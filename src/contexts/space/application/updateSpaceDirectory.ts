@@ -1,4 +1,5 @@
 import type { SpaceBoundary } from '../../../shared/types/spaceBoundary'
+import { collectSpaceSubtreeIds } from './spaceTree'
 import { replaceBoundaryScopeRoot, resolveSpaceBoundaryScope } from './spaceBoundaryPolicy'
 
 export interface UpdateSpaceDirectoryOptions {
@@ -50,7 +51,7 @@ export function computeSpaceDirectoryUpdate<TSpace extends SpaceDirectoryRecord>
   const archiveSpace = options?.archiveSpace === true
   const markNodeDirectoryMismatch = options?.markNodeDirectoryMismatch === true
   const renameSpaceTo = options?.renameSpaceTo?.trim()
-  const removedSpaceIds = archiveSpace ? collectDescendantSpaceIds(spaces, spaceId) : new Set()
+  const removedSpaceIds = archiveSpace ? collectSpaceSubtreeIds(spaces, spaceId) : new Set()
   const cascadedSpaceIds = archiveSpace
     ? new Set<string>()
     : collectInheritedDirectoryDescendantIds({
@@ -87,26 +88,6 @@ export function computeSpaceDirectoryUpdate<TSpace extends SpaceDirectoryRecord>
     previousEffectiveDirectory,
     nextDirectoryPath: directoryPath,
   }
-}
-
-function collectDescendantSpaceIds<TSpace extends SpaceDirectoryRecord>(
-  spaces: TSpace[],
-  rootSpaceId: string,
-): Set<string> {
-  const removed = new Set<string>([rootSpaceId])
-  let changed = true
-
-  while (changed) {
-    changed = false
-    for (const space of spaces) {
-      if (space.parentSpaceId && removed.has(space.parentSpaceId) && !removed.has(space.id)) {
-        removed.add(space.id)
-        changed = true
-      }
-    }
-  }
-
-  return removed
 }
 
 function collectInheritedDirectoryDescendantIds<TSpace extends SpaceDirectoryRecord>({

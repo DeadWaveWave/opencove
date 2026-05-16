@@ -31,7 +31,7 @@ export function resolveSelectedChildSpaceParent(options: {
 
   for (const node of options.selectedNodes) {
     const hit = resolveInnermostSpaceAtPoint(options.spaces, resolveNodeCenter(node))
-    if (!hit || hit.parentSpaceId) {
+    if (!hit) {
       return null
     }
 

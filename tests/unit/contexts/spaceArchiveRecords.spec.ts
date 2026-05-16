@@ -8,7 +8,33 @@ import type {
 import {
   appendSpaceArchiveRecord,
   buildSpaceArchiveRecord,
+  getSpaceArchiveRecordSpaces,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/spaceArchiveRecords'
+
+function createNoteNode(id: string, text: string): Node<TerminalNodeData> {
+  return {
+    id,
+    position: { x: 0, y: 0 },
+    data: {
+      sessionId: '',
+      title: id,
+      width: 320,
+      height: 220,
+      kind: 'note',
+      status: null,
+      startedAt: null,
+      endedAt: null,
+      exitCode: null,
+      lastError: null,
+      scrollback: null,
+      executionDirectory: null,
+      expectedDirectory: null,
+      agent: null,
+      task: null,
+      note: { text },
+    },
+  }
+}
 
 describe('space archive records', () => {
   it('captures full text without terminal scrollback', () => {
@@ -165,5 +191,86 @@ describe('space archive records', () => {
     expect(result).toHaveLength(50)
     expect(result[0].id).toBe('record-next')
     expect(result.some(item => item.id === 'record-49')).toBe(false)
+  })
+
+  it('captures archived descendant spaces and their nodes as one subtree snapshot', () => {
+    const parent: WorkspaceSpaceState = {
+      id: 'space-parent',
+      name: 'Parent',
+      directoryPath: '/repo',
+      targetMountId: null,
+      parentSpaceId: null,
+      labelColor: 'blue',
+      nodeIds: ['note-parent'],
+      rect: null,
+    }
+    const child: WorkspaceSpaceState = {
+      id: 'space-child',
+      name: 'Child',
+      directoryPath: '/repo/.opencove/worktrees/api',
+      targetMountId: null,
+      parentSpaceId: 'space-parent',
+      labelColor: 'green',
+      nodeIds: ['note-child'],
+      rect: null,
+    }
+
+    const record = buildSpaceArchiveRecord({
+      space: parent,
+      spaces: [parent, child],
+      nodes: [
+        createNoteNode('note-parent', 'parent note'),
+        createNoteNode('note-child', 'child note'),
+      ],
+      archivedAt: '2026-03-23T00:00:00.000Z',
+      recordId: 'record-subtree',
+    })
+
+    expect(record.spaces?.map(space => space.id)).toEqual(['space-parent', 'space-child'])
+    expect(record.nodes.map(node => node.id)).toEqual(['note-parent', 'note-child'])
+    expect(record.spaces?.find(space => space.id === 'space-child')).toMatchObject({
+      parentSpaceId: 'space-parent',
+      directoryPath: '/repo/.opencove/worktrees/api',
+      nodeIds: ['note-child'],
+    })
+  })
+
+  it('derives a single archived Space from legacy records without spaces snapshots', () => {
+    const record: SpaceArchiveRecord = {
+      id: 'legacy',
+      archivedAt: '2026-03-23T00:00:00.000Z',
+      git: null,
+      space: {
+        id: 'space-legacy',
+        name: 'Legacy',
+        directoryPath: '/repo',
+        labelColor: 'red',
+        rect: null,
+      },
+      nodes: [
+        {
+          kind: 'note',
+          id: 'note-legacy',
+          title: 'Legacy note',
+          frame: null,
+          labelColorOverride: null,
+          text: 'legacy',
+        },
+      ],
+    }
+
+    expect(getSpaceArchiveRecordSpaces(record)).toEqual([
+      {
+        id: 'space-legacy',
+        name: 'Legacy',
+        directoryPath: '/repo',
+        targetMountId: null,
+        parentSpaceId: null,
+        boundary: null,
+        labelColor: 'red',
+        nodeIds: ['note-legacy'],
+        rect: null,
+      },
+    ])
   })
 })

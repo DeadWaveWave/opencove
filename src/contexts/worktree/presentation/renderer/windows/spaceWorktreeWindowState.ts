@@ -39,20 +39,22 @@ export function resolveSpaceWorktreeStatusPath({
 
 export function getSpaceArchiveCounts({
   space,
+  nodeIds,
   nodes,
 }: {
   space: WorkspaceSpaceState | null
+  nodeIds?: ReadonlySet<string> | null
   nodes: Node<TerminalNodeData>[]
 }): SpaceArchiveCounts {
-  if (!space) {
+  if (!space && !nodeIds) {
     return EMPTY_ARCHIVE_COUNTS
   }
 
-  const nodeIds = new Set(space.nodeIds)
+  const targetNodeIds = nodeIds ?? new Set(space?.nodeIds ?? [])
   const counts = { ...EMPTY_ARCHIVE_COUNTS }
 
   for (const node of nodes) {
-    if (!nodeIds.has(node.id)) {
+    if (!targetNodeIds.has(node.id)) {
       continue
     }
 

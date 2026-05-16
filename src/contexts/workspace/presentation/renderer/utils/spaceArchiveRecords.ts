@@ -4,6 +4,7 @@ import type {
   TerminalNodeData,
   SpaceArchiveGitSnapshot,
   SpaceArchiveRecord,
+  SpaceArchiveSpaceSnapshot,
   WorkspaceSpaceState,
 } from '../types'
 
@@ -33,19 +34,23 @@ function toArchiveNodeFrame(node: Node<TerminalNodeData>): NodeFrame {
 
 export function buildSpaceArchiveRecord({
   space,
+  spaces,
   nodes,
   git = null,
   archivedAt = new Date().toISOString(),
   recordId = crypto.randomUUID(),
 }: {
   space: WorkspaceSpaceState
+  spaces?: WorkspaceSpaceState[]
   nodes: Node<TerminalNodeData>[]
   git?: SpaceArchiveGitSnapshot | null
   archivedAt?: string
   recordId?: string
 }): SpaceArchiveRecord {
   const nodeById = new Map(nodes.map(node => [node.id, node]))
-  const snapshots = space.nodeIds
+  const archivedSpaces = normalizeArchivedSpaces(space, spaces)
+  const archivedNodeIds = [...new Set(archivedSpaces.flatMap(candidate => candidate.nodeIds))]
+  const snapshots = archivedNodeIds
     .map(nodeId => nodeById.get(nodeId) ?? null)
     .filter((node): node is Node<TerminalNodeData> => node !== null)
     .map(node => {
@@ -140,8 +145,65 @@ export function buildSpaceArchiveRecord({
       labelColor: space.labelColor,
       rect: space.rect,
     },
+    spaces: archivedSpaces.map(toArchiveSpaceSnapshot),
     nodes: snapshots,
   }
+}
+
+function normalizeArchivedSpaces(
+  targetSpace: WorkspaceSpaceState,
+  spaces: WorkspaceSpaceState[] | null | undefined,
+): WorkspaceSpaceState[] {
+  const candidates = Array.isArray(spaces) && spaces.length > 0 ? spaces : [targetSpace]
+  const result: WorkspaceSpaceState[] = []
+  const seen = new Set<string>()
+
+  for (const candidate of [targetSpace, ...candidates]) {
+    if (seen.has(candidate.id)) {
+      continue
+    }
+
+    seen.add(candidate.id)
+    result.push(candidate)
+  }
+
+  return result
+}
+
+function toArchiveSpaceSnapshot(space: WorkspaceSpaceState): SpaceArchiveSpaceSnapshot {
+  return {
+    id: space.id,
+    name: space.name,
+    directoryPath: space.directoryPath,
+    targetMountId: space.targetMountId ?? null,
+    parentSpaceId: space.parentSpaceId ?? null,
+    boundary: space.boundary ?? null,
+    labelColor: space.labelColor,
+    nodeIds: [...space.nodeIds],
+    rect: space.rect,
+  }
+}
+
+export function getSpaceArchiveRecordSpaces(
+  record: SpaceArchiveRecord,
+): SpaceArchiveSpaceSnapshot[] {
+  if (Array.isArray(record.spaces) && record.spaces.length > 0) {
+    return record.spaces
+  }
+
+  return [
+    {
+      id: record.space.id,
+      name: record.space.name,
+      directoryPath: record.space.directoryPath,
+      targetMountId: null,
+      parentSpaceId: null,
+      boundary: null,
+      labelColor: record.space.labelColor,
+      nodeIds: record.nodes.map(node => node.id),
+      rect: record.space.rect,
+    },
+  ]
 }
 
 export function appendSpaceArchiveRecord(

@@ -192,7 +192,7 @@ export function WorkspaceCanvasView({
 
   const {
     activeMenuSpace,
-    isActiveMenuSpaceOnWorkspaceRoot,
+    canCreateWorktreeForActiveMenuSpace,
     canArrangeCanvas,
     canArrangeAll,
     canArrangeActiveSpace,
@@ -437,7 +437,7 @@ export function WorkspaceCanvasView({
         spaceActionMenu={spaceActionMenu}
         availablePathOpeners={availablePathOpeners}
         activeMenuSpace={activeMenuSpace}
-        isActiveMenuSpaceOnWorkspaceRoot={isActiveMenuSpaceOnWorkspaceRoot}
+        canCreateWorktreeForActiveMenuSpace={canCreateWorktreeForActiveMenuSpace}
         closeSpaceActionMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
         openSpaceCreateWorktree={openSpaceCreateWorktree}

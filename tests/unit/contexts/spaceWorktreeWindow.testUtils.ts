@@ -25,6 +25,48 @@ export function createSpaces(
   ]
 }
 
+export function createSpace(options: {
+  id: string
+  directoryPath: string
+  parentSpaceId?: string | null
+  nodeIds?: string[]
+}): WorkspaceSpaceState {
+  return {
+    id: options.id,
+    name: options.id,
+    directoryPath: options.directoryPath,
+    targetMountId: null,
+    parentSpaceId: options.parentSpaceId ?? null,
+    labelColor: null,
+    nodeIds: options.nodeIds ?? [],
+    rect: null,
+  }
+}
+
+export function createNoteNode(id: string, text: string): Node<TerminalNodeData> {
+  return {
+    id,
+    position: { x: 0, y: 0 },
+    data: {
+      sessionId: id,
+      title: id,
+      width: 240,
+      height: 160,
+      kind: 'note',
+      status: null,
+      startedAt: null,
+      endedAt: null,
+      exitCode: null,
+      lastError: null,
+      scrollback: null,
+      agent: null,
+      task: null,
+      note: { text },
+    },
+    type: 'workspaceNode',
+  }
+}
+
 export function installWorktreeApi(overrides?: Record<string, unknown>): {
   create: ReturnType<typeof vi.fn>
   remove: ReturnType<typeof vi.fn>

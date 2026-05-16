@@ -8,11 +8,7 @@ import type {
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import type { ShowWorkspaceCanvasMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
-import type {
-  CreateGitWorktreeBranchMode,
-  GitWorktreeInfo,
-  RemoveGitWorktreeResult,
-} from '@shared/contracts/dto'
+import type { CreateGitWorktreeBranchMode, GitWorktreeInfo } from '@shared/contracts/dto'
 import { SpaceWorktreeGuardWindow, type SpaceWorktreeGuardState } from './SpaceWorktreeGuardWindow'
 import { SpaceWorktreeWindowDialog } from './SpaceWorktreeWindowDialog'
 import {
@@ -20,6 +16,7 @@ import {
   type BranchMode,
   getBranchNameValidationError,
   getWorktreeApiMethod,
+  removeArchiveWorktreesInOrder,
   type PendingOperation,
   type SpaceWorktreeViewMode,
   type UpdateSpaceDirectoryOptions,
@@ -31,9 +28,7 @@ import { useSpaceWorktreeRefresh } from './useSpaceWorktreeRefresh'
 import { useSpaceWorktreeSuggestNames } from './useSpaceWorktreeSuggestNames'
 import { buildArchiveWarningMessage } from './spaceWorktreeWarnings'
 import { toSpaceWorktreeErrorMessage } from './spaceWorktreeErrorMessage'
-import { buildSpaceArchiveRecord } from '@contexts/workspace/presentation/renderer/utils/spaceArchiveRecords'
-import { closeBlockingNodesForArchive } from './closeBlockingNodesForArchive'
-import { resolveSpaceArchiveGitSnapshot } from './resolveSpaceArchiveGitSnapshot'
+import { useSpaceWorktreeArchiveState } from './useSpaceWorktreeArchiveState'
 export function SpaceWorktreeWindow({
   spaceId,
   initialViewMode = 'create',
@@ -91,16 +86,21 @@ export function SpaceWorktreeWindow({
   >(null)
   const {
     archiveCounts,
+    archiveScope,
     branchesWithWorktrees,
     currentWorktree,
+    hasOwnWorktree,
     isSpaceOnWorkspaceRoot,
+    ownWorktree,
     resolvedInitialViewMode,
     resolvedWorktreesRoot,
     space,
     spaceTasks,
     statusPath,
+    worktreeEligibility,
     worktreeApi,
     worktreeRepoRootPath,
+    worktreeSpacesInScope,
   } = useSpaceWorktreeDerivedState({
     spaceId,
     spaces,
@@ -165,6 +165,27 @@ export function SpaceWorktreeWindow({
     }
   }, [changedFileCount])
 
+  const getWorktreeEligibilityError = useCallback((): string | null => {
+    switch (worktreeEligibility.reason) {
+      case 'already_worktree':
+        return t('worktree.createBlockedAlreadyWorktree')
+      case 'worktree_ancestor':
+        return t('worktree.createBlockedAncestorWorktree', {
+          name: worktreeEligibility.ancestorWorktree?.space.name ?? t('worktree.workspaceRoot'),
+        })
+      case 'worktree_descendant':
+        return t('worktree.createBlockedDescendantWorktree', {
+          name: worktreeEligibility.descendantWorktree?.space.name ?? t('worktree.workspaceRoot'),
+        })
+      case 'space_not_found':
+        return t('worktree.createBlockedSpaceMissing')
+      case null:
+        return null
+      default:
+        return null
+    }
+  }, [t, worktreeEligibility])
+
   const queueGuardIfNeeded = useCallback(
     (pending: PendingOperation, label: string): boolean => {
       if (!space) {
@@ -226,23 +247,21 @@ export function SpaceWorktreeWindow({
             }
           : options
 
-      let removedWorktreeResult: RemoveGitWorktreeResult | null = null
-
-      if (pending.worktreePath) {
-        const removeWorktree = getWorktreeApiMethod(worktreeApi, 'remove', t)
-        removedWorktreeResult = await removeWorktree({
-          repoPath: worktreeRepoRootPath,
-          worktreePath: pending.worktreePath,
-          force: pending.force,
-          deleteBranch: pending.deleteBranch,
-        })
-      }
+      const removedWorktreeResults =
+        pending.worktreeCleanups.length > 0
+          ? await removeArchiveWorktreesInOrder({
+              cleanups: pending.worktreeCleanups,
+              force: pending.force,
+              removeWorktree: getWorktreeApiMethod(worktreeApi, 'remove', t),
+              repoPath: worktreeRepoRootPath,
+            })
+          : []
 
       onUpdateSpaceDirectory(targetSpaceId, worktreeRepoRootPath, nextUpdateOptions)
       setDeleteBranchOnArchive(false)
       await refresh()
 
-      if (removedWorktreeResult) {
+      for (const removedWorktreeResult of removedWorktreeResults) {
         const warningMessage = buildArchiveWarningMessage(removedWorktreeResult, t)
         if (warningMessage) {
           onShowMessage?.(warningMessage, 'warning')
@@ -307,6 +326,11 @@ export function SpaceWorktreeWindow({
       return
     }
 
+    if (!worktreeEligibility.canCreate) {
+      setError(getWorktreeEligibilityError())
+      return
+    }
+
     const branchModePayload: CreateGitWorktreeBranchMode =
       branchMode === 'existing'
         ? { kind: 'existing', name: existingBranchName.trim() }
@@ -333,86 +357,45 @@ export function SpaceWorktreeWindow({
   }, [
     branchMode,
     existingBranchName,
+    getWorktreeEligibilityError,
     newBranchName,
     resolvedWorktreesRoot,
     runOperation,
     space,
     startPoint,
     t,
+    worktreeEligibility.canCreate,
   ])
 
-  const handleArchive = useCallback(
-    async (saveArchiveRecord: boolean) => {
-      if (!space) {
-        return
-      }
-      if (!isSpaceOnWorkspaceRoot && changedFileCount > 0 && !forceArchiveConfirmed) {
-        return
-      }
-
-      const git = saveArchiveRecord
-        ? await resolveSpaceArchiveGitSnapshot({
-            agentSettings,
-            workspacePath: worktreeRepoRootPath,
-            isSpaceOnWorkspaceRoot,
-            spaceDirectoryPath: space.directoryPath,
-            currentBranch,
-            currentWorktree,
-          })
-        : null
-
-      const snapshot = saveArchiveRecord ? buildSpaceArchiveRecord({ space, nodes, git }) : null
-      setError(null)
-      setIsMutating(true)
-      try {
-        const canContinue = await closeBlockingNodesForArchive(
-          space.id,
-          getBlockingNodes,
-          closeNodesById,
-        )
-        if (!canContinue) {
-          setError(t('worktreeGuard.closeFailed'))
-          return
-        }
-        await executePendingOperation(space.id, {
-          kind: 'archive',
-          worktreePath:
-            !isSpaceOnWorkspaceRoot && deleteWorktreeOnArchive ? space.directoryPath : null,
-          deleteBranch:
-            !isSpaceOnWorkspaceRoot && deleteWorktreeOnArchive ? deleteBranchOnArchive : false,
-          archiveSpace: true,
-          force: true,
-        })
-        if (snapshot) {
-          onAppendSpaceArchiveRecord(snapshot)
-        }
-        onClose()
-      } catch (operationError) {
-        setError(toSpaceWorktreeErrorMessage(operationError, t))
-      } finally {
-        setIsMutating(false)
-      }
-    },
-    [
-      agentSettings,
-      closeNodesById,
-      currentBranch,
-      currentWorktree,
-      changedFileCount,
-      deleteWorktreeOnArchive,
-      deleteBranchOnArchive,
-      executePendingOperation,
-      forceArchiveConfirmed,
-      getBlockingNodes,
-      isSpaceOnWorkspaceRoot,
-      onClose,
-      onAppendSpaceArchiveRecord,
-      space,
-      t,
-      nodes,
-      worktreeRepoRootPath,
-    ],
-  )
+  const {
+    descendantWorktreeCleanups,
+    handleArchive,
+    handleDescendantDeleteBranchOnArchiveChange,
+    handleDescendantDeleteWorktreeOnArchiveChange,
+  } = useSpaceWorktreeArchiveState({
+    agentSettings,
+    archiveScope,
+    changedFileCount,
+    closeNodesById,
+    currentBranch,
+    currentWorktree,
+    deleteBranchOnArchive,
+    deleteWorktreeOnArchive,
+    executePendingOperation,
+    forceArchiveConfirmed,
+    getBlockingNodes,
+    hasOwnWorktree,
+    isSpaceOnWorkspaceRoot,
+    nodes,
+    onAppendSpaceArchiveRecord,
+    onClose,
+    ownWorktree,
+    setError,
+    setIsMutating,
+    space,
+    worktreeRepoRootPath,
+    worktreeSpacesInScope,
+  })
   const panelHandlers = useSpaceWorktreePanelHandlers({
     setError,
     setDeleteWorktreeOnArchive,
@@ -454,6 +437,8 @@ export function SpaceWorktreeWindow({
         archiveTerminalCount={archiveCounts.terminalCount}
         archiveTaskCount={archiveCounts.taskCount}
         archiveNoteCount={archiveCounts.noteCount}
+        archiveHasOwnWorktree={hasOwnWorktree}
+        archiveDescendantWorktrees={descendantWorktreeCleanups}
         error={error}
         guardIsBusy={guard?.isBusy === true}
         onBackdropClose={onClose}
@@ -466,6 +451,8 @@ export function SpaceWorktreeWindow({
         onCreate={panelHandlers.onCreate}
         onDeleteWorktreeOnArchiveChange={panelHandlers.onDeleteWorktreeOnArchiveChange}
         onDeleteBranchOnArchiveChange={panelHandlers.onDeleteBranchOnArchiveChange}
+        onDescendantDeleteWorktreeOnArchiveChange={handleDescendantDeleteWorktreeOnArchiveChange}
+        onDescendantDeleteBranchOnArchiveChange={handleDescendantDeleteBranchOnArchiveChange}
         onForceArchiveConfirmedChange={panelHandlers.onForceArchiveConfirmedChange}
         onArchive={panelHandlers.onArchive}
         onCloseOnly={panelHandlers.onCloseOnly}

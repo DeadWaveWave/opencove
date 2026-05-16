@@ -1,0 +1,32 @@
+.workspace-space-worktree__descendant-cleanups {
+  display: grid;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.workspace-space-worktree__option-group {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0 0 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workspace-space-worktree__option-heading {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workspace-space-worktree__option-heading strong {
+  color: rgba(241, 246, 255, 0.98);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.25;
+}
+
+.workspace-space-worktree__option-heading span {
+  color: rgba(192, 204, 225, 0.78);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}

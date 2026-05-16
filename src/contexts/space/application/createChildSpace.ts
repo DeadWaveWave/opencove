@@ -179,7 +179,7 @@ export function createChildSpace<TSpace extends ChildSpaceRecord>(options: {
     return { ok: false, code: 'parent_not_found' }
   }
 
-  if (!options.allowNestedParent && parent.parentSpaceId) {
+  if (options.allowNestedParent === false && parent.parentSpaceId) {
     return { ok: false, code: 'nested_parent_not_allowed' }
   }
 

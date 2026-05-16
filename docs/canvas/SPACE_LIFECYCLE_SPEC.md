@@ -2,7 +2,7 @@
 
 本规格定义 Space 在画布里的创建、组织、执行目录、Space Worktree 和归档语义。目标是让用户看到的是稳定的 “Space” 心智，而不是被迫理解 root space / child space / worktree binding 等内部实现细节。
 
-Status: Accepted target semantics for the Space lifecycle and Space Worktree slice. Runtime implementation and tests must match this document before the slice is considered delivered.
+Status: Implemented for the Space lifecycle and Space Worktree slice. Runtime behavior, archive records, and targeted unit coverage are expected to match this document; future changes to Space creation, archive, or Worktree conversion must update this spec in the same change.
 
 ## Problem Class
 
@@ -135,6 +135,17 @@ Settings defaults may preselect deletion checkboxes, but they do not replace exp
 
 ## Verification Anchors
 
-- Unit: Space tree helpers, innermost hit resolution, `canCreateSpaceWorktree`, archive scope calculation, archive record normalization.
-- Integration: persistence compatibility for old archive records and new subtree archive records, including archive review rendering.
+- Unit: Space tree helpers, innermost hit resolution, `canCreateSpaceWorktree`, archive scope calculation, archive record normalization, scoped worktree cleanup choices.
+- Integration: persistence compatibility for old archive records and new subtree archive records, including archive review rendering and node ownership colors.
 - E2E: `Create Space` from blank canvas vs inside Space, absence of `Create Child Space` from `...`, sibling child Space Worktree creation, blocked ancestor/descendant Worktree conversion, ordinary child archive, child Worktree archive, parent archive with descendant Worktrees.
+
+Current targeted checks:
+
+- `tests/unit/contexts/space/createChildSpace.spec.ts`
+- `tests/unit/contexts/space/spaceTree.spec.ts`
+- `tests/unit/contexts/space/spaceArchiveScope.spec.ts`
+- `tests/unit/contexts/space/spaceWorktreeEligibility.spec.ts`
+- `tests/unit/contexts/spaceArchiveRecords.spec.ts`
+- `tests/unit/contexts/spaceWorktreeWindow.archive.spec.tsx`
+- `tests/unit/contexts/spaceWorktreeWindow.flow.spec.tsx`
+- `tests/unit/contexts/workspaceSpaceActionMenu.spec.tsx`

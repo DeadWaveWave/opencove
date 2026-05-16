@@ -155,16 +155,6 @@ export function WorkspaceContextMenu({
     arrangeCanvas,
     arrangeInSpace,
   })
-  const spaceCreationHitSpace = useMemo(() => {
-    if (!contextMenu || contextMenu.kind !== 'pane') {
-      return null
-    }
-
-    return resolveInnermostSpaceAtPoint(spaces, {
-      x: contextMenu.flowX,
-      y: contextMenu.flowY,
-    })
-  }, [contextMenu, spaces])
   const menuRef = React.useRef<HTMLDivElement | null>(null)
   const submenuRef = React.useRef<HTMLDivElement | null>(null)
   const agentProviderToggleRef = React.useRef<HTMLButtonElement | null>(null)
@@ -389,7 +379,7 @@ export function WorkspaceContextMenu({
             isProjectRolesSubmenuOpen={openSubmenu === 'project-roles'}
             openAgentLauncher={openAgentLauncher}
             createSpaceFromContextMenu={createSpaceFromContextMenu}
-            canCreateSpace={spaceCreationHitSpace === null || !spaceCreationHitSpace.parentSpaceId}
+            canCreateSpace={contextMenu.kind === 'pane'}
             openAgentProviderSubmenu={openAgentProviderSubmenu}
             agentProviderToggleRef={agentProviderToggleRef}
             isLoadingInstalledProviders={isLoadingInstalledProviders}

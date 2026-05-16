@@ -15,6 +15,7 @@ function renderMenu(
       canCreateWorktree={options?.canCreateWorktree ?? false}
       canArchive={options?.canArchive ?? false}
       closeMenu={() => undefined}
+      setSpaceLabelColor={() => undefined}
       onCreateWorktree={() => undefined}
       onArchive={() => undefined}
       onCopyPath={() => undefined}
