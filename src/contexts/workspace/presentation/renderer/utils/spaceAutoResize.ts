@@ -1,5 +1,4 @@
 import type { WorkspaceSpaceRect, WorkspaceSpaceState } from '../types'
-import { clampRectInsideRect } from '@contexts/space/application/spaceContainment'
 import {
   pushAwayLayout,
   SPACE_MIN_SIZE,
@@ -7,6 +6,14 @@ import {
   type LayoutDirection,
   type LayoutItem,
 } from './spaceLayout'
+import {
+  buildDirectChildSpaceIdsByParentId,
+  buildOwningSpaceIdByNodeId,
+  buildSpaceById,
+  buildSpaceTreeGroupIdResolver,
+  resolveAncestorSpaceIds,
+  resolveSpaceRootId,
+} from './spaceTreeLayout'
 
 function rectEquals(a: WorkspaceSpaceRect, b: WorkspaceSpaceRect): boolean {
   return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
@@ -50,6 +57,155 @@ function buildGroupBounds(items: LayoutItem[]): Map<string, WorkspaceSpaceRect> 
   return boundsByGroupId
 }
 
+function computePaddedBounds(
+  rects: WorkspaceSpaceRect[],
+  padding: number,
+): WorkspaceSpaceRect | null {
+  if (rects.length === 0) {
+    return null
+  }
+
+  let minX = Number.POSITIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+
+  for (const rect of rects) {
+    minX = Math.min(minX, rect.x)
+    minY = Math.min(minY, rect.y)
+    maxX = Math.max(maxX, rect.x + rect.width)
+    maxY = Math.max(maxY, rect.y + rect.height)
+  }
+
+  if (
+    !Number.isFinite(minX) ||
+    !Number.isFinite(minY) ||
+    !Number.isFinite(maxX) ||
+    !Number.isFinite(maxY)
+  ) {
+    return null
+  }
+
+  return {
+    x: minX - padding,
+    y: minY - padding,
+    width: maxX - minX + padding * 2,
+    height: maxY - minY + padding * 2,
+  }
+}
+
+function expandRectToFit(
+  existingRect: WorkspaceSpaceRect,
+  requiredRect: WorkspaceSpaceRect,
+): WorkspaceSpaceRect {
+  const nextLeft = Math.min(existingRect.x, requiredRect.x)
+  const nextTop = Math.min(existingRect.y, requiredRect.y)
+  const nextRight = Math.max(
+    existingRect.x + existingRect.width,
+    requiredRect.x + requiredRect.width,
+  )
+  const nextBottom = Math.max(
+    existingRect.y + existingRect.height,
+    requiredRect.y + requiredRect.height,
+  )
+
+  return {
+    x: nextLeft,
+    y: nextTop,
+    width: Math.max(SPACE_MIN_SIZE.width, nextRight - nextLeft),
+    height: Math.max(SPACE_MIN_SIZE.height, nextBottom - nextTop),
+  }
+}
+
+function resolveSpaceContentRects({
+  space,
+  nodeRectById,
+  spaceRectById,
+  directChildSpaceIdsByParentId,
+}: {
+  space: WorkspaceSpaceState
+  nodeRectById: Map<string, WorkspaceSpaceRect>
+  spaceRectById: Map<string, WorkspaceSpaceRect>
+  directChildSpaceIdsByParentId: Map<string, string[]>
+}): WorkspaceSpaceRect[] {
+  const rects: WorkspaceSpaceRect[] = []
+
+  for (const nodeId of space.nodeIds) {
+    const rect = nodeRectById.get(nodeId)
+    if (rect) {
+      rects.push(rect)
+    }
+  }
+
+  for (const childSpaceId of directChildSpaceIdsByParentId.get(space.id) ?? []) {
+    const rect = spaceRectById.get(childSpaceId)
+    if (rect) {
+      rects.push(rect)
+    }
+  }
+
+  return rects
+}
+
+function resolveResizeDirections(
+  previousRect: WorkspaceSpaceRect,
+  nextRect: WorkspaceSpaceRect,
+): LayoutDirection[] {
+  const expandedDirections: LayoutDirection[] = []
+  if (nextRect.x < previousRect.x) {
+    expandedDirections.push('x-')
+  }
+  if (nextRect.x + nextRect.width > previousRect.x + previousRect.width) {
+    expandedDirections.push('x+')
+  }
+  if (nextRect.y < previousRect.y) {
+    expandedDirections.push('y-')
+  }
+  if (nextRect.y + nextRect.height > previousRect.y + previousRect.height) {
+    expandedDirections.push('y+')
+  }
+
+  return expandedDirections.length > 0 ? expandedDirections : ['x+']
+}
+
+function buildSpaceTreeLayoutItems({
+  spaces,
+  nodeRects,
+  owningSpaceIdByNodeId,
+}: {
+  spaces: WorkspaceSpaceState[]
+  nodeRects: Array<{ id: string; rect: WorkspaceSpaceRect }>
+  owningSpaceIdByNodeId: Map<string, string>
+}): LayoutItem[] {
+  const resolveSpaceGroupId = buildSpaceTreeGroupIdResolver(spaces)
+  const items: LayoutItem[] = []
+
+  for (const space of spaces) {
+    if (!space.rect) {
+      continue
+    }
+
+    items.push({
+      id: space.id,
+      kind: 'space',
+      groupId: resolveSpaceGroupId(space.id),
+      rect: { ...space.rect },
+    })
+  }
+
+  for (const nodeItem of nodeRects) {
+    const ownerSpaceId = owningSpaceIdByNodeId.get(nodeItem.id) ?? null
+    items.push({
+      id: nodeItem.id,
+      kind: 'node',
+      groupId: ownerSpaceId ? resolveSpaceGroupId(ownerSpaceId) : `node:${nodeItem.id}`,
+      rect: { ...nodeItem.rect },
+    })
+  }
+
+  return items
+}
+
 export function expandSpaceToFitOwnedNodesAndPushAway({
   targetSpaceId,
   spaces,
@@ -68,6 +224,8 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
     return { spaces, nodePositionById: new Map() }
   }
 
+  const spaceById = buildSpaceById(spaces)
+  const directChildSpaceIdsByParentId = buildDirectChildSpaceIdsByParentId(spaces)
   const nodeRectById = new Map(nodeRects.map(item => [item.id, item.rect]))
   const ownedRects = targetSpace.nodeIds
     .map(nodeId => nodeRectById.get(nodeId))
@@ -77,133 +235,79 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
     return { spaces, nodePositionById: new Map() }
   }
 
-  let minX = Number.POSITIVE_INFINITY
-  let minY = Number.POSITIVE_INFINITY
-  let maxX = Number.NEGATIVE_INFINITY
-  let maxY = Number.NEGATIVE_INFINITY
-
-  for (const rect of ownedRects) {
-    minX = Math.min(minX, rect.x)
-    minY = Math.min(minY, rect.y)
-    maxX = Math.max(maxX, rect.x + rect.width)
-    maxY = Math.max(maxY, rect.y + rect.height)
-  }
-
-  if (
-    !Number.isFinite(minX) ||
-    !Number.isFinite(minY) ||
-    !Number.isFinite(maxX) ||
-    !Number.isFinite(maxY)
-  ) {
-    return { spaces, nodePositionById: new Map() }
-  }
-
-  const requiredRect: WorkspaceSpaceRect = {
-    x: minX - padding,
-    y: minY - padding,
-    width: maxX - minX + padding * 2,
-    height: maxY - minY + padding * 2,
-  }
-
-  const existingRect = targetSpace.rect
-  const nextLeft = Math.min(existingRect.x, requiredRect.x)
-  const nextTop = Math.min(existingRect.y, requiredRect.y)
-  const nextRight = Math.max(
-    existingRect.x + existingRect.width,
-    requiredRect.x + requiredRect.width,
+  const spaceRectById = new Map(
+    spaces.flatMap(space => (space.rect ? [[space.id, { ...space.rect }] as const] : [])),
   )
-  const nextBottom = Math.max(
-    existingRect.y + existingRect.height,
-    requiredRect.y + requiredRect.height,
-  )
+  const changedSpaceIds = new Set<string>()
 
-  const expandedRect: WorkspaceSpaceRect = {
-    x: nextLeft,
-    y: nextTop,
-    width: Math.max(SPACE_MIN_SIZE.width, nextRight - nextLeft),
-    height: Math.max(SPACE_MIN_SIZE.height, nextBottom - nextTop),
+  for (const spaceId of resolveAncestorSpaceIds(targetSpaceId, spaceById)) {
+    const space = spaceById.get(spaceId)
+    const existingRect = spaceRectById.get(spaceId)
+    if (!space || !existingRect) {
+      continue
+    }
+
+    const requiredRect = computePaddedBounds(
+      resolveSpaceContentRects({
+        space,
+        nodeRectById,
+        spaceRectById,
+        directChildSpaceIdsByParentId,
+      }),
+      padding,
+    )
+    if (!requiredRect) {
+      continue
+    }
+
+    const expandedRect = expandRectToFit(existingRect, requiredRect)
+    if (rectEquals(existingRect, expandedRect)) {
+      continue
+    }
+
+    spaceRectById.set(spaceId, expandedRect)
+    changedSpaceIds.add(spaceId)
   }
 
-  if (rectEquals(existingRect, expandedRect)) {
-    return { spaces, nodePositionById: new Map() }
-  }
-
-  const parentRect = targetSpace.parentSpaceId
-    ? (spaces.find(space => space.id === targetSpace.parentSpaceId)?.rect ?? null)
-    : null
-  const resolvedExpandedRect = parentRect
-    ? clampRectInsideRect(expandedRect, parentRect, padding)
-    : expandedRect
-  if (rectEquals(existingRect, resolvedExpandedRect)) {
+  if (changedSpaceIds.size === 0) {
     return { spaces, nodePositionById: new Map() }
   }
 
   const draftSpaces = spaces.map(space =>
-    space.id === targetSpaceId
+    changedSpaceIds.has(space.id)
       ? {
           ...space,
-          rect: resolvedExpandedRect,
+          rect: spaceRectById.get(space.id) ?? space.rect,
         }
       : space,
   )
 
-  if (parentRect) {
+  const targetRootSpaceId = resolveSpaceRootId(targetSpaceId, spaceById)
+  const previousRootRect = targetRootSpaceId
+    ? (spaces.find(space => space.id === targetRootSpaceId)?.rect ?? null)
+    : null
+  const nextRootRect = targetRootSpaceId
+    ? (draftSpaces.find(space => space.id === targetRootSpaceId)?.rect ?? null)
+    : null
+  if (!previousRootRect || !nextRootRect || rectEquals(previousRootRect, nextRootRect)) {
     return { spaces: draftSpaces, nodePositionById: new Map() }
   }
 
-  const expandedDirections: LayoutDirection[] = []
-  if (resolvedExpandedRect.x < existingRect.x) {
-    expandedDirections.push('x-')
-  }
-  if (resolvedExpandedRect.x + resolvedExpandedRect.width > existingRect.x + existingRect.width) {
-    expandedDirections.push('x+')
-  }
-  if (resolvedExpandedRect.y < existingRect.y) {
-    expandedDirections.push('y-')
-  }
-  if (resolvedExpandedRect.y + resolvedExpandedRect.height > existingRect.y + existingRect.height) {
-    expandedDirections.push('y+')
-  }
-
-  const directions: LayoutDirection[] = expandedDirections.length > 0 ? expandedDirections : ['x+']
-
-  const owningSpaceIdByNodeId = new Map<string, string>()
-  for (const space of draftSpaces) {
-    for (const nodeId of space.nodeIds) {
-      owningSpaceIdByNodeId.set(nodeId, space.id)
-    }
-  }
-
-  const items: LayoutItem[] = []
-  for (const space of draftSpaces) {
-    if (!space.rect) {
-      continue
-    }
-
-    items.push({
-      id: space.id,
-      kind: 'space',
-      groupId: space.id,
-      rect: { ...space.rect },
-    })
-  }
-
-  for (const nodeItem of nodeRects) {
-    const owner = owningSpaceIdByNodeId.get(nodeItem.id)
-    items.push({
-      id: nodeItem.id,
-      kind: 'node',
-      groupId: owner ?? nodeItem.id,
-      rect: { ...nodeItem.rect },
-    })
-  }
+  const directions = resolveResizeDirections(previousRootRect, nextRootRect)
+  const owningSpaceIdByNodeId = buildOwningSpaceIdByNodeId(draftSpaces)
+  const items = buildSpaceTreeLayoutItems({
+    spaces: draftSpaces,
+    nodeRects,
+    owningSpaceIdByNodeId,
+  })
+  const targetRootGroupId = `space:${targetRootSpaceId}`
 
   const groupBoundsById = buildGroupBounds(items)
-  const targetGroupBounds = groupBoundsById.get(targetSpaceId) ?? null
+  const targetGroupBounds = groupBoundsById.get(targetRootGroupId) ?? null
   const hasExternalCollision =
     targetGroupBounds !== null &&
     [...groupBoundsById.entries()].some(([groupId, rect]) => {
-      if (groupId === targetSpaceId) {
+      if (groupId === targetRootGroupId) {
         return false
       }
 
@@ -216,8 +320,8 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
 
   const pushed = pushAwayLayout({
     items,
-    pinnedGroupIds: [targetSpaceId],
-    sourceGroupIds: [targetSpaceId],
+    pinnedGroupIds: [targetRootGroupId],
+    sourceGroupIds: [targetRootGroupId],
     directions,
     gap,
   })
