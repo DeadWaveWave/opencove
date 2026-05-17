@@ -1,6 +1,7 @@
 import { fork } from 'node:child_process'
 import { resolve } from 'node:path'
 import { PtyHostSupervisor } from '../../platform/process/ptyHost/supervisor'
+import { createNodeChildPtyHostProcess } from '../../platform/process/ptyHost/nodeProcessAdapter'
 import type {
   TerminalGeometryCommitReason,
   TerminalSessionMetadataEvent,
@@ -74,26 +75,7 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
         stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
         env: { ...process.env },
       })
-
-      return {
-        on: (event, listener) => {
-          if (event === 'message') {
-            child.on('message', listener)
-            return
-          }
-
-          child.on('exit', listener)
-        },
-        postMessage: message => {
-          child.send?.(message)
-        },
-        kill: () => {
-          return child.kill()
-        },
-        stdout: child.stdout ?? null,
-        stderr: child.stderr ?? null,
-        pid: child.pid,
-      }
+      return createNodeChildPtyHostProcess(child)
     },
   })
 

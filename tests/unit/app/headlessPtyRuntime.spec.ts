@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 afterEach(() => {
@@ -191,5 +192,54 @@ describe('headless PTY runtime', () => {
     } finally {
       runtime.dispose()
     }
+  })
+
+  it('forwards child IPC send failures through the headless pty adapter callback', async () => {
+    vi.resetModules()
+
+    const observedErrors: Array<string> = []
+
+    const child = new EventEmitter() as EventEmitter & {
+      send: (
+        message: unknown,
+        sendHandle?: unknown,
+        options?: unknown,
+        callback?: (error: Error | null) => void,
+      ) => void
+      kill: () => boolean
+      stdout: null
+      stderr: null
+      pid: number
+    }
+
+    let capturedSendCallback: ((error: Error | null) => void) | null = null
+    child.send = (message, _sendHandle, _options, callback) => {
+      const record =
+        message && typeof message === 'object' ? (message as Record<string, unknown>) : null
+      const messageType = typeof record?.type === 'string' ? record.type : null
+
+      if (messageType === 'shutdown') {
+        capturedSendCallback = callback ?? null
+      }
+    }
+    child.kill = () => true
+    child.stdout = null
+    child.stderr = null
+    child.pid = 3210
+
+    const { createNodeChildPtyHostProcess } =
+      await import('../../../src/platform/process/ptyHost/nodeProcessAdapter')
+
+    const ptyHostProcess = createNodeChildPtyHostProcess(child)
+    ptyHostProcess.postMessage({ type: 'shutdown' }, error => {
+      if (error) {
+        observedErrors.push(error.message)
+      }
+    })
+
+    expect(typeof capturedSendCallback).toBe('function')
+    capturedSendCallback?.(new Error('Channel closed'))
+
+    expect(observedErrors).toEqual(['Channel closed'])
   })
 })

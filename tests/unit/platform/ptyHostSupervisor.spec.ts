@@ -4,15 +4,28 @@ import type { PtyHostProcess } from '@platform/process/ptyHost/supervisor'
 
 class TestPtyHostProcess extends EventEmitter implements PtyHostProcess {
   public readonly sentMessages: unknown[] = []
+  public readonly failPostMessageTypes = new Set<string>()
   public readonly stdout = null
   public readonly stderr = null
   public pid: number | undefined = 1234
+  public killCalls = 0
 
-  public postMessage(message: unknown): void {
+  public postMessage(message: unknown, callback?: (error: Error | null) => void): void {
+    const record =
+      message && typeof message === 'object' ? (message as Record<string, unknown>) : null
+    const messageType = typeof record?.type === 'string' ? record.type : null
+
+    if (messageType && this.failPostMessageTypes.has(messageType)) {
+      callback?.(new Error('Channel closed'))
+      return
+    }
+
     this.sentMessages.push(message)
+    callback?.(null)
   }
 
   public kill(): boolean {
+    this.killCalls += 1
     this.emit('exit', 0)
     return true
   }
@@ -44,6 +57,7 @@ describe('PtyHostSupervisor', () => {
       baseDir: '/',
       resolveEntryPath: () => '/fake/ptyHost.js',
       createProcess: () => testProcess,
+      reportIssue: () => undefined,
     })
 
     const spawnPromise = supervisor.spawn({
@@ -136,6 +150,7 @@ describe('PtyHostSupervisor', () => {
       baseDir: '/',
       resolveEntryPath: () => '/fake/ptyHost.js',
       createProcess: () => testProcess,
+      reportIssue: () => undefined,
     })
 
     const spawnPromise = supervisor.spawn({
@@ -213,6 +228,92 @@ describe('PtyHostSupervisor', () => {
 
     testProcess.emit('exit', 6)
     expect(observedExits).toContainEqual({ sessionId: 's2', exitCode: 6 })
+
+    supervisor.dispose()
+  })
+
+  it('ignores shutdown send failures while disposing', async () => {
+    const testProcess = new TestPtyHostProcess()
+    testProcess.failPostMessageTypes.add('shutdown')
+
+    const supervisor = new PtyHostSupervisor({
+      baseDir: '/',
+      resolveEntryPath: () => '/fake/ptyHost.js',
+      createProcess: () => testProcess,
+    })
+
+    const spawnPromise = supervisor.spawn({
+      command: '/bin/zsh',
+      args: ['-lc', 'echo OK'],
+      cwd: '/',
+      cols: 80,
+      rows: 24,
+    })
+
+    testProcess.emit('message', { type: 'ready', protocolVersion: 1 })
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
+      testProcess,
+      'spawn',
+    )
+    testProcess.emit('message', {
+      type: 'response',
+      requestId: sentSpawn?.requestId,
+      ok: true,
+      result: { sessionId: 's-shutdown-failure' },
+    })
+
+    await expect(spawnPromise).resolves.toEqual({ sessionId: 's-shutdown-failure' })
+
+    expect(() => {
+      supervisor.dispose()
+    }).not.toThrow()
+    expect(testProcess.killCalls).toBe(1)
+  })
+
+  it('treats a send failure as host loss during runtime writes', async () => {
+    const testProcess = new TestPtyHostProcess()
+    const supervisor = new PtyHostSupervisor({
+      baseDir: '/',
+      resolveEntryPath: () => '/fake/ptyHost.js',
+      createProcess: () => testProcess,
+      reportIssue: () => undefined,
+    })
+
+    const observedExits: Array<{ sessionId: string; exitCode: number }> = []
+    supervisor.onExit(event => {
+      observedExits.push(event)
+    })
+
+    const spawnPromise = supervisor.spawn({
+      command: '/bin/zsh',
+      args: ['-lc', 'echo OK'],
+      cwd: '/',
+      cols: 80,
+      rows: 24,
+    })
+
+    testProcess.emit('message', { type: 'ready', protocolVersion: 1 })
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
+      testProcess,
+      'spawn',
+    )
+    testProcess.emit('message', {
+      type: 'response',
+      requestId: sentSpawn?.requestId,
+      ok: true,
+      result: { sessionId: 's-write-failure' },
+    })
+
+    await expect(spawnPromise).resolves.toEqual({ sessionId: 's-write-failure' })
+
+    testProcess.failPostMessageTypes.add('write')
+    supervisor.write('s-write-failure', 'echo test')
+
+    expect(observedExits).toContainEqual({ sessionId: 's-write-failure', exitCode: 1 })
 
     supervisor.dispose()
   })

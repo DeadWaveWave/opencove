@@ -18,6 +18,7 @@ import type {
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
 import type { SpawnPtyOptions } from '../../../../platform/process/pty/types'
 import { PtyHostSupervisor } from '../../../../platform/process/ptyHost/supervisor'
+import { createElectronUtilityPtyHostProcess } from '../../../../platform/process/ptyHost/electronUtilityProcessAdapter'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import { stripAutomaticTerminalQueriesFromOutput } from '../../../../shared/terminal/automaticTerminalSequences'
 import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
@@ -174,7 +175,12 @@ export function createPtyRuntime(): PtyRuntime {
     logFilePath: ptyHostLogFilePath,
     reportIssue: reportStateWatcherIssue,
     createProcess: modulePath =>
-      utilityProcess.fork(modulePath, [], { stdio: 'pipe', serviceName: 'OpenCove PTY Host' }),
+      createElectronUtilityPtyHostProcess(
+        utilityProcess.fork(modulePath, [], {
+          stdio: 'pipe',
+          serviceName: 'OpenCove PTY Host',
+        }),
+      ),
   })
 
   // --- Probe state (ptyHost-specific, not managed by SessionManager) ---

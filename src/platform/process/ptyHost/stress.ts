@@ -3,6 +3,7 @@ import { execSync } from 'node:child_process'
 import process from 'node:process'
 import { resolve as pathResolve } from 'node:path'
 import { PtyHostSupervisor } from './supervisor'
+import { createElectronUtilityPtyHostProcess } from './electronUtilityProcessAdapter'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -118,7 +119,7 @@ export async function runPtyHostStressTest(): Promise<void> {
       })
       hostPid = child.pid
       hostRssStartKb = tryResolveRssKb(child.pid)
-      return child
+      return createElectronUtilityPtyHostProcess(child)
     },
   })
 

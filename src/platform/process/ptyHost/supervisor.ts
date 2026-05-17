@@ -8,6 +8,8 @@ import {
   resolveBundledPtyHostEntryPath,
   sleep,
 } from './supervisorSupport'
+import { postPtyHostMessage } from './postMessage'
+export type { PtyHostProcess, PtyHostProcessFactory } from './processTypes'
 import type {
   PtyHostMessage,
   PtyHostRequest,
@@ -15,6 +17,7 @@ import type {
   PtyHostWriteEncoding,
   PtyHostResponseMessage,
 } from './protocol'
+import type { PtyHostProcess, PtyHostProcessFactory } from './processTypes'
 
 const READY_TIMEOUT_MS = 5_000
 const SPAWN_TIMEOUT_MS = 10_000
@@ -27,18 +30,6 @@ export interface PtyHostSpawnOptions {
   cols: number
   rows: number
 }
-
-export interface PtyHostProcess {
-  on(event: 'message', listener: (message: unknown) => void): void
-  on(event: 'exit', listener: (code: number) => void): void
-  postMessage(message: unknown): void
-  kill(): boolean
-  stdout: NodeJS.ReadableStream | null
-  stderr: NodeJS.ReadableStream | null
-  pid: number | undefined
-}
-
-export type PtyHostProcessFactory = (modulePath: string) => PtyHostProcess
 
 type UnsubscribeFn = () => void
 
@@ -161,6 +152,10 @@ export class PtyHostSupervisor {
     this.pendingResponses.clear()
   }
 
+  private normalizeHostError(error: unknown): Error {
+    return error instanceof Error ? error : new Error(String(error))
+  }
+
   private handleHostExit(exitCode: number): void {
     const error = new Error(`[pty-host] exited with code ${exitCode}`)
     this.failPendingResponses(error)
@@ -179,6 +174,20 @@ export class PtyHostSupervisor {
     this.restartAttempt += 1
     const delayMs = resolveBackoffDelay(this.restartAttempt - 1)
     this.nextStartAllowedAtMs = nowMs() + delayMs
+  }
+
+  private handleHostError(child: PtyHostProcess, error: unknown): void {
+    if (this.isDisposed) {
+      return
+    }
+
+    if (this.process !== child) {
+      return
+    }
+
+    const normalizedError = this.normalizeHostError(error)
+    this.reportIssue(`[pty-host] process error: ${normalizedError.message}`)
+    this.handleHostExit(1)
   }
 
   private attachProcessLogging(child: PtyHostProcess): void {
@@ -257,6 +266,10 @@ export class PtyHostSupervisor {
       }
 
       this.handleHostExit(code)
+    })
+
+    child.on('error', error => {
+      this.handleHostError(child, error)
     })
 
     this.attachProcessLogging(child)
@@ -363,10 +376,8 @@ export class PtyHostSupervisor {
           timer,
         })
       })
-      try {
-        child.postMessage(request satisfies PtyHostRequest)
-      } catch (error) {
-        const normalizedError = error instanceof Error ? error : new Error(String(error))
+      const handleSendError = (error: unknown): void => {
+        const normalizedError = this.normalizeHostError(error)
         const pending = this.pendingResponses.get(requestId)
         if (pending) {
           clearTimeout(pending.timer)
@@ -377,6 +388,7 @@ export class PtyHostSupervisor {
           this.handleHostExit(1)
         }
       }
+      postPtyHostMessage(child, request satisfies PtyHostRequest, handleSendError)
       const response = await responsePromise
       if (!response.ok) {
         throw new Error(
@@ -407,7 +419,9 @@ export class PtyHostSupervisor {
       return
     }
 
-    child.postMessage({ type: 'write', sessionId, data, encoding } satisfies PtyHostRequest)
+    postPtyHostMessage(child, { type: 'write', sessionId, data, encoding }, error => {
+      this.handleHostError(child, error)
+    })
   }
 
   public resize(sessionId: string, cols: number, rows: number): void {
@@ -416,7 +430,9 @@ export class PtyHostSupervisor {
       return
     }
 
-    child.postMessage({ type: 'resize', sessionId, cols, rows } satisfies PtyHostRequest)
+    postPtyHostMessage(child, { type: 'resize', sessionId, cols, rows }, error => {
+      this.handleHostError(child, error)
+    })
   }
 
   public kill(sessionId: string): void {
@@ -427,7 +443,9 @@ export class PtyHostSupervisor {
       return
     }
 
-    child.postMessage({ type: 'kill', sessionId } satisfies PtyHostRequest)
+    postPtyHostMessage(child, { type: 'kill', sessionId }, error => {
+      this.handleHostError(child, error)
+    })
   }
 
   public crash(): void {
@@ -458,11 +476,9 @@ export class PtyHostSupervisor {
     this.process = null
 
     if (child) {
-      try {
-        child.postMessage({ type: 'shutdown' } satisfies PtyHostRequest)
-      } catch {
-        // ignore
-      }
+      postPtyHostMessage(child, { type: 'shutdown' }, () => {
+        // The host can already be gone during shutdown; cleanup continues via kill below.
+      })
 
       try {
         child.kill()
