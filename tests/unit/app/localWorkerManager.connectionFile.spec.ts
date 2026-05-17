@@ -8,6 +8,9 @@ import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../src/shared/contracts/
 let userDataDir: string | null = null
 let appPath: string | null = null
 const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }))
+const { readRuntimeAppVersionMock } = vi.hoisted(() => ({
+  readRuntimeAppVersionMock: vi.fn(() => 'test-version'),
+}))
 
 vi.mock('node:child_process', async importOriginal => {
   const actual = await importOriginal<typeof import('node:child_process')>()
@@ -36,6 +39,10 @@ vi.mock('electron', () => {
   }
 })
 
+vi.mock('../../../src/app/main/controlSurface/runtimeAppVersion', () => ({
+  readRuntimeAppVersion: readRuntimeAppVersionMock,
+}))
+
 import {
   getLocalWorkerStatus,
   repairStaleLocalWorkerFiles,
@@ -47,6 +54,8 @@ describe('local worker manager connection file', () => {
   afterEach(async () => {
     spawnMock.mockReset()
     vi.unstubAllGlobals()
+    readRuntimeAppVersionMock.mockReset()
+    readRuntimeAppVersionMock.mockReturnValue('test-version')
     await stopOwnedLocalWorker().catch(() => undefined)
 
     if (userDataDir) {
@@ -74,6 +83,7 @@ describe('local worker manager connection file', () => {
       port: 4321,
       token: 'token123',
       createdAt: new Date().toISOString(),
+      appVersion: 'test-version',
       ...overrides,
     }
   }
@@ -138,7 +148,7 @@ describe('local worker manager connection file', () => {
             now: new Date().toISOString(),
             pid: process.pid,
             protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
-            appVersion: null,
+            appVersion: 'test-version',
             features: {
               webShell: false,
               sync: { state: true, events: true },
@@ -178,6 +188,96 @@ describe('local worker manager connection file', () => {
     expect(status.connection).toEqual(info)
   })
 
+  it('treats Desktop-started worker connections from another app version as stale', async () => {
+    const dir = await createTempUserDataDir()
+    const info = createConnectionInfo({ startedBy: 'desktop', appVersion: 'old-version' })
+    await writeFile(
+      resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE),
+      `${JSON.stringify(info)}\n`,
+      'utf8',
+    )
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error('version-mismatched worker should not be pinged')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getLocalWorkerStatus()).resolves.toEqual({
+      status: 'stopped',
+      connection: null,
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('treats Desktop-started workers reporting another app version as stale', async () => {
+    const dir = await createTempUserDataDir()
+    const info = createConnectionInfo({ startedBy: 'desktop', appVersion: 'test-version' })
+    await writeFile(
+      resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE),
+      `${JSON.stringify(info)}\n`,
+      'utf8',
+    )
+
+    const fetchMock = vi.fn(async (_input: unknown, init?: RequestInit) => {
+      const body = typeof init?.body === 'string' ? init.body : ''
+      const requestId =
+        body.length > 0 ? ((JSON.parse(body) as Record<string, unknown>).id as string) : ''
+      const ok = (value: unknown) =>
+        JSON.stringify({ __opencoveControlEnvelope: true, ok: true, value })
+
+      if (requestId === 'system.ping') {
+        return new Response(ok({ ok: true, now: new Date().toISOString(), pid: process.pid }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      if (requestId === 'system.capabilities') {
+        return new Response(
+          ok({
+            ok: true,
+            now: new Date().toISOString(),
+            pid: process.pid,
+            protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
+            appVersion: 'old-version',
+            features: {},
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }
+
+      throw new Error(`Unexpected request: ${requestId}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getLocalWorkerStatus()).resolves.toEqual({
+      status: 'stopped',
+      connection: null,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('treats legacy Desktop-started worker connections without appVersion as stale', async () => {
+    const dir = await createTempUserDataDir()
+    const info = createConnectionInfo({ startedBy: 'desktop', appVersion: undefined })
+    await writeFile(
+      resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE),
+      `${JSON.stringify(info)}\n`,
+      'utf8',
+    )
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error('legacy desktop worker should not be pinged')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getLocalWorkerStatus()).resolves.toEqual({
+      status: 'stopped',
+      connection: null,
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('treats workers missing endpoint list as stopped', async () => {
     const dir = await createTempUserDataDir()
     const info = createConnectionInfo()
@@ -211,7 +311,7 @@ describe('local worker manager connection file', () => {
             now: new Date().toISOString(),
             pid: process.pid,
             protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
-            appVersion: null,
+            appVersion: 'test-version',
             features: {
               webShell: false,
               sync: { state: true, events: true },

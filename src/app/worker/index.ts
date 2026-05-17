@@ -9,6 +9,7 @@ import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../shared/constants/c
 import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironment'
 import { hashWebUiPassword } from '../main/controlSurface/http/webUiPassword'
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
+import { readRuntimeAppVersion } from '../main/controlSurface/runtimeAppVersion'
 
 function readFlagValue(argv: string[], flag: string): string | null {
   const index = argv.indexOf(flag)
@@ -114,6 +115,7 @@ async function main(): Promise<void> {
   const parentPid = resolveParentPid(argv)
   const enableWebUi = !hasFlag(argv, '--disable-web-ui')
   const startedBy = resolveStartedBy(argv)
+  const appVersion = readRuntimeAppVersion()
 
   const lock = await acquireWorkerSingleInstanceLock(userDataPath)
   if (lock.status === 'existing') {
@@ -122,7 +124,16 @@ async function main(): Promise<void> {
       fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
       requireLivePid: false,
     })
-    if (connectionInfo && (await isWorkerConnectionAlive(connectionInfo))) {
+    const canReuseDesktopWorker =
+      startedBy !== 'desktop' ||
+      (typeof appVersion === 'string' &&
+        appVersion.length > 0 &&
+        connectionInfo?.appVersion === appVersion)
+    if (
+      connectionInfo &&
+      canReuseDesktopWorker &&
+      (await isWorkerConnectionAlive(connectionInfo))
+    ) {
       process.stdout.write(`${JSON.stringify(connectionInfo)}\n`)
       process.stderr.write(
         '[opencove-worker] Local Worker already running for this user data; printed existing connection info.\n',

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { registerPtyMountHandlers } from '../../../src/app/main/controlSurface/handlers/ptyMountHandlers'
 import { registerSessionStreamingHandlers } from '../../../src/app/main/controlSurface/handlers/sessionStreamingHandlers'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import type { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
-import { toFileUri } from '../../../src/contexts/filesystem/domain/fileUri'
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-05-10T00:00:00.000Z'),
@@ -81,8 +82,10 @@ function createPtyStreamHubStub() {
 
 describe('control surface session streaming handlers', () => {
   it('routes session.spawnTerminal through pty.spawnInMount for mounted spaces', async () => {
-    const rootPath = '/repo'
-    const rootUri = toFileUri(rootPath)
+    const rootPath = path.join(process.cwd(), '.tmp-mounted-repo')
+    const worktreePath = path.join(rootPath, 'worktrees', 'feature-b')
+    const rootUri = pathToFileURL(rootPath).href
+    const worktreeUri = pathToFileURL(worktreePath).href
     const appState = {
       formatVersion: 1,
       activeWorkspaceId: 'ws1',
@@ -104,8 +107,8 @@ describe('control surface session streaming handlers', () => {
                 allowedMountIds: ['mount-1'],
                 scopesByMountId: {
                   'mount-1': {
-                    rootPath: '/repo/worktrees/feature-b',
-                    rootUri: 'file:///repo/worktrees/feature-b',
+                    rootPath: worktreePath,
+                    rootUri: worktreeUri,
                   },
                 },
                 allowedPluginIds: null,
@@ -220,8 +223,8 @@ describe('control surface session streaming handlers', () => {
       return
     }
 
-    expect(spawnedInput.cwd).toBe('/repo/worktrees/feature-b')
-    expect(spawned.value.cwd).toBe('/repo/worktrees/feature-b')
+    expect(spawnedInput.cwd).toBe(worktreePath)
+    expect(spawned.value.cwd).toBe(worktreePath)
     expect(spawned.value.command).toBe(spawnedInput.command)
     expect(spawned.value.args).toEqual(spawnedInput.args)
     expect(spawned.value.executionContext).toMatchObject({
@@ -229,14 +232,14 @@ describe('control surface session streaming handlers', () => {
       spaceId: 's1',
       mountId: 'mount-1',
       targetId: 'target-1',
-      workingDirectory: '/repo/worktrees/feature-b',
+      workingDirectory: worktreePath,
       target: {
         rootPath,
         rootUri,
       },
       scope: {
-        rootPath: '/repo/worktrees/feature-b',
-        rootUri: 'file:///repo/worktrees/feature-b',
+        rootPath: worktreePath,
+        rootUri: worktreeUri,
       },
       endpoint: {
         endpointId: 'local',

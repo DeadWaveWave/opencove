@@ -9,6 +9,7 @@ export interface WorkerConnectionHealthTarget {
 
 export async function isWorkerConnectionAlive(
   connection: WorkerConnectionHealthTarget,
+  options?: { expectedAppVersion?: string | null },
 ): Promise<boolean> {
   try {
     const endpoint = {
@@ -42,6 +43,15 @@ export async function isWorkerConnectionAlive(
         : null
     if (protocolVersion !== CONTROL_SURFACE_PROTOCOL_VERSION) {
       return false
+    }
+    if (typeof options?.expectedAppVersion === 'string' && options.expectedAppVersion.length > 0) {
+      const appVersion =
+        capabilities && typeof capabilities === 'object' && !Array.isArray(capabilities)
+          ? (capabilities as Record<string, unknown>).appVersion
+          : null
+      if (appVersion !== options.expectedAppVersion) {
+        return false
+      }
     }
 
     const endpointsResponse = await invokeControlSurface(

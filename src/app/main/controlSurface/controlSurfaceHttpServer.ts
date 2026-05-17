@@ -24,6 +24,7 @@ import { createWorkerTopologyStore } from './topology/topologyStore'
 import { registerControlSurfaceHandlers } from './registerControlSurfaceHandlers'
 import { createManagedSshEndpointRuntime } from './topology/managedSshEndpointRuntime'
 import { createEndpointHealthService } from './topology/endpointHealthService'
+import { readRuntimeAppVersion } from './runtimeAppVersion'
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
 const CONTROL_SURFACE_CONNECTION_VERSION = 1 as const
@@ -37,6 +38,7 @@ export interface ControlSurfaceConnectionInfo {
   port: number
   token: string
   createdAt: string
+  appVersion: string | null
   startedBy?: 'cli' | 'desktop'
 }
 
@@ -55,6 +57,7 @@ export function registerControlSurfaceHttpServer(
   const hostname = options.hostname ?? DEFAULT_CONTROL_SURFACE_HOSTNAME
   const bindHostname = options.bindHostname ?? hostname
   const port = options.port ?? 0
+  const appVersion = readRuntimeAppVersion()
   const connectionFileName = options.connectionFileName ?? DEFAULT_CONTROL_SURFACE_CONNECTION_FILE
   const webUiPasswordHash = options.webUiPasswordHash ?? null
   const webSessions = new WebSessionManager()
@@ -387,6 +390,7 @@ export function registerControlSurfaceHttpServer(
       port: address.port,
       token,
       createdAt: new Date().toISOString(),
+      appVersion,
       ...(options.connectionStartedBy ? { startedBy: options.connectionStartedBy } : {}),
     }
 

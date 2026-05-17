@@ -22,6 +22,13 @@ Control Surface 是 OpenCove 对外能力入口。Desktop、CLI、Web UI 和 rem
 
 Transport 只做鉴权、校验、mapping 和连接生命周期；业务 owner 仍在 context application/usecase、runtime manager 或 topology store。
 
+本地 Worker 连接文件是运行时发现文件，不是 durable truth。连接文件必须写入
+`appVersion`、`startedBy`、pid、host、port 和 token。Desktop 只允许复用
+`startedBy: "desktop"` 且 `appVersion` 等于当前 Desktop 的 Worker；缺失或不一致表示
+升级后旧 Worker 仍存活，必须重启并重写连接文件。CLI-started/remote Worker 仍以
+`system.capabilities.protocolVersion` 和功能探测作为兼容边界，避免 Desktop 自动接管用户
+显式管理的 Worker。
+
 ## Authentication
 
 当前鉴权路径：

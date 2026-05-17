@@ -93,6 +93,7 @@ function normalizeConnectionInfo(value, userDataPath, processAlive) {
   const port = value.port
   const pid = value.pid
   const createdAt = typeof value.createdAt === 'string' ? value.createdAt.trim() : ''
+  const appVersion = typeof value.appVersion === 'string' ? value.appVersion.trim() : ''
 
   if (hostname.length === 0 || token.length === 0 || createdAt.length === 0) {
     return null
@@ -109,6 +110,7 @@ function normalizeConnectionInfo(value, userDataPath, processAlive) {
     port,
     token,
     createdAt,
+    appVersion: appVersion.length > 0 ? appVersion : null,
     startedBy: normalizeStartedBy(value.startedBy),
     userDataPath,
     processAlive,
@@ -189,6 +191,7 @@ function toPublicWorkerStatus(connection, reachable) {
     port: connection.port,
     userDataPath: connection.userDataPath,
     startedBy: connection.startedBy,
+    appVersion: connection.appVersion,
     createdAt: connection.createdAt,
     reachable,
   }

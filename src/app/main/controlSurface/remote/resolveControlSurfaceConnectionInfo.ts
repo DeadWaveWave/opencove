@@ -64,6 +64,11 @@ export async function resolveControlSurfaceConnectionInfoFromUserData(options: {
       return null
     }
 
+    const appVersion =
+      typeof parsed.appVersion === 'string' && parsed.appVersion.trim().length > 0
+        ? parsed.appVersion.trim()
+        : null
+
     return {
       version: 1,
       pid: parsed.pid,
@@ -71,6 +76,7 @@ export async function resolveControlSurfaceConnectionInfoFromUserData(options: {
       port: parsed.port,
       token: parsed.token.trim(),
       createdAt: parsed.createdAt,
+      appVersion,
       ...(parsed.startedBy === 'cli' || parsed.startedBy === 'desktop'
         ? { startedBy: parsed.startedBy }
         : {}),

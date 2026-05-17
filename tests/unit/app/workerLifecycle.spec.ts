@@ -109,6 +109,7 @@ describe('CLI worker lifecycle', () => {
         pid: 2222,
         userDataPath,
         startedBy: 'cli',
+        appVersion: null,
         reachable: true,
       }),
     ])
