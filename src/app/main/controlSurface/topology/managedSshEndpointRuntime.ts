@@ -58,7 +58,7 @@ export interface ManagedSshEndpointRuntimeDependencies {
   runBootstrap: (
     sshExecutablePath: string,
     access: ManagedSshEndpointRuntimeAccess,
-    options?: { reinstallRuntime?: boolean },
+    options?: { reinstallRuntime?: boolean; appVersion?: string | null },
   ) => Promise<void>
   waitForCondition: (
     fn: () => Promise<boolean>,
@@ -199,8 +199,9 @@ async function defaultProbeConnection(
 }
 
 export function createManagedSshEndpointRuntime(
-  overrides: Partial<ManagedSshEndpointRuntimeDependencies> = {},
+  overrides: Partial<ManagedSshEndpointRuntimeDependencies> & { appVersion?: string | null } = {},
 ): ManagedSshEndpointRuntime {
+  const { appVersion, ...dependencyOverrides } = overrides
   const records = new Map<string, ManagedTunnelRecord>()
   const inFlightPrepare = new Map<
     string,
@@ -218,7 +219,7 @@ export function createManagedSshEndpointRuntime(
     probeConnection: defaultProbeConnection,
     runBootstrap: runManagedSshBootstrap,
     waitForCondition,
-    ...overrides,
+    ...dependencyOverrides,
   }
 
   const getSshAvailability = async (): Promise<ExecutableLocationResult> => {
@@ -345,7 +346,7 @@ export function createManagedSshEndpointRuntime(
   const runBootstrap = async (
     sshExecutablePath: string,
     access: ManagedSshEndpointRuntimeAccess,
-    options?: { reinstallRuntime?: boolean },
+    options?: { reinstallRuntime?: boolean; appVersion?: string | null },
   ): Promise<void> => {
     await dependencies.runBootstrap(sshExecutablePath, access, options)
   }
@@ -402,6 +403,7 @@ export function createManagedSshEndpointRuntime(
         try {
           await runBootstrap(sshAvailability.executablePath, access, {
             reinstallRuntime: options?.reinstallRuntime,
+            appVersion,
           })
           bootstrapRan = true
           record = await ensureTunnel(sshAvailability.executablePath, access, {

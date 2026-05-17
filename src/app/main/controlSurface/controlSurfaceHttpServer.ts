@@ -24,7 +24,6 @@ import { createWorkerTopologyStore } from './topology/topologyStore'
 import { registerControlSurfaceHandlers } from './registerControlSurfaceHandlers'
 import { createManagedSshEndpointRuntime } from './topology/managedSshEndpointRuntime'
 import { createEndpointHealthService } from './topology/endpointHealthService'
-import { readRuntimeAppVersion } from './runtimeAppVersion'
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
 const CONTROL_SURFACE_CONNECTION_VERSION = 1 as const
@@ -50,6 +49,10 @@ export interface ControlSurfaceHttpServerInstance extends ControlSurfaceServerDi
   ready: Promise<ControlSurfaceConnectionInfo>
 }
 
+function normalizeAppVersion(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
 export function registerControlSurfaceHttpServer(
   options: RegisterControlSurfaceHttpServerOptions,
 ): ControlSurfaceHttpServerInstance {
@@ -57,7 +60,7 @@ export function registerControlSurfaceHttpServer(
   const hostname = options.hostname ?? DEFAULT_CONTROL_SURFACE_HOSTNAME
   const bindHostname = options.bindHostname ?? hostname
   const port = options.port ?? 0
-  const appVersion = readRuntimeAppVersion()
+  const appVersion = normalizeAppVersion(options.appVersion)
   const connectionFileName = options.connectionFileName ?? DEFAULT_CONTROL_SURFACE_CONNECTION_FILE
   const webUiPasswordHash = options.webUiPasswordHash ?? null
   const webSessions = new WebSessionManager()
@@ -85,7 +88,7 @@ export function registerControlSurfaceHttpServer(
     },
   }
 
-  const managedSshRuntime = createManagedSshEndpointRuntime()
+  const managedSshRuntime = createManagedSshEndpointRuntime({ appVersion })
   const topology = createWorkerTopologyStore({
     userDataPath: options.userDataPath,
     resolveManagedSshEndpointConnection: managedSshRuntime.resolveConnection,
@@ -138,6 +141,7 @@ export function registerControlSurfaceHttpServer(
     publishSyncEvent: publishSyncEventToLiveClients,
     closeWebsiteNode: options.closeWebsiteNode,
     endpointHealth,
+    appVersion,
   })
   let closed = false
   let disposePromise: Promise<void> | null = null

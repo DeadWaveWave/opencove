@@ -6,9 +6,11 @@ import type {
   ControlSurfacePingResult,
 } from '../../../../shared/contracts/dto'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
-import { readRuntimeAppVersion } from '../runtimeAppVersion'
 
-export function registerSystemHandlers(controlSurface: ControlSurface): void {
+export function registerSystemHandlers(
+  controlSurface: ControlSurface,
+  deps: { appVersion: string | null },
+): void {
   controlSurface.register('system.ping', {
     kind: 'query',
     validate: payload => payload ?? null,
@@ -44,7 +46,7 @@ export function registerSystemHandlers(controlSurface: ControlSurface): void {
         now: ctx.now().toISOString(),
         pid: process.pid,
         protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
-        appVersion: readRuntimeAppVersion(),
+        appVersion: deps.appVersion,
         features: ctx.capabilities,
       }) satisfies ControlSurfaceCapabilitiesResult,
     defaultErrorCode: 'common.unexpected',

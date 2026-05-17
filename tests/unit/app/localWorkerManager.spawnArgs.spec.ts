@@ -22,6 +22,7 @@ describe('local worker manager spawn args', () => {
       port: 0,
       enableWebUi: true,
       webUiPasswordHash: null,
+      appVersion: 'test-version',
     })
 
     expect(args).toEqual([
@@ -36,6 +37,8 @@ describe('local worker manager spawn args', () => {
       '0',
       '--user-data',
       '/mock/user-data',
+      '--app-version',
+      'test-version',
     ])
   })
 
@@ -53,6 +56,7 @@ describe('local worker manager spawn args', () => {
       port: 0,
       enableWebUi: true,
       webUiPasswordHash: 'scrypt:abc:def',
+      appVersion: 'test-version',
     })
 
     expect(args).toEqual([
@@ -71,6 +75,8 @@ describe('local worker manager spawn args', () => {
       '127.0.0.1',
       '--web-ui-password-hash',
       'scrypt:abc:def',
+      '--app-version',
+      'test-version',
     ])
   })
 
@@ -88,9 +94,11 @@ describe('local worker manager spawn args', () => {
       port: 0,
       enableWebUi: false,
       webUiPasswordHash: null,
+      appVersion: null,
     })
 
     expect(args).toContain('--disable-web-ui')
+    expect(args).not.toContain('--app-version')
   })
 
   it('normalizes diagnostics flags forwarded to local worker processes', async () => {

@@ -1,12 +1,12 @@
-import { basename } from 'node:path'
+import { appendFileSync, mkdirSync } from 'node:fs'
+import { basename, dirname, resolve } from 'node:path'
 import type {
   AgentLaunchMode,
   AgentProviderId,
   RuntimeDiagnosticsDetailValue,
+  RuntimeDiagnosticsLogInput,
 } from '../../../shared/contracts/dto'
-import { createMainRuntimeDiagnosticsLogger } from '../runtimeDiagnostics'
 
-const logger = createMainRuntimeDiagnosticsLogger('main-app')
 const AGENT_LAUNCH_DIAGNOSTICS_ENABLED =
   process.env['OPENCOVE_AGENT_LAUNCH_DIAGNOSTICS'] === '1' ||
   process.env['OPENCOVE_TERMINAL_DIAGNOSTICS'] === '1'
@@ -31,6 +31,46 @@ function truncate(value: string, maxLength = 240): string {
   }
 
   return `${value.slice(0, maxLength)}...<truncated:${value.length}>`
+}
+
+function appendRuntimeDiagnosticsFile(line: string): void {
+  const userDataDir = process.env['OPENCOVE_USER_DATA_DIR']?.trim()
+  if (!userDataDir) {
+    return
+  }
+
+  try {
+    const filePath = resolve(userDataDir, 'logs', 'runtime-diagnostics.log')
+    mkdirSync(dirname(filePath), { recursive: true })
+    appendFileSync(filePath, `${line}\n`, { encoding: 'utf8', mode: 0o600 })
+  } catch {
+    // Diagnostics logging must never affect app runtime behavior.
+  }
+}
+
+function writeAgentLaunchDiagnosticsLine(payload: RuntimeDiagnosticsLogInput): void {
+  const line = JSON.stringify({
+    ts: new Date().toISOString(),
+    ...payload,
+  })
+  const stream = payload.level === 'error' ? process.stderr : process.stdout
+  stream.write(`[opencove-runtime-diagnostics] ${line}\n`)
+  appendRuntimeDiagnosticsFile(line)
+}
+
+function logAgentLaunchDiagnostics(
+  level: 'info' | 'error',
+  event: string,
+  message: string,
+  details?: Record<string, RuntimeDiagnosticsDetailValue>,
+): void {
+  writeAgentLaunchDiagnosticsLine({
+    source: 'main-app',
+    level,
+    event: `agent-launch:${event}`,
+    message,
+    ...(details ? { details } : {}),
+  })
 }
 
 function summarizePath(path: string | null | undefined): string | null {
@@ -178,7 +218,7 @@ export function logAgentLaunchInfo(
     return
   }
 
-  logger.info(`agent-launch:${event}`, message, details)
+  logAgentLaunchDiagnostics('info', event, message, details)
 }
 
 export function logAgentLaunchError(
@@ -190,5 +230,5 @@ export function logAgentLaunchError(
     return
   }
 
-  logger.error(`agent-launch:${event}`, message, details)
+  logAgentLaunchDiagnostics('error', event, message, details)
 }

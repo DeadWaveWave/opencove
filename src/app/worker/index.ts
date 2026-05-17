@@ -9,7 +9,7 @@ import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../shared/constants/c
 import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironment'
 import { hashWebUiPassword } from '../main/controlSurface/http/webUiPassword'
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
-import { readRuntimeAppVersion } from '../main/controlSurface/runtimeAppVersion'
+import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
 
 function readFlagValue(argv: string[], flag: string): string | null {
   const index = argv.indexOf(flag)
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
   const parentPid = resolveParentPid(argv)
   const enableWebUi = !hasFlag(argv, '--disable-web-ui')
   const startedBy = resolveStartedBy(argv)
-  const appVersion = readRuntimeAppVersion()
+  const appVersion = readFlagValue(argv, '--app-version')
 
   const lock = await acquireWorkerSingleInstanceLock(userDataPath)
   if (lock.status === 'existing') {
@@ -124,15 +124,18 @@ async function main(): Promise<void> {
       fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
       requireLivePid: false,
     })
-    const canReuseDesktopWorker =
-      startedBy !== 'desktop' ||
-      (typeof appVersion === 'string' &&
-        appVersion.length > 0 &&
-        connectionInfo?.appVersion === appVersion)
+    const reusePolicy = connectionInfo
+      ? resolveLocalWorkerReusePolicy(connectionInfo, {
+          launcherStartedBy: startedBy,
+          desktopAppVersion: appVersion,
+        })
+      : null
     if (
       connectionInfo &&
-      canReuseDesktopWorker &&
-      (await isWorkerConnectionAlive(connectionInfo))
+      reusePolicy?.canReuse === true &&
+      (await isWorkerConnectionAlive(connectionInfo, {
+        expectedAppVersion: reusePolicy.expectedAppVersion,
+      }))
     ) {
       process.stdout.write(`${JSON.stringify(connectionInfo)}\n`)
       process.stderr.write(
@@ -169,6 +172,7 @@ async function main(): Promise<void> {
     webUiPasswordHash: resolvedWebUiPasswordHash ?? null,
     connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
     connectionStartedBy: startedBy,
+    appVersion,
   })
 
   const info = await server.ready

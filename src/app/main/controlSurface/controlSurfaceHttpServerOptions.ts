@@ -11,6 +11,7 @@ export interface RegisterControlSurfaceHttpServerOptions {
   bindHostname?: string
   port?: number
   token?: string
+  appVersion?: string | null
   connectionFileName?: string
   connectionStartedBy?: 'cli' | 'desktop'
   approvedWorkspaces: ApprovedWorkspaceStore

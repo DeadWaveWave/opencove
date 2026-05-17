@@ -1,5 +1,4 @@
 import { runCommand } from '../../../../platform/process/runCommand'
-import { readRuntimeAppVersion } from '../runtimeAppVersion'
 import type { ManagedSshEndpointRuntimeAccess } from './topologyEndpointAccess'
 
 type BootstrapRemotePlatform = 'posix' | 'windows'
@@ -284,10 +283,10 @@ async function classifyBootstrapPlatform(
 export async function runManagedSshBootstrap(
   sshExecutablePath: string,
   access: ManagedSshEndpointRuntimeAccess,
-  options?: { reinstallRuntime?: boolean },
+  options?: { reinstallRuntime?: boolean; appVersion?: string | null },
 ): Promise<void> {
   const remotePlatform = await classifyBootstrapPlatform(sshExecutablePath, access)
-  const installerUrl = buildInstallerAssetUrl(remotePlatform, readRuntimeAppVersion())
+  const installerUrl = buildInstallerAssetUrl(remotePlatform, options?.appVersion ?? null)
   if (remotePlatform === 'windows') {
     const script = buildWindowsBootstrapScript(access, {
       installerUrl,

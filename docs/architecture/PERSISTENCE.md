@@ -72,7 +72,7 @@ Worker。Worker 是 Desktop 的 persistence/control-surface owner；因此升级
 - `workspace_spaces` 这类 additive 字段必须可幂等补齐；读取代码新增依赖前，必须先有
   对应 repair。
 - Desktop-started local Worker 必须和当前 Desktop `appVersion` 一致；缺失
-  `appVersion` 的旧连接文件视为不可复用，必须重启 Worker。
+  `startedBy` 或 `appVersion` 的旧连接文件视为不可复用，必须重启 Worker。
 - CLI-started 或 remote Worker 走协议兼容检查；不要把 Desktop 本地升级闸门套到用户
   显式管理的远端 Worker。
 - `pnpm dev` 通过不代表安装版升级安全，因为 dev 默认使用独立 `userData` 且通常没有

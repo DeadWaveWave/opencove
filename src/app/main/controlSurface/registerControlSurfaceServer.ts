@@ -10,6 +10,7 @@ import {
   registerControlSurfaceHttpServer,
   type ControlSurfaceHttpServerInstance,
 } from './controlSurfaceHttpServer'
+import { readRuntimeAppVersion } from './runtimeAppVersion'
 
 const CONTROL_SURFACE_TRASH_TIMEOUT_MS = 3_000
 
@@ -30,6 +31,7 @@ export function registerControlSurfaceServer(deps?: {
 
   return registerControlSurfaceHttpServer({
     userDataPath,
+    appVersion: readRuntimeAppVersion(),
     approvedWorkspaces,
     ptyRuntime,
     ownsPtyRuntime,

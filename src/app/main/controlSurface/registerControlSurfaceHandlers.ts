@@ -41,9 +41,10 @@ export function registerControlSurfaceHandlers(
     publishSyncEvent?: (payload: SyncEventPayload) => number
     closeWebsiteNode?: (nodeId: string) => Promise<void> | void
     endpointHealth: EndpointHealthService
+    appVersion: string | null
   },
 ): void {
-  registerSystemHandlers(controlSurface)
+  registerSystemHandlers(controlSurface, { appVersion: deps.appVersion })
   registerAuthHandlers(controlSurface, { webSessions: deps.webSessions })
   registerTopologyHandlers(controlSurface, {
     topology: deps.topology,

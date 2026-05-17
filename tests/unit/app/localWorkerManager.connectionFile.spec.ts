@@ -84,6 +84,7 @@ describe('local worker manager connection file', () => {
       token: 'token123',
       createdAt: new Date().toISOString(),
       appVersion: 'test-version',
+      startedBy: 'cli',
       ...overrides,
     }
   }
@@ -278,6 +279,27 @@ describe('local worker manager connection file', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('treats legacy worker connections without owner metadata as stale', async () => {
+    const dir = await createTempUserDataDir()
+    const info = createConnectionInfo({ startedBy: undefined, appVersion: undefined })
+    await writeFile(
+      resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE),
+      `${JSON.stringify(info)}\n`,
+      'utf8',
+    )
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error('legacy worker without owner metadata should not be pinged')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getLocalWorkerStatus()).resolves.toEqual({
+      status: 'stopped',
+      connection: null,
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('treats workers missing endpoint list as stopped', async () => {
     const dir = await createTempUserDataDir()
     const info = createConnectionInfo()
@@ -371,6 +393,41 @@ describe('local worker manager connection file', () => {
     await expect(
       readFile(resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE), 'utf8'),
     ).rejects.toBeDefined()
+  })
+
+  it('repairs legacy worker files before starting a replacement worker', async () => {
+    const dir = await createTempUserDataDir()
+    const legacyInfo = createConnectionInfo({
+      pid: 999_999,
+      startedBy: undefined,
+      appVersion: undefined,
+    })
+    await writeFile(
+      resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE),
+      `${JSON.stringify(legacyInfo)}\n`,
+      'utf8',
+    )
+    await writeFile(
+      resolve(dir, 'opencove-worker.lock'),
+      `${JSON.stringify({ pid: 999_999, createdAt: new Date(0).toISOString() })}\n`,
+      'utf8',
+    )
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error('legacy worker should not be pinged before replacement')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(startLocalWorker()).rejects.toThrow(
+      'Run `pnpm build` once before using Worker/Web UI in dev.',
+    )
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    await expect(readFile(resolve(dir, 'opencove-worker.lock'), 'utf8')).rejects.toBeDefined()
+    await expect(
+      readFile(resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE), 'utf8'),
+    ).rejects.toBeDefined()
+    expect(spawnMock).not.toHaveBeenCalled()
   })
 
   it('surfaces a missing worker build entry in dev', async () => {

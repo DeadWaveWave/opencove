@@ -1,27 +1,32 @@
 import type { WorkerConnectionInfoDto } from '../../../shared/contracts/dto'
+import {
+  resolveLocalWorkerReusePolicy as resolveSharedLocalWorkerReusePolicy,
+  type LocalWorkerReusePolicy,
+} from '../../../shared/runtime/localWorkerReusePolicy'
 import { readRuntimeAppVersion } from '../controlSurface/runtimeAppVersion'
 import { isWorkerConnectionAlive } from './workerConnectionHealth'
 
-function resolveExpectedDesktopAppVersion(connection: WorkerConnectionInfoDto): string | null {
-  if (connection.startedBy !== 'desktop') {
-    return null
-  }
+export type { LocalWorkerReusePolicy }
 
-  const runtimeVersion = readRuntimeAppVersion()
-  if (typeof runtimeVersion !== 'string' || runtimeVersion.length === 0) {
-    return ''
-  }
-
-  return connection.appVersion === runtimeVersion ? runtimeVersion : ''
+export function resolveLocalWorkerReusePolicy(
+  connection: Pick<WorkerConnectionInfoDto, 'appVersion' | 'startedBy'>,
+  options: { launcherStartedBy: 'cli' | 'desktop' } = { launcherStartedBy: 'desktop' },
+): LocalWorkerReusePolicy {
+  return resolveSharedLocalWorkerReusePolicy(connection, {
+    launcherStartedBy: options.launcherStartedBy,
+    desktopAppVersion: readRuntimeAppVersion(),
+  })
 }
 
 export async function isReusableLocalWorkerConnection(
   connection: WorkerConnectionInfoDto,
 ): Promise<boolean> {
-  const expectedAppVersion = resolveExpectedDesktopAppVersion(connection)
-  if (expectedAppVersion === '') {
+  const policy = resolveLocalWorkerReusePolicy(connection)
+  if (!policy.canReuse) {
     return false
   }
 
-  return await isWorkerConnectionAlive(connection, { expectedAppVersion })
+  return await isWorkerConnectionAlive(connection, {
+    expectedAppVersion: policy.expectedAppVersion,
+  })
 }
