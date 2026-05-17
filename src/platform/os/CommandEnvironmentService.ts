@@ -5,7 +5,7 @@ import {
   type ShellEnvironmentSnapshot,
 } from './ShellEnvironmentService'
 import { removeElectronRunAsNode } from './ElectronControlEnvironment'
-import { mergeCommandPath } from './CommandPathSegments'
+import { mergeCommandPath, splitPathSegments } from './CommandPathSegments'
 import { resolveHomeDirectory } from './HomeDirectory'
 
 const TRUST_PROCESS_ENV_MARKER = 'OPENCOVE_TRUST_PROCESS_ENV'
@@ -114,6 +114,25 @@ function writeCanonicalWindowsPathEnvValue(env: NodeJS.ProcessEnv, value: string
   env.PATH = value
 }
 
+function mergeExplicitCommandPath(
+  basePath: string | undefined,
+  explicitPath: string | undefined,
+): string | undefined {
+  if (typeof explicitPath !== 'string' || explicitPath.trim().length === 0) {
+    return basePath
+  }
+
+  if (typeof basePath !== 'string' || basePath.trim().length === 0) {
+    return explicitPath
+  }
+
+  const delimiter = process.platform === 'win32' ? ';' : ':'
+  return [
+    ...splitPathSegments(explicitPath, delimiter),
+    ...splitPathSegments(basePath, delimiter),
+  ].join(delimiter)
+}
+
 function toCommandEnvironmentSnapshot(
   shellSnapshot: ShellEnvironmentSnapshot,
 ): CommandEnvironmentSnapshot {
@@ -166,7 +185,9 @@ export async function getCommandExecutionEnvironment(
     return { ...snapshot.env }
   }
 
-  return { ...snapshot.env, ...overrides }
+  const merged = { ...snapshot.env, ...overrides }
+  merged.PATH = mergeExplicitCommandPath(snapshot.env.PATH, overrides.PATH)
+  return merged
 }
 
 export function disposeCommandEnvironmentService(): void {

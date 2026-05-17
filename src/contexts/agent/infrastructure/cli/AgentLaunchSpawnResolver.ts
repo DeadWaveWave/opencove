@@ -25,9 +25,8 @@ export async function resolveAgentLaunchSpawn(
   input: ResolveAgentLaunchSpawnInput,
 ): Promise<ResolvedTerminalSpawn> {
   const command = normalizeOptionalCommand(input.executablePathOverride) ?? input.command
-  const baseEnv = await getCommandExecutionEnvironment()
   const explicitEnv = input.env ? { ...input.env } : undefined
-  const env = explicitEnv ? { ...baseEnv, ...explicitEnv } : baseEnv
+  const env = await getCommandExecutionEnvironment(explicitEnv)
   const commandSpawn: ResolveCommandSpawnInput = {
     cwd: input.cwd,
     profileId: input.profileId,

@@ -92,6 +92,26 @@ describe('CommandEnvironmentService', () => {
     expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
   })
 
+  it('prepends explicit command PATH without dropping the base command environment PATH', async () => {
+    setPlatform('linux')
+    process.env.NODE_ENV = 'production'
+    delete process.env.OPENCOVE_TRUST_PROCESS_ENV
+
+    getShellEnvironmentSnapshotMock.mockResolvedValue({
+      env: {
+        PATH: '/usr/bin:/bin:/root/.local/bin',
+      },
+      shellPath: '/bin/bash',
+      source: 'default_shell',
+      diagnostics: [],
+    })
+
+    const { getCommandExecutionEnvironment } = await importCommandEnvironmentService()
+    const env = await getCommandExecutionEnvironment({ PATH: '/custom/bin' })
+
+    expect(env.PATH?.split(':')).toEqual(['/custom/bin', '/usr/bin', '/bin', '/root/.local/bin'])
+  })
+
   it('enriches Windows process PATH with stable fallback directories for wrapper runtimes', async () => {
     setPlatform('win32')
     process.env.NODE_ENV = 'production'
