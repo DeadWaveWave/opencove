@@ -42,10 +42,8 @@ export function WorkspaceContextPaneMenuContent({
   openProjectRolesSubmenu,
   isProjectRolesSubmenuOpen,
   openAgentLauncher,
-  createEmptySpaceFromContextMenu,
-  canCreateEmptySpace,
-  createChildSpaceFromContextMenu,
-  canCreateChildSpace,
+  createSpaceFromContextMenu,
+  canCreateSpace,
   openAgentProviderSubmenu,
   agentProviderToggleRef,
   isLoadingInstalledProviders,
@@ -76,10 +74,8 @@ export function WorkspaceContextPaneMenuContent({
   openProjectRolesSubmenu: () => void
   isProjectRolesSubmenuOpen: boolean
   openAgentLauncher: () => void
-  createEmptySpaceFromContextMenu: () => void
-  canCreateEmptySpace: boolean
-  createChildSpaceFromContextMenu: () => void
-  canCreateChildSpace: boolean
+  createSpaceFromContextMenu: () => void
+  canCreateSpace: boolean
   openAgentProviderSubmenu: () => void
   agentProviderToggleRef: React.RefObject<HTMLButtonElement | null>
   isLoadingInstalledProviders: boolean
@@ -195,27 +191,15 @@ export function WorkspaceContextPaneMenuContent({
           )}
         </button>
       </div>
-      {canCreateEmptySpace ? (
+      {canCreateSpace ? (
         <button
           type="button"
-          data-testid="workspace-context-create-empty-space"
-          onClick={createEmptySpaceFromContextMenu}
+          data-testid="workspace-context-create-space"
+          onClick={createSpaceFromContextMenu}
         >
           <Group className="workspace-context-menu__icon" aria-hidden="true" />
           <span className="workspace-context-menu__label">
-            {t('workspaceContextMenu.createEmptySpace')}
-          </span>
-        </button>
-      ) : null}
-      {canCreateChildSpace ? (
-        <button
-          type="button"
-          data-testid="workspace-context-create-child-space"
-          onClick={createChildSpaceFromContextMenu}
-        >
-          <Group className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">
-            {t('workspaceContextMenu.createChildSpace')}
+            {t('workspaceContextMenu.createSpace')}
           </span>
         </button>
       ) : null}

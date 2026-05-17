@@ -397,7 +397,7 @@ export function registerSpaceHandlers(
         })),
         input: payload,
         createId: () => randomUUID(),
-        defaultName: count => `Child Space ${count}`,
+        defaultName: count => `Space ${count}`,
       })
 
       if (!result.ok) {

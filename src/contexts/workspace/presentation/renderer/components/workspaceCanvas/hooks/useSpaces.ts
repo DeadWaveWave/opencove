@@ -73,7 +73,6 @@ export function useWorkspaceCanvasSpaces({
   commitSpaceRename: (spaceId: string) => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   createSpaceFromSelectedNodes: () => void
-  createChildSpaceFromSelectedNodes: () => void
   createChildSpaceInParent: (
     parentSpaceId: string,
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
@@ -185,6 +184,19 @@ export function useWorkspaceCanvasSpaces({
     setSpaceRenameDraft('')
   }, [])
 
+  const { createChildSpaceInParent } = useWorkspaceCanvasCreateChildSpace({
+    workspacePath,
+    nodesRef,
+    setNodes,
+    spacesRef,
+    onSpacesChange,
+    onRequestPersistFlush,
+    setContextMenu,
+    setEmptySelectionPrompt,
+    cancelSpaceRename,
+    onShowMessage,
+  })
+
   const {
     createSpaceFromSelectedNodes,
     createSpaceWithTargetMount,
@@ -205,22 +217,8 @@ export function useWorkspaceCanvasSpaces({
     setSpaceTargetMountPicker,
     cancelSpaceRename,
     onShowMessage,
+    createChildSpaceInParent,
   })
-
-  const { createChildSpaceInParent, createChildSpaceFromSelectedNodes } =
-    useWorkspaceCanvasCreateChildSpace({
-      workspacePath,
-      nodesRef,
-      setNodes,
-      spacesRef,
-      selectedNodeIdsRef,
-      onSpacesChange,
-      onRequestPersistFlush,
-      setContextMenu,
-      setEmptySelectionPrompt,
-      cancelSpaceRename,
-      onShowMessage,
-    })
 
   const startSpaceRename = useCallback(
     (spaceId: string) => {
@@ -371,7 +369,6 @@ export function useWorkspaceCanvasSpaces({
     commitSpaceRename,
     setSpaceLabelColor,
     createSpaceFromSelectedNodes,
-    createChildSpaceFromSelectedNodes,
     createChildSpaceInParent,
     createEmptySpaceAtPoint,
     spaceTargetMountPicker,

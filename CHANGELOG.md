@@ -51,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - CLI: Local Worker lifecycle controls with `worker status --all` and ownership-safe `worker stop`. (#195)
 
 ### 💅 Changed
+- Workspace canvas: simplify Space creation and scoped lifecycle operations so the same `Create Space` action creates child Spaces inside existing Spaces, child Spaces can become Space Worktrees under the ancestor-chain guard, and archive cleanup is explicit for contained Worktrees. (#257)
 - Workspace canvas: note markdown export now defaults to Downloads, confirms the save location on Desktop, supports WebUI browser downloads, and reports completion through the app message toast instead of inline note status text. (#253)
 - Space Explorer: now opens at half the canonical agent window width by default, uses flatter VS Code-style selection chrome, and creates new files/folders inline in the tree with preserved selection. (#232)
 - Workspace canvas: document nodes now use a Monaco editor with live disk refresh, dirty/conflict protection, and dark-theme fixes. (#233)
@@ -82,6 +83,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - Worker/PTY: shutdown-time IPC disconnects no longer crash the process with unhandled `EPIPE` / closed-channel errors. (#260)
+- Workspace canvas: keep Child Spaces contained during window resize by expanding child/ancestor Spaces together and moving Space subtrees as one push-away group. (#257)
 - Workspace canvas: fix note Markdown download activation and move note save, convert-to-task, and label-color actions into the note header menu. (#253)
 - Agent: launch interactive agent CLIs through terminal profiles instead of host PATH preflight, so agent runtime environments match OpenCove terminals and Windows host diagnostics no longer block valid launches. (#250)
 - Workspace canvas: block nodes at Child Space edges until the drag pointer enters the child, preventing pre-entry overlap and ownership drift. (#245)

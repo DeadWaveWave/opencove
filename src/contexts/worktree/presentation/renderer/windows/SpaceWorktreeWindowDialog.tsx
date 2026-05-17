@@ -29,6 +29,8 @@ export function SpaceWorktreeWindowDialog({
   archiveTerminalCount,
   archiveTaskCount,
   archiveNoteCount,
+  archiveHasOwnWorktree,
+  archiveDescendantWorktrees,
   error,
   guardIsBusy,
   onBackdropClose,
@@ -41,6 +43,8 @@ export function SpaceWorktreeWindowDialog({
   onCreate,
   onDeleteWorktreeOnArchiveChange,
   onDeleteBranchOnArchiveChange,
+  onDescendantDeleteWorktreeOnArchiveChange,
+  onDescendantDeleteBranchOnArchiveChange,
   onForceArchiveConfirmedChange,
   onArchive,
   onCloseOnly,
@@ -67,6 +71,15 @@ export function SpaceWorktreeWindowDialog({
   archiveTerminalCount: number
   archiveTaskCount: number
   archiveNoteCount: number
+  archiveHasOwnWorktree: boolean
+  archiveDescendantWorktrees: Array<{
+    spaceId: string
+    spaceName: string
+    worktreePath: string
+    branchName: string | null
+    deleteWorktree: boolean
+    deleteBranch: boolean
+  }>
   error: string | null
   guardIsBusy: boolean
   onBackdropClose: () => void
@@ -79,6 +92,8 @@ export function SpaceWorktreeWindowDialog({
   onCreate: () => void
   onDeleteWorktreeOnArchiveChange: (checked: boolean) => void
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
+  onDescendantDeleteWorktreeOnArchiveChange: (spaceId: string, checked: boolean) => void
+  onDescendantDeleteBranchOnArchiveChange: (spaceId: string, checked: boolean) => void
   onForceArchiveConfirmedChange: (checked: boolean) => void
   onArchive: () => void
   onCloseOnly: () => void
@@ -184,7 +199,8 @@ export function SpaceWorktreeWindowDialog({
           isBusy={isBusy}
           isMutating={isMutating}
           isSuggesting={isSuggesting}
-          isSpaceOnWorkspaceRoot={isSpaceOnWorkspaceRoot}
+          archiveHasOwnWorktree={archiveHasOwnWorktree}
+          archiveDescendantWorktrees={archiveDescendantWorktrees}
           changedFileCount={changedFileCount}
           branches={branches}
           branchesWithWorktrees={branchesWithWorktrees}
@@ -205,6 +221,8 @@ export function SpaceWorktreeWindowDialog({
           onCreate={onCreate}
           onDeleteWorktreeOnArchiveChange={onDeleteWorktreeOnArchiveChange}
           onDeleteBranchOnArchiveChange={onDeleteBranchOnArchiveChange}
+          onDescendantDeleteWorktreeOnArchiveChange={onDescendantDeleteWorktreeOnArchiveChange}
+          onDescendantDeleteBranchOnArchiveChange={onDescendantDeleteBranchOnArchiveChange}
           onForceArchiveConfirmedChange={onForceArchiveConfirmedChange}
           onArchive={onArchive}
           onCloseOnly={onCloseOnly}

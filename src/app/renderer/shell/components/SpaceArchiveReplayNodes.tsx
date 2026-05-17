@@ -7,10 +7,12 @@ import type {
   AgentRuntimeStatus,
   SpaceArchiveNodeSnapshot,
   SpaceArchiveRecord,
+  SpaceArchiveSpaceSnapshot,
 } from '@contexts/workspace/presentation/renderer/types'
 import { providerLabel } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 import { getStatusClassName } from '@contexts/workspace/presentation/renderer/components/terminalNode/status'
 import { ArchivedTaskNode, type ArchivedTaskNodeType } from './SpaceArchiveReplayTaskNode'
+import { getSpaceArchiveRecordSpaces } from '@contexts/workspace/presentation/renderer/utils/spaceArchiveRecords'
 
 type TerminalLikeNodeData =
   | {
@@ -222,20 +224,25 @@ export function hasArchiveNodeFrame(
 export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArchiveReplayNode[] {
   const nodesWithFrame = record.nodes.filter(hasArchiveNodeFrame)
   const shouldRenderNodes = nodesWithFrame.length === record.nodes.length
-  const resolvedSpaceLabelColor = record.space.labelColor ?? null
   const snapshotById = new Map(record.nodes.map(snapshot => [snapshot.id, snapshot] as const))
+  const archivedSpaces = getSpaceArchiveRecordSpaces(record)
+  const owningSpaceByNodeId = resolveOwningSpaceByNodeId(archivedSpaces)
 
   const replayNodes: SpaceArchiveReplayNode[] = []
 
-  if (record.space.rect) {
+  for (const space of archivedSpaces) {
+    if (!space.rect) {
+      continue
+    }
+
     replayNodes.push({
-      id: `space-bounds:${record.id}`,
+      id: `space-bounds:${record.id}:${space.id}`,
       type: 'spaceBounds',
-      position: { x: record.space.rect.x, y: record.space.rect.y },
+      position: { x: space.rect.x, y: space.rect.y },
       data: { kind: 'spaceBounds' },
       style: {
-        width: record.space.rect.width,
-        height: record.space.rect.height,
+        width: space.rect.width,
+        height: space.rect.height,
         opacity: 0,
         pointerEvents: 'none',
       },
@@ -250,8 +257,9 @@ export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArch
   }
 
   for (const node of nodesWithFrame) {
+    const owningSpace = owningSpaceByNodeId.get(node.id) ?? null
     const effectiveLabelColor = resolveEffectiveLabelColor({
-      spaceLabelColor: resolvedSpaceLabelColor,
+      spaceLabelColor: owningSpace?.labelColor ?? record.space.labelColor ?? null,
       override: node.labelColorOverride,
     })
 
@@ -362,6 +370,22 @@ export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArch
   }
 
   return replayNodes
+}
+
+function resolveOwningSpaceByNodeId(
+  spaces: SpaceArchiveSpaceSnapshot[],
+): Map<string, SpaceArchiveSpaceSnapshot> {
+  const result = new Map<string, SpaceArchiveSpaceSnapshot>()
+
+  for (const space of spaces) {
+    for (const nodeId of space.nodeIds) {
+      if (!result.has(nodeId)) {
+        result.set(nodeId, space)
+      }
+    }
+  }
+
+  return result
 }
 
 export const spaceArchiveReplayNodeTypes = {

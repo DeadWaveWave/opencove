@@ -22,6 +22,7 @@
 ## Canvas
 
 - `canvas/FILESYSTEM.md`：URI、mount-aware filesystem contracts 和 guardrails。
+- `canvas/SPACE_LIFECYCLE_SPEC.md`：Space 创建、child Space、Space Worktree 和归档生命周期规格。
 - `canvas/SPACE_EXPLORER.md`：Space 内文件浏览器。
 - `canvas/DOCUMENT_NODE.md`：画布内文件编辑与媒体预览。
 - `canvas/WEBSITE_WINDOW_NODE.md`：Website Node 运行时与窗口语义。

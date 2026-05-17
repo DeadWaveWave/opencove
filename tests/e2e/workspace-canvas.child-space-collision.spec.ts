@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   dragMouse,
@@ -6,109 +6,13 @@ import {
   readLocatorClientRect,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
-
-interface Rect {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-interface ChildSpaceCollisionSnapshot {
-  nodes: Record<string, Rect>
-  spaces: Record<string, Rect>
-}
-
-async function readSnapshot(window: {
-  evaluate: <T>(fn: () => T | Promise<T>) => Promise<T>
-}): Promise<ChildSpaceCollisionSnapshot> {
-  return await window.evaluate(async () => {
-    const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-    if (!raw) {
-      return { nodes: {}, spaces: {} }
-    }
-
-    const parsed = JSON.parse(raw) as {
-      workspaces?: Array<{
-        nodes?: Array<{
-          id?: string
-          position?: { x?: number; y?: number }
-          width?: number
-          height?: number
-        }>
-        spaces?: Array<{
-          id?: string
-          rect?: { x?: number; y?: number; width?: number; height?: number } | null
-        }>
-      }>
-    }
-    const workspace = parsed.workspaces?.[0]
-    const nodes: Record<string, Rect> = {}
-    const spaces: Record<string, Rect> = {}
-
-    for (const node of workspace?.nodes ?? []) {
-      if (
-        !node.id ||
-        !node.position ||
-        typeof node.position.x !== 'number' ||
-        typeof node.position.y !== 'number' ||
-        typeof node.width !== 'number' ||
-        typeof node.height !== 'number'
-      ) {
-        continue
-      }
-
-      nodes[node.id] = {
-        x: node.position.x,
-        y: node.position.y,
-        width: node.width,
-        height: node.height,
-      }
-    }
-
-    for (const space of workspace?.spaces ?? []) {
-      if (
-        !space.id ||
-        !space.rect ||
-        typeof space.rect.x !== 'number' ||
-        typeof space.rect.y !== 'number' ||
-        typeof space.rect.width !== 'number' ||
-        typeof space.rect.height !== 'number'
-      ) {
-        continue
-      }
-
-      spaces[space.id] = {
-        x: space.rect.x,
-        y: space.rect.y,
-        width: space.rect.width,
-        height: space.rect.height,
-      }
-    }
-
-    return { nodes, spaces }
-  })
-}
-
-function overlaps(a: Rect, b: Rect): boolean {
-  return a.x + a.width > b.x && a.x < b.x + b.width && a.y + a.height > b.y && a.y < b.y + b.height
-}
-
-function contains(container: Rect, child: Rect, padding = 0): boolean {
-  return (
-    child.x >= container.x + padding &&
-    child.y >= container.y + padding &&
-    child.x + child.width <= container.x + container.width - padding &&
-    child.y + child.height <= container.y + container.height - padding
-  )
-}
-
-async function fitWorkspaceView(window: Page): Promise<void> {
-  const fitView = window.locator('.react-flow__controls-fitview')
-  await expect(fitView).toBeVisible()
-  await fitView.click()
-  await window.waitForTimeout(100)
-}
+import {
+  contains,
+  dragSpaceTopHandle,
+  fitWorkspaceView,
+  overlaps,
+  readChildSpaceSnapshot as readSnapshot,
+} from './workspace-canvas.child-space.helpers'
 
 test.describe('Workspace Canvas - Child Space Collision', () => {
   test('moves child space content with parent while keeping root blockers clear', async () => {
@@ -161,17 +65,7 @@ test.describe('Workspace Canvas - Child Space Collision', () => {
         '[data-testid="workspace-space-drag-child-collision-parent-top"]',
       )
       await expect(dragHandle).toBeVisible()
-      const handleRect = await readLocatorClientRect(dragHandle)
-      const start = {
-        x: handleRect.x + handleRect.width * 0.8,
-        y: handleRect.y + handleRect.height * 0.5,
-      }
-
-      await dragMouse(window, {
-        start,
-        end: { x: start.x + 760, y: start.y },
-        steps: 16,
-      })
+      await dragSpaceTopHandle(window, dragHandle, { x: 760, y: 0 })
 
       await expect
         .poll(async () => {
@@ -334,17 +228,7 @@ test.describe('Workspace Canvas - Child Space Collision', () => {
       const before = await readSnapshot(window)
       const dragHandle = window.locator('[data-testid="workspace-space-drag-child-push-mover-top"]')
       await expect(dragHandle).toBeVisible()
-      const handleRect = await readLocatorClientRect(dragHandle)
-      const start = {
-        x: handleRect.x + handleRect.width * 0.8,
-        y: handleRect.y + handleRect.height * 0.5,
-      }
-
-      await dragMouse(window, {
-        start,
-        end: { x: start.x + 520, y: start.y },
-        steps: 16,
-      })
+      await dragSpaceTopHandle(window, dragHandle, { x: 520, y: 0 })
 
       await expect
         .poll(async () => {
@@ -442,17 +326,7 @@ test.describe('Workspace Canvas - Child Space Collision', () => {
         '[data-testid="workspace-space-drag-child-local-moving-top"]',
       )
       await expect(dragHandle).toBeVisible()
-      const handleRect = await readLocatorClientRect(dragHandle)
-      const start = {
-        x: handleRect.x + handleRect.width * 0.8,
-        y: handleRect.y + handleRect.height * 0.5,
-      }
-
-      await dragMouse(window, {
-        start,
-        end: { x: start.x + 220, y: start.y },
-        steps: 14,
-      })
+      await dragSpaceTopHandle(window, dragHandle, { x: 220, y: 0 }, 14)
 
       await expect
         .poll(async () => {

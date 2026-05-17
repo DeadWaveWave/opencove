@@ -213,6 +213,18 @@ export interface WorkspaceSpaceState {
   rect: WorkspaceSpaceRect | null
 }
 
+export interface SpaceArchiveSpaceSnapshot {
+  id: string
+  name: string
+  directoryPath: string
+  targetMountId: string | null
+  parentSpaceId: string | null
+  boundary: SpaceBoundary | null
+  labelColor: LabelColor | null
+  nodeIds: string[]
+  rect: WorkspaceSpaceRect | null
+}
+
 export interface SpaceArchiveRecord {
   id: string
   archivedAt: string
@@ -224,6 +236,7 @@ export interface SpaceArchiveRecord {
     labelColor: LabelColor | null
     rect: WorkspaceSpaceRect | null
   }
+  spaces?: SpaceArchiveSpaceSnapshot[]
   nodes: SpaceArchiveNodeSnapshot[]
 }
 

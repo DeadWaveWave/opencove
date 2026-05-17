@@ -2,18 +2,10 @@ import React from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { SpaceActionMenuState } from '../types'
-import type { ResolveMountTargetResult } from '@shared/contracts/dto'
-
-function normalizeComparablePath(pathValue: string): string {
-  return pathValue.trim().replace(/\\/g, '/').replace(/\/+$/g, '').toLowerCase()
-}
-
-function resolveControlSurfaceInvoke(): ((request: unknown) => Promise<unknown>) | null {
-  const invoke = (window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } })
-    .opencoveApi?.controlSurface?.invoke
-
-  return typeof invoke === 'function' ? (invoke as (request: unknown) => Promise<unknown>) : null
-}
+import { getSpaceWorktreeEligibility } from '@contexts/space/application/spaceWorktreeEligibility'
+import { resolveWorktreeRepoRootPath } from '@contexts/worktree/presentation/renderer/windows/spaceWorktree.shared'
+import { normalizeComparablePath } from '../view/WorkspaceSpaceRegionsOverlay.helpers'
+import { useWorkspaceWorktreeInfoByPath } from '../view/WorkspaceSpaceRegionsOverlay.worktreePolling'
 
 export function useWorkspaceCanvasSpaceMenuState({
   spaceActionMenu,
@@ -27,7 +19,7 @@ export function useWorkspaceCanvasSpaceMenuState({
   nodes: Node<TerminalNodeData>[]
 }): {
   activeMenuSpace: WorkspaceSpaceState | null
-  isActiveMenuSpaceOnWorkspaceRoot: boolean
+  canCreateWorktreeForActiveMenuSpace: boolean
   canArrangeAll: boolean
   canArrangeCanvas: boolean
   canArrangeActiveSpace: boolean
@@ -40,74 +32,56 @@ export function useWorkspaceCanvasSpaceMenuState({
     [spaceActionMenu, spaces],
   )
 
-  const [resolvedMountRootPath, setResolvedMountRootPath] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    setResolvedMountRootPath(null)
-
-    const mountId = activeMenuSpace?.targetMountId
-    if (!mountId) {
-      return
-    }
-
-    const invoke = resolveControlSurfaceInvoke()
-    if (!invoke) {
-      return
-    }
-
-    let cancelled = false
-
-    void (async () => {
-      try {
-        const result = (await invoke({
-          kind: 'query',
-          id: 'mountTarget.resolve',
-          payload: { mountId },
-        })) as ResolveMountTargetResult
-
-        if (cancelled) {
-          return
-        }
-
-        setResolvedMountRootPath(typeof result?.rootPath === 'string' ? result.rootPath : null)
-      } catch {
-        if (cancelled) {
-          return
-        }
-
-        setResolvedMountRootPath(null)
+  const mountIdsKey = React.useMemo(() => {
+    const unique = new Set<string>()
+    spaces.forEach(space => {
+      const mountId = space.targetMountId?.trim() ?? ''
+      if (mountId.length > 0) {
+        unique.add(mountId)
       }
-    })()
+    })
 
-    return () => {
-      cancelled = true
-    }
-  }, [activeMenuSpace?.targetMountId])
+    return [...unique].sort((left, right) => left.localeCompare(right)).join('|')
+  }, [spaces])
 
-  const workspaceRootForComparison = React.useMemo(() => {
-    if (activeMenuSpace?.targetMountId && resolvedMountRootPath) {
-      return resolvedMountRootPath
-    }
+  const worktreeDirectoriesKey = React.useMemo(() => {
+    const unique = new Set<string>()
+    spaces.forEach(space => {
+      const normalized = normalizeComparablePath(space.directoryPath)
+      if (normalized.length > 0) {
+        unique.add(normalized)
+      }
+    })
 
-    return workspacePath
-  }, [activeMenuSpace?.targetMountId, resolvedMountRootPath, workspacePath])
+    return [...unique].sort((left, right) => left.localeCompare(right)).join('|')
+  }, [spaces])
 
-  const normalizedWorkspacePath = React.useMemo(
-    () => normalizeComparablePath(workspaceRootForComparison),
-    [workspaceRootForComparison],
+  const worktreeInfoByPath = useWorkspaceWorktreeInfoByPath({
+    workspacePath,
+    mountIdsKey,
+    refreshNonce: 0,
+    worktreeDirectoriesKey,
+  })
+  const worktrees = React.useMemo(() => [...worktreeInfoByPath.values()], [worktreeInfoByPath])
+
+  const worktreeRepoRootPath = React.useMemo(
+    () =>
+      activeMenuSpace?.targetMountId
+        ? resolveWorktreeRepoRootPath(workspacePath, worktrees)
+        : workspacePath,
+    [activeMenuSpace?.targetMountId, workspacePath, worktrees],
   )
 
-  const activeMenuSpacePath = React.useMemo(() => {
-    if (!activeMenuSpace) {
-      return workspaceRootForComparison
-    }
-
-    const trimmed = activeMenuSpace.directoryPath.trim()
-    return trimmed.length > 0 ? trimmed : workspaceRootForComparison
-  }, [activeMenuSpace, workspaceRootForComparison])
-
-  const isActiveMenuSpaceOnWorkspaceRoot =
-    normalizeComparablePath(activeMenuSpacePath) === normalizedWorkspacePath
+  const canCreateWorktreeForActiveMenuSpace = React.useMemo(
+    () =>
+      getSpaceWorktreeEligibility({
+        space: activeMenuSpace,
+        spaces,
+        worktrees,
+        repoRootPath: worktreeRepoRootPath,
+      }).canCreate,
+    [activeMenuSpace, spaces, worktreeRepoRootPath, worktrees],
+  )
 
   const ownedNodeIdSet = React.useMemo(
     () => new Set(spaces.flatMap(space => space.nodeIds)),
@@ -124,7 +98,7 @@ export function useWorkspaceCanvasSpaceMenuState({
 
   return {
     activeMenuSpace,
-    isActiveMenuSpaceOnWorkspaceRoot,
+    canCreateWorktreeForActiveMenuSpace,
     canArrangeAll,
     canArrangeCanvas,
     canArrangeActiveSpace,

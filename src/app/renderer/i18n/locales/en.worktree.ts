@@ -15,6 +15,12 @@ export const enWorktree = {
     deleteWorktreeHelp: 'Remove the worktree directory from disk.',
     deleteBranch: 'Delete branch',
     deleteBranchHelp: 'Also remove the current git branch.',
+    descendantCleanupIntro:
+      'Contained worktrees stay on disk unless you explicitly remove them here.',
+    deleteContainedWorktree: 'Delete contained worktree',
+    deleteContainedWorktreeHelp: 'Remove this contained Space worktree directory from disk.',
+    deleteContainedBranch: 'Delete contained branch',
+    deleteContainedBranchHelp: 'Also remove this contained Space branch.',
     executeAndClose: 'Execute & Close',
     executeAndArchive: 'Execute & Archive',
     workspaceRoot: 'Workspace root',
@@ -24,6 +30,12 @@ export const enWorktree = {
     closeWorktreeWindow: 'Close worktree window',
     clean: 'clean',
     apiUnavailable: 'Worktree API is unavailable. Please restart OpenCove and try again.',
+    createBlockedAlreadyWorktree: 'This Space is already a worktree.',
+    createBlockedAncestorWorktree:
+      'This Space is inside {{name}}, which is already a worktree. Create a sibling Space instead.',
+    createBlockedDescendantWorktree:
+      'This Space contains {{name}}, which is already a worktree. Archive or move that Space first.',
+    createBlockedSpaceMissing: 'This Space no longer exists.',
     changedFiles_one: '{{count}} change',
     changedFiles_other: '{{count}} changes',
     archiveAgents_one: '{{count}} agent',

@@ -5,6 +5,11 @@ import type {
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import type { GitWorktreeInfo } from '@shared/contracts/dto'
+import { resolveSpaceArchiveScope } from '@contexts/space/application/spaceArchiveScope'
+import {
+  getSpaceWorktreeEligibility,
+  resolveSpaceOwnWorktree,
+} from '@contexts/space/application/spaceWorktreeEligibility'
 import { resolveGitWorktreeApiForMount } from './mountAwareGitWorktreeApi'
 import {
   normalizeComparablePath,
@@ -91,19 +96,62 @@ export function useSpaceWorktreeDerivedState({
   )
 
   const spaceTasks = useMemo(() => resolveSpaceTasks(space, nodes), [nodes, space])
-  const archiveCounts = useMemo(() => getSpaceArchiveCounts({ space, nodes }), [nodes, space])
+  const ownWorktree = useMemo(
+    () =>
+      resolveSpaceOwnWorktree({
+        space,
+        spaces,
+        worktrees,
+        repoRootPath: worktreeRepoRootPath,
+      }),
+    [space, spaces, worktreeRepoRootPath, worktrees],
+  )
+  const archiveScope = useMemo(
+    () =>
+      resolveSpaceArchiveScope({
+        targetSpace: space,
+        spaces,
+        worktrees,
+        repoRootPath: worktreeRepoRootPath,
+      }),
+    [space, spaces, worktreeRepoRootPath, worktrees],
+  )
+  const worktreeEligibility = useMemo(
+    () =>
+      getSpaceWorktreeEligibility({
+        space,
+        spaces,
+        worktrees,
+        repoRootPath: worktreeRepoRootPath,
+      }),
+    [space, spaces, worktreeRepoRootPath, worktrees],
+  )
+  const archiveCounts = useMemo(
+    () =>
+      getSpaceArchiveCounts({
+        space,
+        nodeIds: archiveScope?.archivedNodeIds ?? null,
+        nodes,
+      }),
+    [archiveScope?.archivedNodeIds, nodes, space],
+  )
 
   return {
     archiveCounts,
+    archiveScope,
     branchesWithWorktrees,
     currentWorktree,
+    hasOwnWorktree: ownWorktree !== null,
     isSpaceOnWorkspaceRoot,
+    ownWorktree,
     resolvedInitialViewMode: initialViewMode,
     resolvedWorktreesRoot,
     space,
     spaceTasks,
     statusPath,
+    worktreeEligibility,
     worktreeApi,
     worktreeRepoRootPath,
+    worktreeSpacesInScope: archiveScope?.worktreeSpacesInScope ?? [],
   }
 }

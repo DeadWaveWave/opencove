@@ -7,6 +7,7 @@ import {
   readLocatorClientRect,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { openPaneContextMenuInSpace } from './workspace-canvas.arrange.shared'
 
 const commandCenterModifier = process.platform === 'darwin' ? 'Meta' : 'Control'
 const findModifier = process.platform === 'darwin' ? 'Meta' : 'Control'
@@ -28,6 +29,13 @@ async function readWorkspaceSnapshot(window: {
           parentSpaceId?: string | null
           nodeIds?: string[]
           rect?: { x?: number; y?: number; width?: number; height?: number } | null
+        }>
+        nodes?: Array<{
+          id?: string
+          kind?: string
+          position?: { x?: number; y?: number }
+          width?: number
+          height?: number
         }>
       }>
     }
@@ -131,10 +139,8 @@ test.describe('Workspace Canvas - Child Space', () => {
       await expect(terminalNode).toBeVisible()
       await clickHeaderDragSurface(terminalNode.locator('.terminal-node__header'))
       await terminalNode.click({ button: 'right' })
-      await expect(
-        window.locator('[data-testid="workspace-selection-create-child-space"]'),
-      ).toBeVisible()
-      await window.locator('[data-testid="workspace-selection-create-child-space"]').click()
+      await expect(window.locator('[data-testid="workspace-selection-create-space"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-selection-create-space"]').click()
 
       await expect(window.locator('.workspace-space-region--child')).toBeVisible()
       await expect(
@@ -227,6 +233,77 @@ test.describe('Workspace Canvas - Child Space', () => {
         .toEqual({
           insideLeft: true,
           insideTop: true,
+        })
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('creates notes inside the child space under the context-menu anchor', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [], {
+        spaces: [
+          {
+            id: 'child-create-note-parent',
+            name: 'Parent Note Scope',
+            directoryPath: testWorkspacePath,
+            nodeIds: [],
+            rect: { x: 220, y: 180, width: 700, height: 430 },
+          },
+          {
+            id: 'child-create-note-child',
+            name: 'Child Note Scope',
+            directoryPath: testWorkspacePath,
+            parentSpaceId: 'child-create-note-parent',
+            nodeIds: [],
+            rect: { x: 500, y: 280, width: 260, height: 190 },
+          },
+        ],
+        activeSpaceId: null,
+      })
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+      await openPaneContextMenuInSpace(window, pane, 'child-create-note-child')
+      await expect(window.locator('[data-testid="workspace-context-new-note"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-context-new-note"]').click()
+
+      await expect(window.locator('.note-node')).toHaveCount(1)
+
+      await expect
+        .poll(async () => {
+          const snapshot = await readWorkspaceSnapshot(window)
+          const workspace = snapshot?.workspaces?.[0]
+          const child =
+            workspace?.spaces?.find(space => space.id === 'child-create-note-child') ?? null
+          const parent =
+            workspace?.spaces?.find(space => space.id === 'child-create-note-parent') ?? null
+          const note = workspace?.nodes?.find(node => node.kind === 'note') ?? null
+          if (!child?.rect || !parent?.rect || !note?.id || !note.position) {
+            return null
+          }
+
+          const nodeRight = (note.position.x ?? 0) + (note.width ?? 0)
+          const nodeBottom = (note.position.y ?? 0) + (note.height ?? 0)
+          const childRight = (child.rect.x ?? 0) + (child.rect.width ?? 0)
+          const childBottom = (child.rect.y ?? 0) + (child.rect.height ?? 0)
+
+          return {
+            childOwnsNote: child.nodeIds?.includes(note.id) ?? false,
+            parentOwnsNote: parent.nodeIds?.includes(note.id) ?? false,
+            noteInsideChild:
+              (note.position.x ?? 0) >= (child.rect.x ?? 0) &&
+              (note.position.y ?? 0) >= (child.rect.y ?? 0) &&
+              nodeRight <= childRight &&
+              nodeBottom <= childBottom,
+          }
+        })
+        .toEqual({
+          childOwnsNote: true,
+          parentOwnsNote: false,
+          noteInsideChild: true,
         })
     } finally {
       await electronApp.close()

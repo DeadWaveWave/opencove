@@ -22,7 +22,7 @@ function resolveNodeCenter(node: Node<TerminalNodeData>): { x: number; y: number
   }
 }
 
-function resolveSelectedParentSpace(options: {
+export function resolveSelectedChildSpaceParent(options: {
   spaces: WorkspaceSpaceState[]
   selectedNodes: Node<TerminalNodeData>[]
 }): WorkspaceSpaceState | null {
@@ -31,7 +31,7 @@ function resolveSelectedParentSpace(options: {
 
   for (const node of options.selectedNodes) {
     const hit = resolveInnermostSpaceAtPoint(options.spaces, resolveNodeCenter(node))
-    if (!hit || hit.parentSpaceId) {
+    if (!hit) {
       return null
     }
 
@@ -47,7 +47,6 @@ export function useWorkspaceCanvasCreateChildSpace({
   nodesRef,
   setNodes,
   spacesRef,
-  selectedNodeIdsRef,
   onSpacesChange,
   onRequestPersistFlush,
   setContextMenu,
@@ -59,7 +58,6 @@ export function useWorkspaceCanvasCreateChildSpace({
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
@@ -71,7 +69,6 @@ export function useWorkspaceCanvasCreateChildSpace({
     parentSpaceId: string,
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
   ) => string | null
-  createChildSpaceFromSelectedNodes: () => void
 } {
   const { t } = useTranslation()
 
@@ -192,30 +189,7 @@ export function useWorkspaceCanvasCreateChildSpace({
     ],
   )
 
-  const createChildSpaceFromSelectedNodes = useCallback(() => {
-    const selectedNodeIds = selectedNodeIdsRef.current
-    if (selectedNodeIds.length === 0) {
-      onShowMessage?.(t('messages.childSpaceRequiresSelection'), 'warning')
-      return
-    }
-
-    const selectedNodeIdSet = new Set(selectedNodeIds)
-    const selectedNodes = nodesRef.current.filter(node => selectedNodeIdSet.has(node.id))
-    const parentSpace = resolveSelectedParentSpace({
-      spaces: spacesRef.current,
-      selectedNodes,
-    })
-
-    if (!parentSpace) {
-      onShowMessage?.(t('messages.childSpaceRequiresParent'), 'warning')
-      return
-    }
-
-    applyChildSpaceCreation(parentSpace.id, { nodeIds: selectedNodeIds })
-  }, [applyChildSpaceCreation, nodesRef, onShowMessage, selectedNodeIdsRef, spacesRef, t])
-
   return {
     createChildSpaceInParent: applyChildSpaceCreation,
-    createChildSpaceFromSelectedNodes,
   }
 }

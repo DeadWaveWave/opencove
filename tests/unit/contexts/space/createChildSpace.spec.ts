@@ -66,7 +66,7 @@ describe('createChildSpace', () => {
     expect(result.nextSpaces.find(space => space.id === 'child-space')?.nodeIds).toEqual(['node-a'])
   })
 
-  it('rejects nested child creation from the UI-level default path', () => {
+  it('allows nested child creation by default', () => {
     const childParent = createParentSpace({
       id: 'child-parent',
       parentSpaceId: 'parent-space',
@@ -79,6 +79,33 @@ describe('createChildSpace', () => {
       input: { parentSpaceId: childParent.id },
       createId: () => 'child-space',
       defaultName: count => `Child ${count}`,
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) {
+      return
+    }
+
+    expect(result.childSpace).toMatchObject({
+      id: 'child-space',
+      parentSpaceId: 'child-parent',
+    })
+  })
+
+  it('rejects nested child creation when nested parents are explicitly disabled', () => {
+    const childParent = createParentSpace({
+      id: 'child-parent',
+      parentSpaceId: 'parent-space',
+    })
+
+    const result = createChildSpace({
+      spaces: [childParent],
+      workspacePath: '/repo',
+      nodeFrames: [],
+      input: { parentSpaceId: childParent.id },
+      createId: () => 'child-space',
+      defaultName: count => `Child ${count}`,
+      allowNestedParent: false,
     })
 
     expect(result).toEqual({ ok: false, code: 'nested_parent_not_allowed' })

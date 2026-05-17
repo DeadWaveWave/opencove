@@ -14,6 +14,7 @@
 Durable fact：
 
 - Workspace、Space、Node、Viewport layout。
+- Space tree、Space archive records 和 Space execution boundary。
 - Task 字段和 task-agent 关系。
 - Agent/Terminal 可恢复 metadata。
 - Settings。
@@ -60,7 +61,9 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
 | --- | --- | --- | --- | --- |
 | workspace list / active workspace | durable fact | workspace persistence/usecase | workspace mutation | SQLite |
 | spaces / node layout / viewport | durable fact | workspace context | workspace mutation | SQLite |
+| `parentSpaceId` | durable fact | workspace context | space tree mutation | SQLite |
 | `targetMountId` | durable fact | workspace/space model | space/mount binding mutation | SQLite + topology |
+| space archive records | durable fact | workspace context | archive usecase | SQLite |
 | endpoint/mount registry | durable fact | topology store | endpoint/mount commands | topology files |
 | task fields | durable fact | task/workspace model | task mutation | SQLite |
 | task-agent relation | durable fact | task/agent usecase | launch/bind/close mutation | SQLite |
@@ -94,6 +97,8 @@ Close/delete:
 - Node deletion removes durable node and space membership.
 - Runtime cleanup is best-effort and must not block durable removal forever.
 - Forget/archive semantics must be explicit.
+- Space archive must calculate a target subtree first, then remove only those Spaces and nodes from durable state.
+- Worktree / branch cleanup during archive is an explicit per-worktree user choice and must not be inferred from visual containment.
 
 ## Terminal Recovery
 

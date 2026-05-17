@@ -30,7 +30,6 @@ export function WorkspaceCanvasMenus({
   arrangeCanvas,
   arrangeInSpace,
   createSpaceFromSelectedNodes,
-  createChildSpaceFromSelectedNodes,
   createChildSpaceInParent,
   createEmptySpaceAtPoint,
   clearNodeSelection,
@@ -41,7 +40,7 @@ export function WorkspaceCanvasMenus({
   spaceActionMenu,
   availablePathOpeners,
   activeMenuSpace,
-  isActiveMenuSpaceOnWorkspaceRoot,
+  canCreateWorktreeForActiveMenuSpace,
   closeSpaceActionMenu,
   setSpaceLabelColor,
   openSpaceCreateWorktree,
@@ -74,7 +73,6 @@ export function WorkspaceCanvasMenus({
   | 'arrangeCanvas'
   | 'arrangeInSpace'
   | 'createSpaceFromSelectedNodes'
-  | 'createChildSpaceFromSelectedNodes'
   | 'createChildSpaceInParent'
   | 'createEmptySpaceAtPoint'
   | 'clearNodeSelection'
@@ -93,7 +91,7 @@ export function WorkspaceCanvasMenus({
   | 'agentSettings'
 > & {
   activeMenuSpace: WorkspaceCanvasViewProps['spaces'][number] | null
-  isActiveMenuSpaceOnWorkspaceRoot: boolean
+  canCreateWorktreeForActiveMenuSpace: boolean
   canArrangeAll: boolean
   canArrangeCanvas: boolean
   canArrangeActiveSpace: boolean
@@ -131,7 +129,6 @@ export function WorkspaceCanvasMenus({
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
-        createChildSpaceFromSelectedNodes={createChildSpaceFromSelectedNodes}
         createChildSpaceInParent={createChildSpaceInParent}
         createEmptySpaceAtPoint={createEmptySpaceAtPoint}
         clearNodeSelection={clearNodeSelection}
@@ -144,12 +141,7 @@ export function WorkspaceCanvasMenus({
         menu={spaceActionMenu}
         availableOpeners={availablePathOpeners}
         canArrange={canArrangeActiveSpace}
-        canCreateChildSpace={activeMenuSpace !== null && !activeMenuSpace.parentSpaceId}
-        canCreateWorktree={
-          activeMenuSpace !== null &&
-          !activeMenuSpace.parentSpaceId &&
-          isActiveMenuSpaceOnWorkspaceRoot
-        }
+        canCreateWorktree={canCreateWorktreeForActiveMenuSpace}
         canArchive={activeMenuSpace !== null}
         closeMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
@@ -162,11 +154,6 @@ export function WorkspaceCanvasMenus({
         onArchive={() => {
           if (activeMenuSpace) {
             openSpaceArchive(activeMenuSpace.id)
-          }
-        }}
-        onCreateChildSpace={() => {
-          if (activeMenuSpace) {
-            createChildSpaceInParent(activeMenuSpace.id)
           }
         }}
         onCopyPath={() => {

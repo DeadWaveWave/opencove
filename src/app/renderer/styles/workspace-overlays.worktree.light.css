@@ -77,6 +77,19 @@
   color: var(--cove-text-muted);
 }
 
+:root[data-cove-theme='light'] .workspace-space-worktree__option-group {
+  border-top-color: var(--cove-border-subtle);
+  border-left-color: var(--cove-border-subtle);
+}
+
+:root[data-cove-theme='light'] .workspace-space-worktree__option-heading strong {
+  color: var(--cove-text);
+}
+
+:root[data-cove-theme='light'] .workspace-space-worktree__option-heading span {
+  color: var(--cove-text-muted);
+}
+
 :root[data-cove-theme='light'] .workspace-space-worktree__option-copy strong {
   color: var(--cove-text);
 }

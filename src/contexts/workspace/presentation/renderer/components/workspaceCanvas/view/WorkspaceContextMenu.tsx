@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } fro
 import { WorkspaceContextPaneMenuContent } from './WorkspaceContextMenuParts'
 import { WorkspaceContextSelectionMenuContent } from './WorkspaceContextMenuSelectionParts'
 import { WorkspaceContextSubmenus } from './WorkspaceContextSubmenus'
+import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
 import {
   MENU_WIDTH,
   SUBMENU_CLOSE_DELAY_MS,
@@ -47,7 +48,6 @@ export function WorkspaceContextMenu({
   arrangeCanvas,
   arrangeInSpace,
   createSpaceFromSelectedNodes,
-  createChildSpaceFromSelectedNodes,
   createChildSpaceInParent,
   createEmptySpaceAtPoint,
   clearNodeSelection,
@@ -177,31 +177,28 @@ export function WorkspaceContextMenu({
     applyArrange()
   }, [applyArrange, closeContextMenu])
 
-  const createEmptySpaceFromContextMenu = useCallback(() => {
+  const createSpaceFromContextMenu = useCallback(() => {
     if (!contextMenu || contextMenu.kind !== 'pane') {
       return
     }
 
-    if (contextHitSpace) {
+    closeContextMenu()
+    setOpenSubmenu(null)
+
+    const hitSpace = resolveInnermostSpaceAtPoint(spaces, {
+      x: contextMenu.flowX,
+      y: contextMenu.flowY,
+    })
+
+    if (!hitSpace) {
+      createEmptySpaceAtPoint({ x: contextMenu.flowX, y: contextMenu.flowY })
       return
     }
 
-    closeContextMenu()
-    setOpenSubmenu(null)
-    createEmptySpaceAtPoint({ x: contextMenu.flowX, y: contextMenu.flowY })
-  }, [closeContextMenu, contextHitSpace, contextMenu, createEmptySpaceAtPoint])
-
-  const createChildSpaceFromContextMenu = useCallback(() => {
-    if (!contextMenu || contextMenu.kind !== 'pane' || !contextHitSpace) {
-      return
-    }
-
-    closeContextMenu()
-    setOpenSubmenu(null)
-    createChildSpaceInParent(contextHitSpace.id, {
+    createChildSpaceInParent(hitSpace.id, {
       anchor: { x: contextMenu.flowX, y: contextMenu.flowY },
     })
-  }, [closeContextMenu, contextHitSpace, contextMenu, createChildSpaceInParent])
+  }, [closeContextMenu, contextMenu, createChildSpaceInParent, createEmptySpaceAtPoint, spaces])
 
   const keepAgentProviderSubmenuOpen = useCallback(() => {
     cancelScheduledSubmenuClose()
@@ -381,10 +378,8 @@ export function WorkspaceContextMenu({
             openProjectRolesSubmenu={openProjectRolesSubmenu}
             isProjectRolesSubmenuOpen={openSubmenu === 'project-roles'}
             openAgentLauncher={openAgentLauncher}
-            createEmptySpaceFromContextMenu={createEmptySpaceFromContextMenu}
-            canCreateEmptySpace={contextHitSpace === null}
-            createChildSpaceFromContextMenu={createChildSpaceFromContextMenu}
-            canCreateChildSpace={Boolean(contextHitSpace && !contextHitSpace.parentSpaceId)}
+            createSpaceFromContextMenu={createSpaceFromContextMenu}
+            canCreateSpace={contextMenu.kind === 'pane'}
             openAgentProviderSubmenu={openAgentProviderSubmenu}
             agentProviderToggleRef={agentProviderToggleRef}
             isLoadingInstalledProviders={isLoadingInstalledProviders}
@@ -415,7 +410,6 @@ export function WorkspaceContextMenu({
         ) : (
           <WorkspaceContextSelectionMenuContent
             createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
-            createChildSpaceFromSelectedNodes={createChildSpaceFromSelectedNodes}
             openLabelColorSubmenu={openLabelColorSubmenu}
             labelColorButtonRef={labelColorButtonRef}
             canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}

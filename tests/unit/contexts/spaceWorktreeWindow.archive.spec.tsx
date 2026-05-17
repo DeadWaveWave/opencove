@@ -1,47 +1,15 @@
-import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import { SpaceWorktreeWindow } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/SpaceWorktreeWindow'
+import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   clearWorktreeApi,
   createArchiveSummaryScenario,
-  createNodes,
+  createNoteNode,
+  createSpace,
   createSpaces,
   installWorktreeApi,
 } from './spaceWorktreeWindow.testUtils'
-
-type SpaceWorktreeWindowProps = React.ComponentProps<typeof SpaceWorktreeWindow>
-
-function renderArchiveWindow(overrides: Partial<SpaceWorktreeWindowProps> = {}) {
-  const onClose = overrides.onClose ?? vi.fn()
-  const onShowMessage = overrides.onShowMessage
-  const onAppendSpaceArchiveRecord = overrides.onAppendSpaceArchiveRecord ?? vi.fn()
-  const onUpdateSpaceDirectory = overrides.onUpdateSpaceDirectory ?? vi.fn()
-  const closeNodesById = overrides.closeNodesById ?? vi.fn(async () => undefined)
-  const getBlockingNodes =
-    overrides.getBlockingNodes ?? (() => ({ agentNodeIds: [], terminalNodeIds: [] }))
-
-  render(
-    <SpaceWorktreeWindow
-      spaceId={overrides.spaceId ?? 'space-1'}
-      initialViewMode="archive"
-      spaces={overrides.spaces ?? createSpaces()}
-      nodes={overrides.nodes ?? createNodes()}
-      workspacePath={overrides.workspacePath ?? '/repo'}
-      worktreesRoot={overrides.worktreesRoot ?? '.opencove/worktrees'}
-      agentSettings={overrides.agentSettings ?? DEFAULT_AGENT_SETTINGS}
-      onClose={onClose}
-      onShowMessage={onShowMessage}
-      onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
-      onUpdateSpaceDirectory={onUpdateSpaceDirectory}
-      getBlockingNodes={getBlockingNodes}
-      closeNodesById={closeNodesById}
-    />,
-  )
-
-  return { closeNodesById, onAppendSpaceArchiveRecord, onClose, onUpdateSpaceDirectory }
-}
+import { renderArchiveWindow, submitArchive } from './spaceWorktreeWindow.renderUtils'
 
 describe('SpaceWorktreeWindow archive flow', () => {
   afterEach(() => {
@@ -151,10 +119,7 @@ describe('SpaceWorktreeWindow archive flow', () => {
     })
 
     expect(screen.queryByTestId('space-worktree-archive-delete-branch')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
-    })
-    fireEvent.click(screen.getByTestId('space-worktree-archive-submit'))
+    await submitArchive()
 
     await waitFor(() => {
       expect(remove).not.toHaveBeenCalled()
@@ -162,6 +127,218 @@ describe('SpaceWorktreeWindow archive flow', () => {
         archiveSpace: true,
       })
       expect(onClose).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('archives an ordinary child Space without worktree cleanup options', async () => {
+    installWorktreeApi({
+      statusSummary: vi.fn(async () => ({ changedFileCount: 0 })),
+    })
+    const parent = createSpace({ id: 'parent', directoryPath: '/repo' })
+    const child = createSpace({
+      id: 'child',
+      directoryPath: '/repo',
+      parentSpaceId: 'parent',
+    })
+    renderArchiveWindow({ spaceId: 'child', spaces: [parent, child] })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
+    })
+    expect(screen.queryByTestId('space-worktree-archive-delete-worktree')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('space-worktree-archive-delete-branch')).not.toBeInTheDocument()
+    expect(
+      screen.queryByTestId('space-worktree-archive-descendant-cleanups'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('records the inherited parent worktree snapshot for an ordinary child Space', async () => {
+    installWorktreeApi({
+      listWorktrees: vi.fn(async () => ({
+        worktrees: [
+          { path: '/repo', head: 'abc', branch: 'main' },
+          { path: '/repo/.opencove/worktrees/api', head: 'def', branch: 'space/api' },
+        ],
+      })),
+      statusSummary: vi.fn(async () => ({ changedFileCount: 0 })),
+    })
+    const parent = createSpace({
+      id: 'parent',
+      directoryPath: '/repo/.opencove/worktrees/api',
+    })
+    const child = createSpace({
+      id: 'child',
+      directoryPath: '/repo/.opencove/worktrees/api',
+      parentSpaceId: 'parent',
+    })
+    const onAppendSpaceArchiveRecord = vi.fn()
+    renderArchiveWindow({
+      spaceId: 'child',
+      spaces: [parent, child],
+      onAppendSpaceArchiveRecord,
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
+    })
+    expect(screen.queryByTestId('space-worktree-archive-delete-worktree')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('space-worktree-archive-submit'))
+
+    await waitFor(() => {
+      const record = onAppendSpaceArchiveRecord.mock.calls[0]?.[0]
+      expect(record?.git).toMatchObject({
+        worktreePath: '/repo/.opencove/worktrees/api',
+        branch: 'space/api',
+        head: 'def',
+      })
+    })
+  })
+
+  it('archives a child Space worktree with its own cleanup options', async () => {
+    const { remove } = installWorktreeApi({
+      listWorktrees: vi.fn(async () => ({
+        worktrees: [
+          { path: '/repo', head: 'abc', branch: 'main' },
+          { path: '/repo/.opencove/worktrees/api', head: 'def', branch: 'space/api' },
+        ],
+      })),
+      statusSummary: vi.fn(async () => ({ changedFileCount: 0 })),
+    })
+    const parent = createSpace({ id: 'parent', directoryPath: '/repo' })
+    const child = createSpace({
+      id: 'child',
+      directoryPath: '/repo/.opencove/worktrees/api',
+      parentSpaceId: 'parent',
+    })
+    renderArchiveWindow({ spaceId: 'child', spaces: [parent, child] })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-delete-worktree')).not.toBeDisabled()
+    })
+    expect(screen.getByTestId('space-worktree-archive-delete-branch')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('space-worktree-archive-submit'))
+
+    await waitFor(() => {
+      expect(remove).toHaveBeenCalledWith({
+        repoPath: '/repo',
+        worktreePath: '/repo/.opencove/worktrees/api',
+        force: true,
+        deleteBranch: false,
+      })
+    })
+  })
+
+  it('keeps descendant worktrees unless parent archive cleanup is explicitly selected', async () => {
+    const { remove } = installWorktreeApi({
+      listWorktrees: vi.fn(async () => ({
+        worktrees: [
+          { path: '/repo', head: 'abc', branch: 'main' },
+          { path: '/repo/.opencove/worktrees/api', head: 'def', branch: 'space/api' },
+        ],
+      })),
+      statusSummary: vi.fn(async () => ({ changedFileCount: 0 })),
+    })
+    const parent = createSpace({ id: 'parent', directoryPath: '/repo' })
+    const child = createSpace({
+      id: 'child',
+      directoryPath: '/repo/.opencove/worktrees/api',
+      parentSpaceId: 'parent',
+    })
+    const { onUpdateSpaceDirectory } = renderArchiveWindow({
+      spaceId: 'parent',
+      spaces: [parent, child],
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-descendant-cleanups')).toBeVisible()
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-archive-submit'))
+
+    await waitFor(() => {
+      expect(remove).not.toHaveBeenCalled()
+      expect(onUpdateSpaceDirectory).toHaveBeenCalledWith('parent', '/repo', {
+        archiveSpace: true,
+      })
+    })
+  })
+
+  it('removes an explicitly selected descendant worktree during parent archive', async () => {
+    const { remove } = installWorktreeApi({
+      listWorktrees: vi.fn(async () => ({
+        worktrees: [
+          { path: '/repo', head: 'abc', branch: 'main' },
+          { path: '/repo/.opencove/worktrees/api', head: 'def', branch: 'space/api' },
+        ],
+      })),
+      statusSummary: vi.fn(async () => ({ changedFileCount: 0 })),
+    })
+    const parent = createSpace({ id: 'parent', directoryPath: '/repo' })
+    const child = createSpace({
+      id: 'child',
+      directoryPath: '/repo/.opencove/worktrees/api',
+      parentSpaceId: 'parent',
+    })
+    renderArchiveWindow({ spaceId: 'parent', spaces: [parent, child] })
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('space-worktree-archive-descendant-delete-worktree-child'),
+      ).not.toBeDisabled()
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-archive-descendant-delete-worktree-child'))
+    fireEvent.click(screen.getByTestId('space-worktree-archive-submit'))
+
+    await waitFor(() => {
+      expect(remove).toHaveBeenCalledWith({
+        repoPath: '/repo',
+        worktreePath: '/repo/.opencove/worktrees/api',
+        force: true,
+        deleteBranch: false,
+      })
+    })
+  })
+
+  it('saves archive records with descendant spaces and subtree nodes', async () => {
+    installWorktreeApi({
+      statusSummary: vi.fn(async () => ({ changedFileCount: 0 })),
+    })
+    const parent = createSpace({
+      id: 'parent',
+      directoryPath: '/repo',
+      nodeIds: ['note-parent'],
+    })
+    const child = createSpace({
+      id: 'child',
+      directoryPath: '/repo',
+      parentSpaceId: 'parent',
+      nodeIds: ['note-child'],
+    })
+    const onAppendSpaceArchiveRecord = vi.fn()
+    renderArchiveWindow({
+      spaceId: 'parent',
+      spaces: [parent, child],
+      nodes: [
+        createNoteNode('note-parent', 'parent note'),
+        createNoteNode('note-child', 'child note'),
+      ],
+      onAppendSpaceArchiveRecord,
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-archive-submit'))
+
+    await waitFor(() => {
+      const record = onAppendSpaceArchiveRecord.mock.calls[0]?.[0]
+      expect(record?.spaces.map((space: WorkspaceSpaceState) => space.id)).toEqual([
+        'parent',
+        'child',
+      ])
+      expect(record?.nodes.map((node: { id: string }) => node.id)).toEqual([
+        'note-parent',
+        'note-child',
+      ])
     })
   })
 

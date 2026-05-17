@@ -3,9 +3,11 @@ import type {
   SpaceArchiveGitSnapshot,
   SpaceArchiveNodeSnapshot,
   SpaceArchiveRecord,
+  SpaceArchiveSpaceSnapshot,
 } from '../../types'
 import type { GitHubPullRequestSummary, TerminalRuntimeKind } from '@shared/contracts/dto'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
+import { isSpaceBoundaryEmpty, normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
 import { normalizeResumeSessionBinding } from './ensureResumeSessionBinding'
 import {
   normalizeAgentRuntimeStatus,
@@ -247,6 +249,45 @@ function ensurePersistedSpaceArchiveNodeSnapshot(value: unknown): SpaceArchiveNo
   return null
 }
 
+function ensurePersistedSpaceArchiveSpaceSnapshot(
+  value: unknown,
+  workspacePath: string,
+): SpaceArchiveSpaceSnapshot | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const id = normalizeOptionalString(record.id)
+  const name = typeof record.name === 'string' ? record.name : null
+  if (!id || name === null) {
+    return null
+  }
+
+  const nodeIds = Array.isArray(record.nodeIds)
+    ? [
+        ...new Set(
+          record.nodeIds
+            .map(nodeId => (typeof nodeId === 'string' ? nodeId.trim() : ''))
+            .filter(Boolean),
+        ),
+      ]
+    : []
+  const boundary = normalizeSpaceBoundary(record.boundary)
+
+  return {
+    id,
+    name,
+    directoryPath: normalizeOptionalString(record.directoryPath) ?? workspacePath,
+    targetMountId: normalizeOptionalString(record.targetMountId),
+    parentSpaceId: normalizeOptionalString(record.parentSpaceId),
+    boundary: isSpaceBoundaryEmpty(boundary) ? null : boundary,
+    labelColor: normalizeLabelColor(record.labelColor),
+    nodeIds,
+    rect: normalizeWorkspaceSpaceRect(record.rect),
+  }
+}
+
 export function ensurePersistedSpaceArchiveRecord(
   value: unknown,
   workspacePath: string,
@@ -281,6 +322,10 @@ export function ensurePersistedSpaceArchiveRecord(
   const nodes: SpaceArchiveNodeSnapshot[] = nodesInput
     .map(item => ensurePersistedSpaceArchiveNodeSnapshot(item))
     .filter((item): item is SpaceArchiveNodeSnapshot => item !== null)
+  const spacesInput = Array.isArray(record.spaces) ? record.spaces : []
+  const spaces = spacesInput
+    .map(item => ensurePersistedSpaceArchiveSpaceSnapshot(item, workspacePath))
+    .filter((item): item is SpaceArchiveSpaceSnapshot => item !== null)
 
   return {
     id,
@@ -293,6 +338,7 @@ export function ensurePersistedSpaceArchiveRecord(
       labelColor,
       rect,
     },
+    ...(spaces.length > 0 ? { spaces } : {}),
     nodes,
   }
 }

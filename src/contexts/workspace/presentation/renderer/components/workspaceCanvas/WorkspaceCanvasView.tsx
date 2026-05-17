@@ -121,7 +121,6 @@ export function WorkspaceCanvasView({
   insertQuickPhrase,
   openQuickMenuSettings,
   createSpaceFromSelectedNodes,
-  createChildSpaceFromSelectedNodes,
   createChildSpaceInParent,
   createEmptySpaceAtPoint,
   spaceTargetMountPicker,
@@ -193,7 +192,7 @@ export function WorkspaceCanvasView({
 
   const {
     activeMenuSpace,
-    isActiveMenuSpaceOnWorkspaceRoot,
+    canCreateWorktreeForActiveMenuSpace,
     canArrangeCanvas,
     canArrangeAll,
     canArrangeActiveSpace,
@@ -428,7 +427,6 @@ export function WorkspaceCanvasView({
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
-        createChildSpaceFromSelectedNodes={createChildSpaceFromSelectedNodes}
         createChildSpaceInParent={createChildSpaceInParent}
         createEmptySpaceAtPoint={createEmptySpaceAtPoint}
         clearNodeSelection={clearNodeSelection}
@@ -439,7 +437,7 @@ export function WorkspaceCanvasView({
         spaceActionMenu={spaceActionMenu}
         availablePathOpeners={availablePathOpeners}
         activeMenuSpace={activeMenuSpace}
-        isActiveMenuSpaceOnWorkspaceRoot={isActiveMenuSpaceOnWorkspaceRoot}
+        canCreateWorktreeForActiveMenuSpace={canCreateWorktreeForActiveMenuSpace}
         closeSpaceActionMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
         openSpaceCreateWorktree={openSpaceCreateWorktree}

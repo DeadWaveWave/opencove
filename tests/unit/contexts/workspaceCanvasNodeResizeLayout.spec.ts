@@ -144,4 +144,190 @@ describe('resolveWorkspaceLayoutAfterNodeResize', () => {
     )
     expect(rectsOverlap(nextRootRect, nextSpaceRect)).toBe(false)
   })
+
+  it('expands child and ancestor spaces when resizing a child-owned node outward', () => {
+    const nodes: Node<TerminalNodeData>[] = [
+      createTerminalNode({
+        id: 'child-space-terminal',
+        title: 'terminal-in-child-space',
+        x: 140,
+        y: 140,
+        width: 180,
+        height: 120,
+      }),
+    ]
+
+    const spaces: WorkspaceSpaceState[] = [
+      {
+        id: 'resize-parent-space',
+        name: 'Resize Parent Space',
+        directoryPath: '/tmp/workspace',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: 100, y: 100, width: 360, height: 260 },
+      },
+      {
+        id: 'resize-child-space',
+        name: 'Resize Child Space',
+        directoryPath: '/tmp/workspace',
+        targetMountId: null,
+        parentSpaceId: 'resize-parent-space',
+        labelColor: null,
+        nodeIds: ['child-space-terminal'],
+        rect: { x: 120, y: 120, width: 220, height: 160 },
+      },
+    ]
+
+    const resolved = resolveWorkspaceLayoutAfterNodeResize({
+      nodeId: 'child-space-terminal',
+      desiredFrame: {
+        position: { x: 140, y: 140 },
+        size: { width: 520, height: 260 },
+      },
+      nodes,
+      spaces,
+      gap: 0,
+    })
+
+    expect(resolved).not.toBeNull()
+
+    const nextNode = resolved?.nodes.find(node => node.id === 'child-space-terminal') ?? null
+    const parent = resolved?.spaces.find(space => space.id === 'resize-parent-space') ?? null
+    const child = resolved?.spaces.find(space => space.id === 'resize-child-space') ?? null
+
+    expect(nextNode?.position).toEqual({ x: 140, y: 140 })
+    expect(nextNode?.data.width).toBe(520)
+    expect(nextNode?.data.height).toBe(260)
+    expect(child?.rect?.x).toBeLessThanOrEqual(140 - 24)
+    expect(child?.rect?.x ?? 0).toBeGreaterThanOrEqual(parent?.rect?.x ?? 0)
+    expect((child?.rect?.x ?? 0) + (child?.rect?.width ?? 0)).toBeGreaterThanOrEqual(140 + 520 + 24)
+    expect((parent?.rect?.x ?? 0) + (parent?.rect?.width ?? 0)).toBeGreaterThanOrEqual(
+      (child?.rect?.x ?? 0) + (child?.rect?.width ?? 0) + 24,
+    )
+  })
+
+  it('does not push child spaces out when resizing a parent-owned node outward', () => {
+    const nodes: Node<TerminalNodeData>[] = [
+      createTerminalNode({
+        id: 'parent-space-terminal',
+        title: 'terminal-in-parent-space',
+        x: 140,
+        y: 140,
+        width: 180,
+        height: 120,
+      }),
+    ]
+
+    const spaces: WorkspaceSpaceState[] = [
+      {
+        id: 'parent-node-resize-space',
+        name: 'Parent Node Resize Space',
+        directoryPath: '/tmp/workspace',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: ['parent-space-terminal'],
+        rect: { x: 100, y: 100, width: 340, height: 260 },
+      },
+      {
+        id: 'stable-child-space',
+        name: 'Stable Child Space',
+        directoryPath: '/tmp/workspace',
+        targetMountId: null,
+        parentSpaceId: 'parent-node-resize-space',
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: 300, y: 150, width: 120, height: 120 },
+      },
+    ]
+
+    const resolved = resolveWorkspaceLayoutAfterNodeResize({
+      nodeId: 'parent-space-terminal',
+      desiredFrame: {
+        position: { x: 140, y: 140 },
+        size: { width: 480, height: 260 },
+      },
+      nodes,
+      spaces,
+      gap: 0,
+    })
+
+    expect(resolved).not.toBeNull()
+
+    const parent = resolved?.spaces.find(space => space.id === 'parent-node-resize-space') ?? null
+    const child = resolved?.spaces.find(space => space.id === 'stable-child-space') ?? null
+
+    expect(child?.rect).toEqual(spaces[1]?.rect)
+    expect(parent?.rect?.width).toBeGreaterThan(340)
+    expect(parent?.rect?.height).toBeGreaterThan(260)
+    expect((child?.rect?.x ?? 0) + (child?.rect?.width ?? 0)).toBeLessThanOrEqual(
+      (parent?.rect?.x ?? 0) + (parent?.rect?.width ?? 0),
+    )
+    expect((child?.rect?.y ?? 0) + (child?.rect?.height ?? 0)).toBeLessThanOrEqual(
+      (parent?.rect?.y ?? 0) + (parent?.rect?.height ?? 0),
+    )
+  })
+
+  it('moves child spaces with their parent when a root node resize pushes the parent tree', () => {
+    const nodes: Node<TerminalNodeData>[] = [
+      createTerminalNode({
+        id: 'root-resize-source',
+        title: 'root-resize-source',
+        x: 100,
+        y: 100,
+        width: 260,
+        height: 180,
+      }),
+    ]
+
+    const spaces: WorkspaceSpaceState[] = [
+      {
+        id: 'pushed-parent-space',
+        name: 'Pushed Parent Space',
+        directoryPath: '/tmp/workspace',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: 430, y: 100, width: 320, height: 260 },
+      },
+      {
+        id: 'pushed-child-space',
+        name: 'Pushed Child Space',
+        directoryPath: '/tmp/workspace',
+        targetMountId: null,
+        parentSpaceId: 'pushed-parent-space',
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: 480, y: 150, width: 120, height: 120 },
+      },
+    ]
+
+    const resolved = resolveWorkspaceLayoutAfterNodeResize({
+      nodeId: 'root-resize-source',
+      desiredFrame: {
+        position: { x: 100, y: 100 },
+        size: { width: 420, height: 180 },
+      },
+      nodes,
+      spaces,
+      gap: 0,
+    })
+
+    expect(resolved).not.toBeNull()
+
+    const parent = resolved?.spaces.find(space => space.id === 'pushed-parent-space') ?? null
+    const child = resolved?.spaces.find(space => space.id === 'pushed-child-space') ?? null
+    const parentDx = (parent?.rect?.x ?? 0) - (spaces[0]?.rect?.x ?? 0)
+    const parentDy = (parent?.rect?.y ?? 0) - (spaces[0]?.rect?.y ?? 0)
+
+    expect(parentDx).toBeGreaterThan(0)
+    expect(child?.rect?.x).toBe((spaces[1]?.rect?.x ?? 0) + parentDx)
+    expect(child?.rect?.y).toBe((spaces[1]?.rect?.y ?? 0) + parentDy)
+    expect((child?.rect?.x ?? 0) + (child?.rect?.width ?? 0)).toBeLessThanOrEqual(
+      (parent?.rect?.x ?? 0) + (parent?.rect?.width ?? 0),
+    )
+    expect((child?.rect?.y ?? 0) + (child?.rect?.height ?? 0)).toBeLessThanOrEqual(
+      (parent?.rect?.y ?? 0) + (parent?.rect?.height ?? 0),
+    )
+  })
 })

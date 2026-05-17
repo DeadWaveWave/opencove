@@ -7,6 +7,10 @@ import type {
 } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { pushAwayLayout, type LayoutDirection, type LayoutItem } from '../../../utils/spaceLayout'
+import {
+  buildOwningSpaceIdByNodeId,
+  buildSpaceTreeGroupIdResolver,
+} from '../../../utils/spaceTreeLayout'
 
 function toNodeRect(node: Node<TerminalNodeData>): WorkspaceSpaceRect {
   return {
@@ -120,6 +124,43 @@ function pushAwayNodesInSpace({
   return applyNodePositions(nodes, nodePositionById)
 }
 
+function buildTreeAwareLayoutItems({
+  spaces,
+  nodes,
+}: {
+  spaces: WorkspaceSpaceState[]
+  nodes: Node<TerminalNodeData>[]
+}): LayoutItem[] {
+  const owningSpaceIdByNodeId = buildOwningSpaceIdByNodeId(spaces)
+  const resolveSpaceGroupId = buildSpaceTreeGroupIdResolver(spaces)
+  const items: LayoutItem[] = []
+
+  for (const space of spaces) {
+    if (!space.rect) {
+      continue
+    }
+
+    items.push({
+      id: space.id,
+      kind: 'space',
+      groupId: resolveSpaceGroupId(space.id),
+      rect: { ...space.rect },
+    })
+  }
+
+  for (const node of nodes) {
+    const ownerSpaceId = owningSpaceIdByNodeId.get(node.id) ?? null
+    items.push({
+      id: node.id,
+      kind: 'node',
+      groupId: ownerSpaceId ? resolveSpaceGroupId(ownerSpaceId) : node.id,
+      rect: toNodeRect(node),
+    })
+  }
+
+  return items
+}
+
 function resolveRootResizePushAway({
   nodeId,
   nodes,
@@ -137,37 +178,7 @@ function resolveRootResizePushAway({
     return { nodes, spaces }
   }
 
-  const owningSpaceIdByNodeId = new Map<string, string>()
-  for (const space of spaces) {
-    for (const ownedNodeId of space.nodeIds) {
-      owningSpaceIdByNodeId.set(ownedNodeId, space.id)
-    }
-  }
-
-  const items: LayoutItem[] = []
-
-  for (const space of spaces) {
-    if (!space.rect) {
-      continue
-    }
-
-    items.push({
-      id: space.id,
-      kind: 'space',
-      groupId: space.id,
-      rect: { ...space.rect },
-    })
-  }
-
-  for (const node of nodes) {
-    const ownerSpaceId = owningSpaceIdByNodeId.get(node.id) ?? null
-    items.push({
-      id: node.id,
-      kind: 'node',
-      groupId: ownerSpaceId ?? node.id,
-      rect: toNodeRect(node),
-    })
-  }
+  const items = buildTreeAwareLayoutItems({ spaces, nodes })
 
   const pushed = pushAwayLayout({
     items,

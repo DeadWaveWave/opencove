@@ -9,7 +9,8 @@ export function SpaceWorktreePanels({
   isBusy,
   isMutating,
   isSuggesting,
-  isSpaceOnWorkspaceRoot,
+  archiveHasOwnWorktree,
+  archiveDescendantWorktrees,
   changedFileCount,
   forceArchiveConfirmed,
   branches,
@@ -30,6 +31,8 @@ export function SpaceWorktreePanels({
   onCreate,
   onDeleteWorktreeOnArchiveChange,
   onDeleteBranchOnArchiveChange,
+  onDescendantDeleteWorktreeOnArchiveChange,
+  onDescendantDeleteBranchOnArchiveChange,
   onForceArchiveConfirmedChange,
   onArchive,
   onCloseOnly,
@@ -38,7 +41,15 @@ export function SpaceWorktreePanels({
   isBusy: boolean
   isMutating: boolean
   isSuggesting: boolean
-  isSpaceOnWorkspaceRoot: boolean
+  archiveHasOwnWorktree: boolean
+  archiveDescendantWorktrees: Array<{
+    spaceId: string
+    spaceName: string
+    worktreePath: string
+    branchName: string | null
+    deleteWorktree: boolean
+    deleteBranch: boolean
+  }>
   changedFileCount: number
   forceArchiveConfirmed: boolean
   branches: string[]
@@ -59,12 +70,15 @@ export function SpaceWorktreePanels({
   onCreate: () => void
   onDeleteWorktreeOnArchiveChange: (checked: boolean) => void
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
+  onDescendantDeleteWorktreeOnArchiveChange: (spaceId: string, checked: boolean) => void
+  onDescendantDeleteBranchOnArchiveChange: (spaceId: string, checked: boolean) => void
   onForceArchiveConfirmedChange: (checked: boolean) => void
   onArchive: () => void
   onCloseOnly: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
-  const requiresForceArchiveConfirmation = !isSpaceOnWorkspaceRoot && changedFileCount > 0
+  const requiresForceArchiveConfirmation =
+    archiveHasOwnWorktree && deleteWorktreeOnArchive && changedFileCount > 0
 
   return (
     <>
@@ -216,9 +230,9 @@ export function SpaceWorktreePanels({
       {viewMode === 'archive' ? (
         <div className="workspace-space-worktree__view" data-testid="space-worktree-archive-view">
           <section className="workspace-space-worktree__surface workspace-space-worktree__surface--minimal">
-            {isSpaceOnWorkspaceRoot ? null : (
+            {!archiveHasOwnWorktree && archiveDescendantWorktrees.length === 0 ? null : (
               <div className="workspace-space-worktree__message-block">
-                {changedFileCount > 0 ? (
+                {archiveHasOwnWorktree && changedFileCount > 0 ? (
                   <p
                     className="workspace-space-worktree__supporting-text"
                     data-testid="space-worktree-archive-uncommitted-warning"
@@ -248,7 +262,7 @@ export function SpaceWorktreePanels({
                 </label>
               ) : null}
 
-              {!isSpaceOnWorkspaceRoot ? (
+              {archiveHasOwnWorktree ? (
                 <label className="cove-window__checkbox workspace-space-worktree__option-row">
                   <input
                     type="checkbox"
@@ -266,7 +280,7 @@ export function SpaceWorktreePanels({
                 </label>
               ) : null}
 
-              {!isSpaceOnWorkspaceRoot ? (
+              {archiveHasOwnWorktree ? (
                 <label className="cove-window__checkbox workspace-space-worktree__option-row">
                   <input
                     type="checkbox"
@@ -282,6 +296,65 @@ export function SpaceWorktreePanels({
                     <span>{t('worktree.deleteBranchHelp')}</span>
                   </span>
                 </label>
+              ) : null}
+
+              {archiveDescendantWorktrees.length > 0 ? (
+                <div
+                  className="workspace-space-worktree__descendant-cleanups"
+                  data-testid="space-worktree-archive-descendant-cleanups"
+                >
+                  <p className="workspace-space-worktree__supporting-text">
+                    {t('worktree.descendantCleanupIntro')}
+                  </p>
+                  {archiveDescendantWorktrees.map(cleanup => (
+                    <div
+                      key={cleanup.spaceId}
+                      className="workspace-space-worktree__option-group"
+                      data-testid={`space-worktree-archive-descendant-cleanup-${cleanup.spaceId}`}
+                    >
+                      <div className="workspace-space-worktree__option-heading">
+                        <strong>{cleanup.spaceName}</strong>
+                        <span>{cleanup.branchName ?? cleanup.worktreePath}</span>
+                      </div>
+                      <label className="cove-window__checkbox workspace-space-worktree__option-row">
+                        <input
+                          type="checkbox"
+                          data-testid={`space-worktree-archive-descendant-delete-worktree-${cleanup.spaceId}`}
+                          checked={cleanup.deleteWorktree}
+                          disabled={isBusy}
+                          onChange={event => {
+                            onDescendantDeleteWorktreeOnArchiveChange(
+                              cleanup.spaceId,
+                              event.target.checked,
+                            )
+                          }}
+                        />
+                        <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
+                          <strong>{t('worktree.deleteContainedWorktree')}</strong>
+                          <span>{t('worktree.deleteContainedWorktreeHelp')}</span>
+                        </span>
+                      </label>
+                      <label className="cove-window__checkbox workspace-space-worktree__option-row">
+                        <input
+                          type="checkbox"
+                          data-testid={`space-worktree-archive-descendant-delete-branch-${cleanup.spaceId}`}
+                          checked={cleanup.deleteBranch}
+                          disabled={isBusy || !cleanup.deleteWorktree}
+                          onChange={event => {
+                            onDescendantDeleteBranchOnArchiveChange(
+                              cleanup.spaceId,
+                              event.target.checked,
+                            )
+                          }}
+                        />
+                        <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
+                          <strong>{t('worktree.deleteContainedBranch')}</strong>
+                          <span>{t('worktree.deleteContainedBranchHelp')}</span>
+                        </span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
               ) : null}
             </div>
 
