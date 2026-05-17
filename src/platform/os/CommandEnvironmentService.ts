@@ -63,9 +63,7 @@ function parseRegistryPathFromRegQuery(stdout: string): string {
       continue
     }
 
-    const match = trimmed.match(
-      /^\s*Path\s+(?:REG_(?:EXPAND_)?SZ|REG_SZ)\s+(.+)$/i,
-    )
+    const match = trimmed.match(/^\s*Path\s+(?:REG_(?:EXPAND_)?SZ|REG_SZ)\s+(.+)$/i)
     if (match) {
       return (match[1] ?? '').trim()
     }
@@ -106,11 +104,11 @@ function readWindowsRegistryPath(): string {
   }
 
   try {
-    const userStdout = execFileSync(
-      'reg.exe',
-      ['query', 'HKCU\\Environment', '/v', 'Path'],
-      { encoding: 'utf8', windowsHide: true, timeout: 3000 },
-    )
+    const userStdout = execFileSync('reg.exe', ['query', 'HKCU\\Environment', '/v', 'Path'], {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 3000,
+    })
     const userPath = parseRegistryPathFromRegQuery(userStdout)
     if (userPath.length > 0) {
       segments.push(userPath)
