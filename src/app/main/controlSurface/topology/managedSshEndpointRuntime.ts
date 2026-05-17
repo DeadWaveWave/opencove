@@ -7,7 +7,7 @@ import {
   type ExecutableLocationResult,
 } from '../../../../platform/process/ExecutableLocator'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
-import { buildSshArgs, runManagedSshBootstrap } from './managedSshRuntimeSupport'
+import { buildSshTunnelArgs, runManagedSshBootstrap } from './managedSshRuntimeSupport'
 import type {
   ManagedSshEndpointConnectionResolver,
   ManagedSshEndpointRuntimeDisposer,
@@ -163,7 +163,7 @@ function defaultSpawnTunnelProcess(
   localPort: number,
 ): ManagedSshTunnelProcess {
   const args = [
-    ...buildSshArgs(access, [
+    ...buildSshTunnelArgs(access, [
       '-N',
       '-o',
       'ExitOnForwardFailure=yes',

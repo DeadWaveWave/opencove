@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { createAppError } from '../../../../shared/errors/appError'
 import type {
@@ -24,14 +24,10 @@ import {
   LOCAL_ENDPOINT_TIMESTAMP,
   SECRETS_FILE_NAME,
   TOPOLOGY_FILE_NAME,
-  type ManagedSshEndpointRecord,
   type MountRecord,
-  normalizeHostname,
   normalizeNonEmptyString,
-  normalizePort,
   normalizeSecretsFile,
   normalizeTopologyFile,
-  type RemoteEndpointRecord,
   type SecretsFileV1,
   type TopologyFileV1,
   toEndpointDto,
@@ -44,6 +40,10 @@ import {
   readJsonFile,
   type RemoteEndpointConnection,
 } from './topologyEndpointAccess'
+import {
+  createManagedSshEndpointRegistration,
+  createManualEndpointRegistration,
+} from './topologyEndpointRegistration'
 
 export interface WorkerTopologyStore {
   listEndpoints: () => Promise<ListWorkerEndpointsResult>
@@ -130,36 +130,11 @@ export function createWorkerTopologyStore(options: {
   ): Promise<RegisterWorkerEndpointResult> => {
     await ensureLoaded()
 
-    const hostname = normalizeHostname(input.hostname)
-    const port = normalizePort(input.port)
-    const token = normalizeNonEmptyString(input.token)
-    if (!hostname || port === null || !token) {
-      throw createAppError('common.invalid_input', {
-        debugMessage: 'endpoint.register requires hostname/port/token.',
-      })
-    }
-
-    const displayName = normalizeNonEmptyString(input.displayName) ?? `${hostname}:${String(port)}`
-
     const now = new Date().toISOString()
-    const endpointId = randomUUID()
-    const credentialRef = endpointId
-
-    const record: RemoteEndpointRecord = {
-      endpointId,
-      kind: 'remote_worker',
-      displayName,
-      hostname,
-      port,
-      credentialRef,
-      accessKind: 'manual',
-      managedSsh: null,
-      createdAt: now,
-      updatedAt: now,
-    }
+    const { record, token } = createManualEndpointRegistration(input, now)
 
     topology.endpoints = [...topology.endpoints, record]
-    secrets.tokensByCredentialRef[credentialRef] = token
+    secrets.tokensByCredentialRef[record.credentialRef] = token
 
     await persistQueued()
 
@@ -171,48 +146,17 @@ export function createWorkerTopologyStore(options: {
   ): Promise<RegisterManagedSshWorkerEndpointResult> => {
     await ensureLoaded()
 
-    const host = normalizeHostname(input.host)
-    const port = input.port === null || input.port === undefined ? null : normalizePort(input.port)
-    const username = normalizeNonEmptyString(input.username)
-    const remotePort = normalizePort(input.remotePort ?? 39_291)
-    const remotePlatform =
-      input.remotePlatform === 'posix' || input.remotePlatform === 'windows'
-        ? input.remotePlatform
-        : 'auto'
-    if (!host || remotePort === null) {
-      throw createAppError('common.invalid_input', {
-        debugMessage: 'endpoint.registerManagedSsh requires host and remotePort.',
-      })
-    }
-
-    const displayName =
-      normalizeNonEmptyString(input.displayName) ?? `${username ? `${username}@` : ''}${host}`
-    const endpointId = randomUUID()
-    const credentialRef = endpointId
-    const token = randomBytes(24).toString('base64url')
     const now = new Date().toISOString()
-    const managedSsh: ManagedSshEndpointRecord = {
-      host,
-      port,
-      username,
-      remotePort,
-      remotePlatform,
-    }
-    const record: RemoteEndpointRecord = {
-      endpointId,
-      kind: 'remote_worker',
-      displayName,
-      hostname: '127.0.0.1',
-      port: remotePort,
-      credentialRef,
-      accessKind: 'managed_ssh',
-      managedSsh,
-      createdAt: now,
-      updatedAt: now,
-    }
+    const { record, token } = createManagedSshEndpointRegistration(
+      input,
+      topology.endpoints
+        .map(endpoint => endpoint.managedSsh?.remotePort)
+        .filter((candidate): candidate is number => typeof candidate === 'number'),
+      now,
+    )
 
     topology.endpoints = [...topology.endpoints, record]
-    secrets.tokensByCredentialRef[credentialRef] = token
+    secrets.tokensByCredentialRef[record.credentialRef] = token
 
     await persistQueued()
 

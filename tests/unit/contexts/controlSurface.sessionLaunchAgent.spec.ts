@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import { registerSessionHandlers } from '../../../src/app/main/controlSurface/handlers/sessionHandlers'
 import type { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
+import { toFileUri } from '../../../src/contexts/filesystem/domain/fileUri'
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-03-27T00:00:00.000Z'),
@@ -212,7 +212,7 @@ describe('control surface session launch agent', () => {
 
   it('routes space-based agent launches through session.launchAgentInMount when the space resolves to a mount', async () => {
     const rootPath = '/repo'
-    const rootUri = pathToFileURL(rootPath).href
+    const rootUri = toFileUri(rootPath)
     const appState = {
       formatVersion: 1,
       activeWorkspaceId: 'ws1',

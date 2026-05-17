@@ -2,6 +2,11 @@ import { EventEmitter } from 'node:events'
 import type { ExecutableLocationResult } from '../../../src/platform/process/ExecutableLocator'
 import type { ManagedSshEndpointRuntimeAccess } from '../../../src/app/main/controlSurface/topology/topologyEndpointAccess'
 import { createManagedSshEndpointRuntime } from '../../../src/app/main/controlSurface/topology/managedSshEndpointRuntime'
+import {
+  buildPosixBootstrapScript,
+  buildSshArgs,
+  buildSshTunnelArgs,
+} from '../../../src/app/main/controlSurface/topology/managedSshRuntimeSupport'
 
 import { describe, expect, it, vi } from 'vitest'
 
@@ -53,6 +58,90 @@ function createTunnelProcess(): MockTunnelProcess {
 }
 
 describe('managedSshEndpointRuntime', () => {
+  it('puts tunnel options before the SSH destination for real OpenSSH', () => {
+    expect(buildSshTunnelArgs(createAccess(), ['-N', '-L', '41000:127.0.0.1:39291'])).toEqual([
+      '-p',
+      '22',
+      '-N',
+      '-L',
+      '41000:127.0.0.1:39291',
+      'ubuntu@example.com',
+    ])
+  })
+
+  it('keeps remote commands after the SSH destination', () => {
+    expect(buildSshArgs(createAccess(), ['sh', '-lc', 'printf ok'])).toEqual([
+      '-p',
+      '22',
+      'ubuntu@example.com',
+      'sh',
+      '-lc',
+      'printf ok',
+    ])
+  })
+
+  it('forces IPv4 for localhost while preserving the localhost SSH config host key', () => {
+    const access = createAccess()
+    access.ssh.host = 'localhost'
+
+    expect(buildSshTunnelArgs(access, ['-N'])).toEqual([
+      '-p',
+      '22',
+      '-o',
+      'AddressFamily=inet',
+      '-N',
+      'ubuntu@localhost',
+    ])
+  })
+
+  it('fails posix bootstrap when the opencove command is still unavailable after install', () => {
+    const script = buildPosixBootstrapScript(createAccess(), {
+      devRepoRoot: null,
+      installerUrl: 'https://example.invalid/opencove-install.sh',
+      reinstallRuntime: false,
+    })
+
+    expect(script).toContain('if ! command -v opencove >/dev/null 2>&1; then')
+    expect(script).toContain('curl -fsSL')
+    expect(script).toContain(
+      'OpenCove remote runtime bootstrap did not make the opencove command available.',
+    )
+    expect(script).toContain('exit 127')
+  })
+
+  it('polls the managed worker and returns the remote bootstrap log on startup failure', () => {
+    const script = buildPosixBootstrapScript(createAccess(), {
+      devRepoRoot: null,
+      installerUrl: 'https://example.invalid/opencove-install.sh',
+      reinstallRuntime: false,
+    })
+
+    expect(script).toContain("endpoint_id='managed-1'")
+    expect(script).toContain('/opencove/managed-ssh/$endpoint_id')
+    expect(script).toContain('managed-worker.log')
+    expect(script).toContain('--user-data "$user_data_dir"')
+    expect(script).toContain('http://127.0.0.1:39291/invoke')
+    expect(script).toContain('authorization: Bearer managed-token')
+    expect(script).toContain('OpenCove worker did not become ready after SSH bootstrap.')
+    expect(script).toContain('tail -n 80 "$log_file" >&2')
+  })
+
+  it('uses the mounted source repo as a dev bootstrap runtime before downloading installers', () => {
+    const script = buildPosixBootstrapScript(createAccess(), {
+      devRepoRoot: '/root/opencove-wsl-deploy',
+      installerUrl: 'https://example.invalid/opencove-install.sh',
+      reinstallRuntime: false,
+    })
+
+    expect(script).toContain('find_opencove_dev_repo_root')
+    expect(script).toContain("configured_root='/root/opencove-wsl-deploy'")
+    expect(script).toContain('"$HOME/opencove-wsl-deploy"')
+    expect(script).toContain('[ -f "$repo_root/out/main/worker.js" ]')
+    expect(script).toContain('cd "$OPENCOVE_MANAGED_SSH_DEV_REPO_ROOT"')
+    expect(script).toContain('exec node out/main/worker.js "$@"')
+    expect(script.indexOf('out/main/worker.js')).toBeLessThan(script.indexOf('curl -fsSL'))
+  })
+
   it('returns an error snapshot when ssh is unavailable', async () => {
     const runtime = createManagedSshEndpointRuntime({
       getSshAvailability: async () =>

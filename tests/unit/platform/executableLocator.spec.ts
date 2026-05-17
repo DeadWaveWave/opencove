@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { join } from 'node:path'
+import { posix } from 'node:path'
 
 const { statMock } = vi.hoisted(() => ({
   statMock: vi.fn(),
@@ -78,8 +78,8 @@ describe('ExecutableLocator', () => {
   it('prefers shell-derived PATH entries over the current process PATH', async () => {
     setPlatform('darwin')
     process.env.PATH = '/process/bin'
-    const shellCodexPath = join('/shell/bin', 'codex')
-    const processCodexPath = join('/process/bin', 'codex')
+    const shellCodexPath = posix.join('/shell/bin', 'codex')
+    const processCodexPath = posix.join('/process/bin', 'codex')
     mockExecutablePaths([shellCodexPath, processCodexPath])
     getCommandEnvironmentSnapshotMock.mockResolvedValue({
       env: { PATH: '/shell/bin' },

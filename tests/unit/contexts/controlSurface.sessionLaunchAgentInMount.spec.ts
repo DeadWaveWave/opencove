@@ -241,7 +241,7 @@ describe('control surface session.launchAgentInMount', () => {
 
     expect(launched.ok).toBe(true)
     expect(launched.value).toMatchObject({
-      profileId: null,
+      profileId: process.platform === 'win32' ? 'powershell' : null,
       runtimeKind: expectedRuntimeKind,
     })
     expect(resolveWorkerAgentTestStubMock).toHaveBeenCalledWith(
@@ -250,12 +250,15 @@ describe('control surface session.launchAgentInMount', () => {
         resumeSessionId: 'resume-session-123',
       }),
     )
-    expect(spawnSession).toHaveBeenCalledWith(
+    const spawnedInput = spawnSession.mock.calls[0]?.[0]
+    expect(spawnedInput).toEqual(
       expect.objectContaining({
         command: expect.any(String),
-        args: ['stub-agent', 'resume-session-123'],
+        args: expect.any(Array),
       }),
     )
+    expect(spawnedInput?.args.join('\n')).toContain('stub-agent')
+    expect(spawnedInput?.args.join('\n')).toContain('resume-session-123')
   })
 
   it('captures the Gemini discovery cursor before starting the mount watcher for new launches', async () => {

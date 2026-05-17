@@ -57,6 +57,12 @@ function appendJoinedPathSegment(
   }
 }
 
+function appendWindowsOpenSshPathSegments(segments: string[], env: NodeJS.ProcessEnv): void {
+  appendJoinedPathSegment(segments, env.WINDIR, 'System32', 'OpenSSH')
+  appendJoinedPathSegment(segments, env.SystemRoot, 'System32', 'OpenSSH')
+  appendPathSegment(segments, 'C:\\Windows\\System32\\OpenSSH')
+}
+
 function appendJoinedPosixPathSegment(
   segments: string[],
   basePath: string | null | undefined,
@@ -77,6 +83,7 @@ export function buildAdditionalPathSegments(
     const segments: string[] = []
     appendPathSegment(segments, env.NVM_SYMLINK)
     appendPathSegment(segments, env.PNPM_HOME)
+    appendWindowsOpenSshPathSegments(segments, env)
     appendJoinedPathSegment(segments, env.APPDATA, 'npm')
     appendJoinedPathSegment(segments, env.LOCALAPPDATA, 'pnpm')
     appendJoinedPathSegment(segments, env.LOCALAPPDATA, 'Volta', 'bin')

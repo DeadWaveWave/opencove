@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { registerPtyMountHandlers } from '../../../src/app/main/controlSurface/handlers/ptyMountHandlers'
 import { registerSessionStreamingHandlers } from '../../../src/app/main/controlSurface/handlers/sessionStreamingHandlers'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import type { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
+import { toFileUri } from '../../../src/contexts/filesystem/domain/fileUri'
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-05-10T00:00:00.000Z'),
@@ -82,7 +82,7 @@ function createPtyStreamHubStub() {
 describe('control surface session streaming handlers', () => {
   it('routes session.spawnTerminal through pty.spawnInMount for mounted spaces', async () => {
     const rootPath = '/repo'
-    const rootUri = pathToFileURL(rootPath).href
+    const rootUri = toFileUri(rootPath)
     const appState = {
       formatVersion: 1,
       activeWorkspaceId: 'ws1',
