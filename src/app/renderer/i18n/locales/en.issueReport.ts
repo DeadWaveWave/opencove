@@ -17,9 +17,10 @@ export const enIssueReport = {
     other: 'OpenCove issue',
   },
   includedDetails: 'Included details',
-  includedDetailsSummary: 'Version, OS, worker, agent setup, recent logs',
+  includedDetailsSummary: 'Version, OS, worker, agent setup, process snapshot, redacted logs',
   includeLocalPaths: 'Include local paths',
-  localPathsHint: 'Off by default. Turn on only if paths matter for this issue.',
+  localPathsHint:
+    'Off by default. Tokens and secrets are always redacted; turn this on only if paths matter.',
   generated: 'Report ready',
   generatedMeta: 'Saved to {{fileName}}',
   generate: 'Generate Report',

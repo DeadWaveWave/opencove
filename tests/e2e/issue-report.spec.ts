@@ -24,8 +24,14 @@ test.describe('Issue report', () => {
       const clipboardText = await electronApp.evaluate(({ clipboard }) => clipboard.readText())
 
       expect(clipboardText).toContain('Run Agent no longer starts after updating OpenCove.')
-      expect(clipboardText).toContain('## App')
-      expect(clipboardText).toContain('## Logs')
+      expect(clipboardText).toContain('## Diagnostics Manifest')
+      expect(clipboardText).toContain('## App Runtime')
+      expect(clipboardText).toContain('## Worker State')
+      expect(clipboardText).toContain('## Agent State')
+      expect(clipboardText).toContain('## Process Snapshot')
+      expect(clipboardText).toContain('## Log: runtime-diagnostics.log')
+      expect(clipboardText).toContain('## Log: terminal-diagnostics.log')
+      expect(clipboardText).toContain('## Log: pty-host.log')
     } finally {
       await electronApp.close()
     }

@@ -201,6 +201,7 @@
     -   任务 UI 标准：`docs/ui/TASK_UI_STANDARD.md`
     -   视口导航标准：`docs/ui/VIEWPORT_NAVIGATION_STANDARD.md`
 -   **诊断与复盘案例**：
+    -   Issue Report 诊断包：`docs/development/ISSUE_REPORT_DIAGNOSTICS.md`
     -   Win10 Codex Scroll：`docs/cases/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
     -   画布抖动与终端持久化：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`
 -   **参考优秀项目与方案调研法**：`docs/development/REFERENCE_RESEARCH_METHOD.md`

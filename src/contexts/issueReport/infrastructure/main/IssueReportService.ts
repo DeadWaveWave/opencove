@@ -1,5 +1,5 @@
 import { app, shell } from 'electron'
-import { mkdir, open, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { basename, relative, resolve } from 'node:path'
 import type {
   AppUpdateState,
@@ -8,25 +8,20 @@ import type {
 } from '@shared/contracts/dto'
 import { createAppError } from '@shared/errors/appError'
 import type { PersistenceStore } from '@platform/persistence/sqlite/PersistenceStore'
-import { normalizePersistedAppState } from '@platform/persistence/sqlite/normalize'
-import {
-  normalizeAgentSettings,
-  resolveAgentExecutablePathOverride,
-  resolveAgentModel,
-} from '@contexts/settings/domain/agentSettings'
-import { AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings.providers'
-import { listInstalledAgentProviders } from '@contexts/agent/infrastructure/cli/AgentCliAvailability'
 import type { ControlSurfaceRemoteEndpointResolver } from '@app/main/controlSurface/remote/controlSurfaceHttpClient'
-import { readHomeWorkerConfig } from '@app/main/worker/homeWorkerConfig'
 import {
   buildGitHubIssueUrl,
-  buildIssueReportMarkdown,
+  buildIssueReportDocument,
   defaultIssueReportTitle,
   resolveIncludedDiagnostics,
 } from '../../application/IssueReportDocument'
+import {
+  collectIssueReportDiagnosticSections,
+  collectIssueReportKnownPaths,
+  readIssueReportPersistedState,
+} from './issueReportDiagnostics'
 
 const ISSUE_REPORTS_DIR = 'issue-reports'
-const LOG_TAIL_BYTES = 32 * 1024
 
 export interface IssueReportService {
   prepare(input: PrepareIssueReportInput): Promise<PrepareIssueReportResult>
@@ -48,103 +43,6 @@ export function createIssueReportService(deps: {
     return rel.length > 0 && !rel.startsWith('..') && !rel.includes(':')
   }
 
-  const readLogTail = async (fileName: string): Promise<string | null> => {
-    const filePath = resolve(userDataPath, 'logs', fileName)
-    let file: Awaited<ReturnType<typeof open>> | null = null
-    try {
-      file = await open(filePath, 'r')
-      const stat = await file.stat()
-      const length = Math.min(stat.size, LOG_TAIL_BYTES)
-      const buffer = Buffer.alloc(length)
-      await file.read(buffer, 0, length, Math.max(0, stat.size - length))
-      return buffer.toString('utf8')
-    } catch {
-      return null
-    } finally {
-      await file?.close().catch(() => undefined)
-    }
-  }
-
-  const collectAgentDiagnostics = async () => {
-    try {
-      const store = await deps.getPersistenceStore()
-      const persisted = normalizePersistedAppState(await store.readAppState())
-      const settings = normalizeAgentSettings(persisted?.settings)
-      const availability = await listInstalledAgentProviders({
-        executablePathOverrideByProvider: settings.agentExecutablePathOverrideByProvider,
-      })
-
-      return {
-        defaultProvider: settings.defaultProvider,
-        defaultModel: resolveAgentModel(settings, settings.defaultProvider),
-        defaultTerminalProfileId: settings.defaultTerminalProfileId,
-        agentFullAccess: settings.agentFullAccess,
-        runtimeEnvironment: {
-          launchOwner: 'terminal_profile',
-          availabilityScope: 'host_executable_discovery',
-          availabilityIsLaunchGate: false,
-        },
-        executableOverrides: Object.fromEntries(
-          AGENT_PROVIDERS.map(provider => [
-            provider,
-            Boolean(resolveAgentExecutablePathOverride(settings, provider)),
-          ]),
-        ),
-        providers: Object.fromEntries(
-          AGENT_PROVIDERS.map(provider => {
-            const info = availability.availabilityByProvider[provider]
-            return [
-              provider,
-              info
-                ? {
-                    status: info.status,
-                    command: info.command,
-                    source: info.source,
-                    hasExecutablePath: Boolean(info.executablePath),
-                    diagnostics: info.diagnostics,
-                  }
-                : { status: 'unknown' },
-            ]
-          }),
-        ),
-        fetchedAt: availability.fetchedAt,
-      }
-    } catch (error) {
-      return {
-        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
-      }
-    }
-  }
-
-  const collectWorkerDiagnostics = async () => {
-    const config = await readHomeWorkerConfig(userDataPath, {
-      allowStandaloneMode: false,
-      allowRemoteMode: true,
-    })
-    const endpoint = await deps.workerEndpointResolver?.().catch(() => null)
-
-    return {
-      mode: config.mode,
-      updatedAt: config.updatedAt,
-      remote: config.remote
-        ? {
-            hostname: config.remote.hostname,
-            port: config.remote.port,
-            token: '[hidden]',
-          }
-        : null,
-      webUi: config.webUi,
-      endpointAvailable: Boolean(endpoint),
-      endpoint: endpoint
-        ? {
-            hostname: endpoint.hostname,
-            port: endpoint.port,
-            token: '[hidden]',
-          }
-        : null,
-    }
-  }
-
   const prepare = async (input: PrepareIssueReportInput): Promise<PrepareIssueReportResult> => {
     const createdAt = new Date().toISOString()
     const reportId = createdAt.replace(/[:.]/g, '-')
@@ -153,38 +51,20 @@ export function createIssueReportService(deps: {
     const includeLocalPaths = input.includeLocalPaths === true
     const title = input.title?.trim() || defaultIssueReportTitle(input.kind)
     const description = input.description?.trim() ?? ''
-    const diagnostics = {
-      app: {
-        version: app.getVersion(),
-        isPackaged: app.isPackaged,
-        platform: process.platform,
-        arch: process.arch,
-        pid: process.pid,
-        versions: {
-          electron: process.versions.electron,
-          chrome: process.versions.chrome,
-          node: process.versions.node,
-        },
-      },
-      update: deps.getUpdateState(),
-      worker: await collectWorkerDiagnostics().catch(error => ({
-        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
-      })),
-      agent: await collectAgentDiagnostics(),
-      logs: [
-        { label: 'runtime-diagnostics.log', content: await readLogTail('runtime-diagnostics.log') },
-        { label: 'pty-host.log', content: await readLogTail('pty-host.log') },
-      ],
-    }
+    const persistedState = await readIssueReportPersistedState(deps.getPersistenceStore)
+    const sections = await collectIssueReportDiagnosticSections({
+      input,
+      reportId,
+      createdAt,
+      userDataPath,
+      persistedState,
+      getUpdateState: deps.getUpdateState,
+      workerEndpointResolver: deps.workerEndpointResolver,
+    })
     const knownPathsToRedact = includeLocalPaths
       ? []
-      : [
-          app.getPath('home'),
-          userDataPath,
-          input.context?.activeWorkspacePath ?? '',
-          input.context?.activeSpacePath ?? '',
-        ]
-    const markdown = buildIssueReportMarkdown({
+      : collectIssueReportKnownPaths({ input, persistedState, userDataPath })
+    const document = buildIssueReportDocument({
       reportId,
       createdAt,
       request: {
@@ -194,24 +74,22 @@ export function createIssueReportService(deps: {
         includeLocalPaths,
         context: input.context ?? null,
       },
-      diagnostics,
+      sections,
       knownPathsToRedact,
     })
     const githubIssueUrl = buildGitHubIssueUrl({
       title,
-      description,
-      reportId,
-      reportFileName: fileName,
+      body: document.githubBody,
     })
 
     await mkdir(issueReportsDir, { recursive: true })
-    await writeFile(reportPath, markdown, { encoding: 'utf8', mode: 0o600 })
+    await writeFile(reportPath, document.markdown, { encoding: 'utf8', mode: 0o600 })
 
     return {
       reportId,
       createdAt,
       reportPath,
-      markdown,
+      markdown: document.markdown,
       githubIssueUrl,
       includedDiagnostics: resolveIncludedDiagnostics(includeLocalPaths),
     }

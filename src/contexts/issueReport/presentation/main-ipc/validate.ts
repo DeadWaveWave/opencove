@@ -11,6 +11,7 @@ import { createAppError } from '@shared/errors/appError'
 const MAX_TITLE_LENGTH = 180
 const MAX_DESCRIPTION_LENGTH = 4_000
 const MAX_CONTEXT_TEXT_LENGTH = 1_024
+const MAX_GITHUB_ISSUE_URL_LENGTH = 8_000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -76,7 +77,7 @@ export function normalizeOpenIssueReportGithubPayload(
   }
 
   const githubIssueUrl = payload.githubIssueUrl.trim()
-  if (githubIssueUrl.length === 0 || githubIssueUrl.length > 2_500) {
+  if (githubIssueUrl.length === 0 || githubIssueUrl.length > MAX_GITHUB_ISSUE_URL_LENGTH) {
     throw createAppError('common.invalid_input', {
       debugMessage: 'Invalid GitHub issue URL.',
     })
