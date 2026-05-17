@@ -180,6 +180,7 @@ describe('CommandEnvironmentService', () => {
       NODE_ENV: 'production',
       Path: [
         'C:\\Windows\\System32',
+        'C:\\Windows\\System32\\OpenSSH',
         'C:\\Users\\tester\\AppData\\Roaming\\npm',
         'C:\\Users\\tester\\AppData\\Local\\pnpm',
         'C:\\Users\\tester\\AppData\\Local\\Volta\\bin',
