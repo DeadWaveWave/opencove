@@ -82,6 +82,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Persistence: harden installed upgrade repair, block stale local Worker reuse across app-version changes, and document rollback as unsupported unless explicitly tested. (#261)
 - Worker/PTY: shutdown-time IPC disconnects no longer crash the process with unhandled `EPIPE` / closed-channel errors. (#260)
 - Remote: fix Managed SSH localhost-to-WSL startup by preserving OpenSSH argument ordering, allocating dedicated worker ports, and waiting for the remote worker to become ready before marking the endpoint connected. (#259)
 - Remote agents: preserve the worker command `PATH` when launch env overrides `PATH`, so WSL Codex starts instead of failing with `execvp(3) failed`. (#259)
