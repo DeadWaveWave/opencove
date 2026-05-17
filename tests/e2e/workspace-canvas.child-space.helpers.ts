@@ -1,4 +1,5 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
+import { dragMouse, readLocatorClientRect } from './workspace-canvas.helpers'
 
 export interface Rect {
   x: number
@@ -101,4 +102,25 @@ export async function fitWorkspaceView(window: Page): Promise<void> {
   await expect(fitView).toBeVisible()
   await fitView.click()
   await window.waitForTimeout(100)
+}
+
+export async function dragSpaceTopHandle(
+  window: Page,
+  handle: Locator,
+  delta: { x: number; y: number },
+  steps = 16,
+): Promise<void> {
+  const handleRect = await readLocatorClientRect(handle)
+  const start = {
+    x: handleRect.x + handleRect.width * 0.5,
+    y: handleRect.y + handleRect.height * 0.35,
+  }
+
+  await dragMouse(window, {
+    start,
+    end: { x: start.x + delta.x, y: start.y + delta.y },
+    steps,
+    settleBeforeTriggerMs: 24,
+    settleAfterReleaseMs: 80,
+  })
 }

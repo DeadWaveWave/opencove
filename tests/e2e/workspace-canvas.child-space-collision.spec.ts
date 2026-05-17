@@ -8,6 +8,7 @@ import {
 } from './workspace-canvas.helpers'
 import {
   contains,
+  dragSpaceTopHandle,
   fitWorkspaceView,
   overlaps,
   readChildSpaceSnapshot as readSnapshot,
@@ -64,17 +65,7 @@ test.describe('Workspace Canvas - Child Space Collision', () => {
         '[data-testid="workspace-space-drag-child-collision-parent-top"]',
       )
       await expect(dragHandle).toBeVisible()
-      const handleRect = await readLocatorClientRect(dragHandle)
-      const start = {
-        x: handleRect.x + handleRect.width * 0.8,
-        y: handleRect.y + handleRect.height * 0.5,
-      }
-
-      await dragMouse(window, {
-        start,
-        end: { x: start.x + 760, y: start.y },
-        steps: 16,
-      })
+      await dragSpaceTopHandle(window, dragHandle, { x: 760, y: 0 })
 
       await expect
         .poll(async () => {
@@ -237,17 +228,7 @@ test.describe('Workspace Canvas - Child Space Collision', () => {
       const before = await readSnapshot(window)
       const dragHandle = window.locator('[data-testid="workspace-space-drag-child-push-mover-top"]')
       await expect(dragHandle).toBeVisible()
-      const handleRect = await readLocatorClientRect(dragHandle)
-      const start = {
-        x: handleRect.x + handleRect.width * 0.8,
-        y: handleRect.y + handleRect.height * 0.5,
-      }
-
-      await dragMouse(window, {
-        start,
-        end: { x: start.x + 520, y: start.y },
-        steps: 16,
-      })
+      await dragSpaceTopHandle(window, dragHandle, { x: 520, y: 0 })
 
       await expect
         .poll(async () => {
@@ -345,17 +326,7 @@ test.describe('Workspace Canvas - Child Space Collision', () => {
         '[data-testid="workspace-space-drag-child-local-moving-top"]',
       )
       await expect(dragHandle).toBeVisible()
-      const handleRect = await readLocatorClientRect(dragHandle)
-      const start = {
-        x: handleRect.x + handleRect.width * 0.8,
-        y: handleRect.y + handleRect.height * 0.5,
-      }
-
-      await dragMouse(window, {
-        start,
-        end: { x: start.x + 220, y: start.y },
-        steps: 14,
-      })
+      await dragSpaceTopHandle(window, dragHandle, { x: 220, y: 0 }, 14)
 
       await expect
         .poll(async () => {
