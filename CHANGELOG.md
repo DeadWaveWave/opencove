@@ -51,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - CLI: Local Worker lifecycle controls with `worker status --all` and ownership-safe `worker stop`. (#195)
 
 ### 💅 Changed
+- Support: expand in-app issue reports into structured redacted diagnostic bundles with runtime state, process snapshots, and log excerpts. (#262)
 - Workspace canvas: simplify Space creation and scoped lifecycle operations so the same `Create Space` action creates child Spaces inside existing Spaces, child Spaces can become Space Worktrees under the ancestor-chain guard, and archive cleanup is explicit for contained Worktrees. (#257)
 - Workspace canvas: note markdown export now defaults to Downloads, confirms the save location on Desktop, supports WebUI browser downloads, and reports completion through the app message toast instead of inline note status text. (#253)
 - Space Explorer: now opens at half the canonical agent window width by default, uses flatter VS Code-style selection chrome, and creates new files/folders inline in the tree with preserved selection. (#232)
