@@ -210,6 +210,10 @@ function normalizeWriteSyncStatePayload(payload: unknown): WriteSyncStateInput {
   return {
     state: payload.state,
     baseRevision: normalizeOptionalFiniteNumber(payload.baseRevision),
+    allowEmptyWorkspaceOverwrite:
+      typeof payload.allowEmptyWorkspaceOverwrite === 'boolean'
+        ? payload.allowEmptyWorkspaceOverwrite
+        : null,
   }
 }
 
@@ -245,8 +249,12 @@ function normalizeCreateNotePayload(payload: unknown): CreateNoteInput {
   }
 }
 
-async function persistNextAppState(store: PersistenceStore, nextState: unknown): Promise<void> {
-  const result = await store.writeAppState(nextState)
+async function persistNextAppState(
+  store: PersistenceStore,
+  nextState: unknown,
+  options?: { allowEmptyWorkspaceOverwrite?: boolean },
+): Promise<void> {
+  const result = await store.writeAppState(nextState, options)
   if (!result.ok) {
     throw createAppError(result.error)
   }
@@ -349,7 +357,9 @@ export function registerSyncHandlers(
         })
       }
 
-      await persistNextAppState(store, payload.state)
+      await persistNextAppState(store, payload.state, {
+        allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
+      })
       const nextRevision = await store.readAppStateRevision()
       return { revision: nextRevision }
     },

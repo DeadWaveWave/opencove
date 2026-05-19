@@ -35,6 +35,7 @@ export interface ReadAppStateResult {
 
 export interface WriteAppStateInput {
   state: unknown
+  allowEmptyWorkspaceOverwrite?: boolean | null
 }
 
 export interface ReadNodeScrollbackInput {

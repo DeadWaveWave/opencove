@@ -81,7 +81,13 @@ export function normalizeWriteAppStatePayload(payload: unknown): WriteAppStateIn
     })
   }
 
-  return { state }
+  return {
+    state,
+    allowEmptyWorkspaceOverwrite:
+      typeof record.allowEmptyWorkspaceOverwrite === 'boolean'
+        ? record.allowEmptyWorkspaceOverwrite
+        : null,
+  }
 }
 
 export function normalizeReadNodeScrollbackPayload(payload: unknown): ReadNodeScrollbackInput {

@@ -48,13 +48,20 @@ export function createBrowserPersistenceApi(): PersistenceApi {
       return { state: value.state, recovery: null }
     },
     writeAppState: async payload => {
-      const attemptWrite = async (state: unknown, baseRevision: number | null): Promise<number> => {
+      const attemptWrite = async (
+        state: unknown,
+        baseRevision: number | null,
+        options?: { allowEmptyWorkspaceOverwrite?: boolean },
+      ): Promise<number> => {
         const response = await invokeBrowserControlSurface<{ revision: number }>({
           kind: 'command',
           id: 'sync.writeState',
           payload: {
             state,
             ...(typeof baseRevision === 'number' ? { baseRevision } : {}),
+            ...(options?.allowEmptyWorkspaceOverwrite === true
+              ? { allowEmptyWorkspaceOverwrite: true }
+              : {}),
           },
         })
         setLastKnownSyncRevision(response.revision)
@@ -69,7 +76,9 @@ export function createBrowserPersistenceApi(): PersistenceApi {
       try {
         const baseRevision =
           typeof lastKnownSyncRevision === 'number' ? lastKnownSyncRevision : null
-        const revision = await attemptWrite(state, baseRevision)
+        const revision = await attemptWrite(state, baseRevision, {
+          allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
+        })
 
         return {
           ok: true,
@@ -105,7 +114,9 @@ export function createBrowserPersistenceApi(): PersistenceApi {
               ? mergePersistedAppStates(latest.state, state, baseSnapshot)
               : state
 
-          const revision = await attemptWrite(merged, latest.revision)
+          const revision = await attemptWrite(merged, latest.revision, {
+            allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
+          })
 
           return {
             ok: true,

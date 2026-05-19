@@ -10,4 +10,8 @@ export {
 } from './persistence/schedule'
 export { readPersistedState, readPersistedStateWithMeta } from './persistence/read'
 export { toPersistedState } from './persistence/toPersistedState'
-export { writePersistedState, writeRawPersistedState } from './persistence/write'
+export {
+  allowNextEmptyWorkspacePersistedStateWrite,
+  writePersistedState,
+  writeRawPersistedState,
+} from './persistence/write'

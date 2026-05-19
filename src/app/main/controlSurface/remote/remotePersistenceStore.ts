@@ -176,7 +176,7 @@ export function createRemotePersistenceStore(
         return 0
       }
     },
-    writeAppState: async state => {
+    writeAppState: async (state, options) => {
       try {
         const endpoint = await endpointResolver()
         if (!endpoint) {
@@ -210,6 +210,9 @@ export function createRemotePersistenceStore(
           const payload: WriteAppStateInput & { baseRevision?: number } = {
             state: nextState,
             ...(typeof baseRevision === 'number' ? { baseRevision } : {}),
+            ...(options?.allowEmptyWorkspaceOverwrite === true
+              ? { allowEmptyWorkspaceOverwrite: true }
+              : {}),
           }
 
           const { result } = await invokeControlSurface(endpoint, {

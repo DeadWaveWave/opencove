@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   readPersistedState,
   toPersistedState,
+  allowNextEmptyWorkspacePersistedStateWrite,
   writePersistedState,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence'
 import { installMockStorage, MockStorage } from '../../support/persistenceTestStorage'
@@ -122,5 +123,15 @@ describe('workspace persistence (write)', () => {
       writable: true,
       value: previousStorage,
     })
+  })
+
+  it('allows the next explicit empty workspace overwrite', async () => {
+    const state = toPersistedState([], null)
+
+    allowNextEmptyWorkspacePersistedStateWrite()
+    const result = await writePersistedState(state)
+
+    expect(result.ok).toBe(true)
+    expect(result.ok ? result.level : null).toBe('full')
   })
 })

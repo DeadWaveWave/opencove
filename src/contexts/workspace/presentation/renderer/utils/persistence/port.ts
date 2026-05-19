@@ -8,7 +8,10 @@ export type PersistencePortKind = 'ipc' | 'localStorage'
 export interface PersistencePort {
   kind: PersistencePortKind
   readAppState: () => Promise<ReadAppStateResult | null>
-  writeAppState: (state: unknown) => Promise<PersistWriteResult>
+  writeAppState: (
+    state: unknown,
+    options?: { allowEmptyWorkspaceOverwrite?: boolean },
+  ) => Promise<PersistWriteResult>
   readNodeScrollback: (nodeId: string) => Promise<string | null>
   writeNodeScrollback: (nodeId: string, scrollback: string | null) => Promise<PersistWriteResult>
   readAgentNodePlaceholderScrollback: (nodeId: string) => Promise<string | null>
@@ -65,9 +68,12 @@ function createIpcPort(): PersistencePort | null {
         return null
       }
     },
-    writeAppState: async state => {
+    writeAppState: async (state, options) => {
       try {
-        const result = await persistenceApi.writeAppState({ state })
+        const result = await persistenceApi.writeAppState({
+          state,
+          allowEmptyWorkspaceOverwrite: options?.allowEmptyWorkspaceOverwrite === true,
+        })
         if (result.ok) {
           publishLocalSyncWriteRevision(result.revision)
         }

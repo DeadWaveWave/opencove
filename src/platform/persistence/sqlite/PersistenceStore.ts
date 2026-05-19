@@ -22,7 +22,7 @@ export interface PersistenceStore {
 
   readAppState: () => Promise<unknown | null>
   readAppStateRevision: () => Promise<number>
-  writeAppState: (state: unknown) => Promise<PersistWriteResult>
+  writeAppState: (state: unknown, options?: WriteAppStateOptions) => Promise<PersistWriteResult>
 
   readNodeScrollback: (nodeId: string) => Promise<string | null>
   writeNodeScrollback: (nodeId: string, scrollback: string | null) => Promise<PersistWriteResult>
@@ -35,6 +35,39 @@ export interface PersistenceStore {
 
   consumeRecovery: () => PersistenceRecoveryReason | null
   dispose: () => void
+}
+
+export type WriteAppStateOptions = {
+  allowEmptyWorkspaceOverwrite?: boolean
+}
+
+function invalidStateResult(debugMessage: string): PersistWriteResult {
+  return {
+    ok: false,
+    reason: 'unknown',
+    error: createAppErrorDescriptor('persistence.invalid_state', {
+      debugMessage,
+    }),
+  }
+}
+
+function hasExistingWorkspaces(sqlite: Database.Database): boolean {
+  const row = sqlite.prepare('SELECT 1 FROM workspaces LIMIT 1').get() as
+    | { '1'?: unknown }
+    | undefined
+  return !!row
+}
+
+function shouldRejectEmptyWorkspaceOverwrite(
+  sqlite: Database.Database,
+  nextState: NonNullable<ReturnType<typeof normalizePersistedAppState>>,
+  options: WriteAppStateOptions | undefined,
+): boolean {
+  if (nextState.workspaces.length > 0 || options?.allowEmptyWorkspaceOverwrite === true) {
+    return false
+  }
+
+  return hasExistingWorkspaces(sqlite)
 }
 
 function readNodeScrollbackFromDb(db: BetterSQLite3Database, nodeId: string): string | null {
@@ -58,31 +91,31 @@ function readAgentNodePlaceholderScrollbackFromDb(
   return typeof row?.scrollback === 'string' ? row.scrollback : null
 }
 
-export async function createPersistenceStore(options: {
+export async function createPersistenceStore(storeOptions: {
   dbPath: string
   maxRawBytes?: number
 }): Promise<PersistenceStore> {
-  const maxRawBytes = options.maxRawBytes ?? DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES
+  const maxRawBytes = storeOptions.maxRawBytes ?? DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES
 
-  await mkdir(dirname(options.dbPath), { recursive: true })
+  await mkdir(dirname(storeOptions.dbPath), { recursive: true })
 
   const now = new Date()
   let recovery: PersistenceRecoveryReason | null = null
 
   let sqlite: Database.Database
   try {
-    sqlite = new Database(options.dbPath)
+    sqlite = new Database(storeOptions.dbPath)
   } catch {
     recovery = 'corrupt_db'
-    await moveCorruptDbAside(options.dbPath, now)
-    sqlite = new Database(options.dbPath)
+    await moveCorruptDbAside(storeOptions.dbPath, now)
+    sqlite = new Database(storeOptions.dbPath)
   }
 
   try {
     const version = sqlite.pragma('user_version', { simple: true }) as unknown
     const currentVersion = typeof version === 'number' ? version : 0
     if (currentVersion < DB_SCHEMA_VERSION) {
-      await backupDbFile(options.dbPath, now)
+      await backupDbFile(storeOptions.dbPath, now)
     }
 
     migrate(sqlite)
@@ -95,8 +128,8 @@ export async function createPersistenceStore(options: {
       // ignore
     }
 
-    await moveCorruptDbAside(options.dbPath, now)
-    sqlite = new Database(options.dbPath)
+    await moveCorruptDbAside(storeOptions.dbPath, now)
+    sqlite = new Database(storeOptions.dbPath)
     migrate(sqlite)
   }
 
@@ -183,16 +216,25 @@ export async function createPersistenceStore(options: {
     }
   }
 
-  const writeAppState = async (state: unknown): Promise<PersistWriteResult> => {
+  const writeAppState = async (
+    state: unknown,
+    options?: WriteAppStateOptions,
+  ): Promise<PersistWriteResult> => {
     const normalized = normalizePersistedAppState(state)
     if (!normalized) {
-      return {
-        ok: false,
-        reason: 'unknown',
-        error: createAppErrorDescriptor('persistence.invalid_state', {
-          debugMessage: 'Invalid app state payload.',
-        }),
+      return invalidStateResult('Invalid app state payload.')
+    }
+
+    try {
+      if (shouldRejectEmptyWorkspaceOverwrite(sqlite, normalized, options)) {
+        return invalidStateResult(
+          'Refusing to overwrite existing workspace state with an empty workspace list.',
+        )
       }
+    } catch {
+      return invalidStateResult(
+        'Refusing to persist an empty workspace list because the existing workspace state could not be verified.',
+      )
     }
 
     try {

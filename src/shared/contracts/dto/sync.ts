@@ -26,6 +26,7 @@ export type SyncEventPayload =
 export interface WriteSyncStateInput {
   state: unknown
   baseRevision?: number | null
+  allowEmptyWorkspaceOverwrite?: boolean | null
 }
 
 export interface WriteSyncStateResult {

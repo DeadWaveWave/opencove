@@ -1,4 +1,5 @@
 import { cleanupNodeRuntimeArtifacts } from '@contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup'
+import { allowNextEmptyWorkspacePersistedStateWrite } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { useAppStore } from '../store/useAppStore'
 
 export async function removeWorkspace(workspaceId: string): Promise<void> {
@@ -25,6 +26,9 @@ export async function removeWorkspace(workspaceId: string): Promise<void> {
     )
 
     const nextWorkspaces = store.workspaces.filter(workspace => workspace.id !== workspaceId)
+    if (nextWorkspaces.length === 0) {
+      allowNextEmptyWorkspacePersistedStateWrite()
+    }
     store.setWorkspaces(nextWorkspaces)
     store.setActiveWorkspaceId(currentActiveId =>
       currentActiveId === workspaceId ? (nextWorkspaces[0]?.id ?? null) : currentActiveId,

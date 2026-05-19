@@ -9,6 +9,7 @@ import {
 } from './viewState'
 
 let lastSuccessfulSharedState: { portKind: string; raw: string } | null = null
+let allowNextEmptyWorkspaceOverwrite = false
 
 function stripScrollbackFromState(state: PersistedAppState): PersistedAppState {
   return {
@@ -41,6 +42,9 @@ function unavailableResult(): PersistWriteResult {
 }
 
 export async function writePersistedState(state: PersistedAppState): Promise<PersistWriteResult> {
+  const shouldAllowNextEmptyWorkspaceOverwrite = allowNextEmptyWorkspaceOverwrite
+  allowNextEmptyWorkspaceOverwrite = false
+
   const port = getPersistencePort()
   if (!port) {
     return unavailableResult()
@@ -62,8 +66,13 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
   }
 
   let fullResult: PersistWriteResult
+  const writeOptions = {
+    allowEmptyWorkspaceOverwrite:
+      shouldAllowNextEmptyWorkspaceOverwrite === true && sharedState.workspaces.length === 0,
+  }
+
   try {
-    fullResult = await port.writeAppState(sharedState)
+    fullResult = await port.writeAppState(sharedState, writeOptions)
   } catch (error) {
     return {
       ok: false,
@@ -97,7 +106,9 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
 
   const minimalState = settingsOnlyState(sharedState)
   const minimalRaw = JSON.stringify(minimalState)
-  const minimalResult = await port.writeAppState(minimalState)
+  const minimalResult = await port.writeAppState(minimalState, {
+    allowEmptyWorkspaceOverwrite: writeOptions.allowEmptyWorkspaceOverwrite,
+  })
   if (minimalResult.ok) {
     lastSuccessfulSharedState = { portKind: port.kind, raw: minimalRaw }
     return { ok: true, level: 'settings_only', bytes: minimalResult.bytes }
@@ -142,4 +153,8 @@ export function markPersistedStateAsSynced(state: PersistedAppState): void {
   } catch {
     // ignore cache failures
   }
+}
+
+export function allowNextEmptyWorkspacePersistedStateWrite(): void {
+  allowNextEmptyWorkspaceOverwrite = true
 }
