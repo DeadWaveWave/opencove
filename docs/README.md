@@ -56,6 +56,10 @@
 - `development/DEBUGGING.md`：调试工作流。
 - `development/REFERENCE_RESEARCH_METHOD.md`：外部参考调研方法。
 
+## Recovery
+
+- `cases/opencove-db-sqlite-recover.md`：离线 SQLite `.recover` 输出重建 OpenCove 数据库的可复用脚本说明。
+
 ## Cases
 
 - `cases/README.md`：复盘案例索引。
