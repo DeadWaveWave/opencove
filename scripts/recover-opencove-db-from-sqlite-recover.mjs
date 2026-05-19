@@ -425,6 +425,7 @@ async function runSqlite3(sqlite3Bin, args) {
   } catch (error) {
     throw new Error(
       `Failed to run sqlite3 (${sqlite3Bin} ${args.map(arg => JSON.stringify(arg)).join(' ')}): ${toErrorMessage(error)}`,
+      { cause: error },
     )
   }
 }
@@ -490,11 +491,26 @@ async function collectBrowserTableInserts(sqlite3Bin, sourceDbPath) {
   const statements = []
   const warnings = []
 
-  for (const tableName of tableNames) {
-    try {
-      statements.push(...(await dumpTableInserts(sqlite3Bin, sourceDbPath, tableName)))
-    } catch (error) {
-      warnings.push(`Skipped ${tableName}: ${toErrorMessage(error)}`)
+  const tableResults = await Promise.all(
+    tableNames.map(async tableName => {
+      try {
+        return {
+          statements: await dumpTableInserts(sqlite3Bin, sourceDbPath, tableName),
+          warning: null,
+        }
+      } catch (error) {
+        return {
+          statements: [],
+          warning: `Skipped ${tableName}: ${toErrorMessage(error)}`,
+        }
+      }
+    }),
+  )
+
+  for (const result of tableResults) {
+    statements.push(...result.statements)
+    if (result.warning) {
+      warnings.push(result.warning)
     }
   }
 
@@ -871,11 +887,11 @@ function buildSummary({ outputDbPath, targetWorkspace, counts, validationSummary
 
 async function main() {
   const rawArgs = process.argv.slice(2)
-  const { values, positionals } = parseCli(
+  const { values: cliValues, positionals } = parseCli(
     rawArgs.length > 0 && rawArgs[0] === '--' ? rawArgs.slice(1) : rawArgs,
   )
 
-  if (values.help === true) {
+  if (cliValues.help === true) {
     printUsage()
     return
   }
@@ -884,13 +900,13 @@ async function main() {
     throw new Error(`Unexpected extra positional arguments: ${positionals.slice(3).join(' ')}`)
   }
 
-  const recoverSqlPath = normalizeArg(values['recover-sql']) ?? normalizeArg(positionals[0])
-  const sourceDbPath = normalizeArg(values['source-db']) ?? normalizeArg(positionals[1])
-  const outputDbPath = normalizeArg(values['output-db']) ?? normalizeArg(positionals[2])
-  const workspaceId = normalizeArg(values['workspace-id'])
-  const workspaceName = normalizeArg(values['workspace-name'])
-  const workspacePath = normalizeArg(values['workspace-path'])
-  const sqlite3Bin = normalizeArg(values['sqlite3-bin']) ?? DEFAULT_SQLITE3_BIN
+  const recoverSqlPath = normalizeArg(cliValues['recover-sql']) ?? normalizeArg(positionals[0])
+  const sourceDbPath = normalizeArg(cliValues['source-db']) ?? normalizeArg(positionals[1])
+  const outputDbPath = normalizeArg(cliValues['output-db']) ?? normalizeArg(positionals[2])
+  const workspaceId = normalizeArg(cliValues['workspace-id'])
+  const workspaceName = normalizeArg(cliValues['workspace-name'])
+  const workspacePath = normalizeArg(cliValues['workspace-path'])
+  const sqlite3Bin = normalizeArg(cliValues['sqlite3-bin']) ?? DEFAULT_SQLITE3_BIN
 
   if (!recoverSqlPath) {
     throw new Error('Missing required input: --recover-sql')
@@ -914,11 +930,11 @@ async function main() {
   const scrollbackByNodeId = new Map()
   const linkByCompositeId = new Map()
 
-  for (const values of rawRows) {
-    const nfield = parseInteger(values[2])
+  for (const rowValues of rawRows) {
+    const nfield = parseInteger(rowValues[2])
 
     if (nfield === 13) {
-      const workspace = parseWorkspaceRow(values)
+      const workspace = parseWorkspaceRow(rowValues)
       if (workspace) {
         const previous = workspaceById.get(workspace.id)
         if (!previous || scoreCompleteness(workspace) >= scoreCompleteness(previous)) {
@@ -927,7 +943,7 @@ async function main() {
         continue
       }
 
-      const space = parseSpaceRow(values)
+      const space = parseSpaceRow(rowValues)
       if (space) {
         const previous = spaceById.get(space.id)
         if (!previous || scoreCompleteness(space) >= scoreCompleteness(previous)) {
@@ -949,7 +965,7 @@ async function main() {
     }
 
     if (nfield === 19 || nfield === 20 || nfield === 24) {
-      const node = parseNodeRow(values)
+      const node = parseNodeRow(rowValues)
       if (node) {
         const previous = nodeById.get(node.id)
         if (!previous || scoreCompleteness(node) >= scoreCompleteness(previous)) {
@@ -960,13 +976,13 @@ async function main() {
     }
 
     if (nfield === 3) {
-      const link = parseSpaceNodeLink(values)
+      const link = parseSpaceNodeLink(rowValues)
       if (link) {
         linkByCompositeId.set(`${link.spaceId}:${link.nodeId}`, link)
         continue
       }
 
-      const scrollback = parseScrollbackRow(values)
+      const scrollback = parseScrollbackRow(rowValues)
       if (scrollback) {
         scrollbackByNodeId.set(scrollback.nodeId, scrollback)
       }
