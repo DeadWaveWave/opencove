@@ -48,7 +48,9 @@ describe('Control Surface HTTP server (sync.writeState)', () => {
     return { userDataPath, connectionFilePath, workspacePath, server, baseUrl }
   }
 
-  async function readSyncState(baseUrl: string): Promise<{ revision: number; state: unknown | null }> {
+  async function readSyncState(
+    baseUrl: string,
+  ): Promise<{ revision: number; state: unknown | null }> {
     const response = await invoke(baseUrl, 'test-token', {
       kind: 'query',
       id: 'sync.state',

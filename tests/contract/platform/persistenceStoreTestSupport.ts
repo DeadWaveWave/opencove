@@ -1,4 +1,11 @@
-import { appMeta, appSettings, nodes, spaceNodes, spaces, workspaces } from '../../../src/platform/persistence/sqlite/schema'
+import {
+  appMeta,
+  appSettings,
+  nodes,
+  spaceNodes,
+  spaces,
+  workspaces,
+} from '../../../src/platform/persistence/sqlite/schema'
 import { CURRENT_SCHEMA_COLUMNS } from './persistenceSchemaColumns'
 
 export const PERSISTENCE_STORE_TEST_TIMEOUT_MS = 20_000
@@ -244,9 +251,7 @@ export function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>)
                         : 1,
                     isMinimapVisible: candidate.isMinimapVisible !== false,
                     activeSpaceId:
-                      typeof candidate.activeSpaceId === 'string'
-                        ? candidate.activeSpaceId
-                        : null,
+                      typeof candidate.activeSpaceId === 'string' ? candidate.activeSpaceId : null,
                     sortOrder: index,
                   }
                 })
@@ -308,9 +313,11 @@ export function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>)
           all: () => [],
           get: () =>
             this.state.workspaceRows.length > 0 ||
-            (Array.isArray((this.state.currentState as Record<string, unknown> | null)?.workspaces) &&
-              ((this.state.currentState as Record<string, unknown>).workspaces as unknown[]).length >
-                0)
+            (Array.isArray(
+              (this.state.currentState as Record<string, unknown> | null)?.workspaces,
+            ) &&
+              ((this.state.currentState as Record<string, unknown>).workspaces as unknown[])
+                .length > 0)
               ? { 1: 1 }
               : undefined,
           run: () => undefined,
