@@ -163,8 +163,7 @@ describe('SettingsPanel', () => {
     })
   })
 
-  it('persists agent executable overrides from the settings panel', async () => {
-    const onChange = vi.fn()
+  it('checks agent executable availability without exposing manual path input', async () => {
     const listInstalledProviders = vi.fn(async () => ({
       providers: ['codex'],
       availabilityByProvider: {
@@ -211,24 +210,21 @@ describe('SettingsPanel', () => {
     } as Window['opencoveApi']
 
     mockTerminalProfiles()
-    renderSettingsPanel({ onChange })
+    renderSettingsPanel()
 
     fireEvent.click(screen.getByTestId('settings-section-nav-agent'))
-    fireEvent.change(screen.getByTestId('settings-agent-executable-override-codex'), {
-      target: { value: '/opt/codex/bin/codex' },
+
+    await waitFor(() => {
+      expect(listInstalledProviders).toHaveBeenCalledWith({
+        executablePathOverrideByProvider:
+          DEFAULT_AGENT_SETTINGS.agentExecutablePathOverrideByProvider,
+      })
     })
 
-    expect(listInstalledProviders).toHaveBeenCalledWith({
-      executablePathOverrideByProvider:
-        DEFAULT_AGENT_SETTINGS.agentExecutablePathOverrideByProvider,
-    })
-    expect(onChange).toHaveBeenCalledWith({
-      ...DEFAULT_AGENT_SETTINGS,
-      agentExecutablePathOverrideByProvider: {
-        ...DEFAULT_AGENT_SETTINGS.agentExecutablePathOverrideByProvider,
-        codex: '/opt/codex/bin/codex',
-      },
-    })
+    expect(screen.queryByTestId('settings-agent-executable-override-codex')).not.toBeInTheDocument()
+    expect(screen.getByTestId('settings-agent-executable-install-codex')).toHaveTextContent(
+      'Installed',
+    )
   })
 
   it('updates the standard window size bucket from canvas settings', () => {

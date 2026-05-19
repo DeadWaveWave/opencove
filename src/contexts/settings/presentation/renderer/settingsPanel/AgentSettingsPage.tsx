@@ -27,7 +27,6 @@ export function AgentSettingsPage({
   onChangeAddModelInput,
   onAddCustomModelOption,
   onChangeAgentEnvByProvider,
-  onChangeAgentExecutablePathOverrideByProvider,
 }: {
   settings: AgentSettings
   modelCatalogByProvider: Record<AgentProvider, ModelCatalogEntry>
@@ -41,9 +40,6 @@ export function AgentSettingsPage({
   onChangeAddModelInput: (provider: AgentProvider, value: string) => void
   onAddCustomModelOption: (provider: AgentProvider) => void
   onChangeAgentEnvByProvider: (agentEnvByProvider: AgentSettings['agentEnvByProvider']) => void
-  onChangeAgentExecutablePathOverrideByProvider: (
-    agentExecutablePathOverrideByProvider: AgentSettings['agentExecutablePathOverrideByProvider'],
-  ) => void
 }): React.JSX.Element {
   return (
     <>
@@ -73,9 +69,6 @@ export function AgentSettingsPage({
       <AgentExecutableSection
         agentProviderOrder={settings.agentProviderOrder}
         agentExecutablePathOverrideByProvider={settings.agentExecutablePathOverrideByProvider}
-        onChangeAgentExecutablePathOverrideByProvider={
-          onChangeAgentExecutablePathOverrideByProvider
-        }
       />
     </>
   )

@@ -5,6 +5,7 @@ describe('agent IPC validation', () => {
   it('accepts Windows absolute cwd values on non-Windows runners', async () => {
     const {
       normalizeLaunchAgentPayload,
+      normalizeInstallProviderPayload,
       normalizeListSessionsPayload,
       normalizeReadLastMessagePayload,
       normalizeResolveResumeSessionPayload,
@@ -23,6 +24,14 @@ describe('agent IPC validation', () => {
         prompt: 'hello',
       }),
     )
+
+    expect(
+      normalizeInstallProviderPayload({
+        provider: 'codex',
+      }),
+    ).toEqual({
+      provider: 'codex',
+    })
 
     expect(
       normalizeListSessionsPayload({
@@ -89,6 +98,20 @@ describe('agent IPC validation', () => {
       expect(error).toBeInstanceOf(OpenCoveAppError)
       expect((error as OpenCoveAppError).code).toBe('common.invalid_input')
       expect(getAppErrorDebugMessage(error)).toBe('agent:list-sessions requires an absolute cwd')
+    }
+  })
+
+  it('rejects invalid agent provider install payloads', async () => {
+    const { normalizeInstallProviderPayload } =
+      await import('../../../src/contexts/agent/presentation/main-ipc/validate')
+
+    try {
+      normalizeInstallProviderPayload({ provider: 'unknown' })
+      throw new Error('Expected normalizeInstallProviderPayload to throw')
+    } catch (error) {
+      expect(error).toBeInstanceOf(OpenCoveAppError)
+      expect((error as OpenCoveAppError).code).toBe('common.invalid_input')
+      expect(getAppErrorDebugMessage(error)).toBe('Invalid provider')
     }
   })
 })

@@ -1,5 +1,6 @@
 import type {
   AgentProviderId,
+  InstallAgentProviderInput,
   LaunchAgentInput,
   ListAgentSessionsInput,
   ListAgentModelsInput,
@@ -91,6 +92,17 @@ export function normalizeListModelsPayload(payload: unknown): ListAgentModelsInp
         ? record.executablePathOverride.trim() || null
         : null,
   }
+}
+
+export function normalizeInstallProviderPayload(payload: unknown): InstallAgentProviderInput {
+  if (!payload || typeof payload !== 'object') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for agent:install-provider',
+    })
+  }
+
+  const record = payload as Record<string, unknown>
+  return { provider: normalizeProvider(record.provider) }
 }
 
 export function normalizeListSessionsPayload(payload: unknown): ListAgentSessionsInput {

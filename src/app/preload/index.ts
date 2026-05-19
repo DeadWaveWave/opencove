@@ -16,6 +16,8 @@ import type {
   KillTerminalInput,
   LaunchAgentInput,
   LaunchAgentResult,
+  InstallAgentProviderInput,
+  InstallAgentProviderResult,
   ListAgentSessionsInput,
   ListAgentSessionsResult,
   ListInstalledAgentProvidersInput,
@@ -401,6 +403,8 @@ const opencoveApi = {
       payload?: ListInstalledAgentProvidersInput,
     ): Promise<ListInstalledAgentProvidersResult> =>
       invokeIpc(IPC_CHANNELS.agentListInstalledProviders, payload),
+    installProvider: (payload: InstallAgentProviderInput): Promise<InstallAgentProviderResult> =>
+      invokeIpc(IPC_CHANNELS.agentInstallProvider, payload),
     listSessions: (payload: ListAgentSessionsInput): Promise<ListAgentSessionsResult> =>
       invokeIpc(IPC_CHANNELS.agentListSessions, payload),
     launch: (payload: LaunchAgentInput): Promise<LaunchAgentResult> =>

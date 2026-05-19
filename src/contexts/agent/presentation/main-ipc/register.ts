@@ -4,6 +4,8 @@ import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   LaunchAgentInput,
   LaunchAgentResult,
+  InstallAgentProviderInput,
+  InstallAgentProviderResult,
   ListInstalledAgentProvidersInput,
   ListAgentSessionsInput,
   ListAgentSessionsResult,
@@ -20,6 +22,7 @@ import { buildAgentLaunchCommand } from '../../infrastructure/cli/AgentCommandFa
 import { resolveAgentCliInvocation } from '../../infrastructure/cli/AgentCliInvocation'
 import { resolveAgentLaunchSpawn } from '../../infrastructure/cli/AgentLaunchSpawnResolver'
 import { listInstalledAgentProviders } from '../../infrastructure/cli/AgentCliAvailability'
+import { installAgentProvider } from '../../infrastructure/cli/AgentProviderInstaller'
 import {
   disposeAgentModelService,
   listAgentModels,
@@ -38,6 +41,7 @@ import type { PtyRuntime } from '../../../terminal/presentation/main-ipc/runtime
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import {
   normalizeLaunchAgentPayload,
+  normalizeInstallProviderPayload,
   normalizeListSessionsPayload,
   normalizeListModelsPayload,
   normalizeReadLastMessagePayload,
@@ -123,6 +127,15 @@ export function registerAgentIpcHandlers(
       })
     },
     { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.agentInstallProvider,
+    async (_event, payload: InstallAgentProviderInput): Promise<InstallAgentProviderResult> => {
+      const normalized = normalizeInstallProviderPayload(payload)
+      return await installAgentProvider(normalized.provider)
+    },
+    { defaultErrorCode: 'agent.install_failed' },
   )
 
   registerHandledIpc(
@@ -405,6 +418,7 @@ export function registerAgentIpcHandlers(
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentListSessions)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentListInstalledProviders)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentInstallProvider)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)

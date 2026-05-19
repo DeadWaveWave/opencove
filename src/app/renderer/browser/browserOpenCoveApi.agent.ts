@@ -141,6 +141,9 @@ export function createBrowserAgentApi(): AgentApi {
       ) as ListInstalledAgentProvidersResult['availabilityByProvider'],
       fetchedAt: new Date().toISOString(),
     }),
+    installProvider: async () => {
+      throw new Error('Agent provider installation is only available in the desktop app.')
+    },
     listSessions: async payload => {
       const provider = payload.provider
       const desiredCwd = normalizeRequiredString(payload.cwd, 'agent.listSessions cwd')

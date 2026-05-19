@@ -10,6 +10,8 @@ import type {
   GetGitDefaultBranchResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
+  InstallAgentProviderInput,
+  InstallAgentProviderResult,
   KillTerminalInput,
   LaunchAgentInput,
   LaunchAgentResult,
@@ -308,6 +310,7 @@ export interface OpenCoveApi {
     listInstalledProviders: (
       payload?: ListInstalledAgentProvidersInput,
     ) => Promise<ListInstalledAgentProvidersResult>
+    installProvider: (payload: InstallAgentProviderInput) => Promise<InstallAgentProviderResult>
     listSessions: (payload: ListAgentSessionsInput) => Promise<ListAgentSessionsResult>
     launch: (payload: LaunchAgentInput) => Promise<LaunchAgentResult>
     readLastMessage: (payload: ReadAgentLastMessageInput) => Promise<ReadAgentLastMessageResult>

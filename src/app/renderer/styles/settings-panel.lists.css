@@ -53,6 +53,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 18px;
+  gap: 12px;
 }
 
 .settings-provider-card__title {
@@ -69,6 +70,79 @@
 
 .settings-provider-card .settings-list-item__left {
   color: var(--cove-text);
+}
+
+.settings-agent-install-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.settings-agent-install-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-agent-install-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 10px;
+  background: var(--cove-field);
+}
+
+.settings-agent-install-row__identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.settings-agent-install-row__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cove-text);
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-agent-install-row__icon {
+  width: 22px;
+  height: 22px;
+  flex-basis: 22px;
+}
+
+.settings-panel button.settings-agent-install__button {
+  min-width: 92px;
+}
+
+.settings-panel button.settings-agent-install__button[data-status='available'] {
+  border-color: transparent;
+  color: var(--cove-label-green);
+}
+
+.settings-panel button.settings-agent-install__button[data-status='misconfigured'] {
+  border-color: transparent;
+  color: var(--cove-label-red);
+}
+
+.settings-panel button.settings-agent-install__button[data-status='loading'],
+.settings-panel button.settings-agent-install__button[data-status='installing'] {
+  color: var(--cove-text-muted);
+}
+
+.settings-agent-install-item__error {
+  padding: 0 10px;
+  color: rgba(232, 103, 120, 0.92);
+  font-size: calc(11px * var(--cove-ui-font-scale));
 }
 
 .settings-panel .settings-list-item__remove.secondary {

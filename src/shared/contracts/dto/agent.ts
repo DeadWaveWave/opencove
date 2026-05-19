@@ -45,6 +45,18 @@ export interface ListInstalledAgentProvidersResult {
   fetchedAt: string
 }
 
+export interface InstallAgentProviderInput {
+  provider: AgentProviderId
+}
+
+export interface InstallAgentProviderResult {
+  provider: AgentProviderId
+  packageName: string
+  availability: AgentProviderAvailability
+  stdout: string
+  stderr: string
+}
+
 export interface AgentSessionSummary {
   sessionId: string
   provider: AgentProviderId

@@ -1,16 +1,12 @@
 export const enSettingsPanelAgentExecutable = {
-  title: 'Agent Executable Resolution',
-  help: 'Inspect host-side diagnostics for each local agent CLI. Agent launches use the selected terminal profile, so an unavailable host probe is not always a launch blocker.',
-  overrideLabel: 'Executable Override',
-  overrideHelp:
-    'Optional local path override for this provider. When set, OpenCove requires it to resolve successfully.',
-  overridePlaceholder: '/absolute/path/to/executable',
-  pathLabel: 'Resolved Path',
-  notResolved: 'Not resolved',
-  commandLabel: 'Command: {{command}}',
+  title: 'Agent Installation Status',
+  help: 'Check local agent CLIs and install missing providers with npm. Agent launches still use the selected terminal profile.',
+  install: 'Install',
+  installUnavailable: 'Installation is only available in the desktop app.',
   status: {
-    available: 'Available',
-    unavailable: 'Unavailable',
+    available: 'Installed',
+    unavailable: 'Not installed',
     misconfigured: 'Misconfigured',
+    installing: 'Installing',
   },
 }

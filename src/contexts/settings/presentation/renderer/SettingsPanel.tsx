@@ -105,7 +105,6 @@ export function SettingsPanel({
     updateQuickCommands,
     updateQuickPhrases,
     updateAgentEnvByProvider,
-    updateAgentExecutablePathOverrideByProvider,
     updateDisableAppShortcutsWhenTerminalFocused,
     updateKeybindings,
     updateGitHubPullRequestsEnabled,
@@ -332,9 +331,6 @@ export function SettingsPanel({
                 onChangeAddModelInput={updateAddModelInput}
                 onAddCustomModelOption={addCustomModelOption}
                 onChangeAgentEnvByProvider={updateAgentEnvByProvider}
-                onChangeAgentExecutablePathOverrideByProvider={
-                  updateAgentExecutablePathOverrideByProvider
-                }
               />
             ) : null}
 

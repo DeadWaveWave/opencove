@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
+import { toErrorMessage } from './workerSectionUtils'
 import {
   AGENT_PROVIDER_LABEL,
   type AgentExecutablePathOverrideByProvider,
@@ -7,10 +9,15 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import type { AgentProviderAvailability } from '@shared/contracts/dto'
 
-function resolveAvailabilityLabel(
+function resolveInstallActionLabel(
   availability: AgentProviderAvailability | null | undefined,
   t: ReturnType<typeof useTranslation>['t'],
+  isInstalling = false,
 ): string {
+  if (isInstalling) {
+    return t('settingsPanel.agentExecutable.status.installing')
+  }
+
   if (!availability) {
     return t('common.loading')
   }
@@ -23,25 +30,23 @@ function resolveAvailabilityLabel(
     return t('settingsPanel.agentExecutable.status.misconfigured')
   }
 
-  return t('settingsPanel.agentExecutable.status.unavailable')
+  return t('settingsPanel.agentExecutable.install')
 }
 
 export function AgentExecutableSection({
   agentProviderOrder,
   agentExecutablePathOverrideByProvider,
-  onChangeAgentExecutablePathOverrideByProvider,
 }: {
   agentProviderOrder: AgentProvider[]
   agentExecutablePathOverrideByProvider: AgentExecutablePathOverrideByProvider<AgentProvider>
-  onChangeAgentExecutablePathOverrideByProvider: (
-    next: AgentExecutablePathOverrideByProvider<AgentProvider>,
-  ) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const [availabilityByProvider, setAvailabilityByProvider] = useState<
     Record<string, AgentProviderAvailability>
   >({})
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [installingProvider, setInstallingProvider] = useState<AgentProvider | null>(null)
+  const [installErrorByProvider, setInstallErrorByProvider] = useState<Record<string, string>>({})
 
   const refreshAvailability = useCallback(() => {
     const listInstalledProviders = window.opencoveApi?.agent?.listInstalledProviders
@@ -71,6 +76,43 @@ export function AgentExecutableSection({
     refreshAvailability()
   }, [refreshAvailability])
 
+  const installProvider = useCallback(
+    async (provider: AgentProvider): Promise<void> => {
+      const install = window.opencoveApi?.agent?.installProvider
+      if (typeof install !== 'function') {
+        setInstallErrorByProvider(previous => ({
+          ...previous,
+          [provider]: t('settingsPanel.agentExecutable.installUnavailable'),
+        }))
+        return
+      }
+
+      setInstallingProvider(provider)
+      setInstallErrorByProvider(previous => {
+        const next = { ...previous }
+        delete next[provider]
+        return next
+      })
+
+      try {
+        const result = await install({ provider })
+        setAvailabilityByProvider(previous => ({
+          ...previous,
+          [provider]: result.availability,
+        }))
+        refreshAvailability()
+      } catch (caughtError) {
+        setInstallErrorByProvider(previous => ({
+          ...previous,
+          [provider]: toErrorMessage(caughtError),
+        }))
+      } finally {
+        setInstallingProvider(current => (current === provider ? null : current))
+      }
+    },
+    [refreshAvailability, t],
+  )
+
   return (
     <div
       className="settings-panel__section settings-panel__section--vertical"
@@ -78,86 +120,66 @@ export function AgentExecutableSection({
     >
       <h3 className="settings-panel__section-title">{t('settingsPanel.agentExecutable.title')}</h3>
 
-      <div className="settings-panel__subsection-header" style={{ marginTop: 8 }}>
-        <span>{t('settingsPanel.agentExecutable.help')}</span>
-        <button
-          type="button"
-          className="secondary"
-          data-testid="settings-agent-executable-refresh"
-          onClick={refreshAvailability}
-          disabled={isRefreshing}
-        >
-          {isRefreshing ? t('common.loading') : t('common.refresh')}
-        </button>
+      <div className="settings-agent-install-list">
+        {agentProviderOrder.map(provider => {
+          const availability = availabilityByProvider[provider]
+          const isInstallingProvider = installingProvider === provider
+          const diagnostics = availability?.diagnostics?.join(' ') ?? ''
+          const installError = installErrorByProvider[provider] ?? ''
+          const isUnavailable = availability?.status === 'unavailable'
+          const isMisconfigured = availability?.status === 'misconfigured'
+          const isBusy = isRefreshing || Boolean(installingProvider)
+          const actionLabel = resolveInstallActionLabel(availability, t, isInstallingProvider)
+          const actionStatus = isInstallingProvider
+            ? 'installing'
+            : (availability?.status ?? 'loading')
+
+          return (
+            <div className="settings-agent-install-item" key={provider}>
+              <div className="settings-agent-install-row">
+                <div className="settings-agent-install-row__identity">
+                  <AgentProviderIcon
+                    provider={provider}
+                    className="settings-agent-install-row__icon"
+                  />
+                  <strong className="settings-agent-install-row__name">
+                    {AGENT_PROVIDER_LABEL[provider]}
+                  </strong>
+                </div>
+                <button
+                  type="button"
+                  className="secondary settings-agent-install__button"
+                  data-status={actionStatus}
+                  data-testid={`settings-agent-executable-install-${provider}`}
+                  aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${actionLabel}`}
+                  onClick={() => void installProvider(provider)}
+                  disabled={!isUnavailable || isBusy}
+                >
+                  {actionLabel}
+                </button>
+              </div>
+
+              {isMisconfigured && diagnostics.length > 0 ? (
+                <div
+                  className="settings-agent-install-item__error"
+                  data-testid={`settings-agent-executable-diagnostics-${provider}`}
+                >
+                  {diagnostics}
+                </div>
+              ) : null}
+
+              {installError.length > 0 ? (
+                <div
+                  className="settings-agent-install-item__error"
+                  data-testid={`settings-agent-executable-install-error-${provider}`}
+                >
+                  {installError}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
       </div>
-
-      {agentProviderOrder.map(provider => {
-        const availability = availabilityByProvider[provider]
-        const diagnostics = availability?.diagnostics?.join(' ') ?? ''
-        const resolvedExecutablePath = availability?.executablePath?.trim() ?? ''
-        const executablePath =
-          resolvedExecutablePath.length > 0
-            ? resolvedExecutablePath
-            : t('settingsPanel.agentExecutable.notResolved')
-
-        return (
-          <div className="settings-provider-card" key={provider}>
-            <div className="settings-provider-card__header">
-              <strong className="settings-provider-card__title">
-                {AGENT_PROVIDER_LABEL[provider]}
-              </strong>
-              <span data-testid={`settings-agent-executable-status-${provider}`}>
-                {resolveAvailabilityLabel(availability, t)}
-              </span>
-            </div>
-
-            <div className="settings-panel__subsection-header" style={{ marginTop: 0 }}>
-              <span>
-                {t('settingsPanel.agentExecutable.commandLabel', {
-                  command: availability?.command ?? '',
-                })}
-              </span>
-            </div>
-
-            <div className="settings-panel__row" style={{ marginTop: 12 }}>
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.agentExecutable.overrideLabel')}</strong>
-                <span>{t('settingsPanel.agentExecutable.overrideHelp')}</span>
-              </div>
-              <div className="settings-panel__control">
-                <input
-                  type="text"
-                  className="cove-field"
-                  data-testid={`settings-agent-executable-override-${provider}`}
-                  value={agentExecutablePathOverrideByProvider[provider] ?? ''}
-                  placeholder={t('settingsPanel.agentExecutable.overridePlaceholder')}
-                  onChange={event => {
-                    onChangeAgentExecutablePathOverrideByProvider({
-                      ...agentExecutablePathOverrideByProvider,
-                      [provider]: event.target.value,
-                    })
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="settings-panel__subsection-header" style={{ marginTop: 12 }}>
-              <span>
-                {t('settingsPanel.agentExecutable.pathLabel')}: {executablePath}
-              </span>
-            </div>
-
-            {diagnostics.length > 0 ? (
-              <div
-                className="settings-provider-card__error"
-                data-testid={`settings-agent-executable-diagnostics-${provider}`}
-              >
-                {diagnostics}
-              </div>
-            ) : null}
-          </div>
-        )
-      })}
     </div>
   )
 }

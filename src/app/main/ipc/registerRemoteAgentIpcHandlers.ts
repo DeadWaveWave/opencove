@@ -218,6 +218,16 @@ export function registerRemoteAgentIpcHandlers(options: {
   )
 
   registerHandledIpc(
+    IPC_CHANNELS.agentInstallProvider,
+    async () => {
+      throw createAppError('common.unavailable', {
+        debugMessage: 'Agent provider installation is only available on the local desktop host.',
+      })
+    },
+    { defaultErrorCode: 'agent.install_failed' },
+  )
+
+  registerHandledIpc(
     IPC_CHANNELS.agentListSessions,
     async (_event, payload: ListAgentSessionsInput): Promise<ListAgentSessionsResult> => {
       const provider = payload?.provider as AgentProviderId
@@ -440,6 +450,7 @@ export function registerRemoteAgentIpcHandlers(options: {
       ipcMain.removeHandler(IPC_CHANNELS.agentListSessions)
       ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
       ipcMain.removeHandler(IPC_CHANNELS.agentListInstalledProviders)
+      ipcMain.removeHandler(IPC_CHANNELS.agentInstallProvider)
       ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
       ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
       ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)

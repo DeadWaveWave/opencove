@@ -66,6 +66,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'terminal.detach_failed': 'Unable to detach the terminal session.',
     'terminal.snapshot_failed': 'Unable to read terminal output.',
     'agent.list_models_failed': 'Unable to load models for this provider.',
+    'agent.install_failed': 'Unable to install this agent provider.',
     'agent.launch_failed': 'Unable to start the agent.',
     'agent.read_last_message_failed': 'Unable to read the last agent message.',
     'agent.resume_session_resolve_failed': 'Unable to resolve the previous agent session.',
