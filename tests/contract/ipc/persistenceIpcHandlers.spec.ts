@@ -424,7 +424,9 @@ describe('persistence IPC handlers', () => {
     await expect(invokeHandledIpc<PersistWriteResult>(handler, null, { state })).resolves.toEqual(
       writeResult,
     )
-    expect(store.writeAppState).toHaveBeenCalledWith(state)
+    expect(store.writeAppState).toHaveBeenCalledWith(state, {
+      allowEmptyWorkspaceOverwrite: false,
+    })
   })
 
   it('writes node scrollback through the store', async () => {

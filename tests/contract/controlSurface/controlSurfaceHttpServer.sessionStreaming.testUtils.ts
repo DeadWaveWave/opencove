@@ -1,5 +1,6 @@
 import { readFile, rm } from 'node:fs/promises'
 import type { PersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
+import { createAppErrorDescriptor } from '../../../src/shared/errors/appError'
 import WebSocket from 'ws'
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -208,12 +209,41 @@ export function createInMemoryPersistenceStore(): PersistenceStore {
   const nodeScrollbacks = new Map<string, string>()
   const agentPlaceholderScrollbacks = new Map<string, string>()
 
+  const hasExistingWorkspaces = (): boolean =>
+    !!state &&
+    typeof state === 'object' &&
+    !Array.isArray(state) &&
+    Array.isArray((state as { workspaces?: unknown }).workspaces) &&
+    (state as { workspaces: unknown[] }).workspaces.length > 0
+
+  const isEmptyWorkspaceState = (nextState: unknown): boolean =>
+    !!nextState &&
+    typeof nextState === 'object' &&
+    !Array.isArray(nextState) &&
+    Array.isArray((nextState as { workspaces?: unknown }).workspaces) &&
+    (nextState as { workspaces: unknown[] }).workspaces.length === 0
+
   return {
     readWorkspaceStateRaw: async () => null,
     writeWorkspaceStateRaw: async raw => ({ ok: true, level: 'full', bytes: raw.length }),
     readAppState: async () => state,
     readAppStateRevision: async () => revision,
-    writeAppState: async nextState => {
+    writeAppState: async (nextState, options) => {
+      if (
+        isEmptyWorkspaceState(nextState) &&
+        hasExistingWorkspaces() &&
+        options?.allowEmptyWorkspaceOverwrite !== true
+      ) {
+        return {
+          ok: false,
+          reason: 'unknown',
+          error: createAppErrorDescriptor('persistence.invalid_state', {
+            debugMessage:
+              'Refusing to overwrite existing workspace state with an empty workspace list.',
+          }),
+        }
+      }
+
       state = nextState
       revision += 1
       return { ok: true, level: 'full', bytes: 0 }
