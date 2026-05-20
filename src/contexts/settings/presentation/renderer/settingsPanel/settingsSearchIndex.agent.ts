@@ -44,7 +44,8 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
     pageId: 'agent',
     pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.models.title',
-    anchorId: 'settings-section-model-override',
+    descriptionKey: 'settingsPanel.agent.agentProviderOrderHelp',
+    anchorId: 'settings-agent-list',
     keywordKeys: [
       'settingsPanel.models.useCustomModel',
       'settingsPanel.models.addModelPlaceholder',
@@ -57,7 +58,7 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
     pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.agentEnv.title',
     descriptionKey: 'settingsPanel.agentEnv.help',
-    anchorId: 'settings-section-agent-env',
+    anchorId: 'settings-agent-list',
     keywords: ['environment', 'env', 'variable', '环境变量'],
   },
   {

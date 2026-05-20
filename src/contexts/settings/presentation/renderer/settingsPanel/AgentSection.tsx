@@ -1,9 +1,23 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
-import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
+import {
+  AGENT_PROVIDER_LABEL,
+  type AgentEnvByProvider,
+  type AgentProvider,
+  type AgentSettings,
+} from '@contexts/settings/domain/agentSettings'
 import type { AgentProviderAvailability } from '@shared/contracts/dto'
+import { AgentProviderConfigurePanel } from './AgentProviderConfigurePanel'
+
+interface ProviderModelCatalogEntry {
+  models: string[]
+  source: string | null
+  fetchedAt: string | null
+  isLoading: boolean
+  error: string | null
+}
 
 export function AgentSection(props: {
   defaultProvider: AgentProvider
@@ -13,12 +27,22 @@ export function AgentSection(props: {
   installingProvider: AgentProvider | null
   installErrorByProvider: Record<string, string>
   isRefreshingAvailability: boolean
+  settings: AgentSettings
+  modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
+  addModelInputByProvider: Record<AgentProvider, string>
   onChangeDefaultProvider: (provider: AgentProvider) => void
   onChangeAgentProviderOrder: (providers: AgentProvider[]) => void
   onChangeAgentFullAccess: (enabled: boolean) => void
+  onToggleCustomModelEnabled: (provider: AgentProvider, enabled: boolean) => void
+  onSelectProviderModel: (provider: AgentProvider, model: string) => void
+  onRemoveCustomModelOption: (provider: AgentProvider, model: string) => void
+  onChangeAddModelInput: (provider: AgentProvider, value: string) => void
+  onAddCustomModelOption: (provider: AgentProvider) => void
+  onChangeAgentEnvByProvider: (next: AgentEnvByProvider) => void
   onInstallProvider: (provider: AgentProvider) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const [configuringProvider, setConfiguringProvider] = useState<AgentProvider | null>(null)
   const {
     defaultProvider,
     agentProviderOrder,
@@ -27,9 +51,18 @@ export function AgentSection(props: {
     installingProvider,
     installErrorByProvider,
     isRefreshingAvailability,
+    settings,
+    modelCatalogByProvider,
+    addModelInputByProvider,
     onChangeDefaultProvider,
     onChangeAgentProviderOrder,
     onChangeAgentFullAccess,
+    onToggleCustomModelEnabled,
+    onSelectProviderModel,
+    onRemoveCustomModelOption,
+    onChangeAddModelInput,
+    onAddCustomModelOption,
+    onChangeAgentEnvByProvider,
     onInstallProvider,
   } = props
 
@@ -79,6 +112,9 @@ export function AgentSection(props: {
             const actionStatus = isInstallingProvider
               ? 'installing'
               : (availability?.status ?? 'loading')
+            const modelSummary = resolveModelSummary(settings, provider, t)
+            const envSummary = resolveEnvSummary(settings, provider, t)
+            const isConfiguring = configuringProvider === provider
 
             return (
               <div className="settings-agent-list-item" key={provider}>
@@ -133,17 +169,35 @@ export function AgentSection(props: {
                       ) : null}
                     </span>
                   </label>
-                  <button
-                    type="button"
-                    className="secondary settings-agent-install__button"
-                    data-status={actionStatus}
-                    data-testid={`settings-agent-executable-install-${provider}`}
-                    aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${installLabel}`}
-                    onClick={() => onInstallProvider(provider)}
-                    disabled={!isUnavailable || isBusy}
-                  >
-                    {installLabel}
-                  </button>
+                  <div className="settings-agent-list-row__summary">
+                    <span>{modelSummary}</span>
+                    <span>{envSummary}</span>
+                  </div>
+                  <div className="settings-agent-list-row__actions">
+                    <button
+                      type="button"
+                      className="secondary settings-agent-install__button"
+                      data-status={actionStatus}
+                      data-testid={`settings-agent-executable-install-${provider}`}
+                      aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${installLabel}`}
+                      onClick={() => onInstallProvider(provider)}
+                      disabled={!isUnavailable || isBusy}
+                    >
+                      {installLabel}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary settings-agent-configure__button"
+                      data-testid={`settings-agent-configure-${provider}`}
+                      aria-expanded={isConfiguring}
+                      aria-controls={`settings-agent-configure-panel-${provider}`}
+                      onClick={() => {
+                        setConfiguringProvider(current => (current === provider ? null : provider))
+                      }}
+                    >
+                      {t('settingsPanel.agent.configure')}
+                    </button>
+                  </div>
                 </div>
 
                 {installError.length > 0 ? (
@@ -161,6 +215,21 @@ export function AgentSection(props: {
                   >
                     {diagnostics}
                   </div>
+                ) : null}
+                {isConfiguring ? (
+                  <AgentProviderConfigurePanel
+                    provider={provider}
+                    settings={settings}
+                    modelCatalog={modelCatalogByProvider[provider]}
+                    addModelInputValue={addModelInputByProvider[provider]}
+                    onToggleCustomModelEnabled={onToggleCustomModelEnabled}
+                    onSelectProviderModel={onSelectProviderModel}
+                    onRemoveCustomModelOption={onRemoveCustomModelOption}
+                    onChangeAddModelInput={onChangeAddModelInput}
+                    onAddCustomModelOption={onAddCustomModelOption}
+                    onChangeAgentEnvByProvider={onChangeAgentEnvByProvider}
+                    onDone={() => setConfiguringProvider(null)}
+                  />
                 ) : null}
               </div>
             )
@@ -187,6 +256,35 @@ export function AgentSection(props: {
       </div>
     </div>
   )
+}
+
+function resolveModelSummary(
+  settings: AgentSettings,
+  provider: AgentProvider,
+  t: ReturnType<typeof useTranslation>['t'],
+): string {
+  const customModel = settings.customModelByProvider[provider]?.trim() ?? ''
+  if (settings.customModelEnabledByProvider[provider] && customModel.length > 0) {
+    return customModel
+  }
+
+  return t('common.defaultFollowCli')
+}
+
+function resolveEnvSummary(
+  settings: AgentSettings,
+  provider: AgentProvider,
+  t: ReturnType<typeof useTranslation>['t'],
+): string {
+  const count = (settings.agentEnvByProvider[provider] ?? []).filter(
+    row => row.key.trim().length > 0,
+  ).length
+
+  if (count === 0) {
+    return t('settingsPanel.agent.envSummaryNone')
+  }
+
+  return t('settingsPanel.agent.envSummary', { count })
 }
 
 function resolveInstallActionLabel(

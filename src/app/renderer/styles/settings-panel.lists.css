@@ -65,7 +65,7 @@
 .settings-provider-card__error {
   margin-top: 12px;
   font-size: calc(11px * var(--cove-ui-font-scale));
-  color: rgba(232, 103, 120, 0.92);
+  color: var(--cove-label-red);
 }
 
 .settings-agent-list-block {
@@ -105,7 +105,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 48px;
+  min-height: 58px;
   padding: 8px 10px 8px 8px;
 }
 
@@ -113,7 +113,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1 1 auto;
+  flex: 1 1 220px;
   min-width: 0;
   cursor: pointer;
 }
@@ -177,8 +177,36 @@
   white-space: nowrap;
 }
 
+.settings-agent-list-row__summary {
+  display: flex;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.25;
+}
+
+.settings-agent-list-row__summary span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-agent-list-row__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .settings-panel button.settings-agent-install__button {
   min-width: 92px;
+}
+
+.settings-panel button.settings-agent-configure__button {
+  min-width: 86px;
 }
 
 .settings-panel button.settings-agent-install__button[data-status='available'] {
@@ -198,8 +226,90 @@
 
 .settings-agent-install-item__error {
   padding: 0 10px;
-  color: rgba(232, 103, 120, 0.92);
+  color: var(--cove-label-red);
   font-size: calc(11px * var(--cove-ui-font-scale));
+}
+
+.settings-agent-configure-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 14px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 10px;
+  background: var(--cove-surface);
+}
+
+.settings-agent-configure-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-agent-configure-panel__header strong {
+  color: var(--cove-text);
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 600;
+}
+
+.settings-agent-configure-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-agent-configure-panel__section-title {
+  color: var(--cove-text-muted);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.settings-agent-configure-panel__row {
+  padding: 12px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 10px;
+  background: var(--cove-field);
+}
+
+.settings-agent-configure-panel__model-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-agent-configure-panel__compact-item {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.settings-agent-configure-panel__input-row {
+  margin-top: 0;
+}
+
+.settings-agent-configure-panel__error {
+  color: var(--cove-label-red);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+}
+
+.settings-agent-env-row {
+  gap: 10px;
+}
+
+.settings-agent-env-row__fields {
+  cursor: default;
+}
+
+.settings-agent-env-row__fields .cove-field {
+  min-width: 0;
+}
+
+.settings-agent-configure-panel__add-env {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .settings-provider-card .settings-list-item__left {
@@ -243,4 +353,26 @@
 
 .settings-quick-menu__toggle[data-active='true'] .settings-quick-menu__toggle-icon {
   color: var(--cove-text);
+}
+
+@media (max-width: 760px) {
+  .settings-agent-list-row {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .settings-agent-list-row__summary {
+    flex-basis: 100%;
+    padding-left: 58px;
+  }
+
+  .settings-agent-list-row__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .settings-agent-env-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }

@@ -168,6 +168,11 @@ test.describe('Settings', () => {
       await defaultProvider.check()
       await expect(defaultProvider).toBeChecked()
 
+      const configureCodex = window.locator('[data-testid="settings-agent-configure-codex"]')
+      await configureCodex.click()
+      const configurePanel = window.locator('[data-testid="settings-agent-configure-panel-codex"]')
+      await expect(configurePanel).toBeVisible()
+
       const customModelEnabled = window.locator(
         '[data-testid="settings-custom-model-enabled-codex"]',
       )
@@ -183,14 +188,9 @@ test.describe('Settings', () => {
         'gpt-5.2-codex',
       )
 
-      const modelOverrideSection = window.locator('#settings-section-model-override')
-      await expect(modelOverrideSection).toBeVisible()
-      await modelOverrideSection.scrollIntoViewIfNeeded()
+      await configurePanel.scrollIntoViewIfNeeded()
 
-      const providerTitle = modelOverrideSection
-        .locator('.settings-provider-card__title')
-        .filter({ hasText: 'Codex' })
-        .first()
+      const providerTitle = configurePanel.locator('.settings-agent-configure-panel__header strong')
       await expect(providerTitle).toBeVisible()
 
       const providerTitleColor = await providerTitle.evaluate(element => {

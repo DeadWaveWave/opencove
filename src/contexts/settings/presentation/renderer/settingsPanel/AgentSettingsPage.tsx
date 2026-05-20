@@ -5,8 +5,6 @@ import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { AgentProviderAvailability } from '@shared/contracts/dto'
 import { AgentSection } from './AgentSection'
-import { ModelOverrideSection } from './ModelOverrideSection'
-import { AgentEnvSection } from './AgentEnvSection'
 
 interface ModelCatalogEntry {
   models: string[]
@@ -126,27 +124,21 @@ export function AgentSettingsPage({
         installingProvider={installingProvider}
         installErrorByProvider={installErrorByProvider}
         isRefreshingAvailability={isRefreshingAvailability}
-        onChangeDefaultProvider={onChangeDefaultProvider}
-        onChangeAgentProviderOrder={onChangeAgentProviderOrder}
-        onChangeAgentFullAccess={onChangeAgentFullAccess}
-        onInstallProvider={provider => {
-          void installProvider(provider)
-        }}
-      />
-      <ModelOverrideSection
         settings={settings}
         modelCatalogByProvider={modelCatalogByProvider}
         addModelInputByProvider={addModelInputByProvider}
+        onChangeDefaultProvider={onChangeDefaultProvider}
+        onChangeAgentProviderOrder={onChangeAgentProviderOrder}
+        onChangeAgentFullAccess={onChangeAgentFullAccess}
         onToggleCustomModelEnabled={onToggleCustomModelEnabled}
         onSelectProviderModel={onSelectProviderModel}
         onRemoveCustomModelOption={onRemoveCustomModelOption}
         onChangeAddModelInput={onChangeAddModelInput}
         onAddCustomModelOption={onAddCustomModelOption}
-      />
-      <AgentEnvSection
-        agentProviderOrder={settings.agentProviderOrder}
-        agentEnvByProvider={settings.agentEnvByProvider}
         onChangeAgentEnvByProvider={onChangeAgentEnvByProvider}
+        onInstallProvider={provider => {
+          void installProvider(provider)
+        }}
       />
     </>
   )
