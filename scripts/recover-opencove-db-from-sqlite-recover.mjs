@@ -135,7 +135,10 @@ function scoreCompleteness(record) {
 }
 
 function isUuid(value) {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)
+  return (
+    typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)
+  )
 }
 
 function isAbsolutePathLike(value) {
@@ -337,7 +340,12 @@ function parseNodeRow(values) {
     terminalProviderHint,
   ] = columns
 
-  if (!isUuid(id) || !isUuid(workspaceId) || typeof title !== 'string' || typeof kind !== 'string') {
+  if (
+    !isUuid(id) ||
+    !isUuid(workspaceId) ||
+    typeof title !== 'string' ||
+    typeof kind !== 'string'
+  ) {
     return null
   }
 
@@ -431,7 +439,13 @@ async function runSqlite3(sqlite3Bin, args) {
 }
 
 async function readScalarValue(sqlite3Bin, sourceDbPath, query) {
-  const { stdout } = await runSqlite3(sqlite3Bin, ['-readonly', sourceDbPath, '-cmd', '.mode list', query])
+  const { stdout } = await runSqlite3(sqlite3Bin, [
+    '-readonly',
+    sourceDbPath,
+    '-cmd',
+    '.mode list',
+    query,
+  ])
   return stdout.trim()
 }
 
