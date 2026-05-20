@@ -163,6 +163,20 @@ describe('SettingsPanel', () => {
     })
   })
 
+  it('sets the default agent from the agent list', () => {
+    const onChange = vi.fn()
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-agent'))
+    fireEvent.click(screen.getByTestId('settings-default-provider-gemini'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      defaultProvider: 'gemini',
+    })
+  })
+
   it('checks agent executable availability without exposing manual path input', async () => {
     const listInstalledProviders = vi.fn(async () => ({
       providers: ['codex'],

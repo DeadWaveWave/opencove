@@ -163,13 +163,10 @@ test.describe('Settings', () => {
       await focusToggle.uncheck()
 
       await agentNav.click()
-      const defaultProvider = window.locator('[data-testid="settings-default-provider"]')
-      const defaultProviderTrigger = window.locator(
-        '[data-testid="settings-default-provider-trigger"]',
-      )
-      await expect(defaultProviderTrigger).toBeVisible()
-      await selectCoveOption(window, 'settings-default-provider', 'codex')
-      await expect(defaultProvider).toHaveValue('codex')
+      const defaultProvider = window.locator('[data-testid="settings-default-provider-codex"]')
+      await expect(defaultProvider).toBeVisible()
+      await defaultProvider.check()
+      await expect(defaultProvider).toBeChecked()
 
       const customModelEnabled = window.locator(
         '[data-testid="settings-custom-model-enabled-codex"]',
@@ -239,8 +236,8 @@ test.describe('Settings', () => {
       await expect(window.locator('#settings-section-task-title')).toHaveCount(0)
 
       await window.locator('.settings-panel__close').click()
-      await expect(window.locator('.workspace-sidebar__agent-provider')).toHaveText('Codex')
-      await expect(window.locator('.workspace-sidebar__agent-model')).toHaveText('gpt-5.2-codex')
+      await expect(window.locator('.workspace-sidebar__agent-provider')).toHaveCount(0)
+      await expect(window.locator('.workspace-sidebar__agent-model')).toHaveCount(0)
 
       const readPersistedSettings = async () =>
         await window.evaluate(async () => {
@@ -311,8 +308,8 @@ test.describe('Settings', () => {
           return document.documentElement.dataset.coveTheme
         }),
       ).resolves.toBe('light')
-      await expect(window.locator('.workspace-sidebar__agent-provider')).toHaveText('Codex')
-      await expect(window.locator('.workspace-sidebar__agent-model')).toHaveText('gpt-5.2-codex')
+      await expect(window.locator('.workspace-sidebar__agent-provider')).toHaveCount(0)
+      await expect(window.locator('.workspace-sidebar__agent-model')).toHaveCount(0)
 
       const persistedSettings = await readPersistedSettings()
 

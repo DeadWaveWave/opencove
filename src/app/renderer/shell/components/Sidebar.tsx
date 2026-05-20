@@ -22,8 +22,6 @@ import { getWorkspaceAgents } from '../utils/sidebarAgents'
 type SidebarProps = {
   workspaces: WorkspaceState[]
   activeWorkspaceId: string | null
-  activeProviderLabel: string
-  activeProviderModel: string
   persistNotice: PersistNotice | null
   onAddWorkspace: () => void
   onSelectWorkspace: (workspaceId: string) => void
@@ -208,8 +206,6 @@ function WorkspaceItemOverlay({
 export function Sidebar({
   workspaces,
   activeWorkspaceId,
-  activeProviderLabel,
-  activeProviderModel,
   persistNotice,
   onAddWorkspace,
   onSelectWorkspace,
@@ -281,12 +277,6 @@ export function Sidebar({
         >
           {t('sidebar.addProject')}
         </button>
-      </div>
-
-      <div className="workspace-sidebar__agent">
-        <span className="workspace-sidebar__agent-label">{t('sidebar.defaultAgent')}</span>
-        <strong className="workspace-sidebar__agent-provider">{activeProviderLabel}</strong>
-        <span className="workspace-sidebar__agent-model">{activeProviderModel}</span>
       </div>
 
       {persistNotice ? (

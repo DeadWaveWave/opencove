@@ -7,7 +7,6 @@ import {
   useRendererFrameSampler,
   useRendererMemoryTrend,
 } from '@app/renderer/performanceDiagnostics/rendererDiagnosticsSampling'
-import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { AppHeader } from './components/AppHeader'
 import { AppShellBootBoundary } from './components/AppShellBootBoundary'
@@ -264,9 +263,6 @@ export default function App(): React.JSX.Element {
     onChangeSettings: setAgentSettings,
   })
 
-  const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
-  const activeProviderModel =
-    resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? t('common.defaultFollowCli')
   const handleAddWorkspace = useCallback((): void => {
     setIsFocusNodeTargetZoomPreviewing(false)
     openAddProjectWizard()
@@ -354,8 +350,6 @@ export default function App(): React.JSX.Element {
             <Sidebar
               workspaces={workspaces}
               activeWorkspaceId={activeWorkspaceId}
-              activeProviderLabel={activeProviderLabel}
-              activeProviderModel={activeProviderModel}
               persistNotice={persistNotice}
               onAddWorkspace={handleAddWorkspace}
               onSelectWorkspace={handleSelectWorkspace}

@@ -18,7 +18,7 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
     pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.agent.defaultAgentLabel',
     descriptionKey: 'settingsPanel.agent.defaultAgentHelp',
-    anchorId: 'settings-default-provider',
+    anchorId: 'settings-agent-list',
     keywords: ['provider', 'claude', 'codex', 'gemini', 'opencode', '默认'],
   },
   {
@@ -27,7 +27,7 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
     pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.agent.agentProviderOrderLabel',
     descriptionKey: 'settingsPanel.agent.agentProviderOrderHelp',
-    anchorId: 'settings-section-agent',
+    anchorId: 'settings-agent-list',
     keywords: ['provider', 'order', 'menu', '排序'],
   },
   {
@@ -64,9 +64,9 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
     id: 'agent.executable',
     pageId: 'agent',
     pageLabelKey: 'settingsPanel.nav.agent',
-    titleKey: 'settingsPanel.agentExecutable.title',
+    titleKey: 'settingsPanel.agent.agentListLabel',
     descriptionKey: 'settingsPanel.agentExecutable.help',
-    anchorId: 'settings-section-agent-executable',
-    keywords: ['path', 'binary', 'executable', 'override', '路径', '可执行文件'],
+    anchorId: 'settings-agent-list',
+    keywords: ['install', 'binary', 'executable', 'npm', '安装', '可执行文件'],
   },
 ]

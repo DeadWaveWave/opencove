@@ -193,8 +193,6 @@ describe('Sidebar', () => {
       <Sidebar
         workspaces={[createWorkspace('workspace-a'), createWorkspace('workspace-b')]}
         activeWorkspaceId="workspace-a"
-        activeProviderLabel="Codex"
-        activeProviderModel="gpt-5.2-codex"
         persistNotice={null}
         onAddWorkspace={() => undefined}
         onSelectWorkspace={() => undefined}
@@ -240,8 +238,6 @@ describe('Sidebar', () => {
       <Sidebar
         workspaces={[createWorkspace('workspace-a', { hasAgent: true })]}
         activeWorkspaceId="workspace-a"
-        activeProviderLabel="Codex"
-        activeProviderModel="gpt-5.2-codex"
         persistNotice={null}
         onAddWorkspace={() => undefined}
         onSelectWorkspace={onSelectWorkspace}
@@ -280,8 +276,6 @@ describe('Sidebar', () => {
       <Sidebar
         workspaces={[createWorkspace('workspace-a', { hasAgent: true, spaceLabelColor: 'blue' })]}
         activeWorkspaceId="workspace-a"
-        activeProviderLabel="Codex"
-        activeProviderModel="gpt-5.2-codex"
         persistNotice={null}
         onAddWorkspace={() => undefined}
         onSelectWorkspace={() => undefined}
@@ -305,8 +299,6 @@ describe('Sidebar', () => {
       <Sidebar
         workspaces={[createWorkspace('workspace-a', { hasAgent: true })]}
         activeWorkspaceId="workspace-a"
-        activeProviderLabel="Codex"
-        activeProviderModel="gpt-5.2-codex"
         persistNotice={null}
         onAddWorkspace={() => undefined}
         onSelectWorkspace={onSelectWorkspace}

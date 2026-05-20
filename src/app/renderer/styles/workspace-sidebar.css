@@ -75,31 +75,6 @@
   transform: translateY(1px);
 }
 
-.workspace-sidebar__agent {
-  border: 1px solid var(--cove-border-subtle);
-  background: var(--cove-field);
-  border-radius: 12px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.workspace-sidebar__agent-label {
-  font-size: calc(11px * var(--cove-ui-font-scale));
-  color: var(--cove-text-faint);
-}
-
-.workspace-sidebar__agent-provider {
-  font-size: calc(13px * var(--cove-ui-font-scale));
-  color: var(--cove-text);
-}
-
-.workspace-sidebar__agent-model {
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  color: var(--cove-text-muted);
-}
-
 .workspace-sidebar__persist-alert {
   border: 1px solid var(--cove-border-subtle);
   border-radius: 12px;
