@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import type { FitAddon } from '@xterm/addon-fit'
 
 export type TerminalRenderDimensions = {
   css?: {
@@ -62,5 +63,20 @@ export function runTerminalRenderMutationSafely(mutation: () => void): boolean {
     }
 
     throw error
+  }
+}
+
+export function installFitAddonDetachedRendererGuard(fitAddon: FitAddon): void {
+  const proposeDimensions = fitAddon.proposeDimensions.bind(fitAddon)
+  fitAddon.proposeDimensions = () => {
+    try {
+      return proposeDimensions() ?? undefined
+    } catch (error) {
+      if (isTerminalRenderServiceDetachedError(error)) {
+        return undefined
+      }
+
+      throw error
+    }
   }
 }

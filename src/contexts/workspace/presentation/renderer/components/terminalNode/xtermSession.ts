@@ -21,6 +21,7 @@ import {
 } from './preferredRenderer'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
 import { installTerminalEffectiveDevicePixelRatioController } from './effectiveDevicePixelRatio'
+import { installFitAddonDetachedRendererGuard } from './renderServiceSafety'
 import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
 import { registerTerminalDisplayMeasurementHandle } from '@contexts/settings/presentation/renderer/terminalDisplayMeasurement'
 
@@ -115,6 +116,7 @@ export function createMountedXtermSession({
     ...(initialDimensions ?? {}),
   })
   const fitAddon = new FitAddon()
+  installFitAddonDetachedRendererGuard(fitAddon)
   const serializeAddon = new SerializeAddon()
   const unicode11Addon = new Unicode11Addon()
   terminal.loadAddon(fitAddon)

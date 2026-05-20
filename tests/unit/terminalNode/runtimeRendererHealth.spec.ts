@@ -3,6 +3,7 @@ import {
   registerRuntimeTerminalRendererHealth,
   resolveTerminalRendererHealthIssue,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/runtimeRendererHealth'
+import { installFitAddonDetachedRendererGuard } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/renderServiceSafety'
 
 class MockResizeObserver {
   public observe = vi.fn()
@@ -163,6 +164,18 @@ describe('runtime renderer health', () => {
       trigger: 'mutation',
       forceDom: true,
     })
+  })
+
+  it('guards fit measurements during a transient detached renderer read', () => {
+    const fitAddon = {
+      proposeDimensions: vi.fn(() => {
+        throw new TypeError("Cannot read properties of undefined (reading 'dimensions')")
+      }),
+    }
+
+    installFitAddonDetachedRendererGuard(fitAddon as never)
+
+    expect(fitAddon.proposeDimensions()).toBeUndefined()
   })
 
   it('rebuilds from worker truth after a blank canvas is detected', () => {
