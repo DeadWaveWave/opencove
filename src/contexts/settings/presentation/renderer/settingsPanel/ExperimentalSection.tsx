@@ -7,30 +7,25 @@ import {
   type BrowserSearchEngineId,
 } from '@contexts/settings/domain/browserSettings'
 import type { BrowserMode } from '@shared/contracts/dto'
-import { ExperimentalWorkerWebUiSection } from './ExperimentalWorkerWebUiSection'
 
 export function ExperimentalSection({
   websiteWindowPolicy,
   browserDefaultMode,
   browserSearchEngine,
   websiteWindowPasteEnabled,
-  remoteWorkersEnabled,
   onChangeWebsiteWindowPolicy,
   onChangeBrowserDefaultMode,
   onChangeBrowserSearchEngine,
   onChangeWebsiteWindowPasteEnabled,
-  onChangeRemoteWorkersEnabled,
 }: {
   websiteWindowPolicy: WebsiteWindowPolicy
   browserDefaultMode: BrowserMode
   browserSearchEngine: BrowserSearchEngineId
   websiteWindowPasteEnabled: boolean
-  remoteWorkersEnabled: boolean
   onChangeWebsiteWindowPolicy: (policy: WebsiteWindowPolicy) => void
   onChangeBrowserDefaultMode: (mode: BrowserMode) => void
   onChangeBrowserSearchEngine: (engine: BrowserSearchEngineId) => void
   onChangeWebsiteWindowPasteEnabled: (enabled: boolean) => void
-  onChangeRemoteWorkersEnabled: (enabled: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const [keepAliveHostDraft, setKeepAliveHostDraft] = useState('')
@@ -74,35 +69,6 @@ export function ExperimentalSection({
   return (
     <div className="settings-panel__section" id="settings-section-experimental">
       <h3 className="settings-panel__section-title">{t('settingsPanel.experimental.title')}</h3>
-
-      <ExperimentalWorkerWebUiSection />
-
-      <div className="settings-panel__subsection" id="settings-section-experimental-remote-workers">
-        <div className="settings-panel__subsection-header">
-          <h4 className="settings-panel__section-title">
-            {t('settingsPanel.experimental.remoteWorkersTitle')}
-          </h4>
-          <span>{t('settingsPanel.experimental.remoteWorkersHelp')}</span>
-        </div>
-
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.experimental.remoteWorkersEnabledLabel')}</strong>
-            <span>{t('settingsPanel.experimental.remoteWorkersEnabledHelp')}</span>
-          </div>
-          <div className="settings-panel__control">
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                data-testid="settings-experimental-remote-workers-enabled"
-                checked={remoteWorkersEnabled}
-                onChange={event => onChangeRemoteWorkersEnabled(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
 
       <div className="settings-panel__subsection" id="settings-section-website-windows">
         <div className="settings-panel__subsection-header">

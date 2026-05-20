@@ -33,12 +33,16 @@ export interface SettingsPanelProps {
 
 type CorePageId =
   | 'general'
+  | 'appearance'
+  | 'canvas-windows'
   | 'worker'
   | 'endpoints'
   | 'agent'
+  | 'tasks-shortcuts'
   | 'quick-menu'
   | 'notifications'
   | 'canvas'
+  | 'advanced'
   | 'experimental'
   | 'shortcuts'
   | 'task-configuration'

@@ -2,6 +2,16 @@ import { useEffect, useMemo, useState, type RefObject } from 'react'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { isWorkspacePageId, type SettingsPageId } from './SettingsPanel.shared'
 
+type StaticSettingsPageId = Exclude<SettingsPageId, `workspace:${string}`>
+
+const SETTINGS_PAGE_SCROLL_TARGET: Partial<Record<StaticSettingsPageId, string>> = {
+  endpoints: 'settings-section-endpoints',
+  diagnostics: 'settings-section-diagnostics',
+  'quick-menu': 'settings-section-quick-commands',
+  shortcuts: 'settings-section-shortcuts',
+  'task-configuration': 'settings-section-task-configuration',
+}
+
 export function useSettingsPanelPageState(options: {
   openPageId?: SettingsPageId | null
   workspaces: WorkspaceState[]
@@ -44,10 +54,21 @@ export function useSettingsPanelPageState(options: {
     }
 
     contentRef.current.scrollTop = 0
+
+    const targetId = isWorkspacePageId(activePageId)
+      ? undefined
+      : SETTINGS_PAGE_SCROLL_TARGET[activePageId]
+    if (!targetId) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: 'start' })
+    })
   }, [activePageId, contentRef])
 
   useEffect(() => {
-    if (activePageId !== 'canvas') {
+    if (activePageId !== 'canvas' && activePageId !== 'canvas-windows') {
       onFocusNodeTargetZoomPreviewChange(false)
     }
   }, [activePageId, onFocusNodeTargetZoomPreviewChange])

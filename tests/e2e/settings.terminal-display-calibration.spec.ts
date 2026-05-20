@@ -141,9 +141,9 @@ test.describe('Settings - Terminal Display Calibration', () => {
       await expect(settingsButton).toBeVisible()
       await settingsButton.click({ noWaitAfter: true })
 
-      const generalNav = window.locator('[data-testid="settings-section-nav-general"]')
-      await expect(generalNav).toBeVisible()
-      await generalNav.click()
+      const appearanceNav = window.locator('[data-testid="settings-section-nav-appearance"]')
+      await expect(appearanceNav).toBeVisible()
+      await appearanceNav.click()
 
       const setReferenceButton = window.locator(
         '[data-testid="settings-terminal-display-set-reference"]',

@@ -9,6 +9,7 @@ import {
 import type { AppUpdateState } from '../../../src/shared/contracts/dto'
 import * as terminalProfilesHook from '../../../src/app/renderer/shell/hooks/useTerminalProfiles'
 import { SettingsPanel } from '../../../src/contexts/settings/presentation/renderer/SettingsPanel'
+import { installSettingsPanelWorkerApi } from './settingsPanelWorkerApiTestUtils'
 
 function createModelCatalog() {
   return AGENT_PROVIDERS.reduce<
@@ -129,9 +130,11 @@ describe('SettingsPanel', () => {
     })
   })
 
-  it('exposes terminal display consistency controls in general settings', () => {
+  it('exposes terminal display consistency controls in display settings', () => {
     mockTerminalProfiles()
     renderSettingsPanel()
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-appearance'))
 
     expect(screen.getByText('Terminal Display Consistency')).toBeVisible()
     expect(screen.getByText('Set Reference Automatically')).toBeVisible()
@@ -322,12 +325,13 @@ describe('SettingsPanel', () => {
     expect(onDownloadUpdate).toHaveBeenCalledTimes(1)
   })
 
-  it('toggles experimental remote workers from experimental settings', () => {
+  it('toggles remote workers from Worker & Connections settings', () => {
     const onChange = vi.fn()
     mockTerminalProfiles()
+    installSettingsPanelWorkerApi()
     renderSettingsPanel({ onChange })
 
-    fireEvent.click(screen.getByTestId('settings-section-nav-experimental'))
+    fireEvent.click(screen.getByTestId('settings-section-nav-worker'))
     fireEvent.click(screen.getByTestId('settings-experimental-remote-workers-enabled'))
 
     expect(onChange).toHaveBeenCalledWith({

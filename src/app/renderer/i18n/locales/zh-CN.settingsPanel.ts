@@ -1,6 +1,7 @@
 import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibration'
 import { zhCNSettingsPanelDiagnostics } from './zh-CN.settingsPanel.diagnostics'
 import { zhCNSettingsPanelEndpoints } from './zh-CN.settingsPanel.endpoints'
+import { zhCNSettingsPanelLayout } from './zh-CN.settingsPanel.layout'
 import { zhCNWorkspaceCanvasNavigationShortcutCommands } from './zh-CN.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const zhCNSettingsPanel = {
@@ -10,23 +11,7 @@ export const zhCNSettingsPanel = {
     placeholder: '搜索',
     noResults: '未找到匹配的设置',
   },
-  nav: {
-    general: '通用',
-    worker: 'Worker',
-    endpoints: '远程 Worker',
-    agent: 'Agent',
-    notifications: '通知',
-    canvas: '画布',
-    experimental: '实验性',
-    shortcuts: '快捷键',
-    quickMenu: '快捷菜单',
-    tasks: '任务',
-    models: '模型',
-    integrations: '集成',
-    diagnostics: '诊断',
-    projects: '项目',
-    sectionsLabel: '设置分区',
-  },
+  nav: zhCNSettingsPanelLayout.nav,
   general: {
     title: '通用',
     languageLabel: '界面语言',
@@ -85,6 +70,8 @@ export const zhCNSettingsPanel = {
       },
     },
   },
+  appearance: zhCNSettingsPanelLayout.appearance,
+  terminal: zhCNSettingsPanelLayout.terminal,
   agent: {
     title: 'Agent',
     defaultAgentLabel: '默认 Agent',
@@ -227,6 +214,7 @@ export const zhCNSettingsPanel = {
   },
   experimental: {
     title: '实验性',
+    help: '低频且仍在演进的能力。没有明确需要时建议保持默认。',
     remoteWorkersTitle: '远程 Worker 与位置',
     remoteWorkersHelp:
       '远程 Worker 与远程项目位置（mount）的实验性支持。在工作流稳定前建议保持关闭。',
@@ -295,6 +283,7 @@ export const zhCNSettingsPanel = {
     websiteWindowKeepAliveHostsHelp: '匹配的 host 不会被回收（例如 slack.com、*.figma.com）。',
     websiteWindowKeepAliveHostsPlaceholder: '添加 host pattern（例如 *.figma.com）',
   },
+  workerConnections: zhCNSettingsPanelLayout.workerConnections,
   shortcuts: {
     title: '快捷键',
     disableWhenTerminalFocusedLabel: '终端聚焦时禁用快捷键',
@@ -410,7 +399,7 @@ export const zhCNSettingsPanel = {
     errors: {
       remoteRequired: '远程 Worker 需要填写主机、端口和 Token。',
       remoteExperimentalDisabled:
-        '远程 Worker 为实验性功能。请先在「实验性」设置中启用远程 Worker 后再继续。',
+        '远程 Worker 为实验性功能。请先在「Worker 与连接」中启用远程 Worker 后再继续。',
       stopLocalWorkerFirst: '切换到 Standalone 前请先停止本机 Worker。',
       enableLocalRequiresRestart: '请先启用本机 Worker 模式并重启，然后再启动 Worker。',
     },
@@ -452,7 +441,7 @@ export const zhCNSettingsPanel = {
     },
     local: {
       title: '本机 Worker 状态',
-      help: '默认仅监听 127.0.0.1，并要求 token。远程访问建议使用 SSH tunnel。Worker Web UI 为实验性功能（见“实验性”设置）。',
+      help: '默认仅监听 127.0.0.1，并要求 token。远程访问建议使用 SSH tunnel。Worker Web UI 位于「Worker 与连接」。',
       statusLabel: '状态',
       status: {
         running: '运行中',

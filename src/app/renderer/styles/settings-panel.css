@@ -28,70 +28,6 @@
     border-color 180ms ease;
 }
 
-/* --- Sidebar --- */
-.settings-panel__sidebar {
-  background: var(--cove-settings-sidebar-background);
-  border-right: 1px solid var(--cove-border-subtle);
-  padding: 28px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  overflow-y: auto;
-  min-height: 0;
-  transition:
-    background 180ms ease,
-    backdrop-filter 180ms ease;
-}
-
-.settings-panel__nav-button {
-  all: unset;
-  padding: 9px 14px;
-  border-radius: 10px;
-  font-size: calc(13px * var(--cove-ui-font-scale));
-  color: var(--cove-text-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.settings-panel__nav-button:hover {
-  color: var(--cove-text);
-  background: var(--cove-surface-hover);
-}
-
-.settings-panel__nav-button--active {
-  color: var(--cove-text);
-  background: rgba(94, 156, 255, 0.12);
-  font-weight: 500;
-}
-
-.settings-panel__nav-button--active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  background: #5e9cff;
-  border-radius: 0 2px 2px 0;
-}
-
-.settings-panel__nav-group-label {
-  margin-top: 20px;
-  padding: 0 14px;
-  font-size: calc(11px * var(--cove-ui-font-scale));
-  font-weight: 600;
-  color: var(--cove-text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.settings-panel__nav-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 /* --- Content Layout --- */
 .settings-panel__content-wrapper {
   display: flex;
@@ -150,10 +86,16 @@
 .settings-panel__section-title {
   font-size: calc(12px * var(--cove-ui-font-scale));
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #5e9cff;
+  letter-spacing: 0;
+  color: var(--cove-accent);
   margin: 0;
+}
+
+.settings-panel__section-help {
+  max-width: 620px;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.45;
+  color: var(--cove-text-muted);
 }
 
 /* --- Setting Rows --- */
@@ -380,7 +322,7 @@
 }
 
 .cove-toggle input:checked + .cove-toggle__slider {
-  background-color: #5e9cff;
+  background-color: var(--cove-accent);
 }
 
 .cove-toggle input:checked + .cove-toggle__slider:before {
@@ -481,7 +423,7 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #5e9cff;
+  accent-color: var(--cove-accent);
 }
 
 .settings-panel .cove-select,

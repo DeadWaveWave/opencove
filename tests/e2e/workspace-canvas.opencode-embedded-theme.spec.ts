@@ -63,6 +63,7 @@ test.describe('Workspace Canvas - OpenCode Embedded Theme', () => {
 
       const settingsButton = window.locator('[data-testid="app-header-settings"]')
       await settingsButton.click({ noWaitAfter: true })
+      await window.locator('[data-testid="settings-section-nav-appearance"]').click()
 
       await selectCoveOption(window, 'settings-ui-theme', 'light')
 

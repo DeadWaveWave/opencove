@@ -35,6 +35,34 @@ export function SettingsPanelSidebar({
   )
   const hasSearchQuery = searchQuery.trim().length > 0
   const visibleSearchResults = searchResults.slice(0, 8)
+  const hasSecondaryActivePage =
+    activePageId === 'endpoints' ||
+    activePageId === 'diagnostics' ||
+    activePageId === 'shortcuts' ||
+    activePageId === 'quick-menu'
+  const effectiveActivePageId = (() => {
+    if (
+      activePageId === 'quick-menu' ||
+      activePageId === 'shortcuts' ||
+      activePageId === 'task-configuration'
+    ) {
+      return 'tasks-shortcuts'
+    }
+
+    if (activePageId === 'experimental' || activePageId === 'diagnostics') {
+      return 'advanced'
+    }
+
+    if (activePageId === 'endpoints') {
+      return 'worker'
+    }
+
+    if (activePageId === 'canvas') {
+      return 'canvas-windows'
+    }
+
+    return activePageId
+  })()
 
   return (
     <aside className="settings-panel__sidebar" aria-label={t('settingsPanel.nav.sectionsLabel')}>
@@ -78,14 +106,60 @@ export function SettingsPanelSidebar({
       ) : null}
 
       <SettingsPanelNavButton
-        isActive={activePageId === 'general'}
+        isActive={effectiveActivePageId === 'general'}
         label={t('settingsPanel.nav.general')}
         testId="settings-section-nav-general"
         onClick={() => onSelectPage('general')}
       />
       <SettingsPanelNavButton
-        isActive={activePageId === 'worker'}
-        label={t('settingsPanel.nav.worker')}
+        isActive={effectiveActivePageId === 'appearance'}
+        label={t('settingsPanel.nav.appearance')}
+        testId="settings-section-nav-appearance"
+        onClick={() => onSelectPage('appearance')}
+      />
+      <SettingsPanelNavButton
+        isActive={effectiveActivePageId === 'canvas-windows'}
+        label={t('settingsPanel.nav.canvasWindows')}
+        testId="settings-section-nav-canvas"
+        onClick={() => onSelectPage('canvas-windows')}
+      />
+      <SettingsPanelNavButton
+        isActive={effectiveActivePageId === 'agent'}
+        label={t('settingsPanel.nav.agent')}
+        testId="settings-section-nav-agent"
+        onClick={() => onSelectPage('agent')}
+      />
+      <SettingsPanelNavButton
+        isActive={effectiveActivePageId === 'tasks-shortcuts'}
+        isCurrent={!hasSecondaryActivePage}
+        label={t('settingsPanel.nav.tasksShortcuts')}
+        testId="settings-section-nav-task-configuration"
+        onClick={() => onSelectPage('tasks-shortcuts')}
+      />
+      <SettingsPanelNavButton
+        isActive={activePageId === 'shortcuts'}
+        label={t('settingsPanel.nav.shortcuts')}
+        testId="settings-section-nav-shortcuts"
+        tone="secondary"
+        onClick={() => onSelectPage('shortcuts')}
+      />
+      <SettingsPanelNavButton
+        isActive={activePageId === 'quick-menu'}
+        label={t('settingsPanel.nav.quickMenu')}
+        testId="settings-section-nav-quick-menu"
+        tone="secondary"
+        onClick={() => onSelectPage('quick-menu')}
+      />
+      <SettingsPanelNavButton
+        isActive={effectiveActivePageId === 'notifications'}
+        label={t('settingsPanel.nav.notifications')}
+        testId="settings-section-nav-notifications"
+        onClick={() => onSelectPage('notifications')}
+      />
+      <SettingsPanelNavButton
+        isActive={effectiveActivePageId === 'worker'}
+        isCurrent={!hasSecondaryActivePage}
+        label={t('settingsPanel.nav.workerConnections')}
         testId="settings-section-nav-worker"
         onClick={() => onSelectPage('worker')}
       />
@@ -94,62 +168,29 @@ export function SettingsPanelSidebar({
           isActive={activePageId === 'endpoints'}
           label={t('settingsPanel.nav.endpoints')}
           testId="settings-section-nav-endpoints"
+          tone="secondary"
           onClick={() => onSelectPage('endpoints')}
         />
       ) : null}
       <SettingsPanelNavButton
-        isActive={activePageId === 'agent'}
-        label={t('settingsPanel.nav.agent')}
-        testId="settings-section-nav-agent"
-        onClick={() => onSelectPage('agent')}
-      />
-      <SettingsPanelNavButton
-        isActive={activePageId === 'notifications'}
-        label={t('settingsPanel.nav.notifications')}
-        testId="settings-section-nav-notifications"
-        onClick={() => onSelectPage('notifications')}
-      />
-      <SettingsPanelNavButton
-        isActive={activePageId === 'canvas'}
-        label={t('settingsPanel.nav.canvas')}
-        testId="settings-section-nav-canvas"
-        onClick={() => onSelectPage('canvas')}
-      />
-      <SettingsPanelNavButton
-        isActive={activePageId === 'shortcuts'}
-        label={t('settingsPanel.nav.shortcuts')}
-        testId="settings-section-nav-shortcuts"
-        onClick={() => onSelectPage('shortcuts')}
-      />
-      <SettingsPanelNavButton
-        isActive={activePageId === 'quick-menu'}
-        label={t('settingsPanel.nav.quickMenu')}
-        testId="settings-section-nav-quick-menu"
-        onClick={() => onSelectPage('quick-menu')}
-      />
-      <SettingsPanelNavButton
-        isActive={activePageId === 'task-configuration'}
-        label={t('settingsPanel.nav.tasks')}
-        testId="settings-section-nav-task-configuration"
-        onClick={() => onSelectPage('task-configuration')}
-      />
-      <SettingsPanelNavButton
-        isActive={activePageId === 'integrations'}
+        isActive={effectiveActivePageId === 'integrations'}
         label={t('settingsPanel.nav.integrations')}
         testId="settings-section-nav-integrations"
         onClick={() => onSelectPage('integrations')}
       />
       <SettingsPanelNavButton
+        isActive={effectiveActivePageId === 'advanced'}
+        isCurrent={!hasSecondaryActivePage}
+        label={t('settingsPanel.nav.advanced')}
+        testId="settings-section-nav-experimental"
+        onClick={() => onSelectPage('advanced')}
+      />
+      <SettingsPanelNavButton
         isActive={activePageId === 'diagnostics'}
         label={t('settingsPanel.nav.diagnostics')}
         testId="settings-section-nav-diagnostics"
+        tone="secondary"
         onClick={() => onSelectPage('diagnostics')}
-      />
-      <SettingsPanelNavButton
-        isActive={activePageId === 'experimental'}
-        label={t('settingsPanel.nav.experimental')}
-        testId="settings-section-nav-experimental"
-        onClick={() => onSelectPage('experimental')}
       />
 
       <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>

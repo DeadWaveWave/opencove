@@ -20,7 +20,6 @@ import {
   getCanvasWheelZoomModifierLabel,
   getStandardWindowSizeBucketLabel,
 } from '@app/renderer/i18n/labels'
-import type { TerminalProfile } from '@shared/contracts/dto'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function CanvasSection(props: {
@@ -33,14 +32,10 @@ export function CanvasSection(props: {
   focusNodeUseVisibleCanvasCenter: boolean
   archiveSpaceDeleteWorktreeByDefault: boolean
   archiveSpaceDeleteBranchByDefault: boolean
-  defaultTerminalProfileId: string | null
-  terminalProfiles: TerminalProfile[]
-  detectedDefaultTerminalProfileId: string | null
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
   onChangeCanvasWheelBehavior: (behavior: CanvasWheelBehavior) => void
   onChangeCanvasWheelZoomModifier: (modifier: CanvasWheelZoomModifier) => void
   onChangeStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket) => void
-  onChangeDefaultTerminalProfileId: (profileId: string | null) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
   onChangeFocusNodeUseVisibleCanvasCenter: (enabled: boolean) => void
@@ -59,14 +54,10 @@ export function CanvasSection(props: {
     focusNodeUseVisibleCanvasCenter,
     archiveSpaceDeleteWorktreeByDefault,
     archiveSpaceDeleteBranchByDefault,
-    defaultTerminalProfileId,
-    terminalProfiles,
-    detectedDefaultTerminalProfileId,
     onChangeCanvasInputMode,
     onChangeCanvasWheelBehavior,
     onChangeCanvasWheelZoomModifier,
     onChangeStandardWindowSizeBucket,
-    onChangeDefaultTerminalProfileId,
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
     onChangeFocusNodeUseVisibleCanvasCenter,
@@ -99,11 +90,6 @@ export function CanvasSection(props: {
   const focusTargetZoomRangeStyle: React.CSSProperties & Record<string, string | number> = {
     '--settings-panel-range-neutral-ratio': neutralTargetZoomRatio,
   }
-  const selectedProfileId = terminalProfiles.some(
-    profile => profile.id === defaultTerminalProfileId,
-  )
-    ? defaultTerminalProfileId
-    : null
   return (
     <div className="settings-panel__section" id="settings-section-canvas">
       <h3 className="settings-panel__section-title">{t('settingsPanel.canvas.title')}</h3>
@@ -195,46 +181,6 @@ export function CanvasSection(props: {
           />
         </div>
       </div>
-
-      {terminalProfiles.length > 0 ? (
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.canvas.terminalProfileLabel')}</strong>
-            <span>
-              {t('settingsPanel.canvas.terminalProfileHelp', {
-                defaultProfile:
-                  terminalProfiles.find(profile => profile.id === detectedDefaultTerminalProfileId)
-                    ?.label ?? t('settingsPanel.canvas.terminalProfileAuto'),
-              })}
-            </span>
-          </div>
-          <div className="settings-panel__control">
-            <CoveSelect
-              id="settings-terminal-profile"
-              testId="settings-terminal-profile"
-              value={selectedProfileId ?? ''}
-              options={[
-                {
-                  value: '',
-                  label: t('settingsPanel.canvas.terminalProfileAutoWithDefault', {
-                    defaultProfile:
-                      terminalProfiles.find(
-                        profile => profile.id === detectedDefaultTerminalProfileId,
-                      )?.label ?? t('settingsPanel.canvas.terminalProfileAuto'),
-                  }),
-                },
-                ...terminalProfiles.map(profile => ({
-                  value: profile.id,
-                  label: profile.label,
-                })),
-              ]}
-              onChange={nextValue =>
-                onChangeDefaultTerminalProfileId(nextValue.trim().length > 0 ? nextValue : null)
-              }
-            />
-          </div>
-        </div>
-      ) : null}
 
       <div className="settings-panel__row" id="settings-focus-node-on-click">
         <div className="settings-panel__row-label">

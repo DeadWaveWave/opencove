@@ -102,6 +102,10 @@ function renderSettingsPanel({
   )
 }
 
+function openAppearanceSettings(): void {
+  fireEvent.click(screen.getByTestId('settings-section-nav-appearance'))
+}
+
 function createReference() {
   return {
     version: 1 as const,
@@ -136,6 +140,7 @@ describe('SettingsPanel terminal display controls', () => {
   it('persists the automatic reference setup toggle', () => {
     const onChange = vi.fn()
     renderSettingsPanel({ onChange })
+    openAppearanceSettings()
 
     fireEvent.click(screen.getByTestId('settings-terminal-display-auto-reference'))
 
@@ -148,6 +153,7 @@ describe('SettingsPanel terminal display controls', () => {
   it('persists the automatic calibration compensation toggle', () => {
     const onChange = vi.fn()
     renderSettingsPanel({ onChange })
+    openAppearanceSettings()
 
     fireEvent.click(screen.getByTestId('settings-terminal-display-compensation'))
 
@@ -182,6 +188,7 @@ describe('SettingsPanel terminal display controls', () => {
     renderSettingsPanel({
       settings: { ...DEFAULT_AGENT_SETTINGS, terminalDisplayReference: reference },
     })
+    openAppearanceSettings()
 
     expect(screen.getByText(/Match: Exact/)).toBeVisible()
     expect(screen.queryByText(/score/i)).not.toBeInTheDocument()
@@ -216,6 +223,7 @@ describe('SettingsPanel terminal display controls', () => {
         terminalDisplayReference: reference,
       },
     })
+    openAppearanceSettings()
 
     expect(screen.getByText(/saved adjustment is available but paused/i)).toBeVisible()
   })

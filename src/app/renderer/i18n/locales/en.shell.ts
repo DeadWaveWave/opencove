@@ -25,8 +25,9 @@ export const enShell = {
     remotePathMustBeAbsolute: 'Remote path must be absolute.',
     openEndpointsAction: 'Add remote worker…',
     remoteExperimentalTitle: 'Remote mounts are experimental',
-    remoteExperimentalHint: 'Enable Remote Workers in Settings → Experimental to manage them.',
-    openExperimentalAction: 'Open Experimental',
+    remoteExperimentalHint:
+      'Enable Remote Workers in Settings → Worker & Connections to manage them.',
+    openExperimentalAction: 'Open Worker & Connections',
   },
   spaceTargetMountPicker: {
     title: 'Select target location',

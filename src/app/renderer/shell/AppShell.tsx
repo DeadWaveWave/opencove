@@ -423,7 +423,7 @@ export default function App(): React.JSX.Element {
           onOpenSettings={handleOpenSettings}
           onRequestOpenEndpoints={() => {
             handleOpenSettings(
-              agentSettings.experimentalRemoteWorkersEnabled ? 'endpoints' : 'experimental',
+              agentSettings.experimentalRemoteWorkersEnabled ? 'endpoints' : 'worker',
             )
           }}
           onOpenSpaceArchives={openSpaceArchives}

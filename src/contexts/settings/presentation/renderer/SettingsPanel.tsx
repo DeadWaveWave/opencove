@@ -7,19 +7,16 @@ import {
   resolveTaskTitleProvider,
   type AgentProvider,
 } from '@contexts/settings/domain/agentSettings'
-import { CanvasSection } from './settingsPanel/CanvasSection'
-import { EndpointsSection } from './settingsPanel/EndpointsSection'
-import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
+import { AdvancedSection } from './settingsPanel/AdvancedSection'
+import { CanvasWindowsSection } from './settingsPanel/CanvasWindowsSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
-import { DiagnosticsSection } from './settingsPanel/DiagnosticsSection'
+import { AppearanceSection } from './settingsPanel/AppearanceSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { NotificationsSection } from './settingsPanel/NotificationsSection'
 import { SettingsPanelSidebar } from './settingsPanel/SettingsPanelSidebar'
-import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
-import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
-import { QuickMenuSection } from './settingsPanel/QuickMenuSection'
+import { TasksAndShortcutsSection } from './settingsPanel/TasksAndShortcutsSection'
 import { AgentSettingsPage } from './settingsPanel/AgentSettingsPage'
-import { WorkerSection } from './settingsPanel/WorkerSection'
+import { WorkerConnectionsSection } from './settingsPanel/WorkerConnectionsSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import type { SettingsSearchResult } from './settingsPanel/settingsSearchIndex'
 import {
@@ -212,8 +209,32 @@ export function SettingsPanel({
       return
     }
 
-    setActivePageId('experimental')
+    setActivePageId('worker')
   }, [activePageId, setActivePageId, settings.experimentalRemoteWorkersEnabled])
+
+  const renderedPageId = (() => {
+    if (activePageId === 'canvas') {
+      return 'canvas-windows'
+    }
+
+    if (
+      activePageId === 'shortcuts' ||
+      activePageId === 'quick-menu' ||
+      activePageId === 'task-configuration'
+    ) {
+      return 'tasks-shortcuts'
+    }
+
+    if (activePageId === 'experimental' || activePageId === 'diagnostics') {
+      return 'advanced'
+    }
+
+    if (activePageId === 'endpoints') {
+      return 'worker'
+    }
+
+    return activePageId
+  })()
 
   const selectSearchResult = (result: SettingsSearchResult): void => {
     setActivePageId(result.pageId)
@@ -254,9 +275,23 @@ export function SettingsPanel({
             </button>
           </div>
           <div className="settings-panel__content" ref={contentRef}>
-            {activePageId === 'general' ? (
+            {renderedPageId === 'general' ? (
               <GeneralSection
                 language={settings.language}
+                updatePolicy={settings.updatePolicy}
+                updateChannel={settings.updateChannel}
+                updateState={updateState}
+                onChangeLanguage={updateLanguage}
+                onChangeUpdatePolicy={updateUpdatePolicy}
+                onChangeUpdateChannel={updateUpdateChannel}
+                onCheckForUpdates={onCheckForUpdates}
+                onDownloadUpdate={onDownloadUpdate}
+                onInstallUpdate={onInstallUpdate}
+              />
+            ) : null}
+
+            {renderedPageId === 'appearance' ? (
+              <AppearanceSection
                 uiTheme={settings.uiTheme}
                 uiFontSize={settings.uiFontSize}
                 terminalFontSize={settings.terminalFontSize}
@@ -266,10 +301,6 @@ export function SettingsPanel({
                   settings.terminalDisplayCalibrationCompensationEnabled
                 }
                 terminalDisplayReference={settings.terminalDisplayReference}
-                updatePolicy={settings.updatePolicy}
-                updateChannel={settings.updateChannel}
-                updateState={updateState}
-                onChangeLanguage={updateLanguage}
                 onChangeUiTheme={updateUiTheme}
                 onChangeUiFontSize={updateUiFontSize}
                 onChangeTerminalFontSize={updateTerminalFontSize}
@@ -277,23 +308,17 @@ export function SettingsPanel({
                 onChangeTerminalDisplayAutoReferenceEnabled={updateTerminalAutoReference}
                 onChangeTerminalDisplayCalibrationCompensationEnabled={updateTerminalCompensation}
                 onChangeTerminalDisplayReference={updateTerminalDisplayReference}
-                onChangeUpdatePolicy={updateUpdatePolicy}
-                onChangeUpdateChannel={updateUpdateChannel}
-                onCheckForUpdates={onCheckForUpdates}
-                onDownloadUpdate={onDownloadUpdate}
-                onInstallUpdate={onInstallUpdate}
               />
             ) : null}
 
-            {activePageId === 'worker' ? (
-              <WorkerSection remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled} />
+            {renderedPageId === 'worker' ? (
+              <WorkerConnectionsSection
+                remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled}
+                onChangeRemoteWorkersEnabled={updateExperimentalRemoteWorkersEnabled}
+              />
             ) : null}
 
-            {activePageId === 'endpoints' && settings.experimentalRemoteWorkersEnabled ? (
-              <EndpointsSection />
-            ) : null}
-
-            {activePageId === 'agent' ? (
+            {renderedPageId === 'agent' ? (
               <AgentSettingsPage
                 settings={settings}
                 modelCatalogByProvider={modelCatalogByProvider}
@@ -313,7 +338,7 @@ export function SettingsPanel({
               />
             ) : null}
 
-            {activePageId === 'notifications' ? (
+            {renderedPageId === 'notifications' ? (
               <NotificationsSection
                 systemNotificationsEnabled={settings.systemNotificationsEnabled}
                 standbyBannerEnabled={settings.standbyBannerEnabled}
@@ -331,20 +356,15 @@ export function SettingsPanel({
               />
             ) : null}
 
-            {activePageId === 'integrations' ? (
+            {renderedPageId === 'integrations' ? (
               <IntegrationsSection
                 githubPullRequestsEnabled={settings.githubPullRequestsEnabled}
                 onChangeGitHubPullRequestsEnabled={updateGitHubPullRequestsEnabled}
               />
             ) : null}
-            {activePageId === 'diagnostics' ? (
-              <DiagnosticsSection
-                headerButtonEnabled={settings.performanceMonitorHeaderButtonEnabled}
-                onChangeHeaderButtonEnabled={updatePerformanceMonitorHeaderButtonEnabled}
-              />
-            ) : null}
-            {activePageId === 'canvas' ? (
-              <CanvasSection
+
+            {renderedPageId === 'canvas-windows' ? (
+              <CanvasWindowsSection
                 canvasInputMode={settings.canvasInputMode}
                 canvasWheelBehavior={settings.canvasWheelBehavior}
                 canvasWheelZoomModifier={settings.canvasWheelZoomModifier}
@@ -373,45 +393,27 @@ export function SettingsPanel({
               />
             ) : null}
 
-            {activePageId === 'experimental' ? (
-              <ExperimentalSection
+            {renderedPageId === 'advanced' ? (
+              <AdvancedSection
                 websiteWindowPolicy={settings.websiteWindowPolicy}
                 browserDefaultMode={settings.browserDefaultMode}
                 browserSearchEngine={settings.browserSearchEngine}
                 websiteWindowPasteEnabled={settings.experimentalWebsiteWindowPasteEnabled}
-                remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled}
+                performanceMonitorHeaderButtonEnabled={
+                  settings.performanceMonitorHeaderButtonEnabled
+                }
                 onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
                 onChangeBrowserDefaultMode={updateBrowserDefaultMode}
                 onChangeBrowserSearchEngine={updateBrowserSearchEngine}
                 onChangeWebsiteWindowPasteEnabled={updateExperimentalWebsiteWindowPasteEnabled}
-                onChangeRemoteWorkersEnabled={updateExperimentalRemoteWorkersEnabled}
-              />
-            ) : null}
-
-            {activePageId === 'shortcuts' ? (
-              <ShortcutsSection
-                disableAppShortcutsWhenTerminalFocused={
-                  settings.disableAppShortcutsWhenTerminalFocused
+                onChangePerformanceMonitorHeaderButtonEnabled={
+                  updatePerformanceMonitorHeaderButtonEnabled
                 }
-                keybindings={settings.keybindings}
-                onChangeDisableAppShortcutsWhenTerminalFocused={
-                  updateDisableAppShortcutsWhenTerminalFocused
-                }
-                onChangeKeybindings={updateKeybindings}
               />
             ) : null}
 
-            {activePageId === 'quick-menu' ? (
-              <QuickMenuSection
-                quickCommands={settings.quickCommands}
-                quickPhrases={settings.quickPhrases}
-                onChangeQuickCommands={updateQuickCommands}
-                onChangeQuickPhrases={updateQuickPhrases}
-              />
-            ) : null}
-
-            {activePageId === 'task-configuration' ? (
-              <TaskConfigurationSection
+            {renderedPageId === 'tasks-shortcuts' ? (
+              <TasksAndShortcutsSection
                 showTaskTitleGeneration={AI_NAMING_FEATURES.taskTitleGeneration}
                 defaultProvider={settings.defaultProvider}
                 taskTitleProvider={settings.taskTitleProvider}
@@ -419,11 +421,23 @@ export function SettingsPanel({
                 effectiveTaskTitleProvider={effectiveTaskTitleProvider}
                 tags={settings.taskTagOptions}
                 addTaskTagInput={addTaskTagInput}
+                quickCommands={settings.quickCommands}
+                quickPhrases={settings.quickPhrases}
+                disableAppShortcutsWhenTerminalFocused={
+                  settings.disableAppShortcutsWhenTerminalFocused
+                }
+                keybindings={settings.keybindings}
                 onChangeTaskTitleProvider={updateTaskTitleProvider}
                 onChangeTaskTitleModel={updateTaskTitleModel}
                 onChangeAddTaskTagInput={setAddTaskTagInput}
                 onAddTag={addTaskTagOption}
                 onRemoveTag={removeTaskTagOption}
+                onChangeQuickCommands={updateQuickCommands}
+                onChangeQuickPhrases={updateQuickPhrases}
+                onChangeDisableAppShortcutsWhenTerminalFocused={
+                  updateDisableAppShortcutsWhenTerminalFocused
+                }
+                onChangeKeybindings={updateKeybindings}
               />
             ) : null}
 

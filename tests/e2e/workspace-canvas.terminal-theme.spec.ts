@@ -38,6 +38,7 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
 
       const settingsButton = window.locator('[data-testid="app-header-settings"]')
       await settingsButton.click({ noWaitAfter: true })
+      await window.locator('[data-testid="settings-section-nav-appearance"]').click()
 
       await selectCoveOption(window, 'settings-ui-theme', 'light')
 
@@ -118,6 +119,7 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
 
       const settingsButton = window.locator('[data-testid="app-header-settings"]')
       await settingsButton.click({ noWaitAfter: true })
+      await window.locator('[data-testid="settings-section-nav-appearance"]').click()
       await selectCoveOption(window, 'settings-ui-theme', 'light')
 
       await expect

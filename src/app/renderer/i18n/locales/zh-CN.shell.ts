@@ -24,8 +24,8 @@ export const zhCNShell = {
     remotePathMustBeAbsolute: '远程路径必须是绝对路径。',
     openEndpointsAction: '添加远程 Worker…',
     remoteExperimentalTitle: '远程挂载点为实验性功能',
-    remoteExperimentalHint: '请先在「设置 → 实验性」启用远程 Worker 后再进行管理。',
-    openExperimentalAction: '打开实验性设置',
+    remoteExperimentalHint: '请先在「设置 → Worker 与连接」启用远程 Worker 后再进行管理。',
+    openExperimentalAction: '打开 Worker 与连接',
   },
   spaceTargetMountPicker: {
     title: '选择目标位置',

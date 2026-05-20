@@ -48,7 +48,7 @@ describe('settingsSearchIndex', () => {
 
     expect(results[0]).toMatchObject({
       id: 'general.theme',
-      pageId: 'general',
+      pageId: 'appearance',
       anchorId: 'settings-ui-theme',
     })
   })
@@ -91,7 +91,7 @@ describe('settingsSearchIndex', () => {
 
     expect(results[0]).toMatchObject({
       id: 'diagnostics.performance',
-      pageId: 'diagnostics',
+      pageId: 'advanced',
       anchorId: 'settings-section-diagnostics',
     })
   })

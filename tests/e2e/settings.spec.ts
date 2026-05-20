@@ -36,12 +36,14 @@ test.describe('Settings', () => {
       await settingsButton.click({ noWaitAfter: true })
 
       const generalNav = window.locator('[data-testid="settings-section-nav-general"]')
+      const appearanceNav = window.locator('[data-testid="settings-section-nav-appearance"]')
       const agentNav = window.locator('[data-testid="settings-section-nav-agent"]')
       const canvasNav = window.locator('[data-testid="settings-section-nav-canvas"]')
       const taskConfigurationNav = window.locator(
         '[data-testid="settings-section-nav-task-configuration"]',
       )
       await expect(generalNav).toBeVisible()
+      await expect(appearanceNav).toBeVisible()
       await expect(agentNav).toBeVisible()
       await expect(canvasNav).toBeVisible()
       await expect(taskConfigurationNav).toBeVisible()
@@ -52,6 +54,8 @@ test.describe('Settings', () => {
       await selectCoveOption(window, 'settings-language', 'zh-CN')
       await expect(languageSelect).toHaveValue('zh-CN')
       await expect(window.locator('.settings-panel__header h2')).toHaveText('设置')
+
+      await appearanceNav.click()
 
       const uiThemeSelect = window.locator('[data-testid="settings-ui-theme"]')
       const uiThemeTrigger = window.locator('[data-testid="settings-ui-theme-trigger"]')
@@ -73,6 +77,8 @@ test.describe('Settings', () => {
       const terminalFontSize = window.locator('[data-testid="settings-terminal-font-size"]')
       await expect(terminalFontSize).toBeVisible()
       await terminalFontSize.fill('15')
+
+      await generalNav.click()
 
       const updatePolicy = window.locator('[data-testid="settings-update-policy"]')
       const updatePolicyTrigger = window.locator('[data-testid="settings-update-policy-trigger"]')

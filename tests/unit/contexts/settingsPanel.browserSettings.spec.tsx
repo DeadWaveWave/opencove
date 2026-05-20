@@ -64,7 +64,7 @@ describe('SettingsPanel browser settings', () => {
     vi.restoreAllMocks()
   })
 
-  it('updates browser mode and search engine from experimental settings', () => {
+  it('updates browser mode and search engine from advanced settings', () => {
     const onChange = vi.fn()
     mockTerminalProfiles()
     renderSettingsPanel({ onChange })

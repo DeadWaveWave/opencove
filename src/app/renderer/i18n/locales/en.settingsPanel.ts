@@ -2,6 +2,7 @@ import { enTerminalDisplayCalibration } from './en.terminalDisplayCalibration'
 import { enSettingsPanelEndpoints } from './en.settingsPanel.endpoints'
 import { enSettingsPanelAgentExecutable } from './en.settingsPanel.agentExecutable'
 import { enSettingsPanelDiagnostics } from './en.settingsPanel.diagnostics'
+import { enSettingsPanelLayout } from './en.settingsPanel.layout'
 import { enWorkspaceCanvasNavigationShortcutCommands } from './en.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const enSettingsPanel = {
@@ -11,23 +12,7 @@ export const enSettingsPanel = {
     placeholder: 'Search',
     noResults: 'No matching settings',
   },
-  nav: {
-    general: 'General',
-    worker: 'Worker',
-    endpoints: 'Endpoints',
-    agent: 'Agent',
-    notifications: 'Notifications',
-    canvas: 'Canvas',
-    experimental: 'Experimental',
-    shortcuts: 'Shortcuts',
-    quickMenu: 'Quick Menu',
-    tasks: 'Tasks',
-    models: 'Models',
-    integrations: 'Integrations',
-    diagnostics: 'Diagnostics',
-    projects: 'Projects',
-    sectionsLabel: 'Settings sections',
-  },
+  nav: enSettingsPanelLayout.nav,
   general: {
     title: 'General',
     languageLabel: 'Display Language',
@@ -86,6 +71,8 @@ export const enSettingsPanel = {
       },
     },
   },
+  appearance: enSettingsPanelLayout.appearance,
+  terminal: enSettingsPanelLayout.terminal,
   agent: {
     title: 'Agent',
     defaultAgentLabel: 'Default Agent',
@@ -217,6 +204,7 @@ export const enSettingsPanel = {
   },
   experimental: {
     title: 'Experimental',
+    help: 'Low-frequency and still-evolving capabilities. Keep defaults unless you need these workflows.',
     remoteWorkersTitle: 'Remote Workers & Locations',
     remoteWorkersHelp:
       'Opt-in support for remote workers and remote project locations. Keep this off until the workflow is stable.',
@@ -293,6 +281,7 @@ export const enSettingsPanel = {
       'Host patterns that should not be discarded (e.g. slack.com, *.figma.com).',
     websiteWindowKeepAliveHostsPlaceholder: 'Add host pattern (e.g. *.figma.com)',
   },
+  workerConnections: enSettingsPanelLayout.workerConnections,
   shortcuts: {
     title: 'Shortcuts',
     disableWhenTerminalFocusedLabel: 'Disable shortcuts when terminal is focused',
@@ -410,7 +399,7 @@ export const enSettingsPanel = {
     errors: {
       remoteRequired: 'Remote worker hostname, port, and token are required.',
       remoteExperimentalDisabled:
-        'Remote workers are experimental. Enable Remote Workers in Experimental settings to continue.',
+        'Remote workers are experimental. Enable Remote Workers in Worker & Connections to continue.',
       stopLocalWorkerFirst: 'Stop the Local Worker before switching to Standalone.',
       enableLocalRequiresRestart: 'Enable Local Worker mode and restart before starting it.',
     },
@@ -453,7 +442,7 @@ export const enSettingsPanel = {
     },
     local: {
       title: 'Local Worker Status',
-      help: 'Loopback-only (127.0.0.1) + token. Use SSH tunnels for remote access. Worker Web UI is experimental (see Experimental settings).',
+      help: 'Loopback-only (127.0.0.1) + token. Use SSH tunnels for remote access. Worker Web UI is in Worker & Connections.',
       statusLabel: 'Status',
       status: {
         running: 'Running',

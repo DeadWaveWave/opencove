@@ -1,0 +1,85 @@
+.settings-panel__sidebar {
+  background: var(--cove-settings-sidebar-background);
+  border-right: 1px solid var(--cove-border-subtle);
+  padding: 28px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+  transition:
+    background 180ms ease,
+    backdrop-filter 180ms ease;
+}
+
+.settings-panel__nav-button {
+  all: unset;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  color: var(--cove-text-muted);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+  position: relative;
+}
+
+.settings-panel__nav-button:hover {
+  color: var(--cove-text);
+  background: var(--cove-surface-hover);
+}
+
+.settings-panel__nav-button--active {
+  color: var(--cove-text);
+  background: color-mix(in srgb, var(--cove-accent) 14%, transparent);
+  font-weight: 500;
+}
+
+.settings-panel__nav-button--parent-active {
+  background: transparent;
+  color: var(--cove-text-muted);
+}
+
+.settings-panel__nav-button--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--cove-accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.settings-panel__nav-button--parent-active::before {
+  opacity: 0;
+}
+
+.settings-panel__nav-button--secondary {
+  margin-left: 10px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  color: var(--cove-text-faint);
+}
+
+.settings-panel__nav-button--secondary::before {
+  left: -6px;
+}
+
+.settings-panel__nav-group-label {
+  margin-top: 20px;
+  padding: 0 14px;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  color: var(--cove-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings-panel__nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
