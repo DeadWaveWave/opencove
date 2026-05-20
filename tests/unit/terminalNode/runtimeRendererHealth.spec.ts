@@ -178,6 +178,12 @@ describe('runtime renderer health', () => {
     expect(fitAddon.proposeDimensions()).toBeUndefined()
   })
 
+  it('allows fit addon test doubles without a measurement method', () => {
+    expect(() => {
+      installFitAddonDetachedRendererGuard({} as never)
+    }).not.toThrow()
+  })
+
   it('rebuilds from worker truth after a blank canvas is detected', () => {
     const container = document.createElement('div')
     Object.defineProperty(container, 'getBoundingClientRect', {

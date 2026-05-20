@@ -67,6 +67,10 @@ export function runTerminalRenderMutationSafely(mutation: () => void): boolean {
 }
 
 export function installFitAddonDetachedRendererGuard(fitAddon: FitAddon): void {
+  if (typeof fitAddon.proposeDimensions !== 'function') {
+    return
+  }
+
   const proposeDimensions = fitAddon.proposeDimensions.bind(fitAddon)
   fitAddon.proposeDimensions = () => {
     try {
