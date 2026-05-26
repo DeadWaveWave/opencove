@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Release: add Linux Debian (`.deb`) packages to release artifacts. (#272)
 - Agent: add Settings install status for local agent CLIs with one-click npm install actions and a unified default/order/install list. (#267)
 - Release: add separate macOS Intel x64 release artifacts alongside Apple Silicon packages. (#255)
 - Workspace canvas: add full browser-window capability with client-local history, bookmarks, Safari-style start page, Settings-owned full-browser/web-compatible viewer modes, configurable search engine, downloads, permissions, find, fullscreen, four-terminal default sizing, 90% normal-window constraints, and WebUI web-compatible viewer support. (#246)
