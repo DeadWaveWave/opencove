@@ -2,7 +2,7 @@ import { expect } from 'vitest'
 import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/constants'
 import { CURRENT_SCHEMA_COLUMNS } from './persistenceSchemaColumns'
 
-export const SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8] as const
+export const SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const
 
 export type InstalledUpgradeSourceVersion =
   (typeof SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS)[number]

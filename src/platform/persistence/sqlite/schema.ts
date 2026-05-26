@@ -103,6 +103,20 @@ export const agentNodePlaceholderScrollback = sqliteTable('agent_node_placeholde
   updatedAt: text('updated_at').notNull(),
 })
 
+// 会话目录扫描结果的持久化缓存。以会话文件路径为键,mtime+size 为指纹;
+// 命中(指纹一致)即复用,免去重新扫描会话日志。value_json 存各 provider 解析出的
+// 结果(形状各异:Claude 是 {title,preview}、Codex 是预览串、Gemini 是整条摘要),
+// 故用通用 JSON blob 而非固定列。仅缓存需扫描文件的来源(claude-code / codex /
+// gemini),OpenCode 自带标题不入此表。
+export const agentSessionTitleCache = sqliteTable('agent_session_title_cache', {
+  filePath: text('file_path').primaryKey(),
+  provider: text('provider').notNull(),
+  mtimeMs: real('mtime_ms').notNull(),
+  size: integer('size').notNull(),
+  valueJson: text('value_json').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
 export const browserProfileSettings = sqliteTable('browser_profile_settings', {
   profileKey: text('profile_key').primaryKey(),
   homepageUrl: text('homepage_url'),

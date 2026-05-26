@@ -42,6 +42,8 @@ import { createPersistedWorkspaceApprovalGate } from '../../../contexts/workspac
 import type { BrowserProfileStore } from '../../../contexts/browser/infrastructure/main/BrowserProfileStore'
 import { createBrowserProfileStore } from '../../../contexts/browser/infrastructure/main/BrowserProfileStore'
 import { registerBrowserProfileIpcHandlers } from '../../../contexts/browser/presentation/main-ipc/register'
+import type { AgentSessionTitleCacheStore } from '../../../contexts/agent/infrastructure/cli/AgentSessionTitleCacheStore'
+import { createAgentSessionTitleCacheStore } from '../../../contexts/agent/infrastructure/cli/AgentSessionTitleCacheStore'
 
 export type { IpcRegistrationDisposable } from './types'
 
@@ -64,6 +66,7 @@ export function registerIpcHandlers(deps?: {
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
   let browserProfileStorePromise: Promise<BrowserProfileStore> | null = null
+  let agentSessionTitleCacheStorePromise: Promise<AgentSessionTitleCacheStore> | null = null
   const getPersistenceStore = async (): Promise<PersistenceStore> => {
     if (persistenceStorePromise) {
       return await persistenceStorePromise
@@ -108,6 +111,40 @@ export function registerIpcHandlers(deps?: {
     })
     browserProfileStorePromise = nextStorePromise
     return await browserProfileStorePromise
+  }
+
+  const getAgentSessionTitleCacheStore = async (): Promise<AgentSessionTitleCacheStore> => {
+    if (agentSessionTitleCacheStorePromise) {
+      return await agentSessionTitleCacheStorePromise
+    }
+
+    const dbPath = resolve(app.getPath('userData'), 'opencove.db')
+    const nextStorePromise = (async () => {
+      // 与 browser store 同序:先确保主持久化 store 初始化(版本升级时的一次性
+      // 备份在主 store 那边先跑),再开本 store 的连接。
+      if (!workerEndpointResolver) {
+        await getPersistenceStore()
+      }
+
+      const store = await createAgentSessionTitleCacheStore({ dbPath })
+      // 一次性清理已删除会话的陈旧缓存行,best-effort、异步,不阻塞列表加载。
+      setImmediate(() => {
+        try {
+          store.pruneMissing()
+        } catch {
+          // 清理失败无关紧要。
+        }
+      })
+      return store
+    })().catch(error => {
+      if (agentSessionTitleCacheStorePromise === nextStorePromise) {
+        agentSessionTitleCacheStorePromise = null
+      }
+
+      throw error
+    })
+    agentSessionTitleCacheStorePromise = nextStorePromise
+    return await agentSessionTitleCacheStorePromise
   }
 
   const workspaceApprovedWorkspaces = workerEndpointResolver
@@ -183,7 +220,12 @@ export function registerIpcHandlers(deps?: {
           ptyRuntime,
           startupReady: startupApprovedWorkspaces.ready,
         })
-      : registerAgentIpcHandlers(ptyRuntime, guardedApprovedWorkspaces, getPersistenceStore),
+      : registerAgentIpcHandlers(
+          ptyRuntime,
+          guardedApprovedWorkspaces,
+          getPersistenceStore,
+          getAgentSessionTitleCacheStore,
+        ),
     registerTaskIpcHandlers(guardedApprovedWorkspaces),
     registerSystemIpcHandlers(),
     registerBrowserProfileIpcHandlers(getBrowserProfileStore),

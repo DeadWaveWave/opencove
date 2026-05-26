@@ -419,7 +419,7 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(9)
+      expect(migratedState?.userVersion).toBe(10)
       expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
       expect(migratedState?.tables.get('nodes')).toContain('session_id')
       expect(migratedState?.tables.get('nodes')).toContain('profile_id')

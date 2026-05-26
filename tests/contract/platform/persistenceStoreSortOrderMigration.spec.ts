@@ -471,7 +471,7 @@ describe('PersistenceStore sort order migration', () => {
       expect(store.consumeRecovery()).toBeNull()
       store.dispose()
 
-      expect(mockDbByPath.get(dbPath)?.userVersion).toBe(9)
+      expect(mockDbByPath.get(dbPath)?.userVersion).toBe(10)
       expect(mockDbByPath.get(dbPath)?.workspaceRows).toEqual([
         { id: 'ws-2', sortOrder: 0 },
         { id: 'ws-4', sortOrder: 1 },

@@ -106,6 +106,15 @@ function createTables(db: Database.Database): void {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS agent_session_title_cache (
+      file_path TEXT PRIMARY KEY,
+      provider TEXT NOT NULL,
+      mtime_ms REAL NOT NULL,
+      size INTEGER NOT NULL,
+      value_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS browser_profile_settings (
       profile_key TEXT PRIMARY KEY,
       homepage_url TEXT,

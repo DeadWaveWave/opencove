@@ -29,6 +29,7 @@ import {
 } from '../../infrastructure/cli/AgentModelService'
 import { disposeAgentExecutableResolver } from '../../infrastructure/cli/AgentExecutableResolver'
 import { listAgentSessions } from '../../infrastructure/cli/AgentSessionCatalog'
+import type { AgentSessionTitleCacheStore } from '../../infrastructure/cli/AgentSessionTitleCacheStore'
 import { captureGeminiSessionDiscoveryCursor } from '../../infrastructure/cli/AgentSessionLocatorProviders'
 import { locateAgentResumeSessionId } from '../../infrastructure/cli/AgentSessionLocator'
 import {
@@ -108,6 +109,7 @@ export function registerAgentIpcHandlers(
   ptyRuntime: PtyRuntime,
   approvedWorkspaces: ApprovedWorkspaceStore,
   getPersistenceStore: () => Promise<PersistenceStore>,
+  getAgentSessionTitleCacheStore: () => Promise<AgentSessionTitleCacheStore>,
 ): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.agentListInstalledProviders,
@@ -150,7 +152,9 @@ export function registerAgentIpcHandlers(
         })
       }
 
-      return await listAgentSessions(normalized)
+      // 标题缓存(L2)仅为加速;获取失败时降级为无持久缓存,绝不影响列表本身。
+      const titleCache = await getAgentSessionTitleCacheStore().catch(() => undefined)
+      return await listAgentSessions(normalized, { titleCache })
     },
     { defaultErrorCode: 'common.unexpected' },
   )

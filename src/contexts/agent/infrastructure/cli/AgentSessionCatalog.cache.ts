@@ -10,10 +10,19 @@
 //
 // 仅缓存「需要扫描文件」的来源(Claude / Codex / Gemini);OpenCode 的标题来自
 // 其自身的 CLI / SQLite,本就廉价,不走这里。
+//
+// 两级缓存:L1 为本模块的进程内 Map(秒级刷新免查库);L2 为可选注入的
+// 持久化 store(SQLite,跨重启)。L1 未命中时回落 L2,命中则顺带回填 L1。
+// L2 任何异常都被吞掉、降级为重新扫描,绝不影响会话列表本身。
 
-interface SessionFileFingerprint {
-  mtimeMs: number
-  size: number
+import type {
+  AgentSessionTitleCacheStore,
+  SessionFileFingerprint,
+} from './AgentSessionTitleCacheStore'
+
+export interface SessionTitleL2 {
+  store: AgentSessionTitleCacheStore
+  provider: string
 }
 
 interface CachedSessionFileEntry {
@@ -54,17 +63,19 @@ function storeWithEviction(
 }
 
 /**
- * 以文件指纹为键缓存会话文件的解析结果。
+ * 以文件指纹为键缓存会话文件的解析结果(L1 内存 + 可选 L2 持久化)。
  *
  * @param filePath    会话文件路径,作为缓存键。
  * @param fingerprint 文件指纹(mtime + size);为 null 或字段非有限数字时不缓存,
  *                    直接执行 compute(既兼顾文件被删除等异常,也保证测试隔离)。
  * @param compute     指纹失配或不可缓存时,实际执行的解析逻辑。
+ * @param l2          可选的持久化层;命中回填 L1,未命中在 compute 后写回。其异常不外抛。
  */
 export async function readSessionFileWithCache<T>(
   filePath: string,
   fingerprint: SessionFileFingerprint | null,
   compute: () => Promise<T>,
+  l2?: SessionTitleL2,
 ): Promise<T> {
   const cacheable = isUsableFingerprint(fingerprint)
 
@@ -73,12 +84,31 @@ export async function readSessionFileWithCache<T>(
     if (cached && cached.mtimeMs === fingerprint.mtimeMs && cached.size === fingerprint.size) {
       return cached.value as T
     }
+
+    if (l2) {
+      try {
+        const hit = l2.store.read(filePath, fingerprint)
+        if (hit) {
+          storeWithEviction(filePath, fingerprint, hit.value)
+          return hit.value as T
+        }
+      } catch {
+        // L2 故障绝不影响功能,继续重新计算。
+      }
+    }
   }
 
   const value = await compute()
 
   if (cacheable) {
     storeWithEviction(filePath, fingerprint, value)
+    if (l2) {
+      try {
+        l2.store.write({ filePath, provider: l2.provider, fingerprint, value })
+      } catch {
+        // 写盘失败仅丢失一次缓存收益,忽略。
+      }
+    }
   }
 
   return value

@@ -39,6 +39,7 @@ vi.mock('../../../src/contexts/agent/infrastructure/opencode/OpenCodeSqlite', as
 })
 import { listAgentSessions } from '../../../src/contexts/agent/infrastructure/cli/AgentSessionCatalog'
 import { clearSessionFileCache } from '../../../src/contexts/agent/infrastructure/cli/AgentSessionCatalog.cache'
+import type { AgentSessionTitleCacheStore } from '../../../src/contexts/agent/infrastructure/cli/AgentSessionTitleCacheStore'
 
 function createFileEntry(name: string): Dirent {
   return { name, isFile: () => true, isDirectory: () => false } as unknown as Dirent
@@ -304,6 +305,69 @@ describe('listAgentSessions', () => {
     fingerprint = { mtimeMs: Date.parse('2026-04-28T11:00:00.000Z'), size: 4096 }
     await listAgentSessions({ provider: 'claude-code', cwd, limit: 10 })
     expect(fsPromisesMock.open.mock.calls.length).toBeGreaterThan(openCallsAfterFirst)
+  })
+
+  it('serves Claude titles from the injected persistent cache (L2) without rescanning', async () => {
+    const cwd = '/Users/tester/Development/cove'
+    const projectDir = toClaudeProjectDir(cwd)
+    const filePath = join(projectDir, 'session-p.jsonl')
+
+    fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
+      return directory === projectDir ? [createFileEntry('session-p.jsonl')] : []
+    })
+
+    fsPromisesMock.stat.mockImplementation(async (target: string) => {
+      if (target === filePath) {
+        return { mtimeMs: Date.parse('2026-04-28T10:00:00.000Z'), size: 2048 }
+      }
+
+      throw new Error(`Unexpected stat ${target}`)
+    })
+
+    fsPromisesMock.open.mockImplementation(async (target: string) => {
+      if (target === filePath) {
+        return createOpenHandle(
+          `${JSON.stringify({ type: 'user', content: 'Investigate restart recovery' })}\n${JSON.stringify(
+            { type: 'ai-title', aiTitle: 'Restart recovery investigation' },
+          )}\n`,
+        )
+      }
+
+      throw new Error(`Unexpected open ${target}`)
+    })
+
+    const rows = new Map<string, { mtimeMs: number; size: number; value: unknown }>()
+    const titleCache: AgentSessionTitleCacheStore = {
+      read: (cachedFilePath, fingerprint) => {
+        const row = rows.get(cachedFilePath)
+        if (!row || row.mtimeMs !== fingerprint.mtimeMs || row.size !== fingerprint.size) {
+          return null
+        }
+
+        return { value: row.value }
+      },
+      write: ({ filePath: cachedFilePath, fingerprint, value }) => {
+        rows.set(cachedFilePath, { mtimeMs: fingerprint.mtimeMs, size: fingerprint.size, value })
+      },
+      pruneMissing: () => 0,
+      dispose: () => undefined,
+    }
+
+    await listAgentSessions({ provider: 'claude-code', cwd, limit: 10 }, { titleCache })
+    const openCallsAfterFirst = fsPromisesMock.open.mock.calls.length
+    expect(openCallsAfterFirst).toBeGreaterThan(0)
+    expect(rows.size).toBe(1)
+
+    // 丢弃 L1,迫使第二次只能依赖注入的 L2:命中则不应再打开文件。
+    clearSessionFileCache()
+    const result = await listAgentSessions({ provider: 'claude-code', cwd, limit: 10 }, { titleCache })
+
+    expect(fsPromisesMock.open.mock.calls.length).toBe(openCallsAfterFirst)
+    expect(result.sessions[0]).toMatchObject({
+      sessionId: 'session-p',
+      title: 'Restart recovery investigation',
+      preview: 'Investigate restart recovery',
+    })
   })
 
   it('lists Codex sessions by scanning rollout metadata across date directories', async () => {

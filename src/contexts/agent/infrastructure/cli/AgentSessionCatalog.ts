@@ -12,6 +12,7 @@ import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPa
 import { listDirectories, listFiles, parseTimestampMs } from './AgentSessionLocatorProviders.utils'
 import { listOpenCodeSessions } from './AgentSessionCatalog.openCode'
 import { readSessionFileWithCache } from './AgentSessionCatalog.cache'
+import type { AgentSessionTitleCacheStore } from './AgentSessionTitleCacheStore'
 import {
   JSONL_DEEP_SCAN_MAX_BYTES,
   normalizeSessionPreview,
@@ -174,7 +175,11 @@ function toClaudeProjectDirs(cwd: string): string[] {
   return resolveClaudeProjectDirectoryCandidateGroups(cwd)[0] ?? []
 }
 
-async function listClaudeSessions(cwd: string, limit: number): Promise<AgentSessionSummary[]> {
+async function listClaudeSessions(
+  cwd: string,
+  limit: number,
+  titleCache?: AgentSessionTitleCacheStore,
+): Promise<AgentSessionSummary[]> {
   const resolvedCwd = resolve(cwd)
   const projectDirs = toClaudeProjectDirs(resolvedCwd)
   const indexedSessions = (
@@ -276,6 +281,7 @@ async function listClaudeSessions(cwd: string, limit: number): Promise<AgentSess
               ])
               return { title: aiTitle ?? firstUserPreview, preview: firstUserPreview }
             },
+            titleCache ? { store: titleCache, provider: 'claude-code' } : undefined,
           )
           return {
             sessionId,
@@ -313,7 +319,11 @@ async function listCodexDateDirectories(rootDirectory: string): Promise<string[]
   return dayDirectories.flat()
 }
 
-async function listCodexSessions(cwd: string, limit: number): Promise<AgentSessionSummary[]> {
+async function listCodexSessions(
+  cwd: string,
+  limit: number,
+  titleCache?: AgentSessionTitleCacheStore,
+): Promise<AgentSessionSummary[]> {
   const resolvedCwd = resolve(cwd)
   const dayDirectories = (
     await Promise.all(
@@ -352,8 +362,11 @@ async function listCodexSessions(cwd: string, limit: number): Promise<AgentSessi
           .stat(filePath)
           .then(stats => ({ mtimeMs: stats.mtimeMs, size: stats.size }))
           .catch(() => null)
-        const preview = await readSessionFileWithCache(filePath, fingerprint, async () =>
-          readFirstMatchingJsonlValue(filePath, parseCodexFirstUserPreview),
+        const preview = await readSessionFileWithCache(
+          filePath,
+          fingerprint,
+          async () => readFirstMatchingJsonlValue(filePath, parseCodexFirstUserPreview),
+          titleCache ? { store: titleCache, provider: 'codex' } : undefined,
         )
 
         return {
@@ -405,7 +418,11 @@ function parseGeminiSessionSummary(rawContents: string, cwd: string): AgentSessi
   }
 }
 
-async function listGeminiSessions(cwd: string, limit: number): Promise<AgentSessionSummary[]> {
+async function listGeminiSessions(
+  cwd: string,
+  limit: number,
+  titleCache?: AgentSessionTitleCacheStore,
+): Promise<AgentSessionSummary[]> {
   const resolvedCwd = resolve(cwd)
   const projectDirectories = (
     await Promise.all(
@@ -442,10 +459,15 @@ async function listGeminiSessions(cwd: string, limit: number): Promise<AgentSess
               .stat(chatFile)
               .then(stats => ({ mtimeMs: stats.mtimeMs, size: stats.size }))
               .catch(() => null)
-            return await readSessionFileWithCache(chatFile, fingerprint, async () => {
-              const contents = await fs.readFile(chatFile, 'utf8').catch(() => null)
-              return contents ? parseGeminiSessionSummary(contents, resolvedCwd) : null
-            })
+            return await readSessionFileWithCache(
+              chatFile,
+              fingerprint,
+              async () => {
+                const contents = await fs.readFile(chatFile, 'utf8').catch(() => null)
+                return contents ? parseGeminiSessionSummary(contents, resolvedCwd) : null
+              },
+              titleCache ? { store: titleCache, provider: 'gemini' } : undefined,
+            )
           }),
         )
       }),
@@ -459,17 +481,19 @@ async function listGeminiSessions(cwd: string, limit: number): Promise<AgentSess
 
 export async function listAgentSessions(
   input: ListAgentSessionsInput,
+  options?: { titleCache?: AgentSessionTitleCacheStore },
 ): Promise<ListAgentSessionsResult> {
   const resolvedCwd = resolve(input.cwd)
   const limit = normalizeLimit(input.limit)
+  const titleCache = options?.titleCache
 
   const sessions =
     input.provider === 'claude-code'
-      ? await listClaudeSessions(resolvedCwd, limit)
+      ? await listClaudeSessions(resolvedCwd, limit, titleCache)
       : input.provider === 'codex'
-        ? await listCodexSessions(resolvedCwd, limit)
+        ? await listCodexSessions(resolvedCwd, limit, titleCache)
         : input.provider === 'gemini'
-          ? await listGeminiSessions(resolvedCwd, limit)
+          ? await listGeminiSessions(resolvedCwd, limit, titleCache)
           : await listOpenCodeSessions(resolvedCwd, limit)
 
   return {
