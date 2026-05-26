@@ -30,6 +30,10 @@ jobs:
     env:
       OPENCOVE_NIGHTLY_TARGET_REF: ${{ inputs.target_ref || github.ref_name }}
     outputs:
+      should_release: ${{ steps.gate.outputs.should_release }}
+      previous_tag: ${{ steps.gate.outputs.previous_tag }}
+      has_changes: ${{ steps.gate.outputs.has_changes }}
+      reason: ${{ steps.gate.outputs.reason }}
       tag_name: ${{ steps.tag.outputs.tag_name }}
       target_commitish: ${{ steps.sha.outputs.target_commitish }}
     steps:
@@ -49,8 +53,24 @@ jobs:
         run: |
           echo "target_commitish=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve nightly release gate
+        id: gate
+        run: |
+          node scripts/resolve-nightly-release-gate.mjs \
+            --event "${{ github.event_name }}" \
+            --target "${{ steps.sha.outputs.target_commitish }}" >> "$GITHUB_OUTPUT"
+
+      - name: Report skipped nightly release
+        if: steps.gate.outputs.should_release != 'true'
+        run: |
+          echo "Skipping nightly release for target ${{ steps.sha.outputs.target_commitish }}."
+          echo "reason=${{ steps.gate.outputs.reason }}"
+          echo "previous_tag=${{ steps.gate.outputs.previous_tag }}"
+          echo "has_changes=${{ steps.gate.outputs.has_changes }}"
+
       - name: Resolve nightly tag
         id: tag
+        if: steps.gate.outputs.should_release == 'true'
         run: |
           TAG_NAME="$(node scripts/resolve-nightly-tag.mjs)"
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
@@ -58,6 +78,7 @@ jobs:
   release:
     name: Release Nightly
     needs: resolve
+    if: needs.resolve.outputs.should_release == 'true'
     uses: ./.github/workflows/release.yml
     with:
       dry_run: ${{ inputs.dry_run || false }}
