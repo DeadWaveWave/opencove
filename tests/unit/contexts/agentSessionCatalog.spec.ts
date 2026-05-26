@@ -38,6 +38,7 @@ vi.mock('../../../src/contexts/agent/infrastructure/opencode/OpenCodeSqlite', as
   }
 })
 import { listAgentSessions } from '../../../src/contexts/agent/infrastructure/cli/AgentSessionCatalog'
+import { clearSessionFileCache } from '../../../src/contexts/agent/infrastructure/cli/AgentSessionCatalog.cache'
 
 function createFileEntry(name: string): Dirent {
   return { name, isFile: () => true, isDirectory: () => false } as unknown as Dirent
@@ -85,6 +86,7 @@ describe('listAgentSessions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    clearSessionFileCache()
     process.env.HOME = '/Users/tester'
     osMock.homedir.mockReturnValue('/Users/tester')
     fsPromisesMock.readdir.mockResolvedValue([])
@@ -158,7 +160,7 @@ describe('listAgentSessions', () => {
     expect(result.sessions).toHaveLength(2)
     expect(result.sessions[0]).toMatchObject({
       sessionId: 'claude-session-2',
-      title: null,
+      title: 'Fix flaky tests',
       preview: 'Fix flaky tests',
       source: 'claude-index',
     })
@@ -223,6 +225,85 @@ describe('listAgentSessions', () => {
     expect(result.sessions.map(session => session.sessionId)).toEqual(['session-b', 'session-a'])
     expect(result.sessions[0]?.source).toBe('claude-jsonl')
     expect(result.sessions[0]?.preview).toBe('Improve session discoverability')
+  })
+
+  it('prefers the Claude ai-title over the first user message for the title', async () => {
+    const cwd = '/Users/tester/Development/cove'
+    const projectDir = toClaudeProjectDir(cwd)
+    const filePath = join(projectDir, 'session-x.jsonl')
+
+    fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
+      return directory === projectDir ? [createFileEntry('session-x.jsonl')] : []
+    })
+
+    fsPromisesMock.stat.mockImplementation(async (target: string) => {
+      if (target === filePath) {
+        return { mtimeMs: Date.parse('2026-04-28T10:00:00.000Z'), size: 2048 }
+      }
+
+      throw new Error(`Unexpected stat ${target}`)
+    })
+
+    fsPromisesMock.open.mockImplementation(async (target: string) => {
+      if (target === filePath) {
+        return createOpenHandle(
+          `${JSON.stringify({ type: 'user', content: 'Investigate restart recovery' })}\n${JSON.stringify(
+            { type: 'ai-title', aiTitle: 'Restart recovery investigation' },
+          )}\n`,
+        )
+      }
+
+      throw new Error(`Unexpected open ${target}`)
+    })
+
+    const result = await listAgentSessions({ provider: 'claude-code', cwd, limit: 10 })
+
+    expect(result.sessions[0]).toMatchObject({
+      sessionId: 'session-x',
+      title: 'Restart recovery investigation',
+      preview: 'Investigate restart recovery',
+      source: 'claude-jsonl',
+    })
+  })
+
+  it('reuses cached Claude titles until the file fingerprint changes', async () => {
+    const cwd = '/Users/tester/Development/cove'
+    const projectDir = toClaudeProjectDir(cwd)
+    const filePath = join(projectDir, 'session-c.jsonl')
+
+    fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
+      return directory === projectDir ? [createFileEntry('session-c.jsonl')] : []
+    })
+
+    let fingerprint = { mtimeMs: Date.parse('2026-04-28T10:00:00.000Z'), size: 1024 }
+    fsPromisesMock.stat.mockImplementation(async (target: string) => {
+      if (target === filePath) {
+        return fingerprint
+      }
+
+      throw new Error(`Unexpected stat ${target}`)
+    })
+
+    fsPromisesMock.open.mockImplementation(async (target: string) => {
+      if (target === filePath) {
+        return createOpenHandle(`${JSON.stringify({ type: 'ai-title', aiTitle: 'Cached title' })}\n`)
+      }
+
+      throw new Error(`Unexpected open ${target}`)
+    })
+
+    await listAgentSessions({ provider: 'claude-code', cwd, limit: 10 })
+    const openCallsAfterFirst = fsPromisesMock.open.mock.calls.length
+    expect(openCallsAfterFirst).toBeGreaterThan(0)
+
+    // 指纹不变 → 命中缓存,不再打开文件
+    await listAgentSessions({ provider: 'claude-code', cwd, limit: 10 })
+    expect(fsPromisesMock.open.mock.calls.length).toBe(openCallsAfterFirst)
+
+    // 文件被追加(mtime/size 变化)→ 缓存失效,重新扫描
+    fingerprint = { mtimeMs: Date.parse('2026-04-28T11:00:00.000Z'), size: 4096 }
+    await listAgentSessions({ provider: 'claude-code', cwd, limit: 10 })
+    expect(fsPromisesMock.open.mock.calls.length).toBeGreaterThan(openCallsAfterFirst)
   })
 
   it('lists Codex sessions by scanning rollout metadata across date directories', async () => {

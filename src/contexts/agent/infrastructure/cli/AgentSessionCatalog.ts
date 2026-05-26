@@ -11,10 +11,14 @@ import { normalizeAgentProjectRootPath } from '../AgentProjectRootPath'
 import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPaths'
 import { listDirectories, listFiles, parseTimestampMs } from './AgentSessionLocatorProviders.utils'
 import { listOpenCodeSessions } from './AgentSessionCatalog.openCode'
+import { readSessionFileWithCache } from './AgentSessionCatalog.cache'
 import {
+  JSONL_DEEP_SCAN_MAX_BYTES,
   normalizeSessionPreview,
+  parseClaudeAiTitle,
   parseClaudeFirstUserPreview,
   parseCodexFirstUserPreview,
+  parseGeminiFirstUserPreview,
   readFirstMatchingJsonlValue,
 } from './AgentSessionCatalog.preview'
 
@@ -209,12 +213,14 @@ async function listClaudeSessions(cwd: string, limit: number): Promise<AgentSess
                   const updatedAtMs =
                     parseTimestampMs(entry.modified) ?? parseTimestampMs(entry.fileMtime)
 
+                  const firstPrompt = normalizeSessionPreview(entry.firstPrompt)
+
                   return {
                     sessionId,
                     provider: 'claude-code' as const,
                     cwd: resolvedCwd,
-                    title: null,
-                    preview: normalizeSessionPreview(entry.firstPrompt),
+                    title: firstPrompt,
+                    preview: firstPrompt,
                     startedAt: toIsoString(startedAtMs),
                     updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
                     source: 'claude-index' as const,
@@ -254,12 +260,28 @@ async function listClaudeSessions(cwd: string, limit: number): Promise<AgentSess
 
         try {
           const stats = await fs.stat(filePath)
-          const preview = await readFirstMatchingJsonlValue(filePath, parseClaudeFirstUserPreview)
+          const { title, preview } = await readSessionFileWithCache(
+            filePath,
+            { mtimeMs: stats.mtimeMs, size: stats.size },
+            async () => {
+              // preview(首条用户消息)在文件开头,默认 64KB 上限足够;
+              // ai-title 可能埋得很深,需深度扫描(命中即停,内存仍受控)。
+              const [firstUserPreview, aiTitle] = await Promise.all([
+                readFirstMatchingJsonlValue(filePath, parseClaudeFirstUserPreview),
+                readFirstMatchingJsonlValue(
+                  filePath,
+                  parseClaudeAiTitle,
+                  JSONL_DEEP_SCAN_MAX_BYTES,
+                ),
+              ])
+              return { title: aiTitle ?? firstUserPreview, preview: firstUserPreview }
+            },
+          )
           return {
             sessionId,
             provider: 'claude-code' as const,
             cwd: resolvedCwd,
-            title: null,
+            title,
             preview,
             startedAt: null,
             updatedAt: toIsoString(stats.mtimeMs),
@@ -326,13 +348,19 @@ async function listCodexSessions(cwd: string, limit: number): Promise<AgentSessi
 
         const startedAtMs = parsed.payloadTimestampMs ?? parsed.recordTimestampMs
         const updatedAtMs = parsed.recordTimestampMs ?? parsed.payloadTimestampMs
-        const preview = await readFirstMatchingJsonlValue(filePath, parseCodexFirstUserPreview)
+        const fingerprint = await fs
+          .stat(filePath)
+          .then(stats => ({ mtimeMs: stats.mtimeMs, size: stats.size }))
+          .catch(() => null)
+        const preview = await readSessionFileWithCache(filePath, fingerprint, async () =>
+          readFirstMatchingJsonlValue(filePath, parseCodexFirstUserPreview),
+        )
 
         return {
           sessionId: parsed.sessionId,
           provider: 'codex' as const,
           cwd: resolvedCwd,
-          title: null,
+          title: preview,
           preview,
           startedAt: toIsoString(startedAtMs),
           updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
@@ -358,6 +386,7 @@ function parseGeminiSessionSummary(rawContents: string, cwd: string): AgentSessi
       return null
     }
 
+    const preview = parseGeminiFirstUserPreview(parsed)
     const startedAtMs = parseTimestampMs(parsed.startTime)
     const updatedAtMs = parseTimestampMs(parsed.lastUpdated)
 
@@ -365,8 +394,8 @@ function parseGeminiSessionSummary(rawContents: string, cwd: string): AgentSessi
       sessionId,
       provider: 'gemini',
       cwd,
-      title: null,
-      preview: null,
+      title: preview,
+      preview,
       startedAt: toIsoString(startedAtMs),
       updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
       source: 'gemini-file',
@@ -409,8 +438,14 @@ async function listGeminiSessions(cwd: string, limit: number): Promise<AgentSess
 
         return await Promise.all(
           chatFiles.map(async chatFile => {
-            const contents = await fs.readFile(chatFile, 'utf8').catch(() => null)
-            return contents ? parseGeminiSessionSummary(contents, resolvedCwd) : null
+            const fingerprint = await fs
+              .stat(chatFile)
+              .then(stats => ({ mtimeMs: stats.mtimeMs, size: stats.size }))
+              .catch(() => null)
+            return await readSessionFileWithCache(chatFile, fingerprint, async () => {
+              const contents = await fs.readFile(chatFile, 'utf8').catch(() => null)
+              return contents ? parseGeminiSessionSummary(contents, resolvedCwd) : null
+            })
           }),
         )
       }),

@@ -5,6 +5,11 @@ const JSONL_SCAN_CHUNK_BYTES = 4096
 const JSONL_SCAN_MAX_BYTES = 64 * 1024
 const SESSION_PREVIEW_MAX_CHARS = 160
 
+// ai-title 这类语义标题行可能写在长会话很靠后的位置(实测可达数 MB),
+// 64KB 的默认上限会扫不到而漏读。深度扫描放宽到该上限;因为按 chunk 流式
+// 读取、命中即返回,内存始终受控,该上限只作为防御极端大文件的安全阀。
+export const JSONL_DEEP_SCAN_MAX_BYTES = 32 * 1024 * 1024
+
 function truncatePreview(value: string): string {
   if (value.length <= SESSION_PREVIEW_MAX_CHARS) {
     return value
@@ -105,6 +110,23 @@ export function parseCodexFirstUserPreview(parsed: unknown): string | null {
   return preview
 }
 
+export function parseClaudeAiTitle(parsed: unknown): string | null {
+  if (!parsed || typeof parsed !== 'object') {
+    return null
+  }
+
+  const record = parsed as {
+    type?: unknown
+    aiTitle?: unknown
+  }
+
+  if (record.type !== 'ai-title') {
+    return null
+  }
+
+  return normalizeSessionPreview(record.aiTitle)
+}
+
 export function parseClaudeFirstUserPreview(parsed: unknown): string | null {
   if (!parsed || typeof parsed !== 'object') {
     return null
@@ -113,18 +135,67 @@ export function parseClaudeFirstUserPreview(parsed: unknown): string | null {
   const record = parsed as {
     type?: unknown
     content?: unknown
+    message?: {
+      role?: unknown
+      content?: unknown
+    }
   }
 
   if (record.type !== 'user') {
     return null
   }
 
-  return extractTextFromMessageContent(record.content)
+  return (
+    extractTextFromMessageContent(record.content) ??
+    extractTextFromMessageContent(record.message?.content)
+  )
+}
+
+export function parseGeminiFirstUserPreview(parsed: unknown): string | null {
+  if (!parsed || typeof parsed !== 'object') {
+    return null
+  }
+
+  const record = parsed as {
+    messages?: Array<{
+      type?: unknown
+      role?: unknown
+      content?: unknown
+      parts?: unknown
+    }>
+  }
+
+  if (!Array.isArray(record.messages)) {
+    return null
+  }
+
+  for (const message of record.messages) {
+    if (!message || typeof message !== 'object') {
+      continue
+    }
+
+    const raw =
+      typeof message.type === 'string'
+        ? message.type
+        : typeof message.role === 'string'
+          ? message.role
+          : null
+    const role = raw ? raw.trim().toLowerCase() : ''
+
+    if (role !== 'user' && role !== 'human') {
+      continue
+    }
+
+    return extractTextFromMessageContent(message.content) ?? extractTextFromMessageContent(message.parts)
+  }
+
+  return null
 }
 
 export async function readFirstMatchingJsonlValue<T>(
   filePath: string,
   match: (parsed: unknown) => T | null,
+  maxBytes: number = JSONL_SCAN_MAX_BYTES,
 ): Promise<T | null> {
   let handle: Awaited<ReturnType<typeof fs.open>> | null = null
 
@@ -135,8 +206,8 @@ export async function readFirstMatchingJsonlValue<T>(
     let bytesReadTotal = 0
     let remainder = ''
 
-    while (bytesReadTotal < JSONL_SCAN_MAX_BYTES) {
-      const bytesToRead = Math.min(buffer.length, JSONL_SCAN_MAX_BYTES - bytesReadTotal)
+    while (bytesReadTotal < maxBytes) {
+      const bytesToRead = Math.min(buffer.length, maxBytes - bytesReadTotal)
       // eslint-disable-next-line no-await-in-loop
       const { bytesRead } = await handle.read(buffer, 0, bytesToRead, null)
       if (bytesRead <= 0) {
@@ -165,7 +236,7 @@ export async function readFirstMatchingJsonlValue<T>(
       }
     }
 
-    if (bytesReadTotal >= JSONL_SCAN_MAX_BYTES) {
+    if (bytesReadTotal >= maxBytes) {
       return null
     }
 

@@ -225,6 +225,11 @@ export function resolveNodeTitle(options: {
   }
 
   if (options.kind === 'agent') {
+    const promptText = options.data.kind === 'agent' ? (options.data.prompt ?? '').trim() : ''
+    if (promptText.length > 0) {
+      return promptText.slice(0, 80)
+    }
+
     const provider = options.agentRuntime?.provider ?? 'codex'
     const model = options.agentRuntime?.effectiveModel ?? options.agentRuntime?.model ?? null
     return model ? `${provider} ${model}` : 'Agent'
