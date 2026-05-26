@@ -75,7 +75,7 @@
     "build:mac:x64": "pnpm build && pnpm build:release-manifest && electron-builder --mac --x64 --publish never",
     "build:mac:unsigned": "pnpm build && pnpm build:release-manifest && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --publish never",
     "build:win": "pnpm build && pnpm build:release-manifest && electron-builder --win --publish never",
-    "build:linux": "pnpm build && pnpm build:release-manifest && electron-builder --linux AppImage --publish never",
+    "build:linux": "pnpm build && pnpm build:release-manifest && electron-builder --linux AppImage deb --publish never",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "node scripts/test-e2e-with-window-fallback.mjs",

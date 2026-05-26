@@ -152,6 +152,7 @@ jobs:
           name: release-assets-${{ matrix.artifact_name }}
           path: |
             dist/*.AppImage
+            dist/*.deb
             dist/*.blockmap
             dist/*.dmg
             dist/*.exe

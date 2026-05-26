@@ -13,7 +13,7 @@
 - `OpenCove-<version>-mac-arm64.dmg` / `OpenCove-<version>-mac-arm64.zip`
 - `OpenCove-<version>-mac-x64.dmg` / `OpenCove-<version>-mac-x64.zip`
 - `*.exe`
-- `*.AppImage` / 其他 Linux 包格式（取决于 electron-builder 实际输出）
+- `*.AppImage` / `*.deb`
 - `opencove-server-<platform>-<arch>.tar.gz`（macOS / Linux standalone CLI / Worker runtime）
 - `opencove-server-windows-<arch>.zip`（Windows standalone CLI / Worker runtime）
 
@@ -48,7 +48,7 @@
 - macOS Apple Silicon 产物（`OpenCove-<version>-mac-arm64.dmg` / `.zip`）
 - macOS Intel 产物（`OpenCove-<version>-mac-x64.dmg` / `.zip`）
 - Windows 产物（如 `*.exe`）
-- Linux 产物（如 `*.AppImage`）
+- Linux 产物（`*.AppImage` / `*.deb`）
 - macOS / Linux standalone server bundle（`opencove-server-<platform>-<arch>.tar.gz`）
 - Windows standalone server bundle（`opencove-server-windows-<arch>.zip`）
 - tag-pinned 一键安装 / 卸载脚本（`opencove-install-v<tag>.*`、`opencove-uninstall-v<tag>.*`）
