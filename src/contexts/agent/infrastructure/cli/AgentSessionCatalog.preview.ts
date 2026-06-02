@@ -186,7 +186,9 @@ export function parseGeminiFirstUserPreview(parsed: unknown): string | null {
       continue
     }
 
-    return extractTextFromMessageContent(message.content) ?? extractTextFromMessageContent(message.parts)
+    return (
+      extractTextFromMessageContent(message.content) ?? extractTextFromMessageContent(message.parts)
+    )
   }
 
   return null

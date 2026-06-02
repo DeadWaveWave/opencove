@@ -15,13 +15,19 @@ interface MockRow {
 class MockDatabase {
   private readonly rows = new Map<string, MockRow>()
 
-  prepare(sql: string): { get: (...a: unknown[]) => unknown; all: () => unknown[]; run: (...a: unknown[]) => void } {
+  prepare(sql: string): {
+    get: (...a: unknown[]) => unknown
+    all: () => unknown[]
+    run: (...a: unknown[]) => void
+  } {
     const rows = this.rows
     return {
       get: (...args: unknown[]) => {
         if (sql.includes('SELECT mtime_ms')) {
           const row = rows.get(String(args[0]))
-          return row ? { mtime_ms: row.mtimeMs, size: row.size, value_json: row.valueJson } : undefined
+          return row
+            ? { mtime_ms: row.mtimeMs, size: row.size, value_json: row.valueJson }
+            : undefined
         }
 
         return undefined
@@ -77,9 +83,8 @@ describe('AgentSessionTitleCacheStore', () => {
   async function createStore(): Promise<{ store: AgentSessionTitleCacheStore; directory: string }> {
     const directory = await mkdtemp(path.join(tmpdir(), 'opencove-title-cache-'))
     tempDirectories.push(directory)
-    const { createAgentSessionTitleCacheStore } = await import(
-      '../../../src/contexts/agent/infrastructure/cli/AgentSessionTitleCacheStore'
-    )
+    const { createAgentSessionTitleCacheStore } =
+      await import('../../../src/contexts/agent/infrastructure/cli/AgentSessionTitleCacheStore')
     const store = await createAgentSessionTitleCacheStore({
       dbPath: path.join(directory, 'opencove.db'),
     })
@@ -153,8 +158,18 @@ describe('AgentSessionTitleCacheStore', () => {
     const missingFile = path.join(directory, 'gone.jsonl')
 
     const fingerprint = { mtimeMs: 1, size: 1 }
-    store.write({ filePath: existingFile, provider: 'claude-code', fingerprint, value: { title: 'keep' } })
-    store.write({ filePath: missingFile, provider: 'claude-code', fingerprint, value: { title: 'drop' } })
+    store.write({
+      filePath: existingFile,
+      provider: 'claude-code',
+      fingerprint,
+      value: { title: 'keep' },
+    })
+    store.write({
+      filePath: missingFile,
+      provider: 'claude-code',
+      fingerprint,
+      value: { title: 'drop' },
+    })
 
     expect(store.pruneMissing()).toBe(1)
     expect(store.read(existingFile, fingerprint)).toEqual({ value: { title: 'keep' } })

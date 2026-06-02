@@ -246,6 +246,8 @@ export function registerIpcHandlers(deps?: {
       persistenceStorePromise = null
       const browserStorePromise = browserProfileStorePromise
       browserProfileStorePromise = null
+      const agentTitleCacheStorePromise = agentSessionTitleCacheStorePromise
+      agentSessionTitleCacheStorePromise = null
       void Promise.resolve(storePromise)
         .then(store => {
           store?.dispose()
@@ -254,6 +256,13 @@ export function registerIpcHandlers(deps?: {
           // ignore
         })
       void Promise.resolve(browserStorePromise)
+        .then(store => {
+          store?.dispose()
+        })
+        .catch(() => {
+          // ignore
+        })
+      void Promise.resolve(agentTitleCacheStorePromise)
         .then(store => {
           store?.dispose()
         })

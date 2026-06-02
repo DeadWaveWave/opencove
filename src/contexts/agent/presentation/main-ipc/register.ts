@@ -109,7 +109,7 @@ export function registerAgentIpcHandlers(
   ptyRuntime: PtyRuntime,
   approvedWorkspaces: ApprovedWorkspaceStore,
   getPersistenceStore: () => Promise<PersistenceStore>,
-  getAgentSessionTitleCacheStore: () => Promise<AgentSessionTitleCacheStore>,
+  getAgentSessionTitleCacheStore?: () => Promise<AgentSessionTitleCacheStore>,
 ): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.agentListInstalledProviders,
@@ -153,7 +153,7 @@ export function registerAgentIpcHandlers(
       }
 
       // 标题缓存(L2)仅为加速;获取失败时降级为无持久缓存,绝不影响列表本身。
-      const titleCache = await getAgentSessionTitleCacheStore().catch(() => undefined)
+      const titleCache = await getAgentSessionTitleCacheStore?.().catch(() => undefined)
       return await listAgentSessions(normalized, { titleCache })
     },
     { defaultErrorCode: 'common.unexpected' },

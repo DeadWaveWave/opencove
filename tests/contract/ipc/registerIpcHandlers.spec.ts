@@ -60,12 +60,20 @@ describe('registerIpcHandlers', () => {
 
   it('retries persistence store creation after an initialization failure', async () => {
     const store = createPersistenceStoreStub()
+    const agentTitleCacheStore = {
+      read: vi.fn(),
+      write: vi.fn(),
+      pruneMissing: vi.fn(),
+      dispose: vi.fn(),
+    }
     const createPersistenceStore = vi
       .fn()
       .mockRejectedValueOnce(new Error('database locked'))
       .mockResolvedValueOnce(store)
+    const createAgentSessionTitleCacheStore = vi.fn().mockResolvedValue(agentTitleCacheStore)
 
     let getStore: (() => Promise<typeof store>) | null = null
+    let getAgentTitleCacheStore: (() => Promise<typeof agentTitleCacheStore>) | null = null
 
     const ipcMain = {
       handle: vi.fn(),
@@ -83,7 +91,18 @@ describe('registerIpcHandlers', () => {
       clipboard,
     }))
     vi.doMock('../../../src/contexts/agent/presentation/main-ipc/register', () => ({
-      registerAgentIpcHandlers: () => ({ dispose: vi.fn() }),
+      registerAgentIpcHandlers: (
+        _runtime: unknown,
+        _approvedWorkspaces: unknown,
+        _getPersistenceStore: unknown,
+        nextGetAgentTitleCacheStore: () => Promise<typeof agentTitleCacheStore>,
+      ) => {
+        getAgentTitleCacheStore = nextGetAgentTitleCacheStore
+        return { dispose: vi.fn() }
+      },
+    }))
+    vi.doMock('../../../src/contexts/agent/infrastructure/cli/AgentSessionTitleCacheStore', () => ({
+      createAgentSessionTitleCacheStore,
     }))
     vi.doMock('../../../src/contexts/terminal/presentation/main-ipc/register', () => ({
       registerPtyIpcHandlers: () => ({ dispose: vi.fn() }),
@@ -133,11 +152,15 @@ describe('registerIpcHandlers', () => {
 
     await expect(getStore?.()).rejects.toThrow('database locked')
     await expect(getStore?.()).resolves.toBe(store)
+    await expect(getAgentTitleCacheStore?.()).resolves.toBe(agentTitleCacheStore)
     expect(createPersistenceStore).toHaveBeenCalledTimes(2)
+    expect(createAgentSessionTitleCacheStore).toHaveBeenCalledTimes(1)
 
     disposable.dispose()
     await waitForMockCalls(store.dispose, 1)
+    await waitForMockCalls(agentTitleCacheStore.dispose, 1)
     expect(store.dispose).toHaveBeenCalledTimes(1)
+    expect(agentTitleCacheStore.dispose).toHaveBeenCalledTimes(1)
   })
 
   it('hydrates persisted workspace roots before local workspace guards run', async () => {
