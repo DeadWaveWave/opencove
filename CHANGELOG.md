@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Workspace canvas: add an Arrange option to keep current window sizes while tidying Spaces or canvas selections. (#275)
 - Release: add Linux Debian (`.deb`) packages to release artifacts. (#272)
 - Agent: add Settings install status for local agent CLIs with one-click npm install actions and a unified default/order/install list. (#267)
 - Release: add separate macOS Intel x64 release artifacts alongside Apple Silicon packages. (#255)
