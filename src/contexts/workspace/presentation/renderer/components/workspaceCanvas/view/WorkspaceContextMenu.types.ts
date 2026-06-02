@@ -44,6 +44,8 @@ export interface WorkspaceContextMenuProps {
   spaces: WorkspaceSpaceState[]
   magneticSnappingEnabled: boolean
   onToggleMagneticSnapping: () => void
+  arrangePreserveWindowSizes: boolean
+  onChangeArrangePreserveWindowSizes: (enabled: boolean) => void
   canArrangeAll: boolean
   canArrangeCanvas: boolean
   arrangeAll: (style?: WorkspaceArrangeStyle) => void

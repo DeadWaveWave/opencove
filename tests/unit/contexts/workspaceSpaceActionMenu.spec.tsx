@@ -111,6 +111,31 @@ describe('WorkspaceSpaceActionMenu', () => {
     expect(screen.getByTestId('workspace-space-action-archive')).toBeVisible()
   })
 
+  it('toggles the preserve window sizes setting', () => {
+    const onChangePreserveWindowSizes = vi.fn()
+    render(
+      <WorkspaceSpaceActionMenu
+        menu={{ spaceId: 'space-1', x: 120, y: 80 }}
+        availableOpeners={[]}
+        canCreateWorktree={false}
+        canArchive={false}
+        preserveWindowSizes={false}
+        onChangePreserveWindowSizes={onChangePreserveWindowSizes}
+        closeMenu={() => undefined}
+        setSpaceLabelColor={() => undefined}
+        onArrange={() => undefined}
+        onCreateWorktree={() => undefined}
+        onArchive={() => undefined}
+        onCopyPath={() => undefined}
+        onOpenPath={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('workspace-space-action-preserve-window-sizes'))
+
+    expect(onChangePreserveWindowSizes).toHaveBeenCalledWith(true)
+  })
+
   it('keeps label color second-to-last and arrange last', () => {
     render(
       <WorkspaceSpaceActionMenu

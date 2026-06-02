@@ -92,6 +92,9 @@ test.describe('Workspace Canvas - Arrange', () => {
         window.locator('[data-testid="workspace-context-arrange-canonical-sizes"]'),
       ).toHaveCount(0)
       await expect(
+        window.locator('[data-testid="workspace-context-arrange-preserve-window-sizes"]'),
+      ).toBeVisible()
+      await expect(
         window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"]'),
       ).toHaveCount(0)
       await expect(
@@ -109,7 +112,9 @@ test.describe('Workspace Canvas - Arrange', () => {
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
 
-      await expect(window.locator('.workspace-context-menu__section-title')).toContainText('Space')
+      await expect(
+        window.locator('.workspace-context-menu__section-title', { hasText: 'Space' }),
+      ).toBeVisible()
 
       await window.screenshot({
         path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.standard-sizes.png',
@@ -230,7 +235,7 @@ test.describe('Workspace Canvas - Arrange', () => {
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
 
-      await window.locator('[data-testid="workspace-context-arrange-scope-all"]').click()
+      await window.locator('[data-testid="workspace-context-arrange-order-created"]').click()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
@@ -252,8 +257,8 @@ test.describe('Workspace Canvas - Arrange', () => {
           nodes: {
             'root-a': terminalSize,
             'root-b': terminalSize,
-            'space-a': terminalSize,
-            'space-b': terminalSize,
+            'space-a': { width: 320, height: 240 },
+            'space-b': { width: 320, height: 240 },
           },
         })
       const layout = await readSeededWorkspaceLayout(window, {

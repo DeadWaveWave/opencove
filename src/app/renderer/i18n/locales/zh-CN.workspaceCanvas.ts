@@ -28,6 +28,8 @@ export const zhCNWorkspaceCanvas = {
     spaceFit: 'Space',
     spaceFitTight: '紧缩 Space',
     spaceFitKeep: '保持 Space 大小',
+    windowSize: '窗口大小',
+    preserveWindowSizes: '保持当前窗口大小',
     style: '样式',
     alignCanonicalSizes: '对齐标准尺寸',
     magneticSnapping: '磁吸对齐',

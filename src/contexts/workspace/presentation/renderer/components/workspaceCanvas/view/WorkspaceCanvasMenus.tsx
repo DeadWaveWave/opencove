@@ -96,6 +96,12 @@ export function WorkspaceCanvasMenus({
   canArrangeCanvas: boolean
   canArrangeActiveSpace: boolean
 }): React.JSX.Element {
+  const [arrangePreserveWindowSizes, setArrangePreserveWindowSizes] = React.useState(false)
+  const arrangeStyle = React.useMemo(
+    () => ({ alignCanonicalSizes: !arrangePreserveWindowSizes }),
+    [arrangePreserveWindowSizes],
+  )
+
   return (
     <>
       <WorkspaceContextMenu
@@ -123,6 +129,8 @@ export function WorkspaceCanvasMenus({
         spaces={spaces}
         magneticSnappingEnabled={magneticSnappingEnabled}
         onToggleMagneticSnapping={onToggleMagneticSnapping}
+        arrangePreserveWindowSizes={arrangePreserveWindowSizes}
+        onChangeArrangePreserveWindowSizes={setArrangePreserveWindowSizes}
         canArrangeAll={canArrangeAll}
         canArrangeCanvas={canArrangeCanvas}
         arrangeAll={arrangeAll}
@@ -145,7 +153,9 @@ export function WorkspaceCanvasMenus({
         canArchive={activeMenuSpace !== null}
         closeMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
-        onArrange={arrangeInSpace}
+        preserveWindowSizes={arrangePreserveWindowSizes}
+        onChangePreserveWindowSizes={setArrangePreserveWindowSizes}
+        onArrange={spaceId => arrangeInSpace(spaceId, arrangeStyle)}
         onCreateWorktree={() => {
           if (activeMenuSpace) {
             openSpaceCreateWorktree(activeMenuSpace.id)

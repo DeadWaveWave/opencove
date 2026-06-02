@@ -28,6 +28,8 @@ export const enWorkspaceCanvas = {
     spaceFit: 'Space',
     spaceFitTight: 'Tighten Space',
     spaceFitKeep: 'Keep Space size',
+    windowSize: 'Window Size',
+    preserveWindowSizes: 'Keep current window sizes',
     style: 'Style',
     alignCanonicalSizes: 'Align standard sizes',
     magneticSnapping: 'Magnetic snapping',

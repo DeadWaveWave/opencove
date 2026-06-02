@@ -42,6 +42,8 @@ export function WorkspaceContextMenu({
   spaces,
   magneticSnappingEnabled,
   onToggleMagneticSnapping,
+  arrangePreserveWindowSizes,
+  onChangeArrangePreserveWindowSizes,
   canArrangeAll,
   canArrangeCanvas,
   arrangeAll,
@@ -148,9 +150,12 @@ export function WorkspaceContextMenu({
     handleArrangeScopeSelect,
     handleArrangeOrderSelect,
     handleArrangeSpaceFitSelect,
+    handlePreserveWindowSizesSelect,
   } = useWorkspaceContextArrangeMenuState({
     contextMenu,
     spaces,
+    preserveWindowSizes: arrangePreserveWindowSizes,
+    onChangePreserveWindowSizes: onChangeArrangePreserveWindowSizes,
     arrangeAll,
     arrangeCanvas,
     arrangeInSpace,
@@ -433,9 +438,11 @@ export function WorkspaceContextMenu({
         arrangeScope={arrangeScope}
         arrangeOrder={arrangeOrder}
         arrangeSpaceFit={arrangeSpaceFit}
+        arrangePreserveWindowSizes={arrangePreserveWindowSizes}
         handleArrangeScopeSelect={handleArrangeScopeSelect}
         handleArrangeOrderSelect={handleArrangeOrderSelect}
         handleArrangeSpaceFitSelect={handleArrangeSpaceFitSelect}
+        handleArrangePreserveWindowSizesSelect={handlePreserveWindowSizesSelect}
         sortedInstalledProviders={sortedInstalledProviders}
         enabledQuickCommands={enabledQuickCommands}
         enabledQuickPhrases={enabledQuickPhrases}

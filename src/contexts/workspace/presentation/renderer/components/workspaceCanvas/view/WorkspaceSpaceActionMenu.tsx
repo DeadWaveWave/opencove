@@ -1,6 +1,7 @@
 import React from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import {
+  Check,
   ChevronRight,
   Copy,
   FolderOpen,
@@ -28,8 +29,10 @@ interface WorkspaceSpaceActionMenuProps {
   canArrange?: boolean
   canCreateWorktree: boolean
   canArchive: boolean
+  preserveWindowSizes?: boolean
   closeMenu: () => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
+  onChangePreserveWindowSizes?: (enabled: boolean) => void
   onArrange?: (spaceId: string) => void
   onCreateWorktree: () => void
   onArchive: () => void
@@ -38,6 +41,14 @@ interface WorkspaceSpaceActionMenuProps {
 }
 
 const SUBMENU_WIDTH = MENU_WIDTH
+
+function renderMark(checked: boolean): React.JSX.Element {
+  return checked ? (
+    <Check className="workspace-context-menu__mark" aria-hidden="true" />
+  ) : (
+    <span className="workspace-context-menu__mark" aria-hidden="true" />
+  )
+}
 
 function getWorkspacePathOpenerSortRank(openerId: WorkspacePathOpenerId): number {
   if (openerId === 'finder') {
@@ -70,8 +81,10 @@ export function WorkspaceSpaceActionMenu({
   canArrange = true,
   canCreateWorktree,
   canArchive,
+  preserveWindowSizes = false,
   closeMenu,
   setSpaceLabelColor,
+  onChangePreserveWindowSizes,
   onArrange,
   onCreateWorktree,
   onArchive,
@@ -291,6 +304,21 @@ export function WorkspaceSpaceActionMenu({
         ) : null}
 
         <div className="workspace-context-menu__separator" />
+
+        {onChangePreserveWindowSizes ? (
+          <button
+            type="button"
+            data-testid="workspace-space-action-preserve-window-sizes"
+            onClick={() => {
+              onChangePreserveWindowSizes(!preserveWindowSizes)
+            }}
+          >
+            {renderMark(preserveWindowSizes)}
+            <span className="workspace-context-menu__label">
+              {t('workspaceArrangeMenu.preserveWindowSizes')}
+            </span>
+          </button>
+        ) : null}
 
         <button
           type="button"

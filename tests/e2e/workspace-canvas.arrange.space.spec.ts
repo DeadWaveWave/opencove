@@ -10,6 +10,7 @@ import {
   CANONICAL_GUTTER_PX,
   ensureArtifactsDir,
   readSeededWorkspaceLayout,
+  rectsOverlap,
   resolveCanonicalNodeSizes,
 } from './workspace-canvas.arrange.shared'
 
@@ -137,6 +138,100 @@ test.describe('Workspace Canvas - Arrange', () => {
 
       await ensureArtifactsDir()
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.in-space-after.png' })
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('keeps current window sizes when enabled from the space action menu', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'keep-size-a',
+            title: 'a',
+            position: { x: 900, y: 700 },
+            width: 620,
+            height: 360,
+          },
+          {
+            id: 'keep-size-b',
+            title: 'b',
+            position: { x: 230, y: 240 },
+            width: 350,
+            height: 260,
+          },
+          {
+            id: 'keep-size-c',
+            title: 'c',
+            position: { x: 610, y: 260 },
+            width: 430,
+            height: 310,
+          },
+        ],
+        {
+          spaces: [
+            {
+              id: 'space-keep-size',
+              name: 'Keep Size',
+              directoryPath: testWorkspacePath,
+              nodeIds: ['keep-size-a', 'keep-size-b', 'keep-size-c'],
+              rect: { x: 100, y: 100, width: 1800, height: 1200 },
+            },
+          ],
+          activeSpaceId: null,
+        },
+      )
+
+      await expect(window.locator('.workspace-space-region')).toHaveCount(1)
+      await expect(window.locator('.react-flow__node')).toHaveCount(3)
+
+      await window.locator('[data-testid="workspace-space-menu-space-keep-size"]').click()
+      await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
+      await expect(
+        window.locator('[data-testid="workspace-space-action-preserve-window-sizes"]'),
+      ).toContainText('Keep current window sizes')
+
+      await window.locator('[data-testid="workspace-space-action-preserve-window-sizes"]').click()
+      await window.locator('[data-testid="workspace-space-action-arrange"]').click()
+      await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toHaveCount(0)
+
+      await expect
+        .poll(async () => {
+          return await readSeededWorkspaceLayout(window, {
+            nodeIds: ['keep-size-a', 'keep-size-b', 'keep-size-c'],
+            spaceIds: ['space-keep-size'],
+          })
+        })
+        .toEqual({
+          nodes: {
+            'keep-size-a': { x: 928, y: 124, width: 620, height: 360 },
+            'keep-size-b': { x: 124, y: 124, width: 350, height: 260 },
+            'keep-size-c': { x: 486, y: 124, width: 430, height: 310 },
+          },
+          spaces: {
+            'space-keep-size': { x: 100, y: 100, width: 1472, height: 408 },
+          },
+        })
+
+      const layout = await readSeededWorkspaceLayout(window, {
+        nodeIds: ['keep-size-a', 'keep-size-b', 'keep-size-c'],
+        spaceIds: ['space-keep-size'],
+      })
+      const rects = Object.values(layout.nodes)
+      for (let i = 0; i < rects.length; i += 1) {
+        for (let j = i + 1; j < rects.length; j += 1) {
+          expect(rectsOverlap(rects[i]!, rects[j]!)).toBe(false)
+        }
+      }
+
+      await ensureArtifactsDir()
+      await window.screenshot({
+        path: 'artifacts/workspace-canvas-arrange.in-space-preserve-sizes.png',
+      })
     } finally {
       await electronApp.close()
     }

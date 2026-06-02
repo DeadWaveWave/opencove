@@ -12,6 +12,8 @@ import type { ArrangeScope } from './WorkspaceContextArrangeBySubmenu'
 export function useWorkspaceContextArrangeMenuState(params: {
   contextMenu: ContextMenuState | null
   spaces: WorkspaceSpaceState[]
+  preserveWindowSizes: boolean
+  onChangePreserveWindowSizes: (enabled: boolean) => void
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
@@ -24,8 +26,17 @@ export function useWorkspaceContextArrangeMenuState(params: {
   handleArrangeScopeSelect: (scope: ArrangeScope) => void
   handleArrangeOrderSelect: (order: WorkspaceArrangeOrder) => void
   handleArrangeSpaceFitSelect: (spaceFit: WorkspaceArrangeSpaceFit) => void
+  handlePreserveWindowSizesSelect: (enabled: boolean) => void
 } {
-  const { contextMenu, spaces, arrangeAll, arrangeCanvas, arrangeInSpace } = params
+  const {
+    contextMenu,
+    spaces,
+    preserveWindowSizes,
+    onChangePreserveWindowSizes,
+    arrangeAll,
+    arrangeCanvas,
+    arrangeInSpace,
+  } = params
 
   const [contextHitSpaceId, setContextHitSpaceId] = useState<string | null>(null)
   const contextHitSpaceIdRef = useRef<string | null>(null)
@@ -70,8 +81,9 @@ export function useWorkspaceContextArrangeMenuState(params: {
     return {
       order: arrangeOrderRef.current,
       spaceFit: arrangeSpaceFitRef.current,
+      alignCanonicalSizes: !preserveWindowSizes,
     }
-  }, [])
+  }, [preserveWindowSizes])
 
   const applyArrange = useCallback(
     (options?: { scope?: ArrangeScope; style?: WorkspaceArrangeStyle }) => {
@@ -123,6 +135,20 @@ export function useWorkspaceContextArrangeMenuState(params: {
     [applyArrange],
   )
 
+  const handlePreserveWindowSizesSelect = useCallback(
+    (enabled: boolean) => {
+      onChangePreserveWindowSizes(enabled)
+      applyArrange({
+        style: {
+          order: arrangeOrderRef.current,
+          spaceFit: arrangeSpaceFitRef.current,
+          alignCanonicalSizes: !enabled,
+        },
+      })
+    },
+    [applyArrange, onChangePreserveWindowSizes],
+  )
+
   return {
     contextHitSpace,
     arrangeScope,
@@ -132,5 +158,6 @@ export function useWorkspaceContextArrangeMenuState(params: {
     handleArrangeScopeSelect,
     handleArrangeOrderSelect,
     handleArrangeSpaceFitSelect,
+    handlePreserveWindowSizesSelect,
   }
 }

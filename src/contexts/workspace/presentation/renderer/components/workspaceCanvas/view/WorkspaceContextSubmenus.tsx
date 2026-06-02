@@ -39,9 +39,11 @@ export function WorkspaceContextSubmenus({
   arrangeScope,
   arrangeOrder,
   arrangeSpaceFit,
+  arrangePreserveWindowSizes,
   handleArrangeScopeSelect,
   handleArrangeOrderSelect,
   handleArrangeSpaceFitSelect,
+  handleArrangePreserveWindowSizesSelect,
   sortedInstalledProviders,
   enabledQuickCommands,
   enabledQuickPhrases,
@@ -75,9 +77,11 @@ export function WorkspaceContextSubmenus({
   arrangeScope: ArrangeScope
   arrangeOrder: WorkspaceArrangeOrder
   arrangeSpaceFit: WorkspaceArrangeSpaceFit
+  arrangePreserveWindowSizes: boolean
   handleArrangeScopeSelect: (scope: ArrangeScope) => void
   handleArrangeOrderSelect: (order: WorkspaceArrangeOrder) => void
   handleArrangeSpaceFitSelect: (fit: WorkspaceArrangeSpaceFit) => void
+  handleArrangePreserveWindowSizesSelect: (enabled: boolean) => void
   sortedInstalledProviders: AgentProvider[]
   enabledQuickCommands: QuickCommand[]
   enabledQuickPhrases: QuickPhrase[]
@@ -127,9 +131,11 @@ export function WorkspaceContextSubmenus({
           arrangeScope={arrangeScope}
           arrangeOrder={arrangeOrder}
           arrangeSpaceFit={arrangeSpaceFit}
+          preserveWindowSizes={arrangePreserveWindowSizes}
           onSelectScope={handleArrangeScopeSelect}
           onSelectOrder={handleArrangeOrderSelect}
           onSelectSpaceFit={handleArrangeSpaceFitSelect}
+          onSelectPreserveWindowSizes={handleArrangePreserveWindowSizesSelect}
         />
       ) : null}
 

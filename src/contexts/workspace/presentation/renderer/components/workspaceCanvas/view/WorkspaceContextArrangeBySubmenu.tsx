@@ -28,9 +28,11 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeScope,
   arrangeOrder,
   arrangeSpaceFit,
+  preserveWindowSizes,
   onSelectScope,
   onSelectOrder,
   onSelectSpaceFit,
+  onSelectPreserveWindowSizes,
 }: {
   submenuRef: React.RefObject<HTMLDivElement | null>
   style: React.CSSProperties
@@ -41,9 +43,11 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeScope: ArrangeScope
   arrangeOrder: WorkspaceArrangeOrder
   arrangeSpaceFit: WorkspaceArrangeSpaceFit
+  preserveWindowSizes: boolean
   onSelectScope: (scope: ArrangeScope) => void
   onSelectOrder: (order: WorkspaceArrangeOrder) => void
   onSelectSpaceFit: (fit: WorkspaceArrangeSpaceFit) => void
+  onSelectPreserveWindowSizes: (enabled: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
@@ -126,6 +130,24 @@ export function WorkspaceContextArrangeBySubmenu({
         {renderMark(arrangeOrder === 'createdAt')}
         <span className="workspace-context-menu__label">
           {t('workspaceArrangeMenu.orderCreatedAt')}
+        </span>
+      </button>
+
+      <div className="workspace-context-menu__separator" />
+      <div className="workspace-context-menu__section-title">
+        {t('workspaceArrangeMenu.windowSize')}
+      </div>
+
+      <button
+        type="button"
+        data-testid="workspace-context-arrange-preserve-window-sizes"
+        onClick={() => {
+          onSelectPreserveWindowSizes(!preserveWindowSizes)
+        }}
+      >
+        {renderMark(preserveWindowSizes)}
+        <span className="workspace-context-menu__label">
+          {t('workspaceArrangeMenu.preserveWindowSizes')}
         </span>
       </button>
 
