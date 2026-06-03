@@ -57,6 +57,9 @@ function classifyExternalAgent(
   if (nameStem === 'gemini' || hasExecutableToken(commandLine, 'gemini')) {
     return 'external-agent-gemini'
   }
+  if (nameStem === 'hermes' || hasExecutableToken(commandLine, 'hermes')) {
+    return 'external-agent-hermes'
+  }
   return null
 }
 
@@ -144,6 +147,7 @@ export function resolvePerformanceProcessScope(
     kind === 'external-agent-claude' ||
     kind === 'external-agent-opencode' ||
     kind === 'external-agent-gemini' ||
+    kind === 'external-agent-hermes' ||
     kind === 'external-output-stub'
   ) {
     return 'external-agent'

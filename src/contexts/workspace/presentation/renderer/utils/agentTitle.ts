@@ -15,6 +15,10 @@ export function providerTitlePrefix(provider: AgentProvider): string {
     return 'gemini'
   }
 
+  if (provider === 'hermes') {
+    return 'hermes'
+  }
+
   return 'codex'
 }
 

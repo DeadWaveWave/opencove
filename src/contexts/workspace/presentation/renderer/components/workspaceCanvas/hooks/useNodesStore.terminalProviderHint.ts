@@ -27,5 +27,9 @@ export function resolveTerminalProviderHintFromCommand(command: string): AgentPr
     return 'gemini'
   }
 
+  if (executableName === 'hermes') {
+    return 'hermes'
+  }
+
   return null
 }

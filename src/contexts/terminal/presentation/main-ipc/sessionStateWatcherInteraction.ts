@@ -1,7 +1,7 @@
 import type { AgentProviderId } from '../../../../shared/contracts/dto'
 
 function isJsonlProvider(provider: AgentProviderId): boolean {
-  return provider === 'claude-code' || provider === 'codex'
+  return provider === 'claude-code' || provider === 'codex' || provider === 'hermes'
 }
 
 function isExplicitSubmitInteraction(data: string | undefined): boolean {

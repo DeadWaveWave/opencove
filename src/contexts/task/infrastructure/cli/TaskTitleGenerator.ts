@@ -185,7 +185,7 @@ function testModeTitle(requirement: string): string {
 }
 
 async function executeCommand(
-  provider: 'claude-code' | 'codex',
+  provider: 'claude-code' | 'codex' | 'hermes',
   args: string[],
   cwd: string,
 ): Promise<CommandExecutionResult> {

@@ -10,6 +10,7 @@ export const DEFAULT_AGENT_EXECUTABLE_PATH_OVERRIDE_BY_PROVIDER: AgentExecutable
     codex: '',
     opencode: '',
     gemini: '',
+    hermes: '',
   }
 
 export function normalizeAgentExecutablePathOverrideByProvider(
