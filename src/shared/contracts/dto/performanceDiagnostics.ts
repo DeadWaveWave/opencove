@@ -15,6 +15,7 @@ export type PerformanceProcessKind =
   | 'external-agent-claude'
   | 'external-agent-opencode'
   | 'external-agent-gemini'
+  | 'external-agent-hermes'
   | 'external-output-stub'
   | 'external-shell'
   | 'windows-console-host'

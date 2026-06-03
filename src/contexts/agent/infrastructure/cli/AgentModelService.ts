@@ -199,8 +199,21 @@ async function listOpenCodeModelsFromCli(
     }))
 }
 
+const HERMES_STATIC_MODELS: AgentModelOption[] = [
+  {
+    id: 'hermes-default',
+    displayName: 'Hermes Default',
+    description: 'Hermes default model (provider-configured)',
+    isDefault: true,
+  },
+]
+
 function listClaudeCodeStaticModels(): AgentModelOption[] {
   return CLAUDE_CODE_STATIC_MODELS.map(model => ({ ...model }))
+}
+
+function listHermesStaticModels(): AgentModelOption[] {
+  return HERMES_STATIC_MODELS.map(model => ({ ...model }))
 }
 
 export function disposeAgentModelService(): void {
@@ -277,6 +290,18 @@ export async function listAgentModels(options: {
           debugMessage: toErrorMessage(error),
         }),
       }
+    }
+  }
+
+  if (provider === 'hermes') {
+    const fetchedAt = new Date().toISOString()
+
+    return {
+      provider,
+      source: 'hermes-static',
+      fetchedAt,
+      models: listHermesStaticModels(),
+      error: null,
     }
   }
 

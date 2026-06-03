@@ -42,7 +42,7 @@ describe('agent settings normalization', () => {
       agentProviderOrder: ['gemini', 'codex', 'gemini', 'invalid'],
     })
 
-    expect(result.agentProviderOrder).toEqual(['gemini', 'codex', 'claude-code', 'opencode'])
+    expect(result.agentProviderOrder).toEqual(['gemini', 'codex', 'claude-code', 'opencode', 'hermes'])
   })
 
   it('keeps valid provider, custom model, and model option fields', () => {

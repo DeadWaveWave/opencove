@@ -94,6 +94,24 @@ export function buildTaskTitleCommand(input: BuildTaskTitleCommandInput): TaskTi
     }
   }
 
+  if (input.provider === 'hermes') {
+    const args = ['chat', '-q']
+
+    if (effectiveModel) {
+      args.push('--model', effectiveModel)
+    }
+
+    args.push(prompt)
+
+    return {
+      command: 'hermes',
+      args,
+      provider: input.provider,
+      effectiveModel,
+      outputMode: 'stdout',
+    }
+  }
+
   const args = [
     'exec',
     '--skip-git-repo-check',

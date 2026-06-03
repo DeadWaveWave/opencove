@@ -45,7 +45,8 @@ export function normalizeAgentProviderId(
     provider === 'claude-code' ||
     provider === 'codex' ||
     provider === 'opencode' ||
-    provider === 'gemini'
+    provider === 'gemini' ||
+    provider === 'hermes'
   ) {
     return provider
   }

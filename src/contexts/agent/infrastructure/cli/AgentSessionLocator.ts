@@ -300,6 +300,40 @@ async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promi
   return sessionId ?? null
 }
 
+async function findHermesResumeSessionId(
+  _cwd: string,
+  startedAtMs: number,
+): Promise<string | null> {
+  try {
+    const sessionsIndexPath = join(resolveHomeDirectoryCandidates()[0] ?? '', '.hermes', 'sessions', 'sessions.json')
+    const raw = await fs.readFile(sessionsIndexPath, 'utf8')
+    const index = JSON.parse(raw) as Record<string, { session_id?: string; platform?: string; updated_at?: string }>
+
+    let bestSessionId: string | null = null
+    let bestUpdatedAt = 0
+
+    for (const entry of Object.values(index)) {
+      if (!entry.session_id || entry.platform !== 'cli') {
+        continue
+      }
+
+      const updatedAt = entry.updated_at ? Date.parse(entry.updated_at) : 0
+      if (Number.isNaN(updatedAt)) {
+        continue
+      }
+
+      if (updatedAt > bestUpdatedAt && updatedAt >= startedAtMs - 6000) {
+        bestUpdatedAt = updatedAt
+        bestSessionId = entry.session_id
+      }
+    }
+
+    return bestSessionId
+  } catch {
+    return null
+  }
+}
+
 async function tryFindResumeSessionId(
   provider: AgentProviderId,
   cwd: string,
@@ -315,6 +349,10 @@ async function tryFindResumeSessionId(
 
   if (provider === 'opencode') {
     return await findOpenCodeResumeSessionId(cwd, startedAtMs)
+  }
+
+  if (provider === 'hermes') {
+    return await findHermesResumeSessionId(cwd, startedAtMs)
   }
 
   return await findGeminiResumeSessionId(cwd, startedAtMs)

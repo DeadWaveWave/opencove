@@ -22,5 +22,5 @@ export function logSessionStateWatcherDiagnostics(
 }
 
 export function isJsonlProvider(provider: AgentProviderId): boolean {
-  return provider === 'claude-code' || provider === 'codex'
+  return provider === 'claude-code' || provider === 'codex' || provider === 'hermes'
 }

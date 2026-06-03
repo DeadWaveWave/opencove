@@ -27,6 +27,7 @@ const AGENT_PROVIDER_NPM_PACKAGES: Record<AgentProviderId, string> = {
   codex: '@openai/codex',
   opencode: 'opencode-ai',
   gemini: '@google/gemini-cli',
+  hermes: 'hermes-agent',
 }
 
 interface CommandOutput {
