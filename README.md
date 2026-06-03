@@ -1,37 +1,74 @@
 <div align="center">
 
-# OpenCove 🌌
+> [!WARNING]  
+> ## This is NOT the official OpenCove repository  
+> **This is a third-party fork of the [official OpenCove project](https://github.com/DeadWaveWave/opencove).**  
+> **Original author: [DeadWaveWave (Haojie Shi)](https://github.com/DeadWaveWave) • Upstream: [github.com/DeadWaveWave/opencove](https://github.com/DeadWaveWave/opencove)**  
+> For official releases, downloads, or bug reports, please visit the upstream repository. This fork is maintained independently. Issues with this fork should be reported here.
 
-**An infinite canvas for Claude Code, Codex, terminals, tasks, and notes.**
+---
+
+# OpenCove 🌌 + Hermes
+
+**An infinite canvas for Claude Code, Codex, Hermes, Gemini CLI, terminals, tasks, and notes.**
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)]()
 [![简体中文](https://img.shields.io/badge/Language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-blue)](./README_ZH.md)
-
-Keep every agent, terminal, task, and note on one infinite canvas.
-
-See parallel work at a glance, keep context visible, and resume exactly where you left off.
-
-[Download the latest builds](https://github.com/DeadWaveWave/opencove/releases) · [Read the Chinese README](./README_ZH.md)
-
-<img src="./assets/images/opencove_header_readme.jpg" alt="OpenCove Header" width="100%" />
+[![Hermes](https://img.shields.io/badge/Hermes-Integrated-teal.svg)](https://github.com/DeadWaveWave/hermes-agent)
+[![Modified](https://img.shields.io/badge/Fork-Modified-red.svg)](https://github.com/DeadWaveWave/opencove)
 
 </div>
 
-## 📖 What is OpenCove?
+---
 
-OpenCove is a **spatial development workspace** for people who work with AI coding agents every day.
+## ⚡ About This Fork
 
-Instead of burying work inside tabs, sidebars, and long chat threads, OpenCove puts your **AI agents**, **terminals**, **tasks**, and **notes** on the same infinite 2D canvas, so the full state of your work stays visible.
+This fork is maintained by **[@UbiStaff](https://github.com/UbiStaff)**. It adds [Hermes Agent](https://github.com/DeadWaveWave/hermes-agent) Provider integration on top of the [official OpenCove](https://github.com/DeadWaveWave/opencove) by [DeadWaveWave](https://github.com/DeadWaveWave).
 
-It is built for workflows like:
+### What's Changed
 
-- Running multiple `Claude Code` or `Codex` sessions side by side
-- Keeping task plans, notes, and terminal output in one shared workspace
-- Switching projects without losing layout, context, or execution history
+**Added Hermes CLI as a 5th native Agent engine**, usable alongside Claude Code, Codex, OpenCode, and Gemini CLI on the opencove canvas.
 
-<img src="./assets/images/opencove_app_preview_readme.jpg" alt="OpenCove App Preview" width="100%" />
+| Layer | Details |
+|-------|---------|
+| Settings panel | New Hermes provider option with configurable executable path |
+| Agent nodes | Create Hermes agent nodes on canvas, launching interactive terminals |
+| Command modes | `hermes chat` (interactive) / `hermes chat -q <prompt>` / `--resume <id>` |
+| Session management | Auto-discover and resume sessions from `~/.hermes/sessions/sessions.json` |
+| Type system | Extended `AgentProviderId`, `AgentModelCatalogSource`, and all related unions |
+| IPC validation | All provider validation gates updated (normalizeProvider, normalizeAgentProviderId, managedAgentProvider) |
+| Frontend UI | Layered diamond SVG icon + teal accent color + EN/ZH labels |
+| Tests | Updated 3 unit test suites for provider order and defaults |
+
+### Screenshots
+
+#### Settings — Enable Hermes Provider
+
+![Hermes Settings](https://raw.githubusercontent.com/UbiStaff/opencove/main/assets/screenshots/hermes-settings.png)
+
+#### Canvas — Hermes Agent in Action
+
+![Hermes Canvas](https://raw.githubusercontent.com/UbiStaff/opencove/main/assets/screenshots/hermes-canvas.png)
+
+### Upstream PR
+
+Changes submitted to upstream: **[#277 feat: add Hermes agent provider integration](https://github.com/DeadWaveWave/opencove/pull/277)**
+
+### Install This Fork
+
+```bash
+git clone https://github.com/UbiStaff/opencove-hermes.git
+cd opencove-hermes
+pnpm install
+pnpm dev
+```
+
+> [!NOTE]
+> Requires [Hermes CLI](https://github.com/DeadWaveWave/hermes-agent) to be pre-installed. Enable Hermes in opencove Settings → Agent Providers.
+
+---
 
 ## ✨ Highlights
 
