@@ -1,6 +1,11 @@
 export type AgentProviderId = 'claude-code' | 'codex' | 'opencode' | 'gemini' | 'hermes'
 
-export type AgentModelCatalogSource = 'claude-static' | 'codex-cli' | 'opencode-cli' | 'gemini-cli' | 'hermes-static'
+export type AgentModelCatalogSource =
+  | 'claude-static'
+  | 'codex-cli'
+  | 'opencode-cli'
+  | 'gemini-cli'
+  | 'hermes-static'
 export type ExecutableResolutionSource =
   | 'override'
   | 'shell_env_path'

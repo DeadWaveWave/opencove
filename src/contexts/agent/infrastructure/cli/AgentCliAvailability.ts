@@ -5,7 +5,13 @@ import type {
 } from '@shared/contracts/dto'
 import { resolveAgentProviderAvailability } from './AgentExecutableResolver'
 
-const AGENT_PROVIDERS: readonly AgentProviderId[] = ['claude-code', 'codex', 'opencode', 'gemini', 'hermes']
+const AGENT_PROVIDERS: readonly AgentProviderId[] = [
+  'claude-code',
+  'codex',
+  'opencode',
+  'gemini',
+  'hermes',
+]
 
 function toAvailabilityRecord(
   entries: AgentProviderAvailability[],

@@ -305,9 +305,17 @@ async function findHermesResumeSessionId(
   startedAtMs: number,
 ): Promise<string | null> {
   try {
-    const sessionsIndexPath = join(resolveHomeDirectoryCandidates()[0] ?? '', '.hermes', 'sessions', 'sessions.json')
+    const sessionsIndexPath = join(
+      resolveHomeDirectoryCandidates()[0] ?? '',
+      '.hermes',
+      'sessions',
+      'sessions.json',
+    )
     const raw = await fs.readFile(sessionsIndexPath, 'utf8')
-    const index = JSON.parse(raw) as Record<string, { session_id?: string; platform?: string; updated_at?: string }>
+    const index = JSON.parse(raw) as Record<
+      string,
+      { session_id?: string; platform?: string; updated_at?: string }
+    >
 
     let bestSessionId: string | null = null
     let bestUpdatedAt = 0
