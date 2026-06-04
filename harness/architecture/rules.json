@@ -1,0 +1,108 @@
+{
+  "sourceRoot": "src",
+  "includeExtensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
+  "exclude": ["**/*.d.ts", "**/*.spec.ts", "**/*.test.ts", "**/*.spec.tsx", "**/*.test.tsx"],
+  "aliases": [
+    { "prefix": "@/", "path": "src/" },
+    { "prefix": "@app/", "path": "src/app/" },
+    { "prefix": "@contexts/", "path": "src/contexts/" },
+    { "prefix": "@platform/", "path": "src/platform/" },
+    { "prefix": "@shared/", "path": "src/shared/" }
+  ],
+  "layers": [
+    { "name": "domain", "patterns": ["src/contexts/*/domain/**"] },
+    { "name": "application", "patterns": ["src/contexts/*/application/**"] },
+    { "name": "infrastructure", "patterns": ["src/contexts/*/infrastructure/**"] },
+    { "name": "presentation-main", "patterns": ["src/contexts/*/presentation/main-ipc/**"] },
+    { "name": "presentation-renderer", "patterns": ["src/contexts/*/presentation/renderer/**"] },
+    { "name": "app-main", "patterns": ["src/app/main/**"] },
+    { "name": "app-preload", "patterns": ["src/app/preload/**"] },
+    { "name": "app-renderer", "patterns": ["src/app/renderer/**"] },
+    { "name": "app-worker", "patterns": ["src/app/worker/**"] },
+    { "name": "app-cli", "patterns": ["src/app/cli/**"] },
+    { "name": "platform", "patterns": ["src/platform/**"] },
+    { "name": "shared", "patterns": ["src/shared/**"] }
+  ],
+  "allowedLayerDependencies": [
+    { "from": "domain", "to": ["domain", "shared"] },
+    { "from": "application", "to": ["application", "domain", "shared"] },
+    {
+      "from": "infrastructure",
+      "to": ["infrastructure", "application", "domain", "shared", "platform"]
+    },
+    { "from": "presentation-main", "to": ["presentation-main", "application", "domain", "shared"] },
+    {
+      "from": "presentation-renderer",
+      "to": ["presentation-renderer", "application", "domain", "shared"]
+    },
+    {
+      "from": "app-main",
+      "to": [
+        "app-main",
+        "presentation-main",
+        "application",
+        "infrastructure",
+        "domain",
+        "shared",
+        "platform"
+      ]
+    },
+    { "from": "app-preload", "to": ["app-preload", "shared"] },
+    { "from": "app-renderer", "to": ["app-renderer", "presentation-renderer", "domain", "shared"] },
+    { "from": "app-worker", "to": ["app-worker", "app-main", "shared"] },
+    { "from": "app-cli", "to": ["app-cli", "shared"] },
+    { "from": "platform", "to": ["platform", "shared"] },
+    { "from": "shared", "to": ["shared"] }
+  ],
+  "checks": {
+    "fileRuntimeCycles": {
+      "severity": "error"
+    },
+    "layerDependencies": {
+      "severity": "warn",
+      "ignoreTypeOnly": true,
+      "doc": "docs/architecture/ARCHITECTURE.md#5-依赖规则"
+    },
+    "forbiddenImportSpecifiers": [
+      {
+        "id": "architecture.domainNoOuterRuntime",
+        "severity": "error",
+        "fromLayers": ["domain"],
+        "specifiers": ["electron", "react", "react-dom", "better-sqlite3"],
+        "specifierPrefixes": ["node:", "@app/", "@platform/"],
+        "doc": "docs/architecture/ARCHITECTURE.md#domain"
+      },
+      {
+        "id": "architecture.applicationNoOuterRuntime",
+        "severity": "error",
+        "fromLayers": ["application"],
+        "specifiers": ["electron", "react", "react-dom", "better-sqlite3"],
+        "specifierPrefixes": ["@app/"],
+        "doc": "docs/architecture/ARCHITECTURE.md#application"
+      },
+      {
+        "id": "architecture.rendererNoElectronRuntime",
+        "severity": "error",
+        "fromLayers": ["app-renderer", "presentation-renderer"],
+        "specifiers": ["electron", "better-sqlite3"],
+        "specifierPrefixes": ["node:"],
+        "doc": "docs/architecture/ARCHITECTURE.md#6-进程边界规则"
+      }
+    ],
+    "forbiddenText": [
+      {
+        "id": "architecture.windowOpenCoveApiBoundary",
+        "severity": "warn",
+        "pattern": "window\\.opencoveApi",
+        "allowedPatterns": [
+          "src/app/preload/**",
+          "src/app/renderer/browser/**",
+          "src/**/presentation/renderer/*Api.ts",
+          "src/**/presentation/renderer/**/*Api.ts",
+          "src/**/presentation/renderer/**/testHarness.ts"
+        ],
+        "doc": "docs/architecture/ARCHITECTURE.md#windowopencoveapi"
+      }
+    ]
+  }
+}

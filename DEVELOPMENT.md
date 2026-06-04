@@ -53,6 +53,16 @@
     - **同类问题短期内反复出现**：同一类故障在一个迭代内出现多次，说明边界/owner/不变量未收敛。
     - 需要具体案例时，参考：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`。
 
+### 架构契约变更 Gate (Architecture Contract Change Gate)
+
+本节只记录必须遵守的入口规则。详细 checklist 和 guard 行为见
+`harness/architecture/README.md`。
+
+- 契约文档包括：`docs/architecture/ARCHITECTURE.md`、`docs/architecture/CONTROL_SURFACE.md`、`docs/architecture/RECOVERY_MODEL.md`。
+- 如果改动影响依赖方向、层职责、进程边界、allowlist、禁止 import/API 或 severity，必须同步 `harness/architecture/` 的规则、分析器、测试和结果。
+- 如果只是措辞、错别字或说明性例子，必须在 review/提交说明中声明 `no executable-rule impact`。
+- 本地 staged guard：`pnpm arch:doc-sync`。
+
 ### 高风险问题预防策略（只列最容易漏的）
 
 以下内容是前文原则的落地建模方式；正式检查项统一见后文“风险与合规检查”，这里不重复展开检查清单。
@@ -183,6 +193,7 @@
 
 -   **Agent 关键指令与决策门槛**：`AGENTS.md`
 -   **架构标准（DDD + Clean）**：`docs/architecture/ARCHITECTURE.md`
+-   **架构 harness（源码偏离检查）**：说明见 `docs/architecture/ARCHITECTURE_HARNESS.md`，工具目录见 `harness/architecture/`
 -   **Project / Space / Endpoint / Mount 能力链路**：`docs/architecture/WORKSPACE_CAPABILITY_ARCHITECTURE.md`
 -   **统一控制面（command/query/event）**：`docs/architecture/CONTROL_SURFACE.md`
 -   **CLI 规范**：`docs/cli/README.md`

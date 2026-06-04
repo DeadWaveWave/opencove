@@ -1,0 +1,54 @@
+{
+  "filesAnalyzed": 1043,
+  "summary": {
+    "errors": 0,
+    "warnings": 475,
+    "violations": 475
+  },
+  "byRule": {
+    "architecture.windowOpenCoveApiBoundary": 244,
+    "architecture.layerDependency": 231
+  },
+  "topAreas": [
+    {
+      "area": "src/contexts/workspace/presentation",
+      "count": 213
+    },
+    {
+      "area": "src/contexts/settings/presentation",
+      "count": 87
+    },
+    {
+      "area": "src/app/renderer/shell",
+      "count": 79
+    },
+    {
+      "area": "src/contexts/agent/presentation",
+      "count": 23
+    },
+    {
+      "area": "src/contexts/terminal/presentation",
+      "count": 17
+    },
+    {
+      "area": "src/contexts/worktree/presentation",
+      "count": 15
+    },
+    {
+      "area": "src/contexts/task/presentation",
+      "count": 14
+    },
+    {
+      "area": "src/app/worker",
+      "count": 8
+    },
+    {
+      "area": "src/app/renderer/performanceDiagnostics",
+      "count": 3
+    },
+    {
+      "area": "src/contexts/browser/presentation",
+      "count": 2
+    }
+  ]
+}

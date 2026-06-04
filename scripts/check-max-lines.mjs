@@ -16,6 +16,7 @@ const CHECKED_EXTENSIONS = new Set([
   '.scss',
   '.less',
   '.json',
+  '.jsonl',
   '.md',
   '.yml',
   '.yaml',

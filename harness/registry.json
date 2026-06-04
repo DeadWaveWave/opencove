@@ -1,0 +1,22 @@
+{
+  "checks": [
+    {
+      "id": "architecture:check",
+      "category": "architecture",
+      "command": "node",
+      "args": ["harness/architecture/check.mjs", "--mode", "check", "--severity", "error"]
+    },
+    {
+      "id": "architecture:doc-sync",
+      "category": "architecture",
+      "command": "node",
+      "args": ["harness/architecture/check-doc-sync.mjs"]
+    },
+    {
+      "id": "architecture:test",
+      "category": "architecture",
+      "command": "pnpm",
+      "args": ["exec", "vitest", "--run", "--config", "harness/architecture/vitest.config.ts"]
+    }
+  ]
+}
