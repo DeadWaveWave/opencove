@@ -129,20 +129,25 @@ async function assertDomRendererOverflowIfPresent(window: Page, nodeId: string):
   const domOverflow = await window.evaluate(id => {
     const nodeElement = document.querySelector(`.react-flow__node[data-id="${id}"] .terminal-node`)
     const terminalSurface = nodeElement?.querySelector('.terminal-node__terminal')
+    const xtermElement = nodeElement?.querySelector('.xterm')
     const screenElement = nodeElement?.querySelector('.xterm-screen')
     const rowElement = nodeElement?.querySelector('.xterm-rows > div')
     if (
       !(terminalSurface instanceof HTMLElement) ||
       terminalSurface.dataset.coveTerminalRenderer !== 'dom' ||
+      !(xtermElement instanceof HTMLElement) ||
       !(screenElement instanceof HTMLElement) ||
       !(rowElement instanceof HTMLElement)
     ) {
       return null
     }
 
+    const xtermStyle = window.getComputedStyle(xtermElement)
     const screenStyle = window.getComputedStyle(screenElement)
     const rowStyle = window.getComputedStyle(rowElement)
     return {
+      xtermOverflowX: xtermStyle.overflowX,
+      xtermOverflowY: xtermStyle.overflowY,
       screenOverflowX: screenStyle.overflowX,
       screenOverflowY: screenStyle.overflowY,
       rowOverflowX: rowStyle.overflowX,
@@ -152,6 +157,8 @@ async function assertDomRendererOverflowIfPresent(window: Page, nodeId: string):
 
   if (domOverflow !== null) {
     expect(domOverflow).toMatchObject({
+      xtermOverflowX: 'visible',
+      xtermOverflowY: 'visible',
       screenOverflowX: 'visible',
       screenOverflowY: 'visible',
       rowOverflowX: 'visible',

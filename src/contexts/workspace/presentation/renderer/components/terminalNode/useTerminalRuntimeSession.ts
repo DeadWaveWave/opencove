@@ -14,8 +14,6 @@ import { MAX_SCROLLBACK_CHARS } from './constants'
 import { createTerminalOutputScheduler } from './outputScheduler'
 import { createCommittedScreenStateRecorder } from './committedScreenState'
 import { createTerminalHydrationRouter } from './hydrationRouter'
-import { createMountedXtermSession } from './xtermSession'
-import { registerTerminalDiagnostics } from './registerDiagnostics'
 import { registerTerminalRuntimeTestHandles } from './testHarness'
 import type { TerminalRuntimeSessionOptions } from './useTerminalRuntimeSession.types'
 import { hasVisibleTerminalBufferContent } from './terminalRuntimeDiagnostics'
@@ -31,7 +29,6 @@ import {
 } from './useTerminalRuntimeSession.initialGeometry'
 import {
   createOptionalOpenCodeThemeBridge,
-  shouldReusePreservedXtermSession,
   scheduleTestEnvironmentTerminalAutoFocus,
   prepareRuntimePresentationAttach,
   registerRuntimeRendererAndThemeSync,
@@ -44,6 +41,7 @@ import {
 import { createRestoredAgentVisibilityGate } from './restoredAgentVisibilityGate'
 import { startRuntimeTerminalHydration } from './runtimeHydrationStarter'
 import { subscribeRuntimeTerminalEvents } from './useTerminalRuntimeSession.events'
+import { createOrReuseRuntimeXtermSession } from './useTerminalRuntimeSession.xterm'
 
 export function useTerminalRuntimeSession({
   nodeId,
@@ -131,112 +129,36 @@ export function useTerminalRuntimeSession({
       window.opencoveApi.meta?.enableTerminalDiagnostics === true || inputDiagnosticsEnabled
     const logTerminalDiagnostics =
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
-    const preservedSession = preservedXtermSessionRef.current
-    preservedXtermSessionRef.current = null
-    const canReusePreservedSession = shouldReusePreservedXtermSession({
-      preservedSession,
-      terminalClientResetVersion,
-    })
-    const hasPreservedVisibleBaseline = canReusePreservedSession && preservedSession !== null
-    const session =
-      (canReusePreservedSession ? preservedSession : null) ??
-      (() => {
-        const displayTerminalMetrics = displayTerminalMetricsRef.current
-        if (diagnosticsEnabled) {
-          const rect = containerRef.current?.getBoundingClientRect()
-          logTerminalDiagnostics({
-            source: 'renderer-terminal',
-            nodeId,
-            sessionId,
-            nodeKind: kind === 'agent' ? 'agent' : 'terminal',
-            title: titleRef.current,
-            event: 'xterm-session-create-request',
-            snapshot: {
-              bufferKind: 'unknown',
-              activeBaseY: null,
-              activeViewportY: null,
-              activeLength: null,
-              cols: initialDimensions?.cols ?? 0,
-              rows: initialDimensions?.rows ?? 0,
-              viewportScrollTop: null,
-              viewportScrollHeight: null,
-              viewportClientHeight: null,
-              hasViewport: false,
-              hasVerticalScrollbar: false,
-              containerRectWidth: rect?.width ?? null,
-              containerRectHeight: rect?.height ?? null,
-            },
-            details: {
-              initialCols: initialDimensions?.cols ?? null,
-              initialRows: initialDimensions?.rows ?? null,
-              terminalFontSize,
-              displayFontSize: displayTerminalMetrics.fontSize,
-              displayLineHeight: displayTerminalMetrics.lineHeight,
-              displayLetterSpacing: displayTerminalMetrics.letterSpacing ?? null,
-              isLiveSessionReattach,
-              canReusePreservedSession,
-            },
-          })
-        }
-        return createMountedXtermSession({
-          nodeId,
-          ownerId: `${nodeId}:${sessionId}`,
-          sessionIdForDiagnostics: sessionId,
-          nodeKindForDiagnostics: kind === 'agent' ? 'agent' : 'terminal',
-          titleForDiagnostics: titleRef.current,
-          terminalProvider,
-          terminalThemeMode,
-          isTestEnvironment,
-          container: containerRef.current,
-          initialDimensions,
-          windowsPty,
-          cursorBlink: true,
-          disableStdin: false,
-          fontSize: displayTerminalMetrics.fontSize,
-          fontFamily: terminalFontFamily,
-          lineHeight: displayTerminalMetrics.lineHeight,
-          letterSpacing: displayTerminalMetrics.letterSpacing,
-          bindSearchAddonToFind,
-          syncTerminalSize,
-          diagnosticsEnabled,
-          logTerminalDiagnostics,
-          initialViewportZoom: viewportZoomRef.current,
-          preferredRendererMode,
-          onRendererIssue: issue => {
-            requestTerminalRendererRecovery({
-              ...issue,
-              trigger: 'context_loss',
-            })
-          },
-          scheduleWebglCanvasTransformCleanup,
-        })
-      })()
-    if (preservedSession && !canReusePreservedSession) {
-      preservedSession.dispose()
-    }
-    if (canReusePreservedSession && preservedSession) {
-      session.terminal.options.disableStdin = false
-      session.terminal.options.cursorBlink = true
-      session.diagnostics.dispose()
-      session.diagnostics = registerTerminalDiagnostics({
-        enabled: diagnosticsEnabled,
-        emit: logTerminalDiagnostics,
+    const { session, hasPreservedVisibleBaseline, preservedSession } =
+      createOrReuseRuntimeXtermSession({
         nodeId,
         sessionId,
-        nodeKind: kind === 'agent' ? 'agent' : 'terminal',
-        title: titleRef.current,
-        terminal: session.terminal,
-        container: containerRef.current,
-        rendererKind: session.renderer.kind,
+        kind,
+        terminalProvider,
+        titleRef,
         terminalThemeMode,
+        isTestEnvironment,
+        containerRef,
+        terminalRef,
+        fitAddonRef,
+        preservedXtermSessionRef,
+        isLiveSessionReattach,
+        scheduleWebglCanvasTransformCleanup,
+        syncTerminalSize,
+        bindSearchAddonToFind,
+        terminalFontSize,
+        terminalFontFamily,
+        displayTerminalMetricsRef,
+        viewportZoomRef,
+        preferredRendererMode,
+        terminalClientResetVersion,
+        requestTerminalRendererRecovery,
+        initialDimensions,
         windowsPty,
+        diagnosticsEnabled,
+        logTerminalDiagnostics,
+        scheduleTranscriptSync,
       })
-      session.renderer.clearTextureAtlas()
-      syncTerminalSize()
-      scheduleTranscriptSync()
-    }
-    terminalRef.current = session.terminal
-    fitAddonRef.current = session.fitAddon
     const terminal = session.terminal
     setRendererKindAndApply(session.renderer.kind)
     const disposeInteractionWindow = registerTerminalUserInteractionWindow({

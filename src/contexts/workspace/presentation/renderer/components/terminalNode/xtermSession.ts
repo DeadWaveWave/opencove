@@ -41,6 +41,22 @@ export interface XtermSession {
   dispose: () => void
 }
 
+export function bindMountedXtermSessionRefs({
+  session,
+  terminalRef,
+  fitAddonRef,
+  syncTerminalSize,
+}: {
+  session: Pick<XtermSession, 'terminal' | 'fitAddon'>
+  terminalRef: { current: Terminal | null }
+  fitAddonRef: { current: FitAddon | null }
+  syncTerminalSize: (options?: { force?: boolean }) => void
+}): void {
+  terminalRef.current = session.terminal
+  fitAddonRef.current = session.fitAddon
+  syncTerminalSize()
+}
+
 export function createMountedXtermSession({
   nodeId,
   ownerId,

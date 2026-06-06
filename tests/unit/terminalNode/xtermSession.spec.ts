@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Terminal } from '@xterm/xterm'
-import { createMountedXtermSession } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/xtermSession'
+import {
+  bindMountedXtermSessionRefs,
+  createMountedXtermSession,
+} from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/xtermSession'
 
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: class {
@@ -96,6 +99,13 @@ vi.mock(
   }),
 )
 
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/patchXtermMouseService',
+  () => ({
+    patchXtermMouseServiceWithRetry: vi.fn(() => () => undefined),
+  }),
+)
+
 describe('createMountedXtermSession', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -104,6 +114,8 @@ describe('createMountedXtermSession', () => {
         getPropertyValue: () => '',
       })),
       requestAnimationFrame: vi.fn(() => 1),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
       open: vi.fn(),
       opencoveApi: {
         meta: {
@@ -142,5 +154,69 @@ describe('createMountedXtermSession', () => {
         fontSize: 13,
       }),
     )
+  })
+
+  it('schedules one post-mount layout refresh after the immediate sync', () => {
+    const animationFrames: FrameRequestCallback[] = []
+    const requestAnimationFrameMock = vi.fn((callback: FrameRequestCallback) => {
+      animationFrames.push(callback)
+      return animationFrames.length
+    })
+    vi.stubGlobal('requestAnimationFrame', requestAnimationFrameMock)
+    ;(window as unknown as typeof window).requestAnimationFrame = requestAnimationFrameMock
+    const syncTerminalSize = vi.fn()
+    const container = document.createElement('div')
+
+    createMountedXtermSession({
+      nodeId: 'node-1',
+      ownerId: 'node-1:session-1',
+      sessionIdForDiagnostics: 'session-1',
+      nodeKindForDiagnostics: 'terminal',
+      titleForDiagnostics: 'terminal',
+      terminalProvider: null,
+      terminalThemeMode: 'sync-with-ui',
+      isTestEnvironment: false,
+      container,
+      initialDimensions: { cols: 80, rows: 24 },
+      windowsPty: null,
+      cursorBlink: true,
+      disableStdin: false,
+      fontSize: 13,
+      fontFamily: 'Consolas',
+      bindSearchAddonToFind: () => () => undefined,
+      syncTerminalSize,
+      diagnosticsEnabled: false,
+      logTerminalDiagnostics: () => undefined,
+    })
+
+    expect(syncTerminalSize).toHaveBeenCalledTimes(1)
+    expect(animationFrames).toHaveLength(1)
+
+    animationFrames.shift()?.(0)
+
+    expect(syncTerminalSize).toHaveBeenCalledTimes(2)
+    expect(animationFrames).toHaveLength(0)
+  })
+
+  it('syncs after mounted session refs are bound', () => {
+    const terminalRef: { current: unknown | null } = { current: null }
+    const fitAddonRef: { current: unknown | null } = { current: null }
+    const session = {
+      terminal: { id: 'terminal' },
+      fitAddon: { id: 'fit-addon' },
+    }
+    const syncTerminalSize = vi.fn(() => {
+      expect(terminalRef.current).toBe(session.terminal)
+      expect(fitAddonRef.current).toBe(session.fitAddon)
+    })
+
+    bindMountedXtermSessionRefs({
+      session: session as never,
+      terminalRef: terminalRef as never,
+      fitAddonRef: fitAddonRef as never,
+      syncTerminalSize,
+    })
+
+    expect(syncTerminalSize).toHaveBeenCalledTimes(1)
   })
 })

@@ -88,7 +88,8 @@ Constraints:
 
 - Viewer attach must not resize the PTY.
 - Focus, typing and ordinary stream attach must not change PTY geometry.
-- Local calibration/fit may adjust renderer display, but canonical PTY size changes only through explicit resize commits.
+- Local calibration/fit may adjust renderer-specific measured geometry, but canonical PTY size changes only through explicit resize commits.
+- DOM renderer glyph footprint, row overhang, scrollbar gap, and viewport zoom fractional artifacts observed after output are visual-only concerns. They may refresh local renderer dimensions, but must not apply another `terminal.resize`, update committed PTY geometry, or send `/pty.resize`.
 
 Current limitation:
 
@@ -144,6 +145,7 @@ The goal is stable visual parity without letting multiple renderers fight for te
 5. Controller resize requires explicit commit reason.
 6. Desync fails closed to snapshot resync.
 7. Hidden or frozen clients can be dropped and rebuilt without changing session truth.
+8. Output-time content footprint observation never owns PTY `cols/rows`; it can only trigger visual refresh.
 
 ## Verification Anchors
 

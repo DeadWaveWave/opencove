@@ -182,7 +182,7 @@ describe('DOM renderer terminal geometry sync', () => {
     expect(terminal.refresh).toHaveBeenCalledWith(0, 39)
   })
 
-  it('does not locally reconcile DOM text overhang while PTY resize is suppressed', () => {
+  it('refreshes DOM text overhang visuals while PTY resize is suppressed', () => {
     const terminal = createTerminalMock()
 
     const scheduler = createTerminalDomTextOverhangGeometryCommitScheduler({
@@ -210,7 +210,39 @@ describe('DOM renderer terminal geometry sync', () => {
     scheduler.schedule()
 
     expect(terminal.resize).not.toHaveBeenCalled()
-    expect(terminal.refresh).not.toHaveBeenCalled()
+    expect(terminal.refresh).toHaveBeenCalledWith(0, 39)
+    expect(ptyResize).not.toHaveBeenCalled()
+  })
+
+  it('refreshes DOM text overhang visuals before committed PTY geometry is available', () => {
+    const terminal = createTerminalMock()
+
+    const scheduler = createTerminalDomTextOverhangGeometryCommitScheduler({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: {
+        current: {
+          proposeDimensions: vi.fn(() => ({ cols: 117, rows: 40 })),
+        } as never,
+      },
+      containerRef: {
+        current: createDomLayoutContainerMock({
+          containerWidth: 865,
+          xtermWidth: 865,
+          screenWidth: 852,
+          rowsScrollWidth: 884,
+          maxRowRight: 892,
+        }) as never,
+      },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef: { current: null },
+      suppressPtyResizeRef: { current: false },
+      sessionId: 'session-dom-overhang-before-commit',
+    })
+
+    scheduler.schedule()
+
+    expect(terminal.resize).not.toHaveBeenCalled()
+    expect(terminal.refresh).toHaveBeenCalledWith(0, 39)
     expect(ptyResize).not.toHaveBeenCalled()
   })
 })

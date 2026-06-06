@@ -6,7 +6,11 @@ import type { WorkspaceNodeKind } from '../../types'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TerminalThemeMode } from './theme'
 import { writeTerminalAsync } from './writeTerminal'
-import { createMountedXtermSession, type XtermSession } from './xtermSession'
+import {
+  bindMountedXtermSessionRefs,
+  createMountedXtermSession,
+  type XtermSession,
+} from './xtermSession'
 import type { TerminalRendererKind } from './useWebglCanvasTransformCleanupScheduler'
 import type { PreferredTerminalRendererMode } from './preferredRenderer'
 import {
@@ -146,8 +150,12 @@ export function useTerminalPlaceholderSession({
       initialViewportZoom: viewportZoomRef.current,
       preferredRendererMode,
     })
-    terminalRef.current = session.terminal
-    fitAddonRef.current = session.fitAddon
+    bindMountedXtermSessionRefs({
+      session,
+      terminalRef,
+      fitAddonRef,
+      syncTerminalSize,
+    })
     setRendererKindAndApply(session.renderer.kind)
     const disposeInteractionWindow = registerTerminalUserInteractionWindow({
       container: containerRef.current,

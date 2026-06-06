@@ -11,6 +11,10 @@
   overflow: hidden;
 }
 
+.terminal-node__terminal[data-cove-terminal-renderer='dom'] .xterm {
+  overflow: visible;
+}
+
 .terminal-node__terminal[data-cove-terminal-renderer='dom'] .xterm-screen {
   overflow: visible;
 }

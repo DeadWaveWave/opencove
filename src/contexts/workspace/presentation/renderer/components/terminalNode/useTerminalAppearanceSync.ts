@@ -97,7 +97,7 @@ export function useTerminalAppearanceSync({
   isViewportInteractionActive,
 }: {
   terminalRef: RefObject<Terminal | null>
-  syncTerminalSize: () => void
+  syncTerminalSize: (options?: { force?: boolean }) => void
   commitTerminalGeometry: () => void
   terminalFontSize: number
   displayTerminalFontSize?: number
@@ -279,5 +279,25 @@ export function useTerminalAppearanceSync({
     }
 
     setTerminalViewportZoom(terminal, viewportZoom)
+
+    // Schedule refresh in next two frames to ensure DPR change and render updates have completed
+    let frame1: number | null = null
+    let frame2: number | null = null
+
+    frame1 = requestAnimationFrame(() => {
+      frame2 = requestAnimationFrame(() => {
+        // Force refresh after viewport zoom change to ensure DOM renderer updates
+        syncTerminalSizeRef.current({ force: true })
+      })
+    })
+
+    return () => {
+      if (frame1 !== null) {
+        cancelAnimationFrame(frame1)
+      }
+      if (frame2 !== null) {
+        cancelAnimationFrame(frame2)
+      }
+    }
   }, [terminalRef, viewportZoom])
 }

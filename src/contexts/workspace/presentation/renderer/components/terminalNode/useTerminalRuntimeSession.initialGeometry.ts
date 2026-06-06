@@ -35,11 +35,13 @@ export function shouldPreferMeasuredInitialGeometryCommit({
 
 function applyCanonicalGeometryLocally({
   terminalRef,
+  fitAddonRef,
   containerRef,
   isPointerResizingRef,
   geometry,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
+  fitAddonRef: MutableRefObject<FitAddon | null>
   containerRef: MutableRefObject<HTMLElement | null>
   isPointerResizingRef: MutableRefObject<boolean>
   geometry: PtySize
@@ -57,6 +59,7 @@ function applyCanonicalGeometryLocally({
     terminalRef,
     containerRef,
     isPointerResizingRef,
+    fitAddonRef,
   })
 }
 
@@ -108,6 +111,7 @@ export function createRuntimeInitialGeometryCommitter({
       lastCommittedPtySizeRef.current = canonicalGeometry
       applyCanonicalGeometryLocally({
         terminalRef,
+        fitAddonRef,
         containerRef,
         isPointerResizingRef,
         geometry: canonicalGeometry,
@@ -123,6 +127,7 @@ export function createRuntimeInitialGeometryCommitter({
       lastCommittedPtySizeRef.current = canonicalGeometry
       applyCanonicalGeometryLocally({
         terminalRef,
+        fitAddonRef,
         containerRef,
         isPointerResizingRef,
         geometry: canonicalGeometry,
@@ -155,6 +160,7 @@ export function createRuntimeInitialGeometryCommitter({
     lastCommittedPtySizeRef.current = canonicalGeometry
     applyCanonicalGeometryLocally({
       terminalRef,
+      fitAddonRef,
       containerRef,
       isPointerResizingRef,
       geometry: canonicalGeometry,

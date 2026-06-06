@@ -24,6 +24,15 @@ describe('terminal node styles', () => {
     expect(css).toMatch(/\boverflow:\s*visible\s*!important;/)
   })
 
+  it('keeps DOM renderer xterm root overflow visible so glyph overhang is not clipped by the root', () => {
+    const css = readRendererStyle('terminal-node.webgl-layout.css')
+
+    expect(css).toMatch(/\.terminal-node__terminal\s+\.xterm\s*{[^}]*\boverflow:\s*hidden;/s)
+    expect(css).toMatch(
+      /\.terminal-node__terminal\[data-cove-terminal-renderer='dom'\]\s+\.xterm\s*{[^}]*\boverflow:\s*visible;/s,
+    )
+  })
+
   it('force hides the xterm overview ruler so resume decorations cannot draw a vertical line', () => {
     const css = readRendererStyle('terminal-node.css')
 

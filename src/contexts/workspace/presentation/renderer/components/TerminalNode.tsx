@@ -253,14 +253,19 @@ export function TerminalNode({
     rendererRecoveryPendingRef.current = false
   }, [sessionId, terminalClientResetVersion])
 
-  const syncTerminalSize = useCallback(() => {
-    refreshTerminalNodeSize({
-      terminalRef,
-      containerRef,
-      isPointerResizingRef,
-    })
-    scheduleWebglCanvasTransformCleanup()
-  }, [scheduleWebglCanvasTransformCleanup])
+  const syncTerminalSize = useCallback(
+    (options?: { force?: boolean }) => {
+      refreshTerminalNodeSize({
+        terminalRef,
+        containerRef,
+        isPointerResizingRef,
+        fitAddonRef,
+        force: options?.force ?? false,
+      })
+      scheduleWebglCanvasTransformCleanup()
+    },
+    [scheduleWebglCanvasTransformCleanup],
+  )
 
   const commitTerminalGeometry = useCommittedTerminalGeometry({
     terminalRef,
