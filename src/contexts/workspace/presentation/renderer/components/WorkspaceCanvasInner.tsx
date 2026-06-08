@@ -325,6 +325,7 @@ export function WorkspaceCanvasInner({
     updateTerminalTitle: nodeStore.updateTerminalTitle,
     renameTerminalTitle: nodeStore.renameTerminalTitle,
     reloadAgentSession: agentSupport.reloadAgentNode,
+    branchAgentSession: agentSupport.branchAgentNodeSession,
     listAgentSessions: agentSupport.listAgentSessionsForNode,
     switchAgentSession: agentSupport.switchAgentNodeSession,
     focusNodeOnClick: agentSettings.focusNodeOnClick,

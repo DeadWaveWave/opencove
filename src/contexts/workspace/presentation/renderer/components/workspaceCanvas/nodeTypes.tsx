@@ -41,6 +41,7 @@ interface WorkspaceCanvasNodeTypesParams {
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
   reloadAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
+  branchAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
   listAgentSessionsRef: MutableRefObject<
     (
       nodeId: string,
@@ -104,6 +105,7 @@ export function useWorkspaceCanvasNodeTypes({
   resizeNodeRef,
   copyAgentLastMessageRef,
   reloadAgentSessionRef,
+  branchAgentSessionRef,
   listAgentSessionsRef,
   switchAgentSessionRef,
   updateNoteTextRef,
@@ -230,6 +232,7 @@ export function useWorkspaceCanvasNodeTypes({
             resizeNodeRef={resizeNodeRef}
             copyAgentLastMessageRef={copyAgentLastMessageRef}
             reloadAgentSessionRef={reloadAgentSessionRef}
+            branchAgentSessionRef={branchAgentSessionRef}
             listAgentSessionsRef={listAgentSessionsRef}
             switchAgentSessionRef={switchAgentSessionRef}
             updateNodeScrollbackRef={updateNodeScrollbackRef}
@@ -307,6 +310,7 @@ export function useWorkspaceCanvasNodeTypes({
     runTaskAgentRef,
     copyAgentLastMessageRef,
     reloadAgentSessionRef,
+    branchAgentSessionRef,
     listAgentSessionsRef,
     switchAgentSessionRef,
     resumeTaskAgentSessionRef,

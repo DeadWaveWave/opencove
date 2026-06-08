@@ -66,6 +66,7 @@ export function TerminalNode({
   onClose,
   onCopyLastMessage,
   onReloadSession,
+  onBranchSession,
   onListSessions,
   onSwitchSession,
   onResize,
@@ -477,6 +478,7 @@ export function TerminalNode({
       onClose={onClose}
       onCopyLastMessage={onCopyLastMessage}
       onReloadSession={onReloadSession}
+      onBranchSession={onBranchSession}
       onListSessions={onListSessions}
       onSwitchSession={onSwitchSession}
       find={findState}

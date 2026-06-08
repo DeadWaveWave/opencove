@@ -15,6 +15,7 @@ export interface WorkspaceCanvasActionRefs {
   resizeNodeRef: React.MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   reloadAgentSessionRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
+  branchAgentSessionRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   listAgentSessionsRef: React.MutableRefObject<
     (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
   >
@@ -72,6 +73,9 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     async (_nodeId: string) => undefined,
   )
   const reloadAgentSessionRef = useRef<(nodeId: string) => Promise<void>>(
+    async (_nodeId: string) => undefined,
+  )
+  const branchAgentSessionRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
   )
   const listAgentSessionsRef = useRef<
@@ -164,6 +168,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     resizeNodeRef,
     copyAgentLastMessageRef,
     reloadAgentSessionRef,
+    branchAgentSessionRef,
     listAgentSessionsRef,
     switchAgentSessionRef,
     updateNoteTextRef,
@@ -198,6 +203,7 @@ interface SyncActionRefsParams {
   resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
   copyAgentLastMessage: (nodeId: string) => Promise<void>
   reloadAgentSession: (nodeId: string) => Promise<void>
+  branchAgentSession: (nodeId: string) => Promise<void>
   listAgentSessions: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
   switchAgentSession: (nodeId: string, summary: AgentSessionSummary) => Promise<void>
   updateNoteText: (nodeId: string, text: string) => void
@@ -232,6 +238,7 @@ export function useWorkspaceCanvasSyncActionRefs({
   resizeNode,
   copyAgentLastMessage,
   reloadAgentSession,
+  branchAgentSession,
   listAgentSessions,
   switchAgentSession,
   updateNoteText,
@@ -268,6 +275,10 @@ export function useWorkspaceCanvasSyncActionRefs({
   useLayoutEffect(() => {
     actionRefs.reloadAgentSessionRef.current = reloadAgentSession
   }, [actionRefs.reloadAgentSessionRef, reloadAgentSession])
+
+  useLayoutEffect(() => {
+    actionRefs.branchAgentSessionRef.current = branchAgentSession
+  }, [actionRefs.branchAgentSessionRef, branchAgentSession])
 
   useLayoutEffect(() => {
     actionRefs.listAgentSessionsRef.current = listAgentSessions

@@ -19,6 +19,7 @@ export function useWorkspaceCanvasRuntimeBindings({
   updateTerminalTitle,
   renameTerminalTitle,
   reloadAgentSession,
+  branchAgentSession,
   listAgentSessions,
   switchAgentSession,
   focusNodeOnClick,
@@ -52,6 +53,7 @@ export function useWorkspaceCanvasRuntimeBindings({
   updateTerminalTitle: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['updateTerminalTitle']
   renameTerminalTitle: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['renameTerminalTitle']
   reloadAgentSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['reloadAgentSession']
+  branchAgentSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['branchAgentSession']
   listAgentSessions: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['listAgentSessions']
   switchAgentSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['switchAgentSession']
   focusNodeOnClick: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['focusNodeOnClick']
@@ -74,6 +76,7 @@ export function useWorkspaceCanvasRuntimeBindings({
     resizeNode,
     copyAgentLastMessage,
     reloadAgentSession,
+    branchAgentSession,
     listAgentSessions,
     switchAgentSession,
     updateNoteText: noteMutations.updateNoteText,

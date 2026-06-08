@@ -86,7 +86,9 @@ export function useWorkspaceCanvasNodeCreation({
         avoidRects: placement?.avoidRects,
       })
       if (resolvedPlacement.canPlace !== true) {
-        await window.opencoveApi.pty.kill({ sessionId })
+        if (sessionId.trim().length > 0) {
+          await window.opencoveApi.pty.kill({ sessionId })
+        }
         onShowMessage?.(t('messages.noTerminalSlotNearby'), 'warning')
         return null
       }

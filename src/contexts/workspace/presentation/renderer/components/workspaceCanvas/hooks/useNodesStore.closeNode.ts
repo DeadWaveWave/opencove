@@ -44,6 +44,7 @@ export function removeNodeWithRelations({
         node.data.kind === 'task' &&
         node.data.task
       ) {
+        const isLinkedTaskAgent = node.data.task.linkedAgentNodeId === target.id
         const existingSessions = Array.isArray(node.data.task.agentSessions)
           ? node.data.task.agentSessions
           : []
@@ -57,9 +58,12 @@ export function removeNodeWithRelations({
             ...node.data,
             task: {
               ...node.data.task,
-              linkedAgentNodeId: null,
+              linkedAgentNodeId: isLinkedTaskAgent ? null : node.data.task.linkedAgentNodeId,
               agentSessions: nextSessions,
-              status: node.data.task.status === 'doing' ? 'todo' : node.data.task.status,
+              status:
+                isLinkedTaskAgent && node.data.task.status === 'doing'
+                  ? 'todo'
+                  : node.data.task.status,
               updatedAt: now,
             },
           },

@@ -27,6 +27,7 @@ export function WorkspaceCanvasTerminalNodeType({
   resizeNodeRef,
   copyAgentLastMessageRef,
   reloadAgentSessionRef,
+  branchAgentSessionRef,
   listAgentSessionsRef,
   switchAgentSessionRef,
   updateNodeScrollbackRef,
@@ -46,6 +47,7 @@ export function WorkspaceCanvasTerminalNodeType({
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
   reloadAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
+  branchAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
   listAgentSessionsRef: MutableRefObject<
     (
       nodeId: string,
@@ -170,6 +172,13 @@ export function WorkspaceCanvasTerminalNodeType({
         data.kind === 'agent' && data.agent
           ? async () => {
               await reloadAgentSessionRef.current(id)
+            }
+          : undefined
+      }
+      onBranchSession={
+        data.kind === 'agent' && data.agent
+          ? async () => {
+              await branchAgentSessionRef.current(id)
             }
           : undefined
       }

@@ -43,6 +43,7 @@ interface TerminalNodeFrameProps {
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>
   onReloadSession?: () => Promise<void>
+  onBranchSession?: () => Promise<void>
   onListSessions?: (limit?: number) => Promise<AgentSessionSummary[]>
   onSwitchSession?: (summary: AgentSessionSummary) => Promise<void>
   find: {
@@ -91,6 +92,7 @@ export function TerminalNodeFrame({
   onClose,
   onCopyLastMessage,
   onReloadSession,
+  onBranchSession,
   onListSessions,
   onSwitchSession,
   find,
@@ -200,6 +202,7 @@ export function TerminalNodeFrame({
         onClose={onClose}
         onCopyLastMessage={onCopyLastMessage}
         onReloadSession={onReloadSession}
+        onBranchSession={onBranchSession}
         onListSessions={onListSessions}
         onSwitchSession={onSwitchSession}
       />

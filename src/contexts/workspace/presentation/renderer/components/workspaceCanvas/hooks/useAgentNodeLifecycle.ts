@@ -29,6 +29,8 @@ import {
   resolveAgentRuntimeLaunchFrameSize,
   type RelaunchAgentNodeOptions,
 } from './useAgentNodeLifecycle.support'
+import { setAgentNodeFailureInNodes } from './agentNodeFailure'
+import { useAgentNodeBranching } from './useAgentNodeBranching'
 
 interface UseAgentNodeLifecycleParams {
   workspaceId: string
@@ -40,6 +42,7 @@ interface UseAgentNodeLifecycleParams {
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },
   ) => void
+  createNodeForSession: Parameters<typeof useAgentNodeBranching>[0]['createNodeForSession']
   bumpAgentLaunchToken: (nodeId: string) => number
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   agentFullAccess: boolean
@@ -59,6 +62,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   spacesRef,
   onSpacesChange,
   setNodes,
+  createNodeForSession,
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
   agentFullAccess,
@@ -81,25 +85,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
 
   const setAgentNodeFailure = useCallback(
     (nodeId: string, message: string) => {
-      setNodes(
-        prevNodes =>
-          prevNodes.map(item => {
-            if (item.id !== nodeId) {
-              return item
-            }
-
-            return {
-              ...item,
-              data: {
-                ...item.data,
-                status: 'failed',
-                endedAt: new Date().toISOString(),
-                lastError: message,
-              },
-            }
-          }),
-        { syncLayout: false },
-      )
+      setAgentNodeFailureInNodes({ nodeId, message, setNodes })
     },
     [setNodes],
   )
@@ -377,6 +363,16 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
     [nodesRef, relaunchAgentNode],
   )
 
+  const branchAgentNodeSession = useAgentNodeBranching({
+    nodesRef,
+    spacesRef,
+    onSpacesChange,
+    createNodeForSession,
+    setAgentNodeFailure,
+    relaunchAgentNode,
+    onRequestPersistFlush,
+  })
+
   const listAgentSessionsForNode = useCallback(
     async (nodeId: string, limit = 20): Promise<AgentSessionSummary[]> => {
       const node = findAgentNode(nodeId, nodesRef.current)
@@ -490,6 +486,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
     buildAgentNodeTitle,
     launchAgentInNode,
     reloadAgentNode,
+    branchAgentNodeSession,
     listAgentSessionsForNode,
     switchAgentNodeSession,
     stopAgentNode,

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type JSX } from 'react'
-import { Check, History, LoaderCircle, RotateCcw } from 'lucide-react'
+import { Check, GitBranch, History, LoaderCircle, RotateCcw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { toRelativeTime } from '@app/renderer/shell/utils/format'
@@ -13,6 +13,7 @@ interface TerminalNodeAgentSessionActionsProps {
   currentResumeSessionId: string | null
   currentResumeSessionIdVerified: boolean
   onReloadSession?: () => Promise<void>
+  onBranchSession?: () => Promise<void>
   onListSessions?: (limit?: number) => Promise<AgentSessionSummary[]>
   onSwitchSession?: (summary: AgentSessionSummary) => Promise<void>
 }
@@ -35,12 +36,14 @@ export function TerminalNodeAgentSessionActions({
   currentResumeSessionId,
   currentResumeSessionIdVerified,
   onReloadSession,
+  onBranchSession,
   onListSessions,
   onSwitchSession,
 }: TerminalNodeAgentSessionActionsProps): JSX.Element | null {
   const { t } = useTranslation()
   const listTriggerRef = useRef<HTMLButtonElement | null>(null)
   const [isReloading, setIsReloading] = useState(false)
+  const [isBranching, setIsBranching] = useState(false)
   const [isLoadingSessions, setIsLoadingSessions] = useState(false)
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null)
   const [sessionMenuPoint, setSessionMenuPoint] = useState<{ x: number; y: number } | null>(null)
@@ -49,9 +52,10 @@ export function TerminalNodeAgentSessionActions({
   const [isSwitching, setIsSwitching] = useState(false)
 
   const canReload = typeof onReloadSession === 'function'
+  const canBranch = typeof onBranchSession === 'function'
   const canListSessions =
     typeof onListSessions === 'function' && typeof onSwitchSession === 'function'
-  const isBusy = status === 'restoring' || isReloading || isSwitching
+  const isBusy = status === 'restoring' || isReloading || isBranching || isSwitching
   const normalizedCurrentDirectory =
     typeof currentDirectory === 'string' ? currentDirectory.trim() : ''
 
@@ -66,7 +70,7 @@ export function TerminalNodeAgentSessionActions({
     return switchTarget ? toAgentSessionDisplaySummary(switchTarget) : null
   }, [switchTarget])
 
-  if (!canReload && !canListSessions) {
+  if (!canReload && !canBranch && !canListSessions) {
     return null
   }
 
@@ -103,6 +107,48 @@ export function TerminalNodeAgentSessionActions({
             <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
           ) : (
             <RotateCcw className="terminal-node__action-icon" />
+          )}
+        </button>
+      ) : null}
+
+      {canBranch ? (
+        <button
+          type="button"
+          className="terminal-node__action terminal-node__action--icon nodrag"
+          data-testid="terminal-node-branch-session"
+          aria-label={t('terminalNodeHeader.branchSession')}
+          title={
+            !currentResumeSessionIdVerified || !currentResumeSessionId
+              ? t('terminalNodeHeader.branchSessionUnavailable')
+              : isBranching
+                ? t('terminalNodeHeader.branchingSession')
+                : t('terminalNodeHeader.branchSession')
+          }
+          disabled={isBusy || !currentResumeSessionIdVerified || !currentResumeSessionId}
+          onClick={async event => {
+            event.stopPropagation()
+            if (
+              isBusy ||
+              !onBranchSession ||
+              !currentResumeSessionIdVerified ||
+              !currentResumeSessionId
+            ) {
+              return
+            }
+
+            setIsBranching(true)
+
+            try {
+              await onBranchSession()
+            } finally {
+              setIsBranching(false)
+            }
+          }}
+        >
+          {isBranching ? (
+            <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
+          ) : (
+            <GitBranch className="terminal-node__action-icon" />
           )}
         </button>
       ) : null}

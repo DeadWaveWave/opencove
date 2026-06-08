@@ -23,6 +23,7 @@ interface TerminalNodeHeaderProps {
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>
   onReloadSession?: () => Promise<void>
+  onBranchSession?: () => Promise<void>
   onListSessions?: (limit?: number) => Promise<AgentSessionSummary[]>
   onSwitchSession?: (summary: AgentSessionSummary) => Promise<void>
 }
@@ -42,6 +43,7 @@ export function TerminalNodeHeader({
   onClose,
   onCopyLastMessage,
   onReloadSession,
+  onBranchSession,
   onListSessions,
   onSwitchSession,
 }: TerminalNodeHeaderProps): JSX.Element {
@@ -153,6 +155,7 @@ export function TerminalNodeHeader({
           currentResumeSessionId={agentResumeSessionId ?? null}
           currentResumeSessionIdVerified={agentResumeSessionIdVerified}
           onReloadSession={onReloadSession}
+          onBranchSession={onBranchSession}
           onListSessions={onListSessions}
           onSwitchSession={onSwitchSession}
         />

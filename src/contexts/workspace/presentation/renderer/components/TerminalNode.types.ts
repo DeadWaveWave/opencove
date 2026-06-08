@@ -48,6 +48,7 @@ export interface TerminalNodeProps {
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>
   onReloadSession?: () => Promise<void>
+  onBranchSession?: () => Promise<void>
   onListSessions?: (limit?: number) => Promise<AgentSessionSummary[]>
   onSwitchSession?: (summary: AgentSessionSummary) => Promise<void>
   onResize: (frame: NodeFrame) => void
