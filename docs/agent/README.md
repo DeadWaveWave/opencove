@@ -14,7 +14,22 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
   the terminal-profile launch path when configured.
 - Agent launch can run in a Space mount via `session.launchAgentInMount`.
 - Agent session restore participates in worker `session.prepareOrRevive`.
+- Agent nodes can branch a verified resumable session into a new Agent node.
 - Canvas nodes store provider/model/prompt/session metadata; PTY output and presentation belong to Worker runtime.
+
+## Session Branching
+
+`Branch session` in an Agent node header creates a new Agent node from the source Agent's verified `resumeSessionId`. This is an Agent conversation-context fork, not a Git branch or worktree operation.
+
+The action is only enabled after the current Agent session binding has been verified. When triggered, the renderer creates a sibling Agent node, copies the source provider, model, prompt, execution directory, directory mode, profile/runtime settings, and task context, then launches the new node through the existing `mode: 'resume'` path with the source `resumeSessionId`.
+
+Branching preserves the source Agent:
+
+- The source node is not killed, relaunched, or rebound.
+- The source Agent keeps its existing task primary binding.
+- A branched Agent that inherited task context can be closed without unlinking the original task Agent.
+- If the source belongs to a mounted Space, branch launch continues through the mount-aware launch route.
+- If placement fails before a branch node exists, no Agent runtime is launched.
 
 ## Main Owners
 

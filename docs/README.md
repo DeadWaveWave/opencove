@@ -42,7 +42,7 @@
 
 ## Agent
 
-- `agent/README.md`：Agent runtime、session 恢复与外部 CLI 解析的当前公开入口。
+- `agent/README.md`：Agent runtime、session 恢复、session branching 与外部 CLI 解析的当前公开入口。
 
 ## UI
 
