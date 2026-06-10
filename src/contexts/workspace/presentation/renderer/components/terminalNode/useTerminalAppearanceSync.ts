@@ -118,6 +118,7 @@ export function useTerminalAppearanceSync({
   const previousDisplayLetterSpacingRef = useRef(displayTerminalLetterSpacing)
   const previousSharedFontFamilyRef = useRef(terminalFontFamily)
   const previousFrameSizeRef = useRef<{ width: number; height: number } | null>(null)
+  const previousViewportZoomRef = useRef(viewportZoom)
   const syncTerminalSizeRef = useRef(syncTerminalSize)
   const commitTerminalGeometryRef = useRef(commitTerminalGeometry)
 
@@ -279,6 +280,12 @@ export function useTerminalAppearanceSync({
     }
 
     setTerminalViewportZoom(terminal, viewportZoom)
+
+    const previousViewportZoom = previousViewportZoomRef.current
+    previousViewportZoomRef.current = viewportZoom
+    if (previousViewportZoom === viewportZoom) {
+      return
+    }
 
     // Schedule refresh in next two frames to ensure DPR change and render updates have completed
     let frame1: number | null = null

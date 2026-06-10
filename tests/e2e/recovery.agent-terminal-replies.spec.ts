@@ -1,10 +1,39 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   createTestUserDataDir,
   launchApp,
   removePathWithRetry,
 } from './workspace-canvas.helpers'
+
+async function readFirstTerminalTranscript(window: Page): Promise<string> {
+  return await window.evaluate(() => {
+    const api = window.__opencoveTerminalSelectionTestApi
+    const nodeId = api?.getRegisteredNodeIds?.()[0] ?? null
+    if (!nodeId) {
+      return ''
+    }
+
+    const reader = (
+      window as Window & {
+        __OPENCOVE_TEST_READ_TERMINAL_TRANSCRIPT__?: (targetNodeId: string) => string
+      }
+    ).__OPENCOVE_TEST_READ_TERMINAL_TRANSCRIPT__
+
+    if (typeof reader === 'function') {
+      return reader(nodeId)
+    }
+
+    return ''
+  })
+}
+
+async function expectFirstTerminalDsrReply(window: Page): Promise<void> {
+  await expect
+    .poll(async () => await readFirstTerminalTranscript(window), { timeout: 20_000 })
+    .toContain('[opencove-test-dsr] done')
+  expect(await readFirstTerminalTranscript(window)).not.toContain('^[[1;1R')
+}
 
 test.describe('Recovery - Agent terminal replies', () => {
   test('does not echo delayed xterm replies as visible ^[[ garbage after restart', async () => {
@@ -52,8 +81,8 @@ test.describe('Recovery - Agent terminal replies', () => {
         await runButton.click()
 
         const terminalNode = window.locator('.terminal-node').first()
-        await expect(terminalNode).toContainText('[opencove-test-dsr] done', { timeout: 20_000 })
-        await expect(terminalNode).not.toContainText('^[[1;1R')
+        await expect(terminalNode.locator('.xterm')).toBeVisible()
+        await expectFirstTerminalDsrReply(window)
       } finally {
         await electronApp.close()
       }
@@ -70,8 +99,8 @@ test.describe('Recovery - Agent terminal replies', () => {
       try {
         await expect(restartedWindow.locator('.terminal-node')).toHaveCount(1)
         const terminalNode = restartedWindow.locator('.terminal-node').first()
-        await expect(terminalNode).toContainText('[opencove-test-dsr] done', { timeout: 20_000 })
-        await expect(terminalNode).not.toContainText('^[[1;1R')
+        await expect(terminalNode.locator('.xterm')).toBeVisible()
+        await expectFirstTerminalDsrReply(restartedWindow)
       } finally {
         await restartedApp.close()
       }

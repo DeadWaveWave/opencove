@@ -28,7 +28,7 @@ function AppearanceHarness({
   height?: number
   viewportZoom?: number
   onCommitGeometry: () => void
-  onSyncSize: () => void
+  onSyncSize: (options?: { force?: boolean }) => void
 }): null {
   const terminalRef = useRef(terminal as never)
 
@@ -257,6 +257,26 @@ describe('useTerminalAppearanceSync', () => {
     expect(onCommitGeometry).toHaveBeenCalledTimes(1)
   })
 
+  it('does not force local terminal size refresh on initial viewport zoom mount', () => {
+    const terminal = { options: {} }
+    const onCommitGeometry = vi.fn()
+    const onSyncSize = vi.fn()
+
+    render(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        viewportZoom={1}
+        onCommitGeometry={onCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+
+    expect(onSyncSize).not.toHaveBeenCalledWith({ force: true })
+    expect(onCommitGeometry).not.toHaveBeenCalled()
+  })
+
   it('refreshes local terminal size without committing PTY geometry when viewport zoom changes', () => {
     const terminal = { options: {} }
     const onCommitGeometry = vi.fn()
@@ -286,6 +306,7 @@ describe('useTerminalAppearanceSync', () => {
     )
 
     expect(onSyncSize).toHaveBeenCalledTimes(1)
+    expect(onSyncSize).toHaveBeenCalledWith({ force: true })
     expect(onCommitGeometry).not.toHaveBeenCalled()
   })
 
