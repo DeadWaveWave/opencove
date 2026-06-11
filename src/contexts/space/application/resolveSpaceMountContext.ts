@@ -92,6 +92,27 @@ export function resolveSpaceMountContext(options: {
     boundaryScope !== null && isPathInside(fallbackMount.rootPath, boundaryScope.rootPath)
   const directoryWithinMount =
     rawDirectoryPath !== null && isPathInside(fallbackMount.rootPath, rawDirectoryPath)
+
+  if (
+    rawDirectoryPath !== null &&
+    currentTargetMountId !== null &&
+    mountById !== null &&
+    !isBoundaryScopeWithinMount &&
+    !directoryWithinMount
+  ) {
+    return {
+      mount: null,
+      workingDirectory: rawDirectoryPath,
+      scope: null,
+      repair: options.space
+        ? {
+            targetMountId: null,
+            directoryPath: rawDirectoryPath,
+          }
+        : null,
+    }
+  }
+
   const workingDirectory = isBoundaryScopeWithinMount
     ? boundaryScope.rootPath
     : directoryWithinMount

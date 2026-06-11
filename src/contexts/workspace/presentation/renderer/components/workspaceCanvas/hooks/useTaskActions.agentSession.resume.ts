@@ -101,6 +101,7 @@ export async function resumeTaskAgentSessionAction(
   try {
     const launched = await launchWorkspaceAgentSession({
       mountId: initialBinding.mountId,
+      workspacePath: context.workspacePath,
       executionDirectory: initialBinding.executionDirectory,
       prompt: record.prompt,
       provider: record.provider,

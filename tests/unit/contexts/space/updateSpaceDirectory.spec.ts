@@ -151,4 +151,50 @@ describe('computeSpaceDirectoryUpdate', () => {
     expect(customChild?.directoryPath).toBe('/repo/packages/app')
     expect(customChild?.boundary?.scopesByMountId['mount-1']?.rootPath).toBe('/repo/packages/app')
   })
+
+  it('can clear a stale target mount when binding a space to an external worktree', () => {
+    const spaces = [
+      {
+        id: 'space-1',
+        name: 'Feature',
+        directoryPath: '/repo',
+        targetMountId: 'mount-1',
+        boundary: {
+          allowedMountIds: ['mount-1'],
+          scopesByMountId: {
+            'mount-1': {
+              rootPath: '/repo',
+              rootUri: 'file:///repo',
+            },
+          },
+          allowedPluginIds: null,
+          capabilities: null,
+          trustLevel: null,
+        },
+        nodeIds: [],
+      },
+    ]
+
+    const result = computeSpaceDirectoryUpdate({
+      workspacePath: '/repo',
+      spaces,
+      spaceId: 'space-1',
+      directoryPath: '/external/worktrees/feature-a',
+      options: { renameSpaceTo: 'feature/a', targetMountId: null },
+    })
+
+    expect(result?.nextSpaces[0]).toMatchObject({
+      id: 'space-1',
+      name: 'feature/a',
+      directoryPath: '/external/worktrees/feature-a',
+      targetMountId: null,
+      boundary: {
+        allowedMountIds: [],
+        scopesByMountId: {},
+        allowedPluginIds: null,
+        capabilities: null,
+        trustLevel: null,
+      },
+    })
+  })
 })

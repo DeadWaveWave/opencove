@@ -107,6 +107,89 @@ describe('SpaceWorktreeWindow create flow', () => {
     })
   })
 
+  it('clears the mount projection when binding an existing branch checked out outside the project root', async () => {
+    const create = vi.fn(async () => ({
+      worktree: {
+        path: '/external/worktrees/feature-existing',
+        head: null,
+        branch: 'feature/existing',
+      },
+    }))
+    installWorktreeApi({
+      listBranches: vi.fn(async () => ({
+        current: 'main',
+        branches: ['main', 'feature/existing'],
+      })),
+      listWorktrees: vi.fn(async () => ({
+        worktrees: [
+          { path: '/repo', head: 'abc', branch: 'main' },
+          {
+            path: '/external/worktrees/feature-existing',
+            head: 'def',
+            branch: 'feature/existing',
+          },
+        ],
+      })),
+      statusSummary: vi.fn(async () => ({
+        changedFileCount: 0,
+      })),
+      create,
+    })
+
+    const onClose = vi.fn()
+    const onUpdateSpaceDirectory = vi.fn()
+    const spaces = createSpaces('/repo').map(space => ({
+      ...space,
+      targetMountId: 'mount-1',
+    }))
+
+    render(
+      <SpaceWorktreeWindow
+        spaceId="space-1"
+        initialViewMode="create"
+        spaces={spaces}
+        nodes={createNodes()}
+        workspacePath="/repo"
+        worktreesRoot=".opencove/worktrees"
+        agentSettings={DEFAULT_AGENT_SETTINGS}
+        onClose={onClose}
+        onUpdateSpaceDirectory={onUpdateSpaceDirectory}
+        getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
+        closeNodesById={async () => undefined}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-create')).not.toBeDisabled()
+    })
+
+    fireEvent.click(screen.getByTestId('space-worktree-mode-existing'))
+    fireEvent.click(screen.getByTestId('space-worktree-existing-branch-trigger'))
+    const existingBranchOption = screen
+      .getAllByRole('option')
+      .find(option => option.textContent?.includes('feature/existing'))
+    expect(existingBranchOption).toBeTruthy()
+    fireEvent.click(existingBranchOption as HTMLElement)
+    fireEvent.click(screen.getByTestId('space-worktree-create'))
+
+    await waitFor(() => {
+      expect(create).toHaveBeenCalledWith({
+        repoPath: '/repo',
+        worktreesRoot: '/repo/.opencove/worktrees',
+        branchMode: { kind: 'existing', name: 'feature/existing' },
+      })
+      expect(onUpdateSpaceDirectory).toHaveBeenCalledWith(
+        'space-1',
+        '/external/worktrees/feature-existing',
+        {
+          targetMountId: null,
+          renameSpaceTo: 'feature/existing',
+        },
+      )
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('surfaces an actionable error when creating a worktree in a repo with no commits', async () => {
     installWorktreeApi({
       create: vi.fn(async () => {

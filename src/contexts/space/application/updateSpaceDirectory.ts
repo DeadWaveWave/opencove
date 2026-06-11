@@ -1,4 +1,5 @@
 import type { SpaceBoundary } from '../../../shared/types/spaceBoundary'
+import { EMPTY_SPACE_BOUNDARY } from '../../../shared/types/spaceBoundary'
 import { collectSpaceSubtreeIds } from './spaceTree'
 import { replaceBoundaryScopeRoot, resolveSpaceBoundaryScope } from './spaceBoundaryPolicy'
 
@@ -6,6 +7,7 @@ export interface UpdateSpaceDirectoryOptions {
   markNodeDirectoryMismatch?: boolean
   archiveSpace?: boolean
   renameSpaceTo?: string
+  targetMountId?: string | null
 }
 
 export interface SpaceDirectoryRecord {
@@ -51,6 +53,9 @@ export function computeSpaceDirectoryUpdate<TSpace extends SpaceDirectoryRecord>
   const archiveSpace = options?.archiveSpace === true
   const markNodeDirectoryMismatch = options?.markNodeDirectoryMismatch === true
   const renameSpaceTo = options?.renameSpaceTo?.trim()
+  const targetMountId = Object.prototype.hasOwnProperty.call(options ?? {}, 'targetMountId')
+    ? (options?.targetMountId ?? null)
+    : undefined
   const removedSpaceIds = archiveSpace ? collectSpaceSubtreeIds(spaces, spaceId) : new Set()
   const cascadedSpaceIds = archiveSpace
     ? new Set<string>()
@@ -76,6 +81,7 @@ export function computeSpaceDirectoryUpdate<TSpace extends SpaceDirectoryRecord>
               space,
               directoryPath,
               renameSpaceTo: space.id === spaceId ? renameSpaceTo : null,
+              targetMountId,
             })
           : space,
       )
@@ -137,19 +143,35 @@ function updateSpaceDirectoryProjection<TSpace extends SpaceDirectoryRecord>({
   space,
   directoryPath,
   renameSpaceTo,
+  targetMountId,
 }: {
   space: TSpace
   directoryPath: string
   renameSpaceTo?: string | null
+  targetMountId?: string | null
 }): TSpace {
-  return {
+  const hasTargetMountOverride = targetMountId !== undefined
+  const hasTargetMountField = Object.prototype.hasOwnProperty.call(space, 'targetMountId')
+  const nextTargetMountId = hasTargetMountOverride ? targetMountId : (space.targetMountId ?? null)
+  const nextBoundary =
+    nextTargetMountId === null
+      ? { ...EMPTY_SPACE_BOUNDARY }
+      : replaceBoundaryScopeRoot({
+          boundary: space.boundary,
+          mountId: nextTargetMountId,
+          rootPath: directoryPath,
+        })
+
+  const nextSpace = {
     ...space,
     directoryPath,
-    boundary: replaceBoundaryScopeRoot({
-      boundary: space.boundary,
-      mountId: space.targetMountId,
-      rootPath: directoryPath,
-    }),
+    boundary: nextBoundary,
     name: renameSpaceTo && renameSpaceTo.length > 0 ? renameSpaceTo : space.name,
   }
+
+  return (
+    hasTargetMountOverride || hasTargetMountField
+      ? { ...nextSpace, targetMountId: nextTargetMountId }
+      : nextSpace
+  ) as TSpace
 }

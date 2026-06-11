@@ -147,6 +147,7 @@ export async function runRoleNodeAction(
   try {
     const launched = await launchWorkspaceAgentSession({
       mountId: initialBinding.mountId,
+      workspacePath: context.workspacePath,
       executionDirectory: initialBinding.executionDirectory,
       prompt,
       provider,

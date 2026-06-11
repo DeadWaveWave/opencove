@@ -62,6 +62,85 @@ describe('workspaceAgentLaunch.shared', () => {
     expect(spacesRef.current[0]?.targetMountId).toBe('mount-api')
   })
 
+  it('does not bind an external worktree directory to the first project mount', async () => {
+    const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
+    invoke.mockResolvedValueOnce({
+      mounts: [{ mountId: 'mount-root', rootPath: '/project' }],
+    })
+
+    const spacesRef = createSpacesRef([
+      {
+        id: 'space-1',
+        name: 'External',
+        directoryPath: '/external/worktrees/feature-a',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: null,
+      },
+    ])
+    const onSpacesChange = vi.fn()
+
+    const binding = await resolveWorkspaceAgentLaunchBinding({
+      workspaceId: 'workspace-1',
+      workspacePath: '/project',
+      currentMountId: null,
+      executionDirectory: '/external/worktrees/feature-a',
+      targetSpace: spacesRef.current[0],
+      spacesRef,
+      onSpacesChange,
+    })
+
+    expect(binding).toEqual({
+      mountId: null,
+      executionDirectory: '/external/worktrees/feature-a',
+    })
+    expect(onSpacesChange).not.toHaveBeenCalled()
+    expect(spacesRef.current[0]?.targetMountId).toBeNull()
+  })
+
+  it('launches external worktree agents through the control surface plain runtime', async () => {
+    const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
+    invoke.mockResolvedValueOnce({
+      sessionId: 'session-external',
+      profileId: 'profile-1',
+      runtimeKind: 'posix',
+      effectiveModel: 'gpt-5.2-codex',
+      executionContext: {
+        workingDirectory: '/external/worktrees/feature-a',
+      },
+    })
+
+    const launched = await launchWorkspaceAgentSession({
+      mountId: null,
+      workspacePath: '/project',
+      executionDirectory: '/external/worktrees/feature-a',
+      prompt: '',
+      provider: 'codex',
+      mode: 'new',
+      model: 'gpt-5.2-codex',
+      executablePathOverride: null,
+      mergedEnv: {},
+      agentSettings: {
+        agentFullAccess: true,
+        defaultTerminalProfileId: null,
+      },
+      launchGeometry: {
+        terminalGeometry: { cols: 120, rows: 40 },
+      },
+    })
+
+    expect(launched.executionDirectory).toBe('/external/worktrees/feature-a')
+    expect(window.opencoveApi.agent.launch).not.toHaveBeenCalled()
+    expect(invoke).toHaveBeenCalledWith({
+      kind: 'command',
+      id: 'session.launchAgent',
+      payload: expect.objectContaining({
+        cwd: '/external/worktrees/feature-a',
+      }),
+    })
+  })
+
   it('retries mount launches after refreshing the mount binding', async () => {
     const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
     invoke.mockRejectedValueOnce(new Error('stale mount')).mockResolvedValueOnce({
@@ -76,6 +155,7 @@ describe('workspaceAgentLaunch.shared', () => {
 
     const launched = await launchWorkspaceAgentSession({
       mountId: 'mount-stale',
+      workspacePath: '/project',
       executionDirectory: '/project',
       prompt: 'Implement the feature.',
       provider: 'codex',

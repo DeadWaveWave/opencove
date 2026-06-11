@@ -74,21 +74,21 @@ describe('resolveSpaceMountContext', () => {
     })
   })
 
-  it('falls back to the mount root when directoryPath escapes the selected mount', () => {
+  it('clears a selected mount instead of repairing an external linked worktree to the mount root', () => {
     const resolved = resolveSpaceMountContext({
       space: {
-        directoryPath: '/tmp/elsewhere',
+        directoryPath: '/external/worktrees/feature-a',
         targetMountId: 'mount-1',
       },
       workspacePath: '/repo',
       mounts: [createMount({})],
     })
 
-    expect(resolved.mount?.mountId).toBe('mount-1')
-    expect(resolved.workingDirectory).toBe('/repo')
+    expect(resolved.mount).toBeNull()
+    expect(resolved.workingDirectory).toBe('/external/worktrees/feature-a')
     expect(resolved.repair).toEqual({
-      targetMountId: 'mount-1',
-      directoryPath: '/repo',
+      targetMountId: null,
+      directoryPath: '/external/worktrees/feature-a',
     })
   })
 

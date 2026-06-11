@@ -26,6 +26,10 @@ import {
 import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
 import { resolveTerminalLaunchWorkspaceContext } from './useInteractions.paneNodeCreation.terminalLaunch'
 import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
+import {
+  resolveControlSurfaceInvoke,
+  shouldUseControlSurfacePlainRuntime,
+} from './useWorkspaceRuntimeLaunchRouting'
 import { translate } from '@app/renderer/i18n'
 import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 
@@ -127,6 +131,14 @@ export async function createTerminalNodeAtFlowPosition({
     mountId && resolvedCwd.trim().length > 0 ? toFileUri(resolvedCwd.trim()) : null
 
   const nodeWorkingDirectory = resolvedCwd
+  const controlSurfaceInvoke = resolveControlSurfaceInvoke()
+  const shouldUseControlSurfacePlainSpawn =
+    !mountId &&
+    controlSurfaceInvoke !== null &&
+    shouldUseControlSurfacePlainRuntime({
+      workspacePath: resolvedWorkspacePath,
+      executionDirectory: resolvedCwd,
+    })
 
   let spawned: SpawnTerminalResult
 
@@ -146,15 +158,29 @@ export async function createTerminalNodeAtFlowPosition({
               : {}),
           },
         })
-      : await window.opencoveApi.pty.spawn({
-          cwd: resolvedCwd,
-          profileId: defaultTerminalProfileId ?? undefined,
-          cols: launchGeometry.cols,
-          rows: launchGeometry.rows,
-          ...(environmentVariables && Object.keys(environmentVariables).length > 0
-            ? { env: environmentVariables }
-            : {}),
-        })
+      : shouldUseControlSurfacePlainSpawn
+        ? await controlSurfaceInvoke<SpawnTerminalResult>({
+            kind: 'command',
+            id: 'pty.spawn',
+            payload: {
+              cwd: resolvedCwd,
+              profileId: defaultTerminalProfileId,
+              cols: launchGeometry.cols,
+              rows: launchGeometry.rows,
+              ...(environmentVariables && Object.keys(environmentVariables).length > 0
+                ? { env: environmentVariables }
+                : {}),
+            },
+          })
+        : await window.opencoveApi.pty.spawn({
+            cwd: resolvedCwd,
+            profileId: defaultTerminalProfileId ?? undefined,
+            cols: launchGeometry.cols,
+            rows: launchGeometry.rows,
+            ...(environmentVariables && Object.keys(environmentVariables).length > 0
+              ? { env: environmentVariables }
+              : {}),
+          })
   } catch (error) {
     onShowMessage?.(
       translate('messages.terminalLaunchFailed', { message: toErrorMessage(error) }),

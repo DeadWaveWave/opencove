@@ -9,6 +9,7 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import type { ShowWorkspaceCanvasMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import type { CreateGitWorktreeBranchMode, GitWorktreeInfo } from '@shared/contracts/dto'
+import { isPathInsideOrEqual } from '@contexts/space/application/spaceBoundaryPolicy'
 import { SpaceWorktreeGuardWindow, type SpaceWorktreeGuardState } from './SpaceWorktreeGuardWindow'
 import { SpaceWorktreeWindowDialog } from './SpaceWorktreeWindowDialog'
 import {
@@ -230,9 +231,14 @@ export function SpaceWorktreeWindow({
 
         const resolvedSpaceName =
           created.worktree.branch?.trim() || pending.branchMode.name.trim() || undefined
+        const targetMountOptions =
+          space?.targetMountId && !isPathInsideOrEqual(worktreeRepoRootPath, created.worktree.path)
+            ? { targetMountId: null }
+            : {}
 
         onUpdateSpaceDirectory(targetSpaceId, created.worktree.path, {
           ...options,
+          ...targetMountOptions,
           renameSpaceTo: resolvedSpaceName,
         })
         await refresh()
@@ -268,7 +274,15 @@ export function SpaceWorktreeWindow({
         }
       }
     },
-    [onShowMessage, onUpdateSpaceDirectory, refresh, t, worktreeApi, worktreeRepoRootPath],
+    [
+      onShowMessage,
+      onUpdateSpaceDirectory,
+      refresh,
+      space?.targetMountId,
+      t,
+      worktreeApi,
+      worktreeRepoRootPath,
+    ],
   )
 
   const runOperation = useCallback(

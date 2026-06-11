@@ -181,6 +181,7 @@ export async function runTaskAgentAction(
   try {
     const launched = await launchWorkspaceAgentSession({
       mountId,
+      workspacePath: context.workspacePath,
       executionDirectory: taskDirectory,
       prompt: requirement,
       provider,

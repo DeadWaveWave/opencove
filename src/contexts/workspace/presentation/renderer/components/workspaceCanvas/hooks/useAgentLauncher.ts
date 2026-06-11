@@ -118,6 +118,7 @@ export function useWorkspaceCanvasAgentLauncher({
           }
           const launched = await launchWorkspaceAgentSession({
             mountId: initialBinding.mountId,
+            workspacePath,
             executionDirectory: initialBinding.executionDirectory,
             prompt: '',
             provider,

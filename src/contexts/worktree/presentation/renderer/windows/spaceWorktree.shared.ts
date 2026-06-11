@@ -17,6 +17,7 @@ export interface UpdateSpaceDirectoryOptions {
   markNodeDirectoryMismatch?: boolean
   archiveSpace?: boolean
   renameSpaceTo?: string
+  targetMountId?: string | null
 }
 
 export interface ArchiveWorktreeCleanup {
