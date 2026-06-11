@@ -186,6 +186,7 @@ export async function createTerminalNodeAtFlowPosition({
     assignNodeToSpaceAndExpand({
       createdNodeId: created.id,
       targetSpaceId: targetSpace.id,
+      targetSpaceSnapshot: targetSpace,
       spacesRef,
       nodesRef,
       setNodes,

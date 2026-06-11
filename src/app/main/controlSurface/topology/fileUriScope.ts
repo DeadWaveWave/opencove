@@ -15,6 +15,10 @@ function normalizeMacPrivateAlias(pathname: string): string {
     return pathname.slice('/private'.length)
   }
 
+  if (pathname === '/private/etc' || pathname.startsWith('/private/etc/')) {
+    return pathname.slice('/private'.length)
+  }
+
   return pathname
 }
 

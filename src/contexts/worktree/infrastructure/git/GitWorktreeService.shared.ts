@@ -1,6 +1,6 @@
 import { realpath } from 'node:fs/promises'
 import { basename, dirname, resolve } from 'node:path'
-import process from 'node:process'
+import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
 import { runCommand } from '../../../../platform/process/runCommand'
 import { createAppError } from '../../../../shared/errors/appError'
 
@@ -29,13 +29,13 @@ export async function runGit(
   const timeoutMs = options.timeoutMs ?? DEFAULT_GIT_TIMEOUT_MS
 
   try {
+    const env = await getCommandExecutionEnvironment({
+      GIT_TERMINAL_PROMPT: '0',
+    })
+
     const result = await runCommand('git', args, cwd, {
       timeoutMs,
-      env: {
-        ...process.env,
-        // Prevent git from opening an interactive prompt (e.g. auth).
-        GIT_TERMINAL_PROMPT: '0',
-      },
+      env,
     })
 
     return result

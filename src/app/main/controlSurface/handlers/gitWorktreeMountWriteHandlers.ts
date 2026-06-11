@@ -151,11 +151,13 @@ export function registerGitWorktreeMountWriteHandlers(
           })
         }
 
-        return await createGitWorktreeUseCase(deps.gitWorktreePort, {
+        const created = await createGitWorktreeUseCase(deps.gitWorktreePort, {
           repoPath,
           worktreesRoot,
           branchMode: payload.branchMode,
         })
+        await deps.approvedWorkspaces.registerRoot(created.worktree.path)
+        return created
       }
 
       return await invokeRemoteValue<CreateGitWorktreeResult>({

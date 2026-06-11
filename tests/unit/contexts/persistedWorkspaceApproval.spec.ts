@@ -10,13 +10,37 @@ describe('PersistedWorkspaceApproval', () => {
       listPersistedWorkspaceApprovalRoots({
         activeWorkspaceId: 'workspace-1',
         workspaces: [
-          { id: 'workspace-1', name: 'One', path: '/tmp/one', nodes: [] },
-          { id: 'workspace-2', name: 'Two', path: '  /tmp/two  ', nodes: [] },
+          {
+            id: 'workspace-1',
+            name: 'One',
+            path: '/tmp/one',
+            nodes: [],
+            spaces: [
+              {
+                id: 'space-1',
+                name: 'Feature',
+                directoryPath: '/tmp/one/.opencove/worktrees/feature-a',
+                nodeIds: [],
+              },
+              {
+                id: 'space-2',
+                name: 'External',
+                directoryPath: '  /Users/me/.codex/worktrees/1234/project  ',
+                nodeIds: [],
+              },
+            ],
+          },
+          { id: 'workspace-2', name: 'Two', path: '  /tmp/two  ', nodes: [], spaces: [] },
           { id: 'workspace-3', name: 'Three', path: '/tmp/one', nodes: [] },
           { id: 'workspace-4', name: 'Four', path: '   ', nodes: [] },
         ],
       }),
-    ).toEqual(['/tmp/one', '/tmp/two'])
+    ).toEqual([
+      '/tmp/one',
+      '/tmp/one/.opencove/worktrees/feature-a',
+      '/Users/me/.codex/worktrees/1234/project',
+      '/tmp/two',
+    ])
   })
 
   it('waits for startup hydration before answering approvals or accepting writes', async () => {

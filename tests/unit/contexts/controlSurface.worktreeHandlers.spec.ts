@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
+import { registerGitWorktreeMountHandlers } from '../../../src/app/main/controlSurface/handlers/gitWorktreeMountHandlers'
 import { registerWorktreeHandlers } from '../../../src/app/main/controlSurface/handlers/worktreeHandlers'
 import type {
   CreateGitWorktreeInput,
@@ -141,11 +143,14 @@ describe('control surface worktree handlers', () => {
     }
 
     const { store, getWrittenState } = createStubStore(appState)
+    const registerRootCalls: string[] = []
 
     const controlSurface = createControlSurface()
     registerWorktreeHandlers(controlSurface, {
       approvedWorkspaces: {
-        registerRoot: async () => undefined,
+        registerRoot: async rootPath => {
+          registerRootCalls.push(rootPath)
+        },
         isPathApproved: async () => true,
       },
       getPersistenceStore: async () => store,
@@ -196,6 +201,65 @@ describe('control surface worktree handlers', () => {
     }
     expect(written.workspaces[0].spaces[0].directoryPath).toBe('/worktrees/wt1')
     expect(written.workspaces[0].spaces[0].name).toBe('feature-a')
+    expect(registerRootCalls).toEqual(['/worktrees/wt1'])
+  })
+
+  it('registers a mount-created worktree path as an approved root', async () => {
+    const registerRootCalls: string[] = []
+    const controlSurface = createControlSurface()
+    registerGitWorktreeMountHandlers(controlSurface, {
+      approvedWorkspaces: {
+        registerRoot: async rootPath => {
+          registerRootCalls.push(rootPath)
+        },
+        isPathApproved: async path => path === '/repo' || path === '/repo/.opencove/worktrees',
+      },
+      topology: {
+        resolveMountTarget: async () => ({
+          mountId: 'mount-1',
+          targetId: 'target-1',
+          endpointId: 'local',
+          rootPath: '/repo',
+          rootUri: 'file:///repo',
+        }),
+      } as never,
+      gitWorktreePort: {
+        listBranches: async () => ({ current: null, branches: [] }),
+        listWorktrees: async () => ({ worktrees: [] }),
+        getStatusSummary: async () => ({ changedFileCount: 0 }),
+        getDefaultBranch: async () => 'main',
+        createWorktree: async (): Promise<GitWorktreeInfo> => ({
+          path: '/external/worktrees/wt1',
+          head: null,
+          branch: 'feature-a',
+        }),
+        removeWorktree: async (): Promise<RemoveGitWorktreeResult> => ({
+          deletedBranchName: null,
+          branchDeleteError: null,
+          directoryCleanupError: null,
+        }),
+        renameBranch: async () => undefined,
+        suggestNames: async () => ({
+          branchName: 'feature-a',
+          worktreeName: 'worktree',
+          provider: 'codex',
+          effectiveModel: null,
+        }),
+      },
+    })
+
+    const result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'gitWorktree.createInMount',
+      payload: {
+        mountId: 'mount-1',
+        worktreesRootUri: pathToFileURL('/repo/.opencove/worktrees').href,
+        branchMode: { kind: 'existing', name: 'feature-a' },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(registerRootCalls).toEqual(['/external/worktrees/wt1'])
   })
 
   it('rejects invalid payloads', async () => {

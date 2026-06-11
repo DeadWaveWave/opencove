@@ -147,7 +147,9 @@ export function registerWorktreeIpcHandlers(
         })
       }
 
-      return await createGitWorktreeUseCase(gitWorktreePort, normalized)
+      const created = await createGitWorktreeUseCase(gitWorktreePort, normalized)
+      await approvedWorkspaces.registerRoot(created.worktree.path)
+      return created
     },
     { defaultErrorCode: 'worktree.create_failed' },
   )

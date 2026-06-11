@@ -22,6 +22,7 @@ export function findContainingSpaceByAnchor(
 export function assignNodeToSpaceAndExpand({
   createdNodeId,
   targetSpaceId,
+  targetSpaceSnapshot,
   spacesRef,
   nodesRef,
   setNodes,
@@ -29,13 +30,15 @@ export function assignNodeToSpaceAndExpand({
 }: {
   createdNodeId: string
   targetSpaceId: string
+  targetSpaceSnapshot?: WorkspaceSpaceState | null
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
 }): void {
+  const baseSpaces = mergeTargetSpaceSnapshot(spacesRef.current, targetSpaceId, targetSpaceSnapshot)
   const nextSpaces = sanitizeSpaces(
-    spacesRef.current.map(space => {
+    baseSpaces.map(space => {
       const filtered = space.nodeIds.filter(nodeId => nodeId !== createdNodeId)
 
       if (space.id !== targetSpaceId) {
@@ -89,4 +92,34 @@ export function assignNodeToSpaceAndExpand({
   }
 
   onSpacesChange(pushedSpaces)
+}
+
+function mergeTargetSpaceSnapshot(
+  spaces: WorkspaceSpaceState[],
+  targetSpaceId: string,
+  snapshot: WorkspaceSpaceState | null | undefined,
+): WorkspaceSpaceState[] {
+  if (!snapshot || snapshot.id !== targetSpaceId) {
+    return spaces
+  }
+
+  let foundTarget = false
+  const nextSpaces = spaces.map(space => {
+    if (space.id !== targetSpaceId) {
+      return space
+    }
+
+    foundTarget = true
+    return {
+      ...space,
+      name: snapshot.name,
+      directoryPath: snapshot.directoryPath,
+      targetMountId: snapshot.targetMountId,
+      parentSpaceId: snapshot.parentSpaceId ?? null,
+      boundary: snapshot.boundary ?? null,
+      sortOrder: snapshot.sortOrder ?? space.sortOrder,
+    }
+  })
+
+  return foundTarget ? nextSpaces : [...nextSpaces, snapshot]
 }

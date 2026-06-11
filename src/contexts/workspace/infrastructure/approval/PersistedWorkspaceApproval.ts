@@ -21,12 +21,20 @@ export function listPersistedWorkspaceApprovalRoots(appState: unknown): string[]
 
   for (const workspace of normalized.workspaces) {
     const rootPath = normalizeRootPath(workspace.path)
-    if (!rootPath || seen.has(rootPath)) {
-      continue
+    if (rootPath && !seen.has(rootPath)) {
+      seen.add(rootPath)
+      roots.push(rootPath)
     }
 
-    seen.add(rootPath)
-    roots.push(rootPath)
+    for (const space of workspace.spaces) {
+      const directoryPath = normalizeRootPath(space.directoryPath)
+      if (!directoryPath || seen.has(directoryPath)) {
+        continue
+      }
+
+      seen.add(directoryPath)
+      roots.push(directoryPath)
+    }
   }
 
   return roots

@@ -277,6 +277,7 @@ export function registerWorktreeHandlers(
         worktreesRoot,
         branchMode: { kind: 'new', name: branchName, startPoint: 'HEAD' },
       })
+      await deps.approvedWorkspaces.registerRoot(created.worktree.path)
 
       const nextSpaceName = created.worktree.branch?.trim() || branchName
       const update = computeSpaceDirectoryUpdate({

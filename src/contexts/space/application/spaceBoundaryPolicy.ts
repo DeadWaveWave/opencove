@@ -18,10 +18,26 @@ export function normalizeComparablePath(pathValue: string): string {
     .trim()
     .replace(/[\\/]+$/, '')
     .replace(/\\/g, '/')
+  const aliasNormalized = normalizeMacPrivateAlias(normalized)
 
-  return /^[a-zA-Z]:\//.test(normalized) || normalized.startsWith('//')
-    ? normalized.toLowerCase()
-    : normalized
+  return /^[a-zA-Z]:\//.test(aliasNormalized) || aliasNormalized.startsWith('//')
+    ? aliasNormalized.toLowerCase()
+    : aliasNormalized
+}
+
+function normalizeMacPrivateAlias(pathValue: string): string {
+  if (
+    pathValue === '/private/var' ||
+    pathValue.startsWith('/private/var/') ||
+    pathValue === '/private/tmp' ||
+    pathValue.startsWith('/private/tmp/') ||
+    pathValue === '/private/etc' ||
+    pathValue.startsWith('/private/etc/')
+  ) {
+    return pathValue.slice('/private'.length)
+  }
+
+  return pathValue
 }
 
 export function isPathInsideOrEqual(rootPath: string, targetPath: string): boolean {
