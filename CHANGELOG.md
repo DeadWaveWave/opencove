@@ -88,6 +88,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Workspace canvas: keep Space Worktrees bound to their worktree directory after creating terminal or agent nodes, and preserve archive/status access through approved worktree roots. (#284)
 - Persistence: reject accidental empty workspace overwrites unless the caller explicitly opts in, preventing sync/restart from clearing durable workspace state. (#265)
 - Persistence: harden installed upgrade repair, block stale local Worker reuse across app-version changes, and document rollback as unsupported unless explicitly tested. (#261)
 - Worker/PTY: shutdown-time IPC disconnects no longer crash the process with unhandled `EPIPE` / closed-channel errors. (#260)
