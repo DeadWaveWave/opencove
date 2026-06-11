@@ -13,7 +13,6 @@ import type { PersistenceStore } from '../../../../platform/persistence/sqlite/P
 import type {
   LaunchAgentSessionResult,
   PreparedRuntimeNodeResult,
-  SpawnTerminalResult,
 } from '../../../../shared/contracts/dto'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceContext } from '../types'
@@ -34,10 +33,13 @@ import {
   type PersistedAgentLike,
 } from './sessionPrepareOrReviveShared'
 import {
+  resolvePrepareOrReviveLaunchContext,
+  spawnFallbackTerminal,
+} from './sessionPrepareOrReviveTerminalSpawn'
+import {
   DEFAULT_PTY_COLS,
   DEFAULT_PTY_ROWS,
   resolveNodeInitialPtyGeometry,
-  type PtyGeometry,
 } from './sessionPrepareOrReviveGeometry'
 export { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
 
@@ -94,41 +96,6 @@ export function resolvePrepareOrReviveResumeLocateTimeoutMs(
   return COLD_RESUME_SESSION_LOCATE_TIMEOUT_MS
 }
 
-async function spawnFallbackTerminal(options: {
-  controlSurface: ControlSurface
-  ctx: ControlSurfaceContext
-  workspace: NormalizedPersistedWorkspace
-  node: NormalizedPersistedNode
-  space: NormalizedPersistedSpace | null
-  cwd: string
-  profileId: string | null
-  geometry?: PtyGeometry
-}): Promise<SpawnTerminalResult> {
-  const geometry = options.geometry ?? { cols: DEFAULT_PTY_COLS, rows: DEFAULT_PTY_ROWS }
-  if (options.space?.targetMountId) {
-    return await invokeCommand<SpawnTerminalResult>(options.controlSurface, options.ctx, {
-      id: 'pty.spawnInMount',
-      payload: {
-        mountId: options.space.targetMountId,
-        cwdUri: toFileUri(options.cwd),
-        profileId: options.profileId,
-        cols: geometry.cols,
-        rows: geometry.rows,
-      },
-    })
-  }
-
-  return await invokeCommand<SpawnTerminalResult>(options.controlSurface, options.ctx, {
-    id: 'pty.spawn',
-    payload: {
-      cwd: options.cwd,
-      profileId: options.profileId,
-      cols: geometry.cols,
-      rows: geometry.rows,
-    },
-  })
-}
-
 export async function prepareTerminalNode(options: {
   controlSurface: ControlSurface
   ctx: ControlSurfaceContext
@@ -152,7 +119,6 @@ export async function prepareTerminalNode(options: {
       controlSurface: options.controlSurface,
       ctx: options.ctx,
       workspace: options.workspace,
-      node: options.node,
       space: options.space,
       cwd,
       profileId: resolveNodeProfileId(options.node),
@@ -172,8 +138,8 @@ export async function prepareTerminalNode(options: {
       lastError: null,
       scrollback,
       terminalGeometry: preparedTerminalGeometry,
-      executionDirectory: normalizeOptionalString(options.node.executionDirectory),
-      expectedDirectory: normalizeOptionalString(options.node.expectedDirectory),
+      executionDirectory: spawned.cwd,
+      expectedDirectory: spawned.cwd,
       agent: null,
     })
   } catch (error) {
@@ -239,14 +205,23 @@ export async function prepareAgentNode(options: {
     hasRecoverableStatus &&
     !isResumeSessionBindingVerified(sanitizedAgent) &&
     sanitizedAgent.prompt.trim().length === 0
+  const agentLaunchContext = await resolvePrepareOrReviveLaunchContext({
+    controlSurface,
+    ctx,
+    workspace,
+    space,
+    cwd: sanitizedAgent.executionDirectory,
+  })
+  const agentExecutionDirectory = agentLaunchContext.workingDirectory
+  const agentExpectedDirectory = agentLaunchContext.workingDirectory
 
   const invokeAgentLaunch = async (mode: 'new' | 'resume'): Promise<LaunchAgentSessionResult> => {
-    if (space?.targetMountId) {
+    if (agentLaunchContext.mountId) {
       return await invokeCommand<LaunchAgentSessionResult>(controlSurface, ctx, {
         id: 'session.launchAgentInMount',
         payload: {
-          mountId: space.targetMountId,
-          cwdUri: toFileUri(sanitizedAgent.executionDirectory),
+          mountId: agentLaunchContext.mountId,
+          cwdUri: toFileUri(agentExecutionDirectory),
           prompt: sanitizedAgent.prompt,
           provider: sanitizedAgent.provider,
           mode,
@@ -263,7 +238,7 @@ export async function prepareAgentNode(options: {
     return await invokeCommand<LaunchAgentSessionResult>(controlSurface, ctx, {
       id: 'session.launchAgent',
       payload: {
-        cwd: sanitizedAgent.executionDirectory,
+        cwd: agentExecutionDirectory,
         prompt: sanitizedAgent.prompt,
         provider: sanitizedAgent.provider,
         mode,
@@ -294,10 +269,12 @@ export async function prepareAgentNode(options: {
         lastError: null,
         scrollback,
         terminalGeometry: initialGeometry,
-        executionDirectory: sanitizedAgent.executionDirectory,
-        expectedDirectory: sanitizedAgent.expectedDirectory,
+        executionDirectory: agentExecutionDirectory,
+        expectedDirectory: agentExpectedDirectory,
         agent: {
           ...sanitizedAgent,
+          executionDirectory: agentExecutionDirectory,
+          expectedDirectory: agentExpectedDirectory,
           effectiveModel: launched.effectiveModel,
           launchMode: 'resume',
           resumeSessionId: sanitizedAgent.resumeSessionId,
@@ -310,9 +287,8 @@ export async function prepareAgentNode(options: {
           controlSurface,
           ctx,
           workspace,
-          node,
           space,
-          cwd: sanitizedAgent.executionDirectory,
+          cwd: agentExecutionDirectory,
           profileId: terminalProfileId,
           geometry: initialGeometry,
         })
@@ -329,9 +305,13 @@ export async function prepareAgentNode(options: {
           lastError: formatRecoverableError('Agent resume failed', error),
           scrollback,
           terminalGeometry: initialGeometry,
-          executionDirectory: sanitizedAgent.executionDirectory,
-          expectedDirectory: sanitizedAgent.expectedDirectory,
-          agent: sanitizedAgent,
+          executionDirectory: spawned.cwd,
+          expectedDirectory: spawned.cwd,
+          agent: {
+            ...sanitizedAgent,
+            executionDirectory: spawned.cwd,
+            expectedDirectory: spawned.cwd,
+          },
         })
       } catch (fallbackError) {
         return toPreparedNodeResult(node, {
@@ -347,9 +327,13 @@ export async function prepareAgentNode(options: {
           lastError: formatRecoverableError('Agent resume failed', fallbackError),
           scrollback,
           terminalGeometry: node.terminalGeometry,
-          executionDirectory: sanitizedAgent.executionDirectory,
-          expectedDirectory: sanitizedAgent.expectedDirectory,
-          agent: sanitizedAgent,
+          executionDirectory: agentExecutionDirectory,
+          expectedDirectory: agentExpectedDirectory,
+          agent: {
+            ...sanitizedAgent,
+            executionDirectory: agentExecutionDirectory,
+            expectedDirectory: agentExpectedDirectory,
+          },
         })
       }
     }
@@ -372,10 +356,12 @@ export async function prepareAgentNode(options: {
         lastError: null,
         scrollback,
         terminalGeometry: initialGeometry,
-        executionDirectory: sanitizedAgent.executionDirectory,
-        expectedDirectory: sanitizedAgent.expectedDirectory,
+        executionDirectory: agentExecutionDirectory,
+        expectedDirectory: agentExpectedDirectory,
         agent: {
           ...sanitizedAgent,
+          executionDirectory: agentExecutionDirectory,
+          expectedDirectory: agentExpectedDirectory,
           effectiveModel: launched.effectiveModel,
           launchMode: 'new',
           ...clearResumeSessionBinding(),
@@ -387,9 +373,8 @@ export async function prepareAgentNode(options: {
           controlSurface,
           ctx,
           workspace,
-          node,
           space,
-          cwd: sanitizedAgent.executionDirectory,
+          cwd: agentExecutionDirectory,
           profileId: terminalProfileId,
           geometry: initialGeometry,
         })
@@ -406,9 +391,13 @@ export async function prepareAgentNode(options: {
           lastError: formatRecoverableError('Agent launch failed', error),
           scrollback,
           terminalGeometry: initialGeometry,
-          executionDirectory: sanitizedAgent.executionDirectory,
-          expectedDirectory: sanitizedAgent.expectedDirectory,
-          agent: sanitizedAgent,
+          executionDirectory: spawned.cwd,
+          expectedDirectory: spawned.cwd,
+          agent: {
+            ...sanitizedAgent,
+            executionDirectory: spawned.cwd,
+            expectedDirectory: spawned.cwd,
+          },
         })
       } catch (fallbackError) {
         return toPreparedNodeResult(node, {
@@ -424,9 +413,13 @@ export async function prepareAgentNode(options: {
           lastError: formatRecoverableError('Agent launch failed', fallbackError),
           scrollback,
           terminalGeometry: node.terminalGeometry,
-          executionDirectory: sanitizedAgent.executionDirectory,
-          expectedDirectory: sanitizedAgent.expectedDirectory,
-          agent: sanitizedAgent,
+          executionDirectory: agentExecutionDirectory,
+          expectedDirectory: agentExpectedDirectory,
+          agent: {
+            ...sanitizedAgent,
+            executionDirectory: agentExecutionDirectory,
+            expectedDirectory: agentExpectedDirectory,
+          },
         })
       }
     }
@@ -437,9 +430,8 @@ export async function prepareAgentNode(options: {
       controlSurface,
       ctx,
       workspace,
-      node,
       space,
-      cwd: sanitizedAgent.executionDirectory,
+      cwd: agentExecutionDirectory,
       profileId: terminalProfileId,
       geometry: initialGeometry,
     })
@@ -456,9 +448,13 @@ export async function prepareAgentNode(options: {
       lastError: null,
       scrollback,
       terminalGeometry: initialGeometry,
-      executionDirectory: sanitizedAgent.executionDirectory,
-      expectedDirectory: sanitizedAgent.expectedDirectory,
-      agent: sanitizedAgent,
+      executionDirectory: spawned.cwd,
+      expectedDirectory: spawned.cwd,
+      agent: {
+        ...sanitizedAgent,
+        executionDirectory: spawned.cwd,
+        expectedDirectory: spawned.cwd,
+      },
     })
   } catch (error) {
     return toPreparedNodeResult(node, {
@@ -474,9 +470,13 @@ export async function prepareAgentNode(options: {
       lastError: formatRecoverableError('Terminal launch failed', error),
       scrollback,
       terminalGeometry: node.terminalGeometry,
-      executionDirectory: sanitizedAgent.executionDirectory,
-      expectedDirectory: sanitizedAgent.expectedDirectory,
-      agent: sanitizedAgent,
+      executionDirectory: agentExecutionDirectory,
+      expectedDirectory: agentExpectedDirectory,
+      agent: {
+        ...sanitizedAgent,
+        executionDirectory: agentExecutionDirectory,
+        expectedDirectory: agentExpectedDirectory,
+      },
     })
   }
 }

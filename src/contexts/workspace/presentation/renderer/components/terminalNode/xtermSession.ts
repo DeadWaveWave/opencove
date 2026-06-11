@@ -153,6 +153,7 @@ export function createMountedXtermSession({
   let disposeTerminalHitTargetCursorScope: () => void = () => undefined
   let disposeWebglCanvasTransformCleanupObserver: () => void = () => undefined
   let disposeTerminalDisplayMeasurementHandle: () => void = () => undefined
+  let disposeTerminalPointerFocus: () => void = () => undefined
   let effectiveDprController = installTerminalEffectiveDevicePixelRatioController({
     terminal,
     initialViewportZoom,
@@ -161,6 +162,15 @@ export function createMountedXtermSession({
 
   if (container) {
     terminal.open(container)
+    const handleTerminalPointerDown = (event: PointerEvent): void => {
+      if (event.button === 0) {
+        terminal.focus()
+      }
+    }
+    container.addEventListener('pointerdown', handleTerminalPointerDown, true)
+    disposeTerminalPointerFocus = () => {
+      container.removeEventListener('pointerdown', handleTerminalPointerDown, true)
+    }
     effectiveDprController.dispose()
     effectiveDprController = installTerminalEffectiveDevicePixelRatioController({
       terminal,
@@ -251,6 +261,7 @@ export function createMountedXtermSession({
       cancelMouseServicePatch()
       disposeTerminalHitTargetCursorScope()
       disposeWebglCanvasTransformCleanupObserver()
+      disposeTerminalPointerFocus()
       effectiveDprController.dispose()
       renderer.dispose()
       diagnostics.dispose()

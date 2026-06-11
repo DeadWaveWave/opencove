@@ -3,6 +3,7 @@ import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/ag
 import { resolveTerminalPtyGeometryForNodeFrame } from '../../../src/contexts/workspace/domain/terminalPtyGeometry'
 import { resolveDefaultTerminalWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation'
+import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 function regularTerminalLaunchGeometry() {
   return resolveTerminalPtyGeometryForNodeFrame({
@@ -148,6 +149,116 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
     ])
   })
 
+  it('does not overwrite local space metadata changed while a terminal launch is in flight', async () => {
+    const ptySpawn = vi.fn(async () => ({
+      sessionId: 'session-worktree',
+      profileId: null,
+      runtimeKind: 'posix' as const,
+    }))
+    const controlSurfaceInvoke = vi.fn(async () => ({
+      projectId: 'workspace-1',
+      mounts: [],
+    }))
+    const onSpacesChange = vi.fn()
+    const originalSpace: WorkspaceSpaceState = {
+      id: 'space-1',
+      name: 'Feature',
+      directoryPath: '/repo',
+      targetMountId: null,
+      labelColor: null,
+      nodeIds: [],
+      rect: { x: 0, y: 0, width: 1200, height: 800 },
+    }
+    const changedBoundary = {
+      allowedMountIds: ['mount-local'],
+      scopesByMountId: {},
+      allowedPluginIds: null,
+      capabilities: null,
+      trustLevel: null,
+    }
+    const spacesRef: { current: WorkspaceSpaceState[] } = {
+      current: [originalSpace],
+    }
+    const createNodeForSession = vi.fn(async () => {
+      spacesRef.current = [
+        {
+          ...originalSpace,
+          name: 'Renamed Locally',
+          directoryPath: '/repo/manual-change',
+          targetMountId: 'mount-local',
+          parentSpaceId: 'parent-local',
+          boundary: changedBoundary,
+          sortOrder: 42,
+        },
+      ]
+      return { id: 'node-worktree' } as never
+    })
+
+    vi.stubGlobal('window', {
+      opencoveApi: {
+        pty: {
+          spawn: ptySpawn,
+        },
+        persistence: {
+          readAppState: vi.fn(async () => ({
+            state: {
+              activeWorkspaceId: 'workspace-1',
+              workspaces: [
+                {
+                  id: 'workspace-1',
+                  path: '/repo',
+                  activeSpaceId: 'space-1',
+                  spaces: [
+                    {
+                      ...originalSpace,
+                      directoryPath: '/repo/.opencove/worktrees/feature-a',
+                      targetMountId: 'mount-1',
+                    },
+                  ],
+                },
+              ],
+            },
+            recovery: null,
+          })),
+        },
+        controlSurface: {
+          invoke: controlSurfaceInvoke,
+        },
+      },
+    })
+
+    await createTerminalNodeAtFlowPosition({
+      anchor: { x: 320, y: 180 },
+      workspaceId: 'workspace-1',
+      defaultTerminalProfileId: null,
+      standardWindowSizeBucket: 'regular',
+      workspacePath: '/repo',
+      spacesRef,
+      nodesRef: { current: [] },
+      setNodes: vi.fn(),
+      onSpacesChange,
+      createNodeForSession,
+    })
+
+    expect(ptySpawn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: '/repo/.opencove/worktrees/feature-a',
+      }),
+    )
+    expect(onSpacesChange).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'space-1',
+        name: 'Renamed Locally',
+        directoryPath: '/repo/manual-change',
+        targetMountId: 'mount-local',
+        parentSpaceId: 'parent-local',
+        boundary: changedBoundary,
+        sortOrder: 42,
+        nodeIds: ['node-worktree'],
+      }),
+    ])
+  })
+
   it('uses a persisted containing space when local spaces are not hydrated yet', async () => {
     const ptySpawn = vi.fn()
     const controlSurfaceInvoke = vi.fn(async (request: { id: string }) => {
@@ -204,6 +315,15 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
                       nodeIds: [],
                       rect: { x: 0, y: 0, width: 1200, height: 800 },
                     },
+                    {
+                      id: 'space-2',
+                      name: 'Docs',
+                      directoryPath: '/repo/docs',
+                      targetMountId: 'mount-1',
+                      labelColor: null,
+                      nodeIds: ['existing-node'],
+                      rect: { x: 1300, y: 0, width: 800, height: 600 },
+                    },
                   ],
                 },
               ],
@@ -254,13 +374,124 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
         expectedDirectory: '/repo/.opencove/worktrees/feature-a',
       }),
     )
-    expect(onSpacesChange).toHaveBeenCalledWith([
+    const nextSpaces = onSpacesChange.mock.calls[0]?.[0]
+    expect(nextSpaces).toEqual([
       expect.objectContaining({
         id: 'space-1',
         name: 'Feature',
         directoryPath: '/repo/.opencove/worktrees/feature-a',
         targetMountId: 'mount-1',
         nodeIds: ['node-worktree'],
+      }),
+      expect.objectContaining({
+        id: 'space-2',
+        name: 'Docs',
+        directoryPath: '/repo/docs',
+        targetMountId: 'mount-1',
+        nodeIds: ['existing-node'],
+      }),
+    ])
+  })
+
+  it('merges a persisted target space without replacing existing local spaces', async () => {
+    const ptySpawn = vi.fn(async () => ({
+      sessionId: 'session-worktree',
+      profileId: null,
+      runtimeKind: 'posix' as const,
+    }))
+    const createNodeForSession = vi.fn(async () => ({ id: 'node-worktree' }) as never)
+    const onSpacesChange = vi.fn()
+    const localSpace: WorkspaceSpaceState = {
+      id: 'space-local',
+      name: 'Scratch',
+      directoryPath: '/repo/scratch',
+      targetMountId: null,
+      labelColor: null,
+      nodeIds: ['local-node'],
+      rect: { x: 1400, y: 0, width: 800, height: 600 },
+    }
+
+    vi.stubGlobal('window', {
+      opencoveApi: {
+        pty: {
+          spawn: ptySpawn,
+        },
+        persistence: {
+          readAppState: vi.fn(async () => ({
+            state: {
+              activeWorkspaceId: 'workspace-1',
+              workspaces: [
+                {
+                  id: 'workspace-1',
+                  path: '/repo',
+                  activeSpaceId: 'space-1',
+                  spaces: [
+                    {
+                      id: 'space-1',
+                      name: 'Feature',
+                      directoryPath: '/repo/.opencove/worktrees/feature-a',
+                      targetMountId: 'mount-1',
+                      labelColor: null,
+                      nodeIds: [],
+                      rect: { x: 0, y: 0, width: 1200, height: 800 },
+                    },
+                    {
+                      id: 'space-2',
+                      name: 'Docs',
+                      directoryPath: '/repo/docs',
+                      targetMountId: null,
+                      labelColor: null,
+                      nodeIds: ['existing-node'],
+                      rect: { x: 2300, y: 0, width: 800, height: 600 },
+                    },
+                  ],
+                },
+              ],
+            },
+            recovery: null,
+          })),
+        },
+      },
+    })
+
+    await createTerminalNodeAtFlowPosition({
+      anchor: { x: 320, y: 180 },
+      workspaceId: 'workspace-1',
+      defaultTerminalProfileId: null,
+      standardWindowSizeBucket: 'regular',
+      workspacePath: '/repo',
+      spacesRef: { current: [localSpace] },
+      nodesRef: { current: [] },
+      setNodes: vi.fn(),
+      onSpacesChange,
+      createNodeForSession,
+    })
+
+    expect(ptySpawn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: '/repo/.opencove/worktrees/feature-a',
+      }),
+    )
+    const nextSpaces = onSpacesChange.mock.calls[0]?.[0]
+    expect(nextSpaces).toEqual([
+      expect.objectContaining({
+        id: 'space-local',
+        name: 'Scratch',
+        directoryPath: '/repo/scratch',
+        nodeIds: ['local-node'],
+      }),
+      expect.objectContaining({
+        id: 'space-1',
+        name: 'Feature',
+        directoryPath: '/repo/.opencove/worktrees/feature-a',
+        targetMountId: 'mount-1',
+        nodeIds: ['node-worktree'],
+      }),
+      expect.objectContaining({
+        id: 'space-2',
+        name: 'Docs',
+        directoryPath: '/repo/docs',
+        nodeIds: ['existing-node'],
       }),
     ])
   })

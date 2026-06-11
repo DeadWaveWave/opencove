@@ -79,6 +79,7 @@ export async function resolveTerminalLaunchWorkspaceContext(options: {
 }): Promise<{
   workspacePath: string
   targetSpace: WorkspaceSpaceState | null
+  workspaceSpacesSnapshot: WorkspaceSpaceState[] | null
 }> {
   const normalizedWorkspacePath = options.workspacePath.trim()
   const localWorkingDirectory = resolveSpaceWorkingDirectory(
@@ -91,6 +92,7 @@ export async function resolveTerminalLaunchWorkspaceContext(options: {
     return {
       workspacePath: normalizedWorkspacePath,
       targetSpace: options.targetSpace,
+      workspaceSpacesSnapshot: null,
     }
   }
 
@@ -104,6 +106,7 @@ export async function resolveTerminalLaunchWorkspaceContext(options: {
       return {
         workspacePath: normalizedWorkspacePath,
         targetSpace: options.targetSpace,
+        workspaceSpacesSnapshot: null,
       }
     }
 
@@ -112,11 +115,13 @@ export async function resolveTerminalLaunchWorkspaceContext(options: {
       targetSpace: resolvePersistedTargetSpace(workspace, options.targetSpace, options.anchor, {
         allowWorkspaceFallback: localWorkingDirectory.length === 0,
       }),
+      workspaceSpacesSnapshot: workspace.spaces,
     }
   } catch {
     return {
       workspacePath: normalizedWorkspacePath,
       targetSpace: options.targetSpace,
+      workspaceSpacesSnapshot: null,
     }
   }
 }

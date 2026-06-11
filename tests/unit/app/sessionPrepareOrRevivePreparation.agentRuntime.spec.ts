@@ -90,10 +90,38 @@ function createAgentRecord(): PreparedRuntimeAgentResult {
   }
 }
 
+function createMountListValue(options?: { mountId?: string; rootPath?: string; rootUri?: string }) {
+  const mountId = options?.mountId ?? 'mount-1'
+  const rootPath = options?.rootPath ?? 'C:\\repo'
+  const rootUri = options?.rootUri ?? 'file:///C:/repo'
+
+  return {
+    projectId: 'workspace-1',
+    mounts: [
+      {
+        mountId,
+        projectId: 'workspace-1',
+        name: 'Primary',
+        sortOrder: 0,
+        endpointId: 'local',
+        targetId: 'target-1',
+        rootPath,
+        rootUri,
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ],
+  }
+}
+
 describe('session prepare/revive agent runtime metadata', () => {
   it('uses the mounted launch runtime metadata instead of the stale persisted default profile', async () => {
     const controlSurface: ControlSurface = {
       invoke: vi.fn(async (_ctx, request) => {
+        if (request.id === 'mount.list') {
+          return { ok: true, value: createMountListValue() }
+        }
+
         expect(request.id).toBe('session.launchAgentInMount')
         return {
           ok: true,
@@ -166,6 +194,10 @@ describe('session prepare/revive agent runtime metadata', () => {
   it('revives a verified non-stopped agent window without rebinding to provider metadata', async () => {
     const controlSurface: ControlSurface = {
       invoke: vi.fn(async (_ctx, request) => {
+        if (request.id === 'mount.list') {
+          return { ok: true, value: createMountListValue() }
+        }
+
         expect(request.id).toBe('session.launchAgentInMount')
         expect((request.payload as { resumeSessionId?: string }).resumeSessionId).toBe('resume-1')
         return {
@@ -226,5 +258,101 @@ describe('session prepare/revive agent runtime metadata', () => {
     expect(prepared.status).toBe('standby')
     expect(prepared.agent?.resumeSessionId).toBe('resume-1')
     expect(prepared.agent?.resumeSessionIdVerified).toBe(true)
+  })
+
+  it('revives through the current inferred mount when the persisted Space mount is stale', async () => {
+    const controlSurface: ControlSurface = {
+      invoke: vi.fn(async (_ctx, request) => {
+        if (request.id === 'mount.list') {
+          return {
+            ok: true,
+            value: createMountListValue({
+              mountId: 'mount-current',
+              rootPath: 'C:\\repo',
+              rootUri: 'file:///C:/repo',
+            }),
+          }
+        }
+
+        expect(request.id).toBe('session.launchAgentInMount')
+        expect(request.payload).toMatchObject({
+          mountId: 'mount-current',
+          cwdUri: 'file:///C:/repo/worktrees/feature-a',
+          resumeSessionId: 'resume-1',
+        })
+        return {
+          ok: true,
+          value: {
+            sessionId: 'mounted-session-current',
+            provider: 'codex' as const,
+            startedAt: '2026-05-01T00:00:00.000Z',
+            executionContext: {
+              projectId: 'workspace-1',
+              spaceId: 'space-1',
+              mountId: 'mount-current',
+              targetId: 'target-current',
+              endpoint: { endpointId: 'local', kind: 'local' as const },
+              target: {
+                scheme: 'file' as const,
+                rootPath: 'C:\\repo',
+                rootUri: 'file:///C:/repo',
+              },
+              scope: {
+                rootPath: 'C:\\repo',
+                rootUri: 'file:///C:/repo',
+              },
+              workingDirectory: 'C:\\repo\\worktrees\\feature-a',
+            },
+            profileId: null,
+            runtimeKind: 'windows' as const,
+            resumeSessionId: 'resume-1',
+            effectiveModel: 'gpt-5.2-codex',
+            command: 'cmd.exe',
+            args: ['/d', '/c', 'codex.cmd'],
+          },
+        }
+      }),
+    } as ControlSurface
+    const space: NormalizedPersistedSpace = {
+      id: 'space-1',
+      name: 'Feature',
+      directoryPath: 'C:\\repo\\worktrees\\feature-a',
+      targetMountId: 'mount-stale',
+      parentSpaceId: null,
+      boundary: {
+        allowedMountIds: null,
+        scopesByMountId: null,
+        allowedPluginIds: null,
+        capabilities: null,
+        trustLevel: null,
+      },
+      sortOrder: 0,
+      labelColor: null,
+      nodeIds: ['agent-1'],
+      rect: null,
+    }
+
+    const prepared = await prepareAgentNode({
+      controlSurface,
+      ctx,
+      store: { readNodeScrollback: vi.fn(async () => null) } as never,
+      workspace: createWorkspace(space),
+      node: createAgentNode({
+        executionDirectory: 'C:\\repo\\worktrees\\feature-a',
+        expectedDirectory: 'C:\\repo\\worktrees\\feature-a',
+      }),
+      space,
+      agent: {
+        ...createAgentRecord(),
+        executionDirectory: 'C:\\repo\\worktrees\\feature-a',
+        expectedDirectory: 'C:\\repo\\worktrees\\feature-a',
+      },
+      settings: DEFAULT_AGENT_SETTINGS,
+    })
+
+    expect(prepared.recoveryState).toBe('revived')
+    expect(prepared.sessionId).toBe('mounted-session-current')
+    expect(prepared.agent?.executionDirectory).toBe('C:\\repo\\worktrees\\feature-a')
+    expect(prepared.agent?.expectedDirectory).toBe('C:\\repo\\worktrees\\feature-a')
   })
 })

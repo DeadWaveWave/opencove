@@ -42,9 +42,7 @@ describe('workspaceAgentLaunch.shared', () => {
         rect: null,
       },
     ])
-    const onSpacesChange = vi.fn((spaces: WorkspaceSpaceState[]) => {
-      spacesRef.current = spaces
-    })
+    const onSpacesChange = vi.fn()
 
     const binding = await resolveWorkspaceAgentLaunchBinding({
       workspaceId: 'workspace-1',

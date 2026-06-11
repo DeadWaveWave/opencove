@@ -7,7 +7,11 @@ import {
 import { toPreparedNodeResult } from '../../../src/app/main/controlSurface/handlers/sessionPrepareOrReviveShared'
 import type { ControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
-import type { NormalizedPersistedNode } from '../../../src/platform/persistence/sqlite/normalize'
+import type {
+  NormalizedPersistedNode,
+  NormalizedPersistedSpace,
+  NormalizedPersistedWorkspace,
+} from '../../../src/platform/persistence/sqlite/normalize'
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-05-01T00:00:00.000Z'),
@@ -48,6 +52,26 @@ function createNode(overrides: Partial<NormalizedPersistedNode>): NormalizedPers
     agent: null,
     task: null,
     scrollback: null,
+    ...overrides,
+  }
+}
+
+function createWorkspace(
+  overrides: Partial<NormalizedPersistedWorkspace> = {},
+): NormalizedPersistedWorkspace {
+  return {
+    id: 'workspace-1',
+    name: 'repo',
+    path: '/tmp/workspace',
+    worktreesRoot: '',
+    pullRequestBaseBranchOptions: [],
+    environmentVariables: {},
+    spaceArchiveRecords: [],
+    viewport: { x: 0, y: 0, zoom: 1 },
+    isMinimapVisible: true,
+    spaces: [],
+    activeSpaceId: null,
+    nodes: [],
     ...overrides,
   }
 }
@@ -139,20 +163,7 @@ describe('session prepare/revive terminal geometry', () => {
       store: {
         readNodeScrollback: vi.fn(async () => null),
       } as never,
-      workspace: {
-        id: 'workspace-1',
-        name: 'repo',
-        path: '/tmp/workspace',
-        worktreesRoot: '',
-        pullRequestBaseBranchOptions: [],
-        environmentVariables: {},
-        spaceArchiveRecords: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-        isMinimapVisible: true,
-        spaces: [],
-        activeSpaceId: null,
-        nodes: [],
-      },
+      workspace: createWorkspace(),
       node: createNode({
         kind: 'terminal',
         title: 'terminal',
@@ -165,6 +176,87 @@ describe('session prepare/revive terminal geometry', () => {
 
     expect(prepared.sessionId).toBe('restarted-terminal-session')
     expect(prepared.terminalGeometry).toBeNull()
+  })
+
+  it('restarts a mounted terminal through the current mount when the persisted Space mount is stale', async () => {
+    const worktreePath = '/tmp/workspace/worktrees/feature-a'
+    const currentMount = {
+      mountId: 'mount-current',
+      projectId: 'workspace-1',
+      name: 'Current',
+      sortOrder: 0,
+      endpointId: 'local',
+      targetId: 'target-current',
+      rootPath: '/tmp/workspace',
+      rootUri: 'file:///tmp/workspace',
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    }
+    const space: NormalizedPersistedSpace = {
+      id: 'space-1',
+      name: 'Feature',
+      directoryPath: worktreePath,
+      targetMountId: 'mount-stale',
+      parentSpaceId: null,
+      boundary: {
+        allowedMountIds: null,
+        scopesByMountId: null,
+        allowedPluginIds: null,
+        capabilities: null,
+        trustLevel: null,
+      },
+      sortOrder: 0,
+      labelColor: null,
+      nodeIds: ['node-1'],
+      rect: null,
+    }
+    const controlSurface: ControlSurface = {
+      invoke: vi.fn(async (_ctx, request) => {
+        if (request.id === 'mount.list') {
+          return {
+            ok: true,
+            value: { projectId: 'workspace-1', mounts: [currentMount] },
+          }
+        }
+
+        expect(request.id).toBe('pty.spawnInMount')
+        expect(request.payload).toMatchObject({
+          mountId: 'mount-current',
+          cwdUri: 'file:///tmp/workspace/worktrees/feature-a',
+          cols: 80,
+          rows: 24,
+        })
+        return {
+          ok: true,
+          value: {
+            sessionId: 'mounted-terminal-session',
+            profileId: null,
+            runtimeKind: 'posix' as const,
+          },
+        }
+      }),
+    } as ControlSurface
+
+    const prepared = await prepareTerminalNode({
+      controlSurface,
+      ctx,
+      store: {
+        readNodeScrollback: vi.fn(async () => null),
+      } as never,
+      workspace: createWorkspace({ spaces: [space], activeSpaceId: space.id }),
+      node: createNode({
+        kind: 'terminal',
+        title: 'terminal',
+        runtimeKind: 'posix',
+        executionDirectory: worktreePath,
+        expectedDirectory: worktreePath,
+      }),
+      space,
+    })
+
+    expect(prepared.sessionId).toBe('mounted-terminal-session')
+    expect(prepared.executionDirectory).toBe(worktreePath)
+    expect(prepared.expectedDirectory).toBe(worktreePath)
   })
 })
 

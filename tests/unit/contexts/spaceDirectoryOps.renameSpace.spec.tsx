@@ -9,6 +9,72 @@ import type {
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 describe('useWorkspaceCanvasSpaceDirectoryOps renameSpaceTo', () => {
+  it('updates spacesRef before notifying consumers about the directory change', () => {
+    const onRequestPersistFlush = vi.fn()
+    const closeNode = vi.fn(async () => undefined)
+    const initialNodes: Node<TerminalNodeData>[] = []
+    const initialSpaces: WorkspaceSpaceState[] = [
+      {
+        id: 'space-1',
+        name: 'Inbox',
+        directoryPath: '/repo',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: null,
+      },
+    ]
+    const nextDirectoryPath = '/repo/.opencove/worktrees/feat-inbox'
+    let directorySeenDuringOnSpacesChange: string | null = null
+
+    function Harness() {
+      const [nodes, setNodesState] = useState(initialNodes)
+      const [spaces, setSpacesState] = useState(initialSpaces)
+      const nodesRef = useRef(nodes)
+      const spacesRef = useRef(spaces)
+
+      nodesRef.current = nodes
+
+      const { updateSpaceDirectory } = useWorkspaceCanvasSpaceDirectoryOps({
+        workspacePath: '/repo',
+        spacesRef,
+        nodesRef,
+        setNodes: updater => {
+          setNodesState(prevNodes => {
+            const nextNodes = updater(prevNodes)
+            nodesRef.current = nextNodes
+            return nextNodes
+          })
+        },
+        onSpacesChange: nextSpaces => {
+          directorySeenDuringOnSpacesChange = spacesRef.current[0]?.directoryPath ?? null
+          setSpacesState(nextSpaces)
+        },
+        onRequestPersistFlush,
+        closeNode,
+      })
+
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            updateSpaceDirectory('space-1', nextDirectoryPath, {
+              renameSpaceTo: 'feat/inbox',
+            })
+          }}
+        >
+          Bind Worktree
+        </button>
+      )
+    }
+
+    render(<Harness />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bind Worktree' }))
+
+    expect(directorySeenDuringOnSpacesChange).toBe(nextDirectoryPath)
+  })
+
   it('updates the space name when binding a worktree directory', () => {
     const onRequestPersistFlush = vi.fn()
     const closeNode = vi.fn(async () => undefined)

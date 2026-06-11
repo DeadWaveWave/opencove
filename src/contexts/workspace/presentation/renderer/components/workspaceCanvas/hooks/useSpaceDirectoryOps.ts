@@ -56,6 +56,7 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
         return
       }
 
+      spacesRef.current = result.nextSpaces
       onSpacesChange(result.nextSpaces)
 
       if (result.archiveSpace && result.targetNodeIds.size > 0) {
