@@ -347,7 +347,8 @@ export function useWorkspaceCanvasNodeCreation({
 
   const createImageNode = useCallback(
     (anchor: Point, image: ImageNodeData, placementOptions?: NodeCreationPlacementOptions) => {
-      const defaultSize = resolveDefaultImageWindowSize()
+      const defaultSize =
+        placementOptions?.sizeOverride ?? resolveDefaultImageWindowSize(standardWindowSizeBucket)
       const desiredSize = resolveImageNodeSizeFromNaturalDimensions({
         naturalWidth: image.naturalWidth,
         naturalHeight: image.naturalHeight,
@@ -398,7 +399,16 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, notifyNodeCreated, onRequestPersistFlush, onShowMessage, setNodes, spacesRef, t],
+    [
+      nodesRef,
+      notifyNodeCreated,
+      onRequestPersistFlush,
+      onShowMessage,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
+      t,
+    ],
   )
 
   const createDocumentNode = useCallback(

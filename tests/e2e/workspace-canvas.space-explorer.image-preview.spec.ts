@@ -6,10 +6,14 @@ import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import {
   clearAndSeedWorkspace,
   launchApp,
+  readCanvasViewport,
   removePathWithRetry,
   seededWorkspaceId,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+
+const widePngBase64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAGAAAAA2CAYAAAA4T5zSAAAAZ0lEQVR42u3RMQEAAAQAQVFEFVUTCtgtN3yBv8jq0V9hAgAAAgBAAAAIAAABACAAAAQAgAAAEAAAAgBAAAAIAAABACAAAAQAgAAAEAAAAgBAAAAIAAABACAAAAQAgAAAEAAAAgBAdwv0rI6vE2ggVwAAAABJRU5ErkJggg=='
 
 test.describe('Workspace Canvas - Space Explorer image preview', () => {
   test('previews and opens image files when the space targets a mount', async () => {
@@ -24,14 +28,7 @@ test.describe('Workspace Canvas - Space Explorer image preview', () => {
     const fixtureImageUri = toFileUri(fixtureImagePath)
 
     await mkdir(fixtureDir, { recursive: true })
-    await writeFile(
-      fixtureImagePath,
-      Buffer.from(
-        // 1x1 transparent PNG.
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/axm9wAAAABJRU5ErkJggg==',
-        'base64',
-      ),
-    )
+    await writeFile(fixtureImagePath, Buffer.from(widePngBase64, 'base64'))
 
     const { electronApp, window } = await launchApp()
 
@@ -136,13 +133,74 @@ test.describe('Workspace Canvas - Space Explorer image preview', () => {
       const previewWindow = window.locator('[data-testid="workspace-space-quick-preview"]')
       await expect(previewWindow).toBeVisible()
       await expect(previewWindow).toHaveAttribute('data-preview-kind', 'image')
-      await expect(previewWindow.locator('.workspace-space-quick-preview__image')).toBeVisible()
+      const previewHeader = previewWindow.locator('.workspace-space-quick-preview__header')
+      const previewImage = previewWindow.locator('.workspace-space-quick-preview__image')
+      await expect(previewHeader).toBeVisible()
+      await expect(previewImage).toBeVisible()
+
+      const viewport = await readCanvasViewport(window)
+      const previewBox = await previewWindow.boundingBox()
+      const previewHeaderBox = await previewHeader.boundingBox()
+      const previewImageBox = await previewImage.boundingBox()
+      if (!previewBox || !previewHeaderBox || !previewImageBox) {
+        throw new Error('Image quick preview bounding box unavailable')
+      }
+
+      expect(previewBox.width / viewport.zoom).toBeGreaterThanOrEqual(500)
+      expect(previewHeaderBox.y + previewHeaderBox.height).toBeLessThanOrEqual(
+        previewImageBox.y + 1,
+      )
+      expect(Math.abs(previewImageBox.width - previewBox.width)).toBeLessThanOrEqual(4)
+      expect(Math.abs(previewImageBox.height - previewBox.height)).toBeLessThanOrEqual(4)
 
       await imageEntry.dblclick()
 
       const imageNode = window.locator('.image-node').first()
       await expect(imageNode).toBeVisible()
       await expect(imageNode.locator('.image-node__img')).toBeVisible()
+
+      const imageNodeBox = await imageNode.boundingBox()
+      if (!imageNodeBox) {
+        throw new Error('Image node bounding box unavailable')
+      }
+
+      expect(Math.abs(imageNodeBox.width - previewBox.width)).toBeLessThanOrEqual(4)
+      expect(Math.abs(imageNodeBox.height - previewBox.height)).toBeLessThanOrEqual(4)
+
+      await expect
+        .poll(async () => {
+          return await window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return null
+            }
+
+            const parsed = JSON.parse(raw) as {
+              workspaces?: Array<{
+                nodes?: Array<{
+                  kind?: string
+                  width?: number
+                  height?: number
+                }>
+              }>
+            }
+
+            const nodes = parsed.workspaces?.[0]?.nodes ?? []
+            const imageNodeState = nodes.find(node => node.kind === 'image') ?? null
+            if (!imageNodeState) {
+              return null
+            }
+
+            return {
+              width: imageNodeState.width ?? null,
+              height: imageNodeState.height ?? null,
+            }
+          })
+        })
+        .toEqual({
+          width: 516,
+          height: 290,
+        })
     } finally {
       await electronApp.close()
       await removePathWithRetry(fixtureDir)

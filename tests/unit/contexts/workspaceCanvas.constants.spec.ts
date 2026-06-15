@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   resolveDefaultAgentWindowSize,
+  resolveDefaultImageWindowSize,
   resolveDefaultNoteWindowSize,
   resolveDefaultTerminalWindowSize,
   resolveDefaultTaskWindowSize,
@@ -36,6 +37,11 @@ describe('workspace canvas default sizing', () => {
       width: 276,
       height: 188,
     })
+
+    expect(resolveDefaultImageWindowSize('large')).toEqual({
+      width: 564,
+      height: 388,
+    })
   })
 
   it('keeps compact bucket sizes on the canonical grid', () => {
@@ -69,6 +75,11 @@ describe('workspace canvas default sizing', () => {
     expect(resolveDefaultWebsiteWindowSize()).toEqual({
       width: 1044,
       height: 724,
+    })
+
+    expect(resolveDefaultImageWindowSize()).toEqual({
+      width: 516,
+      height: 356,
     })
   })
 

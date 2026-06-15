@@ -5,6 +5,7 @@ import {
   type DragEventHandler,
 } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   CANVAS_IMAGE_MIME_TYPES,
@@ -13,6 +14,7 @@ import {
 } from '@shared/contracts/dto'
 import type { ImageNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveDefaultImageWindowSize } from '../constants'
+import type { NodeCreationPlacementOptions } from '../types'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import {
   assignNodeToSpaceAndExpand,
@@ -108,6 +110,7 @@ export function useWorkspaceCanvasImageImport({
   onSpacesChange,
   onShowMessage,
   createImageNode,
+  standardWindowSizeBucket,
 }: {
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
@@ -119,10 +122,11 @@ export function useWorkspaceCanvasImageImport({
   ) => void
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onShowMessage?: (message: string, tone?: 'info' | 'warning' | 'error') => void
+  standardWindowSizeBucket: StandardWindowSizeBucket
   createImageNode: (
     anchor: Point,
     image: ImageNodeData,
-    placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
+    placement?: NodeCreationPlacementOptions,
   ) => Node<TerminalNodeData> | null
 }): {
   handleCanvasPaste: ClipboardEventHandler<HTMLDivElement>
@@ -139,7 +143,7 @@ export function useWorkspaceCanvasImageImport({
       }
 
       const deleteCanvasImage = window.opencoveApi?.workspace?.deleteCanvasImage
-      const defaultSize = resolveDefaultImageWindowSize()
+      const defaultSize = resolveDefaultImageWindowSize(standardWindowSizeBucket)
       const maxMegabytes = Math.round(MAX_CANVAS_IMAGE_BYTES / 1024 / 1024)
 
       const prepared = await Promise.all(
@@ -232,7 +236,16 @@ export function useWorkspaceCanvasImageImport({
         }
       }
     },
-    [createImageNode, nodesRef, onShowMessage, onSpacesChange, setNodes, spacesRef, t],
+    [
+      createImageNode,
+      nodesRef,
+      onShowMessage,
+      onSpacesChange,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
+      t,
+    ],
   )
 
   const handleCanvasPaste = useCallback<ClipboardEventHandler<HTMLDivElement>>(

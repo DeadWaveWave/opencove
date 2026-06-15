@@ -4,11 +4,7 @@ import {
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import type { Size, TaskPriority } from '../../types'
-import {
-  resolveCanvasCanonicalBucketFromViewport,
-  resolveAgentNodeSize,
-  resolveCanonicalNodeSize,
-} from '../../utils/workspaceNodeSizing'
+import { resolveAgentNodeSize, resolveCanonicalNodeSize } from '../../utils/workspaceNodeSizing'
 
 export const MIN_CANVAS_ZOOM = 0.1
 export const MAX_CANVAS_ZOOM = 2
@@ -35,8 +31,9 @@ export function resolveDefaultRoleWindowSize(
   return resolveCanonicalNodeSize({ kind: 'role', bucket })
 }
 
-export function resolveDefaultImageWindowSize(viewport?: Partial<Size>): Size {
-  const bucket = resolveCanvasCanonicalBucketFromViewport(viewport)
+export function resolveDefaultImageWindowSize(
+  bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
+): Size {
   return resolveCanonicalNodeSize({ kind: 'image', bucket })
 }
 

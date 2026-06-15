@@ -13,6 +13,7 @@ import type {
   ContextMenuState,
   CreateNodeInput,
   EmptySelectionPromptState,
+  NodeCreationPlacementOptions,
   SelectionDraftState,
   ShowWorkspaceCanvasMessage,
 } from '../types'
@@ -73,7 +74,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   createImageNode: (
     anchor: Point,
     image: ImageNodeData,
-    placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
+    placement?: NodeCreationPlacementOptions,
   ) => Node<TerminalNodeData> | null
   createWebsiteNode: (
     anchor: Point,

@@ -8,7 +8,7 @@ import type {
   WebsiteNodeData,
   WorkspaceSpaceState,
 } from '../../../types'
-import type { ShowWorkspaceCanvasMessage } from '../types'
+import type { NodeCreationPlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
 import { isEditableDomTarget } from '../domTargets'
 import { resolveWebsitePasteUrl } from '@shared/utils/websiteUrl'
 import { useWorkspaceCanvasImageImport } from './useCanvasImageImport'
@@ -40,7 +40,7 @@ export function useWorkspaceCanvasPasteHandlers({
   createImageNode: (
     anchor: { x: number; y: number },
     image: ImageNodeData,
-    placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
+    placement?: NodeCreationPlacementOptions,
   ) => Node<TerminalNodeData> | null
   createWebsiteNode: (
     anchor: { x: number; y: number },
@@ -65,6 +65,7 @@ export function useWorkspaceCanvasPasteHandlers({
     onSpacesChange,
     onShowMessage,
     createImageNode,
+    standardWindowSizeBucket,
   })
 
   const handleCanvasPaste = useCallback<React.ClipboardEventHandler<HTMLDivElement>>(

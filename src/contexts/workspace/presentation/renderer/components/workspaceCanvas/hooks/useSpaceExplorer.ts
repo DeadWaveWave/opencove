@@ -343,6 +343,10 @@ export function useWorkspaceCanvasSpaceExplorer({
           ...(preview.createPlacement ?? {}),
           targetSpaceRect: rect,
           focusViewportOnCreate: options?.focusViewportOnCreate,
+          sizeOverride: {
+            width: preview.rect.width,
+            height: preview.rect.height,
+          },
         }
 
         const created = createImageNode(

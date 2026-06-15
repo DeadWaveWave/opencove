@@ -111,13 +111,13 @@ export async function resolveSpaceExplorerPreviewDisplay(options: {
         size = resolveImageNodeSizeFromNaturalDimensions({
           naturalWidth,
           naturalHeight,
-          preferred: resolveDefaultImageWindowSize(),
+          preferred: resolveDefaultImageWindowSize(options.standardWindowSizeBucket),
         })
       } catch {
-        size = resolveDefaultImageWindowSize()
+        size = resolveDefaultImageWindowSize(options.standardWindowSizeBucket)
       }
     } else {
-      size = resolveDefaultImageWindowSize()
+      size = resolveDefaultImageWindowSize(options.standardWindowSizeBucket)
     }
   } else if (mediaDescriptor) {
     kind = mediaDescriptor.kind

@@ -31,7 +31,7 @@ const KIND_UNITS: Record<WorkspaceNodeKind, { col: number; row: number }> = {
   agent: { col: 4, row: 8 },
   note: { col: 2, row: 2 },
   role: { col: 3, row: 4 },
-  image: { col: 3, row: 3 },
+  image: { col: 4, row: 4 },
   document: { col: 4, row: 6 },
   website: { col: 8, row: 8 },
 }
