@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { applyNodeChanges } from '@xyflow/react'
 import type { Node, NodeChange, NodePositionChange } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
@@ -6,9 +6,63 @@ import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { type UseApplyNodeChangesParams } from './useApplyNodeChanges.helpers'
 
+type WorkspaceNodeChange = NodeChange<Node<TerminalNodeData>>
+type ContinuousDragPositionChange = NodePositionChange & { dragging: true }
+
+const MULTI_NODE_CONTINUOUS_DRAG_MIN_FRAME_MS = 24
+
+function isContinuousDragPositionChange(
+  change: WorkspaceNodeChange,
+): change is ContinuousDragPositionChange {
+  return change.type === 'position' && change.dragging !== false
+}
+
+function toContinuousDragPositionChanges(
+  changes: WorkspaceNodeChange[],
+): ContinuousDragPositionChange[] | null {
+  if (changes.length === 0) {
+    return null
+  }
+
+  const positionChanges = changes.filter(isContinuousDragPositionChange)
+  return positionChanges.length === changes.length ? positionChanges : null
+}
+
+function mergeContinuousDragPositionChanges(
+  previousChanges: ContinuousDragPositionChange[] | null,
+  nextChanges: ContinuousDragPositionChange[],
+): ContinuousDragPositionChange[] {
+  if (!previousChanges) {
+    return nextChanges
+  }
+
+  const nextPositionChangeById = new Map<string, ContinuousDragPositionChange>()
+  for (const change of previousChanges) {
+    nextPositionChangeById.set(change.id, change)
+  }
+
+  for (const change of nextChanges) {
+    nextPositionChangeById.set(change.id, change)
+  }
+
+  return [...nextPositionChangeById.values()]
+}
+
+function resolveContinuousDragMinFrameMs(changes: ContinuousDragPositionChange[]): number {
+  const changedNodeIds = new Set(changes.map(change => change.id))
+  return changedNodeIds.size > 1 ? MULTI_NODE_CONTINUOUS_DRAG_MIN_FRAME_MS : 0
+}
+
+function resolveNow(): number {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now()
+}
+
 export function useWorkspaceCanvasApplyNodeChanges({
   nodesRef,
   onNodesChange,
+  onNodesCommit,
   clearAgentLaunchToken,
   normalizePosition,
   applyPendingScrollbacks,
@@ -16,8 +70,12 @@ export function useWorkspaceCanvasApplyNodeChanges({
   exclusiveNodeDragAnchorIdRef,
   nodeDragSession,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
-  return useCallback(
-    (changes: NodeChange<Node<TerminalNodeData>>[]) => {
+  const pendingContinuousDragChangesRef = useRef<ContinuousDragPositionChange[] | null>(null)
+  const pendingContinuousDragFrameRef = useRef<number | null>(null)
+  const lastContinuousDragFlushAtRef = useRef(0)
+
+  const applyNodeChangeBatch = useCallback(
+    (changes: WorkspaceNodeChange[]) => {
       const wasDragging = isNodeDraggingRef.current
       const exclusiveAnchorId = exclusiveNodeDragAnchorIdRef?.current ?? null
       const filteredChanges = changes
@@ -236,7 +294,11 @@ export function useWorkspaceCanvasApplyNodeChanges({
       })
 
       nodesRef.current = nextNodes
-      onNodesChange(nextNodes)
+      if (onNodesCommit && !isDraggingThisFrame) {
+        onNodesCommit(nextNodes)
+      } else {
+        onNodesChange(nextNodes)
+      }
       if (shouldSyncLayout) {
         window.dispatchEvent(new Event(TERMINAL_LAYOUT_SYNC_EVENT))
       }
@@ -249,7 +311,105 @@ export function useWorkspaceCanvasApplyNodeChanges({
       nodeDragSession,
       nodesRef,
       normalizePosition,
+      onNodesCommit,
       onNodesChange,
+    ],
+  )
+
+  const flushPendingContinuousDragChanges = useCallback(
+    (flushedAt: number = resolveNow()) => {
+      const pendingChanges = pendingContinuousDragChangesRef.current
+      pendingContinuousDragChangesRef.current = null
+      pendingContinuousDragFrameRef.current = null
+
+      if (!pendingChanges) {
+        return
+      }
+
+      lastContinuousDragFlushAtRef.current = flushedAt
+      applyNodeChangeBatch(pendingChanges)
+    },
+    [applyNodeChangeBatch],
+  )
+
+  const cancelPendingContinuousDragFrame = useCallback(() => {
+    if (pendingContinuousDragFrameRef.current === null) {
+      return
+    }
+
+    window.cancelAnimationFrame(pendingContinuousDragFrameRef.current)
+    pendingContinuousDragFrameRef.current = null
+  }, [])
+
+  const scheduleContinuousDragFrame = useCallback(() => {
+    if (pendingContinuousDragFrameRef.current !== null) {
+      return
+    }
+
+    if (typeof window.requestAnimationFrame !== 'function') {
+      flushPendingContinuousDragChanges()
+      return
+    }
+
+    pendingContinuousDragFrameRef.current = window.requestAnimationFrame(now => {
+      pendingContinuousDragFrameRef.current = null
+      const pendingChanges = pendingContinuousDragChangesRef.current
+      if (!pendingChanges) {
+        return
+      }
+
+      const minFrameMs = resolveContinuousDragMinFrameMs(pendingChanges)
+      if (
+        minFrameMs > 0 &&
+        lastContinuousDragFlushAtRef.current > 0 &&
+        now - lastContinuousDragFlushAtRef.current < minFrameMs
+      ) {
+        scheduleContinuousDragFrame()
+        return
+      }
+
+      flushPendingContinuousDragChanges(now)
+    })
+  }, [flushPendingContinuousDragChanges])
+
+  const scheduleContinuousDragChanges = useCallback(
+    (changes: ContinuousDragPositionChange[]) => {
+      pendingContinuousDragChangesRef.current = mergeContinuousDragPositionChanges(
+        pendingContinuousDragChangesRef.current,
+        changes,
+      )
+      scheduleContinuousDragFrame()
+    },
+    [scheduleContinuousDragFrame],
+  )
+
+  useEffect(() => {
+    return () => {
+      cancelPendingContinuousDragFrame()
+      pendingContinuousDragChangesRef.current = null
+    }
+  }, [cancelPendingContinuousDragFrame])
+
+  return useCallback(
+    (changes: WorkspaceNodeChange[]) => {
+      const continuousDragChanges = toContinuousDragPositionChanges(changes)
+      if (continuousDragChanges) {
+        scheduleContinuousDragChanges(continuousDragChanges)
+        return
+      }
+
+      if (pendingContinuousDragChangesRef.current) {
+        cancelPendingContinuousDragFrame()
+        flushPendingContinuousDragChanges()
+      }
+
+      applyNodeChangeBatch(changes)
+    },
+    [
+      applyNodeChangeBatch,
+      cancelPendingContinuousDragFrame,
+      flushPendingContinuousDragChanges,
+      scheduleContinuousDragChanges,
     ],
   )
 }

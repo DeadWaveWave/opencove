@@ -89,6 +89,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - Dev: keep the launching terminal interactive after stopping `pnpm dev` with Ctrl+C by making the dev wrapper own child-process shutdown. (#286)
+- Workspace canvas: reduce CPU usage during rapid multi-window dragging by keeping live drag projection canvas-local, throttling multi-node drag publishing, and removing unnecessary React Flow handle measurement. (#285)
 - Workspace canvas: keep Space Worktrees bound to their worktree directory after creating terminal or agent nodes, and preserve archive/status access through approved worktree roots. (#284)
 - Persistence: reject accidental empty workspace overwrites unless the caller explicitly opts in, preventing sync/restart from clearing durable workspace state. (#265)
 - Persistence: harden installed upgrade repair, block stale local Worker reuse across app-version changes, and document rollback as unsupported unless explicitly tested. (#261)

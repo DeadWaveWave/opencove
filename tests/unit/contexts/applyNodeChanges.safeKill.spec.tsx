@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type {
@@ -261,7 +261,15 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
               {
                 type: 'position',
                 id: 'outside-node',
-                position: { x: 120, y: 400 },
+                position: { x: 120, y: 410 },
+                dragging: true,
+              } as never,
+            ])
+            apply([
+              {
+                type: 'position',
+                id: 'outside-node',
+                position: { x: 120, y: 410 },
                 dragging: false,
               } as never,
             ])
@@ -284,7 +292,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         targetMountId: null,
         labelColor: null,
         nodeIds: ['inside-node'],
-        rect: { x: 800, y: 380, width: 540, height: 380 },
+        rect: { x: 800, y: 390, width: 540, height: 380 },
       },
     ])
     expect(onRequestPersistFlush).toHaveBeenCalledTimes(1)
@@ -423,11 +431,15 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
     render(<Harness />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Drag' }))
-    expect(screen.getByTestId('node-position')).toHaveTextContent('104,430')
-    expect(screen.getByTestId('guide-count')).toHaveTextContent('1')
+    await waitFor(() => {
+      expect(screen.getByTestId('node-position')).toHaveTextContent('104,430')
+      expect(screen.getByTestId('guide-count')).toHaveTextContent('1')
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Drop' }))
-    expect(screen.getByTestId('node-position')).toHaveTextContent('100,432')
-    expect(screen.getByTestId('guide-count')).toHaveTextContent('0')
+    await waitFor(() => {
+      expect(screen.getByTestId('node-position')).toHaveTextContent('100,432')
+      expect(screen.getByTestId('guide-count')).toHaveTextContent('0')
+    })
   })
 })

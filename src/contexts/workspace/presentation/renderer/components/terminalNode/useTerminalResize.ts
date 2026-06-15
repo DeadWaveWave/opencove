@@ -4,7 +4,7 @@ import { useNodeFrameResize, type ResizeEdges } from '../../utils/nodeFrameResiz
 import { MIN_HEIGHT, MIN_WIDTH } from './constants'
 
 export function useTerminalResize({
-  position,
+  getPosition,
   width,
   height,
   minSize,
@@ -13,7 +13,7 @@ export function useTerminalResize({
   scheduleScrollbackPublish,
   isPointerResizingRef,
 }: {
-  position: Point
+  getPosition: () => Point
   width: number
   height: number
   minSize?: Size
@@ -26,7 +26,7 @@ export function useTerminalResize({
   handleResizePointerDown: (edges: ResizeEdges) => (event: ReactPointerEvent<HTMLElement>) => void
 } {
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
-    position,
+    getPosition,
     width,
     height,
     minSize: {

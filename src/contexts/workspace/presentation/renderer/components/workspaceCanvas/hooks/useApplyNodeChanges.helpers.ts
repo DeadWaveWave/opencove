@@ -7,6 +7,7 @@ import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession'
 export interface UseApplyNodeChangesParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
+  onNodesCommit?: (nodes: Node<TerminalNodeData>[]) => void
   clearAgentLaunchToken: (nodeId: string) => void
   normalizePosition: (
     nodeId: string,
