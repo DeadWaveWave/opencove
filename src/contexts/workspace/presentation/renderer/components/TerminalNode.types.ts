@@ -38,7 +38,8 @@ export interface TerminalNodeProps {
   status: AgentRuntimeStatus | null
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null
-  position: Point
+  position?: Point
+  getPosition?: () => Point
   width: number
   height: number
   terminalFontSize: number

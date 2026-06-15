@@ -20,12 +20,51 @@ type SelectionDraftUiState = Pick<
   'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
 >
 
+function mergeExternalNodesIntoTransientCanvas(
+  currentNodes: Node<TerminalNodeData>[],
+  externalNodes: Node<TerminalNodeData>[],
+): Node<TerminalNodeData>[] {
+  const currentNodeById = new Map(currentNodes.map(node => [node.id, node]))
+  let didChange = currentNodes.length !== externalNodes.length
+
+  const mergedNodes = externalNodes.map(externalNode => {
+    const currentNode = currentNodeById.get(externalNode.id)
+    if (!currentNode) {
+      didChange = true
+      return externalNode
+    }
+
+    const hasTransientPosition =
+      currentNode.position.x !== externalNode.position.x ||
+      currentNode.position.y !== externalNode.position.y
+
+    if (!hasTransientPosition) {
+      if (currentNode !== externalNode) {
+        didChange = true
+      }
+      return externalNode
+    }
+
+    didChange = true
+    return {
+      ...externalNode,
+      position: currentNode.position,
+      selected: currentNode.selected,
+      dragHandle: currentNode.dragHandle,
+    }
+  })
+
+  return didChange ? mergedNodes : currentNodes
+}
+
 export function useWorkspaceCanvasState({
+  workspaceId,
   nodes,
   spaces,
   viewport,
   persistedMinimapVisible,
 }: {
+  workspaceId: string
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
   viewport: Viewport
@@ -65,9 +104,12 @@ export function useWorkspaceCanvasState({
   setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
   viewportRef: React.MutableRefObject<Viewport>
   spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
+  setCanvasNodes: React.Dispatch<React.SetStateAction<Node<TerminalNodeData>[]>>
+  hasTransientNodePositionsRef: React.MutableRefObject<boolean>
   flowNodes: Node<TerminalNodeData>[]
 } {
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
+  const [canvasNodes, setCanvasNodes] = useState(nodes)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [isMinimapVisible, setIsMinimapVisible] = useState(persistedMinimapVisible)
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
@@ -82,6 +124,8 @@ export function useWorkspaceCanvasState({
   const [snapGuides, setSnapGuides] = useState<WorkspaceSnapGuide[] | null>(null)
 
   const canvasRef = useRef<HTMLDivElement>(null)
+  const workspaceIdRef = useRef(workspaceId)
+  const hasTransientNodePositionsRef = useRef(false)
   const restoredViewportWorkspaceIdRef = useRef<string | null>(null)
   const spacesRef = useRef(spaces)
   const selectedNodeIdsRef = useRef<string[]>([])
@@ -98,22 +142,37 @@ export function useWorkspaceCanvasState({
   const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds])
 
   useLayoutEffect(() => {
+    const workspaceChanged = workspaceIdRef.current !== workspaceId
+    workspaceIdRef.current = workspaceId
+
+    if (workspaceChanged) {
+      hasTransientNodePositionsRef.current = false
+    }
+
+    if (hasTransientNodePositionsRef.current) {
+      setCanvasNodes(currentNodes => mergeExternalNodesIntoTransientCanvas(currentNodes, nodes))
+    } else {
+      setCanvasNodes(nodes)
+    }
+  }, [nodes, workspaceId])
+
+  useLayoutEffect(() => {
     if (!selectedNodeIds.length) {
       return
     }
 
-    const nodeIdSet = new Set(nodes.map(node => node.id))
+    const nodeIdSet = new Set(canvasNodes.map(node => node.id))
     const resolvedSelection = selectedNodeIds.filter(nodeId => nodeIdSet.has(nodeId))
     if (resolvedSelection.length === selectedNodeIds.length) {
       return
     }
 
     setSelectedNodeIds(resolvedSelection)
-  }, [nodes, selectedNodeIds])
+  }, [canvasNodes, selectedNodeIds])
 
   const flowNodes = useMemo(
     () =>
-      nodes.map(node => {
+      canvasNodes.map(node => {
         const isSelected = selectedNodeIdSet.has(node.id)
         const dragHandle =
           isSelected && isDragSurfaceSelectionMode ? undefined : NODE_DRAG_HANDLE_SELECTOR
@@ -128,7 +187,7 @@ export function useWorkspaceCanvasState({
           dragHandle,
         }
       }),
-    [isDragSurfaceSelectionMode, nodes, selectedNodeIdSet],
+    [canvasNodes, isDragSurfaceSelectionMode, selectedNodeIdSet],
   )
 
   useLayoutEffect(() => {
@@ -178,6 +237,8 @@ export function useWorkspaceCanvasState({
     setIsCanvasWheelGestureCaptureActive,
     viewportRef,
     spaceNavigationAnchorIdRef,
+    setCanvasNodes,
+    hasTransientNodePositionsRef,
     flowNodes,
   }
 }

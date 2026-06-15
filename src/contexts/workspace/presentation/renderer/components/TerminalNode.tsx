@@ -22,6 +22,7 @@ import { useTerminalRuntimeSession } from './terminalNode/useTerminalRuntimeSess
 import { useTerminalPlaceholderSession } from './terminalNode/useTerminalPlaceholderSession'
 import { useWebglCanvasTransformCleanupScheduler } from './terminalNode/useWebglCanvasTransformCleanupScheduler'
 import { useCommittedTerminalGeometry } from './terminalNode/useCommittedTerminalGeometry'
+import { useTerminalNodePositionResolver } from './terminalNode/useTerminalNodePositionResolver'
 import type { XtermSession } from './terminalNode/xtermSession'
 import { invalidateCachedTerminalScreenState } from './terminalNode/screenStateCache'
 import type { PreferredTerminalRendererMode } from './terminalNode/preferredRenderer'
@@ -57,6 +58,7 @@ export function TerminalNode({
   directoryMismatch,
   lastError,
   position,
+  getPosition,
   width,
   height,
   terminalFontSize,
@@ -314,8 +316,9 @@ export function TerminalNode({
     resetKey: sessionId,
     terminalRef,
   })
+  const getCommittedPosition = useTerminalNodePositionResolver({ position, getPosition })
   const { draftFrame, handleResizePointerDown } = useTerminalResize({
-    position,
+    getPosition: getCommittedPosition,
     width,
     height,
     minSize:
@@ -329,7 +332,12 @@ export function TerminalNode({
     scheduleScrollbackPublish,
     isPointerResizingRef,
   })
-  const sizeStyle = resolveTerminalNodeFrameStyle({ draftFrame, position, width, height })
+  const sizeStyle = resolveTerminalNodeFrameStyle({
+    draftFrame,
+    position: draftFrame ? getCommittedPosition() : null,
+    width,
+    height,
+  })
 
   useTerminalPlaceholderSession({
     nodeId,

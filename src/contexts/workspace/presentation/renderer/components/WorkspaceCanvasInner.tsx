@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
@@ -31,29 +30,28 @@ export function WorkspaceCanvasInner({
   focusSequence,
 }: WorkspaceCanvasProps) {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
-  const terminalDisplayCalibration =
-    workspaceCanvasHooks.useResolvedTerminalDisplayCalibration(agentSettings)
-  const terminalDisplayMetrics = useMemo(
-    () =>
-      workspaceCanvasHooks.resolveTerminalDisplayMetrics({
-        terminalFontSize: agentSettings.terminalFontSize,
-        terminalDisplayCalibration,
-      }),
-    [agentSettings.terminalFontSize, terminalDisplayCalibration],
-  )
+  const { terminalDisplayCalibration, terminalDisplayMetrics } =
+    workspaceCanvasHooks.useWorkspaceCanvasTerminalDisplay(agentSettings)
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
+    workspaceId,
     nodes,
     spaces,
     viewport,
     persistedMinimapVisible,
   })
+  const { publishLiveNodesChange, commitNodesChange } =
+    workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({
+      setCanvasNodes: canvasState.setCanvasNodes,
+      hasTransientNodePositionsRef: canvasState.hasTransientNodePositionsRef,
+      onNodesChange,
+    })
   // prettier-ignore
   const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
   const nodeStore = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     nodes: canvasState.flowNodes,
     spacesRef: canvasState.spacesRef,
-    onNodesChange,
+    onNodesChange: commitNodesChange,
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
@@ -335,7 +333,8 @@ export function WorkspaceCanvasInner({
   })
   const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasApplyNodeChanges({
     nodesRef: nodeStore.nodesRef,
-    onNodesChange,
+    onNodesChange: publishLiveNodesChange,
+    onNodesCommit: commitNodesChange,
     clearAgentLaunchToken: nodeStore.clearAgentLaunchToken,
     normalizePosition: nodeStore.normalizePosition,
     applyPendingScrollbacks: nodeStore.applyPendingScrollbacks,

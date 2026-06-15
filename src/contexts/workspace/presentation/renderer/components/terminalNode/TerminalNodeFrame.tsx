@@ -104,6 +104,8 @@ export function TerminalNodeFrame({
 }: TerminalNodeFrameProps): JSX.Element {
   const { t } = useTranslation()
   const isAgentNode = kind === 'agent'
+  const hasTargetHandle = kind === 'agent'
+  const hasSourceHandle = kind === 'task'
   const hasSelectedDragSurface = isSelected || isDragging
   const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
 
@@ -168,8 +170,12 @@ export function TerminalNodeFrame({
         }
       }}
     >
-      <Handle type="target" position={Position.Left} className="workspace-node-handle" />
-      <Handle type="source" position={Position.Right} className="workspace-node-handle" />
+      {hasTargetHandle ? (
+        <Handle type="target" position={Position.Left} className="workspace-node-handle" />
+      ) : null}
+      {hasSourceHandle ? (
+        <Handle type="source" position={Position.Right} className="workspace-node-handle" />
+      ) : null}
 
       <TerminalNodeHeader
         title={title}

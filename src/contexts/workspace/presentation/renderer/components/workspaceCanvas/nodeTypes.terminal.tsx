@@ -1,5 +1,5 @@
-import type { MutableRefObject, ReactElement } from 'react'
-import { useStore, type Node } from '@xyflow/react'
+import React, { useCallback, type MutableRefObject, type ReactElement } from 'react'
+import { useStore, useStoreApi, type Node } from '@xyflow/react'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { LabelColor } from '@shared/types/labelColor'
 import { TerminalNode } from '../TerminalNode'
@@ -11,10 +11,10 @@ import {
   providerTitlePrefix,
   resolveAgentDisplayTitle,
 } from '../../utils/agentTitle'
-import { useNodePosition } from './nodePosition'
+import { readNodePositionFromStoreState } from './nodePosition'
 import type { UpdateNodeScrollback } from './types'
 
-export function WorkspaceCanvasTerminalNodeType({
+function WorkspaceCanvasTerminalNodeTypeComponent({
   data,
   id,
   selected,
@@ -60,10 +60,13 @@ export function WorkspaceCanvasTerminalNodeType({
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
+  const storeApi = useStoreApi()
   const scrollback = useScrollbackStore(state =>
     data.kind === 'agent' ? null : (state.scrollbackByNodeId[id] ?? data.scrollback ?? null),
   )
-  const nodePosition = useNodePosition(id)
+  const getNodePosition = useCallback(() => {
+    return readNodePositionFromStoreState(storeApi.getState(), id)
+  }, [id, storeApi])
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null
@@ -149,7 +152,7 @@ export function WorkspaceCanvasTerminalNodeType({
             : null
       }
       lastError={data.lastError}
-      position={nodePosition}
+      getPosition={getNodePosition}
       width={data.width}
       height={data.height}
       terminalFontSize={terminalFontSize}
@@ -226,3 +229,5 @@ export function WorkspaceCanvasTerminalNodeType({
     />
   )
 }
+
+export const WorkspaceCanvasTerminalNodeType = React.memo(WorkspaceCanvasTerminalNodeTypeComponent)

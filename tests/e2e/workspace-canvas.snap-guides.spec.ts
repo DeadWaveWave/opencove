@@ -71,6 +71,23 @@ test.describe('Workspace Canvas - Snap Guides', () => {
         .toEqual({ hasVerticalOverflow: false, hasHorizontalOverflow: false })
       await expect
         .poll(async () => {
+          const box = await secondHeader.boundingBox()
+
+          return {
+            movedFromStart:
+              box !== null &&
+              (Math.abs(box.x - startBox.x) > 20 || Math.abs(box.y - startBox.y) > 20),
+          }
+        })
+        .toMatchObject({ movedFromStart: true })
+
+      await ensureArtifactsDir()
+      await window.screenshot({ path: 'artifacts/workspace-canvas-snap-guides.visible.png' })
+
+      await drag.release()
+      await expect(window.locator('[data-testid="workspace-snap-guides"]')).toHaveCount(0)
+      await expect
+        .poll(async () => {
           const layout = await readSeededWorkspaceLayout(window, {
             nodeIds: ['snap-a', 'snap-b'],
             spaceIds: [],
@@ -84,12 +101,6 @@ test.describe('Workspace Canvas - Snap Guides', () => {
           }
         })
         .toMatchObject({ movedFromOrigin: true })
-
-      await ensureArtifactsDir()
-      await window.screenshot({ path: 'artifacts/workspace-canvas-snap-guides.visible.png' })
-
-      await drag.release()
-      await expect(window.locator('[data-testid="workspace-snap-guides"]')).toHaveCount(0)
     } finally {
       await electronApp.close()
     }

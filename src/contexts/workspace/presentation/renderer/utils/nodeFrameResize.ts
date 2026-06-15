@@ -242,6 +242,7 @@ export function getNodeResizeCursor(edges: ResizeEdges): string {
 
 export function useNodeFrameResize({
   position,
+  getPosition,
   width,
   height,
   minSize,
@@ -251,7 +252,8 @@ export function useNodeFrameResize({
   onResizeStart,
   onResizeEnd,
 }: {
-  position: Point
+  position?: Point
+  getPosition?: () => Point
   width: number
   height: number
   minSize: Size
@@ -281,6 +283,9 @@ export function useNodeFrameResize({
     return currentZoom
   })
   const zoomRef = useRef(zoom)
+  const getCurrentPosition = useCallback((): Point => {
+    return getPosition?.() ?? position ?? { x: 0, y: 0 }
+  }, [getPosition, position])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -322,8 +327,9 @@ export function useNodeFrameResize({
       return
     }
 
+    const currentPosition = getCurrentPosition()
     const baseFrame: NodeFrame = {
-      position: { x: position.x, y: position.y },
+      position: { x: currentPosition.x, y: currentPosition.y },
       size: { width, height },
     }
     const pendingCommitFrame = pendingCommitFrameRef.current
@@ -350,14 +356,14 @@ export function useNodeFrameResize({
     }
 
     if (
-      draftFrame.position.x === position.x &&
-      draftFrame.position.y === position.y &&
+      draftFrame.position.x === currentPosition.x &&
+      draftFrame.position.y === currentPosition.y &&
       draftFrame.size.width === width &&
       draftFrame.size.height === height
     ) {
       setDraftFrame(null)
     }
-  }, [draftFrame, height, isResizing, position.x, position.y, width])
+  }, [draftFrame, getCurrentPosition, height, isResizing, width])
 
   const handleResizePointerDown = useCallback(
     (edges: ResizeEdges) => (event: ReactPointerEvent<HTMLElement>) => {
@@ -368,8 +374,9 @@ export function useNodeFrameResize({
       activeResizeCleanupRef.current?.()
       activeResizeCleanupRef.current = null
 
+      const currentPosition = getCurrentPosition()
       const frame: NodeFrame = {
-        position: { ...position },
+        position: { ...currentPosition },
         size: { width, height },
       }
 
@@ -432,8 +439,9 @@ export function useNodeFrameResize({
         const finalFrame = draftFrameRef.current ?? frame
 
         pendingCommitFrameRef.current = finalFrame
+        const settledPosition = getCurrentPosition()
         baseFrameAtResizeEndRef.current = {
-          position: { x: position.x, y: position.y },
+          position: { x: settledPosition.x, y: settledPosition.y },
           size: { width, height },
         }
 
@@ -455,7 +463,7 @@ export function useNodeFrameResize({
       window.addEventListener('pointerup', finalizeResize, { once: true })
       window.addEventListener('pointercancel', finalizeResize, { once: true })
     },
-    [aspectRatio, height, onResizeStart, position, width],
+    [aspectRatio, getCurrentPosition, height, onResizeStart, width],
   )
 
   return {
