@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import {
   resolveTerminalDisplayCalibrationCompensation,
@@ -98,4 +98,29 @@ export function useResolvedTerminalDisplayCalibration(
   ])
 
   return appliedTerminalDisplayCalibration
+}
+
+export function useWorkspaceCanvasTerminalDisplay(
+  agentSettings: Pick<
+    AgentSettings,
+    | 'terminalFontSize'
+    | 'terminalFontFamily'
+    | 'terminalDisplayReference'
+    | 'terminalDisplayCalibrationCompensationEnabled'
+  >,
+): {
+  terminalDisplayCalibration: TerminalClientDisplayCalibration | null
+  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
+} {
+  const terminalDisplayCalibration = useResolvedTerminalDisplayCalibration(agentSettings)
+  const terminalDisplayMetrics = useMemo(
+    () =>
+      resolveTerminalDisplayMetrics({
+        terminalFontSize: agentSettings.terminalFontSize,
+        terminalDisplayCalibration,
+      }),
+    [agentSettings.terminalFontSize, terminalDisplayCalibration],
+  )
+
+  return { terminalDisplayCalibration, terminalDisplayMetrics }
 }

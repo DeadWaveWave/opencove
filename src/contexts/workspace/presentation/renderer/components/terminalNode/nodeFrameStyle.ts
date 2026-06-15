@@ -7,7 +7,7 @@ export function resolveTerminalNodeFrameStyle({
   height,
 }: {
   draftFrame: NodeFrame | null
-  position: Point
+  position: Point | null
   width: number
   height: number
 }): {
@@ -15,17 +15,19 @@ export function resolveTerminalNodeFrameStyle({
   height: number
   transform?: string
 } {
-  const renderedFrame = draftFrame ?? {
-    position,
-    size: { width, height },
+  if (!draftFrame || !position) {
+    return {
+      width: Math.round(width),
+      height: Math.round(height),
+    }
   }
 
-  const translateX = Math.round(renderedFrame.position.x - position.x)
-  const translateY = Math.round(renderedFrame.position.y - position.y)
+  const translateX = Math.round(draftFrame.position.x - position.x)
+  const translateY = Math.round(draftFrame.position.y - position.y)
 
   return {
-    width: Math.round(renderedFrame.size.width),
-    height: Math.round(renderedFrame.size.height),
+    width: Math.round(draftFrame.size.width),
+    height: Math.round(draftFrame.size.height),
     transform:
       translateX !== 0 || translateY !== 0
         ? `translate(${translateX}px, ${translateY}px)`

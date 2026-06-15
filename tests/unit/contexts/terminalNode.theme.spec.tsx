@@ -88,9 +88,12 @@ vi.mock('@xterm/addon-serialize', () => {
   return { SerializeAddon: MockSerializeAddon }
 })
 
-vi.mock('@xyflow/react', () => {
+vi.mock('@xyflow/react', async () => {
+  const ReactModule = await import('react')
+
   return {
-    Handle: () => null,
+    Handle: ({ type }: { type: string }) =>
+      ReactModule.createElement('div', { 'data-testid': `react-flow-handle-${type}` }),
     Position: {
       Left: 'left',
       Right: 'right',
@@ -360,5 +363,46 @@ describe('TerminalNode theme behavior', () => {
       expect(__getLastTerminal()?.options.scrollback).toBeGreaterThan(0)
       expect(__getLastTerminal()?.options.overviewRuler).toEqual({ width: 10 })
     })
+  })
+
+  it('only renders React Flow handles for edge-capable terminal frame kinds', async () => {
+    installResizeObserverMock()
+    installPtyApiMock()
+
+    const { TerminalNode } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
+
+    const renderNode = (kind: 'terminal' | 'task' | 'agent', sessionId: string) => (
+      <TerminalNode
+        nodeId={`node-${kind}`}
+        sessionId={sessionId}
+        title={kind}
+        kind={kind}
+        status={null}
+        lastError={null}
+        position={{ x: 0, y: 0 }}
+        width={520}
+        height={360}
+        terminalFontSize={13}
+        scrollback={null}
+        onClose={() => undefined}
+        onResize={() => undefined}
+      />
+    )
+
+    const { queryByTestId, rerender } = render(renderNode('terminal', 'session-terminal'))
+
+    expect(queryByTestId('react-flow-handle-target')).toBeNull()
+    expect(queryByTestId('react-flow-handle-source')).toBeNull()
+
+    rerender(renderNode('task', 'session-task'))
+
+    expect(queryByTestId('react-flow-handle-target')).toBeNull()
+    expect(queryByTestId('react-flow-handle-source')).not.toBeNull()
+
+    rerender(renderNode('agent', 'session-agent'))
+
+    expect(queryByTestId('react-flow-handle-target')).not.toBeNull()
+    expect(queryByTestId('react-flow-handle-source')).toBeNull()
   })
 })
