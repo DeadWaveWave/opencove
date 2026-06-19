@@ -1,22 +1,11 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-
-const PNPM_COMMAND = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+import { resolveSpawnInvocation } from './lib/spawn-command.mjs'
 
 function readOption(name) {
   const index = process.argv.indexOf(name)
   return index === -1 ? null : (process.argv[index + 1] ?? null)
-}
-
-function resolveCommand(command) {
-  if (command === 'node') {
-    return process.execPath
-  }
-  if (command === 'pnpm') {
-    return PNPM_COMMAND
-  }
-  return command
 }
 
 function loadRegistry(pathname) {
@@ -28,9 +17,11 @@ function loadRegistry(pathname) {
     if (!check.id || !check.category || !check.command || !Array.isArray(check.args)) {
       throw new Error(`Invalid harness registry check entry: ${JSON.stringify(check)}`)
     }
+    const spawn = resolveSpawnInvocation(check.command)
     return {
       ...check,
-      command: resolveCommand(check.command),
+      command: spawn.command,
+      shell: spawn.shell,
     }
   })
 }
@@ -61,7 +52,7 @@ for (const check of selectedChecks) {
   process.stdout.write(`\n[harness] ${check.id}\n`)
   const result = spawnSync(check.command, check.args, {
     encoding: 'utf8',
-    shell: process.platform === 'win32',
+    shell: check.shell,
     stdio: 'inherit',
   })
   results.push({ id: check.id, status: result.status ?? 1 })
