@@ -134,6 +134,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
         cols: 120,
         rows: 32,
         reason: 'frame_commit',
+        revision: 7,
       }),
     )
     handler(JSON.stringify({ type: 'exit', sessionId: 'session-1', exitCode: 0, seq: 8 }))
@@ -143,6 +144,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
       cols: 120,
       rows: 32,
       reason: 'frame_commit',
+      revision: 7,
     })
     expect(sendToAllWindows).toHaveBeenNthCalledWith(2, IPC_CHANNELS.ptyExit, {
       sessionId: 'session-1',

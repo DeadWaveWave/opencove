@@ -4,11 +4,16 @@ import {
   captureTerminalScrollState,
   restoreTerminalScrollStateAfterRedraw,
 } from './effectiveDevicePixelRatio'
+import {
+  canWriteTerminalOutput,
+  subscribeTerminalGeometryWriteGate,
+} from './terminalGeometryCoordinator'
 
 export interface TerminalOutputScheduler {
   handleChunk: (
     data: string,
     options?: {
+      allowDuringPendingGeometry?: boolean
       immediateScrollbackPublish?: boolean
     },
   ) => void
@@ -19,6 +24,11 @@ export interface TerminalOutputScheduler {
 
 type ScrollbackBuffer = {
   append: (data: string) => void
+}
+
+type PendingTerminalWrite = {
+  allowDuringPendingGeometry: boolean
+  data: string
 }
 
 export function createTerminalOutputScheduler({
@@ -44,12 +54,13 @@ export function createTerminalOutputScheduler({
   const viewportInteractionWriteChunkChars = options?.viewportInteractionWriteChunkChars ?? 8_000
   const viewportInteractionFlushDelayMs = options?.viewportInteractionFlushDelayMs ?? 300
 
-  const pendingWrites: string[] = []
+  const pendingWrites: PendingTerminalWrite[] = []
   let pendingWritesHead = 0
   let pendingWriteChars = 0
   let pendingDrainHandle: number | null = null
   let pendingDrainRequest: DrainRequest | null = null
   let viewportFlushTimer: number | null = null
+  let unsubscribeGeometryWriteGate: (() => void) | null = null
 
   let isDisposed = false
   let isDraining = false
@@ -75,29 +86,72 @@ export function createTerminalOutputScheduler({
     pendingWritesHead = 0
   }
 
-  const enqueue = (data: string): void => {
-    pendingWrites.push(data)
+  const enqueue = (data: string, writeOptions?: { allowDuringPendingGeometry?: boolean }): void => {
+    pendingWrites.push({
+      allowDuringPendingGeometry: writeOptions?.allowDuringPendingGeometry === true,
+      data,
+    })
     pendingWriteChars += data.length
   }
 
-  const takeChunk = (maxChars: number): string => {
+  const hasPendingGeometryBypassWrite = (): boolean =>
+    pendingWrites[pendingWritesHead]?.allowDuringPendingGeometry === true
+
+  const takeNextPendingWriteIndex = (allowOnlyGeometryBypassWrites: boolean): number => {
+    if (!allowOnlyGeometryBypassWrites) {
+      return pendingWritesHead
+    }
+
+    return pendingWrites[pendingWritesHead]?.allowDuringPendingGeometry === true
+      ? pendingWritesHead
+      : -1
+  }
+
+  const consumePendingWriteAt = (index: number, remaining: number): string => {
+    const next = pendingWrites[index]
+    if (!next) {
+      return ''
+    }
+
+    if (next.data.length <= remaining) {
+      const data = next.data
+      pendingWriteChars -= data.length
+      if (index === pendingWritesHead) {
+        pendingWritesHead += 1
+      } else {
+        pendingWrites.splice(index, 1)
+      }
+      return data
+    }
+
+    const data = next.data.slice(0, remaining)
+    next.data = next.data.slice(remaining)
+    pendingWriteChars -= data.length
+    return data
+  }
+
+  const takeChunk = (
+    maxChars: number,
+    takeOptions?: { allowOnlyGeometryBypassWrites?: boolean },
+  ): string => {
     let remaining = maxChars
     const parts: string[] = []
 
-    while (remaining > 0 && pendingWritesHead < pendingWrites.length) {
-      const next = pendingWrites[pendingWritesHead] ?? ''
-      if (next.length <= remaining) {
-        parts.push(next)
-        pendingWriteChars -= next.length
-        pendingWritesHead += 1
-        remaining -= next.length
-        continue
+    while (remaining > 0) {
+      const nextIndex = takeNextPendingWriteIndex(
+        takeOptions?.allowOnlyGeometryBypassWrites === true,
+      )
+      if (nextIndex < pendingWritesHead || nextIndex >= pendingWrites.length) {
+        break
       }
 
-      parts.push(next.slice(0, remaining))
-      pendingWrites[pendingWritesHead] = next.slice(remaining)
-      pendingWriteChars -= remaining
-      remaining = 0
+      const consumed = consumePendingWriteAt(nextIndex, remaining)
+      if (consumed.length === 0) {
+        break
+      }
+
+      parts.push(consumed)
+      remaining -= consumed.length
     }
 
     cleanupPendingWrites()
@@ -159,12 +213,32 @@ export function createTerminalOutputScheduler({
     })
   }
 
+  const waitForGeometryWriteGate = (request: DrainRequest): void => {
+    mergeDrainRequest(request)
+    if (unsubscribeGeometryWriteGate !== null) {
+      return
+    }
+
+    unsubscribeGeometryWriteGate = subscribeTerminalGeometryWriteGate(terminal, () => {
+      const unsubscribe = unsubscribeGeometryWriteGate
+      unsubscribeGeometryWriteGate = null
+      unsubscribe?.()
+      scheduleDrain()
+    })
+  }
+
   const flush = ({
     allowDuringViewportInteraction = false,
     budgetChars,
     force = false,
   }: DrainRequest = {}): void => {
     if (isDisposed || !hasPending()) {
+      return
+    }
+
+    const canWriteThroughGeometryGate = canWriteTerminalOutput(terminal)
+    if (!canWriteThroughGeometryGate && !hasPendingGeometryBypassWrite()) {
+      waitForGeometryWriteGate({ allowDuringViewportInteraction, budgetChars, force })
       return
     }
 
@@ -192,7 +266,9 @@ export function createTerminalOutputScheduler({
     const maxChunkSize = isViewportInteractionActive
       ? viewportInteractionWriteChunkChars
       : normalWriteChunkChars
-    const chunk = takeChunk(Math.min(maxChunkSize, resolvedBudget))
+    const chunk = takeChunk(Math.min(maxChunkSize, resolvedBudget), {
+      allowOnlyGeometryBypassWrites: !canWriteThroughGeometryGate,
+    })
     if (chunk.length === 0) {
       isDraining = false
       return
@@ -233,7 +309,7 @@ export function createTerminalOutputScheduler({
     scrollbackBuffer.append(data)
     markScrollbackDirty(chunkOptions?.immediateScrollbackPublish === true)
 
-    enqueue(data)
+    enqueue(data, chunkOptions)
 
     if (isViewportInteractionActive) {
       if (pendingWriteChars >= maxPendingChars) {
@@ -263,9 +339,15 @@ export function createTerminalOutputScheduler({
     handleChunk,
     onViewportInteractionActiveChange,
     hasPendingWrites: () =>
-      hasPending() || isDraining || hasWriteInFlight || pendingDrainHandle !== null,
+      hasPending() ||
+      isDraining ||
+      hasWriteInFlight ||
+      pendingDrainHandle !== null ||
+      unsubscribeGeometryWriteGate !== null,
     dispose: () => {
       isDisposed = true
+      unsubscribeGeometryWriteGate?.()
+      unsubscribeGeometryWriteGate = null
       cancelViewportFlushTimer()
       if (pendingDrainHandle !== null) {
         cancelTerminalOutputDrain(pendingDrainHandle)

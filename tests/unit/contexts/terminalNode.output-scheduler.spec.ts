@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTerminalOutputScheduler } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/outputScheduler'
+import {
+  beginTerminalGeometryCommit,
+  markTerminalGeometryAccepted,
+} from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalGeometryCoordinator'
 import { resetTerminalOutputFrameBudgetForTests } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalOutputFrameBudget'
 
 function installAnimationFrameHarness() {
@@ -199,6 +203,76 @@ describe('terminal output scheduler', () => {
 
     expect(frameHarness.runNextFrame()).toBe(true)
     expect(writes).toEqual(['FIRSTSECOND'])
+
+    scheduler.dispose()
+    frameHarness.restore()
+  })
+
+  it('waits for pending geometry to be accepted before writing terminal output', () => {
+    const frameHarness = installAnimationFrameHarness()
+    const writes: string[] = []
+    const terminal = {
+      write: vi.fn((data: string, callback?: () => void) => {
+        writes.push(data)
+        callback?.()
+      }),
+    } as never
+    const revision = beginTerminalGeometryCommit(terminal)
+
+    const scheduler = createTerminalOutputScheduler({
+      terminal,
+      scrollbackBuffer: { append: vi.fn() },
+      markScrollbackDirty: vi.fn(),
+    })
+
+    scheduler.handleChunk('AFTER_RESIZE')
+
+    expect(frameHarness.runNextFrame()).toBe(true)
+    expect(writes).toEqual([])
+    expect(scheduler.hasPendingWrites()).toBe(true)
+
+    markTerminalGeometryAccepted(terminal, revision)
+
+    expect(frameHarness.runNextFrame()).toBe(true)
+    expect(writes).toEqual(['AFTER_RESIZE'])
+    expect(scheduler.hasPendingWrites()).toBe(false)
+
+    scheduler.dispose()
+    frameHarness.restore()
+  })
+
+  it('lets input-mode control sequences pass pending geometry only when they are next in order', () => {
+    const frameHarness = installAnimationFrameHarness()
+    const writes: string[] = []
+    const terminal = {
+      write: vi.fn((data: string, callback?: () => void) => {
+        writes.push(data)
+        callback?.()
+      }),
+    } as never
+    const revision = beginTerminalGeometryCommit(terminal)
+
+    const scheduler = createTerminalOutputScheduler({
+      terminal,
+      scrollbackBuffer: { append: vi.fn() },
+      markScrollbackDirty: vi.fn(),
+    })
+
+    scheduler.handleChunk('\u001b[?2004h', { allowDuringPendingGeometry: true })
+
+    expect(frameHarness.runNextFrame()).toBe(true)
+    expect(writes).toEqual(['\u001b[?2004h'])
+
+    scheduler.handleChunk('AFTER_RESIZE')
+    expect(frameHarness.runNextFrame()).toBe(true)
+    expect(writes).toEqual(['\u001b[?2004h'])
+    expect(scheduler.hasPendingWrites()).toBe(true)
+
+    markTerminalGeometryAccepted(terminal, revision)
+
+    expect(frameHarness.runNextFrame()).toBe(true)
+    expect(writes).toEqual(['\u001b[?2004h', 'AFTER_RESIZE'])
+    expect(scheduler.hasPendingWrites()).toBe(false)
 
     scheduler.dispose()
     frameHarness.restore()

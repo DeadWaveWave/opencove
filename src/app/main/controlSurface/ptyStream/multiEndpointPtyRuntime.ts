@@ -144,14 +144,20 @@ export function createMultiEndpointPtyRuntime(options: {
 
       getProxy(route.endpointId).write(route.remoteSessionId, data)
     },
-    resize: (sessionId, cols, rows, reason: TerminalGeometryCommitReason = 'frame_commit') => {
+    resize: (
+      sessionId,
+      cols,
+      rows,
+      reason: TerminalGeometryCommitReason = 'frame_commit',
+      revision?: number | null,
+    ) => {
       const route = routes.get(sessionId)
       if (!route || route.kind === 'local') {
-        options.localRuntime.resize(sessionId, cols, rows, reason)
+        options.localRuntime.resize(sessionId, cols, rows, reason, revision)
         return
       }
 
-      getProxy(route.endpointId).resize(route.remoteSessionId, cols, rows, reason)
+      getProxy(route.endpointId).resize(route.remoteSessionId, cols, rows, reason, revision)
     },
     kill: sessionId => {
       const route = routes.get(sessionId)

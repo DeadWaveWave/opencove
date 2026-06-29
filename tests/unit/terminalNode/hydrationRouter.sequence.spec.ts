@@ -56,7 +56,9 @@ describe('hydrationRouter sequence replay', () => {
 
     router.handleDataChunk('\u001b[c', { seq: 4 })
 
-    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[c')
+    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[c', {
+      allowDuringPendingGeometry: true,
+    })
 
     router.finalizeHydration('[accepted worker snapshot]', { baselineAppliedSeq: 5 })
 

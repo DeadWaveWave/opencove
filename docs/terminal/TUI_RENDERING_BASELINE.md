@@ -20,6 +20,8 @@ Key files:
 
 - `src/contexts/workspace/presentation/renderer/components/TerminalNode.tsx`
 - `src/contexts/workspace/presentation/renderer/components/terminalNode/syncTerminalNodeSize.ts`
+- `src/contexts/workspace/presentation/renderer/components/terminalNode/terminalGeometryCoordinator.ts`
+- `src/contexts/workspace/presentation/renderer/components/terminalNode/outputScheduler.ts`
 - `src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalAppearanceSync.ts`
 - `src/contexts/workspace/presentation/renderer/components/terminalNode/xtermSession.ts`
 - `src/app/renderer/styles/terminal-node.css`
@@ -29,11 +31,14 @@ Current tactical baseline:
 1. `syncTerminalSize()` stays direct:
    - `fitAddon.fit()`
    - `terminal.refresh(0, terminal.rows - 1)`
-   - optional `window.opencoveApi.pty.resize(...)`
+   - optional geometry commit through `window.opencoveApi.pty.resize(...)`
 2. `ResizeObserver` and layout-sync triggers call `syncTerminalSize()` directly.
 3. width/height changes use `requestAnimationFrame(syncTerminalSize)` instead of layered debounce state.
 4. drag-resize stays as `preview while dragging -> single commit after release`.
 5. viewport zoom clarity work must refresh the renderer without remounting the terminal.
+6. local resize commits use a geometry revision; stale async commits must not overwrite newer local refs.
+7. terminal output scheduler must pause writes while a geometry revision is pending.
+8. DOM text-overhang correction is a local display correction, not a hidden PTY resize writer.
 
 ## Constraints To Preserve
 
@@ -42,6 +47,8 @@ Current tactical baseline:
    - release performs the actual terminal sync
 2. keep scrollback publishing deferred during drag-resize and flush after release
 3. do not turn renderer refresh into an implicit correctness path
+4. keep `TerminalPresentationSession` as the authoritative geometry revision owner
+5. keep old clients compatible: missing revision is accepted, but cannot order concurrent renderer commits
 
 ## High-Risk Changes
 
@@ -52,6 +59,8 @@ These changes tend to reintroduce Codex/OpenCode TUI regressions:
 3. splitting `syncTerminalNodeSize()` into several competing branches or effects
 4. remounting terminal DOM or replacing renderer DOM to “fix” blur or redraw
 5. using high-frequency mutation observers as the primary redraw mechanism
+6. writing PTY output while a new local geometry commit is unresolved
+7. adding a second canonical PTY geometry writer outside the commit path
 
 ## Fast Recovery Checklist
 
@@ -68,7 +77,7 @@ git diff -- src/app/renderer/styles/terminal-node.css
 Validate with targeted checks:
 
 ```bash
-pnpm test -- --run
+pnpm exec vitest run tests/unit/platform/terminal/TerminalPresentationSession.spec.ts tests/unit/app/ptyStreamHub.resize.spec.ts tests/contract/ipc/ptyRuntimeGeometry.spec.ts tests/unit/contexts/terminalNode.output-scheduler.spec.ts
 pnpm test:e2e
 ```
 

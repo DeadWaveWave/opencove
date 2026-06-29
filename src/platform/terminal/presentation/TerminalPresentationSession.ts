@@ -26,6 +26,7 @@ export class TerminalPresentationSession {
   private disposed = false
   private cols: number
   private rows: number
+  private geometryRevision: number | null = null
 
   public constructor(options: { sessionId: string; cols?: number; rows?: number }) {
     this.sessionId = options.sessionId
@@ -81,20 +82,48 @@ export class TerminalPresentationSession {
     )
   }
 
-  public resize(cols: number, rows: number): { cols: number; rows: number; changed: boolean } {
-    const nextCols = normalizePositiveInt(cols, this.cols || DEFAULT_COLS)
-    const nextRows = normalizePositiveInt(rows, this.rows || DEFAULT_ROWS)
-
-    if (nextCols === this.cols && nextRows === this.rows) {
+  public resize(
+    cols: number,
+    rows: number,
+    revision?: number | null,
+  ): { cols: number; rows: number; changed: boolean; revision: number | null } {
+    const nextRevision =
+      typeof revision === 'number' && Number.isFinite(revision) && revision > 0
+        ? Math.floor(revision)
+        : null
+    if (
+      nextRevision !== null &&
+      this.geometryRevision !== null &&
+      nextRevision < this.geometryRevision
+    ) {
       return {
         cols: this.cols,
         rows: this.rows,
         changed: false,
+        revision: this.geometryRevision,
+      }
+    }
+
+    const nextCols = normalizePositiveInt(cols, this.cols || DEFAULT_COLS)
+    const nextRows = normalizePositiveInt(rows, this.rows || DEFAULT_ROWS)
+
+    if (nextCols === this.cols && nextRows === this.rows) {
+      if (nextRevision !== null) {
+        this.geometryRevision = nextRevision
+      }
+      return {
+        cols: this.cols,
+        rows: this.rows,
+        changed: false,
+        revision: this.geometryRevision,
       }
     }
 
     this.cols = nextCols
     this.rows = nextRows
+    if (nextRevision !== null) {
+      this.geometryRevision = nextRevision
+    }
 
     void this.enqueue(() => {
       if (nextCols === this.terminal.cols && nextRows === this.terminal.rows) {
@@ -109,6 +138,7 @@ export class TerminalPresentationSession {
       cols: nextCols,
       rows: nextRows,
       changed: true,
+      revision: this.geometryRevision,
     }
   }
 
@@ -126,6 +156,7 @@ export class TerminalPresentationSession {
       presentationRevision: this.presentationRevision,
       cols: this.cols,
       rows: this.rows,
+      geometryRevision: this.geometryRevision,
       bufferKind: this.terminal.buffer.active.type ?? 'unknown',
       cursor: {
         x: this.terminal.buffer.active.cursorX,

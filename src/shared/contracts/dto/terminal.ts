@@ -61,6 +61,7 @@ export type TerminalGeometryCommitReason = 'frame_commit' | 'appearance_commit'
 export interface TerminalPtyGeometry {
   cols: number
   rows: number
+  revision?: number | null
 }
 
 export interface ResizeTerminalInput {
@@ -68,6 +69,7 @@ export interface ResizeTerminalInput {
   cols: number
   rows: number
   reason: TerminalGeometryCommitReason
+  revision?: number | null
 }
 
 export interface KillTerminalInput {
@@ -114,6 +116,7 @@ export interface PresentationSnapshotTerminalResult {
   presentationRevision: number
   cols: number
   rows: number
+  geometryRevision?: number | null
   bufferKind: TerminalBufferKind
   cursor: TerminalCursorPosition
   title: string | null
@@ -136,6 +139,7 @@ export interface TerminalGeometryEvent {
   cols: number
   rows: number
   reason: TerminalGeometryCommitReason
+  revision?: number | null
 }
 
 export interface TerminalResyncEvent {

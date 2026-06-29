@@ -183,4 +183,95 @@ describe('PtyStreamHub resize', () => {
       reason: 'frame_commit',
     })
   })
+
+  it('acks accepted geometry revisions without forwarding unchanged or stale resizes', async () => {
+    const runtimeResize = vi.fn()
+    const hub = new PtyStreamHub({
+      replayWindowMaxBytes: 64_000,
+      ptyRuntime: {
+        spawnSession: vi.fn(),
+        write: vi.fn(),
+        resize: runtimeResize,
+        kill: vi.fn(),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+      },
+    })
+    const { ws, sent } = createOpenWebSocketMock()
+
+    hub.registerClient({ clientId: 'client-1', kind: 'desktop', ws })
+    hub.registerSessionMetadata({
+      sessionId: 'session-1',
+      kind: 'agent',
+      startedAt: '2026-04-29T00:00:00.000Z',
+      cwd: '/tmp',
+      command: 'codex',
+      args: [],
+      cols: 64,
+      rows: 44,
+    })
+    hub.attach({ clientId: 'client-1', sessionId: 'session-1', role: 'controller' })
+    sent.length = 0
+
+    hub.resize({
+      clientId: 'client-1',
+      sessionId: 'session-1',
+      cols: 80,
+      rows: 24,
+      reason: 'frame_commit',
+      revision: 2,
+    })
+
+    expect(runtimeResize).toHaveBeenCalledWith('session-1', 80, 24, 'frame_commit', 2)
+    expect(sent).toContainEqual({
+      type: 'geometry',
+      sessionId: 'session-1',
+      cols: 80,
+      rows: 24,
+      reason: 'frame_commit',
+      revision: 2,
+    })
+
+    sent.length = 0
+    runtimeResize.mockClear()
+
+    hub.resize({
+      clientId: 'client-1',
+      sessionId: 'session-1',
+      cols: 80,
+      rows: 24,
+      reason: 'frame_commit',
+      revision: 3,
+    })
+
+    expect(runtimeResize).not.toHaveBeenCalled()
+    expect(sent).toContainEqual({
+      type: 'geometry',
+      sessionId: 'session-1',
+      cols: 80,
+      rows: 24,
+      reason: 'frame_commit',
+      revision: 3,
+    })
+
+    sent.length = 0
+
+    hub.resize({
+      clientId: 'client-1',
+      sessionId: 'session-1',
+      cols: 120,
+      rows: 40,
+      reason: 'frame_commit',
+      revision: 1,
+    })
+
+    expect(runtimeResize).not.toHaveBeenCalled()
+    expect(sent.some(message => (message as { type?: string }).type === 'geometry')).toBe(false)
+
+    const snapshot = await hub.presentationSnapshotSession('session-1')
+
+    expect(snapshot.cols).toBe(80)
+    expect(snapshot.rows).toBe(24)
+    expect(snapshot.geometryRevision).toBe(3)
+  })
 })

@@ -11,6 +11,7 @@ import { hydrateTerminalFromSnapshot } from './hydrateFromSnapshot'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
 import type { RuntimeTerminalInputBridge } from './createRuntimeTerminalInputBridge'
 import type { TerminalHydrationRouter } from './hydrationRouter'
+import { markTerminalGeometryAccepted } from './terminalGeometryCoordinator'
 
 export function startRuntimeTerminalHydration({
   attachPromise,
@@ -88,8 +89,10 @@ export function startRuntimeTerminalHydration({
         cols: snapshot.cols,
         rows: snapshot.rows,
       }
+      markTerminalGeometryAccepted(terminal, snapshot.geometryRevision)
     },
     finalizeHydration: (rawSnapshot, options) => {
+      runtimeInputBridge.handlePtyOutputChunk(rawSnapshot)
       runtimeInputBridge.enableTerminalDataForwarding()
       hydrationRouter.finalizeHydration(rawSnapshot, {
         baselineAppliedSeq: options?.baselineAppliedSeq ?? null,

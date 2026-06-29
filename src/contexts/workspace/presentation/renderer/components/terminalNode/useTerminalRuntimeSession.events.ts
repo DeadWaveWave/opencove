@@ -8,10 +8,12 @@ import {
 import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio'
 import { formatTerminalDataHeadHex } from './terminalRuntimeDiagnostics'
 import type { createTerminalHydrationRouter } from './hydrationRouter'
+import type { RuntimeTerminalInputBridge } from './createRuntimeTerminalInputBridge'
 import type { createRestoredAgentVisibilityGate } from './restoredAgentVisibilityGate'
 import type { registerTerminalDiagnostics } from './registerDiagnostics'
 import type { createOptionalOpenCodeThemeBridge } from './useTerminalRuntimeSession.support'
 import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
+import { markTerminalGeometryAccepted } from './terminalGeometryCoordinator'
 
 type PtyEventHub = ReturnType<typeof getPtyEventHub>
 type TerminalDiagnostics = ReturnType<typeof registerTerminalDiagnostics>
@@ -23,6 +25,7 @@ export function subscribeRuntimeTerminalEvents({
   ptyEventHub,
   sessionId,
   openCodeThemeBridge,
+  runtimeInputBridge,
   diagnosticsEnabled,
   terminalDiagnostics,
   restoredAgentVisibilityGate,
@@ -36,6 +39,7 @@ export function subscribeRuntimeTerminalEvents({
   ptyEventHub: PtyEventHub
   sessionId: string
   openCodeThemeBridge: OpenCodeThemeBridge
+  runtimeInputBridge: RuntimeTerminalInputBridge
   diagnosticsEnabled: boolean
   terminalDiagnostics: TerminalDiagnostics
   restoredAgentVisibilityGate: RestoredAgentVisibilityGate
@@ -48,6 +52,7 @@ export function subscribeRuntimeTerminalEvents({
 }): () => void {
   const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
     openCodeThemeBridge?.handlePtyOutputChunk(event.data)
+    runtimeInputBridge.handlePtyOutputChunk(event.data)
     if (diagnosticsEnabled) {
       terminalDiagnostics.log('pty-data', {
         seq: event.seq ?? null,
@@ -69,6 +74,7 @@ export function subscribeRuntimeTerminalEvents({
     if (terminal.cols !== event.cols || terminal.rows !== event.rows) {
       resizeTerminalPreservingScrollState(terminal, event.cols, event.rows)
     }
+    markTerminalGeometryAccepted(terminal, event.revision)
     syncTerminalSize()
     scheduleTranscriptSync()
   })

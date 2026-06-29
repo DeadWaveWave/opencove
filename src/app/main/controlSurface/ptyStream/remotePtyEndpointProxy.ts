@@ -429,6 +429,7 @@ export class RemotePtyEndpointProxy {
     cols: number,
     rows: number,
     reason: TerminalGeometryCommitReason = 'frame_commit',
+    revision?: number | null,
   ): void {
     void this.ensureSocket()
       .then(() => {
@@ -436,7 +437,14 @@ export class RemotePtyEndpointProxy {
         if (!ws) {
           return
         }
-        trySendWs(ws, { type: 'resize', sessionId: remoteSessionId, cols, rows, reason })
+        trySendWs(ws, {
+          type: 'resize',
+          sessionId: remoteSessionId,
+          cols,
+          rows,
+          reason,
+          ...(typeof revision === 'number' && Number.isFinite(revision) ? { revision } : {}),
+        })
       })
       .catch(() => undefined)
   }

@@ -307,6 +307,51 @@ describe('hydrationRouter', () => {
     )
   })
 
+  it('forwards input-mode control chunks immediately without treating them as visible output', () => {
+    const terminal = {
+      reset: vi.fn(),
+      write: vi.fn(),
+    }
+    const outputScheduler = {
+      handleChunk: vi.fn(),
+    }
+    const scrollbackBuffer = {
+      set: vi.fn(),
+      append: vi.fn(),
+    }
+    const committedScrollbackBuffer = {
+      set: vi.fn(),
+      append: vi.fn(),
+      snapshot: vi.fn(() => ''),
+    }
+
+    const router = createTerminalHydrationRouter({
+      terminal: terminal as never,
+      outputScheduler,
+      shouldReplaceAgentPlaceholderAfterHydration: () => false,
+      shouldDeferHydratedRedrawChunks: () => true,
+      scrollbackBuffer,
+      committedScrollbackBuffer,
+      recordCommittedScreenState: vi.fn(),
+      scheduleTranscriptSync: vi.fn(),
+      ptyWriteQueue: { flush: vi.fn() },
+      markScrollbackDirty: vi.fn(),
+      logHydrated: vi.fn(),
+      syncTerminalSize: vi.fn(),
+      onRevealed: vi.fn(),
+      isDisposed: () => false,
+    })
+
+    router.finalizeHydration('[restored history]')
+    router.handleDataChunk('\u001b[?2004h\u001b[?1000h\u001b[?1006h')
+
+    expect(outputScheduler.handleChunk).toHaveBeenCalledWith(
+      '\u001b[?2004h\u001b[?1000h\u001b[?1006h',
+      { allowDuringPendingGeometry: true },
+    )
+    expect(terminal.reset).not.toHaveBeenCalled()
+  })
+
   it('does not reset an accepted worker snapshot baseline on the first redraw chunk', () => {
     const terminal = {
       reset: vi.fn(),

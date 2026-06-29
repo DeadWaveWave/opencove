@@ -31,7 +31,7 @@ Key implementation files:
 | Presentation snapshot | Worker | `session.presentationSnapshot` |
 | Replay baseline | Worker | `appliedSeq` from snapshot |
 | Controller role | `PtyStreamHub` | `/pty` attach/control |
-| PTY geometry | `PtyStreamHub` + PTY runtime | controller resize with commit reason |
+| PTY geometry | `TerminalPresentationSession` | controller resize with commit reason and geometry revision |
 | Renderer backend health | client | local rebuild/resync |
 | Selection/local scroll/zoom | client | local UI only |
 
@@ -45,6 +45,7 @@ Key implementation files:
 - `presentationRevision`
 - `cols`
 - `rows`
+- `geometryRevision`
 - `bufferKind`
 - `cursor`
 - `title`
@@ -82,13 +83,18 @@ Current geometry behavior:
 - `/pty` attach assigns one controller; additional clients become viewers unless controller is available.
 - `PtyStreamHub.resize` accepts resize only from the controller client.
 - Resize reason is `frame_commit` or `appearance_commit`.
-- Accepted resize updates `TerminalPresentationSession`, then resizes the PTY runtime.
+- Renderer-originated resize commits carry an optional positive `revision`.
+- `TerminalPresentationSession` rejects stale resize revisions and records the latest accepted revision.
+- Accepted geometry broadcasts include the accepted revision. If the size is unchanged but the revision is new, OpenCove broadcasts an acknowledgement and does not resize the PTY runtime.
+- Accepted size changes update `TerminalPresentationSession`, then resize the PTY runtime.
+- Renderer output writing is gated while a local geometry commit is pending. The gate opens only after the accepted revision is observed or the local commit is settled.
 
 Constraints:
 
 - Viewer attach must not resize the PTY.
 - Focus, typing and ordinary stream attach must not change PTY geometry.
 - Local calibration/fit may adjust renderer display, but canonical PTY size changes only through explicit resize commits.
+- DOM-renderer text-overhang correction may adjust local xterm display for readability, but it must not directly commit PTY geometry.
 
 Current limitation:
 
@@ -142,12 +148,17 @@ The goal is stable visual parity without letting multiple renderers fight for te
 3. `appliedSeq` must survive hydration wrappers.
 4. Viewer attach does not resize.
 5. Controller resize requires explicit commit reason.
-6. Desync fails closed to snapshot resync.
-7. Hidden or frozen clients can be dropped and rebuilt without changing session truth.
+6. A lower geometry revision never overwrites a higher accepted revision.
+7. PTY output is not written into xterm while local geometry is pending.
+8. Desync fails closed to snapshot resync.
+9. Hidden or frozen clients can be dropped and rebuilt without changing session truth.
 
 ## Verification Anchors
 
 - `tests/contract/controlSurface/controlSurfaceHttpServer.sessionStreaming.integration.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.multiEndpoint.ptyProxy.spec.ts`
+- `tests/contract/ipc/ptyRuntimeGeometry.spec.ts`
+- `tests/unit/app/ptyStreamHub.resize.spec.ts`
+- `tests/unit/contexts/terminalNode.output-scheduler.spec.ts`
 - `scripts/test-terminal-presentation-contract.mjs`
 - Terminal renderer E2E cases under `tests/e2e/`.

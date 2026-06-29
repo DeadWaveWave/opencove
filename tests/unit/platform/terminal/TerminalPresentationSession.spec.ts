@@ -23,6 +23,33 @@ describe('TerminalPresentationSession', () => {
     expect(snapshot.serializedScreen).toContain('hello\r\nworld')
   })
 
+  it('rejects stale geometry revisions and snapshots the accepted revision', async () => {
+    const session = new TerminalPresentationSession({
+      sessionId: 'session-revision',
+      cols: 80,
+      rows: 24,
+    })
+
+    expect(session.resize(120, 40, 2)).toEqual({
+      cols: 120,
+      rows: 40,
+      changed: true,
+      revision: 2,
+    })
+    expect(session.resize(90, 30, 1)).toEqual({
+      cols: 120,
+      rows: 40,
+      changed: false,
+      revision: 2,
+    })
+
+    const snapshot = await session.snapshot()
+
+    expect(snapshot.cols).toBe(120)
+    expect(snapshot.rows).toBe(40)
+    expect(snapshot.geometryRevision).toBe(2)
+  })
+
   it('tracks alternate buffer presentation and title updates', async () => {
     const session = new TerminalPresentationSession({
       sessionId: 'session-2',

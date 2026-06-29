@@ -53,6 +53,7 @@ export interface PtyRuntime {
     cols: number,
     rows: number,
     reason?: TerminalGeometryCommitReason,
+    revision?: number | null,
   ) => Promise<void>
   kill: (sessionId: string) => Promise<void>
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
@@ -369,8 +370,8 @@ export function createPtyRuntime(): PtyRuntime {
       ptyHost.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
-    resize: async (sessionId, cols, rows, reason) => {
-      const geometry = manager.resize(sessionId, cols, rows, reason)
+    resize: async (sessionId, cols, rows, reason, revision) => {
+      const geometry = manager.resize(sessionId, cols, rows, reason, revision)
       if (!geometry.changed) {
         logPtyResizeDiagnostics({
           event: 'unchanged',
@@ -380,6 +381,7 @@ export function createPtyRuntime(): PtyRuntime {
           cols: geometry.cols,
           rows: geometry.rows,
           reason,
+          revision: geometry.revision,
         })
         return
       }
@@ -392,6 +394,7 @@ export function createPtyRuntime(): PtyRuntime {
         cols: geometry.cols,
         rows: geometry.rows,
         reason,
+        revision: geometry.revision,
       })
       ptyHost.resize(sessionId, geometry.cols, geometry.rows)
     },

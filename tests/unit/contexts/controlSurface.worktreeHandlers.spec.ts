@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import { registerGitWorktreeMountHandlers } from '../../../src/app/main/controlSurface/handlers/gitWorktreeMountHandlers'
@@ -253,7 +252,7 @@ describe('control surface worktree handlers', () => {
       id: 'gitWorktree.createInMount',
       payload: {
         mountId: 'mount-1',
-        worktreesRootUri: pathToFileURL('/repo/.opencove/worktrees').href,
+        worktreesRootUri: 'file:///repo/.opencove/worktrees',
         branchMode: { kind: 'existing', name: 'feature-a' },
       },
     })

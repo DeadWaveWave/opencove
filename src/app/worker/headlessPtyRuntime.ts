@@ -33,6 +33,7 @@ export interface HeadlessPtyRuntime {
     cols: number,
     rows: number,
     reason?: TerminalGeometryCommitReason,
+    revision?: number | null,
   ) => void
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
@@ -95,8 +96,9 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
       supervisor.write(sessionId, data)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
-    resize: (sessionId, cols, rows, _reason) => {
+    resize: (sessionId, cols, rows, _reason, _revision) => {
       void _reason
+      void _revision
       supervisor.resize(sessionId, cols, rows)
     },
     kill: sessionId => {

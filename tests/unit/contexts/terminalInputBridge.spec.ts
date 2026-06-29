@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  createPtyWriteQueue,
   handleTerminalCustomKeyEvent,
   isLinuxTerminalCopyShortcut,
   isLinuxTerminalPasteShortcut,
   isMacTerminalPasteShortcut,
-  pasteTextFromClipboard,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/inputBridge'
 
 describe('isLinuxTerminalCopyShortcut', () => {
@@ -112,7 +110,6 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => true,
         getSelection: () => 'selected output',
-        paste: vi.fn(),
       },
     })
 
@@ -137,7 +134,6 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => false,
         getSelection: () => '',
-        paste: vi.fn(),
       },
     })
 
@@ -159,7 +155,6 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => true,
         getSelection: () => 'selected output',
-        paste: vi.fn(),
       },
     })
 
@@ -191,7 +186,6 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => true,
         getSelection: () => 'selected output',
-        paste: vi.fn(),
       },
     })
 
@@ -215,7 +209,6 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => true,
         getSelection: () => 'selected output',
-        paste: vi.fn(),
       },
     })
 
@@ -225,6 +218,10 @@ describe('handleTerminalCustomKeyEvent', () => {
 
   it('pastes clipboard text on Windows Ctrl+V', () => {
     const pasteClipboardText = vi.fn()
+    const ptyWriteQueue = {
+      enqueue: vi.fn(),
+      flush: vi.fn(),
+    }
     const event = {
       type: 'keydown',
       key: 'v',
@@ -238,28 +235,31 @@ describe('handleTerminalCustomKeyEvent', () => {
     const terminal = {
       hasSelection: () => false,
       getSelection: () => '',
-      paste: vi.fn(),
     }
 
     const result = handleTerminalCustomKeyEvent({
       event,
       pasteClipboardText,
       platformInfo: { platform: 'Win32' },
-      ptyWriteQueue: {
-        enqueue: vi.fn(),
-        flush: vi.fn(),
-      },
+      ptyWriteQueue,
       terminal,
     })
 
     expect(result).toBe(false)
-    expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+    expect(pasteClipboardText).toHaveBeenCalledWith({
+      isBracketedPasteMode: undefined,
+      writePastePayload: expect.any(Function),
+    })
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
     expect(event.stopPropagation).toHaveBeenCalledTimes(1)
   })
 
   it('pastes clipboard text on Linux Ctrl+Shift+V', () => {
     const pasteClipboardText = vi.fn()
+    const ptyWriteQueue = {
+      enqueue: vi.fn(),
+      flush: vi.fn(),
+    }
     const event = {
       type: 'keydown',
       key: 'V',
@@ -273,28 +273,31 @@ describe('handleTerminalCustomKeyEvent', () => {
     const terminal = {
       hasSelection: () => false,
       getSelection: () => '',
-      paste: vi.fn(),
     }
 
     const result = handleTerminalCustomKeyEvent({
       event,
       pasteClipboardText,
       platformInfo: { platform: 'Linux x86_64' },
-      ptyWriteQueue: {
-        enqueue: vi.fn(),
-        flush: vi.fn(),
-      },
+      ptyWriteQueue,
       terminal,
     })
 
     expect(result).toBe(false)
-    expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+    expect(pasteClipboardText).toHaveBeenCalledWith({
+      isBracketedPasteMode: undefined,
+      writePastePayload: expect.any(Function),
+    })
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
     expect(event.stopPropagation).toHaveBeenCalledTimes(1)
   })
 
   it('pastes clipboard text on Windows Shift+Insert', () => {
     const pasteClipboardText = vi.fn()
+    const ptyWriteQueue = {
+      enqueue: vi.fn(),
+      flush: vi.fn(),
+    }
     const event = {
       type: 'keydown',
       key: 'Insert',
@@ -308,24 +311,66 @@ describe('handleTerminalCustomKeyEvent', () => {
     const terminal = {
       hasSelection: () => false,
       getSelection: () => '',
-      paste: vi.fn(),
     }
 
     const result = handleTerminalCustomKeyEvent({
       event,
       pasteClipboardText,
       platformInfo: { platform: 'Win32' },
-      ptyWriteQueue: {
-        enqueue: vi.fn(),
-        flush: vi.fn(),
-      },
+      ptyWriteQueue,
       terminal,
     })
 
     expect(result).toBe(false)
-    expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+    expect(pasteClipboardText).toHaveBeenCalledWith({
+      isBracketedPasteMode: undefined,
+      writePastePayload: expect.any(Function),
+    })
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
     expect(event.stopPropagation).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls back to the PTY queue when no paste payload writer is provided', async () => {
+    const pasteClipboardText = vi.fn(
+      async ({
+        writePastePayload,
+      }: {
+        isBracketedPasteMode?: () => boolean
+        writePastePayload: (data: string) => void
+      }) => {
+        writePastePayload('clipboard payload')
+      },
+    )
+    const ptyWriteQueue = {
+      enqueue: vi.fn(),
+      flush: vi.fn(),
+    }
+    const event = {
+      type: 'keydown',
+      key: 'v',
+      ctrlKey: true,
+      shiftKey: false,
+      altKey: false,
+      metaKey: false,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
+
+    handleTerminalCustomKeyEvent({
+      event,
+      pasteClipboardText,
+      platformInfo: { platform: 'Win32' },
+      ptyWriteQueue,
+      terminal: {
+        hasSelection: () => false,
+        getSelection: () => '',
+      },
+    })
+
+    await Promise.resolve()
+
+    expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith('clipboard payload')
+    expect(ptyWriteQueue.flush).toHaveBeenCalledTimes(1)
   })
 
   it('preserves Shift+Enter terminal input bridging', () => {
@@ -340,7 +385,6 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => false,
         getSelection: () => '',
-        paste: vi.fn(),
       },
     })
 
@@ -349,23 +393,12 @@ describe('handleTerminalCustomKeyEvent', () => {
     expect(ptyWriteQueue.flush).toHaveBeenCalledTimes(1)
   })
 
-  it('writes clipboard text through xterm paste', async () => {
-    const readClipboardText = vi.fn(async () => 'clipboard payload')
-    const terminal = {
-      paste: vi.fn(),
-    }
-
-    await pasteTextFromClipboard({
-      readClipboardText,
-      terminal,
-    })
-
-    expect(readClipboardText).toHaveBeenCalledTimes(1)
-    expect(terminal.paste).toHaveBeenCalledWith('clipboard payload')
-  })
-
   it('pastes clipboard text on macOS Cmd+V', () => {
     const pasteClipboardText = vi.fn()
+    const ptyWriteQueue = {
+      enqueue: vi.fn(),
+      flush: vi.fn(),
+    }
     const event = {
       type: 'keydown',
       key: 'v',
@@ -379,22 +412,21 @@ describe('handleTerminalCustomKeyEvent', () => {
     const terminal = {
       hasSelection: () => false,
       getSelection: () => '',
-      paste: vi.fn(),
     }
 
     const result = handleTerminalCustomKeyEvent({
       event,
       pasteClipboardText,
       platformInfo: { platform: 'MacIntel' },
-      ptyWriteQueue: {
-        enqueue: vi.fn(),
-        flush: vi.fn(),
-      },
+      ptyWriteQueue,
       terminal,
     })
 
     expect(result).toBe(false)
-    expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+    expect(pasteClipboardText).toHaveBeenCalledWith({
+      isBracketedPasteMode: undefined,
+      writePastePayload: expect.any(Function),
+    })
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
     expect(event.stopPropagation).toHaveBeenCalledTimes(1)
   })
@@ -415,7 +447,6 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => true,
         getSelection: () => 'selected output',
-        paste: vi.fn(),
       },
     })
 
@@ -448,30 +479,10 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => false,
         getSelection: () => '',
-        paste: vi.fn(),
       },
     })
 
     expect(result).toBe(true)
     expect(pasteClipboardText).not.toHaveBeenCalled()
-  })
-
-  it('preserves binary writes as a separate PTY payload', async () => {
-    const writes: Array<{ data: string; encoding: 'utf8' | 'binary' }> = []
-    const ptyWriteQueue = createPtyWriteQueue(async payload => {
-      writes.push(payload)
-    })
-
-    ptyWriteQueue.enqueue('plain-text')
-    ptyWriteQueue.enqueue(String.fromCharCode(64, 80), 'binary')
-    ptyWriteQueue.flush()
-
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(writes).toEqual([
-      { data: 'plain-text', encoding: 'utf8' },
-      { data: String.fromCharCode(64, 80), encoding: 'binary' },
-    ])
   })
 })

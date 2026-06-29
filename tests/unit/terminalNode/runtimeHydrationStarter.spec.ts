@@ -48,6 +48,7 @@ describe('runtimeHydrationStarter', () => {
       hydrationBaselineSourceRef: { current: 'empty' },
       lastCommittedPtySizeRef: { current: null },
       runtimeInputBridge: {
+        handlePtyOutputChunk: vi.fn(),
         enableTerminalDataForwarding: vi.fn(),
         releaseBufferedUserInput: vi.fn(),
       } as never,
@@ -143,6 +144,7 @@ describe('runtimeHydrationStarter', () => {
       hydrationBaselineSourceRef: { current: 'empty' },
       lastCommittedPtySizeRef: { current: null },
       runtimeInputBridge: {
+        handlePtyOutputChunk: vi.fn(),
         enableTerminalDataForwarding: vi.fn(),
         releaseBufferedUserInput: vi.fn(),
       } as never,

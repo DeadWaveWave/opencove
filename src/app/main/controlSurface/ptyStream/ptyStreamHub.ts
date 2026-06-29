@@ -37,7 +37,7 @@ import {
   snapshotSessionPresentation,
   snapshotSessionScrollback,
 } from './ptyStreamHub.support'
-import { logPtyStreamResizeDiagnostics } from './ptyStreamDiagnostics'
+import { resizePtyStreamSession, type PtyStreamHubResizeOptions } from './ptyStreamHub.resize'
 
 export class PtyStreamHub {
   private readonly ptyRuntime: ControlSurfacePtyRuntime
@@ -254,6 +254,7 @@ export class PtyStreamHub {
     cols: number,
     rows: number,
     reason: 'frame_commit' | 'appearance_commit',
+    revision?: number | null,
   ): void {
     broadcastGeometry({
       sessions: this.sessions,
@@ -262,6 +263,7 @@ export class PtyStreamHub {
       cols,
       rows,
       reason,
+      revision,
     })
   }
 
@@ -429,65 +431,15 @@ export class PtyStreamHub {
     this.ptyRuntime.write(options.sessionId, options.data)
   }
 
-  public resize(options: {
-    clientId: string
-    sessionId: string
-    cols: number
-    rows: number
-    reason?: 'frame_commit' | 'appearance_commit' | null
-  }): void {
-    const session = this.sessions.get(options.sessionId)
-    const client = this.clients.get(options.clientId)
-    if (!session || !client) {
-      return
-    }
-
-    if (session.controllerClientId !== options.clientId) {
-      sendPtyError(
-        client.ws,
-        options.sessionId,
-        'session.not_controller',
-        'Only controller can resize.',
-      )
-      return
-    }
-
-    const geometry = session.presentationSession.resize(options.cols, options.rows)
-    const resizeReason = options.reason ?? 'frame_commit'
-    if (!geometry.changed) {
-      logPtyStreamResizeDiagnostics({
-        event: 'stream-unchanged',
-        sessionId: options.sessionId,
-        clientId: options.clientId,
-        requestedCols: options.cols,
-        requestedRows: options.rows,
-        cols: geometry.cols,
-        rows: geometry.rows,
-        reason: resizeReason,
-      })
-      return
-    }
-
-    logPtyStreamResizeDiagnostics({
-      event: 'stream-forwarded',
-      sessionId: options.sessionId,
-      clientId: options.clientId,
-      requestedCols: options.cols,
-      requestedRows: options.rows,
-      cols: geometry.cols,
-      rows: geometry.rows,
-      reason: resizeReason,
+  public resize(options: PtyStreamHubResizeOptions): void {
+    resizePtyStreamSession({
+      sessions: this.sessions,
+      clients: this.clients,
+      ptyRuntime: this.ptyRuntime,
+      resize: options,
+      broadcastGeometry: (sessionId, cols, rows, reason, revision) => {
+        this.broadcastGeometry(sessionId, cols, rows, reason, revision)
+      },
     })
-
-    if (session.metadata) {
-      session.metadata = {
-        ...session.metadata,
-        cols: geometry.cols,
-        rows: geometry.rows,
-      }
-    }
-    this.broadcastGeometry(options.sessionId, geometry.cols, geometry.rows, resizeReason)
-
-    this.ptyRuntime.resize(options.sessionId, geometry.cols, geometry.rows, resizeReason)
   }
 }

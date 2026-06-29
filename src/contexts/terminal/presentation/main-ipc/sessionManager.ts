@@ -29,6 +29,14 @@ type PtyDataReplayChunk = {
   data: string
 }
 
+function normalizePositiveRevision(value: number | null | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return null
+  }
+
+  return Math.floor(value)
+}
+
 export interface SessionManagerDeps {
   sendToAllWindows: <T>(channel: string, payload: T) => void
   sendPtyDataToSubscriber: (contentsId: number, eventPayload: TerminalDataEvent) => void
@@ -387,18 +395,25 @@ export class TerminalSessionManager {
     cols: number,
     rows: number,
     reason?: TerminalGeometryCommitReason,
-  ): { cols: number; rows: number; changed: boolean } {
+    revision?: number | null,
+  ): { cols: number; rows: number; changed: boolean; revision: number | null } {
     const presentationSession =
       this.presentationSessions.get(sessionId) ?? new TerminalPresentationSession({ sessionId })
     this.presentationSessions.set(sessionId, presentationSession)
-    const geometry = presentationSession.resize(cols, rows)
+    const geometry = presentationSession.resize(cols, rows, revision)
 
-    if (geometry.changed && reason) {
+    const requestedRevision = normalizePositiveRevision(revision)
+    const shouldBroadcastGeometry =
+      reason &&
+      (geometry.changed || (requestedRevision !== null && geometry.revision === requestedRevision))
+
+    if (shouldBroadcastGeometry && reason) {
       this.sendToAllWindows(IPC_CHANNELS.ptyGeometry, {
         sessionId,
         cols: geometry.cols,
         rows: geometry.rows,
         reason,
+        ...(geometry.revision !== null ? { revision: geometry.revision } : {}),
       } satisfies TerminalGeometryEvent)
     }
 

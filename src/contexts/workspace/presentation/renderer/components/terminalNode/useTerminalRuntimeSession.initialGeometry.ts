@@ -8,6 +8,11 @@ import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio
 import type { CachedTerminalScreenState } from './screenStateCache'
 import type { XtermSession } from './xtermSession'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
+import {
+  beginTerminalGeometryCommit,
+  markTerminalGeometryAccepted,
+  markTerminalGeometryCommitSettled,
+} from './terminalGeometryCoordinator'
 
 type PtySize = { cols: number; rows: number }
 
@@ -112,6 +117,10 @@ export function createRuntimeInitialGeometryCommitter({
         isPointerResizingRef,
         geometry: canonicalGeometry,
       })
+      const terminal = terminalRef.current
+      if (terminal) {
+        markTerminalGeometryAccepted(terminal, baselineSnapshot?.geometryRevision)
+      }
       return { ...canonicalGeometry, changed: false }
     }
 
@@ -127,6 +136,10 @@ export function createRuntimeInitialGeometryCommitter({
         isPointerResizingRef,
         geometry: canonicalGeometry,
       })
+      const terminal = terminalRef.current
+      if (terminal) {
+        markTerminalGeometryAccepted(terminal, baselineSnapshot?.geometryRevision)
+      }
       return { ...canonicalGeometry, changed: false }
     }
 
@@ -134,6 +147,8 @@ export function createRuntimeInitialGeometryCommitter({
       lastCommittedPtySizeRef.current = canonicalGeometry
     }
 
+    const terminal = terminalRef.current
+    const geometryRevision = terminal ? beginTerminalGeometryCommit(terminal) : null
     const measuredGeometry = await commitInitialTerminalNodeGeometry({
       terminalRef,
       fitAddonRef,
@@ -142,10 +157,18 @@ export function createRuntimeInitialGeometryCommitter({
       lastCommittedPtySizeRef,
       sessionId,
       reason: 'frame_commit',
+      geometryRevision,
     })
 
     if (measuredGeometry) {
+      if (terminal && geometryRevision !== null) {
+        markTerminalGeometryCommitSettled(terminal, geometryRevision)
+      }
       return measuredGeometry
+    }
+
+    if (terminal) {
+      markTerminalGeometryAccepted(terminal, geometryRevision)
     }
 
     if (!canonicalGeometry) {

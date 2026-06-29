@@ -6,6 +6,11 @@ import {
   commitSettledTerminalNodeGeometry,
   fitTerminalNodeToMeasuredSize,
 } from './syncTerminalNodeSize'
+import {
+  beginTerminalGeometryCommit,
+  isTerminalGeometryCommitCurrent,
+  markTerminalGeometryCommitSettled,
+} from './terminalGeometryCoordinator'
 
 type PtySize = { cols: number; rows: number }
 
@@ -40,6 +45,7 @@ export async function commitTerminalGeometryForCurrentSession(
   }: CommittedTerminalGeometryParams,
   reason: CommitTerminalGeometryReason,
 ): Promise<void> {
+  const terminal = terminalRef.current
   if (suppressPtyResizeRef.current || sessionId.trim().length === 0) {
     fitTerminalNodeToMeasuredSize({
       terminalRef,
@@ -51,6 +57,7 @@ export async function commitTerminalGeometryForCurrentSession(
   }
 
   const committedSessionId = sessionId
+  const geometryRevision = terminal ? beginTerminalGeometryCommit(terminal) : null
   const pendingCommittedPtySizeRef: MutableRefObject<PtySize | null> = {
     current: lastCommittedPtySizeRef.current,
   }
@@ -63,14 +70,29 @@ export async function commitTerminalGeometryForCurrentSession(
     lastCommittedPtySizeRef: pendingCommittedPtySizeRef,
     sessionId,
     reason,
+    geometryRevision,
     shouldCommit: () => latestSessionIdRef.current === committedSessionId,
   })
 
   if (latestSessionIdRef.current !== committedSessionId) {
+    if (terminal && geometryRevision !== null) {
+      markTerminalGeometryCommitSettled(terminal, geometryRevision)
+    }
+    return
+  }
+
+  if (
+    terminal &&
+    geometryRevision !== null &&
+    !isTerminalGeometryCommitCurrent(terminal, geometryRevision)
+  ) {
     return
   }
 
   lastCommittedPtySizeRef.current = pendingCommittedPtySizeRef.current
+  if (terminal && geometryRevision !== null) {
+    markTerminalGeometryCommitSettled(terminal, geometryRevision)
+  }
   scheduleWebglCanvasTransformCleanup()
 }
 

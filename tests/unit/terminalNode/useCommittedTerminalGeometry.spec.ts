@@ -32,6 +32,10 @@ function createCommitParams(): CommitParams {
   }
 }
 
+function createTerminalMock(): never {
+  return { cols: 80, rows: 24 } as never
+}
+
 function createDeferred(): { promise: Promise<void>; resolve: () => void } {
   let resolveDeferred: (() => void) | null = null
   const promise = new Promise<void>(resolve => {
@@ -80,6 +84,38 @@ describe('commitTerminalGeometryForCurrentSession', () => {
 
     expect(params.lastCommittedPtySizeRef.current).toStrictEqual({ cols: 80, rows: 24 })
     expect(params.scheduleWebglCanvasTransformCleanup).not.toHaveBeenCalled()
+  })
+
+  it('keeps the newer geometry when an older async commit settles last', async () => {
+    const params = createCommitParams()
+    params.terminalRef.current = createTerminalMock()
+    const firstBlocked = createDeferred()
+    const secondBlocked = createDeferred()
+
+    commitSettledMock
+      .mockImplementationOnce(async options => {
+        await firstBlocked.promise
+        options.lastCommittedPtySizeRef.current = { cols: 100, rows: 32 }
+        return { cols: 100, rows: 32, changed: true }
+      })
+      .mockImplementationOnce(async options => {
+        await secondBlocked.promise
+        options.lastCommittedPtySizeRef.current = { cols: 120, rows: 40 }
+        return { cols: 120, rows: 40, changed: true }
+      })
+
+    const firstCommit = commitTerminalGeometryForCurrentSession(params, 'frame_commit')
+    const secondCommit = commitTerminalGeometryForCurrentSession(params, 'frame_commit')
+
+    secondBlocked.resolve()
+    await secondCommit
+    firstBlocked.resolve()
+    await firstCommit
+
+    expect(params.lastCommittedPtySizeRef.current).toStrictEqual({ cols: 120, rows: 40 })
+    expect(params.scheduleWebglCanvasTransformCleanup).toHaveBeenCalledTimes(1)
+    expect(commitSettledMock.mock.calls[0]?.[0].geometryRevision).toBe(1)
+    expect(commitSettledMock.mock.calls[1]?.[0].geometryRevision).toBe(2)
   })
 
   it('only fits local terminal size when PTY resize is suppressed', async () => {

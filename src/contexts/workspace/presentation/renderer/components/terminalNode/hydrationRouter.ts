@@ -14,6 +14,7 @@ import {
   stripEchoedTerminalControlSequences,
 } from './hydrationReplacement'
 import { resolveSuffixPrefixOverlap } from './overlap'
+import { isInputSemanticTerminalControlChunk } from './terminalInputSemanticControls'
 
 export interface TerminalHydrationRouter {
   handleDataChunk: (data: string, options?: { seq?: number | null }) => void
@@ -56,7 +57,10 @@ export function createTerminalHydrationRouter({
 }: {
   terminal: Terminal
   outputScheduler: {
-    handleChunk: (data: string, options?: { immediateScrollbackPublish?: boolean }) => void
+    handleChunk: (
+      data: string,
+      options?: { allowDuringPendingGeometry?: boolean; immediateScrollbackPublish?: boolean },
+    ) => void
   }
   shouldReplaceAgentPlaceholderAfterHydration: () => boolean
   shouldReplaceAuthoritativeBaselineWithBufferedOutput?: () => boolean
@@ -232,22 +236,27 @@ export function createTerminalHydrationRouter({
         return
       }
 
+      const shouldWriteThroughGeometryGate =
+        isAutomaticTerminalQuery(displayData) || isInputSemanticTerminalControlChunk(displayData)
+      const writeThroughGeometryGateOptions = shouldWriteThroughGeometryGate
+        ? { allowDuringPendingGeometry: true }
+        : undefined
+
       if (isHydrating) {
-        const shouldDeliverQueryImmediately = isAutomaticTerminalQuery(displayData)
-        if (shouldDeliverQueryImmediately) {
-          outputScheduler.handleChunk(displayData)
+        if (shouldWriteThroughGeometryGate) {
+          outputScheduler.handleChunk(displayData, writeThroughGeometryGateOptions)
         }
 
         hydrationBuffer.dataChunks.push({
           data: displayData,
           seq: normalizeTerminalDataSeq(options?.seq),
-          deliveredDuringHydration: shouldDeliverQueryImmediately,
+          deliveredDuringHydration: shouldWriteThroughGeometryGate,
         })
         return
       }
 
-      if (isAutomaticTerminalQuery(displayData)) {
-        outputScheduler.handleChunk(displayData)
+      if (shouldWriteThroughGeometryGate) {
+        outputScheduler.handleChunk(displayData, writeThroughGeometryGateOptions)
         return
       }
 

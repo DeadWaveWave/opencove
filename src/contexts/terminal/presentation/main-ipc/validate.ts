@@ -112,7 +112,12 @@ export function normalizeResizeTerminalPayload(payload: unknown): ResizeTerminal
     })
   }
 
-  return { sessionId, cols, rows, reason }
+  const revision =
+    typeof record.revision === 'number' && Number.isFinite(record.revision) && record.revision > 0
+      ? Math.floor(record.revision)
+      : null
+
+  return { sessionId, cols, rows, reason, ...(revision !== null ? { revision } : {}) }
 }
 
 export function normalizeKillTerminalPayload(payload: unknown): KillTerminalInput {

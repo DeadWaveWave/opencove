@@ -25,6 +25,16 @@ function extractBracketedPastePayload(buffer) {
   return buffer.slice(contentStartIndex, endIndex)
 }
 
+function extractUnwrappedPrintablePastePayload(buffer) {
+  if (buffer.length === 0 || buffer.includes('\u001b') || buffer.includes('\u0016')) {
+    return null
+  }
+
+  const normalized = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const trimmed = normalized.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
 function extractMouseWheelLabel(buffer) {
   const sgrStartIndex = buffer.indexOf('\u001b[<')
   const sgrMatch =
@@ -107,22 +117,48 @@ function containsDeviceStatusReply(buffer) {
 }
 
 export async function runRawBracketedPasteEchoScenario() {
-  process.stdout.write('\u001b[?2004h')
-
   await new Promise(resolveScenario => {
     let settled = false
     let buffer = ''
 
-    const settle = message => {
+    function cleanup() {
+      process.stdin.off('data', handleData)
+      if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+        process.stdin.setRawMode(false)
+      }
+    }
+
+    function settle(message) {
       if (settled) {
         return
       }
 
       settled = true
       clearTimeout(timeout)
+      cleanup()
       process.stdout.write(`${message}\n`)
       process.stdout.write('\u001b[?2004l')
       resolveScenario()
+    }
+
+    function handleData(chunk) {
+      buffer += chunk
+
+      const bracketedPayload = extractBracketedPastePayload(buffer)
+      if (typeof bracketedPayload === 'string') {
+        settle(`[opencove-test-paste] ${bracketedPayload}`)
+        return
+      }
+
+      if (buffer.includes('\u0016')) {
+        settle('[opencove-test-paste] ctrl-v')
+        return
+      }
+
+      const unwrappedPayload = extractUnwrappedPrintablePastePayload(buffer)
+      if (typeof unwrappedPayload === 'string') {
+        settle(`[opencove-test-paste] ${unwrappedPayload}`)
+      }
     }
 
     const timeout = setTimeout(() => {
@@ -134,20 +170,9 @@ export async function runRawBracketedPasteEchoScenario() {
     }
 
     process.stdin.setEncoding('utf8')
-    process.stdin.on('data', chunk => {
-      buffer += chunk
-
-      const bracketedPayload = extractBracketedPastePayload(buffer)
-      if (typeof bracketedPayload === 'string') {
-        settle(`[opencove-test-paste] ${bracketedPayload}`)
-        return
-      }
-
-      if (buffer.includes('\u0016')) {
-        settle('[opencove-test-paste] ctrl-v')
-      }
-    })
+    process.stdin.on('data', handleData)
     process.stdin.resume()
+    process.stdout.write('\u001b[?2004h[opencove-test-paste] ready\n')
   })
 
   await sleep(20_000)

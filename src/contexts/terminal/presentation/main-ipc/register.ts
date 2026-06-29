@@ -82,6 +82,7 @@ export function registerPtyIpcHandlers(
         normalized.cols,
         normalized.rows,
         normalized.reason,
+        normalized.revision,
       )
     },
     { defaultErrorCode: 'terminal.resize_failed' },

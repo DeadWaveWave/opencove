@@ -17,7 +17,14 @@ type PtyStreamMessage =
   | { type: 'attached'; sessionId: string; seq?: number }
   | { type: 'data'; sessionId: string; seq?: number; data?: string }
   | { type: 'exit'; sessionId: string; seq?: number; exitCode?: number }
-  | { type: 'geometry'; sessionId: string; cols?: number; rows?: number; reason?: string }
+  | {
+      type: 'geometry'
+      sessionId: string
+      cols?: number
+      rows?: number
+      reason?: string
+      revision?: number
+    }
   | { type: 'state'; sessionId: string; state?: string }
   | {
       type: 'metadata'
@@ -172,6 +179,7 @@ export function createRemotePtyStreamMessageHandler(options: {
         message.reason === 'frame_commit' || message.reason === 'appearance_commit'
           ? message.reason
           : null
+      const revision = normalizeOptionalFiniteInt(message.revision)
 
       if (cols <= 0 || rows <= 0 || !reason) {
         return
@@ -182,6 +190,7 @@ export function createRemotePtyStreamMessageHandler(options: {
         cols,
         rows,
         reason,
+        ...(revision !== null && revision > 0 ? { revision } : {}),
       }
       options.sendToAllWindows(IPC_CHANNELS.ptyGeometry, eventPayload)
       return

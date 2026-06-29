@@ -85,6 +85,14 @@ function normalizePositiveInt(value: unknown): number | null {
   return intValue > 0 ? intValue : null
 }
 
+function normalizeOptionalPositiveInt(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  return normalizePositiveInt(value)
+}
+
 function normalizeGeometryReason(value: unknown): 'frame_commit' | 'appearance_commit' | null {
   if (value === 'frame_commit' || value === 'appearance_commit') {
     return value
@@ -338,6 +346,7 @@ export function createPtyStreamService(options: {
         const cols = normalizePositiveInt(message.cols)
         const rows = normalizePositiveInt(message.rows)
         const reason = normalizeGeometryReason(message.reason)
+        const revision = normalizeOptionalPositiveInt(message.revision)
 
         if (!sessionId) {
           closeWithError(ws, 'protocol.invalid_message', 'Missing sessionId.')
@@ -349,7 +358,7 @@ export function createPtyStreamService(options: {
           return
         }
 
-        hub.resize({ clientId: state.clientId, sessionId, cols, rows, reason })
+        hub.resize({ clientId: state.clientId, sessionId, cols, rows, reason, revision })
         return
       }
 

@@ -8,7 +8,6 @@ type PtyWritePayload = {
 type TerminalClipboardController = {
   getSelection: () => string
   hasSelection: () => boolean
-  paste: (data: string) => void
 }
 
 type PtyWriteQueue = {
@@ -238,18 +237,24 @@ export async function readTextFromClipboard(): Promise<string> {
 }
 
 export async function pasteTextFromClipboard({
+  isBracketedPasteMode = () => false,
+  writePastePayload,
   readClipboardText = readTextFromClipboard,
-  terminal,
 }: {
+  isBracketedPasteMode?: () => boolean
+  writePastePayload: (data: string) => void
   readClipboardText?: () => Promise<string> | string
-  terminal: Pick<TerminalClipboardController, 'paste'>
 }): Promise<void> {
   const text = await readClipboardText()
   if (text.length === 0) {
     return
   }
 
-  terminal.paste(text)
+  const normalizedText = text.replace(/\r?\n/g, '\r')
+  const payload = isBracketedPasteMode()
+    ? `\u001b[200~${normalizedText}\u001b[201~`
+    : normalizedText
+  writePastePayload(payload)
 }
 
 export function handleTerminalCustomKeyEvent({
@@ -257,18 +262,25 @@ export function handleTerminalCustomKeyEvent({
   event,
   pasteClipboardText = pasteTextFromClipboard,
   onOpenFind,
+  writePastePayload,
   platformInfo,
   ptyWriteQueue,
+  isBracketedPasteMode,
   terminal,
 }: {
   copySelectedText?: (text: string) => Promise<void> | void
   event: KeyboardEvent
   pasteClipboardText?: (
-    options: Pick<Parameters<typeof pasteTextFromClipboard>[0], 'terminal'>,
+    options: Pick<
+      Parameters<typeof pasteTextFromClipboard>[0],
+      'isBracketedPasteMode' | 'writePastePayload'
+    >,
   ) => Promise<void> | void
   onOpenFind?: () => void
+  writePastePayload?: (data: string) => void
   platformInfo?: PlatformInfo
   ptyWriteQueue: PtyWriteQueue
+  isBracketedPasteMode?: () => boolean
   terminal: TerminalClipboardController
 }): boolean {
   if (
@@ -310,7 +322,15 @@ export function handleTerminalCustomKeyEvent({
   ) {
     event.preventDefault()
     event.stopPropagation()
-    void pasteClipboardText({ terminal })
+    void pasteClipboardText({
+      isBracketedPasteMode,
+      writePastePayload:
+        writePastePayload ??
+        (data => {
+          ptyWriteQueue.enqueue(data)
+          ptyWriteQueue.flush()
+        }),
+    })
     return false
   }
 

@@ -58,12 +58,35 @@ describe('Pty runtime geometry', () => {
     expect(resize).not.toHaveBeenCalled()
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyGeometry)).toEqual([])
 
-    runtime.resize(sessionId, 100, 32, 'frame_commit')
+    runtime.resize(sessionId, 100, 32, 'frame_commit', 2)
 
     expect(resize).toHaveBeenCalledWith(sessionId, 100, 32)
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyGeometry)).toEqual([
-      [IPC_CHANNELS.ptyGeometry, { sessionId, cols: 100, rows: 32, reason: 'frame_commit' }],
+      [
+        IPC_CHANNELS.ptyGeometry,
+        { sessionId, cols: 100, rows: 32, reason: 'frame_commit', revision: 2 },
+      ],
     ])
+
+    resize.mockClear()
+    send.mockClear()
+
+    runtime.resize(sessionId, 100, 32, 'frame_commit', 3)
+
+    expect(resize).not.toHaveBeenCalled()
+    expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyGeometry)).toEqual([
+      [
+        IPC_CHANNELS.ptyGeometry,
+        { sessionId, cols: 100, rows: 32, reason: 'frame_commit', revision: 3 },
+      ],
+    ])
+
+    send.mockClear()
+
+    runtime.resize(sessionId, 120, 40, 'frame_commit', 1)
+
+    expect(resize).not.toHaveBeenCalled()
+    expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyGeometry)).toEqual([])
 
     runtime.dispose()
   })

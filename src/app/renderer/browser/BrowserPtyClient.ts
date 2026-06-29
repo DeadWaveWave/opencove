@@ -50,6 +50,14 @@ function normalizeTerminalSessionState(value: unknown): 'working' | 'standby' | 
   return null
 }
 
+function normalizeOptionalPositiveInt(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return null
+  }
+
+  return Math.floor(value)
+}
+
 function resolvePtyWebSocketUrl(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const token = getBrowserQueryToken()
@@ -210,12 +218,19 @@ export class BrowserPtyClient {
         record.reason === 'frame_commit' || record.reason === 'appearance_commit'
           ? record.reason
           : null
+      const revision = normalizeOptionalPositiveInt(record.revision)
 
       if (cols <= 0 || rows <= 0 || !reason) {
         return
       }
 
-      emitToListeners(this.geometryListeners, { sessionId, cols, rows, reason })
+      emitToListeners(this.geometryListeners, {
+        sessionId,
+        cols,
+        rows,
+        reason,
+        ...(revision !== null ? { revision } : {}),
+      })
       return
     }
 
@@ -326,6 +341,9 @@ export class BrowserPtyClient {
       cols: payload.cols,
       rows: payload.rows,
       reason: payload.reason,
+      ...(typeof payload.revision === 'number' && Number.isFinite(payload.revision)
+        ? { revision: payload.revision }
+        : {}),
     })
   }
 

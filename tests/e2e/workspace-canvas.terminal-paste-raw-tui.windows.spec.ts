@@ -49,6 +49,7 @@ test.describe('Workspace Canvas - Terminal Paste Raw TUI (Windows)', () => {
         await expect(terminal).toContainText(
           `[opencove-test-agent] ${providerCase.provider} new default-model`,
         )
+        await expect(terminal).toContainText('[opencove-test-paste] ready')
 
         await window.keyboard.press('Control+V')
 

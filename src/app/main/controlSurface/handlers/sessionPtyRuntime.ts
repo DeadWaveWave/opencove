@@ -22,6 +22,7 @@ export interface ControlSurfacePtyRuntime {
     cols: number,
     rows: number,
     reason?: TerminalGeometryCommitReason,
+    revision?: number | null,
   ) => void
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void

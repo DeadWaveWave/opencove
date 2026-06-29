@@ -162,6 +162,12 @@ export function parsePresentationSnapshot(
       typeof record.rows === 'number' && Number.isFinite(record.rows)
         ? Math.floor(record.rows)
         : 24,
+    geometryRevision:
+      typeof record.geometryRevision === 'number' &&
+      Number.isFinite(record.geometryRevision) &&
+      record.geometryRevision > 0
+        ? Math.floor(record.geometryRevision)
+        : null,
     bufferKind:
       record.bufferKind === 'normal' ||
       record.bufferKind === 'alternate' ||

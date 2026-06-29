@@ -69,8 +69,16 @@ export function sendPtyGeometry(
   cols: number,
   rows: number,
   reason: 'frame_commit' | 'appearance_commit',
+  revision?: number | null,
 ): void {
-  sendJson(ws, { type: 'geometry', sessionId, cols, rows, reason })
+  sendJson(ws, {
+    type: 'geometry',
+    sessionId,
+    cols,
+    rows,
+    reason,
+    ...(typeof revision === 'number' && Number.isFinite(revision) ? { revision } : {}),
+  })
 }
 
 export function sendPtyOverflow(

@@ -344,6 +344,7 @@ export function createRemotePtyRuntime(options: {
       cols: number,
       rows: number,
       reason?: TerminalGeometryCommitReason,
+      revision?: number | null,
     ) => {
       await sendSocketMessage({
         type: 'resize',
@@ -351,6 +352,7 @@ export function createRemotePtyRuntime(options: {
         cols,
         rows,
         ...(reason ? { reason } : {}),
+        ...(typeof revision === 'number' && Number.isFinite(revision) ? { revision } : {}),
       })
     },
     kill: async (sessionId: string) => {

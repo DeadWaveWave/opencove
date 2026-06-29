@@ -117,13 +117,21 @@ export function broadcastGeometry(options: {
   cols: number
   rows: number
   reason: 'frame_commit' | 'appearance_commit'
+  revision?: number | null
 }): void {
   if (!options.sessions.has(options.sessionId) || options.clients.size === 0) {
     return
   }
 
   for (const client of options.clients.values()) {
-    sendPtyGeometry(client.ws, options.sessionId, options.cols, options.rows, options.reason)
+    sendPtyGeometry(
+      client.ws,
+      options.sessionId,
+      options.cols,
+      options.rows,
+      options.reason,
+      options.revision,
+    )
   }
 }
 

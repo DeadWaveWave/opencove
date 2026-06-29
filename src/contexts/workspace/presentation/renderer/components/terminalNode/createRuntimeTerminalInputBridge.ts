@@ -3,10 +3,12 @@ import type { TerminalDiagnosticsLogInput } from '@shared/contracts/dto'
 import { parseTerminalCommandInput, type TerminalCommandInputState } from './commandInput'
 import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './inputBridge'
 import { isAutomaticTerminalReply } from './inputClassification'
+import { createTerminalInputModeTracker } from './terminalInputModes'
 import { hasRecentTerminalUserInteraction } from './userInteractionWindow'
 
 export interface RuntimeTerminalInputBridge {
   ptyWriteQueue: ReturnType<typeof createPtyWriteQueue>
+  handlePtyOutputChunk: (data: string) => void
   releaseBufferedUserInput: () => void
   enableTerminalDataForwarding: () => void
   dispose: () => void
@@ -87,6 +89,7 @@ export function createRuntimeTerminalInputBridge({
 
   let isBufferedUserInputGateOpen = !shouldGateInitialUserInput
   let shouldForwardTerminalData = false
+  const inputModeTracker = createTerminalInputModeTracker()
 
   const bufferUserInput = (data: string, encoding: 'utf8' | 'binary'): void => {
     if (data.length === 0) {
@@ -126,31 +129,20 @@ export function createRuntimeTerminalInputBridge({
     return true
   }
 
-  terminal.attachCustomKeyEventHandler(event =>
-    handleTerminalCustomKeyEvent({
-      event,
-      ptyWriteQueue,
-      terminal,
-      onOpenFind: openTerminalFind,
-    }),
-  )
-
-  const dataDisposable = terminal.onData(data => {
-    if (suppressPtyResizeRef.current) {
-      suppressPtyResizeRef.current = false
-      syncTerminalSize()
+  const recordCommandInput = (data: string): void => {
+    const commandRunHandler = onCommandRunRef.current
+    if (!commandRunHandler) {
+      return
     }
 
-    if (inputDiagnosticsEnabled) {
-      terminalDiagnostics.log('xterm-onData', {
-        dataLength: data.length,
-        dataStartsWithEsc: data.startsWith('\u001b'),
-        dataHeadHex: formatInputHeadHex(data),
-        shouldForwardTerminalData,
-        inputGateOpen: isBufferedUserInputGateOpen,
-      })
-    }
+    const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
+    commandInputStateRef.current = parsed.nextState
+    parsed.commands.forEach(command => {
+      commandRunHandler(command)
+    })
+  }
 
+  const forwardUtf8UserInput = (data: string): void => {
     if (!isBufferedUserInputGateOpen) {
       if (forwardAutomaticTerminalReply(data, 'utf8')) {
         return
@@ -205,16 +197,37 @@ export function createRuntimeTerminalInputBridge({
 
     ptyWriteQueue.enqueue(data)
     ptyWriteQueue.flush()
-    const commandRunHandler = onCommandRunRef.current
-    if (!commandRunHandler) {
-      return
+    recordCommandInput(data)
+  }
+
+  terminal.attachCustomKeyEventHandler(event =>
+    handleTerminalCustomKeyEvent({
+      event,
+      ptyWriteQueue,
+      terminal,
+      isBracketedPasteMode: inputModeTracker.isBracketedPasteMode,
+      writePastePayload: forwardUtf8UserInput,
+      onOpenFind: openTerminalFind,
+    }),
+  )
+
+  const dataDisposable = terminal.onData(data => {
+    if (suppressPtyResizeRef.current) {
+      suppressPtyResizeRef.current = false
+      syncTerminalSize()
     }
 
-    const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
-    commandInputStateRef.current = parsed.nextState
-    parsed.commands.forEach(command => {
-      commandRunHandler(command)
-    })
+    if (inputDiagnosticsEnabled) {
+      terminalDiagnostics.log('xterm-onData', {
+        dataLength: data.length,
+        dataStartsWithEsc: data.startsWith('\u001b'),
+        dataHeadHex: formatInputHeadHex(data),
+        shouldForwardTerminalData,
+        inputGateOpen: isBufferedUserInputGateOpen,
+      })
+    }
+
+    forwardUtf8UserInput(data)
   })
 
   const binaryDisposable = terminal.onBinary(data => {
@@ -291,6 +304,7 @@ export function createRuntimeTerminalInputBridge({
 
   return {
     ptyWriteQueue,
+    handlePtyOutputChunk: inputModeTracker.handlePtyOutputChunk,
     releaseBufferedUserInput: () => {
       isBufferedUserInputGateOpen = true
       flushBufferedUserInput()
