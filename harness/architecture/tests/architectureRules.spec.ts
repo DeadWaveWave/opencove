@@ -146,6 +146,23 @@ describe('architecture rules audit', () => {
     ])
   })
 
+  it('reports type query forbidden imports by default', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/domain/model.ts':
+        "type BrowserWindowRef = import('electron').BrowserWindow\nexport type Model = BrowserWindowRef\n",
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        ruleId: 'architecture.domainNoOuterRuntime',
+        severity: 'error',
+        file: 'src/contexts/workspace/domain/model.ts',
+        found: 'electron',
+      }),
+    ])
+  })
+
   it('allows explicit forbidden rules to ignore type-only imports', async () => {
     const root = await createFixture({
       'src/contexts/workspace/domain/model.ts':

@@ -62,6 +62,14 @@ function getStaticModuleSpecifierText(node) {
   return null
 }
 
+function getImportTypeModuleSpecifierText(node) {
+  const argument = node.argument
+  if (!ts.isLiteralTypeNode(argument)) {
+    return null
+  }
+  return getStaticModuleSpecifierText(argument.literal)
+}
+
 export function readImportEdgesFromSource(filePath, source) {
   const sourceFile = ts.createSourceFile(
     filePath,
@@ -116,6 +124,13 @@ export function readImportEdgesFromSource(filePath, source) {
       const specifier = getStaticModuleSpecifierText(node.arguments[0])
       if (specifier) {
         addEdge(node, specifier, 'runtime')
+      }
+    }
+
+    if (ts.isImportTypeNode(node)) {
+      const specifier = getImportTypeModuleSpecifierText(node)
+      if (specifier) {
+        addEdge(node, specifier, 'type')
       }
     }
 
