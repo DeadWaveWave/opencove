@@ -78,10 +78,11 @@ Harness 是仓库治理检查。它们检查项目是否仍然遵守已约定的
 
 ```bash
 pnpm arch:check
+pnpm arch:results:check
 pnpm arch:test
 ```
 
-`pnpm arch:doc-sync` 当前是 staged 本地守卫。架构 harness 推广到 CI 前，需要新增 CI-safe 的结果验证模式，或用不依赖 staged index 的 CI 专用命令替代它。
+`pnpm arch:doc-sync` 当前是 staged 本地守卫。`pnpm arch:results:check` 是不依赖 staged index 的结果验证模式，可作为未来 CI 推广时的候选命令。
 
 所有已注册分类清理完成后的推荐根命令：
 

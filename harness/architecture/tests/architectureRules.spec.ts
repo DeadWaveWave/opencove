@@ -64,6 +64,129 @@ describe('architecture rules audit', () => {
     })
   })
 
+  it('includes dynamic imports in runtime boundary checks', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/domain/model.ts':
+        "export async function load() {\n  return await import('@app/main/bootstrap')\n}\n",
+      'src/app/main/bootstrap.ts': 'export const bootstrap = true\n',
+      'src/contexts/workspace/presentation/renderer/View.ts':
+        "export async function loadElectron() {\n  return import('electron')\n}\n",
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleId: 'architecture.domainNoOuterRuntime',
+          severity: 'error',
+          file: 'src/contexts/workspace/domain/model.ts',
+        }),
+        expect.objectContaining({
+          ruleId: 'architecture.rendererNoElectronRuntime',
+          severity: 'error',
+          file: 'src/contexts/workspace/presentation/renderer/View.ts',
+        }),
+      ]),
+    )
+  })
+
+  it('includes statically resolvable dynamic import variants in boundary checks', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/domain/model.ts':
+        "export async function load() {\n  return import('@app/main/bootstrap', { with: { type: 'json' } })\n}\n",
+      'src/app/main/bootstrap.ts': 'export const bootstrap = true\n',
+      'src/contexts/workspace/presentation/renderer/View.ts':
+        'export async function loadElectron() {\n  return import(`electron`)\n}\n',
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleId: 'architecture.domainNoOuterRuntime',
+          severity: 'error',
+          file: 'src/contexts/workspace/domain/model.ts',
+        }),
+        expect.objectContaining({
+          ruleId: 'architecture.rendererNoElectronRuntime',
+          severity: 'error',
+          file: 'src/contexts/workspace/presentation/renderer/View.ts',
+        }),
+      ]),
+    )
+  })
+
+  it('includes dynamic imports in runtime file cycle checks', async () => {
+    const root = await createFixture({
+      'src/shared/a.ts': "export async function a() { return import('./b') }\n",
+      'src/shared/b.ts': "import { a } from './a'\nexport const b = a\n",
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations[0]).toMatchObject({
+      ruleId: 'architecture.fileRuntimeCycle',
+      severity: 'error',
+    })
+  })
+
+  it('ignores pure inline type imports when type-only layer edges are ignored', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/domain/model.ts':
+        "import { type Store } from '../infrastructure/store'\nexport type Model = Store\n",
+      'src/contexts/workspace/infrastructure/store.ts': 'export type Store = { id: string }\n',
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([])
+  })
+
+  it('keeps mixed inline type imports as runtime layer edges', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/domain/model.ts':
+        "import { type Store, loadStore } from '../infrastructure/store'\nexport type Model = Store\nexport const model = loadStore()\n",
+      'src/contexts/workspace/infrastructure/store.ts':
+        "export type Store = { id: string }\nexport function loadStore(): Store { return { id: '1' } }\n",
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        ruleId: 'architecture.layerDependency',
+        severity: 'warn',
+        file: 'src/contexts/workspace/domain/model.ts',
+      }),
+    ])
+  })
+
+  it('ignores pure inline type re-exports when type-only layer edges are ignored', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/domain/model.ts':
+        "export { type Store } from '../infrastructure/store'\n",
+      'src/contexts/workspace/infrastructure/store.ts': 'export type Store = { id: string }\n',
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([])
+  })
+
+  it('keeps mixed inline type re-exports as runtime layer edges', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/domain/model.ts':
+        "export { type Store, loadStore } from '../infrastructure/store'\n",
+      'src/contexts/workspace/infrastructure/store.ts':
+        "export type Store = { id: string }\nexport function loadStore(): Store { return { id: '1' } }\n",
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        ruleId: 'architecture.layerDependency',
+        severity: 'warn',
+        file: 'src/contexts/workspace/domain/model.ts',
+      }),
+    ])
+  })
+
   it('respects configured allowlists for boundary adapters', async () => {
     const root = await createFixture({
       'src/app/renderer/browser/browserOpenCoveApi.ts': 'window.opencoveApi = {} as never\n',

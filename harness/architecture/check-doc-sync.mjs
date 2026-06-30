@@ -93,11 +93,44 @@ function compareResultDirectories(actualDir, expectedDir) {
   return { missingFiles, unexpectedFiles, changedFiles }
 }
 
-function fail(messages) {
-  process.stderr.write(`Architecture doc sync check failed:\n\n${messages.join('\n\n')}\n`)
+function fail(title, messages) {
+  process.stderr.write(`${title} failed:\n\n${messages.join('\n\n')}\n`)
   process.exitCode = 1
 }
 
+function verifyResultFiles(failures) {
+  const expectedDir = mkdtempSync(join(tmpdir(), 'opencove-architecture-results-'))
+  try {
+    runAuditResults(expectedDir)
+    const { missingFiles, unexpectedFiles, changedFiles } = compareResultDirectories(
+      resultsDir,
+      expectedDir,
+    )
+
+    if (missingFiles.length > 0 || unexpectedFiles.length > 0 || changedFiles.length > 0) {
+      failures.push(
+        [
+          'Architecture audit results are stale.',
+          '',
+          missingFiles.length > 0 ? `Missing result files: ${missingFiles.join(', ')}` : null,
+          unexpectedFiles.length > 0
+            ? `Unexpected result files: ${unexpectedFiles.join(', ')}`
+            : null,
+          changedFiles.length > 0 ? `Changed result files: ${changedFiles.join(', ')}` : null,
+          '',
+          'Regenerate with:',
+          `node harness/architecture/check.mjs --mode audit --write-results ${resultsDir}`,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      )
+    }
+  } finally {
+    rmSync(expectedDir, { recursive: true, force: true })
+  }
+}
+
+const verifyResults = process.argv.includes('--verify-results')
 const stagedFiles = getStagedFiles()
 const changedContractDocs = stagedFiles.filter(pathname => contractDocs.has(pathname))
 const hasContractSyncEvidence = stagedFiles.some(isContractSyncEvidence)
@@ -106,7 +139,7 @@ const allowDocOnly =
 
 const failures = []
 
-if (changedContractDocs.length > 0 && !hasContractSyncEvidence && !allowDocOnly) {
+if (!verifyResults && changedContractDocs.length > 0 && !hasContractSyncEvidence && !allowDocOnly) {
   failures.push(
     [
       'Architecture contract docs changed without architecture harness sync evidence:',
@@ -118,13 +151,14 @@ if (changedContractDocs.length > 0 && !hasContractSyncEvidence && !allowDocOnly)
   )
 }
 
-const shouldVerifyResults = stagedFiles.some(isAuditRelevant) || stagedFiles.some(isResultFile)
+const shouldVerifyResults =
+  verifyResults || stagedFiles.some(isAuditRelevant) || stagedFiles.some(isResultFile)
 
 if (shouldVerifyResults) {
-  const unstagedAuditFiles = getUnstagedFiles().filter(
-    pathname => isAuditRelevant(pathname) || isResultFile(pathname),
-  )
-  if (unstagedAuditFiles.length > 0) {
+  const unstagedAuditFiles = verifyResults
+    ? []
+    : getUnstagedFiles().filter(pathname => isAuditRelevant(pathname) || isResultFile(pathname))
+  if (!verifyResults && unstagedAuditFiles.length > 0) {
     failures.push(
       [
         'Audit-relevant files have unstaged changes, so staged result verification would be ambiguous:',
@@ -134,40 +168,16 @@ if (shouldVerifyResults) {
       ].join('\n'),
     )
   } else {
-    const expectedDir = mkdtempSync(join(tmpdir(), 'opencove-architecture-results-'))
-    try {
-      runAuditResults(expectedDir)
-      const { missingFiles, unexpectedFiles, changedFiles } = compareResultDirectories(
-        resultsDir,
-        expectedDir,
-      )
-
-      if (missingFiles.length > 0 || unexpectedFiles.length > 0 || changedFiles.length > 0) {
-        failures.push(
-          [
-            'Architecture audit results are stale.',
-            '',
-            missingFiles.length > 0 ? `Missing result files: ${missingFiles.join(', ')}` : null,
-            unexpectedFiles.length > 0
-              ? `Unexpected result files: ${unexpectedFiles.join(', ')}`
-              : null,
-            changedFiles.length > 0 ? `Changed result files: ${changedFiles.join(', ')}` : null,
-            '',
-            'Regenerate with:',
-            `node harness/architecture/check.mjs --mode audit --write-results ${resultsDir}`,
-          ]
-            .filter(Boolean)
-            .join('\n'),
-        )
-      }
-    } finally {
-      rmSync(expectedDir, { recursive: true, force: true })
-    }
+    verifyResultFiles(failures)
   }
 }
 
 if (failures.length > 0) {
-  fail(failures)
+  fail(verifyResults ? 'Architecture result verification' : 'Architecture doc sync check', failures)
 } else {
-  process.stdout.write('Architecture doc sync check passed.\n')
+  process.stdout.write(
+    verifyResults
+      ? 'Architecture result verification passed.\n'
+      : 'Architecture doc sync check passed.\n',
+  )
 }

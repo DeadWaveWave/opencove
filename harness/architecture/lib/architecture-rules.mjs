@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, extname, join, resolve, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import ts from 'typescript'
+import { readImportEdgesFromSource } from './import-edges.mjs'
 
 export const defaultArchitectureRulesPath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -48,72 +48,6 @@ function matchesPattern(pathname, pattern) {
 
 function matchesAnyPattern(pathname, patterns = []) {
   return patterns.some(pattern => matchesPattern(pathname, pattern))
-}
-
-function getScriptKind(filePath) {
-  switch (extname(filePath)) {
-    case '.tsx':
-      return ts.ScriptKind.TSX
-    case '.jsx':
-      return ts.ScriptKind.JSX
-    case '.js':
-    case '.mjs':
-    case '.cjs':
-      return ts.ScriptKind.JS
-    default:
-      return ts.ScriptKind.TS
-  }
-}
-
-function getLine(sourceFile, node) {
-  return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1
-}
-
-function readImportEdgesFromSource(filePath, source) {
-  const sourceFile = ts.createSourceFile(
-    filePath,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    getScriptKind(filePath),
-  )
-  const edges = []
-
-  const addEdge = (node, specifier, kind) => {
-    edges.push({
-      specifier,
-      kind,
-      line: getLine(sourceFile, node),
-    })
-  }
-
-  const visit = node => {
-    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-      addEdge(node, node.moduleSpecifier.text, node.importClause?.isTypeOnly ? 'type' : 'runtime')
-    }
-
-    if (
-      ts.isExportDeclaration(node) &&
-      node.moduleSpecifier &&
-      ts.isStringLiteral(node.moduleSpecifier)
-    ) {
-      addEdge(node, node.moduleSpecifier.text, node.isTypeOnly ? 'type' : 'runtime')
-    }
-
-    if (
-      ts.isCallExpression(node) &&
-      node.expression.getText(sourceFile) === 'require' &&
-      node.arguments.length === 1 &&
-      ts.isStringLiteral(node.arguments[0])
-    ) {
-      addEdge(node, node.arguments[0].text, 'runtime')
-    }
-
-    ts.forEachChild(node, visit)
-  }
-
-  visit(sourceFile)
-  return edges
 }
 
 async function collectSourceFiles(root, config) {

@@ -43,6 +43,7 @@
 
 - `arch:check`：源码违反了 hard-error 级别的可执行架构规则。warning 级别待修复项由已提交的 audit baseline 表示。
 - `arch:doc-sync`：架构文档、规则或结果基线不同步。
+- `arch:results:check`：已提交 audit baseline 与当前分析器输出不同步。
 - `arch:test`：harness 实现或 fixture 发生回归。
 
 ## 发现项分类

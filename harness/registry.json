@@ -13,6 +13,12 @@
       "args": ["harness/architecture/check-doc-sync.mjs"]
     },
     {
+      "id": "architecture:results-check",
+      "category": "architecture",
+      "command": "node",
+      "args": ["harness/architecture/check-doc-sync.mjs", "--verify-results"]
+    },
+    {
       "id": "architecture:test",
       "category": "architecture",
       "command": "pnpm",

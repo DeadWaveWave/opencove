@@ -92,6 +92,7 @@
     "arch:check": "node harness/architecture/check.mjs --mode check --severity error",
     "arch:doc-sync": "node harness/architecture/check-doc-sync.mjs",
     "arch:results": "node harness/architecture/check.mjs --mode audit --write-results harness/architecture/results",
+    "arch:results:check": "node harness/architecture/check-doc-sync.mjs --verify-results",
     "arch:test": "vitest --run --config harness/architecture/vitest.config.ts",
     "opencove": "node src/app/cli/opencove.mjs",
     "format": "prettier --write .",
