@@ -39,6 +39,8 @@ Current tactical baseline:
 6. local resize commits use a geometry revision; stale async commits must not overwrite newer local refs.
 7. terminal output scheduler must pause writes while a geometry revision is pending.
 8. DOM text-overhang correction is a local display correction, not a hidden PTY resize writer.
+9. old Windows ConPTY resize uses a renderer-only xterm reflow compatibility path so scrollback
+   rows follow the accepted geometry when users scroll into history after a horizontal resize.
 
 ## Constraints To Preserve
 
@@ -61,6 +63,7 @@ These changes tend to reintroduce Codex/OpenCode TUI regressions:
 5. using high-frequency mutation observers as the primary redraw mechanism
 6. writing PTY output while a new local geometry commit is unresolved
 7. adding a second canonical PTY geometry writer outside the commit path
+8. disabling or bypassing the old ConPTY scrollback reflow adapter on renderer resize
 
 ## Fast Recovery Checklist
 

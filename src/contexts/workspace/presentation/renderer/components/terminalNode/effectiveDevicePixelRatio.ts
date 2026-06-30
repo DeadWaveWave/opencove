@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import { resizeTerminalWithWindowsConptyScrollbackReflow } from './terminalWindowsPtyReflow'
 
 type TerminalEffectiveDprController = {
   dispose: () => void
@@ -245,7 +246,7 @@ export function resizeTerminalPreservingScrollState(
   }
 
   const snapshot = captureTerminalScrollState(terminal)
-  terminal.resize(cols, rows)
+  resizeTerminalWithWindowsConptyScrollbackReflow(terminal, cols, rows)
   restoreTerminalScrollStateAfterResize(terminal, snapshot)
   scheduleTerminalScrollStateRestoreAfterResize(terminal, snapshot)
 }

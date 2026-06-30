@@ -95,6 +95,9 @@ Constraints:
 - Focus, typing and ordinary stream attach must not change PTY geometry.
 - Local calibration/fit may adjust renderer display, but canonical PTY size changes only through explicit resize commits.
 - DOM-renderer text-overhang correction may adjust local xterm display for readability, but it must not directly commit PTY geometry.
+- On old Windows ConPTY builds, local renderer resize may temporarily force xterm scrollback reflow
+  so historical soft-wrapped lines project at the accepted geometry. This is renderer-only: it must
+  preserve the real Windows PTY metadata and must not create another PTY geometry writer.
 
 Current limitation:
 
