@@ -189,6 +189,45 @@ describe('terminal geometry DOM overhang helpers', () => {
     expect(ptyResize).not.toHaveBeenCalled()
   })
 
+  it('restores restart-local geometry drift when DOM space fits committed PTY geometry', () => {
+    const terminal = createTerminalMock()
+    terminal.cols = 91
+    terminal.rows = 39
+    terminal._core._renderService.dimensions.css.cell = {
+      width: 7.142857142857143,
+      height: 15.2,
+    }
+    const lastCommittedPtySizeRef = { current: { cols: 92, rows: 40 } }
+
+    const scheduler = createTerminalDomTextOverhangGeometryCommitScheduler({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: {
+        current: {
+          proposeDimensions: vi.fn(() => ({ cols: 92, rows: 40 })),
+        } as never,
+      },
+      containerRef: {
+        current: createDomLayoutContainerMock({
+          containerWidth: 722,
+          xtermWidth: 722,
+          screenWidth: 650,
+          rowsScrollWidth: 650,
+        }) as never,
+      },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      suppressPtyResizeRef: { current: false },
+      sessionId: 'session-dom-overhang-restart-drift',
+    })
+
+    scheduler.schedule()
+
+    expect(terminal.resize).toHaveBeenCalledWith(92, 40)
+    expect(terminal.refresh).toHaveBeenCalledWith(0, 39)
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 92, rows: 40 })
+    expect(ptyResize).not.toHaveBeenCalled()
+  })
+
   it('commits a smaller DOM renderer geometry when glyph overhang reaches the scrollbar', () => {
     const terminal = createTerminalMock()
     terminal.cols = 107

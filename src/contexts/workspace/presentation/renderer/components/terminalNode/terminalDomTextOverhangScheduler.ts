@@ -119,8 +119,13 @@ function reconcileDomRendererTextOverhangLocally({
     lastOutputCorrection !== null &&
     terminal.cols === lastOutputCorrection.cols &&
     terminal.rows === lastOutputCorrection.rows
+  const hasRecoverableLocalGeometryDrift =
+    terminal.cols <= committedPtySize.cols &&
+    (isCurrentOutputCorrection ||
+      terminal.cols !== committedPtySize.cols ||
+      terminal.rows !== committedPtySize.rows)
   const canRecoverToCommittedGeometry =
-    isCurrentOutputCorrection && safeMeasuredCols >= committedPtySize.cols
+    hasRecoverableLocalGeometryDrift && safeMeasuredCols >= committedPtySize.cols
   const canApplySafeShrink =
     safeMeasuredCols < measured.cols && safeMeasuredCols < committedPtySize.cols
   const nextCols = canRecoverToCommittedGeometry
