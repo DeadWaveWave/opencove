@@ -126,6 +126,10 @@ function specifierMatchesRule(specifier, rule) {
   return (rule.specifierPrefixes ?? []).some(prefix => specifier.startsWith(prefix))
 }
 
+function shouldIgnoreForbiddenImportEdge(edge, rule) {
+  return edge.kind === 'type' && rule.ignoreTypeOnly === true
+}
+
 function createViolation(input) {
   return {
     ruleId: input.ruleId,
@@ -280,7 +284,10 @@ export async function runArchitectureAudit(options = {}) {
           continue
         }
         for (const edge of edges) {
-          if (edge.kind === 'type' || !specifierMatchesRule(edge.specifier, rule)) {
+          if (
+            shouldIgnoreForbiddenImportEdge(edge, rule) ||
+            !specifierMatchesRule(edge.specifier, rule)
+          ) {
             continue
           }
           fileViolations.push(

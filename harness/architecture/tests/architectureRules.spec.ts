@@ -129,6 +129,45 @@ describe('architecture rules audit', () => {
     })
   })
 
+  it('reports type-only forbidden imports by default', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/domain/model.ts':
+        "import type { BrowserWindow } from 'electron'\nexport type Model = BrowserWindow\n",
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        ruleId: 'architecture.domainNoOuterRuntime',
+        severity: 'error',
+        file: 'src/contexts/workspace/domain/model.ts',
+        found: 'electron',
+      }),
+    ])
+  })
+
+  it('allows explicit forbidden rules to ignore type-only imports', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/domain/model.ts':
+        "import type { BrowserWindow } from 'electron'\nexport type Model = BrowserWindow\n",
+    })
+    const config = await loadArchitectureConfig()
+    const ignoreTypeOnlyConfig = {
+      ...config,
+      checks: {
+        ...config.checks,
+        forbiddenImportSpecifiers: config.checks.forbiddenImportSpecifiers.map(rule =>
+          rule.id === 'architecture.domainNoOuterRuntime'
+            ? { ...rule, ignoreTypeOnly: true }
+            : rule,
+        ),
+      },
+    }
+
+    const report = await runArchitectureAudit({ root, config: ignoreTypeOnlyConfig })
+    expect(report.violations).toEqual([])
+  })
+
   it('ignores pure inline type imports when type-only layer edges are ignored', async () => {
     const root = await createFixture({
       'src/contexts/workspace/domain/model.ts':

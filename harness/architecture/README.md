@@ -42,6 +42,10 @@ pnpm arch:results:check
 
 该命令不依赖 staged files，适合 clean checkout、CI 候选流程，以及 `pnpm harness:check` 的聚合校验。
 
+## 规则语义
+
+`layerDependencies.ignoreTypeOnly` 只影响层级依赖检查，用于在手动基线阶段降低纯类型跨层边的噪声。`forbiddenImportSpecifiers` 默认仍会检查 type-only import，因为 `electron`、`react`、`node:`、`@app/` 这类规则表达的是禁止外层/runtime/framework 耦合；只有规则显式设置 `ignoreTypeOnly: true` 时才会跳过 type-only 边。
+
 ## 架构契约变更清单
 
 当架构契约文档发生变更时：
