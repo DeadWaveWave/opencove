@@ -117,13 +117,38 @@ function reconcileDomRendererTextOverhangLocally({
   const safeMeasuredCols = Math.floor(safeMeasured.cols)
   const isCurrentOutputCorrection =
     lastOutputCorrection !== null &&
-    committedPtySize.cols === lastOutputCorrection.cols &&
-    committedPtySize.rows === lastOutputCorrection.rows
-  const canRecoverFromOutputCorrection =
-    isCurrentOutputCorrection &&
-    safeMeasuredCols > committedPtySize.cols &&
-    safeMeasuredCols < measured.cols
-  if (isCurrentOutputCorrection && !canRecoverFromOutputCorrection) {
+    terminal.cols === lastOutputCorrection.cols &&
+    terminal.rows === lastOutputCorrection.rows
+  const canRecoverToCommittedGeometry =
+    isCurrentOutputCorrection && safeMeasuredCols >= committedPtySize.cols
+  const canApplySafeShrink =
+    safeMeasuredCols < measured.cols && safeMeasuredCols < committedPtySize.cols
+  const nextCols = canRecoverToCommittedGeometry
+    ? committedPtySize.cols
+    : canApplySafeShrink
+      ? safeMeasuredCols
+      : null
+
+  if (!Number.isFinite(safeMeasuredCols) || safeMeasuredCols <= 0 || nextCols === null) {
+    logDomTextOverhangSchedulerDiagnostics({
+      event: 'geometry-dom-overhang-scheduler-skipped',
+      terminal,
+      fitAddon,
+      container,
+      sessionId,
+      lastCommittedPtySize: committedPtySize,
+      skippedReason: 'no-output-safe-column-change',
+      remainingFrames,
+      suppressPtyResize,
+    })
+    return null
+  }
+
+  const nextPtySize = {
+    cols: nextCols,
+    rows: committedPtySize.rows,
+  }
+  if (terminal.cols === nextPtySize.cols && terminal.rows === nextPtySize.rows) {
     logDomTextOverhangSchedulerDiagnostics({
       event: 'geometry-dom-overhang-scheduler-skipped',
       terminal,
@@ -138,30 +163,6 @@ function reconcileDomRendererTextOverhangLocally({
     return null
   }
 
-  if (
-    !Number.isFinite(safeMeasuredCols) ||
-    safeMeasuredCols <= 0 ||
-    safeMeasuredCols >= measured.cols ||
-    (!canRecoverFromOutputCorrection && safeMeasuredCols >= committedPtySize.cols)
-  ) {
-    logDomTextOverhangSchedulerDiagnostics({
-      event: 'geometry-dom-overhang-scheduler-skipped',
-      terminal,
-      fitAddon,
-      container,
-      sessionId,
-      lastCommittedPtySize: committedPtySize,
-      skippedReason: 'no-output-safe-column-shrink',
-      remainingFrames,
-      suppressPtyResize,
-    })
-    return null
-  }
-
-  const nextPtySize = {
-    cols: safeMeasuredCols,
-    rows: committedPtySize.rows,
-  }
   resizeTerminalPreservingScrollState(terminal, nextPtySize.cols, nextPtySize.rows)
   refreshTerminalNodeSize({
     terminalRef,
@@ -249,7 +250,13 @@ export function createTerminalDomTextOverhangGeometryCommitScheduler({
       remainingFrames,
     })
     if (appliedCorrection) {
-      lastOutputCorrection = appliedCorrection
+      const committedPtySize = lastCommittedPtySizeRef.current
+      lastOutputCorrection =
+        committedPtySize !== null &&
+        appliedCorrection.cols === committedPtySize.cols &&
+        appliedCorrection.rows === committedPtySize.rows
+          ? null
+          : appliedCorrection
     }
   }
 

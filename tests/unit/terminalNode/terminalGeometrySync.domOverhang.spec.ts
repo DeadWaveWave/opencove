@@ -177,8 +177,14 @@ describe('terminal geometry DOM overhang helpers', () => {
     scheduler.schedule()
     flushAnimationFrames()
 
-    expect(terminal.resize).toHaveBeenLastCalledWith(91, 40)
-    expect(terminal.resize).toHaveBeenCalledTimes(1)
+    expect(terminal.resize).toHaveBeenLastCalledWith(92, 40)
+    expect(terminal.resize).toHaveBeenCalledTimes(2)
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 92, rows: 40 })
+
+    scheduler.schedule()
+    flushAnimationFrames()
+
+    expect(terminal.resize).toHaveBeenCalledTimes(2)
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 92, rows: 40 })
     expect(ptyResize).not.toHaveBeenCalled()
   })
