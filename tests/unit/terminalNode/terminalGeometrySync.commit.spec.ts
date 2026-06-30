@@ -140,6 +140,29 @@ describe('terminal geometry commit helpers', () => {
     ).toBe(true)
   })
 
+  it('keeps restored agent runtime geometry canonical during restart recovery', () => {
+    expect(
+      shouldPreferMeasuredInitialGeometryCommit({
+        kind: 'agent',
+        isLiveSessionReattach: false,
+        canonicalInitialGeometry: null,
+        suppressPtyResize: false,
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: null,
+      }),
+    ).toBe(false)
+    expect(
+      shouldPreferMeasuredInitialGeometryCommit({
+        kind: 'agent',
+        isLiveSessionReattach: false,
+        canonicalInitialGeometry: null,
+        suppressPtyResize: false,
+        agentResumeSessionIdVerified: false,
+        agentLaunchMode: 'resume',
+      }),
+    ).toBe(false)
+  })
+
   it('does not prefer measured initial geometry during terminal live reattach or suppressed resize', () => {
     expect(
       shouldPreferMeasuredInitialGeometryCommit({
@@ -195,6 +218,46 @@ describe('terminal geometry commit helpers', () => {
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 72, rows: 20 })
     expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
     expect(terminal.resize).toHaveBeenCalledWith(72, 20)
+    expect(ptyResize).not.toHaveBeenCalled()
+  })
+
+  it('keeps restored agent snapshot geometry instead of committing smaller mounted measurement', async () => {
+    const terminal = createTerminalMock()
+    const fitAddon = {
+      proposeDimensions: vi.fn(() => ({ cols: 91, rows: 39 })),
+    }
+    const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
+      current: null,
+    }
+    const commitInitialGeometry = createRuntimeInitialGeometryCommitter({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: { current: fitAddon as never },
+      containerRef: { current: { clientWidth: 720, clientHeight: 620 } as never },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      sessionId: 'session-restored-agent',
+      canonicalInitialGeometry: null,
+      allowMeasuredResizeCommit: true,
+      preferMeasuredGeometryCommit: false,
+    })
+
+    const size = await commitInitialGeometry({
+      sessionId: 'session-restored-agent',
+      epoch: 1,
+      appliedSeq: 3,
+      presentationRevision: 4,
+      cols: 92,
+      rows: 40,
+      bufferKind: 'normal',
+      cursor: { x: 0, y: 0 },
+      title: 'opencode',
+      serializedScreen: 'opencode',
+    } as never)
+
+    expect(size).toStrictEqual({ cols: 92, rows: 40, changed: false })
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 92, rows: 40 })
+    expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
+    expect(terminal.resize).toHaveBeenCalledWith(92, 40)
     expect(ptyResize).not.toHaveBeenCalled()
   })
 

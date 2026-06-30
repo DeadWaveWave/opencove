@@ -265,6 +265,8 @@ export function useTerminalRuntimeSession({
           isLiveSessionReattach,
           canonicalInitialGeometry: initialTerminalGeometryRef.current,
           suppressPtyResize: suppressPtyResizeRef.current,
+          agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
+          agentLaunchMode: agentLaunchModeRef.current,
         }),
       }),
       requirePostGeometrySnapshotOutput: shouldRequirePostGeometrySnapshotOutput({

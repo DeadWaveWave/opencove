@@ -2,6 +2,7 @@ import type { MutableRefObject } from 'react'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
 import type { PresentationSnapshotTerminalResult, TerminalPtyGeometry } from '@shared/contracts/dto'
+import type { AgentLaunchMode } from '../../types'
 import { resolveInitialTerminalDimensions } from './initialDimensions'
 import { commitInitialTerminalNodeGeometry, refreshTerminalNodeSize } from './syncTerminalNodeSize'
 import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio'
@@ -21,13 +22,25 @@ export function shouldPreferMeasuredInitialGeometryCommit({
   isLiveSessionReattach,
   canonicalInitialGeometry,
   suppressPtyResize,
+  agentResumeSessionIdVerified = false,
+  agentLaunchMode = null,
 }: {
   kind: 'terminal' | 'agent' | string
   isLiveSessionReattach: boolean
   canonicalInitialGeometry: PtySize | null
   suppressPtyResize: boolean
+  agentResumeSessionIdVerified?: boolean
+  agentLaunchMode?: AgentLaunchMode | null
 }): boolean {
   if (suppressPtyResize) {
+    return false
+  }
+
+  const isRestoredAgentRuntime =
+    kind === 'agent' &&
+    !isLiveSessionReattach &&
+    (agentResumeSessionIdVerified || agentLaunchMode === 'resume')
+  if (isRestoredAgentRuntime) {
     return false
   }
 
