@@ -38,7 +38,7 @@ jobs:
       target_commitish: ${{ steps.sha.outputs.target_commitish }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.OPENCOVE_NIGHTLY_TARGET_REF }}
           fetch-depth: 0
