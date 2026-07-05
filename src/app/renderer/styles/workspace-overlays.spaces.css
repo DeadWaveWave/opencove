@@ -421,16 +421,44 @@
 }
 
 .workspace-space-action-menu {
-  z-index: 12;
-  min-width: 188px;
+  z-index: 72;
+  min-width: 286px;
 }
 
 .workspace-space-action-menu--submenu {
-  z-index: 13;
+  z-index: 73;
+  min-width: 188px;
 }
 
 .workspace-space-action-menu__chevron {
   margin-left: auto;
+}
+
+.workspace-space-action-menu__color-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 6px;
+}
+
+.workspace-space-action-menu__color-button {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0;
+  border-radius: 999px;
+  justify-content: center;
+  gap: 0;
+}
+
+.workspace-space-action-menu__color-button .workspace-label-color-menu__dot {
+  width: 12px;
+  height: 12px;
+}
+
+.workspace-space-action-menu__color-button--selected {
+  background: var(--cove-surface-hover);
 }
 
 .workspace-space-branch-rename-backdrop {

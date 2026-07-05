@@ -3,18 +3,23 @@ import { useTranslation } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { toRelativeTime } from '../utils/format'
-import { buildSidebarAgentItems } from '../utils/sidebarAgents'
-import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
+import type { SidebarAgentItemModel } from '../utils/sidebarAgents'
+import type { ProjectContextMenuState } from '../types'
 
 export function SidebarAgentItems({
-  workspace,
+  workspaceId,
+  agentItems,
   onSelectAgentNode,
+  onOpenProjectContextMenu,
+  showOwningSpacePill = false,
 }: {
-  workspace: WorkspaceState
+  workspaceId: string
+  agentItems: SidebarAgentItemModel[]
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
+  onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
+  showOwningSpacePill?: boolean
 }): React.JSX.Element | null {
   const { t } = useTranslation()
-  const agentItems = buildSidebarAgentItems(workspace)
 
   if (agentItems.length === 0) {
     return null
@@ -34,9 +39,9 @@ export function SidebarAgentItems({
         return (
           <button
             type="button"
-            key={`${workspace.id}:${node.id}`}
+            key={`${workspaceId}:${node.id}`}
             className="workspace-agent-item workspace-agent-item--nested workspace-agent-item--sidebar"
-            data-testid={`workspace-agent-item-${workspace.id}-${node.id}`}
+            data-testid={`workspace-agent-item-${workspaceId}-${node.id}`}
             data-cove-label-color={effectiveLabelColor ?? undefined}
             title={[
               providerText,
@@ -48,35 +53,54 @@ export function SidebarAgentItems({
               .filter(Boolean)
               .join(' · ')}
             onClick={() => {
-              onSelectAgentNode(workspace.id, node.id)
+              onSelectAgentNode(workspaceId, node.id)
+            }}
+            onContextMenu={event => {
+              event.preventDefault()
+              onOpenProjectContextMenu({
+                workspaceId,
+                x: event.clientX,
+                y: event.clientY,
+                target: {
+                  kind: 'agent',
+                  workspaceId,
+                  nodeId: node.id,
+                },
+              })
             }}
           >
-            <span className="workspace-agent-item__singleline">
-              {provider ? (
-                <AgentProviderIcon
-                  provider={provider}
-                  labelColor={effectiveLabelColor}
-                  className="workspace-agent-item__provider"
-                />
-              ) : null}
-              <span className="workspace-agent-item__headline">
-                <span className="workspace-agent-item__title">{displayTitle}</span>
-                {owningSpace ? (
-                  <span
-                    className="workspace-agent-item__pill"
-                    data-cove-label-color={owningSpace.labelColor ?? undefined}
-                    title={owningSpace.name}
-                  >
-                    <span className="workspace-agent-item__pill-text">{owningSpace.name}</span>
+            <span className="workspace-agent-item__body">
+              <span className="workspace-agent-item__singleline">
+                <span className="workspace-agent-item__identity">
+                  {provider ? (
+                    <AgentProviderIcon
+                      provider={provider}
+                      labelColor={effectiveLabelColor}
+                      className={`workspace-agent-item__provider workspace-agent-item__provider--status workspace-agent-item__provider--status-${status}`}
+                    />
+                  ) : null}
+                  <span className="workspace-agent-item__status-label">
+                    {sidebarAgentStatusText}
                   </span>
-                ) : null}
+                </span>
+                <span className="workspace-agent-item__headline">
+                  <span className="workspace-agent-item__title">{displayTitle}</span>
+                  {showOwningSpacePill && owningSpace ? (
+                    <span
+                      className="workspace-agent-item__pill"
+                      data-cove-label-color={owningSpace.labelColor ?? undefined}
+                      title={owningSpace.name}
+                    >
+                      <span className="workspace-agent-item__pill-text">{owningSpace.name}</span>
+                    </span>
+                  ) : null}
+                </span>
               </span>
               <span
-                className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${status}`}
-                aria-label={sidebarAgentStatusText}
+                className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${status} workspace-agent-item__status--hidden`}
                 title={`${providerText} · ${startedText} · ${sidebarAgentStatusText}`}
               >
-                <span className="workspace-agent-item__status-label">{sidebarAgentStatusText}</span>
+                {sidebarAgentStatusText}
               </span>
             </span>
           </button>

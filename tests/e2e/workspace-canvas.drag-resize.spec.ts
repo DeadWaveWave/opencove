@@ -34,7 +34,7 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       ])
 
       await expect(window.locator('.workspace-canvas')).toBeVisible()
-      await expect(window.locator('.workspace-item__meta').first()).toContainText('2 terminals')
+      await expect(window.locator('.workspace-item__meta')).toHaveCount(0)
 
       const terminals = window.locator('.terminal-node')
       await expect(terminals).toHaveCount(2)

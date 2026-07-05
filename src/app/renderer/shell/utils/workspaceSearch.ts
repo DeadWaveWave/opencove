@@ -109,10 +109,7 @@ function resolvePullRequestSummary(
   return pullRequestsByBranch[branch] ?? null
 }
 
-function toEffectiveLabelColor(
-  node: Node<TerminalNodeData>,
-  inheritedLabelColorByNodeId: Map<string, LabelColor>,
-): LabelColor | null {
+function toEffectiveLabelColor(node: Node<TerminalNodeData>): LabelColor | null {
   const overrideRaw = (node.data.labelColorOverride ?? null) as unknown
   if (overrideRaw === 'none') {
     return null
@@ -122,25 +119,7 @@ function toEffectiveLabelColor(
     return overrideRaw
   }
 
-  return inheritedLabelColorByNodeId.get(node.id) ?? null
-}
-
-function buildInheritedLabelColorByNodeId(spaces: WorkspaceSpaceState[]): Map<string, LabelColor> {
-  const map = new Map<string, LabelColor>()
-
-  for (const space of spaces) {
-    if (!space.labelColor) {
-      continue
-    }
-
-    for (const nodeId of space.nodeIds) {
-      if (!map.has(nodeId)) {
-        map.set(nodeId, space.labelColor)
-      }
-    }
-  }
-
-  return map
+  return null
 }
 
 function buildSpaceByNodeId(spaces: WorkspaceSpaceState[]): Map<string, WorkspaceSpaceState> {
@@ -176,7 +155,6 @@ export function searchWorkspace({
   const hits: Array<WorkspaceSearchHit & { index: number }> = []
 
   const spaceByNodeId = buildSpaceByNodeId(spaces)
-  const inheritedLabelColorByNodeId = buildInheritedLabelColorByNodeId(spaces)
 
   spaces
     .filter(space => !space.parentSpaceId)
@@ -273,7 +251,7 @@ export function searchWorkspace({
         title,
         subtitle,
         score,
-        effectiveLabelColor: toEffectiveLabelColor(node, inheritedLabelColorByNodeId),
+        effectiveLabelColor: toEffectiveLabelColor(node),
         context: {
           space: space
             ? {
@@ -323,7 +301,7 @@ export function searchWorkspace({
         title,
         subtitle,
         score,
-        effectiveLabelColor: toEffectiveLabelColor(node, inheritedLabelColorByNodeId),
+        effectiveLabelColor: toEffectiveLabelColor(node),
         context: {
           space: space
             ? {

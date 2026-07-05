@@ -185,7 +185,9 @@ test.describe('Remote UI audit', () => {
 
       await closeSettings(window)
 
-      await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })
+      await window
+        .locator('[data-testid="workspace-sidebar-add-project"]')
+        .click({ noWaitAfter: true })
       const projectWizard = window.locator('[data-testid="workspace-project-create-window"]')
       await expect(projectWizard).toBeVisible()
       await window.locator('[data-testid="workspace-project-create-name"]').fill('UI Audit Project')

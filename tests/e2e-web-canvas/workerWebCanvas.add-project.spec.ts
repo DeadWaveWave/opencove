@@ -24,7 +24,7 @@ test.describe('Worker web canvas - Add project', () => {
 
     await openAuthedCanvas(page)
 
-    await page.locator('[data-testid="sidebar-add-project"]').click()
+    await page.locator('[data-testid="workspace-sidebar-add-project"]').click()
     await expect(page.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
 
     await page

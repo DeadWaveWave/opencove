@@ -6,7 +6,7 @@ import type { WorkspacePathOpener } from '../../../src/shared/types/api'
 
 function renderMenu(
   openers: WorkspacePathOpener[],
-  options?: { canCreateWorktree?: boolean; canArchive?: boolean },
+  options?: { canCreateWorktree?: boolean; canArchive?: boolean; currentLabelColor?: 'blue' },
 ) {
   render(
     <WorkspaceSpaceActionMenu
@@ -14,6 +14,7 @@ function renderMenu(
       availableOpeners={openers}
       canCreateWorktree={options?.canCreateWorktree ?? false}
       canArchive={options?.canArchive ?? false}
+      currentLabelColor={options?.currentLabelColor ?? null}
       closeMenu={() => undefined}
       setSpaceLabelColor={() => undefined}
       onCreateWorktree={() => undefined}
@@ -136,7 +137,7 @@ describe('WorkspaceSpaceActionMenu', () => {
     expect(onChangePreserveWindowSizes).toHaveBeenCalledWith(true)
   })
 
-  it('keeps label color second-to-last and arrange last', () => {
+  it('keeps label colors above the separator and arrange last', () => {
     render(
       <WorkspaceSpaceActionMenu
         menu={{ spaceId: 'space-1', x: 120, y: 80 }}
@@ -157,14 +158,27 @@ describe('WorkspaceSpaceActionMenu', () => {
       />,
     )
 
-    const ids = within(screen.getByTestId('workspace-space-action-menu'))
+    const menu = screen.getByTestId('workspace-space-action-menu')
+    const children = Array.from(menu.children)
+    const ids = within(menu)
       .getAllByRole('button')
       .map(button => button.getAttribute('data-testid'))
 
-    expect(ids.slice(-2)).toEqual([
-      'workspace-space-action-label-color',
-      'workspace-space-action-arrange',
-    ])
+    expect(children[0]).toHaveAttribute('data-testid', 'workspace-space-action-label-color-menu')
+    expect(children[1]).toHaveClass('workspace-context-menu__separator')
+    expect(ids).toContain('workspace-space-action-label-color-blue')
+    expect(ids.at(-1)).toBe('workspace-space-action-arrange')
+  })
+
+  it('shows the selected label color check in the swatch center', () => {
+    renderMenu([], { currentLabelColor: 'blue' })
+
+    expect(
+      screen.getByTestId('workspace-space-action-label-color-blue').querySelector('svg'),
+    ).not.toBeNull()
+    expect(
+      screen.getByTestId('workspace-space-action-label-color-green').querySelector('svg'),
+    ).toBeNull()
   })
 
   it('does not show the Open submenu when no path openers are available (web)', () => {

@@ -30,10 +30,27 @@ export interface PersistNotice {
   kind?: 'recovery' | 'write'
 }
 
+export type ProjectContextMenuTarget =
+  | {
+      kind: 'project'
+      workspaceId: string
+    }
+  | {
+      kind: 'space'
+      workspaceId: string
+      spaceId: string
+    }
+  | {
+      kind: 'agent'
+      workspaceId: string
+      nodeId: string
+    }
+
 export interface ProjectContextMenuState {
   workspaceId: string
   x: number
   y: number
+  target?: ProjectContextMenuTarget
 }
 
 export interface ProjectMountManagerState {

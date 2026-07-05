@@ -44,7 +44,7 @@ export const enWorkspaceCanvas = {
   },
   labelColors: {
     title: 'Label Color',
-    autoInherit: 'Auto (inherit Space)',
+    autoInherit: 'Default',
     none: 'None',
     gray: 'Gray',
     red: 'Red',

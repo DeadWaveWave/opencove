@@ -8,7 +8,6 @@ import {
   GitBranchPlus,
   LayoutGrid,
   Package,
-  Tag,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
@@ -29,6 +28,7 @@ interface WorkspaceSpaceActionMenuProps {
   canArrange?: boolean
   canCreateWorktree: boolean
   canArchive: boolean
+  currentLabelColor?: LabelColor | null
   preserveWindowSizes?: boolean
   closeMenu: () => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
@@ -41,6 +41,7 @@ interface WorkspaceSpaceActionMenuProps {
 }
 
 const SUBMENU_WIDTH = MENU_WIDTH
+const SPACE_ACTION_MENU_WIDTH = 220
 
 function renderMark(checked: boolean): React.JSX.Element {
   return checked ? (
@@ -81,6 +82,7 @@ export function WorkspaceSpaceActionMenu({
   canArrange = true,
   canCreateWorktree,
   canArchive,
+  currentLabelColor = null,
   preserveWindowSizes = false,
   closeMenu,
   setSpaceLabelColor,
@@ -92,11 +94,10 @@ export function WorkspaceSpaceActionMenu({
   onOpenPath,
 }: WorkspaceSpaceActionMenuProps): React.JSX.Element | null {
   const { t } = useTranslation()
-  const [openSubmenu, setOpenSubmenu] = React.useState<'open' | 'label-color' | null>(null)
-  const [pinnedSubmenu, setPinnedSubmenu] = React.useState<'open' | 'label-color' | null>(null)
+  const [openSubmenu, setOpenSubmenu] = React.useState<'open' | null>(null)
+  const [pinnedSubmenu, setPinnedSubmenu] = React.useState<'open' | null>(null)
   const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const openButtonRef = React.useRef<HTMLButtonElement | null>(null)
-  const labelColorButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const submenuRef = React.useRef<HTMLDivElement | null>(null)
   const [measuredSubmenuSize, setMeasuredSubmenuSize] = React.useState<{
     width: number
@@ -129,7 +130,7 @@ export function WorkspaceSpaceActionMenu({
   }, [cancelScheduledSubmenuClose, pinnedSubmenu])
 
   const openSubmenuTransient = React.useCallback(
-    (submenu: 'open' | 'label-color') => {
+    (submenu: 'open') => {
       cancelScheduledSubmenuClose()
       setPinnedSubmenu(null)
       setOpenSubmenu(submenu)
@@ -138,7 +139,7 @@ export function WorkspaceSpaceActionMenu({
   )
 
   const openSubmenuPinned = React.useCallback(
-    (submenu: 'open' | 'label-color') => {
+    (submenu: 'open') => {
       cancelScheduledSubmenuClose()
       setPinnedSubmenu(submenu)
       setOpenSubmenu(submenu)
@@ -186,22 +187,16 @@ export function WorkspaceSpaceActionMenu({
 
   const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth
   const viewportHeight = typeof window === 'undefined' ? 720 : window.innerHeight
-  const menuLeft = Math.min(menu.x, viewportWidth - MENU_WIDTH - VIEWPORT_PADDING)
+  const menuLeft = Math.min(menu.x, viewportWidth - SPACE_ACTION_MENU_WIDTH - VIEWPORT_PADDING)
   const menuTop = Math.min(menu.y, viewportHeight - 120)
   const shouldShowOpenSubmenu = openSubmenu === 'open' && sortedOpeners.length > 0
-  const shouldShowLabelColorSubmenu = openSubmenu === 'label-color'
   const rootMenuRect = {
     left: menuLeft,
     top: menuTop,
-    width: MENU_WIDTH,
+    width: SPACE_ACTION_MENU_WIDTH,
     height: 0,
   }
-  const activeSubmenuAnchor =
-    openSubmenu === 'open'
-      ? openButtonRef.current
-      : openSubmenu === 'label-color'
-        ? labelColorButtonRef.current
-        : null
+  const activeSubmenuAnchor = openSubmenu === 'open' ? openButtonRef.current : null
   const measuredSubmenuAnchorRect = activeSubmenuAnchor?.getBoundingClientRect() ?? null
   const submenuMaxHeight = Math.min(SUBMENU_MAX_HEIGHT, viewportHeight - VIEWPORT_PADDING * 2)
   const submenuVisibleHeight =
@@ -244,6 +239,61 @@ export function WorkspaceSpaceActionMenu({
         onMouseEnter={cancelScheduledSubmenuClose}
         onMouseLeave={scheduleSubmenuClose}
       >
+        <div
+          className="workspace-space-action-menu__color-strip"
+          data-testid="workspace-space-action-label-color-menu"
+        >
+          <button
+            type="button"
+            className={`workspace-space-action-menu__color-button${currentLabelColor === null ? ' workspace-space-action-menu__color-button--selected' : ''}`}
+            data-testid="workspace-space-action-label-color-none"
+            aria-label={t('labelColors.none')}
+            title={t('labelColors.none')}
+            onClick={() => {
+              setSpaceLabelColor(menu.spaceId, null)
+              closeMenu()
+            }}
+          >
+            <span
+              className="workspace-label-color-menu__dot workspace-label-color-menu__dot--none"
+              aria-hidden="true"
+            />
+            {currentLabelColor === null ? (
+              <Check className="workspace-space-action-menu__color-check" aria-hidden="true" />
+            ) : null}
+          </button>
+
+          {LABEL_COLORS.map(color => {
+            const selected = currentLabelColor === color
+
+            return (
+              <button
+                key={color}
+                type="button"
+                className={`workspace-space-action-menu__color-button${selected ? ' workspace-space-action-menu__color-button--selected' : ''}`}
+                data-testid={`workspace-space-action-label-color-${color}`}
+                aria-label={t(`labelColors.${color}`)}
+                title={t(`labelColors.${color}`)}
+                onClick={() => {
+                  setSpaceLabelColor(menu.spaceId, color)
+                  closeMenu()
+                }}
+              >
+                <span
+                  className="workspace-label-color-menu__dot"
+                  data-cove-label-color={color}
+                  aria-hidden="true"
+                />
+                {selected ? (
+                  <Check className="workspace-space-action-menu__color-check" aria-hidden="true" />
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="workspace-context-menu__separator" />
+
         {canCreateWorktree ? (
           <button
             type="button"
@@ -320,22 +370,6 @@ export function WorkspaceSpaceActionMenu({
           </button>
         ) : null}
 
-        <button
-          type="button"
-          data-testid="workspace-space-action-label-color"
-          ref={labelColorButtonRef}
-          onMouseEnter={() => openSubmenuTransient('label-color')}
-          onFocus={() => openSubmenuTransient('label-color')}
-          onClick={() => openSubmenuPinned('label-color')}
-        >
-          <Tag className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">{t('labelColors.title')}</span>
-          <ChevronRight
-            className="workspace-context-menu__icon workspace-space-action-menu__chevron"
-            aria-hidden="true"
-          />
-        </button>
-
         {onArrange ? (
           <button
             type="button"
@@ -384,61 +418,6 @@ export function WorkspaceSpaceActionMenu({
             >
               <FolderOpen className="workspace-context-menu__icon" aria-hidden="true" />
               <span className="workspace-context-menu__label">{opener.label}</span>
-            </button>
-          ))}
-        </ViewportMenuSurface>
-      ) : null}
-
-      {shouldShowLabelColorSubmenu ? (
-        <ViewportMenuSurface
-          ref={submenuRef}
-          open={true}
-          className="workspace-context-menu workspace-space-action-menu workspace-space-action-menu--submenu"
-          data-testid="workspace-space-action-label-color-menu"
-          placement={{
-            type: 'absolute',
-            top: submenuPlacement.top,
-            left: submenuPlacement.left,
-          }}
-          style={submenuStyle}
-          onMouseEnter={() => {
-            cancelScheduledSubmenuClose()
-            setPinnedSubmenu(null)
-            setOpenSubmenu('label-color')
-          }}
-          onMouseLeave={scheduleSubmenuClose}
-        >
-          <button
-            type="button"
-            data-testid="workspace-space-action-label-color-none"
-            onClick={() => {
-              setSpaceLabelColor(menu.spaceId, null)
-              closeMenu()
-            }}
-          >
-            <span
-              className="workspace-context-menu__icon workspace-label-color-menu__dot workspace-label-color-menu__dot--none"
-              aria-hidden="true"
-            />
-            <span className="workspace-context-menu__label">{t('labelColors.none')}</span>
-          </button>
-
-          {LABEL_COLORS.map(color => (
-            <button
-              key={color}
-              type="button"
-              data-testid={`workspace-space-action-label-color-${color}`}
-              onClick={() => {
-                setSpaceLabelColor(menu.spaceId, color)
-                closeMenu()
-              }}
-            >
-              <span
-                className="workspace-context-menu__icon workspace-label-color-menu__dot"
-                data-cove-label-color={color}
-                aria-hidden="true"
-              />
-              <span className="workspace-context-menu__label">{t(`labelColors.${color}`)}</span>
             </button>
           ))}
         </ViewportMenuSurface>

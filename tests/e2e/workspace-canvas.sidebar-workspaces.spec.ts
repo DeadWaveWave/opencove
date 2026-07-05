@@ -13,7 +13,7 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
     try {
       await seedWorkspaceState(window, {
         activeWorkspaceId: 'workspace-scroll-0',
-        workspaces: Array.from({ length: 18 }, (_, index) => ({
+        workspaces: Array.from({ length: 24 }, (_, index) => ({
           id: `workspace-scroll-${index}`,
           name: `workspace-scroll-${index}`,
           path: `${testWorkspacePath}-scroll-${index}`,
@@ -25,7 +25,7 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
       const sidebarList = window.locator('.workspace-sidebar__list')
       const settingsButton = window.locator('[data-testid="app-header-settings"]')
       const lastWorkspaceName = window.locator('.workspace-item__name', {
-        hasText: 'workspace-scroll-17',
+        hasText: 'workspace-scroll-23',
       })
 
       await expect(settingsButton).toBeVisible()

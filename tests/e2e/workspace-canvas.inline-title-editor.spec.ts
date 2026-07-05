@@ -67,7 +67,7 @@ test.describe('Workspace Canvas - Inline Title Editor', () => {
       const longTitle =
         '超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题'
 
-      const sidebarToggle = window.locator('[data-testid="app-header-toggle-primary-sidebar"]')
+      const sidebarToggle = window.locator('[data-testid="workspace-sidebar-pin"]')
       await expect(sidebarToggle).toBeVisible()
       await sidebarToggle.click()
       await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
@@ -156,7 +156,7 @@ test.describe('Workspace Canvas - Inline Title Editor', () => {
         },
       )
 
-      const sidebarToggle = window.locator('[data-testid="app-header-toggle-primary-sidebar"]')
+      const sidebarToggle = window.locator('[data-testid="workspace-sidebar-pin"]')
       await expect(sidebarToggle).toBeVisible()
       await sidebarToggle.click()
       await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)

@@ -22,6 +22,7 @@ import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
 import { useAppQuitPersistenceFlush } from './hooks/useAppQuitPersistenceFlush'
+import { useAppDocumentChrome } from './hooks/useAppDocumentChrome'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
@@ -36,6 +37,7 @@ import { useShellOverlayState } from './hooks/useShellOverlayState'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
 import { useWorkspaceMountRepair } from './hooks/useWorkspaceMountRepair'
+import { usePrimarySidebarAutoReveal } from './hooks/usePrimarySidebarAutoReveal'
 import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
 import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
 import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
@@ -134,8 +136,7 @@ export default function App(): React.JSX.Element {
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
     [activeWorkspaceId, workspaces],
   )
-
-  const activeWorkspaceName = activeWorkspace?.name ?? null
+  useAppDocumentChrome(activeWorkspace?.name ?? null)
 
   const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
 
@@ -174,6 +175,13 @@ export default function App(): React.JSX.Element {
     projectDeleteConfirmation !== null
 
   useWebsiteWindowOcclusionSync(hasBlockingShellOverlay)
+  const {
+    isPeekOpen: isPrimarySidebarPeekOpen,
+    handlePointerEnter: handleSidebarPointerEnter,
+    handlePointerLeave: handleSidebarPointerLeave,
+  } = usePrimarySidebarAutoReveal({
+    isCollapsed: isPrimarySidebarCollapsed,
+  })
 
   useAppKeybindings({
     enabled:
@@ -225,20 +233,11 @@ export default function App(): React.JSX.Element {
     }
   }, [isSettingsOpen])
 
-  useEffect(() => {
-    document.title = activeWorkspaceName ? `${activeWorkspaceName} — OpenCove` : 'OpenCove'
-  }, [activeWorkspaceName])
-
   const platform =
     typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
       ? window.opencoveApi.meta.platform
       : undefined
 
-  useEffect(() => {
-    if (platform) {
-      document.documentElement.dataset.covePlatform = platform
-    }
-  }, [platform])
   const commandCenterBindings = useMemo(
     () =>
       resolveCommandKeybinding({
@@ -284,6 +283,7 @@ export default function App(): React.JSX.Element {
     handleRemoveWorkspace,
     handleSelectWorkspace,
     handleSelectAgentNode,
+    handleSelectSpace,
     handleRequestRemoveProject,
     handleRequestManageProjectMounts,
     handleRequestOpenProjectInFileManager,
@@ -310,12 +310,11 @@ export default function App(): React.JSX.Element {
     <AppShellBootBoundary isBootReady={isPersistReady}>
       <>
         <div
-          className={`app-shell ${isPrimarySidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}`}
+          className={`app-shell ${isPrimarySidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}${isPrimarySidebarPeekOpen ? ' app-shell--sidebar-peek' : ''}`}
         >
           <AppHeader
             activeWorkspaceName={activeWorkspace?.name ?? null}
             activeWorkspacePath={activeWorkspace?.path ?? null}
-            isSidebarCollapsed={isPrimarySidebarCollapsed}
             isControlCenterOpen={isControlCenterOpen}
             isCommandCenterOpen={isCommandCenterOpen}
             isPerformanceMonitorEnabled={agentSettings.performanceMonitorHeaderButtonEnabled}
@@ -328,12 +327,6 @@ export default function App(): React.JSX.Element {
             memoryTrend={memoryTrend}
             performanceIncidents={performanceIncidents}
             updateState={updateState}
-            onToggleSidebar={() => {
-              setAgentSettings(prev => ({
-                ...prev,
-                isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
-              }))
-            }}
             onToggleControlCenter={toggleControlCenter}
             onToggleCommandCenter={toggleCommandCenter}
             onTogglePerformanceMonitor={togglePerformanceMonitor}
@@ -346,18 +339,29 @@ export default function App(): React.JSX.Element {
             onInstallUpdate={installUpdate}
           />
 
-          {isPrimarySidebarCollapsed ? null : (
-            <Sidebar
-              workspaces={workspaces}
-              activeWorkspaceId={activeWorkspaceId}
-              persistNotice={persistNotice}
-              onAddWorkspace={handleAddWorkspace}
-              onSelectWorkspace={handleSelectWorkspace}
-              onOpenProjectContextMenu={setProjectContextMenu}
-              onSelectAgentNode={handleSelectAgentNode}
-              onReorderWorkspaces={handleReorderWorkspaces}
-            />
-          )}
+          <Sidebar
+            variant={
+              isPrimarySidebarCollapsed ? (isPrimarySidebarPeekOpen ? 'peek' : 'rail') : 'docked'
+            }
+            isPinned={!isPrimarySidebarCollapsed}
+            workspaces={workspaces}
+            activeWorkspaceId={activeWorkspaceId}
+            persistNotice={persistNotice}
+            onTogglePinned={() => {
+              setAgentSettings(prev => ({
+                ...prev,
+                isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
+              }))
+            }}
+            onAddProject={handleAddWorkspace}
+            onSelectWorkspace={handleSelectWorkspace}
+            onSelectSpace={handleSelectSpace}
+            onOpenProjectContextMenu={setProjectContextMenu}
+            onSelectAgentNode={handleSelectAgentNode}
+            onReorderWorkspaces={handleReorderWorkspaces}
+            onPointerEnter={handleSidebarPointerEnter}
+            onPointerLeave={handleSidebarPointerLeave}
+          />
 
           <WorkspaceMain
             activeWorkspace={activeWorkspace}

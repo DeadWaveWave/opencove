@@ -151,6 +151,7 @@ export function WorkspaceCanvasMenus({
         canArrange={canArrangeActiveSpace}
         canCreateWorktree={canCreateWorktreeForActiveMenuSpace}
         canArchive={activeMenuSpace !== null}
+        currentLabelColor={activeMenuSpace?.labelColor ?? null}
         closeMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
         preserveWindowSizes={arrangePreserveWindowSizes}

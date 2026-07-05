@@ -44,7 +44,7 @@ export const zhCNWorkspaceCanvas = {
   },
   labelColors: {
     title: '颜色标注',
-    autoInherit: '自动（跟随 Space）',
+    autoInherit: '默认',
     none: '无',
     gray: '灰色',
     red: '红色',

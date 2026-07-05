@@ -10,7 +10,7 @@ type NodeWithEffectiveLabelColor = Node<TerminalNodeData> & {
 export function useWorkspaceCanvasLabelColorFilter({
   nodes,
   edges,
-  spaces,
+  spaces: _spaces,
 }: {
   nodes: Node<TerminalNodeData>[]
   edges: Edge[]
@@ -24,33 +24,11 @@ export function useWorkspaceCanvasLabelColorFilter({
 } {
   const [labelColorFilter, setLabelColorFilter] = React.useState<LabelColor | null>(null)
 
-  const inheritedLabelColorByNodeId = React.useMemo(() => {
-    const map = new Map<string, LabelColor>()
-
-    for (const space of spaces) {
-      if (!space.labelColor) {
-        continue
-      }
-
-      for (const nodeId of space.nodeIds) {
-        if (!map.has(nodeId)) {
-          map.set(nodeId, space.labelColor)
-        }
-      }
-    }
-
-    return map
-  }, [spaces])
-
   const nodesWithEffectiveLabelColor = React.useMemo<NodeWithEffectiveLabelColor[]>(() => {
     return nodes.map(node => {
       const override = node.data.labelColorOverride ?? null
       const effectiveLabelColor: LabelColor | null =
-        override === 'none'
-          ? null
-          : override
-            ? override
-            : (inheritedLabelColorByNodeId.get(node.id) ?? null)
+        override === 'none' ? null : override ? override : null
 
       return {
         ...node,
@@ -60,7 +38,7 @@ export function useWorkspaceCanvasLabelColorFilter({
         },
       }
     })
-  }, [inheritedLabelColorByNodeId, nodes])
+  }, [nodes])
 
   const usedLabelColors = React.useMemo(() => {
     const seen = new Set<LabelColor>()

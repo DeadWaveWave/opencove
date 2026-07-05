@@ -45,7 +45,6 @@ export function getWorkspaceAgents(workspace: WorkspaceState): Array<Node<Termin
 }
 
 export function buildSidebarAgentItems(workspace: WorkspaceState): SidebarAgentItemModel[] {
-  const inheritedLabelColorByNodeId = buildInheritedLabelColorByNodeId(workspace.spaces)
   const spaceByNodeId = buildSpaceByNodeId(workspace.spaces)
 
   return getWorkspaceAgents(workspace).map(node => {
@@ -65,29 +64,11 @@ export function buildSidebarAgentItems(workspace: WorkspaceState): SidebarAgentI
             preferFallbackTitle: node.data.titlePinnedByUser === true,
           })
         : node.data.title,
-      effectiveLabelColor: resolveEffectiveLabelColor(node, inheritedLabelColorByNodeId),
+      effectiveLabelColor: resolveEffectiveLabelColor(node),
       owningSpace: spaceByNodeId.get(node.id) ?? null,
       status: resolveSidebarAgentStatus(node.data.status),
     }
   })
-}
-
-function buildInheritedLabelColorByNodeId(spaces: WorkspaceSpaceState[]): Map<string, LabelColor> {
-  const map = new Map<string, LabelColor>()
-
-  for (const space of spaces) {
-    if (!space.labelColor) {
-      continue
-    }
-
-    for (const nodeId of space.nodeIds) {
-      if (!map.has(nodeId)) {
-        map.set(nodeId, space.labelColor)
-      }
-    }
-  }
-
-  return map
 }
 
 function buildSpaceByNodeId(spaces: WorkspaceSpaceState[]): Map<string, WorkspaceSpaceState> {
@@ -104,10 +85,7 @@ function buildSpaceByNodeId(spaces: WorkspaceSpaceState[]): Map<string, Workspac
   return map
 }
 
-function resolveEffectiveLabelColor(
-  node: Node<TerminalNodeData>,
-  inheritedLabelColorByNodeId: Map<string, LabelColor>,
-): LabelColor | null {
+function resolveEffectiveLabelColor(node: Node<TerminalNodeData>): LabelColor | null {
   const overrideRaw = (node.data.labelColorOverride ?? null) as unknown
   if (overrideRaw === 'none') {
     return null
@@ -117,5 +95,5 @@ function resolveEffectiveLabelColor(
     return overrideRaw
   }
 
-  return inheritedLabelColorByNodeId.get(node.id) ?? null
+  return null
 }

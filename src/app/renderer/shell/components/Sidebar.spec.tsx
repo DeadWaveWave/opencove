@@ -60,8 +60,10 @@ vi.mock('@dnd-kit/utilities', () => ({
 
 function createWorkspace(
   id: string,
-  options?: { hasAgent?: boolean; spaceLabelColor?: LabelColor | null },
+  options?: { hasAgent?: boolean; spaceLabelColor?: LabelColor | null; activeSpace?: boolean },
 ): WorkspaceState {
+  const spaceId = `${id}-space`
+
   return {
     id,
     name: id,
@@ -165,7 +167,7 @@ function createWorkspace(
       options?.hasAgent && options.spaceLabelColor
         ? [
             {
-              id: `${id}-space`,
+              id: spaceId,
               name: `${id} space`,
               directoryPath: `/tmp/${id}`,
               targetMountId: null,
@@ -175,7 +177,7 @@ function createWorkspace(
             },
           ]
         : [],
-    activeSpaceId: null,
+    activeSpaceId: options?.activeSpace ? spaceId : null,
     spaceArchiveRecords: [],
   }
 }
@@ -194,8 +196,8 @@ describe('Sidebar', () => {
         workspaces={[createWorkspace('workspace-a'), createWorkspace('workspace-b')]}
         activeWorkspaceId="workspace-a"
         persistNotice={null}
-        onAddWorkspace={() => undefined}
         onSelectWorkspace={() => undefined}
+        onSelectSpace={() => undefined}
         onOpenProjectContextMenu={() => undefined}
         onSelectAgentNode={() => undefined}
         onReorderWorkspaces={onReorderWorkspaces}
@@ -239,8 +241,8 @@ describe('Sidebar', () => {
         workspaces={[createWorkspace('workspace-a', { hasAgent: true })]}
         activeWorkspaceId="workspace-a"
         persistNotice={null}
-        onAddWorkspace={() => undefined}
         onSelectWorkspace={onSelectWorkspace}
+        onSelectSpace={() => undefined}
         onOpenProjectContextMenu={onOpenProjectContextMenu}
         onSelectAgentNode={onSelectAgentNode}
         onReorderWorkspaces={() => undefined}
@@ -265,20 +267,36 @@ describe('Sidebar', () => {
       workspaceId: 'workspace-a',
       x: 120,
       y: 220,
+      target: {
+        kind: 'project',
+        workspaceId: 'workspace-a',
+      },
     })
 
     fireEvent.click(agentButton)
     expect(onSelectAgentNode).toHaveBeenCalledWith('workspace-a', 'workspace-a-agent')
+
+    fireEvent.contextMenu(agentButton, { clientX: 130, clientY: 230 })
+    expect(onOpenProjectContextMenu).toHaveBeenCalledWith({
+      workspaceId: 'workspace-a',
+      x: 130,
+      y: 230,
+      target: {
+        kind: 'agent',
+        workspaceId: 'workspace-a',
+        nodeId: 'workspace-a-agent',
+      },
+    })
   })
 
-  it('syncs the inherited space label color onto the sidebar provider badge', () => {
-    render(
+  it('keeps space label color on the group without tinting nested agents', () => {
+    const { container } = render(
       <Sidebar
         workspaces={[createWorkspace('workspace-a', { hasAgent: true, spaceLabelColor: 'blue' })]}
         activeWorkspaceId="workspace-a"
         persistNotice={null}
-        onAddWorkspace={() => undefined}
         onSelectWorkspace={() => undefined}
+        onSelectSpace={() => undefined}
         onOpenProjectContextMenu={() => undefined}
         onSelectAgentNode={() => undefined}
         onReorderWorkspaces={() => undefined}
@@ -287,21 +305,61 @@ describe('Sidebar', () => {
 
     const agentButton = screen.getByTestId('workspace-agent-item-workspace-a-workspace-a-agent')
     const badge = agentButton.querySelector('.agent-provider-icon')
+    const group = container.querySelector('.workspace-space-group')
 
-    expect(badge?.getAttribute('data-cove-label-color')).toBe('blue')
-    expect(agentButton.getAttribute('data-cove-label-color')).toBe('blue')
+    expect(group?.getAttribute('data-cove-label-color')).toBe('blue')
+    expect(group?.className).toContain('workspace-space-group--branched')
+    expect(badge?.getAttribute('data-cove-label-color')).toBeNull()
+    expect(agentButton.getAttribute('data-cove-label-color')).toBeNull()
+  })
+
+  it('opens a context menu target for spaces', () => {
+    const onOpenProjectContextMenu = vi.fn()
+
+    render(
+      <Sidebar
+        workspaces={[createWorkspace('workspace-a', { hasAgent: true, spaceLabelColor: 'blue' })]}
+        activeWorkspaceId="workspace-a"
+        persistNotice={null}
+        onSelectWorkspace={() => undefined}
+        onSelectSpace={() => undefined}
+        onOpenProjectContextMenu={onOpenProjectContextMenu}
+        onSelectAgentNode={() => undefined}
+        onReorderWorkspaces={() => undefined}
+      />,
+    )
+
+    fireEvent.contextMenu(
+      screen.getByTestId('workspace-space-item-workspace-a-workspace-a-space'),
+      {
+        clientX: 140,
+        clientY: 240,
+      },
+    )
+
+    expect(document.querySelector('.workspace-space-item__icon')).toBeNull()
+    expect(onOpenProjectContextMenu).toHaveBeenCalledWith({
+      workspaceId: 'workspace-a',
+      x: 140,
+      y: 240,
+      target: {
+        kind: 'space',
+        workspaceId: 'workspace-a',
+        spaceId: 'workspace-a-space',
+      },
+    })
   })
 
   it('toggles the project agent tree without selecting the workspace', () => {
     const onSelectWorkspace = vi.fn()
 
-    render(
+    const { rerender } = render(
       <Sidebar
         workspaces={[createWorkspace('workspace-a', { hasAgent: true })]}
         activeWorkspaceId="workspace-a"
         persistNotice={null}
-        onAddWorkspace={() => undefined}
         onSelectWorkspace={onSelectWorkspace}
+        onSelectSpace={() => undefined}
         onOpenProjectContextMenu={() => undefined}
         onSelectAgentNode={() => undefined}
         onReorderWorkspaces={() => undefined}
@@ -314,8 +372,128 @@ describe('Sidebar', () => {
     fireEvent.click(toggleButton)
     expect(screen.queryByTestId('workspace-agent-item-workspace-a-workspace-a-agent')).toBeNull()
     expect(onSelectWorkspace).not.toHaveBeenCalled()
+    rerender(
+      <Sidebar
+        variant="rail"
+        workspaces={[createWorkspace('workspace-a', { hasAgent: true })]}
+        activeWorkspaceId="workspace-a"
+        persistNotice={null}
+        onSelectWorkspace={onSelectWorkspace}
+        onSelectSpace={() => undefined}
+        onOpenProjectContextMenu={() => undefined}
+        onSelectAgentNode={() => undefined}
+        onReorderWorkspaces={() => undefined}
+      />,
+    )
+    expect(screen.queryByTestId('workspace-rail-space-root-workspace-a')).toBeNull()
+  })
 
-    fireEvent.click(toggleButton)
+  it('selects a space from the expanded project tree', () => {
+    const onSelectSpace = vi.fn()
+
+    render(
+      <Sidebar
+        workspaces={[createWorkspace('workspace-a', { hasAgent: true, spaceLabelColor: 'blue' })]}
+        activeWorkspaceId="workspace-a"
+        persistNotice={null}
+        onSelectWorkspace={() => undefined}
+        onSelectSpace={onSelectSpace}
+        onOpenProjectContextMenu={() => undefined}
+        onSelectAgentNode={() => undefined}
+        onReorderWorkspaces={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('workspace-space-item-workspace-a-workspace-a-space'))
+
+    expect(onSelectSpace).toHaveBeenCalledWith('workspace-a', 'workspace-a-space')
+  })
+
+  it('toggles a space agent group without selecting the space', () => {
+    const onSelectSpace = vi.fn()
+
+    const { rerender } = render(
+      <Sidebar
+        workspaces={[createWorkspace('workspace-a', { hasAgent: true, spaceLabelColor: 'blue' })]}
+        activeWorkspaceId="workspace-a"
+        persistNotice={null}
+        onSelectWorkspace={() => undefined}
+        onSelectSpace={onSelectSpace}
+        onOpenProjectContextMenu={() => undefined}
+        onSelectAgentNode={() => undefined}
+        onReorderWorkspaces={() => undefined}
+      />,
+    )
+
+    const spaceItem = screen.getByTestId('workspace-space-item-workspace-a-workspace-a-space')
+    const spaceToggle = spaceItem.querySelector('.workspace-space-item__toggle')
+
+    expect(spaceToggle).not.toBeNull()
     expect(screen.getByTestId('workspace-agent-item-workspace-a-workspace-a-agent')).not.toBeNull()
+
+    fireEvent.click(spaceToggle as Element)
+
+    expect(screen.queryByTestId('workspace-agent-item-workspace-a-workspace-a-agent')).toBeNull()
+    expect(onSelectSpace).not.toHaveBeenCalled()
+    rerender(
+      <Sidebar
+        variant="rail"
+        workspaces={[createWorkspace('workspace-a', { hasAgent: true, spaceLabelColor: 'blue' })]}
+        activeWorkspaceId="workspace-a"
+        persistNotice={null}
+        onSelectWorkspace={() => undefined}
+        onSelectSpace={onSelectSpace}
+        onOpenProjectContextMenu={() => undefined}
+        onSelectAgentNode={() => undefined}
+        onReorderWorkspaces={() => undefined}
+      />,
+    )
+    expect(screen.getByTestId('workspace-rail-space-workspace-a-workspace-a-space')).not.toBeNull()
+    expect(screen.queryByTestId('workspace-rail-agent-workspace-a-workspace-a-agent')).toBeNull()
+  })
+
+  it('renders the collapsed rail with space grouping and nested agents', () => {
+    const { container } = render(
+      <Sidebar
+        variant="rail"
+        workspaces={[
+          createWorkspace('workspace-a', {
+            hasAgent: true,
+            spaceLabelColor: 'purple',
+            activeSpace: true,
+          }),
+          createWorkspace('workspace-b', {
+            hasAgent: true,
+            spaceLabelColor: 'green',
+          }),
+        ]}
+        activeWorkspaceId="workspace-a"
+        persistNotice={null}
+        onSelectWorkspace={() => undefined}
+        onSelectSpace={() => undefined}
+        onOpenProjectContextMenu={() => undefined}
+        onSelectAgentNode={() => undefined}
+        onReorderWorkspaces={() => undefined}
+      />,
+    )
+
+    const spaceButton = screen.getByTestId('workspace-rail-space-workspace-a-workspace-a-space')
+    const agentButton = screen.getByTestId('workspace-rail-agent-workspace-a-workspace-a-agent')
+    const inactiveSpaceButton = screen.getByTestId(
+      'workspace-rail-space-workspace-b-workspace-b-space',
+    )
+    const inactiveAgentButton = screen.getByTestId(
+      'workspace-rail-agent-workspace-b-workspace-b-agent',
+    )
+    const branch = container.querySelector('.workspace-rail-space-group__agents')
+
+    expect(spaceButton.className).toContain('workspace-rail-space--active')
+    expect(inactiveSpaceButton.className).not.toContain('workspace-rail-space--active')
+    expect(agentButton.querySelector('.agent-provider-icon')).not.toBeNull()
+    expect(inactiveAgentButton.querySelector('.agent-provider-icon')).not.toBeNull()
+    expect(branch).not.toBeNull()
+    expect(
+      branch?.closest('.workspace-rail-space-group')?.getAttribute('data-cove-label-color'),
+    ).toBe('purple')
   })
 })

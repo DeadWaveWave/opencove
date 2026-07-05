@@ -1,5 +1,8 @@
 export const zhCNShell = {
   projectContextMenu: {
+    rename: '重命名',
+    save: '保存',
+    cancel: '取消',
     manageMounts: '管理位置…',
     openInExplorer: '在资源管理器中打开',
     openInFinder: '在 Finder 中打开',

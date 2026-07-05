@@ -137,7 +137,9 @@ export function AppShellPopups({
 
       {projectContextMenu ? (
         <ProjectContextMenu
+          workspaces={workspaces}
           workspaceId={projectContextMenu.workspaceId}
+          target={projectContextMenu.target}
           x={projectContextMenu.x}
           y={projectContextMenu.y}
           onRequestManageMounts={workspaceId => {

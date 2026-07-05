@@ -354,15 +354,19 @@ body {
 }
 
 .app-shell {
-  --cove-primary-sidebar-width: 280px;
+  --cove-primary-sidebar-expanded-width: 280px;
+  --cove-primary-sidebar-rail-width: 72px;
+  --cove-primary-sidebar-width: var(--cove-primary-sidebar-expanded-width);
   display: grid;
   grid-template-columns: var(--cove-primary-sidebar-width) minmax(0, 1fr);
   grid-template-rows: var(--cove-app-header-height) minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  position: relative;
+  transition: grid-template-columns 0.22s ease;
 }
 
 .app-shell--sidebar-collapsed {
-  --cove-primary-sidebar-width: 0px;
+  --cove-primary-sidebar-width: var(--cove-primary-sidebar-rail-width);
 }

@@ -35,7 +35,6 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof AppHeader>>
     <AppHeader
       activeWorkspaceName="Workspace"
       activeWorkspacePath="/tmp/workspace"
-      isSidebarCollapsed={false}
       isControlCenterOpen={false}
       isCommandCenterOpen={false}
       isPerformanceMonitorEnabled={true}
@@ -48,7 +47,6 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof AppHeader>>
       memoryTrend={memoryTrend}
       performanceIncidents={[]}
       updateState={null}
-      onToggleSidebar={() => undefined}
       onToggleControlCenter={() => undefined}
       onToggleCommandCenter={() => undefined}
       onTogglePerformanceMonitor={() => undefined}

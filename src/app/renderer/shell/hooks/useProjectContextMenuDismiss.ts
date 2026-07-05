@@ -13,11 +13,8 @@ export function useProjectContextMenuDismiss({
       return
     }
 
-    const closeMenu = (event: MouseEvent): void => {
-      if (
-        event.target instanceof Element &&
-        event.target.closest('.workspace-project-context-menu')
-      ) {
+    const closeMenu = (event: Event): void => {
+      if (event.target instanceof Element && event.target.closest('.workspace-context-menu')) {
         return
       }
 
@@ -30,11 +27,13 @@ export function useProjectContextMenuDismiss({
       }
     }
 
-    window.addEventListener('mousedown', closeMenu)
+    window.addEventListener('pointerdown', closeMenu, true)
+    window.addEventListener('mousedown', closeMenu, true)
     window.addEventListener('keydown', handleEscape)
 
     return () => {
-      window.removeEventListener('mousedown', closeMenu)
+      window.removeEventListener('pointerdown', closeMenu, true)
+      window.removeEventListener('mousedown', closeMenu, true)
       window.removeEventListener('keydown', handleEscape)
     }
   }, [projectContextMenu, setProjectContextMenu])

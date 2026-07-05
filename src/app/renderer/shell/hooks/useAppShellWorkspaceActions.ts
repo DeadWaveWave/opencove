@@ -78,6 +78,39 @@ export function useAppShellWorkspaceActions({
     }))
   }, [])
 
+  const handleSelectSpace = useCallback((workspaceId: string, spaceId: string): void => {
+    const store = useAppStore.getState()
+    const targetWorkspace = store.workspaces.find(workspace => workspace.id === workspaceId) ?? null
+    const targetSpace =
+      targetWorkspace?.spaces.find(space => space.id === spaceId && !space.parentSpaceId) ?? null
+
+    store.setActiveWorkspaceId(workspaceId)
+
+    if (!targetSpace) {
+      store.setFocusRequest(null)
+      return
+    }
+
+    store.setWorkspaces(previous =>
+      previous.map(workspace => {
+        if (workspace.id !== workspaceId || workspace.activeSpaceId === spaceId) {
+          return workspace
+        }
+
+        return {
+          ...workspace,
+          activeSpaceId: spaceId,
+        }
+      }),
+    )
+    store.setFocusRequest(prev => ({
+      kind: 'space',
+      workspaceId,
+      spaceId,
+      sequence: (prev?.sequence ?? 0) + 1,
+    }))
+  }, [])
+
   const handleRequestRemoveProject = useCallback((workspaceId: string): void => {
     const store = useAppStore.getState()
     const targetWorkspace = store.workspaces.find(workspace => workspace.id === workspaceId)
@@ -153,6 +186,7 @@ export function useAppShellWorkspaceActions({
     handleRemoveWorkspace,
     handleSelectWorkspace,
     handleSelectAgentNode,
+    handleSelectSpace,
     handleRequestRemoveProject,
     handleRequestManageProjectMounts,
     handleRequestOpenProjectInFileManager,

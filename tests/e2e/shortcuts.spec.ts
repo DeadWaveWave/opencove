@@ -116,10 +116,13 @@ test.describe('Shortcuts', () => {
       await closeSettings(window)
 
       await window.keyboard.press(`${commandCenterModifier}+B`)
-      await expect(window.locator('.workspace-sidebar')).toBeHidden()
+      await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
+      await expect(window.locator('.workspace-sidebar')).toHaveClass(/workspace-sidebar--rail/)
 
       await window.keyboard.press(`${commandCenterModifier}+B`)
+      await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(0)
       await expect(window.locator('.workspace-sidebar')).toBeVisible()
+      await expect(window.locator('.workspace-sidebar')).toHaveClass(/workspace-sidebar--docked/)
     } finally {
       await electronApp.close()
     }

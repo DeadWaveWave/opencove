@@ -12,7 +12,7 @@ export async function createLocalOnlyProjectViaWizard({
   projectName: string
   localRootPath: string
 }): Promise<void> {
-  await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })
+  await window.locator('[data-testid="workspace-sidebar-add-project"]').click({ noWaitAfter: true })
   await expect(window.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
   await window.locator('[data-testid="workspace-project-create-name"]').fill(projectName)
 
@@ -35,7 +35,7 @@ export async function createRemoteOnlyProjectViaWizard({
   remoteEndpointId: string
   remoteRootPath: string
 }): Promise<void> {
-  await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })
+  await window.locator('[data-testid="workspace-sidebar-add-project"]').click({ noWaitAfter: true })
   await expect(window.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
   await window.locator('[data-testid="workspace-project-create-name"]').fill(projectName)
 
@@ -83,7 +83,7 @@ export async function createMultiMountProjectViaWizard({
   remoteRootPath: string
   remoteMountName: string
 }): Promise<void> {
-  await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })
+  await window.locator('[data-testid="workspace-sidebar-add-project"]').click({ noWaitAfter: true })
   await expect(window.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
   await window.locator('[data-testid="workspace-project-create-name"]').fill(projectName)
 

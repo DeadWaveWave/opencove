@@ -162,13 +162,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
         .first()
       await expect(remoteOnlySidebarItem).toBeVisible()
       await expect(remoteOnlySidebarItem).not.toContainText(remoteOnlyDir)
-      await expect
-        .poll(async () => {
-          return (
-            (await remoteOnlySidebarItem.locator('.workspace-item__subtitle').textContent()) ?? ''
-          )
-        })
-        .toContain(path.basename(remoteOnlyDir))
+      await expect(remoteOnlySidebarItem.locator('.workspace-item__subtitle')).toHaveCount(0)
 
       await verifyRemoteOnlyProjectDefaultMount({
         window,
@@ -195,11 +189,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
       await expect(multiSidebarItem).toBeVisible()
       await expect(multiSidebarItem).not.toContainText(multiRemoteDir)
       await expect(multiSidebarItem).not.toContainText(path.resolve(__dirname, '../../'))
-      await expect
-        .poll(async () => {
-          return (await multiSidebarItem.locator('.workspace-item__subtitle').textContent()) ?? ''
-        })
-        .toContain('(+1)')
+      await expect(multiSidebarItem.locator('.workspace-item__subtitle')).toHaveCount(0)
 
       await multiSidebarItem.click({ noWaitAfter: true })
 

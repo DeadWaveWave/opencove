@@ -11,7 +11,6 @@ async function selectSpaceLabelColorWithRetry(
 ): Promise<void> {
   const spaceMenuButton = window.locator(`[data-testid="workspace-space-menu-${payload.spaceId}"]`)
   const actionMenu = window.locator('[data-testid="workspace-space-action-menu"]')
-  const labelColorButton = window.locator('[data-testid="workspace-space-action-label-color"]')
   const labelColorMenu = window.locator('[data-testid="workspace-space-action-label-color-menu"]')
   const colorButton = window.locator(
     `[data-testid="workspace-space-action-label-color-${payload.color}"]`,
@@ -33,16 +32,29 @@ async function selectSpaceLabelColorWithRetry(
       await spaceMenuButton.click({ timeout: 6_000, force: true })
     }
     await expect(actionMenu).toBeVisible()
-    await labelColorButton.click()
-
-    const isSubmenuVisible = await labelColorMenu.isVisible().catch(() => false)
-    if (!isSubmenuVisible) {
-      if (attempt >= maxAttempts) {
-        throw new Error(`Failed to open label color submenu for ${payload.spaceId}`)
-      }
-
-      return await attemptSelection(attempt + 1)
+    await expect(labelColorMenu).toBeVisible()
+    const [actionMenuBox, labelColorMenuBox] = await Promise.all([
+      actionMenu.boundingBox(),
+      labelColorMenu.boundingBox(),
+    ])
+    if (!actionMenuBox || !labelColorMenuBox) {
+      throw new Error('Space action menu or label color row bounding box not available')
     }
+    expect(actionMenuBox.width).toBeLessThanOrEqual(222)
+    const colorButtonBox = await colorButton.boundingBox()
+    if (!colorButtonBox) {
+      throw new Error(`Label color button "${payload.color}" bounding box not available`)
+    }
+    expect(colorButtonBox.width).toBeCloseTo(colorButtonBox.height, 0)
+    expect(colorButtonBox.width).toBeLessThanOrEqual(20.5)
+    expect(colorButtonBox.width).toBeGreaterThanOrEqual(19.5)
+    expect(
+      Math.abs(
+        colorButtonBox.y +
+          colorButtonBox.height / 2 -
+          (labelColorMenuBox.y + labelColorMenuBox.height / 2),
+      ),
+    ).toBeLessThanOrEqual(1.5)
 
     await colorButton.click().catch(() => undefined)
 
@@ -179,6 +191,7 @@ test.describe('Workspace Canvas - Label Colors', () => {
         has: window.locator('[data-testid="workspace-space-label-space-color"]'),
       })
       await expect(region).toHaveAttribute('data-cove-label-color', 'blue')
+      await expect(window.locator('.terminal-node__header .cove-label-dot')).toHaveCount(0)
 
       await expect
         .poll(async () => {
@@ -212,7 +225,7 @@ test.describe('Workspace Canvas - Label Colors', () => {
     }
   })
 
-  test('sets node label override and persists', async () => {
+  test('sets node label override and persists without inheriting space color', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -246,10 +259,7 @@ test.describe('Workspace Canvas - Label Colors', () => {
       const header = terminalNode.locator('.terminal-node__header')
       await expect(terminalNode).toBeVisible()
 
-      await expect(header.locator('.cove-label-dot')).toHaveAttribute(
-        'data-cove-label-color',
-        'blue',
-      )
+      await expect(header.locator('.cove-label-dot')).toHaveCount(0)
 
       await header.click({ position: { x: 8, y: 17 } })
       await terminalNode.click({ button: 'right' })

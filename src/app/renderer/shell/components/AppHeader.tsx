@@ -7,8 +7,6 @@ import {
   LoaderCircle,
   Maximize2,
   Minimize2,
-  PanelLeftClose,
-  PanelLeftOpen,
   RotateCcw,
   Search,
   Settings,
@@ -29,7 +27,6 @@ import { PerformanceMonitorPanel } from './PerformanceMonitorPanel'
 export function AppHeader({
   activeWorkspaceName,
   activeWorkspacePath,
-  isSidebarCollapsed,
   isControlCenterOpen,
   isCommandCenterOpen,
   isPerformanceMonitorEnabled,
@@ -42,7 +39,6 @@ export function AppHeader({
   memoryTrend,
   performanceIncidents,
   updateState,
-  onToggleSidebar,
   onToggleControlCenter,
   onToggleCommandCenter,
   onTogglePerformanceMonitor,
@@ -56,7 +52,6 @@ export function AppHeader({
 }: {
   activeWorkspaceName: string | null
   activeWorkspacePath: string | null
-  isSidebarCollapsed: boolean
   isControlCenterOpen: boolean
   isCommandCenterOpen: boolean
   isPerformanceMonitorEnabled: boolean
@@ -69,7 +64,6 @@ export function AppHeader({
   memoryTrend: RendererMemoryTrendSnapshot
   performanceIncidents: PerformanceIncident[]
   updateState: AppUpdateState | null
-  onToggleSidebar: () => void
   onToggleControlCenter: () => void
   onToggleCommandCenter: () => void
   onTogglePerformanceMonitor: () => void
@@ -86,10 +80,6 @@ export function AppHeader({
   const isWindows = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'win32'
   const isBrowserRuntime =
     typeof window !== 'undefined' && window.opencoveApi?.meta?.runtime === 'browser'
-  const ToggleIcon = useMemo(
-    () => (isSidebarCollapsed ? PanelLeftOpen : PanelLeftClose),
-    [isSidebarCollapsed],
-  )
   const updateAction = useMemo(() => {
     if (!updateState) {
       return null
@@ -220,21 +210,7 @@ export function AppHeader({
         className={`app-header ${isMac ? 'app-header--mac' : ''} ${isWindows ? 'app-header--windows' : ''}`.trim()}
         role="banner"
       >
-        <div className="app-header__section app-header__section--left">
-          <button
-            type="button"
-            className="app-header__icon-button"
-            data-testid="app-header-toggle-primary-sidebar"
-            aria-label={t('appHeader.togglePrimarySidebar')}
-            aria-pressed={!isSidebarCollapsed}
-            title={t('appHeader.togglePrimarySidebar')}
-            onClick={() => {
-              onToggleSidebar()
-            }}
-          >
-            <ToggleIcon aria-hidden="true" size={18} />
-          </button>
-        </div>
+        <div className="app-header__section app-header__section--left" />
 
         <div
           className="app-header__center"

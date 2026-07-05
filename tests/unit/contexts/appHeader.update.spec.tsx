@@ -58,7 +58,6 @@ describe('AppHeader update indicator', () => {
       <AppHeader
         activeWorkspaceName="Workspace"
         activeWorkspacePath="/tmp/workspace"
-        isSidebarCollapsed={false}
         isControlCenterOpen={false}
         isCommandCenterOpen={false}
         isPerformanceMonitorEnabled={true}
@@ -71,7 +70,6 @@ describe('AppHeader update indicator', () => {
         memoryTrend={memoryTrend}
         performanceIncidents={[]}
         updateState={createUpdateState({ status: 'available', latestVersion: '0.2.1' })}
-        onToggleSidebar={() => undefined}
         onToggleControlCenter={() => undefined}
         onToggleCommandCenter={() => undefined}
         onTogglePerformanceMonitor={() => undefined}
@@ -97,7 +95,6 @@ describe('AppHeader update indicator', () => {
       <AppHeader
         activeWorkspaceName="Workspace"
         activeWorkspacePath="/tmp/workspace"
-        isSidebarCollapsed={false}
         isControlCenterOpen={false}
         isCommandCenterOpen={false}
         isPerformanceMonitorEnabled={true}
@@ -110,7 +107,6 @@ describe('AppHeader update indicator', () => {
         memoryTrend={memoryTrend}
         performanceIncidents={[]}
         updateState={createUpdateState({ status: 'downloaded', latestVersion: '0.2.1' })}
-        onToggleSidebar={() => undefined}
         onToggleControlCenter={() => undefined}
         onToggleCommandCenter={() => undefined}
         onTogglePerformanceMonitor={() => undefined}

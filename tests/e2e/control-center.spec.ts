@@ -37,7 +37,9 @@ test.describe('Control Center', () => {
       const sidebar = window.locator('.workspace-sidebar')
       await expect(sidebar).toBeVisible()
       await window.locator('[data-testid="control-center-toggle-sidebar"]').click()
-      await expect(sidebar).toBeHidden()
+      await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
+      await expect(sidebar).toBeVisible()
+      await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
 
       const minimap = window.locator('.workspace-canvas__minimap')
       const wasMinimapVisible = (await minimap.count()) > 0

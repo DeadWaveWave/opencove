@@ -8,7 +8,7 @@
 
 .workspace-context-menu {
   position: fixed;
-  z-index: 10;
+  z-index: 70;
   padding: 6px;
   border: 1px solid var(--cove-border-subtle);
   border-radius: 12px;
