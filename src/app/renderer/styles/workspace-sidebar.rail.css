@@ -36,10 +36,31 @@
 }
 
 .workspace-sidebar .workspace-space-item__rail-icon {
-  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
   width: 10px;
   height: 10px;
-  flex: 0 0 10px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.86);
+  transition:
+    opacity 0.14s ease,
+    transform 0.2s ease;
+}
+
+.workspace-sidebar .workspace-item__tree-toggle,
+.workspace-sidebar .workspace-space-item__toggle,
+.workspace-sidebar .workspace-space-item__toggle-spacer {
+  transition:
+    width 0.2s ease,
+    height 0.2s ease,
+    flex-basis 0.2s ease,
+    opacity 0.12s ease,
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .workspace-sidebar--rail .workspace-sidebar__list {
@@ -110,6 +131,8 @@
   width: 0;
   height: 0;
   flex-basis: 0;
+  padding: 0;
+  border-width: 0;
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
@@ -149,10 +172,12 @@
   display: flex;
   position: relative;
   z-index: 1;
+  gap: 0;
 }
 
 .workspace-sidebar--rail .workspace-space-item__rail-icon {
-  display: block;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .workspace-sidebar--rail .workspace-space-group__branch .workspace-item__agents {
