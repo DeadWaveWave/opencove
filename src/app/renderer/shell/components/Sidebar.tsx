@@ -164,7 +164,7 @@ export function Sidebar({
     >
       <SidebarToolbar
         isPinned={isPinned}
-        showAddProject={variant !== 'rail'}
+        showAddProject={variant !== 'rail' || sidebarTransition === 'collapsing'}
         onTogglePinned={onTogglePinned}
         onAddProject={onAddProject}
       />

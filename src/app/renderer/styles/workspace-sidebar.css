@@ -34,7 +34,7 @@
 
 .workspace-sidebar--rail:not(.workspace-sidebar--transitioning) {
   padding: 8px 10px;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
 }
 

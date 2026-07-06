@@ -30,6 +30,20 @@ const readSidebarToggleVisuals = async (page: Page) =>
           ? window.getComputedStyle(element).backgroundColor
           : ''
       }
+      const readVisibleWidth = (selector: string): number => {
+        const sidebar = document.querySelector('.workspace-sidebar')
+        const element = document.querySelector(selector)
+        if (!(sidebar instanceof HTMLElement) || !(element instanceof HTMLElement)) {
+          return 0
+        }
+
+        const sidebarRect = sidebar.getBoundingClientRect()
+        const rect = element.getBoundingClientRect()
+        return Math.max(
+          0,
+          Math.min(rect.right, sidebarRect.right) - Math.max(rect.left, sidebarRect.left),
+        )
+      }
       const readBeforeBackground = (selector: string): string => {
         const element = document.querySelector(selector)
         return element instanceof HTMLElement
@@ -86,6 +100,7 @@ const readSidebarToggleVisuals = async (page: Page) =>
         spaceRailIcon: readWidth(`${secondarySpace} .workspace-space-item__rail-icon`),
         spaceChevron: readWidth('.workspace-space-item__chevron'),
         spaceWidth: readWidth(secondarySpace),
+        spaceVisibleWidth: readVisibleWidth(secondarySpace),
         spaceHeight: readHeight(secondarySpace),
         spaceIconCount: document.querySelectorAll('.workspace-space-item__icon').length,
         agentIcon: readWidth(`${secondaryAgent} .workspace-agent-item__provider`),
@@ -348,8 +363,8 @@ test.describe('Primary Sidebar Pin', () => {
       expect(peekVisuals.projectGroupBackground).not.toBe(peekVisuals.projectBackground)
       expect(peekVisuals.projectGroupHeight).toBeCloseTo(railVisuals.projectGroupHeight, 0)
       expect(peekVisuals.spaceChevron).toBeCloseTo(railVisuals.spaceRailIcon, 0)
-      expect(railVisuals.spaceWidth).toBeCloseTo(railVisuals.spaceHeight, 0)
-      expect(railVisuals.spaceWidth).toBeLessThanOrEqual(30)
+      expect(railVisuals.spaceVisibleWidth).toBeGreaterThanOrEqual(railVisuals.spaceHeight)
+      expect(railVisuals.spaceVisibleWidth).toBeLessThanOrEqual(52)
       expect(peekVisuals.spaceHeight).toBeCloseTo(railVisuals.spaceHeight, 0)
       expect(peekVisuals.spaceIconCount).toBe(0)
       expect(peekVisuals.agentIcon).toBeCloseTo(railVisuals.agentIcon, 0)

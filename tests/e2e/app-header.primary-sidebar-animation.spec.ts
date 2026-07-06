@@ -19,7 +19,9 @@ type SidebarAnimationSample = {
   projectIconCenterFromSidebarLeft: number
   projectNameOpacity: number
   projectNameViewportLeft: number
+  projectNameVisibleWidth: number
   projectToggleOpacity: number
+  projectToggleVisibleWidth: number
   spaceRailIconDisplay: string
   spaceRailIconOpacity: number
   spaceItemViewportLeft: number
@@ -35,8 +37,10 @@ type SidebarAnimationSample = {
   spaceNameOpacity: number
   spaceNameViewportLeft: number
   spaceNameWidth: number
+  spaceNameVisibleWidth: number
   spaceToggleOpacity: number
   spaceToggleWidth: number
+  spaceToggleVisibleWidth: number
 }
 
 type SidebarAnimationResult = {
@@ -105,6 +109,15 @@ const sampleSidebarToggle = async (
         const spaceRailSurfaceStyle = window.getComputedStyle(spaceItem, '::before')
         const spaceNameStyle = window.getComputedStyle(spaceName)
         const spaceToggleStyle = window.getComputedStyle(spaceToggle)
+        const visibleWidth = (rect: DOMRect): number =>
+          Number(
+            Math.max(
+              0,
+              Math.min(rect.right, sidebarRect.right) - Math.max(rect.left, sidebarRect.left),
+            ).toFixed(3),
+          )
+        const projectToggleRect = projectToggle.getBoundingClientRect()
+        const spaceToggleRect = spaceToggle.getBoundingClientRect()
 
         return {
           label,
@@ -131,7 +144,9 @@ const sampleSidebarToggle = async (
           ),
           projectNameOpacity: Number.parseFloat(projectNameStyle.opacity),
           projectNameViewportLeft: Number(projectNameRect.x.toFixed(3)),
+          projectNameVisibleWidth: visibleWidth(projectNameRect),
           projectToggleOpacity: Number.parseFloat(projectToggleStyle.opacity),
+          projectToggleVisibleWidth: visibleWidth(projectToggleRect),
           spaceRailIconDisplay: spaceRailIconStyle.display,
           spaceRailIconOpacity: Number.parseFloat(spaceRailIconStyle.opacity),
           spaceItemViewportLeft: Number(spaceItemRect.x.toFixed(3)),
@@ -153,8 +168,10 @@ const sampleSidebarToggle = async (
           spaceNameOpacity: Number.parseFloat(spaceNameStyle.opacity),
           spaceNameViewportLeft: Number(spaceNameRect.x.toFixed(3)),
           spaceNameWidth: Number(spaceName.getBoundingClientRect().width.toFixed(3)),
+          spaceNameVisibleWidth: visibleWidth(spaceNameRect),
           spaceToggleOpacity: Number.parseFloat(spaceToggleStyle.opacity),
           spaceToggleWidth: Number(spaceToggle.getBoundingClientRect().width.toFixed(3)),
+          spaceToggleVisibleWidth: visibleWidth(spaceToggleRect),
         }
       }
 
@@ -216,6 +233,11 @@ const expectClose = (actual: number, expected: number, tolerance: number) => {
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)
 }
 
+const maxStep = (values: number[], direction: 'positive' | 'negative') => {
+  const deltas = values.slice(1).map((value, index) => value - values[index])
+  return direction === 'positive' ? Math.max(0, ...deltas) : Math.min(0, ...deltas)
+}
+
 const expectContinuousSidebarAnimation = (
   result: SidebarAnimationResult,
   direction: 'collapse' | 'expand',
@@ -232,6 +254,10 @@ const expectContinuousSidebarAnimation = (
   expect(result.samples.every(sample => sample.sameProjectIcon)).toBe(true)
   expect(result.samples.every(sample => sample.itemGroupCount > 0)).toBe(true)
   expect(result.samples.every(sample => sample.spaceRailIconDisplay !== 'none')).toBe(true)
+  expect(result.samples.every(sample => sample.projectNameOpacity >= 0.95)).toBe(true)
+  expect(result.samples.every(sample => sample.projectToggleOpacity >= 0.95)).toBe(true)
+  expect(result.samples.every(sample => sample.spaceNameOpacity >= 0.95)).toBe(true)
+  expect(result.samples.every(sample => sample.spaceToggleOpacity >= 0.95)).toBe(true)
   expect(firstTransition).toBeDefined()
   expect(lastTransition).toBeDefined()
   if (!firstTransition || !lastTransition) {
@@ -334,17 +360,39 @@ const expectContinuousSidebarAnimation = (
       )
       expectClose(finalSample.spaceItemViewportLeft, lastTransition.spaceItemViewportLeft, 1)
       expectClose(finalSample.spaceItemViewportTop, lastTransition.spaceItemViewportTop, 1)
+      expect(finalSample.projectNameVisibleWidth).toBeLessThanOrEqual(1)
+      expect(finalSample.projectToggleVisibleWidth).toBeLessThanOrEqual(1)
+      expect(finalSample.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
+      expect(finalSample.spaceToggleVisibleWidth).toBeLessThanOrEqual(1)
     }
+    expect(
+      maxStep(
+        result.samples.map(sample => sample.spaceNameVisibleWidth),
+        'positive',
+      ),
+    ).toBeLessThanOrEqual(2)
     return
   }
 
   expect(summary.lastWidth).toBeGreaterThan(summary.firstWidth)
   expect(summary.maxNegativeDelta).toBeGreaterThanOrEqual(-2)
-  expect(firstTransition.projectNameOpacity).toBeLessThanOrEqual(0.05)
-  expect(firstTransition.projectToggleOpacity).toBeLessThanOrEqual(0.05)
-  expect(firstTransition.spaceNameOpacity).toBeLessThanOrEqual(0.05)
-  expect(firstTransition.spaceToggleOpacity).toBeLessThanOrEqual(0.05)
-  expect(transitionSamples.slice(0, 4).every(sample => sample.spaceNameOpacity <= 0.05)).toBe(true)
+  expect(result.before.projectNameVisibleWidth).toBeLessThanOrEqual(1)
+  expect(result.before.projectToggleVisibleWidth).toBeLessThanOrEqual(1)
+  expect(result.before.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
+  expect(result.before.spaceToggleVisibleWidth).toBeLessThanOrEqual(1)
+  expect(
+    maxStep(
+      result.samples.map(sample => sample.spaceNameVisibleWidth),
+      'negative',
+    ),
+  ).toBeGreaterThanOrEqual(-2)
+  expect(
+    transitionSamples.some(
+      sample =>
+        sample.spaceNameVisibleWidth > 2 &&
+        sample.spaceNameVisibleWidth < sample.spaceNameWidth - 2,
+    ),
+  ).toBe(true)
 }
 
 test.describe('Primary Sidebar Animation', () => {
@@ -397,12 +445,10 @@ test.describe('Primary Sidebar Animation', () => {
         throw new Error('Missing final collapsed sidebar animation sample')
       }
       expect(collapsedFinal.sidebarTransition).toBe('idle')
-      expect(collapsedFinal.spaceItemWidth).toBeCloseTo(collapsedFinal.spaceItemHeight, 0)
-      expect(collapsedFinal.spaceItemWidth).toBeLessThanOrEqual(30)
       expect(collapsedFinal.spaceRailIconOpacity).toBeGreaterThanOrEqual(0.95)
-      expect(collapsedFinal.spaceNameOpacity).toBeLessThanOrEqual(0.05)
-      expect(collapsedFinal.spaceToggleOpacity).toBeLessThanOrEqual(0.05)
-      expect(collapsedFinal.spaceToggleWidth).toBeLessThanOrEqual(1)
+      expect(collapsedFinal.projectNameVisibleWidth).toBeLessThanOrEqual(1)
+      expect(collapsedFinal.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
+      expect(collapsedFinal.spaceToggleVisibleWidth).toBeLessThanOrEqual(1)
 
       const expand = await sampleSidebarToggle(window, workspaceId, spaceId)
       await expect(sidebar).toHaveClass(/workspace-sidebar--docked/)
@@ -415,12 +461,12 @@ test.describe('Primary Sidebar Animation', () => {
       }
       expect(expandedFinal.sidebarTransition).toBe('idle')
       expect(expandedFinal.spaceItemWidth).toBeGreaterThan(100)
-      expect(expandedFinal.spaceRailIconOpacity).toBeLessThanOrEqual(0.05)
       expect(expandedFinal.spaceRailSurfaceOpacity).toBeLessThanOrEqual(0.05)
       expect(expandedFinal.spaceNameOpacity).toBeGreaterThanOrEqual(0.95)
+      expect(expandedFinal.spaceNameVisibleWidth).toBeGreaterThan(20)
       expect(expandedFinal.spaceNameWidth).toBeGreaterThan(20)
       expect(expandedFinal.spaceToggleOpacity).toBeGreaterThanOrEqual(0.95)
-      expect(expandedFinal.spaceToggleWidth).toBeGreaterThan(20)
+      expect(expandedFinal.spaceToggleVisibleWidth).toBeGreaterThan(20)
     } finally {
       await electronApp.close()
     }
