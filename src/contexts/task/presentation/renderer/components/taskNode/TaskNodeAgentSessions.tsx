@@ -1,5 +1,6 @@
 import { useMemo, useState, type JSX } from 'react'
 import { RotateCcw, Trash2 } from 'lucide-react'
+import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
@@ -91,6 +92,40 @@ export function TaskNodeAgentSessions({
     }
   }
 
+  const renderAgentSessionSummary = ({
+    provider,
+    status,
+    timestamp,
+    description,
+  }: {
+    provider: AgentProvider
+    status: AgentRuntimeStatus | null
+    timestamp: string | null
+    description: string
+  }): JSX.Element => {
+    const formattedTime = formatTaskTimestamp(timestamp)
+    const runtimeLabel = toRuntimeLabel(status)
+    const summaryLabel = `${description} · ${runtimeLabel} · ${formattedTime}`
+
+    return (
+      <div
+        className="task-node__agent-session-summary"
+        aria-label={summaryLabel}
+        title={summaryLabel}
+      >
+        <span className="task-node__agent-session-identity" aria-hidden="true">
+          <AgentProviderIcon provider={provider} className="task-node__agent-provider" />
+          <span
+            className={`task-node__agent-session-state task-node__agent-session-state--${resolveAgentSessionTone(status)}`}
+          />
+        </span>
+        <time className="task-node__agent-session-time" dateTime={timestamp ?? undefined}>
+          {formattedTime}
+        </time>
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="task-node__agents nodrag" data-testid="task-node-agent-sessions">
@@ -108,20 +143,15 @@ export function TaskNodeAgentSessions({
                 className="workspace-agent-item workspace-agent-item--nested task-node__agent-session task-node__agent-session--linked"
                 data-testid={`task-node-agent-session-linked-${linkedAgentNode.nodeId}`}
               >
-                <div className="workspace-agent-item__headline">
-                  <span className="workspace-agent-item__title">{linkedAgentNode.title}</span>
-                  <span
-                    className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${resolveAgentSessionTone(linkedAgentNode.status)}`}
-                  >
-                    {toRuntimeLabel(linkedAgentNode.status)}
-                  </span>
-                </div>
-                <div className="workspace-agent-item__meta">
-                  <span className="workspace-agent-item__meta-text">
-                    {providerLabel(linkedAgentNode.provider)} ·{' '}
-                    {formatTaskTimestamp(linkedAgentNode.startedAt)}
-                  </span>
-                </div>
+                {renderAgentSessionSummary({
+                  provider: linkedAgentNode.provider,
+                  status: linkedAgentNode.status,
+                  timestamp: linkedAgentNode.startedAt,
+                  description:
+                    linkedAgentNode.title.trim().length > 0
+                      ? linkedAgentNode.title
+                      : providerLabel(linkedAgentNode.provider),
+                })}
               </div>
             ) : null}
 
@@ -140,22 +170,12 @@ export function TaskNodeAgentSessions({
                   })
                 }}
               >
-                <div className="workspace-agent-item__headline">
-                  <span className="workspace-agent-item__title">
-                    {providerLabel(record.provider)} ·{' '}
-                    {record.effectiveModel ?? record.model ?? t('taskNode.defaultModel')}
-                  </span>
-                  <span
-                    className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${resolveAgentSessionTone(record.status)}`}
-                  >
-                    {toRuntimeLabel(record.status)}
-                  </span>
-                </div>
-                <div className="workspace-agent-item__meta">
-                  <span className="workspace-agent-item__meta-text">
-                    {t('taskNode.lastRun', { timestamp: formatTaskTimestamp(record.lastRunAt) })}
-                  </span>
-                </div>
+                {renderAgentSessionSummary({
+                  provider: record.provider,
+                  status: record.status,
+                  timestamp: record.lastRunAt,
+                  description: `${providerLabel(record.provider)} · ${record.effectiveModel ?? record.model ?? t('taskNode.defaultModel')}`,
+                })}
               </div>
             ))}
           </div>

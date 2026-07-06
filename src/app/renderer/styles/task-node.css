@@ -117,15 +117,24 @@
   align-items: center;
   justify-content: center;
   border: 0;
+  border-radius: 6px;
   background: transparent;
   color: var(--cove-text-muted);
   cursor: pointer;
   padding: 0;
-  transition: color 0.16s ease;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
 }
 
 .task-node__icon-button:hover {
+  background: var(--cove-node-header-border);
   color: var(--cove-text);
+}
+
+.task-node__icon-button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .task-node__icon-button:focus-visible {

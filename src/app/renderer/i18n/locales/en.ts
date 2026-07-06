@@ -261,6 +261,7 @@ export const en = {
     untitledTitle: 'Untitled task',
     titleInputLabel: 'Task title',
     openFullTaskEditor: 'Open full task editor',
+    moreActions: 'Task actions',
     deleteTask: 'Delete task',
     noTags: 'No tags',
     requirement: 'Task Requirement',
@@ -270,7 +271,7 @@ export const en = {
     lastRun: 'Last run · {{timestamp}}',
     resume: 'Resume',
     removeRecord: 'Remove Record',
-    runAgent: 'Run Agent',
+    runAgent: 'Run',
     resizeWidth: 'Resize task width',
     resizeHeight: 'Resize task height',
     resumeDialog: {

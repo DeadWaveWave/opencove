@@ -22,6 +22,7 @@
 @import './styles/terminal-node.font-rendering.css';
 @import './styles/terminal-node.theme-opencode.css';
 @import './styles/task-node.css';
+@import './styles/task-node.agent-sessions.css';
 @import './styles/role-node.css';
 @import './styles/note-node.css';
 @import './styles/node-title-editor.css';

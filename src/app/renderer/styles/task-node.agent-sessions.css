@@ -1,0 +1,65 @@
+.task-node__agent-session {
+  min-height: 32px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  cursor: default;
+  padding: 5px 8px;
+}
+
+.task-node__agent-session-summary {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-node__agent-session-identity {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.task-node__agent-provider {
+  width: 22px;
+  height: 22px;
+  flex-basis: 22px;
+}
+
+.task-node__agent-session-state {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1.5px solid var(--cove-field);
+  background: var(--cove-text-faint);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cove-node-surface) 70%, transparent);
+}
+
+.task-node__agent-session-state--working {
+  background: rgba(61, 255, 164, 0.88);
+}
+
+.task-node__agent-session-state--standby {
+  background: rgba(255, 190, 114, 0.94);
+}
+
+.task-node__agent-session-state--failed {
+  background: rgba(255, 96, 112, 0.9);
+}
+
+.task-node__agent-session-time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-variant-numeric: tabular-nums;
+}

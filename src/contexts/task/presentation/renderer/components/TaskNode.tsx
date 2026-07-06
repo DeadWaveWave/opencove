@@ -1,6 +1,5 @@
 import { Handle, Position } from '@xyflow/react'
-import { FileText, Pencil } from 'lucide-react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
@@ -16,11 +15,11 @@ import { NodeResizeHandles } from '@contexts/workspace/presentation/renderer/com
 import { useNodeFrameResize } from '@contexts/workspace/presentation/renderer/utils/nodeFrameResize'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { TaskNodeAgentSessions } from './taskNode/TaskNodeAgentSessions'
+import { TaskNodeActionsMenu } from './taskNode/TaskNodeActionsMenu'
 import { TaskNodeFooter } from './taskNode/TaskNodeFooter'
 import { MIN_HEIGHT, MIN_WIDTH, shouldStopWheelPropagation } from './taskNode/helpers'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import type { LabelColor } from '@shared/types/labelColor'
-import { TaskPromptTemplatesMenu } from './promptTemplates/TaskPromptTemplatesMenu'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 
 interface TaskNodeInteractionOptions {
@@ -91,12 +90,6 @@ export function TaskNode({
 
   const [isRequirementEditing, setIsRequirementEditing] = useState(false)
   const [requirementDraft, setRequirementDraft] = useState(requirement)
-  const [promptTemplatesMenuAnchor, setPromptTemplatesMenuAnchor] = useState<{
-    x: number
-    y: number
-  } | null>(null)
-  const promptTemplatesTriggerRef = React.useRef<HTMLButtonElement | null>(null)
-
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
     width,
@@ -131,8 +124,6 @@ export function TaskNode({
   const cancelRequirementEdit = useCallback(() => {
     setRequirementDraft(requirement)
   }, [requirement])
-
-  const isPromptTemplatesMenuOpen = promptTemplatesMenuAnchor !== null
 
   const renderedFrame = draftFrame ?? {
     position,
@@ -237,44 +228,15 @@ export function TaskNode({
         </div>
 
         <div className="task-node__header-actions nodrag">
-          <button
-            ref={promptTemplatesTriggerRef}
-            type="button"
-            className="task-node__icon-button task-node__icon-button--templates nodrag"
-            data-testid="task-node-open-prompt-templates"
-            onClick={event => {
-              event.stopPropagation()
-
-              if (isPromptTemplatesMenuOpen) {
-                setPromptTemplatesMenuAnchor(null)
-                return
-              }
-
-              const rect = event.currentTarget.getBoundingClientRect()
-              setPromptTemplatesMenuAnchor({
-                x: rect.right,
-                y: rect.bottom,
-              })
+          <TaskNodeActionsMenu
+            workspaceId={workspaceId}
+            currentRequirement={requirementDraft}
+            onChangeRequirement={nextRequirement => {
+              setRequirementDraft(nextRequirement)
+              onQuickRequirementSave(nextRequirement)
             }}
-            aria-label={t('taskPromptTemplates.openMenu')}
-            title={t('taskPromptTemplates.openMenu')}
-          >
-            <FileText size={14} strokeWidth={2.2} />
-          </button>
-
-          <button
-            type="button"
-            className="task-node__icon-button task-node__icon-button--edit nodrag"
-            data-testid="task-node-open-editor"
-            onClick={event => {
-              event.stopPropagation()
-              onOpenEditor()
-            }}
-            aria-label={t('taskNode.openFullTaskEditor')}
-            title={t('taskNode.openFullTaskEditor')}
-          >
-            <Pencil size={14} strokeWidth={2.2} />
-          </button>
+            onOpenEditor={onOpenEditor}
+          />
 
           <button
             type="button"
@@ -291,22 +253,6 @@ export function TaskNode({
           </button>
         </div>
       </div>
-
-      <TaskPromptTemplatesMenu
-        isOpen={isPromptTemplatesMenuOpen}
-        anchor={promptTemplatesMenuAnchor}
-        workspaceId={workspaceId}
-        closeMenu={() => {
-          setPromptTemplatesMenuAnchor(null)
-        }}
-        triggerRef={promptTemplatesTriggerRef}
-        currentRequirement={requirementDraft}
-        onChangeRequirement={nextRequirement => {
-          setRequirementDraft(nextRequirement)
-          onQuickRequirementSave(nextRequirement)
-        }}
-        testIdPrefix="task-node"
-      />
 
       <div className="task-node__meta" data-testid="task-node-meta">
         <span className={`task-node__priority task-node__priority--${priority}`}>

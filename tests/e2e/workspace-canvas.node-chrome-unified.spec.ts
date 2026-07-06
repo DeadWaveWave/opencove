@@ -83,12 +83,12 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(noteNode.locator('.note-node__header')).toHaveCSS('height', '34px')
 
       const terminalClose = terminalNode.locator('.terminal-node__close')
-      const taskEdit = taskNode.locator('.task-node__icon-button--edit')
+      const taskMore = taskNode.locator('.task-node__icon-button--more')
       const taskClose = taskNode.locator('.task-node__icon-button--close')
       const noteClose = noteNode.locator('.note-node__close')
 
       await Promise.all(
-        [terminalClose, taskEdit, taskClose, noteClose].flatMap(button => [
+        [terminalClose, taskMore, taskClose, noteClose].flatMap(button => [
           expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)'),
           expect(button).toHaveCSS('border-top-width', '0px'),
         ]),

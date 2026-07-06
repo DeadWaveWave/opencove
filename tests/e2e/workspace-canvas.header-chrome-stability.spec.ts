@@ -130,7 +130,7 @@ test.describe('Workspace Canvas - Header Chrome Stability', () => {
 
       const taskTitleDisplay = taskNode.locator('[data-testid="task-node-title-display"]')
       const taskTitleInput = taskNode.locator('[data-testid="task-node-inline-title-input"]')
-      const taskEditButton = taskNode.locator('.task-node__icon-button--edit')
+      const taskMoreButton = taskNode.locator('.task-node__icon-button--more')
       const taskCloseButton = taskNode.locator('.task-node__icon-button--close')
 
       const noteTitleDisplay = noteNode.locator('[data-testid="note-node-title-display"]')
@@ -140,7 +140,7 @@ test.describe('Workspace Canvas - Header Chrome Stability', () => {
 
       const agentStatusRect = await readLocatorClientRect(agentStatus)
       const agentCloseRect = await readLocatorClientRect(agentClose)
-      const taskEditRect = await readLocatorClientRect(taskEditButton)
+      const taskMoreRect = await readLocatorClientRect(taskMoreButton)
       const taskCloseRect = await readLocatorClientRect(taskCloseButton)
       const noteActionRect = await readLocatorClientRect(noteActionButton)
       const noteCloseRect = await readLocatorClientRect(noteCloseButton)
@@ -154,7 +154,7 @@ test.describe('Workspace Canvas - Header Chrome Stability', () => {
 
       await clickInlineTitleDisplay(taskTitleDisplay)
       await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
-      await expectStableRect(taskEditButton, taskEditRect)
+      await expectStableRect(taskMoreButton, taskMoreRect)
       await expectStableRect(taskCloseButton, taskCloseRect)
       await taskTitleInput.press('Escape')
       await expect(taskTitleInput).toHaveCount(0)

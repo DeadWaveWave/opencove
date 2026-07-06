@@ -39,8 +39,10 @@ test.describe('Workspace Canvas - Tasks (Edit & Delete)', () => {
       await inlineRequirementInput.fill('Inline updated requirement from card')
       await inlineRequirementInput.blur()
       await expect(inlineRequirementInput).toHaveValue('Inline updated requirement from card')
+      await expect(taskNode.locator('[data-testid="task-node-run-agent"]')).toHaveText('Run')
 
-      await taskNode.locator('[data-testid="task-node-open-editor"]').click()
+      await taskNode.locator('[data-testid="task-node-more"]').click()
+      await window.locator('[data-testid="task-node-open-editor"]').click()
 
       const editor = window.locator('[data-testid="workspace-task-editor"]')
       await expect(editor).toBeVisible()

@@ -263,6 +263,7 @@ export const zhCN = {
     untitledTitle: '未命名任务',
     titleInputLabel: '任务标题',
     openFullTaskEditor: '打开完整任务编辑器',
+    moreActions: '任务操作',
     deleteTask: '删除任务',
     noTags: '没有标签',
     requirement: '任务要求',
@@ -272,7 +273,7 @@ export const zhCN = {
     lastRun: '上次运行 · {{timestamp}}',
     resume: '继续',
     removeRecord: '移除记录',
-    runAgent: '运行 Agent',
+    runAgent: '运行',
     resizeWidth: '调整任务宽度',
     resizeHeight: '调整任务高度',
     resumeDialog: {
