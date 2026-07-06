@@ -104,7 +104,7 @@ function SpaceGroup({
       <div
         role="button"
         tabIndex={0}
-        className={`workspace-space-item${isProjectRoot ? ' workspace-space-item--root' : ' workspace-space-item--space'}${isActive ? ' workspace-space-item--active' : ''}`}
+        className={`workspace-space-item${isProjectRoot ? ' workspace-space-item--root' : ' workspace-space-item--space'}${hasAgents ? ' workspace-space-item--has-toggle' : ''}${isActive ? ' workspace-space-item--active' : ''}`}
         data-testid={
           isProjectRoot
             ? `workspace-space-root-${workspaceId}`

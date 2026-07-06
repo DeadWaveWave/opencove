@@ -5,11 +5,17 @@ import { createRailAgent } from './sidebar-test-fixtures'
 type HoverPeekSample = {
   sidebarTransition: string
   width: number
+  sidebarRight: number
   listOpacity: number
   listTransform: string
   nameVisibleWidth: number
   iconCenterX: number
+  hiddenRailIconOpacity: number
   surfaceWidth: number
+  surfaceRight: number
+  spaceToggleRight: number
+  spaceToggleVisibleWidth: number
+  switchAllVisibleWidth: number
 }
 
 const maxRange = (values: number[]) => Math.max(...values) - Math.min(...values)
@@ -25,14 +31,18 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekSample[]> => {
     const list = document.querySelector('.workspace-sidebar__list')
     const spaceItem = document.querySelector('.workspace-space-item--space')
     const spaceName = spaceItem?.querySelector('.workspace-space-item__name')
-    const railIcon = spaceItem?.querySelector('.workspace-space-item__rail-icon')
+    const hiddenRailIcon = spaceItem?.querySelector('.workspace-space-item__rail-icon')
+    const spaceToggle = spaceItem?.querySelector('.workspace-space-item__toggle')
+    const switchAll = document.querySelector('[data-testid="workspace-space-switch-all"]')
 
     if (
       !(sidebar instanceof HTMLElement) ||
       !(list instanceof HTMLElement) ||
       !(spaceItem instanceof HTMLElement) ||
       !(spaceName instanceof HTMLElement) ||
-      !(railIcon instanceof HTMLElement)
+      !(hiddenRailIcon instanceof HTMLElement) ||
+      !(spaceToggle instanceof HTMLElement) ||
+      !(switchAll instanceof HTMLElement)
     ) {
       throw new Error('Hover sidebar animation measurement target not available')
     }
@@ -40,23 +50,36 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekSample[]> => {
     const readSample = (): HoverPeekSample => {
       const sidebarRect = sidebar.getBoundingClientRect()
       const listStyle = window.getComputedStyle(list)
+      const itemRect = spaceItem.getBoundingClientRect()
       const nameRect = spaceName.getBoundingClientRect()
-      const iconRect = railIcon.getBoundingClientRect()
+      const iconRect = spaceToggle.getBoundingClientRect()
+      const toggleRect = spaceToggle.getBoundingClientRect()
+      const switchAllRect = switchAll.getBoundingClientRect()
+      const hiddenRailIconStyle = window.getComputedStyle(hiddenRailIcon)
       const surfaceStyle = window.getComputedStyle(spaceItem, '::before')
+      const surfaceWidth = Number.parseFloat(surfaceStyle.width)
+      const visibleInSidebar = (rect: DOMRect): number =>
+        Number(
+          Math.max(
+            0,
+            Math.min(rect.right, sidebarRect.right) - Math.max(rect.left, sidebarRect.left),
+          ).toFixed(3),
+        )
 
       return {
         sidebarTransition: sidebar.dataset.coveSidebarTransition ?? 'idle',
         width: Number(sidebarRect.width.toFixed(3)),
+        sidebarRight: Number(sidebarRect.right.toFixed(3)),
         listOpacity: Number.parseFloat(listStyle.opacity),
         listTransform: listStyle.transform,
-        nameVisibleWidth: Number(
-          Math.max(
-            0,
-            Math.min(nameRect.right, sidebarRect.right) - Math.max(nameRect.left, sidebarRect.left),
-          ).toFixed(3),
-        ),
+        nameVisibleWidth: visibleInSidebar(nameRect),
         iconCenterX: Number((iconRect.x + iconRect.width / 2).toFixed(3)),
-        surfaceWidth: Number.parseFloat(surfaceStyle.width),
+        hiddenRailIconOpacity: Number.parseFloat(hiddenRailIconStyle.opacity),
+        surfaceWidth,
+        surfaceRight: Number((itemRect.left - 1 + surfaceWidth).toFixed(3)),
+        spaceToggleRight: Number(toggleRect.right.toFixed(3)),
+        spaceToggleVisibleWidth: visibleInSidebar(toggleRect),
+        switchAllVisibleWidth: visibleInSidebar(switchAllRect),
       }
     }
 
@@ -130,7 +153,14 @@ test.describe('Primary Sidebar Hover Animation', () => {
       expect(transitionSamples.length).toBeGreaterThan(4)
       expect(samples.every(sample => sample.listOpacity >= 0.99)).toBe(true)
       expect(samples.every(sample => sample.listTransform === 'none')).toBe(true)
-      expect(maxRange(samples.map(sample => sample.iconCenterX))).toBeLessThanOrEqual(1)
+      expect(samples.every(sample => sample.hiddenRailIconOpacity <= 0.05)).toBe(true)
+      expect(maxRange(samples.map(sample => sample.iconCenterX))).toBeGreaterThan(40)
+      expect(
+        maxStep(
+          samples.map(sample => sample.iconCenterX),
+          'negative',
+        ),
+      ).toBeGreaterThanOrEqual(-2)
       expect(
         maxStep(
           samples.map(sample => sample.width),
@@ -152,6 +182,22 @@ test.describe('Primary Sidebar Hover Animation', () => {
       expect(new Set(samples.map(sample => Math.round(sample.width))).size).toBeGreaterThan(3)
       expect(
         transitionSamples.some(sample => sample.surfaceWidth > 30 && sample.surfaceWidth < 220),
+      ).toBe(true)
+      expect(
+        transitionSamples
+          .filter(sample => sample.surfaceWidth > 54)
+          .every(sample => Math.abs(sample.spaceToggleRight - sample.surfaceRight) <= 8),
+      ).toBe(true)
+      expect(
+        maxStep(
+          transitionSamples.map(sample => sample.spaceToggleRight),
+          'negative',
+        ),
+      ).toBeGreaterThanOrEqual(-2)
+      expect(
+        transitionSamples.some(
+          sample => sample.switchAllVisibleWidth > 0 && sample.switchAllVisibleWidth < 24,
+        ),
       ).toBe(true)
       expect(finalSample?.width).toBeGreaterThanOrEqual(276)
       expect(finalSample?.surfaceWidth).toBeGreaterThan(100)

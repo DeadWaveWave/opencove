@@ -45,14 +45,27 @@
 
 .workspace-sidebar .workspace-item__folder-icon {
   margin-left: 17px;
-  margin-right: 24px;
+  margin-right: 12px;
+}
+
+.workspace-sidebar .workspace-item__name {
+  max-width: 160px;
+  opacity: 1;
+  transition:
+    max-width 0.22s ease,
+    opacity 0.1s ease;
+}
+
+.workspace-sidebar.workspace-sidebar--rail .workspace-item__name,
+.workspace-sidebar.workspace-sidebar--transition-collapsing .workspace-item__name {
+  max-width: 0;
+  opacity: 0;
 }
 
 .workspace-sidebar .workspace-space-item__name,
 .workspace-sidebar .workspace-space-item__toggle,
 .workspace-sidebar .workspace-space-item__toggle-spacer,
 .workspace-sidebar .workspace-agent-item__body {
-  position: relative;
   z-index: 1;
 }
 
@@ -78,11 +91,62 @@
 }
 
 .workspace-sidebar .workspace-space-item__name {
-  margin-left: 44px;
+  position: relative;
+  flex: 0 0 auto;
+  width: max(0px, calc(var(--workspace-space-item-surface-width) - 68px));
+  margin-left: 32px;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  transition: width 0.22s ease;
+}
+
+.workspace-sidebar .workspace-space-item--has-toggle .workspace-space-item__rail-icon {
+  opacity: 0;
+}
+
+.workspace-sidebar .workspace-space-item--has-toggle .workspace-space-item__name {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: max(0px, calc(var(--workspace-space-item-surface-width) - 56px));
+  margin-left: 0;
+  opacity: 1;
+  transform: translateY(-50%);
+  transition:
+    width 0.22s ease,
+    opacity 0.1s ease;
+}
+
+.workspace-sidebar--rail .workspace-space-item--has-toggle .workspace-space-item__name,
+.workspace-sidebar--transition-collapsing
+  .workspace-space-item--has-toggle
+  .workspace-space-item__name {
+  width: 0;
+  opacity: 0;
+}
+
+.workspace-sidebar .workspace-space-item__toggle,
+.workspace-sidebar .workspace-space-item__toggle-spacer {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--workspace-space-item-surface-width) - 27.5px);
+  z-index: 1;
+  transform: translateY(-50%);
+  transition: left 0.22s ease;
 }
 
 .workspace-sidebar .workspace-agent-item__headline {
-  margin-left: 29px;
+  margin-left: 18px;
+}
+
+.workspace-sidebar--rail .workspace-agent-item__headline,
+.workspace-sidebar--transition-collapsing .workspace-agent-item__headline {
+  max-width: 0;
+  opacity: 0;
 }
 
 .workspace-sidebar--rail .workspace-space-item {
