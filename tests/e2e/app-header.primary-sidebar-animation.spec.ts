@@ -3,8 +3,6 @@ import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-ca
 import { createRailAgent } from './sidebar-test-fixtures'
 
 type SidebarAnimationSample = {
-  label: string
-  elapsedMs: number
   sidebarTransition: string
   width: number
   paddingLeft: number
@@ -32,6 +30,8 @@ type SidebarAnimationSample = {
   spaceRailSurfaceOpacity: number
   spaceRailSurfaceWidth: number
   spaceRailSurfaceHeight: number
+  spaceItemBackground: string
+  spaceItemBorderColor: string
   spaceItemWidth: number
   spaceItemHeight: number
   spaceNameOpacity: number
@@ -88,7 +88,7 @@ const sampleSidebarToggle = async (
         throw new Error('Sidebar animation measurement target not available')
       }
 
-      const readSample = (label: string, elapsedMs: number): SidebarAnimationSample => {
+      const readSample = (): SidebarAnimationSample => {
         const list = document.querySelector('.workspace-sidebar__list')
         const item = document.querySelector(`[data-testid="workspace-item-${activeWorkspaceId}"]`)
         const projectIcon = item?.querySelector('.workspace-item__folder-icon')
@@ -107,6 +107,7 @@ const sampleSidebarToggle = async (
         const projectToggleStyle = window.getComputedStyle(projectToggle)
         const spaceRailIconStyle = window.getComputedStyle(spaceRailIcon)
         const spaceRailSurfaceStyle = window.getComputedStyle(spaceItem, '::before')
+        const spaceItemStyle = window.getComputedStyle(spaceItem)
         const spaceNameStyle = window.getComputedStyle(spaceName)
         const spaceToggleStyle = window.getComputedStyle(spaceToggle)
         const visibleWidth = (rect: DOMRect): number =>
@@ -120,8 +121,6 @@ const sampleSidebarToggle = async (
         const spaceToggleRect = spaceToggle.getBoundingClientRect()
 
         return {
-          label,
-          elapsedMs: Number(elapsedMs.toFixed(2)),
           sidebarTransition: sidebar.dataset.coveSidebarTransition ?? 'idle',
           width: Number(sidebarRect.width.toFixed(2)),
           paddingLeft: Number.parseFloat(sidebarStyle.paddingLeft),
@@ -163,6 +162,8 @@ const sampleSidebarToggle = async (
           spaceRailSurfaceOpacity: Number.parseFloat(spaceRailSurfaceStyle.opacity),
           spaceRailSurfaceWidth: Number.parseFloat(spaceRailSurfaceStyle.width),
           spaceRailSurfaceHeight: Number.parseFloat(spaceRailSurfaceStyle.height),
+          spaceItemBackground: spaceItemStyle.backgroundColor,
+          spaceItemBorderColor: spaceItemStyle.borderColor,
           spaceItemWidth: Number(spaceItemRect.width.toFixed(3)),
           spaceItemHeight: Number(spaceItemRect.height.toFixed(3)),
           spaceNameOpacity: Number.parseFloat(spaceNameStyle.opacity),
@@ -176,20 +177,15 @@ const sampleSidebarToggle = async (
       }
 
       const startClassName = sidebar.className
-      const before = readSample('before', 0)
+      const before = readSample()
       toggleButton.click()
 
       return await new Promise<SidebarAnimationResult>(resolve => {
         const sampleCount = 30
         const samples: SidebarAnimationSample[] = []
-        const startTime = performance.now()
-        const capture = (label: string): void => {
-          const now = performance.now()
-          samples.push(readSample(label, now - startTime))
-        }
 
         const captureAnimationFrame = (index: number): void => {
-          capture(`raf-${index}`)
+          samples.push(readSample())
 
           if (index + 1 < sampleCount) {
             window.requestAnimationFrame(() => captureAnimationFrame(index + 1))
@@ -197,7 +193,7 @@ const sampleSidebarToggle = async (
           }
 
           window.setTimeout(() => {
-            capture('settled')
+            samples.push(readSample())
             resolve({
               startClassName,
               endClassName: sidebar.className,
@@ -229,6 +225,14 @@ const summarize = (samples: SidebarAnimationSample[]) => {
 
 const maxRange = (values: number[]) => Math.max(...values) - Math.min(...values)
 
+const expectStableRange = (
+  samples: SidebarAnimationSample[],
+  readValue: (sample: SidebarAnimationSample) => number,
+  tolerance = 1,
+) => {
+  expect(maxRange(samples.map(readValue))).toBeLessThanOrEqual(tolerance)
+}
+
 const expectClose = (actual: number, expected: number, tolerance: number) => {
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)
 }
@@ -258,6 +262,13 @@ const expectContinuousSidebarAnimation = (
   expect(result.samples.every(sample => sample.projectToggleOpacity >= 0.95)).toBe(true)
   expect(result.samples.every(sample => sample.spaceNameOpacity >= 0.95)).toBe(true)
   expect(result.samples.every(sample => sample.spaceToggleOpacity >= 0.95)).toBe(true)
+  expect(result.samples.every(sample => sample.spaceRailSurfaceOpacity >= 0.95)).toBe(true)
+  expect(result.samples.every(sample => sample.spaceItemBackground === 'rgba(0, 0, 0, 0)')).toBe(
+    true,
+  )
+  expect(result.samples.every(sample => sample.spaceItemBorderColor === 'rgba(0, 0, 0, 0)')).toBe(
+    true,
+  )
   expect(firstTransition).toBeDefined()
   expect(lastTransition).toBeDefined()
   if (!firstTransition || !lastTransition) {
@@ -289,37 +300,17 @@ const expectContinuousSidebarAnimation = (
   }
   expectClose(firstTransition.spaceItemViewportLeft, result.before.spaceItemViewportLeft, 1)
   expectClose(firstTransition.spaceItemViewportTop, result.before.spaceItemViewportTop, 1)
-  expect(maxRange(transitionSamples.map(sample => sample.paddingLeft))).toBeLessThanOrEqual(0.1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.pinButtonViewportCenterX)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.pinButtonViewportCenterY)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.projectIconViewportCenterX)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.projectIconViewportCenterY)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.projectNameViewportLeft)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.spaceRailIconViewportCenterX)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.spaceRailIconViewportCenterY)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.spaceItemViewportLeft)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.spaceItemViewportTop)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(transitionSamples.map(sample => sample.spaceNameViewportLeft)),
-  ).toBeLessThanOrEqual(1)
+  expectStableRange(transitionSamples, sample => sample.paddingLeft, 0.1)
+  expectStableRange(transitionSamples, sample => sample.pinButtonViewportCenterX)
+  expectStableRange(transitionSamples, sample => sample.pinButtonViewportCenterY)
+  expectStableRange(transitionSamples, sample => sample.projectIconViewportCenterX)
+  expectStableRange(transitionSamples, sample => sample.projectIconViewportCenterY)
+  expectStableRange(transitionSamples, sample => sample.projectNameViewportLeft)
+  expectStableRange(transitionSamples, sample => sample.spaceRailIconViewportCenterX)
+  expectStableRange(transitionSamples, sample => sample.spaceRailIconViewportCenterY)
+  expectStableRange(transitionSamples, sample => sample.spaceItemViewportLeft)
+  expectStableRange(transitionSamples, sample => sample.spaceItemViewportTop)
+  expectStableRange(transitionSamples, sample => sample.spaceNameViewportLeft)
   expect(
     transitionSamples.filter(
       sample =>
@@ -364,6 +355,8 @@ const expectContinuousSidebarAnimation = (
       expect(finalSample.projectToggleVisibleWidth).toBeLessThanOrEqual(1)
       expect(finalSample.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
       expect(finalSample.spaceToggleVisibleWidth).toBeLessThanOrEqual(1)
+      expectClose(finalSample.spaceRailSurfaceWidth, finalSample.spaceItemHeight, 0.5)
+      expectClose(finalSample.spaceRailSurfaceHeight, finalSample.spaceItemHeight, 0.5)
     }
     expect(
       maxStep(
@@ -371,6 +364,19 @@ const expectContinuousSidebarAnimation = (
         'positive',
       ),
     ).toBeLessThanOrEqual(2)
+    expect(
+      maxStep(
+        result.samples.map(sample => sample.spaceRailSurfaceWidth),
+        'positive',
+      ),
+    ).toBeLessThanOrEqual(2)
+    expect(
+      transitionSamples.some(
+        sample =>
+          sample.spaceRailSurfaceWidth > sample.spaceItemHeight + 2 &&
+          sample.spaceRailSurfaceWidth < result.before.spaceRailSurfaceWidth - 2,
+      ),
+    ).toBe(true)
     return
   }
 
@@ -387,10 +393,23 @@ const expectContinuousSidebarAnimation = (
     ),
   ).toBeGreaterThanOrEqual(-2)
   expect(
+    maxStep(
+      result.samples.map(sample => sample.spaceRailSurfaceWidth),
+      'negative',
+    ),
+  ).toBeGreaterThanOrEqual(-2)
+  expect(
     transitionSamples.some(
       sample =>
         sample.spaceNameVisibleWidth > 2 &&
         sample.spaceNameVisibleWidth < sample.spaceNameWidth - 2,
+    ),
+  ).toBe(true)
+  expect(
+    transitionSamples.some(
+      sample =>
+        sample.spaceRailSurfaceWidth > result.before.spaceRailSurfaceWidth + 2 &&
+        sample.spaceRailSurfaceWidth < sample.spaceItemWidth - 2,
     ),
   ).toBe(true)
 }
@@ -446,6 +465,9 @@ test.describe('Primary Sidebar Animation', () => {
       }
       expect(collapsedFinal.sidebarTransition).toBe('idle')
       expect(collapsedFinal.spaceRailIconOpacity).toBeGreaterThanOrEqual(0.95)
+      expect(collapsedFinal.spaceItemWidth).toBeGreaterThan(100)
+      expectClose(collapsedFinal.spaceRailSurfaceWidth, collapsedFinal.spaceItemHeight, 0.5)
+      expectClose(collapsedFinal.spaceRailSurfaceHeight, collapsedFinal.spaceItemHeight, 0.5)
       expect(collapsedFinal.projectNameVisibleWidth).toBeLessThanOrEqual(1)
       expect(collapsedFinal.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
       expect(collapsedFinal.spaceToggleVisibleWidth).toBeLessThanOrEqual(1)
@@ -461,7 +483,10 @@ test.describe('Primary Sidebar Animation', () => {
       }
       expect(expandedFinal.sidebarTransition).toBe('idle')
       expect(expandedFinal.spaceItemWidth).toBeGreaterThan(100)
-      expect(expandedFinal.spaceRailSurfaceOpacity).toBeLessThanOrEqual(0.05)
+      expect(expandedFinal.spaceRailSurfaceOpacity).toBeGreaterThanOrEqual(0.95)
+      expect(expandedFinal.spaceRailSurfaceWidth).toBeGreaterThan(100)
+      expectClose(expandedFinal.spaceRailSurfaceWidth, expandedFinal.spaceItemWidth, 0.5)
+      expectClose(expandedFinal.spaceRailSurfaceHeight, expandedFinal.spaceItemHeight, 0.5)
       expect(expandedFinal.spaceNameOpacity).toBeGreaterThanOrEqual(0.95)
       expect(expandedFinal.spaceNameVisibleWidth).toBeGreaterThan(20)
       expect(expandedFinal.spaceNameWidth).toBeGreaterThan(20)

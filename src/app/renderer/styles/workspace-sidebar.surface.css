@@ -1,0 +1,68 @@
+.workspace-space-item {
+  --workspace-space-item-background: transparent;
+  --workspace-space-item-border-color: transparent;
+  --workspace-space-item-surface-width: calc(100% + 2px);
+  --workspace-space-item-surface-height: calc(100% + 2px);
+  background: transparent;
+  border-color: transparent;
+  transition: color 0.15s ease;
+}
+
+.workspace-space-item::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  z-index: 0;
+  box-sizing: border-box;
+  width: var(--workspace-space-item-surface-width);
+  height: var(--workspace-space-item-surface-height);
+  border: 1px solid var(--workspace-space-item-border-color);
+  border-radius: inherit;
+  background: var(--workspace-space-item-background);
+  pointer-events: none;
+  transition:
+    width 0.22s ease,
+    height 0.22s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.workspace-space-item > * {
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-space-item:hover {
+  --workspace-space-item-background: var(--cove-surface-hover);
+  background: transparent;
+}
+
+.workspace-space-group--space > .workspace-space-item,
+.workspace-space-item[data-cove-label-color],
+.workspace-space-group[data-cove-label-color] > .workspace-space-item,
+.workspace-space-item--active {
+  --workspace-space-item-background: color-mix(
+    in srgb,
+    var(--workspace-space-accent) 82%,
+    var(--cove-field) 18%
+  );
+  --workspace-space-item-border-color: color-mix(
+    in srgb,
+    var(--workspace-space-accent) 58%,
+    transparent
+  );
+  background: transparent;
+  border-color: transparent;
+}
+
+.workspace-space-group--space > .workspace-space-item:hover,
+.workspace-space-item[data-cove-label-color]:hover,
+.workspace-space-group[data-cove-label-color] > .workspace-space-item:hover {
+  --workspace-space-item-background: color-mix(
+    in srgb,
+    var(--workspace-space-accent) 88%,
+    var(--cove-field) 12%
+  );
+  background: transparent;
+}

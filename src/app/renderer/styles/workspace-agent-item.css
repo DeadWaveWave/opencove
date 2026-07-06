@@ -79,27 +79,78 @@ button.workspace-agent-item:focus-visible {
 }
 
 .workspace-agent-item--sidebar {
+  --workspace-agent-item-background: transparent;
+  --workspace-agent-item-border-color: transparent;
+  --workspace-agent-item-surface-shadow: none;
+  --workspace-agent-item-surface-width: calc(100% + 2px);
+  --workspace-agent-item-surface-height: calc(100% + 2px);
+  position: relative;
   flex-direction: row;
   align-items: center;
   gap: 0;
   height: var(--workspace-sidebar-tree-item-size, 32px);
   min-height: var(--workspace-sidebar-tree-item-size, 32px);
   padding: 0 6px;
+  background: transparent;
+  border-color: transparent;
+}
+
+.workspace-agent-item--sidebar::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  z-index: 0;
+  box-sizing: border-box;
+  width: var(--workspace-agent-item-surface-width);
+  height: var(--workspace-agent-item-surface-height);
+  border: 1px solid var(--workspace-agent-item-border-color);
+  border-radius: inherit;
+  background: var(--workspace-agent-item-background);
+  box-shadow: var(--workspace-agent-item-surface-shadow);
+  pointer-events: none;
+  transition:
+    width 0.22s ease,
+    height 0.22s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.workspace-agent-item--sidebar > * {
+  position: relative;
+  z-index: 1;
 }
 
 .workspace-agent-item--sidebar.workspace-agent-item--nested {
   background: transparent;
 }
 
+.workspace-agent-item--sidebar:hover {
+  --workspace-agent-item-background: var(--cove-surface-hover);
+  --workspace-agent-item-border-color: var(--cove-border-subtle);
+  background: transparent;
+  border-color: transparent;
+}
+
 .workspace-agent-item--sidebar[data-cove-label-color] {
-  border-color: color-mix(in srgb, var(--cove-label-color) 32%, transparent);
-  background: color-mix(in srgb, var(--cove-label-color) 12%, var(--cove-field) 88%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 10%, transparent);
+  --workspace-agent-item-background: color-mix(
+    in srgb,
+    var(--cove-label-color) 12%,
+    var(--cove-field) 88%
+  );
+  --workspace-agent-item-border-color: color-mix(in srgb, var(--cove-label-color) 32%, transparent);
+  --workspace-agent-item-surface-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--cove-label-color) 10%, transparent);
 }
 
 .workspace-agent-item--sidebar[data-cove-label-color]:hover {
-  border-color: color-mix(in srgb, var(--cove-label-color) 42%, transparent);
-  background: color-mix(in srgb, var(--cove-label-color) 18%, var(--cove-field) 82%);
+  --workspace-agent-item-background: color-mix(
+    in srgb,
+    var(--cove-label-color) 18%,
+    var(--cove-field) 82%
+  );
+  --workspace-agent-item-border-color: color-mix(in srgb, var(--cove-label-color) 42%, transparent);
 }
 
 .workspace-agent-item__body {

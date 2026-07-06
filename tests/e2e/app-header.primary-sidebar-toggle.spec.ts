@@ -102,9 +102,13 @@ const readSidebarToggleVisuals = async (page: Page) =>
         spaceWidth: readWidth(secondarySpace),
         spaceVisibleWidth: readVisibleWidth(secondarySpace),
         spaceHeight: readHeight(secondarySpace),
+        spaceSurfaceWidth: readBeforeNumber(secondarySpace, 'width'),
+        spaceSurfaceHeight: readBeforeNumber(secondarySpace, 'height'),
         spaceIconCount: document.querySelectorAll('.workspace-space-item__icon').length,
         agentIcon: readWidth(`${secondaryAgent} .workspace-agent-item__provider`),
         agentHeight: readHeight(secondaryAgent),
+        agentSurfaceWidth: readBeforeNumber(secondaryAgent, 'width'),
+        agentSurfaceHeight: readBeforeNumber(secondaryAgent, 'height'),
         agentStatusLineCount: document.querySelectorAll(
           '.workspace-sidebar .workspace-agent-item__status:not(.workspace-agent-item__status--hidden)',
         ).length,
@@ -365,24 +369,36 @@ test.describe('Primary Sidebar Pin', () => {
       expect(peekVisuals.spaceChevron).toBeCloseTo(railVisuals.spaceRailIcon, 0)
       expect(railVisuals.spaceVisibleWidth).toBeGreaterThanOrEqual(railVisuals.spaceHeight)
       expect(railVisuals.spaceVisibleWidth).toBeLessThanOrEqual(52)
+      expect(railVisuals.spaceSurfaceWidth).toBeCloseTo(railVisuals.spaceHeight, 0)
+      expect(railVisuals.spaceSurfaceHeight).toBeCloseTo(railVisuals.spaceHeight, 0)
+      expect(peekVisuals.spaceSurfaceWidth).toBeGreaterThan(100)
+      expect(peekVisuals.spaceSurfaceHeight).toBeCloseTo(railVisuals.spaceHeight, 0)
       expect(peekVisuals.spaceHeight).toBeCloseTo(railVisuals.spaceHeight, 0)
       expect(peekVisuals.spaceIconCount).toBe(0)
       expect(peekVisuals.agentIcon).toBeCloseTo(railVisuals.agentIcon, 0)
       expect(peekVisuals.agentHeight).toBeCloseTo(railVisuals.agentHeight, 0)
+      expect(railVisuals.agentSurfaceWidth).toBeCloseTo(railVisuals.agentHeight, 0)
+      expect(railVisuals.agentSurfaceHeight).toBeCloseTo(railVisuals.agentHeight, 0)
+      expect(peekVisuals.agentSurfaceWidth).toBeGreaterThan(100)
+      expect(peekVisuals.agentSurfaceHeight).toBeCloseTo(railVisuals.agentHeight, 0)
       expect(railVisuals.agentStatusLineCount).toBe(0)
       expect(peekVisuals.agentStatusLineCount).toBe(0)
       expect(railVisuals.agentRing).not.toBe('none')
       expect(peekVisuals.agentRing).toBe(railVisuals.agentRing)
-      expect(railVisuals.activeSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
-      expect(railVisuals.activeSpaceSurfaceOpacity).toBeLessThanOrEqual(0.05)
-      expect(peekVisuals.activeSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
-      expect(peekVisuals.activeSpaceSurfaceOpacity).toBeLessThanOrEqual(0.05)
-      expect(railVisuals.inactiveSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
-      expect(railVisuals.inactiveSpaceSurfaceBackground).toBe('rgba(0, 0, 0, 0)')
-      expect(peekVisuals.inactiveSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
-      expect(railVisuals.defaultSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
-      expect(railVisuals.defaultSpaceSurfaceBackground).toBe('rgba(0, 0, 0, 0)')
-      expect(peekVisuals.defaultSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.activeSpaceBackground).toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.activeSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.activeSpaceSurfaceOpacity).toBeGreaterThanOrEqual(0.95)
+      expect(peekVisuals.activeSpaceBackground).toBe('rgba(0, 0, 0, 0)')
+      expect(peekVisuals.activeSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(peekVisuals.activeSpaceSurfaceOpacity).toBeGreaterThanOrEqual(0.95)
+      expect(railVisuals.inactiveSpaceBackground).toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.inactiveSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(peekVisuals.inactiveSpaceBackground).toBe('rgba(0, 0, 0, 0)')
+      expect(peekVisuals.inactiveSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.defaultSpaceBackground).toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.defaultSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(peekVisuals.defaultSpaceBackground).toBe('rgba(0, 0, 0, 0)')
+      expect(peekVisuals.defaultSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
       expect(railVisuals.inactiveBranchBackground).not.toBe('rgba(0, 0, 0, 0)')
       expect(peekVisuals.inactiveBranchBackground).toBe(railVisuals.inactiveBranchBackground)
       expect(peekVisuals.inactiveBranchGap).toBeCloseTo(railVisuals.inactiveBranchGap, 0)
