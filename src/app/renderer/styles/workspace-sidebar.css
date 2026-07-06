@@ -29,10 +29,7 @@
 }
 
 .workspace-sidebar--rail {
-  width: var(--cove-primary-sidebar-rail-width);
-  padding: 6px 5px;
-  align-items: center;
-  gap: 8px;
+  width: 100%;
 }
 
 .workspace-sidebar--peek .workspace-sidebar__list {
@@ -45,12 +42,6 @@
   justify-content: space-between;
   gap: 6px;
   flex: 0 0 auto;
-}
-
-.workspace-sidebar--rail .workspace-sidebar__toolbar {
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
 }
 
 .workspace-sidebar__toolbar-button {
@@ -208,7 +199,7 @@
   background: transparent;
   border-radius: 8px;
   min-height: var(--workspace-sidebar-tree-item-size);
-  padding: 0 6px;
+  padding: 0 6px 0 19px;
   color: var(--cove-text);
   text-align: left;
   display: flex;
