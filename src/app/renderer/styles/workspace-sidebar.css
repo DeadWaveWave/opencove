@@ -44,10 +44,6 @@
   align-items: center;
 }
 
-.workspace-sidebar--peek .workspace-sidebar__list {
-  animation: workspace-sidebar-peek-content-in 0.18s ease both;
-}
-
 .workspace-sidebar__toolbar {
   display: flex;
   align-items: center;
@@ -461,17 +457,6 @@
   padding-left: 0;
   border-left: 0;
   gap: 4px;
-}
-
-@keyframes workspace-sidebar-peek-content-in {
-  from {
-    opacity: 0;
-    transform: translateX(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
 }
 
 .workspace-sidebar__agents {
