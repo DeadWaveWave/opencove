@@ -65,6 +65,67 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
     }
   })
 
+  test('preserves sidebar scroll position between expanded and collapsed modes', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await seedWorkspaceState(window, {
+        activeWorkspaceId: 'workspace-scroll-toggle-0',
+        workspaces: Array.from({ length: 28 }, (_, index) => ({
+          id: `workspace-scroll-toggle-${index}`,
+          name: `workspace-scroll-toggle-${index}`,
+          path: `${testWorkspacePath}-scroll-toggle-${index}`,
+          nodes: [],
+        })),
+      })
+
+      const toggleButton = window.locator('[data-testid="workspace-sidebar-pin"]')
+      const dockedList = window.locator('.workspace-sidebar__list')
+
+      await expect(dockedList).toBeVisible()
+      await expect(dockedList).toHaveAttribute('data-cove-scroll-fade', 'bottom')
+
+      const dockedMetrics = await dockedList.evaluate(element => {
+        const maxScrollTop = element.scrollHeight - element.clientHeight
+        element.scrollTop = maxScrollTop / 2
+        element.dispatchEvent(new Event('scroll', { bubbles: true }))
+
+        return {
+          maxScrollTop,
+          scrollTop: element.scrollTop,
+        }
+      })
+
+      expect(dockedMetrics.scrollTop).toBeGreaterThan(0)
+      await expect(dockedList).toHaveAttribute('data-cove-scroll-fade', 'both')
+
+      await toggleButton.click()
+
+      const railList = window.locator('.workspace-sidebar-rail__list')
+      await expect(railList).toBeVisible()
+      await expect(railList).toHaveAttribute('data-cove-scroll-fade', 'both')
+
+      const railMetrics = await railList.evaluate(element => ({
+        maxScrollTop: element.scrollHeight - element.clientHeight,
+        scrollTop: element.scrollTop,
+      }))
+      const dockedRatio = dockedMetrics.scrollTop / dockedMetrics.maxScrollTop
+      const railRatio = railMetrics.scrollTop / railMetrics.maxScrollTop
+
+      expect(railMetrics.scrollTop).toBeGreaterThan(0)
+      expect(Math.abs(railRatio - dockedRatio)).toBeLessThan(0.08)
+
+      await toggleButton.click()
+      await expect(dockedList).toBeVisible()
+      await expect(dockedList).toHaveAttribute('data-cove-scroll-fade', 'both')
+      await expect
+        .poll(async () => await dockedList.evaluate(element => element.scrollTop))
+        .toBeGreaterThan(0)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('shows agents under each workspace and focuses selected workspace', async () => {
     const { electronApp, window } = await launchApp()
 

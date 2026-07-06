@@ -119,7 +119,6 @@ export function ProjectContextMenu({
   }
   const commitLabelColor = (labelColor: LabelColor | NodeLabelColorOverride | null): void => {
     setTargetLabelColor(resolvedTarget, labelColor)
-    useAppStore.getState().setProjectContextMenu(null)
   }
   const copySpacePath = (): void => {
     const path = resolveTargetSpacePath(workspaces, resolvedTarget)

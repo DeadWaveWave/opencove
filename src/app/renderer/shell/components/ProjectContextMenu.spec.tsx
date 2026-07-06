@@ -146,6 +146,53 @@ describe('ProjectContextMenu', () => {
     expect(useAppStore.getState().workspaces[0]?.spaces[0]?.labelColor).toBe('green')
   })
 
+  it('keeps the context menu open while changing label colors', () => {
+    const workspace = createWorkspace()
+    useAppStore.setState({
+      workspaces: [workspace],
+      projectContextMenu: {
+        workspaceId: 'workspace-a',
+        target: { kind: 'space', workspaceId: 'workspace-a', spaceId: 'space-a' },
+        x: 40,
+        y: 60,
+      },
+    })
+
+    function Harness(): React.JSX.Element {
+      const workspaces = useAppStore(state => state.workspaces)
+      const menu = useAppStore(state => state.projectContextMenu)
+
+      if (!menu) {
+        return <div data-testid="closed" />
+      }
+
+      return (
+        <ProjectContextMenu
+          workspaces={workspaces}
+          workspaceId={menu.workspaceId}
+          target={menu.target}
+          x={menu.x}
+          y={menu.y}
+          onRequestManageMounts={vi.fn()}
+          onRequestOpenInFileManager={vi.fn()}
+          onRequestRemove={vi.fn()}
+        />
+      )
+    }
+
+    render(<Harness />)
+
+    fireEvent.click(screen.getByTestId('workspace-project-context-menu-label-color-green'))
+    expect(useAppStore.getState().workspaces[0]?.spaces[0]?.labelColor).toBe('green')
+    expect(useAppStore.getState().projectContextMenu).not.toBeNull()
+    expect(screen.queryByTestId('workspace-project-context-menu-label-colors')).not.toBeNull()
+
+    fireEvent.click(screen.getByTestId('workspace-project-context-menu-label-color-purple'))
+    expect(useAppStore.getState().workspaces[0]?.spaces[0]?.labelColor).toBe('purple')
+    expect(useAppStore.getState().projectContextMenu).not.toBeNull()
+    expect(screen.queryByTestId('workspace-project-context-menu-label-colors')).not.toBeNull()
+  })
+
   it('renders space edit controls above the context menu separator', () => {
     renderMenu({ kind: 'space', workspaceId: 'workspace-a', spaceId: 'space-a' })
 

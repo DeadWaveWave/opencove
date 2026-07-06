@@ -477,6 +477,13 @@ test.describe('Primary Sidebar Pin', () => {
           (sidebarColorRowBox.y + sidebarColorRowBox.height / 2),
       )
       expect(sidebarColorCenterDelta).toBeLessThanOrEqual(1.5)
+      await window
+        .locator('[data-testid="workspace-project-context-menu-label-color-purple"]')
+        .click()
+      await expect(window.locator('.workspace-project-context-menu')).toBeVisible()
+      await expect(
+        window.locator('[data-testid="workspace-project-context-menu-label-color-green"]'),
+      ).toBeVisible()
       await window.locator('.workspace-canvas').click({ position: { x: 420, y: 420 } })
       await expect(window.locator('.workspace-project-context-menu')).toHaveCount(0)
 

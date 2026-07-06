@@ -5,6 +5,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { ProjectContextMenuState } from '../types'
 import type { SidebarProjectTreeModel, SidebarSpaceGroupModel } from '../utils/sidebarTree'
 import { SidebarDisclosureIcon } from './SidebarDisclosureIcon'
+import type { SidebarScrollFade } from './useSidebarListScroll'
 
 function RailAgentButton({
   workspaceId,
@@ -157,6 +158,9 @@ export function SidebarRail({
   activeWorkspaceId,
   collapsedWorkspaceIds,
   collapsedSpaceGroupIds,
+  listRef,
+  scrollFade,
+  onListScroll,
   onSelectWorkspace,
   onSelectSpace,
   onOpenProjectContextMenu,
@@ -166,13 +170,21 @@ export function SidebarRail({
   activeWorkspaceId: string | null
   collapsedWorkspaceIds: Record<string, boolean>
   collapsedSpaceGroupIds: Record<string, boolean>
+  listRef?: React.Ref<HTMLDivElement>
+  scrollFade?: SidebarScrollFade
+  onListScroll?: React.UIEventHandler<HTMLDivElement>
   onSelectWorkspace: (workspaceId: string) => void
   onSelectSpace: (workspaceId: string, spaceId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
 }): React.JSX.Element {
   return (
-    <div className="workspace-sidebar-rail__list">
+    <div
+      ref={listRef}
+      className="workspace-sidebar-rail__list"
+      data-cove-scroll-fade={scrollFade ?? 'none'}
+      onScroll={onListScroll}
+    >
       {trees.map(tree => {
         const isActive = tree.workspace.id === activeWorkspaceId
         const isExpanded = collapsedWorkspaceIds[tree.workspace.id] !== true
