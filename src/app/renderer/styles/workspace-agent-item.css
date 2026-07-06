@@ -133,12 +133,6 @@ button.workspace-agent-item:focus-visible {
   flex: 0 0 var(--workspace-sidebar-agent-icon-size);
 }
 
-.workspace-rail-agent__provider {
-  width: var(--workspace-rail-agent-icon-size);
-  height: var(--workspace-rail-agent-icon-size);
-  flex: 0 0 var(--workspace-rail-agent-icon-size);
-}
-
 .workspace-agent-item__provider--status {
   --workspace-agent-status-ring: var(--cove-border);
   border: 1px solid color-mix(in srgb, var(--workspace-agent-status-ring) 86%, transparent);
@@ -160,6 +154,11 @@ button.workspace-agent-item:focus-visible {
   align-items: center;
   gap: 5px;
   min-width: 0;
+  max-width: 170px;
+  opacity: 1;
+  transition:
+    max-width 0.2s ease,
+    opacity 0.14s ease;
 }
 
 .workspace-agent-item__title {

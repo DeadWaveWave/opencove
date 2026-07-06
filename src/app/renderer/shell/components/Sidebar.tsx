@@ -12,7 +12,6 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PersistNotice, ProjectContextMenuState } from '../types'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import { SidebarRail } from './SidebarRail'
 import { SidebarToolbar } from './SidebarToolbar'
 import { buildSidebarProjectTree } from '../utils/sidebarTree'
 import { SortableWorkspaceItem, WorkspaceItemOverlay } from './SidebarWorkspaceItem'
@@ -108,37 +107,6 @@ export function Sidebar({
     activeId === null ? null : (trees.find(tree => tree.workspace.id === activeId) ?? null)
   const className = `workspace-sidebar workspace-sidebar--${variant}`
 
-  if (variant === 'rail') {
-    return (
-      <aside
-        className={className}
-        data-testid="workspace-sidebar"
-        onPointerEnter={onPointerEnter}
-        onPointerLeave={onPointerLeave}
-      >
-        <SidebarToolbar
-          isPinned={isPinned}
-          showAddProject={false}
-          onTogglePinned={onTogglePinned}
-          onAddProject={onAddProject}
-        />
-        <SidebarRail
-          trees={trees}
-          activeWorkspaceId={activeWorkspaceId}
-          collapsedWorkspaceIds={collapsedWorkspaceIds}
-          collapsedSpaceGroupIds={collapsedSpaceGroupIds}
-          listRef={setSidebarListRef}
-          scrollFade={sidebarListScrollFade}
-          onListScroll={handleSidebarListScroll}
-          onSelectWorkspace={onSelectWorkspace}
-          onSelectSpace={onSelectSpace}
-          onOpenProjectContextMenu={onOpenProjectContextMenu}
-          onSelectAgentNode={onSelectAgentNode}
-        />
-      </aside>
-    )
-  }
-
   return (
     <aside
       className={className}
@@ -148,11 +116,11 @@ export function Sidebar({
     >
       <SidebarToolbar
         isPinned={isPinned}
-        showAddProject={true}
+        showAddProject={variant !== 'rail'}
         onTogglePinned={onTogglePinned}
         onAddProject={onAddProject}
       />
-      {persistNotice ? (
+      {variant !== 'rail' && persistNotice ? (
         <div
           className={`workspace-sidebar__persist-alert workspace-sidebar__persist-alert--${persistNotice.tone}`}
         >

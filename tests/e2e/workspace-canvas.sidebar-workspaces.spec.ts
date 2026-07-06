@@ -84,6 +84,10 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
 
       await expect(dockedList).toBeVisible()
       await expect(dockedList).toHaveAttribute('data-cove-scroll-fade', 'bottom')
+      const dockedListHandle = await dockedList.elementHandle()
+      if (!dockedListHandle) {
+        throw new Error('Docked sidebar list element not available')
+      }
 
       const dockedMetrics = await dockedList.evaluate(element => {
         const maxScrollTop = element.scrollHeight - element.clientHeight
@@ -101,7 +105,7 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
 
       await toggleButton.click()
 
-      const railList = window.locator('.workspace-sidebar-rail__list')
+      const railList = window.locator('.workspace-sidebar__list')
       await expect(railList).toBeVisible()
       await expect(railList).toHaveAttribute('data-cove-scroll-fade', 'both')
 
@@ -114,6 +118,12 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
 
       expect(railMetrics.scrollTop).toBeGreaterThan(0)
       expect(Math.abs(railRatio - dockedRatio)).toBeLessThan(0.08)
+      expect(
+        await dockedListHandle.evaluate(
+          element => document.querySelector('.workspace-sidebar__list') === element,
+        ),
+      ).toBe(true)
+      await dockedListHandle.dispose()
 
       await toggleButton.click()
       await expect(dockedList).toBeVisible()

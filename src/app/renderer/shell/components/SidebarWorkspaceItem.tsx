@@ -149,6 +149,11 @@ function SpaceGroup({
           onSelectWorkspace(workspaceId)
         }}
       >
+        <SidebarDisclosureIcon
+          expanded={isExpanded}
+          className="workspace-space-item__rail-icon"
+          aria-hidden="true"
+        />
         <span className="workspace-space-item__name">{label}</span>
         {hasAgents ? (
           <button

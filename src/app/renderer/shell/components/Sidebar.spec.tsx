@@ -385,7 +385,7 @@ describe('Sidebar', () => {
         onReorderWorkspaces={() => undefined}
       />,
     )
-    expect(screen.queryByTestId('workspace-rail-space-root-workspace-a')).toBeNull()
+    expect(screen.queryByTestId('workspace-space-root-workspace-a')).toBeNull()
   })
 
   it('selects a space from the expanded project tree', () => {
@@ -448,8 +448,8 @@ describe('Sidebar', () => {
         onReorderWorkspaces={() => undefined}
       />,
     )
-    expect(screen.getByTestId('workspace-rail-space-workspace-a-workspace-a-space')).not.toBeNull()
-    expect(screen.queryByTestId('workspace-rail-agent-workspace-a-workspace-a-agent')).toBeNull()
+    expect(screen.getByTestId('workspace-space-item-workspace-a-workspace-a-space')).not.toBeNull()
+    expect(screen.queryByTestId('workspace-agent-item-workspace-a-workspace-a-agent')).toBeNull()
   })
 
   it('renders the collapsed rail with space grouping and nested agents', () => {
@@ -477,23 +477,24 @@ describe('Sidebar', () => {
       />,
     )
 
-    const spaceButton = screen.getByTestId('workspace-rail-space-workspace-a-workspace-a-space')
-    const agentButton = screen.getByTestId('workspace-rail-agent-workspace-a-workspace-a-agent')
+    const spaceButton = screen.getByTestId('workspace-space-item-workspace-a-workspace-a-space')
+    const agentButton = screen.getByTestId('workspace-agent-item-workspace-a-workspace-a-agent')
     const inactiveSpaceButton = screen.getByTestId(
-      'workspace-rail-space-workspace-b-workspace-b-space',
+      'workspace-space-item-workspace-b-workspace-b-space',
     )
     const inactiveAgentButton = screen.getByTestId(
-      'workspace-rail-agent-workspace-b-workspace-b-agent',
+      'workspace-agent-item-workspace-b-workspace-b-agent',
     )
-    const branch = container.querySelector('.workspace-rail-space-group__agents')
+    const branch = container.querySelector('.workspace-space-group__branch')
 
-    expect(spaceButton.className).toContain('workspace-rail-space--active')
-    expect(inactiveSpaceButton.className).not.toContain('workspace-rail-space--active')
+    expect(container.querySelector('.workspace-sidebar__list')).not.toBeNull()
+    expect(spaceButton.className).toContain('workspace-space-item--active')
+    expect(inactiveSpaceButton.className).not.toContain('workspace-space-item--active')
     expect(agentButton.querySelector('.agent-provider-icon')).not.toBeNull()
     expect(inactiveAgentButton.querySelector('.agent-provider-icon')).not.toBeNull()
     expect(branch).not.toBeNull()
-    expect(
-      branch?.closest('.workspace-rail-space-group')?.getAttribute('data-cove-label-color'),
-    ).toBe('purple')
+    expect(branch?.closest('.workspace-space-group')?.getAttribute('data-cove-label-color')).toBe(
+      'purple',
+    )
   })
 })

@@ -70,23 +70,13 @@ describe('Sidebar scroll state', () => {
         if (this instanceof HTMLElement && this.classList.contains('workspace-sidebar__list')) {
           return 500
         }
-        if (
-          this instanceof HTMLElement &&
-          this.classList.contains('workspace-sidebar-rail__list')
-        ) {
-          return 900
-        }
         return 0
       },
     })
     Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
       configurable: true,
       get() {
-        if (
-          this instanceof HTMLElement &&
-          (this.classList.contains('workspace-sidebar__list') ||
-            this.classList.contains('workspace-sidebar-rail__list'))
-        ) {
+        if (this instanceof HTMLElement && this.classList.contains('workspace-sidebar__list')) {
           return 100
         }
         return 0
@@ -130,8 +120,9 @@ describe('Sidebar scroll state', () => {
         />,
       )
 
-      const railList = container.querySelector('.workspace-sidebar-rail__list') as HTMLDivElement
-      expect(railList.scrollTop).toBe(400)
+      const railList = container.querySelector('.workspace-sidebar__list') as HTMLDivElement
+      expect(railList).toBe(dockedList)
+      expect(railList.scrollTop).toBe(200)
       expect(railList.getAttribute('data-cove-scroll-fade')).toBe('both')
     } finally {
       if (scrollHeightDescriptor) {

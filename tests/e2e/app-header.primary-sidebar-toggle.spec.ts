@@ -1,35 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
-
-const createRailAgent = (
-  id: string,
-  title: string,
-  x: number,
-  prompt: string,
-  startedAt: string,
-) => ({
-  id,
-  title,
-  position: { x, y: 0 },
-  width: 320,
-  height: 240,
-  kind: 'agent' as const,
-  status: 'running' as const,
-  startedAt,
-  agent: {
-    provider: 'codex' as const,
-    prompt,
-    model: 'gpt-5.2-codex',
-    effectiveModel: 'gpt-5.2-codex',
-    launchMode: 'new' as const,
-    resumeSessionId: null,
-    executionDirectory: testWorkspacePath,
-    expectedDirectory: testWorkspacePath,
-    directoryMode: 'workspace' as const,
-    customDirectory: null,
-    shouldCreateDirectory: false,
-  },
-})
+import { createRailAgent } from './sidebar-test-fixtures'
 
 test.describe('Primary Sidebar Pin', () => {
   test('toggles the sidebar between docked and rail modes', async () => {
@@ -190,7 +161,12 @@ test.describe('Primary Sidebar Pin', () => {
       await window.locator('[data-testid="workspace-sidebar-pin"]').click()
       await window.mouse.move(600, 360)
       await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
-      await expect(window.locator('.workspace-rail-space-group__agents')).toHaveCount(3)
+      await expect
+        .poll(async () => await sidebar.evaluate(element => element.getBoundingClientRect().width))
+        .toBeLessThanOrEqual(76)
+      await expect(
+        window.locator('.workspace-sidebar--rail .workspace-space-group__branch'),
+      ).toHaveCount(3)
       await expect(window.locator('[data-testid="workspace-sidebar-add-project"]')).toHaveCount(0)
       const railChrome = await sidebar.evaluate(element => {
         const style = window.getComputedStyle(element)
@@ -251,45 +227,51 @@ test.describe('Primary Sidebar Pin', () => {
           )
         }
         const provider = document.querySelector(
-          '[data-testid="workspace-rail-agent-workspace-toggle-auto-reveal-agent-secondary-space"] .workspace-rail-agent__provider',
+          '[data-testid="workspace-agent-item-workspace-toggle-auto-reveal-agent-secondary-space"] .workspace-agent-item__provider',
         )
 
         return {
-          projectIcon: readWidth('.workspace-rail-project svg'),
-          projectHeight: readHeight('.workspace-rail-project'),
-          projectBackground: readBackground('.workspace-rail-project--active'),
-          projectGroupBackground: readBackground('.workspace-rail-project-group--active'),
-          projectGroupHeight: readHeight('.workspace-rail-project-group--active'),
-          spaceIcon: readWidth('.workspace-rail-space__icon'),
+          projectIcon: readWidth('.workspace-sidebar--rail .workspace-item__folder-icon'),
+          projectHeight: readHeight('.workspace-sidebar--rail .workspace-item'),
+          projectBackground: readBackground('.workspace-sidebar--rail .workspace-item--active'),
+          projectGroupBackground: readBackground(
+            '.workspace-sidebar--rail .workspace-item-group--active',
+          ),
+          projectGroupHeight: readHeight('.workspace-sidebar--rail .workspace-item-group--active'),
+          spaceIcon: readWidth('.workspace-sidebar--rail .workspace-space-item__rail-icon'),
           spaceHeight: readHeight(
-            '[data-testid="workspace-rail-space-workspace-toggle-auto-reveal-space-secondary"]',
+            '[data-testid="workspace-space-item-workspace-toggle-auto-reveal-space-secondary"]',
           ),
           agentIcon: readWidth(
-            '[data-testid="workspace-rail-agent-workspace-toggle-auto-reveal-agent-secondary-space"] .workspace-rail-agent__provider',
+            '[data-testid="workspace-agent-item-workspace-toggle-auto-reveal-agent-secondary-space"] .workspace-agent-item__provider',
           ),
           agentHeight: readHeight(
-            '[data-testid="workspace-rail-agent-workspace-toggle-auto-reveal-agent-secondary-space"]',
+            '[data-testid="workspace-agent-item-workspace-toggle-auto-reveal-agent-secondary-space"]',
           ),
-          agentStatusLineCount: document.querySelectorAll('.workspace-rail-agent__status').length,
+          agentStatusLineCount: document.querySelectorAll(
+            '.workspace-sidebar--rail .workspace-agent-item__status:not(.workspace-agent-item__status--hidden)',
+          ).length,
           agentRing:
             provider instanceof HTMLElement ? window.getComputedStyle(provider).boxShadow : '',
-          activeSpaceBackground: readBackground('.workspace-rail-space--active'),
+          activeSpaceBackground: readBackground(
+            '.workspace-sidebar--rail .workspace-space-item--active',
+          ),
           inactiveSpaceBackground: readBackground(
-            '[data-testid="workspace-rail-space-workspace-toggle-auto-reveal-space-secondary"]',
+            '[data-testid="workspace-space-item-workspace-toggle-auto-reveal-space-secondary"]',
           ),
           defaultSpaceBackground: readBackground(
-            '[data-testid="workspace-rail-space-workspace-toggle-auto-reveal-space-default"]',
+            '[data-testid="workspace-space-item-workspace-toggle-auto-reveal-space-default"]',
           ),
           inactiveBranchBackground: readBeforeBackground(
-            '.workspace-rail-space-group[data-cove-label-color="green"]',
+            '.workspace-sidebar--rail .workspace-space-group[data-cove-label-color="green"]',
           ),
           inactiveBranchGap: readBranchGap(
-            '.workspace-rail-space-group[data-cove-label-color="green"]',
-            '[data-testid="workspace-rail-space-workspace-toggle-auto-reveal-space-secondary"]',
+            '.workspace-sidebar--rail .workspace-space-group[data-cove-label-color="green"]',
+            '[data-testid="workspace-space-item-workspace-toggle-auto-reveal-space-secondary"]',
           ),
           defaultBranchBackground: readBeforeBackgroundFromClosest(
-            '[data-testid="workspace-rail-space-workspace-toggle-auto-reveal-space-default"]',
-            '.workspace-rail-space-group',
+            '[data-testid="workspace-space-item-workspace-toggle-auto-reveal-space-default"]',
+            '.workspace-sidebar--rail .workspace-space-group',
           ),
         }
       })
@@ -300,7 +282,7 @@ test.describe('Primary Sidebar Pin', () => {
         ).getBoundingClientRect()
         const spaceRect = (
           document.querySelector(
-            '[data-testid="workspace-rail-space-workspace-toggle-auto-reveal-space-secondary"]',
+            '[data-testid="workspace-space-item-workspace-toggle-auto-reveal-space-secondary"]',
           ) as HTMLElement
         ).getBoundingClientRect()
         return Math.abs(spaceRect.x + spaceRect.width / 2 - (sidebarRect.x + sidebarRect.width / 2))
@@ -309,6 +291,9 @@ test.describe('Primary Sidebar Pin', () => {
 
       await sidebar.hover()
       await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
+      await expect
+        .poll(async () => await sidebar.evaluate(element => element.getBoundingClientRect().width))
+        .toBeGreaterThanOrEqual(276)
       await expect(window.locator('[data-testid="workspace-sidebar-add-project"]')).toBeVisible()
       await expect
         .poll(async () => {
