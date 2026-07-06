@@ -20,7 +20,7 @@ export function SidebarToolbar({
     <div className="workspace-sidebar__toolbar">
       <button
         type="button"
-        className={`workspace-sidebar__toolbar-button${isPinned ? ' workspace-sidebar__toolbar-button--active' : ''}`}
+        className={`workspace-sidebar__toolbar-button workspace-sidebar__toolbar-button--pin${isPinned ? ' workspace-sidebar__toolbar-button--active' : ''}`}
         data-testid="workspace-sidebar-pin"
         aria-label={pinLabel}
         aria-pressed={isPinned}

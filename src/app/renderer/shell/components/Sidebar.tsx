@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -18,6 +18,9 @@ import { SortableWorkspaceItem, WorkspaceItemOverlay } from './SidebarWorkspaceI
 import { useSidebarListScroll } from './useSidebarListScroll'
 
 export type SidebarVariant = 'docked' | 'rail' | 'peek'
+type SidebarTransition = 'collapsing' | 'expanding' | null
+
+const sidebarTransitionSettleMs = 260
 
 type SidebarProps = {
   variant?: SidebarVariant
@@ -62,6 +65,9 @@ export function Sidebar({
   const [activeId, setActiveId] = useState<string | null>(null)
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useState<Record<string, boolean>>({})
   const [collapsedSpaceGroupIds, setCollapsedSpaceGroupIds] = useState<Record<string, boolean>>({})
+  const [sidebarTransition, setSidebarTransition] = useState<SidebarTransition>(null)
+  const previousVariantRef = useRef(variant)
+  const transitionTimeoutRef = useRef<number | null>(null)
   const {
     scrollFade: sidebarListScrollFade,
     setListRef: setSidebarListRef,
@@ -105,12 +111,54 @@ export function Sidebar({
 
   const activeTree =
     activeId === null ? null : (trees.find(tree => tree.workspace.id === activeId) ?? null)
-  const className = `workspace-sidebar workspace-sidebar--${variant}`
+  useLayoutEffect(() => {
+    const previousVariant = previousVariantRef.current
+    if (previousVariant === variant) {
+      return
+    }
+
+    const nextTransition =
+      previousVariant === 'rail' && variant !== 'rail'
+        ? 'expanding'
+        : previousVariant !== 'rail' && variant === 'rail'
+          ? 'collapsing'
+          : null
+
+    previousVariantRef.current = variant
+    if (transitionTimeoutRef.current !== null) {
+      window.clearTimeout(transitionTimeoutRef.current)
+      transitionTimeoutRef.current = null
+    }
+    setSidebarTransition(nextTransition)
+    if (nextTransition === null) {
+      return
+    }
+
+    transitionTimeoutRef.current = window.setTimeout(() => {
+      setSidebarTransition(null)
+      transitionTimeoutRef.current = null
+    }, sidebarTransitionSettleMs)
+  }, [variant])
+
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current !== null) {
+        window.clearTimeout(transitionTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const transitionClassName =
+    sidebarTransition === null
+      ? ''
+      : ` workspace-sidebar--transitioning workspace-sidebar--transition-${sidebarTransition}`
+  const className = `workspace-sidebar workspace-sidebar--${variant}${transitionClassName}`
 
   return (
     <aside
       className={className}
       data-testid="workspace-sidebar"
+      data-cove-sidebar-transition={sidebarTransition ?? 'idle'}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
     >

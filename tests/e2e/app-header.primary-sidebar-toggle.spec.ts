@@ -73,6 +73,11 @@ const readSidebarToggleVisuals = async (page: Page) =>
       const provider = document.querySelector(`${secondaryAgent} .workspace-agent-item__provider`)
 
       return {
+        sidebarTransition:
+          document.querySelector('.workspace-sidebar') instanceof HTMLElement
+            ? (document.querySelector('.workspace-sidebar') as HTMLElement).dataset
+                .coveSidebarTransition
+            : '',
         projectIcon: readWidth('.workspace-item__folder-icon'),
         projectHeight: readHeight('.workspace-item'),
         projectBackground: readBackground('.workspace-item--active'),
@@ -80,6 +85,7 @@ const readSidebarToggleVisuals = async (page: Page) =>
         projectGroupHeight: readHeight('.workspace-item-group--active'),
         spaceRailIcon: readWidth(`${secondarySpace} .workspace-space-item__rail-icon`),
         spaceChevron: readWidth('.workspace-space-item__chevron'),
+        spaceWidth: readWidth(secondarySpace),
         spaceHeight: readHeight(secondarySpace),
         spaceIconCount: document.querySelectorAll('.workspace-space-item__icon').length,
         agentIcon: readWidth(`${secondaryAgent} .workspace-agent-item__provider`),
@@ -289,6 +295,7 @@ test.describe('Primary Sidebar Pin', () => {
       await expect
         .poll(async () => await sidebar.evaluate(element => element.getBoundingClientRect().width))
         .toBeLessThanOrEqual(76)
+      await expect(sidebar).toHaveAttribute('data-cove-sidebar-transition', 'idle')
       await expect(
         window.locator('.workspace-sidebar--rail .workspace-space-group__branch'),
       ).toHaveCount(3)
@@ -303,6 +310,7 @@ test.describe('Primary Sidebar Pin', () => {
 
       expect(railChrome.transitionDuration).not.toBe('0s')
       const railVisuals = await readSidebarToggleVisuals(window)
+      expect(railVisuals.sidebarTransition).toBe('idle')
 
       const railCenterDelta = await window.evaluate(() => {
         const sidebarRect = (
@@ -322,6 +330,7 @@ test.describe('Primary Sidebar Pin', () => {
       await expect
         .poll(async () => await sidebar.evaluate(element => element.getBoundingClientRect().width))
         .toBeGreaterThanOrEqual(276)
+      await expect(sidebar).toHaveAttribute('data-cove-sidebar-transition', 'idle')
       await expect(window.locator('[data-testid="workspace-sidebar-add-project"]')).toBeVisible()
       await expect
         .poll(async () => {
@@ -329,6 +338,7 @@ test.describe('Primary Sidebar Pin', () => {
         })
         .toBeGreaterThanOrEqual(21)
       const peekVisuals = await readSidebarToggleVisuals(window)
+      expect(peekVisuals.sidebarTransition).toBe('idle')
 
       expect(peekVisuals.projectIcon).toBeCloseTo(railVisuals.projectIcon, 0)
       expect(peekVisuals.projectHeight).toBeCloseTo(railVisuals.projectHeight, 0)
@@ -338,6 +348,8 @@ test.describe('Primary Sidebar Pin', () => {
       expect(peekVisuals.projectGroupBackground).not.toBe(peekVisuals.projectBackground)
       expect(peekVisuals.projectGroupHeight).toBeCloseTo(railVisuals.projectGroupHeight, 0)
       expect(peekVisuals.spaceChevron).toBeCloseTo(railVisuals.spaceRailIcon, 0)
+      expect(railVisuals.spaceWidth).toBeCloseTo(railVisuals.spaceHeight, 0)
+      expect(railVisuals.spaceWidth).toBeLessThanOrEqual(30)
       expect(peekVisuals.spaceHeight).toBeCloseTo(railVisuals.spaceHeight, 0)
       expect(peekVisuals.spaceIconCount).toBe(0)
       expect(peekVisuals.agentIcon).toBeCloseTo(railVisuals.agentIcon, 0)
@@ -346,20 +358,15 @@ test.describe('Primary Sidebar Pin', () => {
       expect(peekVisuals.agentStatusLineCount).toBe(0)
       expect(railVisuals.agentRing).not.toBe('none')
       expect(peekVisuals.agentRing).toBe(railVisuals.agentRing)
-      expect(railVisuals.activeSpaceBackground).toBe('rgba(0, 0, 0, 0)')
-      expect(railVisuals.activeSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
-      expect(railVisuals.activeSpaceSurfaceWidth).toBeCloseTo(
-        railVisuals.activeSpaceSurfaceHeight,
-        0,
-      )
-      expect(railVisuals.activeSpaceSurfaceOpacity).toBeGreaterThanOrEqual(0.95)
+      expect(railVisuals.activeSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.activeSpaceSurfaceOpacity).toBeLessThanOrEqual(0.05)
       expect(peekVisuals.activeSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
       expect(peekVisuals.activeSpaceSurfaceOpacity).toBeLessThanOrEqual(0.05)
-      expect(railVisuals.inactiveSpaceBackground).toBe('rgba(0, 0, 0, 0)')
-      expect(railVisuals.inactiveSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.inactiveSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.inactiveSpaceSurfaceBackground).toBe('rgba(0, 0, 0, 0)')
       expect(peekVisuals.inactiveSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
-      expect(railVisuals.defaultSpaceBackground).toBe('rgba(0, 0, 0, 0)')
-      expect(railVisuals.defaultSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.defaultSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(railVisuals.defaultSpaceSurfaceBackground).toBe('rgba(0, 0, 0, 0)')
       expect(peekVisuals.defaultSpaceBackground).not.toBe('rgba(0, 0, 0, 0)')
       expect(railVisuals.inactiveBranchBackground).not.toBe('rgba(0, 0, 0, 0)')
       expect(peekVisuals.inactiveBranchBackground).toBe(railVisuals.inactiveBranchBackground)

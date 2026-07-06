@@ -3,22 +3,35 @@ import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-ca
 import { createRailAgent } from './sidebar-test-fixtures'
 
 type SidebarAnimationSample = {
+  label: string
   elapsedMs: number
+  sidebarTransition: string
   width: number
+  paddingLeft: number
   sameList: boolean
   sameWorkspaceItem: boolean
   sameProjectIcon: boolean
   itemGroupCount: number
+  pinButtonViewportCenterX: number
+  pinButtonViewportCenterY: number
   projectIconViewportCenterX: number
+  projectIconViewportCenterY: number
   projectIconCenterFromSidebarLeft: number
+  projectNameOpacity: number
   projectNameViewportLeft: number
+  projectToggleOpacity: number
   spaceRailIconDisplay: string
   spaceRailIconOpacity: number
+  spaceItemViewportLeft: number
+  spaceItemViewportTop: number
   spaceRailIconViewportCenterX: number
+  spaceRailIconViewportCenterY: number
   spaceRailIconCenterFromSidebarLeft: number
   spaceRailSurfaceOpacity: number
   spaceRailSurfaceWidth: number
   spaceRailSurfaceHeight: number
+  spaceItemWidth: number
+  spaceItemHeight: number
   spaceNameOpacity: number
   spaceNameViewportLeft: number
   spaceNameWidth: number
@@ -29,6 +42,7 @@ type SidebarAnimationSample = {
 type SidebarAnimationResult = {
   startClassName: string
   endClassName: string
+  before: SidebarAnimationSample
   samples: SidebarAnimationSample[]
 }
 
@@ -50,6 +64,7 @@ const sampleSidebarToggle = async (
       const spaceName = spaceItem?.querySelector('.workspace-space-item__name')
       const spaceToggle = spaceItem?.querySelector('.workspace-space-item__toggle')
       const projectName = itemBefore.querySelector('.workspace-item__name')
+      const projectToggle = itemBefore.querySelector('.workspace-item__tree-toggle')
       const projectIconBefore = itemBefore.querySelector('.workspace-item__folder-icon')
       const toggleButton = document.querySelector('[data-testid="workspace-sidebar-pin"]')
 
@@ -62,84 +77,120 @@ const sampleSidebarToggle = async (
         !(spaceName instanceof HTMLElement) ||
         !(spaceToggle instanceof HTMLElement) ||
         !(projectName instanceof HTMLElement) ||
+        !(projectToggle instanceof HTMLElement) ||
         !(projectIconBefore instanceof SVGElement) ||
         !(toggleButton instanceof HTMLElement)
       ) {
         throw new Error('Sidebar animation measurement target not available')
       }
 
+      const readSample = (label: string, elapsedMs: number): SidebarAnimationSample => {
+        const list = document.querySelector('.workspace-sidebar__list')
+        const item = document.querySelector(`[data-testid="workspace-item-${activeWorkspaceId}"]`)
+        const projectIcon = item?.querySelector('.workspace-item__folder-icon')
+        const spaceItemRect = spaceItem.getBoundingClientRect()
+        const spaceRailIconRect = spaceRailIcon.getBoundingClientRect()
+        const sidebarRect = sidebar.getBoundingClientRect()
+        const sidebarStyle = window.getComputedStyle(sidebar)
+        const pinButtonRect = toggleButton.getBoundingClientRect()
+        const projectNameRect = projectName.getBoundingClientRect()
+        const spaceNameRect = spaceName.getBoundingClientRect()
+        const projectIconRect =
+          projectIcon instanceof SVGElement
+            ? projectIcon.getBoundingClientRect()
+            : projectIconBefore.getBoundingClientRect()
+        const projectNameStyle = window.getComputedStyle(projectName)
+        const projectToggleStyle = window.getComputedStyle(projectToggle)
+        const spaceRailIconStyle = window.getComputedStyle(spaceRailIcon)
+        const spaceRailSurfaceStyle = window.getComputedStyle(spaceItem, '::before')
+        const spaceNameStyle = window.getComputedStyle(spaceName)
+        const spaceToggleStyle = window.getComputedStyle(spaceToggle)
+
+        return {
+          label,
+          elapsedMs: Number(elapsedMs.toFixed(2)),
+          sidebarTransition: sidebar.dataset.coveSidebarTransition ?? 'idle',
+          width: Number(sidebarRect.width.toFixed(2)),
+          paddingLeft: Number.parseFloat(sidebarStyle.paddingLeft),
+          sameList: list === listBefore,
+          sameWorkspaceItem: item === itemBefore,
+          itemGroupCount: document.querySelectorAll(
+            '.workspace-sidebar__list .workspace-item-group',
+          ).length,
+          sameProjectIcon: projectIcon === projectIconBefore,
+          pinButtonViewportCenterX: Number((pinButtonRect.x + pinButtonRect.width / 2).toFixed(3)),
+          pinButtonViewportCenterY: Number((pinButtonRect.y + pinButtonRect.height / 2).toFixed(3)),
+          projectIconViewportCenterX: Number(
+            (projectIconRect.x + projectIconRect.width / 2).toFixed(3),
+          ),
+          projectIconViewportCenterY: Number(
+            (projectIconRect.y + projectIconRect.height / 2).toFixed(3),
+          ),
+          projectIconCenterFromSidebarLeft: Number(
+            (projectIconRect.x + projectIconRect.width / 2 - sidebarRect.x).toFixed(3),
+          ),
+          projectNameOpacity: Number.parseFloat(projectNameStyle.opacity),
+          projectNameViewportLeft: Number(projectNameRect.x.toFixed(3)),
+          projectToggleOpacity: Number.parseFloat(projectToggleStyle.opacity),
+          spaceRailIconDisplay: spaceRailIconStyle.display,
+          spaceRailIconOpacity: Number.parseFloat(spaceRailIconStyle.opacity),
+          spaceItemViewportLeft: Number(spaceItemRect.x.toFixed(3)),
+          spaceItemViewportTop: Number(spaceItemRect.y.toFixed(3)),
+          spaceRailIconViewportCenterX: Number(
+            (spaceRailIconRect.x + spaceRailIconRect.width / 2).toFixed(3),
+          ),
+          spaceRailIconViewportCenterY: Number(
+            (spaceRailIconRect.y + spaceRailIconRect.height / 2).toFixed(3),
+          ),
+          spaceRailIconCenterFromSidebarLeft: Number(
+            (spaceRailIconRect.x + spaceRailIconRect.width / 2 - sidebarRect.x).toFixed(3),
+          ),
+          spaceRailSurfaceOpacity: Number.parseFloat(spaceRailSurfaceStyle.opacity),
+          spaceRailSurfaceWidth: Number.parseFloat(spaceRailSurfaceStyle.width),
+          spaceRailSurfaceHeight: Number.parseFloat(spaceRailSurfaceStyle.height),
+          spaceItemWidth: Number(spaceItemRect.width.toFixed(3)),
+          spaceItemHeight: Number(spaceItemRect.height.toFixed(3)),
+          spaceNameOpacity: Number.parseFloat(spaceNameStyle.opacity),
+          spaceNameViewportLeft: Number(spaceNameRect.x.toFixed(3)),
+          spaceNameWidth: Number(spaceName.getBoundingClientRect().width.toFixed(3)),
+          spaceToggleOpacity: Number.parseFloat(spaceToggleStyle.opacity),
+          spaceToggleWidth: Number(spaceToggle.getBoundingClientRect().width.toFixed(3)),
+        }
+      }
+
       const startClassName = sidebar.className
+      const before = readSample('before', 0)
       toggleButton.click()
 
       return await new Promise<SidebarAnimationResult>(resolve => {
-        const sampleCount = 24
+        const sampleCount = 30
         const samples: SidebarAnimationSample[] = []
         const startTime = performance.now()
-        const capture = (): void => {
+        const capture = (label: string): void => {
           const now = performance.now()
-          const list = document.querySelector('.workspace-sidebar__list')
-          const item = document.querySelector(`[data-testid="workspace-item-${activeWorkspaceId}"]`)
-          const projectIcon = item?.querySelector('.workspace-item__folder-icon')
-          const spaceRailIconRect = spaceRailIcon.getBoundingClientRect()
-          const sidebarRect = sidebar.getBoundingClientRect()
-          const projectNameRect = projectName.getBoundingClientRect()
-          const spaceNameRect = spaceName.getBoundingClientRect()
-          const projectIconRect =
-            projectIcon instanceof SVGElement
-              ? projectIcon.getBoundingClientRect()
-              : projectIconBefore.getBoundingClientRect()
-          const spaceRailIconStyle = window.getComputedStyle(spaceRailIcon)
-          const spaceRailSurfaceStyle = window.getComputedStyle(spaceItem, '::before')
-          const spaceNameStyle = window.getComputedStyle(spaceName)
-          const spaceToggleStyle = window.getComputedStyle(spaceToggle)
+          samples.push(readSample(label, now - startTime))
+        }
 
-          samples.push({
-            elapsedMs: Number((now - startTime).toFixed(2)),
-            width: Number(sidebar.getBoundingClientRect().width.toFixed(2)),
-            sameList: list === listBefore,
-            sameWorkspaceItem: item === itemBefore,
-            itemGroupCount: document.querySelectorAll(
-              '.workspace-sidebar__list .workspace-item-group',
-            ).length,
-            sameProjectIcon: projectIcon === projectIconBefore,
-            projectIconViewportCenterX: Number(
-              (projectIconRect.x + projectIconRect.width / 2).toFixed(3),
-            ),
-            projectIconCenterFromSidebarLeft: Number(
-              (projectIconRect.x + projectIconRect.width / 2 - sidebarRect.x).toFixed(3),
-            ),
-            projectNameViewportLeft: Number(projectNameRect.x.toFixed(3)),
-            spaceRailIconDisplay: spaceRailIconStyle.display,
-            spaceRailIconOpacity: Number.parseFloat(spaceRailIconStyle.opacity),
-            spaceRailIconViewportCenterX: Number(
-              (spaceRailIconRect.x + spaceRailIconRect.width / 2).toFixed(3),
-            ),
-            spaceRailIconCenterFromSidebarLeft: Number(
-              (spaceRailIconRect.x + spaceRailIconRect.width / 2 - sidebarRect.x).toFixed(3),
-            ),
-            spaceRailSurfaceOpacity: Number.parseFloat(spaceRailSurfaceStyle.opacity),
-            spaceRailSurfaceWidth: Number.parseFloat(spaceRailSurfaceStyle.width),
-            spaceRailSurfaceHeight: Number.parseFloat(spaceRailSurfaceStyle.height),
-            spaceNameOpacity: Number.parseFloat(spaceNameStyle.opacity),
-            spaceNameViewportLeft: Number(spaceNameRect.x.toFixed(3)),
-            spaceNameWidth: Number(spaceName.getBoundingClientRect().width.toFixed(3)),
-            spaceToggleOpacity: Number.parseFloat(spaceToggleStyle.opacity),
-            spaceToggleWidth: Number(spaceToggle.getBoundingClientRect().width.toFixed(3)),
-          })
+        const captureAnimationFrame = (index: number): void => {
+          capture(`raf-${index}`)
 
-          if (samples.length < sampleCount) {
-            window.setTimeout(capture, 16)
+          if (index + 1 < sampleCount) {
+            window.requestAnimationFrame(() => captureAnimationFrame(index + 1))
             return
           }
 
-          resolve({
-            startClassName,
-            endClassName: sidebar.className,
-            samples,
-          })
+          window.setTimeout(() => {
+            capture('settled')
+            resolve({
+              startClassName,
+              endClassName: sidebar.className,
+              before,
+              samples,
+            })
+          }, 200)
         }
 
-        window.setTimeout(capture, 16)
+        window.requestAnimationFrame(() => captureAnimationFrame(0))
       })
     },
     { activeWorkspaceId: workspaceId, activeSpaceId: spaceId },
@@ -161,32 +212,90 @@ const summarize = (samples: SidebarAnimationSample[]) => {
 
 const maxRange = (values: number[]) => Math.max(...values) - Math.min(...values)
 
+const expectClose = (actual: number, expected: number, tolerance: number) => {
+  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)
+}
+
 const expectContinuousSidebarAnimation = (
   result: SidebarAnimationResult,
   direction: 'collapse' | 'expand',
 ) => {
   const summary = summarize(result.samples)
+  const transitionSamples = result.samples.filter(sample => sample.sidebarTransition !== 'idle')
+  const firstTransition = transitionSamples[0]
+  const lastTransition = transitionSamples.at(-1)
 
   expect(summary.frameCount).toBeGreaterThan(8)
+  expect(transitionSamples.length).toBeGreaterThan(4)
   expect(result.samples.every(sample => sample.sameList)).toBe(true)
   expect(result.samples.every(sample => sample.sameWorkspaceItem)).toBe(true)
   expect(result.samples.every(sample => sample.sameProjectIcon)).toBe(true)
   expect(result.samples.every(sample => sample.itemGroupCount > 0)).toBe(true)
   expect(result.samples.every(sample => sample.spaceRailIconDisplay !== 'none')).toBe(true)
-  expect(
-    maxRange(result.samples.map(sample => sample.projectIconViewportCenterX)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(result.samples.map(sample => sample.projectNameViewportLeft)),
-  ).toBeLessThanOrEqual(1)
-  expect(
-    maxRange(result.samples.map(sample => sample.spaceRailIconViewportCenterX)),
-  ).toBeLessThanOrEqual(1)
-  expect(maxRange(result.samples.map(sample => sample.spaceNameViewportLeft))).toBeLessThanOrEqual(
+  expect(firstTransition).toBeDefined()
+  expect(lastTransition).toBeDefined()
+  if (!firstTransition || !lastTransition) {
+    return
+  }
+  expectClose(firstTransition.pinButtonViewportCenterX, result.before.pinButtonViewportCenterX, 1)
+  expectClose(firstTransition.pinButtonViewportCenterY, result.before.pinButtonViewportCenterY, 1)
+  expectClose(
+    firstTransition.projectIconViewportCenterX,
+    result.before.projectIconViewportCenterX,
     1,
   )
+  expectClose(
+    firstTransition.projectIconViewportCenterY,
+    result.before.projectIconViewportCenterY,
+    1,
+  )
+  if (direction === 'expand') {
+    expectClose(
+      firstTransition.spaceRailIconViewportCenterX,
+      result.before.spaceRailIconViewportCenterX,
+      1,
+    )
+    expectClose(
+      firstTransition.spaceRailIconViewportCenterY,
+      result.before.spaceRailIconViewportCenterY,
+      1,
+    )
+  }
+  expectClose(firstTransition.spaceItemViewportLeft, result.before.spaceItemViewportLeft, 1)
+  expectClose(firstTransition.spaceItemViewportTop, result.before.spaceItemViewportTop, 1)
+  expect(maxRange(transitionSamples.map(sample => sample.paddingLeft))).toBeLessThanOrEqual(0.1)
   expect(
-    result.samples.filter(
+    maxRange(transitionSamples.map(sample => sample.pinButtonViewportCenterX)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxRange(transitionSamples.map(sample => sample.pinButtonViewportCenterY)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxRange(transitionSamples.map(sample => sample.projectIconViewportCenterX)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxRange(transitionSamples.map(sample => sample.projectIconViewportCenterY)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxRange(transitionSamples.map(sample => sample.projectNameViewportLeft)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxRange(transitionSamples.map(sample => sample.spaceRailIconViewportCenterX)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxRange(transitionSamples.map(sample => sample.spaceRailIconViewportCenterY)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxRange(transitionSamples.map(sample => sample.spaceItemViewportLeft)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxRange(transitionSamples.map(sample => sample.spaceItemViewportTop)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    maxRange(transitionSamples.map(sample => sample.spaceNameViewportLeft)),
+  ).toBeLessThanOrEqual(1)
+  expect(
+    transitionSamples.filter(
       sample =>
         sample.projectIconCenterFromSidebarLeft < 0 ||
         sample.projectIconCenterFromSidebarLeft > 72 ||
@@ -199,11 +308,43 @@ const expectContinuousSidebarAnimation = (
   if (direction === 'collapse') {
     expect(summary.firstWidth).toBeGreaterThan(summary.lastWidth)
     expect(summary.maxPositiveDelta).toBeLessThanOrEqual(2)
+    const finalSample = result.samples.at(-1)
+    if (finalSample) {
+      expectClose(finalSample.pinButtonViewportCenterX, lastTransition.pinButtonViewportCenterX, 1)
+      expectClose(finalSample.pinButtonViewportCenterY, lastTransition.pinButtonViewportCenterY, 1)
+      expectClose(
+        finalSample.projectIconViewportCenterX,
+        lastTransition.projectIconViewportCenterX,
+        1,
+      )
+      expectClose(
+        finalSample.projectIconViewportCenterY,
+        lastTransition.projectIconViewportCenterY,
+        1,
+      )
+      expectClose(
+        finalSample.spaceRailIconViewportCenterX,
+        lastTransition.spaceRailIconViewportCenterX,
+        1,
+      )
+      expectClose(
+        finalSample.spaceRailIconViewportCenterY,
+        lastTransition.spaceRailIconViewportCenterY,
+        1,
+      )
+      expectClose(finalSample.spaceItemViewportLeft, lastTransition.spaceItemViewportLeft, 1)
+      expectClose(finalSample.spaceItemViewportTop, lastTransition.spaceItemViewportTop, 1)
+    }
     return
   }
 
   expect(summary.lastWidth).toBeGreaterThan(summary.firstWidth)
   expect(summary.maxNegativeDelta).toBeGreaterThanOrEqual(-2)
+  expect(firstTransition.projectNameOpacity).toBeLessThanOrEqual(0.05)
+  expect(firstTransition.projectToggleOpacity).toBeLessThanOrEqual(0.05)
+  expect(firstTransition.spaceNameOpacity).toBeLessThanOrEqual(0.05)
+  expect(firstTransition.spaceToggleOpacity).toBeLessThanOrEqual(0.05)
+  expect(transitionSamples.slice(0, 4).every(sample => sample.spaceNameOpacity <= 0.05)).toBe(true)
 }
 
 test.describe('Primary Sidebar Animation', () => {
@@ -255,14 +396,13 @@ test.describe('Primary Sidebar Animation', () => {
       if (!collapsedFinal) {
         throw new Error('Missing final collapsed sidebar animation sample')
       }
+      expect(collapsedFinal.sidebarTransition).toBe('idle')
+      expect(collapsedFinal.spaceItemWidth).toBeCloseTo(collapsedFinal.spaceItemHeight, 0)
+      expect(collapsedFinal.spaceItemWidth).toBeLessThanOrEqual(30)
       expect(collapsedFinal.spaceRailIconOpacity).toBeGreaterThanOrEqual(0.95)
-      expect(collapsedFinal.spaceRailSurfaceOpacity).toBeGreaterThanOrEqual(0.95)
-      expect(collapsedFinal.spaceRailSurfaceWidth).toBeCloseTo(
-        collapsedFinal.spaceRailSurfaceHeight,
-        0,
-      )
       expect(collapsedFinal.spaceNameOpacity).toBeLessThanOrEqual(0.05)
       expect(collapsedFinal.spaceToggleOpacity).toBeLessThanOrEqual(0.05)
+      expect(collapsedFinal.spaceToggleWidth).toBeLessThanOrEqual(1)
 
       const expand = await sampleSidebarToggle(window, workspaceId, spaceId)
       await expect(sidebar).toHaveClass(/workspace-sidebar--docked/)
@@ -273,6 +413,8 @@ test.describe('Primary Sidebar Animation', () => {
       if (!expandedFinal) {
         throw new Error('Missing final expanded sidebar animation sample')
       }
+      expect(expandedFinal.sidebarTransition).toBe('idle')
+      expect(expandedFinal.spaceItemWidth).toBeGreaterThan(100)
       expect(expandedFinal.spaceRailIconOpacity).toBeLessThanOrEqual(0.05)
       expect(expandedFinal.spaceRailSurfaceOpacity).toBeLessThanOrEqual(0.05)
       expect(expandedFinal.spaceNameOpacity).toBeGreaterThanOrEqual(0.95)
