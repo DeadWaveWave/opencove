@@ -42,6 +42,7 @@ function createNode(overrides: Partial<NormalizedPersistedNode>): NormalizedPers
     terminalGeometry: null,
     terminalProviderHint: null,
     labelColorOverride: null,
+    sidebarSortOrder: null,
     status: 'running',
     startedAt: null,
     endedAt: null,
@@ -62,6 +63,7 @@ function createWorkspace(
   return {
     id: 'workspace-1',
     name: 'repo',
+    iconId: null,
     path: '/tmp/workspace',
     worktreesRoot: '',
     pullRequestBaseBranchOptions: [],

@@ -44,12 +44,12 @@
 .workspace-space-item--active {
   --workspace-space-item-background: color-mix(
     in srgb,
-    var(--workspace-space-accent) 82%,
-    var(--cove-field) 18%
+    var(--workspace-space-accent) 38%,
+    var(--cove-surface-strong) 62%
   );
   --workspace-space-item-border-color: color-mix(
     in srgb,
-    var(--workspace-space-accent) 58%,
+    var(--workspace-space-accent) 46%,
     transparent
   );
   background: transparent;
@@ -61,8 +61,8 @@
 .workspace-space-group[data-cove-label-color] > .workspace-space-item:hover {
   --workspace-space-item-background: color-mix(
     in srgb,
-    var(--workspace-space-accent) 88%,
-    var(--cove-field) 12%
+    var(--workspace-space-accent) 46%,
+    var(--cove-surface-strong) 54%
   );
   background: transparent;
 }

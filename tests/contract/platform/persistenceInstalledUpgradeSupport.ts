@@ -2,7 +2,7 @@ import { expect } from 'vitest'
 import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/constants'
 import { CURRENT_SCHEMA_COLUMNS } from './persistenceSchemaColumns'
 
-export const SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const
+export const SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
 
 export type InstalledUpgradeSourceVersion =
   (typeof SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS)[number]
@@ -45,6 +45,7 @@ type SchemaPreset = 'legacy-kv' | 'v2-core' | 'v5-mounted' | 'v8-installed'
 const COLUMNS_ADDED_AFTER_VERSION: Record<number, Record<string, string[]>> = {
   2: {
     workspaces: [
+      'icon_id',
       'pull_request_base_branch_options_json',
       'environment_variables_json',
       'space_archive_records_json',
@@ -57,35 +58,78 @@ const COLUMNS_ADDED_AFTER_VERSION: Record<number, Record<string, string[]>> = {
       'terminal_geometry_json',
       'terminal_provider_hint',
       'label_color_override',
+      'sidebar_sort_order',
     ],
     workspace_spaces: ['target_mount_id', 'parent_space_id', 'boundary_json', 'sort_order'],
   },
   3: {
-    workspaces: ['environment_variables_json', 'space_archive_records_json', 'sort_order'],
-    nodes: ['profile_id', 'runtime_kind', 'terminal_geometry_json', 'terminal_provider_hint'],
+    workspaces: [
+      'icon_id',
+      'environment_variables_json',
+      'space_archive_records_json',
+      'sort_order',
+    ],
+    nodes: [
+      'profile_id',
+      'runtime_kind',
+      'terminal_geometry_json',
+      'terminal_provider_hint',
+      'sidebar_sort_order',
+    ],
     workspace_spaces: ['target_mount_id', 'parent_space_id', 'boundary_json', 'sort_order'],
   },
   4: {
-    workspaces: ['environment_variables_json', 'space_archive_records_json', 'sort_order'],
-    nodes: ['terminal_geometry_json', 'terminal_provider_hint'],
+    workspaces: [
+      'icon_id',
+      'environment_variables_json',
+      'space_archive_records_json',
+      'sort_order',
+    ],
+    nodes: ['terminal_geometry_json', 'terminal_provider_hint', 'sidebar_sort_order'],
     workspace_spaces: ['target_mount_id', 'parent_space_id', 'boundary_json', 'sort_order'],
   },
   5: {
-    workspaces: ['environment_variables_json', 'space_archive_records_json', 'sort_order'],
-    nodes: ['terminal_geometry_json', 'terminal_provider_hint'],
+    workspaces: [
+      'icon_id',
+      'environment_variables_json',
+      'space_archive_records_json',
+      'sort_order',
+    ],
+    nodes: ['terminal_geometry_json', 'terminal_provider_hint', 'sidebar_sort_order'],
     workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order'],
   },
   6: {
-    workspaces: ['environment_variables_json', 'space_archive_records_json', 'sort_order'],
+    workspaces: [
+      'icon_id',
+      'environment_variables_json',
+      'space_archive_records_json',
+      'sort_order',
+    ],
+    nodes: ['sidebar_sort_order'],
     workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order'],
   },
   7: {
-    workspaces: ['environment_variables_json', 'space_archive_records_json', 'sort_order'],
+    workspaces: [
+      'icon_id',
+      'environment_variables_json',
+      'space_archive_records_json',
+      'sort_order',
+    ],
+    nodes: ['sidebar_sort_order'],
     workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order'],
   },
   8: {
-    workspaces: ['environment_variables_json'],
+    workspaces: ['icon_id', 'environment_variables_json'],
+    nodes: ['sidebar_sort_order'],
     workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order'],
+  },
+  9: {
+    workspaces: ['icon_id'],
+    nodes: ['sidebar_sort_order'],
+  },
+  10: {
+    workspaces: ['icon_id'],
+    nodes: ['sidebar_sort_order'],
   },
 }
 

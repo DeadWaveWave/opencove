@@ -85,6 +85,7 @@ export interface SeedNode {
   lastError?: string | null
   scrollback?: string | null
   labelColorOverride?: string | null
+  sidebarSortOrder?: number
   executionDirectory?: string | null
   expectedDirectory?: string | null
   agent?: SeedAgentData | null
@@ -94,6 +95,7 @@ export interface SeedNode {
 export interface SeedWorkspace {
   id: string
   name: string
+  iconId?: string | null
   path: string
   nodes: SeedNode[]
   spaces?: Array<{

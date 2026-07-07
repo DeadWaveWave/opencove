@@ -5,6 +5,7 @@ import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import {
   normalizeEnvironmentVariables,
   normalizeOptionalString,
+  normalizeOptionalSortOrder,
   normalizePullRequestBaseBranchOptions,
   normalizeTerminalGeometry,
   normalizeWorkspaceSpaceNodeIds,
@@ -12,6 +13,7 @@ import {
   normalizeWorkspaceViewport,
 } from './normalize'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
+import { normalizeProjectIconId } from '@shared/types/projectIcon'
 import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
 
 export function toPersistedState(
@@ -25,6 +27,7 @@ export function toPersistedState(
     workspaces: workspaces.map(workspace => ({
       id: workspace.id,
       name: workspace.name,
+      iconId: normalizeProjectIconId(workspace.iconId),
       path: workspace.path,
       worktreesRoot: normalizeOptionalString(workspace.worktreesRoot) ?? '',
       pullRequestBaseBranchOptions: normalizePullRequestBaseBranchOptions(
@@ -78,6 +81,10 @@ export function toPersistedState(
           runtimeKind: node.data.runtimeKind,
           terminalGeometry: normalizeTerminalGeometry(node.data.terminalGeometry),
           labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
+          sidebarSortOrder:
+            node.data.kind === 'agent'
+              ? normalizeOptionalSortOrder(node.data.sidebarSortOrder)
+              : undefined,
           status: node.data.status,
           startedAt: node.data.startedAt,
           endedAt: node.data.endedAt,

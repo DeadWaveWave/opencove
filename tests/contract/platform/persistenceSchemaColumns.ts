@@ -4,6 +4,7 @@ export const CURRENT_SCHEMA_COLUMNS = {
   workspaces: [
     'id',
     'name',
+    'icon_id',
     'path',
     'worktrees_root',
     'pull_request_base_branch_options_json',
@@ -32,6 +33,7 @@ export const CURRENT_SCHEMA_COLUMNS = {
     'terminal_geometry_json',
     'terminal_provider_hint',
     'label_color_override',
+    'sidebar_sort_order',
     'status',
     'started_at',
     'ended_at',

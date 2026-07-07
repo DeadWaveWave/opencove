@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { arrayMove } from '@dnd-kit/sortable'
 import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type {
@@ -10,6 +10,11 @@ import type {
   ProjectDeleteConfirmationState,
   ProjectMountManagerState,
 } from '../types'
+import {
+  reorderWorkspaceList,
+  reorderWorkspaceRootSpaces,
+  reorderWorkspaceSidebarAgents,
+} from '../utils/sidebarReorder'
 
 type SetStateAction<T> = T | ((prev: T) => T)
 
@@ -45,7 +50,18 @@ export interface AppStoreState {
   setSettingsOpenPageId: (action: SetStateAction<SettingsPageId | null>) => void
   setFocusRequest: (action: SetStateAction<FocusRequest | null>) => void
   setPersistNotice: (action: SetStateAction<PersistNotice | null>) => void
-  reorderWorkspaces: (activeId: string, overId: string) => void
+  reorderWorkspaces: (activeId: string, overId: string) => boolean
+  reorderWorkspaceRootSpaces: (
+    workspaceId: string,
+    activeSpaceId: string,
+    overSpaceId: string,
+  ) => boolean
+  reorderWorkspaceSidebarAgents: (
+    workspaceId: string,
+    activeNodeId: string,
+    overNodeId: string,
+  ) => boolean
+  setProjectIconId: (workspaceId: string, iconId: ProjectIconId | null) => boolean
 }
 
 export const useAppStore = create<AppStoreState>(set => ({
@@ -92,15 +108,60 @@ export const useAppStore = create<AppStoreState>(set => ({
     set(state => ({ focusRequest: applySetStateAction(state.focusRequest, action) })),
   setPersistNotice: action =>
     set(state => ({ persistNotice: applySetStateAction(state.persistNotice, action) })),
-  reorderWorkspaces: (activeId, overId) =>
+  reorderWorkspaces: (activeId, overId) => {
+    let changed = false
     set(state => {
-      const oldIndex = state.workspaces.findIndex(workspace => workspace.id === activeId)
-      const newIndex = state.workspaces.findIndex(workspace => workspace.id === overId)
+      const workspaces = reorderWorkspaceList(state.workspaces, activeId, overId)
+      changed = workspaces !== state.workspaces
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
+  reorderWorkspaceRootSpaces: (workspaceId, activeSpaceId, overSpaceId) => {
+    let changed = false
+    set(state => {
+      const workspaces = reorderWorkspaceRootSpaces(
+        state.workspaces,
+        workspaceId,
+        activeSpaceId,
+        overSpaceId,
+      )
+      changed = workspaces !== state.workspaces
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
+  reorderWorkspaceSidebarAgents: (workspaceId, activeNodeId, overNodeId) => {
+    let changed = false
+    set(state => {
+      const workspaces = reorderWorkspaceSidebarAgents(
+        state.workspaces,
+        workspaceId,
+        activeNodeId,
+        overNodeId,
+      )
+      changed = workspaces !== state.workspaces
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
+  setProjectIconId: (workspaceId, iconId) => {
+    let changed = false
+    set(state => {
+      const workspaces = state.workspaces.map(workspace => {
+        if (workspace.id !== workspaceId || (workspace.iconId ?? null) === iconId) {
+          return workspace
+        }
 
-      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
-        return state
-      }
+        changed = true
+        return {
+          ...workspace,
+          iconId,
+        }
+      })
 
-      return { workspaces: arrayMove(state.workspaces, oldIndex, newIndex) }
-    }),
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
 }))

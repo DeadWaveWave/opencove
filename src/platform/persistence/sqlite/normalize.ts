@@ -4,6 +4,7 @@ import {
   normalizeLabelColor,
   normalizeNodeLabelColorOverride,
 } from '../../../shared/types/labelColor'
+import { normalizeProjectIconId, type ProjectIconId } from '../../../shared/types/projectIcon'
 import { normalizeSpaceBoundary, type SpaceBoundary } from '../../../shared/types/spaceBoundary'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -29,6 +30,14 @@ function normalizeOptionalString(value: unknown): string | null {
 
 function normalizeNullableString(value: unknown): string | null {
   return value === null ? null : typeof value === 'string' ? value : null
+}
+
+function normalizeOptionalSortOrder(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null
+  }
+
+  return Math.max(0, Math.floor(value))
 }
 
 function normalizeBoolean(value: unknown, fallback: boolean): boolean {
@@ -95,6 +104,7 @@ export type NormalizedPersistedNode = {
   terminalGeometry: NormalizedTerminalGeometry | null
   terminalProviderHint?: string | null
   labelColorOverride: NodeLabelColorOverride
+  sidebarSortOrder: number | null
   status: string | null
   startedAt: string | null
   endedAt: string | null
@@ -123,6 +133,7 @@ export type NormalizedPersistedSpace = {
 export type NormalizedPersistedWorkspace = {
   id: string
   name: string
+  iconId: ProjectIconId | null
   path: string
   worktreesRoot: string
   pullRequestBaseBranchOptions: string[]
@@ -300,6 +311,8 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
       const sessionIdRaw = typeof node.sessionId === 'string' ? node.sessionId.trim() : ''
       const sessionId = sessionIdRaw.length > 0 ? sessionIdRaw : null
 
+      const kind = normalizeString(node.kind, 'terminal')
+
       normalizedNodes.push({
         id: nodeId,
         sessionId,
@@ -308,12 +321,14 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         position,
         width: normalizeFiniteNumber(node.width, 0),
         height: normalizeFiniteNumber(node.height, 0),
-        kind: normalizeString(node.kind, 'terminal'),
+        kind,
         profileId: normalizeOptionalString(node.profileId),
         runtimeKind: normalizeOptionalString(node.runtimeKind),
         terminalGeometry: normalizeTerminalGeometry(node.terminalGeometry),
         terminalProviderHint: normalizeOptionalString(node.terminalProviderHint),
         labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
+        sidebarSortOrder:
+          kind === 'agent' ? normalizeOptionalSortOrder(node.sidebarSortOrder) : null,
         status: typeof node.status === 'string' ? node.status : null,
         startedAt: typeof node.startedAt === 'string' ? node.startedAt : null,
         endedAt: typeof node.endedAt === 'string' ? node.endedAt : null,
@@ -363,6 +378,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
     normalizedWorkspaces.push({
       id,
       name: normalizeString(workspace.name),
+      iconId: normalizeProjectIconId(workspace.iconId),
       path: normalizeString(workspace.path),
       worktreesRoot: normalizeString(workspace.worktreesRoot),
       pullRequestBaseBranchOptions: normalizeStringArray(workspace.pullRequestBaseBranchOptions),

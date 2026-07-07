@@ -35,12 +35,12 @@ export function writeNormalizedAppState(
   const insertWorkspace = db.prepare(
     `
       INSERT INTO workspaces (
-        id, name, path, worktrees_root, pull_request_base_branch_options_json, environment_variables_json,
+        id, name, icon_id, path, worktrees_root, pull_request_base_branch_options_json, environment_variables_json,
         space_archive_records_json,
         viewport_x, viewport_y, viewport_zoom,
         is_minimap_visible, active_space_id, sort_order
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -50,10 +50,10 @@ export function writeNormalizedAppState(
         id, workspace_id, session_id, title, title_pinned_by_user,
         position_x, position_y, width, height,
         kind, profile_id, runtime_kind, terminal_geometry_json, terminal_provider_hint, label_color_override,
-        status, started_at, ended_at, exit_code, last_error,
+        sidebar_sort_order, status, started_at, ended_at, exit_code, last_error,
         execution_directory, expected_directory, agent_json, task_json
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -104,6 +104,7 @@ export function writeNormalizedAppState(
       insertWorkspace.run(
         workspace.id,
         workspace.name,
+        workspace.iconId,
         workspace.path,
         workspace.worktreesRoot,
         safeJsonStringify(workspace.pullRequestBaseBranchOptions),
@@ -134,6 +135,7 @@ export function writeNormalizedAppState(
           node.terminalGeometry ? safeJsonStringify(node.terminalGeometry) : null,
           node.terminalProviderHint ?? null,
           node.labelColorOverride,
+          node.sidebarSortOrder,
           node.status,
           node.startedAt,
           node.endedAt,

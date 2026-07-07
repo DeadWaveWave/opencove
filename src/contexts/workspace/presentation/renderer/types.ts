@@ -2,6 +2,7 @@ import type { Node } from '@xyflow/react'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
+import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { SpaceBoundary } from '@shared/types/spaceBoundary'
 import type {
   CanvasImageMimeType,
@@ -141,6 +142,7 @@ export interface TerminalNodeData {
   terminalGeometry?: TerminalPtyGeometry | null
   terminalProviderHint?: AgentProvider | null
   labelColorOverride?: NodeLabelColorOverride
+  sidebarSortOrder?: number
   title: string
   titlePinnedByUser?: boolean
   width: number
@@ -166,6 +168,7 @@ export interface TerminalNodeData {
 export interface WorkspaceState {
   id: string
   name: string
+  iconId?: ProjectIconId | null
   path: string
   worktreesRoot: string
   pullRequestBaseBranchOptions?: string[]
@@ -181,6 +184,7 @@ export interface WorkspaceState {
 export interface PersistedWorkspaceState {
   id: string
   name: string
+  iconId?: ProjectIconId | null
   path: string
   worktreesRoot: string
   pullRequestBaseBranchOptions?: string[]
@@ -334,6 +338,7 @@ export interface PersistedTerminalNode {
   terminalGeometry?: TerminalPtyGeometry | null
   terminalProviderHint?: AgentProvider | null
   labelColorOverride?: NodeLabelColorOverride
+  sidebarSortOrder?: number
   status: AgentRuntimeStatus | null
   startedAt: string | null
   endedAt: string | null

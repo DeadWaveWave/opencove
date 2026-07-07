@@ -93,7 +93,7 @@
 .workspace-sidebar .workspace-space-item__name {
   position: relative;
   flex: 0 0 auto;
-  width: max(0px, calc(var(--workspace-space-item-surface-width) - 68px));
+  width: max(0px, calc(var(--workspace-space-item-surface-width) - 72px));
   margin-left: 32px;
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent 100%);
   mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent 100%);
@@ -133,7 +133,7 @@
 .workspace-sidebar .workspace-space-item__toggle-spacer {
   position: absolute;
   top: 50%;
-  left: calc(var(--workspace-space-item-surface-width) - 27.5px);
+  left: max(1px, calc(var(--workspace-space-item-surface-width) - 32px));
   z-index: 1;
   transform: translateY(-50%);
   transition: left 0.22s ease;

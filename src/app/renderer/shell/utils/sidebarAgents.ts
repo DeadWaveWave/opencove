@@ -38,6 +38,29 @@ export function getWorkspaceAgents(workspace: WorkspaceState): Array<Node<Termin
   return workspace.nodes
     .filter(node => node.data.kind === 'agent')
     .sort((left, right) => {
+      const leftSortOrder =
+        typeof left.data.sidebarSortOrder === 'number' &&
+        Number.isFinite(left.data.sidebarSortOrder)
+          ? Math.floor(left.data.sidebarSortOrder)
+          : null
+      const rightSortOrder =
+        typeof right.data.sidebarSortOrder === 'number' &&
+        Number.isFinite(right.data.sidebarSortOrder)
+          ? Math.floor(right.data.sidebarSortOrder)
+          : null
+
+      if (leftSortOrder !== null || rightSortOrder !== null) {
+        if (leftSortOrder === null) {
+          return 1
+        }
+        if (rightSortOrder === null) {
+          return -1
+        }
+        if (leftSortOrder !== rightSortOrder) {
+          return leftSortOrder - rightSortOrder
+        }
+      }
+
       const leftTime = left.data.startedAt ? Date.parse(left.data.startedAt) : 0
       const rightTime = right.data.startedAt ? Date.parse(right.data.startedAt) : 0
       return rightTime - leftTime

@@ -8,7 +8,11 @@ import {
 import type { Node } from '@xyflow/react'
 import { buildSidebarProjectTree, SIDEBAR_UNASSIGNED_SPACE_GROUP_ID } from './sidebarTree'
 
-function createAgentNode(id: string, startedAt: string): Node<TerminalNodeData> {
+function createAgentNode(
+  id: string,
+  startedAt: string,
+  sidebarSortOrder?: number,
+): Node<TerminalNodeData> {
   return {
     id,
     position: { x: 0, y: 0 },
@@ -28,6 +32,7 @@ function createAgentNode(id: string, startedAt: string): Node<TerminalNodeData> 
       scrollback: null,
       executionDirectory: null,
       expectedDirectory: null,
+      sidebarSortOrder,
       agent: {
         provider: 'codex',
         prompt: 'ship it',
@@ -118,5 +123,21 @@ describe('buildSidebarProjectTree', () => {
     expect(tree.spaceGroups[1].agents.map(agent => agent.node.id)).toEqual(['agent-api'])
     expect(tree.projectRootGroup?.id).toBe(SIDEBAR_UNASSIGNED_SPACE_GROUP_ID)
     expect(tree.projectRootGroup?.agents.map(agent => agent.node.id)).toEqual(['agent-root'])
+  })
+
+  it('uses explicit sidebar agent order before startedAt fallback', () => {
+    const workspace = createWorkspace()
+    workspace.nodes = [
+      createAgentNode('agent-old', '2026-03-29T10:00:00.000Z', 0),
+      createAgentNode('agent-new', '2026-03-29T10:03:00.000Z', 1),
+    ]
+    workspace.spaces = []
+
+    const tree = buildSidebarProjectTree(workspace)
+
+    expect(tree.projectRootGroup?.agents.map(agent => agent.node.id)).toEqual([
+      'agent-old',
+      'agent-new',
+    ])
   })
 })

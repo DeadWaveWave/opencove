@@ -61,6 +61,7 @@ export function toShellWorkspaceState(
   return {
     id: workspace.id,
     name: workspace.name,
+    iconId: workspace.iconId ?? null,
     path: workspace.path,
     worktreesRoot: workspace.worktreesRoot,
     pullRequestBaseBranchOptions: workspace.pullRequestBaseBranchOptions ?? [],

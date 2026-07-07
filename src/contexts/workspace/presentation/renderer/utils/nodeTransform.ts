@@ -161,6 +161,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         terminalGeometry: node.terminalGeometry ?? null,
         terminalProviderHint: node.terminalProviderHint ?? null,
         labelColorOverride: node.labelColorOverride ?? null,
+        sidebarSortOrder: node.sidebarSortOrder,
         title: node.title,
         titlePinnedByUser: node.titlePinnedByUser === true,
         width: node.width,

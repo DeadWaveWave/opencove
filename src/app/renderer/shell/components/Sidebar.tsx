@@ -7,6 +7,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from '@app/renderer/i18n'
@@ -15,6 +16,7 @@ import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/t
 import { SidebarToolbar } from './SidebarToolbar'
 import { buildSidebarProjectTree } from '../utils/sidebarTree'
 import { SortableWorkspaceItem, WorkspaceItemOverlay } from './SidebarWorkspaceItem'
+import { readSidebarDragItemData, type SidebarDragItemData } from './SidebarDnd'
 import { useSidebarListScroll } from './useSidebarListScroll'
 
 export type SidebarVariant = 'docked' | 'rail' | 'peek'
@@ -35,6 +37,16 @@ type SidebarProps = {
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
   onReorderWorkspaces: (activeId: string, overId: string) => void
+  onReorderWorkspaceRootSpaces?: (
+    workspaceId: string,
+    activeSpaceId: string,
+    overSpaceId: string,
+  ) => void
+  onReorderWorkspaceSidebarAgents?: (
+    workspaceId: string,
+    activeNodeId: string,
+    overNodeId: string,
+  ) => void
   onPointerEnter?: React.PointerEventHandler<HTMLElement>
   onPointerLeave?: React.PointerEventHandler<HTMLElement>
 }
@@ -52,6 +64,8 @@ export function Sidebar({
   onOpenProjectContextMenu,
   onSelectAgentNode,
   onReorderWorkspaces,
+  onReorderWorkspaceRootSpaces = () => undefined,
+  onReorderWorkspaceSidebarAgents = () => undefined,
   onPointerEnter,
   onPointerLeave,
 }: SidebarProps): React.JSX.Element {
@@ -74,6 +88,30 @@ export function Sidebar({
     handleListScroll: handleSidebarListScroll,
   } = useSidebarListScroll()
 
+  const resolveDragData = useCallback(
+    (id: string, data: unknown): SidebarDragItemData | null => {
+      const itemData = readSidebarDragItemData(data)
+      if (itemData) {
+        return itemData
+      }
+
+      return workspaces.some(workspace => workspace.id === id)
+        ? { kind: 'project', workspaceId: id }
+        : null
+    },
+    [workspaces],
+  )
+
+  const handleDragStart = useCallback(
+    (event: DragStartEvent): void => {
+      const id = String(event.active.id)
+      const activeData = (event.active as { data?: { current?: unknown } }).data?.current
+      const itemData = resolveDragData(id, activeData)
+      setActiveId(itemData?.kind === 'project' ? itemData.workspaceId : id)
+    },
+    [resolveDragData],
+  )
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent): void => {
       const nextActiveId = String(event.active.id)
@@ -90,9 +128,43 @@ export function Sidebar({
         return
       }
 
-      onReorderWorkspaces(nextActiveId, overId)
+      const activeEventData = (event.active as { data?: { current?: unknown } }).data?.current
+      const overEventData = (event.over as { data?: { current?: unknown } } | null)?.data?.current
+      const activeData = resolveDragData(nextActiveId, activeEventData)
+      const overData = resolveDragData(overId, overEventData)
+      if (!activeData || !overData || activeData.kind !== overData.kind) {
+        return
+      }
+
+      if (activeData.kind === 'project' && overData.kind === 'project') {
+        onReorderWorkspaces(activeData.workspaceId, overData.workspaceId)
+        return
+      }
+
+      if (
+        activeData.kind === 'space' &&
+        overData.kind === 'space' &&
+        activeData.workspaceId === overData.workspaceId
+      ) {
+        onReorderWorkspaceRootSpaces(activeData.workspaceId, activeData.spaceId, overData.spaceId)
+        return
+      }
+
+      if (
+        activeData.kind === 'agent' &&
+        overData.kind === 'agent' &&
+        activeData.workspaceId === overData.workspaceId &&
+        activeData.groupId === overData.groupId
+      ) {
+        onReorderWorkspaceSidebarAgents(activeData.workspaceId, activeData.nodeId, overData.nodeId)
+      }
     },
-    [onReorderWorkspaces],
+    [
+      onReorderWorkspaceRootSpaces,
+      onReorderWorkspaceSidebarAgents,
+      onReorderWorkspaces,
+      resolveDragData,
+    ],
   )
 
   const handleToggleProject = useCallback((workspaceId: string): void => {
@@ -188,7 +260,7 @@ export function Sidebar({
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragStart={event => setActiveId(String(event.active.id))}
+            onDragStart={handleDragStart}
             onDragCancel={() => setActiveId(null)}
             onDragEnd={handleDragEnd}
           >

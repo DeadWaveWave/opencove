@@ -19,9 +19,11 @@ const CURRENT_SCHEMA_COLUMNS = {
   workspaces: [
     'id',
     'name',
+    'icon_id',
     'path',
     'worktrees_root',
     'pull_request_base_branch_options_json',
+    'environment_variables_json',
     'space_archive_records_json',
     'viewport_x',
     'viewport_y',
@@ -43,8 +45,10 @@ const CURRENT_SCHEMA_COLUMNS = {
     'kind',
     'profile_id',
     'runtime_kind',
+    'terminal_geometry_json',
     'terminal_provider_hint',
     'label_color_override',
+    'sidebar_sort_order',
     'status',
     'started_at',
     'ended_at',
@@ -419,7 +423,7 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(10)
+      expect(migratedState?.userVersion).toBe(11)
       expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
       expect(migratedState?.tables.get('nodes')).toContain('session_id')
       expect(migratedState?.tables.get('nodes')).toContain('profile_id')
