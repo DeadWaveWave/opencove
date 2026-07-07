@@ -201,7 +201,38 @@ export const sampleSidebarToggle = async (
 
       const startClassName = sidebar.className
       const before = readSample()
+      const transitionStart = new Promise<void>(resolve => {
+        const resolveIfStarted = (): boolean => {
+          if ((sidebar.dataset.coveSidebarTransition ?? 'idle') !== 'idle') {
+            resolve()
+            return true
+          }
+          return false
+        }
+
+        if (resolveIfStarted()) {
+          return
+        }
+
+        const observer = new MutationObserver(() => {
+          if (!resolveIfStarted()) {
+            return
+          }
+          observer.disconnect()
+        })
+
+        observer.observe(sidebar, {
+          attributes: true,
+          attributeFilter: ['class', 'data-cove-sidebar-transition'],
+        })
+
+        window.setTimeout(() => {
+          observer.disconnect()
+          resolve()
+        }, 120)
+      })
       toggleButton.click()
+      await transitionStart
 
       return await new Promise<SidebarAnimationResult>(resolve => {
         const sampleCount = 30
