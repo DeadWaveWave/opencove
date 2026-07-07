@@ -406,8 +406,8 @@ test.describe('Primary Sidebar Pin', () => {
       expect(peekVisuals.inactiveBranchBackground).toBe(railVisuals.inactiveBranchBackground)
       expect(railVisuals.inactiveBranchGap).toBeGreaterThanOrEqual(2)
       expect(railVisuals.inactiveBranchGap).toBeLessThanOrEqual(3)
-      expect(peekVisuals.inactiveBranchGap).toBeGreaterThanOrEqual(4)
-      expect(peekVisuals.inactiveBranchGap).toBeLessThanOrEqual(5)
+      expect(peekVisuals.inactiveBranchGap).toBeGreaterThanOrEqual(2)
+      expect(peekVisuals.inactiveBranchGap).toBeLessThanOrEqual(3)
       expect(railVisuals.defaultBranchBackground).not.toBe('rgba(0, 0, 0, 0)')
       expect(peekVisuals.defaultBranchBackground).toBe(railVisuals.defaultBranchBackground)
       expect(

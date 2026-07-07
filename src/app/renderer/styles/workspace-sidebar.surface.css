@@ -1,8 +1,8 @@
 .workspace-space-item {
   --workspace-space-item-background: transparent;
   --workspace-space-item-border-color: transparent;
-  --workspace-space-item-surface-left: 0px;
-  --workspace-space-item-surface-width: calc(100% - 2px);
+  --workspace-space-item-surface-left: -2px;
+  --workspace-space-item-surface-width: 100%;
   --workspace-space-item-surface-height: var(--workspace-sidebar-tree-surface-size);
   background: transparent;
   border-color: transparent;

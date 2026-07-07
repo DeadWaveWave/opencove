@@ -83,6 +83,7 @@ const expectContinuousSidebarAnimation = (
   )
   expectClose(firstTransition.spaceItemViewportLeft, result.before.spaceItemViewportLeft, 1)
   expectClose(firstTransition.spaceItemViewportTop, result.before.spaceItemViewportTop, 1)
+  expectClose(firstTransition.spaceRailSurfaceLeft, result.before.spaceRailSurfaceLeft, 1)
   expectStableRange(transitionSamples, sample => sample.paddingLeft, 0.1)
   expectStableRange(transitionSamples, sample => sample.pinButtonViewportCenterX)
   expectStableRange(transitionSamples, sample => sample.pinButtonViewportCenterY)
@@ -92,6 +93,7 @@ const expectContinuousSidebarAnimation = (
   expectStableRange(transitionSamples, sample => sample.spaceRailIconViewportCenterY)
   expectStableRange(transitionSamples, sample => sample.spaceItemViewportLeft)
   expectStableRange(transitionSamples, sample => sample.spaceItemViewportTop)
+  expectStableRange(transitionSamples, sample => sample.spaceRailSurfaceLeft)
   expectStableRange(transitionSamples, sample => sample.spaceNameViewportLeft)
   expect(
     transitionSamples
@@ -145,6 +147,7 @@ const expectContinuousSidebarAnimation = (
       )
       expectClose(finalSample.spaceItemViewportLeft, lastTransition.spaceItemViewportLeft, 1)
       expectClose(finalSample.spaceItemViewportTop, lastTransition.spaceItemViewportTop, 1)
+      expectClose(finalSample.spaceRailSurfaceLeft, lastTransition.spaceRailSurfaceLeft, 1)
       expect(finalSample.projectNameVisibleWidth).toBeLessThanOrEqual(1)
       expect(finalSample.projectNameOpacity).toBeLessThanOrEqual(0.1)
       expect(finalSample.projectToggleVisibleWidth).toBeLessThanOrEqual(1)
@@ -219,6 +222,9 @@ const expectContinuousSidebarAnimation = (
         sample.spaceRailSurfaceWidth < sample.spaceItemWidth - 2,
     ),
   ).toBe(true)
+  if (finalSample) {
+    expectClose(finalSample.spaceRailSurfaceLeft, lastTransition.spaceRailSurfaceLeft, 1)
+  }
 }
 
 test.describe('Primary Sidebar Animation', () => {
@@ -299,7 +305,7 @@ test.describe('Primary Sidebar Animation', () => {
       expect(expandedFinal.spaceRailSurfaceOpacity).toBeGreaterThanOrEqual(0.95)
       expect(expandedFinal.spaceRailSurfaceWidth).toBeGreaterThan(100)
       expectClose(
-        expandedFinal.spaceRailSurfaceLeftFromSidebarLeft,
+        expandedFinal.spaceRailSurfaceLeftFromSidebarLeft + 2,
         expandedFinal.spaceRailSurfaceRightInset,
         1,
       )

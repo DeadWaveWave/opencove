@@ -161,7 +161,6 @@
 }
 
 .workspace-sidebar--rail .workspace-space-item {
-  --workspace-space-item-surface-left: -2px;
   --workspace-space-item-surface-width: 24px;
   --workspace-space-item-surface-height: var(--workspace-sidebar-tree-surface-size);
 }
@@ -180,7 +179,6 @@
 }
 
 .workspace-sidebar--rail .workspace-agent-item--sidebar {
-  --workspace-agent-item-surface-left: -2px;
   --workspace-agent-item-surface-width: 24px;
   --workspace-agent-item-surface-height: var(--workspace-sidebar-tree-surface-size);
 }
