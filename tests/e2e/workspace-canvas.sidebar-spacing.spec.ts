@@ -11,6 +11,7 @@ type SidebarRowGeometry = {
   projectContentTopInset: number
   projectIconCenter: number
   projectToggleCenter: number
+  projectToggleIconCenter: number
   spaceSurfaceProjectLeftGap: number
   spaceSurfaceProjectRightGap: number
   spaceBranchLeftInset: number
@@ -22,14 +23,17 @@ type SidebarRowGeometry = {
   spaceSurfaceRightInset: number
   spaceSurfaceGutterDelta: number
   spaceSurfaceWidth: number
+  spaceSurfaceHeight: number
   spaceSurfaceCenter: number
   spaceNameLeft: number
   spaceToggleCenter: number
+  spaceToggleIconCenter: number
   spaceRailIconCenter: number
   agentSurfaceLeftInset: number
   agentSurfaceRightInset: number
   agentSurfaceGutterDelta: number
   agentSurfaceWidth: number
+  agentSurfaceHeight: number
   agentSurfaceCenter: number
   agentSurfaceProjectLeftGap: number
   agentSurfaceProjectRightGap: number
@@ -56,12 +60,14 @@ const readSidebarRowGeometry = async (
       const projectGroup = projectItem?.closest('.workspace-item-group')
       const projectIcon = projectItem?.querySelector('.workspace-item__folder-icon')
       const projectToggle = projectItem?.querySelector('.workspace-item__tree-toggle')
+      const projectToggleIcon = projectToggle?.querySelector('.workspace-tree-triangle')
       const spaceItem = document.querySelector(
         `[data-testid="workspace-space-item-${activeWorkspaceId}-${activeSpaceId}"]`,
       )
       const spaceGroup = spaceItem?.closest('.workspace-space-group')
       const spaceName = spaceItem?.querySelector('.workspace-space-item__name')
       const spaceToggle = spaceItem?.querySelector('.workspace-space-item__toggle')
+      const spaceToggleIcon = spaceToggle?.querySelector('.workspace-tree-triangle')
       const spaceRailIcon = spaceItem?.querySelector('.workspace-space-item__rail-icon')
       const agentItem = document.querySelector(
         `[data-testid="workspace-agent-item-${activeWorkspaceId}-${activeAgentId}"]`,
@@ -75,10 +81,12 @@ const readSidebarRowGeometry = async (
         !(projectGroup instanceof HTMLElement) ||
         !(projectIcon instanceof SVGElement) ||
         !(projectToggle instanceof HTMLElement) ||
+        !(projectToggleIcon instanceof HTMLElement) ||
         !(spaceItem instanceof HTMLElement) ||
         !(spaceGroup instanceof HTMLElement) ||
         !(spaceName instanceof HTMLElement) ||
         !(spaceToggle instanceof HTMLElement) ||
+        !(spaceToggleIcon instanceof HTMLElement) ||
         !(spaceRailIcon instanceof HTMLElement) ||
         !(agentItem instanceof HTMLElement) ||
         !(agentProvider instanceof HTMLElement)
@@ -107,6 +115,7 @@ const readSidebarRowGeometry = async (
           rightInset: round(rightInset),
           gutterDelta: round(Math.abs(leftInset - rightInset)),
           width: round(surfaceWidth),
+          height: round(Number.parseFloat(surfaceStyle.height)),
           center: round(surfaceLeft + surfaceWidth / 2 - sidebarRect.left),
         }
       }
@@ -134,6 +143,7 @@ const readSidebarRowGeometry = async (
         projectContentTopInset: round(projectItemRect.top - projectGroupRect.top),
         projectIconCenter: centerFromSidebarLeft(projectIcon),
         projectToggleCenter: centerFromSidebarLeft(projectToggle),
+        projectToggleIconCenter: centerFromSidebarLeft(projectToggleIcon),
         spaceSurfaceProjectLeftGap: round(
           spaceSurface.leftInset - (projectGroupRect.left - sidebarRect.left),
         ),
@@ -149,14 +159,17 @@ const readSidebarRowGeometry = async (
         spaceSurfaceRightInset: spaceSurface.rightInset,
         spaceSurfaceGutterDelta: spaceSurface.gutterDelta,
         spaceSurfaceWidth: spaceSurface.width,
+        spaceSurfaceHeight: spaceSurface.height,
         spaceSurfaceCenter: spaceSurface.center,
         spaceNameLeft: round(spaceName.getBoundingClientRect().left - sidebarRect.left),
         spaceToggleCenter: centerFromSidebarLeft(spaceToggle),
+        spaceToggleIconCenter: centerFromSidebarLeft(spaceToggleIcon),
         spaceRailIconCenter: centerFromSidebarLeft(spaceRailIcon),
         agentSurfaceLeftInset: agentSurface.leftInset,
         agentSurfaceRightInset: agentSurface.rightInset,
         agentSurfaceGutterDelta: agentSurface.gutterDelta,
         agentSurfaceWidth: agentSurface.width,
+        agentSurfaceHeight: agentSurface.height,
         agentSurfaceCenter: agentSurface.center,
         agentSurfaceProjectLeftGap: round(
           agentSurface.leftInset - (projectGroupRect.left - sidebarRect.left),
@@ -219,10 +232,9 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       await window.waitForTimeout(300)
 
       const rail = await readSidebarRowGeometry(window, workspaceId, spaceId, agentId)
-
       expectDistanceWithin(docked.projectGroupLeftInset, docked.projectIconCenter / 2, 4)
-      expect(docked.projectContentTopInset).toBeGreaterThanOrEqual(3)
-      expect(docked.projectContentTopInset).toBeLessThanOrEqual(5)
+      expect(docked.projectContentTopInset).toBeGreaterThanOrEqual(5)
+      expect(docked.projectContentTopInset).toBeLessThanOrEqual(7)
       expect(docked.spaceSurfaceProjectLeftGap).toBeGreaterThanOrEqual(5)
       expect(docked.spaceSurfaceProjectLeftGap).toBeLessThanOrEqual(7)
       expect(docked.spaceSurfaceProjectRightGap).toBeGreaterThanOrEqual(5)
@@ -236,19 +248,23 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       expect(docked.agentSurfaceGutterDelta).toBeLessThanOrEqual(1)
       expect(docked.agentSurfaceCenter).toBeCloseTo(docked.sidebarWidth / 2, 0)
       expectDistanceWithin(docked.agentSurfaceWidth, docked.spaceSurfaceWidth, 1)
+      expectDistanceWithin(docked.agentSurfaceHeight, docked.spaceSurfaceHeight, 0.5)
       expect(docked.spaceBranchLeftInset).toBeGreaterThanOrEqual(docked.projectGroupLeftInset)
       expect(docked.spaceBranchGap).toBeGreaterThanOrEqual(4)
       expect(docked.spaceBranchGap).toBeLessThanOrEqual(5)
       expect(docked.spaceBranchTopGap).toBeGreaterThanOrEqual(2)
       expect(docked.spaceBranchTopGap).toBeLessThanOrEqual(4)
-      expect(docked.spaceBranchBottomGap).toBeGreaterThanOrEqual(2)
-      expect(docked.spaceBranchBottomGap).toBeLessThanOrEqual(4)
+      expect(docked.spaceBranchBottomGap).toBeGreaterThanOrEqual(4)
+      expect(docked.spaceBranchBottomGap).toBeLessThanOrEqual(6)
       expectDistanceWithin(docked.spaceNameLeft, docked.projectIconCenter, 1)
       expectDistanceWithin(docked.agentProviderCenter, docked.projectIconCenter, 1)
       expectDistanceWithin(docked.spaceToggleCenter, docked.projectToggleCenter, 1)
+      expectDistanceWithin(docked.spaceToggleIconCenter, docked.projectToggleIconCenter, 1)
 
       expectDistanceWithin(rail.sidebarWidth, 52, 1)
       expectDistanceWithin(rail.spaceSurfaceWidth, 24, 1)
+      expectDistanceWithin(rail.spaceSurfaceHeight, docked.spaceSurfaceHeight, 0.5)
+      expectDistanceWithin(rail.spaceSurfaceHeight, rail.spaceSurfaceWidth, 0.5)
       expect(rail.spaceSurfaceGutterDelta).toBeLessThanOrEqual(1)
       expect(rail.spaceSurfaceCenter).toBeCloseTo(rail.sidebarWidth / 2, 0)
       expect(rail.spaceBranchLeftInset).toBeGreaterThanOrEqual(rail.projectGroupLeftInset)
@@ -256,14 +272,17 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       expect(rail.spaceBranchGap).toBeLessThanOrEqual(3)
       expect(rail.spaceBranchTopGap).toBeGreaterThanOrEqual(2)
       expect(rail.spaceBranchTopGap).toBeLessThanOrEqual(4)
-      expect(rail.spaceBranchBottomGap).toBeGreaterThanOrEqual(2)
-      expect(rail.spaceBranchBottomGap).toBeLessThanOrEqual(4)
+      expect(rail.spaceBranchBottomGap).toBeGreaterThanOrEqual(4)
+      expect(rail.spaceBranchBottomGap).toBeLessThanOrEqual(6)
       expect(rail.agentSurfaceGutterDelta).toBeLessThanOrEqual(1)
       expect(rail.agentSurfaceCenter).toBeCloseTo(rail.sidebarWidth / 2, 0)
       expectDistanceWithin(rail.agentSurfaceWidth, rail.spaceSurfaceWidth, 1)
+      expectDistanceWithin(rail.agentSurfaceHeight, docked.agentSurfaceHeight, 0.5)
+      expectDistanceWithin(rail.agentSurfaceHeight, rail.agentSurfaceWidth, 0.5)
       expectDistanceWithin(rail.projectIconCenter, rail.sidebarWidth / 2, 1)
       expectDistanceWithin(rail.pinButtonCenter, rail.sidebarWidth / 2, 1)
       expectDistanceWithin(rail.spaceToggleCenter, rail.sidebarWidth / 2, 1)
+      expectDistanceWithin(rail.spaceToggleIconCenter, rail.sidebarWidth / 2, 1)
       expectDistanceWithin(rail.spaceRailIconCenter, rail.sidebarWidth / 2, 1)
       expectDistanceWithin(rail.agentProviderCenter, rail.sidebarWidth / 2, 1)
     } finally {

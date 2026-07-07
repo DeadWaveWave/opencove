@@ -3,7 +3,7 @@
   --workspace-space-item-border-color: transparent;
   --workspace-space-item-surface-left: 0px;
   --workspace-space-item-surface-width: calc(100% - 2px);
-  --workspace-space-item-surface-height: calc(100% + 2px);
+  --workspace-space-item-surface-height: var(--workspace-sidebar-tree-surface-size);
   background: transparent;
   border-color: transparent;
   transition: color 0.15s ease;
@@ -13,7 +13,7 @@
   content: '';
   position: absolute;
   left: var(--workspace-space-item-surface-left);
-  top: -1px;
+  top: calc((100% - var(--workspace-space-item-surface-height)) / 2);
   z-index: 0;
   box-sizing: border-box;
   width: var(--workspace-space-item-surface-width);

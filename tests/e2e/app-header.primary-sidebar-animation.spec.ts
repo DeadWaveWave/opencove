@@ -303,7 +303,7 @@ test.describe('Primary Sidebar Animation', () => {
         expandedFinal.spaceRailSurfaceRightInset,
         1,
       )
-      expectClose(expandedFinal.spaceRailSurfaceHeight, expandedFinal.spaceItemHeight, 0.5)
+      expectClose(expandedFinal.spaceRailSurfaceHeight, collapsedFinal.spaceRailSurfaceHeight, 0.5)
       expect(expandedFinal.spaceNameOpacity).toBeGreaterThanOrEqual(0.95)
       expect(expandedFinal.spaceNameVisibleWidth).toBeGreaterThan(20)
       expect(expandedFinal.spaceNameWidth).toBeGreaterThan(20)
