@@ -8,6 +8,7 @@ type SidebarRowGeometry = {
   projectGroupLeftInset: number
   projectGroupRightInset: number
   projectGroupCenter: number
+  projectContentTopInset: number
   projectIconCenter: number
   projectToggleCenter: number
   spaceSurfaceProjectLeftGap: number
@@ -16,6 +17,7 @@ type SidebarRowGeometry = {
   spaceBranchRightInset: number
   spaceBranchGap: number
   spaceBranchTopGap: number
+  spaceBranchBottomGap: number
   spaceSurfaceLeftInset: number
   spaceSurfaceRightInset: number
   spaceSurfaceGutterDelta: number
@@ -111,6 +113,7 @@ const readSidebarRowGeometry = async (
 
       const sidebarRect = sidebar.getBoundingClientRect()
       const projectGroupRect = projectGroup.getBoundingClientRect()
+      const projectItemRect = projectItem.getBoundingClientRect()
       const spaceRect = spaceItem.getBoundingClientRect()
       const spaceSurface = surfaceMetrics(spaceItem, '::before')
       const agentSurface = surfaceMetrics(agentItem, '::before')
@@ -128,6 +131,7 @@ const readSidebarRowGeometry = async (
         projectGroupCenter: round(
           projectGroupRect.left + projectGroupRect.width / 2 - sidebarRect.left,
         ),
+        projectContentTopInset: round(projectItemRect.top - projectGroupRect.top),
         projectIconCenter: centerFromSidebarLeft(projectIcon),
         projectToggleCenter: centerFromSidebarLeft(projectToggle),
         spaceSurfaceProjectLeftGap: round(
@@ -140,6 +144,7 @@ const readSidebarRowGeometry = async (
         spaceBranchRightInset: round(branchRight - sidebarRect.left),
         spaceBranchGap: round(spaceSurface.leftInset - (branchRight - sidebarRect.left)),
         spaceBranchTopGap: round(branchTop - spaceRect.bottom),
+        spaceBranchBottomGap: round(projectGroupRect.bottom - spaceGroupRect.bottom),
         spaceSurfaceLeftInset: spaceSurface.leftInset,
         spaceSurfaceRightInset: spaceSurface.rightInset,
         spaceSurfaceGutterDelta: spaceSurface.gutterDelta,
@@ -216,6 +221,8 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       const rail = await readSidebarRowGeometry(window, workspaceId, spaceId, agentId)
 
       expectDistanceWithin(docked.projectGroupLeftInset, docked.projectIconCenter / 2, 4)
+      expect(docked.projectContentTopInset).toBeGreaterThanOrEqual(3)
+      expect(docked.projectContentTopInset).toBeLessThanOrEqual(5)
       expect(docked.spaceSurfaceProjectLeftGap).toBeGreaterThanOrEqual(5)
       expect(docked.spaceSurfaceProjectLeftGap).toBeLessThanOrEqual(7)
       expect(docked.spaceSurfaceProjectRightGap).toBeGreaterThanOrEqual(5)
@@ -234,6 +241,8 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       expect(docked.spaceBranchGap).toBeLessThanOrEqual(5)
       expect(docked.spaceBranchTopGap).toBeGreaterThanOrEqual(2)
       expect(docked.spaceBranchTopGap).toBeLessThanOrEqual(4)
+      expect(docked.spaceBranchBottomGap).toBeGreaterThanOrEqual(2)
+      expect(docked.spaceBranchBottomGap).toBeLessThanOrEqual(4)
       expectDistanceWithin(docked.spaceNameLeft, docked.projectIconCenter, 1)
       expectDistanceWithin(docked.agentProviderCenter, docked.projectIconCenter, 1)
       expectDistanceWithin(docked.spaceToggleCenter, docked.projectToggleCenter, 1)
@@ -247,6 +256,8 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       expect(rail.spaceBranchGap).toBeLessThanOrEqual(3)
       expect(rail.spaceBranchTopGap).toBeGreaterThanOrEqual(2)
       expect(rail.spaceBranchTopGap).toBeLessThanOrEqual(4)
+      expect(rail.spaceBranchBottomGap).toBeGreaterThanOrEqual(2)
+      expect(rail.spaceBranchBottomGap).toBeLessThanOrEqual(4)
       expect(rail.agentSurfaceGutterDelta).toBeLessThanOrEqual(1)
       expect(rail.agentSurfaceCenter).toBeCloseTo(rail.sidebarWidth / 2, 0)
       expectDistanceWithin(rail.agentSurfaceWidth, rail.spaceSurfaceWidth, 1)
