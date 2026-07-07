@@ -355,7 +355,7 @@ body {
 
 .app-shell {
   --cove-primary-sidebar-expanded-width: 280px;
-  --cove-primary-sidebar-rail-width: 72px;
+  --cove-primary-sidebar-rail-width: 52px;
   --cove-primary-sidebar-width: var(--cove-primary-sidebar-expanded-width);
   display: grid;
   grid-template-columns: var(--cove-primary-sidebar-width) minmax(0, 1fr);

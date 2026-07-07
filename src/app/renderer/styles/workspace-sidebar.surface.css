@@ -1,7 +1,8 @@
 .workspace-space-item {
   --workspace-space-item-background: transparent;
   --workspace-space-item-border-color: transparent;
-  --workspace-space-item-surface-width: calc(100% + 2px);
+  --workspace-space-item-surface-left: 0px;
+  --workspace-space-item-surface-width: calc(100% - 2px);
   --workspace-space-item-surface-height: calc(100% + 2px);
   background: transparent;
   border-color: transparent;
@@ -11,7 +12,7 @@
 .workspace-space-item::before {
   content: '';
   position: absolute;
-  left: -1px;
+  left: var(--workspace-space-item-surface-left);
   top: -1px;
   z-index: 0;
   box-sizing: border-box;
@@ -22,6 +23,7 @@
   background: var(--workspace-space-item-background);
   pointer-events: none;
   transition:
+    left 0.22s ease,
     width 0.22s ease,
     height 0.22s ease,
     background-color 0.15s ease,

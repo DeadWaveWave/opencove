@@ -82,7 +82,8 @@ button.workspace-agent-item:focus-visible {
   --workspace-agent-item-background: transparent;
   --workspace-agent-item-border-color: transparent;
   --workspace-agent-item-surface-shadow: none;
-  --workspace-agent-item-surface-width: calc(100% + 2px);
+  --workspace-agent-item-surface-left: 0px;
+  --workspace-agent-item-surface-width: calc(100% - 2px);
   --workspace-agent-item-surface-height: calc(100% + 2px);
   position: relative;
   flex-direction: row;
@@ -90,15 +91,20 @@ button.workspace-agent-item:focus-visible {
   gap: 0;
   height: var(--workspace-sidebar-tree-item-size, 32px);
   min-height: var(--workspace-sidebar-tree-item-size, 32px);
-  padding: 0 6px;
+  padding: 0 6px 0 1px;
   background: transparent;
   border-color: transparent;
+  transition:
+    padding-left 0.22s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .workspace-agent-item--sidebar::before {
   content: '';
   position: absolute;
-  left: -1px;
+  left: var(--workspace-agent-item-surface-left);
   top: -1px;
   z-index: 0;
   box-sizing: border-box;
@@ -110,6 +116,7 @@ button.workspace-agent-item:focus-visible {
   box-shadow: var(--workspace-agent-item-surface-shadow);
   pointer-events: none;
   transition:
+    left 0.22s ease,
     width 0.22s ease,
     height 0.22s ease,
     background-color 0.15s ease,

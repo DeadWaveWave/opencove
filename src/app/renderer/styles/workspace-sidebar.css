@@ -324,7 +324,7 @@
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  padding-left: 10px;
+  padding-left: 4px;
   position: relative;
   --workspace-space-accent: var(--cove-label-color, var(--cove-accent));
 }
@@ -332,12 +332,15 @@
 .workspace-space-group--branched::before {
   content: '';
   position: absolute;
-  left: 4px;
-  top: 0;
+  left: -2px;
+  top: calc(var(--workspace-sidebar-tree-item-size) + 3px);
   bottom: 0;
   width: 2px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--workspace-space-accent) 82%, transparent);
+  transition:
+    left 0.22s ease,
+    background-color 0.15s ease;
 }
 
 .workspace-space-item {
