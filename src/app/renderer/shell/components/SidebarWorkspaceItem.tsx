@@ -5,7 +5,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { ProjectContextMenuState } from '../types'
 import { type SidebarProjectTreeModel, type SidebarSpaceGroupModel } from '../utils/sidebarTree'
 import { SidebarAgentItems } from './SidebarAgentItems'
-import { createSpaceSortableId } from './SidebarDnd'
+import { createSpaceSortableId, sidebarSortableTransition } from './SidebarDnd'
 import { SidebarDisclosureIcon } from './SidebarDisclosureIcon'
 import { ProjectIcon } from './ProjectIcon'
 
@@ -22,7 +22,7 @@ type SortableWorkspaceItemProps = {
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
 }
 
-function getTreeChildGroups(tree: SidebarProjectTreeModel): SidebarSpaceGroupModel[] {
+export function getTreeChildGroups(tree: SidebarProjectTreeModel): SidebarSpaceGroupModel[] {
   return tree.projectRootGroup ? [...tree.spaceGroups, tree.projectRootGroup] : tree.spaceGroups
 }
 
@@ -103,6 +103,7 @@ function SpaceGroup({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: sortableId,
     disabled: isProjectRoot,
+    transition: sidebarSortableTransition,
     data: !isProjectRoot
       ? {
           kind: 'space',
@@ -118,7 +119,9 @@ function SpaceGroup({
   }
   const groupClassName = `workspace-space-group ${
     isProjectRoot ? 'workspace-space-group--root' : 'workspace-space-group--space'
-  }${hasAgents && isExpanded ? ' workspace-space-group--branched' : ''}`
+  }${hasAgents && isExpanded ? ' workspace-space-group--branched' : ''}${
+    isDragging ? ' workspace-space-group--dragging' : ''
+  }`
 
   return (
     <div
@@ -177,41 +180,12 @@ function SpaceGroup({
           onSelectWorkspace(workspaceId)
         }}
       >
-        <SidebarDisclosureIcon
-          expanded={isExpanded}
-          className="workspace-space-item__rail-icon"
-          aria-hidden="true"
+        <SpaceItemContent
+          label={label}
+          hasAgents={hasAgents}
+          isExpanded={isExpanded}
+          onToggleSpaceGroup={() => onToggleSpaceGroup(groupKey)}
         />
-        <span className="workspace-space-item__name">{label}</span>
-        {hasAgents ? (
-          <button
-            type="button"
-            className="workspace-space-item__toggle"
-            aria-label={
-              isExpanded ? t('sidebar.collapseProjectTree') : t('sidebar.expandProjectTree')
-            }
-            aria-expanded={isExpanded}
-            onClick={event => {
-              event.stopPropagation()
-              onToggleSpaceGroup(groupKey)
-            }}
-            onKeyDown={event => {
-              if (event.key !== 'Enter' && event.key !== ' ') {
-                return
-              }
-              event.preventDefault()
-              event.stopPropagation()
-              onToggleSpaceGroup(groupKey)
-            }}
-          >
-            <SidebarDisclosureIcon
-              expanded={isExpanded}
-              className="workspace-space-item__chevron"
-            />
-          </button>
-        ) : (
-          <span className="workspace-space-item__toggle-spacer" aria-hidden="true" />
-        )}
       </div>
 
       {hasAgents && isExpanded ? (
@@ -244,6 +218,7 @@ export function SortableWorkspaceItem({
   const { workspace } = tree
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: workspace.id,
+    transition: sidebarSortableTransition,
     data: {
       kind: 'project',
       workspaceId: workspace.id,
@@ -265,7 +240,9 @@ export function SortableWorkspaceItem({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`workspace-item-group${isActive ? ' workspace-item-group--active' : ''}`}
+      className={`workspace-item-group${isActive ? ' workspace-item-group--active' : ''}${
+        isDragging ? ' workspace-item-group--dragging' : ''
+      }`}
     >
       <div className="workspace-item-row">
         <div
@@ -331,6 +308,71 @@ export function SortableWorkspaceItem({
   )
 }
 
+function SpaceItemContent({
+  label,
+  hasAgents,
+  isExpanded,
+  isOverlay = false,
+  onToggleSpaceGroup,
+}: {
+  label: string
+  hasAgents: boolean
+  isExpanded: boolean
+  isOverlay?: boolean
+  onToggleSpaceGroup?: () => void
+}): React.JSX.Element {
+  const { t } = useTranslation()
+
+  return (
+    <>
+      <SidebarDisclosureIcon
+        expanded={isExpanded}
+        className="workspace-space-item__rail-icon"
+        aria-hidden="true"
+      />
+      <span className="workspace-space-item__name">{label}</span>
+      {hasAgents ? (
+        isOverlay ? (
+          <span className="workspace-space-item__toggle" aria-hidden="true">
+            <SidebarDisclosureIcon
+              expanded={isExpanded}
+              className="workspace-space-item__chevron"
+            />
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="workspace-space-item__toggle"
+            aria-label={
+              isExpanded ? t('sidebar.collapseProjectTree') : t('sidebar.expandProjectTree')
+            }
+            aria-expanded={isExpanded}
+            onClick={event => {
+              event.stopPropagation()
+              onToggleSpaceGroup?.()
+            }}
+            onKeyDown={event => {
+              if (event.key !== 'Enter' && event.key !== ' ') {
+                return
+              }
+              event.preventDefault()
+              event.stopPropagation()
+              onToggleSpaceGroup?.()
+            }}
+          >
+            <SidebarDisclosureIcon
+              expanded={isExpanded}
+              className="workspace-space-item__chevron"
+            />
+          </button>
+        )
+      ) : (
+        <span className="workspace-space-item__toggle-spacer" aria-hidden="true" />
+      )}
+    </>
+  )
+}
+
 export function WorkspaceItemOverlay({
   tree,
 }: {
@@ -341,7 +383,8 @@ export function WorkspaceItemOverlay({
   return (
     <div
       className="workspace-item-group workspace-item-group--drag-overlay"
-      data-testid="workspace-item-overlay"
+      data-testid="workspace-sidebar-drag-overlay"
+      data-cove-sidebar-drag-kind="project"
     >
       <div className="workspace-item workspace-item--drag-overlay">
         <WorkspaceItemContent
@@ -350,6 +393,42 @@ export function WorkspaceItemOverlay({
           isExpanded={true}
           onToggleProject={() => undefined}
         />
+      </div>
+    </div>
+  )
+}
+
+export function SpaceItemOverlay({
+  group,
+  isExpanded,
+}: {
+  group: SidebarSpaceGroupModel
+  isExpanded: boolean
+}): React.JSX.Element {
+  const { t } = useTranslation()
+  const label = group.kind === 'project-root' ? t('sidebar.projectRoot') : group.name
+  const hasAgents = group.agents.length > 0
+
+  return (
+    <div
+      className={`workspace-space-group workspace-space-group--drag-overlay ${
+        group.kind === 'project-root'
+          ? 'workspace-space-group--root'
+          : 'workspace-space-group--space'
+      }`}
+      data-testid="workspace-sidebar-drag-overlay"
+      data-cove-label-color={group.labelColor ?? undefined}
+      data-cove-sidebar-drag-kind="space"
+    >
+      <div
+        className={`workspace-space-item ${
+          group.kind === 'project-root'
+            ? 'workspace-space-item--root'
+            : 'workspace-space-item--space'
+        }${hasAgents ? ' workspace-space-item--has-toggle' : ''} workspace-space-item--drag-overlay`}
+        data-cove-label-color={group.labelColor ?? undefined}
+      >
+        <SpaceItemContent label={label} hasAgents={hasAgents} isExpanded={isExpanded} isOverlay />
       </div>
     </div>
   )

@@ -7,7 +7,6 @@ import {
   type WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import { Sidebar } from './Sidebar'
-
 const dndState = vi.hoisted(() => ({
   draggingId: null as string | null,
   onDragStart: null as ((event: { active: { id: string } }) => void) | null,
@@ -15,7 +14,6 @@ const dndState = vi.hoisted(() => ({
     | ((event: { active: { id: string }; over: { id: string } | null }) => void)
     | null,
 }))
-
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({
     children,
@@ -31,12 +29,13 @@ vi.mock('@dnd-kit/core', () => ({
     return <>{children}</>
   },
   DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  MeasuringStrategy: { Always: 0 },
   PointerSensor: vi.fn(),
   closestCenter: vi.fn(),
+  pointerWithin: vi.fn(() => []),
   useSensor: vi.fn((_sensor: unknown, options?: unknown) => ({ options })),
   useSensors: vi.fn((...sensors: unknown[]) => sensors),
 }))
-
 vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useSortable: ({ id }: { id: string }) => ({
@@ -49,7 +48,6 @@ vi.mock('@dnd-kit/sortable', () => ({
   }),
   verticalListSortingStrategy: vi.fn(),
 }))
-
 vi.mock('@dnd-kit/utilities', () => ({
   CSS: {
     Transform: {

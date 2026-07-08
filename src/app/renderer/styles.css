@@ -10,6 +10,7 @@
 @import './styles/workspace-search-panel.css';
 @import './styles/workspace-sidebar.css';
 @import './styles/workspace-sidebar.surface.css';
+@import './styles/workspace-sidebar.dnd.css';
 @import './styles/workspace-sidebar.rail.css';
 @import './styles/workspace-sidebar.fade.css';
 @import './styles/workspace-agent-item.css';

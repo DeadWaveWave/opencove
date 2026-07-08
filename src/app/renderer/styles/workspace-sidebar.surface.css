@@ -68,3 +68,17 @@
   );
   background: transparent;
 }
+
+.workspace-space-item--drag-overlay,
+.workspace-space-group[data-cove-label-color] > .workspace-space-item--drag-overlay {
+  --workspace-space-item-background: color-mix(
+    in srgb,
+    var(--workspace-space-accent) 42%,
+    var(--cove-surface-strong) 58%
+  );
+  --workspace-space-item-border-color: color-mix(
+    in srgb,
+    var(--workspace-space-accent) 54%,
+    rgba(94, 156, 255, 0.26)
+  );
+}

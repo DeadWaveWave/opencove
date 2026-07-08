@@ -160,6 +160,24 @@ button.workspace-agent-item:focus-visible {
   --workspace-agent-item-border-color: color-mix(in srgb, var(--cove-label-color) 36%, transparent);
 }
 
+.workspace-agent-item--drag-overlay {
+  --workspace-agent-item-background: color-mix(in srgb, var(--cove-surface) 82%, transparent);
+  --workspace-agent-item-border-color: rgba(94, 156, 255, 0.3);
+  --workspace-agent-item-surface-shadow:
+    0 12px 24px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(94, 156, 255, 0.14);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.workspace-agent-item--drag-overlay[data-cove-label-color] {
+  --workspace-agent-item-background: color-mix(
+    in srgb,
+    var(--cove-label-color) 14%,
+    var(--cove-surface-strong) 86%
+  );
+  --workspace-agent-item-border-color: color-mix(in srgb, var(--cove-label-color) 40%, transparent);
+}
+
 .workspace-agent-item__body {
   display: inline-flex;
   align-items: center;

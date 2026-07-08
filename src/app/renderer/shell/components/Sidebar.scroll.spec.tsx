@@ -11,8 +11,10 @@ import { Sidebar } from './Sidebar'
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: { children: ReactNode }) => <>{children}</>,
   DragOverlay: ({ children }: { children: ReactNode }) => <>{children}</>,
+  MeasuringStrategy: { Always: 0 },
   PointerSensor: vi.fn(),
   closestCenter: vi.fn(),
+  pointerWithin: vi.fn(() => []),
   useSensor: vi.fn((_sensor: unknown, options?: unknown) => ({ options })),
   useSensors: vi.fn((...sensors: unknown[]) => sensors),
 }))
