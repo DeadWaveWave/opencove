@@ -90,6 +90,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Sidebar: stabilize Project, Space, and Agent drag sorting with scoped collision detection, consistent drag overlays, and measured upward-drag motion coverage. (#295)
 - Sidebar: use a continuous shared-list animation for expanded/collapsed mode switches, keep the Space disclosure as one moving button, hide rail text cleanly, preserve list scroll position, add overflow edge fades, and keep label color context menus open for consecutive changes. (#292)
 - Space Explorer: make image quick previews match the opened image node size and keep preview headers from covering image content. (#287)
 - Dev: keep the launching terminal interactive after stopping `pnpm dev` with Ctrl+C by making the dev wrapper own child-process shutdown. (#286)
