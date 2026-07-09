@@ -55,6 +55,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - CLI: Local Worker lifecycle controls with `worker status --all` and ownership-safe `worker stop`. (#195)
 
 ### 💅 Changed
+- UI: refine standby banner notification chrome with an accent hairline, standby pulse, and monospace branch/PR chips. (#297)
 - Task: simplify the node header into a Note-style actions menu, shorten the run button label, and compact agent session rows to icon, state, and time. (#294)
 - Settings: reorganize the panel into user-oriented groups for display/fonts, canvas/windows, AI assistants, tasks/shortcuts, worker connections, integrations, and advanced tools while preserving search and legacy section routing. (#266)
 - Worker: Desktop now versions local-worker reuse and repairs legacy connection files before reconnecting, preventing installed upgrades from reusing stale runtimes and bypassing persistence repair. (#264)
