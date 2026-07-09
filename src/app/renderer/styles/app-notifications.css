@@ -10,6 +10,7 @@
 }
 
 .app-notification {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
@@ -25,16 +26,36 @@
     0 12px 32px var(--cove-shadow-color-elevated);
   cursor: pointer;
   -webkit-app-region: no-drag;
-  animation: app-notification-in 0.24s cubic-bezier(0.22, 1.1, 0.4, 1);
-  transition:
-    border-color 0.18s ease,
-    transform 0.18s ease;
+  animation: app-notification-in 0.32s cubic-bezier(0.3, 1.4, 0.5, 1);
+  transition: transform 0.18s ease;
+}
+
+/* 签名细节 1：从左上角淡出的主题色发丝描边 */
+.app-notification::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--cove-accent) 45%, transparent),
+    transparent 40%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity 0.18s ease;
 }
 
 @keyframes app-notification-in {
   from {
     opacity: 0;
-    transform: translateX(12px);
+    transform: translateX(16px);
   }
   to {
     opacity: 1;
@@ -43,8 +64,11 @@
 }
 
 .app-notification:hover {
-  border-color: var(--cove-border);
   transform: translateY(-1px);
+}
+
+.app-notification:hover::after {
+  opacity: 1;
 }
 
 .app-notification:active {
@@ -86,7 +110,7 @@
 .app-notification__subtitle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   font-size: calc(11.5px * var(--cove-ui-font-scale));
   color: var(--cove-text-muted);
   line-height: 1.3;
@@ -95,13 +119,35 @@
   text-overflow: ellipsis;
 }
 
+/* 签名细节 2：待命状态点的雷达脉冲 */
 .app-notification__status-dot {
+  position: relative;
   flex: 0 0 auto;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--cove-label-green);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--cove-label-green) 55%, transparent);
+}
+
+.app-notification__status-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--cove-label-green);
+  animation: app-notification-ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes app-notification-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  70%,
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
 }
 
 .app-notification__context {
@@ -130,6 +176,12 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 签名细节 3：分支名 / PR 号用等宽字体 */
+.app-notification__chip--code .app-notification__chip-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: calc(10.5px * var(--cove-ui-font-scale));
 }
 
 .app-notification__close {
@@ -162,5 +214,10 @@
 @media (prefers-reduced-motion: reduce) {
   .app-notification {
     animation: none;
+  }
+
+  .app-notification__status-dot::before {
+    animation: none;
+    opacity: 0;
   }
 }

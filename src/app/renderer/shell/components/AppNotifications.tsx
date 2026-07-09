@@ -150,7 +150,7 @@ export function AppNotifications({
 
                     {contextVisibility.showBranch && notification.gitContext ? (
                       <span
-                        className="app-notification__chip"
+                        className="app-notification__chip app-notification__chip--code"
                         data-testid="app-notification-chip-branch"
                         title={
                           notification.gitContext.kind === 'branch'
@@ -186,7 +186,7 @@ export function AppNotifications({
 
                     {contextVisibility.showPullRequest && notification.pullRequest ? (
                       <span
-                        className="app-notification__chip"
+                        className="app-notification__chip app-notification__chip--code"
                         data-testid="app-notification-chip-pr"
                         title={`${notification.pullRequest.title} (#${notification.pullRequest.number})`}
                         aria-label={`PR #${notification.pullRequest.number}: ${notification.pullRequest.title}`}
