@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 
 import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
 import { DismissableLayer } from './ui/DismissableLayer'
+import { useIsWithinDialog } from './ui/Dialog'
 
 export interface CoveSelectOption {
   value: string
@@ -49,6 +50,7 @@ export function CoveSelect({
   onChange: (nextValue: string) => void
 }): React.JSX.Element {
   const listboxId = useId()
+  const isWithinDialog = useIsWithinDialog()
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -326,7 +328,7 @@ export function CoveSelect({
             <DismissableLayer
               id={listboxId}
               ref={menuRef}
-              className={`cove-select__menu${menuClassName ? ` ${menuClassName}` : ''}`}
+              className={`cove-select__menu${isWithinDialog ? ' cove-select__menu--within-dialog' : ''}${menuClassName ? ` ${menuClassName}` : ''}`}
               data-testid={menuTestId ?? (testId ? `${testId}-menu` : undefined)}
               role="listbox"
               branchRefs={[rootRef]}

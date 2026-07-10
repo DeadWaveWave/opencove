@@ -118,6 +118,10 @@
   padding: 6px;
 }
 
+.cove-select__menu--within-dialog {
+  z-index: var(--cove-z-dialog-popover);
+}
+
 .cove-select__option {
   width: 100%;
   min-height: 36px;

@@ -2,6 +2,7 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { CoveSelect } from '../../../src/app/renderer/components/CoveSelect'
+import { Dialog } from '../../../src/app/renderer/components/ui/Dialog'
 
 function renderHarness(disabled = false) {
   function Harness(): React.JSX.Element {
@@ -67,5 +68,25 @@ describe('CoveSelect', () => {
     fireEvent.click(screen.getByTestId('theme-select-trigger'))
 
     expect(screen.queryByRole('option', { name: 'Light' })).not.toBeInTheDocument()
+  })
+
+  it('raises a portaled menu above its containing dialog', () => {
+    render(
+      <Dialog open aria-label="Preferences" onDismiss={() => {}}>
+        <CoveSelect
+          testId="dialog-theme-select"
+          value="dark"
+          options={[
+            { value: 'dark', label: 'Dark' },
+            { value: 'light', label: 'Light' },
+          ]}
+          onChange={() => {}}
+        />
+      </Dialog>,
+    )
+
+    fireEvent.click(screen.getByTestId('dialog-theme-select-trigger'))
+
+    expect(screen.getByRole('listbox')).toHaveClass('cove-select__menu--within-dialog')
   })
 })

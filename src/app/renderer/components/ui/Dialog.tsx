@@ -5,6 +5,12 @@ import { DismissableLayer, type DismissableLayerDismissReason } from './Dismissa
 
 export type DialogDismissReason = DismissableLayerDismissReason
 
+const DialogLayerContext = React.createContext(false)
+
+export function useIsWithinDialog(): boolean {
+  return React.useContext(DialogLayerContext)
+}
+
 export interface DialogProps extends Omit<
   React.HTMLAttributes<HTMLDivElement>,
   'aria-modal' | 'children' | 'role'
@@ -163,7 +169,7 @@ export const Dialog = React.forwardRef<HTMLDivElement, DialogProps>(function Dia
         }}
         onKeyDown={handleKeyDown}
       >
-        {children}
+        <DialogLayerContext.Provider value>{children}</DialogLayerContext.Provider>
       </DismissableLayer>
     </div>,
     portalContainer ?? document.body,
