@@ -147,11 +147,9 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
       let released = false
       let cleanedUp = false
       let latestDraggedNodePositionById = new Map<string, { x: number; y: number }>()
-      let latestSpaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null = null
       const sequence = options.beginTransientRequest()
 
       const clearDragProjection = () => {
-        latestSpaceFramePreview = null
         options.nodeDragSession.clearNodeDragProjection()
       }
 
@@ -177,7 +175,6 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
               desiredDraggedPositionById: new Map([[materializedNodeId!, desiredPosition]]),
               dropFlowPoint,
             })
-            latestSpaceFramePreview = projected.nextSpaceFramePreview
             latestDraggedNodePositionById = projected.nextDraggedNodePositionById
             return projected.nextNodes
           },
@@ -217,7 +214,6 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
           dragStartSpaceRectById,
           dropFlowPoint: options.reactFlow.screenToFlowPosition(latestClient),
           fallbackNodes: fallbackNode ? [fallbackNode] : [],
-          spaceRectOverrideById: latestSpaceFramePreview,
         })
         options.nodeDragSession.endNodeDragSession()
         cleanup()

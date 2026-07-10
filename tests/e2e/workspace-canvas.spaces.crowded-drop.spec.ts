@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
+  beginDragMouse,
   clearAndSeedWorkspace,
-  dragHeaderDragSurfaceTo,
   launchApp,
   readCanvasViewport,
   readLocatorClientRect,
@@ -10,8 +10,9 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
-  test('expands a crowded space when dropping a window into it', async () => {
+  test('previews crowded Space expansion before committing it on release', async () => {
     const { electronApp, window } = await launchApp()
+    let releaseHeldDrag: (() => Promise<void>) | null = null
 
     try {
       await clearAndSeedWorkspace(
@@ -60,6 +61,10 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
 
       const draggedNode = window.locator('.note-node').filter({ hasText: 'drag note' }).first()
       await expect(draggedNode).toBeVisible()
+      const dragSurface = draggedNode.getByTestId('note-node-header-drag-surface')
+      const dragSurfaceBox = await readLocatorClientRect(dragSurface)
+      const spaceRegion = window.getByTestId('workspace-space-drag-space-full-right').locator('..')
+      const initialSpaceClientRect = await readLocatorClientRect(spaceRegion)
 
       const clamp = (value: number, min: number, max: number): number =>
         Math.max(min, Math.min(max, value))
@@ -69,13 +74,68 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
         y: 460,
       }
 
-      await dragHeaderDragSurfaceTo(window, draggedNode.locator('.note-node__header'), pane, {
-        sourcePosition: { x: 80, y: 16 },
-        targetPosition: {
-          x: clamp(viewport.x + dropFlowPoint.x * viewport.zoom, 40, paneBox.width - 40),
-          y: clamp(viewport.y + dropFlowPoint.y * viewport.zoom, 40, paneBox.height - 40),
-        },
+      const target = {
+        x: paneBox.x + clamp(viewport.x + dropFlowPoint.x * viewport.zoom, 40, paneBox.width - 40),
+        y: paneBox.y + clamp(viewport.y + dropFlowPoint.y * viewport.zoom, 40, paneBox.height - 40),
+      }
+      const drag = await beginDragMouse(window, {
+        start: { x: dragSurfaceBox.x + 80, y: dragSurfaceBox.y + 16 },
+        initialTarget: target,
       })
+      releaseHeldDrag = drag.release
+      await drag.moveTo(target, { steps: 16, settleAfterMoveMs: 180 })
+
+      await expect
+        .poll(async () => {
+          const previewRect = await readLocatorClientRect(spaceRegion)
+          return {
+            expanded:
+              previewRect.width > initialSpaceClientRect.width + 2 ||
+              previewRect.height > initialSpaceClientRect.height + 2,
+            initial: initialSpaceClientRect,
+            preview: previewRect,
+          }
+        })
+        .toMatchObject({ expanded: true })
+      const previewSpaceClientRect = await readLocatorClientRect(spaceRegion)
+
+      // The frame is derived UI while the pointer is held; durable ownership,
+      // geometry, and node position must remain at their drag baseline.
+      await window.waitForTimeout(180)
+      const durableDuringPreview = await window.evaluate(async () => {
+        const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+        if (!raw) {
+          return null
+        }
+
+        const parsed = JSON.parse(raw) as {
+          workspaces?: Array<{
+            nodes?: Array<{ id?: string; position?: { x?: number; y?: number } }>
+            spaces?: Array<{
+              id?: string
+              nodeIds?: string[]
+              rect?: { x?: number; y?: number; width?: number; height?: number } | null
+            }>
+          }>
+        }
+        const workspace = parsed.workspaces?.[0]
+        const space = workspace?.spaces?.find(item => item.id === 'space-full')
+        const dragNode = workspace?.nodes?.find(item => item.id === 'space-full-drag-node')
+
+        return {
+          nodeIds: space?.nodeIds ?? null,
+          rect: space?.rect ?? null,
+          dragPosition: dragNode?.position ?? null,
+        }
+      })
+      expect(durableDuringPreview).toEqual({
+        nodeIds: ['space-full-static-node'],
+        rect: { x: 120, y: 120, width: 520, height: 360 },
+        dragPosition: { x: 140, y: 560 },
+      })
+
+      await drag.release()
+      releaseHeldDrag = null
 
       await expect
         .poll(async () => {
@@ -212,7 +272,21 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
           )
         })
         .toEqual(expect.objectContaining({ ok: true }))
+
+      await expect
+        .poll(async () => {
+          const committedRect = await readLocatorClientRect(spaceRegion)
+          return Math.max(
+            Math.abs(committedRect.x - previewSpaceClientRect.x),
+            Math.abs(committedRect.y - previewSpaceClientRect.y),
+            Math.abs(committedRect.width - previewSpaceClientRect.width),
+            Math.abs(committedRect.height - previewSpaceClientRect.height),
+          )
+        })
+        // Release recomputes from durable state and may normalize legacy padding.
+        .toBeLessThanOrEqual(8)
     } finally {
+      await releaseHeldDrag?.().catch(() => undefined)
       await electronApp.close()
     }
   })

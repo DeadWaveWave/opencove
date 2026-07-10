@@ -135,7 +135,6 @@ export function WorkspaceCanvasInner({
     onShowMessage,
     hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
     nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
-    nodeSpaceFramePreviewRef: nodeDragSession.nodeSpaceFramePreviewRef,
   })
   const agentSupport = workspaceCanvasHooks.useWorkspaceCanvasAgentSupport({
     nodesRef: nodeStore.nodesRef,
