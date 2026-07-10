@@ -288,6 +288,8 @@ export default function App(): React.JSX.Element {
     handleRequestManageProjectMounts,
     handleRequestOpenProjectInFileManager,
     handleReorderWorkspaces,
+    handleReorderWorkspaceRootSpaces,
+    handleReorderWorkspaceSidebarAgents,
   } = useAppShellWorkspaceActions({ requestPersistFlush, t, showMessage: handleShowMessage })
 
   useProjectContextMenuDismiss({
@@ -359,6 +361,8 @@ export default function App(): React.JSX.Element {
             onOpenProjectContextMenu={setProjectContextMenu}
             onSelectAgentNode={handleSelectAgentNode}
             onReorderWorkspaces={handleReorderWorkspaces}
+            onReorderWorkspaceRootSpaces={handleReorderWorkspaceRootSpaces}
+            onReorderWorkspaceSidebarAgents={handleReorderWorkspaceSidebarAgents}
             onPointerEnter={handleSidebarPointerEnter}
             onPointerLeave={handleSidebarPointerLeave}
           />
@@ -441,9 +445,7 @@ export default function App(): React.JSX.Element {
           onDeleteSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordRemove}
           onCloseSpaceArchives={closeSpaceArchives}
           isAddProjectWizardOpen={isAddProjectWizardOpen}
-          onCloseAddProjectWizard={() => {
-            closeAddProjectWizard()
-          }}
+          onCloseAddProjectWizard={closeAddProjectWizard}
           projectContextMenu={projectContextMenu}
           projectMountManager={projectMountManager}
           onCloseProjectMountManager={() => {

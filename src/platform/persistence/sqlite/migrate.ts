@@ -31,6 +31,7 @@ function createTables(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS workspaces (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      icon_id TEXT,
       path TEXT NOT NULL,
       worktrees_root TEXT NOT NULL,
       pull_request_base_branch_options_json TEXT NOT NULL DEFAULT '[]',
@@ -60,6 +61,7 @@ function createTables(db: Database.Database): void {
       terminal_geometry_json TEXT,
       terminal_provider_hint TEXT,
       label_color_override TEXT,
+      sidebar_sort_order INTEGER,
       status TEXT,
       started_at TEXT,
       ended_at TEXT,
@@ -266,6 +268,12 @@ function ensureCurrentSchema(db: Database.Database): void {
 
   ensureTableColumn(db, {
     tableName: 'workspaces',
+    columnName: 'icon_id',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspaces',
     columnName: 'environment_variables_json',
     definitionSql: `TEXT NOT NULL DEFAULT '{}'`,
   })
@@ -290,6 +298,12 @@ function ensureCurrentSchema(db: Database.Database): void {
     tableName: 'nodes',
     columnName: 'label_color_override',
     definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'sidebar_sort_order',
+    definitionSql: 'INTEGER',
   })
 
   ensureTableColumn(db, {

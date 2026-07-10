@@ -75,13 +75,16 @@ const readSidebarToggleVisuals = async (page: Page) =>
           return -1
         }
 
-        const style = window.getComputedStyle(group, '::before')
-        return (
-          item.getBoundingClientRect().left -
-          group.getBoundingClientRect().left -
-          Number.parseFloat(style.left) -
-          Number.parseFloat(style.width)
-        )
+        const branchStyle = window.getComputedStyle(group, '::before')
+        const itemSurfaceStyle = window.getComputedStyle(item, '::before')
+        const groupRect = group.getBoundingClientRect()
+        const itemRect = item.getBoundingClientRect()
+        const branchRight =
+          groupRect.left +
+          Number.parseFloat(branchStyle.left) +
+          Number.parseFloat(branchStyle.width)
+        const surfaceLeft = itemRect.left + Number.parseFloat(itemSurfaceStyle.left)
+        return surfaceLeft - branchRight
       }
       const activeSpace = document.querySelector('.workspace-space-item--active')
       const provider = document.querySelector(`${secondaryAgent} .workspace-agent-item__provider`)
@@ -369,18 +372,18 @@ test.describe('Primary Sidebar Pin', () => {
       expect(peekVisuals.spaceChevron).toBeCloseTo(railVisuals.spaceRailIcon, 0)
       expect(railVisuals.spaceVisibleWidth).toBeGreaterThanOrEqual(railVisuals.spaceHeight)
       expect(railVisuals.spaceVisibleWidth).toBeLessThanOrEqual(52)
-      expect(railVisuals.spaceSurfaceWidth).toBeCloseTo(railVisuals.spaceHeight, 0)
-      expect(railVisuals.spaceSurfaceHeight).toBeCloseTo(railVisuals.spaceHeight, 0)
+      expect(railVisuals.spaceSurfaceWidth).toBeCloseTo(24, 0)
+      expect(railVisuals.spaceSurfaceHeight).toBeCloseTo(railVisuals.spaceSurfaceWidth, 0)
       expect(peekVisuals.spaceSurfaceWidth).toBeGreaterThan(100)
-      expect(peekVisuals.spaceSurfaceHeight).toBeCloseTo(railVisuals.spaceHeight, 0)
+      expect(peekVisuals.spaceSurfaceHeight).toBeCloseTo(railVisuals.spaceSurfaceHeight, 0)
       expect(peekVisuals.spaceHeight).toBeCloseTo(railVisuals.spaceHeight, 0)
       expect(peekVisuals.spaceIconCount).toBe(0)
       expect(peekVisuals.agentIcon).toBeCloseTo(railVisuals.agentIcon, 0)
       expect(peekVisuals.agentHeight).toBeCloseTo(railVisuals.agentHeight, 0)
-      expect(railVisuals.agentSurfaceWidth).toBeCloseTo(railVisuals.agentHeight, 0)
-      expect(railVisuals.agentSurfaceHeight).toBeCloseTo(railVisuals.agentHeight, 0)
+      expect(railVisuals.agentSurfaceWidth).toBeCloseTo(24, 0)
+      expect(railVisuals.agentSurfaceHeight).toBeCloseTo(railVisuals.agentSurfaceWidth, 0)
       expect(peekVisuals.agentSurfaceWidth).toBeGreaterThan(100)
-      expect(peekVisuals.agentSurfaceHeight).toBeCloseTo(railVisuals.agentHeight, 0)
+      expect(peekVisuals.agentSurfaceHeight).toBeCloseTo(railVisuals.agentSurfaceHeight, 0)
       expect(railVisuals.agentStatusLineCount).toBe(0)
       expect(peekVisuals.agentStatusLineCount).toBe(0)
       expect(railVisuals.agentRing).not.toBe('none')
@@ -401,7 +404,10 @@ test.describe('Primary Sidebar Pin', () => {
       expect(peekVisuals.defaultSpaceSurfaceBackground).not.toBe('rgba(0, 0, 0, 0)')
       expect(railVisuals.inactiveBranchBackground).not.toBe('rgba(0, 0, 0, 0)')
       expect(peekVisuals.inactiveBranchBackground).toBe(railVisuals.inactiveBranchBackground)
-      expect(peekVisuals.inactiveBranchGap).toBeCloseTo(railVisuals.inactiveBranchGap, 0)
+      expect(railVisuals.inactiveBranchGap).toBeGreaterThanOrEqual(2)
+      expect(railVisuals.inactiveBranchGap).toBeLessThanOrEqual(3)
+      expect(peekVisuals.inactiveBranchGap).toBeGreaterThanOrEqual(2)
+      expect(peekVisuals.inactiveBranchGap).toBeLessThanOrEqual(3)
       expect(railVisuals.defaultBranchBackground).not.toBe('rgba(0, 0, 0, 0)')
       expect(peekVisuals.defaultBranchBackground).toBe(railVisuals.defaultBranchBackground)
       expect(

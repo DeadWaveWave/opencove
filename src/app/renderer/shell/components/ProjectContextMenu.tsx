@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, FolderOpen, FolderX, HardDrive, Pencil, X } from 'lucide-react'
+import { Check, Copy, Folder, FolderOpen, FolderX, HardDrive, Pencil, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import {
@@ -7,14 +7,18 @@ import {
   type LabelColor,
   type NodeLabelColorOverride,
 } from '@shared/types/labelColor'
+import { PROJECT_ICON_IDS, type ProjectIconId } from '@shared/types/projectIcon'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { ProjectContextMenuTarget } from '../types'
 import { useAppStore } from '../store/useAppStore'
+import { getProjectIconComponent } from './ProjectIcon'
 import {
   renameTarget,
+  resolveTargetProjectIconId,
   resolveTargetLabelColor,
   resolveTargetName,
   resolveTargetSpacePath,
+  setTargetProjectIconId,
   setTargetLabelColor,
 } from './ProjectContextMenu.state'
 
@@ -58,6 +62,7 @@ export function ProjectContextMenu({
   const isProjectTarget = resolvedTarget.kind === 'project'
   const isSpaceTarget = resolvedTarget.kind === 'space'
   const supportsLabelColor = resolvedTarget.kind !== 'project'
+  const currentProjectIconId = resolveTargetProjectIconId(workspaces, resolvedTarget)
   const currentLabelColor = resolveTargetLabelColor(workspaces, resolvedTarget)
   const estimatedWidth = isRenaming
     ? 236
@@ -73,9 +78,9 @@ export function ProjectContextMenu({
     : isSpaceTarget
       ? 174
       : canOpenInFileManager && isProjectTarget
-        ? 148
+        ? 218
         : isProjectTarget
-          ? 112
+          ? 182
           : resolvedTarget.kind === 'agent'
             ? 124
             : 102
@@ -119,6 +124,9 @@ export function ProjectContextMenu({
   }
   const commitLabelColor = (labelColor: LabelColor | NodeLabelColorOverride | null): void => {
     setTargetLabelColor(resolvedTarget, labelColor)
+  }
+  const commitProjectIcon = (iconId: ProjectIconId | null): void => {
+    setTargetProjectIconId(resolvedTarget, iconId)
   }
   const copySpacePath = (): void => {
     const path = resolveTargetSpacePath(workspaces, resolvedTarget)
@@ -227,6 +235,64 @@ export function ProjectContextMenu({
       </div>
     )
   }
+  const renderProjectIconButton = ({
+    id,
+    iconId,
+    label,
+  }: {
+    id: string
+    iconId: ProjectIconId | null
+    label: string
+  }): React.JSX.Element => {
+    const Icon = iconId ? (getProjectIconComponent(iconId) ?? Folder) : Folder
+    const selected = currentProjectIconId === iconId
+
+    return (
+      <button
+        type="button"
+        className={`workspace-project-context-menu__project-icon-button${selected ? ' workspace-project-context-menu__project-icon-button--selected' : ''}`}
+        data-testid={`workspace-project-context-menu-icon-${id}`}
+        aria-label={label}
+        title={label}
+        onClick={() => {
+          commitProjectIcon(iconId)
+        }}
+      >
+        <Icon className="workspace-project-context-menu__project-icon" aria-hidden="true" />
+        {selected ? <Check className="workspace-project-context-menu__icon-check" /> : null}
+      </button>
+    )
+  }
+  const renderProjectIconRow = (): React.JSX.Element | null => {
+    if (!isProjectTarget) {
+      return null
+    }
+
+    return (
+      <div
+        className="workspace-project-context-menu__project-icon-section"
+        data-testid="workspace-project-context-menu-icons"
+      >
+        <div className="workspace-context-menu__section-title">
+          {t('projectContextMenu.projectIcon')}
+        </div>
+        <div className="workspace-project-context-menu__project-icon-grid">
+          {renderProjectIconButton({
+            id: 'default',
+            iconId: null,
+            label: t('projectContextMenu.defaultProjectIcon'),
+          })}
+          {PROJECT_ICON_IDS.map(iconId =>
+            renderProjectIconButton({
+              id: iconId,
+              iconId,
+              label: t(`projectContextMenu.icons.${iconId}`),
+            }),
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <ViewportMenuSurface
@@ -322,6 +388,7 @@ export function ProjectContextMenu({
           <span className="workspace-context-menu__label">{t('projectContextMenu.rename')}</span>
         </button>
       )}
+      {!isRenaming && isProjectTarget ? renderProjectIconRow() : null}
       {!isRenaming && isProjectTarget ? (
         <button
           type="button"

@@ -82,24 +82,30 @@ button.workspace-agent-item:focus-visible {
   --workspace-agent-item-background: transparent;
   --workspace-agent-item-border-color: transparent;
   --workspace-agent-item-surface-shadow: none;
-  --workspace-agent-item-surface-width: calc(100% + 2px);
-  --workspace-agent-item-surface-height: calc(100% + 2px);
+  --workspace-agent-item-surface-left: -2px;
+  --workspace-agent-item-surface-width: 100%;
+  --workspace-agent-item-surface-height: var(--workspace-sidebar-tree-surface-size, 24px);
   position: relative;
   flex-direction: row;
   align-items: center;
   gap: 0;
   height: var(--workspace-sidebar-tree-item-size, 32px);
   min-height: var(--workspace-sidebar-tree-item-size, 32px);
-  padding: 0 6px;
+  padding: 0 6px 0 1px;
   background: transparent;
   border-color: transparent;
+  transition:
+    padding-left 0.22s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .workspace-agent-item--sidebar::before {
   content: '';
   position: absolute;
-  left: -1px;
-  top: -1px;
+  left: var(--workspace-agent-item-surface-left);
+  top: calc((100% - var(--workspace-agent-item-surface-height)) / 2);
   z-index: 0;
   box-sizing: border-box;
   width: var(--workspace-agent-item-surface-width);
@@ -110,6 +116,7 @@ button.workspace-agent-item:focus-visible {
   box-shadow: var(--workspace-agent-item-surface-shadow);
   pointer-events: none;
   transition:
+    left 0.22s ease,
     width 0.22s ease,
     height 0.22s ease,
     background-color 0.15s ease,
@@ -136,10 +143,10 @@ button.workspace-agent-item:focus-visible {
 .workspace-agent-item--sidebar[data-cove-label-color] {
   --workspace-agent-item-background: color-mix(
     in srgb,
-    var(--cove-label-color) 12%,
-    var(--cove-field) 88%
+    var(--cove-label-color) 10%,
+    var(--cove-surface-strong) 90%
   );
-  --workspace-agent-item-border-color: color-mix(in srgb, var(--cove-label-color) 32%, transparent);
+  --workspace-agent-item-border-color: color-mix(in srgb, var(--cove-label-color) 28%, transparent);
   --workspace-agent-item-surface-shadow: inset 0 0 0 1px
     color-mix(in srgb, var(--cove-label-color) 10%, transparent);
 }
@@ -147,10 +154,28 @@ button.workspace-agent-item:focus-visible {
 .workspace-agent-item--sidebar[data-cove-label-color]:hover {
   --workspace-agent-item-background: color-mix(
     in srgb,
-    var(--cove-label-color) 18%,
-    var(--cove-field) 82%
+    var(--cove-label-color) 14%,
+    var(--cove-surface-strong) 86%
   );
-  --workspace-agent-item-border-color: color-mix(in srgb, var(--cove-label-color) 42%, transparent);
+  --workspace-agent-item-border-color: color-mix(in srgb, var(--cove-label-color) 36%, transparent);
+}
+
+.workspace-agent-item--drag-overlay {
+  --workspace-agent-item-background: color-mix(in srgb, var(--cove-surface) 82%, transparent);
+  --workspace-agent-item-border-color: rgba(94, 156, 255, 0.3);
+  --workspace-agent-item-surface-shadow:
+    0 12px 24px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(94, 156, 255, 0.14);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.workspace-agent-item--drag-overlay[data-cove-label-color] {
+  --workspace-agent-item-background: color-mix(
+    in srgb,
+    var(--cove-label-color) 14%,
+    var(--cove-surface-strong) 86%
+  );
+  --workspace-agent-item-border-color: color-mix(in srgb, var(--cove-label-color) 40%, transparent);
 }
 
 .workspace-agent-item__body {

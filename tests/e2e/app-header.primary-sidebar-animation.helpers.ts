@@ -26,9 +26,12 @@ export type SidebarAnimationSample = {
   spaceRailIconViewportCenterY: number
   spaceRailIconCenterFromSidebarLeft: number
   spaceRailSurfaceOpacity: number
+  spaceRailSurfaceLeft: number
+  spaceRailSurfaceLeftFromSidebarLeft: number
   spaceRailSurfaceWidth: number
   spaceRailSurfaceHeight: number
   spaceRailSurfaceRight: number
+  spaceRailSurfaceRightInset: number
   spaceItemBackground: string
   spaceItemBorderColor: string
   spaceItemWidth: number
@@ -109,6 +112,7 @@ export const sampleSidebarToggle = async (
         const projectToggleStyle = window.getComputedStyle(projectToggle)
         const spaceRailIconStyle = window.getComputedStyle(spacePrimaryControl)
         const spaceRailSurfaceStyle = window.getComputedStyle(spaceItem, '::before')
+        const spaceRailSurfaceLeft = spaceItemRect.x + Number.parseFloat(spaceRailSurfaceStyle.left)
         const spaceItemStyle = window.getComputedStyle(spaceItem)
         const spaceNameStyle = window.getComputedStyle(spaceName)
         const spaceToggleStyle = window.getComputedStyle(spaceToggle)
@@ -162,10 +166,20 @@ export const sampleSidebarToggle = async (
             (spaceRailIconRect.x + spaceRailIconRect.width / 2 - sidebarRect.x).toFixed(3),
           ),
           spaceRailSurfaceOpacity: Number.parseFloat(spaceRailSurfaceStyle.opacity),
+          spaceRailSurfaceLeft: Number(spaceRailSurfaceLeft.toFixed(3)),
+          spaceRailSurfaceLeftFromSidebarLeft: Number(
+            (spaceRailSurfaceLeft - sidebarRect.x).toFixed(3),
+          ),
           spaceRailSurfaceWidth: Number.parseFloat(spaceRailSurfaceStyle.width),
           spaceRailSurfaceHeight: Number.parseFloat(spaceRailSurfaceStyle.height),
           spaceRailSurfaceRight: Number(
-            (spaceItemRect.x - 1 + Number.parseFloat(spaceRailSurfaceStyle.width)).toFixed(3),
+            (spaceRailSurfaceLeft + Number.parseFloat(spaceRailSurfaceStyle.width)).toFixed(3),
+          ),
+          spaceRailSurfaceRightInset: Number(
+            (
+              sidebarRect.right -
+              (spaceRailSurfaceLeft + Number.parseFloat(spaceRailSurfaceStyle.width))
+            ).toFixed(3),
           ),
           spaceItemBackground: spaceItemStyle.backgroundColor,
           spaceItemBorderColor: spaceItemStyle.borderColor,
@@ -187,7 +201,38 @@ export const sampleSidebarToggle = async (
 
       const startClassName = sidebar.className
       const before = readSample()
+      const transitionStart = new Promise<void>(resolve => {
+        const resolveIfStarted = (): boolean => {
+          if ((sidebar.dataset.coveSidebarTransition ?? 'idle') !== 'idle') {
+            resolve()
+            return true
+          }
+          return false
+        }
+
+        if (resolveIfStarted()) {
+          return
+        }
+
+        const observer = new MutationObserver(() => {
+          if (!resolveIfStarted()) {
+            return
+          }
+          observer.disconnect()
+        })
+
+        observer.observe(sidebar, {
+          attributes: true,
+          attributeFilter: ['class', 'data-cove-sidebar-transition'],
+        })
+
+        window.setTimeout(() => {
+          observer.disconnect()
+          resolve()
+        }, 120)
+      })
       toggleButton.click()
+      await transitionStart
 
       return await new Promise<SidebarAnimationResult>(resolve => {
         const sampleCount = 30

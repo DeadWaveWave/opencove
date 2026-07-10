@@ -5,6 +5,7 @@ import {
   normalizeLabelColor,
   normalizeNodeLabelColorOverride,
 } from '../../../shared/types/labelColor'
+import { normalizeProjectIconId } from '../../../shared/types/projectIcon'
 import { normalizeSpaceBoundary } from '../../../shared/types/spaceBoundary'
 import { normalizeTerminalGeometry } from './normalize'
 import {
@@ -139,6 +140,12 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
             ? node.terminalProviderHint
             : null,
         labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
+        sidebarSortOrder:
+          node.kind === 'agent' &&
+          typeof node.sidebarSortOrder === 'number' &&
+          Number.isFinite(node.sidebarSortOrder)
+            ? Math.max(0, Math.floor(node.sidebarSortOrder))
+            : null,
         status: node.status,
         startedAt: node.startedAt,
         endedAt: node.endedAt,
@@ -197,6 +204,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
       return {
         id: workspace.id,
         name: workspace.name,
+        iconId: normalizeProjectIconId(workspace.iconId),
         path: workspace.path,
         worktreesRoot: workspace.worktreesRoot,
         pullRequestBaseBranchOptions: normalizeStringArray(

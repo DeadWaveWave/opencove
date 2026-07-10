@@ -119,6 +119,16 @@ describe('ProjectContextMenu', () => {
     expect(useAppStore.getState().workspaces[0]?.name).toBe('Project Renamed')
   })
 
+  it('updates a project icon from the context menu', () => {
+    renderMenu({ kind: 'project', workspaceId: 'workspace-a' })
+
+    fireEvent.click(screen.getByTestId('workspace-project-context-menu-icon-code'))
+    expect(useAppStore.getState().workspaces[0]?.iconId).toBe('code')
+
+    fireEvent.click(screen.getByTestId('workspace-project-context-menu-icon-default'))
+    expect(useAppStore.getState().workspaces[0]?.iconId).toBeNull()
+  })
+
   it('renames a space target', () => {
     renderMenu({ kind: 'space', workspaceId: 'workspace-a', spaceId: 'space-a' })
 

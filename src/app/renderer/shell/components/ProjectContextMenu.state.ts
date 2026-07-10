@@ -1,4 +1,5 @@
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
+import { normalizeProjectIconId, type ProjectIconId } from '@shared/types/projectIcon'
 import {
   buildAgentNodeTitle,
   stripAgentProviderPrefix,
@@ -135,6 +136,29 @@ export function resolveTargetLabelColor(
   }
 
   return node.data.labelColorOverride ?? null
+}
+
+export function resolveTargetProjectIconId(
+  workspaces: WorkspaceState[],
+  target: ProjectContextMenuTarget,
+): ProjectIconId | null {
+  if (target.kind !== 'project') {
+    return null
+  }
+
+  const workspace = workspaces.find(candidate => candidate.id === target.workspaceId) ?? null
+  return normalizeProjectIconId(workspace?.iconId)
+}
+
+export function setTargetProjectIconId(
+  target: ProjectContextMenuTarget,
+  iconId: ProjectIconId | null,
+): void {
+  if (target.kind !== 'project') {
+    return
+  }
+
+  useAppStore.getState().setProjectIconId(target.workspaceId, iconId)
 }
 
 export function setTargetLabelColor(

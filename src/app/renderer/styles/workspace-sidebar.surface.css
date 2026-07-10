@@ -1,8 +1,9 @@
 .workspace-space-item {
   --workspace-space-item-background: transparent;
   --workspace-space-item-border-color: transparent;
-  --workspace-space-item-surface-width: calc(100% + 2px);
-  --workspace-space-item-surface-height: calc(100% + 2px);
+  --workspace-space-item-surface-left: -2px;
+  --workspace-space-item-surface-width: 100%;
+  --workspace-space-item-surface-height: var(--workspace-sidebar-tree-surface-size);
   background: transparent;
   border-color: transparent;
   transition: color 0.15s ease;
@@ -11,8 +12,8 @@
 .workspace-space-item::before {
   content: '';
   position: absolute;
-  left: -1px;
-  top: -1px;
+  left: var(--workspace-space-item-surface-left);
+  top: calc((100% - var(--workspace-space-item-surface-height)) / 2);
   z-index: 0;
   box-sizing: border-box;
   width: var(--workspace-space-item-surface-width);
@@ -22,6 +23,7 @@
   background: var(--workspace-space-item-background);
   pointer-events: none;
   transition:
+    left 0.22s ease,
     width 0.22s ease,
     height 0.22s ease,
     background-color 0.15s ease,
@@ -44,12 +46,12 @@
 .workspace-space-item--active {
   --workspace-space-item-background: color-mix(
     in srgb,
-    var(--workspace-space-accent) 82%,
-    var(--cove-field) 18%
+    var(--workspace-space-accent) 38%,
+    var(--cove-surface-strong) 62%
   );
   --workspace-space-item-border-color: color-mix(
     in srgb,
-    var(--workspace-space-accent) 58%,
+    var(--workspace-space-accent) 46%,
     transparent
   );
   background: transparent;
@@ -61,8 +63,22 @@
 .workspace-space-group[data-cove-label-color] > .workspace-space-item:hover {
   --workspace-space-item-background: color-mix(
     in srgb,
-    var(--workspace-space-accent) 88%,
-    var(--cove-field) 12%
+    var(--workspace-space-accent) 46%,
+    var(--cove-surface-strong) 54%
   );
   background: transparent;
+}
+
+.workspace-space-item--drag-overlay,
+.workspace-space-group[data-cove-label-color] > .workspace-space-item--drag-overlay {
+  --workspace-space-item-background: color-mix(
+    in srgb,
+    var(--workspace-space-accent) 42%,
+    var(--cove-surface-strong) 58%
+  );
+  --workspace-space-item-border-color: color-mix(
+    in srgb,
+    var(--workspace-space-accent) 54%,
+    rgba(94, 156, 255, 0.26)
+  );
 }

@@ -15,6 +15,8 @@ export type MockDbState = {
   tables: Map<string, string[]>
   openAttempts: number
   workspaceRows: Array<{ id: string; sortOrder: number }>
+  workspaceIconRows: Array<{ id: string; iconId: string | null }>
+  nodeRows: Array<{ id: string; sidebarSortOrder: number | null }>
   currentState: unknown | null
   failOnFirstOpen?: boolean
 }
@@ -91,6 +93,8 @@ export function createMockDbState(
     tables: options.version2Schema ? createVersion2Tables() : new Map<string, string[]>(),
     openAttempts: 0,
     workspaceRows: [],
+    workspaceIconRows: [],
+    nodeRows: [],
     currentState: options.currentState ?? null,
     ...(options.failOnFirstOpen ? { failOnFirstOpen: true } : {}),
   }
@@ -214,6 +218,7 @@ export function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>)
                   return {
                     id: typeof candidate.id === 'string' ? candidate.id : `workspace-${index}`,
                     name: typeof candidate.name === 'string' ? candidate.name : '',
+                    iconId: typeof candidate.iconId === 'string' ? candidate.iconId : null,
                     path: typeof candidate.path === 'string' ? candidate.path : '',
                     worktreesRoot:
                       typeof candidate.worktreesRoot === 'string' ? candidate.worktreesRoot : '',
@@ -344,6 +349,31 @@ export function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>)
               }
             }
 
+            if (tableName === 'nodes') {
+              const idIndex = columns.indexOf('id')
+              if (idIndex < 0) {
+                throw new Error('node insert missing id column')
+              }
+
+              const id = params[idIndex]
+              if (typeof id !== 'string') {
+                throw new Error('node insert missing id value')
+              }
+
+              const sidebarSortOrderIndex = columns.indexOf('sidebar_sort_order')
+              const sidebarSortOrderParam =
+                sidebarSortOrderIndex >= 0 ? params[sidebarSortOrderIndex] : null
+              if (sidebarSortOrderParam !== null && typeof sidebarSortOrderParam !== 'number') {
+                throw new Error('node insert sidebar_sort_order must be numeric or null')
+              }
+
+              this.state.nodeRows.push({
+                id,
+                sidebarSortOrder: sidebarSortOrderParam,
+              })
+              return
+            }
+
             if (tableName !== 'workspaces') {
               return
             }
@@ -365,6 +395,14 @@ export function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>)
             }
 
             this.state.workspaceRows.push({ id, sortOrder: sortOrderParam })
+
+            const iconIdIndex = columns.indexOf('icon_id')
+            const iconIdParam = iconIdIndex >= 0 ? params[iconIdIndex] : null
+            if (iconIdParam !== null && typeof iconIdParam !== 'string') {
+              throw new Error('workspace insert icon_id must be text or null')
+            }
+
+            this.state.workspaceIconRows.push({ id, iconId: iconIdParam })
           },
         }
       }

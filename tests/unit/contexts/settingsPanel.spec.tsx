@@ -350,11 +350,14 @@ describe('SettingsPanel', () => {
     })
   })
 
-  it('hides endpoints settings until remote workers are enabled', () => {
+  it('keeps endpoints inside Worker settings and gates registration until enabled', () => {
     mockTerminalProfiles()
+    installSettingsPanelWorkerApi()
     const { rerender } = renderSettingsPanel()
 
-    expect(screen.queryByTestId('settings-section-nav-endpoints')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('settings-section-nav-worker'))
+    expect(screen.getByText('Remote Workers disabled')).toBeVisible()
+    expect(screen.queryByTestId('settings-endpoints-empty-register')).not.toBeInTheDocument()
 
     rerender(
       <SettingsPanel
@@ -374,7 +377,7 @@ describe('SettingsPanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('settings-section-nav-endpoints')).toBeVisible()
+    expect(screen.getByTestId('settings-endpoints-empty-register')).toBeVisible()
   })
 
   it('toggles the opt-in header performance monitor button from diagnostics settings', () => {
@@ -403,7 +406,7 @@ describe('SettingsPanel', () => {
     mockTerminalProfiles()
     renderSettingsPanel({ onChange })
 
-    fireEvent.click(screen.getByTestId('settings-section-nav-diagnostics'))
+    fireEvent.click(screen.getByTestId('settings-section-nav-experimental'))
 
     const toggle = screen.getByTestId(
       'settings-performance-monitor-header-button-enabled',
@@ -467,7 +470,7 @@ describe('SettingsPanel', () => {
     mockTerminalProfiles()
     renderSettingsPanel()
 
-    fireEvent.click(screen.getByTestId('settings-section-nav-diagnostics'))
+    fireEvent.click(screen.getByTestId('settings-section-nav-experimental'))
 
     expect(await screen.findByText('Performance Diagnostics')).toBeVisible()
     await waitFor(() => expect(getSnapshot).toHaveBeenCalledTimes(1))

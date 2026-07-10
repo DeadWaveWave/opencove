@@ -257,6 +257,7 @@ export function toShellWorkspaceStateForSync(
   const nextWorkspace: WorkspaceState = {
     id: workspace.id,
     name: workspace.name,
+    iconId: workspace.iconId ?? null,
     path: workspace.path,
     worktreesRoot: workspace.worktreesRoot,
     pullRequestBaseBranchOptions,
@@ -272,6 +273,7 @@ export function toShellWorkspaceStateForSync(
   if (
     existingWorkspace &&
     existingWorkspace.name === nextWorkspace.name &&
+    (existingWorkspace.iconId ?? null) === (nextWorkspace.iconId ?? null) &&
     existingWorkspace.path === nextWorkspace.path &&
     existingWorkspace.worktreesRoot === nextWorkspace.worktreesRoot &&
     areStringArraysEqual(

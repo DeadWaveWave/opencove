@@ -1,0 +1,145 @@
+.settings-panel__group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding-top: 26px;
+  scroll-margin-top: 20px;
+}
+
+.settings-panel__group + .settings-panel__group {
+  padding-top: 28px;
+}
+
+.settings-panel__group-header {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 9px;
+  padding-inline: 2px;
+}
+
+.settings-panel__group-title {
+  margin: 0;
+  color: var(--cove-text);
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-weight: 620;
+  line-height: 1.35;
+  letter-spacing: -0.008em;
+}
+
+.settings-panel__group-description {
+  max-width: 640px;
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.45;
+}
+
+.settings-panel__group-body {
+  min-width: 0;
+  overflow: hidden;
+  padding-inline: 16px;
+  border-radius: 12px;
+  background: var(--cove-settings-group-surface);
+  box-shadow: inset 0 0 0 1px var(--cove-settings-group-outline);
+}
+
+.settings-panel__group-body > .settings-panel__row,
+.settings-panel__module-content > .settings-panel__row {
+  padding: 14px 0;
+  border-top: 1px solid var(--cove-settings-row-divider);
+}
+
+.settings-panel__group-body > .settings-panel__row:first-child,
+.settings-panel__module-content > .settings-panel__row:first-child {
+  border-top: none;
+}
+
+.settings-panel__module {
+  min-width: 0;
+  padding: 15px 0 0;
+}
+
+.settings-panel__module + .settings-panel__module {
+  margin-top: 1px;
+  border-top: 1px solid var(--cove-settings-row-divider);
+  padding-top: 16px;
+}
+
+.settings-panel__group-body > .settings-panel__row + .settings-panel__module {
+  border-top: 1px solid var(--cove-settings-row-divider);
+  padding-top: 16px;
+}
+
+.settings-panel__group > .settings-panel__module {
+  padding-top: 4px;
+}
+
+.settings-panel__group > .settings-panel__module + .settings-panel__module {
+  margin-top: 20px;
+  padding-top: 20px;
+}
+
+.settings-panel__module-header {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding-bottom: 5px;
+}
+
+.settings-panel__module-title {
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  font-weight: 620;
+  line-height: 1.4;
+  letter-spacing: -0.002em;
+}
+
+.settings-panel__module-description {
+  max-width: 640px;
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.45;
+}
+
+.settings-panel__module-content {
+  min-width: 0;
+}
+
+.settings-panel__control--actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-panel__group .settings-panel__value {
+  overflow-wrap: anywhere;
+}
+
+.settings-panel__group > .settings-panel__group-body + :not(.settings-panel__group-body) {
+  margin-top: 16px;
+}
+
+@media (max-width: 760px) {
+  .settings-panel__group,
+  .settings-panel__group + .settings-panel__group {
+    padding-top: 22px;
+  }
+
+  .settings-panel__group-header {
+    margin-bottom: 8px;
+  }
+
+  .settings-panel__group-body {
+    padding-inline: 14px;
+    border-radius: 11px;
+  }
+
+  .settings-panel__group-body > .settings-panel__row,
+  .settings-panel__module-content > .settings-panel__row {
+    padding: 13px 0;
+  }
+}

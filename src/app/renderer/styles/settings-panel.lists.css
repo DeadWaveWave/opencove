@@ -21,6 +21,66 @@
   background: var(--cove-surface-hover);
 }
 
+.settings-task-tags {
+  flex-flow: row wrap;
+  gap: 8px;
+}
+
+.settings-task-tags .settings-list-item {
+  width: auto;
+  min-height: 34px;
+  gap: 5px;
+  padding: 4px 5px 4px 10px;
+  border-radius: 999px;
+}
+
+.settings-task-tags .settings-list-item:hover {
+  background: var(--cove-field);
+}
+
+.settings-panel button.settings-task-tags__remove {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cove-text-muted);
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background 150ms ease,
+    transform 120ms ease;
+}
+
+.settings-panel button.settings-task-tags__remove:hover:not(:disabled) {
+  background: var(--cove-surface-hover);
+  color: var(--cove-text);
+}
+
+.settings-panel button.settings-task-tags__remove:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.settings-panel button.settings-task-tags__remove:focus-visible {
+  outline: 2px solid var(--cove-settings-focus-ring);
+  outline-offset: 1px;
+}
+
+.settings-panel button.settings-task-tags__remove:disabled {
+  color: var(--cove-text-faint);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.settings-task-tags__input {
+  width: min(100%, 420px);
+  margin-top: 10px;
+}
+
 .settings-list-item__left {
   display: flex;
   align-items: center;
@@ -144,7 +204,7 @@
 }
 
 .settings-agent-default-choice input:focus-visible + .settings-agent-default-choice__visual {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-settings-focus-ring);
   outline-offset: 2px;
 }
 

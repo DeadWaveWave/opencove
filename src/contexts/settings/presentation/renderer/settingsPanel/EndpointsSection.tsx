@@ -7,6 +7,7 @@ import { getEndpointActionExecution } from '@app/renderer/shell/utils/endpointOv
 import { notifyTopologyChanged } from '@app/renderer/shell/utils/topologyEvents'
 import { EndpointsRegisterDialog } from './EndpointsRegisterDialog'
 import { toErrorMessage } from './workerSectionUtils'
+import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 
 type RegisterMode = 'managed' | 'manual'
 
@@ -197,30 +198,27 @@ export function EndpointsSection(): React.JSX.Element {
   }
 
   return (
-    <div className="settings-panel__section" id="settings-section-endpoints">
-      <h3 className="settings-panel__section-title">{t('settingsPanel.endpoints.title')}</h3>
-
+    <SettingsGroup id="settings-section-endpoints" title={t('settingsPanel.endpoints.title')}>
       {error ? (
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('common.error')}</strong>
+        <SettingsGroupBody>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('common.error')}</strong>
+            </div>
+            <div className="settings-panel__control">
+              <span className="settings-panel__value" style={{ color: 'var(--cove-danger-text)' }}>
+                {error}
+              </span>
+            </div>
           </div>
-          <div className="settings-panel__control">
-            <span className="settings-panel__value" style={{ color: 'var(--cove-danger-text)' }}>
-              {error}
-            </span>
-          </div>
-        </div>
+        </SettingsGroupBody>
       ) : null}
 
-      <div className="settings-panel__subsection">
-        <div className="settings-panel__subsection-header">
-          <h4 className="settings-panel__section-title">
-            {t('settingsPanel.endpoints.list.title')}
-          </h4>
-          <span>{t('settingsPanel.endpoints.list.help')}</span>
-        </div>
-
+      <SettingsModule
+        id="settings-section-endpoints-list"
+        title={t('settingsPanel.endpoints.list.title')}
+        description={t('settingsPanel.endpoints.list.help')}
+      >
         <div className="settings-panel__endpoint-toolbar">
           <div className="settings-panel__endpoint-toolbar-meta">
             <strong>
@@ -306,7 +304,7 @@ export function EndpointsSection(): React.JSX.Element {
             })}
           </div>
         )}
-      </div>
+      </SettingsModule>
 
       <EndpointsRegisterDialog
         isOpen={isRegisterOpen}
@@ -336,6 +334,6 @@ export function EndpointsSection(): React.JSX.Element {
           void handleRegister()
         }}
       />
-    </div>
+    </SettingsGroup>
   )
 }

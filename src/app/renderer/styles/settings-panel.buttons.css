@@ -1,18 +1,23 @@
 /* --- Settings Buttons --- */
 .settings-panel button.primary {
-  background: linear-gradient(180deg, rgba(84, 126, 235, 0.92), rgba(60, 99, 201, 0.92));
-  color: #eff6ff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 10px;
+  min-height: 34px;
+  padding: 7px 14px;
+  border: 1px solid color-mix(in srgb, var(--cove-accent) 68%, transparent);
+  border-radius: 9px;
+  background: var(--cove-settings-primary-background);
+  color: var(--cove-settings-on-accent);
   font-weight: 600;
   font-size: calc(13px * var(--cove-ui-font-scale));
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 120ms ease;
 }
 
 .settings-panel button.primary:hover {
-  background: linear-gradient(180deg, rgba(103, 143, 245, 0.95), rgba(73, 113, 216, 0.95));
+  border-color: var(--cove-accent);
+  background: var(--cove-settings-primary-background-hover);
 }
 
 .settings-panel button.primary:active {
@@ -21,22 +26,106 @@
 
 .settings-panel button.primary:disabled {
   background: var(--cove-border-subtle);
+  border-color: transparent;
   color: var(--cove-text-faint);
   cursor: not-allowed;
 }
 
 .settings-panel button.secondary {
-  background: transparent;
+  min-height: 32px;
+  padding: 6px 11px;
   border: 1px solid var(--cove-border);
+  border-radius: 9px;
+  background: transparent;
   color: var(--cove-text);
-  padding: 6px 12px;
-  border-radius: 10px;
   font-size: calc(12px * var(--cove-ui-font-scale));
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    color 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 120ms ease;
 }
 
 .settings-panel button.secondary:hover {
   background: var(--cove-surface-hover);
   border-color: var(--cove-border);
+}
+
+.settings-panel button.secondary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.settings-panel button.primary:focus-visible,
+.settings-panel button.secondary:focus-visible {
+  outline: 2px solid var(--cove-settings-focus-ring);
+  outline-offset: 2px;
+}
+
+.settings-panel button.secondary:disabled {
+  color: var(--cove-text-faint);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* --- Toggle Switch --- */
+.cove-toggle {
+  position: relative;
+  display: inline-flex;
+  width: 36px;
+  height: 20px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.cove-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.cove-toggle__slider {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--cove-border);
+  border-radius: 999px;
+  background: var(--cove-field);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+  pointer-events: none;
+}
+
+.cove-toggle__slider::before {
+  position: absolute;
+  content: '';
+  width: 14px;
+  height: 14px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: var(--cove-text-muted);
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.cove-toggle input:checked + .cove-toggle__slider {
+  border-color: var(--cove-accent);
+  background: var(--cove-accent);
+}
+
+.cove-toggle input:checked + .cove-toggle__slider::before {
+  transform: translateX(16px);
+  background: var(--cove-settings-on-accent);
+}
+
+.cove-toggle input:focus-visible + .cove-toggle__slider {
+  box-shadow: 0 0 0 3px var(--cove-settings-focus-ring);
+}
+
+.cove-toggle input:disabled + .cove-toggle__slider {
+  cursor: not-allowed;
+  opacity: 0.5;
 }

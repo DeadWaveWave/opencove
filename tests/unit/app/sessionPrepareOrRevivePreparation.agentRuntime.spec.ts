@@ -41,6 +41,7 @@ function createAgentNode(
     terminalGeometry: { cols: 80, rows: 24 },
     terminalProviderHint: null,
     labelColorOverride: null,
+    sidebarSortOrder: null,
     status: 'running',
     startedAt: '2026-05-01T00:00:00.000Z',
     endedAt: null,
@@ -59,6 +60,7 @@ function createWorkspace(space: NormalizedPersistedSpace): NormalizedPersistedWo
   return {
     id: 'workspace-1',
     name: 'repo',
+    iconId: null,
     path: 'C:\\repo',
     worktreesRoot: '',
     pullRequestBaseBranchOptions: [],

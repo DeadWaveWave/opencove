@@ -3,6 +3,7 @@
   --workspace-sidebar-agent-icon-size: 16px;
   --workspace-sidebar-chevron-icon-size: 11px;
   --workspace-sidebar-tree-item-size: 28px;
+  --workspace-sidebar-tree-surface-size: 24px;
   --workspace-space-accent: var(--cove-accent);
   grid-row: 2;
   width: 100%;
@@ -173,7 +174,7 @@
   gap: 3px;
   border: 1px solid transparent;
   border-radius: 10px;
-  padding: 1px;
+  padding: 5px 1px;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
@@ -324,7 +325,7 @@
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  padding-left: 10px;
+  padding-left: 4px;
   position: relative;
   --workspace-space-accent: var(--cove-label-color, var(--cove-accent));
 }
@@ -332,12 +333,15 @@
 .workspace-space-group--branched::before {
   content: '';
   position: absolute;
-  left: 4px;
-  top: 0;
+  left: -2px;
+  top: calc(var(--workspace-sidebar-tree-item-size) + 3px);
   bottom: 0;
   width: 2px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--workspace-space-accent) 82%, transparent);
+  transition:
+    left 0.22s ease,
+    background-color 0.15s ease;
 }
 
 .workspace-space-item {
@@ -348,7 +352,7 @@
   color: var(--cove-text-muted);
   border-radius: 7px;
   height: var(--workspace-sidebar-tree-item-size);
-  padding: 0 6px;
+  padding: 0 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -368,24 +372,24 @@
 
 .workspace-space-group--space > .workspace-space-item {
   color: var(--cove-text);
-  border-color: color-mix(in srgb, var(--workspace-space-accent) 58%, transparent);
-  background: color-mix(in srgb, var(--workspace-space-accent) 82%, var(--cove-field) 18%);
+  border-color: color-mix(in srgb, var(--workspace-space-accent) 46%, transparent);
+  background: color-mix(in srgb, var(--workspace-space-accent) 38%, var(--cove-surface-strong) 62%);
 }
 
 .workspace-space-group--space > .workspace-space-item:hover {
-  background: color-mix(in srgb, var(--workspace-space-accent) 88%, var(--cove-field) 12%);
+  background: color-mix(in srgb, var(--workspace-space-accent) 46%, var(--cove-surface-strong) 54%);
 }
 
 .workspace-space-item[data-cove-label-color],
 .workspace-space-group[data-cove-label-color] > .workspace-space-item {
   color: var(--cove-text);
-  border-color: color-mix(in srgb, var(--workspace-space-accent) 58%, transparent);
-  background: color-mix(in srgb, var(--workspace-space-accent) 82%, var(--cove-field) 18%);
+  border-color: color-mix(in srgb, var(--workspace-space-accent) 46%, transparent);
+  background: color-mix(in srgb, var(--workspace-space-accent) 38%, var(--cove-surface-strong) 62%);
 }
 
 .workspace-space-item[data-cove-label-color]:hover,
 .workspace-space-group[data-cove-label-color] > .workspace-space-item:hover {
-  background: color-mix(in srgb, var(--workspace-space-accent) 88%, var(--cove-field) 12%);
+  background: color-mix(in srgb, var(--workspace-space-accent) 46%, var(--cove-surface-strong) 54%);
 }
 
 .workspace-space-item:focus-visible {
@@ -395,8 +399,8 @@
 
 .workspace-space-item--active {
   color: var(--cove-text);
-  border-color: color-mix(in srgb, var(--workspace-space-accent) 58%, transparent);
-  background: color-mix(in srgb, var(--workspace-space-accent) 82%, var(--cove-field) 18%);
+  border-color: color-mix(in srgb, var(--workspace-space-accent) 46%, transparent);
+  background: color-mix(in srgb, var(--workspace-space-accent) 38%, var(--cove-surface-strong) 62%);
 }
 
 .workspace-space-item__name {

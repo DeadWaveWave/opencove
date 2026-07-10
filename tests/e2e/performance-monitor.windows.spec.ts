@@ -13,7 +13,7 @@ test.describe('Performance Monitor (Windows)', () => {
       void browserName
 
       await window.locator('[data-testid="app-header-settings"]').click({ noWaitAfter: true })
-      await window.locator('[data-testid="settings-section-nav-diagnostics"]').click()
+      await window.locator('[data-testid="settings-section-nav-experimental"]').click()
 
       const headerToggle = window.locator(
         '[data-testid="settings-performance-monitor-header-button-enabled"]',

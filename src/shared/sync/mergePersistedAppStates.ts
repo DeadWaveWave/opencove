@@ -98,6 +98,20 @@ function mergeNodes(
     return left.x === right.x && left.y === right.y
   }
 
+  function withSidebarSortOrder(
+    node: PersistedTerminalNode,
+    sidebarSortOrder: number | null,
+  ): PersistedTerminalNode {
+    const next = { ...node }
+    if (sidebarSortOrder === null) {
+      delete next.sidebarSortOrder
+      return next
+    }
+
+    next.sidebarSortOrder = sidebarSortOrder
+    return next
+  }
+
   for (const baseNode of baseNodes) {
     if (deletedNodeIds.has(baseNode.id)) {
       seen.add(baseNode.id)
@@ -152,9 +166,15 @@ function mergeNodes(
         linkedAgentNodeId: mergedLinkedAgentNodeId,
       }
     })()
+    const sidebarSortOrder = mergeSnapshotField(
+      baseNode.sidebarSortOrder ?? null,
+      localNode.sidebarSortOrder ?? null,
+      snapshotNode.sidebarSortOrder ?? null,
+      (left, right) => left === right,
+    )
 
     merged.push({
-      ...localNode,
+      ...withSidebarSortOrder(localNode, sidebarSortOrder),
       position: mergeSnapshotField(
         baseNode.position,
         localNode.position,
@@ -419,6 +439,12 @@ function mergeWorkspaces(
   return {
     ...base,
     ...local,
+    iconId: mergeSnapshotField(
+      base.iconId ?? null,
+      local.iconId ?? null,
+      baseSnapshotWorkspace ? (baseSnapshotWorkspace.iconId ?? null) : undefined,
+      (left, right) => left === right,
+    ),
     nodes,
     spaces: mergeSpaces({
       baseSpaces: base.spaces,

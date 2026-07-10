@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import {
   DndContext,
   DragOverlay,
+  MeasuringStrategy,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from '@app/renderer/i18n'
@@ -14,7 +15,20 @@ import type { PersistNotice, ProjectContextMenuState } from '../types'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { SidebarToolbar } from './SidebarToolbar'
 import { buildSidebarProjectTree } from '../utils/sidebarTree'
-import { SortableWorkspaceItem, WorkspaceItemOverlay } from './SidebarWorkspaceItem'
+import { SidebarAgentItemOverlay } from './SidebarAgentItems'
+import {
+  getTreeChildGroups,
+  SortableWorkspaceItem,
+  SpaceItemOverlay,
+  WorkspaceItemOverlay,
+} from './SidebarWorkspaceItem'
+import {
+  canReorderSidebarDragItems,
+  readSidebarDragItemData,
+  sidebarCollisionDetection,
+  sidebarDropAnimation,
+  type SidebarDragItemData,
+} from './SidebarDnd'
 import { useSidebarListScroll } from './useSidebarListScroll'
 
 export type SidebarVariant = 'docked' | 'rail' | 'peek'
@@ -35,8 +49,23 @@ type SidebarProps = {
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
   onReorderWorkspaces: (activeId: string, overId: string) => void
+  onReorderWorkspaceRootSpaces?: (
+    workspaceId: string,
+    activeSpaceId: string,
+    overSpaceId: string,
+  ) => void
+  onReorderWorkspaceSidebarAgents?: (
+    workspaceId: string,
+    activeNodeId: string,
+    overNodeId: string,
+  ) => void
   onPointerEnter?: React.PointerEventHandler<HTMLElement>
   onPointerLeave?: React.PointerEventHandler<HTMLElement>
+}
+
+type ActiveSidebarDragItem = {
+  id: string
+  data: SidebarDragItemData
 }
 
 export function Sidebar({
@@ -52,6 +81,8 @@ export function Sidebar({
   onOpenProjectContextMenu,
   onSelectAgentNode,
   onReorderWorkspaces,
+  onReorderWorkspaceRootSpaces = () => undefined,
+  onReorderWorkspaceSidebarAgents = () => undefined,
   onPointerEnter,
   onPointerLeave,
 }: SidebarProps): React.JSX.Element {
@@ -62,7 +93,7 @@ export function Sidebar({
       activationConstraint: { distance: 8 },
     }),
   )
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeDragItem, setActiveDragItem] = useState<ActiveSidebarDragItem | null>(null)
   const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useState<Record<string, boolean>>({})
   const [collapsedSpaceGroupIds, setCollapsedSpaceGroupIds] = useState<Record<string, boolean>>({})
   const [sidebarTransition, setSidebarTransition] = useState<SidebarTransition>(null)
@@ -74,12 +105,36 @@ export function Sidebar({
     handleListScroll: handleSidebarListScroll,
   } = useSidebarListScroll()
 
+  const resolveDragData = useCallback(
+    (id: string, data: unknown): SidebarDragItemData | null => {
+      const itemData = readSidebarDragItemData(data)
+      if (itemData) {
+        return itemData
+      }
+
+      return workspaces.some(workspace => workspace.id === id)
+        ? { kind: 'project', workspaceId: id }
+        : null
+    },
+    [workspaces],
+  )
+
+  const handleDragStart = useCallback(
+    (event: DragStartEvent): void => {
+      const id = String(event.active.id)
+      const activeData = (event.active as { data?: { current?: unknown } }).data?.current
+      const itemData = resolveDragData(id, activeData)
+      setActiveDragItem(itemData ? { id, data: itemData } : null)
+    },
+    [resolveDragData],
+  )
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent): void => {
       const nextActiveId = String(event.active.id)
       const nextOverId = event.over?.id
 
-      setActiveId(null)
+      setActiveDragItem(null)
 
       if (nextOverId === null || nextOverId === undefined) {
         return
@@ -90,9 +145,43 @@ export function Sidebar({
         return
       }
 
-      onReorderWorkspaces(nextActiveId, overId)
+      const activeEventData = (event.active as { data?: { current?: unknown } }).data?.current
+      const overEventData = (event.over as { data?: { current?: unknown } } | null)?.data?.current
+      const activeData = resolveDragData(nextActiveId, activeEventData)
+      const overData = resolveDragData(overId, overEventData)
+      if (!activeData || !overData || !canReorderSidebarDragItems(activeData, overData)) {
+        return
+      }
+
+      if (activeData.kind === 'project' && overData.kind === 'project') {
+        onReorderWorkspaces(activeData.workspaceId, overData.workspaceId)
+        return
+      }
+
+      if (
+        activeData.kind === 'space' &&
+        overData.kind === 'space' &&
+        activeData.workspaceId === overData.workspaceId
+      ) {
+        onReorderWorkspaceRootSpaces(activeData.workspaceId, activeData.spaceId, overData.spaceId)
+        return
+      }
+
+      if (
+        activeData.kind === 'agent' &&
+        overData.kind === 'agent' &&
+        activeData.workspaceId === overData.workspaceId &&
+        activeData.groupId === overData.groupId
+      ) {
+        onReorderWorkspaceSidebarAgents(activeData.workspaceId, activeData.nodeId, overData.nodeId)
+      }
     },
-    [onReorderWorkspaces],
+    [
+      onReorderWorkspaceRootSpaces,
+      onReorderWorkspaceSidebarAgents,
+      onReorderWorkspaces,
+      resolveDragData,
+    ],
   )
 
   const handleToggleProject = useCallback((workspaceId: string): void => {
@@ -109,8 +198,32 @@ export function Sidebar({
     }))
   }, [])
 
-  const activeTree =
-    activeId === null ? null : (trees.find(tree => tree.workspace.id === activeId) ?? null)
+  const activeDragData = activeDragItem?.data ?? null
+  const activeDragWorkspaceId = activeDragData?.workspaceId ?? null
+  const activeDragTree =
+    activeDragWorkspaceId !== null
+      ? (trees.find(tree => tree.workspace.id === activeDragWorkspaceId) ?? null)
+      : null
+  const activeTree = activeDragData?.kind === 'project' ? activeDragTree : null
+  const activeSpaceGroup =
+    activeDragData?.kind === 'space'
+      ? (activeDragTree?.spaceGroups.find(group => group.id === activeDragData.spaceId) ?? null)
+      : null
+  const activeAgentGroup =
+    activeDragData?.kind === 'agent'
+      ? activeDragTree
+        ? (getTreeChildGroups(activeDragTree).find(group => group.id === activeDragData.groupId) ??
+          null)
+        : null
+      : null
+  const activeAgentItem =
+    activeDragData?.kind === 'agent'
+      ? (activeAgentGroup?.agents.find(agent => agent.node.id === activeDragData.nodeId) ?? null)
+      : null
+  const activeSpaceGroupKey =
+    activeSpaceGroup && activeDragWorkspaceId
+      ? `${activeDragWorkspaceId}:${activeSpaceGroup.id}`
+      : null
   useLayoutEffect(() => {
     const previousVariant = previousVariantRef.current
     if (previousVariant === variant) {
@@ -187,9 +300,14 @@ export function Sidebar({
         ) : (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={event => setActiveId(String(event.active.id))}
-            onDragCancel={() => setActiveId(null)}
+            collisionDetection={sidebarCollisionDetection}
+            measuring={{
+              droppable: {
+                strategy: MeasuringStrategy.Always,
+              },
+            }}
+            onDragStart={handleDragStart}
+            onDragCancel={() => setActiveDragItem(null)}
             onDragEnd={handleDragEnd}
           >
             <SortableContext
@@ -213,8 +331,18 @@ export function Sidebar({
               ))}
             </SortableContext>
 
-            <DragOverlay>
+            <DragOverlay dropAnimation={sidebarDropAnimation}>
               {activeTree ? <WorkspaceItemOverlay tree={activeTree} /> : null}
+              {activeSpaceGroup ? (
+                <SpaceItemOverlay
+                  group={activeSpaceGroup}
+                  isExpanded={
+                    activeSpaceGroupKey === null ||
+                    collapsedSpaceGroupIds[activeSpaceGroupKey] !== true
+                  }
+                />
+              ) : null}
+              {activeAgentItem ? <SidebarAgentItemOverlay item={activeAgentItem} /> : null}
             </DragOverlay>
           </DndContext>
         )}

@@ -10,6 +10,7 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import type { AgentProviderAvailability } from '@shared/contracts/dto'
 import { AgentProviderConfigurePanel } from './AgentProviderConfigurePanel'
+import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 interface ProviderModelCatalogEntry {
   models: string[]
@@ -90,171 +91,180 @@ export function AgentSection(props: {
   }
 
   return (
-    <div className="settings-panel__section" id="settings-section-agent">
-      <h3 className="settings-panel__section-title">{t('settingsPanel.agent.title')}</h3>
+    <>
+      <SettingsGroup
+        id="settings-section-agent"
+        title={t('settingsPanel.groups.agent.providers')}
+        description={t('settingsPanel.agent.agentProviderOrderHelp')}
+      >
+        <div className="settings-agent-list-block" id="settings-agent-list">
+          <div className="settings-list-container">
+            {agentProviderOrder.map((provider, index) => {
+              const availability = availabilityByProvider[provider]
+              const isInstallingProvider = installingProvider === provider
+              const diagnostics = availability?.diagnostics?.join(' ') ?? ''
+              const installError = installErrorByProvider[provider] ?? ''
+              const isUnavailable = availability?.status === 'unavailable'
+              const isMisconfigured = availability?.status === 'misconfigured'
+              const isBusy = isRefreshingAvailability || Boolean(installingProvider)
+              const installLabel = resolveInstallActionLabel(availability, t, isInstallingProvider)
+              const actionStatus = isInstallingProvider
+                ? 'installing'
+                : (availability?.status ?? 'loading')
+              const modelSummary = resolveModelSummary(settings, provider, t)
+              const envSummary = resolveEnvSummary(settings, provider, t)
+              const isConfiguring = configuringProvider === provider
 
-      <div className="settings-agent-list-block" id="settings-agent-list">
-        <div className="settings-agent-list-block__header">
-          <strong>{t('settingsPanel.agent.agentListLabel')}</strong>
-          <span>{t('settingsPanel.agent.agentProviderOrderHelp')}</span>
-        </div>
-
-        <div className="settings-list-container">
-          {agentProviderOrder.map((provider, index) => {
-            const availability = availabilityByProvider[provider]
-            const isInstallingProvider = installingProvider === provider
-            const diagnostics = availability?.diagnostics?.join(' ') ?? ''
-            const installError = installErrorByProvider[provider] ?? ''
-            const isUnavailable = availability?.status === 'unavailable'
-            const isMisconfigured = availability?.status === 'misconfigured'
-            const isBusy = isRefreshingAvailability || Boolean(installingProvider)
-            const installLabel = resolveInstallActionLabel(availability, t, isInstallingProvider)
-            const actionStatus = isInstallingProvider
-              ? 'installing'
-              : (availability?.status ?? 'loading')
-            const modelSummary = resolveModelSummary(settings, provider, t)
-            const envSummary = resolveEnvSummary(settings, provider, t)
-            const isConfiguring = configuringProvider === provider
-
-            return (
-              <div className="settings-agent-list-item" key={provider}>
-                <div
-                  className="settings-list-item settings-agent-list-row"
-                  data-testid={`settings-agent-order-item-${provider}`}
-                >
-                  <div className="settings-agent-order__actions">
-                    <button
-                      type="button"
-                      className="secondary settings-agent-order__action"
-                      data-testid={`settings-agent-order-move-up-${provider}`}
-                      disabled={index === 0}
-                      aria-label={t('settingsPanel.agent.moveUp')}
-                      onClick={() => moveProvider(index, index - 1)}
-                    >
-                      <ChevronUp className="settings-agent-order__icon" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary settings-agent-order__action"
-                      data-testid={`settings-agent-order-move-down-${provider}`}
-                      disabled={index === agentProviderOrder.length - 1}
-                      aria-label={t('settingsPanel.agent.moveDown')}
-                      onClick={() => moveProvider(index, index + 1)}
-                    >
-                      <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
-                    </button>
-                  </div>
-                  <label className="settings-agent-default-choice">
-                    <input
-                      type="radio"
-                      name="settings-default-provider"
-                      value={provider}
-                      data-testid={`settings-default-provider-${provider}`}
-                      checked={defaultProvider === provider}
-                      onChange={() => onChangeDefaultProvider(provider)}
-                    />
-                    <span className="settings-agent-default-choice__visual" aria-hidden="true" />
-                    <span className="settings-agent-default-choice__label">
-                      <AgentProviderIcon
-                        provider={provider}
-                        className="settings-agent-list-row__icon"
+              return (
+                <div className="settings-agent-list-item" key={provider}>
+                  <div
+                    className="settings-list-item settings-agent-list-row"
+                    data-testid={`settings-agent-order-item-${provider}`}
+                  >
+                    <div className="settings-agent-order__actions">
+                      <button
+                        type="button"
+                        className="secondary settings-agent-order__action"
+                        data-testid={`settings-agent-order-move-up-${provider}`}
+                        disabled={index === 0}
+                        aria-label={t('settingsPanel.agent.moveUp')}
+                        onClick={() => moveProvider(index, index - 1)}
+                      >
+                        <ChevronUp className="settings-agent-order__icon" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary settings-agent-order__action"
+                        data-testid={`settings-agent-order-move-down-${provider}`}
+                        disabled={index === agentProviderOrder.length - 1}
+                        aria-label={t('settingsPanel.agent.moveDown')}
+                        onClick={() => moveProvider(index, index + 1)}
+                      >
+                        <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <label className="settings-agent-default-choice">
+                      <input
+                        type="radio"
+                        name="settings-default-provider"
+                        value={provider}
+                        data-testid={`settings-default-provider-${provider}`}
+                        checked={defaultProvider === provider}
+                        onChange={() => onChangeDefaultProvider(provider)}
                       />
-                      <strong className="settings-agent-list-row__name">
-                        {AGENT_PROVIDER_LABEL[provider]}
-                      </strong>
-                      {defaultProvider === provider ? (
-                        <span className="settings-agent-list-row__default">
-                          {t('settingsPanel.agent.defaultBadge')}
-                        </span>
-                      ) : null}
-                    </span>
-                  </label>
-                  <div className="settings-agent-list-row__summary">
-                    <span>{modelSummary}</span>
-                    <span>{envSummary}</span>
+                      <span className="settings-agent-default-choice__visual" aria-hidden="true" />
+                      <span className="settings-agent-default-choice__label">
+                        <AgentProviderIcon
+                          provider={provider}
+                          className="settings-agent-list-row__icon"
+                        />
+                        <strong className="settings-agent-list-row__name">
+                          {AGENT_PROVIDER_LABEL[provider]}
+                        </strong>
+                        {defaultProvider === provider ? (
+                          <span className="settings-agent-list-row__default">
+                            {t('settingsPanel.agent.defaultBadge')}
+                          </span>
+                        ) : null}
+                      </span>
+                    </label>
+                    <div className="settings-agent-list-row__summary">
+                      <span>{modelSummary}</span>
+                      <span>{envSummary}</span>
+                    </div>
+                    <div className="settings-agent-list-row__actions">
+                      <button
+                        type="button"
+                        className="secondary settings-agent-install__button"
+                        data-status={actionStatus}
+                        data-testid={`settings-agent-executable-install-${provider}`}
+                        aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${installLabel}`}
+                        onClick={() => onInstallProvider(provider)}
+                        disabled={!isUnavailable || isBusy}
+                      >
+                        {installLabel}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary settings-agent-configure__button"
+                        data-testid={`settings-agent-configure-${provider}`}
+                        aria-expanded={isConfiguring}
+                        aria-controls={`settings-agent-configure-panel-${provider}`}
+                        onClick={() => {
+                          setConfiguringProvider(current =>
+                            current === provider ? null : provider,
+                          )
+                        }}
+                      >
+                        {t('settingsPanel.agent.configure')}
+                      </button>
+                    </div>
                   </div>
-                  <div className="settings-agent-list-row__actions">
-                    <button
-                      type="button"
-                      className="secondary settings-agent-install__button"
-                      data-status={actionStatus}
-                      data-testid={`settings-agent-executable-install-${provider}`}
-                      aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${installLabel}`}
-                      onClick={() => onInstallProvider(provider)}
-                      disabled={!isUnavailable || isBusy}
+
+                  {installError.length > 0 ? (
+                    <div
+                      className="settings-agent-install-item__error"
+                      data-testid={`settings-agent-executable-install-error-${provider}`}
                     >
-                      {installLabel}
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary settings-agent-configure__button"
-                      data-testid={`settings-agent-configure-${provider}`}
-                      aria-expanded={isConfiguring}
-                      aria-controls={`settings-agent-configure-panel-${provider}`}
-                      onClick={() => {
-                        setConfiguringProvider(current => (current === provider ? null : provider))
-                      }}
+                      {installError}
+                    </div>
+                  ) : null}
+                  {isMisconfigured && diagnostics.length > 0 ? (
+                    <div
+                      className="settings-agent-install-item__error"
+                      data-testid={`settings-agent-executable-diagnostics-${provider}`}
                     >
-                      {t('settingsPanel.agent.configure')}
-                    </button>
-                  </div>
+                      {diagnostics}
+                    </div>
+                  ) : null}
+                  {isConfiguring ? (
+                    <AgentProviderConfigurePanel
+                      provider={provider}
+                      settings={settings}
+                      modelCatalog={modelCatalogByProvider[provider]}
+                      addModelInputValue={addModelInputByProvider[provider]}
+                      onToggleCustomModelEnabled={onToggleCustomModelEnabled}
+                      onSelectProviderModel={onSelectProviderModel}
+                      onRemoveCustomModelOption={onRemoveCustomModelOption}
+                      onChangeAddModelInput={onChangeAddModelInput}
+                      onAddCustomModelOption={onAddCustomModelOption}
+                      onChangeAgentEnvByProvider={onChangeAgentEnvByProvider}
+                      onDone={() => setConfiguringProvider(null)}
+                    />
+                  ) : null}
                 </div>
+              )
+            })}
+          </div>
+        </div>
+      </SettingsGroup>
 
-                {installError.length > 0 ? (
-                  <div
-                    className="settings-agent-install-item__error"
-                    data-testid={`settings-agent-executable-install-error-${provider}`}
-                  >
-                    {installError}
-                  </div>
-                ) : null}
-                {isMisconfigured && diagnostics.length > 0 ? (
-                  <div
-                    className="settings-agent-install-item__error"
-                    data-testid={`settings-agent-executable-diagnostics-${provider}`}
-                  >
-                    {diagnostics}
-                  </div>
-                ) : null}
-                {isConfiguring ? (
-                  <AgentProviderConfigurePanel
-                    provider={provider}
-                    settings={settings}
-                    modelCatalog={modelCatalogByProvider[provider]}
-                    addModelInputValue={addModelInputByProvider[provider]}
-                    onToggleCustomModelEnabled={onToggleCustomModelEnabled}
-                    onSelectProviderModel={onSelectProviderModel}
-                    onRemoveCustomModelOption={onRemoveCustomModelOption}
-                    onChangeAddModelInput={onChangeAddModelInput}
-                    onAddCustomModelOption={onAddCustomModelOption}
-                    onChangeAgentEnvByProvider={onChangeAgentEnvByProvider}
-                    onDone={() => setConfiguringProvider(null)}
-                  />
-                ) : null}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="settings-panel__row" id="settings-agent-full-access">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.agent.fullAccessLabel')}</strong>
-          <span>{t('settingsPanel.agent.fullAccessHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-agent-full-access"
-              checked={agentFullAccess}
-              onChange={event => onChangeAgentFullAccess(event.target.checked)}
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
-        </div>
-      </div>
-    </div>
+      <SettingsGroup
+        id="settings-section-agent-permissions"
+        title={t('settingsPanel.groups.agent.permissions')}
+      >
+        <SettingsGroupBody>
+          <div className="settings-panel__row" id="settings-agent-full-access">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.agent.fullAccessLabel')}</strong>
+              <span>{t('settingsPanel.agent.fullAccessHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <label className="cove-toggle">
+                <input
+                  type="checkbox"
+                  data-testid="settings-agent-full-access"
+                  checked={agentFullAccess}
+                  aria-label={t('settingsPanel.agent.fullAccessLabel')}
+                  onChange={event => onChangeAgentFullAccess(event.target.checked)}
+                />
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
+          </div>
+        </SettingsGroupBody>
+      </SettingsGroup>
+    </>
   )
 }
 

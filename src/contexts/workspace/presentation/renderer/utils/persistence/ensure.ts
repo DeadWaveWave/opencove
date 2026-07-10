@@ -19,6 +19,7 @@ import type {
 } from '@shared/contracts/dto'
 import { CANVAS_IMAGE_MIME_TYPES } from '@shared/contracts/dto'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
+import { normalizeProjectIconId } from '@shared/types/projectIcon'
 import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
 import { normalizeResumeSessionBinding } from './ensureResumeSessionBinding'
 import { ensurePersistedRoleData } from './ensureRoleNodeData'
@@ -30,6 +31,7 @@ import {
   normalizeEnvironmentVariables,
   normalizeLaunchMode,
   normalizeNodeKind,
+  normalizeOptionalSortOrder,
   normalizeOptionalString,
   normalizePullRequestBaseBranchOptions,
   normalizeProvider,
@@ -375,6 +377,8 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
         ? record.terminalProviderHint
         : null,
     labelColorOverride: normalizeNodeLabelColorOverride(record.labelColorOverride),
+    sidebarSortOrder:
+      kind === 'agent' ? normalizeOptionalSortOrder(record.sidebarSortOrder) : undefined,
     status: normalizeAgentRuntimeStatus(record.status),
     startedAt: normalizeOptionalString(record.startedAt),
     endedAt: normalizeOptionalString(record.endedAt),
@@ -413,6 +417,7 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
   const record = workspace as Record<string, unknown>
   const id = record.id
   const name = record.name
+  const iconId = normalizeProjectIconId(record.iconId)
   const path = record.path
   const worktreesRoot = normalizeOptionalString(record.worktreesRoot) ?? ''
   const pullRequestBaseBranchOptions = normalizePullRequestBaseBranchOptions(
@@ -464,6 +469,7 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
   return {
     id,
     name,
+    iconId,
     path,
     worktreesRoot,
     pullRequestBaseBranchOptions,

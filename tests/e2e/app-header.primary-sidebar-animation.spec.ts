@@ -83,6 +83,7 @@ const expectContinuousSidebarAnimation = (
   )
   expectClose(firstTransition.spaceItemViewportLeft, result.before.spaceItemViewportLeft, 1)
   expectClose(firstTransition.spaceItemViewportTop, result.before.spaceItemViewportTop, 1)
+  expectClose(firstTransition.spaceRailSurfaceLeft, result.before.spaceRailSurfaceLeft, 1)
   expectStableRange(transitionSamples, sample => sample.paddingLeft, 0.1)
   expectStableRange(transitionSamples, sample => sample.pinButtonViewportCenterX)
   expectStableRange(transitionSamples, sample => sample.pinButtonViewportCenterY)
@@ -92,6 +93,7 @@ const expectContinuousSidebarAnimation = (
   expectStableRange(transitionSamples, sample => sample.spaceRailIconViewportCenterY)
   expectStableRange(transitionSamples, sample => sample.spaceItemViewportLeft)
   expectStableRange(transitionSamples, sample => sample.spaceItemViewportTop)
+  expectStableRange(transitionSamples, sample => sample.spaceRailSurfaceLeft)
   expectStableRange(transitionSamples, sample => sample.spaceNameViewportLeft)
   expect(
     transitionSamples
@@ -145,18 +147,20 @@ const expectContinuousSidebarAnimation = (
       )
       expectClose(finalSample.spaceItemViewportLeft, lastTransition.spaceItemViewportLeft, 1)
       expectClose(finalSample.spaceItemViewportTop, lastTransition.spaceItemViewportTop, 1)
+      expectClose(finalSample.spaceRailSurfaceLeft, lastTransition.spaceRailSurfaceLeft, 1)
       expect(finalSample.projectNameVisibleWidth).toBeLessThanOrEqual(1)
       expect(finalSample.projectNameOpacity).toBeLessThanOrEqual(0.1)
       expect(finalSample.projectToggleVisibleWidth).toBeLessThanOrEqual(1)
       expect(finalSample.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
       expect(finalSample.spaceNameOpacity).toBeLessThanOrEqual(0.1)
+      expectClose(finalSample.projectIconCenterFromSidebarLeft, finalSample.width / 2, 1)
       expectClose(
         finalSample.spaceRailSurfaceRight - finalSample.spaceRailSurfaceWidth / 2,
         finalSample.spaceRailIconViewportCenterX,
         1,
       )
-      expectClose(finalSample.spaceRailSurfaceWidth, finalSample.spaceItemHeight, 0.5)
-      expectClose(finalSample.spaceRailSurfaceHeight, finalSample.spaceItemHeight, 0.5)
+      expectClose(finalSample.spaceRailSurfaceWidth, 24, 0.5)
+      expectClose(finalSample.spaceRailSurfaceHeight, 24, 0.5)
     }
     expect(
       maxStep(
@@ -188,6 +192,7 @@ const expectContinuousSidebarAnimation = (
   expect(result.before.projectToggleVisibleWidth).toBeLessThanOrEqual(1)
   expect(result.before.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
   expect(result.before.spaceNameOpacity).toBeLessThanOrEqual(0.1)
+  expectClose(result.before.projectIconCenterFromSidebarLeft, result.before.width / 2, 1)
   expectClose(
     result.before.spaceRailSurfaceRight - result.before.spaceRailSurfaceWidth / 2,
     result.before.spaceRailIconViewportCenterX,
@@ -217,6 +222,9 @@ const expectContinuousSidebarAnimation = (
         sample.spaceRailSurfaceWidth < sample.spaceItemWidth - 2,
     ),
   ).toBe(true)
+  if (finalSample) {
+    expectClose(finalSample.spaceRailSurfaceLeft, lastTransition.spaceRailSurfaceLeft, 1)
+  }
 }
 
 test.describe('Primary Sidebar Animation', () => {
@@ -271,8 +279,8 @@ test.describe('Primary Sidebar Animation', () => {
       expect(collapsedFinal.sidebarTransition).toBe('idle')
       expect(collapsedFinal.spaceRailIconOpacity).toBeGreaterThanOrEqual(0.95)
       expect(collapsedFinal.spaceItemWidth).toBeGreaterThan(100)
-      expectClose(collapsedFinal.spaceRailSurfaceWidth, collapsedFinal.spaceItemHeight, 0.5)
-      expectClose(collapsedFinal.spaceRailSurfaceHeight, collapsedFinal.spaceItemHeight, 0.5)
+      expectClose(collapsedFinal.spaceRailSurfaceWidth, 24, 0.5)
+      expectClose(collapsedFinal.spaceRailSurfaceHeight, 24, 0.5)
       expect(collapsedFinal.projectNameVisibleWidth).toBeLessThanOrEqual(1)
       expect(collapsedFinal.projectNameOpacity).toBeLessThanOrEqual(0.1)
       expect(collapsedFinal.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
@@ -296,8 +304,12 @@ test.describe('Primary Sidebar Animation', () => {
       expect(expandedFinal.spaceItemWidth).toBeGreaterThan(100)
       expect(expandedFinal.spaceRailSurfaceOpacity).toBeGreaterThanOrEqual(0.95)
       expect(expandedFinal.spaceRailSurfaceWidth).toBeGreaterThan(100)
-      expectClose(expandedFinal.spaceRailSurfaceWidth, expandedFinal.spaceItemWidth, 0.5)
-      expectClose(expandedFinal.spaceRailSurfaceHeight, expandedFinal.spaceItemHeight, 0.5)
+      expectClose(
+        expandedFinal.spaceRailSurfaceLeftFromSidebarLeft + 2,
+        expandedFinal.spaceRailSurfaceRightInset,
+        1,
+      )
+      expectClose(expandedFinal.spaceRailSurfaceHeight, collapsedFinal.spaceRailSurfaceHeight, 0.5)
       expect(expandedFinal.spaceNameOpacity).toBeGreaterThanOrEqual(0.95)
       expect(expandedFinal.spaceNameVisibleWidth).toBeGreaterThan(20)
       expect(expandedFinal.spaceNameWidth).toBeGreaterThan(20)

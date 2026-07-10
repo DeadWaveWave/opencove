@@ -84,6 +84,78 @@ describe('PersistenceStore', () => {
   )
 
   it(
+    'persists project icons and agent sidebar sort order through sqlite columns',
+    async () => {
+      tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
+      const dbPath = join(tempDir, 'opencove.db')
+      const mockDbByPath = new Map<string, MockDbState>()
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
+
+      const { createPersistenceStore } =
+        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
+
+      const store = await createPersistenceStore({ dbPath })
+
+      const result = await store.writeAppState({
+        formatVersion: 1,
+        activeWorkspaceId: 'ws-1',
+        workspaces: [
+          {
+            id: 'ws-1',
+            name: 'Workspace 1',
+            iconId: 'code',
+            path: '/tmp/ws-1',
+            worktreesRoot: '/tmp',
+            pullRequestBaseBranchOptions: [],
+            environmentVariables: {},
+            spaceArchiveRecords: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+            isMinimapVisible: false,
+            activeSpaceId: null,
+            nodes: [
+              {
+                id: 'agent-1',
+                sessionId: 'session-1',
+                title: 'Agent 1',
+                titlePinnedByUser: false,
+                position: { x: 0, y: 0 },
+                width: 640,
+                height: 420,
+                kind: 'agent',
+                profileId: null,
+                runtimeKind: null,
+                terminalGeometry: null,
+                terminalProviderHint: null,
+                labelColorOverride: null,
+                sidebarSortOrder: 3,
+                status: 'running',
+                startedAt: '2026-01-01T00:00:00.000Z',
+                endedAt: null,
+                exitCode: null,
+                lastError: null,
+                executionDirectory: '/tmp/ws-1',
+                expectedDirectory: '/tmp/ws-1',
+                agent: { provider: 'codex' },
+                task: null,
+                scrollback: null,
+              },
+            ],
+            spaces: [],
+          },
+        ],
+        settings: {},
+      })
+
+      expect(result).toMatchObject({ ok: true, level: 'full' })
+      expect(mockDbByPath.get(dbPath)?.workspaceIconRows).toEqual([{ id: 'ws-1', iconId: 'code' }])
+      expect(mockDbByPath.get(dbPath)?.nodeRows).toEqual([{ id: 'agent-1', sidebarSortOrder: 3 }])
+
+      store.dispose()
+    },
+    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
+  )
+
+  it(
     'creates a backup when migrating an existing db file',
     async () => {
       vi.useFakeTimers()

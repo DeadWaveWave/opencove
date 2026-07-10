@@ -119,6 +119,7 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
     persisted.profileId !== existing.profileId ||
     persisted.runtimeKind !== existing.runtimeKind ||
     (persisted.labelColorOverride ?? null) !== (existing.labelColorOverride ?? null) ||
+    (persisted.sidebarSortOrder ?? null) !== (existing.sidebarSortOrder ?? null) ||
     persisted.status !== existing.status ||
     persisted.startedAt !== existing.startedAt ||
     persisted.endedAt !== existing.endedAt ||

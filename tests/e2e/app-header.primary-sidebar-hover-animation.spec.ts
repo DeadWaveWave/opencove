@@ -57,6 +57,7 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekSample[]> => {
       const switchAllRect = switchAll.getBoundingClientRect()
       const hiddenRailIconStyle = window.getComputedStyle(hiddenRailIcon)
       const surfaceStyle = window.getComputedStyle(spaceItem, '::before')
+      const surfaceLeft = itemRect.left + Number.parseFloat(surfaceStyle.left)
       const surfaceWidth = Number.parseFloat(surfaceStyle.width)
       const visibleInSidebar = (rect: DOMRect): number =>
         Number(
@@ -76,7 +77,7 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekSample[]> => {
         iconCenterX: Number((iconRect.x + iconRect.width / 2).toFixed(3)),
         hiddenRailIconOpacity: Number.parseFloat(hiddenRailIconStyle.opacity),
         surfaceWidth,
-        surfaceRight: Number((itemRect.left - 1 + surfaceWidth).toFixed(3)),
+        surfaceRight: Number((surfaceLeft + surfaceWidth).toFixed(3)),
         spaceToggleRight: Number(toggleRect.right.toFixed(3)),
         spaceToggleVisibleWidth: visibleInSidebar(toggleRect),
         switchAllVisibleWidth: visibleInSidebar(switchAllRect),

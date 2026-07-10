@@ -295,3 +295,9 @@ export function normalizeWorkspaceSpaceNodeIds(value: unknown): string[] {
     ),
   ]
 }
+
+export function normalizeOptionalSortOrder(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : undefined
+}

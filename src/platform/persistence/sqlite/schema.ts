@@ -23,6 +23,7 @@ export const appSettings = sqliteTable('app_settings', {
 export const workspaces = sqliteTable('workspaces', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  iconId: text('icon_id'),
   path: text('path').notNull(),
   worktreesRoot: text('worktrees_root').notNull(),
   pullRequestBaseBranchOptionsJson: text('pull_request_base_branch_options_json').notNull(),
@@ -52,6 +53,7 @@ export const nodes = sqliteTable('nodes', {
   terminalGeometryJson: text('terminal_geometry_json'),
   terminalProviderHint: text('terminal_provider_hint'),
   labelColorOverride: text('label_color_override'),
+  sidebarSortOrder: integer('sidebar_sort_order'),
   status: text('status'),
   startedAt: text('started_at'),
   endedAt: text('ended_at'),

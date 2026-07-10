@@ -176,8 +176,29 @@ export function useAppShellWorkspaceActions({
   const handleReorderWorkspaces = useCallback(
     (activeId: string, overId: string): void => {
       const store = useAppStore.getState()
-      store.reorderWorkspaces(activeId, overId)
-      requestPersistFlush()
+      if (store.reorderWorkspaces(activeId, overId)) {
+        requestPersistFlush()
+      }
+    },
+    [requestPersistFlush],
+  )
+
+  const handleReorderWorkspaceRootSpaces = useCallback(
+    (workspaceId: string, activeSpaceId: string, overSpaceId: string): void => {
+      const store = useAppStore.getState()
+      if (store.reorderWorkspaceRootSpaces(workspaceId, activeSpaceId, overSpaceId)) {
+        requestPersistFlush()
+      }
+    },
+    [requestPersistFlush],
+  )
+
+  const handleReorderWorkspaceSidebarAgents = useCallback(
+    (workspaceId: string, activeNodeId: string, overNodeId: string): void => {
+      const store = useAppStore.getState()
+      if (store.reorderWorkspaceSidebarAgents(workspaceId, activeNodeId, overNodeId)) {
+        requestPersistFlush()
+      }
     },
     [requestPersistFlush],
   )
@@ -191,5 +212,7 @@ export function useAppShellWorkspaceActions({
     handleRequestManageProjectMounts,
     handleRequestOpenProjectInFileManager,
     handleReorderWorkspaces,
+    handleReorderWorkspaceRootSpaces,
+    handleReorderWorkspaceSidebarAgents,
   }
 }
