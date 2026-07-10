@@ -27,7 +27,7 @@
     color-mix(in srgb, var(--cove-space-region-surface) 82%, transparent);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--cove-border) 38%, transparent),
-    0 12px 28px rgba(0, 0, 0, 0.12);
+    var(--cove-shadow-md);
 }
 
 .workspace-space-region--child[data-cove-label-color] {
@@ -154,8 +154,8 @@
 }
 
 .workspace-space-region__menu:hover {
-  border-color: rgba(142, 210, 255, 0.9);
-  background: rgba(94, 156, 255, 0.14);
+  border-color: var(--cove-control-border-hover);
+  background: var(--cove-control-selected);
   color: var(--cove-text);
 }
 
@@ -183,7 +183,7 @@
 
 .workspace-space-region__label-input:focus {
   outline: none;
-  box-shadow: 0 0 0 1px rgba(132, 186, 255, 0.32);
+  box-shadow: var(--cove-focus-shadow);
 }
 
 .workspace-canvas .react-flow__viewport-portal {
@@ -287,8 +287,8 @@
 }
 
 .workspace-space-switcher__item--active {
-  border-color: rgba(142, 210, 255, 0.9);
-  background: rgba(94, 156, 255, 0.14);
+  border-color: var(--cove-control-border-hover);
+  background: var(--cove-control-selected);
   color: var(--cove-text);
 }
 
@@ -327,8 +327,8 @@
 }
 
 .workspace-space-switcher__menu--active {
-  border-color: rgba(142, 210, 255, 0.9);
-  background: rgba(94, 156, 255, 0.14);
+  border-color: var(--cove-control-border-hover);
+  background: var(--cove-control-selected);
   color: var(--cove-text);
 }
 
@@ -376,14 +376,14 @@
   gap: 8px;
   max-width: 520px;
   flex: 1 1 auto;
-  border: 1px solid rgba(255, 196, 112, 0.52);
-  background: rgba(55, 35, 12, 0.92);
-  color: rgba(255, 228, 180, 0.96);
+  border: 1px solid var(--cove-warning-border);
+  background: var(--cove-warning-surface);
+  color: var(--cove-warning);
 }
 
 .workspace-space-region__branch-badge-kind {
   flex: 0 0 auto;
-  color: rgba(255, 214, 142, 0.84);
+  color: var(--cove-warning);
   font-size: calc(9px * var(--cove-ui-font-scale));
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -406,9 +406,9 @@
 }
 
 .workspace-space-region__branch-badge--button:hover {
-  border-color: rgba(255, 214, 142, 0.85);
-  background: rgba(91, 59, 19, 0.95);
-  color: #fff0cf;
+  border-color: var(--cove-warning);
+  background: color-mix(in srgb, var(--cove-warning-surface) 72%, var(--cove-warning) 28%);
+  color: var(--cove-text);
 }
 
 .workspace-space-region__branch-badge--button:active {
@@ -416,7 +416,7 @@
 }
 
 .workspace-space-region__branch-badge--button:focus-visible {
-  outline: 2px solid rgba(255, 212, 132, 0.72);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -481,13 +481,13 @@
 .workspace-space-branch-rename__meta {
   margin: 0;
   font-size: calc(12px * var(--cove-ui-font-scale));
-  color: rgba(184, 205, 241, 0.9);
+  color: var(--cove-text-muted);
 }
 
 .workspace-space-branch-rename__prompt {
   margin: 0;
   font-size: calc(12px * var(--cove-ui-font-scale));
-  color: rgba(227, 236, 255, 0.94);
+  color: var(--cove-text);
 }
 
 .workspace-space-branch-rename__error {

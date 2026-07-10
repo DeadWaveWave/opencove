@@ -39,6 +39,7 @@ export function AppHeader({
   memoryTrend,
   performanceIncidents,
   updateState,
+  controlCenterButtonRef,
   onToggleControlCenter,
   onToggleCommandCenter,
   onTogglePerformanceMonitor,
@@ -64,6 +65,7 @@ export function AppHeader({
   memoryTrend: RendererMemoryTrendSnapshot
   performanceIncidents: PerformanceIncident[]
   updateState: AppUpdateState | null
+  controlCenterButtonRef: React.Ref<HTMLButtonElement>
   onToggleControlCenter: () => void
   onToggleCommandCenter: () => void
   onTogglePerformanceMonitor: () => void
@@ -292,6 +294,7 @@ export function AppHeader({
             </button>
           ) : null}
           <button
+            ref={controlCenterButtonRef}
             type="button"
             className={`app-header__icon-button${isControlCenterOpen ? ' app-header__icon-button--active' : ''}`}
             data-testid="app-header-control-center"

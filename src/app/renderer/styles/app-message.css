@@ -12,36 +12,30 @@
   max-width: min(420px, calc(100vw - 32px));
   padding: 10px 12px;
   border: 1px solid var(--app-message-border);
-  border-radius: 12px;
+  border-radius: var(--cove-radius-lg);
   background: var(--app-message-background);
   color: var(--cove-text);
-  backdrop-filter: blur(18px) saturate(140%);
-  box-shadow: 0 14px 34px var(--cove-shadow-color-elevated);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--cove-shadow-md);
   pointer-events: none;
 }
 
 .app-message--info {
-  --app-message-border: rgba(94, 156, 255, 0.38);
-  --app-message-background:
-    radial-gradient(circle at top right, rgba(94, 156, 255, 0.12), transparent 45%),
-    var(--cove-surface-strong);
-  --app-message-label: rgba(94, 156, 255, 0.92);
+  --app-message-border: var(--cove-info-border);
+  --app-message-background: var(--cove-popover);
+  --app-message-label: var(--cove-info);
 }
 
 .app-message--warning {
-  --app-message-border: rgba(255, 196, 107, 0.34);
-  --app-message-background:
-    radial-gradient(circle at top right, rgba(255, 196, 107, 0.16), transparent 50%),
-    var(--cove-surface-strong);
-  --app-message-label: rgba(255, 196, 107, 0.92);
+  --app-message-border: var(--cove-warning-border);
+  --app-message-background: var(--cove-popover);
+  --app-message-label: var(--cove-warning);
 }
 
 .app-message--error {
-  --app-message-border: rgba(255, 125, 125, 0.36);
-  --app-message-background:
-    radial-gradient(circle at top right, rgba(255, 125, 125, 0.16), transparent 50%),
-    var(--cove-surface-strong);
-  --app-message-label: rgba(255, 125, 125, 0.92);
+  --app-message-border: var(--cove-danger-border);
+  --app-message-background: var(--cove-popover);
+  --app-message-label: var(--cove-danger-text);
 }
 
 .app-message__label {

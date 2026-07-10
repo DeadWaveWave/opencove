@@ -1,6 +1,8 @@
 @import '@xyflow/react/dist/style.css';
 
 @import './styles/base.css';
+@import './styles/ui-controls.css';
+@import './styles/ui-overlays.css';
 @import './styles/app-startup-state.css';
 @import './styles/cove-fields.css';
 @import './styles/app-header.css';
@@ -33,6 +35,7 @@
 @import './styles/website-node.css';
 @import './styles/website-node.browser.css';
 @import './styles/image-node.css';
+@import './styles/node-chrome.css';
 @import './styles/node-selected-drag-surface.css';
 @import './styles/settings-panel.css';
 @import './styles/settings-panel.sidebar.css';

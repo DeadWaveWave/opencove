@@ -16,8 +16,8 @@ export function AppShellOverlays({
   agentSettings,
   setAgentSettings,
   activeWorkspace,
-  isPrimarySidebarCollapsed,
   isControlCenterOpen,
+  controlCenterAnchorRef,
   onCloseControlCenter,
   onMinimapVisibilityChange,
   onOpenSettings,
@@ -29,8 +29,8 @@ export function AppShellOverlays({
   agentSettings: AgentSettings
   setAgentSettings: (action: SetStateAction<AgentSettings>) => void
   activeWorkspace: WorkspaceState | null
-  isPrimarySidebarCollapsed: boolean
   isControlCenterOpen: boolean
+  controlCenterAnchorRef: React.RefObject<HTMLButtonElement | null>
   onCloseControlCenter: () => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
   onOpenSettings: () => void
@@ -59,8 +59,8 @@ export function AppShellOverlays({
 
       <ControlCenter
         isOpen={isControlCenterOpen}
+        anchorRef={controlCenterAnchorRef}
         uiTheme={agentSettings.uiTheme}
-        isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
         isMinimapVisible={activeWorkspace?.isMinimapVisible ?? false}
         isStandbyBannerEnabled={agentSettings.standbyBannerEnabled}
         hasActiveWorkspace={activeWorkspace !== null}
@@ -71,12 +71,6 @@ export function AppShellOverlays({
           setAgentSettings(prev => ({
             ...prev,
             uiTheme: theme,
-          }))
-        }}
-        onTogglePrimarySidebar={() => {
-          setAgentSettings(prev => ({
-            ...prev,
-            isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
           }))
         }}
         onToggleMinimap={() => {

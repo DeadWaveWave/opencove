@@ -1,6 +1,5 @@
 @import './workspace-overlays.worktree.css';
 @import './workspace-overlays.worktree.archive.css';
-@import './workspace-overlays.worktree.light.css';
 @import './workspace-overlays.worktree-guard.css';
 @import './workspace-overlays.spaces.css';
 @import './workspace-overlays.spaces.explorer.css';
@@ -19,6 +18,14 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.task-prompt-template-menu--within-dialog {
+  z-index: var(--cove-z-dialog-popover);
+}
+
+.task-prompt-template-create-backdrop--within-dialog {
+  z-index: var(--cove-z-dialog-nested);
 }
 
 .workspace-context-menu button {
@@ -59,11 +66,11 @@
 }
 
 .workspace-context-menu button:active {
-  background: rgba(94, 156, 255, 0.08);
+  background: var(--cove-control-active);
 }
 
 .workspace-context-menu button:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -109,7 +116,7 @@
 .workspace-context-menu__separator {
   height: 1px;
   margin: 4px 6px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--cove-border-subtle);
 }
 
 .workspace-context-menu__split {
@@ -261,18 +268,18 @@
 
 .workspace-label-color-filter__trigger:hover {
   background: var(--cove-surface-hover);
-  border-color: rgba(142, 210, 255, 0.9);
+  border-color: var(--cove-control-border-hover);
   color: var(--cove-text);
 }
 
 .workspace-label-color-filter__trigger--open {
-  border-color: rgba(142, 210, 255, 0.9);
-  background: rgba(94, 156, 255, 0.14);
+  border-color: var(--cove-control-border-hover);
+  background: var(--cove-control-selected);
   color: var(--cove-text);
 }
 
 .workspace-label-color-filter__trigger:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -323,12 +330,12 @@
 
 .workspace-label-color-filter__clear:hover {
   background: var(--cove-surface-hover);
-  border-color: rgba(142, 210, 255, 0.9);
+  border-color: var(--cove-control-border-hover);
   color: var(--cove-text);
 }
 
 .workspace-label-color-filter__clear:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 

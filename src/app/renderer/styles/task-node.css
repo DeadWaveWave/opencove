@@ -1,11 +1,11 @@
 .task-node {
-  border-radius: 14px;
+  border-radius: var(--cove-radius-lg);
   border: 1px solid var(--cove-node-border);
   background: var(--cove-node-surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 10px 30px var(--cove-node-shadow-color);
+  box-shadow: var(--cove-node-shadow);
   position: relative;
 }
 
@@ -56,10 +56,10 @@
   left: 10px;
   width: 12px;
   height: 12px;
-  border-radius: 999px;
-  border: 2px solid rgba(120, 157, 255, 0.85);
-  border-right-color: rgba(120, 157, 255, 0.2);
-  border-top-color: rgba(120, 157, 255, 0.2);
+  border-radius: var(--cove-radius-round);
+  border: 2px solid var(--cove-accent);
+  border-right-color: var(--cove-info-border);
+  border-top-color: var(--cove-info-border);
   animation: task-node-spin 0.8s linear infinite;
   opacity: 0.9;
   pointer-events: none;
@@ -138,7 +138,7 @@
 }
 
 .task-node__icon-button:focus-visible {
-  outline: 2px solid rgba(153, 223, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -170,19 +170,19 @@
 }
 
 .task-node__priority--low {
-  border-color: rgba(124, 152, 196, 0.62);
+  border-color: var(--cove-control-border-hover);
 }
 
 .task-node__priority--medium {
-  border-color: rgba(95, 160, 255, 0.66);
+  border-color: var(--cove-info-border);
 }
 
 .task-node__priority--high {
-  border-color: rgba(255, 170, 88, 0.7);
+  border-color: var(--cove-warning-border);
 }
 
 .task-node__priority--urgent {
-  border-color: rgba(255, 116, 116, 0.72);
+  border-color: var(--cove-danger-border);
 }
 
 .task-node__tags {
@@ -234,7 +234,7 @@
 .task-node__requirement-input,
 .task-node__agents {
   scrollbar-width: thin;
-  scrollbar-color: rgba(94, 156, 255, 0.68) var(--cove-field);
+  scrollbar-color: var(--cove-accent) var(--cove-field);
 }
 
 .task-node__content p::-webkit-scrollbar,
@@ -254,7 +254,7 @@
 .task-node__content p::-webkit-scrollbar-thumb,
 .task-node__requirement-input::-webkit-scrollbar-thumb,
 .task-node__agents::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(136, 178, 255, 0.78), rgba(88, 124, 210, 0.78));
+  background: var(--cove-accent);
   border: 2px solid var(--cove-field);
   border-radius: 999px;
 }
@@ -262,7 +262,7 @@
 .task-node__content p::-webkit-scrollbar-thumb:hover,
 .task-node__requirement-input::-webkit-scrollbar-thumb:hover,
 .task-node__agents::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(164, 203, 255, 0.9), rgba(106, 145, 234, 0.9));
+  background: var(--cove-accent-text);
 }
 
 .task-node__requirement-text {
@@ -372,8 +372,8 @@
 }
 
 .task-node__run-agent {
-  border: 1px solid rgba(94, 156, 255, 0.35);
-  background: rgba(94, 156, 255, 0.14);
+  border: 1px solid var(--cove-info-border);
+  background: var(--cove-info-surface);
   color: var(--cove-text);
   border-radius: 8px;
   padding: 6px 10px;
@@ -383,7 +383,7 @@
 }
 
 .task-node__run-agent:hover {
-  background: rgba(94, 156, 255, 0.22);
+  background: color-mix(in srgb, var(--cove-info-surface) 72%, var(--cove-accent) 28%);
 }
 
 .task-node__resizer {

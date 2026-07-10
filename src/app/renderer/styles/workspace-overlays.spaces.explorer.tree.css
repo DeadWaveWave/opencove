@@ -60,7 +60,7 @@
 }
 
 .workspace-space-explorer__entry:active {
-  background: rgba(94, 156, 255, 0.08);
+  background: var(--cove-control-active);
 }
 
 .workspace-space-explorer__entry-icon {

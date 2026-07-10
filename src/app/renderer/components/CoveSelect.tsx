@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
+import { DismissableLayer } from './ui/DismissableLayer'
 
 export interface CoveSelectOption {
   value: string
@@ -142,29 +143,14 @@ export function CoveSelect({
 
     updateMenuPosition()
 
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) {
-        return
-      }
-
-      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) {
-        return
-      }
-
-      closeMenu()
-    }
-
     const handleWindowChange = () => {
       updateMenuPosition()
     }
 
-    document.addEventListener('pointerdown', handlePointerDown, true)
     window.addEventListener('resize', handleWindowChange)
     window.addEventListener('scroll', handleWindowChange, true)
 
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown, true)
       window.removeEventListener('resize', handleWindowChange)
       window.removeEventListener('scroll', handleWindowChange, true)
     }
@@ -337,12 +323,19 @@ export function CoveSelect({
 
       {isOpen && menuPosition
         ? createPortal(
-            <div
+            <DismissableLayer
               id={listboxId}
               ref={menuRef}
               className={`cove-select__menu${menuClassName ? ` ${menuClassName}` : ''}`}
               data-testid={menuTestId ?? (testId ? `${testId}-menu` : undefined)}
               role="listbox"
+              branchRefs={[rootRef]}
+              onDismiss={reason => {
+                closeMenu()
+                if (reason === 'escape') {
+                  triggerRef.current?.focus()
+                }
+              }}
               style={{
                 top: menuPosition.top,
                 left: menuPosition.left,
@@ -384,7 +377,7 @@ export function CoveSelect({
                   </button>
                 )
               })}
-            </div>,
+            </DismissableLayer>,
             document.body,
           )
         : null}

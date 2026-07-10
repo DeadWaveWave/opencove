@@ -1,11 +1,11 @@
 .website-node {
-  border-radius: 14px;
+  border-radius: var(--cove-radius-lg);
   border: 1px solid var(--cove-node-border);
   background: var(--cove-node-surface);
   display: flex;
   flex-direction: column;
   overflow: visible;
-  box-shadow: 0 10px 30px var(--cove-node-shadow-color);
+  box-shadow: var(--cove-node-shadow);
   position: relative;
 }
 
@@ -195,7 +195,7 @@
 .website-node__address-input:focus-visible,
 .website-node__session:focus-visible,
 .website-node__profile:focus-visible {
-  outline: 2px solid rgba(153, 223, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -222,14 +222,26 @@
 
 .website-node__viewport::before {
   left: 0;
-  -webkit-mask-image: radial-gradient(circle at top right, transparent 12.5px, #000 13px);
-  mask-image: radial-gradient(circle at top right, transparent 12.5px, #000 13px);
+  -webkit-mask-image: radial-gradient(
+    circle at top right,
+    transparent 12.5px,
+    var(--cove-mask-opaque) 13px
+  );
+  mask-image: radial-gradient(
+    circle at top right,
+    transparent 12.5px,
+    var(--cove-mask-opaque) 13px
+  );
 }
 
 .website-node__viewport::after {
   right: 0;
-  -webkit-mask-image: radial-gradient(circle at top left, transparent 12.5px, #000 13px);
-  mask-image: radial-gradient(circle at top left, transparent 12.5px, #000 13px);
+  -webkit-mask-image: radial-gradient(
+    circle at top left,
+    transparent 12.5px,
+    var(--cove-mask-opaque) 13px
+  );
+  mask-image: radial-gradient(circle at top left, transparent 12.5px, var(--cove-mask-opaque) 13px);
 }
 
 .website-node__body {

@@ -47,7 +47,7 @@
 }
 
 .workspace-space-region__files-pill:focus-visible {
-  outline: 2px solid rgba(142, 210, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -215,7 +215,7 @@
 .workspace-space-explorer__filter-clear:focus-visible,
 .workspace-space-explorer__entry:focus-visible,
 .workspace-space-explorer__state-action:focus-visible {
-  outline: 2px solid rgba(142, 210, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 

@@ -21,6 +21,7 @@
   --cove-label-purple: #8b6f8b;
 
   --cove-app-background: #15110e;
+  --cove-app-background-elevated: #211a15;
   --cove-surface: rgba(28, 23, 20, 0.78);
   --cove-surface-strong: rgba(36, 29, 24, 0.94);
   --cove-window-surface: rgb(28, 23, 20);
@@ -30,7 +31,7 @@
   --cove-border-subtle: rgba(232, 217, 196, 0.08);
   --cove-text: #e8d9c4;
   --cove-text-muted: #b5a692;
-  --cove-text-faint: #6e6258;
+  --cove-text-faint: #8f8173;
   --cove-backdrop: rgba(8, 6, 4, 0.66);
   --cove-shadow-color-elevated: rgba(0, 0, 0, 0.5);
   --cove-shadow-color-panel: rgba(0, 0, 0, 0.72);
@@ -137,7 +138,7 @@
   --cove-terminal-cursor: #c97c3a;
   --cove-text: #e8d9c4;
   --cove-text-muted: #b5a692;
-  --cove-text-faint: #6e6258;
+  --cove-text-faint: #958575;
   --cove-border: rgba(232, 217, 196, 0.14);
   --cove-border-subtle: rgba(232, 217, 196, 0.08);
   --cove-field: rgba(232, 217, 196, 0.04);

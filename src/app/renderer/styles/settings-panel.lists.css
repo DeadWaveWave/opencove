@@ -144,7 +144,7 @@
 }
 
 .settings-agent-default-choice input:focus-visible + .settings-agent-default-choice__visual {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 

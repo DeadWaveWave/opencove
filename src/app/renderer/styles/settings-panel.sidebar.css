@@ -1,10 +1,10 @@
 .settings-panel__sidebar {
   background: var(--cove-settings-sidebar-background);
   border-right: 1px solid var(--cove-border-subtle);
-  padding: 28px 12px;
+  padding: 16px 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   overflow-y: auto;
   min-height: 0;
   transition:
@@ -14,14 +14,15 @@
 
 .settings-panel__nav-button {
   all: unset;
-  padding: 8px 14px;
-  border-radius: 8px;
+  min-height: var(--cove-control-height-md);
+  padding: 6px 10px;
+  border-radius: var(--cove-radius-sm);
   font-size: calc(13px * var(--cove-ui-font-scale));
   color: var(--cove-text-muted);
   cursor: pointer;
   transition:
-    background 0.18s ease,
-    color 0.18s ease;
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard);
   position: relative;
 }
 
@@ -32,8 +33,8 @@
 
 .settings-panel__nav-button--active {
   color: var(--cove-text);
-  background: color-mix(in srgb, var(--cove-accent) 14%, transparent);
-  font-weight: 500;
+  background: var(--cove-control-selected);
+  font-weight: 600;
 }
 
 .settings-panel__nav-button--parent-active {
@@ -44,9 +45,9 @@
 .settings-panel__nav-button--active::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
+  left: -1px;
+  top: 7px;
+  bottom: 7px;
   width: 2px;
   background: var(--cove-accent);
   border-radius: 0 2px 2px 0;
@@ -69,8 +70,8 @@
 }
 
 .settings-panel__nav-group-label {
-  margin-top: 20px;
-  padding: 0 14px;
+  margin-top: 16px;
+  padding: 0 10px;
   font-size: calc(11px * var(--cove-ui-font-scale));
   font-weight: 600;
   color: var(--cove-text-faint);

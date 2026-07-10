@@ -8,8 +8,8 @@
   grid-row: 2;
   width: 100%;
   border-right: 1px solid var(--cove-border-subtle);
-  background: var(--cove-surface);
-  backdrop-filter: blur(20px) saturate(130%);
+  background: color-mix(in srgb, var(--cove-panel) 84%, transparent);
+  backdrop-filter: blur(18px);
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
@@ -18,15 +18,15 @@
   overflow: hidden;
   z-index: 6;
   transition:
-    width 0.22s ease,
-    box-shadow 0.22s ease,
-    background-color 0.18s ease;
+    width var(--cove-motion-slow) var(--cove-ease-standard),
+    box-shadow var(--cove-motion-slow) var(--cove-ease-standard),
+    background-color var(--cove-motion-normal) var(--cove-ease-standard);
 }
 
 .workspace-sidebar--peek {
   width: var(--cove-primary-sidebar-expanded-width);
   z-index: 21;
-  box-shadow: 18px 0 36px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--cove-shadow-md);
 }
 
 .workspace-sidebar--rail {
@@ -66,10 +66,10 @@
   justify-content: center;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.15s ease;
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .workspace-sidebar__toolbar-button svg {
@@ -96,7 +96,7 @@
 .workspace-sidebar__toolbar-button:focus-visible,
 .workspace-empty-state button:focus-visible,
 .workspace-empty-selection-prompt button:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -141,13 +141,13 @@
 }
 
 .workspace-sidebar__persist-alert--warning {
-  border-color: rgba(255, 199, 0, 0.45);
-  background: rgba(255, 199, 0, 0.08);
+  border-color: var(--cove-warning-border);
+  background: var(--cove-warning-surface);
 }
 
 .workspace-sidebar__persist-alert--error {
-  border-color: rgba(255, 88, 124, 0.5);
-  background: rgba(255, 88, 124, 0.1);
+  border-color: var(--cove-danger-border);
+  background: var(--cove-danger-surface);
 }
 
 .workspace-sidebar__list {
@@ -252,7 +252,7 @@
 }
 
 .workspace-item__tree-toggle:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -261,7 +261,7 @@
 }
 
 .workspace-item:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -273,10 +273,10 @@
 
 .workspace-item--drag-overlay {
   background: color-mix(in srgb, var(--cove-surface) 78%, transparent);
-  border-color: rgba(94, 156, 255, 0.28);
+  border-color: var(--cove-info-border);
   box-shadow:
-    0 12px 24px rgba(15, 23, 42, 0.12),
-    0 0 0 1px rgba(94, 156, 255, 0.14);
+    var(--cove-shadow-md),
+    0 0 0 1px color-mix(in srgb, var(--cove-accent) 14%, transparent);
   opacity: 0.86;
 }
 
@@ -393,7 +393,7 @@
 }
 
 .workspace-space-item:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -436,7 +436,7 @@
 }
 
 .workspace-space-item__toggle:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 

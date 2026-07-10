@@ -102,13 +102,14 @@
     "secrets:scan": "secretlint \"**/*\"",
     "naming-check:staged": "node scripts/check-naming-staged.mjs",
     "line-check:staged": "node scripts/check-max-lines.mjs",
+    "ui:style-check": "node scripts/check-ui-styles.mjs",
     "test:staged": "node scripts/run-vitest-related-staged.mjs",
     "test:e2e:pre-commit": "node scripts/run-precommit-e2e.mjs",
     "release:patch": "node scripts/prepare-release.mjs patch",
     "release:minor": "node scripts/prepare-release.mjs minor",
     "release:major": "node scripts/prepare-release.mjs major",
     "release:version": "node scripts/prepare-release.mjs",
-    "pre-commit": "pnpm line-check:staged && pnpm secret-check:staged && pnpm naming-check:staged && pnpm lint:fix && pnpm format-check:staged && pnpm check && pnpm test:staged && pnpm test:e2e:pre-commit",
+    "pre-commit": "pnpm line-check:staged && pnpm secret-check:staged && pnpm naming-check:staged && pnpm ui:style-check && pnpm lint:fix && pnpm format-check:staged && pnpm check && pnpm test:staged && pnpm test:e2e:pre-commit",
     "prepare": "husky"
   },
   "dependencies": {

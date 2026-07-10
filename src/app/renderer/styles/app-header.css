@@ -7,8 +7,8 @@
   gap: 12px;
   padding: 4px 10px;
   border-bottom: 1px solid var(--cove-border-subtle);
-  background: var(--cove-surface);
-  backdrop-filter: blur(20px) saturate(130%);
+  background: color-mix(in srgb, var(--cove-panel) 82%, transparent);
+  backdrop-filter: blur(18px);
   height: var(--cove-app-header-height);
   -webkit-app-region: drag;
 }
@@ -53,33 +53,33 @@
   align-items: center;
   gap: 8px;
   border: 1px solid var(--cove-border-subtle);
-  border-radius: 999px;
-  background: var(--cove-field);
+  border-radius: var(--cove-radius-sm);
+  background: var(--cove-control);
   color: var(--cove-text-muted);
   cursor: pointer;
   -webkit-app-region: no-drag;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .app-header__command-center:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--cove-border);
+  background: var(--cove-control-hover);
+  border-color: var(--cove-control-border-hover);
   color: var(--cove-text);
 }
 
 .app-header__command-center--open,
 .app-header__command-center:active {
-  background: rgba(94, 156, 255, 0.1);
-  border-color: rgba(94, 156, 255, 0.35);
+  background: var(--cove-control-selected);
+  border-color: var(--cove-info-border);
   transform: translateY(1px);
 }
 
 .app-header__command-center:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -116,7 +116,7 @@
 .app-header__command-center-chevron {
   flex: 0 0 auto;
   opacity: 0.65;
-  transition: transform 0.15s ease;
+  transition: transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .app-header__command-center--open .app-header__command-center-chevron {
@@ -132,18 +132,18 @@
   border: 0;
   background: transparent;
   color: var(--cove-text-muted);
-  border-radius: 8px;
+  border-radius: var(--cove-radius-sm);
   cursor: pointer;
   padding: 0;
   -webkit-app-region: no-drag;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .app-header__icon-button--active {
-  background: rgba(94, 156, 255, 0.12);
+  background: var(--cove-control-selected);
   color: var(--cove-text);
 }
 
@@ -182,21 +182,21 @@
   align-items: center;
   gap: 6px;
   padding: 0 10px;
-  border: 1px solid rgba(94, 156, 255, 0.28);
-  background: rgba(94, 156, 255, 0.14);
+  border: 1px solid var(--cove-info-border);
+  background: var(--cove-info-surface);
   color: var(--cove-text);
-  border-radius: 999px;
+  border-radius: var(--cove-radius-sm);
   cursor: pointer;
   -webkit-app-region: no-drag;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.15s ease;
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .app-header__update-button:hover {
-  background: rgba(94, 156, 255, 0.2);
-  border-color: rgba(94, 156, 255, 0.42);
+  background: color-mix(in srgb, var(--cove-info-surface) 76%, var(--cove-accent) 24%);
+  border-color: color-mix(in srgb, var(--cove-info-border) 70%, var(--cove-accent));
 }
 
 .app-header__update-button:active {
@@ -204,7 +204,7 @@
 }
 
 .app-header__update-button:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -234,7 +234,7 @@
 }
 
 .app-header__icon-button:focus-visible {
-  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -245,5 +245,49 @@
 
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 620px) {
+  .app-header {
+    gap: 8px;
+  }
+
+  .app-header__center {
+    position: static;
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    justify-content: center;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .app-header__command-center {
+    width: 100%;
+    max-width: 240px;
+    min-width: var(--cove-control-height-sm);
+  }
+
+  .app-header__command-center-keycap,
+  .app-header__command-center-chevron {
+    display: none;
+  }
+
+  .app-header__section--right {
+    position: relative;
+    z-index: 1;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-header__command-center {
+    justify-content: center;
+    padding-inline: 6px;
+  }
+
+  .app-header__command-center-title {
+    display: none;
   }
 }

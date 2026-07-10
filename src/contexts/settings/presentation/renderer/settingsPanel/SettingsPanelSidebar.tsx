@@ -1,4 +1,4 @@
-import { useMemo, useState, type JSX } from 'react'
+import { useMemo, useState, type JSX, type Ref } from 'react'
 import { Search } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
@@ -11,12 +11,14 @@ import {
 } from './settingsSearchIndex'
 
 export function SettingsPanelSidebar({
+  searchInputRef,
   activePageId,
   workspaces,
   endpointsEnabled,
   onSelectPage,
   onSelectSearchResult,
 }: {
+  searchInputRef?: Ref<HTMLInputElement>
   activePageId: SettingsPageId
   workspaces: WorkspaceState[]
   endpointsEnabled: boolean
@@ -70,6 +72,7 @@ export function SettingsPanelSidebar({
         <div className="settings-panel__search-input-shell">
           <Search className="settings-panel__search-icon" size={14} aria-hidden="true" />
           <input
+            ref={searchInputRef}
             id="settings-panel-search"
             className="cove-field settings-panel__search-input"
             type="search"

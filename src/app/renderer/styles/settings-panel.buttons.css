@@ -1,18 +1,21 @@
 /* --- Settings Buttons --- */
 .settings-panel button.primary {
-  background: linear-gradient(180deg, rgba(84, 126, 235, 0.92), rgba(60, 99, 201, 0.92));
-  color: #eff6ff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 10px;
+  min-height: var(--cove-control-height-md);
+  padding: 6px 12px;
+  border: 1px solid var(--cove-accent);
+  border-radius: var(--cove-radius-sm);
+  background: var(--cove-accent);
+  color: var(--cove-accent-foreground);
   font-weight: 600;
   font-size: calc(13px * var(--cove-ui-font-scale));
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .settings-panel button.primary:hover {
-  background: linear-gradient(180deg, rgba(103, 143, 245, 0.95), rgba(73, 113, 216, 0.95));
+  background: color-mix(in srgb, var(--cove-accent) 88%, var(--cove-accent-foreground));
 }
 
 .settings-panel button.primary:active {
@@ -26,17 +29,20 @@
 }
 
 .settings-panel button.secondary {
-  background: transparent;
-  border: 1px solid var(--cove-border);
+  min-height: var(--cove-control-height-sm);
+  padding: 5px 10px;
+  border: 1px solid var(--cove-control-border);
+  border-radius: var(--cove-radius-sm);
+  background: var(--cove-control);
   color: var(--cove-text);
-  padding: 6px 12px;
-  border-radius: 10px;
   font-size: calc(12px * var(--cove-ui-font-scale));
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .settings-panel button.secondary:hover {
   background: var(--cove-surface-hover);
-  border-color: var(--cove-border);
+  border-color: var(--cove-control-border-hover);
 }

@@ -100,7 +100,7 @@
   min-width: 240px;
   overflow: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+  scrollbar-color: var(--cove-border) transparent;
 }
 
 .workspace-context-menu--submenu::-webkit-scrollbar {
@@ -112,12 +112,12 @@
 }
 
 .workspace-context-menu--submenu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--cove-border-subtle);
   border-radius: 999px;
 }
 
 .workspace-context-menu--submenu::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--cove-border);
 }
 
 .workspace-project-context-menu__rename {
@@ -138,7 +138,7 @@
 }
 
 .workspace-project-context-menu__rename input:focus {
-  outline: 2px solid rgba(94, 156, 255, 0.7);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 1px;
 }
 

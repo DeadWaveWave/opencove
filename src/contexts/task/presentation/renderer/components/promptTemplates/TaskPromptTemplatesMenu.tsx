@@ -45,6 +45,7 @@ export function TaskPromptTemplatesMenu({
   onChangeRequirement,
   onRequestPersistFlush,
   testIdPrefix,
+  isWithinDialog = false,
 }: {
   isOpen: boolean
   anchor: { x: number; y: number } | null
@@ -55,6 +56,7 @@ export function TaskPromptTemplatesMenu({
   onChangeRequirement: (nextRequirement: string) => void
   onRequestPersistFlush?: () => void
   testIdPrefix: string
+  isWithinDialog?: boolean
 }): React.JSX.Element | null {
   const { t } = useTranslation()
   const templates = useAppStore(state => state.agentSettings.taskPromptTemplates)
@@ -212,7 +214,9 @@ export function TaskPromptTemplatesMenu({
     return (
       <ViewportMenuSurface
         open={isOpen}
-        className="workspace-context-menu task-prompt-template-menu"
+        className={`workspace-context-menu task-prompt-template-menu${
+          isWithinDialog ? ' task-prompt-template-menu--within-dialog' : ''
+        }`}
         data-testid={`${testIdPrefix}-prompt-templates-menu`}
         placement={{
           type: 'point',
@@ -228,9 +232,6 @@ export function TaskPromptTemplatesMenu({
         dismissOnPointerDownOutside={true}
         dismissOnEscape={true}
         dismissIgnoreRefs={triggerRef ? [triggerRef] : []}
-        style={{
-          zIndex: 25,
-        }}
       >
         <div className="workspace-context-menu__section-title">
           {t('taskPromptTemplates.globalSection')}
@@ -323,6 +324,7 @@ export function TaskPromptTemplatesMenu({
     globalTemplates,
     handleUseTemplate,
     isOpen,
+    isWithinDialog,
     openCreateDialog,
     projectTemplates,
     closeMenu,
@@ -342,7 +344,9 @@ export function TaskPromptTemplatesMenu({
 
       {createScope ? (
         <div
-          className="cove-window-backdrop task-prompt-template-create-backdrop"
+          className={`cove-window-backdrop task-prompt-template-create-backdrop${
+            isWithinDialog ? ' task-prompt-template-create-backdrop--within-dialog' : ''
+          }`}
           data-testid={`${testIdPrefix}-prompt-templates-create-window`}
           onClick={() => {
             closeCreateDialog()

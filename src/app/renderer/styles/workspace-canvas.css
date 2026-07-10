@@ -13,14 +13,18 @@
   place-items: center;
   text-align: center;
   gap: 8px;
+  padding: 32px;
 }
 
 .workspace-empty-state h2 {
-  font-size: calc(24px * var(--cove-ui-font-scale));
+  max-width: 440px;
+  font-size: calc(20px * var(--cove-ui-font-scale));
+  font-weight: 650;
   margin-bottom: 4px;
 }
 
 .workspace-empty-state p {
+  max-width: 480px;
   color: var(--cove-text-muted);
   margin-bottom: 12px;
 }
@@ -44,10 +48,10 @@
   position: absolute;
   z-index: 6;
   pointer-events: none;
-  background: rgba(94, 156, 255, 0.12);
-  border: 1px dotted rgba(150, 200, 255, 0.9);
-  border-radius: 10px;
-  box-shadow: inset 0 0 0 1px rgba(94, 156, 255, 0.18);
+  background: var(--cove-control-selected);
+  border: 1px dotted var(--cove-focus-ring);
+  border-radius: var(--cove-radius-md);
+  box-shadow: inset 0 0 0 1px var(--cove-info-border);
 }
 
 .workspace-snap-guides {
@@ -61,11 +65,9 @@
 
 .workspace-snap-guide {
   position: absolute;
-  background: rgba(142, 210, 255, 0.92);
-  box-shadow:
-    0 0 0 1px rgba(142, 210, 255, 0.28),
-    0 0 22px rgba(95, 178, 255, 0.22);
-  border-radius: 999px;
+  background: var(--cove-focus-ring);
+  box-shadow: var(--cove-focus-shadow);
+  border-radius: var(--cove-radius-round);
   pointer-events: none;
 }
 
@@ -135,13 +137,16 @@
   left: 16px;
   bottom: 16px;
   z-index: 20;
-  box-shadow: none;
-  border: 0;
-  background: transparent;
-  opacity: 0.62;
+  overflow: hidden;
+  padding: 3px;
+  border: 1px solid var(--cove-canvas-control-border);
+  border-radius: var(--cove-radius-md);
+  background: var(--cove-popover);
+  box-shadow: var(--cove-shadow-sm);
+  opacity: 0.76;
   transition:
-    opacity 180ms ease,
-    transform 180ms ease;
+    opacity var(--cove-motion-normal) var(--cove-ease-standard),
+    transform var(--cove-motion-normal) var(--cove-ease-standard);
 }
 
 .workspace-canvas .react-flow__controls:hover,
@@ -153,22 +158,20 @@
 .workspace-canvas .react-flow__controls-button {
   width: 28px;
   height: 28px;
-  border: 1px solid var(--cove-canvas-control-border);
-  border-radius: 8px;
+  border: 0;
+  border-radius: var(--cove-radius-xs);
   margin: 0;
   background: var(--cove-canvas-control-surface);
   backdrop-filter: blur(8px);
   color: var(--cove-canvas-control-text);
   transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+    background-color var(--cove-motion-normal) var(--cove-ease-standard),
+    color var(--cove-motion-normal) var(--cove-ease-standard),
+    box-shadow var(--cove-motion-normal) var(--cove-ease-standard);
 }
 
 .workspace-canvas .react-flow__controls-button + .react-flow__controls-button {
-  margin-top: 8px;
+  margin-top: 2px;
 }
 
 .workspace-canvas .react-flow__controls-button svg {
@@ -178,11 +181,9 @@
 
 .workspace-canvas .react-flow__controls-button:hover,
 .workspace-canvas .react-flow__controls-button:focus-visible {
-  border-color: var(--cove-canvas-control-border-hover);
   background: var(--cove-canvas-control-surface-hover);
   color: var(--cove-canvas-control-text-hover);
-  box-shadow: 0 0 0 1px rgba(101, 151, 255, 0.35);
-  transform: translateY(-1px);
+  box-shadow: var(--cove-focus-shadow);
 }
 
 .workspace-canvas .react-flow__controls-button:focus-visible {
@@ -199,20 +200,18 @@
   height: 100%;
   right: 0;
   bottom: 0;
-  border-radius: 12px;
+  border-radius: var(--cove-radius-lg);
   overflow: hidden;
   border: 1px solid var(--cove-canvas-minimap-border);
   background: var(--cove-canvas-minimap-surface);
   backdrop-filter: blur(10px);
   opacity: var(--cove-canvas-minimap-opacity-idle);
-  box-shadow:
-    0 16px 30px rgba(2, 6, 20, 0.42),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  box-shadow: var(--cove-shadow-md);
   transition:
-    opacity 200ms ease,
-    transform 200ms ease,
-    border-color 200ms ease,
-    box-shadow 200ms ease;
+    opacity var(--cove-motion-slow) var(--cove-ease-standard),
+    transform var(--cove-motion-slow) var(--cove-ease-standard),
+    border-color var(--cove-motion-slow) var(--cove-ease-standard),
+    box-shadow var(--cove-motion-slow) var(--cove-ease-standard);
 }
 
 .workspace-canvas .react-flow__minimap svg {
@@ -234,12 +233,9 @@
 .workspace-canvas__minimap-dock:hover .react-flow__minimap,
 .workspace-canvas__minimap-dock:focus-within .react-flow__minimap {
   opacity: var(--cove-canvas-minimap-opacity-hover);
-  border-color: rgba(121, 176, 255, 0.82);
+  border-color: var(--cove-canvas-control-border-hover);
   transform: translateY(-1px);
-  box-shadow:
-    0 18px 34px rgba(3, 9, 30, 0.5),
-    0 0 0 1px rgba(94, 145, 255, 0.28),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: var(--cove-shadow-md), var(--cove-focus-shadow);
 }
 
 .workspace-canvas__minimap-dock {
@@ -262,7 +258,7 @@
   bottom: 8px;
   z-index: 8;
   border: 1px solid var(--cove-canvas-control-border);
-  border-radius: 999px;
+  border-radius: var(--cove-radius-round);
   background: var(--cove-canvas-control-surface);
   backdrop-filter: blur(8px);
   color: var(--cove-canvas-control-text);
@@ -279,12 +275,12 @@
   pointer-events: none;
   transform: translateY(2px);
   transition:
-    opacity 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease,
-    background-color 160ms ease,
-    transform 160ms ease,
-    visibility 160ms ease;
+    opacity var(--cove-motion-normal) var(--cove-ease-standard),
+    border-color var(--cove-motion-normal) var(--cove-ease-standard),
+    color var(--cove-motion-normal) var(--cove-ease-standard),
+    background-color var(--cove-motion-normal) var(--cove-ease-standard),
+    transform var(--cove-motion-normal) var(--cove-ease-standard),
+    visibility var(--cove-motion-normal) var(--cove-ease-standard);
 }
 
 .workspace-canvas__minimap-dock--expanded:hover .workspace-canvas__minimap-toggle {
@@ -320,51 +316,60 @@
 
 .workspace-canvas__minimap-toggle:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 1px rgba(107, 159, 255, 0.32);
+  box-shadow: var(--cove-focus-shadow);
 }
 
 .workspace-canvas .workspace-task-agent-edge .react-flow__edge-path {
-  stroke: rgba(129, 183, 255, 0.72);
+  stroke: color-mix(in srgb, var(--cove-label-blue) 72%, transparent);
   stroke-width: 1.8;
-  filter: drop-shadow(0 0 8px rgba(98, 160, 255, 0.45));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--cove-label-blue) 45%, transparent));
 }
 
 .workspace-canvas .workspace-task-agent-edge--active .react-flow__edge-path {
-  stroke: rgba(134, 206, 255, 0.95);
+  stroke: color-mix(in srgb, var(--cove-label-blue) 88%, var(--cove-text));
   stroke-dasharray: 7 3;
   animation: workspace-task-cable-flow 0.9s linear infinite;
 }
 
 .workspace-canvas .workspace-task-agent-edge--idle .react-flow__edge-path {
-  stroke: rgba(123, 160, 209, 0.65);
+  stroke: color-mix(in srgb, var(--cove-label-blue) 54%, var(--cove-text-muted));
 }
 
 .workspace-canvas .workspace-task-agent-edge .react-flow__arrowhead {
-  filter: drop-shadow(0 0 6px rgba(95, 163, 255, 0.45));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--cove-label-blue) 45%, transparent));
 }
 
 .workspace-canvas .workspace-role-agent-edge .react-flow__edge-path {
-  stroke: rgba(112, 204, 171, 0.76);
+  stroke: color-mix(in srgb, var(--cove-label-green) 72%, var(--cove-text-muted));
   stroke-width: 1.8;
-  filter: drop-shadow(0 0 8px rgba(84, 180, 145, 0.38));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--cove-label-green) 38%, transparent));
 }
 
 .workspace-canvas .workspace-role-agent-edge--active .react-flow__edge-path {
-  stroke: rgba(125, 224, 185, 0.96);
+  stroke: color-mix(in srgb, var(--cove-label-green) 84%, var(--cove-text));
   stroke-dasharray: 7 3;
   animation: workspace-task-cable-flow 0.9s linear infinite;
 }
 
 .workspace-canvas .workspace-role-agent-edge--idle .react-flow__edge-path {
-  stroke: rgba(112, 172, 152, 0.68);
+  stroke: color-mix(in srgb, var(--cove-label-green) 52%, var(--cove-text-muted));
 }
 
 .workspace-canvas .workspace-role-agent-edge .react-flow__arrowhead {
-  filter: drop-shadow(0 0 6px rgba(84, 180, 145, 0.38));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--cove-label-green) 38%, transparent));
 }
 
 @keyframes workspace-task-cable-flow {
   to {
     stroke-dashoffset: -20;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-canvas .react-flow__controls,
+  .workspace-canvas .react-flow__controls-button,
+  .workspace-canvas .react-flow__minimap,
+  .workspace-canvas__minimap-toggle {
+    transition-duration: 0.01ms;
   }
 }

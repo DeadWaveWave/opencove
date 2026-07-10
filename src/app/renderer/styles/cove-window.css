@@ -2,25 +2,25 @@
 .workspace-task-creator-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 24;
+  z-index: var(--cove-z-dialog);
   background: var(--cove-backdrop);
   display: grid;
   place-items: center;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(10px);
 }
 
 .cove-window,
 .workspace-task-creator {
-  width: min(680px, calc(100vw - 48px));
-  max-height: calc(100vh - 48px);
-  border: 1px solid var(--cove-border-subtle);
-  border-radius: 16px;
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  border: 1px solid var(--cove-border);
+  border-radius: var(--cove-radius-xl);
   background: var(--cove-window-surface);
-  box-shadow: 0 24px 56px var(--cove-shadow-color-elevated);
-  padding: 18px;
+  box-shadow: var(--cove-shadow-lg);
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   overflow: hidden;
 }
 
@@ -35,8 +35,8 @@
 
 .cove-window h3,
 .workspace-task-creator h3 {
-  font-size: calc(18px * var(--cove-ui-font-scale));
-  font-weight: 600;
+  font-size: calc(16px * var(--cove-ui-font-scale));
+  font-weight: 650;
   color: var(--cove-text);
 }
 
@@ -71,27 +71,27 @@
 }
 
 .cove-window__icon-button {
-  width: 28px;
-  height: 28px;
+  width: var(--cove-control-height-sm);
+  height: var(--cove-control-height-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--cove-border-subtle);
-  border-radius: 10px;
-  background: var(--cove-field);
+  border-radius: var(--cove-radius-sm);
+  background: var(--cove-control);
   color: var(--cove-text-muted);
   cursor: pointer;
   padding: 0;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .cove-window__icon-button:hover:not(:disabled) {
   background: var(--cove-surface-hover);
-  border-color: rgba(142, 210, 255, 0.72);
+  border-color: var(--cove-control-border-hover);
   color: var(--cove-text);
 }
 
@@ -106,7 +106,7 @@
 }
 
 .cove-window__icon-button:focus-visible {
-  outline: 2px solid rgba(153, 223, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -121,18 +121,18 @@
 .cove-window__field-row textarea,
 .workspace-task-creator__field-row input,
 .workspace-task-creator__field-row textarea {
-  border: 1px solid var(--cove-border);
-  background: var(--cove-field);
+  border: 1px solid var(--cove-control-border);
+  background: var(--cove-control);
   color: var(--cove-text);
-  border-radius: 10px;
-  padding: 9px 11px;
+  border-radius: var(--cove-radius-sm);
+  padding: 8px 10px;
   font-size: calc(13px * var(--cove-ui-font-scale));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--cove-shadow-sm);
   transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    color 0.18s ease;
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    box-shadow var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .cove-window__field-row input:focus,
@@ -141,8 +141,8 @@
 .workspace-task-creator__field-row textarea:focus {
   outline: none;
   border-color: var(--cove-accent);
-  box-shadow: 0 0 0 1px var(--cove-accent);
-  background: rgba(255, 255, 255, 0.06);
+  box-shadow: var(--cove-focus-shadow);
+  background: var(--cove-control-hover);
 }
 
 .cove-window__field-row textarea,
@@ -174,10 +174,10 @@
 .cove-window__error,
 .workspace-task-creator__error {
   font-size: calc(12px * var(--cove-ui-font-scale));
-  color: #ffbaba;
-  background: rgba(97, 24, 35, 0.22);
-  border: 1px solid rgba(255, 120, 144, 0.28);
-  border-radius: 10px;
+  color: var(--cove-danger-text);
+  background: var(--cove-danger-surface);
+  border: 1px solid var(--cove-danger-border);
+  border-radius: var(--cove-radius-md);
   padding: 8px 10px;
 }
 
@@ -194,17 +194,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  padding: 7px 12px;
+  min-height: var(--cove-control-height-md);
+  border-radius: var(--cove-radius-sm);
+  padding: 6px 12px;
   cursor: pointer;
   font-size: calc(12px * var(--cove-ui-font-scale));
   font-weight: 600;
   white-space: nowrap;
   transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease;
+    background-color var(--cove-motion-normal) var(--cove-ease-standard),
+    border-color var(--cove-motion-normal) var(--cove-ease-standard),
+    color var(--cove-motion-normal) var(--cove-ease-standard),
+    transform var(--cove-motion-normal) var(--cove-ease-standard);
 }
 
 .cove-window__action:active,
@@ -249,24 +250,24 @@
 
 .cove-window__action--primary,
 .workspace-task-creator__action--primary {
-  border: 1px solid rgba(120, 157, 255, 0.7);
-  background: linear-gradient(180deg, rgba(84, 126, 235, 0.92), rgba(60, 99, 201, 0.92));
-  color: #eff6ff;
+  border: 1px solid var(--cove-accent);
+  background: var(--cove-accent);
+  color: var(--cove-accent-foreground);
 }
 
 .cove-window__action--primary:hover:not(:disabled),
 .workspace-task-creator__action--primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, rgba(103, 143, 245, 0.95), rgba(73, 113, 216, 0.95));
+  background: color-mix(in srgb, var(--cove-accent) 88%, var(--cove-accent-foreground));
 }
 
 .cove-window__action--danger,
 .workspace-task-creator__action--danger {
-  border: 1px solid rgba(232, 103, 120, 0.7);
-  background: linear-gradient(180deg, rgba(177, 55, 76, 0.9), rgba(133, 40, 57, 0.9));
-  color: #ffeef2;
+  border: 1px solid var(--cove-danger-border);
+  background: var(--cove-danger-surface);
+  color: var(--cove-danger-text);
 }
 
 .cove-window__action--danger:hover:not(:disabled),
 .workspace-task-creator__action--danger:hover:not(:disabled) {
-  background: linear-gradient(180deg, rgba(199, 69, 92, 0.92), rgba(149, 48, 66, 0.92));
+  background: color-mix(in srgb, var(--cove-danger-surface) 72%, var(--cove-danger) 28%);
 }

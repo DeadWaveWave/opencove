@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolvePerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
 import { usePerformanceIncidentRecorder } from '@app/renderer/performanceDiagnostics/performanceIncidentRecorder'
@@ -142,6 +142,7 @@ export default function App(): React.JSX.Element {
 
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
   const [settingsInitialPageId, setSettingsInitialPageId] = useState<SettingsPageId | null>(null)
+  const controlCenterButtonRef = useRef<HTMLButtonElement | null>(null)
   const {
     isCommandCenterOpen,
     isControlCenterOpen,
@@ -329,6 +330,7 @@ export default function App(): React.JSX.Element {
             memoryTrend={memoryTrend}
             performanceIncidents={performanceIncidents}
             updateState={updateState}
+            controlCenterButtonRef={controlCenterButtonRef}
             onToggleControlCenter={toggleControlCenter}
             onToggleCommandCenter={toggleCommandCenter}
             onTogglePerformanceMonitor={togglePerformanceMonitor}
@@ -409,8 +411,8 @@ export default function App(): React.JSX.Element {
           agentSettings={agentSettings}
           setAgentSettings={setAgentSettings}
           activeWorkspace={activeWorkspace}
-          isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
           isControlCenterOpen={isControlCenterOpen}
+          controlCenterAnchorRef={controlCenterButtonRef}
           onCloseControlCenter={closeControlCenter}
           onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
           onOpenSettings={handleOpenSettings}
@@ -460,11 +462,9 @@ export default function App(): React.JSX.Element {
             setProjectDeleteConfirmation(null)
           }}
           onConfirmProjectDelete={() => {
-            if (!projectDeleteConfirmation) {
-              return
+            if (projectDeleteConfirmation) {
+              void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
             }
-
-            void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
           }}
         />
         <AppShellModals

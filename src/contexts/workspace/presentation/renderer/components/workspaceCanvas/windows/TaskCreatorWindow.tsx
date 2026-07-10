@@ -131,6 +131,7 @@ export function TaskCreatorWindow({
           }}
           triggerRef={promptTemplatesTriggerRef}
           currentRequirement={taskCreator.requirement}
+          isWithinDialog
           onChangeRequirement={nextRequirement => {
             setTaskCreator(prev =>
               prev

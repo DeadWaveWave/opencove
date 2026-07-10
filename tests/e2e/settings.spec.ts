@@ -2,6 +2,33 @@ import { expect, test } from '@playwright/test'
 import { launchApp, selectCoveOption } from './workspace-canvas.helpers'
 
 test.describe('Settings', () => {
+  test('uses modal dialog focus semantics', async ({ browserName: _browserName }, testInfo) => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      const settingsButton = window.locator('[data-testid="app-header-settings"]')
+      await settingsButton.click()
+
+      const dialog = window.getByRole('dialog')
+      await expect(dialog).toBeVisible()
+      await expect(dialog).toHaveAttribute('aria-modal', 'true')
+      await expect(window.locator('[data-testid="settings-panel-search"]')).toBeFocused()
+
+      const screenshotPath = testInfo.outputPath('settings-dialog-dark.png')
+      await window.screenshot({ path: screenshotPath })
+      await testInfo.attach('settings-dialog-dark', {
+        path: screenshotPath,
+        contentType: 'image/png',
+      })
+
+      await window.keyboard.press('Escape')
+      await expect(dialog).toHaveCount(0)
+      await expect(settingsButton).toBeFocused()
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('persists agent provider and list-based custom model options', async ({
     browserName,
   }, testInfo) => {

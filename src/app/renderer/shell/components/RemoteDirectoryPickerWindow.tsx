@@ -247,7 +247,7 @@ export function RemoteDirectoryPickerWindow({
 
   return (
     <div
-      className="cove-window-backdrop"
+      className="cove-window-backdrop remote-directory-picker-backdrop"
       data-testid="remote-directory-picker-backdrop"
       onClick={() => {
         if (isBusy) {
@@ -256,7 +256,6 @@ export function RemoteDirectoryPickerWindow({
 
         onCancel()
       }}
-      style={{ zIndex: 28 }}
     >
       <section
         className="cove-window cove-window--xwide"

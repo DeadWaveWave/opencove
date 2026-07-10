@@ -83,8 +83,8 @@
 }
 
 .cove-window__segment--selected {
-  background: rgba(94, 156, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(94, 156, 255, 0.34);
+  background: var(--cove-control-selected);
+  box-shadow: inset 0 0 0 1px var(--cove-info-border);
   color: var(--cove-text);
 }
 
@@ -233,9 +233,9 @@
 }
 
 .cove-window__badge--success {
-  border: 1px solid rgba(84, 185, 128, 0.36);
-  background: rgba(84, 185, 128, 0.14);
-  color: var(--cove-text);
+  border: 1px solid var(--cove-success-border);
+  background: var(--cove-success-surface);
+  color: var(--cove-success);
 }
 
 .remote-endpoint-status {
@@ -254,13 +254,13 @@
 }
 
 .remote-endpoint-status--success {
-  border-color: color-mix(in srgb, rgba(84, 185, 128, 0.24) 70%, var(--cove-border-subtle));
-  background: color-mix(in srgb, rgba(84, 185, 128, 0.06) 52%, var(--cove-window-surface));
+  border-color: color-mix(in srgb, var(--cove-success-border) 70%, var(--cove-border-subtle));
+  background: color-mix(in srgb, var(--cove-success-surface) 52%, var(--cove-window-surface));
 }
 
 .remote-endpoint-status--info {
-  border-color: color-mix(in srgb, rgba(94, 156, 255, 0.26) 70%, var(--cove-border-subtle));
-  background: color-mix(in srgb, rgba(94, 156, 255, 0.06) 52%, var(--cove-window-surface));
+  border-color: color-mix(in srgb, var(--cove-info-border) 70%, var(--cove-border-subtle));
+  background: color-mix(in srgb, var(--cove-info-surface) 52%, var(--cove-window-surface));
 }
 
 .remote-endpoint-status--warning {
@@ -371,15 +371,15 @@
 }
 
 .remote-endpoint-status__badge--success {
-  border: 1px solid rgba(84, 185, 128, 0.38);
-  background: rgba(84, 185, 128, 0.14);
-  color: var(--cove-text);
+  border: 1px solid var(--cove-success-border);
+  background: var(--cove-success-surface);
+  color: var(--cove-success);
 }
 
 .remote-endpoint-status__badge--info {
-  border: 1px solid rgba(94, 156, 255, 0.34);
-  background: rgba(94, 156, 255, 0.12);
-  color: var(--cove-text);
+  border: 1px solid var(--cove-info-border);
+  background: var(--cove-info-surface);
+  color: var(--cove-info);
 }
 
 .remote-endpoint-status__badge--warning {
@@ -398,6 +398,10 @@
   border: 1px solid var(--cove-border-subtle);
   background: color-mix(in srgb, var(--cove-field) 72%, transparent);
   color: var(--cove-text-muted);
+}
+
+.remote-directory-picker-backdrop {
+  z-index: var(--cove-z-dialog-nested);
 }
 
 .remote-directory-picker__list {

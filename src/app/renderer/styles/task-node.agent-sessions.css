@@ -43,15 +43,15 @@
 }
 
 .task-node__agent-session-state--working {
-  background: rgba(61, 255, 164, 0.88);
+  background: var(--cove-success);
 }
 
 .task-node__agent-session-state--standby {
-  background: rgba(255, 190, 114, 0.94);
+  background: var(--cove-warning);
 }
 
 .task-node__agent-session-state--failed {
-  background: rgba(255, 96, 112, 0.9);
+  background: var(--cove-danger);
 }
 
 .task-node__agent-session-time {

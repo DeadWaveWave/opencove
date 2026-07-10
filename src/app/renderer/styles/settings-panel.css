@@ -1,31 +1,25 @@
 .settings-backdrop {
-  position: fixed;
-  inset: 0;
   background: var(--cove-backdrop);
-  backdrop-filter: blur(16px);
-  display: grid;
-  place-items: center;
-  z-index: 100;
+  backdrop-filter: blur(10px);
   transition:
-    background 180ms ease,
-    backdrop-filter 180ms ease;
+    background-color var(--cove-motion-normal) var(--cove-ease-standard),
+    backdrop-filter var(--cove-motion-normal) var(--cove-ease-standard);
 }
 
 .settings-panel {
-  width: min(980px, calc(100vw - 48px));
-  height: min(760px, calc(100vh - 48px));
+  width: min(960px, calc(100vw - 32px));
+  height: min(720px, calc(100vh - 32px));
   background: var(--cove-settings-panel-background);
-  border: 1px solid var(--cove-border-subtle);
-  border-radius: 18px;
+  border: 1px solid var(--cove-border);
+  border-radius: var(--cove-radius-xl);
   display: grid;
-  grid-template-columns: 208px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   overflow: hidden;
-  box-shadow: 0 40px 100px var(--cove-shadow-color-panel);
+  outline: none;
+  box-shadow: var(--cove-shadow-lg);
   transition:
-    background 180ms ease,
-    backdrop-filter 180ms ease,
-    opacity 180ms ease,
-    border-color 180ms ease;
+    background-color var(--cove-motion-normal) var(--cove-ease-standard),
+    border-color var(--cove-motion-normal) var(--cove-ease-standard);
 }
 
 /* --- Content Layout --- */
@@ -36,7 +30,8 @@
 }
 
 .settings-panel__header {
-  padding: 26px 32px 20px;
+  min-height: 56px;
+  padding: 0 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -51,11 +46,7 @@
 }
 
 .settings-panel__close {
-  all: unset;
   color: var(--cove-text-faint);
-  cursor: pointer;
-  font-size: calc(20px * var(--cove-ui-font-scale));
-  transition: color 0.2s;
 }
 
 .settings-panel__close:hover {
@@ -63,7 +54,7 @@
 }
 
 .settings-panel__content {
-  padding: 0 32px 32px;
+  padding: 0 24px 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -73,8 +64,8 @@
 .settings-panel__section {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 28px 0;
+  gap: 16px;
+  padding: 24px 0;
   border-top: 1px solid var(--cove-border-subtle);
 }
 
@@ -87,7 +78,7 @@
   font-size: calc(12px * var(--cove-ui-font-scale));
   font-weight: 600;
   letter-spacing: 0;
-  color: var(--cove-accent);
+  color: var(--cove-accent-text);
   margin: 0;
 }
 
@@ -285,49 +276,67 @@
   flex: 1;
 }
 
-/* --- Toggle Switch --- */
-.cove-toggle {
+/* --- Legacy settings toggle markup, aligned with the shared Toggle primitive. --- */
+.settings-panel .cove-toggle {
   position: relative;
-  display: inline-block;
-  width: 32px;
-  height: 18px;
+  display: inline-flex;
+  width: 38px;
+  height: var(--cove-control-height-xs);
   flex: 0 0 auto;
 }
 
-.cove-toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.cove-toggle__slider {
+.settings-panel .cove-toggle > input {
   position: absolute;
+  z-index: 1;
   inset: 0;
-  background-color: var(--cove-border);
-  transition: 0.2s;
-  border-radius: 20px;
-  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
-.cove-toggle__slider:before {
+.settings-panel .cove-toggle__slider {
+  position: absolute;
+  inset: 2px 1px;
+  border: 1px solid var(--cove-control-border);
+  border-radius: var(--cove-radius-round);
+  background: var(--cove-control);
+  pointer-events: none;
+  transition:
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    box-shadow var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+.settings-panel .cove-toggle__slider::before {
   position: absolute;
   content: '';
-  height: 14px;
-  width: 14px;
+  top: 2px;
   left: 2px;
-  bottom: 2px;
-  background-color: var(--cove-text-muted);
-  transition: 0.2s;
-  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--cove-radius-round);
+  background: var(--cove-text-muted);
+  box-shadow: var(--cove-shadow-sm);
+  transition:
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
-.cove-toggle input:checked + .cove-toggle__slider {
-  background-color: var(--cove-accent);
+.settings-panel .cove-toggle > input:checked + .cove-toggle__slider {
+  border-color: var(--cove-accent);
+  background: var(--cove-accent);
 }
 
-.cove-toggle input:checked + .cove-toggle__slider:before {
-  transform: translateX(14px);
-  background-color: #fff;
+.settings-panel .cove-toggle > input:checked + .cove-toggle__slider::before {
+  background: var(--cove-accent-foreground);
+  transform: translateX(16px);
+}
+
+.settings-panel .cove-toggle > input:focus-visible + .cove-toggle__slider {
+  border-color: var(--cove-focus-ring);
+  box-shadow: var(--cove-focus-shadow);
 }
 
 /* --- Vertical Section Layout --- */
@@ -396,10 +405,10 @@
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--cove-accent) 92%, #fff);
+  background: color-mix(in srgb, var(--cove-accent) 92%, var(--cove-accent-foreground));
   border: 1px solid color-mix(in srgb, var(--cove-accent) 60%, transparent);
   box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.22),
+    var(--cove-shadow-sm),
     0 0 0 2px color-mix(in srgb, var(--cove-surface) 75%, transparent);
   margin-top: -6px;
 }
@@ -410,7 +419,7 @@
 
 .settings-panel input[type='range']:focus-visible::-webkit-slider-thumb {
   box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.22),
+    var(--cove-shadow-sm),
     0 0 0 3px color-mix(in srgb, var(--cove-accent) 35%, transparent);
 }
 
@@ -424,6 +433,15 @@
   height: 16px;
   cursor: pointer;
   accent-color: var(--cove-accent);
+}
+
+.settings-panel .cove-toggle > input[type='checkbox'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
 }
 
 .settings-panel .cove-select,
