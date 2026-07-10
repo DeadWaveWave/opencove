@@ -3,6 +3,7 @@ import type {
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryEvent,
+  TerminalGeometryCommitResult,
   TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
@@ -10,11 +11,13 @@ import type {
 
 export type AttachedSessionState = {
   lastSeq: number
+  role: 'viewer' | 'controller'
+  authorityEpoch: number | null
 }
 
 type PtyStreamMessage =
-  | { type: 'hello_ack'; protocolVersion: number }
-  | { type: 'attached'; sessionId: string; seq?: number }
+  | { type: 'hello_ack'; protocolVersion: number; capabilities?: unknown }
+  | { type: 'attached'; sessionId: string; seq?: number; role?: string; authorityEpoch?: number }
   | { type: 'data'; sessionId: string; seq?: number; data?: string }
   | { type: 'exit'; sessionId: string; seq?: number; exitCode?: number }
   | {
@@ -40,7 +43,8 @@ type PtyStreamMessage =
       reason?: string
       recovery?: string
     }
-  | { type: 'control_changed'; sessionId: string }
+  | { type: 'control_changed'; sessionId: string; role?: string; authorityEpoch?: number }
+  | ({ type: 'resize_result' } & Record<string, unknown>)
   | { type: 'error'; code?: string; message?: string; sessionId?: string }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -76,6 +80,52 @@ function normalizeTerminalSessionState(value: unknown): 'working' | 'standby' | 
   return null
 }
 
+export function parseTerminalGeometryCommitResult(
+  record: Record<string, unknown>,
+): TerminalGeometryCommitResult | null {
+  const sessionId = normalizeOptionalString(record.sessionId)
+  const operationId = normalizeOptionalString(record.operationId)
+  const status =
+    record.status === 'accepted' ||
+    record.status === 'rejected_not_controller' ||
+    record.status === 'rejected_stale_authority' ||
+    record.status === 'superseded' ||
+    record.status === 'session_not_found' ||
+    record.status === 'runtime_failed'
+      ? record.status
+      : null
+  if (!sessionId || !operationId || !status) {
+    return null
+  }
+  const rawGeometry = isRecord(record.geometry)
+    ? (record.geometry as Record<string, unknown>)
+    : null
+  const cols = normalizeOptionalFiniteInt(rawGeometry?.cols)
+  const rows = normalizeOptionalFiniteInt(rawGeometry?.rows)
+  const rawRevision = rawGeometry?.revision
+  const revision = rawRevision === null ? null : normalizeOptionalFiniteInt(rawRevision)
+  const geometry =
+    rawGeometry && cols !== null && cols > 0 && rows !== null && rows > 0
+      ? { cols, rows, revision: revision !== null && revision > 0 ? revision : null }
+      : null
+  const rawAuthority = isRecord(record.authority)
+    ? (record.authority as Record<string, unknown>)
+    : null
+  const role =
+    rawAuthority?.role === 'controller' || rawAuthority?.role === 'viewer'
+      ? rawAuthority.role
+      : null
+  const epoch = normalizeOptionalFiniteInt(rawAuthority?.epoch)
+  return {
+    sessionId,
+    operationId,
+    status,
+    changed: record.changed === true,
+    geometry,
+    authority: role && epoch !== null && epoch >= 0 ? { role, epoch } : null,
+  }
+}
+
 export function createRemotePtyStreamMessageHandler(options: {
   attachedSessions: Map<string, AttachedSessionState>
   sendToSessionSubscribers: (sessionId: string, channel: string, payload: unknown) => void
@@ -88,9 +138,16 @@ export function createRemotePtyStreamMessageHandler(options: {
   onSessionExit: (sessionId: string) => void
   onSessionAttached: (sessionId: string) => void
   handshake: {
-    onHelloAck: () => void
+    onHelloAck: (capabilities: { geometryCommitAck: boolean }) => void
     onHandshakeError: (error: Error) => void
   }
+  onResizeResult: (result: TerminalGeometryCommitResult) => void
+  onGeometry: (event: TerminalGeometryEvent) => void
+  onAuthorityChanged: (
+    sessionId: string,
+    authority: { role: 'viewer' | 'controller'; epoch: number },
+  ) => void
+  onSessionError: (sessionId: string, code: string | null, message: string) => void
 }): (raw: string) => void {
   return (raw: string) => {
     let parsed: unknown
@@ -107,18 +164,24 @@ export function createRemotePtyStreamMessageHandler(options: {
     const message = parsed as PtyStreamMessage
 
     if (message.type === 'hello_ack') {
-      options.handshake.onHelloAck()
+      const capabilities = isRecord(message.capabilities)
+        ? (message.capabilities as Record<string, unknown>)
+        : null
+      options.handshake.onHelloAck({ geometryCommitAck: capabilities?.geometryCommitAck === 1 })
       return
     }
 
     if (message.type === 'error') {
-      options.handshake.onHandshakeError(
-        new Error(
-          normalizeOptionalString(message.message) ??
-            normalizeOptionalString(message.code) ??
-            'PTY error',
-        ),
-      )
+      const errorMessage =
+        normalizeOptionalString(message.message) ??
+        normalizeOptionalString(message.code) ??
+        'PTY error'
+      const errorSessionId = normalizeOptionalString(message.sessionId)
+      if (errorSessionId) {
+        options.onSessionError(errorSessionId, normalizeOptionalString(message.code), errorMessage)
+      } else {
+        options.handshake.onHandshakeError(new Error(errorMessage))
+      }
       return
     }
 
@@ -129,9 +192,44 @@ export function createRemotePtyStreamMessageHandler(options: {
 
     if (message.type === 'attached') {
       if (!options.attachedSessions.has(sessionId)) {
-        options.attachedSessions.set(sessionId, { lastSeq: 0 })
+        options.attachedSessions.set(sessionId, {
+          lastSeq: 0,
+          role: 'viewer',
+          authorityEpoch: null,
+        })
+      }
+      const state = options.attachedSessions.get(sessionId)
+      if (state) {
+        state.role = message.role === 'controller' ? 'controller' : 'viewer'
+        state.authorityEpoch = Math.max(0, normalizeOptionalFiniteInt(message.authorityEpoch) ?? 0)
+        options.onAuthorityChanged(sessionId, {
+          role: state.role,
+          epoch: state.authorityEpoch,
+        })
       }
       options.onSessionAttached(sessionId)
+      return
+    }
+
+    if (message.type === 'control_changed') {
+      const state = options.attachedSessions.get(sessionId)
+      if (!state) {
+        return
+      }
+      state.role = message.role === 'controller' ? 'controller' : 'viewer'
+      state.authorityEpoch = Math.max(0, normalizeOptionalFiniteInt(message.authorityEpoch) ?? 0)
+      options.onAuthorityChanged(sessionId, {
+        role: state.role,
+        epoch: state.authorityEpoch,
+      })
+      return
+    }
+
+    if (message.type === 'resize_result') {
+      const result = parseTerminalGeometryCommitResult(message)
+      if (result) {
+        options.onResizeResult(result)
+      }
       return
     }
 
@@ -193,6 +291,7 @@ export function createRemotePtyStreamMessageHandler(options: {
         ...(revision !== null && revision > 0 ? { revision } : {}),
       }
       options.sendToAllWindows(IPC_CHANNELS.ptyGeometry, eventPayload)
+      options.onGeometry(eventPayload)
       return
     }
 

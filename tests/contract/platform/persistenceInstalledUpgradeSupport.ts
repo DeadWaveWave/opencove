@@ -227,7 +227,9 @@ function createTablesForVersion(version: InstalledUpgradeSourceVersion): Map<str
     return createV2CoreTables()
   }
 
-  return currentTablesWithout(COLUMNS_ADDED_AFTER_VERSION[version] ?? {})
+  const tables = currentTablesWithout(COLUMNS_ADDED_AFTER_VERSION[version] ?? {})
+  tables.delete('terminal_recovery_records')
+  return tables
 }
 
 export function assertInstalledUpgradeCoverageMatchesCurrentSchemaVersion(): void {

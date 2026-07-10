@@ -263,6 +263,9 @@ async function persistNextAppState(
 export function registerSyncHandlers(
   controlSurface: ControlSurface,
   getPersistenceStore: () => Promise<PersistenceStore>,
+  options: {
+    onStatePersisted?: (state: NormalizedPersistedAppState) => Promise<void>
+  } = {},
 ): void {
   controlSurface.register('sync.state', {
     kind: 'query',
@@ -293,7 +296,18 @@ export function registerSyncHandlers(
     validate: normalizeWriteWorkspaceStateRawPayload,
     handle: async (_ctx, payload): Promise<PersistWriteResult> => {
       const store = await getPersistenceStore()
-      return await store.writeWorkspaceStateRaw(payload.raw)
+      const result = await store.writeWorkspaceStateRaw(payload.raw)
+      if (result.ok && options.onStatePersisted) {
+        try {
+          const normalized = normalizePersistedAppState(JSON.parse(payload.raw) as unknown)
+          if (normalized) {
+            await options.onStatePersisted(normalized)
+          }
+        } catch {
+          // Persistence validation remains authoritative; recovery binding is best-effort here.
+        }
+      }
+      return result
     },
     defaultErrorCode: 'common.unexpected',
   })
@@ -360,6 +374,10 @@ export function registerSyncHandlers(
       await persistNextAppState(store, payload.state, {
         allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
       })
+      const normalizedState = normalizePersistedAppState(payload.state)
+      if (normalizedState && options.onStatePersisted) {
+        await options.onStatePersisted(normalizedState).catch(() => undefined)
+      }
       const nextRevision = await store.readAppStateRevision()
       return { revision: nextRevision }
     },

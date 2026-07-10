@@ -1,146 +1,23 @@
 import React from 'react'
 import { render, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-declare global {
-  interface Window {
-    ResizeObserver: typeof ResizeObserver
-  }
-}
-
-vi.mock('@xterm/xterm', () => {
-  class MockTerminal {
-    public static lastInstance: MockTerminal | null = null
-
-    public cols = 80
-    public rows = 24
-    public options: Record<string, unknown> = { fontSize: 13 }
-    public refreshCalls = 0
-
-    public constructor(options?: Record<string, unknown> & { cols?: number; rows?: number }) {
-      MockTerminal.lastInstance = this
-      this.cols = options?.cols ?? 80
-      this.rows = options?.rows ?? 24
-      this.options = {
-        ...this.options,
-        ...(options ?? {}),
-      }
-    }
-
-    public loadAddon(addon: { activate?: (terminal: MockTerminal) => void }): void {
-      addon.activate?.(this)
-    }
-
-    public open(): void {}
-
-    public focus(): void {}
-
-    public refresh(): void {
-      this.refreshCalls += 1
-    }
-
-    public dispose(): void {}
-
-    public attachCustomKeyEventHandler(): void {}
-
-    public registerLinkProvider(): { dispose: () => void } {
-      return { dispose: () => undefined }
-    }
-
-    public onData() {
-      return { dispose: () => undefined }
-    }
-
-    public onBinary() {
-      return { dispose: () => undefined }
-    }
-
-    public write(_data: string, callback?: () => void): void {
-      callback?.()
-    }
-  }
-
-  return {
-    Terminal: MockTerminal,
-    __getLastTerminal: () => MockTerminal.lastInstance,
-  }
-})
-
-vi.mock('@xterm/addon-fit', () => {
-  class MockFitAddon {
-    public fit(): void {}
-  }
-
-  return { FitAddon: MockFitAddon }
-})
-
-vi.mock('@xterm/addon-serialize', () => {
-  class MockSerializeAddon {
-    public activate(): void {}
-
-    public serialize(): string {
-      return '[mock-serialized]'
-    }
-
-    public dispose(): void {}
-  }
-
-  return { SerializeAddon: MockSerializeAddon }
-})
-
-vi.mock('@xyflow/react', async () => {
-  const ReactModule = await import('react')
-
-  return {
-    Handle: ({ type }: { type: string }) =>
-      ReactModule.createElement('div', { 'data-testid': `react-flow-handle-${type}` }),
-    Position: {
-      Left: 'left',
-      Right: 'right',
-    },
-    useStore: (selector: (state: unknown) => unknown) =>
-      selector({ coveDragSurfaceSelectionMode: false }),
-  }
-})
-
-function installResizeObserverMock() {
-  if (typeof window.ResizeObserver !== 'undefined') {
-    return
-  }
-
-  window.ResizeObserver = class ResizeObserver {
-    public observe(): void {}
-    public disconnect(): void {}
-    public unobserve(): void {}
-  }
-}
-
-function installPtyApiMock() {
-  Object.defineProperty(window, 'opencoveApi', {
-    configurable: true,
-    writable: true,
-    value: {
-      meta: {
-        isTest: true,
-        platform: 'darwin',
-        windowsPty: null,
-      },
-      pty: {
-        attach: vi.fn(async () => undefined),
-        detach: vi.fn(async () => undefined),
-        snapshot: vi.fn(async () => ({ data: '' })),
-        onData: vi.fn(() => () => undefined),
-        onExit: vi.fn(() => () => undefined),
-        write: vi.fn(async () => undefined),
-        resize: vi.fn(async () => undefined),
-      },
-    },
-  })
-}
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Terminal } from '@xterm/xterm'
+import { getTerminalAppearanceOwner } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalAppearance'
+import {
+  installTerminalThemePtyApiMock as installPtyApiMock,
+  installTerminalThemeResizeObserverMock as installResizeObserverMock,
+} from './terminalNode.theme.testHarness'
 
 describe('TerminalNode theme behavior', () => {
   beforeEach(() => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback =>
+      window.setTimeout(() => callback(performance.now()), 0),
+    )
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(handle => {
+      window.clearTimeout(handle)
+    })
     document.documentElement.dataset.coveTheme = 'dark'
+    document.documentElement.dataset.coveThemeId = 'dark'
     document.documentElement.style.setProperty('--cove-terminal-background', '#0a0f1d')
     document.documentElement.style.setProperty('--cove-terminal-foreground', '#d6e4ff')
     document.documentElement.style.setProperty('--cove-terminal-cursor', '#d6e4ff')
@@ -148,6 +25,10 @@ describe('TerminalNode theme behavior', () => {
       '--cove-terminal-selection',
       'rgba(94, 156, 255, 0.35)',
     )
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('synchronizes the runtime xterm theme when the app theme changes', async () => {
@@ -186,6 +67,7 @@ describe('TerminalNode theme behavior', () => {
     })
 
     document.documentElement.dataset.coveTheme = 'light'
+    document.documentElement.dataset.coveThemeId = 'light'
     document.documentElement.style.setProperty('--cove-terminal-background', '#fbfcff')
     document.documentElement.style.setProperty(
       '--cove-terminal-foreground',
@@ -262,6 +144,7 @@ describe('TerminalNode theme behavior', () => {
     })
 
     document.documentElement.dataset.coveTheme = 'light'
+    document.documentElement.dataset.coveThemeId = 'light'
     document.documentElement.style.setProperty('--cove-terminal-background', '#fbfcff')
     document.documentElement.style.setProperty(
       '--cove-terminal-foreground',
@@ -291,6 +174,148 @@ describe('TerminalNode theme behavior', () => {
         'data-cove-terminal-theme',
         'dark',
       )
+    })
+  })
+
+  it('uses ember-light terminal semantics instead of its light UI base scheme', async () => {
+    installResizeObserverMock()
+    installPtyApiMock()
+
+    const { TerminalNode } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
+    const { __getLastTerminal } = await import('@xterm/xterm')
+    const previousTerminal = __getLastTerminal()
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
+    const themeListenerBaseline = addEventListenerSpy.mock.calls.filter(
+      ([type]) => type === 'opencove-theme-changed',
+    ).length
+    const { container } = render(
+      <TerminalNode
+        nodeId="node-ember-light"
+        sessionId="session-ember-light"
+        title="Ember Light"
+        kind="terminal"
+        status={null}
+        lastError={null}
+        position={{ x: 0, y: 0 }}
+        width={520}
+        height={360}
+        terminalFontSize={13}
+        scrollback={null}
+        onClose={() => undefined}
+        onResize={() => undefined}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(__getLastTerminal()).not.toBe(previousTerminal)
+      expect(
+        addEventListenerSpy.mock.calls.filter(([type]) => type === 'opencove-theme-changed'),
+      ).toHaveLength(themeListenerBaseline + 1)
+    })
+
+    document.documentElement.dataset.coveTheme = 'light'
+    document.documentElement.dataset.coveThemeId = 'ember-light'
+    document.documentElement.style.setProperty('--cove-terminal-background', '#15110e')
+    document.documentElement.style.setProperty('--cove-terminal-foreground', '#d4c4ae')
+    document.documentElement.style.setProperty('--cove-terminal-cursor', '#d4c4ae')
+    document.documentElement.style.setProperty(
+      '--cove-terminal-selection',
+      'rgba(203, 131, 85, 0.32)',
+    )
+    const terminalNode = container.querySelector('.terminal-node') as HTMLElement
+    terminalNode.style.setProperty('--cove-terminal-background', '#15110e')
+    terminalNode.style.setProperty('--cove-terminal-foreground', '#d4c4ae')
+    terminalNode.style.setProperty('--cove-terminal-cursor', '#d4c4ae')
+    terminalNode.style.setProperty('--cove-terminal-selection', 'rgba(203, 131, 85, 0.32)')
+    window.dispatchEvent(
+      new CustomEvent('opencove-theme-changed', {
+        detail: { theme: 'light', themeId: 'ember-light' },
+      }),
+    )
+
+    await waitFor(() => {
+      expect(
+        getTerminalAppearanceOwner(__getLastTerminal() as unknown as Terminal)?.getDesiredSnapshot()
+          .xtermTheme.background,
+      ).toBe('#15110e')
+      expect(__getLastTerminal()?.options.theme).toEqual(
+        expect.objectContaining({
+          background: '#15110e',
+          foreground: '#d4c4ae',
+        }),
+      )
+      expect(container.querySelector('.terminal-node')).toHaveAttribute(
+        'data-cove-terminal-node-theme',
+        'dark',
+      )
+      expect(container.querySelector('.terminal-node__terminal')).toHaveAttribute(
+        'data-cove-terminal-theme',
+        'dark',
+      )
+    })
+  })
+
+  it('coalesces same-frame named-theme changes to one final xterm refresh', async () => {
+    installResizeObserverMock()
+    installPtyApiMock()
+
+    const { TerminalNode } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
+    const { __getLastTerminal } = await import('@xterm/xterm')
+    const previousTerminal = __getLastTerminal()
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
+    const themeListenerBaseline = addEventListenerSpy.mock.calls.filter(
+      ([type]) => type === 'opencove-theme-changed',
+    ).length
+    const { container } = render(
+      <TerminalNode
+        nodeId="node-theme-coalescing"
+        sessionId="session-theme-coalescing"
+        title="Theme coalescing"
+        kind="terminal"
+        status={null}
+        lastError={null}
+        position={{ x: 0, y: 0 }}
+        width={520}
+        height={360}
+        terminalFontSize={13}
+        scrollback={null}
+        onClose={() => undefined}
+        onResize={() => undefined}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(__getLastTerminal()).not.toBe(previousTerminal)
+      expect(
+        addEventListenerSpy.mock.calls.filter(([type]) => type === 'opencove-theme-changed'),
+      ).toHaveLength(themeListenerBaseline + 1)
+    })
+    const terminal = __getLastTerminal()!
+    const refreshBaseline = terminal.refreshCalls
+    const terminalNode = container.querySelector('.terminal-node') as HTMLElement
+
+    document.documentElement.dataset.coveThemeId = 'ember'
+    document.documentElement.style.setProperty('--cove-terminal-background', '#19120e')
+    terminalNode.style.setProperty('--cove-terminal-background', '#19120e')
+    window.dispatchEvent(
+      new CustomEvent('opencove-theme-changed', {
+        detail: { theme: 'dark', themeId: 'ember' },
+      }),
+    )
+    document.documentElement.dataset.coveThemeId = 'dark'
+    document.documentElement.style.setProperty('--cove-terminal-background', '#111827')
+    terminalNode.style.setProperty('--cove-terminal-background', '#111827')
+    window.dispatchEvent(
+      new CustomEvent('opencove-theme-changed', {
+        detail: { theme: 'dark', themeId: 'dark' },
+      }),
+    )
+
+    await waitFor(() => {
+      expect(terminal.options.theme).toEqual(expect.objectContaining({ background: '#111827' }))
+      expect(terminal.refreshCalls).toBe(refreshBaseline + 1)
     })
   })
 

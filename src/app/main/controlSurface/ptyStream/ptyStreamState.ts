@@ -29,6 +29,8 @@ export type SessionState = {
   status: 'running' | 'exited'
   exitCode: number | null
   seq: number
+  /** Local replay fence established by an authoritative presentation replacement. */
+  presentationBaselineSeq: number
   chunks: SessionChunk[]
   totalBytes: number
   truncated: boolean
@@ -38,8 +40,14 @@ export type SessionState = {
   pendingChars: number
   flushTimer: NodeJS.Timeout | null
   subscribers: Set<string>
+  controllerCandidateClientIds: Set<string>
   controllerClientId: string | null
+  authorityEpoch: number
+  operationChain: Promise<void>
+  operationQueueDepth: number
   presentationSession: TerminalPresentationSession
+  /** Immutable archived-epoch envelope prepended only to client-facing presentation snapshots. */
+  displayPrefix: string
 }
 
 export type ClientState = {

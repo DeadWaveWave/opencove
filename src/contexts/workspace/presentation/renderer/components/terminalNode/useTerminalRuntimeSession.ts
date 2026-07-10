@@ -7,7 +7,6 @@ import {
   getCachedTerminalScreenState,
   isCachedTerminalScreenStateInvalidated,
 } from './screenStateCache'
-import { createTerminalDomTextOverhangGeometryCommitScheduler } from './syncTerminalNodeSize'
 import { resolveAttachablePtyApi } from './attachablePty'
 import { cacheTerminalScreenStateOnUnmount } from './cacheTerminalScreenState'
 import { MAX_SCROLLBACK_CHARS } from './constants'
@@ -29,7 +28,6 @@ import {
   shouldPreferMeasuredInitialGeometryCommit,
 } from './useTerminalRuntimeSession.initialGeometry'
 import {
-  createOptionalOpenCodeThemeBridge,
   shouldReusePreservedXtermSession,
   scheduleTestEnvironmentTerminalAutoFocus,
   prepareRuntimePresentationAttach,
@@ -40,10 +38,11 @@ import {
   shouldTreatHydratedAgentBaselineAsPlaceholder,
   type TerminalHydrationBaselineSource,
 } from './useTerminalRuntimeSession.support'
+import { createOptionalOpenCodeThemeBridge } from './openCodeThemeBridgeFactory'
 import { createRestoredAgentVisibilityGate } from './restoredAgentVisibilityGate'
 import { startRuntimeTerminalHydration } from './runtimeHydrationStarter'
 import { subscribeRuntimeTerminalEvents } from './useTerminalRuntimeSession.events'
-
+import { resetTerminalGeometryRevisionDomain } from './terminalGeometryCoordinator'
 export function useTerminalRuntimeSession({
   nodeId,
   sessionId,
@@ -167,7 +166,9 @@ export function useTerminalRuntimeSession({
       canReusePreservedSession,
     })
     terminalRef.current = session.terminal
+    resetTerminalGeometryRevisionDomain(session.terminal)
     fitAddonRef.current = session.fitAddon
+    applyTerminalTheme()
     const terminal = session.terminal
     setRendererKindAndApply(session.renderer.kind)
     const disposeInteractionWindow = registerTerminalUserInteractionWindow({
@@ -281,16 +282,6 @@ export function useTerminalRuntimeSession({
       sessionId,
       terminal,
     })
-    const domTextOverhangGeometryCommitScheduler =
-      createTerminalDomTextOverhangGeometryCommitScheduler({
-        terminalRef,
-        fitAddonRef,
-        containerRef,
-        isPointerResizingRef,
-        lastCommittedPtySizeRef,
-        suppressPtyResizeRef,
-        sessionId,
-      })
     const outputScheduler = createTerminalOutputScheduler({
       terminal,
       scrollbackBuffer,
@@ -300,7 +291,6 @@ export function useTerminalRuntimeSession({
         committedScreenStateRecorder.record(committedScrollbackBuffer.snapshot())
         scheduleTranscriptSync()
         restoredAgentVisibilityGate.notifyWriteCommitted(data)
-        domTextOverhangGeometryCommitScheduler.schedule()
       },
     })
     outputSchedulerRef.current = outputScheduler
@@ -333,7 +323,6 @@ export function useTerminalRuntimeSession({
       syncTerminalSize,
       onReplayWriteCommitted: () => {
         restoredAgentVisibilityGate.notifyReplayWriteCommitted()
-        domTextOverhangGeometryCommitScheduler.schedule()
       },
       onRevealed: restoredAgentVisibilityGate.revealAfterHydration,
       isDisposed: () => isDisposed,
@@ -382,12 +371,6 @@ export function useTerminalRuntimeSession({
       shouldGateInitialUserInput,
       shouldAwaitAgentVisibleOutput,
       isDisposed: () => isDisposed,
-      onHydrated: () => {
-        domTextOverhangGeometryCommitScheduler.schedule()
-      },
-      onPresentationSnapshotGeometryApplied: () => {
-        domTextOverhangGeometryCommitScheduler.schedule()
-      },
     })
     const disposeRuntimeRendererAndThemeSync = registerRuntimeRendererAndThemeSync({
       terminal,
@@ -426,7 +409,6 @@ export function useTerminalRuntimeSession({
       disposeInteractionWindow()
       unsubscribeRuntimeEvents()
       restoredAgentVisibilityGate.dispose()
-      domTextOverhangGeometryCommitScheduler.dispose()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
       disposeRuntimeTestHandles()

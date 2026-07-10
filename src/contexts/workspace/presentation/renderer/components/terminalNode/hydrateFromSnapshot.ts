@@ -52,6 +52,45 @@ function shouldSkipRawDeltaForSerializedScreen(serialized: string, delta: string
   return true
 }
 
+function leavesTerminalInAlternateBuffer(snapshot: string): boolean {
+  return (
+    snapshot.lastIndexOf(ALT_BUFFER_ENTER_MARKER) > snapshot.lastIndexOf(ALT_BUFFER_EXIT_MARKER)
+  )
+}
+
+function captureActiveScreenText(terminal: Terminal): string {
+  const buffer = terminal.buffer?.active
+  if (!buffer) {
+    return ''
+  }
+
+  const startLine = Math.max(0, buffer.viewportY)
+  const lines: string[] = []
+  for (let offset = 0; offset < terminal.rows; offset += 1) {
+    const line = buffer.getLine(startLine + offset)
+    lines.push(line?.translateToString(true) ?? '')
+  }
+  return lines.join('\r\n').trimEnd()
+}
+
+function createTerminalEpochTransition(options: {
+  terminal: Terminal
+  previousSnapshot: string
+  alternateScreenPreview: string
+}): string {
+  const exitAlternateBuffer = leavesTerminalInAlternateBuffer(options.previousSnapshot)
+    ? ALT_BUFFER_EXIT_MARKER
+    : ''
+  const archivedAlternateScreen =
+    exitAlternateBuffer.length > 0 && options.alternateScreenPreview.length > 0
+      ? `\r\n${options.alternateScreenPreview}`
+      : ''
+  const scrollPreviousViewportIntoHistory = '\r\n'.repeat(
+    Math.max(1, Math.min(200, options.terminal.rows)),
+  )
+  return `${exitAlternateBuffer}${archivedAlternateScreen}${scrollPreviousViewportIntoHistory}`
+}
+
 function shouldUsePresentationSnapshotAsVisibleBaseline(options: {
   kind: 'terminal' | 'agent'
   persistedSnapshot: string
@@ -94,6 +133,7 @@ export async function hydrateTerminalFromSnapshot({
   terminal,
   kind,
   useLivePtySnapshotDuringHydration = kind !== 'agent',
+  runtimeEpochChanged = false,
   skipInitialPlaceholderWrite = false,
   cachedScreenState,
   persistedSnapshot,
@@ -112,6 +152,7 @@ export async function hydrateTerminalFromSnapshot({
   terminal: Terminal
   kind: 'terminal' | 'agent'
   useLivePtySnapshotDuringHydration?: boolean
+  runtimeEpochChanged?: boolean
   skipInitialPlaceholderWrite?: boolean
   cachedScreenState: CachedTerminalScreenState | null
   persistedSnapshot: string
@@ -159,11 +200,31 @@ export async function hydrateTerminalFromSnapshot({
     ? presentationSnapshot
     : null
   const hasPresentationSnapshotPayload = (presentationSnapshot?.serializedScreen.length ?? 0) > 0
+  const shouldArchivePreviousTerminalEpoch =
+    runtimeEpochChanged &&
+    kind === 'terminal' &&
+    rendererPlaceholderSnapshot.length > 0 &&
+    visiblePresentationSnapshot !== null
 
   applyPresentationSnapshotGeometry(terminal, presentationSnapshot)
   onPresentationSnapshotGeometryApplied?.()
 
-  if (visiblePresentationSnapshot) {
+  if (shouldArchivePreviousTerminalEpoch && visiblePresentationSnapshot) {
+    await writeTerminalAsync(terminal, rendererPlaceholderSnapshot)
+    const alternateScreenPreview = captureActiveScreenText(terminal)
+    const epochTransition = createTerminalEpochTransition({
+      terminal,
+      previousSnapshot: rendererPlaceholderSnapshot,
+      alternateScreenPreview,
+    })
+    await writeTerminalAsync(terminal, epochTransition)
+    await writeTerminalAsync(terminal, visiblePresentationSnapshot.serializedScreen)
+    onPresentationSnapshotAccepted?.(visiblePresentationSnapshot)
+    rawSnapshot = `${rendererPlaceholderSnapshot}${epochTransition}${visiblePresentationSnapshot.serializedScreen}`
+    hydrationBaselineSource = 'presentation_snapshot'
+    onHydratedWriteCommitted(rawSnapshot)
+    await awaitAttachForPresentationSnapshot(attachPromise)
+  } else if (visiblePresentationSnapshot) {
     await writeTerminalAsync(terminal, visiblePresentationSnapshot.serializedScreen)
     onPresentationSnapshotAccepted?.(visiblePresentationSnapshot)
     rawSnapshot = visiblePresentationSnapshot.serializedScreen

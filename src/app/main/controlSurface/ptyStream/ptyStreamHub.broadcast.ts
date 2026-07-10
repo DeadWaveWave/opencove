@@ -21,7 +21,11 @@ export function setSessionController(options: {
   broadcastControlChanged: (sessionId: string) => void
 }): void {
   const { session, controllerClientId, clients } = options
+  if (session.controllerClientId === controllerClientId) {
+    return
+  }
   session.controllerClientId = controllerClientId
+  session.authorityEpoch += 1
 
   for (const subscriberId of session.subscribers) {
     const client = clients.get(subscriberId)
@@ -157,7 +161,7 @@ export function broadcastControlChanged(options: {
     }
 
     const role = client.rolesBySessionId.get(options.sessionId) ?? 'viewer'
-    sendPtyControlChanged(client.ws, options.sessionId, controllerDto, role)
+    sendPtyControlChanged(client.ws, options.sessionId, controllerDto, role, session.authorityEpoch)
   }
 }
 

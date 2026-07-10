@@ -232,6 +232,68 @@ describe('PtyHostSupervisor', () => {
     supervisor.dispose()
   })
 
+  it('waits for the PTY host resize response', async () => {
+    const testProcess = new TestPtyHostProcess()
+    const supervisor = new PtyHostSupervisor({
+      baseDir: '/',
+      resolveEntryPath: () => '/fake/ptyHost.js',
+      createProcess: () => testProcess,
+      reportIssue: () => undefined,
+    })
+
+    const spawnPromise = supervisor.spawn({
+      command: '/bin/zsh',
+      args: [],
+      cwd: '/',
+      cols: 80,
+      rows: 24,
+    })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 1 })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
+      testProcess,
+      'spawn',
+    )
+    testProcess.emit('message', {
+      type: 'response',
+      requestId: sentSpawn?.requestId,
+      ok: true,
+      result: { sessionId: 's-resize' },
+    })
+    await spawnPromise
+
+    const resizePromise = supervisor.resize('s-resize', 100, 32)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const sentResize = findLastSentMessage<{
+      type: 'resize'
+      requestId: string
+      sessionId: string
+      cols: number
+      rows: number
+    }>(testProcess, 'resize')
+
+    expect(sentResize).toMatchObject({
+      type: 'resize',
+      sessionId: 's-resize',
+      cols: 100,
+      rows: 32,
+    })
+
+    testProcess.emit('message', {
+      type: 'response',
+      requestId: sentResize?.requestId,
+      ok: true,
+      result: { sessionId: 's-resize', cols: 100, rows: 32 },
+    })
+
+    await expect(resizePromise).resolves.toEqual({
+      sessionId: 's-resize',
+      cols: 100,
+      rows: 32,
+    })
+    supervisor.dispose()
+  })
+
   it('ignores shutdown send failures while disposing', async () => {
     const testProcess = new TestPtyHostProcess()
     testProcess.failPostMessageTypes.add('shutdown')

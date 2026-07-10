@@ -68,6 +68,7 @@ export function startRuntimeTerminalHydration({
     terminal,
     kind: kind === 'agent' ? 'agent' : 'terminal',
     useLivePtySnapshotDuringHydration: kind !== 'agent' || isLiveSessionReattach,
+    runtimeEpochChanged: !isLiveSessionReattach,
     skipInitialPlaceholderWrite: shouldSkipInitialPlaceholderWrite,
     cachedScreenState,
     persistedSnapshot: kind === 'agent' ? '' : scrollbackBuffer.snapshot(),

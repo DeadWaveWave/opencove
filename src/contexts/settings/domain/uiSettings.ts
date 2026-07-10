@@ -11,15 +11,21 @@ export type UiThemeBaseScheme = ResolvedUiTheme | 'system'
 export interface UiThemeDescriptor {
   id: UiTheme
   baseScheme: UiThemeBaseScheme
+  terminalScheme: UiThemeBaseScheme
   i18nKey: string
 }
 
 export const UI_THEME_DESCRIPTORS: Record<UiTheme, UiThemeDescriptor> = {
-  system: { id: 'system', baseScheme: 'system', i18nKey: 'system' },
-  light: { id: 'light', baseScheme: 'light', i18nKey: 'light' },
-  dark: { id: 'dark', baseScheme: 'dark', i18nKey: 'dark' },
-  ember: { id: 'ember', baseScheme: 'dark', i18nKey: 'ember' },
-  'ember-light': { id: 'ember-light', baseScheme: 'light', i18nKey: 'emberLight' },
+  system: { id: 'system', baseScheme: 'system', terminalScheme: 'system', i18nKey: 'system' },
+  light: { id: 'light', baseScheme: 'light', terminalScheme: 'light', i18nKey: 'light' },
+  dark: { id: 'dark', baseScheme: 'dark', terminalScheme: 'dark', i18nKey: 'dark' },
+  ember: { id: 'ember', baseScheme: 'dark', terminalScheme: 'dark', i18nKey: 'ember' },
+  'ember-light': {
+    id: 'ember-light',
+    baseScheme: 'light',
+    terminalScheme: 'dark',
+    i18nKey: 'emberLight',
+  },
 }
 
 export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
@@ -38,4 +44,12 @@ export function resolveUiThemeBaseScheme(theme: UiTheme, prefersDark: boolean): 
     return prefersDark ? 'dark' : 'light'
   }
   return baseScheme
+}
+
+export function resolveUiThemeTerminalScheme(
+  theme: UiTheme,
+  resolvedBaseScheme: ResolvedUiTheme,
+): ResolvedUiTheme {
+  const terminalScheme = UI_THEME_DESCRIPTORS[theme].terminalScheme
+  return terminalScheme === 'system' ? resolvedBaseScheme : terminalScheme
 }

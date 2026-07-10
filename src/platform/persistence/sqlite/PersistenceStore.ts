@@ -293,6 +293,25 @@ export async function createPersistenceStore(storeOptions: {
       }
     }
 
+    try {
+      const recoveryOwned = sqlite
+        .prepare('SELECT 1 FROM terminal_recovery_records WHERE node_id = ? LIMIT 1')
+        .get(normalizedNodeId)
+      if (recoveryOwned) {
+        // Once the Worker has reserved this node, renderer scrollback is only a view cache. A late
+        // renderer flush must never overwrite (or delete) the Worker-owned durability mirror.
+        return { ok: true, level: 'full', bytes: 0 }
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        reason: 'io',
+        error: createAppErrorDescriptor('persistence.io_failed', {
+          debugMessage: toErrorMessage(error),
+        }),
+      }
+    }
+
     const normalizedScrollback = normalizeScrollback(scrollback)
     if (!normalizedScrollback) {
       try {

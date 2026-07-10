@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTerminalOutputScheduler } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/outputScheduler'
 import {
   beginTerminalGeometryCommit,
-  markTerminalGeometryAccepted,
+  markTerminalGeometryCommitSettled,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalGeometryCoordinator'
 import { resetTerminalOutputFrameBudgetForTests } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalOutputFrameBudget'
 
@@ -231,7 +231,7 @@ describe('terminal output scheduler', () => {
     expect(writes).toEqual([])
     expect(scheduler.hasPendingWrites()).toBe(true)
 
-    markTerminalGeometryAccepted(terminal, revision)
+    markTerminalGeometryCommitSettled(terminal, revision)
 
     expect(frameHarness.runNextFrame()).toBe(true)
     expect(writes).toEqual(['AFTER_RESIZE'])
@@ -268,7 +268,7 @@ describe('terminal output scheduler', () => {
     expect(writes).toEqual(['\u001b[?2004h'])
     expect(scheduler.hasPendingWrites()).toBe(true)
 
-    markTerminalGeometryAccepted(terminal, revision)
+    markTerminalGeometryCommitSettled(terminal, revision)
 
     expect(frameHarness.runNextFrame()).toBe(true)
     expect(writes).toEqual(['\u001b[?2004h', 'AFTER_RESIZE'])

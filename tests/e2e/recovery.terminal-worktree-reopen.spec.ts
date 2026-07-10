@@ -52,6 +52,7 @@ test.describe('Recovery - Terminal worktree reopen', () => {
     const userDataDir = await createTestUserDataDir()
     const worktreeName = `wt-e2e-terminal-reopen-${Date.now()}`
     const worktreePath = path.join(testWorkspacePath, '.opencove', 'worktrees', worktreeName)
+    const historyToken = `OPENCOVE_RESTART_HISTORY_${Date.now()}`
 
     await mkdir(worktreePath, { recursive: true })
 
@@ -102,6 +103,14 @@ test.describe('Recovery - Terminal worktree reopen', () => {
             expectedDirectory: worktreePath,
             spaceDirectoryPath: worktreePath,
           })
+
+        await terminal.locator('.xterm').click()
+        await window.keyboard.type(
+          buildNodeEvalCommand(`process.stdout.write(${JSON.stringify(historyToken)} + '\\n')`),
+          { delay: 20 },
+        )
+        await window.keyboard.press('Enter')
+        await expect(terminal).toContainText(historyToken)
       } finally {
         await electronApp.close()
       }
@@ -125,6 +134,7 @@ test.describe('Recovery - Terminal worktree reopen', () => {
           'aria-busy',
           'false',
         )
+        await expect(restartedTerminal).toContainText(historyToken)
 
         await restartedTerminal.locator('.xterm').click()
         await expect(restartedTerminal.locator('.xterm-helper-textarea')).toBeFocused()

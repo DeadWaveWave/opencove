@@ -4,6 +4,7 @@ import {
   createRuntimeInitialGeometryCommitter,
   shouldPreferMeasuredInitialGeometryCommit,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalRuntimeSession.initialGeometry'
+import { beginTerminalGeometryCommit } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalGeometryCoordinator'
 import {
   cleanupTerminalGeometrySyncTestWindow,
   createTerminalMock,
@@ -18,6 +19,94 @@ describe('terminal geometry commit helpers', () => {
 
   afterEach(() => {
     cleanupTerminalGeometrySyncTestWindow()
+  })
+
+  it('does not mutate local xterm geometry until the worker accepts the commit', async () => {
+    const terminal = createTerminalMock()
+    const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
+      current: null,
+    }
+    let resolveResize: ((value: unknown) => void) | null = null
+    ptyResize.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveResize = resolve
+        }),
+    )
+    const geometryRevision = beginTerminalGeometryCommit(terminal as never)
+
+    const pendingCommit = commitInitialTerminalNodeGeometry({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: {
+        current: {
+          proposeDimensions: vi.fn(() => ({ cols: 65, rows: 44 })),
+        } as never,
+      },
+      containerRef: { current: { clientWidth: 640, clientHeight: 660 } as never },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      sessionId: 'session-correlated-geometry',
+      reason: 'frame_commit',
+      geometryRevision,
+    })
+
+    await vi.waitFor(() => {
+      expect(ptyResize).toHaveBeenCalledTimes(1)
+    })
+    expect(terminal.resize).not.toHaveBeenCalled()
+    expect(lastCommittedPtySizeRef.current).toBeNull()
+
+    const request = ptyResize.mock.calls[0]?.[0] as {
+      operationId?: string
+    }
+    resolveResize?.({
+      sessionId: 'session-correlated-geometry',
+      operationId: request.operationId,
+      status: 'accepted',
+      changed: true,
+      geometry: { cols: 65, rows: 44, revision: 7 },
+      authority: { role: 'controller', epoch: 3 },
+    })
+
+    await expect(pendingCommit).resolves.toStrictEqual({ cols: 65, rows: 44, changed: true })
+    expect(terminal.resize).toHaveBeenCalledTimes(1)
+    expect(terminal.resize).toHaveBeenCalledWith(65, 44)
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 65, rows: 44 })
+  })
+
+  it('applies canonical geometry instead of the rejected local measurement', async () => {
+    const terminal = createTerminalMock()
+    const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
+      current: { cols: 80, rows: 24 },
+    }
+    const geometryRevision = beginTerminalGeometryCommit(terminal as never)
+    ptyResize.mockImplementationOnce(async payload => ({
+      sessionId: payload.sessionId,
+      operationId: payload.operationId,
+      status: 'rejected_stale_authority',
+      changed: false,
+      geometry: { cols: 80, rows: 24, revision: 9 },
+      authority: { role: 'viewer', epoch: 4 },
+    }))
+
+    const result = await commitInitialTerminalNodeGeometry({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: {
+        current: {
+          proposeDimensions: vi.fn(() => ({ cols: 65, rows: 44 })),
+        } as never,
+      },
+      containerRef: { current: { clientWidth: 640, clientHeight: 660 } as never },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      sessionId: 'session-rejected-geometry',
+      reason: 'frame_commit',
+      geometryRevision,
+    })
+
+    expect(result).toStrictEqual({ cols: 80, rows: 24, changed: false })
+    expect(terminal.resize).not.toHaveBeenCalled()
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 80, rows: 24 })
   })
 
   it('does not write PTY geometry when the initial restore size is already canonical', async () => {
@@ -38,6 +127,33 @@ describe('terminal geometry commit helpers', () => {
       lastCommittedPtySizeRef,
       sessionId: 'session-initial-geometry',
       reason: 'frame_commit',
+    })
+
+    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
+    expect(terminal.resize).toHaveBeenCalledWith(64, 44)
+    expect(ptyResize).not.toHaveBeenCalled()
+  })
+
+  it('coalesces a correlated commit when measured geometry is already canonical', async () => {
+    const terminal = createTerminalMock()
+    const geometryRevision = beginTerminalGeometryCommit(terminal as never)
+    const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
+      current: { cols: 64, rows: 44 },
+    }
+
+    const size = await commitInitialTerminalNodeGeometry({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: {
+        current: {
+          proposeDimensions: vi.fn(() => ({ cols: 64, rows: 44 })),
+        } as never,
+      },
+      containerRef: { current: { clientWidth: 640, clientHeight: 660 } as never },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      sessionId: 'session-coalesced-geometry',
+      reason: 'frame_commit',
+      geometryRevision,
     })
 
     expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
@@ -103,7 +219,9 @@ describe('terminal geometry commit helpers', () => {
       cols: 65,
       rows: 44,
       reason: 'frame_commit',
-      revision: 1,
+      operationId: expect.any(String),
+      baseGeometryRevision: null,
+      authorityEpoch: null,
     })
   })
 
@@ -303,7 +421,9 @@ describe('terminal geometry commit helpers', () => {
       cols: 69,
       rows: 44,
       reason: 'frame_commit',
-      revision: 1,
+      operationId: expect.any(String),
+      baseGeometryRevision: null,
+      authorityEpoch: null,
     })
   })
 
@@ -349,7 +469,9 @@ describe('terminal geometry commit helpers', () => {
       cols: 68,
       rows: 40,
       reason: 'frame_commit',
-      revision: 1,
+      operationId: expect.any(String),
+      baseGeometryRevision: null,
+      authorityEpoch: null,
     })
   })
 })

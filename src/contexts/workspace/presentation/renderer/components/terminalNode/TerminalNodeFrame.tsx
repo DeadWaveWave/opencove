@@ -1,4 +1,4 @@
-import React, { type JSX } from 'react'
+import React, { useId, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Handle, Position } from '@xyflow/react'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
@@ -9,8 +9,6 @@ import { resolveTerminalNodeInteraction } from './interaction'
 import { shouldStopWheelPropagation } from './wheel'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
-import type { TerminalThemeMode } from './theme'
-import { resolveTerminalUiTheme } from './theme'
 import type { TerminalNodeInteractionOptions } from '../TerminalNode.types'
 import type { ResizeEdges } from '../../utils/nodeFrameResize'
 
@@ -22,7 +20,6 @@ interface TerminalNodeFrameProps {
   agentExecutionDirectory?: string | null
   agentResumeSessionId?: string | null
   agentResumeSessionIdVerified?: boolean
-  terminalThemeMode: TerminalThemeMode
   isSelected: boolean
   isDragging: boolean
   status: AgentRuntimeStatus | null
@@ -70,7 +67,6 @@ export function TerminalNodeFrame({
   agentExecutionDirectory,
   agentResumeSessionId,
   agentResumeSessionIdVerified = false,
-  terminalThemeMode,
   isSelected,
   isDragging,
   status,
@@ -107,12 +103,11 @@ export function TerminalNodeFrame({
   const hasTargetHandle = kind === 'agent'
   const hasSourceHandle = kind === 'task'
   const hasSelectedDragSurface = isSelected || isDragging
-  const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
+  const terminalElementId = useId()
 
   return (
     <div
       className={`terminal-node nowheel ${hasSelectedDragSurface ? 'terminal-node--selected-surface' : ''}`.trim()}
-      data-cove-terminal-node-theme={resolvedTerminalUiTheme}
       style={sizeStyle}
       onPointerDownCapture={handleTerminalBodyPointerDownCapture}
       onPointerMoveCapture={handleTerminalBodyPointerMoveCapture}
@@ -212,33 +207,38 @@ export function TerminalNodeFrame({
 
       {isAgentNode && lastError ? <div className="terminal-node__error">{lastError}</div> : null}
 
-      <TerminalNodeFindBar
-        isOpen={find.isOpen}
-        query={find.query}
-        resultIndex={find.resultIndex}
-        resultCount={find.resultCount}
-        caseSensitive={find.caseSensitive}
-        useRegex={find.useRegex}
-        onQueryChange={onFindQueryChange}
-        onFindNext={onFindNext}
-        onFindPrevious={onFindPrevious}
-        onClose={onFindClose}
-        onToggleCaseSensitive={onFindToggleCaseSensitive}
-        onToggleUseRegex={onFindToggleUseRegex}
-      />
+      <div className="terminal-node__body">
+        <div
+          id={terminalElementId}
+          ref={containerRef}
+          className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
+          data-cove-focus-scope="terminal"
+          aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
+        />
 
-      <div
-        ref={containerRef}
-        className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
-        data-cove-focus-scope="terminal"
-        aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
-      />
-      {isRecoveringAgentOutput ? (
-        <div className="terminal-node__recovering" role="status">
-          <span className="terminal-node__recovering-dot" aria-hidden="true" />
-          <span>{t('terminalNode.recoveringAgentSession')}</span>
-        </div>
-      ) : null}
+        <TerminalNodeFindBar
+          isOpen={find.isOpen}
+          query={find.query}
+          resultIndex={find.resultIndex}
+          resultCount={find.resultCount}
+          caseSensitive={find.caseSensitive}
+          useRegex={find.useRegex}
+          terminalElementId={terminalElementId}
+          onQueryChange={onFindQueryChange}
+          onFindNext={onFindNext}
+          onFindPrevious={onFindPrevious}
+          onClose={onFindClose}
+          onToggleCaseSensitive={onFindToggleCaseSensitive}
+          onToggleUseRegex={onFindToggleUseRegex}
+        />
+
+        {isRecoveringAgentOutput ? (
+          <div className="terminal-node__recovering" role="status">
+            <span className="terminal-node__recovering-dot" aria-hidden="true" />
+            <span>{t('terminalNode.recoveringAgentSession')}</span>
+          </div>
+        ) : null}
+      </div>
       <div ref={transcriptRef} className="terminal-node__transcript" aria-hidden="true" />
 
       <NodeResizeHandles

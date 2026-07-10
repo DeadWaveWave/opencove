@@ -177,6 +177,12 @@ export function writeNormalizedAppState(
       "DELETE FROM node_scrollback WHERE node_id NOT IN (SELECT id FROM nodes WHERE kind = 'terminal')",
     )
 
+    // Recovery records are owned by the terminal Worker pipeline and must follow terminal-node
+    // lifecycle, independently from the renderer-owned workspace snapshot.
+    db.exec(
+      "DELETE FROM terminal_recovery_records WHERE node_id NOT IN (SELECT id FROM nodes WHERE kind = 'terminal')",
+    )
+
     // Agent placeholder scrollback is a UI cache only. Clear placeholders for nodes that no longer
     // exist (or aren't agents) so we don't accumulate unreferenced cache entries over time.
     db.exec(
@@ -204,13 +210,22 @@ export function writeNormalizedScrollbacks(
   )
 
   const now = new Date().toISOString()
+  const isRecoveryOwned = db.prepare(
+    'SELECT 1 FROM terminal_recovery_records WHERE node_id = ? LIMIT 1',
+  )
 
   const writeTx = db.transaction(() => {
-    db.exec('DELETE FROM node_scrollback;')
+    db.exec(
+      'DELETE FROM node_scrollback WHERE node_id NOT IN (SELECT node_id FROM terminal_recovery_records);',
+    )
 
     for (const workspace of state.workspaces) {
       for (const node of workspace.nodes) {
         if (node.kind !== 'terminal') {
+          continue
+        }
+
+        if (isRecoveryOwned.get(node.id)) {
           continue
         }
 

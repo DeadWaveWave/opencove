@@ -22,6 +22,7 @@ export type PtyHostWriteRequest = {
 
 export type PtyHostResizeRequest = {
   type: 'resize'
+  requestId: string
   sessionId: string
   cols: number
   rows: number
@@ -58,7 +59,7 @@ export type PtyHostResponseMessage =
       type: 'response'
       requestId: string
       ok: true
-      result: { sessionId: string }
+      result: { sessionId: string; cols?: number; rows?: number }
     }
   | {
       type: 'response'

@@ -74,13 +74,21 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
       write: (sessionId: string, data: string) => {
         writes.push({ sessionId, data })
       },
-      resize: (
-        sessionId: string,
-        cols: number,
-        rows: number,
-        reason?: 'frame_commit' | 'appearance_commit',
-      ) => {
-        resizes.push({ sessionId, cols, rows, reason })
+      resize: async input => {
+        resizes.push({
+          sessionId: input.sessionId,
+          cols: input.cols,
+          rows: input.rows,
+          reason: input.reason,
+        })
+        return {
+          sessionId: input.sessionId,
+          operationId: input.operationId ?? 'legacy-operation',
+          status: 'accepted',
+          changed: true,
+          geometry: { cols: input.cols, rows: input.rows, revision: null },
+          authority: null,
+        }
       },
       kill: () => undefined,
       onData: listener => {

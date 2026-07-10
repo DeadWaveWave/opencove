@@ -1,5 +1,18 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
+import {
+  buildNodeEvalCommand,
+  clearAndSeedWorkspace,
+  launchApp,
+  readLocatorClientRect,
+} from './workspace-canvas.helpers'
+
+type TerminalGeometry = { cols: number; rows: number }
+
+type AuthoritativeGeometry = {
+  renderer: TerminalGeometry
+  worker: TerminalGeometry
+  shell: TerminalGeometry
+}
 
 async function dragResizerBy(
   window: Page,
@@ -18,12 +31,95 @@ async function dragResizerBy(
 
   await window.mouse.move(start.x, start.y)
   await window.mouse.down()
-  await window.waitForTimeout(40)
   await window.mouse.move(end.x, end.y, { steps: 16 })
   await window.mouse.move(end.x, end.y)
-  await window.waitForTimeout(60)
   await window.mouse.up()
-  await window.waitForTimeout(40)
+}
+
+async function readRuntimeSessionId(window: Page, nodeId: string): Promise<string | null> {
+  return await window.evaluate(id => {
+    return window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null
+  }, nodeId)
+}
+
+async function assertAuthoritativeTerminalGeometry(options: {
+  window: Page
+  nodeId: string
+  sessionId: string
+  expected: TerminalGeometry
+  phase: string
+}): Promise<AuthoritativeGeometry> {
+  const marker = `OCSZ_${options.phase}_${Date.now().toString(36)}`
+  const command = buildNodeEvalCommand(
+    [
+      "const {execFileSync}=require('node:child_process');",
+      "const [rows,cols]=execFileSync('stty',['size'],{encoding:'utf8',stdio:['inherit','pipe','pipe']}).trim().split(/\\s+/);",
+      `process.stdout.write(${JSON.stringify(marker)}+':'+rows+'x'+cols+'\\n');`,
+    ].join(''),
+  )
+  const baselineAppliedSeq = await options.window.evaluate(
+    async payload => {
+      const baseline = await window.opencoveApi.pty.presentationSnapshot({
+        sessionId: payload.sessionId,
+      })
+      await window.opencoveApi.pty.write({
+        sessionId: payload.sessionId,
+        data: `${payload.command}\r`,
+      })
+      return baseline.appliedSeq
+    },
+    { sessionId: options.sessionId, command },
+  )
+
+  let observed: AuthoritativeGeometry | null = null
+  await expect
+    .poll(
+      async () => {
+        observed = await options.window.evaluate(
+          async payload => {
+            const renderer =
+              window.__opencoveTerminalSelectionTestApi?.getSize(payload.nodeId) ?? null
+            const worker = await window.opencoveApi.pty
+              .presentationSnapshot({ sessionId: payload.sessionId })
+              .catch(() => null)
+            if (!renderer || !worker || worker.appliedSeq <= payload.baselineAppliedSeq) {
+              return null
+            }
+            const markerMatch = worker.serializedScreen.match(
+              new RegExp(`${payload.marker}:(\\d+)x(\\d+)`),
+            )
+            const shellRows = Number(markerMatch?.[1])
+            const shellCols = Number(markerMatch?.[2])
+            if (!markerMatch || !Number.isFinite(shellRows) || !Number.isFinite(shellCols)) {
+              return null
+            }
+            return {
+              renderer,
+              worker: { cols: worker.cols, rows: worker.rows },
+              shell: { cols: shellCols, rows: shellRows },
+            }
+          },
+          {
+            nodeId: options.nodeId,
+            sessionId: options.sessionId,
+            marker,
+            baselineAppliedSeq,
+          },
+        )
+        return observed
+      },
+      { timeout: 15_000, intervals: [20, 50, 100, 250] },
+    )
+    .toEqual({
+      renderer: options.expected,
+      worker: options.expected,
+      shell: options.expected,
+    })
+
+  if (!observed) {
+    throw new Error(`Missing authoritative terminal geometry for ${options.phase}`)
+  }
+  return observed
 }
 
 async function readPersistedNodeFrame(
@@ -67,7 +163,6 @@ async function shrinkRowsUntilLessThan(
   readRows: () => Promise<number>,
   targetRows: number,
   readNodeHeight: () => Promise<number>,
-  targetNodeHeight: number,
   offsets: number[],
 ): Promise<{ rows: number; nodeHeight: number }> {
   const tryOffset = async (index: number): Promise<{ rows: number; nodeHeight: number }> => {
@@ -84,9 +179,7 @@ async function shrinkRowsUntilLessThan(
       await expect
         .poll(
           async () => {
-            const rows = await readRows()
-            const nodeHeight = await readNodeHeight()
-            return rows < targetRows || nodeHeight < targetNodeHeight
+            return (await readRows()) < targetRows
           },
           { timeout: 3_000 },
         )
@@ -104,6 +197,8 @@ async function shrinkRowsUntilLessThan(
 }
 
 test.describe('Workspace Canvas - Terminal resize shrink', () => {
+  test.skip(process.platform === 'win32', 'Authoritative PTY geometry requires POSIX stty.')
+
   test('reflows terminal when resizing smaller after expanding', async () => {
     const { electronApp, window } = await launchApp()
 
@@ -133,6 +228,21 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
 
       await expect.poll(readSize).toBeTruthy()
       const initialSize = (await readSize())!
+      await expect
+        .poll(() => readRuntimeSessionId(window, nodeId), { timeout: 15_000 })
+        .toBeTruthy()
+      const sessionId = await readRuntimeSessionId(window, nodeId)
+      expect(sessionId).not.toBeNull()
+
+      await electronApp.evaluate(({ BrowserWindow }) => {
+        const mainWindow = BrowserWindow.getAllWindows()[0]
+        if (!mainWindow) {
+          throw new Error('Missing main window')
+        }
+        const [windowWidth, windowHeight] = mainWindow.getSize()
+        mainWindow.setSize(windowWidth + 120, windowHeight + 80)
+      })
+      await expect.poll(readSize).toEqual(initialSize)
 
       const rightResizer = terminal.locator('[data-testid="terminal-resizer-right"]')
       await expect(rightResizer).toBeVisible()
@@ -165,6 +275,13 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
         .toBeGreaterThan(beforeHeightSize.rows)
       const expandedHeightSize = (await readSize())!
       const expandedNodeHeight = await readNodeHeight()
+      const expandedAuthority = await assertAuthoritativeTerminalGeometry({
+        window,
+        nodeId,
+        sessionId: sessionId!,
+        expected: expandedHeightSize,
+        phase: 'expanded',
+      })
 
       const shrinkResult = await shrinkRowsUntilLessThan(
         window,
@@ -172,7 +289,6 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
         async () => (await readSize())?.rows ?? Number.POSITIVE_INFINITY,
         expandedHeightSize.rows,
         readNodeHeight,
-        expandedNodeHeight,
         [-220, -320, -420],
       )
 
@@ -180,7 +296,18 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
         shrinkResult.nodeHeight,
         `Expected terminal node height to shrink after resizing smaller, but sampled height was ${shrinkResult.nodeHeight} and expanded height was ${expandedNodeHeight}`,
       ).toBeLessThan(expandedNodeHeight)
-      expect(shrinkResult.rows).toBeLessThanOrEqual(expandedHeightSize.rows)
+      expect(shrinkResult.rows).toBeLessThan(expandedHeightSize.rows)
+      const shrunkSize = (await readSize())!
+      const shrunkAuthority = await assertAuthoritativeTerminalGeometry({
+        window,
+        nodeId,
+        sessionId: sessionId!,
+        expected: shrunkSize,
+        phase: 'shrunk',
+      })
+      expect(shrunkAuthority.renderer.rows).toBeLessThan(expandedAuthority.renderer.rows)
+      expect(shrunkAuthority.worker.rows).toBeLessThan(expandedAuthority.worker.rows)
+      expect(shrunkAuthority.shell.rows).toBeLessThan(expandedAuthority.shell.rows)
     } finally {
       await electronApp.close()
     }

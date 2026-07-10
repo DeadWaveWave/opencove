@@ -9,6 +9,7 @@ import {
   sleep,
 } from './supervisorSupport'
 import { postPtyHostMessage } from './postMessage'
+import { PtyHostPendingResponseCoordinator } from './pendingResponseCoordinator'
 export type { PtyHostProcess, PtyHostProcessFactory } from './processTypes'
 import type {
   PtyHostMessage,
@@ -51,14 +52,7 @@ export class PtyHostSupervisor {
   private resolveReady: (() => void) | null = null
   private rejectReady: ((error: Error) => void) | null = null
   private readyTimer: NodeJS.Timeout | null = null
-  private pendingResponses = new Map<
-    string,
-    {
-      resolve: (message: PtyHostResponseMessage) => void
-      reject: (error: Error) => void
-      timer: NodeJS.Timeout
-    }
-  >()
+  private readonly pendingResponses = new PtyHostPendingResponseCoordinator()
   private activeSessions = new Set<string>()
 
   private isDisposed = false
@@ -144,21 +138,13 @@ export class PtyHostSupervisor {
     this.rejectReady = null
   }
 
-  private failPendingResponses(error: Error): void {
-    for (const [, pending] of this.pendingResponses.entries()) {
-      clearTimeout(pending.timer)
-      pending.reject(error)
-    }
-    this.pendingResponses.clear()
-  }
-
   private normalizeHostError(error: unknown): Error {
     return error instanceof Error ? error : new Error(String(error))
   }
 
   private handleHostExit(exitCode: number): void {
     const error = new Error(`[pty-host] exited with code ${exitCode}`)
-    this.failPendingResponses(error)
+    this.pendingResponses.failAll(error)
 
     for (const sessionId of this.activeSessions.values()) {
       this.emitExit(sessionId, exitCode)
@@ -290,14 +276,7 @@ export class PtyHostSupervisor {
     }
 
     if (message.type === 'response') {
-      const pending = this.pendingResponses.get(message.requestId)
-      if (!pending) {
-        return
-      }
-
-      clearTimeout(pending.timer)
-      this.pendingResponses.delete(message.requestId)
-      pending.resolve(message)
+      this.pendingResponses.resolve(message)
       return
     }
 
@@ -341,6 +320,25 @@ export class PtyHostSupervisor {
     return await this.readyPromise
   }
 
+  private requestHostResponse(
+    child: PtyHostProcess,
+    request: PtyHostRequest & { requestId: string },
+    timeoutMessage: string,
+  ): Promise<PtyHostResponseMessage> {
+    const responsePromise = this.pendingResponses.waitFor(request.requestId, {
+      timeoutMs: this.spawnTimeoutMs,
+      timeoutMessage,
+    })
+    postPtyHostMessage(child, request, error => {
+      const normalizedError = this.normalizeHostError(error)
+      this.pendingResponses.reject(request.requestId, normalizedError)
+      if (this.process === child) {
+        this.handleHostExit(1)
+      }
+    })
+    return responsePromise
+  }
+
   public async spawn(options: PtyHostSpawnOptions): Promise<{ sessionId: string }> {
     const env = resolvePtyHostSpawnEnv(options.env)
     let attemptedChild: PtyHostProcess | null = null
@@ -364,31 +362,11 @@ export class PtyHostSupervisor {
         rows: options.rows,
       }
 
-      const responsePromise = new Promise<PtyHostResponseMessage>((resolve, reject) => {
-        const timer = setTimeout(() => {
-          this.pendingResponses.delete(requestId)
-          reject(new Error(`[pty-host] spawn timeout after ${this.spawnTimeoutMs}ms`))
-        }, this.spawnTimeoutMs)
-
-        this.pendingResponses.set(requestId, {
-          resolve,
-          reject,
-          timer,
-        })
-      })
-      const handleSendError = (error: unknown): void => {
-        const normalizedError = this.normalizeHostError(error)
-        const pending = this.pendingResponses.get(requestId)
-        if (pending) {
-          clearTimeout(pending.timer)
-          this.pendingResponses.delete(requestId)
-          pending.reject(normalizedError)
-        }
-        if (this.process === child) {
-          this.handleHostExit(1)
-        }
-      }
-      postPtyHostMessage(child, request satisfies PtyHostRequest, handleSendError)
+      const responsePromise = this.requestHostResponse(
+        child,
+        request satisfies PtyHostRequest & { requestId: string },
+        `[pty-host] spawn timeout after ${this.spawnTimeoutMs}ms`,
+      )
       const response = await responsePromise
       if (!response.ok) {
         throw new Error(
@@ -424,15 +402,39 @@ export class PtyHostSupervisor {
     })
   }
 
-  public resize(sessionId: string, cols: number, rows: number): void {
-    const child = this.process
-    if (!child || !this.readyPromise) {
-      return
+  public async resize(
+    sessionId: string,
+    cols: number,
+    rows: number,
+  ): Promise<{ sessionId: string; cols: number; rows: number }> {
+    if (!this.activeSessions.has(sessionId)) {
+      throw new Error(`[pty-host] unknown active session: ${sessionId}`)
     }
 
-    postPtyHostMessage(child, { type: 'resize', sessionId, cols, rows }, error => {
-      this.handleHostError(child, error)
-    })
+    await this.ensureReady()
+    const child = this.process
+    if (!child) {
+      throw new Error('[pty-host] missing process')
+    }
+
+    const requestId = crypto.randomUUID()
+    const responsePromise = this.requestHostResponse(
+      child,
+      { type: 'resize', requestId, sessionId, cols, rows } satisfies PtyHostRequest,
+      `[pty-host] resize timeout after ${this.spawnTimeoutMs}ms`,
+    )
+    const response = await responsePromise
+    if (!response.ok) {
+      throw new Error(
+        `[pty-host] resize failed: ${response.error.name ?? 'Error'}: ${response.error.message}`,
+      )
+    }
+
+    return {
+      sessionId: response.result.sessionId,
+      cols: response.result.cols ?? cols,
+      rows: response.result.rows ?? rows,
+    }
   }
 
   public kill(sessionId: string): void {
@@ -469,7 +471,7 @@ export class PtyHostSupervisor {
     this.isDisposed = true
 
     this.clearReadyTimer()
-    this.failPendingResponses(new Error('[pty-host] supervisor disposed'))
+    this.pendingResponses.failAll(new Error('[pty-host] supervisor disposed'))
     this.activeSessions.clear()
 
     const child = this.process

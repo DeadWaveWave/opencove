@@ -148,6 +148,7 @@ export function useTerminalPlaceholderSession({
     })
     terminalRef.current = session.terminal
     fitAddonRef.current = session.fitAddon
+    applyTerminalTheme()
     setRendererKindAndApply(session.renderer.kind)
     const disposeInteractionWindow = registerTerminalUserInteractionWindow({
       container: containerRef.current,
@@ -211,8 +212,6 @@ export function useTerminalPlaceholderSession({
         return
       }
       applyTerminalTheme()
-      session.renderer.clearTextureAtlas()
-      syncTerminalSize()
     }
     window.addEventListener('opencove-theme-changed', handleThemeChange)
 

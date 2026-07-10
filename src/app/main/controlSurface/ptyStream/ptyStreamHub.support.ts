@@ -15,6 +15,7 @@ export function createSessionState(sessionId: string): SessionState {
     status: 'running',
     exitCode: null,
     seq: 0,
+    presentationBaselineSeq: 0,
     chunks: [],
     totalBytes: 0,
     truncated: false,
@@ -24,8 +25,13 @@ export function createSessionState(sessionId: string): SessionState {
     pendingChars: 0,
     flushTimer: null,
     subscribers: new Set(),
+    controllerCandidateClientIds: new Set(),
     controllerClientId: null,
+    authorityEpoch: 0,
+    operationChain: Promise.resolve(),
+    operationQueueDepth: 0,
     presentationSession: new TerminalPresentationSession({ sessionId }),
+    displayPrefix: '',
   }
 }
 

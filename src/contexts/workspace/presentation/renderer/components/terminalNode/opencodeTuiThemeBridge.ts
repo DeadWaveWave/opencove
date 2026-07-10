@@ -1,6 +1,7 @@
 import type { Terminal } from '@xterm/xterm'
 import { registerOpenCodeOscColorQueryResponder } from './opencodeOscColorQueryResponder'
 import { resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
+import type { TerminalAppearanceSnapshot } from './terminalAppearance'
 
 type PtyWriteQueue = {
   enqueue: (data: string, encoding?: 'utf8' | 'binary') => void
@@ -27,25 +28,40 @@ export function createOpenCodeTuiThemeBridge({
   terminal,
   ptyWriteQueue,
   terminalThemeMode,
+  getAppliedAppearance,
+  subscribeAppliedAppearance,
 }: {
   terminal: Terminal
   ptyWriteQueue: PtyWriteQueue
   terminalThemeMode: TerminalThemeMode
+  getAppliedAppearance?: () => TerminalAppearanceSnapshot | null
+  subscribeAppliedAppearance?: (
+    listener: (snapshot: TerminalAppearanceSnapshot) => void,
+  ) => () => void
 }): {
   handlePtyOutputChunk: (data: string) => void
   reportThemeMode: () => void
   dispose: () => void
 } {
-  const disposeOscResponder = registerOpenCodeOscColorQueryResponder({ terminal, ptyWriteQueue })
+  const disposeOscResponder = registerOpenCodeOscColorQueryResponder({
+    terminal,
+    ptyWriteQueue,
+    getAppliedAppearance,
+  })
   let isAltScreenActive = false
-  let lastReported: 'light' | 'dark' | null = null
+  let lastReportedKey: string | null = null
   let matchBuffer = ''
 
   const reportThemeMode = (): void => {
-    const resolvedTheme = resolveTerminalUiTheme(terminalThemeMode)
+    const appliedAppearance = getAppliedAppearance?.() ?? null
+    const resolvedTheme =
+      appliedAppearance?.terminalScheme ?? resolveTerminalUiTheme(terminalThemeMode)
+    const reportKey = appliedAppearance
+      ? `revision:${appliedAppearance.revision}`
+      : `legacy:${resolvedTheme}`
 
     const altScreenActive = isAltScreenActive || isTerminalInAltScreen(terminal)
-    if (!altScreenActive || lastReported === resolvedTheme) {
+    if (!altScreenActive || lastReportedKey === reportKey) {
       return
     }
 
@@ -53,7 +69,7 @@ export function createOpenCodeTuiThemeBridge({
     const report = buildOpenCodeThemeModeReport(resolvedTheme)
     ptyWriteQueue.enqueue(report)
     ptyWriteQueue.flush()
-    lastReported = resolvedTheme
+    lastReportedKey = reportKey
   }
 
   const handlePtyOutputChunk = (data: string): void => {
@@ -76,14 +92,19 @@ export function createOpenCodeTuiThemeBridge({
     if (!previousState && isAltScreenActive) {
       reportThemeMode()
     } else if (previousState && !isAltScreenActive) {
-      lastReported = null
+      lastReportedKey = null
     }
   }
+
+  const disposeAppliedAppearanceSubscription = subscribeAppliedAppearance?.(() => {
+    reportThemeMode()
+  })
 
   return {
     handlePtyOutputChunk,
     reportThemeMode,
     dispose: () => {
+      disposeAppliedAppearanceSubscription?.()
       disposeOscResponder()
     },
   }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Terminal } from '@xterm/xterm'
 import { registerOpenCodeOscColorQueryResponder } from '@/contexts/workspace/presentation/renderer/components/terminalNode/opencodeOscColorQueryResponder'
+import type { TerminalAppearanceSnapshot } from '@/contexts/workspace/presentation/renderer/components/terminalNode/terminalAppearance'
 
 function createTerminalHarness(theme: Record<string, unknown>) {
   const handlers = new Map<number, (data: string) => boolean>()
@@ -54,12 +55,56 @@ describe('registerOpenCodeOscColorQueryResponder', () => {
     })
 
     const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
-    registerOpenCodeOscColorQueryResponder({ terminal, ptyWriteQueue })
+    const appliedAppearance = {
+      revision: 7,
+      themeId: 'light',
+      uiScheme: 'light',
+      terminalScheme: 'light',
+      xtermTheme: terminal.options.theme,
+      cssTokens: {},
+    } as TerminalAppearanceSnapshot
+    registerOpenCodeOscColorQueryResponder({
+      terminal,
+      ptyWriteQueue,
+      getAppliedAppearance: () => appliedAppearance,
+    })
 
     expect(handlers.get(11)?.('?')).toBe(true)
     expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith('\u001b]11;#fbfcff\u0007')
 
     expect(handlers.get(10)?.('?')).toBe(true)
     expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith('\u001b]10;#111827\u0007')
+  })
+
+  it('answers OSC from the applied snapshot instead of a newer desired or stale terminal option', () => {
+    const { terminal, handlers } = createTerminalHarness({
+      background: '#stale',
+      foreground: '#stale',
+    })
+    const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
+    const appliedAppearance = {
+      revision: 3,
+      themeId: 'ember-light',
+      uiScheme: 'light',
+      terminalScheme: 'dark',
+      xtermTheme: {
+        background: '#15110e',
+        foreground: '#d4c4ae',
+        cursor: '#d4c4ae',
+        selectionBackground: 'rgba(94, 156, 255, 0.35)',
+      },
+      cssTokens: {},
+    } satisfies TerminalAppearanceSnapshot
+
+    registerOpenCodeOscColorQueryResponder({
+      terminal,
+      ptyWriteQueue,
+      getAppliedAppearance: () => appliedAppearance,
+    })
+
+    expect(handlers.get(11)?.('?')).toBe(true)
+    expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith('\u001b]11;#15110e\u0007')
+    expect(handlers.get(10)?.('?')).toBe(true)
+    expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith('\u001b]10;#d4c4ae\u0007')
   })
 })

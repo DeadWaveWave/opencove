@@ -57,6 +57,7 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       }) => void
     >()
     const remoteWrites: Array<{ sessionId: string; data: string }> = []
+    const remoteResizes: Array<{ sessionId: string; cols: number; rows: number }> = []
     let lastRemoteSessionId: string | null = null
 
     const remotePtyRuntime = {
@@ -67,7 +68,17 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       write: (sessionId: string, data: string) => {
         remoteWrites.push({ sessionId, data })
       },
-      resize: () => undefined,
+      resize: async input => {
+        remoteResizes.push({ sessionId: input.sessionId, cols: input.cols, rows: input.rows })
+        return {
+          sessionId: input.sessionId,
+          operationId: input.operationId ?? 'legacy-remote-operation',
+          status: 'accepted',
+          changed: true,
+          geometry: { cols: input.cols, rows: input.rows, revision: null },
+          authority: null,
+        }
+      },
       kill: () => undefined,
       onData: (listener: (event: { sessionId: string; data: string }) => void) => {
         remoteDataListeners.add(listener)
@@ -116,7 +127,14 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       ptyRuntime: {
         spawnSession: async () => ({ sessionId: randomUUID() }),
         write: () => undefined,
-        resize: () => undefined,
+        resize: async input => ({
+          sessionId: input.sessionId,
+          operationId: input.operationId ?? 'legacy-home-operation',
+          status: 'accepted',
+          changed: true,
+          geometry: { cols: input.cols, rows: input.rows, revision: null },
+          authority: null,
+        }),
         kill: () => undefined,
         onData: () => () => undefined,
         onExit: () => () => undefined,
@@ -229,6 +247,144 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       await waitForCondition(async () => remoteWrites.length > 0, { timeoutMs: 2_000 })
       expect(remoteWrites[0]?.sessionId).toBe(remoteSessionId)
       expect(remoteWrites[0]?.data).toBe('ping')
+
+      sendJson(ws, {
+        type: 'resize',
+        sessionId: homeSessionId,
+        cols: 100,
+        rows: 32,
+        reason: 'frame_commit',
+        operationId: 'operation-home-remote-1',
+        baseGeometryRevision: null,
+        authorityEpoch: 1,
+      })
+      const resizeResult = await waitForMessage(
+        ws,
+        (
+          message,
+        ): message is {
+          type: 'resize_result'
+          sessionId: string
+          operationId: string
+          status: string
+        } =>
+          isRecord(message) &&
+          message.type === 'resize_result' &&
+          message.sessionId === homeSessionId &&
+          message.operationId === 'operation-home-remote-1',
+      )
+      expect(resizeResult.status).toBe('accepted')
+      expect(remoteResizes).toContainEqual({
+        sessionId: remoteSessionId,
+        cols: 100,
+        rows: 32,
+      })
+
+      const remoteWsUrl = toWsUrl(remoteBaseUrl, '/pty', { token: 'remote-token' })
+      const remoteWs = new WebSocket(remoteWsUrl, 'opencove-pty.v1')
+      await new Promise<void>((resolvePromise, rejectPromise) => {
+        remoteWs.once('open', resolvePromise)
+        remoteWs.once('error', rejectPromise)
+      })
+      sendJson(remoteWs, { type: 'hello', protocolVersion: 1, client: { kind: 'cli' } })
+      await waitForMessage(remoteWs, message => isRecord(message) && message.type === 'hello_ack')
+      sendJson(remoteWs, {
+        type: 'attach',
+        sessionId: remoteSessionId,
+        role: 'controller',
+      })
+      await waitForMessage(
+        remoteWs,
+        message =>
+          isRecord(message) && message.type === 'attached' && message.sessionId === remoteSessionId,
+      )
+      sendJson(remoteWs, { type: 'request_control', sessionId: remoteSessionId })
+      await waitForMessage(
+        remoteWs,
+        message =>
+          isRecord(message) &&
+          message.type === 'control_changed' &&
+          message.sessionId === remoteSessionId &&
+          message.role === 'controller' &&
+          message.authorityEpoch === 2,
+      )
+
+      sendJson(remoteWs, {
+        type: 'resize',
+        sessionId: remoteSessionId,
+        cols: 110,
+        rows: 35,
+        reason: 'frame_commit',
+        operationId: 'operation-remote-only-revision-2',
+        baseGeometryRevision: 1,
+        authorityEpoch: 2,
+      })
+      const remoteOnlyResize = await waitForMessage(
+        remoteWs,
+        message =>
+          isRecord(message) &&
+          message.type === 'resize_result' &&
+          message.operationId === 'operation-remote-only-revision-2',
+      )
+      expect(remoteOnlyResize).toMatchObject({
+        status: 'accepted',
+        geometry: { cols: 110, rows: 35, revision: 2 },
+      })
+
+      sendJson(remoteWs, { type: 'release_control', sessionId: remoteSessionId })
+      await waitForMessage(
+        remoteWs,
+        message =>
+          isRecord(message) &&
+          message.type === 'control_changed' &&
+          message.sessionId === remoteSessionId &&
+          message.authorityEpoch === 3,
+      )
+      const proxyControlChanged = waitForMessage(
+        remoteWs,
+        message =>
+          isRecord(message) &&
+          message.type === 'control_changed' &&
+          message.sessionId === remoteSessionId &&
+          message.authorityEpoch === 4,
+      )
+      const remoteWriteCountBeforeControlReturn = remoteWrites.length
+      sendJson(ws, { type: 'write', sessionId: homeSessionId, data: 'return proxy control' })
+      await waitForCondition(
+        async () => remoteWrites.length > remoteWriteCountBeforeControlReturn,
+        { timeoutMs: 2_000 },
+      )
+      await proxyControlChanged
+
+      sendJson(ws, {
+        type: 'resize',
+        sessionId: homeSessionId,
+        cols: 120,
+        rows: 40,
+        reason: 'frame_commit',
+        operationId: 'operation-home-revision-2-remote-revision-3',
+        baseGeometryRevision: 1,
+        authorityEpoch: 1,
+      })
+      const divergentRevisionResize = await waitForMessage(
+        ws,
+        message =>
+          isRecord(message) &&
+          message.type === 'resize_result' &&
+          message.operationId === 'operation-home-revision-2-remote-revision-3',
+      )
+      expect(divergentRevisionResize).toMatchObject({
+        status: 'accepted',
+        geometry: { cols: 120, rows: 40, revision: 2 },
+      })
+      expect(remoteResizes).toContainEqual({
+        sessionId: remoteSessionId,
+        cols: 120,
+        rows: 40,
+      })
+
+      remoteWs.close()
+      await new Promise<void>(resolvePromise => remoteWs.once('close', resolvePromise))
 
       remoteExitListeners.forEach(listener =>
         listener({ sessionId: remoteSessionId as string, exitCode: 0 }),

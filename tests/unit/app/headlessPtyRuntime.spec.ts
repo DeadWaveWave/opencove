@@ -140,7 +140,13 @@ describe('headless PTY runtime', () => {
       })
 
       runtime.write('session-1', '\r')
-      runtime.resize('session-1', 120, 40)
+      await runtime.resize({
+        sessionId: 'session-1',
+        cols: 120,
+        rows: 40,
+        reason: 'frame_commit',
+        operationId: 'operation-1',
+      })
       runtime.kill('session-2')
       runtime.debugCrashHost?.()
       runtime.dispose()

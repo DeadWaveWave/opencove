@@ -1,18 +1,18 @@
 {
-  "filesAnalyzed": 1043,
+  "filesAnalyzed": 1102,
   "summary": {
     "errors": 0,
-    "warnings": 475,
-    "violations": 475
+    "warnings": 481,
+    "violations": 481
   },
   "byRule": {
-    "architecture.windowOpenCoveApiBoundary": 244,
-    "architecture.layerDependency": 231
+    "architecture.windowOpenCoveApiBoundary": 246,
+    "architecture.layerDependency": 235
   },
   "topAreas": [
     {
       "area": "src/contexts/workspace/presentation",
-      "count": 213
+      "count": 211
     },
     {
       "area": "src/contexts/settings/presentation",
@@ -20,7 +20,7 @@
     },
     {
       "area": "src/app/renderer/shell",
-      "count": 79
+      "count": 83
     },
     {
       "area": "src/contexts/agent/presentation",
@@ -28,15 +28,15 @@
     },
     {
       "area": "src/contexts/terminal/presentation",
+      "count": 18
+    },
+    {
+      "area": "src/contexts/task/presentation",
       "count": 17
     },
     {
       "area": "src/contexts/worktree/presentation",
       "count": 15
-    },
-    {
-      "area": "src/contexts/task/presentation",
-      "count": 14
     },
     {
       "area": "src/app/worker",

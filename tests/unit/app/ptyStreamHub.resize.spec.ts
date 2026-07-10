@@ -126,7 +126,7 @@ describe('PtyStreamHub resize', () => {
     expect(snapshot.rows).toBe(44)
   })
 
-  it('does not forward unchanged canonical geometry to the PTY runtime', () => {
+  it('does not forward unchanged canonical geometry to the PTY runtime', async () => {
     const runtimeResize = vi.fn()
     const hub = new PtyStreamHub({
       replayWindowMaxBytes: 64_000,
@@ -155,7 +155,7 @@ describe('PtyStreamHub resize', () => {
     hub.attach({ clientId: 'client-1', sessionId: 'session-1', role: 'controller' })
     sent.length = 0
 
-    hub.resize({
+    await hub.resize({
       clientId: 'client-1',
       sessionId: 'session-1',
       cols: 64,
@@ -166,7 +166,7 @@ describe('PtyStreamHub resize', () => {
     expect(runtimeResize).not.toHaveBeenCalled()
     expect(sent.some(message => (message as { type?: string }).type === 'geometry')).toBe(false)
 
-    hub.resize({
+    await hub.resize({
       clientId: 'client-1',
       sessionId: 'session-1',
       cols: 80,
@@ -174,13 +174,21 @@ describe('PtyStreamHub resize', () => {
       reason: 'frame_commit',
     })
 
-    expect(runtimeResize).toHaveBeenCalledWith('session-1', 80, 24, 'frame_commit')
+    expect(runtimeResize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        cols: 80,
+        rows: 24,
+        reason: 'frame_commit',
+      }),
+    )
     expect(sent).toContainEqual({
       type: 'geometry',
       sessionId: 'session-1',
       cols: 80,
       rows: 24,
       reason: 'frame_commit',
+      revision: 1,
     })
   })
 
@@ -213,65 +221,222 @@ describe('PtyStreamHub resize', () => {
     hub.attach({ clientId: 'client-1', sessionId: 'session-1', role: 'controller' })
     sent.length = 0
 
-    hub.resize({
+    await hub.resize({
       clientId: 'client-1',
       sessionId: 'session-1',
       cols: 80,
       rows: 24,
       reason: 'frame_commit',
-      revision: 2,
+      operationId: 'operation-2',
+      baseGeometryRevision: null,
+      authorityEpoch: 1,
     })
 
-    expect(runtimeResize).toHaveBeenCalledWith('session-1', 80, 24, 'frame_commit', 2)
+    expect(runtimeResize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        cols: 80,
+        rows: 24,
+        reason: 'frame_commit',
+        operationId: 'operation-2',
+      }),
+    )
     expect(sent).toContainEqual({
       type: 'geometry',
       sessionId: 'session-1',
       cols: 80,
       rows: 24,
       reason: 'frame_commit',
-      revision: 2,
+      revision: 1,
     })
 
     sent.length = 0
     runtimeResize.mockClear()
 
-    hub.resize({
+    await hub.resize({
       clientId: 'client-1',
       sessionId: 'session-1',
       cols: 80,
       rows: 24,
       reason: 'frame_commit',
-      revision: 3,
+      operationId: 'operation-3',
+      baseGeometryRevision: 1,
+      authorityEpoch: 1,
     })
 
     expect(runtimeResize).not.toHaveBeenCalled()
-    expect(sent).toContainEqual({
-      type: 'geometry',
-      sessionId: 'session-1',
-      cols: 80,
-      rows: 24,
-      reason: 'frame_commit',
-      revision: 3,
-    })
+    expect(sent).toContainEqual(
+      expect.objectContaining({
+        type: 'resize_result',
+        operationId: 'operation-3',
+        status: 'accepted',
+        changed: false,
+        geometry: { cols: 80, rows: 24, revision: 1 },
+      }),
+    )
 
     sent.length = 0
 
-    hub.resize({
+    const superseded = await hub.resize({
       clientId: 'client-1',
       sessionId: 'session-1',
       cols: 120,
       rows: 40,
       reason: 'frame_commit',
-      revision: 1,
+      operationId: 'operation-stale',
+      baseGeometryRevision: null,
+      authorityEpoch: 1,
     })
 
     expect(runtimeResize).not.toHaveBeenCalled()
     expect(sent.some(message => (message as { type?: string }).type === 'geometry')).toBe(false)
+    expect(superseded.status).toBe('superseded')
 
     const snapshot = await hub.presentationSnapshotSession('session-1')
 
     expect(snapshot.cols).toBe(80)
     expect(snapshot.rows).toBe(24)
-    expect(snapshot.geometryRevision).toBe(3)
+    expect(snapshot.geometryRevision).toBe(1)
+  })
+
+  it('returns requester-only correlated results with controller epochs and canonical CAS revisions', async () => {
+    const runtimeResize = vi.fn(async input => ({
+      sessionId: input.sessionId,
+      operationId: input.operationId ?? 'runtime-operation',
+      status: 'accepted' as const,
+      changed: true,
+      geometry: { cols: input.cols, rows: input.rows, revision: null },
+      authority: null,
+    }))
+    const hub = new PtyStreamHub({
+      replayWindowMaxBytes: 64_000,
+      ptyRuntime: {
+        spawnSession: vi.fn(),
+        write: vi.fn(),
+        resize: runtimeResize,
+        kill: vi.fn(),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+      },
+    })
+    const controller = createOpenWebSocketMock()
+    const viewer = createOpenWebSocketMock()
+
+    hub.registerClient({ clientId: 'controller', kind: 'desktop', ws: controller.ws })
+    hub.registerClient({ clientId: 'viewer', kind: 'web', ws: viewer.ws })
+    hub.registerSessionMetadata({
+      sessionId: 'session-ack',
+      kind: 'terminal',
+      startedAt: '2026-07-10T00:00:00.000Z',
+      cwd: '/tmp',
+      command: 'zsh',
+      args: [],
+      cols: 80,
+      rows: 24,
+    })
+    hub.attach({ clientId: 'controller', sessionId: 'session-ack', role: 'controller' })
+    hub.attach({ clientId: 'viewer', sessionId: 'session-ack', role: 'controller' })
+
+    expect(controller.sent).toContainEqual(
+      expect.objectContaining({
+        type: 'attached',
+        sessionId: 'session-ack',
+        role: 'controller',
+        authorityEpoch: 1,
+      }),
+    )
+    expect(viewer.sent).toContainEqual(
+      expect.objectContaining({
+        type: 'attached',
+        sessionId: 'session-ack',
+        role: 'viewer',
+        authorityEpoch: 1,
+      }),
+    )
+    controller.sent.length = 0
+    viewer.sent.length = 0
+
+    const accepted = await hub.resize({
+      clientId: 'controller',
+      sessionId: 'session-ack',
+      cols: 100,
+      rows: 32,
+      reason: 'frame_commit',
+      operationId: 'operation-1',
+      baseGeometryRevision: null,
+      authorityEpoch: 1,
+    })
+
+    expect(accepted).toEqual({
+      sessionId: 'session-ack',
+      operationId: 'operation-1',
+      status: 'accepted',
+      changed: true,
+      geometry: { cols: 100, rows: 32, revision: 1 },
+      authority: { role: 'controller', epoch: 1 },
+    })
+    expect(controller.sent).toContainEqual({ type: 'resize_result', ...accepted })
+    expect(
+      viewer.sent.some(message => (message as { type?: string }).type === 'resize_result'),
+    ).toBe(false)
+
+    hub.requestControl({ clientId: 'viewer', sessionId: 'session-ack' })
+    expect(viewer.sent).toContainEqual(
+      expect.objectContaining({
+        type: 'control_changed',
+        role: 'controller',
+        authorityEpoch: 2,
+      }),
+    )
+
+    const staleAuthority = await hub.resize({
+      clientId: 'controller',
+      sessionId: 'session-ack',
+      cols: 120,
+      rows: 40,
+      reason: 'frame_commit',
+      operationId: 'operation-stale-authority',
+      baseGeometryRevision: 1,
+      authorityEpoch: 1,
+    })
+    expect(staleAuthority).toEqual({
+      sessionId: 'session-ack',
+      operationId: 'operation-stale-authority',
+      status: 'rejected_stale_authority',
+      changed: false,
+      geometry: { cols: 100, rows: 32, revision: 1 },
+      authority: { role: 'viewer', epoch: 2 },
+    })
+
+    const secondAccepted = await hub.resize({
+      clientId: 'viewer',
+      sessionId: 'session-ack',
+      cols: 120,
+      rows: 40,
+      reason: 'frame_commit',
+      operationId: 'operation-2',
+      baseGeometryRevision: 1,
+      authorityEpoch: 2,
+    })
+    expect(secondAccepted.geometry).toEqual({ cols: 120, rows: 40, revision: 2 })
+
+    const superseded = await hub.resize({
+      clientId: 'viewer',
+      sessionId: 'session-ack',
+      cols: 90,
+      rows: 30,
+      reason: 'frame_commit',
+      operationId: 'operation-superseded',
+      baseGeometryRevision: 1,
+      authorityEpoch: 2,
+    })
+    expect(superseded).toEqual({
+      sessionId: 'session-ack',
+      operationId: 'operation-superseded',
+      status: 'superseded',
+      changed: false,
+      geometry: { cols: 120, rows: 40, revision: 2 },
+      authority: { role: 'controller', epoch: 2 },
+    })
   })
 })

@@ -117,7 +117,37 @@ export function normalizeResizeTerminalPayload(payload: unknown): ResizeTerminal
       ? Math.floor(record.revision)
       : null
 
-  return { sessionId, cols, rows, reason, ...(revision !== null ? { revision } : {}) }
+  const operationId =
+    typeof record.operationId === 'string' && record.operationId.trim().length > 0
+      ? record.operationId.trim().slice(0, 160)
+      : null
+  const baseGeometryRevision =
+    record.baseGeometryRevision === null
+      ? null
+      : typeof record.baseGeometryRevision === 'number' &&
+          Number.isFinite(record.baseGeometryRevision) &&
+          record.baseGeometryRevision > 0
+        ? Math.floor(record.baseGeometryRevision)
+        : undefined
+  const authorityEpoch =
+    record.authorityEpoch === null
+      ? null
+      : typeof record.authorityEpoch === 'number' &&
+          Number.isFinite(record.authorityEpoch) &&
+          record.authorityEpoch >= 0
+        ? Math.floor(record.authorityEpoch)
+        : undefined
+
+  return {
+    sessionId,
+    cols,
+    rows,
+    reason,
+    ...(operationId ? { operationId } : {}),
+    ...(baseGeometryRevision !== undefined ? { baseGeometryRevision } : {}),
+    ...(authorityEpoch !== undefined ? { authorityEpoch } : {}),
+    ...(revision !== null ? { revision } : {}),
+  }
 }
 
 export function normalizeKillTerminalPayload(payload: unknown): KillTerminalInput {

@@ -47,6 +47,7 @@ import type {
   ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
+  TerminalGeometryCommitResult,
   PresentationSnapshotTerminalInput,
   PresentationSnapshotTerminalResult,
   RemoveGitWorktreeInput,
@@ -289,7 +290,7 @@ export interface OpenCoveApi {
     listProfiles?: () => Promise<ListTerminalProfilesResult>
     spawn: (payload: SpawnTerminalInput) => Promise<SpawnTerminalResult>
     write: (payload: WriteTerminalInput) => Promise<void>
-    resize: (payload: ResizeTerminalInput) => Promise<void>
+    resize: (payload: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
     kill: (payload: KillTerminalInput) => Promise<void>
     attach: (payload: AttachTerminalInput) => Promise<void>
     detach: (payload: DetachTerminalInput) => Promise<void>

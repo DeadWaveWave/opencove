@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
-import type { Locator } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 
 async function clickInlineTitleDisplay(display: Locator): Promise<void> {
   await expect(display).toBeVisible()
@@ -11,14 +11,42 @@ async function clickInlineTitleDisplay(display: Locator): Promise<void> {
 
 async function expectStableRect(
   locator: Locator,
+  header: Locator,
   baseline: { width: number; height: number; x: number; y: number },
 ): Promise<void> {
-  const next = await readLocatorClientRect(locator)
+  const next = await readHeaderRelativeRect(locator, header)
 
   expect(next.width).toBeCloseTo(baseline.width, 0)
   expect(next.height).toBeCloseTo(baseline.height, 0)
   expect(next.x).toBeCloseTo(baseline.x, 0)
   expect(next.y).toBeCloseTo(baseline.y, 0)
+}
+
+async function readHeaderRelativeRect(
+  locator: Locator,
+  header: Locator,
+): Promise<{ width: number; height: number; x: number; y: number }> {
+  const [rect, headerRect] = await Promise.all([
+    readLocatorClientRect(locator),
+    readLocatorClientRect(header),
+  ])
+  return {
+    width: rect.width,
+    height: rect.height,
+    x: rect.x - headerRect.x,
+    y: rect.y - headerRect.y,
+  }
+}
+
+async function waitForAppShellGridTransition(window: Page): Promise<void> {
+  await window.locator('.app-shell').evaluate(async element => {
+    const gridTransitions = element.getAnimations().filter(animation => {
+      return (animation as CSSTransition).transitionProperty === 'grid-template-columns'
+    })
+    await Promise.all(
+      gridTransitions.map(async animation => await animation.finished.catch(() => undefined)),
+    )
+  })
 }
 
 test.describe('Workspace Canvas - Header Chrome Stability', () => {
@@ -114,7 +142,7 @@ test.describe('Workspace Canvas - Header Chrome Stability', () => {
       await expect(sidebarToggle).toBeVisible()
       await sidebarToggle.click()
       await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
-      await window.waitForTimeout(200)
+      await waitForAppShellGridTransition(window)
 
       const agentNode = window
         .locator('.terminal-node')
@@ -125,44 +153,47 @@ test.describe('Workspace Canvas - Header Chrome Stability', () => {
 
       const agentTitleDisplay = agentNode.locator('[data-testid="terminal-node-title-display"]')
       const agentTitleInput = agentNode.locator('[data-testid="terminal-node-inline-title-input"]')
+      const agentHeader = agentNode.locator('.terminal-node__header')
       const agentStatus = agentNode.locator('.terminal-node__status')
       const agentClose = agentNode.locator('.terminal-node__close')
 
       const taskTitleDisplay = taskNode.locator('[data-testid="task-node-title-display"]')
       const taskTitleInput = taskNode.locator('[data-testid="task-node-inline-title-input"]')
+      const taskHeader = taskNode.locator('.task-node__header')
       const taskMoreButton = taskNode.locator('.task-node__icon-button--more')
       const taskCloseButton = taskNode.locator('.task-node__icon-button--close')
 
       const noteTitleDisplay = noteNode.locator('[data-testid="note-node-title-display"]')
       const noteTitleInput = noteNode.locator('[data-testid="note-node-title-input"]')
+      const noteHeader = noteNode.locator('.note-node__header')
       const noteActionButton = noteNode.locator('.note-node__action')
       const noteCloseButton = noteNode.locator('.note-node__close')
 
-      const agentStatusRect = await readLocatorClientRect(agentStatus)
-      const agentCloseRect = await readLocatorClientRect(agentClose)
-      const taskMoreRect = await readLocatorClientRect(taskMoreButton)
-      const taskCloseRect = await readLocatorClientRect(taskCloseButton)
-      const noteActionRect = await readLocatorClientRect(noteActionButton)
-      const noteCloseRect = await readLocatorClientRect(noteCloseButton)
+      const agentStatusRect = await readHeaderRelativeRect(agentStatus, agentHeader)
+      const agentCloseRect = await readHeaderRelativeRect(agentClose, agentHeader)
+      const taskMoreRect = await readHeaderRelativeRect(taskMoreButton, taskHeader)
+      const taskCloseRect = await readHeaderRelativeRect(taskCloseButton, taskHeader)
+      const noteActionRect = await readHeaderRelativeRect(noteActionButton, noteHeader)
+      const noteCloseRect = await readHeaderRelativeRect(noteCloseButton, noteHeader)
 
       await clickInlineTitleDisplay(agentTitleDisplay)
       await expect(agentTitleInput).toBeVisible({ timeout: 30_000 })
-      await expectStableRect(agentStatus, agentStatusRect)
-      await expectStableRect(agentClose, agentCloseRect)
+      await expectStableRect(agentStatus, agentHeader, agentStatusRect)
+      await expectStableRect(agentClose, agentHeader, agentCloseRect)
       await agentTitleInput.press('Escape')
       await expect(agentTitleInput).toHaveCount(0)
 
       await clickInlineTitleDisplay(taskTitleDisplay)
       await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
-      await expectStableRect(taskMoreButton, taskMoreRect)
-      await expectStableRect(taskCloseButton, taskCloseRect)
+      await expectStableRect(taskMoreButton, taskHeader, taskMoreRect)
+      await expectStableRect(taskCloseButton, taskHeader, taskCloseRect)
       await taskTitleInput.press('Escape')
       await expect(taskTitleInput).toHaveCount(0)
 
       await clickInlineTitleDisplay(noteTitleDisplay)
       await expect(noteTitleInput).toBeVisible({ timeout: 30_000 })
-      await expectStableRect(noteActionButton, noteActionRect)
-      await expectStableRect(noteCloseButton, noteCloseRect)
+      await expectStableRect(noteActionButton, noteHeader, noteActionRect)
+      await expectStableRect(noteCloseButton, noteHeader, noteCloseRect)
       await noteTitleInput.press('Escape')
       await expect(noteTitleInput).toHaveCount(0)
     } finally {

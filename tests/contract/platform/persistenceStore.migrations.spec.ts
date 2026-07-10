@@ -76,6 +76,20 @@ const CURRENT_SCHEMA_COLUMNS = {
   ],
   workspace_space_nodes: ['space_id', 'node_id', 'sort_order'],
   node_scrollback: ['node_id', 'scrollback', 'updated_at'],
+  terminal_recovery_records: [
+    'node_id',
+    'format_version',
+    'generation',
+    'binding_json',
+    'runtime_epoch',
+    'checkpoint_revision',
+    'applied_seq',
+    'presentation_json',
+    'raw_tail',
+    'raw_truncated',
+    'checksum',
+    'updated_at',
+  ],
   agent_node_placeholder_scrollback: ['node_id', 'scrollback', 'updated_at'],
   browser_profile_settings: ['profile_key', 'homepage_url', 'updated_at'],
   browser_history: [
@@ -424,6 +438,9 @@ describe('PersistenceStore (migrations)', () => {
 
       const migratedState = mockDbByPath.get(dbPath)
       expect(migratedState?.userVersion).toBe(11)
+      expect(migratedState?.tables.get('terminal_recovery_records')).toEqual(
+        expect.arrayContaining([...CURRENT_SCHEMA_COLUMNS.terminal_recovery_records]),
+      )
       expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
       expect(migratedState?.tables.get('nodes')).toContain('session_id')
       expect(migratedState?.tables.get('nodes')).toContain('profile_id')
@@ -448,7 +465,7 @@ describe('PersistenceStore (migrations)', () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 9, version2Schema: true })],
+        [dbPath, createMockDbState({ userVersion: 11, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 

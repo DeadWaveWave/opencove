@@ -4,7 +4,11 @@ import type { Terminal } from '@xterm/xterm'
 import type { PresentationSnapshotTerminalResult, TerminalPtyGeometry } from '@shared/contracts/dto'
 import type { AgentLaunchMode } from '../../types'
 import { resolveInitialTerminalDimensions } from './initialDimensions'
-import { commitInitialTerminalNodeGeometry, refreshTerminalNodeSize } from './syncTerminalNodeSize'
+import {
+  commitInitialTerminalNodeGeometry,
+  refreshTerminalNodeSize,
+  type InitialTerminalNodeGeometryCommitResult,
+} from './syncTerminalNodeSize'
 import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio'
 import type { CachedTerminalScreenState } from './screenStateCache'
 import type { XtermSession } from './xtermSession'
@@ -162,16 +166,23 @@ export function createRuntimeInitialGeometryCommitter({
 
     const terminal = terminalRef.current
     const geometryRevision = terminal ? beginTerminalGeometryCommit(terminal) : null
-    const measuredGeometry = await commitInitialTerminalNodeGeometry({
-      terminalRef,
-      fitAddonRef,
-      containerRef,
-      isPointerResizingRef,
-      lastCommittedPtySizeRef,
-      sessionId,
-      reason: 'frame_commit',
-      geometryRevision,
-    })
+    let measuredGeometry: InitialTerminalNodeGeometryCommitResult | null = null
+    try {
+      measuredGeometry = await commitInitialTerminalNodeGeometry({
+        terminalRef,
+        fitAddonRef,
+        containerRef,
+        isPointerResizingRef,
+        lastCommittedPtySizeRef,
+        sessionId,
+        reason: 'frame_commit',
+        geometryRevision,
+      })
+    } catch {
+      if (terminal && geometryRevision !== null) {
+        markTerminalGeometryCommitSettled(terminal, geometryRevision)
+      }
+    }
 
     if (measuredGeometry) {
       if (terminal && geometryRevision !== null) {
@@ -180,8 +191,8 @@ export function createRuntimeInitialGeometryCommitter({
       return measuredGeometry
     }
 
-    if (terminal) {
-      markTerminalGeometryAccepted(terminal, geometryRevision)
+    if (terminal && geometryRevision !== null) {
+      markTerminalGeometryCommitSettled(terminal, geometryRevision)
     }
 
     if (!canonicalGeometry) {

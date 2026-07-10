@@ -4,10 +4,8 @@ import type {
   PresentationSnapshotTerminalResult,
   TerminalDiagnosticsLogInput,
 } from '@shared/contracts/dto'
-import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { AgentLaunchMode, WorkspaceNodeKind } from '../../types'
 import type { AttachablePtyApi } from './attachablePty'
-import { createOpenCodeTuiThemeBridge } from './opencodeTuiThemeBridge'
 import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement'
 import { attachAfterPresentationSnapshot } from './presentationSnapshotReplayCursor'
 import type { TerminalThemeMode } from './theme'
@@ -432,24 +430,6 @@ export function prepareRuntimePresentationAttach(options: {
   return { attachPromise, presentationSnapshotPromise }
 }
 
-export function createOptionalOpenCodeThemeBridge(options: {
-  terminalProvider: AgentProvider | null
-  terminal: Terminal
-  ptyWriteQueue: {
-    enqueue: (data: string, encoding?: 'utf8' | 'binary') => void
-    flush: () => void
-  }
-  terminalThemeMode: TerminalThemeMode
-}) {
-  return options.terminalProvider === 'opencode'
-    ? createOpenCodeTuiThemeBridge({
-        terminal: options.terminal,
-        ptyWriteQueue: options.ptyWriteQueue,
-        terminalThemeMode: options.terminalThemeMode,
-      })
-    : null
-}
-
 export function registerRuntimeRendererAndThemeSync(options: {
   terminal: Terminal
   renderer: XtermSession['renderer']
@@ -481,7 +461,6 @@ export function registerRuntimeRendererAndThemeSync(options: {
       return
     }
     options.applyTerminalTheme()
-    runtimeRendererHealth.notifyLayoutTrigger('theme_change')
     options.reportOpenCodeThemeMode()
   }
 

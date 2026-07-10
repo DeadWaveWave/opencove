@@ -1,9 +1,11 @@
 import { fork } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import { PtyHostSupervisor } from '../../platform/process/ptyHost/supervisor'
 import { createNodeChildPtyHostProcess } from '../../platform/process/ptyHost/nodeProcessAdapter'
 import type {
-  TerminalGeometryCommitReason,
+  ResizeTerminalInput,
+  TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../shared/contracts/dto'
@@ -28,13 +30,7 @@ export interface HeadlessPtyRuntime {
   listProfiles: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: SpawnSessionOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string) => void
-  resize: (
-    sessionId: string,
-    cols: number,
-    rows: number,
-    reason?: TerminalGeometryCommitReason,
-    revision?: number | null,
-  ) => void
+  resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
@@ -96,10 +92,28 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
       supervisor.write(sessionId, data)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
-    resize: (sessionId, cols, rows, _reason, _revision) => {
-      void _reason
-      void _revision
-      supervisor.resize(sessionId, cols, rows)
+    resize: async input => {
+      const operationId = input.operationId?.trim() || randomUUID()
+      try {
+        await supervisor.resize(input.sessionId, input.cols, input.rows)
+        return {
+          sessionId: input.sessionId,
+          operationId,
+          status: 'accepted',
+          changed: true,
+          geometry: { cols: input.cols, rows: input.rows, revision: null },
+          authority: null,
+        }
+      } catch {
+        return {
+          sessionId: input.sessionId,
+          operationId,
+          status: 'runtime_failed',
+          changed: false,
+          geometry: null,
+          authority: null,
+        }
+      }
     },
     kill: sessionId => {
       sessionStateWatcher.disposeSession(sessionId)

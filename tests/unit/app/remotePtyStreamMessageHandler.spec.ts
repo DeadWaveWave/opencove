@@ -4,7 +4,10 @@ import { createRemotePtyStreamMessageHandler } from '../../../src/app/main/contr
 
 describe('createRemotePtyStreamMessageHandler', () => {
   function createHandler() {
-    const attachedSessions = new Map<string, { lastSeq: number }>()
+    const attachedSessions = new Map<
+      string,
+      { lastSeq: number; role: 'viewer' | 'controller'; authorityEpoch: number }
+    >()
     const sendToSessionSubscribers = vi.fn()
     const sendToAllWindows = vi.fn()
     const externalDataListener = vi.fn()
@@ -13,6 +16,8 @@ describe('createRemotePtyStreamMessageHandler', () => {
     const externalMetadataListener = vi.fn()
     const onSessionExit = vi.fn()
     const onSessionAttached = vi.fn()
+    const onResizeResult = vi.fn()
+    const onAuthorityChanged = vi.fn()
 
     const handler = createRemotePtyStreamMessageHandler({
       attachedSessions,
@@ -25,6 +30,10 @@ describe('createRemotePtyStreamMessageHandler', () => {
       cancelMetadataWatcher: vi.fn(),
       onSessionExit,
       onSessionAttached,
+      onResizeResult,
+      onGeometry: vi.fn(),
+      onAuthorityChanged,
+      onSessionError: vi.fn(),
       handshake: {
         onHelloAck: vi.fn(),
         onHandshakeError: vi.fn(),
@@ -42,6 +51,8 @@ describe('createRemotePtyStreamMessageHandler', () => {
       externalMetadataListener,
       onSessionExit,
       onSessionAttached,
+      onResizeResult,
+      onAuthorityChanged,
     }
   }
 
@@ -78,6 +89,43 @@ describe('createRemotePtyStreamMessageHandler', () => {
       sessionId: 'session-1',
       data: 'hello',
       seq: 3,
+    })
+  })
+
+  it('parses authority and correlated resize results', () => {
+    const { handler, onResizeResult, onAuthorityChanged } = createHandler()
+
+    handler(
+      JSON.stringify({
+        type: 'attached',
+        sessionId: 'session-ack',
+        role: 'controller',
+        authorityEpoch: 2,
+      }),
+    )
+    handler(
+      JSON.stringify({
+        type: 'resize_result',
+        sessionId: 'session-ack',
+        operationId: 'operation-1',
+        status: 'accepted',
+        changed: true,
+        geometry: { cols: 100, rows: 32, revision: 4 },
+        authority: { role: 'controller', epoch: 2 },
+      }),
+    )
+
+    expect(onAuthorityChanged).toHaveBeenCalledWith('session-ack', {
+      role: 'controller',
+      epoch: 2,
+    })
+    expect(onResizeResult).toHaveBeenCalledWith({
+      sessionId: 'session-ack',
+      operationId: 'operation-1',
+      status: 'accepted',
+      changed: true,
+      geometry: { cols: 100, rows: 32, revision: 4 },
+      authority: { role: 'controller', epoch: 2 },
     })
   })
 

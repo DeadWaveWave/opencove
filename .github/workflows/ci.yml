@@ -55,6 +55,9 @@ jobs:
         if: github.event_name == 'push'
         run: pnpm test:coverage
 
+      - name: Terminal recovery native contracts
+        run: pnpm test:terminal-recovery:native
+
       - name: Build
         run: pnpm build
 

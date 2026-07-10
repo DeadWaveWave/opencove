@@ -34,11 +34,16 @@
 
 ### 2.1 单一真相
 
-- 持久化设置：`settings.uiTheme: UiTheme`，取值见 `src/contexts/settings/domain/uiSettings.ts`（当前为 `'system' | 'light' | 'dark' | 'ember'`）。
+- 持久化设置：`settings.uiTheme: UiTheme`，取值见 `src/contexts/settings/domain/uiSettings.ts`（当前为 `'system' | 'light' | 'dark' | 'ember' | 'ember-light'`）。
 - Renderer 主题入口（**两个互补的 hook**，共同构成命名主题扩展点）：
   - `<html data-cove-theme="light|dark">` —— 解析后的基础配色，所有 `--cove-*` token 默认基于此切换；`system` 会跟随 `prefers-color-scheme` 计算出 light/dark。
   - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。命名主题通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。当前内置主题包含 `ember`；用户提供主题包的 loader、安全沙箱和 UI 入口不在当前公开能力内。
-- 添加一个新内置主题的步骤：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `baseScheme`（决定该主题坐落于 light 还是 dark base）与 `i18nKey`；③ 提供 `styles/themes/<id>.css`，以 `:root[data-cove-theme-id='<id>']` 选择器覆盖需要的 `--cove-*` token。
+- 添加一个新内置主题的步骤：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `baseScheme`、`terminalScheme` 与 `i18nKey`；③ 提供 `styles/themes/<id>.css`，以 `:root[data-cove-theme-id='<id>']` 选择器覆盖需要的 `--cove-*` token。
+- `baseScheme` 与 `terminalScheme` 是两个独立语义：前者决定应用 shell 的 light/dark token，后者决定 xterm 与内嵌 TUI 的配色协议。`ember-light` 的 shell 是 light，但 terminal/OpenCode 语义固定为 dark。
+- 每个 xterm 实例必须通过一个 revisioned `TerminalAppearanceSnapshot` 应用主题。快速连续切换采用 final-wins：每帧至多应用/刷新一次最新 snapshot；xterm theme、OpenCode OSC/CSI 与 Find decoration 必须消费同一份 **applied** snapshot，不能各自读取时序不同的 desired theme。
+- 同一 xterm 在 placeholder handoff/DOM remount 后必须从 live `containerRef` 定位主题 scope，不能
+  继续写 detached DOM；一次瞬态 render mutation 失败只能 bounded retry，且成功 refresh 前不得
+  发布新的 applied revision。
 - 必须设置 `color-scheme`，让原生控件在主题下正确渲染。
 
 ### 2.2 Token 优先（禁止硬编码颜色）
@@ -96,6 +101,23 @@
 - 样式：`src/app/renderer/styles/workspace-canvas.css`
 - Token：`src/app/renderer/styles/base.css`
 
+### 4.2 Terminal Node
+
+- Terminal body 是 PTY rows/cols 的唯一测量区域。Header、error 与 node frame 可以影响可用
+  区域，但局部浮层不得偷偷成为 geometry writer。
+- Find 必须 absolute overlay 在 `.terminal-node__body` 内；打开、关闭、查询与主题刷新均不得
+  改变 xterm container 高度或触发 PTY resize。
+- Renderer 只提交 side-effect-free 测量结果；Worker runtime ACK 后还必须复核 presentation
+  identity 与 authority，Renderer 才应用返回的 canonical geometry。Attach/detach/control/write/
+  resize 在 Worker 侧共享同一 session FIFO，Find 不参与该队列且不是 geometry writer。
+- Transport 断线后必须把缓存 authority epoch 清为 unknown；新 `attached`/`control_changed`
+  到达前不得把旧连接 epoch 带入 resize。
+- 主题刷新应保留 terminal DOM、selection、viewport 与 Find state；禁止用 remount 或虚假
+  resize/SIGWINCH 修复调色板残影。
+- Terminal appearance 只有一个 final-wins apply owner；新 revision 仅在实际 apply/refresh 完成后
+  成为 applied state。任何真实 presentation change 都必须标记 durable dirty；退出前需 drain
+  完整 session FIFO 后再做最终 recovery flush。
+
 ---
 
 ## 5) Settings（可读性硬约束）
@@ -127,6 +149,10 @@
 
 - Light / Dark 下主要页面可读（至少：Sidebar / Canvas / Settings / Node chrome）
 - MiniMap idle/hover 层级正确（默认不抢眼，hover 可读）
+- 命名主题分别验收 app shell 与 `terminalScheme`；`ember-light` 必须是浅色 shell + 深色终端。
+- Terminal Find 打开前后 terminal body 尺寸、rows/cols 与 PTY geometry 保持不变。
+- Terminal node 扩张与收缩后，Renderer accepted rows/cols、Worker presentation snapshot 与
+  POSIX PTY `stty size` 必须三方一致，且收缩后的 rows 严格下降。
 
 ### 6.2 E2E 要求（有 UI 回归风险时必须）
 
@@ -147,3 +173,7 @@
 - Theme 应用：`src/app/renderer/shell/hooks/useApplyUiTheme.ts`
 - Theme Token：`src/app/renderer/styles/base.css`
 - Terminal 主题映射：`src/contexts/workspace/presentation/renderer/components/terminalNode/theme.ts`
+- Terminal geometry 权威 E2E：`tests/e2e/workspace-canvas.terminal-resize-shrink.spec.ts`
+- Terminal theme/Find E2E：`tests/e2e/workspace-canvas.terminal-theme.spec.ts`
+- Multi-client authority/FIFO：`tests/unit/app/ptyStreamHub.attach.authority.spec.ts`、
+  `tests/unit/app/ptyStreamHub.resize.authority.spec.ts`、`tests/unit/app/BrowserPtyClient.spec.ts`

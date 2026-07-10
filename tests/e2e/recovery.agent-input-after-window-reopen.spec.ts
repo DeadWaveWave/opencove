@@ -445,10 +445,19 @@ test.describe('Recovery - Agent input after window reopen', () => {
           reopenedTranscriptLocator,
           2_500,
         )
+        const firstRestoredSampleIndex = transcriptSamplesAfterImmediateInput.findIndex(sample =>
+          sample.includes(stableMarker),
+        )
         expect(
-          transcriptSamplesAfterImmediateInput.filter(sample => sample.length === 0),
-          `Transcript unexpectedly blanked after immediate reopen input: ${JSON.stringify(transcriptSamplesAfterImmediateInput)}`,
-        ).toHaveLength(0)
+          firstRestoredSampleIndex,
+          `Restored history never became visible after immediate input: ${JSON.stringify(transcriptSamplesAfterImmediateInput)}`,
+        ).toBeGreaterThanOrEqual(0)
+        const samplesAfterRestore =
+          transcriptSamplesAfterImmediateInput.slice(firstRestoredSampleIndex)
+        expect(
+          samplesAfterRestore.every(sample => sample.length > 0 && sample.includes(stableMarker)),
+          `Restored history disappeared after becoming visible: ${JSON.stringify(transcriptSamplesAfterImmediateInput)}`,
+        ).toBe(true)
 
         const finalTranscript = await waitForTranscriptContaining(
           reopenedWindow,

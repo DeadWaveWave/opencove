@@ -291,10 +291,16 @@ function writeToSession(request: PtyHostWriteRequest): void {
 function resizeSession(request: PtyHostResizeRequest): void {
   const session = sessions.get(request.sessionId)
   if (!session) {
-    return
+    throw new Error(`Unknown PTY session: ${request.sessionId}`)
   }
 
   session.pty.resize(request.cols, request.rows)
+  send({
+    type: 'response',
+    requestId: request.requestId,
+    ok: true,
+    result: { sessionId: request.sessionId, cols: request.cols, rows: request.rows },
+  })
 }
 
 function killSession(request: PtyHostKillRequest): void {
@@ -345,7 +351,11 @@ parentPort.on('message', messageEvent => {
   }
 
   if (message.type === 'resize') {
-    resizeSession(message)
+    try {
+      resizeSession(message)
+    } catch (error) {
+      respondError(message.requestId, error)
+    }
     return
   }
 

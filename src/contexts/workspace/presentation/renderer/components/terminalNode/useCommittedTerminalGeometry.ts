@@ -1,10 +1,11 @@
-import { useCallback, type MutableRefObject } from 'react'
+import { useCallback, useRef, type MutableRefObject } from 'react'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
 import type { TerminalGeometryCommitReason } from '@shared/contracts/dto'
 import {
   commitSettledTerminalNodeGeometry,
   fitTerminalNodeToMeasuredSize,
+  refreshTerminalNodeSize,
 } from './syncTerminalNodeSize'
 import {
   beginTerminalGeometryCommit,
@@ -46,7 +47,7 @@ export async function commitTerminalGeometryForCurrentSession(
   reason: CommitTerminalGeometryReason,
 ): Promise<void> {
   const terminal = terminalRef.current
-  if (suppressPtyResizeRef.current || sessionId.trim().length === 0) {
+  if (sessionId.trim().length === 0) {
     fitTerminalNodeToMeasuredSize({
       terminalRef,
       fitAddonRef,
@@ -56,23 +57,40 @@ export async function commitTerminalGeometryForCurrentSession(
     return
   }
 
+  if (suppressPtyResizeRef.current) {
+    refreshTerminalNodeSize({
+      terminalRef,
+      containerRef,
+      isPointerResizingRef,
+    })
+    scheduleWebglCanvasTransformCleanup()
+    return
+  }
+
   const committedSessionId = sessionId
   const geometryRevision = terminal ? beginTerminalGeometryCommit(terminal) : null
   const pendingCommittedPtySizeRef: MutableRefObject<PtySize | null> = {
     current: lastCommittedPtySizeRef.current,
   }
 
-  await commitSettledTerminalNodeGeometry({
-    terminalRef,
-    fitAddonRef,
-    containerRef,
-    isPointerResizingRef,
-    lastCommittedPtySizeRef: pendingCommittedPtySizeRef,
-    sessionId,
-    reason,
-    geometryRevision,
-    shouldCommit: () => latestSessionIdRef.current === committedSessionId,
-  })
+  try {
+    await commitSettledTerminalNodeGeometry({
+      terminalRef,
+      fitAddonRef,
+      containerRef,
+      isPointerResizingRef,
+      lastCommittedPtySizeRef: pendingCommittedPtySizeRef,
+      sessionId,
+      reason,
+      geometryRevision,
+      shouldCommit: () => latestSessionIdRef.current === committedSessionId,
+    })
+  } catch {
+    if (terminal && geometryRevision !== null) {
+      markTerminalGeometryCommitSettled(terminal, geometryRevision)
+    }
+    return
+  }
 
   if (latestSessionIdRef.current !== committedSessionId) {
     if (terminal && geometryRevision !== null) {
@@ -110,23 +128,42 @@ export function useCommittedTerminalGeometry(
     sessionId,
     scheduleWebglCanvasTransformCleanup,
   } = params
+  const commitQueueRef = useRef<{
+    sessionId: string
+    terminal: Terminal | null
+    chain: Promise<void>
+  } | null>(null)
 
   return useCallback(
     (reason: CommitTerminalGeometryReason) => {
-      void commitTerminalGeometryForCurrentSession(
-        {
-          terminalRef,
-          fitAddonRef,
-          containerRef,
-          isPointerResizingRef,
-          lastCommittedPtySizeRef,
-          suppressPtyResizeRef,
-          latestSessionIdRef,
+      const currentTerminal = terminalRef.current
+      if (
+        commitQueueRef.current?.sessionId !== sessionId ||
+        commitQueueRef.current.terminal !== currentTerminal
+      ) {
+        commitQueueRef.current = {
           sessionId,
-          scheduleWebglCanvasTransformCleanup,
-        },
-        reason,
-      )
+          terminal: currentTerminal,
+          chain: Promise.resolve(),
+        }
+      }
+      const queue = commitQueueRef.current
+      const commit = () =>
+        commitTerminalGeometryForCurrentSession(
+          {
+            terminalRef,
+            fitAddonRef,
+            containerRef,
+            isPointerResizingRef,
+            lastCommittedPtySizeRef,
+            suppressPtyResizeRef,
+            latestSessionIdRef,
+            sessionId,
+            scheduleWebglCanvasTransformCleanup,
+          },
+          reason,
+        )
+      queue.chain = queue.chain.then(commit, commit)
     },
     [
       containerRef,

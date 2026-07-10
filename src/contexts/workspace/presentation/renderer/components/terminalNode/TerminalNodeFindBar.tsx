@@ -33,6 +33,7 @@ export function TerminalNodeFindBar({
   resultCount,
   caseSensitive,
   useRegex,
+  terminalElementId,
   onQueryChange,
   onFindNext,
   onFindPrevious,
@@ -46,6 +47,7 @@ export function TerminalNodeFindBar({
   resultCount: number
   caseSensitive: boolean
   useRegex: boolean
+  terminalElementId: string
   onQueryChange: (query: string) => void
   onFindNext: () => void
   onFindPrevious: () => void
@@ -81,6 +83,8 @@ export function TerminalNodeFindBar({
       className="terminal-node__find nodrag"
       data-cove-focus-scope="terminal"
       data-testid="terminal-find"
+      role="search"
+      aria-label={t('terminalFind.placeholder')}
     >
       <Search aria-hidden="true" size={14} className="terminal-node__find-icon" />
       <input
@@ -88,6 +92,8 @@ export function TerminalNodeFindBar({
         className="terminal-node__find-input nowheel"
         value={query}
         placeholder={t('terminalFind.placeholder')}
+        aria-label={t('terminalFind.placeholder')}
+        aria-controls={terminalElementId}
         data-testid="terminal-find-input"
         onChange={event => {
           onQueryChange(event.target.value)
@@ -152,7 +158,12 @@ export function TerminalNodeFindBar({
         </button>
       </div>
 
-      <span className="terminal-node__find-count" aria-hidden="true">
+      <span
+        className="terminal-node__find-count"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {matchCountLabel}
       </span>
 

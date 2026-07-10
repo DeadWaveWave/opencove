@@ -78,6 +78,7 @@
     "build:linux": "pnpm build && pnpm build:release-manifest && electron-builder --linux AppImage deb --publish never",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:terminal-recovery:native": "node scripts/run-terminal-recovery-native-tests.mjs",
     "test:e2e": "node scripts/test-e2e-with-window-fallback.mjs",
     "test:e2e:web-canvas": "node scripts/test-e2e-web-canvas.mjs",
     "test:e2e:web-shell": "node scripts/test-e2e-web-shell.mjs",
@@ -109,7 +110,7 @@
     "release:minor": "node scripts/prepare-release.mjs minor",
     "release:major": "node scripts/prepare-release.mjs major",
     "release:version": "node scripts/prepare-release.mjs",
-    "pre-commit": "pnpm line-check:staged && pnpm secret-check:staged && pnpm naming-check:staged && pnpm ui:style-check && pnpm lint:fix && pnpm format-check:staged && pnpm check && pnpm test:staged && pnpm test:e2e:pre-commit",
+    "pre-commit": "pnpm line-check:staged && pnpm secret-check:staged && pnpm naming-check:staged && pnpm ui:style-check && pnpm lint:fix && pnpm format-check:staged && pnpm check && pnpm test:staged && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit",
     "prepare": "husky"
   },
   "dependencies": {

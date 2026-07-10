@@ -77,13 +77,7 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptyResize,
     async (_event, payload: ResizeTerminalInput) => {
       const normalized = normalizeResizeTerminalPayload(payload)
-      await runtime.resize(
-        normalized.sessionId,
-        normalized.cols,
-        normalized.rows,
-        normalized.reason,
-        normalized.revision,
-      )
+      return await runtime.resize(normalized)
     },
     { defaultErrorCode: 'terminal.resize_failed' },
   )

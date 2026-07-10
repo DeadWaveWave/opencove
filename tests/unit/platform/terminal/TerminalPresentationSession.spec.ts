@@ -50,6 +50,62 @@ describe('TerminalPresentationSession', () => {
     expect(snapshot.geometryRevision).toBe(2)
   })
 
+  it('owns canonical geometry revisions and rejects stale compare-and-set commits', () => {
+    const session = new TerminalPresentationSession({
+      sessionId: 'session-cas',
+      cols: 80,
+      rows: 24,
+    })
+
+    expect(
+      session.commitGeometry({
+        cols: 100,
+        rows: 32,
+        baseGeometryRevision: null,
+      }),
+    ).toEqual({
+      status: 'accepted',
+      changed: true,
+      geometry: { cols: 100, rows: 32, revision: 1 },
+    })
+
+    expect(
+      session.commitGeometry({
+        cols: 120,
+        rows: 40,
+        baseGeometryRevision: null,
+      }),
+    ).toEqual({
+      status: 'superseded',
+      changed: false,
+      geometry: { cols: 100, rows: 32, revision: 1 },
+    })
+
+    expect(
+      session.commitGeometry({
+        cols: 120,
+        rows: 40,
+        baseGeometryRevision: 1,
+      }),
+    ).toEqual({
+      status: 'accepted',
+      changed: true,
+      geometry: { cols: 120, rows: 40, revision: 2 },
+    })
+
+    expect(
+      session.commitGeometry({
+        cols: 120,
+        rows: 40,
+        baseGeometryRevision: 2,
+      }),
+    ).toEqual({
+      status: 'accepted',
+      changed: false,
+      geometry: { cols: 120, rows: 40, revision: 2 },
+    })
+  })
+
   it('tracks alternate buffer presentation and title updates', async () => {
     const session = new TerminalPresentationSession({
       sessionId: 'session-2',

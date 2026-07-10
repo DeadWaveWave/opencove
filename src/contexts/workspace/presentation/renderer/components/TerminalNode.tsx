@@ -309,6 +309,7 @@ export function TerminalNode({
     terminalRef,
     containerRef,
     terminalThemeMode,
+    terminalLifecycleKey: `${sessionId}:${terminalClientResetVersion}`,
   })
   const { transcriptRef, scheduleTranscriptSync } = useTerminalTestTranscriptMirror({
     enabled: (isTestEnvironment || diagnosticsEnabled) && !transcriptMirrorDisabled,
@@ -464,7 +465,6 @@ export function TerminalNode({
       agentExecutionDirectory={agentExecutionDirectory}
       agentResumeSessionId={agentResumeSessionId}
       agentResumeSessionIdVerified={agentResumeSessionIdVerified}
-      terminalThemeMode={terminalThemeMode}
       isSelected={hasSelectedDragSurface}
       isDragging={isDragging}
       status={status}
