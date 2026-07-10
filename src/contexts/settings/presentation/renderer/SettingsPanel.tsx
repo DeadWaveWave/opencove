@@ -1,7 +1,5 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
-import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useTranslation } from '@app/renderer/i18n'
 import { useTerminalProfiles } from '@app/renderer/shell/hooks/useTerminalProfiles'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
@@ -16,6 +14,7 @@ import { GeneralSection } from './settingsPanel/GeneralSection'
 import { AppearanceSection } from './settingsPanel/AppearanceSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { NotificationsSection } from './settingsPanel/NotificationsSection'
+import { SettingsPanelHeader } from './settingsPanel/SettingsPanelHeader'
 import { SettingsPanelSidebar } from './settingsPanel/SettingsPanelSidebar'
 import { TasksAndShortcutsSection } from './settingsPanel/TasksAndShortcutsSection'
 import { AgentSettingsPage } from './settingsPanel/AgentSettingsPage'
@@ -24,11 +23,15 @@ import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import type { SettingsSearchResult } from './settingsPanel/settingsSearchIndex'
 import {
   createInitialInputState,
+  getFolderName,
   isWorkspacePageId,
   type SettingsPanelProps,
 } from './SettingsPanel.shared'
 import { useSettingsPanelPageState } from './useSettingsPanelPageState'
 import { createSettingsPanelUpdaters } from './useSettingsPanelUpdaters'
+import { resolveSettingsPage } from './settingsPanel/settingsPageRegistry'
+
+const SETTINGS_FOCUS_OUTSIDE_SELECTORS = ['.cove-window'] as const
 
 export function SettingsPanel({
   initialPageId,
@@ -48,20 +51,23 @@ export function SettingsPanel({
   onClose,
 }: SettingsPanelProps): React.JSX.Element {
   const { t } = useTranslation()
-  const dialogTitleId = useId()
   const { terminalProfiles, detectedDefaultTerminalProfileId } = useTerminalProfiles()
   const contentRef = useRef<HTMLDivElement | null>(null)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const highlightedSearchTargetRef = useRef<HTMLElement | null>(null)
+  const searchHighlightTimeoutRef = useRef<number | null>(null)
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState(AGENT_PROVIDERS))
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
-  const { activePageId, setActivePageId, activeWorkspace } = useSettingsPanelPageState({
-    openPageId,
-    workspaces,
-    contentRef,
-    onFocusNodeTargetZoomPreviewChange,
-  })
+  const { activePageId, canonicalPageId, setActivePageId, activeWorkspace } =
+    useSettingsPanelPageState({
+      openPageId,
+      workspaces,
+      contentRef,
+      onFocusNodeTargetZoomPreviewChange,
+    })
+  const resolvedActivePage = useMemo(() => resolveSettingsPage(activePageId), [activePageId])
 
   useEffect(() => {
     if (initialPageId) {
@@ -216,30 +222,6 @@ export function SettingsPanel({
     setActivePageId('worker')
   }, [activePageId, setActivePageId, settings.experimentalRemoteWorkersEnabled])
 
-  const renderedPageId = (() => {
-    if (activePageId === 'canvas') {
-      return 'canvas-windows'
-    }
-
-    if (
-      activePageId === 'shortcuts' ||
-      activePageId === 'quick-menu' ||
-      activePageId === 'task-configuration'
-    ) {
-      return 'tasks-shortcuts'
-    }
-
-    if (activePageId === 'experimental' || activePageId === 'diagnostics') {
-      return 'advanced'
-    }
-
-    if (activePageId === 'endpoints') {
-      return 'worker'
-    }
-
-    return activePageId
-  })()
-
   const selectSearchResult = (result: SettingsSearchResult): void => {
     setActivePageId(result.pageId)
 
@@ -251,17 +233,65 @@ export function SettingsPanel({
       }
 
       target.scrollIntoView({ block: 'start' })
+      highlightedSearchTargetRef.current?.removeAttribute('data-settings-search-target')
+      target.setAttribute('data-settings-search-target', 'true')
+      highlightedSearchTargetRef.current = target
+
+      if (searchHighlightTimeoutRef.current !== null) {
+        window.clearTimeout(searchHighlightTimeoutRef.current)
+      }
+      searchHighlightTimeoutRef.current = window.setTimeout(() => {
+        target.removeAttribute('data-settings-search-target')
+        if (highlightedSearchTargetRef.current === target) {
+          highlightedSearchTargetRef.current = null
+        }
+        searchHighlightTimeoutRef.current = null
+      }, 1600)
     })
   }
+
+  useEffect(() => {
+    return () => {
+      if (searchHighlightTimeoutRef.current !== null) {
+        window.clearTimeout(searchHighlightTimeoutRef.current)
+      }
+      highlightedSearchTargetRef.current?.removeAttribute('data-settings-search-target')
+    }
+  }, [])
+
+  const pageTitle = activeWorkspace
+    ? activeWorkspace.name.trim() || getFolderName(activeWorkspace.path)
+    : t(resolvedActivePage.navLabelKey ?? 'settingsPanel.title')
+  const pageDescription = activeWorkspace
+    ? activeWorkspace.path
+    : resolvedActivePage.descriptionKey
+      ? t(resolvedActivePage.descriptionKey)
+      : ''
 
   return (
     <Dialog
       open
-      aria-labelledby={dialogTitleId}
       initialFocusRef={searchInputRef}
       backdropClassName={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
       className={`settings-panel${isFocusNodeTargetZoomPreviewing ? ' settings-panel--preview' : ''}`}
-      onDismiss={() => {
+      aria-labelledby="settings-panel-page-title"
+      aria-describedby={pageDescription ? 'settings-panel-page-description' : undefined}
+      data-testid="settings-panel"
+      inertRootSelector=".app-shell"
+      focusOutsideSelectors={SETTINGS_FOCUS_OUTSIDE_SELECTORS}
+      fallbackReturnFocusSelector='[data-testid="app-header-settings"]'
+      dismissOnEscape={false}
+      onDismiss={() => onClose()}
+      onKeyDown={event => {
+        const target = event.target
+        if (
+          event.key !== 'Escape' ||
+          event.defaultPrevented ||
+          (target instanceof Element && target.closest('.cove-window'))
+        ) {
+          return
+        }
+        event.preventDefault()
         onClose()
       }}
     >
@@ -275,19 +305,9 @@ export function SettingsPanel({
       />
 
       <div className="settings-panel__content-wrapper">
-        <div className="settings-panel__header">
-          <h2 id={dialogTitleId}>{t('settingsPanel.title')}</h2>
-          <IconButton
-            label={t('common.close')}
-            size="xs"
-            className="settings-panel__close"
-            onClick={onClose}
-          >
-            <X aria-hidden="true" />
-          </IconButton>
-        </div>
+        <SettingsPanelHeader title={pageTitle} description={pageDescription} onClose={onClose} />
         <div className="settings-panel__content" ref={contentRef}>
-          {renderedPageId === 'general' ? (
+          {canonicalPageId === 'general' ? (
             <GeneralSection
               language={settings.language}
               updatePolicy={settings.updatePolicy}
@@ -302,7 +322,7 @@ export function SettingsPanel({
             />
           ) : null}
 
-          {renderedPageId === 'appearance' ? (
+          {canonicalPageId === 'appearance' ? (
             <AppearanceSection
               uiTheme={settings.uiTheme}
               uiFontSize={settings.uiFontSize}
@@ -323,14 +343,14 @@ export function SettingsPanel({
             />
           ) : null}
 
-          {renderedPageId === 'worker' ? (
+          {canonicalPageId === 'worker' ? (
             <WorkerConnectionsSection
               remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled}
               onChangeRemoteWorkersEnabled={updateExperimentalRemoteWorkersEnabled}
             />
           ) : null}
 
-          {renderedPageId === 'agent' ? (
+          {canonicalPageId === 'agent' ? (
             <AgentSettingsPage
               settings={settings}
               modelCatalogByProvider={modelCatalogByProvider}
@@ -347,7 +367,7 @@ export function SettingsPanel({
             />
           ) : null}
 
-          {renderedPageId === 'notifications' ? (
+          {canonicalPageId === 'notifications' ? (
             <NotificationsSection
               systemNotificationsEnabled={settings.systemNotificationsEnabled}
               standbyBannerEnabled={settings.standbyBannerEnabled}
@@ -365,14 +385,14 @@ export function SettingsPanel({
             />
           ) : null}
 
-          {renderedPageId === 'integrations' ? (
+          {canonicalPageId === 'integrations' ? (
             <IntegrationsSection
               githubPullRequestsEnabled={settings.githubPullRequestsEnabled}
               onChangeGitHubPullRequestsEnabled={updateGitHubPullRequestsEnabled}
             />
           ) : null}
 
-          {renderedPageId === 'canvas-windows' ? (
+          {canonicalPageId === 'canvas-windows' ? (
             <CanvasWindowsSection
               canvasInputMode={settings.canvasInputMode}
               canvasWheelBehavior={settings.canvasWheelBehavior}
@@ -402,7 +422,7 @@ export function SettingsPanel({
             />
           ) : null}
 
-          {renderedPageId === 'advanced' ? (
+          {canonicalPageId === 'advanced' ? (
             <AdvancedSection
               websiteWindowPolicy={settings.websiteWindowPolicy}
               browserDefaultMode={settings.browserDefaultMode}
@@ -419,7 +439,7 @@ export function SettingsPanel({
             />
           ) : null}
 
-          {renderedPageId === 'tasks-shortcuts' ? (
+          {canonicalPageId === 'tasks-shortcuts' ? (
             <TasksAndShortcutsSection
               showTaskTitleGeneration={AI_NAMING_FEATURES.taskTitleGeneration}
               defaultProvider={settings.defaultProvider}

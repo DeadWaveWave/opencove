@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { CliPathStatusResult, HomeWorkerMode, WorkerStatusResult } from '@shared/contracts/dto'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
+import { WorkerRemoteConnectionFields } from './WorkerRemoteConnectionFields'
+import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 import { formatToken, toBaseUrl, toErrorMessage } from './workerSectionUtils'
 
 export function WorkerSection({
@@ -198,300 +200,248 @@ export function WorkerSection({
   }
 
   return (
-    <div className="settings-panel__section" id="settings-section-worker">
-      <div className="settings-panel__section-header">
-        <h3 className="settings-panel__section-title">{t('settingsPanel.worker.title')}</h3>
-      </div>
-
-      {error ? (
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('common.error')}</strong>
-          </div>
-          <div className="settings-panel__control">
-            <span className="settings-panel__value" style={{ color: 'var(--cove-danger-text)' }}>
-              {error}
-            </span>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="settings-panel__subsection" id="settings-section-worker-home">
-        <div className="settings-panel__subsection-header">
-          <h4 className="settings-panel__section-title">{t('settingsPanel.worker.home.title')}</h4>
-          <span>
-            {supportsHomeWorkerModeSelection
-              ? t('settingsPanel.worker.home.help')
-              : t('settingsPanel.worker.home.packagedHelp')}
-          </span>
-        </div>
-
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>
-              {supportsHomeWorkerModeSelection
-                ? t('settingsPanel.worker.home.modeLabel')
-                : t('settingsPanel.worker.home.packagedModeLabel')}
-            </strong>
-          </div>
-          <div className="settings-panel__control">
-            {supportsHomeWorkerModeSelection ? (
-              <CoveSelect
-                id="settings-worker-home-mode"
-                testId="settings-worker-home-mode"
-                value={draftMode}
-                options={modeOptions}
-                onChange={nextValue => setDraftMode(nextValue as HomeWorkerMode)}
-              />
-            ) : (
-              <span className="settings-panel__value" data-testid="settings-worker-home-mode-value">
-                {t('settingsPanel.worker.home.packagedModeValue')}
+    <SettingsGroup id="settings-section-worker" title={t('settingsPanel.groups.worker.runtime')}>
+      <SettingsGroupBody>
+        {error ? (
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('common.error')}</strong>
+            </div>
+            <div className="settings-panel__control">
+              <span className="settings-panel__value" style={{ color: 'var(--cove-danger-text)' }}>
+                {error}
               </span>
-            )}
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        {supportsHomeWorkerModeSelection && draftMode === 'remote' ? (
-          <>
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.worker.remote.hostnameLabel')}</strong>
-              </div>
-              <div className="settings-panel__control">
-                <input
-                  className="cove-field"
-                  style={{ width: '100%' }}
-                  type="text"
-                  value={remoteHostname}
-                  onChange={e => setRemoteHostname(e.target.value)}
-                  data-testid="settings-worker-remote-hostname"
-                />
-              </div>
+        <SettingsModule
+          id="settings-section-worker-home"
+          title={t('settingsPanel.worker.home.title')}
+          description={
+            supportsHomeWorkerModeSelection
+              ? t('settingsPanel.worker.home.help')
+              : t('settingsPanel.worker.home.packagedHelp')
+          }
+        >
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>
+                {supportsHomeWorkerModeSelection
+                  ? t('settingsPanel.worker.home.modeLabel')
+                  : t('settingsPanel.worker.home.packagedModeLabel')}
+              </strong>
             </div>
-
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.worker.remote.portLabel')}</strong>
-              </div>
-              <div className="settings-panel__control">
-                <input
-                  className="cove-field"
-                  style={{ width: '120px' }}
-                  type="number"
-                  min={1}
-                  max={65_535}
-                  value={remotePort}
-                  onChange={e => setRemotePort(e.target.value)}
-                  data-testid="settings-worker-remote-port"
+            <div className="settings-panel__control">
+              {supportsHomeWorkerModeSelection ? (
+                <CoveSelect
+                  id="settings-worker-home-mode"
+                  testId="settings-worker-home-mode"
+                  ariaLabel={t('settingsPanel.worker.home.title')}
+                  value={draftMode}
+                  options={modeOptions}
+                  onChange={nextValue => setDraftMode(nextValue as HomeWorkerMode)}
                 />
-              </div>
+              ) : (
+                <span
+                  className="settings-panel__value"
+                  data-testid="settings-worker-home-mode-value"
+                >
+                  {t('settingsPanel.worker.home.packagedModeValue')}
+                </span>
+              )}
             </div>
+          </div>
 
+          {supportsHomeWorkerModeSelection && draftMode === 'remote' ? (
+            <WorkerRemoteConnectionFields
+              hostname={remoteHostname}
+              port={remotePort}
+              token={remoteToken}
+              revealToken={revealRemoteToken}
+              onHostnameChange={setRemoteHostname}
+              onPortChange={setRemotePort}
+              onTokenChange={setRemoteToken}
+              onToggleRevealToken={() => setRevealRemoteToken(value => !value)}
+            />
+          ) : null}
+
+          {supportsHomeWorkerModeSelection ? (
             <div className="settings-panel__row">
               <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.worker.remote.tokenLabel')}</strong>
+                <strong>{t('settingsPanel.worker.home.applyLabel')}</strong>
+                <span>{t('settingsPanel.worker.home.applyHelp')}</span>
               </div>
-              <div className="settings-panel__control" style={{ gap: 8 }}>
-                <input
-                  className="cove-field"
-                  style={{ width: '100%', fontFamily: 'var(--cove-font-mono)' }}
-                  type={revealRemoteToken ? 'text' : 'password'}
-                  value={remoteToken}
-                  onChange={e => setRemoteToken(e.target.value)}
-                  data-testid="settings-worker-remote-token"
-                />
+              <div className="settings-panel__control settings-panel__control--actions">
                 <button
                   type="button"
-                  className="secondary"
-                  onClick={() => setRevealRemoteToken(value => !value)}
-                  data-testid="settings-worker-remote-token-toggle"
+                  className="primary"
+                  data-testid="settings-worker-apply-restart"
+                  disabled={isBusy || (draftMode === 'remote' && !canApplyRemote)}
+                  onClick={applyAndRestart}
                 >
-                  {revealRemoteToken
-                    ? t('settingsPanel.worker.remote.hideToken')
-                    : t('settingsPanel.worker.remote.revealToken')}
+                  {t('settingsPanel.worker.home.applyRestart')}
                 </button>
               </div>
             </div>
-          </>
-        ) : null}
+          ) : null}
+        </SettingsModule>
 
-        {supportsHomeWorkerModeSelection ? (
+        <SettingsModule
+          id="settings-section-worker-cli"
+          title={t('settingsPanel.worker.cli.title')}
+          description={t('settingsPanel.worker.cli.help')}
+        >
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.worker.home.applyLabel')}</strong>
-              <span>{t('settingsPanel.worker.home.applyHelp')}</span>
+              <strong>{t('settingsPanel.worker.cli.statusLabel')}</strong>
             </div>
-            <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
+            <div className="settings-panel__control">
+              <span className="settings-panel__value" data-testid="settings-worker-cli-status">
+                {cliStatus?.installed
+                  ? cliStatus.healthy
+                    ? t('settingsPanel.worker.cli.status.installed', {
+                        path: cliStatus.path ?? '—',
+                      })
+                    : t('settingsPanel.worker.cli.status.needsRepair', {
+                        path: cliStatus.path ?? '—',
+                      })
+                  : t('settingsPanel.worker.cli.status.notInstalled')}
+              </span>
+            </div>
+          </div>
+
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.worker.cli.actionsLabel')}</strong>
+            </div>
+            <div className="settings-panel__control settings-panel__control--actions">
               <button
                 type="button"
-                className="primary"
-                data-testid="settings-worker-apply-restart"
-                disabled={isBusy || (draftMode === 'remote' && !canApplyRemote)}
-                onClick={applyAndRestart}
+                className="secondary"
+                data-testid="settings-worker-cli-install"
+                disabled={isBusy}
+                onClick={() => void installCli()}
               >
-                {t('settingsPanel.worker.home.applyRestart')}
+                {t('settingsPanel.worker.cli.install')}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                data-testid="settings-worker-cli-uninstall"
+                disabled={isBusy || !cliStatus?.installed}
+                onClick={() => void uninstallCli()}
+              >
+                {t('settingsPanel.worker.cli.uninstall')}
               </button>
             </div>
           </div>
-        ) : null}
-      </div>
+        </SettingsModule>
 
-      <div className="settings-panel__subsection" id="settings-section-worker-cli">
-        <div className="settings-panel__subsection-header">
-          <h4 className="settings-panel__section-title">{t('settingsPanel.worker.cli.title')}</h4>
-          <span>{t('settingsPanel.worker.cli.help')}</span>
-        </div>
-
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.worker.cli.statusLabel')}</strong>
-          </div>
-          <div className="settings-panel__control">
-            <span className="settings-panel__value" data-testid="settings-worker-cli-status">
-              {cliStatus?.installed
-                ? cliStatus.healthy
-                  ? t('settingsPanel.worker.cli.status.installed', {
-                      path: cliStatus.path ?? '—',
-                    })
-                  : t('settingsPanel.worker.cli.status.needsRepair', {
-                      path: cliStatus.path ?? '—',
-                    })
-                : t('settingsPanel.worker.cli.status.notInstalled')}
-            </span>
-          </div>
-        </div>
-
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.worker.cli.actionsLabel')}</strong>
-          </div>
-          <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              className="secondary"
-              data-testid="settings-worker-cli-install"
-              disabled={isBusy}
-              onClick={() => void installCli()}
-            >
-              {t('settingsPanel.worker.cli.install')}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              data-testid="settings-worker-cli-uninstall"
-              disabled={isBusy || !cliStatus?.installed}
-              onClick={() => void uninstallCli()}
-            >
-              {t('settingsPanel.worker.cli.uninstall')}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="settings-panel__subsection" id="settings-section-worker-local">
-        <div className="settings-panel__subsection-header">
-          <h4 className="settings-panel__section-title">{t('settingsPanel.worker.local.title')}</h4>
-          <span>{t('settingsPanel.worker.local.help')}</span>
-        </div>
-
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.worker.local.statusLabel')}</strong>
-          </div>
-          <div className="settings-panel__control">
-            <span className="settings-panel__value" data-testid="settings-worker-local-status">
-              {localStatus?.status === 'running'
-                ? t('settingsPanel.worker.local.status.running')
-                : t('settingsPanel.worker.local.status.stopped')}
-            </span>
-          </div>
-        </div>
-
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.worker.local.actionsLabel')}</strong>
-          </div>
-          <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              className="secondary"
-              data-testid="settings-worker-local-start"
-              disabled={isBusy || localStatus?.status === 'running'}
-              onClick={startLocalWorker}
-            >
-              {t('settingsPanel.worker.local.start')}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              data-testid="settings-worker-local-stop"
-              disabled={isBusy || localStatus?.status !== 'running'}
-              onClick={stopLocalWorker}
-            >
-              {t('settingsPanel.worker.local.stop')}
-            </button>
-          </div>
-        </div>
-
-        {localConnection ? (
-          <>
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.worker.local.baseUrlLabel')}</strong>
-              </div>
-              <div className="settings-panel__control" style={{ gap: 8 }}>
-                <span
-                  className="settings-panel__value"
-                  style={{ fontFamily: 'var(--cove-font-mono)' }}
-                >
-                  {toBaseUrl(localConnection)}
-                </span>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => void copyLocalBaseUrl()}
-                  data-testid="settings-worker-local-copy-base-url"
-                >
-                  {t('settingsPanel.worker.local.copyBaseUrl')}
-                </button>
-              </div>
+        <SettingsModule
+          id="settings-section-worker-local"
+          title={t('settingsPanel.worker.local.title')}
+          description={t('settingsPanel.worker.local.help')}
+        >
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.worker.local.statusLabel')}</strong>
             </div>
-
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.worker.local.tokenLabel')}</strong>
-              </div>
-              <div className="settings-panel__control" style={{ gap: 8 }}>
-                <span
-                  className="settings-panel__value"
-                  style={{ fontFamily: 'var(--cove-font-mono)' }}
-                  data-testid="settings-worker-local-token"
-                >
-                  {formatToken(localConnection.token, revealLocalToken)}
-                </span>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setRevealLocalToken(value => !value)}
-                  data-testid="settings-worker-local-token-toggle"
-                >
-                  {revealLocalToken
-                    ? t('settingsPanel.worker.local.hideToken')
-                    : t('settingsPanel.worker.local.revealToken')}
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => void copyLocalToken()}
-                  data-testid="settings-worker-local-copy-token"
-                >
-                  {t('settingsPanel.worker.local.copyToken')}
-                </button>
-              </div>
+            <div className="settings-panel__control">
+              <span className="settings-panel__value" data-testid="settings-worker-local-status">
+                {localStatus?.status === 'running'
+                  ? t('settingsPanel.worker.local.status.running')
+                  : t('settingsPanel.worker.local.status.stopped')}
+              </span>
             </div>
-          </>
-        ) : null}
-      </div>
-    </div>
+          </div>
+
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.worker.local.actionsLabel')}</strong>
+            </div>
+            <div className="settings-panel__control settings-panel__control--actions">
+              <button
+                type="button"
+                className="secondary"
+                data-testid="settings-worker-local-start"
+                disabled={isBusy || localStatus?.status === 'running'}
+                onClick={startLocalWorker}
+              >
+                {t('settingsPanel.worker.local.start')}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                data-testid="settings-worker-local-stop"
+                disabled={isBusy || localStatus?.status !== 'running'}
+                onClick={stopLocalWorker}
+              >
+                {t('settingsPanel.worker.local.stop')}
+              </button>
+            </div>
+          </div>
+
+          {localConnection ? (
+            <>
+              <div className="settings-panel__row">
+                <div className="settings-panel__row-label">
+                  <strong>{t('settingsPanel.worker.local.baseUrlLabel')}</strong>
+                </div>
+                <div className="settings-panel__control" style={{ gap: 8 }}>
+                  <span
+                    className="settings-panel__value"
+                    style={{ fontFamily: 'var(--cove-font-mono)' }}
+                  >
+                    {toBaseUrl(localConnection)}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => void copyLocalBaseUrl()}
+                    data-testid="settings-worker-local-copy-base-url"
+                  >
+                    {t('settingsPanel.worker.local.copyBaseUrl')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="settings-panel__row">
+                <div className="settings-panel__row-label">
+                  <strong>{t('settingsPanel.worker.local.tokenLabel')}</strong>
+                </div>
+                <div className="settings-panel__control" style={{ gap: 8 }}>
+                  <span
+                    className="settings-panel__value"
+                    style={{ fontFamily: 'var(--cove-font-mono)' }}
+                    data-testid="settings-worker-local-token"
+                  >
+                    {formatToken(localConnection.token, revealLocalToken)}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setRevealLocalToken(value => !value)}
+                    data-testid="settings-worker-local-token-toggle"
+                  >
+                    {revealLocalToken
+                      ? t('settingsPanel.worker.local.hideToken')
+                      : t('settingsPanel.worker.local.revealToken')}
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => void copyLocalToken()}
+                    data-testid="settings-worker-local-copy-token"
+                  >
+                    {t('settingsPanel.worker.local.copyToken')}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </SettingsModule>
+      </SettingsGroupBody>
+    </SettingsGroup>
   )
 }

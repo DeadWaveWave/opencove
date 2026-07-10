@@ -3,6 +3,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { QuickCommand, QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import { QuickCommandsSubsection } from './quickMenu/QuickCommandsSubsection'
 import { QuickPhrasesSubsection } from './quickMenu/QuickPhrasesSubsection'
+import { SettingsGroup } from './SettingsGroup'
 
 export function QuickMenuSection({
   quickCommands,
@@ -18,11 +19,10 @@ export function QuickMenuSection({
   const { t } = useTranslation()
 
   return (
-    <div
-      className="settings-panel__section settings-panel__section--vertical"
+    <SettingsGroup
       id="settings-section-quick-menu"
+      title={t('settingsPanel.groups.tasksShortcuts.quickActions')}
     >
-      <h3 className="settings-panel__section-title">{t('settingsPanel.quickMenu.title')}</h3>
       <QuickCommandsSubsection
         quickCommands={quickCommands}
         onChangeQuickCommands={onChangeQuickCommands}
@@ -31,6 +31,6 @@ export function QuickMenuSection({
         quickPhrases={quickPhrases}
         onChangeQuickPhrases={onChangeQuickPhrases}
       />
-    </div>
+    </SettingsGroup>
   )
 }

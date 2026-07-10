@@ -1,9 +1,8 @@
-import type { SettingsPageId } from '../SettingsPanel.shared'
+import type { StaticSettingsPageId } from './settingsPageRegistry'
 
 export interface AgentSettingsSearchEntryDefinition {
   id: string
-  pageId: SettingsPageId
-  pageLabelKey: string
+  pageId: StaticSettingsPageId
   titleKey: string
   descriptionKey?: string
   anchorId: string
@@ -15,7 +14,6 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
   {
     id: 'agent.default',
     pageId: 'agent',
-    pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.agent.defaultAgentLabel',
     descriptionKey: 'settingsPanel.agent.defaultAgentHelp',
     anchorId: 'settings-agent-list',
@@ -24,7 +22,6 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
   {
     id: 'agent.order',
     pageId: 'agent',
-    pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.agent.agentProviderOrderLabel',
     descriptionKey: 'settingsPanel.agent.agentProviderOrderHelp',
     anchorId: 'settings-agent-list',
@@ -33,7 +30,6 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
   {
     id: 'agent.full-access',
     pageId: 'agent',
-    pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.agent.fullAccessLabel',
     descriptionKey: 'settingsPanel.agent.fullAccessHelp',
     anchorId: 'settings-agent-full-access',
@@ -42,7 +38,6 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
   {
     id: 'agent.models',
     pageId: 'agent',
-    pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.models.title',
     descriptionKey: 'settingsPanel.agent.agentProviderOrderHelp',
     anchorId: 'settings-agent-list',
@@ -55,7 +50,6 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
   {
     id: 'agent.env',
     pageId: 'agent',
-    pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.agentEnv.title',
     descriptionKey: 'settingsPanel.agentEnv.help',
     anchorId: 'settings-agent-list',
@@ -64,7 +58,6 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
   {
     id: 'agent.executable',
     pageId: 'agent',
-    pageLabelKey: 'settingsPanel.nav.agent',
     titleKey: 'settingsPanel.agent.agentListLabel',
     descriptionKey: 'settingsPanel.agentExecutable.help',
     anchorId: 'settings-agent-list',

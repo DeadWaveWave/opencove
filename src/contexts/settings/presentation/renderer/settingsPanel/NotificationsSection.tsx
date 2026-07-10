@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 
 export function NotificationsSection(props: {
   systemNotificationsEnabled: boolean
@@ -34,113 +35,138 @@ export function NotificationsSection(props: {
   } = props
 
   return (
-    <div className="settings-panel__section" id="settings-section-notifications">
-      <h3 className="settings-panel__section-title">{t('settingsPanel.notifications.title')}</h3>
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.notifications.systemNotifications.enabledLabel')}</strong>
-          <span>{t('settingsPanel.notifications.systemNotifications.enabledHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-system-notifications-enabled"
-              checked={systemNotificationsEnabled}
-              onChange={event => onChangeSystemNotificationsEnabled(event.target.checked)}
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.notifications.agentStandbyBanner.enabledLabel')}</strong>
-          <span>{t('settingsPanel.notifications.agentStandbyBanner.enabledHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-agent-standby-banner-enabled"
-              checked={standbyBannerEnabled}
-              onChange={event => onChangeStandbyBannerEnabled(event.target.checked)}
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div className="settings-panel__subsection">
-        <div className="settings-panel__subsection-header">
-          <strong>{t('settingsPanel.notifications.agentStandbyBanner.contextTitle')}</strong>
-          <span>{t('settingsPanel.notifications.agentStandbyBanner.contextHelp')}</span>
-        </div>
-
-        <div className="settings-list-container">
-          <div className="settings-list-item" data-testid="settings-standby-banner-show-task">
-            <div className="settings-list-item__left">
-              {t('settingsPanel.notifications.agentStandbyBanner.showTask')}
+    <>
+      <SettingsGroup
+        id="settings-section-notifications"
+        title={t('settingsPanel.groups.notifications.system')}
+      >
+        <SettingsGroupBody>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.notifications.systemNotifications.enabledLabel')}</strong>
+              <span>{t('settingsPanel.notifications.systemNotifications.enabledHelp')}</span>
             </div>
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                checked={standbyBannerShowTask}
-                disabled={!standbyBannerEnabled}
-                onChange={event => onChangeStandbyBannerShowTask(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <div className="settings-panel__control">
+              <label className="cove-toggle">
+                <input
+                  type="checkbox"
+                  data-testid="settings-system-notifications-enabled"
+                  checked={systemNotificationsEnabled}
+                  aria-label={t('settingsPanel.notifications.systemNotifications.enabledLabel')}
+                  onChange={event => onChangeSystemNotificationsEnabled(event.target.checked)}
+                />
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
+          </div>
+        </SettingsGroupBody>
+      </SettingsGroup>
+
+      <SettingsGroup
+        id="settings-section-standby-banner"
+        title={t('settingsPanel.groups.notifications.standby')}
+      >
+        <SettingsGroupBody>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.notifications.agentStandbyBanner.enabledLabel')}</strong>
+              <span>{t('settingsPanel.notifications.agentStandbyBanner.enabledHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <label className="cove-toggle">
+                <input
+                  type="checkbox"
+                  data-testid="settings-agent-standby-banner-enabled"
+                  checked={standbyBannerEnabled}
+                  aria-label={t('settingsPanel.notifications.agentStandbyBanner.enabledLabel')}
+                  onChange={event => onChangeStandbyBannerEnabled(event.target.checked)}
+                />
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
           </div>
 
-          <div className="settings-list-item" data-testid="settings-standby-banner-show-space">
-            <div className="settings-list-item__left">
-              {t('settingsPanel.notifications.agentStandbyBanner.showSpace')}
+          <SettingsModule
+            id="settings-standby-banner-context"
+            title={t('settingsPanel.notifications.agentStandbyBanner.contextTitle')}
+            description={t('settingsPanel.notifications.agentStandbyBanner.contextHelp')}
+          >
+            <div className="settings-panel__row" data-testid="settings-standby-banner-show-task">
+              <div className="settings-panel__row-label">
+                <strong>{t('settingsPanel.notifications.agentStandbyBanner.showTask')}</strong>
+              </div>
+              <div className="settings-panel__control">
+                <label className="cove-toggle">
+                  <input
+                    type="checkbox"
+                    checked={standbyBannerShowTask}
+                    disabled={!standbyBannerEnabled}
+                    aria-label={t('settingsPanel.notifications.agentStandbyBanner.showTask')}
+                    onChange={event => onChangeStandbyBannerShowTask(event.target.checked)}
+                  />
+                  <span className="cove-toggle__slider"></span>
+                </label>
+              </div>
             </div>
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                checked={standbyBannerShowSpace}
-                disabled={!standbyBannerEnabled}
-                onChange={event => onChangeStandbyBannerShowSpace(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
-          </div>
 
-          <div className="settings-list-item" data-testid="settings-standby-banner-show-branch">
-            <div className="settings-list-item__left">
-              {t('settingsPanel.notifications.agentStandbyBanner.showBranch')}
+            <div className="settings-panel__row" data-testid="settings-standby-banner-show-space">
+              <div className="settings-panel__row-label">
+                <strong>{t('settingsPanel.notifications.agentStandbyBanner.showSpace')}</strong>
+              </div>
+              <div className="settings-panel__control">
+                <label className="cove-toggle">
+                  <input
+                    type="checkbox"
+                    checked={standbyBannerShowSpace}
+                    disabled={!standbyBannerEnabled}
+                    aria-label={t('settingsPanel.notifications.agentStandbyBanner.showSpace')}
+                    onChange={event => onChangeStandbyBannerShowSpace(event.target.checked)}
+                  />
+                  <span className="cove-toggle__slider"></span>
+                </label>
+              </div>
             </div>
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                checked={standbyBannerShowBranch}
-                disabled={!standbyBannerEnabled}
-                onChange={event => onChangeStandbyBannerShowBranch(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
-          </div>
 
-          <div className="settings-list-item" data-testid="settings-standby-banner-show-pr">
-            <div className="settings-list-item__left">
-              {t('settingsPanel.notifications.agentStandbyBanner.showPullRequest')}
+            <div className="settings-panel__row" data-testid="settings-standby-banner-show-branch">
+              <div className="settings-panel__row-label">
+                <strong>{t('settingsPanel.notifications.agentStandbyBanner.showBranch')}</strong>
+              </div>
+              <div className="settings-panel__control">
+                <label className="cove-toggle">
+                  <input
+                    type="checkbox"
+                    checked={standbyBannerShowBranch}
+                    disabled={!standbyBannerEnabled}
+                    aria-label={t('settingsPanel.notifications.agentStandbyBanner.showBranch')}
+                    onChange={event => onChangeStandbyBannerShowBranch(event.target.checked)}
+                  />
+                  <span className="cove-toggle__slider"></span>
+                </label>
+              </div>
             </div>
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                checked={standbyBannerShowPullRequest}
-                disabled={!standbyBannerEnabled || !githubPullRequestsEnabled}
-                onChange={event => onChangeStandbyBannerShowPullRequest(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
+
+            <div className="settings-panel__row" data-testid="settings-standby-banner-show-pr">
+              <div className="settings-panel__row-label">
+                <strong>
+                  {t('settingsPanel.notifications.agentStandbyBanner.showPullRequest')}
+                </strong>
+              </div>
+              <div className="settings-panel__control">
+                <label className="cove-toggle">
+                  <input
+                    type="checkbox"
+                    checked={standbyBannerShowPullRequest}
+                    disabled={!standbyBannerEnabled || !githubPullRequestsEnabled}
+                    aria-label={t('settingsPanel.notifications.agentStandbyBanner.showPullRequest')}
+                    onChange={event => onChangeStandbyBannerShowPullRequest(event.target.checked)}
+                  />
+                  <span className="cove-toggle__slider"></span>
+                </label>
+              </div>
+            </div>
+          </SettingsModule>
+        </SettingsGroupBody>
+      </SettingsGroup>
+    </>
   )
 }

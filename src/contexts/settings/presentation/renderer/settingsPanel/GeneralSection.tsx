@@ -9,6 +9,7 @@ import {
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import type { AppUpdateChannel, AppUpdatePolicy, AppUpdateState } from '@shared/contracts/dto'
 import { APP_UPDATE_CHANNELS, APP_UPDATE_POLICIES } from '@shared/contracts/dto'
+import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 function getUpdateStatusText(
   t: ReturnType<typeof useTranslation>['t'],
@@ -80,140 +81,147 @@ export function GeneralSection(props: {
   } = props
 
   return (
-    <div className="settings-panel__section" id="settings-section-general">
-      <h3 className="settings-panel__section-title">{t('settingsPanel.general.title')}</h3>
+    <>
+      <SettingsGroup
+        id="settings-section-general"
+        title={t('settingsPanel.groups.general.languageRegion')}
+      >
+        <SettingsGroupBody>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.general.languageLabel')}</strong>
+              <span>{t('settingsPanel.general.languageHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <CoveSelect
+                id="settings-language"
+                testId="settings-language"
+                ariaLabel={t('settingsPanel.general.languageLabel')}
+                value={language}
+                options={UI_LANGUAGES.map(option => ({
+                  value: option,
+                  label: getUiLanguageLabel(option),
+                }))}
+                onChange={nextValue => {
+                  onChangeLanguage(nextValue as UiLanguage)
+                }}
+              />
+            </div>
+          </div>
+        </SettingsGroupBody>
+      </SettingsGroup>
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.general.languageLabel')}</strong>
-          <span>{t('settingsPanel.general.languageHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <CoveSelect
-            id="settings-language"
-            testId="settings-language"
-            value={language}
-            options={UI_LANGUAGES.map(option => ({
-              value: option,
-              label: getUiLanguageLabel(option),
-            }))}
-            onChange={nextValue => {
-              onChangeLanguage(nextValue as UiLanguage)
-            }}
-          />
-        </div>
-      </div>
+      <SettingsGroup
+        id="settings-section-updates"
+        title={t('settingsPanel.groups.general.softwareUpdates')}
+        description={t('settingsPanel.general.updates.help')}
+      >
+        <SettingsGroupBody>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.general.updates.currentVersionLabel')}</strong>
+            </div>
+            <div className="settings-panel__control">
+              <span className="settings-panel__value">{updateState?.currentVersion ?? '—'}</span>
+            </div>
+          </div>
 
-      <div className="settings-panel__subsection" id="settings-section-updates">
-        <div className="settings-panel__subsection-header">
-          <h4 className="settings-panel__section-title">
-            {t('settingsPanel.general.updates.title')}
-          </h4>
-          <span>{t('settingsPanel.general.updates.help')}</span>
-        </div>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.general.updates.policyLabel')}</strong>
+              <span>{t('settingsPanel.general.updates.policyHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <CoveSelect
+                id="settings-update-policy"
+                value={updatePolicy}
+                testId="settings-update-policy"
+                ariaLabel={t('settingsPanel.general.updates.policyLabel')}
+                options={(updateChannel === 'nightly'
+                  ? APP_UPDATE_POLICIES.filter(policy => policy !== 'auto')
+                  : APP_UPDATE_POLICIES
+                ).map(policy => ({
+                  value: policy,
+                  label: getAppUpdatePolicyLabel(t, policy),
+                }))}
+                onChange={nextValue => onChangeUpdatePolicy(nextValue as AppUpdatePolicy)}
+              />
+            </div>
+          </div>
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.general.updates.currentVersionLabel')}</strong>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.general.updates.channelLabel')}</strong>
+              <span>{t('settingsPanel.general.updates.channelHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <CoveSelect
+                id="settings-update-channel"
+                value={updateChannel}
+                testId="settings-update-channel"
+                ariaLabel={t('settingsPanel.general.updates.channelLabel')}
+                options={APP_UPDATE_CHANNELS.map(channel => ({
+                  value: channel,
+                  label: getAppUpdateChannelLabel(t, channel),
+                }))}
+                onChange={nextValue => onChangeUpdateChannel(nextValue as AppUpdateChannel)}
+              />
+            </div>
           </div>
-          <div className="settings-panel__control">
-            <span className="settings-panel__value">{updateState?.currentVersion ?? '—'}</span>
-          </div>
-        </div>
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.general.updates.policyLabel')}</strong>
-            <span>{t('settingsPanel.general.updates.policyHelp')}</span>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.general.updates.statusLabel')}</strong>
+            </div>
+            <div className="settings-panel__control">
+              <span className="settings-panel__value" data-testid="settings-update-status">
+                {getUpdateStatusText(t, updateState)}
+              </span>
+            </div>
           </div>
-          <div className="settings-panel__control">
-            <CoveSelect
-              id="settings-update-policy"
-              value={updatePolicy}
-              testId="settings-update-policy"
-              options={(updateChannel === 'nightly'
-                ? APP_UPDATE_POLICIES.filter(policy => policy !== 'auto')
-                : APP_UPDATE_POLICIES
-              ).map(policy => ({
-                value: policy,
-                label: getAppUpdatePolicyLabel(t, policy),
-              }))}
-              onChange={nextValue => onChangeUpdatePolicy(nextValue as AppUpdatePolicy)}
-            />
-          </div>
-        </div>
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.general.updates.channelLabel')}</strong>
-            <span>{t('settingsPanel.general.updates.channelHelp')}</span>
-          </div>
-          <div className="settings-panel__control">
-            <CoveSelect
-              id="settings-update-channel"
-              value={updateChannel}
-              testId="settings-update-channel"
-              options={APP_UPDATE_CHANNELS.map(channel => ({
-                value: channel,
-                label: getAppUpdateChannelLabel(t, channel),
-              }))}
-              onChange={nextValue => onChangeUpdateChannel(nextValue as AppUpdateChannel)}
-            />
-          </div>
-        </div>
-
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.general.updates.statusLabel')}</strong>
-          </div>
-          <div className="settings-panel__control">
-            <span className="settings-panel__value" data-testid="settings-update-status">
-              {getUpdateStatusText(t, updateState)}
-            </span>
-          </div>
-        </div>
-
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.general.updates.actionsLabel')}</strong>
-          </div>
-          <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              className="secondary"
-              data-testid="settings-update-check"
-              onClick={onCheckForUpdates}
-              disabled={
-                updateState?.status === 'checking' ||
-                updateState?.status === 'unsupported' ||
-                updatePolicy === 'off'
-              }
-            >
-              {t('settingsPanel.general.updates.checkNow')}
-            </button>
-            {updateState?.status === 'available' ? (
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.general.updates.actionsLabel')}</strong>
+            </div>
+            <div className="settings-panel__control settings-panel__control--actions">
               <button
                 type="button"
-                className="primary"
-                data-testid="settings-update-download"
-                onClick={onDownloadUpdate}
+                className="secondary"
+                data-testid="settings-update-check"
+                onClick={onCheckForUpdates}
+                disabled={
+                  updateState?.status === 'checking' ||
+                  updateState?.status === 'unsupported' ||
+                  updatePolicy === 'off'
+                }
               >
-                {t('settingsPanel.general.updates.downloadNow')}
+                {t('settingsPanel.general.updates.checkNow')}
               </button>
-            ) : null}
-            {updateState?.status === 'downloaded' ? (
-              <button
-                type="button"
-                className="primary"
-                data-testid="settings-update-install"
-                onClick={onInstallUpdate}
-              >
-                {t('settingsPanel.general.updates.restartToUpdate')}
-              </button>
-            ) : null}
+              {updateState?.status === 'available' ? (
+                <button
+                  type="button"
+                  className="primary"
+                  data-testid="settings-update-download"
+                  onClick={onDownloadUpdate}
+                >
+                  {t('settingsPanel.general.updates.downloadNow')}
+                </button>
+              ) : null}
+              {updateState?.status === 'downloaded' ? (
+                <button
+                  type="button"
+                  className="primary"
+                  data-testid="settings-update-install"
+                  onClick={onInstallUpdate}
+                >
+                  {t('settingsPanel.general.updates.restartToUpdate')}
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </SettingsGroupBody>
+      </SettingsGroup>
+    </>
   )
 }

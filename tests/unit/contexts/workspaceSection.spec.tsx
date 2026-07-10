@@ -20,7 +20,7 @@ describe('WorkspaceSection', () => {
       />,
     )
 
-    expect(screen.getByText('Workspace Worktree')).toBeVisible()
+    expect(screen.getByRole('group', { name: 'Worktrees' })).toBeVisible()
     expect(screen.getByTestId('settings-workspace-path-display')).toHaveTextContent('demo')
     expect(screen.getByTestId('settings-workspace-path-display')).toHaveAttribute(
       'title',
@@ -60,7 +60,7 @@ describe('WorkspaceSection', () => {
     expect(screen.queryByTestId('settings-worktree-root')).not.toBeInTheDocument()
   })
 
-  it('renders Environment Variables section when workspace is selected', () => {
+  it('renders Runtime Environment section when workspace is selected', () => {
     render(
       <WorkspaceSection
         workspaceName="Demo"
@@ -74,11 +74,11 @@ describe('WorkspaceSection', () => {
       />,
     )
 
-    expect(screen.getByText('Environment Variables')).toBeVisible()
+    expect(screen.getByRole('group', { name: 'Runtime Environment' })).toBeVisible()
     expect(screen.getByText(/No environment variables configured/i)).toBeVisible()
   })
 
-  it('does not render Environment Variables section when no workspace is selected', () => {
+  it('does not render Runtime Environment section when no workspace is selected', () => {
     render(
       <WorkspaceSection
         workspaceName={null}
@@ -92,7 +92,7 @@ describe('WorkspaceSection', () => {
       />,
     )
 
-    expect(screen.queryByText('Environment Variables')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Runtime Environment' })).not.toBeInTheDocument()
   })
 
   it('renders existing environment variables', () => {

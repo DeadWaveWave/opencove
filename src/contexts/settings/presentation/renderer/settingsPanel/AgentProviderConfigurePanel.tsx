@@ -137,6 +137,7 @@ export function AgentProviderConfigurePanel(props: {
                 type="checkbox"
                 data-testid={`settings-custom-model-enabled-${provider}`}
                 checked={customEnabled}
+                aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${t('settingsPanel.models.useCustomModel')}`}
                 onChange={event => onToggleCustomModelEnabled(provider, event.target.checked)}
               />
               <span className="cove-toggle__slider"></span>
@@ -182,6 +183,7 @@ export function AgentProviderConfigurePanel(props: {
                 type="text"
                 data-testid={`settings-custom-model-add-input-${provider}`}
                 className="cove-field"
+                aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${t('settingsPanel.models.addModelPlaceholder')}`}
                 value={addModelInputValue}
                 placeholder={t('settingsPanel.models.addModelPlaceholder')}
                 onChange={event => onChangeAddModelInput(provider, event.target.value)}
@@ -228,7 +230,7 @@ export function AgentProviderConfigurePanel(props: {
                     type="checkbox"
                     data-testid={`settings-agent-env-enabled-${provider}-${row.id}`}
                     checked={row.enabled}
-                    aria-label={t('settingsPanel.agentEnv.enabled')}
+                    aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.enabled')}`}
                     onChange={event => {
                       updateProviderRows(
                         rows.map(existing =>
@@ -245,6 +247,7 @@ export function AgentProviderConfigurePanel(props: {
                 <input
                   type="text"
                   className="cove-field"
+                  aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.keyLabel')}`}
                   value={row.key}
                   placeholder={t('settingsPanel.agentEnv.keyPlaceholder')}
                   onChange={event => {
@@ -260,6 +263,7 @@ export function AgentProviderConfigurePanel(props: {
                 <input
                   type="text"
                   className="cove-field"
+                  aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.valueLabel')}`}
                   value={row.value}
                   placeholder={t('settingsPanel.agentEnv.valuePlaceholder')}
                   onChange={event => {

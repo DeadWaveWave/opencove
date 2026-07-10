@@ -1,21 +1,23 @@
 /* --- Settings Buttons --- */
 .settings-panel button.primary {
-  min-height: var(--cove-control-height-md);
-  padding: 6px 12px;
-  border: 1px solid var(--cove-accent);
+  min-height: 34px;
+  padding: 7px 14px;
+  border: 1px solid color-mix(in srgb, var(--cove-accent) 68%, transparent);
   border-radius: var(--cove-radius-sm);
-  background: var(--cove-accent);
-  color: var(--cove-accent-foreground);
+  background: var(--cove-settings-primary-background);
+  color: var(--cove-settings-on-accent);
   font-weight: 600;
   font-size: calc(13px * var(--cove-ui-font-scale));
   cursor: pointer;
   transition:
-    background-color var(--cove-motion-fast) var(--cove-ease-standard),
-    border-color var(--cove-motion-fast) var(--cove-ease-standard);
+    background var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .settings-panel button.primary:hover {
-  background: color-mix(in srgb, var(--cove-accent) 88%, var(--cove-accent-foreground));
+  border-color: var(--cove-accent);
+  background: var(--cove-settings-primary-background-hover);
 }
 
 .settings-panel button.primary:active {
@@ -24,25 +26,111 @@
 
 .settings-panel button.primary:disabled {
   background: var(--cove-border-subtle);
+  border-color: transparent;
   color: var(--cove-text-faint);
   cursor: not-allowed;
 }
 
 .settings-panel button.secondary {
-  min-height: var(--cove-control-height-sm);
-  padding: 5px 10px;
-  border: 1px solid var(--cove-control-border);
+  min-height: 32px;
+  padding: 6px 11px;
+  border: 1px solid var(--cove-border);
   border-radius: var(--cove-radius-sm);
-  background: var(--cove-control);
+  background: transparent;
   color: var(--cove-text);
   font-size: calc(12px * var(--cove-ui-font-scale));
   cursor: pointer;
   transition:
-    background-color var(--cove-motion-fast) var(--cove-ease-standard),
-    border-color var(--cove-motion-fast) var(--cove-ease-standard);
+    color var(--cove-motion-fast) var(--cove-ease-standard),
+    background var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
 .settings-panel button.secondary:hover {
   background: var(--cove-surface-hover);
-  border-color: var(--cove-control-border-hover);
+  border-color: var(--cove-border);
+}
+
+.settings-panel button.secondary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.settings-panel button.primary:focus-visible,
+.settings-panel button.secondary:focus-visible {
+  outline: 2px solid var(--cove-settings-focus-ring);
+  outline-offset: 2px;
+}
+
+.settings-panel button.secondary:disabled {
+  color: var(--cove-text-faint);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* --- Toggle Switch --- */
+.settings-panel label.cove-toggle {
+  position: relative;
+  display: inline-flex;
+  width: 36px;
+  height: 20px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.settings-panel label.cove-toggle input {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.settings-panel label.cove-toggle .cove-toggle__slider {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--cove-border);
+  border-radius: var(--cove-radius-round);
+  background: var(--cove-field);
+  transition:
+    border-color var(--cove-motion-normal) var(--cove-ease-standard),
+    background var(--cove-motion-normal) var(--cove-ease-standard),
+    box-shadow var(--cove-motion-normal) var(--cove-ease-standard);
+  pointer-events: none;
+}
+
+.settings-panel label.cove-toggle .cove-toggle__slider::before {
+  position: absolute;
+  content: '';
+  width: 14px;
+  height: 14px;
+  top: 2px;
+  left: 2px;
+  border-radius: var(--cove-radius-round);
+  background: var(--cove-text-muted);
+  transition:
+    transform var(--cove-motion-normal) var(--cove-ease-standard),
+    background var(--cove-motion-normal) var(--cove-ease-standard);
+}
+
+.settings-panel label.cove-toggle input:checked + .cove-toggle__slider {
+  border-color: var(--cove-accent);
+  background: var(--cove-accent);
+}
+
+.settings-panel label.cove-toggle input:checked + .cove-toggle__slider::before {
+  transform: translateX(16px);
+  background: var(--cove-settings-on-accent);
+}
+
+.settings-panel label.cove-toggle input:focus-visible + .cove-toggle__slider {
+  box-shadow: 0 0 0 3px var(--cove-settings-focus-ring);
+}
+
+.settings-panel label.cove-toggle input:disabled + .cove-toggle__slider {
+  cursor: not-allowed;
+  opacity: 0.5;
 }

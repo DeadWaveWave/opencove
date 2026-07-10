@@ -18,6 +18,7 @@ import {
   useRendererMemoryTrend,
 } from '@app/renderer/performanceDiagnostics/rendererDiagnosticsSampling'
 import type { PerformanceDiagnosticsProcessSummary } from '@shared/contracts/dto'
+import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 export function DiagnosticsSection({
   headerButtonEnabled,
@@ -77,29 +78,31 @@ export function DiagnosticsSection({
   }
 
   return (
-    <div className="settings-panel__section" id="settings-section-diagnostics">
-      <div className="settings-panel__subsection-header">
-        <h3 className="settings-panel__section-title">{t('settingsPanel.diagnostics.title')}</h3>
-        <span>{t('settingsPanel.diagnostics.help')}</span>
-      </div>
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.diagnostics.headerMonitor.label')}</strong>
-          <span>{t('settingsPanel.diagnostics.headerMonitor.help')}</span>
+    <SettingsGroup
+      id="settings-section-diagnostics"
+      title={t('settingsPanel.groups.advanced.diagnostics')}
+      description={t('settingsPanel.diagnostics.help')}
+    >
+      <SettingsGroupBody>
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.diagnostics.headerMonitor.label')}</strong>
+            <span>{t('settingsPanel.diagnostics.headerMonitor.help')}</span>
+          </div>
+          <div className="settings-panel__control">
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                data-testid="settings-performance-monitor-header-button-enabled"
+                checked={headerButtonEnabled}
+                aria-label={t('settingsPanel.diagnostics.headerMonitor.label')}
+                onChange={event => onChangeHeaderButtonEnabled(event.target.checked)}
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
         </div>
-        <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-performance-monitor-header-button-enabled"
-              checked={headerButtonEnabled}
-              onChange={event => onChangeHeaderButtonEnabled(event.target.checked)}
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
-        </div>
-      </div>
+      </SettingsGroupBody>
 
       <div className="settings-panel__diagnostics-actions">
         <button
@@ -222,7 +225,7 @@ export function DiagnosticsSection({
           ))}
         </div>
       ) : null}
-    </div>
+    </SettingsGroup>
   )
 }
 

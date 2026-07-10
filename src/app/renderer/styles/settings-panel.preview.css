@@ -24,41 +24,57 @@
   pointer-events: none;
 }
 
-.settings-panel--preview #settings-section-canvas .settings-panel__section-title {
+.settings-panel--preview
+  .settings-panel__content
+  > .settings-panel__group:not(#settings-section-canvas-node-focus) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.settings-panel--preview #settings-section-canvas-node-focus .settings-panel__group-header {
   visibility: hidden;
 }
 
 .settings-panel--preview
-  #settings-section-canvas
+  #settings-section-canvas-node-focus
   .settings-panel__row:not(.settings-panel__row--focus-target-zoom) {
   visibility: hidden;
   pointer-events: none;
 }
 
 .settings-panel--preview
-  #settings-section-canvas
+  #settings-section-canvas-node-focus
   .settings-panel__row:not(.settings-panel__row--focus-target-zoom)
   * {
   transition: none;
 }
 
-.settings-panel--preview #settings-section-canvas .settings-panel__row--focus-target-zoom {
+.settings-panel--preview #settings-section-canvas-node-focus .settings-panel__group-body {
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+
+.settings-panel--preview
+  #settings-section-canvas-node-focus
+  .settings-panel__row--focus-target-zoom {
+  border-top-color: transparent;
   pointer-events: auto;
 }
 
 .settings-panel--preview
-  #settings-section-canvas
+  #settings-section-canvas-node-focus
   .settings-panel__row--focus-target-zoom
   input[type='range'] {
   pointer-events: auto;
 }
 
 .settings-panel--preview
-  #settings-section-canvas
+  #settings-section-canvas-node-focus
   .settings-panel__row--focus-target-zoom
   .settings-panel__row-label,
 .settings-panel--preview
-  #settings-section-canvas
+  #settings-section-canvas-node-focus
   .settings-panel__row--focus-target-zoom
   .settings-panel__range-value {
   visibility: hidden;
@@ -70,7 +86,7 @@
 }
 
 .settings-panel--preview
-  #settings-section-canvas
+  #settings-section-canvas-node-focus
   .settings-panel__row--focus-target-zoom
   input[type='range'] {
   --cove-range-track-bg: color-mix(in srgb, var(--cove-border) 88%, transparent);

@@ -3,6 +3,7 @@ import React from 'react'
 export function SettingsPanelNavButton({
   isActive,
   isCurrent = isActive,
+  icon,
   label,
   testId,
   tone = 'default',
@@ -10,6 +11,7 @@ export function SettingsPanelNavButton({
 }: {
   isActive: boolean
   isCurrent?: boolean
+  icon?: React.ReactNode
   label: string
   testId?: string
   tone?: 'default' | 'secondary'
@@ -24,7 +26,8 @@ export function SettingsPanelNavButton({
       onClick={onClick}
       className={`settings-panel__nav-button${tone === 'secondary' ? ' settings-panel__nav-button--secondary' : ''}${isActive ? ' settings-panel__nav-button--active' : ''}${isActive && !isCurrent ? ' settings-panel__nav-button--parent-active' : ''}`}
     >
-      {label}
+      {icon ? <span className="settings-panel__nav-button-icon">{icon}</span> : null}
+      <span className="settings-panel__nav-button-label">{label}</span>
     </button>
   )
 }

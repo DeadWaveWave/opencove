@@ -102,10 +102,22 @@
 
 - 所有文本/边框/输入框必须基于 token；尤其避免 `#fff` / `#ccc` 这类暗色假设。
 - provider/card 标题与错误信息必须可读（Light/Dark 都可读）。
+- 页面 registry 是 Settings 信息架构的单一来源：规范页面 id、别名、导航分组、标题/说明键和滚动目标；侧栏、动态页头、搜索结果与窄窗选择器必须共同消费它，禁止各自维护映射。
+- 桌面侧栏按“应用 / 工作区 / 连接 / 高级”分组；项目使用独立、可折叠分组。二级入口可供搜索或深链定位，但不重复占用主导航。
+- 页头必须随当前页面显示对应标题和简短说明，标题与说明来自 registry，不使用泛化的固定标题替代页面上下文。
+- Settings 内容层级固定为 `Page H2 → Group H3 →（必要时）Module H4 → Row`；Group 标题与说明必须位于内容面之外，不能用 `<strong>` 冒充结构标题。
+- 每个 Group 最多一个共享的轻量内容面，内部继续使用扁平设置行和细分隔线；Module 只用标题、说明、留白与 hairline 区分，不得再拥有独立背景、圆角或 header surface。Agent、Endpoint 等具备独立身份与状态的重复实体可保留 Entity Card，但不能再套 Group Body Card。
+- 单项页面不为了形式统一强加空洞层级；条件内容不得产生空 Group；重排时必须保留搜索/深链依赖的 `settings-section-*` anchor。
+- 窄窗口使用顶部 page selector 和单列内容，不能把桌面侧栏压缩成不可读的窄栏；页面切换后仍需保持标题、说明和目标内容可达。
+- Settings 容器必须具备 `dialog` 语义、可访问名称和 `aria-modal`。打开后把焦点移入面板，关闭后恢复到触发控件；所有交互必须有清晰的 `:focus-visible`。
+- 搜索支持方向键选择结果、`Enter` 跳转和 `Escape` 退出；查询非空时首次 `Escape` 先清空查询，再次 `Escape` 关闭面板。关闭按钮必须有可访问名称。
 
 实现锚点：
 - 面板样式：`src/app/renderer/styles/settings-panel.css`
+- 分组原语：`src/contexts/settings/presentation/renderer/settingsPanel/SettingsGroup.tsx`
 - 主题选择：`src/contexts/settings/presentation/renderer/settingsPanel/GeneralSection.tsx`
+
+参考原则：Apple HIG Settings（稳定 pane 与相关设置分组）、Windows App Settings（单列、受约束宽度与 section header）、GNOME HIG Boxed Lists（短静态偏好使用共享列表面，标题位于列表之外）。
 
 ---
 

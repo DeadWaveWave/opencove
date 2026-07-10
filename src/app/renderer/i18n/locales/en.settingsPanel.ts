@@ -3,6 +3,7 @@ import { enSettingsPanelEndpoints } from './en.settingsPanel.endpoints'
 import { enSettingsPanelAgentExecutable } from './en.settingsPanel.agentExecutable'
 import { enSettingsPanelDiagnostics } from './en.settingsPanel.diagnostics'
 import { enSettingsPanelLayout } from './en.settingsPanel.layout'
+import { enSettingsPanelWorkspace } from './en.settingsPanel.workspace'
 import { enWorkspaceCanvasNavigationShortcutCommands } from './en.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const enSettingsPanel = {
@@ -13,6 +14,9 @@ export const enSettingsPanel = {
     noResults: 'No matching settings',
   },
   nav: enSettingsPanelLayout.nav,
+  navGroups: enSettingsPanelLayout.navGroups,
+  pageDescriptions: enSettingsPanelLayout.pageDescriptions,
+  groups: enSettingsPanelLayout.groups,
   general: {
     title: 'General',
     languageLabel: 'Display Language',
@@ -97,6 +101,8 @@ export const enSettingsPanel = {
     help: 'Add or override environment variables when starting an agent.',
     add: 'Add Variable',
     enabled: 'Enabled',
+    keyLabel: 'variable name',
+    valueLabel: 'variable value',
     keyPlaceholder: 'KEY',
     valuePlaceholder: 'value',
   },
@@ -221,6 +227,7 @@ export const enSettingsPanel = {
       'Shows remote worker and remote location UI. When disabled, OpenCove keeps the local-only workflow by default.',
     workerWebUi: {
       title: 'Worker Web UI',
+      securityTitle: 'Access Security',
       help: 'Open the experimental browser UI served by the Local Worker.',
       enabledLabel: 'Enable Web UI',
       enabledHelp:
@@ -418,13 +425,13 @@ export const enSettingsPanel = {
         'OpenCove uses the Local Worker on this device. Most of the time, you only need to start or restart it below.',
       packagedModeLabel: 'Current Mode',
       packagedModeValue: 'Local Worker',
-      modeLabel: 'Worker Mode',
+      modeLabel: 'Current Mode',
       mode: {
         standalone: 'Standalone (No Worker)',
         local: 'Local Worker',
         remote: 'Remote Worker',
       },
-      applyLabel: 'Apply',
+      applyLabel: 'Mode Changes',
       applyHelp: 'Changes require a restart to take effect.',
       applyRestart: 'Apply & Restart',
     },
@@ -438,25 +445,25 @@ export const enSettingsPanel = {
     cli: {
       title: 'CLI',
       help: 'Install the `opencove` command in your PATH.',
-      statusLabel: 'Status',
+      statusLabel: 'CLI Status',
       status: {
         installed: 'Installed ({{path}})',
         needsRepair: 'Installed, but the launcher needs repair ({{path}})',
         notInstalled: 'Not installed',
       },
-      actionsLabel: 'Actions',
+      actionsLabel: 'CLI Actions',
       install: 'Install CLI',
       uninstall: 'Uninstall CLI',
     },
     local: {
-      title: 'Local Worker Status',
+      title: 'Local Worker',
       help: 'Loopback-only (127.0.0.1) + token. Use SSH tunnels for remote access. Worker Web UI is in Worker & Connections.',
-      statusLabel: 'Status',
+      statusLabel: 'Worker Status',
       status: {
         running: 'Running',
         stopped: 'Stopped',
       },
-      actionsLabel: 'Actions',
+      actionsLabel: 'Worker Controls',
       start: 'Start',
       stop: 'Stop',
       baseUrlLabel: 'Base URL',
@@ -468,28 +475,5 @@ export const enSettingsPanel = {
     },
   },
   endpoints: enSettingsPanelEndpoints,
-  workspace: {
-    title: 'Workspace Worktree',
-    selectProjectFirst: 'Select a project first',
-    selectProjectFirstHelp: 'Choose a project in the sidebar to configure its worktree root.',
-    workspacePathLabel: 'Workspace Path',
-    workspacePathHelp: 'Project root for {{name}}.',
-    worktreeRootLabel: 'Worktree Root',
-    worktreeRootHelp: 'Relative path is based on project root.',
-    worktreeRootPlaceholder: '.opencove/worktrees',
-    resolvedPathLabel: 'Resolved Path',
-    resolvedPathHelp: 'Where new worktrees will be created.',
-    pullRequestBaseBranchesLabel: 'Pull Request Base Branches',
-    pullRequestBaseBranchesHelp:
-      'Suggestions shown when creating PRs on the canvas. The repository default branch is always included.',
-    pullRequestBaseBranchesEmpty: 'No base branches configured.',
-    pullRequestBaseBranchesPlaceholder: 'e.g. develop',
-    environmentVariablesTitle: 'Environment Variables',
-    environmentVariablesHelp:
-      'Custom environment variables injected into terminals and agents in this workspace.',
-    searchResultDescription: 'Project worktree and environment settings.',
-    environmentVariablesEmpty: 'No environment variables configured.',
-    environmentVariablesKeyPlaceholder: 'e.g. NODE_ENV',
-    environmentVariablesValuePlaceholder: 'e.g. development',
-  },
+  workspace: enSettingsPanelWorkspace,
 }
