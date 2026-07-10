@@ -7,6 +7,7 @@ import {
   type BrowserSearchEngineId,
 } from '@contexts/settings/domain/browserSettings'
 import type { BrowserMode } from '@shared/contracts/dto'
+import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 export function ExperimentalSection({
   websiteWindowPolicy,
@@ -67,17 +68,12 @@ export function ExperimentalSection({
   }, [keepAliveHostDraft, updateWebsiteWindowPolicy, websiteWindowPolicy.keepAliveHosts])
 
   return (
-    <div className="settings-panel__section" id="settings-section-experimental">
-      <h3 className="settings-panel__section-title">{t('settingsPanel.experimental.title')}</h3>
-
-      <div className="settings-panel__subsection" id="settings-section-website-windows">
-        <div className="settings-panel__subsection-header">
-          <h4 className="settings-panel__section-title">
-            {t('settingsPanel.experimental.websiteWindowsTitle')}
-          </h4>
-          <span>{t('settingsPanel.experimental.websiteWindowsHelp')}</span>
-        </div>
-
+    <SettingsGroup
+      id="settings-section-experimental"
+      title={t('settingsPanel.groups.advanced.websiteWindows')}
+      description={t('settingsPanel.experimental.websiteWindowsHelp')}
+    >
+      <SettingsGroupBody id="settings-section-website-windows">
         <div className="settings-panel__row">
           <div className="settings-panel__row-label">
             <strong>{t('settingsPanel.experimental.websiteWindowEnabledLabel')}</strong>
@@ -89,6 +85,7 @@ export function ExperimentalSection({
                 type="checkbox"
                 data-testid="settings-experimental-website-window-enabled"
                 checked={websiteWindowPolicy.enabled}
+                aria-label={t('settingsPanel.experimental.websiteWindowEnabledLabel')}
                 onChange={event =>
                   updateWebsiteWindowPolicy({
                     enabled: event.target.checked,
@@ -109,6 +106,7 @@ export function ExperimentalSection({
             <CoveSelect
               id="settings-website-window-default-mode"
               testId="settings-website-window-default-mode"
+              ariaLabel={t('settingsPanel.experimental.websiteWindowDefaultModeLabel')}
               value={browserDefaultMode}
               disabled={!websiteWindowPolicy.enabled}
               options={[
@@ -135,6 +133,7 @@ export function ExperimentalSection({
             <CoveSelect
               id="settings-browser-search-engine"
               testId="settings-browser-search-engine"
+              ariaLabel={t('settingsPanel.experimental.browserSearchEngineLabel')}
               value={browserSearchEngine}
               disabled={!websiteWindowPolicy.enabled}
               options={BROWSER_SEARCH_ENGINES.map(engine => ({
@@ -160,6 +159,7 @@ export function ExperimentalSection({
                 data-testid="settings-experimental-website-window-paste"
                 checked={websiteWindowPasteEnabled}
                 disabled={!websiteWindowPolicy.enabled}
+                aria-label={t('settingsPanel.experimental.websiteWindowPasteLabel')}
                 onChange={event => onChangeWebsiteWindowPasteEnabled(event.target.checked)}
               />
               <span className="cove-toggle__slider"></span>
@@ -179,6 +179,7 @@ export function ExperimentalSection({
               className="cove-field"
               style={{ width: '80px' }}
               type="number"
+              aria-label={t('settingsPanel.experimental.websiteWindowMaxActiveLabel')}
               min={1}
               max={6}
               value={websiteWindowPolicy.maxActiveCount}
@@ -206,6 +207,7 @@ export function ExperimentalSection({
               className="cove-field"
               style={{ width: '80px' }}
               type="number"
+              aria-label={t('settingsPanel.experimental.websiteWindowDiscardAfterLabel')}
               min={1}
               max={240}
               value={websiteWindowPolicy.discardAfterMinutes}
@@ -255,6 +257,7 @@ export function ExperimentalSection({
             <input
               type="text"
               data-testid="settings-website-keep-alive-add-input"
+              aria-label={t('settingsPanel.experimental.websiteWindowKeepAliveHostsPlaceholder')}
               className="cove-field"
               value={keepAliveHostDraft}
               disabled={!websiteWindowPolicy.enabled}
@@ -273,7 +276,7 @@ export function ExperimentalSection({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </SettingsGroupBody>
+    </SettingsGroup>
   )
 }

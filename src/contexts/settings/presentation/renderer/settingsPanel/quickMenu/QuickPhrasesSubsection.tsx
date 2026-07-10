@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { ChevronDown, ChevronUp, Power } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickPhrase } from '@contexts/settings/domain/agentSettings'
+import { SettingsModule } from '../SettingsGroup'
 import { moveItem } from './moveItem'
 
 type QuickPhraseDraft = {
@@ -103,12 +104,11 @@ export function QuickPhrasesSubsection({
   )
 
   return (
-    <div className="settings-panel__subsection" id="settings-section-quick-phrases">
-      <div className="settings-panel__subsection-header">
-        <strong>{t('settingsPanel.quickMenu.phrases.title')}</strong>
-        <span>{t('settingsPanel.quickMenu.phrases.help')}</span>
-      </div>
-
+    <SettingsModule
+      id="settings-section-quick-phrases"
+      title={t('settingsPanel.quickMenu.phrases.title')}
+      description={t('settingsPanel.quickMenu.phrases.help')}
+    >
       <div className="settings-list-container" data-testid="settings-quick-phrases-list">
         {quickPhrases.map((phrase, index) => (
           <div className="settings-list-item" key={phrase.id}>
@@ -128,7 +128,7 @@ export function QuickPhrasesSubsection({
                     type="checkbox"
                     data-testid={`settings-quick-phrase-enabled-${phrase.id}`}
                     checked={phrase.enabled}
-                    aria-label={t('settingsPanel.quickMenu.phrases.enabled')}
+                    aria-label={`${phrase.title} ${t('settingsPanel.quickMenu.phrases.enabled')}`}
                     onChange={event => {
                       onChangeQuickPhrases(
                         quickPhrases.map(existing =>
@@ -271,6 +271,7 @@ export function QuickPhrasesSubsection({
                 <input
                   type="checkbox"
                   checked={phraseEditor.draft.enabled}
+                  aria-label={t('settingsPanel.quickMenu.phrases.enabled')}
                   onChange={event => {
                     setPhraseEditor(previous =>
                       previous
@@ -314,6 +315,6 @@ export function QuickPhrasesSubsection({
           </section>
         </div>
       ) : null}
-    </div>
+    </SettingsModule>
   )
 }

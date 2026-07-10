@@ -107,10 +107,32 @@
   --cove-canvas-minimap-node-default: rgba(130, 156, 255, 0.78);
   --cove-canvas-minimap-node-stroke: rgba(0, 0, 0, 0.18);
 
-  --cove-settings-panel-background:
-    radial-gradient(circle at top right, rgba(94, 156, 255, 0.1), transparent 30%),
-    linear-gradient(180deg, #111318 0%, #0c0f14 100%);
-  --cove-settings-sidebar-background: rgba(8, 10, 14, 0.92);
+  --cove-settings-panel-background: color-mix(
+    in srgb,
+    var(--cove-window-surface) 92%,
+    var(--cove-surface-strong)
+  );
+  --cove-settings-sidebar-background: color-mix(
+    in srgb,
+    var(--cove-window-surface) 86%,
+    var(--cove-surface)
+  );
+  --cove-settings-header-background: color-mix(
+    in srgb,
+    var(--cove-settings-panel-background) 94%,
+    transparent
+  );
+  --cove-settings-row-divider: color-mix(in srgb, var(--cove-border-subtle) 82%, transparent);
+  --cove-settings-group-surface: color-mix(in srgb, var(--cove-field) 48%, transparent);
+  --cove-settings-group-outline: color-mix(in srgb, var(--cove-border-subtle) 52%, transparent);
+  --cove-settings-active-surface: color-mix(in srgb, var(--cove-accent) 13%, transparent);
+  --cove-settings-active-surface-strong: color-mix(in srgb, var(--cove-accent) 19%, transparent);
+  --cove-settings-primary-background: color-mix(in srgb, var(--cove-accent) 78%, black);
+  --cove-settings-primary-background-hover: color-mix(in srgb, var(--cove-accent) 88%, black);
+  --cove-settings-on-accent: rgba(255, 255, 255, 0.96);
+  --cove-settings-focus-ring: color-mix(in srgb, var(--cove-accent) 58%, transparent);
+  --cove-settings-control-shadow: 0 8px 20px
+    color-mix(in srgb, var(--cove-shadow-color-elevated) 54%, transparent);
 }
 
 :root[data-cove-theme='light'] {
@@ -213,11 +235,6 @@
   --cove-canvas-minimap-node-image: rgba(255, 206, 120, 0.66);
   --cove-canvas-minimap-node-default: rgba(94, 156, 255, 0.55);
   --cove-canvas-minimap-node-stroke: rgba(17, 24, 39, 0.14);
-
-  --cove-settings-panel-background:
-    radial-gradient(circle at top right, rgba(94, 156, 255, 0.14), transparent 32%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(243, 246, 252, 0.94) 100%);
-  --cove-settings-sidebar-background: rgba(255, 255, 255, 0.78);
 }
 
 [data-cove-label-color='gray'] {

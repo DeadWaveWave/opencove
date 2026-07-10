@@ -53,7 +53,7 @@ test.describe('Settings', () => {
       await expect(languageTrigger).toBeVisible()
       await selectCoveOption(window, 'settings-language', 'zh-CN')
       await expect(languageSelect).toHaveValue('zh-CN')
-      await expect(window.locator('.settings-panel__header h2')).toHaveText('设置')
+      await expect(window.locator('.settings-panel__header h2')).toHaveText('通用')
 
       await appearanceNav.click()
 

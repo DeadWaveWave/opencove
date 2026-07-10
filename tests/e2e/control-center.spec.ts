@@ -73,8 +73,17 @@ test.describe('Control Center', () => {
       await expect(window.locator('[data-testid="control-center"]')).toBeVisible()
       await window.locator('[data-testid="control-center-open-settings"]').click()
 
-      await expect(window.locator('.settings-panel')).toBeVisible()
+      const settingsPanel = window.locator('.settings-panel')
+      const settingsSearch = window.locator('[data-testid="settings-panel-search"]')
+      await expect(settingsPanel).toBeVisible()
       await expect(window.locator('[data-testid="control-center"]')).toHaveCount(0)
+      await expect(settingsSearch).toBeFocused()
+      await window.waitForTimeout(100)
+      await expect(settingsSearch).toBeFocused()
+
+      await window.keyboard.press('Escape')
+      await expect(settingsPanel).toBeHidden()
+      await expect(window.locator('[data-testid="app-header-settings"]')).toBeFocused()
     } finally {
       await electronApp.close()
     }

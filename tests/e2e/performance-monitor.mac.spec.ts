@@ -11,7 +11,7 @@ test.describe('Performance Diagnostics (macOS)', () => {
 
     try {
       await window.locator('[data-testid="app-header-settings"]').click({ noWaitAfter: true })
-      await window.locator('[data-testid="settings-section-nav-diagnostics"]').click()
+      await window.locator('[data-testid="settings-section-nav-experimental"]').click()
 
       const diagnosticsSection = window.locator('#settings-section-diagnostics')
       await expect(diagnosticsSection).toContainText(/Process Totals|进程汇总/)

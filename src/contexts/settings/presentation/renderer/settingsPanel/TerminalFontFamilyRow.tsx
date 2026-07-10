@@ -79,6 +79,7 @@ export function TerminalFontFamilyRow({
             onClick={() => (isOpen ? close() : open())}
             id="settings-terminal-font-family"
             data-testid="settings-terminal-font-family"
+            aria-label={t('settingsPanel.general.terminalFontFamily')}
           >
             <span className="cove-select__label">
               {isLoading ? t('settingsPanel.general.terminalFontFamilyLoading') : displayValue}
@@ -117,6 +118,7 @@ export function TerminalFontFamilyRow({
                   className="cove-field"
                   style={{ width: '100%', boxSizing: 'border-box' }}
                   placeholder={t('settingsPanel.general.terminalFontFamilySearch')}
+                  aria-label={t('settingsPanel.general.terminalFontFamilySearch')}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                 />

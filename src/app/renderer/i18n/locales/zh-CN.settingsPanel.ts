@@ -2,6 +2,7 @@ import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibrati
 import { zhCNSettingsPanelDiagnostics } from './zh-CN.settingsPanel.diagnostics'
 import { zhCNSettingsPanelEndpoints } from './zh-CN.settingsPanel.endpoints'
 import { zhCNSettingsPanelLayout } from './zh-CN.settingsPanel.layout'
+import { zhCNSettingsPanelWorkspace } from './zh-CN.settingsPanel.workspace'
 import { zhCNWorkspaceCanvasNavigationShortcutCommands } from './zh-CN.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const zhCNSettingsPanel = {
@@ -12,6 +13,9 @@ export const zhCNSettingsPanel = {
     noResults: '未找到匹配的设置',
   },
   nav: zhCNSettingsPanelLayout.nav,
+  navGroups: zhCNSettingsPanelLayout.navGroups,
+  pageDescriptions: zhCNSettingsPanelLayout.pageDescriptions,
+  groups: zhCNSettingsPanelLayout.groups,
   general: {
     title: '通用',
     languageLabel: '界面语言',
@@ -95,6 +99,8 @@ export const zhCNSettingsPanel = {
     help: '启动 Agent 时新增或覆写环境变量。',
     add: '添加变量',
     enabled: '启用',
+    keyLabel: '变量名',
+    valueLabel: '变量值',
     keyPlaceholder: 'KEY',
     valuePlaceholder: 'value',
   },
@@ -227,6 +233,7 @@ export const zhCNSettingsPanel = {
       '开启后将显示远程 Worker 与远程位置相关的界面入口。关闭时默认保持本地工作流。',
     workerWebUi: {
       title: 'Worker Web UI',
+      securityTitle: '访问安全',
       help: '通过本机 Worker 提供的浏览器 UI（实验性）。',
       enabledLabel: '启用 Web UI',
       enabledHelp: '开启本机 Worker 同源托管的 Web UI 与 Debug Shell。修改后会重启本机 Worker。',
@@ -413,13 +420,13 @@ export const zhCNSettingsPanel = {
       packagedHelp: 'OpenCove 会使用这台电脑上的本机 Worker。通常你只需要在下面启动或重启它。',
       packagedModeLabel: '当前模式',
       packagedModeValue: '本机 Worker',
-      modeLabel: 'Worker 模式',
+      modeLabel: '当前模式',
       mode: {
         standalone: 'Standalone（无 Worker）',
         local: '本机 Worker',
         remote: '远程 Worker',
       },
-      applyLabel: '应用',
+      applyLabel: '模式变更',
       applyHelp: '变更需要重启后生效。',
       applyRestart: '应用并重启',
     },
@@ -433,25 +440,25 @@ export const zhCNSettingsPanel = {
     cli: {
       title: 'CLI',
       help: '将 `opencove` 命令安装到 PATH。',
-      statusLabel: '状态',
+      statusLabel: 'CLI 状态',
       status: {
         installed: '已安装（{{path}}）',
         needsRepair: '已安装，但命令入口需要修复（{{path}}）',
         notInstalled: '未安装',
       },
-      actionsLabel: '操作',
+      actionsLabel: 'CLI 操作',
       install: '安装 CLI',
       uninstall: '卸载 CLI',
     },
     local: {
-      title: '本机 Worker 状态',
+      title: '本机 Worker',
       help: '默认仅监听 127.0.0.1，并要求 token。远程访问建议使用 SSH tunnel。Worker Web UI 位于「Worker 与连接」。',
-      statusLabel: '状态',
+      statusLabel: 'Worker 状态',
       status: {
         running: '运行中',
         stopped: '已停止',
       },
-      actionsLabel: '操作',
+      actionsLabel: 'Worker 控制',
       start: '启动',
       stop: '停止',
       baseUrlLabel: 'Base URL',
@@ -463,26 +470,5 @@ export const zhCNSettingsPanel = {
     },
   },
   endpoints: zhCNSettingsPanelEndpoints,
-  workspace: {
-    title: '工作区 Worktree',
-    selectProjectFirst: '请先选择一个项目',
-    selectProjectFirstHelp: '在侧边栏选择项目后，再配置其 worktree 根目录。',
-    workspacePathLabel: '工作区路径',
-    workspacePathHelp: '{{name}} 的项目根目录。',
-    worktreeRootLabel: 'Worktree 根目录',
-    worktreeRootHelp: '相对路径以项目根目录为基准。',
-    worktreeRootPlaceholder: '.opencove/worktrees',
-    resolvedPathLabel: '解析后的路径',
-    resolvedPathHelp: '新 worktree 将会创建在这里。',
-    pullRequestBaseBranchesLabel: 'PR 目标分支候选',
-    pullRequestBaseBranchesHelp: '用于画布创建 PR 时的目标分支建议。默认分支会自动出现。',
-    pullRequestBaseBranchesEmpty: '暂无候选分支。',
-    pullRequestBaseBranchesPlaceholder: '例如 develop',
-    environmentVariablesTitle: '环境变量',
-    environmentVariablesHelp: '自定义环境变量将注入到该工作区下启动的所有终端和 Agent 中。',
-    searchResultDescription: '项目 worktree 与环境设置。',
-    environmentVariablesEmpty: '暂无环境变量。',
-    environmentVariablesKeyPlaceholder: '例如 NODE_ENV',
-    environmentVariablesValuePlaceholder: '例如 development',
-  },
+  workspace: zhCNSettingsPanelWorkspace,
 }

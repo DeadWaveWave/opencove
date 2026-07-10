@@ -20,6 +20,73 @@ export const enSettingsPanelLayout = {
     diagnostics: 'Diagnostics',
     projects: 'Projects',
     sectionsLabel: 'Settings sections',
+    pageSelectorLabel: 'Settings page',
+    expandProjects: 'Expand projects',
+    collapseProjects: 'Collapse projects',
+  },
+  navGroups: {
+    application: 'Application',
+    workspace: 'Workspace',
+    connections: 'Connections',
+    advanced: 'Advanced',
+    projects: 'Projects',
+  },
+  pageDescriptions: {
+    general: 'Language, updates, and everyday preferences.',
+    appearance: 'Theme, interface text, and terminal typography.',
+    notifications: 'Manage system alerts and standby context.',
+    canvasWindows: 'Adjust canvas navigation and window behavior.',
+    agent: 'Choose and configure AI assistants.',
+    tasksShortcuts: 'Set task defaults, quick actions, and shortcuts.',
+    worker: 'Configure Worker runtime, access, and remote endpoints.',
+    integrations: 'Connect OpenCove with external services.',
+    advanced: 'Manage experimental features and diagnostics.',
+  },
+  groups: {
+    general: {
+      languageRegion: 'Language & Region',
+      softwareUpdates: 'Software Updates',
+    },
+    appearance: {
+      interface: 'Interface',
+      terminal: 'Terminal',
+    },
+    notifications: {
+      system: 'Notification Delivery',
+      standby: 'Standby Banner',
+    },
+    canvasWindows: {
+      canvasInput: 'Canvas Input',
+      nodeFocus: 'Node Focus',
+      spaceArchiving: 'Space Archiving',
+      windowTerminal: 'Windows & Terminal',
+    },
+    agent: {
+      providers: 'Agent Providers',
+      permissions: 'Permissions',
+    },
+    tasksShortcuts: {
+      taskTitles: 'Task Titles',
+      taskTags: 'Task Tags',
+      quickActions: 'Quick Actions',
+      keyboard: 'Keyboard Shortcuts',
+    },
+    worker: {
+      runtime: 'Worker Runtime',
+      remote: 'Remote Connections',
+      webAccess: 'Browser Access',
+    },
+    integrations: {
+      github: 'GitHub',
+    },
+    advanced: {
+      websiteWindows: 'Website Windows',
+      diagnostics: 'Performance Diagnostics',
+    },
+    workspace: {
+      worktrees: 'Worktrees',
+      environment: 'Runtime Environment',
+    },
   },
   appearance: {
     title: 'Display & Fonts',
