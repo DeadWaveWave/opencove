@@ -92,6 +92,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Sidebar: keep the collapsed hover-reveal open while Project, Space, or Agent context menus are active, so menu interactions do not leave the sidebar collapsed underneath them. (#303)
 - Terminal: preserve local and remote output and interactivity across restarts, keep sizing stable during resize and continuous TUI redraws, and reliably resync UI and OpenCode themes after remount. (#301)
 - Workspace canvas: keep window dragging stable at Space edges and preview crowded Space expansion before release without committing transient geometry. (#300)
 - Sidebar: stabilize Project, Space, and Agent drag sorting with scoped collision detection, consistent drag overlays, and measured upward-drag motion coverage. (#295)
