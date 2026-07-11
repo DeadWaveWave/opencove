@@ -48,6 +48,7 @@ export type SidebarAnimationSample = {
 }
 
 export type SidebarAnimationResult = {
+  transitionWasObserved: boolean
   startClassName: string
   endClassName: string
   before: SidebarAnimationSample
@@ -201,9 +202,11 @@ export const sampleSidebarToggle = async (
 
       const startClassName = sidebar.className
       const before = readSample()
+      let transitionWasObserved = false
       const transitionStart = new Promise<void>(resolve => {
         const resolveIfStarted = (): boolean => {
           if ((sidebar.dataset.coveSidebarTransition ?? 'idle') !== 'idle') {
+            transitionWasObserved = true
             resolve()
             return true
           }
@@ -249,6 +252,7 @@ export const sampleSidebarToggle = async (
           window.setTimeout(() => {
             samples.push(readSample())
             resolve({
+              transitionWasObserved,
               startClassName,
               endClassName: sidebar.className,
               before,

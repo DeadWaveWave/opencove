@@ -182,6 +182,7 @@ export default function App(): React.JSX.Element {
     handlePointerLeave: handleSidebarPointerLeave,
   } = usePrimarySidebarAutoReveal({
     isCollapsed: isPrimarySidebarCollapsed,
+    isInteractionActive: projectContextMenu !== null,
   })
 
   useAppKeybindings({
