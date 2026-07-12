@@ -43,6 +43,7 @@ import { useWorkspaceWorktreeInfoByPath } from './WorkspaceSpaceRegionsOverlay.w
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
   spaceVisuals: SpaceVisual[]
+  busyOperationBySpaceId?: ReadonlyMap<string, string>
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
   openExplorerSpaceId: string | null
@@ -65,6 +66,7 @@ interface WorkspaceSpaceRegionsOverlayProps {
 export function WorkspaceSpaceRegionsOverlay({
   workspacePath,
   spaceVisuals,
+  busyOperationBySpaceId = new Map(),
   spaceFramePreview,
   selectedSpaceIds,
   openExplorerSpaceId,
@@ -356,6 +358,11 @@ export function WorkspaceSpaceRegionsOverlay({
               isExplorerOpen={isExplorerOpen}
               isDragSurfaceSelectionMode={isDragSurfaceSelectionMode}
               githubPullRequestsEnabled={githubPullRequestsEnabled}
+              busyOperationLabel={
+                branchRename?.spaceId === space.id && branchRename.isSubmitting
+                  ? t('branchRenameDialog.renaming')
+                  : (busyOperationBySpaceId.get(space.id) ?? null)
+              }
               editingSpaceId={editingSpaceId}
               spaceRenameInputRef={spaceRenameInputRef}
               spaceRenameDraft={spaceRenameDraft}
@@ -370,7 +377,7 @@ export function WorkspaceSpaceRegionsOverlay({
               resolvedChangedFileCount={resolvedChangedFileCount}
               resolvedBranchBadge={resolvedBranchBadge}
               resolvedPullRequestSummary={resolvedPullRequestSummary}
-              onStartBranchRename={({ spaceId, spaceName, worktreePath, branchName }) => {
+              onStartBranchRename={({ spaceId, spaceName, worktreePath, branchName, anchor }) => {
                 setBranchRename({
                   spaceId,
                   spaceName,
@@ -380,6 +387,7 @@ export function WorkspaceSpaceRegionsOverlay({
                   nextName: branchName,
                   isSubmitting: false,
                   error: null,
+                  anchor,
                 })
               }}
               onToggleExplorer={toggleExplorer}

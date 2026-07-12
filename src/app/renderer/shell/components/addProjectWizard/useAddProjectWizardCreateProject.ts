@@ -38,145 +38,171 @@ export function useAddProjectWizardCreateProject(options: {
   defaultRemoteRootPath: string
   defaultRemoteMountName: string
   extraMounts: DraftMount[]
-}): () => Promise<void> {
-  return useCallback(async () => {
-    if (options.isBusy) {
-      return
-    }
-
-    options.setError(null)
-
-    const name = options.derivedProjectName.trim()
-    if (name.length === 0) {
-      options.setError(options.t('addProjectWizard.nameRequired'))
-      return
-    }
-
-    const defaultMount: PlannedMount | null =
-      options.defaultLocationKind === 'local'
-        ? (() => {
-            const rootPath = options.defaultLocalRootPath.trim()
-            if (rootPath.length === 0) {
-              options.setError(options.t('addProjectWizard.defaultMountRequired'))
-              return null
-            }
-
-            if (!isAbsolutePath(rootPath)) {
-              options.setError(options.t('addProjectWizard.localPathMustBeAbsolute'))
-              return null
-            }
-
-            return {
-              endpointId: 'local',
-              rootPath,
-              name: resolveMountName(rootPath, options.defaultLocalMountName),
-            }
-          })()
-        : (() => {
-            const endpointId = options.defaultRemoteEndpointId.trim()
-            const rootPath = options.defaultRemoteRootPath.trim()
-            if (endpointId.length === 0 || rootPath.length === 0) {
-              options.setError(options.t('addProjectWizard.defaultMountRequired'))
-              return null
-            }
-
-            if (!isAbsolutePath(rootPath)) {
-              options.setError(options.t('addProjectWizard.remotePathMustBeAbsolute'))
-              return null
-            }
-
-            return {
-              endpointId,
-              rootPath,
-              name: resolveMountName(rootPath, options.defaultRemoteMountName),
-            }
-          })()
-
-    if (!defaultMount) {
-      return
-    }
-
-    if (options.existingWorkspaces.some(workspace => workspace.name.trim() === name)) {
-      // allow duplicates, but warn via subtle error messaging
-    }
-
-    const mountsToCreate: PlannedMount[] = [
-      defaultMount,
-      ...options.extraMounts.map(mount => ({
-        endpointId: mount.endpointId,
-        rootPath: mount.rootPath,
-        name: mount.name,
-      })),
-    ]
-
-    const projectId = crypto.randomUUID()
-
-    options.setIsBusy(true)
-    const createdMountIds: string[] = []
-    try {
-      const firstLocalMount = mountsToCreate.find(mount => mount.endpointId === 'local') ?? null
-      const workspacePath = firstLocalMount
-        ? firstLocalMount.rootPath
-        : (
-            await window.opencoveApi.controlSurface.invoke<AllocateProjectPlaceholderResult>({
-              kind: 'command',
-              id: 'workspace.allocateProjectPlaceholder',
-              payload: { projectId },
-            })
-          ).path
-
-      await mountsToCreate.reduce<Promise<void>>((acc, mount) => {
-        return acc.then(async () => {
-          const created = await window.opencoveApi.controlSurface.invoke<CreateMountResult>({
-            kind: 'command',
-            id: 'mount.create',
-            payload: {
-              projectId,
-              endpointId: mount.endpointId,
-              rootPath: mount.rootPath,
-              name: mount.name,
-            },
-          })
-          createdMountIds.push(created.mount.mountId)
-        })
-      }, Promise.resolve())
-
-      const nextWorkspace: WorkspaceState = {
-        id: projectId,
-        name,
-        path: workspacePath,
-        nodes: [],
-        worktreesRoot: '',
-        viewport: createDefaultWorkspaceViewport(),
-        isMinimapVisible: DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
-        spaces: [],
-        activeSpaceId: null,
-        spaceArchiveRecords: [],
+}): (
+  overrides?: Partial<{
+    derivedProjectName: string
+    defaultLocationKind: DefaultLocationKind
+    defaultLocalRootPath: string
+    defaultLocalMountName: string
+    defaultRemoteEndpointId: string
+    defaultRemoteRootPath: string
+    defaultRemoteMountName: string
+    extraMounts: DraftMount[]
+  }>,
+) => Promise<void> {
+  return useCallback(
+    async overrides => {
+      if (options.isBusy) {
+        return
       }
 
-      const store = useAppStore.getState()
-      store.setWorkspaces(prev => [...prev, nextWorkspace])
-      store.setActiveWorkspaceId(nextWorkspace.id)
-      store.setFocusRequest(null)
+      options.setError(null)
 
-      notifyTopologyChanged()
-      options.onClose()
-    } catch (caughtError) {
-      await Promise.all(
-        createdMountIds.map(mountId =>
-          window.opencoveApi.controlSurface
-            .invoke({
+      const name = (overrides?.derivedProjectName ?? options.derivedProjectName).trim()
+      if (name.length === 0) {
+        options.setError(options.t('addProjectWizard.nameRequired'))
+        return
+      }
+
+      const defaultMount: PlannedMount | null =
+        (overrides?.defaultLocationKind ?? options.defaultLocationKind) === 'local'
+          ? (() => {
+              const rootPath = (
+                overrides?.defaultLocalRootPath ?? options.defaultLocalRootPath
+              ).trim()
+              if (rootPath.length === 0) {
+                options.setError(options.t('addProjectWizard.defaultMountRequired'))
+                return null
+              }
+
+              if (!isAbsolutePath(rootPath)) {
+                options.setError(options.t('addProjectWizard.localPathMustBeAbsolute'))
+                return null
+              }
+
+              return {
+                endpointId: 'local',
+                rootPath,
+                name: resolveMountName(
+                  rootPath,
+                  overrides?.defaultLocalMountName ?? options.defaultLocalMountName,
+                ),
+              }
+            })()
+          : (() => {
+              const endpointId = (
+                overrides?.defaultRemoteEndpointId ?? options.defaultRemoteEndpointId
+              ).trim()
+              const rootPath = (
+                overrides?.defaultRemoteRootPath ?? options.defaultRemoteRootPath
+              ).trim()
+              if (endpointId.length === 0 || rootPath.length === 0) {
+                options.setError(options.t('addProjectWizard.defaultMountRequired'))
+                return null
+              }
+
+              if (!isAbsolutePath(rootPath)) {
+                options.setError(options.t('addProjectWizard.remotePathMustBeAbsolute'))
+                return null
+              }
+
+              return {
+                endpointId,
+                rootPath,
+                name: resolveMountName(
+                  rootPath,
+                  overrides?.defaultRemoteMountName ?? options.defaultRemoteMountName,
+                ),
+              }
+            })()
+
+      if (!defaultMount) {
+        return
+      }
+
+      if (options.existingWorkspaces.some(workspace => workspace.name.trim() === name)) {
+        // allow duplicates, but warn via subtle error messaging
+      }
+
+      const mountsToCreate: PlannedMount[] = [
+        defaultMount,
+        ...(overrides?.extraMounts ?? options.extraMounts).map(mount => ({
+          endpointId: mount.endpointId,
+          rootPath: mount.rootPath,
+          name: mount.name,
+        })),
+      ]
+
+      const projectId = crypto.randomUUID()
+
+      options.setIsBusy(true)
+      const createdMountIds: string[] = []
+      try {
+        const firstLocalMount = mountsToCreate.find(mount => mount.endpointId === 'local') ?? null
+        const workspacePath = firstLocalMount
+          ? firstLocalMount.rootPath
+          : (
+              await window.opencoveApi.controlSurface.invoke<AllocateProjectPlaceholderResult>({
+                kind: 'command',
+                id: 'workspace.allocateProjectPlaceholder',
+                payload: { projectId },
+              })
+            ).path
+
+        await mountsToCreate.reduce<Promise<void>>((acc, mount) => {
+          return acc.then(async () => {
+            const created = await window.opencoveApi.controlSurface.invoke<CreateMountResult>({
               kind: 'command',
-              id: 'mount.remove',
-              payload: { mountId },
+              id: 'mount.create',
+              payload: {
+                projectId,
+                endpointId: mount.endpointId,
+                rootPath: mount.rootPath,
+                name: mount.name,
+              },
             })
-            .catch(() => undefined),
-        ),
-      )
+            createdMountIds.push(created.mount.mountId)
+          })
+        }, Promise.resolve())
 
-      options.setError(toErrorMessage(caughtError))
-    } finally {
-      options.setIsBusy(false)
-    }
-  }, [options])
+        const nextWorkspace: WorkspaceState = {
+          id: projectId,
+          name,
+          path: workspacePath,
+          nodes: [],
+          worktreesRoot: '',
+          viewport: createDefaultWorkspaceViewport(),
+          isMinimapVisible: DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
+          spaces: [],
+          activeSpaceId: null,
+          spaceArchiveRecords: [],
+        }
+
+        const store = useAppStore.getState()
+        store.setWorkspaces(prev => [...prev, nextWorkspace])
+        store.setActiveWorkspaceId(nextWorkspace.id)
+        store.setFocusRequest(null)
+
+        notifyTopologyChanged()
+        options.onClose()
+      } catch (caughtError) {
+        await Promise.all(
+          createdMountIds.map(mountId =>
+            window.opencoveApi.controlSurface
+              .invoke({
+                kind: 'command',
+                id: 'mount.remove',
+                payload: { mountId },
+              })
+              .catch(() => undefined),
+          ),
+        )
+
+        options.setError(toErrorMessage(caughtError))
+      } finally {
+        options.setIsBusy(false)
+      }
+    },
+    [options],
+  )
 }

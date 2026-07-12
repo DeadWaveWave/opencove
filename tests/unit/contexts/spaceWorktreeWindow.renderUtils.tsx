@@ -12,6 +12,7 @@ export function renderArchiveWindow(overrides: Partial<SpaceWorktreeWindowProps>
   const onShowMessage = overrides.onShowMessage
   const onAppendSpaceArchiveRecord = overrides.onAppendSpaceArchiveRecord ?? vi.fn()
   const onUpdateSpaceDirectory = overrides.onUpdateSpaceDirectory ?? vi.fn()
+  const onOperationPhaseChange = overrides.onOperationPhaseChange ?? vi.fn()
   const closeNodesById = overrides.closeNodesById ?? vi.fn(async () => undefined)
   const getBlockingNodes =
     overrides.getBlockingNodes ?? (() => ({ agentNodeIds: [], terminalNodeIds: [] }))
@@ -26,6 +27,7 @@ export function renderArchiveWindow(overrides: Partial<SpaceWorktreeWindowProps>
       worktreesRoot={overrides.worktreesRoot ?? '.opencove/worktrees'}
       agentSettings={overrides.agentSettings ?? DEFAULT_AGENT_SETTINGS}
       onClose={onClose}
+      onOperationPhaseChange={onOperationPhaseChange}
       onShowMessage={onShowMessage}
       onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
       onUpdateSpaceDirectory={onUpdateSpaceDirectory}
@@ -34,7 +36,13 @@ export function renderArchiveWindow(overrides: Partial<SpaceWorktreeWindowProps>
     />,
   )
 
-  return { closeNodesById, onAppendSpaceArchiveRecord, onClose, onUpdateSpaceDirectory }
+  return {
+    closeNodesById,
+    onAppendSpaceArchiveRecord,
+    onClose,
+    onOperationPhaseChange,
+    onUpdateSpaceDirectory,
+  }
 }
 
 export async function submitArchive(): Promise<void> {

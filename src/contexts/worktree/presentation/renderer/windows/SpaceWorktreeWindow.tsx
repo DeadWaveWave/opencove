@@ -1,19 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type {
-  TerminalNodeData,
-  SpaceArchiveRecord,
-  WorkspaceSpaceState,
-} from '@contexts/workspace/presentation/renderer/types'
-import type { ShowWorkspaceCanvasMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import type { CreateGitWorktreeBranchMode, GitWorktreeInfo } from '@shared/contracts/dto'
 import { isPathInsideOrEqual } from '@contexts/space/application/spaceBoundaryPolicy'
 import { SpaceWorktreeGuardWindow, type SpaceWorktreeGuardState } from './SpaceWorktreeGuardWindow'
 import { SpaceWorktreeWindowDialog } from './SpaceWorktreeWindowDialog'
 import {
-  type BlockingNodesSnapshot,
   type BranchMode,
   getBranchNameValidationError,
   getWorktreeApiMethod,
@@ -30,39 +21,25 @@ import { useSpaceWorktreeSuggestNames } from './useSpaceWorktreeSuggestNames'
 import { buildArchiveWarningMessage } from './spaceWorktreeWarnings'
 import { toSpaceWorktreeErrorMessage } from './spaceWorktreeErrorMessage'
 import { useSpaceWorktreeArchiveState } from './useSpaceWorktreeArchiveState'
+import type { SpaceWorktreeWindowProps } from './SpaceWorktreeWindow.types'
 export function SpaceWorktreeWindow({
   spaceId,
   initialViewMode = 'create',
+  anchor = { x: 24, y: 24 },
+  operationPhase = 'draft',
   spaces,
   nodes,
   workspacePath,
   worktreesRoot,
   agentSettings,
   onClose,
+  onOperationPhaseChange,
   onShowMessage,
   onAppendSpaceArchiveRecord,
   onUpdateSpaceDirectory,
   getBlockingNodes,
   closeNodesById,
-}: {
-  spaceId: string | null
-  initialViewMode?: 'create' | 'archive'
-  spaces: WorkspaceSpaceState[]
-  nodes: Node<TerminalNodeData>[]
-  workspacePath: string
-  worktreesRoot: string
-  agentSettings: AgentSettings
-  onClose: () => void
-  onShowMessage?: ShowWorkspaceCanvasMessage
-  onAppendSpaceArchiveRecord: (record: SpaceArchiveRecord) => void
-  onUpdateSpaceDirectory: (
-    spaceId: string,
-    directoryPath: string,
-    options?: UpdateSpaceDirectoryOptions,
-  ) => void
-  getBlockingNodes: (spaceId: string) => BlockingNodesSnapshot
-  closeNodesById: (nodeIds: string[]) => Promise<void>
-}): React.JSX.Element | null {
+}: SpaceWorktreeWindowProps): React.JSX.Element | null {
   const { t } = useTranslation()
   const [viewMode, setViewMode] = useState<SpaceWorktreeViewMode>(initialViewMode)
   const [branches, setBranches] = useState<string[]>([])
@@ -297,12 +274,14 @@ export function SpaceWorktreeWindow({
       }
 
       setIsMutating(true)
+      onOperationPhaseChange?.('running')
       let shouldClose = false
       try {
         await executePendingOperation(space.id, pending)
         shouldClose = pending.kind === 'create' || pending.kind === 'archive'
       } catch (operationError) {
         setError(toSpaceWorktreeErrorMessage(operationError, t))
+        onOperationPhaseChange?.('error')
       } finally {
         setIsMutating(false)
       }
@@ -311,7 +290,7 @@ export function SpaceWorktreeWindow({
         onClose()
       }
     },
-    [executePendingOperation, onClose, queueGuardIfNeeded, space, t],
+    [executePendingOperation, onClose, onOperationPhaseChange, queueGuardIfNeeded, space, t],
   )
 
   const { applyPendingWithMismatch, applyPendingByClosingAll } = useSpaceWorktreeGuardActions({
@@ -321,6 +300,7 @@ export function SpaceWorktreeWindow({
     closeNodesById,
     executePendingOperation,
     onClose,
+    onOperationPhaseChange,
   })
 
   const handleSuggestNames = useSpaceWorktreeSuggestNames({
@@ -403,6 +383,7 @@ export function SpaceWorktreeWindow({
     nodes,
     onAppendSpaceArchiveRecord,
     onClose,
+    onOperationPhaseChange,
     ownWorktree,
     setError,
     setIsMutating,
@@ -428,51 +409,55 @@ export function SpaceWorktreeWindow({
   }
   return (
     <>
-      <SpaceWorktreeWindowDialog
-        space={space}
-        isSpaceOnWorkspaceRoot={isSpaceOnWorkspaceRoot}
-        currentWorktree={currentWorktree}
-        viewMode={viewMode}
-        isBusy={isLoading || isMutating}
-        isMutating={isMutating}
-        isSuggesting={isSuggesting}
-        branches={branches}
-        branchesWithWorktrees={branchesWithWorktrees}
-        currentBranch={currentBranch}
-        changedFileCount={changedFileCount}
-        branchMode={branchMode}
-        newBranchName={newBranchName}
-        startPoint={startPoint}
-        existingBranchName={existingBranchName}
-        deleteWorktreeOnArchive={deleteWorktreeOnArchive}
-        deleteBranchOnArchive={deleteBranchOnArchive}
-        forceArchiveConfirmed={forceArchiveConfirmed}
-        archiveAgentCount={archiveCounts.agentCount}
-        archiveTerminalCount={archiveCounts.terminalCount}
-        archiveTaskCount={archiveCounts.taskCount}
-        archiveNoteCount={archiveCounts.noteCount}
-        archiveHasOwnWorktree={hasOwnWorktree}
-        archiveDescendantWorktrees={descendantWorktreeCleanups}
-        error={error}
-        guardIsBusy={guard?.isBusy === true}
-        onBackdropClose={onClose}
-        onClose={onClose}
-        onBranchModeChange={panelHandlers.onBranchModeChange}
-        onNewBranchNameChange={panelHandlers.onNewBranchNameChange}
-        onStartPointChange={panelHandlers.onStartPointChange}
-        onExistingBranchNameChange={panelHandlers.onExistingBranchNameChange}
-        onSuggestNames={panelHandlers.onSuggestNames}
-        onCreate={panelHandlers.onCreate}
-        onDeleteWorktreeOnArchiveChange={panelHandlers.onDeleteWorktreeOnArchiveChange}
-        onDeleteBranchOnArchiveChange={panelHandlers.onDeleteBranchOnArchiveChange}
-        onDescendantDeleteWorktreeOnArchiveChange={handleDescendantDeleteWorktreeOnArchiveChange}
-        onDescendantDeleteBranchOnArchiveChange={handleDescendantDeleteBranchOnArchiveChange}
-        onForceArchiveConfirmedChange={panelHandlers.onForceArchiveConfirmedChange}
-        onArchive={panelHandlers.onArchive}
-        onCloseOnly={panelHandlers.onCloseOnly}
-      />
-      {guard ? (
+      {!isMutating && operationPhase !== 'running' && !guard ? (
+        <SpaceWorktreeWindowDialog
+          anchor={anchor}
+          space={space}
+          isSpaceOnWorkspaceRoot={isSpaceOnWorkspaceRoot}
+          currentWorktree={currentWorktree}
+          viewMode={viewMode}
+          isBusy={isLoading || isMutating}
+          isMutating={isMutating}
+          isSuggesting={isSuggesting}
+          branches={branches}
+          branchesWithWorktrees={branchesWithWorktrees}
+          currentBranch={currentBranch}
+          changedFileCount={changedFileCount}
+          branchMode={branchMode}
+          newBranchName={newBranchName}
+          startPoint={startPoint}
+          existingBranchName={existingBranchName}
+          deleteWorktreeOnArchive={deleteWorktreeOnArchive}
+          deleteBranchOnArchive={deleteBranchOnArchive}
+          forceArchiveConfirmed={forceArchiveConfirmed}
+          archiveAgentCount={archiveCounts.agentCount}
+          archiveTerminalCount={archiveCounts.terminalCount}
+          archiveTaskCount={archiveCounts.taskCount}
+          archiveNoteCount={archiveCounts.noteCount}
+          archiveHasOwnWorktree={hasOwnWorktree}
+          archiveDescendantWorktrees={descendantWorktreeCleanups}
+          error={error}
+          guardIsBusy={false}
+          onBackdropClose={onClose}
+          onClose={onClose}
+          onBranchModeChange={panelHandlers.onBranchModeChange}
+          onNewBranchNameChange={panelHandlers.onNewBranchNameChange}
+          onStartPointChange={panelHandlers.onStartPointChange}
+          onExistingBranchNameChange={panelHandlers.onExistingBranchNameChange}
+          onSuggestNames={panelHandlers.onSuggestNames}
+          onCreate={panelHandlers.onCreate}
+          onDeleteWorktreeOnArchiveChange={panelHandlers.onDeleteWorktreeOnArchiveChange}
+          onDeleteBranchOnArchiveChange={panelHandlers.onDeleteBranchOnArchiveChange}
+          onDescendantDeleteWorktreeOnArchiveChange={handleDescendantDeleteWorktreeOnArchiveChange}
+          onDescendantDeleteBranchOnArchiveChange={handleDescendantDeleteBranchOnArchiveChange}
+          onForceArchiveConfirmedChange={panelHandlers.onForceArchiveConfirmedChange}
+          onArchive={panelHandlers.onArchive}
+          onCloseOnly={panelHandlers.onCloseOnly}
+        />
+      ) : null}
+      {guard && !guard.isBusy && operationPhase !== 'running' ? (
         <SpaceWorktreeGuardWindow
+          anchor={anchor}
           guard={guard}
           onCancel={() => {
             setGuard(null)

@@ -18,6 +18,7 @@ import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
 import { useWorkspaceCanvasSpaceMenuState } from './hooks/useCanvasSpaceMenuState'
 import { useWorkspaceCanvasLabelColorFilter } from './hooks/useLabelColorFilter'
 import { useViewportDprSnapping } from './hooks/useViewportDprSnapping'
+import { useSpaceWorktreeBusyLabels } from './hooks/useSpaceWorktreeBusyLabels'
 import { WorkspaceCanvasMenus } from './view/WorkspaceCanvasMenus'
 import { WorkspaceCanvasWindows } from './view/WorkspaceCanvasWindows'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
@@ -163,11 +164,12 @@ export function WorkspaceCanvasView({
   closeSpaceActionMenu,
   copySpacePath,
   openSpacePath,
-  spaceWorktreeDialog,
+  spaceWorktreeOperations,
   worktreesRoot,
   openSpaceCreateWorktree,
   openSpaceArchive,
   closeSpaceWorktree,
+  setSpaceWorktreeOperationPhase,
   onShowMessage,
   onAppendSpaceArchiveRecord,
   updateSpaceDirectory,
@@ -178,6 +180,7 @@ export function WorkspaceCanvasView({
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const { labelColorFilter, setLabelColorFilter, usedLabelColors, filteredNodes, filteredEdges } =
     useWorkspaceCanvasLabelColorFilter({ nodes, edges, spaces })
+  const busyOperationBySpaceId = useSpaceWorktreeBusyLabels(spaceWorktreeOperations)
 
   useWorkspaceCanvasGlobalDismissals({
     contextMenu,
@@ -334,6 +337,7 @@ export function WorkspaceCanvasView({
         <WorkspaceSpaceRegionsOverlay
           workspacePath={workspacePath}
           spaceVisuals={spaceVisuals}
+          busyOperationBySpaceId={busyOperationBySpaceId}
           spaceFramePreview={spaceFramePreview}
           selectedSpaceIds={selectedSpaceIds}
           openExplorerSpaceId={openExplorerSpaceId}
@@ -474,13 +478,14 @@ export function WorkspaceCanvasView({
         spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
         cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}
         continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}
-        spaceWorktreeDialog={spaceWorktreeDialog}
+        spaceWorktreeOperations={spaceWorktreeOperations}
         spaces={spaces}
         nodes={nodes}
         workspacePath={workspacePath}
         worktreesRoot={worktreesRoot}
         agentSettings={agentSettings}
         closeSpaceWorktree={closeSpaceWorktree}
+        setSpaceWorktreeOperationPhase={setSpaceWorktreeOperationPhase}
         onShowMessage={onShowMessage}
         onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
         updateSpaceDirectory={updateSpaceDirectory}

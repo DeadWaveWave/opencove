@@ -1,5 +1,6 @@
 import React from 'react'
-import { WarningDialog } from '@app/renderer/components/WarningDialog'
+import { Trash2 } from 'lucide-react'
+import { AnchoredOperationPopover } from '@app/renderer/components/AnchoredOperationPopover'
 import { useTranslation } from '@app/renderer/i18n'
 import { type SpaceExplorerDeleteConfirmationState } from './WorkspaceSpaceExplorerOverlay.operations'
 
@@ -17,18 +18,27 @@ export function WorkspaceSpaceExplorerOverlayWindows({
   return (
     <>
       {deleteConfirmation ? (
-        <WarningDialog
-          dataTestId="workspace-space-explorer-delete-confirmation"
-          title={t('spaceExplorer.deleteTitle')}
-          lead={
-            <p data-testid="workspace-space-explorer-delete-message">
-              {t('spaceExplorer.deletePrompt', { name: deleteConfirmation.entry.name })}
-            </p>
-          }
-          onBackdropClick={onCancelDelete}
-          dialogClassName="workspace-warning-dialog--compact"
-          actions={
-            <>
+        <AnchoredOperationPopover
+          anchor={deleteConfirmation.anchor}
+          ariaLabel={t('spaceExplorer.deleteTitle')}
+          className="workspace-space-explorer-delete-popover"
+          estimatedHeight={220}
+          onDismiss={onCancelDelete}
+          testId="workspace-space-explorer-delete-confirmation"
+        >
+          <section className="workspace-operation-guard workspace-operation-guard--danger">
+            <header className="workspace-operation-guard__header">
+              <span className="workspace-operation-guard__icon" aria-hidden="true">
+                <Trash2 size={16} />
+              </span>
+              <div>
+                <h3>{t('spaceExplorer.deleteTitle')}</h3>
+                <p data-testid="workspace-space-explorer-delete-message">
+                  {t('spaceExplorer.deletePrompt', { name: deleteConfirmation.entry.name })}
+                </p>
+              </div>
+            </header>
+            <div className="workspace-operation-guard__actions">
               <button
                 type="button"
                 className="cove-window__action cove-window__action--ghost"
@@ -43,9 +53,9 @@ export function WorkspaceSpaceExplorerOverlayWindows({
               >
                 {t('common.delete')}
               </button>
-            </>
-          }
-        />
+            </div>
+          </section>
+        </AnchoredOperationPopover>
       ) : null}
     </>
   )

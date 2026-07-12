@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
   EmptySelectionPromptState,
-  SpaceWorktreeDialogState,
+  SpaceWorktreeOperationPhase,
+  SpaceWorktreeOperationState,
 } from '../types'
 
 export function useWorkspaceCanvasSpaceUi({
@@ -35,7 +36,7 @@ export function useWorkspaceCanvasSpaceUi({
   ) => void
 }): {
   spaceActionMenu: { spaceId: string; x: number; y: number } | null
-  spaceWorktreeDialog: SpaceWorktreeDialogState | null
+  spaceWorktreeOperations: SpaceWorktreeOperationState[]
   availablePathOpeners: WorkspacePathOpener[]
   onCanvasClick: () => void
   closeContextMenu: () => void
@@ -47,18 +48,20 @@ export function useWorkspaceCanvasSpaceUi({
   closeSpaceActionMenu: () => void
   copySpacePath: (spaceId: string) => Promise<void>
   openSpacePath: (spaceId: string, openerId: WorkspacePathOpenerId) => Promise<void>
-  openSpaceCreateWorktree: (spaceId: string) => void
-  openSpaceArchive: (spaceId: string) => void
-  closeSpaceWorktree: () => void
+  openSpaceCreateWorktree: (spaceId: string, anchor: { x: number; y: number }) => void
+  openSpaceArchive: (spaceId: string, anchor: { x: number; y: number }) => void
+  closeSpaceWorktree: (operationId: string) => void
+  setSpaceWorktreeOperationPhase: (operationId: string, phase: SpaceWorktreeOperationPhase) => void
 } {
   const [spaceActionMenu, setSpaceActionMenu] = useState<{
     spaceId: string
     x: number
     y: number
   } | null>(null)
-  const [spaceWorktreeDialog, setSpaceWorktreeDialog] = useState<SpaceWorktreeDialogState | null>(
-    null,
-  )
+  const [spaceWorktreeOperations, setSpaceWorktreeOperations] = useState<
+    SpaceWorktreeOperationState[]
+  >([])
+  const nextSpaceWorktreeOperationIdRef = useRef(0)
   const [availablePathOpeners, setAvailablePathOpeners] = useState<WorkspacePathOpener[]>([])
 
   useEffect(() => {
@@ -183,23 +186,63 @@ export function useWorkspaceCanvasSpaceUi({
     [resolveSpacePath],
   )
 
-  const openSpaceCreateWorktree = useCallback((spaceId: string) => {
-    setSpaceActionMenu(null)
-    setSpaceWorktreeDialog({ spaceId, initialViewMode: 'create' })
+  const openSpaceWorktreeOperation = useCallback(
+    (
+      spaceId: string,
+      initialViewMode: SpaceWorktreeOperationState['initialViewMode'],
+      anchor: { x: number; y: number },
+    ) => {
+      setSpaceActionMenu(null)
+      const operationId = `space-worktree-${nextSpaceWorktreeOperationIdRef.current}`
+      nextSpaceWorktreeOperationIdRef.current += 1
+      setSpaceWorktreeOperations(previous => [
+        ...previous.filter(operation => operation.phase === 'running'),
+        {
+          id: operationId,
+          spaceId,
+          initialViewMode,
+          anchor,
+          phase: 'draft',
+        },
+      ])
+    },
+    [],
+  )
+
+  const openSpaceCreateWorktree = useCallback(
+    (spaceId: string, anchor: { x: number; y: number }) => {
+      openSpaceWorktreeOperation(spaceId, 'create', anchor)
+    },
+    [openSpaceWorktreeOperation],
+  )
+
+  const openSpaceArchive = useCallback(
+    (spaceId: string, anchor: { x: number; y: number }) => {
+      openSpaceWorktreeOperation(spaceId, 'archive', anchor)
+    },
+    [openSpaceWorktreeOperation],
+  )
+
+  const closeSpaceWorktree = useCallback((operationId: string) => {
+    setSpaceWorktreeOperations(previous =>
+      previous.filter(operation => operation.id !== operationId),
+    )
   }, [])
 
-  const openSpaceArchive = useCallback((spaceId: string) => {
-    setSpaceActionMenu(null)
-    setSpaceWorktreeDialog({ spaceId, initialViewMode: 'archive' })
-  }, [])
-
-  const closeSpaceWorktree = useCallback(() => {
-    setSpaceWorktreeDialog(null)
-  }, [])
+  const setSpaceWorktreeOperationPhase = useCallback(
+    (operationId: string, phase: SpaceWorktreeOperationPhase) => {
+      setSpaceWorktreeOperations(previous =>
+        previous.map(operation =>
+          operation.id === operationId ? { ...operation, phase } : operation,
+        ),
+      )
+    },
+    [],
+  )
 
   return {
     spaceActionMenu,
-    spaceWorktreeDialog,
+    spaceWorktreeOperations,
     availablePathOpeners,
     onCanvasClick,
     closeContextMenu,
@@ -214,5 +257,6 @@ export function useWorkspaceCanvasSpaceUi({
     openSpaceCreateWorktree,
     openSpaceArchive,
     closeSpaceWorktree,
+    setSpaceWorktreeOperationPhase,
   }
 }

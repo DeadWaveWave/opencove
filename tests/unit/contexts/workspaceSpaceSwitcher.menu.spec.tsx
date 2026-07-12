@@ -58,6 +58,46 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
     )
   })
 
+  it('locks only the space with a submitted operation', () => {
+    render(
+      <WorkspaceSpaceRegionsOverlay
+        workspacePath="/tmp"
+        spaceVisuals={[
+          {
+            id: 'space-1',
+            name: 'Infra',
+            directoryPath: '/tmp/infra',
+            rect: { x: 0, y: 0, width: 200, height: 160 },
+            hasExplicitRect: true,
+          },
+          {
+            id: 'space-2',
+            name: 'Docs',
+            directoryPath: '/tmp/docs',
+            rect: { x: 240, y: 0, width: 200, height: 160 },
+            hasExplicitRect: true,
+          },
+        ]}
+        busyOperationBySpaceId={new Map([['space-1', 'Creating worktree…']])}
+        selectedSpaceIds={[]}
+        spaceFramePreview={null}
+        handleSpaceDragHandlePointerDown={() => undefined}
+        editingSpaceId={null}
+        spaceRenameInputRef={{ current: null }}
+        spaceRenameDraft=""
+        setSpaceRenameDraft={() => undefined}
+        commitSpaceRename={() => undefined}
+        cancelSpaceRename={() => undefined}
+        startSpaceRename={() => undefined}
+      />,
+    )
+
+    expect(screen.getByTestId('workspace-space-operation-space-1')).toHaveTextContent(
+      'Creating worktree…',
+    )
+    expect(screen.queryByTestId('workspace-space-operation-space-2')).not.toBeInTheDocument()
+  })
+
   it('keeps rename input mouse placement events away from the canvas', () => {
     const handleSpaceDragHandlePointerDown = vi.fn()
     const wrapperMouseDown = vi.fn()
@@ -214,8 +254,24 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
       />,
     )
 
-    fireEvent.click(await screen.findByTestId('workspace-space-worktree-branch-space-1'))
-    expect(await screen.findByTestId('workspace-space-branch-rename-dialog')).toBeVisible()
+    const branchBadge = await screen.findByTestId('workspace-space-worktree-branch-space-1')
+    vi.spyOn(branchBadge, 'getBoundingClientRect').mockReturnValue({
+      x: 120,
+      y: 40,
+      left: 120,
+      top: 40,
+      right: 260,
+      bottom: 64,
+      width: 140,
+      height: 24,
+      toJSON: () => ({}),
+    })
+    fireEvent.click(branchBadge)
+    const renameDialog = await screen.findByTestId('workspace-space-branch-rename-dialog')
+    expect(renameDialog).toBeVisible()
+    expect(renameDialog).toHaveAttribute('aria-modal', 'false')
+    expect(renameDialog).toHaveStyle({ left: '120px', top: '70px' })
+    expect(document.querySelector('.workspace-space-branch-rename-backdrop')).toBeNull()
 
     fireEvent.change(screen.getByTestId('workspace-space-branch-rename-input'), {
       target: { value: 'feat/infra-next' },

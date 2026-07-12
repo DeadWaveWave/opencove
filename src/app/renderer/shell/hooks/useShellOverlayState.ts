@@ -8,6 +8,7 @@ export function useShellOverlayState(): {
   isWorkspaceSearchOpen: boolean
   isSpaceArchivesOpen: boolean
   isAddProjectWizardOpen: boolean
+  addProjectWizardAnchor: { x: number; y: number }
   hasBlockingOverlay: boolean
   toggleCommandCenter: () => void
   closeCommandCenter: () => void
@@ -21,7 +22,7 @@ export function useShellOverlayState(): {
   closeWorkspaceSearch: () => void
   openSpaceArchives: () => void
   closeSpaceArchives: () => void
-  openAddProjectWizard: () => void
+  openAddProjectWizard: (anchor?: { x: number; y: number }) => void
   closeAddProjectWizard: () => void
   closeTransientOverlays: () => void
 } {
@@ -32,6 +33,7 @@ export function useShellOverlayState(): {
   const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
   const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
   const [isAddProjectWizardOpen, setIsAddProjectWizardOpen] = useState(false)
+  const [addProjectWizardAnchor, setAddProjectWizardAnchor] = useState({ x: 24, y: 64 })
 
   const closeCommandCenter = useCallback((): void => setIsCommandCenterOpen(false), [])
   const closeControlCenter = useCallback((): void => setIsControlCenterOpen(false), [])
@@ -105,10 +107,16 @@ export function useShellOverlayState(): {
     setIsSpaceArchivesOpen(true)
   }, [])
 
-  const openAddProjectWizard = useCallback((): void => {
-    closeTransientOverlays()
-    setIsAddProjectWizardOpen(true)
-  }, [closeTransientOverlays])
+  const openAddProjectWizard = useCallback(
+    (anchor?: { x: number; y: number }): void => {
+      closeTransientOverlays()
+      if (anchor) {
+        setAddProjectWizardAnchor(anchor)
+      }
+      setIsAddProjectWizardOpen(true)
+    },
+    [closeTransientOverlays],
+  )
 
   return {
     isCommandCenterOpen,
@@ -118,13 +126,13 @@ export function useShellOverlayState(): {
     isWorkspaceSearchOpen,
     isSpaceArchivesOpen,
     isAddProjectWizardOpen,
+    addProjectWizardAnchor,
     hasBlockingOverlay:
       isCommandCenterOpen ||
       isControlCenterOpen ||
       isIssueReportOpen ||
       isWorkspaceSearchOpen ||
-      isSpaceArchivesOpen ||
-      isAddProjectWizardOpen,
+      isSpaceArchivesOpen,
     toggleCommandCenter,
     closeCommandCenter,
     toggleControlCenter,

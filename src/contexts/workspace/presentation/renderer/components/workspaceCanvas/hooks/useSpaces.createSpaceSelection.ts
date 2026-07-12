@@ -121,6 +121,22 @@ export function createSpaceFromSelectedNodesWithMounts({
           rect: null,
           mounts: mountResult.mounts,
           selectedMountId: mountResult.mounts[0].mountId,
+          anchor: (() => {
+            const firstSelectedNode = reactFlow
+              .getNodes()
+              .find(node => selectedIds.includes(node.id))
+            if (!firstSelectedNode) {
+              return { x: 24, y: 24 }
+            }
+
+            return reactFlow.flowToScreenPosition({
+              x:
+                firstSelectedNode.position.x +
+                (firstSelectedNode.measured?.width ?? firstSelectedNode.width ?? 240) +
+                8,
+              y: firstSelectedNode.position.y,
+            })
+          })(),
         })
         setContextMenu(null)
         setEmptySelectionPrompt(null)

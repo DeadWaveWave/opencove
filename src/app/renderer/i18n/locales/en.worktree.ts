@@ -11,6 +11,8 @@ export const enWorktree = {
     branchPlaceholder: 'e.g. space/infra-core',
     branchHasWorktree: 'worktree exists',
     createAndBind: 'Create & Bind',
+    creatingWorktree: 'Creating worktree…',
+    archivingSpace: 'Archiving Space…',
     deleteWorktree: 'Delete worktree',
     deleteWorktreeHelp: 'Remove the worktree directory from disk.',
     deleteBranch: 'Delete branch',

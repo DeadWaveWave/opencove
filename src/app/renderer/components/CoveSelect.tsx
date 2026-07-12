@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
+import {
+  TRANSIENT_LAYER_OWNER_ATTRIBUTE,
+  useTransientLayerOwner,
+} from './TransientLayerOwnerContext'
 
 export interface CoveSelectOption {
   value: string
@@ -48,6 +52,7 @@ export function CoveSelect({
   onChange: (nextValue: string) => void
 }): React.JSX.Element {
   const listboxId = useId()
+  const transientLayerOwner = useTransientLayerOwner()
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -342,6 +347,9 @@ export function CoveSelect({
               ref={menuRef}
               className={`cove-select__menu${menuClassName ? ` ${menuClassName}` : ''}`}
               data-testid={menuTestId ?? (testId ? `${testId}-menu` : undefined)}
+              {...(transientLayerOwner
+                ? { [TRANSIENT_LAYER_OWNER_ATTRIBUTE]: transientLayerOwner }
+                : {})}
               role="listbox"
               style={{
                 top: menuPosition.top,

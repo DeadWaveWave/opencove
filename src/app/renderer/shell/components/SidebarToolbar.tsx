@@ -11,7 +11,7 @@ export function SidebarToolbar({
   isPinned: boolean
   showAddProject: boolean
   onTogglePinned: () => void
-  onAddProject: () => void
+  onAddProject: (anchor?: { x: number; y: number }) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const pinLabel = isPinned ? t('sidebar.unpin') : t('sidebar.pin')
@@ -36,7 +36,13 @@ export function SidebarToolbar({
           data-testid="workspace-sidebar-add-project"
           aria-label={t('sidebar.addProject')}
           title={t('sidebar.addProject')}
-          onClick={onAddProject}
+          onClick={event => {
+            const rect = event.currentTarget.getBoundingClientRect()
+            onAddProject({
+              x: Math.round(rect.left),
+              y: Math.round(rect.bottom + 6),
+            })
+          }}
         >
           <Plus aria-hidden="true" />
         </button>

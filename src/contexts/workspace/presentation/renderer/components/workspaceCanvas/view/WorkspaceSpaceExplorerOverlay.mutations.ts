@@ -316,14 +316,23 @@ export function useSpaceExplorerOverlayMutations({
     setExplorerClipboard({ mode: 'cut', entry })
   }, [closeContextMenu, ensureEntryMutable, resolveSelectedEntry, setExplorerClipboard])
 
-  const requestDeleteSelection = React.useCallback(() => {
-    const entry = resolveSelectedEntry()
-    if (!entry || !ensureEntryMutable(entry)) {
-      return
-    }
-    closeContextMenu()
-    setDeleteConfirmation({ entry })
-  }, [closeContextMenu, ensureEntryMutable, resolveSelectedEntry])
+  const requestDeleteSelection = React.useCallback(
+    (anchor?: { x: number; y: number }) => {
+      const entry = resolveSelectedEntry()
+      if (!entry || !ensureEntryMutable(entry)) {
+        return
+      }
+      closeContextMenu()
+      setDeleteConfirmation({
+        entry,
+        anchor: anchor ?? {
+          x: Math.round(window.innerWidth / 2),
+          y: Math.round(window.innerHeight / 2),
+        },
+      })
+    },
+    [closeContextMenu, ensureEntryMutable, resolveSelectedEntry],
+  )
 
   const confirmDelete = React.useCallback(async () => {
     const entry = deleteConfirmation?.entry
@@ -333,6 +342,7 @@ export function useSpaceExplorerOverlayMutations({
     }
 
     try {
+      setDeleteConfirmation(null)
       await api.deleteEntry({ uri: entry.uri })
       if (
         explorerClipboard?.mode === 'cut' &&
@@ -343,7 +353,6 @@ export function useSpaceExplorerOverlayMutations({
       if (selectedEntryUri && isWithinDirectoryUri(entry.uri, selectedEntryUri)) {
         selectEntry(null)
       }
-      setDeleteConfirmation(null)
       refresh()
     } catch (error) {
       onShowMessage?.(toErrorMessage(error), 'error')

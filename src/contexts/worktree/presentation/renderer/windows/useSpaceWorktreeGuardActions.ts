@@ -15,6 +15,7 @@ export function useSpaceWorktreeGuardActions({
   closeNodesById,
   executePendingOperation,
   onClose,
+  onOperationPhaseChange,
 }: {
   guard: (SpaceWorktreeGuardState & { pending: PendingOperation; spaceId: string }) | null
   setGuard: React.Dispatch<
@@ -30,6 +31,7 @@ export function useSpaceWorktreeGuardActions({
     options?: UpdateSpaceDirectoryOptions,
   ) => Promise<void>
   onClose: () => void
+  onOperationPhaseChange?: (phase: 'running' | 'error') => void
 }): {
   applyPendingWithMismatch: () => Promise<void>
   applyPendingByClosingAll: () => Promise<void>
@@ -54,6 +56,7 @@ export function useSpaceWorktreeGuardActions({
     }
 
     setGuard(previous => (previous ? { ...previous, isBusy: true, error: null } : previous))
+    onOperationPhaseChange?.('running')
 
     try {
       await executePendingOperation(guard.spaceId, guard.pending, {
@@ -64,6 +67,7 @@ export function useSpaceWorktreeGuardActions({
         onClose()
       }
     } catch (operationError) {
+      onOperationPhaseChange?.('error')
       setGuard(previous =>
         previous
           ? {
@@ -74,7 +78,7 @@ export function useSpaceWorktreeGuardActions({
           : previous,
       )
     }
-  }, [executePendingOperation, guard, onClose, setGuard, t])
+  }, [executePendingOperation, guard, onClose, onOperationPhaseChange, setGuard, t])
 
   const applyPendingByClosingAll = useCallback(async () => {
     if (!guard) {
@@ -85,6 +89,7 @@ export function useSpaceWorktreeGuardActions({
     const nodesToClose = [...new Set([...blocking.agentNodeIds, ...blocking.terminalNodeIds])]
 
     setGuard(previous => (previous ? { ...previous, isBusy: true, error: null } : previous))
+    onOperationPhaseChange?.('running')
 
     try {
       if (nodesToClose.length > 0) {
@@ -93,6 +98,7 @@ export function useSpaceWorktreeGuardActions({
 
       const nextBlocking = getBlockingNodes(guard.spaceId)
       if (nextBlocking.agentNodeIds.length > 0 || nextBlocking.terminalNodeIds.length > 0) {
+        onOperationPhaseChange?.('error')
         setGuard(previous =>
           previous
             ? {
@@ -113,6 +119,7 @@ export function useSpaceWorktreeGuardActions({
         onClose()
       }
     } catch (operationError) {
+      onOperationPhaseChange?.('error')
       setGuard(previous =>
         previous
           ? {
@@ -123,7 +130,16 @@ export function useSpaceWorktreeGuardActions({
           : previous,
       )
     }
-  }, [closeNodesById, executePendingOperation, getBlockingNodes, guard, onClose, setGuard, t])
+  }, [
+    closeNodesById,
+    executePendingOperation,
+    getBlockingNodes,
+    guard,
+    onClose,
+    onOperationPhaseChange,
+    setGuard,
+    t,
+  ])
 
   return {
     applyPendingWithMismatch,

@@ -1,0 +1,66 @@
+.workspace-canvas .react-flow__viewport-portal:has(.workspace-space-region--busy) {
+  z-index: 2;
+}
+
+.workspace-space-region__operation-state {
+  position: absolute;
+  z-index: 20;
+  inset: -1px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cove-border) 72%, transparent);
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--cove-window-surface) 34%, transparent);
+  backdrop-filter: blur(5px) saturate(0.82);
+  -webkit-backdrop-filter: blur(5px) saturate(0.82);
+  pointer-events: auto;
+  animation: workspace-space-operation-state-in 160ms ease-out;
+}
+
+.workspace-space-region__operation-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100% - 24px);
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--cove-border) 68%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cove-window-surface) 88%, transparent);
+  box-shadow: 0 6px 18px var(--cove-shadow-color-elevated);
+  color: var(--cove-text);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.workspace-space-region__operation-pill svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--cove-accent);
+  animation: workspace-space-operation-spinner 850ms linear infinite;
+}
+
+@keyframes workspace-space-operation-state-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes workspace-space-operation-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-space-region__operation-state,
+  .workspace-space-region__operation-pill svg {
+    animation: none;
+  }
+}

@@ -37,7 +37,7 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
   moveSelection: (direction: 'next' | 'previous' | 'first' | 'last') => void
   collapseSelectionOrFocusParent: () => void
   expandSelectionOrOpen: () => void
-  requestDeleteSelection: () => void
+  requestDeleteSelection: (anchor?: { x: number; y: number }) => void
   copySelection: () => void
   cutSelection: () => void
   copyPath: () => Promise<void>

@@ -11,6 +11,8 @@ export const zhCNWorktree = {
     branchPlaceholder: '例如：space/infra-core',
     branchHasWorktree: '已有 worktree',
     createAndBind: '创建并绑定',
+    creatingWorktree: '正在创建 worktree…',
+    archivingSpace: '正在归档 Space…',
     deleteWorktree: '删除 worktree',
     deleteWorktreeHelp: '从磁盘移除该 worktree 目录。',
     deleteBranch: '删除分支',

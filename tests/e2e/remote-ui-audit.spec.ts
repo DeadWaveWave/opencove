@@ -190,7 +190,6 @@ test.describe('Remote UI audit', () => {
         .click({ noWaitAfter: true })
       const projectWizard = window.locator('[data-testid="workspace-project-create-window"]')
       await expect(projectWizard).toBeVisible()
-      await window.locator('[data-testid="workspace-project-create-name"]').fill('UI Audit Project')
       await window
         .locator('[data-testid="workspace-project-create-default-location-remote"]')
         .click({ noWaitAfter: true })
@@ -201,14 +200,6 @@ test.describe('Remote UI audit', () => {
       )
       await projectWizard.screenshot({
         path: path.join(auditOutputDir, '04-add-project-default-remote.png'),
-      })
-
-      await window.locator('[data-testid="workspace-project-create-advanced-toggle"]').click()
-      await expect(
-        window.locator('[data-testid="workspace-project-create-extra-remote-endpoint-trigger"]'),
-      ).toBeVisible()
-      await projectWizard.screenshot({
-        path: path.join(auditOutputDir, '05-add-project-advanced-remote.png'),
       })
 
       await window.locator('[data-testid="workspace-project-create-default-remote-browse"]').click()
@@ -230,7 +221,7 @@ test.describe('Remote UI audit', () => {
 
       const projectItem = window
         .locator('.workspace-sidebar [data-testid^="workspace-item-"]')
-        .filter({ hasText: 'UI Audit Project' })
+        .filter({ hasText: path.basename(remoteProjectDir) })
         .first()
       await expect(projectItem).toBeVisible()
       await projectItem.click({ noWaitAfter: true })

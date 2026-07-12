@@ -1,5 +1,9 @@
 import React from 'react'
 import { GitBranch, X } from 'lucide-react'
+import {
+  AnchoredOperationPopover,
+  type AnchoredOperationPopoverAnchor,
+} from '@app/renderer/components/AnchoredOperationPopover'
 import { useTranslation } from '@app/renderer/i18n'
 import type { GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
@@ -7,6 +11,7 @@ import { SpaceWorktreePanels } from './SpaceWorktreePanels'
 import type { BranchMode, SpaceWorktreeViewMode } from './spaceWorktree.shared'
 
 export function SpaceWorktreeWindowDialog({
+  anchor,
   space,
   isSpaceOnWorkspaceRoot,
   currentWorktree,
@@ -49,6 +54,7 @@ export function SpaceWorktreeWindowDialog({
   onArchive,
   onCloseOnly,
 }: {
+  anchor: AnchoredOperationPopoverAnchor
   space: WorkspaceSpaceState
   isSpaceOnWorkspaceRoot: boolean
   currentWorktree: GitWorktreeInfo | null
@@ -124,19 +130,18 @@ export function SpaceWorktreeWindowDialog({
     .join(' · ')
 
   return (
-    <div
+    <AnchoredOperationPopover
+      anchor={anchor}
+      ariaLabel={headerTitle}
       className={
         viewMode === 'archive'
-          ? 'cove-window-backdrop workspace-space-worktree-backdrop workspace-space-worktree-backdrop--archive'
-          : 'cove-window-backdrop workspace-space-worktree-backdrop'
+          ? 'workspace-space-worktree-popover workspace-space-worktree-popover--archive'
+          : 'workspace-space-worktree-popover'
       }
-      onClick={() => {
-        if (isBusy || guardIsBusy) {
-          return
-        }
-
-        onBackdropClose()
-      }}
+      dismissDisabled={isBusy || guardIsBusy}
+      estimatedHeight={viewMode === 'archive' ? 500 : 420}
+      onDismiss={onBackdropClose}
+      testId="space-worktree-popover"
     >
       <section
         className={
@@ -145,9 +150,6 @@ export function SpaceWorktreeWindowDialog({
             : 'cove-window workspace-space-worktree'
         }
         data-testid="space-worktree-window"
-        onClick={event => {
-          event.stopPropagation()
-        }}
       >
         <header className="workspace-space-worktree__header">
           <div className="workspace-space-worktree__header-main">
@@ -232,6 +234,6 @@ export function SpaceWorktreeWindowDialog({
           <p className="cove-window__error workspace-space-worktree__error">{error}</p>
         ) : null}
       </section>
-    </div>
+    </AnchoredOperationPopover>
   )
 }

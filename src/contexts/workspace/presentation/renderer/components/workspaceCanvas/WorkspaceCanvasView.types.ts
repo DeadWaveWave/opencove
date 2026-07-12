@@ -24,7 +24,8 @@ import type {
   SpaceVisual,
   SpaceWorktreeMismatchDropWarningState,
   SpaceTargetMountPickerState,
-  SpaceWorktreeDialogState,
+  SpaceWorktreeOperationPhase,
+  SpaceWorktreeOperationState,
   TaskCreatorState,
   TaskEditorState,
   RoleCreatorState,
@@ -199,11 +200,12 @@ export interface WorkspaceCanvasViewProps {
   closeSpaceActionMenu: () => void
   copySpacePath: (spaceId: string) => Promise<void> | void
   openSpacePath: (spaceId: string, openerId: WorkspacePathOpenerId) => Promise<void> | void
-  spaceWorktreeDialog: SpaceWorktreeDialogState | null
+  spaceWorktreeOperations: SpaceWorktreeOperationState[]
   worktreesRoot: string
-  openSpaceCreateWorktree: (spaceId: string) => void
-  openSpaceArchive: (spaceId: string) => void
-  closeSpaceWorktree: () => void
+  openSpaceCreateWorktree: (spaceId: string, anchor: { x: number; y: number }) => void
+  openSpaceArchive: (spaceId: string, anchor: { x: number; y: number }) => void
+  closeSpaceWorktree: (operationId: string) => void
+  setSpaceWorktreeOperationPhase: (operationId: string, phase: SpaceWorktreeOperationPhase) => void
   onShowMessage?: WorkspaceCanvasProps['onShowMessage']
   onAppendSpaceArchiveRecord: WorkspaceCanvasProps['onAppendSpaceArchiveRecord']
   updateSpaceDirectory: (

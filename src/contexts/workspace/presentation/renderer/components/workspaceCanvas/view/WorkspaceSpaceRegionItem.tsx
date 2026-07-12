@@ -1,5 +1,5 @@
 import React from 'react'
-import { Folder } from 'lucide-react'
+import { Folder, LoaderCircle } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
@@ -19,6 +19,7 @@ export function WorkspaceSpaceRegionItem({
   isExplorerOpen,
   isDragSurfaceSelectionMode,
   githubPullRequestsEnabled,
+  busyOperationLabel,
   editingSpaceId,
   spaceRenameInputRef,
   spaceRenameDraft,
@@ -43,6 +44,7 @@ export function WorkspaceSpaceRegionItem({
   isExplorerOpen: boolean
   isDragSurfaceSelectionMode: boolean
   githubPullRequestsEnabled: boolean
+  busyOperationLabel: string | null
   editingSpaceId: string | null
   spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   spaceRenameDraft: string
@@ -70,6 +72,7 @@ export function WorkspaceSpaceRegionItem({
     spaceName: string
     worktreePath: string
     branchName: string
+    anchor: { x: number; y: number }
   }) => void
   onToggleExplorer?: (spaceId: string) => void
   onOpenSpaceMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
@@ -102,6 +105,7 @@ export function WorkspaceSpaceRegionItem({
     'workspace-space-region',
     space.parentSpaceId ? 'workspace-space-region--child' : null,
     isSelected ? 'workspace-space-region--selected' : null,
+    busyOperationLabel ? 'workspace-space-region--busy' : null,
   ]
     .filter(Boolean)
     .join(' ')
@@ -281,11 +285,16 @@ export function WorkspaceSpaceRegionItem({
                 title={resolvedBranchBadge.title}
                 onClick={event => {
                   event.stopPropagation()
+                  const rect = event.currentTarget.getBoundingClientRect()
                   onStartBranchRename({
                     spaceId: space.id,
                     spaceName: space.name,
                     worktreePath,
                     branchName,
+                    anchor: {
+                      x: Math.round(rect.left),
+                      y: Math.round(rect.bottom + 6),
+                    },
                   })
                 }}
               >
@@ -338,6 +347,25 @@ export function WorkspaceSpaceRegionItem({
           </div>
         </>
       )}
+      {busyOperationLabel ? (
+        <div
+          className="workspace-space-region__operation-state nodrag nopan nowheel"
+          data-testid={`workspace-space-operation-${space.id}`}
+          role="status"
+          aria-live="polite"
+          onPointerDown={event => {
+            event.stopPropagation()
+          }}
+          onClick={event => {
+            event.stopPropagation()
+          }}
+        >
+          <span className="workspace-space-region__operation-pill">
+            <LoaderCircle aria-hidden="true" />
+            <span>{busyOperationLabel}</span>
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }

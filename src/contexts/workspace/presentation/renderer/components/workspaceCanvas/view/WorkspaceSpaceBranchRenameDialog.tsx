@@ -1,5 +1,5 @@
 import React from 'react'
-import { createPortal } from 'react-dom'
+import { AnchoredOperationPopover } from '@app/renderer/components/AnchoredOperationPopover'
 import { useTranslation } from '@app/renderer/i18n'
 
 export interface BranchRenameState {
@@ -11,6 +11,7 @@ export interface BranchRenameState {
   nextName: string
   isSubmitting: boolean
   error: string | null
+  anchor: { x: number; y: number }
 }
 
 export function WorkspaceSpaceBranchRenameDialog({
@@ -28,24 +29,20 @@ export function WorkspaceSpaceBranchRenameDialog({
 }): React.JSX.Element | null {
   const { t } = useTranslation()
 
-  if (!branchRename || !document.body) {
+  if (!branchRename || branchRename.isSubmitting) {
     return null
   }
 
-  return createPortal(
-    <div
-      className="cove-window-backdrop workspace-space-branch-rename-backdrop"
-      data-testid="workspace-space-branch-rename-dialog"
-      onClick={() => {
-        closeBranchRename()
-      }}
+  return (
+    <AnchoredOperationPopover
+      anchor={branchRename.anchor}
+      ariaLabel={t('branchRenameDialog.title')}
+      className="workspace-space-branch-rename-popover"
+      estimatedHeight={240}
+      onDismiss={closeBranchRename}
+      testId="workspace-space-branch-rename-dialog"
     >
-      <section
-        className="cove-window workspace-space-branch-rename"
-        onClick={event => {
-          event.stopPropagation()
-        }}
-      >
+      <section className="workspace-space-branch-rename">
         <header className="workspace-space-branch-rename__header">
           <h3>{t('branchRenameDialog.title')}</h3>
           <p className="workspace-space-branch-rename__meta">{branchRename.spaceName}</p>
@@ -116,7 +113,6 @@ export function WorkspaceSpaceBranchRenameDialog({
           </button>
         </div>
       </section>
-    </div>,
-    document.body,
+    </AnchoredOperationPopover>
   )
 }

@@ -197,6 +197,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
         spaceName: targetSpace?.name ?? t('worktree.workspaceRoot'),
         agentCount,
         terminalCount,
+        anchor: reactFlow.flowToScreenPosition(dropTargetPoint),
       })
 
       const nodeIdSet = new Set(draggedNodeIds)

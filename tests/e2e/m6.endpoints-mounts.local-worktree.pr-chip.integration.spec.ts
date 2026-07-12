@@ -48,6 +48,7 @@ test.describe('M6 - Local mount worktree PR chip integration', () => {
     const { electronApp, window } = await launchApp({
       env: {
         OPENCOVE_TEST_GITHUB_INTEGRATION: '1',
+        OPENCOVE_TEST_WORKSPACE: repoDir,
       },
     })
 

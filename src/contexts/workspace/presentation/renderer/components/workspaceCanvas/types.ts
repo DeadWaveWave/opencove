@@ -72,9 +72,14 @@ export interface SpaceActionMenuState {
   y: number
 }
 
-export interface SpaceWorktreeDialogState {
+export type SpaceWorktreeOperationPhase = 'draft' | 'running' | 'error'
+
+export interface SpaceWorktreeOperationState {
+  id: string
   spaceId: string
   initialViewMode: 'create' | 'archive'
+  anchor: { x: number; y: number }
+  phase: SpaceWorktreeOperationPhase
 }
 
 export interface SelectionDraftState {
@@ -101,6 +106,7 @@ export interface SpaceTargetMountPickerState {
   rect: WorkspaceSpaceRect | null
   mounts: MountDto[]
   selectedMountId: string
+  anchor: { x: number; y: number }
 }
 
 export interface SpaceVisual {
@@ -202,6 +208,7 @@ export interface SpaceWorktreeMismatchDropWarningState {
   spaceName: string
   agentCount: number
   terminalCount: number
+  anchor: { x: number; y: number }
 }
 
 export interface CreateNodeInput {

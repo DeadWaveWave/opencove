@@ -157,14 +157,14 @@ export function WorkspaceCanvasMenus({
         preserveWindowSizes={arrangePreserveWindowSizes}
         onChangePreserveWindowSizes={setArrangePreserveWindowSizes}
         onArrange={spaceId => arrangeInSpace(spaceId, arrangeStyle)}
-        onCreateWorktree={() => {
+        onCreateWorktree={anchor => {
           if (activeMenuSpace) {
-            openSpaceCreateWorktree(activeMenuSpace.id)
+            openSpaceCreateWorktree(activeMenuSpace.id, anchor)
           }
         }}
-        onArchive={() => {
+        onArchive={anchor => {
           if (activeMenuSpace) {
-            openSpaceArchive(activeMenuSpace.id)
+            openSpaceArchive(activeMenuSpace.id, anchor)
           }
         }}
         onCopyPath={() => {

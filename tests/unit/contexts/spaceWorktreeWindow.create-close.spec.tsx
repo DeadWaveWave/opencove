@@ -107,6 +107,65 @@ describe('SpaceWorktreeWindow create flow', () => {
     })
   })
 
+  it('dismisses the anchored editor after submit while the operation continues', async () => {
+    let resolveCreate:
+      | ((value: { worktree: { path: string; head: null; branch: string } }) => void)
+      | null = null
+    const create = vi.fn(
+      () =>
+        new Promise<{ worktree: { path: string; head: null; branch: string } }>(resolve => {
+          resolveCreate = resolve
+        }),
+    )
+    installWorktreeApi({ create })
+    const onClose = vi.fn()
+    const onOperationPhaseChange = vi.fn()
+
+    render(
+      <SpaceWorktreeWindow
+        spaceId="space-1"
+        initialViewMode="create"
+        anchor={{ x: 300, y: 90 }}
+        operationPhase="draft"
+        spaces={createSpaces('/repo')}
+        nodes={createNodes()}
+        workspacePath="/repo"
+        worktreesRoot=".opencove/worktrees"
+        agentSettings={DEFAULT_AGENT_SETTINGS}
+        onClose={onClose}
+        onOperationPhaseChange={onOperationPhaseChange}
+        onUpdateSpaceDirectory={() => undefined}
+        getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
+        closeNodesById={async () => undefined}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-create')).not.toBeDisabled()
+    })
+    fireEvent.change(screen.getByTestId('space-worktree-branch-name'), {
+      target: { value: 'space/demo' },
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-create'))
+
+    await waitFor(() => {
+      expect(onOperationPhaseChange).toHaveBeenCalledWith('running')
+      expect(screen.queryByTestId('space-worktree-window')).not.toBeInTheDocument()
+    })
+    expect(onClose).not.toHaveBeenCalled()
+
+    resolveCreate?.({
+      worktree: {
+        path: '/repo/.opencove/worktrees/space-demo',
+        head: null,
+        branch: 'space/demo',
+      },
+    })
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('clears the mount projection when binding an existing branch checked out outside the project root', async () => {
     const create = vi.fn(async () => ({
       worktree: {

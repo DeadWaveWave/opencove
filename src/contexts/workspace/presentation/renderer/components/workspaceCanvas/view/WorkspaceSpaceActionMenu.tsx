@@ -34,8 +34,8 @@ interface WorkspaceSpaceActionMenuProps {
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   onChangePreserveWindowSizes?: (enabled: boolean) => void
   onArrange?: (spaceId: string) => void
-  onCreateWorktree: () => void
-  onArchive: () => void
+  onCreateWorktree: (anchor: { x: number; y: number }) => void
+  onArchive: (anchor: { x: number; y: number }) => void
   onCopyPath: () => void | Promise<void>
   onOpenPath: (openerId: WorkspacePathOpenerId) => void | Promise<void>
 }
@@ -298,8 +298,9 @@ export function WorkspaceSpaceActionMenu({
           <button
             type="button"
             data-testid="workspace-space-action-create"
-            onClick={() => {
-              onCreateWorktree()
+            onClick={event => {
+              const rect = event.currentTarget.getBoundingClientRect()
+              onCreateWorktree({ x: Math.round(rect.left), y: Math.round(rect.top) })
               closeMenu()
             }}
           >
@@ -314,8 +315,9 @@ export function WorkspaceSpaceActionMenu({
           <button
             type="button"
             data-testid="workspace-space-action-archive"
-            onClick={() => {
-              onArchive()
+            onClick={event => {
+              const rect = event.currentTarget.getBoundingClientRect()
+              onArchive({ x: Math.round(rect.left), y: Math.round(rect.top) })
               closeMenu()
             }}
           >

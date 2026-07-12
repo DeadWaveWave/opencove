@@ -15,6 +15,7 @@ export interface SpaceExplorerContextMenuState {
 
 export interface SpaceExplorerDeleteConfirmationState {
   entry: FileSystemEntry
+  anchor: { x: number; y: number }
 }
 
 export interface SpaceExplorerMoveHistoryEntry {

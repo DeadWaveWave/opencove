@@ -43,7 +43,7 @@ type SidebarProps = {
   activeWorkspaceId: string | null
   persistNotice: PersistNotice | null
   onTogglePinned?: () => void
-  onAddProject?: () => void
+  onAddProject?: (anchor?: { x: number; y: number }) => void
   onSelectWorkspace: (workspaceId: string) => void
   onSelectSpace: (workspaceId: string, spaceId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void

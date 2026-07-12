@@ -38,6 +38,7 @@ export function AppShellPopups({
   onDeleteSpaceArchiveRecord,
   onCloseSpaceArchives,
   isAddProjectWizardOpen,
+  addProjectWizardAnchor,
   onCloseAddProjectWizard,
   projectContextMenu,
   projectMountManager,
@@ -60,7 +61,7 @@ export function AppShellPopups({
   onRequestOpenEndpoints: () => void
   onOpenSpaceArchives: () => void
   onTogglePrimarySidebar: () => void
-  onAddWorkspace: () => void
+  onAddWorkspace: (anchor?: { x: number; y: number }) => void
   onSelectWorkspace: (workspaceId: string) => void
   onSelectSpace: (spaceId: string | null) => void
   isSpaceArchivesOpen: boolean
@@ -70,6 +71,7 @@ export function AppShellPopups({
   onDeleteSpaceArchiveRecord: (recordId: string) => void
   onCloseSpaceArchives: () => void
   isAddProjectWizardOpen: boolean
+  addProjectWizardAnchor: { x: number; y: number }
   onCloseAddProjectWizard: () => void
   projectContextMenu: ProjectContextMenuState | null
   projectMountManager: ProjectMountManagerState | null
@@ -126,6 +128,7 @@ export function AppShellPopups({
 
       {isAddProjectWizardOpen ? (
         <AddProjectWizardWindow
+          anchor={addProjectWizardAnchor}
           existingWorkspaces={workspaces}
           remoteWorkersEnabled={remoteWorkersEnabled}
           onClose={() => {

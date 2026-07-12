@@ -42,6 +42,9 @@
 @import './styles/settings-panel.buttons.css';
 @import './styles/settings-panel.diagnostics.css';
 @import './styles/cove-window.css';
+@import './styles/anchored-operation-popover.css';
+@import './styles/workspace-operation-popovers.css';
+@import './styles/workspace-space-operation-state.css';
 @import './styles/remote-ui.css';
 @import './styles/remote-ui.settings.css';
 @import './styles/app-message.css';

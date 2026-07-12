@@ -36,13 +36,14 @@ export function WorkspaceCanvasWindows({
   spaceWorktreeMismatchDropWarning,
   cancelSpaceWorktreeMismatchDropWarning,
   continueSpaceWorktreeMismatchDropWarning,
-  spaceWorktreeDialog,
+  spaceWorktreeOperations,
   spaces,
   nodes,
   workspacePath,
   worktreesRoot,
   agentSettings,
   closeSpaceWorktree,
+  setSpaceWorktreeOperationPhase,
   onShowMessage,
   onAppendSpaceArchiveRecord,
   updateSpaceDirectory,
@@ -77,13 +78,14 @@ export function WorkspaceCanvasWindows({
   | 'spaceWorktreeMismatchDropWarning'
   | 'cancelSpaceWorktreeMismatchDropWarning'
   | 'continueSpaceWorktreeMismatchDropWarning'
-  | 'spaceWorktreeDialog'
+  | 'spaceWorktreeOperations'
   | 'spaces'
   | 'nodes'
   | 'workspacePath'
   | 'worktreesRoot'
   | 'agentSettings'
   | 'closeSpaceWorktree'
+  | 'setSpaceWorktreeOperationPhase'
   | 'onShowMessage'
   | 'onAppendSpaceArchiveRecord'
   | 'updateSpaceDirectory'
@@ -140,23 +142,33 @@ export function WorkspaceCanvasWindows({
         onContinue={continueSpaceWorktreeMismatchDropWarning}
       />
 
-      <SpaceWorktreeWindow
-        spaceId={spaceWorktreeDialog?.spaceId ?? null}
-        initialViewMode={spaceWorktreeDialog?.initialViewMode ?? 'create'}
-        spaces={spaces}
-        nodes={nodes}
-        workspacePath={workspacePath}
-        worktreesRoot={worktreesRoot}
-        agentSettings={agentSettings}
-        onClose={closeSpaceWorktree}
-        onShowMessage={onShowMessage}
-        onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
-        onUpdateSpaceDirectory={(spaceId, directoryPath, options) => {
-          updateSpaceDirectory(spaceId, directoryPath, options)
-        }}
-        getBlockingNodes={spaceId => getSpaceBlockingNodes(spaceId)}
-        closeNodesById={nodeIds => closeNodesById(nodeIds)}
-      />
+      {spaceWorktreeOperations.map(operation => (
+        <SpaceWorktreeWindow
+          key={operation.id}
+          spaceId={operation.spaceId}
+          initialViewMode={operation.initialViewMode}
+          anchor={operation.anchor}
+          operationPhase={operation.phase}
+          spaces={spaces}
+          nodes={nodes}
+          workspacePath={workspacePath}
+          worktreesRoot={worktreesRoot}
+          agentSettings={agentSettings}
+          onClose={() => {
+            closeSpaceWorktree(operation.id)
+          }}
+          onOperationPhaseChange={phase => {
+            setSpaceWorktreeOperationPhase(operation.id, phase)
+          }}
+          onShowMessage={onShowMessage}
+          onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
+          onUpdateSpaceDirectory={(spaceId, directoryPath, options) => {
+            updateSpaceDirectory(spaceId, directoryPath, options)
+          }}
+          getBlockingNodes={spaceId => getSpaceBlockingNodes(spaceId)}
+          closeNodesById={nodeIds => closeNodesById(nodeIds)}
+        />
+      ))}
     </>
   )
 }

@@ -24,7 +24,7 @@ describe('SpaceWorktreeWindow archive flow', () => {
         directoryCleanupError: null,
       })),
     })
-    const { onClose, onUpdateSpaceDirectory } = renderArchiveWindow()
+    const { onClose, onOperationPhaseChange, onUpdateSpaceDirectory } = renderArchiveWindow()
 
     await waitFor(() => {
       expect(screen.getByTestId('space-worktree-archive-force-confirm')).not.toBeDisabled()
@@ -44,6 +44,9 @@ describe('SpaceWorktreeWindow archive flow', () => {
     expect(screen.getByTestId('space-worktree-archive-delete-branch')).not.toBeChecked()
     fireEvent.click(screen.getByTestId('space-worktree-archive-delete-branch'))
     fireEvent.click(screen.getByTestId('space-worktree-archive-submit'))
+
+    expect(onOperationPhaseChange).toHaveBeenCalledWith('running')
+    expect(screen.queryByTestId('space-worktree-window')).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(remove).toHaveBeenCalledWith({

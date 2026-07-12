@@ -53,6 +53,7 @@ export function useSpaceWorktreeArchiveState({
   nodes,
   onAppendSpaceArchiveRecord,
   onClose,
+  onOperationPhaseChange,
   ownWorktree,
   setError,
   setIsMutating,
@@ -80,6 +81,7 @@ export function useSpaceWorktreeArchiveState({
   nodes: Node<TerminalNodeData>[]
   onAppendSpaceArchiveRecord: (record: SpaceArchiveRecord) => void
   onClose: () => void
+  onOperationPhaseChange?: (phase: 'running' | 'error') => void
   ownWorktree: GitWorktreeInfo | null
   setError: Dispatch<SetStateAction<string | null>>
   setIsMutating: Dispatch<SetStateAction<boolean>>
@@ -188,23 +190,24 @@ export function useSpaceWorktreeArchiveState({
         return
       }
 
-      const git = saveArchiveRecord
-        ? await resolveSpaceArchiveGitSnapshot({
-            agentSettings,
-            workspacePath: worktreeRepoRootPath,
-            isSpaceOnWorkspaceRoot,
-            spaceDirectoryPath: space.directoryPath,
-            currentBranch,
-            currentWorktree,
-          })
-        : null
-      const snapshot = saveArchiveRecord
-        ? buildSpaceArchiveRecord({ space, spaces: archiveScope.spaces, nodes, git })
-        : null
-
       setError(null)
       setIsMutating(true)
+      onOperationPhaseChange?.('running')
       try {
+        const git = saveArchiveRecord
+          ? await resolveSpaceArchiveGitSnapshot({
+              agentSettings,
+              workspacePath: worktreeRepoRootPath,
+              isSpaceOnWorkspaceRoot,
+              spaceDirectoryPath: space.directoryPath,
+              currentBranch,
+              currentWorktree,
+            })
+          : null
+        const snapshot = saveArchiveRecord
+          ? buildSpaceArchiveRecord({ space, spaces: archiveScope.spaces, nodes, git })
+          : null
+
         const canContinue = await closeBlockingNodesForArchive(
           archiveScope.archivedSpaceIds,
           getBlockingNodes,
@@ -212,6 +215,7 @@ export function useSpaceWorktreeArchiveState({
         )
         if (!canContinue) {
           setError(t('worktreeGuard.closeFailed'))
+          onOperationPhaseChange?.('error')
           return
         }
         await executePendingOperation(space.id, {
@@ -226,6 +230,7 @@ export function useSpaceWorktreeArchiveState({
         onClose()
       } catch (operationError) {
         setError(toSpaceWorktreeErrorMessage(operationError, t))
+        onOperationPhaseChange?.('error')
       } finally {
         setIsMutating(false)
       }
@@ -247,6 +252,7 @@ export function useSpaceWorktreeArchiveState({
       nodes,
       onAppendSpaceArchiveRecord,
       onClose,
+      onOperationPhaseChange,
       setError,
       setIsMutating,
       space,

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { WarningDialog } from '@app/renderer/components/WarningDialog'
+import { AlertTriangle } from 'lucide-react'
+import { AnchoredOperationPopover } from '@app/renderer/components/AnchoredOperationPopover'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { SpaceWorktreeMismatchDropWarningState } from '../types'
@@ -36,19 +37,45 @@ export function SpaceWorktreeMismatchDropWarningWindow({
   }
 
   return (
-    <WarningDialog
-      dataTestId="space-worktree-mismatch-drop-warning"
-      title={t('spaceDropGuard.title', { name: warning.spaceName })}
-      summary={windowSummary}
-      statusLabel={t('terminalNodeHeader.directoryMismatch')}
-      statusAriaLabel="directory mismatch warning"
-      lead={t('spaceDropGuard.description', {
-        badge: t('terminalNodeHeader.directoryMismatch'),
-      })}
-      onBackdropClick={onCancel}
-      backdropClassName="workspace-space-drop-guard-backdrop"
-      actions={
-        <>
+    <AnchoredOperationPopover
+      anchor={warning.anchor}
+      ariaLabel={t('spaceDropGuard.title', { name: warning.spaceName })}
+      className="workspace-space-drop-guard-popover"
+      estimatedHeight={280}
+      onDismiss={onCancel}
+      testId="space-worktree-mismatch-drop-warning"
+    >
+      <section className="workspace-operation-guard">
+        <header className="workspace-operation-guard__header">
+          <span className="workspace-operation-guard__icon" aria-hidden="true">
+            <AlertTriangle size={16} />
+          </span>
+          <div>
+            <h3>{t('spaceDropGuard.title', { name: warning.spaceName })}</h3>
+            <p>{windowSummary}</p>
+          </div>
+        </header>
+        <p className="workspace-operation-guard__lead">
+          {t('spaceDropGuard.description', {
+            badge: t('terminalNodeHeader.directoryMismatch'),
+          })}
+        </p>
+
+        <label className="cove-window__checkbox workspace-operation-guard__checkbox">
+          <input
+            type="checkbox"
+            data-testid="space-worktree-mismatch-drop-warning-dont-show-again"
+            checked={dontShowAgain}
+            onChange={event => {
+              setDontShowAgain(event.target.checked)
+            }}
+          />
+          <span>
+            <strong>{t('spaceDropGuard.dontShowAgain')}</strong>
+          </span>
+        </label>
+
+        <div className="workspace-operation-guard__actions">
           <button
             type="button"
             className="cove-window__action cove-window__action--ghost"
@@ -77,22 +104,8 @@ export function SpaceWorktreeMismatchDropWarningWindow({
           >
             {t('spaceDropGuard.move')}
           </button>
-        </>
-      }
-    >
-      <label className="cove-window__checkbox">
-        <input
-          type="checkbox"
-          data-testid="space-worktree-mismatch-drop-warning-dont-show-again"
-          checked={dontShowAgain}
-          onChange={event => {
-            setDontShowAgain(event.target.checked)
-          }}
-        />
-        <span>
-          <strong>{t('spaceDropGuard.dontShowAgain')}</strong>
-        </span>
-      </label>
-    </WarningDialog>
+        </div>
+      </section>
+    </AnchoredOperationPopover>
   )
 }

@@ -35,7 +35,9 @@ export interface ViewportMenuSurfaceProps extends Omit<
   dismissOnPointerDownOutside?: boolean
   dismissOnEscape?: boolean
   dismissIgnoreRefs?: Array<React.RefObject<HTMLElement | null>>
+  dismissIgnoreTarget?: (target: EventTarget | null) => boolean
   stopEventPropagation?: boolean
+  waitForMeasurement?: boolean
 }
 
 function assignRef<T>(ref: React.ForwardedRef<T>, value: T): void {
@@ -66,7 +68,9 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
       dismissOnPointerDownOutside = false,
       dismissOnEscape = false,
       dismissIgnoreRefs = [],
+      dismissIgnoreTarget,
       stopEventPropagation = true,
+      waitForMeasurement = false,
       style,
       onMouseDown,
       onClick,
@@ -146,7 +150,10 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
           return true
         }
 
-        return dismissIgnoreRefs.some(ref => ref.current?.contains(target) ?? false)
+        return (
+          dismissIgnoreRefs.some(ref => ref.current?.contains(target) ?? false) ||
+          dismissIgnoreTarget?.(target) === true
+        )
       }
 
       const handlePointerDown = (event: PointerEvent): void => {
@@ -166,6 +173,10 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
           return
         }
 
+        if (dismissIgnoreTarget?.(event.target) || dismissIgnoreTarget?.(document.activeElement)) {
+          return
+        }
+
         onDismiss()
       }
 
@@ -176,7 +187,14 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
         document.removeEventListener('pointerdown', handlePointerDown, true)
         window.removeEventListener('keydown', handleKeyDown, true)
       }
-    }, [dismissIgnoreRefs, dismissOnEscape, dismissOnPointerDownOutside, onDismiss, open])
+    }, [
+      dismissIgnoreRefs,
+      dismissIgnoreTarget,
+      dismissOnEscape,
+      dismissOnPointerDownOutside,
+      onDismiss,
+      open,
+    ])
 
     const resolvedPosition = React.useMemo(() => {
       if (placement.type === 'absolute') {
@@ -203,14 +221,19 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
       return null
     }
 
+    const isMeasurementReady = placement.type !== 'point' || measuredSize !== null
+
     return createPortal(
       <div
         {...rest}
         ref={setRefs}
+        data-viewport-menu-measured={waitForMeasurement ? String(isMeasurementReady) : undefined}
         style={{
           ...style,
           top: resolvedPosition.top,
           left: resolvedPosition.left,
+          visibility:
+            waitForMeasurement && !isMeasurementReady ? 'hidden' : (style?.visibility ?? undefined),
         }}
         onMouseDown={event => {
           if (stopEventPropagation) {

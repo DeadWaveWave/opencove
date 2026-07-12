@@ -204,6 +204,7 @@ export function WorkspaceSpaceRegion({
               title={resolvedBranchBadge.title}
               onClick={event => {
                 event.stopPropagation()
+                const rect = event.currentTarget.getBoundingClientRect()
                 setBranchRename({
                   spaceId: space.id,
                   spaceName: space.name,
@@ -213,6 +214,10 @@ export function WorkspaceSpaceRegion({
                   nextName: branchName,
                   isSubmitting: false,
                   error: null,
+                  anchor: {
+                    x: Math.round(rect.left),
+                    y: Math.round(rect.bottom + 6),
+                  },
                 })
               }}
             >

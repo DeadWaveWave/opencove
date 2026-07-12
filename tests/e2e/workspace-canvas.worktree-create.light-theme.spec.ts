@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { execFile } from 'node:child_process'
-import { mkdtemp, realpath, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { launchApp, removePathWithRetry, seedWorkspaceState } from './workspace-canvas.helpers'
@@ -105,14 +105,24 @@ test.describe('Workspace Canvas - Worktree Create (Light Theme)', () => {
         await window.locator('[data-testid="workspace-space-switch-space-worktree-root"]').click()
         await window.locator('[data-testid="workspace-space-menu-space-worktree-root"]').click()
         await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
-        await window.locator('[data-testid="workspace-space-action-create"]').click()
+        const createAction = window.locator('[data-testid="workspace-space-action-create"]')
+        const actionRect = await createAction.boundingBox()
+        await createAction.click()
 
         const worktreeWindow = window.locator('[data-testid="space-worktree-window"]')
         await expect(worktreeWindow).toBeVisible()
+        const popover = window.locator('[data-testid="space-worktree-popover"]')
+        await expect(popover).toHaveAttribute('aria-modal', 'false')
+        await expect(window.locator('.workspace-space-worktree-backdrop')).toHaveCount(0)
+        await window.waitForTimeout(180)
 
-        const heading = worktreeWindow
-          .locator('[data-testid="space-worktree-create-view"] h4')
-          .first()
+        const popoverRect = await popover.boundingBox()
+        expect(actionRect).not.toBeNull()
+        expect(popoverRect).not.toBeNull()
+        expect(Math.abs((popoverRect?.x ?? 0) - (actionRect?.x ?? 0))).toBeLessThanOrEqual(2)
+        expect(Math.abs((popoverRect?.y ?? 0) - (actionRect?.y ?? 0))).toBeLessThanOrEqual(2)
+
+        const heading = worktreeWindow.locator('.workspace-space-worktree__header h3').first()
         await expect(heading).toBeVisible()
 
         const headingColor = await heading.evaluate(element => {
@@ -128,6 +138,24 @@ test.describe('Workspace Canvas - Worktree Create (Light Theme)', () => {
         expect(rgb.r).toBeLessThan(200)
         expect(rgb.g).toBeLessThan(200)
         expect(rgb.b).toBeLessThan(200)
+
+        await mkdir('artifacts', { recursive: true })
+        await window.screenshot({ path: 'artifacts/popup-ui-worktree.light.png' })
+
+        await window.locator('[data-testid="space-worktree-close"]').click()
+        await window.emulateMedia({ reducedMotion: 'reduce' })
+        await window.locator('[data-testid="workspace-space-menu-space-worktree-root"]').click()
+        await window.locator('[data-testid="workspace-space-action-create"]').click()
+
+        const reducedMotionPopover = window.locator('[data-testid="space-worktree-popover"]')
+        await expect(reducedMotionPopover).toBeVisible()
+        await expect
+          .poll(() =>
+            reducedMotionPopover.evaluate(element => {
+              return window.getComputedStyle(element).animationName
+            }),
+          )
+          .toBe('none')
       } finally {
         await electronApp.close()
       }

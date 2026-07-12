@@ -106,10 +106,40 @@ describe('WorkspaceSpaceActionMenu', () => {
   })
 
   it('can render both create and archive actions together', () => {
-    renderMenu([], { canCreateWorktree: true, canArchive: true })
+    const onCreateWorktree = vi.fn()
+    render(
+      <WorkspaceSpaceActionMenu
+        menu={{ spaceId: 'space-1', x: 120, y: 80 }}
+        availableOpeners={[]}
+        canCreateWorktree
+        canArchive
+        closeMenu={() => undefined}
+        setSpaceLabelColor={() => undefined}
+        onCreateWorktree={onCreateWorktree}
+        onArchive={() => undefined}
+        onCopyPath={() => undefined}
+        onOpenPath={() => undefined}
+      />,
+    )
 
     expect(screen.getByTestId('workspace-space-action-create')).toBeVisible()
     expect(screen.getByTestId('workspace-space-action-archive')).toBeVisible()
+
+    const createButton = screen.getByTestId('workspace-space-action-create')
+    vi.spyOn(createButton, 'getBoundingClientRect').mockReturnValue({
+      x: 120,
+      y: 80,
+      left: 120,
+      top: 80,
+      right: 340,
+      bottom: 110,
+      width: 220,
+      height: 30,
+      toJSON: () => ({}),
+    })
+    fireEvent.click(createButton)
+
+    expect(onCreateWorktree).toHaveBeenCalledWith({ x: 120, y: 80 })
   })
 
   it('toggles the preserve window sizes setting', () => {

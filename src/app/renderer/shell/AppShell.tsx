@@ -34,6 +34,7 @@ import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useAppShellWorkspaceActions } from './hooks/useAppShellWorkspaceActions'
 import { useShellOverlayState } from './hooks/useShellOverlayState'
+import { useAddProjectRequest } from './hooks/useAddProjectWizardRequest'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
 import { useWorkspaceMountRepair } from './hooks/useWorkspaceMountRepair'
@@ -140,7 +141,7 @@ export default function App(): React.JSX.Element {
 
   const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
 
-  const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
+  const [isFocusNodeTargetZoomPreviewing, setFocusNodeZoomPreviewing] = useState(false)
   const [settingsInitialPageId, setSettingsInitialPageId] = useState<SettingsPageId | null>(null)
   const {
     isCommandCenterOpen,
@@ -150,6 +151,7 @@ export default function App(): React.JSX.Element {
     isWorkspaceSearchOpen,
     isSpaceArchivesOpen,
     isAddProjectWizardOpen,
+    addProjectWizardAnchor,
     hasBlockingOverlay,
     toggleCommandCenter,
     closeCommandCenter,
@@ -229,7 +231,7 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     if (!isSettingsOpen) {
-      setIsFocusNodeTargetZoomPreviewing(false)
+      setFocusNodeZoomPreviewing(false)
     }
   }, [isSettingsOpen])
 
@@ -262,10 +264,7 @@ export default function App(): React.JSX.Element {
     onChangeSettings: setAgentSettings,
   })
 
-  const handleAddWorkspace = useCallback((): void => {
-    setIsFocusNodeTargetZoomPreviewing(false)
-    openAddProjectWizard()
-  }, [openAddProjectWizard])
+  const handleAddWorkspace = useAddProjectRequest(openAddProjectWizard, setFocusNodeZoomPreviewing)
 
   const {
     handleWorkspaceNodesChange,
@@ -299,7 +298,7 @@ export default function App(): React.JSX.Element {
 
   const handleOpenSettings = useCallback(
     (initialPageId: SettingsPageId | null = null): void => {
-      setIsFocusNodeTargetZoomPreviewing(false)
+      setFocusNodeZoomPreviewing(false)
       setSettingsInitialPageId(initialPageId)
       closeTransientOverlays()
       setSettingsOpenPageId(null)
@@ -445,6 +444,7 @@ export default function App(): React.JSX.Element {
           onDeleteSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordRemove}
           onCloseSpaceArchives={closeSpaceArchives}
           isAddProjectWizardOpen={isAddProjectWizardOpen}
+          addProjectWizardAnchor={addProjectWizardAnchor}
           onCloseAddProjectWizard={closeAddProjectWizard}
           projectContextMenu={projectContextMenu}
           projectMountManager={projectMountManager}
@@ -478,14 +478,14 @@ export default function App(): React.JSX.Element {
           onWorkspaceWorktreesRootChange={handleAnyWorkspaceWorktreesRootChange}
           onWorkspaceEnvironmentVariablesChange={handleAnyWorkspaceEnvironmentVariablesChange}
           isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
-          onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
+          onFocusNodeTargetZoomPreviewChange={setFocusNodeZoomPreviewing}
           onChangeSettings={setAgentSettings}
           onCheckForUpdates={checkForUpdates}
           onDownloadUpdate={downloadUpdate}
           onInstallUpdate={installUpdate}
           onCloseSettings={() => {
             flushPersistNow()
-            setIsFocusNodeTargetZoomPreviewing(false)
+            setFocusNodeZoomPreviewing(false)
             setSettingsInitialPageId(null)
             setSettingsOpenPageId(null)
             setIsSettingsOpen(false)

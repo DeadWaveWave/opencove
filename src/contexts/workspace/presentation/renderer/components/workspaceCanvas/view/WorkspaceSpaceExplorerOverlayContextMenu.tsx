@@ -28,7 +28,7 @@ function MenuButton({
   icon: React.ReactNode
   label: string
   disabled?: boolean
-  onClick: () => void
+  onClick: (anchor: { x: number; y: number }) => void
 }): React.JSX.Element {
   return (
     <button
@@ -36,7 +36,11 @@ function MenuButton({
       disabled={disabled}
       onClick={event => {
         event.stopPropagation()
-        onClick()
+        const rect = event.currentTarget.getBoundingClientRect()
+        onClick({
+          x: Math.round(rect.left),
+          y: Math.round(rect.top),
+        })
       }}
     >
       <span className="workspace-context-menu__icon" aria-hidden="true">
@@ -76,7 +80,7 @@ function renderEntryActions({
   onCopyPath: () => void
   onCopyRelativePath: () => void
   onRefresh: () => void
-  onDelete: () => void
+  onDelete: (anchor: { x: number; y: number }) => void
 }): React.JSX.Element[] {
   const actions: React.JSX.Element[] = []
 
@@ -194,7 +198,7 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
   onCopyPath: () => void
   onCopyRelativePath: () => void
   onRefresh: () => void
-  onDelete: () => void
+  onDelete: (anchor: { x: number; y: number }) => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
 
