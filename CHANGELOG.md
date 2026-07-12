@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Spaces: add sidebar pinning for root Spaces, pinned-first ordering, matching top-rail pills with shared context menus, and click-through gaps between pills. (#306)
 - UI: add browser-style Project/Space/Agent vertical sidebar grouping with pinned rail mode, hover auto-reveal, colored Space branches, and Agent status rings. (#291)
 - Workspace canvas: add an Arrange option to keep current window sizes while tidying Spaces or canvas selections. (#275)
 - Release: add Linux Debian (`.deb`) packages to release artifacts. (#272)
