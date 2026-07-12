@@ -69,7 +69,7 @@ export const sampleSidebarToggle = async (
       )
       const spaceItemSelector = `[data-testid="workspace-space-item-${activeWorkspaceId}-${activeSpaceId}"]`
       const spaceItem = document.querySelector(spaceItemSelector)
-      const spaceRailIcon = spaceItem?.querySelector('.workspace-space-item__rail-icon')
+      const spaceRailIcon = spaceItem?.querySelector('.workspace-space-item__chevron')
       const spaceName = spaceItem?.querySelector('.workspace-space-item__name')
       const spaceToggle = spaceItem?.querySelector('.workspace-space-item__toggle')
       const projectName = itemBefore.querySelector('.workspace-item__name')
