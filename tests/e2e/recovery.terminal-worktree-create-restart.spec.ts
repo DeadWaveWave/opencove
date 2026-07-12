@@ -1,43 +1,71 @@
 import { expect, test, type Page } from '@playwright/test'
 import { execFile } from 'node:child_process'
+import { mkdtemp, realpath, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import {
   buildNodeEvalCommand,
-  clearAndSeedWorkspace,
   createTestUserDataDir,
   launchApp,
   removePathWithRetry,
   seededWorkspaceId,
   seedWorkspaceState,
-  testWorkspacePath,
 } from './workspace-canvas.helpers'
 import { openPaneContextMenuInSpace } from './workspace-canvas.arrange.shared'
+import { resolveE2ETmpDir } from './workspace-canvas.testUtils'
 import type { ListMountsResult } from '../../src/shared/contracts/dto'
 
 const execFileAsync = promisify(execFile)
 
-async function removeGitWorktree(payload: {
-  branchName: string
-  worktreePath: string | null
-}): Promise<void> {
-  if (payload.worktreePath) {
-    try {
-      await execFileAsync('git', ['worktree', 'remove', '--force', payload.worktreePath], {
-        cwd: testWorkspacePath,
-      })
-    } catch {
-      // ignore cleanup failures
-    }
+async function runGit(args: string[], cwd: string): Promise<string> {
+  const { stdout } = await execFileAsync('git', args, {
+    cwd,
+    env: process.env,
+    maxBuffer: 1024 * 1024,
+    windowsHide: true,
+  })
+  return stdout
+}
 
-    await removePathWithRetry(payload.worktreePath)
-  }
+async function createTempRepo(): Promise<string> {
+  const repoDir = await mkdtemp(path.join(resolveE2ETmpDir(), 'opencove-recovery-worktree-e2e-'))
 
   try {
-    await execFileAsync('git', ['branch', '-D', payload.branchName], { cwd: testWorkspacePath })
-  } catch {
-    // ignore cleanup failures
+    await runGit(['init'], repoDir)
+    await runGit(['config', 'user.email', 'test@example.com'], repoDir)
+    await runGit(['config', 'user.name', 'OpenCove Test'], repoDir)
+    await runGit(['config', 'core.autocrlf', 'false'], repoDir)
+    await runGit(['config', 'core.safecrlf', 'false'], repoDir)
+    await writeFile(path.join(repoDir, 'README.md'), '# recovery worktree fixture\n', 'utf8')
+    await runGit(['add', '.'], repoDir)
+    await runGit(['commit', '-m', 'init'], repoDir)
+
+    return await realpath(repoDir)
+  } catch (error) {
+    await removePathWithRetry(repoDir)
+    throw error
   }
+}
+
+async function listRegisteredWorktreePaths(repoPath: string): Promise<string[]> {
+  const output = await runGit(['worktree', 'list', '--porcelain', '-z'], repoPath)
+  return output
+    .split('\0')
+    .filter(record => record.startsWith('worktree '))
+    .map(record => record.slice('worktree '.length))
+}
+
+async function expectOwnedWorktreePath(repoPath: string, worktreePath: string): Promise<void> {
+  const canonicalRepoPath = await realpath(repoPath)
+  const canonicalWorktreesRoot = await realpath(path.join(repoPath, '.opencove', 'worktrees'))
+  const canonicalWorktreePath = await realpath(worktreePath)
+  const relativePath = path.relative(canonicalWorktreesRoot, canonicalWorktreePath)
+
+  expect(canonicalWorktreePath).not.toBe(canonicalRepoPath)
+  expect(relativePath).not.toBe('')
+  expect(relativePath).not.toMatch(/^\.\.(?:[\\/]|$)/)
+  expect(path.isAbsolute(relativePath)).toBe(false)
+  expect(await listRegisteredWorktreePaths(repoPath)).toContain(canonicalWorktreePath)
 }
 
 async function readWorktreeTerminalState(window: Page): Promise<{
@@ -178,14 +206,19 @@ test.describe('Recovery - Terminal created after Space worktree', () => {
     const userDataDir = await createTestUserDataDir()
     const branchName = `opencove-e2e-wt-terminal-${Date.now()}`
     const staleMountId = `mount-stale-${Date.now()}`
+    let repoPath = ''
     let createdWorktreePath: string | null = null
     let mountId: string | null = null
 
     try {
+      repoPath = await createTempRepo()
       const { electronApp, window } = await launchApp({
         windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: false,
+        env: {
+          OPENCOVE_TEST_WORKSPACE: repoPath,
+        },
       })
 
       try {
@@ -205,7 +238,7 @@ test.describe('Recovery - Terminal created after Space worktree', () => {
           },
           standardWindowSizeBucket: 'regular',
         }
-        const seedSpace = (targetMountId: string | null, directoryPath = testWorkspacePath) => ({
+        const seedSpace = (targetMountId: string | null, directoryPath = repoPath) => ({
           id: 'space-worktree-create-restart',
           name: 'Worktree Create Restart',
           directoryPath,
@@ -215,9 +248,18 @@ test.describe('Recovery - Terminal created after Space worktree', () => {
           rect: { x: 120, y: 100, width: 760, height: 480 },
         })
 
-        await clearAndSeedWorkspace(window, [], {
-          spaces: [seedSpace(null)],
-          activeSpaceId: 'space-worktree-create-restart',
+        await seedWorkspaceState(window, {
+          activeWorkspaceId: seededWorkspaceId,
+          workspaces: [
+            {
+              id: seededWorkspaceId,
+              name: path.basename(repoPath),
+              path: repoPath,
+              nodes: [],
+              spaces: [seedSpace(null)],
+              activeSpaceId: 'space-worktree-create-restart',
+            },
+          ],
           settings,
         })
 
@@ -236,8 +278,8 @@ test.describe('Recovery - Terminal created after Space worktree', () => {
           workspaces: [
             {
               id: seededWorkspaceId,
-              name: path.basename(testWorkspacePath),
-              path: testWorkspacePath,
+              name: path.basename(repoPath),
+              path: repoPath,
               nodes: [],
               spaces: [seedSpace(mountId)],
               activeSpaceId: 'space-worktree-create-restart',
@@ -261,6 +303,22 @@ test.describe('Recovery - Terminal created after Space worktree', () => {
         await worktreeWindow.locator('[data-testid="space-worktree-create"]').click()
         await expect(worktreeWindow).toHaveCount(0, { timeout: 30_000 })
 
+        await expect
+          .poll(async () => (await readWorktreeTerminalState(window))?.spaceDirectoryPath ?? '', {
+            timeout: 30_000,
+          })
+          .toContain(branchName)
+        await expect(
+          window.locator('[data-testid="workspace-space-operation-space-worktree-create-restart"]'),
+        ).toHaveCount(0)
+
+        const createdState = await readWorktreeTerminalState(window)
+        createdWorktreePath = createdState?.spaceDirectoryPath ?? null
+        expect(createdWorktreePath).not.toBeNull()
+        expect(createdWorktreePath).toContain(branchName)
+        await expectOwnedWorktreePath(repoPath, createdWorktreePath)
+        expect(createdState?.spaceTargetMountId).toBe(mountId)
+
         const pane = window.locator('.workspace-canvas .react-flow__pane')
         await openPaneContextMenuInSpace(window, pane, 'space-worktree-create-restart')
         await expect(window.locator('[data-testid="workspace-context-new-terminal"]')).toBeVisible()
@@ -277,10 +335,7 @@ test.describe('Recovery - Terminal created after Space worktree', () => {
           })
 
         const persistedState = await readWorktreeTerminalState(window)
-        createdWorktreePath = persistedState?.spaceDirectoryPath ?? null
-        expect(createdWorktreePath).not.toBeNull()
-        expect(createdWorktreePath).not.toBe(testWorkspacePath)
-        expect(createdWorktreePath).toContain(branchName)
+        expect(persistedState?.spaceDirectoryPath).toBe(createdWorktreePath)
         expect(persistedState?.spaceTargetMountId).toBe(mountId)
         expect(persistedState?.terminalExecutionDirectory).toBe(createdWorktreePath)
         expect(persistedState?.terminalExpectedDirectory).toBe(createdWorktreePath)
@@ -308,6 +363,9 @@ test.describe('Recovery - Terminal created after Space worktree', () => {
         windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: true,
+        env: {
+          OPENCOVE_TEST_WORKSPACE: repoPath,
+        },
       })
 
       try {
@@ -362,7 +420,9 @@ test.describe('Recovery - Terminal created after Space worktree', () => {
         await restartedApp.close()
       }
     } finally {
-      await removeGitWorktree({ branchName, worktreePath: createdWorktreePath })
+      if (repoPath) {
+        await removePathWithRetry(repoPath)
+      }
       await removePathWithRetry(userDataDir)
     }
   })
