@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { TerminalSessionState, TerminalSessionStateEvent } from '@shared/contracts/dto'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
+import { isAgentNodeAwaitingSessionTitle } from '@contexts/workspace/presentation/renderer/utils/agentSessionTitleSync'
 import { useAppStore } from '../store/useAppStore'
 import { getPtyEventHub } from '../utils/ptyEventHub'
 
@@ -13,12 +14,14 @@ function normalizeSessionId(rawValue: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
-function resolveAgentNodeForSessionId(sessionId: string): {
+export function resolveAgentNodeForSessionId(sessionId: string): {
+  sessionId: string
   workspaceId: string
   workspaceName: string
   workspacePath: string
   nodeId: string
   title: string
+  awaitingSessionTitle: boolean
   runtimeStatus: AgentRuntimeStatus | null
   executionDirectory: string
   taskId: string | null
@@ -32,15 +35,18 @@ function resolveAgentNodeForSessionId(sessionId: string): {
       }
 
       const taskId = node.data.agent?.taskId ?? null
+      const agent = node.data.agent
       const resolvedExecutionDirectory =
-        node.data.executionDirectory ?? node.data.agent?.executionDirectory ?? workspace.path
+        node.data.executionDirectory ?? agent?.executionDirectory ?? workspace.path
 
       return {
+        sessionId,
         workspaceId: workspace.id,
         workspaceName: workspace.name,
         workspacePath: workspace.path,
         nodeId: node.id,
         title: node.data.title,
+        awaitingSessionTitle: isAgentNodeAwaitingSessionTitle(node),
         runtimeStatus: node.data.status,
         executionDirectory: resolvedExecutionDirectory,
         taskId,
@@ -58,6 +64,7 @@ export type AgentStandbyNotificationPayload = {
   workspacePath: string
   nodeId: string
   title: string
+  awaitingSessionTitle: boolean
   executionDirectory: string
   taskId: string | null
 }
@@ -127,6 +134,7 @@ export function useAgentStandbyNotificationWatcher({
         workspacePath: resolved.workspacePath,
         nodeId: resolved.nodeId,
         title: resolved.title,
+        awaitingSessionTitle: resolved.awaitingSessionTitle,
         executionDirectory: resolved.executionDirectory,
         taskId: resolved.taskId,
       })

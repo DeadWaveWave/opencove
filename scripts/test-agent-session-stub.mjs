@@ -7,6 +7,7 @@ import {
   runCodexClickRedrawAfterClickScenario,
   runCodexStandbyNoNewlineScenario,
   runCodexStandbyOnlyScenario,
+  runCodexTitleFromFirstInputScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
   runJsonlStdinSubmitDrivenTurnScenario,
 } from './test-agent-session-stub/codex.mjs'
@@ -78,6 +79,11 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-click-redraw-after-click') {
     await runCodexClickRedrawAfterClickScenario(cwd)
+    return
+  }
+
+  if (provider === 'codex' && scenario === 'codex-title-from-first-input') {
+    await runCodexTitleFromFirstInputScenario(cwd)
     return
   }
 
