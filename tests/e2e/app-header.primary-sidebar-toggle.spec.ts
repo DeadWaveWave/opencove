@@ -100,7 +100,7 @@ const readSidebarToggleVisuals = async (page: Page) =>
         projectBackground: readBackground('.workspace-item--active'),
         projectGroupBackground: readBackground('.workspace-item-group--active'),
         projectGroupHeight: readHeight('.workspace-item-group--active'),
-        spaceRailIcon: readWidth(`${secondarySpace} .workspace-space-item__rail-icon`),
+        spaceRailIcon: readWidth(`${secondarySpace} .workspace-space-item__chevron`),
         spaceChevron: readWidth('.workspace-space-item__chevron'),
         spaceWidth: readWidth(secondarySpace),
         spaceVisibleWidth: readVisibleWidth(secondarySpace),
@@ -340,8 +340,8 @@ test.describe('Primary Sidebar Pin', () => {
         ).getBoundingClientRect()
         const iconRect = (
           document.querySelector(
-            '[data-testid="workspace-space-item-workspace-toggle-auto-reveal-space-secondary"] .workspace-space-item__rail-icon',
-          ) as SVGElement
+            '[data-testid="workspace-space-item-workspace-toggle-auto-reveal-space-secondary"] .workspace-space-item__chevron',
+          ) as HTMLElement
         ).getBoundingClientRect()
         return Math.abs(iconRect.x + iconRect.width / 2 - (sidebarRect.x + sidebarRect.width / 2))
       })
