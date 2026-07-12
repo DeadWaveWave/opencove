@@ -325,11 +325,7 @@ function SpaceItemContent({
 
   return (
     <>
-      <SidebarDisclosureIcon
-        expanded={isExpanded}
-        className="workspace-space-item__rail-icon"
-        aria-hidden="true"
-      />
+      {!hasAgents ? <SpaceRailMarker /> : null}
       <span className="workspace-space-item__name">{label}</span>
       {hasAgents ? (
         isOverlay ? (
@@ -371,6 +367,10 @@ function SpaceItemContent({
       )}
     </>
   )
+}
+
+function SpaceRailMarker(): React.JSX.Element {
+  return <span className="workspace-space-item__rail-icon" aria-hidden="true" />
 }
 
 export function WorkspaceItemOverlay({

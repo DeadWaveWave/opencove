@@ -10,7 +10,7 @@ type HoverPeekSample = {
   listTransform: string
   nameVisibleWidth: number
   iconCenterX: number
-  hiddenRailIconOpacity: number
+  railMarkerOpacity: number
   surfaceWidth: number
   surfaceRight: number
   spaceToggleRight: number
@@ -36,7 +36,9 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekResult> => {
     const list = document.querySelector('.workspace-sidebar__list')
     const spaceItem = document.querySelector('.workspace-space-item--space')
     const spaceName = spaceItem?.querySelector('.workspace-space-item__name')
-    const hiddenRailIcon = spaceItem?.querySelector('.workspace-space-item__rail-icon')
+    const railMarker = document.querySelector(
+      '.workspace-space-item:not(.workspace-space-item--has-toggle) .workspace-space-item__rail-icon',
+    )
     const spaceToggle = spaceItem?.querySelector('.workspace-space-item__toggle')
     const switchAll = document.querySelector('[data-testid="workspace-space-switch-all"]')
 
@@ -45,7 +47,7 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekResult> => {
       !(list instanceof HTMLElement) ||
       !(spaceItem instanceof HTMLElement) ||
       !(spaceName instanceof HTMLElement) ||
-      !(hiddenRailIcon instanceof HTMLElement) ||
+      !(railMarker instanceof HTMLElement) ||
       !(spaceToggle instanceof HTMLElement) ||
       !(switchAll instanceof HTMLElement)
     ) {
@@ -60,7 +62,7 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekResult> => {
       const iconRect = spaceToggle.getBoundingClientRect()
       const toggleRect = spaceToggle.getBoundingClientRect()
       const switchAllRect = switchAll.getBoundingClientRect()
-      const hiddenRailIconStyle = window.getComputedStyle(hiddenRailIcon)
+      const railMarkerStyle = window.getComputedStyle(railMarker)
       const surfaceStyle = window.getComputedStyle(spaceItem, '::before')
       const surfaceLeft = itemRect.left + Number.parseFloat(surfaceStyle.left)
       const surfaceWidth = Number.parseFloat(surfaceStyle.width)
@@ -80,7 +82,7 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekResult> => {
         listTransform: listStyle.transform,
         nameVisibleWidth: visibleInSidebar(nameRect),
         iconCenterX: Number((iconRect.x + iconRect.width / 2).toFixed(3)),
-        hiddenRailIconOpacity: Number.parseFloat(hiddenRailIconStyle.opacity),
+        railMarkerOpacity: Number.parseFloat(railMarkerStyle.opacity),
         surfaceWidth,
         surfaceRight: Number((surfaceLeft + surfaceWidth).toFixed(3)),
         spaceToggleRight: Number(toggleRect.right.toFixed(3)),
@@ -123,7 +125,9 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekResult> => {
 }
 
 test.describe('Primary Sidebar Hover Animation', () => {
-  test('auto reveal expands by clipping without list fade or translate flicker', async () => {
+  test('auto reveal expands by clipping without list fade or translate flicker', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -151,6 +155,13 @@ test.describe('Primary Sidebar Hover Animation', () => {
                 labelColor: 'blue',
                 nodeIds: ['agent-hover-animation'],
               },
+              {
+                id: 'space-hover-animation-empty',
+                name: 'Empty space',
+                directoryPath: testWorkspacePath,
+                labelColor: 'orange',
+                nodeIds: [],
+              },
             ],
             activeSpaceId: 'space-hover-animation',
           },
@@ -163,6 +174,11 @@ test.describe('Primary Sidebar Hover Animation', () => {
         'data-cove-sidebar-transition',
         'idle',
       )
+      const sidebar = window.locator('.workspace-sidebar')
+      await testInfo.attach('sidebar-marker-animation-rail', {
+        body: await sidebar.screenshot({ animations: 'disabled' }),
+        contentType: 'image/png',
+      })
 
       const result = await sampleHoverPeek(window)
       const { samples } = result
@@ -172,12 +188,23 @@ test.describe('Primary Sidebar Hover Animation', () => {
       expect(result.transitionWasObserved).toBe(true)
       expect(samples.every(sample => sample.listOpacity >= 0.99)).toBe(true)
       expect(samples.every(sample => sample.listTransform === 'none')).toBe(true)
-      expect(samples.every(sample => sample.hiddenRailIconOpacity <= 0.05)).toBe(true)
+      expect(samples.every(sample => sample.railMarkerOpacity >= 0)).toBe(true)
+      expect(samples.every(sample => sample.railMarkerOpacity <= 1)).toBe(true)
+      expect(samples[0]?.railMarkerOpacity).toBeGreaterThanOrEqual(0.95)
       expect(samples[0]?.width).toBeLessThanOrEqual(76)
       expect(finalSample?.width).toBeGreaterThanOrEqual(276)
       expect(finalSample?.surfaceWidth).toBeGreaterThan(100)
       expect(finalSample?.nameVisibleWidth).toBeGreaterThan(20)
+      expect(finalSample?.railMarkerOpacity).toBeLessThanOrEqual(0.05)
       await expect(window.locator('.workspace-sidebar')).toHaveClass(/workspace-sidebar--peek/)
+      await testInfo.attach('sidebar-marker-animation-samples', {
+        body: Buffer.from(JSON.stringify(result, null, 2)),
+        contentType: 'application/json',
+      })
+      await testInfo.attach('sidebar-marker-animation-peek', {
+        body: await sidebar.screenshot({ animations: 'disabled' }),
+        contentType: 'image/png',
+      })
 
       if (transitionSamples.length > 4) {
         expect(maxRange(samples.map(sample => sample.iconCenterX))).toBeGreaterThan(40)
@@ -208,6 +235,11 @@ test.describe('Primary Sidebar Hover Animation', () => {
         expect(new Set(samples.map(sample => Math.round(sample.width))).size).toBeGreaterThan(3)
         expect(
           transitionSamples.some(sample => sample.surfaceWidth > 30 && sample.surfaceWidth < 220),
+        ).toBe(true)
+        expect(
+          transitionSamples.some(
+            sample => sample.railMarkerOpacity > 0.05 && sample.railMarkerOpacity < 0.95,
+          ),
         ).toBe(true)
         expect(
           transitionSamples

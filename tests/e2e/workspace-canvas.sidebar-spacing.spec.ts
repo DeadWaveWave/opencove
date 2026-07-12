@@ -68,7 +68,7 @@ const readSidebarRowGeometry = async (
       const spaceName = spaceItem?.querySelector('.workspace-space-item__name')
       const spaceToggle = spaceItem?.querySelector('.workspace-space-item__toggle')
       const spaceToggleIcon = spaceToggle?.querySelector('.workspace-tree-triangle')
-      const spaceRailIcon = spaceItem?.querySelector('.workspace-space-item__rail-icon')
+      const spaceRailIcon = spaceItem?.querySelector('.workspace-space-item__chevron')
       const agentItem = document.querySelector(
         `[data-testid="workspace-agent-item-${activeWorkspaceId}-${activeAgentId}"]`,
       )
