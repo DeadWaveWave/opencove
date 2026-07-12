@@ -93,6 +93,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - Worktrees: prevent background Git status polling from acquiring index locks or leaving stale locks when commands time out. (#305)
+- Worktree create: keep branch dropdowns above the Space worktree dialog so branches remain visible and selectable. (#304)
 - Sidebar: keep the collapsed hover-reveal open while Project, Space, or Agent context menus are active, so menu interactions do not leave the sidebar collapsed underneath them. (#303)
 - Terminal: preserve local and remote output and interactivity across restarts, keep sizing stable during resize and continuous TUI redraws, and reliably resync UI and OpenCode themes after remount. (#301)
 - Workspace canvas: keep window dragging stable at Space edges and preview crowded Space expansion before release without committing transient geometry. (#300)

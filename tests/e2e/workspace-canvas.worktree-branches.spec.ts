@@ -28,12 +28,15 @@ async function createTempRepo(): Promise<string> {
   await writeFile(path.join(repoDir, 'README.md'), '# temp\n', 'utf8')
   await runGit(['add', '.'], repoDir)
   await runGit(['commit', '-m', 'init'], repoDir)
+  await runGit(['branch', 'release/1.1.2'], repoDir)
 
   return await realpath(repoDir)
 }
 
 test.describe('Workspace Canvas - Worktree Branches', () => {
-  test('loads git branches in the Space Worktree window', async () => {
+  test('loads and selects git branches above the Space Worktree window', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     let repoPath = ''
 
     try {
@@ -88,6 +91,34 @@ test.describe('Workspace Canvas - Worktree Branches', () => {
 
         const worktreeWindow = window.locator('[data-testid="space-worktree-window"]')
         await expect(worktreeWindow).toBeVisible()
+
+        await worktreeWindow.locator('[data-testid="space-worktree-start-point-trigger"]').click()
+        const startPointMenu = window.locator('[data-testid="space-worktree-start-point-menu"]')
+        await expect(startPointMenu).toBeVisible()
+        await expect
+          .poll(async () => {
+            return await window.evaluate(() => {
+              const menu = document.querySelector<HTMLElement>(
+                '[data-testid="space-worktree-start-point-menu"]',
+              )
+              const backdrop = document.querySelector<HTMLElement>(
+                '.workspace-space-worktree-backdrop',
+              )
+              return (
+                Number(window.getComputedStyle(menu!).zIndex) -
+                Number(window.getComputedStyle(backdrop!).zIndex)
+              )
+            })
+          })
+          .toBeGreaterThan(0)
+        await testInfo.attach('space-worktree-branch-menu', {
+          body: await window.screenshot(),
+          contentType: 'image/png',
+        })
+        await startPointMenu.locator('[data-cove-select-option-value="release/1.1.2"]').click()
+        await expect(
+          worktreeWindow.locator('[data-testid="space-worktree-start-point"]'),
+        ).toHaveValue('release/1.1.2')
 
         await worktreeWindow.locator('[data-testid="space-worktree-mode-existing"]').click()
 
