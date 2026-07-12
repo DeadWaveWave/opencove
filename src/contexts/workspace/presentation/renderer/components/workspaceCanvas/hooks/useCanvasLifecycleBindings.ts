@@ -2,9 +2,9 @@ import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
-import { useWorkspaceCanvasFocusSpaceRequest } from './useFocusSpaceRequest'
 import { useWorkspaceCanvasLifecycle } from './useLifecycle'
 import { useWorkspaceCanvasState } from './useCanvasState'
+import { useWorkspaceCanvasViewportNavigation } from './useViewportNavigation'
 
 export function useWorkspaceCanvasLifecycleBindings({
   workspaceId,
@@ -41,11 +41,19 @@ export function useWorkspaceCanvasLifecycleBindings({
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   requestNodeDeleteRef: WorkspaceCanvasActionRefs['requestNodeDeleteRef']
 }): void {
-  useWorkspaceCanvasFocusSpaceRequest({
+  useWorkspaceCanvasViewportNavigation({
+    workspaceId,
+    persistedViewport: viewport,
+    restoredViewportWorkspaceIdRef: canvasState.restoredViewportWorkspaceIdRef,
+    reactFlow,
+    focusNodeId,
     focusSpaceId,
     focusSequence,
+    nodes,
+    nodesRef,
     spaces,
     focusSpaceInViewport,
+    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
   })
 
   useWorkspaceCanvasLifecycle({
@@ -60,7 +68,6 @@ export function useWorkspaceCanvasLifecycleBindings({
     selectionDraftRef: canvasState.selectionDraftRef,
     trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
     setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive,
-    restoredViewportWorkspaceIdRef: canvasState.restoredViewportWorkspaceIdRef,
     reactFlow,
     viewport,
     viewportRef: canvasState.viewportRef,
@@ -71,11 +78,7 @@ export function useWorkspaceCanvasLifecycleBindings({
     setIsShiftPressed: canvasState.setIsShiftPressed,
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     requestNodeDeleteRef,
-    focusNodeId,
-    focusSequence,
-    nodes,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     isFocusNodeTargetZoomPreviewing,
-    nodesRef,
   })
 }

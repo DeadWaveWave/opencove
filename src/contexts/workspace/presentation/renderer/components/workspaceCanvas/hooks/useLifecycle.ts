@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
-import { focusNodeInViewport } from '../helpers'
 import {
   createCanvasInputModalityState,
   type CanvasInputModalityState,
@@ -27,7 +26,6 @@ interface UseWorkspaceCanvasLifecycleParams {
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   trackpadGestureLockRef: React.MutableRefObject<TrackpadGestureLockState | null>
   setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
-  restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   viewport: Viewport
   viewportRef: React.MutableRefObject<Viewport>
@@ -38,12 +36,8 @@ interface UseWorkspaceCanvasLifecycleParams {
   setIsShiftPressed: React.Dispatch<React.SetStateAction<boolean>>
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   requestNodeDeleteRef: React.MutableRefObject<(nodeIds: string[]) => void>
-  focusNodeId?: string | null
-  focusSequence?: number
-  nodes: Node<TerminalNodeData>[]
   focusNodeTargetZoom: number
   isFocusNodeTargetZoomPreviewing: boolean
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
 }
 
 export function useWorkspaceCanvasLifecycle({
@@ -58,7 +52,6 @@ export function useWorkspaceCanvasLifecycle({
   selectionDraftRef,
   trackpadGestureLockRef,
   setIsCanvasWheelGestureCaptureActive,
-  restoredViewportWorkspaceIdRef,
   reactFlow,
   viewport,
   viewportRef,
@@ -69,16 +62,11 @@ export function useWorkspaceCanvasLifecycle({
   setIsShiftPressed,
   selectedNodeIdsRef,
   requestNodeDeleteRef,
-  focusNodeId,
-  focusSequence,
-  nodes,
   focusNodeTargetZoom,
   isFocusNodeTargetZoomPreviewing,
-  nodesRef,
 }: UseWorkspaceCanvasLifecycleParams): void {
   const previewSequenceRef = useRef(0)
   const viewportBeforePreviewRef = useRef<Viewport | null>(null)
-  const focusedNodeRequestKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     setIsMinimapVisible(persistedMinimapVisible)
@@ -104,23 +92,6 @@ export function useWorkspaceCanvasLifecycle({
     trackpadGestureLockRef,
     workspaceId,
   ])
-
-  useEffect(() => {
-    if (restoredViewportWorkspaceIdRef.current === workspaceId) {
-      return
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      reactFlow.setViewport(viewport, {
-        duration: 0,
-      })
-      restoredViewportWorkspaceIdRef.current = workspaceId
-    })
-
-    return () => {
-      window.cancelAnimationFrame(frame)
-    }
-  }, [reactFlow, restoredViewportWorkspaceIdRef, viewport, workspaceId])
 
   useEffect(() => {
     viewportRef.current = viewport
@@ -224,23 +195,4 @@ export function useWorkspaceCanvasLifecycle({
     inputModalityStateRef.current = createCanvasInputModalityState(canvasInputModeSetting)
     setDetectedCanvasInputMode(canvasInputModeSetting)
   }, [canvasInputModeSetting, inputModalityStateRef, setDetectedCanvasInputMode])
-
-  useEffect(() => {
-    if (!focusNodeId) {
-      return
-    }
-
-    const requestKey = `${focusNodeId}:${focusSequence ?? 0}`
-    if (focusedNodeRequestKeyRef.current === requestKey) {
-      return
-    }
-
-    const target = nodesRef.current.find(node => node.id === focusNodeId)
-    if (!target) {
-      return
-    }
-
-    focusedNodeRequestKeyRef.current = requestKey
-    focusNodeInViewport(reactFlow, target, { duration: 220, zoom: focusNodeTargetZoom })
-  }, [focusNodeId, focusNodeTargetZoom, focusSequence, nodes, nodesRef, reactFlow])
 }

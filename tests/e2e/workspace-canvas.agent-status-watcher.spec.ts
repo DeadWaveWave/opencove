@@ -1,10 +1,34 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
 import {
   clearAndSeedWorkspace,
   launchApp,
+  readCanvasViewport,
   seedWorkspaceState,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+
+async function readAgentLandingGeometry(
+  window: Page,
+  agentNode: Locator,
+): Promise<{ deltaX: number; deltaY: number }> {
+  return await agentNode.evaluate(element => {
+    const agentRect = element.getBoundingClientRect()
+    const header = document.querySelector('.app-header')
+    const sidebar = document.querySelector('.workspace-sidebar')
+    const headerRect = header instanceof HTMLElement ? header.getBoundingClientRect() : null
+    const sidebarRect = sidebar instanceof HTMLElement ? sidebar.getBoundingClientRect() : null
+    const contentLeft = sidebarRect ? sidebarRect.right : 0
+    const contentTop = headerRect ? headerRect.bottom : 0
+    const expectedCenterX = contentLeft + (window.innerWidth - contentLeft) / 2
+    const expectedCenterY = contentTop + (window.innerHeight - contentTop) / 2
+
+    return {
+      deltaX: agentRect.left + agentRect.width / 2 - expectedCenterX,
+      deltaY: agentRect.top + agentRect.height / 2 - expectedCenterY,
+    }
+  })
+}
 
 async function seedCodexTask(window: Awaited<ReturnType<typeof launchApp>>['window']) {
   await clearAndSeedWorkspace(
@@ -105,6 +129,8 @@ async function seedCodexTaskInMultipleWorkspaces(
         'claude-code': [],
         codex: ['gpt-5.2-codex'],
       },
+      focusNodeTargetZoom: 1,
+      focusNodeUseVisibleCanvasCenter: true,
     },
   })
 }
@@ -156,7 +182,9 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
     }
   })
 
-  test('keeps updating a non-focused project agent status after switching projects', async () => {
+  test('opens a non-focused project notification at the corresponding agent', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     const { electronApp, window } = await launchApp({
       windowMode: 'offscreen',
       env: {
@@ -197,12 +225,67 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
         .locator('[data-testid="app-notifications"] .app-notification')
         .first()
       await expect(notification).toBeVisible()
+
+      await window.locator('.workspace-item__name', { hasText: 'workspace-a' }).click()
+      await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
+        'workspace-a',
+      )
+      await window.locator('.react-flow__controls-fitview').click()
+      const viewportBeforeSwitch = await readCanvasViewport(window)
+      const landingBeforeSwitch = await readAgentLandingGeometry(window, agentNode)
+      expect(Math.hypot(landingBeforeSwitch.deltaX, landingBeforeSwitch.deltaY)).toBeGreaterThan(80)
+      await window.screenshot({ path: testInfo.outputPath('notification-agent-before.png') })
+
+      await window.locator('.workspace-item__name', { hasText: 'workspace-b' }).click()
+      await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
+        'workspace-b',
+      )
       await notification.click()
 
       await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
         'workspace-a',
       )
       await expect(window.locator('[data-testid="app-notifications"]')).toHaveCount(0)
+      await expect
+        .poll(async () => {
+          const landing = await readAgentLandingGeometry(window, agentNode)
+          return Math.hypot(landing.deltaX, landing.deltaY)
+        })
+        .toBeLessThan(3)
+      await expect
+        .poll(async () => {
+          return (await readCanvasViewport(window)).zoom
+        })
+        .toBeCloseTo(1, 2)
+
+      const viewportAfterNotification = await readCanvasViewport(window)
+      const landingAfterNotification = await readAgentLandingGeometry(window, agentNode)
+      expect(
+        Math.hypot(
+          viewportAfterNotification.x - viewportBeforeSwitch.x,
+          viewportAfterNotification.y - viewportBeforeSwitch.y,
+        ),
+      ).toBeGreaterThan(30)
+      await window.screenshot({ path: testInfo.outputPath('notification-agent-after.png') })
+      const measurementPath = testInfo.outputPath('notification-agent-landing.json')
+      await writeFile(
+        measurementPath,
+        JSON.stringify(
+          {
+            before: { viewport: viewportBeforeSwitch, landing: landingBeforeSwitch },
+            after: {
+              viewport: viewportAfterNotification,
+              landing: landingAfterNotification,
+            },
+          },
+          null,
+          2,
+        ),
+      )
+      await testInfo.attach('notification-agent-landing-measurement', {
+        path: measurementPath,
+        contentType: 'application/json',
+      })
     } finally {
       await electronApp.close()
     }
