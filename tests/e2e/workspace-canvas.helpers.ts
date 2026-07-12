@@ -106,6 +106,7 @@ export interface SeedWorkspace {
     parentSpaceId?: string | null
     boundary?: unknown
     sortOrder?: number
+    pinned?: boolean
     labelColor?: string | null
     nodeIds: string[]
     rect?: {
@@ -256,7 +257,19 @@ export async function seedWorkspaceState(
   const seededState = {
     formatVersion: 1,
     activeWorkspaceId: payload.activeWorkspaceId,
-    workspaces: payload.workspaces,
+    // Existing canvas E2E cases predate opt-in space pills and exercise navigation through them.
+    // Preserve those fixtures while allowing pinning tests to opt out explicitly with `false`.
+    workspaces: payload.workspaces.map(workspace => ({
+      ...workspace,
+      ...(workspace.spaces
+        ? {
+            spaces: workspace.spaces.map(space => ({
+              ...space,
+              pinned: space.pinned ?? true,
+            })),
+          }
+        : {}),
+    })),
     ...(payload.settings ? { settings: payload.settings } : {}),
   }
 

@@ -128,6 +128,7 @@ export interface WorkspaceCanvasViewProps {
   spaces: WorkspaceSpaceState[]
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
+  onOpenSpaceContextMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
   contextMenu: ContextMenuState | null
   closeContextMenu: () => void
   magneticSnappingEnabled: boolean

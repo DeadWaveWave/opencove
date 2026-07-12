@@ -83,6 +83,7 @@ function createTables(db: Database.Database): void {
       parent_space_id TEXT,
       boundary_json TEXT NOT NULL DEFAULT '{}',
       sort_order INTEGER NOT NULL DEFAULT 0,
+      pinned INTEGER NOT NULL DEFAULT 0,
       label_color TEXT,
       rect_x REAL,
       rect_y REAL,
@@ -379,6 +380,12 @@ function ensureCurrentSchema(db: Database.Database): void {
   ensureTableColumn(db, {
     tableName: 'workspace_spaces',
     columnName: 'sort_order',
+    definitionSql: 'INTEGER NOT NULL DEFAULT 0',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspace_spaces',
+    columnName: 'pinned',
     definitionSql: 'INTEGER NOT NULL DEFAULT 0',
   })
 }

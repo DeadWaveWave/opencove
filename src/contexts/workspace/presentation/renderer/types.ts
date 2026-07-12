@@ -212,6 +212,7 @@ export interface WorkspaceSpaceState {
   parentSpaceId?: string | null
   boundary?: SpaceBoundary | null
   sortOrder?: number
+  pinned?: boolean
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: WorkspaceSpaceRect | null

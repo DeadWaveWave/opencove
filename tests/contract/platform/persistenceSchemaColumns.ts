@@ -53,6 +53,7 @@ export const CURRENT_SCHEMA_COLUMNS = {
     'parent_space_id',
     'boundary_json',
     'sort_order',
+    'pinned',
     'label_color',
     'rect_x',
     'rect_y',

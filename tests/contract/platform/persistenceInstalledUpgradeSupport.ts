@@ -2,7 +2,9 @@ import { expect } from 'vitest'
 import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/constants'
 import { CURRENT_SCHEMA_COLUMNS } from './persistenceSchemaColumns'
 
-export const SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
+export const SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+] as const
 
 export type InstalledUpgradeSourceVersion =
   (typeof SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS)[number]
@@ -60,7 +62,13 @@ const COLUMNS_ADDED_AFTER_VERSION: Record<number, Record<string, string[]>> = {
       'label_color_override',
       'sidebar_sort_order',
     ],
-    workspace_spaces: ['target_mount_id', 'parent_space_id', 'boundary_json', 'sort_order'],
+    workspace_spaces: [
+      'target_mount_id',
+      'parent_space_id',
+      'boundary_json',
+      'sort_order',
+      'pinned',
+    ],
   },
   3: {
     workspaces: [
@@ -76,7 +84,13 @@ const COLUMNS_ADDED_AFTER_VERSION: Record<number, Record<string, string[]>> = {
       'terminal_provider_hint',
       'sidebar_sort_order',
     ],
-    workspace_spaces: ['target_mount_id', 'parent_space_id', 'boundary_json', 'sort_order'],
+    workspace_spaces: [
+      'target_mount_id',
+      'parent_space_id',
+      'boundary_json',
+      'sort_order',
+      'pinned',
+    ],
   },
   4: {
     workspaces: [
@@ -86,7 +100,13 @@ const COLUMNS_ADDED_AFTER_VERSION: Record<number, Record<string, string[]>> = {
       'sort_order',
     ],
     nodes: ['terminal_geometry_json', 'terminal_provider_hint', 'sidebar_sort_order'],
-    workspace_spaces: ['target_mount_id', 'parent_space_id', 'boundary_json', 'sort_order'],
+    workspace_spaces: [
+      'target_mount_id',
+      'parent_space_id',
+      'boundary_json',
+      'sort_order',
+      'pinned',
+    ],
   },
   5: {
     workspaces: [
@@ -96,7 +116,7 @@ const COLUMNS_ADDED_AFTER_VERSION: Record<number, Record<string, string[]>> = {
       'sort_order',
     ],
     nodes: ['terminal_geometry_json', 'terminal_provider_hint', 'sidebar_sort_order'],
-    workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order'],
+    workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order', 'pinned'],
   },
   6: {
     workspaces: [
@@ -106,7 +126,7 @@ const COLUMNS_ADDED_AFTER_VERSION: Record<number, Record<string, string[]>> = {
       'sort_order',
     ],
     nodes: ['sidebar_sort_order'],
-    workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order'],
+    workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order', 'pinned'],
   },
   7: {
     workspaces: [
@@ -116,20 +136,25 @@ const COLUMNS_ADDED_AFTER_VERSION: Record<number, Record<string, string[]>> = {
       'sort_order',
     ],
     nodes: ['sidebar_sort_order'],
-    workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order'],
+    workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order', 'pinned'],
   },
   8: {
     workspaces: ['icon_id', 'environment_variables_json'],
     nodes: ['sidebar_sort_order'],
-    workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order'],
+    workspace_spaces: ['parent_space_id', 'boundary_json', 'sort_order', 'pinned'],
   },
   9: {
     workspaces: ['icon_id'],
     nodes: ['sidebar_sort_order'],
+    workspace_spaces: ['pinned'],
   },
   10: {
     workspaces: ['icon_id'],
     nodes: ['sidebar_sort_order'],
+    workspace_spaces: ['pinned'],
+  },
+  11: {
+    workspace_spaces: ['pinned'],
   },
 }
 

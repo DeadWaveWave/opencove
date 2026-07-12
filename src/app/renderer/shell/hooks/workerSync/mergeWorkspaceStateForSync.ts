@@ -165,6 +165,7 @@ export function toShellWorkspaceStateForSync(
       (existing.targetMountId ?? null) === (space.targetMountId ?? null) &&
       (existing.parentSpaceId ?? null) === (space.parentSpaceId ?? null) &&
       (existing.sortOrder ?? 0) === (space.sortOrder ?? 0) &&
+      (existing.pinned === true) === (space.pinned === true) &&
       isWorkspaceSpaceBoundaryEqual(existing.boundary, space.boundary) &&
       existing.labelColor === space.labelColor &&
       isWorkspaceSpaceRectEqual(existing.rect, space.rect) &&

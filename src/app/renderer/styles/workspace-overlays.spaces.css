@@ -256,10 +256,11 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding: 0 4px 2px 0;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .workspace-space-switcher__item {
+  pointer-events: auto;
   border: 1px solid var(--cove-border);
   background: var(--cove-window-surface);
   color: var(--cove-text-muted);

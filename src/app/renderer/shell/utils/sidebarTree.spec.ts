@@ -140,4 +140,15 @@ describe('buildSidebarProjectTree', () => {
       'agent-new',
     ])
   })
+
+  it('orders pinned spaces before unpinned spaces without disturbing group order', () => {
+    const workspace = createWorkspace()
+    workspace.spaces = workspace.spaces.map(space =>
+      space.id === 'space-web' ? { ...space, pinned: true } : space,
+    )
+
+    const tree = buildSidebarProjectTree(workspace)
+
+    expect(tree.spaceGroups.map(group => group.id)).toEqual(['space-web', 'space-api'])
+  })
 })

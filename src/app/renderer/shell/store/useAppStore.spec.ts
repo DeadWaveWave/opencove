@@ -107,4 +107,43 @@ describe('useAppStore', () => {
       'workspace-3',
     ])
   })
+
+  it('pins a root space and moves it ahead of unpinned spaces', () => {
+    const workspace = createWorkspace('workspace-1')
+    workspace.spaces = [
+      {
+        id: 'space-a',
+        name: 'Space A',
+        directoryPath: workspace.path,
+        targetMountId: null,
+        sortOrder: 0,
+        labelColor: null,
+        nodeIds: [],
+        rect: null,
+      },
+      {
+        id: 'space-b',
+        name: 'Space B',
+        directoryPath: workspace.path,
+        targetMountId: null,
+        sortOrder: 1,
+        labelColor: null,
+        nodeIds: [],
+        rect: null,
+      },
+    ]
+    useAppStore.setState({ workspaces: [workspace] }, false)
+
+    expect(useAppStore.getState().setWorkspaceSpacePinned('workspace-1', 'space-b', true)).toBe(
+      true,
+    )
+    expect(
+      [...useAppStore.getState().workspaces[0]!.spaces]
+        .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+        .map(space => [space.id, space.pinned]),
+    ).toEqual([
+      ['space-b', true],
+      ['space-a', undefined],
+    ])
+  })
 })

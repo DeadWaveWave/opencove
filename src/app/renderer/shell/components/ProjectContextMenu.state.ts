@@ -138,6 +138,26 @@ export function resolveTargetLabelColor(
   return node.data.labelColorOverride ?? null
 }
 
+export function resolveTargetSpacePinned(
+  workspaces: WorkspaceState[],
+  target: ProjectContextMenuTarget,
+): boolean {
+  if (target.kind !== 'space') {
+    return false
+  }
+
+  const workspace = workspaces.find(candidate => candidate.id === target.workspaceId) ?? null
+  return workspace?.spaces.find(space => space.id === target.spaceId)?.pinned === true
+}
+
+export function setTargetSpacePinned(target: ProjectContextMenuTarget, pinned: boolean): void {
+  if (target.kind !== 'space') {
+    return
+  }
+
+  useAppStore.getState().setWorkspaceSpacePinned(target.workspaceId, target.spaceId, pinned)
+}
+
 export function resolveTargetProjectIconId(
   workspaces: WorkspaceState[],
   target: ProjectContextMenuTarget,

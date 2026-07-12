@@ -93,6 +93,20 @@ describe('mergePersistedAppStates', () => {
     expect(merged.workspaces[0]?.spaces[0]?.rect).toEqual(localRect)
   })
 
+  it('keeps a locally changed space pin when the base did not change it', () => {
+    const rect: WorkspaceSpaceRect = { x: 0, y: 0, width: 100, height: 100 }
+    const baseSnapshot = createState({ rect, nodeTitle: 'snapshot' })
+    const base = createState({ rect, nodeTitle: 'base' })
+    const local = createState({ rect, nodeTitle: 'local' })
+    baseSnapshot.workspaces[0]!.spaces[0]!.pinned = false
+    base.workspaces[0]!.spaces[0]!.pinned = false
+    local.workspaces[0]!.spaces[0]!.pinned = true
+
+    const merged = mergePersistedAppStates(base, local, baseSnapshot)
+
+    expect(merged.workspaces[0]?.spaces[0]?.pinned).toBe(true)
+  })
+
   it('keeps base child-space topology when local did not change it (snapshot-aware)', () => {
     const rect: WorkspaceSpaceRect = { x: 0, y: 0, width: 100, height: 100 }
     const snapshotBoundary = {

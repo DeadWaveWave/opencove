@@ -128,6 +128,7 @@ function ensurePersistedWorkspaceSpace(
       typeof record.sortOrder === 'number' && Number.isFinite(record.sortOrder)
         ? Math.max(0, Math.floor(record.sortOrder))
         : 0,
+    pinned: record.pinned === true,
     labelColor: normalizeLabelColor(record.labelColor),
     nodeIds: normalizeWorkspaceSpaceNodeIds(record.nodeIds),
     rect: normalizeWorkspaceSpaceRect(record.rect),

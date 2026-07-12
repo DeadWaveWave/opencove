@@ -262,7 +262,9 @@ test.describe('M6 - Dev profile happy path (manual)', () => {
         { label: 'created space metadata' },
       )
 
-      await window.locator(`[data-testid="workspace-space-switch-${spaceMeta.spaceId}"]`).click()
+      await window
+        .locator(`[data-testid="workspace-space-item-${workspaceId}-${spaceMeta.spaceId}"]`)
+        .click()
       await window.locator(`[data-testid="workspace-space-menu-${spaceMeta.spaceId}"]`).click()
       await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
       await window.locator('[data-testid="workspace-space-action-create"]').click()

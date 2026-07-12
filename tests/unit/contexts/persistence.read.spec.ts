@@ -306,6 +306,7 @@ describe('workspace persistence (read/normalize)', () => {
                 id: 'space-1',
                 name: 'Backlog',
                 directoryPath: '/tmp/cove',
+                pinned: true,
                 nodeIds: ['node-1'],
                 rect: {
                   x: 10,
@@ -313,6 +314,13 @@ describe('workspace persistence (read/normalize)', () => {
                   width: 300,
                   height: 240,
                 },
+              },
+              {
+                id: 'space-legacy',
+                name: 'Legacy',
+                directoryPath: '/tmp/cove',
+                nodeIds: [],
+                rect: null,
               },
             ],
             activeSpaceId: 'space-1',
@@ -324,10 +332,12 @@ describe('workspace persistence (read/normalize)', () => {
 
     const restored = await readPersistedState()
     expect(restored).not.toBeNull()
-    expect(restored?.workspaces[0].spaces).toHaveLength(1)
+    expect(restored?.workspaces[0].spaces).toHaveLength(2)
     expect(restored?.workspaces[0].spaces[0].name).toBe('Backlog')
     expect(restored?.workspaces[0].spaces[0].directoryPath).toBe('/tmp/cove')
     expect(restored?.workspaces[0].spaces[0].nodeIds).toEqual(['node-1'])
+    expect(restored?.workspaces[0].spaces[0].pinned).toBe(true)
+    expect(restored?.workspaces[0].spaces[1].pinned).toBe(false)
     expect(restored?.workspaces[0].activeSpaceId).toBe('space-1')
   })
 

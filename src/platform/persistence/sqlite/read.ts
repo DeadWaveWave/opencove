@@ -178,6 +178,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
               typeof space.boundaryJson === 'string' ? safeJsonParse(space.boundaryJson) : null,
             ),
             sortOrder: Number.isFinite(space.sortOrder) ? Math.max(0, space.sortOrder) : 0,
+            pinned: space.pinned === true,
             labelColor: normalizeLabelColor(space.labelColor),
             nodeIds: links.map(link => link.nodeId),
             rect:

@@ -41,8 +41,8 @@ import { usePrimarySidebarAutoReveal } from './hooks/usePrimarySidebarAutoReveal
 import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
 import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
 import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
+import { useCommandCenterShortcutHint } from './hooks/useCommandCenterShortcutHint'
 import { useAppStore } from './store/useAppStore'
-import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import { useTerminalDisplayReferenceAutoCapture } from '@contexts/settings/presentation/renderer/useTerminalDisplayReferenceAutoCapture'
 
@@ -235,21 +235,7 @@ export default function App(): React.JSX.Element {
     }
   }, [isSettingsOpen])
 
-  const platform =
-    typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
-      ? window.opencoveApi.meta.platform
-      : undefined
-
-  const commandCenterBindings = useMemo(
-    () =>
-      resolveCommandKeybinding({
-        commandId: 'commandCenter.toggle',
-        overrides: agentSettings.keybindings,
-        platform,
-      }),
-    [agentSettings.keybindings, platform],
-  )
-  const commandCenterShortcutHint = formatKeyChord(platform, commandCenterBindings) || '—'
+  const commandCenterShortcutHint = useCommandCenterShortcutHint(agentSettings.keybindings)
 
   const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
     policy: agentSettings.updatePolicy,
@@ -387,6 +373,7 @@ export default function App(): React.JSX.Element {
             onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
             onSpacesChange={handleWorkspaceSpacesChange}
             onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
+            onOpenProjectContextMenu={setProjectContextMenu}
           />
 
           <WorkspaceSearchOverlay

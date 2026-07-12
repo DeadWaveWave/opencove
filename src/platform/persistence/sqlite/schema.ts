@@ -74,6 +74,7 @@ export const spaces = sqliteTable('workspace_spaces', {
   parentSpaceId: text('parent_space_id'),
   boundaryJson: text('boundary_json').notNull().default('{}'),
   sortOrder: integer('sort_order').notNull().default(0),
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
   labelColor: text('label_color'),
   rectX: real('rect_x'),
   rectY: real('rect_y'),

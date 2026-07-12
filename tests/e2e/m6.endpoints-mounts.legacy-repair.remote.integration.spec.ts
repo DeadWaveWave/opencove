@@ -310,7 +310,9 @@ test.describe('M6 - Legacy mount/space repair integration (remote)', () => {
         { label: 'remote space mount binding repaired', timeoutMs: 30_000 },
       )
 
-      await window.locator(`[data-testid="workspace-space-switch-${spaceId}"]`).click()
+      await window
+        .locator(`[data-testid="workspace-space-item-${workspaceMeta.id}-${spaceId}"]`)
+        .click()
       await window.locator(`[data-testid="workspace-space-menu-${spaceId}"]`).click()
       await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
       await window.locator('[data-testid="workspace-space-action-create"]').click()

@@ -1,4 +1,4 @@
-export const DB_SCHEMA_VERSION = 11
+export const DB_SCHEMA_VERSION = 12
 
 export const LEGACY_WORKSPACE_STATE_KEY = 'workspace-state-raw'
 

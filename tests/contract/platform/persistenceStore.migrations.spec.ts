@@ -2,16 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-
-const PERSISTENCE_STORE_TEST_TIMEOUT_MS = 20_000
-
-type MockDbState = {
-  userVersion: number
-  tables: Map<string, string[]>
-  openAttempts: number
-  workspaceRows: Array<{ id: string; sortOrder: number }>
-  failOnFirstOpen?: boolean
-}
+import {
+  PERSISTENCE_STORE_TEST_TIMEOUT_MS,
+  type PersistenceMigrationMockDbState as MockDbState,
+} from './persistenceStoreMigrations.types'
 
 const CURRENT_SCHEMA_COLUMNS = {
   app_meta: ['key', 'value'],
@@ -68,6 +62,7 @@ const CURRENT_SCHEMA_COLUMNS = {
     'parent_space_id',
     'boundary_json',
     'sort_order',
+    'pinned',
     'label_color',
     'rect_x',
     'rect_y',
@@ -437,7 +432,7 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(11)
+      expect(migratedState?.userVersion).toBe(12)
       expect(migratedState?.tables.get('terminal_recovery_records')).toEqual(
         expect.arrayContaining([...CURRENT_SCHEMA_COLUMNS.terminal_recovery_records]),
       )
@@ -451,6 +446,7 @@ describe('PersistenceStore (migrations)', () => {
       expect(migratedState?.tables.get('workspace_spaces')).toContain('parent_space_id')
       expect(migratedState?.tables.get('workspace_spaces')).toContain('boundary_json')
       expect(migratedState?.tables.get('workspace_spaces')).toContain('sort_order')
+      expect(migratedState?.tables.get('workspace_spaces')).toContain('pinned')
       expect(migratedState?.tables.get('workspaces')).toContain(
         'pull_request_base_branch_options_json',
       )
@@ -465,7 +461,7 @@ describe('PersistenceStore (migrations)', () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 11, version2Schema: true })],
+        [dbPath, createMockDbState({ userVersion: 12, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
@@ -493,6 +489,7 @@ describe('PersistenceStore (migrations)', () => {
       expect(repairedState?.tables.get('workspace_spaces')).toContain('parent_space_id')
       expect(repairedState?.tables.get('workspace_spaces')).toContain('boundary_json')
       expect(repairedState?.tables.get('workspace_spaces')).toContain('sort_order')
+      expect(repairedState?.tables.get('workspace_spaces')).toContain('pinned')
       expect(repairedState?.tables.get('workspaces')).toContain(
         'pull_request_base_branch_options_json',
       )

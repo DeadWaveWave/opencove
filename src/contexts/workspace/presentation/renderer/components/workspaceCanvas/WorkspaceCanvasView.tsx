@@ -99,6 +99,7 @@ export function WorkspaceCanvasView({
   spaces,
   activateSpace,
   activateAllSpaces,
+  onOpenSpaceContextMenu,
   contextMenu,
   closeContextMenu,
   magneticSnappingEnabled,
@@ -390,6 +391,10 @@ export function WorkspaceCanvasView({
         activateSpace={activateSpace}
         activateAllSpaces={activateAllSpaces}
         cancelSpaceRename={cancelSpaceRename}
+        onOpenSpaceContextMenu={(spaceId, anchor) => {
+          closeContextMenu()
+          onOpenSpaceContextMenu?.(spaceId, anchor)
+        }}
         usedLabelColors={usedLabelColors}
         activeLabelColorFilter={labelColorFilter}
         onToggleLabelColorFilter={color => {

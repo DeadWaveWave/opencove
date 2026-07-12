@@ -1,5 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, Folder, FolderOpen, FolderX, HardDrive, Pencil, X } from 'lucide-react'
+import {
+  Check,
+  Copy,
+  Folder,
+  FolderOpen,
+  FolderX,
+  HardDrive,
+  Pencil,
+  Pin,
+  PinOff,
+  X,
+} from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import {
@@ -15,10 +26,12 @@ import { getProjectIconComponent } from './ProjectIcon'
 import {
   renameTarget,
   resolveTargetProjectIconId,
+  resolveTargetSpacePinned,
   resolveTargetLabelColor,
   resolveTargetName,
   resolveTargetSpacePath,
   setTargetProjectIconId,
+  setTargetSpacePinned,
   setTargetLabelColor,
 } from './ProjectContextMenu.state'
 
@@ -64,6 +77,7 @@ export function ProjectContextMenu({
   const supportsLabelColor = resolvedTarget.kind !== 'project'
   const currentProjectIconId = resolveTargetProjectIconId(workspaces, resolvedTarget)
   const currentLabelColor = resolveTargetLabelColor(workspaces, resolvedTarget)
+  const isSpacePinned = resolveTargetSpacePinned(workspaces, resolvedTarget)
   const estimatedWidth = isRenaming
     ? 236
     : isSpaceTarget
@@ -76,7 +90,7 @@ export function ProjectContextMenu({
   const estimatedHeight = isRenaming
     ? 96
     : isSpaceTarget
-      ? 174
+      ? 206
       : canOpenInFileManager && isProjectTarget
         ? 218
         : isProjectTarget
@@ -159,6 +173,10 @@ export function ProjectContextMenu({
     }
 
     void openPath({ path, openerId: 'finder' })
+  }
+  const toggleSpacePinned = (): void => {
+    setTargetSpacePinned(resolvedTarget, !isSpacePinned)
+    useAppStore.getState().setProjectContextMenu(null)
   }
 
   const renderColorButton = ({
@@ -417,6 +435,22 @@ export function ProjectContextMenu({
       ) : null}
       {!isRenaming && isSpaceTarget ? (
         <>
+          <button
+            type="button"
+            data-testid={`workspace-space-context-pin-${resolvedTarget.spaceId}`}
+            onClick={toggleSpacePinned}
+          >
+            {isSpacePinned ? (
+              <PinOff className="workspace-context-menu__icon" aria-hidden="true" />
+            ) : (
+              <Pin className="workspace-context-menu__icon" aria-hidden="true" />
+            )}
+            <span className="workspace-context-menu__label">
+              {isSpacePinned
+                ? t('projectContextMenu.unpinSpace')
+                : t('projectContextMenu.pinSpace')}
+            </span>
+          </button>
           <button
             type="button"
             data-testid={`workspace-space-context-copy-path-${resolvedTarget.spaceId}`}

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
+import { setRootSpacePinned } from '@contexts/workspace/domain/workspaceSpacePinning'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type {
   FocusRequest,
@@ -62,6 +63,7 @@ export interface AppStoreState {
     overNodeId: string,
   ) => boolean
   setProjectIconId: (workspaceId: string, iconId: ProjectIconId | null) => boolean
+  setWorkspaceSpacePinned: (workspaceId: string, spaceId: string, pinned: boolean) => boolean
 }
 
 export const useAppStore = create<AppStoreState>(set => ({
@@ -158,6 +160,27 @@ export const useAppStore = create<AppStoreState>(set => ({
           ...workspace,
           iconId,
         }
+      })
+
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
+  setWorkspaceSpacePinned: (workspaceId, spaceId, pinned) => {
+    let changed = false
+    set(state => {
+      const workspaces = state.workspaces.map(workspace => {
+        if (workspace.id !== workspaceId) {
+          return workspace
+        }
+
+        const spaces = setRootSpacePinned(workspace.spaces, spaceId, pinned)
+        if (spaces === workspace.spaces) {
+          return workspace
+        }
+
+        changed = true
+        return { ...workspace, spaces }
       })
 
       return changed ? { workspaces } : state

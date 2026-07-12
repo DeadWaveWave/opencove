@@ -125,6 +125,7 @@ export type NormalizedPersistedSpace = {
   parentSpaceId: string | null
   boundary: SpaceBoundary
   sortOrder: number
+  pinned: boolean
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: { x: number; y: number; width: number; height: number } | null
@@ -369,6 +370,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         parentSpaceId: normalizeOptionalString(space.parentSpaceId),
         boundary: normalizeSpaceBoundary(space.boundary ?? space.boundaryJson),
         sortOrder: Math.max(0, Math.floor(normalizeFiniteNumber(space.sortOrder, index))),
+        pinned: normalizeBoolean(space.pinned, false),
         labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeNodeIds(space.nodeIds),
         rect: normalizeRect(space.rect),

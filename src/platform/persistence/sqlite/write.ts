@@ -61,10 +61,10 @@ export function writeNormalizedAppState(
     `
       INSERT INTO workspace_spaces (
         id, workspace_id, name, directory_path, target_mount_id,
-        parent_space_id, boundary_json, sort_order, label_color,
+        parent_space_id, boundary_json, sort_order, pinned, label_color,
         rect_x, rect_y, rect_width, rect_height
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -158,6 +158,7 @@ export function writeNormalizedAppState(
           space.parentSpaceId,
           safeJsonStringify(space.boundary),
           space.sortOrder,
+          space.pinned ? 1 : 0,
           space.labelColor,
           space.rect?.x ?? null,
           space.rect?.y ?? null,
