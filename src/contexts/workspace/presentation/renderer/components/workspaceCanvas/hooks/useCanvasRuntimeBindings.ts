@@ -60,7 +60,12 @@ export function useWorkspaceCanvasRuntimeBindings({
   reactFlow: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['reactFlow']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasAgentLastMessageCopy>[0]['onShowMessage']
 }): void {
-  useWorkspaceCanvasPtyTaskCompletion({ setNodes, onRequestPersistFlush })
+  useWorkspaceCanvasPtyTaskCompletion({
+    nodesRef,
+    setNodes,
+    listAgentSessions,
+    onRequestPersistFlush,
+  })
 
   const copyAgentLastMessage = useWorkspaceCanvasAgentLastMessageCopy({
     nodesRef,

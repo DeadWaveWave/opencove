@@ -8,6 +8,7 @@ import {
   type AgentStandbyNotificationPayload,
   useAgentStandbyNotificationWatcher,
 } from './useAgentStandbyNotificationWatcher'
+import { useAgentStandbyNotificationTitleGate } from './useAgentStandbyNotificationTitleGate'
 
 function normalizeComparablePath(pathValue: string, platform?: string): string {
   const normalized = pathValue
@@ -151,10 +152,7 @@ export function useAgentStandbyNotifications({
   dismiss: (id: string) => void
 } {
   const { t } = useTranslation()
-  const platform =
-    typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
-      ? window.opencoveApi.meta.platform
-      : undefined
+  const platform = window.opencoveApi?.meta?.platform
   const workspaces = useAppStore(state => state.workspaces)
   const areSystemNotificationsEnabled = useAppStore(
     state => state.agentSettings.systemNotificationsEnabled,
@@ -183,7 +181,6 @@ export function useAgentStandbyNotifications({
   const prInFlightByKeyRef = useRef<Map<string, Promise<GitHubPullRequestSummary | null>>>(
     new Map(),
   )
-
   const workspacesById = useMemo(() => {
     return new Map(workspaces.map(workspace => [workspace.id, workspace]))
   }, [workspaces])
@@ -271,7 +268,7 @@ export function useAgentStandbyNotifications({
     [platform],
   )
 
-  const handleAgentEnteredStandby = useCallback(
+  const publishAgentEnteredStandby = useCallback(
     (payload: AgentStandbyNotificationPayload) => {
       if (!isStandbyBannerEnabled && !areSystemNotificationsEnabled) {
         return
@@ -321,31 +318,28 @@ export function useAgentStandbyNotifications({
           return previous
         }
 
-        if (!shouldResolveBranch && !shouldResolvePullRequest) {
-          const updated = [next, ...previous]
-          return updated.length > maxVisible ? updated.slice(0, maxVisible) : updated
-        }
-
         const updated = [next, ...previous]
         return updated.length > maxVisible ? updated.slice(0, maxVisible) : updated
       })
     },
-    [
-      areSystemNotificationsEnabled,
-      isStandbyBannerEnabled,
-      maxVisible,
-      shouldResolveBranch,
-      shouldResolvePullRequest,
-      t,
-      workspacesById,
-    ],
+    [areSystemNotificationsEnabled, isStandbyBannerEnabled, maxVisible, t, workspacesById],
   )
 
-  const handleAgentEnteredWorking = useCallback((sessionId: string) => {
-    setNotifications(previous =>
-      previous.filter(notification => notification.sessionId !== sessionId),
-    )
-  }, [])
+  const { deferUntilTitleReady: handleAgentEnteredStandby, cancelPendingTitle } =
+    useAgentStandbyNotificationTitleGate({
+      enabled: isStandbyBannerEnabled || areSystemNotificationsEnabled,
+      onReady: publishAgentEnteredStandby,
+    })
+
+  const handleAgentEnteredWorking = useCallback(
+    (sessionId: string) => {
+      cancelPendingTitle(sessionId)
+      setNotifications(previous =>
+        previous.filter(notification => notification.sessionId !== sessionId),
+      )
+    },
+    [cancelPendingTitle],
+  )
 
   useEffect(() => {
     if (isStandbyBannerEnabled) {
@@ -490,7 +484,7 @@ export function useAgentStandbyNotifications({
   ])
 
   useAgentStandbyNotificationWatcher({
-    enabled: isStandbyBannerEnabled,
+    enabled: isStandbyBannerEnabled || areSystemNotificationsEnabled,
     onAgentEnteredStandby: handleAgentEnteredStandby,
     onAgentEnteredWorking: handleAgentEnteredWorking,
   })

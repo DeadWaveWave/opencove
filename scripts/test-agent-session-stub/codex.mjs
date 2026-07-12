@@ -118,4 +118,87 @@ export async function runCodexClickRedrawAfterClickScenario(cwd) {
   await runRawClickRedrawAfterClickScenario()
 }
 
+function normalizeSubmittedPrompt(rawValue) {
+  let normalized = ''
+
+  for (let index = 0; index < rawValue.length; index += 1) {
+    const characterCode = rawValue.charCodeAt(index)
+    if (characterCode === 27 && rawValue[index + 1] === '[') {
+      index += 2
+      while (index < rawValue.length) {
+        const sequenceCode = rawValue.charCodeAt(index)
+        if (sequenceCode >= 64 && sequenceCode <= 126) {
+          break
+        }
+        index += 1
+      }
+      continue
+    }
+
+    if (characterCode < 32 || characterCode === 127) {
+      continue
+    }
+
+    normalized += rawValue[index]
+  }
+
+  return normalized.trim()
+}
+
+export async function runCodexTitleFromFirstInputScenario(cwd) {
+  const sessionFilePath = await createCodexSessionFile(cwd)
+  let pendingInput = ''
+  let capturedFirstPrompt = false
+
+  process.stdin.on('data', chunk => {
+    if (capturedFirstPrompt) {
+      return
+    }
+
+    pendingInput += Buffer.from(chunk).toString('utf8')
+    const submitIndex = pendingInput.search(/[\r\n]/)
+    if (submitIndex === -1) {
+      return
+    }
+
+    const prompt = normalizeSubmittedPrompt(pendingInput.slice(0, submitIndex))
+    pendingInput = pendingInput.slice(submitIndex + 1)
+    if (prompt.length === 0) {
+      return
+    }
+
+    capturedFirstPrompt = true
+    void (async () => {
+      await appendCodexRecord(sessionFilePath, {
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: prompt }],
+        },
+      })
+      await appendCodexRecord(sessionFilePath, {
+        type: 'event_msg',
+        payload: {
+          type: 'task_started',
+          turn_id: 'opencove-test-title-turn-1',
+          model_context_window: 128_000,
+          collaboration_mode_kind: 'default',
+        },
+      })
+      await sleep(50)
+      await appendCodexRecord(sessionFilePath, {
+        type: 'event_msg',
+        payload: {
+          type: 'task_complete',
+          turn_id: 'opencove-test-title-turn-1',
+          last_agent_message: 'Done.',
+        },
+      })
+    })()
+  })
+
+  await sleep(IDLE_SCENARIO_LIFETIME_MS)
+}
+
 export { runJsonlStdinSubmitDelayedTurnScenario, runJsonlStdinSubmitDrivenTurnScenario }
