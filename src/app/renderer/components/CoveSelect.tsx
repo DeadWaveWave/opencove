@@ -26,6 +26,7 @@ export function CoveSelect({
   className,
   triggerClassName,
   menuClassName,
+  menuLayer = 'auto',
   size = 'default',
   testId,
   triggerTestId,
@@ -41,6 +42,7 @@ export function CoveSelect({
   className?: string
   triggerClassName?: string
   menuClassName?: string
+  menuLayer?: 'auto' | 'popover' | 'dialog-popover'
   size?: 'default' | 'compact'
   testId?: string
   triggerTestId?: string
@@ -51,6 +53,8 @@ export function CoveSelect({
 }): React.JSX.Element {
   const listboxId = useId()
   const isWithinDialog = useIsWithinDialog()
+  const usesDialogPopoverLayer =
+    menuLayer === 'dialog-popover' || (menuLayer === 'auto' && isWithinDialog)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -328,7 +332,7 @@ export function CoveSelect({
             <DismissableLayer
               id={listboxId}
               ref={menuRef}
-              className={`cove-select__menu${isWithinDialog ? ' cove-select__menu--within-dialog' : ''}${menuClassName ? ` ${menuClassName}` : ''}`}
+              className={`cove-select__menu${usesDialogPopoverLayer ? ' cove-select__menu--within-dialog' : ''}${menuClassName ? ` ${menuClassName}` : ''}`}
               data-testid={menuTestId ?? (testId ? `${testId}-menu` : undefined)}
               role="listbox"
               branchRefs={[rootRef]}

@@ -87,6 +87,10 @@ describe('SpaceWorktreeWindow create flow', () => {
     expect(await screen.findByTestId('space-worktree-create-view')).toBeVisible()
     expect(screen.queryByTestId('space-worktree-name')).not.toBeInTheDocument()
 
+    fireEvent.click(screen.getByTestId('space-worktree-start-point-trigger'))
+    expect(screen.getByRole('listbox')).toHaveClass('cove-select__menu--within-dialog')
+    fireEvent.click(screen.getByRole('option', { name: 'main' }))
+
     fireEvent.change(screen.getByTestId('space-worktree-branch-name'), {
       target: { value: 'space/demo' },
     })
