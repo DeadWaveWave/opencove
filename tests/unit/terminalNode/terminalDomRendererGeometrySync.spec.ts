@@ -1,8 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  createTerminalDomTextOverhangGeometryCommitScheduler,
-  refreshTerminalNodeSize,
-} from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/syncTerminalNodeSize'
+import { refreshTerminalNodeSize } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/syncTerminalNodeSize'
 
 function createTerminalMock() {
   const terminal = {
@@ -180,37 +177,6 @@ describe('DOM renderer terminal geometry sync', () => {
     expect(terminal._core._renderService._renderer.value.handleResize).toHaveBeenCalledWith(117, 40)
     expect(terminal.resize).not.toHaveBeenCalled()
     expect(terminal.refresh).toHaveBeenCalledWith(0, 39)
-  })
-
-  it('does not locally reconcile DOM text overhang while PTY resize is suppressed', () => {
-    const terminal = createTerminalMock()
-
-    const scheduler = createTerminalDomTextOverhangGeometryCommitScheduler({
-      terminalRef: { current: terminal as never },
-      fitAddonRef: {
-        current: {
-          proposeDimensions: vi.fn(() => ({ cols: 117, rows: 40 })),
-        } as never,
-      },
-      containerRef: {
-        current: createDomLayoutContainerMock({
-          containerWidth: 865,
-          xtermWidth: 865,
-          screenWidth: 852,
-          rowsScrollWidth: 884,
-          maxRowRight: 892,
-        }) as never,
-      },
-      isPointerResizingRef: { current: false },
-      lastCommittedPtySizeRef: { current: { cols: 117, rows: 40 } },
-      suppressPtyResizeRef: { current: true },
-      sessionId: 'session-dom-overhang-suppressed',
-    })
-
-    scheduler.schedule()
-
-    expect(terminal.resize).not.toHaveBeenCalled()
-    expect(terminal.refresh).not.toHaveBeenCalled()
     expect(ptyResize).not.toHaveBeenCalled()
   })
 })

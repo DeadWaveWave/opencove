@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { SearchAddon } from '@xterm/addon-search'
+import { SearchAddon, type ISearchOptions } from '@xterm/addon-search'
 import type { Terminal } from '@xterm/xterm'
 import { resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
+import {
+  subscribeTerminalAppliedAppearance,
+  type TerminalAppearanceSnapshot,
+} from './terminalAppearance'
+import type { ResolvedUiTheme } from '@shared/contracts/dto'
 
 export type TerminalFindState = {
   isOpen: boolean
@@ -12,9 +17,8 @@ export type TerminalFindState = {
   useRegex: boolean
 }
 
-function resolveDecorations(terminalThemeMode: TerminalThemeMode) {
-  const resolvedUiTheme = resolveTerminalUiTheme(terminalThemeMode)
-  return resolvedUiTheme === 'light'
+export function resolveTerminalFindDecorations(terminalScheme: ResolvedUiTheme) {
+  return terminalScheme === 'light'
     ? {
         matchBackground: '#d6e8ff',
         matchBorder: '#5e9cff',
@@ -31,6 +35,34 @@ function resolveDecorations(terminalThemeMode: TerminalThemeMode) {
         activeMatchBorder: '#5e9cff',
         activeMatchColorOverviewRuler: '#5e9cff',
       }
+}
+
+export function rebuildTerminalFindDecorations({
+  terminal,
+  addon,
+  term,
+  options,
+}: {
+  terminal: Terminal
+  addon: SearchAddon
+  term: string
+  options: ISearchOptions
+}): boolean {
+  const selection = terminal.getSelectionPosition()
+  const viewportY = terminal.buffer.active.viewportY
+
+  addon.clearDecorations()
+  const matched = addon.findNext(term, { ...options, incremental: true })
+
+  if (selection) {
+    const selectionLength = Math.max(
+      0,
+      (selection.end.y - selection.start.y) * terminal.cols + selection.end.x - selection.start.x,
+    )
+    terminal.select(selection.start.x, selection.start.y, selectionLength)
+  }
+  terminal.scrollToLine(viewportY)
+  return matched
 }
 
 export function useTerminalFind({
@@ -53,6 +85,12 @@ export function useTerminalFind({
   bindSearchAddon: (addon: SearchAddon) => () => void
 } {
   const addonRef = useRef<SearchAddon | null>(null)
+  const appearanceRef = useRef<TerminalAppearanceSnapshot | null>(null)
+  const lastDecorationSnapshotRef = useRef<TerminalAppearanceSnapshot | null>(null)
+  const [appearanceSnapshot, setAppearanceSnapshot] = useState<TerminalAppearanceSnapshot | null>(
+    null,
+  )
+  const [addonRevision, setAddonRevision] = useState(0)
   const [state, setState] = useState<TerminalFindState>({
     isOpen: false,
     query: '',
@@ -63,6 +101,9 @@ export function useTerminalFind({
   })
 
   useEffect(() => {
+    appearanceRef.current = null
+    lastDecorationSnapshotRef.current = null
+    setAppearanceSnapshot(null)
     setState(prev => ({
       isOpen: false,
       query: '',
@@ -72,6 +113,18 @@ export function useTerminalFind({
       useRegex: prev.useRegex,
     }))
   }, [sessionId])
+
+  useEffect(
+    () =>
+      subscribeTerminalAppliedAppearance((terminal, snapshot) => {
+        if (terminalRef.current !== terminal) {
+          return
+        }
+        appearanceRef.current = snapshot
+        setAppearanceSnapshot(snapshot)
+      }),
+    [terminalRef],
+  )
 
   useEffect(() => {
     if (!state.isOpen) {
@@ -94,12 +147,22 @@ export function useTerminalFind({
       return
     }
 
-    const ok = addon.findNext(term, {
+    const decorations = resolveTerminalFindDecorations(
+      appearanceRef.current?.terminalScheme ?? resolveTerminalUiTheme(terminalThemeMode),
+    )
+    const searchOptions: ISearchOptions = {
       incremental: true,
       caseSensitive: state.caseSensitive,
       regex: state.useRegex,
-      decorations: resolveDecorations(terminalThemeMode),
-    })
+      decorations,
+    }
+    const isAppearanceRebuild = appearanceSnapshot !== lastDecorationSnapshotRef.current
+    lastDecorationSnapshotRef.current = appearanceSnapshot
+    const terminal = terminalRef.current
+    const ok =
+      isAppearanceRebuild && terminal
+        ? rebuildTerminalFindDecorations({ terminal, addon, term, options: searchOptions })
+        : addon.findNext(term, searchOptions)
 
     if (!ok) {
       setState(prev => ({
@@ -108,10 +171,20 @@ export function useTerminalFind({
         resultCount: 0,
       }))
     }
-  }, [state.isOpen, state.query, state.caseSensitive, state.useRegex, terminalThemeMode])
+  }, [
+    addonRevision,
+    appearanceSnapshot,
+    state.isOpen,
+    state.query,
+    state.caseSensitive,
+    state.useRegex,
+    terminalRef,
+    terminalThemeMode,
+  ])
 
   const bindSearchAddon = useCallback((addon: SearchAddon) => {
     addonRef.current = addon
+    setAddonRevision(revision => revision + 1)
 
     const resultsDisposable = addon.onDidChangeResults(event => {
       setState(prev =>
@@ -168,7 +241,9 @@ export function useTerminalFind({
     addon.findNext(term, {
       caseSensitive: state.caseSensitive,
       regex: state.useRegex,
-      decorations: resolveDecorations(terminalThemeMode),
+      decorations: resolveTerminalFindDecorations(
+        appearanceRef.current?.terminalScheme ?? resolveTerminalUiTheme(terminalThemeMode),
+      ),
     })
   }, [state.query, state.caseSensitive, state.useRegex, terminalThemeMode])
 
@@ -182,7 +257,9 @@ export function useTerminalFind({
     addon.findPrevious(term, {
       caseSensitive: state.caseSensitive,
       regex: state.useRegex,
-      decorations: resolveDecorations(terminalThemeMode),
+      decorations: resolveTerminalFindDecorations(
+        appearanceRef.current?.terminalScheme ?? resolveTerminalUiTheme(terminalThemeMode),
+      ),
     })
   }, [state.query, state.caseSensitive, state.useRegex, terminalThemeMode])
 

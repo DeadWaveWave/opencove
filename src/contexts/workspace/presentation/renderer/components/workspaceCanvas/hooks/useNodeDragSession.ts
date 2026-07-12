@@ -14,15 +14,20 @@ import {
   setResolvedSpaceFramePreview,
 } from './useApplyNodeChanges.helpers'
 import { projectWorkspaceSpaceDominantLayout } from './useApplyNodeChanges.spaceDominant'
-import { projectWorkspaceNodeDropLayout } from './useSpaceOwnership.projectDropLayout'
+import {
+  projectWorkspaceNodeDropLayout,
+  projectWorkspaceNodeLiveDropLayout,
+  projectWorkspaceNodePrimaryDropLayout,
+} from './useSpaceOwnership.projectDropLayout'
+import { resolveSpaceAtPoint } from './useSpaceOwnership.drop.helpers'
 import {
   buildDraggedNodeKey,
   readDragLayoutTimeMs,
   resolveDragLayoutAnchorPoint,
-  shouldResolveLiveDragLayoutProjection,
+  shouldResolveLiveDragSecondaryProjection,
   type DragLayoutProjectionInput,
   type DragLayoutProjectionResult,
-  type LastLiveDragLayoutProjection,
+  type LastLiveDragSecondaryProjection,
 } from './useNodeDragSession.liveProjection'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
 export type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
@@ -50,7 +55,7 @@ export function useWorkspaceCanvasNodeDragSession({
     nodeId: string
     offset: { x: number; y: number }
   } | null>(null)
-  const nodeSpaceFramePreviewRef = useRef<ReadonlyMap<string, WorkspaceSpaceRect> | null>(null)
+  // Visual-only for ordinary node drops; ownership always recomputes from durable Spaces.
   const [nodeSpaceFramePreview, setNodeSpaceFramePreview] = useState<ReadonlyMap<
     string,
     WorkspaceSpaceRect
@@ -59,61 +64,36 @@ export function useWorkspaceCanvasNodeDragSession({
   const dragBaselineSpaceRectByIdRef = useRef<Map<string, WorkspaceSpaceRect> | null>(null)
   const dragSpaceDominantRef = useRef(false)
   const dragSpaceFramePreviewRef = useRef<ReadonlyMap<string, WorkspaceSpaceRect> | null>(null)
+  const committableSpaceFramePreviewRef = useRef<ReadonlyMap<string, WorkspaceSpaceRect> | null>(
+    null,
+  )
   const pendingReleasePositionByIdRef = useRef<Map<string, { x: number; y: number }> | null>(null)
   const latestDragLayoutProjectionInputRef = useRef<DragLayoutProjectionInput | null>(null)
-  const lastLiveDragLayoutProjectionRef = useRef<LastLiveDragLayoutProjection | null>(null)
-  const liveDragLayoutFrameRef = useRef<number | null>(null)
+  const lastLiveDragSecondaryProjectionRef = useRef<LastLiveDragSecondaryProjection | null>(null)
 
   const setNodeSpaceFramePreviewState = useCallback(
-    (updater: React.SetStateAction<ReadonlyMap<string, WorkspaceSpaceRect> | null>) => {
-      setNodeSpaceFramePreview(current => {
-        const next =
-          typeof updater === 'function'
-            ? (
-                updater as (
-                  current: ReadonlyMap<string, WorkspaceSpaceRect> | null,
-                ) => ReadonlyMap<string, WorkspaceSpaceRect> | null
-              )(current)
-            : updater
-
-        nodeSpaceFramePreviewRef.current = next
-        return next
-      })
-    },
+    (next: React.SetStateAction<ReadonlyMap<string, WorkspaceSpaceRect> | null>) =>
+      setNodeSpaceFramePreview(next),
     [],
   )
 
   const resetLiveDragLayoutProjection = useCallback(() => {
     latestDragLayoutProjectionInputRef.current = null
-    lastLiveDragLayoutProjectionRef.current = null
-    if (liveDragLayoutFrameRef.current !== null) {
-      window.cancelAnimationFrame?.(liveDragLayoutFrameRef.current)
-      liveDragLayoutFrameRef.current = null
-    }
-  }, [])
-
-  const markLiveDragLayoutProjectionFrame = useCallback(() => {
-    if (
-      liveDragLayoutFrameRef.current !== null ||
-      typeof window.requestAnimationFrame !== 'function'
-    ) {
-      return
-    }
-
-    liveDragLayoutFrameRef.current = window.requestAnimationFrame(() => {
-      liveDragLayoutFrameRef.current = null
-    })
+    lastLiveDragSecondaryProjectionRef.current = null
   }, [])
 
   const resolveDragLayoutProjection = useCallback(
-    ({
-      currentNodes,
-      draggedNodeIds,
-      desiredDraggedPositionById,
-      dropFlowPoint,
-      anchorNodeId,
-      anchorIsSelected,
-    }: DragLayoutProjectionInput): DragLayoutProjectionResult => {
+    (
+      {
+        currentNodes,
+        draggedNodeIds,
+        desiredDraggedPositionById,
+        dropFlowPoint,
+        anchorNodeId,
+        anchorIsSelected,
+      }: DragLayoutProjectionInput,
+      strategy: 'primary' | 'live' | 'final',
+    ): DragLayoutProjectionResult => {
       const baselinePositionById = dragBaselinePositionByIdRef.current
       const baselineSpaceRectById = dragBaselineSpaceRectByIdRef.current
       const resolvedAnchorNodeId = anchorNodeId ?? draggedNodeIds[0] ?? null
@@ -153,6 +133,7 @@ export function useWorkspaceCanvasNodeDragSession({
         })
 
         dragSpaceFramePreviewRef.current = projected.nextSpaceFramePreview
+        committableSpaceFramePreviewRef.current = projected.nextSpaceFramePreview
         setResolvedSpaceFramePreview(setNodeSpaceFramePreviewState, projected.nextSpaceFramePreview)
         pendingReleasePositionByIdRef.current = null
 
@@ -168,13 +149,22 @@ export function useWorkspaceCanvasNodeDragSession({
         }
       }
 
+      // Ordinary node previews are visual-only and can never be committed as a
+      // Space-dominant frame, even if selection changes during the drag.
+      committableSpaceFramePreviewRef.current = null
       const baselineNodes = buildDragBaselineNodes({
         nodes: currentNodes,
         baselinePositionById,
         shiftNodeIds: null,
       })
 
-      const projected = projectWorkspaceNodeDropLayout({
+      const projectDropLayout =
+        strategy === 'primary'
+          ? projectWorkspaceNodePrimaryDropLayout
+          : strategy === 'live'
+            ? projectWorkspaceNodeLiveDropLayout
+            : projectWorkspaceNodeDropLayout
+      const projected = projectDropLayout({
         nodes: baselineNodes,
         spaces: spacesRef.current,
         draggedNodeIds,
@@ -206,16 +196,22 @@ export function useWorkspaceCanvasNodeDragSession({
         }
       }
 
-      const nextSpaceFramePreview = hasChanged
-        ? new Map(
-            projected.nextSpaces
-              .filter(space => Boolean(space.rect))
-              .map(space => [space.id, space.rect!] as const),
-          )
-        : null
+      const nextSpaceFramePreview =
+        strategy === 'primary'
+          ? dragSpaceFramePreviewRef.current
+          : hasChanged
+            ? new Map(
+                projected.nextSpaces
+                  .filter(space => Boolean(space.rect))
+                  .map(space => [space.id, space.rect!] as const),
+              )
+            : null
 
-      dragSpaceFramePreviewRef.current = nextSpaceFramePreview
-      setResolvedSpaceFramePreview(setNodeSpaceFramePreviewState, nextSpaceFramePreview)
+      if (strategy !== 'primary') {
+        dragSpaceFramePreviewRef.current = nextSpaceFramePreview
+        committableSpaceFramePreviewRef.current = null
+        setResolvedSpaceFramePreview(setNodeSpaceFramePreviewState, nextSpaceFramePreview)
+      }
 
       return {
         nextNodes,
@@ -233,6 +229,7 @@ export function useWorkspaceCanvasNodeDragSession({
 
   const clearNodeDragProjection = useCallback(() => {
     dragSpaceFramePreviewRef.current = null
+    committableSpaceFramePreviewRef.current = null
     pendingReleasePositionByIdRef.current = null
     resetLiveDragLayoutProjection()
     setResolvedSnapGuides(setSnapGuides, null)
@@ -252,6 +249,7 @@ export function useWorkspaceCanvasNodeDragSession({
       const selectedSpaceIdsAtStart = dragSelectedSpaceIdsRef.current ?? selectedSpaceIdsRef.current
       dragSpaceDominantRef.current = selectedSpaceIdsAtStart.length > 0
       dragSpaceFramePreviewRef.current = null
+      committableSpaceFramePreviewRef.current = null
       pendingReleasePositionByIdRef.current = null
       resetLiveDragLayoutProjection()
     },
@@ -344,43 +342,55 @@ export function useWorkspaceCanvasNodeDragSession({
         desiredDraggedPositionById: nextDraggedPositionById,
       })
       const nowMs = readDragLayoutTimeMs()
-      const shouldResolveProjection = shouldResolveLiveDragLayoutProjection({
-        lastProjection: lastLiveDragLayoutProjectionRef.current,
+      const draggedNodeIdSet = new Set(draggedNodeIds)
+      const desiredDraggedNodes = currentNodes.flatMap(node => {
+        if (!draggedNodeIdSet.has(node.id)) {
+          return []
+        }
+
+        const desiredPosition = nextDraggedPositionById.get(node.id)
+        return desiredPosition ? [{ ...node, position: desiredPosition }] : []
+      })
+      const desiredDraggedRect = unionWorkspaceNodeRects(desiredDraggedNodes)
+      const targetPoint =
+        draggedNodeIds.length === 1 &&
+        dropFlowPoint &&
+        Number.isFinite(dropFlowPoint.x) &&
+        Number.isFinite(dropFlowPoint.y)
+          ? dropFlowPoint
+          : desiredDraggedRect
+            ? {
+                x: desiredDraggedRect.x + desiredDraggedRect.width * 0.5,
+                y: desiredDraggedRect.y + desiredDraggedRect.height * 0.5,
+              }
+            : null
+      const targetSpaceId = targetPoint
+        ? (resolveSpaceAtPoint(spacesRef.current, targetPoint)?.id ?? null)
+        : null
+      const shouldResolveSecondary = shouldResolveLiveDragSecondaryProjection({
+        lastProjection: lastLiveDragSecondaryProjectionRef.current,
         draggedNodeKey,
         anchorPoint,
         nowMs,
+        targetSpaceId,
       })
 
-      if (!shouldResolveProjection) {
-        return {
-          nextNodes: currentNodes,
-          nextDraggedNodePositionById: new Map(
-            draggedNodeIds.flatMap(nodeId => {
-              const next = nextDraggedPositionById.get(nodeId)
-              return next ? ([[nodeId, next]] as const) : []
-            }),
-          ),
-          nextSpaceFramePreview: dragSpaceFramePreviewRef.current,
+      if (shouldResolveSecondary) {
+        lastLiveDragSecondaryProjectionRef.current = {
+          anchorPoint: anchorPoint ? { ...anchorPoint } : null,
+          draggedNodeKey,
+          projectedAtMs: nowMs,
+          targetSpaceId,
         }
       }
 
-      const projected = resolveDragLayoutProjection(projectionInput)
-      lastLiveDragLayoutProjectionRef.current = {
-        anchorPoint: anchorPoint ? { ...anchorPoint } : null,
-        draggedNodeKey,
-        projectedAtMs: nowMs,
-      }
-      markLiveDragLayoutProjectionFrame()
-
-      return projected
+      // Never skip primary: deferred peer layout must not expose raw edge-crossing positions.
+      return resolveDragLayoutProjection(
+        projectionInput,
+        shouldResolveSecondary ? 'live' : 'primary',
+      )
     },
-    [
-      magneticSnappingEnabledRef,
-      markLiveDragLayoutProjectionFrame,
-      resolveDragLayoutProjection,
-      setSnapGuides,
-      spacesRef,
-    ],
+    [magneticSnappingEnabledRef, resolveDragLayoutProjection, setSnapGuides, spacesRef],
   )
 
   const applyPendingReleaseProjection = useCallback(
@@ -412,19 +422,22 @@ export function useWorkspaceCanvasNodeDragSession({
         desiredDraggedPositionById.set(nodeId, { x: position.x, y: position.y })
       }
 
-      const finalProjection = resolveDragLayoutProjection({
-        ...latestInput,
-        currentNodes: releaseNodes,
-        desiredDraggedPositionById,
-      })
+      const finalProjection = resolveDragLayoutProjection(
+        {
+          ...latestInput,
+          currentNodes: releaseNodes,
+          desiredDraggedPositionById,
+        },
+        'final',
+      )
       return finalProjection.nextNodes
     },
     [resolveDragLayoutProjection],
   )
 
   const endNodeDragSession = useCallback(() => {
-    if (dragSpaceDominantRef.current && dragSpaceFramePreviewRef.current) {
-      const rectOverrideById = dragSpaceFramePreviewRef.current
+    if (dragSpaceDominantRef.current && committableSpaceFramePreviewRef.current) {
+      const rectOverrideById = committableSpaceFramePreviewRef.current
       const previousSpaces = spacesRef.current
       let hasSpaceChange = false
       const nextSpaces = previousSpaces.map(space => {
@@ -465,7 +478,6 @@ export function useWorkspaceCanvasNodeDragSession({
   return {
     nodeDragPointerAnchorRef,
     nodeSpaceFramePreview,
-    nodeSpaceFramePreviewRef,
     dragBaselinePositionByIdRef,
     dragBaselineSpaceRectByIdRef,
     beginNodeDragSession,

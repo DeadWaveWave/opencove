@@ -145,6 +145,14 @@ ELECTRON_RUN_AS_NODE=1 OPENCOVE_REPRO_PROVIDER=opencode OPENCOVE_REPRO_ITERATION
 
 用 Electron 作为 Node runner 可以避免本机 Node ABI 与 Electron 原生依赖（例如 `better-sqlite3`）不一致导致的假失败。
 
+Terminal recovery 的真实 SQLite/Worker contracts 已收口为跨平台脚本：
+
+```bash
+pnpm test:terminal-recovery:native
+```
+
+默认 Node Vitest 会跳过这组 Electron-native tests；不要把 skip 当成验证通过，提交/CI 仍需运行上面的专用门禁。
+
 ## Playwright 交互排查重点
 
 ### 1) 复杂拖拽优先使用真实鼠标事件

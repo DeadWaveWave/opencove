@@ -1,16 +1,7 @@
 import { useEffect, useMemo, useState, type RefObject } from 'react'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { isWorkspacePageId, type SettingsPageId } from './SettingsPanel.shared'
-
-type StaticSettingsPageId = Exclude<SettingsPageId, `workspace:${string}`>
-
-const SETTINGS_PAGE_SCROLL_TARGET: Partial<Record<StaticSettingsPageId, string>> = {
-  endpoints: 'settings-section-endpoints',
-  diagnostics: 'settings-section-diagnostics',
-  'quick-menu': 'settings-section-quick-commands',
-  shortcuts: 'settings-section-shortcuts',
-  'task-configuration': 'settings-section-task-configuration',
-}
+import { resolveSettingsPage } from './settingsPanel/settingsPageRegistry'
 
 export function useSettingsPanelPageState(options: {
   openPageId?: SettingsPageId | null
@@ -19,11 +10,13 @@ export function useSettingsPanelPageState(options: {
   onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
 }): {
   activePageId: SettingsPageId
+  canonicalPageId: SettingsPageId
   setActivePageId: (pageId: SettingsPageId) => void
   activeWorkspace: WorkspaceState | null
 } {
   const { openPageId, workspaces, contentRef, onFocusNodeTargetZoomPreviewChange } = options
   const [activePageId, setActivePageId] = useState<SettingsPageId>(() => openPageId ?? 'general')
+  const resolvedPage = useMemo(() => resolveSettingsPage(activePageId), [activePageId])
 
   const activeWorkspace = useMemo(() => {
     if (!isWorkspacePageId(activePageId)) {
@@ -55,9 +48,7 @@ export function useSettingsPanelPageState(options: {
 
     contentRef.current.scrollTop = 0
 
-    const targetId = isWorkspacePageId(activePageId)
-      ? undefined
-      : SETTINGS_PAGE_SCROLL_TARGET[activePageId]
+    const targetId = resolvedPage.scrollTargetId
     if (!targetId) {
       return
     }
@@ -65,16 +56,17 @@ export function useSettingsPanelPageState(options: {
     window.requestAnimationFrame(() => {
       document.getElementById(targetId)?.scrollIntoView({ block: 'start' })
     })
-  }, [activePageId, contentRef])
+  }, [activePageId, contentRef, resolvedPage.scrollTargetId])
 
   useEffect(() => {
-    if (activePageId !== 'canvas' && activePageId !== 'canvas-windows') {
+    if (resolvedPage.canonicalPageId !== 'canvas-windows') {
       onFocusNodeTargetZoomPreviewChange(false)
     }
-  }, [activePageId, onFocusNodeTargetZoomPreviewChange])
+  }, [onFocusNodeTargetZoomPreviewChange, resolvedPage.canonicalPageId])
 
   return {
     activePageId,
+    canonicalPageId: resolvedPage.canonicalPageId,
     setActivePageId: nextPageId => setActivePageId(nextPageId),
     activeWorkspace,
   }

@@ -101,8 +101,16 @@
   flex: 0 0 auto;
   width: max(0px, calc(var(--workspace-space-item-surface-width) - 72px));
   margin-left: 32px;
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent 100%);
-  mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    var(--cove-mask-opaque) calc(100% - 14px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    var(--cove-mask-opaque) calc(100% - 14px),
+    transparent 100%
+  );
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;

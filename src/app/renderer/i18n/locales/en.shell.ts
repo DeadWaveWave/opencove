@@ -3,6 +3,8 @@ export const enShell = {
     rename: 'Rename',
     save: 'Save',
     cancel: 'Cancel',
+    pinSpace: 'Pin space',
+    unpinSpace: 'Unpin space',
     projectIcon: 'Project icon',
     defaultProjectIcon: 'Default folder',
     icons: {

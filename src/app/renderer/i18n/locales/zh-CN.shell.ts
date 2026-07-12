@@ -3,6 +3,8 @@ export const zhCNShell = {
     rename: '重命名',
     save: '保存',
     cancel: '取消',
+    pinSpace: '置顶空间',
+    unpinSpace: '取消置顶',
     projectIcon: '项目图标',
     defaultProjectIcon: '默认文件夹',
     icons: {

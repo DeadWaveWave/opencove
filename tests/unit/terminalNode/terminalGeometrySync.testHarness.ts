@@ -161,6 +161,26 @@ export const ptyResize = vi.fn()
 
 export function installTerminalGeometrySyncTestWindow(): void {
   ptyResize.mockReset()
+  ptyResize.mockImplementation(
+    async (payload: {
+      sessionId: string
+      cols: number
+      rows: number
+      operationId: string
+      baseGeometryRevision?: number | null
+    }) => ({
+      sessionId: payload.sessionId,
+      operationId: payload.operationId,
+      status: 'accepted',
+      changed: true,
+      geometry: {
+        cols: payload.cols,
+        rows: payload.rows,
+        revision: (payload.baseGeometryRevision ?? 0) + 1,
+      },
+      authority: { role: 'controller', epoch: 1 },
+    }),
+  )
   vi.stubGlobal('window', {
     requestAnimationFrame: (callback: FrameRequestCallback) => {
       callback(0)

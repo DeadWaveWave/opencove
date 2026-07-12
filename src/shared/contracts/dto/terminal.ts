@@ -64,11 +64,45 @@ export interface TerminalPtyGeometry {
   revision?: number | null
 }
 
+export interface TerminalCanonicalPtyGeometry {
+  cols: number
+  rows: number
+  revision: number | null
+}
+
+export type TerminalPtyRole = 'viewer' | 'controller'
+
+export interface TerminalGeometryAuthority {
+  role: TerminalPtyRole
+  epoch: number
+}
+
+export type TerminalGeometryCommitStatus =
+  | 'accepted'
+  | 'rejected_not_controller'
+  | 'rejected_stale_authority'
+  | 'superseded'
+  | 'session_not_found'
+  | 'runtime_failed'
+
+export interface TerminalGeometryCommitResult {
+  sessionId: string
+  operationId: string
+  status: TerminalGeometryCommitStatus
+  changed: boolean
+  geometry: TerminalCanonicalPtyGeometry | null
+  authority: TerminalGeometryAuthority | null
+}
+
 export interface ResizeTerminalInput {
   sessionId: string
   cols: number
   rows: number
   reason: TerminalGeometryCommitReason
+  operationId?: string
+  baseGeometryRevision?: number | null
+  authorityEpoch?: number | null
+  /** @deprecated Compatibility only. Use operationId + baseGeometryRevision. */
   revision?: number | null
 }
 

@@ -24,6 +24,7 @@ import { createWorkerTopologyStore } from './topology/topologyStore'
 import { registerControlSurfaceHandlers } from './registerControlSurfaceHandlers'
 import { createManagedSshEndpointRuntime } from './topology/managedSshEndpointRuntime'
 import { createEndpointHealthService } from './topology/endpointHealthService'
+import { createControlSurfaceTerminalRecoveryRuntime } from './terminalRecovery/controlSurfaceTerminalRecoveryRuntime'
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
 const CONTROL_SURFACE_CONNECTION_VERSION = 1 as const
@@ -119,6 +120,14 @@ export function registerControlSurfaceHttpServer(
     createPersistenceStore: options.createPersistenceStore,
   })
   const getPersistenceStore = persistence.getPersistenceStore
+  const terminalRecovery = createControlSurfaceTerminalRecoveryRuntime({
+    enabled: !options.createPersistenceStore,
+    userDataPath: options.userDataPath,
+    dbPath: options.dbPath,
+    getPersistenceStore,
+    ptyRuntime,
+    ptyStreamService,
+  })
   const syncClients = new Set<ServerResponse>()
   const syncEventBuffer: SyncEventPayload[] = []
   const publishSyncEventToLiveClients = (payload: SyncEventPayload): number =>
@@ -142,6 +151,8 @@ export function registerControlSurfaceHttpServer(
     closeWebsiteNode: options.closeWebsiteNode,
     endpointHealth,
     appVersion,
+    onStatePersisted: terminalRecovery.onStatePersisted,
+    restoreTerminalSession: terminalRecovery.restoreTerminalSession,
   })
   let closed = false
   let disposePromise: Promise<void> | null = null
@@ -449,15 +460,18 @@ export function registerControlSurfaceHttpServer(
         }
         syncClients.clear()
 
+        // Stop new HTTP commands and wait for commands already accepted by the server before the
+        // recovery cutoff. Existing PTY stream clients are frozen first so server.close can drain.
+        ptyStreamService.freezeIngress()
+        await new Promise<void>(resolveClose => server.close(() => resolveClose()))
+
+        await terminalRecovery.drainBeforeShutdown()
+
         try {
           ptyStreamService.dispose()
         } catch {
           // ignore
         }
-
-        await new Promise<void>(resolveClose => {
-          server.close(() => resolveClose())
-        })
 
         try {
           ptyRuntime.dispose()
@@ -470,6 +484,8 @@ export function registerControlSurfaceHttpServer(
         } catch {
           // ignore
         }
+
+        await terminalRecovery.dispose()
 
         try {
           await persistence.dispose()

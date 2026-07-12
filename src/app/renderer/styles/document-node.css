@@ -1,11 +1,11 @@
 .document-node {
-  border-radius: 14px;
+  border-radius: var(--cove-radius-lg);
   border: 1px solid var(--cove-node-border);
   background: var(--cove-node-surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 10px 30px var(--cove-node-shadow-color);
+  box-shadow: var(--cove-node-shadow);
   position: relative;
 }
 
@@ -63,7 +63,7 @@
   border: 1px solid var(--cove-border-subtle);
   background: color-mix(in srgb, var(--cove-field) 82%, transparent);
   color: var(--cove-text);
-  border-radius: 999px;
+  border-radius: var(--cove-radius-xs);
   font-size: calc(11px * var(--cove-ui-font-scale));
   line-height: 1.3;
   padding: 3px 10px;
@@ -114,7 +114,7 @@
 .document-node__action:focus-visible,
 .document-node__close-prompt-action:focus-visible,
 .document-node__state-action:focus-visible {
-  outline: 2px solid rgba(153, 223, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -144,7 +144,7 @@
   border: 1px solid var(--cove-border-subtle);
   background: color-mix(in srgb, var(--cove-field) 88%, transparent);
   color: var(--cove-text);
-  border-radius: 999px;
+  border-radius: var(--cove-radius-xs);
   font-size: calc(11px * var(--cove-ui-font-scale));
   line-height: 1.3;
   padding: 3px 10px;
@@ -334,7 +334,7 @@
   border: 1px solid var(--cove-border-subtle);
   background: color-mix(in srgb, var(--cove-field) 88%, transparent);
   color: var(--cove-text);
-  border-radius: 999px;
+  border-radius: var(--cove-radius-xs);
   font-size: calc(11px * var(--cove-ui-font-scale));
   padding: 4px 10px;
   cursor: pointer;

@@ -26,6 +26,7 @@ import { registerTopologyHandlers } from './handlers/topologyHandlers'
 import { registerAuthHandlers } from './handlers/authHandlers'
 import { registerNodeControlHandlers } from './handlers/nodeControlHandlers'
 import type { EndpointHealthService } from './topology/endpointHealthService'
+import type { NormalizedPersistedAppState } from '../../../platform/persistence/sqlite/normalize'
 
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
@@ -42,6 +43,8 @@ export function registerControlSurfaceHandlers(
     closeWebsiteNode?: (nodeId: string) => Promise<void> | void
     endpointHealth: EndpointHealthService
     appVersion: string | null
+    onStatePersisted?: (state: NormalizedPersistedAppState) => Promise<void>
+    restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
   },
 ): void {
   registerSystemHandlers(controlSurface, { appVersion: deps.appVersion })
@@ -92,6 +95,7 @@ export function registerControlSurfaceHandlers(
     ptyRuntime: deps.ptyRuntime,
     ptyStreamHub: deps.ptyStreamHub,
     topology: deps.topology,
+    restoreTerminalSession: deps.restoreTerminalSession,
   })
   registerSessionStreamingHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
@@ -112,5 +116,7 @@ export function registerControlSurfaceHandlers(
     publishSyncEvent: deps.publishSyncEvent,
     closeWebsiteNode: deps.closeWebsiteNode,
   })
-  registerSyncHandlers(controlSurface, deps.getPersistenceStore)
+  registerSyncHandlers(controlSurface, deps.getPersistenceStore, {
+    onStatePersisted: deps.onStatePersisted,
+  })
 }

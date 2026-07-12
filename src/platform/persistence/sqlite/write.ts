@@ -61,10 +61,10 @@ export function writeNormalizedAppState(
     `
       INSERT INTO workspace_spaces (
         id, workspace_id, name, directory_path, target_mount_id,
-        parent_space_id, boundary_json, sort_order, label_color,
+        parent_space_id, boundary_json, sort_order, pinned, label_color,
         rect_x, rect_y, rect_width, rect_height
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -158,6 +158,7 @@ export function writeNormalizedAppState(
           space.parentSpaceId,
           safeJsonStringify(space.boundary),
           space.sortOrder,
+          space.pinned ? 1 : 0,
           space.labelColor,
           space.rect?.x ?? null,
           space.rect?.y ?? null,
@@ -175,6 +176,12 @@ export function writeNormalizedAppState(
     // the external CLI's own resume semantics instead of OpenCove persistence.
     db.exec(
       "DELETE FROM node_scrollback WHERE node_id NOT IN (SELECT id FROM nodes WHERE kind = 'terminal')",
+    )
+
+    // Recovery records are owned by the terminal Worker pipeline and must follow terminal-node
+    // lifecycle, independently from the renderer-owned workspace snapshot.
+    db.exec(
+      "DELETE FROM terminal_recovery_records WHERE node_id NOT IN (SELECT id FROM nodes WHERE kind = 'terminal')",
     )
 
     // Agent placeholder scrollback is a UI cache only. Clear placeholders for nodes that no longer
@@ -204,13 +211,22 @@ export function writeNormalizedScrollbacks(
   )
 
   const now = new Date().toISOString()
+  const isRecoveryOwned = db.prepare(
+    'SELECT 1 FROM terminal_recovery_records WHERE node_id = ? LIMIT 1',
+  )
 
   const writeTx = db.transaction(() => {
-    db.exec('DELETE FROM node_scrollback;')
+    db.exec(
+      'DELETE FROM node_scrollback WHERE node_id NOT IN (SELECT node_id FROM terminal_recovery_records);',
+    )
 
     for (const workspace of state.workspaces) {
       for (const node of workspace.nodes) {
         if (node.kind !== 'terminal') {
+          continue
+        }
+
+        if (isRecoveryOwned.get(node.id)) {
           continue
         }
 

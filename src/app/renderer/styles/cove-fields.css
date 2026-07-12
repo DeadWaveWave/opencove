@@ -1,17 +1,17 @@
 .cove-field {
   width: 100%;
-  min-height: 38px;
-  border: 1px solid var(--cove-border);
-  background: var(--cove-field);
+  min-height: var(--cove-control-height-lg);
+  border: 1px solid var(--cove-control-border);
+  background: var(--cove-control);
   color: var(--cove-text);
-  border-radius: 10px;
-  padding: 8px 12px;
+  border-radius: var(--cove-radius-sm);
+  padding: 7px 10px;
   font-size: calc(13px * var(--cove-ui-font-scale));
   transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    color 0.18s ease;
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    box-shadow var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard);
   color-scheme: inherit;
 }
 
@@ -21,14 +21,14 @@
 
 .cove-field:hover:enabled,
 .cove-field:hover:not(:disabled) {
-  border-color: var(--cove-border);
+  border-color: var(--cove-control-border-hover);
 }
 
 .cove-field:focus,
 .cove-field:focus-visible {
   outline: none;
   border-color: var(--cove-accent);
-  box-shadow: 0 0 0 1px var(--cove-accent);
+  box-shadow: var(--cove-focus-shadow);
 }
 
 .cove-field:disabled {
@@ -37,8 +37,8 @@
 }
 
 .cove-field--compact {
-  min-height: 34px;
-  border-radius: 8px;
+  min-height: var(--cove-control-height-md);
+  border-radius: var(--cove-radius-xs);
   padding: 6px 8px;
   font-size: calc(12px * var(--cove-ui-font-scale));
 }
@@ -58,8 +58,8 @@
 }
 
 .cove-select--compact .cove-select__trigger {
-  min-height: 34px;
-  border-radius: 8px;
+  min-height: var(--cove-control-height-md);
+  border-radius: var(--cove-radius-xs);
   padding: 6px 8px;
   font-size: calc(12px * var(--cove-ui-font-scale));
 }
@@ -86,9 +86,9 @@
   align-items: center;
   min-height: 18px;
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--cove-radius-round);
   border: 1px solid var(--cove-border-subtle);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--cove-control);
   color: var(--cove-text-muted);
   font-size: calc(10px * var(--cove-ui-font-scale));
   line-height: 1.2;
@@ -99,7 +99,7 @@
 .cove-select__chevron {
   flex: 0 0 auto;
   color: var(--cove-text-faint);
-  transition: transform 0.16s ease;
+  transition: transform var(--cove-motion-normal) var(--cove-ease-standard);
 }
 
 .cove-select__chevron--open {
@@ -108,21 +108,25 @@
 
 .cove-select__menu {
   position: fixed;
-  z-index: 140;
+  z-index: var(--cove-z-popover);
   overflow-y: auto;
   border: 1px solid var(--cove-border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--cove-surface-strong) 88%, transparent);
-  backdrop-filter: blur(18px) saturate(130%);
-  box-shadow: 0 22px 48px var(--cove-shadow-color-elevated);
+  border-radius: var(--cove-radius-lg);
+  background: var(--cove-popover);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--cove-shadow-lg);
   padding: 6px;
+}
+
+.cove-select__menu--within-dialog {
+  z-index: var(--cove-z-dialog-popover);
 }
 
 .cove-select__option {
   width: 100%;
   min-height: 36px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--cove-radius-sm);
   background: transparent;
   color: var(--cove-text);
   padding: 8px 10px;
@@ -150,7 +154,7 @@
 
 .cove-select__option--selected {
   color: var(--cove-text);
-  background: color-mix(in srgb, var(--cove-accent) 16%, transparent);
+  background: var(--cove-control-selected);
 }
 
 .cove-select__option:disabled {
@@ -159,6 +163,6 @@
 }
 
 .cove-select__option:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--cove-accent) 80%, white);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: -1px;
 }

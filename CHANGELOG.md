@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Spaces: add sidebar pinning for root Spaces, pinned-first ordering, matching top-rail pills with shared context menus, and click-through gaps between pills. (#306)
 - UI: add browser-style Project/Space/Agent vertical sidebar grouping with pinned rail mode, hover auto-reveal, colored Space branches, and Agent status rings. (#291)
 - Workspace canvas: add an Arrange option to keep current window sizes while tidying Spaces or canvas selections. (#275)
 - Release: add Linux Debian (`.deb`) packages to release artifacts. (#272)
@@ -56,6 +57,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 💅 Changed
 - UI: replace Project and Space modal dialogs with compact context-anchored popovers, use the selected folder name for local Projects, keep nested selectors interactive, and show Space-local progress during Worktree operations. (#307)
+- UI: refine the console and Control Center with compact proportions, accessible primitives, calibrated theme/toggle styling, and deterministic nested-overlay behavior. (#298)
+- UI: refine standby banner notification chrome with an accent hairline, standby pulse, and monospace branch/PR chips. (#297)
 - Task: simplify the node header into a Note-style actions menu, shorten the run button label, and compact agent session rows to icon, state, and time. (#294)
 - Settings: reorganize the panel into user-oriented groups for display/fonts, canvas/windows, AI assistants, tasks/shortcuts, worker connections, integrations, and advanced tools while preserving search and legacy section routing. (#266)
 - Worker: Desktop now versions local-worker reuse and repairs legacy connection files before reconnecting, preventing installed upgrades from reusing stale runtimes and bypassing persistence repair. (#264)
@@ -91,6 +94,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Worktrees: prevent background Git status polling from acquiring index locks or leaving stale locks when commands time out. (#305)
+- Worktree create: keep branch dropdowns above the Space worktree dialog so branches remain visible and selectable. (#304)
+- Sidebar: keep the collapsed hover-reveal open while Project, Space, or Agent context menus are active, so menu interactions do not leave the sidebar collapsed underneath them. (#303)
+- Terminal: preserve local and remote output and interactivity across restarts, keep sizing stable during resize and continuous TUI redraws, and reliably resync UI and OpenCode themes after remount. (#301)
+- Workspace canvas: keep window dragging stable at Space edges and preview crowded Space expansion before release without committing transient geometry. (#300)
 - Sidebar: stabilize Project, Space, and Agent drag sorting with scoped collision detection, consistent drag overlays, and measured upward-drag motion coverage. (#295)
 - Sidebar: use a continuous shared-list animation for expanded/collapsed mode switches, keep the Space disclosure as one moving button, hide rail text cleanly, preserve list scroll position, add overflow edge fades, and keep label color context menus open for consecutive changes. (#292)
 - Space Explorer: make image quick previews match the opened image node size and keep preview headers from covering image content. (#287)

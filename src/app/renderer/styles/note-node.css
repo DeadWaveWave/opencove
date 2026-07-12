@@ -1,11 +1,11 @@
 .note-node {
-  border-radius: 14px;
+  border-radius: var(--cove-radius-lg);
   border: 1px solid var(--cove-node-border);
   background: var(--cove-node-surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 10px 30px var(--cove-node-shadow-color);
+  box-shadow: var(--cove-node-shadow);
   position: relative;
 }
 
@@ -94,7 +94,7 @@
 }
 
 .note-node__action:focus-visible {
-  outline: 2px solid rgba(153, 223, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 
@@ -103,7 +103,7 @@
 }
 
 .note-node__close:focus-visible {
-  outline: 2px solid rgba(153, 223, 255, 0.85);
+  outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }
 

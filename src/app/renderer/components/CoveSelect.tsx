@@ -5,6 +5,8 @@ import {
   TRANSIENT_LAYER_OWNER_ATTRIBUTE,
   useTransientLayerOwner,
 } from './TransientLayerOwnerContext'
+import { DismissableLayer } from './ui/DismissableLayer'
+import { useIsWithinDialog } from './ui/Dialog'
 
 export interface CoveSelectOption {
   value: string
@@ -28,6 +30,7 @@ export function CoveSelect({
   className,
   triggerClassName,
   menuClassName,
+  menuLayer = 'auto',
   size = 'default',
   testId,
   triggerTestId,
@@ -43,6 +46,7 @@ export function CoveSelect({
   className?: string
   triggerClassName?: string
   menuClassName?: string
+  menuLayer?: 'auto' | 'popover' | 'dialog-popover'
   size?: 'default' | 'compact'
   testId?: string
   triggerTestId?: string
@@ -53,6 +57,9 @@ export function CoveSelect({
 }): React.JSX.Element {
   const listboxId = useId()
   const transientLayerOwner = useTransientLayerOwner()
+  const isWithinDialog = useIsWithinDialog()
+  const usesDialogPopoverLayer =
+    menuLayer === 'dialog-popover' || (menuLayer === 'auto' && isWithinDialog)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -147,29 +154,14 @@ export function CoveSelect({
 
     updateMenuPosition()
 
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) {
-        return
-      }
-
-      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) {
-        return
-      }
-
-      closeMenu()
-    }
-
     const handleWindowChange = () => {
       updateMenuPosition()
     }
 
-    document.addEventListener('pointerdown', handlePointerDown, true)
     window.addEventListener('resize', handleWindowChange)
     window.addEventListener('scroll', handleWindowChange, true)
 
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown, true)
       window.removeEventListener('resize', handleWindowChange)
       window.removeEventListener('scroll', handleWindowChange, true)
     }
@@ -342,15 +334,22 @@ export function CoveSelect({
 
       {isOpen && menuPosition
         ? createPortal(
-            <div
+            <DismissableLayer
               id={listboxId}
               ref={menuRef}
-              className={`cove-select__menu${menuClassName ? ` ${menuClassName}` : ''}`}
+              className={`cove-select__menu${usesDialogPopoverLayer ? ' cove-select__menu--within-dialog' : ''}${menuClassName ? ` ${menuClassName}` : ''}`}
               data-testid={menuTestId ?? (testId ? `${testId}-menu` : undefined)}
               {...(transientLayerOwner
                 ? { [TRANSIENT_LAYER_OWNER_ATTRIBUTE]: transientLayerOwner }
                 : {})}
               role="listbox"
+              branchRefs={[rootRef]}
+              onDismiss={reason => {
+                closeMenu()
+                if (reason === 'escape') {
+                  triggerRef.current?.focus()
+                }
+              }}
               style={{
                 top: menuPosition.top,
                 left: menuPosition.left,
@@ -392,7 +391,7 @@ export function CoveSelect({
                   </button>
                 )
               })}
-            </div>,
+            </DismissableLayer>,
             document.body,
           )
         : null}

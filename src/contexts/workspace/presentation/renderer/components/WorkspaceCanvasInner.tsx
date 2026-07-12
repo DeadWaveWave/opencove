@@ -17,6 +17,7 @@ export function WorkspaceCanvasInner({
   activeSpaceId,
   onSpacesChange,
   onActiveSpaceChange,
+  onOpenSpaceContextMenu,
   shortcutsEnabled = true,
   onAppendSpaceArchiveRecord,
   viewport,
@@ -135,7 +136,6 @@ export function WorkspaceCanvasInner({
     onShowMessage,
     hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
     nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
-    nodeSpaceFramePreviewRef: nodeDragSession.nodeSpaceFramePreviewRef,
   })
   const agentSupport = workspaceCanvasHooks.useWorkspaceCanvasAgentSupport({
     nodesRef: nodeStore.nodesRef,
@@ -433,6 +433,7 @@ export function WorkspaceCanvasInner({
       spaces={spaces}
       activateSpace={spacesApi.activateSpace}
       activateAllSpaces={spacesApi.activateAllSpaces}
+      onOpenSpaceContextMenu={onOpenSpaceContextMenu}
       contextMenu={canvasState.contextMenu}
       magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
       onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}

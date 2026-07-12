@@ -11,7 +11,7 @@ import type { createTerminalHydrationRouter } from './hydrationRouter'
 import type { RuntimeTerminalInputBridge } from './createRuntimeTerminalInputBridge'
 import type { createRestoredAgentVisibilityGate } from './restoredAgentVisibilityGate'
 import type { registerTerminalDiagnostics } from './registerDiagnostics'
-import type { createOptionalOpenCodeThemeBridge } from './useTerminalRuntimeSession.support'
+import type { createOptionalOpenCodeThemeBridge } from './openCodeThemeBridgeFactory'
 import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
 import { markTerminalGeometryAccepted } from './terminalGeometryCoordinator'
 

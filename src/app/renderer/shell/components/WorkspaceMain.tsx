@@ -7,7 +7,7 @@ import type {
   WorkspaceState,
   WorkspaceViewport,
 } from '@contexts/workspace/presentation/renderer/types'
-import type { FocusRequest } from '../types'
+import type { FocusRequest, ProjectContextMenuState } from '../types'
 import { WorkspaceEmptyState } from './WorkspaceEmptyState'
 
 function WorkspaceMainComponent({
@@ -25,6 +25,7 @@ function WorkspaceMainComponent({
   onMinimapVisibilityChange,
   onSpacesChange,
   onActiveSpaceChange,
+  onOpenProjectContextMenu,
 }: {
   activeWorkspace: WorkspaceState | null
   agentSettings: AgentSettings
@@ -40,6 +41,7 @@ function WorkspaceMainComponent({
   onMinimapVisibilityChange: (isVisible: boolean) => void
   onSpacesChange: (spaces: WorkspaceState['spaces']) => void
   onActiveSpaceChange: (spaceId: string | null) => void
+  onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
 }): React.JSX.Element {
   if (!activeWorkspace) {
     return (
@@ -75,6 +77,18 @@ function WorkspaceMainComponent({
         activeSpaceId={activeWorkspace.activeSpaceId}
         onSpacesChange={onSpacesChange}
         onActiveSpaceChange={onActiveSpaceChange}
+        onOpenSpaceContextMenu={(spaceId, anchor) => {
+          onOpenProjectContextMenu({
+            workspaceId: activeWorkspace.id,
+            x: anchor.x,
+            y: anchor.y,
+            target: {
+              kind: 'space',
+              workspaceId: activeWorkspace.id,
+              spaceId,
+            },
+          })
+        }}
         shortcutsEnabled={shortcutsEnabled}
         agentSettings={agentSettings}
         isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}

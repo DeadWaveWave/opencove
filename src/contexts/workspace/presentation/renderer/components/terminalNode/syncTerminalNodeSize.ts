@@ -3,198 +3,18 @@ import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
 import type { TerminalGeometryCommitReason } from '@shared/contracts/dto'
 import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio'
-import { readTerminalRenderDimensionsSafely } from './renderServiceSafety'
-import { resolveDomRendererSafeMeasuredSize } from './terminalGeometryDomSafety'
 import { logTerminalGeometryDiagnostics } from './terminalGeometryDiagnostics'
-import { fitTerminalNodeToMeasuredSize } from './terminalGeometryFit'
-import { canRefreshTerminalLayout, refreshTerminalNodeSize } from './terminalGeometryLayout'
-import type {
-  FitTerminalNodeOptions,
-  InitialTerminalNodeGeometryCommitResult,
-  PtySize,
-} from './terminalGeometryTypes'
+import { refreshTerminalNodeSize } from './terminalGeometryLayout'
+import type { InitialTerminalNodeGeometryCommitResult, PtySize } from './terminalGeometryTypes'
+import { recordTerminalGeometryCommitResult } from './terminalGeometryCoordinator'
+import { requestTerminalGeometryCommitAck } from './terminalGeometryCommitAck'
+import { resolveStableMeasuredTerminalNodeGeometry } from './terminalGeometryStableMeasurement'
 
-export { createTerminalDomTextOverhangGeometryCommitScheduler } from './terminalDomTextOverhangScheduler'
 export { fitTerminalNodeToMeasuredSize } from './terminalGeometryFit'
 export { refreshTerminalNodeSize } from './terminalGeometryLayout'
 export type { InitialTerminalNodeGeometryCommitResult } from './terminalGeometryTypes'
 
-type StableMeasuredGeometrySample = PtySize & {
-  containerWidth: number
-  containerHeight: number
-  renderCellWidth: number | null
-  renderCellHeight: number | null
-  renderCanvasWidth: number | null
-  renderCanvasHeight: number | null
-}
-
-const STABLE_MEASURED_GEOMETRY_MIN_SAMPLES = 4
-const STABLE_MEASURED_GEOMETRY_MAX_ATTEMPTS = 8
-
-function normalizeGeometryRevision(value: number | null | undefined): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return null
-  }
-
-  return Math.floor(value)
-}
-
-function createResizePayload({
-  sessionId,
-  cols,
-  rows,
-  reason,
-  geometryRevision,
-}: {
-  sessionId: string
-  cols: number
-  rows: number
-  reason: TerminalGeometryCommitReason
-  geometryRevision?: number | null
-}) {
-  const revision = normalizeGeometryRevision(geometryRevision)
-  return {
-    sessionId,
-    cols,
-    rows,
-    reason,
-    ...(revision !== null ? { revision } : {}),
-  }
-}
-
-function waitForAnimationFrame(): Promise<void> {
-  return new Promise(resolve => {
-    if (typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => {
-        resolve()
-      })
-      return
-    }
-
-    window.setTimeout(resolve, 0)
-  })
-}
-
-function isSameStableMeasuredGeometrySample(
-  previous: StableMeasuredGeometrySample | null,
-  next: StableMeasuredGeometrySample,
-): boolean {
-  return (
-    previous !== null &&
-    previous.cols === next.cols &&
-    previous.rows === next.rows &&
-    previous.containerWidth === next.containerWidth &&
-    previous.containerHeight === next.containerHeight &&
-    previous.renderCellWidth === next.renderCellWidth &&
-    previous.renderCellHeight === next.renderCellHeight &&
-    previous.renderCanvasWidth === next.renderCanvasWidth &&
-    previous.renderCanvasHeight === next.renderCanvasHeight
-  )
-}
-
-function normalizeSampleNumber(value: number | undefined): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return null
-  }
-
-  return Math.round(value * 100) / 100
-}
-
-function createStableMeasuredGeometrySample({
-  terminal,
-  container,
-  measured,
-}: {
-  terminal: Terminal
-  container: HTMLElement
-  measured: PtySize
-}): StableMeasuredGeometrySample {
-  const renderDimensions = readTerminalRenderDimensionsSafely(terminal)
-  return {
-    cols: measured.cols,
-    rows: measured.rows,
-    containerWidth: container.clientWidth,
-    containerHeight: container.clientHeight,
-    renderCellWidth: normalizeSampleNumber(renderDimensions?.css?.cell?.width),
-    renderCellHeight: normalizeSampleNumber(renderDimensions?.css?.cell?.height),
-    renderCanvasWidth: normalizeSampleNumber(renderDimensions?.css?.canvas?.width),
-    renderCanvasHeight: normalizeSampleNumber(renderDimensions?.css?.canvas?.height),
-  }
-}
-
-async function resolveStableMeasuredTerminalNodeGeometry({
-  terminalRef,
-  fitAddonRef,
-  containerRef,
-  isPointerResizingRef,
-}: {
-  terminalRef: MutableRefObject<Terminal | null>
-  fitAddonRef: MutableRefObject<FitAddon | null>
-  containerRef: MutableRefObject<HTMLElement | null>
-  isPointerResizingRef: MutableRefObject<boolean>
-}): Promise<PtySize | null> {
-  const attemptResolve = async (
-    attempt: number,
-    previousSample: StableMeasuredGeometrySample | null,
-    lastResolvedSize: PtySize | null,
-    stableSamples: number,
-  ): Promise<PtySize | null> => {
-    if (attempt >= STABLE_MEASURED_GEOMETRY_MAX_ATTEMPTS) {
-      return lastResolvedSize
-    }
-
-    await waitForAnimationFrame()
-
-    const terminal = terminalRef.current
-    const fitAddon = fitAddonRef.current
-    const container = containerRef.current
-    if (
-      !canRefreshTerminalLayout({ terminal, container, isPointerResizingRef }) ||
-      !terminal ||
-      !fitAddon ||
-      !container
-    ) {
-      return attemptResolve(attempt + 1, previousSample, lastResolvedSize, stableSamples)
-    }
-
-    const proposed = fitAddon.proposeDimensions()
-    if (!proposed) {
-      return attemptResolve(attempt + 1, previousSample, lastResolvedSize, stableSamples)
-    }
-
-    const nextPtySize = resolveDomRendererSafeMeasuredSize({
-      terminal,
-      container,
-      measured: proposed,
-    })
-    applyTerminalNodeGeometryLocally({
-      terminalRef,
-      containerRef,
-      isPointerResizingRef,
-      size: nextPtySize,
-    })
-    const nextSample = createStableMeasuredGeometrySample({
-      terminal,
-      container,
-      measured: nextPtySize,
-    })
-    const nextStableSamples = isSameStableMeasuredGeometrySample(previousSample, nextSample)
-      ? stableSamples + 1
-      : 1
-    const canCommitStableGeometry =
-      nextStableSamples >= 2 && attempt + 1 >= STABLE_MEASURED_GEOMETRY_MIN_SAMPLES
-
-    if (canCommitStableGeometry) {
-      return nextPtySize
-    }
-
-    return attemptResolve(attempt + 1, nextSample, nextPtySize, nextStableSamples)
-  }
-
-  return attemptResolve(0, null, null, 0)
-}
-
-export function commitTerminalNodeGeometry({
+export async function commitTerminalNodeGeometry({
   terminalRef,
   fitAddonRef,
   containerRef,
@@ -203,7 +23,6 @@ export function commitTerminalNodeGeometry({
   sessionId,
   reason,
   geometryRevision,
-  options,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
   fitAddonRef: MutableRefObject<FitAddon | null>
@@ -213,52 +32,17 @@ export function commitTerminalNodeGeometry({
   sessionId: string
   reason: TerminalGeometryCommitReason
   geometryRevision?: number | null
-  options?: FitTerminalNodeOptions
-}): void {
-  const nextPtySize = fitTerminalNodeToMeasuredSize({
+}): Promise<void> {
+  await commitSettledTerminalNodeGeometry({
     terminalRef,
     fitAddonRef,
     containerRef,
     isPointerResizingRef,
     lastCommittedPtySizeRef,
-    options,
-  })
-
-  if (!nextPtySize) {
-    if (options?.logWhenStable !== false) {
-      logTerminalGeometryDiagnostics({
-        event: 'geometry-commit-skipped',
-        terminal: terminalRef.current,
-        fitAddon: fitAddonRef.current,
-        container: containerRef.current,
-        sessionId,
-        reason,
-        lastCommittedPtySize: lastCommittedPtySizeRef.current,
-        skippedReason: 'no-next-size',
-      })
-    }
-    return
-  }
-
-  logTerminalGeometryDiagnostics({
-    event: 'geometry-commit-resize',
-    terminal: terminalRef.current,
-    fitAddon: fitAddonRef.current,
-    container: containerRef.current,
     sessionId,
     reason,
-    lastCommittedPtySize: lastCommittedPtySizeRef.current,
-    nextPtySize,
+    geometryRevision,
   })
-  void window.opencoveApi.pty.resize(
-    createResizePayload({
-      sessionId,
-      cols: nextPtySize.cols,
-      rows: nextPtySize.rows,
-      reason,
-      geometryRevision,
-    }),
-  )
 }
 
 async function commitMeasuredTerminalNodeGeometry({
@@ -319,19 +103,17 @@ async function commitMeasuredTerminalNodeGeometry({
     return null
   }
 
-  applyTerminalNodeGeometryLocally({
-    terminalRef,
-    containerRef,
-    isPointerResizingRef,
-    size: nextPtySize,
-  })
-
-  const revision = normalizeGeometryRevision(geometryRevision)
   const alreadyCommitted =
     lastCommittedPtySizeRef.current?.cols === nextPtySize.cols &&
     lastCommittedPtySizeRef.current.rows === nextPtySize.rows
 
-  if (alreadyCommitted && revision === null) {
+  if (alreadyCommitted) {
+    applyTerminalNodeGeometryLocally({
+      terminalRef,
+      containerRef,
+      isPointerResizingRef,
+      size: nextPtySize,
+    })
     logTerminalGeometryDiagnostics({
       event: unchangedEvent,
       terminal: terminalRef.current,
@@ -345,15 +127,23 @@ async function commitMeasuredTerminalNodeGeometry({
     return { ...nextPtySize, changed: false }
   }
 
-  await window.opencoveApi.pty.resize(
-    createResizePayload({
-      sessionId,
-      cols: nextPtySize.cols,
-      rows: nextPtySize.rows,
-      reason,
-      geometryRevision,
-    }),
-  )
+  const terminal = terminalRef.current
+  const { revision, result } = await requestTerminalGeometryCommitAck({
+    terminal,
+    sessionId,
+    cols: nextPtySize.cols,
+    rows: nextPtySize.rows,
+    reason,
+    geometryRevision,
+  })
+
+  if (
+    terminal &&
+    revision !== null &&
+    !recordTerminalGeometryCommitResult(terminal, revision, result)
+  ) {
+    return null
+  }
 
   if (shouldCommit && !shouldCommit()) {
     logTerminalGeometryDiagnostics({
@@ -370,18 +160,36 @@ async function commitMeasuredTerminalNodeGeometry({
     return null
   }
 
-  lastCommittedPtySizeRef.current = nextPtySize
+  const canonicalGeometry = result.geometry
+  if (!canonicalGeometry) {
+    return null
+  }
+
+  const canonicalPtySize = {
+    cols: canonicalGeometry.cols,
+    rows: canonicalGeometry.rows,
+  }
+  applyTerminalNodeGeometryLocally({
+    terminalRef,
+    containerRef,
+    isPointerResizingRef,
+    size: canonicalPtySize,
+  })
+  lastCommittedPtySizeRef.current = canonicalPtySize
   logTerminalGeometryDiagnostics({
-    event: alreadyCommitted ? unchangedEvent : commitEvent,
+    event: result.status === 'accepted' && result.changed ? commitEvent : unchangedEvent,
     terminal: terminalRef.current,
     fitAddon: fitAddonRef.current,
     container: containerRef.current,
     sessionId,
     reason,
     lastCommittedPtySize: lastCommittedPtySizeRef.current,
-    nextPtySize,
+    nextPtySize: canonicalPtySize,
   })
-  return { ...nextPtySize, changed: !alreadyCommitted }
+  return {
+    ...canonicalPtySize,
+    changed: result.status === 'accepted' && result.changed,
+  }
 }
 
 function applyTerminalNodeGeometryLocally({

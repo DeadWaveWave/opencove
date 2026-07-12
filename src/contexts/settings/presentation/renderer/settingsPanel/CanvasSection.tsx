@@ -11,22 +11,19 @@ import {
   type CanvasWheelBehavior,
   type CanvasWheelZoomModifier,
   type FocusNodeTargetZoom,
-  STANDARD_WINDOW_SIZE_BUCKETS,
-  type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import {
   getCanvasInputModeLabel,
   getCanvasWheelBehaviorLabel,
   getCanvasWheelZoomModifierLabel,
-  getStandardWindowSizeBucketLabel,
 } from '@app/renderer/i18n/labels'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
+import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
   canvasWheelBehavior: CanvasWheelBehavior
   canvasWheelZoomModifier: CanvasWheelZoomModifier
-  standardWindowSizeBucket: StandardWindowSizeBucket
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   focusNodeUseVisibleCanvasCenter: boolean
@@ -35,7 +32,6 @@ export function CanvasSection(props: {
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
   onChangeCanvasWheelBehavior: (behavior: CanvasWheelBehavior) => void
   onChangeCanvasWheelZoomModifier: (modifier: CanvasWheelZoomModifier) => void
-  onChangeStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
   onChangeFocusNodeUseVisibleCanvasCenter: (enabled: boolean) => void
@@ -48,7 +44,6 @@ export function CanvasSection(props: {
     canvasInputMode,
     canvasWheelBehavior,
     canvasWheelZoomModifier,
-    standardWindowSizeBucket,
     focusNodeOnClick,
     focusNodeTargetZoom,
     focusNodeUseVisibleCanvasCenter,
@@ -57,7 +52,6 @@ export function CanvasSection(props: {
     onChangeCanvasInputMode,
     onChangeCanvasWheelBehavior,
     onChangeCanvasWheelZoomModifier,
-    onChangeStandardWindowSizeBucket,
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
     onChangeFocusNodeUseVisibleCanvasCenter,
@@ -91,206 +85,212 @@ export function CanvasSection(props: {
     '--settings-panel-range-neutral-ratio': neutralTargetZoomRatio,
   }
   return (
-    <div className="settings-panel__section" id="settings-section-canvas">
-      <h3 className="settings-panel__section-title">{t('settingsPanel.canvas.title')}</h3>
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.inputModeLabel')}</strong>
-          <span>{t('settingsPanel.canvas.inputModeHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <CoveSelect
-            id="settings-canvas-input-mode"
-            testId="settings-canvas-input-mode"
-            value={canvasInputMode}
-            options={CANVAS_INPUT_MODES.map(mode => ({
-              value: mode,
-              label: getCanvasInputModeLabel(t, mode),
-            }))}
-            onChange={nextValue => onChangeCanvasInputMode(nextValue as CanvasInputMode)}
-          />
-        </div>
-      </div>
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.wheelBehaviorLabel')}</strong>
-          <span>{t('settingsPanel.canvas.wheelBehaviorHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <CoveSelect
-            id="settings-canvas-wheel-behavior"
-            testId="settings-canvas-wheel-behavior"
-            value={canvasWheelBehavior}
-            options={CANVAS_WHEEL_BEHAVIORS.map(behavior => ({
-              value: behavior,
-              label: getCanvasWheelBehaviorLabel(t, behavior),
-            }))}
-            onChange={nextValue => onChangeCanvasWheelBehavior(nextValue as CanvasWheelBehavior)}
-          />
-        </div>
-      </div>
-
-      {canvasWheelBehavior === 'pan' ? (
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.canvas.wheelZoomModifierLabel')}</strong>
-            <span>
-              {t('settingsPanel.canvas.wheelZoomModifierHelp', {
-                modifier: wheelZoomModifierHelpLabel,
-              })}
-            </span>
-          </div>
-          <div className="settings-panel__control">
-            <CoveSelect
-              id="settings-canvas-wheel-zoom-modifier"
-              testId="settings-canvas-wheel-zoom-modifier"
-              value={canvasWheelZoomModifier}
-              options={CANVAS_WHEEL_ZOOM_MODIFIERS.filter(modifier =>
-                modifier === 'ctrl' ? isMac : true,
-              ).map(modifier => ({
-                value: modifier,
-                label: getCanvasWheelZoomModifierLabel(t, modifier, platform),
-              }))}
-              onChange={nextValue =>
-                onChangeCanvasWheelZoomModifier(nextValue as CanvasWheelZoomModifier)
-              }
-            />
-          </div>
-        </div>
-      ) : null}
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.standardWindowSizeLabel')}</strong>
-          <span>{t('settingsPanel.canvas.standardWindowSizeHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <CoveSelect
-            id="settings-standard-window-size"
-            testId="settings-standard-window-size"
-            value={standardWindowSizeBucket}
-            options={STANDARD_WINDOW_SIZE_BUCKETS.map(bucket => ({
-              value: bucket,
-              label: getStandardWindowSizeBucketLabel(t, bucket),
-            }))}
-            onChange={nextValue =>
-              onChangeStandardWindowSizeBucket(nextValue as StandardWindowSizeBucket)
-            }
-          />
-        </div>
-      </div>
-
-      <div className="settings-panel__row" id="settings-focus-node-on-click">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.focusOnClickLabel')}</strong>
-          <span>{t('settingsPanel.canvas.focusOnClickHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-focus-node-on-click"
-              checked={focusNodeOnClick}
-              onChange={event => onChangeFocusNodeOnClick(event.target.checked)}
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.focusVisibleCenterLabel')}</strong>
-          <span>{t('settingsPanel.canvas.focusVisibleCenterHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-focus-node-visible-center"
-              checked={focusNodeUseVisibleCanvasCenter}
-              onChange={event => onChangeFocusNodeUseVisibleCanvasCenter(event.target.checked)}
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div className="settings-panel__row settings-panel__row--focus-target-zoom">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.focusTargetZoomLabel')}</strong>
-          <span>{t('settingsPanel.canvas.focusTargetZoomHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <div
-            className="settings-panel__range settings-panel__range--neutral-marker"
-            style={focusTargetZoomRangeStyle}
-          >
-            <input
-              id="settings-focus-node-target-zoom"
-              data-testid="settings-focus-node-target-zoom"
-              value={focusNodeTargetZoom}
-              disabled={!focusNodeOnClick}
-              type="range"
-              min={MIN_FOCUS_NODE_TARGET_ZOOM}
-              max={MAX_FOCUS_NODE_TARGET_ZOOM}
-              step={FOCUS_NODE_TARGET_ZOOM_STEP}
-              onPointerDown={() => onFocusNodeTargetZoomPreviewChange(true)}
-              onPointerUp={() => onFocusNodeTargetZoomPreviewChange(false)}
-              onPointerCancel={() => onFocusNodeTargetZoomPreviewChange(false)}
-              onBlur={() => onFocusNodeTargetZoomPreviewChange(false)}
-              onChange={event => onChangeFocusNodeTargetZoom(Number(event.target.value))}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="settings-panel__subsection">
-        <div className="settings-panel__subsection-header">
-          <strong>{t('settingsPanel.canvas.archiveSpaceDefaultsTitle')}</strong>
-          <span>{t('settingsPanel.canvas.archiveSpaceDefaultsHelp')}</span>
-        </div>
-
-        <div className="settings-list-container">
-          <div
-            className="settings-list-item"
-            data-testid="settings-archive-space-delete-worktree-default"
-          >
-            <div className="settings-list-item__left">
-              {t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}
+    <>
+      <SettingsGroup
+        id="settings-section-canvas"
+        title={t('settingsPanel.groups.canvasWindows.canvasInput')}
+      >
+        <SettingsGroupBody>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.canvas.inputModeLabel')}</strong>
+              <span>{t('settingsPanel.canvas.inputModeHelp')}</span>
             </div>
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                checked={archiveSpaceDeleteWorktreeByDefault}
-                onChange={event =>
-                  onChangeArchiveSpaceDeleteWorktreeByDefault(event.target.checked)
+            <div className="settings-panel__control">
+              <CoveSelect
+                id="settings-canvas-input-mode"
+                testId="settings-canvas-input-mode"
+                ariaLabel={t('settingsPanel.canvas.inputModeLabel')}
+                value={canvasInputMode}
+                options={CANVAS_INPUT_MODES.map(mode => ({
+                  value: mode,
+                  label: getCanvasInputModeLabel(t, mode),
+                }))}
+                onChange={nextValue => onChangeCanvasInputMode(nextValue as CanvasInputMode)}
+              />
+            </div>
+          </div>
+
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.canvas.wheelBehaviorLabel')}</strong>
+              <span>{t('settingsPanel.canvas.wheelBehaviorHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <CoveSelect
+                id="settings-canvas-wheel-behavior"
+                testId="settings-canvas-wheel-behavior"
+                ariaLabel={t('settingsPanel.canvas.wheelBehaviorLabel')}
+                value={canvasWheelBehavior}
+                options={CANVAS_WHEEL_BEHAVIORS.map(behavior => ({
+                  value: behavior,
+                  label: getCanvasWheelBehaviorLabel(t, behavior),
+                }))}
+                onChange={nextValue =>
+                  onChangeCanvasWheelBehavior(nextValue as CanvasWheelBehavior)
                 }
               />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            </div>
+          </div>
+
+          {canvasWheelBehavior === 'pan' ? (
+            <div className="settings-panel__row">
+              <div className="settings-panel__row-label">
+                <strong>{t('settingsPanel.canvas.wheelZoomModifierLabel')}</strong>
+                <span>
+                  {t('settingsPanel.canvas.wheelZoomModifierHelp', {
+                    modifier: wheelZoomModifierHelpLabel,
+                  })}
+                </span>
+              </div>
+              <div className="settings-panel__control">
+                <CoveSelect
+                  id="settings-canvas-wheel-zoom-modifier"
+                  testId="settings-canvas-wheel-zoom-modifier"
+                  ariaLabel={t('settingsPanel.canvas.wheelZoomModifierLabel')}
+                  value={canvasWheelZoomModifier}
+                  options={CANVAS_WHEEL_ZOOM_MODIFIERS.filter(modifier =>
+                    modifier === 'ctrl' ? isMac : true,
+                  ).map(modifier => ({
+                    value: modifier,
+                    label: getCanvasWheelZoomModifierLabel(t, modifier, platform),
+                  }))}
+                  onChange={nextValue =>
+                    onChangeCanvasWheelZoomModifier(nextValue as CanvasWheelZoomModifier)
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+        </SettingsGroupBody>
+      </SettingsGroup>
+
+      <SettingsGroup
+        id="settings-section-canvas-node-focus"
+        title={t('settingsPanel.groups.canvasWindows.nodeFocus')}
+      >
+        <SettingsGroupBody>
+          <div className="settings-panel__row" id="settings-focus-node-on-click">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.canvas.focusOnClickLabel')}</strong>
+              <span>{t('settingsPanel.canvas.focusOnClickHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <label className="cove-toggle">
+                <input
+                  type="checkbox"
+                  data-testid="settings-focus-node-on-click"
+                  checked={focusNodeOnClick}
+                  aria-label={t('settingsPanel.canvas.focusOnClickLabel')}
+                  onChange={event => onChangeFocusNodeOnClick(event.target.checked)}
+                />
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.canvas.focusVisibleCenterLabel')}</strong>
+              <span>{t('settingsPanel.canvas.focusVisibleCenterHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <label className="cove-toggle">
+                <input
+                  type="checkbox"
+                  data-testid="settings-focus-node-visible-center"
+                  checked={focusNodeUseVisibleCanvasCenter}
+                  aria-label={t('settingsPanel.canvas.focusVisibleCenterLabel')}
+                  onChange={event => onChangeFocusNodeUseVisibleCanvasCenter(event.target.checked)}
+                />
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div className="settings-panel__row settings-panel__row--focus-target-zoom">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.canvas.focusTargetZoomLabel')}</strong>
+              <span>{t('settingsPanel.canvas.focusTargetZoomHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <div
+                className="settings-panel__range settings-panel__range--neutral-marker"
+                style={focusTargetZoomRangeStyle}
+              >
+                <input
+                  id="settings-focus-node-target-zoom"
+                  data-testid="settings-focus-node-target-zoom"
+                  value={focusNodeTargetZoom}
+                  disabled={!focusNodeOnClick}
+                  type="range"
+                  aria-label={t('settingsPanel.canvas.focusTargetZoomLabel')}
+                  min={MIN_FOCUS_NODE_TARGET_ZOOM}
+                  max={MAX_FOCUS_NODE_TARGET_ZOOM}
+                  step={FOCUS_NODE_TARGET_ZOOM_STEP}
+                  onPointerDown={() => onFocusNodeTargetZoomPreviewChange(true)}
+                  onPointerUp={() => onFocusNodeTargetZoomPreviewChange(false)}
+                  onPointerCancel={() => onFocusNodeTargetZoomPreviewChange(false)}
+                  onBlur={() => onFocusNodeTargetZoomPreviewChange(false)}
+                  onChange={event => onChangeFocusNodeTargetZoom(Number(event.target.value))}
+                />
+              </div>
+            </div>
+          </div>
+        </SettingsGroupBody>
+      </SettingsGroup>
+
+      <SettingsGroup
+        id="settings-section-space-archiving"
+        title={t('settingsPanel.groups.canvasWindows.spaceArchiving')}
+        description={t('settingsPanel.canvas.archiveSpaceDefaultsHelp')}
+      >
+        <SettingsGroupBody>
+          <div
+            className="settings-panel__row"
+            data-testid="settings-archive-space-delete-worktree-default"
+          >
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}</strong>
+            </div>
+            <div className="settings-panel__control">
+              <label className="cove-toggle">
+                <input
+                  type="checkbox"
+                  checked={archiveSpaceDeleteWorktreeByDefault}
+                  aria-label={t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}
+                  onChange={event =>
+                    onChangeArchiveSpaceDeleteWorktreeByDefault(event.target.checked)
+                  }
+                />
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
           </div>
 
           <div
-            className="settings-list-item"
+            className="settings-panel__row"
             data-testid="settings-archive-space-delete-branch-default"
           >
-            <div className="settings-list-item__left">
-              {t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}</strong>
             </div>
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                checked={archiveSpaceDeleteBranchByDefault}
-                onChange={event => onChangeArchiveSpaceDeleteBranchByDefault(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <div className="settings-panel__control">
+              <label className="cove-toggle">
+                <input
+                  type="checkbox"
+                  checked={archiveSpaceDeleteBranchByDefault}
+                  aria-label={t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}
+                  onChange={event =>
+                    onChangeArchiveSpaceDeleteBranchByDefault(event.target.checked)
+                  }
+                />
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </SettingsGroupBody>
+      </SettingsGroup>
+    </>
   )
 }

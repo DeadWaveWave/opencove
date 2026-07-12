@@ -7,7 +7,7 @@ async function openShortcutsSettings(window: Page): Promise<void> {
   await window.locator('[data-testid="app-header-settings"]').click()
   await expect(window.locator('.settings-panel')).toBeVisible()
 
-  await window.locator('[data-testid="settings-section-nav-shortcuts"]').click()
+  await window.locator('[data-testid="settings-section-nav-task-configuration"]').click()
   await expect(window.locator('#settings-section-shortcuts')).toBeVisible()
 }
 

@@ -150,6 +150,7 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
                   parentSpaceId: null,
                   boundaryJson: '{}',
                   sortOrder: 0,
+                  pinned: false,
                   labelColor: null,
                   ...space,
                 }))
@@ -265,6 +266,7 @@ describe('PersistenceStore installed upgrade', () => {
                   trustLevel: null,
                 },
                 sortOrder: 0,
+                pinned: false,
               },
             ],
           },

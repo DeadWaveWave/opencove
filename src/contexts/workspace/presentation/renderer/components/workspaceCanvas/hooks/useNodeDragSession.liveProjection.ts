@@ -1,8 +1,8 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
 
-export const LIVE_DRAG_LAYOUT_MIN_DISTANCE_PX = 24
-export const LIVE_DRAG_LAYOUT_MIN_INTERVAL_MS = 120
+export const LIVE_DRAG_SECONDARY_MIN_DISTANCE_PX = 24
+export const LIVE_DRAG_SECONDARY_MIN_INTERVAL_MS = 120
 
 export interface DragLayoutProjectionInput {
   currentNodes: Node<TerminalNodeData>[]
@@ -19,10 +19,11 @@ export interface DragLayoutProjectionResult {
   nextSpaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
 }
 
-export interface LastLiveDragLayoutProjection {
+export interface LastLiveDragSecondaryProjection {
   anchorPoint: { x: number; y: number } | null
   draggedNodeKey: string
   projectedAtMs: number
+  targetSpaceId: string | null
 }
 
 export function readDragLayoutTimeMs(): number {
@@ -52,22 +53,24 @@ export function resolveDragLayoutAnchorPoint({
     : null
 }
 
-export function shouldResolveLiveDragLayoutProjection({
+export function shouldResolveLiveDragSecondaryProjection({
   lastProjection,
   draggedNodeKey,
   anchorPoint,
   nowMs,
+  targetSpaceId,
 }: {
-  lastProjection: LastLiveDragLayoutProjection | null
+  lastProjection: LastLiveDragSecondaryProjection | null
   draggedNodeKey: string
   anchorPoint: { x: number; y: number } | null
   nowMs: number
+  targetSpaceId: string | null
 }): boolean {
-  if (!lastProjection) {
+  if (!lastProjection || lastProjection.draggedNodeKey !== draggedNodeKey) {
     return true
   }
 
-  if (lastProjection.draggedNodeKey !== draggedNodeKey) {
+  if (lastProjection.targetSpaceId !== targetSpaceId) {
     return true
   }
 
@@ -82,9 +85,12 @@ export function shouldResolveLiveDragLayoutProjection({
     return false
   }
 
-  if (distanceSquared >= LIVE_DRAG_LAYOUT_MIN_DISTANCE_PX * LIVE_DRAG_LAYOUT_MIN_DISTANCE_PX) {
+  if (
+    distanceSquared >=
+    LIVE_DRAG_SECONDARY_MIN_DISTANCE_PX * LIVE_DRAG_SECONDARY_MIN_DISTANCE_PX
+  ) {
     return true
   }
 
-  return nowMs - lastProjection.projectedAtMs >= LIVE_DRAG_LAYOUT_MIN_INTERVAL_MS
+  return nowMs - lastProjection.projectedAtMs >= LIVE_DRAG_SECONDARY_MIN_INTERVAL_MS
 }

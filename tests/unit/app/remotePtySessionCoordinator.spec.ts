@@ -104,4 +104,40 @@ describe('remotePtyRuntime session coordinator', () => {
 
     expect(secondSocket.send).toHaveBeenCalledTimes(1)
   })
+
+  it('clears connection-local authority and requires a fresh attach ACK after disconnect', async () => {
+    const coordinator = createRemotePtySessionCoordinator({
+      connectTimeoutMs: 50,
+      cancelMetadataWatcher: vi.fn(),
+      shouldKeepSocketAlive: () => true,
+      closeSocket: vi.fn(),
+      sendDetachMessage: vi.fn(async () => undefined),
+    })
+    const socket = createMockSocket()
+    coordinator.noteSessionRolePreference('session-reconnect', 'controller')
+    coordinator.sendAttachForSession(socket as never, 'session-reconnect')
+    coordinator.attachedSessions.set('session-reconnect', {
+      lastSeq: 4,
+      role: 'controller',
+      authorityEpoch: 7,
+    })
+    coordinator.onSessionAttached('session-reconnect')
+
+    coordinator.onSocketClosed()
+
+    expect(coordinator.attachedSessions.get('session-reconnect')).toMatchObject({
+      role: 'viewer',
+      authorityEpoch: null,
+    })
+    let attached = false
+    const pendingAttach = coordinator.waitForSessionAttached('session-reconnect').then(() => {
+      attached = true
+    })
+    await Promise.resolve()
+    expect(attached).toBe(false)
+
+    coordinator.onSessionAttached('session-reconnect')
+    await pendingAttach
+    expect(attached).toBe(true)
+  })
 })

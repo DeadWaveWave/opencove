@@ -1,5 +1,6 @@
 import { arrayMove } from '@dnd-kit/sortable'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
+import { reorderRootSpacesWithinPinGroup } from '@contexts/workspace/domain/workspaceSpacePinning'
 import { buildSidebarProjectTree, SIDEBAR_UNASSIGNED_SPACE_GROUP_ID } from './sidebarTree'
 
 export function reorderWorkspaceList(
@@ -28,33 +29,8 @@ export function reorderWorkspaceRootSpaces(
     return workspaces
   }
 
-  const tree = buildSidebarProjectTree(workspace)
-  const rootSpaceIds = tree.spaceGroups.map(group => group.id)
-  const oldIndex = rootSpaceIds.indexOf(activeSpaceId)
-  const newIndex = rootSpaceIds.indexOf(overSpaceId)
-
-  if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
-    return workspaces
-  }
-
-  const nextRootSpaceIds = arrayMove(rootSpaceIds, oldIndex, newIndex)
-  const sortOrderBySpaceId = new Map(nextRootSpaceIds.map((id, index) => [id, index] as const))
-
-  let changed = false
-  const nextSpaces = workspace.spaces.map(space => {
-    const nextSortOrder = sortOrderBySpaceId.get(space.id)
-    if (nextSortOrder === undefined || space.sortOrder === nextSortOrder) {
-      return space
-    }
-
-    changed = true
-    return {
-      ...space,
-      sortOrder: nextSortOrder,
-    }
-  })
-
-  if (!changed) {
+  const nextSpaces = reorderRootSpacesWithinPinGroup(workspace.spaces, activeSpaceId, overSpaceId)
+  if (nextSpaces === workspace.spaces) {
     return workspaces
   }
 

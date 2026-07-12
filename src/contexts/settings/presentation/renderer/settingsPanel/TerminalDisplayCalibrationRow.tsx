@@ -21,6 +21,7 @@ import {
   TERMINAL_DISPLAY_MEASUREMENT_HEIGHT,
   TERMINAL_DISPLAY_MEASUREMENT_WIDTH,
 } from '../terminalDisplayMeasurement'
+import { SettingsModule } from './SettingsGroup'
 
 export function TerminalDisplayCalibrationRow({
   terminalFontSize,
@@ -180,14 +181,11 @@ export function TerminalDisplayCalibrationRow({
     : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
 
   return (
-    <div className="settings-panel__subsection" id="settings-section-terminal-display-calibration">
-      <div className="settings-panel__subsection-header">
-        <h4 className="settings-panel__section-title">
-          {t('settingsPanel.general.terminalDisplayCalibration.title')}
-        </h4>
-        <span>{t('settingsPanel.general.terminalDisplayCalibration.help')}</span>
-      </div>
-
+    <SettingsModule
+      id="settings-section-terminal-display-calibration"
+      title={t('settingsPanel.general.terminalDisplayCalibration.title')}
+      description={t('settingsPanel.general.terminalDisplayCalibration.help')}
+    >
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
           <strong>
@@ -201,6 +199,7 @@ export function TerminalDisplayCalibrationRow({
               type="checkbox"
               data-testid="settings-terminal-display-auto-reference"
               checked={terminalDisplayAutoReferenceEnabled}
+              aria-label={t('settingsPanel.general.terminalDisplayCalibration.autoReferenceLabel')}
               onChange={event => onChangeTerminalDisplayAutoReferenceEnabled(event.target.checked)}
             />
             <span className="cove-toggle__slider"></span>
@@ -219,6 +218,7 @@ export function TerminalDisplayCalibrationRow({
               type="checkbox"
               data-testid="settings-terminal-display-compensation"
               checked={terminalDisplayCalibrationCompensationEnabled}
+              aria-label={t('settingsPanel.general.terminalDisplayCalibration.compensationLabel')}
               onChange={event =>
                 onChangeTerminalDisplayCalibrationCompensationEnabled(event.target.checked)
               }
@@ -321,6 +321,6 @@ export function TerminalDisplayCalibrationRow({
           pointerEvents: 'none',
         }}
       />
-    </div>
+    </SettingsModule>
   )
 }

@@ -46,7 +46,7 @@
 }
 
 .issue-report-window__segment--selected {
-  background: rgba(94, 156, 255, 0.16);
+  background: var(--cove-control-selected);
   color: var(--cove-text);
 }
 
@@ -96,15 +96,15 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid rgba(92, 196, 133, 0.34);
+  border: 1px solid var(--cove-success-border);
   border-radius: 10px;
-  background: rgba(70, 160, 106, 0.12);
+  background: var(--cove-success-surface);
   color: var(--cove-text);
   padding: 10px 12px;
 }
 
 .issue-report-window__ready svg {
-  color: #79d89c;
+  color: var(--cove-success);
   flex: 0 0 auto;
 }
 

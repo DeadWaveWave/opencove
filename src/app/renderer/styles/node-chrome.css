@@ -1,0 +1,74 @@
+:is(
+  .terminal-node,
+  .task-node,
+  .role-node,
+  .note-node,
+  .document-node,
+  .website-node,
+  .image-node
+) {
+  border-radius: var(--cove-radius-lg);
+  box-shadow: var(--cove-node-shadow);
+  transition:
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    box-shadow var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+:is(
+  .terminal-node__header,
+  .task-node__header,
+  .role-node__header,
+  .note-node__header,
+  .document-node__header,
+  .website-node__header,
+  .image-node__header
+) {
+  height: 34px;
+  padding-inline: 9px;
+}
+
+:is(
+  .terminal-node__action--icon,
+  .terminal-node__close,
+  .task-node__icon-button,
+  .role-node__icon-button,
+  .note-node__action,
+  .note-node__close,
+  .document-node__close,
+  .website-node__icon-button,
+  .image-node__close
+):focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 1px;
+  box-shadow: var(--cove-focus-shadow);
+}
+
+:is(
+    .terminal-node__action--icon,
+    .terminal-node__close,
+    .task-node__icon-button,
+    .role-node__icon-button,
+    .note-node__action,
+    .note-node__close,
+    .document-node__close,
+    .website-node__icon-button,
+    .image-node__close
+  ):hover:not(:disabled) {
+  border-radius: var(--cove-radius-xs);
+  background: var(--cove-control-hover);
+  color: var(--cove-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    .terminal-node,
+    .task-node,
+    .role-node,
+    .note-node,
+    .document-node,
+    .website-node,
+    .image-node
+  ) {
+    transition-duration: 0.01ms;
+  }
+}

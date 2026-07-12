@@ -17,6 +17,7 @@ function createTables(db: Database.Database): void {
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = NORMAL;
     PRAGMA foreign_keys = ON;
+    PRAGMA busy_timeout = 5000;
 
     CREATE TABLE IF NOT EXISTS app_meta (
       key TEXT PRIMARY KEY,
@@ -82,6 +83,7 @@ function createTables(db: Database.Database): void {
       parent_space_id TEXT,
       boundary_json TEXT NOT NULL DEFAULT '{}',
       sort_order INTEGER NOT NULL DEFAULT 0,
+      pinned INTEGER NOT NULL DEFAULT 0,
       label_color TEXT,
       rect_x REAL,
       rect_y REAL,
@@ -99,6 +101,21 @@ function createTables(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS node_scrollback (
       node_id TEXT PRIMARY KEY,
       scrollback TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS terminal_recovery_records (
+      node_id TEXT PRIMARY KEY,
+      format_version INTEGER NOT NULL,
+      generation INTEGER NOT NULL,
+      binding_json TEXT,
+      runtime_epoch TEXT,
+      checkpoint_revision INTEGER NOT NULL DEFAULT 0,
+      applied_seq INTEGER NOT NULL DEFAULT 0,
+      presentation_json TEXT,
+      raw_tail TEXT NOT NULL DEFAULT '',
+      raw_truncated INTEGER NOT NULL DEFAULT 0,
+      checksum TEXT,
       updated_at TEXT NOT NULL
     );
 
@@ -363,6 +380,12 @@ function ensureCurrentSchema(db: Database.Database): void {
   ensureTableColumn(db, {
     tableName: 'workspace_spaces',
     columnName: 'sort_order',
+    definitionSql: 'INTEGER NOT NULL DEFAULT 0',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspace_spaces',
+    columnName: 'pinned',
     definitionSql: 'INTEGER NOT NULL DEFAULT 0',
   })
 }

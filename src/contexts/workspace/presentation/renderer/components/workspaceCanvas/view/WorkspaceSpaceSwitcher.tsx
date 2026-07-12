@@ -6,6 +6,7 @@ interface WorkspaceSpaceSwitcherProps {
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
   cancelSpaceRename: () => void
+  onOpenSpaceContextMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
 }
 
 export function WorkspaceSpaceSwitcher({
@@ -13,6 +14,7 @@ export function WorkspaceSpaceSwitcher({
   activateSpace,
   activateAllSpaces,
   cancelSpaceRename,
+  onOpenSpaceContextMenu,
 }: WorkspaceSpaceSwitcherProps): React.JSX.Element | null {
   if (spaces.length === 0) {
     return null
@@ -43,6 +45,11 @@ export function WorkspaceSpaceSwitcher({
           className="workspace-space-switcher__item"
           data-testid={`workspace-space-switch-${space.id}`}
           data-cove-label-color={space.labelColor ?? undefined}
+          onContextMenu={event => {
+            event.preventDefault()
+            event.stopPropagation()
+            onOpenSpaceContextMenu?.(space.id, { x: event.clientX, y: event.clientY })
+          }}
           onClick={() => {
             activateSpace(space.id)
             cancelSpaceRename()

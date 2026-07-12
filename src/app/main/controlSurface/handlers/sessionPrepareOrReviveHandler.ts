@@ -62,6 +62,7 @@ export function registerSessionPrepareOrReviveHandler(
   deps: {
     getPersistenceStore: () => Promise<PersistenceStore>
     ptyStreamHub: PtyStreamHub
+    restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
   },
 ): void {
   controlSurface.register('session.prepareOrRevive', {
@@ -95,7 +96,15 @@ export function registerSessionPrepareOrReviveHandler(
         PREPARE_OR_REVIVE_CONCURRENCY,
         async (node): Promise<PreparedRuntimeNodeResult | null> => {
           const existingSessionId = normalizeOptionalString(node.sessionId)
-          if (existingSessionId && deps.ptyStreamHub.hasSession(existingSessionId)) {
+          if (
+            existingSessionId &&
+            node.kind === 'terminal' &&
+            !deps.ptyStreamHub.isSessionActive(existingSessionId) &&
+            deps.restoreTerminalSession
+          ) {
+            await deps.restoreTerminalSession({ nodeId: node.id, sessionId: existingSessionId })
+          }
+          if (existingSessionId && deps.ptyStreamHub.isSessionActive(existingSessionId)) {
             const scrollback =
               node.kind === 'agent'
                 ? null

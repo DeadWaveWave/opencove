@@ -165,6 +165,7 @@ export function TaskEditorWindow({
           }}
           triggerRef={promptTemplatesTriggerRef}
           currentRequirement={taskEditor.requirement}
+          isWithinDialog
           onChangeRequirement={nextRequirement => {
             setTaskEditor(prev =>
               prev

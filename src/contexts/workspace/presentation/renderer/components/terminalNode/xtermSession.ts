@@ -22,7 +22,12 @@ import {
 import { registerTerminalDiagnostics } from './registerDiagnostics'
 import { installTerminalEffectiveDevicePixelRatioController } from './effectiveDevicePixelRatio'
 import { installFitAddonDetachedRendererGuard } from './renderServiceSafety'
-import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
+import type { TerminalThemeMode } from './theme'
+import {
+  getOrCreateTerminalAppearanceOwner,
+  publishTerminalAppearanceSnapshot,
+  resolveDesiredTerminalAppearanceValue,
+} from './terminalAppearance'
 import { registerTerminalDisplayMeasurementHandle } from '@contexts/settings/presentation/renderer/terminalDisplayMeasurement'
 
 type TerminalDiagnosticsHandle = ReturnType<typeof registerTerminalDiagnostics>
@@ -96,9 +101,11 @@ export function createMountedXtermSession({
   scheduleWebglCanvasTransformCleanup?: () => void
   initialViewportZoom?: number
 }): XtermSession {
-  const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
   const initialThemeScope = container?.closest('.terminal-node') ?? container ?? null
-  const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode, initialThemeScope)
+  const initialAppearance = resolveDesiredTerminalAppearanceValue({
+    terminalThemeMode,
+    sourceScope: initialThemeScope,
+  })
 
   const terminal = new Terminal({
     cursorBlink,
@@ -107,13 +114,16 @@ export function createMountedXtermSession({
     fontSize,
     lineHeight,
     letterSpacing,
-    theme: initialTerminalTheme,
+    theme: { ...initialAppearance.xtermTheme },
     allowProposedApi: true,
     convertEol: true,
     scrollback: 5000,
     overviewRuler: { width: XTERM_SCROLLBAR_GUTTER_WIDTH },
     ...(windowsPty ? { windowsPty } : {}),
     ...(initialDimensions ?? {}),
+  })
+  const initialAppearanceOwner = getOrCreateTerminalAppearanceOwner(terminal, initialAppearance, {
+    initiallyApplied: true,
   })
   const fitAddon = new FitAddon()
   installFitAddonDetachedRendererGuard(fitAddon)
@@ -161,6 +171,10 @@ export function createMountedXtermSession({
   })
 
   if (container) {
+    const initialAppearanceSnapshot = initialAppearanceOwner.getAppliedSnapshot()
+    if (initialAppearanceSnapshot) {
+      publishTerminalAppearanceSnapshot(container, initialAppearanceSnapshot)
+    }
     terminal.open(container)
     const handleTerminalPointerDown = (event: PointerEvent): void => {
       if (event.button === 0) {
@@ -201,7 +215,6 @@ export function createMountedXtermSession({
     terminal.registerLinkProvider(
       new FilePathLinkProvider(terminal, (_, path) => window.open(path)),
     )
-    container.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
     cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
     disposeTerminalHitTargetCursorScope = registerTerminalHitTargetCursorScope({
       container,

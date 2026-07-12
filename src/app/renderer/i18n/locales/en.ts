@@ -98,10 +98,13 @@ export const en = {
   controlCenter: {
     open: 'Control Center',
     title: 'Control Center',
+    quickSettings: 'Quick settings',
     sidebar: 'Sidebar',
     minimap: 'Minimap',
     theme: 'Theme',
     agentStandbyBanner: 'Top-right banner',
+    shown: 'Shown',
+    hidden: 'Hidden',
     on: 'On',
     off: 'Off',
   },

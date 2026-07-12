@@ -53,6 +53,7 @@ export function toPersistedState(
           typeof space.sortOrder === 'number' && Number.isFinite(space.sortOrder)
             ? Math.max(0, Math.floor(space.sortOrder))
             : index,
+        pinned: space.pinned === true,
         labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeWorkspaceSpaceNodeIds(space.nodeIds),
         rect: normalizeWorkspaceSpaceRect(space.rect),

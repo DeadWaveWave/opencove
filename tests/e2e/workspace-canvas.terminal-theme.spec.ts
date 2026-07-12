@@ -14,11 +14,12 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
 
     try {
       void browserName
+      const nodeId = 'node-terminal-theme'
       await clearAndSeedWorkspace(
         window,
         [
           {
-            id: 'node-terminal-theme',
+            id: nodeId,
             title: 'terminal-theme',
             position: { x: 160, y: 140 },
             width: 520,
@@ -51,14 +52,48 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
         .toBe('light')
       await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'light')
 
+      await selectCoveOption(window, 'settings-ui-theme', 'ember-light')
+      await expect
+        .poll(() =>
+          window.evaluate(() => ({
+            baseScheme: document.documentElement.dataset.coveTheme ?? null,
+            themeId: document.documentElement.dataset.coveThemeId ?? null,
+          })),
+        )
+        .toEqual({ baseScheme: 'light', themeId: 'ember-light' })
+      await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'dark')
+      await expect(terminalBody).toHaveCSS('background-color', 'rgb(21, 17, 14)')
+
       await window.locator('.settings-panel__close').click()
 
-      const screenshotPath = testInfo.outputPath('terminal-theme-light.png')
+      const readTerminalSize = async () =>
+        await window.evaluate(
+          id => window.__opencoveTerminalSelectionTestApi?.getSize?.(id) ?? null,
+          nodeId,
+        )
+      await expect.poll(readTerminalSize).toBeTruthy()
+      const terminalSizeBeforeFind = await readTerminalSize()
+      const terminalHeightBeforeFind = await terminalBody.evaluate(element => element.clientHeight)
+      await terminalBody.click()
+      await window.keyboard.press(process.platform === 'darwin' ? 'Meta+f' : 'Control+f')
+      const findBar = window.locator('[data-testid="terminal-find"]')
+      await expect(findBar).toBeVisible()
+      await expect(findBar.locator('[data-testid="terminal-find-input"]')).toBeFocused()
+      await expect.poll(readTerminalSize).toEqual(terminalSizeBeforeFind)
+      await expect
+        .poll(() => terminalBody.evaluate(element => element.clientHeight))
+        .toBe(terminalHeightBeforeFind)
+
+      const screenshotPath = testInfo.outputPath('terminal-theme-ember-light-find.png')
       await window.screenshot({ path: screenshotPath })
-      await testInfo.attach('terminal-theme-light', {
+      await testInfo.attach('terminal-theme-ember-light-find', {
         path: screenshotPath,
         contentType: 'image/png',
       })
+
+      await window.keyboard.press('Escape')
+      await expect(findBar).toBeHidden()
+      await expect.poll(readTerminalSize).toEqual(terminalSizeBeforeFind)
     } finally {
       await electronApp.close()
     }

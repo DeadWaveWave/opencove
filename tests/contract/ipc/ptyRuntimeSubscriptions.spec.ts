@@ -219,7 +219,13 @@ describe('Pty runtime subscriptions', () => {
 
     const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
     runtime.attach(1, sessionId)
-    runtime.resize(sessionId, 120, 40)
+    await runtime.resize({
+      sessionId,
+      cols: 120,
+      rows: 40,
+      reason: 'frame_commit',
+      operationId: 'operation-probe',
+    })
 
     onDataHandler?.({ sessionId, data: '\u001b[6n\u001b[c\u001b[?u' })
     expect(write.mock.calls).toEqual([

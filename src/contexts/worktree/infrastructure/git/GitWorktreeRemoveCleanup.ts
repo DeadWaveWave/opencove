@@ -59,7 +59,7 @@ export async function runGitWorktreeRemoveWithRetry(
   args: string[],
   repoPath: string,
 ): Promise<Awaited<ReturnType<typeof runGit>>> {
-  const initialResult = await runGit(args, repoPath)
+  const initialResult = await runGit(args, repoPath, { intent: 'mutation' })
   if (initialResult.exitCode === 0 || !shouldRetryGitWorktreeRemove(initialResult.stderr)) {
     return initialResult
   }
@@ -110,7 +110,7 @@ async function runGitWorktreeRemoveWithRetryAttempt(
   attempt: number,
 ): Promise<Awaited<ReturnType<typeof runGit>>> {
   await delay(WORKTREE_DIRECTORY_CLEANUP_RETRY_MS * attempt)
-  const result = await runGit(args, repoPath)
+  const result = await runGit(args, repoPath, { intent: 'mutation' })
   if (result.exitCode === 0 || !shouldRetryGitWorktreeRemove(result.stderr) || attempt >= 4) {
     return result
   }

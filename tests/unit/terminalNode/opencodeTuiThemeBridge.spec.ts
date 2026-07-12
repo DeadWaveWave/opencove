@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Terminal } from '@xterm/xterm'
 import { createOpenCodeTuiThemeBridge } from '@/contexts/workspace/presentation/renderer/components/terminalNode/opencodeTuiThemeBridge'
+import type { TerminalAppearanceSnapshot } from '@/contexts/workspace/presentation/renderer/components/terminalNode/terminalAppearance'
 
 function createTerminalHarness() {
   const handlers = new Map<number, (data: string) => boolean>()
@@ -57,5 +58,44 @@ describe('createOpenCodeTuiThemeBridge', () => {
     bridge.handlePtyOutputChunk('\u001b[?1049h')
     expect(ptyWriteQueue.enqueue).toHaveBeenCalledTimes(3)
     expect(ptyWriteQueue.enqueue).toHaveBeenLastCalledWith('\u001b[?997;2n')
+  })
+
+  it('reports every applied appearance revision, including palette-only changes', () => {
+    const { terminal } = createTerminalHarness()
+    const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
+    let appliedAppearance = {
+      revision: 1,
+      themeId: 'ember-light',
+      uiScheme: 'light',
+      terminalScheme: 'dark',
+      xtermTheme: {
+        background: '#15110e',
+        foreground: '#d4c4ae',
+        cursor: '#d4c4ae',
+        selectionBackground: '#5e9cff',
+      },
+      cssTokens: {},
+    } satisfies TerminalAppearanceSnapshot
+
+    const bridge = createOpenCodeTuiThemeBridge({
+      terminal,
+      ptyWriteQueue,
+      terminalThemeMode: 'sync-with-ui',
+      getAppliedAppearance: () => appliedAppearance,
+    })
+
+    bridge.handlePtyOutputChunk('\u001b[?1049h')
+    expect(ptyWriteQueue.enqueue).toHaveBeenLastCalledWith('\u001b[?997;1n')
+
+    appliedAppearance = {
+      ...appliedAppearance,
+      revision: 2,
+      themeId: 'ember',
+      xtermTheme: { ...appliedAppearance.xtermTheme, background: '#19120e' },
+    }
+    bridge.reportThemeMode()
+
+    expect(ptyWriteQueue.enqueue).toHaveBeenCalledTimes(2)
+    expect(ptyWriteQueue.enqueue).toHaveBeenLastCalledWith('\u001b[?997;1n')
   })
 })

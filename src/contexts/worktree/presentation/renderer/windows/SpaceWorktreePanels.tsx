@@ -141,6 +141,7 @@ export function SpaceWorktreePanels({
                     <CoveSelect
                       id="space-worktree-start-point"
                       testId="space-worktree-start-point"
+                      menuLayer="dialog-popover"
                       value={startPoint}
                       disabled={isBusy}
                       options={[
@@ -183,6 +184,7 @@ export function SpaceWorktreePanels({
                     <CoveSelect
                       id="space-worktree-existing-branch"
                       testId="space-worktree-existing-branch"
+                      menuLayer="dialog-popover"
                       value={existingBranchName}
                       disabled={isBusy}
                       options={branches.map(branch => ({

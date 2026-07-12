@@ -65,7 +65,6 @@ export function CanvasWindowsSection({
         canvasInputMode={canvasInputMode}
         canvasWheelBehavior={canvasWheelBehavior}
         canvasWheelZoomModifier={canvasWheelZoomModifier}
-        standardWindowSizeBucket={standardWindowSizeBucket}
         focusNodeOnClick={focusNodeOnClick}
         focusNodeTargetZoom={focusNodeTargetZoom}
         focusNodeUseVisibleCanvasCenter={focusNodeUseVisibleCanvasCenter}
@@ -74,7 +73,6 @@ export function CanvasWindowsSection({
         onChangeCanvasInputMode={onChangeCanvasInputMode}
         onChangeCanvasWheelBehavior={onChangeCanvasWheelBehavior}
         onChangeCanvasWheelZoomModifier={onChangeCanvasWheelZoomModifier}
-        onChangeStandardWindowSizeBucket={onChangeStandardWindowSizeBucket}
         onChangeFocusNodeOnClick={onChangeFocusNodeOnClick}
         onChangeFocusNodeTargetZoom={onChangeFocusNodeTargetZoom}
         onChangeFocusNodeUseVisibleCanvasCenter={onChangeFocusNodeUseVisibleCanvasCenter}
@@ -83,9 +81,11 @@ export function CanvasWindowsSection({
         onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
       />
       <TerminalProfileSection
+        standardWindowSizeBucket={standardWindowSizeBucket}
         defaultTerminalProfileId={defaultTerminalProfileId}
         terminalProfiles={terminalProfiles}
         detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
+        onChangeStandardWindowSizeBucket={onChangeStandardWindowSizeBucket}
         onChangeDefaultTerminalProfileId={onChangeDefaultTerminalProfileId}
       />
     </>

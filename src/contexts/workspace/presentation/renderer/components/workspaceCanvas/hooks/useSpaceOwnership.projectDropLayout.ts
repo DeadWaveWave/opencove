@@ -2,7 +2,12 @@ import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { reassignNodesAcrossSpaces } from './useSpaceOwnership.drop.helpers'
-import { projectWorkspaceNodeDragLayout } from './useSpaceOwnership.projectLayout'
+import {
+  projectWorkspaceNodeDragLayout,
+  projectWorkspaceNodeLiveDragLayout,
+  type ProjectedNodeDragLayout,
+} from './useSpaceOwnership.projectLayout'
+import { projectWorkspaceNodePrimaryDragLayout } from './useSpaceOwnership.projectLayout.primary'
 
 export interface ProjectedWorkspaceNodeDropLayout {
   targetSpaceId: string | null
@@ -10,6 +15,18 @@ export interface ProjectedWorkspaceNodeDropLayout {
   nextSpaces: WorkspaceSpaceState[]
   hasSpaceChange: boolean
 }
+
+interface ProjectWorkspaceNodeDropLayoutInput {
+  nodes: Node<TerminalNodeData>[]
+  spaces: WorkspaceSpaceState[]
+  draggedNodeIds: string[]
+  draggedNodePositionById: Map<string, { x: number; y: number }>
+  dragDx?: number
+  dragDy?: number
+  dropFlowPoint?: { x: number; y: number } | null
+}
+
+type DragProjector = (input: ProjectWorkspaceNodeDropLayoutInput) => ProjectedNodeDragLayout | null
 
 function rectEquals(a: WorkspaceSpaceRect | null, b: WorkspaceSpaceRect | null): boolean {
   if (a === b) {
@@ -23,23 +40,43 @@ function rectEquals(a: WorkspaceSpaceRect | null, b: WorkspaceSpaceRect | null):
   return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
 }
 
-export function projectWorkspaceNodeDropLayout({
-  nodes,
+function mergeProjectedSpaceRects({
   spaces,
-  draggedNodeIds,
-  draggedNodePositionById,
-  dragDx = 0,
-  dragDy = 0,
-  dropFlowPoint,
+  projectedSpaces,
 }: {
-  nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
-  draggedNodeIds: string[]
-  draggedNodePositionById: Map<string, { x: number; y: number }>
-  dragDx?: number
-  dragDy?: number
-  dropFlowPoint?: { x: number; y: number } | null
+  projectedSpaces: WorkspaceSpaceState[]
+}): WorkspaceSpaceState[] {
+  const projectedSpaceById = new Map(projectedSpaces.map(space => [space.id, space]))
+  return spaces.map(space => {
+    const projectedRect = projectedSpaceById.get(space.id)?.rect ?? null
+    return projectedRect && !rectEquals(projectedRect, space.rect)
+      ? { ...space, rect: { ...projectedRect } }
+      : space
+  })
+}
+
+function projectWorkspaceNodeDropLayoutWith({
+  input,
+  projectDrag,
+  previewOnly = false,
+  preserveDraggedNodePositions = false,
+}: {
+  input: ProjectWorkspaceNodeDropLayoutInput
+  projectDrag: DragProjector
+  previewOnly?: boolean
+  preserveDraggedNodePositions?: boolean
 }): ProjectedWorkspaceNodeDropLayout {
+  const {
+    nodes,
+    spaces,
+    draggedNodeIds,
+    draggedNodePositionById,
+    dragDx = 0,
+    dragDy = 0,
+    dropFlowPoint,
+  } = input
+
   if (draggedNodeIds.length === 0) {
     return {
       targetSpaceId: null,
@@ -49,7 +86,7 @@ export function projectWorkspaceNodeDropLayout({
     }
   }
 
-  const projectedDrag = projectWorkspaceNodeDragLayout({
+  const projectedDrag = projectDrag({
     nodes,
     spaces,
     draggedNodeIds,
@@ -115,13 +152,20 @@ export function projectWorkspaceNodeDropLayout({
       gap: 0,
     })
 
+    const draggedNodeIdSet = new Set(draggedNodeIds)
     nodeRects = nodeRects.map(item => {
-      const next = nodePositionById.get(item.id)
-      if (!next) {
-        return item
+      if (preserveDraggedNodePositions && draggedNodeIdSet.has(item.id)) {
+        const primaryPosition = projectedDrag.nextNodePositionById.get(item.id)
+        if (primaryPosition) {
+          return {
+            id: item.id,
+            rect: { ...item.rect, x: primaryPosition.x, y: primaryPosition.y },
+          }
+        }
       }
 
-      return { id: item.id, rect: { ...item.rect, x: next.x, y: next.y } }
+      const next = nodePositionById.get(item.id)
+      return next ? { id: item.id, rect: { ...item.rect, x: next.x, y: next.y } } : item
     })
 
     const beforeRectById = new Map(
@@ -129,22 +173,28 @@ export function projectWorkspaceNodeDropLayout({
         .filter(space => Boolean(space.rect))
         .map(space => [space.id, space.rect!] as const),
     )
+    const hasRectChange = pushedSpaces.some(
+      space => Boolean(space.rect) && !rectEquals(space.rect, beforeRectById.get(space.id) ?? null),
+    )
 
-    const hasRectChange = pushedSpaces.some(space => {
-      if (!space.rect) {
-        return false
-      }
-
-      return !rectEquals(space.rect, beforeRectById.get(space.id) ?? null)
-    })
+    const projectedSpaces = hasRectChange
+      ? pushedSpaces
+      : hasSpaceChange
+        ? reassignedSpaces
+        : spaces
+    const nextSpaces = previewOnly
+      ? hasRectChange
+        ? mergeProjectedSpaceRects({ spaces, projectedSpaces })
+        : spaces
+      : projectedSpaces
 
     return {
       targetSpaceId,
       nextNodePositionById: new Map(
         nodeRects.map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
       ),
-      nextSpaces: hasRectChange ? pushedSpaces : hasSpaceChange ? reassignedSpaces : spaces,
-      hasSpaceChange: hasRectChange || hasSpaceChange,
+      nextSpaces,
+      hasSpaceChange: hasRectChange || (!previewOnly && hasSpaceChange),
     }
   }
 
@@ -153,7 +203,73 @@ export function projectWorkspaceNodeDropLayout({
     nextNodePositionById: new Map(
       nodeRects.map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
     ),
-    nextSpaces: hasSpaceChange ? reassignedSpaces : spaces,
-    hasSpaceChange,
+    nextSpaces: previewOnly ? spaces : hasSpaceChange ? reassignedSpaces : spaces,
+    hasSpaceChange: previewOnly ? false : hasSpaceChange,
   }
+}
+
+export function projectWorkspaceNodeLiveDropLayout(
+  input: ProjectWorkspaceNodeDropLayoutInput,
+): ProjectedWorkspaceNodeDropLayout {
+  return projectWorkspaceNodeDropLayoutWith({
+    input,
+    projectDrag: projectWorkspaceNodeLiveDragLayout,
+    previewOnly: true,
+    preserveDraggedNodePositions: true,
+  })
+}
+
+export function projectWorkspaceNodePrimaryDropLayout(
+  input: ProjectWorkspaceNodeDropLayoutInput,
+): ProjectedWorkspaceNodeDropLayout {
+  return projectWorkspaceNodeTransientDropLayout(
+    input,
+    projectWorkspaceNodePrimaryDragLayout(input),
+    false,
+  )
+}
+
+function projectWorkspaceNodeTransientDropLayout(
+  input: ProjectWorkspaceNodeDropLayoutInput,
+  projected: Pick<ProjectedNodeDragLayout, 'targetSpaceId' | 'nextNodePositionById'> | null,
+  restoreBaselinePositions: boolean,
+): ProjectedWorkspaceNodeDropLayout {
+  if (input.draggedNodeIds.length === 0) {
+    return {
+      targetSpaceId: null,
+      nextNodePositionById: new Map(),
+      nextSpaces: input.spaces,
+      hasSpaceChange: false,
+    }
+  }
+
+  const nextNodePositionById = restoreBaselinePositions
+    ? new Map(input.nodes.map(node => [node.id, { ...node.position }]))
+    : new Map<string, { x: number; y: number }>()
+
+  if (projected) {
+    projected.nextNodePositionById.forEach((position, nodeId) => {
+      nextNodePositionById.set(nodeId, position)
+    })
+  } else {
+    input.draggedNodeIds.forEach(nodeId => {
+      const position = input.draggedNodePositionById.get(nodeId)
+      if (position) {
+        nextNodePositionById.set(nodeId, position)
+      }
+    })
+  }
+
+  return {
+    targetSpaceId: projected?.targetSpaceId ?? null,
+    nextNodePositionById,
+    nextSpaces: input.spaces,
+    hasSpaceChange: false,
+  }
+}
+
+export function projectWorkspaceNodeDropLayout(
+  input: ProjectWorkspaceNodeDropLayoutInput,
+): ProjectedWorkspaceNodeDropLayout {
+  return projectWorkspaceNodeDropLayoutWith({ input, projectDrag: projectWorkspaceNodeDragLayout })
 }

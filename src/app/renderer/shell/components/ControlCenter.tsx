@@ -1,228 +1,181 @@
-import React, { useEffect, useMemo, useRef } from 'react'
-import { Bell, Map as MapIcon, Monitor, Moon, PanelLeft, Settings, Sun } from 'lucide-react'
+import React, { useEffect, useId, useRef, useState } from 'react'
+import { Bell, ChevronRight, Map as MapIcon, Settings } from 'lucide-react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { Popover } from '@app/renderer/components/ui/Popover'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
-import type { UiTheme } from '@contexts/settings/domain/agentSettings'
 import { getUiThemeLabel } from '@app/renderer/i18n/labels'
+import { UI_THEMES, type UiTheme } from '@contexts/settings/domain/agentSettings'
 
 export function ControlCenter({
   isOpen,
+  anchorRef,
   uiTheme,
-  isPrimarySidebarCollapsed,
   isMinimapVisible,
   isStandbyBannerEnabled,
   hasActiveWorkspace,
   onClose,
   onChangeUiTheme,
-  onTogglePrimarySidebar,
   onToggleMinimap,
   onToggleStandbyBanner,
   onOpenSettings,
 }: {
   isOpen: boolean
+  anchorRef: React.RefObject<HTMLButtonElement | null>
   uiTheme: UiTheme
-  isPrimarySidebarCollapsed: boolean
   isMinimapVisible: boolean
   isStandbyBannerEnabled: boolean
   hasActiveWorkspace: boolean
   onClose: () => void
   onChangeUiTheme: (theme: UiTheme) => void
-  onTogglePrimarySidebar: () => void
   onToggleMinimap: () => void
   onToggleStandbyBanner: () => void
   onOpenSettings: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
-  const restoreFocusRef = useRef<HTMLElement | null>(null)
-  const initialFocusRef = useRef<HTMLButtonElement | null>(null)
-
-  const themeOptions = useMemo(
-    () => [
-      { value: 'system' as const, icon: Monitor },
-      { value: 'light' as const, icon: Sun },
-      { value: 'dark' as const, icon: Moon },
-    ],
-    [],
-  )
+  const titleId = useId()
+  const initialFocusRef = useRef<HTMLInputElement | null>(null)
+  const [returnFocusOnClose, setReturnFocusOnClose] = useState(true)
 
   useEffect(() => {
     if (!isOpen) {
       return
     }
 
-    restoreFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null
-
-    window.setTimeout(() => {
-      initialFocusRef.current?.focus()
+    setReturnFocusOnClose(true)
+    const focusTimer = window.setTimeout(() => {
+      initialFocusRef.current?.focus({ preventScroll: true })
     }, 0)
 
     return () => {
-      const focusTarget = restoreFocusRef.current
-      restoreFocusRef.current = null
-      if (focusTarget && document.contains(focusTarget)) {
-        window.setTimeout(() => {
-          focusTarget.focus()
-        }, 0)
-      }
+      window.clearTimeout(focusTimer)
     }
   }, [isOpen])
 
-  useEffect(() => {
-    if (!isOpen) {
-      return
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return
-      }
-
-      event.preventDefault()
-      onClose()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen, onClose])
-
-  if (!isOpen) {
-    return null
-  }
-
   return (
-    <div
-      className="control-center-backdrop"
-      data-testid="control-center-backdrop"
-      onMouseDown={event => {
-        event.preventDefault()
+    <Popover
+      open={isOpen}
+      anchorRef={anchorRef}
+      returnFocus={returnFocusOnClose ? anchorRef : false}
+      side="bottom"
+      align="end"
+      offset={8}
+      className="control-center"
+      role="dialog"
+      aria-labelledby={titleId}
+      data-testid="control-center"
+      onDismiss={() => {
         onClose()
       }}
     >
-      <section
-        className="control-center"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('controlCenter.title')}
-        data-testid="control-center"
-        onMouseDown={event => {
-          event.stopPropagation()
-        }}
-      >
-        <header className="control-center__header">
-          <span className="control-center__title">{t('controlCenter.title')}</span>
-        </header>
+      <header className="control-center__header">
+        <h2 id={titleId} className="control-center__title">
+          {t('controlCenter.title')}
+        </h2>
+        <span className="control-center__header-meta">{t('controlCenter.quickSettings')}</span>
+      </header>
 
-        <div className="control-center__tiles">
-          <button
-            type="button"
+      <div className="control-center__toggles">
+        <label className="control-center__row" data-disabled={!hasActiveWorkspace ? '' : undefined}>
+          <span className="control-center__row-icon" aria-hidden="true">
+            <MapIcon />
+          </span>
+          <span className="control-center__row-copy">
+            <span className="control-center__row-label">{t('controlCenter.minimap')}</span>
+            <span className="control-center__row-status">
+              {isMinimapVisible ? t('controlCenter.shown') : t('controlCenter.hidden')}
+            </span>
+          </span>
+          <Toggle
             ref={initialFocusRef}
-            className={`control-center-tile${!isPrimarySidebarCollapsed ? ' control-center-tile--on' : ''}`}
-            data-testid="control-center-toggle-sidebar"
-            onClick={() => {
-              onTogglePrimarySidebar()
-            }}
-          >
-            <span className="control-center-tile__icon" aria-hidden="true">
-              <PanelLeft size={18} />
-            </span>
-            <span className="control-center-tile__text">
-              <span className="control-center-tile__label">{t('controlCenter.sidebar')}</span>
-              <span className="control-center-tile__subtitle">
-                {isPrimarySidebarCollapsed
-                  ? t('commandCenter.commands.showPrimarySidebar')
-                  : t('commandCenter.commands.hidePrimarySidebar')}
-              </span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`control-center-tile${isMinimapVisible ? ' control-center-tile--on' : ''}`}
-            data-testid="control-center-toggle-minimap"
+            checked={isMinimapVisible}
             disabled={!hasActiveWorkspace}
-            onClick={() => {
+            label={t('controlCenter.minimap')}
+            testId="control-center-toggle-minimap"
+            onCheckedChange={() => {
               onToggleMinimap()
             }}
-          >
-            <span className="control-center-tile__icon" aria-hidden="true">
-              <MapIcon size={18} />
-            </span>
-            <span className="control-center-tile__text">
-              <span className="control-center-tile__label">{t('controlCenter.minimap')}</span>
-              <span className="control-center-tile__subtitle">
-                {isMinimapVisible
-                  ? t('workspaceCanvas.hideMinimap')
-                  : t('workspaceCanvas.showMinimap')}
-              </span>
-            </span>
-          </button>
+          />
+        </label>
 
-          <button
-            type="button"
-            className={`control-center-tile${isStandbyBannerEnabled ? ' control-center-tile--on' : ''}`}
-            data-testid="control-center-toggle-agent-standby-banner"
-            onClick={() => {
+        <label className="control-center__row">
+          <span className="control-center__row-icon" aria-hidden="true">
+            <Bell />
+          </span>
+          <span className="control-center__row-copy">
+            <span className="control-center__row-label">
+              {t('controlCenter.agentStandbyBanner')}
+            </span>
+            <span className="control-center__row-status">
+              {isStandbyBannerEnabled ? t('controlCenter.on') : t('controlCenter.off')}
+            </span>
+          </span>
+          <Toggle
+            checked={isStandbyBannerEnabled}
+            label={t('controlCenter.agentStandbyBanner')}
+            testId="control-center-toggle-agent-standby-banner"
+            onCheckedChange={() => {
               onToggleStandbyBanner()
             }}
-          >
-            <span className="control-center-tile__icon" aria-hidden="true">
-              <Bell size={18} />
-            </span>
-            <span className="control-center-tile__text">
-              <span className="control-center-tile__label">
-                {t('controlCenter.agentStandbyBanner')}
-              </span>
-              <span className="control-center-tile__subtitle">
-                {isStandbyBannerEnabled ? t('controlCenter.on') : t('controlCenter.off')}
-              </span>
-            </span>
-          </button>
-        </div>
+          />
+        </label>
+      </div>
 
-        <div className="control-center__section">
-          <div className="control-center__section-label">{t('controlCenter.theme')}</div>
-          <div
-            className="control-center__segmented"
-            role="group"
-            aria-label={t('controlCenter.theme')}
+      <section className="control-center__section" aria-labelledby={`${titleId}-theme`}>
+        <div className="control-center__section-heading">
+          <h3 id={`${titleId}-theme`} className="control-center__section-label">
+            {t('controlCenter.theme')}
+          </h3>
+          <span
+            className="control-center__current-theme"
+            data-testid="control-center-current-theme"
           >
-            {themeOptions.map(option => {
-              const Icon = option.icon
-              const isSelected = uiTheme === option.value
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`control-center__segment${isSelected ? ' control-center__segment--selected' : ''}`}
-                  data-testid={`control-center-theme-${option.value}`}
-                  aria-pressed={isSelected}
-                  onClick={() => {
-                    onChangeUiTheme(option.value)
-                  }}
-                >
-                  <Icon aria-hidden="true" size={16} />
-                  <span>{getUiThemeLabel(t, option.value)}</span>
-                </button>
-              )
-            })}
-          </div>
+            {getUiThemeLabel(t, uiTheme)}
+          </span>
         </div>
+        <div className="control-center__themes" role="radiogroup">
+          {UI_THEMES.map(theme => (
+            <label key={theme} className="control-center__theme">
+              <input
+                type="radio"
+                name="control-center-theme"
+                value={theme}
+                checked={uiTheme === theme}
+                data-testid={`control-center-theme-${theme}`}
+                onChange={() => {
+                  onChangeUiTheme(theme)
+                }}
+              />
+              <span className="control-center__theme-card">
+                <span
+                  className="control-center__theme-preview"
+                  data-theme-preview={theme}
+                  aria-hidden="true"
+                />
+                <span className="control-center__theme-label">{getUiThemeLabel(t, theme)}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </section>
 
-        <button
-          type="button"
+      <footer className="control-center__footer">
+        <Button
+          variant="ghost"
+          size="sm"
           className="control-center__settings"
           data-testid="control-center-open-settings"
           onClick={() => {
+            setReturnFocusOnClose(false)
             onOpenSettings()
             onClose()
           }}
         >
-          <Settings aria-hidden="true" size={16} />
+          <Settings aria-hidden="true" />
           <span>{t('common.settings')}</span>
-        </button>
-      </section>
-    </div>
+          <ChevronRight className="control-center__settings-chevron" aria-hidden="true" />
+        </Button>
+      </footer>
+    </Popover>
   )
 }

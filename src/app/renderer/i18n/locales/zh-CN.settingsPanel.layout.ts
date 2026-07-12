@@ -20,6 +20,73 @@ export const zhCNSettingsPanelLayout = {
     diagnostics: '诊断',
     projects: '项目',
     sectionsLabel: '设置分区',
+    pageSelectorLabel: '设置页面',
+    expandProjects: '展开项目',
+    collapseProjects: '收起项目',
+  },
+  navGroups: {
+    application: '应用',
+    workspace: '工作区',
+    connections: '连接',
+    advanced: '高级',
+    projects: '项目',
+  },
+  pageDescriptions: {
+    general: '设置语言、更新和常用偏好。',
+    appearance: '调整主题、界面文字与终端字体。',
+    notifications: '管理系统通知与待命信息。',
+    canvasWindows: '调整画布操作与窗口行为。',
+    agent: '选择并配置 AI 助手。',
+    tasksShortcuts: '设置任务默认项、快捷操作与快捷键。',
+    worker: '配置 Worker 运行方式、访问与远程端点。',
+    integrations: '连接 OpenCove 与外部服务。',
+    advanced: '管理实验性功能与诊断选项。',
+  },
+  groups: {
+    general: {
+      languageRegion: '语言与地区',
+      softwareUpdates: '软件更新',
+    },
+    appearance: {
+      interface: '界面',
+      terminal: '终端',
+    },
+    notifications: {
+      system: '通知方式',
+      standby: '待命横幅',
+    },
+    canvasWindows: {
+      canvasInput: '画布输入',
+      nodeFocus: '节点定位',
+      spaceArchiving: 'Space 归档',
+      windowTerminal: '窗口与终端',
+    },
+    agent: {
+      providers: 'Agent 提供方',
+      permissions: '权限',
+    },
+    tasksShortcuts: {
+      taskTitles: '任务标题',
+      taskTags: '任务标签',
+      quickActions: '快捷操作',
+      keyboard: '键盘快捷键',
+    },
+    worker: {
+      runtime: 'Worker 运行',
+      remote: '远程连接',
+      webAccess: '浏览器访问',
+    },
+    integrations: {
+      github: 'GitHub',
+    },
+    advanced: {
+      websiteWindows: '网页窗口',
+      diagnostics: '性能诊断',
+    },
+    workspace: {
+      worktrees: 'Worktree',
+      environment: '运行环境',
+    },
   },
   appearance: {
     title: '显示与字体',

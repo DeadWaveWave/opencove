@@ -240,9 +240,28 @@ export async function closeSettings(window: Page): Promise<void> {
 }
 
 export async function switchSettingsPage(window: Page, pageId: string): Promise<void> {
-  const nav = window.locator(`[data-testid="settings-section-nav-${pageId}"]`)
+  const canonicalNavId: Record<string, string> = {
+    endpoints: 'worker',
+    shortcuts: 'task-configuration',
+    'quick-menu': 'task-configuration',
+    diagnostics: 'experimental',
+  }
+  const nav = window.locator(
+    `[data-testid="settings-section-nav-${canonicalNavId[pageId] ?? pageId}"]`,
+  )
   await expect(nav).toBeVisible()
   await nav.click({ noWaitAfter: true })
+
+  const legacyTargetId: Record<string, string> = {
+    endpoints: 'settings-section-endpoints',
+    shortcuts: 'settings-section-shortcuts',
+    'quick-menu': 'settings-section-quick-commands',
+    diagnostics: 'settings-section-diagnostics',
+  }
+  const targetId = legacyTargetId[pageId]
+  if (targetId) {
+    await window.locator(`#${targetId}`).scrollIntoViewIfNeeded()
+  }
 }
 
 export async function pollForEndpointPing(window: Page, endpointId: string): Promise<void> {

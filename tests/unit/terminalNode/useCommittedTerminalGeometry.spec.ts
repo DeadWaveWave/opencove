@@ -1,20 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { commitTerminalGeometryForCurrentSession } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/useCommittedTerminalGeometry'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import {
+  commitTerminalGeometryForCurrentSession,
+  useCommittedTerminalGeometry,
+} from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/useCommittedTerminalGeometry'
 import {
   commitSettledTerminalNodeGeometry,
   fitTerminalNodeToMeasuredSize,
+  refreshTerminalNodeSize,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/syncTerminalNodeSize'
+import { canWriteTerminalOutput } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalGeometryCoordinator'
 
 vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/syncTerminalNodeSize',
   () => ({
     commitSettledTerminalNodeGeometry: vi.fn(),
     fitTerminalNodeToMeasuredSize: vi.fn(),
+    refreshTerminalNodeSize: vi.fn(),
   }),
 )
 
 const commitSettledMock = vi.mocked(commitSettledTerminalNodeGeometry)
 const fitTerminalNodeToMeasuredSizeMock = vi.mocked(fitTerminalNodeToMeasuredSize)
+const refreshTerminalNodeSizeMock = vi.mocked(refreshTerminalNodeSize)
 
 type CommitParams = Parameters<typeof commitTerminalGeometryForCurrentSession>[0]
 
@@ -118,13 +126,90 @@ describe('commitTerminalGeometryForCurrentSession', () => {
     expect(commitSettledMock.mock.calls[1]?.[0].geometryRevision).toBe(2)
   })
 
-  it('only fits local terminal size when PTY resize is suppressed', async () => {
+  it('serializes geometry intents so a newer measurement starts after the prior ACK settles', async () => {
+    const params = createCommitParams()
+    params.terminalRef.current = createTerminalMock()
+    const firstBlocked = createDeferred()
+    commitSettledMock
+      .mockImplementationOnce(async options => {
+        await firstBlocked.promise
+        options.lastCommittedPtySizeRef.current = { cols: 100, rows: 32 }
+        return { cols: 100, rows: 32, changed: true }
+      })
+      .mockImplementationOnce(async options => {
+        options.lastCommittedPtySizeRef.current = { cols: 120, rows: 40 }
+        return { cols: 120, rows: 40, changed: true }
+      })
+    const { result } = renderHook(() => useCommittedTerminalGeometry(params))
+
+    act(() => {
+      result.current('frame_commit')
+      result.current('appearance_commit')
+    })
+
+    await waitFor(() => {
+      expect(commitSettledMock).toHaveBeenCalledTimes(1)
+    })
+    firstBlocked.resolve()
+    await waitFor(() => {
+      expect(commitSettledMock).toHaveBeenCalledTimes(2)
+    })
+    expect(commitSettledMock.mock.calls[1]?.[0].geometryRevision).toBe(2)
+  })
+
+  it('starts a new session queue without waiting for the prior session ACK', async () => {
+    const params = createCommitParams()
+    params.terminalRef.current = createTerminalMock()
+    const oldSessionBlocked = createDeferred()
+    commitSettledMock
+      .mockImplementationOnce(async () => {
+        await oldSessionBlocked.promise
+        return { cols: 100, rows: 32, changed: true }
+      })
+      .mockResolvedValueOnce({ cols: 120, rows: 40, changed: true })
+    const { result, rerender } = renderHook(() => useCommittedTerminalGeometry(params))
+    act(() => result.current('frame_commit'))
+    await waitFor(() => expect(commitSettledMock).toHaveBeenCalledTimes(1))
+
+    params.sessionId = 'session-b'
+    params.latestSessionIdRef.current = 'session-b'
+    params.terminalRef.current = createTerminalMock()
+    rerender()
+    act(() => result.current('frame_commit'))
+
+    await waitFor(() => expect(commitSettledMock).toHaveBeenCalledTimes(2))
+    oldSessionBlocked.resolve()
+  })
+
+  it('refreshes current canonical geometry without a local fit when PTY resize is suppressed', async () => {
     const params = createCommitParams()
     params.suppressPtyResizeRef.current = true
 
     await commitTerminalGeometryForCurrentSession(params, 'appearance_commit')
 
-    expect(fitTerminalNodeToMeasuredSizeMock).toHaveBeenCalledTimes(1)
+    expect(refreshTerminalNodeSizeMock).toHaveBeenCalledWith({
+      terminalRef: params.terminalRef,
+      containerRef: params.containerRef,
+      isPointerResizingRef: params.isPointerResizingRef,
+    })
+    expect(params.scheduleWebglCanvasTransformCleanup).toHaveBeenCalledTimes(1)
+    expect(fitTerminalNodeToMeasuredSizeMock).not.toHaveBeenCalled()
     expect(commitSettledMock).not.toHaveBeenCalled()
+    expect(params.lastCommittedPtySizeRef.current).toStrictEqual({ cols: 80, rows: 24 })
+  })
+
+  it('releases the output gate when a geometry commit rejects', async () => {
+    const params = createCommitParams()
+    const terminal = createTerminalMock()
+    params.terminalRef.current = terminal
+    commitSettledMock.mockRejectedValueOnce(new Error('resize rejected'))
+
+    await expect(
+      commitTerminalGeometryForCurrentSession(params, 'frame_commit'),
+    ).resolves.toBeUndefined()
+
+    expect(canWriteTerminalOutput(terminal)).toBe(true)
+    expect(params.lastCommittedPtySizeRef.current).toStrictEqual({ cols: 80, rows: 24 })
+    expect(params.scheduleWebglCanvasTransformCleanup).not.toHaveBeenCalled()
   })
 })

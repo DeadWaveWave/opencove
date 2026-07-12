@@ -126,10 +126,10 @@ describe('terminal geometry layout sync helpers', () => {
     expect(ptyResize).not.toHaveBeenCalled()
   })
 
-  it('commits measured geometry only on explicit commit', () => {
+  it('commits measured geometry only on explicit commit', async () => {
     const terminal = createTerminalMock()
 
-    commitTerminalNodeGeometry({
+    await commitTerminalNodeGeometry({
       terminalRef: { current: terminal as never },
       fitAddonRef: {
         current: {
@@ -150,6 +150,9 @@ describe('terminal geometry layout sync helpers', () => {
       cols: 96,
       rows: 30,
       reason: 'frame_commit',
+      operationId: expect.any(String),
+      baseGeometryRevision: null,
+      authorityEpoch: null,
     })
   })
 
@@ -195,7 +198,7 @@ describe('terminal geometry layout sync helpers', () => {
     expect(terminal.resize).toHaveBeenCalledWith(121, 40)
   })
 
-  it('shrinks DOM renderer geometry when real row content would be clipped by xterm overflow', () => {
+  it('does not shrink geometry when only visible DOM row content overhangs', () => {
     const terminal = createTerminalMock()
     terminal.cols = 117
     terminal.rows = 40
@@ -223,8 +226,8 @@ describe('terminal geometry layout sync helpers', () => {
       isPointerResizingRef: { current: false },
     })
 
-    expect(size).toStrictEqual({ cols: 111, rows: 40 })
-    expect(terminal.resize).toHaveBeenCalledWith(111, 40)
+    expect(size).toStrictEqual({ cols: 117, rows: 40 })
+    expect(terminal.resize).not.toHaveBeenCalled()
   })
 
   it('does not reserve DOM renderer overhang space when rows match the measured cell width', () => {
@@ -258,7 +261,7 @@ describe('terminal geometry layout sync helpers', () => {
     expect(terminal.resize).not.toHaveBeenCalled()
   })
 
-  it('keeps DOM renderer text close to the scrollbar when the measured gap is already safe', () => {
+  it('ignores DOM scrollbar distance when the proposed geometry is unchanged', () => {
     const terminal = createTerminalMock()
     terminal.cols = 107
     terminal.rows = 37
@@ -292,7 +295,7 @@ describe('terminal geometry layout sync helpers', () => {
     expect(terminal.resize).not.toHaveBeenCalled()
   })
 
-  it('keeps the DOM renderer scrollbar gap decision in unscaled CSS pixels', () => {
+  it('ignores transformed DOM text footprints when the proposed geometry is unchanged', () => {
     const terminal = createTerminalMock()
     terminal.cols = 107
     terminal.rows = 37
@@ -327,7 +330,7 @@ describe('terminal geometry layout sync helpers', () => {
     expect(terminal.resize).not.toHaveBeenCalled()
   })
 
-  it('uses visible DOM row overflow when keeping text away from the scrollbar', () => {
+  it('does not make visible DOM row overflow a geometry input', () => {
     const terminal = createTerminalMock()
     terminal.cols = 117
     terminal.rows = 36
@@ -358,40 +361,7 @@ describe('terminal geometry layout sync helpers', () => {
       lastCommittedPtySizeRef: { current: { cols: 117, rows: 36 } },
     })
 
-    expect(size).toStrictEqual({ cols: 116, rows: 36 })
-    expect(terminal.resize).toHaveBeenCalledWith(116, 36)
-  })
-
-  it('keeps DOM renderer geometry capped after a previous overhang correction', () => {
-    const terminal = createTerminalMock()
-    terminal.cols = 114
-    terminal.rows = 40
-    terminal._core._renderService.dimensions.css.cell = {
-      width: 7.282051282051282,
-      height: 15.2,
-    }
-
-    const size = fitTerminalNodeToMeasuredSize({
-      terminalRef: { current: terminal as never },
-      fitAddonRef: {
-        current: {
-          proposeDimensions: vi.fn(() => ({ cols: 117, rows: 40 })),
-        } as never,
-      },
-      containerRef: {
-        current: createDomLayoutContainerMock({
-          containerWidth: 865,
-          xtermWidth: 865,
-          screenWidth: 830,
-          rowsScrollWidth: 861,
-          maxRowRight: 869,
-        }) as never,
-      },
-      isPointerResizingRef: { current: false },
-      lastCommittedPtySizeRef: { current: { cols: 114, rows: 40 } },
-    })
-
-    expect(size).toStrictEqual({ cols: 111, rows: 40 })
-    expect(terminal.resize).toHaveBeenCalledWith(111, 40)
+    expect(size).toBeNull()
+    expect(terminal.resize).not.toHaveBeenCalled()
   })
 })

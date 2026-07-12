@@ -144,6 +144,7 @@ const switcherSpace = {
   id: 'space-1',
   name: 'Space 1',
   directoryPath: '/tmp/space-1',
+  pinned: true,
   nodeIds: [],
   rect: null,
 } as const

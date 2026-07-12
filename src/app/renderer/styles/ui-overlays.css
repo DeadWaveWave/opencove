@@ -1,0 +1,76 @@
+.cove-popover {
+  position: fixed;
+  z-index: var(--cove-z-popover);
+  border: 1px solid var(--cove-popover-border);
+  border-radius: var(--cove-radius-xl);
+  background: var(--cove-popover);
+  color: var(--cove-text);
+  box-shadow: var(--cove-shadow-lg);
+  animation: cove-popover-enter var(--cove-motion-normal) var(--cove-ease-standard);
+  backdrop-filter: blur(20px);
+}
+
+.cove-dialog-backdrop {
+  position: fixed;
+  z-index: var(--cove-z-dialog);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--cove-backdrop);
+  backdrop-filter: blur(12px);
+  animation: cove-dialog-backdrop-enter var(--cove-motion-normal) var(--cove-ease-standard);
+}
+
+.cove-dialog {
+  min-width: 0;
+  min-height: 0;
+  animation: cove-dialog-enter var(--cove-motion-normal) var(--cove-ease-standard);
+}
+
+.cove-popover:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  box-shadow: var(--cove-shadow-lg), var(--cove-focus-shadow);
+}
+
+@keyframes cove-popover-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cove-dialog-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cove-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-popover {
+    animation: none;
+  }
+
+  .cove-dialog,
+  .cove-dialog-backdrop {
+    animation: none;
+  }
+}

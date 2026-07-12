@@ -14,6 +14,7 @@ import {
 import type { TerminalNodeData } from '../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type { WorkspaceCanvasViewProps } from './WorkspaceCanvasView.types'
+import { useActiveExplorerSpace } from './hooks/useActiveExplorerSpace'
 import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
 import { useWorkspaceCanvasSpaceMenuState } from './hooks/useCanvasSpaceMenuState'
 import { useWorkspaceCanvasLabelColorFilter } from './hooks/useLabelColorFilter'
@@ -100,6 +101,7 @@ export function WorkspaceCanvasView({
   spaces,
   activateSpace,
   activateAllSpaces,
+  onOpenSpaceContextMenu,
   contextMenu,
   closeContextMenu,
   magneticSnappingEnabled,
@@ -206,13 +208,7 @@ export function WorkspaceCanvasView({
     nodes,
   })
 
-  const activeExplorerSpace = React.useMemo(() => {
-    if (!openExplorerSpaceId) {
-      return null
-    }
-
-    return spaces.find(space => space.id === openExplorerSpaceId) ?? null
-  }, [openExplorerSpaceId, spaces])
+  const activeExplorerSpace = useActiveExplorerSpace(openExplorerSpaceId, spaces)
 
   React.useEffect(() => {
     if (!useManualCanvasWheelGestures) {
@@ -394,6 +390,10 @@ export function WorkspaceCanvasView({
         activateSpace={activateSpace}
         activateAllSpaces={activateAllSpaces}
         cancelSpaceRename={cancelSpaceRename}
+        onOpenSpaceContextMenu={(spaceId, anchor) => {
+          closeContextMenu()
+          onOpenSpaceContextMenu?.(spaceId, anchor)
+        }}
         usedLabelColors={usedLabelColors}
         activeLabelColorFilter={labelColorFilter}
         onToggleLabelColorFilter={color => {

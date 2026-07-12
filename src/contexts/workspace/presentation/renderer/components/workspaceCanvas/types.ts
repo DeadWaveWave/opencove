@@ -37,6 +37,7 @@ export interface WorkspaceCanvasProps {
   activeSpaceId: string | null
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onActiveSpaceChange: (spaceId: string | null) => void
+  onOpenSpaceContextMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
   shortcutsEnabled?: boolean
   onAppendSpaceArchiveRecord: (record: SpaceArchiveRecord) => void
   viewport: WorkspaceViewport

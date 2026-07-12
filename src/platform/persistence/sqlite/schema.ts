@@ -74,6 +74,7 @@ export const spaces = sqliteTable('workspace_spaces', {
   parentSpaceId: text('parent_space_id'),
   boundaryJson: text('boundary_json').notNull().default('{}'),
   sortOrder: integer('sort_order').notNull().default(0),
+  pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
   labelColor: text('label_color'),
   rectX: real('rect_x'),
   rectY: real('rect_y'),
@@ -96,6 +97,21 @@ export const spaceNodes = sqliteTable(
 export const nodeScrollback = sqliteTable('node_scrollback', {
   nodeId: text('node_id').primaryKey(),
   scrollback: text('scrollback').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const terminalRecoveryRecords = sqliteTable('terminal_recovery_records', {
+  nodeId: text('node_id').primaryKey(),
+  formatVersion: integer('format_version').notNull(),
+  generation: integer('generation').notNull(),
+  bindingJson: text('binding_json'),
+  runtimeEpoch: text('runtime_epoch'),
+  checkpointRevision: integer('checkpoint_revision').notNull().default(0),
+  appliedSeq: integer('applied_seq').notNull().default(0),
+  presentationJson: text('presentation_json'),
+  rawTail: text('raw_tail').notNull().default(''),
+  rawTruncated: integer('raw_truncated', { mode: 'boolean' }).notNull().default(false),
+  checksum: text('checksum'),
   updatedAt: text('updated_at').notNull(),
 })
 

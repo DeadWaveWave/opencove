@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Globe, Pin, Power, Terminal } from 'lucide-reac
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickCommand } from '@contexts/settings/domain/agentSettings'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
+import { SettingsModule } from '../SettingsGroup'
 import { moveItem } from './moveItem'
 
 type QuickCommandDraft = {
@@ -159,12 +160,11 @@ export function QuickCommandsSubsection({
     : 'settings-quick-command-pinned'
 
   return (
-    <div className="settings-panel__subsection" id="settings-section-quick-commands">
-      <div className="settings-panel__subsection-header">
-        <strong>{t('settingsPanel.quickMenu.commands.title')}</strong>
-        <span>{t('settingsPanel.quickMenu.commands.help')}</span>
-      </div>
-
+    <SettingsModule
+      id="settings-section-quick-commands"
+      title={t('settingsPanel.quickMenu.commands.title')}
+      description={t('settingsPanel.quickMenu.commands.help')}
+    >
       <div className="settings-list-container" data-testid="settings-quick-commands-list">
         {quickCommands.map((command, index) => (
           <div className="settings-list-item" key={command.id}>
@@ -196,7 +196,7 @@ export function QuickCommandsSubsection({
                     type="checkbox"
                     data-testid={`settings-quick-command-enabled-${command.id}`}
                     checked={command.enabled}
-                    aria-label={t('settingsPanel.quickMenu.commands.enabled')}
+                    aria-label={`${command.title} ${t('settingsPanel.quickMenu.commands.enabled')}`}
                     onChange={event => {
                       onChangeQuickCommands(
                         quickCommands.map(existing =>
@@ -222,7 +222,7 @@ export function QuickCommandsSubsection({
                     type="checkbox"
                     data-testid={`settings-quick-command-pinned-${command.id}`}
                     checked={command.pinned}
-                    aria-label={t('settingsPanel.quickMenu.commands.pinned')}
+                    aria-label={`${command.title} ${t('settingsPanel.quickMenu.commands.pinned')}`}
                     onChange={event => {
                       onChangeQuickCommands(
                         quickCommands.map(existing =>
@@ -493,6 +493,6 @@ export function QuickCommandsSubsection({
           </section>
         </div>
       ) : null}
-    </div>
+    </SettingsModule>
   )
 }

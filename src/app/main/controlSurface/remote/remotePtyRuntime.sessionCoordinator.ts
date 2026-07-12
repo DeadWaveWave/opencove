@@ -4,6 +4,10 @@ import type { AttachedSessionState } from './remotePtyStreamMessageHandler'
 
 type SessionRole = 'viewer' | 'controller'
 
+function createAttachedSessionState(): AttachedSessionState {
+  return { lastSeq: 0, role: 'viewer', authorityEpoch: null }
+}
+
 export type RemotePtySessionCoordinator = {
   attachedSessions: Map<string, AttachedSessionState>
   trackSession: (sessionId: string) => void
@@ -123,6 +127,10 @@ export function createRemotePtySessionCoordinator(options: {
     })
     streamAttachedSessionIds.clear()
     streamAttachRequestedSessionIds.clear()
+    attachedSessions.forEach(state => {
+      state.role = 'viewer'
+      state.authorityEpoch = null
+    })
   }
 
   const onSessionAttached = (sessionId: string): void => {
@@ -168,7 +176,7 @@ export function createRemotePtySessionCoordinator(options: {
       return
     }
 
-    const state = attachedSessions.get(sessionId) ?? { lastSeq: 0 }
+    const state = attachedSessions.get(sessionId) ?? createAttachedSessionState()
     attachedSessions.set(sessionId, state)
 
     ws.send(
@@ -213,7 +221,7 @@ export function createRemotePtySessionCoordinator(options: {
   const noteSessionRolePreference = (sessionId: string, role: SessionRole): void => {
     rolePreferenceBySessionId.set(sessionId, role)
     if (!attachedSessions.has(sessionId)) {
-      attachedSessions.set(sessionId, { lastSeq: 0 })
+      attachedSessions.set(sessionId, createAttachedSessionState())
     }
     trackSession(sessionId)
   }
@@ -224,7 +232,7 @@ export function createRemotePtySessionCoordinator(options: {
       return
     }
 
-    const state = attachedSessions.get(normalizedSessionId) ?? { lastSeq: 0 }
+    const state = attachedSessions.get(normalizedSessionId) ?? createAttachedSessionState()
     state.lastSeq = Math.max(state.lastSeq, seq)
     attachedSessions.set(normalizedSessionId, state)
   }

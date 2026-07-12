@@ -3,6 +3,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import { EndpointsSection } from './EndpointsSection'
 import { ExperimentalWorkerWebUiSection } from './ExperimentalWorkerWebUiSection'
 import { WorkerSection } from './WorkerSection'
+import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 export function WorkerConnectionsSection({
   remoteWorkersEnabled,
@@ -17,24 +18,13 @@ export function WorkerConnectionsSection({
     <>
       <WorkerSection remoteWorkersEnabled={remoteWorkersEnabled} />
 
-      <div className="settings-panel__section" id="settings-section-worker-connections">
-        <h3 className="settings-panel__section-title">
-          {t('settingsPanel.workerConnections.title')}
-        </h3>
-        <span className="settings-panel__section-help">
-          {t('settingsPanel.workerConnections.help')}
-        </span>
-
-        <div
-          className="settings-panel__subsection"
-          id="settings-section-experimental-remote-workers"
-        >
-          <div className="settings-panel__subsection-header">
-            <strong>{t('settingsPanel.experimental.remoteWorkersTitle')}</strong>
-            <span>{t('settingsPanel.experimental.remoteWorkersHelp')}</span>
-          </div>
-
-          <div className="settings-panel__row">
+      <SettingsGroup
+        id="settings-section-worker-connections"
+        title={t('settingsPanel.groups.worker.remote')}
+        description={t('settingsPanel.workerConnections.help')}
+      >
+        <SettingsGroupBody>
+          <div className="settings-panel__row" id="settings-section-experimental-remote-workers">
             <div className="settings-panel__row-label">
               <strong>{t('settingsPanel.experimental.remoteWorkersEnabledLabel')}</strong>
               <span>{t('settingsPanel.experimental.remoteWorkersEnabledHelp')}</span>
@@ -45,32 +35,34 @@ export function WorkerConnectionsSection({
                   type="checkbox"
                   data-testid="settings-experimental-remote-workers-enabled"
                   checked={remoteWorkersEnabled}
+                  aria-label={t('settingsPanel.experimental.remoteWorkersEnabledLabel')}
                   onChange={event => onChangeRemoteWorkersEnabled(event.target.checked)}
                 />
                 <span className="cove-toggle__slider"></span>
               </label>
             </div>
           </div>
-        </div>
-      </div>
+        </SettingsGroupBody>
+      </SettingsGroup>
 
       {remoteWorkersEnabled ? (
         <EndpointsSection />
       ) : (
-        <div className="settings-panel__section" id="settings-section-endpoints">
-          <h3 className="settings-panel__section-title">{t('settingsPanel.endpoints.title')}</h3>
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.endpoints.list.title')}</strong>
-              <span>{t('settingsPanel.workerConnections.endpointsDisabledHelp')}</span>
+        <SettingsGroup id="settings-section-endpoints" title={t('settingsPanel.endpoints.title')}>
+          <SettingsGroupBody>
+            <div className="settings-panel__row">
+              <div className="settings-panel__row-label">
+                <strong>{t('settingsPanel.endpoints.list.title')}</strong>
+                <span>{t('settingsPanel.workerConnections.endpointsDisabledHelp')}</span>
+              </div>
+              <div className="settings-panel__control">
+                <span className="settings-panel__value">
+                  {t('settingsPanel.workerConnections.endpointsDisabledValue')}
+                </span>
+              </div>
             </div>
-            <div className="settings-panel__control">
-              <span className="settings-panel__value">
-                {t('settingsPanel.workerConnections.endpointsDisabledValue')}
-              </span>
-            </div>
-          </div>
-        </div>
+          </SettingsGroupBody>
+        </SettingsGroup>
       )}
 
       <ExperimentalWorkerWebUiSection />

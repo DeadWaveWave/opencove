@@ -45,11 +45,23 @@ OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm test:e2e tests/e2e/workspace-canvas.opencod
   - 未在正确时机向 PTY 上报 `CSI ?997;…n`
   - embedded session 可能复用/污染了用户全局 OpenCode state，触发 `theme_mode_lock`
 
+另一个容易被忽略的边界是：应用 shell 的 light/dark 不一定等于 terminal/TUI 的
+light/dark。命名主题可以显式选择不同的 `terminalScheme`；例如 `ember-light` 的应用
+shell 是 light，但终端与 OpenCode 必须保持 dark。若各桥接点分别读取 base UI scheme，
+就会再次出现 palette、CSI mode 与 xterm frame 不一致。
+
 ## Fix
 
-- **以 OpenCove `uiTheme` 为 single source of truth**，终端节点默认跟随应用主题（而不是 OS）。
+- **以 applied terminal appearance 为 single source of truth**。`UiThemeDescriptor` 先解析
+  `baseScheme` 与独立的 `terminalScheme`；终端节点跟随 resolved terminal scheme（而不是
+  直接跟随 OS 或应用 shell）。`ember-light` 因而发送 dark TUI 语义。
   - `src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.tsx`
+  - `src/contexts/workspace/presentation/renderer/components/terminalNode/terminalAppearance.ts`
   - `src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalThemeApplier.ts`
+- **final-wins 统一应用**：每个 xterm 实例只有一个 revisioned appearance owner；快速切换
+  合并到最新 snapshot，每帧至多一次 apply/refresh。只有 `markApplied` 后的 snapshot 才能
+  驱动 OSC replies、CSI `?997` 与 Find decorations，同 scheme 但 palette 改变也按 appearance
+  revision 处理。
 - **补齐 OpenCode “system theme” 协议能力**（Renderer 侧）：
   - 响应 `OSC 4/10/11/...`：`src/contexts/workspace/presentation/renderer/components/terminalNode/opencodeOscColorQueryResponder.ts`
   - 监听 alt-screen 进入后再上报 `CSI ?997;…n`，并处理分片序列与 alt-screen 退出：`src/contexts/workspace/presentation/renderer/components/terminalNode/opencodeTuiThemeBridge.ts`
@@ -67,6 +79,10 @@ OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm test:e2e tests/e2e/workspace-canvas.opencod
 ## Lessons
 
 - 遇到 “`theme: system` 行为不符合直觉” 时，先确认它依赖哪类协议/查询（OSC/CSI），不要默认等同 OS theme。
+- 不要把 app shell scheme 当成 terminal scheme；命名主题必须通过 descriptor 明确两者。
+- palette、CSI mode 和 xterm frame 必须来自同一 applied appearance revision。只按
+  light/dark 去重会漏掉同 scheme 的 palette 更新。
+- Terminal identity 可以跨 placeholder/DOM replacement 复用；theme apply 必须在执行时读取 live
+  container scope，不能让 coordinator closure 绑定已经 detached 的节点。
 - 向 PTY 写控制序列要考虑 **时机**：TUI 未 ready（未进入 alt-screen）时，很容易被渲染为普通文本。
 - embedded 外部 CLI 一旦有 durable state（配置/锁/缓存），优先为“内嵌模式”做隔离，避免用户全局状态反向影响应用内行为。
-

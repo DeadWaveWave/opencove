@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolvePerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
 import { usePerformanceIncidentRecorder } from '@app/renderer/performanceDiagnostics/performanceIncidentRecorder'
@@ -42,8 +42,8 @@ import { usePrimarySidebarAutoReveal } from './hooks/usePrimarySidebarAutoReveal
 import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
 import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
 import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
+import { useCommandCenterShortcutHint } from './hooks/useCommandCenterShortcutHint'
 import { useAppStore } from './store/useAppStore'
-import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import { useTerminalDisplayReferenceAutoCapture } from '@contexts/settings/presentation/renderer/useTerminalDisplayReferenceAutoCapture'
 
@@ -143,6 +143,7 @@ export default function App(): React.JSX.Element {
 
   const [isFocusNodeTargetZoomPreviewing, setFocusNodeZoomPreviewing] = useState(false)
   const [settingsInitialPageId, setSettingsInitialPageId] = useState<SettingsPageId | null>(null)
+  const controlCenterButtonRef = useRef<HTMLButtonElement | null>(null)
   const {
     isCommandCenterOpen,
     isControlCenterOpen,
@@ -183,6 +184,7 @@ export default function App(): React.JSX.Element {
     handlePointerLeave: handleSidebarPointerLeave,
   } = usePrimarySidebarAutoReveal({
     isCollapsed: isPrimarySidebarCollapsed,
+    isInteractionActive: projectContextMenu !== null,
   })
 
   useAppKeybindings({
@@ -235,21 +237,7 @@ export default function App(): React.JSX.Element {
     }
   }, [isSettingsOpen])
 
-  const platform =
-    typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
-      ? window.opencoveApi.meta.platform
-      : undefined
-
-  const commandCenterBindings = useMemo(
-    () =>
-      resolveCommandKeybinding({
-        commandId: 'commandCenter.toggle',
-        overrides: agentSettings.keybindings,
-        platform,
-      }),
-    [agentSettings.keybindings, platform],
-  )
-  const commandCenterShortcutHint = formatKeyChord(platform, commandCenterBindings) || '—'
+  const commandCenterShortcutHint = useCommandCenterShortcutHint(agentSettings.keybindings)
 
   const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
     policy: agentSettings.updatePolicy,
@@ -328,6 +316,7 @@ export default function App(): React.JSX.Element {
             memoryTrend={memoryTrend}
             performanceIncidents={performanceIncidents}
             updateState={updateState}
+            controlCenterButtonRef={controlCenterButtonRef}
             onToggleControlCenter={toggleControlCenter}
             onToggleCommandCenter={toggleCommandCenter}
             onTogglePerformanceMonitor={togglePerformanceMonitor}
@@ -383,6 +372,7 @@ export default function App(): React.JSX.Element {
             onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
             onSpacesChange={handleWorkspaceSpacesChange}
             onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
+            onOpenProjectContextMenu={setProjectContextMenu}
           />
 
           <WorkspaceSearchOverlay
@@ -408,8 +398,8 @@ export default function App(): React.JSX.Element {
           agentSettings={agentSettings}
           setAgentSettings={setAgentSettings}
           activeWorkspace={activeWorkspace}
-          isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
           isControlCenterOpen={isControlCenterOpen}
+          controlCenterAnchorRef={controlCenterButtonRef}
           onCloseControlCenter={closeControlCenter}
           onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
           onOpenSettings={handleOpenSettings}
@@ -460,11 +450,9 @@ export default function App(): React.JSX.Element {
             setProjectDeleteConfirmation(null)
           }}
           onConfirmProjectDelete={() => {
-            if (!projectDeleteConfirmation) {
-              return
+            if (projectDeleteConfirmation) {
+              void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
             }
-
-            void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
           }}
         />
         <AppShellModals

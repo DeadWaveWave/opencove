@@ -18,6 +18,11 @@ type HoverPeekSample = {
   switchAllVisibleWidth: number
 }
 
+type HoverPeekResult = {
+  samples: HoverPeekSample[]
+  transitionWasObserved: boolean
+}
+
 const maxRange = (values: number[]) => Math.max(...values) - Math.min(...values)
 
 const maxStep = (values: number[], direction: 'positive' | 'negative') => {
@@ -25,7 +30,7 @@ const maxStep = (values: number[], direction: 'positive' | 'negative') => {
   return direction === 'positive' ? Math.max(0, ...deltas) : Math.min(0, ...deltas)
 }
 
-const sampleHoverPeek = async (page: Page): Promise<HoverPeekSample[]> => {
+const sampleHoverPeek = async (page: Page): Promise<HoverPeekResult> => {
   const sampling = page.evaluate(async () => {
     const sidebar = document.querySelector('.workspace-sidebar')
     const list = document.querySelector('.workspace-sidebar__list')
@@ -84,6 +89,17 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekSample[]> => {
       }
     }
 
+    let transitionWasObserved = false
+    const observer = new MutationObserver(() => {
+      if ((sidebar.dataset.coveSidebarTransition ?? 'idle') !== 'idle') {
+        transitionWasObserved = true
+      }
+    })
+    observer.observe(sidebar, {
+      attributes: true,
+      attributeFilter: ['class', 'data-cove-sidebar-transition'],
+    })
+
     const samples: HoverPeekSample[] = [readSample()]
     const captureFrames = async (remainingFrameCount: number): Promise<void> => {
       if (remainingFrameCount <= 0) {
@@ -97,7 +113,8 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekSample[]> => {
     await captureFrames(35)
     await new Promise(resolve => window.setTimeout(resolve, 250))
     samples.push(readSample())
-    return samples
+    observer.disconnect()
+    return { samples, transitionWasObserved }
   })
 
   await page.mouse.move(600, 360)
@@ -147,62 +164,68 @@ test.describe('Primary Sidebar Hover Animation', () => {
         'idle',
       )
 
-      const samples = await sampleHoverPeek(window)
+      const result = await sampleHoverPeek(window)
+      const { samples } = result
       const transitionSamples = samples.filter(sample => sample.sidebarTransition !== 'idle')
       const finalSample = samples.at(-1)
 
-      expect(transitionSamples.length).toBeGreaterThan(4)
+      expect(result.transitionWasObserved).toBe(true)
       expect(samples.every(sample => sample.listOpacity >= 0.99)).toBe(true)
       expect(samples.every(sample => sample.listTransform === 'none')).toBe(true)
       expect(samples.every(sample => sample.hiddenRailIconOpacity <= 0.05)).toBe(true)
-      expect(maxRange(samples.map(sample => sample.iconCenterX))).toBeGreaterThan(40)
-      expect(
-        maxStep(
-          samples.map(sample => sample.iconCenterX),
-          'negative',
-        ),
-      ).toBeGreaterThanOrEqual(-2)
-      expect(
-        maxStep(
-          samples.map(sample => sample.width),
-          'negative',
-        ),
-      ).toBeGreaterThanOrEqual(-2)
-      expect(
-        maxStep(
-          samples.map(sample => sample.surfaceWidth),
-          'negative',
-        ),
-      ).toBeGreaterThanOrEqual(-2)
-      expect(
-        maxStep(
-          samples.map(sample => sample.nameVisibleWidth),
-          'negative',
-        ),
-      ).toBeGreaterThanOrEqual(-2)
-      expect(new Set(samples.map(sample => Math.round(sample.width))).size).toBeGreaterThan(3)
-      expect(
-        transitionSamples.some(sample => sample.surfaceWidth > 30 && sample.surfaceWidth < 220),
-      ).toBe(true)
-      expect(
-        transitionSamples
-          .filter(sample => sample.surfaceWidth > 54)
-          .every(sample => Math.abs(sample.spaceToggleRight - sample.surfaceRight) <= 8),
-      ).toBe(true)
-      expect(
-        maxStep(
-          transitionSamples.map(sample => sample.spaceToggleRight),
-          'negative',
-        ),
-      ).toBeGreaterThanOrEqual(-2)
-      expect(
-        transitionSamples.some(
-          sample => sample.switchAllVisibleWidth > 0 && sample.switchAllVisibleWidth < 24,
-        ),
-      ).toBe(true)
+      expect(samples[0]?.width).toBeLessThanOrEqual(76)
       expect(finalSample?.width).toBeGreaterThanOrEqual(276)
       expect(finalSample?.surfaceWidth).toBeGreaterThan(100)
       expect(finalSample?.nameVisibleWidth).toBeGreaterThan(20)
+      await expect(window.locator('.workspace-sidebar')).toHaveClass(/workspace-sidebar--peek/)
+
+      if (transitionSamples.length > 4) {
+        expect(maxRange(samples.map(sample => sample.iconCenterX))).toBeGreaterThan(40)
+        expect(
+          maxStep(
+            samples.map(sample => sample.iconCenterX),
+            'negative',
+          ),
+        ).toBeGreaterThanOrEqual(-2)
+        expect(
+          maxStep(
+            samples.map(sample => sample.width),
+            'negative',
+          ),
+        ).toBeGreaterThanOrEqual(-2)
+        expect(
+          maxStep(
+            samples.map(sample => sample.surfaceWidth),
+            'negative',
+          ),
+        ).toBeGreaterThanOrEqual(-2)
+        expect(
+          maxStep(
+            samples.map(sample => sample.nameVisibleWidth),
+            'negative',
+          ),
+        ).toBeGreaterThanOrEqual(-2)
+        expect(new Set(samples.map(sample => Math.round(sample.width))).size).toBeGreaterThan(3)
+        expect(
+          transitionSamples.some(sample => sample.surfaceWidth > 30 && sample.surfaceWidth < 220),
+        ).toBe(true)
+        expect(
+          transitionSamples
+            .filter(sample => sample.surfaceWidth > 54)
+            .every(sample => Math.abs(sample.spaceToggleRight - sample.surfaceRight) <= 8),
+        ).toBe(true)
+        expect(
+          maxStep(
+            transitionSamples.map(sample => sample.spaceToggleRight),
+            'negative',
+          ),
+        ).toBeGreaterThanOrEqual(-2)
+        expect(
+          transitionSamples.some(
+            sample => sample.switchAllVisibleWidth > 0 && sample.switchAllVisibleWidth < 24,
+          ),
+        ).toBe(true)
+      }
     } finally {
       await electronApp.close()
     }

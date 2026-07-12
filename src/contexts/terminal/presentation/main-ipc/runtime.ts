@@ -7,10 +7,11 @@ import type {
   AgentProviderId,
   ListTerminalProfilesResult,
   PresentationSnapshotTerminalResult,
+  ResizeTerminalInput,
   SpawnTerminalInput,
   SpawnTerminalResult,
   TerminalDataEvent,
-  TerminalGeometryCommitReason,
+  TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   TerminalWriteEncoding,
@@ -24,6 +25,7 @@ import { stripAutomaticTerminalQueriesFromOutput } from '../../../../shared/term
 import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 import { TerminalSessionManager } from './sessionManager'
+import { createLocalPtyGeometryCommitter } from './localPtyGeometryCommit'
 import { isDebugCrashHostEnabled } from './debugCrashHost'
 import {
   describeAgentLaunchCommand,
@@ -48,13 +50,7 @@ export interface PtyRuntime {
   spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
   spawnSession: (options: SpawnPtyOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => Promise<void>
-  resize: (
-    sessionId: string,
-    cols: number,
-    rows: number,
-    reason?: TerminalGeometryCommitReason,
-    revision?: number | null,
-  ) => Promise<void>
+  resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
   kill: (sessionId: string) => Promise<void>
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
@@ -234,6 +230,11 @@ export function createPtyRuntime(): PtyRuntime {
       terminalProbeBufferBySession.set(sessionId, '')
     },
   })
+  const geometryCommitter = createLocalPtyGeometryCommitter({
+    manager,
+    resizeRuntime: async (sessionId, cols, rows) => await ptyHost.resize(sessionId, cols, rows),
+    log: logPtyResizeDiagnostics,
+  })
 
   // --- PtyHost event wiring ---
 
@@ -370,34 +371,7 @@ export function createPtyRuntime(): PtyRuntime {
       ptyHost.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
-    resize: async (sessionId, cols, rows, reason, revision) => {
-      const geometry = manager.resize(sessionId, cols, rows, reason, revision)
-      if (!geometry.changed) {
-        logPtyResizeDiagnostics({
-          event: 'unchanged',
-          sessionId,
-          requestedCols: cols,
-          requestedRows: rows,
-          cols: geometry.cols,
-          rows: geometry.rows,
-          reason,
-          revision: geometry.revision,
-        })
-        return
-      }
-
-      logPtyResizeDiagnostics({
-        event: 'forwarded',
-        sessionId,
-        requestedCols: cols,
-        requestedRows: rows,
-        cols: geometry.cols,
-        rows: geometry.rows,
-        reason,
-        revision: geometry.revision,
-      })
-      ptyHost.resize(sessionId, geometry.cols, geometry.rows)
-    },
+    resize: geometryCommitter.resize,
     kill: async sessionId => {
       manager.kill(sessionId)
       clearSessionProbeState(sessionId)
@@ -475,6 +449,7 @@ export function createPtyRuntime(): PtyRuntime {
       externalStateListeners.clear()
       externalMetadataListeners.clear()
       warnedWriteSessions.clear()
+      geometryCommitter.dispose()
       ptyHost.dispose()
     },
   }

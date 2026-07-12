@@ -49,6 +49,7 @@ describe('settingsSearchIndex', () => {
     expect(results[0]).toMatchObject({
       id: 'general.theme',
       pageId: 'appearance',
+      pageLabel: '显示与字体',
       anchorId: 'settings-ui-theme',
     })
   })
@@ -92,6 +93,7 @@ describe('settingsSearchIndex', () => {
     expect(results[0]).toMatchObject({
       id: 'diagnostics.performance',
       pageId: 'advanced',
+      pageLabel: 'Advanced',
       anchorId: 'settings-section-diagnostics',
     })
   })

@@ -33,7 +33,6 @@ export function useWorkspaceCanvasSpaceOwnership({
   onShowMessage,
   hideWorktreeMismatchDropWarning,
   nodeDragPointerAnchorRef,
-  nodeSpaceFramePreviewRef,
 }: {
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
@@ -53,7 +52,6 @@ export function useWorkspaceCanvasSpaceOwnership({
     nodeId: string
     offset: { x: number; y: number }
   } | null>
-  nodeSpaceFramePreviewRef?: React.MutableRefObject<ReadonlyMap<string, WorkspaceSpaceRect> | null>
 }): {
   finalizeDraggedNodeDrop: (input: {
     draggedNodeIds: string[]
@@ -88,33 +86,9 @@ export function useWorkspaceCanvasSpaceOwnership({
   const dragStartAllNodePositionByIdRef = useRef<Map<string, { x: number; y: number }> | null>(null)
   const dragStartSpaceRectByIdRef = useRef<Map<string, WorkspaceSpaceRect> | null>(null)
   const resolveDropTargetSpaceAtPoint = useCallback(
-    (point: { x: number; y: number }): WorkspaceSpaceState | null => {
-      const preview = nodeSpaceFramePreviewRef?.current ?? null
-      const sourceSpaces = spacesRef.current
-      const effectiveSpaces = preview
-        ? sourceSpaces.map(space => {
-            const rect = preview.get(space.id) ?? null
-            if (!rect) {
-              return space
-            }
-
-            if (
-              space.rect &&
-              rect.x === space.rect.x &&
-              rect.y === space.rect.y &&
-              rect.width === space.rect.width &&
-              rect.height === space.rect.height
-            ) {
-              return space
-            }
-
-            return { ...space, rect: { ...rect } }
-          })
-        : sourceSpaces
-
-      return resolveSpaceAtPointFromHelpers(effectiveSpaces, point)
-    },
-    [nodeSpaceFramePreviewRef, spacesRef],
+    (point: { x: number; y: number }): WorkspaceSpaceState | null =>
+      resolveSpaceAtPointFromHelpers(spacesRef.current, point),
+    [spacesRef],
   )
 
   const applyOwnershipForDrop = useWorkspaceCanvasApplyOwnershipForDrop({
@@ -436,17 +410,10 @@ export function useWorkspaceCanvasSpaceOwnership({
         dragStartSpaceRectById,
         dropFlowPoint: dropPoint,
         fallbackNodes,
-        spaceRectOverrideById: nodeSpaceFramePreviewRef?.current ?? null,
       })
       dragSelectedSpaceIdsRef.current = null
     },
-    [
-      dragSelectedSpaceIdsRef,
-      finalizeDraggedNodeDrop,
-      nodeSpaceFramePreviewRef,
-      nodeDragPointerAnchorRef,
-      reactFlow,
-    ],
+    [dragSelectedSpaceIdsRef, finalizeDraggedNodeDrop, nodeDragPointerAnchorRef, reactFlow],
   )
 
   const handleSelectionDragStop = useCallback(
@@ -498,17 +465,10 @@ export function useWorkspaceCanvasSpaceOwnership({
         dragStartSpaceRectById,
         dropFlowPoint: dropPoint,
         fallbackNodes,
-        spaceRectOverrideById: nodeSpaceFramePreviewRef?.current ?? null,
       })
       dragSelectedSpaceIdsRef.current = null
     },
-    [
-      dragSelectedSpaceIdsRef,
-      finalizeDraggedNodeDrop,
-      nodeSpaceFramePreviewRef,
-      nodeDragPointerAnchorRef,
-      reactFlow,
-    ],
+    [dragSelectedSpaceIdsRef, finalizeDraggedNodeDrop, nodeDragPointerAnchorRef, reactFlow],
   )
 
   return {

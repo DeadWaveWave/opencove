@@ -138,6 +138,17 @@ describe('sidebarReorder', () => {
     expect(next).toEqual([source])
   })
 
+  it('ignores root space reorder attempts across pin groups', () => {
+    const workspace = createWorkspace()
+    workspace.spaces = workspace.spaces.map(space =>
+      space.id === 'space-a' ? { ...space, pinned: true } : space,
+    )
+
+    const next = reorderWorkspaceRootSpaces([workspace], 'project-a', 'space-a', 'space-b')
+
+    expect(next).toEqual([workspace])
+  })
+
   it('reorders agents only within the same sidebar group', () => {
     const source = createWorkspace()
     source.spaces = [

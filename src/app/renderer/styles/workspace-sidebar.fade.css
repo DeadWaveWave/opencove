@@ -15,28 +15,28 @@
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 var(--workspace-sidebar-edge-fade-size),
-    #000 100%
+    var(--cove-mask-opaque) var(--workspace-sidebar-edge-fade-size),
+    var(--cove-mask-opaque) 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 var(--workspace-sidebar-edge-fade-size),
-    #000 100%
+    var(--cove-mask-opaque) var(--workspace-sidebar-edge-fade-size),
+    var(--cove-mask-opaque) 100%
   );
 }
 
 .workspace-sidebar__list[data-cove-scroll-fade='bottom'] {
   -webkit-mask-image: linear-gradient(
     to bottom,
-    #000 0,
-    #000 calc(100% - var(--workspace-sidebar-edge-fade-size)),
+    var(--cove-mask-opaque) 0,
+    var(--cove-mask-opaque) calc(100% - var(--workspace-sidebar-edge-fade-size)),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
-    #000 0,
-    #000 calc(100% - var(--workspace-sidebar-edge-fade-size)),
+    var(--cove-mask-opaque) 0,
+    var(--cove-mask-opaque) calc(100% - var(--workspace-sidebar-edge-fade-size)),
     transparent 100%
   );
 }
@@ -45,15 +45,15 @@
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 var(--workspace-sidebar-edge-fade-size),
-    #000 calc(100% - var(--workspace-sidebar-edge-fade-size)),
+    var(--cove-mask-opaque) var(--workspace-sidebar-edge-fade-size),
+    var(--cove-mask-opaque) calc(100% - var(--workspace-sidebar-edge-fade-size)),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 var(--workspace-sidebar-edge-fade-size),
-    #000 calc(100% - var(--workspace-sidebar-edge-fade-size)),
+    var(--cove-mask-opaque) var(--workspace-sidebar-edge-fade-size),
+    var(--cove-mask-opaque) calc(100% - var(--workspace-sidebar-edge-fade-size)),
     transparent 100%
   );
 }

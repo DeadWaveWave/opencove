@@ -156,6 +156,15 @@ describe('ProjectContextMenu', () => {
     expect(useAppStore.getState().workspaces[0]?.spaces[0]?.labelColor).toBe('green')
   })
 
+  it('pins a space from the shared space context menu', () => {
+    renderMenu({ kind: 'space', workspaceId: 'workspace-a', spaceId: 'space-a' })
+
+    fireEvent.click(screen.getByTestId('workspace-space-context-pin-space-a'))
+
+    expect(useAppStore.getState().workspaces[0]?.spaces[0]?.pinned).toBe(true)
+    expect(useAppStore.getState().projectContextMenu).toBeNull()
+  })
+
   it('keeps the context menu open while changing label colors', () => {
     const workspace = createWorkspace()
     useAppStore.setState({

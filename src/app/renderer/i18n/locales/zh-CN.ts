@@ -100,10 +100,13 @@ export const zhCN = {
   controlCenter: {
     open: '控制中心',
     title: '控制中心',
+    quickSettings: '快捷设置',
     sidebar: '侧边栏',
     minimap: '缩略图',
     theme: '主题',
     agentStandbyBanner: '右上角横幅',
+    shown: '已显示',
+    hidden: '已隐藏',
     on: '已开启',
     off: '已关闭',
   },

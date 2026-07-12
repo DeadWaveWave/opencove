@@ -1,5 +1,12 @@
 import React from 'react'
-import { Bot, X } from 'lucide-react'
+import {
+  GitBranch,
+  GitCommitHorizontal,
+  GitPullRequest,
+  LayoutGrid,
+  ListTodo,
+  X,
+} from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 
 export type AgentStandbyNotificationGitContext =
@@ -93,76 +100,110 @@ export function AppNotifications({
               onActivate(notification)
             }}
           >
-            <span className="app-notification__icon" aria-hidden="true">
-              <Bot size={18} />
-            </span>
             <span className="app-notification__content">
               <span className="app-notification__title">{notification.title}</span>
-              <span className="app-notification__subtitle">{subtitle}</span>
-              {contextVisibility.showTask ||
-              contextVisibility.showSpace ||
-              contextVisibility.showBranch ||
-              contextVisibility.showPullRequest ? (
-                <span className="app-notification__context">
-                  {contextVisibility.showTask && notification.taskTitle ? (
-                    <span
-                      className="app-notification__chip"
-                      data-testid="app-notification-chip-task"
-                      title={notification.taskTitle}
-                    >
-                      <span className="app-notification__chip-kind">{taskKindLabel}</span>
-                      <span className="app-notification__chip-value">{notification.taskTitle}</span>
-                    </span>
-                  ) : null}
-
-                  {contextVisibility.showSpace && notification.spaceName ? (
-                    <span
-                      className="app-notification__chip"
-                      data-testid="app-notification-chip-space"
-                      title={notification.spaceName}
-                    >
-                      <span className="app-notification__chip-kind">{spaceKindLabel}</span>
-                      <span className="app-notification__chip-value">{notification.spaceName}</span>
-                    </span>
-                  ) : null}
-
-                  {contextVisibility.showBranch && notification.gitContext ? (
-                    <span
-                      className="app-notification__chip"
-                      data-testid="app-notification-chip-branch"
-                      title={
-                        notification.gitContext.kind === 'branch'
-                          ? notification.gitContext.name
-                          : notification.gitContext.head
-                      }
-                    >
-                      <span className="app-notification__chip-kind">
-                        {notification.gitContext.kind === 'branch'
-                          ? branchKindLabel
-                          : detachedKindLabel}
-                      </span>
-                      <span className="app-notification__chip-value">
-                        {notification.gitContext.kind === 'branch'
-                          ? notification.gitContext.name
-                          : notification.gitContext.shortHead}
-                      </span>
-                    </span>
-                  ) : null}
-
-                  {contextVisibility.showPullRequest && notification.pullRequest ? (
-                    <span
-                      className="app-notification__chip"
-                      data-testid="app-notification-chip-pr"
-                      title={`${notification.pullRequest.title} (#${notification.pullRequest.number})`}
-                    >
-                      <span className="app-notification__chip-kind">PR</span>
-                      <span className="app-notification__chip-value">
-                        {`#${notification.pullRequest.number}`}
-                      </span>
-                    </span>
-                  ) : null}
+              <span className="app-notification__meta">
+                <span className="app-notification__subtitle">
+                  <span className="app-notification__status-dot" aria-hidden="true" />
+                  {subtitle}
                 </span>
-              ) : null}
+                {contextVisibility.showTask ||
+                contextVisibility.showSpace ||
+                contextVisibility.showBranch ||
+                contextVisibility.showPullRequest ? (
+                  <span className="app-notification__context">
+                    {contextVisibility.showTask && notification.taskTitle ? (
+                      <span
+                        className="app-notification__chip"
+                        data-testid="app-notification-chip-task"
+                        title={`${taskKindLabel}: ${notification.taskTitle}`}
+                        aria-label={`${taskKindLabel}: ${notification.taskTitle}`}
+                      >
+                        <ListTodo
+                          size={12}
+                          className="app-notification__chip-icon"
+                          aria-hidden="true"
+                        />
+                        <span className="app-notification__chip-value">
+                          {notification.taskTitle}
+                        </span>
+                      </span>
+                    ) : null}
+
+                    {contextVisibility.showSpace && notification.spaceName ? (
+                      <span
+                        className="app-notification__chip"
+                        data-testid="app-notification-chip-space"
+                        title={`${spaceKindLabel}: ${notification.spaceName}`}
+                        aria-label={`${spaceKindLabel}: ${notification.spaceName}`}
+                      >
+                        <LayoutGrid
+                          size={12}
+                          className="app-notification__chip-icon"
+                          aria-hidden="true"
+                        />
+                        <span className="app-notification__chip-value">
+                          {notification.spaceName}
+                        </span>
+                      </span>
+                    ) : null}
+
+                    {contextVisibility.showBranch && notification.gitContext ? (
+                      <span
+                        className="app-notification__chip app-notification__chip--code"
+                        data-testid="app-notification-chip-branch"
+                        title={
+                          notification.gitContext.kind === 'branch'
+                            ? `${branchKindLabel}: ${notification.gitContext.name}`
+                            : `${detachedKindLabel}: ${notification.gitContext.head}`
+                        }
+                        aria-label={
+                          notification.gitContext.kind === 'branch'
+                            ? `${branchKindLabel}: ${notification.gitContext.name}`
+                            : `${detachedKindLabel}: ${notification.gitContext.shortHead}`
+                        }
+                      >
+                        {notification.gitContext.kind === 'branch' ? (
+                          <GitBranch
+                            size={12}
+                            className="app-notification__chip-icon"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <GitCommitHorizontal
+                            size={12}
+                            className="app-notification__chip-icon"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span className="app-notification__chip-value">
+                          {notification.gitContext.kind === 'branch'
+                            ? notification.gitContext.name
+                            : notification.gitContext.shortHead}
+                        </span>
+                      </span>
+                    ) : null}
+
+                    {contextVisibility.showPullRequest && notification.pullRequest ? (
+                      <span
+                        className="app-notification__chip app-notification__chip--code"
+                        data-testid="app-notification-chip-pr"
+                        title={`${notification.pullRequest.title} (#${notification.pullRequest.number})`}
+                        aria-label={`PR #${notification.pullRequest.number}: ${notification.pullRequest.title}`}
+                      >
+                        <GitPullRequest
+                          size={12}
+                          className="app-notification__chip-icon"
+                          aria-hidden="true"
+                        />
+                        <span className="app-notification__chip-value">
+                          {`#${notification.pullRequest.number}`}
+                        </span>
+                      </span>
+                    ) : null}
+                  </span>
+                ) : null}
+              </span>
             </span>
             <button
               type="button"
@@ -176,7 +217,7 @@ export function AppNotifications({
                 onDismiss(notification.id)
               }}
             >
-              <X size={16} aria-hidden="true" />
+              <X size={14} aria-hidden="true" />
             </button>
           </div>
         )

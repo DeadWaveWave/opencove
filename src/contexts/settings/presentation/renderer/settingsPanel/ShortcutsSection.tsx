@@ -20,6 +20,7 @@ import {
   isSpatialNavigationCommandId,
 } from './shortcuts/ShortcutKeycaps'
 import { getCommandHelpKey, getCommandTitleKey } from './shortcuts/shortcutCommandKeys'
+import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 const TERMINAL_FOCUS_SCOPE_LABEL_BY_LOCALE: Record<string, string> = {
   en: 'terminal',
@@ -222,214 +223,232 @@ export function ShortcutsSection({
   )
 
   return (
-    <div className="settings-panel__section" id="settings-section-shortcuts">
-      <h3 className="settings-panel__section-title">{t('settingsPanel.shortcuts.title')}</h3>
-
-      <div className="settings-panel__row" id="settings-disable-shortcuts-terminal-focused">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.shortcuts.disableWhenTerminalFocusedLabel')}</strong>
-          <span>
-            {t('settingsPanel.shortcuts.disableWhenTerminalFocusedHelp', {
-              terminal: localeTerminalLabel,
-            })}
-          </span>
-        </div>
-        <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-disable-shortcuts-when-terminal-focused"
-              checked={disableAppShortcutsWhenTerminalFocused}
-              onChange={event =>
-                onChangeDisableAppShortcutsWhenTerminalFocused(event.target.checked)
-              }
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div className="settings-panel__subsection" id="settings-section-keybindings">
-        <div className="settings-panel__subsection-header">
-          <h4 className="settings-panel__section-title">{t('settingsPanel.shortcuts.bindings')}</h4>
-          <span>{t('settingsPanel.shortcuts.bindingsHelp')}</span>
-        </div>
-
-        {commandGroups.map(group => (
-          <div key={group.id} className="settings-panel__subsection" style={{ marginTop: '12px' }}>
-            <div className="settings-panel__subsection-header">
-              <h4 className="settings-panel__section-title">{group.title}</h4>
-              <span>{group.help}</span>
-            </div>
-
-            {group.commandIds.map(commandId => {
-              const chord = effectiveBindings[commandId]
-              const hasBinding = chord !== null
-
-              return (
-                <div className="settings-panel__row" key={commandId}>
-                  <div className="settings-panel__row-label">
-                    <strong>{t(getCommandTitleKey(commandId))}</strong>
-                    <span>{t(getCommandHelpKey(commandId))}</span>
-                  </div>
-                  <div className="settings-panel__control" style={{ gap: '8px', flexWrap: 'wrap' }}>
-                    {chord ? (
-                      <KeybindingValue
-                        platform={platform}
-                        chord={chord}
-                        testId={`settings-shortcut-value-${commandId}`}
-                      />
-                    ) : (
-                      <span
-                        className="settings-panel__value"
-                        data-testid={`settings-shortcut-value-${commandId}`}
-                        data-keybinding=""
-                      >
-                        {t('settingsPanel.shortcuts.unassigned')}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      className="secondary"
-                      style={shortcutButtonStyle}
-                      data-testid={`settings-shortcut-record-${commandId}`}
-                      onClick={() => {
-                        setRecordingCommandId(current => (current === commandId ? null : commandId))
-                      }}
-                    >
-                      {recordingCommandId === commandId
-                        ? t('settingsPanel.shortcuts.recording')
-                        : t('settingsPanel.shortcuts.record')}
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary"
-                      style={shortcutButtonStyle}
-                      data-testid={`settings-shortcut-clear-${commandId}`}
-                      onClick={() => {
-                        onChangeKeybindings(
-                          pruneOverrides(setOverride(keybindings, commandId, null)),
-                        )
-                      }}
-                      disabled={
-                        !hasBinding && !Object.prototype.hasOwnProperty.call(keybindings, commandId)
-                      }
-                    >
-                      {t('settingsPanel.shortcuts.clear')}
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary"
-                      style={shortcutButtonStyle}
-                      data-testid={`settings-shortcut-reset-${commandId}`}
-                      onClick={() => {
-                        onChangeKeybindings(pruneOverrides(removeOverride(keybindings, commandId)))
-                      }}
-                      disabled={!Object.prototype.hasOwnProperty.call(keybindings, commandId)}
-                    >
-                      {t('common.resetToDefault')}
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-
-            {group.id === 'workspaceCanvas' ? (
-              <>
-                {spatialNavigationSummary}
-                {showSpatialNavigationBindings ? (
-                  <div className="settings-panel__subsection settings-panel__subsection--spatial-nav">
-                    {[
-                      ...SPATIAL_NAVIGATION_NODE_COMMAND_IDS,
-                      ...SPATIAL_NAVIGATION_SPACE_COMMAND_IDS,
-                    ].map(commandId => {
-                      const chord = effectiveBindings[commandId]
-                      const hasBinding = chord !== null
-
-                      return (
-                        <div className="settings-panel__row" key={commandId}>
-                          <div className="settings-panel__row-label">
-                            <strong>{t(getCommandTitleKey(commandId))}</strong>
-                            <span>{t(getCommandHelpKey(commandId))}</span>
-                          </div>
-                          <div
-                            className="settings-panel__control"
-                            style={{ gap: '8px', flexWrap: 'wrap' }}
-                          >
-                            {chord ? (
-                              <KeybindingValue
-                                platform={platform}
-                                chord={chord}
-                                testId={`settings-shortcut-value-${commandId}`}
-                              />
-                            ) : (
-                              <span
-                                className="settings-panel__value"
-                                data-testid={`settings-shortcut-value-${commandId}`}
-                                data-keybinding=""
-                              >
-                                {t('settingsPanel.shortcuts.unassigned')}
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              className="secondary"
-                              style={shortcutButtonStyle}
-                              data-testid={`settings-shortcut-record-${commandId}`}
-                              onClick={() => {
-                                setRecordingCommandId(current =>
-                                  current === commandId ? null : commandId,
-                                )
-                              }}
-                            >
-                              {recordingCommandId === commandId
-                                ? t('settingsPanel.shortcuts.recording')
-                                : t('settingsPanel.shortcuts.record')}
-                            </button>
-                            <button
-                              type="button"
-                              className="secondary"
-                              style={shortcutButtonStyle}
-                              data-testid={`settings-shortcut-clear-${commandId}`}
-                              onClick={() => {
-                                onChangeKeybindings(
-                                  pruneOverrides(setOverride(keybindings, commandId, null)),
-                                )
-                              }}
-                              disabled={
-                                !hasBinding &&
-                                !Object.prototype.hasOwnProperty.call(keybindings, commandId)
-                              }
-                            >
-                              {t('settingsPanel.shortcuts.clear')}
-                            </button>
-                            <button
-                              type="button"
-                              className="secondary"
-                              style={shortcutButtonStyle}
-                              data-testid={`settings-shortcut-reset-${commandId}`}
-                              onClick={() => {
-                                onChangeKeybindings(
-                                  pruneOverrides(removeOverride(keybindings, commandId)),
-                                )
-                              }}
-                              disabled={
-                                !Object.prototype.hasOwnProperty.call(keybindings, commandId)
-                              }
-                            >
-                              {t('common.resetToDefault')}
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : null}
-              </>
-            ) : null}
+    <SettingsGroup
+      id="settings-section-shortcuts"
+      title={t('settingsPanel.groups.tasksShortcuts.keyboard')}
+    >
+      <SettingsGroupBody>
+        <div className="settings-panel__row" id="settings-disable-shortcuts-terminal-focused">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.shortcuts.disableWhenTerminalFocusedLabel')}</strong>
+            <span>
+              {t('settingsPanel.shortcuts.disableWhenTerminalFocusedHelp', {
+                terminal: localeTerminalLabel,
+              })}
+            </span>
           </div>
-        ))}
-      </div>
-    </div>
+          <div className="settings-panel__control">
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                data-testid="settings-disable-shortcuts-when-terminal-focused"
+                checked={disableAppShortcutsWhenTerminalFocused}
+                aria-label={t('settingsPanel.shortcuts.disableWhenTerminalFocusedLabel')}
+                onChange={event =>
+                  onChangeDisableAppShortcutsWhenTerminalFocused(event.target.checked)
+                }
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div className="settings-panel__subsection" id="settings-section-keybindings">
+          <div className="settings-panel__subsection-header">
+            <h4 className="settings-panel__section-title">
+              {t('settingsPanel.shortcuts.bindings')}
+            </h4>
+            <span>{t('settingsPanel.shortcuts.bindingsHelp')}</span>
+          </div>
+
+          {commandGroups.map(group => (
+            <div
+              key={group.id}
+              className="settings-panel__subsection"
+              style={{ marginTop: '12px' }}
+            >
+              <div className="settings-panel__subsection-header">
+                <h4 className="settings-panel__section-title">{group.title}</h4>
+                <span>{group.help}</span>
+              </div>
+
+              {group.commandIds.map(commandId => {
+                const chord = effectiveBindings[commandId]
+                const hasBinding = chord !== null
+
+                return (
+                  <div className="settings-panel__row" key={commandId}>
+                    <div className="settings-panel__row-label">
+                      <strong>{t(getCommandTitleKey(commandId))}</strong>
+                      <span>{t(getCommandHelpKey(commandId))}</span>
+                    </div>
+                    <div
+                      className="settings-panel__control"
+                      style={{ gap: '8px', flexWrap: 'wrap' }}
+                    >
+                      {chord ? (
+                        <KeybindingValue
+                          platform={platform}
+                          chord={chord}
+                          testId={`settings-shortcut-value-${commandId}`}
+                        />
+                      ) : (
+                        <span
+                          className="settings-panel__value"
+                          data-testid={`settings-shortcut-value-${commandId}`}
+                          data-keybinding=""
+                        >
+                          {t('settingsPanel.shortcuts.unassigned')}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="secondary"
+                        style={shortcutButtonStyle}
+                        data-testid={`settings-shortcut-record-${commandId}`}
+                        onClick={() => {
+                          setRecordingCommandId(current =>
+                            current === commandId ? null : commandId,
+                          )
+                        }}
+                      >
+                        {recordingCommandId === commandId
+                          ? t('settingsPanel.shortcuts.recording')
+                          : t('settingsPanel.shortcuts.record')}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        style={shortcutButtonStyle}
+                        data-testid={`settings-shortcut-clear-${commandId}`}
+                        onClick={() => {
+                          onChangeKeybindings(
+                            pruneOverrides(setOverride(keybindings, commandId, null)),
+                          )
+                        }}
+                        disabled={
+                          !hasBinding &&
+                          !Object.prototype.hasOwnProperty.call(keybindings, commandId)
+                        }
+                      >
+                        {t('settingsPanel.shortcuts.clear')}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        style={shortcutButtonStyle}
+                        data-testid={`settings-shortcut-reset-${commandId}`}
+                        onClick={() => {
+                          onChangeKeybindings(
+                            pruneOverrides(removeOverride(keybindings, commandId)),
+                          )
+                        }}
+                        disabled={!Object.prototype.hasOwnProperty.call(keybindings, commandId)}
+                      >
+                        {t('common.resetToDefault')}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {group.id === 'workspaceCanvas' ? (
+                <>
+                  {spatialNavigationSummary}
+                  {showSpatialNavigationBindings ? (
+                    <div className="settings-panel__subsection settings-panel__subsection--spatial-nav">
+                      {[
+                        ...SPATIAL_NAVIGATION_NODE_COMMAND_IDS,
+                        ...SPATIAL_NAVIGATION_SPACE_COMMAND_IDS,
+                      ].map(commandId => {
+                        const chord = effectiveBindings[commandId]
+                        const hasBinding = chord !== null
+
+                        return (
+                          <div className="settings-panel__row" key={commandId}>
+                            <div className="settings-panel__row-label">
+                              <strong>{t(getCommandTitleKey(commandId))}</strong>
+                              <span>{t(getCommandHelpKey(commandId))}</span>
+                            </div>
+                            <div
+                              className="settings-panel__control"
+                              style={{ gap: '8px', flexWrap: 'wrap' }}
+                            >
+                              {chord ? (
+                                <KeybindingValue
+                                  platform={platform}
+                                  chord={chord}
+                                  testId={`settings-shortcut-value-${commandId}`}
+                                />
+                              ) : (
+                                <span
+                                  className="settings-panel__value"
+                                  data-testid={`settings-shortcut-value-${commandId}`}
+                                  data-keybinding=""
+                                >
+                                  {t('settingsPanel.shortcuts.unassigned')}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                className="secondary"
+                                style={shortcutButtonStyle}
+                                data-testid={`settings-shortcut-record-${commandId}`}
+                                onClick={() => {
+                                  setRecordingCommandId(current =>
+                                    current === commandId ? null : commandId,
+                                  )
+                                }}
+                              >
+                                {recordingCommandId === commandId
+                                  ? t('settingsPanel.shortcuts.recording')
+                                  : t('settingsPanel.shortcuts.record')}
+                              </button>
+                              <button
+                                type="button"
+                                className="secondary"
+                                style={shortcutButtonStyle}
+                                data-testid={`settings-shortcut-clear-${commandId}`}
+                                onClick={() => {
+                                  onChangeKeybindings(
+                                    pruneOverrides(setOverride(keybindings, commandId, null)),
+                                  )
+                                }}
+                                disabled={
+                                  !hasBinding &&
+                                  !Object.prototype.hasOwnProperty.call(keybindings, commandId)
+                                }
+                              >
+                                {t('settingsPanel.shortcuts.clear')}
+                              </button>
+                              <button
+                                type="button"
+                                className="secondary"
+                                style={shortcutButtonStyle}
+                                data-testid={`settings-shortcut-reset-${commandId}`}
+                                onClick={() => {
+                                  onChangeKeybindings(
+                                    pruneOverrides(removeOverride(keybindings, commandId)),
+                                  )
+                                }}
+                                disabled={
+                                  !Object.prototype.hasOwnProperty.call(keybindings, commandId)
+                                }
+                              >
+                                {t('common.resetToDefault')}
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </SettingsGroupBody>
+    </SettingsGroup>
   )
 }

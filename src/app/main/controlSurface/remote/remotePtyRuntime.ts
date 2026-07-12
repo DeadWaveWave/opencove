@@ -2,10 +2,10 @@ import WebSocket from 'ws'
 import type {
   ListTerminalProfilesResult,
   PresentationSnapshotTerminalResult,
+  ResizeTerminalInput,
   SpawnTerminalInput,
   SpawnTerminalResult,
   TerminalDataEvent,
-  TerminalGeometryCommitReason,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   TerminalWriteEncoding,
@@ -33,6 +33,7 @@ import {
   resolveRemotePtyWsUrl,
 } from './remotePtyRuntime.support'
 import { createRemotePtySessionCoordinator } from './remotePtyRuntime.sessionCoordinator'
+import { createRemotePtyRuntimeGeometryCoordinator } from './remotePtyRuntime.geometryCoordinator'
 export type RemotePtyRuntime = PtyRuntime & {
   noteSessionRolePreference: (sessionId: string, role: 'viewer' | 'controller') => void
 }
@@ -55,6 +56,7 @@ export function createRemotePtyRuntime(options: {
   let socketHandshakeReject: ((error: Error) => void) | null = null
   let reconnectTimer: NodeJS.Timeout | null = null
   let disposed = false
+  const geometryCoordinator = createRemotePtyRuntimeGeometryCoordinator()
   const sendToSessionSubscribers = (sessionId: string, channel: string, payload: unknown): void => {
     sendToWebContentsSessionSubscribers(
       sessionCoordinator.subscribersBySessionId,
@@ -92,6 +94,7 @@ export function createRemotePtyRuntime(options: {
     socket = null
     socketReadyPromise = null
     sessionCoordinator.onSocketClosed()
+    geometryCoordinator.rejectAll(new Error('PTY stream connection closed'))
 
     if (socketHandshakeReject) {
       socketHandshakeReject(new Error('PTY stream connection closed'))
@@ -129,7 +132,8 @@ export function createRemotePtyRuntime(options: {
       sessionCoordinator.untrackSession(sessionId)
     },
     handshake: {
-      onHelloAck: () => {
+      onHelloAck: capabilities => {
+        geometryCoordinator.noteAckCapability(capabilities.geometryCommitAck)
         if (socketHandshakeResolve) {
           socketHandshakeResolve()
           socketHandshakeResolve = null
@@ -143,6 +147,22 @@ export function createRemotePtyRuntime(options: {
           socketHandshakeReject = null
         }
       },
+    },
+    onResizeResult: result => {
+      geometryCoordinator.handleResizeResult(result)
+    },
+    onGeometry: event => {
+      const attached = sessionCoordinator.attachedSessions.get(event.sessionId)
+      geometryCoordinator.handleGeometry(
+        event,
+        attached && attached.authorityEpoch !== null
+          ? { role: attached.role, epoch: attached.authorityEpoch }
+          : null,
+      )
+    },
+    onAuthorityChanged: () => undefined,
+    onSessionError: (sessionId, code, message) => {
+      geometryCoordinator.handleSessionError(sessionId, code, message)
     },
   })
 
@@ -339,20 +359,27 @@ export function createRemotePtyRuntime(options: {
     write: async (sessionId: string, data: string, _encoding: TerminalWriteEncoding = 'utf8') => {
       await sendSocketMessage({ type: 'write', sessionId, data })
     },
-    resize: async (
-      sessionId: string,
-      cols: number,
-      rows: number,
-      reason?: TerminalGeometryCommitReason,
-      revision?: number | null,
-    ) => {
-      await sendSocketMessage({
-        type: 'resize',
-        sessionId,
-        cols,
-        rows,
-        ...(reason ? { reason } : {}),
-        ...(typeof revision === 'number' && Number.isFinite(revision) ? { revision } : {}),
+    resize: async (input: ResizeTerminalInput) => {
+      await ensureSessionAttached(input.sessionId)
+      const attachedSocket = socket
+      const attached = sessionCoordinator.attachedSessions.get(input.sessionId)
+      return await geometryCoordinator.resize({
+        request: input,
+        authority:
+          attached && attached.authorityEpoch !== null
+            ? { role: attached.role, epoch: attached.authorityEpoch }
+            : null,
+        timeoutMs: connectTimeoutMs,
+        send: async payload => {
+          if (
+            !attachedSocket ||
+            socket !== attachedSocket ||
+            attachedSocket.readyState !== WebSocket.OPEN
+          ) {
+            throw new Error('PTY stream connection changed before terminal geometry commit')
+          }
+          attachedSocket.send(JSON.stringify(payload))
+        },
       })
     },
     kill: async (sessionId: string) => {
@@ -430,6 +457,7 @@ export function createRemotePtyRuntime(options: {
         errorMessage: 'Failed to fetch remote session presentation snapshot',
       })
       const snapshot = parsePresentationSnapshot(sessionId, value)
+      geometryCoordinator.notePresentationRevision(sessionId, snapshot.geometryRevision)
 
       return snapshot
     },
@@ -457,8 +485,10 @@ export function createRemotePtyRuntime(options: {
       externalExitListeners.clear()
       externalStateListeners.clear()
       externalMetadataListeners.clear()
+      geometryCoordinator.rejectAll(new Error('PTY runtime disposed'))
       agentMetadataWatcher.dispose()
       sessionCoordinator.clear()
+      geometryCoordinator.clear()
     },
   }
 

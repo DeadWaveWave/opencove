@@ -3,21 +3,13 @@ import type {
   GetSessionPresentationSnapshotResult,
   GetSessionSnapshotResult,
   ListSessionsResult,
+  PresentationSnapshotTerminalResult,
   TerminalSessionMetadataEvent,
   TerminalSessionState,
+  TerminalGeometryCommitResult,
 } from '../../../../shared/contracts/dto'
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { PtyStreamClientKind, PtyStreamRole } from './ptyStreamTypes'
-import {
-  sendPtyAttached,
-  sendPtyData,
-  sendPtyError,
-  sendPtyExit,
-  sendPtyOverflow,
-  sendPtySessionMetadata,
-  sendPtyState,
-  toControllerDto,
-} from './ptyStreamWire'
 import type { SessionMetadata, SessionState, ClientState } from './ptyStreamState'
 import {
   broadcastControlChanged,
@@ -27,7 +19,6 @@ import {
   broadcastSessionMetadata,
   broadcastState,
   buildSessionList,
-  setSessionController,
 } from './ptyStreamHub.broadcast'
 import {
   createSessionState,
@@ -38,20 +29,31 @@ import {
   snapshotSessionScrollback,
 } from './ptyStreamHub.support'
 import { resizePtyStreamSession, type PtyStreamHubResizeOptions } from './ptyStreamHub.resize'
+import { writePtyStreamSession } from './ptyStreamHub.write'
+import { queuePtyStreamSessionControllerChange } from './ptyStreamHub.controller'
+import {
+  replacePtyStreamPresentationCurrent,
+  restorePtyStreamPresentationBaseline,
+} from './ptyStreamHub.presentationRecovery'
+import { attachPtyStreamClient, detachPtyStreamClient } from './ptyStreamHub.attach'
 
 export class PtyStreamHub {
   private readonly ptyRuntime: ControlSurfacePtyRuntime
   private readonly replayWindowMaxBytes: number
+  private readonly onPresentationMutation: ((sessionId: string) => void) | undefined
 
   private readonly sessions = new Map<string, SessionState>()
   private readonly clients = new Map<string, ClientState>()
+  private readonly inFlightRecoveryOperations = new Set<Promise<unknown>>()
 
   public constructor(options: {
     ptyRuntime: ControlSurfacePtyRuntime
     replayWindowMaxBytes: number
+    onPresentationMutation?: (sessionId: string) => void
   }) {
     this.ptyRuntime = options.ptyRuntime
     this.replayWindowMaxBytes = Math.max(64_000, Math.floor(options.replayWindowMaxBytes))
+    this.onPresentationMutation = options.onPresentationMutation
   }
 
   private ensureSession(sessionId: string): SessionState {
@@ -66,11 +68,52 @@ export class PtyStreamHub {
     return created
   }
 
-  private setSessionController(session: SessionState, controllerClientId: string | null): void {
-    setSessionController({
+  private async trackRecoveryOperation<TResult>(operation: Promise<TResult>): Promise<TResult> {
+    this.inFlightRecoveryOperations.add(operation)
+    try {
+      return await operation
+    } finally {
+      this.inFlightRecoveryOperations.delete(operation)
+    }
+  }
+
+  public async drainRecoveryOperations(): Promise<void> {
+    for (;;) {
+      const observedSessions = [...this.sessions.values()]
+      const observedChains = observedSessions.map(session => session.operationChain)
+      const observedOperations = [...this.inFlightRecoveryOperations]
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.allSettled([...observedChains, ...observedOperations])
+      const stable =
+        this.inFlightRecoveryOperations.size === 0 &&
+        observedSessions.length === this.sessions.size &&
+        observedSessions.every(
+          (session, index) =>
+            this.sessions.get(session.sessionId) === session &&
+            session.operationQueueDepth === 0 &&
+            session.operationChain === observedChains[index],
+        )
+      if (stable) {
+        return
+      }
+    }
+  }
+
+  private setSessionController(
+    session: SessionState,
+    controllerClientId: string | null,
+    expectedControllerClientId?: string | null,
+    candidateIntent?: { clientId: string; eligible: boolean },
+    requireAttachedClientId?: string,
+  ): void {
+    queuePtyStreamSessionControllerChange({
+      clients: this.clients,
+      sessions: this.sessions,
       session,
       controllerClientId,
-      clients: this.clients,
+      ...(expectedControllerClientId !== undefined ? { expectedControllerClientId } : {}),
+      ...(candidateIntent ? { candidateIntent } : {}),
+      ...(requireAttachedClientId ? { requireAttachedClientId } : {}),
       broadcastControlChanged: sessionId => this.broadcastControlChanged(sessionId),
     })
   }
@@ -138,6 +181,10 @@ export class PtyStreamHub {
 
   public hasSession(sessionId: string): boolean {
     return this.sessions.has(sessionId)
+  }
+
+  public isSessionActive(sessionId: string): boolean {
+    return this.sessions.get(sessionId)?.status === 'running'
   }
 
   public forgetSession(sessionId: string): void {
@@ -226,7 +273,60 @@ export class PtyStreamHub {
     }
 
     this.flushSession(session)
+    const snapshot = await snapshotSessionPresentation(session)
+    return {
+      ...snapshot,
+      serializedScreen: `${session.displayPrefix}${snapshot.serializedScreen}`,
+    }
+  }
+
+  /** Snapshot used by persistence; excludes archived display-only history. */
+  public async recoveryPresentationSnapshotSession(
+    sessionId: string,
+  ): Promise<GetSessionPresentationSnapshotResult> {
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      throw new Error('Unknown session')
+    }
+    this.flushSession(session)
     return await snapshotSessionPresentation(session)
+  }
+
+  /**
+   * Seeds a fresh Home Hub presentation from the durable checkpoint before downstream replay is
+   * attached. The baseline is presentation-only: it must not enter this Hub's replay window.
+   */
+  public async restoreSessionPresentationBaseline(options: {
+    sessionId: string
+    serializedScreen: string
+    displayPrefix?: string
+  }): Promise<void> {
+    const session = this.ensureSession(options.sessionId)
+    await restorePtyStreamPresentationBaseline({
+      session,
+      serializedScreen: options.serializedScreen,
+      ...(options.displayPrefix !== undefined ? { displayPrefix: options.displayPrefix } : {}),
+    })
+  }
+
+  /** Atomically replaces only the current epoch after a downstream replay overflow resync. */
+  public async replaceSessionPresentationCurrent(options: {
+    sessionId: string
+    snapshot: PresentationSnapshotTerminalResult
+  }): Promise<void> {
+    const session = this.sessions.get(options.sessionId)
+    if (!session) {
+      throw new Error('Unknown session')
+    }
+    await this.trackRecoveryOperation(
+      replacePtyStreamPresentationCurrent({
+        ...options,
+        session,
+        sessions: this.sessions,
+        clients: this.clients,
+        flushSession: current => this.flushSession(current),
+      }),
+    )
   }
 
   private broadcastData(sessionId: string, seq: number, data: string): void {
@@ -298,89 +398,23 @@ export class PtyStreamHub {
     afterSeq?: number | null
     role?: PtyStreamRole | null
   }): void {
-    const client = this.clients.get(options.clientId)
-    if (!client) {
-      return
-    }
-
-    const session = this.sessions.get(options.sessionId)
-    if (!session) {
-      sendPtyError(client.ws, options.sessionId, 'session.not_found', 'Unknown session.')
-      return
-    }
-
-    this.flushSession(session)
-
-    const wantsController =
-      options.role === 'controller' || options.role === null || options.role === undefined
-    const hasController = Boolean(session.controllerClientId)
-    const role: PtyStreamRole = wantsController && !hasController ? 'controller' : 'viewer'
-
-    session.subscribers.add(client.clientId)
-    client.rolesBySessionId.set(options.sessionId, role)
-
-    if (role === 'controller' && !session.controllerClientId) {
-      this.setSessionController(session, client.clientId)
-    }
-
-    const controllerClient = session.controllerClientId
-      ? (this.clients.get(session.controllerClientId) ?? null)
-      : null
-
-    const earliestSeq = session.chunks[0]?.seq ?? session.seq
-    sendPtyAttached(
-      client.ws,
-      options.sessionId,
-      role,
-      session.seq,
-      earliestSeq,
-      toControllerDto(controllerClient),
-    )
-
-    if (session.agentMetadata) {
-      sendPtySessionMetadata(client.ws, session.agentMetadata)
-    }
-
-    if (session.agentState) {
-      sendPtyState(client.ws, options.sessionId, session.agentState)
-    }
-
-    const afterSeq =
-      typeof options.afterSeq === 'number' && Number.isFinite(options.afterSeq)
-        ? Math.floor(options.afterSeq)
-        : null
-    const effectiveAfterSeq = afterSeq === null ? earliestSeq - 1 : afterSeq
-
-    if (effectiveAfterSeq < earliestSeq - 1) {
-      sendPtyOverflow(client.ws, options.sessionId, session.seq, earliestSeq)
-    } else {
-      for (const chunk of session.chunks) {
-        if (chunk.seq <= effectiveAfterSeq) {
-          continue
-        }
-
-        sendPtyData(client.ws, options.sessionId, chunk.seq, chunk.data)
-      }
-    }
-
-    if (session.status === 'exited' && typeof session.exitCode === 'number') {
-      sendPtyExit(client.ws, options.sessionId, session.seq, session.exitCode)
-    }
+    attachPtyStreamClient({
+      clients: this.clients,
+      sessions: this.sessions,
+      ...options,
+      flushSession: session => this.flushSession(session),
+      broadcastControlChanged: sessionId => this.broadcastControlChanged(sessionId),
+    })
   }
 
   public detach(clientId: string, sessionId: string): void {
-    const client = this.clients.get(clientId)
-    const session = this.sessions.get(sessionId)
-    if (!client || !session) {
-      return
-    }
-
-    session.subscribers.delete(clientId)
-    client.rolesBySessionId.delete(sessionId)
-
-    if (session.controllerClientId === clientId) {
-      this.setSessionController(session, null)
-    }
+    detachPtyStreamClient({
+      clients: this.clients,
+      sessions: this.sessions,
+      clientId,
+      sessionId,
+      broadcastControlChanged: currentSessionId => this.broadcastControlChanged(currentSessionId),
+    })
   }
 
   public requestControl(options: { clientId: string; sessionId: string }): void {
@@ -390,12 +424,16 @@ export class PtyStreamHub {
       return
     }
 
-    if (!session.subscribers.has(options.clientId)) {
-      sendPtyError(client.ws, options.sessionId, 'session.not_attached', 'Not attached.')
-      return
-    }
-
-    this.setSessionController(session, options.clientId)
+    this.setSessionController(
+      session,
+      options.clientId,
+      undefined,
+      {
+        clientId: options.clientId,
+        eligible: true,
+      },
+      options.clientId,
+    )
   }
 
   public releaseControl(options: { clientId: string; sessionId: string }): void {
@@ -405,41 +443,44 @@ export class PtyStreamHub {
       return
     }
 
-    if (session.controllerClientId !== options.clientId) {
-      return
-    }
-
-    this.setSessionController(session, null)
+    this.setSessionController(
+      session,
+      null,
+      options.clientId,
+      {
+        clientId: options.clientId,
+        eligible: false,
+      },
+      options.clientId,
+    )
   }
 
   public write(options: { clientId: string; sessionId: string; data: string }): void {
-    const session = this.sessions.get(options.sessionId)
-    const client = this.clients.get(options.clientId)
-    if (!session || !client) {
-      return
-    }
-
-    if (!session.subscribers.has(options.clientId)) {
-      sendPtyError(client.ws, options.sessionId, 'session.not_attached', 'Not attached.')
-      return
-    }
-
-    if (session.controllerClientId !== options.clientId) {
-      this.setSessionController(session, options.clientId)
-    }
-
-    this.ptyRuntime.write(options.sessionId, options.data)
+    writePtyStreamSession({
+      clients: this.clients,
+      sessions: this.sessions,
+      ptyRuntime: this.ptyRuntime,
+      ...options,
+      broadcastControlChanged: sessionId => this.broadcastControlChanged(sessionId),
+    })
   }
 
-  public resize(options: PtyStreamHubResizeOptions): void {
-    resizePtyStreamSession({
-      sessions: this.sessions,
-      clients: this.clients,
-      ptyRuntime: this.ptyRuntime,
-      resize: options,
-      broadcastGeometry: (sessionId, cols, rows, reason, revision) => {
-        this.broadcastGeometry(sessionId, cols, rows, reason, revision)
-      },
-    })
+  public async resize(options: PtyStreamHubResizeOptions): Promise<TerminalGeometryCommitResult> {
+    return await this.trackRecoveryOperation(
+      resizePtyStreamSession({
+        sessions: this.sessions,
+        clients: this.clients,
+        ptyRuntime: this.ptyRuntime,
+        resize: options,
+        broadcastGeometry: (sessionId, cols, rows, reason, revision) => {
+          this.broadcastGeometry(sessionId, cols, rows, reason, revision)
+        },
+      }).then(result => {
+        if (result.changed) {
+          this.onPresentationMutation?.(options.sessionId)
+        }
+        return result
+      }),
+    )
   }
 }

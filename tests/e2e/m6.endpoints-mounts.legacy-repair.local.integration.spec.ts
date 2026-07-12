@@ -228,7 +228,9 @@ test.describe('M6 - Legacy mount/space repair integration (local)', () => {
 
       await expect(repairedMountId).not.toBe(createdMountId)
 
-      await window.locator(`[data-testid="workspace-space-switch-${spaceId}"]`).click()
+      await window
+        .locator(`[data-testid="workspace-space-item-${legacyWorkspaceId}-${spaceId}"]`)
+        .click()
       await window.locator(`[data-testid="workspace-space-menu-${spaceId}"]`).click()
       await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
       await window.locator('[data-testid="workspace-space-action-create"]').click()

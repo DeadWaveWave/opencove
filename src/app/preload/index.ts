@@ -49,6 +49,7 @@ import type {
   ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
+  TerminalGeometryCommitResult,
   PresentationSnapshotTerminalInput,
   PresentationSnapshotTerminalResult,
   RemoveGitWorktreeInput,
@@ -304,7 +305,7 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptySpawn, payload),
     write: (payload: WriteTerminalInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptyWrite, payload),
-    resize: (payload: ResizeTerminalInput): Promise<void> =>
+    resize: (payload: ResizeTerminalInput): Promise<TerminalGeometryCommitResult> =>
       invokeIpc(IPC_CHANNELS.ptyResize, payload),
     kill: (payload: KillTerminalInput): Promise<void> => invokeIpc(IPC_CHANNELS.ptyKill, payload),
     attach: (payload: AttachTerminalInput): Promise<void> =>

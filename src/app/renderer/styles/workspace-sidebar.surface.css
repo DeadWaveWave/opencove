@@ -79,6 +79,6 @@
   --workspace-space-item-border-color: color-mix(
     in srgb,
     var(--workspace-space-accent) 54%,
-    rgba(94, 156, 255, 0.26)
+    var(--cove-info-border)
   );
 }

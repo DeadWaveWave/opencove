@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import type { TerminalAppearanceSnapshot, TerminalAppearanceTheme } from './terminalAppearance'
 
 type PtyWriteQueue = {
   enqueue: (data: string, encoding?: 'utf8' | 'binary') => void
@@ -91,8 +92,10 @@ function normalizeCssColorToHex(input: string | undefined | null): string | null
   return null
 }
 
-function resolveTerminalThemeColor(terminal: Terminal, key: string): string | null {
-  const theme = (terminal.options as unknown as { theme?: Record<string, unknown> }).theme
+function resolveTerminalThemeColor(
+  theme: Record<string, unknown> | null,
+  key: string,
+): string | null {
   if (!theme) {
     return null
   }
@@ -110,26 +113,29 @@ function resolvePaletteColor(index: number): string | null {
   return typeof value === 'string' ? value : null
 }
 
-function resolveSpecialColor(terminal: Terminal, identifier: number): string | null {
+function resolveSpecialColor(
+  theme: Record<string, unknown> | null,
+  identifier: number,
+): string | null {
   switch (identifier) {
     case 10:
-      return resolveTerminalThemeColor(terminal, 'foreground')
+      return resolveTerminalThemeColor(theme, 'foreground')
     case 11:
-      return resolveTerminalThemeColor(terminal, 'background')
+      return resolveTerminalThemeColor(theme, 'background')
     case 12:
-      return resolveTerminalThemeColor(terminal, 'cursor')
+      return resolveTerminalThemeColor(theme, 'cursor')
     case 13:
-      return resolveTerminalThemeColor(terminal, 'foreground')
+      return resolveTerminalThemeColor(theme, 'foreground')
     case 14:
-      return resolveTerminalThemeColor(terminal, 'background')
+      return resolveTerminalThemeColor(theme, 'background')
     case 15:
-      return resolveTerminalThemeColor(terminal, 'foreground')
+      return resolveTerminalThemeColor(theme, 'foreground')
     case 16:
-      return resolveTerminalThemeColor(terminal, 'background')
+      return resolveTerminalThemeColor(theme, 'background')
     case 17:
-      return resolveTerminalThemeColor(terminal, 'selectionBackground')
+      return resolveTerminalThemeColor(theme, 'selectionBackground')
     case 19:
-      return resolveTerminalThemeColor(terminal, 'foreground')
+      return resolveTerminalThemeColor(theme, 'foreground')
     default:
       return null
   }
@@ -138,9 +144,11 @@ function resolveSpecialColor(terminal: Terminal, identifier: number): string | n
 export function registerOpenCodeOscColorQueryResponder({
   terminal,
   ptyWriteQueue,
+  getAppliedAppearance,
 }: {
   terminal: Terminal
   ptyWriteQueue: PtyWriteQueue
+  getAppliedAppearance?: () => TerminalAppearanceSnapshot | null
 }): () => void {
   const parser = (terminal as unknown as { parser?: XtermOscParser }).parser
   if (!parser || typeof parser.registerOscHandler !== 'function') {
@@ -179,7 +187,16 @@ export function registerOpenCodeOscColorQueryResponder({
           return false
         }
 
-        const color = resolveSpecialColor(terminal, identifier)
+        const appliedTheme = getAppliedAppearance?.()?.xtermTheme ?? null
+        const legacyTheme = (
+          terminal.options as unknown as {
+            theme?: Partial<TerminalAppearanceTheme>
+          }
+        ).theme
+        const color = resolveSpecialColor(
+          (appliedTheme ?? legacyTheme ?? null) as Record<string, unknown> | null,
+          identifier,
+        )
         if (!color) {
           return false
         }

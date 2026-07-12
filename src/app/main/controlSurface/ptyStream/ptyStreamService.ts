@@ -7,6 +7,23 @@ import { resolveRequestAuth } from '../http/requestAuth'
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import { PtyStreamHub } from './ptyStreamHub'
 import type { PtyStreamClientKind } from './ptyStreamTypes'
+import type {
+  TerminalRecoveryFlushResult,
+  TerminalRecoveryOwner,
+} from '../../../../contexts/terminal/application/recovery/TerminalRecoveryOwner'
+import {
+  isPtyStreamRecord as isRecord,
+  normalizePtyStreamAfterSeq as normalizeAfterSeq,
+  normalizePtyStreamGeometryReason as normalizeGeometryReason,
+  normalizePtyStreamOptionalNonNegativeInt as normalizeOptionalNonNegativeInt,
+  normalizePtyStreamOptionalPositiveInt as normalizeOptionalPositiveInt,
+  normalizePtyStreamOptionalString as normalizeOptionalString,
+  normalizePtyStreamPositiveInt as normalizePositiveInt,
+  normalizePtyStreamRole as normalizeRole,
+  normalizePtyStreamWriteData as normalizePtyWriteData,
+  resolveOfferedPtyStreamSubprotocols as resolveOfferedSubprotocols,
+} from './ptyStreamMessageValidation'
+import { createPtyStreamPresentationResetBarrier } from './ptyStreamService.presentationResetBarrier'
 
 export const PTY_STREAM_PROTOCOL_VERSION = 1 as const
 export const PTY_STREAM_WS_PATH = '/pty'
@@ -18,110 +35,21 @@ type PtyStreamClientState = {
   didHandshake: boolean
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizePtyWriteData(value: unknown): string {
-  if (value === null || value === undefined) {
-    return ''
-  }
-
-  if (typeof value !== 'string') {
-    return ''
-  }
-
-  return value
-}
-
 function normalizeSessionId(value: unknown): string | null {
   const sessionId = normalizeOptionalString(value)
   return sessionId
 }
 
-function normalizeAfterSeq(value: unknown): number | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return null
-  }
-
-  return Math.floor(value)
-}
-
-function normalizeRole(value: unknown): 'viewer' | 'controller' | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (value === 'viewer' || value === 'controller') {
-    return value
-  }
-
-  return null
-}
-
-function normalizePositiveInt(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return null
-  }
-
-  const intValue = Math.floor(value)
-  return intValue > 0 ? intValue : null
-}
-
-function normalizeOptionalPositiveInt(value: unknown): number | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  return normalizePositiveInt(value)
-}
-
-function normalizeGeometryReason(value: unknown): 'frame_commit' | 'appearance_commit' | null {
-  if (value === 'frame_commit' || value === 'appearance_commit') {
-    return value
-  }
-
-  return null
-}
-
-function resolveOfferedSubprotocols(header: IncomingMessage['headers'][string]): string[] {
-  const rawValues: string[] = []
-
-  if (typeof header === 'string') {
-    rawValues.push(header)
-  } else if (Array.isArray(header)) {
-    rawValues.push(...header)
-  }
-
-  return rawValues
-    .flatMap(value =>
-      value
-        .split(',')
-        .map(part => part.trim())
-        .filter(part => part.length > 0),
-    )
-    .filter((value, index, list) => list.indexOf(value) === index)
-}
-
 export interface PtyStreamService {
   hub: PtyStreamHub
+  instanceId: string
+  setRecoveryOwner: (owner: TerminalRecoveryOwner | null) => void
+  flushRecovery: () => Promise<TerminalRecoveryFlushResult>
+  drainPendingOperations: () => Promise<void>
+  /** Stops new client commands while runtime output continues feeding the durability owner. */
+  freezeIngress: () => void
+  /** Establishes the runtime-output cutoff after the pre-cutoff durability drain completes. */
+  quiesce: () => Promise<void>
   handleUpgrade: (req: IncomingMessage, socket: Duplex, head: Buffer) => void
   dispose: () => void
 }
@@ -135,17 +63,48 @@ export function createPtyStreamService(options: {
   allowQueryToken?: boolean
 }): PtyStreamService {
   const allowQueryToken = options.allowQueryToken === true
+  let recoveryOwner: TerminalRecoveryOwner | null = null
+  let runtimeEventsQuiesced = false
+  let quiescePromise: Promise<void> | null = null
   const hub = new PtyStreamHub({
     ptyRuntime: options.ptyRuntime,
     replayWindowMaxBytes: options.replayWindowMaxBytes,
+    onPresentationMutation: sessionId => {
+      recoveryOwner?.notePresentationMutation({ sessionId })
+    },
+  })
+  const presentationResetBarrier = createPtyStreamPresentationResetBarrier({
+    expectsCommit: typeof options.ptyRuntime.onPresentationResetCommitted === 'function',
+    applyReset: async ({ sessionId, snapshot }) =>
+      await hub.replaceSessionPresentationCurrent({ sessionId, snapshot }),
+    onCommitted: sessionId => recoveryOwner?.notePresentationMutation({ sessionId }),
   })
 
   const disposeDataListener = options.ptyRuntime.onData(({ sessionId, data }) => {
     hub.handlePtyData(sessionId, data)
+    recoveryOwner?.noteOutput({ sessionId, data })
   })
 
   const disposeExitListener = options.ptyRuntime.onExit(({ sessionId, exitCode }) => {
     hub.handlePtyExit(sessionId, exitCode)
+    const owner = recoveryOwner
+    if (owner) {
+      void owner
+        .retireSession(sessionId)
+        .then(result => {
+          if (result.status === 'degraded') {
+            process.stderr.write(
+              `[opencove] terminal recovery exit retire degraded for ${sessionId}: ${JSON.stringify(result.failures)}\n`,
+            )
+          }
+        })
+        .catch(error => {
+          const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+          process.stderr.write(
+            `[opencove] terminal recovery exit retire failed for ${sessionId}: ${detail}\n`,
+          )
+        })
+    }
   })
 
   const disposeStateListener = options.ptyRuntime.onState?.(({ sessionId, state }) => {
@@ -155,6 +114,49 @@ export function createPtyStreamService(options: {
   const disposeMetadataListener = options.ptyRuntime.onMetadata?.(metadata => {
     hub.registerSessionAgentMetadata(metadata)
   })
+  const disposePresentationResetListener = options.ptyRuntime.onPresentationReset?.(event =>
+    presentationResetBarrier.apply(event),
+  )
+  const disposePresentationResetCommittedListener =
+    options.ptyRuntime.onPresentationResetCommitted?.(event =>
+      presentationResetBarrier.settle(event),
+    )
+  let ingressFrozen = false
+  const freezeIngress = (): void => {
+    if (ingressFrozen) {
+      return
+    }
+    ingressFrozen = true
+    clients.forEach(client => {
+      try {
+        client.close()
+      } catch {
+        // ignore
+      }
+    })
+  }
+  const quiesce = async (): Promise<void> => {
+    if (runtimeEventsQuiesced) {
+      return
+    }
+    if (!quiescePromise) {
+      quiescePromise = (async () => {
+        // Runtime-owned overflow recovery starts before the reset reaches this service. Freeze its
+        // transport and drain fetch/apply/buffer settlement before closing the local reset barrier.
+        await options.ptyRuntime.drainPresentationRecovery?.()
+        await presentationResetBarrier.drainAndStopAccepting()
+        await hub.drainRecoveryOperations()
+        disposeDataListener()
+        disposeExitListener()
+        disposeStateListener?.()
+        disposeMetadataListener?.()
+        disposePresentationResetListener?.()
+        disposePresentationResetCommittedListener?.()
+        runtimeEventsQuiesced = true
+      })()
+    }
+    await quiescePromise
+  }
 
   const instanceId = randomBytes(18).toString('base64url')
   const clients = new Set<WebSocket>()
@@ -202,6 +204,9 @@ export function createPtyStreamService(options: {
     }, 2_000)
 
     ws.on('message', raw => {
+      if (ingressFrozen) {
+        return
+      }
       const text = typeof raw === 'string' ? raw : Buffer.isBuffer(raw) ? raw.toString('utf8') : ''
       if (text.trim().length === 0) {
         return
@@ -265,6 +270,8 @@ export function createPtyStreamService(options: {
               capabilities: {
                 roles: ['viewer', 'controller'],
                 replayWindow: { maxBytes: options.replayWindowMaxBytes },
+                geometryCommitAck: 1,
+                authorityEpoch: 1,
               },
             }),
           )
@@ -347,6 +354,15 @@ export function createPtyStreamService(options: {
         const rows = normalizePositiveInt(message.rows)
         const reason = normalizeGeometryReason(message.reason)
         const revision = normalizeOptionalPositiveInt(message.revision)
+        const operationId = normalizeOptionalString(message.operationId)
+        const baseGeometryRevision =
+          message.baseGeometryRevision === null
+            ? null
+            : normalizeOptionalPositiveInt(message.baseGeometryRevision)
+        const authorityEpoch =
+          message.authorityEpoch === null
+            ? null
+            : normalizeOptionalNonNegativeInt(message.authorityEpoch)
 
         if (!sessionId) {
           closeWithError(ws, 'protocol.invalid_message', 'Missing sessionId.')
@@ -358,7 +374,19 @@ export function createPtyStreamService(options: {
           return
         }
 
-        hub.resize({ clientId: state.clientId, sessionId, cols, rows, reason, revision })
+        void hub.resize({
+          clientId: state.clientId,
+          sessionId,
+          cols,
+          rows,
+          reason,
+          ...(operationId ? { operationId } : {}),
+          ...(message.baseGeometryRevision === null || baseGeometryRevision !== null
+            ? { baseGeometryRevision }
+            : {}),
+          ...(message.authorityEpoch === null || authorityEpoch !== null ? { authorityEpoch } : {}),
+          ...(revision !== null ? { revision } : {}),
+        })
         return
       }
 
@@ -367,6 +395,10 @@ export function createPtyStreamService(options: {
   })
 
   const handleUpgrade = (req: IncomingMessage, socket: Duplex, head: Buffer): void => {
+    if (ingressFrozen) {
+      socket.destroy()
+      return
+    }
     if (!req.url) {
       socket.destroy()
       return
@@ -421,15 +453,18 @@ export function createPtyStreamService(options: {
 
   return {
     hub,
+    instanceId,
+    setRecoveryOwner: owner => {
+      recoveryOwner = owner
+    },
+    flushRecovery: async () =>
+      recoveryOwner?.flushAll() ?? { status: 'complete', committed: 0, failures: [] },
+    drainPendingOperations: async () => await hub.drainRecoveryOperations(),
+    freezeIngress,
+    quiesce,
     handleUpgrade,
     dispose: () => {
-      clients.forEach(client => {
-        try {
-          client.close()
-        } catch {
-          // ignore
-        }
-      })
+      freezeIngress()
       clients.clear()
 
       try {
@@ -438,10 +473,7 @@ export function createPtyStreamService(options: {
         // ignore
       }
 
-      disposeDataListener()
-      disposeExitListener()
-      disposeStateListener?.()
-      disposeMetadataListener?.()
+      void quiesce()
     },
   }
 }

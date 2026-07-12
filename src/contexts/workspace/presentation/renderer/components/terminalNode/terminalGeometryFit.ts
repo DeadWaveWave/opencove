@@ -3,7 +3,6 @@ import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
 import { resolveStablePtySize } from '../../utils/terminalResize'
 import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio'
-import { resolveDomRendererSafeMeasuredSize } from './terminalGeometryDomSafety'
 import { logTerminalGeometryDiagnostics } from './terminalGeometryDiagnostics'
 import { canRefreshTerminalLayout, refreshTerminalNodeSize } from './terminalGeometryLayout'
 import type { FitTerminalNodeOptions, PtySize } from './terminalGeometryTypes'
@@ -72,11 +71,7 @@ export function fitTerminalNodeToMeasuredSize({
     })
     return null
   }
-  const measured = resolveDomRendererSafeMeasuredSize({
-    terminal,
-    container,
-    measured: proposed,
-  })
+  const measured = proposed
 
   const nextPtySize = resolveStablePtySize({
     previous: lastCommittedPtySizeRef?.current ?? null,

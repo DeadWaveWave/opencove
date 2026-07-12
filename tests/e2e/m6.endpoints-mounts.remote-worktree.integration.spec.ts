@@ -280,7 +280,9 @@ test.describe('M6 - Remote mount worktree integration', () => {
         { label: 'created space metadata' },
       )
 
-      await window.locator(`[data-testid="workspace-space-switch-${spaceMeta.spaceId}"]`).click()
+      await window
+        .locator(`[data-testid="workspace-space-item-${workspaceId}-${spaceMeta.spaceId}"]`)
+        .click()
       await window.locator(`[data-testid="workspace-space-menu-${spaceMeta.spaceId}"]`).click()
       await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
       await window.locator('[data-testid="workspace-space-action-create"]').click()
@@ -364,7 +366,9 @@ test.describe('M6 - Remote mount worktree integration', () => {
       await expect(prChip).toHaveAttribute('target', '_blank')
       await expect(prChip).toHaveAttribute('title', `Test PR for ${branchName} (#123)`)
 
-      await window.locator(`[data-testid="workspace-space-switch-${spaceMeta.spaceId}"]`).click()
+      await window
+        .locator(`[data-testid="workspace-space-item-${workspaceId}-${spaceMeta.spaceId}"]`)
+        .click()
       await window.locator(`[data-testid="workspace-space-menu-${spaceMeta.spaceId}"]`).click()
       await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
       await window.locator('[data-testid="workspace-space-action-archive"]').click()

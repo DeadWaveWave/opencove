@@ -1,6 +1,7 @@
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { getFolderName, getWorkspacePageId, type SettingsPageId } from '../SettingsPanel.shared'
+import { resolveSettingsPage, type StaticSettingsPageId } from './settingsPageRegistry'
 import {
   AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS,
   type AgentSettingsSearchEntryDefinition,
@@ -22,8 +23,7 @@ export interface SettingsSearchResult extends SettingsSearchEntry {
 
 interface CoreSettingsSearchEntryDefinition {
   id: string
-  pageId: SettingsPageId
-  pageLabelKey: string
+  pageId: StaticSettingsPageId
   titleKey: string
   descriptionKey?: string
   anchorId: string
@@ -37,7 +37,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'general.language',
     pageId: 'general',
-    pageLabelKey: 'settingsPanel.nav.general',
     titleKey: 'settingsPanel.general.languageLabel',
     descriptionKey: 'settingsPanel.general.languageHelp',
     anchorId: 'settings-language',
@@ -46,7 +45,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'general.theme',
     pageId: 'appearance',
-    pageLabelKey: 'settingsPanel.nav.appearance',
     titleKey: 'settingsPanel.general.uiThemeLabel',
     descriptionKey: 'settingsPanel.general.uiThemeHelp',
     anchorId: 'settings-ui-theme',
@@ -55,7 +53,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'general.ui-font-size',
     pageId: 'appearance',
-    pageLabelKey: 'settingsPanel.nav.appearance',
     titleKey: 'settingsPanel.general.interfaceFontSize',
     anchorId: 'settings-ui-font-size',
     keywords: ['font', 'size', 'interface', '字体', '界面'],
@@ -63,7 +60,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'general.terminal-font-size',
     pageId: 'appearance',
-    pageLabelKey: 'settingsPanel.nav.appearance',
     titleKey: 'settingsPanel.general.terminalFontSize',
     anchorId: 'settings-terminal-font-size',
     keywords: ['font', 'size', 'terminal', '终端', '字体'],
@@ -71,7 +67,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'general.terminal-font-family',
     pageId: 'appearance',
-    pageLabelKey: 'settingsPanel.nav.appearance',
     titleKey: 'settingsPanel.general.terminalFontFamily',
     anchorId: 'settings-terminal-font-family',
     keywords: ['font', 'family', 'terminal', 'shell', '终端', '字体'],
@@ -79,7 +74,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'general.terminal-display-calibration',
     pageId: 'appearance',
-    pageLabelKey: 'settingsPanel.nav.appearance',
     titleKey: 'settingsPanel.general.terminalDisplayCalibration.title',
     descriptionKey: 'settingsPanel.general.terminalDisplayCalibration.help',
     anchorId: 'settings-section-terminal-display-calibration',
@@ -88,7 +82,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'general.updates',
     pageId: 'general',
-    pageLabelKey: 'settingsPanel.nav.general',
     titleKey: 'settingsPanel.general.updates.title',
     descriptionKey: 'settingsPanel.general.updates.help',
     anchorId: 'settings-section-updates',
@@ -102,7 +95,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'worker.home',
     pageId: 'worker',
-    pageLabelKey: 'settingsPanel.nav.workerConnections',
     titleKey: 'settingsPanel.worker.home.title',
     descriptionKey: 'settingsPanel.worker.home.help',
     anchorId: 'settings-section-worker-home',
@@ -112,7 +104,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'worker.cli',
     pageId: 'worker',
-    pageLabelKey: 'settingsPanel.nav.workerConnections',
     titleKey: 'settingsPanel.worker.cli.title',
     descriptionKey: 'settingsPanel.worker.cli.help',
     anchorId: 'settings-section-worker-cli',
@@ -122,7 +113,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'worker.local',
     pageId: 'worker',
-    pageLabelKey: 'settingsPanel.nav.workerConnections',
     titleKey: 'settingsPanel.worker.local.title',
     descriptionKey: 'settingsPanel.worker.local.help',
     anchorId: 'settings-section-worker-local',
@@ -131,7 +121,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'endpoints.list',
     pageId: 'worker',
-    pageLabelKey: 'settingsPanel.nav.workerConnections',
     titleKey: 'settingsPanel.endpoints.list.title',
     descriptionKey: 'settingsPanel.endpoints.list.help',
     anchorId: 'settings-section-endpoints',
@@ -142,7 +131,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'notifications.standby-banner',
     pageId: 'notifications',
-    pageLabelKey: 'settingsPanel.nav.notifications',
     titleKey: 'settingsPanel.notifications.agentStandbyBanner.enabledLabel',
     descriptionKey: 'settingsPanel.notifications.agentStandbyBanner.enabledHelp',
     anchorId: 'settings-section-notifications',
@@ -158,7 +146,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'notifications.system-notifications',
     pageId: 'notifications',
-    pageLabelKey: 'settingsPanel.nav.notifications',
     titleKey: 'settingsPanel.notifications.systemNotifications.enabledLabel',
     descriptionKey: 'settingsPanel.notifications.systemNotifications.enabledHelp',
     anchorId: 'settings-section-notifications',
@@ -167,7 +154,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'canvas.input-mode',
     pageId: 'canvas-windows',
-    pageLabelKey: 'settingsPanel.nav.canvasWindows',
     titleKey: 'settingsPanel.canvas.inputModeLabel',
     descriptionKey: 'settingsPanel.canvas.inputModeHelp',
     anchorId: 'settings-canvas-input-mode',
@@ -181,7 +167,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'canvas.wheel',
     pageId: 'canvas-windows',
-    pageLabelKey: 'settingsPanel.nav.canvasWindows',
     titleKey: 'settingsPanel.canvas.wheelBehaviorLabel',
     descriptionKey: 'settingsPanel.canvas.wheelBehaviorHelp',
     anchorId: 'settings-canvas-wheel-behavior',
@@ -196,7 +181,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'canvas.window-size',
     pageId: 'canvas-windows',
-    pageLabelKey: 'settingsPanel.nav.canvasWindows',
     titleKey: 'settingsPanel.canvas.standardWindowSizeLabel',
     descriptionKey: 'settingsPanel.canvas.standardWindowSizeHelp',
     anchorId: 'settings-standard-window-size',
@@ -205,7 +189,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'canvas.terminal-profile',
     pageId: 'canvas-windows',
-    pageLabelKey: 'settingsPanel.nav.canvasWindows',
     titleKey: 'settingsPanel.terminal.profileLabel',
     descriptionKey: 'settingsPanel.terminal.profileHelp',
     anchorId: 'settings-terminal-profile',
@@ -214,7 +197,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'canvas.focus',
     pageId: 'canvas-windows',
-    pageLabelKey: 'settingsPanel.nav.canvasWindows',
     titleKey: 'settingsPanel.canvas.focusOnClickLabel',
     descriptionKey: 'settingsPanel.canvas.focusOnClickHelp',
     anchorId: 'settings-focus-node-on-click',
@@ -228,7 +210,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'experimental.remote-workers',
     pageId: 'worker',
-    pageLabelKey: 'settingsPanel.nav.workerConnections',
     titleKey: 'settingsPanel.experimental.remoteWorkersTitle',
     descriptionKey: 'settingsPanel.experimental.remoteWorkersHelp',
     anchorId: 'settings-section-experimental-remote-workers',
@@ -238,7 +219,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'experimental.worker-web-ui',
     pageId: 'worker',
-    pageLabelKey: 'settingsPanel.nav.workerConnections',
     titleKey: 'settingsPanel.experimental.workerWebUi.title',
     descriptionKey: 'settingsPanel.experimental.workerWebUi.help',
     anchorId: 'settings-section-worker-web-ui',
@@ -253,7 +233,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'experimental.website-windows',
     pageId: 'advanced',
-    pageLabelKey: 'settingsPanel.nav.advanced',
     titleKey: 'settingsPanel.experimental.websiteWindowsTitle',
     descriptionKey: 'settingsPanel.experimental.websiteWindowsHelp',
     anchorId: 'settings-section-website-windows',
@@ -270,7 +249,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'shortcuts.disable-terminal',
     pageId: 'tasks-shortcuts',
-    pageLabelKey: 'settingsPanel.nav.tasksShortcuts',
     titleKey: 'settingsPanel.shortcuts.disableWhenTerminalFocusedLabel',
     descriptionKey: 'settingsPanel.shortcuts.disableWhenTerminalFocusedHelp',
     anchorId: 'settings-disable-shortcuts-terminal-focused',
@@ -279,7 +257,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'shortcuts.bindings',
     pageId: 'tasks-shortcuts',
-    pageLabelKey: 'settingsPanel.nav.tasksShortcuts',
     titleKey: 'settingsPanel.shortcuts.bindings',
     descriptionKey: 'settingsPanel.shortcuts.bindingsHelp',
     anchorId: 'settings-section-keybindings',
@@ -288,7 +265,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'quick-menu.commands',
     pageId: 'tasks-shortcuts',
-    pageLabelKey: 'settingsPanel.nav.tasksShortcuts',
     titleKey: 'settingsPanel.quickMenu.commands.title',
     descriptionKey: 'settingsPanel.quickMenu.commands.help',
     anchorId: 'settings-section-quick-commands',
@@ -302,7 +278,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'quick-menu.phrases',
     pageId: 'tasks-shortcuts',
-    pageLabelKey: 'settingsPanel.nav.tasksShortcuts',
     titleKey: 'settingsPanel.quickMenu.phrases.title',
     descriptionKey: 'settingsPanel.quickMenu.phrases.help',
     anchorId: 'settings-section-quick-phrases',
@@ -312,7 +287,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'tasks.title-generation',
     pageId: 'tasks-shortcuts',
-    pageLabelKey: 'settingsPanel.nav.tasksShortcuts',
     titleKey: 'settingsPanel.tasks.titleProviderLabel',
     descriptionKey: 'settingsPanel.tasks.titleProviderHelp',
     anchorId: 'settings-task-title-provider',
@@ -325,7 +299,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'tasks.tags',
     pageId: 'tasks-shortcuts',
-    pageLabelKey: 'settingsPanel.nav.tasksShortcuts',
     titleKey: 'settingsPanel.tasks.tagsLabel',
     descriptionKey: 'settingsPanel.tasks.tagsHelp',
     anchorId: 'settings-section-task-tags',
@@ -334,7 +307,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'integrations.github-prs',
     pageId: 'integrations',
-    pageLabelKey: 'settingsPanel.nav.integrations',
     titleKey: 'settingsPanel.integrations.githubPullRequestsLabel',
     descriptionKey: 'settingsPanel.integrations.githubPullRequestsHelp',
     anchorId: 'settings-github-pull-requests',
@@ -343,7 +315,6 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
   {
     id: 'diagnostics.performance',
     pageId: 'advanced',
-    pageLabelKey: 'settingsPanel.nav.advanced',
     titleKey: 'settingsPanel.diagnostics.title',
     descriptionKey: 'settingsPanel.diagnostics.help',
     anchorId: 'settings-section-diagnostics',
@@ -377,6 +348,11 @@ function resolveEntry(
   definition: CoreSettingsSearchEntryDefinition,
   t: TranslateFn,
 ): SettingsSearchEntry {
+  const { navLabelKey } = resolveSettingsPage(definition.pageId)
+  if (!navLabelKey) {
+    throw new Error(`Missing settings navigation label for page: ${definition.pageId}`)
+  }
+
   const keywordText = [
     ...(definition.keywordKeys ?? []).map(key => t(key)),
     ...(definition.keywords ?? []),
@@ -385,7 +361,7 @@ function resolveEntry(
   return {
     id: definition.id,
     pageId: definition.pageId,
-    pageLabel: t(definition.pageLabelKey),
+    pageLabel: t(navLabelKey),
     title: t(definition.titleKey),
     description: definition.descriptionKey ? t(definition.descriptionKey) : undefined,
     anchorId: definition.anchorId,

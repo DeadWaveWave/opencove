@@ -1,6 +1,7 @@
 import { SerializeAddon } from '@xterm/addon-serialize'
 import { Terminal } from '@xterm/xterm'
 import type { PresentationSnapshotTerminalResult } from '../../../shared/contracts/dto'
+import type { TerminalCanonicalPtyGeometry } from '../../../shared/contracts/dto'
 
 const DEFAULT_COLS = 80
 const DEFAULT_ROWS = 24
@@ -12,6 +13,12 @@ function normalizePositiveInt(value: number, fallback: number): number {
 
   const normalized = Math.floor(value)
   return normalized > 0 ? normalized : fallback
+}
+
+export type TerminalPresentationGeometryCommitResult = {
+  status: 'accepted' | 'superseded'
+  changed: boolean
+  geometry: TerminalCanonicalPtyGeometry
 }
 
 export class TerminalPresentationSession {
@@ -139,6 +146,87 @@ export class TerminalPresentationSession {
       rows: nextRows,
       changed: true,
       revision: this.geometryRevision,
+    }
+  }
+
+  public planGeometryCommit(options: {
+    cols: number
+    rows: number
+    baseGeometryRevision?: number | null
+  }): TerminalPresentationGeometryCommitResult {
+    const hasBaseGeometryRevision = options.baseGeometryRevision !== undefined
+    const baseGeometryRevision =
+      options.baseGeometryRevision === null
+        ? null
+        : typeof options.baseGeometryRevision === 'number' &&
+            Number.isFinite(options.baseGeometryRevision) &&
+            options.baseGeometryRevision > 0
+          ? Math.floor(options.baseGeometryRevision)
+          : undefined
+
+    if (hasBaseGeometryRevision && baseGeometryRevision !== this.geometryRevision) {
+      return {
+        status: 'superseded',
+        changed: false,
+        geometry: {
+          cols: this.cols,
+          rows: this.rows,
+          revision: this.geometryRevision,
+        },
+      }
+    }
+
+    const cols = normalizePositiveInt(options.cols, this.cols || DEFAULT_COLS)
+    const rows = normalizePositiveInt(options.rows, this.rows || DEFAULT_ROWS)
+    return {
+      status: 'accepted',
+      changed: cols !== this.cols || rows !== this.rows,
+      geometry: {
+        cols,
+        rows,
+        revision: this.geometryRevision,
+      },
+    }
+  }
+
+  public getGeometry(): TerminalCanonicalPtyGeometry {
+    return {
+      cols: this.cols,
+      rows: this.rows,
+      revision: this.geometryRevision,
+    }
+  }
+
+  public commitGeometry(options: {
+    cols: number
+    rows: number
+    baseGeometryRevision?: number | null
+  }): TerminalPresentationGeometryCommitResult {
+    const plan = this.planGeometryCommit(options)
+    if (plan.status === 'superseded' || !plan.changed) {
+      return plan
+    }
+
+    this.cols = plan.geometry.cols
+    this.rows = plan.geometry.rows
+    this.geometryRevision = (this.geometryRevision ?? 0) + 1
+    const revision = this.geometryRevision
+    const cols = this.cols
+    const rows = this.rows
+
+    void this.enqueue(() => {
+      if (cols === this.terminal.cols && rows === this.terminal.rows) {
+        return
+      }
+
+      this.terminal.resize(cols, rows)
+      this.presentationRevision += 1
+    })
+
+    return {
+      status: 'accepted',
+      changed: true,
+      geometry: { cols, rows, revision },
     }
   }
 

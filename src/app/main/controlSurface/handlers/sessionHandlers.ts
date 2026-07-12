@@ -32,13 +32,11 @@ import { invokeInternalCommand } from './controlSurfaceInternalCommand'
 import { registerSessionFinalMessageHandler } from './sessionFinalMessageHandler'
 import { registerSessionLaunchAgentInMountHandler } from './sessionLaunchAgentInMountHandler'
 import { registerSessionPrepareOrReviveHandler } from './sessionPrepareOrReviveHandler'
-import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
 import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
 import {
   isRecord,
-  normalizeAgentProviderId,
+  normalizeLaunchAgentPayload,
   normalizeOptionalString,
-  normalizeOptionalPositiveInt,
 } from './sessionLaunchPayloadSupport'
 import type { SessionRecord } from './sessionRecords'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
@@ -54,122 +52,6 @@ const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 
 function resolveOpenCodeEmbeddedXdgStateHome(userDataPath: string): string {
   return userDataPath.trim() || process.cwd()
-}
-
-function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgent.',
-    })
-  }
-
-  const spaceIdRaw = payload.spaceId
-  if (spaceIdRaw !== undefined && spaceIdRaw !== null && typeof spaceIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgent spaceId.',
-    })
-  }
-
-  const spaceId = typeof spaceIdRaw === 'string' ? spaceIdRaw.trim() : ''
-
-  const cwdRaw = payload.cwd
-  if (cwdRaw !== undefined && cwdRaw !== null && typeof cwdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgent cwd.',
-    })
-  }
-
-  const cwd = typeof cwdRaw === 'string' ? cwdRaw.trim() : ''
-
-  const promptRaw = payload.prompt
-  if (typeof promptRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgent prompt.',
-    })
-  }
-
-  const prompt = promptRaw.trim()
-
-  const providerRaw = payload.provider
-  if (providerRaw !== undefined && providerRaw !== null && typeof providerRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgent provider.',
-    })
-  }
-
-  const provider = normalizeAgentProviderId(providerRaw, 'session.launchAgent provider')
-
-  const modelRaw = payload.model
-  if (modelRaw !== undefined && modelRaw !== null && typeof modelRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgent model.',
-    })
-  }
-
-  const model = modelRaw === null ? null : normalizeOptionalString(modelRaw)
-  const agentFullAccess = payload.agentFullAccess
-  const modeRaw = payload.mode
-
-  if (modeRaw !== undefined && modeRaw !== null && typeof modeRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgent mode.',
-    })
-  }
-
-  const mode = modeRaw === 'resume' ? 'resume' : 'new'
-
-  const resumeSessionIdRaw = payload.resumeSessionId
-  if (
-    resumeSessionIdRaw !== undefined &&
-    resumeSessionIdRaw !== null &&
-    typeof resumeSessionIdRaw !== 'string'
-  ) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgent resumeSessionId.',
-    })
-  }
-
-  const resumeSessionId =
-    resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw)
-
-  const env = normalizeLaunchAgentEnv(payload.env)
-  const executablePathOverride =
-    payload.executablePathOverride === undefined || payload.executablePathOverride === null
-      ? null
-      : normalizeOptionalString(payload.executablePathOverride)
-  const cols = normalizeOptionalPositiveInt(payload.cols)
-  const rows = normalizeOptionalPositiveInt(payload.rows)
-
-  if (
-    agentFullAccess !== undefined &&
-    agentFullAccess !== null &&
-    typeof agentFullAccess !== 'boolean'
-  ) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgent agentFullAccess.',
-    })
-  }
-
-  if (spaceId.length === 0 && cwd.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'session.launchAgent requires either spaceId or cwd.',
-    })
-  }
-
-  return {
-    ...(spaceId.length > 0 ? { spaceId } : {}),
-    ...(cwd.length > 0 ? { cwd } : {}),
-    prompt,
-    provider,
-    mode,
-    model,
-    resumeSessionId,
-    env,
-    executablePathOverride,
-    agentFullAccess: agentFullAccess ?? null,
-    cols,
-    rows,
-  }
 }
 
 function normalizeSessionIdPayload(payload: unknown, operationId: string): GetSessionInput {
@@ -205,6 +87,7 @@ export function registerSessionHandlers(
     ptyRuntime: MultiEndpointPtyRuntime
     ptyStreamHub: PtyStreamHub
     topology: WorkerTopologyStore
+    restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
   },
 ): void {
   const sessions = new Map<string, SessionRecord>()
@@ -553,6 +436,7 @@ export function registerSessionHandlers(
   registerSessionPrepareOrReviveHandler(controlSurface, {
     getPersistenceStore: deps.getPersistenceStore,
     ptyStreamHub: deps.ptyStreamHub,
+    restoreTerminalSession: deps.restoreTerminalSession,
   })
 
   controlSurface.register('session.get', {

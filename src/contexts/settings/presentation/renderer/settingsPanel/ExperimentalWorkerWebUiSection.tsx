@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { HomeWorkerConfigDto, WorkerStatusResult } from '@shared/contracts/dto'
 import { toErrorMessage } from './workerSectionUtils'
+import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 
 export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
   const { t } = useTranslation()
@@ -257,178 +258,191 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
   )
 
   return (
-    <div className="settings-panel__section" id="settings-section-worker-web-ui">
-      <div className="settings-panel__subsection-header">
-        <h3 className="settings-panel__section-title">
-          {t('settingsPanel.experimental.workerWebUi.title')}
-        </h3>
-        <span>{t('settingsPanel.experimental.workerWebUi.help')}</span>
-      </div>
-
-      {workerWebUiError ? (
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('common.error')}</strong>
+    <SettingsGroup
+      id="settings-section-worker-web-ui"
+      title={t('settingsPanel.groups.worker.webAccess')}
+    >
+      <SettingsGroupBody>
+        {workerWebUiError ? (
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('common.error')}</strong>
+            </div>
+            <div className="settings-panel__control">
+              <span className="settings-panel__value" style={{ color: 'var(--cove-danger-text)' }}>
+                {workerWebUiError}
+              </span>
+            </div>
           </div>
-          <div className="settings-panel__control">
-            <span className="settings-panel__value" style={{ color: 'var(--cove-danger-text)' }}>
-              {workerWebUiError}
-            </span>
+        ) : null}
+
+        <SettingsModule
+          id="settings-section-worker-web-ui-service"
+          title={t('settingsPanel.experimental.workerWebUi.title')}
+          description={t('settingsPanel.experimental.workerWebUi.help')}
+        >
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.experimental.workerWebUi.enabledLabel')}</strong>
+              <span>{t('settingsPanel.experimental.workerWebUi.enabledHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <label className="cove-toggle">
+                <input
+                  type="checkbox"
+                  data-testid="settings-experimental-worker-web-ui-enabled"
+                  checked={workerConfig?.webUi.enabled ?? false}
+                  disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
+                  aria-label={t('settingsPanel.experimental.workerWebUi.enabledLabel')}
+                  onChange={event => void toggleWorkerWebUiEnabled(event.target.checked)}
+                />
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
           </div>
-        </div>
-      ) : null}
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.experimental.workerWebUi.enabledLabel')}</strong>
-          <span>{t('settingsPanel.experimental.workerWebUi.enabledHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-experimental-worker-web-ui-enabled"
-              checked={workerConfig?.webUi.enabled ?? false}
-              disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
-              onChange={event => void toggleWorkerWebUiEnabled(event.target.checked)}
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
-        </div>
-      </div>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.experimental.workerWebUi.portLabel')}</strong>
+              <span>{t('settingsPanel.experimental.workerWebUi.portHelp')}</span>
+            </div>
+            <div className="settings-panel__control settings-panel__control--actions">
+              <input
+                className="cove-field"
+                style={{ width: 120 }}
+                type="number"
+                min={0}
+                max={65_535}
+                aria-label={t('settingsPanel.experimental.workerWebUi.portLabel')}
+                value={webUiPortDraft}
+                disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
+                placeholder={t('settingsPanel.experimental.workerWebUi.portPlaceholder')}
+                onChange={event => setWebUiPortDraft(event.target.value)}
+                data-testid="settings-experimental-worker-web-ui-port"
+              />
+              <button
+                type="button"
+                className="primary"
+                disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
+                onClick={() => void saveWorkerWebUiPort()}
+                data-testid="settings-experimental-worker-web-ui-port-save"
+              >
+                {t('settingsPanel.experimental.workerWebUi.portSave')}
+              </button>
+            </div>
+          </div>
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.experimental.workerWebUi.portLabel')}</strong>
-          <span>{t('settingsPanel.experimental.workerWebUi.portHelp')}</span>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-          <input
-            className="cove-field"
-            style={{ width: 120 }}
-            type="number"
-            min={0}
-            max={65_535}
-            value={webUiPortDraft}
-            disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
-            placeholder={t('settingsPanel.experimental.workerWebUi.portPlaceholder')}
-            onChange={event => setWebUiPortDraft(event.target.value)}
-            data-testid="settings-experimental-worker-web-ui-port"
-          />
-          <button
-            type="button"
-            className="primary"
-            disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
-            onClick={() => void saveWorkerWebUiPort()}
-            data-testid="settings-experimental-worker-web-ui-port-save"
-          >
-            {t('settingsPanel.experimental.workerWebUi.portSave')}
-          </button>
-        </div>
-      </div>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.experimental.workerWebUi.statusLabel')}</strong>
+              <span>{t('settingsPanel.experimental.workerWebUi.statusHelp')}</span>
+            </div>
+            <div className="settings-panel__control settings-panel__control--actions">
+              <span
+                className="settings-panel__value"
+                data-testid="settings-experimental-worker-web-ui-status"
+              >
+                {workerWebUiStatusLabel}
+              </span>
+              <button
+                type="button"
+                className="secondary"
+                data-testid="settings-experimental-worker-web-ui-refresh"
+                disabled={workerWebUiBusy}
+                onClick={() => void loadWorkerWebUiState()}
+              >
+                {t('settingsPanel.experimental.workerWebUi.refresh')}
+              </button>
+            </div>
+          </div>
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.experimental.workerWebUi.statusLabel')}</strong>
-          <span>{t('settingsPanel.experimental.workerWebUi.statusHelp')}</span>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-          <span
-            className="settings-panel__value"
-            data-testid="settings-experimental-worker-web-ui-status"
-          >
-            {workerWebUiStatusLabel}
-          </span>
-          <button
-            type="button"
-            className="secondary"
-            data-testid="settings-experimental-worker-web-ui-refresh"
-            disabled={workerWebUiBusy}
-            onClick={() => void loadWorkerWebUiState()}
-          >
-            {t('settingsPanel.experimental.workerWebUi.refresh')}
-          </button>
-        </div>
-      </div>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.experimental.workerWebUi.actionsLabel')}</strong>
+            </div>
+            <div className="settings-panel__control settings-panel__control--actions">
+              <button
+                type="button"
+                className="primary"
+                data-testid="settings-experimental-worker-web-ui-open"
+                disabled={!canOpenWorkerWebUi || workerWebUiBusy}
+                onClick={() => void openWorkerWebUi()}
+              >
+                {t('settingsPanel.experimental.workerWebUi.open')}
+              </button>
+            </div>
+          </div>
+        </SettingsModule>
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.experimental.workerWebUi.actionsLabel')}</strong>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-          <button
-            type="button"
-            className="primary"
-            data-testid="settings-experimental-worker-web-ui-open"
-            disabled={!canOpenWorkerWebUi || workerWebUiBusy}
-            onClick={() => void openWorkerWebUi()}
-          >
-            {t('settingsPanel.experimental.workerWebUi.open')}
-          </button>
-        </div>
-      </div>
+        <SettingsModule
+          id="settings-section-worker-web-ui-security"
+          title={t('settingsPanel.experimental.workerWebUi.securityTitle')}
+        >
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.experimental.workerWebUi.lanLabel')}</strong>
+              <span>{t('settingsPanel.experimental.workerWebUi.lanHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <label className="cove-toggle">
+                <input
+                  type="checkbox"
+                  data-testid="settings-experimental-worker-web-ui-lan"
+                  checked={workerConfig?.webUi.exposeOnLan ?? false}
+                  disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
+                  aria-label={t('settingsPanel.experimental.workerWebUi.lanLabel')}
+                  onChange={event => void toggleWorkerWebUiLan(event.target.checked)}
+                />
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
+          </div>
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.experimental.workerWebUi.lanLabel')}</strong>
-          <span>{t('settingsPanel.experimental.workerWebUi.lanHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-experimental-worker-web-ui-lan"
-              checked={workerConfig?.webUi.exposeOnLan ?? false}
-              disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
-              onChange={event => void toggleWorkerWebUiLan(event.target.checked)}
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.experimental.workerWebUi.passwordLabel')}</strong>
-          <span>
-            {workerConfig?.webUi.passwordSet
-              ? t('settingsPanel.experimental.workerWebUi.passwordHelpSet')
-              : t('settingsPanel.experimental.workerWebUi.passwordHelpUnset')}
-          </span>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-          <input
-            className="cove-field"
-            style={{ width: 240 }}
-            type={revealWebUiPassword ? 'text' : 'password'}
-            value={webUiPasswordDraft}
-            disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
-            placeholder={t('settingsPanel.experimental.workerWebUi.passwordPlaceholder')}
-            onChange={event => setWebUiPasswordDraft(event.target.value)}
-            data-testid="settings-experimental-worker-web-ui-password"
-          />
-          <button
-            type="button"
-            className="secondary"
-            disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
-            onClick={() => setRevealWebUiPassword(prev => !prev)}
-            data-testid="settings-experimental-worker-web-ui-password-reveal"
-          >
-            {revealWebUiPassword
-              ? t('settingsPanel.experimental.workerWebUi.passwordHide')
-              : t('settingsPanel.experimental.workerWebUi.passwordShow')}
-          </button>
-          <button
-            type="button"
-            className="primary"
-            disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
-            onClick={() => void setWorkerWebUiPassword()}
-            data-testid="settings-experimental-worker-web-ui-password-save"
-          >
-            {t('settingsPanel.experimental.workerWebUi.passwordSave')}
-          </button>
-        </div>
-      </div>
-    </div>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.experimental.workerWebUi.passwordLabel')}</strong>
+              <span>
+                {workerConfig?.webUi.passwordSet
+                  ? t('settingsPanel.experimental.workerWebUi.passwordHelpSet')
+                  : t('settingsPanel.experimental.workerWebUi.passwordHelpUnset')}
+              </span>
+            </div>
+            <div className="settings-panel__control settings-panel__control--actions">
+              <input
+                className="cove-field"
+                style={{ width: 240 }}
+                type={revealWebUiPassword ? 'text' : 'password'}
+                aria-label={t('settingsPanel.experimental.workerWebUi.passwordLabel')}
+                value={webUiPasswordDraft}
+                disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
+                placeholder={t('settingsPanel.experimental.workerWebUi.passwordPlaceholder')}
+                onChange={event => setWebUiPasswordDraft(event.target.value)}
+                data-testid="settings-experimental-worker-web-ui-password"
+              />
+              <button
+                type="button"
+                className="secondary"
+                disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
+                onClick={() => setRevealWebUiPassword(prev => !prev)}
+                data-testid="settings-experimental-worker-web-ui-password-reveal"
+              >
+                {revealWebUiPassword
+                  ? t('settingsPanel.experimental.workerWebUi.passwordHide')
+                  : t('settingsPanel.experimental.workerWebUi.passwordShow')}
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
+                onClick={() => void setWorkerWebUiPassword()}
+                data-testid="settings-experimental-worker-web-ui-password-save"
+              >
+                {t('settingsPanel.experimental.workerWebUi.passwordSave')}
+              </button>
+            </div>
+          </div>
+        </SettingsModule>
+      </SettingsGroupBody>
+    </SettingsGroup>
   )
 }

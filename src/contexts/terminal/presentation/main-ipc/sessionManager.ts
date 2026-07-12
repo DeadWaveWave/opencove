@@ -1,6 +1,7 @@
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   PresentationSnapshotTerminalResult,
+  ResizeTerminalInput,
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryCommitReason,
@@ -11,31 +12,27 @@ import {
   createEmptySnapshotState,
   snapshotToString,
 } from '../../../../platform/process/pty/snapshot'
-import { TerminalPresentationSession } from '../../../../platform/terminal/presentation/TerminalPresentationSession'
+import {
+  TerminalPresentationSession,
+  type TerminalPresentationGeometryCommitResult,
+} from '../../../../platform/terminal/presentation/TerminalPresentationSession'
 import type { SnapshotState } from '../../../../platform/process/pty/snapshot'
 import type {
   SessionStateWatcherStartInput,
   createSessionStateWatcherController,
 } from './sessionStateWatcher'
+import {
+  getOrCreateTerminalPresentationSession,
+  normalizePositiveTerminalGeometryRevision,
+  resolveTerminalPresentationGeometryInput,
+  type PtyDataReplayChunk,
+} from './terminalPresentationRegistry'
 
 const PTY_DATA_FLUSH_DELAY_MS = 32
 const PTY_DATA_HIGH_VOLUME_FLUSH_DELAY_MS = 64
 const PTY_DATA_HIGH_VOLUME_BATCH_CHARS = 32_000
 const PTY_DATA_MAX_BATCH_CHARS = 256_000
 const PTY_DATA_REPLAY_WINDOW_MAX_CHARS = 1_000_000
-
-type PtyDataReplayChunk = {
-  seq: number
-  data: string
-}
-
-function normalizePositiveRevision(value: number | null | undefined): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return null
-  }
-
-  return Math.floor(value)
-}
 
 export interface SessionManagerDeps {
   sendToAllWindows: <T>(channel: string, payload: T) => void
@@ -148,6 +145,9 @@ export class TerminalSessionManager {
     return 'unknown'
   }
 
+  resolveActivePresentationSessionIdentity(sessionId: string): object | null {
+    return (this.activeSessions.has(sessionId) && this.presentationSessions.get(sessionId)) || null
+  }
   hasPtyDataSubscribers(sessionId: string): boolean {
     const subscribers = this.ptyDataSubscribersBySessionId.get(sessionId)
     return Boolean(subscribers && subscribers.size > 0)
@@ -247,9 +247,10 @@ export class TerminalSessionManager {
       }
 
       this.presentationSeqs.set(sessionId, nextSeq)
-      const presentationSession =
-        this.presentationSessions.get(sessionId) ?? new TerminalPresentationSession({ sessionId })
-      this.presentationSessions.set(sessionId, presentationSession)
+      const presentationSession = getOrCreateTerminalPresentationSession(
+        this.presentationSessions,
+        sessionId,
+      )
       void presentationSession.applyOutput(nextSeq, data)
       this.appendPtyDataReplayChunk(sessionId, nextSeq, data)
     }
@@ -397,12 +398,13 @@ export class TerminalSessionManager {
     reason?: TerminalGeometryCommitReason,
     revision?: number | null,
   ): { cols: number; rows: number; changed: boolean; revision: number | null } {
-    const presentationSession =
-      this.presentationSessions.get(sessionId) ?? new TerminalPresentationSession({ sessionId })
-    this.presentationSessions.set(sessionId, presentationSession)
+    const presentationSession = getOrCreateTerminalPresentationSession(
+      this.presentationSessions,
+      sessionId,
+    )
     const geometry = presentationSession.resize(cols, rows, revision)
 
-    const requestedRevision = normalizePositiveRevision(revision)
+    const requestedRevision = normalizePositiveTerminalGeometryRevision(revision)
     const shouldBroadcastGeometry =
       reason &&
       (geometry.changed || (requestedRevision !== null && geometry.revision === requestedRevision))
@@ -418,6 +420,40 @@ export class TerminalSessionManager {
     }
 
     return geometry
+  }
+
+  planGeometryCommit(input: ResizeTerminalInput): TerminalPresentationGeometryCommitResult {
+    const presentationSession = getOrCreateTerminalPresentationSession(
+      this.presentationSessions,
+      input.sessionId,
+    )
+    return presentationSession.planGeometryCommit(resolveTerminalPresentationGeometryInput(input))
+  }
+
+  getGeometry(sessionId: string) {
+    return this.presentationSessions.get(sessionId)?.getGeometry() ?? null
+  }
+
+  commitGeometry(input: ResizeTerminalInput): TerminalPresentationGeometryCommitResult {
+    const presentationSession = getOrCreateTerminalPresentationSession(
+      this.presentationSessions,
+      input.sessionId,
+    )
+    const result = presentationSession.commitGeometry(
+      resolveTerminalPresentationGeometryInput(input),
+    )
+
+    if (result.status === 'accepted' && result.changed) {
+      this.sendToAllWindows(IPC_CHANNELS.ptyGeometry, {
+        sessionId: input.sessionId,
+        cols: result.geometry.cols,
+        rows: result.geometry.rows,
+        reason: input.reason,
+        ...(result.geometry.revision !== null ? { revision: result.geometry.revision } : {}),
+      } satisfies TerminalGeometryEvent)
+    }
+
+    return result
   }
 
   kill(sessionId: string): void {

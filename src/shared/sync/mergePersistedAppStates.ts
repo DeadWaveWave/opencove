@@ -6,6 +6,7 @@ import type {
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import { isSpaceBoundaryEqual } from './spaceBoundaryEquality'
+import { mergeSnapshotField } from './mergeSnapshotField'
 
 export function isPersistedAppState(value: unknown): value is PersistedAppState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -19,34 +20,6 @@ export function isPersistedAppState(value: unknown): value is PersistedAppState 
     typeof record.settings === 'object' &&
     record.settings !== null
   )
-}
-
-function mergeSnapshotField<T>(
-  baseValue: T,
-  localValue: T,
-  snapshotValue: T | undefined,
-  equals: (left: T, right: T) => boolean,
-): T {
-  if (snapshotValue === undefined) {
-    return localValue
-  }
-
-  const baseChanged = !equals(baseValue, snapshotValue)
-  const localChanged = !equals(localValue, snapshotValue)
-
-  if (localChanged && !baseChanged) {
-    return localValue
-  }
-
-  if (!localChanged && baseChanged) {
-    return baseValue
-  }
-
-  if (!localChanged && !baseChanged) {
-    return baseValue
-  }
-
-  return localValue
 }
 
 function mergeNodes(
@@ -343,6 +316,12 @@ function mergeSpaces(options: {
         baseSpace.sortOrder ?? 0,
         localSpace.sortOrder ?? 0,
         snapshotSpace?.sortOrder,
+        (left, right) => left === right,
+      ),
+      pinned: mergeSnapshotField(
+        baseSpace.pinned === true,
+        localSpace.pinned === true,
+        snapshotSpace?.pinned,
         (left, right) => left === right,
       ),
       labelColor: mergeSnapshotField(
