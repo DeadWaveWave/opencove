@@ -17,9 +17,12 @@ export async function getGitStatusSummary({
 
   await ensureGitRepo(normalizedRepoPath)
 
+  // This runs from background polling. Observation intent prevents Git's optional index refresh
+  // from contending with user-initiated checkout/add/commit operations.
   const result = await runGit(
     ['status', '--porcelain', '--untracked-files=all'],
     normalizedRepoPath,
+    { intent: 'observation' },
   )
   if (result.exitCode !== 0) {
     throw new Error(normalizeOptionalText(result.stderr) ?? 'git status failed')

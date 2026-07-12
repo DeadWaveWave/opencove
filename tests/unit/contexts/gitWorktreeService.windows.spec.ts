@@ -133,7 +133,11 @@ describe('GitWorktreeService (Windows cleanup warnings)', () => {
         code: 'worktree.remove_directory_cleanup_failed',
       }),
     })
-    expect(runGitMock).toHaveBeenCalledWith(['worktree', 'remove', worktreePath], repoPath)
-    expect(runGitMock).toHaveBeenCalledWith(['branch', '-D', 'feature/demo'], repoPath)
+    expect(runGitMock).toHaveBeenCalledWith(['worktree', 'remove', worktreePath], repoPath, {
+      intent: 'mutation',
+    })
+    expect(runGitMock).toHaveBeenCalledWith(['branch', '-D', 'feature/demo'], repoPath, {
+      intent: 'mutation',
+    })
   })
 })

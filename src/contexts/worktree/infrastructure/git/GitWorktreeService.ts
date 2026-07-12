@@ -43,12 +43,14 @@ export async function listGitBranches({
   const currentResult = await runGit(
     ['symbolic-ref', '--quiet', '--short', 'HEAD'],
     normalizedRepoPath,
+    { intent: 'observation' },
   )
   const current = currentResult.exitCode === 0 ? normalizeOptionalText(currentResult.stdout) : null
 
   const result = await runGit(
     ['for-each-ref', '--format=%(refname:short)', 'refs/heads'],
     normalizedRepoPath,
+    { intent: 'observation' },
   )
   if (result.exitCode !== 0) {
     const stderr = normalizeOptionalText(result.stderr) ?? 'git branch list failed'
@@ -85,7 +87,9 @@ export async function listGitWorktrees({
 
   await ensureGitRepo(normalizedRepoPath)
 
-  const result = await runGit(['worktree', 'list', '--porcelain'], normalizedRepoPath)
+  const result = await runGit(['worktree', 'list', '--porcelain'], normalizedRepoPath, {
+    intent: 'observation',
+  })
   if (result.exitCode !== 0) {
     throw new Error(normalizeOptionalText(result.stderr) ?? 'git worktree list failed')
   }
@@ -213,7 +217,9 @@ async function assertValidGitBranchName(
   branchName: string,
   label: string,
 ): Promise<void> {
-  const result = await runGit(['check-ref-format', '--branch', branchName], repoPath)
+  const result = await runGit(['check-ref-format', '--branch', branchName], repoPath, {
+    intent: 'observation',
+  })
   if (result.exitCode === 0) {
     return
   }
@@ -324,7 +330,7 @@ export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<
       ? ['worktree', 'add', '-b', branchName, comparableWorktreePath, input.branchMode.startPoint]
       : ['worktree', 'add', comparableWorktreePath, branchName]
 
-  const result = await runGit(args, normalizedRepoPath)
+  const result = await runGit(args, normalizedRepoPath, { intent: 'mutation' })
   if (result.exitCode !== 0) {
     throw new Error(normalizeOptionalText(result.stderr) ?? 'git worktree add failed')
   }
@@ -404,6 +410,7 @@ export async function removeGitWorktree(
     const deleteBranchResult = await runGit(
       ['branch', '-D', targetWorktree.branch],
       normalizedRepoPath,
+      { intent: 'mutation' },
     )
     if (deleteBranchResult.exitCode === 0) {
       deletedBranchName = targetWorktree.branch
@@ -478,7 +485,9 @@ export async function renameGitBranch(input: RenameGitBranchInput): Promise<void
     throw new Error(`Branch "${nextName}" already exists`)
   }
 
-  const result = await runGit(['branch', '-m', currentName, nextName], comparableWorktreePath)
+  const result = await runGit(['branch', '-m', currentName, nextName], comparableWorktreePath, {
+    intent: 'mutation',
+  })
   if (result.exitCode !== 0) {
     throw new Error(normalizeOptionalText(result.stderr) ?? 'git branch rename failed')
   }

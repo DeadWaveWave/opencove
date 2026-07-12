@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
@@ -289,6 +289,46 @@ describe('GitWorktreeService', () => {
 
       const summary = await getGitStatusSummary({ repoPath: canonicalRepoDir })
       expect(summary).toEqual({ changedFileCount: 3 })
+    },
+    GIT_WORKTREE_TEST_TIMEOUT_MS,
+  )
+
+  it(
+    'does not refresh the index during background status observation',
+    async () => {
+      repoDir = await createTempRepo()
+      const canonicalRepoDir = await realpath(repoDir)
+      const indexPath = join(repoDir, '.git', 'index')
+      const oldIndexTime = new Date('2000-01-01T00:00:00.000Z')
+      await utimes(indexPath, oldIndexTime, oldIndexTime)
+      await utimes(join(repoDir, 'README.md'), new Date(), new Date())
+
+      const { getGitStatusSummary } =
+        await import('../../../src/contexts/worktree/infrastructure/git/GitWorktreeService')
+
+      await expect(getGitStatusSummary({ repoPath: canonicalRepoDir })).resolves.toEqual({
+        changedFileCount: 0,
+      })
+      await expect(stat(indexPath)).resolves.toMatchObject({ mtimeMs: oldIndexTime.getTime() })
+    },
+    GIT_WORKTREE_TEST_TIMEOUT_MS,
+  )
+
+  it(
+    'reads status without taking or deleting an existing index lock',
+    async () => {
+      repoDir = await createTempRepo()
+      const canonicalRepoDir = await realpath(repoDir)
+      const indexLockPath = join(repoDir, '.git', 'index.lock')
+      await writeFile(indexLockPath, '', 'utf8')
+
+      const { getGitStatusSummary } =
+        await import('../../../src/contexts/worktree/infrastructure/git/GitWorktreeService')
+
+      await expect(getGitStatusSummary({ repoPath: canonicalRepoDir })).resolves.toEqual({
+        changedFileCount: 0,
+      })
+      await expect(stat(indexLockPath)).resolves.toMatchObject({ size: 0 })
     },
     GIT_WORKTREE_TEST_TIMEOUT_MS,
   )

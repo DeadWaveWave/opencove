@@ -12,6 +12,10 @@ export interface GitCommandResult {
   stderr: string
 }
 
+export type GitCommandOptions =
+  | { intent: 'observation'; timeoutMs?: number }
+  | { intent: 'mutation' }
+
 export function normalizeOptionalText(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
     return null
@@ -24,13 +28,17 @@ export function normalizeOptionalText(value: string | null | undefined): string 
 export async function runGit(
   args: string[],
   cwd: string,
-  options: { timeoutMs?: number } = {},
+  options: GitCommandOptions,
 ): Promise<GitCommandResult> {
-  const timeoutMs = options.timeoutMs ?? DEFAULT_GIT_TIMEOUT_MS
+  const isObservation = options.intent === 'observation'
+  // Windows cannot deliver a graceful SIGTERM to child processes. Never put a fixed force-kill
+  // timeout around Git mutations because it can strand required lock files.
+  const timeoutMs = isObservation ? (options.timeoutMs ?? DEFAULT_GIT_TIMEOUT_MS) : null
 
   try {
     const env = await getCommandExecutionEnvironment({
       GIT_TERMINAL_PROMPT: '0',
+      ...(isObservation ? { GIT_OPTIONAL_LOCKS: '0' } : {}),
     })
 
     const result = await runCommand('git', args, cwd, {
@@ -55,7 +63,9 @@ export async function runGit(
 }
 
 export async function ensureGitRepo(repoPath: string): Promise<void> {
-  const result = await runGit(['rev-parse', '--is-inside-work-tree'], repoPath)
+  const result = await runGit(['rev-parse', '--is-inside-work-tree'], repoPath, {
+    intent: 'observation',
+  })
   const isRepo = result.exitCode === 0 && result.stdout.trim() === 'true'
 
   if (!isRepo) {

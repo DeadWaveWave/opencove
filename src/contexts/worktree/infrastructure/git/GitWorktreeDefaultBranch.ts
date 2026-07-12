@@ -25,7 +25,7 @@ function normalizeStringArray(value: unknown): string[] {
 }
 
 async function listGitRemotes(repoPath: string): Promise<string[]> {
-  const result = await runGit(['remote'], repoPath)
+  const result = await runGit(['remote'], repoPath, { intent: 'observation' })
   if (result.exitCode !== 0) {
     return []
   }
@@ -34,7 +34,9 @@ async function listGitRemotes(repoPath: string): Promise<string[]> {
 }
 
 async function doesGitRefExist(repoPath: string, ref: string): Promise<boolean> {
-  const result = await runGit(['show-ref', '--verify', '--quiet', ref], repoPath)
+  const result = await runGit(['show-ref', '--verify', '--quiet', ref], repoPath, {
+    intent: 'observation',
+  })
   return result.exitCode === 0
 }
 
@@ -42,6 +44,7 @@ async function resolveRemoteHeadBranch(repoPath: string, remote: string): Promis
   const symbolicRef = await runGit(
     ['symbolic-ref', '--quiet', `refs/remotes/${remote}/HEAD`],
     repoPath,
+    { intent: 'observation' },
   )
 
   if (symbolicRef.exitCode === 0) {
@@ -51,7 +54,10 @@ async function resolveRemoteHeadBranch(repoPath: string, remote: string): Promis
     }
   }
 
-  const showRemote = await runGit(['remote', 'show', '-n', remote], repoPath, { timeoutMs: 10_000 })
+  const showRemote = await runGit(['remote', 'show', '-n', remote], repoPath, {
+    intent: 'observation',
+    timeoutMs: 10_000,
+  })
   if (showRemote.exitCode === 0) {
     const match = showRemote.stdout
       .split(/\r?\n/)
@@ -113,7 +119,9 @@ export async function getGitDefaultBranch({
     }
   }
 
-  const currentBranchResult = await runGit(['branch', '--show-current'], normalizedRepoPath)
+  const currentBranchResult = await runGit(['branch', '--show-current'], normalizedRepoPath, {
+    intent: 'observation',
+  })
   if (currentBranchResult.exitCode === 0) {
     const current = normalizeOptionalText(currentBranchResult.stdout)
     if (current) {

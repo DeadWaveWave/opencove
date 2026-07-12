@@ -4,7 +4,9 @@ import { runGit } from './GitWorktreeService.shared'
 export async function ensureGitRepoHasCommits(repoPath: string): Promise<void> {
   // A repo can be a valid git working tree while still having an "unborn" HEAD (no commits yet).
   // Worktree creation requires a commit-ish to check out, so surface an actionable error early.
-  const result = await runGit(['rev-parse', '--verify', '--quiet', 'HEAD'], repoPath)
+  const result = await runGit(['rev-parse', '--verify', '--quiet', 'HEAD'], repoPath, {
+    intent: 'observation',
+  })
   if (result.exitCode === 0) {
     return
   }
