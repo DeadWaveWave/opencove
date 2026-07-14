@@ -1,13 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { EventEmitter } from 'node:events'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { PassThrough } from 'node:stream'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../src/shared/constants/controlSurface'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../src/shared/contracts/controlSurface'
 
 let userDataDir: string | null = null
 let appPath: string | null = null
-const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }))
+const { spawnMock, removeConnectionFileMock } = vi.hoisted(() => ({
+  spawnMock: vi.fn(),
+  removeConnectionFileMock: vi.fn(),
+}))
+const { isReusableLocalWorkerConnectionMock } = vi.hoisted(() => ({
+  isReusableLocalWorkerConnectionMock: vi.fn(),
+}))
 const { readRuntimeAppVersionMock } = vi.hoisted(() => ({
   readRuntimeAppVersionMock: vi.fn(() => 'test-version'),
 }))
@@ -17,6 +25,7 @@ vi.mock('node:child_process', async importOriginal => {
   return {
     ...actual,
     spawn: spawnMock,
+    default: { ...actual, spawn: spawnMock },
   }
 })
 
@@ -39,6 +48,32 @@ vi.mock('electron', () => {
   }
 })
 
+vi.mock('../../../src/app/main/controlSurface/http/connectionFile', async importOriginal => {
+  const actual =
+    await importOriginal<
+      typeof import('../../../src/app/main/controlSurface/http/connectionFile')
+    >()
+
+  return {
+    ...actual,
+    removeConnectionFile: async (userDataPath: string, fileName: string) => {
+      removeConnectionFileMock(userDataPath, fileName)
+      return await actual.removeConnectionFile(userDataPath, fileName)
+    },
+  }
+})
+
+vi.mock('../../../src/app/main/worker/localWorkerCompatibility', async importOriginal => {
+  const actual =
+    await importOriginal<typeof import('../../../src/app/main/worker/localWorkerCompatibility')>()
+  isReusableLocalWorkerConnectionMock.mockImplementation(actual.isReusableLocalWorkerConnection)
+
+  return {
+    ...actual,
+    isReusableLocalWorkerConnection: isReusableLocalWorkerConnectionMock,
+  }
+})
+
 vi.mock('../../../src/app/main/controlSurface/runtimeAppVersion', () => ({
   readRuntimeAppVersion: readRuntimeAppVersionMock,
 }))
@@ -53,6 +88,7 @@ import {
 describe('local worker manager connection file', () => {
   afterEach(async () => {
     spawnMock.mockReset()
+    removeConnectionFileMock.mockReset()
     vi.unstubAllGlobals()
     readRuntimeAppVersionMock.mockReset()
     readRuntimeAppVersionMock.mockReturnValue('test-version')
@@ -88,6 +124,83 @@ describe('local worker manager connection file', () => {
       ...overrides,
     }
   }
+  type TestWorkerChild = EventEmitter & {
+    stdout: PassThrough
+    stderr: PassThrough
+    killed: boolean
+    exitCode: number | null
+    signalCode: NodeJS.Signals | null
+    kill: () => boolean
+  }
+  function createWorkerChild(): TestWorkerChild {
+    const child = Object.assign(new EventEmitter(), {
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      killed: false,
+      exitCode: null,
+      signalCode: null,
+    }) as TestWorkerChild
+    child.kill = vi.fn(() => {
+      child.killed = true
+      child.exitCode = 0
+      child.emit('exit', 0)
+      return true
+    })
+    return child
+  }
+  function emitWorkerReady(child: TestWorkerChild): void {
+    setTimeout(() => child.stdout.write(`${JSON.stringify(createConnectionInfo())}\n`), 0)
+  }
+
+  function emitWorkerExit(child: TestWorkerChild): void {
+    setTimeout(() => {
+      child.emit('exit', 1)
+    }, 0)
+  }
+
+  async function createWorkerBuildEntry(): Promise<void> {
+    const workerScriptPath = resolve(appPath!, 'out', 'main', 'worker.js')
+    await mkdir(dirname(workerScriptPath), { recursive: true })
+    await writeFile(workerScriptPath, '// test worker entry\n', 'utf8')
+  }
+
+  function stubWorkerHealthFetch(options?: {
+    appVersion?: string
+    endpointList?: 'available' | 'missing'
+  }): ReturnType<typeof vi.fn> {
+    const fetchMock = vi.fn(async (_input: unknown, init?: RequestInit) => {
+      const body = typeof init?.body === 'string' ? init.body : ''
+      const requestId = body.length > 0 ? (JSON.parse(body) as { id?: string }).id : ''
+      const response = (ok: boolean, value: unknown, status = 200) =>
+        new Response(JSON.stringify({ __opencoveControlEnvelope: true, ok, value }), {
+          status,
+          headers: { 'content-type': 'application/json' },
+        })
+
+      if (requestId === 'system.ping') {
+        return response(true, { ok: true, now: new Date().toISOString(), pid: process.pid })
+      }
+      if (requestId === 'system.capabilities') {
+        return response(true, {
+          protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
+          appVersion: options?.appVersion ?? 'test-version',
+        })
+      }
+      if (requestId === 'endpoint.list' && options?.endpointList === 'missing') {
+        return response(
+          false,
+          {
+            code: 'common.invalid_input',
+            debugMessage: 'Unknown control surface query: endpoint.list',
+          },
+          400,
+        )
+      }
+      return response(true, { endpoints: [] })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
 
   it('ignores Desktop control surface connection files', async () => {
     const dir = await createTempUserDataDir()
@@ -112,73 +225,7 @@ describe('local worker manager connection file', () => {
       'utf8',
     )
 
-    const fetchMock = vi.fn(async (_input: unknown, init?: RequestInit) => {
-      const requestId = (() => {
-        const body = init?.body
-        if (typeof body !== 'string') {
-          return ''
-        }
-
-        try {
-          const parsed = JSON.parse(body) as unknown
-          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-            return ''
-          }
-
-          const id = (parsed as Record<string, unknown>).id
-          return typeof id === 'string' ? id : ''
-        } catch {
-          return ''
-        }
-      })()
-
-      const ok = (value: unknown) =>
-        JSON.stringify({ __opencoveControlEnvelope: true, ok: true, value })
-
-      if (requestId === 'system.ping') {
-        return new Response(ok({ ok: true, now: new Date().toISOString(), pid: process.pid }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        })
-      }
-
-      if (requestId === 'system.capabilities') {
-        return new Response(
-          ok({
-            ok: true,
-            now: new Date().toISOString(),
-            pid: process.pid,
-            protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
-            appVersion: 'test-version',
-            features: {
-              webShell: false,
-              sync: { state: true, events: true },
-              sessionStreaming: {
-                enabled: true,
-                ptyProtocolVersion: 1,
-                replayWindowMaxBytes: 400_000,
-                roles: { viewer: true, controller: true },
-                webAuth: { ticketToCookie: true, cookieSession: true },
-              },
-            },
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        )
-      }
-
-      if (requestId === 'endpoint.list') {
-        return new Response(ok({ endpoints: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        })
-      }
-
-      return new Response(ok({ ok: true }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
-    })
-    vi.stubGlobal('fetch', fetchMock)
+    stubWorkerHealthFetch()
 
     const status = await getLocalWorkerStatus()
     expect(status.status).toBe('running')
@@ -219,37 +266,7 @@ describe('local worker manager connection file', () => {
       'utf8',
     )
 
-    const fetchMock = vi.fn(async (_input: unknown, init?: RequestInit) => {
-      const body = typeof init?.body === 'string' ? init.body : ''
-      const requestId =
-        body.length > 0 ? ((JSON.parse(body) as Record<string, unknown>).id as string) : ''
-      const ok = (value: unknown) =>
-        JSON.stringify({ __opencoveControlEnvelope: true, ok: true, value })
-
-      if (requestId === 'system.ping') {
-        return new Response(ok({ ok: true, now: new Date().toISOString(), pid: process.pid }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        })
-      }
-
-      if (requestId === 'system.capabilities') {
-        return new Response(
-          ok({
-            ok: true,
-            now: new Date().toISOString(),
-            pid: process.pid,
-            protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
-            appVersion: 'old-version',
-            features: {},
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        )
-      }
-
-      throw new Error(`Unexpected request: ${requestId}`)
-    })
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = stubWorkerHealthFetch({ appVersion: 'old-version' })
 
     await expect(getLocalWorkerStatus()).resolves.toEqual({
       status: 'stopped',
@@ -309,63 +326,7 @@ describe('local worker manager connection file', () => {
       'utf8',
     )
 
-    const fetchMock = vi.fn(async (_input: unknown, init?: RequestInit) => {
-      const body = typeof init?.body === 'string' ? init.body : ''
-      const requestId =
-        body.length > 0 ? ((JSON.parse(body) as Record<string, unknown>).id as string) : ''
-
-      const ok = (value: unknown) =>
-        JSON.stringify({ __opencoveControlEnvelope: true, ok: true, value })
-      const fail = (error: unknown) =>
-        JSON.stringify({ __opencoveControlEnvelope: true, ok: false, error })
-
-      if (requestId === 'system.ping') {
-        return new Response(ok({ ok: true, now: new Date().toISOString(), pid: process.pid }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        })
-      }
-
-      if (requestId === 'system.capabilities') {
-        return new Response(
-          ok({
-            ok: true,
-            now: new Date().toISOString(),
-            pid: process.pid,
-            protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
-            appVersion: 'test-version',
-            features: {
-              webShell: false,
-              sync: { state: true, events: true },
-              sessionStreaming: {
-                enabled: true,
-                ptyProtocolVersion: 1,
-                replayWindowMaxBytes: 400_000,
-                roles: { viewer: true, controller: true },
-                webAuth: { ticketToCookie: true, cookieSession: true },
-              },
-            },
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        )
-      }
-
-      if (requestId === 'endpoint.list') {
-        return new Response(
-          fail({
-            code: 'common.invalid_input',
-            debugMessage: 'Unknown control surface query: endpoint.list',
-          }),
-          { status: 400, headers: { 'content-type': 'application/json' } },
-        )
-      }
-
-      return new Response(ok({ ok: true }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
-    })
-    vi.stubGlobal('fetch', fetchMock)
+    stubWorkerHealthFetch({ endpointList: 'missing' })
 
     await expect(getLocalWorkerStatus()).resolves.toEqual({
       status: 'stopped',
@@ -428,6 +389,104 @@ describe('local worker manager connection file', () => {
       readFile(resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE), 'utf8'),
     ).rejects.toBeDefined()
     expect(spawnMock).not.toHaveBeenCalled()
+  })
+
+  it('shares concurrent successful starts and allows a later fresh start', async () => {
+    await createTempUserDataDir()
+    await createWorkerBuildEntry()
+    isReusableLocalWorkerConnectionMock.mockReset()
+    isReusableLocalWorkerConnectionMock.mockResolvedValue(true)
+
+    const firstChild = createWorkerChild()
+    const secondChild = createWorkerChild()
+    spawnMock.mockImplementationOnce(() => {
+      emitWorkerReady(firstChild)
+      return firstChild
+    })
+    spawnMock.mockImplementationOnce(() => {
+      emitWorkerReady(secondChild)
+      return secondChild
+    })
+
+    const firstStart = startLocalWorker()
+    const concurrentStart = startLocalWorker()
+
+    await expect(Promise.all([firstStart, concurrentStart])).resolves.toEqual([
+      expect.objectContaining({ status: 'running' }),
+      expect.objectContaining({ status: 'running' }),
+    ])
+    expect(concurrentStart).toBe(firstStart)
+    expect(spawnMock).toHaveBeenCalledTimes(1)
+
+    const laterStart = startLocalWorker()
+    expect(laterStart).not.toBe(firstStart)
+    await expect(laterStart).resolves.toEqual(expect.objectContaining({ status: 'running' }))
+    expect(spawnMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('shares stale-file repair and one retry across concurrent starts', async () => {
+    const dir = await createTempUserDataDir()
+    await createWorkerBuildEntry()
+    await writeFile(
+      resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE),
+      `${JSON.stringify(createConnectionInfo({ pid: 999_999, startedBy: 'desktop' }))}\n`,
+      'utf8',
+    )
+    isReusableLocalWorkerConnectionMock.mockReset()
+    isReusableLocalWorkerConnectionMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+
+    const failedChild = createWorkerChild()
+    spawnMock.mockImplementationOnce(() => {
+      emitWorkerExit(failedChild)
+      return failedChild
+    })
+    spawnMock.mockImplementation(() => {
+      const retryChild = createWorkerChild()
+      emitWorkerReady(retryChild)
+      return retryChild
+    })
+
+    const firstStart = startLocalWorker()
+    const concurrentStart = startLocalWorker()
+
+    await expect(Promise.all([firstStart, concurrentStart])).resolves.toEqual([
+      expect.objectContaining({ status: 'running' }),
+      expect.objectContaining({ status: 'running' }),
+    ])
+    expect(concurrentStart).toBe(firstStart)
+    expect(removeConnectionFileMock).toHaveBeenCalledTimes(2)
+    expect(spawnMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('clears a rejected shared start before a later explicit retry', async () => {
+    await createTempUserDataDir()
+
+    const firstStart = startLocalWorker()
+    const concurrentStart = startLocalWorker()
+
+    await Promise.all([
+      expect(firstStart).rejects.toThrow(
+        'Run `pnpm build` once before using Worker/Web UI in dev.',
+      ),
+      expect(concurrentStart).rejects.toThrow(
+        'Run `pnpm build` once before using Worker/Web UI in dev.',
+      ),
+    ])
+    expect(concurrentStart).toBe(firstStart)
+
+    await createWorkerBuildEntry()
+    isReusableLocalWorkerConnectionMock.mockReset()
+    isReusableLocalWorkerConnectionMock.mockResolvedValue(true)
+    const retryChild = createWorkerChild()
+    spawnMock.mockImplementation(() => {
+      emitWorkerReady(retryChild)
+      return retryChild
+    })
+
+    await expect(startLocalWorker()).resolves.toEqual(
+      expect.objectContaining({ status: 'running' }),
+    )
+    expect(spawnMock).toHaveBeenCalledTimes(1)
   })
 
   it('surfaces a missing worker build entry in dev', async () => {

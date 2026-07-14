@@ -68,6 +68,7 @@ async function resolveConnectionFromUserData(options?: {
 type WorkerChildProcess = ChildProcessByStdio<null, Readable, Readable>
 
 let activeWorkerChild: WorkerChildProcess | null = null
+let startLocalWorkerPromise: Promise<WorkerStatusResult> | null = null
 
 function childHasExited(child: WorkerChildProcess): boolean {
   return child.exitCode !== null || child.signalCode !== null
@@ -329,7 +330,7 @@ async function recoverAfterFailedWorkerStart(
   return null
 }
 
-export async function startLocalWorker(): Promise<WorkerStatusResult> {
+async function startLocalWorkerInternal(): Promise<WorkerStatusResult> {
   const userDataPath = app.getPath('userData')
   const existing = await resolveConnectionFromUserData({ requireLivePid: false })
   if (existing) {
@@ -384,6 +385,25 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
       throw retryError instanceof Error ? retryError : firstError
     }
   }
+}
+
+export function startLocalWorker(): Promise<WorkerStatusResult> {
+  if (startLocalWorkerPromise) {
+    return startLocalWorkerPromise
+  }
+
+  const operation = startLocalWorkerInternal()
+  startLocalWorkerPromise = operation
+
+  void operation
+    .finally(() => {
+      if (startLocalWorkerPromise === operation) {
+        startLocalWorkerPromise = null
+      }
+    })
+    .catch(() => undefined)
+
+  return operation
 }
 
 export async function stopLocalWorker(): Promise<WorkerStatusResult> {
