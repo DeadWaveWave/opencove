@@ -94,6 +94,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Task: keep priority menus above the Task Creator and Task Editor dialog backdrops. (#313)
 - Notifications: clicking an Agent notification from another Project now lands on the corresponding Agent instead of only switching Projects. (#310)
 - Agent: derive directly launched Agent titles from their first bound session and keep short-turn completion notifications aligned with the resolved title. (#309)
 - Sidebar: distinguish expandable Spaces from empty Spaces in the collapsed rail, keeping disclosure arrows only for Spaces with agents and using a subtle leaf marker for empty Spaces. (#308)
