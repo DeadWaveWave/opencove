@@ -194,6 +194,7 @@ export function TaskCreatorWindow({
                 <CoveSelect
                   id="workspace-task-priority"
                   testId="workspace-task-priority"
+                  menuLayer="dialog-popover"
                   value={taskCreator.priority}
                   disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
                   options={TASK_PRIORITY_OPTIONS.map(option => ({

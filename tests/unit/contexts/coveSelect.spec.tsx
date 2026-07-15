@@ -70,6 +70,14 @@ describe('CoveSelect', () => {
     expect(screen.queryByRole('option', { name: 'Light' })).not.toBeInTheDocument()
   })
 
+  it('keeps a standalone select on the default popover layer', () => {
+    renderHarness()
+
+    fireEvent.click(screen.getByTestId('theme-select-trigger'))
+
+    expect(screen.getByRole('listbox')).not.toHaveClass('cove-select__menu--within-dialog')
+  })
+
   it('raises a portaled menu above its containing dialog', () => {
     render(
       <Dialog open aria-label="Preferences" onDismiss={() => {}}>
