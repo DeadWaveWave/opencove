@@ -186,6 +186,7 @@ export function TaskEditorWindow({
             <CoveSelect
               id="workspace-task-editor-priority"
               testId="workspace-task-editor-priority"
+              menuLayer="dialog-popover"
               value={taskEditor.priority}
               disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
               options={TASK_PRIORITY_OPTIONS.map(option => ({
