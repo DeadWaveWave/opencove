@@ -87,6 +87,7 @@ export function parseTerminalGeometryCommitResult(
   const operationId = normalizeOptionalString(record.operationId)
   const status =
     record.status === 'accepted' ||
+    record.status === 'accepted_unverified' ||
     record.status === 'rejected_not_controller' ||
     record.status === 'rejected_stale_authority' ||
     record.status === 'superseded' ||
@@ -119,8 +120,8 @@ export function parseTerminalGeometryCommitResult(
   return {
     sessionId,
     operationId,
-    status,
-    changed: record.changed === true,
+    status: status === 'accepted' && geometry === null ? 'runtime_failed' : status,
+    changed: status === 'accepted' && geometry === null ? false : record.changed === true,
     geometry,
     authority: role && epoch !== null && epoch >= 0 ? { role, epoch } : null,
   }

@@ -96,6 +96,16 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
       const operationId = input.operationId?.trim() || randomUUID()
       try {
         const appliedGeometry = await supervisor.resize(input.sessionId, input.cols, input.rows)
+        if (appliedGeometry.status === 'applied_unverified') {
+          return {
+            sessionId: input.sessionId,
+            operationId,
+            status: 'accepted_unverified',
+            changed: false,
+            geometry: null,
+            authority: null,
+          }
+        }
         return {
           sessionId: input.sessionId,
           operationId,

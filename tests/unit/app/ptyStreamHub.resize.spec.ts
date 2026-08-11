@@ -16,6 +16,17 @@ function createOpenWebSocketMock() {
   return { ws: ws as never, sent }
 }
 
+function createAcceptedRuntimeResize() {
+  return vi.fn(async input => ({
+    sessionId: input.sessionId,
+    operationId: input.operationId,
+    status: 'accepted' as const,
+    changed: true,
+    geometry: { cols: input.cols, rows: input.rows, revision: null },
+    authority: null,
+  }))
+}
+
 describe('PtyStreamHub resize', () => {
   it('replays worker-owned PTY output when a client attaches from an older seq', () => {
     const hub = new PtyStreamHub({
@@ -127,7 +138,7 @@ describe('PtyStreamHub resize', () => {
   })
 
   it('does not forward unchanged canonical geometry to the PTY runtime', async () => {
-    const runtimeResize = vi.fn()
+    const runtimeResize = createAcceptedRuntimeResize()
     const hub = new PtyStreamHub({
       replayWindowMaxBytes: 64_000,
       ptyRuntime: {
@@ -193,7 +204,7 @@ describe('PtyStreamHub resize', () => {
   })
 
   it('acks accepted geometry revisions without forwarding unchanged or stale resizes', async () => {
-    const runtimeResize = vi.fn()
+    const runtimeResize = createAcceptedRuntimeResize()
     const hub = new PtyStreamHub({
       replayWindowMaxBytes: 64_000,
       ptyRuntime: {

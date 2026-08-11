@@ -3,7 +3,7 @@ export interface PtyHostProcess {
   on(event: 'exit', listener: (code: number) => void): void
   on(event: 'error', listener: (error: unknown) => void): void
   postMessage(message: unknown, callback?: (error: Error | null) => void): void
-  kill(): boolean
+  kill(signal?: 'SIGTERM' | 'SIGKILL'): boolean
   stdout: NodeJS.ReadableStream | null
   stderr: NodeJS.ReadableStream | null
   pid: number | undefined

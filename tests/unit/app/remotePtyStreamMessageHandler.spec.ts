@@ -129,6 +129,31 @@ describe('createRemotePtyStreamMessageHandler', () => {
     })
   })
 
+  it('rejects a remote accepted result without geometry as runtime_failed', () => {
+    const { handler, onResizeResult } = createHandler()
+
+    handler(
+      JSON.stringify({
+        type: 'resize_result',
+        sessionId: 'session-missing-geometry',
+        operationId: 'operation-missing-geometry',
+        status: 'accepted',
+        changed: true,
+        geometry: null,
+        authority: { role: 'controller', epoch: 2 },
+      }),
+    )
+
+    expect(onResizeResult).toHaveBeenCalledWith({
+      sessionId: 'session-missing-geometry',
+      operationId: 'operation-missing-geometry',
+      status: 'runtime_failed',
+      changed: false,
+      geometry: null,
+      authority: { role: 'controller', epoch: 2 },
+    })
+  })
+
   it('broadcasts session state and metadata to every renderer window', () => {
     const {
       handler,

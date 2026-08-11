@@ -118,9 +118,11 @@ Current geometry transaction:
 - A transport disconnect immediately makes its cached authority epoch unknown (`null`). Until a new
   `attached`/`control_changed` message establishes that transport's epoch, reconnect traffic must not
   reuse the prior connection's epoch.
-- The requester receives one typed `resize_result`: `accepted`, `rejected_not_controller`,
-  `rejected_stale_authority`, `superseded`, `session_not_found` or `runtime_failed`. Every result
-  includes the correlated operation id and, when known, canonical geometry and current authority.
+- The requester receives one typed `resize_result`: `accepted`, `accepted_unverified`,
+  `rejected_not_controller`, `rejected_stale_authority`, `superseded`, `session_not_found` or
+  `runtime_failed`. `accepted_unverified` means the resize was issued but its applied ConPTY
+  geometry cannot be observed synchronously; it does not commit or broadcast the proposal. Every
+  result includes the correlated operation id and, when known, canonical geometry and authority.
 - An unchanged accepted size acknowledges the operation without issuing another runtime resize.
 - The Renderer measures without mutating xterm, gates PTY output while its operation is pending, and
   applies only the canonical result geometry. Rejection, supersession, timeout and stale-session
@@ -128,8 +130,10 @@ Current geometry transaction:
 - Stable geometry measurement is derived from the terminal container and xterm cell metrics. Current
   text, progress frames, `.xterm-rows` bounds, glyph overhang and scroll width are renderer output,
   not geometry observations.
-- Once a live commit settles, local xterm rows/columns equal Worker presentation and PTY runtime
-  geometry. There is no local-only corrective size and no output-triggered shrink/recovery cycle.
+- Once a verified live commit settles, local xterm rows/columns equal Worker presentation and PTY
+  runtime geometry. An unverified result preserves the prior canonical geometry rather than
+  pretending the request was applied. There is no local-only corrective size and no
+  output-triggered shrink/recovery cycle.
 - Legacy `revision` input remains compatibility-only. New clients order work through operation id,
   base revision and authority epoch.
 - Any transaction that actually changes Worker presentation marks terminal recovery dirty, including
@@ -244,8 +248,9 @@ The goal is stable visual parity without letting multiple renderers fight for te
     queue before its final checkpoint.
 16. Ordered PTY output changes parser-owned buffer/cursor/dirty rows only; output content and DOM
     footprint never produce a geometry intent.
-17. After a live geometry transaction settles, local xterm, Worker presentation and PTY runtime agree
-    on rows/columns; no local-only correction may temporarily diverge them.
+17. After a verified live geometry transaction settles, local xterm, Worker presentation and PTY
+    runtime agree on rows/columns; an unverified transaction preserves canonical geometry and never
+    substitutes requested rows/columns as an acknowledgement.
 18. Only the current recovery reconciliation scope may spawn before its workspace runtime is ready;
     normal user/node paths cannot acquire or forge that scope.
 
@@ -257,6 +262,7 @@ The goal is stable visual parity without letting multiple renderers fight for te
 - `tests/unit/app/ptyStreamHub.attach.authority.spec.ts`
 - `tests/unit/app/ptyStreamHub.resize.authority.spec.ts`
 - `tests/unit/app/ptyStreamHub.resize.spec.ts`
+- `tests/unit/app/ptyStreamHub.resizeGeometryAck.spec.ts`
 - `tests/unit/app/ptyStreamService.recoveryBarrier.spec.ts`
 - `tests/unit/app/BrowserPtyClient.spec.ts`
 - `tests/unit/contexts/terminalNode.output-scheduler.spec.ts`
@@ -269,6 +275,8 @@ The goal is stable visual parity without letting multiple renderers fight for te
 - `tests/unit/terminalRecovery/`
 - `tests/e2e/workspace-canvas.terminal-resize-shrink.spec.ts` (renderer accepted size = Worker
   presentation geometry = POSIX PTY `stty size`, after both expansion and shrink)
+- `tests/e2e/pty-host.resize-ack.windows.spec.ts` (deferred ConPTY resize remains explicitly
+  unverified and cannot overwrite canonical geometry with the request)
 - `tests/e2e/workspace-canvas.terminal-theme.spec.ts` (Find overlay and applied appearance)
 - `scripts/test-terminal-presentation-contract.mjs`
 - Terminal renderer E2E cases under `tests/e2e/`.

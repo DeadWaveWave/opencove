@@ -7,6 +7,10 @@ import type { TerminalSessionManager } from './sessionManager'
 
 const LOCAL_GEOMETRY_AUTHORITY = { role: 'controller' as const, epoch: 1 }
 
+type RuntimeResizeObservation =
+  | { status: 'applied_verified'; cols: number; rows: number }
+  | { status: 'applied_unverified' }
+
 export function createLocalPtyGeometryCommitter(options: {
   manager: Pick<
     TerminalSessionManager,
@@ -16,7 +20,11 @@ export function createLocalPtyGeometryCommitter(options: {
     | 'planGeometryCommit'
     | 'commitGeometry'
   >
-  resizeRuntime: (sessionId: string, cols: number, rows: number) => Promise<unknown>
+  resizeRuntime: (
+    sessionId: string,
+    cols: number,
+    rows: number,
+  ) => Promise<RuntimeResizeObservation>
   log: (payload: Record<string, unknown>) => void
 }): {
   resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
@@ -104,8 +112,13 @@ export function createLocalPtyGeometryCommitter(options: {
         }
       }
 
+      let runtimeObservation: RuntimeResizeObservation
       try {
-        await options.resizeRuntime(input.sessionId, plan.geometry.cols, plan.geometry.rows)
+        runtimeObservation = await options.resizeRuntime(
+          input.sessionId,
+          plan.geometry.cols,
+          plan.geometry.rows,
+        )
       } catch (error) {
         const geometry = options.manager.getGeometry(input.sessionId)
         options.log({
@@ -134,7 +147,33 @@ export function createLocalPtyGeometryCommitter(options: {
         return sessionNotFound()
       }
 
-      const committed = options.manager.commitGeometry(normalizedInput)
+      if (!runtimeObservation || typeof runtimeObservation !== 'object') {
+        return {
+          sessionId: input.sessionId,
+          operationId,
+          status: 'runtime_failed',
+          changed: false,
+          geometry: options.manager.getGeometry(input.sessionId),
+          authority: LOCAL_GEOMETRY_AUTHORITY,
+        }
+      }
+
+      if (runtimeObservation.status === 'applied_unverified') {
+        return {
+          sessionId: input.sessionId,
+          operationId,
+          status: 'accepted_unverified',
+          changed: false,
+          geometry: options.manager.getGeometry(input.sessionId),
+          authority: LOCAL_GEOMETRY_AUTHORITY,
+        }
+      }
+
+      const committed = options.manager.commitGeometry({
+        ...normalizedInput,
+        cols: runtimeObservation.cols,
+        rows: runtimeObservation.rows,
+      })
       if (committed.status === 'superseded') {
         return {
           sessionId: input.sessionId,

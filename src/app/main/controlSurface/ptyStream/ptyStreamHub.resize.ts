@@ -329,7 +329,18 @@ export async function resizePtyStreamSession(options: {
 
       try {
         const runtimeResult = await options.ptyRuntime.resize(runtimeInput)
-        if (runtimeResult && runtimeResult.status !== 'accepted') {
+        if (runtimeResult?.status === 'accepted_unverified') {
+          const unverified = createResult({
+            sessionId: options.resize.sessionId,
+            operationId,
+            status: 'accepted_unverified',
+            session: currentSession,
+            client: currentClient,
+          })
+          sendPtyResizeResult(currentClient.ws, unverified)
+          return unverified
+        }
+        if (runtimeResult?.status !== 'accepted' || !runtimeResult.geometry) {
           const failed = createResult({
             sessionId: options.resize.sessionId,
             operationId,
@@ -340,7 +351,7 @@ export async function resizePtyStreamSession(options: {
           sendPtyResizeResult(currentClient.ws, failed)
           return failed
         }
-        acceptedRuntimeGeometry = runtimeResult?.geometry ?? plan.geometry
+        acceptedRuntimeGeometry = runtimeResult.geometry
 
         if (
           !isGeometryLeaseCurrent({

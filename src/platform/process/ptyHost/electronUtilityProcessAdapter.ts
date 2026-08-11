@@ -28,7 +28,7 @@ export function createElectronUtilityPtyHostProcess(child: UtilityProcess): PtyH
         callback?.(error instanceof Error ? error : new Error(String(error)))
       }
     },
-    kill: () => {
+    kill: _signal => {
       return child.kill()
     },
     stdout: child.stdout ?? null,

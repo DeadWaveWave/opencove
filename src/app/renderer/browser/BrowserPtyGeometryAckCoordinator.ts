@@ -30,6 +30,7 @@ function parseGeometryCommitResult(
   const operationId = typeof record.operationId === 'string' ? record.operationId : null
   const status =
     record.status === 'accepted' ||
+    record.status === 'accepted_unverified' ||
     record.status === 'rejected_not_controller' ||
     record.status === 'rejected_stale_authority' ||
     record.status === 'superseded' ||
@@ -67,8 +68,8 @@ function parseGeometryCommitResult(
   return {
     sessionId,
     operationId,
-    status,
-    changed: record.changed === true,
+    status: status === 'accepted' && geometry === null ? 'runtime_failed' : status,
+    changed: status === 'accepted' && geometry === null ? false : record.changed === true,
     geometry,
     authority: role && epoch !== null ? { role, epoch } : null,
   }

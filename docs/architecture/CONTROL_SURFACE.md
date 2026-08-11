@@ -89,6 +89,10 @@ Before persisted runtime nodes are reconciled, normal spawn operations fail with
 user-explicable `terminal.runtime_not_ready` error. The scope is runtime-only and is never accepted
 as client payload.
 
+PTY resize results distinguish verified `accepted`, non-failing `accepted_unverified`, and
+`runtime_failed`. Only verified applied geometry may advance canonical presentation state; an
+unverified ConPTY resize never promotes requested rows/columns into an acknowledgement.
+
 其中 `session.launchAgent` 和 `session.spawnTerminal` 是通用 intent：当 payload 通过 `spaceId` 命中一个 mount-aware Space 时，handler 会先解析该 Space 的 mount 上下文，再内部委派到 `session.launchAgentInMount` 或 `pty.spawnInMount`。
 
 Canvas node control:

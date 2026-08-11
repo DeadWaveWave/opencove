@@ -67,4 +67,27 @@ describe('TerminalRuntimeAvailability', () => {
       epoch: 0,
     })
   })
+
+  it('retries a failed startup for one workspace without globally opening admission', async () => {
+    const availability = new TerminalRuntimeAvailability()
+    availability.failStartup()
+
+    expect(() => availability.assertSpawnAllowed('workspace-retry', null)).toThrowError(
+      expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
+    )
+
+    await availability.reconcileWorkspace('workspace-retry', scope => {
+      expect(() => availability.assertSpawnAllowed('workspace-retry', scope)).not.toThrow()
+      expect(() => availability.assertSpawnAllowed('other-workspace', null)).toThrowError(
+        expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
+      )
+      return Promise.resolve()
+    })
+
+    expect(availability.snapshot('workspace-retry')).toEqual({ phase: 'ready', epoch: 1 })
+    expect(() => availability.assertSpawnAllowed('workspace-retry', null)).not.toThrow()
+    expect(() => availability.assertSpawnAllowed('other-workspace', null)).toThrowError(
+      expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
+    )
+  })
 })

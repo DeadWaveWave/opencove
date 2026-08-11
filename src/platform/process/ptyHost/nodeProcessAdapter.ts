@@ -50,8 +50,8 @@ export function createNodeChildPtyHostProcess(child: ChildProcess): PtyHostProce
         callback?.(error instanceof Error ? error : new Error(String(error)))
       }
     },
-    kill: () => {
-      return child.kill()
+    kill: signal => {
+      return child.kill(signal)
     },
     stdout: child.stdout ?? null,
     stderr: child.stderr ?? null,

@@ -18,6 +18,7 @@ import {
 } from './protocol'
 import { convertHighByteX10MouseReportsToSgr } from '../pty/x10Mouse'
 import { PtyHostSpawnIdentityRegistry } from './spawnIdentityRegistry'
+import { resizePtyAndReadAck } from './resizeAck'
 
 type ParentPort = {
   on: (event: 'message', listener: (messageEvent: { data: unknown }) => void) => void
@@ -313,12 +314,12 @@ function resizeSession(request: PtyHostResizeRequest): void {
     throw new Error(`Unknown PTY session: ${request.sessionId}`)
   }
 
-  session.pty.resize(request.cols, request.rows)
+  const resize = resizePtyAndReadAck(session.pty, request.cols, request.rows)
   send({
     type: 'response',
     requestId: request.requestId,
     ok: true,
-    result: { sessionId: request.sessionId, cols: request.cols, rows: request.rows },
+    result: { sessionId: request.sessionId, resize },
   })
 }
 

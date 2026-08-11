@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { registerSessionPrepareOrReviveHandler } from '../../../src/app/main/controlSurface/handlers/sessionPrepareOrReviveHandler'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
+import { createReadyTerminalAdmissionDeps } from '../contexts/controlSurfaceTestTerminalAvailability'
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-07-10T00:00:00.000Z'),
@@ -77,6 +78,7 @@ describe('session.prepareOrRevive remote terminal recovery', () => {
     })
     const controlSurface = createControlSurface()
     registerSessionPrepareOrReviveHandler(controlSurface, {
+      ...createReadyTerminalAdmissionDeps(),
       getPersistenceStore: async () => createRemoteRecoveryStore(),
       ptyStreamHub: {
         isSessionActive: vi.fn(() => active),
@@ -117,6 +119,7 @@ describe('session.prepareOrRevive remote terminal recovery', () => {
     })
     const controlSurface = createControlSurface()
     registerSessionPrepareOrReviveHandler(controlSurface, {
+      ...createReadyTerminalAdmissionDeps(),
       getPersistenceStore: async () => createRemoteRecoveryStore(),
       ptyStreamHub: {
         isSessionActive: vi.fn(() => false),

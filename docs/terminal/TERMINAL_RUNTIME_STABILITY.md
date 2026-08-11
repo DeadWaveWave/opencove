@@ -8,16 +8,20 @@ move geometry authority out of the Worker Hub or make renderer state authoritati
 
 | State | Owner | Write entry | Restart source |
 | --- | --- | --- | --- |
-| Applied PTY rows and columns | ptyHost | successful `resize` request | none |
+| Applied PTY rows and columns | ptyHost | post-resize PTY read-back when synchronously observable | none |
+| Resize verification outcome | ptyHost | `applied_verified` / `applied_unverified` response | none |
 | Canonical presentation geometry | Worker `PtyStreamHub` | runtime ACK followed by presentation commit | terminal recovery checkpoint |
 | Local xterm geometry | renderer | canonical resize result | Worker presentation snapshot |
 
 Invariants:
 
-1. A successful runtime result reports the rows and columns acknowledged by ptyHost, never the
-   caller's proposal substituted as an acknowledgement.
-2. The Worker commits and broadcasts only the runtime-acknowledged geometry.
-3. Missing or failed runtime acknowledgement is `runtime_failed`; it is not an accepted geometry.
+1. A verified runtime result reports the rows and columns read back from ptyHost, never the caller's
+   proposal substituted as an acknowledgement.
+2. The Worker commits and broadcasts only verified runtime geometry. ConPTY resize is deferred, so
+   its synchronous result is `accepted_unverified`: the operation was issued, but canonical
+   presentation geometry remains unchanged until a verified observation exists.
+3. A malformed or missing remote acknowledgement is `runtime_failed`; it is distinct from the
+   explicit non-failing `accepted_unverified` outcome.
 
 ## Spawn identity
 
@@ -33,8 +37,9 @@ Invariants:
    the already-created session identity.
 2. A retry reuses the original launch identity and is allowed only when the previous host has a
    confirmed exit, or when no spawn request reached a host.
-3. Ambiguous transport loss fails closed. It never starts another host while the prior child may
-   still own an unreferenced PTY.
+3. Ambiguous transport loss fails closed immediately. An observed exit clears the fence; otherwise
+   a bounded deadline escalates termination to `SIGKILL` and retires only that exact child before a
+   later spawn may create a replacement host.
 
 ## Startup admission
 
@@ -52,4 +57,6 @@ Invariants:
 2. Only the recovery handler owns the internal spawn capability. Its exact precondition is a live,
    current reconciliation scope for that workspace; public user/node spawn paths cannot create one.
 3. Failed reconciliation becomes `unavailable`, shutdown becomes `shutting-down`, late completions
-   cannot reopen either state, and every successful return to `ready` increases the epoch.
+   cannot reopen either state, and every successful return to `ready` increases the epoch. A user
+   retry may reconcile that one unavailable workspace without globally opening admission for other
+   workspaces after a startup scan failure.

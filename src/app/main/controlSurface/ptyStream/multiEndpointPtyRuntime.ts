@@ -2,8 +2,6 @@ import { randomUUID } from 'node:crypto'
 import type {
   ListSessionsResult,
   PresentationSnapshotTerminalResult,
-  ResizeTerminalInput,
-  TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -66,18 +64,6 @@ export function createMultiEndpointPtyRuntime(options: {
   topology: WorkerTopologyStore
   disposeLocalRuntime: boolean
 }): MultiEndpointPtyRuntime {
-  const normalizeResizeResult = (
-    input: ResizeTerminalInput,
-    result: TerminalGeometryCommitResult | void,
-  ): TerminalGeometryCommitResult =>
-    result ?? {
-      sessionId: input.sessionId,
-      operationId: input.operationId ?? `legacy-${input.sessionId}`,
-      status: 'accepted',
-      changed: true,
-      geometry: { cols: input.cols, rows: input.rows, revision: null },
-      authority: null,
-    }
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
@@ -371,7 +357,7 @@ export function createMultiEndpointPtyRuntime(options: {
     resize: async input => {
       const route = routes.get(input.sessionId)
       if (!route || route.kind === 'local') {
-        return normalizeResizeResult(input, await options.localRuntime.resize(input))
+        return await options.localRuntime.resize(input)
       }
 
       // Geometry revisions and authority epochs are scoped to one Hub. The Home Hub has already

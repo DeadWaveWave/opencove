@@ -8,6 +8,7 @@ export class TestPtyHostProcess extends EventEmitter implements PtyHostProcess {
   public readonly stderr = null
   public pid: number | undefined = 1234
   public killCalls = 0
+  public readonly killSignals: Array<'SIGTERM' | 'SIGKILL' | undefined> = []
   public exitOnKill = true
 
   public postMessage(message: unknown, callback?: (error: Error | null) => void): void {
@@ -24,8 +25,9 @@ export class TestPtyHostProcess extends EventEmitter implements PtyHostProcess {
     callback?.(null)
   }
 
-  public kill(): boolean {
+  public kill(signal?: 'SIGTERM' | 'SIGKILL'): boolean {
     this.killCalls += 1
+    this.killSignals.push(signal)
     if (this.exitOnKill) {
       this.emit('exit', 0)
     }

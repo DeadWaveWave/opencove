@@ -80,7 +80,7 @@ export class TerminalRuntimeAvailability {
     workspaceId: string,
     operation: (scope: TerminalRecoverySpawnScope) => Promise<T>,
   ): Promise<T> {
-    if (this.shuttingDown || this.startupPhase !== 'ready') {
+    if (this.shuttingDown || this.startupPhase === 'initializing') {
       this.assertSpawnAllowed(workspaceId, null)
     }
 

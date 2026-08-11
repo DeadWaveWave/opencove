@@ -79,6 +79,7 @@ export interface TerminalGeometryAuthority {
 
 export type TerminalGeometryCommitStatus =
   | 'accepted'
+  | 'accepted_unverified'
   | 'rejected_not_controller'
   | 'rejected_stale_authority'
   | 'superseded'

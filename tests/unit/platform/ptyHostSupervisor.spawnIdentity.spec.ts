@@ -34,7 +34,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    firstProcess.emit('message', { type: 'ready', protocolVersion: 2 })
+    firstProcess.emit('message', { type: 'ready', protocolVersion: 3 })
     await vi.waitFor(() => {
       expect(findLastSentMessage(firstProcess, 'spawn')).not.toBeNull()
     })
@@ -47,7 +47,7 @@ describe('PtyHostSupervisor spawn identity', () => {
     await vi.waitFor(() => {
       expect(processes).toHaveLength(0)
     })
-    secondProcess.emit('message', { type: 'ready', protocolVersion: 2 })
+    secondProcess.emit('message', { type: 'ready', protocolVersion: 3 })
     await vi.waitFor(() => {
       expect(findLastSentMessage(secondProcess, 'spawn')).not.toBeNull()
     })
@@ -69,16 +69,19 @@ describe('PtyHostSupervisor spawn identity', () => {
     supervisor.dispose()
   })
 
-  it('fails closed when transport loss leaves the prior host exit unconfirmed', async () => {
-    const testProcess = new TestPtyHostProcess()
-    testProcess.exitOnKill = false
-    testProcess.failPostMessageTypes.add('spawn')
-    const createProcess = vi.fn(() => testProcess)
+  it('fails closed until a bounded escalation retires an unconfirmed host', async () => {
+    const firstProcess = new TestPtyHostProcess()
+    firstProcess.exitOnKill = false
+    firstProcess.failPostMessageTypes.add('spawn')
+    const secondProcess = new TestPtyHostProcess()
+    const processes = [firstProcess, secondProcess]
+    const createProcess = vi.fn(() => processes.shift() ?? secondProcess)
     const supervisor = new PtyHostSupervisor({
       baseDir: '/',
       resolveEntryPath: () => '/fake/ptyHost.js',
       createProcess,
       reportIssue: () => undefined,
+      ambiguousExitTimeoutMs: 5,
     })
 
     const spawnPromise = supervisor.spawn({
@@ -88,7 +91,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    testProcess.emit('message', { type: 'ready', protocolVersion: 2 })
+    firstProcess.emit('message', { type: 'ready', protocolVersion: 3 })
 
     await expect(spawnPromise).rejects.toThrow('Channel closed')
     expect(createProcess).toHaveBeenCalledTimes(1)
@@ -102,6 +105,82 @@ describe('PtyHostSupervisor spawn identity', () => {
       }),
     ).rejects.toThrow('prior host exit is unconfirmed')
     expect(createProcess).toHaveBeenCalledTimes(1)
+
+    await vi.waitFor(() => {
+      expect(firstProcess.killSignals).toContain('SIGKILL')
+    })
+
+    const recoveredSpawn = supervisor.spawn({
+      command: '/bin/zsh',
+      args: [],
+      cwd: '/',
+      cols: 80,
+      rows: 24,
+    })
+    await vi.waitFor(() => expect(createProcess).toHaveBeenCalledTimes(2))
+    secondProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    await vi.waitFor(() => expect(findLastSentMessage(secondProcess, 'spawn')).not.toBeNull())
+    const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
+      secondProcess,
+      'spawn',
+    )
+    secondProcess.emit('message', {
+      type: 'response',
+      requestId: sentSpawn?.requestId,
+      ok: true,
+      result: { sessionId: 'session-after-deadline' },
+    })
+    await expect(recoveredSpawn).resolves.toEqual({ sessionId: 'session-after-deadline' })
+
+    supervisor.dispose()
+  })
+
+  it('allows a subsequent spawn when an ambiguous host later emits exit', async () => {
+    const firstProcess = new TestPtyHostProcess()
+    firstProcess.exitOnKill = false
+    firstProcess.failPostMessageTypes.add('spawn')
+    const secondProcess = new TestPtyHostProcess()
+    const processes = [firstProcess, secondProcess]
+    const supervisor = new PtyHostSupervisor({
+      baseDir: '/',
+      resolveEntryPath: () => '/fake/ptyHost.js',
+      createProcess: () => processes.shift() ?? secondProcess,
+      reportIssue: () => undefined,
+      ambiguousExitTimeoutMs: 1_000,
+    })
+
+    const failedSpawn = supervisor.spawn({
+      command: '/bin/zsh',
+      args: [],
+      cwd: '/',
+      cols: 80,
+      rows: 24,
+    })
+    firstProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    await expect(failedSpawn).rejects.toThrow('Channel closed')
+
+    firstProcess.emit('exit', 1)
+    const recoveredSpawn = supervisor.spawn({
+      command: '/bin/zsh',
+      args: [],
+      cwd: '/',
+      cols: 80,
+      rows: 24,
+    })
+    await vi.waitFor(() => expect(processes).toHaveLength(0), { timeout: 1_000 })
+    secondProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    await vi.waitFor(() => expect(findLastSentMessage(secondProcess, 'spawn')).not.toBeNull())
+    const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
+      secondProcess,
+      'spawn',
+    )
+    secondProcess.emit('message', {
+      type: 'response',
+      requestId: sentSpawn?.requestId,
+      ok: true,
+      result: { sessionId: 'session-after-observed-exit' },
+    })
+    await expect(recoveredSpawn).resolves.toEqual({ sessionId: 'session-after-observed-exit' })
 
     supervisor.dispose()
   })
@@ -124,7 +203,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    testProcess.emit('message', { type: 'ready', protocolVersion: 2 })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
 
     await expect(spawnPromise).rejects.toThrow('spawn timeout')
     expect(createProcess).toHaveBeenCalledTimes(1)

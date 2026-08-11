@@ -16,7 +16,12 @@ describe('Pty runtime geometry', () => {
   it('returns the geometry acknowledged by the headless PTY host', async () => {
     vi.resetModules()
 
-    const resize = vi.fn(async () => ({ sessionId: 'session-ack', cols: 91, rows: 27 }))
+    const resize = vi.fn(async () => ({
+      sessionId: 'session-ack',
+      status: 'applied_verified' as const,
+      cols: 91,
+      rows: 27,
+    }))
 
     class MockPtyHostSupervisor {
       public resize = resize
@@ -39,8 +44,7 @@ describe('Pty runtime geometry', () => {
       PtyHostSupervisor: MockPtyHostSupervisor,
     }))
 
-    const { createHeadlessPtyRuntime } =
-      await import('../../../src/app/worker/headlessPtyRuntime')
+    const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
     const runtime = createHeadlessPtyRuntime({ userDataPath: '/tmp/opencove-headless-test' })
 
     await expect(
@@ -65,11 +69,67 @@ describe('Pty runtime geometry', () => {
     runtime.dispose()
   })
 
+  it('reports an issued but unverified ConPTY resize without echoing the request', async () => {
+    vi.resetModules()
+
+    class MockPtyHostSupervisor {
+      public resize = vi.fn(async (sessionId: string) => ({
+        sessionId,
+        status: 'applied_unverified' as const,
+      }))
+      public dispose = vi.fn()
+      public spawn = vi.fn()
+      public write = vi.fn()
+      public kill = vi.fn()
+      public crash = vi.fn()
+
+      public onData(_handler: PtyDataHandler): () => void {
+        return () => undefined
+      }
+
+      public onExit(_handler: PtyExitHandler): () => void {
+        return () => undefined
+      }
+    }
+
+    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
+      PtyHostSupervisor: MockPtyHostSupervisor,
+    }))
+
+    const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
+    const runtime = createHeadlessPtyRuntime({ userDataPath: '/tmp/opencove-headless-test' })
+
+    await expect(
+      runtime.resize({
+        sessionId: 'session-unverified',
+        cols: 120,
+        rows: 40,
+        reason: 'frame_commit',
+        operationId: 'operation-unverified',
+        baseGeometryRevision: null,
+      }),
+    ).resolves.toEqual({
+      sessionId: 'session-unverified',
+      operationId: 'operation-unverified',
+      status: 'accepted_unverified',
+      changed: false,
+      geometry: null,
+      authority: null,
+    })
+
+    runtime.dispose()
+  })
+
   it('does not forward unchanged geometry to the PTY host', async () => {
     vi.resetModules()
 
     const send = vi.fn()
-    const resize = vi.fn()
+    const resize = vi.fn(async (sessionId: string) => ({
+      sessionId,
+      status: 'applied_verified' as const,
+      cols: 91,
+      rows: 27,
+    }))
     const content = {
       isDestroyed: () => false,
       getType: () => 'window',
@@ -146,7 +206,7 @@ describe('Pty runtime geometry', () => {
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyGeometry)).toEqual([
       [
         IPC_CHANNELS.ptyGeometry,
-        { sessionId, cols: 100, rows: 32, reason: 'frame_commit', revision: 1 },
+        { sessionId, cols: 91, rows: 27, reason: 'frame_commit', revision: 1 },
       ],
     ])
     expect(accepted).toEqual({
@@ -154,7 +214,7 @@ describe('Pty runtime geometry', () => {
       operationId: 'operation-1',
       status: 'accepted',
       changed: true,
-      geometry: { cols: 100, rows: 32, revision: 1 },
+      geometry: { cols: 91, rows: 27, revision: 1 },
       authority: { role: 'controller', epoch: 1 },
     })
 
@@ -163,8 +223,8 @@ describe('Pty runtime geometry', () => {
 
     const unchanged = await runtime.resize({
       sessionId,
-      cols: 100,
-      rows: 32,
+      cols: 91,
+      rows: 27,
       reason: 'frame_commit',
       operationId: 'operation-2',
       baseGeometryRevision: 1,
@@ -177,7 +237,7 @@ describe('Pty runtime geometry', () => {
       operationId: 'operation-2',
       status: 'accepted',
       changed: false,
-      geometry: { cols: 100, rows: 32, revision: 1 },
+      geometry: { cols: 91, rows: 27, revision: 1 },
       authority: { role: 'controller', epoch: 1 },
     })
 
@@ -199,7 +259,7 @@ describe('Pty runtime geometry', () => {
       operationId: 'operation-stale',
       status: 'superseded',
       changed: false,
-      geometry: { cols: 100, rows: 32, revision: 1 },
+      geometry: { cols: 91, rows: 27, revision: 1 },
       authority: { role: 'controller', epoch: 1 },
     })
 
