@@ -66,4 +66,5 @@ For runtime-risk or Large work, explicitly check:
 3.  **Verify**:
     -   **Small**: Targeted unit/integration tests OK.
     -   **Final/Large**: **MUST** run full suite (`pnpm pre-commit`).
-4.  **Submit**: Review self -> Update PR description -> Handover.
+4.  **Commit**: Gates passing is not delivery. `git commit` immediately after the gates pass, then prove it with `git log --oneline <base>..HEAD` (your commit is listed) and `git status --short` (empty). Never report work as complete while it exists only in the staging area or the working tree.
+5.  **Submit**: Review self -> Update PR description -> Handover.

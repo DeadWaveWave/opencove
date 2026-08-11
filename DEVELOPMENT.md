@@ -157,6 +157,7 @@
     -   PR 中的截图 / 录屏应通过 GitHub PR 描述或评论框直接上传，不要把这类评审素材作为 repo 资产提交；只有明确作为视觉回归基线的 snapshot / golden 文件，才应进入仓库并纳入测试。
     -   若本次改动涉及 **Renderer 用户可见文案**，必须做好 i18n：禁止新增硬编码用户文案，新增/修改文案时同步更新 `src/app/renderer/i18n/locales/en.ts` 与 `src/app/renderer/i18n/locales/zh-CN.ts`，并在提交前做一次对应语言的最小 smoke/测试验证。
     -   通过上述检查后，再执行 `pnpm pre-commit` （type, lint, format, test）。
+    -   **门禁通过后必须立即 `git commit`，然后才能汇报完成。** 只 `git add` 不 `git commit` 的工作不算交付：暂存区不是持久状态，清理 worktree、`git checkout`、`git stash` 都会让它消失。汇报前用 `git log --oneline <base>..HEAD` 确认自己的提交在列，且 `git status --short` 为空——这两条是「已交付」的判据，`pnpm pre-commit` 通过不是。
 -   **测试失败排查前置**：
     -   凡遇到 `pnpm pre-commit`、`pnpm test -- --run`、`pnpm test:e2e` 或单独 `Playwright` 用例失败，继续排查前**必须先阅读** `docs/development/DEBUGGING.md`。
     -   需要复现/定位 bug 时：先阅读 `docs/development/DEBUGGING.md` 选择合适的调试方法与测试层级；若没有覆盖到的合适方法，则自行探索新方法；当用户反馈“确实解决了困难问题”后，应补充对应案例到 `docs/cases/`，并按需更新 `docs/development/DEBUGGING.md`（方法+适用场景）及其它必要信息。
