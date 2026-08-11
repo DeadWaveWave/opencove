@@ -253,6 +253,7 @@ export function useWorkspaceCanvasTaskCreator({
       if (targetSpace) {
         assignNodeToSpaceAndExpand({
           createdNodeId: created.id,
+          createdNode: created,
           targetSpaceId: targetSpace.id,
           spacesRef,
           nodesRef,

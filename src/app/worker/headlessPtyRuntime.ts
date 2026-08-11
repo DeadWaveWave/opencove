@@ -16,6 +16,7 @@ import {
 import { isDebugCrashHostEnabled } from '../../contexts/terminal/presentation/main-ipc/debugCrashHost'
 import { TerminalProfileResolver } from '../../platform/terminal/TerminalProfileResolver'
 import type { ListTerminalProfilesResult } from '../../shared/contracts/dto'
+import { stripAutomaticTerminalQueriesFromOutput } from '../../shared/terminal/automaticTerminalSequences'
 
 type SpawnSessionOptions = {
   cwd: string
@@ -77,7 +78,16 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
   })
 
   const disposeDataListener = supervisor.onData(event => {
-    dataListeners.forEach(listener => listener(event))
+    const { visibleData, replies } = stripAutomaticTerminalQueriesFromOutput(event.data)
+    replies.forEach(reply => {
+      supervisor.write(event.sessionId, reply)
+    })
+
+    if (visibleData.length === 0) {
+      return
+    }
+
+    dataListeners.forEach(listener => listener({ ...event, data: visibleData }))
   })
 
   const disposeExitListener = supervisor.onExit(event => {

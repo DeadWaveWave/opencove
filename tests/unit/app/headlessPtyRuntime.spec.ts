@@ -131,7 +131,7 @@ describe('headless PTY runtime', () => {
       })
 
       ptyDataListeners.forEach(listener => {
-        listener({ sessionId: 'session-1', data: 'hello from worker\n' })
+        listener({ sessionId: 'session-1', data: 'hello from worker\n\u001b[6n' })
       })
       emitState?.({ sessionId: 'session-1', state: 'working' })
       emitMetadata?.({ sessionId: 'session-1', resumeSessionId: 'resume-session-1' })
@@ -161,6 +161,7 @@ describe('headless PTY runtime', () => {
       expect(watcherDisposeSession).toHaveBeenCalledWith('session-1')
       expect(watcherDisposeSession).toHaveBeenCalledWith('session-2')
       expect(lastSupervisor?.write).toHaveBeenCalledWith('session-1', '\r')
+      expect(lastSupervisor?.write).toHaveBeenCalledWith('session-1', '\u001b[1;1R')
       expect(lastSupervisor?.resize).toHaveBeenCalledWith('session-1', 120, 40)
       expect(lastSupervisor?.kill).toHaveBeenCalledWith('session-2')
       expect(lastSupervisor?.crash).toHaveBeenCalledTimes(1)

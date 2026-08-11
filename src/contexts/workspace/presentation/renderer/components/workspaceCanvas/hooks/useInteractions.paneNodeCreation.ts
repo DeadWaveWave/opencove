@@ -216,6 +216,7 @@ export async function createTerminalNodeAtFlowPosition({
   if (targetSpace) {
     assignNodeToSpaceAndExpand({
       createdNodeId: created.id,
+      createdNode: created,
       targetSpaceId: targetSpace.id,
       targetSpaceSnapshot: targetSpace,
       targetSpaceBaseline,
@@ -347,6 +348,7 @@ export function createWebsiteNodeAtFlowPosition({
 
   assignNodeToSpaceAndExpand({
     createdNodeId: created.id,
+    createdNode: created,
     targetSpaceId: targetSpace.id,
     spacesRef,
     nodesRef,

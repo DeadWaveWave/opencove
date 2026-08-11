@@ -227,6 +227,7 @@ export function useWorkspaceCanvasImageImport({
         if (targetSpace) {
           assignNodeToSpaceAndExpand({
             createdNodeId: node.id,
+            createdNode: node,
             targetSpaceId: targetSpace.id,
             spacesRef,
             nodesRef,

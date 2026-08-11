@@ -57,10 +57,12 @@ export function findTaskSpace(
 export function assignAgentNodeToTaskSpace({
   taskNodeId,
   assignedNodeId,
+  assignedNode,
   context,
 }: {
   taskNodeId: string
   assignedNodeId: string
+  assignedNode: Node<TerminalNodeData>
   context: Pick<
     TaskActionContext | ResumeTaskAgentSessionContext,
     'spacesRef' | 'nodesRef' | 'setNodes' | 'onSpacesChange'
@@ -73,6 +75,7 @@ export function assignAgentNodeToTaskSpace({
 
   assignNodeToSpaceAndExpand({
     createdNodeId: assignedNodeId,
+    createdNode: assignedNode,
     targetSpaceId: taskSpaceId,
     spacesRef: context.spacesRef,
     nodesRef: context.nodesRef,

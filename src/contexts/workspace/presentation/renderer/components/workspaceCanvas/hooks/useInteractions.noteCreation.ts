@@ -51,6 +51,7 @@ export function createNoteNodeAtAnchor({
 
   assignNodeToSpaceAndExpand({
     createdNodeId: created.id,
+    createdNode: created,
     targetSpaceId: targetSpace.id,
     spacesRef,
     nodesRef,

@@ -21,6 +21,7 @@ export function findContainingSpaceByAnchor(
 
 export function assignNodeToSpaceAndExpand({
   createdNodeId,
+  createdNode,
   targetSpaceId,
   targetSpaceSnapshot,
   targetSpaceBaseline,
@@ -31,6 +32,7 @@ export function assignNodeToSpaceAndExpand({
   onSpacesChange,
 }: {
   createdNodeId: string
+  createdNode: Node<TerminalNodeData>
   targetSpaceId: string
   targetSpaceSnapshot?: WorkspaceSpaceState | null
   targetSpaceBaseline?: WorkspaceSpaceState | null
@@ -59,10 +61,13 @@ export function assignNodeToSpaceAndExpand({
     }),
   )
 
+  const layoutNodes = hasUsableLayoutRect(createdNode)
+    ? [...nodesRef.current.filter(node => node.id !== createdNode.id), createdNode]
+    : nodesRef.current
   const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({
     targetSpaceId,
     spaces: nextSpaces,
-    nodeRects: nodesRef.current.map(node => ({
+    nodeRects: layoutNodes.map(node => ({
       id: node.id,
       rect: {
         x: node.position.x,
@@ -103,6 +108,18 @@ export function assignNodeToSpaceAndExpand({
 
   spacesRef.current = pushedSpaces
   onSpacesChange(pushedSpaces)
+}
+
+function hasUsableLayoutRect(
+  node: Node<TerminalNodeData> | null | undefined,
+): node is Node<TerminalNodeData> {
+  return Boolean(
+    node &&
+    Number.isFinite(node.position?.x) &&
+    Number.isFinite(node.position?.y) &&
+    Number.isFinite(node.data?.width) &&
+    Number.isFinite(node.data?.height),
+  )
 }
 
 function mergeTargetSpaceSnapshot({

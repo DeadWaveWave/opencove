@@ -288,6 +288,7 @@ export function useWorkspaceCanvasSpaceExplorer({
 
         assignNodeToSpaceAndExpand({
           createdNodeId: created.id,
+          createdNode: created,
           targetSpaceId: space.id,
           spacesRef,
           nodesRef,
@@ -399,6 +400,7 @@ export function useWorkspaceCanvasSpaceExplorer({
 
         assignNodeToSpaceAndExpand({
           createdNodeId: created.id,
+          createdNode: created,
           targetSpaceId: space.id,
           spacesRef,
           nodesRef,

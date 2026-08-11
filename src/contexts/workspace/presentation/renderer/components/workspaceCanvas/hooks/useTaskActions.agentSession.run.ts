@@ -41,6 +41,7 @@ function reuseLinkedAgentForTask({
   assignAgentNodeToTaskSpace({
     taskNodeId,
     assignedNodeId: linkedAgentNodeId,
+    assignedNode: linkedAgentNode,
     context,
   })
 
@@ -241,6 +242,7 @@ export async function runTaskAgentAction(
     assignAgentNodeToTaskSpace({
       taskNodeId,
       assignedNodeId: createdAgentNode.id,
+      assignedNode: createdAgentNode,
       context,
     })
 
