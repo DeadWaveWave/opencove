@@ -41,6 +41,7 @@ export const zhCNSettingsPanelEndpoints = {
     tokenLabel: 'Token',
     tokenHelp: 'Token 仅提交一次，注册后会自动清空。',
     tokenRequired: 'Token 不能为空。',
+    refreshFailed: '远程端点已添加，但无法刷新当前状态。请重试。',
   },
   remove: {
     title: '移除端点？',

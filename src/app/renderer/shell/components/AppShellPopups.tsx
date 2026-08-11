@@ -134,7 +134,6 @@ export function AppShellPopups({
           onClose={() => {
             onCloseAddProjectWizard()
           }}
-          onRequestOpenEndpoints={onRequestOpenEndpoints}
         />
       ) : null}
 

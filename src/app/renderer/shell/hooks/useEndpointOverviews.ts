@@ -46,7 +46,7 @@ export function useEndpointOverviews({
   isLoading: boolean
   error: string | null
   busyByEndpointId: Readonly<Record<string, 'prepare' | 'repair'>>
-  reload: () => Promise<void>
+  reload: () => Promise<WorkerEndpointOverviewDto[] | null>
   prepareEndpoint: (input: PrepareWorkerEndpointInput) => Promise<WorkerEndpointOverviewDto>
   repairEndpoint: (input: RepairWorkerEndpointInput) => Promise<WorkerEndpointOverviewDto>
 } {
@@ -60,11 +60,11 @@ export function useEndpointOverviews({
     setOverviews(current => replaceOverview(current, overview))
   }, [])
 
-  const reload = useCallback(async (): Promise<void> => {
+  const reload = useCallback(async (): Promise<WorkerEndpointOverviewDto[] | null> => {
     if (!enabled) {
       setOverviews([])
       setError(null)
-      return
+      return []
     }
 
     const requestId = (requestCounterRef.current += 1)
@@ -80,16 +80,18 @@ export function useEndpointOverviews({
         })
 
       if (requestCounterRef.current !== requestId) {
-        return
+        return null
       }
 
       setOverviews(result.endpoints)
+      return result.endpoints
     } catch (caughtError) {
       if (requestCounterRef.current !== requestId) {
-        return
+        return null
       }
 
       setError(toErrorMessage(caughtError))
+      return null
     } finally {
       if (requestCounterRef.current === requestId) {
         setIsLoading(false)

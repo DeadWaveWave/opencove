@@ -5,6 +5,7 @@ import {
   type AnchoredOperationPopoverAnchor,
 } from '@app/renderer/components/AnchoredOperationPopover'
 import { useTranslation } from '@app/renderer/i18n'
+import { EndpointRegistrationDialog } from '@contexts/settings/presentation/renderer/settingsPanel/EndpointRegistrationDialog'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { basename } from '../utils/pathHelpers'
 import { RemoteDirectoryPickerWindow } from './RemoteDirectoryPickerWindow'
@@ -22,13 +23,11 @@ export function AddProjectWizardWindow({
   existingWorkspaces,
   remoteWorkersEnabled,
   onClose,
-  onRequestOpenEndpoints,
 }: {
   anchor?: AnchoredOperationPopoverAnchor
   existingWorkspaces: WorkspaceState[]
   remoteWorkersEnabled: boolean
   onClose: () => void
-  onRequestOpenEndpoints: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
   const [defaultLocationKind, setDefaultLocationKind] = useState<DefaultLocationKind>('local')
@@ -39,6 +38,7 @@ export function AddProjectWizardWindow({
   const [defaultRemoteMountName, setDefaultRemoteMountName] = useState('')
   const [unusedExtraRemoteEndpointId, setUnusedExtraRemoteEndpointId] = useState('')
   const [remotePicker, setRemotePicker] = useState<RemotePickerState | null>(null)
+  const [isEndpointRegistrationOpen, setIsEndpointRegistrationOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isBusy, setIsBusy] = useState(false)
   const [homeWorkerMode, setHomeWorkerMode] = useState<'standalone' | 'local' | 'remote' | null>(
@@ -46,6 +46,7 @@ export function AddProjectWizardWindow({
   )
   const [isWorkerModeResolved, setIsWorkerModeResolved] = useState(false)
   const didOpenNativePickerRef = useRef(false)
+  const addRemoteEndpointButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const {
     remoteOverviews,
@@ -53,6 +54,7 @@ export function AddProjectWizardWindow({
     defaultRemoteOverview,
     endpointError,
     busyByEndpointId,
+    reloadRemoteOverviews,
     runRemoteEndpointAction,
     reconnectRemoteEndpoint,
   } = useAddProjectWizardRemoteEndpoints({
@@ -170,7 +172,6 @@ export function AddProjectWizardWindow({
     const endpointLabel =
       endpointOptions.find(option => option.value === endpointId)?.label ?? endpointId
     setRemotePicker({
-      target: 'default',
       endpointId,
       endpointLabel,
       initialPath: defaultRemoteRootPath.trim() || null,
@@ -254,7 +255,11 @@ export function AddProjectWizardWindow({
                 setDefaultRemoteMountName(basename(value))
               }}
               onBrowseDefaultRemoteRootPath={openRemotePicker}
-              onRequestOpenEndpoints={onRequestOpenEndpoints}
+              addRemoteEndpointButtonRef={addRemoteEndpointButtonRef}
+              onAddRemoteEndpoint={() => {
+                setError(null)
+                setIsEndpointRegistrationOpen(true)
+              }}
             />
 
             <div className="workspace-project-create__actions">
@@ -280,6 +285,25 @@ export function AddProjectWizardWindow({
               </button>
             </div>
           </section>
+
+          <EndpointRegistrationDialog
+            isOpen={isEndpointRegistrationOpen}
+            returnFocus={addRemoteEndpointButtonRef}
+            onCancel={() => {
+              setIsEndpointRegistrationOpen(false)
+            }}
+            onRegistered={async endpointId => {
+              const refreshedOverviews = await reloadRemoteOverviews()
+              if (
+                !refreshedOverviews?.some(overview => overview.endpoint.endpointId === endpointId)
+              ) {
+                throw new Error(t('settingsPanel.endpoints.register.refreshFailed'))
+              }
+
+              setDefaultRemoteEndpointId(endpointId)
+              setIsEndpointRegistrationOpen(false)
+            }}
+          />
         </AnchoredOperationPopover>
       ) : null}
 

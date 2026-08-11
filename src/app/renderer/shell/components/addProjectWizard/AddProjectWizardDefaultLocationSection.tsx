@@ -22,7 +22,8 @@ export function AddProjectWizardDefaultLocationSection({
   onChangeDefaultRemoteEndpointId,
   onChangeDefaultRemoteRootPath,
   onBrowseDefaultRemoteRootPath,
-  onRequestOpenEndpoints,
+  addRemoteEndpointButtonRef,
+  onAddRemoteEndpoint,
 }: {
   t: TranslateFn
   isBusy: boolean
@@ -41,7 +42,8 @@ export function AddProjectWizardDefaultLocationSection({
   onChangeDefaultRemoteEndpointId: (value: string) => void
   onChangeDefaultRemoteRootPath: (value: string) => void
   onBrowseDefaultRemoteRootPath: () => void
-  onRequestOpenEndpoints: () => void
+  addRemoteEndpointButtonRef?: React.RefObject<HTMLButtonElement | null>
+  onAddRemoteEndpoint: () => void
 }): React.JSX.Element {
   const effectiveDefaultLocationKind: DefaultLocationKind = showRemote
     ? defaultLocationKind
@@ -111,12 +113,13 @@ export function AddProjectWizardDefaultLocationSection({
                 <span>{t('addProjectWizard.noRemoteWorkersHint')}</span>
               </div>
               <button
+                ref={addRemoteEndpointButtonRef}
                 type="button"
                 className="cove-window__action cove-window__action--primary"
                 disabled={isBusy}
                 data-testid="workspace-project-create-open-endpoints"
                 onClick={() => {
-                  onRequestOpenEndpoints()
+                  onAddRemoteEndpoint()
                 }}
               >
                 {t('addProjectWizard.openEndpointsAction')}

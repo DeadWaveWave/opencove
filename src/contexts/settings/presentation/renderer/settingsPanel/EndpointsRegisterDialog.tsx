@@ -1,4 +1,5 @@
 import React from 'react'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { useTranslation } from '@app/renderer/i18n'
 
 export function EndpointsRegisterDialog({
@@ -29,6 +30,7 @@ export function EndpointsRegisterDialog({
   onChangeManualToken,
   onCancel,
   onSubmit,
+  returnFocus,
 }: {
   isOpen: boolean
   mode: 'create' | 'edit'
@@ -57,6 +59,7 @@ export function EndpointsRegisterDialog({
   onChangeManualToken: (value: string) => void
   onCancel: () => void
   onSubmit: () => void
+  returnFocus?: React.RefObject<HTMLElement | null> | false
 }): React.JSX.Element | null {
   const { t } = useTranslation()
 
@@ -78,15 +81,22 @@ export function EndpointsRegisterDialog({
       : t('settingsPanel.endpoints.register.help')
 
   return (
-    <div
-      className="cove-window-backdrop"
-      data-testid="settings-endpoints-register-backdrop"
-      onClick={onCancel}
+    <Dialog
+      open
+      aria-label={title}
+      backdropClassName="cove-window-backdrop"
+      backdropTestId="settings-endpoints-register-backdrop"
+      dismissOnEscape={!isBusy}
+      returnFocus={returnFocus}
+      onDismiss={() => {
+        if (!isBusy) {
+          onCancel()
+        }
+      }}
     >
       <section
         className="cove-window cove-window--wide"
         data-testid="settings-endpoints-register-window"
-        onClick={event => event.stopPropagation()}
       >
         <h3>{title}</h3>
         <p className="cove-window__intro">{help}</p>
@@ -317,6 +327,6 @@ export function EndpointsRegisterDialog({
           </button>
         </div>
       </section>
-    </div>
+    </Dialog>
   )
 }

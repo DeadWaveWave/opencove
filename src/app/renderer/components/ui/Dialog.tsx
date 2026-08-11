@@ -1,5 +1,9 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
+import {
+  TRANSIENT_LAYER_OWNER_ATTRIBUTE,
+  useTransientLayerOwner,
+} from '../TransientLayerOwnerContext'
 import { classNames } from './classNames'
 import { DismissableLayer, type DismissableLayerDismissReason } from './DismissableLayer'
 
@@ -113,6 +117,7 @@ export const Dialog = React.forwardRef<HTMLDivElement, DialogProps>(function Dia
   forwardedRef,
 ): React.JSX.Element | null {
   const dialogRef = React.useRef<HTMLDivElement | null>(null)
+  const transientLayerOwner = useTransientLayerOwner()
   const lastDialogFocusRef = React.useRef<HTMLElement | null>(null)
   const latestFocusOutsideSelectorsRef = React.useRef(focusOutsideSelectors)
   latestFocusOutsideSelectorsRef.current = focusOutsideSelectors
@@ -280,6 +285,7 @@ export const Dialog = React.forwardRef<HTMLDivElement, DialogProps>(function Dia
     <div
       className={classNames('cove-dialog-backdrop', backdropClassName)}
       data-testid={backdropTestId}
+      {...(transientLayerOwner ? { [TRANSIENT_LAYER_OWNER_ATTRIBUTE]: transientLayerOwner } : {})}
     >
       <DismissableLayer
         {...dialogProps}

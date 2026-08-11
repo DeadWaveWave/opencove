@@ -41,6 +41,8 @@ export const enSettingsPanelEndpoints = {
     tokenLabel: 'Token',
     tokenHelp: 'This token is submitted once and cleared after registration.',
     tokenRequired: 'Token is required.',
+    refreshFailed:
+      'The remote endpoint was added, but its current status could not be refreshed. Try again.',
   },
   remove: {
     title: 'Remove endpoint?',
