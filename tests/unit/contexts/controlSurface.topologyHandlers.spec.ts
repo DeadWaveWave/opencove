@@ -40,6 +40,9 @@ function createSubject(options?: {
     registerManagedSshEndpoint: async () => {
       throw new Error('not used')
     },
+    updateManagedSshEndpoint: async () => {
+      throw new Error('not used')
+    },
     removeEndpoint: async () => ({ removedMountCount: 0 }),
     getEndpointRemovalImpact: async () => ({ mountIds: [], mountCount: 0 }),
     resolveEndpointRuntimeAccess: async () => null,
@@ -437,4 +440,5 @@ describe('control surface topology handlers', () => {
       remotePlatform: 'auto',
     })
   })
+
 })

@@ -30,6 +30,7 @@ import {
   normalizeRemoveMountPayload,
   normalizeRepairEndpointPayload,
   normalizeResolveMountTargetPayload,
+  normalizeUpdateManagedSshEndpointPayload,
 } from './topologyHandlerPayloads'
 
 export function registerTopologyHandlers(
@@ -58,6 +59,24 @@ export function registerTopologyHandlers(
     kind: 'command',
     validate: normalizeRegisterManagedSshEndpointPayload,
     handle: async (_ctx, payload) => await deps.topology.registerManagedSshEndpoint(payload),
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('endpoint.updateManagedSsh', {
+    kind: 'command',
+    validate: normalizeUpdateManagedSshEndpointPayload,
+    handle: async (_ctx, payload) => {
+      const result = await deps.topology.updateManagedSshEndpoint(payload)
+      try {
+        await deps.endpointHealth.prepareEndpoint({
+          endpointId: payload.endpointId,
+          reason: 'reconnect',
+        })
+      } catch {
+        // Durable update succeeded. Runtime health remains observable and repairable separately.
+      }
+      return result
+    },
     defaultErrorCode: 'common.unexpected',
   })
 

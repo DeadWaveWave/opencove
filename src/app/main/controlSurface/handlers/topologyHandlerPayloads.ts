@@ -13,8 +13,10 @@ import type {
   RemoveMountInput,
   RemoveWorkerEndpointInput,
   ResolveMountTargetInput,
+  UpdateManagedSshWorkerEndpointInput,
 } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
+import { parseOptionalManagedSshPort } from '../../../../contexts/topology/domain/managedSshPort'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -69,6 +71,23 @@ function normalizeRequiredPort(value: unknown, debugName: string): number {
   }
 
   return port
+}
+
+function normalizeOptionalManagedSshPort(value: unknown, debugName: string): number | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (typeof value !== 'number') {
+    throw createAppError('common.invalid_input', { debugMessage: `Invalid ${debugName}.` })
+  }
+
+  const result = parseOptionalManagedSshPort(String(value))
+  if (result.state !== 'valid') {
+    throw createAppError('common.invalid_input', { debugMessage: `Invalid ${debugName}.` })
+  }
+
+  return result.value
 }
 
 function isAbsolutePathLike(pathValue: string): boolean {
@@ -142,15 +161,50 @@ export function normalizeRegisterManagedSshEndpointPayload(
   return {
     displayName: normalizeOptionalString(payload.displayName),
     host: normalizeRequiredString(payload.host, 'endpoint.registerManagedSsh host'),
-    port:
-      typeof payload.port === 'number' && Number.isFinite(payload.port)
-        ? normalizeRequiredPort(payload.port, 'endpoint.registerManagedSsh port')
-        : null,
+    port: normalizeOptionalManagedSshPort(payload.port, 'endpoint.registerManagedSsh port'),
     username: normalizeOptionalString(payload.username),
-    remotePort:
-      typeof payload.remotePort === 'number' && Number.isFinite(payload.remotePort)
-        ? normalizeRequiredPort(payload.remotePort, 'endpoint.registerManagedSsh remotePort')
-        : null,
+    remotePort: normalizeOptionalManagedSshPort(
+      payload.remotePort,
+      'endpoint.registerManagedSsh remotePort',
+    ),
+    remotePlatform,
+  }
+}
+
+export function normalizeUpdateManagedSshEndpointPayload(
+  payload: unknown,
+): UpdateManagedSshWorkerEndpointInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for endpoint.updateManagedSsh.',
+    })
+  }
+
+  const remotePort = normalizeOptionalManagedSshPort(
+    payload.remotePort,
+    'endpoint.updateManagedSsh remotePort',
+  )
+  if (remotePort === null) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Missing endpoint.updateManagedSsh remotePort.',
+    })
+  }
+
+  const remotePlatform =
+    payload.remotePlatform === 'posix' || payload.remotePlatform === 'windows'
+      ? payload.remotePlatform
+      : 'auto'
+
+  return {
+    endpointId: normalizeRequiredString(
+      payload.endpointId,
+      'endpoint.updateManagedSsh endpointId',
+    ),
+    displayName: normalizeOptionalString(payload.displayName),
+    host: normalizeRequiredString(payload.host, 'endpoint.updateManagedSsh host'),
+    port: normalizeOptionalManagedSshPort(payload.port, 'endpoint.updateManagedSsh port'),
+    username: normalizeOptionalString(payload.username),
+    remotePort,
     remotePlatform,
   }
 }

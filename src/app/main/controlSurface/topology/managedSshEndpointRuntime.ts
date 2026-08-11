@@ -1,13 +1,9 @@
-import net from 'node:net'
-import { spawn, type ChildProcess } from 'node:child_process'
-import { buildAdditionalPathSegments } from '../../../../platform/os/CliEnvironment'
-import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
+import type { ExecutableLocationResult } from '../../../../platform/process/ExecutableLocator'
 import {
-  locateExecutable,
-  type ExecutableLocationResult,
-} from '../../../../platform/process/ExecutableLocator'
-import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
-import { buildSshTunnelArgs, runManagedSshBootstrap } from './managedSshRuntimeSupport'
+  createDefaultManagedSshEndpointRuntimeDependencies,
+  type ManagedSshEndpointRuntimeDependencies,
+  type ManagedSshTunnelProcess,
+} from './managedSshEndpointRuntimeDependencies'
 import type {
   ManagedSshEndpointConnectionResolver,
   ManagedSshEndpointRuntimeDisposer,
@@ -15,19 +11,6 @@ import type {
 } from './topologyEndpointAccess'
 
 type TunnelStatus = 'idle' | 'connecting' | 'ready' | 'error'
-
-type ManagedSshRuntimeConnection = {
-  hostname: string
-  port: number
-  token: string
-}
-
-export interface ManagedSshTunnelProcess {
-  exitCode: number | null
-  stderr?: Pick<NodeJS.ReadableStream, 'on'> | null
-  once: (event: 'exit', listener: (code: number | null) => void) => this
-  kill: (signal?: NodeJS.Signals | number) => boolean
-}
 
 export interface ManagedSshRuntimeSnapshot {
   endpointId: string
@@ -39,6 +22,7 @@ export interface ManagedSshRuntimeSnapshot {
 
 type ManagedTunnelRecord = {
   endpointId: string
+  accessSignature: string | null
   localPort: number | null
   process: ManagedSshTunnelProcess | null
   status: TunnelStatus
@@ -46,25 +30,9 @@ type ManagedTunnelRecord = {
   stderrLines: string[]
 }
 
-export interface ManagedSshEndpointRuntimeDependencies {
-  getSshAvailability: () => Promise<ExecutableLocationResult>
-  reserveLoopbackPort: () => Promise<number>
-  spawnTunnelProcess: (
-    sshExecutablePath: string,
-    access: ManagedSshEndpointRuntimeAccess,
-    localPort: number,
-  ) => ManagedSshTunnelProcess
-  probeConnection: (connection: ManagedSshRuntimeConnection, timeoutMs: number) => Promise<boolean>
-  runBootstrap: (
-    sshExecutablePath: string,
-    access: ManagedSshEndpointRuntimeAccess,
-    options?: { reinstallRuntime?: boolean; appVersion?: string | null },
-  ) => Promise<void>
-  waitForCondition: (
-    fn: () => Promise<boolean>,
-    timeoutMs: number,
-    intervalMs?: number,
-  ) => Promise<boolean>
+type InFlightTunnel = {
+  accessSignature: string
+  promise: Promise<ManagedTunnelRecord>
 }
 
 export interface ManagedSshEndpointRuntime
@@ -104,98 +72,15 @@ function toSnapshot(record: ManagedTunnelRecord): ManagedSshRuntimeSnapshot {
   }
 }
 
-async function reserveLoopbackPort(): Promise<number> {
-  return await new Promise((resolve, reject) => {
-    const server = net.createServer()
-    server.on('error', reject)
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address()
-      if (!address || typeof address === 'string') {
-        server.close(() => reject(new Error('Unable to reserve a loopback port.')))
-        return
-      }
-
-      server.close(error => {
-        if (error) {
-          reject(error)
-          return
-        }
-
-        resolve(address.port)
-      })
-    })
-  })
-}
-
-async function waitForCondition(
-  fn: () => Promise<boolean>,
-  timeoutMs: number,
-  intervalMs = 150,
-): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs
-  const poll = async (): Promise<boolean> => {
-    if (await fn()) {
-      return true
-    }
-
-    if (Date.now() >= deadline) {
-      return await fn()
-    }
-
-    await new Promise(resolve => setTimeout(resolve, intervalMs))
-    return await poll()
-  }
-
-  return await poll()
-}
-
-function defaultGetSshAvailability(): Promise<ExecutableLocationResult> {
-  return locateExecutable({
-    toolId: 'ssh',
-    command: 'ssh',
-    fallbackDirectories: buildAdditionalPathSegments(process.platform, resolveHomeDirectory()),
-  })
-}
-
-function defaultSpawnTunnelProcess(
-  sshExecutablePath: string,
-  access: ManagedSshEndpointRuntimeAccess,
-  localPort: number,
-): ManagedSshTunnelProcess {
-  const args = [
-    ...buildSshTunnelArgs(access, [
-      '-N',
-      '-o',
-      'ExitOnForwardFailure=yes',
-      '-o',
-      'ServerAliveInterval=15',
-      '-o',
-      'ServerAliveCountMax=3',
-      '-L',
-      `${String(localPort)}:127.0.0.1:${String(access.ssh.remotePort)}`,
-    ]),
-  ]
-
-  return spawn(sshExecutablePath, args, {
-    stdio: ['ignore', 'ignore', 'pipe'],
-    windowsHide: true,
-  }) as ChildProcess
-}
-
-async function defaultProbeConnection(
-  connection: ManagedSshRuntimeConnection,
-  timeoutMs: number,
-): Promise<boolean> {
-  try {
-    const ping = await invokeControlSurface(
-      connection,
-      { kind: 'query', id: 'system.ping', payload: null },
-      { timeoutMs },
-    )
-    return ping.httpStatus === 200 && ping.result?.ok === true
-  } catch {
-    return false
-  }
+function managedSshAccessSignature(access: ManagedSshEndpointRuntimeAccess): string {
+  return JSON.stringify([
+    access.token,
+    access.ssh.host,
+    access.ssh.port,
+    access.ssh.username,
+    access.ssh.remotePort,
+    access.ssh.remotePlatform,
+  ])
 }
 
 export function createManagedSshEndpointRuntime(
@@ -203,22 +88,21 @@ export function createManagedSshEndpointRuntime(
 ): ManagedSshEndpointRuntime {
   const { appVersion, ...dependencyOverrides } = overrides
   const records = new Map<string, ManagedTunnelRecord>()
+  const inFlightTunnel = new Map<string, InFlightTunnel>()
   const inFlightPrepare = new Map<
     string,
-    Promise<{
-      connection: { hostname: string; port: number; token: string } | null
-      snapshot: ManagedSshRuntimeSnapshot
-      bootstrapRan: boolean
-    }>
+    {
+      accessSignature: string
+      promise: Promise<{
+        connection: { hostname: string; port: number; token: string } | null
+        snapshot: ManagedSshRuntimeSnapshot
+        bootstrapRan: boolean
+      }>
+    }
   >()
   let sshAvailabilityPromise: Promise<ExecutableLocationResult> | null = null
   const dependencies: ManagedSshEndpointRuntimeDependencies = {
-    getSshAvailability: defaultGetSshAvailability,
-    reserveLoopbackPort,
-    spawnTunnelProcess: defaultSpawnTunnelProcess,
-    probeConnection: defaultProbeConnection,
-    runBootstrap: runManagedSshBootstrap,
-    waitForCondition,
+    ...createDefaultManagedSshEndpointRuntimeDependencies(),
     ...dependencyOverrides,
   }
 
@@ -238,6 +122,7 @@ export function createManagedSshEndpointRuntime(
 
     const next: ManagedTunnelRecord = {
       endpointId,
+      accessSignature: null,
       localPort: null,
       process: null,
       status: 'idle',
@@ -251,6 +136,7 @@ export function createManagedSshEndpointRuntime(
   const stopTunnel = async (record: ManagedTunnelRecord): Promise<void> => {
     const child = record.process
     record.process = null
+    record.accessSignature = null
     record.localPort = null
     record.status = 'idle'
     if (!child || child.exitCode !== null) {
@@ -278,13 +164,17 @@ export function createManagedSshEndpointRuntime(
     })
   }
 
-  const ensureTunnel = async (
+  const ensureTunnelOnce = async (
     sshExecutablePath: string,
     access: ManagedSshEndpointRuntimeAccess,
     options?: { restartTunnel?: boolean },
   ): Promise<ManagedTunnelRecord> => {
     const record = getOrCreateRecord(access.endpointId)
-    if (options?.restartTunnel) {
+    const accessSignature = managedSshAccessSignature(access)
+    if (
+      options?.restartTunnel ||
+      (record.accessSignature !== null && record.accessSignature !== accessSignature)
+    ) {
       await stopTunnel(record)
     }
 
@@ -296,6 +186,7 @@ export function createManagedSshEndpointRuntime(
     record.status = 'connecting'
     record.lastError = null
     record.stderrLines = []
+    record.accessSignature = accessSignature
     record.localPort = await dependencies.reserveLoopbackPort()
     const child = dependencies.spawnTunnelProcess(sshExecutablePath, access, record.localPort)
     record.process = child
@@ -343,6 +234,33 @@ export function createManagedSshEndpointRuntime(
     return record
   }
 
+
+  const ensureTunnel = async (
+    sshExecutablePath: string,
+    access: ManagedSshEndpointRuntimeAccess,
+    options?: { restartTunnel?: boolean },
+  ): Promise<ManagedTunnelRecord> => {
+    const accessSignature = managedSshAccessSignature(access)
+    const existing = inFlightTunnel.get(access.endpointId)
+    if (existing) {
+      if (existing.accessSignature === accessSignature && !options?.restartTunnel) {
+        return await existing.promise
+      }
+      await existing.promise.catch(() => undefined)
+      return await ensureTunnel(sshExecutablePath, access, options)
+    }
+
+    const promise = ensureTunnelOnce(sshExecutablePath, access, options)
+    inFlightTunnel.set(access.endpointId, { accessSignature, promise })
+    try {
+      return await promise
+    } finally {
+      if (inFlightTunnel.get(access.endpointId)?.promise === promise) {
+        inFlightTunnel.delete(access.endpointId)
+      }
+    }
+  }
+
   const runBootstrap = async (
     sshExecutablePath: string,
     access: ManagedSshEndpointRuntimeAccess,
@@ -370,9 +288,14 @@ export function createManagedSshEndpointRuntime(
   }
 
   const prepare: ManagedSshEndpointRuntime['prepare'] = async (access, options) => {
+    const accessSignature = managedSshAccessSignature(access)
     const existing = inFlightPrepare.get(access.endpointId)
     if (existing) {
-      return await existing
+      if (existing.accessSignature === accessSignature) {
+        return await existing.promise
+      }
+      await existing.promise.catch(() => undefined)
+      return await prepare(access, options)
     }
 
     const run = (async () => {
@@ -426,15 +349,19 @@ export function createManagedSshEndpointRuntime(
       }
     })()
 
-    inFlightPrepare.set(access.endpointId, run)
+    inFlightPrepare.set(access.endpointId, { accessSignature, promise: run })
     try {
       return await run
     } finally {
-      inFlightPrepare.delete(access.endpointId)
+      if (inFlightPrepare.get(access.endpointId)?.promise === run) {
+        inFlightPrepare.delete(access.endpointId)
+      }
     }
   }
 
   const disposeEndpoint: ManagedSshEndpointRuntimeDisposer = async access => {
+    await inFlightPrepare.get(access.endpointId)?.promise.catch(() => undefined)
+    await inFlightTunnel.get(access.endpointId)?.promise.catch(() => undefined)
     const record = records.get(access.endpointId)
     if (!record) {
       return

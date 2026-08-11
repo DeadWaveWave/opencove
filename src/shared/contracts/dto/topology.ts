@@ -56,6 +56,20 @@ export interface RegisterManagedSshWorkerEndpointResult {
   endpoint: WorkerEndpointDto
 }
 
+export interface UpdateManagedSshWorkerEndpointInput {
+  endpointId: string
+  displayName?: string | null
+  host: string
+  port?: number | null
+  username?: string | null
+  remotePort: number
+  remotePlatform?: WorkerEndpointManagedSshPlatformDto | null
+}
+
+export interface UpdateManagedSshWorkerEndpointResult {
+  endpoint: WorkerEndpointDto
+}
+
 export interface RemoveWorkerEndpointInput {
   endpointId: string
   expectedMountCount?: number | null

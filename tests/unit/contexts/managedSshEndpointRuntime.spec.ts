@@ -257,6 +257,36 @@ describe('managedSshEndpointRuntime', () => {
     })
   })
 
+  it('stops the old tunnel before preparing changed connection parameters', async () => {
+    const firstTunnel = createTunnelProcess()
+    const secondTunnel = createTunnelProcess()
+    const spawnTunnelProcess = vi
+      .fn()
+      .mockReturnValueOnce(firstTunnel)
+      .mockReturnValueOnce(secondTunnel)
+    const runtime = createManagedSshEndpointRuntime({
+      getSshAvailability: async () => createSshAvailability(),
+      reserveLoopbackPort: vi.fn().mockResolvedValueOnce(41003).mockResolvedValueOnce(41004),
+      spawnTunnelProcess,
+      probeConnection: async () => true,
+      waitForCondition: async fn => await fn(),
+    })
+
+    await runtime.prepare(createAccess())
+    const updatedAccess = createAccess()
+    updatedAccess.ssh.port = 2222
+    const restarted = await runtime.prepare(updatedAccess)
+
+    expect(firstTunnel.kill).toHaveBeenCalledTimes(1)
+    expect(spawnTunnelProcess).toHaveBeenNthCalledWith(
+      2,
+      '/usr/bin/ssh',
+      updatedAccess,
+      41004,
+    )
+    expect(restarted.connection?.port).toBe(41004)
+  })
+
   it('records an error snapshot when the tunnel exits unexpectedly', async () => {
     const tunnelProcess = createTunnelProcess()
 

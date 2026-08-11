@@ -58,6 +58,11 @@ pnpm arch:results:check
 6. 运行 `pnpm arch:doc-sync`、`pnpm arch:results:check`、`pnpm arch:check` 和 `pnpm arch:test`。
 7. 如果 diff 只是措辞变更，在 review 中记录 `no executable-rule impact`。
 
+在既有 Control Surface 边界内新增 operation id（例如新增 command）本身不改变 dependency、
+进程边界或 renderer API allowlist，因此没有可生成的 architecture finding；这类契约变更以
+handler runtime validation、contract test 与 staged `arch:doc-sync` 作为同步证据。若新 operation
+同时改变上述任一可执行规则，仍必须更新 `rules.json` / analyzer / baseline。
+
 `pnpm arch:doc-sync` 是确定性的。它不会尝试理解文档语义，只检查已暂存的架构契约文档变更是否有 harness 同步证据。当已暂存的 audit-relevant 文件或结果文件存在时，它还会验证已提交的 audit 结果是否匹配当前分析器输出。它要求 audit-relevant 文件在比较结果前没有未暂存变更，避免已暂存提交内容因为未暂存的再生成产物而误通过。措辞类本地检查可使用 `OPENCOVE_ARCH_DOC_NO_RULE_IMPACT=1 pnpm arch:doc-sync`。`pnpm arch:results:check` 是不依赖 staged index 的结果基线校验。
 
 ## 规划

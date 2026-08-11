@@ -55,3 +55,11 @@
 - `architecture.domainNoOuterRuntime`：`domain` 引入了外层 runtime 或平台细节。
 - `architecture.applicationNoOuterRuntime`：`application` 引入了外层 runtime 细节。
 - `architecture.rendererNoElectronRuntime`：renderer 侧代码直接引入 Electron 或 Node runtime 细节。
+
+## Control Surface 契约同步边界
+
+在既有 Control Surface transport、进程边界和依赖方向内新增 command/query/event id，不会单独
+产生新的 architecture rule；这类变化由 handler runtime validation 与 contract test 执行约束。
+如果新增契约同时改变 transport、renderer bridge allowlist、依赖方向或进程职责，则必须同步
+`rules.json` / analyzer / fixture，并重新生成 audit baseline。无论是否新增规则，契约变更后的源码
+baseline 都必须通过 `arch:results`、`arch:doc-sync` 与 harness 全套校验重新确认。

@@ -1,5 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { createAppError } from '../../../../shared/errors/appError'
@@ -20,6 +19,8 @@ import type {
   ResolveMountTargetInput,
   ResolveMountTargetResult,
   WorkerEndpointDto,
+  UpdateManagedSshWorkerEndpointInput,
+  UpdateManagedSshWorkerEndpointResult,
 } from '../../../../shared/contracts/dto'
 import {
   resolveEndpointRemovalImpact,
@@ -49,23 +50,10 @@ import {
   createManagedSshEndpointRegistration,
   createManualEndpointRegistration,
 } from './topologyEndpointRegistration'
-
-export interface WorkerTopologyStore {
-  listEndpoints: () => Promise<ListWorkerEndpointsResult>
-  registerEndpoint: (input: RegisterWorkerEndpointInput) => Promise<RegisterWorkerEndpointResult>
-  registerManagedSshEndpoint: (
-    input: RegisterManagedSshWorkerEndpointInput,
-  ) => Promise<RegisterManagedSshWorkerEndpointResult>
-  removeEndpoint: (input: RemoveWorkerEndpointInput) => Promise<RemoveWorkerEndpointResult>
-  getEndpointRemovalImpact: (endpointId: string) => Promise<EndpointRemovalImpact>
-  resolveEndpointRuntimeAccess: (endpointId: string) => Promise<EndpointRuntimeAccess | null>
-  resolveRemoteEndpointConnection: (endpointId: string) => Promise<RemoteEndpointConnection | null>
-  listMounts: (input: ListMountsInput) => Promise<ListMountsResult>
-  createMount: (input: CreateMountInput) => Promise<CreateMountResult>
-  removeMount: (input: RemoveMountInput) => Promise<void>
-  promoteMount: (input: PromoteMountInput) => Promise<void>
-  resolveMountTarget: (input: ResolveMountTargetInput) => Promise<ResolveMountTargetResult | null>
-}
+import { createManagedSshEndpointUpdate } from './topologyEndpointUpdate'
+import { persistTopologyFiles } from './topologyPersistence'
+import type { WorkerTopologyStore } from './topologyStoreTypes'
+export type { WorkerTopologyStore } from './topologyStoreTypes'
 
 export function createWorkerTopologyStore(options: {
   userDataPath: string
@@ -96,16 +84,16 @@ export function createWorkerTopologyStore(options: {
     loaded = true
   }
 
-  const persist = async (): Promise<void> => {
-    await mkdir(dirname(topologyPath), { recursive: true })
-
-    const topologyPayload = `${JSON.stringify(topology)}\n`
-    const secretsPayload = `${JSON.stringify(secrets)}\n`
-
-    await Promise.all([
-      writeFile(topologyPath, topologyPayload, { encoding: 'utf8', mode: 0o600 }),
-      writeFile(secretsPath, secretsPayload, { encoding: 'utf8', mode: 0o600 }),
-    ])
+  const persist = async (
+    topologySnapshot: TopologyFileV1 = topology,
+    secretsSnapshot: SecretsFileV1 = secrets,
+  ): Promise<void> => {
+    await persistTopologyFiles({
+      topologyPath,
+      secretsPath,
+      topology: topologySnapshot,
+      secrets: secretsSnapshot,
+    })
   }
 
   const persistQueued = async (): Promise<void> => {
@@ -167,6 +155,44 @@ export function createWorkerTopologyStore(options: {
     await persistQueued()
 
     return { endpoint: toEndpointDto(record) }
+  }
+
+  const updateManagedSshEndpoint = async (
+    input: UpdateManagedSshWorkerEndpointInput,
+  ): Promise<UpdateManagedSshWorkerEndpointResult> => {
+    await ensureLoaded()
+
+    const endpointId = normalizeNonEmptyString(input.endpointId)
+    const matched = topology.endpoints.find(endpoint => endpoint.endpointId === endpointId) ?? null
+    if (!matched || matched.accessKind !== 'managed_ssh' || !matched.managedSsh) {
+      throw createAppError('common.invalid_input', {
+        debugMessage: `Managed SSH endpoint not found: ${endpointId}`,
+      })
+    }
+
+    const nextRecord = createManagedSshEndpointUpdate({
+      current: matched,
+      update: input,
+      now: new Date().toISOString(),
+    })
+    const nextTopology: TopologyFileV1 = {
+      ...topology,
+      endpoints: topology.endpoints.map(endpoint =>
+        endpoint.endpointId === endpointId ? nextRecord : endpoint,
+      ),
+    }
+
+    await persist(nextTopology, secrets)
+    topology = nextTopology
+
+    await options.disposeManagedSshEndpointRuntime?.({
+      endpointId: matched.endpointId,
+      displayName: matched.displayName,
+      token: secrets.tokensByCredentialRef[matched.credentialRef] ?? '',
+      ssh: matched.managedSsh,
+    })
+
+    return { endpoint: toEndpointDto(nextRecord) }
   }
 
   const getEndpointRemovalImpact = async (endpointId: string): Promise<EndpointRemovalImpact> => {
@@ -458,6 +484,7 @@ export function createWorkerTopologyStore(options: {
     listEndpoints,
     registerEndpoint,
     registerManagedSshEndpoint,
+    updateManagedSshEndpoint,
     removeEndpoint,
     getEndpointRemovalImpact,
     resolveEndpointRuntimeAccess,
