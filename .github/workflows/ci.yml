@@ -132,6 +132,11 @@ jobs:
           rm -rf "/tmp/cove-e2e-user-data-"* || true
 
   ci-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
     runs-on: macos-latest
     env:
       NODE_OPTIONS: --max-old-space-size=4096
@@ -157,18 +162,18 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: E2E tests
+      - name: E2E tests (shard)
         timeout-minutes: 30
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_WINDOW_MODE: inactive
-        run: pnpm test:e2e -- --max-failures=2
+        run: pnpm test:e2e -- --shard=${{ matrix.shard }}/3
 
       - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-artifacts-macos
+          name: playwright-artifacts-macos-shard-${{ matrix.shard }}
           path: |
             test-results/
           retention-days: 7

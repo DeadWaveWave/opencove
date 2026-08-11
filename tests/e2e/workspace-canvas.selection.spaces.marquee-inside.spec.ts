@@ -60,14 +60,34 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         .first()
       await expect(outsideNode).toBeVisible()
 
-      const paneBox = await readLocatorClientRect(pane)
-      const viewport = await readCanvasViewport(window)
-      const toClientPoint = (point: { x: number; y: number }): { x: number; y: number } => ({
-        x: paneBox.x + viewport.x + point.x * viewport.zoom,
-        y: paneBox.y + viewport.y + point.y * viewport.zoom,
-      })
-      const start = toClientPoint({ x: 220, y: 180 })
-      const end = toClientPoint({ x: 820, y: 440 })
+      const readMarqueeGeometry = async (): Promise<{
+        start: { x: number; y: number }
+        end: { x: number; y: number }
+        startInsideSpace: boolean
+      }> => {
+        const paneBox = await readLocatorClientRect(pane)
+        const viewport = await readCanvasViewport(window)
+        const spaceBox = await readLocatorClientRect(spaceRegion)
+        const toClientPoint = (point: { x: number; y: number }): { x: number; y: number } => ({
+          x: paneBox.x + viewport.x + point.x * viewport.zoom,
+          y: paneBox.y + viewport.y + point.y * viewport.zoom,
+        })
+        const start = toClientPoint({ x: 220, y: 180 })
+
+        return {
+          start,
+          end: toClientPoint({ x: 820, y: 440 }),
+          startInsideSpace:
+            start.x > spaceBox.x &&
+            start.x < spaceBox.x + spaceBox.width &&
+            start.y > spaceBox.y &&
+            start.y < spaceBox.y + spaceBox.height,
+        }
+      }
+
+      await expect.poll(async () => (await readMarqueeGeometry()).startInsideSpace).toBe(true)
+      const { start, end, startInsideSpace } = await readMarqueeGeometry()
+      expect(startInsideSpace).toBe(true)
 
       const drag = await beginDragMouse(window, {
         start,

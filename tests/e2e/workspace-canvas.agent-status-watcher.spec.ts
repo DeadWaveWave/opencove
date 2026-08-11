@@ -231,9 +231,15 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
         'workspace-a',
       )
       await window.locator('.react-flow__controls-fitview').click()
-      const viewportBeforeSwitch = await readCanvasViewport(window)
+      await expect
+        .poll(async () => {
+          const landing = await readAgentLandingGeometry(window, agentNode)
+          return Math.hypot(landing.deltaX, landing.deltaY)
+        })
+        .toBeGreaterThan(80)
       const landingBeforeSwitch = await readAgentLandingGeometry(window, agentNode)
       expect(Math.hypot(landingBeforeSwitch.deltaX, landingBeforeSwitch.deltaY)).toBeGreaterThan(80)
+      const viewportBeforeSwitch = await readCanvasViewport(window)
       await window.screenshot({ path: testInfo.outputPath('notification-agent-before.png') })
 
       await window.locator('.workspace-item__name', { hasText: 'workspace-b' }).click()

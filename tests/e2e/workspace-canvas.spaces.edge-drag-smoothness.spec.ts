@@ -96,6 +96,14 @@ test.describe('Workspace Canvas - Spaces (Edge Drag Smoothness)', () => {
         .filter({ hasText: 'Edge Drag Space' })
         .first()
 
+      await expect
+        .poll(async () => {
+          const rootRect = await readLocatorClientRect(rootNode)
+          const spaceRect = await readLocatorClientRect(spaceRegion)
+          return spaceRect.x - (rootRect.x + rootRect.width)
+        })
+        .toBeGreaterThan(0)
+
       const rootBox = await readLocatorClientRect(rootNode)
       const dragSurfaceBox = await readLocatorClientRect(dragSurface)
       const spaceBox = await readLocatorClientRect(spaceRegion)
