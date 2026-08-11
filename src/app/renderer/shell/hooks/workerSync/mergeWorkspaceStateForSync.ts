@@ -193,13 +193,14 @@ export function toShellWorkspaceStateForSync(
     sanitizedSpaces.some(space => space.id === workspace.activeSpaceId && !space.parentSpaceId)
 
   const existingActiveSpaceId = existingWorkspace?.activeSpaceId ?? null
-  const resolvedActiveSpaceId =
-    existingActiveSpaceId &&
-    sanitizedSpaces.some(space => space.id === existingActiveSpaceId && !space.parentSpaceId)
+  const resolvedActiveSpaceId = existingWorkspace
+    ? existingActiveSpaceId &&
+      sanitizedSpaces.some(space => space.id === existingActiveSpaceId && !space.parentSpaceId)
       ? existingActiveSpaceId
-      : hasActiveSpace
-        ? workspace.activeSpaceId
-        : null
+      : null
+    : hasActiveSpace
+      ? workspace.activeSpaceId
+      : null
 
   const pullRequestBaseBranchOptions = (() => {
     const existing = existingWorkspace?.pullRequestBaseBranchOptions ?? null
