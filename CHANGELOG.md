@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Remote: support editing managed SSH endpoints in place, so changing connection parameters keeps the endpoint identity and its existing mount bindings instead of requiring delete-and-recreate. (#317)
 - Spaces: add sidebar pinning for root Spaces, pinned-first ordering, matching top-rail pills with shared context menus, and click-through gaps between pills. (#306)
 - UI: add browser-style Project/Space/Agent vertical sidebar grouping with pinned rail mode, hover auto-reveal, colored Space branches, and Agent status rings. (#291)
 - Workspace canvas: add an Arrange option to keep current window sizes while tidying Spaces or canvas selections. (#275)
@@ -94,6 +95,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Remote: reject invalid managed SSH ports that were previously accepted silently, and confirm endpoint removal with an explicit impact disclosure before deleting. (#317)
 - Settings: persist the collapsed sidebar and Arrange window-size preference across app restarts. (#316)
 - Notifications: clicking an Agent notification from another Project now lands on the corresponding Agent instead of only switching Projects. (#310)
 - Agent: derive directly launched Agent titles from their first bound session and keep short-turn completion notifications aligned with the resolved title. (#309)
