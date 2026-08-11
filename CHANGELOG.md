@@ -96,6 +96,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Terminal: acknowledge resizes with the geometry the PTY host actually applied instead of echoing the requested size, and keep unconfirmable ConPTY resizes explicitly unverified rather than reporting a fabricated value. (#318)
+- Terminal: gate session spawns until the runtime is ready and bound the ambiguous-exit and startup-retry paths, preventing orphaned PTYs and permanently locked recovery. (#318)
 - Remote: reject invalid managed SSH ports that were previously accepted silently, and confirm endpoint removal with an explicit impact disclosure before deleting. (#317)
 - Settings: persist the collapsed sidebar and Arrange window-size preference across app restarts. (#316)
 - Notifications: clicking an Agent notification from another Project now lands on the corresponding Agent instead of only switching Projects. (#310)
