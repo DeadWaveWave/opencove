@@ -5,7 +5,7 @@ import process from 'node:process'
 
 type PtyHostReadyMessage = {
   type: 'ready'
-  protocolVersion: 1
+  protocolVersion: 2
 }
 
 type PtyHostResponseMessage =
@@ -146,6 +146,7 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
   child.postMessage({
     type: 'spawn',
     requestId,
+    launchId: crypto.randomUUID(),
     command: process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh',
     args:
       process.platform === 'win32'

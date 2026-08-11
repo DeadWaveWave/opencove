@@ -10,7 +10,9 @@ import {
 } from './supervisorSupport'
 import { postPtyHostMessage } from './postMessage'
 import { PtyHostPendingResponseCoordinator } from './pendingResponseCoordinator'
+import { PtyHostExitEvidence } from './hostExitEvidence'
 export type { PtyHostProcess, PtyHostProcessFactory } from './processTypes'
+export type { PtyHostSpawnOptions } from './spawnOptions'
 import type {
   PtyHostMessage,
   PtyHostRequest,
@@ -19,18 +21,10 @@ import type {
   PtyHostResponseMessage,
 } from './protocol'
 import type { PtyHostProcess, PtyHostProcessFactory } from './processTypes'
+import type { PtyHostSpawnOptions } from './spawnOptions'
 
 const READY_TIMEOUT_MS = 5_000
 const SPAWN_TIMEOUT_MS = 10_000
-
-export interface PtyHostSpawnOptions {
-  command: string
-  args: string[]
-  cwd: string
-  env?: NodeJS.ProcessEnv
-  cols: number
-  rows: number
-}
 
 type UnsubscribeFn = () => void
 
@@ -53,6 +47,7 @@ export class PtyHostSupervisor {
   private rejectReady: ((error: Error) => void) | null = null
   private readyTimer: NodeJS.Timeout | null = null
   private readonly pendingResponses = new PtyHostPendingResponseCoordinator()
+  private readonly hostExitEvidence = new PtyHostExitEvidence()
   private activeSessions = new Set<string>()
 
   private isDisposed = false
@@ -173,7 +168,13 @@ export class PtyHostSupervisor {
 
     const normalizedError = this.normalizeHostError(error)
     this.reportIssue(`[pty-host] process error: ${normalizedError.message}`)
-    this.handleHostExit(1)
+    this.hostExitEvidence.beginAmbiguousExit(child, 1)
+    this.pendingResponses.failAll(normalizedError)
+    try {
+      child.kill()
+    } catch {
+      // Keep the ambiguous host fenced until a real exit event confirms cleanup.
+    }
   }
 
   private attachProcessLogging(child: PtyHostProcess): void {
@@ -247,11 +248,12 @@ export class PtyHostSupervisor {
         return
       }
 
+      const resolvedExitCode = this.hostExitEvidence.confirmExit(child, code)
       if (this.process !== child) {
         return
       }
 
-      this.handleHostExit(code)
+      this.handleHostExit(resolvedExitCode)
     })
 
     child.on('error', error => {
@@ -296,6 +298,7 @@ export class PtyHostSupervisor {
     if (this.isDisposed) {
       throw new Error('[pty-host] supervisor disposed')
     }
+    this.hostExitEvidence.assertNoAmbiguousExit()
 
     if (this.process && this.readyPromise) {
       return await this.readyPromise
@@ -333,7 +336,7 @@ export class PtyHostSupervisor {
       const normalizedError = this.normalizeHostError(error)
       this.pendingResponses.reject(request.requestId, normalizedError)
       if (this.process === child) {
-        this.handleHostExit(1)
+        this.handleHostError(child, normalizedError)
       }
     })
     return responsePromise
@@ -341,6 +344,7 @@ export class PtyHostSupervisor {
 
   public async spawn(options: PtyHostSpawnOptions): Promise<{ sessionId: string }> {
     const env = resolvePtyHostSpawnEnv(options.env)
+    const launchId = crypto.randomUUID()
     let attemptedChild: PtyHostProcess | null = null
     const spawnOnce = async (): Promise<{ sessionId: string }> => {
       await this.ensureReady()
@@ -354,6 +358,7 @@ export class PtyHostSupervisor {
       const request: PtyHostSpawnRequest = {
         type: 'spawn',
         requestId,
+        launchId,
         command: options.command,
         args: options.args,
         cwd: options.cwd,
@@ -380,11 +385,8 @@ export class PtyHostSupervisor {
     try {
       return await spawnOnce()
     } catch (error) {
-      const hostLost =
-        !this.process ||
-        !this.readyPromise ||
-        (attemptedChild !== null && this.process !== attemptedChild)
-      if (hostLost && !this.isDisposed) {
+      const retryIsIdentitySafe = this.hostExitEvidence.isRetrySafe(attemptedChild)
+      if (retryIsIdentitySafe && !this.isDisposed) {
         return await spawnOnce()
       }
       throw error

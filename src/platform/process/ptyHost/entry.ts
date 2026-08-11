@@ -17,6 +17,7 @@ import {
   type PtyHostCrashRequest,
 } from './protocol'
 import { convertHighByteX10MouseReportsToSgr } from '../pty/x10Mouse'
+import { PtyHostSpawnIdentityRegistry } from './spawnIdentityRegistry'
 
 type ParentPort = {
   on: (event: 'message', listener: (messageEvent: { data: unknown }) => void) => void
@@ -164,9 +165,11 @@ parentPort.start()
 type PtySession = {
   pty: IPty
   rootPid: number | null
+  launchId: string
 }
 
 const sessions = new Map<string, PtySession>()
+const spawnIdentities = new PtyHostSpawnIdentityRegistry()
 let hasCleanedSessions = false
 
 function terminatePtySession(session: PtySession): void {
@@ -191,8 +194,10 @@ const cleanupSessions = (): void => {
 
   for (const [sessionId, session] of sessions.entries()) {
     sessions.delete(sessionId)
+    spawnIdentities.release(session.launchId, sessionId)
     terminatePtySession(session)
   }
+  spawnIdentities.clear()
 }
 
 cleanupOrphanedNodePtySpawnHelpers()
@@ -240,11 +245,23 @@ const onPtyData = (sessionId: string, data: string): void => {
 }
 
 const onPtyExit = (sessionId: string, exitCode: number): void => {
-  sessions.delete(sessionId)
+  const session = sessions.get(sessionId)
+  if (session) {
+    sessions.delete(sessionId)
+    spawnIdentities.release(session.launchId, sessionId)
+  }
   send({ type: 'exit', sessionId, exitCode })
 }
 
 function spawnPtySession(request: PtyHostSpawnRequest): void {
+  const existingSessionId = spawnIdentities.findLiveSession(request.launchId, sessionId =>
+    sessions.has(sessionId),
+  )
+  if (existingSessionId) {
+    respondOk(request.requestId, existingSessionId)
+    return
+  }
+
   const sessionId = crypto.randomUUID()
   const pty = spawn(request.command, request.args, {
     cwd: request.cwd,
@@ -257,7 +274,9 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
   sessions.set(sessionId, {
     pty,
     rootPid: Number.isFinite(pty.pid) && pty.pid > 0 ? pty.pid : null,
+    launchId: request.launchId,
   })
+  spawnIdentities.bind(request.launchId, sessionId)
 
   pty.onData(data => {
     onPtyData(sessionId, data)
@@ -310,6 +329,7 @@ function killSession(request: PtyHostKillRequest): void {
   }
 
   sessions.delete(request.sessionId)
+  spawnIdentities.release(session.launchId, request.sessionId)
   terminatePtySession(session)
 }
 

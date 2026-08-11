@@ -1,10 +1,11 @@
-export const PTY_HOST_PROTOCOL_VERSION = 1 as const
+export const PTY_HOST_PROTOCOL_VERSION = 2 as const
 
 export type PtyHostWriteEncoding = 'utf8' | 'binary'
 
 export type PtyHostSpawnRequest = {
   type: 'spawn'
   requestId: string
+  launchId: string
   command: string
   args: string[]
   cwd: string

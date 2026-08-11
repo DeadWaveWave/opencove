@@ -254,8 +254,13 @@ return { ..., status: 'accepted', changed: true,
 
 这**直接违反** `MULTI_CLIENT_ARCHITECTURE.md` invariant 7「PTY runtime ACK precedes presentation commit」与 invariant 17「local xterm、Worker presentation、PTY runtime 三者一致」——ACK 在时序上发生了，但**内容被丢弃**，等于没有 ACK。若 host 侧对 cols/rows 做了钳制或平台调整，presentation 会与真实 PTY 永久不一致。这与 `WIN10_CODEX_SCROLL_DIAGNOSTICS` 类症状高度相关（未确认因果，需实测）。
 
-**D2 — `supervisor.spawn` 失败重试可能产生孤儿 PTY。**
-`src/platform/process/ptyHost/supervisor.ts:380-390`：捕获异常后若判定 `hostLost` 就再 `spawnOnce()` 一次。但触发点包含 `spawn timeout`（`:355-358`）。超时不等于 host 没执行——若 host 已创建 PTY 但响应丢失/迟到，第二次 spawn 会再建一个，第一个成为**无人引用的孤儿进程**（不在 `activeSessions` 内，`kill` 永远不会发给它）。cleancode 对应位置用 launch lock + 身份再确认避免（`cc:.../FileProviderLaunchLockLease.ts`）。
+**D2 — `supervisor.spawn` 的 host-lost 重试缺少可确认的启动身份。**
+Phase 2 复核纠正：普通 `spawn timeout` 只会拒绝当前调用，**不会**触发重试；Phase 1
+把它写成“超时后无条件重试”是错误的。真实风险在 `src/platform/process/ptyHost/supervisor.ts`
+的 host-lost 分支：进程/transport error 会把 host 标为 lost，但该路径此前既没有稳定 launch
+identity，也没有证明旧 child 已退出；若错误发生在请求已生效、响应未确认之后，盲目重试可能
+让仍存活的旧 host 留下无人引用的 PTY。cleancode 的可迁移原则仍是 launch identity + 确认后
+重试，但 OpenCove 应让歧义 transport loss 失败关闭，而不是引入 Provider 文件锁。
 
 **D3 — host 崩溃时对每个 active session 发 exit，但 exitCode 是 host 的退出码，不是 PTY 的。**
 `src/platform/process/ptyHost/supervisor.ts:145-152`。语义上把「host 死了」与「你的命令退出了」混为一谈，下游无法区分「shell 正常退出 0」与「host 崩溃恰好 code 0」。cleancode 在协议层用独立事件区分（未在 OpenCove 找到等价区分，**未确认**是否有上层补偿）。
@@ -283,7 +288,7 @@ return { ..., status: 'accepted', changed: true,
 | 维度 | cleancode | OpenCove | 差距等级 | 用户可感知影响 |
 | --- | --- | --- | --- | --- |
 | resize ACK 内容被采信 | 采信 runtime 返回值 | **丢弃并回显请求值**（`headlessPtyRuntime.ts:98-106`） | **P0** | TUI 错行/串行、Codex 显示错乱、shrink 后残影 |
-| spawn 重试幂等 | launch lock + 身份确认 | 超时后无条件重试，可能孤儿 PTY（`supervisor.ts:380-390`） | **P0** | 幽灵进程占用 CPU/端口；用户"关不掉的终端" |
+| spawn 重试幂等 | launch lock + 身份确认 | host-lost 重试缺稳定 launch identity/退出确认（普通 timeout 不重试） | **P0** | 幽灵进程占用 CPU/端口；用户"关不掉的终端" |
 | 启动准入 gate | phase 状态机 + epoch（`RunLifecycleService.ts:384`） | 无等价 gate | **P0** | 重启后新 shell 抢占本可恢复的 session，历史丢失 |
 | 会话领域聚合与状态机 | `TerminalSession` 聚合 5 态 | presentation 层 3 态 + 14 个 Map | **P1** | 边界状态（stopping/failed）无处表达，异常路径靠调用方自觉 |
 | shutdown 有界 drain | 每操作 deadline + partial-failure（`ShutdownCoordinator.ts:153`） | 文档有承诺，`supervisor.dispose()` 无等待（`supervisor.ts:470-497`） | **P1** | 退出时最后输出丢失；下次打开缺一段历史 |
@@ -351,7 +356,7 @@ return { ..., status: 'accepted', changed: true,
 **P0-2 spawn 幂等化，消除孤儿 PTY**
 - 改动点：`src/platform/process/ptyHost/supervisor.ts:340-390`。引入调用方提供的幂等 key（如 `nodeId + generation`），host 侧按 key 去重；重试前先向 host 查询该 key 是否已有 session。
 - 状态所有权：`sessionId <-> 幂等 key` 映射 owner = ptyHost。
-- invariants：(1) 同一幂等 key 至多对应一个活 PTY；(2) 超时重试必须先查询再创建；(3) 查询不可用时**失败关闭**，不盲目重试。
+- invariants：(1) 同一 launch identity 至多对应一个活 PTY；(2) 仅在旧 child 确认退出或请求尚未送达时重试，并复用 identity；(3) transport 状态不明时**失败关闭**，不盲目重试。
 - 跨平台：Windows 进程树清理需配合 `windowsProcessTree.ts`。
 
 **P0-3 引入终端运行时准入 gate**
@@ -397,7 +402,7 @@ return { ..., status: 'accepted', changed: true,
 ### Unit
 - `TerminalSession` 聚合状态迁移、非法迁移抛错（P2-1）。
 - runtime availability 状态机：非 ready 拒绝、epoch 递增、失败不永久锁（P0-3）。
-- `supervisor.spawn` 幂等：超时重试不产生第二个 session（P0-2，注入假 host）。
+- `supervisor.spawn` 幂等：确认 host exit 后重试复用 launch identity；transport 状态不明时不重试（P0-2，注入假 host）。
 - `supervisor.dispose` 三段式：正常确认 / 超时 SIGKILL / 重复 dispose 幂等（P1-1）。
 - 背压阈值：达到高水位 pause、回落低水位 resume（P1-3）。
 
@@ -428,7 +433,7 @@ return { ..., status: 'accepted', changed: true,
 | --- | --- | --- | --- |
 | **S1** | P0-1 resize ACK 修复 | 无 | Contract 用例：ACK 值 != 请求值时 presentation 采用 ACK；`terminal-resize-shrink` E2E 在 macOS + Windows 通过 |
 | **S2** | P1-2 host 崩溃 exit 语义区分 | 无（可与 S1 并行） | Integration：崩溃后每个 session 恰好一次带 reason 的 exit；任务不误判完成 |
-| **S3** | P0-2 spawn 幂等 | S2（复用 reason 协议扩展） | Unit：超时重试不产生第二个 session；无孤儿进程（进程数断言） |
+| **S3** | P0-2 spawn 幂等 | S2（复用 reason 协议扩展） | Unit：确认退出后重试复用 identity；歧义 transport loss 不重试；host 同 identity 去重 |
 | **S4** | P1-1 shutdown 有界 drain | S3 | Integration：持续输出中退出，最后一批进 checkpoint；超时路径有结构化诊断 |
 | **S5** | P0-3 启动准入 gate | S4（drain 保证 checkpoint 完整，gate 才有意义） | Integration：恢复查询失败不 spawn；E2E：重启后历史不被覆盖。**需先过架构契约 gate** |
 | **S6** | P2-1 会话生命周期下沉 domain | S5 | 架构 harness 通过；`sessionManager.ts` 降到 500 行门禁以下；原有 130 个终端测试全绿 |
