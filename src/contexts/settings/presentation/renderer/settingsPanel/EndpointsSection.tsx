@@ -5,6 +5,7 @@ import { RemoteEndpointStatusPanel } from '@app/renderer/shell/components/Remote
 import { useEndpointOverviews } from '@app/renderer/shell/hooks/useEndpointOverviews'
 import { getEndpointActionExecution } from '@app/renderer/shell/utils/endpointOverviewUi'
 import { notifyTopologyChanged } from '@app/renderer/shell/utils/topologyEvents'
+import { parseOptionalManagedSshPort } from '../../../../topology/domain/managedSshPort'
 import { EndpointsRegisterDialog } from './EndpointsRegisterDialog'
 import { toErrorMessage } from './workerSectionUtils'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
@@ -19,15 +20,6 @@ function parseRequiredPort(value: string): number | null {
 
   const port = Math.floor(parsed)
   return port > 0 && port <= 65_535 ? port : null
-}
-
-function parseOptionalPort(value: string): number | null {
-  const trimmed = value.trim()
-  if (trimmed.length === 0) {
-    return null
-  }
-
-  return parseRequiredPort(trimmed)
 }
 
 export function EndpointsSection(): React.JSX.Element {
@@ -56,12 +48,15 @@ export function EndpointsSection(): React.JSX.Element {
   const [localError, setLocalError] = useState<string | null>(null)
 
   const error = localError ?? overviewError
-  const managedPortValue = parseOptionalPort(managedPort)
-  const managedRemotePortValue = parseOptionalPort(managedRemotePort)
+  const managedPortResult = parseOptionalManagedSshPort(managedPort)
+  const managedRemotePortResult = parseOptionalManagedSshPort(managedRemotePort)
   const manualPortValue = parseRequiredPort(manualPort)
   const remoteEndpoints = remoteOverviews
 
-  const canRegisterManaged = managedHost.trim().length > 0 && managedPortValue !== 0
+  const canRegisterManaged =
+    managedHost.trim().length > 0 &&
+    managedPortResult.state !== 'invalid' &&
+    managedRemotePortResult.state !== 'invalid'
   const canRegisterManual =
     manualHostname.trim().length > 0 && manualPortValue !== null && manualToken.trim().length > 0
 
@@ -145,9 +140,9 @@ export function EndpointsSection(): React.JSX.Element {
           payload: {
             displayName: displayName.trim().length > 0 ? displayName.trim() : null,
             host: managedHost.trim(),
-            port: managedPortValue,
+            port: managedPortResult.value,
             username: managedUsername.trim().length > 0 ? managedUsername.trim() : null,
-            remotePort: managedRemotePortValue,
+            remotePort: managedRemotePortResult.value,
             remotePlatform: 'auto',
           },
         })
@@ -320,6 +315,8 @@ export function EndpointsSection(): React.JSX.Element {
         manualPort={manualPort}
         manualToken={manualToken}
         canSubmit={registerMode === 'managed' ? canRegisterManaged : canRegisterManual}
+        managedPortInvalid={managedPortResult.state === 'invalid'}
+        managedRemotePortInvalid={managedRemotePortResult.state === 'invalid'}
         onChangeRegisterMode={setRegisterMode}
         onChangeDisplayName={setDisplayName}
         onChangeManagedHost={setManagedHost}

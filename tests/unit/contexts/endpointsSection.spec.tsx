@@ -213,6 +213,29 @@ describe('EndpointsSection', () => {
     )
   })
 
+  it.each(['abc', '0', '70000', '2 2'])('rejects illegal managed SSH port %j', async port => {
+    const { invoke } = installEndpointsApi()
+
+    render(<EndpointsSection />)
+
+    await screen.findByText('Remote endpoints')
+    fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
+    fireEvent.change(screen.getByTestId('settings-endpoints-register-hostname'), {
+      target: { value: 'build.example.com' },
+    })
+    fireEvent.change(screen.getByTestId('settings-endpoints-register-ssh-port'), {
+      target: { value: port },
+    })
+
+    expect(screen.getByTestId('settings-endpoints-register-ssh-port-error')).toHaveTextContent(
+      'Enter a whole-number port from 1 to 65535.',
+    )
+    expect(screen.getByTestId('settings-endpoints-register-submit')).toBeDisabled()
+    expect(invoke).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'endpoint.registerManagedSsh' }),
+    )
+  })
+
   it('can switch to manual mode and register a manual endpoint', async () => {
     const { invoke } = installEndpointsApi()
 

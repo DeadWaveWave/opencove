@@ -37,6 +37,7 @@ export const enSettingsPanelEndpoints = {
     managedRemotePortPlaceholder: 'Auto',
     hostnameLabel: 'Hostname',
     portLabel: 'Port',
+    portInvalid: 'Enter a whole-number port from 1 to 65535.',
     tokenLabel: 'Token',
     tokenHelp: 'This token is submitted once and cleared after registration.',
     tokenRequired: 'Token is required.',

@@ -37,6 +37,7 @@ export const zhCNSettingsPanelEndpoints = {
     managedRemotePortPlaceholder: '自动',
     hostnameLabel: '主机',
     portLabel: '端口',
+    portInvalid: '请输入 1 到 65535 之间的整数端口。',
     tokenLabel: 'Token',
     tokenHelp: 'Token 仅提交一次，注册后会自动清空。',
     tokenRequired: 'Token 不能为空。',

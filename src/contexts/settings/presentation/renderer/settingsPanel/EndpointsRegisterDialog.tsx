@@ -15,6 +15,8 @@ export function EndpointsRegisterDialog({
   manualPort,
   manualToken,
   canSubmit,
+  managedPortInvalid,
+  managedRemotePortInvalid,
   onChangeRegisterMode,
   onChangeDisplayName,
   onChangeManagedHost,
@@ -40,6 +42,8 @@ export function EndpointsRegisterDialog({
   manualPort: string
   manualToken: string
   canSubmit: boolean
+  managedPortInvalid: boolean
+  managedRemotePortInvalid: boolean
   onChangeRegisterMode: (value: 'managed' | 'manual') => void
   onChangeDisplayName: (value: string) => void
   onChangeManagedHost: (value: string) => void
@@ -180,6 +184,14 @@ export function EndpointsRegisterDialog({
                     disabled={isBusy}
                     placeholder={t('settingsPanel.endpoints.register.managedPortPlaceholder')}
                   />
+                  {managedPortInvalid ? (
+                    <span
+                      className="cove-window__error"
+                      data-testid="settings-endpoints-register-ssh-port-error"
+                    >
+                      {t('settingsPanel.endpoints.register.portInvalid')}
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="cove-window__field-row">
@@ -200,6 +212,14 @@ export function EndpointsRegisterDialog({
                   <span className="cove-window__field-help">
                     {t('settingsPanel.endpoints.register.managedRemotePortHelp')}
                   </span>
+                  {managedRemotePortInvalid ? (
+                    <span
+                      className="cove-window__error"
+                      data-testid="settings-endpoints-register-remote-port-error"
+                    >
+                      {t('settingsPanel.endpoints.register.portInvalid')}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             ) : (
