@@ -37,6 +37,8 @@ export const en = {
     defaultModel: 'default model',
     followCliDefault: 'Follow CLI default',
     unknownError: 'Unknown error',
+    terminalRuntimeNotReady:
+      'Terminal recovery is still in progress. Please wait a moment and try again.',
     percentUnit: '%',
     pixelUnit: 'px',
     minuteUnit: 'min',

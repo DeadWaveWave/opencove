@@ -221,6 +221,7 @@ export interface ResolveMountTargetInput {
 
 export interface ResolveMountTargetResult {
   mountId: string
+  projectId: string
   endpointId: string
   targetId: string
   rootPath: string

@@ -39,6 +39,7 @@ export const zhCN = {
     defaultModel: '默认模型',
     followCliDefault: '跟随 CLI 默认值',
     unknownError: '未知错误',
+    terminalRuntimeNotReady: '终端仍在恢复中，请稍候重试。',
     percentUnit: '%',
     pixelUnit: 'px',
     minuteUnit: '分钟',

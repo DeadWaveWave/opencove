@@ -8,6 +8,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import type { ControlSurface } from '../controlSurface'
+import type { TerminalSpawnAdmission } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { assertFileUriWithinRootUri } from '../topology/fileUriScope'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
@@ -174,6 +175,7 @@ export function registerPtyMountHandlers(
     topology: WorkerTopologyStore
     ptyRuntime: MultiEndpointPtyRuntime
     ptyStreamHub: PtyStreamHub
+    terminalSpawnAdmission: TerminalSpawnAdmission
   },
 ): void {
   controlSurface.register('pty.spawnInMount', {
@@ -186,6 +188,10 @@ export function registerPtyMountHandlers(
           debugMessage: `Unknown mountId: ${payload.mountId}`,
         })
       }
+      deps.terminalSpawnAdmission.assertSpawnAllowed(
+        target.projectId,
+        ctx.terminalRecoverySpawnScope,
+      )
 
       const cwdUri = payload.cwdUri ?? target.rootUri
       assertFileUriWithinRootUri({

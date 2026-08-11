@@ -39,10 +39,16 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError) {
+    if (error.code === 'terminal.runtime_not_ready') {
+      return translate('common.terminalRuntimeNotReady')
+    }
     return formatAppErrorMessage(error)
   }
 
   if (isAppErrorDescriptor(error)) {
+    if (error.code === 'terminal.runtime_not_ready') {
+      return translate('common.terminalRuntimeNotReady')
+    }
     return formatAppErrorMessage(error)
   }
 

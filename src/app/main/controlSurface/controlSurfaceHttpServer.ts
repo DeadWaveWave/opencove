@@ -25,34 +25,23 @@ import { registerControlSurfaceHandlers } from './registerControlSurfaceHandlers
 import { createManagedSshEndpointRuntime } from './topology/managedSshEndpointRuntime'
 import { createEndpointHealthService } from './topology/endpointHealthService'
 import { createControlSurfaceTerminalRecoveryRuntime } from './terminalRecovery/controlSurfaceTerminalRecoveryRuntime'
+import { TerminalRuntimeAvailability } from '../../../contexts/terminal/application/TerminalRuntimeAvailability'
+import { initializeTerminalRuntimeAvailability } from './terminalRecovery/terminalRuntimeStartup'
+import {
+  CONTROL_SURFACE_CONNECTION_VERSION,
+  normalizeControlSurfaceAppVersion,
+  type ControlSurfaceConnectionInfo,
+  type ControlSurfaceHttpServerInstance,
+} from './controlSurfaceHttpServer.contract'
+export type {
+  ControlSurfaceConnectionInfo,
+  ControlSurfaceHttpServerInstance,
+  ControlSurfaceServerDisposable,
+} from './controlSurfaceHttpServer.contract'
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
-const CONTROL_SURFACE_CONNECTION_VERSION = 1 as const
 const MAX_SYNC_EVENT_BUFFER = 256
 const PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES = 400_000
-
-export interface ControlSurfaceConnectionInfo {
-  version: typeof CONTROL_SURFACE_CONNECTION_VERSION
-  pid: number
-  hostname: string
-  port: number
-  token: string
-  createdAt: string
-  appVersion: string | null
-  startedBy?: 'cli' | 'desktop'
-}
-
-export interface ControlSurfaceServerDisposable {
-  dispose: () => Promise<void>
-}
-
-export interface ControlSurfaceHttpServerInstance extends ControlSurfaceServerDisposable {
-  ready: Promise<ControlSurfaceConnectionInfo>
-}
-
-function normalizeAppVersion(value: unknown): string | null {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
-}
 
 export function registerControlSurfaceHttpServer(
   options: RegisterControlSurfaceHttpServerOptions,
@@ -61,7 +50,7 @@ export function registerControlSurfaceHttpServer(
   const hostname = options.hostname ?? DEFAULT_CONTROL_SURFACE_HOSTNAME
   const bindHostname = options.bindHostname ?? hostname
   const port = options.port ?? 0
-  const appVersion = normalizeAppVersion(options.appVersion)
+  const appVersion = normalizeControlSurfaceAppVersion(options.appVersion)
   const connectionFileName = options.connectionFileName ?? DEFAULT_CONTROL_SURFACE_CONNECTION_FILE
   const webUiPasswordHash = options.webUiPasswordHash ?? null
   const webSessions = new WebSessionManager()
@@ -120,6 +109,11 @@ export function registerControlSurfaceHttpServer(
     createPersistenceStore: options.createPersistenceStore,
   })
   const getPersistenceStore = persistence.getPersistenceStore
+  const terminalRuntimeAvailability = new TerminalRuntimeAvailability()
+  const terminalRuntimeInitialization = initializeTerminalRuntimeAvailability({
+    getPersistenceStore,
+    availability: terminalRuntimeAvailability,
+  })
   const terminalRecovery = createControlSurfaceTerminalRecoveryRuntime({
     enabled: !options.createPersistenceStore,
     userDataPath: options.userDataPath,
@@ -153,6 +147,8 @@ export function registerControlSurfaceHttpServer(
     appVersion,
     onStatePersisted: terminalRecovery.onStatePersisted,
     restoreTerminalSession: terminalRecovery.restoreTerminalSession,
+    terminalSpawnAdmission: terminalRuntimeAvailability,
+    terminalRecoverySpawnAdmission: terminalRuntimeAvailability,
   })
   let closed = false
   let disposePromise: Promise<void> | null = null
@@ -409,20 +405,22 @@ export function registerControlSurfaceHttpServer(
       ...(options.connectionStartedBy ? { startedBy: options.connectionStartedBy } : {}),
     }
 
-    pendingConnectionWrite = writeConnectionFile(
-      options.userDataPath,
-      info,
-      connectionFileName,
-    ).catch(error => {
-      const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
-      process.stderr.write(
-        `[opencove] failed to write control surface connection file: ${detail}\n`,
-      )
-    })
+    void terminalRuntimeInitialization.then(() => {
+      pendingConnectionWrite = writeConnectionFile(
+        options.userDataPath,
+        info,
+        connectionFileName,
+      ).catch(error => {
+        const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
+        process.stderr.write(
+          `[opencove] failed to write control surface connection file: ${detail}\n`,
+        )
+      })
 
-    resolveReady?.(info)
-    resolveReady = null
-    rejectReady = null
+      resolveReady?.(info)
+      resolveReady = null
+      rejectReady = null
+    })
   })
 
   return {
@@ -450,6 +448,7 @@ export function registerControlSurfaceHttpServer(
         }
 
         closed = true
+        terminalRuntimeAvailability.beginShutdown()
 
         for (const client of syncClients) {
           try {

@@ -4,6 +4,8 @@ import { createControlSurface } from '../../../src/app/main/controlSurface/contr
 import { registerSessionHandlers } from '../../../src/app/main/controlSurface/handlers/sessionHandlers'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import type { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
+import { TerminalRuntimeAvailability } from '../../../src/contexts/terminal/application/TerminalRuntimeAvailability'
+import { createReadyTerminalAdmissionDeps } from './controlSurfaceTestTerminalAvailability'
 
 const resolveWorkerAgentTestStubMock = vi.hoisted(() => vi.fn())
 const { captureGeminiSessionDiscoveryCursorMock } = vi.hoisted(() => ({
@@ -48,6 +50,77 @@ afterEach(() => {
 })
 
 describe('control surface session.launchAgentInMount', () => {
+  it('rejects a direct mounted launch until that target finishes recovery', async () => {
+    const rootPath = process.cwd()
+    const rootUri = pathToFileURL(rootPath).href
+    const spawnSession = vi.fn(async () => ({ sessionId: 'must-not-spawn' }))
+    const availability = new TerminalRuntimeAvailability()
+    availability.completeStartup(['project-local'])
+    const admissionSpy = vi.spyOn(availability, 'assertSpawnAllowed')
+
+    const controlSurface = createControlSurface()
+    registerSessionHandlers(controlSurface, {
+      terminalSpawnAdmission: availability,
+      terminalRecoverySpawnAdmission: availability,
+      userDataPath: '/tmp/opencove-test-user-data',
+      approvedWorkspaces: {
+        registerRoot: async () => undefined,
+        isPathApproved: async () => true,
+      },
+      getPersistenceStore: async () =>
+        ({
+          readAppState: async () => ({ settings: {} }),
+        }) as never,
+      ptyRuntime: {
+        spawnSession,
+        write: () => undefined,
+        resize: () => undefined,
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+        attach: () => undefined,
+        detach: () => undefined,
+        snapshot: () => '',
+        startSessionStateWatcher: () => undefined,
+        registerRemoteSession: () => 'remote-home-session',
+        dispose: () => undefined,
+      },
+      ptyStreamHub: {
+        registerSessionMetadata: () => undefined,
+        hasSession: () => false,
+      } as unknown as PtyStreamHub,
+      topology: {
+        resolveMountTarget: async () => ({
+          mountId: 'mount-local',
+          projectId: 'project-local',
+          targetId: 'target-local',
+          endpointId: 'local',
+          rootPath,
+          rootUri,
+        }),
+      } as never,
+    })
+
+    const launched = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'session.launchAgentInMount',
+      payload: {
+        mountId: 'mount-local',
+        cwdUri: rootUri,
+        prompt: '',
+        provider: 'codex',
+        mode: 'new',
+      },
+    })
+
+    expect(launched).toMatchObject({
+      ok: false,
+      error: { code: 'terminal.runtime_not_ready' },
+    })
+    expect(admissionSpy).toHaveBeenCalledWith('project-local', undefined)
+    expect(spawnSession).not.toHaveBeenCalled()
+  })
+
   it('passes executable overrides through remote mounted agent launches', async () => {
     const rootPath = process.cwd()
     const rootUri = pathToFileURL(rootPath).href
@@ -90,6 +163,7 @@ describe('control surface session.launchAgentInMount', () => {
 
     const controlSurface = createControlSurface()
     registerSessionHandlers(controlSurface, {
+      ...createReadyTerminalAdmissionDeps(),
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -120,6 +194,7 @@ describe('control surface session.launchAgentInMount', () => {
       topology: {
         resolveMountTarget: async () => ({
           mountId: 'mount-remote',
+          projectId: 'project-remote',
           targetId: 'target-remote',
           endpointId: 'remote-worker-1',
           rootPath,
@@ -187,6 +262,7 @@ describe('control surface session.launchAgentInMount', () => {
 
     const controlSurface = createControlSurface()
     registerSessionHandlers(controlSurface, {
+      ...createReadyTerminalAdmissionDeps(),
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -217,6 +293,7 @@ describe('control surface session.launchAgentInMount', () => {
       topology: {
         resolveMountTarget: async () => ({
           mountId: 'mount-local',
+          projectId: 'project-local',
           targetId: 'target-local',
           endpointId: 'local',
           rootPath,
@@ -285,6 +362,7 @@ describe('control surface session.launchAgentInMount', () => {
 
       const controlSurface = createControlSurface()
       registerSessionHandlers(controlSurface, {
+        ...createReadyTerminalAdmissionDeps(),
         userDataPath: '/tmp/opencove-test-user-data',
         approvedWorkspaces: {
           registerRoot: async () => undefined,
@@ -315,6 +393,7 @@ describe('control surface session.launchAgentInMount', () => {
         topology: {
           resolveMountTarget: async () => ({
             mountId: 'mount-local',
+            projectId: 'project-local',
             targetId: 'target-local',
             endpointId: 'local',
             rootPath,

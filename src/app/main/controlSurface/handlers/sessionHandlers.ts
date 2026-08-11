@@ -32,6 +32,10 @@ import { invokeInternalCommand } from './controlSurfaceInternalCommand'
 import { registerSessionFinalMessageHandler } from './sessionFinalMessageHandler'
 import { registerSessionLaunchAgentInMountHandler } from './sessionLaunchAgentInMountHandler'
 import { registerSessionPrepareOrReviveHandler } from './sessionPrepareOrReviveHandler'
+import type {
+  TerminalRecoverySpawnAdmission,
+  TerminalSpawnAdmission,
+} from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
 import {
   isRecord,
@@ -88,6 +92,8 @@ export function registerSessionHandlers(
     ptyStreamHub: PtyStreamHub
     topology: WorkerTopologyStore
     restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
+    terminalSpawnAdmission: TerminalSpawnAdmission
+    terminalRecoverySpawnAdmission: TerminalRecoverySpawnAdmission
   },
 ): void {
   const sessions = new Map<string, SessionRecord>()
@@ -123,6 +129,11 @@ export function registerSessionHandlers(
             getPersistenceStore: deps.getPersistenceStore,
           })
         : null
+
+      deps.terminalSpawnAdmission.assertSpawnAllowed(
+        resolvedSpace?.projectId ?? null,
+        ctx.terminalRecoverySpawnScope,
+      )
 
       if (resolvedSpace) {
         const mountContext = resolveSpaceMountContext({
@@ -437,6 +448,7 @@ export function registerSessionHandlers(
     getPersistenceStore: deps.getPersistenceStore,
     ptyStreamHub: deps.ptyStreamHub,
     restoreTerminalSession: deps.restoreTerminalSession,
+    terminalRecoverySpawnAdmission: deps.terminalRecoverySpawnAdmission,
   })
 
   controlSurface.register('session.get', {

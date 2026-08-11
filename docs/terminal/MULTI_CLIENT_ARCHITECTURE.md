@@ -21,12 +21,14 @@ Key implementation files:
 - `src/app/main/controlSurface/handlers/sessionStreamingHandlers.ts`
 - `src/app/renderer/browser/BrowserPtyClient.ts`
 - `src/contexts/workspace/presentation/renderer/components/TerminalNode.tsx`
+- `src/contexts/terminal/application/TerminalRuntimeAvailability.ts`
 
 ## Ownership
 
 | State | Owner | Write path |
 | --- | --- | --- |
 | PTY process lifecycle | Worker PTY runtime | spawn/kill/exit callbacks |
+| Terminal startup phase + epoch | Worker terminal runtime availability | startup scan/reconciliation/shutdown |
 | PTY byte stream seq | `PtyStreamHub` | output append |
 | Terminal presentation state | `TerminalPresentationSession` | PTY output applied in seq order |
 | Presentation snapshot | Worker | `session.presentationSnapshot` |
@@ -156,6 +158,15 @@ Remote routes forward the same transaction and await the downstream typed result
 binding includes endpoint/session ids plus home/target Worker instance fences; reconnecting through a
 different target instance cannot reuse the old route silently.
 
+## Startup Admission
+
+Worker startup scans persisted workspace state before publishing its connection file. Workspaces
+with runtime nodes remain `initializing` until `session.prepareOrRevive` completes; normal terminal
+and agent spawn commands return typed `terminal.runtime_not_ready` while blocked. Recovery receives
+one internal, attempt-scoped capability that is unavailable to public command contexts. Successful
+reconciliation increments the workspace runtime epoch; failure stays `unavailable`, and shutdown or
+an out-of-order older completion cannot reopen admission.
+
 ## Renderer Cache And Placeholder
 
 Allowed:
@@ -235,6 +246,8 @@ The goal is stable visual parity without letting multiple renderers fight for te
     footprint never produce a geometry intent.
 17. After a live geometry transaction settles, local xterm, Worker presentation and PTY runtime agree
     on rows/columns; no local-only correction may temporarily diverge them.
+18. Only the current recovery reconciliation scope may spawn before its workspace runtime is ready;
+    normal user/node paths cannot acquire or forge that scope.
 
 ## Verification Anchors
 

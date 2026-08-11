@@ -59,6 +59,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'worktree.remove_directory_cleanup_failed':
       'The worktree was archived, but the worktree directory could not be removed.',
     'terminal.spawn_failed': 'Unable to start the terminal.',
+    'terminal.runtime_not_ready':
+      'Terminal recovery is still in progress. Please wait a moment and try again.',
     'terminal.write_failed': 'Unable to write to the terminal.',
     'terminal.resize_failed': 'Unable to resize the terminal.',
     'terminal.kill_failed': 'Unable to close the terminal.',

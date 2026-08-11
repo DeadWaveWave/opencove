@@ -465,6 +465,7 @@ export function createWorkerTopologyStore(options: {
 
     return {
       mountId: mount.mountId,
+      projectId: mount.projectId,
       endpointId: mount.endpointId,
       targetId: mount.targetId,
       rootPath: mount.rootPath,

@@ -47,6 +47,11 @@ SQLite durable state
   -> terminal clients attach through presentation snapshot + stream
 ```
 
+Worker 在发布 connection file 前扫描 persisted workspace runtime nodes。命中的 workspace 保持
+`initializing`，普通 spawn 返回 `terminal.runtime_not_ready`；只有 `session.prepareOrRevive`
+拥有当前 attempt 的内部 spawn scope。成功完成后进入 `ready` 并递增 epoch，失败进入
+`unavailable`，shutdown/旧 attempt 的迟到完成都不能重新打开准入。
+
 Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/recovering UI，并在 session attach 后渲染 worker-owned output。
 
 ## Invariants
@@ -63,6 +68,8 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
 8. 新建 shell 是新的 runtime epoch；旧 history 可以保留，但不能把新 prompt 写进旧 alternate screen 并伪装成 TUI continuation。
 9. Remote route 暂时不可观测不是 runtime 已被替换的证据；只有完整观察或明确 replacement 才能 retire
    durable binding。
+10. Persisted runtime reconciliation 完成前，普通 terminal/agent spawn 不得创建新 PTY；只有当前
+    `session.prepareOrRevive` attempt 的内部 scope 可以启动恢复所需 runtime。
 
 ## Ownership Table
 

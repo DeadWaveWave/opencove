@@ -16,6 +16,7 @@ import type {
   SpawnTerminalSessionResult,
 } from '../../../../shared/contracts/dto'
 import type { ControlSurface } from '../controlSurface'
+import type { TerminalSpawnAdmission } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
@@ -212,6 +213,7 @@ export function registerSessionStreamingHandlers(
     ptyRuntime: ControlSurfacePtyRuntime
     ptyStreamHub: PtyStreamHub
     topology: WorkerTopologyStore
+    terminalSpawnAdmission: TerminalSpawnAdmission
   },
 ): void {
   controlSurface.register('session.list', {
@@ -269,6 +271,8 @@ export function registerSessionStreamingHandlers(
         spaceId: payload.spaceId,
         getPersistenceStore: deps.getPersistenceStore,
       })
+
+      deps.terminalSpawnAdmission.assertSpawnAllowed(projectId, ctx.terminalRecoverySpawnScope)
 
       const mountContext = resolveSpaceMountContext({
         space: { directoryPath, targetMountId, boundary },
@@ -406,6 +410,7 @@ export function registerSessionStreamingHandlers(
     kind: 'command',
     validate: normalizePtySpawnPayload,
     handle: async (_ctx, payload): Promise<SpawnTerminalResult> => {
+      deps.terminalSpawnAdmission.assertSpawnAllowed(null, _ctx.terminalRecoverySpawnScope)
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.cwd)
       if (!isApproved) {
         throw createAppError('common.approved_path_required', {

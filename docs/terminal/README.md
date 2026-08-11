@@ -6,6 +6,7 @@
 
 - `MULTI_CLIENT_ARCHITECTURE.md`：当前终端 owner、attach、snapshot、geometry 和 renderer cache 边界。
 - `TUI_RENDERING_BASELINE.md`：Codex/OpenCode TUI 渲染稳定性基线。
+- `TERMINAL_RUNTIME_STABILITY.md`：geometry ACK、spawn identity 与启动准入不变量。
 - `ANSI_SCREEN_PERSISTENCE.md`：ANSI / alternate-screen restore 案例记录。
 
 ## Related Docs

@@ -50,6 +50,7 @@ export const APP_ERROR_CODES = [
   'worktree.remove_branch_cleanup_failed',
   'worktree.remove_directory_cleanup_failed',
   'terminal.spawn_failed',
+  'terminal.runtime_not_ready',
   'terminal.write_failed',
   'terminal.resize_failed',
   'terminal.kill_failed',

@@ -6,6 +6,7 @@ import { registerPtyMountHandlers } from '../../../src/app/main/controlSurface/h
 import { registerSessionStreamingHandlers } from '../../../src/app/main/controlSurface/handlers/sessionStreamingHandlers'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import type { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
+import { createReadyTerminalAdmissionDeps } from './controlSurfaceTestTerminalAvailability'
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-05-10T00:00:00.000Z'),
@@ -138,6 +139,7 @@ describe('control surface session streaming handlers', () => {
 
     const ptyStreamHub = createPtyStreamHubStub()
     const controlSurface = createControlSurface()
+    const terminalAdmissionDeps = createReadyTerminalAdmissionDeps()
     const topology = {
       listMounts: async () => ({
         projectId: 'ws1',
@@ -158,6 +160,7 @@ describe('control surface session streaming handlers', () => {
       }),
       resolveMountTarget: async () => ({
         mountId: 'mount-1',
+        projectId: 'ws1',
         endpointId: 'local',
         targetId: 'target-1',
         rootPath,
@@ -166,6 +169,7 @@ describe('control surface session streaming handlers', () => {
     } as never
 
     registerPtyMountHandlers(controlSurface, {
+      terminalSpawnAdmission: terminalAdmissionDeps.terminalSpawnAdmission,
       approvedWorkspaces: {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,
@@ -191,6 +195,7 @@ describe('control surface session streaming handlers', () => {
     })
 
     registerSessionStreamingHandlers(controlSurface, {
+      terminalSpawnAdmission: terminalAdmissionDeps.terminalSpawnAdmission,
       approvedWorkspaces: {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,

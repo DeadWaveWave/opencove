@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { registerSessionHandlers } from '../../../src/app/main/controlSurface/handlers/sessionHandlers'
 import type { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
+import { createReadyTerminalAdmissionDeps } from './controlSurfaceTestTerminalAvailability'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 
 const { captureGeminiSessionDiscoveryCursorMock } = vi.hoisted(() => ({
@@ -74,6 +75,7 @@ describe('control surface session handler watchers', () => {
       }
 
       registerSessionHandlers(controlSurface, {
+        ...createReadyTerminalAdmissionDeps(),
         userDataPath: '/tmp/opencove-test-user-data',
         approvedWorkspaces: {
           registerRoot: async () => undefined,
@@ -146,6 +148,7 @@ describe('control surface session handler watchers', () => {
       }
 
       registerSessionHandlers(controlSurface, {
+        ...createReadyTerminalAdmissionDeps(),
         userDataPath: '/tmp/opencove-test-user-data',
         approvedWorkspaces: {
           registerRoot: async () => undefined,

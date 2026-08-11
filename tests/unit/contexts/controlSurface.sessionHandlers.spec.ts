@@ -3,6 +3,7 @@ import { createControlSurface } from '../../../src/app/main/controlSurface/contr
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import { registerSessionHandlers } from '../../../src/app/main/controlSurface/handlers/sessionHandlers'
 import type { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
+import { createReadyTerminalAdmissionDeps } from './controlSurfaceTestTerminalAvailability'
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-03-27T00:00:00.000Z'),
@@ -84,6 +85,7 @@ describe('control surface session handlers', () => {
       hasSession: () => false,
     }
     registerSessionHandlers(controlSurface, {
+      ...createReadyTerminalAdmissionDeps(),
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -161,6 +163,7 @@ describe('control surface session handlers', () => {
       hasSession: () => false,
     }
     registerSessionHandlers(controlSurface, {
+      ...createReadyTerminalAdmissionDeps(),
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -268,6 +271,7 @@ describe('control surface session handlers', () => {
       hasSession: () => false,
     }
     registerSessionHandlers(controlSurface, {
+      ...createReadyTerminalAdmissionDeps(),
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,

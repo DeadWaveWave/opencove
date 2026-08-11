@@ -35,3 +35,21 @@ Invariants:
    confirmed exit, or when no spawn request reached a host.
 3. Ambiguous transport loss fails closed. It never starts another host while the prior child may
    still own an unreferenced PTY.
+
+## Startup admission
+
+| State | Owner | Write entry | Restart source |
+| --- | --- | --- | --- |
+| Startup phase and monotonic epoch | Worker `TerminalRuntimeAvailability` | startup scan, recovery completion, shutdown | recomputed from persisted workspace nodes |
+| Workspaces requiring reconciliation | Worker startup scan | normalized persisted app state | SQLite app state |
+| Recovery-only spawn capability | `session.prepareOrRevive` handler | current reconciliation scope only | none; unforgeable runtime scope |
+| User-visible readiness message | renderer i18n | typed `terminal.runtime_not_ready` mapping | locale bundle |
+
+Invariants:
+
+1. A workspace with persisted runtime nodes remains `initializing` until its complete
+   `session.prepareOrRevive` operation succeeds; normal spawn entry points reject before then.
+2. Only the recovery handler owns the internal spawn capability. Its exact precondition is a live,
+   current reconciliation scope for that workspace; public user/node spawn paths cannot create one.
+3. Failed reconciliation becomes `unavailable`, shutdown becomes `shutting-down`, late completions
+   cannot reopen either state, and every successful return to `ready` increases the epoch.

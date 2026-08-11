@@ -27,6 +27,10 @@ import { registerAuthHandlers } from './handlers/authHandlers'
 import { registerNodeControlHandlers } from './handlers/nodeControlHandlers'
 import type { EndpointHealthService } from './topology/endpointHealthService'
 import type { NormalizedPersistedAppState } from '../../../platform/persistence/sqlite/normalize'
+import type {
+  TerminalRecoverySpawnAdmission,
+  TerminalSpawnAdmission,
+} from '../../../contexts/terminal/application/TerminalRuntimeAvailability'
 
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
@@ -45,6 +49,8 @@ export function registerControlSurfaceHandlers(
     appVersion: string | null
     onStatePersisted?: (state: NormalizedPersistedAppState) => Promise<void>
     restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
+    terminalSpawnAdmission: TerminalSpawnAdmission
+    terminalRecoverySpawnAdmission: TerminalRecoverySpawnAdmission
   },
 ): void {
   registerSystemHandlers(controlSurface, { appVersion: deps.appVersion })
@@ -96,6 +102,8 @@ export function registerControlSurfaceHandlers(
     ptyStreamHub: deps.ptyStreamHub,
     topology: deps.topology,
     restoreTerminalSession: deps.restoreTerminalSession,
+    terminalSpawnAdmission: deps.terminalSpawnAdmission,
+    terminalRecoverySpawnAdmission: deps.terminalRecoverySpawnAdmission,
   })
   registerSessionStreamingHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
@@ -103,12 +111,14 @@ export function registerControlSurfaceHandlers(
     ptyRuntime: deps.ptyRuntime,
     ptyStreamHub: deps.ptyStreamHub,
     topology: deps.topology,
+    terminalSpawnAdmission: deps.terminalSpawnAdmission,
   })
   registerPtyMountHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
     topology: deps.topology,
     ptyRuntime: deps.ptyRuntime,
     ptyStreamHub: deps.ptyStreamHub,
+    terminalSpawnAdmission: deps.terminalSpawnAdmission,
   })
   registerNodeControlHandlers(controlSurface, {
     topology: deps.topology,

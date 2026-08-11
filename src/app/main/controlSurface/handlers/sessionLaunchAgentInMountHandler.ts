@@ -12,7 +12,6 @@ import {
 } from '../../../../contexts/settings/domain/agentSettings'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type {
-  LaunchAgentSessionInMountInput,
   LaunchAgentSessionInput,
   LaunchAgentSessionResult,
 } from '../../../../shared/contracts/dto'
@@ -22,23 +21,20 @@ import {
   resolveProviderFromSettings,
   resolveSessionLaunchSpawn,
 } from './sessionLaunchSupport'
-import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
 import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
-import { assertFileUriWithinRootUri } from '../topology/fileUriScope'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { SessionRecord } from './sessionRecords'
+import { normalizeOptionalString } from './sessionLaunchPayloadSupport'
 import {
-  isRecord,
-  normalizeAgentProviderId,
-  normalizeFileSystemUri,
-  normalizeOptionalString,
-  normalizeOptionalPositiveInt,
-  resolvePathFromFileSystemUriOrThrow,
-} from './sessionLaunchPayloadSupport'
+  normalizeLaunchAgentInMountPayload,
+  resolveOpenCodeEmbeddedXdgStateHome,
+} from './sessionLaunchAgentInMountPayload'
+import type { TerminalSpawnAdmission } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
+import { resolveAdmittedMountAgentLaunch } from './resolveAdmittedMountAgentLaunch'
 import {
   describeAgentLaunchCommand,
   describeAgentLaunchError,
@@ -47,105 +43,6 @@ import {
 } from '../../diagnostics/agentLaunchRuntimeDiagnostics'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
-
-function resolveOpenCodeEmbeddedXdgStateHome(userDataPath: string): string {
-  const normalized = userDataPath.trim()
-  return normalized.length > 0 ? normalized : process.cwd()
-}
-
-function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessionInMountInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgentInMount.',
-    })
-  }
-
-  const mountId = normalizeOptionalString(payload.mountId)
-  if (!mountId) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgentInMount mountId.',
-    })
-  }
-
-  const cwdUriRaw = payload.cwdUri
-  if (cwdUriRaw !== undefined && cwdUriRaw !== null && typeof cwdUriRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgentInMount cwdUri.',
-    })
-  }
-
-  const promptRaw = payload.prompt
-  if (typeof promptRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgentInMount prompt.',
-    })
-  }
-
-  const provider = normalizeAgentProviderId(payload.provider, 'session.launchAgentInMount provider')
-
-  const modelRaw = payload.model
-  if (modelRaw !== undefined && modelRaw !== null && typeof modelRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgentInMount model.',
-    })
-  }
-
-  const modeRaw = payload.mode
-  if (modeRaw !== undefined && modeRaw !== null && typeof modeRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgentInMount mode.',
-    })
-  }
-
-  const resumeSessionIdRaw = payload.resumeSessionId
-  if (
-    resumeSessionIdRaw !== undefined &&
-    resumeSessionIdRaw !== null &&
-    typeof resumeSessionIdRaw !== 'string'
-  ) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgentInMount resumeSessionId.',
-    })
-  }
-
-  const agentFullAccess = payload.agentFullAccess
-  if (
-    agentFullAccess !== undefined &&
-    agentFullAccess !== null &&
-    typeof agentFullAccess !== 'boolean'
-  ) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.launchAgentInMount agentFullAccess.',
-    })
-  }
-
-  const env = normalizeLaunchAgentEnv(payload.env)
-  const executablePathOverride =
-    payload.executablePathOverride === undefined || payload.executablePathOverride === null
-      ? null
-      : normalizeOptionalString(payload.executablePathOverride)
-  const cols = normalizeOptionalPositiveInt(payload.cols)
-  const rows = normalizeOptionalPositiveInt(payload.rows)
-
-  return {
-    mountId,
-    cwdUri:
-      cwdUriRaw === undefined || cwdUriRaw === null
-        ? null
-        : normalizeFileSystemUri(cwdUriRaw, 'session.launchAgentInMount cwdUri'),
-    prompt: promptRaw.trim(),
-    provider,
-    mode: modeRaw === 'resume' ? 'resume' : 'new',
-    model: modelRaw === null ? null : normalizeOptionalString(modelRaw),
-    resumeSessionId:
-      resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw),
-    env,
-    executablePathOverride,
-    agentFullAccess: agentFullAccess ?? null,
-    cols,
-    rows,
-  }
-}
 
 export function registerSessionLaunchAgentInMountHandler(
   controlSurface: ControlSurface,
@@ -157,44 +54,19 @@ export function registerSessionLaunchAgentInMountHandler(
     ptyStreamHub: PtyStreamHub
     topology: WorkerTopologyStore
     sessions: Map<string, SessionRecord>
+    terminalSpawnAdmission: TerminalSpawnAdmission
   },
 ): void {
   controlSurface.register('session.launchAgentInMount', {
     kind: 'command',
     validate: normalizeLaunchAgentInMountPayload,
-    handle: async (_ctx, payload): Promise<LaunchAgentSessionResult> => {
-      logAgentLaunchInfo(
-        'control-surface-mount-received',
-        'Control surface received session.launchAgentInMount.',
-        {
-          mountId: payload.mountId,
-          provider: payload.provider ?? null,
-          mode: payload.mode ?? 'new',
-          cwdUriPresent: !!payload.cwdUri,
-          promptLength: payload.prompt.length,
-          resumeSessionIdPresent: !!payload.resumeSessionId,
-          executablePathOverridePresent: !!payload.executablePathOverride,
-          agentFullAccess: payload.agentFullAccess ?? null,
-          cols: payload.cols ?? null,
-          rows: payload.rows ?? null,
-        },
-      )
-      const target = await deps.topology.resolveMountTarget({ mountId: payload.mountId })
-      if (!target) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: `Unknown mountId: ${payload.mountId}`,
-        })
-      }
-
-      const cwdUri = payload.cwdUri ?? target.rootUri
-      assertFileUriWithinRootUri({
-        rootUri: target.rootUri,
-        uri: cwdUri,
-        debugMessage: 'session.launchAgentInMount cwdUri is outside mount root',
+    handle: async (ctx, payload): Promise<LaunchAgentSessionResult> => {
+      const { target, cwd, mode } = await resolveAdmittedMountAgentLaunch({
+        ctx,
+        payload,
+        topology: deps.topology,
+        admission: deps.terminalSpawnAdmission,
       })
-
-      const cwd = resolvePathFromFileSystemUriOrThrow(cwdUri, 'session.launchAgentInMount cwdUri')
-      const mode = payload.mode ?? 'new'
 
       if (target.endpointId !== 'local') {
         logAgentLaunchInfo(

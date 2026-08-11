@@ -3,6 +3,7 @@ import type { ControlSurfaceOperationKind } from '../../../shared/contracts/cont
 
 export interface ControlSurfaceContext {
   readonly now: () => Date
+  readonly terminalRecoverySpawnScope?: unknown
   readonly capabilities: {
     webShell: boolean
     sync: {

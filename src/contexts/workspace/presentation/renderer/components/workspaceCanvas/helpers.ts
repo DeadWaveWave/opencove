@@ -378,6 +378,9 @@ export function validateSpaceTransfer(
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError) {
+    if (error.code === 'terminal.runtime_not_ready') {
+      return translate('common.terminalRuntimeNotReady')
+    }
     const debug = getAppErrorDebugMessage(error)
     if (typeof debug === 'string' && error.code.startsWith('integration.github.')) {
       return normalizeIntegrationErrorMessage(debug)
@@ -387,6 +390,9 @@ export function toErrorMessage(error: unknown): string {
   }
 
   if (isAppErrorDescriptor(error)) {
+    if (error.code === 'terminal.runtime_not_ready') {
+      return translate('common.terminalRuntimeNotReady')
+    }
     const debug = getAppErrorDebugMessage(error)
     if (typeof debug === 'string' && error.code.startsWith('integration.github.')) {
       return normalizeIntegrationErrorMessage(debug)
