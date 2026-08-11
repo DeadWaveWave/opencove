@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  launchApp,
+  readLocatorClientRect,
+  testWorkspacePath,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
   test('expands the space with minimal delta and keeps the created terminal inside when the space is too small', async () => {
@@ -179,18 +184,30 @@ test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
       await expect(createdTerminalNode).toBeVisible()
       await expect(pane).toBeVisible()
 
-      const terminalBounds = await createdTerminalNode.boundingBox()
-      const paneBounds = await pane.boundingBox()
+      const readCenterDeltas = async (): Promise<{ x: number; y: number }> => {
+        const [terminalBounds, paneBounds] = await Promise.all([
+          readLocatorClientRect(createdTerminalNode),
+          readLocatorClientRect(pane),
+        ])
+        const centeredX = terminalBounds.x + terminalBounds.width / 2
+        const centeredY = terminalBounds.y + terminalBounds.height / 2
 
-      if (!terminalBounds || !paneBounds) {
-        throw new Error('failed to resolve created terminal or pane bounds')
+        return {
+          x: Math.abs(centeredX - (paneBounds.x + paneBounds.width / 2)),
+          y: Math.abs(centeredY - (paneBounds.y + paneBounds.height / 2)),
+        }
       }
 
-      const centeredX = terminalBounds.x + terminalBounds.width / 2
-      const centeredY = terminalBounds.y + terminalBounds.height / 2
+      await expect
+        .poll(async () => {
+          const deltas = await readCenterDeltas()
+          return Math.max(deltas.x, deltas.y)
+        })
+        .toBeLessThanOrEqual(48)
+      const centeredDeltas = await readCenterDeltas()
 
-      expect(Math.abs(centeredX - (paneBounds.x + paneBounds.width / 2))).toBeLessThanOrEqual(48)
-      expect(Math.abs(centeredY - (paneBounds.y + paneBounds.height / 2))).toBeLessThanOrEqual(48)
+      expect(centeredDeltas.x).toBeLessThanOrEqual(48)
+      expect(centeredDeltas.y).toBeLessThanOrEqual(48)
     } finally {
       await electronApp.close()
     }
