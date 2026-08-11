@@ -12,7 +12,8 @@ Your primary directive is to **Read `DEVELOPMENT.md` first** and strictly adhere
 1.  **Golden Rule**: ALWAYS read `DEVELOPMENT.md` at the start of a task. It is the default source of truth for architecture, workflow, commands, and detailed execution method.
 2.  **Monorepo**: Always set correct CWD. Follow the file structure defined in `DEVELOPMENT.md`.
 3.  **Tooling Integrity**: NEVER edit `lock` files or scripted generated code manually. Use the commands defined in the relevant module `DEVELOPMENT.md` (linked from root `DEVELOPMENT.md`).
-4.  **Keep AGENTS Concise**: `AGENTS.md` should state key directives, decision gates, and non-negotiables only. Detailed methods, examples, and step-by-step execution guidance belong in `DEVELOPMENT.md` or topic docs.
+4.  **Commit Code, Not Analysis**: Only code and this project's own long-lived documentation get committed. Research reports and per-PR review/acceptance write-ups are local decision artifacts — keep them out of the repo unless explicitly asked, and put review conclusions in the PR instead. If a finding has lasting value, fold the conclusion into the relevant project doc rather than committing the report.
+5.  **Keep AGENTS Concise**: `AGENTS.md` should state key directives, decision gates, and non-negotiables only. Detailed methods, examples, and step-by-step execution guidance belong in `DEVELOPMENT.md` or topic docs.
 
 ## 2. Decision Framework (Small vs Large)
 
