@@ -12,7 +12,7 @@ import { toErrorMessage } from './workerSectionUtils'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 
 type RegisterMode = 'managed' | 'manual'
-type EndpointDialogMode = 'create' | 'edit'
+type EndpointDialogState = { kind: 'create' } | { kind: 'edit'; endpointId: string }
 
 function parseRequiredPort(value: string): number | null {
   const parsed = Number(value.trim())
@@ -36,8 +36,7 @@ export function EndpointsSection(): React.JSX.Element {
     repairEndpoint,
   } = useEndpointOverviews()
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
-  const [dialogMode, setDialogMode] = useState<EndpointDialogMode>('create')
-  const [editingEndpointId, setEditingEndpointId] = useState<string | null>(null)
+  const [dialogState, setDialogState] = useState<EndpointDialogState>({ kind: 'create' })
   const [registerBusy, setRegisterBusy] = useState(false)
   const [removingEndpointId, setRemovingEndpointId] = useState<string | null>(null)
   const [pendingRemoval, setPendingRemoval] = useState<WorkerEndpointOverviewDto | null>(null)
@@ -62,14 +61,13 @@ export function EndpointsSection(): React.JSX.Element {
     managedHost.trim().length > 0 &&
     managedPortResult.state !== 'invalid' &&
     managedRemotePortResult.state !== 'invalid' &&
-    (dialogMode === 'create' || managedRemotePortResult.state === 'valid')
+    (dialogState.kind === 'create' || managedRemotePortResult.state === 'valid')
   const canRegisterManual =
     manualHostname.trim().length > 0 && manualPortValue !== null && manualToken.trim().length > 0
 
   const resetRegisterForm = (): void => {
     setRegisterMode('managed')
-    setDialogMode('create')
-    setEditingEndpointId(null)
+    setDialogState({ kind: 'create' })
     setDisplayName('')
     setManagedHost('')
     setManagedPort('')
@@ -93,8 +91,7 @@ export function EndpointsSection(): React.JSX.Element {
     }
 
     setLocalError(null)
-    setDialogMode('edit')
-    setEditingEndpointId(overview.endpoint.endpointId)
+    setDialogState({ kind: 'edit', endpointId: overview.endpoint.endpointId })
     setRegisterMode('managed')
     setDisplayName(overview.endpoint.displayName)
     setManagedHost(ssh.host)
@@ -171,11 +168,11 @@ export function EndpointsSection(): React.JSX.Element {
           remotePort: managedRemotePortResult.value,
           remotePlatform: 'auto' as const,
         }
-        if (dialogMode === 'edit' && editingEndpointId) {
+        if (dialogState.kind === 'edit') {
           await window.opencoveApi.controlSurface.invoke({
             kind: 'command',
             id: 'endpoint.updateManagedSsh',
-            payload: { endpointId: editingEndpointId, ...payload },
+            payload: { endpointId: dialogState.endpointId, ...payload },
           })
         } else {
           await window.opencoveApi.controlSurface.invoke({
@@ -355,7 +352,7 @@ export function EndpointsSection(): React.JSX.Element {
 
       <EndpointsRegisterDialog
         isOpen={isRegisterOpen}
-        mode={dialogMode}
+        mode={dialogState.kind}
         error={error}
         isBusy={registerBusy}
         registerMode={registerMode}

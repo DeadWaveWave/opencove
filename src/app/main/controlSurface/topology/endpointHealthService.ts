@@ -294,9 +294,15 @@ export function createEndpointHealthService(options: {
   return {
     listOverviews: async (): Promise<ListWorkerEndpointOverviewsResult> => {
       const endpoints = await options.topology.listEndpoints()
+      const impactByEndpointId = await options.topology.getEndpointRemovalImpacts(
+        endpoints.endpoints.map(endpoint => endpoint.endpointId),
+      )
       const overviews = await Promise.all(
         endpoints.endpoints.map(async endpoint => {
-          const impact = await options.topology.getEndpointRemovalImpact(endpoint.endpointId)
+          const impact = impactByEndpointId.get(endpoint.endpointId) ?? {
+            mountIds: [],
+            mountCount: 0,
+          }
           const access = await options.topology.resolveEndpointRuntimeAccess(endpoint.endpointId)
           if (!access) {
             return buildOverview(endpoint, {

@@ -278,12 +278,7 @@ describe('managedSshEndpointRuntime', () => {
     const restarted = await runtime.prepare(updatedAccess)
 
     expect(firstTunnel.kill).toHaveBeenCalledTimes(1)
-    expect(spawnTunnelProcess).toHaveBeenNthCalledWith(
-      2,
-      '/usr/bin/ssh',
-      updatedAccess,
-      41004,
-    )
+    expect(spawnTunnelProcess).toHaveBeenNthCalledWith(2, '/usr/bin/ssh', updatedAccess, 41004)
     expect(restarted.connection?.port).toBe(41004)
   })
 

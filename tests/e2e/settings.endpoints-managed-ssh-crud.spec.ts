@@ -49,10 +49,12 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
   test.setTimeout(180_000)
 
   test('edits, validates, and confirms removal impact in both themes', async ({
-    browserName: _browserName,
+    browserName,
   }, testInfo) => {
     const remoteWorkerPort = await reserveLoopbackPort()
-    const remoteBaseDir = await mkdtemp(path.join(tmpdir(), 'opencove-e2e-ssh-crud-remote-'))
+    const remoteBaseDir = await mkdtemp(
+      path.join(tmpdir(), `opencove-e2e-ssh-crud-${browserName}-remote-`),
+    )
     const remoteProjectDir = path.join(remoteBaseDir, 'project')
     const remoteWorkerUserDataDir = await mkdtemp(
       path.join(tmpdir(), 'opencove-e2e-ssh-crud-worker-'),
@@ -174,6 +176,20 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
       await window.locator('[data-testid="settings-endpoints-refresh"]').click()
 
       await selectTheme(window, 'light')
+      await window.locator('[data-testid="settings-endpoints-open-register"]').click()
+      await window
+        .locator('[data-testid="settings-endpoints-register-hostname"]')
+        .fill('invalid.example.com')
+      await window.locator('[data-testid="settings-endpoints-register-ssh-port"]').fill('abc')
+      await expect(
+        window.locator('[data-testid="settings-endpoints-register-ssh-port-error"]'),
+      ).toContainText('Enter a whole-number port from 1 to 65535.')
+      await capture(
+        window.locator('[data-testid="settings-endpoints-register-window"]'),
+        'managed-ssh-invalid-port-light',
+        testInfo,
+      )
+      await window.locator('[data-testid="settings-endpoints-register-cancel"]').click()
       await endpointCard.locator(`[data-testid="settings-endpoints-edit-${endpointId}"]`).click()
       await capture(
         window.locator('[data-testid="settings-endpoints-register-window"]'),

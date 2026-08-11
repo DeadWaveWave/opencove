@@ -45,6 +45,8 @@ function createSubject(options?: {
     },
     removeEndpoint: async () => ({ removedMountCount: 0 }),
     getEndpointRemovalImpact: async () => ({ mountIds: [], mountCount: 0 }),
+    getEndpointRemovalImpacts: async endpointIds =>
+      new Map(endpointIds.map(endpointId => [endpointId, { mountIds: [], mountCount: 0 }])),
     resolveEndpointRuntimeAccess: async () => null,
     resolveRemoteEndpointConnection: async endpointId =>
       endpointId === 'remote' ? { hostname: 'example.com', port: 1234, token: 'token' } : null,
@@ -440,5 +442,4 @@ describe('control surface topology handlers', () => {
       remotePlatform: 'auto',
     })
   })
-
 })

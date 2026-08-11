@@ -234,7 +234,6 @@ export function createManagedSshEndpointRuntime(
     return record
   }
 
-
   const ensureTunnel = async (
     sshExecutablePath: string,
     access: ManagedSshEndpointRuntimeAccess,

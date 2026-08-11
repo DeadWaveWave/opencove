@@ -30,9 +30,7 @@ export function EndpointRemoveDialog({
         data-testid="settings-endpoints-remove-window"
         onClick={event => event.stopPropagation()}
       >
-        <h3 id="settings-endpoints-remove-title">
-          {t('settingsPanel.endpoints.remove.title')}
-        </h3>
+        <h3 id="settings-endpoints-remove-title">{t('settingsPanel.endpoints.remove.title')}</h3>
         <p className="cove-window__intro">
           {t('settingsPanel.endpoints.remove.description', { name: displayName })}
         </p>

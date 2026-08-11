@@ -31,6 +31,9 @@ export interface WorkerTopologyStore {
   ) => Promise<UpdateManagedSshWorkerEndpointResult>
   removeEndpoint: (input: RemoveWorkerEndpointInput) => Promise<RemoveWorkerEndpointResult>
   getEndpointRemovalImpact: (endpointId: string) => Promise<EndpointRemovalImpact>
+  getEndpointRemovalImpacts: (
+    endpointIds: readonly string[],
+  ) => Promise<ReadonlyMap<string, EndpointRemovalImpact>>
   resolveEndpointRuntimeAccess: (endpointId: string) => Promise<EndpointRuntimeAccess | null>
   resolveRemoteEndpointConnection: (endpointId: string) => Promise<RemoteEndpointConnection | null>
   listMounts: (input: ListMountsInput) => Promise<ListMountsResult>

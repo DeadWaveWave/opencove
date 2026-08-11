@@ -108,10 +108,18 @@ Worker endpoints and mounts are managed by the topology store:
 Managed SSH remains a topology-level endpoint record. `endpoint.prepare` / `endpoint.repair`
 own local tunnel orchestration, remote runtime bootstrap, and health projection; browse flows
 still resolve through `endpoint.homeDirectory` and `endpoint.readDirectory` on the target Worker.
-`endpoint.updateManagedSsh` validates the complete replacement configuration before one durable
-write, preserves endpoint and credential identity, then invalidates the previous tunnel before the
-new configuration is prepared. Callers must re-resolve endpoint connections after an update and
-must not cache the runtime-only loopback port.
+`endpoint.updateManagedSsh` validates the complete replacement configuration before side effects,
+stops the previous tunnel, revalidates the endpoint against the topology store's current state,
+then commits the replacement through the store's serialized write queue before preparing the new
+tunnel. If stopping the previous tunnel succeeds but the durable write fails, the old durable
+configuration remains authoritative even though its tunnel has already stopped; callers can
+reconnect or repair it. Endpoint and credential identity plus concurrent mount bindings are
+preserved. Callers must re-resolve endpoint connections after an update and must not cache the
+runtime-only loopback port.
+
+Interactive `endpoint.remove` callers must send the `expectedMountCount` from the overview they
+presented so a concurrent binding change fails closed. The field remains optional for compatible
+non-interactive callers; omitting it deliberately accepts and removes the current mount impact.
 
 Mount-aware operations resolve `mountId` through `mountTarget.resolve`, enforce mount root scope, then route to the correct endpoint.
 

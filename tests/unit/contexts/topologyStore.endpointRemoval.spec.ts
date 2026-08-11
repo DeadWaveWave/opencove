@@ -44,8 +44,12 @@ describe('WorkerTopologyStore endpoint removal impact', () => {
 
     expect(impact.mountCount).toBe(2)
     expect(result.removedMountCount).toBe(2)
-    await expect(store.listMounts({ projectId: 'project-a' })).resolves.toMatchObject({ mounts: [] })
-    await expect(store.listMounts({ projectId: 'project-b' })).resolves.toMatchObject({ mounts: [] })
+    await expect(store.listMounts({ projectId: 'project-a' })).resolves.toMatchObject({
+      mounts: [],
+    })
+    await expect(store.listMounts({ projectId: 'project-b' })).resolves.toMatchObject({
+      mounts: [],
+    })
   })
 
   it('fails closed when mount bindings changed after the displayed snapshot', async () => {
@@ -71,7 +75,9 @@ describe('WorkerTopologyStore endpoint removal impact', () => {
     })
 
     await expect(store.listEndpoints()).resolves.toMatchObject({
-      endpoints: expect.arrayContaining([expect.objectContaining({ endpointId: endpoint.endpointId })]),
+      endpoints: expect.arrayContaining([
+        expect.objectContaining({ endpointId: endpoint.endpointId }),
+      ]),
     })
     await expect(store.listMounts({ projectId: 'project-a' })).resolves.toMatchObject({
       mounts: [expect.objectContaining({ endpointId: endpoint.endpointId })],

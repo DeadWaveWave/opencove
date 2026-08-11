@@ -196,10 +196,7 @@ export function normalizeUpdateManagedSshEndpointPayload(
       : 'auto'
 
   return {
-    endpointId: normalizeRequiredString(
-      payload.endpointId,
-      'endpoint.updateManagedSsh endpointId',
-    ),
+    endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.updateManagedSsh endpointId'),
     displayName: normalizeOptionalString(payload.displayName),
     host: normalizeRequiredString(payload.host, 'endpoint.updateManagedSsh host'),
     port: normalizeOptionalManagedSshPort(payload.port, 'endpoint.updateManagedSsh port'),

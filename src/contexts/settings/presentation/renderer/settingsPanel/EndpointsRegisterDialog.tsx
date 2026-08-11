@@ -100,24 +100,24 @@ export function EndpointsRegisterDialog({
 
           {mode === 'create' ? (
             <div className="cove-window__segmented" data-testid="settings-endpoints-register-mode">
-            <button
-              type="button"
-              className={`cove-window__segment${registerMode === 'managed' ? ' cove-window__segment--selected' : ''}`}
-              data-testid="settings-endpoints-register-mode-managed"
-              disabled={isBusy}
-              onClick={() => onChangeRegisterMode('managed')}
-            >
-              {t('settingsPanel.endpoints.register.managedLabel')}
-            </button>
-            <button
-              type="button"
-              className={`cove-window__segment${registerMode === 'manual' ? ' cove-window__segment--selected' : ''}`}
-              data-testid="settings-endpoints-register-mode-manual"
-              disabled={isBusy}
-              onClick={() => onChangeRegisterMode('manual')}
-            >
-              {t('settingsPanel.endpoints.register.manualLabel')}
-            </button>
+              <button
+                type="button"
+                className={`cove-window__segment${registerMode === 'managed' ? ' cove-window__segment--selected' : ''}`}
+                data-testid="settings-endpoints-register-mode-managed"
+                disabled={isBusy}
+                onClick={() => onChangeRegisterMode('managed')}
+              >
+                {t('settingsPanel.endpoints.register.managedLabel')}
+              </button>
+              <button
+                type="button"
+                className={`cove-window__segment${registerMode === 'manual' ? ' cove-window__segment--selected' : ''}`}
+                data-testid="settings-endpoints-register-mode-manual"
+                disabled={isBusy}
+                onClick={() => onChangeRegisterMode('manual')}
+              >
+                {t('settingsPanel.endpoints.register.manualLabel')}
+              </button>
             </div>
           ) : null}
 

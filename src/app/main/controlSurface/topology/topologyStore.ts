@@ -24,6 +24,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import {
   resolveEndpointRemovalImpact,
+  resolveEndpointRemovalImpacts,
   type EndpointRemovalImpact,
 } from '../../../../contexts/topology/domain/endpointRemovalImpact'
 import {
@@ -50,8 +51,8 @@ import {
   createManagedSshEndpointRegistration,
   createManualEndpointRegistration,
 } from './topologyEndpointRegistration'
-import { createManagedSshEndpointUpdate } from './topologyEndpointUpdate'
-import { persistTopologyFile, persistTopologyFiles } from './topologyPersistence'
+import { runManagedSshEndpointUpdate } from './topologyManagedSshUpdate'
+import { persistTopologyFiles } from './topologyPersistence'
 import type { WorkerTopologyStore } from './topologyStoreTypes'
 export type { WorkerTopologyStore } from './topologyStoreTypes'
 
@@ -161,36 +162,20 @@ export function createWorkerTopologyStore(options: {
     input: UpdateManagedSshWorkerEndpointInput,
   ): Promise<UpdateManagedSshWorkerEndpointResult> => {
     await ensureLoaded()
-
-    const endpointId = normalizeNonEmptyString(input.endpointId)
-    const matched = topology.endpoints.find(endpoint => endpoint.endpointId === endpointId) ?? null
-    if (!matched || matched.accessKind !== 'managed_ssh' || !matched.managedSsh) {
-      throw createAppError('common.invalid_input', {
-        debugMessage: `Managed SSH endpoint not found: ${endpointId}`,
-      })
-    }
-
-    const nextRecord = createManagedSshEndpointUpdate({
-      current: matched,
-      update: input,
+    const nextRecord = await runManagedSshEndpointUpdate({
+      input,
       now: new Date().toISOString(),
+      findCurrentEndpoint: endpointId =>
+        topology.endpoints.find(endpoint => endpoint.endpointId === endpointId) ?? null,
+      readToken: credentialRef => secrets.tokensByCredentialRef[credentialRef] ?? '',
+      disposeRuntime: options.disposeManagedSshEndpointRuntime,
+      commit: async record => {
+        topology.endpoints = topology.endpoints.map(endpoint =>
+          endpoint.endpointId === record.endpointId ? record : endpoint,
+        )
+        await persistQueued()
+      },
     })
-    const nextTopology: TopologyFileV1 = {
-      ...topology,
-      endpoints: topology.endpoints.map(endpoint =>
-        endpoint.endpointId === endpointId ? nextRecord : endpoint,
-      ),
-    }
-
-    await options.disposeManagedSshEndpointRuntime?.({
-      endpointId: matched.endpointId,
-      displayName: matched.displayName,
-      token: secrets.tokensByCredentialRef[matched.credentialRef] ?? '',
-      ssh: matched.managedSsh,
-    })
-
-    await persistTopologyFile(topologyPath, nextTopology)
-    topology = nextTopology
 
     return { endpoint: toEndpointDto(nextRecord) }
   }
@@ -198,6 +183,13 @@ export function createWorkerTopologyStore(options: {
   const getEndpointRemovalImpact = async (endpointId: string): Promise<EndpointRemovalImpact> => {
     await ensureLoaded()
     return resolveEndpointRemovalImpact(endpointId, topology.mounts)
+  }
+
+  const getEndpointRemovalImpacts = async (
+    endpointIds: readonly string[],
+  ): Promise<ReadonlyMap<string, EndpointRemovalImpact>> => {
+    await ensureLoaded()
+    return resolveEndpointRemovalImpacts(endpointIds, topology.mounts)
   }
 
   const removeEndpoint = async (
@@ -487,6 +479,7 @@ export function createWorkerTopologyStore(options: {
     updateManagedSshEndpoint,
     removeEndpoint,
     getEndpointRemovalImpact,
+    getEndpointRemovalImpacts,
     resolveEndpointRuntimeAccess,
     resolveRemoteEndpointConnection,
     listMounts,

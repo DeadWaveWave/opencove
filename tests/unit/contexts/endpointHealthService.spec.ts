@@ -94,6 +94,8 @@ function createSubject(options: {
     },
     removeEndpoint: async () => ({ removedMountCount: 0 }),
     getEndpointRemovalImpact: async () => ({ mountIds: [], mountCount: 0 }),
+    getEndpointRemovalImpacts: async endpointIds =>
+      new Map(endpointIds.map(endpointId => [endpointId, { mountIds: [], mountCount: 0 }])),
     resolveEndpointRuntimeAccess: async endpointId => accessByEndpointId.get(endpointId) ?? null,
     resolveRemoteEndpointConnection: async () => null,
     listMounts: async () => ({ projectId: 'project', mounts: [] }),

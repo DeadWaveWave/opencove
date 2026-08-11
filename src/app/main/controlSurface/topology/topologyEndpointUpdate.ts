@@ -1,10 +1,6 @@
 import { createAppError } from '../../../../shared/errors/appError'
 import type { UpdateManagedSshWorkerEndpointInput } from '../../../../shared/contracts/dto'
-import {
-  normalizeNonEmptyString,
-  normalizePort,
-  type RemoteEndpointRecord,
-} from './topologyFileV1'
+import { normalizeNonEmptyString, normalizePort, type RemoteEndpointRecord } from './topologyFileV1'
 
 export function createManagedSshEndpointUpdate(input: {
   current: RemoteEndpointRecord

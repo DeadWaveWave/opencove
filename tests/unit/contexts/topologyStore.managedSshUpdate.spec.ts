@@ -90,6 +90,100 @@ describe('WorkerTopologyStore managed SSH update', () => {
     )
   })
 
+  it('preserves a mount created while the previous tunnel is being disposed', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-topology-update-race-'))
+    tempPaths.push(userDataPath)
+    let markDisposeStarted: () => void = () => undefined
+    let releaseDispose: () => void = () => undefined
+    const disposeStarted = new Promise<void>(resolve => {
+      markDisposeStarted = resolve
+    })
+    const disposeGate = new Promise<void>(resolve => {
+      releaseDispose = resolve
+    })
+    const store = createWorkerTopologyStore({
+      userDataPath,
+      disposeManagedSshEndpointRuntime: async () => {
+        markDisposeStarted()
+        await disposeGate
+      },
+    })
+    const registered = await store.registerManagedSshEndpoint({
+      host: 'old.example.com',
+      remotePort: 41_000,
+    })
+
+    const updating = store.updateManagedSshEndpoint({
+      endpointId: registered.endpoint.endpointId,
+      host: 'new.example.com',
+      remotePort: 42_000,
+    })
+    await disposeStarted
+    const createdMount = await store.createMount({
+      projectId: 'project-a',
+      endpointId: registered.endpoint.endpointId,
+      rootPath: '/remote/project',
+    })
+    releaseDispose()
+    await updating
+
+    const listed = await store.listMounts({ projectId: 'project-a' })
+    expect(listed.mounts).toContainEqual(
+      expect.objectContaining({ mountId: createdMount.mount.mountId }),
+    )
+    const durableTopology = JSON.parse(
+      await readFile(join(userDataPath, 'worker-topology.json'), 'utf8'),
+    ) as { mounts: Array<{ mountId: string }> }
+    expect(durableTopology.mounts).toContainEqual(
+      expect.objectContaining({ mountId: createdMount.mount.mountId }),
+    )
+  })
+
+  it('fails cleanly when the endpoint is removed during runtime disposal', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-topology-update-removed-'))
+    tempPaths.push(userDataPath)
+    let markDisposeStarted: () => void = () => undefined
+    let releaseDispose: () => void = () => undefined
+    const disposeStarted = new Promise<void>(resolve => {
+      markDisposeStarted = resolve
+    })
+    const disposeGate = new Promise<void>(resolve => {
+      releaseDispose = resolve
+    })
+    let disposeCallCount = 0
+    const store = createWorkerTopologyStore({
+      userDataPath,
+      disposeManagedSshEndpointRuntime: async () => {
+        disposeCallCount += 1
+        if (disposeCallCount === 1) {
+          markDisposeStarted()
+          await disposeGate
+        }
+      },
+    })
+    const registered = await store.registerManagedSshEndpoint({
+      host: 'old.example.com',
+      remotePort: 41_000,
+    })
+
+    const updating = store.updateManagedSshEndpoint({
+      endpointId: registered.endpoint.endpointId,
+      host: 'new.example.com',
+      remotePort: 42_000,
+    })
+    await disposeStarted
+    await store.removeEndpoint({ endpointId: registered.endpoint.endpointId })
+    releaseDispose()
+
+    await expect(updating).rejects.toMatchObject({ code: 'common.invalid_input' })
+    const durableTopology = JSON.parse(
+      await readFile(join(userDataPath, 'worker-topology.json'), 'utf8'),
+    ) as { endpoints: Array<{ endpointId: string }> }
+    expect(durableTopology.endpoints).not.toContainEqual(
+      expect.objectContaining({ endpointId: registered.endpoint.endpointId }),
+    )
+  })
+
   it('leaves the durable topology byte-for-byte unchanged when validation fails', async () => {
     const { userDataPath, store, disposeManagedSshEndpointRuntime } = await createSubject()
     const registered = await store.registerManagedSshEndpoint({
