@@ -12,6 +12,7 @@ export const zhCNCommonRemoteEndpoints = {
     tunnel_failed: '隧道失败',
     needs_setup: '需要安装',
     version_mismatch: '需要更新',
+    persistence_failed: '尚未保存',
     error: '错误',
   },
   summary: {
@@ -25,6 +26,7 @@ export const zhCNCommonRemoteEndpoints = {
     tunnel_failed: 'OpenCove 无法保持 SSH 隧道在线。',
     needs_setup: '远程 runtime 还需要先安装或启动。',
     version_mismatch: '远程 runtime 与当前 OpenCove 构建还不兼容。',
+    persistence_failed: '上一次拓扑变更未能保存。磁盘中的设置仍是权威状态。',
     error: 'OpenCove 暂时无法准备好这个 endpoint。',
   },
   action: {

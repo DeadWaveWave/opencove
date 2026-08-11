@@ -12,6 +12,7 @@ export const enCommonRemoteEndpoints = {
     tunnel_failed: 'Tunnel failed',
     needs_setup: 'Needs setup',
     version_mismatch: 'Update required',
+    persistence_failed: 'Not saved',
     error: 'Error',
   },
   summary: {
@@ -25,6 +26,8 @@ export const enCommonRemoteEndpoints = {
     tunnel_failed: 'OpenCove could not keep the SSH tunnel alive.',
     needs_setup: 'The remote runtime still needs to be installed or started.',
     version_mismatch: 'The remote runtime is not compatible with this OpenCove build yet.',
+    persistence_failed:
+      'The last topology change was not saved. On-disk settings remain authoritative.',
     error: 'OpenCove could not prepare this endpoint.',
   },
   action: {

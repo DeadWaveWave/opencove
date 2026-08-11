@@ -27,6 +27,7 @@ function parseRequiredPort(value: string): number | null {
 export function EndpointsSection(): React.JSX.Element {
   const { t } = useTranslation()
   const {
+    overviews,
     remoteOverviews,
     error: overviewError,
     isLoading,
@@ -56,6 +57,11 @@ export function EndpointsSection(): React.JSX.Element {
   const managedRemotePortResult = parseOptionalManagedSshPort(managedRemotePort)
   const manualPortValue = parseRequiredPort(manualPort)
   const remoteEndpoints = remoteOverviews
+  const persistenceOverview =
+    overviews.find(
+      overview =>
+        overview.endpoint.endpointId === 'local' && overview.status === 'persistence_failed',
+    ) ?? null
 
   const canSaveManaged =
     managedHost.trim().length > 0 &&
@@ -251,6 +257,19 @@ export function EndpointsSection(): React.JSX.Element {
         title={t('settingsPanel.endpoints.list.title')}
         description={t('settingsPanel.endpoints.list.help')}
       >
+        {persistenceOverview ? (
+          <RemoteEndpointStatusPanel
+            t={t}
+            overview={persistenceOverview}
+            compact
+            isBusy={Boolean(busyByEndpointId.local)}
+            onRunRecommendedAction={nextOverview => {
+              void runRecommendedAction(nextOverview)
+            }}
+            testIdPrefix="settings-topology-persistence"
+          />
+        ) : null}
+
         <div className="settings-panel__endpoint-toolbar">
           <div className="settings-panel__endpoint-toolbar-meta">
             <strong>

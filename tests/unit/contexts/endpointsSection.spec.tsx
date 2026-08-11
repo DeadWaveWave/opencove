@@ -34,9 +34,9 @@ function createOverview(overrides: Partial<WorkerEndpointOverviewDto>): WorkerEn
   }
 }
 
-function installEndpointsApi() {
+function installEndpointsApi(options: { localOverview?: WorkerEndpointOverviewDto } = {}) {
   const overviews: WorkerEndpointOverviewDto[] = [
-    createOverview({}),
+    options.localOverview ?? createOverview({}),
     createOverview({
       endpoint: {
         endpointId: 'managed-1',
@@ -174,6 +174,21 @@ function installEndpointsApi() {
         matched.summary = 'Connected.'
         return { overview: { ...matched } }
       }
+      case 'endpoint.repair': {
+        const { endpointId, action } = payload as { endpointId: string; action: string }
+        const matched = overviews.find(overview => overview.endpoint.endpointId === endpointId)
+        if (!matched) {
+          throw new Error(`Unknown endpointId: ${endpointId}`)
+        }
+
+        if (endpointId === 'local' && action === 'retry') {
+          matched.status = 'connected'
+          matched.recommendedAction = 'none'
+          return { overview: { ...matched } }
+        }
+
+        throw new Error(`Unexpected repair: ${endpointId}/${action}`)
+      }
       case 'endpoint.remove':
         overviews.splice(
           overviews.findIndex(
@@ -204,6 +219,29 @@ describe('EndpointsSection', () => {
   afterEach(() => {
     delete (window as { opencoveApi?: unknown }).opencoveApi
     vi.restoreAllMocks()
+  })
+
+  it('shows a persistent topology save failure with a retry action', async () => {
+    const { invoke } = installEndpointsApi({
+      localOverview: createOverview({
+        status: 'persistence_failed',
+        recommendedAction: 'retry',
+      }),
+    })
+
+    render(<EndpointsSection />)
+
+    expect(await screen.findByText(/The last topology change was not saved\./)).toBeVisible()
+    fireEvent.click(screen.getByTestId('settings-topology-persistence-recommended-action'))
+
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'endpoint.repair',
+          payload: { endpointId: 'local', action: 'retry' },
+        }),
+      )
+    })
   })
 
   it('opens registration in a dialog instead of rendering the form inline', async () => {

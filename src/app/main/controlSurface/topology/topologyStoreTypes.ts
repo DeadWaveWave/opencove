@@ -19,6 +19,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import type { EndpointRemovalImpact } from '../../../../contexts/topology/domain/endpointRemovalImpact'
 import type { EndpointRuntimeAccess, RemoteEndpointConnection } from './topologyEndpointAccess'
+import type { TopologyPersistenceIssue } from './topologyWriteQueue'
 
 export interface WorkerTopologyStore {
   listEndpoints: () => Promise<ListWorkerEndpointsResult>
@@ -41,4 +42,6 @@ export interface WorkerTopologyStore {
   removeMount: (input: RemoveMountInput) => Promise<void>
   promoteMount: (input: PromoteMountInput) => Promise<void>
   resolveMountTarget: (input: ResolveMountTargetInput) => Promise<ResolveMountTargetResult | null>
+  getPersistenceIssue?: () => Promise<TopologyPersistenceIssue | null>
+  retryPersistence?: () => Promise<void>
 }

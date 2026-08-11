@@ -27,6 +27,10 @@ export function getEndpointStatusSummary(
   t: TranslateFn,
   overview: WorkerEndpointOverviewDto,
 ): string {
+  if (overview.status === 'persistence_failed') {
+    return t('common.remoteEndpoints.summary.persistence_failed')
+  }
+
   if (overview.endpoint.endpointId === 'local') {
     return t('common.remoteEndpoints.summary.local')
   }
@@ -51,6 +55,7 @@ export function getEndpointStatusTone(status: WorkerEndpointHealthStatusDto): En
     case 'auth_failed':
     case 'tunnel_failed':
     case 'version_mismatch':
+    case 'persistence_failed':
     case 'error':
       return 'danger'
     case 'needs_setup':

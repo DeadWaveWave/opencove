@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
@@ -14,11 +15,8 @@ import type {
   RegisterWorkerEndpointInput,
   RegisterWorkerEndpointResult,
   RemoveMountInput,
-  RemoveWorkerEndpointInput,
-  RemoveWorkerEndpointResult,
   ResolveMountTargetInput,
   ResolveMountTargetResult,
-  WorkerEndpointDto,
   UpdateManagedSshWorkerEndpointInput,
   UpdateManagedSshWorkerEndpointResult,
 } from '../../../../shared/contracts/dto'
@@ -28,31 +26,30 @@ import {
   type EndpointRemovalImpact,
 } from '../../../../contexts/topology/domain/endpointRemovalImpact'
 import {
-  LOCAL_ENDPOINT_TIMESTAMP,
   SECRETS_FILE_NAME,
   TOPOLOGY_FILE_NAME,
   type MountRecord,
   normalizeNonEmptyString,
-  normalizeSecretsFile,
-  normalizeTopologyFile,
   type SecretsFileV1,
   type TopologyFileV1,
   toEndpointDto,
+  toLocalEndpointDto,
   toMountDto,
 } from './topologyFileV1'
 import {
   type EndpointRuntimeAccess,
   type ManagedSshEndpointConnectionResolver,
   type ManagedSshEndpointRuntimeDisposer,
-  readJsonFile,
   type RemoteEndpointConnection,
 } from './topologyEndpointAccess'
 import {
   createManagedSshEndpointRegistration,
   createManualEndpointRegistration,
 } from './topologyEndpointRegistration'
+import { removeTopologyEndpoint } from './topologyEndpointRemoval'
 import { runManagedSshEndpointUpdate } from './topologyManagedSshUpdate'
-import { persistTopologyFiles } from './topologyPersistence'
+import { createTopologyMutationQueue, type TopologyPersistenceIssue } from './topologyWriteQueue'
+import { persistTopologyState, readTopologyState, type TopologyState } from './topologyPersistence'
 import type { WorkerTopologyStore } from './topologyStoreTypes'
 export type { WorkerTopologyStore } from './topologyStoreTypes'
 
@@ -60,61 +57,61 @@ export function createWorkerTopologyStore(options: {
   userDataPath: string
   resolveManagedSshEndpointConnection?: ManagedSshEndpointConnectionResolver
   disposeManagedSshEndpointRuntime?: ManagedSshEndpointRuntimeDisposer
+  writeFileImpl?: typeof writeFile
 }): WorkerTopologyStore {
   const topologyPath = resolve(options.userDataPath, TOPOLOGY_FILE_NAME)
   const secretsPath = resolve(options.userDataPath, SECRETS_FILE_NAME)
-
   let loaded = false
+  let loadPromise: Promise<void> | null = null
   let topology: TopologyFileV1 = { version: 1, endpoints: [], mounts: [] }
   let secrets: SecretsFileV1 = { version: 1, tokensByCredentialRef: {} }
 
-  let writeQueue: Promise<void> = Promise.resolve()
+  const readDurableState = async (): Promise<TopologyState> =>
+    await readTopologyState({ topologyPath, secretsPath })
 
   const ensureLoaded = async (): Promise<void> => {
     if (loaded) {
       return
     }
 
-    const [rawTopology, rawSecrets] = await Promise.all([
-      readJsonFile(topologyPath),
-      readJsonFile(secretsPath),
-    ])
+    loadPromise ??= (async () => {
+      const durable = await readDurableState()
+      topology = durable.topology
+      secrets = durable.secrets
+      loaded = true
+    })()
 
-    topology = normalizeTopologyFile(rawTopology)
-    secrets = normalizeSecretsFile(rawSecrets)
-    loaded = true
+    try {
+      await loadPromise
+    } finally {
+      if (!loaded) {
+        loadPromise = null
+      }
+    }
   }
 
-  const persist = async (
-    topologySnapshot: TopologyFileV1 = topology,
-    secretsSnapshot: SecretsFileV1 = secrets,
-  ): Promise<void> => {
-    await persistTopologyFiles({
+  const persist = async (state: TopologyState): Promise<void> =>
+    await persistTopologyState({
       topologyPath,
       secretsPath,
-      topology: topologySnapshot,
-      secrets: secretsSnapshot,
+      state,
+      writeFileImpl: options.writeFileImpl,
     })
-  }
 
-  const persistQueued = async (): Promise<void> => {
-    writeQueue = writeQueue.then(async () => await persist())
-    return await writeQueue
-  }
+  const mutationQueue = createTopologyMutationQueue({
+    getCommittedState: () => ({ topology, secrets }),
+    replaceCommittedState: state => {
+      topology = state.topology
+      secrets = state.secrets
+    },
+    readDurableState,
+    persist,
+  })
 
   const listEndpoints = async (): Promise<ListWorkerEndpointsResult> => {
     await ensureLoaded()
 
-    const local: WorkerEndpointDto = {
-      endpointId: 'local',
-      kind: 'local',
-      displayName: 'Local',
-      createdAt: LOCAL_ENDPOINT_TIMESTAMP,
-      updatedAt: LOCAL_ENDPOINT_TIMESTAMP,
-      access: null,
-      remote: null,
-    }
-
+    const local = toLocalEndpointDto()
     const endpoints = [local, ...topology.endpoints.map(toEndpointDto)]
     endpoints.sort((a, b) => a.displayName.localeCompare(b.displayName))
     return { endpoints }
@@ -124,38 +121,56 @@ export function createWorkerTopologyStore(options: {
     input: RegisterWorkerEndpointInput,
   ): Promise<RegisterWorkerEndpointResult> => {
     await ensureLoaded()
+    let registration: ReturnType<typeof createManualEndpointRegistration> | null = null
 
-    const now = new Date().toISOString()
-    const { record, token } = createManualEndpointRegistration(input, now)
-
-    topology.endpoints = [...topology.endpoints, record]
-    secrets.tokensByCredentialRef[record.credentialRef] = token
-
-    await persistQueued()
-
-    return { endpoint: toEndpointDto(record) }
+    return await mutationQueue.enqueue({
+      operation: 'endpoint.register',
+      apply: draft => {
+        registration ??= createManualEndpointRegistration(input, new Date().toISOString())
+        const { record, token } = registration
+        const existingIndex = draft.topology.endpoints.findIndex(
+          endpoint => endpoint.endpointId === record.endpointId,
+        )
+        if (existingIndex === -1) {
+          draft.topology.endpoints.push(record)
+        } else {
+          draft.topology.endpoints[existingIndex] = record
+        }
+        draft.secrets.tokensByCredentialRef[record.credentialRef] = token
+        return { endpoint: toEndpointDto(record) }
+      },
+    })
   }
 
   const registerManagedSshEndpoint = async (
     input: RegisterManagedSshWorkerEndpointInput,
   ): Promise<RegisterManagedSshWorkerEndpointResult> => {
     await ensureLoaded()
+    let registration: ReturnType<typeof createManagedSshEndpointRegistration> | null = null
 
-    const now = new Date().toISOString()
-    const { record, token } = createManagedSshEndpointRegistration(
-      input,
-      topology.endpoints
-        .map(endpoint => endpoint.managedSsh?.remotePort)
-        .filter((candidate): candidate is number => typeof candidate === 'number'),
-      now,
-    )
-
-    topology.endpoints = [...topology.endpoints, record]
-    secrets.tokensByCredentialRef[record.credentialRef] = token
-
-    await persistQueued()
-
-    return { endpoint: toEndpointDto(record) }
+    return await mutationQueue.enqueue({
+      operation: 'endpoint.registerManagedSsh',
+      apply: draft => {
+        registration ??= createManagedSshEndpointRegistration(
+          input,
+          draft.topology.endpoints
+            .map(endpoint => endpoint.managedSsh?.remotePort)
+            .filter((candidate): candidate is number => typeof candidate === 'number'),
+          new Date().toISOString(),
+        )
+        const { record, token } = registration
+        const existingIndex = draft.topology.endpoints.findIndex(
+          endpoint => endpoint.endpointId === record.endpointId,
+        )
+        if (existingIndex === -1) {
+          draft.topology.endpoints.push(record)
+        } else {
+          draft.topology.endpoints[existingIndex] = record
+        }
+        draft.secrets.tokensByCredentialRef[record.credentialRef] = token
+        return { endpoint: toEndpointDto(record) }
+      },
+    })
   }
 
   const updateManagedSshEndpoint = async (
@@ -170,10 +185,23 @@ export function createWorkerTopologyStore(options: {
       readToken: credentialRef => secrets.tokensByCredentialRef[credentialRef] ?? '',
       disposeRuntime: options.disposeManagedSshEndpointRuntime,
       commit: async record => {
-        topology.endpoints = topology.endpoints.map(endpoint =>
-          endpoint.endpointId === record.endpointId ? record : endpoint,
-        )
-        await persistQueued()
+        await mutationQueue.enqueue({
+          operation: 'endpoint.updateManagedSsh',
+          apply: draft => {
+            const matched = draft.topology.endpoints.find(
+              endpoint => endpoint.endpointId === record.endpointId,
+            )
+            if (!matched) {
+              throw createAppError('common.invalid_input', {
+                debugMessage: `Managed SSH endpoint not found: ${record.endpointId}`,
+              })
+            }
+
+            draft.topology.endpoints = draft.topology.endpoints.map(endpoint =>
+              endpoint.endpointId === record.endpointId ? record : endpoint,
+            )
+          },
+        })
       },
     })
 
@@ -192,48 +220,13 @@ export function createWorkerTopologyStore(options: {
     return resolveEndpointRemovalImpacts(endpointIds, topology.mounts)
   }
 
-  const removeEndpoint = async (
-    input: RemoveWorkerEndpointInput,
-  ): Promise<RemoveWorkerEndpointResult> => {
+  const removeEndpoint: WorkerTopologyStore['removeEndpoint'] = async input => {
     await ensureLoaded()
-
-    const endpointId = normalizeNonEmptyString(input.endpointId)
-    if (!endpointId || endpointId === 'local') {
-      throw createAppError('common.invalid_input', { debugMessage: 'Invalid endpointId.' })
-    }
-
-    const matched = topology.endpoints.find(endpoint => endpoint.endpointId === endpointId) ?? null
-    if (!matched) {
-      return { removedMountCount: 0 }
-    }
-
-    const impact = resolveEndpointRemovalImpact(endpointId, topology.mounts)
-    if (
-      input.expectedMountCount !== null &&
-      input.expectedMountCount !== undefined &&
-      input.expectedMountCount !== impact.mountCount
-    ) {
-      throw createAppError('common.invalid_input', {
-        debugMessage: 'Endpoint mount bindings changed. Refresh before removing the endpoint.',
-      })
-    }
-
-    topology.endpoints = topology.endpoints.filter(endpoint => endpoint.endpointId !== endpointId)
-    const removedMountIds = new Set(impact.mountIds)
-    topology.mounts = topology.mounts.filter(mount => !removedMountIds.has(mount.mountId))
-    delete secrets.tokensByCredentialRef[matched.credentialRef]
-
-    if (matched.accessKind === 'managed_ssh' && matched.managedSsh) {
-      await options.disposeManagedSshEndpointRuntime?.({
-        endpointId: matched.endpointId,
-        displayName: matched.displayName,
-        token: '',
-        ssh: matched.managedSsh,
-      })
-    }
-
-    await persistQueued()
-    return { removedMountCount: impact.mountCount }
+    return await removeTopologyEndpoint({
+      input,
+      mutationQueue,
+      disposeManagedSshEndpointRuntime: options.disposeManagedSshEndpointRuntime,
+    })
   }
 
   const resolveEndpointRuntimeAccess = async (
@@ -330,46 +323,56 @@ export function createWorkerTopologyStore(options: {
       })
     }
 
-    if (endpointId !== 'local') {
-      const exists =
-        topology.endpoints.some(endpoint => endpoint.endpointId === endpointId) ?? false
-      if (!exists) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: `Unknown endpointId: ${endpointId}`,
-        })
-      }
-    }
-
     const name =
       normalizeNonEmptyString(input.name) ??
       (endpointId === 'local' ? 'Local' : `Remote (${endpointId.slice(0, 8)})`)
-
     const now = new Date().toISOString()
     const mountId = randomUUID()
     const targetId = randomUUID()
     const rootUri = toFileUri(rootPath)
-    const sortOrder =
-      topology.mounts
-        .filter(mount => mount.projectId === projectId)
-        .reduce((acc, mount) => Math.max(acc, mount.sortOrder), -1) + 1
 
-    const record: MountRecord = {
-      mountId,
-      projectId,
-      name,
-      sortOrder,
-      endpointId,
-      targetId,
-      rootPath,
-      rootUri,
-      createdAt: now,
-      updatedAt: now,
-    }
+    return await mutationQueue.enqueue({
+      operation: 'mount.create',
+      apply: draft => {
+        if (
+          endpointId !== 'local' &&
+          !draft.topology.endpoints.some(endpoint => endpoint.endpointId === endpointId)
+        ) {
+          throw createAppError('common.invalid_input', {
+            debugMessage: `Unknown endpointId: ${endpointId}`,
+          })
+        }
 
-    topology.mounts = [...topology.mounts, record]
-    await persistQueued()
+        const existing =
+          draft.topology.mounts.find(candidate => candidate.mountId === mountId) ?? null
+        const sortOrder =
+          existing?.sortOrder ??
+          draft.topology.mounts
+            .filter(mount => mount.projectId === projectId)
+            .reduce((acc, mount) => Math.max(acc, mount.sortOrder), -1) + 1
+        const record: MountRecord = {
+          mountId,
+          projectId,
+          name,
+          sortOrder,
+          endpointId,
+          targetId,
+          rootPath,
+          rootUri,
+          createdAt: now,
+          updatedAt: now,
+        }
 
-    return { mount: toMountDto(record) }
+        if (existing) {
+          draft.topology.mounts = draft.topology.mounts.map(mount =>
+            mount.mountId === mountId ? record : mount,
+          )
+        } else {
+          draft.topology.mounts.push(record)
+        }
+        return { mount: toMountDto(record) }
+      },
+    })
   }
 
   const removeMount = async (input: RemoveMountInput): Promise<void> => {
@@ -382,13 +385,12 @@ export function createWorkerTopologyStore(options: {
       })
     }
 
-    const existing = topology.mounts.some(mount => mount.mountId === mountId)
-    if (!existing) {
-      return
-    }
-
-    topology.mounts = topology.mounts.filter(mount => mount.mountId !== mountId)
-    await persistQueued()
+    await mutationQueue.enqueue({
+      operation: 'mount.remove',
+      apply: draft => {
+        draft.topology.mounts = draft.topology.mounts.filter(mount => mount.mountId !== mountId)
+      },
+    })
   }
 
   const promoteMount = async (input: PromoteMountInput): Promise<void> => {
@@ -401,49 +403,52 @@ export function createWorkerTopologyStore(options: {
       })
     }
 
-    const selected = topology.mounts.find(candidate => candidate.mountId === mountId) ?? null
-    if (!selected) {
-      return
-    }
+    await mutationQueue.enqueue({
+      operation: 'mount.promote',
+      apply: draft => {
+        const selected = draft.topology.mounts.find(candidate => candidate.mountId === mountId)
+        if (!selected) {
+          return
+        }
 
-    const projectId = selected.projectId
-    const projectMounts = topology.mounts
-      .filter(mount => mount.projectId === projectId)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+        const projectId = selected.projectId
+        const projectMounts = draft.topology.mounts
+          .filter(mount => mount.projectId === projectId)
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+        const nextMountIds = [
+          mountId,
+          ...projectMounts.filter(mount => mount.mountId !== mountId).map(mount => mount.mountId),
+        ]
+        const nextOrderById = new Map<string, number>()
+        for (const [index, id] of nextMountIds.entries()) {
+          nextOrderById.set(id, index)
+        }
 
-    if (projectMounts.length === 0) {
-      return
-    }
+        const now = new Date().toISOString()
+        draft.topology.mounts = draft.topology.mounts.map(mount => {
+          if (mount.projectId !== projectId) {
+            return mount
+          }
 
-    const nextMountIds = [
-      mountId,
-      ...projectMounts.filter(mount => mount.mountId !== mountId).map(mount => mount.mountId),
-    ]
+          const nextOrder = nextOrderById.get(mount.mountId)
+          if (nextOrder === undefined || mount.sortOrder === nextOrder) {
+            return mount
+          }
 
-    const nextOrderById = new Map<string, number>()
-    for (const [index, id] of nextMountIds.entries()) {
-      nextOrderById.set(id, index)
-    }
-
-    const now = new Date().toISOString()
-    topology.mounts = topology.mounts.map(mount => {
-      if (mount.projectId !== projectId) {
-        return mount
-      }
-
-      const nextOrder = nextOrderById.get(mount.mountId)
-      if (nextOrder === undefined || mount.sortOrder === nextOrder) {
-        return mount
-      }
-
-      return {
-        ...mount,
-        sortOrder: nextOrder,
-        updatedAt: now,
-      }
+          return { ...mount, sortOrder: nextOrder, updatedAt: now }
+        })
+      },
     })
+  }
 
-    await persistQueued()
+  const getPersistenceIssue = async (): Promise<TopologyPersistenceIssue | null> => {
+    await ensureLoaded()
+    return mutationQueue.getPersistenceIssue()
+  }
+
+  const retryPersistence = async (): Promise<void> => {
+    await ensureLoaded()
+    await mutationQueue.retryPersistence()
   }
 
   const resolveMountTarget = async (
@@ -488,5 +493,7 @@ export function createWorkerTopologyStore(options: {
     removeMount,
     promoteMount,
     resolveMountTarget,
+    getPersistenceIssue,
+    retryPersistence,
   }
 }

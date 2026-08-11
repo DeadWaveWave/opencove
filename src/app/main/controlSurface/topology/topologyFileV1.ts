@@ -8,6 +8,18 @@ export const TOPOLOGY_FILE_NAME = 'worker-topology.json'
 export const SECRETS_FILE_NAME = 'worker-endpoint-secrets.json'
 export const LOCAL_ENDPOINT_TIMESTAMP = new Date(0).toISOString()
 
+export function toLocalEndpointDto(): WorkerEndpointDto {
+  return {
+    endpointId: 'local',
+    kind: 'local',
+    displayName: 'Local',
+    createdAt: LOCAL_ENDPOINT_TIMESTAMP,
+    updatedAt: LOCAL_ENDPOINT_TIMESTAMP,
+    access: null,
+    remote: null,
+  }
+}
+
 export type ManagedSshEndpointRecord = {
   host: string
   port: number | null

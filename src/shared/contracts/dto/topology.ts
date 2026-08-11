@@ -99,6 +99,7 @@ export type WorkerEndpointHealthStatusDto =
   | 'tunnel_failed'
   | 'needs_setup'
   | 'version_mismatch'
+  | 'persistence_failed'
   | 'error'
 
 export type WorkerEndpointHealthActionDto =

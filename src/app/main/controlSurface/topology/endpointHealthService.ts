@@ -56,6 +56,7 @@ function buildOverview(
           tunnel_failed: 'SSH tunnel failed.',
           needs_setup: 'Remote runtime needs setup.',
           version_mismatch: 'Remote runtime is incompatible with this OpenCove version.',
+          persistence_failed: 'A topology change was not saved.',
           error: 'Endpoint error.',
         } satisfies Record<WorkerEndpointHealthStatusDto, string>
       )[options.status],
@@ -178,6 +179,7 @@ function recommendedActionForAccessStatus(
       return access.kind === 'managed_ssh' ? 'install_runtime' : 'show_details'
     case 'version_mismatch':
       return access.kind === 'managed_ssh' ? 'update_runtime' : 'show_details'
+    case 'persistence_failed':
     case 'error':
     default:
       return 'retry'
@@ -294,15 +296,28 @@ export function createEndpointHealthService(options: {
   return {
     listOverviews: async (): Promise<ListWorkerEndpointOverviewsResult> => {
       const endpoints = await options.topology.listEndpoints()
-      const impactByEndpointId = await options.topology.getEndpointRemovalImpacts(
-        endpoints.endpoints.map(endpoint => endpoint.endpointId),
-      )
+      const [persistenceIssue, impactByEndpointId] = await Promise.all([
+        options.topology.getPersistenceIssue?.(),
+        options.topology.getEndpointRemovalImpacts(
+          endpoints.endpoints.map(endpoint => endpoint.endpointId),
+        ),
+      ])
       const overviews = await Promise.all(
         endpoints.endpoints.map(async endpoint => {
           const impact = impactByEndpointId.get(endpoint.endpointId) ?? {
             mountIds: [],
             mountCount: 0,
           }
+          if (endpoint.endpointId === 'local' && persistenceIssue) {
+            return buildOverview(endpoint, {
+              status: 'persistence_failed',
+              details: [],
+              recommendedAction: 'retry',
+              canBrowse: false,
+              dependentMountCount: impact.mountCount,
+            })
+          }
+
           const access = await options.topology.resolveEndpointRuntimeAccess(endpoint.endpointId)
           if (!access) {
             return buildOverview(endpoint, {
@@ -378,8 +393,30 @@ export function createEndpointHealthService(options: {
     repairEndpoint: async (
       input: RepairWorkerEndpointInput,
     ): Promise<RepairWorkerEndpointResult> => {
-      const access = await options.topology.resolveEndpointRuntimeAccess(input.endpointId)
       const impact = await options.topology.getEndpointRemovalImpact(input.endpointId)
+      if (
+        input.endpointId === 'local' &&
+        input.action === 'retry' &&
+        options.topology.retryPersistence
+      ) {
+        await options.topology.retryPersistence()
+        const endpoint = (await options.topology.listEndpoints()).endpoints.find(
+          candidate => candidate.endpointId === 'local',
+        )
+        const issue = await options.topology.getPersistenceIssue?.()
+        return {
+          overview: buildOverview(endpoint ?? makeMissingEndpoint('local'), {
+            status: issue ? 'persistence_failed' : 'connected',
+            details: [],
+            recommendedAction: issue ? 'retry' : 'none',
+            canBrowse: !issue,
+            summary: issue ? 'A topology change was not saved.' : 'Local endpoint.',
+            dependentMountCount: impact.mountCount,
+          }),
+        }
+      }
+
+      const access = await options.topology.resolveEndpointRuntimeAccess(input.endpointId)
       if (!access) {
         return {
           overview: buildOverview(makeMissingEndpoint(input.endpointId), {
