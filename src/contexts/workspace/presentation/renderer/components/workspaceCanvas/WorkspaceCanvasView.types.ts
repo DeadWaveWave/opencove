@@ -194,6 +194,7 @@ export interface WorkspaceCanvasViewProps {
   cancelSpaceWorktreeMismatchDropWarning: () => void
   continueSpaceWorktreeMismatchDropWarning: () => void
   agentSettings: WorkspaceCanvasProps['agentSettings']
+  onChangePreserveWindowSizesOnArrange: WorkspaceCanvasProps['onChangePreserveWindowSizesOnArrange']
   workspacePath: string
   spaceActionMenu: SpaceActionMenuState | null
   availablePathOpeners: WorkspacePathOpener[]

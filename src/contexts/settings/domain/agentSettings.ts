@@ -278,6 +278,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const standardWindowSizeBucket = isValidStandardWindowSizeBucket(value.standardWindowSizeBucket)
     ? value.standardWindowSizeBucket
     : DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
+  const preserveWindowSizesOnArrange =
+    normalizeBoolean(value.preserveWindowSizesOnArrange) ??
+    DEFAULT_AGENT_SETTINGS.preserveWindowSizesOnArrange
   const websiteWindowPolicy = normalizeWebsiteWindowPolicy(
     value.websiteWindowPolicy,
     DEFAULT_AGENT_SETTINGS.websiteWindowPolicy,
@@ -401,6 +404,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     canvasWheelBehavior,
     canvasWheelZoomModifier,
     standardWindowSizeBucket,
+    preserveWindowSizesOnArrange,
     websiteWindowPolicy,
     browserDefaultMode,
     browserSearchEngine,

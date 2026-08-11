@@ -23,6 +23,7 @@ function WorkspaceMainComponent({
   onNodesChange,
   onViewportChange,
   onMinimapVisibilityChange,
+  onChangePreserveWindowSizesOnArrange,
   onSpacesChange,
   onActiveSpaceChange,
   onOpenProjectContextMenu,
@@ -39,6 +40,7 @@ function WorkspaceMainComponent({
   onNodesChange: (nodes: WorkspaceState['nodes']) => void
   onViewportChange: (viewport: WorkspaceViewport) => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
+  onChangePreserveWindowSizesOnArrange: (enabled: boolean) => void
   onSpacesChange: (spaces: WorkspaceState['spaces']) => void
   onActiveSpaceChange: (spaceId: string | null) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
@@ -73,6 +75,7 @@ function WorkspaceMainComponent({
         isMinimapVisible={activeWorkspace.isMinimapVisible}
         onViewportChange={onViewportChange}
         onMinimapVisibilityChange={onMinimapVisibilityChange}
+        onChangePreserveWindowSizesOnArrange={onChangePreserveWindowSizesOnArrange}
         spaces={activeWorkspace.spaces}
         activeSpaceId={activeWorkspace.activeSpaceId}
         onSpacesChange={onSpacesChange}

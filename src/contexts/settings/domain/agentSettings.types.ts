@@ -68,6 +68,7 @@ export interface AgentSettings {
   canvasWheelBehavior: CanvasWheelBehavior
   canvasWheelZoomModifier: CanvasWheelZoomModifier
   standardWindowSizeBucket: StandardWindowSizeBucket
+  preserveWindowSizesOnArrange: boolean
   websiteWindowPolicy: WebsiteWindowPolicy
   browserDefaultMode: BrowserMode
   browserSearchEngine: BrowserSearchEngineId

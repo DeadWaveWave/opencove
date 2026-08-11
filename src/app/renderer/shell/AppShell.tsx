@@ -140,6 +140,16 @@ export default function App(): React.JSX.Element {
   useAppDocumentChrome(activeWorkspace?.name ?? null)
 
   const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
+  const handleChangePreserveWindowSizesOnArrange = useCallback(
+    (enabled: boolean) => {
+      setAgentSettings(previous =>
+        previous.preserveWindowSizesOnArrange === enabled
+          ? previous
+          : { ...previous, preserveWindowSizesOnArrange: enabled },
+      )
+    },
+    [setAgentSettings],
+  )
 
   const [isFocusNodeTargetZoomPreviewing, setFocusNodeZoomPreviewing] = useState(false)
   const [settingsInitialPageId, setSettingsInitialPageId] = useState<SettingsPageId | null>(null)
@@ -370,6 +380,7 @@ export default function App(): React.JSX.Element {
             onNodesChange={handleWorkspaceNodesChange}
             onViewportChange={handleWorkspaceViewportChange}
             onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
+            onChangePreserveWindowSizesOnArrange={handleChangePreserveWindowSizesOnArrange}
             onSpacesChange={handleWorkspaceSpacesChange}
             onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
             onOpenProjectContextMenu={setProjectContextMenu}

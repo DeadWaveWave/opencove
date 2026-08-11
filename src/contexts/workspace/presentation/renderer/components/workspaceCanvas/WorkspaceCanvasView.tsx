@@ -159,6 +159,7 @@ export function WorkspaceCanvasView({
   cancelSpaceWorktreeMismatchDropWarning,
   continueSpaceWorktreeMismatchDropWarning,
   agentSettings,
+  onChangePreserveWindowSizesOnArrange,
   workspacePath,
   spaceActionMenu,
   availablePathOpeners,
@@ -449,6 +450,7 @@ export function WorkspaceCanvasView({
         copySpacePath={copySpacePath}
         openSpacePath={openSpacePath}
         agentSettings={agentSettings}
+        onChangePreserveWindowSizesOnArrange={onChangePreserveWindowSizesOnArrange}
       />
       <WorkspaceCanvasWindows
         taskCreator={taskCreator}

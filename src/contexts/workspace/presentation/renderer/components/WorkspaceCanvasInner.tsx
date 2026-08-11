@@ -25,6 +25,7 @@ export function WorkspaceCanvasInner({
   onViewportChange,
   onMinimapVisibilityChange,
   agentSettings,
+  onChangePreserveWindowSizesOnArrange,
   isFocusNodeTargetZoomPreviewing = false,
   focusNodeId,
   focusSpaceId,
@@ -483,6 +484,7 @@ export function WorkspaceCanvasInner({
       cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}
       continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}
       agentSettings={agentSettings}
+      onChangePreserveWindowSizesOnArrange={onChangePreserveWindowSizesOnArrange}
       workspacePath={workspacePath}
       worktreesRoot={worktreesRoot}
       onShowMessage={onShowMessage}

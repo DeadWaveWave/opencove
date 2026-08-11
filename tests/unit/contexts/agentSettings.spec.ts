@@ -93,6 +93,17 @@ describe('normalizeAgentSettings', () => {
     ).toBe(DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket)
   })
 
+  it('defaults and normalizes the arrange window-size preference', () => {
+    expect(DEFAULT_AGENT_SETTINGS.preserveWindowSizesOnArrange).toBe(false)
+    expect(normalizeAgentSettings({}).preserveWindowSizesOnArrange).toBe(false)
+    expect(
+      normalizeAgentSettings({ preserveWindowSizesOnArrange: true }).preserveWindowSizesOnArrange,
+    ).toBe(true)
+    expect(
+      normalizeAgentSettings({ preserveWindowSizesOnArrange: 'true' }).preserveWindowSizesOnArrange,
+    ).toBe(false)
+  })
+
   it('defaults and normalizes browser runtime settings', () => {
     expect(DEFAULT_AGENT_SETTINGS.browserDefaultMode).toBe('native')
     expect(DEFAULT_AGENT_SETTINGS.browserSearchEngine).toBe('google')
