@@ -6,7 +6,6 @@ export type DraftMount = {
 }
 
 export type RemotePickerState = {
-  target: 'default' | 'extra'
   endpointId: string
   endpointLabel: string
   initialPath: string | null

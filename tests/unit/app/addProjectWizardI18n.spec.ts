@@ -34,9 +34,26 @@ describe('add project wizard translations', () => {
     )
   })
 
-  it.each([enShell, zhCNShell])('does not retain unused project-name or local-only keys', shell => {
-    expect(shell.addProjectWizard).not.toHaveProperty('nameLabel')
-    expect(shell.addProjectWizard).not.toHaveProperty('namePlaceholder')
-    expect(shell.addProjectWizard).not.toHaveProperty('descriptionLocalOnly')
+  it.each([enShell, zhCNShell])('does not retain keys from unreachable wizard UI', shell => {
+    const removedKeys = [
+      'nameLabel',
+      'namePlaceholder',
+      'descriptionLocalOnly',
+      'localNamePlaceholder',
+      'remoteNamePlaceholder',
+      'advancedLabel',
+      'advancedShow',
+      'advancedHide',
+      'mountsLabel',
+      'mountsEmpty',
+      'defaultMountBadge',
+      'mountUnnamed',
+      'addExtraLocalLabel',
+      'addExtraRemoteLabel',
+    ]
+
+    for (const key of removedKeys) {
+      expect(shell.addProjectWizard).not.toHaveProperty(key)
+    }
   })
 })
