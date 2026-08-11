@@ -60,6 +60,7 @@ function installEndpointsApi() {
       summary: 'Not connected.',
       recommendedAction: 'connect',
       isManaged: true,
+      dependentMountCount: 2,
     }),
   ]
 
@@ -368,7 +369,7 @@ describe('EndpointsSection', () => {
     fireEvent.click(screen.getByTestId('settings-endpoints-remove-managed-1'))
     expect(screen.getByTestId('settings-endpoints-remove-window')).toBeVisible()
     expect(screen.getByTestId('settings-endpoints-remove-impact')).toHaveTextContent(
-      'This will unbind 0 mounts from the endpoint.',
+      'This will unbind 2 mounts from the endpoint.',
     )
 
     fireEvent.click(screen.getByTestId('settings-endpoints-remove-cancel'))
@@ -384,7 +385,7 @@ describe('EndpointsSection', () => {
     expect(invoke).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'endpoint.remove',
-        payload: { endpointId: 'managed-1', expectedMountCount: 0 },
+        payload: { endpointId: 'managed-1', expectedMountCount: 2 },
       }),
     )
   })

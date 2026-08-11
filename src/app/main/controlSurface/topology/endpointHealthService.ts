@@ -37,7 +37,7 @@ function buildOverview(
     checkedAt?: string
     recommendedAction: WorkerEndpointHealthActionDto
     canBrowse?: boolean
-    dependentMountCount?: number
+    dependentMountCount: number
     runtime?: ProbedRuntime
     summary?: string
   },
@@ -64,7 +64,7 @@ function buildOverview(
     recommendedAction: options.recommendedAction,
     isManaged: access.access?.kind === 'managed_ssh',
     canBrowse: options.canBrowse ?? false,
-    dependentMountCount: options.dependentMountCount ?? 0,
+    dependentMountCount: options.dependentMountCount,
     runtime: options.runtime ?? emptyRuntime(),
   }
 }
@@ -219,7 +219,7 @@ export function createEndpointHealthService(options: {
 }): EndpointHealthService {
   const buildOverviewForAccess = async (
     access: EndpointRuntimeAccess,
-    dependentMountCount = 0,
+    dependentMountCount: number,
   ): Promise<WorkerEndpointOverviewDto> => {
     if (access.kind === 'manual') {
       const probed = await probeEndpointConnection(access.connection)
@@ -413,6 +413,7 @@ export function createEndpointHealthService(options: {
             runtime: probed.runtime,
             recommendedAction: recommendedActionForAccessStatus(access, probed.status),
             canBrowse: probed.status === 'connected',
+            dependentMountCount: impact.mountCount,
           }),
         }
       }
