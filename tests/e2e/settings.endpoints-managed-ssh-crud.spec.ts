@@ -48,7 +48,7 @@ async function selectTheme(window: Page, theme: 'light' | 'dark'): Promise<void>
 test.describe('Settings managed SSH endpoint CRUD', () => {
   test.setTimeout(180_000)
 
-  test('edits, validates, and confirms removal impact in both themes', async ({}, testInfo) => {
+  test('edits, validates, and confirms removal impact in both themes', async (_fixtures, testInfo) => {
     const remoteWorkerPort = await reserveLoopbackPort()
     const remoteBaseDir = await mkdtemp(path.join(tmpdir(), 'opencove-e2e-ssh-crud-remote-'))
     const remoteProjectDir = path.join(remoteBaseDir, 'project')
@@ -194,7 +194,7 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
       expect(mounts.mounts).toHaveLength(0)
     } finally {
       await electronApp.close().catch(() => undefined)
-      if (remoteWorker) await stopRemoteWorker(remoteWorker.child).catch(() => undefined)
+      if (remoteWorker) {await stopRemoteWorker(remoteWorker.child).catch(() => undefined)}
       await removePathWithRetry(fakeSshInstallDir)
       await removePathWithRetry(remoteWorkerUserDataDir)
       await removePathWithRetry(remoteBaseDir)
