@@ -7,6 +7,7 @@ import { getEndpointActionExecution } from '@app/renderer/shell/utils/endpointOv
 import { notifyTopologyChanged } from '@app/renderer/shell/utils/topologyEvents'
 import { parseOptionalManagedSshPort } from '../../../../topology/domain/managedSshPort'
 import { EndpointsRegisterDialog } from './EndpointsRegisterDialog'
+import { EndpointRemoveDialog } from './EndpointRemoveDialog'
 import { toErrorMessage } from './workerSectionUtils'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 
@@ -36,6 +37,7 @@ export function EndpointsSection(): React.JSX.Element {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   const [registerBusy, setRegisterBusy] = useState(false)
   const [removingEndpointId, setRemovingEndpointId] = useState<string | null>(null)
+  const [pendingRemoval, setPendingRemoval] = useState<WorkerEndpointOverviewDto | null>(null)
   const [registerMode, setRegisterMode] = useState<RegisterMode>('managed')
   const [displayName, setDisplayName] = useState('')
   const [managedHost, setManagedHost] = useState('')
@@ -173,7 +175,8 @@ export function EndpointsSection(): React.JSX.Element {
     }
   }
 
-  const handleRemove = async (endpointId: string): Promise<void> => {
+  const handleRemove = async (overview: WorkerEndpointOverviewDto): Promise<void> => {
+    const endpointId = overview.endpoint.endpointId
     setLocalError(null)
     setRemovingEndpointId(endpointId)
 
@@ -181,8 +184,9 @@ export function EndpointsSection(): React.JSX.Element {
       await window.opencoveApi.controlSurface.invoke({
         kind: 'command',
         id: 'endpoint.remove',
-        payload: { endpointId },
+        payload: { endpointId, expectedMountCount: overview.dependentMountCount },
       })
+      setPendingRemoval(null)
       notifyTopologyChanged()
       await reload()
     } catch (caughtError) {
@@ -288,7 +292,8 @@ export function EndpointsSection(): React.JSX.Element {
                       data-testid={`settings-endpoints-remove-${overview.endpoint.endpointId}`}
                       disabled={isBusy || removingEndpointId === overview.endpoint.endpointId}
                       onClick={() => {
-                        void handleRemove(overview.endpoint.endpointId)
+                        setLocalError(null)
+                        setPendingRemoval(overview)
                       }}
                     >
                       {t('common.remove')}
@@ -331,6 +336,21 @@ export function EndpointsSection(): React.JSX.Element {
           void handleRegister()
         }}
       />
+      {pendingRemoval ? (
+        <EndpointRemoveDialog
+          displayName={pendingRemoval.endpoint.displayName}
+          mountCount={pendingRemoval.dependentMountCount}
+          isBusy={removingEndpointId === pendingRemoval.endpoint.endpointId}
+          onCancel={() => {
+            if (!removingEndpointId) {
+              setPendingRemoval(null)
+            }
+          }}
+          onConfirm={() => {
+            void handleRemove(pendingRemoval)
+          }}
+        />
+      ) : null}
     </SettingsGroup>
   )
 }

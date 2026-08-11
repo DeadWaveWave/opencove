@@ -42,4 +42,10 @@ export const enSettingsPanelEndpoints = {
     tokenHelp: 'This token is submitted once and cleared after registration.',
     tokenRequired: 'Token is required.',
   },
+  remove: {
+    title: 'Remove endpoint?',
+    description: '“{{name}}” will no longer be available to OpenCove.',
+    impact_one: 'This will unbind {{count}} mount from the endpoint.',
+    impact_other: 'This will unbind {{count}} mounts from the endpoint.',
+  },
 } as const

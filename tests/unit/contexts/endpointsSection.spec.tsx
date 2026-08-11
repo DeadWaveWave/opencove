@@ -23,6 +23,7 @@ function createOverview(overrides: Partial<WorkerEndpointOverviewDto>): WorkerEn
     recommendedAction: 'none',
     isManaged: false,
     canBrowse: false,
+    dependentMountCount: 0,
     runtime: {
       appVersion: null,
       protocolVersion: null,
@@ -142,6 +143,13 @@ function installEndpointsApi() {
         return { overview: { ...matched } }
       }
       case 'endpoint.remove':
+        overviews.splice(
+          overviews.findIndex(
+            overview =>
+              overview.endpoint.endpointId === (payload as { endpointId: string }).endpointId,
+          ),
+          1,
+        )
         return null
       default:
         throw new Error(`Unexpected invoke id: ${id}`)
@@ -287,6 +295,36 @@ describe('EndpointsSection', () => {
     expect(invoke).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'endpoint.prepare',
+      }),
+    )
+  })
+
+  it('confirms removal with the dependent mount count and supports cancel', async () => {
+    const { invoke } = installEndpointsApi()
+
+    render(<EndpointsSection />)
+    await screen.findAllByText('SSH Box')
+
+    fireEvent.click(screen.getByTestId('settings-endpoints-remove-managed-1'))
+    expect(screen.getByTestId('settings-endpoints-remove-window')).toBeVisible()
+    expect(screen.getByTestId('settings-endpoints-remove-impact')).toHaveTextContent(
+      'This will unbind 0 mounts from the endpoint.',
+    )
+
+    fireEvent.click(screen.getByTestId('settings-endpoints-remove-cancel'))
+    expect(screen.queryByTestId('settings-endpoints-remove-window')).not.toBeInTheDocument()
+    expect(screen.getAllByText('SSH Box').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByTestId('settings-endpoints-remove-managed-1'))
+    fireEvent.click(screen.getByTestId('settings-endpoints-remove-confirm'))
+
+    await waitFor(() => {
+      expect(screen.queryByText('SSH Box')).not.toBeInTheDocument()
+    })
+    expect(invoke).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'endpoint.remove',
+        payload: { endpointId: 'managed-1', expectedMountCount: 0 },
       }),
     )
   })

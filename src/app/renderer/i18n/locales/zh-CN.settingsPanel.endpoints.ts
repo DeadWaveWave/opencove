@@ -42,4 +42,10 @@ export const zhCNSettingsPanelEndpoints = {
     tokenHelp: 'Token 仅提交一次，注册后会自动清空。',
     tokenRequired: 'Token 不能为空。',
   },
+  remove: {
+    title: '移除端点？',
+    description: 'OpenCove 将无法再使用“{{name}}”。',
+    impact_one: '此操作会解除该端点上的 {{count}} 个挂载。',
+    impact_other: '此操作会解除该端点上的 {{count}} 个挂载。',
+  },
 } as const

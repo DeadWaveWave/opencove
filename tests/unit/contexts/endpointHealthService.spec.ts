@@ -89,7 +89,8 @@ function createSubject(options: {
     registerManagedSshEndpoint: async () => {
       throw new Error('not used')
     },
-    removeEndpoint: async () => undefined,
+    removeEndpoint: async () => ({ removedMountCount: 0 }),
+    getEndpointRemovalImpact: async () => ({ mountIds: [], mountCount: 0 }),
     resolveEndpointRuntimeAccess: async endpointId => accessByEndpointId.get(endpointId) ?? null,
     resolveRemoteEndpointConnection: async () => null,
     listMounts: async () => ({ projectId: 'project', mounts: [] }),

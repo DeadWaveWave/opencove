@@ -58,6 +58,11 @@ export interface RegisterManagedSshWorkerEndpointResult {
 
 export interface RemoveWorkerEndpointInput {
   endpointId: string
+  expectedMountCount?: number | null
+}
+
+export interface RemoveWorkerEndpointResult {
+  removedMountCount: number
 }
 
 export interface PingWorkerEndpointInput {
@@ -103,6 +108,7 @@ export interface WorkerEndpointOverviewDto {
   recommendedAction: WorkerEndpointHealthActionDto
   isManaged: boolean
   canBrowse: boolean
+  dependentMountCount: number
   runtime: {
     appVersion: string | null
     protocolVersion: number | null

@@ -16,10 +16,15 @@ import type {
   RegisterWorkerEndpointResult,
   RemoveMountInput,
   RemoveWorkerEndpointInput,
+  RemoveWorkerEndpointResult,
   ResolveMountTargetInput,
   ResolveMountTargetResult,
   WorkerEndpointDto,
 } from '../../../../shared/contracts/dto'
+import {
+  resolveEndpointRemovalImpact,
+  type EndpointRemovalImpact,
+} from '../../../../contexts/topology/domain/endpointRemovalImpact'
 import {
   LOCAL_ENDPOINT_TIMESTAMP,
   SECRETS_FILE_NAME,
@@ -51,7 +56,8 @@ export interface WorkerTopologyStore {
   registerManagedSshEndpoint: (
     input: RegisterManagedSshWorkerEndpointInput,
   ) => Promise<RegisterManagedSshWorkerEndpointResult>
-  removeEndpoint: (input: RemoveWorkerEndpointInput) => Promise<void>
+  removeEndpoint: (input: RemoveWorkerEndpointInput) => Promise<RemoveWorkerEndpointResult>
+  getEndpointRemovalImpact: (endpointId: string) => Promise<EndpointRemovalImpact>
   resolveEndpointRuntimeAccess: (endpointId: string) => Promise<EndpointRuntimeAccess | null>
   resolveRemoteEndpointConnection: (endpointId: string) => Promise<RemoteEndpointConnection | null>
   listMounts: (input: ListMountsInput) => Promise<ListMountsResult>
@@ -163,7 +169,14 @@ export function createWorkerTopologyStore(options: {
     return { endpoint: toEndpointDto(record) }
   }
 
-  const removeEndpoint = async (input: RemoveWorkerEndpointInput): Promise<void> => {
+  const getEndpointRemovalImpact = async (endpointId: string): Promise<EndpointRemovalImpact> => {
+    await ensureLoaded()
+    return resolveEndpointRemovalImpact(endpointId, topology.mounts)
+  }
+
+  const removeEndpoint = async (
+    input: RemoveWorkerEndpointInput,
+  ): Promise<RemoveWorkerEndpointResult> => {
     await ensureLoaded()
 
     const endpointId = normalizeNonEmptyString(input.endpointId)
@@ -173,11 +186,23 @@ export function createWorkerTopologyStore(options: {
 
     const matched = topology.endpoints.find(endpoint => endpoint.endpointId === endpointId) ?? null
     if (!matched) {
-      return
+      return { removedMountCount: 0 }
+    }
+
+    const impact = resolveEndpointRemovalImpact(endpointId, topology.mounts)
+    if (
+      input.expectedMountCount !== null &&
+      input.expectedMountCount !== undefined &&
+      input.expectedMountCount !== impact.mountCount
+    ) {
+      throw createAppError('common.invalid_input', {
+        debugMessage: 'Endpoint mount bindings changed. Refresh before removing the endpoint.',
+      })
     }
 
     topology.endpoints = topology.endpoints.filter(endpoint => endpoint.endpointId !== endpointId)
-    topology.mounts = topology.mounts.filter(mount => mount.endpointId !== endpointId)
+    const removedMountIds = new Set(impact.mountIds)
+    topology.mounts = topology.mounts.filter(mount => !removedMountIds.has(mount.mountId))
     delete secrets.tokensByCredentialRef[matched.credentialRef]
 
     if (matched.accessKind === 'managed_ssh' && matched.managedSsh) {
@@ -190,6 +215,7 @@ export function createWorkerTopologyStore(options: {
     }
 
     await persistQueued()
+    return { removedMountCount: impact.mountCount }
   }
 
   const resolveEndpointRuntimeAccess = async (
@@ -433,6 +459,7 @@ export function createWorkerTopologyStore(options: {
     registerEndpoint,
     registerManagedSshEndpoint,
     removeEndpoint,
+    getEndpointRemovalImpact,
     resolveEndpointRuntimeAccess,
     resolveRemoteEndpointConnection,
     listMounts,

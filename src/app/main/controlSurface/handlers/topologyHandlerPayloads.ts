@@ -108,7 +108,21 @@ export function normalizeRemoveEndpointPayload(payload: unknown): RemoveWorkerEn
     })
   }
 
-  return { endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.remove endpointId') }
+  const expectedMountCount = payload.expectedMountCount
+  if (
+    expectedMountCount !== null &&
+    expectedMountCount !== undefined &&
+    (!Number.isSafeInteger(expectedMountCount) || Number(expectedMountCount) < 0)
+  ) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid endpoint.remove expectedMountCount.',
+    })
+  }
+
+  return {
+    endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.remove endpointId'),
+    ...(typeof expectedMountCount === 'number' ? { expectedMountCount } : {}),
+  }
 }
 
 export function normalizeRegisterManagedSshEndpointPayload(
