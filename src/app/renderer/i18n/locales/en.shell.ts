@@ -54,11 +54,7 @@ export const enShell = {
   addProjectWizard: {
     title: 'Add project',
     description: 'Choose a default location (local or remote). You can add more later.',
-    descriptionLocalOnly:
-      'Choose a project folder. You can manage locations later from the project menu.',
-    nameLabel: 'Project name',
-    namePlaceholder: 'Leave empty to use the folder name',
-    nameRequired: 'Please enter a project name or choose a folder.',
+    nameRequired: 'Choose a project folder instead of the filesystem root.',
     defaultLocationLabel: 'Default location',
     defaultLocationLocal: 'Local',
     defaultLocationRemote: 'Remote',
@@ -71,7 +67,7 @@ export const enShell = {
     localPathMustBeAbsolute: 'Local path must be absolute.',
     remotePathMustBeAbsolute: 'Remote path must be absolute.',
     noRemoteWorkersTitle: 'No remote workers',
-    noRemoteWorkersHint: 'Add a remote worker in Settings → Endpoints.',
+    noRemoteWorkersHint: 'Add a remote worker in Settings → Worker & Connections.',
     openEndpointsAction: 'Add remote worker…',
     advancedLabel: 'Advanced',
     advancedShow: 'Show',
