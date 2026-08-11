@@ -229,7 +229,21 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
 
       await window.locator('[data-testid="workspace-sidebar-pin"]').click()
       await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
-      await expect(sidebar).toHaveAttribute('data-cove-sidebar-transition', 'idle')
+      // Neither signal is sufficient alone. `data-cove-sidebar-transition` resolves to 'idle'
+      // both before a transition starts and after it settles, and the transitioning class is
+      // likewise absent on both sides, so either one can be satisfied without waiting at all.
+      // Their conjunction is unambiguous: the sidebar is only at rail width AND done
+      // transitioning once it has actually settled. The final rail padding/gap rules depend on
+      // the transitioning class being gone (workspace-sidebar.css:36), so the inner geometry
+      // this test asserts is not valid until both hold.
+      await expect
+        .poll(async () => {
+          const width = (await sidebar.boundingBox())?.width ?? 0
+          const className = (await sidebar.getAttribute('class')) ?? ''
+          const settled = width <= 60 && !className.includes('workspace-sidebar--transitioning')
+          return settled
+        })
+        .toBe(true)
 
       const rail = await readSidebarRowGeometry(window, workspaceId, spaceId, agentId)
       expectDistanceWithin(docked.projectGroupLeftInset, docked.projectIconCenter / 2, 4)
