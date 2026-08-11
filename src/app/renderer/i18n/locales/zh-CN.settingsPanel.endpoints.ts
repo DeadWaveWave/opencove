@@ -48,4 +48,8 @@ export const zhCNSettingsPanelEndpoints = {
     impact_one: '此操作会解除该端点上的 {{count}} 个挂载。',
     impact_other: '此操作会解除该端点上的 {{count}} 个挂载。',
   },
+  edit: {
+    title: '编辑托管 SSH 端点',
+    help: '更新连接信息，同时保持端点身份和现有挂载绑定不变。',
+  },
 } as const

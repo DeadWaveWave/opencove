@@ -48,4 +48,8 @@ export const enSettingsPanelEndpoints = {
     impact_one: 'This will unbind {{count}} mount from the endpoint.',
     impact_other: 'This will unbind {{count}} mounts from the endpoint.',
   },
+  edit: {
+    title: 'Edit managed SSH endpoint',
+    help: 'Update connection details without changing endpoint identity or existing mount bindings.',
+  },
 } as const

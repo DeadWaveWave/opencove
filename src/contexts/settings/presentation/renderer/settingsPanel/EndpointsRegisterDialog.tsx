@@ -3,6 +3,7 @@ import { useTranslation } from '@app/renderer/i18n'
 
 export function EndpointsRegisterDialog({
   isOpen,
+  mode,
   error,
   isBusy,
   registerMode,
@@ -30,6 +31,7 @@ export function EndpointsRegisterDialog({
   onSubmit,
 }: {
   isOpen: boolean
+  mode: 'create' | 'edit'
   error: string | null
   isBusy: boolean
   registerMode: 'managed' | 'manual'
@@ -66,6 +68,14 @@ export function EndpointsRegisterDialog({
     registerMode === 'managed'
       ? t('settingsPanel.endpoints.register.managedHelp')
       : t('settingsPanel.endpoints.register.manualHelp')
+  const title =
+    mode === 'edit'
+      ? t('settingsPanel.endpoints.edit.title')
+      : t('settingsPanel.endpoints.register.title')
+  const help =
+    mode === 'edit'
+      ? t('settingsPanel.endpoints.edit.help')
+      : t('settingsPanel.endpoints.register.help')
 
   return (
     <div
@@ -78,8 +88,8 @@ export function EndpointsRegisterDialog({
         data-testid="settings-endpoints-register-window"
         onClick={event => event.stopPropagation()}
       >
-        <h3>{t('settingsPanel.endpoints.register.title')}</h3>
-        <p className="cove-window__intro">{t('settingsPanel.endpoints.register.help')}</p>
+        <h3>{title}</h3>
+        <p className="cove-window__intro">{help}</p>
 
         <div className="cove-window__fields">
           {error ? (
@@ -88,7 +98,8 @@ export function EndpointsRegisterDialog({
             </p>
           ) : null}
 
-          <div className="cove-window__segmented" data-testid="settings-endpoints-register-mode">
+          {mode === 'create' ? (
+            <div className="cove-window__segmented" data-testid="settings-endpoints-register-mode">
             <button
               type="button"
               className={`cove-window__segment${registerMode === 'managed' ? ' cove-window__segment--selected' : ''}`}
@@ -107,7 +118,8 @@ export function EndpointsRegisterDialog({
             >
               {t('settingsPanel.endpoints.register.manualLabel')}
             </button>
-          </div>
+            </div>
+          ) : null}
 
           <div className="cove-window__section-card">
             <div className="cove-window__section-card-heading">
@@ -297,7 +309,11 @@ export function EndpointsRegisterDialog({
             disabled={isBusy || !canSubmit}
             onClick={onSubmit}
           >
-            {isBusy ? t('common.saving') : t('settingsPanel.endpoints.actions.add')}
+            {isBusy
+              ? t('common.saving')
+              : mode === 'edit'
+                ? t('common.save')
+                : t('settingsPanel.endpoints.actions.add')}
           </button>
         </div>
       </section>

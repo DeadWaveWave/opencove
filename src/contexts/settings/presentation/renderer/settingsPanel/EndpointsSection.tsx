@@ -12,6 +12,7 @@ import { toErrorMessage } from './workerSectionUtils'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 
 type RegisterMode = 'managed' | 'manual'
+type EndpointDialogMode = 'create' | 'edit'
 
 function parseRequiredPort(value: string): number | null {
   const parsed = Number(value.trim())
@@ -35,6 +36,8 @@ export function EndpointsSection(): React.JSX.Element {
     repairEndpoint,
   } = useEndpointOverviews()
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<EndpointDialogMode>('create')
+  const [editingEndpointId, setEditingEndpointId] = useState<string | null>(null)
   const [registerBusy, setRegisterBusy] = useState(false)
   const [removingEndpointId, setRemovingEndpointId] = useState<string | null>(null)
   const [pendingRemoval, setPendingRemoval] = useState<WorkerEndpointOverviewDto | null>(null)
@@ -55,15 +58,18 @@ export function EndpointsSection(): React.JSX.Element {
   const manualPortValue = parseRequiredPort(manualPort)
   const remoteEndpoints = remoteOverviews
 
-  const canRegisterManaged =
+  const canSaveManaged =
     managedHost.trim().length > 0 &&
     managedPortResult.state !== 'invalid' &&
-    managedRemotePortResult.state !== 'invalid'
+    managedRemotePortResult.state !== 'invalid' &&
+    (dialogMode === 'create' || managedRemotePortResult.state === 'valid')
   const canRegisterManual =
     manualHostname.trim().length > 0 && manualPortValue !== null && manualToken.trim().length > 0
 
   const resetRegisterForm = (): void => {
     setRegisterMode('managed')
+    setDialogMode('create')
+    setEditingEndpointId(null)
     setDisplayName('')
     setManagedHost('')
     setManagedPort('')
@@ -77,6 +83,27 @@ export function EndpointsSection(): React.JSX.Element {
   const openRegisterWindow = (): void => {
     setLocalError(null)
     resetRegisterForm()
+    setIsRegisterOpen(true)
+  }
+
+  const openEditWindow = (overview: WorkerEndpointOverviewDto): void => {
+    const ssh = overview.endpoint.access?.managedSsh
+    if (overview.endpoint.access?.kind !== 'managed_ssh' || !ssh) {
+      return
+    }
+
+    setLocalError(null)
+    setDialogMode('edit')
+    setEditingEndpointId(overview.endpoint.endpointId)
+    setRegisterMode('managed')
+    setDisplayName(overview.endpoint.displayName)
+    setManagedHost(ssh.host)
+    setManagedPort(ssh.port === null ? '' : String(ssh.port))
+    setManagedUsername(ssh.username ?? '')
+    setManagedRemotePort(String(ssh.remotePort))
+    setManualHostname('')
+    setManualPort('')
+    setManualToken('')
     setIsRegisterOpen(true)
   }
 
@@ -126,28 +153,37 @@ export function EndpointsSection(): React.JSX.Element {
     }
   }
 
-  const handleRegister = async (): Promise<void> => {
+  const handleSave = async (): Promise<void> => {
     setLocalError(null)
     setRegisterBusy(true)
 
     try {
       if (registerMode === 'managed') {
-        if (!canRegisterManaged) {
+        if (!canSaveManaged) {
           return
         }
 
-        await window.opencoveApi.controlSurface.invoke({
-          kind: 'command',
-          id: 'endpoint.registerManagedSsh',
-          payload: {
-            displayName: displayName.trim().length > 0 ? displayName.trim() : null,
-            host: managedHost.trim(),
-            port: managedPortResult.value,
-            username: managedUsername.trim().length > 0 ? managedUsername.trim() : null,
-            remotePort: managedRemotePortResult.value,
-            remotePlatform: 'auto',
-          },
-        })
+        const payload = {
+          displayName: displayName.trim().length > 0 ? displayName.trim() : null,
+          host: managedHost.trim(),
+          port: managedPortResult.value,
+          username: managedUsername.trim().length > 0 ? managedUsername.trim() : null,
+          remotePort: managedRemotePortResult.value,
+          remotePlatform: 'auto' as const,
+        }
+        if (dialogMode === 'edit' && editingEndpointId) {
+          await window.opencoveApi.controlSurface.invoke({
+            kind: 'command',
+            id: 'endpoint.updateManagedSsh',
+            payload: { endpointId: editingEndpointId, ...payload },
+          })
+        } else {
+          await window.opencoveApi.controlSurface.invoke({
+            kind: 'command',
+            id: 'endpoint.registerManagedSsh',
+            payload,
+          })
+        }
       } else {
         if (!canRegisterManual) {
           return
@@ -286,6 +322,17 @@ export function EndpointsSection(): React.JSX.Element {
                   />
 
                   <div className="settings-panel__endpoint-card-actions">
+                    {overview.isManaged ? (
+                      <button
+                        type="button"
+                        className="secondary"
+                        data-testid={`settings-endpoints-edit-${overview.endpoint.endpointId}`}
+                        disabled={isBusy || removingEndpointId === overview.endpoint.endpointId}
+                        onClick={() => openEditWindow(overview)}
+                      >
+                        {t('common.edit')}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="secondary"
@@ -308,6 +355,7 @@ export function EndpointsSection(): React.JSX.Element {
 
       <EndpointsRegisterDialog
         isOpen={isRegisterOpen}
+        mode={dialogMode}
         error={error}
         isBusy={registerBusy}
         registerMode={registerMode}
@@ -319,7 +367,7 @@ export function EndpointsSection(): React.JSX.Element {
         manualHostname={manualHostname}
         manualPort={manualPort}
         manualToken={manualToken}
-        canSubmit={registerMode === 'managed' ? canRegisterManaged : canRegisterManual}
+        canSubmit={registerMode === 'managed' ? canSaveManaged : canRegisterManual}
         managedPortInvalid={managedPortResult.state === 'invalid'}
         managedRemotePortInvalid={managedRemotePortResult.state === 'invalid'}
         onChangeRegisterMode={setRegisterMode}
@@ -333,7 +381,7 @@ export function EndpointsSection(): React.JSX.Element {
         onChangeManualToken={setManualToken}
         onCancel={closeRegisterWindow}
         onSubmit={() => {
-          void handleRegister()
+          void handleSave()
         }}
       />
       {pendingRemoval ? (

@@ -129,6 +129,37 @@ function installEndpointsApi() {
         overviews.push(overview)
         return { endpoint: overview.endpoint }
       }
+      case 'endpoint.updateManagedSsh': {
+        const input = payload as {
+          endpointId: string
+          displayName?: string | null
+          host: string
+          port?: number | null
+          username?: string | null
+          remotePort: number
+        }
+        const overview = overviews.find(
+          candidate => candidate.endpoint.endpointId === input.endpointId,
+        )
+        if (!overview || overview.endpoint.access?.kind !== 'managed_ssh') {
+          throw new Error(`Unknown managed endpoint: ${input.endpointId}`)
+        }
+        overview.endpoint = {
+          ...overview.endpoint,
+          displayName: input.displayName?.trim() || input.host,
+          access: {
+            kind: 'managed_ssh',
+            managedSsh: {
+              host: input.host,
+              port: input.port ?? null,
+              username: input.username ?? null,
+              remotePort: input.remotePort,
+              remotePlatform: 'auto',
+            },
+          },
+        }
+        return { endpoint: overview.endpoint }
+      }
       case 'endpoint.prepare': {
         const { endpointId } = payload as { endpointId: string }
         const matched = overviews.find(overview => overview.endpoint.endpointId === endpointId)
@@ -277,6 +308,35 @@ describe('EndpointsSection', () => {
     expect(invoke).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'endpoint.register',
+      }),
+    )
+  })
+
+  it('edits a managed SSH endpoint with the reused dialog', async () => {
+    const { invoke } = installEndpointsApi()
+
+    render(<EndpointsSection />)
+    await screen.findAllByText('SSH Box')
+    fireEvent.click(screen.getByTestId('settings-endpoints-edit-managed-1'))
+
+    expect(screen.getByTestId('settings-endpoints-register-window')).toHaveTextContent(
+      'Edit managed SSH endpoint',
+    )
+    expect(screen.queryByTestId('settings-endpoints-register-mode')).not.toBeInTheDocument()
+    expect(screen.getByTestId('settings-endpoints-register-ssh-port')).toHaveValue('22')
+    fireEvent.change(screen.getByTestId('settings-endpoints-register-ssh-port'), {
+      target: { value: '2222' },
+    })
+    fireEvent.click(screen.getByTestId('settings-endpoints-register-submit'))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('settings-endpoints-register-window')).not.toBeInTheDocument()
+    })
+    expect(await screen.findByText('Managed SSH · ubuntu@example.com:2222')).toBeVisible()
+    expect(invoke).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'endpoint.updateManagedSsh',
+        payload: expect.objectContaining({ endpointId: 'managed-1', port: 2222 }),
       }),
     )
   })
