@@ -1,7 +1,46 @@
 import { runCommand } from '../../../../platform/process/runCommand'
+import type { ManagedSshStageFailureCode } from '../../../../shared/contracts/dto'
 import type { ManagedSshEndpointRuntimeAccess } from './topologyEndpointAccess'
 
 type BootstrapRemotePlatform = 'posix' | 'windows'
+
+export type ManagedSshBootstrapFailureKind = ManagedSshStageFailureCode
+
+export class ManagedSshBootstrapError extends Error {
+  readonly failureKind: ManagedSshBootstrapFailureKind
+
+  constructor(failureKind: ManagedSshBootstrapFailureKind, message: string) {
+    super(message)
+    this.name = 'ManagedSshBootstrapError'
+    this.failureKind = failureKind
+  }
+}
+
+export function classifyManagedSshBootstrapFailure(detail: string): ManagedSshBootstrapFailureKind {
+  if (detail.includes('[opencove-bootstrap:installer_unavailable]')) {
+    return 'installer_unavailable'
+  }
+
+  if (detail.includes('[opencove-bootstrap:runtime_corrupt]')) {
+    return 'runtime_corrupt'
+  }
+
+  if (detail.includes('[opencove-bootstrap:runtime_unmanaged]')) {
+    return 'runtime_unmanaged'
+  }
+
+  if (detail.includes('[opencove-bootstrap:runtime_start_failed]')) {
+    return 'runtime_start_failed'
+  }
+
+  return 'unknown'
+}
+
+function toManagedSshBootstrapError(detail: string): ManagedSshBootstrapError {
+  const failureKind = classifyManagedSshBootstrapFailure(detail)
+  const actionableDetail = detail.replaceAll(/\[opencove-bootstrap:[^\]]+\]\s*/g, '').trim()
+  return new ManagedSshBootstrapError(failureKind, actionableDetail || 'Remote bootstrap failed.')
+}
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
@@ -71,7 +110,10 @@ function buildReleaseBaseUrl(version: string | null): string {
   return `https://github.com/DeadWaveWave/opencove/releases/download/v${normalizedVersion}`
 }
 
-function buildInstallerAssetUrl(platform: BootstrapRemotePlatform, version: string | null): string {
+export function buildInstallerAssetUrl(
+  platform: BootstrapRemotePlatform,
+  version: string | null,
+): string {
   const ext = platform === 'windows' ? 'ps1' : 'sh'
   const baseUrl = buildReleaseBaseUrl(version)
   const normalizedVersion = version?.trim() ?? ''
@@ -106,10 +148,13 @@ export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 endpoint_id=${shellQuote(endpointSegment)}
 remote_port=${shellQuote(remotePort)}
 remote_token=${token}
+installer_url=${installerUrl}
 state_dir="${'${XDG_STATE_HOME:-$HOME/.local/state}'}/opencove/managed-ssh/$endpoint_id"
 user_data_dir="${'${XDG_CONFIG_HOME:-$HOME/.config}'}/opencove/managed-ssh/$endpoint_id"
 log_file="$state_dir/managed-worker.log"
+health_log="$state_dir/runtime-health.log"
 installer_path="$state_dir/opencove-install.sh"
+managed_launcher="${'${OPENCOVE_BIN_DIR:-$HOME/.local/bin}'}/opencove"
 mkdir -p "$state_dir" "$user_data_dir"
 
 find_opencove_dev_repo_root() {
@@ -142,23 +187,78 @@ OPENCOVE_MANAGED_SSH_WRAPPER
   export PATH="$state_dir:$PATH"
 }
 
-if [ "${options.reinstallRuntime ? '1' : '0'}" = "1" ]; then
-  rm -f "$state_dir/opencove"
+runtime_is_healthy() {
+  : > "$health_log"
+  if ! command -v opencove >/dev/null 2>&1; then
+    printf '%s\\n' 'The opencove command is not available.' > "$health_log"
+    return 1
+  fi
+
+  opencove worker start --help > "$health_log" 2>&1
+}
+
+worker_is_ready() {
+  curl -fsS -m 1 -X POST \\
+    -H "authorization: Bearer ${access.token}" \\
+    -H "content-type: application/json" \\
+    --data '{"kind":"query","id":"system.ping","payload":null}' \\
+    "http://127.0.0.1:${remotePort}/invoke" >/dev/null 2>&1
+}
+
+prepare_repair_target() {
+  resolved_launcher="$(command -v opencove 2>/dev/null || true)"
+  if [ -z "$resolved_launcher" ]; then
+    return 0
+  fi
+
+  if [ "$resolved_launcher" = "$state_dir/opencove" ]; then
+    rm -f "$resolved_launcher"
+    return 0
+  fi
+
+  if [ "$resolved_launcher" != "$managed_launcher" ] || \\
+    ! grep -q '__OPENCOVE_CLI_WRAPPER__' "$resolved_launcher" 2>/dev/null; then
+    printf '%s\\n' "[opencove-bootstrap:runtime_unmanaged] Refusing to replace the active opencove command because it is not an OpenCove-managed launcher: $resolved_launcher. Remove or repair that command, or set OPENCOVE_BIN_DIR to its OpenCove-managed location." >&2
+    exit 127
+  fi
+}
+
+force_reinstall=${shellQuote(options.reinstallRuntime ? '1' : '0')}
+if [ "$force_reinstall" != "1" ] && worker_is_ready; then
+  exit 0
 fi
 
-if ! command -v opencove >/dev/null 2>&1; then
+repair_needed=0
+if [ "$force_reinstall" = "1" ] || ! runtime_is_healthy; then
+  repair_needed=1
+fi
+
+if [ "$repair_needed" = "1" ]; then
+  prepare_repair_target
   if ${allowDevBootstrapExpression}; then
-    install_opencove_dev_wrapper || true
+    if install_opencove_dev_wrapper && runtime_is_healthy; then
+      repair_needed=0
+    fi
   fi
 fi
 
-if ! command -v opencove >/dev/null 2>&1; then
-  curl -fsSL ${installerUrl} -o "$installer_path"
-  sh "$installer_path"
+if [ "$repair_needed" = "1" ]; then
+  prepare_repair_target
+  if ! curl -fsSL "$installer_url" -o "$installer_path"; then
+    printf '%s\\n' "[opencove-bootstrap:installer_unavailable] The OpenCove installer could not be downloaded. Verify the release asset exists and the remote host can reach: $installer_url" >&2
+    tail -n 80 "$health_log" >&2 || true
+    exit 127
+  fi
+  if ! sh "$installer_path"; then
+    printf '%s\\n' '[opencove-bootstrap:installer_unavailable] The OpenCove installer failed before the runtime became usable.' >&2
+    tail -n 80 "$health_log" >&2 || true
+    exit 127
+  fi
 fi
 
-if ! command -v opencove >/dev/null 2>&1; then
-  printf '%s\\n' 'OpenCove remote runtime bootstrap did not make the opencove command available.' >&2
+if ! runtime_is_healthy; then
+  printf '%s\\n' '[opencove-bootstrap:runtime_corrupt] The OpenCove runtime failed its executable health check after one repair attempt.' >&2
+  tail -n 80 "$health_log" >&2 || true
   exit 127
 fi
 
@@ -167,11 +267,7 @@ nohup opencove worker start --hostname 127.0.0.1 --port "$remote_port" --token "
 ready=0
 attempt=0
 while [ "$attempt" -lt 120 ]; do
-  if curl -fsS -m 1 -X POST \\
-    -H "authorization: Bearer ${access.token}" \\
-    -H "content-type: application/json" \\
-    --data '{"kind":"query","id":"system.ping","payload":null}' \\
-    "http://127.0.0.1:${remotePort}/invoke" >/dev/null 2>&1; then
+  if worker_is_ready; then
     ready=1
     break
   fi
@@ -180,7 +276,7 @@ while [ "$attempt" -lt 120 ]; do
 done
 
 if [ "$ready" != "1" ]; then
-  printf '%s\\n' 'OpenCove worker did not become ready after SSH bootstrap.' >&2
+  printf '%s\\n' '[opencove-bootstrap:runtime_start_failed] OpenCove worker did not become ready after SSH bootstrap.' >&2
   tail -n 80 "$log_file" >&2 || true
   exit 1
 fi
@@ -206,11 +302,25 @@ $userDataDir = Join-Path $configBase (Join-Path 'OpenCove\\managed-ssh' $endpoin
 $stdoutLogFile = Join-Path $stateDir 'managed-worker.out.log'
 $stderrLogFile = Join-Path $stateDir 'managed-worker.err.log'
 $installerPath = Join-Path $stateDir 'opencove-install.ps1'
+$forceReinstall = ${options.reinstallRuntime ? '$true' : '$false'}
 New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
 New-Item -ItemType Directory -Path $userDataDir -Force | Out-Null
 
+$workerIsReady = {
+  try {
+    Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:${remotePort}/invoke' -Headers @{ authorization = 'Bearer ${access.token}' } -ContentType 'application/json' -Body '{"kind":"query","id":"system.ping","payload":null}' -TimeoutSec 1 | Out-Null
+    return $true
+  } catch {
+    return $false
+  }
+}
+
+if (-not $forceReinstall -and (& $workerIsReady)) {
+  exit 0
+}
+
 $existing = Get-Command opencove -ErrorAction SilentlyContinue
-if (${options.reinstallRuntime ? '$true' : '$false'} -or -not $existing) {
+if ($forceReinstall -or -not $existing) {
   Invoke-RestMethod ${installerUrl} -OutFile $installerPath
   powershell -NoProfile -ExecutionPolicy Bypass -File $installerPath
 }
@@ -225,13 +335,11 @@ Start-Process -FilePath $existing.Source -ArgumentList $args -RedirectStandardOu
 
 $ready = $false
 for ($attempt = 0; $attempt -lt 120; $attempt++) {
-  try {
-    Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:${remotePort}/invoke' -Headers @{ authorization = 'Bearer ${access.token}' } -ContentType 'application/json' -Body '{"kind":"query","id":"system.ping","payload":null}' -TimeoutSec 1 | Out-Null
+  if (& $workerIsReady) {
     $ready = $true
     break
-  } catch {
-    Start-Sleep -Milliseconds 500
   }
+  Start-Sleep -Milliseconds 500
 }
 
 if (-not $ready) {
@@ -309,7 +417,8 @@ export async function runManagedSshBootstrap(
       },
     )
     if (result.exitCode !== 0) {
-      throw new Error(result.stderr.trim() || result.stdout.trim() || 'Remote bootstrap failed.')
+      const detail = result.stderr.trim() || result.stdout.trim() || 'Remote bootstrap failed.'
+      throw toManagedSshBootstrapError(detail)
     }
     return
   }
@@ -324,6 +433,7 @@ export async function runManagedSshBootstrap(
     stdin: script,
   })
   if (result.exitCode !== 0) {
-    throw new Error(result.stderr.trim() || result.stdout.trim() || 'Remote bootstrap failed.')
+    const detail = result.stderr.trim() || result.stdout.trim() || 'Remote bootstrap failed.'
+    throw toManagedSshBootstrapError(detail)
   }
 }

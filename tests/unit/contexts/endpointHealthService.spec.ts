@@ -125,6 +125,7 @@ function createSubject(options: {
         localPort: null,
         lastError: null,
         stderrTail: '',
+        failureKind: null,
       },
       bootstrapRan: false,
     }),
@@ -186,6 +187,7 @@ describe('endpointHealthService', () => {
           localPort: 41011,
           lastError: null,
           stderrTail: '',
+          failureKind: null,
         }),
       },
     })
@@ -196,6 +198,52 @@ describe('endpointHealthService', () => {
     expect(overview?.status).toBe('auth_failed')
     expect(overview?.recommendedAction).toBe('repair_credentials')
   })
+
+  it.each([
+    {
+      failureKind: 'runtime_corrupt' as const,
+      status: 'runtime_corrupt',
+      recommendedAction: 'install_runtime',
+      detail: 'dyld: Library not loaded: Electron Framework',
+    },
+    {
+      failureKind: 'installer_unavailable' as const,
+      status: 'installer_unavailable',
+      recommendedAction: 'retry',
+      detail: 'curl: (22) The requested URL returned error: 404',
+    },
+    {
+      failureKind: 'runtime_unmanaged' as const,
+      status: 'runtime_unmanaged',
+      recommendedAction: 'show_details',
+      detail: 'Refusing to replace /usr/local/bin/opencove.',
+    },
+  ])(
+    'projects managed bootstrap diagnosis $failureKind into an actionable endpoint error',
+    async ({ failureKind, status, recommendedAction, detail }) => {
+      const managedAccess = createManagedAccess()
+      const service = createSubject({
+        access: managedAccess,
+        managedRuntime: {
+          getSnapshot: () => ({
+            endpointId: managedAccess.endpoint.endpointId,
+            status: 'error',
+            localPort: null,
+            lastError: detail,
+            stderrTail: '',
+            failureKind,
+          }),
+        },
+      })
+
+      const result = await service.listOverviews()
+      const overview = result.endpoints[0]
+
+      expect(overview?.status).toBe(status)
+      expect(overview?.recommendedAction).toBe(recommendedAction)
+      expect(overview?.details).toContain(detail)
+    },
+  )
 
   it('restarts the managed tunnel and preserves dependent mounts after successful repair', async () => {
     const managedAccess = createManagedAccess()
@@ -224,6 +272,7 @@ describe('endpointHealthService', () => {
         localPort: 41012,
         lastError: null,
         stderrTail: '',
+        failureKind: null,
       },
       bootstrapRan: true,
     }))
@@ -284,6 +333,7 @@ describe('endpointHealthService', () => {
         localPort: 41013,
         lastError: null,
         stderrTail: '',
+        failureKind: null,
       },
       bootstrapRan: true,
     }))

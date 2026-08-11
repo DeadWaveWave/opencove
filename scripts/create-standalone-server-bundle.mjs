@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 
-import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import {
+  copyRuntimePreservingSymlinks,
+  createTarArchive,
+} from './lib/standalone-bundle-archive.mjs'
 
 const rootDir = resolve(import.meta.dirname, '..')
 const distDir = resolve(rootDir, 'dist')
@@ -157,18 +161,6 @@ function resolveRelativePaths(input) {
   }
 }
 
-function runTar(outputPath, sourceDirName) {
-  const result = spawnSync('tar', ['-czf', outputPath, sourceDirName], {
-    cwd: distDir,
-    encoding: 'utf8',
-  })
-
-  if (result.status !== 0) {
-    const detail = result.stderr?.trim() || result.stdout?.trim() || 'tar failed'
-    throw new Error(detail)
-  }
-}
-
 function quotePowerShellLiteral(value) {
   return `'${value.replace(/'/g, "''")}'`
 }
@@ -221,9 +213,10 @@ const relativePaths = resolveRelativePaths({
 await rm(bundleRoot, { recursive: true, force: true })
 await rm(archivePath, { force: true })
 await mkdir(runtimeRoot, { recursive: true })
-await cp(runtimeSource.runtimePath, resolve(runtimeRoot, basename(runtimeSource.runtimePath)), {
-  recursive: true,
-})
+await copyRuntimePreservingSymlinks(
+  runtimeSource.runtimePath,
+  resolve(runtimeRoot, basename(runtimeSource.runtimePath)),
+)
 await writeFile(
   resolve(bundleRoot, 'opencove-runtime.env'),
   [
@@ -246,6 +239,6 @@ await writeFile(
 if (process.platform === 'win32') {
   runZip(archivePath, bundleName)
 } else {
-  runTar(archivePath, bundleName)
+  createTarArchive({ cwd: distDir, outputPath: archivePath, sourceDirName: bundleName })
 }
 process.stdout.write(`Created standalone server bundle: ${archivePath}\n`)

@@ -4,6 +4,10 @@ import {
   type ManagedSshEndpointRuntimeDependencies,
   type ManagedSshTunnelProcess,
 } from './managedSshEndpointRuntimeDependencies'
+import {
+  ManagedSshBootstrapError,
+  type ManagedSshBootstrapFailureKind,
+} from './managedSshRuntimeSupport'
 import type {
   ManagedSshEndpointConnectionResolver,
   ManagedSshEndpointRuntimeDisposer,
@@ -18,6 +22,7 @@ export interface ManagedSshRuntimeSnapshot {
   localPort: number | null
   lastError: string | null
   stderrTail: string
+  failureKind: ManagedSshBootstrapFailureKind | 'tunnel_failed' | null
 }
 
 type ManagedTunnelRecord = {
@@ -28,6 +33,7 @@ type ManagedTunnelRecord = {
   status: TunnelStatus
   lastError: string | null
   stderrLines: string[]
+  failureKind: ManagedSshBootstrapFailureKind | 'tunnel_failed' | null
 }
 
 type InFlightTunnel = {
@@ -69,6 +75,7 @@ function toSnapshot(record: ManagedTunnelRecord): ManagedSshRuntimeSnapshot {
     localPort: record.localPort,
     lastError: record.lastError,
     stderrTail: trimStderrLines(record.stderrLines).join(''),
+    failureKind: record.failureKind,
   }
 }
 
@@ -128,6 +135,7 @@ export function createManagedSshEndpointRuntime(
       status: 'idle',
       lastError: null,
       stderrLines: [],
+      failureKind: null,
     }
     records.set(endpointId, next)
     return next
@@ -187,6 +195,7 @@ export function createManagedSshEndpointRuntime(
     record.lastError = null
     record.stderrLines = []
     record.accessSignature = accessSignature
+    record.failureKind = null
     record.localPort = await dependencies.reserveLoopbackPort()
     const child = dependencies.spawnTunnelProcess(sshExecutablePath, access, record.localPort)
     record.process = child
@@ -204,6 +213,7 @@ export function createManagedSshEndpointRuntime(
         record.status = 'error'
         record.lastError =
           record.stderrLines.join('').trim() || `ssh tunnel exited with code ${String(code ?? 1)}`
+        record.failureKind = 'tunnel_failed'
       }
       record.localPort = null
     })
@@ -227,6 +237,7 @@ export function createManagedSshEndpointRuntime(
       record.lastError =
         record.stderrLines.join('').trim() ||
         'SSH tunnel started, but the remote worker is not ready yet.'
+      record.failureKind = 'tunnel_failed'
       return record
     }
 
@@ -303,6 +314,7 @@ export function createManagedSshEndpointRuntime(
         const record = getOrCreateRecord(access.endpointId)
         record.status = 'error'
         record.lastError = sshAvailability.diagnostics.join(' ')
+        record.failureKind = 'tunnel_failed'
         return {
           connection: null,
           snapshot: toSnapshot(record),
@@ -338,6 +350,8 @@ export function createManagedSshEndpointRuntime(
         } catch (error) {
           record.status = 'error'
           record.lastError = error instanceof Error ? error.message : String(error)
+          record.failureKind =
+            error instanceof ManagedSshBootstrapError ? error.failureKind : 'unknown'
         }
       }
 

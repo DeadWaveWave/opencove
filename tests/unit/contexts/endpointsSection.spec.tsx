@@ -1,6 +1,7 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { applyUiLanguage } from '../../../src/app/renderer/i18n'
 import { EndpointsSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/EndpointsSection'
 import type { WorkerEndpointOverviewDto } from '../../../src/shared/contracts/dto'
 
@@ -34,7 +35,12 @@ function createOverview(overrides: Partial<WorkerEndpointOverviewDto>): WorkerEn
   }
 }
 
-function installEndpointsApi(options: { localOverview?: WorkerEndpointOverviewDto } = {}) {
+function installEndpointsApi(
+  options: {
+    localOverview?: WorkerEndpointOverviewDto
+    managedOverrides?: Partial<WorkerEndpointOverviewDto>
+  } = {},
+) {
   const overviews: WorkerEndpointOverviewDto[] = [
     options.localOverview ?? createOverview({}),
     createOverview({
@@ -61,6 +67,7 @@ function installEndpointsApi(options: { localOverview?: WorkerEndpointOverviewDt
       recommendedAction: 'connect',
       isManaged: true,
       dependentMountCount: 2,
+      ...options.managedOverrides,
     }),
   ]
 
@@ -216,7 +223,8 @@ function installEndpointsApi(options: { localOverview?: WorkerEndpointOverviewDt
 }
 
 describe('EndpointsSection', () => {
-  afterEach(() => {
+  afterEach(async () => {
+    await applyUiLanguage('en')
     delete (window as { opencoveApi?: unknown }).opencoveApi
     vi.restoreAllMocks()
   })
@@ -426,5 +434,45 @@ describe('EndpointsSection', () => {
         payload: { endpointId: 'managed-1', expectedMountCount: 2 },
       }),
     )
+  })
+
+  it('shows corrupt runtime diagnostics with the existing repair action', async () => {
+    installEndpointsApi({
+      managedOverrides: {
+        status: 'runtime_corrupt',
+        summary: 'Remote runtime is corrupt.',
+        details: ['dyld: Library not loaded: Electron Framework'],
+        recommendedAction: 'install_runtime',
+      },
+    })
+
+    render(<EndpointsSection />)
+
+    expect(await screen.findByText('Runtime corrupt')).toBeVisible()
+    expect(
+      screen.getByText(
+        'The remote runtime cannot execute. Reinstall it before trying to reconnect.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByText('dyld: Library not loaded: Electron Framework')).toBeVisible()
+    expect(screen.getByText('Install runtime')).toBeVisible()
+  })
+
+  it('localizes corrupt runtime diagnosis and repair action in Chinese', async () => {
+    await applyUiLanguage('zh-CN')
+    installEndpointsApi({
+      managedOverrides: {
+        status: 'runtime_corrupt',
+        summary: 'Remote runtime is corrupt.',
+        details: ['dyld: Library not loaded: Electron Framework'],
+        recommendedAction: 'install_runtime',
+      },
+    })
+
+    render(<EndpointsSection />)
+
+    expect(await screen.findByText('Runtime 已损坏')).toBeVisible()
+    expect(screen.getByText('远程 runtime 无法执行。请重新安装后再尝试连接。')).toBeVisible()
+    expect(screen.getByText('安装 runtime')).toBeVisible()
   })
 })

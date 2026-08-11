@@ -2,6 +2,13 @@ export type WorkerEndpointKindDto = 'local' | 'remote_worker'
 export type WorkerEndpointAccessKindDto = 'manual' | 'managed_ssh'
 export type WorkerEndpointManagedSshPlatformDto = 'auto' | 'posix' | 'windows'
 
+export type ManagedSshStageFailureCode =
+  | 'installer_unavailable'
+  | 'runtime_corrupt'
+  | 'runtime_unmanaged'
+  | 'runtime_start_failed'
+  | 'unknown'
+
 export interface WorkerEndpointManagedSshDto {
   host: string
   port: number | null
@@ -97,6 +104,9 @@ export type WorkerEndpointHealthStatusDto =
   | 'disconnected'
   | 'auth_failed'
   | 'tunnel_failed'
+  | 'installer_unavailable'
+  | 'runtime_corrupt'
+  | 'runtime_unmanaged'
   | 'needs_setup'
   | 'version_mismatch'
   | 'persistence_failed'

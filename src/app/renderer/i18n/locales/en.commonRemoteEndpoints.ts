@@ -10,6 +10,9 @@ export const enCommonRemoteEndpoints = {
     disconnected: 'Disconnected',
     auth_failed: 'Auth failed',
     tunnel_failed: 'Tunnel failed',
+    installer_unavailable: 'Installer unavailable',
+    runtime_corrupt: 'Runtime corrupt',
+    runtime_unmanaged: 'Unmanaged runtime',
     needs_setup: 'Needs setup',
     version_mismatch: 'Update required',
     persistence_failed: 'Not saved',
@@ -24,6 +27,11 @@ export const enCommonRemoteEndpoints = {
     manualDisconnected: 'Not connected. Check the host, port, and token.',
     auth_failed: 'The saved credentials were rejected by the remote worker.',
     tunnel_failed: 'OpenCove could not keep the SSH tunnel alive.',
+    installer_unavailable:
+      'OpenCove reached the host, but this release does not provide the required installer.',
+    runtime_corrupt: 'The remote runtime cannot execute. Reinstall it before trying to reconnect.',
+    runtime_unmanaged:
+      'The active remote command is not owned by OpenCove, so it was left untouched. Remove or repair it manually.',
     needs_setup: 'The remote runtime still needs to be installed or started.',
     version_mismatch: 'The remote runtime is not compatible with this OpenCove build yet.',
     persistence_failed:

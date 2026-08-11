@@ -3,12 +3,14 @@ import type { ExecutableLocationResult } from '../../../src/platform/process/Exe
 import type { ManagedSshEndpointRuntimeAccess } from '../../../src/app/main/controlSurface/topology/topologyEndpointAccess'
 import { createManagedSshEndpointRuntime } from '../../../src/app/main/controlSurface/topology/managedSshEndpointRuntime'
 import {
+  buildInstallerAssetUrl,
   buildPosixBootstrapScript,
   buildSshArgs,
   buildSshTunnelArgs,
+  ManagedSshBootstrapError,
 } from '../../../src/app/main/controlSurface/topology/managedSshRuntimeSupport'
 
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 type MockTunnelProcess = EventEmitter & {
   exitCode: number | null
@@ -58,6 +60,27 @@ function createTunnelProcess(): MockTunnelProcess {
 }
 
 describe('managedSshEndpointRuntime', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('builds installer URLs that match stable and nightly release asset names', () => {
+    expect(buildInstallerAssetUrl('posix', '0.2.1')).toBe(
+      'https://github.com/DeadWaveWave/opencove/releases/download/v0.2.1/opencove-install-v0.2.1.sh',
+    )
+    expect(buildInstallerAssetUrl('windows', '0.2.1-nightly.20260811.1')).toBe(
+      'https://github.com/DeadWaveWave/opencove/releases/download/v0.2.1-nightly.20260811.1/opencove-install-v0.2.1-nightly.20260811.1.ps1',
+    )
+    expect(buildInstallerAssetUrl('posix', null)).toBe(
+      'https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh',
+    )
+
+    vi.stubEnv('OPENCOVE_RELEASE_BASE_URL', 'https://releases.example.test/custom')
+    expect(buildInstallerAssetUrl('posix', '0.2.1')).toBe(
+      'https://releases.example.test/custom/opencove-install.sh',
+    )
+  })
+
   it('puts tunnel options before the SSH destination for real OpenSSH', () => {
     expect(buildSshTunnelArgs(createAccess(), ['-N', '-L', '41000:127.0.0.1:39291'])).toEqual([
       '-p',
@@ -94,19 +117,22 @@ describe('managedSshEndpointRuntime', () => {
     ])
   })
 
-  it('fails posix bootstrap when the opencove command is still unavailable after install', () => {
+  it('health-checks an existing posix runtime and bounds repair to one installer attempt', () => {
     const script = buildPosixBootstrapScript(createAccess(), {
       devRepoRoot: null,
       installerUrl: 'https://example.invalid/opencove-install.sh',
       reinstallRuntime: false,
     })
 
-    expect(script).toContain('if ! command -v opencove >/dev/null 2>&1; then')
-    expect(script).toContain('curl -fsSL')
-    expect(script).toContain(
-      'OpenCove remote runtime bootstrap did not make the opencove command available.',
-    )
-    expect(script).toContain('exit 127')
+    expect(script).toContain('runtime_is_healthy()')
+    expect(script).toContain('opencove worker start --help > "$health_log" 2>&1')
+    expect(script).toContain('[ "$force_reinstall" = "1" ] || ! runtime_is_healthy')
+    expect(script).toContain('prepare_repair_target()')
+    expect(script).toContain('resolved_launcher="$(command -v opencove 2>/dev/null || true)"')
+    expect(script).toContain('[opencove-bootstrap:runtime_unmanaged]')
+    expect(script.match(/curl -fsSL/g)).toHaveLength(1)
+    expect(script).toContain('[opencove-bootstrap:runtime_corrupt]')
+    expect(script).toContain('after one repair attempt')
   })
 
   it('polls the managed worker and returns the remote bootstrap log on startup failure', () => {
@@ -122,6 +148,8 @@ describe('managedSshEndpointRuntime', () => {
     expect(script).toContain('--user-data "$user_data_dir"')
     expect(script).toContain('http://127.0.0.1:39291/invoke')
     expect(script).toContain('authorization: Bearer managed-token')
+    expect(script).toContain('[ "$force_reinstall" != "1" ] && worker_is_ready')
+    expect(script.indexOf('worker_is_ready; then')).toBeLessThan(script.indexOf('repair_needed=0'))
     expect(script).toContain('OpenCove worker did not become ready after SSH bootstrap.')
     expect(script).toContain('tail -n 80 "$log_file" >&2')
   })
@@ -229,6 +257,32 @@ describe('managedSshEndpointRuntime', () => {
     expect(firstTunnel.kill).toHaveBeenCalledTimes(1)
   })
 
+  it('classifies a corrupt runtime bootstrap failure in the runtime snapshot', async () => {
+    const tunnelProcess = createTunnelProcess()
+    const runtime = createManagedSshEndpointRuntime({
+      getSshAvailability: async () => createSshAvailability(),
+      reserveLoopbackPort: async () => 41006,
+      spawnTunnelProcess: vi.fn(() => tunnelProcess),
+      probeConnection: async () => false,
+      waitForCondition: async () => false,
+      runBootstrap: async () => {
+        throw new ManagedSshBootstrapError(
+          'runtime_corrupt',
+          '[opencove-bootstrap:runtime_corrupt] dyld: Library not loaded',
+        )
+      },
+    })
+
+    const prepared = await runtime.prepare(createAccess())
+
+    expect(prepared.connection).toBeNull()
+    expect(prepared.snapshot).toMatchObject({
+      status: 'error',
+      failureKind: 'runtime_corrupt',
+      lastError: expect.stringContaining('dyld: Library not loaded'),
+    })
+  })
+
   it('restarts the tunnel when reconnect is requested', async () => {
     const firstTunnel = createTunnelProcess()
     const secondTunnel = createTunnelProcess()
@@ -303,6 +357,7 @@ describe('managedSshEndpointRuntime', () => {
       status: 'error',
       localPort: null,
       lastError: 'broken pipe',
+      failureKind: 'tunnel_failed',
     })
   })
 })

@@ -54,6 +54,9 @@ export function getEndpointStatusTone(status: WorkerEndpointHealthStatusDto): En
       return 'info'
     case 'auth_failed':
     case 'tunnel_failed':
+    case 'installer_unavailable':
+    case 'runtime_corrupt':
+    case 'runtime_unmanaged':
     case 'version_mismatch':
     case 'persistence_failed':
     case 'error':
