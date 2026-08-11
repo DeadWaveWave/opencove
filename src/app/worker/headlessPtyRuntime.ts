@@ -95,13 +95,17 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     resize: async input => {
       const operationId = input.operationId?.trim() || randomUUID()
       try {
-        await supervisor.resize(input.sessionId, input.cols, input.rows)
+        const appliedGeometry = await supervisor.resize(input.sessionId, input.cols, input.rows)
         return {
           sessionId: input.sessionId,
           operationId,
           status: 'accepted',
           changed: true,
-          geometry: { cols: input.cols, rows: input.rows, revision: null },
+          geometry: {
+            cols: appliedGeometry.cols,
+            rows: appliedGeometry.rows,
+            revision: null,
+          },
           authority: null,
         }
       } catch {

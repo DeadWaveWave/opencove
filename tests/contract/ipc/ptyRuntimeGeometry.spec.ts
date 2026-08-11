@@ -13,6 +13,58 @@ function createDeferred<T>() {
 }
 
 describe('Pty runtime geometry', () => {
+  it('returns the geometry acknowledged by the headless PTY host', async () => {
+    vi.resetModules()
+
+    const resize = vi.fn(async () => ({ sessionId: 'session-ack', cols: 91, rows: 27 }))
+
+    class MockPtyHostSupervisor {
+      public resize = resize
+      public dispose = vi.fn()
+      public spawn = vi.fn()
+      public write = vi.fn()
+      public kill = vi.fn()
+      public crash = vi.fn()
+
+      public onData(_handler: PtyDataHandler): () => void {
+        return () => undefined
+      }
+
+      public onExit(_handler: PtyExitHandler): () => void {
+        return () => undefined
+      }
+    }
+
+    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
+      PtyHostSupervisor: MockPtyHostSupervisor,
+    }))
+
+    const { createHeadlessPtyRuntime } =
+      await import('../../../src/app/worker/headlessPtyRuntime')
+    const runtime = createHeadlessPtyRuntime({ userDataPath: '/tmp/opencove-headless-test' })
+
+    await expect(
+      runtime.resize({
+        sessionId: 'session-ack',
+        cols: 120,
+        rows: 40,
+        reason: 'frame_commit',
+        operationId: 'operation-host-ack',
+        baseGeometryRevision: null,
+      }),
+    ).resolves.toEqual({
+      sessionId: 'session-ack',
+      operationId: 'operation-host-ack',
+      status: 'accepted',
+      changed: true,
+      geometry: { cols: 91, rows: 27, revision: null },
+      authority: null,
+    })
+
+    expect(resize).toHaveBeenCalledWith('session-ack', 120, 40)
+    runtime.dispose()
+  })
+
   it('does not forward unchanged geometry to the PTY host', async () => {
     vi.resetModules()
 
