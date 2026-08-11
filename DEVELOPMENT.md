@@ -155,6 +155,7 @@
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑 Playwright E2E（通常 `pnpm test:e2e`，或统一跑 `pnpm pre-commit`）。
     -   创建/更新 PR 时：必须按 `.github/pull_request_template.md` 的结构完整填写；若使用 `gh pr create` / `gh pr edit`，也要显式按模板组织 title/body，不得跳过必填段落。
+    -   **提交 PR 正文前，必须先把正文写入文件并运行 `node scripts/check-pr-template.mjs <file>`，确认输出为通过。** 章节标题必须逐字取自 `.github/pull_request_template.md`（先读模板，不要凭记忆写），因为 `pr-template` CI 按精确标题匹配：少一个字或改写措辞都会判失败。本地校验一次，比推上去等 CI 红再改快得多。
     -   PR 中的截图 / 录屏应通过 GitHub PR 描述或评论框直接上传，不要把这类评审素材作为 repo 资产提交；只有明确作为视觉回归基线的 snapshot / golden 文件，才应进入仓库并纳入测试。
     -   若本次改动涉及 **Renderer 用户可见文案**，必须做好 i18n：禁止新增硬编码用户文案，新增/修改文案时同步更新 `src/app/renderer/i18n/locales/en.ts` 与 `src/app/renderer/i18n/locales/zh-CN.ts`，并在提交前做一次对应语言的最小 smoke/测试验证。
     -   通过上述检查后，再执行 `pnpm pre-commit` （type, lint, format, test）。
