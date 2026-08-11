@@ -48,11 +48,15 @@ async function selectTheme(window: Page, theme: 'light' | 'dark'): Promise<void>
 test.describe('Settings managed SSH endpoint CRUD', () => {
   test.setTimeout(180_000)
 
-  test('edits, validates, and confirms removal impact in both themes', async (_fixtures, testInfo) => {
+  test('edits, validates, and confirms removal impact in both themes', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     const remoteWorkerPort = await reserveLoopbackPort()
     const remoteBaseDir = await mkdtemp(path.join(tmpdir(), 'opencove-e2e-ssh-crud-remote-'))
     const remoteProjectDir = path.join(remoteBaseDir, 'project')
-    const remoteWorkerUserDataDir = await mkdtemp(path.join(tmpdir(), 'opencove-e2e-ssh-crud-worker-'))
+    const remoteWorkerUserDataDir = await mkdtemp(
+      path.join(tmpdir(), 'opencove-e2e-ssh-crud-worker-'),
+    )
     const appUserDataDir = await mkdtemp(path.join(tmpdir(), 'opencove-e2e-ssh-crud-app-'))
     const fakeSshInstallDir = await createFakeManagedSshInstallDir()
     await mkdir(remoteProjectDir, { recursive: true })
@@ -64,15 +68,16 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
     })
 
     try {
-      const seeded = await window.evaluate(async () =>
-        await window.opencoveApi.persistence.writeWorkspaceStateRaw({
-          raw: JSON.stringify({
-            formatVersion: 1,
-            activeWorkspaceId: null,
-            workspaces: [],
-            settings: { experimentalRemoteWorkersEnabled: true, uiTheme: 'dark' },
+      const seeded = await window.evaluate(
+        async () =>
+          await window.opencoveApi.persistence.writeWorkspaceStateRaw({
+            raw: JSON.stringify({
+              formatVersion: 1,
+              activeWorkspaceId: null,
+              workspaces: [],
+              settings: { experimentalRemoteWorkersEnabled: true, uiTheme: 'dark' },
+            }),
           }),
-        }),
       )
       expect(seeded.ok).toBe(true)
       await window.reload({ waitUntil: 'domcontentloaded' })
@@ -85,7 +90,9 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
         )
         .first()
         .click()
-      await window.locator('[data-testid="settings-endpoints-register-displayName"]').fill('Build box')
+      await window
+        .locator('[data-testid="settings-endpoints-register-displayName"]')
+        .fill('Build box')
       await window.locator('[data-testid="settings-endpoints-register-hostname"]').fill('127.0.0.1')
       await window.locator('[data-testid="settings-endpoints-register-username"]').fill('tester')
       await window.locator('[data-testid="settings-endpoints-register-ssh-port"]').fill('2222')
@@ -93,7 +100,9 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
         .locator('[data-testid="settings-endpoints-register-remote-port"]')
         .fill(String(remoteWorkerPort))
       await window.locator('[data-testid="settings-endpoints-register-submit"]').click()
-      await expect(window.locator('[data-testid="settings-endpoints-register-window"]')).toHaveCount(0)
+      await expect(
+        window.locator('[data-testid="settings-endpoints-register-window"]'),
+      ).toHaveCount(0)
 
       const endpointId = await pollFor(
         async () =>
@@ -101,7 +110,10 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
             const result = await window.opencoveApi.controlSurface.invoke<{
               endpoints: Array<{ endpointId: string; displayName: string }>
             }>({ kind: 'query', id: 'endpoint.list', payload: null })
-            return result.endpoints.find(endpoint => endpoint.displayName === 'Build box')?.endpointId ?? null
+            return (
+              result.endpoints.find(endpoint => endpoint.displayName === 'Build box')?.endpointId ??
+              null
+            )
           }),
         { label: 'CRUD endpoint id' },
       )
@@ -115,7 +127,9 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
         agentSessionScenario: 'codex-standby-only',
       })
 
-      const endpointCard = window.locator('.settings-panel__endpoint-card', { hasText: 'Build box' })
+      const endpointCard = window.locator('.settings-panel__endpoint-card', {
+        hasText: 'Build box',
+      })
       await endpointCard.locator(`[data-testid="settings-endpoints-edit-${endpointId}"]`).click()
       await capture(
         window.locator('[data-testid="settings-endpoints-register-window"]'),
@@ -127,12 +141,16 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
       await expect(endpointCard).toContainText('tester@127.0.0.1:2223')
 
       await window.locator('[data-testid="settings-endpoints-open-register"]').click()
-      await window.locator('[data-testid="settings-endpoints-register-hostname"]').fill('invalid.example.com')
+      await window
+        .locator('[data-testid="settings-endpoints-register-hostname"]')
+        .fill('invalid.example.com')
       await window.locator('[data-testid="settings-endpoints-register-ssh-port"]').fill('abc')
-      await expect(window.locator('[data-testid="settings-endpoints-register-ssh-port-error"]')).toContainText(
-        'Enter a whole-number port from 1 to 65535.',
-      )
-      await expect(window.locator('[data-testid="settings-endpoints-register-submit"]')).toBeDisabled()
+      await expect(
+        window.locator('[data-testid="settings-endpoints-register-ssh-port-error"]'),
+      ).toContainText('Enter a whole-number port from 1 to 65535.')
+      await expect(
+        window.locator('[data-testid="settings-endpoints-register-submit"]'),
+      ).toBeDisabled()
       await capture(
         window.locator('[data-testid="settings-endpoints-register-window"]'),
         'managed-ssh-invalid-port-dark',
@@ -164,9 +182,9 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
       )
       await window.locator('[data-testid="settings-endpoints-register-cancel"]').click()
       await endpointCard.locator(`[data-testid="settings-endpoints-remove-${endpointId}"]`).click()
-      await expect(window.locator('[data-testid="settings-endpoints-remove-impact"]')).toContainText(
-        'This will unbind 1 mount from the endpoint.',
-      )
+      await expect(
+        window.locator('[data-testid="settings-endpoints-remove-impact"]'),
+      ).toContainText('This will unbind 1 mount from the endpoint.')
       await capture(
         window.locator('[data-testid="settings-endpoints-remove-window"]'),
         'managed-ssh-remove-light',
@@ -184,17 +202,20 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
       )
       await window.locator('[data-testid="settings-endpoints-remove-confirm"]').click()
       await expect(endpointCard).toHaveCount(0)
-      const mounts = await window.evaluate(async () =>
-        await window.opencoveApi.controlSurface.invoke<{ mounts: unknown[] }>({
-          kind: 'query',
-          id: 'mount.list',
-          payload: { projectId: 'ssh-crud-project' },
-        }),
+      const mounts = await window.evaluate(
+        async () =>
+          await window.opencoveApi.controlSurface.invoke<{ mounts: unknown[] }>({
+            kind: 'query',
+            id: 'mount.list',
+            payload: { projectId: 'ssh-crud-project' },
+          }),
       )
       expect(mounts.mounts).toHaveLength(0)
     } finally {
       await electronApp.close().catch(() => undefined)
-      if (remoteWorker) {await stopRemoteWorker(remoteWorker.child).catch(() => undefined)}
+      if (remoteWorker) {
+        await stopRemoteWorker(remoteWorker.child).catch(() => undefined)
+      }
       await removePathWithRetry(fakeSshInstallDir)
       await removePathWithRetry(remoteWorkerUserDataDir)
       await removePathWithRetry(remoteBaseDir)
