@@ -47,7 +47,16 @@ function isLikelyBinary(content) {
   return content.includes('\u0000')
 }
 
-const files = resolveFilesFromStaged()
+const hasExplicitTargets = process.argv.length > 2
+const files = hasExplicitTargets ? process.argv.slice(2) : resolveFilesFromStaged()
+
+if (files.length === 0 && !hasExplicitTargets) {
+  process.stderr.write(
+    '[gate:format] WARNING: no staged files matched — this gate checked NOTHING and is not a pass.\n' +
+      'Stage your changes first (git add -A) and confirm: git diff --cached --name-only\n',
+  )
+  process.exit(process.env.OPENCOVE_REQUIRE_STAGED === '1' ? 1 : 0)
+}
 
 const results = await Promise.all(
   files.map(async file => {

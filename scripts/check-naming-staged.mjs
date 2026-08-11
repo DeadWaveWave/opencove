@@ -92,11 +92,15 @@ const diff = resolveStagedDiff()
 const lines = diff.split(/\r\n|\r|\n/)
 
 const violations = []
+const checkedFiles = new Set()
 let currentFile = null
 
 for (const rawLine of lines) {
   if (rawLine.startsWith('+++ b/')) {
     currentFile = rawLine.slice('+++ b/'.length).trim()
+    if (shouldCheck(currentFile) && (!targetFiles || targetFiles.has(currentFile))) {
+      checkedFiles.add(currentFile)
+    }
     continue
   }
 
@@ -175,6 +179,14 @@ for (const rawLine of lines) {
       line: addedLine.trimEnd(),
     })
   }
+}
+
+if (checkedFiles.size === 0 && !targetFiles) {
+  process.stderr.write(
+    '[gate:naming] WARNING: no staged files matched — this gate checked NOTHING and is not a pass.\n' +
+      'Stage your changes first (git add -A) and confirm: git diff --cached --name-only\n',
+  )
+  process.exit(process.env.OPENCOVE_REQUIRE_STAGED === '1' ? 1 : 0)
 }
 
 if (violations.length === 0) {

@@ -66,8 +66,17 @@ function resolveFilesFromStaged() {
     .filter(line => line.length > 0)
 }
 
-const targetFiles = process.argv.length > 2 ? process.argv.slice(2) : resolveFilesFromStaged()
+const hasExplicitTargets = process.argv.length > 2
+const targetFiles = hasExplicitTargets ? process.argv.slice(2) : resolveFilesFromStaged()
 const files = targetFiles.filter(shouldCheck)
+
+if (files.length === 0 && !hasExplicitTargets) {
+  process.stderr.write(
+    '[gate:secrets] WARNING: no staged files matched — this gate checked NOTHING and is not a pass.\n' +
+      'Stage your changes first (git add -A) and confirm: git diff --cached --name-only\n',
+  )
+  process.exit(process.env.OPENCOVE_REQUIRE_STAGED === '1' ? 1 : 0)
+}
 
 let hasErrors = false
 

@@ -147,7 +147,8 @@
     -   lock 文件 (`pnpm-lock.yaml`) 必须由命令生成/更新。
     -   生成代码（如自动生成的类型定义等）禁止手改。
 -   **提交前检查（与 CI 对齐的最低门槛）**：
-    -   运行 `pnpm pre-commit` 前，必须先 `git add` 本次改动，再执行 `pnpm line-check:staged`，因为行数门禁只检查 staged 文件。
+    -   运行 staged gates 前，必须先 `git add -A` 暂存本次改动；若已经提交，仍须显式重新暂存后再运行。执行 `git diff --cached --name-only` 逐项确认文件列表，并确保 `git diff --cached --name-only | wc -l` 的结果大于 0。
+    -   对 0 个文件运行的 gate 实际上没有运行；将其报告为“通过”属于错误陈述。需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`；随后先执行 `pnpm line-check:staged`，因为行数门禁只检查 staged 文件。
     -   若 staged 文件中存在超过 500 行的文件，先重构/拆分，过门禁后再继续，不要带着超长文件直接运行 `pnpm pre-commit`。
     -   `pnpm pre-commit` 会执行 `pnpm naming-check:staged`：禁止在新代码里重新引入 `cove:*`（对外/协议/持久化），仅允许显式 legacy 迁移用途；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。

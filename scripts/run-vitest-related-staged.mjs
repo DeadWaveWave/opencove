@@ -70,10 +70,18 @@ function shouldCheck(filePath) {
   return TEST_RELATED_EXTENSIONS.has(extension)
 }
 
-const targetFiles = process.argv.length > 2 ? process.argv.slice(2) : resolveFilesFromStaged()
+const hasExplicitTargets = process.argv.length > 2
+const targetFiles = hasExplicitTargets ? process.argv.slice(2) : resolveFilesFromStaged()
 const files = targetFiles.filter(shouldCheck)
 
 if (files.length === 0) {
+  if (!hasExplicitTargets) {
+    process.stderr.write(
+      '[gate:vitest-related] WARNING: no staged files matched — this gate checked NOTHING and is not a pass.\n' +
+        'Stage your changes first (git add -A) and confirm: git diff --cached --name-only\n',
+    )
+    process.exit(process.env.OPENCOVE_REQUIRE_STAGED === '1' ? 1 : 0)
+  }
   process.exit(0)
 }
 
