@@ -57,8 +57,12 @@ async function waitForCondition(
   intervalMs = 150,
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
-  if (await fn()) return true
-  if (Date.now() >= deadline) return await fn()
+  if (await fn()) {
+    return true
+  }
+  if (Date.now() >= deadline) {
+    return await fn()
+  }
   await new Promise(resolve => setTimeout(resolve, intervalMs))
   return await waitForCondition(fn, Math.max(0, deadline - Date.now()), intervalMs)
 }
