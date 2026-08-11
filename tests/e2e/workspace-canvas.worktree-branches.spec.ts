@@ -121,7 +121,7 @@ test.describe('Workspace Canvas - Worktree Branches', () => {
                 left: rect.left,
                 top: rect.top,
               })
-              if (performance.now() - startedAt < 220) {
+              if (Number.parseFloat(style.opacity) < 1) {
                 requestAnimationFrame(sample)
               }
             }
@@ -134,7 +134,18 @@ test.describe('Workspace Canvas - Worktree Branches', () => {
         const worktreeWindow = window.locator('[data-testid="space-worktree-window"]')
         await expect(worktreeWindow).toBeVisible()
         const popover = window.locator('[data-testid="space-worktree-popover"]')
-        await window.waitForTimeout(220)
+        await expect
+          .poll(async () => {
+            return await window.evaluate(() => {
+              const samples = (
+                window as typeof window & {
+                  __opencovePopoverMotionSamples?: Array<{ opacity: string }>
+                }
+              ).__opencovePopoverMotionSamples
+              return Number.parseFloat(samples?.at(-1)?.opacity ?? '0')
+            })
+          })
+          .toBe(1)
         await window.screenshot({ path: 'artifacts/popup-ui-worktree.dark.png' })
 
         const popoverRect = await popover.boundingBox()

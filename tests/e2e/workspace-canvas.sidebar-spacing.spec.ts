@@ -229,7 +229,7 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
 
       await window.locator('[data-testid="workspace-sidebar-pin"]').click()
       await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
-      await window.waitForTimeout(300)
+      await expect(sidebar).toHaveAttribute('data-cove-sidebar-transition', 'idle')
 
       const rail = await readSidebarRowGeometry(window, workspaceId, spaceId, agentId)
       expectDistanceWithin(docked.projectGroupLeftInset, docked.projectIconCenter / 2, 4)
