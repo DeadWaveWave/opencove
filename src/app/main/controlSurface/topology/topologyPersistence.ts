@@ -14,15 +14,22 @@ async function writeJsonAtomically(path: string, payload: string): Promise<void>
   }
 }
 
+export async function persistTopologyFile(
+  topologyPath: string,
+  topology: TopologyFileV1,
+): Promise<void> {
+  await mkdir(dirname(topologyPath), { recursive: true })
+  await writeJsonAtomically(topologyPath, `${JSON.stringify(topology)}\n`)
+}
+
 export async function persistTopologyFiles(input: {
   topologyPath: string
   secretsPath: string
   topology: TopologyFileV1
   secrets: SecretsFileV1
 }): Promise<void> {
-  await mkdir(dirname(input.topologyPath), { recursive: true })
   await Promise.all([
-    writeJsonAtomically(input.topologyPath, `${JSON.stringify(input.topology)}\n`),
+    persistTopologyFile(input.topologyPath, input.topology),
     writeJsonAtomically(input.secretsPath, `${JSON.stringify(input.secrets)}\n`),
   ])
 }

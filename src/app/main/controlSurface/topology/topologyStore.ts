@@ -51,7 +51,7 @@ import {
   createManualEndpointRegistration,
 } from './topologyEndpointRegistration'
 import { createManagedSshEndpointUpdate } from './topologyEndpointUpdate'
-import { persistTopologyFiles } from './topologyPersistence'
+import { persistTopologyFile, persistTopologyFiles } from './topologyPersistence'
 import type { WorkerTopologyStore } from './topologyStoreTypes'
 export type { WorkerTopologyStore } from './topologyStoreTypes'
 
@@ -182,15 +182,15 @@ export function createWorkerTopologyStore(options: {
       ),
     }
 
-    await persist(nextTopology, secrets)
-    topology = nextTopology
-
     await options.disposeManagedSshEndpointRuntime?.({
       endpointId: matched.endpointId,
       displayName: matched.displayName,
       token: secrets.tokensByCredentialRef[matched.credentialRef] ?? '',
       ssh: matched.managedSsh,
     })
+
+    await persistTopologyFile(topologyPath, nextTopology)
+    topology = nextTopology
 
     return { endpoint: toEndpointDto(nextRecord) }
   }

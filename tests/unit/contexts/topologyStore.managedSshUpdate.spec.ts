@@ -110,4 +110,31 @@ describe('WorkerTopologyStore managed SSH update', () => {
     await expect(readFile(topologyPath, 'utf8')).resolves.toBe(before)
     expect(disposeManagedSshEndpointRuntime).not.toHaveBeenCalled()
   })
+
+  it('leaves the durable topology unchanged when old-tunnel disposal fails', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-topology-update-dispose-'))
+    tempPaths.push(userDataPath)
+    const store = createWorkerTopologyStore({
+      userDataPath,
+      disposeManagedSshEndpointRuntime: async () => {
+        throw new Error('dispose failed')
+      },
+    })
+    const registered = await store.registerManagedSshEndpoint({
+      host: 'old.example.com',
+      remotePort: 41_000,
+    })
+    const topologyPath = join(userDataPath, 'worker-topology.json')
+    const before = await readFile(topologyPath, 'utf8')
+
+    await expect(
+      store.updateManagedSshEndpoint({
+        endpointId: registered.endpoint.endpointId,
+        host: 'new.example.com',
+        remotePort: 42_000,
+      }),
+    ).rejects.toThrow('dispose failed')
+
+    await expect(readFile(topologyPath, 'utf8')).resolves.toBe(before)
+  })
 })
