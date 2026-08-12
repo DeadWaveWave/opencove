@@ -153,6 +153,7 @@ export class PtyStreamHub {
   public registerSessionAgentState(options: TerminalSessionStateEvent): void {
     const session = this.ensureSession(options.sessionId)
     if (
+      options.source !== 'claude_hook' &&
       session.agentState?.state === options.state &&
       session.agentState.source === options.source &&
       session.agentState.hookInstallState === options.hookInstallState

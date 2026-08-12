@@ -170,6 +170,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       status={data.agentRuntimeObservation?.status ?? data.agentOverlay?.status ?? data.status}
       agentStateSource={data.agentRuntimeObservation?.source ?? null}
       agentHookInstallState={data.agentRuntimeObservation?.hookInstallState ?? null}
+      agentStateDegraded={data.agentRuntimeObservation?.degraded === true}
       directoryMismatch={
         data.kind === 'agent' &&
         data.agent?.expectedDirectory &&

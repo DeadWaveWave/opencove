@@ -5,6 +5,7 @@ export interface AgentRuntimeObservationInput {
   state: 'working' | 'waiting' | 'standby'
   source?: TerminalSessionStateSource
   hookInstallState?: AgentHookInstallState | null
+  degraded?: boolean
 }
 
 export function projectAgentRuntimeObservation(
@@ -19,36 +20,18 @@ export function projectAgentRuntimeObservation(
     input.state === 'standby' ? 'standby' : input.state === 'waiting' ? 'waiting' : 'running'
   const source = input.source ?? 'session_file'
   const hookInstallState = input.hookInstallState ?? null
-  const nextObservation = { status: nextStatus, source, hookInstallState }
-  const observationMatches = hookInstallState
-    ? data.agentRuntimeObservation?.status === nextStatus &&
-      data.agentRuntimeObservation.source === source &&
-      data.agentRuntimeObservation.hookInstallState === hookInstallState
-    : !data.agentRuntimeObservation
-
-  if (source === 'claude_hook') {
-    if (
-      data.agentRuntimeObservation?.status === nextStatus &&
-      data.agentRuntimeObservation.source === source &&
-      data.agentRuntimeObservation.hookInstallState === hookInstallState
-    ) {
-      return null
-    }
-    return {
-      data: { ...data, agentRuntimeObservation: nextObservation },
-      durableDidChange: false,
-    }
-  }
-
-  if (data.status === nextStatus && observationMatches) {
+  const degraded = input.degraded === true
+  const nextObservation = { status: nextStatus, source, hookInstallState, degraded }
+  if (
+    data.agentRuntimeObservation?.status === nextStatus &&
+    data.agentRuntimeObservation.source === source &&
+    data.agentRuntimeObservation.hookInstallState === hookInstallState &&
+    data.agentRuntimeObservation.degraded === degraded
+  ) {
     return null
   }
   return {
-    data: {
-      ...data,
-      status: nextStatus,
-      agentRuntimeObservation: hookInstallState ? nextObservation : null,
-    },
-    durableDidChange: data.status !== nextStatus,
+    data: { ...data, agentRuntimeObservation: nextObservation },
+    durableDidChange: false,
   }
 }

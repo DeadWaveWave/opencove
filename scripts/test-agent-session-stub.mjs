@@ -20,6 +20,7 @@ import {
 } from './test-agent-session-stub/gemini.mjs'
 import { runOpenCodeIdleWithMessageScenario } from './test-agent-session-stub/opencode.mjs'
 import {
+  runClaudeHookArbitrationScenario,
   runClaudeHookFallbackScenario,
   runClaudeHookLifecycleScenario,
 } from './test-agent-session-stub/claudeHook.mjs'
@@ -75,7 +76,12 @@ async function main() {
   }
 
   if (provider === 'claude-code' && scenario === 'claude-hook-lifecycle') {
-    await runClaudeHookLifecycleScenario()
+    await runClaudeHookLifecycleScenario(cwd)
+    return
+  }
+
+  if (provider === 'claude-code' && scenario === 'claude-hook-arbitration') {
+    await runClaudeHookArbitrationScenario(cwd)
     return
   }
 

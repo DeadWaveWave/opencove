@@ -124,6 +124,7 @@ describe('agent resume metadata binding', () => {
       status: 'waiting',
       source: 'claude_hook',
       hookInstallState: 'installed',
+      degraded: false,
     })
     const persistedNode = toPersistedState(result.nextWorkspaces, 'workspace-1').workspaces[0]
       ?.nodes[0]
@@ -131,7 +132,7 @@ describe('agent resume metadata binding', () => {
     expect(persistedNode).not.toHaveProperty('agentRuntimeObservation')
   })
 
-  it('surfaces degraded fallback while preserving session-file durable behavior', () => {
+  it('INV-1 keeps degraded session-file fallback runtime-only', () => {
     const node = createAgentNode({ resumeSessionId: null, resumeSessionIdVerified: false })
     const workspace = {
       id: 'workspace-1',
@@ -151,15 +152,21 @@ describe('agent resume metadata binding', () => {
       state: 'standby',
       source: 'session_file',
       hookInstallState: 'error',
+      degraded: true,
     })
 
-    expect(result.durableDidChange).toBe(true)
-    expect(result.nextWorkspaces[0]?.nodes[0]?.data.status).toBe('standby')
+    expect(result.durableDidChange).toBe(false)
+    expect(result.nextWorkspaces[0]?.nodes[0]?.data.status).toBe('running')
     expect(result.nextWorkspaces[0]?.nodes[0]?.data.agentRuntimeObservation).toEqual({
       status: 'standby',
       source: 'session_file',
       hookInstallState: 'error',
+      degraded: true,
     })
+    const persistedNode = toPersistedState(result.nextWorkspaces, 'workspace-1').workspaces[0]
+      ?.nodes[0]
+    expect(persistedNode?.status).toBe('running')
+    expect(persistedNode).not.toHaveProperty('agentRuntimeObservation')
   })
 
   it('ignores runtime metadata that conflicts with a verified durable binding', () => {

@@ -1,6 +1,6 @@
 import { useCallback, useState, type JSX, type PointerEvent } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { AgentHookInstallState, AgentSessionSummary } from '@shared/contracts/dto'
+import type { AgentSessionSummary } from '@shared/contracts/dto'
 import { Copy, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
@@ -13,7 +13,7 @@ interface TerminalNodeHeaderProps {
   fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
   status: AgentRuntimeStatus | null
-  agentHookInstallState?: AgentHookInstallState | null
+  agentStateDegraded?: boolean
   labelColor?: LabelColor | null
   agentExecutionDirectory?: string | null
   agentResumeSessionId?: string | null
@@ -33,7 +33,7 @@ export function TerminalNodeHeader({
   fixedTitlePrefix = null,
   kind,
   status,
-  agentHookInstallState = null,
+  agentStateDegraded = false,
   labelColor,
   agentExecutionDirectory,
   agentResumeSessionId,
@@ -144,7 +144,7 @@ export function TerminalNodeHeader({
           ) : null}
           {isAgentNode ? (
             <>
-              {agentHookInstallState && agentHookInstallState !== 'installed' ? (
+              {agentStateDegraded ? (
                 <span
                   className="terminal-node__badge terminal-node__badge--warning"
                   data-testid="agent-hook-degraded"

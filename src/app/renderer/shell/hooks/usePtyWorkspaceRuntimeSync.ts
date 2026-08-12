@@ -70,12 +70,14 @@ export function updateWorkspacesWithAgentRunState({
   state,
   source = 'session_file',
   hookInstallState = null,
+  degraded = false,
 }: {
   workspaces: WorkspaceState[]
   sessionId: string
   state: 'working' | 'waiting' | 'standby'
   source?: TerminalSessionStateSource
   hookInstallState?: AgentHookInstallState | null
+  degraded?: boolean
 }): { nextWorkspaces: WorkspaceState[]; didChange: boolean; durableDidChange: boolean } {
   let durableDidChange = false
   const result = updateWorkspacesWithAgentTreatedNodes(workspaces, {
@@ -83,14 +85,15 @@ export function updateWorkspacesWithAgentRunState({
     updateNode: node => {
       const nextStatus: 'running' | 'waiting' | 'standby' =
         state === 'standby' ? 'standby' : state === 'waiting' ? 'waiting' : 'running'
-      const nextObservation = { status: nextStatus, source, hookInstallState }
+      const nextObservation = { status: nextStatus, source, hookInstallState, degraded }
       if (node.data.kind === 'terminal') {
         const overlay = node.data.agentOverlay
         if (
           !overlay ||
           (overlay.status === nextStatus &&
             node.data.agentRuntimeObservation?.source === source &&
-            node.data.agentRuntimeObservation.hookInstallState === hookInstallState)
+            node.data.agentRuntimeObservation.hookInstallState === hookInstallState &&
+            node.data.agentRuntimeObservation.degraded === degraded)
         ) {
           return null
         }
@@ -108,6 +111,7 @@ export function updateWorkspacesWithAgentRunState({
         state,
         source,
         hookInstallState,
+        degraded,
       })
       if (!projected) {
         return null
@@ -347,8 +351,19 @@ export function usePtyWorkspaceRuntimeSync({
     const owner = createTerminalAgentWatcherOwner({
       invoke: request => invoke(request),
     })
+    const ptyEventHub = getPtyEventHub()
     const sync = (): void => {
-      owner.sync(useAppStore.getState().workspaces)
+      const workspaces = useAppStore.getState().workspaces
+      owner.sync(workspaces)
+      const agentSessionIds = new Set<string>()
+      for (const workspace of workspaces) {
+        for (const node of workspace.nodes) {
+          if (isAgentTreatedNode(node) && node.data.sessionId.trim().length > 0) {
+            agentSessionIds.add(node.data.sessionId)
+          }
+        }
+      }
+      ptyEventHub.syncAgentRunStateSessions(agentSessionIds)
     }
     sync()
     const unsubscribe = useAppStore.subscribe(sync)
@@ -356,6 +371,7 @@ export function usePtyWorkspaceRuntimeSync({
     return () => {
       unsubscribe()
       owner.dispose()
+      ptyEventHub.syncAgentRunStateSessions(new Set())
     }
   }, [])
 
@@ -395,6 +411,7 @@ export function usePtyWorkspaceRuntimeSync({
           state: event.state,
           source: event.source,
           hookInstallState: event.hookInstallState,
+          degraded: event.degraded,
         })
 
         didChange = result.didChange

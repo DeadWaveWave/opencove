@@ -129,11 +129,59 @@ describe('createPtyEventHub', () => {
     expect(lateStateListener).toHaveBeenCalledWith({
       sessionId: 'session-1',
       state: 'standby',
+      source: 'session_file',
+      degraded: false,
     })
     expect(lateMetadataListener).toHaveBeenCalledWith({
       sessionId: 'session-1',
       resumeSessionId: 'resume-1',
     })
+  })
+
+  it('dispatches only the arbitrated winner and exposes deterministic refresh', () => {
+    let rawStateListener: ((event: TerminalSessionStateEvent) => void) | undefined
+    let nowMs = 1_000
+    const hub = createPtyEventHub(
+      {
+        onData: vi.fn((_listener: (event: TerminalDataEvent) => void) => () => undefined),
+        onExit: vi.fn((_listener: (event: TerminalExitEvent) => void) => () => undefined),
+        onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
+          rawStateListener = listener
+          return () => undefined
+        }),
+      },
+      {
+        now: () => nowMs,
+        setTimer: vi.fn(() => 1),
+        clearTimer: vi.fn(),
+      },
+    )
+    const projected = vi.fn()
+    hub.onState(projected)
+
+    rawStateListener?.({
+      sessionId: 'session-1',
+      state: 'working',
+      source: 'claude_hook',
+      hookInstallState: 'installed',
+    })
+    rawStateListener?.({
+      sessionId: 'session-1',
+      state: 'standby',
+      source: 'session_file',
+      hookInstallState: 'installed',
+    })
+    expect(projected).toHaveBeenCalledTimes(1)
+    expect(projected).toHaveBeenLastCalledWith(
+      expect.objectContaining({ source: 'claude_hook', state: 'working', degraded: false }),
+    )
+
+    nowMs += 120_000
+    hub.refreshAgentRunStateAuthority()
+    expect(projected).toHaveBeenCalledTimes(2)
+    expect(projected).toHaveBeenLastCalledWith(
+      expect.objectContaining({ source: 'session_file', state: 'standby', degraded: true }),
+    )
   })
 
   it('routes resync events by session id', () => {

@@ -158,6 +158,15 @@ describe('headless PTY runtime', () => {
       })
 
       runtime.startSessionStateWatcher({
+        sessionId: 'session-2',
+        provider: 'claude-code',
+        cwd: '/tmp/workspace',
+        launchMode: 'new',
+        resumeSessionId: null,
+        startedAtMs: Date.now(),
+      })
+
+      runtime.startSessionStateWatcher({
         sessionId: 'session-1',
         provider: 'codex',
         cwd: '/tmp/workspace',
@@ -166,7 +175,15 @@ describe('headless PTY runtime', () => {
         startedAtMs: Date.now(),
       })
 
-      expect(watcherStart).toHaveBeenCalledWith({
+      expect(watcherStart).toHaveBeenNthCalledWith(1, {
+        sessionId: 'session-2',
+        provider: 'claude-code',
+        cwd: '/tmp/workspace',
+        launchMode: 'new',
+        resumeSessionId: null,
+        startedAtMs: expect.any(Number),
+      })
+      expect(watcherStart).toHaveBeenNthCalledWith(2, {
         sessionId: 'session-1',
         provider: 'codex',
         cwd: '/tmp/workspace',

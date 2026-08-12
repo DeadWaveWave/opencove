@@ -195,6 +195,7 @@ export interface TerminalSessionStateEvent {
   state: TerminalSessionState
   source?: TerminalSessionStateSource
   hookInstallState?: AgentHookInstallState
+  degraded?: boolean
 }
 
 export interface TerminalSessionMetadataEvent {

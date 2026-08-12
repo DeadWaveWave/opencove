@@ -58,6 +58,7 @@ export function TerminalNode({
   status,
   agentStateSource = null,
   agentHookInstallState = null,
+  agentStateDegraded = false,
   directoryMismatch,
   lastError,
   position,
@@ -452,7 +453,6 @@ export function TerminalNode({
     handlePointerMoveCapture: handleTerminalBodyPointerMoveCapture,
     handlePointerUp: handleTerminalBodyPointerUp,
   } = useTerminalBodyClickFallback(onInteractionStart)
-
   return (
     <TerminalNodeFrame
       title={title}
@@ -467,6 +467,7 @@ export function TerminalNode({
       status={status}
       agentStateSource={agentStateSource}
       agentHookInstallState={agentHookInstallState}
+      agentStateDegraded={agentStateDegraded}
       directoryMismatch={directoryMismatch}
       lastError={lastError}
       sessionId={sessionId}

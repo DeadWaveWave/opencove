@@ -231,7 +231,7 @@ export const zhCN = {
     waiting: '等待中',
     standby: '待命',
     hookDegraded: '降级',
-    hookDegradedDetail: 'Agent Hook 不可用；正在使用会话活动状态。',
+    hookDegradedDetail: 'Agent Hook 不可用或已过期；当前状态由会话活动驱动。',
     exited: '已退出',
     failed: '失败',
     stopped: '已停止',

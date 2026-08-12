@@ -30,7 +30,7 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 | launch intent | agent/session launch path |
 | PTY process | Worker PTY runtime |
 | local Claude hook receiver and credentials | Worker Control Surface lifecycle |
-| agent run-state observation | Worker hook channel, with session-file fallback |
+| agent run-state observation | Renderer run-state arbiter over Worker observations |
 | terminal presentation | Worker stream hub |
 | node placement and frame | workspace context |
 | task-agent relation | workspace/task model |
@@ -48,10 +48,16 @@ settings and preserves unrelated hooks. Invalid settings, an unavailable loopbac
 hook disablement, or managed-hook restrictions fail open: the agent still launches, the existing
 session-file detector remains active, and the renderer displays a localized fallback indicator.
 
-Hook observations are runtime-only. Renderer projection may update `agentRuntimeObservation` and the
-terminal-agent overlay, but it must never write hook state into durable node facts. This slice does not
-arbitrate concurrent hook and session-file signals: a successfully installed local Claude hook is the
-sole source, while every degraded install uses the session-file fallback.
+Hook and session-file observations are runtime-only. The renderer arbiter keeps the session-file watcher
+warm, but projects exactly one source per session: a fresh installed hook wins, a stale `working` hook or
+an unavailable hook falls back to the cached session-file signal, and providers without a hook use their
+session file normally. `waiting` and `standby` hook signals are sticky because silence is expected in
+those states; only `working` owns the 120-second freshness lease. The lease timer belongs to the renderer
+event hub and is disposed on session exit, node removal, or owner teardown.
+
+Every source switch is reflected in runtime observation metadata and degraded fallback is visible in the
+Agent header. Neither source may write run-state into durable node status; persistence strips the runtime
+observation entirely.
 
 ## Related Docs
 

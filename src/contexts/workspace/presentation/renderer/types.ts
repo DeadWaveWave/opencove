@@ -84,6 +84,7 @@ export interface AgentRuntimeObservation {
   status: 'running' | 'waiting' | 'standby'
   source: TerminalSessionStateSource
   hookInstallState: AgentHookInstallState | null
+  degraded: boolean
 }
 
 export interface TaskNodeData {

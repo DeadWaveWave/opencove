@@ -58,7 +58,6 @@ export function createHeadlessPtyRuntime(options: {
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   const profileResolver = new TerminalProfileResolver()
-  const hookModeBySessionId = new Map<string, boolean>()
   const hookInstallStateBySessionId = new Map<
     string,
     TerminalSessionStateEvent['hookInstallState']
@@ -74,9 +73,6 @@ export function createHeadlessPtyRuntime(options: {
       process.stderr.write(`${message}\n`)
     },
     onState: event => {
-      if (hookModeBySessionId.get(event.sessionId) === true) {
-        return
-      }
       emitState({
         ...event,
         source: 'session_file',
@@ -120,7 +116,6 @@ export function createHeadlessPtyRuntime(options: {
   const disposeExitListener = supervisor.onExit(event => {
     sessionStateWatcher.disposeSession(event.sessionId)
     options.claudeHookChannel?.disposeSession(event.sessionId)
-    hookModeBySessionId.delete(event.sessionId)
     hookInstallStateBySessionId.delete(event.sessionId)
     exitListeners.forEach(listener => listener(event))
   })
@@ -142,7 +137,6 @@ export function createHeadlessPtyRuntime(options: {
               : {}),
         })
         if (reservation) {
-          hookModeBySessionId.set(spawned.sessionId, reservation.usesHook)
           hookInstallStateBySessionId.set(spawned.sessionId, reservation.installState)
           emitState({
             sessionId: spawned.sessionId,
@@ -202,7 +196,6 @@ export function createHeadlessPtyRuntime(options: {
     kill: sessionId => {
       sessionStateWatcher.disposeSession(sessionId)
       options.claudeHookChannel?.disposeSession(sessionId)
-      hookModeBySessionId.delete(sessionId)
       hookInstallStateBySessionId.delete(sessionId)
       supervisor.kill(sessionId)
     },
@@ -231,9 +224,6 @@ export function createHeadlessPtyRuntime(options: {
       }
     },
     startSessionStateWatcher: input => {
-      if (hookModeBySessionId.get(input.sessionId) === true) {
-        return
-      }
       sessionStateWatcher.start(input)
     },
     disposeSessionStateWatcher: sessionId => {
@@ -254,7 +244,6 @@ export function createHeadlessPtyRuntime(options: {
       exitListeners.clear()
       stateListeners.clear()
       metadataListeners.clear()
-      hookModeBySessionId.clear()
       hookInstallStateBySessionId.clear()
       sessionStateWatcher.dispose()
       supervisor.dispose()

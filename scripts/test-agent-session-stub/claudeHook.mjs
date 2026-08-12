@@ -42,7 +42,14 @@ async function postHook(envelope) {
   }
 }
 
-export async function runClaudeHookLifecycleScenario() {
+async function runClaudeHookScenario(cwd, { sessionFileWarmStandby }) {
+  const sessionFilePath = sessionFileWarmStandby ? await createClaudeSessionFile(cwd) : null
+  if (sessionFilePath) {
+    await appendClaudeRecord(sessionFilePath, {
+      type: 'user',
+      message: { content: [{ type: 'text', text: 'Begin arbitration test.' }] },
+    })
+  }
   await postHook({
     version: 1,
     state: 'working',
@@ -66,6 +73,20 @@ export async function runClaudeHookLifecycleScenario() {
           return
         }
         input += String.fromCharCode(byte)
+        if (sessionFilePath && input.endsWith('<test-session-standby>')) {
+          input = ''
+          operation = operation.then(async () => {
+            await appendClaudeRecord(sessionFilePath, {
+              type: 'assistant',
+              message: {
+                content: [{ type: 'text', text: 'Conflicting fallback standby.' }],
+                stop_reason: 'end_turn',
+              },
+            })
+            process.stdout.write('[opencove-test-hook] session-standby\n')
+          })
+          continue
+        }
         const matched = Object.entries(SIGNALS).find(([signal]) => input.endsWith(signal))
         if (matched) {
           input = ''
@@ -81,6 +102,14 @@ export async function runClaudeHookLifecycleScenario() {
     process.stdin.on('data', onData)
     process.stdin.resume()
   })
+}
+
+export async function runClaudeHookLifecycleScenario(cwd) {
+  await runClaudeHookScenario(cwd, { sessionFileWarmStandby: false })
+}
+
+export async function runClaudeHookArbitrationScenario(cwd) {
+  await runClaudeHookScenario(cwd, { sessionFileWarmStandby: true })
 }
 
 export async function runClaudeHookFallbackScenario(cwd) {

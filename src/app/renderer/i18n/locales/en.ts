@@ -230,7 +230,7 @@ export const en = {
     waiting: 'Waiting',
     standby: 'Standby',
     hookDegraded: 'Fallback',
-    hookDegradedDetail: 'Agent hook unavailable; using session activity.',
+    hookDegradedDetail: 'Agent hook unavailable or stale; session activity is driving status.',
     exited: 'Exited',
     failed: 'Failed',
     stopped: 'Stopped',

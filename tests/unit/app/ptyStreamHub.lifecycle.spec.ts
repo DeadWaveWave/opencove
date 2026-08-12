@@ -20,6 +20,46 @@ function createWebSocketHarness(): {
 }
 
 describe('PtyStreamHub lifecycle truth', () => {
+  it('broadcasts identical hook signals because their arrival renews the freshness lease', () => {
+    const hub = new PtyStreamHub({
+      replayWindowMaxBytes: 64_000,
+      ptyRuntime: {
+        spawnSession: vi.fn(),
+        write: vi.fn(),
+        resize: vi.fn(),
+        kill: vi.fn(),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+      },
+    })
+    const client = createWebSocketHarness()
+    hub.registerClient({ clientId: 'client', kind: 'desktop', ws: client.ws })
+    hub.registerSessionMetadata({
+      sessionId: 'session-hook-renewal',
+      kind: 'terminal',
+      startedAt: '2026-07-10T00:00:00.000Z',
+      cwd: '/tmp',
+      command: 'shell',
+      args: [],
+      cols: 80,
+      rows: 24,
+    })
+
+    const signal = {
+      sessionId: 'session-hook-renewal',
+      state: 'working' as const,
+      source: 'claude_hook' as const,
+      hookInstallState: 'installed' as const,
+    }
+    hub.registerSessionAgentState(signal)
+    hub.registerSessionAgentState(signal)
+
+    expect(client.messages.filter(message => message.type === 'state')).toEqual([
+      { type: 'state', ...signal },
+      { type: 'state', ...signal },
+    ])
+  })
+
   it('does not classify an exited retained session as live', () => {
     const hub = new PtyStreamHub({
       replayWindowMaxBytes: 64_000,

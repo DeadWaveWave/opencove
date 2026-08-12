@@ -29,6 +29,7 @@ interface TerminalNodeFrameProps {
   status: AgentRuntimeStatus | null
   agentStateSource: TerminalSessionStateSource | null
   agentHookInstallState: AgentHookInstallState | null
+  agentStateDegraded: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null
   sessionId: string
@@ -78,6 +79,7 @@ export function TerminalNodeFrame({
   status,
   agentStateSource,
   agentHookInstallState,
+  agentStateDegraded,
   directoryMismatch,
   lastError,
   sessionId,
@@ -187,7 +189,7 @@ export function TerminalNodeFrame({
         fixedTitlePrefix={fixedTitlePrefix}
         kind={kind}
         status={status}
-        agentHookInstallState={agentHookInstallState}
+        agentStateDegraded={agentStateDegraded}
         labelColor={labelColor ?? null}
         agentExecutionDirectory={agentExecutionDirectory}
         agentResumeSessionId={agentResumeSessionId}

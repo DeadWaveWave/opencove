@@ -43,6 +43,7 @@ export interface TerminalNodeProps {
   status: AgentRuntimeStatus | null
   agentStateSource?: TerminalSessionStateSource | null
   agentHookInstallState?: AgentHookInstallState | null
+  agentStateDegraded?: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null
   position?: Point

@@ -28,6 +28,12 @@ describe('PTY task completion side effects', () => {
           title: 'Agent',
           sessionId: 'session-1',
           status: 'standby',
+          agentRuntimeObservation: {
+            status: 'standby',
+            source: 'session_file',
+            hookInstallState: null,
+            degraded: false,
+          },
           startedAt: null,
           endedAt: null,
           exitCode: null,
@@ -115,7 +121,13 @@ describe('PTY task completion side effects', () => {
 
     expect(result.didChange).toBe(true)
     expect(result.nextNodes).not.toBe(prevNodes)
-    expect(result.nextNodes[0]?.data.status).toBe('running')
+    expect(result.nextNodes[0]?.data.status).toBe('standby')
+    expect(result.nextNodes[0]?.data.agentRuntimeObservation).toEqual({
+      status: 'running',
+      source: 'session_file',
+      hookInstallState: null,
+      degraded: false,
+    })
   })
 
   it('does not mark linked tasks as ai_done in canvas node updates', () => {
