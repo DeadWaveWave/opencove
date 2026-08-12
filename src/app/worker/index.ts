@@ -11,7 +11,7 @@ import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironm
 import { hashWebUiPassword } from '../main/controlSurface/http/webUiPassword'
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
-import { resolvePackagedAppRoot } from '../main/runtime/opencoveRuntimePaths'
+import { resolvePackagedAppRoot } from '../../shared/runtime/opencoveRuntimePaths'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 
 function resolveClaudeHookHelperPath(): string {

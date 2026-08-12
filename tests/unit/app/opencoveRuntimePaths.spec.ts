@@ -6,7 +6,7 @@ import {
   resolvePackagedAppRoot,
   resolvePackagedCliScriptPath,
   resolvePackagedWorkerScriptPath,
-} from '../../../src/app/main/runtime/opencoveRuntimePaths'
+} from '../../../src/shared/runtime/opencoveRuntimePaths'
 
 const createdRoots: string[] = []
 

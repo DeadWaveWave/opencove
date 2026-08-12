@@ -9,7 +9,7 @@ import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurfa
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
 import { readHomeWorkerConfigFile } from './homeWorkerConfig'
-import { resolvePackagedWorkerScriptPath } from '../runtime/opencoveRuntimePaths'
+import { resolvePackagedWorkerScriptPath } from '../../../shared/runtime/opencoveRuntimePaths'
 import { removeConnectionFile } from '../controlSurface/http/connectionFile'
 import { removeWorkerSingleInstanceLock } from '../../../platform/process/workerSingleInstanceLockFile'
 import { isReusableLocalWorkerConnection } from './localWorkerCompatibility'

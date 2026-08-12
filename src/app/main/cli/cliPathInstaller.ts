@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import type { CliPathStatusResult } from '../../../shared/contracts/dto'
 import { createAppError } from '../../../shared/errors/appError'
-import { resolvePackagedCliScriptPath } from '../runtime/opencoveRuntimePaths'
+import { resolvePackagedCliScriptPath } from '../../../shared/runtime/opencoveRuntimePaths'
 
 const CLI_WRAPPER_MARKER = '__OPENCOVE_CLI_WRAPPER__'
 const CLI_WRAPPER_NAME = 'opencove'
