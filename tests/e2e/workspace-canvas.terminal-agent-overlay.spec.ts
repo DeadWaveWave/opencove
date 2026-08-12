@@ -5,6 +5,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
 
 const testAgentStubScript = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
+const overlayAdvanceSentinel = '<test-overlay-advance>'
 
 async function createAgentCommandPath(): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), 'opencove-agent-overlay-'))
@@ -58,6 +59,12 @@ async function readPersistedNode(window: Page, nodeId: string) {
   }, nodeId)
 }
 
+async function expectOverlayStubReady(terminal: Locator, provider: 'claude-code' | 'codex') {
+  await expect
+    .poll(async () => (await terminal.locator('.terminal-node__transcript').textContent()) ?? '')
+    .toContain(`[opencove-test-overlay] ${provider} ready`)
+}
+
 async function runOverlayLifecycle(options: {
   window: Page
   nodeId: string
@@ -71,6 +78,7 @@ async function runOverlayLifecycle(options: {
   await terminal.locator('.xterm-helper-textarea').click()
   await window.keyboard.type('claude')
   await window.keyboard.press('Enter')
+  await expectOverlayStubReady(terminal, 'claude-code')
 
   const sidebarItem = window.locator(
     `[data-testid="workspace-agent-item-workspace-overlay-${nodeId}"]`,
@@ -81,6 +89,7 @@ async function runOverlayLifecycle(options: {
   await expect(terminal.getByTestId('terminal-node-copy-last-message')).toBeVisible()
   await expect(terminal.getByTestId('terminal-node-reload-session')).toBeVisible()
   await expect(terminal.getByTestId('terminal-node-session-list')).toBeVisible()
+  await window.keyboard.type(overlayAdvanceSentinel)
   await expect(sidebarItem).toContainText('Standby', { timeout: 15_000 })
   await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
 
@@ -125,17 +134,23 @@ async function runOverlayLifecycle(options: {
       return exitIndex >= 0 && /[%$#]/.test(transcript.slice(exitIndex))
     })
     .toBe(true)
+  await expect
+    .poll(async () => (await readPersistedNode(window, nodeId))?.scrollback ?? '')
+    .toContain('claude-code exited')
 
   await terminal.locator('.xterm-helper-textarea').click()
   await window.keyboard.type('codex')
   await window.keyboard.press('Enter')
+  await expectOverlayStubReady(terminal, 'codex')
   await expect(sidebarItem).toBeVisible({ timeout: 15_000 })
   await expect(sidebarItem).toContainText('Working')
   await expect(terminal.locator('.terminal-node__status')).toHaveText('Working')
   await expect(terminal.getByTestId('terminal-node-copy-last-message')).toBeVisible()
   await expect(terminal.getByTestId('terminal-node-reload-session')).toBeVisible()
   await expect(terminal.getByTestId('terminal-node-session-list')).toBeVisible()
+  await window.keyboard.type(overlayAdvanceSentinel)
   await expect(sidebarItem).toContainText('Standby', { timeout: 15_000 })
+  await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
   await expect
     .poll(() => readPersistedNode(window, nodeId))
     .toMatchObject({

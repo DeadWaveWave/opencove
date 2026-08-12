@@ -10,6 +10,74 @@ import { runRawClickRedrawAfterClickScenario } from './raw.mjs'
 import { sleep } from './sleep.mjs'
 
 const IDLE_SCENARIO_LIFETIME_MS = 180_000
+const OVERLAY_ADVANCE_SENTINEL = '<test-overlay-advance>'
+const OVERLAY_INTERRUPT_BYTE = 0x03
+
+function waitForOverlayAdvanceAndExit({ onAdvance, onExit }) {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    let advanced = false
+    let advancePromise = Promise.resolve()
+    let pendingInput = ''
+
+    const cleanup = () => {
+      process.stdin.off('data', handleData)
+      process.off('SIGINT', finish)
+      if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+        process.stdin.setRawMode(false)
+      }
+      process.stdin.pause()
+    }
+    const fail = error => {
+      if (settled) {
+        return
+      }
+      settled = true
+      cleanup()
+      reject(error)
+    }
+    const finish = () => {
+      if (settled) {
+        return
+      }
+      settled = true
+      cleanup()
+      void advancePromise.then(() => {
+        onExit()
+        resolve()
+      }, reject)
+    }
+    const handleData = chunk => {
+      for (const byte of Buffer.from(chunk)) {
+        if (byte === OVERLAY_INTERRUPT_BYTE) {
+          finish()
+          return
+        }
+        if (advanced) {
+          continue
+        }
+
+        pendingInput += String.fromCharCode(byte)
+        if (pendingInput.endsWith(OVERLAY_ADVANCE_SENTINEL)) {
+          advanced = true
+          advancePromise = Promise.resolve().then(onAdvance)
+          void advancePromise.catch(fail)
+          continue
+        }
+        if (pendingInput.length > OVERLAY_ADVANCE_SENTINEL.length) {
+          pendingInput = pendingInput.slice(-OVERLAY_ADVANCE_SENTINEL.length)
+        }
+      }
+    }
+
+    if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+      process.stdin.setRawMode(true)
+    }
+    process.stdin.on('data', handleData)
+    process.stdin.resume()
+    process.on('SIGINT', finish)
+  })
+}
 
 export async function runCodexStandbyNoNewlineScenario(cwd) {
   const sessionFilePath = await createCodexSessionFile(cwd)
@@ -122,7 +190,33 @@ export async function runJsonlOverlayLifecycleScenario(provider, cwd) {
   const sessionFilePath = isClaude
     ? await createClaudeSessionFile(cwd)
     : await createCodexSessionFile(cwd)
-  process.stdout.write(`\u001b[?1049h[opencove-test-overlay] ${provider} ready\n`)
+
+  const lifecyclePromise = waitForOverlayAdvanceAndExit({
+    onAdvance: async () => {
+      if (isClaude) {
+        await appendClaudeRecord(sessionFilePath, {
+          type: 'assistant',
+          message: {
+            content: [{ type: 'text', text: 'Overlay ready.' }],
+            stop_reason: 'end_turn',
+          },
+        })
+        return
+      }
+
+      await appendCodexRecord(sessionFilePath, {
+        type: 'event_msg',
+        payload: {
+          type: 'task_complete',
+          turn_id: 'opencove-test-overlay-turn-1',
+          last_agent_message: 'Overlay ready.',
+        },
+      })
+    },
+    onExit: () => {
+      process.stdout.write(`\u001b[?1049l[opencove-test-overlay] ${provider} exited\n`)
+    },
+  })
 
   if (isClaude) {
     await appendClaudeRecord(sessionFilePath, {
@@ -130,14 +224,6 @@ export async function runJsonlOverlayLifecycleScenario(provider, cwd) {
       message: {
         content: [{ type: 'thinking', text: 'Working.' }],
         stop_reason: null,
-      },
-    })
-    await sleep(2_500)
-    await appendClaudeRecord(sessionFilePath, {
-      type: 'assistant',
-      message: {
-        content: [{ type: 'text', text: 'Overlay ready.' }],
-        stop_reason: 'end_turn',
       },
     })
   } else {
@@ -150,46 +236,10 @@ export async function runJsonlOverlayLifecycleScenario(provider, cwd) {
         collaboration_mode_kind: 'default',
       },
     })
-    await sleep(2_500)
-    await appendCodexRecord(sessionFilePath, {
-      type: 'event_msg',
-      payload: {
-        type: 'task_complete',
-        turn_id: 'opencove-test-overlay-turn-1',
-        last_agent_message: 'Overlay ready.',
-      },
-    })
   }
 
-  await new Promise(resolve => {
-    let settled = false
-    const finish = () => {
-      if (settled) {
-        return
-      }
-      settled = true
-      process.stdin.off('data', handleData)
-      process.off('SIGINT', finish)
-      if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
-        process.stdin.setRawMode(false)
-      }
-      process.stdin.pause()
-      process.stdout.write(`\u001b[?1049l[opencove-test-overlay] ${provider} exited\n`)
-      resolve()
-    }
-    const handleData = chunk => {
-      if (Buffer.from(chunk).includes(3)) {
-        finish()
-      }
-    }
-
-    if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
-      process.stdin.setRawMode(true)
-    }
-    process.stdin.on('data', handleData)
-    process.stdin.resume()
-    process.on('SIGINT', finish)
-  })
+  process.stdout.write(`\u001b[?1049h[opencove-test-overlay] ${provider} ready\n`)
+  await lifecyclePromise
 }
 
 export async function runCodexCommentaryThenFinalScenario(cwd) {
