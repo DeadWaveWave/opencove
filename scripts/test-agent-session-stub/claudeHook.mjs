@@ -1,4 +1,10 @@
 const SIGNALS = {
+  '<test-hook-initial-working>': {
+    version: 1,
+    state: 'working',
+    hookEventName: 'UserPromptSubmit',
+    claudeSessionId: 'claude-hook-e2e',
+  },
   '<test-hook-tool>': {
     version: 1,
     state: 'working',
@@ -50,12 +56,6 @@ async function runClaudeHookScenario(cwd, { sessionFileWarmStandby }) {
       message: { content: [{ type: 'text', text: 'Begin arbitration test.' }] },
     })
   }
-  await postHook({
-    version: 1,
-    state: 'working',
-    hookEventName: 'UserPromptSubmit',
-    claudeSessionId: 'claude-hook-e2e',
-  })
   process.stdout.write('[opencove-test-hook] ready\n')
 
   await new Promise((resolveRun, reject) => {

@@ -64,9 +64,9 @@ async function waitForInitialHookWorkingSignal(
   window: Awaited<ReturnType<typeof launchApp>>['window'],
   sessionId: string,
 ): Promise<void> {
-  // The initial hook `working` arrives asynchronously (hook install -> PTY spawn -> agent start ->
-  // first hook POST). Until it lands, session_file legitimately wins arbitration, so gate the
-  // first claude_hook assertion on the real hook signal instead of racing a cold CI start.
+  await writeToPty(window, { sessionId, data: '<test-hook-initial-working>\r' })
+  // Drive the first hook POST only after the PTY session is observable. Until it lands,
+  // session_file legitimately wins arbitration, so gate hook authority on the real signal.
   await expect
     .poll(async () => {
       return await window.evaluate(id => {
