@@ -32,6 +32,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   updateNodeScrollbackRef,
   normalizeViewportForTerminalInteractionRef,
   updateTerminalTitleRef,
+  clearTerminalAgentOverlayRef,
   renameTerminalTitleRef,
 }: {
   data: TerminalNodeData
@@ -58,6 +59,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
+  clearTerminalAgentOverlayRef: MutableRefObject<(nodeId: string) => void>
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
   const storeApi = useStoreApi()
@@ -71,7 +73,16 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null
   const resolvedTerminalProvider =
-    data.kind === 'agent' ? (data.agent?.provider ?? null) : (data.terminalProviderHint ?? null)
+    data.kind === 'agent'
+      ? (data.agent?.provider ?? null)
+      : (data.agentOverlay?.provider ??
+        data.terminalAgentBinding?.provider ??
+        data.terminalProviderHint ??
+        null)
+  const overlayProvider =
+    data.kind === 'terminal'
+      ? (data.agentOverlay?.provider ?? data.terminalAgentBinding?.provider ?? null)
+      : null
   const linkedTaskTitle = useStore(storeState => {
     if (data.kind !== 'agent' || !data.agent) {
       return null
@@ -113,7 +124,9 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       fixedTitlePrefix={
         data.kind === 'agent' && data.agent
           ? `${providerTitlePrefix(data.agent.provider)} · `
-          : null
+          : overlayProvider
+            ? `${providerTitlePrefix(overlayProvider)} · `
+            : null
       }
       kind={data.kind}
       labelColor={labelColor}
@@ -121,9 +134,17 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       agentExecutionDirectory={
         data.kind === 'agent' ? (data.agent?.executionDirectory ?? null) : null
       }
-      agentResumeSessionId={data.kind === 'agent' ? (data.agent?.resumeSessionId ?? null) : null}
+      agentResumeSessionId={
+        data.kind === 'agent'
+          ? (data.agent?.resumeSessionId ?? null)
+          : (data.terminalAgentBinding?.resumeSessionId ?? null)
+      }
       agentResumeSessionIdVerified={
-        data.kind === 'agent' && data.agent ? isResumeSessionBindingVerified(data.agent) : false
+        data.kind === 'agent' && data.agent
+          ? isResumeSessionBindingVerified(data.agent)
+          : data.terminalAgentBinding
+            ? isResumeSessionBindingVerified(data.terminalAgentBinding)
+            : false
       }
       terminalProvider={resolvedTerminalProvider}
       isLiveSessionReattach={data.isLiveSessionReattach === true}
@@ -132,7 +153,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       terminalThemeMode="sync-with-ui"
       isSelected={selected === true}
       isDragging={dragging === true}
-      status={data.status}
+      status={data.agentOverlay?.status ?? data.status}
       directoryMismatch={
         data.kind === 'agent' &&
         data.agent?.expectedDirectory &&
@@ -201,6 +222,11 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
           ? command => {
               updateTerminalTitleRef.current(id, command)
             }
+          : undefined
+      }
+      onAgentOverlayExit={
+        data.kind === 'terminal' && data.agentOverlay
+          ? () => clearTerminalAgentOverlayRef.current(id)
           : undefined
       }
       onTitleCommit={

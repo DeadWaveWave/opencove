@@ -51,6 +51,7 @@ import {
   logAgentLaunchError,
   logAgentLaunchInfo,
 } from '../../diagnostics/agentLaunchRuntimeDiagnostics'
+import { registerSessionAgentWatcherHandlers } from './sessionAgentWatcherHandlers'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 
@@ -444,6 +445,7 @@ export function registerSessionHandlers(
   })
 
   registerSessionLaunchAgentInMountHandler(controlSurface, { ...deps, sessions })
+  registerSessionAgentWatcherHandlers(controlSurface, deps)
   registerSessionPrepareOrReviveHandler(controlSurface, {
     getPersistenceStore: deps.getPersistenceStore,
     ptyStreamHub: deps.ptyStreamHub,

@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type {
   DocumentNodeData,
+  AgentNodeData,
   ImageNodeData,
   NoteNodeData,
   PersistedWorkspaceState,
@@ -160,6 +161,15 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         runtimeKind: node.runtimeKind,
         terminalGeometry: node.terminalGeometry ?? null,
         terminalProviderHint: node.terminalProviderHint ?? null,
+        terminalAgentBinding: node.terminalAgentBinding ?? null,
+        agentOverlay:
+          node.kind === 'terminal' && node.terminalAgentBinding
+            ? {
+                provider: node.terminalAgentBinding.provider,
+                status: 'restoring',
+                startedAtMs: Date.now(),
+              }
+            : null,
         labelColorOverride: node.labelColorOverride ?? null,
         sidebarSortOrder: node.sidebarSortOrder,
         title: node.title,
@@ -175,7 +185,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         scrollback: node.scrollback,
         executionDirectory: node.executionDirectory,
         expectedDirectory: node.expectedDirectory,
-        agent: node.agent,
+        agent: node.kind === 'agent' ? (node.agent as AgentNodeData | null) : null,
         task,
         note,
         role,

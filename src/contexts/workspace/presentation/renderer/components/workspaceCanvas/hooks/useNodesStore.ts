@@ -26,7 +26,7 @@ import type {
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
 import { persistNodeScrollback } from './useNodesStore.scrollbackPersistence'
-import { resolveTerminalProviderHintFromCommand } from './useNodesStore.terminalProviderHint'
+import { useTerminalAgentOverlayMutations } from './useNodesStore.terminalAgentOverlay'
 
 export function useWorkspaceCanvasNodesStore({
   nodes,
@@ -127,6 +127,8 @@ export function useWorkspaceCanvasNodesStore({
     },
     [onNodesChange],
   )
+  const { updateTerminalTitle, clearTerminalAgentOverlay } =
+    useTerminalAgentOverlayMutations(setNodes)
   const upsertNode = useCallback(
     (nextNode: Node<TerminalNodeData>) => {
       setNodes(prevNodes => prevNodes.map(node => (node.id === nextNode.id ? nextNode : node)))
@@ -284,53 +286,6 @@ export function useWorkspaceCanvasNodesStore({
     [setNodeScrollback],
   )
 
-  const updateTerminalTitle = useCallback(
-    (nodeId: string, title: string) => {
-      const normalizedTitle = title.trim()
-      if (normalizedTitle.length === 0) {
-        return
-      }
-      const terminalProviderHint = resolveTerminalProviderHintFromCommand(normalizedTitle)
-
-      setNodes(
-        prevNodes => {
-          let hasChanged = false
-
-          const nextNodes = prevNodes.map(node => {
-            if (node.id !== nodeId || node.data.kind !== 'terminal') {
-              return node
-            }
-
-            const nextTitle =
-              node.data.titlePinnedByUser === true ? node.data.title : normalizedTitle
-            const nextTerminalProviderHint =
-              terminalProviderHint ?? node.data.terminalProviderHint ?? null
-            if (
-              node.data.title === nextTitle &&
-              (node.data.terminalProviderHint ?? null) === nextTerminalProviderHint
-            ) {
-              return node
-            }
-
-            hasChanged = true
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                title: nextTitle,
-                terminalProviderHint: nextTerminalProviderHint,
-              },
-            }
-          })
-
-          return hasChanged ? nextNodes : prevNodes
-        },
-        { syncLayout: false },
-      )
-    },
-    [setNodes],
-  )
-
   const renameTerminalTitle = useCallback(
     (nodeId: string, title: string) => {
       const normalizedTitle = title.trim()
@@ -464,6 +419,7 @@ export function useWorkspaceCanvasNodesStore({
     applyPendingScrollbacks,
     updateNodeScrollback,
     updateTerminalTitle,
+    clearTerminalAgentOverlay,
     renameTerminalTitle,
     setNodeLabelColorOverride,
     updateNoteText,

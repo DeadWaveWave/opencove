@@ -25,6 +25,7 @@ import { normalizeResumeSessionBinding } from './ensureResumeSessionBinding'
 import { ensurePersistedRoleData } from './ensureRoleNodeData'
 import { ensurePersistedSpaceArchiveRecord } from './ensureSpaceArchiveRecord'
 import { normalizeWebsiteNodeFrame } from '../websiteNodeData'
+import { isTerminalAgentBinding } from '../terminalAgentOverlay'
 import {
   normalizeAgentRuntimeStatus,
   normalizeDirectoryMode,
@@ -348,6 +349,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   const sessionId = normalizeOptionalString(record.sessionId)
   const agent = ensurePersistedAgentData(record.agent)
   const task = ensurePersistedTaskData(record.task)
+  const terminalAgentBinding = isTerminalAgentBinding(record.agent) ? record.agent : null
   const note = ensurePersistedNoteData(record.task)
   const role = ensurePersistedRoleData(record.task)
   const image = ensurePersistedImageData(record.task)
@@ -388,6 +390,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     scrollback: normalizeScrollback(record.scrollback),
     executionDirectory: normalizeOptionalString(record.executionDirectory),
     expectedDirectory: normalizeOptionalString(record.expectedDirectory),
+    terminalAgentBinding: kind === 'terminal' ? terminalAgentBinding : null,
     agent: kind === 'agent' ? agent : null,
     task:
       kind === 'task'

@@ -51,8 +51,27 @@ function updateBracketedPasteModeFromCsiSequence(
   return sequence.finalByte === 'h'
 }
 
-export function createTerminalInputModeTracker(): TerminalInputModeTracker {
+function resolveIncompleteCsiTail(data: string): string {
+  const lastEscapeIndex = data.lastIndexOf('\u001b')
+  if (lastEscapeIndex === -1) {
+    return ''
+  }
+
+  const candidate = data.slice(lastEscapeIndex)
+  if (candidate === '\u001b') {
+    return candidate
+  }
+  if (candidate.startsWith('\u001b[') && readCsiSequence(candidate, 0) === null) {
+    return candidate.slice(-32)
+  }
+  return ''
+}
+
+export function createTerminalInputModeTracker(
+  options: { onAlternateScreenExit?: () => void } = {},
+): TerminalInputModeTracker {
   let bracketedPasteMode = false
+  let alternateScreenMode = false
   let tail = ''
 
   const handlePtyOutputChunk = (data: string): void => {
@@ -74,10 +93,25 @@ export function createTerminalInputModeTracker(): TerminalInputModeTracker {
       }
 
       bracketedPasteMode = updateBracketedPasteModeFromCsiSequence(sequence, bracketedPasteMode)
+      if (
+        (sequence.finalByte === 'h' || sequence.finalByte === 'l') &&
+        sequence.payload.startsWith('?') &&
+        sequence.payload
+          .slice(1)
+          .split(';')
+          .map(value => Number(value))
+          .some(mode => mode === 47 || mode === 1047 || mode === 1049)
+      ) {
+        const nextAlternateScreenMode = sequence.finalByte === 'h'
+        if (alternateScreenMode && !nextAlternateScreenMode) {
+          options.onAlternateScreenExit?.()
+        }
+        alternateScreenMode = nextAlternateScreenMode
+      }
       cursor = sequence.endIndex + 1
     }
 
-    tail = combined.slice(-32)
+    tail = resolveIncompleteCsiTail(combined)
   }
 
   return {

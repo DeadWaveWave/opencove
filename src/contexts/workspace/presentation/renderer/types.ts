@@ -66,6 +66,18 @@ export interface AgentNodeData {
   taskId: string | null
 }
 
+export interface TerminalAgentSessionBinding {
+  provider: AgentProvider
+  resumeSessionId: string | null
+  resumeSessionIdVerified?: boolean
+}
+
+export interface TerminalAgentOverlay {
+  provider: AgentProvider
+  status: AgentRuntimeStatus
+  startedAtMs: number
+}
+
 export interface TaskNodeData {
   requirement: string
   status: TaskRuntimeStatus
@@ -141,6 +153,8 @@ export interface TerminalNodeData {
   runtimeKind?: TerminalRuntimeKind
   terminalGeometry?: TerminalPtyGeometry | null
   terminalProviderHint?: AgentProvider | null
+  terminalAgentBinding?: TerminalAgentSessionBinding | null
+  agentOverlay?: TerminalAgentOverlay | null
   labelColorOverride?: NodeLabelColorOverride
   sidebarSortOrder?: number
   title: string
@@ -338,6 +352,7 @@ export interface PersistedTerminalNode {
   runtimeKind?: TerminalRuntimeKind
   terminalGeometry?: TerminalPtyGeometry | null
   terminalProviderHint?: AgentProvider | null
+  terminalAgentBinding?: TerminalAgentSessionBinding | null
   labelColorOverride?: NodeLabelColorOverride
   sidebarSortOrder?: number
   status: AgentRuntimeStatus | null
@@ -348,7 +363,7 @@ export interface PersistedTerminalNode {
   scrollback: string | null
   executionDirectory?: string | null
   expectedDirectory?: string | null
-  agent: AgentNodeData | null
+  agent: AgentNodeData | TerminalAgentSessionBinding | null
   task:
     | TaskNodeData
     | NoteNodeData

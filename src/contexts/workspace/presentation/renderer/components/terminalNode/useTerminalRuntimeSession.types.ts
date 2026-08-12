@@ -35,6 +35,7 @@ export interface TerminalRuntimeSessionOptions {
   lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null }
   commandInputStateRef: { current: TerminalCommandInputState }
   onCommandRunRef: { current: ((command: string) => void) | undefined }
+  onAgentOverlayExitRef: { current: (() => void) | undefined }
   scrollbackBufferRef: {
     current: {
       snapshot: () => string

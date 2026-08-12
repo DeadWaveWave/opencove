@@ -68,6 +68,7 @@ interface WorkspaceCanvasNodeTypesParams {
   removeTaskAgentSessionRecordRef: MutableRefObject<(taskNodeId: string, recordId: string) => void>
   updateTaskStatusRef: MutableRefObject<UpdateTaskStatus>
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
+  clearTerminalAgentOverlayRef: MutableRefObject<(nodeId: string) => void>
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   updateWebsiteUrlRef: MutableRefObject<(nodeId: string, url: string) => void>
   setWebsitePinnedRef: MutableRefObject<(nodeId: string, pinned: boolean) => void>
@@ -122,6 +123,7 @@ export function useWorkspaceCanvasNodeTypes({
   removeTaskAgentSessionRecordRef,
   updateTaskStatusRef,
   updateTerminalTitleRef,
+  clearTerminalAgentOverlayRef,
   renameTerminalTitleRef,
   updateWebsiteUrlRef,
   setWebsitePinnedRef,
@@ -235,6 +237,7 @@ export function useWorkspaceCanvasNodeTypes({
             updateNodeScrollbackRef={updateNodeScrollbackRef}
             normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
             updateTerminalTitleRef={updateTerminalTitleRef}
+            clearTerminalAgentOverlayRef={clearTerminalAgentOverlayRef}
             renameTerminalTitleRef={renameTerminalTitleRef}
           />
         )
@@ -314,6 +317,7 @@ export function useWorkspaceCanvasNodeTypes({
     updateNodeScrollbackRef,
     updateTaskStatusRef,
     updateTerminalTitleRef,
+    clearTerminalAgentOverlayRef,
     renameTerminalTitleRef,
     updateWebsiteUrlRef,
     setWebsitePinnedRef,

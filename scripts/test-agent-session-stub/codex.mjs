@@ -60,6 +60,59 @@ export async function runCodexStandbyOnlyScenario(cwd) {
   await sleep(IDLE_SCENARIO_LIFETIME_MS)
 }
 
+export async function runCodexOverlayLifecycleScenario(cwd) {
+  const sessionFilePath = await createCodexSessionFile(cwd)
+  process.stdout.write('\u001b[?1049h[opencove-test-overlay] ready\n')
+
+  await appendCodexRecord(sessionFilePath, {
+    type: 'event_msg',
+    payload: {
+      type: 'task_started',
+      turn_id: 'opencove-test-overlay-turn-1',
+      model_context_window: 128_000,
+      collaboration_mode_kind: 'default',
+    },
+  })
+
+  await sleep(2_500)
+  await appendCodexRecord(sessionFilePath, {
+    type: 'event_msg',
+    payload: {
+      type: 'task_complete',
+      turn_id: 'opencove-test-overlay-turn-1',
+      last_agent_message: 'Overlay ready.',
+    },
+  })
+
+  await new Promise(resolve => {
+    let settled = false
+    const finish = () => {
+      if (settled) {
+        return
+      }
+      settled = true
+      process.stdin.off('data', handleData)
+      if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+        process.stdin.setRawMode(false)
+      }
+      process.stdout.write('\u001b[?1049l[opencove-test-overlay] exited\n')
+      resolve()
+    }
+    const handleData = chunk => {
+      if (Buffer.from(chunk).includes(3)) {
+        finish()
+      }
+    }
+
+    if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+      process.stdin.setRawMode(true)
+    }
+    process.stdin.on('data', handleData)
+    process.stdin.resume()
+    process.on('SIGINT', finish)
+  })
+}
+
 export async function runCodexCommentaryThenFinalScenario(cwd) {
   const sessionFilePath = await createCodexSessionFile(cwd)
 

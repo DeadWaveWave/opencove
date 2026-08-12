@@ -8,6 +8,7 @@ import { toRelativeTime } from '../utils/format'
 import type { SidebarAgentItemModel } from '../utils/sidebarAgents'
 import type { ProjectContextMenuState } from '../types'
 import { createAgentSortableId, sidebarSortableTransition } from './SidebarDnd'
+import { resolveAgentTreatedProvider } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 
 function SidebarAgentItemContent({
   item,
@@ -18,7 +19,7 @@ function SidebarAgentItemContent({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const { node, displayTitle, effectiveLabelColor, owningSpace, status } = item
-  const provider = node.data.agent?.provider
+  const provider = resolveAgentTreatedProvider(node)
   const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel')
   const startedText = toRelativeTime(node.data.startedAt)
   const sidebarAgentStatusText =
@@ -77,7 +78,7 @@ function SidebarAgentItem({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const { node, displayTitle, effectiveLabelColor, owningSpace, status } = item
-  const provider = node.data.agent?.provider
+  const provider = resolveAgentTreatedProvider(node)
   const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel')
   const startedText = toRelativeTime(node.data.startedAt)
   const sidebarAgentStatusText =
@@ -203,7 +204,7 @@ export function SidebarAgentItemOverlay({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const { node, displayTitle, effectiveLabelColor, owningSpace, status } = item
-  const provider = node.data.agent?.provider
+  const provider = resolveAgentTreatedProvider(node)
   const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel')
   const startedText = toRelativeTime(node.data.startedAt)
   const sidebarAgentStatusText =

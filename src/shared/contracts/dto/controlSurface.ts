@@ -255,6 +255,15 @@ export interface GetSessionInput {
   sessionId: string
 }
 
+export interface AttachAgentStateWatcherInput {
+  sessionId: string
+  provider: AgentProviderId
+  cwd: string
+  launchMode: 'new' | 'resume'
+  resumeSessionId: string | null
+  startedAtMs: number
+}
+
 export interface GetSessionResult {
   sessionId: string
   provider: AgentProviderId

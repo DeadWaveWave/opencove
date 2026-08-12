@@ -35,6 +35,7 @@ import { useViewportInteractionSettledState } from './terminalNode/useViewportIn
 import { TerminalNodeFrame } from './terminalNode/TerminalNodeFrame'
 import { resolveAgentNodeMinSize, resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import type { TerminalNodeProps } from './TerminalNode.types'
+import { useLatestCallbackRef } from './terminalNode/useLatestCallbackRef'
 
 export function TerminalNode({
   nodeId,
@@ -74,6 +75,7 @@ export function TerminalNode({
   onScrollbackChange,
   onTitleCommit,
   onCommandRun,
+  onAgentOverlayExit,
   onInteractionStart,
 }: TerminalNodeProps): JSX.Element {
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
@@ -121,7 +123,8 @@ export function TerminalNode({
   const lastCommittedPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
   const suppressPtyResizeRef = useRef(false)
   const commandInputStateRef = useRef(createTerminalCommandInputState())
-  const onCommandRunRef = useRef(onCommandRun)
+  const onCommandRunRef = useLatestCallbackRef(onCommandRun)
+  const onAgentOverlayExitRef = useLatestCallbackRef(onAgentOverlayExit)
   const titleRef = useRef(title)
   const agentLaunchModeRef = useRef(agentLaunchMode)
   const agentResumeSessionIdVerifiedRef = useRef(agentResumeSessionIdVerified)
@@ -177,22 +180,13 @@ export function TerminalNode({
   }
 
   useEffect(() => {
-    onCommandRunRef.current = onCommandRun
     titleRef.current = title
     agentLaunchModeRef.current = agentLaunchMode
     agentResumeSessionIdVerifiedRef.current = agentResumeSessionIdVerified
     statusRef.current = status
     latestSessionIdRef.current = sessionId
     viewportZoomRef.current = viewportZoom
-  }, [
-    agentLaunchMode,
-    agentResumeSessionIdVerified,
-    onCommandRun,
-    sessionId,
-    status,
-    title,
-    viewportZoom,
-  ])
+  }, [agentLaunchMode, agentResumeSessionIdVerified, sessionId, status, title, viewportZoom])
 
   useEffect(() => {
     isViewportInteractionActiveRef.current = isViewportInteractionSettledActive
@@ -397,6 +391,7 @@ export function TerminalNode({
     lastCommittedPtySizeRef,
     commandInputStateRef,
     onCommandRunRef,
+    onAgentOverlayExitRef,
     scrollbackBufferRef,
     markScrollbackDirty,
     scheduleTranscriptSync,
@@ -460,7 +455,7 @@ export function TerminalNode({
     <TerminalNodeFrame
       title={title}
       fixedTitlePrefix={fixedTitlePrefix}
-      kind={kind}
+      kind={onAgentOverlayExit ? 'agent' : kind}
       labelColor={labelColor}
       agentExecutionDirectory={agentExecutionDirectory}
       agentResumeSessionId={agentResumeSessionId}

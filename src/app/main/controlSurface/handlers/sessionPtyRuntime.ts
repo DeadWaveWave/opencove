@@ -37,5 +37,6 @@ export interface ControlSurfacePtyRuntime {
   /** Freezes and drains runtime-owned presentation recovery before event listeners are removed. */
   drainPresentationRecovery?: () => Promise<void>
   startSessionStateWatcher?: (input: SessionStateWatcherStartInput) => void
+  disposeSessionStateWatcher?: (sessionId: string) => void
   debugCrashHost?: () => void | Promise<void>
 }

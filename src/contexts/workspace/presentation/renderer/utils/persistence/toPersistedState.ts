@@ -95,7 +95,10 @@ export function toPersistedState(
           executionDirectory: normalizeOptionalString(node.data.executionDirectory),
           expectedDirectory: normalizeOptionalString(node.data.expectedDirectory),
           terminalProviderHint: node.data.terminalProviderHint ?? null,
-          agent: node.data.agent,
+          agent:
+            node.data.kind === 'terminal'
+              ? (node.data.terminalAgentBinding ?? null)
+              : node.data.agent,
           task:
             node.data.kind === 'note'
               ? node.data.note

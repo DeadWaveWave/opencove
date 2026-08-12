@@ -306,8 +306,9 @@ describe('WorkspaceCanvas terminal title mode', () => {
         position: { x: 0, y: 0 },
         data: {
           sessionId: 'session-1',
-          title: 'terminal-1',
+          title: 'opencode .',
           titlePinnedByUser: false,
+          terminalProviderHint: 'opencode',
           width: 520,
           height: 400,
           kind: 'terminal',
@@ -368,9 +369,12 @@ describe('WorkspaceCanvas terminal title mode', () => {
       expect(screen.getByTestId('terminal-provider')).toHaveTextContent('opencode')
     })
     expect(latestNodes[0]?.data.terminalProviderHint).toBe('opencode')
+    expect(latestNodes[0]?.data.kind).toBe('terminal')
+    expect(latestNodes[0]?.data.terminalAgentBinding?.provider).toBe('opencode')
+    expect(latestNodes[0]?.data.agentOverlay?.provider).toBe('opencode')
   })
 
-  it('keeps the opencode provider hint after later non-provider terminal input', async () => {
+  it('ignores command-like text submitted inside an active terminal agent overlay', async () => {
     const kill = vi.fn(async () => undefined)
     const onExit = vi.fn(() => () => undefined)
 
@@ -477,10 +481,9 @@ describe('WorkspaceCanvas terminal title mode', () => {
 
     fireEvent.click(screen.getByTestId('terminal-command-auto-1'))
 
-    await waitFor(() => {
-      expect(screen.getByTestId('terminal-title')).toHaveTextContent('ls -la')
-    })
+    expect(screen.getByTestId('terminal-title')).toHaveTextContent('opencode .')
     expect(screen.getByTestId('terminal-provider')).toHaveTextContent('opencode')
     expect(latestNodes[0]?.data.terminalProviderHint).toBe('opencode')
+    expect(latestNodes[0]?.data.agentOverlay?.provider).toBe('opencode')
   })
 })

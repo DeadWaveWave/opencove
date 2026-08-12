@@ -8,6 +8,7 @@ import {
   runCodexStandbyNoNewlineScenario,
   runCodexStandbyOnlyScenario,
   runCodexTitleFromFirstInputScenario,
+  runCodexOverlayLifecycleScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
   runJsonlStdinSubmitDrivenTurnScenario,
 } from './test-agent-session-stub/codex.mjs'
@@ -84,6 +85,11 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-title-from-first-input') {
     await runCodexTitleFromFirstInputScenario(cwd)
+    return
+  }
+
+  if (provider === 'codex' && scenario === 'codex-overlay-lifecycle') {
+    await runCodexOverlayLifecycleScenario(cwd)
     return
   }
 

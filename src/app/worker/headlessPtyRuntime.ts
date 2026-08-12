@@ -170,6 +170,9 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     startSessionStateWatcher: input => {
       sessionStateWatcher.start(input)
     },
+    disposeSessionStateWatcher: sessionId => {
+      sessionStateWatcher.disposeSession(sessionId)
+    },
     ...(debugCrashHostEnabled
       ? {
           debugCrashHost: () => {

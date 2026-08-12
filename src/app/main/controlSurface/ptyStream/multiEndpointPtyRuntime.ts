@@ -427,7 +427,16 @@ export function createMultiEndpointPtyRuntime(options: {
       }
     },
     startSessionStateWatcher: input => {
-      options.localRuntime.startSessionStateWatcher?.(input)
+      const route = routes.get(input.sessionId)
+      if (!route || route.kind === 'local') {
+        options.localRuntime.startSessionStateWatcher?.(input)
+      }
+    },
+    disposeSessionStateWatcher: sessionId => {
+      const route = routes.get(sessionId)
+      if (!route || route.kind === 'local') {
+        options.localRuntime.disposeSessionStateWatcher?.(sessionId)
+      }
     },
     ...(options.localRuntime.debugCrashHost
       ? {

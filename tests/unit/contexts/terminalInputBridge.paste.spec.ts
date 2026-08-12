@@ -69,4 +69,18 @@ describe('terminal input mode tracker', () => {
 
     expect(tracker.isBracketedPasteMode()).toBe(false)
   })
+
+  it('reports alternate-screen exit only after a matching enter transition', () => {
+    const onAlternateScreenExit = vi.fn()
+    const tracker = createTerminalInputModeTracker({ onAlternateScreenExit })
+
+    tracker.handlePtyOutputChunk('\u001b[?1049l')
+    expect(onAlternateScreenExit).not.toHaveBeenCalled()
+
+    tracker.handlePtyOutputChunk('\u001b[?10')
+    tracker.handlePtyOutputChunk('49hagent running')
+    tracker.handlePtyOutputChunk('\u001b[?1049l')
+
+    expect(onAlternateScreenExit).toHaveBeenCalledTimes(1)
+  })
 })

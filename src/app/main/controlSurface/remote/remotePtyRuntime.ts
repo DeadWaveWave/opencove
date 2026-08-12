@@ -471,6 +471,7 @@ export function createRemotePtyRuntime(options: {
       })
     },
     startSessionStateWatcher: () => undefined,
+    disposeSessionStateWatcher: () => undefined,
     noteSessionRolePreference,
     dispose: () => {
       disposed = true

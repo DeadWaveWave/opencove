@@ -33,6 +33,7 @@ export function createRuntimeTerminalInputBridge({
   sessionId,
   openTerminalFind,
   onCommandRunRef,
+  onAgentOverlayExitRef,
   commandInputStateRef,
   suppressPtyResizeRef,
   syncTerminalSize,
@@ -46,6 +47,7 @@ export function createRuntimeTerminalInputBridge({
   sessionId: string
   openTerminalFind: () => void
   onCommandRunRef: { current: ((command: string) => void) | undefined }
+  onAgentOverlayExitRef: { current: (() => void) | undefined }
   commandInputStateRef: { current: TerminalCommandInputState }
   suppressPtyResizeRef: { current: boolean }
   syncTerminalSize: () => void
@@ -89,7 +91,9 @@ export function createRuntimeTerminalInputBridge({
 
   let isBufferedUserInputGateOpen = !shouldGateInitialUserInput
   let shouldForwardTerminalData = false
-  const inputModeTracker = createTerminalInputModeTracker()
+  const inputModeTracker = createTerminalInputModeTracker({
+    onAlternateScreenExit: () => onAgentOverlayExitRef.current?.(),
+  })
 
   const bufferUserInput = (data: string, encoding: 'utf8' | 'binary'): void => {
     if (data.length === 0) {
@@ -197,6 +201,9 @@ export function createRuntimeTerminalInputBridge({
 
     ptyWriteQueue.enqueue(data)
     ptyWriteQueue.flush()
+    if (data.includes('\u0003')) {
+      onAgentOverlayExitRef.current?.()
+    }
     recordCommandInput(data)
   }
 

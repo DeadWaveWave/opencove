@@ -56,6 +56,7 @@ export interface WorkspaceCanvasActionRefs {
   updateTaskStatusRef: React.MutableRefObject<(nodeId: string, status: TaskRuntimeStatus) => void>
   updateNodeScrollbackRef: React.MutableRefObject<(nodeId: string, scrollback: string) => void>
   updateTerminalTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
+  clearTerminalAgentOverlayRef: React.MutableRefObject<(nodeId: string) => void>
   renameTerminalTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
   normalizeViewportForTerminalInteractionRef: React.MutableRefObject<(nodeId: string) => void>
 }
@@ -151,6 +152,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const updateTerminalTitleRef = useRef<(nodeId: string, title: string) => void>(
     (_nodeId: string, _title: string) => undefined,
   )
+  const clearTerminalAgentOverlayRef = useRef<(nodeId: string) => void>(() => undefined)
   const renameTerminalTitleRef = useRef<(nodeId: string, title: string) => void>(
     (_nodeId: string, _title: string) => undefined,
   )
@@ -186,6 +188,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     updateTaskStatusRef,
     updateNodeScrollbackRef,
     updateTerminalTitleRef,
+    clearTerminalAgentOverlayRef,
     renameTerminalTitleRef,
     normalizeViewportForTerminalInteractionRef,
   }
@@ -218,6 +221,7 @@ interface SyncActionRefsParams {
   ) => void
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
+  clearTerminalAgentOverlay: (nodeId: string) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
   focusNodeOnClick: boolean
   focusNodeTargetZoom: number
@@ -243,6 +247,7 @@ export function useWorkspaceCanvasSyncActionRefs({
   setWebsiteFullscreen,
   updateNodeScrollback,
   updateTerminalTitle,
+  clearTerminalAgentOverlay,
   renameTerminalTitle,
   focusNodeOnClick,
   focusNodeTargetZoom,
@@ -330,6 +335,10 @@ export function useWorkspaceCanvasSyncActionRefs({
       updateTerminalTitle(nodeId, title)
     }
   }, [actionRefs.updateTerminalTitleRef, updateTerminalTitle])
+
+  useLayoutEffect(() => {
+    actionRefs.clearTerminalAgentOverlayRef.current = clearTerminalAgentOverlay
+  }, [actionRefs.clearTerminalAgentOverlayRef, clearTerminalAgentOverlay])
 
   useLayoutEffect(() => {
     actionRefs.renameTerminalTitleRef.current = (nodeId, title) => {

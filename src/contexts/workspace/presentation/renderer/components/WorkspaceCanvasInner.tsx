@@ -322,6 +322,7 @@ export function WorkspaceCanvasInner({
     setWebsiteFullscreen: nodeStore.setWebsiteFullscreen,
     updateNodeScrollback: nodeStore.updateNodeScrollback,
     updateTerminalTitle: nodeStore.updateTerminalTitle,
+    clearTerminalAgentOverlay: nodeStore.clearTerminalAgentOverlay,
     renameTerminalTitle: nodeStore.renameTerminalTitle,
     reloadAgentSession: agentSupport.reloadAgentNode,
     listAgentSessions: agentSupport.listAgentSessionsForNode,

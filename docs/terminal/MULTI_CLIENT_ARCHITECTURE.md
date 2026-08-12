@@ -36,11 +36,26 @@ Key implementation files:
 | Controller role + authority epoch | `PtyStreamHub` | `/pty` attach/control handoff |
 | PTY geometry | Worker geometry transaction | controller request -> runtime ACK -> presentation commit |
 | Terminal recovery generation/archive/binding/checkpoint | Worker terminal recovery owner | reconcile/output checkpoint/atomic retire/two-phase shutdown drain |
+| Terminal agent session binding | Workspace persistence | explicit `provider` + resume identity record; never a durable node-kind rewrite |
+| Terminal agent overlay and run-state | Renderer workspace runtime | projection from the binding plus watched session state; never terminal presentation truth |
+| Retrofitted agent session-state watcher | Renderer overlay lifecycle + Worker terminal session manager | attach once per bound live session; dispose on drop-back, node removal, or renderer owner teardown |
 | Renderer backend health | client | local rebuild/resync |
 | Visible output and dirty rows | xterm parser/renderer | ordered PTY bytes; never a geometry write path |
 | Selection/local scroll/zoom | client | local UI only |
 | Find overlay | client | local search state/decorations only |
 | Applied terminal appearance | client terminal appearance owner | final-wins apply/refresh |
+
+### Terminal Agent Overlay Contract
+
+A submitted, recognized agent command can project an existing `terminal` node as an Agent without
+restarting its PTY. The durable node `kind`, node ID, session ID, and worker-owned terminal
+presentation remain unchanged. Persistence stores only the separate agent session binding; renderer
+hydration reconstructs the overlay and reattaches the existing session-state watcher.
+
+The renderer overlay lifecycle owns that watcher attachment. Clearing the overlay also clears its
+binding and detaches the watcher; removing the node or disposing the renderer owner performs the same
+detach. An alternate-screen exit or Ctrl+C is a presentation signal for drop-back, not authority to
+replace or retire the terminal session.
 
 ## Snapshot Contract
 

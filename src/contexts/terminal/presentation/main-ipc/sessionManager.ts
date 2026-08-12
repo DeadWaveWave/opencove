@@ -473,10 +473,11 @@ export class TerminalSessionManager {
   startSessionStateWatcher(input: SessionStateWatcherStartInput): void {
     this.sessionStateWatcher.start(input)
   }
-
+  disposeSessionStateWatcher(sessionId: string): void {
+    this.sessionStateWatcher.disposeSession(sessionId)
+  }
   dispose(): void {
     this.sessionStateWatcher.dispose()
-
     this.pendingPtyDataFlushTimerBySession.forEach(timer => {
       clearTimeout(timer)
     })
@@ -487,7 +488,6 @@ export class TerminalSessionManager {
     this.ptyDataSubscribersBySessionId.clear()
     this.ptyDataSessionsByWebContentsId.clear()
     this.ptyDataSubscribedWebContentsIds.clear()
-
     this.activeSessions.clear()
     this.terminatedSessions.clear()
     this.snapshots.clear()

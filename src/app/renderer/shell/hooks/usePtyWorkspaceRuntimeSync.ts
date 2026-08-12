@@ -10,6 +10,8 @@ import { useScrollbackStore } from '@contexts/workspace/presentation/renderer/st
 import { scheduleNodeScrollbackWrite } from '@contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule'
 import { getPtyEventHub } from '../utils/ptyEventHub'
 import { useAppStore } from '../store/useAppStore'
+import { isAgentTreatedNode } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
+import { createTerminalAgentWatcherOwner } from '../utils/terminalAgentWatcherOwner'
 
 function shouldIgnoreAgentStatusUpdate(status: TerminalNodeData['status']): boolean {
   return status === 'failed' || status === 'stopped' || status === 'exited'
@@ -24,7 +26,7 @@ function normalizeResumeSessionId(rawValue: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
-function updateWorkspacesWithAgentNodes(
+function updateWorkspacesWithAgentTreatedNodes(
   workspaces: WorkspaceState[],
   {
     sessionId,
@@ -40,7 +42,7 @@ function updateWorkspacesWithAgentNodes(
     let workspaceDidChange = false
 
     const nextNodes = workspace.nodes.map(node => {
-      if (node.data.kind !== 'agent' || node.data.sessionId !== sessionId) {
+      if (!isAgentTreatedNode(node) || node.data.sessionId !== sessionId) {
         return node
       }
 
@@ -62,6 +64,42 @@ function updateWorkspacesWithAgentNodes(
   })
 
   return { nextWorkspaces, didChange }
+}
+
+export function updateWorkspacesWithAgentRunState({
+  workspaces,
+  sessionId,
+  state,
+}: {
+  workspaces: WorkspaceState[]
+  sessionId: string
+  state: 'working' | 'standby'
+}): { nextWorkspaces: WorkspaceState[]; didChange: boolean; durableDidChange: boolean } {
+  let durableDidChange = false
+  const result = updateWorkspacesWithAgentTreatedNodes(workspaces, {
+    sessionId,
+    updateNode: node => {
+      const nextStatus = state === 'standby' ? 'standby' : 'running'
+      if (node.data.kind === 'terminal') {
+        const overlay = node.data.agentOverlay
+        if (!overlay || overlay.status === nextStatus) {
+          return null
+        }
+        return {
+          ...node,
+          data: { ...node.data, agentOverlay: { ...overlay, status: nextStatus } },
+        }
+      }
+
+      if (shouldIgnoreAgentStatusUpdate(node.data.status) || node.data.status === nextStatus) {
+        return null
+      }
+      durableDidChange = true
+      return { ...node, data: { ...node.data, status: nextStatus } }
+    },
+  })
+
+  return { ...result, durableDidChange }
 }
 
 export function updateWorkspacesWithTerminalGeometry({
@@ -175,11 +213,17 @@ export function updateWorkspacesWithAgentMetadata({
     let workspaceDidChange = false
 
     const nextNodes = workspace.nodes.map(node => {
-      if (node.data.kind !== 'agent' || node.data.sessionId !== sessionId || !node.data.agent) {
+      if (node.data.sessionId !== sessionId) {
         return node
       }
 
-      const update = resolveObservedResumeSessionBindingUpdate(node.data.agent, resumeSessionId)
+      const binding =
+        node.data.kind === 'agent' ? node.data.agent : (node.data.terminalAgentBinding ?? null)
+      if (!binding) {
+        return node
+      }
+
+      const update = resolveObservedResumeSessionBindingUpdate(binding, resumeSessionId)
       if (!update) {
         return node
       }
@@ -189,10 +233,14 @@ export function updateWorkspacesWithAgentMetadata({
         ...node,
         data: {
           ...node.data,
-          agent: {
-            ...node.data.agent,
-            ...update,
-          },
+          ...(node.data.kind === 'agent'
+            ? { agent: { ...node.data.agent!, ...update } }
+            : {
+                terminalAgentBinding: {
+                  ...node.data.terminalAgentBinding!,
+                  ...update,
+                },
+              }),
         },
       }
     })
@@ -273,6 +321,27 @@ export function usePtyWorkspaceRuntimeSync({
   const setWorkspaces = useAppStore(state => state.setWorkspaces)
 
   useEffect(() => {
+    const invoke = window.opencoveApi.controlSurface?.invoke
+    if (!invoke) {
+      return undefined
+    }
+
+    const owner = createTerminalAgentWatcherOwner({
+      invoke: request => invoke(request),
+    })
+    const sync = (): void => {
+      owner.sync(useAppStore.getState().workspaces)
+    }
+    sync()
+    const unsubscribe = useAppStore.subscribe(sync)
+
+    return () => {
+      unsubscribe()
+      owner.dispose()
+    }
+  }, [])
+
+  useEffect(() => {
     const ptyEventHub = getPtyEventHub()
 
     const appendInactiveTerminalChunk = (sessionId: string, chunk: string): void => {
@@ -299,29 +368,21 @@ export function usePtyWorkspaceRuntimeSync({
 
     const unsubscribeState = ptyEventHub.onState(event => {
       let didChange = false
+      let durableDidChange = false
 
       setWorkspaces(previous => {
-        const result = updateWorkspacesWithAgentNodes(previous, {
+        const result = updateWorkspacesWithAgentRunState({
+          workspaces: previous,
           sessionId: event.sessionId,
-          updateNode: node => {
-            if (shouldIgnoreAgentStatusUpdate(node.data.status)) {
-              return null
-            }
-
-            const nextStatus = event.state === 'standby' ? 'standby' : 'running'
-            if (node.data.status === nextStatus) {
-              return null
-            }
-
-            return { ...node, data: { ...node.data, status: nextStatus } }
-          },
+          state: event.state,
         })
 
         didChange = result.didChange
+        durableDidChange = result.durableDidChange
         return didChange ? result.nextWorkspaces : previous
       })
 
-      if (didChange) {
+      if (didChange && durableDidChange) {
         requestPersistFlush()
       }
     })

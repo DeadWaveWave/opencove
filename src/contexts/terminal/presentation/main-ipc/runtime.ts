@@ -61,6 +61,7 @@ export interface PtyRuntime {
   snapshot: (sessionId: string) => Promise<string>
   presentationSnapshot: (sessionId: string) => Promise<PresentationSnapshotTerminalResult>
   startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
+  disposeSessionStateWatcher: (sessionId: string) => void
   debugCrashHost?: () => void | Promise<void>
   dispose: () => void
 }
@@ -433,6 +434,9 @@ export function createPtyRuntime(): PtyRuntime {
         opencodeBaseUrl,
         geminiDiscoveryCursor,
       })
+    },
+    disposeSessionStateWatcher: sessionId => {
+      manager.disposeSessionStateWatcher(sessionId)
     },
     ...(debugCrashHostEnabled
       ? {

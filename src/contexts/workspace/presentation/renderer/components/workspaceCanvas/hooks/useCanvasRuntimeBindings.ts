@@ -17,6 +17,7 @@ export function useWorkspaceCanvasRuntimeBindings({
   setWebsiteFullscreen,
   updateNodeScrollback,
   updateTerminalTitle,
+  clearTerminalAgentOverlay,
   renameTerminalTitle,
   reloadAgentSession,
   listAgentSessions,
@@ -50,6 +51,9 @@ export function useWorkspaceCanvasRuntimeBindings({
     typeof useWorkspaceCanvasSyncActionRefs
   >[0]['updateNodeScrollback']
   updateTerminalTitle: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['updateTerminalTitle']
+  clearTerminalAgentOverlay: Parameters<
+    typeof useWorkspaceCanvasSyncActionRefs
+  >[0]['clearTerminalAgentOverlay']
   renameTerminalTitle: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['renameTerminalTitle']
   reloadAgentSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['reloadAgentSession']
   listAgentSessions: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['listAgentSessions']
@@ -90,6 +94,7 @@ export function useWorkspaceCanvasRuntimeBindings({
     setWebsiteFullscreen,
     updateNodeScrollback,
     updateTerminalTitle,
+    clearTerminalAgentOverlay,
     renameTerminalTitle,
     focusNodeOnClick,
     focusNodeTargetZoom,
