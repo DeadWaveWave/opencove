@@ -38,6 +38,8 @@ Key implementation files:
 | Terminal recovery generation/archive/binding/checkpoint | Worker terminal recovery owner | reconcile/output checkpoint/atomic retire/two-phase shutdown drain |
 | Terminal agent session binding | Workspace persistence | explicit `provider` + resume identity record; never a durable node-kind rewrite |
 | Terminal agent overlay and run-state | Renderer run-state arbiter | one runtime projection from fresh hook > warm session-file > nothing; never terminal presentation or durable node truth |
+| Terminal agent raw-source replay | `PtyStreamHub` session state | one timestamped runtime-only observation per source; replayed on attach and removed with the session |
+| Desktop renderer state replay | Main remote PTY runtime | per-source transport mirror for reloaded subscribers; never reattaches or restarts the Worker PTY |
 | Retrofitted agent session-state watcher | Renderer overlay lifecycle + Worker terminal session manager | attach once per bound live session; dispose on drop-back, node removal, or renderer owner teardown |
 | Renderer backend health | client | local rebuild/resync |
 | Visible output and dirty rows | xterm parser/renderer | ordered PTY bytes; never a geometry write path |
@@ -68,6 +70,17 @@ Each activation owns exactly one session-state watcher. A provider or resume-ide
 serialized as detach-before-attach, and re-entry never reuses an old watcher. Presentation snapshot
 hydration may update terminal input modes, but replayed alternate-screen exits must not emit live
 drop-back effects.
+
+An attach replays the latest raw state observation from every available source in original observation
+order. The renderer feeds these observations through the same pure run-state arbiter used for live events;
+the Hub does not duplicate authority policy. Observation timestamps cross the stream boundary so a late
+attach cannot renew a stale `working` lease, while quiet `waiting` remains authoritative. The source cache
+survives client detach but not session exit, retirement, or Worker shutdown.
+
+The desktop relay mirrors these raw observations while its Worker stream remains attached. When a renderer
+subscriber reloads, the relay targets the replay to that subscriber instead of issuing a second stream
+attach, preserving input ownership, session identity, and scrollback. The mirror is cleared on session exit,
+explicit kill, or relay disposal.
 
 ## Snapshot Contract
 

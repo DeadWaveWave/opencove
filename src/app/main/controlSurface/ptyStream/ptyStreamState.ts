@@ -34,7 +34,10 @@ export type SessionState = {
   chunks: SessionChunk[]
   totalBytes: number
   truncated: boolean
-  agentState: TerminalSessionStateEvent | null
+  agentStateBySource: Map<
+    NonNullable<TerminalSessionStateEvent['source']>,
+    TerminalSessionStateEvent
+  >
   agentMetadata: TerminalSessionMetadataEvent | null
   pendingChunks: string[]
   pendingChars: number

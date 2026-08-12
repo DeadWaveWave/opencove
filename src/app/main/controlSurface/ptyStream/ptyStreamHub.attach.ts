@@ -93,9 +93,9 @@ export function attachPtyStreamClient(options: {
     if (session.agentMetadata) {
       sendPtySessionMetadata(client.ws, session.agentMetadata)
     }
-    if (session.agentState) {
-      sendPtyState(client.ws, session.agentState)
-    }
+    ;[...session.agentStateBySource.values()]
+      .sort((left, right) => (left.observedAtMs ?? 0) - (right.observedAtMs ?? 0))
+      .forEach(event => sendPtyState(client.ws, event))
 
     const afterSeq =
       typeof options.afterSeq === 'number' && Number.isFinite(options.afterSeq)

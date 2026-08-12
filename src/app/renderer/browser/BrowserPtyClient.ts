@@ -22,6 +22,7 @@ import { invokeBrowserControlSurface } from './browserControlSurface'
 import { BrowserPtyGeometryAckCoordinator } from './BrowserPtyGeometryAckCoordinator'
 import { BrowserPtyClientMetadataWatcher } from './BrowserPtyClientMetadataWatcher'
 import { BrowserPtySocketLifecycle } from './BrowserPtySocketLifecycle'
+import { BrowserPtyClientStateReplay } from './BrowserPtyClientStateReplay'
 import {
   emitBrowserPtyEvent,
   normalizeBrowserPtyAttachAfterSeq,
@@ -81,7 +82,7 @@ export class BrowserPtyClient {
   private readonly resyncListeners = new Set<(event: TerminalResyncEvent) => void>()
   private readonly stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   private readonly metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
-  private readonly latestStateBySessionId = new Map<string, TerminalSessionStateEvent>()
+  private readonly stateReplay = new BrowserPtyClientStateReplay()
   private readonly latestMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
   private readonly metadataWatcher = new BrowserPtyClientMetadataWatcher({
     hasListeners: () => this.metadataListeners.size > 0,
@@ -176,6 +177,7 @@ export class BrowserPtyClient {
           ? Math.floor(record.exitCode)
           : 0
       emitBrowserPtyEvent(this.exitListeners, { sessionId, exitCode })
+      this.stateReplay.disposeSession(sessionId)
       return
     }
 
@@ -232,7 +234,7 @@ export class BrowserPtyClient {
 
       const eventPayload: TerminalSessionStateEvent = { sessionId, state }
       Object.assign(eventPayload, normalizeBrowserPtyStateMetadata(record))
-      this.latestStateBySessionId.set(sessionId, eventPayload)
+      this.stateReplay.register(eventPayload)
       emitBrowserPtyEvent(this.stateListeners, eventPayload)
       return
     }
@@ -392,6 +394,8 @@ export class BrowserPtyClient {
 
   public async detach(payload: DetachTerminalInput): Promise<void> {
     this.attachedSessions.delete(payload.sessionId)
+    this.stateReplay.disposeSession(payload.sessionId)
+    this.latestMetadataBySessionId.delete(payload.sessionId)
     this.metadataWatcher.cancel(payload.sessionId)
     this.socketLifecycle.sendIfOpen({
       type: 'detach',
@@ -475,9 +479,7 @@ export class BrowserPtyClient {
 
   public onState(listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn {
     this.stateListeners.add(listener)
-    this.latestStateBySessionId.forEach(event => {
-      listener(event)
-    })
+    this.stateReplay.replay(listener)
     return () => {
       this.stateListeners.delete(listener)
     }

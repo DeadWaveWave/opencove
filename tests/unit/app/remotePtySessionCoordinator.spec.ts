@@ -140,4 +140,23 @@ describe('remotePtyRuntime session coordinator', () => {
     await pendingAttach
     expect(attached).toBe(true)
   })
+
+  it('reports whether a tracked session is attached to the worker stream', () => {
+    const coordinator = createRemotePtySessionCoordinator({
+      connectTimeoutMs: 50,
+      cancelMetadataWatcher: vi.fn(),
+      shouldKeepSocketAlive: () => true,
+      closeSocket: vi.fn(),
+      sendDetachMessage: vi.fn(async () => undefined),
+    })
+    const socket = createMockSocket()
+    coordinator.noteSessionRolePreference('session-replay', 'controller')
+    expect(coordinator.isStreamAttached('session-replay')).toBe(false)
+    coordinator.sendAttachForSession(socket as never, 'session-replay')
+    coordinator.onSessionAttached('session-replay')
+
+    expect(coordinator.isStreamAttached('session-replay')).toBe(true)
+    coordinator.onSocketClosed()
+    expect(coordinator.isStreamAttached('session-replay')).toBe(false)
+  })
 })

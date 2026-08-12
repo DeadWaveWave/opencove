@@ -34,6 +34,7 @@ type PtyStreamMessage =
       state?: string
       source?: string
       hookInstallState?: string
+      observedAtMs?: number
     }
   | {
       type: 'metadata'
@@ -141,6 +142,7 @@ export function createRemotePtyStreamMessageHandler(options: {
   externalExitListeners: Set<(event: { sessionId: string; exitCode: number }) => void>
   externalStateListeners: Set<(event: TerminalSessionStateEvent) => void>
   externalMetadataListeners: Set<(event: TerminalSessionMetadataEvent) => void>
+  onSessionState: (event: TerminalSessionStateEvent) => void
   cancelMetadataWatcher: (sessionId: string) => void
   onSessionExit: (sessionId: string) => void
   onSessionAttached: (sessionId: string) => void
@@ -325,6 +327,14 @@ export function createRemotePtyStreamMessageHandler(options: {
       ) {
         eventPayload.hookInstallState = message.hookInstallState
       }
+      if (
+        typeof message.observedAtMs === 'number' &&
+        Number.isFinite(message.observedAtMs) &&
+        message.observedAtMs >= 0
+      ) {
+        eventPayload.observedAtMs = message.observedAtMs
+      }
+      options.onSessionState(eventPayload)
       options.sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)
       options.externalStateListeners.forEach(listener => listener(eventPayload))
       return

@@ -24,7 +24,7 @@ export function normalizeBrowserPtySessionState(
 
 export function normalizeBrowserPtyStateMetadata(
   record: Record<string, unknown>,
-): Partial<Pick<TerminalSessionStateEvent, 'source' | 'hookInstallState'>> {
+): Partial<Pick<TerminalSessionStateEvent, 'source' | 'hookInstallState' | 'observedAtMs'>> {
   const source: TerminalSessionStateSource | null =
     record.source === 'launch' ||
     record.source === 'session_file' ||
@@ -39,9 +39,16 @@ export function normalizeBrowserPtyStateMetadata(
     record.hookInstallState === 'skipped'
       ? record.hookInstallState
       : null
+  const observedAtMs =
+    typeof record.observedAtMs === 'number' &&
+    Number.isFinite(record.observedAtMs) &&
+    record.observedAtMs >= 0
+      ? record.observedAtMs
+      : null
   return {
     ...(source ? { source } : {}),
     ...(hookInstallState ? { hookInstallState } : {}),
+    ...(observedAtMs !== null ? { observedAtMs } : {}),
   }
 }
 

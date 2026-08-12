@@ -169,6 +169,88 @@ async function runOverlayLifecycle(options: {
 test.describe('Workspace Canvas - Terminal agent overlay', () => {
   test.skip(process.platform === 'win32', 'POSIX command shim coverage')
 
+  test('re-projects a restored binding and re-derives state without replacing the PTY', async () => {
+    const commandDirectory = await createAgentCommandPath()
+    await mkdir(testWorkspacePath, { recursive: true })
+    const executionDirectory = await mkdtemp(path.join(testWorkspacePath, 'agent-overlay-reload-'))
+    const { electronApp, window } = await launchApp({
+      windowMode: 'inactive',
+      env: {
+        PATH: `${commandDirectory}${path.delimiter}${process.env.PATH ?? ''}`,
+        OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+      },
+    })
+
+    try {
+      await seedWorkspaceState(window, {
+        activeWorkspaceId: 'workspace-overlay-reload',
+        workspaces: [
+          {
+            id: 'workspace-overlay-reload',
+            name: 'workspace-overlay-reload',
+            path: testWorkspacePath,
+            activeSpaceId: null,
+            nodes: [
+              {
+                id: 'terminal-reload',
+                title: 'Reload agent terminal',
+                position: { x: 180, y: 160 },
+                width: 520,
+                height: 400,
+                kind: 'terminal',
+                executionDirectory,
+              },
+            ],
+            spaces: [],
+          },
+        ],
+      })
+
+      const terminal = window.locator('[data-id="terminal-reload"] .terminal-node')
+      await expect(terminal).toBeVisible()
+      await expect.poll(() => readRuntimeSessionId(window, 'terminal-reload')).toBeTruthy()
+      const initialSessionId = await readRuntimeSessionId(window, 'terminal-reload')
+      expect(initialSessionId).not.toBeNull()
+
+      await terminal.locator('.xterm-helper-textarea').click()
+      await window.keyboard.type('codex')
+      await window.keyboard.press('Enter')
+      await expectOverlayStubReady(terminal, 'codex')
+      await window.keyboard.type(overlayAdvanceSentinel)
+      await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
+      const persistedBeforeReload = await readPersistedNode(window, 'terminal-reload')
+      expect(persistedBeforeReload).toMatchObject({
+        id: 'terminal-reload',
+        kind: 'terminal',
+        sessionId: initialSessionId,
+        agent: { provider: 'codex' },
+      })
+
+      await window.reload({ waitUntil: 'domcontentloaded' })
+
+      const restoredTerminal = window.locator('[data-id="terminal-reload"] .terminal-node')
+      const restoredSidebarItem = window.locator(
+        '[data-testid="workspace-agent-item-workspace-overlay-reload-terminal-reload"]',
+      )
+      await expect(restoredTerminal).toBeVisible()
+      await expect(restoredSidebarItem).toBeVisible()
+      await expect(restoredTerminal.locator('.terminal-node__status')).toHaveText('Standby')
+      await expect(restoredSidebarItem).toContainText('Standby')
+      expect(await readRuntimeSessionId(window, 'terminal-reload')).toBe(initialSessionId)
+      expect(await readPersistedNode(window, 'terminal-reload')).toMatchObject({
+        id: 'terminal-reload',
+        kind: 'terminal',
+        sessionId: initialSessionId,
+        scrollback: persistedBeforeReload?.scrollback,
+        agent: { provider: 'codex' },
+      })
+    } finally {
+      await electronApp.close()
+      await rm(commandDirectory, { recursive: true, force: true })
+      await rm(executionDirectory, { recursive: true, force: true })
+    }
+  })
+
   test('recognizes and drops back in both space-internal and root-canvas terminals', async () => {
     const commandDirectory = await createAgentCommandPath()
     await mkdir(testWorkspacePath, { recursive: true })

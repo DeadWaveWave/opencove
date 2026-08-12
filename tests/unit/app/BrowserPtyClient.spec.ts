@@ -81,6 +81,67 @@ describe('BrowserPtyClient', () => {
     })
   })
 
+  it('retains one timestamped raw observation per source until client detach', async () => {
+    vi.stubGlobal('window', {
+      location: {
+        protocol: 'http:',
+        host: 'localhost:3000',
+        search: '',
+      },
+      clearTimeout,
+      setTimeout,
+    })
+
+    const client = new BrowserPtyClient()
+    const internals = client as unknown as {
+      handleMessage: (raw: string) => Promise<void>
+    }
+    await internals.handleMessage(
+      JSON.stringify({
+        type: 'state',
+        sessionId: 'session-replay',
+        state: 'waiting',
+        source: 'claude_hook',
+        hookInstallState: 'installed',
+        observedAtMs: 1_000,
+      }),
+    )
+    await internals.handleMessage(
+      JSON.stringify({
+        type: 'state',
+        sessionId: 'session-replay',
+        state: 'standby',
+        source: 'session_file',
+        hookInstallState: 'installed',
+        observedAtMs: 2_000,
+      }),
+    )
+
+    const lateListener = vi.fn()
+    client.onState(lateListener)
+    expect(lateListener.mock.calls.map(([event]) => event)).toEqual([
+      {
+        sessionId: 'session-replay',
+        state: 'waiting',
+        source: 'claude_hook',
+        hookInstallState: 'installed',
+        observedAtMs: 1_000,
+      },
+      {
+        sessionId: 'session-replay',
+        state: 'standby',
+        source: 'session_file',
+        hookInstallState: 'installed',
+        observedAtMs: 2_000,
+      },
+    ])
+
+    await client.detach({ sessionId: 'session-replay' })
+    const afterDetachListener = vi.fn()
+    client.onState(afterDetachListener)
+    expect(afterDetachListener).not.toHaveBeenCalled()
+  })
+
   it('uses transport-owned authority while waiting for the correlated resize result', async () => {
     vi.stubGlobal('window', {
       location: {

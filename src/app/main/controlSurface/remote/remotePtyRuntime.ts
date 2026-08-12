@@ -34,6 +34,11 @@ import {
 } from './remotePtyRuntime.support'
 import { createRemotePtySessionCoordinator } from './remotePtyRuntime.sessionCoordinator'
 import { createRemotePtyRuntimeGeometryCoordinator } from './remotePtyRuntime.geometryCoordinator'
+import {
+  attachRemotePtyRenderer,
+  createEnsureRemotePtySessionAttached,
+  RemotePtyAgentStateReplay,
+} from './remotePtyRuntime.attach'
 export type RemotePtyRuntime = PtyRuntime & {
   noteSessionRolePreference: (sessionId: string, role: 'viewer' | 'controller') => void
 }
@@ -88,6 +93,7 @@ export function createRemotePtyRuntime(options: {
       await sendSocketMessage({ type: 'detach', sessionId })
     },
   })
+  const agentStateReplay = new RemotePtyAgentStateReplay()
 
   const closeSocket = (): void => {
     const current = socket
@@ -122,6 +128,9 @@ export function createRemotePtyRuntime(options: {
     externalExitListeners,
     externalStateListeners,
     externalMetadataListeners,
+    onSessionState: event => {
+      agentStateReplay.register(event)
+    },
     cancelMetadataWatcher: sessionId => {
       agentMetadataWatcher.cancel(sessionId)
     },
@@ -129,6 +138,7 @@ export function createRemotePtyRuntime(options: {
       sessionCoordinator.onSessionAttached(sessionId)
     },
     onSessionExit: sessionId => {
+      agentStateReplay.disposeSession(sessionId)
       sessionCoordinator.untrackSession(sessionId)
     },
     handshake: {
@@ -165,20 +175,6 @@ export function createRemotePtyRuntime(options: {
       geometryCoordinator.handleSessionError(sessionId, code, message)
     },
   })
-
-  const ensureSessionAttached = async (sessionId: string): Promise<void> => {
-    if (!sessionCoordinator.hasTrackedSession(sessionId)) {
-      return
-    }
-
-    await ensureSocket()
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      return
-    }
-
-    sessionCoordinator.sendAttachForSession(socket, sessionId)
-    await sessionCoordinator.waitForSessionAttached(sessionId)
-  }
 
   const connectSocket = async (): Promise<void> => {
     const endpoint = await options.endpointResolver()
@@ -299,6 +295,12 @@ export function createRemotePtyRuntime(options: {
     }
   }
 
+  const ensureSessionAttached = createEnsureRemotePtySessionAttached({
+    sessionCoordinator,
+    ensureSocket,
+    getSocket: () => socket,
+  })
+
   const sendSocketMessage = async (payload: unknown): Promise<void> => {
     await ensureSocket()
     if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -383,6 +385,7 @@ export function createRemotePtyRuntime(options: {
       })
     },
     kill: async (sessionId: string) => {
+      agentStateReplay.disposeSession(sessionId)
       sessionCoordinator.untrackSession(sessionId)
       await invokeRemoteControlSurfaceValue<void>({
         endpointResolver: options.endpointResolver,
@@ -417,14 +420,14 @@ export function createRemotePtyRuntime(options: {
       }
     },
     attach: async (contentsId: number, sessionId: string, afterSeq?: number | null) => {
-      sessionCoordinator.trackWebContentsDestroyed(contentsId)
-      sessionCoordinator.trackSession(sessionId)
-      if (typeof afterSeq === 'number' && Number.isFinite(afterSeq) && afterSeq >= 0) {
-        sessionCoordinator.updateAttachedSeq(sessionId, afterSeq)
-      }
-      sessionCoordinator.addSubscriber(contentsId, sessionId)
-
-      await ensureSessionAttached(sessionId)
+      await attachRemotePtyRenderer({
+        contentsId,
+        sessionId,
+        afterSeq,
+        sessionCoordinator,
+        ensureSessionAttached,
+        agentStateReplay,
+      })
 
       agentMetadataWatcher.ensure(sessionId)
     },
@@ -475,7 +478,6 @@ export function createRemotePtyRuntime(options: {
     noteSessionRolePreference,
     dispose: () => {
       disposed = true
-
       if (reconnectTimer) {
         clearTimeout(reconnectTimer)
         reconnectTimer = null
@@ -488,6 +490,7 @@ export function createRemotePtyRuntime(options: {
       externalMetadataListeners.clear()
       geometryCoordinator.rejectAll(new Error('PTY runtime disposed'))
       agentMetadataWatcher.dispose()
+      agentStateReplay.dispose()
       sessionCoordinator.clear()
       geometryCoordinator.clear()
     },

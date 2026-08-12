@@ -120,7 +120,13 @@ export function createAgentRunStateArbiterOwner(options: {
       if (event.hookInstallState) {
         state.hookInstallState = event.hookInstallState
       }
-      const signal = { state: event.state, observedAtMs: now() }
+      const signal = {
+        state: event.state,
+        observedAtMs:
+          typeof event.observedAtMs === 'number' && Number.isFinite(event.observedAtMs)
+            ? event.observedAtMs
+            : now(),
+      }
       if (source === 'claude_hook') {
         state.lastHookSignal = signal
       } else if (source === 'session_file') {

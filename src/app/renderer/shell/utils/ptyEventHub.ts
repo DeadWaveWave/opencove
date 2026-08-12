@@ -451,6 +451,7 @@ declare global {
   interface Window {
     __opencoveAgentRunStateTestApi?: {
       advanceBy: (durationMs: number) => boolean
+      resetClock: () => void
       getSession: ReturnType<typeof createAgentRunStateArbiterOwner>['getDebugState']
     }
   }
@@ -479,6 +480,10 @@ export function getPtyEventHub(): PtyEventHub {
           testTimeOffsetMs += durationMs
           hub.refreshAgentRunStateAuthority()
           return true
+        },
+        resetClock: () => {
+          testTimeOffsetMs = 0
+          hub.refreshAgentRunStateAuthority()
         },
         getSession: sessionId => hub.getAgentRunStateDebug(sessionId),
       }

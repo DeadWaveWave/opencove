@@ -59,6 +59,14 @@ Every source switch is reflected in runtime observation metadata and degraded fa
 Agent header. Neither source may write run-state into durable node status; persistence strips the runtime
 observation entirely.
 
+The Worker stream hub retains one timestamped runtime observation per source for each live session. A
+renderer attach replays those raw observations in observation order, and the same renderer arbiter derives
+the winner again; attach never renews an old `working` lease. The desktop relay keeps the same per-source
+runtime mirror so a reloaded window can receive replay without reattaching or disturbing the Worker PTY.
+These caches are discarded on session exit or retirement and are never persisted. Renderer-only reload can
+therefore reconstruct a quiet `waiting` state, while a cold Worker restart honestly re-derives state from
+the newly launched process and its session file.
+
 ## Related Docs
 
 - `../cli/EXTERNAL_EXECUTABLE_RESOLUTION.md`

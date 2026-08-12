@@ -19,7 +19,7 @@ export function createSessionState(sessionId: string): SessionState {
     chunks: [],
     totalBytes: 0,
     truncated: false,
-    agentState: null,
+    agentStateBySource: new Map(),
     agentMetadata: null,
     pendingChunks: [],
     pendingChars: 0,

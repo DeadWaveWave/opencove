@@ -23,6 +23,7 @@ export type RemotePtySessionCoordinator = {
   forEachTrackedSession: (callback: (sessionId: string) => void) => void
   hasTrackedSession: (sessionId: string) => boolean
   hasTrackedSessions: () => boolean
+  isStreamAttached: (sessionId: string) => boolean
   updateAttachedSeq: (sessionId: string, seq: number) => void
   clear: () => void
 }
@@ -270,6 +271,7 @@ export function createRemotePtySessionCoordinator(options: {
     },
     hasTrackedSession: sessionId => trackedSessionIds.has(sessionId),
     hasTrackedSessions: () => trackedSessionIds.size > 0,
+    isStreamAttached: sessionId => streamAttachedSessionIds.has(sessionId),
     updateAttachedSeq,
     clear,
   }

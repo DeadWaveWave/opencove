@@ -20,9 +20,75 @@ function createWebSocketHarness(): {
 }
 
 describe('PtyStreamHub lifecycle truth', () => {
-  it('broadcasts identical hook signals because their arrival renews the freshness lease', () => {
+  it('replays the latest observation from every agent-state source to a late client', async () => {
+    let nowMs = 1_000
     const hub = new PtyStreamHub({
       replayWindowMaxBytes: 64_000,
+      now: () => nowMs,
+      ptyRuntime: {
+        spawnSession: vi.fn(),
+        write: vi.fn(),
+        resize: vi.fn(),
+        kill: vi.fn(),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+      },
+    })
+    hub.registerSessionMetadata({
+      sessionId: 'session-replay',
+      kind: 'agent',
+      startedAt: '2026-07-10T00:00:00.000Z',
+      cwd: '/tmp',
+      command: 'agent',
+      args: [],
+      cols: 80,
+      rows: 24,
+    })
+
+    hub.registerSessionAgentState({
+      sessionId: 'session-replay',
+      state: 'waiting',
+      source: 'claude_hook',
+      hookInstallState: 'installed',
+    })
+    nowMs = 2_000
+    hub.registerSessionAgentState({
+      sessionId: 'session-replay',
+      state: 'standby',
+      source: 'session_file',
+      hookInstallState: 'installed',
+    })
+
+    const lateClient = createWebSocketHarness()
+    hub.registerClient({ clientId: 'late-client', kind: 'web', ws: lateClient.ws })
+    hub.attach({ clientId: 'late-client', sessionId: 'session-replay' })
+    await hub.drainRecoveryOperations()
+
+    expect(lateClient.messages.filter(message => message.type === 'state')).toEqual([
+      {
+        type: 'state',
+        sessionId: 'session-replay',
+        state: 'waiting',
+        source: 'claude_hook',
+        hookInstallState: 'installed',
+        observedAtMs: 1_000,
+      },
+      {
+        type: 'state',
+        sessionId: 'session-replay',
+        state: 'standby',
+        source: 'session_file',
+        hookInstallState: 'installed',
+        observedAtMs: 2_000,
+      },
+    ])
+  })
+
+  it('broadcasts identical hook signals because their arrival renews the freshness lease', () => {
+    let nowMs = 1_000
+    const hub = new PtyStreamHub({
+      replayWindowMaxBytes: 64_000,
+      now: () => nowMs,
       ptyRuntime: {
         spawnSession: vi.fn(),
         write: vi.fn(),
@@ -52,11 +118,12 @@ describe('PtyStreamHub lifecycle truth', () => {
       hookInstallState: 'installed' as const,
     }
     hub.registerSessionAgentState(signal)
+    nowMs = 2_000
     hub.registerSessionAgentState(signal)
 
     expect(client.messages.filter(message => message.type === 'state')).toEqual([
-      { type: 'state', ...signal },
-      { type: 'state', ...signal },
+      { type: 'state', ...signal, observedAtMs: 1_000 },
+      { type: 'state', ...signal, observedAtMs: 2_000 },
     ])
   })
 
@@ -86,10 +153,22 @@ describe('PtyStreamHub lifecycle truth', () => {
     expect(hub.hasSession('session-exited')).toBe(true)
     expect(hub.isSessionActive('session-exited')).toBe(true)
 
+    hub.registerSessionAgentState({
+      sessionId: 'session-exited',
+      state: 'waiting',
+      source: 'claude_hook',
+      hookInstallState: 'installed',
+    })
+
     hub.handlePtyExit('session-exited', 0)
 
     expect(hub.hasSession('session-exited')).toBe(true)
     expect(hub.isSessionActive('session-exited')).toBe(false)
+
+    const lateClient = createWebSocketHarness()
+    hub.registerClient({ clientId: 'late-exit-client', kind: 'web', ws: lateClient.ws })
+    hub.attach({ clientId: 'late-exit-client', sessionId: 'session-exited' })
+    expect(lateClient.messages.filter(message => message.type === 'state')).toEqual([])
   })
 
   it('keeps archived display prefix out of recovery checkpoints', async () => {

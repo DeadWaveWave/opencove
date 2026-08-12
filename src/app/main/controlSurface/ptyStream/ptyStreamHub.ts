@@ -36,11 +36,13 @@ import {
   restorePtyStreamPresentationBaseline,
 } from './ptyStreamHub.presentationRecovery'
 import { attachPtyStreamClient, detachPtyStreamClient } from './ptyStreamHub.attach'
+import { registerPtyStreamAgentState } from './ptyStreamAgentStateReplay'
 
 export class PtyStreamHub {
   private readonly ptyRuntime: ControlSurfacePtyRuntime
   private readonly replayWindowMaxBytes: number
   private readonly onPresentationMutation: ((sessionId: string) => void) | undefined
+  private readonly now: () => number
 
   private readonly sessions = new Map<string, SessionState>()
   private readonly clients = new Map<string, ClientState>()
@@ -50,10 +52,12 @@ export class PtyStreamHub {
     ptyRuntime: ControlSurfacePtyRuntime
     replayWindowMaxBytes: number
     onPresentationMutation?: (sessionId: string) => void
+    now?: () => number
   }) {
     this.ptyRuntime = options.ptyRuntime
     this.replayWindowMaxBytes = Math.max(64_000, Math.floor(options.replayWindowMaxBytes))
     this.onPresentationMutation = options.onPresentationMutation
+    this.now = options.now ?? Date.now
   }
 
   private ensureSession(sessionId: string): SessionState {
@@ -151,18 +155,12 @@ export class PtyStreamHub {
   }
 
   public registerSessionAgentState(options: TerminalSessionStateEvent): void {
-    const session = this.ensureSession(options.sessionId)
-    if (
-      options.source !== 'claude_hook' &&
-      session.agentState?.state === options.state &&
-      session.agentState.source === options.source &&
-      session.agentState.hookInstallState === options.hookInstallState
-    ) {
-      return
-    }
-
-    session.agentState = options
-    this.broadcastState(options)
+    registerPtyStreamAgentState({
+      session: this.ensureSession(options.sessionId),
+      event: options,
+      now: this.now,
+      broadcast: event => this.broadcastState(event),
+    })
   }
 
   public registerSessionAgentMetadata(metadata: TerminalSessionMetadataEvent): void {
@@ -246,6 +244,7 @@ export class PtyStreamHub {
     this.flushSession(session)
     session.status = 'exited'
     session.exitCode = exitCode
+    session.agentStateBySource.clear()
     this.broadcastExit(sessionId, session.seq, exitCode)
   }
 

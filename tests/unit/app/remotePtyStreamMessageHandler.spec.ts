@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
 import { createRemotePtyStreamMessageHandler } from '../../../src/app/main/controlSurface/remote/remotePtyStreamMessageHandler'
+import { RemotePtyAgentStateReplay } from '../../../src/app/main/controlSurface/remote/remotePtyRuntime.attach'
 
 describe('createRemotePtyStreamMessageHandler', () => {
   function createHandler() {
@@ -14,6 +15,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
     const externalExitListener = vi.fn()
     const externalStateListener = vi.fn()
     const externalMetadataListener = vi.fn()
+    const onSessionState = vi.fn()
     const onSessionExit = vi.fn()
     const onSessionAttached = vi.fn()
     const onResizeResult = vi.fn()
@@ -27,6 +29,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
       externalExitListeners: new Set([externalExitListener]),
       externalStateListeners: new Set([externalStateListener]),
       externalMetadataListeners: new Set([externalMetadataListener]),
+      onSessionState,
       cancelMetadataWatcher: vi.fn(),
       onSessionExit,
       onSessionAttached,
@@ -49,6 +52,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
       externalExitListener,
       externalStateListener,
       externalMetadataListener,
+      onSessionState,
       onSessionExit,
       onSessionAttached,
       onResizeResult,
@@ -161,9 +165,19 @@ describe('createRemotePtyStreamMessageHandler', () => {
       sendToAllWindows,
       externalStateListener,
       externalMetadataListener,
+      onSessionState,
     } = createHandler()
 
-    handler(JSON.stringify({ type: 'state', sessionId: 'session-1', state: 'working' }))
+    handler(
+      JSON.stringify({
+        type: 'state',
+        sessionId: 'session-1',
+        state: 'working',
+        source: 'claude_hook',
+        hookInstallState: 'installed',
+        observedAtMs: 1_000,
+      }),
+    )
     handler(
       JSON.stringify({
         type: 'metadata',
@@ -178,6 +192,9 @@ describe('createRemotePtyStreamMessageHandler', () => {
     expect(sendToAllWindows).toHaveBeenNthCalledWith(1, IPC_CHANNELS.ptyState, {
       sessionId: 'session-1',
       state: 'working',
+      source: 'claude_hook',
+      hookInstallState: 'installed',
+      observedAtMs: 1_000,
     })
     expect(sendToAllWindows).toHaveBeenNthCalledWith(2, IPC_CHANNELS.ptySessionMetadata, {
       sessionId: 'session-1',
@@ -188,6 +205,16 @@ describe('createRemotePtyStreamMessageHandler', () => {
     expect(externalStateListener).toHaveBeenCalledWith({
       sessionId: 'session-1',
       state: 'working',
+      source: 'claude_hook',
+      hookInstallState: 'installed',
+      observedAtMs: 1_000,
+    })
+    expect(onSessionState).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      state: 'working',
+      source: 'claude_hook',
+      hookInstallState: 'installed',
+      observedAtMs: 1_000,
     })
     expect(externalMetadataListener).toHaveBeenCalledWith({
       sessionId: 'session-1',
@@ -195,6 +222,52 @@ describe('createRemotePtyStreamMessageHandler', () => {
       profileId: 'profile-1',
       runtimeKind: 'posix',
     })
+  })
+
+  it('retains and replays the latest state from each source until the session is disposed', () => {
+    const replay = new RemotePtyAgentStateReplay()
+    const listener = vi.fn()
+
+    replay.register({
+      sessionId: 'session-replay',
+      state: 'waiting',
+      source: 'claude_hook',
+      observedAtMs: 1_000,
+    })
+    replay.register({
+      sessionId: 'session-replay',
+      state: 'working',
+      source: 'session_file',
+      observedAtMs: 2_000,
+    })
+    replay.register({
+      sessionId: 'session-replay',
+      state: 'standby',
+      source: 'session_file',
+      observedAtMs: 3_000,
+    })
+
+    replay.replaySession('session-replay', listener)
+
+    expect(listener.mock.calls.map(([event]) => event)).toEqual([
+      {
+        sessionId: 'session-replay',
+        state: 'waiting',
+        source: 'claude_hook',
+        observedAtMs: 1_000,
+      },
+      {
+        sessionId: 'session-replay',
+        state: 'standby',
+        source: 'session_file',
+        observedAtMs: 3_000,
+      },
+    ])
+
+    replay.disposeSession('session-replay')
+    listener.mockClear()
+    replay.replaySession('session-replay', listener)
+    expect(listener).not.toHaveBeenCalled()
   })
 
   it('broadcasts exit and geometry updates to every renderer window', () => {

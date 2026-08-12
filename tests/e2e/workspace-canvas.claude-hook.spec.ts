@@ -121,11 +121,19 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       },
     })
     try {
-      const { agentNode } = await launchClaudeTask(window)
+      const { sessionId, agentNode } = await launchClaudeTask(window)
       await expect(agentNode.locator('.terminal-node__status')).toHaveText('Standby')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'session_file')
       await expect(agentNode).toHaveAttribute('data-agent-hook-install-state', 'error')
       await expect(agentNode.locator('[data-testid="agent-hook-degraded"]')).toHaveText('Fallback')
+
+      await window.reload({ waitUntil: 'domcontentloaded' })
+
+      const restoredAgentNode = window.locator('.terminal-node').first()
+      await expect(restoredAgentNode).toBeVisible()
+      await expect(restoredAgentNode.locator('.terminal-node__status')).toHaveText('Standby')
+      await expect(restoredAgentNode).toHaveAttribute('data-agent-state-source', 'session_file')
+      expect(await resolveFirstAgentSessionId(window)).toBe(sessionId)
     } finally {
       await electronApp.close()
     }
@@ -162,6 +170,18 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       await expect(status).toHaveText('Waiting')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
 
+      const agentNodeId = await agentNode.evaluate(
+        element => element.closest('[data-id]')?.getAttribute('data-id') ?? null,
+      )
+      expect(agentNodeId).not.toBeNull()
+      await window.reload({ waitUntil: 'domcontentloaded' })
+
+      const restoredAgentNode = window.locator(`[data-id="${agentNodeId}"] .terminal-node`)
+      await expect(restoredAgentNode).toBeVisible()
+      await expect(restoredAgentNode.locator('.terminal-node__status')).toHaveText('Waiting')
+      await expect(restoredAgentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
+      expect(await resolveFirstAgentSessionId(window)).toBe(sessionId)
+
       expect(
         await window.evaluate(() => {
           return window.__opencoveAgentRunStateTestApi?.advanceBy(1_200_000) ?? false
@@ -169,6 +189,9 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       ).toBe(true)
       await expect(status).toHaveText('Waiting')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
+      await window.evaluate(() => {
+        window.__opencoveAgentRunStateTestApi?.resetClock()
+      })
 
       await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
       await expect(status).toHaveText('Standby')
@@ -183,6 +206,9 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       await expect(status).toHaveText('Standby')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'session_file')
       await expect(agentNode.locator('[data-testid="agent-hook-degraded"]')).toHaveText('Fallback')
+      await window.evaluate(() => {
+        window.__opencoveAgentRunStateTestApi?.resetClock()
+      })
 
       await writeToPty(window, { sessionId, data: '<test-hook-tool>\r' })
       await expect(status).toHaveText('Working')
