@@ -192,4 +192,20 @@ describe('terminal agent overlay invariants', () => {
       resumeSessionIdVerified: true,
     })
   })
+
+  it('ignores a stale exit from an earlier overlay activation', () => {
+    const original = createTerminalNode()
+    const current = activateTerminalAgentOverlay(original, {
+      provider: 'codex',
+      startedAtMs: 1_723_456_790_000,
+    })
+
+    expect(clearTerminalAgentOverlay(current, { expectedStartedAtMs: 1_723_456_789_000 })).toBe(
+      current,
+    )
+    expect(
+      clearTerminalAgentOverlay(current, { expectedStartedAtMs: 1_723_456_790_000 }).data
+        .agentOverlay,
+    ).toBeNull()
+  })
 })

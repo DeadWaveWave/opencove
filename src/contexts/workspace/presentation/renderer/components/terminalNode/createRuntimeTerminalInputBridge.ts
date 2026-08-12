@@ -195,15 +195,16 @@ export function createRuntimeTerminalInputBridge({
     }
 
     const commands = parseCommandInput(data)
+    const interruptOverlayExit = data.includes('\u0003') ? onAgentOverlayExitRef.current : undefined
     ptyWriteQueue.enqueue(data)
     ptyWriteQueue.flush()
-    if (commands.length > 0 || data.includes('\u0003')) {
+    if (commands.length > 0 || interruptOverlayExit) {
       void ptyWriteQueue.whenIdle().then(() => {
         if (isDisposed) {
           return
         }
-        if (data.includes('\u0003')) {
-          onAgentOverlayExitRef.current?.()
+        if (interruptOverlayExit && onAgentOverlayExitRef.current === interruptOverlayExit) {
+          interruptOverlayExit()
         }
         commands.forEach(command => onCommandRunRef.current?.(command))
       })

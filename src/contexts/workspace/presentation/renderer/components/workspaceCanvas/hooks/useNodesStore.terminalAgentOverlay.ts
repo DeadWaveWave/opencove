@@ -67,7 +67,7 @@ export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
   )
 
   const clearOverlay = useCallback(
-    (nodeId: string) => {
+    (nodeId: string, expectedStartedAtMs?: number) => {
       setNodes(
         previousNodes => {
           let didChange = false
@@ -75,7 +75,7 @@ export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
             if (node.id !== nodeId) {
               return node
             }
-            const nextNode = clearTerminalAgentOverlay(node)
+            const nextNode = clearTerminalAgentOverlay(node, { expectedStartedAtMs })
             didChange ||= nextNode !== node
             return nextNode
           })

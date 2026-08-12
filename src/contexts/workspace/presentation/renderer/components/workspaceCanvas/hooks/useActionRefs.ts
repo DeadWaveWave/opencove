@@ -56,7 +56,9 @@ export interface WorkspaceCanvasActionRefs {
   updateTaskStatusRef: React.MutableRefObject<(nodeId: string, status: TaskRuntimeStatus) => void>
   updateNodeScrollbackRef: React.MutableRefObject<(nodeId: string, scrollback: string) => void>
   updateTerminalTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
-  clearTerminalAgentOverlayRef: React.MutableRefObject<(nodeId: string) => void>
+  clearTerminalAgentOverlayRef: React.MutableRefObject<
+    (nodeId: string, expectedStartedAtMs?: number) => void
+  >
   renameTerminalTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
   normalizeViewportForTerminalInteractionRef: React.MutableRefObject<(nodeId: string) => void>
 }
@@ -152,7 +154,9 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const updateTerminalTitleRef = useRef<(nodeId: string, title: string) => void>(
     (_nodeId: string, _title: string) => undefined,
   )
-  const clearTerminalAgentOverlayRef = useRef<(nodeId: string) => void>(() => undefined)
+  const clearTerminalAgentOverlayRef = useRef<
+    (nodeId: string, expectedStartedAtMs?: number) => void
+  >(() => undefined)
   const renameTerminalTitleRef = useRef<(nodeId: string, title: string) => void>(
     (_nodeId: string, _title: string) => undefined,
   )
@@ -221,7 +225,7 @@ interface SyncActionRefsParams {
   ) => void
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
-  clearTerminalAgentOverlay: (nodeId: string) => void
+  clearTerminalAgentOverlay: (nodeId: string, expectedStartedAtMs?: number) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
   focusNodeOnClick: boolean
   focusNodeTargetZoom: number

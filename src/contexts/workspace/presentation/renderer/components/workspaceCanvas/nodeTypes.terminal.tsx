@@ -60,7 +60,9 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
-  clearTerminalAgentOverlayRef: MutableRefObject<(nodeId: string) => void>
+  clearTerminalAgentOverlayRef: MutableRefObject<
+    (nodeId: string, expectedStartedAtMs?: number) => void
+  >
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
   const storeApi = useStoreApi()
@@ -70,6 +72,14 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   const getNodePosition = useCallback(() => {
     return readNodePositionFromStoreState(storeApi.getState(), id)
   }, [id, storeApi])
+  const overlayStartedAtMs =
+    data.kind === 'terminal' && data.agentOverlay ? data.agentOverlay.startedAtMs : null
+  const handleAgentOverlayExit = useCallback(() => {
+    if (overlayStartedAtMs === null) {
+      return
+    }
+    clearTerminalAgentOverlayRef.current(id, overlayStartedAtMs)
+  }, [clearTerminalAgentOverlayRef, id, overlayStartedAtMs])
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null
@@ -228,11 +238,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
             }
           : undefined
       }
-      onAgentOverlayExit={
-        data.kind === 'terminal' && data.agentOverlay
-          ? () => clearTerminalAgentOverlayRef.current(id)
-          : undefined
-      }
+      onAgentOverlayExit={overlayStartedAtMs === null ? undefined : handleAgentOverlayExit}
       onTitleCommit={
         data.kind === 'terminal' || data.kind === 'agent'
           ? nextTitle => {

@@ -66,10 +66,15 @@ export function activateTerminalAgentOverlay(
   }
 }
 
-export function clearTerminalAgentOverlay(node: Node<TerminalNodeData>): Node<TerminalNodeData> {
+export function clearTerminalAgentOverlay(
+  node: Node<TerminalNodeData>,
+  options: { expectedStartedAtMs?: number } = {},
+): Node<TerminalNodeData> {
   if (
     node.data.kind !== 'terminal' ||
-    (!node.data.agentOverlay && !node.data.terminalAgentBinding)
+    (!node.data.agentOverlay && !node.data.terminalAgentBinding) ||
+    (options.expectedStartedAtMs !== undefined &&
+      node.data.agentOverlay?.startedAtMs !== options.expectedStartedAtMs)
   ) {
     return node
   }
