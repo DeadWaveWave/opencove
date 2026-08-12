@@ -20,6 +20,10 @@ import {
 } from './test-agent-session-stub/gemini.mjs'
 import { runOpenCodeIdleWithMessageScenario } from './test-agent-session-stub/opencode.mjs'
 import {
+  runClaudeHookFallbackScenario,
+  runClaudeHookLifecycleScenario,
+} from './test-agent-session-stub/claudeHook.mjs'
+import {
   runRawAltScreenWheelEchoScenario,
   runRawBracketedPasteEchoScenario,
   runRawClickRedrawAfterClickScenario,
@@ -39,7 +43,8 @@ function isLikelyScenarioArg(value) {
     value.startsWith('jsonl-stdin-submit-') ||
     value.startsWith('codex-') ||
     value.startsWith('gemini-') ||
-    value.startsWith('opencode-')
+    value.startsWith('opencode-') ||
+    value.startsWith('claude-hook-')
   )
 }
 
@@ -66,6 +71,16 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-standby-no-newline') {
     await runCodexStandbyNoNewlineScenario(cwd)
+    return
+  }
+
+  if (provider === 'claude-code' && scenario === 'claude-hook-lifecycle') {
+    await runClaudeHookLifecycleScenario()
+    return
+  }
+
+  if (provider === 'claude-code' && scenario === 'claude-hook-fallback') {
+    await runClaudeHookFallbackScenario(cwd)
     return
   }
 

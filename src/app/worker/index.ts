@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import { homedir } from 'node:os'
 import { registerControlSurfaceHttpServer } from '../main/controlSurface/controlSurfaceHttpServer'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../main/controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { createApprovedWorkspaceStoreForPath } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
@@ -10,6 +11,24 @@ import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironm
 import { hashWebUiPassword } from '../main/controlSurface/http/webUiPassword'
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
+import { resolvePackagedAppRoot } from '../main/runtime/opencoveRuntimePaths'
+import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
+
+function resolveClaudeHookHelperPath(): string {
+  const resourcesPath =
+    typeof process.resourcesPath === 'string' ? process.resourcesPath.trim() : ''
+  if (resourcesPath.length > 0) {
+    return resolve(
+      resolvePackagedAppRoot(resourcesPath),
+      'src',
+      'app',
+      'cli',
+      'hooks',
+      'claude-status.mjs',
+    )
+  }
+  return resolve(__dirname, '../../src/app/cli/hooks/claude-status.mjs')
+}
 
 function readFlagValue(argv: string[], flag: string): string | null {
   const index = argv.indexOf(flag)
@@ -156,7 +175,22 @@ async function main(): Promise<void> {
   const approvedRoots = readRepeatedFlagValues(argv, '--approve-root')
   await Promise.all(approvedRoots.map(rootPath => approvedWorkspaces.registerRoot(rootPath)))
 
-  const ptyRuntime = createHeadlessPtyRuntime({ userDataPath })
+  const forceHookBindFailure =
+    process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CLAUDE_HOOK_BIND_FAILURE === '1'
+  const forceHookInstallFailure =
+    process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE === '1'
+  const claudeHookChannel = createClaudeHookChannel({
+    homeDirectory: homedir(),
+    helperCommand: process.execPath,
+    helperArgs: [resolveClaudeHookHelperPath()],
+    ...(forceHookBindFailure ? { port: -1 } : {}),
+    ...(forceHookInstallFailure
+      ? {
+          install: async () => ({ state: 'error' as const, detail: 'test_install_failure' }),
+        }
+      : {}),
+  })
+  const ptyRuntime = createHeadlessPtyRuntime({ userDataPath, claudeHookChannel })
 
   const server = registerControlSurfaceHttpServer({
     userDataPath,
@@ -173,6 +207,7 @@ async function main(): Promise<void> {
     connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
     connectionStartedBy: startedBy,
     appVersion,
+    claudeHookChannel,
   })
 
   const info = await server.ready

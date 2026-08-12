@@ -2,6 +2,7 @@ import type { PersistenceStore } from '../../../platform/persistence/sqlite/Pers
 import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
 import type { SyncEventPayload } from '../../../shared/contracts/dto'
+import type { ClaudeHookChannel } from './agentHook/claudeHookChannel'
 
 export interface RegisterControlSurfaceHttpServerOptions {
   userDataPath: string
@@ -22,4 +23,5 @@ export interface RegisterControlSurfaceHttpServerOptions {
   webUiPasswordHash?: string | null
   desktopSyncEventSink?: (payload: SyncEventPayload) => number
   closeWebsiteNode?: (nodeId: string) => Promise<void> | void
+  claudeHookChannel?: ClaudeHookChannel
 }

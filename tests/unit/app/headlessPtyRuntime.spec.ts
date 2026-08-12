@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { TerminalSessionStateEvent } from '../../../src/shared/contracts/dto'
 
 afterEach(() => {
   vi.doUnmock('../../../src/platform/process/ptyHost/supervisor')
@@ -29,6 +30,7 @@ describe('headless PTY runtime', () => {
         | null = null
 
       let lastSupervisor: {
+        spawn: ReturnType<typeof vi.fn>
         write: ReturnType<typeof vi.fn>
         resize: ReturnType<typeof vi.fn>
         kill: ReturnType<typeof vi.fn>
@@ -42,10 +44,14 @@ describe('headless PTY runtime', () => {
         public kill = vi.fn()
         public crash = vi.fn()
         public dispose = vi.fn()
-        public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
+        public spawn = vi
+          .fn()
+          .mockResolvedValueOnce({ sessionId: 'session-2' })
+          .mockResolvedValue({ sessionId: 'session-1' })
 
         public constructor() {
           lastSupervisor = {
+            spawn: this.spawn,
             write: this.write,
             resize: this.resize,
             kill: this.kill,
@@ -92,11 +98,38 @@ describe('headless PTY runtime', () => {
       const { createHeadlessPtyRuntime } =
         await import('../../../src/app/worker/headlessPtyRuntime')
 
-      const runtime = createHeadlessPtyRuntime({ userDataPath: '/tmp/opencove-headless-runtime' })
+      let emitHookState: ((event: TerminalSessionStateEvent) => void) | null = null
+      const hookCommit = vi.fn()
+      const hookDisposeSession = vi.fn()
+      const claudeHookChannel = {
+        start: vi.fn(async () => undefined),
+        reserveSpawn: vi.fn(async () => ({
+          env: {
+            OPENCOVE_CLAUDE_HOOK_ENDPOINT: 'http://127.0.0.1:1234/hooks/claude',
+            OPENCOVE_CLAUDE_HOOK_TOKEN: 'token-1',
+          },
+          installState: 'installed' as const,
+          usesHook: true,
+          commit: hookCommit,
+          dispose: vi.fn(),
+        })),
+        onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
+          emitHookState = listener
+          return () => undefined
+        }),
+        disposeSession: hookDisposeSession,
+        getInstallState: vi.fn(() => 'installed' as const),
+        getEndpoint: vi.fn(() => 'http://127.0.0.1:1234/hooks/claude'),
+        dispose: vi.fn(async () => undefined),
+      }
+      const runtime = createHeadlessPtyRuntime({
+        userDataPath: '/tmp/opencove-headless-runtime',
+        claudeHookChannel,
+      })
 
       const observedData: Array<{ sessionId: string; data: string }> = []
       const observedExit: Array<{ sessionId: string; exitCode: number }> = []
-      const observedState: Array<{ sessionId: string; state: 'working' | 'standby' }> = []
+      const observedState: TerminalSessionStateEvent[] = []
       const observedMetadata: Array<{ sessionId: string; resumeSessionId: string | null }> = []
 
       runtime.onData(event => {
@@ -105,11 +138,23 @@ describe('headless PTY runtime', () => {
       runtime.onExit(event => {
         observedExit.push(event)
       })
-      runtime.onState(event => {
+      const stateListener = vi.fn((event: TerminalSessionStateEvent) => {
         observedState.push(event)
       })
+      runtime.onState(stateListener)
       runtime.onMetadata(event => {
         observedMetadata.push(event)
+      })
+
+      await runtime.spawnSession({
+        cwd: '/tmp/workspace',
+        cols: 80,
+        rows: 24,
+        command: 'claude',
+        args: [],
+        env: { EXISTING: 'value' },
+        agentProvider: 'claude-code',
+        initialAgentState: 'working',
       })
 
       runtime.startSessionStateWatcher({
@@ -134,6 +179,12 @@ describe('headless PTY runtime', () => {
         listener({ sessionId: 'session-1', data: 'hello from worker\n\u001b[6n' })
       })
       emitState?.({ sessionId: 'session-1', state: 'working' })
+      emitHookState?.({
+        sessionId: 'session-2',
+        state: 'waiting',
+        source: 'claude_hook',
+        hookInstallState: 'installed',
+      })
       emitMetadata?.({ sessionId: 'session-1', resumeSessionId: 'resume-session-1' })
       ptyExitListeners.forEach(listener => {
         listener({ sessionId: 'session-1', exitCode: 0 })
@@ -152,7 +203,21 @@ describe('headless PTY runtime', () => {
       runtime.dispose()
 
       expect(observedData).toEqual([{ sessionId: 'session-1', data: 'hello from worker\n' }])
-      expect(observedState).toEqual([{ sessionId: 'session-1', state: 'working' }])
+      expect(observedState).toEqual([
+        {
+          sessionId: 'session-2',
+          state: 'working',
+          source: 'launch',
+          hookInstallState: 'installed',
+        },
+        { sessionId: 'session-1', state: 'working', source: 'session_file' },
+        {
+          sessionId: 'session-2',
+          state: 'waiting',
+          source: 'claude_hook',
+          hookInstallState: 'installed',
+        },
+      ])
       expect(observedMetadata).toEqual([
         { sessionId: 'session-1', resumeSessionId: 'resume-session-1' },
       ])
@@ -164,6 +229,20 @@ describe('headless PTY runtime', () => {
       expect(lastSupervisor?.write).toHaveBeenCalledWith('session-1', '\u001b[1;1R')
       expect(lastSupervisor?.resize).toHaveBeenCalledWith('session-1', 120, 40)
       expect(lastSupervisor?.kill).toHaveBeenCalledWith('session-2')
+      expect(lastSupervisor?.spawn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          env: {
+            EXISTING: 'value',
+            OPENCOVE_CLAUDE_HOOK_ENDPOINT: 'http://127.0.0.1:1234/hooks/claude',
+            OPENCOVE_CLAUDE_HOOK_TOKEN: 'token-1',
+          },
+        }),
+      )
+      expect(hookCommit).toHaveBeenCalledWith('session-2')
+      expect(stateListener.mock.invocationCallOrder[0]).toBeLessThan(
+        hookCommit.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+      )
+      expect(hookDisposeSession).toHaveBeenCalledWith('session-2')
       expect(lastSupervisor?.crash).toHaveBeenCalledTimes(1)
       expect(watcherDispose).toHaveBeenCalledTimes(1)
       expect(lastSupervisor?.dispose).toHaveBeenCalledTimes(1)

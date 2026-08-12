@@ -94,7 +94,7 @@ export function attachPtyStreamClient(options: {
       sendPtySessionMetadata(client.ws, session.agentMetadata)
     }
     if (session.agentState) {
-      sendPtyState(client.ws, options.sessionId, session.agentState)
+      sendPtyState(client.ws, session.agentState)
     }
 
     const afterSeq =

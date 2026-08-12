@@ -23,7 +23,11 @@ function SidebarAgentItemContent({
   const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel')
   const startedText = toRelativeTime(node.data.startedAt)
   const sidebarAgentStatusText =
-    status === 'working' ? t('sidebar.status.working') : t('sidebar.status.standby')
+    status === 'working'
+      ? t('sidebar.status.working')
+      : status === 'waiting'
+        ? t('sidebar.status.waiting')
+        : t('sidebar.status.standby')
 
   return (
     <span className="workspace-agent-item__body">
@@ -82,7 +86,11 @@ function SidebarAgentItem({
   const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel')
   const startedText = toRelativeTime(node.data.startedAt)
   const sidebarAgentStatusText =
-    status === 'working' ? t('sidebar.status.working') : t('sidebar.status.standby')
+    status === 'working'
+      ? t('sidebar.status.working')
+      : status === 'waiting'
+        ? t('sidebar.status.waiting')
+        : t('sidebar.status.standby')
   const sortableId = groupId ? createAgentSortableId(workspaceId, groupId, node.id) : node.id
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: sortableId,
@@ -208,7 +216,11 @@ export function SidebarAgentItemOverlay({
   const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel')
   const startedText = toRelativeTime(node.data.startedAt)
   const sidebarAgentStatusText =
-    status === 'working' ? t('sidebar.status.working') : t('sidebar.status.standby')
+    status === 'working'
+      ? t('sidebar.status.working')
+      : status === 'waiting'
+        ? t('sidebar.status.waiting')
+        : t('sidebar.status.standby')
 
   return (
     <div

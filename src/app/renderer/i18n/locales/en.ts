@@ -73,6 +73,7 @@ export const en = {
     collapseProjectAgents: 'Collapse project agents',
     status: {
       working: 'Working',
+      waiting: 'Waiting',
       standby: 'Standby',
     },
     terminals_one: '{{count}} terminal',
@@ -226,7 +227,10 @@ export const en = {
   performanceMonitor: enPerformanceMonitor,
   agentRuntime: {
     working: 'Working',
+    waiting: 'Waiting',
     standby: 'Standby',
+    hookDegraded: 'Fallback',
+    hookDegradedDetail: 'Agent hook unavailable; using session activity.',
     exited: 'Exited',
     failed: 'Failed',
     stopped: 'Stopped',

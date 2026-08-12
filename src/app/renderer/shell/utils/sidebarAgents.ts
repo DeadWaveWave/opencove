@@ -14,7 +14,7 @@ import {
   resolveAgentTreatedProvider,
 } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 
-export type SidebarAgentStatus = 'working' | 'standby'
+export type SidebarAgentStatus = 'working' | 'waiting' | 'standby'
 
 export interface SidebarAgentItemModel {
   node: Node<TerminalNodeData>
@@ -33,6 +33,10 @@ export function resolveSidebarAgentStatus(
 
   if (runtimeStatus === 'running' || runtimeStatus === 'restoring') {
     return 'working'
+  }
+
+  if (runtimeStatus === 'waiting') {
+    return 'waiting'
   }
 
   return 'standby'
@@ -99,7 +103,11 @@ export function buildSidebarAgentItems(workspace: WorkspaceState): SidebarAgentI
             : node.data.title,
       effectiveLabelColor: resolveEffectiveLabelColor(node),
       owningSpace: spaceByNodeId.get(node.id) ?? null,
-      status: resolveSidebarAgentStatus(node.data.agentOverlay?.status ?? node.data.status),
+      status: resolveSidebarAgentStatus(
+        node.data.agentRuntimeObservation?.status ??
+          node.data.agentOverlay?.status ??
+          node.data.status,
+      ),
     }
   })
 }

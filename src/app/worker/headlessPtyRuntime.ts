@@ -4,11 +4,13 @@ import { resolve } from 'node:path'
 import { PtyHostSupervisor } from '../../platform/process/ptyHost/supervisor'
 import { createNodeChildPtyHostProcess } from '../../platform/process/ptyHost/nodeProcessAdapter'
 import type {
+  AgentProviderId,
   ResizeTerminalInput,
   TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../shared/contracts/dto'
+import type { ClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 import {
   createSessionStateWatcherController,
   type SessionStateWatcherStartInput,
@@ -25,6 +27,8 @@ type SpawnSessionOptions = {
   command: string
   args: string[]
   env?: NodeJS.ProcessEnv
+  agentProvider?: AgentProviderId
+  initialAgentState?: 'working' | 'standby'
 }
 
 export interface HeadlessPtyRuntime {
@@ -42,7 +46,10 @@ export interface HeadlessPtyRuntime {
   dispose: () => void
 }
 
-export function createHeadlessPtyRuntime(options: { userDataPath: string }): HeadlessPtyRuntime {
+export function createHeadlessPtyRuntime(options: {
+  userDataPath: string
+  claudeHookChannel?: ClaudeHookChannel
+}): HeadlessPtyRuntime {
   const logsDir = resolve(options.userDataPath, 'logs')
   const logFilePath = resolve(logsDir, 'pty-host.log')
   const debugCrashHostEnabled = isDebugCrashHostEnabled()
@@ -51,6 +58,15 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   const profileResolver = new TerminalProfileResolver()
+  const hookModeBySessionId = new Map<string, boolean>()
+  const hookInstallStateBySessionId = new Map<
+    string,
+    TerminalSessionStateEvent['hookInstallState']
+  >()
+
+  const emitState = (event: TerminalSessionStateEvent): void => {
+    stateListeners.forEach(listener => listener(event))
+  }
 
   const sessionStateWatcher = createSessionStateWatcherController({
     sendToAllWindows: () => undefined,
@@ -58,12 +74,23 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
       process.stderr.write(`${message}\n`)
     },
     onState: event => {
-      stateListeners.forEach(listener => listener(event))
+      if (hookModeBySessionId.get(event.sessionId) === true) {
+        return
+      }
+      emitState({
+        ...event,
+        source: 'session_file',
+        ...(hookInstallStateBySessionId.get(event.sessionId)
+          ? { hookInstallState: hookInstallStateBySessionId.get(event.sessionId) }
+          : {}),
+      })
     },
     onMetadata: event => {
       metadataListeners.forEach(listener => listener(event))
     },
   })
+
+  const disposeHookStateListener = options.claudeHookChannel?.onState(emitState)
 
   const supervisor = new PtyHostSupervisor({
     baseDir: __dirname,
@@ -92,12 +119,45 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
 
   const disposeExitListener = supervisor.onExit(event => {
     sessionStateWatcher.disposeSession(event.sessionId)
+    options.claudeHookChannel?.disposeSession(event.sessionId)
+    hookModeBySessionId.delete(event.sessionId)
+    hookInstallStateBySessionId.delete(event.sessionId)
     exitListeners.forEach(listener => listener(event))
   })
 
   return {
     listProfiles: async () => await profileResolver.listProfiles(),
-    spawnSession: async input => await supervisor.spawn(input),
+    spawnSession: async input => {
+      const reservation =
+        input.agentProvider === 'claude-code'
+          ? await options.claudeHookChannel?.reserveSpawn()
+          : undefined
+      try {
+        const spawned = await supervisor.spawn({
+          ...input,
+          ...(reservation?.env
+            ? { env: { ...(input.env ?? {}), ...reservation.env } }
+            : input.env
+              ? { env: input.env }
+              : {}),
+        })
+        if (reservation) {
+          hookModeBySessionId.set(spawned.sessionId, reservation.usesHook)
+          hookInstallStateBySessionId.set(spawned.sessionId, reservation.installState)
+          emitState({
+            sessionId: spawned.sessionId,
+            state: input.initialAgentState ?? 'working',
+            source: 'launch',
+            hookInstallState: reservation.installState,
+          })
+          reservation.commit(spawned.sessionId)
+        }
+        return spawned
+      } catch (error) {
+        reservation?.dispose()
+        throw error
+      }
+    },
     write: (sessionId, data) => {
       supervisor.write(sessionId, data)
       sessionStateWatcher.noteInteraction(sessionId, data)
@@ -141,6 +201,9 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     },
     kill: sessionId => {
       sessionStateWatcher.disposeSession(sessionId)
+      options.claudeHookChannel?.disposeSession(sessionId)
+      hookModeBySessionId.delete(sessionId)
+      hookInstallStateBySessionId.delete(sessionId)
       supervisor.kill(sessionId)
     },
     onData: listener => {
@@ -168,6 +231,9 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
       }
     },
     startSessionStateWatcher: input => {
+      if (hookModeBySessionId.get(input.sessionId) === true) {
+        return
+      }
       sessionStateWatcher.start(input)
     },
     disposeSessionStateWatcher: sessionId => {
@@ -183,10 +249,13 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     dispose: () => {
       disposeDataListener()
       disposeExitListener()
+      disposeHookStateListener?.()
       dataListeners.clear()
       exitListeners.clear()
       stateListeners.clear()
       metadataListeners.clear()
+      hookModeBySessionId.clear()
+      hookInstallStateBySessionId.clear()
       sessionStateWatcher.dispose()
       supervisor.dispose()
     },

@@ -16,7 +16,9 @@ import type {
   LaunchAgentSessionResult,
 } from '../../../../shared/contracts/dto'
 import {
+  LOCAL_AGENT_SERVER_HOSTNAME,
   reserveLoopbackPort,
+  resolveAgentPtySpawnState,
   resolveExecutionContextDto,
   resolveProviderFromSettings,
   resolveSessionLaunchSpawn,
@@ -41,8 +43,6 @@ import {
   logAgentLaunchError,
   logAgentLaunchInfo,
 } from '../../diagnostics/agentLaunchRuntimeDiagnostics'
-
-const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 
 export function registerSessionLaunchAgentInMountHandler(
   controlSurface: ControlSurface,
@@ -275,8 +275,8 @@ export function registerSessionLaunchAgentInMountHandler(
       const opencodeServer =
         provider === 'opencode'
           ? {
-              hostname: OPENCODE_SERVER_HOSTNAME,
-              port: await reserveLoopbackPort(OPENCODE_SERVER_HOSTNAME),
+              hostname: LOCAL_AGENT_SERVER_HOSTNAME,
+              port: await reserveLoopbackPort(LOCAL_AGENT_SERVER_HOSTNAME),
             }
           : null
 
@@ -391,6 +391,7 @@ export function registerSessionLaunchAgentInMountHandler(
           rows: spawnRows,
           command: resolvedSpawn.command,
           args: resolvedSpawn.args,
+          ...resolveAgentPtySpawnState(provider, payload.prompt, mode),
           ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
         })
         .catch(error => {

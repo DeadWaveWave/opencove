@@ -16,6 +16,7 @@ import { MAX_PERSISTED_SCROLLBACK_CHARS } from './constants'
 const AGENT_RUNTIME_STATUSES: AgentRuntimeStatus[] = [
   'running',
   'standby',
+  'waiting',
   'exited',
   'failed',
   'stopped',

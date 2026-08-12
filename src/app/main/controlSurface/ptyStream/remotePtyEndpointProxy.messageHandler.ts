@@ -133,7 +133,10 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
     }
 
     if (parsed.type === 'state') {
-      const state = parsed.state === 'working' || parsed.state === 'standby' ? parsed.state : null
+      const state =
+        parsed.state === 'working' || parsed.state === 'waiting' || parsed.state === 'standby'
+          ? parsed.state
+          : null
       if (state) {
         options.onState(sessionId, state)
       }

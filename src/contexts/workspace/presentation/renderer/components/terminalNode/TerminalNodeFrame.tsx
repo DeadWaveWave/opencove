@@ -1,7 +1,11 @@
 import React, { useId, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Handle, Position } from '@xyflow/react'
-import type { AgentSessionSummary } from '@shared/contracts/dto'
+import type {
+  AgentHookInstallState,
+  AgentSessionSummary,
+  TerminalSessionStateSource,
+} from '@shared/contracts/dto'
 import { TerminalNodeHeader } from './TerminalNodeHeader'
 import { TerminalNodeFindBar } from './TerminalNodeFindBar'
 import { NodeResizeHandles } from '../shared/NodeResizeHandles'
@@ -23,6 +27,8 @@ interface TerminalNodeFrameProps {
   isSelected: boolean
   isDragging: boolean
   status: AgentRuntimeStatus | null
+  agentStateSource: TerminalSessionStateSource | null
+  agentHookInstallState: AgentHookInstallState | null
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null
   sessionId: string
@@ -70,6 +76,8 @@ export function TerminalNodeFrame({
   isSelected,
   isDragging,
   status,
+  agentStateSource,
+  agentHookInstallState,
   directoryMismatch,
   lastError,
   sessionId,
@@ -108,6 +116,8 @@ export function TerminalNodeFrame({
   return (
     <div
       className={`terminal-node nowheel ${hasSelectedDragSurface ? 'terminal-node--selected-surface' : ''}`.trim()}
+      data-agent-state-source={agentStateSource ?? undefined}
+      data-agent-hook-install-state={agentHookInstallState ?? undefined}
       style={sizeStyle}
       onPointerDownCapture={handleTerminalBodyPointerDownCapture}
       onPointerMoveCapture={handleTerminalBodyPointerMoveCapture}
@@ -177,6 +187,7 @@ export function TerminalNodeFrame({
         fixedTitlePrefix={fixedTitlePrefix}
         kind={kind}
         status={status}
+        agentHookInstallState={agentHookInstallState}
         labelColor={labelColor ?? null}
         agentExecutionDirectory={agentExecutionDirectory}
         agentResumeSessionId={agentResumeSessionId}

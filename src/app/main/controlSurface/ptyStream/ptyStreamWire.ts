@@ -1,6 +1,9 @@
 import type { WebSocket } from 'ws'
 import type { PtyStreamControllerDto, PtyStreamRole } from './ptyStreamTypes'
-import type { TerminalGeometryCommitResult } from '../../../../shared/contracts/dto'
+import type {
+  TerminalGeometryCommitResult,
+  TerminalSessionStateEvent,
+} from '../../../../shared/contracts/dto'
 
 const WS_BACKPRESSURE_CLOSE_THRESHOLD_BYTES = 8_000_000
 
@@ -138,11 +141,10 @@ export function sendPtyResizeResult(ws: WebSocket, result: TerminalGeometryCommi
   sendJson(ws, { type: 'resize_result', ...result })
 }
 
-export function sendPtyState(ws: WebSocket, sessionId: string, state: 'working' | 'standby'): void {
+export function sendPtyState(ws: WebSocket, event: TerminalSessionStateEvent): void {
   sendJson(ws, {
     type: 'state',
-    sessionId,
-    state,
+    ...event,
   })
 }
 

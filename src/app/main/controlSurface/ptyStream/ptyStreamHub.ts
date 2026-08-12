@@ -5,7 +5,7 @@ import type {
   ListSessionsResult,
   PresentationSnapshotTerminalResult,
   TerminalSessionMetadataEvent,
-  TerminalSessionState,
+  TerminalSessionStateEvent,
   TerminalGeometryCommitResult,
 } from '../../../../shared/contracts/dto'
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
@@ -150,17 +150,18 @@ export class PtyStreamHub {
     session.presentationSession.resize(metadata.cols, metadata.rows)
   }
 
-  public registerSessionAgentState(options: {
-    sessionId: string
-    state: TerminalSessionState
-  }): void {
+  public registerSessionAgentState(options: TerminalSessionStateEvent): void {
     const session = this.ensureSession(options.sessionId)
-    if (session.agentState === options.state) {
+    if (
+      session.agentState?.state === options.state &&
+      session.agentState.source === options.source &&
+      session.agentState.hookInstallState === options.hookInstallState
+    ) {
       return
     }
 
-    session.agentState = options.state
-    this.broadcastState(options.sessionId, options.state)
+    session.agentState = options
+    this.broadcastState(options)
   }
 
   public registerSessionAgentMetadata(metadata: TerminalSessionMetadataEvent): void {
@@ -375,12 +376,11 @@ export class PtyStreamHub {
     })
   }
 
-  private broadcastState(sessionId: string, state: TerminalSessionState): void {
+  private broadcastState(event: TerminalSessionStateEvent): void {
     broadcastState({
       sessions: this.sessions,
       clients: this.clients,
-      sessionId,
-      state,
+      event,
     })
   }
 

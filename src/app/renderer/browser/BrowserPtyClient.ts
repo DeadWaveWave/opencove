@@ -28,6 +28,7 @@ import {
   normalizeBrowserPtyNonNegativeInt,
   normalizeBrowserPtyPositiveInt,
   normalizeBrowserPtySessionState,
+  normalizeBrowserPtyStateMetadata,
 } from './BrowserPtyWire'
 
 type UnsubscribeFn = () => void
@@ -230,6 +231,7 @@ export class BrowserPtyClient {
       }
 
       const eventPayload: TerminalSessionStateEvent = { sessionId, state }
+      Object.assign(eventPayload, normalizeBrowserPtyStateMetadata(record))
       this.latestStateBySessionId.set(sessionId, eventPayload)
       emitBrowserPtyEvent(this.stateListeners, eventPayload)
       return

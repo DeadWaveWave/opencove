@@ -2,8 +2,12 @@ import { useEffect, type MutableRefObject } from 'react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { Node } from '@xyflow/react'
 import { resolveObservedResumeSessionBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
-import type { AgentSessionSummary, TerminalSessionMetadataEvent } from '@shared/contracts/dto'
-import type { AgentRuntimeStatus, TerminalNodeData } from '../../../types'
+import type {
+  AgentSessionSummary,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+} from '@shared/contracts/dto'
+import type { TerminalNodeData } from '../../../types'
 import {
   applyAgentSessionTitleToNodes,
   isAgentNodeAwaitingSessionTitle,
@@ -11,10 +15,11 @@ import {
   loadAgentSessionTitle,
   resolveAgentSessionTitleSyncTarget,
 } from '../../../utils/agentSessionTitleSync'
+import { projectAgentRuntimeObservation } from '../../../utils/agentRuntimeObservation'
 
 export function applyAgentStateToNodes(
   prevNodes: Node<TerminalNodeData>[],
-  event: { sessionId: string; state: 'working' | 'standby' },
+  event: TerminalSessionStateEvent,
 ): { nextNodes: Node<TerminalNodeData>[]; didChange: boolean } {
   let didChange = false
 
@@ -23,27 +28,13 @@ export function applyAgentStateToNodes(
       return node
     }
 
-    if (
-      node.data.status === 'failed' ||
-      node.data.status === 'stopped' ||
-      node.data.status === 'exited'
-    ) {
-      return node
-    }
-
-    const nextStatus: AgentRuntimeStatus = event.state === 'standby' ? 'standby' : 'running'
-    if (node.data.status === nextStatus) {
+    const projected = projectAgentRuntimeObservation(node.data, event)
+    if (!projected) {
       return node
     }
 
     didChange = true
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        status: nextStatus,
-      },
-    }
+    return { ...node, data: projected.data }
   })
 
   return {

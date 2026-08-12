@@ -28,7 +28,13 @@ type PtyStreamMessage =
       reason?: string
       revision?: number
     }
-  | { type: 'state'; sessionId: string; state?: string }
+  | {
+      type: 'state'
+      sessionId: string
+      state?: string
+      source?: string
+      hookInstallState?: string
+    }
   | {
       type: 'metadata'
       sessionId: string
@@ -72,8 +78,8 @@ function normalizeOptionalRawString(value: unknown): string | null {
   return typeof value === 'string' ? value : null
 }
 
-function normalizeTerminalSessionState(value: unknown): 'working' | 'standby' | null {
-  if (value === 'working' || value === 'standby') {
+function normalizeTerminalSessionState(value: unknown): 'working' | 'waiting' | 'standby' | null {
+  if (value === 'working' || value === 'waiting' || value === 'standby') {
     return value
   }
 
@@ -303,6 +309,22 @@ export function createRemotePtyStreamMessageHandler(options: {
       }
 
       const eventPayload: TerminalSessionStateEvent = { sessionId, state }
+      if (
+        message.source === 'launch' ||
+        message.source === 'session_file' ||
+        message.source === 'claude_hook'
+      ) {
+        eventPayload.source = message.source
+      }
+      if (
+        message.hookInstallState === 'installed' ||
+        message.hookInstallState === 'partial' ||
+        message.hookInstallState === 'not_installed' ||
+        message.hookInstallState === 'error' ||
+        message.hookInstallState === 'skipped'
+      ) {
+        eventPayload.hookInstallState = message.hookInstallState
+      }
       options.sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)
       options.externalStateListeners.forEach(listener => listener(eventPayload))
       return

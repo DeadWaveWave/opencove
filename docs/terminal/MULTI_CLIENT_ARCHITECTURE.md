@@ -37,7 +37,7 @@ Key implementation files:
 | PTY geometry | Worker geometry transaction | controller request -> runtime ACK -> presentation commit |
 | Terminal recovery generation/archive/binding/checkpoint | Worker terminal recovery owner | reconcile/output checkpoint/atomic retire/two-phase shutdown drain |
 | Terminal agent session binding | Workspace persistence | explicit `provider` + resume identity record; never a durable node-kind rewrite |
-| Terminal agent overlay and run-state | Renderer workspace runtime | projection from the binding plus watched session state; never terminal presentation truth |
+| Terminal agent overlay and run-state | Renderer workspace runtime | projection from the binding plus hook/session-file runtime observation; never terminal presentation or durable node truth |
 | Retrofitted agent session-state watcher | Renderer overlay lifecycle + Worker terminal session manager | attach once per bound live session; dispose on drop-back, node removal, or renderer owner teardown |
 | Renderer backend health | client | local rebuild/resync |
 | Visible output and dirty rows | xterm parser/renderer | ordered PTY bytes; never a geometry write path |

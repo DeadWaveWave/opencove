@@ -5,6 +5,7 @@ import {
   updateWorkspacesWithAgentRunState,
 } from '../../../src/app/renderer/shell/hooks/usePtyWorkspaceRuntimeSync'
 import { applyAgentMetadataToNodes } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
+import { toPersistedState } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/toPersistedState'
 
 function createAgentNode({
   resumeSessionId,
@@ -93,6 +94,72 @@ describe('agent resume metadata binding', () => {
     expect(result.durableDidChange).toBe(false)
     expect(result.nextWorkspaces[0]?.nodes[0]?.data.kind).toBe('terminal')
     expect(result.nextWorkspaces[0]?.nodes[0]?.data.agentOverlay?.status).toBe('standby')
+  })
+
+  it('keeps authoritative waiting and hook health in runtime-only observation state', () => {
+    const node = createAgentNode({ resumeSessionId: null, resumeSessionIdVerified: false })
+    const workspace = {
+      id: 'workspace-1',
+      name: 'Workspace',
+      path: '/tmp/workspace',
+      nodes: [node],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      isMinimapVisible: true,
+      spaces: [],
+      activeSpaceId: null,
+      spaceArchiveRecords: [],
+    } as never
+
+    const result = updateWorkspacesWithAgentRunState({
+      workspaces: [workspace],
+      sessionId: 'runtime-1',
+      state: 'waiting',
+      source: 'claude_hook',
+      hookInstallState: 'installed',
+    })
+
+    expect(result.durableDidChange).toBe(false)
+    expect(result.nextWorkspaces[0]?.nodes[0]?.data.status).toBe('running')
+    expect(result.nextWorkspaces[0]?.nodes[0]?.data.agentRuntimeObservation).toEqual({
+      status: 'waiting',
+      source: 'claude_hook',
+      hookInstallState: 'installed',
+    })
+    const persistedNode = toPersistedState(result.nextWorkspaces, 'workspace-1').workspaces[0]
+      ?.nodes[0]
+    expect(persistedNode?.status).toBe('running')
+    expect(persistedNode).not.toHaveProperty('agentRuntimeObservation')
+  })
+
+  it('surfaces degraded fallback while preserving session-file durable behavior', () => {
+    const node = createAgentNode({ resumeSessionId: null, resumeSessionIdVerified: false })
+    const workspace = {
+      id: 'workspace-1',
+      name: 'Workspace',
+      path: '/tmp/workspace',
+      nodes: [node],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      isMinimapVisible: true,
+      spaces: [],
+      activeSpaceId: null,
+      spaceArchiveRecords: [],
+    } as never
+
+    const result = updateWorkspacesWithAgentRunState({
+      workspaces: [workspace],
+      sessionId: 'runtime-1',
+      state: 'standby',
+      source: 'session_file',
+      hookInstallState: 'error',
+    })
+
+    expect(result.durableDidChange).toBe(true)
+    expect(result.nextWorkspaces[0]?.nodes[0]?.data.status).toBe('standby')
+    expect(result.nextWorkspaces[0]?.nodes[0]?.data.agentRuntimeObservation).toEqual({
+      status: 'standby',
+      source: 'session_file',
+      hookInstallState: 'error',
+    })
   })
 
   it('ignores runtime metadata that conflicts with a verified durable binding', () => {

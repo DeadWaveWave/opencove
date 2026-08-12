@@ -6,7 +6,25 @@ import {
   normalizeAgentSettings,
   type AgentProvider,
 } from '../../../../contexts/settings/domain/agentSettings'
-import type { ExecutionContextDto, WorkerEndpointKindDto } from '../../../../shared/contracts/dto'
+import type {
+  AgentLaunchMode,
+  ExecutionContextDto,
+  WorkerEndpointKindDto,
+} from '../../../../shared/contracts/dto'
+
+export const LOCAL_AGENT_SERVER_HOSTNAME = '127.0.0.1'
+
+export function resolveAgentPtySpawnState(
+  provider: AgentProvider,
+  prompt: string,
+  mode: AgentLaunchMode,
+) {
+  return {
+    agentProvider: provider,
+    initialAgentState:
+      mode === 'new' && prompt.trim().length > 0 ? ('working' as const) : ('standby' as const),
+  }
+}
 
 function normalizeOptionalString(value: unknown): string | null {
   if (value === null || value === undefined) {

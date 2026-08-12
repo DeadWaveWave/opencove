@@ -1,5 +1,6 @@
 import type { SessionStateWatcherStartInput } from '../../../../contexts/terminal/presentation/main-ipc/sessionStateWatcher'
 import type {
+  AgentProviderId,
   ListTerminalProfilesResult,
   PresentationSnapshotTerminalResult,
   ResizeTerminalInput,
@@ -17,6 +18,8 @@ export interface ControlSurfacePtyRuntime {
     command: string
     args: string[]
     env?: NodeJS.ProcessEnv
+    agentProvider?: AgentProviderId
+    initialAgentState?: 'working' | 'standby'
   }) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string) => void
   resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>

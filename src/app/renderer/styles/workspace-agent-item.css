@@ -223,6 +223,10 @@ button.workspace-agent-item:focus-visible {
   --workspace-agent-status-ring: var(--cove-warning);
 }
 
+.workspace-agent-item__provider--status-waiting {
+  --workspace-agent-status-ring: var(--cove-info);
+}
+
 .workspace-agent-item__headline {
   flex: 1 1 auto;
   display: flex;

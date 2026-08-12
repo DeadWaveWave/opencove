@@ -184,11 +184,17 @@ export interface TerminalResyncEvent {
   recovery: 'presentation_snapshot'
 }
 
-export type TerminalSessionState = 'working' | 'standby'
+export type TerminalSessionState = 'working' | 'waiting' | 'standby'
+
+export type TerminalSessionStateSource = 'launch' | 'session_file' | 'claude_hook'
+
+export type AgentHookInstallState = 'installed' | 'partial' | 'not_installed' | 'error' | 'skipped'
 
 export interface TerminalSessionStateEvent {
   sessionId: string
   state: TerminalSessionState
+  source?: TerminalSessionStateSource
+  hookInstallState?: AgentHookInstallState
 }
 
 export interface TerminalSessionMetadataEvent {

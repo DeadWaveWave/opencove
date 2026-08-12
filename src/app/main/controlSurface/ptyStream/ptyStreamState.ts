@@ -3,7 +3,7 @@ import type { ControlSurfaceSessionKind } from '../../../../shared/contracts/dto
 import type { TerminalPresentationSession } from '../../../../platform/terminal/presentation/TerminalPresentationSession'
 import type {
   TerminalSessionMetadataEvent,
-  TerminalSessionState,
+  TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
 import type { PtyStreamClientKind, PtyStreamRole } from './ptyStreamTypes'
 
@@ -34,7 +34,7 @@ export type SessionState = {
   chunks: SessionChunk[]
   totalBytes: number
   truncated: boolean
-  agentState: TerminalSessionState | null
+  agentState: TerminalSessionStateEvent | null
   agentMetadata: TerminalSessionMetadataEvent | null
   pendingChunks: string[]
   pendingChars: number

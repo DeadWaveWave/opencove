@@ -5,10 +5,12 @@ import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColo
 import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { SpaceBoundary } from '@shared/types/spaceBoundary'
 import type {
+  AgentHookInstallState,
   CanvasImageMimeType,
   GitHubPullRequestSummary,
   TerminalPtyGeometry,
   TerminalRuntimeKind,
+  TerminalSessionStateSource,
   WebsiteWindowSessionMode,
   BrowserMode,
 } from '@shared/contracts/dto'
@@ -76,6 +78,12 @@ export interface TerminalAgentOverlay {
   provider: AgentProvider
   status: AgentRuntimeStatus
   startedAtMs: number
+}
+
+export interface AgentRuntimeObservation {
+  status: 'running' | 'waiting' | 'standby'
+  source: TerminalSessionStateSource
+  hookInstallState: AgentHookInstallState | null
 }
 
 export interface TaskNodeData {
@@ -155,6 +163,7 @@ export interface TerminalNodeData {
   terminalProviderHint?: AgentProvider | null
   terminalAgentBinding?: TerminalAgentSessionBinding | null
   agentOverlay?: TerminalAgentOverlay | null
+  agentRuntimeObservation?: AgentRuntimeObservation | null
   labelColorOverride?: NodeLabelColorOverride
   sidebarSortOrder?: number
   title: string

@@ -1,6 +1,6 @@
 import { useCallback, useState, type JSX, type PointerEvent } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { AgentSessionSummary } from '@shared/contracts/dto'
+import type { AgentHookInstallState, AgentSessionSummary } from '@shared/contracts/dto'
 import { Copy, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
@@ -13,6 +13,7 @@ interface TerminalNodeHeaderProps {
   fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
   status: AgentRuntimeStatus | null
+  agentHookInstallState?: AgentHookInstallState | null
   labelColor?: LabelColor | null
   agentExecutionDirectory?: string | null
   agentResumeSessionId?: string | null
@@ -32,6 +33,7 @@ export function TerminalNodeHeader({
   fixedTitlePrefix = null,
   kind,
   status,
+  agentHookInstallState = null,
   labelColor,
   agentExecutionDirectory,
   agentResumeSessionId,
@@ -78,6 +80,8 @@ export function TerminalNodeHeader({
     switch (status) {
       case 'standby':
         return t('agentRuntime.standby')
+      case 'waiting':
+        return t('agentRuntime.waiting')
       case 'exited':
         return t('agentRuntime.exited')
       case 'failed':
@@ -139,9 +143,20 @@ export function TerminalNodeHeader({
             </span>
           ) : null}
           {isAgentNode ? (
-            <span className={`terminal-node__status ${getStatusClassName(status)}`}>
-              {statusLabel}
-            </span>
+            <>
+              {agentHookInstallState && agentHookInstallState !== 'installed' ? (
+                <span
+                  className="terminal-node__badge terminal-node__badge--warning"
+                  data-testid="agent-hook-degraded"
+                  title={t('agentRuntime.hookDegradedDetail')}
+                >
+                  {t('agentRuntime.hookDegraded')}
+                </span>
+              ) : null}
+              <span className={`terminal-node__status ${getStatusClassName(status)}`}>
+                {statusLabel}
+              </span>
+            </>
           ) : null}
         </div>
       ) : null}

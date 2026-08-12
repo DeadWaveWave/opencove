@@ -56,6 +56,8 @@ export function TerminalNode({
   isSelected = false,
   isDragging = false,
   status,
+  agentStateSource = null,
+  agentHookInstallState = null,
   directoryMismatch,
   lastError,
   position,
@@ -463,6 +465,8 @@ export function TerminalNode({
       isSelected={hasSelectedDragSurface}
       isDragging={isDragging}
       status={status}
+      agentStateSource={agentStateSource}
+      agentHookInstallState={agentHookInstallState}
       directoryMismatch={directoryMismatch}
       lastError={lastError}
       sessionId={sessionId}

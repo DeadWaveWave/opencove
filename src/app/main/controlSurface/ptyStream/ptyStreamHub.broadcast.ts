@@ -1,7 +1,7 @@
 import type {
   ListSessionsResult,
   TerminalSessionMetadataEvent,
-  TerminalSessionState,
+  TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
 import type { ClientState, SessionState } from './ptyStreamState'
 import {
@@ -168,15 +168,14 @@ export function broadcastControlChanged(options: {
 export function broadcastState(options: {
   sessions: Map<string, SessionState>
   clients: Map<string, ClientState>
-  sessionId: string
-  state: TerminalSessionState
+  event: TerminalSessionStateEvent
 }): void {
-  if (!options.sessions.has(options.sessionId) || options.clients.size === 0) {
+  if (!options.sessions.has(options.event.sessionId) || options.clients.size === 0) {
     return
   }
 
   for (const client of options.clients.values()) {
-    sendPtyState(client.ws, options.sessionId, options.state)
+    sendPtyState(client.ws, options.event)
   }
 }
 

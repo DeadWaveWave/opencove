@@ -107,8 +107,8 @@ export function createPtyStreamService(options: {
     }
   })
 
-  const disposeStateListener = options.ptyRuntime.onState?.(({ sessionId, state }) => {
-    hub.registerSessionAgentState({ sessionId, state })
+  const disposeStateListener = options.ptyRuntime.onState?.(event => {
+    hub.registerSessionAgentState(event)
   })
 
   const disposeMetadataListener = options.ptyRuntime.onMetadata?.(metadata => {

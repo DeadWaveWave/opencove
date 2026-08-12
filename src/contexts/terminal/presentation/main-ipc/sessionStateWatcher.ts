@@ -15,12 +15,14 @@ import { resolveSessionFilePath } from '../../../agent/infrastructure/watchers/S
 import { SessionTurnStateWatcher } from '../../../agent/infrastructure/watchers/SessionTurnStateWatcher'
 import { resolveDiscoveredSessionId } from './sessionStateWatcherDiscovery'
 import { shouldBroadcastOptimisticWorkingFromInteraction } from './sessionStateWatcherInteraction'
-import { isJsonlProvider, logSessionStateWatcherDiagnostics } from './sessionStateWatcherShared'
+import {
+  isJsonlProvider,
+  logSessionStateWatcherDiagnostics,
+  resolveSessionStateWatcherRetryDelay,
+} from './sessionStateWatcherShared'
 
 const SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS = 1_500
 const SESSION_STATE_WATCHER_FILE_TIMEOUT_MS = 1_500
-const SESSION_STATE_WATCHER_RETRY_BASE_DELAY_MS = 250
-const SESSION_STATE_WATCHER_RETRY_MAX_DELAY_MS = 15_000
 const SESSION_STATE_WATCHER_RETRY_MAX_IDLE_MS = 30 * 60_000
 
 export interface SessionStateWatcherStartInput {
@@ -86,15 +88,6 @@ export function createSessionStateWatcherController({
 
     clearTimeout(timer)
     stateWatcherRetryTimerBySession.delete(sessionId)
-  }
-
-  const resolveSessionStateWatcherRetryDelay = (attempt: number): number => {
-    if (attempt <= 0) {
-      return SESSION_STATE_WATCHER_RETRY_BASE_DELAY_MS
-    }
-
-    const delay = SESSION_STATE_WATCHER_RETRY_BASE_DELAY_MS * 2 ** attempt
-    return Math.min(delay, SESSION_STATE_WATCHER_RETRY_MAX_DELAY_MS)
   }
 
   const broadcastSessionMetadata = (sessionId: string, resumeSessionId: string | null): void => {
@@ -173,7 +166,10 @@ export function createSessionStateWatcherController({
     broadcastSessionMetadata(sessionId, resumeSessionId)
   }
 
-  const broadcastSessionState = (sessionId: string, state: 'working' | 'standby'): void => {
+  const broadcastSessionState = (
+    sessionId: string,
+    state: 'working' | 'waiting' | 'standby',
+  ): void => {
     const eventPayload: TerminalSessionStateEvent = {
       sessionId,
       state,

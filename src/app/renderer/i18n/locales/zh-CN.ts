@@ -74,6 +74,7 @@ export const zhCN = {
     collapseProjectAgents: '折叠项目 Agent 列表',
     status: {
       working: '运行中',
+      waiting: '等待中',
       standby: '待命',
     },
     terminals_one: '{{count}} 个终端',
@@ -227,7 +228,10 @@ export const zhCN = {
   performanceMonitor: zhCNPerformanceMonitor,
   agentRuntime: {
     working: '运行中',
+    waiting: '等待中',
     standby: '待命',
+    hookDegraded: '降级',
+    hookDegradedDetail: 'Agent Hook 不可用；正在使用会话活动状态。',
     exited: '已退出',
     failed: '失败',
     stopped: '已停止',

@@ -3,7 +3,6 @@ import { randomBytes } from 'node:crypto'
 import { createAppErrorDescriptor } from '../../../shared/errors/appError'
 import { createControlSurface } from './controlSurface'
 import { normalizeInvokeRequest } from './validate'
-import type { ControlSurfaceContext } from './types'
 import { renderWorkerWebShellPage } from './workerWebShellPage'
 import { tryResolveWebUiResponse } from './webUiAssets'
 import { WebSessionManager } from './http/webSessionManager'
@@ -27,6 +26,7 @@ import { createEndpointHealthService } from './topology/endpointHealthService'
 import { createControlSurfaceTerminalRecoveryRuntime } from './terminalRecovery/controlSurfaceTerminalRecoveryRuntime'
 import { TerminalRuntimeAvailability } from '../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { initializeTerminalRuntimeAvailability } from './terminalRecovery/terminalRuntimeStartup'
+import { createControlSurfaceHttpServerContext } from './controlSurfaceHttpServerContext'
 import {
   CONTROL_SURFACE_CONNECTION_VERSION,
   normalizeControlSurfaceAppVersion,
@@ -54,29 +54,11 @@ export function registerControlSurfaceHttpServer(
   const connectionFileName = options.connectionFileName ?? DEFAULT_CONTROL_SURFACE_CONNECTION_FILE
   const webUiPasswordHash = options.webUiPasswordHash ?? null
   const webSessions = new WebSessionManager()
-  const ctx: ControlSurfaceContext = {
-    now: () => new Date(),
-    capabilities: {
-      webShell: options.enableWebShell === true,
-      sync: {
-        state: true,
-        events: true,
-      },
-      sessionStreaming: {
-        enabled: true,
-        ptyProtocolVersion: PTY_STREAM_PROTOCOL_VERSION,
-        replayWindowMaxBytes: PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES,
-        roles: {
-          viewer: true,
-          controller: true,
-        },
-        webAuth: {
-          ticketToCookie: true,
-          cookieSession: true,
-        },
-      },
-    },
-  }
+  const ctx = createControlSurfaceHttpServerContext({
+    enableWebShell: options.enableWebShell === true,
+    ptyProtocolVersion: PTY_STREAM_PROTOCOL_VERSION,
+    replayWindowMaxBytes: PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES,
+  })
 
   const managedSshRuntime = createManagedSshEndpointRuntime({ appVersion })
   const topology = createWorkerTopologyStore({
@@ -93,6 +75,7 @@ export function registerControlSurfaceHttpServer(
     topology,
     disposeLocalRuntime: options.ownsPtyRuntime === true,
   })
+  const claudeHookStart = options.claudeHookChannel?.start() ?? Promise.resolve()
 
   const ptyStreamService = createPtyStreamService({
     token,
@@ -431,6 +414,7 @@ export function registerControlSurfaceHttpServer(
       }
 
       disposePromise = (async () => {
+        await claudeHookStart.catch(() => undefined)
         try {
           await pendingConnectionWrite
         } catch {
@@ -463,6 +447,12 @@ export function registerControlSurfaceHttpServer(
         // recovery cutoff. Existing PTY stream clients are frozen first so server.close can drain.
         ptyStreamService.freezeIngress()
         await new Promise<void>(resolveClose => server.close(() => resolveClose()))
+
+        try {
+          await options.claudeHookChannel?.dispose()
+        } catch {
+          // ignore
+        }
 
         await terminalRecovery.drainBeforeShutdown()
 

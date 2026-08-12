@@ -4,6 +4,8 @@ export function getStatusClassName(status: AgentRuntimeStatus | null): string {
   switch (status) {
     case 'standby':
       return 'terminal-node__status--standby'
+    case 'waiting':
+      return 'terminal-node__status--waiting'
     case 'exited':
       return 'terminal-node__status--exited'
     case 'failed':

@@ -7,7 +7,12 @@ import type {
 } from '../types'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
-import type { AgentSessionSummary, TerminalPtyGeometry } from '@shared/contracts/dto'
+import type {
+  AgentHookInstallState,
+  AgentSessionSummary,
+  TerminalPtyGeometry,
+  TerminalSessionStateSource,
+} from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { TerminalThemeMode } from './terminalNode/theme'
 
@@ -36,6 +41,8 @@ export interface TerminalNodeProps {
   isDragging?: boolean
   terminalGeometry?: TerminalPtyGeometry | null
   status: AgentRuntimeStatus | null
+  agentStateSource?: TerminalSessionStateSource | null
+  agentHookInstallState?: AgentHookInstallState | null
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null
   position?: Point

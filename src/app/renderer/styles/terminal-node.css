@@ -384,6 +384,12 @@
   border: 1px solid var(--cove-warning-border);
 }
 
+.terminal-node__status--waiting {
+  background: var(--cove-info-surface);
+  color: var(--cove-info);
+  border: 1px solid var(--cove-info-border);
+}
+
 .terminal-node__status--exited,
 .terminal-node__status--stopped {
   background: var(--cove-control);

@@ -4,6 +4,7 @@ import type {
   TerminalNodeData,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
+import type { AgentHookInstallState, TerminalSessionStateSource } from '@shared/contracts/dto'
 import { resolveObservedResumeSessionBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
 import { truncateScrollback } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
 import { useScrollbackStore } from '@contexts/workspace/presentation/renderer/store/useScrollbackStore'
@@ -12,10 +13,7 @@ import { getPtyEventHub } from '../utils/ptyEventHub'
 import { useAppStore } from '../store/useAppStore'
 import { isAgentTreatedNode } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 import { createTerminalAgentWatcherOwner } from '../utils/terminalAgentWatcherOwner'
-
-function shouldIgnoreAgentStatusUpdate(status: TerminalNodeData['status']): boolean {
-  return status === 'failed' || status === 'stopped' || status === 'exited'
-}
+import { projectAgentRuntimeObservation } from '@contexts/workspace/presentation/renderer/utils/agentRuntimeObservation'
 
 function normalizeResumeSessionId(rawValue: unknown): string | null {
   if (typeof rawValue !== 'string') {
@@ -70,32 +68,52 @@ export function updateWorkspacesWithAgentRunState({
   workspaces,
   sessionId,
   state,
+  source = 'session_file',
+  hookInstallState = null,
 }: {
   workspaces: WorkspaceState[]
   sessionId: string
-  state: 'working' | 'standby'
+  state: 'working' | 'waiting' | 'standby'
+  source?: TerminalSessionStateSource
+  hookInstallState?: AgentHookInstallState | null
 }): { nextWorkspaces: WorkspaceState[]; didChange: boolean; durableDidChange: boolean } {
   let durableDidChange = false
   const result = updateWorkspacesWithAgentTreatedNodes(workspaces, {
     sessionId,
     updateNode: node => {
-      const nextStatus = state === 'standby' ? 'standby' : 'running'
+      const nextStatus: 'running' | 'waiting' | 'standby' =
+        state === 'standby' ? 'standby' : state === 'waiting' ? 'waiting' : 'running'
+      const nextObservation = { status: nextStatus, source, hookInstallState }
       if (node.data.kind === 'terminal') {
         const overlay = node.data.agentOverlay
-        if (!overlay || overlay.status === nextStatus) {
+        if (
+          !overlay ||
+          (overlay.status === nextStatus &&
+            node.data.agentRuntimeObservation?.source === source &&
+            node.data.agentRuntimeObservation.hookInstallState === hookInstallState)
+        ) {
           return null
         }
         return {
           ...node,
-          data: { ...node.data, agentOverlay: { ...overlay, status: nextStatus } },
+          data: {
+            ...node.data,
+            agentOverlay: { ...overlay, status: nextStatus },
+            agentRuntimeObservation: nextObservation,
+          },
         }
       }
 
-      if (shouldIgnoreAgentStatusUpdate(node.data.status) || node.data.status === nextStatus) {
+      const projected = projectAgentRuntimeObservation(node.data, {
+        state,
+        source,
+        hookInstallState,
+      })
+      if (!projected) {
         return null
       }
-      durableDidChange = true
-      return { ...node, data: { ...node.data, status: nextStatus } }
+      durableDidChange ||= projected.durableDidChange
+      return { ...node, data: projected.data }
     },
   })
 
@@ -375,6 +393,8 @@ export function usePtyWorkspaceRuntimeSync({
           workspaces: previous,
           sessionId: event.sessionId,
           state: event.state,
+          source: event.source,
+          hookInstallState: event.hookInstallState,
         })
 
         didChange = result.didChange

@@ -167,7 +167,9 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       terminalThemeMode="sync-with-ui"
       isSelected={selected === true}
       isDragging={dragging === true}
-      status={data.agentOverlay?.status ?? data.status}
+      status={data.agentRuntimeObservation?.status ?? data.agentOverlay?.status ?? data.status}
+      agentStateSource={data.agentRuntimeObservation?.source ?? null}
+      agentHookInstallState={data.agentRuntimeObservation?.hookInstallState ?? null}
       directoryMismatch={
         data.kind === 'agent' &&
         data.agent?.expectedDirectory &&

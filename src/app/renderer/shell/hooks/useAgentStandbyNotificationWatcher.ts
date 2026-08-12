@@ -110,6 +110,10 @@ export function useAgentStandbyNotificationWatcher({
         return
       }
 
+      if (event.state === 'waiting') {
+        return
+      }
+
       const resolved = resolveAgentNodeForSessionId(sessionId)
       if (!resolved) {
         return
