@@ -60,6 +60,22 @@ async function launchClaudeTask(
   return { sessionId, agentNode }
 }
 
+async function waitForInitialHookWorkingSignal(
+  window: Awaited<ReturnType<typeof launchApp>>['window'],
+  sessionId: string,
+): Promise<void> {
+  // The initial hook `working` arrives asynchronously (hook install -> PTY spawn -> agent start ->
+  // first hook POST). Until it lands, session_file legitimately wins arbitration, so gate the
+  // first claude_hook assertion on the real hook signal instead of racing a cold CI start.
+  await expect
+    .poll(async () => {
+      return await window.evaluate(id => {
+        return window.__opencoveAgentRunStateTestApi?.getSession(id)?.lastHookSignal?.state ?? null
+      }, sessionId)
+    })
+    .toBe('working')
+}
+
 test.describe('Workspace Canvas - Claude hook channel', () => {
   test('projects authoritative working, waiting, and standby without tool-call false positives', async () => {
     const { electronApp, window } = await launchApp({
@@ -75,6 +91,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       const status = agentNode.locator('.terminal-node__status')
       const sidebarStatus = window.locator('.workspace-agent-item__status--agent').first()
 
+      await waitForInitialHookWorkingSignal(window, sessionId)
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
       await expect(status).toHaveText('Working')
       await writeToPty(window, { sessionId, data: '<test-hook-tool>\r' })
@@ -127,6 +144,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       const { sessionId, agentNode } = await launchClaudeTask(window)
       const status = agentNode.locator('.terminal-node__status')
 
+      await waitForInitialHookWorkingSignal(window, sessionId)
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
       await expect(status).toHaveText('Working')
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })
