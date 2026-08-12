@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createTerminalAgentWatcherOwner } from '../../../src/app/renderer/shell/utils/terminalAgentWatcherOwner'
 
-function createWorkspace(options: { overlay: boolean }) {
+function createWorkspace(options: { overlay: boolean; provider?: 'claude-code' | 'codex' }) {
+  const provider = options.provider ?? 'codex'
   return {
     id: 'workspace-1',
     name: 'Workspace',
@@ -39,13 +40,13 @@ function createWorkspace(options: { overlay: boolean }) {
           website: null,
           terminalAgentBinding: options.overlay
             ? {
-                provider: 'codex',
+                provider,
                 resumeSessionId: null,
                 resumeSessionIdVerified: false,
               }
             : null,
           agentOverlay: options.overlay
-            ? { provider: 'codex', status: 'running', startedAtMs: 1_723_456_789_000 }
+            ? { provider, status: 'running', startedAtMs: 1_723_456_789_000 }
             : null,
         },
       },
@@ -54,12 +55,13 @@ function createWorkspace(options: { overlay: boolean }) {
 }
 
 describe('terminal agent watcher owner', () => {
-  it('INV-3 attaches once and disposes on drop-back and node removal', () => {
+  it('INV-3 attaches once and disposes on drop-back and node removal', async () => {
     const invoke = vi.fn(async () => undefined)
     const owner = createTerminalAgentWatcherOwner({ invoke, now: () => 1_723_456_789_000 })
 
     owner.sync([createWorkspace({ overlay: true })])
     owner.sync([createWorkspace({ overlay: true })])
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1))
     expect(invoke).toHaveBeenCalledTimes(1)
     expect(invoke).toHaveBeenNthCalledWith(1, {
       kind: 'command',
@@ -72,6 +74,7 @@ describe('terminal agent watcher owner', () => {
     })
 
     owner.sync([createWorkspace({ overlay: false })])
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2))
     expect(invoke).toHaveBeenNthCalledWith(2, {
       kind: 'command',
       id: 'session.detachAgentStateWatcher',
@@ -79,7 +82,9 @@ describe('terminal agent watcher owner', () => {
     })
 
     owner.sync([createWorkspace({ overlay: true })])
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(3))
     owner.sync([])
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(4))
     expect(invoke).toHaveBeenLastCalledWith({
       kind: 'command',
       id: 'session.detachAgentStateWatcher',
@@ -87,12 +92,14 @@ describe('terminal agent watcher owner', () => {
     })
   })
 
-  it('disposes every watcher still owned by the renderer lifecycle', () => {
+  it('disposes every watcher still owned by the renderer lifecycle', async () => {
     const invoke = vi.fn(async () => undefined)
     const owner = createTerminalAgentWatcherOwner({ invoke, now: () => 1_723_456_789_000 })
 
     owner.sync([createWorkspace({ overlay: true })])
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1))
     owner.dispose()
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2))
 
     expect(invoke).toHaveBeenLastCalledWith({
       kind: 'command',
@@ -112,9 +119,68 @@ describe('terminal agent watcher owner', () => {
     await Promise.resolve()
     owner.sync([createWorkspace({ overlay: true })])
 
-    expect(invoke).toHaveBeenCalledTimes(2)
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2))
     expect(invoke).toHaveBeenLastCalledWith(
       expect.objectContaining({ id: 'session.attachAgentStateWatcher' }),
+    )
+  })
+
+  it('INV-3 serializes drop-back disposal before one fresh cross-provider watcher attach', async () => {
+    const liveWatchers: Array<{ provider: string }> = []
+    let releaseDetach = () => undefined
+    const detachBarrier = new Promise<void>(resolve => {
+      releaseDetach = resolve
+    })
+    const invoke = vi.fn(async request => {
+      if (request.id === 'session.attachAgentStateWatcher') {
+        liveWatchers.push({ provider: request.payload.provider })
+        return
+      }
+      await detachBarrier
+      liveWatchers.length = 0
+    })
+    const owner = createTerminalAgentWatcherOwner({ invoke, now: () => 1_723_456_789_000 })
+
+    owner.sync([createWorkspace({ overlay: true, provider: 'claude-code' })])
+    await vi.waitFor(() => expect(liveWatchers).toEqual([{ provider: 'claude-code' }]))
+
+    owner.sync([createWorkspace({ overlay: false })])
+    owner.sync([createWorkspace({ overlay: true, provider: 'codex' })])
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2))
+    expect(liveWatchers).toEqual([{ provider: 'claude-code' }])
+
+    releaseDetach()
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(3))
+    expect(invoke).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        id: 'session.attachAgentStateWatcher',
+        payload: expect.objectContaining({ provider: 'codex' }),
+      }),
+    )
+    expect(liveWatchers).toEqual([{ provider: 'codex' }])
+  })
+
+  it('does not attach a replacement watcher when disposal fails', async () => {
+    const invoke = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('detach failed'))
+    const owner = createTerminalAgentWatcherOwner({ invoke, now: () => 1_723_456_789_000 })
+
+    owner.sync([createWorkspace({ overlay: true, provider: 'claude-code' })])
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1))
+
+    owner.sync([createWorkspace({ overlay: true, provider: 'codex' })])
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2))
+
+    expect(invoke).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'session.detachAgentStateWatcher' }),
+    )
+    expect(invoke).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'session.attachAgentStateWatcher',
+        payload: expect.objectContaining({ provider: 'codex' }),
+      }),
     )
   })
 })

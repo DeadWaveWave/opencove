@@ -13,6 +13,7 @@ type TerminalClipboardController = {
 type PtyWriteQueue = {
   enqueue: (data: string, encoding?: PtyWriteEncoding) => void
   flush: () => void
+  whenIdle?: () => Promise<void>
 }
 
 type PlatformInfo = {
@@ -360,11 +361,22 @@ export function handleTerminalCustomKeyEvent({
 export function createPtyWriteQueue(write: (payload: PtyWritePayload) => Promise<void>): {
   enqueue: (data: string, encoding?: PtyWriteEncoding) => void
   flush: () => void
+  whenIdle: () => Promise<void>
   dispose: () => void
 } {
   let isDisposed = false
   const pendingWrites: PtyWritePayload[] = []
   let pendingWrite: Promise<void> | null = null
+  let idleWaiters: Array<() => void> = []
+
+  const settleIdleWaiters = (): void => {
+    if (pendingWrite || pendingWrites.length > 0) {
+      return
+    }
+    const waiters = idleWaiters
+    idleWaiters = []
+    waiters.forEach(resolve => resolve())
+  }
 
   const takeNextPayload = (): PtyWritePayload | null => {
     const firstPayload = pendingWrites.shift()
@@ -390,6 +402,7 @@ export function createPtyWriteQueue(write: (payload: PtyWritePayload) => Promise
 
     const nextPayload = takeNextPayload()
     if (!nextPayload) {
+      settleIdleWaiters()
       return
     }
 
@@ -410,10 +423,19 @@ export function createPtyWriteQueue(write: (payload: PtyWritePayload) => Promise
       pendingWrites.push({ data, encoding })
     },
     flush,
+    whenIdle: async () => {
+      if (!pendingWrite && pendingWrites.length === 0) {
+        return
+      }
+      await new Promise<void>(resolve => {
+        idleWaiters.push(resolve)
+      })
+    },
     dispose: () => {
       isDisposed = true
       pendingWrites.length = 0
       pendingWrite = null
+      settleIdleWaiters()
     },
   }
 }

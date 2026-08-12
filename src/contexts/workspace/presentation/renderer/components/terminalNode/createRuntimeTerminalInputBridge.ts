@@ -9,6 +9,7 @@ import { hasRecentTerminalUserInteraction } from './userInteractionWindow'
 export interface RuntimeTerminalInputBridge {
   ptyWriteQueue: ReturnType<typeof createPtyWriteQueue>
   handlePtyOutputChunk: (data: string) => void
+  hydratePtyOutputSnapshot: (data: string) => void
   releaseBufferedUserInput: () => void
   enableTerminalDataForwarding: () => void
   dispose: () => void
@@ -91,6 +92,7 @@ export function createRuntimeTerminalInputBridge({
 
   let isBufferedUserInputGateOpen = !shouldGateInitialUserInput
   let shouldForwardTerminalData = false
+  let isDisposed = false
   const inputModeTracker = createTerminalInputModeTracker({
     onAlternateScreenExit: () => onAgentOverlayExitRef.current?.(),
   })
@@ -133,17 +135,10 @@ export function createRuntimeTerminalInputBridge({
     return true
   }
 
-  const recordCommandInput = (data: string): void => {
-    const commandRunHandler = onCommandRunRef.current
-    if (!commandRunHandler) {
-      return
-    }
-
+  const parseCommandInput = (data: string): string[] => {
     const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
     commandInputStateRef.current = parsed.nextState
-    parsed.commands.forEach(command => {
-      commandRunHandler(command)
-    })
+    return parsed.commands
   }
 
   const forwardUtf8UserInput = (data: string): void => {
@@ -199,12 +194,20 @@ export function createRuntimeTerminalInputBridge({
       return
     }
 
+    const commands = parseCommandInput(data)
     ptyWriteQueue.enqueue(data)
     ptyWriteQueue.flush()
-    if (data.includes('\u0003')) {
-      onAgentOverlayExitRef.current?.()
+    if (commands.length > 0 || data.includes('\u0003')) {
+      void ptyWriteQueue.whenIdle().then(() => {
+        if (isDisposed) {
+          return
+        }
+        if (data.includes('\u0003')) {
+          onAgentOverlayExitRef.current?.()
+        }
+        commands.forEach(command => onCommandRunRef.current?.(command))
+      })
     }
-    recordCommandInput(data)
   }
 
   terminal.attachCustomKeyEventHandler(event =>
@@ -312,6 +315,9 @@ export function createRuntimeTerminalInputBridge({
   return {
     ptyWriteQueue,
     handlePtyOutputChunk: inputModeTracker.handlePtyOutputChunk,
+    hydratePtyOutputSnapshot: data => {
+      inputModeTracker.handlePtyOutputChunk(data, { notifyAlternateScreenExit: false })
+    },
     releaseBufferedUserInput: () => {
       isBufferedUserInputGateOpen = true
       flushBufferedUserInput()
@@ -320,6 +326,7 @@ export function createRuntimeTerminalInputBridge({
       shouldForwardTerminalData = true
     },
     dispose: () => {
+      isDisposed = true
       dataDisposable.dispose()
       binaryDisposable.dispose()
       ptyWriteQueue.dispose()

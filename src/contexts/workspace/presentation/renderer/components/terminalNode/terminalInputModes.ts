@@ -1,5 +1,5 @@
 export interface TerminalInputModeTracker {
-  handlePtyOutputChunk: (data: string) => void
+  handlePtyOutputChunk: (data: string, options?: { notifyAlternateScreenExit?: boolean }) => void
   isBracketedPasteMode: () => boolean
 }
 
@@ -74,7 +74,10 @@ export function createTerminalInputModeTracker(
   let alternateScreenMode = false
   let tail = ''
 
-  const handlePtyOutputChunk = (data: string): void => {
+  const handlePtyOutputChunk = (
+    data: string,
+    handleOptions: { notifyAlternateScreenExit?: boolean } = {},
+  ): void => {
     if (data.length === 0) {
       return
     }
@@ -103,7 +106,11 @@ export function createTerminalInputModeTracker(
           .some(mode => mode === 47 || mode === 1047 || mode === 1049)
       ) {
         const nextAlternateScreenMode = sequence.finalByte === 'h'
-        if (alternateScreenMode && !nextAlternateScreenMode) {
+        if (
+          alternateScreenMode &&
+          !nextAlternateScreenMode &&
+          handleOptions.notifyAlternateScreenExit !== false
+        ) {
           options.onAlternateScreenExit?.()
         }
         alternateScreenMode = nextAlternateScreenMode

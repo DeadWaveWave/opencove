@@ -1,11 +1,19 @@
 import type { ControlSurfaceInvokeRequest } from '@shared/contracts/controlSurface'
+import type { AttachAgentStateWatcherInput } from '@shared/contracts/dto'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { resolveAgentTreatedProvider } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 
 type ControlSurfaceInvoke = (request: ControlSurfaceInvokeRequest) => Promise<unknown>
 
-interface OwnedWatcher {
-  sessionId: string
+interface SessionWatcherOwnership {
+  active: AttachAgentStateWatcherInput | null
+  desired: AttachAgentStateWatcherInput | null
+  reconciling: boolean
+  needsReconcile: boolean
+}
+
+function watcherKey(input: AttachAgentStateWatcherInput | null): string | null {
+  return input ? JSON.stringify(input) : null
 }
 
 export function createTerminalAgentWatcherOwner(options: {
@@ -15,22 +23,67 @@ export function createTerminalAgentWatcherOwner(options: {
   sync: (workspaces: WorkspaceState[]) => void
   dispose: () => void
 } {
-  const ownedBySessionId = new Map<string, OwnedWatcher>()
+  const ownershipBySessionId = new Map<string, SessionWatcherOwnership>()
   const now = options.now ?? Date.now
+  let disposed = false
 
-  const detach = (sessionId: string): void => {
-    ownedBySessionId.delete(sessionId)
-    void options
-      .invoke({
-        kind: 'command',
-        id: 'session.detachAgentStateWatcher',
-        payload: { sessionId },
-      })
-      .catch(() => undefined)
+  const reconcile = (sessionId: string, ownership: SessionWatcherOwnership): void => {
+    if (ownership.reconciling) {
+      ownership.needsReconcile = true
+      return
+    }
+    ownership.reconciling = true
+    ownership.needsReconcile = false
+
+    void (async () => {
+      while (watcherKey(ownership.active) !== watcherKey(ownership.desired)) {
+        if (ownership.active) {
+          try {
+            // eslint-disable-next-line no-await-in-loop -- replacement must wait for disposal
+            await options.invoke({
+              kind: 'command',
+              id: 'session.detachAgentStateWatcher',
+              payload: { sessionId },
+            })
+          } catch {
+            break
+          }
+          ownership.active = null
+          continue
+        }
+
+        const desired = ownership.desired
+        if (!desired || disposed) {
+          break
+        }
+
+        try {
+          // eslint-disable-next-line no-await-in-loop -- ownership transitions are serialized
+          await options.invoke({
+            kind: 'command',
+            id: 'session.attachAgentStateWatcher',
+            payload: desired,
+          })
+          ownership.active = desired
+        } catch {
+          break
+        }
+      }
+    })().finally(() => {
+      ownership.reconciling = false
+      if (ownership.needsReconcile) {
+        reconcile(sessionId, ownership)
+      } else if (!ownership.active && !ownership.desired) {
+        ownershipBySessionId.delete(sessionId)
+      }
+    })
   }
 
   const sync = (workspaces: WorkspaceState[]): void => {
-    const desiredSessionIds = new Set<string>()
+    if (disposed) {
+      return
+    }
+    const desiredBySessionId = new Map<string, AttachAgentStateWatcherInput>()
 
     for (const workspace of workspaces) {
       for (const node of workspace.nodes) {
@@ -45,43 +98,38 @@ export function createTerminalAgentWatcherOwner(options: {
           continue
         }
 
-        desiredSessionIds.add(sessionId)
-        if (ownedBySessionId.has(sessionId)) {
-          continue
-        }
-
-        ownedBySessionId.set(sessionId, { sessionId })
-        void options
-          .invoke({
-            kind: 'command',
-            id: 'session.attachAgentStateWatcher',
-            payload: {
-              sessionId,
-              provider,
-              cwd: node.data.executionDirectory?.trim() || workspace.path,
-              launchMode: binding.resumeSessionIdVerified === true ? 'resume' : 'new',
-              resumeSessionId: binding.resumeSessionId,
-              startedAtMs: node.data.agentOverlay?.startedAtMs ?? now(),
-            },
-          })
-          .catch(() => {
-            ownedBySessionId.delete(sessionId)
-          })
+        desiredBySessionId.set(sessionId, {
+          sessionId,
+          provider,
+          cwd: node.data.executionDirectory?.trim() || workspace.path,
+          launchMode: binding.resumeSessionIdVerified === true ? 'resume' : 'new',
+          resumeSessionId: binding.resumeSessionId,
+          startedAtMs: node.data.agentOverlay?.startedAtMs ?? now(),
+        })
       }
     }
 
-    for (const sessionId of ownedBySessionId.keys()) {
-      if (!desiredSessionIds.has(sessionId)) {
-        detach(sessionId)
+    const sessionIds = new Set([...ownershipBySessionId.keys(), ...desiredBySessionId.keys()])
+    for (const sessionId of sessionIds) {
+      const ownership = ownershipBySessionId.get(sessionId) ?? {
+        active: null,
+        desired: null,
+        reconciling: false,
+        needsReconcile: false,
       }
+      ownership.desired = desiredBySessionId.get(sessionId) ?? null
+      ownershipBySessionId.set(sessionId, ownership)
+      reconcile(sessionId, ownership)
     }
   }
 
   return {
     sync,
     dispose: () => {
-      for (const sessionId of [...ownedBySessionId.keys()]) {
-        detach(sessionId)
+      disposed = true
+      for (const [sessionId, ownership] of ownershipBySessionId) {
+        ownership.desired = null
+        reconcile(sessionId, ownership)
       }
     },
   }

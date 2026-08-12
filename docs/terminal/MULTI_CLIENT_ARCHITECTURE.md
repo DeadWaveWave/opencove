@@ -57,6 +57,18 @@ binding and detaches the watcher; removing the node or disposing the renderer ow
 detach. An alternate-screen exit or Ctrl+C is a presentation signal for drop-back, not authority to
 replace or retire the terminal session.
 
+An active terminal overlay exposes the same copy-last-message, reload, list-session, and
+switch-session actions as a durable Agent node. These actions read provider and resume identity from
+the terminal binding, start time from the runtime overlay, and working directory from the terminal.
+Reload and switch are explicit same-PTY re-executions: they interrupt the foreground agent, wait for
+drop-back, clear the prompt line, and enter the new command while preserving node ID, PTY session ID,
+and scrollback. Switching intentionally changes the bound resume identity.
+
+Each activation owns exactly one session-state watcher. A provider or resume-identity change is
+serialized as detach-before-attach, and re-entry never reuses an old watcher. Presentation snapshot
+hydration may update terminal input modes, but replayed alternate-screen exits must not emit live
+drop-back effects.
+
 ## Snapshot Contract
 
 `session.presentationSnapshot` returns:

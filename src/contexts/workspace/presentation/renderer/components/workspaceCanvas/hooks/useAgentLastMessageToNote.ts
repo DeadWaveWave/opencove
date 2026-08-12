@@ -2,6 +2,7 @@ import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalNodeData } from '../../../types'
+import { resolveAgentTreatedActionContext } from '../../../utils/terminalAgentOverlay'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 
 const AGENT_LAST_MESSAGE_READ_MAX_ATTEMPTS = 5
@@ -49,23 +50,26 @@ export function useWorkspaceCanvasAgentLastMessageCopy({
   return useCallback(
     async (nodeId: string): Promise<void> => {
       const node = nodesRef.current.find(candidate => candidate.id === nodeId) ?? null
-      if (!node || node.data.kind !== 'agent' || !node.data.agent) {
+      const context = node ? resolveAgentTreatedActionContext(node) : null
+      if (!context) {
+        if (
+          node?.data.kind === 'agent' &&
+          node.data.agent &&
+          (node.data.startedAt?.trim() ?? '').length === 0
+        ) {
+          onShowMessage?.(t('messages.agentLastMessageStartedAtMissing'), 'warning')
+          return
+        }
         onShowMessage?.(t('messages.agentLastMessageUnavailable'), 'warning')
-        return
-      }
-
-      const startedAt = typeof node.data.startedAt === 'string' ? node.data.startedAt.trim() : ''
-      if (startedAt.length === 0) {
-        onShowMessage?.(t('messages.agentLastMessageStartedAtMissing'), 'warning')
         return
       }
 
       try {
         const message = await readLastAgentMessageWithRetry({
-          provider: node.data.agent.provider,
-          cwd: node.data.agent.executionDirectory,
-          startedAt,
-          resumeSessionId: node.data.agent.resumeSessionId ?? null,
+          provider: context.provider,
+          cwd: context.cwd,
+          startedAt: context.startedAt,
+          resumeSessionId: context.resumeSessionId,
         })
 
         if (message.length === 0) {

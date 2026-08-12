@@ -1,5 +1,6 @@
 import { useWorkspaceCanvasAgentLauncher } from './useAgentLauncher'
 import { useWorkspaceCanvasAgentNodeLifecycle } from './useAgentNodeLifecycle'
+import { useTerminalAgentSessionActions } from './useTerminalAgentSessionActions'
 
 export function useWorkspaceCanvasAgentSupport({
   nodesRef,
@@ -54,14 +55,7 @@ export function useWorkspaceCanvasAgentSupport({
     ReturnType<typeof useWorkspaceCanvasAgentLauncher>,
     'openAgentLauncher' | 'openAgentLauncherForProvider'
   > {
-  const {
-    buildAgentNodeTitle,
-    launchAgentInNode,
-    reloadAgentNode,
-    listAgentSessionsForNode,
-    switchAgentNodeSession,
-    stopAgentNode,
-  } = useWorkspaceCanvasAgentNodeLifecycle({
+  const lifecycle = useWorkspaceCanvasAgentNodeLifecycle({
     workspaceId,
     workspacePath,
     nodesRef,
@@ -79,6 +73,13 @@ export function useWorkspaceCanvasAgentSupport({
     environmentVariables,
     onRequestPersistFlush,
   })
+  const overlayActions = useTerminalAgentSessionActions({
+    nodesRef,
+    setNodes,
+    onRequestPersistFlush,
+    onShowMessage,
+  })
+  const { buildAgentNodeTitle, launchAgentInNode, stopAgentNode } = lifecycle
 
   const { openAgentLauncher, openAgentLauncherForProvider } = useWorkspaceCanvasAgentLauncher({
     agentSettings,
@@ -101,9 +102,20 @@ export function useWorkspaceCanvasAgentSupport({
   return {
     buildAgentNodeTitle,
     launchAgentInNode,
-    reloadAgentNode,
-    listAgentSessionsForNode,
-    switchAgentNodeSession,
+    reloadAgentNode: async nodeId => {
+      if (!(await overlayActions.reloadOverlayAgent(nodeId))) {
+        await lifecycle.reloadAgentNode(nodeId)
+      }
+    },
+    listAgentSessionsForNode: async (nodeId, limit) => {
+      const sessions = await overlayActions.listOverlayAgentSessions(nodeId, limit)
+      return sessions ?? (await lifecycle.listAgentSessionsForNode(nodeId, limit))
+    },
+    switchAgentNodeSession: async (nodeId, summary) => {
+      if (!(await overlayActions.switchOverlayAgentSession(nodeId, summary))) {
+        await lifecycle.switchAgentNodeSession(nodeId, summary)
+      }
+    },
     stopAgentNode,
     openAgentLauncher,
     openAgentLauncherForProvider,

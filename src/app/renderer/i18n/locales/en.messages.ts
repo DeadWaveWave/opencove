@@ -1,6 +1,9 @@
 export const enMessages = {
   agentLaunchFailed: 'Agent launch failed: {{message}}',
   agentResumeFailed: 'Agent resume failed: {{message}}',
+  terminalAgentReexecFailed: 'Failed to restart the agent in this terminal: {{message}}',
+  terminalAgentReexecTimeout:
+    'The agent did not return to the terminal prompt, so no command was entered.',
   terminalLaunchFailed: 'Terminal launch failed: {{message}}',
   fallbackTerminalFailed: 'Fallback terminal launch also failed: {{message}}',
   agentPromptRequired: 'Agent prompt cannot be empty.',

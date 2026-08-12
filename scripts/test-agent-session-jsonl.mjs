@@ -118,7 +118,7 @@ export async function appendCodexRecord(sessionFilePath, record, { newline = tru
   await fs.appendFile(sessionFilePath, `${prefix}${serialized}${newline ? '\n' : ''}`, 'utf8')
 }
 
-async function createClaudeSessionFile(cwd) {
+export async function createClaudeSessionFile(cwd) {
   const startedAtMs = Date.now()
   const sessionId = `opencove-test-session-${startedAtMs}`
   const sessionFilePath = join(
@@ -177,7 +177,7 @@ async function findClaudeSessionFile(cwd, sessionId) {
   return null
 }
 
-async function appendClaudeRecord(sessionFilePath, record, { newline = true } = {}) {
+export async function appendClaudeRecord(sessionFilePath, record, { newline = true } = {}) {
   const serialized = JSON.stringify(record)
   const prefix = (await shouldPrefixJsonlRecordSeparator(sessionFilePath)) ? '\n' : ''
   await fs.appendFile(sessionFilePath, `${prefix}${serialized}${newline ? '\n' : ''}`, 'utf8')

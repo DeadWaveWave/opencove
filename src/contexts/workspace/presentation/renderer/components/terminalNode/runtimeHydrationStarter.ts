@@ -93,7 +93,7 @@ export function startRuntimeTerminalHydration({
       markTerminalGeometryAccepted(terminal, snapshot.geometryRevision)
     },
     finalizeHydration: (rawSnapshot, options) => {
-      runtimeInputBridge.handlePtyOutputChunk(rawSnapshot)
+      runtimeInputBridge.hydratePtyOutputSnapshot(rawSnapshot)
       runtimeInputBridge.enableTerminalDataForwarding()
       hydrationRouter.finalizeHydration(rawSnapshot, {
         baselineAppliedSeq: options?.baselineAppliedSeq ?? null,

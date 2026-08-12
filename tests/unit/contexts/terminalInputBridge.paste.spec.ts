@@ -52,6 +52,33 @@ describe('createPtyWriteQueue', () => {
       { data: String.fromCharCode(64, 80), encoding: 'binary' },
     ])
   })
+
+  it('does not report idle until every queued input payload is written', async () => {
+    let releaseFirstWrite = () => undefined
+    const firstWriteBarrier = new Promise<void>(resolve => {
+      releaseFirstWrite = resolve
+    })
+    const writes: string[] = []
+    const ptyWriteQueue = createPtyWriteQueue(async payload => {
+      writes.push(payload.data)
+      if (writes.length === 1) {
+        await firstWriteBarrier
+      }
+    })
+
+    ptyWriteQueue.enqueue('codex')
+    ptyWriteQueue.flush()
+    ptyWriteQueue.enqueue('\r')
+    ptyWriteQueue.flush()
+    const idle = vi.fn()
+    void ptyWriteQueue.whenIdle().then(idle)
+
+    await Promise.resolve()
+    expect(idle).not.toHaveBeenCalled()
+    releaseFirstWrite()
+    await vi.waitFor(() => expect(idle).toHaveBeenCalledTimes(1))
+    expect(writes.join('')).toBe('codex\r')
+  })
 })
 
 describe('terminal input mode tracker', () => {
@@ -81,6 +108,20 @@ describe('terminal input mode tracker', () => {
     tracker.handlePtyOutputChunk('49hagent running')
     tracker.handlePtyOutputChunk('\u001b[?1049l')
 
+    expect(onAlternateScreenExit).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not replay alternate-screen lifecycle effects while hydrating a snapshot', () => {
+    const onAlternateScreenExit = vi.fn()
+    const tracker = createTerminalInputModeTracker({ onAlternateScreenExit })
+
+    tracker.handlePtyOutputChunk('\u001b[?1049hprior agent\u001b[?1049lterminal prompt', {
+      notifyAlternateScreenExit: false,
+    })
+
+    expect(onAlternateScreenExit).not.toHaveBeenCalled()
+
+    tracker.handlePtyOutputChunk('\u001b[?1049hnew agent\u001b[?1049l')
     expect(onAlternateScreenExit).toHaveBeenCalledTimes(1)
   })
 })

@@ -4,6 +4,8 @@ import {
   activateTerminalAgentOverlay,
   clearTerminalAgentOverlay,
   isAgentTreatedNode,
+  resolveAgentTreatedActionContext,
+  reactivateTerminalAgentOverlayAfterReexec,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { toRuntimeNodes } from '../../../src/contexts/workspace/presentation/renderer/utils/nodeTransform'
@@ -130,5 +132,64 @@ describe('terminal agent overlay invariants', () => {
     expect(ignored).toBe(active)
     expect(ignored.data.agentOverlay?.provider).toBe('codex')
     expect(ignored.data.terminalAgentBinding?.provider).toBe('codex')
+  })
+
+  it('sources overlay action fields only from the binding, overlay, and terminal directory', () => {
+    const activated = activateTerminalAgentOverlay(
+      {
+        ...createTerminalNode(),
+        data: {
+          ...createTerminalNode().data,
+          executionDirectory: '/tmp/terminal-cwd',
+          agent: null,
+          startedAt: '1999-01-01T00:00:00.000Z',
+        },
+      },
+      {
+        provider: 'claude-code',
+        startedAtMs: Date.parse('2026-08-12T01:02:03.000Z'),
+        resumeSessionId: 'resume-overlay',
+        resumeSessionIdVerified: true,
+      },
+    )
+
+    expect(resolveAgentTreatedActionContext(activated)).toEqual({
+      provider: 'claude-code',
+      cwd: '/tmp/terminal-cwd',
+      startedAt: '2026-08-12T01:02:03.000Z',
+      resumeSessionId: 'resume-overlay',
+      resumeSessionIdVerified: true,
+    })
+  })
+
+  it('INV-1 re-enters with a fresh provider without changing terminal identity or scrollback', () => {
+    const original = createTerminalNode()
+    const firstOverlay = activateTerminalAgentOverlay(original, {
+      provider: 'claude-code',
+      startedAtMs: 1_723_456_789_000,
+    })
+    const droppedBack = clearTerminalAgentOverlay(firstOverlay)
+    const reentered = reactivateTerminalAgentOverlayAfterReexec(droppedBack, {
+      expectedSessionId: original.data.sessionId,
+      provider: 'codex',
+      startedAtMs: 1_723_456_790_000,
+      resumeSessionId: 'codex-session-2',
+      resumeSessionIdVerified: true,
+    })
+
+    expect(reentered.id).toBe(original.id)
+    expect(reentered.data.kind).toBe('terminal')
+    expect(reentered.data.sessionId).toBe(original.data.sessionId)
+    expect(reentered.data.scrollback).toBe(original.data.scrollback)
+    expect(reentered.data.agentOverlay).toEqual({
+      provider: 'codex',
+      status: 'running',
+      startedAtMs: 1_723_456_790_000,
+    })
+    expect(reentered.data.terminalAgentBinding).toEqual({
+      provider: 'codex',
+      resumeSessionId: 'codex-session-2',
+      resumeSessionIdVerified: true,
+    })
   })
 })

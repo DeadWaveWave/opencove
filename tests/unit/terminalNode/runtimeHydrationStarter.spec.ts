@@ -49,6 +49,7 @@ describe('runtimeHydrationStarter', () => {
       lastCommittedPtySizeRef: { current: null },
       runtimeInputBridge: {
         handlePtyOutputChunk: vi.fn(),
+        hydratePtyOutputSnapshot: vi.fn(),
         enableTerminalDataForwarding: vi.fn(),
         releaseBufferedUserInput: vi.fn(),
       } as never,
@@ -145,6 +146,7 @@ describe('runtimeHydrationStarter', () => {
       lastCommittedPtySizeRef: { current: null },
       runtimeInputBridge: {
         handlePtyOutputChunk: vi.fn(),
+        hydratePtyOutputSnapshot: vi.fn(),
         enableTerminalDataForwarding: vi.fn(),
         releaseBufferedUserInput: vi.fn(),
       } as never,

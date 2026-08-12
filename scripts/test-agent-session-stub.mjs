@@ -9,6 +9,7 @@ import {
   runCodexStandbyOnlyScenario,
   runCodexTitleFromFirstInputScenario,
   runCodexOverlayLifecycleScenario,
+  runJsonlOverlayLifecycleScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
   runJsonlStdinSubmitDrivenTurnScenario,
 } from './test-agent-session-stub/codex.mjs'
@@ -90,6 +91,14 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-overlay-lifecycle') {
     await runCodexOverlayLifecycleScenario(cwd)
+    return
+  }
+
+  if (
+    (provider === 'codex' || provider === 'claude-code') &&
+    scenario === 'jsonl-overlay-lifecycle'
+  ) {
+    await runJsonlOverlayLifecycleScenario(provider, cwd)
     return
   }
 

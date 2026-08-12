@@ -1,6 +1,8 @@
 export const zhCNMessages = {
   agentLaunchFailed: 'Agent 启动失败：{{message}}',
   agentResumeFailed: 'Agent 继续失败：{{message}}',
+  terminalAgentReexecFailed: '无法在此终端中重新启动 Agent：{{message}}',
+  terminalAgentReexecTimeout: 'Agent 未返回终端提示符，因此没有输入任何命令。',
   terminalLaunchFailed: '终端启动失败：{{message}}',
   fallbackTerminalFailed: '兜底终端启动也失败了：{{message}}',
   agentPromptRequired: 'Agent 提示词不能为空。',
