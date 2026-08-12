@@ -42,7 +42,11 @@ export async function invokeRemoteControlSurfaceValue<TResult>(options: {
     payload: options.payload,
   })
 
-  if (httpStatus !== 200 || !result || result.ok !== true) {
+  if (result?.ok === false) {
+    throw createAppError(result.error)
+  }
+
+  if (httpStatus !== 200 || !result) {
     throw new Error(options.errorMessage)
   }
 

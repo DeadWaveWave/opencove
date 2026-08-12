@@ -341,6 +341,7 @@ function createRuntimeDeps(
             id: 'pty.spawn',
             payload: {
               cwd: resolved.workingDirectory,
+              workspaceId: resolved.workspace.id,
               ...base,
             } satisfies SpawnTerminalInput,
           })

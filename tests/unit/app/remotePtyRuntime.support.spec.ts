@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  invokeRemoteControlSurfaceValue,
   parseListTerminalProfilesResult,
   parsePresentationSnapshot,
 } from '../../../src/app/main/controlSurface/remote/remotePtyRuntime.support'
 
 describe('remotePtyRuntime support', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('parses remote terminal profiles and drops invalid entries', () => {
     expect(
       parseListTerminalProfilesResult({
@@ -44,5 +49,51 @@ describe('remotePtyRuntime support', () => {
     })
 
     expect(snapshot.geometryRevision).toBe(9)
+  })
+
+  it('preserves structured remote control-surface errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              __opencoveControlEnvelope: true,
+              ok: false,
+              error: {
+                code: 'terminal.runtime_not_ready',
+                details: {
+                  workspaceId: 'workspace-ready',
+                  phase: 'initializing',
+                  epoch: 2,
+                },
+                debugMessage: 'Terminal runtime is initializing for workspace-ready.',
+              },
+            }),
+            { status: 409 },
+          ),
+        ),
+      ),
+    )
+
+    await expect(
+      invokeRemoteControlSurfaceValue({
+        endpointResolver: async () => ({ hostname: '127.0.0.1', port: 43210, token: 'test' }),
+        kind: 'command',
+        id: 'pty.spawn',
+        payload: { cwd: '/workspace/root' },
+        errorMessage: 'generic fallback',
+      }),
+    ).rejects.toMatchObject({
+      name: 'OpenCoveAppError',
+      code: 'terminal.runtime_not_ready',
+      message: 'Terminal recovery is still in progress. Please wait a moment and try again.',
+      details: {
+        workspaceId: 'workspace-ready',
+        phase: 'initializing',
+        epoch: 2,
+      },
+      debugMessage: 'Terminal runtime is initializing for workspace-ready.',
+    })
   })
 })

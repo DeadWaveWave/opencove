@@ -164,6 +164,7 @@ export async function createTerminalNodeAtFlowPosition({
             id: 'pty.spawn',
             payload: {
               cwd: resolvedCwd,
+              workspaceId,
               profileId: defaultTerminalProfileId,
               cols: launchGeometry.cols,
               rows: launchGeometry.rows,
@@ -174,6 +175,7 @@ export async function createTerminalNodeAtFlowPosition({
           })
         : await window.opencoveApi.pty.spawn({
             cwd: resolvedCwd,
+            workspaceId,
             profileId: defaultTerminalProfileId ?? undefined,
             cols: launchGeometry.cols,
             rows: launchGeometry.rows,

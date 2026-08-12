@@ -22,6 +22,7 @@ export function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalIn
 
   const record = payload as Record<string, unknown>
   const cwd = typeof record.cwd === 'string' ? record.cwd.trim() : ''
+  const workspaceId = typeof record.workspaceId === 'string' ? record.workspaceId.trim() : ''
   const profileId = typeof record.profileId === 'string' ? record.profileId.trim() : ''
   const shell = typeof record.shell === 'string' ? record.shell.trim() : ''
 
@@ -46,10 +47,17 @@ export function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalIn
     })
   }
 
+  if (record.workspaceId !== undefined && workspaceId.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid workspaceId for pty:spawn',
+    })
+  }
+
   const env = normalizeEnvPayload(record.env)
 
   return {
     cwd,
+    ...(workspaceId.length > 0 ? { workspaceId } : {}),
     profileId: profileId.length > 0 ? profileId : undefined,
     shell: shell.length > 0 ? shell : undefined,
     cols,

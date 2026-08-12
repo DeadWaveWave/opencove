@@ -113,6 +113,7 @@ export async function spawnFallbackTerminal(options: {
     id: 'pty.spawn',
     payload: {
       cwd: launchContext.workingDirectory,
+      workspaceId: options.workspace.id,
       profileId: options.profileId,
       cols: geometry.cols,
       rows: geometry.rows,

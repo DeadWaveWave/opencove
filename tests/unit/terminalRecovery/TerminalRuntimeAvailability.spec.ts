@@ -37,6 +37,18 @@ describe('TerminalRuntimeAvailability', () => {
     })
   })
 
+  it('gates a scoped spawn only on its owning workspace', async () => {
+    const availability = new TerminalRuntimeAvailability()
+    availability.completeStartup(['workspace-ready', 'workspace-initializing'])
+
+    await availability.reconcileWorkspace('workspace-ready', () => Promise.resolve())
+
+    expect(() => availability.assertSpawnAllowed('workspace-ready', null)).not.toThrow()
+    expect(() => availability.assertSpawnAllowed('workspace-initializing', null)).toThrowError(
+      expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
+    )
+  })
+
   it('keeps failed recovery unavailable and ignores a late completion after shutdown', async () => {
     const availability = new TerminalRuntimeAvailability()
     availability.completeStartup(['workspace-failed', 'workspace-closing'])

@@ -84,6 +84,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
 
     expect(ptySpawn).toHaveBeenCalledWith({
       cwd: '/workspace/root/space',
+      workspaceId: 'workspace-1',
       cols: expectedGeometry.cols,
       rows: expectedGeometry.rows,
       profileId: undefined,
@@ -155,6 +156,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
     expect(controlSurfaceInvoke).not.toHaveBeenCalled()
     expect(ptySpawn).toHaveBeenCalledWith({
       cwd: '/workspace/root',
+      workspaceId: 'workspace-1',
       cols: expectedGeometry.cols,
       rows: expectedGeometry.rows,
       profileId: undefined,

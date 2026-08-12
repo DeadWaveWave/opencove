@@ -167,6 +167,10 @@ function normalizePtySpawnPayload(payload: unknown): SpawnTerminalInput {
   }
 
   const cwd = normalizeRequiredString(payload.cwd, 'pty.spawn cwd')
+  const workspaceId =
+    payload.workspaceId === undefined
+      ? null
+      : normalizeRequiredString(payload.workspaceId, 'pty.spawn workspaceId')
   const cols = normalizeOptionalPositiveInt(payload.cols) ?? 80
   const rows = normalizeOptionalPositiveInt(payload.rows) ?? 24
   const profileId = normalizeOptionalString(payload.profileId)
@@ -177,6 +181,7 @@ function normalizePtySpawnPayload(payload: unknown): SpawnTerminalInput {
 
   return {
     cwd,
+    ...(workspaceId ? { workspaceId } : {}),
     ...(profileId ? { profileId } : {}),
     ...(shell ? { shell } : {}),
     ...(command ? { command } : {}),
@@ -409,8 +414,11 @@ export function registerSessionStreamingHandlers(
   controlSurface.register('pty.spawn', {
     kind: 'command',
     validate: normalizePtySpawnPayload,
-    handle: async (_ctx, payload): Promise<SpawnTerminalResult> => {
-      deps.terminalSpawnAdmission.assertSpawnAllowed(null, _ctx.terminalRecoverySpawnScope)
+    handle: async (ctx, payload): Promise<SpawnTerminalResult> => {
+      deps.terminalSpawnAdmission.assertSpawnAllowed(
+        payload.workspaceId ?? null,
+        ctx.terminalRecoverySpawnScope,
+      )
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.cwd)
       if (!isApproved) {
         throw createAppError('common.approved_path_required', {

@@ -60,3 +60,5 @@ Invariants:
    cannot reopen either state, and every successful return to `ready` increases the epoch. A user
    retry may reconcile that one unavailable workspace without globally opening admission for other
    workspaces after a startup scan failure.
+4. Every workspace-owned spawn carries that workspace identity across the client boundary and gates
+   on only that workspace's phase. A different workspace that is still initializing cannot block it.

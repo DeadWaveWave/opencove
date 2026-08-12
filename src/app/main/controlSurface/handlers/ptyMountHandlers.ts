@@ -270,6 +270,7 @@ export function registerPtyMountHandlers(
 
       const remoteSpawnPayload: SpawnTerminalInput = {
         cwd,
+        workspaceId: target.projectId,
         cols,
         rows,
         ...(profileId ? { profileId } : {}),

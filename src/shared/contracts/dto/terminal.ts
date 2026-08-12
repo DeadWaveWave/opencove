@@ -22,6 +22,7 @@ export interface ListTerminalProfilesResult {
 
 export interface SpawnTerminalInput {
   cwd: string
+  workspaceId?: string
   profileId?: string
   shell?: string
   command?: string | null
