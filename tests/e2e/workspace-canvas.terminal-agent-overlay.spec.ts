@@ -120,7 +120,9 @@ async function runOverlayLifecycle(options: {
     .poll(async () => {
       const transcript = (await terminal.locator('.terminal-node__transcript').textContent()) ?? ''
       const exitIndex = transcript.lastIndexOf('claude-code exited')
-      return exitIndex >= 0 && transcript.slice(exitIndex).includes('%')
+      // The shell prompt glyph is shell/OS-specific (zsh '%', bash/sh '$', root '#');
+      // matching any of them keeps the drop-back-to-live-shell check cross-platform.
+      return exitIndex >= 0 && /[%$#]/.test(transcript.slice(exitIndex))
     })
     .toBe(true)
 
