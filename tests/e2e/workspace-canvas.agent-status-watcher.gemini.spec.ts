@@ -15,30 +15,69 @@ import {
   writeToPty,
 } from './workspace-canvas.agent-status-watcher.helpers'
 
-async function seedGeminiWorkspace(window: Awaited<ReturnType<typeof launchApp>>['window']) {
-  await clearAndSeedWorkspace(window, [], {
-    settings: {
-      defaultProvider: 'gemini',
-      customModelEnabledByProvider: {
-        'claude-code': false,
-        codex: false,
-        opencode: false,
-        gemini: true,
+async function seedGeminiWorkspace(
+  window: Awaited<ReturnType<typeof launchApp>>['window'],
+  {
+    resumeSessionId,
+    startedAtMs,
+  }: {
+    resumeSessionId: string
+    startedAtMs: number
+  },
+) {
+  await clearAndSeedWorkspace(
+    window,
+    [
+      {
+        id: 'agent-gemini-existing',
+        title: 'gemini · existing session',
+        position: { x: 320, y: 220 },
+        width: 520,
+        height: 320,
+        kind: 'agent',
+        status: 'standby',
+        startedAt: new Date(startedAtMs).toISOString(),
+        agent: {
+          provider: 'gemini',
+          prompt: 'Resume the existing session',
+          model: 'gemini-3-flash-preview',
+          effectiveModel: 'gemini-3-flash-preview',
+          launchMode: 'resume',
+          resumeSessionId,
+          resumeSessionIdVerified: true,
+          executionDirectory: testWorkspacePath,
+          expectedDirectory: testWorkspacePath,
+          directoryMode: 'workspace',
+          customDirectory: null,
+          shouldCreateDirectory: false,
+          taskId: null,
+        },
       },
-      customModelByProvider: {
-        'claude-code': '',
-        codex: '',
-        opencode: '',
-        gemini: 'gemini-3-flash-preview',
-      },
-      customModelOptionsByProvider: {
-        'claude-code': [],
-        codex: [],
-        opencode: [],
-        gemini: ['gemini-3-flash-preview'],
+    ],
+    {
+      settings: {
+        defaultProvider: 'gemini',
+        customModelEnabledByProvider: {
+          'claude-code': false,
+          codex: false,
+          opencode: false,
+          gemini: true,
+        },
+        customModelByProvider: {
+          'claude-code': '',
+          codex: '',
+          opencode: '',
+          gemini: 'gemini-3-flash-preview',
+        },
+        customModelOptionsByProvider: {
+          'claude-code': [],
+          codex: [],
+          opencode: [],
+          gemini: ['gemini-3-flash-preview'],
+        },
       },
     },
-  })
+  )
 }
 
 async function seedExistingGeminiRealTurnSession(userDataDir: string): Promise<void> {
@@ -83,7 +122,7 @@ async function seedExistingGeminiRealTurnSession(userDataDir: string): Promise<v
 test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
   test.describe.configure({ retries: 1 })
 
-  test('keeps gemini in standby while typing and only switches to working after submit', async () => {
+  test('keeps a resumed gemini session in standby while typing and switches after submit', async () => {
     test.skip(
       process.platform === 'win32',
       'Windows offscreen Playwright input does not reliably submit the Gemini stub prompt.',
@@ -99,20 +138,17 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
     })
 
     try {
-      await seedGeminiWorkspace(window)
-
-      const pane = window.locator('.workspace-canvas .react-flow__pane')
-      await expect(pane).toBeVisible()
-
-      await pane.click({
-        button: 'right',
-        position: { x: 320, y: 220 },
+      const geminiSessionId = `gemini-e2e-${Date.now()}`
+      const startedAtMs = Date.now()
+      await writeGeminiSessionFile({
+        userDataDir,
+        cwd: testWorkspacePath,
+        sessionId: geminiSessionId,
+        startedAtMs,
+        messages: [],
       })
-
-      const runButton = window.locator('[data-testid="workspace-context-run-default-agent"]')
-      await expect(runButton).toBeVisible()
       await installPtySessionCapture(window)
-      await runButton.click()
+      await seedGeminiWorkspace(window, { resumeSessionId: geminiSessionId, startedAtMs })
 
       const agentNode = window.locator('.terminal-node').first()
       const xterm = agentNode.locator('.xterm')
@@ -134,8 +170,12 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
 
       const sessionId = await resolveFirstAgentSessionId(window)
       if (!sessionId) {
-        throw new Error('Failed to resolve the launched Gemini session id')
+        throw new Error('Failed to resolve the resumed Gemini PTY session id')
       }
+
+      await expect
+        .poll(async () => await readObservedResumeSessionId(window, sessionId))
+        .toBe(geminiSessionId)
 
       await writeToPty(window, {
         sessionId,
@@ -151,8 +191,6 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
         data: '\r',
       })
 
-      const geminiSessionId = `gemini-e2e-${Date.now()}`
-      const startedAtMs = Date.now()
       await writeGeminiSessionFile({
         userDataDir,
         cwd: testWorkspacePath,
@@ -203,7 +241,7 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
     }
   })
 
-  test('binds a new gemini launch even when an older real-turn session already exists', async () => {
+  test('keeps an explicit resumed gemini binding when an older session already exists', async () => {
     test.skip(
       process.platform === 'win32',
       'Windows offscreen Playwright input does not reliably submit the Gemini stub prompt.',
@@ -220,20 +258,17 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
 
     try {
       await seedExistingGeminiRealTurnSession(userDataDir)
-      await seedGeminiWorkspace(window)
-
-      const pane = window.locator('.workspace-canvas .react-flow__pane')
-      await expect(pane).toBeVisible()
-
-      await pane.click({
-        button: 'right',
-        position: { x: 320, y: 220 },
+      const geminiSessionId = `gemini-e2e-${Date.now()}`
+      const startedAtMs = Date.now()
+      await writeGeminiSessionFile({
+        userDataDir,
+        cwd: testWorkspacePath,
+        sessionId: geminiSessionId,
+        startedAtMs,
+        messages: [],
       })
-
-      const runButton = window.locator('[data-testid="workspace-context-run-default-agent"]')
-      await expect(runButton).toBeVisible()
       await installPtySessionCapture(window)
-      await runButton.click()
+      await seedGeminiWorkspace(window, { resumeSessionId: geminiSessionId, startedAtMs })
 
       const agentNode = window.locator('.terminal-node').first()
       const nodeStatus = agentNode.locator('.terminal-node__status')
@@ -253,8 +288,12 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
 
       const sessionId = await resolveFirstAgentSessionId(window)
       if (!sessionId) {
-        throw new Error('Failed to resolve the launched Gemini session id')
+        throw new Error('Failed to resolve the resumed Gemini PTY session id')
       }
+
+      await expect
+        .poll(async () => await readObservedResumeSessionId(window, sessionId))
+        .toBe(geminiSessionId)
 
       await writeToPty(window, {
         sessionId,
@@ -265,8 +304,6 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
         data: '\r',
       })
 
-      const geminiSessionId = `gemini-e2e-${Date.now()}`
-      const startedAtMs = Date.now()
       await writeGeminiSessionFile({
         userDataDir,
         cwd: testWorkspacePath,

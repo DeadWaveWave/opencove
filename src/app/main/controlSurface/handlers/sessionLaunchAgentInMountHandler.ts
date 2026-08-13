@@ -242,7 +242,7 @@ export function registerSessionLaunchAgentInMountHandler(
       const normalized = normalizePersistedAppState(await store.readAppState())
       const agentSettings = normalizeAgentSettings(normalized?.settings)
 
-      const provider = resolveProviderFromSettings(payload.provider ?? null, agentSettings)
+      const provider = resolveProviderFromSettings(payload.provider ?? null, agentSettings, mode)
       const model = payload.model ?? resolveAgentModel(agentSettings, provider)
       const executablePathOverride =
         payload.executablePathOverride ??

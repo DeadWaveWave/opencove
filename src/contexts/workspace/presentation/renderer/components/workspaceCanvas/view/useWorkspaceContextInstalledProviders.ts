@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  AGENT_PROVIDERS,
+  normalizeSelectableAgentProviderOrder,
   type AgentExecutablePathOverrideByProvider,
   type AgentProvider,
 } from '@contexts/settings/domain/agentSettings'
@@ -49,7 +49,7 @@ export function useWorkspaceContextInstalledProviders({
       return []
     }
 
-    const effectiveOrder = agentProviderOrder.length > 0 ? agentProviderOrder : AGENT_PROVIDERS
+    const effectiveOrder = normalizeSelectableAgentProviderOrder(agentProviderOrder)
     const providerSet = new Set(installedProviders.providers)
 
     return effectiveOrder.filter(provider => {

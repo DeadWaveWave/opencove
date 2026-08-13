@@ -24,7 +24,7 @@ import type {
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import type { PtyRuntime } from '../../../contexts/terminal/presentation/main-ipc/runtime'
 import { isRemotePtyRuntime } from '../controlSurface/remote/remotePtyRuntime'
-import { AGENT_PROVIDERS } from '../../../contexts/settings/domain/agentSettings.providers'
+import { SELECTABLE_AGENT_PROVIDERS } from '../../../contexts/settings/domain/agentSettings.providers'
 import {
   describeAgentLaunchError,
   logAgentLaunchError,
@@ -189,9 +189,9 @@ export function registerRemoteAgentIpcHandlers(options: {
   registerHandledIpc(
     IPC_CHANNELS.agentListInstalledProviders,
     async (): Promise<ListInstalledAgentProvidersResult> => ({
-      providers: [...AGENT_PROVIDERS],
+      providers: [...SELECTABLE_AGENT_PROVIDERS],
       availabilityByProvider: Object.fromEntries(
-        AGENT_PROVIDERS.map(provider => [
+        SELECTABLE_AGENT_PROVIDERS.map(provider => [
           provider,
           {
             provider,
@@ -200,9 +200,7 @@ export function registerRemoteAgentIpcHandlers(options: {
                 ? 'claude'
                 : provider === 'opencode'
                   ? 'opencode'
-                  : provider === 'gemini'
-                    ? 'gemini'
-                    : 'codex',
+                  : 'codex',
             status: 'available',
             executablePath: null,
             source: null,

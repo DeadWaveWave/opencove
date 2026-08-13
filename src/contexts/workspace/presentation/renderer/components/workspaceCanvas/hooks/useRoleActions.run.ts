@@ -4,6 +4,7 @@ import type { TranslateFn } from '@app/renderer/i18n'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import {
   resolveAgentModel,
+  resolveSelectableAgentProvider,
   type AgentProvider,
   type AgentSettings,
   type ProjectRoleDefinition,
@@ -117,7 +118,9 @@ export async function runRoleNodeAction(
     return
   }
 
-  const provider = roleNode.data.role.selectedProvider ?? context.agentSettings.defaultProvider
+  const provider = resolveSelectableAgentProvider(
+    roleNode.data.role.selectedProvider ?? context.agentSettings.defaultProvider,
+  )
   const model = resolveAgentModel(context.agentSettings, provider)
   const executablePathOverride = resolveAgentExecutableOverride(context.agentSettings, provider)
   const mergedEnv = buildMergedAgentLaunchEnv(

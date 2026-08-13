@@ -37,7 +37,7 @@ describe('useWorkspaceContextInstalledProviders', () => {
 
   it('keeps host-unavailable providers launchable unless an override is misconfigured', async () => {
     const listInstalledProviders = vi.fn(async () => ({
-      providers: ['codex' as const],
+      providers: ['codex' as const, 'gemini' as const],
       availabilityByProvider: {
         'claude-code': {
           provider: 'claude-code' as const,
@@ -66,10 +66,10 @@ describe('useWorkspaceContextInstalledProviders', () => {
         gemini: {
           provider: 'gemini' as const,
           command: 'gemini',
-          status: 'misconfigured' as const,
-          executablePath: null,
-          source: null,
-          diagnostics: ['Configured override was not executable.'],
+          status: 'available' as const,
+          executablePath: '/usr/local/bin/gemini',
+          source: 'process_path' as const,
+          diagnostics: [],
         },
       },
       fetchedAt: '2026-05-12T00:00:00.000Z',

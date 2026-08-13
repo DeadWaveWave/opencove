@@ -442,7 +442,6 @@ export function SettingsPanel({
           {canonicalPageId === 'tasks-shortcuts' ? (
             <TasksAndShortcutsSection
               showTaskTitleGeneration={AI_NAMING_FEATURES.taskTitleGeneration}
-              defaultProvider={settings.defaultProvider}
               taskTitleProvider={settings.taskTitleProvider}
               taskTitleModel={settings.taskTitleModel}
               effectiveTaskTitleProvider={effectiveTaskTitleProvider}

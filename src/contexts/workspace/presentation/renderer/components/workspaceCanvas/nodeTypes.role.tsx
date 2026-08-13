@@ -1,5 +1,9 @@
 import type { MutableRefObject, ReactElement } from 'react'
-import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import {
+  normalizeSelectableAgentProviderOrder,
+  resolveSelectableAgentProvider,
+  type AgentProvider,
+} from '@contexts/settings/domain/agentSettings'
 import { RoleNode } from '../RoleNode'
 import type { NodeFrame, TerminalNodeData } from '../../types'
 import { useNodePosition } from './nodePosition'
@@ -35,10 +39,10 @@ export function WorkspaceCanvasRoleNodeType({
     return null
   }
 
-  const selectedProvider = data.role.selectedProvider ?? defaultProvider
-  const providerOptions = agentProviderOrder.includes(selectedProvider)
-    ? agentProviderOrder
-    : [selectedProvider, ...agentProviderOrder]
+  const selectedProvider = resolveSelectableAgentProvider(
+    data.role.selectedProvider ?? defaultProvider,
+  )
+  const providerOptions = normalizeSelectableAgentProviderOrder(agentProviderOrder)
 
   return (
     <RoleNode

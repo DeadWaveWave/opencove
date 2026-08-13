@@ -1,4 +1,7 @@
-import { resolveAgentModel } from '@contexts/settings/domain/agentSettings'
+import {
+  resolveAgentModel,
+  resolveSelectableAgentProvider,
+} from '@contexts/settings/domain/agentSettings'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import {
@@ -164,7 +167,7 @@ export async function runTaskAgentAction(
     context.onRequestPersistFlush?.()
   }
 
-  const provider = context.agentSettings.defaultProvider
+  const provider = resolveSelectableAgentProvider(context.agentSettings.defaultProvider)
   const model = resolveAgentModel(context.agentSettings, provider)
   const executablePathOverride = resolveAgentExecutableOverride(context.agentSettings, provider)
   const launchGeometry = resolveDefaultAgentLaunchGeometry({

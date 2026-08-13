@@ -55,14 +55,22 @@ export {
 export type { FocusNodeTargetZoom } from './focusNodeTargetZoom'
 export {
   AGENT_PROVIDERS,
+  SELECTABLE_AGENT_PROVIDERS,
   EXPERIMENTAL_AGENT_PROVIDERS,
   TASK_TITLE_PROVIDERS,
   WORKTREE_NAME_SUGGESTION_PROVIDERS,
+  isSelectableAgentProvider,
   isTaskTitleAgentProvider,
+  isValidProvider,
   isWorktreeNameSuggestionProvider,
+  mergeSelectableAgentProviderOrder,
+  normalizeAgentProviderOrder,
+  normalizeSelectableAgentProviderOrder,
+  resolveSelectableAgentProvider,
 } from './agentSettings.providers'
 export type {
   AgentProvider,
+  SelectableAgentProvider,
   TaskTitleAgentProvider,
   WorktreeNameSuggestionAgentProvider,
 } from './agentSettings.providers'

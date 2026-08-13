@@ -11,6 +11,7 @@ import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import {
+  resolveSelectableAgentProvider,
   type AgentProvider,
   type AgentSettings,
   type ProjectRoleDefinition,
@@ -122,7 +123,7 @@ export function useWorkspaceCanvasRoleActions({
       const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
       const created = createRoleNode(nodeAnchor, role, {
         targetSpaceRect: targetSpace?.rect ?? null,
-        selectedProvider: agentSettings.defaultProvider,
+        selectedProvider: resolveSelectableAgentProvider(agentSettings.defaultProvider),
       })
 
       if (!created || !targetSpace) {
