@@ -96,6 +96,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Agent: make managed Codex hooks work end-to-end — install a fail-open POSIX launcher over a private loopback endpoint, inject pane coordinates at PTY creation, and grant durable hook trust through the CLI configuration RPC so authenticated working/waiting/standby state is reported without any manual trust step, with a fallback lane and automatic cleanup on abnormal exits. (#339)
 - Terminal: acknowledge resizes with the geometry the PTY host actually applied instead of echoing the requested size, and keep unconfirmable ConPTY resizes explicitly unverified rather than reporting a fabricated value. (#318)
 - Terminal: gate session spawns until the runtime is ready and bound the ambiguous-exit and startup-retry paths, preventing orphaned PTYs and permanently locked recovery. (#318)
 - Remote: reject invalid managed SSH ports that were previously accepted silently, and confirm endpoint removal with an explicit impact disclosure before deleting. (#317)

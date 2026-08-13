@@ -25,9 +25,15 @@ export interface AgentHookSpawnReservation {
   dispose: () => void
 }
 
+export interface AgentHookPtyIdentity {
+  paneKey: string
+  tabId: string
+  worktreeId: string
+}
+
 export interface AgentHookChannel {
   start: () => Promise<void>
-  reserveSpawn: () => Promise<AgentHookSpawnReservation>
+  reserveSpawn: (identity?: AgentHookPtyIdentity) => Promise<AgentHookSpawnReservation>
   onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   disposeSession: (sessionId: string) => void
   getInstallState: () => AgentHookInstallState

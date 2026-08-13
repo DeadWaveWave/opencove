@@ -13,7 +13,6 @@ describe('buildAgentLaunchCommand', () => {
 
     expect(command.command).toBe('codex')
     expect(command.args).toEqual([
-      '--dangerously-bypass-hook-trust',
       '--dangerously-bypass-approvals-and-sandbox',
       '--model',
       'gpt-5.2-codex',
@@ -34,7 +33,6 @@ describe('buildAgentLaunchCommand', () => {
 
     expect(command.command).toBe('codex')
     expect(command.args).toEqual([
-      '--dangerously-bypass-hook-trust',
       '--dangerously-bypass-approvals-and-sandbox',
       '--model',
       'gpt-5.2-codex',
@@ -56,7 +54,6 @@ describe('buildAgentLaunchCommand', () => {
 
     expect(command.command).toBe('codex')
     expect(command.args).toEqual([
-      '--dangerously-bypass-hook-trust',
       '--sandbox',
       'workspace-write',
       '--ask-for-approval',
@@ -81,7 +78,6 @@ describe('buildAgentLaunchCommand', () => {
 
     expect(command.command).toBe('codex')
     expect(command.args).toEqual([
-      '--dangerously-bypass-hook-trust',
       '--sandbox',
       'workspace-write',
       '--ask-for-approval',
@@ -136,7 +132,6 @@ describe('buildAgentLaunchCommand', () => {
 
     expect(command.command).toBe('codex')
     expect(command.args).toEqual([
-      '--dangerously-bypass-hook-trust',
       '--dangerously-bypass-approvals-and-sandbox',
       'resume',
       '019c3e32-52ff-7b00-94ac-e6c5a56b4aa4',
@@ -182,10 +177,7 @@ describe('buildAgentLaunchCommand', () => {
     })
 
     expect(command.command).toBe('codex')
-    expect(command.args).toEqual([
-      '--dangerously-bypass-hook-trust',
-      '--dangerously-bypass-approvals-and-sandbox',
-    ])
+    expect(command.args).toEqual(['--dangerously-bypass-approvals-and-sandbox'])
     expect(command.launchMode).toBe('new')
   })
 

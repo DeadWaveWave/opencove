@@ -1,4 +1,5 @@
 import { appendCodexRecord, createCodexSessionFile } from '../test-agent-session-jsonl.mjs'
+import { readFile } from 'node:fs/promises'
 
 const SIGNALS = {
   '<test-codex-hook-working>': {
@@ -23,18 +24,47 @@ const SIGNALS = {
 }
 
 async function postHook(envelope) {
-  const endpoint = process.env.OPENCOVE_CODEX_HOOK_ENDPOINT
-  const token = process.env.OPENCOVE_CODEX_HOOK_TOKEN
-  if (!endpoint || !token) {
+  const endpointPath = process.env.OPENCOVE_AGENT_HOOK_ENDPOINT
+  const paneKey = process.env.OPENCOVE_PANE_KEY
+  if (!endpointPath || !paneKey) {
     throw new Error('Codex hook stub did not receive its correlation environment.')
   }
-  const response = await fetch(endpoint, {
+  const coordinates = Object.fromEntries(
+    (await readFile(endpointPath, 'utf8'))
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map(line => line.replace(/^set /, '').split(/=(.*)/s).slice(0, 2)),
+  )
+  const port = coordinates.OPENCOVE_AGENT_HOOK_PORT
+  const token = coordinates.OPENCOVE_AGENT_HOOK_TOKEN
+  const form = new URLSearchParams({
+    paneKey,
+    tabId: process.env.OPENCOVE_TAB_ID ?? '',
+    worktreeId: process.env.OPENCOVE_WORKTREE_ID ?? '',
+    env: coordinates.OPENCOVE_AGENT_HOOK_ENV ?? '',
+    version: coordinates.OPENCOVE_AGENT_HOOK_VERSION ?? '',
+    payload: JSON.stringify({
+      session_id: envelope.codexSessionId,
+      transcript_path: null,
+      cwd: process.cwd(),
+      hook_event_name: envelope.hookEventName,
+      model: 'test-model',
+      ...(envelope.tool
+        ? {
+            tool_name: envelope.tool.name,
+            tool_use_id: envelope.tool.useId,
+            tool_input: envelope.tool.input,
+          }
+        : {}),
+    }),
+  })
+  const response = await fetch(`http://127.0.0.1:${port}/hook/codex`, {
     method: 'POST',
     headers: {
-      'content-type': 'application/json',
-      'x-opencove-hook-token': token,
+      'content-type': 'application/x-www-form-urlencoded',
+      'x-opencove-agent-hook-token': token,
     },
-    body: JSON.stringify(envelope),
+    body: form,
   })
   if (!response.ok) {
     throw new Error(`Codex hook stub POST failed with ${response.status}.`)

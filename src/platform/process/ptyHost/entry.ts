@@ -19,6 +19,7 @@ import {
 import { convertHighByteX10MouseReportsToSgr } from '../pty/x10Mouse'
 import { PtyHostSpawnIdentityRegistry } from './spawnIdentityRegistry'
 import { resizePtyAndReadAck } from './resizeAck'
+import { resolveForegroundAgentObservation } from '../../../shared/runtime/agentForegroundRecognition'
 
 type ParentPort = {
   on: (event: 'message', listener: (messageEvent: { data: unknown }) => void) => void
@@ -170,6 +171,7 @@ type PtySession = {
 }
 
 const sessions = new Map<string, PtySession>()
+const foregroundTimers = new Map<string, NodeJS.Timeout>()
 const spawnIdentities = new PtyHostSpawnIdentityRegistry()
 let hasCleanedSessions = false
 
@@ -198,6 +200,8 @@ const cleanupSessions = (): void => {
     spawnIdentities.release(session.launchId, sessionId)
     terminatePtySession(session)
   }
+  foregroundTimers.forEach(timer => clearTimeout(timer))
+  foregroundTimers.clear()
   spawnIdentities.clear()
 }
 
@@ -243,9 +247,46 @@ const respondError = (requestId: string, error: unknown): void => {
 
 const onPtyData = (sessionId: string, data: string): void => {
   send({ type: 'data', sessionId, data })
+  if (!data.includes('\u001b]133;D')) {
+    return
+  }
+  const previousTimer = foregroundTimers.get(sessionId)
+  if (previousTimer) {
+    clearTimeout(previousTimer)
+  }
+  const timer = setTimeout(() => {
+    foregroundTimers.delete(sessionId)
+    const rootPid = sessions.get(sessionId)?.rootPid
+    if (!rootPid || process.platform === 'win32') {
+      return
+    }
+    const result = spawnSync('ps', ['ax', '-o', 'pid=,ppid=,stat=,command='], {
+      encoding: 'utf8',
+      env: process.env,
+    })
+    if (result.status !== 0 || typeof result.stdout !== 'string') {
+      return
+    }
+    const observation = resolveForegroundAgentObservation(result.stdout, rootPid)
+    if (observation.availability === 'available') {
+      send({
+        type: 'foreground',
+        sessionId,
+        agent: observation.agent,
+        shellOnly: observation.shellOnly,
+      })
+    }
+  }, 350)
+  timer.unref()
+  foregroundTimers.set(sessionId, timer)
 }
 
 const onPtyExit = (sessionId: string, exitCode: number): void => {
+  const timer = foregroundTimers.get(sessionId)
+  if (timer) {
+    clearTimeout(timer)
+    foregroundTimers.delete(sessionId)
+  }
   const session = sessions.get(sessionId)
   if (session) {
     sessions.delete(sessionId)

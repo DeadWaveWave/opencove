@@ -85,11 +85,19 @@ export type PtyHostExitMessage = {
   exitCode: number
 }
 
+export type PtyHostForegroundMessage = {
+  type: 'foreground'
+  sessionId: string
+  agent: 'codex' | null
+  shellOnly: boolean
+}
+
 export type PtyHostMessage =
   | PtyHostReadyMessage
   | PtyHostResponseMessage
   | PtyHostDataMessage
   | PtyHostExitMessage
+  | PtyHostForegroundMessage
 
 export function isPtyHostMessage(value: unknown): value is PtyHostMessage {
   if (!value || typeof value !== 'object') {

@@ -289,6 +289,12 @@ describe('headless PTY runtime', () => {
           source: 'codex_hook',
           hookInstallState: 'installed',
         },
+        {
+          sessionId: 'session-1',
+          state: 'standby',
+          source: 'codex_hook',
+          hookInstallState: 'installed',
+        },
       ])
       expect(observedMetadata).toEqual([
         { sessionId: 'session-1', resumeSessionId: 'resume-session-1' },
@@ -307,6 +313,8 @@ describe('headless PTY runtime', () => {
             EXISTING: 'value',
             OPENCOVE_CLAUDE_HOOK_ENDPOINT: 'http://127.0.0.1:1234/hooks/claude',
             OPENCOVE_CLAUDE_HOOK_TOKEN: 'token-1',
+            OPENCOVE_CODEX_HOOK_ENDPOINT: 'http://127.0.0.1:5678/hooks/codex',
+            OPENCOVE_CODEX_HOOK_TOKEN: 'reserved-token',
           },
         }),
       )

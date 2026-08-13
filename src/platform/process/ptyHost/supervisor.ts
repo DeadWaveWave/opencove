@@ -43,6 +43,9 @@ export class PtyHostSupervisor {
   private readonly exitListeners = new Set<
     (event: { sessionId: string; exitCode: number }) => void
   >()
+  private readonly foregroundListeners = new Set<
+    (event: { sessionId: string; agent: 'codex' | null; shellOnly: boolean }) => void
+  >()
 
   private process: PtyHostProcess | null = null
   private readyPromise: Promise<void> | null = null
@@ -96,6 +99,15 @@ export class PtyHostSupervisor {
     this.exitListeners.add(listener)
     return () => {
       this.exitListeners.delete(listener)
+    }
+  }
+
+  public onForeground(
+    listener: (event: { sessionId: string; agent: 'codex' | null; shellOnly: boolean }) => void,
+  ): UnsubscribeFn {
+    this.foregroundListeners.add(listener)
+    return () => {
+      this.foregroundListeners.delete(listener)
     }
   }
 
@@ -278,6 +290,10 @@ export class PtyHostSupervisor {
       this.activeSessions.delete(message.sessionId)
       this.emitExit(message.sessionId, message.exitCode)
       return
+    }
+
+    if (message.type === 'foreground') {
+      this.foregroundListeners.forEach(listener => listener(message))
     }
   }
 
