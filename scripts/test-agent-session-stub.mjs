@@ -15,6 +15,10 @@ import {
 } from './test-agent-session-stub/codex.mjs'
 import { runStdinEchoScenario } from './test-agent-session-stub/stdinEcho.mjs'
 import {
+  runCodexHookFallbackScenario,
+  runCodexHookLifecycleScenario,
+} from './test-agent-session-stub/codexHook.mjs'
+import {
   runGeminiStdinSubmitThenReplyScenario,
   runGeminiUserThenGeminiScenario,
 } from './test-agent-session-stub/gemini.mjs'
@@ -72,6 +76,16 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-standby-no-newline') {
     await runCodexStandbyNoNewlineScenario(cwd)
+    return
+  }
+
+  if (provider === 'codex' && scenario === 'codex-hook-lifecycle') {
+    await runCodexHookLifecycleScenario()
+    return
+  }
+
+  if (provider === 'codex' && scenario === 'codex-hook-fallback') {
+    await runCodexHookFallbackScenario(cwd)
     return
   }
 

@@ -186,7 +186,9 @@ export interface TerminalResyncEvent {
 
 export type TerminalSessionState = 'working' | 'waiting' | 'standby'
 
-export type TerminalSessionStateSource = 'launch' | 'session_file' | 'claude_hook'
+export type AgentHookStateSource = 'claude_hook' | 'codex_hook'
+
+export type TerminalSessionStateSource = 'launch' | 'session_file' | AgentHookStateSource
 
 export type AgentHookInstallState = 'installed' | 'partial' | 'not_installed' | 'error' | 'skipped'
 

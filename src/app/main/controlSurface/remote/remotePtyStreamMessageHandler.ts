@@ -314,7 +314,8 @@ export function createRemotePtyStreamMessageHandler(options: {
       if (
         message.source === 'launch' ||
         message.source === 'session_file' ||
-        message.source === 'claude_hook'
+        message.source === 'claude_hook' ||
+        message.source === 'codex_hook'
       ) {
         eventPayload.source = message.source
       }

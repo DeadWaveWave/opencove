@@ -28,7 +28,8 @@ export function normalizeBrowserPtyStateMetadata(
   const source: TerminalSessionStateSource | null =
     record.source === 'launch' ||
     record.source === 'session_file' ||
-    record.source === 'claude_hook'
+    record.source === 'claude_hook' ||
+    record.source === 'codex_hook'
       ? record.source
       : null
   const hookInstallState: AgentHookInstallState | null =

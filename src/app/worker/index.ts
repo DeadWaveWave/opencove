@@ -13,21 +13,15 @@ import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
 import { resolvePackagedAppRoot } from '../../shared/runtime/opencoveRuntimePaths'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
+import { createCodexHookChannel } from '../main/controlSurface/agentHook/codexHookChannel'
 
-function resolveClaudeHookHelperPath(): string {
+function resolveAgentHookHelperPath(fileName: string): string {
   const resourcesPath =
     typeof process.resourcesPath === 'string' ? process.resourcesPath.trim() : ''
   if (resourcesPath.length > 0) {
-    return resolve(
-      resolvePackagedAppRoot(resourcesPath),
-      'src',
-      'app',
-      'cli',
-      'hooks',
-      'claude-status.mjs',
-    )
+    return resolve(resolvePackagedAppRoot(resourcesPath), 'src', 'app', 'cli', 'hooks', fileName)
   }
-  return resolve(__dirname, '../../src/app/cli/hooks/claude-status.mjs')
+  return resolve(__dirname, '../../src/app/cli/hooks', fileName)
 }
 
 function readFlagValue(argv: string[], flag: string): string | null {
@@ -182,7 +176,7 @@ async function main(): Promise<void> {
   const claudeHookChannel = createClaudeHookChannel({
     homeDirectory: homedir(),
     helperCommand: process.execPath,
-    helperArgs: [resolveClaudeHookHelperPath()],
+    helperArgs: [resolveAgentHookHelperPath('claude-status.mjs')],
     ...(forceHookBindFailure ? { port: -1 } : {}),
     ...(forceHookInstallFailure
       ? {
@@ -190,7 +184,26 @@ async function main(): Promise<void> {
         }
       : {}),
   })
-  const ptyRuntime = createHeadlessPtyRuntime({ userDataPath, claudeHookChannel })
+  const forceCodexHookBindFailure =
+    process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CODEX_HOOK_BIND_FAILURE === '1'
+  const forceCodexHookInstallFailure =
+    process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CODEX_HOOK_INSTALL_FAILURE === '1'
+  const codexHookChannel = createCodexHookChannel({
+    homeDirectory: homedir(),
+    helperCommand: process.execPath,
+    helperArgs: [resolveAgentHookHelperPath('codex-status.mjs')],
+    ...(forceCodexHookBindFailure ? { port: -1 } : {}),
+    ...(forceCodexHookInstallFailure
+      ? {
+          install: async () => ({ state: 'error' as const, detail: 'test_install_failure' }),
+        }
+      : {}),
+  })
+  const agentHookChannels = {
+    'claude-code': claudeHookChannel,
+    codex: codexHookChannel,
+  }
+  const ptyRuntime = createHeadlessPtyRuntime({ userDataPath, agentHookChannels })
 
   const server = registerControlSurfaceHttpServer({
     userDataPath,
@@ -207,7 +220,7 @@ async function main(): Promise<void> {
     connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
     connectionStartedBy: startedBy,
     appVersion,
-    claudeHookChannel,
+    agentHookChannels: [claudeHookChannel, codexHookChannel],
   })
 
   const info = await server.ready

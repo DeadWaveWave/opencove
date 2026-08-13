@@ -1,10 +1,15 @@
-import type { AgentHookInstallState, TerminalSessionState } from '../../../shared/contracts/dto'
+import type {
+  AgentHookInstallState,
+  AgentHookStateSource,
+  TerminalSessionState,
+} from '../../../shared/contracts/dto'
 
 export const AGENT_HOOK_FRESHNESS_MS = 120_000
 
 export interface AgentRunStateSignal {
   state: TerminalSessionState
   observedAtMs: number
+  source?: AgentHookStateSource
 }
 
 export interface AgentRunStateAuthorityInput {
@@ -16,7 +21,7 @@ export interface AgentRunStateAuthorityInput {
 }
 
 export interface AgentRunStateAuthorityDecision {
-  source: 'claude_hook' | 'session_file' | null
+  source: AgentHookStateSource | 'session_file' | null
   state: TerminalSessionState | null
   degraded: boolean
   hookHealth: 'fresh' | 'stale' | 'unavailable' | 'not_applicable'
@@ -68,7 +73,7 @@ export function resolveAgentRunStateAuthority(
   // blocked on a person or while idle is not evidence that the hook channel failed.
   if (hookSignal.state !== 'working') {
     return {
-      source: 'claude_hook',
+      source: hookSignal.source ?? 'claude_hook',
       state: hookSignal.state,
       degraded: false,
       hookHealth: 'fresh',
@@ -80,7 +85,7 @@ export function resolveAgentRunStateAuthority(
   const deadline = hookSignal.observedAtMs + freshnessMs
   if (input.nowMs < deadline) {
     return {
-      source: 'claude_hook',
+      source: hookSignal.source ?? 'claude_hook',
       state: hookSignal.state,
       degraded: false,
       hookHealth: 'fresh',

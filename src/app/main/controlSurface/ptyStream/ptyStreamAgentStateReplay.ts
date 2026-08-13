@@ -11,6 +11,7 @@ export function registerPtyStreamAgentState(options: {
   const previous = options.session.agentStateBySource.get(source)
   if (
     source !== 'claude_hook' &&
+    source !== 'codex_hook' &&
     previous?.state === options.event.state &&
     previous.hookInstallState === options.event.hookInstallState
   ) {
