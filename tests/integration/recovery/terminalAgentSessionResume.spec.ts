@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { registerSessionPrepareOrReviveHandler } from '../../../src/app/main/controlSurface/handlers/sessionPrepareOrReviveHandler'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
-import { createReadyTerminalAdmissionDeps } from '../contexts/controlSurfaceTestTerminalAvailability'
+import { createReadyTerminalAdmissionDeps } from '../../unit/contexts/controlSurfaceTestTerminalAvailability'
 
 const ctx: ControlSurfaceContext = {
-  now: () => new Date('2026-07-10T00:00:00.000Z'),
+  now: () => new Date('2026-08-13T00:00:00.000Z'),
   capabilities: {
     webShell: false,
     sync: { state: true, events: true },
@@ -19,7 +19,10 @@ const ctx: ControlSurfaceContext = {
   },
 }
 
-function createRemoteRecoveryStore() {
+function createStore(binding: {
+  resumeSessionId: string | null
+  resumeSessionIdVerified: boolean
+}) {
   return {
     readAppState: async () => ({
       formatVersion: 1,
@@ -40,9 +43,9 @@ function createRemoteRecoveryStore() {
           spaces: [],
           nodes: [
             {
-              id: 'terminal-1',
-              sessionId: 'home-session-1',
-              title: 'Shell',
+              id: 'terminal-agent-1',
+              sessionId: 'stale-pty-session',
+              title: 'codex',
               position: { x: 0, y: 0 },
               width: 520,
               height: 360,
@@ -50,15 +53,16 @@ function createRemoteRecoveryStore() {
               profileId: null,
               runtimeKind: 'posix',
               terminalGeometry: { cols: 80, rows: 24 },
+              terminalProviderHint: 'codex',
               status: null,
               startedAt: null,
               endedAt: null,
               exitCode: null,
               lastError: null,
-              scrollback: 'durable history',
+              scrollback: 'durable terminal history',
               executionDirectory: '/tmp/workspace',
               expectedDirectory: '/tmp/workspace',
-              agent: null,
+              agent: { provider: 'codex', ...binding },
               task: null,
             },
           ],
@@ -69,22 +73,30 @@ function createRemoteRecoveryStore() {
   } as never
 }
 
-describe('session.prepareOrRevive remote terminal recovery', () => {
-  it('reattaches a persisted remote route before deciding to spawn a replacement shell', async () => {
-    let active = false
-    const restoreTerminalSession = vi.fn(async () => {
-      active = true
-      return true
-    })
+function registerSpawn(controlSurface: ReturnType<typeof createControlSurface>): void {
+  controlSurface.register('pty.spawn', {
+    kind: 'command',
+    validate: payload => payload,
+    handle: async () => ({
+      sessionId: 'fresh-pty-session',
+      profileId: null,
+      runtimeKind: 'posix' as const,
+    }),
+    defaultErrorCode: 'terminal.spawn_failed',
+  })
+}
+
+describe('terminal agent cold session recovery', () => {
+  it('hydrates a fresh PTY and injects the exact durable resume command once', async () => {
     const controlSurface = createControlSurface()
+    const write = vi.fn()
+    registerSpawn(controlSurface)
     registerSessionPrepareOrReviveHandler(controlSurface, {
       ...createReadyTerminalAdmissionDeps(),
-      getPersistenceStore: async () => createRemoteRecoveryStore(),
-      ptyStreamHub: {
-        isSessionActive: vi.fn(() => active),
-      } as never,
-      ptyRuntime: { write: vi.fn() },
-      restoreTerminalSession,
+      getPersistenceStore: async () =>
+        createStore({ resumeSessionId: 'resume-session-1', resumeSessionIdVerified: true }),
+      ptyStreamHub: { isSessionActive: vi.fn(() => false) } as never,
+      ptyRuntime: { write },
     })
 
     const result = await controlSurface.invoke(ctx, {
@@ -94,39 +106,32 @@ describe('session.prepareOrRevive remote terminal recovery', () => {
     })
 
     expect(result.ok).toBe(true)
-    if (!result.ok) {
-      return
-    }
-    expect(restoreTerminalSession).toHaveBeenCalledWith({
-      nodeId: 'terminal-1',
-      sessionId: 'home-session-1',
-    })
-    expect(result.value).toMatchObject({
+    expect(result.ok && result.value).toMatchObject({
       nodes: [
         {
-          nodeId: 'terminal-1',
-          sessionId: 'home-session-1',
-          recoveryState: 'live',
-          isLiveSessionReattach: true,
-          scrollback: 'worker checkpoint',
+          nodeId: 'terminal-agent-1',
+          recoveryState: 'restarted',
+          sessionId: 'fresh-pty-session',
+          isLiveSessionReattach: false,
         },
       ],
     })
+    expect(write.mock.calls).toEqual([
+      ['fresh-pty-session', '\u0003'],
+      ['fresh-pty-session', '\u0015codex resume resume-session-1\r'],
+    ])
   })
 
-  it('does not spawn a replacement when remote recovery rejects transiently', async () => {
-    const restoreTerminalSession = vi.fn(async () => {
-      throw new Error('temporary remote recovery failure')
-    })
+  it('hydrates an unverified legacy binding as a shell without launching a new agent', async () => {
     const controlSurface = createControlSurface()
+    const write = vi.fn()
+    registerSpawn(controlSurface)
     registerSessionPrepareOrReviveHandler(controlSurface, {
       ...createReadyTerminalAdmissionDeps(),
-      getPersistenceStore: async () => createRemoteRecoveryStore(),
-      ptyStreamHub: {
-        isSessionActive: vi.fn(() => false),
-      } as never,
-      ptyRuntime: { write: vi.fn() },
-      restoreTerminalSession,
+      getPersistenceStore: async () =>
+        createStore({ resumeSessionId: null, resumeSessionIdVerified: false }),
+      ptyStreamHub: { isSessionActive: vi.fn(() => false) } as never,
+      ptyRuntime: { write },
     })
 
     const result = await controlSurface.invoke(ctx, {
@@ -135,10 +140,7 @@ describe('session.prepareOrRevive remote terminal recovery', () => {
       payload: { workspaceId: 'workspace-1' },
     })
 
-    expect(result.ok).toBe(false)
-    expect(restoreTerminalSession).toHaveBeenCalledTimes(1)
-    if (!result.ok) {
-      expect(result.error.debugMessage).toContain('temporary remote recovery failure')
-    }
+    expect(result.ok).toBe(true)
+    expect(write).not.toHaveBeenCalled()
   })
 })

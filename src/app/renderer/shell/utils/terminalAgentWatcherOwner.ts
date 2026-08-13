@@ -94,7 +94,7 @@ export function createTerminalAgentWatcherOwner(options: {
         const binding = node.data.terminalAgentBinding ?? null
         const provider = resolveAgentTreatedProvider(node)
         const sessionId = node.data.sessionId.trim()
-        if (!binding || !provider || sessionId.length === 0) {
+        if (!provider || !node.data.agentOverlay || sessionId.length === 0) {
           continue
         }
 
@@ -102,8 +102,8 @@ export function createTerminalAgentWatcherOwner(options: {
           sessionId,
           provider,
           cwd: node.data.executionDirectory?.trim() || workspace.path,
-          launchMode: binding.resumeSessionIdVerified === true ? 'resume' : 'new',
-          resumeSessionId: binding.resumeSessionId,
+          launchMode: binding?.resumeSessionIdVerified === true ? 'resume' : 'new',
+          resumeSessionId: binding?.resumeSessionId ?? null,
           startedAtMs: node.data.agentOverlay?.startedAtMs ?? now(),
         })
       }

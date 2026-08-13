@@ -1,13 +1,19 @@
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
+import {
+  createTestUserDataDir,
+  launchApp,
+  removePathWithRetry,
+  seedWorkspaceState,
+  testWorkspacePath,
+} from './workspace-canvas.helpers'
 
 const testAgentStubScript = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
 const overlayAdvanceSentinel = '<test-overlay-advance>'
 
-async function createAgentCommandPath(): Promise<string> {
+async function createAgentCommandPath(options?: { invocationLogPath?: string }): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), 'opencove-agent-overlay-'))
   await Promise.all(
     (
@@ -19,7 +25,11 @@ async function createAgentCommandPath(): Promise<string> {
       const executablePath = path.join(directory, command)
       await writeFile(
         executablePath,
-        `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(
+        `#!/bin/sh\n${
+          options?.invocationLogPath
+            ? `printf '${command} %s\\n' "$*" >> ${JSON.stringify(options.invocationLogPath)}\n`
+            : ''
+        }exec ${JSON.stringify(process.execPath)} ${JSON.stringify(
           testAgentStubScript,
         )} ${provider} "$PWD" new default-model "" jsonl-overlay-lifecycle\n`,
         'utf8',
@@ -46,7 +56,11 @@ async function readPersistedNode(window: Page, nodeId: string) {
               id: string
               kind: string
               sessionId?: string | null
-              agent?: { provider?: string; resumeSessionId?: string | null } | null
+              agent?: {
+                provider?: string
+                resumeSessionId?: string | null
+                resumeSessionIdVerified?: boolean
+              } | null
               agentOverlay?: unknown
               scrollback?: string | null
             }>
@@ -251,6 +265,116 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
       await electronApp.close()
       await rm(commandDirectory, { recursive: true, force: true })
       await rm(executionDirectory, { recursive: true, force: true })
+    }
+  })
+
+  test('resumes a verified terminal agent session in a fresh PTY after app restart', async () => {
+    const userDataDir = await createTestUserDataDir()
+    const invocationLogPath = path.join(userDataDir, 'agent-command-invocations.log')
+    const commandDirectory = await createAgentCommandPath({ invocationLogPath })
+    await mkdir(testWorkspacePath, { recursive: true })
+    const executionDirectory = await mkdtemp(path.join(testWorkspacePath, 'agent-overlay-restart-'))
+    const env = {
+      PATH: `${commandDirectory}${path.delimiter}${process.env.PATH ?? ''}`,
+      OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+    }
+
+    try {
+      const { electronApp, window } = await launchApp({
+        windowMode: 'offscreen',
+        userDataDir,
+        cleanupUserDataDir: false,
+        env,
+      })
+      let initialRuntimeSessionId: string | null = null
+      let durableResumeSessionId: string | null = null
+
+      try {
+        await seedWorkspaceState(window, {
+          activeWorkspaceId: 'workspace-overlay-restart',
+          workspaces: [
+            {
+              id: 'workspace-overlay-restart',
+              name: 'workspace-overlay-restart',
+              path: testWorkspacePath,
+              activeSpaceId: null,
+              nodes: [
+                {
+                  id: 'terminal-restart',
+                  title: 'Restart agent terminal',
+                  position: { x: 180, y: 160 },
+                  width: 520,
+                  height: 400,
+                  kind: 'terminal',
+                  executionDirectory,
+                },
+              ],
+              spaces: [],
+            },
+          ],
+        })
+
+        const terminal = window.locator('[data-id="terminal-restart"] .terminal-node')
+        await expect(terminal).toBeVisible()
+        await expect.poll(() => readRuntimeSessionId(window, 'terminal-restart')).toBeTruthy()
+        initialRuntimeSessionId = await readRuntimeSessionId(window, 'terminal-restart')
+
+        await terminal.locator('.xterm-helper-textarea').click()
+        await window.keyboard.type('codex')
+        await window.keyboard.press('Enter')
+        await expectOverlayStubReady(terminal, 'codex')
+        await expect
+          .poll(async () => {
+            const agent = (await readPersistedNode(window, 'terminal-restart'))?.agent
+            return Boolean(
+              agent?.resumeSessionIdVerified &&
+              typeof agent.resumeSessionId === 'string' &&
+              agent.resumeSessionId.length > 0,
+            )
+          })
+          .toBe(true)
+
+        durableResumeSessionId =
+          (await readPersistedNode(window, 'terminal-restart'))?.agent?.resumeSessionId ?? null
+        expect(durableResumeSessionId).not.toBeNull()
+      } finally {
+        await electronApp.close()
+      }
+
+      const { electronApp: restartedApp, window: restartedWindow } = await launchApp({
+        windowMode: 'offscreen',
+        userDataDir,
+        cleanupUserDataDir: true,
+        env,
+      })
+
+      try {
+        const expectedResumeCommand = `codex resume ${durableResumeSessionId}`
+        await expect
+          .poll(async () => (await readFile(invocationLogPath, 'utf8')).split(/\r?\n/))
+          .toContain(expectedResumeCommand)
+        const invocations = (await readFile(invocationLogPath, 'utf8')).split(/\r?\n/)
+        expect(invocations.filter(invocation => invocation === expectedResumeCommand)).toHaveLength(
+          1,
+        )
+
+        const restoredTerminal = restartedWindow.locator(
+          '[data-id="terminal-restart"] .terminal-node',
+        )
+        await expect(restoredTerminal).toBeVisible()
+        await expect
+          .poll(() => readRuntimeSessionId(restartedWindow, 'terminal-restart'))
+          .toBeTruthy()
+        expect(await readRuntimeSessionId(restartedWindow, 'terminal-restart')).not.toBe(
+          initialRuntimeSessionId,
+        )
+      } finally {
+        await restartedApp.close()
+      }
+    } finally {
+      await rm(commandDirectory, { recursive: true, force: true })
+      await rm(executionDirectory, { recursive: true, force: true })
+      await removePathWithRetry(userDataDir)
     }
   })
 

@@ -225,4 +225,46 @@ describe('agent resume metadata binding', () => {
     expect(result.nextWorkspaces[0]?.nodes[0]?.data.agent?.resumeSessionId).toBe('observed-session')
     expect(result.nextWorkspaces[0]?.nodes[0]?.data.agent?.resumeSessionIdVerified).toBe(true)
   })
+
+  it('promotes a provider-hinted terminal to a verified durable binding', () => {
+    const hintedTerminal = {
+      ...createAgentNode({ resumeSessionId: null, resumeSessionIdVerified: false }),
+      data: {
+        ...createAgentNode({ resumeSessionId: null, resumeSessionIdVerified: false }).data,
+        kind: 'terminal',
+        agent: null,
+        terminalProviderHint: 'codex',
+        terminalAgentBinding: null,
+        agentOverlay: {
+          provider: 'codex',
+          status: 'running',
+          startedAtMs: 1_723_456_789_000,
+        },
+      },
+    }
+    const workspace = {
+      id: 'workspace-1',
+      name: 'Workspace',
+      path: '/tmp/workspace',
+      nodes: [hintedTerminal],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      isMinimapVisible: true,
+      spaces: [],
+      activeSpaceId: null,
+      spaceArchiveRecords: [],
+    } as never
+
+    const result = updateWorkspacesWithAgentMetadata({
+      workspaces: [workspace],
+      sessionId: 'runtime-1',
+      resumeSessionId: 'captured-terminal-session',
+    })
+
+    expect(result.didChange).toBe(true)
+    expect(result.nextWorkspaces[0]?.nodes[0]?.data.terminalAgentBinding).toEqual({
+      provider: 'codex',
+      resumeSessionId: 'captured-terminal-session',
+      resumeSessionIdVerified: true,
+    })
+  })
 })

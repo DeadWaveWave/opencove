@@ -16,6 +16,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceContext } from '../types'
+import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import { normalizeOptionalString } from './sessionLaunchPayloadSupport'
 import {
   formatRecoverableError,
@@ -41,6 +42,7 @@ import {
   DEFAULT_PTY_ROWS,
   resolveNodeInitialPtyGeometry,
 } from './sessionPrepareOrReviveGeometry'
+import { reenterVerifiedTerminalAgent } from './sessionPrepareOrReviveTerminalAgent'
 export { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
 
 const RECENT_RESUME_SESSION_LOCATE_TIMEOUT_MS = 750
@@ -99,6 +101,7 @@ export function resolvePrepareOrReviveResumeLocateTimeoutMs(
 export async function prepareTerminalNode(options: {
   controlSurface: ControlSurface
   ctx: ControlSurfaceContext
+  ptyRuntime: Pick<ControlSurfacePtyRuntime, 'write'>
   store: PersistenceStore
   workspace: NormalizedPersistedWorkspace
   node: NormalizedPersistedNode
@@ -123,6 +126,11 @@ export async function prepareTerminalNode(options: {
       cwd,
       profileId: resolveNodeProfileId(options.node),
       geometry: spawnGeometry,
+    })
+    await reenterVerifiedTerminalAgent({
+      node: options.node,
+      sessionId: spawned.sessionId,
+      ptyRuntime: options.ptyRuntime,
     })
 
     return toPreparedNodeResult(options.node, {

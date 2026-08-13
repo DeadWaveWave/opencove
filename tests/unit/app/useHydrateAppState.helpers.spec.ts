@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { mergeHydratedNode } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
+import {
+  mergeHydratedNode,
+  prepareWorkspaceRuntimeNodes,
+} from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
 import { repairRuntimeNodeFrame } from '../../../src/app/renderer/shell/hooks/runtimeNodeFrameRepair'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 
@@ -47,6 +50,90 @@ describe('mergeHydratedNode', () => {
     )
 
     expect(merged.data.terminalGeometry).toEqual({ cols: 72, rows: 20 })
+  })
+
+  it('keeps a provider-hinted overlay and shows the manual recovery notice', async () => {
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      value: {
+        controlSurface: {
+          invoke: async () => ({
+            workspaceId: 'workspace-1',
+            nodes: [
+              {
+                nodeId: 'terminal-node-1',
+                kind: 'terminal',
+                recoveryState: 'restarted',
+                sessionId: 'fresh-shell-session',
+                isLiveSessionReattach: false,
+                title: 'codex',
+                profileId: null,
+                runtimeKind: 'posix',
+                status: null,
+                startedAt: null,
+                endedAt: null,
+                exitCode: null,
+                lastError: null,
+                scrollback: null,
+                executionDirectory: '/tmp/workspace',
+                expectedDirectory: '/tmp/workspace',
+                terminalGeometry: null,
+                agent: null,
+              },
+            ],
+          }),
+        },
+      },
+    })
+
+    const [hydrated] = await prepareWorkspaceRuntimeNodes({
+      workspace: {
+        id: 'workspace-1',
+        name: 'Workspace',
+        path: '/tmp/workspace',
+        worktreesRoot: '',
+        pullRequestBaseBranchOptions: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+        isMinimapVisible: true,
+        spaces: [],
+        activeSpaceId: null,
+        spaceArchiveRecords: [],
+        nodes: [
+          {
+            id: 'terminal-node-1',
+            sessionId: 'stale-session',
+            title: 'codex',
+            position: { x: 0, y: 0 },
+            width: 520,
+            height: 360,
+            kind: 'terminal',
+            status: null,
+            startedAt: null,
+            endedAt: null,
+            exitCode: null,
+            lastError: null,
+            scrollback: null,
+            executionDirectory: '/tmp/workspace',
+            expectedDirectory: '/tmp/workspace',
+            terminalProviderHint: 'codex',
+            terminalAgentBinding: null,
+            agent: null,
+            task: null,
+          },
+        ],
+      } as never,
+      agentSettings: {} as never,
+    })
+
+    expect(hydrated?.data.kind).toBe('terminal')
+    expect(hydrated?.data.terminalAgentBinding).toBeNull()
+    expect(hydrated?.data.agentOverlay).toMatchObject({
+      provider: 'codex',
+      status: 'restoring',
+    })
+    expect(hydrated?.data.lastError).toBe(
+      'This agent session could not be restored automatically. Choose an existing session or start a new one.',
+    )
   })
 })
 

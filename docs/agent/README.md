@@ -67,6 +67,14 @@ These caches are discarded on session exit or retirement and are never persisted
 therefore reconstruct a quiet `waiting` state, while a cold Worker restart honestly re-derives state from
 the newly launched process and its session file.
 
+Run-state replay and provider session resume are separate recovery contracts. The run-state work introduced
+in #337 replays runtime-only `working` / `waiting` / `standby` observations across renderer reload or live
+reattach; those observations expire with the Worker and cannot restore conversation contents after a cold
+restart. Cold session resume instead requires a durable, verified provider session ID. For a terminal-started
+Agent, hydration starts a fresh shell and enters the explicit provider resume command exactly once. A provider
+hint without a verified ID remains visible for manual recovery but never starts a new conversation
+automatically.
+
 ## Related Docs
 
 - `../cli/EXTERNAL_EXECUTABLE_RESOLUTION.md`

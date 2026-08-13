@@ -162,6 +162,7 @@ describe('session prepare/revive terminal geometry', () => {
     const prepared = await prepareTerminalNode({
       controlSurface,
       ctx,
+      ptyRuntime: { write: vi.fn() } as never,
       store: {
         readNodeScrollback: vi.fn(async () => null),
       } as never,
@@ -178,6 +179,90 @@ describe('session prepare/revive terminal geometry', () => {
 
     expect(prepared.sessionId).toBe('restarted-terminal-session')
     expect(prepared.terminalGeometry).toBeNull()
+  })
+
+  it('resumes a verified terminal agent binding exactly once in the fresh PTY', async () => {
+    const write = vi.fn()
+    const controlSurface: ControlSurface = {
+      invoke: vi.fn(async (_ctx, request) => {
+        expect(request.id).toBe('pty.spawn')
+        return {
+          ok: true,
+          value: {
+            sessionId: 'restarted-terminal-agent-session',
+            profileId: null,
+            runtimeKind: 'posix' as const,
+          },
+        }
+      }),
+    } as ControlSurface
+
+    const prepared = await prepareTerminalNode({
+      controlSurface,
+      ctx,
+      store: {
+        readNodeScrollback: vi.fn(async () => null),
+      } as never,
+      ptyRuntime: { write } as never,
+      workspace: createWorkspace(),
+      node: createNode({
+        kind: 'terminal',
+        title: 'codex',
+        agent: {
+          provider: 'codex',
+          resumeSessionId: 'resume-terminal-1',
+          resumeSessionIdVerified: true,
+        },
+      }),
+      space: null,
+    })
+
+    expect(prepared.sessionId).toBe('restarted-terminal-agent-session')
+    expect(write).toHaveBeenNthCalledWith(1, 'restarted-terminal-agent-session', '\u0003')
+    expect(write).toHaveBeenNthCalledWith(
+      2,
+      'restarted-terminal-agent-session',
+      '\u0015codex resume resume-terminal-1\r',
+    )
+    expect(write).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps an unverified terminal agent hint without starting any agent command', async () => {
+    const write = vi.fn()
+    const controlSurface: ControlSurface = {
+      invoke: vi.fn(async () => ({
+        ok: true,
+        value: {
+          sessionId: 'restarted-hinted-terminal',
+          profileId: null,
+          runtimeKind: 'posix' as const,
+        },
+      })),
+    } as ControlSurface
+
+    const prepared = await prepareTerminalNode({
+      controlSurface,
+      ctx,
+      store: {
+        readNodeScrollback: vi.fn(async () => null),
+      } as never,
+      ptyRuntime: { write } as never,
+      workspace: createWorkspace(),
+      node: createNode({
+        kind: 'terminal',
+        title: 'codex',
+        terminalProviderHint: 'codex',
+        agent: {
+          provider: 'codex',
+          resumeSessionId: null,
+          resumeSessionIdVerified: false,
+        },
+      }),
+      space: null,
+    })
+
+    expect(prepared.sessionId).toBe('restarted-hinted-terminal')
+    expect(write).not.toHaveBeenCalled()
   })
 
   it('restarts a mounted terminal through the current mount when the persisted Space mount is stale', async () => {
@@ -242,6 +327,7 @@ describe('session prepare/revive terminal geometry', () => {
     const prepared = await prepareTerminalNode({
       controlSurface,
       ctx,
+      ptyRuntime: { write: vi.fn() } as never,
       store: {
         readNodeScrollback: vi.fn(async () => null),
       } as never,

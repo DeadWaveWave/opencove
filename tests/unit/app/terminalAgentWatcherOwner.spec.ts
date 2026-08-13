@@ -38,13 +38,8 @@ function createWorkspace(options: { overlay: boolean; provider?: 'claude-code' |
           image: null,
           document: null,
           website: null,
-          terminalAgentBinding: options.overlay
-            ? {
-                provider,
-                resumeSessionId: null,
-                resumeSessionIdVerified: false,
-              }
-            : null,
+          terminalProviderHint: options.overlay ? provider : null,
+          terminalAgentBinding: null,
           agentOverlay: options.overlay
             ? { provider, status: 'running', startedAtMs: 1_723_456_789_000 }
             : null,
@@ -70,6 +65,8 @@ describe('terminal agent watcher owner', () => {
         sessionId: 'pty-session-1',
         provider: 'codex',
         cwd: '/tmp/workspace',
+        launchMode: 'new',
+        resumeSessionId: null,
       }),
     })
 

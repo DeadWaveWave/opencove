@@ -10,6 +10,8 @@ import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/render
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { mergeScrollbackSnapshots } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
 import { hydrateAgentNode } from '@contexts/agent/presentation/renderer/hydrateAgentNode'
+import { translate } from '@app/renderer/i18n'
+import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import { repairRuntimeNodeFrame } from './runtimeNodeFrameRepair'
 
 export function toShellWorkspaceState(
@@ -181,6 +183,12 @@ function toHydratedRuntimeNode(
   currentNode: Node<TerminalNodeData>,
   preparedNode: PreparedRuntimeNodeResult,
 ): Node<TerminalNodeData> {
+  const terminalAgentNeedsManualRecovery =
+    currentNode.data.kind === 'terminal' &&
+    Boolean(currentNode.data.agentOverlay || currentNode.data.terminalProviderHint) &&
+    (!currentNode.data.terminalAgentBinding ||
+      !isResumeSessionBindingVerified(currentNode.data.terminalAgentBinding))
+
   return {
     ...currentNode,
     data: {
@@ -195,7 +203,9 @@ function toHydratedRuntimeNode(
       startedAt: preparedNode.startedAt,
       endedAt: preparedNode.endedAt,
       exitCode: preparedNode.exitCode,
-      lastError: preparedNode.lastError,
+      lastError: terminalAgentNeedsManualRecovery
+        ? translate('messages.terminalAgentAutoResumeUnavailable')
+        : preparedNode.lastError,
       scrollback: preparedNode.kind === 'agent' ? null : preparedNode.scrollback,
       executionDirectory: preparedNode.executionDirectory ?? currentNode.data.executionDirectory,
       expectedDirectory: preparedNode.expectedDirectory ?? currentNode.data.expectedDirectory,

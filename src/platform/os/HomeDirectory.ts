@@ -1,4 +1,5 @@
 import os from 'node:os'
+import { posix, win32 } from 'node:path'
 
 interface ComputeHomeDirectoryInput {
   env: NodeJS.ProcessEnv
@@ -99,6 +100,28 @@ export function computeHomeDirectoryCandidates(
   return candidates
 }
 
+export function computeCodexHomeDirectoryCandidates(
+  input: ComputeHomeDirectoryCandidatesInput,
+): string[] {
+  const candidates: string[] = []
+
+  appendUniqueHomeDirectoryCandidate(
+    candidates,
+    normalizeEnvPath(input.env.CODEX_HOME),
+    input.platform,
+  )
+
+  for (const homeDirectory of computeHomeDirectoryCandidates(input)) {
+    const codexHomeDirectory =
+      input.platform === 'win32'
+        ? win32.join(homeDirectory, '.codex')
+        : posix.join(homeDirectory, '.codex')
+    appendUniqueHomeDirectoryCandidate(candidates, codexHomeDirectory, input.platform)
+  }
+
+  return candidates
+}
+
 export function resolveHomeDirectory(): string {
   return computeHomeDirectory({
     env: process.env,
@@ -117,6 +140,23 @@ export function resolveHomeDirectoryCandidates(): string[] {
   }
 
   return computeHomeDirectoryCandidates({
+    env: process.env,
+    platform: process.platform,
+    osHomeDir: os.homedir(),
+    osUserInfoHomeDir: userInfoHomeDir,
+  })
+}
+
+export function resolveCodexHomeDirectoryCandidates(): string[] {
+  let userInfoHomeDir: string | null = null
+
+  try {
+    userInfoHomeDir = normalizeHomeDirectoryCandidate(os.userInfo().homedir)
+  } catch {
+    userInfoHomeDir = null
+  }
+
+  return computeCodexHomeDirectoryCandidates({
     env: process.env,
     platform: process.platform,
     osHomeDir: os.homedir(),

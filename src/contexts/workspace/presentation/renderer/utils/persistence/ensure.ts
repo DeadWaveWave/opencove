@@ -26,6 +26,7 @@ import { ensurePersistedRoleData } from './ensureRoleNodeData'
 import { ensurePersistedSpaceArchiveRecord } from './ensureSpaceArchiveRecord'
 import { normalizeWebsiteNodeFrame } from '../websiteNodeData'
 import { isTerminalAgentBinding } from '../terminalAgentOverlay'
+import { isResumeSessionBindingVerified } from '../agentResumeBinding'
 import {
   normalizeAgentRuntimeStatus,
   normalizeDirectoryMode,
@@ -349,7 +350,11 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   const sessionId = normalizeOptionalString(record.sessionId)
   const agent = ensurePersistedAgentData(record.agent)
   const task = ensurePersistedTaskData(record.task)
-  const terminalAgentBinding = isTerminalAgentBinding(record.agent) ? record.agent : null
+  const terminalAgentBindingCandidate = isTerminalAgentBinding(record.agent) ? record.agent : null
+  const terminalAgentBinding =
+    terminalAgentBindingCandidate && isResumeSessionBindingVerified(terminalAgentBindingCandidate)
+      ? terminalAgentBindingCandidate
+      : null
   const note = ensurePersistedNoteData(record.task)
   const role = ensurePersistedRoleData(record.task)
   const image = ensurePersistedImageData(record.task)
@@ -378,7 +383,9 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
       record.terminalProviderHint === 'opencode' ||
       record.terminalProviderHint === 'gemini'
         ? record.terminalProviderHint
-        : null,
+        : kind === 'terminal'
+          ? (terminalAgentBindingCandidate?.provider ?? null)
+          : null,
     labelColorOverride: normalizeNodeLabelColorOverride(record.labelColorOverride),
     sidebarSortOrder:
       kind === 'agent' ? normalizeOptionalSortOrder(record.sidebarSortOrder) : undefined,

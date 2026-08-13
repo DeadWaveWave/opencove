@@ -5,7 +5,6 @@ import type {
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import type { AgentHookInstallState, TerminalSessionStateSource } from '@shared/contracts/dto'
-import { resolveObservedResumeSessionBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
 import { truncateScrollback } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
 import { useScrollbackStore } from '@contexts/workspace/presentation/renderer/store/useScrollbackStore'
 import { scheduleNodeScrollbackWrite } from '@contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule'
@@ -14,6 +13,8 @@ import { useAppStore } from '../store/useAppStore'
 import { isAgentTreatedNode } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 import { createTerminalAgentWatcherOwner } from '../utils/terminalAgentWatcherOwner'
 import { projectAgentRuntimeObservation } from '@contexts/workspace/presentation/renderer/utils/agentRuntimeObservation'
+import { updateWorkspacesWithAgentMetadata } from './usePtyWorkspaceRuntimeSync.agentMetadata'
+export { updateWorkspacesWithAgentMetadata } from './usePtyWorkspaceRuntimeSync.agentMetadata'
 
 function normalizeResumeSessionId(rawValue: unknown): string | null {
   if (typeof rawValue !== 'string') {
@@ -218,64 +219,6 @@ export function updateWorkspacesWithAgentExit({
   })
 
   return { nextWorkspaces, didChange }
-}
-
-export function updateWorkspacesWithAgentMetadata({
-  workspaces,
-  sessionId,
-  resumeSessionId,
-}: {
-  workspaces: WorkspaceState[]
-  sessionId: string
-  resumeSessionId: string | null | undefined
-}): { nextWorkspaces: WorkspaceState[]; didChange: boolean } {
-  let didChange = false
-
-  const nextWorkspaces = workspaces.map(workspace => {
-    let workspaceDidChange = false
-
-    const nextNodes = workspace.nodes.map(node => {
-      if (node.data.sessionId !== sessionId) {
-        return node
-      }
-
-      const binding =
-        node.data.kind === 'agent' ? node.data.agent : (node.data.terminalAgentBinding ?? null)
-      if (!binding) {
-        return node
-      }
-
-      const update = resolveObservedResumeSessionBindingUpdate(binding, resumeSessionId)
-      if (!update) {
-        return node
-      }
-
-      workspaceDidChange = true
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          ...(node.data.kind === 'agent'
-            ? { agent: { ...node.data.agent!, ...update } }
-            : {
-                terminalAgentBinding: {
-                  ...node.data.terminalAgentBinding!,
-                  ...update,
-                },
-              }),
-        },
-      }
-    })
-
-    if (!workspaceDidChange) {
-      return workspace
-    }
-
-    didChange = true
-    return { ...workspace, nodes: nextNodes }
-  })
-
-  return { nextWorkspaces: didChange ? nextWorkspaces : workspaces, didChange }
 }
 
 export function resolveInactiveTerminalNodeForSession({

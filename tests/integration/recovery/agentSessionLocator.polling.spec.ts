@@ -35,6 +35,51 @@ function createRolloutFirstLine({
 }
 
 describe('locateAgentResumeSessionId polling', () => {
+  it('uses the effective CODEX_HOME session root', async () => {
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-user-home-'))
+    const codexHome = await fs.mkdtemp(join(tmpdir(), 'opencove-codex-home-'))
+    const previousHome = process.env.HOME
+    const previousCodexHome = process.env.CODEX_HOME
+    process.env.HOME = tempHome
+    process.env.CODEX_HOME = codexHome
+
+    const startedAtMs = Date.now()
+    const { year, month, day } = toDateParts(startedAtMs)
+    const cwd = join(tempHome, 'workspace')
+    const sessionsDir = join(codexHome, 'sessions', year, month, day)
+
+    try {
+      await fs.mkdir(sessionsDir, { recursive: true })
+      await fs.writeFile(
+        join(sessionsDir, 'rollout-effective-home.jsonl'),
+        `${createRolloutFirstLine({
+          sessionId: 'session-from-effective-codex-home',
+          cwd,
+          timestamp: new Date(startedAtMs).toISOString(),
+        })}\n`,
+        'utf8',
+      )
+
+      await expect(
+        locateAgentResumeSessionId({
+          provider: 'codex',
+          cwd,
+          startedAtMs,
+          timeoutMs: 0,
+        }),
+      ).resolves.toBe('session-from-effective-codex-home')
+    } finally {
+      process.env.HOME = previousHome
+      if (previousCodexHome === undefined) {
+        delete process.env.CODEX_HOME
+      } else {
+        process.env.CODEX_HOME = previousCodexHome
+      }
+      await fs.rm(tempHome, { recursive: true, force: true })
+      await fs.rm(codexHome, { recursive: true, force: true })
+    }
+  })
+
   it('detects a codex session that appears after launch (late session_meta)', async () => {
     const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-integration-home-'))
     const previousHome = process.env.HOME

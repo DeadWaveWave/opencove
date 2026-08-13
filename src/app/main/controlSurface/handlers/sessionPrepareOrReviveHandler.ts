@@ -63,6 +63,7 @@ export function registerSessionPrepareOrReviveHandler(
   deps: {
     getPersistenceStore: () => Promise<PersistenceStore>
     ptyStreamHub: PtyStreamHub
+    ptyRuntime: Pick<import('./sessionPtyRuntime').ControlSurfacePtyRuntime, 'write'>
     restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
     terminalRecoverySpawnAdmission: TerminalRecoverySpawnAdmission
   },
@@ -160,6 +161,7 @@ export function registerSessionPrepareOrReviveHandler(
               return await prepareTerminalNode({
                 controlSurface,
                 ctx: recoveryContext,
+                ptyRuntime: deps.ptyRuntime,
                 store,
                 workspace,
                 node,
