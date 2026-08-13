@@ -71,7 +71,9 @@ export function toAgentNodeTitle(provider: AgentProvider, model: string | null):
         ? 'opencode'
         : provider === 'gemini'
           ? 'gemini'
-          : 'codex'
+          : provider === 'hermes'
+            ? 'hermes'
+            : 'codex'
   return `${providerTitle} · ${model ?? translate('common.defaultModel')}`
 }
 

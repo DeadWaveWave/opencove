@@ -79,6 +79,35 @@ function ProviderGlyph({ provider }: { provider: AgentProvider }): JSX.Element {
           <path d="M49.04 24.001L47.958 23.958H47.957C36.134 23.492 26.508 13.866 26.042 2.043L25.999 0.96C25.978 0.424 25.537 0 25 0S24.022 0.424 24.001 0.96L23.958 2.043C23.492 13.866 13.866 23.492 2.042 23.958L0.96 24.001C0.424 24.022 0 24.463 0 25C0 25.537 0.424 25.978 0.961 25.999L2.043 26.041C13.866 26.508 23.492 36.134 23.958 47.957L24.001 49.04C24.022 49.576 24.463 50 25 50S25.978 49.576 25.999 49.04L26.042 47.957C26.508 36.134 36.134 26.508 47.957 26.041L49.039 25.999C49.576 25.978 50 25.537 50 25C50 24.463 49.576 24.022 49.04 24.001Z" />
         </svg>
       )
+    case 'hermes':
+      return (
+        <svg
+          className="agent-provider-icon__svg"
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M12 2L2 7L12 12L22 7L12 2Z"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M2 17L12 22L22 17"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M2 12L12 17L22 12"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
     case 'codex':
     default:
       return (

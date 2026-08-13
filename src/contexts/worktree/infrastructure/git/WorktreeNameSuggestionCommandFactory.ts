@@ -47,6 +47,24 @@ export function buildWorktreeNameSuggestionCommand(
     }
   }
 
+  if (input.provider === 'hermes') {
+    const args = ['chat', '-q']
+
+    if (effectiveModel) {
+      args.push('--model', effectiveModel)
+    }
+
+    args.push(input.prompt)
+
+    return {
+      command: 'hermes',
+      args,
+      provider: input.provider,
+      effectiveModel,
+      outputMode: 'stdout',
+    }
+  }
+
   const args = ['exec', '--skip-git-repo-check', '--sandbox', 'read-only']
 
   if (effectiveModel) {

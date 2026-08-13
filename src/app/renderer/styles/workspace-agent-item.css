@@ -33,6 +33,10 @@
   --agent-provider-accent: rgba(196, 181, 253, 0.96);
 }
 
+.agent-provider-icon[data-agent-provider='hermes'] {
+  --agent-provider-accent: rgba(94, 234, 212, 0.96);
+}
+
 .agent-provider-icon__glyph,
 .agent-provider-icon__svg {
   width: 11px;

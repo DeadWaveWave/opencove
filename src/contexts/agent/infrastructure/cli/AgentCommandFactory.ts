@@ -36,6 +36,10 @@ export function resolveAgentCliCommand(provider: AgentProviderId): string {
     return 'gemini'
   }
 
+  if (provider === 'hermes') {
+    return 'hermes'
+  }
+
   return 'codex'
 }
 
@@ -196,6 +200,36 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
 
     return {
       command: 'gemini',
+      args,
+      launchMode: 'new',
+      effectiveModel,
+      resumeSessionId: null,
+    }
+  }
+
+  if (input.provider === 'hermes') {
+    if (input.mode === 'resume') {
+      if (!resumeSessionId) {
+        throw new Error('hermes resume requires explicit session id')
+      }
+
+      return {
+        command: 'hermes',
+        args: ['chat', '--resume', resumeSessionId],
+        launchMode: 'resume',
+        effectiveModel,
+        resumeSessionId,
+      }
+    }
+
+    const args = ['chat']
+    const prompt = normalizePrompt(input.prompt)
+    if (prompt.length > 0) {
+      args.push('-q', prompt)
+    }
+
+    return {
+      command: 'hermes',
       args,
       launchMode: 'new',
       effectiveModel,

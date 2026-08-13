@@ -17,6 +17,7 @@ describe('normalizeAgentSettings', () => {
       codex: '',
       opencode: '',
       gemini: '',
+      hermes: '',
     })
   })
 
@@ -265,6 +266,7 @@ describe('normalizeAgentSettings', () => {
       codex: '/opt/tools/codex',
       opencode: '',
       gemini: '',
+      hermes: '',
     })
   })
 

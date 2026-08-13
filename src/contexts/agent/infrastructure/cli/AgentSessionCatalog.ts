@@ -487,6 +487,14 @@ export async function listAgentSessions(
   const limit = normalizeLimit(input.limit)
   const titleCache = options?.titleCache
 
+  if (input.provider === 'hermes') {
+    return {
+      provider: input.provider,
+      cwd: resolvedCwd,
+      sessions: [],
+    }
+  }
+
   const sessions =
     input.provider === 'claude-code'
       ? await listClaudeSessions(resolvedCwd, limit, titleCache)

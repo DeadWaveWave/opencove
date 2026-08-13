@@ -55,6 +55,7 @@ export const enSettingsPanelDiagnostics = {
     'external-agent-claude': 'Claude CLI',
     'external-agent-opencode': 'OpenCode CLI',
     'external-agent-gemini': 'Gemini CLI',
+    'external-agent-hermes': 'Hermes CLI',
     'external-output-stub': 'Output stub',
     'external-shell': 'Shell',
     'windows-console-host': 'Windows console host',
