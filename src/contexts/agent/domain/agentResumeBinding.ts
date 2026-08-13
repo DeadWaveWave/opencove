@@ -11,6 +11,42 @@ export interface VerifiedResumeSessionBindingUpdate {
   resumeSessionIdVerified: true
 }
 
+export function normalizeResumeSessionBinding(value: unknown): ResumeSessionBindingLike | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const binding = value as Partial<ResumeSessionBindingLike>
+  if (
+    binding.provider !== 'claude-code' &&
+    binding.provider !== 'codex' &&
+    binding.provider !== 'opencode' &&
+    binding.provider !== 'gemini'
+  ) {
+    return null
+  }
+
+  if (
+    binding.resumeSessionId !== null &&
+    binding.resumeSessionId !== undefined &&
+    typeof binding.resumeSessionId !== 'string'
+  ) {
+    return null
+  }
+
+  const resumeSessionIdVerified =
+    typeof binding.resumeSessionIdVerified === 'boolean'
+      ? binding.resumeSessionIdVerified
+      : undefined
+
+  return {
+    provider: binding.provider,
+    resumeSessionId:
+      typeof binding.resumeSessionId === 'string' ? binding.resumeSessionId.trim() || null : null,
+    ...(resumeSessionIdVerified === undefined ? {} : { resumeSessionIdVerified }),
+  }
+}
+
 export function hasResumeSessionId(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }

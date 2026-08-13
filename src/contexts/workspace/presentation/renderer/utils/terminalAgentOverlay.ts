@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import type { TerminalAgentSessionBinding, TerminalNodeData } from '../types'
 
 export interface AgentTreatedActionContext {
@@ -48,15 +49,20 @@ export function activateTerminalAgentOverlay(
     return node
   }
 
+  const resumableBinding = {
+    provider: options.provider,
+    resumeSessionId: options.resumeSessionId ?? null,
+    resumeSessionIdVerified: options.resumeSessionIdVerified === true,
+  }
+
   return {
     ...node,
     data: {
       ...node.data,
-      terminalAgentBinding: {
-        provider: options.provider,
-        resumeSessionId: options.resumeSessionId ?? null,
-        resumeSessionIdVerified: options.resumeSessionIdVerified === true,
-      },
+      terminalProviderHint: options.provider,
+      terminalAgentBinding: isResumeSessionBindingVerified(resumableBinding)
+        ? resumableBinding
+        : null,
       agentOverlay: {
         provider: options.provider,
         status: 'running',
@@ -145,15 +151,16 @@ export function resolveAgentTreatedActionContext(
   const binding = node.data.terminalAgentBinding
   const overlay = node.data.agentOverlay
   const cwd = node.data.executionDirectory?.trim() ?? ''
-  if (!binding || !overlay || cwd.length === 0 || !Number.isFinite(overlay.startedAtMs)) {
+  const provider = binding?.provider ?? overlay?.provider ?? node.data.terminalProviderHint ?? null
+  if (!provider || !overlay || cwd.length === 0 || !Number.isFinite(overlay.startedAtMs)) {
     return null
   }
 
   return {
-    provider: binding.provider,
+    provider,
     cwd,
     startedAt: new Date(overlay.startedAtMs).toISOString(),
-    resumeSessionId: binding.resumeSessionId,
-    resumeSessionIdVerified: binding.resumeSessionIdVerified === true,
+    resumeSessionId: binding?.resumeSessionId ?? null,
+    resumeSessionIdVerified: binding ? isResumeSessionBindingVerified(binding) : false,
   }
 }

@@ -10,6 +10,7 @@ import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { RemotePtyEndpointProxy } from './remotePtyEndpointProxy'
 import type { TerminalRuntimeRoute } from '../../../../contexts/terminal/domain/recovery/terminalRecovery'
 import { createRemoteRecoveryCheckpointFence } from './remoteRecoveryCheckpointFence'
+import { ShellInputReadiness } from './shellInputReadiness'
 
 type RemoteSessionRoute = {
   kind: 'remote'
@@ -68,6 +69,7 @@ export function createMultiEndpointPtyRuntime(options: {
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
+  const shellInputReadiness = new ShellInputReadiness()
   const presentationResetListeners = new Set<
     (event: {
       sessionId: string
@@ -107,6 +109,7 @@ export function createMultiEndpointPtyRuntime(options: {
         if (!homeSessionId) {
           return
         }
+        shellInputReadiness.markReady(homeSessionId)
         dataListeners.forEach(listener => listener({ sessionId: homeSessionId, data }))
       },
       emitExit: (remoteSessionId, exitCode) => {
@@ -124,6 +127,7 @@ export function createMultiEndpointPtyRuntime(options: {
         homeSessionIdByRemote.delete(remoteKey)
         remoteByHomeSessionId.delete(homeSessionId)
         routes.delete(homeSessionId)
+        shellInputReadiness.forget(homeSessionId)
         created.forget(remoteSessionId)
 
         exitListeners.forEach(listener => listener({ sessionId: homeSessionId, exitCode }))
@@ -197,10 +201,12 @@ export function createMultiEndpointPtyRuntime(options: {
   }
 
   const disposeLocalDataListener = options.localRuntime.onData(event => {
+    shellInputReadiness.markReady(event.sessionId)
     dataListeners.forEach(listener => listener(event))
   })
 
   const disposeLocalExitListener = options.localRuntime.onExit(event => {
+    shellInputReadiness.forget(event.sessionId)
     exitListeners.forEach(listener => listener(event))
   })
 
@@ -221,6 +227,9 @@ export function createMultiEndpointPtyRuntime(options: {
       const { sessionId } = await options.localRuntime.spawnSession(spawnOptions)
       routes.set(sessionId, { kind: 'local' })
       return { sessionId }
+    },
+    waitForShellReady: async sessionId => {
+      await shellInputReadiness.wait(sessionId)
     },
     registerRemoteSession: ({ endpointId, remoteSessionId }) => {
       const homeSessionId = randomUUID()
@@ -444,6 +453,7 @@ export function createMultiEndpointPtyRuntime(options: {
         }
       : {}),
     dispose: () => {
+      shellInputReadiness.dispose()
       disposeLocalDataListener()
       disposeLocalExitListener()
       disposeLocalStateListener?.()

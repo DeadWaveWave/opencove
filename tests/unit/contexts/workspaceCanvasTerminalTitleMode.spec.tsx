@@ -370,7 +370,7 @@ describe('WorkspaceCanvas terminal title mode', () => {
     })
     expect(latestNodes[0]?.data.terminalProviderHint).toBe('opencode')
     expect(latestNodes[0]?.data.kind).toBe('terminal')
-    expect(latestNodes[0]?.data.terminalAgentBinding?.provider).toBe('opencode')
+    expect(latestNodes[0]?.data.terminalAgentBinding).toBeNull()
     expect(latestNodes[0]?.data.agentOverlay?.provider).toBe('opencode')
   })
 

@@ -450,6 +450,7 @@ export function registerSessionHandlers(
   registerSessionPrepareOrReviveHandler(controlSurface, {
     getPersistenceStore: deps.getPersistenceStore,
     ptyStreamHub: deps.ptyStreamHub,
+    ptyRuntime: deps.ptyRuntime,
     restoreTerminalSession: deps.restoreTerminalSession,
     terminalRecoverySpawnAdmission: deps.terminalRecoverySpawnAdmission,
   })

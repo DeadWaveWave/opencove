@@ -14,6 +14,7 @@ import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerR
 import { resolvePackagedAppRoot } from '../../shared/runtime/opencoveRuntimePaths'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 import { createCodexHookChannel } from '../main/controlSurface/agentHook/codexHookChannel'
+import { resolveManagedCodexRuntimePaths } from '../main/controlSurface/agentHook/codexHookInstaller'
 
 function resolveAgentHookHelperPath(fileName: string): string {
   const resourcesPath =
@@ -191,9 +192,16 @@ async function main(): Promise<void> {
     process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CODEX_HOOK_BIND_FAILURE === '1'
   const forceCodexHookInstallFailure =
     process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CODEX_HOOK_INSTALL_FAILURE === '1'
-  const codexHookChannel = createCodexHookChannel({
-    homeDirectory: homedir(),
+  const homeDirectory = homedir()
+  const codexRuntimeHome = resolveManagedCodexRuntimePaths({
+    homeDirectory,
     userDataDirectory: userDataPath,
+  }).runtimeHome
+  process.env.CODEX_HOME = codexRuntimeHome
+  const codexHookChannel = createCodexHookChannel({
+    homeDirectory,
+    userDataDirectory: userDataPath,
+    runtimeHomeDirectory: codexRuntimeHome,
     trustGrantEntryPath: resolveAgentHookHelperPath('codex-trust-grant.mjs'),
     ...(forceCodexHookBindFailure ? { port: -1 } : {}),
     ...(forceCodexHookInstallFailure

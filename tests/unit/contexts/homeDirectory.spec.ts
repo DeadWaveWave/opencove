@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  computeCodexHomeDirectoryCandidates,
   computeHomeDirectory,
   computeHomeDirectoryCandidates,
 } from '../../../src/platform/os/HomeDirectory'
@@ -54,5 +55,18 @@ describe('computeHomeDirectory', () => {
         osUserInfoHomeDir: 'C:\\Users\\tester',
       }),
     ).toEqual(['D:\\agent-home', 'C:\\Users\\tester'])
+  })
+
+  it('uses CODEX_HOME as the primary Codex storage root', () => {
+    expect(
+      computeCodexHomeDirectoryCandidates({
+        env: {
+          HOME: '/home/tester',
+          CODEX_HOME: '/runtime/codex-home',
+        },
+        platform: 'linux',
+        osHomeDir: '/home/tester',
+      }),
+    ).toEqual(['/runtime/codex-home', '/home/tester/.codex'])
   })
 })

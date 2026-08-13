@@ -2,7 +2,10 @@ import fs from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '@shared/contracts/dto'
-import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
+import {
+  resolveCodexHomeDirectoryCandidates,
+  resolveHomeDirectoryCandidates,
+} from '../../../../platform/os/HomeDirectory'
 import { normalizeAgentProjectRootPath } from '../AgentProjectRootPath'
 import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPaths'
 
@@ -145,8 +148,8 @@ async function findCodexSessionFilePath(
 
   for (const timestamp of timestamps) {
     const [year, month, day] = toDateDirectoryParts(timestamp)
-    for (const homeDirectory of resolveHomeDirectoryCandidates()) {
-      dateCandidates.add(join(homeDirectory, '.codex', 'sessions', year, month, day))
+    for (const codexHomeDirectory of resolveCodexHomeDirectoryCandidates()) {
+      dateCandidates.add(join(codexHomeDirectory, 'sessions', year, month, day))
     }
   }
 

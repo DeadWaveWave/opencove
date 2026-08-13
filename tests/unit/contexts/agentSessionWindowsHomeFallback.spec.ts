@@ -3,11 +3,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const { resolveHomeDirectoryCandidatesMock } = vi.hoisted(() => ({
-  resolveHomeDirectoryCandidatesMock: vi.fn<() => string[]>(),
-}))
+const { resolveCodexHomeDirectoryCandidatesMock, resolveHomeDirectoryCandidatesMock } = vi.hoisted(
+  () => ({
+    resolveCodexHomeDirectoryCandidatesMock: vi.fn<() => string[]>(),
+    resolveHomeDirectoryCandidatesMock: vi.fn<() => string[]>(),
+  }),
+)
 
 vi.mock('../../../src/platform/os/HomeDirectory', () => ({
+  resolveCodexHomeDirectoryCandidates: resolveCodexHomeDirectoryCandidatesMock,
   resolveHomeDirectoryCandidates: resolveHomeDirectoryCandidatesMock,
 }))
 
@@ -39,6 +43,10 @@ describe('agent session discovery with Windows home overrides', () => {
     const sessionFilePath = join(sessionsDir, 'rollout-real-home.jsonl')
 
     resolveHomeDirectoryCandidatesMock.mockReturnValue([overriddenHome, actualHome])
+    resolveCodexHomeDirectoryCandidatesMock.mockReturnValue([
+      join(overriddenHome, '.codex'),
+      join(actualHome, '.codex'),
+    ])
 
     try {
       await fs.mkdir(sessionsDir, { recursive: true })

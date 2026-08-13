@@ -83,6 +83,7 @@ describe('session.prepareOrRevive remote terminal recovery', () => {
       ptyStreamHub: {
         isSessionActive: vi.fn(() => active),
       } as never,
+      ptyRuntime: { write: vi.fn() },
       restoreTerminalSession,
     })
 
@@ -124,6 +125,7 @@ describe('session.prepareOrRevive remote terminal recovery', () => {
       ptyStreamHub: {
         isSessionActive: vi.fn(() => false),
       } as never,
+      ptyRuntime: { write: vi.fn() },
       restoreTerminalSession,
     })
 

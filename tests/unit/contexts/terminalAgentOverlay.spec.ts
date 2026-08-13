@@ -41,7 +41,7 @@ function createTerminalNode(): Node<TerminalNodeData> {
 }
 
 describe('terminal agent overlay invariants', () => {
-  it('INV-1 keeps durable terminal kind while adding a separate binding and runtime overlay', () => {
+  it('INV-A keeps an unverified terminal agent as a provider hint instead of a binding', () => {
     const terminal = createTerminalNode()
     const activated = activateTerminalAgentOverlay(terminal, {
       provider: 'codex',
@@ -49,11 +49,8 @@ describe('terminal agent overlay invariants', () => {
     })
 
     expect(activated.data.kind).toBe('terminal')
-    expect(activated.data.terminalAgentBinding).toEqual({
-      provider: 'codex',
-      resumeSessionId: null,
-      resumeSessionIdVerified: false,
-    })
+    expect(activated.data.terminalAgentBinding).toBeNull()
+    expect(activated.data.terminalProviderHint).toBe('codex')
     expect(activated.data.agentOverlay).toEqual({
       provider: 'codex',
       status: 'running',
@@ -98,6 +95,43 @@ describe('terminal agent overlay invariants', () => {
     )
   })
 
+  it('normalizes an unverified legacy binding to a provider hint without auto-resume identity', () => {
+    const terminal = createTerminalNode()
+    const persistedWorkspace = toPersistedState(
+      [
+        {
+          id: 'workspace-1',
+          name: 'Workspace',
+          path: '/tmp/workspace',
+          worktreesRoot: '',
+          pullRequestBaseBranchOptions: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          spaces: [],
+          activeSpaceId: null,
+          spaceArchiveRecords: [],
+          nodes: [terminal],
+        } as never,
+      ],
+      'workspace-1',
+    ).workspaces[0]!
+    persistedWorkspace.nodes[0]!.agent = {
+      provider: 'codex',
+      resumeSessionId: null,
+      resumeSessionIdVerified: false,
+    }
+
+    const ensuredWorkspace = ensurePersistedWorkspace(persistedWorkspace)
+    const recovered = toRuntimeNodes(ensuredWorkspace!)[0]!
+
+    expect(recovered.data.terminalAgentBinding).toBeNull()
+    expect(recovered.data.terminalProviderHint).toBe('codex')
+    expect(recovered.data.agentOverlay).toMatchObject({
+      provider: 'codex',
+      status: 'restoring',
+    })
+  })
+
   it('INV-2 preserves node, PTY session, and scrollback identity across overlay on/off', () => {
     const terminal = createTerminalNode()
     const activated = activateTerminalAgentOverlay(terminal, {
@@ -131,7 +165,8 @@ describe('terminal agent overlay invariants', () => {
 
     expect(ignored).toBe(active)
     expect(ignored.data.agentOverlay?.provider).toBe('codex')
-    expect(ignored.data.terminalAgentBinding?.provider).toBe('codex')
+    expect(ignored.data.terminalAgentBinding).toBeNull()
+    expect(ignored.data.terminalProviderHint).toBe('codex')
   })
 
   it('sources overlay action fields only from the binding, overlay, and terminal directory', () => {

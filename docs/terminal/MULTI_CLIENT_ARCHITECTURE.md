@@ -36,7 +36,7 @@ Key implementation files:
 | Controller role + authority epoch | `PtyStreamHub` | `/pty` attach/control handoff |
 | PTY geometry | Worker geometry transaction | controller request -> runtime ACK -> presentation commit |
 | Terminal recovery generation/archive/binding/checkpoint | Worker terminal recovery owner | reconcile/output checkpoint/atomic retire/two-phase shutdown drain |
-| Terminal agent session binding | Workspace persistence | explicit `provider` + resume identity record; never a durable node-kind rewrite |
+| Terminal agent session binding | Workspace persistence | verified `provider` + resume identity record; an unverified provider remains a hint, never a resumable identity or durable node-kind rewrite |
 | Terminal agent overlay and run-state | Renderer run-state arbiter | one runtime projection from fresh hook > warm session-file > nothing; never terminal presentation or durable node truth |
 | Terminal agent raw-source replay | `PtyStreamHub` session state | one timestamped runtime-only observation per source; replayed on attach and removed with the session |
 | Desktop renderer state replay | Main remote PTY runtime | per-source transport mirror for reloaded subscribers; never reattaches or restarts the Worker PTY |
@@ -51,8 +51,17 @@ Key implementation files:
 
 A submitted, recognized agent command can project an existing `terminal` node as an Agent without
 restarting its PTY. The durable node `kind`, node ID, session ID, and worker-owned terminal
-presentation remain unchanged. Persistence stores only the separate agent session binding; renderer
-hydration reconstructs the overlay and reattaches the existing session-state watcher.
+presentation remain unchanged. Persistence stores a separate verified agent session binding, or only a
+provider hint while identity is unknown. Renderer hydration reconstructs the overlay and reattaches the
+session-state watcher in either case. Watcher metadata may promote a hint to a verified binding, but it
+cannot replace a different verified durable identity.
+
+Run-state replay (#337) and provider session resume solve different restart boundaries. Replaying
+`working` / `waiting` / `standby` is useful for renderer reload and live reattach, but it is runtime-only and
+does not survive a cold Worker restart. Cold resume is driven only by the durable verified binding: recovery
+starts a fresh shell and enters the explicit provider resume command once. With only a provider hint,
+recovery keeps the overlay, shows a manual-recovery notice, and sends neither a resume command nor a
+new-agent command.
 
 The renderer overlay lifecycle owns that watcher attachment. Clearing the overlay also clears its
 binding and detaches the watcher; removing the node or disposing the renderer owner performs the same

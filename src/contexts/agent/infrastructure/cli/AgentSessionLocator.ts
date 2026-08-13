@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import { basename, extname, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '@shared/contracts/dto'
-import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
+import { resolveCodexHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
 import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPaths'
 import {
   findGeminiResumeSessionId,
@@ -253,8 +253,8 @@ async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promi
     now - 24 * 60 * 60 * 1000,
   ]) {
     const [year, month, day] = toDateDirectoryParts(timestamp)
-    for (const homeDirectory of resolveHomeDirectoryCandidates()) {
-      dateCandidates.add(join(homeDirectory, '.codex', 'sessions', year, month, day))
+    for (const codexHomeDirectory of resolveCodexHomeDirectoryCandidates()) {
+      dateCandidates.add(join(codexHomeDirectory, 'sessions', year, month, day))
     }
   }
 
