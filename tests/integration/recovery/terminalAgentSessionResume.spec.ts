@@ -90,20 +90,34 @@ describe('terminal agent cold session recovery', () => {
   it('hydrates a fresh PTY and injects the exact durable resume command once', async () => {
     const controlSurface = createControlSurface()
     const write = vi.fn()
+    let markShellReady: (() => void) | null = null
+    const waitForShellReady = vi.fn(
+      async () =>
+        await new Promise<void>(resolve => {
+          markShellReady = resolve
+        }),
+    )
     registerSpawn(controlSurface)
     registerSessionPrepareOrReviveHandler(controlSurface, {
       ...createReadyTerminalAdmissionDeps(),
       getPersistenceStore: async () =>
         createStore({ resumeSessionId: 'resume-session-1', resumeSessionIdVerified: true }),
       ptyStreamHub: { isSessionActive: vi.fn(() => false) } as never,
-      ptyRuntime: { write },
+      ptyRuntime: { write, waitForShellReady },
     })
 
-    const result = await controlSurface.invoke(ctx, {
+    const resultPromise = controlSurface.invoke(ctx, {
       kind: 'command',
       id: 'session.prepareOrRevive',
       payload: { workspaceId: 'workspace-1' },
     })
+
+    await vi.waitFor(() => {
+      expect(waitForShellReady).toHaveBeenCalledWith('fresh-pty-session')
+    })
+    expect(write).not.toHaveBeenCalled()
+    markShellReady?.()
+    const result = await resultPromise
 
     expect(result.ok).toBe(true)
     expect(result.ok && result.value).toMatchObject({
@@ -117,7 +131,6 @@ describe('terminal agent cold session recovery', () => {
       ],
     })
     expect(write.mock.calls).toEqual([
-      ['fresh-pty-session', '\u0003'],
       ['fresh-pty-session', '\u0015codex resume resume-session-1\r'],
     ])
   })

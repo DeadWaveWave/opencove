@@ -183,6 +183,7 @@ describe('session prepare/revive terminal geometry', () => {
 
   it('resumes a verified terminal agent binding exactly once in the fresh PTY', async () => {
     const write = vi.fn()
+    const waitForShellReady = vi.fn(async () => undefined)
     const controlSurface: ControlSurface = {
       invoke: vi.fn(async (_ctx, request) => {
         expect(request.id).toBe('pty.spawn')
@@ -203,7 +204,7 @@ describe('session prepare/revive terminal geometry', () => {
       store: {
         readNodeScrollback: vi.fn(async () => null),
       } as never,
-      ptyRuntime: { write } as never,
+      ptyRuntime: { write, waitForShellReady } as never,
       workspace: createWorkspace(),
       node: createNode({
         kind: 'terminal',
@@ -218,13 +219,13 @@ describe('session prepare/revive terminal geometry', () => {
     })
 
     expect(prepared.sessionId).toBe('restarted-terminal-agent-session')
-    expect(write).toHaveBeenNthCalledWith(1, 'restarted-terminal-agent-session', '\u0003')
+    expect(waitForShellReady).toHaveBeenCalledWith('restarted-terminal-agent-session')
     expect(write).toHaveBeenNthCalledWith(
-      2,
+      1,
       'restarted-terminal-agent-session',
       '\u0015codex resume resume-terminal-1\r',
     )
-    expect(write).toHaveBeenCalledTimes(2)
+    expect(write).toHaveBeenCalledTimes(1)
   })
 
   it('keeps an unverified terminal agent hint without starting any agent command', async () => {

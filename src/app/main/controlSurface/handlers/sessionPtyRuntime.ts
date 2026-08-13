@@ -21,6 +21,8 @@ export interface ControlSurfacePtyRuntime {
     agentProvider?: AgentProviderId
     initialAgentState?: 'working' | 'standby'
   }) => Promise<{ sessionId: string }>
+  /** Waits until a newly spawned interactive shell can safely accept its first command. */
+  waitForShellReady?: (sessionId: string) => Promise<void>
   write: (sessionId: string, data: string) => void
   resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
   kill: (sessionId: string) => void

@@ -63,7 +63,10 @@ export function registerSessionPrepareOrReviveHandler(
   deps: {
     getPersistenceStore: () => Promise<PersistenceStore>
     ptyStreamHub: PtyStreamHub
-    ptyRuntime: Pick<import('./sessionPtyRuntime').ControlSurfacePtyRuntime, 'write'>
+    ptyRuntime: Pick<
+      import('./sessionPtyRuntime').ControlSurfacePtyRuntime,
+      'waitForShellReady' | 'write'
+    >
     restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
     terminalRecoverySpawnAdmission: TerminalRecoverySpawnAdmission
   },

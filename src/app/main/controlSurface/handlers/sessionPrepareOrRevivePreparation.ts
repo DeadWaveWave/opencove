@@ -101,7 +101,7 @@ export function resolvePrepareOrReviveResumeLocateTimeoutMs(
 export async function prepareTerminalNode(options: {
   controlSurface: ControlSurface
   ctx: ControlSurfaceContext
-  ptyRuntime: Pick<ControlSurfacePtyRuntime, 'write'>
+  ptyRuntime: Pick<ControlSurfacePtyRuntime, 'waitForShellReady' | 'write'>
   store: PersistenceStore
   workspace: NormalizedPersistedWorkspace
   node: NormalizedPersistedNode

@@ -61,3 +61,16 @@ export async function reexecTerminalAgentInPty(options: {
   })
   return 'reexecuted'
 }
+
+export async function enterTerminalAgentInFreshPty(options: {
+  sessionId: string
+  command: string
+  waitForShellReady: () => Promise<void>
+  write: (input: { sessionId: string; data: string }) => Promise<void>
+}): Promise<void> {
+  await options.waitForShellReady()
+  await options.write({
+    sessionId: options.sessionId,
+    data: `${CLEAR_PROMPT_INPUT}${options.command}\r`,
+  })
+}
