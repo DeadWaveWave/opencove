@@ -138,7 +138,7 @@ describe('IPC approved workspace guards on Windows', () => {
       )
       const spawnCall = vi.mocked(runtime.spawnSession).mock.calls[0]?.[0]
       expect(spawnCall?.args[2]).toContain(
-        "& 'codex' '--dangerously-bypass-approvals-and-sandbox' 'hello'",
+        "& 'codex' '--dangerously-bypass-hook-trust' '--dangerously-bypass-approvals-and-sandbox' 'hello'",
       )
 
       expect(result).toEqual(

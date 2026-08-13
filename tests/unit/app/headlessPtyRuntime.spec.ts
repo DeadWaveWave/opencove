@@ -99,8 +99,11 @@ describe('headless PTY runtime', () => {
         await import('../../../src/app/worker/headlessPtyRuntime')
 
       let emitHookState: ((event: TerminalSessionStateEvent) => void) | null = null
+      let emitCodexHookState: ((event: TerminalSessionStateEvent) => void) | null = null
       const hookCommit = vi.fn()
       const hookDisposeSession = vi.fn()
+      const codexHookCommit = vi.fn()
+      const codexHookDisposeSession = vi.fn()
       const claudeHookChannel = {
         start: vi.fn(async () => undefined),
         reserveSpawn: vi.fn(async () => ({
@@ -122,9 +125,28 @@ describe('headless PTY runtime', () => {
         getEndpoint: vi.fn(() => 'http://127.0.0.1:1234/hooks/claude'),
         dispose: vi.fn(async () => undefined),
       }
+      const codexHookChannel = {
+        ...claudeHookChannel,
+        reserveSpawn: vi.fn(async () => ({
+          env: {
+            OPENCOVE_CODEX_HOOK_ENDPOINT: 'http://127.0.0.1:5678/hooks/codex',
+            OPENCOVE_CODEX_HOOK_TOKEN: 'reserved-token',
+          },
+          installState: 'installed' as const,
+          usesHook: true,
+          commit: codexHookCommit,
+          dispose: vi.fn(),
+        })),
+        onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
+          emitCodexHookState = listener
+          return () => undefined
+        }),
+        disposeSession: codexHookDisposeSession,
+        getEndpoint: vi.fn(() => 'http://127.0.0.1:5678/hooks/codex'),
+      }
       const runtime = createHeadlessPtyRuntime({
         userDataPath: '/tmp/opencove-headless-runtime',
-        claudeHookChannel,
+        agentHookChannels: { 'claude-code': claudeHookChannel, codex: codexHookChannel },
       })
 
       const observedData: Array<{ sessionId: string; data: string }> = []
@@ -154,6 +176,16 @@ describe('headless PTY runtime', () => {
         args: [],
         env: { EXISTING: 'value' },
         agentProvider: 'claude-code',
+        initialAgentState: 'working',
+      })
+      await runtime.spawnSession({
+        cwd: '/tmp/workspace',
+        cols: 80,
+        rows: 24,
+        command: 'codex',
+        args: [],
+        env: { EXISTING: 'codex-value', OPENCOVE_CODEX_HOOK_TOKEN: 'caller-token' },
+        agentProvider: 'codex',
         initialAgentState: 'working',
       })
 
@@ -202,6 +234,12 @@ describe('headless PTY runtime', () => {
         source: 'claude_hook',
         hookInstallState: 'installed',
       })
+      emitCodexHookState?.({
+        sessionId: 'session-1',
+        state: 'waiting',
+        source: 'codex_hook',
+        hookInstallState: 'installed',
+      })
       emitMetadata?.({ sessionId: 'session-1', resumeSessionId: 'resume-session-1' })
       ptyExitListeners.forEach(listener => {
         listener({ sessionId: 'session-1', exitCode: 0 })
@@ -227,11 +265,28 @@ describe('headless PTY runtime', () => {
           source: 'launch',
           hookInstallState: 'installed',
         },
-        { sessionId: 'session-1', state: 'working', source: 'session_file' },
+        {
+          sessionId: 'session-1',
+          state: 'working',
+          source: 'launch',
+          hookInstallState: 'installed',
+        },
+        {
+          sessionId: 'session-1',
+          state: 'working',
+          source: 'session_file',
+          hookInstallState: 'installed',
+        },
         {
           sessionId: 'session-2',
           state: 'waiting',
           source: 'claude_hook',
+          hookInstallState: 'installed',
+        },
+        {
+          sessionId: 'session-1',
+          state: 'waiting',
+          source: 'codex_hook',
           hookInstallState: 'installed',
         },
       ])
@@ -255,11 +310,23 @@ describe('headless PTY runtime', () => {
           },
         }),
       )
+      expect(lastSupervisor?.spawn).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          env: {
+            EXISTING: 'codex-value',
+            OPENCOVE_CODEX_HOOK_ENDPOINT: 'http://127.0.0.1:5678/hooks/codex',
+            OPENCOVE_CODEX_HOOK_TOKEN: 'reserved-token',
+          },
+        }),
+      )
       expect(hookCommit).toHaveBeenCalledWith('session-2')
+      expect(codexHookCommit).toHaveBeenCalledWith('session-1')
       expect(stateListener.mock.invocationCallOrder[0]).toBeLessThan(
         hookCommit.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
       )
       expect(hookDisposeSession).toHaveBeenCalledWith('session-2')
+      expect(codexHookDisposeSession).toHaveBeenCalledWith('session-1')
       expect(lastSupervisor?.crash).toHaveBeenCalledTimes(1)
       expect(watcherDispose).toHaveBeenCalledTimes(1)
       expect(lastSupervisor?.dispose).toHaveBeenCalledTimes(1)

@@ -10,7 +10,7 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../shared/contracts/dto'
-import type { ClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
+import type { AgentHookChannel } from '../../shared/runtime/agentHook/agentHookChannel'
 import {
   createSessionStateWatcherController,
   type SessionStateWatcherStartInput,
@@ -48,7 +48,7 @@ export interface HeadlessPtyRuntime {
 
 export function createHeadlessPtyRuntime(options: {
   userDataPath: string
-  claudeHookChannel?: ClaudeHookChannel
+  agentHookChannels?: Partial<Record<AgentProviderId, AgentHookChannel>>
 }): HeadlessPtyRuntime {
   const logsDir = resolve(options.userDataPath, 'logs')
   const logFilePath = resolve(logsDir, 'pty-host.log')
@@ -62,6 +62,8 @@ export function createHeadlessPtyRuntime(options: {
     string,
     TerminalSessionStateEvent['hookInstallState']
   >()
+  const hookChannelBySessionId = new Map<string, AgentHookChannel>()
+  const agentHookChannels = options.agentHookChannels ?? {}
 
   const emitState = (event: TerminalSessionStateEvent): void => {
     stateListeners.forEach(listener => listener(event))
@@ -86,7 +88,9 @@ export function createHeadlessPtyRuntime(options: {
     },
   })
 
-  const disposeHookStateListener = options.claudeHookChannel?.onState(emitState)
+  const disposeHookStateListeners = Object.values(agentHookChannels).map(channel =>
+    channel.onState(emitState),
+  )
 
   const supervisor = new PtyHostSupervisor({
     baseDir: __dirname,
@@ -115,7 +119,8 @@ export function createHeadlessPtyRuntime(options: {
 
   const disposeExitListener = supervisor.onExit(event => {
     sessionStateWatcher.disposeSession(event.sessionId)
-    options.claudeHookChannel?.disposeSession(event.sessionId)
+    hookChannelBySessionId.get(event.sessionId)?.disposeSession(event.sessionId)
+    hookChannelBySessionId.delete(event.sessionId)
     hookInstallStateBySessionId.delete(event.sessionId)
     exitListeners.forEach(listener => listener(event))
   })
@@ -123,10 +128,8 @@ export function createHeadlessPtyRuntime(options: {
   return {
     listProfiles: async () => await profileResolver.listProfiles(),
     spawnSession: async input => {
-      const reservation =
-        input.agentProvider === 'claude-code'
-          ? await options.claudeHookChannel?.reserveSpawn()
-          : undefined
+      const hookChannel = input.agentProvider ? agentHookChannels[input.agentProvider] : undefined
+      const reservation = await hookChannel?.reserveSpawn()
       try {
         const spawned = await supervisor.spawn({
           ...input,
@@ -137,6 +140,9 @@ export function createHeadlessPtyRuntime(options: {
               : {}),
         })
         if (reservation) {
+          if (hookChannel) {
+            hookChannelBySessionId.set(spawned.sessionId, hookChannel)
+          }
           hookInstallStateBySessionId.set(spawned.sessionId, reservation.installState)
           emitState({
             sessionId: spawned.sessionId,
@@ -195,7 +201,8 @@ export function createHeadlessPtyRuntime(options: {
     },
     kill: sessionId => {
       sessionStateWatcher.disposeSession(sessionId)
-      options.claudeHookChannel?.disposeSession(sessionId)
+      hookChannelBySessionId.get(sessionId)?.disposeSession(sessionId)
+      hookChannelBySessionId.delete(sessionId)
       hookInstallStateBySessionId.delete(sessionId)
       supervisor.kill(sessionId)
     },
@@ -239,12 +246,14 @@ export function createHeadlessPtyRuntime(options: {
     dispose: () => {
       disposeDataListener()
       disposeExitListener()
-      disposeHookStateListener?.()
+      disposeHookStateListeners.forEach(disposeListener => disposeListener())
       dataListeners.clear()
       exitListeners.clear()
       stateListeners.clear()
       metadataListeners.clear()
       hookInstallStateBySessionId.clear()
+      hookChannelBySessionId.forEach((channel, sessionId) => channel.disposeSession(sessionId))
+      hookChannelBySessionId.clear()
       sessionStateWatcher.dispose()
       supervisor.dispose()
     },

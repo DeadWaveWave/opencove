@@ -3,6 +3,7 @@ import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrast
 import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
 import type { SyncEventPayload } from '../../../shared/contracts/dto'
 import type { ClaudeHookChannel } from './agentHook/claudeHookChannel'
+import type { AgentHookChannel } from '../../../shared/runtime/agentHook/agentHookChannel'
 
 export interface RegisterControlSurfaceHttpServerOptions {
   userDataPath: string
@@ -24,4 +25,5 @@ export interface RegisterControlSurfaceHttpServerOptions {
   desktopSyncEventSink?: (payload: SyncEventPayload) => number
   closeWebsiteNode?: (nodeId: string) => Promise<void> | void
   claudeHookChannel?: ClaudeHookChannel
+  agentHookChannels?: readonly AgentHookChannel[]
 }

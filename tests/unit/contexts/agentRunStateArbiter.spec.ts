@@ -24,6 +24,17 @@ describe('agent run-state authority', () => {
     })
   })
 
+  it('preserves the authoritative Codex hook source without changing hook policy', () => {
+    expect(
+      resolveAgentRunStateAuthority({
+        hookInstallState: 'installed',
+        lastHookSignal: { state: 'waiting', observedAtMs: 100, source: 'codex_hook' },
+        lastSessionFileSignal: sessionFileStandby,
+        nowMs: 300,
+      }),
+    ).toMatchObject({ source: 'codex_hook', state: 'waiting', degraded: false })
+  })
+
   it('falls back at the exact freshness deadline when a working hook goes stale', () => {
     const deadline = 100 + AGENT_HOOK_FRESHNESS_MS
     const input = {

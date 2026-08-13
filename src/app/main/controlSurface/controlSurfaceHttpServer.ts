@@ -75,7 +75,9 @@ export function registerControlSurfaceHttpServer(
     topology,
     disposeLocalRuntime: options.ownsPtyRuntime === true,
   })
-  const claudeHookStart = options.claudeHookChannel?.start() ?? Promise.resolve()
+  const agentHookChannels =
+    options.agentHookChannels ?? (options.claudeHookChannel ? [options.claudeHookChannel] : [])
+  const agentHookStart = Promise.all(agentHookChannels.map(async channel => await channel.start()))
 
   const ptyStreamService = createPtyStreamService({
     token,
@@ -414,7 +416,7 @@ export function registerControlSurfaceHttpServer(
       }
 
       disposePromise = (async () => {
-        await claudeHookStart.catch(() => undefined)
+        await agentHookStart.catch(() => undefined)
         try {
           await pendingConnectionWrite
         } catch {
@@ -449,7 +451,7 @@ export function registerControlSurfaceHttpServer(
         await new Promise<void>(resolveClose => server.close(() => resolveClose()))
 
         try {
-          await options.claudeHookChannel?.dispose()
+          await Promise.all(agentHookChannels.map(async channel => await channel.dispose()))
         } catch {
           // ignore
         }

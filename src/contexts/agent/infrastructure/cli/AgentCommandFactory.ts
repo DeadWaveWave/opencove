@@ -59,6 +59,7 @@ function maybeTerminateOptionParsing(args: string[], value: string): void {
 }
 
 function appendCodexAccessArgs(args: string[], agentFullAccess: boolean): void {
+  args.push('--dangerously-bypass-hook-trust')
   if (agentFullAccess) {
     args.push('--dangerously-bypass-approvals-and-sandbox')
     return
