@@ -190,6 +190,12 @@ test.describe('Settings', () => {
       await focusToggle.uncheck()
 
       await agentNav.click()
+      await expect(window.locator('[data-testid="settings-agent-order-item-gemini"]')).toHaveCount(
+        0,
+      )
+      await expect(window.locator('[data-testid="settings-default-provider-gemini"]')).toHaveCount(
+        0,
+      )
       const defaultProvider = window.locator('[data-testid="settings-default-provider-codex"]')
       await expect(defaultProvider).toBeVisible()
       await defaultProvider.check()

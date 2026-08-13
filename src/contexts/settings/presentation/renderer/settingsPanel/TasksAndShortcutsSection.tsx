@@ -1,6 +1,5 @@
 import React from 'react'
 import {
-  type AgentProvider,
   type TaskTitleAgentProvider,
   type QuickCommand,
   type QuickPhrase,
@@ -13,7 +12,6 @@ import { TaskConfigurationSection } from './TaskConfigurationSection'
 
 export function TasksAndShortcutsSection({
   showTaskTitleGeneration,
-  defaultProvider,
   taskTitleProvider,
   taskTitleModel,
   effectiveTaskTitleProvider,
@@ -34,7 +32,6 @@ export function TasksAndShortcutsSection({
   onChangeKeybindings,
 }: {
   showTaskTitleGeneration: boolean
-  defaultProvider: AgentProvider
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   effectiveTaskTitleProvider: TaskTitleAgentProvider
@@ -58,7 +55,6 @@ export function TasksAndShortcutsSection({
     <>
       <TaskConfigurationSection
         showTaskTitleGeneration={showTaskTitleGeneration}
-        defaultProvider={defaultProvider}
         taskTitleProvider={taskTitleProvider}
         taskTitleModel={taskTitleModel}
         effectiveTaskTitleProvider={effectiveTaskTitleProvider}

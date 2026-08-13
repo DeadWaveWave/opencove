@@ -3,19 +3,18 @@ import type {
   AgentProviderId,
   ListInstalledAgentProvidersResult,
 } from '@shared/contracts/dto'
+import { SELECTABLE_AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings.providers'
 import { resolveAgentProviderAvailability } from './AgentExecutableResolver'
-
-const AGENT_PROVIDERS: readonly AgentProviderId[] = ['claude-code', 'codex', 'opencode', 'gemini']
 
 function toAvailabilityRecord(
   entries: AgentProviderAvailability[],
-): Record<AgentProviderId, AgentProviderAvailability> {
-  return entries.reduce<Record<AgentProviderId, AgentProviderAvailability>>(
+): Partial<Record<AgentProviderId, AgentProviderAvailability>> {
+  return entries.reduce<Partial<Record<AgentProviderId, AgentProviderAvailability>>>(
     (acc, entry) => {
       acc[entry.provider] = entry
       return acc
     },
-    {} as Record<AgentProviderId, AgentProviderAvailability>,
+    {},
   )
 }
 
@@ -23,7 +22,7 @@ export async function listInstalledAgentProviders(options?: {
   executablePathOverrideByProvider?: Partial<Record<AgentProviderId, string>> | null
 }): Promise<ListInstalledAgentProvidersResult> {
   const availabilityEntries = await Promise.all(
-    AGENT_PROVIDERS.map(
+    SELECTABLE_AGENT_PROVIDERS.map(
       async provider =>
         await resolveAgentProviderAvailability({
           provider,

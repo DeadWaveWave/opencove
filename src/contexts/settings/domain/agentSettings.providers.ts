@@ -4,12 +4,29 @@ export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as co
 export const EXPERIMENTAL_AGENT_PROVIDERS = [] as const
 
 export type AgentProvider = (typeof AGENT_PROVIDERS)[number]
+export const SELECTABLE_AGENT_PROVIDERS = [
+  'claude-code',
+  'codex',
+  'opencode',
+] as const satisfies readonly AgentProvider[]
+export type SelectableAgentProvider = (typeof SELECTABLE_AGENT_PROVIDERS)[number]
 export type TaskTitleAgentProvider = (typeof TASK_TITLE_PROVIDERS)[number]
 export type WorktreeNameSuggestionAgentProvider =
   (typeof WORKTREE_NAME_SUGGESTION_PROVIDERS)[number]
 
 export function isValidProvider(value: unknown): value is AgentProvider {
   return typeof value === 'string' && AGENT_PROVIDERS.includes(value as AgentProvider)
+}
+
+export function isSelectableAgentProvider(value: unknown): value is SelectableAgentProvider {
+  return (
+    typeof value === 'string' &&
+    SELECTABLE_AGENT_PROVIDERS.includes(value as SelectableAgentProvider)
+  )
+}
+
+export function resolveSelectableAgentProvider(value: unknown): SelectableAgentProvider {
+  return isSelectableAgentProvider(value) ? value : SELECTABLE_AGENT_PROVIDERS[0]
 }
 
 export function isTaskTitleAgentProvider(value: unknown): value is TaskTitleAgentProvider {
@@ -56,4 +73,27 @@ export function normalizeAgentProviderOrder(value: unknown): AgentProvider[] {
   }
 
   return normalized
+}
+
+export function normalizeSelectableAgentProviderOrder(value: unknown): SelectableAgentProvider[] {
+  return normalizeAgentProviderOrder(value).filter(isSelectableAgentProvider)
+}
+
+export function mergeSelectableAgentProviderOrder(
+  currentValue: unknown,
+  selectableValue: unknown,
+): AgentProvider[] {
+  const currentOrder = normalizeAgentProviderOrder(currentValue)
+  const selectableOrder = normalizeSelectableAgentProviderOrder(selectableValue)
+  let selectableIndex = 0
+
+  return currentOrder.map(provider => {
+    if (!isSelectableAgentProvider(provider)) {
+      return provider
+    }
+
+    const replacement = selectableOrder[selectableIndex]
+    selectableIndex += 1
+    return replacement ?? provider
+  })
 }

@@ -4,7 +4,6 @@ import { useTranslation } from '@app/renderer/i18n'
 import {
   AGENT_PROVIDER_LABEL,
   TASK_TITLE_PROVIDERS,
-  type AgentProvider,
   type TaskTitleAgentProvider,
   type TaskTitleProvider,
 } from '@contexts/settings/domain/agentSettings'
@@ -13,7 +12,6 @@ import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 export function TaskConfigurationSection(props: {
   showTaskTitleGeneration: boolean
-  defaultProvider: AgentProvider
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   effectiveTaskTitleProvider: TaskTitleAgentProvider
@@ -27,7 +25,6 @@ export function TaskConfigurationSection(props: {
 }): React.JSX.Element {
   const { t } = useTranslation()
   const {
-    defaultProvider,
     taskTitleProvider,
     taskTitleModel,
     effectiveTaskTitleProvider,
@@ -63,7 +60,7 @@ export function TaskConfigurationSection(props: {
                     {
                       value: 'default',
                       label: t('settingsPanel.tasks.followDefaultAgent', {
-                        provider: AGENT_PROVIDER_LABEL[defaultProvider],
+                        provider: AGENT_PROVIDER_LABEL[effectiveTaskTitleProvider],
                       }),
                     },
                     ...TASK_TITLE_PROVIDERS.map(provider => ({

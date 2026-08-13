@@ -3,6 +3,7 @@ import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   resolveAgentModel,
+  resolveSelectableAgentProvider,
   type AgentSettings,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
@@ -70,7 +71,7 @@ export function useWorkspaceCanvasAgentLauncher({
   const { t } = useTranslation()
 
   const openAgentLauncherForProvider = useCallback(
-    (provider: AgentNodeData['provider']) => {
+    (requestedProvider: AgentNodeData['provider']) => {
       if (!contextMenu || contextMenu.kind !== 'pane') {
         return
       }
@@ -79,6 +80,7 @@ export function useWorkspaceCanvasAgentLauncher({
 
       void (async () => {
         try {
+          const provider = resolveSelectableAgentProvider(requestedProvider)
           const cursorAnchor: Point = {
             x: contextMenu.flowX,
             y: contextMenu.flowY,
@@ -224,7 +226,7 @@ export function useWorkspaceCanvasAgentLauncher({
   )
 
   const openAgentLauncher = useCallback(() => {
-    openAgentLauncherForProvider(agentSettings.defaultProvider)
+    openAgentLauncherForProvider(resolveSelectableAgentProvider(agentSettings.defaultProvider))
   }, [agentSettings.defaultProvider, openAgentLauncherForProvider])
 
   return {

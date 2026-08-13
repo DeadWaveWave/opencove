@@ -338,7 +338,7 @@ describe('control surface session.launchAgentInMount', () => {
     expect(spawnedInput?.args.join('\n')).toContain('resume-session-123')
   })
 
-  it('captures the Gemini discovery cursor before starting the mount watcher for new launches', async () => {
+  it('falls back before starting a new mounted session for a compatibility-only provider', async () => {
     const previousFlag = process.env.OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER
     process.env.OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER = '1'
 
@@ -416,19 +416,11 @@ describe('control surface session.launchAgentInMount', () => {
       })
 
       expect(launched.ok).toBe(true)
-      expect(captureGeminiSessionDiscoveryCursorMock).toHaveBeenCalledWith(rootPath)
+      expect(captureGeminiSessionDiscoveryCursorMock).not.toHaveBeenCalled()
       expect(startSessionStateWatcher).toHaveBeenCalledWith(
         expect.objectContaining({
           sessionId: 'pty-mounted-gemini',
-          provider: 'gemini',
-          geminiDiscoveryCursor: {
-            entriesByFilePath: {
-              [`${rootPath}/.gemini/chats/session-existing.json`]: {
-                signature: 'existing-signature',
-                hadRelevantTurn: true,
-              },
-            },
-          },
+          provider: 'codex',
         }),
       )
     } finally {

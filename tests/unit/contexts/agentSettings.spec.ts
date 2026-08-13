@@ -1,8 +1,47 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AGENT_PROVIDERS,
   DEFAULT_AGENT_SETTINGS,
+  SELECTABLE_AGENT_PROVIDERS,
+  isValidProvider,
+  mergeSelectableAgentProviderOrder,
   normalizeAgentSettings,
+  normalizeSelectableAgentProviderOrder,
+  resolveSelectableAgentProvider,
 } from '../../../src/contexts/settings/domain/agentSettings'
+
+describe('agent provider selection compatibility', () => {
+  it('keeps the full provider domain while excluding compatibility-only providers from selection', () => {
+    expect(AGENT_PROVIDERS).toContain('gemini')
+    expect(SELECTABLE_AGENT_PROVIDERS).not.toContain('gemini')
+    expect(isValidProvider('gemini')).toBe(true)
+    expect(resolveSelectableAgentProvider('gemini')).toBe(SELECTABLE_AGENT_PROVIDERS[0])
+  })
+
+  it('projects durable settings for selection without rewriting compatibility data', () => {
+    const settings = normalizeAgentSettings({
+      defaultProvider: 'gemini',
+      agentProviderOrder: ['gemini', 'codex'],
+    })
+
+    expect(settings.defaultProvider).toBe('gemini')
+    expect(settings.agentProviderOrder).toEqual(['gemini', 'codex', 'claude-code', 'opencode'])
+    expect(normalizeSelectableAgentProviderOrder(settings.agentProviderOrder)).toEqual([
+      'codex',
+      'claude-code',
+      'opencode',
+    ])
+    expect(
+      mergeSelectableAgentProviderOrder(settings.agentProviderOrder, [
+        'opencode',
+        'claude-code',
+        'codex',
+      ]),
+    ).toEqual(['gemini', 'opencode', 'claude-code', 'codex'])
+    expect(settings.defaultProvider).toBe('gemini')
+    expect(settings.agentProviderOrder[0]).toBe('gemini')
+  })
+})
 
 describe('normalizeAgentSettings', () => {
   it('provides defaults for quick menu fields', () => {

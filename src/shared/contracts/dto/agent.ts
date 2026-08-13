@@ -41,7 +41,7 @@ export interface AgentProviderAvailability {
 
 export interface ListInstalledAgentProvidersResult {
   providers: AgentProviderId[]
-  availabilityByProvider: Record<AgentProviderId, AgentProviderAvailability>
+  availabilityByProvider: Partial<Record<AgentProviderId, AgentProviderAvailability>>
   fetchedAt: string
 }
 

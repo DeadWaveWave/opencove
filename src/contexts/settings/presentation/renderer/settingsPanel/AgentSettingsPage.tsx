@@ -1,8 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toErrorMessage } from './workerSectionUtils'
-import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import {
+  mergeSelectableAgentProviderOrder,
+  normalizeSelectableAgentProviderOrder,
+  resolveSelectableAgentProvider,
+  type AgentProvider,
+  type AgentSettings,
+} from '@contexts/settings/domain/agentSettings'
 import type { AgentProviderAvailability } from '@shared/contracts/dto'
 import { AgentSection } from './AgentSection'
 
@@ -117,8 +122,8 @@ export function AgentSettingsPage({
   return (
     <>
       <AgentSection
-        defaultProvider={settings.defaultProvider}
-        agentProviderOrder={settings.agentProviderOrder}
+        defaultProvider={resolveSelectableAgentProvider(settings.defaultProvider)}
+        agentProviderOrder={normalizeSelectableAgentProviderOrder(settings.agentProviderOrder)}
         agentFullAccess={settings.agentFullAccess}
         availabilityByProvider={availabilityByProvider}
         installingProvider={installingProvider}
@@ -128,7 +133,11 @@ export function AgentSettingsPage({
         modelCatalogByProvider={modelCatalogByProvider}
         addModelInputByProvider={addModelInputByProvider}
         onChangeDefaultProvider={onChangeDefaultProvider}
-        onChangeAgentProviderOrder={onChangeAgentProviderOrder}
+        onChangeAgentProviderOrder={providers => {
+          onChangeAgentProviderOrder(
+            mergeSelectableAgentProviderOrder(settings.agentProviderOrder, providers),
+          )
+        }}
         onChangeAgentFullAccess={onChangeAgentFullAccess}
         onToggleCustomModelEnabled={onToggleCustomModelEnabled}
         onSelectProviderModel={onSelectProviderModel}

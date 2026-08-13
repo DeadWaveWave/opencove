@@ -3,7 +3,10 @@ import { resolveAgentLaunchSpawn } from '../../../../contexts/agent/infrastructu
 import { resolveLocalWorkerEndpointRef } from '../../../../contexts/project/application/resolveLocalWorkerEndpointRef'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import {
+  isSelectableAgentProvider,
+  isValidProvider,
   normalizeAgentSettings,
+  resolveSelectableAgentProvider,
   type AgentProvider,
 } from '../../../../contexts/settings/domain/agentSettings'
 import type {
@@ -112,17 +115,15 @@ export function resolveExecutionContextDto(
 export function resolveProviderFromSettings(
   requestedProvider: string | null,
   settings: ReturnType<typeof normalizeAgentSettings>,
+  mode: AgentLaunchMode,
 ): AgentProvider {
-  if (
-    requestedProvider === 'claude-code' ||
-    requestedProvider === 'codex' ||
-    requestedProvider === 'opencode' ||
-    requestedProvider === 'gemini'
-  ) {
+  if (mode === 'resume' && isValidProvider(requestedProvider)) {
     return requestedProvider
   }
 
-  return settings.defaultProvider
+  return isSelectableAgentProvider(requestedProvider)
+    ? requestedProvider
+    : resolveSelectableAgentProvider(settings.defaultProvider)
 }
 
 interface ResolveSessionLaunchSpawnInput {

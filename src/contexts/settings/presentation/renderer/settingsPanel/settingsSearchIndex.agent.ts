@@ -17,7 +17,7 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
     titleKey: 'settingsPanel.agent.defaultAgentLabel',
     descriptionKey: 'settingsPanel.agent.defaultAgentHelp',
     anchorId: 'settings-agent-list',
-    keywords: ['provider', 'claude', 'codex', 'gemini', 'opencode', '默认'],
+    keywords: ['provider', 'claude', 'codex', 'opencode', '默认'],
   },
   {
     id: 'agent.order',

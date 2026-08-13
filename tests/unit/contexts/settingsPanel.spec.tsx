@@ -163,18 +163,24 @@ describe('SettingsPanel', () => {
     })
   })
 
-  it('sets the default agent from the agent list', () => {
+  it('hides compatibility-only providers without rewriting a persisted default', () => {
     const onChange = vi.fn()
     mockTerminalProfiles()
-    renderSettingsPanel({ onChange })
+    renderSettingsPanel({
+      onChange,
+      settings: {
+        ...DEFAULT_AGENT_SETTINGS,
+        defaultProvider: 'gemini',
+        agentProviderOrder: ['gemini', 'codex', 'claude-code', 'opencode'],
+      },
+    })
 
     fireEvent.click(screen.getByTestId('settings-section-nav-agent'))
-    fireEvent.click(screen.getByTestId('settings-default-provider-gemini'))
 
-    expect(onChange).toHaveBeenCalledWith({
-      ...DEFAULT_AGENT_SETTINGS,
-      defaultProvider: 'gemini',
-    })
+    expect(screen.queryByTestId('settings-agent-order-item-gemini')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('settings-default-provider-gemini')).not.toBeInTheDocument()
+    expect(screen.getByTestId('settings-default-provider-claude-code')).toBeChecked()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('checks agent executable availability without exposing manual path input', async () => {

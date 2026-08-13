@@ -2,7 +2,7 @@ import type {
   ListAgentSessionsResult,
   ListInstalledAgentProvidersResult,
 } from '@shared/contracts/dto'
-import { AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings'
+import { SELECTABLE_AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 
 type AgentApi = Window['opencoveApi']['agent']
@@ -118,9 +118,9 @@ export function createBrowserAgentApi(): AgentApi {
       error: null,
     }),
     listInstalledProviders: async (): Promise<ListInstalledAgentProvidersResult> => ({
-      providers: [...AGENT_PROVIDERS],
+      providers: [...SELECTABLE_AGENT_PROVIDERS],
       availabilityByProvider: Object.fromEntries(
-        AGENT_PROVIDERS.map(provider => [
+        SELECTABLE_AGENT_PROVIDERS.map(provider => [
           provider,
           {
             provider,
@@ -129,9 +129,7 @@ export function createBrowserAgentApi(): AgentApi {
                 ? 'claude'
                 : provider === 'opencode'
                   ? 'opencode'
-                  : provider === 'gemini'
-                    ? 'gemini'
-                    : 'codex',
+                  : 'codex',
             status: 'available',
             executablePath: null,
             source: null,
