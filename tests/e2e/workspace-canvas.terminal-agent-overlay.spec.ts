@@ -218,6 +218,9 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
       await expectOverlayStubReady(terminal, 'codex')
       await window.keyboard.type(overlayAdvanceSentinel)
       await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
+      await expect
+        .poll(async () => (await readPersistedNode(window, 'terminal-reload'))?.scrollback ?? '')
+        .toContain('[opencove-test-overlay] codex ready')
       const persistedBeforeReload = await readPersistedNode(window, 'terminal-reload')
       expect(persistedBeforeReload).toMatchObject({
         id: 'terminal-reload',

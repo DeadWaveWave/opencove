@@ -141,6 +141,24 @@ export function createRuntimeTerminalInputBridge({
     return parsed.commands
   }
 
+  const forwardAcceptedUtf8UserInput = (data: string): void => {
+    const commands = parseCommandInput(data)
+    const interruptOverlayExit = data.includes('\u0003') ? onAgentOverlayExitRef.current : undefined
+    ptyWriteQueue.enqueue(data)
+    ptyWriteQueue.flush()
+    if (commands.length > 0 || interruptOverlayExit) {
+      void ptyWriteQueue.whenIdle().then(() => {
+        if (isDisposed) {
+          return
+        }
+        if (interruptOverlayExit && onAgentOverlayExitRef.current === interruptOverlayExit) {
+          interruptOverlayExit()
+        }
+        commands.forEach(command => onCommandRunRef.current?.(command))
+      })
+    }
+  }
+
   const forwardUtf8UserInput = (data: string): void => {
     if (!isBufferedUserInputGateOpen) {
       if (forwardAutomaticTerminalReply(data, 'utf8')) {
@@ -189,26 +207,11 @@ export function createRuntimeTerminalInputBridge({
         return
       }
 
-      ptyWriteQueue.enqueue(data)
-      ptyWriteQueue.flush()
+      forwardAcceptedUtf8UserInput(data)
       return
     }
 
-    const commands = parseCommandInput(data)
-    const interruptOverlayExit = data.includes('\u0003') ? onAgentOverlayExitRef.current : undefined
-    ptyWriteQueue.enqueue(data)
-    ptyWriteQueue.flush()
-    if (commands.length > 0 || interruptOverlayExit) {
-      void ptyWriteQueue.whenIdle().then(() => {
-        if (isDisposed) {
-          return
-        }
-        if (interruptOverlayExit && onAgentOverlayExitRef.current === interruptOverlayExit) {
-          interruptOverlayExit()
-        }
-        commands.forEach(command => onCommandRunRef.current?.(command))
-      })
-    }
+    forwardAcceptedUtf8UserInput(data)
   }
 
   terminal.attachCustomKeyEventHandler(event =>

@@ -12,6 +12,56 @@ function createDeferred(): { promise: Promise<void>; resolve: () => void } {
 }
 
 describe('runtime terminal input bridge', () => {
+  it('preserves command semantics for input accepted during hydration', async () => {
+    const pendingWrite = createDeferred()
+    const write = vi.fn(() => pendingWrite.promise)
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: { pty: { write } },
+    })
+
+    let forwardData = (_data: string) => undefined
+    const terminal = {
+      attachCustomKeyEventHandler: vi.fn(),
+      getSelection: () => '',
+      hasSelection: () => false,
+      onBinary: vi.fn(() => ({ dispose: vi.fn() })),
+      onData: vi.fn((listener: (data: string) => void) => {
+        forwardData = listener
+        return { dispose: vi.fn() }
+      }),
+    } as unknown as Terminal
+    const onCommandRun = vi.fn()
+    const bridge = createRuntimeTerminalInputBridge({
+      terminal,
+      sessionId: 'pty-session-hydrating',
+      openTerminalFind: vi.fn(),
+      onCommandRunRef: { current: onCommandRun },
+      onAgentOverlayExitRef: { current: undefined },
+      commandInputStateRef: { current: createTerminalCommandInputState() },
+      suppressPtyResizeRef: { current: false },
+      syncTerminalSize: vi.fn(),
+      shouldGateInitialUserInput: false,
+      pendingUserInputBufferRef: { current: [] },
+      recentUserInteractionAtRef: { current: Date.now() },
+      inputDiagnosticsEnabled: false,
+      terminalDiagnostics: { log: vi.fn() },
+    })
+
+    forwardData('codex')
+    forwardData('\r')
+
+    expect(onCommandRun).not.toHaveBeenCalled()
+    pendingWrite.resolve()
+    await bridge.ptyWriteQueue.whenIdle()
+    expect(write).toHaveBeenCalled()
+    expect(onCommandRun).toHaveBeenCalledTimes(1)
+    expect(onCommandRun).toHaveBeenCalledWith('codex')
+
+    bridge.dispose()
+  })
+
   it('does not let a delayed interrupt clear a replacement overlay activation', async () => {
     const pendingWrite = createDeferred()
     Object.defineProperty(window, 'opencoveApi', {
