@@ -57,6 +57,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - CLI: Local Worker lifecycle controls with `worker status --all` and ownership-safe `worker stop`. (#195)
 
 ### 💅 Changed
+- Agent: hide Gemini from selectable provider surfaces (new/select/default/order, installed list, install suggestions) while keeping existing Gemini sessions and settings fully readable, resumable, and unchanged on disk. (#341)
 - Tooling: staged pre-commit gates now warn loudly when they match no files, so an empty staging area can no longer look like a clean pass; `OPENCOVE_REQUIRE_STAGED=1` makes it a hard failure. (#319)
 - UI: replace Project and Space modal dialogs with compact context-anchored popovers, use the selected folder name for local Projects, keep nested selectors interactive, and show Space-local progress during Worktree operations. (#307)
 - UI: refine the console and Control Center with compact proportions, accessible primitives, calibrated theme/toggle styling, and deterministic nested-overlay behavior. (#298)
