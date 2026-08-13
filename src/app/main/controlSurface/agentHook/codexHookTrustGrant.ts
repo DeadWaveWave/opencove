@@ -200,54 +200,6 @@ async function writeLedger(
   )
 }
 
-async function reuseLedger(input: {
-  runtimeHome: string
-  executable: string
-  entries: readonly ManagedCodexTrustEntry[]
-  config: string | null
-}): Promise<Record<string, string> | null> {
-  if (!input.config) {
-    return null
-  }
-  try {
-    const raw = await readFile(join(input.runtimeHome, 'trust-grant-ledger.json'), 'utf8')
-    const ledger: unknown = JSON.parse(raw)
-    const fingerprint = await executableFingerprint(input.executable)
-    if (!fingerprint || !isRecord(ledger) || ledger.version !== 1) {
-      return null
-    }
-    if (
-      JSON.stringify(ledger.executable) !== JSON.stringify(fingerprint) ||
-      !isRecord(ledger.grants)
-    ) {
-      return null
-    }
-    const keys = expectedKeys(input.entries)
-    const grants = Object.fromEntries(
-      Object.entries(ledger.grants).filter(
-        (entry): entry is [string, string] => keys.has(entry[0]) && typeof entry[1] === 'string',
-      ),
-    )
-    if (Object.keys(grants).length !== keys.size) {
-      return null
-    }
-    for (const [key, hash] of Object.entries(grants)) {
-      const escapedKey = key.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-      const escapedHash = hash.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-      const section = new RegExp(
-        `\\[hooks\\.state\\."${escapedKey}"\\][\\s\\S]*?trusted_hash\\s*=\\s*"${escapedHash}"`,
-        'u',
-      )
-      if (!section.test(input.config)) {
-        return null
-      }
-    }
-    return grants
-  } catch {
-    return null
-  }
-}
-
 export async function grantManagedCodexHookTrust(options: {
   runtimeHome: string
   executable: string
@@ -256,15 +208,6 @@ export async function grantManagedCodexHookTrust(options: {
 }): Promise<CodexHookTrustGrantResult> {
   const configPath = join(options.runtimeHome, 'config.toml')
   const snapshot = await readOptional(configPath).catch(() => null)
-  const reused = await reuseLedger({
-    runtimeHome: options.runtimeHome,
-    executable: options.executable,
-    entries: options.entries,
-    config: snapshot,
-  })
-  if (reused) {
-    return { lane: 'rpc', trustedHashes: reused, detail: 'reused executable trust ledger' }
-  }
   try {
     if (options.entryPath) {
       const bridgeResult = spawnSync(process.execPath, [options.entryPath], {
@@ -309,7 +252,12 @@ export async function grantManagedCodexHookTrust(options: {
           (entry): entry is [string, string] => typeof entry[1] === 'string',
         ),
       )
-      if (Object.keys(trustedHashes).length !== options.entries.length) {
+      const trustedHashKeys = new Set(Object.keys(trustedHashes))
+      const expectedTrustKeys = expectedKeys(options.entries)
+      if (
+        trustedHashKeys.size !== expectedTrustKeys.size ||
+        [...expectedTrustKeys].some(key => !trustedHashKeys.has(key))
+      ) {
         throw new Error('Trust grant entry returned incomplete hashes.')
       }
       await writeLedger(options.runtimeHome, options.executable, trustedHashes)
@@ -383,6 +331,9 @@ export async function grantManagedCodexHookTrust(options: {
     return { lane: 'rpc', trustedHashes, detail: null }
   } catch (error) {
     await restoreSnapshot(configPath, snapshot).catch(() => undefined)
+    await rm(join(options.runtimeHome, 'trust-grant-ledger.json'), { force: true }).catch(
+      () => undefined,
+    )
     const trustedHashes = Object.fromEntries(
       options.entries.map(entry => [
         computeCodexHookTrustKey({ sourcePath: entry.sourcePath, eventName: entry.eventName }),
@@ -395,7 +346,6 @@ export async function grantManagedCodexHookTrust(options: {
     )
     try {
       await writeAtomic(configPath, appendFallbackTrust(snapshot ?? '', trustedHashes))
-      await writeLedger(options.runtimeHome, options.executable, trustedHashes)
     } catch {
       // Hook installation remains fail-open even when neither trust lane can persist.
     }

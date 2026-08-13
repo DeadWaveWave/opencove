@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -12,7 +12,7 @@ afterEach(async () => {
 })
 
 describe('managed hook trust grant', () => {
-  it('reuses a matching executable ledger and rejects a stale persisted hash', async () => {
+  it('never records a fallback file write as reusable live RPC trust', async () => {
     const runtimeHome = await mkdtemp(join(tmpdir(), 'opencove-trust-ledger-'))
     roots.push(runtimeHome)
     const entries = [
@@ -31,9 +31,11 @@ describe('managed hook trust grant', () => {
     }
 
     await expect(grantManagedCodexHookTrust(options)).resolves.toMatchObject({ lane: 'fallback' })
+    await expect(access(join(runtimeHome, 'trust-grant-ledger.json'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    })
     await expect(grantManagedCodexHookTrust(options)).resolves.toMatchObject({
-      lane: 'rpc',
-      detail: 'reused executable trust ledger',
+      lane: 'fallback',
     })
 
     const configPath = join(runtimeHome, 'config.toml')

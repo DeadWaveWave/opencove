@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest'
+import { buildManagedCodexHookCommand } from '../../../src/shared/runtime/codexHookRuntime'
 import { computeCodexHookTrustedHash } from '../../../src/shared/runtime/codexHookTrust'
 
 describe('Codex hook trust identity', () => {
   it('matches the canonical command hook hash contract', () => {
-    const goldenCommand =
-      "if [ -f '/Users/shihaojie/.orca/agent-hooks/codex-hook.sh' ] && [ -r '/Users/shihaojie/.orca/agent-hooks/codex-hook.sh' ] && [ -x '/Users/shihaojie/.orca/agent-hooks/codex-hook.sh' ]; then /bin/sh '/Users/shihaojie/.orca/agent-hooks/codex-hook.sh'; else { command -p cat 2>/dev/null || cat; } >/dev/null 2>&1 || :; fi"
+    const installedCommand = buildManagedCodexHookCommand(
+      '/Users/tester/.opencove/agent-hooks/codex-hook.sh',
+    )
     expect(
       computeCodexHookTrustedHash({
         eventName: 'PreToolUse',
-        command: goldenCommand,
+        command: installedCommand,
         timeoutSeconds: 10,
       }),
-    ).toBe('sha256:ef4cab48335903c5e10948adb3c271564dcdfe821f440f3ec665fa9a567e77d7')
+    ).toBe('sha256:948aff68c30919675ecdd86b30caff1e523b6e4e0206b944e0bbadedfb12b4b5')
   })
 
   it('drops matchers for prompt and stop events', () => {
