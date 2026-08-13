@@ -19,6 +19,9 @@ function resolveAgentHookHelperPath(fileName: string): string {
   const resourcesPath =
     typeof process.resourcesPath === 'string' ? process.resourcesPath.trim() : ''
   if (resourcesPath.length > 0) {
+    if (fileName === 'codex-trust-grant.mjs') {
+      return resolve(resourcesPath, 'app.asar.unpacked', 'src', 'app', 'cli', 'hooks', fileName)
+    }
     return resolve(resolvePackagedAppRoot(resourcesPath), 'src', 'app', 'cli', 'hooks', fileName)
   }
   return resolve(__dirname, '../../src/app/cli/hooks', fileName)
@@ -190,8 +193,8 @@ async function main(): Promise<void> {
     process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CODEX_HOOK_INSTALL_FAILURE === '1'
   const codexHookChannel = createCodexHookChannel({
     homeDirectory: homedir(),
-    helperCommand: process.execPath,
-    helperArgs: [resolveAgentHookHelperPath('codex-status.mjs')],
+    userDataDirectory: userDataPath,
+    trustGrantEntryPath: resolveAgentHookHelperPath('codex-trust-grant.mjs'),
     ...(forceCodexHookBindFailure ? { port: -1 } : {}),
     ...(forceCodexHookInstallFailure
       ? {

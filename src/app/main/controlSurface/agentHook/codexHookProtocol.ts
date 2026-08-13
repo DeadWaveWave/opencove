@@ -24,12 +24,10 @@ export interface CodexHookEnvelope {
 }
 
 const WAITING_EVENTS = new Set(['PermissionRequest'])
-const DONE_EVENTS = new Set(['Stop', 'SessionEnd'])
+const DONE_EVENTS = new Set(['Stop'])
 const WORKING_EVENTS = new Set([
   'PreToolUse',
   'PostToolUse',
-  'PreCompact',
-  'PostCompact',
   'SessionStart',
   'UserPromptSubmit',
   'SubagentStart',

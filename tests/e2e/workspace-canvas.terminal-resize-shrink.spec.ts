@@ -224,15 +224,24 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
           return window.__opencoveTerminalSelectionTestApi?.getSize?.(id) ?? null
         }, nodeId)
       }
+      const hasCommittedMeasuredSize = async () => {
+        return await window.evaluate(id => {
+          const api = window.__opencoveTerminalSelectionTestApi
+          const size = api?.getSize?.(id) ?? null
+          const proposed = api?.getProposedGeometry?.(id) ?? null
+          return !!size && !!proposed && size.cols === proposed.cols && size.rows === proposed.rows
+        }, nodeId)
+      }
       const readNodeHeight = async () => (await readPersistedNodeFrame(window, nodeId))?.height ?? 0
 
       await expect.poll(readSize).toBeTruthy()
-      const initialSize = (await readSize())!
       await expect
         .poll(() => readRuntimeSessionId(window, nodeId), { timeout: 15_000 })
         .toBeTruthy()
       const sessionId = await readRuntimeSessionId(window, nodeId)
       expect(sessionId).not.toBeNull()
+      await expect.poll(hasCommittedMeasuredSize).toBe(true)
+      const initialSize = (await readSize())!
 
       await electronApp.evaluate(({ BrowserWindow }) => {
         const mainWindow = BrowserWindow.getAllWindows()[0]

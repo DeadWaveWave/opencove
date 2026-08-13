@@ -32,6 +32,9 @@
     "productName": "OpenCove",
     "executableName": "OpenCove",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "asarUnpack": [
+      "src/app/cli/hooks/codex-trust-grant.mjs"
+    ],
     "generateUpdatesFilesForAllChannels": true,
     "extraResources": [
       {

@@ -19,6 +19,7 @@ import { isDebugCrashHostEnabled } from '../../contexts/terminal/presentation/ma
 import { TerminalProfileResolver } from '../../platform/terminal/TerminalProfileResolver'
 import type { ListTerminalProfilesResult } from '../../shared/contracts/dto'
 import { stripAutomaticTerminalQueriesFromOutput } from '../../shared/terminal/automaticTerminalSequences'
+import { cleanAgentHookRuntimeEnv } from '../../shared/runtime/codexHookRuntime'
 
 type SpawnSessionOptions = {
   cwd: string
@@ -62,7 +63,7 @@ export function createHeadlessPtyRuntime(options: {
     string,
     TerminalSessionStateEvent['hookInstallState']
   >()
-  const hookChannelBySessionId = new Map<string, AgentHookChannel>()
+  const hookChannelsBySessionId = new Map<string, AgentHookChannel[]>()
   const agentHookChannels = options.agentHookChannels ?? {}
 
   const emitState = (event: TerminalSessionStateEvent): void => {
@@ -118,43 +119,96 @@ export function createHeadlessPtyRuntime(options: {
   })
 
   const disposeExitListener = supervisor.onExit(event => {
+    const codexHookChannel = agentHookChannels.codex
+    if (
+      codexHookChannel &&
+      hookChannelsBySessionId.get(event.sessionId)?.includes(codexHookChannel)
+    ) {
+      emitState({
+        sessionId: event.sessionId,
+        state: 'standby',
+        source: 'codex_hook',
+        hookInstallState: codexHookChannel.getInstallState(),
+      })
+    }
     sessionStateWatcher.disposeSession(event.sessionId)
-    hookChannelBySessionId.get(event.sessionId)?.disposeSession(event.sessionId)
-    hookChannelBySessionId.delete(event.sessionId)
+    hookChannelsBySessionId
+      .get(event.sessionId)
+      ?.forEach(channel => channel.disposeSession(event.sessionId))
+    hookChannelsBySessionId.delete(event.sessionId)
     hookInstallStateBySessionId.delete(event.sessionId)
     exitListeners.forEach(listener => listener(event))
   })
+  const disposeForegroundListener =
+    supervisor.onForeground?.(event => {
+      if (!event.shellOnly) {
+        return
+      }
+      const codexHookChannel = agentHookChannels.codex
+      if (
+        !codexHookChannel ||
+        !hookChannelsBySessionId.get(event.sessionId)?.includes(codexHookChannel)
+      ) {
+        return
+      }
+      emitState({
+        sessionId: event.sessionId,
+        state: 'standby',
+        source: 'codex_hook',
+        hookInstallState: codexHookChannel.getInstallState(),
+      })
+    }) ?? (() => undefined)
 
   return {
     listProfiles: async () => await profileResolver.listProfiles(),
     spawnSession: async input => {
-      const hookChannel = input.agentProvider ? agentHookChannels[input.agentProvider] : undefined
-      const reservation = await hookChannel?.reserveSpawn()
+      const codexHookChannel = agentHookChannels.codex
+      const providerHookChannel = input.agentProvider
+        ? agentHookChannels[input.agentProvider]
+        : undefined
+      const paneIdentity = {
+        paneKey: randomUUID(),
+        tabId: randomUUID(),
+        worktreeId: input.cwd,
+      }
+      const codexReservation = await codexHookChannel?.reserveSpawn(paneIdentity)
+      const providerReservation =
+        providerHookChannel && providerHookChannel !== codexHookChannel
+          ? await providerHookChannel.reserveSpawn()
+          : undefined
+      const reservations = [codexReservation, providerReservation].filter(
+        (reservation): reservation is NonNullable<typeof reservation> => !!reservation,
+      )
       try {
+        const reservationEnv = Object.assign({}, ...reservations.map(item => item.env ?? {}))
         const spawned = await supervisor.spawn({
           ...input,
-          ...(reservation?.env
-            ? { env: { ...(input.env ?? {}), ...reservation.env } }
-            : input.env
-              ? { env: input.env }
-              : {}),
+          env: { ...cleanAgentHookRuntimeEnv(input.env ?? {}), ...reservationEnv },
         })
-        if (reservation) {
-          if (hookChannel) {
-            hookChannelBySessionId.set(spawned.sessionId, hookChannel)
+        if (reservations.length > 0) {
+          hookChannelsBySessionId.set(spawned.sessionId, [
+            ...new Set([codexHookChannel, providerHookChannel].filter(Boolean)),
+          ] as AgentHookChannel[])
+          if (input.agentProvider && providerHookChannel) {
+            const installState =
+              providerHookChannel === codexHookChannel
+                ? codexReservation?.installState
+                : providerReservation?.installState
+            if (installState) {
+              hookInstallStateBySessionId.set(spawned.sessionId, installState)
+            }
+            emitState({
+              sessionId: spawned.sessionId,
+              state: input.initialAgentState ?? 'working',
+              source: 'launch',
+              hookInstallState: installState,
+            })
           }
-          hookInstallStateBySessionId.set(spawned.sessionId, reservation.installState)
-          emitState({
-            sessionId: spawned.sessionId,
-            state: input.initialAgentState ?? 'working',
-            source: 'launch',
-            hookInstallState: reservation.installState,
-          })
-          reservation.commit(spawned.sessionId)
+          reservations.forEach(reservation => reservation.commit(spawned.sessionId))
         }
         return spawned
       } catch (error) {
-        reservation?.dispose()
+        reservations.forEach(reservation => reservation.dispose())
         throw error
       }
     },
@@ -201,8 +255,8 @@ export function createHeadlessPtyRuntime(options: {
     },
     kill: sessionId => {
       sessionStateWatcher.disposeSession(sessionId)
-      hookChannelBySessionId.get(sessionId)?.disposeSession(sessionId)
-      hookChannelBySessionId.delete(sessionId)
+      hookChannelsBySessionId.get(sessionId)?.forEach(channel => channel.disposeSession(sessionId))
+      hookChannelsBySessionId.delete(sessionId)
       hookInstallStateBySessionId.delete(sessionId)
       supervisor.kill(sessionId)
     },
@@ -246,14 +300,17 @@ export function createHeadlessPtyRuntime(options: {
     dispose: () => {
       disposeDataListener()
       disposeExitListener()
+      disposeForegroundListener()
       disposeHookStateListeners.forEach(disposeListener => disposeListener())
       dataListeners.clear()
       exitListeners.clear()
       stateListeners.clear()
       metadataListeners.clear()
       hookInstallStateBySessionId.clear()
-      hookChannelBySessionId.forEach((channel, sessionId) => channel.disposeSession(sessionId))
-      hookChannelBySessionId.clear()
+      hookChannelsBySessionId.forEach((channels, sessionId) =>
+        channels.forEach(channel => channel.disposeSession(sessionId)),
+      )
+      hookChannelsBySessionId.clear()
       sessionStateWatcher.dispose()
       supervisor.dispose()
     },
