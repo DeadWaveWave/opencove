@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Remote: discover concrete `~/.ssh/config` aliases through a bounded, fail-closed backend query while preserving OpenSSH as the effective connection-config owner. (#346)
 - Remote: support editing managed SSH endpoints in place, so changing connection parameters keeps the endpoint identity and its existing mount bindings instead of requiring delete-and-recreate. (#317)
 - Spaces: add sidebar pinning for root Spaces, pinned-first ordering, matching top-rail pills with shared context menus, and click-through gaps between pills. (#306)
 - UI: add browser-style Project/Space/Agent vertical sidebar grouping with pinned rail mode, hover auto-reveal, colored Space branches, and Agent status rings. (#291)
