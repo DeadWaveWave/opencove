@@ -20,7 +20,6 @@ export const zhCNMessages = {
   taskLinkedAgentWindowOpen: '请先关闭当前关联的 Agent 窗口再继续。',
   taskResumeSessionMissing: '该 Agent 记录没有已验证的 resumeSessionId，无法继续。',
   resumeSessionMissing: '该 Agent 还没有已验证的 resumeSessionId。',
-  terminalAgentAutoResumeUnavailable: '无法自动恢复此 Agent 会话。请选择已有会话或新建会话。',
   noTerminalSlotNearby: '当前视图附近没有可用空位，请先移动或关闭部分终端窗口。',
   noWindowSlotOnRight: '当前 Agent 右侧没有可用空位，请先移动或关闭部分窗口。',
   noWindowSlotNearby: '当前视图附近没有可用空位，请先移动或关闭部分窗口。',

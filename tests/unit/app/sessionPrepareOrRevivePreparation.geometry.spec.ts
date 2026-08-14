@@ -228,7 +228,7 @@ describe('session prepare/revive terminal geometry', () => {
     expect(write).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps an unverified terminal agent hint without starting any agent command', async () => {
+  it('relaunches an unverified terminal agent hint exactly once', async () => {
     const write = vi.fn()
     const controlSurface: ControlSurface = {
       invoke: vi.fn(async () => ({
@@ -263,7 +263,8 @@ describe('session prepare/revive terminal geometry', () => {
     })
 
     expect(prepared.sessionId).toBe('restarted-hinted-terminal')
-    expect(write).not.toHaveBeenCalled()
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledWith('restarted-hinted-terminal', '\u0015codex\r')
   })
 
   it('restarts a mounted terminal through the current mount when the persisted Space mount is stale', async () => {

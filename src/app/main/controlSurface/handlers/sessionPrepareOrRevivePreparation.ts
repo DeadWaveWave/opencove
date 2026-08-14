@@ -42,7 +42,7 @@ import {
   DEFAULT_PTY_ROWS,
   resolveNodeInitialPtyGeometry,
 } from './sessionPrepareOrReviveGeometry'
-import { reenterVerifiedTerminalAgent } from './sessionPrepareOrReviveTerminalAgent'
+import { reenterTerminalAgent } from './sessionPrepareOrReviveTerminalAgent'
 export { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
 
 const RECENT_RESUME_SESSION_LOCATE_TIMEOUT_MS = 750
@@ -127,7 +127,7 @@ export async function prepareTerminalNode(options: {
       profileId: resolveNodeProfileId(options.node),
       geometry: spawnGeometry,
     })
-    await reenterVerifiedTerminalAgent({
+    await reenterTerminalAgent({
       node: options.node,
       sessionId: spawned.sessionId,
       ptyRuntime: options.ptyRuntime,

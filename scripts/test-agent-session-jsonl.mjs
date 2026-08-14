@@ -371,3 +371,62 @@ export async function runJsonlStdinSubmitDrivenTurnScenario(
 
   await sleep(INTERACTIVE_SCENARIO_LIFETIME_MS)
 }
+
+export async function runJsonlStdinSubmitTurnLifecycleScenario(provider, cwd) {
+  process.stdout.write(`\u001b[?1049h[opencove-test-overlay] ${provider} ready\n`)
+
+  let sessionFilePath = null
+  let turnQueue = Promise.resolve()
+  process.stdin.on('data', chunk => {
+    if (!/[\r\n]/.test(Buffer.from(chunk).toString('utf8'))) {
+      return
+    }
+
+    turnQueue = turnQueue.then(async () => {
+      sessionFilePath ??=
+        provider === 'claude-code'
+          ? await createClaudeSessionFile(cwd)
+          : await createCodexSessionFile(cwd)
+
+      if (provider === 'claude-code') {
+        await appendClaudeRecord(sessionFilePath, {
+          type: 'assistant',
+          message: {
+            content: [{ type: 'thinking', text: 'Working.' }],
+            stop_reason: null,
+          },
+        })
+        await sleep(1_500)
+        await appendClaudeRecord(sessionFilePath, {
+          type: 'assistant',
+          message: {
+            content: [{ type: 'text', text: 'Done.' }],
+            stop_reason: 'end_turn',
+          },
+        })
+        return
+      }
+
+      await appendCodexRecord(sessionFilePath, {
+        type: 'event_msg',
+        payload: {
+          type: 'task_started',
+          turn_id: 'opencove-test-terminal-turn',
+          model_context_window: 128_000,
+          collaboration_mode_kind: 'default',
+        },
+      })
+      await sleep(1_500)
+      await appendCodexRecord(sessionFilePath, {
+        type: 'event_msg',
+        payload: {
+          type: 'task_complete',
+          turn_id: 'opencove-test-terminal-turn',
+          last_agent_message: 'Done.',
+        },
+      })
+    })
+  })
+
+  await sleep(INTERACTIVE_SCENARIO_LIFETIME_MS)
+}

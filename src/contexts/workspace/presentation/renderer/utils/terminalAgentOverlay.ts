@@ -65,7 +65,7 @@ export function activateTerminalAgentOverlay(
         : null,
       agentOverlay: {
         provider: options.provider,
-        status: 'running',
+        status: 'standby',
         startedAtMs: options.startedAtMs,
       },
     },

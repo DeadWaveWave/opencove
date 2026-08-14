@@ -10,8 +10,6 @@ import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/render
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { mergeScrollbackSnapshots } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
 import { hydrateAgentNode } from '@contexts/agent/presentation/renderer/hydrateAgentNode'
-import { translate } from '@app/renderer/i18n'
-import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import { repairRuntimeNodeFrame } from './runtimeNodeFrameRepair'
 
 export function toShellWorkspaceState(
@@ -143,6 +141,7 @@ export function mergeHydratedNode(
       profileId: hydratedNode.data.profileId ?? currentNode.data.profileId ?? null,
       runtimeKind: hydratedNode.data.runtimeKind ?? currentNode.data.runtimeKind,
       terminalGeometry: hydratedNode.data.terminalGeometry ?? currentNode.data.terminalGeometry,
+      agentOverlay: hydratedNode.data.agentOverlay,
       status: hydratedNode.data.status,
       startedAt: hydratedNode.data.startedAt,
       endedAt: hydratedNode.data.endedAt,
@@ -183,11 +182,19 @@ function toHydratedRuntimeNode(
   currentNode: Node<TerminalNodeData>,
   preparedNode: PreparedRuntimeNodeResult,
 ): Node<TerminalNodeData> {
-  const terminalAgentNeedsManualRecovery =
+  const hydratedTerminalAgentOverlay =
     currentNode.data.kind === 'terminal' &&
-    Boolean(currentNode.data.agentOverlay || currentNode.data.terminalProviderHint) &&
-    (!currentNode.data.terminalAgentBinding ||
-      !isResumeSessionBindingVerified(currentNode.data.terminalAgentBinding))
+    preparedNode.kind === 'terminal' &&
+    preparedNode.sessionId.trim().length > 0 &&
+    preparedNode.lastError === null &&
+    (currentNode.data.agentOverlay || currentNode.data.terminalProviderHint)
+      ? {
+          provider:
+            currentNode.data.agentOverlay?.provider ?? currentNode.data.terminalProviderHint!,
+          status: 'standby' as const,
+          startedAtMs: Date.now(),
+        }
+      : currentNode.data.agentOverlay
 
   return {
     ...currentNode,
@@ -203,13 +210,12 @@ function toHydratedRuntimeNode(
       startedAt: preparedNode.startedAt,
       endedAt: preparedNode.endedAt,
       exitCode: preparedNode.exitCode,
-      lastError: terminalAgentNeedsManualRecovery
-        ? translate('messages.terminalAgentAutoResumeUnavailable')
-        : preparedNode.lastError,
+      lastError: preparedNode.lastError,
       scrollback: preparedNode.kind === 'agent' ? null : preparedNode.scrollback,
       executionDirectory: preparedNode.executionDirectory ?? currentNode.data.executionDirectory,
       expectedDirectory: preparedNode.expectedDirectory ?? currentNode.data.expectedDirectory,
       terminalGeometry: preparedNode.terminalGeometry ?? currentNode.data.terminalGeometry ?? null,
+      agentOverlay: hydratedTerminalAgentOverlay,
       agent:
         currentNode.data.kind === 'agent' || preparedNode.kind === 'agent'
           ? ({

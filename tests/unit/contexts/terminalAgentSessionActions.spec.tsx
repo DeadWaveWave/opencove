@@ -108,7 +108,7 @@ describe('terminal agent overlay session actions', () => {
           resumeSessionId: 'resume-current',
           resumeSessionIdVerified: true,
         },
-        agentOverlay: { provider: 'codex', status: 'running' },
+        agentOverlay: { provider: 'codex', status: 'standby' },
       },
     })
     expect(harness.onRequestPersistFlush).toHaveBeenCalledTimes(1)
@@ -163,7 +163,7 @@ describe('terminal agent overlay session actions', () => {
         },
         agentOverlay: {
           provider: 'codex',
-          status: 'running',
+          status: 'standby',
           startedAtMs: Date.parse('2026-08-11T09:30:00.000Z'),
         },
       },

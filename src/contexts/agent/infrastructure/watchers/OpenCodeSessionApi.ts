@@ -1,3 +1,5 @@
+import { selectNearestAgentSessionId } from '../cli/AgentSessionCandidateSelector'
+
 const OPENCODE_API_TIMEOUT_MS = 1_500
 const OPENCODE_DISCOVERY_LIMIT = 20
 // Keep the API-side discovery window aligned with the sqlite fallback so restart/load spikes do
@@ -90,7 +92,7 @@ export async function findOpenCodeSessionId({
       return null
     }
 
-    const matchingSessionIds = new Set<string>()
+    const candidates: Array<{ sessionId: string; timestampMs: number }> = []
 
     for (const item of payload) {
       const candidate = parseOpenCodeSessionIdCandidate(item)
@@ -98,18 +100,14 @@ export async function findOpenCodeSessionId({
         continue
       }
 
-      if (Math.abs(candidate.createdAtMs - startedAtMs) > OPENCODE_DISCOVERY_WINDOW_MS) {
-        continue
-      }
-
-      matchingSessionIds.add(candidate.sessionId)
-      if (matchingSessionIds.size > 1) {
-        return null
-      }
+      candidates.push({ sessionId: candidate.sessionId, timestampMs: candidate.createdAtMs })
     }
 
-    const [sessionId] = [...matchingSessionIds]
-    return sessionId ?? null
+    return selectNearestAgentSessionId({
+      candidates,
+      startedAtMs,
+      maxDistanceMs: OPENCODE_DISCOVERY_WINDOW_MS,
+    })
   } catch {
     return null
   }

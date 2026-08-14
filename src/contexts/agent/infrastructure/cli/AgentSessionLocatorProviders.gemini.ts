@@ -8,6 +8,7 @@ import {
   parseTimestampMs,
   wait,
 } from './AgentSessionLocatorProviders.utils'
+import { selectNearestAgentSessionId } from './AgentSessionCandidateSelector'
 
 interface GeminiSessionMeta {
   sessionId: string
@@ -255,22 +256,19 @@ export async function findGeminiResumeSessionId(
   startedAtMs: number,
   options: FindGeminiResumeSessionIdOptions = {},
 ): Promise<string | null> {
-  const candidateSessionIds = (await listGeminiSessionCandidates(cwd))
+  const candidates = (await listGeminiSessionCandidates(cwd))
     .filter(candidate => candidate.lastRelevantMessageType !== null)
     .filter(candidate => shouldAcceptGeminiCandidateFromCursor(candidate, options.discoveryCursor))
-    .filter(candidate => {
-      const timestampMs = resolveGeminiSessionTimestampMs(candidate, startedAtMs)
-      return Math.abs(timestampMs - startedAtMs) <= GEMINI_CANDIDATE_WINDOW_MS
-    })
-    .map(candidate => candidate.sessionId)
+    .map(candidate => ({
+      sessionId: candidate.sessionId,
+      timestampMs: resolveGeminiSessionTimestampMs(candidate, startedAtMs),
+    }))
 
-  const matchingSessionIds = new Set(candidateSessionIds)
-  if (matchingSessionIds.size > 1) {
-    return null
-  }
-
-  const [sessionId] = candidateSessionIds
-  return sessionId ?? null
+  return selectNearestAgentSessionId({
+    candidates,
+    startedAtMs,
+    maxDistanceMs: GEMINI_CANDIDATE_WINDOW_MS,
+  })
 }
 
 async function pollGeminiResumeSessionId(
