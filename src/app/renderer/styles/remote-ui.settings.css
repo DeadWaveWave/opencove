@@ -77,3 +77,90 @@
 .cove-window__advanced-fields {
   padding-top: 12px;
 }
+
+.cove-window__ssh-config-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+
+.cove-window__ssh-config-picker-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cove-window__ssh-config-list {
+  display: flex;
+  max-height: 220px;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.cove-window__ssh-config-host {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--cove-control-border);
+  border-radius: var(--cove-radius-sm);
+  background: var(--cove-control);
+  color: var(--cove-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.cove-window__ssh-config-host:hover:not(:disabled) {
+  border-color: var(--cove-control-border-hover);
+  background: var(--cove-control-hover);
+}
+
+.cove-window__ssh-config-host:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 2px;
+}
+
+.cove-window__ssh-config-host:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.cove-window__ssh-config-host-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cove-window__ssh-config-host-copy strong {
+  overflow: hidden;
+  font-size: calc(12.5px * var(--cove-ui-font-scale));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cove-window__ssh-config-host-copy small,
+.cove-window__ssh-config-empty,
+.cove-window__ssh-config-added {
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(11.5px * var(--cove-ui-font-scale));
+  line-height: 1.4;
+}
+
+.cove-window__ssh-config-added {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+  .cove-window__ssh-config-picker-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -22,6 +22,16 @@ export const zhCNSettingsPanelEndpoints = {
     manualLabel: '手动（高级）',
     managedHelp:
       '通过 SSH 接入。OpenCove 会负责建立隧道、按需安装远程组件，并让这台机器为浏览和挂载流程保持可用。',
+    sshConfig: {
+      title: '使用你的 SSH 配置',
+      help: '选择一台主机来预填表单；添加前仍可检查和修改。',
+      action: '从 ~/.ssh/config 选择…',
+      loading: '正在加载主机…',
+      empty: '无可导入主机',
+      readError: '无法读取 ~/.ssh/config。你仍可手动输入 SSH 主机。',
+      userSummary: 'SSH 用户 {{user}}',
+      alreadyAdded: '已添加',
+    },
     manualHelp:
       '仅当你已经有现成的远程服务主机、端口和访问令牌时再使用。这个路径会把连接细节保留给你手动管理。',
     displayNameLabel: '显示名称（可选）',

@@ -1,3 +1,6 @@
+import type { SshConfigHost } from '../../../shared/contracts/dto'
+import { normalizeSshConfigAlias } from './sshConfigHost'
+
 export type EndpointRegisterMode = 'managed' | 'manual'
 
 export interface EndpointFormDraft {
@@ -18,6 +21,10 @@ export interface ManagedSshDraftSource {
   port: number | null
   username: string | null
   remotePort: number | null
+}
+
+export interface SshConfigEndpointFormDraft extends EndpointFormDraft {
+  isAlreadyAdded: boolean
 }
 
 export function createEmptyEndpointFormDraft(): EndpointFormDraft {
@@ -42,6 +49,30 @@ export function buildManagedSshDraft(source: ManagedSshDraftSource): EndpointFor
     managedPort: source.port === null ? '' : String(source.port),
     managedUsername: source.username ?? '',
     managedRemotePort: source.remotePort === null ? '' : String(source.remotePort),
+  }
+}
+
+export function sshConfigHostToDraft(
+  host: SshConfigHost,
+  existingHosts: Iterable<string> = [],
+): SshConfigEndpointFormDraft {
+  const alias = host.alias.trim()
+  const normalizedAlias = normalizeSshConfigAlias(alias)
+  const isAlreadyAdded =
+    normalizedAlias.length > 0 &&
+    Array.from(existingHosts).some(
+      existingHost => normalizeSshConfigAlias(existingHost) === normalizedAlias,
+    )
+
+  return {
+    ...buildManagedSshDraft({
+      displayName: alias,
+      host: alias,
+      port: null,
+      username: null,
+      remotePort: null,
+    }),
+    isAlreadyAdded,
   }
 }
 
