@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { isContractSyncEvidence } from './lib/doc-sync-evidence.mjs'
 
 const contractDocs = new Set([
   'docs/architecture/ARCHITECTURE.md',
@@ -28,15 +29,6 @@ function getUnstagedFiles() {
     .split('\n')
     .map(line => line.trim())
     .filter(Boolean)
-}
-
-function isContractSyncEvidence(pathname) {
-  return (
-    pathname === 'docs/architecture/ARCHITECTURE_HARNESS.md' ||
-    pathname === 'harness/architecture/check.mjs' ||
-    pathname === 'harness/architecture/rules.json' ||
-    pathname.startsWith('harness/architecture/lib/')
-  )
 }
 
 function isAuditRelevant(pathname) {

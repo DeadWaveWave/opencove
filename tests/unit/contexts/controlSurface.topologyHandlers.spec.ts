@@ -125,6 +125,7 @@ function createSubject(options?: {
       isPathApproved: async () => true,
     },
     endpointHealth,
+    readSshConfigHosts: async () => [],
   })
 
   return { controlSurface, topology, endpointHealth }

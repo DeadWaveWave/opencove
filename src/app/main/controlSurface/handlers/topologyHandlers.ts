@@ -15,6 +15,7 @@ import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 import type { EndpointHealthService } from '../topology/endpointHealthService'
+import type { SshConfigHost } from '../../../../shared/contracts/dto'
 import {
   isUnknownControlSurfaceOperationError,
   normalizeCreateMountPayload,
@@ -30,6 +31,7 @@ import {
   normalizeRemoveMountPayload,
   normalizeRepairEndpointPayload,
   normalizeResolveMountTargetPayload,
+  normalizeSshConfigHostsPayload,
   normalizeUpdateManagedSshEndpointPayload,
 } from './topologyHandlerPayloads'
 
@@ -39,12 +41,20 @@ export function registerTopologyHandlers(
     topology: WorkerTopologyStore
     approvedWorkspaces: ApprovedWorkspaceStore
     endpointHealth: EndpointHealthService
+    readSshConfigHosts: () => Promise<SshConfigHost[]>
   },
 ): void {
   controlSurface.register('endpoint.list', {
     kind: 'query',
     validate: payload => payload ?? null,
     handle: async () => await deps.topology.listEndpoints(),
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('endpoint.sshConfigHosts', {
+    kind: 'query',
+    validate: normalizeSshConfigHostsPayload,
+    handle: async () => await deps.readSshConfigHosts(),
     defaultErrorCode: 'common.unexpected',
   })
 
