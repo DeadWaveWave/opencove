@@ -8,6 +8,7 @@ import {
   findGeminiResumeSessionId,
   findOpenCodeResumeSessionId,
 } from './AgentSessionLocatorProviders'
+import { selectNearestAgentSessionId } from './AgentSessionCandidateSelector'
 
 interface LocateAgentResumeSessionInput {
   provider: AgentProviderId
@@ -271,7 +272,7 @@ async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promi
     return null
   }
 
-  const matchingSessionIds = new Set<string>()
+  const candidates: Array<{ sessionId: string; timestampMs: number }> = []
 
   for (const file of files) {
     // eslint-disable-next-line no-await-in-loop
@@ -286,18 +287,14 @@ async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promi
     }
 
     const timestampMs = resolveCodexSessionTimestampMs(parsed, startedAtMs)
-    if (Math.abs(timestampMs - startedAtMs) > CODEX_CANDIDATE_WINDOW_MS) {
-      continue
-    }
-
-    matchingSessionIds.add(parsed.sessionId)
-    if (matchingSessionIds.size > 1) {
-      return null
-    }
+    candidates.push({ sessionId: parsed.sessionId, timestampMs })
   }
 
-  const [sessionId] = [...matchingSessionIds]
-  return sessionId ?? null
+  return selectNearestAgentSessionId({
+    candidates,
+    startedAtMs,
+    maxDistanceMs: CODEX_CANDIDATE_WINDOW_MS,
+  })
 }
 
 async function tryFindResumeSessionId(

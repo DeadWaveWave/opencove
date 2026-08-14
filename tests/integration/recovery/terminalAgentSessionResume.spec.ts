@@ -135,25 +135,39 @@ describe('terminal agent cold session recovery', () => {
     ])
   })
 
-  it('hydrates an unverified legacy binding as a shell without launching a new agent', async () => {
+  it('relaunches an unverified provider hint once after the fresh shell is ready', async () => {
     const controlSurface = createControlSurface()
     const write = vi.fn()
+    let markShellReady: (() => void) | null = null
+    const waitForShellReady = vi.fn(
+      async () =>
+        await new Promise<void>(resolve => {
+          markShellReady = resolve
+        }),
+    )
     registerSpawn(controlSurface)
     registerSessionPrepareOrReviveHandler(controlSurface, {
       ...createReadyTerminalAdmissionDeps(),
       getPersistenceStore: async () =>
         createStore({ resumeSessionId: null, resumeSessionIdVerified: false }),
       ptyStreamHub: { isSessionActive: vi.fn(() => false) } as never,
-      ptyRuntime: { write },
+      ptyRuntime: { write, waitForShellReady },
     })
 
-    const result = await controlSurface.invoke(ctx, {
+    const resultPromise = controlSurface.invoke(ctx, {
       kind: 'command',
       id: 'session.prepareOrRevive',
       payload: { workspaceId: 'workspace-1' },
     })
 
-    expect(result.ok).toBe(true)
+    await vi.waitFor(() => {
+      expect(waitForShellReady).toHaveBeenCalledWith('fresh-pty-session')
+    })
     expect(write).not.toHaveBeenCalled()
+    markShellReady?.()
+    const result = await resultPromise
+
+    expect(result.ok).toBe(true)
+    expect(write.mock.calls).toEqual([['fresh-pty-session', '\u0015codex\r']])
   })
 })

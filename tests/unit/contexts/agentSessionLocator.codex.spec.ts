@@ -104,7 +104,7 @@ describe('locateAgentResumeSessionId (codex)', () => {
     }
   })
 
-  it('returns null when multiple same-cwd rollout candidates are plausible', async () => {
+  it('selects the same-cwd rollout closest to the launch hint when multiple are plausible', async () => {
     const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
     const previousHome = process.env.HOME
     process.env.HOME = tempHome
@@ -144,7 +144,97 @@ describe('locateAgentResumeSessionId (codex)', () => {
         timeoutMs: 0,
       })
 
-      expect(sessionId).toBeNull()
+      expect(sessionId).toBe('session-a')
+    } finally {
+      process.env.HOME = previousHome
+      await fs.rm(tempHome, { recursive: true, force: true })
+    }
+  })
+
+  it('returns null when every same-cwd rollout candidate is outside the safety window', async () => {
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
+    const previousHome = process.env.HOME
+    process.env.HOME = tempHome
+
+    const cwd = join(tempHome, 'workspace')
+    const startedAtMs = Date.now()
+    const { year, month, day } = toDateParts(startedAtMs)
+    const sessionsDir = join(tempHome, '.codex', 'sessions', year, month, day)
+
+    try {
+      await fs.mkdir(sessionsDir, { recursive: true })
+      await fs.writeFile(
+        join(sessionsDir, 'rollout-a.jsonl'),
+        `${createRolloutFirstLine({
+          sessionId: 'session-too-old',
+          cwd,
+          timestamp: new Date(startedAtMs - 20_001).toISOString(),
+        })}\n`,
+        'utf8',
+      )
+      await fs.writeFile(
+        join(sessionsDir, 'rollout-b.jsonl'),
+        `${createRolloutFirstLine({
+          sessionId: 'session-too-new',
+          cwd,
+          timestamp: new Date(startedAtMs + 20_001).toISOString(),
+        })}\n`,
+        'utf8',
+      )
+
+      await expect(
+        locateAgentResumeSessionId({
+          provider: 'codex',
+          cwd,
+          startedAtMs,
+          timeoutMs: 0,
+        }),
+      ).resolves.toBeNull()
+    } finally {
+      process.env.HOME = previousHome
+      await fs.rm(tempHome, { recursive: true, force: true })
+    }
+  })
+
+  it('fails closed when two different sessions are exactly equally near the launch hint', async () => {
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
+    const previousHome = process.env.HOME
+    process.env.HOME = tempHome
+
+    const cwd = join(tempHome, 'workspace')
+    const startedAtMs = Date.now()
+    const { year, month, day } = toDateParts(startedAtMs)
+    const sessionsDir = join(tempHome, '.codex', 'sessions', year, month, day)
+
+    try {
+      await fs.mkdir(sessionsDir, { recursive: true })
+      await fs.writeFile(
+        join(sessionsDir, 'rollout-a.jsonl'),
+        `${createRolloutFirstLine({
+          sessionId: 'session-before',
+          cwd,
+          timestamp: new Date(startedAtMs - 100).toISOString(),
+        })}\n`,
+        'utf8',
+      )
+      await fs.writeFile(
+        join(sessionsDir, 'rollout-b.jsonl'),
+        `${createRolloutFirstLine({
+          sessionId: 'session-after',
+          cwd,
+          timestamp: new Date(startedAtMs + 100).toISOString(),
+        })}\n`,
+        'utf8',
+      )
+
+      await expect(
+        locateAgentResumeSessionId({
+          provider: 'codex',
+          cwd,
+          startedAtMs,
+          timeoutMs: 0,
+        }),
+      ).resolves.toBeNull()
     } finally {
       process.env.HOME = previousHome
       await fs.rm(tempHome, { recursive: true, force: true })

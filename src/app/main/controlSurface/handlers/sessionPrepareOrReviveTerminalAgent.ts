@@ -2,28 +2,31 @@ import {
   buildTerminalAgentReentryCommand,
   enterTerminalAgentInFreshPty,
 } from '../../../../contexts/agent/application/terminalAgentPtyReexec'
-import {
-  isResumeSessionBindingVerified,
-  normalizeResumeSessionBinding,
-} from '../../../../contexts/agent/domain/agentResumeBinding'
+import { normalizeResumeSessionBinding } from '../../../../contexts/agent/domain/agentResumeBinding'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type { NormalizedPersistedNode } from './sessionPrepareOrReviveShared'
 
-export async function reenterVerifiedTerminalAgent(options: {
+export async function reenterTerminalAgent(options: {
   node: NormalizedPersistedNode
   sessionId: string
   ptyRuntime: Pick<ControlSurfacePtyRuntime, 'waitForShellReady' | 'write'>
 }): Promise<void> {
   const binding = normalizeResumeSessionBinding(options.node.agent)
-  if (!binding || !isResumeSessionBindingVerified(binding)) {
+  const hintedBinding = normalizeResumeSessionBinding({
+    provider: options.node.terminalProviderHint,
+    resumeSessionId: null,
+    resumeSessionIdVerified: false,
+  })
+  const provider = binding?.provider ?? hintedBinding?.provider
+  if (!provider) {
     return
   }
 
   await enterTerminalAgentInFreshPty({
     sessionId: options.sessionId,
     command: buildTerminalAgentReentryCommand({
-      provider: binding.provider,
-      resumeSessionId: binding.resumeSessionId,
+      provider,
+      resumeSessionId: binding?.resumeSessionIdVerified === true ? binding.resumeSessionId : null,
     }),
     waitForShellReady: async () => {
       await options.ptyRuntime.waitForShellReady?.(options.sessionId)

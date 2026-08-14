@@ -53,7 +53,7 @@ describe('terminal agent overlay invariants', () => {
     expect(activated.data.terminalProviderHint).toBe('codex')
     expect(activated.data.agentOverlay).toEqual({
       provider: 'codex',
-      status: 'running',
+      status: 'standby',
       startedAtMs: 1_723_456_789_000,
     })
     expect(isAgentTreatedNode(activated)).toBe(true)
@@ -218,7 +218,7 @@ describe('terminal agent overlay invariants', () => {
     expect(reentered.data.scrollback).toBe(original.data.scrollback)
     expect(reentered.data.agentOverlay).toEqual({
       provider: 'codex',
-      status: 'running',
+      status: 'standby',
       startedAtMs: 1_723_456_790_000,
     })
     expect(reentered.data.terminalAgentBinding).toEqual({

@@ -5,6 +5,7 @@ import {
   createCodexSessionFile,
   runJsonlStdinSubmitDelayedTurnScenario,
   runJsonlStdinSubmitDrivenTurnScenario,
+  runJsonlStdinSubmitTurnLifecycleScenario,
 } from '../test-agent-session-jsonl.mjs'
 import { runRawClickRedrawAfterClickScenario } from './raw.mjs'
 import { sleep } from './sleep.mjs'
@@ -383,4 +384,8 @@ export async function runCodexTitleFromFirstInputScenario(cwd) {
   await sleep(IDLE_SCENARIO_LIFETIME_MS)
 }
 
-export { runJsonlStdinSubmitDelayedTurnScenario, runJsonlStdinSubmitDrivenTurnScenario }
+export {
+  runJsonlStdinSubmitDelayedTurnScenario,
+  runJsonlStdinSubmitDrivenTurnScenario,
+  runJsonlStdinSubmitTurnLifecycleScenario,
+}

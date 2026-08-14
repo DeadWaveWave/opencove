@@ -13,6 +13,7 @@ import {
   normalizeTimestampMsWithSecondsFallback,
   parseTimestampMs,
 } from './AgentSessionLocatorProviders.utils'
+import { selectNearestAgentSessionId } from './AgentSessionCandidateSelector'
 
 interface OpenCodeSessionMeta {
   sessionId: string
@@ -102,7 +103,7 @@ async function findOpenCodeResumeSessionIdFromDb(
       .all() as Array<{ id?: unknown; directory?: unknown; created?: unknown }>
 
     const resolvedCwd = resolve(cwd)
-    const matchingSessionIds = new Set<string>()
+    const candidates: Array<{ sessionId: string; timestampMs: number }> = []
 
     for (const row of rows) {
       const sessionId = typeof row.id === 'string' ? row.id.trim() : ''
@@ -116,18 +117,14 @@ async function findOpenCodeResumeSessionIdFromDb(
         continue
       }
 
-      if (Math.abs(createdAtMs - startedAtMs) > OPENCODE_CANDIDATE_WINDOW_MS) {
-        continue
-      }
-
-      matchingSessionIds.add(sessionId)
-      if (matchingSessionIds.size > 1) {
-        return null
-      }
+      candidates.push({ sessionId, timestampMs: createdAtMs })
     }
 
-    const [sessionId] = [...matchingSessionIds]
-    return sessionId ?? null
+    return selectNearestAgentSessionId({
+      candidates,
+      startedAtMs,
+      maxDistanceMs: OPENCODE_CANDIDATE_WINDOW_MS,
+    })
   } catch {
     return null
   } finally {
@@ -161,23 +158,19 @@ export async function findOpenCodeResumeSessionId(
     return null
   }
 
-  const matchingSessionIds = new Set<string>()
+  const candidates: Array<{ sessionId: string; timestampMs: number }> = []
 
   for (const session of parseOpenCodeSessionList(rawOutput)) {
     if (session.directory !== resolvedCwd || session.createdAtMs === null) {
       continue
     }
 
-    if (Math.abs(session.createdAtMs - startedAtMs) > OPENCODE_CANDIDATE_WINDOW_MS) {
-      continue
-    }
-
-    matchingSessionIds.add(session.sessionId)
-    if (matchingSessionIds.size > 1) {
-      return null
-    }
+    candidates.push({ sessionId: session.sessionId, timestampMs: session.createdAtMs })
   }
 
-  const [sessionId] = [...matchingSessionIds]
-  return sessionId ?? null
+  return selectNearestAgentSessionId({
+    candidates,
+    startedAtMs,
+    maxDistanceMs: OPENCODE_CANDIDATE_WINDOW_MS,
+  })
 }

@@ -52,7 +52,35 @@ describe('mergeHydratedNode', () => {
     expect(merged.data.terminalGeometry).toEqual({ cols: 72, rows: 20 })
   })
 
-  it('keeps a provider-hinted overlay and shows the manual recovery notice', async () => {
+  it('projects the worker-prepared terminal agent overlay state', () => {
+    const merged = mergeHydratedNode(
+      createRuntimeNode({
+        terminalProviderHint: 'codex',
+        agentOverlay: {
+          provider: 'codex',
+          status: 'restoring',
+          startedAtMs: 1,
+        },
+      }),
+      createRuntimeNode({
+        sessionId: 'runtime-session',
+        terminalProviderHint: 'codex',
+        agentOverlay: {
+          provider: 'codex',
+          status: 'standby',
+          startedAtMs: 2,
+        },
+      }),
+    )
+
+    expect(merged.data.agentOverlay).toEqual({
+      provider: 'codex',
+      status: 'standby',
+      startedAtMs: 2,
+    })
+  })
+
+  it('keeps a provider-hinted overlay without inventing a manual recovery error', async () => {
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
       value: {
@@ -129,11 +157,9 @@ describe('mergeHydratedNode', () => {
     expect(hydrated?.data.terminalAgentBinding).toBeNull()
     expect(hydrated?.data.agentOverlay).toMatchObject({
       provider: 'codex',
-      status: 'restoring',
+      status: 'standby',
     })
-    expect(hydrated?.data.lastError).toBe(
-      'This agent session could not be restored automatically. Choose an existing session or start a new one.',
-    )
+    expect(hydrated?.data.lastError).toBeNull()
   })
 })
 

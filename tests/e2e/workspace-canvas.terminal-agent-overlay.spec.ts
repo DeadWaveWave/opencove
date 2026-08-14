@@ -1,5 +1,4 @@
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import {
@@ -9,75 +8,14 @@ import {
   seedWorkspaceState,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import {
+  createAgentCommandPath,
+  expectOverlayStubReady,
+  readPersistedTerminalAgentNode as readPersistedNode,
+  readRuntimeSessionId,
+} from './workspace-canvas.terminal-agent-overlay.helpers'
 
-const testAgentStubScript = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
 const overlayAdvanceSentinel = '<test-overlay-advance>'
-
-async function createAgentCommandPath(options?: { invocationLogPath?: string }): Promise<string> {
-  const directory = await mkdtemp(path.join(tmpdir(), 'opencove-agent-overlay-'))
-  await Promise.all(
-    (
-      [
-        ['claude', 'claude-code'],
-        ['codex', 'codex'],
-      ] as const
-    ).map(async ([command, provider]) => {
-      const executablePath = path.join(directory, command)
-      await writeFile(
-        executablePath,
-        `#!/bin/sh\n${
-          options?.invocationLogPath
-            ? `printf '${command} %s\\n' "$*" >> ${JSON.stringify(options.invocationLogPath)}\n`
-            : ''
-        }exec ${JSON.stringify(process.execPath)} ${JSON.stringify(
-          testAgentStubScript,
-        )} ${provider} "$PWD" new default-model "" jsonl-overlay-lifecycle\n`,
-        'utf8',
-      )
-      await chmod(executablePath, 0o755)
-    }),
-  )
-  return directory
-}
-
-async function readRuntimeSessionId(window: Page, nodeId: string): Promise<string | null> {
-  return await window.evaluate(id => {
-    return window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null
-  }, nodeId)
-}
-
-async function readPersistedNode(window: Page, nodeId: string) {
-  return await window.evaluate(async id => {
-    const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-    const parsed = raw
-      ? (JSON.parse(raw) as {
-          workspaces?: Array<{
-            nodes?: Array<{
-              id: string
-              kind: string
-              sessionId?: string | null
-              agent?: {
-                provider?: string
-                resumeSessionId?: string | null
-                resumeSessionIdVerified?: boolean
-              } | null
-              agentOverlay?: unknown
-              scrollback?: string | null
-            }>
-          }>
-        })
-      : null
-    return parsed?.workspaces
-      ?.flatMap(workspace => workspace.nodes ?? [])
-      .find(node => node.id === id)
-  }, nodeId)
-}
-
-async function expectOverlayStubReady(terminal: Locator, provider: 'claude-code' | 'codex') {
-  await expect
-    .poll(async () => (await terminal.locator('.terminal-node__transcript').textContent()) ?? '')
-    .toContain(`[opencove-test-overlay] ${provider} ready`)
-}
 
 async function runOverlayLifecycle(options: {
   window: Page

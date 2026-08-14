@@ -22,8 +22,6 @@ export const enMessages = {
   taskResumeSessionMissing:
     'This agent record does not have a verified resumeSessionId, so it cannot resume.',
   resumeSessionMissing: 'This agent does not have a verified resumeSessionId yet.',
-  terminalAgentAutoResumeUnavailable:
-    'This agent session could not be restored automatically. Choose an existing session or start a new one.',
   noTerminalSlotNearby:
     'No room nearby in the current view. Move or close some terminal windows first.',
   noWindowSlotOnRight:

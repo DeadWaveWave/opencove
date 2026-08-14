@@ -12,6 +12,7 @@ import {
   runJsonlOverlayLifecycleScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
   runJsonlStdinSubmitDrivenTurnScenario,
+  runJsonlStdinSubmitTurnLifecycleScenario,
 } from './test-agent-session-stub/codex.mjs'
 import { runStdinEchoScenario } from './test-agent-session-stub/stdinEcho.mjs'
 import {
@@ -142,6 +143,14 @@ async function main() {
     scenario === 'jsonl-stdin-submit-delayed-turn'
   ) {
     await runJsonlStdinSubmitDelayedTurnScenario(provider, cwd)
+    return
+  }
+
+  if (
+    (provider === 'codex' || provider === 'claude-code') &&
+    scenario === 'jsonl-stdin-submit-turn-lifecycle'
+  ) {
+    await runJsonlStdinSubmitTurnLifecycleScenario(provider, cwd)
     return
   }
 
