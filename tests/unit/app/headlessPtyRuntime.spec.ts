@@ -1,6 +1,9 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { TerminalSessionStateEvent } from '../../../src/shared/contracts/dto'
+import type {
+  TerminalForegroundEvent,
+  TerminalSessionStateEvent,
+} from '../../../src/shared/contracts/dto'
 
 afterEach(() => {
   vi.doUnmock('../../../src/platform/process/ptyHost/supervisor')
@@ -17,6 +20,16 @@ describe('headless PTY runtime', () => {
     try {
       const ptyDataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
       const ptyExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+      const ptyForegroundListeners = new Set<
+        (event: {
+          sessionId: string
+          observedAtMs: number
+          source: 'process_scan'
+          availability: 'available'
+          agent: null
+          shellOnly: true
+        }) => void
+      >()
 
       const watcherStart = vi.fn()
       const watcherNoteInteraction = vi.fn()
@@ -73,6 +86,22 @@ describe('headless PTY runtime', () => {
           ptyExitListeners.add(listener)
           return () => {
             ptyExitListeners.delete(listener)
+          }
+        }
+
+        public onForeground(
+          listener: (event: {
+            sessionId: string
+            observedAtMs: number
+            source: 'process_scan'
+            availability: 'available'
+            agent: null
+            shellOnly: true
+          }) => void,
+        ): () => void {
+          ptyForegroundListeners.add(listener)
+          return () => {
+            ptyForegroundListeners.delete(listener)
           }
         }
       }
@@ -151,6 +180,7 @@ describe('headless PTY runtime', () => {
 
       const observedData: Array<{ sessionId: string; data: string }> = []
       const observedExit: Array<{ sessionId: string; exitCode: number }> = []
+      const observedForeground: TerminalForegroundEvent[] = []
       const observedState: TerminalSessionStateEvent[] = []
       const observedMetadata: Array<{ sessionId: string; resumeSessionId: string | null }> = []
 
@@ -159,6 +189,9 @@ describe('headless PTY runtime', () => {
       })
       runtime.onExit(event => {
         observedExit.push(event)
+      })
+      runtime.onForeground(event => {
+        observedForeground.push(event)
       })
       const stateListener = vi.fn((event: TerminalSessionStateEvent) => {
         observedState.push(event)
@@ -241,6 +274,16 @@ describe('headless PTY runtime', () => {
         hookInstallState: 'installed',
       })
       emitMetadata?.({ sessionId: 'session-1', resumeSessionId: 'resume-session-1' })
+      ptyForegroundListeners.forEach(listener => {
+        listener({
+          sessionId: 'session-1',
+          observedAtMs: 42,
+          source: 'process_scan',
+          availability: 'available',
+          agent: null,
+          shellOnly: true,
+        })
+      })
       ptyExitListeners.forEach(listener => {
         listener({ sessionId: 'session-1', exitCode: 0 })
       })
@@ -294,6 +337,22 @@ describe('headless PTY runtime', () => {
           state: 'standby',
           source: 'codex_hook',
           hookInstallState: 'installed',
+        },
+        {
+          sessionId: 'session-1',
+          state: 'standby',
+          source: 'codex_hook',
+          hookInstallState: 'installed',
+        },
+      ])
+      expect(observedForeground).toEqual([
+        {
+          sessionId: 'session-1',
+          observedAtMs: 42,
+          source: 'process_scan',
+          availability: 'available',
+          agent: null,
+          shellOnly: true,
         },
       ])
       expect(observedMetadata).toEqual([

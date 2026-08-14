@@ -10,6 +10,7 @@ import {
 } from './workspace-canvas.helpers'
 import {
   createAgentCommandPath,
+  createFailedCodexCommandPath,
   expectOverlayStubReady,
   readPersistedTerminalAgentNode as readPersistedNode,
   readRuntimeSessionId,
@@ -120,6 +121,94 @@ async function runOverlayLifecycle(options: {
 
 test.describe('Workspace Canvas - Terminal agent overlay', () => {
   test.skip(process.platform === 'win32', 'POSIX command shim coverage')
+
+  test('drops back to a normal terminal when codex exits before it starts', async () => {
+    const commandDirectory = await createFailedCodexCommandPath()
+    await mkdir(testWorkspacePath, { recursive: true })
+    const executionDirectory = await mkdtemp(path.join(testWorkspacePath, 'agent-launch-failure-'))
+    const { electronApp, window } = await launchApp({
+      windowMode: 'offscreen',
+      env: {
+        PATH: `${commandDirectory}${path.delimiter}${process.env.PATH ?? ''}`,
+      },
+    })
+
+    try {
+      await seedWorkspaceState(window, {
+        activeWorkspaceId: 'workspace-agent-launch-failure',
+        workspaces: [
+          {
+            id: 'workspace-agent-launch-failure',
+            name: 'workspace-agent-launch-failure',
+            path: testWorkspacePath,
+            activeSpaceId: null,
+            nodes: [
+              {
+                id: 'terminal-agent-launch-failure',
+                title: 'Terminal',
+                position: { x: 180, y: 160 },
+                width: 520,
+                height: 400,
+                kind: 'terminal',
+                executionDirectory,
+              },
+            ],
+            spaces: [],
+          },
+        ],
+      })
+
+      const nodeId = 'terminal-agent-launch-failure'
+      const terminal = window.locator(`[data-id="${nodeId}"] .terminal-node`)
+      const sidebarItem = window.locator(
+        `[data-testid="workspace-agent-item-workspace-agent-launch-failure-${nodeId}"]`,
+      )
+      await expect(terminal).toBeVisible()
+      await expect
+        .poll(() => readRuntimeSessionId(window, nodeId), { timeout: 15_000 })
+        .toBeTruthy()
+      await window.evaluate(() => {
+        const testWindow = window as typeof window & {
+          __opencoveForegroundEvents?: Array<{ sessionId: string; shellOnly: boolean }>
+        }
+        testWindow.__opencoveForegroundEvents = []
+        window.opencoveApi.pty.onForeground(event => {
+          testWindow.__opencoveForegroundEvents?.push(event)
+        })
+      })
+
+      await terminal.locator('.xterm-helper-textarea').click()
+      await window.keyboard.type('codex')
+      await window.keyboard.press('Enter')
+
+      await expect(sidebarItem).toBeVisible({ timeout: 5_000 })
+      await expect
+        .poll(() =>
+          window.evaluate(() => {
+            const testWindow = window as typeof window & {
+              __opencoveForegroundEvents?: Array<{ sessionId: string; shellOnly: boolean }>
+            }
+            return testWindow.__opencoveForegroundEvents ?? []
+          }),
+        )
+        .toContainEqual(expect.objectContaining({ shellOnly: true }))
+      await expect(sidebarItem).toHaveCount(0, { timeout: 15_000 })
+      await expect(terminal.getByTestId('terminal-node-copy-last-message')).toHaveCount(0)
+      await expect(terminal.getByTestId('terminal-node-reload-session')).toHaveCount(0)
+      await expect(terminal.getByTestId('terminal-node-session-list')).toHaveCount(0)
+      await expect
+        .poll(() => readPersistedNode(window, nodeId))
+        .toMatchObject({
+          id: nodeId,
+          kind: 'terminal',
+          agent: null,
+        })
+    } finally {
+      await electronApp.close()
+      await rm(commandDirectory, { recursive: true, force: true })
+      await rm(executionDirectory, { recursive: true, force: true })
+    }
+  })
 
   test('re-projects a restored binding and re-derives state without replacing the PTY', async () => {
     const commandDirectory = await createAgentCommandPath()

@@ -9,6 +9,7 @@ import type {
   PresentationSnapshotTerminalResult,
   ResizeTerminalInput,
   TerminalGeometryCommitResult,
+  TerminalForegroundEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -40,6 +41,7 @@ export class RemotePtyEndpointProxy {
   private readonly topology: WorkerTopologyStore
   private readonly emitData: (remoteSessionId: string, data: string) => void
   private readonly emitExit: (remoteSessionId: string, exitCode: number) => void
+  private readonly emitForeground: (remoteSessionId: string, event: TerminalForegroundEvent) => void
   private readonly emitState: (
     remoteSessionId: string,
     state: TerminalSessionStateEvent['state'],
@@ -78,6 +80,7 @@ export class RemotePtyEndpointProxy {
     topology: WorkerTopologyStore
     emitData: (remoteSessionId: string, data: string) => void
     emitExit: (remoteSessionId: string, exitCode: number) => void
+    emitForeground: (remoteSessionId: string, event: TerminalForegroundEvent) => void
     emitState: (remoteSessionId: string, state: TerminalSessionStateEvent['state']) => void
     emitMetadata: (remoteSessionId: string, metadata: TerminalSessionMetadataEvent) => void
     emitPresentationReset: (
@@ -90,6 +93,7 @@ export class RemotePtyEndpointProxy {
     this.topology = options.topology
     this.emitData = options.emitData
     this.emitExit = options.emitExit
+    this.emitForeground = options.emitForeground
     this.emitState = options.emitState
     this.emitMetadata = options.emitMetadata
     this.emitPresentationReset = options.emitPresentationReset
@@ -129,6 +133,7 @@ export class RemotePtyEndpointProxy {
       onData: (sessionId, data, seq) => this.overflowRecovery.handleData(sessionId, data, seq),
       onExit: (sessionId, exitCode, seq) =>
         this.overflowRecovery.handleExit(sessionId, exitCode, seq),
+      onForeground: (sessionId, event) => this.emitForeground(sessionId, event),
       onOverflow: sessionId => {
         this.overflowRecovery.begin(sessionId)
       },

@@ -1,10 +1,47 @@
 export type RecognizedForegroundAgent = 'codex'
 
-export interface ForegroundAgentObservation {
-  availability: 'available' | 'unavailable'
-  agent: RecognizedForegroundAgent | null
-  shellOnly: boolean
+export type ForegroundAgentObservation =
+  | {
+      availability: 'available'
+      agent: RecognizedForegroundAgent | null
+      shellOnly: boolean
+    }
+  | {
+      availability: 'unavailable'
+      agent: null
+      shellOnly: false
+    }
+
+export type ForegroundAgentReconciliationSource =
+  | 'process_scan'
+  | 'windows_exit_code'
+  | 'windows_prompt_timeout'
+
+type ForegroundAgentReconciliationIdentity = {
+  sessionId: string
+  observedAtMs: number
 }
+
+export type ForegroundAgentReconciliationEvent = ForegroundAgentReconciliationIdentity &
+  (
+    | (ForegroundAgentObservation & { source: 'process_scan'; exitCode: null })
+    | {
+        source: 'windows_exit_code'
+        exitCode: number
+        availability: 'unavailable'
+        agent: null
+        shellOnly: false
+      }
+    | {
+        source: 'windows_prompt_timeout'
+        exitCode: null
+        availability: 'unavailable'
+        agent: null
+        shellOnly: false
+      }
+  )
+
+export type ForegroundAgentReconciliationDecision = 'keep' | 'confirm' | 'clear'
 
 interface ProcessRow {
   pid: number
@@ -77,4 +114,18 @@ export function resolveForegroundAgentObservation(
     agent: null,
     shellOnly: rootOwnsForeground && foreground.length === 1,
   }
+}
+
+export function resolveForegroundAgentReconciliation(
+  event: ForegroundAgentReconciliationEvent,
+): ForegroundAgentReconciliationDecision {
+  // A failed process scan is weak runtime evidence and must never erase a durable overlay.
+  // Windows completion fallback is modeled as a separate, bounded fact from the prompt marker.
+  if (event.source === 'windows_exit_code' || event.source === 'windows_prompt_timeout') {
+    return 'clear'
+  }
+  if (event.availability === 'unavailable') {
+    return 'keep'
+  }
+  return event.agent === 'codex' ? 'confirm' : 'clear'
 }

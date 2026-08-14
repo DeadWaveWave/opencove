@@ -35,6 +35,10 @@ describe('Pty runtime geometry', () => {
         return () => undefined
       }
 
+      public onForeground(): () => void {
+        return () => undefined
+      }
+
       public onExit(_handler: PtyExitHandler): () => void {
         return () => undefined
       }
@@ -84,6 +88,10 @@ describe('Pty runtime geometry', () => {
       public crash = vi.fn()
 
       public onData(_handler: PtyDataHandler): () => void {
+        return () => undefined
+      }
+
+      public onForeground(): () => void {
         return () => undefined
       }
 
@@ -146,6 +154,10 @@ describe('Pty runtime geometry', () => {
       public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
 
       public onData(_handler: PtyDataHandler): void {}
+
+      public onForeground(): () => void {
+        return () => undefined
+      }
 
       public onExit(_handler: PtyExitHandler): void {}
     }
@@ -288,6 +300,10 @@ describe('Pty runtime geometry', () => {
       public spawn = vi.fn(async () => ({ sessionId: 'session-killed-during-resize' }))
 
       public onData(_handler: PtyDataHandler): void {}
+
+      public onForeground(): () => void {
+        return () => undefined
+      }
 
       public onExit(_handler: PtyExitHandler): void {}
     }

@@ -2,6 +2,7 @@ import type { WebSocket } from 'ws'
 import type { PtyStreamControllerDto, PtyStreamRole } from './ptyStreamTypes'
 import type {
   TerminalGeometryCommitResult,
+  TerminalForegroundEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
 
@@ -65,6 +66,10 @@ export function sendPtyData(ws: WebSocket, sessionId: string, seq: number, data:
 
 export function sendPtyExit(ws: WebSocket, sessionId: string, seq: number, exitCode: number): void {
   sendJson(ws, { type: 'exit', sessionId, seq, exitCode })
+}
+
+export function sendPtyForeground(ws: WebSocket, event: TerminalForegroundEvent): void {
+  sendJson(ws, { type: 'foreground', ...event })
 }
 
 export function sendPtyGeometry(

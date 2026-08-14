@@ -20,7 +20,7 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
@@ -61,7 +61,7 @@ describe('PtyHostSupervisor', () => {
         rows: 24,
       })
 
-      testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+      testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
       await new Promise(resolve => setTimeout(resolve, 0))
 
       const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string; env?: unknown }>(
@@ -113,7 +113,7 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string; env?: unknown }>(
@@ -161,7 +161,7 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
@@ -199,7 +199,7 @@ describe('PtyHostSupervisor', () => {
       cols: 80,
       rows: 24,
     })
-    testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await new Promise(resolve => setTimeout(resolve, 0))
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       testProcess,
@@ -265,7 +265,7 @@ describe('PtyHostSupervisor', () => {
       cols: 80,
       rows: 24,
     })
-    testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await vi.waitFor(() => expect(findLastSentMessage(testProcess, 'spawn')).not.toBeNull())
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       testProcess,
@@ -314,7 +314,7 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
@@ -358,7 +358,7 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(

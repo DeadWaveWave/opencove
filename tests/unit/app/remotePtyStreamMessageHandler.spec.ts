@@ -13,6 +13,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
     const sendToAllWindows = vi.fn()
     const externalDataListener = vi.fn()
     const externalExitListener = vi.fn()
+    const externalForegroundListener = vi.fn()
     const externalStateListener = vi.fn()
     const externalMetadataListener = vi.fn()
     const onSessionState = vi.fn()
@@ -27,6 +28,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
       sendToAllWindows,
       externalDataListeners: new Set([externalDataListener]),
       externalExitListeners: new Set([externalExitListener]),
+      externalForegroundListeners: new Set([externalForegroundListener]),
       externalStateListeners: new Set([externalStateListener]),
       externalMetadataListeners: new Set([externalMetadataListener]),
       onSessionState,
@@ -50,6 +52,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
       sendToAllWindows,
       externalDataListener,
       externalExitListener,
+      externalForegroundListener,
       externalStateListener,
       externalMetadataListener,
       onSessionState,
@@ -222,6 +225,38 @@ describe('createRemotePtyStreamMessageHandler', () => {
       profileId: 'profile-1',
       runtimeKind: 'posix',
     })
+  })
+
+  it('validates and broadcasts foreground reconciliation to every renderer window', () => {
+    const { handler, sendToAllWindows, externalForegroundListener } = createHandler()
+    const event = {
+      sessionId: 'session-1',
+      observedAtMs: 1_000,
+      source: 'process_scan',
+      exitCode: null,
+      availability: 'available',
+      agent: null,
+      shellOnly: true,
+    }
+
+    handler(JSON.stringify({ type: 'foreground', ...event }))
+
+    expect(sendToAllWindows).toHaveBeenCalledWith(IPC_CHANNELS.ptyForeground, event)
+    expect(externalForegroundListener).toHaveBeenCalledWith(event)
+
+    sendToAllWindows.mockClear()
+    handler(JSON.stringify({ type: 'foreground', ...event, availability: 'unknown' }))
+    expect(sendToAllWindows).not.toHaveBeenCalled()
+
+    handler(
+      JSON.stringify({
+        type: 'foreground',
+        ...event,
+        source: 'windows_exit_code',
+        availability: 'unavailable',
+      }),
+    )
+    expect(sendToAllWindows).not.toHaveBeenCalled()
   })
 
   it('retains and replays the latest state from each source until the session is disposed', () => {

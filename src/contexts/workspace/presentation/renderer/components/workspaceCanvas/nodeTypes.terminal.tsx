@@ -59,7 +59,9 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   >
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
-  updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
+  updateTerminalTitleRef: MutableRefObject<
+    (nodeId: string, title: string, startedAtMs?: number) => void
+  >
   clearTerminalAgentOverlayRef: MutableRefObject<
     (nodeId: string, expectedStartedAtMs?: number) => void
   >
@@ -236,8 +238,8 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       }
       onCommandRun={
         data.kind === 'terminal'
-          ? command => {
-              updateTerminalTitleRef.current(id, command)
+          ? (command, startedAtMs) => {
+              updateTerminalTitleRef.current(id, command, startedAtMs)
             }
           : undefined
       }

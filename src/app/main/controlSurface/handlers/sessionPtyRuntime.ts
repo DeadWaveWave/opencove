@@ -4,6 +4,7 @@ import type {
   ListTerminalProfilesResult,
   PresentationSnapshotTerminalResult,
   ResizeTerminalInput,
+  TerminalForegroundEvent,
   TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
@@ -28,6 +29,7 @@ export interface ControlSurfacePtyRuntime {
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
+  onForeground?: (listener: (event: TerminalForegroundEvent) => void) => () => void
   onState?: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
   onPresentationReset?: (

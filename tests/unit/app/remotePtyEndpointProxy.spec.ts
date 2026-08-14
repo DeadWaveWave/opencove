@@ -12,6 +12,7 @@ describe('RemotePtyEndpointProxy', () => {
       } as unknown as WorkerTopologyStore,
       emitData,
       emitExit: vi.fn(),
+      emitForeground: vi.fn(),
       emitState: vi.fn(),
       emitMetadata: vi.fn(),
       emitPresentationReset: vi.fn(async () => undefined),

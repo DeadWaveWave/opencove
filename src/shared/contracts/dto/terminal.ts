@@ -170,6 +170,9 @@ export interface TerminalExitEvent {
   exitCode: number
 }
 
+export type TerminalForegroundEvent =
+  import('../../runtime/agentForegroundRecognition').ForegroundAgentReconciliationEvent
+
 export interface TerminalGeometryEvent {
   sessionId: string
   cols: number

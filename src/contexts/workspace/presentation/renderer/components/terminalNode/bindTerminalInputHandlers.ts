@@ -13,7 +13,7 @@ export function bindTerminalInputHandlers(input: {
     enqueue: (data: string, encoding?: 'utf8' | 'binary') => void
     flush: () => void
   }
-  onCommandRunRef: MutableRefObject<((command: string) => void) | undefined>
+  onCommandRunRef: MutableRefObject<((command: string, startedAtMs: number) => void) | undefined>
   commandInputStateRef: MutableRefObject<TerminalCommandInputState>
 }): { dataDisposable: Disposable; binaryDisposable: Disposable } {
   const {
@@ -27,6 +27,7 @@ export function bindTerminalInputHandlers(input: {
   } = input
 
   const dataDisposable = terminal.onData(data => {
+    const commandStartedAtMs = Date.now()
     if (!shouldForwardTerminalData()) {
       return
     }
@@ -43,7 +44,7 @@ export function bindTerminalInputHandlers(input: {
     const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
     commandInputStateRef.current = parsed.nextState
     parsed.commands.forEach(command => {
-      commandRunHandler(command)
+      commandRunHandler(command, commandStartedAtMs)
     })
   })
 

@@ -67,7 +67,9 @@ interface WorkspaceCanvasNodeTypesParams {
   >
   removeTaskAgentSessionRecordRef: MutableRefObject<(taskNodeId: string, recordId: string) => void>
   updateTaskStatusRef: MutableRefObject<UpdateTaskStatus>
-  updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
+  updateTerminalTitleRef: MutableRefObject<
+    (nodeId: string, title: string, startedAtMs?: number) => void
+  >
   clearTerminalAgentOverlayRef: MutableRefObject<
     (nodeId: string, expectedStartedAtMs?: number) => void
   >

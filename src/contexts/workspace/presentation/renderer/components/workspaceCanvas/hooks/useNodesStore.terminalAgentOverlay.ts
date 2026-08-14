@@ -14,7 +14,7 @@ export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
   clearTerminalAgentOverlay: UseWorkspaceCanvasNodesStoreResult['clearTerminalAgentOverlay']
 } {
   const updateTerminalTitle = useCallback(
-    (nodeId: string, title: string) => {
+    (nodeId: string, title: string, startedAtMs?: number) => {
       const normalizedTitle = title.trim()
       if (normalizedTitle.length === 0) {
         return
@@ -48,7 +48,7 @@ export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
             const nextNode = provider
               ? activateTerminalAgentOverlay(titledNode, {
                   provider,
-                  startedAtMs: Date.now(),
+                  startedAtMs: startedAtMs ?? Date.now(),
                 })
               : titledNode
             if (nextNode === node) {

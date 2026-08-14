@@ -70,6 +70,7 @@ import type {
   ShowSystemNotificationResult,
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalForegroundEvent,
   TerminalGeometryEvent,
   TerminalResyncEvent,
   TerminalSessionMetadataEvent,
@@ -339,6 +340,17 @@ const opencoveApi = {
 
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.ptyExit, handler)
+      }
+    },
+    onForeground: (listener: (event: TerminalForegroundEvent) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: TerminalForegroundEvent) => {
+        listener(payload)
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.ptyForeground, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.ptyForeground, handler)
       }
     },
     onGeometry: (listener: (event: TerminalGeometryEvent) => void): UnsubscribeFn => {

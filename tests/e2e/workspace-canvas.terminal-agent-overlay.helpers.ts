@@ -37,6 +37,14 @@ export async function createAgentCommandPath(options?: {
   return directory
 }
 
+export async function createFailedCodexCommandPath(): Promise<string> {
+  const directory = await mkdtemp(path.join(tmpdir(), 'opencove-agent-launch-failure-'))
+  const executablePath = path.join(directory, 'codex')
+  await writeFile(executablePath, "#!/bin/sh\nprintf '\\033]133;D;127\\007'\nexit 127\n", 'utf8')
+  await chmod(executablePath, 0o755)
+  return directory
+}
+
 export async function readRuntimeSessionId(window: Page, nodeId: string): Promise<string | null> {
   return await window.evaluate(id => {
     return window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null

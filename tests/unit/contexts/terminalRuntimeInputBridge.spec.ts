@@ -57,7 +57,7 @@ describe('runtime terminal input bridge', () => {
     await bridge.ptyWriteQueue.whenIdle()
     expect(write).toHaveBeenCalled()
     expect(onCommandRun).toHaveBeenCalledTimes(1)
-    expect(onCommandRun).toHaveBeenCalledWith('codex')
+    expect(onCommandRun).toHaveBeenCalledWith('codex', expect.any(Number))
 
     bridge.dispose()
   })

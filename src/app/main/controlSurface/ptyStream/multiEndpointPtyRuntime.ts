@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type {
   ListSessionsResult,
   PresentationSnapshotTerminalResult,
+  TerminalForegroundEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -11,6 +12,7 @@ import { RemotePtyEndpointProxy } from './remotePtyEndpointProxy'
 import type { TerminalRuntimeRoute } from '../../../../contexts/terminal/domain/recovery/terminalRecovery'
 import { createRemoteRecoveryCheckpointFence } from './remoteRecoveryCheckpointFence'
 import { ShellInputReadiness } from './shellInputReadiness'
+import { subscribePtyRuntimeListener } from './ptyRuntimeListeners'
 
 type RemoteSessionRoute = {
   kind: 'remote'
@@ -67,6 +69,7 @@ export function createMultiEndpointPtyRuntime(options: {
 }): MultiEndpointPtyRuntime {
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+  const foregroundListeners = new Set<(event: TerminalForegroundEvent) => void>()
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   const shellInputReadiness = new ShellInputReadiness()
@@ -131,6 +134,13 @@ export function createMultiEndpointPtyRuntime(options: {
         created.forget(remoteSessionId)
 
         exitListeners.forEach(listener => listener({ sessionId: homeSessionId, exitCode }))
+      },
+      emitForeground: (remoteSessionId, event) => {
+        const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
+        if (!homeSessionId) {
+          return
+        }
+        foregroundListeners.forEach(listener => listener({ ...event, sessionId: homeSessionId }))
       },
       emitState: (remoteSessionId, state) => {
         const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
@@ -208,6 +218,10 @@ export function createMultiEndpointPtyRuntime(options: {
   const disposeLocalExitListener = options.localRuntime.onExit(event => {
     shellInputReadiness.forget(event.sessionId)
     exitListeners.forEach(listener => listener(event))
+  })
+
+  const disposeLocalForegroundListener = options.localRuntime.onForeground?.(event => {
+    foregroundListeners.forEach(listener => listener(event))
   })
 
   const disposeLocalStateListener = options.localRuntime.onState?.(event => {
@@ -399,30 +413,11 @@ export function createMultiEndpointPtyRuntime(options: {
 
       getProxy(route.endpointId).kill(route.remoteSessionId)
     },
-    onData: listener => {
-      dataListeners.add(listener)
-      return () => {
-        dataListeners.delete(listener)
-      }
-    },
-    onExit: listener => {
-      exitListeners.add(listener)
-      return () => {
-        exitListeners.delete(listener)
-      }
-    },
-    onState: listener => {
-      stateListeners.add(listener)
-      return () => {
-        stateListeners.delete(listener)
-      }
-    },
-    onMetadata: listener => {
-      metadataListeners.add(listener)
-      return () => {
-        metadataListeners.delete(listener)
-      }
-    },
+    onData: listener => subscribePtyRuntimeListener(dataListeners, listener),
+    onExit: listener => subscribePtyRuntimeListener(exitListeners, listener),
+    onForeground: listener => subscribePtyRuntimeListener(foregroundListeners, listener),
+    onState: listener => subscribePtyRuntimeListener(stateListeners, listener),
+    onMetadata: listener => subscribePtyRuntimeListener(metadataListeners, listener),
     onPresentationReset: listener => {
       presentationResetListeners.add(listener)
       return () => {
@@ -456,6 +451,7 @@ export function createMultiEndpointPtyRuntime(options: {
       shellInputReadiness.dispose()
       disposeLocalDataListener()
       disposeLocalExitListener()
+      disposeLocalForegroundListener?.()
       disposeLocalStateListener?.()
       disposeLocalMetadataListener?.()
 
@@ -474,6 +470,7 @@ export function createMultiEndpointPtyRuntime(options: {
       pendingPresentationTransitionByRemote.clear()
       presentationResetListeners.clear()
       presentationResetCommittedListeners.clear()
+      foregroundListeners.clear()
 
       if (options.disposeLocalRuntime) {
         try {

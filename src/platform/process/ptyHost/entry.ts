@@ -20,6 +20,7 @@ import { convertHighByteX10MouseReportsToSgr } from '../pty/x10Mouse'
 import { PtyHostSpawnIdentityRegistry } from './spawnIdentityRegistry'
 import { resizePtyAndReadAck } from './resizeAck'
 import { resolveForegroundAgentObservation } from '../../../shared/runtime/agentForegroundRecognition'
+import { resolveShellCommandFinishedMarker } from '../../../shared/terminal/shellIntegration'
 
 type ParentPort = {
   on: (event: 'message', listener: (messageEvent: { data: unknown }) => void) => void
@@ -172,6 +173,7 @@ type PtySession = {
 
 const sessions = new Map<string, PtySession>()
 const foregroundTimers = new Map<string, NodeJS.Timeout>()
+const shellIntegrationBuffers = new Map<string, string>()
 const spawnIdentities = new PtyHostSpawnIdentityRegistry()
 let hasCleanedSessions = false
 
@@ -202,6 +204,7 @@ const cleanupSessions = (): void => {
   }
   foregroundTimers.forEach(timer => clearTimeout(timer))
   foregroundTimers.clear()
+  shellIntegrationBuffers.clear()
   spawnIdentities.clear()
 }
 
@@ -247,9 +250,14 @@ const respondError = (requestId: string, error: unknown): void => {
 
 const onPtyData = (sessionId: string, data: string): void => {
   send({ type: 'data', sessionId, data })
-  if (!data.includes('\u001b]133;D')) {
+  const bufferedData = `${shellIntegrationBuffers.get(sessionId) ?? ''}${data}`
+  const commandFinished = resolveShellCommandFinishedMarker(bufferedData)
+  if (!commandFinished) {
+    shellIntegrationBuffers.set(sessionId, bufferedData.slice(-64))
     return
   }
+  shellIntegrationBuffers.set(sessionId, '')
+  const observedAtMs = Date.now()
   const previousTimer = foregroundTimers.get(sessionId)
   if (previousTimer) {
     clearTimeout(previousTimer)
@@ -257,7 +265,37 @@ const onPtyData = (sessionId: string, data: string): void => {
   const timer = setTimeout(() => {
     foregroundTimers.delete(sessionId)
     const rootPid = sessions.get(sessionId)?.rootPid
-    if (!rootPid || process.platform === 'win32') {
+    if (process.platform === 'win32') {
+      const common = {
+        type: 'foreground' as const,
+        sessionId,
+        observedAtMs,
+        availability: 'unavailable' as const,
+        agent: null,
+        shellOnly: false as const,
+      }
+      send(
+        commandFinished.exitCode === null
+          ? { ...common, source: 'windows_prompt_timeout', exitCode: null }
+          : {
+              ...common,
+              source: 'windows_exit_code',
+              exitCode: commandFinished.exitCode,
+            },
+      )
+      return
+    }
+    if (!rootPid) {
+      send({
+        type: 'foreground',
+        sessionId,
+        observedAtMs,
+        source: 'process_scan',
+        exitCode: null,
+        availability: 'unavailable',
+        agent: null,
+        shellOnly: false,
+      })
       return
     }
     const result = spawnSync('ps', ['ax', '-o', 'pid=,ppid=,stat=,command='], {
@@ -265,17 +303,27 @@ const onPtyData = (sessionId: string, data: string): void => {
       env: process.env,
     })
     if (result.status !== 0 || typeof result.stdout !== 'string') {
-      return
-    }
-    const observation = resolveForegroundAgentObservation(result.stdout, rootPid)
-    if (observation.availability === 'available') {
       send({
         type: 'foreground',
         sessionId,
-        agent: observation.agent,
-        shellOnly: observation.shellOnly,
+        observedAtMs,
+        source: 'process_scan',
+        exitCode: null,
+        availability: 'unavailable',
+        agent: null,
+        shellOnly: false,
       })
+      return
     }
+    const observation = resolveForegroundAgentObservation(result.stdout, rootPid)
+    send({
+      type: 'foreground',
+      sessionId,
+      observedAtMs,
+      source: 'process_scan',
+      exitCode: null,
+      ...observation,
+    })
   }, 350)
   timer.unref()
   foregroundTimers.set(sessionId, timer)
@@ -287,6 +335,7 @@ const onPtyExit = (sessionId: string, exitCode: number): void => {
     clearTimeout(timer)
     foregroundTimers.delete(sessionId)
   }
+  shellIntegrationBuffers.delete(sessionId)
   const session = sessions.get(sessionId)
   if (session) {
     sessions.delete(sessionId)
