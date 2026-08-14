@@ -45,6 +45,7 @@ function mergeRuntimeNode(
   // together with the overlay until the explicit terminal lifecycle clears both.
   const activeTerminalOverlay =
     kind === 'terminal' ? (existingNode.data.agentOverlay ?? null) : null
+  const activeRecoveryIssue = existingNode.data.recoveryIssue ?? null
 
   const nextNode: Node<TerminalNodeData> = {
     ...persistedNode,
@@ -65,6 +66,16 @@ function mergeRuntimeNode(
         ? existingNode.data.terminalProviderHint
         : persistedNode.data.terminalProviderHint,
       agentOverlay: activeTerminalOverlay ?? persistedNode.data.agentOverlay,
+      recoveryIssue: activeRecoveryIssue,
+      ...(activeRecoveryIssue
+        ? {
+            status: existingNode.data.status,
+            startedAt: existingNode.data.startedAt,
+            endedAt: existingNode.data.endedAt,
+            exitCode: existingNode.data.exitCode,
+            lastError: existingNode.data.lastError,
+          }
+        : {}),
       agent:
         kind === 'agent'
           ? (existingNode.data.agent ?? persistedNode.data.agent)

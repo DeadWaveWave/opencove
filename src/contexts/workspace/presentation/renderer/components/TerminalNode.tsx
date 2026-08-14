@@ -61,6 +61,7 @@ export function TerminalNode({
   agentStateDegraded = false,
   directoryMismatch,
   lastError,
+  recoveryIssue = null,
   position,
   getPosition,
   width,
@@ -445,8 +446,6 @@ export function TerminalNode({
   useTerminalFileDropPaste({ containerRef, terminalRef })
 
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
-  const isRecoveringAgentOutput =
-    kind === 'agent' && sessionId.trim().length > 0 && !isTerminalHydrated && !lastError
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
     handlePointerDownCapture: handleTerminalBodyPointerDownCapture,
@@ -470,9 +469,9 @@ export function TerminalNode({
       agentStateDegraded={agentStateDegraded}
       directoryMismatch={directoryMismatch}
       lastError={lastError}
+      recoveryIssue={recoveryIssue}
       sessionId={sessionId}
       isTerminalHydrated={isTerminalHydrated}
-      isRecoveringAgentOutput={isRecoveringAgentOutput}
       transcriptRef={transcriptRef}
       sizeStyle={sizeStyle}
       containerRef={containerRef}

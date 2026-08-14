@@ -227,6 +227,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                 endedAt: null,
                 exitCode: null,
                 lastError: null,
+                recoveryIssue: null,
                 agent:
                   mode === 'new' && item.data.agent
                     ? {
@@ -433,7 +434,6 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
             }),
           { syncLayout: false },
         )
-        onRequestPersistFlush?.()
       }
 
       await relaunchAgentNode({

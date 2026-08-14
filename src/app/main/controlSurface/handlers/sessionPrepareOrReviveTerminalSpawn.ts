@@ -16,6 +16,7 @@ import type {
 
 export type PrepareOrReviveLaunchContext = {
   mountId: string | null
+  endpointId: string | null
   workingDirectory: string
 }
 
@@ -52,6 +53,7 @@ export async function resolvePrepareOrReviveLaunchContext(options: {
   if (!options.space) {
     return {
       mountId: null,
+      endpointId: 'local',
       workingDirectory: options.cwd,
     }
   }
@@ -73,6 +75,7 @@ export async function resolvePrepareOrReviveLaunchContext(options: {
 
   return {
     mountId: resolved.mount?.mountId ?? null,
+    endpointId: resolved.mount?.endpointId ?? null,
     workingDirectory: resolved.workingDirectory,
   }
 }

@@ -182,6 +182,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         endedAt: node.endedAt,
         exitCode: node.exitCode,
         lastError: node.lastError,
+        recoveryIssue: null,
         scrollback: node.scrollback,
         executionDirectory: node.executionDirectory,
         expectedDirectory: node.expectedDirectory,

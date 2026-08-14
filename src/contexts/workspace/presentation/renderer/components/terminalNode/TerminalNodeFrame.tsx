@@ -3,6 +3,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import { Handle, Position } from '@xyflow/react'
 import type {
   AgentHookInstallState,
+  AgentRecoveryIssue,
   AgentSessionSummary,
   TerminalSessionStateSource,
 } from '@shared/contracts/dto'
@@ -32,9 +33,9 @@ interface TerminalNodeFrameProps {
   agentStateDegraded: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null
+  recoveryIssue?: AgentRecoveryIssue | null
   sessionId: string
   isTerminalHydrated: boolean
-  isRecoveringAgentOutput: boolean
   transcriptRef: React.Ref<HTMLDivElement>
   sizeStyle: React.CSSProperties
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -82,9 +83,9 @@ export function TerminalNodeFrame({
   agentStateDegraded,
   directoryMismatch,
   lastError,
+  recoveryIssue = null,
   sessionId,
   isTerminalHydrated,
-  isRecoveringAgentOutput,
   transcriptRef,
   sizeStyle,
   containerRef,
@@ -110,6 +111,12 @@ export function TerminalNodeFrame({
 }: TerminalNodeFrameProps): JSX.Element {
   const { t } = useTranslation()
   const isAgentNode = kind === 'agent'
+  const isRecoveringAgentOutput =
+    isAgentNode &&
+    sessionId.trim().length > 0 &&
+    !isTerminalHydrated &&
+    !lastError &&
+    !recoveryIssue
   const hasTargetHandle = kind === 'agent'
   const hasSourceHandle = kind === 'task'
   const hasSelectedDragSurface = isSelected || isDragging
@@ -219,6 +226,22 @@ export function TerminalNodeFrame({
       />
 
       {isAgentNode && lastError ? <div className="terminal-node__error">{lastError}</div> : null}
+      {isAgentNode && recoveryIssue === 'codex_writer_locked' ? (
+        <div className="terminal-node__recovery-issue" role="status">
+          <span>{t('terminalNode.writerLockRecoveryMessage')}</span>
+          {onReloadSession ? (
+            <button
+              type="button"
+              className="terminal-node__recovery-issue-action nodrag"
+              onClick={() => {
+                void onReloadSession()
+              }}
+            >
+              {t('terminalNode.retryRecovery')}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="terminal-node__body">
         <div

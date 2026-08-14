@@ -75,6 +75,12 @@ async function main() {
 
   process.stdout.write(`[opencove-test-agent] ${provider} ${mode} ${model}\n`)
 
+  if (provider === 'codex' && mode === 'resume' && scenario === 'codex-active-writer') {
+    process.stderr.write('thread already has an active writer (code -32600)\n')
+    process.exitCode = 1
+    return
+  }
+
   if (provider === 'codex' && scenario === 'codex-standby-no-newline') {
     await runCodexStandbyNoNewlineScenario(cwd)
     return

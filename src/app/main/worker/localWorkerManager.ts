@@ -20,6 +20,7 @@ import {
   isTruthyEnv,
   resolveForwardedLocalWorkerDiagnosticsEnv,
 } from './localWorkerSpawn'
+import { terminateStaleLocalWorkerTree } from './staleLocalWorkerProcessTree'
 
 export { buildLocalWorkerSpawnArgs, isTruthyEnv, resolveForwardedLocalWorkerDiagnosticsEnv }
 
@@ -74,34 +75,6 @@ function childHasExited(child: WorkerChildProcess): boolean {
   return child.exitCode !== null || child.signalCode !== null
 }
 
-async function waitForPidExit(pid: number, timeoutMs: number): Promise<void> {
-  if (!Number.isFinite(pid) || pid <= 0) {
-    return
-  }
-
-  const startedAtMs = Date.now()
-
-  await new Promise<void>(resolvePromise => {
-    const interval = setInterval(() => {
-      const elapsedMs = Date.now() - startedAtMs
-      if (elapsedMs >= timeoutMs) {
-        clearInterval(interval)
-        resolvePromise()
-        return
-      }
-
-      try {
-        process.kill(pid, 0)
-      } catch {
-        clearInterval(interval)
-        resolvePromise()
-      }
-    }, 100)
-
-    interval.unref()
-  })
-}
-
 async function stopChild(child: WorkerChildProcess): Promise<void> {
   if (child.killed || childHasExited(child)) {
     return
@@ -146,8 +119,7 @@ export async function repairStaleLocalWorkerFiles(
   stalePid?: number | null,
 ): Promise<void> {
   if (typeof stalePid === 'number' && Number.isFinite(stalePid) && stalePid > 0) {
-    await stopByPid(stalePid)
-    await waitForPidExit(stalePid, 1_500)
+    await terminateStaleLocalWorkerTree({ stalePid, userDataPath }).catch(() => undefined)
   }
 
   await removeConnectionFile(userDataPath, WORKER_CONTROL_SURFACE_CONNECTION_FILE).catch(
