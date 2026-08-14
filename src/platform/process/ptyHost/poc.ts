@@ -5,7 +5,7 @@ import process from 'node:process'
 
 type PtyHostReadyMessage = {
   type: 'ready'
-  protocolVersion: 3
+  protocolVersion: 4
 }
 
 type PtyHostResponseMessage =

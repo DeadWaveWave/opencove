@@ -1,5 +1,6 @@
 import type {
   ListSessionsResult,
+  TerminalForegroundEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -8,6 +9,7 @@ import {
   sendPtyControlChanged,
   sendPtyData,
   sendPtyExit,
+  sendPtyForeground,
   sendPtyGeometry,
   sendPtySessionMetadata,
   sendPtyState,
@@ -111,6 +113,20 @@ export function broadcastExit(options: {
 
   for (const client of options.clients.values()) {
     sendPtyExit(client.ws, options.sessionId, options.seq, options.exitCode)
+  }
+}
+
+export function broadcastForeground(options: {
+  sessions: Map<string, SessionState>
+  clients: Map<string, ClientState>
+  event: TerminalForegroundEvent
+}): void {
+  if (!options.sessions.has(options.event.sessionId) || options.clients.size === 0) {
+    return
+  }
+
+  for (const client of options.clients.values()) {
+    sendPtyForeground(client.ws, options.event)
   }
 }
 

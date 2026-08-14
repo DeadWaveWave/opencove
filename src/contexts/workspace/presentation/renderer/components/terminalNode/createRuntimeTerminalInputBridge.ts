@@ -47,7 +47,7 @@ export function createRuntimeTerminalInputBridge({
   terminal: Terminal
   sessionId: string
   openTerminalFind: () => void
-  onCommandRunRef: { current: ((command: string) => void) | undefined }
+  onCommandRunRef: { current: ((command: string, startedAtMs: number) => void) | undefined }
   onAgentOverlayExitRef: { current: (() => void) | undefined }
   commandInputStateRef: { current: TerminalCommandInputState }
   suppressPtyResizeRef: { current: boolean }
@@ -143,6 +143,7 @@ export function createRuntimeTerminalInputBridge({
 
   const forwardAcceptedUtf8UserInput = (data: string): void => {
     const commands = parseCommandInput(data)
+    const commandStartedAtMs = Date.now()
     const interruptOverlayExit = data.includes('\u0003') ? onAgentOverlayExitRef.current : undefined
     ptyWriteQueue.enqueue(data)
     ptyWriteQueue.flush()
@@ -154,7 +155,7 @@ export function createRuntimeTerminalInputBridge({
         if (interruptOverlayExit && onAgentOverlayExitRef.current === interruptOverlayExit) {
           interruptOverlayExit()
         }
-        commands.forEach(command => onCommandRunRef.current?.(command))
+        commands.forEach(command => onCommandRunRef.current?.(command, commandStartedAtMs))
       })
     }
   }

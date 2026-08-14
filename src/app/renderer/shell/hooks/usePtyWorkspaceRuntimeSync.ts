@@ -12,6 +12,7 @@ import { getPtyEventHub } from '../utils/ptyEventHub'
 import { useAppStore } from '../store/useAppStore'
 import { isAgentTreatedNode } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 import { createTerminalAgentWatcherOwner } from '../utils/terminalAgentWatcherOwner'
+import { createTerminalAgentOverlayReconciliationOwner } from '../utils/terminalAgentOverlayReconciliationOwner'
 import { projectAgentRuntimeObservation } from '@contexts/workspace/presentation/renderer/utils/agentRuntimeObservation'
 import { updateWorkspacesWithAgentMetadata } from './usePtyWorkspaceRuntimeSync.agentMetadata'
 export { updateWorkspacesWithAgentMetadata } from './usePtyWorkspaceRuntimeSync.agentMetadata'
@@ -320,6 +321,11 @@ export function usePtyWorkspaceRuntimeSync({
 
   useEffect(() => {
     const ptyEventHub = getPtyEventHub()
+    const overlayReconciliationOwner = createTerminalAgentOverlayReconciliationOwner({
+      source: window.opencoveApi.pty,
+      setWorkspaces,
+      requestPersistFlush,
+    })
 
     const appendInactiveTerminalChunk = (sessionId: string, chunk: string): void => {
       const { workspaces, activeWorkspaceId } = useAppStore.getState()
@@ -438,6 +444,7 @@ export function usePtyWorkspaceRuntimeSync({
       unsubscribeMetadata()
       unsubscribeGeometry()
       unsubscribeExit()
+      overlayReconciliationOwner.dispose()
     }
   }, [requestPersistFlush, setWorkspaces])
 }

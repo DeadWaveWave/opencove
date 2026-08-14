@@ -3,6 +3,15 @@ import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 
 type PtyDataHandler = (event: { sessionId: string; data: string }) => void
 type PtyExitHandler = (event: { sessionId: string; exitCode: number }) => void
+type PtyForegroundHandler = (event: {
+  sessionId: string
+  observedAtMs: number
+  source: 'process_scan'
+  exitCode: null
+  availability: 'available'
+  agent: 'codex' | null
+  shellOnly: boolean
+}) => void
 
 describe('Pty runtime subscriptions', () => {
   it('cleans session subscriptions after exit and preserves the last snapshot', async () => {
@@ -19,6 +28,7 @@ describe('Pty runtime subscriptions', () => {
 
     let onDataHandler: PtyDataHandler | null = null
     let onExitHandler: PtyExitHandler | null = null
+    let onForegroundHandler: PtyForegroundHandler | null = null
 
     class MockPtyHostSupervisor {
       public write = vi.fn()
@@ -30,6 +40,11 @@ describe('Pty runtime subscriptions', () => {
 
       public onData(handler: PtyDataHandler): void {
         onDataHandler = handler
+      }
+
+      public onForeground(handler: PtyForegroundHandler): () => void {
+        onForegroundHandler = handler
+        return () => undefined
       }
 
       public onExit(handler: PtyExitHandler): void {
@@ -60,6 +75,20 @@ describe('Pty runtime subscriptions', () => {
     const runtime = createPtyRuntime()
     expect(onDataHandler).not.toBeNull()
     expect(onExitHandler).not.toBeNull()
+    expect(onForegroundHandler).not.toBeNull()
+
+    const foregroundEvent = {
+      sessionId: 'session-1',
+      observedAtMs: 200,
+      source: 'process_scan' as const,
+      exitCode: null,
+      availability: 'available' as const,
+      agent: null,
+      shellOnly: true,
+    }
+    onForegroundHandler?.(foregroundEvent)
+    expect(send).toHaveBeenCalledWith(IPC_CHANNELS.ptyForeground, foregroundEvent)
+    send.mockClear()
 
     const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
     runtime.attach(1, sessionId)
@@ -113,6 +142,10 @@ describe('Pty runtime subscriptions', () => {
 
       public onData(handler: PtyDataHandler): void {
         onDataHandler = handler
+      }
+
+      public onForeground(): () => void {
+        return vi.fn()
       }
 
       public onExit(_handler: PtyExitHandler): void {}
@@ -190,6 +223,8 @@ describe('Pty runtime subscriptions', () => {
       public onData(handler: PtyDataHandler): void {
         onDataHandler = handler
       }
+
+      public onForeground = vi.fn(() => vi.fn())
 
       public onExit(_handler: PtyExitHandler): void {}
     }
@@ -282,6 +317,8 @@ describe('Pty runtime subscriptions', () => {
         onDataHandler = handler
       }
 
+      public onForeground = vi.fn(() => vi.fn())
+
       public onExit(_handler: PtyExitHandler): void {}
     }
 
@@ -357,6 +394,8 @@ describe('Pty runtime subscriptions', () => {
         onDataHandler = handler
       }
 
+      public onForeground = vi.fn(() => vi.fn())
+
       public onExit(_handler: PtyExitHandler): void {}
     }
 
@@ -416,6 +455,8 @@ describe('Pty runtime subscriptions', () => {
       public onData(handler: PtyDataHandler): void {
         onDataHandler = handler
       }
+
+      public onForeground = vi.fn(() => vi.fn())
 
       public onExit(_handler: PtyExitHandler): void {}
     }

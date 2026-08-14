@@ -34,7 +34,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    firstProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    firstProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await vi.waitFor(() => {
       expect(findLastSentMessage(firstProcess, 'spawn')).not.toBeNull()
     })
@@ -47,7 +47,7 @@ describe('PtyHostSupervisor spawn identity', () => {
     await vi.waitFor(() => {
       expect(processes).toHaveLength(0)
     })
-    secondProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    secondProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await vi.waitFor(() => {
       expect(findLastSentMessage(secondProcess, 'spawn')).not.toBeNull()
     })
@@ -91,7 +91,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    firstProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    firstProcess.emit('message', { type: 'ready', protocolVersion: 4 })
 
     await expect(spawnPromise).rejects.toThrow('Channel closed')
     expect(createProcess).toHaveBeenCalledTimes(1)
@@ -118,7 +118,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       rows: 24,
     })
     await vi.waitFor(() => expect(createProcess).toHaveBeenCalledTimes(2))
-    secondProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    secondProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await vi.waitFor(() => expect(findLastSentMessage(secondProcess, 'spawn')).not.toBeNull())
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       secondProcess,
@@ -156,7 +156,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    firstProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    firstProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await expect(failedSpawn).rejects.toThrow('Channel closed')
 
     firstProcess.emit('exit', 1)
@@ -168,7 +168,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       rows: 24,
     })
     await vi.waitFor(() => expect(processes).toHaveLength(0), { timeout: 1_000 })
-    secondProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    secondProcess.emit('message', { type: 'ready', protocolVersion: 4 })
     await vi.waitFor(() => expect(findLastSentMessage(secondProcess, 'spawn')).not.toBeNull())
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       secondProcess,
@@ -203,7 +203,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    testProcess.emit('message', { type: 'ready', protocolVersion: 3 })
+    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
 
     await expect(spawnPromise).rejects.toThrow('spawn timeout')
     expect(createProcess).toHaveBeenCalledTimes(1)

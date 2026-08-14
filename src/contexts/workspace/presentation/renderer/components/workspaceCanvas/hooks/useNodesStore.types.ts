@@ -71,7 +71,7 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
   applyPendingScrollbacks: (targetNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
-  updateTerminalTitle: (nodeId: string, title: string) => void
+  updateTerminalTitle: (nodeId: string, title: string, startedAtMs?: number) => void
   clearTerminalAgentOverlay: (nodeId: string, expectedStartedAtMs?: number) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
   setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void

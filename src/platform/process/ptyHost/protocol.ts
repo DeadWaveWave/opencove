@@ -1,4 +1,6 @@
-export const PTY_HOST_PROTOCOL_VERSION = 3 as const
+import type { ForegroundAgentReconciliationEvent } from '../../../shared/runtime/agentForegroundRecognition'
+
+export const PTY_HOST_PROTOCOL_VERSION = 4 as const
 
 export type PtyHostWriteEncoding = 'utf8' | 'binary'
 
@@ -85,12 +87,11 @@ export type PtyHostExitMessage = {
   exitCode: number
 }
 
-export type PtyHostForegroundMessage = {
+export type PtyHostForegroundMessage = ForegroundAgentReconciliationEvent & {
   type: 'foreground'
-  sessionId: string
-  agent: 'codex' | null
-  shellOnly: boolean
 }
+
+export type PtyHostForegroundEvent = ForegroundAgentReconciliationEvent
 
 export type PtyHostMessage =
   | PtyHostReadyMessage

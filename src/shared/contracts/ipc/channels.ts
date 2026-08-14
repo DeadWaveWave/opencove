@@ -102,6 +102,7 @@ export const IPC_CHANNELS = {
   ptyDebugCrashHost: 'pty:debug-crash-host',
   ptyData: 'pty:data',
   ptyExit: 'pty:exit',
+  ptyForeground: 'pty:foreground',
   ptyGeometry: 'pty:geometry',
   ptyResync: 'pty:resync',
   ptyState: 'pty:state',

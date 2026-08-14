@@ -1,9 +1,13 @@
 import type {
   TerminalGeometryCommitResult,
+  TerminalForegroundEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
-import { parseTerminalGeometryCommitResult } from '../remote/remotePtyStreamMessageHandler'
+import {
+  parseTerminalForegroundEvent,
+  parseTerminalGeometryCommitResult,
+} from '../remote/remotePtyStreamMessageHandler'
 
 export type RemotePtyEndpointAttachedSessionState = {
   lastSeq: number
@@ -40,6 +44,7 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
   onResizeResult: (result: TerminalGeometryCommitResult) => void
   onData: (sessionId: string, data: string, seq: number) => void
   onExit: (sessionId: string, exitCode: number, seq: number) => void
+  onForeground: (sessionId: string, event: TerminalForegroundEvent) => void
   onOverflow: (sessionId: string) => void
   onState: (sessionId: string, state: TerminalSessionStateEvent['state']) => void
   onMetadata: (sessionId: string, metadata: TerminalSessionMetadataEvent) => void
@@ -124,6 +129,14 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
       const exitCode = normalizeOptionalFiniteInt(parsed.exitCode) ?? 0
       const seq = normalizeOptionalFiniteInt(parsed.seq) ?? 0
       options.onExit(sessionId, exitCode, seq)
+      return
+    }
+
+    if (parsed.type === 'foreground') {
+      const event = parseTerminalForegroundEvent(parsed)
+      if (event) {
+        options.onForeground(sessionId, event)
+      }
       return
     }
 

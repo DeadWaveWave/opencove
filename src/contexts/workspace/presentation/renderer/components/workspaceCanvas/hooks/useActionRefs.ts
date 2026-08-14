@@ -55,7 +55,9 @@ export interface WorkspaceCanvasActionRefs {
   requestNodeDeleteRef: React.MutableRefObject<(nodeIds: string[]) => void>
   updateTaskStatusRef: React.MutableRefObject<(nodeId: string, status: TaskRuntimeStatus) => void>
   updateNodeScrollbackRef: React.MutableRefObject<(nodeId: string, scrollback: string) => void>
-  updateTerminalTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
+  updateTerminalTitleRef: React.MutableRefObject<
+    (nodeId: string, title: string, startedAtMs?: number) => void
+  >
   clearTerminalAgentOverlayRef: React.MutableRefObject<
     (nodeId: string, expectedStartedAtMs?: number) => void
   >
@@ -151,9 +153,9 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const updateNodeScrollbackRef = useRef<(nodeId: string, scrollback: string) => void>(
     (_nodeId: string, _scrollback: string) => undefined,
   )
-  const updateTerminalTitleRef = useRef<(nodeId: string, title: string) => void>(
-    (_nodeId: string, _title: string) => undefined,
-  )
+  const updateTerminalTitleRef = useRef<
+    (nodeId: string, title: string, startedAtMs?: number) => void
+  >((_nodeId: string, _title: string, _startedAtMs?: number) => undefined)
   const clearTerminalAgentOverlayRef = useRef<
     (nodeId: string, expectedStartedAtMs?: number) => void
   >(() => undefined)
@@ -224,7 +226,7 @@ interface SyncActionRefsParams {
     isFullscreen: boolean,
   ) => void
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
-  updateTerminalTitle: (nodeId: string, title: string) => void
+  updateTerminalTitle: (nodeId: string, title: string, startedAtMs?: number) => void
   clearTerminalAgentOverlay: (nodeId: string, expectedStartedAtMs?: number) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
   focusNodeOnClick: boolean
@@ -335,8 +337,8 @@ export function useWorkspaceCanvasSyncActionRefs({
   }, [actionRefs.updateNodeScrollbackRef, updateNodeScrollback])
 
   useLayoutEffect(() => {
-    actionRefs.updateTerminalTitleRef.current = (nodeId, title) => {
-      updateTerminalTitle(nodeId, title)
+    actionRefs.updateTerminalTitleRef.current = (nodeId, title, startedAtMs) => {
+      updateTerminalTitle(nodeId, title, startedAtMs)
     }
   }, [actionRefs.updateTerminalTitleRef, updateTerminalTitle])
 

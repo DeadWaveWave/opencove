@@ -6,6 +6,7 @@ import { createNodeChildPtyHostProcess } from '../../platform/process/ptyHost/no
 import type {
   AgentProviderId,
   ResizeTerminalInput,
+  TerminalForegroundEvent,
   TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
@@ -40,6 +41,7 @@ export interface HeadlessPtyRuntime {
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
+  onForeground: (listener: (event: TerminalForegroundEvent) => void) => () => void
   onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
   startSessionStateWatcher: (input: SessionStateWatcherStartInput) => void
@@ -56,6 +58,7 @@ export function createHeadlessPtyRuntime(options: {
   const debugCrashHostEnabled = isDebugCrashHostEnabled()
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+  const foregroundListeners = new Set<(event: TerminalForegroundEvent) => void>()
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   const profileResolver = new TerminalProfileResolver()
@@ -139,25 +142,25 @@ export function createHeadlessPtyRuntime(options: {
     hookInstallStateBySessionId.delete(event.sessionId)
     exitListeners.forEach(listener => listener(event))
   })
-  const disposeForegroundListener =
-    supervisor.onForeground?.(event => {
-      if (!event.shellOnly) {
-        return
-      }
-      const codexHookChannel = agentHookChannels.codex
-      if (
-        !codexHookChannel ||
-        !hookChannelsBySessionId.get(event.sessionId)?.includes(codexHookChannel)
-      ) {
-        return
-      }
-      emitState({
-        sessionId: event.sessionId,
-        state: 'standby',
-        source: 'codex_hook',
-        hookInstallState: codexHookChannel.getInstallState(),
-      })
-    }) ?? (() => undefined)
+  const disposeForegroundListener = supervisor.onForeground(event => {
+    foregroundListeners.forEach(listener => listener(event))
+    if (!event.shellOnly) {
+      return
+    }
+    const codexHookChannel = agentHookChannels.codex
+    if (
+      !codexHookChannel ||
+      !hookChannelsBySessionId.get(event.sessionId)?.includes(codexHookChannel)
+    ) {
+      return
+    }
+    emitState({
+      sessionId: event.sessionId,
+      state: 'standby',
+      source: 'codex_hook',
+      hookInstallState: codexHookChannel.getInstallState(),
+    })
+  })
 
   return {
     listProfiles: async () => await profileResolver.listProfiles(),
@@ -272,6 +275,12 @@ export function createHeadlessPtyRuntime(options: {
         exitListeners.delete(listener)
       }
     },
+    onForeground: listener => {
+      foregroundListeners.add(listener)
+      return () => {
+        foregroundListeners.delete(listener)
+      }
+    },
     onState: listener => {
       stateListeners.add(listener)
       return () => {
@@ -304,6 +313,7 @@ export function createHeadlessPtyRuntime(options: {
       disposeHookStateListeners.forEach(disposeListener => disposeListener())
       dataListeners.clear()
       exitListeners.clear()
+      foregroundListeners.clear()
       stateListeners.clear()
       metadataListeners.clear()
       hookInstallStateBySessionId.clear()

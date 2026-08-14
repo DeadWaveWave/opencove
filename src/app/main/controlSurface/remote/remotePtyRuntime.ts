@@ -6,6 +6,7 @@ import type {
   SpawnTerminalInput,
   SpawnTerminalResult,
   TerminalDataEvent,
+  TerminalForegroundEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   TerminalWriteEncoding,
@@ -39,6 +40,7 @@ import {
   createEnsureRemotePtySessionAttached,
   RemotePtyAgentStateReplay,
 } from './remotePtyRuntime.attach'
+import { subscribePtyRuntimeListener } from '../ptyStream/ptyRuntimeListeners'
 export type RemotePtyRuntime = PtyRuntime & {
   noteSessionRolePreference: (sessionId: string, role: 'viewer' | 'controller') => void
 }
@@ -52,6 +54,7 @@ export function createRemotePtyRuntime(options: {
   const connectTimeoutMs = options.connectTimeoutMs ?? 3_000
   const externalDataListeners = new Set<(event: TerminalDataEvent) => void>()
   const externalExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+  const externalForegroundListeners = new Set<(event: TerminalForegroundEvent) => void>()
   const externalStateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const externalMetadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   let socket: WebSocket | null = null
@@ -126,6 +129,7 @@ export function createRemotePtyRuntime(options: {
     sendToAllWindows,
     externalDataListeners,
     externalExitListeners,
+    externalForegroundListeners,
     externalStateListeners,
     externalMetadataListeners,
     onSessionState: event => {
@@ -395,30 +399,11 @@ export function createRemotePtyRuntime(options: {
         errorMessage: 'Failed to kill remote session',
       })
     },
-    onData: listener => {
-      externalDataListeners.add(listener)
-      return () => {
-        externalDataListeners.delete(listener)
-      }
-    },
-    onExit: listener => {
-      externalExitListeners.add(listener)
-      return () => {
-        externalExitListeners.delete(listener)
-      }
-    },
-    onState: listener => {
-      externalStateListeners.add(listener)
-      return () => {
-        externalStateListeners.delete(listener)
-      }
-    },
-    onMetadata: listener => {
-      externalMetadataListeners.add(listener)
-      return () => {
-        externalMetadataListeners.delete(listener)
-      }
-    },
+    onData: listener => subscribePtyRuntimeListener(externalDataListeners, listener),
+    onExit: listener => subscribePtyRuntimeListener(externalExitListeners, listener),
+    onForeground: listener => subscribePtyRuntimeListener(externalForegroundListeners, listener),
+    onState: listener => subscribePtyRuntimeListener(externalStateListeners, listener),
+    onMetadata: listener => subscribePtyRuntimeListener(externalMetadataListeners, listener),
     attach: async (contentsId: number, sessionId: string, afterSeq?: number | null) => {
       await attachRemotePtyRenderer({
         contentsId,
@@ -486,6 +471,7 @@ export function createRemotePtyRuntime(options: {
       closeSocket()
       externalDataListeners.clear()
       externalExitListeners.clear()
+      externalForegroundListeners.clear()
       externalStateListeners.clear()
       externalMetadataListeners.clear()
       geometryCoordinator.rejectAll(new Error('PTY runtime disposed'))

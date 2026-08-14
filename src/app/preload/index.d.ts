@@ -68,6 +68,7 @@ import type {
   ShowSystemNotificationResult,
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalForegroundEvent,
   TerminalGeometryEvent,
   TerminalResyncEvent,
   TerminalSessionMetadataEvent,
@@ -301,6 +302,7 @@ export interface OpenCoveApi {
     debugCrashHost: () => Promise<void>
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
     onExit: (listener: (event: TerminalExitEvent) => void) => UnsubscribeFn
+    onForeground: (listener: (event: TerminalForegroundEvent) => void) => UnsubscribeFn
     onGeometry: (listener: (event: TerminalGeometryEvent) => void) => UnsubscribeFn
     onResync: (listener: (event: TerminalResyncEvent) => void) => UnsubscribeFn
     onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn

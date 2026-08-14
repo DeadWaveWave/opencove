@@ -20,6 +20,47 @@ function createWebSocketHarness(): {
 }
 
 describe('PtyStreamHub lifecycle truth', () => {
+  it('streams transient foreground reconciliation without turning it into durable replay state', () => {
+    const hub = new PtyStreamHub({
+      replayWindowMaxBytes: 64_000,
+      ptyRuntime: {
+        spawnSession: vi.fn(),
+        write: vi.fn(),
+        resize: vi.fn(),
+        kill: vi.fn(),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+      },
+    })
+    const client = createWebSocketHarness()
+    hub.registerClient({ clientId: 'client', kind: 'desktop', ws: client.ws })
+    hub.registerSessionMetadata({
+      sessionId: 'session-foreground',
+      kind: 'terminal',
+      startedAt: '2026-07-10T00:00:00.000Z',
+      cwd: '/tmp',
+      command: 'shell',
+      args: [],
+      cols: 80,
+      rows: 24,
+    })
+    const event = {
+      sessionId: 'session-foreground',
+      observedAtMs: 1_000,
+      source: 'process_scan' as const,
+      exitCode: null,
+      availability: 'available' as const,
+      agent: null,
+      shellOnly: true,
+    }
+
+    hub.registerSessionForeground(event)
+
+    expect(client.messages.filter(message => message.type === 'foreground')).toEqual([
+      { type: 'foreground', ...event },
+    ])
+  })
+
   it('replays the latest observation from every agent-state source to a late client', async () => {
     let nowMs = 1_000
     const hub = new PtyStreamHub({

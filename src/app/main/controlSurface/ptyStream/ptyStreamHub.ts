@@ -4,6 +4,7 @@ import type {
   GetSessionSnapshotResult,
   ListSessionsResult,
   PresentationSnapshotTerminalResult,
+  TerminalForegroundEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   TerminalGeometryCommitResult,
@@ -15,6 +16,7 @@ import {
   broadcastControlChanged,
   broadcastData,
   broadcastExit,
+  broadcastForeground,
   broadcastGeometry,
   broadcastSessionMetadata,
   broadcastState,
@@ -161,6 +163,10 @@ export class PtyStreamHub {
       now: this.now,
       broadcast: event => this.broadcastState(event),
     })
+  }
+
+  public registerSessionForeground(event: TerminalForegroundEvent): void {
+    broadcastForeground({ sessions: this.sessions, clients: this.clients, event })
   }
 
   public registerSessionAgentMetadata(metadata: TerminalSessionMetadataEvent): void {

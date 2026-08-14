@@ -62,7 +62,7 @@ export interface TerminalNodeProps {
   onResize: (frame: NodeFrame) => void
   onScrollbackChange?: (scrollback: string) => void
   onTitleCommit?: (title: string) => void
-  onCommandRun?: (command: string) => void
+  onCommandRun?: (command: string, startedAtMs: number) => void
   onAgentOverlayExit?: () => void
   onInteractionStart?: (options?: TerminalNodeInteractionOptions) => void
 }

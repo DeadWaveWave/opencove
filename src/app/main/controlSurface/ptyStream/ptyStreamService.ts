@@ -107,6 +107,10 @@ export function createPtyStreamService(options: {
     }
   })
 
+  const disposeForegroundListener = options.ptyRuntime.onForeground?.(event => {
+    hub.registerSessionForeground(event)
+  })
+
   const disposeStateListener = options.ptyRuntime.onState?.(event => {
     hub.registerSessionAgentState(event)
   })
@@ -148,6 +152,7 @@ export function createPtyStreamService(options: {
         await hub.drainRecoveryOperations()
         disposeDataListener()
         disposeExitListener()
+        disposeForegroundListener?.()
         disposeStateListener?.()
         disposeMetadataListener?.()
         disposePresentationResetListener?.()

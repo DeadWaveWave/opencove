@@ -46,6 +46,10 @@ describe('Pty runtime session state watcher', () => {
       public crash = vi.fn()
       public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
       public onData(): void {}
+      public onForeground(): () => void {
+        return () => undefined
+      }
+
       public onExit(): void {}
     }
 

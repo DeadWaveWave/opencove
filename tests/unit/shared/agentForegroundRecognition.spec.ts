@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   recognizeAgentProcessFromCommandLine,
+  resolveForegroundAgentReconciliation,
   resolveForegroundAgentObservation,
 } from '../../../src/shared/runtime/agentForegroundRecognition'
 
@@ -17,7 +18,7 @@ describe('agent foreground recognition', () => {
     expect(recognizeAgentProcessFromCommandLine('/bin/zsh -l')).toBeNull()
   })
 
-  it('clears only after a complete scan proves the shell owns the foreground', () => {
+  it('resolves available agent, available shell-only, and unavailable snapshots', () => {
     const agent = resolveForegroundAgentObservation(
       '100 1 Ss /bin/zsh -l\n120 100 S+ /opt/pkg/node_modules/@openai/codex/bin/codex.js\n',
       100,
@@ -32,5 +33,61 @@ describe('agent foreground recognition', () => {
       agent: null,
       shellOnly: false,
     })
+  })
+
+  it('INV-1 keeps an optimistic overlay when process scanning is unavailable', () => {
+    expect(
+      resolveForegroundAgentReconciliation({
+        sessionId: 'session-1',
+        observedAtMs: 100,
+        source: 'process_scan',
+        exitCode: null,
+        availability: 'unavailable',
+        agent: null,
+        shellOnly: false,
+      }),
+    ).toBe('keep')
+  })
+
+  it('INV-2 clears after an available scan proves no codex foreground process', () => {
+    expect(
+      resolveForegroundAgentReconciliation({
+        sessionId: 'session-1',
+        observedAtMs: 100,
+        source: 'process_scan',
+        exitCode: null,
+        availability: 'available',
+        agent: null,
+        shellOnly: true,
+      }),
+    ).toBe('clear')
+  })
+
+  it('INV-3 confirms a detected codex foreground process without clearing', () => {
+    expect(
+      resolveForegroundAgentReconciliation({
+        sessionId: 'session-1',
+        observedAtMs: 100,
+        source: 'process_scan',
+        exitCode: null,
+        availability: 'available',
+        agent: 'codex',
+        shellOnly: false,
+      }),
+    ).toBe('confirm')
+  })
+
+  it('keeps unavailable process scans distinct from bounded Windows completion fallback', () => {
+    expect(
+      resolveForegroundAgentReconciliation({
+        sessionId: 'session-1',
+        observedAtMs: 100,
+        source: 'windows_prompt_timeout',
+        exitCode: null,
+        availability: 'unavailable',
+        agent: null,
+        shellOnly: false,
+      }),
+    ).toBe('clear')
   })
 })

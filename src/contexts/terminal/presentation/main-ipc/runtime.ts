@@ -11,6 +11,7 @@ import type {
   SpawnTerminalInput,
   SpawnTerminalResult,
   TerminalDataEvent,
+  TerminalForegroundEvent,
   TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
@@ -54,6 +55,7 @@ export interface PtyRuntime {
   kill: (sessionId: string) => Promise<void>
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
+  onForeground?: (listener: (event: TerminalForegroundEvent) => void) => () => void
   onState?: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
   attach: (contentsId: number, sessionId: string, afterSeq?: number | null) => Promise<void>
@@ -241,6 +243,7 @@ export function createPtyRuntime(): PtyRuntime {
 
   const externalDataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const externalExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+  const externalForegroundListeners = new Set<(event: TerminalForegroundEvent) => void>()
 
   ptyHost.onData(({ sessionId, data }) => {
     const { visibleData, replies } = stripAutomaticTerminalQueriesFromOutput(data)
@@ -272,6 +275,11 @@ export function createPtyRuntime(): PtyRuntime {
     externalExitListeners.forEach(listener => {
       listener({ sessionId, exitCode })
     })
+  })
+
+  ptyHost.onForeground(event => {
+    sendToAllWindows(IPC_CHANNELS.ptyForeground, event satisfies TerminalForegroundEvent)
+    externalForegroundListeners.forEach(listener => listener(event))
   })
 
   // --- PtyRuntime interface ---
@@ -390,6 +398,12 @@ export function createPtyRuntime(): PtyRuntime {
         externalExitListeners.delete(listener)
       }
     },
+    onForeground: listener => {
+      externalForegroundListeners.add(listener)
+      return () => {
+        externalForegroundListeners.delete(listener)
+      }
+    },
     onState: listener => {
       externalStateListeners.add(listener)
       return () => {
@@ -450,6 +464,7 @@ export function createPtyRuntime(): PtyRuntime {
       terminalProbeBufferBySession.clear()
       externalDataListeners.clear()
       externalExitListeners.clear()
+      externalForegroundListeners.clear()
       externalStateListeners.clear()
       externalMetadataListeners.clear()
       warnedWriteSessions.clear()

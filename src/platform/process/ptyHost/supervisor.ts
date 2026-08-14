@@ -19,6 +19,7 @@ import type {
   PtyHostRequest,
   PtyHostSpawnRequest,
   PtyHostWriteEncoding,
+  PtyHostForegroundEvent,
   PtyHostResponseMessage,
 } from './protocol'
 import type { PtyHostProcess, PtyHostProcessFactory } from './processTypes'
@@ -43,9 +44,7 @@ export class PtyHostSupervisor {
   private readonly exitListeners = new Set<
     (event: { sessionId: string; exitCode: number }) => void
   >()
-  private readonly foregroundListeners = new Set<
-    (event: { sessionId: string; agent: 'codex' | null; shellOnly: boolean }) => void
-  >()
+  private readonly foregroundListeners = new Set<(event: PtyHostForegroundEvent) => void>()
 
   private process: PtyHostProcess | null = null
   private readyPromise: Promise<void> | null = null
@@ -102,9 +101,7 @@ export class PtyHostSupervisor {
     }
   }
 
-  public onForeground(
-    listener: (event: { sessionId: string; agent: 'codex' | null; shellOnly: boolean }) => void,
-  ): UnsubscribeFn {
+  public onForeground(listener: (event: PtyHostForegroundEvent) => void): UnsubscribeFn {
     this.foregroundListeners.add(listener)
     return () => {
       this.foregroundListeners.delete(listener)
@@ -293,7 +290,8 @@ export class PtyHostSupervisor {
     }
 
     if (message.type === 'foreground') {
-      this.foregroundListeners.forEach(listener => listener(message))
+      const { type: _type, ...event } = message
+      this.foregroundListeners.forEach(listener => listener(event))
     }
   }
 
