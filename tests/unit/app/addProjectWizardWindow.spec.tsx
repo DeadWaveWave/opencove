@@ -154,6 +154,8 @@ describe('AddProjectWizardWindow', () => {
     fireEvent.change(screen.getByTestId('settings-endpoints-register-hostname'), {
       target: { value: 'build.example.com' },
     })
+    fireEvent.pointerDown(screen.getByTestId('settings-endpoints-register-backdrop'))
+    expect(screen.getByTestId('settings-endpoints-register-window')).toBeVisible()
     const submit = screen.getByTestId('settings-endpoints-register-submit')
     submit.focus()
     fireEvent.keyDown(submit, { key: 'Tab' })
@@ -265,7 +267,7 @@ describe('AddProjectWizardWindow', () => {
     fireEvent.click(screen.getByTestId('settings-endpoints-register-submit'))
 
     await screen.findByText(
-      'The remote endpoint was added, but its current status could not be refreshed. Try again.',
+      'The remote machine was added, but its current status could not be refreshed. Try again.',
     )
     fireEvent.click(screen.getByTestId('settings-endpoints-register-submit'))
 

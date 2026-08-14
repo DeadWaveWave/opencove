@@ -31,6 +31,8 @@ export interface DialogProps extends Omit<
   focusOutsideSelectors?: readonly string[]
   fallbackReturnFocusSelector?: string
   dismissOnEscape?: boolean
+  dismissOnPointerDownOutside?: boolean
+  role?: 'dialog' | 'alertdialog'
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -110,6 +112,8 @@ export const Dialog = React.forwardRef<HTMLDivElement, DialogProps>(function Dia
     focusOutsideSelectors = [],
     fallbackReturnFocusSelector,
     dismissOnEscape = true,
+    dismissOnPointerDownOutside = true,
+    role = 'dialog',
     className,
     onKeyDown,
     ...dialogProps
@@ -291,10 +295,11 @@ export const Dialog = React.forwardRef<HTMLDivElement, DialogProps>(function Dia
         {...dialogProps}
         ref={setRefs}
         className={classNames('cove-dialog', className)}
-        role="dialog"
+        role={role}
         aria-modal="true"
         tabIndex={-1}
         dismissOnEscape={dismissOnEscape}
+        dismissOnPointerDownOutside={dismissOnPointerDownOutside}
         onDismiss={reason => {
           onDismiss(reason)
         }}

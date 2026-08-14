@@ -3,12 +3,16 @@ import type {
   RegisterManagedSshWorkerEndpointResult,
   RegisterWorkerEndpointResult,
 } from '@shared/contracts/dto'
+import {
+  createEmptyEndpointFormDraft,
+  isEndpointFormDirty,
+  type EndpointFormDraft,
+  type EndpointRegisterMode,
+} from '../../../../topology/domain/endpointFormDraft'
 import { parseOptionalManagedSshPort } from '../../../../topology/domain/managedSshPort'
 import { notifyTopologyChanged } from '@app/renderer/shell/utils/topologyEvents'
 import { EndpointsRegisterDialog } from './EndpointsRegisterDialog'
 import { toErrorMessage } from './workerSectionUtils'
-
-type RegisterMode = 'managed' | 'manual'
 
 function parseRequiredPort(value: string): number | null {
   const trimmed = value.trim()
@@ -31,7 +35,7 @@ export function EndpointRegistrationDialog({
   onCancel: () => void
   onRegistered: (endpointId: string) => Promise<void>
 }): React.JSX.Element | null {
-  const [registerMode, setRegisterMode] = useState<RegisterMode>('managed')
+  const [registerMode, setRegisterMode] = useState<EndpointRegisterMode>('managed')
   const [displayName, setDisplayName] = useState('')
   const [managedHost, setManagedHost] = useState('')
   const [managedPort, setManagedPort] = useState('')
@@ -44,6 +48,18 @@ export function EndpointRegistrationDialog({
   const [isBusy, setIsBusy] = useState(false)
   const [registeredEndpointId, setRegisteredEndpointId] = useState<string | null>(null)
   const mountedRef = React.useRef(true)
+
+  const currentDraft: EndpointFormDraft = {
+    registerMode,
+    displayName,
+    managedHost,
+    managedPort,
+    managedUsername,
+    managedRemotePort,
+    manualHostname,
+    manualPort,
+    manualToken,
+  }
 
   useEffect(
     () => () => {
@@ -169,6 +185,7 @@ export function EndpointRegistrationDialog({
       mode="create"
       error={error}
       isBusy={isBusy}
+      isDirty={isEndpointFormDirty(currentDraft, createEmptyEndpointFormDraft())}
       registerMode={registerMode}
       displayName={displayName}
       managedHost={managedHost}

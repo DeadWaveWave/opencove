@@ -225,12 +225,11 @@ export const zhCNSettingsPanel = {
   experimental: {
     title: '实验性',
     help: '低频且仍在演进的能力。没有明确需要时建议保持默认。',
-    remoteWorkersTitle: '远程 Worker 与位置',
-    remoteWorkersHelp:
-      '远程 Worker 与远程项目位置（mount）的实验性支持。在工作流稳定前建议保持关闭。',
-    remoteWorkersEnabledLabel: '启用远程 Worker',
+    remoteWorkersTitle: '远程机器与位置',
+    remoteWorkersHelp: '远程机器与远程项目位置（挂载）的实验性支持。在工作流稳定前建议保持关闭。',
+    remoteWorkersEnabledLabel: '启用远程机器',
     remoteWorkersEnabledHelp:
-      '开启后将显示远程 Worker 与远程位置相关的界面入口。关闭时默认保持本地工作流。',
+      '开启后将显示远程机器与远程位置相关的界面入口。关闭时默认保持本地工作流。',
     workerWebUi: {
       title: 'Worker Web UI',
       securityTitle: '访问安全',
@@ -408,15 +407,15 @@ export const zhCNSettingsPanel = {
   worker: {
     title: 'Worker',
     errors: {
-      remoteRequired: '远程 Worker 需要填写主机、端口和 Token。',
+      remoteRequired: '远程机器需要填写主机、端口和访问令牌。',
       remoteExperimentalDisabled:
-        '远程 Worker 为实验性功能。请先在「Worker 与连接」中启用远程 Worker 后再继续。',
+        '远程机器为实验性功能。请先在「Worker 与连接」中启用远程机器后再继续。',
       stopLocalWorkerFirst: '切换到 Standalone 前请先停止本机 Worker。',
       enableLocalRequiresRestart: '请先启用本机 Worker 模式并重启，然后再启动 Worker。',
     },
     home: {
       title: 'Worker 模式',
-      help: '选择 OpenCove 不使用 Worker、使用本机 Worker，或连接远程 Worker。',
+      help: '选择 OpenCove 不使用 Worker、使用本机 Worker，或连接远程机器。',
       packagedHelp: 'OpenCove 会使用这台电脑上的本机 Worker。通常你只需要在下面启动或重启它。',
       packagedModeLabel: '当前模式',
       packagedModeValue: '本机 Worker',
@@ -424,7 +423,7 @@ export const zhCNSettingsPanel = {
       mode: {
         standalone: 'Standalone（无 Worker）',
         local: '本机 Worker',
-        remote: '远程 Worker',
+        remote: '远程机器',
       },
       applyLabel: '模式变更',
       applyHelp: '变更需要重启后生效。',

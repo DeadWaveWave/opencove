@@ -257,7 +257,7 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    await screen.findByText('Remote endpoints')
+    expect(await screen.findAllByText('Remote machines')).toHaveLength(1)
     expect(screen.queryByTestId('settings-endpoints-register-window')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
@@ -271,7 +271,7 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    await screen.findByText('Remote endpoints')
+    await screen.findByText('Remote machines')
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
 
     fireEvent.change(screen.getByTestId('settings-endpoints-register-displayName'), {
@@ -304,7 +304,7 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    await screen.findByText('Remote endpoints')
+    await screen.findByText('Remote machines')
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
     fireEvent.change(screen.getByTestId('settings-endpoints-register-hostname'), {
       target: { value: 'build.example.com' },
@@ -327,7 +327,7 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    await screen.findByText('Remote endpoints')
+    await screen.findByText('Remote machines')
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
     fireEvent.click(screen.getByTestId('settings-endpoints-register-mode-manual'))
 
@@ -367,7 +367,7 @@ describe('EndpointsSection', () => {
     fireEvent.click(screen.getByTestId('settings-endpoints-edit-managed-1'))
 
     expect(screen.getByTestId('settings-endpoints-register-window')).toHaveTextContent(
-      'Edit managed SSH endpoint',
+      'Edit remote machine',
     )
     expect(screen.queryByTestId('settings-endpoints-register-mode')).not.toBeInTheDocument()
     expect(screen.getByTestId('settings-endpoints-register-ssh-port')).toHaveValue('22')
@@ -379,7 +379,7 @@ describe('EndpointsSection', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('settings-endpoints-register-window')).not.toBeInTheDocument()
     })
-    expect(await screen.findByText('Managed SSH · ubuntu@example.com:2222')).toBeVisible()
+    expect(await screen.findByText('Over SSH · ubuntu@example.com:2222')).toBeVisible()
     expect(invoke).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'endpoint.updateManagedSsh',
@@ -415,7 +415,7 @@ describe('EndpointsSection', () => {
     fireEvent.click(screen.getByTestId('settings-endpoints-remove-managed-1'))
     expect(screen.getByTestId('settings-endpoints-remove-window')).toBeVisible()
     expect(screen.getByTestId('settings-endpoints-remove-impact')).toHaveTextContent(
-      'This will unbind 2 mounts from the endpoint.',
+      'This will unbind 2 mounts from the remote machine.',
     )
 
     fireEvent.click(screen.getByTestId('settings-endpoints-remove-cancel'))
@@ -448,14 +448,14 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    expect(await screen.findByText('Runtime corrupt')).toBeVisible()
+    expect(await screen.findByText('Remote components damaged')).toBeVisible()
     expect(
       screen.getByText(
-        'The remote runtime cannot execute. Reinstall it before trying to reconnect.',
+        'The remote components cannot run. Reinstall them before trying to reconnect.',
       ),
     ).toBeVisible()
     expect(screen.getByText('dyld: Library not loaded: Electron Framework')).toBeVisible()
-    expect(screen.getByText('Install runtime')).toBeVisible()
+    expect(screen.getByText('Install remote components')).toBeVisible()
   })
 
   it('localizes corrupt runtime diagnosis and repair action in Chinese', async () => {
@@ -471,8 +471,25 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    expect(await screen.findByText('Runtime 已损坏')).toBeVisible()
-    expect(screen.getByText('远程 runtime 无法执行。请重新安装后再尝试连接。')).toBeVisible()
-    expect(screen.getByText('安装 runtime')).toBeVisible()
+    expect(await screen.findByText('远程组件已损坏')).toBeVisible()
+    expect(screen.getByText('远程组件无法运行。请重新安装后再尝试连接。')).toBeVisible()
+    expect(screen.getByText('安装远程组件')).toBeVisible()
+  })
+
+  it('protects only drafts changed from their opening baseline', async () => {
+    installEndpointsApi()
+    render(<EndpointsSection />)
+    await screen.findByText('Remote machines')
+    fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
+    fireEvent.pointerDown(screen.getByTestId('settings-endpoints-register-backdrop'))
+    expect(screen.queryByTestId('settings-endpoints-register-window')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
+    fireEvent.change(screen.getByTestId('settings-endpoints-register-hostname'), {
+      target: { value: 'build.example.com' },
+    })
+    fireEvent.pointerDown(screen.getByTestId('settings-endpoints-register-backdrop'))
+    expect(screen.getByTestId('settings-endpoints-register-window')).toBeVisible()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByTestId('settings-endpoints-register-window')).not.toBeInTheDocument()
   })
 })
