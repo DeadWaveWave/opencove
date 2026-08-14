@@ -78,6 +78,21 @@ function createAgentNode(id: string, sessionId: string): WorkspaceState['nodes']
   }
 }
 
+function createTerminalNode(id: string, sessionId: string): WorkspaceState['nodes'][number] {
+  const agentNode = createAgentNode(id, sessionId)
+  return {
+    ...agentNode,
+    data: {
+      ...agentNode.data,
+      kind: 'terminal',
+      agent: null,
+      terminalProviderHint: null,
+      terminalAgentBinding: null,
+      agentOverlay: null,
+    },
+  }
+}
+
 function createSpace(id: string): WorkspaceSpaceState {
   return {
     id,
@@ -284,5 +299,69 @@ describe('useWorkerSyncStateUpdates helpers', () => {
     })
 
     expect(nextWorkspaces[0]?.nodes[0]?.data.sessionId).toBe('live-revived-pty-session')
+  })
+
+  it('preserves an active terminal overlay when worker sync reads its preceding snapshot', () => {
+    const stalePersistedNode = createTerminalNode('terminal-1', 'terminal-session-1')
+    const activeTerminalNode = createTerminalNode('terminal-1', 'terminal-session-1')
+    stalePersistedNode.data.title = 'Root terminal'
+    activeTerminalNode.data.title = 'claude'
+    activeTerminalNode.data.terminalProviderHint = 'claude-code'
+    activeTerminalNode.data.agentOverlay = {
+      provider: 'claude-code',
+      status: 'running',
+      startedAtMs: 1_786_641_731_528,
+    }
+    const currentWorkspace = createWorkspace('workspace-1', {
+      nodes: [activeTerminalNode],
+    })
+    const persistedState = toPersistedState(
+      [
+        createWorkspace('workspace-1', {
+          nodes: [stalePersistedNode],
+          name: 'workspace-1-from-worker',
+        }),
+      ],
+      currentWorkspace.id,
+      DEFAULT_AGENT_SETTINGS,
+    )
+
+    const nextWorkspaces = resolveWorkspacesForWorkerSync({
+      currentWorkspaces: [currentWorkspace],
+      persistedWorkspaces: persistedState.workspaces,
+    })
+
+    expect(nextWorkspaces[0]?.name).toBe('workspace-1-from-worker')
+    expect(nextWorkspaces[0]?.nodes[0]?.data.terminalProviderHint).toBe('claude-code')
+    expect(nextWorkspaces[0]?.nodes[0]?.data.agentOverlay).toEqual({
+      provider: 'claude-code',
+      status: 'running',
+      startedAtMs: 1_786_641_731_528,
+    })
+  })
+
+  it('does not revive a terminal overlay when both runtime and persisted state are clear', () => {
+    const clearedTerminalNode = createTerminalNode('terminal-1', 'terminal-session-1')
+    const currentWorkspace = createWorkspace('workspace-1', {
+      nodes: [clearedTerminalNode],
+    })
+    const persistedState = toPersistedState(
+      [
+        createWorkspace('workspace-1', {
+          nodes: [createTerminalNode('terminal-1', 'terminal-session-1')],
+          name: 'workspace-1-from-worker',
+        }),
+      ],
+      currentWorkspace.id,
+      DEFAULT_AGENT_SETTINGS,
+    )
+
+    const nextWorkspaces = resolveWorkspacesForWorkerSync({
+      currentWorkspaces: [currentWorkspace],
+      persistedWorkspaces: persistedState.workspaces,
+    })
+
+    expect(nextWorkspaces[0]?.nodes[0]?.data.terminalProviderHint).toBeNull()
+    expect(nextWorkspaces[0]?.nodes[0]?.data.agentOverlay).toBeNull()
   })
 })

@@ -41,6 +41,10 @@ function mergeRuntimeNode(
         ? existingSessionId
         : ''
   const kind = persistedNode.data.kind
+  // Persisted snapshots do not own the live terminal overlay. Keep its provider projection
+  // together with the overlay until the explicit terminal lifecycle clears both.
+  const activeTerminalOverlay =
+    kind === 'terminal' ? (existingNode.data.agentOverlay ?? null) : null
 
   const nextNode: Node<TerminalNodeData> = {
     ...persistedNode,
@@ -57,6 +61,10 @@ function mergeRuntimeNode(
       ...persistedNode.data,
       sessionId: runtimeSessionId,
       scrollback: existingNode.data.scrollback ?? persistedNode.data.scrollback,
+      terminalProviderHint: activeTerminalOverlay
+        ? existingNode.data.terminalProviderHint
+        : persistedNode.data.terminalProviderHint,
+      agentOverlay: activeTerminalOverlay ?? persistedNode.data.agentOverlay,
       agent:
         kind === 'agent'
           ? (existingNode.data.agent ?? persistedNode.data.agent)
