@@ -49,6 +49,7 @@ Core system:
 Topology:
 
 - `endpoint.list`
+- `endpoint.sshConfigHosts`
 - `endpoint.register`
 - `endpoint.registerManagedSsh`
 - `endpoint.updateManagedSsh`
@@ -117,6 +118,11 @@ Worker endpoints and mounts are managed by the topology store:
 Managed SSH remains a topology-level endpoint record. `endpoint.prepare` / `endpoint.repair`
 own local tunnel orchestration, remote runtime bootstrap, and health projection; browse flows
 still resolve through `endpoint.homeDirectory` and `endpoint.readDirectory` on the target Worker.
+`endpoint.sshConfigHosts` is a read-only projection of the current user's SSH configuration. Its
+domain parser has no filesystem/runtime dependencies, while the Main boundary exclusively owns
+bounded file and `Include` reads. It returns concrete `Host` aliases for preview only; importing
+still uses `endpoint.registerManagedSsh`, and the stored host remains the alias so OpenSSH owns
+effective `HostName`, `User`, `Port`, identity, and proxy resolution.
 `endpoint.updateManagedSsh` validates the complete replacement configuration before side effects,
 stops the previous tunnel, revalidates the endpoint against the topology store's current state,
 then commits the replacement through the store's serialized write queue before preparing the new

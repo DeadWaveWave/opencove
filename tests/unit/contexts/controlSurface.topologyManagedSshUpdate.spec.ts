@@ -65,6 +65,7 @@ function createSubject(options: {
     topology,
     endpointHealth,
     approvedWorkspaces: { registerRoot: async () => undefined, isPathApproved: async () => true },
+    readSshConfigHosts: async () => [],
   })
   return { controlSurface, prepareEndpoint }
 }
@@ -199,6 +200,7 @@ describe('control surface managed SSH update', () => {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,
       },
+      readSshConfigHosts: async () => [],
     })
 
     const result = await controlSurface.invoke(ctx, {

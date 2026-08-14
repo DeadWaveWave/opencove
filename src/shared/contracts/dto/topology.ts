@@ -39,6 +39,13 @@ export interface ListWorkerEndpointsResult {
   endpoints: WorkerEndpointDto[]
 }
 
+export interface SshConfigHost {
+  alias: string
+  hostName: string | null
+  user: string | null
+  port: number | null
+}
+
 export interface RegisterWorkerEndpointInput {
   displayName?: string | null
   hostname: string

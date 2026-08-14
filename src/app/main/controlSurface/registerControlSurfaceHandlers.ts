@@ -31,6 +31,7 @@ import type {
   TerminalRecoverySpawnAdmission,
   TerminalSpawnAdmission,
 } from '../../../contexts/terminal/application/TerminalRuntimeAvailability'
+import { readSshConfigHosts } from './topology/sshConfigReader'
 
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
@@ -59,6 +60,7 @@ export function registerControlSurfaceHandlers(
     topology: deps.topology,
     approvedWorkspaces: deps.approvedWorkspaces,
     endpointHealth: deps.endpointHealth,
+    readSshConfigHosts,
   })
   registerProjectHandlers(controlSurface, deps.getPersistenceStore)
   registerSpaceHandlers(controlSurface, deps.getPersistenceStore)

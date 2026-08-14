@@ -38,6 +38,15 @@ export function isUnknownControlSurfaceOperationError(
   return debugMessage.includes('Unknown control surface') && debugMessage.includes(operationId)
 }
 
+export function normalizeSshConfigHostsPayload(payload: unknown): null {
+  if (payload !== null && payload !== undefined) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for endpoint.sshConfigHosts.',
+    })
+  }
+  return null
+}
+
 function normalizeOptionalString(value: unknown): string | null {
   if (value === null || value === undefined) {
     return null
