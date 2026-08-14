@@ -97,6 +97,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Terminal: keep an active terminal agent overlay and its provider hint when an asynchronous worker-sync refresh reconciles a stale persisted snapshot, so recognized agents no longer lose their overlay, sidebar item, and watcher ownership under load. (#345)
 - Agent: recover terminal-launched agents without a verified session by relaunching the provider once in a fresh PTY, deterministically bind the nearest safe session candidate, and keep the overlay in standby until real turn signals arrive. (#344)
 - Agent: resume terminal-launched agent sessions after an app restart by capturing a verified resume-session id, aligning the session storage root with the effective CODEX_HOME, and issuing a one-time exact provider resume on a fresh PTY; when no verified id exists the session is kept with an in-app prompt to choose an existing session or start a new one instead of silently downgrading. (#343)
 - Terminal: recognize agent commands typed during terminal hydration so the agent overlay and its watcher ownership are created deterministically regardless of load timing, by routing accepted user input through the command parser while preserving PTY write ordering. (#342)
