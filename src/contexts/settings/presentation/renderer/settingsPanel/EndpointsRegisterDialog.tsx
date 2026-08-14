@@ -1,6 +1,8 @@
 import React from 'react'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { useTranslation } from '@app/renderer/i18n'
+import type { SshConfigHost } from '@shared/contracts/dto'
+import { SshConfigHostPicker } from './SshConfigHostPicker'
 
 export function EndpointsRegisterDialog({
   isOpen,
@@ -20,6 +22,9 @@ export function EndpointsRegisterDialog({
   canSubmit,
   managedPortInvalid,
   managedRemotePortInvalid,
+  existingManagedHosts = [],
+  isSshConfigImportDisabled = false,
+  loadSshConfigHosts,
   onChangeRegisterMode,
   onChangeDisplayName,
   onChangeManagedHost,
@@ -29,6 +34,7 @@ export function EndpointsRegisterDialog({
   onChangeManualHostname,
   onChangeManualPort,
   onChangeManualToken,
+  onSelectSshConfigHost,
   onCancel,
   onSubmit,
   returnFocus,
@@ -50,6 +56,9 @@ export function EndpointsRegisterDialog({
   canSubmit: boolean
   managedPortInvalid: boolean
   managedRemotePortInvalid: boolean
+  existingManagedHosts?: readonly string[]
+  isSshConfigImportDisabled?: boolean
+  loadSshConfigHosts?: () => Promise<SshConfigHost[]>
   onChangeRegisterMode: (value: 'managed' | 'manual') => void
   onChangeDisplayName: (value: string) => void
   onChangeManagedHost: (value: string) => void
@@ -59,6 +68,7 @@ export function EndpointsRegisterDialog({
   onChangeManualHostname: (value: string) => void
   onChangeManualPort: (value: string) => void
   onChangeManualToken: (value: string) => void
+  onSelectSshConfigHost?: (host: SshConfigHost) => void
   onCancel: () => void
   onSubmit: () => void
   returnFocus?: React.RefObject<HTMLElement | null> | false
@@ -164,6 +174,15 @@ export function EndpointsRegisterDialog({
 
             {registerMode === 'managed' ? (
               <>
+                {mode === 'create' && loadSshConfigHosts && onSelectSshConfigHost ? (
+                  <SshConfigHostPicker
+                    existingManagedHosts={existingManagedHosts}
+                    isBusy={isBusy || isSshConfigImportDisabled}
+                    loadHosts={loadSshConfigHosts}
+                    onSelect={onSelectSshConfigHost}
+                  />
+                ) : null}
+
                 <div className="cove-window__field-grid">
                   <div className="cove-window__field-row">
                     <label htmlFor="settings-endpoints-register-hostname">

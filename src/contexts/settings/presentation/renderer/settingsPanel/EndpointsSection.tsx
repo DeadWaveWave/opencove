@@ -1,14 +1,16 @@
 import React, { useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { WorkerEndpointOverviewDto } from '@shared/contracts/dto'
+import type { SshConfigHost, WorkerEndpointOverviewDto } from '@shared/contracts/dto'
 import { RemoteEndpointStatusPanel } from '@app/renderer/shell/components/RemoteEndpointStatusPanel'
 import { useEndpointOverviews } from '@app/renderer/shell/hooks/useEndpointOverviews'
+import { loadSshConfigHosts } from '@app/renderer/shell/utils/sshConfigHostsApi'
 import { getEndpointActionExecution } from '@app/renderer/shell/utils/endpointOverviewUi'
 import { notifyTopologyChanged } from '@app/renderer/shell/utils/topologyEvents'
 import {
   buildManagedSshDraft,
   createEmptyEndpointFormDraft,
   isEndpointFormDirty,
+  sshConfigHostToDraft,
   type EndpointFormDraft,
   type EndpointRegisterMode,
 } from '../../../../topology/domain/endpointFormDraft'
@@ -76,6 +78,10 @@ export function EndpointsSection(): React.JSX.Element {
   const managedRemotePortResult = parseOptionalManagedSshPort(managedRemotePort)
   const manualPortValue = parseRequiredPort(manualPort)
   const remoteEndpoints = remoteOverviews
+  const existingManagedHosts = remoteEndpoints.flatMap(overview => {
+    const access = overview.endpoint.access
+    return access?.kind === 'managed_ssh' && access.managedSsh ? [access.managedSsh.host] : []
+  })
   const persistenceOverview =
     overviews.find(
       overview =>
@@ -415,6 +421,9 @@ export function EndpointsSection(): React.JSX.Element {
           canSubmit={registerMode === 'managed' ? canSaveManaged : canRegisterManual}
           managedPortInvalid={managedPortResult.state === 'invalid'}
           managedRemotePortInvalid={managedRemotePortResult.state === 'invalid'}
+          existingManagedHosts={existingManagedHosts}
+          isSshConfigImportDisabled={isLoading || overviewError !== null}
+          loadSshConfigHosts={loadSshConfigHosts}
           onChangeRegisterMode={setRegisterMode}
           onChangeDisplayName={setDisplayName}
           onChangeManagedHost={setManagedHost}
@@ -424,6 +433,9 @@ export function EndpointsSection(): React.JSX.Element {
           onChangeManualHostname={setManualHostname}
           onChangeManualPort={setManualPort}
           onChangeManualToken={setManualToken}
+          onSelectSshConfigHost={(host: SshConfigHost) => {
+            applyRegisterDraft(sshConfigHostToDraft(host, existingManagedHosts))
+          }}
           onCancel={closeRegisterWindow}
           onSubmit={() => {
             void handleSave()

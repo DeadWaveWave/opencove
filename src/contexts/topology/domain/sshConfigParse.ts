@@ -1,15 +1,5 @@
 import type { SshConfigHost } from '../../../shared/contracts/dto'
 
-export type SshConfigEndpointDraft = {
-  displayName: string
-  host: string
-  port: null
-  username: null
-  remotePort: null
-  remotePlatform: 'auto'
-  isAlreadyAdded: boolean
-}
-
 export function parseSshConfig(content: string): SshConfigHost[] {
   const hosts: SshConfigHost[] = []
   let currentHosts: SshConfigHost[] = []
@@ -62,25 +52,6 @@ export function parseSshConfig(content: string): SshConfigHost[] {
 
   appendHosts(hosts, currentHosts)
   return hosts
-}
-
-export function sshConfigHostToDraft(
-  host: SshConfigHost,
-  existingHosts: Iterable<string>,
-): SshConfigEndpointDraft {
-  const normalizedExistingHosts = new Set(
-    Array.from(existingHosts, existingHost => normalizeAlias(existingHost)),
-  )
-
-  return {
-    displayName: host.alias,
-    host: host.alias,
-    port: null,
-    username: null,
-    remotePort: null,
-    remotePlatform: 'auto',
-    isAlreadyAdded: normalizedExistingHosts.has(normalizeAlias(host.alias)),
-  }
 }
 
 function parseDirective(line: string): { key: string; value: string } | null {
@@ -170,8 +141,4 @@ function appendHosts(target: SshConfigHost[], entries: SshConfigHost[]): void {
   for (const entry of entries) {
     target.push(entry)
   }
-}
-
-function normalizeAlias(alias: string): string {
-  return alias.trim().toLowerCase()
 }

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import {
-  parseSshConfig,
-  sshConfigHostToDraft,
-} from '../../../src/contexts/topology/domain/sshConfigParse'
+import { sshConfigHostToDraft } from '../../../src/contexts/topology/domain/endpointFormDraft'
+import { uniqueImportableSshConfigHosts } from '../../../src/contexts/topology/domain/sshConfigHost'
+import { parseSshConfig } from '../../../src/contexts/topology/domain/sshConfigParse'
 
 describe('parseSshConfig', () => {
   it('parses concrete aliases from single and multi-pattern Host blocks', () => {
@@ -95,17 +94,34 @@ describe('sshConfigHostToDraft', () => {
 
   it('maps through the Host alias and leaves OpenSSH-owned fields empty', () => {
     expect(sshConfigHostToDraft(host, [])).toEqual({
+      registerMode: 'managed',
       displayName: 'build-box',
-      host: 'build-box',
-      port: null,
-      username: null,
-      remotePort: null,
-      remotePlatform: 'auto',
+      managedHost: 'build-box',
+      managedPort: '',
+      managedUsername: '',
+      managedRemotePort: '',
+      manualHostname: '',
+      manualPort: '',
+      manualToken: '',
       isAlreadyAdded: false,
     })
   })
 
-  it('marks aliases already present in existing managed SSH hosts', () => {
+  it('normalizes alias boundaries when checking existing managed SSH hosts', () => {
     expect(sshConfigHostToDraft(host, ['other', 'BUILD-BOX']).isAlreadyAdded).toBe(true)
+    expect(sshConfigHostToDraft({ ...host, alias: ' build-box ' }, []).managedHost).toBe(
+      'build-box',
+    )
+    expect(sshConfigHostToDraft({ ...host, alias: '   ' }, ['']).isAlreadyAdded).toBe(false)
+  })
+
+  it('drops empty and duplicate aliases at the import boundary', () => {
+    expect(
+      uniqueImportableSshConfigHosts([
+        host,
+        { ...host, alias: ' BUILD-BOX ' },
+        { ...host, alias: '   ' },
+      ]),
+    ).toEqual([host])
   })
 })
