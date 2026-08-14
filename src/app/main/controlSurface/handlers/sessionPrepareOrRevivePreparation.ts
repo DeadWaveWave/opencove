@@ -3,7 +3,6 @@ import {
   clearResumeSessionBinding,
   isResumeSessionBindingVerified,
 } from '../../../../contexts/agent/domain/agentResumeBinding'
-import { locateAgentResumeSessionId } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocator'
 import { resolveInitialAgentRuntimeStatus } from '../../../../contexts/agent/domain/agentRuntimeStatus'
 import {
   normalizeAgentSettings,
@@ -43,60 +42,13 @@ import {
   resolveNodeInitialPtyGeometry,
 } from './sessionPrepareOrReviveGeometry'
 import { reenterTerminalAgent } from './sessionPrepareOrReviveTerminalAgent'
+import {
+  CodexWriterLockRecoveryExhaustedError,
+  launchCodexResumeWithRecovery,
+} from './sessionPrepareOrReviveCodex'
+import { resolvePendingResumeSessionId } from './sessionPrepareOrReviveResumeBinding'
 export { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
-
-const RECENT_RESUME_SESSION_LOCATE_TIMEOUT_MS = 750
-const COLD_RESUME_SESSION_LOCATE_TIMEOUT_MS = 0
-const RECENT_RESUME_SESSION_LOCATE_WINDOW_MS = 30_000
-const FUTURE_STARTED_AT_CLOCK_SKEW_MS = 5_000
-
-async function resolvePendingResumeSessionId(
-  node: NormalizedPersistedNode,
-  agent: PersistedAgentLike,
-): Promise<string | null> {
-  if (!isRecoverableAgentWindowStatus(node.status)) {
-    return null
-  }
-
-  if (typeof node.startedAt !== 'string' || node.startedAt.trim().length === 0) {
-    return null
-  }
-
-  if (isResumeSessionBindingVerified(agent)) {
-    return agent.resumeSessionId
-  }
-
-  const startedAtMs = Date.parse(node.startedAt)
-  if (!Number.isFinite(startedAtMs)) {
-    return null
-  }
-
-  return await locateAgentResumeSessionId({
-    provider: agent.provider,
-    cwd: agent.executionDirectory,
-    startedAtMs,
-    timeoutMs: resolvePrepareOrReviveResumeLocateTimeoutMs(startedAtMs),
-  })
-}
-
-export function resolvePrepareOrReviveResumeLocateTimeoutMs(
-  startedAtMs: number,
-  nowMs = Date.now(),
-): number {
-  if (!Number.isFinite(startedAtMs)) {
-    return COLD_RESUME_SESSION_LOCATE_TIMEOUT_MS
-  }
-
-  const ageMs = nowMs - startedAtMs
-  if (
-    ageMs >= -FUTURE_STARTED_AT_CLOCK_SKEW_MS &&
-    ageMs <= RECENT_RESUME_SESSION_LOCATE_WINDOW_MS
-  ) {
-    return RECENT_RESUME_SESSION_LOCATE_TIMEOUT_MS
-  }
-
-  return COLD_RESUME_SESSION_LOCATE_TIMEOUT_MS
-}
+export { resolvePrepareOrReviveResumeLocateTimeoutMs } from './sessionPrepareOrReviveResumeBinding'
 
 export async function prepareTerminalNode(options: {
   controlSurface: ControlSurface
@@ -180,6 +132,7 @@ export async function prepareAgentNode(options: {
   space: NormalizedPersistedSpace | null
   agent: PersistedAgentLike
   settings: ReturnType<typeof normalizeAgentSettings>
+  ptyRuntime?: Pick<ControlSurfacePtyRuntime, 'onData' | 'onExit' | 'kill'>
 }): Promise<PreparedRuntimeNodeResult> {
   const { controlSurface, ctx, workspace, node, space, settings } = options
   const scrollback: string | null = null
@@ -262,7 +215,15 @@ export async function prepareAgentNode(options: {
 
   if (shouldAutoResumeAgent) {
     try {
-      const launched = await invokeAgentLaunch('resume')
+      const launched =
+        sanitizedAgent.provider === 'codex'
+          ? await launchCodexResumeWithRecovery({
+              resumeSessionId: sanitizedAgent.resumeSessionId!,
+              isLocalRuntime: agentLaunchContext.endpointId === 'local',
+              launch: async () => await invokeAgentLaunch('resume'),
+              ...(options.ptyRuntime ? { ptyRuntime: options.ptyRuntime } : {}),
+            })
+          : await invokeAgentLaunch('resume')
       return toPreparedNodeResult(node, {
         recoveryState: 'revived',
         sessionId: launched.sessionId,
@@ -275,6 +236,7 @@ export async function prepareAgentNode(options: {
         endedAt: null,
         exitCode: null,
         lastError: null,
+        recoveryIssue: null,
         scrollback,
         terminalGeometry: initialGeometry,
         executionDirectory: agentExecutionDirectory,
@@ -290,6 +252,7 @@ export async function prepareAgentNode(options: {
         },
       })
     } catch (error) {
+      const isWriterLockConflict = error instanceof CodexWriterLockRecoveryExhaustedError
       try {
         const spawned = await spawnFallbackTerminal({
           controlSurface,
@@ -306,11 +269,14 @@ export async function prepareAgentNode(options: {
           isLiveSessionReattach: false,
           profileId: spawned.profileId ?? terminalProfileId,
           runtimeKind: spawned.runtimeKind ?? resolveNodeRuntimeKind(node),
-          status: 'failed',
+          status: isWriterLockConflict ? 'standby' : 'failed',
           startedAt: node.startedAt,
-          endedAt: node.endedAt ?? ctx.now().toISOString(),
+          endedAt: isWriterLockConflict ? null : (node.endedAt ?? ctx.now().toISOString()),
           exitCode: node.exitCode,
-          lastError: formatRecoverableError('Agent resume failed', error),
+          lastError: isWriterLockConflict
+            ? null
+            : formatRecoverableError('Agent resume failed', error),
+          recoveryIssue: isWriterLockConflict ? 'codex_writer_locked' : null,
           scrollback,
           terminalGeometry: initialGeometry,
           executionDirectory: spawned.cwd,
@@ -328,11 +294,14 @@ export async function prepareAgentNode(options: {
           isLiveSessionReattach: false,
           profileId: terminalProfileId,
           runtimeKind: resolveNodeRuntimeKind(node),
-          status: 'failed',
+          status: isWriterLockConflict ? 'standby' : 'failed',
           startedAt: node.startedAt,
-          endedAt: ctx.now().toISOString(),
+          endedAt: isWriterLockConflict ? null : ctx.now().toISOString(),
           exitCode: node.exitCode,
-          lastError: formatRecoverableError('Agent resume failed', fallbackError),
+          lastError: isWriterLockConflict
+            ? null
+            : formatRecoverableError('Agent resume failed', fallbackError),
+          recoveryIssue: isWriterLockConflict ? 'codex_writer_locked' : null,
           scrollback,
           terminalGeometry: node.terminalGeometry,
           executionDirectory: agentExecutionDirectory,

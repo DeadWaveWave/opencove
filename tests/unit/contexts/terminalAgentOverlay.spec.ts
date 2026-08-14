@@ -95,6 +95,27 @@ describe('terminal agent overlay invariants', () => {
     )
   })
 
+  it('keeps transient recovery issues out of durable node state', () => {
+    const terminal = createTerminalNode()
+    terminal.data.recoveryIssue = 'codex_writer_locked'
+    const workspace = {
+      id: 'workspace-1',
+      name: 'Workspace',
+      path: '/tmp/workspace',
+      worktreesRoot: '',
+      pullRequestBaseBranchOptions: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      isMinimapVisible: true,
+      spaces: [],
+      activeSpaceId: null,
+      spaceArchiveRecords: [],
+      nodes: [terminal],
+    } as never
+
+    const persistedNode = toPersistedState([workspace], 'workspace-1').workspaces[0]!.nodes[0]!
+    expect(persistedNode).not.toHaveProperty('recoveryIssue')
+  })
+
   it('normalizes an unverified legacy binding to a provider hint without auto-resume identity', () => {
     const terminal = createTerminalNode()
     const persistedWorkspace = toPersistedState(

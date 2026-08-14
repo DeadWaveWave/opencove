@@ -346,6 +346,9 @@ export const en = {
     resizeWidth: 'Resize terminal width',
     resizeHeight: 'Resize terminal height',
     recoveringAgentSession: 'Recovering live Agent session…',
+    writerLockRecoveryMessage:
+      'Another writer is still closing this Agent session. Retry recovery in a moment.',
+    retryRecovery: 'Retry recovery',
   },
   terminalFind: {
     placeholder: 'Find…',

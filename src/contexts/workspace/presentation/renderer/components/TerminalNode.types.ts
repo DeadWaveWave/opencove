@@ -9,6 +9,7 @@ import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type {
   AgentHookInstallState,
+  AgentRecoveryIssue,
   AgentSessionSummary,
   TerminalPtyGeometry,
   TerminalSessionStateSource,
@@ -46,6 +47,7 @@ export interface TerminalNodeProps {
   agentStateDegraded?: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null
+  recoveryIssue?: AgentRecoveryIssue | null
   position?: Point
   getPosition?: () => Point
   width: number

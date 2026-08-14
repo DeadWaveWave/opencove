@@ -360,6 +360,8 @@ export interface PreparedRuntimeAgentResult {
   taskId: string | null
 }
 
+export type AgentRecoveryIssue = 'codex_writer_locked'
+
 export interface PreparedRuntimeNodeResult {
   nodeId: string
   kind: 'terminal' | 'agent'
@@ -374,6 +376,7 @@ export interface PreparedRuntimeNodeResult {
   endedAt: string | null
   exitCode: number | null
   lastError: string | null
+  recoveryIssue?: AgentRecoveryIssue | null
   scrollback: string | null
   executionDirectory: string | null
   expectedDirectory: string | null

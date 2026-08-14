@@ -19,7 +19,6 @@ function renderFrame(isFindOpen: boolean) {
     lastError: null,
     sessionId: 'session-1',
     isTerminalHydrated: true,
-    isRecoveringAgentOutput: false,
     transcriptRef: React.createRef<HTMLDivElement>(),
     sizeStyle: { width: 520, height: 360 },
     containerRef: React.createRef<HTMLDivElement>(),

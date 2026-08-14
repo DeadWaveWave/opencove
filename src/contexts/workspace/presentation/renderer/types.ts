@@ -6,6 +6,7 @@ import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { SpaceBoundary } from '@shared/types/spaceBoundary'
 import type {
   AgentHookInstallState,
+  AgentRecoveryIssue,
   CanvasImageMimeType,
   GitHubPullRequestSummary,
   TerminalPtyGeometry,
@@ -177,6 +178,7 @@ export interface TerminalNodeData {
   endedAt: string | null
   exitCode: number | null
   lastError: string | null
+  recoveryIssue?: AgentRecoveryIssue | null
   scrollback: string | null
   executionDirectory?: string | null
   expectedDirectory?: string | null

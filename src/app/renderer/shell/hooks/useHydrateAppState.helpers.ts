@@ -10,6 +10,7 @@ import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/render
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { mergeScrollbackSnapshots } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
 import { hydrateAgentNode } from '@contexts/agent/presentation/renderer/hydrateAgentNode'
+import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import { repairRuntimeNodeFrame } from './runtimeNodeFrameRepair'
 
 export function toShellWorkspaceState(
@@ -90,6 +91,10 @@ function mergeHydratedAgentData(
   if (!currentAgent || !hydratedAgent) {
     return hydratedAgent
   }
+  const preserveCurrentBinding =
+    isResumeSessionBindingVerified(currentAgent) &&
+    (!isResumeSessionBindingVerified(hydratedAgent) ||
+      currentAgent.resumeSessionId !== hydratedAgent.resumeSessionId)
 
   return {
     ...currentAgent,
@@ -97,9 +102,13 @@ function mergeHydratedAgentData(
     prompt: hydratedAgent.prompt,
     model: hydratedAgent.model,
     effectiveModel: hydratedAgent.effectiveModel,
-    launchMode: hydratedAgent.launchMode,
-    resumeSessionId: hydratedAgent.resumeSessionId,
-    resumeSessionIdVerified: hydratedAgent.resumeSessionIdVerified,
+    launchMode: preserveCurrentBinding ? currentAgent.launchMode : hydratedAgent.launchMode,
+    resumeSessionId: preserveCurrentBinding
+      ? currentAgent.resumeSessionId
+      : hydratedAgent.resumeSessionId,
+    resumeSessionIdVerified: preserveCurrentBinding
+      ? currentAgent.resumeSessionIdVerified
+      : hydratedAgent.resumeSessionIdVerified,
     executionDirectory:
       currentAgent.executionDirectory.trim().length > 0
         ? currentAgent.executionDirectory
@@ -147,6 +156,7 @@ export function mergeHydratedNode(
       endedAt: hydratedNode.data.endedAt,
       exitCode: hydratedNode.data.exitCode,
       lastError: hydratedNode.data.lastError,
+      recoveryIssue: hydratedNode.data.recoveryIssue ?? currentNode.data.recoveryIssue ?? null,
       scrollback: hydratedNode.data.kind === 'agent' ? null : preservedTerminalScrollback,
       agent: mergeHydratedAgentData(currentNode.data.agent, hydratedNode.data.agent),
       task: hydratedNode.data.task ?? currentNode.data.task,
@@ -211,6 +221,7 @@ function toHydratedRuntimeNode(
       endedAt: preparedNode.endedAt,
       exitCode: preparedNode.exitCode,
       lastError: preparedNode.lastError,
+      recoveryIssue: preparedNode.recoveryIssue ?? null,
       scrollback: preparedNode.kind === 'agent' ? null : preparedNode.scrollback,
       executionDirectory: preparedNode.executionDirectory ?? currentNode.data.executionDirectory,
       expectedDirectory: preparedNode.expectedDirectory ?? currentNode.data.expectedDirectory,

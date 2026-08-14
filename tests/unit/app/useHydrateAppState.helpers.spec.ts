@@ -80,6 +80,46 @@ describe('mergeHydratedNode', () => {
     })
   })
 
+  it('preserves a transient recovery issue across a late neutral hydration merge', () => {
+    const merged = mergeHydratedNode(
+      createRuntimeNode({
+        kind: 'agent',
+        recoveryIssue: 'codex_writer_locked',
+      }),
+      createRuntimeNode({
+        kind: 'agent',
+        recoveryIssue: null,
+      }),
+    )
+
+    expect(merged.data.recoveryIssue).toBe('codex_writer_locked')
+  })
+
+  it('does not overwrite a concurrently switched verified resume binding', () => {
+    const createAgent = (resumeSessionId: string) => ({
+      provider: 'codex' as const,
+      prompt: '',
+      model: null,
+      effectiveModel: null,
+      launchMode: 'resume' as const,
+      resumeSessionId,
+      resumeSessionIdVerified: true,
+      executionDirectory: '/repo',
+      expectedDirectory: '/repo',
+      directoryMode: 'workspace' as const,
+      customDirectory: null,
+      shouldCreateDirectory: false,
+      taskId: null,
+    })
+    const merged = mergeHydratedNode(
+      createRuntimeNode({ kind: 'agent', agent: createAgent('resume-target') }),
+      createRuntimeNode({ kind: 'agent', agent: createAgent('resume-current') }),
+    )
+
+    expect(merged.data.agent?.resumeSessionId).toBe('resume-target')
+    expect(merged.data.agent?.resumeSessionIdVerified).toBe(true)
+  })
+
   it('keeps a provider-hinted overlay without inventing a manual recovery error', async () => {
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,

@@ -192,6 +192,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
             : null
       }
       lastError={data.lastError}
+      recoveryIssue={data.recoveryIssue ?? null}
       getPosition={getNodePosition}
       width={data.width}
       height={data.height}

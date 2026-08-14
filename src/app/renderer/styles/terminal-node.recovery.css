@@ -1,0 +1,25 @@
+.terminal-node__recovery-issue {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--cove-warning-border);
+  background: var(--cove-warning-surface);
+  color: var(--cove-text);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+}
+
+.terminal-node__recovery-issue-action {
+  flex: none;
+  border: 1px solid var(--cove-warning-border);
+  border-radius: 6px;
+  padding: 3px 7px;
+  background: var(--cove-surface);
+  color: inherit;
+  cursor: pointer;
+}
+
+.terminal-node__recovery-issue-action:hover {
+  background: var(--cove-surface-hover);
+}

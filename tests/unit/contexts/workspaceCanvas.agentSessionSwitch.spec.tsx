@@ -289,7 +289,7 @@ describe('WorkspaceCanvas agent session switch', () => {
       expect(agentNode?.data.agent?.executionDirectory).toBe('/tmp/repo/.opencove/worktrees/target')
       expect(agentNode?.data.agent?.expectedDirectory).toBe('/tmp/repo/.opencove/worktrees/target')
       expect(taskNode?.data.task?.linkedAgentNodeId).toBe('agent-1')
-      expect(requestPersistFlush).toHaveBeenCalledTimes(2)
+      expect(requestPersistFlush).toHaveBeenCalledTimes(1)
       expect(taskNode?.data.task?.agentSessions[0]).toEqual(
         expect.objectContaining({
           resumeSessionId: 'resume-current',

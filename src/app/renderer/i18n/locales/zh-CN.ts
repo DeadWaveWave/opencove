@@ -343,6 +343,8 @@ export const zhCN = {
     resizeWidth: '调整终端宽度',
     resizeHeight: '调整终端高度',
     recoveringAgentSession: '正在恢复实时 Agent 会话…',
+    writerLockRecoveryMessage: '另一个写入进程仍在关闭此 Agent 会话，请稍后重试恢复。',
+    retryRecovery: '重试恢复',
   },
   terminalFind: {
     placeholder: '查找…',
