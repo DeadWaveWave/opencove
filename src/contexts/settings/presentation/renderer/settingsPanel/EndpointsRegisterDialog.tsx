@@ -7,6 +7,7 @@ export function EndpointsRegisterDialog({
   mode,
   error,
   isBusy,
+  isDirty,
   registerMode,
   displayName,
   managedHost,
@@ -36,6 +37,7 @@ export function EndpointsRegisterDialog({
   mode: 'create' | 'edit'
   error: string | null
   isBusy: boolean
+  isDirty: boolean
   registerMode: 'managed' | 'manual'
   displayName: string
   managedHost: string
@@ -62,6 +64,9 @@ export function EndpointsRegisterDialog({
   returnFocus?: React.RefObject<HTMLElement | null> | false
 }): React.JSX.Element | null {
   const { t } = useTranslation()
+  const [isAdvancedOpen, setIsAdvancedOpen] = React.useState(
+    () => mode === 'edit' && (managedPort.trim().length > 0 || managedRemotePort.trim().length > 0),
+  )
 
   if (!isOpen) {
     return null
@@ -88,8 +93,8 @@ export function EndpointsRegisterDialog({
       backdropTestId="settings-endpoints-register-backdrop"
       dismissOnEscape={!isBusy}
       returnFocus={returnFocus}
-      onDismiss={() => {
-        if (!isBusy) {
+      onDismiss={reason => {
+        if (!isBusy && (reason === 'escape' || !isDirty)) {
           onCancel()
         }
       }}
@@ -158,92 +163,112 @@ export function EndpointsRegisterDialog({
             </div>
 
             {registerMode === 'managed' ? (
-              <div className="cove-window__field-grid">
-                <div className="cove-window__field-row">
-                  <label htmlFor="settings-endpoints-register-hostname">
-                    {t('settingsPanel.endpoints.register.managedHostLabel')}
-                  </label>
-                  <input
-                    id="settings-endpoints-register-hostname"
-                    className="cove-field"
-                    type="text"
-                    value={managedHost}
-                    onChange={event => onChangeManagedHost(event.target.value)}
-                    data-testid="settings-endpoints-register-hostname"
-                    disabled={isBusy}
-                    placeholder={t('settingsPanel.endpoints.register.managedHostPlaceholder')}
-                  />
+              <>
+                <div className="cove-window__field-grid">
+                  <div className="cove-window__field-row">
+                    <label htmlFor="settings-endpoints-register-hostname">
+                      {t('settingsPanel.endpoints.register.managedHostLabel')}
+                    </label>
+                    <input
+                      id="settings-endpoints-register-hostname"
+                      className="cove-field"
+                      type="text"
+                      value={managedHost}
+                      onChange={event => onChangeManagedHost(event.target.value)}
+                      data-testid="settings-endpoints-register-hostname"
+                      disabled={isBusy}
+                      placeholder={t('settingsPanel.endpoints.register.managedHostPlaceholder')}
+                    />
+                  </div>
+
+                  <div className="cove-window__field-row">
+                    <label htmlFor="settings-endpoints-register-username">
+                      {t('settingsPanel.endpoints.register.managedUsernameLabel')}
+                    </label>
+                    <input
+                      id="settings-endpoints-register-username"
+                      className="cove-field"
+                      type="text"
+                      value={managedUsername}
+                      onChange={event => onChangeManagedUsername(event.target.value)}
+                      data-testid="settings-endpoints-register-username"
+                      disabled={isBusy}
+                      placeholder={t('settingsPanel.endpoints.register.managedUsernamePlaceholder')}
+                    />
+                  </div>
                 </div>
 
-                <div className="cove-window__field-row">
-                  <label htmlFor="settings-endpoints-register-username">
-                    {t('settingsPanel.endpoints.register.managedUsernameLabel')}
-                  </label>
-                  <input
-                    id="settings-endpoints-register-username"
-                    className="cove-field"
-                    type="text"
-                    value={managedUsername}
-                    onChange={event => onChangeManagedUsername(event.target.value)}
-                    data-testid="settings-endpoints-register-username"
-                    disabled={isBusy}
-                    placeholder={t('settingsPanel.endpoints.register.managedUsernamePlaceholder')}
-                  />
-                </div>
+                <details
+                  className="cove-window__advanced"
+                  data-testid="settings-endpoints-register-advanced"
+                  open={isAdvancedOpen}
+                  onToggle={event => setIsAdvancedOpen(event.currentTarget.open)}
+                >
+                  <summary
+                    className="cove-window__advanced-summary"
+                    data-testid="settings-endpoints-register-advanced-toggle"
+                  >
+                    <span>{t('settingsPanel.endpoints.register.advancedLabel')}</span>
+                    <small>{t('settingsPanel.endpoints.register.advancedHelp')}</small>
+                  </summary>
+                  <div className="cove-window__field-grid cove-window__advanced-fields">
+                    <div className="cove-window__field-row">
+                      <label htmlFor="settings-endpoints-register-ssh-port">
+                        {t('settingsPanel.endpoints.register.managedPortLabel')}
+                      </label>
+                      <input
+                        id="settings-endpoints-register-ssh-port"
+                        className="cove-field"
+                        type="text"
+                        inputMode="numeric"
+                        value={managedPort}
+                        onChange={event => onChangeManagedPort(event.target.value)}
+                        data-testid="settings-endpoints-register-ssh-port"
+                        disabled={isBusy}
+                        placeholder={t('settingsPanel.endpoints.register.managedPortPlaceholder')}
+                      />
+                      {managedPortInvalid ? (
+                        <span
+                          className="cove-window__error"
+                          data-testid="settings-endpoints-register-ssh-port-error"
+                        >
+                          {t('settingsPanel.endpoints.register.portInvalid')}
+                        </span>
+                      ) : null}
+                    </div>
 
-                <div className="cove-window__field-row">
-                  <label htmlFor="settings-endpoints-register-ssh-port">
-                    {t('settingsPanel.endpoints.register.managedPortLabel')}
-                  </label>
-                  <input
-                    id="settings-endpoints-register-ssh-port"
-                    className="cove-field"
-                    type="text"
-                    inputMode="numeric"
-                    value={managedPort}
-                    onChange={event => onChangeManagedPort(event.target.value)}
-                    data-testid="settings-endpoints-register-ssh-port"
-                    disabled={isBusy}
-                    placeholder={t('settingsPanel.endpoints.register.managedPortPlaceholder')}
-                  />
-                  {managedPortInvalid ? (
-                    <span
-                      className="cove-window__error"
-                      data-testid="settings-endpoints-register-ssh-port-error"
-                    >
-                      {t('settingsPanel.endpoints.register.portInvalid')}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="cove-window__field-row">
-                  <label htmlFor="settings-endpoints-register-remote-port">
-                    {t('settingsPanel.endpoints.register.managedRemotePortLabel')}
-                  </label>
-                  <input
-                    id="settings-endpoints-register-remote-port"
-                    className="cove-field"
-                    type="text"
-                    inputMode="numeric"
-                    value={managedRemotePort}
-                    onChange={event => onChangeManagedRemotePort(event.target.value)}
-                    data-testid="settings-endpoints-register-remote-port"
-                    disabled={isBusy}
-                    placeholder={t('settingsPanel.endpoints.register.managedRemotePortPlaceholder')}
-                  />
-                  <span className="cove-window__field-help">
-                    {t('settingsPanel.endpoints.register.managedRemotePortHelp')}
-                  </span>
-                  {managedRemotePortInvalid ? (
-                    <span
-                      className="cove-window__error"
-                      data-testid="settings-endpoints-register-remote-port-error"
-                    >
-                      {t('settingsPanel.endpoints.register.portInvalid')}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
+                    <div className="cove-window__field-row">
+                      <label htmlFor="settings-endpoints-register-remote-port">
+                        {t('settingsPanel.endpoints.register.managedRemotePortLabel')}
+                      </label>
+                      <input
+                        id="settings-endpoints-register-remote-port"
+                        className="cove-field"
+                        type="text"
+                        inputMode="numeric"
+                        value={managedRemotePort}
+                        onChange={event => onChangeManagedRemotePort(event.target.value)}
+                        data-testid="settings-endpoints-register-remote-port"
+                        disabled={isBusy}
+                        placeholder={t(
+                          'settingsPanel.endpoints.register.managedRemotePortPlaceholder',
+                        )}
+                      />
+                      <span className="cove-window__field-help">
+                        {t('settingsPanel.endpoints.register.managedRemotePortHelp')}
+                      </span>
+                      {managedRemotePortInvalid ? (
+                        <span
+                          className="cove-window__error"
+                          data-testid="settings-endpoints-register-remote-port-error"
+                        >
+                          {t('settingsPanel.endpoints.register.portInvalid')}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </details>
+              </>
             ) : (
               <>
                 <div className="cove-window__field-grid">

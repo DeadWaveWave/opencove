@@ -5,13 +5,19 @@ import { RemoteEndpointStatusPanel } from '@app/renderer/shell/components/Remote
 import { useEndpointOverviews } from '@app/renderer/shell/hooks/useEndpointOverviews'
 import { getEndpointActionExecution } from '@app/renderer/shell/utils/endpointOverviewUi'
 import { notifyTopologyChanged } from '@app/renderer/shell/utils/topologyEvents'
+import {
+  buildManagedSshDraft,
+  createEmptyEndpointFormDraft,
+  isEndpointFormDirty,
+  type EndpointFormDraft,
+  type EndpointRegisterMode,
+} from '../../../../topology/domain/endpointFormDraft'
 import { parseOptionalManagedSshPort } from '../../../../topology/domain/managedSshPort'
 import { EndpointsRegisterDialog } from './EndpointsRegisterDialog'
 import { EndpointRemoveDialog } from './EndpointRemoveDialog'
 import { toErrorMessage } from './workerSectionUtils'
-import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
+import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
-type RegisterMode = 'managed' | 'manual'
 type EndpointDialogState = { kind: 'create' } | { kind: 'edit'; endpointId: string }
 
 function parseRequiredPort(value: string): number | null {
@@ -41,7 +47,7 @@ export function EndpointsSection(): React.JSX.Element {
   const [registerBusy, setRegisterBusy] = useState(false)
   const [removingEndpointId, setRemovingEndpointId] = useState<string | null>(null)
   const [pendingRemoval, setPendingRemoval] = useState<WorkerEndpointOverviewDto | null>(null)
-  const [registerMode, setRegisterMode] = useState<RegisterMode>('managed')
+  const [registerMode, setRegisterMode] = useState<EndpointRegisterMode>('managed')
   const [displayName, setDisplayName] = useState('')
   const [managedHost, setManagedHost] = useState('')
   const [managedPort, setManagedPort] = useState('')
@@ -50,7 +56,20 @@ export function EndpointsSection(): React.JSX.Element {
   const [manualHostname, setManualHostname] = useState('')
   const [manualPort, setManualPort] = useState('')
   const [manualToken, setManualToken] = useState('')
+  const [formBaseline, setFormBaseline] = useState<EndpointFormDraft>(createEmptyEndpointFormDraft)
   const [localError, setLocalError] = useState<string | null>(null)
+
+  const currentDraft: EndpointFormDraft = {
+    registerMode,
+    displayName,
+    managedHost,
+    managedPort,
+    managedUsername,
+    managedRemotePort,
+    manualHostname,
+    manualPort,
+    manualToken,
+  }
 
   const error = localError ?? overviewError
   const managedPortResult = parseOptionalManagedSshPort(managedPort)
@@ -71,22 +90,31 @@ export function EndpointsSection(): React.JSX.Element {
   const canRegisterManual =
     manualHostname.trim().length > 0 && manualPortValue !== null && manualToken.trim().length > 0
 
+  const applyRegisterDraft = (draft: EndpointFormDraft): void => {
+    setRegisterMode(draft.registerMode)
+    setDisplayName(draft.displayName)
+    setManagedHost(draft.managedHost)
+    setManagedPort(draft.managedPort)
+    setManagedUsername(draft.managedUsername)
+    setManagedRemotePort(draft.managedRemotePort)
+    setManualHostname(draft.manualHostname)
+    setManualPort(draft.manualPort)
+    setManualToken(draft.manualToken)
+  }
+
   const resetRegisterForm = (): void => {
-    setRegisterMode('managed')
+    const emptyDraft = createEmptyEndpointFormDraft()
+    applyRegisterDraft(emptyDraft)
+    setFormBaseline(emptyDraft)
     setDialogState({ kind: 'create' })
-    setDisplayName('')
-    setManagedHost('')
-    setManagedPort('')
-    setManagedUsername('')
-    setManagedRemotePort('')
-    setManualHostname('')
-    setManualPort('')
-    setManualToken('')
   }
 
   const openRegisterWindow = (): void => {
+    const emptyDraft = createEmptyEndpointFormDraft()
     setLocalError(null)
-    resetRegisterForm()
+    applyRegisterDraft(emptyDraft)
+    setFormBaseline(emptyDraft)
+    setDialogState({ kind: 'create' })
     setIsRegisterOpen(true)
   }
 
@@ -96,17 +124,18 @@ export function EndpointsSection(): React.JSX.Element {
       return
     }
 
+    const draft = buildManagedSshDraft({
+      displayName: overview.endpoint.displayName,
+      host: ssh.host,
+      port: ssh.port,
+      username: ssh.username,
+      remotePort: ssh.remotePort,
+    })
+
     setLocalError(null)
     setDialogState({ kind: 'edit', endpointId: overview.endpoint.endpointId })
-    setRegisterMode('managed')
-    setDisplayName(overview.endpoint.displayName)
-    setManagedHost(ssh.host)
-    setManagedPort(ssh.port === null ? '' : String(ssh.port))
-    setManagedUsername(ssh.username ?? '')
-    setManagedRemotePort(String(ssh.remotePort))
-    setManualHostname('')
-    setManualPort('')
-    setManualToken('')
+    applyRegisterDraft(draft)
+    setFormBaseline(draft)
     setIsRegisterOpen(true)
   }
 
@@ -236,9 +265,13 @@ export function EndpointsSection(): React.JSX.Element {
   }
 
   return (
-    <SettingsGroup id="settings-section-endpoints" title={t('settingsPanel.endpoints.title')}>
-      {error ? (
-        <SettingsGroupBody>
+    <SettingsGroup
+      id="settings-section-endpoints"
+      title={t('settingsPanel.endpoints.title')}
+      description={t('settingsPanel.endpoints.list.help')}
+    >
+      <SettingsGroupBody id="settings-section-endpoints-list">
+        {error ? (
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
               <strong>{t('common.error')}</strong>
@@ -249,14 +282,8 @@ export function EndpointsSection(): React.JSX.Element {
               </span>
             </div>
           </div>
-        </SettingsGroupBody>
-      ) : null}
+        ) : null}
 
-      <SettingsModule
-        id="settings-section-endpoints-list"
-        title={t('settingsPanel.endpoints.list.title')}
-        description={t('settingsPanel.endpoints.list.help')}
-      >
         {persistenceOverview ? (
           <RemoteEndpointStatusPanel
             t={t}
@@ -367,39 +394,42 @@ export function EndpointsSection(): React.JSX.Element {
             })}
           </div>
         )}
-      </SettingsModule>
+      </SettingsGroupBody>
 
-      <EndpointsRegisterDialog
-        isOpen={isRegisterOpen}
-        mode={dialogState.kind}
-        error={error}
-        isBusy={registerBusy}
-        registerMode={registerMode}
-        displayName={displayName}
-        managedHost={managedHost}
-        managedUsername={managedUsername}
-        managedPort={managedPort}
-        managedRemotePort={managedRemotePort}
-        manualHostname={manualHostname}
-        manualPort={manualPort}
-        manualToken={manualToken}
-        canSubmit={registerMode === 'managed' ? canSaveManaged : canRegisterManual}
-        managedPortInvalid={managedPortResult.state === 'invalid'}
-        managedRemotePortInvalid={managedRemotePortResult.state === 'invalid'}
-        onChangeRegisterMode={setRegisterMode}
-        onChangeDisplayName={setDisplayName}
-        onChangeManagedHost={setManagedHost}
-        onChangeManagedUsername={setManagedUsername}
-        onChangeManagedPort={setManagedPort}
-        onChangeManagedRemotePort={setManagedRemotePort}
-        onChangeManualHostname={setManualHostname}
-        onChangeManualPort={setManualPort}
-        onChangeManualToken={setManualToken}
-        onCancel={closeRegisterWindow}
-        onSubmit={() => {
-          void handleSave()
-        }}
-      />
+      {isRegisterOpen ? (
+        <EndpointsRegisterDialog
+          isOpen
+          mode={dialogState.kind}
+          error={error}
+          isBusy={registerBusy}
+          isDirty={isEndpointFormDirty(currentDraft, formBaseline)}
+          registerMode={registerMode}
+          displayName={displayName}
+          managedHost={managedHost}
+          managedUsername={managedUsername}
+          managedPort={managedPort}
+          managedRemotePort={managedRemotePort}
+          manualHostname={manualHostname}
+          manualPort={manualPort}
+          manualToken={manualToken}
+          canSubmit={registerMode === 'managed' ? canSaveManaged : canRegisterManual}
+          managedPortInvalid={managedPortResult.state === 'invalid'}
+          managedRemotePortInvalid={managedRemotePortResult.state === 'invalid'}
+          onChangeRegisterMode={setRegisterMode}
+          onChangeDisplayName={setDisplayName}
+          onChangeManagedHost={setManagedHost}
+          onChangeManagedUsername={setManagedUsername}
+          onChangeManagedPort={setManagedPort}
+          onChangeManagedRemotePort={setManagedRemotePort}
+          onChangeManualHostname={setManualHostname}
+          onChangeManualPort={setManualPort}
+          onChangeManualToken={setManualToken}
+          onCancel={closeRegisterWindow}
+          onSubmit={() => {
+            void handleSave()
+          }}
+        />
+      ) : null}
       {pendingRemoval ? (
         <EndpointRemoveDialog
           displayName={pendingRemoval.endpoint.displayName}

@@ -219,12 +219,12 @@ export const enSettingsPanel = {
   experimental: {
     title: 'Experimental',
     help: 'Low-frequency and still-evolving capabilities. Keep defaults unless you need these workflows.',
-    remoteWorkersTitle: 'Remote Workers & Locations',
+    remoteWorkersTitle: 'Remote machines & locations',
     remoteWorkersHelp:
-      'Opt-in support for remote workers and remote project locations. Keep this off until the workflow is stable.',
-    remoteWorkersEnabledLabel: 'Enable Remote Workers',
+      'Opt-in support for remote machines and remote project locations. Keep this off until the workflow is stable.',
+    remoteWorkersEnabledLabel: 'Enable remote machines',
     remoteWorkersEnabledHelp:
-      'Shows remote worker and remote location UI. When disabled, OpenCove keeps the local-only workflow by default.',
+      'Shows remote machine and remote location UI. When disabled, OpenCove keeps the local-only workflow by default.',
     workerWebUi: {
       title: 'Worker Web UI',
       securityTitle: 'Access Security',
@@ -412,15 +412,15 @@ export const enSettingsPanel = {
   worker: {
     title: 'Worker',
     errors: {
-      remoteRequired: 'Remote worker hostname, port, and token are required.',
+      remoteRequired: 'Remote machine hostname, port, and access token are required.',
       remoteExperimentalDisabled:
-        'Remote workers are experimental. Enable Remote Workers in Worker & Connections to continue.',
+        'Remote machines are experimental. Enable remote machines in Worker & Connections to continue.',
       stopLocalWorkerFirst: 'Stop the Local Worker before switching to Standalone.',
       enableLocalRequiresRestart: 'Enable Local Worker mode and restart before starting it.',
     },
     home: {
       title: 'Worker Mode',
-      help: 'Choose whether OpenCove runs without a worker, uses the Local Worker, or connects to a Remote Worker.',
+      help: 'Choose whether OpenCove runs without a worker, uses the Local Worker, or connects to a remote machine.',
       packagedHelp:
         'OpenCove uses the Local Worker on this device. Most of the time, you only need to start or restart it below.',
       packagedModeLabel: 'Current Mode',
@@ -429,7 +429,7 @@ export const enSettingsPanel = {
       mode: {
         standalone: 'Standalone (No Worker)',
         local: 'Local Worker',
-        remote: 'Remote Worker',
+        remote: 'Remote machine',
       },
       applyLabel: 'Mode Changes',
       applyHelp: 'Changes require a restart to take effect.',

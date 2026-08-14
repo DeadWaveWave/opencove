@@ -362,7 +362,7 @@ describe('SettingsPanel', () => {
     const { rerender } = renderSettingsPanel()
 
     fireEvent.click(screen.getByTestId('settings-section-nav-worker'))
-    expect(screen.getByText('Remote Workers disabled')).toBeVisible()
+    expect(screen.getByText('Remote machines disabled')).toBeVisible()
     expect(screen.queryByTestId('settings-endpoints-empty-register')).not.toBeInTheDocument()
 
     rerender(

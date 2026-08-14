@@ -119,6 +119,7 @@ test.describe('M6 - Managed SSH remote endpoint integration', () => {
         .fill(endpointDisplayName)
       await window.locator('[data-testid="settings-endpoints-register-hostname"]').fill(remoteHost)
       await window.locator('[data-testid="settings-endpoints-register-username"]').fill('tester')
+      await window.locator('[data-testid="settings-endpoints-register-advanced-toggle"]').click()
       await window
         .locator('[data-testid="settings-endpoints-register-ssh-port"]')
         .fill(String(remoteSshPort))
@@ -134,7 +135,7 @@ test.describe('M6 - Managed SSH remote endpoint integration', () => {
         hasText: endpointDisplayName,
       })
       await expect(endpointRow).toBeVisible()
-      await expect(endpointRow).toContainText('Managed SSH')
+      await expect(endpointRow).toContainText('Over SSH')
       await expect(endpointRow).toContainText('Disconnected')
 
       const remoteEndpointId = await pollFor(

@@ -1,8 +1,8 @@
 export const enCommonRemoteEndpoints = {
   access: {
     local: 'Local',
-    manual: 'Manual endpoint',
-    managed_ssh: 'Managed SSH',
+    manual: 'Manual (advanced)',
+    managed_ssh: 'Over SSH',
   },
   status: {
     connected: 'Connected',
@@ -11,8 +11,8 @@ export const enCommonRemoteEndpoints = {
     auth_failed: 'Auth failed',
     tunnel_failed: 'Tunnel failed',
     installer_unavailable: 'Installer unavailable',
-    runtime_corrupt: 'Runtime corrupt',
-    runtime_unmanaged: 'Unmanaged runtime',
+    runtime_corrupt: 'Remote components damaged',
+    runtime_unmanaged: 'Remote components unmanaged',
     needs_setup: 'Needs setup',
     version_mismatch: 'Update required',
     persistence_failed: 'Not saved',
@@ -21,22 +21,22 @@ export const enCommonRemoteEndpoints = {
   summary: {
     local: 'Runs on this device.',
     connected: 'Ready. You can browse folders or bind a remote path.',
-    connecting: 'OpenCove is connecting to this remote worker.',
-    disconnected: 'This remote worker is not connected right now.',
+    connecting: 'OpenCove is connecting to this remote machine.',
+    disconnected: 'This remote machine is not connected right now.',
     managedDisconnected: 'Ready to connect over SSH from this machine.',
     manualDisconnected: 'Not connected. Check the host, port, and token.',
-    auth_failed: 'The saved credentials were rejected by the remote worker.',
+    auth_failed: 'The saved credentials were rejected by the remote machine.',
     tunnel_failed: 'OpenCove could not keep the SSH tunnel alive.',
     installer_unavailable:
-      'OpenCove reached the host, but this release does not provide the required installer.',
-    runtime_corrupt: 'The remote runtime cannot execute. Reinstall it before trying to reconnect.',
+      'OpenCove reached the machine, but this release does not provide the required installer.',
+    runtime_corrupt: 'The remote components cannot run. Reinstall them before trying to reconnect.',
     runtime_unmanaged:
       'The active remote command is not owned by OpenCove, so it was left untouched. Remove or repair it manually.',
-    needs_setup: 'The remote runtime still needs to be installed or started.',
-    version_mismatch: 'The remote runtime is not compatible with this OpenCove build yet.',
+    needs_setup: 'The remote components still need to be installed or started.',
+    version_mismatch: 'The remote components are not compatible with this OpenCove build yet.',
     persistence_failed:
       'The last topology change was not saved. On-disk settings remain authoritative.',
-    error: 'OpenCove could not prepare this endpoint.',
+    error: 'OpenCove could not prepare this remote machine.',
   },
   action: {
     none: 'No action',
@@ -45,12 +45,12 @@ export const enCommonRemoteEndpoints = {
     reconnect: 'Reconnect',
     repair_credentials: 'Repair credentials',
     repair_tunnel: 'Reconnect tunnel',
-    install_runtime: 'Install runtime',
-    update_runtime: 'Update runtime',
+    install_runtime: 'Install remote components',
+    update_runtime: 'Update remote components',
     retry: 'Retry',
     show_details: 'Show details',
   },
   readyHintBrowse: 'Browse folders now, or enter an absolute path manually.',
-  runtimeVersion: 'Runtime {{version}}',
+  runtimeVersion: 'Remote components {{version}}',
   protocolVersion: 'Protocol {{version}}',
 } as const

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { useTranslation } from '@app/renderer/i18n'
 
 export function EndpointRemoveDialog({
@@ -15,22 +16,25 @@ export function EndpointRemoveDialog({
   onConfirm: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const title = t('settingsPanel.endpoints.remove.title')
 
   return (
-    <div
-      className="cove-window-backdrop"
-      data-testid="settings-endpoints-remove-backdrop"
-      onClick={onCancel}
+    <Dialog
+      open
+      role="alertdialog"
+      aria-label={title}
+      backdropClassName="cove-window-backdrop"
+      backdropTestId="settings-endpoints-remove-backdrop"
+      dismissOnEscape={!isBusy}
+      dismissOnPointerDownOutside={false}
+      onDismiss={reason => {
+        if (!isBusy && reason === 'escape') {
+          onCancel()
+        }
+      }}
     >
-      <section
-        className="cove-window"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="settings-endpoints-remove-title"
-        data-testid="settings-endpoints-remove-window"
-        onClick={event => event.stopPropagation()}
-      >
-        <h3 id="settings-endpoints-remove-title">{t('settingsPanel.endpoints.remove.title')}</h3>
+      <section className="cove-window" data-testid="settings-endpoints-remove-window">
+        <h3>{title}</h3>
         <p className="cove-window__intro">
           {t('settingsPanel.endpoints.remove.description', { name: displayName })}
         </p>
@@ -58,6 +62,6 @@ export function EndpointRemoveDialog({
           </button>
         </div>
       </section>
-    </div>
+    </Dialog>
   )
 }

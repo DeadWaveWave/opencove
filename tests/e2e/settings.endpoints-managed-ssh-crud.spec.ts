@@ -97,6 +97,10 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
         .fill('Build box')
       await window.locator('[data-testid="settings-endpoints-register-hostname"]').fill('127.0.0.1')
       await window.locator('[data-testid="settings-endpoints-register-username"]').fill('tester')
+      await expect(
+        window.locator('[data-testid="settings-endpoints-register-advanced"]'),
+      ).not.toHaveAttribute('open')
+      await window.locator('[data-testid="settings-endpoints-register-advanced-toggle"]').click()
       await window.locator('[data-testid="settings-endpoints-register-ssh-port"]').fill('2222')
       await window
         .locator('[data-testid="settings-endpoints-register-remote-port"]')
@@ -133,6 +137,9 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
         hasText: 'Build box',
       })
       await endpointCard.locator(`[data-testid="settings-endpoints-edit-${endpointId}"]`).click()
+      await expect(
+        window.locator('[data-testid="settings-endpoints-register-advanced"]'),
+      ).toHaveAttribute('open')
       await capture(
         window.locator('[data-testid="settings-endpoints-register-window"]'),
         'managed-ssh-edit-dark',
@@ -146,6 +153,7 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
       await window
         .locator('[data-testid="settings-endpoints-register-hostname"]')
         .fill('invalid.example.com')
+      await window.locator('[data-testid="settings-endpoints-register-advanced-toggle"]').click()
       await window.locator('[data-testid="settings-endpoints-register-ssh-port"]').fill('abc')
       await expect(
         window.locator('[data-testid="settings-endpoints-register-ssh-port-error"]'),
@@ -158,7 +166,24 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
         'managed-ssh-invalid-port-dark',
         testInfo,
       )
-      await window.locator('[data-testid="settings-endpoints-register-cancel"]').click()
+      await window
+        .locator('[data-testid="settings-endpoints-register-backdrop"]')
+        .dispatchEvent('pointerdown')
+      await expect(
+        window.locator('[data-testid="settings-endpoints-register-window"]'),
+      ).toBeVisible()
+      await window.keyboard.press('Escape')
+      await expect(
+        window.locator('[data-testid="settings-endpoints-register-window"]'),
+      ).toHaveCount(0)
+
+      await window.locator('[data-testid="settings-endpoints-open-register"]').click()
+      await window
+        .locator('[data-testid="settings-endpoints-register-backdrop"]')
+        .dispatchEvent('pointerdown')
+      await expect(
+        window.locator('[data-testid="settings-endpoints-register-window"]'),
+      ).toHaveCount(0)
 
       await window.evaluate(
         async ({ selectedEndpointId, rootPath }) =>
@@ -180,6 +205,7 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
       await window
         .locator('[data-testid="settings-endpoints-register-hostname"]')
         .fill('invalid.example.com')
+      await window.locator('[data-testid="settings-endpoints-register-advanced-toggle"]').click()
       await window.locator('[data-testid="settings-endpoints-register-ssh-port"]').fill('abc')
       await expect(
         window.locator('[data-testid="settings-endpoints-register-ssh-port-error"]'),
@@ -200,12 +226,16 @@ test.describe('Settings managed SSH endpoint CRUD', () => {
       await endpointCard.locator(`[data-testid="settings-endpoints-remove-${endpointId}"]`).click()
       await expect(
         window.locator('[data-testid="settings-endpoints-remove-impact"]'),
-      ).toContainText('This will unbind 1 mount from the endpoint.')
+      ).toContainText('This will unbind 1 mount from the remote machine.')
       await capture(
         window.locator('[data-testid="settings-endpoints-remove-window"]'),
         'managed-ssh-remove-light',
         testInfo,
       )
+      await window
+        .locator('[data-testid="settings-endpoints-remove-backdrop"]')
+        .dispatchEvent('pointerdown')
+      await expect(window.locator('[data-testid="settings-endpoints-remove-window"]')).toBeVisible()
       await window.locator('[data-testid="settings-endpoints-remove-cancel"]').click()
       await expect(endpointCard).toBeVisible()
 
