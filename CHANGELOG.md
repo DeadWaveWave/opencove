@@ -100,6 +100,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Agent: make Codex resume recovery writer-safe by waiting for the thread writer lock to release before resuming, retrying a bounded number of times on transient `already has an active writer` conflicts, surfacing a retry action instead of a silent failure, and cleaning up orphaned worker process trees left by a forced quit. (#350)
 - Terminal: return a failed terminal-launched Codex command to a normal terminal after authoritative PTY foreground reconciliation, while keeping optimistic launch feedback and fail-open behavior when process evidence is unavailable. (#348)
 - Terminal: keep an active terminal agent overlay and its provider hint when an asynchronous worker-sync refresh reconciles a stale persisted snapshot, so recognized agents no longer lose their overlay, sidebar item, and watcher ownership under load. (#345)
 - Agent: recover terminal-launched agents without a verified session by relaunching the provider once in a fresh PTY, deterministically bind the nearest safe session candidate, and keep the overlay in standby until real turn signals arrive. (#344)
