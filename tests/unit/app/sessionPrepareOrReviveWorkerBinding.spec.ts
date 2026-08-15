@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { logAgentLaunchInfo } from '../../../src/app/main/diagnostics/agentLaunchRuntimeDiagnostics'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import {
   prepareAgentNode,
@@ -11,6 +12,11 @@ import type {
   NormalizedPersistedSpace,
   NormalizedPersistedWorkspace,
 } from '../../../src/platform/persistence/sqlite/normalize'
+
+vi.mock('../../../src/app/main/diagnostics/agentLaunchRuntimeDiagnostics', () => ({
+  logAgentLaunchInfo: vi.fn(),
+  logAgentLaunchError: vi.fn(),
+}))
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-08-15T00:00:00.000Z'),
@@ -253,7 +259,7 @@ describe('session prepare/revive node-owned worker binding', () => {
   })
 
   it('keeps legacy binding-absent local recovery and logs the local decision', async () => {
-    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    vi.mocked(logAgentLaunchInfo).mockClear()
     const controlSurface = {
       invoke: vi.fn(async (_ctx, request) => {
         expect(request.id).toBe('pty.spawn')
@@ -280,11 +286,13 @@ describe('session prepare/revive node-owned worker binding', () => {
 
       expect(prepared.sessionId).toBe('legacy-local-session')
       expect(prepared.workerBinding).toEqual({ endpointId: 'local', mountId: null })
-      expect(stderr).toHaveBeenCalledWith(
-        expect.stringContaining('session recovery selected local worker'),
+      expect(logAgentLaunchInfo).toHaveBeenCalledWith(
+        'session-recovery-selected-local-worker',
+        expect.any(String),
+        expect.objectContaining({ reason: 'legacy_node_without_space' }),
       )
     } finally {
-      stderr.mockRestore()
+      vi.mocked(logAgentLaunchInfo).mockClear()
     }
   })
 

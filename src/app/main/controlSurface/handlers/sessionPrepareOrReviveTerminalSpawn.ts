@@ -1,3 +1,4 @@
+import { logAgentLaunchInfo } from '../../diagnostics/agentLaunchRuntimeDiagnostics'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
 import type { MountDto, SpawnTerminalResult } from '../../../../shared/contracts/dto'
@@ -57,8 +58,15 @@ function logLocalWorkerDecision(options: {
   mountId: string | null
   reason: string
 }): void {
-  process.stderr.write(
-    `[opencove] session recovery selected local worker: ${JSON.stringify(options)}\n`,
+  logAgentLaunchInfo(
+    'session-recovery-selected-local-worker',
+    'Session recovery selected the local worker.',
+    {
+      nodeId: options.nodeId,
+      workspaceId: options.workspaceId,
+      mountId: options.mountId,
+      reason: options.reason,
+    },
   )
 }
 
