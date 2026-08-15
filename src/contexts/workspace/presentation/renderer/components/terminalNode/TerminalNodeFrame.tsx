@@ -242,6 +242,22 @@ export function TerminalNodeFrame({
           ) : null}
         </div>
       ) : null}
+      {recoveryIssue === 'remote_worker_unavailable' ? (
+        <div className="terminal-node__recovery-issue" role="status">
+          <span>{t('terminalNode.remoteWorkerRecoveryMessage')}</span>
+          {isAgentNode && onReloadSession ? (
+            <button
+              type="button"
+              className="terminal-node__recovery-issue-action nodrag"
+              onClick={() => {
+                void onReloadSession()
+              }}
+            >
+              {t('terminalNode.retryRecovery')}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="terminal-node__body">
         <div

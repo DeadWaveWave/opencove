@@ -42,6 +42,7 @@ type NodeRow = {
   profileId: string | null
   runtimeKind: string | null
   terminalGeometryJson: string | null
+  workerBindingJson?: string | null
   terminalProviderHint: string | null
   labelColorOverride: string | null
   sidebarSortOrder?: number | null
@@ -211,6 +212,7 @@ describe('sqlite persistence read', () => {
           profileId: null,
           runtimeKind: null,
           terminalGeometryJson: null,
+          workerBindingJson: '{"endpointId":"remote-1","mountId":"mount-1"}',
           terminalProviderHint: null,
           labelColorOverride: null,
           sidebarSortOrder: 7,
@@ -231,5 +233,9 @@ describe('sqlite persistence read', () => {
 
     expect(appState?.workspaces[0]?.iconId).toBe('code')
     expect(appState?.workspaces[0]?.nodes[0]?.sidebarSortOrder).toBe(7)
+    expect(appState?.workspaces[0]?.nodes[0]?.workerBinding).toEqual({
+      endpointId: 'remote-1',
+      mountId: 'mount-1',
+    })
   })
 })

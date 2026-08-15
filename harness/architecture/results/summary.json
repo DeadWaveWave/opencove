@@ -1,13 +1,13 @@
 {
-  "filesAnalyzed": 1193,
+  "filesAnalyzed": 1208,
   "summary": {
     "errors": 0,
-    "warnings": 499,
-    "violations": 499
+    "warnings": 504,
+    "violations": 504
   },
   "byRule": {
-    "architecture.windowOpenCoveApiBoundary": 251,
-    "architecture.layerDependency": 248
+    "architecture.windowOpenCoveApiBoundary": 253,
+    "architecture.layerDependency": 251
   },
   "topAreas": [
     {
@@ -16,11 +16,11 @@
     },
     {
       "area": "src/contexts/settings/presentation",
-      "count": 98
+      "count": 101
     },
     {
       "area": "src/app/renderer/shell",
-      "count": 83
+      "count": 85
     },
     {
       "area": "src/contexts/agent/presentation",

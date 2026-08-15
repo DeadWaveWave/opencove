@@ -133,6 +133,7 @@ export async function resumeTaskAgentSessionAction(
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,
       terminalGeometry: launchGeometry.terminalGeometry,
+      workerBinding: launched.workerBinding,
       title: context.buildAgentNodeTitle(record.provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',

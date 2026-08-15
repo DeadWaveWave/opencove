@@ -21,6 +21,7 @@ import { CANVAS_IMAGE_MIME_TYPES } from '@shared/contracts/dto'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 import { normalizeProjectIconId } from '@shared/types/projectIcon'
 import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
+import { normalizeNodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 import { normalizeResumeSessionBinding } from './ensureResumeSessionBinding'
 import { ensurePersistedRoleData } from './ensureRoleNodeData'
 import { ensurePersistedSpaceArchiveRecord } from './ensureSpaceArchiveRecord'
@@ -377,6 +378,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     profileId: normalizeOptionalString(record.profileId),
     runtimeKind,
     terminalGeometry: normalizeTerminalGeometry(record.terminalGeometry),
+    workerBinding: normalizeNodeWorkerBinding(record.workerBinding),
     terminalProviderHint:
       record.terminalProviderHint === 'claude-code' ||
       record.terminalProviderHint === 'codex' ||

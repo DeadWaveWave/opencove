@@ -1,6 +1,7 @@
 import type { PersistWriteResult } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { LabelColor, NodeLabelColorOverride } from '../../../../shared/types/labelColor'
+import type { NodeWorkerBinding } from '../../../../shared/types/nodeWorkerBinding'
 
 export type NodeControlNode = {
   id: string
@@ -14,6 +15,7 @@ export type NodeControlNode = {
   profileId?: string | null
   runtimeKind?: string | null
   terminalGeometry?: { cols: number; rows: number } | null
+  workerBinding?: NodeWorkerBinding | null
   terminalProviderHint?: string | null
   labelColorOverride: NodeLabelColorOverride
   status: string | null

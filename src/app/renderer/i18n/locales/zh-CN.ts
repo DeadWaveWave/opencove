@@ -344,6 +344,7 @@ export const zhCN = {
     resizeHeight: '调整终端高度',
     recoveringAgentSession: '正在恢复实时 Agent 会话…',
     writerLockRecoveryMessage: '另一个写入进程仍在关闭此 Agent 会话，请稍后重试恢复。',
+    remoteWorkerRecoveryMessage: '原远程 Worker 当前不可用。请重新连接后安全恢复此会话。',
     retryRecovery: '重试恢复',
   },
   terminalFind: {

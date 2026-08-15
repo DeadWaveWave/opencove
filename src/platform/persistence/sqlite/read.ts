@@ -7,6 +7,7 @@ import {
 } from '../../../shared/types/labelColor'
 import { normalizeProjectIconId } from '../../../shared/types/projectIcon'
 import { normalizeSpaceBoundary } from '../../../shared/types/spaceBoundary'
+import { normalizeNodeWorkerBinding } from '../../../shared/types/nodeWorkerBinding'
 import { normalizeTerminalGeometry } from './normalize'
 import {
   appMeta,
@@ -133,6 +134,9 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
           typeof node.terminalGeometryJson === 'string'
             ? safeJsonParse(node.terminalGeometryJson)
             : null,
+        ),
+        workerBinding: normalizeNodeWorkerBinding(
+          typeof node.workerBindingJson === 'string' ? safeJsonParse(node.workerBindingJson) : null,
         ),
         terminalProviderHint:
           typeof node.terminalProviderHint === 'string' &&

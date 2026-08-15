@@ -12,6 +12,7 @@ import type {
   TerminalRuntimeKind,
 } from '@shared/contracts/dto'
 import type { WorkspaceSpaceState } from '../../../types'
+import type { NodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 import {
   resolveControlSurfaceInvoke,
   shouldUseControlSurfacePlainRuntime,
@@ -28,6 +29,7 @@ export interface WorkspaceAgentSessionLaunchResult {
   runtimeKind: TerminalRuntimeKind | undefined
   effectiveModel: string | null
   executionDirectory: string
+  workerBinding: NodeWorkerBinding
 }
 
 export function buildMergedAgentLaunchEnv(
@@ -295,6 +297,10 @@ export async function launchWorkspaceAgentSession({
         runtimeKind: launched.runtimeKind ?? undefined,
         effectiveModel: launched.effectiveModel,
         executionDirectory: launched.executionContext.workingDirectory,
+        workerBinding: {
+          endpointId: launched.executionContext.endpoint.endpointId,
+          mountId: launched.executionContext.mountId,
+        },
       }
     } catch (error) {
       if (!retryResolveMountBinding) {
@@ -320,6 +326,10 @@ export async function launchWorkspaceAgentSession({
         runtimeKind: launched.runtimeKind ?? undefined,
         effectiveModel: launched.effectiveModel,
         executionDirectory: launched.executionContext.workingDirectory,
+        workerBinding: {
+          endpointId: launched.executionContext.endpoint.endpointId,
+          mountId: launched.executionContext.mountId,
+        },
       }
     }
   }
@@ -353,6 +363,10 @@ export async function launchWorkspaceAgentSession({
       runtimeKind: launched.runtimeKind ?? undefined,
       effectiveModel: launched.effectiveModel,
       executionDirectory: launched.executionContext.workingDirectory,
+      workerBinding: {
+        endpointId: launched.executionContext.endpoint.endpointId,
+        mountId: launched.executionContext.mountId,
+      },
     }
   }
 
@@ -377,5 +391,6 @@ export async function launchWorkspaceAgentSession({
     runtimeKind: launched.runtimeKind,
     effectiveModel: launched.effectiveModel,
     executionDirectory,
+    workerBinding: { endpointId: 'local', mountId: null },
   }
 }

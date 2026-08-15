@@ -64,6 +64,7 @@ export function useWorkspaceCanvasNodeCreation({
       profileId,
       runtimeKind,
       terminalGeometry,
+      workerBinding,
       title,
       anchor,
       kind,
@@ -108,6 +109,7 @@ export function useWorkspaceCanvasNodeCreation({
           profileId: profileId ?? null,
           runtimeKind,
           terminalGeometry: terminalGeometry ?? null,
+          workerBinding: workerBinding ?? null,
           title,
           titlePinnedByUser: false,
           width: defaultSize.width,
@@ -139,7 +141,6 @@ export function useWorkspaceCanvasNodeCreation({
         draggable: true,
         selectable: false,
       }
-
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
       setNodes(prevNodes => [...prevNodes, nextNode])
       onNodeCreated?.(nextNode.id)

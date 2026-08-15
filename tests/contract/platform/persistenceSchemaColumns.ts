@@ -31,6 +31,7 @@ export const CURRENT_SCHEMA_COLUMNS = {
     'profile_id',
     'runtime_kind',
     'terminal_geometry_json',
+    'worker_binding_json',
     'terminal_provider_hint',
     'label_color_override',
     'sidebar_sort_order',

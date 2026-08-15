@@ -4,6 +4,7 @@ import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/age
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { SpaceBoundary } from '@shared/types/spaceBoundary'
+import type { NodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 import type {
   AgentHookInstallState,
   AgentRecoveryIssue,
@@ -162,6 +163,7 @@ export interface TerminalNodeData {
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
   terminalGeometry?: TerminalPtyGeometry | null
+  workerBinding?: NodeWorkerBinding | null
   terminalProviderHint?: AgentProvider | null
   terminalAgentBinding?: TerminalAgentSessionBinding | null
   agentOverlay?: TerminalAgentOverlay | null
@@ -363,6 +365,7 @@ export interface PersistedTerminalNode {
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
   terminalGeometry?: TerminalPtyGeometry | null
+  workerBinding?: NodeWorkerBinding | null
   terminalProviderHint?: AgentProvider | null
   terminalAgentBinding?: TerminalAgentSessionBinding | null
   labelColorOverride?: NodeLabelColorOverride

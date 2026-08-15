@@ -6,6 +6,7 @@ import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/doma
 import type { AgentNodeData, TerminalNodeData } from '../../../types'
 import { resolveAgentLaunchGeometryForFrame } from './agentLaunchGeometry'
 import { logTerminalLaunchGeometryDiagnostics } from './terminalLaunchDiagnostics'
+import type { NodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 
 export type AgentRuntimeNode = Node<TerminalNodeData> & {
   data: TerminalNodeData & {
@@ -33,6 +34,7 @@ export interface AgentRuntimeLaunchResult {
   executionDirectory: string
   terminalGeometry: { cols: number; rows: number }
   frameSize: { width: number; height: number }
+  workerBinding: NodeWorkerBinding
 }
 
 export function findAgentNode(
@@ -143,6 +145,10 @@ export async function launchAgentRuntime({
       executionDirectory: launched.executionContext.workingDirectory,
       terminalGeometry: launchGeometry.terminalGeometry,
       frameSize: launchGeometry.frameSize,
+      workerBinding: {
+        endpointId: launched.executionContext.endpoint.endpointId,
+        mountId: launched.executionContext.mountId,
+      },
     }
   }
 
@@ -171,5 +177,6 @@ export async function launchAgentRuntime({
     executionDirectory,
     terminalGeometry: launchGeometry.terminalGeometry,
     frameSize: launchGeometry.frameSize,
+    workerBinding: { endpointId: 'local', mountId: null },
   }
 }

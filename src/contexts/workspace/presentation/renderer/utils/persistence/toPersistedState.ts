@@ -15,6 +15,7 @@ import {
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 import { normalizeProjectIconId } from '@shared/types/projectIcon'
 import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
+import { normalizeNodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 
 export function toPersistedState(
   workspaces: WorkspaceState[],
@@ -81,6 +82,7 @@ export function toPersistedState(
           profileId: normalizeOptionalString(node.data.profileId),
           runtimeKind: node.data.runtimeKind,
           terminalGeometry: normalizeTerminalGeometry(node.data.terminalGeometry),
+          workerBinding: normalizeNodeWorkerBinding(node.data.workerBinding),
           labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
           sidebarSortOrder:
             node.data.kind === 'agent'

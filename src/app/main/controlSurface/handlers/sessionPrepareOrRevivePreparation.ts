@@ -13,19 +13,17 @@ import type {
   LaunchAgentSessionResult,
   PreparedRuntimeNodeResult,
 } from '../../../../shared/contracts/dto'
+import { isRemoteNodeWorkerBinding } from '../../../../shared/types/nodeWorkerBinding'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceContext } from '../types'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
-import { normalizeOptionalString } from './sessionLaunchPayloadSupport'
 import {
   formatRecoverableError,
   invokeCommand,
   isActiveAgentStatus,
   isRecoverableAgentWindowStatus,
   resolveNodeProfileId,
-  resolvePreparedScrollback,
   resolveNodeRuntimeKind,
-  resolveTerminalRecoveryCwd,
   toPreparedNodeResult,
   type NormalizedPersistedNode,
   type NormalizedPersistedSpace,
@@ -36,12 +34,7 @@ import {
   resolvePrepareOrReviveLaunchContext,
   spawnFallbackTerminal,
 } from './sessionPrepareOrReviveTerminalSpawn'
-import {
-  DEFAULT_PTY_COLS,
-  DEFAULT_PTY_ROWS,
-  resolveNodeInitialPtyGeometry,
-} from './sessionPrepareOrReviveGeometry'
-import { reenterTerminalAgent } from './sessionPrepareOrReviveTerminalAgent'
+import { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
 import {
   CodexWriterLockRecoveryExhaustedError,
   launchCodexResumeWithRecovery,
@@ -49,79 +42,7 @@ import {
 import { resolvePendingResumeSessionId } from './sessionPrepareOrReviveResumeBinding'
 export { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
 export { resolvePrepareOrReviveResumeLocateTimeoutMs } from './sessionPrepareOrReviveResumeBinding'
-
-export async function prepareTerminalNode(options: {
-  controlSurface: ControlSurface
-  ctx: ControlSurfaceContext
-  ptyRuntime: Pick<ControlSurfacePtyRuntime, 'waitForShellReady' | 'write'>
-  store: PersistenceStore
-  workspace: NormalizedPersistedWorkspace
-  node: NormalizedPersistedNode
-  space: NormalizedPersistedSpace | null
-}): Promise<PreparedRuntimeNodeResult> {
-  const cwd = resolveTerminalRecoveryCwd(options.node, options.workspace.path)
-  const spawnGeometry = options.node.terminalGeometry ?? {
-    cols: DEFAULT_PTY_COLS,
-    rows: DEFAULT_PTY_ROWS,
-  }
-  const preparedTerminalGeometry = options.node.terminalGeometry ?? null
-  const scrollback = await resolvePreparedScrollback({
-    store: options.store,
-    node: options.node,
-  })
-  try {
-    const spawned = await spawnFallbackTerminal({
-      controlSurface: options.controlSurface,
-      ctx: options.ctx,
-      workspace: options.workspace,
-      space: options.space,
-      cwd,
-      profileId: resolveNodeProfileId(options.node),
-      geometry: spawnGeometry,
-    })
-    await reenterTerminalAgent({
-      node: options.node,
-      sessionId: spawned.sessionId,
-      ptyRuntime: options.ptyRuntime,
-    })
-
-    return toPreparedNodeResult(options.node, {
-      recoveryState: 'restarted',
-      sessionId: spawned.sessionId,
-      isLiveSessionReattach: false,
-      profileId: spawned.profileId ?? resolveNodeProfileId(options.node),
-      runtimeKind: spawned.runtimeKind ?? resolveNodeRuntimeKind(options.node),
-      status: null,
-      startedAt: null,
-      endedAt: null,
-      exitCode: null,
-      lastError: null,
-      scrollback,
-      terminalGeometry: preparedTerminalGeometry,
-      executionDirectory: spawned.cwd,
-      expectedDirectory: spawned.cwd,
-      agent: null,
-    })
-  } catch (error) {
-    return toPreparedNodeResult(options.node, {
-      recoveryState: 'restarted',
-      sessionId: '',
-      isLiveSessionReattach: false,
-      profileId: resolveNodeProfileId(options.node),
-      runtimeKind: resolveNodeRuntimeKind(options.node),
-      status: null,
-      startedAt: null,
-      endedAt: null,
-      exitCode: null,
-      lastError: formatRecoverableError('Terminal launch failed', error),
-      scrollback,
-      terminalGeometry: options.node.terminalGeometry,
-      executionDirectory: normalizeOptionalString(options.node.executionDirectory),
-      expectedDirectory: normalizeOptionalString(options.node.expectedDirectory),
-      agent: null,
-    })
-  }
-}
+export { prepareTerminalNode } from './sessionPrepareOrReviveTerminalPreparation'
 
 export async function prepareAgentNode(options: {
   controlSurface: ControlSurface
@@ -170,11 +91,39 @@ export async function prepareAgentNode(options: {
     controlSurface,
     ctx,
     workspace,
+    node,
     space,
     cwd: sanitizedAgent.executionDirectory,
   })
   const agentExecutionDirectory = agentLaunchContext.workingDirectory
   const agentExpectedDirectory = agentLaunchContext.workingDirectory
+
+  if (agentLaunchContext.resolution === 'unresolved_remote') {
+    return toPreparedNodeResult(node, {
+      recoveryState: 'fallback_terminal',
+      sessionId: '',
+      isLiveSessionReattach: false,
+      profileId: terminalProfileId,
+      runtimeKind: resolveNodeRuntimeKind(node),
+      status: hasActiveStatus ? 'standby' : node.status,
+      startedAt: node.startedAt,
+      endedAt: null,
+      exitCode: node.exitCode,
+      lastError: null,
+      recoveryIssue: 'remote_worker_unavailable',
+      scrollback,
+      terminalGeometry: node.terminalGeometry,
+      workerBinding: agentLaunchContext.workerBinding,
+      executionDirectory: agentExecutionDirectory,
+      expectedDirectory: agentExpectedDirectory,
+      agent: {
+        ...sanitizedAgent,
+        executionDirectory: agentExecutionDirectory,
+        expectedDirectory: agentExpectedDirectory,
+      },
+    })
+  }
+  const isRemoteLaunchContext = isRemoteNodeWorkerBinding(agentLaunchContext.workerBinding)
 
   const invokeAgentLaunch = async (mode: 'new' | 'resume'): Promise<LaunchAgentSessionResult> => {
     if (agentLaunchContext.mountId) {
@@ -239,6 +188,7 @@ export async function prepareAgentNode(options: {
         recoveryIssue: null,
         scrollback,
         terminalGeometry: initialGeometry,
+        workerBinding: agentLaunchContext.workerBinding,
         executionDirectory: agentExecutionDirectory,
         expectedDirectory: agentExpectedDirectory,
         agent: {
@@ -258,10 +208,12 @@ export async function prepareAgentNode(options: {
           controlSurface,
           ctx,
           workspace,
+          node,
           space,
           cwd: agentExecutionDirectory,
           profileId: terminalProfileId,
           geometry: initialGeometry,
+          launchContext: agentLaunchContext,
         })
         return toPreparedNodeResult(node, {
           recoveryState: 'fallback_terminal',
@@ -279,6 +231,7 @@ export async function prepareAgentNode(options: {
           recoveryIssue: isWriterLockConflict ? 'codex_writer_locked' : null,
           scrollback,
           terminalGeometry: initialGeometry,
+          workerBinding: spawned.workerBinding,
           executionDirectory: spawned.cwd,
           expectedDirectory: spawned.cwd,
           agent: {
@@ -288,22 +241,29 @@ export async function prepareAgentNode(options: {
           },
         })
       } catch (fallbackError) {
+        const remoteUnavailable = isRemoteLaunchContext && !isWriterLockConflict
         return toPreparedNodeResult(node, {
           recoveryState: 'fallback_terminal',
           sessionId: '',
           isLiveSessionReattach: false,
           profileId: terminalProfileId,
           runtimeKind: resolveNodeRuntimeKind(node),
-          status: isWriterLockConflict ? 'standby' : 'failed',
+          status: isWriterLockConflict || remoteUnavailable ? 'standby' : 'failed',
           startedAt: node.startedAt,
-          endedAt: isWriterLockConflict ? null : ctx.now().toISOString(),
+          endedAt: isWriterLockConflict || remoteUnavailable ? null : ctx.now().toISOString(),
           exitCode: node.exitCode,
-          lastError: isWriterLockConflict
-            ? null
-            : formatRecoverableError('Agent resume failed', fallbackError),
-          recoveryIssue: isWriterLockConflict ? 'codex_writer_locked' : null,
+          lastError:
+            isWriterLockConflict || remoteUnavailable
+              ? null
+              : formatRecoverableError('Agent resume failed', fallbackError),
+          recoveryIssue: isWriterLockConflict
+            ? 'codex_writer_locked'
+            : remoteUnavailable
+              ? 'remote_worker_unavailable'
+              : null,
           scrollback,
           terminalGeometry: node.terminalGeometry,
+          workerBinding: agentLaunchContext.workerBinding,
           executionDirectory: agentExecutionDirectory,
           expectedDirectory: agentExpectedDirectory,
           agent: {
@@ -333,6 +293,7 @@ export async function prepareAgentNode(options: {
         lastError: null,
         scrollback,
         terminalGeometry: initialGeometry,
+        workerBinding: agentLaunchContext.workerBinding,
         executionDirectory: agentExecutionDirectory,
         expectedDirectory: agentExpectedDirectory,
         agent: {
@@ -350,10 +311,12 @@ export async function prepareAgentNode(options: {
           controlSurface,
           ctx,
           workspace,
+          node,
           space,
           cwd: agentExecutionDirectory,
           profileId: terminalProfileId,
           geometry: initialGeometry,
+          launchContext: agentLaunchContext,
         })
         return toPreparedNodeResult(node, {
           recoveryState: 'fallback_terminal',
@@ -368,6 +331,7 @@ export async function prepareAgentNode(options: {
           lastError: formatRecoverableError('Agent launch failed', error),
           scrollback,
           terminalGeometry: initialGeometry,
+          workerBinding: spawned.workerBinding,
           executionDirectory: spawned.cwd,
           expectedDirectory: spawned.cwd,
           agent: {
@@ -383,13 +347,17 @@ export async function prepareAgentNode(options: {
           isLiveSessionReattach: false,
           profileId: terminalProfileId,
           runtimeKind: resolveNodeRuntimeKind(node),
-          status: 'failed',
+          status: isRemoteLaunchContext ? 'standby' : 'failed',
           startedAt: node.startedAt,
-          endedAt: ctx.now().toISOString(),
+          endedAt: isRemoteLaunchContext ? null : ctx.now().toISOString(),
           exitCode: null,
-          lastError: formatRecoverableError('Agent launch failed', fallbackError),
+          lastError: isRemoteLaunchContext
+            ? null
+            : formatRecoverableError('Agent launch failed', fallbackError),
+          recoveryIssue: isRemoteLaunchContext ? 'remote_worker_unavailable' : null,
           scrollback,
           terminalGeometry: node.terminalGeometry,
+          workerBinding: agentLaunchContext.workerBinding,
           executionDirectory: agentExecutionDirectory,
           expectedDirectory: agentExpectedDirectory,
           agent: {
@@ -407,10 +375,12 @@ export async function prepareAgentNode(options: {
       controlSurface,
       ctx,
       workspace,
+      node,
       space,
       cwd: agentExecutionDirectory,
       profileId: terminalProfileId,
       geometry: initialGeometry,
+      launchContext: agentLaunchContext,
     })
     return toPreparedNodeResult(node, {
       recoveryState: 'fallback_terminal',
@@ -425,6 +395,7 @@ export async function prepareAgentNode(options: {
       lastError: null,
       scrollback,
       terminalGeometry: initialGeometry,
+      workerBinding: spawned.workerBinding,
       executionDirectory: spawned.cwd,
       expectedDirectory: spawned.cwd,
       agent: {
@@ -440,13 +411,17 @@ export async function prepareAgentNode(options: {
       isLiveSessionReattach: false,
       profileId: terminalProfileId,
       runtimeKind: resolveNodeRuntimeKind(node),
-      status: 'failed',
+      status: isRemoteLaunchContext ? 'standby' : 'failed',
       startedAt: node.startedAt,
-      endedAt: ctx.now().toISOString(),
+      endedAt: isRemoteLaunchContext ? null : ctx.now().toISOString(),
       exitCode: null,
-      lastError: formatRecoverableError('Terminal launch failed', error),
+      lastError: isRemoteLaunchContext
+        ? null
+        : formatRecoverableError('Terminal launch failed', error),
+      recoveryIssue: isRemoteLaunchContext ? 'remote_worker_unavailable' : null,
       scrollback,
       terminalGeometry: node.terminalGeometry,
+      workerBinding: agentLaunchContext.workerBinding,
       executionDirectory: agentExecutionDirectory,
       expectedDirectory: agentExpectedDirectory,
       agent: {

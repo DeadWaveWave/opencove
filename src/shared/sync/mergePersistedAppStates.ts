@@ -7,6 +7,7 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import { isSpaceBoundaryEqual } from './spaceBoundaryEquality'
 import { mergeSnapshotField } from './mergeSnapshotField'
+import { areNodeWorkerBindingsEqual } from '../types/nodeWorkerBinding'
 
 export function isPersistedAppState(value: unknown): value is PersistedAppState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -165,6 +166,12 @@ function mergeNodes(
         localNode.height,
         snapshotNode.height,
         (left, right) => left === right,
+      ),
+      workerBinding: mergeSnapshotField(
+        baseNode.workerBinding ?? null,
+        localNode.workerBinding ?? null,
+        snapshotNode.workerBinding ?? null,
+        areNodeWorkerBindingsEqual,
       ),
       task,
     })

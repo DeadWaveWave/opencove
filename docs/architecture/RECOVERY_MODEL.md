@@ -17,6 +17,7 @@ Durable fact：
 - Space tree、Space archive records 和 Space execution boundary。
 - Task 字段和 task-agent 关系。
 - Agent/Terminal 可恢复 metadata。
+- Agent/Terminal node-owned Worker binding（`endpointId + mountId`）。
 - Terminal recovery generation、runtime binding、presentation checkpoint 与 bounded raw tail。
 - Settings。
 - Endpoint/mount registry。
@@ -70,6 +71,9 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
    durable binding。
 10. Persisted runtime reconciliation 完成前，普通 terminal/agent spawn 不得创建新 PTY；只有当前
     `session.prepareOrRevive` attempt 的内部 scope 可以启动恢复所需 runtime。
+11. Node-owned Worker binding 优先于 Space mount 推导；只有旧数据缺少 binding 时才允许使用
+    Space fallback。无法解析 remote binding 时必须 fail closed 为 `fallback_terminal` +
+    `remote_worker_unavailable`，不得把 remote cwd 交给 Home Worker。
 
 ## Ownership Table
 
@@ -79,6 +83,7 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
 | spaces / node layout / viewport | durable fact | workspace context | workspace mutation | SQLite |
 | `parentSpaceId` | durable fact | workspace context | space tree mutation | SQLite |
 | `targetMountId` | durable fact | workspace/space model | space/mount binding mutation | SQLite + topology |
+| Agent/Terminal Worker binding | durable fact | workspace node model | launch/prepare result | SQLite `nodes.worker_binding_json` + topology |
 | space archive records | durable fact | workspace context | archive usecase | SQLite |
 | endpoint/mount registry | durable fact | topology store | endpoint/mount commands | topology files |
 | task fields | durable fact | task/workspace model | task mutation | SQLite |
@@ -103,6 +108,10 @@ Launch:
 Prepare/revive:
 
 - Reads durable metadata.
+- Resolves a node-owned Worker binding before consulting its owning Space. Binding-absent legacy
+  nodes retain the Space-derived compatibility path.
+- An unresolved remote endpoint/mount reports `fallback_terminal` with
+  `remote_worker_unavailable`; recovery does not create a local PTY.
 - Attempts worker-owned runtime restore.
 - Reports structured failure without mutating durable truth unless the owning usecase explicitly records status.
 
@@ -228,6 +237,7 @@ conversation history.
 - `tests/contract/controlSurface/controlSurfaceHttpServer.sessionPrepareOrRevive.parallel.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.terminalRecovery.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.remoteTerminalRecovery.spec.ts`
+- `tests/contract/controlSurface/controlSurfaceHttpServer.nodeWorkerBindingRecovery.spec.ts`
 - `tests/contract/controlSurface/remotePtyOverflowRecovery.loopback.spec.ts`
 - `tests/contract/platform/terminalRecovery.multiEpoch.spec.ts`
 - `tests/unit/terminalRecovery/`

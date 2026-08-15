@@ -160,6 +160,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         profileId: node.profileId,
         runtimeKind: node.runtimeKind,
         terminalGeometry: node.terminalGeometry ?? null,
+        workerBinding: node.workerBinding ?? null,
         terminalProviderHint: node.terminalProviderHint ?? null,
         terminalAgentBinding: node.terminalAgentBinding ?? null,
         agentOverlay:

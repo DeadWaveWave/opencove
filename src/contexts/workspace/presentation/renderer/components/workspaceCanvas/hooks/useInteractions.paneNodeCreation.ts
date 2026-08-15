@@ -32,12 +32,12 @@ import {
 } from './useWorkspaceRuntimeLaunchRouting'
 import { translate } from '@app/renderer/i18n'
 import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
+import { nodeWorkerBindingForMount } from '@shared/types/nodeWorkerBinding'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
   options?: { syncLayout?: boolean },
 ) => void
-
 export async function createTerminalNodeAtFlowPosition({
   anchor,
   workspaceId,
@@ -104,6 +104,7 @@ export async function createTerminalNodeAtFlowPosition({
     ? mergeMissingWorkspaceSpaces(spacesRef.current, workspaceSpacesSnapshot, targetSpace.id)
     : spacesRef.current
   let mountId: string | null = null
+  let workerBinding = nodeWorkerBindingForMount(null)
   let resolvedCwd = resolvedWorkspacePath
 
   try {
@@ -118,6 +119,7 @@ export async function createTerminalNodeAtFlowPosition({
     })
     targetSpace = mountContext.space
     mountId = mountContext.mountId
+    workerBinding = nodeWorkerBindingForMount(mountContext.mount)
     resolvedCwd = mountContext.workingDirectory
   } catch (error) {
     onShowMessage?.(
@@ -201,6 +203,7 @@ export async function createTerminalNodeAtFlowPosition({
     profileId: spawned.profileId,
     runtimeKind: spawned.runtimeKind,
     terminalGeometry: launchGeometry,
+    workerBinding,
     title: resolvedTitle,
     anchor: nodeAnchor,
     kind: 'terminal',
