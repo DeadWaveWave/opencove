@@ -15,6 +15,7 @@ import {
   resolveCanonicalNodeMinSize,
 } from '../../domain/workspaceNodeSizing'
 import type { NodeControlNode } from './nodeControlState'
+import type { NodeWorkerBinding } from '../../../../shared/types/nodeWorkerBinding'
 
 export type NodeControlCreateData =
   | { kind: 'note'; text: string }
@@ -46,6 +47,7 @@ export interface AgentNodeRuntimeData {
   startedAt: string
   profileId?: string | null
   runtimeKind?: string | null
+  workerBinding: NodeWorkerBinding
 }
 
 export interface TerminalNodeRuntimeData {
@@ -55,6 +57,7 @@ export interface TerminalNodeRuntimeData {
   startedAt: string
   profileId?: string | null
   runtimeKind?: string | null
+  workerBinding: NodeWorkerBinding
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -346,6 +349,7 @@ export function makeNode(options: {
     kind: options.kind,
     profileId: runtime?.profileId ?? null,
     runtimeKind: runtime?.runtimeKind ?? null,
+    workerBinding: runtime?.workerBinding ?? null,
     terminalProviderHint: null,
     labelColorOverride: null,
     status:

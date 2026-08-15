@@ -6,6 +6,10 @@ import {
 } from '../../../shared/types/labelColor'
 import { normalizeProjectIconId, type ProjectIconId } from '../../../shared/types/projectIcon'
 import { normalizeSpaceBoundary, type SpaceBoundary } from '../../../shared/types/spaceBoundary'
+import {
+  normalizeNodeWorkerBinding,
+  type NodeWorkerBinding,
+} from '../../../shared/types/nodeWorkerBinding'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -102,6 +106,7 @@ export type NormalizedPersistedNode = {
   profileId?: string | null
   runtimeKind?: string | null
   terminalGeometry: NormalizedTerminalGeometry | null
+  workerBinding: NodeWorkerBinding | null
   terminalProviderHint?: string | null
   labelColorOverride: NodeLabelColorOverride
   sidebarSortOrder: number | null
@@ -326,6 +331,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         profileId: normalizeOptionalString(node.profileId),
         runtimeKind: normalizeOptionalString(node.runtimeKind),
         terminalGeometry: normalizeTerminalGeometry(node.terminalGeometry),
+        workerBinding: normalizeNodeWorkerBinding(node.workerBinding),
         terminalProviderHint: normalizeOptionalString(node.terminalProviderHint),
         labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
         sidebarSortOrder:

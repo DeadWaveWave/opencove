@@ -108,6 +108,8 @@ describe('workspaceAgentLaunch.shared', () => {
       effectiveModel: 'gpt-5.2-codex',
       executionContext: {
         workingDirectory: '/external/worktrees/feature-a',
+        endpoint: { endpointId: 'local' },
+        mountId: null,
       },
     })
 
@@ -131,6 +133,7 @@ describe('workspaceAgentLaunch.shared', () => {
     })
 
     expect(launched.executionDirectory).toBe('/external/worktrees/feature-a')
+    expect(launched.workerBinding).toEqual({ endpointId: 'local', mountId: null })
     expect(window.opencoveApi.agent.launch).not.toHaveBeenCalled()
     expect(invoke).toHaveBeenCalledWith({
       kind: 'command',
@@ -150,6 +153,8 @@ describe('workspaceAgentLaunch.shared', () => {
       effectiveModel: 'gpt-5.2-codex',
       executionContext: {
         workingDirectory: '/remote/project',
+        endpoint: { endpointId: 'endpoint-remote' },
+        mountId: 'mount-fresh',
       },
     })
 
@@ -185,6 +190,7 @@ describe('workspaceAgentLaunch.shared', () => {
       runtimeKind: 'posix',
       effectiveModel: 'gpt-5.2-codex',
       executionDirectory: '/remote/project',
+      workerBinding: { endpointId: 'endpoint-remote', mountId: 'mount-fresh' },
     })
     expect(invoke).toHaveBeenCalledTimes(2)
     expect(invoke.mock.calls[1]?.[0]).toMatchObject({

@@ -36,6 +36,7 @@ Key implementation files:
 | Controller role + authority epoch | `PtyStreamHub` | `/pty` attach/control handoff |
 | PTY geometry | Worker geometry transaction | controller request -> runtime ACK -> presentation commit |
 | Terminal recovery generation/archive/binding/checkpoint | Worker terminal recovery owner | reconcile/output checkpoint/atomic retire/two-phase shutdown drain |
+| Agent/Terminal Worker binding (`endpointId + mountId`) | Workspace node persistence | launch result -> node state -> SQLite; prepare/revive resolves it against topology |
 | Terminal agent session binding | Workspace persistence | verified `provider` + resume identity record; an unverified provider remains a hint, never a resumable identity or durable node-kind rewrite |
 | Terminal agent overlay and run-state | Renderer run-state arbiter | one runtime projection from fresh hook > warm session-file > nothing; never terminal presentation or durable node truth |
 | Terminal agent raw-source replay | `PtyStreamHub` session state | one timestamped runtime-only observation per source; replayed on attach and removed with the session |
@@ -219,6 +220,11 @@ and agent spawn commands return typed `terminal.runtime_not_ready` while blocked
 one internal, attempt-scoped capability that is unavailable to public command contexts. Successful
 reconciliation increments the workspace runtime epoch; failure stays `unavailable`, and shutdown or
 an out-of-order older completion cannot reopen admission.
+
+For a cold Agent/Terminal replacement, the node-owned `endpointId + mountId` is the route authority.
+Recovery resolves that binding before the owning Space and uses Space `targetMountId` only for legacy
+nodes without a binding. If the persisted remote endpoint or mount is unavailable, recovery returns
+`fallback_terminal` with `remote_worker_unavailable`, retains the binding, and creates no Home PTY.
 
 ## Renderer Cache And Placeholder
 

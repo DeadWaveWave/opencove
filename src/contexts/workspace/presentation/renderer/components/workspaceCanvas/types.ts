@@ -218,6 +218,7 @@ export interface CreateNodeInput {
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
   terminalGeometry?: TerminalPtyGeometry | null
+  workerBinding?: TerminalNodeData['workerBinding']
   title: string
   anchor: Point
   kind: 'terminal' | 'agent'

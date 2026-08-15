@@ -15,6 +15,7 @@ import {
   resolveAgentLaunchEnv,
   type AgentSettings,
 } from '@contexts/settings/domain/agentSettings'
+import { isRemoteNodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 
 interface HydrateAgentNodeInput {
   node: Node<TerminalNodeData>
@@ -116,6 +117,25 @@ export async function hydrateAgentNode({
 }: HydrateAgentNodeInput): Promise<Node<TerminalNodeData>> {
   if (node.data.kind !== 'agent' || !node.data.agent) {
     return node
+  }
+
+  if (isRemoteNodeWorkerBinding(node.data.workerBinding)) {
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        sessionId: '',
+        status:
+          node.data.status === 'running' ||
+          node.data.status === 'restoring' ||
+          node.data.status === 'standby'
+            ? 'standby'
+            : node.data.status,
+        endedAt: null,
+        lastError: null,
+        recoveryIssue: 'remote_worker_unavailable',
+      },
+    }
   }
 
   const hasActiveAgentStatus =

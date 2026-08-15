@@ -6,7 +6,6 @@ import {
   PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   type PersistenceMigrationMockDbState as MockDbState,
 } from './persistenceStoreMigrations.types'
-
 const CURRENT_SCHEMA_COLUMNS = {
   app_meta: ['key', 'value'],
   app_settings: ['id', 'value'],
@@ -40,6 +39,7 @@ const CURRENT_SCHEMA_COLUMNS = {
     'profile_id',
     'runtime_kind',
     'terminal_geometry_json',
+    'worker_binding_json',
     'terminal_provider_hint',
     'label_color_override',
     'sidebar_sort_order',
@@ -432,7 +432,7 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(12)
+      expect(migratedState?.userVersion).toBe(13)
       expect(migratedState?.tables.get('terminal_recovery_records')).toEqual(
         expect.arrayContaining([...CURRENT_SCHEMA_COLUMNS.terminal_recovery_records]),
       )
@@ -461,7 +461,7 @@ describe('PersistenceStore (migrations)', () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 12, version2Schema: true })],
+        [dbPath, createMockDbState({ userVersion: 13, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 

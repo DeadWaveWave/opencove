@@ -10,7 +10,8 @@ SQLite:
 - Store：`src/platform/persistence/sqlite/PersistenceStore.ts`
 - Schema：`src/platform/persistence/sqlite/schema.ts`
 - Migration：`src/platform/persistence/sqlite/migrate.ts`
-- 当前 `DB_SCHEMA_VERSION = 11`
+- 当前 `DB_SCHEMA_VERSION = 13`
+- Agent/Terminal node Worker binding：`nodes.worker_binding_json`
 - Terminal durable recovery：`terminal_recovery_records`
 - Legacy terminal presentation/scrollback mirror：`node_scrollback`（兼容读取，不是独立 truth owner）
 
@@ -21,6 +22,11 @@ Topology files:
 - 文件格式定义：`src/app/main/controlSurface/topology/topologyFileV1.ts`。
 
 Renderer 不直接访问 DB 或 topology 文件；必须通过 preload/IPC 或 Control Surface。
+
+`nodes.worker_binding_json` 保存 node-owned `endpointId + mountId`。它是恢复路由的 durable
+truth：恢复优先使用该 binding，并通过 topology registry 解析 endpoint/mount；只有旧数据中
+该列为 `NULL` 或缺少合法 binding 时才从 Space `targetMountId` 推导。Remote binding 无法解析
+时必须保留原 binding 并返回显式恢复问题，不能将 remote path 作为本地 cwd 启动。
 
 ## SQLite Versioning
 

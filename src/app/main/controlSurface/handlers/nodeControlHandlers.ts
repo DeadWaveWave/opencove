@@ -12,7 +12,6 @@ import type {
   ListGitWorktreesResult,
   ListNodesInput,
   ManagedCanvasNodeKind,
-  SpaceLocator,
   SpawnTerminalInMountInput,
   SpawnTerminalInput,
   SpawnTerminalResult,
@@ -41,6 +40,8 @@ import {
   managedAgentProvider,
   managedTerminalRuntimeKind,
 } from './nodeControlHandlerRuntimeMetadata'
+import { normalizeSpaceLocator } from './nodeControlHandlerInput'
+import { nodeWorkerBindingForMount } from '../../../../shared/types/nodeWorkerBinding'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -83,39 +84,6 @@ function updatableKind(value: unknown): UpdatableCanvasNodeKind {
     throw createAppError('node.unsupported_operation')
   }
   throw createAppError('common.invalid_input', { debugMessage: 'Invalid node update kind.' })
-}
-
-function normalizeSpaceLocator(value: unknown): SpaceLocator {
-  if (!isRecord(value)) {
-    throw createAppError('common.invalid_input', { debugMessage: 'Invalid space locator.' })
-  }
-  if (value.kind === 'spaceId') {
-    return { kind: 'spaceId', spaceId: requiredString(value.spaceId, 'spaceId') }
-  }
-  if (value.kind === 'spaceName') {
-    return {
-      kind: 'spaceName',
-      name: requiredString(value.name, 'spaceName'),
-      projectId: optionalString(value.projectId),
-    }
-  }
-  if (value.kind === 'workerBranch') {
-    return {
-      kind: 'workerBranch',
-      worker: requiredString(value.worker, 'worker'),
-      branch: requiredString(value.branch, 'branch'),
-      projectId: optionalString(value.projectId),
-    }
-  }
-  if (value.kind === 'workerPath') {
-    return {
-      kind: 'workerPath',
-      worker: requiredString(value.worker, 'worker'),
-      path: requiredString(value.path, 'path'),
-      projectId: optionalString(value.projectId),
-    }
-  }
-  throw createAppError('common.invalid_input', { debugMessage: 'Invalid space locator kind.' })
 }
 
 function normalizeFrame(value: unknown): CreateNodeInput['frame'] {
@@ -314,6 +282,7 @@ function createRuntimeDeps(
         startedAt: optionalString(launched.startedAt) ?? ctx.now().toISOString(),
         profileId: launched.profileId === null ? null : optionalString(launched.profileId),
         runtimeKind: managedTerminalRuntimeKind(launched.runtimeKind),
+        workerBinding: nodeWorkerBindingForMount(resolved.mount),
       }
     },
     spawnTerminal: async (resolved, data) => {
@@ -352,6 +321,7 @@ function createRuntimeDeps(
         startedAt: ctx.now().toISOString(),
         profileId: result.profileId ?? data.profileId,
         runtimeKind: result.runtimeKind ?? null,
+        workerBinding: nodeWorkerBindingForMount(resolved.mount),
       }
     },
     killSession: async sessionId => {

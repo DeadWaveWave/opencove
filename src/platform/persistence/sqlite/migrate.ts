@@ -60,6 +60,7 @@ function createTables(db: Database.Database): void {
       profile_id TEXT,
       runtime_kind TEXT,
       terminal_geometry_json TEXT,
+      worker_binding_json TEXT,
       terminal_provider_hint TEXT,
       label_color_override TEXT,
       sidebar_sort_order INTEGER,
@@ -338,6 +339,12 @@ function ensureCurrentSchema(db: Database.Database): void {
   ensureTableColumn(db, {
     tableName: 'nodes',
     columnName: 'terminal_geometry_json',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'worker_binding_json',
     definitionSql: 'TEXT',
   })
 

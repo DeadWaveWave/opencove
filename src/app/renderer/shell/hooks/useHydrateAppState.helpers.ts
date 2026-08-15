@@ -12,6 +12,7 @@ import { mergeScrollbackSnapshots } from '@contexts/workspace/presentation/rende
 import { hydrateAgentNode } from '@contexts/agent/presentation/renderer/hydrateAgentNode'
 import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import { repairRuntimeNodeFrame } from './runtimeNodeFrameRepair'
+import { isRemoteNodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 
 export function toShellWorkspaceState(
   workspace: PersistedWorkspaceState,
@@ -150,6 +151,7 @@ export function mergeHydratedNode(
       profileId: hydratedNode.data.profileId ?? currentNode.data.profileId ?? null,
       runtimeKind: hydratedNode.data.runtimeKind ?? currentNode.data.runtimeKind,
       terminalGeometry: hydratedNode.data.terminalGeometry ?? currentNode.data.terminalGeometry,
+      workerBinding: hydratedNode.data.workerBinding ?? currentNode.data.workerBinding ?? null,
       agentOverlay: hydratedNode.data.agentOverlay,
       status: hydratedNode.data.status,
       startedAt: hydratedNode.data.startedAt,
@@ -226,6 +228,7 @@ function toHydratedRuntimeNode(
       executionDirectory: preparedNode.executionDirectory ?? currentNode.data.executionDirectory,
       expectedDirectory: preparedNode.expectedDirectory ?? currentNode.data.expectedDirectory,
       terminalGeometry: preparedNode.terminalGeometry ?? currentNode.data.terminalGeometry ?? null,
+      workerBinding: preparedNode.workerBinding ?? currentNode.data.workerBinding ?? null,
       agentOverlay: hydratedTerminalAgentOverlay,
       agent:
         currentNode.data.kind === 'agent' || preparedNode.kind === 'agent'
@@ -292,6 +295,19 @@ async function hydrateRuntimeNodeLocally({
 
   if (node.data.kind !== 'terminal') {
     return node
+  }
+
+  if (isRemoteNodeWorkerBinding(node.data.workerBinding)) {
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        sessionId: '',
+        isLiveSessionReattach: false,
+        lastError: null,
+        recoveryIssue: 'remote_worker_unavailable',
+      },
+    }
   }
 
   try {

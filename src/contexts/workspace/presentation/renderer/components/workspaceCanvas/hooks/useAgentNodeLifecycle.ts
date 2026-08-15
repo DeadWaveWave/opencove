@@ -298,6 +298,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                   profileId: launched.profileId,
                   runtimeKind: launched.runtimeKind,
                   terminalGeometry: launched.terminalGeometry,
+                  workerBinding: launched.workerBinding,
                   width: launched.frameSize.width,
                   height: launched.frameSize.height,
                   title:

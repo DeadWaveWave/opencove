@@ -180,6 +180,7 @@ export async function runRoleNodeAction(
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,
       terminalGeometry: launchGeometry.terminalGeometry,
+      workerBinding: launched.workerBinding,
       title: context.buildAgentNodeTitle(provider, role.name),
       anchor: {
         x: roleNode.position.x + roleNode.data.width + 48,

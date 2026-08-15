@@ -51,6 +51,7 @@ export const nodes = sqliteTable('nodes', {
   profileId: text('profile_id'),
   runtimeKind: text('runtime_kind'),
   terminalGeometryJson: text('terminal_geometry_json'),
+  workerBindingJson: text('worker_binding_json'),
   terminalProviderHint: text('terminal_provider_hint'),
   labelColorOverride: text('label_color_override'),
   sidebarSortOrder: integer('sidebar_sort_order'),

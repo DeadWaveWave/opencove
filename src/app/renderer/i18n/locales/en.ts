@@ -348,6 +348,8 @@ export const en = {
     recoveringAgentSession: 'Recovering live Agent session…',
     writerLockRecoveryMessage:
       'Another writer is still closing this Agent session. Retry recovery in a moment.',
+    remoteWorkerRecoveryMessage:
+      'The original remote worker is unavailable. Reconnect it to recover this session safely.',
     retryRecovery: 'Retry recovery',
   },
   terminalFind: {

@@ -5,6 +5,7 @@ import path from 'node:path'
 import electronPath from 'electron'
 
 const tests = [
+  'tests/contract/controlSurface/controlSurfaceHttpServer.nodeWorkerBindingRecovery.spec.ts',
   'tests/contract/controlSurface/controlSurfaceHttpServer.remoteTerminalRecovery.spec.ts',
   'tests/contract/controlSurface/controlSurfaceHttpServer.terminalRecovery.spec.ts',
   'tests/contract/platform/terminalRecovery.multiEpoch.spec.ts',

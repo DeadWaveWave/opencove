@@ -169,6 +169,7 @@ export function toPreparedNodeResult(
     kind: node.kind === 'agent' ? 'agent' : 'terminal',
     title: node.title,
     ...options,
+    workerBinding: options.workerBinding === undefined ? node.workerBinding : options.workerBinding,
     terminalGeometry:
       options.terminalGeometry === undefined ? node.terminalGeometry : options.terminalGeometry,
     scrollback: options.scrollback === undefined ? node.scrollback : options.scrollback,

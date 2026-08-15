@@ -3,7 +3,7 @@ import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/cons
 import { CURRENT_SCHEMA_COLUMNS } from './persistenceSchemaColumns'
 
 export const SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS = [
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
 ] as const
 
 export type InstalledUpgradeSourceVersion =
@@ -252,7 +252,11 @@ function createTablesForVersion(version: InstalledUpgradeSourceVersion): Map<str
     return createV2CoreTables()
   }
 
-  const tables = currentTablesWithout(COLUMNS_ADDED_AFTER_VERSION[version] ?? {})
+  const omissions = COLUMNS_ADDED_AFTER_VERSION[version] ?? {}
+  const tables = currentTablesWithout({
+    ...omissions,
+    nodes: [...(omissions.nodes ?? []), 'worker_binding_json'],
+  })
   tables.delete('terminal_recovery_records')
   return tables
 }

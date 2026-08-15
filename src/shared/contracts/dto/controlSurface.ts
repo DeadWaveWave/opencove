@@ -4,6 +4,7 @@ import type { PresentationSnapshotTerminalResult } from './terminal'
 import type { WorkerEndpointKindDto } from './topology'
 import type { GitWorktreeInfo, RemoveGitWorktreeResult } from './worktree'
 import type { SpaceBoundary } from '../../types/spaceBoundary'
+import type { NodeWorkerBinding } from '../../types/nodeWorkerBinding'
 
 export interface ControlSurfacePingResult {
   ok: true
@@ -360,7 +361,7 @@ export interface PreparedRuntimeAgentResult {
   taskId: string | null
 }
 
-export type AgentRecoveryIssue = 'codex_writer_locked'
+export type AgentRecoveryIssue = 'codex_writer_locked' | 'remote_worker_unavailable'
 
 export interface PreparedRuntimeNodeResult {
   nodeId: string
@@ -381,6 +382,7 @@ export interface PreparedRuntimeNodeResult {
   executionDirectory: string | null
   expectedDirectory: string | null
   terminalGeometry: TerminalPtyGeometry | null
+  workerBinding?: NodeWorkerBinding | null
   agent: PreparedRuntimeAgentResult | null
 }
 
