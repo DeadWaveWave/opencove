@@ -5,6 +5,11 @@ import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { createTarArchive } from './lib/standalone-bundle-archive.mjs'
+import {
+  STANDALONE_NATIVE_MODULE_NAMES,
+  resolveNativeModuleRebuildTargets,
+  resolveOptionalNativeExecutables,
+} from './lib/standalone-native-modules.mjs'
 
 const rootDir = resolve(import.meta.dirname, '..')
 const distDir = resolve(rootDir, 'dist')
@@ -175,7 +180,12 @@ async function copyNodeRuntime(nodeExecutable, runtimeRoot, platform) {
   await copyFile(licensePath, resolve(runtimeRoot, 'node', 'LICENSE'))
 }
 
-async function rebuildAndVerifyNativeModules({ appRoot, nodeExecutable, runtime }) {
+async function rebuildAndVerifyNativeModules({
+  appRoot,
+  nodeExecutable,
+  bundledNodeExecutable,
+  runtime,
+}) {
   const require = createRequire(import.meta.url)
   const electronBuilderRequire = createRequire(require.resolve('electron-builder/package.json'))
   const nodeGypScript = electronBuilderRequire.resolve('node-gyp/bin/node-gyp.js')
@@ -184,33 +194,28 @@ async function rebuildAndVerifyNativeModules({ appRoot, nodeExecutable, runtime 
     npm_config_runtime: 'node',
     npm_config_target: runtime.node,
   }
-  const nativeModuleNames = ['better-sqlite3', 'node-pty']
+  const rebuildTargets = resolveNativeModuleRebuildTargets({
+    rootDir,
+    appRoot,
+    moduleNames: STANDALONE_NATIVE_MODULE_NAMES,
+  })
 
   try {
-    const nativeCopies = []
-    for (const moduleName of nativeModuleNames) {
+    for (const { cwd: moduleCwd } of rebuildTargets) {
       runChecked(nodeExecutable, [nodeGypScript, 'rebuild', '--release'], {
-        cwd: resolve(rootDir, 'node_modules', moduleName),
+        cwd: moduleCwd,
         env,
         stdio: 'inherit',
       })
-      const sourceRelease = resolve(rootDir, 'node_modules', moduleName, 'build', 'Release')
-      const destinationRelease = resolve(appRoot, 'node_modules', moduleName, 'build', 'Release')
-      nativeCopies.push({ sourceRelease, destinationRelease })
     }
     await Promise.all(
-      nativeCopies.map(async ({ sourceRelease, destinationRelease }) => {
+      rebuildTargets.map(async ({ sourceRelease, destinationRelease }) => {
         await rm(destinationRelease, { recursive: true, force: true })
         await cp(sourceRelease, destinationRelease, { recursive: true })
       }),
     )
 
-    if (process.platform !== 'win32') {
-      await chmod(
-        resolve(appRoot, 'node_modules', 'node-pty', 'build', 'Release', 'spawn-helper'),
-        0o755,
-      )
-    }
+    await Promise.all(resolveOptionalNativeExecutables({ appRoot }).map(path => chmod(path, 0o755)))
   } finally {
     const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
     runChecked(pnpmCommand, ['exec', 'electron-builder', 'install-app-deps'], {
@@ -229,9 +234,13 @@ async function rebuildAndVerifyNativeModules({ appRoot, nodeExecutable, runtime 
     'database.close()',
     "const pty=requireFromApp('node-pty')",
     "if(typeof pty.spawn!=='function')throw new Error('node-pty did not expose spawn')",
+    "if(process.versions.electron)throw new Error('bundled runtime is Electron, not pure Node')",
     "process.stdout.write('native modules loaded with Node ABI '+process.versions.modules+'\\n')",
   ].join(';')
-  runChecked(nodeExecutable, ['-e', verifyScript], { cwd: appRoot, env, stdio: 'inherit' })
+  // Verify with the Node that actually ships in the bundle. Verifying with the build host's
+  // Node would pass even when the copied runtime is unusable (for example a dynamically linked
+  // Homebrew build whose libnode is left behind), which is exactly what users would hit first.
+  runChecked(bundledNodeExecutable, ['-e', verifyScript], { cwd: appRoot, env, stdio: 'inherit' })
 }
 
 function quotePowerShellLiteral(value) {
@@ -281,6 +290,7 @@ loadAsar().extractAll(runtimeSource.appAsarPath, appRoot)
 await rebuildAndVerifyNativeModules({
   appRoot,
   nodeExecutable,
+  bundledNodeExecutable: resolve(bundleRoot, relativePaths.nodeRelativePath),
   runtime: nodeRuntime,
 })
 await writeFile(
