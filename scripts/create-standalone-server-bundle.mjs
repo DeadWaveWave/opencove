@@ -5,6 +5,7 @@ import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { createTarArchive } from './lib/standalone-bundle-archive.mjs'
+import { resolveNativeModuleRebuildCommand } from './lib/standalone-glibc-floor.mjs'
 import {
   STANDALONE_NATIVE_MODULE_NAMES,
   resolveNativeModuleRebuildTargets,
@@ -200,10 +201,29 @@ async function rebuildAndVerifyNativeModules({
     moduleNames: STANDALONE_NATIVE_MODULE_NAMES,
   })
 
+  // On Linux the natives must be compiled against an old glibc, otherwise they only load on
+  // distributions at least as new as the build runner. Nightly run 32229590172 failed exactly
+  // this way: built on ubuntu-24.04, unusable in debian:bookworm-slim.
+  const containerImage = process.env.OPENCOVE_NATIVE_BUILD_IMAGE?.trim() || undefined
+  const hostUser =
+    containerImage && process.platform === 'linux'
+      ? `${process.getuid?.()}:${process.getgid?.()}`
+      : undefined
+
   try {
     for (const { cwd: moduleCwd } of rebuildTargets) {
-      runChecked(nodeExecutable, [nodeGypScript, 'rebuild', '--release'], {
-        cwd: moduleCwd,
+      // Inside the container the bundled Node runs node-gyp, so the module ABI matches the
+      // runtime we ship by construction instead of by a separate npm_config_target claim.
+      const rebuild = resolveNativeModuleRebuildCommand({
+        nodeExecutable: containerImage ? bundledNodeExecutable : nodeExecutable,
+        nodeGypScript,
+        moduleCwd,
+        rootDir,
+        containerImage,
+        hostUser,
+      })
+      runChecked(rebuild.command, rebuild.args, {
+        cwd: rebuild.cwd,
         env,
         stdio: 'inherit',
       })
@@ -241,6 +261,16 @@ async function rebuildAndVerifyNativeModules({
   // Node would pass even when the copied runtime is unusable (for example a dynamically linked
   // Homebrew build whose libnode is left behind), which is exactly what users would hit first.
   runChecked(bundledNodeExecutable, ['-e', verifyScript], { cwd: appRoot, env, stdio: 'inherit' })
+
+  // Reading the produced ELF files is what actually proves the floor holds; it does not depend on
+  // trusting that the container was configured correctly.
+  if (process.platform === 'linux') {
+    runChecked(nodeExecutable, [resolve(rootDir, 'scripts/check-standalone-glibc-floor.mjs'), appRoot], {
+      cwd: rootDir,
+      env: process.env,
+      stdio: 'inherit',
+    })
+  }
 }
 
 function quotePowerShellLiteral(value) {

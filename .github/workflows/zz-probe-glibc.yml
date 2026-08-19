@@ -1,0 +1,137 @@
+name: zz-probe-glibc
+# TEMPORARY probe. Verifies only the old-glibc container rebuild + symbol floor check,
+# so the container path can be iterated in ~3 minutes instead of a ~20 minute nightly.
+# Deleted before merge.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Show host toolchain facts
+        run: |
+          ldd --version | head -1
+          readelf --version | head -1
+          docker --version
+
+      - name: Fetch the same official Node we bundle
+        run: |
+          set -euxo pipefail
+          NODE_VERSION="$(node -p "require('./package.json').devDependencies.electron ? '22.23.2' : '22.23.2'")"
+          curl -fsSL -o /tmp/node.tar.gz "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz"
+          mkdir -p /tmp/bundled && tar xzf /tmp/node.tar.gz -C /tmp/bundled --strip-components=1
+          /tmp/bundled/bin/node -v
+
+      - name: Probe - can the bundled Node even run inside the old-glibc image?
+        run: |
+          set -euxo pipefail
+          docker run --rm \
+            --volume /tmp/bundled:/tmp/bundled \
+            quay.io/pypa/manylinux_2_28_x86_64 \
+            /tmp/bundled/bin/node -e "console.log('node runs on almalinux8:', process.version)"
+
+      - name: Probe - toolchain inside the image
+        run: |
+          set -euxo pipefail
+          docker run --rm quay.io/pypa/manylinux_2_28_x86_64 sh -lc '
+            gcc --version | head -1
+            g++ --version | head -1
+            make --version | head -1
+            python3 --version
+            echo "--- C++20 check ---"
+            printf "#include <version>\n#include <concepts>\nint main(){return 0;}\n" > /tmp/t.cpp
+            g++ -std=c++20 /tmp/t.cpp -o /tmp/t && echo "C++20 OK"
+          '
+
+      - name: Probe - real container rebuild through the bundle script path
+        env:
+          OPENCOVE_NATIVE_BUILD_IMAGE: quay.io/pypa/manylinux_2_28_x86_64
+        run: |
+          set -euxo pipefail
+          node - <<'EOF'
+          import { createRequire } from 'node:module'
+          import { execFileSync } from 'node:child_process'
+          import { resolve } from 'node:path'
+          import {
+            resolveNativeModuleRebuildCommand,
+          } from './scripts/lib/standalone-glibc-floor.mjs'
+          import {
+            resolveNativeModuleRebuildTargets,
+            STANDALONE_NATIVE_MODULE_NAMES,
+          } from './scripts/lib/standalone-native-modules.mjs'
+
+          const rootDir = process.cwd()
+          const require = createRequire(resolve(rootDir, 'package.json'))
+          const electronBuilderRequire = createRequire(require.resolve('electron-builder/package.json'))
+          const nodeGypScript = electronBuilderRequire.resolve('node-gyp/bin/node-gyp.js')
+
+          const targets = resolveNativeModuleRebuildTargets({
+            rootDir,
+            appRoot: resolve(rootDir, 'dist/probe-app'),
+            moduleNames: STANDALONE_NATIVE_MODULE_NAMES,
+          })
+
+          for (const { moduleName, cwd } of targets) {
+            const command = resolveNativeModuleRebuildCommand({
+              nodeExecutable: '/tmp/bundled/bin/node',
+              nodeGypScript,
+              moduleCwd: cwd,
+              rootDir,
+              containerImage: process.env.OPENCOVE_NATIVE_BUILD_IMAGE,
+              hostUser: `${process.getuid()}:${process.getgid()}`,
+            })
+            const args = [...command.args]
+            const imageIndex = args.indexOf(process.env.OPENCOVE_NATIVE_BUILD_IMAGE)
+            args.splice(imageIndex, 0, '--volume', '/tmp/bundled:/tmp/bundled')
+            console.log(`\n=== ${moduleName} ===`)
+            execFileSync(command.command, args, { cwd: command.cwd, stdio: 'inherit' })
+          }
+          EOF
+
+      - name: Probe - symbol floor of what the container produced
+        run: |
+          set -euxo pipefail
+          for f in node_modules/better-sqlite3/build/Release/better_sqlite3.node \
+                   node_modules/node-pty/build/Release/pty.node; do
+            real="$(node -e "console.log(require('node:fs').realpathSync('$f'))")"
+            echo "=== $real ==="
+            readelf --version-info "$real" | grep -oE '(GLIBC|GLIBCXX)_[0-9.]+' | sort -u -V | tail -5
+          done
+
+      - name: Probe - floor check script verdict
+        run: |
+          set -euxo pipefail
+          mkdir -p dist/probe-bundle/node_modules/better-sqlite3/build/Release
+          mkdir -p dist/probe-bundle/node_modules/node-pty/build/Release
+          cp "$(node -e "console.log(require('node:fs').realpathSync('node_modules/better-sqlite3/build/Release/better_sqlite3.node'))")" \
+            dist/probe-bundle/node_modules/better-sqlite3/build/Release/
+          cp "$(node -e "console.log(require('node:fs').realpathSync('node_modules/node-pty/build/Release/pty.node'))")" \
+            dist/probe-bundle/node_modules/node-pty/build/Release/
+          node scripts/check-standalone-glibc-floor.mjs dist/probe-bundle
+
+      - name: Probe - do they actually load in bookworm?
+        run: |
+          set -euxo pipefail
+          docker run --rm \
+            --volume "$PWD:/workspace" --volume /tmp/bundled:/tmp/bundled \
+            --workdir /workspace debian:bookworm-slim \
+            /tmp/bundled/bin/node -e "
+              const {createRequire}=require('node:module');
+              const r=createRequire('/workspace/package.json');
+              const D=r('better-sqlite3');
+              const db=new D(':memory:');
+              db.exec('create table t(a)'); db.prepare('insert into t values (42)').run();
+              console.log('sqlite roundtrip:', JSON.stringify(db.prepare('select a from t').get()));
+              db.close();
+              const pty=r('node-pty');
+              console.log('node-pty spawn:', typeof pty.spawn);
+            "
