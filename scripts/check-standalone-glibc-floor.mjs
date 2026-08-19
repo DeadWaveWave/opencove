@@ -18,6 +18,7 @@ import {
   formatFloorViolations,
   parseVersionedSymbolRequirements,
   resolveGlibcFloorArtifacts,
+  resolveReadelfInvocation,
   selectFloorViolations,
 } from './lib/standalone-glibc-floor.mjs'
 
@@ -50,7 +51,8 @@ for (const artifact of artifacts) {
   const name = relative(bundleRoot, artifact)
   let readelfOutput
   try {
-    readelfOutput = execFileSync('readelf', ['--version-info', artifact], { encoding: 'utf8' })
+    const invocation = resolveReadelfInvocation(artifact)
+    readelfOutput = execFileSync(invocation.command, invocation.args, invocation.options)
   } catch (error) {
     failures.push(`${name}: could not read ELF version info (${error.message})`)
     continue
@@ -80,6 +82,8 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-process.stdout.write(
-  `\nAll ${artifacts.length} native artifacts are within GLIBC_${STANDALONE_GLIBC_FLOOR.GLIBC} / GLIBCXX_${STANDALONE_GLIBC_FLOOR.GLIBCXX}.\n`,
-)
+const floorSummary = Object.entries(STANDALONE_GLIBC_FLOOR)
+  .map(([library, version]) => `${library}_${version}`)
+  .join(' / ')
+
+process.stdout.write(`\nAll ${artifacts.length} native artifacts are within ${floorSummary}.\n`)

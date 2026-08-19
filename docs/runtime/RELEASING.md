@@ -158,12 +158,24 @@ job 使用的 Node，并针对该 Node ABI 重新构建 `better-sqlite3` / `node
 
 #### Linux 符号基线（glibc / libstdc++）
 
-Standalone server 的 Linux 支持基线是 **`GLIBC_2.28` + `GLIBCXX_3.4.25`**，覆盖
-RHEL/Alma/Rocky 8+、Debian 10+、Ubuntu 18.04+、Amazon Linux 2023。
+Standalone server 的 Linux 支持基线覆盖 RHEL/Alma/Rocky 8+、Debian 10+、Ubuntu 18.04+、
+Amazon Linux 2023。四个符号族的上限如下，**均实测自 AlmaLinux 8（即 glibc 2.28 基线本身）
+所提供的版本**，而非手工挑选：
 
-这个数字不是随手选的：我们内置的官方 Node linux-x64 二进制本身最高只要求 `GLIBC_2.28`，
-所以它就是整个 bundle 的天然下限 —— 原生模块建得更低没有收益，建得更高则会成为唯一短板。
-它同时与 VS Code 公开的 Linux server 要求一致。
+| 符号族 | 上限 |
+| --- | --- |
+| `GLIBC` | `2.28` |
+| `GLIBCXX` | `3.4.25` |
+| `CXXABI` | `1.3.11` |
+| `GCC` | `7.0.0` |
+
+`GLIBC_2.28` 同时是我们内置的官方 Node linux-x64 二进制自身的最高要求，所以它是整个 bundle 的
+天然下限 —— 原生模块建得更低没有收益，建得更高则会成为唯一短板。`GLIBCXX_3.4.25` 则独立复现了
+VS Code 公开的 Linux server 要求，说明这条基线是业界通行值而非自创。
+
+注意必须**四族都检查**：Node 二进制除 `GLIBC`/`GLIBCXX` 外还要求 `CXXABI_1.3.9` 与 `GCC_3.4`。
+只匹配前两族会让后两族被静默忽略。检查器对**未知符号族一律报错**（fail-closed），因此新增依赖
+不会悄悄溜过去。
 
 因此 Linux 的原生模块**必须在老 glibc 容器内编译**，由 release workflow 的
 `OPENCOVE_NATIVE_BUILD_IMAGE` 指定（`quay.io/pypa/manylinux_2_28_x86_64`：glibc 2.28 基底 +
