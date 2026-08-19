@@ -267,7 +267,11 @@ async function rebuildAndVerifyNativeModules({
   if (process.platform === 'linux') {
     runChecked(
       nodeExecutable,
-      [resolve(rootDir, 'scripts/check-standalone-glibc-floor.mjs'), appRoot],
+      [
+        resolve(rootDir, 'scripts/check-standalone-glibc-floor.mjs'),
+        appRoot,
+        bundledNodeExecutable,
+      ],
       {
         cwd: rootDir,
         env: process.env,

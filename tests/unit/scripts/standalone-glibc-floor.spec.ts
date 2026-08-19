@@ -4,6 +4,7 @@ import {
   STANDALONE_GLIBC_FLOOR,
   formatFloorViolations,
   parseVersionedSymbolRequirements,
+  resolveGlibcFloorArtifacts,
   resolveNativeModuleRebuildCommand,
   selectFloorViolations,
 } from '../../../scripts/lib/standalone-glibc-floor.mjs'
@@ -96,6 +97,42 @@ describe('standalone glibc floor', () => {
     expect(message).toContain('better_sqlite3.node')
     expect(message).toContain('GLIBC_2.38')
     expect(message).toContain('2.28')
+  })
+})
+
+describe('glibc floor artifact scope', () => {
+  const scope = {
+    appRoot: '/bundle/app',
+    bundledNodeExecutable: '/bundle/runtime/node/bin/node',
+  }
+
+  it('checks the natives we rebuild and the Node that must load them', () => {
+    expect(resolveGlibcFloorArtifacts(scope)).toEqual([
+      '/bundle/runtime/node/bin/node',
+      '/bundle/app/node_modules/better-sqlite3/build/Release/better_sqlite3.node',
+      // node-pty's binary name does not match its package name.
+      '/bundle/app/node_modules/node-pty/build/Release/pty.node',
+    ])
+  })
+
+  it('excludes artifacts a glibc floor cannot describe', () => {
+    const artifacts = resolveGlibcFloorArtifacts(scope)
+
+    // These all ship inside a Linux bundle and are Mach-O / PE / musl-linked, so `readelf` reports
+    // "not an ELF file" for them. Nightly run 32237855660 failed on exactly this set. Including
+    // them would force the gate to tolerate unreadable files, which would then let a genuinely
+    // unreadable glibc artifact pass as clean.
+    for (const excluded of [
+      'prebuilds/darwin-arm64',
+      'prebuilds/win32-x64',
+      'linux-x64-musl',
+      // Intermediate link output, not what gets loaded.
+      'obj.target',
+      // better-sqlite3's optional test fixture, never loaded by the server.
+      'test_extension',
+    ]) {
+      expect(artifacts.some(artifact => artifact.includes(excluded))).toBe(false)
+    }
   })
 })
 
