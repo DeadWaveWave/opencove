@@ -3,7 +3,8 @@ name: zz-probe-glibc
 # so the container path can be iterated in ~3 minutes instead of a ~20 minute nightly.
 # Deleted before merge.
 on:
-  workflow_dispatch:
+  push:
+    branches: [DeadWaveWave/lower-standalone-glibc-floor]
 
 jobs:
   probe:
