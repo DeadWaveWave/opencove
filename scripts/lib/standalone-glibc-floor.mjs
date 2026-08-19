@@ -1,4 +1,6 @@
-import { dirname } from 'node:path'
+import { dirname, resolve } from 'node:path'
+
+import { STANDALONE_NATIVE_MODULE_NAMES } from './standalone-native-modules.mjs'
 
 /**
  * The versioned-symbol floor for everything we ship in the standalone server bundle.
@@ -14,6 +16,15 @@ import { dirname } from 'node:path'
  *
  * Coverage at this floor: RHEL/Alma/Rocky 8+, Debian 10+, Ubuntu 18.04+, Amazon Linux 2023.
  */
+/**
+ * The binary each native module actually produces. The file name does not always match the
+ * package name (node-pty ships `pty.node`).
+ */
+const NATIVE_MODULE_BINARY_NAMES = {
+  'better-sqlite3': 'better_sqlite3.node',
+  'node-pty': 'pty.node',
+}
+
 export const STANDALONE_GLIBC_FLOOR = Object.freeze({ GLIBC: '2.28', GLIBCXX: '3.4.25' })
 
 const VERSION_NEED_PATTERN = /Name:\s+(GLIBC|GLIBCXX)_([0-9][0-9.]*)/g
@@ -181,4 +192,34 @@ export function resolveNativeModuleRebuildCommand({
   )
 
   return { command: 'docker', args, cwd: rootDir }
+}
+
+/**
+ * Lists the artifacts whose symbol floor actually matters for a Linux bundle: the native modules
+ * we rebuild ourselves, plus the Node binary that has to load them.
+ *
+ * Deliberately NOT "every .node under the bundle". A bundle also carries prebuilds for other
+ * platforms (`prebuilds/darwin-*`, `prebuilds/win32-*`) and musl variants of build-time tooling.
+ * Those are Mach-O, PE, or musl-linked, so a glibc floor is a category error for them and reading
+ * them yields "not an ELF file". Checking them would force the gate to tolerate unreadable files,
+ * which would in turn let a genuinely unreadable glibc artifact slip through as "clean".
+ *
+ * @param {{ appRoot: string, bundledNodeExecutable: string, moduleNames?: string[] }} options
+ * @returns {string[]} Absolute paths, in a stable order.
+ */
+export function resolveGlibcFloorArtifacts({
+  appRoot,
+  bundledNodeExecutable,
+  moduleNames = STANDALONE_NATIVE_MODULE_NAMES,
+}) {
+  const artifacts = [bundledNodeExecutable]
+
+  for (const moduleName of moduleNames) {
+    const releaseDir = resolve(appRoot, 'node_modules', moduleName, 'build', 'Release')
+    artifacts.push(
+      resolve(releaseDir, NATIVE_MODULE_BINARY_NAMES[moduleName] ?? `${moduleName}.node`),
+    )
+  }
+
+  return artifacts
 }
