@@ -119,14 +119,17 @@ function Test-StandaloneLauncher([string]$Path) {
     return $false
   }
 
-  $electronBin = Get-LauncherMetadataValue $Path 'OPENCOVE_ELECTRON_BIN'
-  if ([string]::IsNullOrWhiteSpace($electronBin)) {
+  $runtimeBin = Get-LauncherMetadataValue $Path 'OPENCOVE_NODE_BIN'
+  if ([string]::IsNullOrWhiteSpace($runtimeBin)) {
+    $runtimeBin = Get-LauncherMetadataValue $Path 'OPENCOVE_ELECTRON_BIN'
+  }
+  if ([string]::IsNullOrWhiteSpace($runtimeBin)) {
     return $false
   }
 
-  $normalizedElectronBin = Normalize-PathSegment $electronBin
+  $normalizedRuntimeBin = Normalize-PathSegment $runtimeBin
   $normalizedInstallRoot = Normalize-PathSegment $InstallRoot
-  return $normalizedElectronBin.StartsWith("$normalizedInstallRoot\", [StringComparison]::OrdinalIgnoreCase)
+  return $normalizedRuntimeBin.StartsWith("$normalizedInstallRoot\", [StringComparison]::OrdinalIgnoreCase)
 }
 
 function Remove-OpenCoveStandalone {
@@ -190,7 +193,7 @@ function Read-RuntimeManifest([string]$Path) {
     }
   }
 
-  if (!$values.ContainsKey('OPENCOVE_EXECUTABLE_RELATIVE_PATH') -or
+  if (!$values.ContainsKey('OPENCOVE_NODE_RELATIVE_PATH') -or
       !$values.ContainsKey('OPENCOVE_CLI_SCRIPT_RELATIVE_PATH')) {
     throw 'Standalone runtime manifest is incomplete.'
   }
@@ -206,35 +209,31 @@ function Escape-CmdValue([string]$Value) {
   return $Value.Replace('%', '%%')
 }
 
-function Write-Launcher([string]$ElectronBin, [string]$CliScript) {
-  $escapedElectronBin = Escape-CmdValue $ElectronBin
+function Write-Launcher([string]$NodeBin, [string]$CliScript) {
+  $escapedNodeBin = Escape-CmdValue $NodeBin
   $escapedCliScript = Escape-CmdValue $CliScript
   $launcher = @"
 @echo off
 rem $CliWrapperMarker
 rem OPENCOVE_INSTALL_OWNER=$CliWrapperOwnerStandalone
 rem OPENCOVE_WRAPPER_KIND=runtime
-rem OPENCOVE_ELECTRON_BIN=$escapedElectronBin
+rem OPENCOVE_NODE_BIN=$escapedNodeBin
 rem OPENCOVE_CLI_SCRIPT=$escapedCliScript
 
-set "ELECTRON_BIN=$escapedElectronBin"
+set "NODE_BIN=$escapedNodeBin"
 set "CLI_SCRIPT=$escapedCliScript"
 
-if not exist "%ELECTRON_BIN%" (
-  echo [opencove] OpenCove executable not found: %ELECTRON_BIN% 1>&2
+if not exist "%NODE_BIN%" (
+  echo [opencove] bundled Node runtime not found: %NODE_BIN% 1>&2
   exit /b 1
 )
 
-echo "%CLI_SCRIPT%" | findstr /i /c:".asar\" /c:".asar/" >nul
-if errorlevel 1 (
-  if not exist "%CLI_SCRIPT%" (
-    echo [opencove] CLI entry not found: %CLI_SCRIPT% 1>&2
-    exit /b 1
-  )
+if not exist "%CLI_SCRIPT%" (
+  echo [opencove] CLI entry not found: %CLI_SCRIPT% 1>&2
+  exit /b 1
 )
 
-set "ELECTRON_RUN_AS_NODE=1"
-"%ELECTRON_BIN%" "%CLI_SCRIPT%" %*
+"%NODE_BIN%" "%CLI_SCRIPT%" %*
 exit /b %ERRORLEVEL%
 "@
   Set-Content -LiteralPath $LauncherPath -Value $launcher -Encoding ASCII
@@ -287,10 +286,10 @@ try {
   }
 
   $manifest = Read-RuntimeManifest $RuntimeEnvPath
-  $electronBin = Join-BundlePath $BundleDir $manifest['OPENCOVE_EXECUTABLE_RELATIVE_PATH']
+  $nodeBin = Join-BundlePath $BundleDir $manifest['OPENCOVE_NODE_RELATIVE_PATH']
   $cliScript = Join-BundlePath $BundleDir $manifest['OPENCOVE_CLI_SCRIPT_RELATIVE_PATH']
 
-  Write-Launcher $electronBin $cliScript
+  Write-Launcher $nodeBin $cliScript
   Set-OpenCoveUserPath $BinDir 'add'
 
   Write-Output "Installed OpenCove CLI at $LauncherPath"

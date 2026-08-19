@@ -148,7 +148,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https:
 
 - stable 同时发布 `latest` 通用别名与 tag-pinned 脚本；nightly 只发布 tag-pinned 脚本。
 - `releases/latest/download/...` 只能表示 latest stable，不得在 nightly 文档中当作“当前 nightly”使用。
-- release workflow 会在上传前使用本地生成的 standalone asset 运行安装后 `opencove worker start --help` smoke。
+- release workflow 会在上传前使用本地生成的 standalone asset 运行安装 smoke。
+
+Standalone server 资产与 Desktop 资产是独立 runtime：bundle 提取应用代码、内置 release
+job 使用的 Node，并针对该 Node ABI 重新构建 `better-sqlite3` / `node-pty`。Linux release
+还必须在 `debian:bookworm-slim` 容器内真实启动 Worker，确认 CLI 与 Worker 的 executable
+都指向 bundle 内 Node，且 runtime 目录中不存在 Electron executable；宿主 runner 上的
+`--help` 不能替代这条 smoke。
 
 ### Stable 流程
 
