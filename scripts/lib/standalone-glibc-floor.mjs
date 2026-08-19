@@ -14,6 +14,14 @@ import { STANDALONE_NATIVE_MODULE_NAMES } from './standalone-native-modules.mjs'
  * needs 3.4.21, but a gcc-toolset build links the newer C++ runtime bits statically and still
  * leaves a 3.4.25-era dynamic dependency, so 3.4.25 is the honest number to promise.
  *
+ * Every number here is measured from what AlmaLinux 8 -- the glibc 2.28 baseline itself -- actually
+ * provides, rather than picked by hand:
+ *
+ *   glibc 2.28 | GLIBCXX_3.4.25 | CXXABI_1.3.11 | GCC_7.0.0
+ *
+ * The GLIBCXX value independently reproduces the number VS Code publishes for its Linux server,
+ * which is a good sign the baseline is the conventional one rather than something invented here.
+ *
  * Coverage at this floor: RHEL/Alma/Rocky 8+, Debian 10+, Ubuntu 18.04+, Amazon Linux 2023.
  */
 /**
@@ -25,9 +33,17 @@ const NATIVE_MODULE_BINARY_NAMES = {
   'node-pty': 'pty.node',
 }
 
-export const STANDALONE_GLIBC_FLOOR = Object.freeze({ GLIBC: '2.28', GLIBCXX: '3.4.25' })
+export const STANDALONE_GLIBC_FLOOR = Object.freeze({
+  GLIBC: '2.28',
+  GLIBCXX: '3.4.25',
+  CXXABI: '1.3.11',
+  GCC: '7.0.0',
+})
 
-const VERSION_NEED_PATTERN = /Name:\s+(GLIBC|GLIBCXX)_([0-9][0-9.]*)/g
+// Captures ANY versioned-symbol family, not a hardcoded list. Restricting this to GLIBC/GLIBCXX
+// silently dropped the CXXABI_* and GCC_* requirements the bundled Node also carries, which made
+// `selectFloorViolations`'s promise to report unknown families unreachable.
+const VERSION_NEED_PATTERN = /Name:\s+([A-Za-z][A-Za-z_]*)_([0-9][0-9.]*)/g
 
 /**
  * Extracts the versioned symbol requirements from `readelf --version-info` output.
@@ -222,4 +238,26 @@ export function resolveGlibcFloorArtifacts({
   }
 
   return artifacts
+}
+
+/**
+ * How readelf should be invoked to read one artifact's versioned symbol requirements.
+ *
+ * `--version-info` prints the whole `.gnu.version` table, which carries one entry per dynamic
+ * symbol, and `execFileSync` defaults to a 1 MB buffer.
+ *
+ * Measured on the Node 22.23.2 linux-x64 binary we bundle: `.gnu.version` is 180,328 bytes, i.e.
+ * 90,164 symbol entries and one printed line each, while `.gnu.version_r` -- the only part parsed
+ * here -- is just 768 bytes. So the default buffer overflows with `ENOBUFS` while reading data we
+ * do not even need. The buffer is sized well above that measurement instead of at a value that
+ * merely happens to fit today.
+ *
+ * stderr is kept separate so a readelf warning cannot end up parsed as if it were symbol data.
+ */
+export function resolveReadelfInvocation(artifact) {
+  return {
+    command: 'readelf',
+    args: ['--version-info', artifact],
+    options: { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] },
+  }
 }

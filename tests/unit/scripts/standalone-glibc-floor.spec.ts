@@ -6,6 +6,7 @@ import {
   parseVersionedSymbolRequirements,
   resolveGlibcFloorArtifacts,
   resolveNativeModuleRebuildCommand,
+  resolveReadelfInvocation,
   selectFloorViolations,
 } from '../../../scripts/lib/standalone-glibc-floor.mjs'
 
@@ -40,10 +41,48 @@ Version needs section '.gnu.version_r' contains 2 entries:
 `
 
 describe('standalone glibc floor', () => {
-  it('declares the floor the bundled Node itself imposes', () => {
-    // Official Node 22 linux-x64 requires at most GLIBC_2.28, so the natives must not exceed it.
-    // GLIBCXX_3.4.25 matches the documented VS Code Linux server requirement.
-    expect(STANDALONE_GLIBC_FLOOR).toEqual({ GLIBC: '2.28', GLIBCXX: '3.4.25' })
+  it('declares every symbol family the glibc 2.28 baseline provides', () => {
+    // Measured from AlmaLinux 8, the glibc 2.28 baseline itself. GLIBCXX_3.4.25 independently
+    // reproduces the number VS Code publishes for its Linux server.
+    expect(STANDALONE_GLIBC_FLOOR).toEqual({
+      GLIBC: '2.28',
+      GLIBCXX: '3.4.25',
+      CXXABI: '1.3.11',
+      GCC: '7.0.0',
+    })
+  })
+
+  it('covers the families the bundled Node actually requires', () => {
+    // Measured on the Node 22.23.2 linux-x64 binary: it needs CXXABI_1.3.9 and GCC_3.4 in addition
+    // to GLIBC/GLIBCXX. A floor missing those families would either reject the very runtime we
+    // ship, or -- with a narrower regex -- silently ignore those requirements altogether.
+    const nodeRequirements = [
+      { library: 'GLIBC', version: '2.28' },
+      { library: 'GLIBCXX', version: '3.4.21' },
+      { library: 'CXXABI', version: '1.3.9' },
+      { library: 'GCC', version: '3.4' },
+    ]
+
+    expect(selectFloorViolations(nodeRequirements)).toEqual([])
+  })
+
+  it('parses any versioned symbol family, not a hardcoded pair', () => {
+    const requirements = parseVersionedSymbolRequirements(
+      '  Name: CXXABI_1.3.9  Flags: none\n  Name: GCC_3.4  Flags: none\n',
+    )
+
+    expect(requirements).toEqual([
+      { library: 'CXXABI', version: '1.3.9' },
+      { library: 'GCC', version: '3.4' },
+    ])
+  })
+
+  it('flags a symbol family it has never been told about', () => {
+    // Fail closed on the unknown: a new versioned dependency must not slip in unnoticed just
+    // because nobody added it to the floor table.
+    expect(selectFloorViolations([{ library: 'SOMETHINGNEW', version: '9.9' }])).toEqual([
+      { library: 'SOMETHINGNEW', version: '9.9' },
+    ])
   })
 
   it('parses versioned symbol requirements from readelf output', () => {
@@ -133,6 +172,27 @@ describe('glibc floor artifact scope', () => {
     ]) {
       expect(artifacts.some(artifact => artifact.includes(excluded))).toBe(false)
     }
+  })
+})
+
+describe('readelf invocation', () => {
+  it('sizes the output buffer for the largest artifact we ship', () => {
+    // `--version-info` prints one entry per dynamic symbol. The bundled Node binary is ~125 MB, so
+    // the default 1 MB buffer overflows and execFileSync fails with ENOBUFS -- which is how nightly
+    // run 32243087132 failed even though both native modules were already within the floor.
+    const invocation = resolveReadelfInvocation('/bundle/runtime/node/bin/node')
+
+    expect(invocation.command).toBe('readelf')
+    expect(invocation.args).toEqual(['--version-info', '/bundle/runtime/node/bin/node'])
+    expect(invocation.options.maxBuffer).toBeGreaterThan(64 * 1024 * 1024)
+  })
+
+  it('keeps stderr out of the parsed output', () => {
+    // Parsed text must be symbol data only; a readelf warning merged into stdout could otherwise
+    // be read as if it were symbol information.
+    const invocation = resolveReadelfInvocation('/bundle/x.node')
+
+    expect(invocation.options.stdio).toEqual(['ignore', 'pipe', 'pipe'])
   })
 })
 
