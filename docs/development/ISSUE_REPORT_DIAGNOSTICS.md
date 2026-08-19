@@ -28,6 +28,7 @@ bundle, not as a long free-form string.
 | --- | --- | --- |
 | User intent | Renderer issue report dialog | Issue kind, summary, details, local path opt-in. |
 | Diagnostic collection | Main issue report infrastructure | Reads logs, app state, worker state, process snapshots. |
+| UI diagnostic breadcrumbs | Main in-memory ring buffer | Renderer supplies validated geometry observations; Main owns the bounded 200-entry history. |
 | Section schema and report formatting | Issue report application layer | Defines section shape, budgets, markdown output, GitHub output. |
 | Sanitization | Issue report application layer | Final mandatory pass before writing files, copying, or opening GitHub. |
 | Report file storage | Main issue report infrastructure | Writes under app-owned `issue-reports/`. |
@@ -65,7 +66,15 @@ The standard bundle should include:
   provider availability, executable override presence without executable paths.
 - `process_snapshot`: process tree status, process summary, key process rows,
   and collector notes.
-- `log_bundle`: recent tails of runtime, terminal, and PTY host logs.
+- `ui_geometry`: BrowserWindow/content bounds, page zoom, renderer viewport,
+  device pixel ratio, canvas viewport, and up to 100 visible node rectangles.
+- `diagnostic_breadcrumbs`: the most recent 200 critical UI observations,
+  including window/canvas geometry, canvas viewport changes, and terminal
+  init/resize/hydration. This buffer is always on, in memory only, and drops
+  the oldest entry at capacity.
+- `log_bundle`: event-type-prioritized samples of the bounded runtime log and
+  PTY host log. Opt-in verbose terminal files are not advertised as a standard
+  user diagnostic source.
 - `diagnostics_manifest`: section availability, truncation, byte counts,
   and collection errors.
 
@@ -81,6 +90,9 @@ The standard bundle should include:
    included bytes, and truncation status.
 5. GitHub issue body must include a usable diagnostic summary and log
    excerpts. It must not only ask the reporter to paste a local file.
+6. Critical UI breadcrumbs must not depend on diagnostic environment flags.
+   Collection failure must be inert, and always-on collection must not write
+   files or grow beyond its fixed capacity.
 
 ## Sanitization Policy
 
@@ -116,7 +128,10 @@ The report has two budget tiers:
   asking for another reproduction.
 
 Each log excerpt must record the original byte count, included byte count,
-and whether the content is a tail excerpt.
+and sampling strategy. Runtime diagnostics rotate at 512 KiB with one backup;
+report generation reserves samples for distinct `source:event` types before
+filling the remaining excerpt budget from recent entries, rather than taking
+only a raw file tail.
 
 Budget changes are allowed, but must update tests that assert truncation and
 must preserve the invariants above.

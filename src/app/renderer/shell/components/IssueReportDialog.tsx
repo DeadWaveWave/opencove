@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Check, Copy, ExternalLink, FolderOpen, LoaderCircle } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { IssueReportKind, PrepareIssueReportResult } from '@shared/contracts/dto'
+import { captureIssueReportUiGeometry } from '@contexts/issueReport/presentation/renderer/uiGeometryDiagnostics'
 
 type IssueReportStatus = 'idle' | 'generating' | 'ready' | 'copied' | 'error'
 
@@ -99,6 +100,7 @@ export function IssueReportDialog({
           activeWorkspaceName,
           activeWorkspacePath,
         },
+        uiGeometry: captureIssueReportUiGeometry(),
       })
       setReport(nextReport)
       setStatus('ready')

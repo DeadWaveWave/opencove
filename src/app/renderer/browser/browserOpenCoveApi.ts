@@ -109,6 +109,7 @@ export function installBrowserOpenCoveApi(): void {
     },
     debug: {
       logTerminalDiagnostics: () => undefined,
+      recordUiDiagnosticBreadcrumb: () => undefined,
       logRuntimeDiagnostics: () => undefined,
     },
     performanceDiagnostics: {

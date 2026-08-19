@@ -1,12 +1,47 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   captureTerminalDiagnosticsSnapshot,
   captureTerminalInteractionDetails,
   captureTerminalLayoutDiagnostics,
   resolveTerminalBufferKind,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/diagnostics'
+import { registerTerminalDiagnostics } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/registerDiagnostics'
 
 describe('terminal diagnostics helpers', () => {
+  it('emits resize breadcrumbs when verbose terminal diagnostics are disabled', () => {
+    const emit = vi.fn()
+    let onResize: ((size: { cols: number; rows: number }) => void) | null = null
+    const diagnostics = registerTerminalDiagnostics({
+      enabled: false,
+      emit,
+      nodeId: 'node-1',
+      sessionId: 'session-1',
+      nodeKind: 'terminal',
+      title: 'Terminal',
+      terminal: {
+        cols: 80,
+        rows: 24,
+        buffer: { active: { baseY: 0, viewportY: 0, length: 24 } },
+        onResize: listener => {
+          onResize = listener
+          return { dispose: () => undefined }
+        },
+      } as never,
+      container: null,
+      rendererKind: 'dom',
+      terminalThemeMode: 'dark',
+      windowsPty: null,
+    })
+
+    emit.mockClear()
+    expect(onResize).not.toBeNull()
+    ;(onResize as (size: { cols: number; rows: number }) => void)({ cols: 100, rows: 24 })
+
+    expect(emit).toHaveBeenCalledOnce()
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ event: 'resize' }))
+    diagnostics.dispose()
+  })
+
   it('detects the alternate buffer when active matches alternate', () => {
     const normal = { baseY: 12, viewportY: 8, length: 120 }
     const alternate = { baseY: 0, viewportY: 0, length: 24 }

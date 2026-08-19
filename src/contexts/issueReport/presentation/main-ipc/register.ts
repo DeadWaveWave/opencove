@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import type { IpcRegistrationDisposable } from '@app/main/ipc/types'
 import { registerHandledIpc } from '@app/main/ipc/handle'
 import { IPC_CHANNELS } from '@shared/contracts/ipc'
@@ -15,8 +15,23 @@ export function registerIssueReportIpcHandlers(
 ): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.issueReportPrepare,
-    async (_event, payload): Promise<PrepareIssueReportResult> =>
-      await service.prepare(normalizePrepareIssueReportPayload(payload)),
+    async (event, payload): Promise<PrepareIssueReportResult> => {
+      const input = normalizePrepareIssueReportPayload(payload)
+      const ownerWindow =
+        typeof BrowserWindow !== 'undefined' && typeof BrowserWindow.fromWebContents === 'function'
+          ? BrowserWindow.fromWebContents(event.sender)
+          : null
+      if (input.uiGeometry && ownerWindow) {
+        input.uiGeometry.browserWindow = {
+          bounds: ownerWindow.getBounds(),
+          contentBounds: ownerWindow.getContentBounds(),
+          zoomFactor: event.sender.getZoomFactor(),
+          maximized: ownerWindow.isMaximized(),
+          fullscreen: ownerWindow.isFullScreen(),
+        }
+      }
+      return await service.prepare(input)
+    },
     { defaultErrorCode: 'issue_report.prepare_failed' },
   )
 

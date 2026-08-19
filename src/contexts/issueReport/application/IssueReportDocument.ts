@@ -25,6 +25,7 @@ export interface IssueReportLogExcerpt {
   omittedBytes: number
   truncated: boolean
   tail: boolean
+  sampling?: 'full' | 'tail' | 'event-type-priority'
   error?: string | null
 }
 

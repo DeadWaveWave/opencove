@@ -1,6 +1,4 @@
 import { app } from 'electron'
-import { open } from 'node:fs/promises'
-import { resolve } from 'node:path'
 import type { AppUpdateState, PrepareIssueReportInput } from '@shared/contracts/dto'
 import type { PersistenceStore } from '@platform/persistence/sqlite/PersistenceStore'
 import { normalizePersistedAppState } from '@platform/persistence/sqlite/normalize'
@@ -14,28 +12,26 @@ import { listInstalledAgentProviders } from '@contexts/agent/infrastructure/cli/
 import type { ControlSurfaceRemoteEndpointResolver } from '@app/main/controlSurface/remote/controlSurfaceHttpClient'
 import { readHomeWorkerConfig } from '@app/main/worker/homeWorkerConfig'
 import { collectPerformanceDiagnosticsSnapshot } from '@app/main/diagnostics/performanceDiagnosticsCollector'
-import type {
-  IssueReportDiagnosticSection,
-  IssueReportLogExcerpt,
-} from '../../application/IssueReportDocument'
+import type { IssueReportDiagnosticSection } from '../../application/IssueReportDocument'
 import {
   createAgentStateSection,
   createAppRuntimeSection,
+  createDiagnosticBreadcrumbsSection,
   createLogSection,
   createProcessSnapshotSection,
   createReportMetadataSection,
   createUnavailableIssueReportSection,
   createUpdateStateSection,
+  createUiGeometrySection,
   createWorkerStateSection,
   createWorkspaceStateSection,
 } from '../../application/IssueReportSections'
-
-const LOG_TAIL_BYTES = 128 * 1024
-const LOG_FILE_NAMES = [
-  'runtime-diagnostics.log',
-  'terminal-diagnostics.log',
-  'pty-host.log',
-] as const
+import { getIssueReportBreadcrumbs } from '@app/main/diagnostics/issueReportBreadcrumbs'
+import {
+  collectIssueReportLogExcerpts,
+  ISSUE_REPORT_LOG_FILE_NAMES,
+  LOG_SAMPLE_BYTES,
+} from './issueReportLogCollector'
 
 function redactExecutablePathDiagnostics(diagnostics: readonly string[]): string[] {
   return diagnostics.map(diagnostic =>
@@ -54,6 +50,7 @@ export interface CollectIssueReportDiagnosticSectionsInput {
   persistedState: unknown | null
   getUpdateState: () => AppUpdateState
   workerEndpointResolver?: ControlSurfaceRemoteEndpointResolver | null
+  getBreadcrumbs?: () => unknown[]
 }
 
 export async function readIssueReportPersistedState(
@@ -62,66 +59,6 @@ export async function readIssueReportPersistedState(
   return await getPersistenceStore()
     .then(store => store.readAppState())
     .catch(() => null)
-}
-
-async function readLogTail(userDataPath: string, fileName: string): Promise<IssueReportLogExcerpt> {
-  const filePath = resolve(userDataPath, 'logs', fileName)
-  let file: Awaited<ReturnType<typeof open>> | null = null
-  try {
-    file = await open(filePath, 'r')
-    const stat = await file.stat()
-    if (stat.size === 0) {
-      return createLogExcerpt({ fileName, filePath, status: 'empty' })
-    }
-
-    const length = Math.min(stat.size, LOG_TAIL_BYTES)
-    const buffer = Buffer.alloc(length)
-    await file.read(buffer, 0, length, Math.max(0, stat.size - length))
-    return {
-      fileName,
-      path: filePath,
-      status: 'available',
-      content: buffer.toString('utf8'),
-      originalBytes: stat.size,
-      includedBytes: length,
-      omittedBytes: Math.max(0, stat.size - length),
-      truncated: stat.size > length,
-      tail: stat.size > length,
-    }
-  } catch (error) {
-    const code =
-      error && typeof error === 'object' && 'code' in error
-        ? String((error as { code?: unknown }).code)
-        : null
-    return createLogExcerpt({
-      fileName,
-      filePath,
-      status: code === 'ENOENT' ? 'missing' : 'read_failed',
-      error: code === 'ENOENT' ? null : error instanceof Error ? error.message : String(error),
-    })
-  } finally {
-    await file?.close().catch(() => undefined)
-  }
-}
-
-function createLogExcerpt(input: {
-  fileName: string
-  filePath: string
-  status: IssueReportLogExcerpt['status']
-  error?: string | null
-}): IssueReportLogExcerpt {
-  return {
-    fileName: input.fileName,
-    path: input.filePath,
-    status: input.status,
-    content: '',
-    originalBytes: input.status === 'empty' ? 0 : null,
-    includedBytes: 0,
-    omittedBytes: 0,
-    truncated: false,
-    tail: false,
-    ...(input.error ? { error: input.error } : {}),
-  }
 }
 
 async function collectAgentDiagnostics(persistedState: unknown | null) {
@@ -289,6 +226,7 @@ export async function collectIssueReportDiagnosticSections({
   persistedState,
   getUpdateState,
   workerEndpointResolver,
+  getBreadcrumbs = getIssueReportBreadcrumbs,
 }: CollectIssueReportDiagnosticSectionsInput): Promise<IssueReportDiagnosticSection[]> {
   const sections: IssueReportDiagnosticSection[] = []
 
@@ -297,8 +235,8 @@ export async function collectIssueReportDiagnosticSections({
       request: input,
       reportId,
       createdAt,
-      logTailBytes: LOG_TAIL_BYTES,
-      logFileNames: LOG_FILE_NAMES,
+      logSampleBytes: LOG_SAMPLE_BYTES,
+      logFileNames: ISSUE_REPORT_LOG_FILE_NAMES,
     }),
   )
 
@@ -306,15 +244,37 @@ export async function collectIssueReportDiagnosticSections({
   sections.push(createUpdateStateSection(getUpdateState()))
   sections.push(await collectWorkerSection(userDataPath, workerEndpointResolver))
   sections.push(createWorkspaceSection(persistedState))
+  sections.push(
+    input.uiGeometry
+      ? createUiGeometrySection(input.uiGeometry)
+      : createUnavailableIssueReportSection(
+          'ui_geometry',
+          'UI Geometry',
+          'Renderer geometry was unavailable.',
+          { github: 'excerpt' },
+        ),
+  )
+  sections.push(collectBreadcrumbSection(getBreadcrumbs))
   sections.push(await collectAgentSection(persistedState))
   sections.push(await collectProcessSection())
 
-  const logExcerpts = await Promise.all(
-    LOG_FILE_NAMES.map(fileName => readLogTail(userDataPath, fileName)),
-  )
+  const logExcerpts = await collectIssueReportLogExcerpts(userDataPath)
   sections.push(...logExcerpts.map(createLogSection))
 
   return sections
+}
+
+function collectBreadcrumbSection(getBreadcrumbs: () => unknown[]): IssueReportDiagnosticSection {
+  try {
+    return createDiagnosticBreadcrumbsSection(getBreadcrumbs())
+  } catch (error) {
+    return createUnavailableIssueReportSection(
+      'diagnostic_breadcrumbs',
+      'Diagnostic Breadcrumbs',
+      error,
+      { github: 'excerpt' },
+    )
+  }
 }
 
 function createAppRuntimeDiagnosticSection(): IssueReportDiagnosticSection {

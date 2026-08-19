@@ -7,11 +7,44 @@ import {
   truncateText,
 } from '../../../src/contexts/issueReport/application/IssueReportDocument'
 import {
+  createDiagnosticBreadcrumbsSection,
   createJsonIssueReportSection,
   createLogSection,
 } from '../../../src/contexts/issueReport/application/IssueReportSections'
 
 describe('issue report document', () => {
+  it('sanitizes always-on breadcrumbs in every generated report output', () => {
+    const localPath = '/Users/alice/private-project'
+    const document = buildIssueReportDocument({
+      reportId: 'report-1',
+      createdAt: '2026-05-07T00:00:00.000Z',
+      request: { kind: 'other', includeLocalPaths: false },
+      knownPathsToRedact: ['/Users/alice'],
+      sections: [
+        createDiagnosticBreadcrumbsSection([
+          {
+            ts: '2026-05-07T00:00:00.000Z',
+            source: 'renderer-ui',
+            event: 'window-resize',
+            details: {
+              token: 'github_pat_abcdefghijklmnopqrstuvwxyz',
+              localPath,
+              innerWidth: 1280,
+            },
+          },
+        ]),
+      ],
+    })
+
+    for (const output of [document.markdown, document.githubBody]) {
+      expect(output).toContain('window-resize')
+      expect(output).toContain('[redacted]')
+      expect(output).toContain('[local-path]')
+      expect(output).not.toContain('github_pat_abcdefghijklmnopqrstuvwxyz')
+      expect(output).not.toContain(localPath)
+    }
+  })
+
   it('redacts tokens, secrets, and known local paths', () => {
     const urlCredential = 'credential'
     const redacted = redactSensitiveText(

@@ -16,7 +16,10 @@ async function setupIpc() {
     }),
   }
 
-  vi.doMock('electron', () => ({ ipcMain }))
+  vi.doMock('electron', () => ({
+    BrowserWindow: { fromWebContents: vi.fn(() => null) },
+    ipcMain,
+  }))
 
   const service = {
     prepare: vi.fn(async payload => ({
@@ -52,14 +55,18 @@ describe('issue report IPC', () => {
     const { handlers, service, disposable } = await setupIpc()
 
     await expect(
-      invokeHandledIpc(handlers.get(IPC_CHANNELS.issueReportPrepare), null, {
-        title: '  Run Agent failed  ',
-        description: '  cannot launch  ',
-        includeLocalPaths: true,
-        context: {
-          activeWorkspaceName: '  OpenCove  ',
+      invokeHandledIpc(
+        handlers.get(IPC_CHANNELS.issueReportPrepare),
+        { sender: {} },
+        {
+          title: '  Run Agent failed  ',
+          description: '  cannot launch  ',
+          includeLocalPaths: true,
+          context: {
+            activeWorkspaceName: '  OpenCove  ',
+          },
         },
-      }),
+      ),
     ).resolves.toMatchObject({ reportId: 'report-1' })
 
     expect(service.prepare).toHaveBeenCalledWith({
@@ -67,6 +74,7 @@ describe('issue report IPC', () => {
       title: 'Run Agent failed',
       description: 'cannot launch',
       includeLocalPaths: true,
+      uiGeometry: null,
       context: {
         activeWorkspaceName: 'OpenCove',
         activeWorkspacePath: null,

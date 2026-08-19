@@ -86,6 +86,7 @@ import type {
   CopyEntryInput,
   RuntimeDiagnosticsLogInput,
   TerminalDiagnosticsLogInput,
+  UiDiagnosticBreadcrumbInput,
   CreateDirectoryInput,
   DeleteEntryInput,
   MoveEntryInput,
@@ -121,6 +122,9 @@ const opencoveApi = {
   debug: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput): void => {
       ipcRenderer.send(IPC_CHANNELS.terminalDiagnosticsLog, payload)
+    },
+    recordUiDiagnosticBreadcrumb: (payload: UiDiagnosticBreadcrumbInput): void => {
+      ipcRenderer.send(IPC_CHANNELS.uiDiagnosticBreadcrumb, payload)
     },
     logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput): void => {
       ipcRenderer.send(IPC_CHANNELS.runtimeDiagnosticsLog, payload)

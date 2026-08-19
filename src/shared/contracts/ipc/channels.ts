@@ -88,6 +88,7 @@ export const IPC_CHANNELS = {
   browserProfileShowDownload: 'browser-profile:show-download',
   browserProfileRespondPermission: 'browser-profile:respond-permission',
   terminalDiagnosticsLog: 'terminal:diagnostics-log',
+  uiDiagnosticBreadcrumb: 'ui:diagnostic-breadcrumb',
   runtimeDiagnosticsLog: 'runtime:diagnostics-log',
   performanceDiagnosticsSnapshot: 'performance-diagnostics:snapshot',
   ptySpawn: 'pty:spawn',

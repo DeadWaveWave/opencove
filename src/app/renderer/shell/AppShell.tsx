@@ -46,8 +46,10 @@ import { useCommandCenterShortcutHint } from './hooks/useCommandCenterShortcutHi
 import { useAppStore } from './store/useAppStore'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import { useTerminalDisplayReferenceAutoCapture } from '@contexts/settings/presentation/renderer/useTerminalDisplayReferenceAutoCapture'
+import { useIssueReportUiDiagnostics } from './hooks/useIssueReportUiDiagnostics'
 
 export default function App(): React.JSX.Element {
+  useIssueReportUiDiagnostics()
   const { t } = useTranslation()
   const rendererSnapshot = useRendererDomSampler()
   const frameSnapshot = useRendererFrameSampler()

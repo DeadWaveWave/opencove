@@ -68,6 +68,21 @@ describe('issue report diagnostics', () => {
       input: {
         kind: 'run_agent_failed',
         includeLocalPaths: true,
+        uiGeometry: {
+          window: {
+            innerWidth: 1280,
+            innerHeight: 720,
+            outerWidth: 1280,
+            outerHeight: 720,
+            devicePixelRatio: 2,
+            visualViewportScale: 1,
+          },
+          canvas: {
+            rect: { x: 0, y: 48, width: 1280, height: 672 },
+            viewport: { x: 10, y: 20, zoom: 0.8 },
+          },
+          nodes: [{ id: 'node-1', kind: 'terminal', x: 20, y: 80, width: 600, height: 400 }],
+        },
       },
       reportId: 'report-1',
       createdAt: '2026-05-07T00:00:00.000Z',
@@ -75,6 +90,14 @@ describe('issue report diagnostics', () => {
       persistedState: null,
       getUpdateState: () => ({ status: 'idle', checkedAt: null }),
       workerEndpointResolver: null,
+      getBreadcrumbs: () => [
+        {
+          ts: '2026-05-07T00:00:00.000Z',
+          source: 'renderer-ui',
+          event: 'window-resize',
+          details: { innerWidth: 1280 },
+        },
+      ],
     })
 
     const agentSection = sections.find(section => section.id === 'agent_state')
@@ -83,5 +106,38 @@ describe('issue report diagnostics', () => {
     expect(JSON.stringify(agentSection?.content)).not.toContain('C:\\Users\\alice')
     expect(JSON.stringify(agentSection?.content)).toContain('[configured override]')
     expect(JSON.stringify(agentSection?.content)).toContain('[local-executable-path]')
+
+    const metadata = sections.find(section => section.id === 'report_meta')
+    expect(JSON.stringify(metadata?.content)).not.toContain('terminal-diagnostics.log')
+    expect(sections.find(section => section.id === 'ui_geometry')?.content).toMatchObject({
+      window: { devicePixelRatio: 2 },
+      canvas: { viewport: { zoom: 0.8 } },
+      nodes: [{ id: 'node-1', width: 600, height: 400 }],
+    })
+    expect(
+      sections.find(section => section.id === 'diagnostic_breadcrumbs')?.content,
+    ).toMatchObject({
+      count: 1,
+      entries: [{ event: 'window-resize' }],
+    })
+
+    const failedBreadcrumbSections = await collectIssueReportDiagnosticSections({
+      input: { kind: 'other' },
+      reportId: 'report-2',
+      createdAt: '2026-05-07T00:00:01.000Z',
+      userDataPath: '/Users/alice/Library/Application Support/OpenCove',
+      persistedState: null,
+      getUpdateState: () => ({ status: 'idle', checkedAt: null }),
+      getBreadcrumbs: () => {
+        throw new Error('breadcrumb collector failed')
+      },
+    })
+    expect(
+      failedBreadcrumbSections.find(section => section.id === 'diagnostic_breadcrumbs'),
+    ).toMatchObject({
+      status: 'unavailable',
+      error: 'Error: breadcrumb collector failed',
+    })
+    expect(failedBreadcrumbSections.find(section => section.id === 'app_runtime')).toBeDefined()
   })
 })

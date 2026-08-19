@@ -1,9 +1,11 @@
 import type {
   AppUpdateState,
+  IssueReportUiGeometryInput,
   PerformanceDiagnosticsSnapshotResult,
   PrepareIssueReportInput,
 } from '@shared/contracts/dto'
 import type { IssueReportDiagnosticSection, IssueReportLogExcerpt } from './IssueReportDocument'
+import { ISSUE_REPORT_BREADCRUMB_CAPACITY } from '@shared/diagnostics/issueReportBreadcrumbPolicy'
 
 export function createJsonIssueReportSection(
   id: string,
@@ -53,7 +55,7 @@ export function createReportMetadataSection(input: {
   request: PrepareIssueReportInput
   reportId: string
   createdAt: string
-  logTailBytes: number
+  logSampleBytes: number
   logFileNames: readonly string[]
 }): IssueReportDiagnosticSection {
   return createJsonIssueReportSection(
@@ -63,7 +65,7 @@ export function createReportMetadataSection(input: {
       reportId: input.reportId,
       createdAt: input.createdAt,
       kind: input.request.kind,
-      fullReportLogTailBytes: input.logTailBytes,
+      fullReportLogSampleBytes: input.logSampleBytes,
       logFiles: input.logFileNames,
     },
     {
@@ -135,6 +137,39 @@ export function createWorkspaceStateSection(workspace: unknown): IssueReportDiag
       : 'Workspace state unavailable.',
     sensitivity: 'local-paths-optional',
   })
+}
+
+export function createUiGeometrySection(
+  geometry: IssueReportUiGeometryInput,
+): IssueReportDiagnosticSection {
+  return createJsonIssueReportSection('ui_geometry', 'UI Geometry', geometry, {
+    summary: `Window ${geometry.window.innerWidth ?? 'unknown'}x${
+      geometry.window.innerHeight ?? 'unknown'
+    }; DPR ${geometry.window.devicePixelRatio ?? 'unknown'}; canvas zoom ${
+      geometry.canvas.viewport?.zoom ?? 'unknown'
+    }.`,
+    github: 'excerpt',
+    sensitivity: 'redacted',
+  })
+}
+
+export function createDiagnosticBreadcrumbsSection(
+  breadcrumbs: unknown[],
+): IssueReportDiagnosticSection {
+  return createJsonIssueReportSection(
+    'diagnostic_breadcrumbs',
+    'Diagnostic Breadcrumbs',
+    {
+      capacity: ISSUE_REPORT_BREADCRUMB_CAPACITY,
+      count: breadcrumbs.length,
+      entries: breadcrumbs,
+    },
+    {
+      summary: `${breadcrumbs.length} recent UI diagnostic event(s).`,
+      github: 'excerpt',
+      sensitivity: 'redacted',
+    },
+  )
 }
 
 function isWorkspaceDiagnosticsSummary(
@@ -219,7 +254,7 @@ export function createLogSection(excerpt: IssueReportLogExcerpt): IssueReportDia
     contentKind: 'log',
     summary: `${excerpt.fileName}: ${excerpt.status}, ${excerpt.includedBytes}/${
       excerpt.originalBytes ?? 'unknown'
-    } bytes included${excerpt.truncated ? ', tail truncated' : ''}.`,
+    } bytes included${excerpt.truncated ? `, ${excerpt.sampling ?? 'tail'} sampled` : ''}.`,
     content: formatLogExcerpt(excerpt),
     error: excerpt.error ?? null,
     metadata: {
@@ -240,6 +275,7 @@ function formatLogExcerpt(excerpt: IssueReportLogExcerpt): string {
     `omittedBytes=${excerpt.omittedBytes}`,
     `truncated=${excerpt.truncated ? 'yes' : 'no'}`,
     `tail=${excerpt.tail ? 'yes' : 'no'}`,
+    `sampling=${excerpt.sampling ?? (excerpt.tail ? 'tail' : 'full')}`,
     `path=${excerpt.path ?? 'unknown'}`,
     excerpt.error ? `error=${excerpt.error}` : null,
   ]
