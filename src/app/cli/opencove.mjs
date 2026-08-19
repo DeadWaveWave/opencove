@@ -8,7 +8,11 @@ import { resolveConnectionInfo, resolveWorkerConnectionInfo } from './connection
 import { invokeAndPrint, invokeControlSurface } from './invoke.mjs'
 import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
-import { resolveCliRuntime, resolveElectronBinaryForWorkerStart } from './runtime.mjs'
+import {
+  createWorkerSpawnEnvironment,
+  resolveCliRuntime,
+  resolveWorkerRuntimeForStart,
+} from './runtime.mjs'
 import { tryHandleMultiEndpointCommands } from './commands/multiEndpoint.mjs'
 import { tryHandleNodeControlCommands } from './commands/nodeControl.mjs'
 import {
@@ -118,12 +122,11 @@ async function main() {
       workerArgs.push('--approve-root', root)
     }
 
-    const electronBinary = await resolveElectronBinaryForWorkerStart()
-
-    if (!electronBinary) {
-      process.stderr.write(
-        '[opencove] unable to resolve Electron runtime for starting the worker. Ensure dependencies are installed.\n',
-      )
+    let workerRuntime
+    try {
+      workerRuntime = await resolveWorkerRuntimeForStart({ cliRuntime: runtime })
+    } catch (error) {
+      process.stderr.write(`[opencove] ${toErrorMessage(error)}.\n`)
       process.exit(2)
     }
 
@@ -133,14 +136,11 @@ async function main() {
         process.env.CI?.toLowerCase() === 'true' ||
         (typeof process.getuid === 'function' && process.getuid() === 0))
 
-    const child = spawn(electronBinary, [workerPath, ...workerArgs], {
+    const child = spawn(workerRuntime.executablePath, [workerPath, ...workerArgs], {
       stdio: 'inherit',
-      env: {
-        ...process.env,
-        ELECTRON_RUN_AS_NODE: '1',
-        OPENCOVE_TRUST_PROCESS_ENV: '1',
-        ...(shouldDisableSandbox ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
-      },
+      env: createWorkerSpawnEnvironment(workerRuntime.kind, process.env, {
+        disableElectronSandbox: shouldDisableSandbox,
+      }),
       windowsHide: true,
     })
     child.on('exit', code => {

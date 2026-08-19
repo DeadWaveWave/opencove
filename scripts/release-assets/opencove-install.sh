@@ -103,8 +103,11 @@ is_standalone_launcher() {
     return 1
   fi
 
-  electron_bin="$(read_launcher_metadata "OPENCOVE_ELECTRON_BIN" || true)"
-  case "${electron_bin}" in
+  runtime_bin="$(read_launcher_metadata "OPENCOVE_NODE_BIN" || true)"
+  if [ -z "${runtime_bin}" ]; then
+    runtime_bin="$(read_launcher_metadata "OPENCOVE_ELECTRON_BIN" || true)"
+  fi
+  case "${runtime_bin}" in
     "${INSTALL_ROOT}"/*) return 0 ;;
     *) return 1 ;;
   esac
@@ -177,14 +180,14 @@ fi
 # shellcheck disable=SC1090
 . "${RUNTIME_ENV_PATH}"
 
-if [ -z "${OPENCOVE_EXECUTABLE_RELATIVE_PATH:-}" ] || [ -z "${OPENCOVE_CLI_SCRIPT_RELATIVE_PATH:-}" ]; then
+if [ -z "${OPENCOVE_NODE_RELATIVE_PATH:-}" ] || [ -z "${OPENCOVE_CLI_SCRIPT_RELATIVE_PATH:-}" ]; then
   printf "Standalone runtime manifest is incomplete.\n" >&2
   exit 1
 fi
 
 ln -sfn "${BUNDLE_DIR}" "${CURRENT_LINK}"
 
-ELECTRON_BIN="${CURRENT_LINK}/${OPENCOVE_EXECUTABLE_RELATIVE_PATH}"
+NODE_BIN="${CURRENT_LINK}/${OPENCOVE_NODE_RELATIVE_PATH}"
 CLI_SCRIPT="${CURRENT_LINK}/${OPENCOVE_CLI_SCRIPT_RELATIVE_PATH}"
 
 cat > "${LAUNCHER_PATH}" <<EOF
@@ -192,28 +195,23 @@ cat > "${LAUNCHER_PATH}" <<EOF
 # ${CLI_WRAPPER_MARKER}
 # OPENCOVE_INSTALL_OWNER=${CLI_WRAPPER_OWNER_STANDALONE}
 # OPENCOVE_WRAPPER_KIND=runtime
-# OPENCOVE_ELECTRON_BIN=${ELECTRON_BIN}
+# OPENCOVE_NODE_BIN=${NODE_BIN}
 # OPENCOVE_CLI_SCRIPT=${CLI_SCRIPT}
 
-ELECTRON_BIN=$(quote_sh "${ELECTRON_BIN}")
+NODE_BIN=$(quote_sh "${NODE_BIN}")
 CLI_SCRIPT=$(quote_sh "${CLI_SCRIPT}")
 
-if [ ! -x "\$ELECTRON_BIN" ]; then
-  echo "[opencove] OpenCove executable not found: \$ELECTRON_BIN" >&2
+if [ ! -x "\$NODE_BIN" ]; then
+  echo "[opencove] bundled Node runtime not found or not executable: \$NODE_BIN" >&2
   exit 1
 fi
 
-case "\$CLI_SCRIPT" in
-  *.asar/*) ;;
-  *)
-    if [ ! -f "\$CLI_SCRIPT" ]; then
-      echo "[opencove] CLI entry not found: \$CLI_SCRIPT" >&2
-      exit 1
-    fi
-    ;;
-esac
+if [ ! -f "\$CLI_SCRIPT" ]; then
+  echo "[opencove] CLI entry not found: \$CLI_SCRIPT" >&2
+  exit 1
+fi
 
-ELECTRON_RUN_AS_NODE=1 "\$ELECTRON_BIN" "\$CLI_SCRIPT" "\$@"
+exec "\$NODE_BIN" "\$CLI_SCRIPT" "\$@"
 EOF
 
 chmod +x "${LAUNCHER_PATH}"

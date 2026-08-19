@@ -20,6 +20,10 @@ OpenCove 目前支持两条正式的 CLI 安装链路：
 当前约束：
 
 - Desktop 安装与 standalone 安装最终都生成 runtime-backed launcher。
+- Desktop launcher 使用已安装的 Electron runtime；standalone launcher 只使用 bundle 内的纯
+  Node runtime，不得加载或回退到 Electron。
+- standalone bundle 内的 `better-sqlite3` 与 `node-pty` 必须按所附 Node runtime 的 module
+  ABI 单独构建，并在归档前由该 Node runtime 真实加载验证。
 - 打包态 launcher 必须指向发布 runtime 内的 CLI entrypoint，不能依赖 repo checkout 路径。
 - launcher 会记录安装 owner；两条安装链可以互相覆盖安装，但卸载时只移除自己拥有的 launcher。
 - standalone release 覆盖 macOS / Linux / Windows；Windows 资产格式为 `opencove-server-windows-<arch>.zip`。
@@ -112,6 +116,7 @@ OpenCove 的本地转译规则：
 3. Stop 先发送 `SIGTERM`，超时且用户显式 `--force` 时才允许升级为强制结束。
 4. Desktop 内置安装与 standalone 安装写出的 launcher 必须共享同一套 runtime 语义。
 5. 打包态 CLI/Worker 必须从发布 runtime 自洽启动，不依赖源码 checkout 或外部 Desktop 进程。
+6. standalone runtime 解析失败必须 fail-closed；不得静默改用 Electron 或宿主机 Node。
 
 ## 4. 命令设计规范
 

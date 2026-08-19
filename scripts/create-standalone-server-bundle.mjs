@@ -1,16 +1,13 @@
 #!/usr/bin/env node
 
-import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
-import { basename, resolve } from 'node:path'
+import { chmod, copyFile, cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { dirname, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import {
-  copyRuntimePreservingSymlinks,
-  createTarArchive,
-} from './lib/standalone-bundle-archive.mjs'
+import { createTarArchive } from './lib/standalone-bundle-archive.mjs'
 
 const rootDir = resolve(import.meta.dirname, '..')
 const distDir = resolve(rootDir, 'dist')
-const packageJsonPath = resolve(rootDir, 'package.json')
 
 function toReleasePlatform(platform) {
   if (platform === 'darwin') {
@@ -50,23 +47,6 @@ async function pathExists(pathname) {
   }
 }
 
-async function resolvePackagedAppRootName(resourcesDir) {
-  const [hasAppAsar, hasAppDir] = await Promise.all([
-    pathExists(resolve(resourcesDir, 'app.asar')),
-    pathExists(resolve(resourcesDir, 'app')),
-  ])
-
-  if (hasAppAsar) {
-    return 'app.asar'
-  }
-
-  if (hasAppDir) {
-    return 'app'
-  }
-
-  return null
-}
-
 async function resolveRuntimeSource(options) {
   const directories = await collectDirectories(distDir)
 
@@ -80,8 +60,8 @@ async function resolveRuntimeSource(options) {
     const resolvedCandidates = await Promise.all(
       appCandidates.map(async candidate => {
         const resourcesDir = resolve(candidate, 'Contents', 'Resources')
-        const appRootName = await resolvePackagedAppRootName(resourcesDir)
-        return appRootName ? { kind: 'macos-app', runtimePath: candidate, appRootName } : null
+        const appAsarPath = resolve(resourcesDir, 'app.asar')
+        return (await pathExists(appAsarPath)) ? { appAsarPath } : null
       }),
     )
     const matched = resolvedCandidates.find(Boolean)
@@ -95,16 +75,8 @@ async function resolveRuntimeSource(options) {
   if (options.platform === 'linux') {
     const resolvedCandidates = await Promise.all(
       directories.map(async directoryPath => {
-        const executablePath = resolve(directoryPath, options.executableName)
-        const resourcesDir = resolve(directoryPath, 'resources')
-        const [hasExecutable, appRootName] = await Promise.all([
-          pathExists(executablePath),
-          resolvePackagedAppRootName(resourcesDir),
-        ])
-
-        return hasExecutable && appRootName
-          ? { kind: 'linux-unpacked', runtimePath: directoryPath, appRootName }
-          : null
+        const appAsarPath = resolve(directoryPath, 'resources', 'app.asar')
+        return (await pathExists(appAsarPath)) ? { appAsarPath } : null
       }),
     )
     const matched = resolvedCandidates.find(Boolean)
@@ -118,16 +90,8 @@ async function resolveRuntimeSource(options) {
   if (options.platform === 'win32') {
     const resolvedCandidates = await Promise.all(
       directories.map(async directoryPath => {
-        const executablePath = resolve(directoryPath, `${options.executableName}.exe`)
-        const resourcesDir = resolve(directoryPath, 'resources')
-        const [hasExecutable, appRootName] = await Promise.all([
-          pathExists(executablePath),
-          resolvePackagedAppRootName(resourcesDir),
-        ])
-
-        return hasExecutable && appRootName
-          ? { kind: 'windows-unpacked', runtimePath: directoryPath, appRootName }
-          : null
+        const appAsarPath = resolve(directoryPath, 'resources', 'app.asar')
+        return (await pathExists(appAsarPath)) ? { appAsarPath } : null
       }),
     )
     const matched = resolvedCandidates.find(Boolean)
@@ -141,24 +105,133 @@ async function resolveRuntimeSource(options) {
   throw new Error(`Unsupported standalone platform: ${options.platform}`)
 }
 
-function resolveRelativePaths(input) {
-  const runtimeDirName = basename(input.runtimePath)
-  const appRootName = input.appRootName
-
-  if (input.platform === 'darwin') {
-    return {
-      executableRelativePath: `runtime/${runtimeDirName}/Contents/MacOS/${input.executableName}`,
-      cliScriptRelativePath: `runtime/${runtimeDirName}/Contents/Resources/${appRootName}/src/app/cli/opencove.mjs`,
-    }
-  }
-
-  const executableName =
-    input.platform === 'win32' ? `${input.executableName}.exe` : input.executableName
-
+function resolveRelativePaths(platform) {
   return {
-    executableRelativePath: `runtime/${runtimeDirName}/${executableName}`,
-    cliScriptRelativePath: `runtime/${runtimeDirName}/resources/${appRootName}/src/app/cli/opencove.mjs`,
+    nodeRelativePath: platform === 'win32' ? 'runtime/node/node.exe' : 'runtime/node/bin/node',
+    cliScriptRelativePath: 'app/src/app/cli/opencove.mjs',
   }
+}
+
+function loadAsar() {
+  const require = createRequire(import.meta.url)
+  const electronBuilderRequire = createRequire(require.resolve('electron-builder/package.json'))
+  return electronBuilderRequire('@electron/asar')
+}
+
+function runChecked(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    encoding: 'utf8',
+    ...options,
+  })
+  if (result.error) {
+    throw result.error
+  }
+  if (result.status !== 0) {
+    const detail = result.stderr?.trim() || result.stdout?.trim() || `${command} failed`
+    throw new Error(detail)
+  }
+  return result.stdout?.trim() ?? ''
+}
+
+function inspectNodeRuntime(nodeExecutable) {
+  const output = runChecked(nodeExecutable, [
+    '-p',
+    'JSON.stringify({node:process.versions.node,modules:process.versions.modules,electron:process.versions.electron||null})',
+  ])
+  const runtime = JSON.parse(output)
+  if (!runtime.node || !runtime.modules || runtime.electron) {
+    throw new Error(`Standalone bundles require a pure Node executable: ${nodeExecutable}`)
+  }
+  return runtime
+}
+
+async function copyNodeRuntime(nodeExecutable, runtimeRoot, platform) {
+  const destination = resolve(
+    runtimeRoot,
+    'node',
+    ...(platform === 'win32' ? ['node.exe'] : ['bin', 'node']),
+  )
+  await mkdir(dirname(destination), { recursive: true })
+  await copyFile(nodeExecutable, destination)
+  if (platform !== 'win32') {
+    await chmod(destination, 0o755)
+  }
+
+  const licenseCandidates =
+    platform === 'win32'
+      ? [resolve(dirname(nodeExecutable), 'LICENSE')]
+      : [
+          resolve(dirname(nodeExecutable), '..', 'LICENSE'),
+          resolve(dirname(nodeExecutable), '..', 'share', 'doc', 'node', 'LICENSE'),
+        ]
+  const licensePath = (
+    await Promise.all(
+      licenseCandidates.map(async candidate => ((await pathExists(candidate)) ? candidate : null)),
+    )
+  ).find(Boolean)
+  if (!licensePath) {
+    throw new Error(`Unable to locate the bundled Node runtime license for ${nodeExecutable}.`)
+  }
+  await copyFile(licensePath, resolve(runtimeRoot, 'node', 'LICENSE'))
+}
+
+async function rebuildAndVerifyNativeModules({ appRoot, nodeExecutable, runtime }) {
+  const require = createRequire(import.meta.url)
+  const electronBuilderRequire = createRequire(require.resolve('electron-builder/package.json'))
+  const nodeGypScript = electronBuilderRequire.resolve('node-gyp/bin/node-gyp.js')
+  const env = {
+    ...process.env,
+    npm_config_runtime: 'node',
+    npm_config_target: runtime.node,
+  }
+  const nativeModuleNames = ['better-sqlite3', 'node-pty']
+
+  try {
+    const nativeCopies = []
+    for (const moduleName of nativeModuleNames) {
+      runChecked(nodeExecutable, [nodeGypScript, 'rebuild', '--release'], {
+        cwd: resolve(rootDir, 'node_modules', moduleName),
+        env,
+        stdio: 'inherit',
+      })
+      const sourceRelease = resolve(rootDir, 'node_modules', moduleName, 'build', 'Release')
+      const destinationRelease = resolve(appRoot, 'node_modules', moduleName, 'build', 'Release')
+      nativeCopies.push({ sourceRelease, destinationRelease })
+    }
+    await Promise.all(
+      nativeCopies.map(async ({ sourceRelease, destinationRelease }) => {
+        await rm(destinationRelease, { recursive: true, force: true })
+        await cp(sourceRelease, destinationRelease, { recursive: true })
+      }),
+    )
+
+    if (process.platform !== 'win32') {
+      await chmod(
+        resolve(appRoot, 'node_modules', 'node-pty', 'build', 'Release', 'spawn-helper'),
+        0o755,
+      )
+    }
+  } finally {
+    const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+    runChecked(pnpmCommand, ['exec', 'electron-builder', 'install-app-deps'], {
+      cwd: rootDir,
+      env: process.env,
+      shell: process.platform === 'win32',
+      stdio: 'inherit',
+    })
+  }
+
+  const verifyScript = [
+    "const {createRequire}=require('node:module')",
+    "const requireFromApp=createRequire(require('node:path').resolve(process.cwd(),'package.json'))",
+    "const Database=requireFromApp('better-sqlite3')",
+    "const database=new Database(':memory:')",
+    'database.close()',
+    "const pty=requireFromApp('node-pty')",
+    "if(typeof pty.spawn!=='function')throw new Error('node-pty did not expose spawn')",
+    "process.stdout.write('native modules loaded with Node ABI '+process.versions.modules+'\\n')",
+  ].join(';')
+  runChecked(nodeExecutable, ['-e', verifyScript], { cwd: appRoot, env, stdio: 'inherit' })
 }
 
 function quotePowerShellLiteral(value) {
@@ -185,43 +258,38 @@ function runZip(outputPath, sourceDirName) {
   }
 }
 
-const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'))
-const executableName = packageJson?.build?.executableName
-
-if (typeof executableName !== 'string' || executableName.trim().length === 0) {
-  throw new Error('package.json build.executableName is missing.')
-}
-
 const platform = toReleasePlatform(process.platform)
 const arch = toReleaseArch(process.arch)
 const bundleName = `opencove-server-${platform}-${arch}`
 const bundleRoot = resolve(distDir, bundleName)
 const runtimeRoot = resolve(bundleRoot, 'runtime')
+const appRoot = resolve(bundleRoot, 'app')
 const archiveExtension = process.platform === 'win32' ? 'zip' : 'tar.gz'
 const archivePath = resolve(distDir, `${bundleName}.${archiveExtension}`)
 const runtimeSource = await resolveRuntimeSource({
   platform: process.platform,
-  executableName,
 })
-const relativePaths = resolveRelativePaths({
-  platform: process.platform,
-  runtimePath: runtimeSource.runtimePath,
-  appRootName: runtimeSource.appRootName,
-  executableName,
-})
+const relativePaths = resolveRelativePaths(process.platform)
+const nodeExecutable = resolve(process.env.OPENCOVE_NODE_EXECUTABLE ?? process.execPath)
+const nodeRuntime = inspectNodeRuntime(nodeExecutable)
 
 await rm(bundleRoot, { recursive: true, force: true })
 await rm(archivePath, { force: true })
 await mkdir(runtimeRoot, { recursive: true })
-await copyRuntimePreservingSymlinks(
-  runtimeSource.runtimePath,
-  resolve(runtimeRoot, basename(runtimeSource.runtimePath)),
-)
+await copyNodeRuntime(nodeExecutable, runtimeRoot, process.platform)
+loadAsar().extractAll(runtimeSource.appAsarPath, appRoot)
+await rebuildAndVerifyNativeModules({
+  appRoot,
+  nodeExecutable,
+  runtime: nodeRuntime,
+})
 await writeFile(
   resolve(bundleRoot, 'opencove-runtime.env'),
   [
-    `OPENCOVE_EXECUTABLE_RELATIVE_PATH=${relativePaths.executableRelativePath}`,
+    `OPENCOVE_NODE_RELATIVE_PATH=${relativePaths.nodeRelativePath}`,
     `OPENCOVE_CLI_SCRIPT_RELATIVE_PATH=${relativePaths.cliScriptRelativePath}`,
+    `OPENCOVE_NODE_VERSION=${nodeRuntime.node}`,
+    `OPENCOVE_NODE_MODULE_VERSION=${nodeRuntime.modules}`,
     '',
   ].join('\n'),
   'utf8',
@@ -231,7 +299,8 @@ await writeFile(
   [
     'OpenCove standalone server runtime bundle',
     '',
-    'Use the release installer script or point a launcher at the bundled runtime.',
+    `Bundled Node.js ${nodeRuntime.node} (module ABI ${nodeRuntime.modules}).`,
+    'Use the release installer script or point a launcher at runtime/node.',
     '',
   ].join('\n'),
   'utf8',

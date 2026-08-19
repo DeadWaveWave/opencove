@@ -91,7 +91,10 @@ SQLite schema 当前版本为 `8`。启动迁移使用 `PRAGMA user_version`，�
 
 ## CLI And Standalone Runtime
 
-CLI launcher 可由 Desktop 内置安装或 standalone server installer 安装。Standalone server bundle 覆盖 macOS、Linux、Windows，并使用同一套 Worker + Web UI runtime 语义。
+CLI launcher 可由 Desktop 内置安装或 standalone server installer 安装。Desktop launcher
+使用 Electron runtime；standalone bundle 覆盖 macOS、Linux、Windows，使用内置 Node
+runtime 和对应 Node ABI 的原生模块，不依赖 Desktop/Electron 共享库。两种分发仍使用同一套
+Worker + Web UI 业务语义。
 
 CLI 默认作为 client 调用 Control Surface；它可以管理 Worker 生命周期、调用 filesystem/mount/PTY 能力，以及通过 node control 管理画布节点。
 

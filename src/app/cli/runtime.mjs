@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -8,13 +8,13 @@ function resolveCliDirectory() {
   return resolve(fileURLToPath(new URL('.', import.meta.url)))
 }
 
-function resolveSourceRepoRoot() {
-  return resolve(resolveCliDirectory(), '../../..')
+function resolveSourceRepoRoot(cliDirectory) {
+  return resolve(cliDirectory, '../../..')
 }
 
-function resolvePackagedResourcesPath() {
+function resolvePackagedResourcesPath(processObject) {
   const resourcesPath =
-    typeof process.resourcesPath === 'string' ? process.resourcesPath.trim() : ''
+    typeof processObject?.resourcesPath === 'string' ? processObject.resourcesPath.trim() : ''
   return resourcesPath.length > 0 ? resourcesPath : null
 }
 
@@ -26,10 +26,36 @@ function resolvePackagedAppRoot(resourcesPath) {
   return matched ?? resolve(resourcesPath, PACKAGED_APP_ROOT_CANDIDATES[0])
 }
 
-export function resolveCliRuntime() {
-  const resourcesPath = resolvePackagedResourcesPath()
+function readManifestValue(content, key) {
+  const prefix = `${key}=`
+  const matched = content.split(/\r?\n/u).find(line => line.startsWith(prefix))
+  return matched?.slice(prefix.length).trim() ?? ''
+}
+
+export function resolveCliRuntime(options = {}) {
+  const cliDirectory = options.cliDirectory ?? resolveCliDirectory()
+  const existsSyncImpl = options.existsSyncImpl ?? existsSync
+  const readFileSyncImpl = options.readFileSyncImpl ?? readFileSync
+  const resourcesPath =
+    options.resourcesPath === undefined
+      ? resolvePackagedResourcesPath(options.processObject ?? process)
+      : options.resourcesPath
+
   if (!resourcesPath) {
-    const repoRoot = resolveSourceRepoRoot()
+    const repoRoot = resolveSourceRepoRoot(cliDirectory)
+    const manifestPath = resolve(repoRoot, '..', 'opencove-runtime.env')
+    if (existsSyncImpl(manifestPath)) {
+      const manifest = readFileSyncImpl(manifestPath, 'utf8')
+      const nodeRelativePath = readManifestValue(manifest, 'OPENCOVE_NODE_RELATIVE_PATH')
+      return {
+        kind: 'standalone',
+        appRoot: repoRoot,
+        nodeExecutablePath:
+          nodeRelativePath.length > 0 ? resolve(repoRoot, '..', nodeRelativePath) : null,
+        workerScriptPath: resolve(repoRoot, 'out', 'main', 'worker.js'),
+      }
+    }
+
     return {
       kind: 'source',
       repoRoot,
@@ -67,4 +93,68 @@ export async function resolveElectronBinaryForWorkerStart(options = {}) {
   } catch {
     return null
   }
+}
+
+export async function resolveWorkerRuntimeForStart(options = {}) {
+  const cliRuntime = options.cliRuntime ?? resolveCliRuntime()
+  const processObject = options.processObject ?? process
+
+  if (cliRuntime.kind === 'standalone') {
+    const execPath =
+      typeof processObject?.execPath === 'string' ? processObject.execPath.trim() : ''
+    const nodeVersion =
+      typeof processObject?.versions?.node === 'string' ? processObject.versions.node.trim() : ''
+    const electronVersion =
+      typeof processObject?.versions?.electron === 'string'
+        ? processObject.versions.electron.trim()
+        : ''
+
+    const expectedNodePath =
+      typeof cliRuntime.nodeExecutablePath === 'string' ? cliRuntime.nodeExecutablePath.trim() : ''
+    let isBundledNode = false
+    if (execPath.length > 0 && expectedNodePath.length > 0) {
+      try {
+        const realpathSyncImpl = options.realpathSyncImpl ?? realpathSync
+        isBundledNode = realpathSyncImpl(execPath) === realpathSyncImpl(expectedNodePath)
+      } catch {
+        isBundledNode = false
+      }
+    }
+
+    if (!isBundledNode || nodeVersion.length === 0 || electronVersion.length > 0) {
+      throw new Error(
+        `standalone worker requires the bundled Node runtime at ${expectedNodePath || '<missing manifest path>'}; refusing to fall back to another runtime`,
+      )
+    }
+
+    return { kind: 'node', executablePath: execPath }
+  }
+
+  const electronBinary = await resolveElectronBinaryForWorkerStart(options)
+  if (!electronBinary) {
+    throw new Error(
+      'unable to resolve Electron runtime for starting the worker; ensure dependencies are installed',
+    )
+  }
+
+  return { kind: 'electron', executablePath: electronBinary }
+}
+
+export function createWorkerSpawnEnvironment(runtimeKind, sourceEnv = process.env, options = {}) {
+  const env = {
+    ...sourceEnv,
+    OPENCOVE_TRUST_PROCESS_ENV: '1',
+  }
+
+  if (runtimeKind === 'node') {
+    delete env.ELECTRON_RUN_AS_NODE
+    delete env.ELECTRON_DISABLE_SANDBOX
+    return env
+  }
+
+  env.ELECTRON_RUN_AS_NODE = '1'
+  if (options.disableElectronSandbox) {
+    env.ELECTRON_DISABLE_SANDBOX = '1'
+  }
+  return env
 }

@@ -117,8 +117,8 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: pnpm build:standalone:asset
 
-      - name: Smoke standalone server install (macOS/Linux)
-        if: matrix.artifact_name != 'windows'
+      - name: Smoke standalone server install (macOS)
+        if: startsWith(matrix.artifact_name, 'macos-')
         shell: bash
         run: |
           set -euo pipefail
@@ -130,6 +130,19 @@ jobs:
           sh scripts/release-assets/opencove-install.sh
           "$OPENCOVE_BIN_DIR/opencove" worker start --help
           sh scripts/release-assets/opencove-install.sh --uninstall
+
+      - name: Smoke standalone server in minimal Linux container
+        if: matrix.artifact_name == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset="$(find dist -maxdepth 1 -name 'opencove-server-linux-*.tar.gz' -print -quit)"
+          test -n "$asset"
+          docker run --rm \
+            --volume "$PWD:/workspace:ro" \
+            --workdir /workspace \
+            debian:bookworm-slim \
+            sh scripts/smoke-standalone-node-runtime.sh "/workspace/$asset"
 
       - name: Smoke standalone server install (Windows)
         if: matrix.artifact_name == 'windows'
