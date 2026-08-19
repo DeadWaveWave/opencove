@@ -1,3 +1,5 @@
+import { dirname } from 'node:path'
+
 /**
  * The versioned-symbol floor for everything we ship in the standalone server bundle.
  *
@@ -139,6 +141,13 @@ export function resolveNativeModuleRebuildCommand({
   }
 
   const args = ['run', '--rm', '--volume', `${rootDir}:${rootDir}`, '--workdir', moduleCwd]
+  const nodeBinDirectory = dirname(nodeExecutable)
+
+  // The bundled Node usually lives outside the repo mount (it is unpacked into dist/, but the
+  // caller may point elsewhere), so make sure its directory is reachable inside the container.
+  if (!nodeBinDirectory.startsWith(`${rootDir}/`)) {
+    args.push('--volume', `${nodeBinDirectory}:${nodeBinDirectory}`)
+  }
 
   if (hostUser) {
     // Without this the container writes root-owned build output into the mounted workspace and
@@ -148,6 +157,10 @@ export function resolveNativeModuleRebuildCommand({
 
   // A non-root container user has no writable home, and node-gyp needs both a cache and a devdir
   // for the downloaded headers. Keep them inside the mount, which is writable by that user.
+  // Some binding.gyp actions shell out to a bare `node` (better-sqlite3's `copy_builtin_sqlite3`
+  // runs `['node', 'copy.js', ...]`), which is not on PATH in a build image. Without this the
+  // build dies with a bare `Error 127`.
+  args.push('--env', `PATH=${nodeBinDirectory}:/usr/local/bin:/usr/bin:/bin`)
   args.push('--env', `HOME=${rootDir}/.cache/standalone-native-build`)
   args.push('--env', `npm_config_devdir=${rootDir}/.cache/standalone-native-build/node-gyp`)
   args.push('--env', 'npm_config_runtime=node')

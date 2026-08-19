@@ -134,6 +134,39 @@ describe('native module rebuild command', () => {
     expect(command.args.slice(-3)).toEqual([base.nodeGypScript, 'rebuild', '--release'])
   })
 
+  it('puts the bundled Node on PATH for binding.gyp actions that shell out to a bare `node`', () => {
+    // better-sqlite3's `copy_builtin_sqlite3` action is literally ['node', 'copy.js', ...]. With no
+    // `node` on PATH inside the image, make dies with an opaque `Error 127`.
+    const command = resolveNativeModuleRebuildCommand({
+      ...base,
+      containerImage: 'quay.io/pypa/manylinux_2_28_x86_64',
+      hostUser: '1001:1001',
+    })
+
+    const env = command.args.filter((_, index) => command.args[index - 1] === '--env').join(' ')
+    expect(env).toMatch(/PATH=\/repo\/dist\/opencove-server-linux-x64\/runtime\/node\/bin:/)
+  })
+
+  it('mounts the bundled Node when it lives outside the repository mount', () => {
+    const command = resolveNativeModuleRebuildCommand({
+      ...base,
+      nodeExecutable: '/opt/bundled/bin/node',
+      containerImage: 'quay.io/pypa/manylinux_2_28_x86_64',
+    })
+
+    expect(command.args).toContain('/opt/bundled/bin:/opt/bundled/bin')
+  })
+
+  it('does not add a redundant mount for a bundled Node already inside the repository', () => {
+    const command = resolveNativeModuleRebuildCommand({
+      ...base,
+      containerImage: 'quay.io/pypa/manylinux_2_28_x86_64',
+    })
+
+    const mounts = command.args.filter((_, index) => command.args[index - 1] === '--volume')
+    expect(mounts).toEqual(['/repo:/repo'])
+  })
+
   it('keeps node-gyp caches inside the workspace so a non-root container user can write them', () => {
     const command = resolveNativeModuleRebuildCommand({
       ...base,
