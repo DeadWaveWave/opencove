@@ -12,6 +12,12 @@ import { createMainRuntimeDiagnosticsLogger } from '../runtimeDiagnostics'
 import { registerHandledIpc } from './handle'
 import { createAppError } from '../../../shared/errors/appError'
 import { collectPerformanceDiagnosticsSnapshot } from '../diagnostics/performanceDiagnosticsCollector'
+import {
+  normalizeTerminalDiagnosticPayload,
+  normalizeUiDiagnosticBreadcrumb,
+  recordTerminalBreadcrumb,
+  recordUiBreadcrumb,
+} from '../diagnostics/issueReportBreadcrumbs'
 
 function isTerminalDiagnosticsEnabled(): boolean {
   return (
@@ -57,15 +63,25 @@ export function registerDiagnosticsIpcHandlers(): IpcRegistrationDisposable {
     }
   }
 
-  const handleTerminalDiagnosticsLog = (
-    _event: Electron.IpcMainEvent,
-    payload: TerminalDiagnosticsLogInput,
-  ): void => {
+  const handleTerminalDiagnosticsLog = (_event: Electron.IpcMainEvent, payload: unknown): void => {
+    const normalized = normalizeTerminalDiagnosticPayload(payload)
+    if (!normalized) {
+      return
+    }
+
+    recordTerminalBreadcrumb(normalized)
     if (!isTerminalDiagnosticsEnabled()) {
       return
     }
 
-    writeTerminalDiagnosticsLine(payload)
+    writeTerminalDiagnosticsLine(normalized)
+  }
+
+  const handleUiDiagnosticBreadcrumb = (_event: Electron.IpcMainEvent, payload: unknown): void => {
+    const normalized = normalizeUiDiagnosticBreadcrumb(payload)
+    if (normalized) {
+      recordUiBreadcrumb(normalized)
+    }
   }
 
   const handleRuntimeDiagnosticsLog = (
@@ -82,6 +98,7 @@ export function registerDiagnosticsIpcHandlers(): IpcRegistrationDisposable {
   }
 
   ipcMain.on(IPC_CHANNELS.terminalDiagnosticsLog, handleTerminalDiagnosticsLog)
+  ipcMain.on(IPC_CHANNELS.uiDiagnosticBreadcrumb, handleUiDiagnosticBreadcrumb)
   ipcMain.on(IPC_CHANNELS.runtimeDiagnosticsLog, handleRuntimeDiagnosticsLog)
   registerHandledIpc(
     IPC_CHANNELS.performanceDiagnosticsSnapshot,
@@ -95,6 +112,7 @@ export function registerDiagnosticsIpcHandlers(): IpcRegistrationDisposable {
   return {
     dispose: () => {
       ipcMain.removeListener(IPC_CHANNELS.terminalDiagnosticsLog, handleTerminalDiagnosticsLog)
+      ipcMain.removeListener(IPC_CHANNELS.uiDiagnosticBreadcrumb, handleUiDiagnosticBreadcrumb)
       ipcMain.removeListener(IPC_CHANNELS.runtimeDiagnosticsLog, handleRuntimeDiagnosticsLog)
       ipcMain.removeHandler(IPC_CHANNELS.performanceDiagnosticsSnapshot)
     },

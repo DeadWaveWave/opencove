@@ -7,6 +7,7 @@ import type {
 import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { appendSpaceArchiveRecord } from '@contexts/workspace/presentation/renderer/utils/spaceArchiveRecords'
 import { useAppStore } from '../store/useAppStore'
+import { recordUiGeometryBreadcrumb } from '@contexts/issueReport/presentation/renderer/uiGeometryDiagnostics'
 
 export function useWorkspaceStateHandlers({
   requestPersistFlush,
@@ -61,6 +62,11 @@ export function useWorkspaceStateHandlers({
   }, [])
 
   const handleWorkspaceViewportChange = useCallback((viewport: WorkspaceViewport): void => {
+    recordUiGeometryBreadcrumb('canvas-viewport-change', {
+      x: viewport.x,
+      y: viewport.y,
+      zoom: viewport.zoom,
+    })
     const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
       useAppStore.getState()
     if (!currentActiveWorkspaceId) {

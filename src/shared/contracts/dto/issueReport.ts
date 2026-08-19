@@ -9,12 +9,43 @@ export interface IssueReportContextInput {
   activeSpacePath?: string | null
 }
 
+export interface IssueReportUiGeometryInput {
+  window: {
+    innerWidth: number | null
+    innerHeight: number | null
+    outerWidth: number | null
+    outerHeight: number | null
+    devicePixelRatio: number | null
+    visualViewportScale: number | null
+  }
+  canvas: {
+    rect: { x: number; y: number; width: number; height: number } | null
+    viewport: { x: number; y: number; zoom: number } | null
+  }
+  nodes: Array<{
+    id: string
+    kind: string | null
+    x: number
+    y: number
+    width: number
+    height: number
+  }>
+  browserWindow?: {
+    bounds: { x: number; y: number; width: number; height: number }
+    contentBounds: { x: number; y: number; width: number; height: number }
+    zoomFactor: number
+    maximized: boolean
+    fullscreen: boolean
+  } | null
+}
+
 export interface PrepareIssueReportInput {
   kind: IssueReportKind
   title?: string | null
   description?: string | null
   includeLocalPaths?: boolean | null
   context?: IssueReportContextInput | null
+  uiGeometry?: IssueReportUiGeometryInput | null
 }
 
 export interface IssueReportIncludedDiagnostics {

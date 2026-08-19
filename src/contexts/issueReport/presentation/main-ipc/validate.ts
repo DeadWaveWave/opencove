@@ -1,6 +1,7 @@
 import type {
   IssueReportContextInput,
   IssueReportKind,
+  IssueReportUiGeometryInput,
   OpenIssueReportGithubInput,
   PrepareIssueReportInput,
   ShowIssueReportFileInput,
@@ -51,6 +52,58 @@ function normalizeContext(value: unknown): IssueReportContextInput | null {
   }
 }
 
+function normalizeFiniteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function normalizeUiGeometry(value: unknown): IssueReportUiGeometryInput | null {
+  if (!isRecord(value) || !isRecord(value.window) || !isRecord(value.canvas)) {
+    return null
+  }
+
+  const canvasRect = isRecord(value.canvas.rect)
+    ? {
+        x: normalizeFiniteNumber(value.canvas.rect.x) ?? 0,
+        y: normalizeFiniteNumber(value.canvas.rect.y) ?? 0,
+        width: normalizeFiniteNumber(value.canvas.rect.width) ?? 0,
+        height: normalizeFiniteNumber(value.canvas.rect.height) ?? 0,
+      }
+    : null
+  const canvasViewport = isRecord(value.canvas.viewport)
+    ? {
+        x: normalizeFiniteNumber(value.canvas.viewport.x) ?? 0,
+        y: normalizeFiniteNumber(value.canvas.viewport.y) ?? 0,
+        zoom: normalizeFiniteNumber(value.canvas.viewport.zoom) ?? 1,
+      }
+    : null
+  const nodes = Array.isArray(value.nodes)
+    ? value.nodes
+        .filter(isRecord)
+        .slice(0, 100)
+        .map(node => ({
+          id: normalizeOptionalText(node.id, 256) ?? 'unknown',
+          kind: normalizeOptionalText(node.kind, 80),
+          x: normalizeFiniteNumber(node.x) ?? 0,
+          y: normalizeFiniteNumber(node.y) ?? 0,
+          width: normalizeFiniteNumber(node.width) ?? 0,
+          height: normalizeFiniteNumber(node.height) ?? 0,
+        }))
+    : []
+
+  return {
+    window: {
+      innerWidth: normalizeFiniteNumber(value.window.innerWidth),
+      innerHeight: normalizeFiniteNumber(value.window.innerHeight),
+      outerWidth: normalizeFiniteNumber(value.window.outerWidth),
+      outerHeight: normalizeFiniteNumber(value.window.outerHeight),
+      devicePixelRatio: normalizeFiniteNumber(value.window.devicePixelRatio),
+      visualViewportScale: normalizeFiniteNumber(value.window.visualViewportScale),
+    },
+    canvas: { rect: canvasRect, viewport: canvasViewport },
+    nodes,
+  }
+}
+
 export function normalizePrepareIssueReportPayload(payload: unknown): PrepareIssueReportInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -64,6 +117,7 @@ export function normalizePrepareIssueReportPayload(payload: unknown): PrepareIss
     description: normalizeOptionalText(payload.description, MAX_DESCRIPTION_LENGTH),
     includeLocalPaths: payload.includeLocalPaths === true,
     context: normalizeContext(payload.context),
+    uiGeometry: normalizeUiGeometry(payload.uiGeometry),
   }
 }
 

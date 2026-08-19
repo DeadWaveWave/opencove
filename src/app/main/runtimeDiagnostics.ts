@@ -1,17 +1,16 @@
 import { app } from 'electron'
-import { appendFileSync, mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import type {
   RuntimeDiagnosticsDetailValue,
   RuntimeDiagnosticsLogInput,
   RuntimeDiagnosticsSource,
 } from '../../shared/contracts/dto'
+import { appendBoundedRuntimeDiagnosticsLine } from './diagnostics/runtimeDiagnosticsFile'
 
 function appendRuntimeDiagnosticsFile(line: string): void {
   try {
     const filePath = resolve(app.getPath('userData'), 'logs', 'runtime-diagnostics.log')
-    mkdirSync(dirname(filePath), { recursive: true })
-    appendFileSync(filePath, `${line}\n`, { encoding: 'utf8', mode: 0o600 })
+    appendBoundedRuntimeDiagnosticsLine(filePath, line)
   } catch {
     // Diagnostics logging must never affect app runtime behavior.
   }

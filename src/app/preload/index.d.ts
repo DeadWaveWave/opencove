@@ -84,6 +84,7 @@ import type {
   CopyEntryInput,
   RuntimeDiagnosticsLogInput,
   TerminalDiagnosticsLogInput,
+  UiDiagnosticBreadcrumbInput,
   CreateDirectoryInput,
   DeleteEntryInput,
   MoveEntryInput,
@@ -156,6 +157,7 @@ export interface OpenCoveApi {
   }
   debug?: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
+    recordUiDiagnosticBreadcrumb: (payload: UiDiagnosticBreadcrumbInput) => void
     logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput) => void
   }
   performanceDiagnostics: {

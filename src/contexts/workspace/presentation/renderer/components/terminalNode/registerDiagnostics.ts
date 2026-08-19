@@ -7,6 +7,7 @@ import {
   captureTerminalLayoutDiagnostics,
   createTerminalDiagnosticsLogger,
 } from './diagnostics'
+import { shouldRecordTerminalBreadcrumb } from '@shared/diagnostics/issueReportBreadcrumbPolicy'
 
 export function registerTerminalDiagnostics({
   enabled,
@@ -42,8 +43,12 @@ export function registerTerminalDiagnostics({
       ? (container.querySelector('.xterm-viewport') as HTMLElement)
       : null
   const diagnostics = createTerminalDiagnosticsLogger({
-    enabled,
-    emit,
+    enabled: true,
+    emit: payload => {
+      if (enabled || shouldRecordTerminalBreadcrumb(payload.event)) {
+        emit(payload)
+      }
+    },
     base: {
       source: 'renderer-terminal',
       nodeId,

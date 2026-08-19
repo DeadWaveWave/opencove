@@ -46,3 +46,15 @@ export interface RuntimeDiagnosticsLogInput {
   message: string
   details?: Record<string, RuntimeDiagnosticsDetailValue>
 }
+
+export type UiDiagnosticBreadcrumbEvent =
+  | 'window-geometry'
+  | 'window-resize'
+  | 'canvas-geometry'
+  | 'canvas-viewport-change'
+
+export interface UiDiagnosticBreadcrumbInput {
+  source: 'renderer-ui'
+  event: UiDiagnosticBreadcrumbEvent
+  details: Record<string, RuntimeDiagnosticsDetailValue>
+}
