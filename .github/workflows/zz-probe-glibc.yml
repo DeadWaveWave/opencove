@@ -53,6 +53,15 @@ jobs:
             g++ -std=c++20 /tmp/t.cpp -o /tmp/t && echo "C++20 OK"
           '
 
+      - name: Probe - is the compiler on PATH under a NON-login sh -c?
+        run: |
+          set -euxo pipefail
+          docker run --rm quay.io/pypa/manylinux_2_28_x86_64 sh -c '
+            echo "PATH=$PATH"
+            command -v gcc || echo "NO gcc under sh -c"
+            command -v g++ || echo "NO g++ under sh -c"
+          '
+
       - name: Probe - real container rebuild through the bundle script path
         env:
           OPENCOVE_NATIVE_BUILD_IMAGE: quay.io/pypa/manylinux_2_28_x86_64

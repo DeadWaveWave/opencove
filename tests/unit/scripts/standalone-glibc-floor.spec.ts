@@ -132,6 +132,8 @@ describe('native module rebuild command', () => {
     expect(command.args).toContain('--user')
     expect(command.args).toContain('1001:1001')
     expect(command.args.slice(-3)).toEqual([base.nodeGypScript, 'rebuild', '--release'])
+    // The bundled Node must still be what executes node-gyp inside the container.
+    expect(command.args.at(-4)).toBe(base.nodeExecutable)
   })
 
   it('puts the bundled Node on PATH for binding.gyp actions that shell out to a bare `node`', () => {
@@ -143,8 +145,12 @@ describe('native module rebuild command', () => {
       hostUser: '1001:1001',
     })
 
-    const env = command.args.filter((_, index) => command.args[index - 1] === '--env').join(' ')
-    expect(env).toMatch(/PATH=\/repo\/dist\/opencove-server-linux-x64\/runtime\/node\/bin:/)
+    // PATH must be prepended, never replaced: the image keeps its C++20 compiler on a toolset
+    // path, and overwriting PATH loses the compiler instead (also an opaque Error 127).
+    const script = command.args.find(argument => argument.includes('PATH='))
+    expect(script).toBe('PATH="$1:$PATH"; export PATH; shift; exec "$@"')
+    expect(command.args).toContain('/repo/dist/opencove-server-linux-x64/runtime/node/bin')
+    expect(command.args.some(argument => argument.startsWith('PATH=/'))).toBe(false)
   })
 
   it('mounts the bundled Node when it lives outside the repository mount', () => {

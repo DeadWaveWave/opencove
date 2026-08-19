@@ -157,14 +157,28 @@ export function resolveNativeModuleRebuildCommand({
 
   // A non-root container user has no writable home, and node-gyp needs both a cache and a devdir
   // for the downloaded headers. Keep them inside the mount, which is writable by that user.
-  // Some binding.gyp actions shell out to a bare `node` (better-sqlite3's `copy_builtin_sqlite3`
-  // runs `['node', 'copy.js', ...]`), which is not on PATH in a build image. Without this the
-  // build dies with a bare `Error 127`.
-  args.push('--env', `PATH=${nodeBinDirectory}:/usr/local/bin:/usr/bin:/bin`)
   args.push('--env', `HOME=${rootDir}/.cache/standalone-native-build`)
   args.push('--env', `npm_config_devdir=${rootDir}/.cache/standalone-native-build/node-gyp`)
   args.push('--env', 'npm_config_runtime=node')
-  args.push(containerImage, nodeExecutable, ...nodeGypArgs)
+
+  // Some binding.gyp actions shell out to a bare `node` — better-sqlite3's
+  // `copy_builtin_sqlite3` action is literally `['node', 'copy.js', ...]` — which is not on PATH
+  // in a build image, and make reports only an opaque `Error 127`.
+  //
+  // PATH must be *prepended*, not replaced: an old-glibc image keeps its modern compiler on a
+  // toolset path (gcc-toolset on manylinux), so overwriting PATH loses the C++20 compiler and
+  // fails the same opaque way one stage later. Paths are passed as argv rather than interpolated
+  // into the script so a path containing a space or a quote cannot break the command.
+  args.push(
+    containerImage,
+    'sh',
+    '-c',
+    'PATH="$1:$PATH"; export PATH; shift; exec "$@"',
+    'opencove-native-build',
+    nodeBinDirectory,
+    nodeExecutable,
+    ...nodeGypArgs,
+  )
 
   return { command: 'docker', args, cwd: rootDir }
 }
