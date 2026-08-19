@@ -115,6 +115,11 @@ jobs:
       - name: Build standalone server bundle
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # Linux natives must be compiled against an old glibc, otherwise they only load on
+          # distributions at least as new as this runner. manylinux_2_28 pairs a glibc 2.28 base
+          # with a modern gcc, which better-sqlite3's -std=c++20 requires. 2.28 is also exactly
+          # what the bundled Node binary itself requires, so it is the bundle's natural floor.
+          OPENCOVE_NATIVE_BUILD_IMAGE: ${{ matrix.artifact_name == 'linux' && 'quay.io/pypa/manylinux_2_28_x86_64' || '' }}
         run: pnpm build:standalone:asset
 
       - name: Smoke standalone server install (macOS)

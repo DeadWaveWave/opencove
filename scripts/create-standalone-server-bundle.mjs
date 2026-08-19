@@ -265,11 +265,15 @@ async function rebuildAndVerifyNativeModules({
   // Reading the produced ELF files is what actually proves the floor holds; it does not depend on
   // trusting that the container was configured correctly.
   if (process.platform === 'linux') {
-    runChecked(nodeExecutable, [resolve(rootDir, 'scripts/check-standalone-glibc-floor.mjs'), appRoot], {
-      cwd: rootDir,
-      env: process.env,
-      stdio: 'inherit',
-    })
+    runChecked(
+      nodeExecutable,
+      [resolve(rootDir, 'scripts/check-standalone-glibc-floor.mjs'), appRoot],
+      {
+        cwd: rootDir,
+        env: process.env,
+        stdio: 'inherit',
+      },
+    )
   }
 }
 

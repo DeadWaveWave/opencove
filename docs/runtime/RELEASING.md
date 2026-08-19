@@ -156,6 +156,24 @@ job 使用的 Node，并针对该 Node ABI 重新构建 `better-sqlite3` / `node
 都指向 bundle 内 Node，且 runtime 目录中不存在 Electron executable；宿主 runner 上的
 `--help` 不能替代这条 smoke。
 
+#### Linux 符号基线（glibc / libstdc++）
+
+Standalone server 的 Linux 支持基线是 **`GLIBC_2.28` + `GLIBCXX_3.4.25`**，覆盖
+RHEL/Alma/Rocky 8+、Debian 10+、Ubuntu 18.04+、Amazon Linux 2023。
+
+这个数字不是随手选的：我们内置的官方 Node linux-x64 二进制本身最高只要求 `GLIBC_2.28`，
+所以它就是整个 bundle 的天然下限 —— 原生模块建得更低没有收益，建得更高则会成为唯一短板。
+它同时与 VS Code 公开的 Linux server 要求一致。
+
+因此 Linux 的原生模块**必须在老 glibc 容器内编译**，由 release workflow 的
+`OPENCOVE_NATIVE_BUILD_IMAGE` 指定（`quay.io/pypa/manylinux_2_28_x86_64`：glibc 2.28 基底 +
+满足 `better-sqlite3` `-std=c++20` 所需的新 gcc）。在 runner 上直接编译会得到
+`GLIBC_2.38` 之类的依赖，只能在与 runner 同代或更新的发行版上加载。
+
+`scripts/check-standalone-glibc-floor.mjs` 会读取产出的 ELF 来核验这条基线，因此它不依赖
+「容器配置正确」这一假设；读不到符号即失败，不会静默放过。若要调整基线，改
+`scripts/lib/standalone-glibc-floor.mjs` 中的 `STANDALONE_GLIBC_FLOOR`，并同步更新本节。
+
 ### Stable 流程
 
 流程建议：

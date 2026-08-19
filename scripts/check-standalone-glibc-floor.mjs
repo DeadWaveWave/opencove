@@ -23,29 +23,30 @@ import {
 
 const bundleRoot = process.argv[2]
 if (!bundleRoot) {
-  console.error('Usage: node scripts/check-standalone-glibc-floor.mjs <bundle-root>')
+  process.stderr.write('Usage: node scripts/check-standalone-glibc-floor.mjs <bundle-root>\n')
   process.exit(1)
 }
 
 if (!existsSync(bundleRoot)) {
-  console.error(`Bundle root does not exist: ${bundleRoot}`)
+  process.stderr.write(`Bundle root does not exist: ${bundleRoot}\n`)
   process.exit(1)
 }
 
 async function collectNativeArtifacts(directory) {
-  const found = []
   const entries = await readdir(directory, { withFileTypes: true })
+  const nested = await Promise.all(
+    entries
+      .filter(entry => entry.isDirectory())
+      .map(entry => collectNativeArtifacts(resolve(directory, entry.name))),
+  )
 
-  for (const entry of entries) {
-    const path = resolve(directory, entry.name)
-    if (entry.isDirectory()) {
-      found.push(...(await collectNativeArtifacts(path)))
-    } else if (entry.isFile() && (entry.name.endsWith('.node') || entry.name === 'spawn-helper')) {
-      found.push(path)
-    }
-  }
+  const here = entries
+    .filter(
+      entry => entry.isFile() && (entry.name.endsWith('.node') || entry.name === 'spawn-helper'),
+    )
+    .map(entry => resolve(directory, entry.name))
 
-  return found
+  return [...here, ...nested.flat()]
 }
 
 const artifacts = await collectNativeArtifacts(bundleRoot)
@@ -53,7 +54,9 @@ const artifacts = await collectNativeArtifacts(bundleRoot)
 // Fail closed. Finding nothing means the layout changed or the bundle is incomplete; reporting
 // "floor OK" in that case would be a false green.
 if (artifacts.length === 0) {
-  console.error(`Found no .node artifacts under ${bundleRoot}. Refusing to report success.`)
+  process.stderr.write(
+    `Found no .node artifacts under ${bundleRoot}. Refusing to report success.\n`,
+  )
   process.exit(1)
 }
 
@@ -79,7 +82,7 @@ for (const artifact of artifacts) {
         .map(entry => entry.version)
         .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
         .pop()
-      console.log(`ok  ${name} (max GLIBC_${highest ?? 'none'})`)
+      process.stdout.write(`ok  ${name} (max GLIBC_${highest ?? 'none'})\n`)
     }
   } catch (error) {
     failures.push(`${name}: ${error.message}`)
@@ -87,11 +90,10 @@ for (const artifact of artifacts) {
 }
 
 if (failures.length > 0) {
-  console.error('')
-  console.error(failures.join('\n'))
+  process.stderr.write(`\n${failures.join('\n')}\n`)
   process.exit(1)
 }
 
-console.log(
-  `\nAll ${artifacts.length} native artifacts are within GLIBC_${STANDALONE_GLIBC_FLOOR.GLIBC} / GLIBCXX_${STANDALONE_GLIBC_FLOOR.GLIBCXX}.`,
+process.stdout.write(
+  `\nAll ${artifacts.length} native artifacts are within GLIBC_${STANDALONE_GLIBC_FLOOR.GLIBC} / GLIBCXX_${STANDALONE_GLIBC_FLOOR.GLIBCXX}.\n`,
 )

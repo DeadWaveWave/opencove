@@ -55,7 +55,9 @@ describe('standalone glibc floor', () => {
   })
 
   it('flags every requirement above the floor', () => {
-    const violations = selectFloorViolations(parseVersionedSymbolRequirements(readelfWithTooNewGlibc))
+    const violations = selectFloorViolations(
+      parseVersionedSymbolRequirements(readelfWithTooNewGlibc),
+    )
 
     // 2.29 and 2.38 both exceed 2.28; 2.17/2.28 and GLIBCXX_3.4.21 are within it.
     expect(violations).toEqual([
