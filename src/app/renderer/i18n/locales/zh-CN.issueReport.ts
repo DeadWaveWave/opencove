@@ -22,6 +22,8 @@ export const zhCNIssueReport = {
   localPathsHint: '默认关闭。Token 和密钥始终会脱敏；只有路径和这个问题相关时再开启。',
   generated: '报告已生成',
   generatedMeta: '已保存到 {{fileName}}',
+  githubSubsetHint:
+    'GitHub 表单里预填的是节选内容。请把保存下来的报告一并附上或粘贴，这样完整日志和事件轨迹才不会丢。',
   generate: '生成报告',
   regenerating: '生成中...',
   copyReport: '复制报告',

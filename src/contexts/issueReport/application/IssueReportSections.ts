@@ -5,6 +5,7 @@ import type {
   PrepareIssueReportInput,
 } from '@shared/contracts/dto'
 import type { IssueReportDiagnosticSection, IssueReportLogExcerpt } from './IssueReportDocument'
+import { GITHUB_SECTION_EXCERPT_CHARS } from './IssueReportDocument'
 import { ISSUE_REPORT_BREADCRUMB_CAPACITY } from '@shared/diagnostics/issueReportBreadcrumbPolicy'
 
 export function createJsonIssueReportSection(
@@ -15,6 +16,7 @@ export function createJsonIssueReportSection(
     summary?: string | null
     github?: IssueReportDiagnosticSection['github']
     sensitivity?: IssueReportDiagnosticSection['sensitivity']
+    githubContent?: unknown
   } = {},
 ): IssueReportDiagnosticSection {
   return {
@@ -26,6 +28,7 @@ export function createJsonIssueReportSection(
     contentKind: 'json',
     summary: options.summary ?? null,
     content,
+    ...(options.githubContent === undefined ? {} : { githubContent: options.githubContent }),
   }
 }
 
@@ -153,21 +156,74 @@ export function createUiGeometrySection(
   })
 }
 
+function buildBreadcrumbPayload(
+  breadcrumbs: unknown[],
+  take: number,
+): { capacity: number; count: number; omittedEntries: number; entries: unknown[] } {
+  return {
+    capacity: ISSUE_REPORT_BREADCRUMB_CAPACITY,
+    count: breadcrumbs.length,
+    omittedEntries: breadcrumbs.length - take,
+    entries: take === breadcrumbs.length ? breadcrumbs : breadcrumbs.slice(-take),
+  }
+}
+
+/**
+ * Picks the largest suffix of the breadcrumb trail that still fits the GitHub
+ * per-section budget.
+ *
+ * The trail is kept newest-last, so the entries nearest the failure are the
+ * ones that must survive; a plain character cut would have kept the oldest and
+ * left the JSON unparseable. Binary search is safe here because serialized
+ * length grows with the number of entries.
+ */
+function selectGithubBreadcrumbs(breadcrumbs: unknown[]): unknown {
+  const fullPayload = buildBreadcrumbPayload(breadcrumbs, breadcrumbs.length)
+  if (JSON.stringify(fullPayload, null, 2).length <= GITHUB_SECTION_EXCERPT_CHARS) {
+    return fullPayload
+  }
+
+  let low = 0
+  let high = breadcrumbs.length
+  while (low < high) {
+    const middle = Math.floor((low + high + 1) / 2)
+    const fits =
+      JSON.stringify(buildBreadcrumbPayload(breadcrumbs, middle), null, 2).length <=
+      GITHUB_SECTION_EXCERPT_CHARS
+    if (fits) {
+      low = middle
+    } else {
+      high = middle - 1
+    }
+  }
+
+  return buildBreadcrumbPayload(breadcrumbs, low)
+}
+
 export function createDiagnosticBreadcrumbsSection(
   breadcrumbs: unknown[],
 ): IssueReportDiagnosticSection {
+  const githubContent = selectGithubBreadcrumbs(breadcrumbs)
+  const includedEntries = (githubContent as { entries: unknown[] }).entries.length
+  const omitted = breadcrumbs.length - includedEntries
+
   return createJsonIssueReportSection(
     'diagnostic_breadcrumbs',
     'Diagnostic Breadcrumbs',
     {
       capacity: ISSUE_REPORT_BREADCRUMB_CAPACITY,
       count: breadcrumbs.length,
+      omittedEntries: 0,
       entries: breadcrumbs,
     },
     {
-      summary: `${breadcrumbs.length} recent UI diagnostic event(s).`,
+      summary:
+        omitted > 0
+          ? `${breadcrumbs.length} recent UI diagnostic event(s); newest ${includedEntries} shown here, all ${breadcrumbs.length} in the saved report.`
+          : `${breadcrumbs.length} recent UI diagnostic event(s).`,
       github: 'excerpt',
       sensitivity: 'redacted',
+      githubContent,
     },
   )
 }

@@ -5,6 +5,13 @@ import type {
 } from '@shared/contracts/dto'
 
 const SANITIZER_VERSION = 2
+/**
+ * Per-section budget for the prefilled GitHub body. Sections that would
+ * overflow it must hand over a smaller, still well-formed `githubContent`
+ * instead of relying on a blind character cut.
+ */
+export const GITHUB_SECTION_EXCERPT_CHARS = 1_800
+
 const MAX_REPORT_MARKDOWN_CHARS = 320_000
 const MAX_GITHUB_BODY_CHARS = 6_000
 const MAX_GITHUB_URL_CHARS = 7_500
@@ -38,6 +45,13 @@ export interface IssueReportDiagnosticSection {
   contentKind: IssueReportDiagnosticContentKind
   summary?: string | null
   content: unknown
+  /**
+   * Optional reduced payload used only for the GitHub body. Sections whose
+   * full content cannot fit in {@link GITHUB_SECTION_EXCERPT_CHARS} should set
+   * this to a self-contained value that still parses, rather than letting the
+   * excerpt be cut mid-token.
+   */
+  githubContent?: unknown
   error?: string | null
   metadata?: {
     originalBytes?: number | null
@@ -157,6 +171,18 @@ function stringifySectionContent(section: IssueReportDiagnosticSection): string 
   }
 
   return JSON.stringify(section.content, null, 2)
+}
+
+function stringifyGithubSectionContent(section: IssueReportDiagnosticSection): string {
+  if (section.githubContent === undefined) {
+    return stringifySectionContent(section)
+  }
+
+  if (section.contentKind !== 'json' && typeof section.githubContent === 'string') {
+    return section.githubContent
+  }
+
+  return JSON.stringify(section.githubContent, null, 2)
 }
 
 function formatTextBlock(value: string): string {
@@ -284,7 +310,7 @@ function formatGithubSection(section: IssueReportDiagnosticSection): string[] {
     return lines
   }
 
-  const rawContent = stringifySectionContent(section)
+  const rawContent = stringifyGithubSectionContent(section)
   const metadata = section.metadata
   if (metadata) {
     lines.push(
@@ -297,7 +323,11 @@ function formatGithubSection(section: IssueReportDiagnosticSection): string[] {
     )
   }
 
-  lines.push(formatTextBlock(truncateText(rawContent, 1_800, `${section.id}:github-excerpt`)))
+  lines.push(
+    formatTextBlock(
+      truncateText(rawContent, GITHUB_SECTION_EXCERPT_CHARS, `${section.id}:github-excerpt`),
+    ),
+  )
   return lines
 }
 
