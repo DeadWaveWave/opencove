@@ -101,6 +101,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Diagnostics: keep the newest breadcrumbs in the prefilled GitHub issue body instead of the oldest, emit a still-parseable payload that states how many entries were dropped, and tell the reporter the form is only an extract so the saved report gets attached. (#363)
 - Release: package the app from an explicit allowlist instead of electron-builder's default "everything except a hardcoded denylist", which had been shipping build caches and repository files inside the app — cutting download sizes by roughly half (Linux server 234 MB → 98 MB, macOS arm64 306 MB → 158 MB, Windows 290 MB → 134 MB). (#361)
 - Release: run the standalone CLI/server bundle on a bundled Node runtime with Node-ABI native modules instead of the packaged Electron executable, so headless Linux servers no longer require Chromium/GTK/NSS shared libraries, and verify it in a minimal container during release. (#355)
 - Recovery: persist Agent and Terminal Worker bindings across restarts, prefer node-owned remote routes over Space fallback, and fail closed with an explicit bilingual recovery issue when the original remote Worker cannot be resolved. (#352)
