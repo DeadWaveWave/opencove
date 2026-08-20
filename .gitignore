@@ -121,4 +121,7 @@ tmp/
 # Other
 .cove/
 .opencove
+# Release CI points ELECTRON_CACHE/ELECTRON_BUILDER_CACHE into the workspace (see release.yml),
+# so a local release-style build creates this too.
+.cache/
 docs/Microsoft/
