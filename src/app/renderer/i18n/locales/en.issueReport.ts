@@ -23,6 +23,8 @@ export const enIssueReport = {
     'Off by default. Tokens and secrets are always redacted; turn this on only if paths matter.',
   generated: 'Report ready',
   generatedMeta: 'Saved to {{fileName}}',
+  githubSubsetHint:
+    'The GitHub form is prefilled with a shortened extract. Attach or paste the saved report as well, so the full logs and event trail come with it.',
   generate: 'Generate Report',
   regenerating: 'Generating...',
   copyReport: 'Copy Report',

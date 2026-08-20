@@ -272,6 +272,12 @@ export function IssueReportDialog({
                 <span>
                   {t('issueReport.generatedMeta', { fileName: reportFileName(report.reportPath) })}
                 </span>
+                <span
+                  className="issue-report-window__ready-hint"
+                  data-testid="issue-report-github-subset-hint"
+                >
+                  {t('issueReport.githubSubsetHint')}
+                </span>
               </div>
             </div>
           ) : null}

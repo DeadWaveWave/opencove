@@ -127,6 +127,12 @@
   white-space: nowrap;
 }
 
+.issue-report-window__ready span.issue-report-window__ready-hint {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .issue-report-window__actions .cove-window__action {
   gap: 6px;
 }

@@ -49,8 +49,15 @@ type IssueReportDiagnosticSection = {
   sensitivity: 'safe' | 'redacted' | 'local-paths-optional'
   github: 'summary' | 'excerpt' | 'omit'
   status: 'available' | 'unavailable'
+  githubContent?: unknown
 }
 ```
+
+A section whose full content cannot fit the per-section GitHub budget must
+supply `githubContent`: a smaller payload that is still self-contained and
+well-formed. Relying on a raw character cut is not acceptable, because it
+yields an unparseable fragment and silently decides which end of the data
+survives.
 
 The standard bundle should include:
 
@@ -93,6 +100,12 @@ The standard bundle should include:
 6. Critical UI breadcrumbs must not depend on diagnostic environment flags.
    Collection failure must be inert, and always-on collection must not write
    files or grow beyond its fixed capacity.
+7. Every truncated payload in the GitHub body must remain parseable, keep the
+   entries nearest the failure, and state how much was dropped. Verification
+   must exercise a trail large enough to actually overflow the budget;
+   otherwise the test cannot tell newest-first from oldest-first.
+8. The user must be told that the prefilled GitHub form is only an extract, so
+   the saved report gets attached instead of assumed.
 
 ## Sanitization Policy
 
@@ -125,7 +138,18 @@ The report has two budget tiers:
 - Full local report: large enough for real diagnosis, but bounded so copying
   and file viewing remain practical.
 - GitHub issue body: compact enough for URL prefill, but still useful without
-  asking for another reproduction.
+  asking for another reproduction. The binding constraint is the prefilled URL
+  length, not GitHub's body limit: percent-encoding expands JSON by roughly
+  1.7x, so the body is trimmed again after the URL is assembled.
+
+Because sections are emitted in order and the body is trimmed from the end,
+section ordering is load-bearing: log excerpts come last precisely so that
+budget pressure lands on them rather than on geometry and breadcrumbs.
+
+For any time-ordered data, the entries nearest the failure are the ones that
+must survive. Breadcrumbs therefore keep a newest-first window, in chronological
+order, and report `omittedEntries` so the reader knows the trail is partial and
+that the saved report holds all of it.
 
 Each log excerpt must record the original byte count, included byte count,
 and sampling strategy. Runtime diagnostics rotate at 512 KiB with one backup;
