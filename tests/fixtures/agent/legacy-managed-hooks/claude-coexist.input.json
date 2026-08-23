@@ -1,0 +1,74 @@
+{
+  "env": {
+    "KEEP_VERBATIM": "third-party-value"
+  },
+  "theme": "dark",
+  "attribution": {
+    "commit": "third-party attribution"
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Applications/OpenCove.app/Contents/MacOS/OpenCove legacy-hook",
+            "statusMessage": "OpenCove agent status"
+          }
+        ]
+      },
+      {
+        "matcher": "orca-user-prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Applications/Orca.app/Contents/MacOS/orca hook --source=user"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "third-party-post-tool",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/local/bin/third-party-hook --preserve-spacing"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Applications/OpenCove.app/Contents/MacOS/OpenCove legacy-hook",
+            "statusMessage": "OpenCove agent status"
+          }
+        ]
+      }
+    ],
+    "PermissionDenied": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Applications/OpenCove.app/Contents/MacOS/OpenCove legacy-hook",
+            "statusMessage": "OpenCove agent status"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "orca-session-start",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Applications/Orca.app/Contents/MacOS/orca hook --source=session"
+          }
+        ]
+      }
+    ]
+  }
+}
