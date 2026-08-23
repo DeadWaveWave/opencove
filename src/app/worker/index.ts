@@ -11,22 +11,14 @@ import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironm
 import { hashWebUiPassword } from '../main/controlSurface/http/webUiPassword'
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
-import { resolvePackagedAppRoot } from '../../shared/runtime/opencoveRuntimePaths'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 import { createCodexHookChannel } from '../main/controlSurface/agentHook/codexHookChannel'
-import { resolveManagedCodexRuntimePaths } from '../main/controlSurface/agentHook/codexHookInstaller'
-
-function resolveAgentHookHelperPath(fileName: string): string {
-  const resourcesPath =
-    typeof process.resourcesPath === 'string' ? process.resourcesPath.trim() : ''
-  if (resourcesPath.length > 0) {
-    if (fileName === 'codex-trust-grant.mjs') {
-      return resolve(resourcesPath, 'app.asar.unpacked', 'src', 'app', 'cli', 'hooks', fileName)
-    }
-    return resolve(resolvePackagedAppRoot(resourcesPath), 'src', 'app', 'cli', 'hooks', fileName)
-  }
-  return resolve(__dirname, '../../src/app/cli/hooks', fileName)
-}
+import { AgentProviderRegistry } from '../../contexts/agent/application/services/AgentProviderRegistry'
+import { createBuiltinAgentProviderContributions } from '../../contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
+import {
+  cleanupLegacyManagedHooksAtStartup,
+  reportLegacyManagedHookCleanupFailures,
+} from '../../contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup'
 
 function readFlagValue(argv: string[], flag: string): string | null {
   const index = argv.indexOf(flag)
@@ -114,6 +106,7 @@ async function main(): Promise<void> {
   // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
   // Web UI, and remote/headless installs.
   await hydrateCliEnvironmentForAppLaunch(true)
+  reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
 
   const argv = process.argv.slice(2)
   const userDataPath = readFlagValue(argv, '--user-data') ?? resolveWorkerUserDataDir()
@@ -178,13 +171,10 @@ async function main(): Promise<void> {
   const forceHookInstallFailure =
     process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE === '1'
   const claudeHookChannel = createClaudeHookChannel({
-    homeDirectory: homedir(),
-    helperCommand: process.execPath,
-    helperArgs: [resolveAgentHookHelperPath('claude-status.mjs')],
     ...(forceHookBindFailure ? { port: -1 } : {}),
     ...(forceHookInstallFailure
       ? {
-          install: async () => ({ state: 'error' as const, detail: 'test_install_failure' }),
+          prepare: async () => ({ state: 'error' as const, detail: 'test_prepare_failure' }),
         }
       : {}),
   })
@@ -192,21 +182,11 @@ async function main(): Promise<void> {
     process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CODEX_HOOK_BIND_FAILURE === '1'
   const forceCodexHookInstallFailure =
     process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_CODEX_HOOK_INSTALL_FAILURE === '1'
-  const homeDirectory = homedir()
-  const codexRuntimeHome = resolveManagedCodexRuntimePaths({
-    homeDirectory,
-    userDataDirectory: userDataPath,
-  }).runtimeHome
-  process.env.CODEX_HOME = codexRuntimeHome
   const codexHookChannel = createCodexHookChannel({
-    homeDirectory,
-    userDataDirectory: userDataPath,
-    runtimeHomeDirectory: codexRuntimeHome,
-    trustGrantEntryPath: resolveAgentHookHelperPath('codex-trust-grant.mjs'),
     ...(forceCodexHookBindFailure ? { port: -1 } : {}),
     ...(forceCodexHookInstallFailure
       ? {
-          install: async () => ({ state: 'error' as const, detail: 'test_install_failure' }),
+          prepare: async () => ({ state: 'error' as const, detail: 'test_prepare_failure' }),
         }
       : {}),
   })
@@ -214,7 +194,14 @@ async function main(): Promise<void> {
     'claude-code': claudeHookChannel,
     codex: codexHookChannel,
   }
-  const ptyRuntime = createHeadlessPtyRuntime({ userDataPath, agentHookChannels })
+  const agentProviderRegistry = new AgentProviderRegistry(
+    createBuiltinAgentProviderContributions({
+      channels: agentHookChannels,
+      runtimeExecutable: process.execPath,
+      runtimePlatform: process.platform,
+    }),
+  )
+  const ptyRuntime = createHeadlessPtyRuntime({ userDataPath })
 
   const server = registerControlSurfaceHttpServer({
     userDataPath,
@@ -232,6 +219,7 @@ async function main(): Promise<void> {
     connectionStartedBy: startedBy,
     appVersion,
     agentHookChannels: [claudeHookChannel, codexHookChannel],
+    agentProviderRegistry,
   })
 
   const info = await server.ready

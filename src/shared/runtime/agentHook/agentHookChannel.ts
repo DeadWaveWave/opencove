@@ -22,18 +22,12 @@ export interface AgentHookSpawnReservation {
   installState: AgentHookInstallState
   usesHook: boolean
   commit: (sessionId: string) => void
-  dispose: () => void
-}
-
-export interface AgentHookPtyIdentity {
-  paneKey: string
-  tabId: string
-  worktreeId: string
+  dispose: () => Promise<void>
 }
 
 export interface AgentHookChannel {
   start: () => Promise<void>
-  reserveSpawn: (identity?: AgentHookPtyIdentity) => Promise<AgentHookSpawnReservation>
+  reserveSpawn: () => Promise<AgentHookSpawnReservation>
   onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   disposeSession: (sessionId: string) => void
   getInstallState: () => AgentHookInstallState
@@ -72,18 +66,11 @@ function readBody(request: IncomingMessage): Promise<unknown> {
 }
 
 export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(options: {
-  homeDirectory: string
-  helperCommand: string
-  helperArgs?: string[]
   hookPath: string
   source: AgentHookStateSource
   validateEnvelope: (value: unknown) => TEnvelope | null
-  install: (options: {
-    homeDirectory: string
-    helperCommand: string
-    helperArgs?: string[]
-  }) => Promise<AgentHookInstallResult>
   buildReservationEnv: (endpoint: string, token: string) => NodeJS.ProcessEnv
+  prepare?: () => Promise<AgentHookInstallResult>
   port?: number
   createHttpServer?: typeof createServer
 }): AgentHookChannel {
@@ -211,14 +198,12 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         return
       }
 
+      if (!options.prepare) {
+        installState = 'installed'
+        return
+      }
       try {
-        installState = (
-          await options.install({
-            homeDirectory: options.homeDirectory,
-            helperCommand: options.helperCommand,
-            helperArgs: options.helperArgs,
-          })
-        ).state
+        installState = (await options.prepare()).state
       } catch {
         installState = 'error'
       }
@@ -236,7 +221,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
           installState,
           usesHook: false,
           commit: () => undefined,
-          dispose: () => undefined,
+          dispose: async () => undefined,
         }
       }
 
@@ -244,7 +229,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       const credential: CredentialRecord<TEnvelope> = { sessionId: null, pending: [] }
       credentials.set(token, credential)
       let settled = false
-      const dispose = (): void => {
+      const dispose = async (): Promise<void> => {
         if (settled && credential.sessionId) {
           tokenBySessionId.delete(credential.sessionId)
         }

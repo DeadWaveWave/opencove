@@ -121,6 +121,17 @@ describe('main process lifecycle', () => {
       })),
     }))
 
+    vi.doMock(
+      '../../../src/contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup',
+      () => ({
+        cleanupLegacyManagedHooksAtStartup: vi.fn(async () => ({
+          removedCount: 0,
+          failures: [],
+        })),
+        reportLegacyManagedHookCleanupFailures: vi.fn(),
+      }),
+    )
+
     await import('../../../src/app/main/index')
     await Promise.resolve()
 

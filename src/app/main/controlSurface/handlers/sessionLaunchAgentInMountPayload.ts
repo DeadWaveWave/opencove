@@ -9,11 +9,6 @@ import {
   normalizeOptionalString,
 } from './sessionLaunchPayloadSupport'
 
-export function resolveOpenCodeEmbeddedXdgStateHome(userDataPath: string): string {
-  const normalized = userDataPath.trim()
-  return normalized.length > 0 ? normalized : process.cwd()
-}
-
 export function normalizeLaunchAgentInMountPayload(
   payload: unknown,
 ): LaunchAgentSessionInMountInput {

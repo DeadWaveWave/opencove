@@ -1,4 +1,5 @@
-export type AgentProviderId = 'claude-code' | 'codex' | 'opencode' | 'gemini'
+export const AGENT_PROVIDER_IDS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
+export type AgentProviderId = (typeof AGENT_PROVIDER_IDS)[number]
 
 export type AgentModelCatalogSource = 'claude-static' | 'codex-cli' | 'opencode-cli' | 'gemini-cli'
 export type ExecutableResolutionSource =

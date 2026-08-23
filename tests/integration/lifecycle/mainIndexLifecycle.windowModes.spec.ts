@@ -167,6 +167,17 @@ function mockMainIndexDependencies(params: {
       token: 'test-token',
     })),
   }))
+
+  vi.doMock(
+    '../../../src/contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup',
+    () => ({
+      cleanupLegacyManagedHooksAtStartup: vi.fn(async () => ({
+        removedCount: 0,
+        failures: [],
+      })),
+      reportLegacyManagedHookCleanupFailures: vi.fn(),
+    }),
+  )
 }
 
 async function importMainIndex(): Promise<void> {

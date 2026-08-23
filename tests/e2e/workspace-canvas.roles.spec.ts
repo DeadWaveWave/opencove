@@ -306,6 +306,12 @@ test.describe('Workspace Canvas - Roles', () => {
             outputFormat: 'PRD',
             targetMountId: reboundMount.nextMountId,
           })
+
+        // This test's restart assertion covers role metadata, not active-Agent recovery. End the
+        // launched runtime explicitly so its worker session and launch artifacts settle before the
+        // cold restart reads the shared user-data directory.
+        await window.locator('.terminal-node').first().locator('.terminal-node__close').click()
+        await expect(window.locator('.terminal-node')).toHaveCount(0)
       } finally {
         await firstLaunch.electronApp.close()
       }

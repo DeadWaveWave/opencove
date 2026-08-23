@@ -27,6 +27,8 @@ import { createControlSurfaceTerminalRecoveryRuntime } from './terminalRecovery/
 import { TerminalRuntimeAvailability } from '../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { initializeTerminalRuntimeAvailability } from './terminalRecovery/terminalRuntimeStartup'
 import { createControlSurfaceHttpServerContext } from './controlSurfaceHttpServerContext'
+import { AgentProviderRegistry } from '../../../contexts/agent/application/services/AgentProviderRegistry'
+import { createBuiltinAgentProviderContributions } from '../../../contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
 import {
   CONTROL_SURFACE_CONNECTION_VERSION,
   normalizeControlSurfaceAppVersion,
@@ -70,14 +72,18 @@ export function registerControlSurfaceHttpServer(
     topology,
     managedRuntime: managedSshRuntime,
   })
+  const agentHookChannels =
+    options.agentHookChannels ?? (options.claudeHookChannel ? [options.claudeHookChannel] : [])
   const ptyRuntime = createMultiEndpointPtyRuntime({
     localRuntime: options.ptyRuntime,
     topology,
     disposeLocalRuntime: options.ownsPtyRuntime === true,
+    agentStateSources: agentHookChannels,
   })
-  const agentHookChannels =
-    options.agentHookChannels ?? (options.claudeHookChannel ? [options.claudeHookChannel] : [])
   const agentHookStart = Promise.all(agentHookChannels.map(async channel => await channel.start()))
+  const agentProviderRegistry =
+    options.agentProviderRegistry ??
+    new AgentProviderRegistry(createBuiltinAgentProviderContributions())
 
   const ptyStreamService = createPtyStreamService({
     token,
@@ -134,6 +140,7 @@ export function registerControlSurfaceHttpServer(
     restoreTerminalSession: terminalRecovery.restoreTerminalSession,
     terminalSpawnAdmission: terminalRuntimeAvailability,
     terminalRecoverySpawnAdmission: terminalRuntimeAvailability,
+    agentProviderRegistry,
   })
   let closed = false
   let disposePromise: Promise<void> | null = null
@@ -466,6 +473,7 @@ export function registerControlSurfaceHttpServer(
 
         try {
           ptyRuntime.dispose()
+          await ptyRuntime.drainLaunchArtifacts()
         } catch {
           // ignore
         }

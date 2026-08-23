@@ -12,7 +12,11 @@ import { RemotePtyEndpointProxy } from './remotePtyEndpointProxy'
 import type { TerminalRuntimeRoute } from '../../../../contexts/terminal/domain/recovery/terminalRecovery'
 import { createRemoteRecoveryCheckpointFence } from './remoteRecoveryCheckpointFence'
 import { ShellInputReadiness } from './shellInputReadiness'
-import { subscribePtyRuntimeListener } from './ptyRuntimeListeners'
+import { subscribePtyRuntimeListener, subscribePtyRuntimeSources } from './ptyRuntimeListeners'
+import { AgentLaunchArtifactOwner } from '../../../../contexts/agent/application/services/AgentLaunchArtifactOwner'
+import { spawnLocalSessionWithArtifacts } from './localAgentLaunchArtifactLifecycle'
+import { RemotePtyRecoveryBlockedError } from './RemotePtyRecoveryBlockedError'
+export { RemotePtyRecoveryBlockedError } from './RemotePtyRecoveryBlockedError'
 
 type RemoteSessionRoute = {
   kind: 'remote'
@@ -23,15 +27,7 @@ type RemoteSessionRoute = {
 type LocalSessionRoute = {
   kind: 'local'
 }
-
 type SessionRoute = LocalSessionRoute | RemoteSessionRoute
-
-export class RemotePtyRecoveryBlockedError extends Error {
-  public constructor(message = 'Authoritative remote PTY presentation snapshot unavailable') {
-    super(message)
-    this.name = 'RemotePtyRecoveryBlockedError'
-  }
-}
 
 export type MultiEndpointPtyRuntime = ControlSurfacePtyRuntime & {
   registerRemoteSession: (options: { endpointId: string; remoteSessionId: string }) => string
@@ -59,6 +55,7 @@ export type MultiEndpointPtyRuntime = ControlSurfacePtyRuntime & {
     downstreamReplayCursor: number | null
   }>
   drainPresentationRecovery: () => Promise<void>
+  drainLaunchArtifacts: () => Promise<void>
   dispose: () => void
 }
 
@@ -66,6 +63,7 @@ export function createMultiEndpointPtyRuntime(options: {
   localRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
   topology: WorkerTopologyStore
   disposeLocalRuntime: boolean
+  agentStateSources?: readonly Pick<ControlSurfacePtyRuntime, 'onState'>[]
 }): MultiEndpointPtyRuntime {
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
@@ -95,6 +93,10 @@ export function createMultiEndpointPtyRuntime(options: {
     string,
     { homeSessionId: string; settle: (committed?: boolean) => void }
   >()
+  const launchArtifactOwner = new AgentLaunchArtifactOwner(error => {
+    const detail = error instanceof Error ? (error.stack ?? error.message) : String(error)
+    process.stderr.write(`[opencove] failed to dispose Agent launch artifacts: ${detail}\n`)
+  })
 
   const proxiesByEndpointId = new Map<string, RemotePtyEndpointProxy>()
 
@@ -217,6 +219,7 @@ export function createMultiEndpointPtyRuntime(options: {
 
   const disposeLocalExitListener = options.localRuntime.onExit(event => {
     shellInputReadiness.forget(event.sessionId)
+    launchArtifactOwner.release(event.sessionId)
     exitListeners.forEach(listener => listener(event))
   })
 
@@ -232,13 +235,22 @@ export function createMultiEndpointPtyRuntime(options: {
     metadataListeners.forEach(listener => listener(event))
   })
 
+  const disposeAgentStateSourceListeners = subscribePtyRuntimeSources(
+    options.agentStateSources ?? [],
+    stateListeners,
+  )
+
   return {
     listProfiles: async () =>
       options.localRuntime.listProfiles
         ? await options.localRuntime.listProfiles()
         : { profiles: [], defaultProfileId: null },
     spawnSession: async spawnOptions => {
-      const { sessionId } = await options.localRuntime.spawnSession(spawnOptions)
+      const { sessionId } = await spawnLocalSessionWithArtifacts(
+        options.localRuntime,
+        spawnOptions,
+        launchArtifactOwner,
+      )
       routes.set(sessionId, { kind: 'local' })
       return { sessionId }
     },
@@ -368,6 +380,7 @@ export function createMultiEndpointPtyRuntime(options: {
         }
       }
     },
+    drainLaunchArtifacts: async () => await launchArtifactOwner.drain(),
     write: (sessionId, data) => {
       const route = routes.get(sessionId)
       if (!route || route.kind === 'local') {
@@ -454,6 +467,7 @@ export function createMultiEndpointPtyRuntime(options: {
       disposeLocalForegroundListener?.()
       disposeLocalStateListener?.()
       disposeLocalMetadataListener?.()
+      disposeAgentStateSourceListeners.forEach(disposeListener => disposeListener())
 
       for (const proxy of proxiesByEndpointId.values()) {
         proxy.dispose()
@@ -471,6 +485,8 @@ export function createMultiEndpointPtyRuntime(options: {
       presentationResetListeners.clear()
       presentationResetCommittedListeners.clear()
       foregroundListeners.clear()
+
+      launchArtifactOwner.releaseAll()
 
       if (options.disposeLocalRuntime) {
         try {
