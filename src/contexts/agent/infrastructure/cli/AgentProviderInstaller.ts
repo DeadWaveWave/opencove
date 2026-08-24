@@ -22,11 +22,13 @@ import { resolveAgentCliInvocation } from './AgentCliInvocation'
 const INSTALL_TIMEOUT_MS = 120_000
 const MAX_CAPTURED_OUTPUT_LENGTH = 16_000
 
-const AGENT_PROVIDER_NPM_PACKAGES: Record<AgentProviderId, string> = {
+const AGENT_PROVIDER_NPM_PACKAGES: Record<AgentProviderId, string | null> = {
   'claude-code': '@anthropic-ai/claude-code',
   codex: '@openai/codex',
   opencode: 'opencode-ai',
   gemini: '@google/gemini-cli',
+  pi: '@earendil-works/pi-coding-agent',
+  kimi: null,
 }
 
 interface CommandOutput {
@@ -190,7 +192,13 @@ export function resolveAgentProviderInstallPackage(provider: AgentProviderId): s
     })
   }
 
-  return AGENT_PROVIDER_NPM_PACKAGES[provider]
+  const packageName = AGENT_PROVIDER_NPM_PACKAGES[provider]
+  if (!packageName) {
+    throw createAppError('common.unavailable', {
+      debugMessage: `${provider} does not have a verified npm installation package.`,
+    })
+  }
+  return packageName
 }
 
 export async function installAgentProvider(

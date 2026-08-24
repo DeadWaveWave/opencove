@@ -174,4 +174,53 @@ describe('agent run-state arbiter owner', () => {
     })
     expect(clearTimer).toHaveBeenCalledWith(7)
   })
+
+  it('uses a degraded launch fallback until Kimi wire becomes observable', () => {
+    const harness = createHarness()
+    harness.owner.observe({
+      sessionId: 'kimi-session',
+      state: 'standby',
+      source: 'launch',
+    })
+    expect(harness.decisions).toEqual([])
+
+    harness.owner.observe({
+      sessionId: 'kimi-session',
+      state: 'standby',
+      source: 'launch',
+      degraded: true,
+    })
+    harness.owner.observe({
+      sessionId: 'kimi-session',
+      state: 'working',
+      source: 'session_file',
+    })
+    harness.owner.observe({
+      sessionId: 'kimi-session',
+      state: 'standby',
+      source: 'launch',
+      degraded: true,
+    })
+
+    expect(harness.decisions).toEqual([
+      {
+        sessionId: 'kimi-session',
+        state: 'standby',
+        source: 'launch',
+        degraded: true,
+      },
+      {
+        sessionId: 'kimi-session',
+        state: 'working',
+        source: 'session_file',
+        degraded: false,
+      },
+      {
+        sessionId: 'kimi-session',
+        state: 'standby',
+        source: 'launch',
+        degraded: true,
+      },
+    ])
+  })
 })

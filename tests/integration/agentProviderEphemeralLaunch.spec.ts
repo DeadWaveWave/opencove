@@ -10,11 +10,17 @@ import type { WorkerTopologyStore } from '../../src/app/main/controlSurface/topo
 import { createManagedAgentLaunchPlan } from '../../src/contexts/agent/application/use-cases/createManagedAgentLaunchPlan'
 import { ClaudeCodeAgentProviderContribution } from '../../src/contexts/agent/infrastructure/providers/claude-code/ClaudeCodeAgentProviderContribution'
 import { CodexAgentProviderContribution } from '../../src/contexts/agent/infrastructure/providers/codex/CodexAgentProviderContribution'
+import { KimiAgentProviderContribution } from '../../src/contexts/agent/infrastructure/providers/kimi/KimiAgentProviderContribution'
+import { PiAgentProviderContribution } from '../../src/contexts/agent/infrastructure/providers/pi/PiAgentProviderContribution'
+import type { AgentProviderId } from '../../src/shared/contracts/dto'
 
 const globalConfigRelativePaths = [
   ['.claude', 'settings.json'],
   ['.codex', 'hooks.json'],
   ['.codex', 'config.toml'],
+  ['.pi', 'agent', 'settings.json'],
+  ['.kimi-code', 'config.toml'],
+  ['.kimi-code', 'tui.toml'],
 ] as const
 
 afterEach(() => {
@@ -22,7 +28,7 @@ afterEach(() => {
 })
 
 describe('ephemeral Agent Provider launch', () => {
-  it('leaves every user-level Claude and Codex config byte-for-byte unchanged', async () => {
+  it('leaves every user-level provider config byte-for-byte unchanged', async () => {
     const testHome = await mkdtemp(join(tmpdir(), 'opencove-provider-home-'))
     vi.stubEnv('HOME', testHome)
     const globalConfigPaths = globalConfigRelativePaths.map(parts => join(homedir(), ...parts))
@@ -101,15 +107,49 @@ describe('ephemeral Agent Provider launch', () => {
       })
       codex.plan.onStarted?.(codexSession.sessionId)
 
+      const pi = await createManagedAgentLaunchPlan(
+        new PiAgentProviderContribution(),
+        launchCommand('pi'),
+      )
+      expect(pi.plan).toMatchObject({ command: 'pi', env: {} })
+      const piSession = await runtime.spawnSession({
+        cwd: testHome,
+        cols: 80,
+        rows: 24,
+        command: pi.plan.command,
+        args: [...pi.plan.args],
+        env: { ...pi.plan.env },
+        launchArtifacts: pi.artifacts,
+      })
+
+      const kimi = await createManagedAgentLaunchPlan(
+        new KimiAgentProviderContribution(),
+        launchCommand('kimi'),
+      )
+      expect(kimi.plan).toMatchObject({ command: 'kimi', env: {} })
+      const kimiSession = await runtime.spawnSession({
+        cwd: testHome,
+        cols: 80,
+        rows: 24,
+        command: kimi.plan.command,
+        args: [...kimi.plan.args],
+        env: { ...kimi.plan.env },
+        launchArtifacts: kimi.artifacts,
+      })
+
       const after = await Promise.all(globalConfigPaths.map(async path => await readFile(path)))
       expect(after).toEqual(before)
 
       emitExit?.({ sessionId: claudeSession.sessionId, exitCode: 0 })
       emitExit?.({ sessionId: codexSession.sessionId, exitCode: 0 })
+      emitExit?.({ sessionId: piSession.sessionId, exitCode: 0 })
+      emitExit?.({ sessionId: kimiSession.sessionId, exitCode: 0 })
       await vi.waitFor(async () => {
         await expect(access(settingsPath)).rejects.toMatchObject({ code: 'ENOENT' })
         expect(claude.artifacts.isDisposed).toBe(true)
         expect(codex.artifacts.isDisposed).toBe(true)
+        expect(pi.artifacts.isDisposed).toBe(true)
+        expect(kimi.artifacts.isDisposed).toBe(true)
       })
     } finally {
       runtime.dispose()
@@ -119,7 +159,7 @@ describe('ephemeral Agent Provider launch', () => {
   })
 })
 
-function launchCommand(provider: 'claude-code' | 'codex') {
+function launchCommand(provider: AgentProviderId) {
   return {
     mode: 'new' as const,
     prompt: 'Explain the change',
@@ -127,6 +167,7 @@ function launchCommand(provider: 'claude-code' | 'codex') {
     resumeSessionId: null,
     agentFullAccess: true,
     workspaceDirectory: homedir(),
-    executablePathOverride: provider === 'codex' ? 'codex' : 'claude',
+    executablePathOverride:
+      provider === 'claude-code' ? 'claude' : provider === 'codex' ? 'codex' : provider,
   }
 }

@@ -22,10 +22,13 @@ export function resolveAgentPtySpawnState(
   prompt: string,
   mode: AgentLaunchMode,
 ) {
+  const hasObservablePromptStart = provider !== 'pi' && provider !== 'kimi'
   return {
     agentProvider: provider,
     initialAgentState:
-      mode === 'new' && prompt.trim().length > 0 ? ('working' as const) : ('standby' as const),
+      hasObservablePromptStart && mode === 'new' && prompt.trim().length > 0
+        ? ('working' as const)
+        : ('standby' as const),
   }
 }
 

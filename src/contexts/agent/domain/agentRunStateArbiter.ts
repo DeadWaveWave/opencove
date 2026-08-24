@@ -15,18 +15,20 @@ export interface AgentRunStateSignal {
   state: TerminalSessionState
   observedAtMs: number
   source?: AgentHookStateSource
+  degraded?: boolean
 }
 
 export interface AgentRunStateAuthorityInput {
   hookInstallState: AgentHookInstallState | null
   lastHookSignal: AgentRunStateSignal | null
   lastSessionFileSignal: AgentRunStateSignal | null
+  lastLaunchSignal?: AgentRunStateSignal | null
   nowMs: number
   hookFreshnessMs?: number
 }
 
 export interface AgentRunStateAuthorityDecision {
-  source: AgentHookStateSource | 'session_file' | null
+  source: AgentHookStateSource | 'session_file' | 'launch' | null
   state: TerminalSessionState | null
   degraded: boolean
   hookHealth: 'fresh' | 'stale' | 'unavailable' | 'not_applicable'
@@ -35,16 +37,19 @@ export interface AgentRunStateAuthorityDecision {
 
 function selectSessionFile(
   signal: AgentRunStateSignal | null,
+  launchSignal: AgentRunStateSignal | null,
   options: {
     degraded: boolean
     hookHealth: AgentRunStateAuthorityDecision['hookHealth']
   },
 ): AgentRunStateAuthorityDecision {
+  const launchFallback = !signal && launchSignal?.degraded === true ? launchSignal : null
+  const selectedSignal = signal ?? launchFallback
   return {
-    source: signal ? 'session_file' : null,
-    state: signal?.state ?? null,
-    degraded: options.degraded,
-    hookHealth: options.hookHealth,
+    source: signal ? 'session_file' : launchFallback ? 'launch' : null,
+    state: selectedSignal?.state ?? null,
+    degraded: options.degraded || selectedSignal?.degraded === true,
+    hookHealth: launchFallback ? 'unavailable' : options.hookHealth,
     nextTransitionAtMs: null,
   }
 }
@@ -53,14 +58,14 @@ export function resolveAgentRunStateAuthority(
   input: AgentRunStateAuthorityInput,
 ): AgentRunStateAuthorityDecision {
   if (input.hookInstallState === null) {
-    return selectSessionFile(input.lastSessionFileSignal, {
+    return selectSessionFile(input.lastSessionFileSignal, input.lastLaunchSignal ?? null, {
       degraded: false,
       hookHealth: 'not_applicable',
     })
   }
 
   if (input.hookInstallState !== 'installed') {
-    return selectSessionFile(input.lastSessionFileSignal, {
+    return selectSessionFile(input.lastSessionFileSignal, input.lastLaunchSignal ?? null, {
       degraded: true,
       hookHealth: 'unavailable',
     })
@@ -68,7 +73,7 @@ export function resolveAgentRunStateAuthority(
 
   const hookSignal = input.lastHookSignal
   if (!hookSignal) {
-    return selectSessionFile(input.lastSessionFileSignal, {
+    return selectSessionFile(input.lastSessionFileSignal, input.lastLaunchSignal ?? null, {
       degraded: true,
       hookHealth: 'stale',
     })
@@ -98,7 +103,7 @@ export function resolveAgentRunStateAuthority(
     }
   }
 
-  return selectSessionFile(input.lastSessionFileSignal, {
+  return selectSessionFile(input.lastSessionFileSignal, input.lastLaunchSignal ?? null, {
     degraded: true,
     hookHealth: 'stale',
   })

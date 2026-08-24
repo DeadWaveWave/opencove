@@ -26,5 +26,7 @@ describe('format', () => {
     await applyUiLanguage('zh-CN')
     expect(toErrorMessage(null)).toBe('未知错误')
     expect(toAgentNodeTitle('opencode', null)).toBe('opencode · 默认模型')
+    expect(toAgentNodeTitle('pi', null)).toBe('pi · 默认模型')
+    expect(toAgentNodeTitle('kimi', null)).toBe('kimi · 默认模型')
   })
 })

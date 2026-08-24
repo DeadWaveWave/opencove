@@ -1,7 +1,19 @@
-export const AGENT_PROVIDER_IDS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
+export const AGENT_PROVIDER_IDS = [
+  'claude-code',
+  'codex',
+  'opencode',
+  'gemini',
+  'pi',
+  'kimi',
+] as const
 export type AgentProviderId = (typeof AGENT_PROVIDER_IDS)[number]
 
-export type AgentModelCatalogSource = 'claude-static' | 'codex-cli' | 'opencode-cli' | 'gemini-cli'
+export type AgentModelCatalogSource =
+  | 'claude-static'
+  | 'codex-cli'
+  | 'opencode-cli'
+  | 'gemini-cli'
+  | 'none'
 export type ExecutableResolutionSource =
   | 'override'
   | 'shell_env_path'

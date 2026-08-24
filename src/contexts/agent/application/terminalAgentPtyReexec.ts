@@ -37,7 +37,10 @@ export function buildTerminalAgentReentryCommand(options: {
   if (options.provider === 'opencode') {
     return `opencode --session ${resumeSessionId} .`
   }
-  return `gemini --resume ${resumeSessionId}`
+  if (options.provider === 'gemini') {
+    return `gemini --resume ${resumeSessionId}`
+  }
+  return `${options.provider} --session ${resumeSessionId}`
 }
 
 export async function reexecTerminalAgentInPty(options: {

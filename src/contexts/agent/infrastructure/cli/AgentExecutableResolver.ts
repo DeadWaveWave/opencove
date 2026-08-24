@@ -18,6 +18,7 @@ import { resolveAgentCliCommand } from './AgentCommandFactory'
 
 export interface ResolveAgentExecutableInput {
   provider: AgentProviderId
+  command?: string
   overridePath?: string | null
 }
 
@@ -28,7 +29,7 @@ export interface ResolvedAgentExecutable extends ExecutableLocationResult {
 const executableResolutionCache = new Map<string, Promise<ResolvedAgentExecutable>>()
 
 function toCacheKey(input: ResolveAgentExecutableInput): string {
-  return `${input.provider}\u0000${input.overridePath?.trim() ?? ''}`
+  return `${input.provider}\u0000${input.command?.trim() ?? ''}\u0000${input.overridePath?.trim() ?? ''}`
 }
 
 function cloneResolvedExecutable(resolved: ResolvedAgentExecutable): ResolvedAgentExecutable {
@@ -49,7 +50,7 @@ function toAvailabilityStatus(resolved: ResolvedAgentExecutable): AgentProviderA
 async function resolveAgentExecutableUncached(
   input: ResolveAgentExecutableInput,
 ): Promise<ResolvedAgentExecutable> {
-  const command = resolveAgentCliCommand(input.provider)
+  const command = input.command?.trim() || resolveAgentCliCommand(input.provider)
   const fallbackDirectories = buildAdditionalPathSegments(process.platform, resolveHomeDirectory())
   const resolved = await locateExecutable({
     toolId: input.provider,

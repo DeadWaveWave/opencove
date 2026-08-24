@@ -1,6 +1,10 @@
 import type { ControlSurface } from '../controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
-import type { AttachAgentStateWatcherInput } from '../../../../shared/contracts/dto'
+import {
+  AGENT_PROVIDER_IDS,
+  type AgentProviderId,
+  type AttachAgentStateWatcherInput,
+} from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
@@ -37,10 +41,8 @@ function normalizeAttachPayload(payload: unknown): AttachAgentStateWatcherInput 
   const launchMode = payload.launchMode
   const startedAtMs = payload.startedAtMs
   if (
-    (provider !== 'claude-code' &&
-      provider !== 'codex' &&
-      provider !== 'opencode' &&
-      provider !== 'gemini') ||
+    typeof provider !== 'string' ||
+    !AGENT_PROVIDER_IDS.includes(provider as AgentProviderId) ||
     cwd.length === 0 ||
     (launchMode !== 'new' && launchMode !== 'resume') ||
     typeof startedAtMs !== 'number' ||
@@ -54,7 +56,7 @@ function normalizeAttachPayload(payload: unknown): AttachAgentStateWatcherInput 
 
   return {
     sessionId,
-    provider,
+    provider: provider as AgentProviderId,
     cwd,
     launchMode,
     resumeSessionId: normalizeOptionalString(payload.resumeSessionId),

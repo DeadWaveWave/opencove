@@ -64,14 +64,7 @@ export function toErrorMessage(error: unknown): string {
 }
 
 export function toAgentNodeTitle(provider: AgentProvider, model: string | null): string {
-  const providerTitle =
-    provider === 'claude-code'
-      ? 'claude'
-      : provider === 'opencode'
-        ? 'opencode'
-        : provider === 'gemini'
-          ? 'gemini'
-          : 'codex'
+  const providerTitle = provider === 'claude-code' ? 'claude' : provider
   return `${providerTitle} · ${model ?? translate('common.defaultModel')}`
 }
 

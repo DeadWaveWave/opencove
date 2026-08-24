@@ -9,17 +9,15 @@ import {
   captureGeminiSessionDiscoveryCursor,
   type GeminiSessionDiscoveryCursor,
 } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
-import { GeminiSessionStateWatcher } from '../../../agent/infrastructure/watchers/GeminiSessionStateWatcher'
 import { OpenCodeSessionStateWatcher } from '../../../agent/infrastructure/watchers/OpenCodeSessionStateWatcher'
 import { resolveSessionFilePath } from '../../../agent/infrastructure/watchers/SessionFileResolver'
-import { SessionTurnStateWatcher } from '../../../agent/infrastructure/watchers/SessionTurnStateWatcher'
 import { resolveDiscoveredSessionId } from './sessionStateWatcherDiscovery'
 import { shouldBroadcastOptimisticWorkingFromInteraction } from './sessionStateWatcherInteraction'
 import {
-  isJsonlProvider,
   logSessionStateWatcherDiagnostics,
   resolveSessionStateWatcherRetryDelay,
 } from './sessionStateWatcherShared'
+import { createSessionFileStateWatcher } from './sessionStateWatcherProvider'
 
 const SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS = 1_500
 const SESSION_STATE_WATCHER_FILE_TIMEOUT_MS = 1_500
@@ -33,12 +31,6 @@ export interface SessionStateWatcherStartInput {
   resumeSessionId: string | null
   startedAtMs: number
   opencodeBaseUrl?: string | null
-  /**
-   * Optional pre-captured snapshot of Gemini sessions for this cwd.
-   *
-   * - `undefined`: controller will capture the snapshot itself (legacy behaviour).
-   * - `null`: explicitly skip snapshot capture and attempt discovery without cursor filtering.
-   */
   geminiDiscoveryCursor?: GeminiSessionDiscoveryCursor | null
 }
 
@@ -169,10 +161,13 @@ export function createSessionStateWatcherController({
   const broadcastSessionState = (
     sessionId: string,
     state: 'working' | 'waiting' | 'standby',
+    options: { degraded?: boolean; source?: TerminalSessionStateEvent['source'] } = {},
   ): void => {
     const eventPayload: TerminalSessionStateEvent = {
       sessionId,
       state,
+      source: options.source ?? 'session_file',
+      ...(options.degraded === true ? { degraded: true } : {}),
     }
     logSessionStateWatcherDiagnostics('broadcast-state', {
       sessionId,
@@ -181,6 +176,9 @@ export function createSessionStateWatcherController({
     sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)
     onState?.(eventPayload)
   }
+
+  const broadcastDegradedLaunch = (sessionId: string): void =>
+    broadcastSessionState(sessionId, 'standby', { source: 'launch', degraded: true })
 
   const scheduleRetry = (sessionId: string, watcherVersion: number): void => {
     const attempt = stateWatcherRetryCountBySession.get(sessionId) ?? 0
@@ -248,6 +246,13 @@ export function createSessionStateWatcherController({
 
       stateWatcherResolvedResumeSessionIdBySession.set(sessionId, resolvedSessionId)
       broadcastSessionMetadataOnce(sessionId, resolvedSessionId)
+
+      if (input.provider === 'pi') {
+        stateWatcherBySession.set(sessionId, { dispose: () => undefined })
+        cancelSessionStateWatcherRetry(sessionId)
+        stateWatcherRetryCountBySession.delete(sessionId)
+        return
+      }
 
       if (input.provider === 'opencode') {
         if (!input.opencodeBaseUrl) {
@@ -326,21 +331,15 @@ export function createSessionStateWatcherController({
         )
       }
 
-      const watcher = isJsonlProvider(input.provider)
-        ? new SessionTurnStateWatcher({
-            provider: input.provider,
-            sessionId,
-            filePath: sessionFilePath,
-            onState: broadcastSessionState,
-            onError: handleWatcherError,
-          })
-        : new GeminiSessionStateWatcher({
-            sessionId,
-            filePath: sessionFilePath,
-            launchMode: input.launchMode,
-            onState: broadcastSessionState,
-            onError: handleWatcherError,
-          })
+      const watcher = createSessionFileStateWatcher({
+        provider: input.provider,
+        sessionId,
+        filePath: sessionFilePath,
+        launchMode: input.launchMode,
+        onState: broadcastSessionState,
+        onUnavailable: broadcastDegradedLaunch,
+        onError: handleWatcherError,
+      })
 
       if ((stateWatcherVersionBySession.get(sessionId) ?? 0) !== watcherVersion) {
         watcher.dispose()
@@ -360,6 +359,10 @@ export function createSessionStateWatcherController({
     clearSessionStateWatcher(input.sessionId, { disposeStartInput: true })
     stateWatcherStartInputBySession.set(input.sessionId, input)
     stateWatcherLastInteractionAtMsBySession.set(input.sessionId, input.startedAtMs)
+
+    if (input.provider === 'kimi') {
+      broadcastDegradedLaunch(input.sessionId)
+    }
 
     const watcherVersion = stateWatcherVersionBySession.get(input.sessionId) ?? 0
     if (input.provider === 'gemini' && input.launchMode === 'new' && !input.resumeSessionId) {
