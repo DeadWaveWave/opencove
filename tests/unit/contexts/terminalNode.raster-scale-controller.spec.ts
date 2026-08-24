@@ -43,6 +43,52 @@ describe('terminal raster scale controller', () => {
     expect(controller.currentScale).toBe(1.75)
   })
 
+  it('keeps xterm and backend PTY geometry unchanged across raster transitions', () => {
+    let backendPtySize = { cols: 120, rows: 32 }
+    const resizeBackendPty = vi.fn((cols: number, rows: number) => {
+      backendPtySize = { cols, rows }
+    })
+    const terminalGeometry = {
+      cols: 120,
+      rows: 32,
+      resize: vi.fn((cols: number, rows: number) => {
+        terminalGeometry.cols = cols
+        terminalGeometry.rows = rows
+        resizeBackendPty(cols, rows)
+      }),
+    }
+    const terminal = terminalGeometry as unknown as Terminal
+    const target = { setRasterScale: vi.fn() }
+    const baseline = {
+      cols: terminalGeometry.cols,
+      rows: terminalGeometry.rows,
+      backendPtySize: { ...backendPtySize },
+    }
+    const controller = installTerminalRasterScaleController({
+      terminal,
+      target,
+      initialViewportZoom: 1,
+    })
+
+    controller.setViewportZoom(1.06)
+    expect(controller.currentScale).toBe(1.25)
+    expect({
+      cols: terminalGeometry.cols,
+      rows: terminalGeometry.rows,
+      backendPtySize,
+    }).toEqual(baseline)
+
+    controller.setViewportZoom(0.94)
+    expect(controller.currentScale).toBe(1)
+    expect({
+      cols: terminalGeometry.cols,
+      rows: terminalGeometry.rows,
+      backendPtySize,
+    }).toEqual(baseline)
+    expect(terminalGeometry.resize).not.toHaveBeenCalled()
+    expect(resizeBackendPty).not.toHaveBeenCalled()
+  })
+
   it('routes viewport changes to the installed controller until disposal', () => {
     const terminal = {} as Terminal
     const target = { setRasterScale: vi.fn() }

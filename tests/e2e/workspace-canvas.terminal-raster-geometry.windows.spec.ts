@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  buildNodeEvalCommand,
   clearAndSeedWorkspace,
   launchApp,
   readCanvasViewport,
@@ -10,6 +11,9 @@ import {
 const nodeId = 'node-windows-raster-geometry'
 const reportedDevicePixelRatio = 1.25
 const reportedCanvasZoom = 1.06
+const contextLossGlyphCount = 48
+const contextLossGlyphRow = 'W'.repeat(contextLossGlyphCount)
+const contextLossMarker = 'raster-context-loss-ok'
 
 test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
   test.skip(process.platform !== 'win32', 'Windows terminal renderer regression')
@@ -73,6 +77,14 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
       )
       await expect(terminalSurface).toBeVisible()
 
+      await terminalSurface.locator('.xterm').click()
+      await window.keyboard.type(
+        buildNodeEvalCommand(
+          `for(let index=0;index<${contextLossGlyphCount};index+=1){process.stdout.write('\\u001b['+(31+index%6)+'mW')}process.stdout.write('\\u001b[0m\\n${contextLossMarker}\\n')`,
+        ),
+      )
+      await window.keyboard.press('Enter')
+
       await expect
         .poll(async () => await terminalSurface.getAttribute('data-cove-terminal-renderer'))
         .toBe('webgl')
@@ -111,6 +123,78 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
       expect(Number.isInteger(deviceCellHeight)).toBe(true)
       expect(metrics.deviceCanvasWidth).toBe(size.cols * deviceCellWidth)
       expect(metrics.deviceCanvasHeight).toBe(size.rows * deviceCellHeight)
+
+      const contextLossPrevented = await terminalSurface
+        .locator('.xterm-screen > canvas:not([class])')
+        .evaluate(canvas => {
+          const event = new Event('webglcontextlost', { cancelable: true })
+          canvas.dispatchEvent(event)
+          return event.defaultPrevented
+        })
+      expect(contextLossPrevented).toBe(true)
+
+      await expect
+        .poll(async () => await terminalSurface.getAttribute('data-cove-terminal-renderer'), {
+          timeout: 10_000,
+        })
+        .toBe('dom')
+      await expect(terminalSurface).toContainText(contextLossMarker)
+
+      const fallbackProjection = await window.evaluate(
+        ({ glyphRow, id }) => {
+          const api = window.__opencoveTerminalSelectionTestApi
+          const terminalElement = document.querySelector(
+            `.react-flow__node[data-id="${id}"] .terminal-node__terminal`,
+          )
+          const screen = terminalElement?.querySelector('.xterm-screen')
+          const glyphRowElement = Array.from(
+            terminalElement?.querySelectorAll('.xterm-rows > div') ?? [],
+          ).find(row => row.textContent?.includes(glyphRow))
+          if (!(screen instanceof HTMLElement) || !(glyphRowElement instanceof HTMLElement)) {
+            return null
+          }
+
+          const glyphSpans = Array.from(glyphRowElement.querySelectorAll(':scope > span'))
+          const rowRect = glyphRowElement.getBoundingClientRect()
+          const lastGlyphRect = glyphSpans.at(-1)?.getBoundingClientRect() ?? null
+          return {
+            glyphSpanCount: glyphSpans.length,
+            glyphWidth: lastGlyphRect ? lastGlyphRect.right - rowRect.left : null,
+            metrics: api?.getRenderMetrics(id) ?? null,
+            rowWidth: rowRect.width,
+            screenWidth: screen.getBoundingClientRect().width,
+            size: api?.getSize(id) ?? null,
+          }
+        },
+        { glyphRow: contextLossGlyphRow, id: nodeId },
+      )
+      expect(fallbackProjection).not.toBeNull()
+      if (!fallbackProjection?.metrics || !fallbackProjection.size) {
+        throw new Error('DOM fallback geometry projection unavailable')
+      }
+
+      const fallbackCellWidth = fallbackProjection.metrics.cssCellWidth
+      const fallbackCanvasWidth = fallbackProjection.metrics.cssCanvasWidth
+      expect(fallbackProjection.size).toEqual(size)
+      expect(fallbackProjection.glyphSpanCount).toBe(contextLossGlyphCount)
+      expect(fallbackCellWidth).not.toBeNull()
+      expect(fallbackCanvasWidth).not.toBeNull()
+      expect(fallbackProjection.glyphWidth).not.toBeNull()
+      if (
+        fallbackCellWidth === null ||
+        fallbackCanvasWidth === null ||
+        fallbackProjection.glyphWidth === null
+      ) {
+        throw new Error('DOM fallback glyph measurements unavailable')
+      }
+
+      expect(fallbackCanvasWidth).toBeCloseTo(size.cols * fallbackCellWidth, 8)
+      expect(fallbackProjection.rowWidth).toBeCloseTo(fallbackCanvasWidth, 1)
+      expect(fallbackProjection.screenWidth).toBeCloseTo(fallbackCanvasWidth, 1)
+      expect(fallbackProjection.glyphWidth).toBeCloseTo(
+        contextLossGlyphCount * fallbackCellWidth,
+        1,
+      )
     } finally {
       await electronApp.close()
     }
