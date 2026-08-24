@@ -80,7 +80,7 @@ describe('agent run-state arbiter owner', () => {
       hookInstallState: 'installed',
     })
     expect([...harness.timers.values()]).toEqual([
-      { callback: expect.any(Function), delayMs: 120_000 },
+      { callback: expect.any(Function), delayMs: AGENT_HOOK_FRESHNESS_MS },
     ])
 
     harness.setNow(2_000)

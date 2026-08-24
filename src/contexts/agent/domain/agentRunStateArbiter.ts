@@ -4,7 +4,12 @@ import type {
   TerminalSessionState,
 } from '../../../shared/contracts/dto'
 
-export const AGENT_HOOK_FRESHNESS_MS = 120_000
+// Measured against a real 59,993-record Codex session (186 compactions): compaction itself is
+// effectively instantaneous (median 1.6s to the next write, and the record following a compaction
+// always lands in the same second). The only silences that exceeded the old 120s lease came from
+// long model generation, reaching 169.5s. A 120s lease therefore expired while the agent was still
+// genuinely working. 180s covers the observed worst case with headroom.
+export const AGENT_HOOK_FRESHNESS_MS = 180_000
 
 export interface AgentRunStateSignal {
   state: TerminalSessionState

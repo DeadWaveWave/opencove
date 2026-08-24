@@ -200,7 +200,8 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
 
       expect(
         await window.evaluate(() => {
-          return window.__opencoveAgentRunStateTestApi?.advanceBy(120_000) ?? false
+          // Must exceed AGENT_HOOK_FRESHNESS_MS (180s) so the working lease actually expires.
+          return window.__opencoveAgentRunStateTestApi?.advanceBy(600_000) ?? false
         }),
       ).toBe(true)
       await expect(status).toHaveText('Standby')
