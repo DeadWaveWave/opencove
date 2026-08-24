@@ -107,12 +107,19 @@ function shouldDisableElectronSandboxForLinuxCi(): boolean {
   return process.platform === 'linux' && isTruthyEnv(process.env['CI'])
 }
 
-function resolveElectronLaunchArgs(): string[] {
-  if (!shouldDisableElectronSandboxForLinuxCi()) {
-    return [electronAppPath]
-  }
+function resolveElectronLaunchArgs(deviceScaleFactor?: number): string[] {
+  const chromiumArgs = [
+    ...(shouldDisableElectronSandboxForLinuxCi()
+      ? ['--no-sandbox', '--disable-dev-shm-usage']
+      : []),
+    ...(typeof deviceScaleFactor === 'number' &&
+    Number.isFinite(deviceScaleFactor) &&
+    deviceScaleFactor > 0
+      ? [`--force-device-scale-factor=${deviceScaleFactor}`]
+      : []),
+  ]
 
-  return ['--no-sandbox', '--disable-dev-shm-usage', electronAppPath]
+  return [...chromiumArgs, electronAppPath]
 }
 
 async function delay(ms: number): Promise<void> {
@@ -247,6 +254,7 @@ async function launchAppInMode(
     env?: Record<string, string | undefined>
     userDataDir?: string
     cleanupUserDataDir?: boolean
+    deviceScaleFactor?: number
   } = {},
   attempt = 0,
 ): Promise<{ electronApp: ElectronApplication; window: Page }> {
@@ -267,7 +275,7 @@ async function launchAppInMode(
 
     electronApp = await electron.launch({
       timeout: E2E_APP_LAUNCH_TIMEOUT_MS,
-      args: resolveElectronLaunchArgs(),
+      args: resolveElectronLaunchArgs(options.deviceScaleFactor),
       env: {
         ...INITIAL_E2E_PROCESS_ENV,
         NODE_ENV: 'test',
@@ -335,6 +343,7 @@ async function launchAppWithModes(
     env?: Record<string, string | undefined>
     userDataDir?: string
     cleanupUserDataDir?: boolean
+    deviceScaleFactor?: number
   } = {},
   index = 0,
 ): Promise<{ electronApp: ElectronApplication; window: Page }> {
@@ -359,6 +368,7 @@ export async function launchApp(options?: {
   env?: Record<string, string | undefined>
   userDataDir?: string
   cleanupUserDataDir?: boolean
+  deviceScaleFactor?: number
 }): Promise<{ electronApp: ElectronApplication; window: Page }> {
   const launchModes = resolveLaunchModes(options?.windowMode)
   return await launchAppWithModes(launchModes, options)
