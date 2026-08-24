@@ -14,6 +14,9 @@ const reportedCanvasZoom = 1.06
 const contextLossGlyphCount = 48
 const contextLossGlyphRow = 'W'.repeat(contextLossGlyphCount)
 const contextLossMarker = 'raster-context-loss-ok'
+const fallbackGeometryGlyph = 'M'
+const fallbackGeometryGlyphRow = fallbackGeometryGlyph.repeat(contextLossGlyphCount)
+const fallbackGeometryMarker = 'raster-dom-geometry-forward'
 
 test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
   test.skip(process.platform !== 'win32', 'Windows terminal renderer regression')
@@ -139,10 +142,11 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
 
       const readContextLossDiagnostics = async () => {
         return await window.evaluate(
-          ({ id, marker }) => {
+          ({ glyphRow, id, marker }) => {
             const api = window.__opencoveTerminalSelectionTestApi
             const renderMetrics = api?.getRenderMetrics(id) ?? null
             const bufferText = api?.getBufferText(id, marker) ?? null
+            const glyphBufferText = api?.getBufferText(id, glyphRow) ?? null
             const terminalElement = document.querySelector(
               `.react-flow__node[data-id="${id}"] .terminal-node__terminal`,
             )
@@ -166,14 +170,16 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
               bufferLength: bufferText?.bufferLength ?? null,
               viewportBufferLines: bufferText?.viewportLines ?? null,
               markerAbsoluteLine: bufferText?.markerAbsoluteLine ?? null,
+              glyphRowAbsoluteLine: glyphBufferText?.markerAbsoluteLine ?? null,
               rowTextContentLengths,
             }
           },
-          { id: nodeId, marker: contextLossMarker },
+          { glyphRow: contextLossGlyphRow, id: nodeId, marker: contextLossMarker },
         )
       }
       const beforeContextLossDiagnostics = await readContextLossDiagnostics()
       expect(beforeContextLossDiagnostics.markerAbsoluteLine).not.toBeNull()
+      expect(beforeContextLossDiagnostics.glyphRowAbsoluteLine).not.toBeNull()
 
       const contextLossPrevented = await terminalSurface
         .locator('.xterm-screen > canvas:not([class])')
@@ -190,8 +196,13 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
         })
         .toBe('dom')
       await expect
-        .poll(async () => (await readContextLossDiagnostics()).markerAbsoluteLine)
-        .not.toBeNull()
+        .poll(async () => {
+          const diagnostics = await readContextLossDiagnostics()
+          return (
+            diagnostics.glyphRowAbsoluteLine !== null && diagnostics.markerAbsoluteLine !== null
+          )
+        })
+        .toBe(true)
       const afterContextLossDiagnostics = await readContextLossDiagnostics()
       const contextLossDiagnostics = {
         beforeContextLoss: beforeContextLossDiagnostics,
@@ -206,6 +217,18 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
       expect(afterContextLossDiagnostics.markerAbsoluteLine).toBe(
         beforeContextLossDiagnostics.markerAbsoluteLine,
       )
+      expect(afterContextLossDiagnostics.glyphRowAbsoluteLine).toBe(
+        beforeContextLossDiagnostics.glyphRowAbsoluteLine,
+      )
+
+      await terminalSurface.locator('.xterm').click()
+      await window.keyboard.type(
+        buildNodeEvalCommand(
+          `for(let index=0;index<${contextLossGlyphCount};index+=1){process.stdout.write('\\u001b['+(31+index%6)+'m${fallbackGeometryGlyph}')}process.stdout.write('\\u001b[0m\\n${fallbackGeometryMarker}\\n')`,
+        ),
+      )
+      await window.keyboard.press('Enter')
+      await expect(terminalSurface).toContainText(fallbackGeometryMarker)
 
       const fallbackProjection = await window.evaluate(
         ({ glyphRow, id }) => {
@@ -233,7 +256,7 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
             size: api?.getSize(id) ?? null,
           }
         },
-        { glyphRow: contextLossGlyphRow, id: nodeId },
+        { glyphRow: fallbackGeometryGlyphRow, id: nodeId },
       )
       expect(fallbackProjection).not.toBeNull()
       if (!fallbackProjection?.metrics || !fallbackProjection.size) {
