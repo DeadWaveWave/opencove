@@ -1,4 +1,8 @@
 export type TerminalRenderMetricsTestProjection = {
+  rendererConstructorName: string | null
+  renderRowCount: number | null
+  renderServicePaused: boolean | null
+  renderServiceNeedsFullRefresh: boolean | null
   effectiveDpr: number | null
   deviceCanvasWidth: number | null
   deviceCanvasHeight: number | null
@@ -27,6 +31,9 @@ type TerminalRenderIntrospection = {
     _bufferService?: { isUserScrolling?: unknown }
     _coreBrowserService?: { dpr?: unknown }
     _renderService?: {
+      _isPaused?: unknown
+      _needsFullRefresh?: unknown
+      _rowCount?: unknown
       dimensions?: {
         device?: { canvas?: { width?: number; height?: number } }
         css?: {
@@ -36,6 +43,7 @@ type TerminalRenderIntrospection = {
       }
       _renderer?: {
         value?: {
+          constructor?: { name?: unknown }
           _coreBrowserService?: Record<string, unknown>
           _devicePixelRatio?: unknown
           _rasterScale?: unknown
@@ -61,8 +69,9 @@ export function readTerminalRenderMetricsForTest(
   value: unknown,
 ): TerminalRenderMetricsTestProjection | null {
   const terminal = value as TerminalRenderIntrospection | undefined
-  const dimensions = terminal?._core?._renderService?.dimensions
-  if (!dimensions) {
+  const renderService = terminal?._core?._renderService
+  const dimensions = renderService?.dimensions
+  if (!terminal || !dimensions) {
     return null
   }
 
@@ -70,7 +79,17 @@ export function readTerminalRenderMetricsForTest(
   const cssCanvas = dimensions.css?.canvas
   const cssCell = dimensions.css?.cell
   const dprDebug = terminal.__opencoveDprDebug
+  const rendererConstructorName = renderService?._renderer?.value?.constructor?.name
   return {
+    rendererConstructorName:
+      typeof rendererConstructorName === 'string' ? rendererConstructorName : null,
+    renderRowCount: finiteNumberOrNull(renderService?._rowCount),
+    renderServicePaused:
+      typeof renderService?._isPaused === 'boolean' ? renderService._isPaused : null,
+    renderServiceNeedsFullRefresh:
+      typeof renderService?._needsFullRefresh === 'boolean'
+        ? renderService._needsFullRefresh
+        : null,
     effectiveDpr: finiteNumberOrNull(terminal._core?._coreBrowserService?.dpr),
     deviceCanvasWidth: finiteNumberOrNull(deviceCanvas?.width),
     deviceCanvasHeight: finiteNumberOrNull(deviceCanvas?.height),

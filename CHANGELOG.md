@@ -102,7 +102,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - Terminal: render Windows terminals with WebGL and quantize backing cells to integer device pixels at fractional DPI and canvas zoom, preventing accumulated glyph-width drift. (#368)
-- Terminal: repaint buffered rows after WebGL context loss so GPU resets, graphics switching, and sleep or resume no longer leave a blank terminal while its scrollback still exists. (#368)
 - Agent: keep a busy agent labelled as working through long model generation by widening the hook freshness lease to 180s, so a run that goes quiet for up to three minutes is no longer downgraded to a stale fallback status. (#367)
 - Agent: inject Claude Code and Codex hook configuration per launch instead of editing user-level files, clean exact legacy OpenCove residue at startup, and tie temporary artifacts to the PTY lifecycle. (#366)
 - Diagnostics: keep the newest breadcrumbs in the prefilled GitHub issue body instead of the oldest, emit a still-parseable payload that states how many entries were dropped, and tell the reporter the form is only an extract so the saved report gets attached. (#363)

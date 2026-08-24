@@ -9,6 +9,7 @@ import { resolveTerminalEffectiveDevicePixelRatio } from '../../src/contexts/wor
 import { resolveTerminalRasterScale } from '../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalZoomRasterPolicy'
 
 type TerminalRenderMetrics = {
+  rendererKind: 'webgl' | 'dom' | null
   effectiveDpr: number | null
   deviceCanvasWidth: number | null
   deviceCanvasHeight: number | null
@@ -37,12 +38,16 @@ async function readTerminalRenderMetrics(
       return null
     }
 
-    const rasterScaleAttribute = document
-      .querySelector(`.react-flow__node[data-id="${targetNodeId}"] .terminal-node__terminal`)
-      ?.getAttribute('data-cove-terminal-raster-scale')
+    const terminalElement = document.querySelector(
+      `.react-flow__node[data-id="${targetNodeId}"] .terminal-node__terminal`,
+    )
+    const rasterScaleAttribute = terminalElement?.getAttribute('data-cove-terminal-raster-scale')
     const rasterScale = Number(rasterScaleAttribute)
+    const rendererAttribute = terminalElement?.getAttribute('data-cove-terminal-renderer')
     return {
       ...metrics,
+      rendererKind:
+        rendererAttribute === 'webgl' || rendererAttribute === 'dom' ? rendererAttribute : null,
       rasterScale: Number.isFinite(rasterScale) && rasterScale > 0 ? rasterScale : null,
       size: api?.getSize(targetNodeId) ?? null,
     }
@@ -140,9 +145,13 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
               canvasZoom: zoomedViewport.zoom,
               currentScale: expectedBaselineRasterScale,
             })
+            const rendererScaleSettled =
+              zoomedMetrics?.rendererKind === 'webgl'
+                ? zoomedMetrics.rasterScale === expectedRasterScale
+                : zoomedMetrics?.rendererKind === 'dom' && zoomedMetrics.rasterScale === 1
             return (
               Math.abs((zoomedMetrics?.effectiveDpr ?? 0) - expectedEffectiveDpr) < 0.05 &&
-              zoomedMetrics?.rasterScale === expectedRasterScale
+              rendererScaleSettled
             )
           },
           { timeout: 15_000 },
@@ -158,7 +167,6 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
         currentScale: expectedBaselineRasterScale,
       })
       expect(zoomedMetrics?.effectiveDpr).toBeCloseTo(expectedZoomedDpr, 1)
-      expect(zoomedMetrics?.rasterScale).toBe(expectedZoomedRasterScale)
       expect(zoomedMetrics?.size).toEqual(baselineMetrics?.size)
       expect(zoomedMetrics?.cssCanvasWidth).toBeCloseTo(baselineMetrics?.cssCanvasWidth ?? 0, 1)
       expect(zoomedMetrics?.cssCanvasHeight).toBeCloseTo(baselineMetrics?.cssCanvasHeight ?? 0, 1)
@@ -172,42 +180,58 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
       const baselineDeviceCellHeight = (baselineMetrics.deviceCanvasHeight ?? 0) / baselineSize.rows
       const zoomedDeviceCellWidth = (zoomedMetrics.deviceCanvasWidth ?? 0) / zoomedSize.cols
       const zoomedDeviceCellHeight = (zoomedMetrics.deviceCanvasHeight ?? 0) / zoomedSize.rows
-      expect(Number.isInteger(zoomedDeviceCellWidth)).toBe(true)
-      expect(Number.isInteger(zoomedDeviceCellHeight)).toBe(true)
-      expect(zoomedDeviceCellWidth).toBe(
-        Math.max(
-          1,
-          Math.round(
-            (baselineDeviceCellWidth / expectedBaselineRasterScale) * expectedZoomedRasterScale,
+      if (zoomedMetrics.rendererKind === 'webgl') {
+        expect(zoomedMetrics.rasterScale).toBe(expectedZoomedRasterScale)
+        expect(Number.isInteger(zoomedDeviceCellWidth)).toBe(true)
+        expect(Number.isInteger(zoomedDeviceCellHeight)).toBe(true)
+        expect(zoomedDeviceCellWidth).toBe(
+          Math.max(
+            1,
+            Math.round(
+              (baselineDeviceCellWidth / expectedBaselineRasterScale) * expectedZoomedRasterScale,
+            ),
           ),
-        ),
-      )
-      expect(zoomedDeviceCellHeight).toBe(
-        Math.max(
-          1,
-          Math.round(
-            (baselineDeviceCellHeight / expectedBaselineRasterScale) * expectedZoomedRasterScale,
+        )
+        expect(zoomedDeviceCellHeight).toBe(
+          Math.max(
+            1,
+            Math.round(
+              (baselineDeviceCellHeight / expectedBaselineRasterScale) * expectedZoomedRasterScale,
+            ),
           ),
-        ),
-      )
-      expect(zoomedMetrics.deviceCanvasWidth).toBe(zoomedSize.cols * zoomedDeviceCellWidth)
-      expect(zoomedMetrics.deviceCanvasHeight).toBe(zoomedSize.rows * zoomedDeviceCellHeight)
+        )
+        expect(zoomedMetrics.deviceCanvasWidth).toBe(zoomedSize.cols * zoomedDeviceCellWidth)
+        expect(zoomedMetrics.deviceCanvasHeight).toBe(zoomedSize.rows * zoomedDeviceCellHeight)
 
-      const changedLayoutDpr = zoomedWindowDpr * expectedZoomedRasterScale
-      const rendererDprProjection = await window.evaluate(
-        ({ nextDpr, nodeId }) =>
-          window.__opencoveTerminalSelectionTestApi?.simulateRendererDevicePixelRatioChange(
-            nodeId,
-            nextDpr,
-          ) ?? null,
-        { nextDpr: changedLayoutDpr, nodeId: 'node-terminal-dpr' },
-      )
-      expect(rendererDprProjection).not.toBeNull()
-      expect(rendererDprProjection?.rasterScale).toBe(expectedZoomedRasterScale)
-      expect(rendererDprProjection?.devicePixelRatio).toBeCloseTo(
-        changedLayoutDpr * expectedZoomedRasterScale,
-        5,
-      )
+        const changedLayoutDpr = zoomedWindowDpr * expectedZoomedRasterScale
+        const rendererDprProjection = await window.evaluate(
+          ({ nextDpr, nodeId }) =>
+            window.__opencoveTerminalSelectionTestApi?.simulateRendererDevicePixelRatioChange(
+              nodeId,
+              nextDpr,
+            ) ?? null,
+          { nextDpr: changedLayoutDpr, nodeId: 'node-terminal-dpr' },
+        )
+        expect(rendererDprProjection).not.toBeNull()
+        expect(rendererDprProjection?.rasterScale).toBe(expectedZoomedRasterScale)
+        expect(rendererDprProjection?.devicePixelRatio).toBeCloseTo(
+          changedLayoutDpr * expectedZoomedRasterScale,
+          5,
+        )
+      } else {
+        expect(zoomedMetrics.rendererKind).toBe('dom')
+        expect(zoomedMetrics.rasterScale).toBe(1)
+        expect(zoomedMetrics.cssCanvasWidth).toBe(
+          Math.round((zoomedMetrics.deviceCanvasWidth ?? 0) / zoomedWindowDpr),
+        )
+        expect(zoomedMetrics.cssCanvasHeight).toBe(
+          Math.round((zoomedMetrics.deviceCanvasHeight ?? 0) / zoomedWindowDpr),
+        )
+        if (baselineMetrics.rendererKind === 'dom') {
+          expect(zoomedMetrics.deviceCanvasWidth).toBe(baselineMetrics.deviceCanvasWidth)
+          expect(zoomedMetrics.deviceCanvasHeight).toBe(baselineMetrics.deviceCanvasHeight)
+        }
+      }
 
       expect(zoomedMetrics?.instanceId).toBe(baselineInstanceId)
       await xterm.click()

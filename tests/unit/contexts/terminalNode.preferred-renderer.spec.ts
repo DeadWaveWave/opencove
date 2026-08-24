@@ -380,12 +380,9 @@ describe('activatePreferredTerminalRenderer', () => {
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const onRendererKindChange = vi.fn()
       const onRendererIssue = vi.fn()
-      const refresh = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer(
         {
           loadAddon: vi.fn(),
-          refresh,
-          rows: 24,
         } as never,
         'codex',
         { onRendererKindChange, onRendererIssue },
@@ -402,7 +399,6 @@ describe('activatePreferredTerminalRenderer', () => {
         reason: 'context_loss',
         forceDom: true,
       })
-      expect(refresh).toHaveBeenCalledWith(0, 23)
       expect(activeRenderer.kind).toBe('dom')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
@@ -420,12 +416,9 @@ describe('activatePreferredTerminalRenderer', () => {
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const onRendererKindChange = vi.fn()
       const onRendererIssue = vi.fn()
-      const refresh = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer(
         {
           loadAddon: vi.fn(),
-          refresh,
-          rows: 18,
         } as never,
         'opencode',
         { terminalKind: 'agent', onRendererKindChange, onRendererIssue },
@@ -442,7 +435,6 @@ describe('activatePreferredTerminalRenderer', () => {
         reason: 'context_loss',
         forceDom: false,
       })
-      expect(refresh).toHaveBeenCalledWith(0, 17)
       expect(activeRenderer.kind).toBe('dom')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext

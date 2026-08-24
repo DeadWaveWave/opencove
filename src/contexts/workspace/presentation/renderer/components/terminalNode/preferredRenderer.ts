@@ -1,7 +1,6 @@
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { Terminal } from '@xterm/xterm'
-import { runTerminalRenderMutationSafely } from './renderServiceSafety'
 import type { TerminalRasterScale } from './terminalZoomRasterPolicy'
 
 export type ActiveTerminalRenderer = {
@@ -118,9 +117,6 @@ export function activatePreferredTerminalRenderer(
       })
       contextLossDisposable.dispose()
       webglAddon.dispose()
-      runTerminalRenderMutationSafely(() => {
-        terminal.refresh(0, Math.max(0, terminal.rows - 1))
-      })
     })
 
     return {

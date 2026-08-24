@@ -18,7 +18,9 @@ const contextLossMarker = 'raster-context-loss-ok'
 test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
   test.skip(process.platform !== 'win32', 'Windows terminal renderer regression')
 
-  test('uses WebGL integer device cells at fractional display scale and canvas zoom', async () => {
+  test('uses WebGL integer device cells at fractional display scale and canvas zoom', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     const { electronApp, window } = await launchApp({
       windowMode: 'inactive',
       deviceScaleFactor: reportedDevicePixelRatio,
@@ -149,6 +151,33 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
           timeout: 10_000,
         })
         .toBe('dom')
+      const contextLossDiagnostics = await window.evaluate(id => {
+        const renderMetrics =
+          window.__opencoveTerminalSelectionTestApi?.getRenderMetrics(id) ?? null
+        const terminalElement = document.querySelector(
+          `.react-flow__node[data-id="${id}"] .terminal-node__terminal`,
+        )
+        const rowTextContentLengths = Array.from(
+          terminalElement?.querySelectorAll('.xterm-rows > div') ?? [],
+        )
+          .slice(0, 5)
+          .map(row => row.textContent?.length ?? null)
+        return {
+          rendererConstructorName: renderMetrics?.rendererConstructorName ?? null,
+          renderRowCount: renderMetrics?.renderRowCount ?? null,
+          renderServicePaused: renderMetrics?.renderServicePaused ?? null,
+          renderServiceNeedsFullRefresh: renderMetrics?.renderServiceNeedsFullRefresh ?? null,
+          viewportY: renderMetrics?.viewportY ?? null,
+          baseY: renderMetrics?.baseY ?? null,
+          rowTextContentLengths,
+        }
+      }, nodeId)
+      const serializedContextLossDiagnostics = JSON.stringify(contextLossDiagnostics)
+      process.stdout.write(`[windows-terminal-context-loss] ${serializedContextLossDiagnostics}\n`)
+      await testInfo.attach('windows-terminal-context-loss', {
+        body: Buffer.from(serializedContextLossDiagnostics),
+        contentType: 'application/json',
+      })
       await expect(terminalSurface).toContainText(contextLossMarker)
 
       const fallbackProjection = await window.evaluate(
