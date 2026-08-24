@@ -1,11 +1,13 @@
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { Terminal } from '@xterm/xterm'
+import type { TerminalRasterScale } from './terminalZoomRasterPolicy'
 
 export type ActiveTerminalRenderer = {
   kind: 'webgl' | 'dom'
   clearTextureAtlas: () => void
   dispose: () => void
+  setRasterScale: (scale: TerminalRasterScale) => void
 }
 
 export type PreferredTerminalRendererMode = 'auto' | 'dom'
@@ -13,7 +15,6 @@ export type PreferredTerminalRendererMode = 'auto' | 'dom'
 export interface PreferredTerminalRendererOptions {
   preferredMode?: PreferredTerminalRendererMode
   webglRendererBudget?: number
-  runtimePlatform?: string
   terminalKind?: 'agent' | 'terminal'
   onRendererKindChange?: (kind: ActiveTerminalRenderer['kind']) => void
   onRendererIssue?: (issue: { reason: 'context_loss'; forceDom: boolean }) => void
@@ -28,6 +29,7 @@ function createDomRenderer(): ActiveTerminalRenderer {
     kind: 'dom',
     clearTextureAtlas: () => undefined,
     dispose: () => undefined,
+    setRasterScale: () => undefined,
   }
 }
 
@@ -60,29 +62,11 @@ function hasWebglRendererBudget(value: number | undefined): boolean {
   return activeWebglRendererCount < resolveWebglRendererBudget(value)
 }
 
-function resolveRuntimePlatform(explicitPlatform: string | undefined): string | null {
-  if (typeof explicitPlatform === 'string' && explicitPlatform.length > 0) {
-    return explicitPlatform
-  }
-
-  return typeof window !== 'undefined' ? (window.opencoveApi?.meta?.platform ?? null) : null
-}
-
 function requiresWebglRenderer(
   terminalProvider: AgentProvider | null | undefined,
   options: PreferredTerminalRendererOptions,
 ): boolean {
   return terminalProvider === 'opencode' && options.terminalKind === 'agent'
-}
-
-function shouldForceDomRenderer(
-  terminalProvider: AgentProvider | null | undefined,
-  options: PreferredTerminalRendererOptions,
-): boolean {
-  return (
-    resolveRuntimePlatform(options.runtimePlatform) === 'win32' &&
-    !requiresWebglRenderer(terminalProvider, options)
-  )
 }
 
 export function resetPreferredTerminalRendererStateForTests(): void {
@@ -97,10 +81,6 @@ export function activatePreferredTerminalRenderer(
   const mustUseWebgl = requiresWebglRenderer(terminalProvider, options)
 
   if (options.preferredMode === 'dom' && !mustUseWebgl) {
-    return createDomRenderer()
-  }
-
-  if (shouldForceDomRenderer(terminalProvider, options)) {
     return createDomRenderer()
   }
 
@@ -157,6 +137,11 @@ export function activatePreferredTerminalRenderer(
         contextLossDisposable.dispose()
         webglAddon.dispose()
         releaseWebglBudget()
+      },
+      setRasterScale: scale => {
+        if (!disposed) {
+          webglAddon.setRasterScale(scale)
+        }
       },
     }
   } catch {

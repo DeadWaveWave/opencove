@@ -6,6 +6,7 @@ import {
   readCanvasViewport,
 } from './workspace-canvas.helpers'
 import { resolveTerminalEffectiveDevicePixelRatio } from '../../src/contexts/workspace/presentation/renderer/components/terminalNode/effectiveDevicePixelRatio'
+import { resolveTerminalRasterScale } from '../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalZoomRasterPolicy'
 
 type TerminalRenderMetrics = {
   effectiveDpr: number | null
@@ -21,6 +22,8 @@ type TerminalRenderMetrics = {
   hookViewportY: number | null
   hookBaseY: number | null
   instanceId: number | null
+  rasterScale: number | null
+  size: { cols: number; rows: number } | null
 }
 
 async function readTerminalRenderMetrics(
@@ -28,12 +31,26 @@ async function readTerminalRenderMetrics(
   nodeId: string,
 ): Promise<TerminalRenderMetrics | null> {
   return await window.evaluate(targetNodeId => {
-    return window.__opencoveTerminalSelectionTestApi?.getRenderMetrics?.(targetNodeId) ?? null
+    const api = window.__opencoveTerminalSelectionTestApi
+    const metrics = api?.getRenderMetrics?.(targetNodeId) ?? null
+    if (!metrics) {
+      return null
+    }
+
+    const rasterScaleAttribute = document
+      .querySelector(`.react-flow__node[data-id="${targetNodeId}"] .terminal-node__terminal`)
+      ?.getAttribute('data-cove-terminal-raster-scale')
+    const rasterScale = Number(rasterScaleAttribute)
+    return {
+      ...metrics,
+      rasterScale: Number.isFinite(rasterScale) && rasterScale > 0 ? rasterScale : null,
+      size: api?.getSize(targetNodeId) ?? null,
+    }
   }, nodeId)
 }
 
 test.describe('Workspace Canvas - Terminal effective DPR', () => {
-  test('keeps terminal DPR native on zoom without remounting or losing focus', async () => {
+  test('keeps terminal DPR and layout native while changing raster scale on zoom', async () => {
     const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
 
     try {
@@ -70,6 +87,11 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
         baseDevicePixelRatio: baselineWindowDpr,
         viewportZoom: 1,
       })
+      const baselineViewport = await readCanvasViewport(window)
+      const expectedBaselineRasterScale = resolveTerminalRasterScale({
+        canvasZoom: baselineViewport.zoom,
+        currentScale: 1,
+      })
 
       let baselineMetrics: TerminalRenderMetrics | null = null
       await expect
@@ -82,11 +104,13 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
         )
         .toMatchObject({
           effectiveDpr: expectedBaselineDpr,
+          rasterScale: expectedBaselineRasterScale,
         })
 
       const baselineInstanceId = baselineMetrics?.instanceId ?? null
       expect(baselineMetrics?.deviceCanvasWidth).not.toBeNull()
       expect(baselineMetrics?.deviceCanvasHeight).not.toBeNull()
+      expect(baselineMetrics?.size).not.toBeNull()
 
       const zoomInButton = window.locator('.react-flow__controls-zoomin')
       await expect(zoomInButton).toBeVisible()
@@ -112,7 +136,14 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
               baseDevicePixelRatio: zoomedWindowDpr,
               viewportZoom: zoomedViewport.zoom,
             })
-            return Math.abs((zoomedMetrics?.effectiveDpr ?? 0) - expectedEffectiveDpr) < 0.05
+            const expectedRasterScale = resolveTerminalRasterScale({
+              canvasZoom: zoomedViewport.zoom,
+              currentScale: expectedBaselineRasterScale,
+            })
+            return (
+              Math.abs((zoomedMetrics?.effectiveDpr ?? 0) - expectedEffectiveDpr) < 0.05 &&
+              zoomedMetrics?.rasterScale === expectedRasterScale
+            )
           },
           { timeout: 15_000 },
         )
@@ -122,17 +153,45 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
         baseDevicePixelRatio: zoomedWindowDpr,
         viewportZoom: zoomedViewport.zoom,
       })
+      const expectedZoomedRasterScale = resolveTerminalRasterScale({
+        canvasZoom: zoomedViewport.zoom,
+        currentScale: expectedBaselineRasterScale,
+      })
       expect(zoomedMetrics?.effectiveDpr).toBeCloseTo(expectedZoomedDpr, 1)
-      expect(zoomedMetrics?.deviceCanvasWidth ?? 0).toBeCloseTo(
-        baselineMetrics?.deviceCanvasWidth ?? 0,
-        1,
-      )
-      expect(zoomedMetrics?.deviceCanvasHeight ?? 0).toBeCloseTo(
-        baselineMetrics?.deviceCanvasHeight ?? 0,
-        1,
-      )
+      expect(zoomedMetrics?.rasterScale).toBe(expectedZoomedRasterScale)
+      expect(zoomedMetrics?.size).toEqual(baselineMetrics?.size)
       expect(zoomedMetrics?.cssCanvasWidth).toBeCloseTo(baselineMetrics?.cssCanvasWidth ?? 0, 1)
       expect(zoomedMetrics?.cssCanvasHeight).toBeCloseTo(baselineMetrics?.cssCanvasHeight ?? 0, 1)
+
+      const baselineSize = baselineMetrics?.size
+      const zoomedSize = zoomedMetrics?.size
+      if (!baselineMetrics || !zoomedMetrics || !baselineSize || !zoomedSize) {
+        throw new Error('terminal raster projection unavailable')
+      }
+      const baselineDeviceCellWidth = (baselineMetrics.deviceCanvasWidth ?? 0) / baselineSize.cols
+      const baselineDeviceCellHeight = (baselineMetrics.deviceCanvasHeight ?? 0) / baselineSize.rows
+      const zoomedDeviceCellWidth = (zoomedMetrics.deviceCanvasWidth ?? 0) / zoomedSize.cols
+      const zoomedDeviceCellHeight = (zoomedMetrics.deviceCanvasHeight ?? 0) / zoomedSize.rows
+      expect(Number.isInteger(zoomedDeviceCellWidth)).toBe(true)
+      expect(Number.isInteger(zoomedDeviceCellHeight)).toBe(true)
+      expect(zoomedDeviceCellWidth).toBe(
+        Math.max(
+          1,
+          Math.round(
+            (baselineDeviceCellWidth / expectedBaselineRasterScale) * expectedZoomedRasterScale,
+          ),
+        ),
+      )
+      expect(zoomedDeviceCellHeight).toBe(
+        Math.max(
+          1,
+          Math.round(
+            (baselineDeviceCellHeight / expectedBaselineRasterScale) * expectedZoomedRasterScale,
+          ),
+        ),
+      )
+      expect(zoomedMetrics.deviceCanvasWidth).toBe(zoomedSize.cols * zoomedDeviceCellWidth)
+      expect(zoomedMetrics.deviceCanvasHeight).toBe(zoomedSize.rows * zoomedDeviceCellHeight)
       expect(zoomedMetrics?.instanceId).toBe(baselineInstanceId)
       await xterm.click()
       await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()

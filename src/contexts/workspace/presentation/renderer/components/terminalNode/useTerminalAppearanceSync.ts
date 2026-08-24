@@ -10,6 +10,7 @@ import {
   captureTerminalLayoutDiagnostics,
   createTerminalDiagnosticsLogger,
 } from './diagnostics'
+import { setTerminalRasterViewportZoom } from './terminalRasterScaleController'
 
 function isTerminalAtBottom(terminal: Terminal): boolean {
   const activeBuffer = terminal.buffer?.active
@@ -279,5 +280,6 @@ export function useTerminalAppearanceSync({
     }
 
     setTerminalViewportZoom(terminal, viewportZoom)
+    setTerminalRasterViewportZoom(terminal, viewportZoom)
   }, [terminalRef, viewportZoom])
 }

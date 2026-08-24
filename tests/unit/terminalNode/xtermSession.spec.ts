@@ -69,6 +69,7 @@ vi.mock(
       kind: 'dom',
       clearTextureAtlas: vi.fn(),
       dispose: vi.fn(),
+      setRasterScale: vi.fn(),
     })),
   }),
 )

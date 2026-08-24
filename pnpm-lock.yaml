@@ -15,6 +15,11 @@ overrides:
   minimatch@10.1.2: 10.2.3
   node-abi: 4.31.0
 
+patchedDependencies:
+  '@xterm/addon-webgl@0.19.0':
+    hash: y3ubwp6umsj4nuhx5d26uagefe
+    path: patches/@xterm__addon-webgl@0.19.0.patch
+
 importers:
 
   .:
@@ -59,10 +64,10 @@ importers:
         specifier: ^0.12.0
         version: 0.12.0
       '@xterm/addon-webgl':
-        specifier: ^0.19.0
-        version: 0.19.0
+        specifier: 0.19.0
+        version: 0.19.0(patch_hash=y3ubwp6umsj4nuhx5d26uagefe)
       '@xterm/xterm':
-        specifier: ^6.0.0
+        specifier: 6.0.0
         version: 6.0.0
       '@xyflow/react':
         specifier: ^12.10.1
@@ -4275,7 +4280,7 @@ snapshots:
 
   '@xterm/addon-web-links@0.12.0': {}
 
-  '@xterm/addon-webgl@0.19.0': {}
+  '@xterm/addon-webgl@0.19.0(patch_hash=y3ubwp6umsj4nuhx5d26uagefe)': {}
 
   '@xterm/xterm@6.0.0': {}
 

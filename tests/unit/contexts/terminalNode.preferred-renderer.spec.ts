@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const webglAddonDispose = vi.fn()
 const webglAddonClearTextureAtlas = vi.fn()
 const webglAddonConstructor = vi.fn()
+const webglAddonSetRasterScale = vi.fn()
 
 type Listener = () => void
 
@@ -34,6 +35,10 @@ vi.mock('@xterm/addon-webgl', () => {
     public clearTextureAtlas(): void {
       webglAddonClearTextureAtlas()
     }
+
+    public setRasterScale(scale: number): void {
+      webglAddonSetRasterScale(scale)
+    }
   }
 
   return {
@@ -63,29 +68,34 @@ describe('activatePreferredTerminalRenderer', () => {
     })
   })
 
-  it('uses the DOM renderer for Windows sessions', async () => {
+  it('uses the WebGL renderer for Windows agent sessions when available', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
       return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
     }) as never
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: { meta: { platform: 'win32' } },
+    })
 
     try {
       const { activatePreferredTerminalRenderer } =
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const loadAddon = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer({ loadAddon } as never, 'codex', {
-        runtimePlatform: 'win32',
         terminalKind: 'agent',
       })
 
-      expect(loadAddon).not.toHaveBeenCalled()
-      expect(activeRenderer.kind).toBe('dom')
+      expect(loadAddon).toHaveBeenCalledTimes(1)
+      expect(activeRenderer.kind).toBe('webgl')
+      activeRenderer.dispose()
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }
   })
 
-  it('keeps regular Windows terminals on the DOM renderer', async () => {
+  it('uses the WebGL renderer for regular Windows terminals when available', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
       return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
@@ -109,12 +119,12 @@ describe('activatePreferredTerminalRenderer', () => {
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const loadAddon = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer({ loadAddon } as never, null, {
-        runtimePlatform: 'win32',
         terminalKind: 'terminal',
       })
 
-      expect(loadAddon).not.toHaveBeenCalled()
-      expect(activeRenderer.kind).toBe('dom')
+      expect(loadAddon).toHaveBeenCalledTimes(1)
+      expect(activeRenderer.kind).toBe('webgl')
+      activeRenderer.dispose()
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }
@@ -144,7 +154,6 @@ describe('activatePreferredTerminalRenderer', () => {
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const loadAddon = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer({ loadAddon } as never, 'opencode', {
-        runtimePlatform: 'win32',
         terminalKind: 'agent',
       })
 
@@ -168,7 +177,6 @@ describe('activatePreferredTerminalRenderer', () => {
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const loadAddon = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer({ loadAddon } as never, 'opencode', {
-        runtimePlatform: 'win32',
         terminalKind: 'agent',
         webglRendererBudget: 0,
       })
@@ -203,6 +211,8 @@ describe('activatePreferredTerminalRenderer', () => {
 
       activeRenderer.clearTextureAtlas()
       expect(webglAddonClearTextureAtlas).toHaveBeenCalledTimes(1)
+      activeRenderer.setRasterScale(1.25)
+      expect(webglAddonSetRasterScale).toHaveBeenCalledWith(1.25)
 
       activeRenderer.dispose()
       expect(webglAddonDispose).toHaveBeenCalledTimes(1)
@@ -237,6 +247,27 @@ describe('activatePreferredTerminalRenderer', () => {
       })
       expect(third.kind).toBe('webgl')
       third.dispose()
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
+  })
+
+  it('keeps the default WebGL renderer budget at eight contexts', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
+      return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
+    }) as never
+
+    try {
+      const { activatePreferredTerminalRenderer } =
+        await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const renderers = Array.from({ length: 9 }, () =>
+        activatePreferredTerminalRenderer({ loadAddon: vi.fn() } as never, 'codex'),
+      )
+
+      expect(renderers.slice(0, 8).every(renderer => renderer.kind === 'webgl')).toBe(true)
+      expect(renderers[8]?.kind).toBe('dom')
+      renderers.forEach(renderer => renderer.dispose())
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }
