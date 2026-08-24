@@ -1,5 +1,10 @@
 export type TerminalRenderMetricsTestProjection = {
   rendererConstructorName: string | null
+  rendererDomRowElementCount: number | null
+  rendererHasDomRowContainer: boolean | null
+  rendererHasDomRowFactory: boolean | null
+  rendererHasWebglCanvas: boolean | null
+  rendererStructuralKind: 'dom' | 'webgl' | 'unknown' | null
   renderRowCount: number | null
   renderServicePaused: boolean | null
   renderServiceNeedsFullRefresh: boolean | null
@@ -20,13 +25,46 @@ export type TerminalRenderMetricsTestProjection = {
   instanceId: number | null
 }
 
+export type TerminalBufferTextTestProjection = {
+  bufferLength: number
+  markerAbsoluteLine: number | null
+  viewportLines: Array<string | null>
+}
+
 export type TerminalRendererDprTestProjection = {
   devicePixelRatio: number
   rasterScale: number
 }
 
+type TerminalRendererIntrospection = {
+  _canvas?: unknown
+  constructor?: { name?: unknown }
+  _coreBrowserService?: Record<string, unknown>
+  _devicePixelRatio?: unknown
+  _gl?: unknown
+  _rasterScale?: unknown
+  _rowContainer?: {
+    classList?: { contains?: (className: string) => boolean }
+  }
+  _rowElements?: unknown
+  _rowFactory?: unknown
+  handleDevicePixelRatioChange?: () => void
+}
+
 type TerminalRenderIntrospection = {
-  buffer?: { active?: { baseY?: unknown; viewportY?: unknown } }
+  rows?: unknown
+  buffer?: {
+    active?: {
+      baseY?: unknown
+      getLine?: (line: number) =>
+        | {
+            translateToString?: (trimRight?: boolean) => string
+          }
+        | undefined
+      length?: unknown
+      viewportY?: unknown
+    }
+  }
   _core?: {
     _bufferService?: { isUserScrolling?: unknown }
     _coreBrowserService?: { dpr?: unknown }
@@ -42,13 +80,7 @@ type TerminalRenderIntrospection = {
         }
       }
       _renderer?: {
-        value?: {
-          constructor?: { name?: unknown }
-          _coreBrowserService?: Record<string, unknown>
-          _devicePixelRatio?: unknown
-          _rasterScale?: unknown
-          handleDevicePixelRatioChange?: () => void
-        }
+        value?: TerminalRendererIntrospection
       }
     }
   }
@@ -65,6 +97,30 @@ function finiteNumberOrNull(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
+function readRendererStructuralKind(
+  renderer: TerminalRendererIntrospection | undefined,
+): 'dom' | 'webgl' | 'unknown' | null {
+  if (!renderer) {
+    return null
+  }
+
+  const rowContainerHasDomClass =
+    renderer._rowContainer?.classList?.contains?.('xterm-rows') === true
+  if (
+    rowContainerHasDomClass &&
+    Array.isArray(renderer._rowElements) &&
+    Boolean(renderer._rowFactory)
+  ) {
+    return 'dom'
+  }
+
+  if (renderer._canvas && renderer._gl) {
+    return 'webgl'
+  }
+
+  return 'unknown'
+}
+
 export function readTerminalRenderMetricsForTest(
   value: unknown,
 ): TerminalRenderMetricsTestProjection | null {
@@ -79,10 +135,21 @@ export function readTerminalRenderMetricsForTest(
   const cssCanvas = dimensions.css?.canvas
   const cssCell = dimensions.css?.cell
   const dprDebug = terminal.__opencoveDprDebug
-  const rendererConstructorName = renderService?._renderer?.value?.constructor?.name
+  const renderer = renderService?._renderer?.value
+  const rendererConstructorName = renderer?.constructor?.name
+  const rendererDomRowElementCount = Array.isArray(renderer?._rowElements)
+    ? renderer._rowElements.length
+    : null
   return {
     rendererConstructorName:
       typeof rendererConstructorName === 'string' ? rendererConstructorName : null,
+    rendererDomRowElementCount,
+    rendererHasDomRowContainer: renderer
+      ? renderer._rowContainer?.classList?.contains?.('xterm-rows') === true
+      : null,
+    rendererHasDomRowFactory: renderer ? Boolean(renderer._rowFactory) : null,
+    rendererHasWebglCanvas: renderer ? Boolean(renderer._canvas && renderer._gl) : null,
+    rendererStructuralKind: readRendererStructuralKind(renderer),
     renderRowCount: finiteNumberOrNull(renderService?._rowCount),
     renderServicePaused:
       typeof renderService?._isPaused === 'boolean' ? renderService._isPaused : null,
@@ -108,6 +175,47 @@ export function readTerminalRenderMetricsForTest(
     hookViewportY: finiteNumberOrNull(dprDebug?.hookViewportY),
     hookBaseY: finiteNumberOrNull(dprDebug?.hookBaseY),
     instanceId: finiteNumberOrNull(terminal.__opencoveXtermSessionInstanceId),
+  }
+}
+
+export function readTerminalBufferTextForTest(
+  value: unknown,
+  marker: string,
+): TerminalBufferTextTestProjection | null {
+  const terminal = value as TerminalRenderIntrospection | undefined
+  const buffer = terminal?.buffer?.active
+  const viewportY = finiteNumberOrNull(buffer?.viewportY)
+  const bufferLength = finiteNumberOrNull(buffer?.length)
+  const viewportLineCount = finiteNumberOrNull(terminal?.rows)
+  if (
+    !buffer?.getLine ||
+    viewportY === null ||
+    bufferLength === null ||
+    viewportLineCount === null
+  ) {
+    return null
+  }
+
+  const readLine = (line: number): string | null => {
+    const bufferLine = buffer.getLine?.(line)
+    const translateToString = bufferLine?.translateToString
+    return typeof translateToString === 'function' ? translateToString.call(bufferLine, true) : null
+  }
+  const viewportLines = Array.from({ length: viewportLineCount }, (_, index) =>
+    readLine(viewportY + index),
+  )
+  let markerAbsoluteLine: number | null = null
+  for (let line = 0; line < bufferLength; line += 1) {
+    if (readLine(line)?.includes(marker)) {
+      markerAbsoluteLine = line
+      break
+    }
+  }
+
+  return {
+    bufferLength,
+    markerAbsoluteLine,
+    viewportLines,
   }
 }
 

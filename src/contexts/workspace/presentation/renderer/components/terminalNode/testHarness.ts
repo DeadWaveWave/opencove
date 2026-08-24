@@ -2,8 +2,10 @@ import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import { peekCachedTerminalScreenState } from './screenStateCache'
 import {
+  readTerminalBufferTextForTest,
   readTerminalRenderMetricsForTest,
   simulateRendererDevicePixelRatioChangeForTest,
+  type TerminalBufferTextTestProjection,
   type TerminalRendererDprTestProjection,
   type TerminalRenderMetricsTestProjection,
 } from './terminalRenderTestProbe'
@@ -39,6 +41,7 @@ type TerminalSelectionTestApi = {
     lineHeight: number | null
     letterSpacing: number | null
   } | null
+  getBufferText: (nodeId: string, marker: string) => TerminalBufferTextTestProjection | null
   getProposedGeometry: (nodeId: string) => { cols: number; rows: number } | null
   getRenderMetrics: (nodeId: string) => TerminalRenderMetricsTestProjection | null
   simulateRendererDevicePixelRatioChange: (
@@ -205,6 +208,9 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
           lineHeight: normalizeFiniteOption(options.lineHeight),
           letterSpacing: normalizeFiniteOption(options.letterSpacing),
         }
+      },
+      getBufferText: (nodeId, marker) => {
+        return readTerminalBufferTextForTest(terminalHandles.get(nodeId), marker)
       },
       getProposedGeometry: nodeId => {
         const fitAddon = terminalFitAddons.get(nodeId)

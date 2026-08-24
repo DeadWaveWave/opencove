@@ -137,6 +137,43 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
       expect(metrics.deviceCanvasWidth).toBe(size.cols * deviceCellWidth)
       expect(metrics.deviceCanvasHeight).toBe(size.rows * deviceCellHeight)
 
+      const readContextLossDiagnostics = async () => {
+        return await window.evaluate(
+          ({ id, marker }) => {
+            const api = window.__opencoveTerminalSelectionTestApi
+            const renderMetrics = api?.getRenderMetrics(id) ?? null
+            const bufferText = api?.getBufferText(id, marker) ?? null
+            const terminalElement = document.querySelector(
+              `.react-flow__node[data-id="${id}"] .terminal-node__terminal`,
+            )
+            const rowTextContentLengths = Array.from(
+              terminalElement?.querySelectorAll('.xterm-rows > div') ?? [],
+            ).map(row => row.textContent?.length ?? null)
+            return {
+              datasetRendererKind:
+                terminalElement?.getAttribute('data-cove-terminal-renderer') ?? null,
+              rendererConstructorName: renderMetrics?.rendererConstructorName ?? null,
+              rendererDomRowElementCount: renderMetrics?.rendererDomRowElementCount ?? null,
+              rendererHasDomRowContainer: renderMetrics?.rendererHasDomRowContainer ?? null,
+              rendererHasDomRowFactory: renderMetrics?.rendererHasDomRowFactory ?? null,
+              rendererHasWebglCanvas: renderMetrics?.rendererHasWebglCanvas ?? null,
+              rendererStructuralKind: renderMetrics?.rendererStructuralKind ?? null,
+              renderRowCount: renderMetrics?.renderRowCount ?? null,
+              renderServicePaused: renderMetrics?.renderServicePaused ?? null,
+              renderServiceNeedsFullRefresh: renderMetrics?.renderServiceNeedsFullRefresh ?? null,
+              viewportY: renderMetrics?.viewportY ?? null,
+              baseY: renderMetrics?.baseY ?? null,
+              bufferLength: bufferText?.bufferLength ?? null,
+              viewportBufferLines: bufferText?.viewportLines ?? null,
+              markerAbsoluteLine: bufferText?.markerAbsoluteLine ?? null,
+              rowTextContentLengths,
+            }
+          },
+          { id: nodeId, marker: contextLossMarker },
+        )
+      }
+      const beforeContextLossDiagnostics = await readContextLossDiagnostics()
+
       const contextLossPrevented = await terminalSurface
         .locator('.xterm-screen > canvas:not([class])')
         .evaluate(canvas => {
@@ -151,27 +188,11 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
           timeout: 10_000,
         })
         .toBe('dom')
-      const contextLossDiagnostics = await window.evaluate(id => {
-        const renderMetrics =
-          window.__opencoveTerminalSelectionTestApi?.getRenderMetrics(id) ?? null
-        const terminalElement = document.querySelector(
-          `.react-flow__node[data-id="${id}"] .terminal-node__terminal`,
-        )
-        const rowTextContentLengths = Array.from(
-          terminalElement?.querySelectorAll('.xterm-rows > div') ?? [],
-        )
-          .slice(0, 5)
-          .map(row => row.textContent?.length ?? null)
-        return {
-          rendererConstructorName: renderMetrics?.rendererConstructorName ?? null,
-          renderRowCount: renderMetrics?.renderRowCount ?? null,
-          renderServicePaused: renderMetrics?.renderServicePaused ?? null,
-          renderServiceNeedsFullRefresh: renderMetrics?.renderServiceNeedsFullRefresh ?? null,
-          viewportY: renderMetrics?.viewportY ?? null,
-          baseY: renderMetrics?.baseY ?? null,
-          rowTextContentLengths,
-        }
-      }, nodeId)
+      const afterContextLossDiagnostics = await readContextLossDiagnostics()
+      const contextLossDiagnostics = {
+        beforeContextLoss: beforeContextLossDiagnostics,
+        afterContextLoss: afterContextLossDiagnostics,
+      }
       const serializedContextLossDiagnostics = JSON.stringify(contextLossDiagnostics)
       process.stdout.write(`[windows-terminal-context-loss] ${serializedContextLossDiagnostics}\n`)
       await testInfo.attach('windows-terminal-context-loss', {
