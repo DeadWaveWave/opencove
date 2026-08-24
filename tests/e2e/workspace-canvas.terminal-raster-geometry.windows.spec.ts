@@ -143,36 +143,83 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
             const api = window.__opencoveTerminalSelectionTestApi
             const renderMetrics = api?.getRenderMetrics(id) ?? null
             const bufferText = api?.getBufferText(id, marker) ?? null
+            const terminalSize = api?.getSize(id) ?? null
             const terminalElement = document.querySelector(
               `.react-flow__node[data-id="${id}"] .terminal-node__terminal`,
             )
-            const rowTextContentLengths = Array.from(
-              terminalElement?.querySelectorAll('.xterm-rows > div') ?? [],
-            ).map(row => row.textContent?.length ?? null)
+            const rowContainers = Array.from(terminalElement?.querySelectorAll('.xterm-rows') ?? [])
+            const rowContainerSummaries = rowContainers.map((container, index) => {
+              const childDivs = Array.from(container.children).filter(
+                child => child.tagName === 'DIV',
+              )
+              return {
+                index,
+                childDivCount: childDivs.length,
+                nonEmptyChildDivCount: childDivs.filter(
+                  child => (child.textContent?.length ?? 0) > 0,
+                ).length,
+              }
+            })
+            const rowTextContentLengths = rowContainers.flatMap(container =>
+              Array.from(container.querySelectorAll(':scope > div')).map(
+                row => row.textContent?.length ?? null,
+              ),
+            )
             return {
               datasetRendererKind:
                 terminalElement?.getAttribute('data-cove-terminal-renderer') ?? null,
               rendererConstructorName: renderMetrics?.rendererConstructorName ?? null,
               rendererDomRowElementCount: renderMetrics?.rendererDomRowElementCount ?? null,
+              rendererDomRowContainerMatchesFirstTerminalRowContainer:
+                renderMetrics?.rendererDomRowContainerMatchesFirstTerminalRowContainer ?? null,
               rendererHasDomRowContainer: renderMetrics?.rendererHasDomRowContainer ?? null,
               rendererHasDomRowFactory: renderMetrics?.rendererHasDomRowFactory ?? null,
               rendererHasWebglCanvas: renderMetrics?.rendererHasWebglCanvas ?? null,
               rendererStructuralKind: renderMetrics?.rendererStructuralKind ?? null,
+              instanceId: renderMetrics?.instanceId ?? null,
               renderRowCount: renderMetrics?.renderRowCount ?? null,
               renderServicePaused: renderMetrics?.renderServicePaused ?? null,
               renderServiceNeedsFullRefresh: renderMetrics?.renderServiceNeedsFullRefresh ?? null,
               viewportY: renderMetrics?.viewportY ?? null,
               baseY: renderMetrics?.baseY ?? null,
+              size: terminalSize,
               bufferLength: bufferText?.bufferLength ?? null,
+              firstNonBlankLineBetweenMarkerAndViewport:
+                bufferText?.firstNonBlankLineBetweenMarkerAndViewport ?? null,
+              lastNonBlankLineBetweenMarkerAndViewport:
+                bufferText?.lastNonBlankLineBetweenMarkerAndViewport ?? null,
               viewportBufferLines: bufferText?.viewportLines ?? null,
               markerAbsoluteLine: bufferText?.markerAbsoluteLine ?? null,
+              nonBlankLineIndicesBetweenMarkerAndViewport:
+                bufferText?.nonBlankLineIndicesBetweenMarkerAndViewport ?? null,
+              rowContainerCount: rowContainers.length,
+              rowContainerSummaries,
               rowTextContentLengths,
             }
           },
           { id: nodeId, marker: contextLossMarker },
         )
       }
-      const beforeContextLossDiagnostics = await readContextLossDiagnostics()
+      const recoveryWithoutContextLossBefore = await readContextLossDiagnostics()
+      if (recoveryWithoutContextLossBefore.instanceId === null) {
+        throw new Error('terminal instance id unavailable before recovery control')
+      }
+      const recoveryRequested = await window.evaluate(id => {
+        return window.__opencoveTerminalSelectionTestApi?.requestRendererRecovery(id) ?? false
+      }, nodeId)
+      expect(recoveryRequested).toBe(true)
+      await expect
+        .poll(async () => {
+          const diagnostics = await readContextLossDiagnostics()
+          return (
+            diagnostics.instanceId !== null &&
+            diagnostics.instanceId !== recoveryWithoutContextLossBefore.instanceId &&
+            diagnostics.datasetRendererKind === 'webgl'
+          )
+        })
+        .toBe(true)
+      const recoveryWithoutContextLossAfter = await readContextLossDiagnostics()
+      const beforeContextLossDiagnostics = recoveryWithoutContextLossAfter
 
       const contextLossPrevented = await terminalSurface
         .locator('.xterm-screen > canvas:not([class])')
@@ -190,6 +237,10 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
         .toBe('dom')
       const afterContextLossDiagnostics = await readContextLossDiagnostics()
       const contextLossDiagnostics = {
+        recoveryWithoutContextLossControl: {
+          before: recoveryWithoutContextLossBefore,
+          after: recoveryWithoutContextLossAfter,
+        },
         beforeContextLoss: beforeContextLossDiagnostics,
         afterContextLoss: afterContextLossDiagnostics,
       }
