@@ -36,8 +36,9 @@ vi.mock('@xterm/addon-webgl', () => {
       webglAddonClearTextureAtlas()
     }
 
-    public setRasterScale(scale: number): void {
+    public setRasterScale(scale: number): boolean {
       webglAddonSetRasterScale(scale)
+      return true
     }
   }
 
@@ -211,7 +212,7 @@ describe('activatePreferredTerminalRenderer', () => {
 
       activeRenderer.clearTextureAtlas()
       expect(webglAddonClearTextureAtlas).toHaveBeenCalledTimes(1)
-      activeRenderer.setRasterScale(1.25)
+      expect(activeRenderer.setRasterScale(1.25)).toBe(true)
       expect(webglAddonSetRasterScale).toHaveBeenCalledWith(1.25)
 
       activeRenderer.dispose()
@@ -290,6 +291,7 @@ describe('activatePreferredTerminalRenderer', () => {
 
       expect(loadAddon).not.toHaveBeenCalled()
       expect(activeRenderer.kind).toBe('dom')
+      expect(activeRenderer.setRasterScale(1.25)).toBe(false)
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }
@@ -315,6 +317,7 @@ describe('activatePreferredTerminalRenderer', () => {
 
       expect(loadAddon).not.toHaveBeenCalled()
       expect(activeRenderer.kind).toBe('dom')
+      expect(activeRenderer.setRasterScale(1.25)).toBe(false)
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }
@@ -377,9 +380,12 @@ describe('activatePreferredTerminalRenderer', () => {
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const onRendererKindChange = vi.fn()
       const onRendererIssue = vi.fn()
+      const refresh = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer(
         {
           loadAddon: vi.fn(),
+          refresh,
+          rows: 24,
         } as never,
         'codex',
         { onRendererKindChange, onRendererIssue },
@@ -396,6 +402,7 @@ describe('activatePreferredTerminalRenderer', () => {
         reason: 'context_loss',
         forceDom: true,
       })
+      expect(refresh).toHaveBeenCalledWith(0, 23)
       expect(activeRenderer.kind).toBe('dom')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
@@ -413,9 +420,12 @@ describe('activatePreferredTerminalRenderer', () => {
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const onRendererKindChange = vi.fn()
       const onRendererIssue = vi.fn()
+      const refresh = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer(
         {
           loadAddon: vi.fn(),
+          refresh,
+          rows: 18,
         } as never,
         'opencode',
         { terminalKind: 'agent', onRendererKindChange, onRendererIssue },
@@ -432,6 +442,7 @@ describe('activatePreferredTerminalRenderer', () => {
         reason: 'context_loss',
         forceDom: false,
       })
+      expect(refresh).toHaveBeenCalledWith(0, 17)
       expect(activeRenderer.kind).toBe('dom')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext

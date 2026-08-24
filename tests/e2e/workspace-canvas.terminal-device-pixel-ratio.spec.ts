@@ -192,6 +192,23 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
       )
       expect(zoomedMetrics.deviceCanvasWidth).toBe(zoomedSize.cols * zoomedDeviceCellWidth)
       expect(zoomedMetrics.deviceCanvasHeight).toBe(zoomedSize.rows * zoomedDeviceCellHeight)
+
+      const changedLayoutDpr = zoomedWindowDpr * expectedZoomedRasterScale
+      const rendererDprProjection = await window.evaluate(
+        ({ nextDpr, nodeId }) =>
+          window.__opencoveTerminalSelectionTestApi?.simulateRendererDevicePixelRatioChange(
+            nodeId,
+            nextDpr,
+          ) ?? null,
+        { nextDpr: changedLayoutDpr, nodeId: 'node-terminal-dpr' },
+      )
+      expect(rendererDprProjection).not.toBeNull()
+      expect(rendererDprProjection?.rasterScale).toBe(expectedZoomedRasterScale)
+      expect(rendererDprProjection?.devicePixelRatio).toBeCloseTo(
+        changedLayoutDpr * expectedZoomedRasterScale,
+        5,
+      )
+
       expect(zoomedMetrics?.instanceId).toBe(baselineInstanceId)
       await xterm.click()
       await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()

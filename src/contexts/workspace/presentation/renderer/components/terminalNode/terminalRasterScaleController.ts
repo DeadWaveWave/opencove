@@ -7,7 +7,7 @@ export type TerminalRasterScaleResolver = (input: {
 }) => TerminalRasterScale
 
 export type TerminalRasterScaleTarget = {
-  setRasterScale: (scale: TerminalRasterScale) => void
+  setRasterScale: (scale: TerminalRasterScale) => boolean | undefined
 }
 
 export type TerminalRasterScaleController = {
@@ -46,7 +46,9 @@ export function installTerminalRasterScaleController({
     }
 
     try {
-      target.setRasterScale(nextScale)
+      if (target.setRasterScale(nextScale) !== true) {
+        return
+      }
     } catch {
       return
     }

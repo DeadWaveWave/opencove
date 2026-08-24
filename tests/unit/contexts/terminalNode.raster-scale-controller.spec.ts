@@ -7,7 +7,7 @@ import {
 
 describe('terminal raster scale controller', () => {
   it('applies discrete scales and keeps failed transitions retryable', () => {
-    const target = { setRasterScale: vi.fn() }
+    const target = { setRasterScale: vi.fn(() => true) }
     const controller = installTerminalRasterScaleController({
       terminal: {} as Terminal,
       target,
@@ -28,8 +28,8 @@ describe('terminal raster scale controller', () => {
     expect(target.setRasterScale).toHaveBeenLastCalledWith(1.5)
   })
 
-  it('injects the scale decision without changing the raster target interface', () => {
-    const target = { setRasterScale: vi.fn() }
+  it('injects the scale decision while committing only applied values', () => {
+    const target = { setRasterScale: vi.fn(() => true) }
     const resolveRasterScale = vi.fn(() => 1.75 as const)
     const controller = installTerminalRasterScaleController({
       terminal: {} as Terminal,
@@ -58,7 +58,7 @@ describe('terminal raster scale controller', () => {
       }),
     }
     const terminal = terminalGeometry as unknown as Terminal
-    const target = { setRasterScale: vi.fn() }
+    const target = { setRasterScale: vi.fn(() => true) }
     const baseline = {
       cols: terminalGeometry.cols,
       rows: terminalGeometry.rows,
@@ -91,7 +91,7 @@ describe('terminal raster scale controller', () => {
 
   it('routes viewport changes to the installed controller until disposal', () => {
     const terminal = {} as Terminal
-    const target = { setRasterScale: vi.fn() }
+    const target = { setRasterScale: vi.fn(() => true) }
     const controller = installTerminalRasterScaleController({
       terminal,
       target,
@@ -104,5 +104,23 @@ describe('terminal raster scale controller', () => {
     controller.dispose()
     setTerminalRasterViewportZoom(terminal, 1.6)
     expect(target.setRasterScale).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps rejected renderer scales retryable and unpublished', () => {
+    const target = { setRasterScale: vi.fn(() => false) }
+    const onScaleChange = vi.fn()
+    const controller = installTerminalRasterScaleController({
+      terminal: {} as Terminal,
+      target,
+      initialViewportZoom: 1.06,
+      onScaleChange,
+    })
+
+    expect(target.setRasterScale).toHaveBeenCalledWith(1.25)
+    expect(controller.currentScale).toBe(1)
+    expect(onScaleChange).not.toHaveBeenCalled()
+
+    controller.setViewportZoom(1.06)
+    expect(target.setRasterScale).toHaveBeenCalledTimes(2)
   })
 })

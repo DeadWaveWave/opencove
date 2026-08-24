@@ -1,6 +1,12 @@
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import { peekCachedTerminalScreenState } from './screenStateCache'
+import {
+  readTerminalRenderMetricsForTest,
+  simulateRendererDevicePixelRatioChangeForTest,
+  type TerminalRendererDprTestProjection,
+  type TerminalRenderMetricsTestProjection,
+} from './terminalRenderTestProbe'
 
 type TerminalSelectionHandle = Pick<
   Terminal,
@@ -14,39 +20,13 @@ type TerminalSelectionHandle = Pick<
   | 'scrollToBottom'
 >
 
-type TerminalRendererIntrospection = {
-  _core?: {
-    _renderService?: {
-      dimensions?: {
-        device?: {
-          canvas?: { width?: number; height?: number }
-        }
-        css?: {
-          canvas?: { width?: number; height?: number }
-          cell?: { width?: number; height?: number }
-        }
-      }
-    }
-    _coreBrowserService?: {
-      dpr?: unknown
-    }
-  }
+type TerminalOptionsIntrospection = {
   options?: {
     fontSize?: unknown
     fontFamily?: unknown
     lineHeight?: unknown
     letterSpacing?: unknown
   }
-  __opencoveDprDebug?: {
-    lastInputZoom?: unknown
-    lastDecision?: unknown
-    appliedDpr?: unknown
-    hookLastZoom?: unknown
-    hookAtBottom?: unknown
-    hookViewportY?: unknown
-    hookBaseY?: unknown
-  }
-  __opencoveXtermSessionInstanceId?: number
 }
 
 type TerminalSelectionTestApi = {
@@ -60,23 +40,11 @@ type TerminalSelectionTestApi = {
     letterSpacing: number | null
   } | null
   getProposedGeometry: (nodeId: string) => { cols: number; rows: number } | null
-  getRenderMetrics: (nodeId: string) => {
-    effectiveDpr: number | null
-    deviceCanvasWidth: number | null
-    deviceCanvasHeight: number | null
-    cssCanvasWidth: number | null
-    cssCanvasHeight: number | null
-    cssCellWidth: number | null
-    cssCellHeight: number | null
-    baseY: number | null
-    viewportY: number | null
-    isUserScrolling: boolean | null
-    dprDecision: string | null
-    hookAtBottom: boolean | null
-    hookViewportY: number | null
-    hookBaseY: number | null
-    instanceId: number | null
-  } | null
+  getRenderMetrics: (nodeId: string) => TerminalRenderMetricsTestProjection | null
+  simulateRendererDevicePixelRatioChange: (
+    nodeId: string,
+    nextDpr: number,
+  ) => TerminalRendererDprTestProjection | null
   getSize: (nodeId: string) => { cols: number; rows: number } | null
   getRegisteredNodeIds: () => string[]
   getRuntimeSessionId: (nodeId: string) => string | null
@@ -225,7 +193,7 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         }
       },
       getFontOptions: nodeId => {
-        const terminal = terminalHandles.get(nodeId) as unknown as TerminalRendererIntrospection
+        const terminal = terminalHandles.get(nodeId) as unknown as TerminalOptionsIntrospection
         const options = terminal?.options
         if (!options) {
           return null
@@ -251,72 +219,10 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         }
       },
       getRenderMetrics: nodeId => {
-        const terminal = terminalHandles.get(nodeId) as unknown as TerminalRendererIntrospection
-        const dimensions = terminal?._core?._renderService?.dimensions
-        if (!dimensions) {
-          return null
-        }
-
-        const effectiveDpr = terminal?._core?._coreBrowserService?.dpr
-        const deviceCanvas = dimensions.device?.canvas
-        const cssCanvas = dimensions.css?.canvas
-        const cssCell = dimensions.css?.cell
-        const baseY = (terminal as unknown as { buffer?: { active?: { baseY?: unknown } } })?.buffer
-          ?.active?.baseY
-        const viewportY = (terminal as unknown as { buffer?: { active?: { viewportY?: unknown } } })
-          ?.buffer?.active?.viewportY
-        const isUserScrolling = (
-          terminal as unknown as { _core?: { _bufferService?: { isUserScrolling?: unknown } } }
-        )?._core?._bufferService?.isUserScrolling
-        const dprDebug = terminal?.__opencoveDprDebug
-
-        return {
-          effectiveDpr:
-            typeof effectiveDpr === 'number' && Number.isFinite(effectiveDpr) ? effectiveDpr : null,
-          deviceCanvasWidth:
-            typeof deviceCanvas?.width === 'number' && Number.isFinite(deviceCanvas.width)
-              ? deviceCanvas.width
-              : null,
-          deviceCanvasHeight:
-            typeof deviceCanvas?.height === 'number' && Number.isFinite(deviceCanvas.height)
-              ? deviceCanvas.height
-              : null,
-          cssCanvasWidth:
-            typeof cssCanvas?.width === 'number' && Number.isFinite(cssCanvas.width)
-              ? cssCanvas.width
-              : null,
-          cssCanvasHeight:
-            typeof cssCanvas?.height === 'number' && Number.isFinite(cssCanvas.height)
-              ? cssCanvas.height
-              : null,
-          cssCellWidth:
-            typeof cssCell?.width === 'number' && Number.isFinite(cssCell.width)
-              ? cssCell.width
-              : null,
-          cssCellHeight:
-            typeof cssCell?.height === 'number' && Number.isFinite(cssCell.height)
-              ? cssCell.height
-              : null,
-          baseY: typeof baseY === 'number' && Number.isFinite(baseY) ? baseY : null,
-          viewportY: typeof viewportY === 'number' && Number.isFinite(viewportY) ? viewportY : null,
-          isUserScrolling: typeof isUserScrolling === 'boolean' ? isUserScrolling : null,
-          dprDecision: typeof dprDebug?.lastDecision === 'string' ? dprDebug.lastDecision : null,
-          hookAtBottom: typeof dprDebug?.hookAtBottom === 'boolean' ? dprDebug.hookAtBottom : null,
-          hookViewportY:
-            typeof dprDebug?.hookViewportY === 'number' && Number.isFinite(dprDebug.hookViewportY)
-              ? dprDebug.hookViewportY
-              : null,
-          hookBaseY:
-            typeof dprDebug?.hookBaseY === 'number' && Number.isFinite(dprDebug.hookBaseY)
-              ? dprDebug.hookBaseY
-              : null,
-          instanceId:
-            typeof terminal?.__opencoveXtermSessionInstanceId === 'number' &&
-            Number.isFinite(terminal.__opencoveXtermSessionInstanceId)
-              ? terminal.__opencoveXtermSessionInstanceId
-              : null,
-        }
+        return readTerminalRenderMetricsForTest(terminalHandles.get(nodeId))
       },
+      simulateRendererDevicePixelRatioChange: (nodeId, nextDpr) =>
+        simulateRendererDevicePixelRatioChangeForTest(terminalHandles.get(nodeId), nextDpr),
       getSize: nodeId => {
         const terminal = terminalHandles.get(nodeId)
         if (!terminal) {
@@ -352,7 +258,7 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         return true
       },
       setDisplayOptions: (nodeId, options) => {
-        const terminal = terminalHandles.get(nodeId) as unknown as TerminalRendererIntrospection
+        const terminal = terminalHandles.get(nodeId) as unknown as TerminalOptionsIntrospection
         if (!terminal?.options) {
           return false
         }

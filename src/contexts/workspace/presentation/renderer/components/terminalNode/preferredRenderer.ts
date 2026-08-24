@@ -1,13 +1,14 @@
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { Terminal } from '@xterm/xterm'
+import { runTerminalRenderMutationSafely } from './renderServiceSafety'
 import type { TerminalRasterScale } from './terminalZoomRasterPolicy'
 
 export type ActiveTerminalRenderer = {
   kind: 'webgl' | 'dom'
   clearTextureAtlas: () => void
   dispose: () => void
-  setRasterScale: (scale: TerminalRasterScale) => void
+  setRasterScale: (scale: TerminalRasterScale) => boolean | undefined
 }
 
 export type PreferredTerminalRendererMode = 'auto' | 'dom'
@@ -29,7 +30,7 @@ function createDomRenderer(): ActiveTerminalRenderer {
     kind: 'dom',
     clearTextureAtlas: () => undefined,
     dispose: () => undefined,
-    setRasterScale: () => undefined,
+    setRasterScale: () => false,
   }
 }
 
@@ -117,6 +118,9 @@ export function activatePreferredTerminalRenderer(
       })
       contextLossDisposable.dispose()
       webglAddon.dispose()
+      runTerminalRenderMutationSafely(() => {
+        terminal.refresh(0, Math.max(0, terminal.rows - 1))
+      })
     })
 
     return {
@@ -139,9 +143,11 @@ export function activatePreferredTerminalRenderer(
         releaseWebglBudget()
       },
       setRasterScale: scale => {
-        if (!disposed) {
-          webglAddon.setRasterScale(scale)
+        if (disposed) {
+          return false
         }
+
+        return webglAddon.setRasterScale(scale)
       },
     }
   } catch {

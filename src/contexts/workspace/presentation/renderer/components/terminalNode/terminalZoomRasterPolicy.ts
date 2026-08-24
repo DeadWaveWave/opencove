@@ -1,4 +1,4 @@
-export const terminalRasterScaleLevels = [1, 1.25, 1.5, 1.75] as const
+export const terminalRasterScaleLevels = [1, 1.25, 1.5, 1.75, 2] as const
 
 export type TerminalRasterScale = (typeof terminalRasterScaleLevels)[number]
 
