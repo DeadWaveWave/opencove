@@ -84,6 +84,17 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
         ),
       )
       await window.keyboard.press('Enter')
+      await expect
+        .poll(async () => {
+          return await window.evaluate(id => {
+            const api = window.__opencoveTerminalSelectionTestApi
+            api?.selectAll(id)
+            const selection = api?.getSelection(id) ?? ''
+            api?.clearSelection(id)
+            return selection
+          }, nodeId)
+        })
+        .toContain(contextLossMarker)
 
       await expect
         .poll(async () => await terminalSurface.getAttribute('data-cove-terminal-renderer'))
