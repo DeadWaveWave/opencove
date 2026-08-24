@@ -7,6 +7,7 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '@shared/contracts/dto'
+import { AGENT_HOOK_FRESHNESS_MS } from '../../../../contexts/agent/domain/agentRunStateArbiter'
 import { createPtyEventHub } from './ptyEventHub'
 
 describe('createPtyEventHub', () => {
@@ -176,7 +177,7 @@ describe('createPtyEventHub', () => {
       expect.objectContaining({ source: 'claude_hook', state: 'working', degraded: false }),
     )
 
-    nowMs += 120_000
+    nowMs += AGENT_HOOK_FRESHNESS_MS
     hub.refreshAgentRunStateAuthority()
     expect(projected).toHaveBeenCalledTimes(2)
     expect(projected).toHaveBeenLastCalledWith(
@@ -230,7 +231,9 @@ describe('createPtyEventHub', () => {
   })
 
   it('does not renew a replayed working hook lease at renderer attach time', () => {
-    let nowMs = 121_000
+    // Just past the working lease measured from the replayed hook signal at observedAtMs 1_000,
+    // so the lease must NOT be renewed by the renderer attaching.
+    let nowMs = 1_000 + AGENT_HOOK_FRESHNESS_MS + 1_000
     const hub = createPtyEventHub(
       {
         onData: vi.fn((_listener: (event: TerminalDataEvent) => void) => () => undefined),
