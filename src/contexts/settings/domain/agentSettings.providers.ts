@@ -1,4 +1,6 @@
-export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
+import { AGENT_PROVIDER_IDS } from '../../../shared/contracts/dto'
+
+export const AGENT_PROVIDERS = AGENT_PROVIDER_IDS
 export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
 export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as const
 export const EXPERIMENTAL_AGENT_PROVIDERS = [] as const

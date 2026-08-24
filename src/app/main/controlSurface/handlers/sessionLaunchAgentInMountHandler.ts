@@ -2,9 +2,8 @@ import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
-import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
+import type { AgentProviderRegistry } from '../../../../contexts/agent/application/services/AgentProviderRegistry'
 import { captureGeminiSessionDiscoveryCursor } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
-import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
 import {
   normalizeAgentSettings,
   resolveAgentExecutablePathOverride,
@@ -25,16 +24,12 @@ import {
 } from './sessionLaunchSupport'
 import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
-import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { SessionRecord } from './sessionRecords'
 import { normalizeOptionalString } from './sessionLaunchPayloadSupport'
-import {
-  normalizeLaunchAgentInMountPayload,
-  resolveOpenCodeEmbeddedXdgStateHome,
-} from './sessionLaunchAgentInMountPayload'
+import { normalizeLaunchAgentInMountPayload } from './sessionLaunchAgentInMountPayload'
 import type { TerminalSpawnAdmission } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { resolveAdmittedMountAgentLaunch } from './resolveAdmittedMountAgentLaunch'
 import {
@@ -43,6 +38,12 @@ import {
   logAgentLaunchError,
   logAgentLaunchInfo,
 } from '../../diagnostics/agentLaunchRuntimeDiagnostics'
+import { prepareAgentLaunch } from './prepareAgentLaunch'
+import { rollbackAgentLaunchArtifacts } from '../../../../contexts/agent/application/services/AgentLaunchArtifactOwner'
+import {
+  mergeAgentLaunchEnvironment,
+  prepareAgentSessionEnvironment,
+} from './agentLaunchEnvironment'
 
 export function registerSessionLaunchAgentInMountHandler(
   controlSurface: ControlSurface,
@@ -55,6 +56,7 @@ export function registerSessionLaunchAgentInMountHandler(
     topology: WorkerTopologyStore
     sessions: Map<string, SessionRecord>
     terminalSpawnAdmission: TerminalSpawnAdmission
+    agentProviderRegistry: AgentProviderRegistry
   },
 ): void {
   controlSurface.register('session.launchAgentInMount', {
@@ -264,14 +266,6 @@ export function registerSessionLaunchAgentInMountHandler(
         },
       )
 
-      const testStub = resolveWorkerAgentTestStub({
-        provider,
-        cwd,
-        mode,
-        model,
-        resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
-      })
-
       const opencodeServer =
         provider === 'opencode'
           ? {
@@ -280,17 +274,25 @@ export function registerSessionLaunchAgentInMountHandler(
             }
           : null
 
-      const launchCommand = testStub
-        ? { command: testStub.command, args: testStub.args, effectiveModel: model }
-        : buildAgentLaunchCommand({
-            provider,
-            mode,
-            prompt: mode === 'new' ? payload.prompt : '',
-            model,
-            resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
-            agentFullAccess,
-            opencodeServer,
-          })
+      const sessionEnv = await prepareAgentSessionEnvironment({
+        provider,
+        opencodeServer,
+        userDataPath: deps.userDataPath,
+      })
+
+      const resumeSessionId = mode === 'resume' ? (payload.resumeSessionId ?? null) : null
+      const { launchCommand, managedLaunch, testStub } = await prepareAgentLaunch({
+        registry: deps.agentProviderRegistry,
+        provider,
+        cwd,
+        mode,
+        model,
+        resumeSessionId,
+        prompt: payload.prompt,
+        agentFullAccess,
+        opencodeServer,
+        executablePathOverride,
+      })
       logAgentLaunchInfo(
         'control-surface-mount-local-command-built',
         'Built local mount agent launch command before spawn resolution.',
@@ -307,26 +309,12 @@ export function registerSessionLaunchAgentInMountHandler(
       const startedAtMs = Date.now()
       const startedAt = new Date(startedAtMs).toISOString()
 
-      const opencodeTuiConfigPath =
-        provider === 'opencode' ? await ensureOpenCodeEmbeddedTuiConfigPath() : null
-
-      const sessionEnv =
-        opencodeServer && provider === 'opencode'
-          ? {
-              OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
-              OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
-              XDG_STATE_HOME: resolveOpenCodeEmbeddedXdgStateHome(deps.userDataPath),
-              ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
-            }
-          : undefined
-
-      const launchEnv =
-        testStub?.env || sessionEnv ? { ...(testStub?.env ?? {}), ...(sessionEnv ?? {}) } : null
-
-      const mergedEnv =
-        payload.env && Object.keys(payload.env).length > 0
-          ? { ...(launchEnv ?? {}), ...payload.env }
-          : (launchEnv ?? undefined)
+      const mergedEnv = mergeAgentLaunchEnvironment({
+        testEnvironment: testStub?.env,
+        sessionEnvironment: sessionEnv,
+        requestedEnvironment: payload.env,
+        providerEnvironment: managedLaunch.plan.env,
+      })
 
       const resolvedSpawn = await resolveSessionLaunchSpawn({
         workingDirectory: cwd,
@@ -335,7 +323,7 @@ export function registerSessionLaunchAgentInMountHandler(
         args: launchCommand.args,
         provider: testStub ? null : provider,
         executablePathOverride,
-        ...(mergedEnv ? { env: mergedEnv } : {}),
+        ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
       }).catch(error => {
         logAgentLaunchError(
           'control-surface-mount-local-spawn-resolve-failed',
@@ -348,7 +336,7 @@ export function registerSessionLaunchAgentInMountHandler(
             ...describeAgentLaunchError(error),
           },
         )
-        throw error
+        return rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts)
       })
       logAgentLaunchInfo(
         'control-surface-mount-local-spawn-resolved',
@@ -393,6 +381,10 @@ export function registerSessionLaunchAgentInMountHandler(
           args: resolvedSpawn.args,
           ...resolveAgentPtySpawnState(provider, payload.prompt, mode),
           ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
+          ...(managedLaunch.plan.hookInstallState
+            ? { hookInstallState: managedLaunch.plan.hookInstallState }
+            : {}),
+          launchArtifacts: managedLaunch.artifacts,
         })
         .catch(error => {
           logAgentLaunchError(
@@ -411,6 +403,7 @@ export function registerSessionLaunchAgentInMountHandler(
           )
           throw error
         })
+      managedLaunch.plan.onStarted?.(sessionId)
       logAgentLaunchInfo(
         'control-surface-mount-local-pty-spawn-succeeded',
         'Local mount agent PTY session spawned.',

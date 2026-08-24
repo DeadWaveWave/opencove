@@ -127,55 +127,8 @@ describe('headless PTY runtime', () => {
       const { createHeadlessPtyRuntime } =
         await import('../../../src/app/worker/headlessPtyRuntime')
 
-      let emitHookState: ((event: TerminalSessionStateEvent) => void) | null = null
-      let emitCodexHookState: ((event: TerminalSessionStateEvent) => void) | null = null
-      const hookCommit = vi.fn()
-      const hookDisposeSession = vi.fn()
-      const codexHookCommit = vi.fn()
-      const codexHookDisposeSession = vi.fn()
-      const claudeHookChannel = {
-        start: vi.fn(async () => undefined),
-        reserveSpawn: vi.fn(async () => ({
-          env: {
-            OPENCOVE_CLAUDE_HOOK_ENDPOINT: 'http://127.0.0.1:1234/hooks/claude',
-            OPENCOVE_CLAUDE_HOOK_TOKEN: 'token-1',
-          },
-          installState: 'installed' as const,
-          usesHook: true,
-          commit: hookCommit,
-          dispose: vi.fn(),
-        })),
-        onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
-          emitHookState = listener
-          return () => undefined
-        }),
-        disposeSession: hookDisposeSession,
-        getInstallState: vi.fn(() => 'installed' as const),
-        getEndpoint: vi.fn(() => 'http://127.0.0.1:1234/hooks/claude'),
-        dispose: vi.fn(async () => undefined),
-      }
-      const codexHookChannel = {
-        ...claudeHookChannel,
-        reserveSpawn: vi.fn(async () => ({
-          env: {
-            OPENCOVE_CODEX_HOOK_ENDPOINT: 'http://127.0.0.1:5678/hooks/codex',
-            OPENCOVE_CODEX_HOOK_TOKEN: 'reserved-token',
-          },
-          installState: 'installed' as const,
-          usesHook: true,
-          commit: codexHookCommit,
-          dispose: vi.fn(),
-        })),
-        onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
-          emitCodexHookState = listener
-          return () => undefined
-        }),
-        disposeSession: codexHookDisposeSession,
-        getEndpoint: vi.fn(() => 'http://127.0.0.1:5678/hooks/codex'),
-      }
       const runtime = createHeadlessPtyRuntime({
         userDataPath: '/tmp/opencove-headless-runtime',
-        agentHookChannels: { 'claude-code': claudeHookChannel, codex: codexHookChannel },
       })
 
       const observedData: Array<{ sessionId: string; data: string }> = []
@@ -207,9 +160,14 @@ describe('headless PTY runtime', () => {
         rows: 24,
         command: 'claude',
         args: [],
-        env: { EXISTING: 'value' },
+        env: {
+          EXISTING: 'value',
+          OPENCOVE_CLAUDE_HOOK_ENDPOINT: 'http://127.0.0.1:1234/hooks/claude',
+          OPENCOVE_CLAUDE_HOOK_TOKEN: 'token-1',
+        },
         agentProvider: 'claude-code',
         initialAgentState: 'working',
+        hookInstallState: 'installed',
       })
       await runtime.spawnSession({
         cwd: '/tmp/workspace',
@@ -217,9 +175,14 @@ describe('headless PTY runtime', () => {
         rows: 24,
         command: 'codex',
         args: [],
-        env: { EXISTING: 'codex-value', OPENCOVE_CODEX_HOOK_TOKEN: 'caller-token' },
+        env: {
+          EXISTING: 'codex-value',
+          OPENCOVE_CODEX_HOOK_ENDPOINT: 'http://127.0.0.1:5678/hooks/codex',
+          OPENCOVE_CODEX_HOOK_TOKEN: 'reserved-token',
+        },
         agentProvider: 'codex',
         initialAgentState: 'working',
+        hookInstallState: 'installed',
       })
 
       runtime.startSessionStateWatcher({
@@ -261,18 +224,6 @@ describe('headless PTY runtime', () => {
         listener({ sessionId: 'session-1', data: 'hello from worker\n\u001b[6n' })
       })
       emitState?.({ sessionId: 'session-1', state: 'working' })
-      emitHookState?.({
-        sessionId: 'session-2',
-        state: 'waiting',
-        source: 'claude_hook',
-        hookInstallState: 'installed',
-      })
-      emitCodexHookState?.({
-        sessionId: 'session-1',
-        state: 'waiting',
-        source: 'codex_hook',
-        hookInstallState: 'installed',
-      })
       emitMetadata?.({ sessionId: 'session-1', resumeSessionId: 'resume-session-1' })
       ptyForegroundListeners.forEach(listener => {
         listener({
@@ -321,18 +272,6 @@ describe('headless PTY runtime', () => {
           hookInstallState: 'installed',
         },
         {
-          sessionId: 'session-2',
-          state: 'waiting',
-          source: 'claude_hook',
-          hookInstallState: 'installed',
-        },
-        {
-          sessionId: 'session-1',
-          state: 'waiting',
-          source: 'codex_hook',
-          hookInstallState: 'installed',
-        },
-        {
           sessionId: 'session-1',
           state: 'standby',
           source: 'codex_hook',
@@ -372,8 +311,6 @@ describe('headless PTY runtime', () => {
             EXISTING: 'value',
             OPENCOVE_CLAUDE_HOOK_ENDPOINT: 'http://127.0.0.1:1234/hooks/claude',
             OPENCOVE_CLAUDE_HOOK_TOKEN: 'token-1',
-            OPENCOVE_CODEX_HOOK_ENDPOINT: 'http://127.0.0.1:5678/hooks/codex',
-            OPENCOVE_CODEX_HOOK_TOKEN: 'reserved-token',
           },
         }),
       )
@@ -387,13 +324,6 @@ describe('headless PTY runtime', () => {
           },
         }),
       )
-      expect(hookCommit).toHaveBeenCalledWith('session-2')
-      expect(codexHookCommit).toHaveBeenCalledWith('session-1')
-      expect(stateListener.mock.invocationCallOrder[0]).toBeLessThan(
-        hookCommit.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
-      )
-      expect(hookDisposeSession).toHaveBeenCalledWith('session-2')
-      expect(codexHookDisposeSession).toHaveBeenCalledWith('session-1')
       expect(lastSupervisor?.crash).toHaveBeenCalledTimes(1)
       expect(watcherDispose).toHaveBeenCalledTimes(1)
       expect(lastSupervisor?.dispose).toHaveBeenCalledTimes(1)

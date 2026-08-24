@@ -6,6 +6,8 @@ import {
 import { RemotePtyEndpointProxy } from '../../../src/app/main/controlSurface/ptyStream/remotePtyEndpointProxy'
 import type { ControlSurfacePtyRuntime } from '../../../src/app/main/controlSurface/handlers/sessionPtyRuntime'
 import type { WorkerTopologyStore } from '../../../src/app/main/controlSurface/topology/topologyStore'
+import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
+import type { TerminalSessionStateEvent } from '../../../src/shared/contracts/dto'
 
 function createRuntimeMock(
   overrides: Partial<ControlSurfacePtyRuntime> = {},
@@ -45,6 +47,105 @@ describe('createMultiEndpointPtyRuntime', () => {
     expect(localRuntime.listProfiles).toHaveBeenCalledTimes(1)
 
     runtime.dispose()
+  })
+
+  it('owns launch artifacts until the local session exits', async () => {
+    let emitExit: ((event: { sessionId: string; exitCode: number }) => void) | null = null
+    const localRuntime = createRuntimeMock({
+      onExit: vi.fn(listener => {
+        emitExit = listener
+        return () => undefined
+      }),
+    })
+    const disposed = vi.fn(async () => undefined)
+    const artifacts = new AgentLaunchArtifactScope()
+    artifacts.track('temporary-provider-config', { dispose: disposed })
+    artifacts.seal()
+    const runtime = createMultiEndpointPtyRuntime({
+      localRuntime,
+      topology: {} as WorkerTopologyStore,
+      disposeLocalRuntime: false,
+    })
+
+    await runtime.spawnSession({
+      cwd: '/tmp/workspace',
+      cols: 80,
+      rows: 24,
+      command: 'claude',
+      args: [],
+      launchArtifacts: artifacts,
+    })
+    expect(disposed).not.toHaveBeenCalled()
+
+    emitExit?.({ sessionId: 'session-1', exitCode: 0 })
+    await vi.waitFor(() => expect(disposed).toHaveBeenCalledTimes(1))
+    runtime.dispose()
+    await Promise.resolve()
+    expect(disposed).toHaveBeenCalledTimes(1)
+  })
+
+  it('rolls back launch artifacts and preserves both failures when spawn fails', async () => {
+    const spawnError = new Error('spawn failed')
+    const cleanupError = new Error('cleanup failed')
+    const artifacts = new AgentLaunchArtifactScope()
+    artifacts.track('temporary-provider-config', {
+      dispose: async () => await Promise.reject(cleanupError),
+    })
+    artifacts.seal()
+    const runtime = createMultiEndpointPtyRuntime({
+      localRuntime: createRuntimeMock({
+        spawnSession: vi.fn(async () => await Promise.reject(spawnError)),
+      }),
+      topology: {} as WorkerTopologyStore,
+      disposeLocalRuntime: false,
+    })
+
+    const error = await runtime
+      .spawnSession({
+        cwd: '/tmp/workspace',
+        cols: 80,
+        rows: 24,
+        command: 'claude',
+        args: [],
+        launchArtifacts: artifacts,
+      })
+      .catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(AggregateError)
+    expect((error as AggregateError).errors).toEqual([spawnError, expect.any(AggregateError)])
+    runtime.dispose()
+  })
+
+  it('projects provider hook state sources through the multi-endpoint runtime', () => {
+    let emitHookState: ((event: TerminalSessionStateEvent) => void) | null = null
+    const disposeHookListener = vi.fn()
+    const runtime = createMultiEndpointPtyRuntime({
+      localRuntime: createRuntimeMock(),
+      topology: {} as WorkerTopologyStore,
+      disposeLocalRuntime: false,
+      agentStateSources: [
+        {
+          onState: listener => {
+            emitHookState = listener
+            return disposeHookListener
+          },
+        },
+      ],
+    })
+    const observed = vi.fn()
+    runtime.onState?.(observed)
+
+    const event: TerminalSessionStateEvent = {
+      sessionId: 'session-1',
+      state: 'waiting',
+      source: 'claude_hook',
+      hookInstallState: 'installed',
+    }
+    emitHookState?.(event)
+    expect(observed).toHaveBeenCalledWith(event)
+
+    runtime.dispose()
+    expect(disposeHookListener).toHaveBeenCalledTimes(1)
   })
 
   it('restores a still-running remote session under its durable home session id', async () => {

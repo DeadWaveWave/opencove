@@ -11,6 +11,10 @@ import {
   type ControlSurfaceHttpServerInstance,
 } from './controlSurfaceHttpServer'
 import { readRuntimeAppVersion } from './runtimeAppVersion'
+import { createClaudeHookChannel } from './agentHook/claudeHookChannel'
+import { createCodexHookChannel } from './agentHook/codexHookChannel'
+import { AgentProviderRegistry } from '../../../contexts/agent/application/services/AgentProviderRegistry'
+import { createBuiltinAgentProviderContributions } from '../../../contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
 
 const CONTROL_SURFACE_TRASH_TIMEOUT_MS = 3_000
 
@@ -28,6 +32,19 @@ export function registerControlSurfaceServer(deps?: {
   const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
   const ownsPtyRuntime = !deps?.ptyRuntime
   const ptyRuntime = deps?.ptyRuntime ?? createPtyRuntime()
+  const claudeHookChannel = createClaudeHookChannel({})
+  const codexHookChannel = createCodexHookChannel({})
+  const agentHookChannels = {
+    'claude-code': claudeHookChannel,
+    codex: codexHookChannel,
+  }
+  const agentProviderRegistry = new AgentProviderRegistry(
+    createBuiltinAgentProviderContributions({
+      channels: agentHookChannels,
+      runtimeExecutable: process.execPath,
+      runtimePlatform: process.platform,
+    }),
+  )
 
   return registerControlSurfaceHttpServer({
     userDataPath,
@@ -43,6 +60,8 @@ export function registerControlSurfaceServer(deps?: {
       ),
     desktopSyncEventSink: sendSyncEventToDesktopWindows,
     closeWebsiteNode: async nodeId => await closeWebsiteWindowNodeAcrossManagers(nodeId),
+    agentHookChannels: [claudeHookChannel, codexHookChannel],
+    agentProviderRegistry,
   })
 }
 

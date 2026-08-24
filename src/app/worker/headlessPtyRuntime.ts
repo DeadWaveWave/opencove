@@ -5,13 +5,13 @@ import { PtyHostSupervisor } from '../../platform/process/ptyHost/supervisor'
 import { createNodeChildPtyHostProcess } from '../../platform/process/ptyHost/nodeProcessAdapter'
 import type {
   AgentProviderId,
+  AgentHookInstallState,
   ResizeTerminalInput,
   TerminalForegroundEvent,
   TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../shared/contracts/dto'
-import type { AgentHookChannel } from '../../shared/runtime/agentHook/agentHookChannel'
 import {
   createSessionStateWatcherController,
   type SessionStateWatcherStartInput,
@@ -20,7 +20,6 @@ import { isDebugCrashHostEnabled } from '../../contexts/terminal/presentation/ma
 import { TerminalProfileResolver } from '../../platform/terminal/TerminalProfileResolver'
 import type { ListTerminalProfilesResult } from '../../shared/contracts/dto'
 import { stripAutomaticTerminalQueriesFromOutput } from '../../shared/terminal/automaticTerminalSequences'
-import { cleanAgentHookRuntimeEnv } from '../../shared/runtime/codexHookRuntime'
 
 type SpawnSessionOptions = {
   cwd: string
@@ -31,6 +30,7 @@ type SpawnSessionOptions = {
   env?: NodeJS.ProcessEnv
   agentProvider?: AgentProviderId
   initialAgentState?: 'working' | 'standby'
+  hookInstallState?: AgentHookInstallState
 }
 
 export interface HeadlessPtyRuntime {
@@ -49,10 +49,7 @@ export interface HeadlessPtyRuntime {
   dispose: () => void
 }
 
-export function createHeadlessPtyRuntime(options: {
-  userDataPath: string
-  agentHookChannels?: Partial<Record<AgentProviderId, AgentHookChannel>>
-}): HeadlessPtyRuntime {
+export function createHeadlessPtyRuntime(options: { userDataPath: string }): HeadlessPtyRuntime {
   const logsDir = resolve(options.userDataPath, 'logs')
   const logFilePath = resolve(logsDir, 'pty-host.log')
   const debugCrashHostEnabled = isDebugCrashHostEnabled()
@@ -66,8 +63,7 @@ export function createHeadlessPtyRuntime(options: {
     string,
     TerminalSessionStateEvent['hookInstallState']
   >()
-  const hookChannelsBySessionId = new Map<string, AgentHookChannel[]>()
-  const agentHookChannels = options.agentHookChannels ?? {}
+  const providerBySessionId = new Map<string, AgentProviderId>()
 
   const emitState = (event: TerminalSessionStateEvent): void => {
     stateListeners.forEach(listener => listener(event))
@@ -91,10 +87,6 @@ export function createHeadlessPtyRuntime(options: {
       metadataListeners.forEach(listener => listener(event))
     },
   })
-
-  const disposeHookStateListeners = Object.values(agentHookChannels).map(channel =>
-    channel.onState(emitState),
-  )
 
   const supervisor = new PtyHostSupervisor({
     baseDir: __dirname,
@@ -122,23 +114,16 @@ export function createHeadlessPtyRuntime(options: {
   })
 
   const disposeExitListener = supervisor.onExit(event => {
-    const codexHookChannel = agentHookChannels.codex
-    if (
-      codexHookChannel &&
-      hookChannelsBySessionId.get(event.sessionId)?.includes(codexHookChannel)
-    ) {
+    if (providerBySessionId.get(event.sessionId) === 'codex') {
       emitState({
         sessionId: event.sessionId,
         state: 'standby',
         source: 'codex_hook',
-        hookInstallState: codexHookChannel.getInstallState(),
+        hookInstallState: hookInstallStateBySessionId.get(event.sessionId),
       })
     }
     sessionStateWatcher.disposeSession(event.sessionId)
-    hookChannelsBySessionId
-      .get(event.sessionId)
-      ?.forEach(channel => channel.disposeSession(event.sessionId))
-    hookChannelsBySessionId.delete(event.sessionId)
+    providerBySessionId.delete(event.sessionId)
     hookInstallStateBySessionId.delete(event.sessionId)
     exitListeners.forEach(listener => listener(event))
   })
@@ -147,73 +132,32 @@ export function createHeadlessPtyRuntime(options: {
     if (!event.shellOnly) {
       return
     }
-    const codexHookChannel = agentHookChannels.codex
-    if (
-      !codexHookChannel ||
-      !hookChannelsBySessionId.get(event.sessionId)?.includes(codexHookChannel)
-    ) {
+    if (providerBySessionId.get(event.sessionId) !== 'codex') {
       return
     }
     emitState({
       sessionId: event.sessionId,
       state: 'standby',
       source: 'codex_hook',
-      hookInstallState: codexHookChannel.getInstallState(),
+      hookInstallState: hookInstallStateBySessionId.get(event.sessionId),
     })
   })
 
   return {
     listProfiles: async () => await profileResolver.listProfiles(),
     spawnSession: async input => {
-      const codexHookChannel = agentHookChannels.codex
-      const providerHookChannel = input.agentProvider
-        ? agentHookChannels[input.agentProvider]
-        : undefined
-      const paneIdentity = {
-        paneKey: randomUUID(),
-        tabId: randomUUID(),
-        worktreeId: input.cwd,
-      }
-      const codexReservation = await codexHookChannel?.reserveSpawn(paneIdentity)
-      const providerReservation =
-        providerHookChannel && providerHookChannel !== codexHookChannel
-          ? await providerHookChannel.reserveSpawn()
-          : undefined
-      const reservations = [codexReservation, providerReservation].filter(
-        (reservation): reservation is NonNullable<typeof reservation> => !!reservation,
-      )
-      try {
-        const reservationEnv = Object.assign({}, ...reservations.map(item => item.env ?? {}))
-        const spawned = await supervisor.spawn({
-          ...input,
-          env: { ...cleanAgentHookRuntimeEnv(input.env ?? {}), ...reservationEnv },
+      const spawned = await supervisor.spawn(input)
+      if (input.agentProvider && input.hookInstallState) {
+        providerBySessionId.set(spawned.sessionId, input.agentProvider)
+        hookInstallStateBySessionId.set(spawned.sessionId, input.hookInstallState)
+        emitState({
+          sessionId: spawned.sessionId,
+          state: input.initialAgentState ?? 'working',
+          source: 'launch',
+          hookInstallState: input.hookInstallState,
         })
-        if (reservations.length > 0) {
-          hookChannelsBySessionId.set(spawned.sessionId, [
-            ...new Set([codexHookChannel, providerHookChannel].filter(Boolean)),
-          ] as AgentHookChannel[])
-          if (input.agentProvider && providerHookChannel) {
-            const installState =
-              providerHookChannel === codexHookChannel
-                ? codexReservation?.installState
-                : providerReservation?.installState
-            if (installState) {
-              hookInstallStateBySessionId.set(spawned.sessionId, installState)
-            }
-            emitState({
-              sessionId: spawned.sessionId,
-              state: input.initialAgentState ?? 'working',
-              source: 'launch',
-              hookInstallState: installState,
-            })
-          }
-          reservations.forEach(reservation => reservation.commit(spawned.sessionId))
-        }
-        return spawned
-      } catch (error) {
-        reservations.forEach(reservation => reservation.dispose())
-        throw error
       }
+      return spawned
     },
     write: (sessionId, data) => {
       supervisor.write(sessionId, data)
@@ -258,8 +202,7 @@ export function createHeadlessPtyRuntime(options: {
     },
     kill: sessionId => {
       sessionStateWatcher.disposeSession(sessionId)
-      hookChannelsBySessionId.get(sessionId)?.forEach(channel => channel.disposeSession(sessionId))
-      hookChannelsBySessionId.delete(sessionId)
+      providerBySessionId.delete(sessionId)
       hookInstallStateBySessionId.delete(sessionId)
       supervisor.kill(sessionId)
     },
@@ -310,17 +253,13 @@ export function createHeadlessPtyRuntime(options: {
       disposeDataListener()
       disposeExitListener()
       disposeForegroundListener()
-      disposeHookStateListeners.forEach(disposeListener => disposeListener())
       dataListeners.clear()
       exitListeners.clear()
       foregroundListeners.clear()
       stateListeners.clear()
       metadataListeners.clear()
       hookInstallStateBySessionId.clear()
-      hookChannelsBySessionId.forEach((channels, sessionId) =>
-        channels.forEach(channel => channel.disposeSession(sessionId)),
-      )
-      hookChannelsBySessionId.clear()
+      providerBySessionId.clear()
       sessionStateWatcher.dispose()
       supervisor.dispose()
     },

@@ -6,9 +6,11 @@ import type {
   ResizeTerminalInput,
   TerminalForegroundEvent,
   TerminalGeometryCommitResult,
+  AgentHookInstallState,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
+import type { AgentLaunchArtifactScope } from '../../../../contexts/agent/application/services/AgentLaunchArtifactScope'
 
 export interface ControlSurfacePtyRuntime {
   listProfiles?: () => Promise<ListTerminalProfilesResult>
@@ -21,6 +23,8 @@ export interface ControlSurfacePtyRuntime {
     env?: NodeJS.ProcessEnv
     agentProvider?: AgentProviderId
     initialAgentState?: 'working' | 'standby'
+    hookInstallState?: AgentHookInstallState
+    launchArtifacts?: AgentLaunchArtifactScope
   }) => Promise<{ sessionId: string }>
   /** Waits until a newly spawned interactive shell can safely accept its first command. */
   waitForShellReady?: (sessionId: string) => Promise<void>

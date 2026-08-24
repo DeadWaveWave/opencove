@@ -5,7 +5,10 @@ import { registerSessionHandlers } from '../../../src/app/main/controlSurface/ha
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import type { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
 import { TerminalRuntimeAvailability } from '../../../src/contexts/terminal/application/TerminalRuntimeAvailability'
-import { createReadyTerminalAdmissionDeps } from './controlSurfaceTestTerminalAvailability'
+import {
+  createReadyTerminalAdmissionDeps,
+  createTestAgentProviderRegistry,
+} from './controlSurfaceTestTerminalAvailability'
 
 const resolveWorkerAgentTestStubMock = vi.hoisted(() => vi.fn())
 const { captureGeminiSessionDiscoveryCursorMock } = vi.hoisted(() => ({
@@ -62,6 +65,7 @@ describe('control surface session.launchAgentInMount', () => {
     registerSessionHandlers(controlSurface, {
       terminalSpawnAdmission: availability,
       terminalRecoverySpawnAdmission: availability,
+      agentProviderRegistry: createTestAgentProviderRegistry(),
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -164,6 +168,7 @@ describe('control surface session.launchAgentInMount', () => {
     const controlSurface = createControlSurface()
     registerSessionHandlers(controlSurface, {
       ...createReadyTerminalAdmissionDeps(),
+      agentProviderRegistry: createTestAgentProviderRegistry(),
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -263,6 +268,7 @@ describe('control surface session.launchAgentInMount', () => {
     const controlSurface = createControlSurface()
     registerSessionHandlers(controlSurface, {
       ...createReadyTerminalAdmissionDeps(),
+      agentProviderRegistry: createTestAgentProviderRegistry(),
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -363,6 +369,7 @@ describe('control surface session.launchAgentInMount', () => {
       const controlSurface = createControlSurface()
       registerSessionHandlers(controlSurface, {
         ...createReadyTerminalAdmissionDeps(),
+        agentProviderRegistry: createTestAgentProviderRegistry(),
         userDataPath: '/tmp/opencove-test-user-data',
         approvedWorkspaces: {
           registerRoot: async () => undefined,

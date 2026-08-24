@@ -5,7 +5,7 @@ interface OpenCodeServerBinding {
   port: number
 }
 
-interface BuildAgentLaunchCommandInput {
+export interface BuildAgentLaunchCommandInput {
   provider: AgentProviderId
   mode: AgentLaunchMode
   prompt?: string
@@ -13,6 +13,7 @@ interface BuildAgentLaunchCommandInput {
   resumeSessionId: string | null
   agentFullAccess?: boolean
   opencodeServer?: OpenCodeServerBinding | null
+  injectedArgs?: readonly string[]
 }
 
 export interface AgentLaunchCommand {
@@ -83,6 +84,8 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
       args.push('--model', effectiveModel)
     }
 
+    args.push(...(input.injectedArgs ?? []))
+
     if (input.mode === 'resume') {
       if (resumeSessionId) {
         args.push('--resume', resumeSessionId)
@@ -130,6 +133,8 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
       args.push('--model', effectiveModel)
     }
 
+    args.push(...(input.injectedArgs ?? []))
+
     if (input.mode === 'resume') {
       if (!resumeSessionId) {
         throw new Error('opencode resume requires explicit session id')
@@ -173,6 +178,8 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
       args.push('--model', effectiveModel)
     }
 
+    args.push(...(input.injectedArgs ?? []))
+
     if (input.mode === 'resume') {
       if (!resumeSessionId) {
         throw new Error('gemini resume requires explicit session id')
@@ -210,6 +217,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
 
     const args: string[] = []
     appendCodexAccessArgs(args, agentFullAccess)
+    args.push(...(input.injectedArgs ?? []))
     args.push('resume', resumeSessionId)
 
     if (effectiveModel) {
@@ -231,6 +239,8 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
   if (effectiveModel) {
     args.push('--model', effectiveModel)
   }
+
+  args.push(...(input.injectedArgs ?? []))
 
   const prompt = normalizePrompt(input.prompt)
   if (prompt.length > 0) {

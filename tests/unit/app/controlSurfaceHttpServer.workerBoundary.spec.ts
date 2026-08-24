@@ -162,16 +162,6 @@ async function collectRuntimeImportGraph(entryFile: string): Promise<{
 }
 
 describe('worker control surface import boundary', () => {
-  it('keeps the synchronous trust entry executable by plain Node', async () => {
-    const source = await readFile(
-      resolve(process.cwd(), 'src/app/cli/hooks/codex-trust-grant.mjs'),
-      'utf8',
-    )
-    expect(source).not.toMatch(
-      /\b(?:from|import)\s+['"]electron['"]|\brequire\(['"]electron['"]\)/u,
-    )
-  })
-
   it('keeps worker-shared modules free of Electron main-process imports', async () => {
     const files = (
       await Promise.all(

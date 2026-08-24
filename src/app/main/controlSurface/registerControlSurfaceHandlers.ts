@@ -32,6 +32,7 @@ import type {
   TerminalSpawnAdmission,
 } from '../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { readSshConfigHosts } from './topology/sshConfigReader'
+import type { AgentProviderRegistry } from '../../../contexts/agent/application/services/AgentProviderRegistry'
 
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
@@ -52,6 +53,7 @@ export function registerControlSurfaceHandlers(
     restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
     terminalSpawnAdmission: TerminalSpawnAdmission
     terminalRecoverySpawnAdmission: TerminalRecoverySpawnAdmission
+    agentProviderRegistry: AgentProviderRegistry
   },
 ): void {
   registerSystemHandlers(controlSurface, { appVersion: deps.appVersion })
@@ -106,6 +108,7 @@ export function registerControlSurfaceHandlers(
     restoreTerminalSession: deps.restoreTerminalSession,
     terminalSpawnAdmission: deps.terminalSpawnAdmission,
     terminalRecoverySpawnAdmission: deps.terminalRecoverySpawnAdmission,
+    agentProviderRegistry: deps.agentProviderRegistry,
   })
   registerSessionStreamingHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,

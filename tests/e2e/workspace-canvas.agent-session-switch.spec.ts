@@ -123,6 +123,13 @@ test.describe('Workspace Canvas - Agent Session Switch', () => {
       const agentNode = window.locator('.terminal-node').first()
       await expect(agentNode).toBeVisible()
       await expect(window.locator('.terminal-node')).toHaveCount(1)
+      await expect
+        .poll(async () => {
+          return await window.evaluate(() => {
+            return window.__opencoveWorkspaceCanvasTestApi?.getFirstAgentSessionId?.() ?? null
+          })
+        })
+        .not.toBeNull()
 
       await agentNode.locator('[data-testid="terminal-node-session-list"]').click()
       await expect(window.locator('[data-testid="terminal-node-session-menu"]')).toContainText(

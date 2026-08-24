@@ -1,0 +1,165 @@
+import { readFile } from 'node:fs/promises'
+import { describe, expect, it, vi } from 'vitest'
+import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
+import { ClaudeCodeAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/claude-code/ClaudeCodeAgentProviderContribution'
+import { CodexAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/codex/CodexAgentProviderContribution'
+import {
+  serializeCodexTomlString,
+  serializeCodexTomlStringArray,
+} from '../../../src/contexts/agent/infrastructure/providers/codex/CodexTomlConfiguration'
+import type { AgentHookChannel } from '../../../src/shared/runtime/agentHook/agentHookChannel'
+
+const detector = {
+  inspect: vi.fn(async () => ({
+    provider: 'codex' as const,
+    command: 'codex',
+    status: 'available' as const,
+    executablePath: '/usr/bin/codex',
+    source: 'override' as const,
+    diagnostics: [],
+  })),
+}
+
+function channel(provider: 'claude' | 'codex') {
+  const commit = vi.fn()
+  const dispose = vi.fn(async () => undefined)
+  const reservation = {
+    env:
+      provider === 'claude'
+        ? {
+            OPENCOVE_CLAUDE_HOOK_ENDPOINT: 'http://127.0.0.1:1/hooks/claude',
+            OPENCOVE_CLAUDE_HOOK_TOKEN: 'claude-token',
+          }
+        : {
+            OPENCOVE_CODEX_HOOK_ENDPOINT: 'http://127.0.0.1:2/hooks/codex',
+            OPENCOVE_CODEX_HOOK_TOKEN: 'codex-token',
+          },
+    installState: 'installed' as const,
+    usesHook: true,
+    commit,
+    dispose,
+  }
+  const result = {
+    start: vi.fn(async () => undefined),
+    reserveSpawn: vi.fn(async () => reservation),
+    onState: vi.fn(() => () => undefined),
+    disposeSession: vi.fn(),
+    getInstallState: vi.fn(() => 'installed' as const),
+    getEndpoint: vi.fn(() => null),
+    dispose: vi.fn(async () => undefined),
+  } satisfies AgentHookChannel
+  return { channel: result, commit, dispose }
+}
+
+function launchCommand(artifacts: AgentLaunchArtifactScope) {
+  return {
+    artifacts,
+    mode: 'new' as const,
+    prompt: 'Explain the change',
+    model: null,
+    resumeSessionId: null,
+    agentFullAccess: true,
+    workspaceDirectory: '/tmp/workspace',
+  }
+}
+
+describe('ClaudeCodeAgentProviderContribution', () => {
+  it('injects one private --settings file and tracks every launch artifact', async () => {
+    const hook = channel('claude')
+    const artifacts = new AgentLaunchArtifactScope()
+    const provider = new ClaudeCodeAgentProviderContribution({
+      channel: hook.channel,
+      detector,
+      runtimeExecutable: '/runtime/node',
+    })
+
+    const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
+    artifacts.seal()
+
+    const settingsIndex = plan.args.indexOf('--settings')
+    expect(settingsIndex).toBeGreaterThanOrEqual(0)
+    const settingsPath = plan.args[settingsIndex + 1]
+    expect(settingsPath).toBeTruthy()
+    const settings = JSON.parse(await readFile(settingsPath!, 'utf8'))
+    expect(settings.hooks.PermissionRequest[0].hooks[0]).toMatchObject({
+      type: 'command',
+      command: '/runtime/node',
+      args: [expect.stringContaining('opencove-claude-hook-')],
+    })
+    expect(plan.args.at(-1)).toBe('Explain the change')
+    expect(plan.env).toMatchObject({
+      OPENCOVE_CLAUDE_HOOK_TOKEN: 'claude-token',
+      ELECTRON_RUN_AS_NODE: '1',
+    })
+
+    plan.onStarted?.('pty-1')
+    expect(hook.commit).toHaveBeenCalledWith('pty-1')
+    await artifacts.dispose()
+    expect(hook.dispose).toHaveBeenCalledTimes(1)
+    await expect(readFile(settingsPath!, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+})
+
+describe('CodexAgentProviderContribution', () => {
+  it('injects trusted hooks and legacy notify as literal --config values', async () => {
+    const hook = channel('codex')
+    const artifacts = new AgentLaunchArtifactScope()
+    const resolveTrust = vi.fn(async () => "hooks.state={'hook'={trusted_hash='sha256:abc'}}")
+    const provider = new CodexAgentProviderContribution({
+      channel: hook.channel,
+      detector,
+      hookTrustResolver: resolveTrust,
+      runtimeExecutable: '/runtime/node',
+      runtimePlatform: 'linux',
+    })
+
+    const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
+    artifacts.seal()
+
+    expect(resolveTrust).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executable: 'codex',
+        hookCommand: expect.stringMatching(
+          /^'\/runtime\/node' '.*opencove-codex-hook-.*\/relay\.mjs'$/u,
+        ),
+      }),
+    )
+    expect(plan.args.join('\n')).toContain('hooks.SessionEnd=')
+    expect(plan.args).toContain("hooks.state={'hook'={trusted_hash='sha256:abc'}}")
+    expect(plan.args.join('\n')).toContain('notify=["/runtime/node"')
+    expect(plan.args.at(-1)).toBe('Explain the change')
+    expect(plan.env).toMatchObject({
+      OPENCOVE_CODEX_HOOK_TOKEN: 'codex-token',
+      ELECTRON_RUN_AS_NODE: '1',
+    })
+
+    await artifacts.dispose()
+  })
+
+  it('falls back to legacy notify when hook trust is unavailable', async () => {
+    const hook = channel('codex')
+    const artifacts = new AgentLaunchArtifactScope()
+    const provider = new CodexAgentProviderContribution({
+      channel: hook.channel,
+      detector,
+      hookTrustResolver: vi.fn(async () => await Promise.reject(new Error('old Codex'))),
+      runtimeExecutable: '/runtime/node',
+      runtimePlatform: 'linux',
+    })
+
+    const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
+    artifacts.seal()
+
+    expect(plan.args.join('\n')).not.toContain('hooks.SessionEnd=')
+    expect(plan.args.join('\n')).toContain('notify=["/runtime/node"')
+    await artifacts.dispose()
+  })
+
+  it('uses platform-safe TOML strings', () => {
+    expect(serializeCodexTomlString('C:\\Open Cove\\relay.mjs', 'win32')).toBe(
+      "'C:\\Open Cove\\relay.mjs'",
+    )
+    expect(serializeCodexTomlStringArray(['a', 'C:\\b'], 'win32')).toBe("['a','C:\\b']")
+    expect(serializeCodexTomlString("line\nwith 'quote", 'linux')).toBe('"line\\nwith \'quote"')
+  })
+})
