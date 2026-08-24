@@ -1,0 +1,9 @@
+{"type":"metadata","protocol_version":"1.5","created_at":1784547740582}
+{"type":"config.update","profileName":"default","time":1784547740732}
+{"type":"turn.prompt","origin":{"kind":"user"},"time":1784547740828}
+{"type":"context.append_message","message":{"role":"user","content":[],"origin":{"kind":"user"}},"time":1784547740831}
+{"type":"context.append_loop_event","event":{"type":"step.begin","uuid":"00000000-0000-0000-0000-000000000001","turnId":"0","step":1},"time":1784547740833}
+<unparsable>
+{"type":"permission.record_approval_result","turnId":0,"toolCallId":"tool-redacted","result":{"decision":"approved","scope":"once"},"time":1784548069071}
+{"type":"context.append_loop_event","event":{"type":"step.end","uuid":"00000000-0000-0000-0000-000000000002","turnId":"0","step":1,"finishReason":"end_turn"},"time":1784548069171}
+{"type":"usage.record","model":"redacted-model","usage":{"inputOther":1,"output":1,"inputCacheRead":0,"inputCacheCreation":0},"usageScope":"turn","time":1784548069172}

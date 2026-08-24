@@ -1,0 +1,17 @@
+model = "gpt-5.4"
+approval_policy = "on-request"
+
+[features]
+hooks = true
+
+[hooks.state]
+schema = 1
+
+[hooks.state."/Applications/Orca.app/Contents/Resources/hooks.json:pre_tool_use:0:0"]
+trusted_hash = "sha256:orca-must-stay-byte-for-byte"
+
+[hooks.state."/Users/redacted/.codex/hooks.json.backup:stop:0:0"]
+trusted_hash = "sha256:backup-must-stay-byte-for-byte"
+
+[projects."/repo"]
+trust_level = "trusted"
