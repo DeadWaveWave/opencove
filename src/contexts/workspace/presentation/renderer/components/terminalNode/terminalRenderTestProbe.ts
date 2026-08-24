@@ -1,7 +1,6 @@
 export type TerminalRenderMetricsTestProjection = {
   rendererConstructorName: string | null
   rendererDomRowElementCount: number | null
-  rendererDomRowContainerMatchesFirstTerminalRowContainer: boolean | null
   rendererHasDomRowContainer: boolean | null
   rendererHasDomRowFactory: boolean | null
   rendererHasWebglCanvas: boolean | null
@@ -28,10 +27,7 @@ export type TerminalRenderMetricsTestProjection = {
 
 export type TerminalBufferTextTestProjection = {
   bufferLength: number
-  firstNonBlankLineBetweenMarkerAndViewport: { line: number; text: string } | null
-  lastNonBlankLineBetweenMarkerAndViewport: { line: number; text: string } | null
   markerAbsoluteLine: number | null
-  nonBlankLineIndicesBetweenMarkerAndViewport: number[]
   viewportLines: Array<string | null>
 }
 
@@ -56,9 +52,6 @@ type TerminalRendererIntrospection = {
 }
 
 type TerminalRenderIntrospection = {
-  element?: {
-    querySelector?: (selector: string) => unknown
-  } | null
   rows?: unknown
   buffer?: {
     active?: {
@@ -147,16 +140,10 @@ export function readTerminalRenderMetricsForTest(
   const rendererDomRowElementCount = Array.isArray(renderer?._rowElements)
     ? renderer._rowElements.length
     : null
-  const firstTerminalRowContainer = terminal.element?.querySelector?.('.xterm-rows') ?? null
-  const rendererDomRowContainerMatchesFirstTerminalRowContainer =
-    renderer?._rowContainer && firstTerminalRowContainer
-      ? renderer._rowContainer === firstTerminalRowContainer
-      : null
   return {
     rendererConstructorName:
       typeof rendererConstructorName === 'string' ? rendererConstructorName : null,
     rendererDomRowElementCount,
-    rendererDomRowContainerMatchesFirstTerminalRowContainer,
     rendererHasDomRowContainer: renderer
       ? renderer._rowContainer?.classList?.contains?.('xterm-rows') === true
       : null,
@@ -224,24 +211,10 @@ export function readTerminalBufferTextForTest(
       break
     }
   }
-  const nonBlankLinesBetweenMarkerAndViewport: Array<{ line: number; text: string }> = []
-  if (markerAbsoluteLine !== null) {
-    for (let line = markerAbsoluteLine + 1; line < viewportY; line += 1) {
-      const text = readLine(line)
-      if (text?.trim()) {
-        nonBlankLinesBetweenMarkerAndViewport.push({ line, text })
-      }
-    }
-  }
 
   return {
     bufferLength,
-    firstNonBlankLineBetweenMarkerAndViewport: nonBlankLinesBetweenMarkerAndViewport.at(0) ?? null,
-    lastNonBlankLineBetweenMarkerAndViewport: nonBlankLinesBetweenMarkerAndViewport.at(-1) ?? null,
     markerAbsoluteLine,
-    nonBlankLineIndicesBetweenMarkerAndViewport: nonBlankLinesBetweenMarkerAndViewport.map(
-      entry => entry.line,
-    ),
     viewportLines,
   }
 }

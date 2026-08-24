@@ -52,7 +52,6 @@ type TerminalSelectionTestApi = {
   getRegisteredNodeIds: () => string[]
   getRuntimeSessionId: (nodeId: string) => string | null
   getViewportY: (nodeId: string) => number | null
-  requestRendererRecovery: (nodeId: string) => boolean
   scrollToLine: (nodeId: string, line: number) => boolean
   setDisplayOptions: (
     nodeId: string,
@@ -80,7 +79,6 @@ const terminalHandles = new Map<string, TerminalSelectionHandle>()
 const terminalFitAddons = new Map<string, FitAddon>()
 const terminalBinaryInputEmitters = new Map<string, (data: string) => boolean>()
 const terminalRuntimeSessionIds = new Map<string, string>()
-const terminalRendererRecoveryRequesters = new Map<string, () => void>()
 const terminalDetachedRendererRestorers = new Map<string, () => void>()
 function normalizeFiniteOption(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
@@ -251,15 +249,6 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         const viewportY = terminal?.buffer?.active?.viewportY
         return typeof viewportY === 'number' && Number.isFinite(viewportY) ? viewportY : null
       },
-      requestRendererRecovery: nodeId => {
-        const requestRecovery = terminalRendererRecoveryRequesters.get(nodeId)
-        if (!requestRecovery) {
-          return false
-        }
-
-        requestRecovery()
-        return true
-      },
       scrollToLine: (nodeId, line) => {
         const terminal = terminalHandles.get(nodeId) as unknown as
           | (TerminalSelectionHandle & {
@@ -413,51 +402,26 @@ export function registerTerminalRuntimeSessionTestHandle(
   }
 }
 
-export function registerTerminalRendererRecoveryTestHandle(
-  nodeId: string,
-  requestRecovery: () => void,
-): () => void {
-  if (typeof window === 'undefined') {
-    return () => undefined
-  }
-
-  getTerminalSelectionTestApi()
-  terminalRendererRecoveryRequesters.set(nodeId, requestRecovery)
-
-  return () => {
-    if (terminalRendererRecoveryRequesters.get(nodeId) === requestRecovery) {
-      terminalRendererRecoveryRequesters.delete(nodeId)
-    }
-  }
-}
-
 export function registerTerminalRuntimeTestHandles({
   enabled,
   nodeId,
   sessionId,
   emitBinaryInput,
-  requestRendererRecovery,
 }: {
   enabled: boolean
   nodeId: string
   sessionId: string
   emitBinaryInput: (data: string) => boolean
-  requestRendererRecovery: () => void
 }): () => void {
   if (!enabled) {
     return () => undefined
   }
 
   const disposeBinaryInput = registerTerminalBinaryInputTestHandle(nodeId, emitBinaryInput)
-  const disposeRendererRecovery = registerTerminalRendererRecoveryTestHandle(
-    nodeId,
-    requestRendererRecovery,
-  )
   const disposeRuntimeSession = registerTerminalRuntimeSessionTestHandle(nodeId, sessionId)
 
   return () => {
     disposeBinaryInput()
-    disposeRendererRecovery()
     disposeRuntimeSession()
   }
 }

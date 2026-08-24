@@ -216,13 +216,6 @@ export function useTerminalRuntimeSession({
         ptyWriteQueue.flush()
         return true
       },
-      requestRendererRecovery: () => {
-        requestTerminalRendererRecovery({
-          reason: 'stream_resync',
-          trigger: 'resync_event',
-          forceDom: false,
-        })
-      },
     })
     const openCodeThemeBridge = createOptionalOpenCodeThemeBridge({
       terminalProvider,
