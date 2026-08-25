@@ -10,6 +10,8 @@ export const SELECTABLE_AGENT_PROVIDERS = [
   'claude-code',
   'codex',
   'opencode',
+  'pi',
+  'kimi',
 ] as const satisfies readonly AgentProvider[]
 export type SelectableAgentProvider = (typeof SELECTABLE_AGENT_PROVIDERS)[number]
 export type TaskTitleAgentProvider = (typeof TASK_TITLE_PROVIDERS)[number]

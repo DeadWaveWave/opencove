@@ -15,8 +15,11 @@ describe('agent provider selection compatibility', () => {
     expect(AGENT_PROVIDERS).toContain('gemini')
     expect(AGENT_PROVIDERS).toEqual(expect.arrayContaining(['pi', 'kimi']))
     expect(SELECTABLE_AGENT_PROVIDERS).not.toContain('gemini')
-    expect(SELECTABLE_AGENT_PROVIDERS).not.toContain('pi')
-    expect(SELECTABLE_AGENT_PROVIDERS).not.toContain('kimi')
+    // pi and kimi are user-selectable. They ship without an agent hook, so their run state is
+    // resolved from session files; the arbiter reports hookHealth 'not_applicable' rather than
+    // 'degraded' for them, which is why exposing them does not surface a permanent warning.
+    expect(SELECTABLE_AGENT_PROVIDERS).toContain('pi')
+    expect(SELECTABLE_AGENT_PROVIDERS).toContain('kimi')
     expect(isValidProvider('gemini')).toBe(true)
     expect(resolveSelectableAgentProvider('gemini')).toBe(SELECTABLE_AGENT_PROVIDERS[0])
   })
@@ -40,6 +43,8 @@ describe('agent provider selection compatibility', () => {
       'codex',
       'claude-code',
       'opencode',
+      'pi',
+      'kimi',
     ])
     expect(
       mergeSelectableAgentProviderOrder(settings.agentProviderOrder, [

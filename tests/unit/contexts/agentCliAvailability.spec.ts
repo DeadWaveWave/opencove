@@ -25,10 +25,12 @@ describe('listInstalledAgentProviders', () => {
   it('reports only providers offered by new-agent selection surfaces', async () => {
     const result = await listInstalledAgentProviders()
 
+    // Kept as an explicit literal rather than derived from SELECTABLE_AGENT_PROVIDERS: comparing
+    // the constant against itself would pass no matter what the list contained.
     expect(
       resolveAgentProviderAvailabilityMock.mock.calls.map(([input]) => input.provider),
-    ).toEqual(['claude-code', 'codex', 'opencode'])
-    expect(result.providers).toEqual(['claude-code', 'codex', 'opencode'])
+    ).toEqual(['claude-code', 'codex', 'opencode', 'pi', 'kimi'])
+    expect(result.providers).toEqual(['claude-code', 'codex', 'opencode', 'pi', 'kimi'])
     expect(result.availabilityByProvider.gemini).toBeUndefined()
   })
 })
