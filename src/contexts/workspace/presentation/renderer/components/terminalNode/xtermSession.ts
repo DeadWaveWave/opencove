@@ -29,6 +29,11 @@ import {
   resolveDesiredTerminalAppearanceValue,
 } from './terminalAppearance'
 import { registerTerminalDisplayMeasurementHandle } from '@contexts/settings/presentation/renderer/terminalDisplayMeasurement'
+import {
+  installTerminalRasterScaleController,
+  type TerminalRasterScaleController,
+  type TerminalRasterScaleResolver,
+} from './terminalRasterScaleController'
 
 type TerminalDiagnosticsHandle = ReturnType<typeof registerTerminalDiagnostics>
 let nextXtermSessionInstanceId = 1
@@ -73,6 +78,7 @@ export function createMountedXtermSession({
   preferredRendererMode = 'auto',
   scheduleWebglCanvasTransformCleanup,
   initialViewportZoom = 1,
+  resolveRasterScale,
 }: {
   nodeId: string
   ownerId: string
@@ -100,6 +106,7 @@ export function createMountedXtermSession({
   preferredRendererMode?: PreferredTerminalRendererMode
   scheduleWebglCanvasTransformCleanup?: () => void
   initialViewportZoom?: number
+  resolveRasterScale?: TerminalRasterScaleResolver
 }): XtermSession {
   const initialThemeScope = container?.closest('.terminal-node') ?? container ?? null
   const initialAppearance = resolveDesiredTerminalAppearanceValue({
@@ -147,7 +154,9 @@ export function createMountedXtermSession({
     kind: 'dom',
     clearTextureAtlas: () => undefined,
     dispose: () => undefined,
+    setRasterScale: () => undefined,
   }
+  let rasterScaleController: TerminalRasterScaleController | null = null
 
   const disposeTerminalFind =
     typeof (terminal as unknown as { onWriteParsed?: unknown }).onWriteParsed === 'function'
@@ -196,13 +205,22 @@ export function createMountedXtermSession({
     })
     renderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
       preferredMode: preferredRendererMode,
-      runtimePlatform: window.opencoveApi.meta?.platform,
       terminalKind: nodeKindForDiagnostics,
       onRendererKindChange: kind => {
         onRendererKindResolved?.(kind)
         scheduleWebglCanvasTransformCleanup?.()
       },
       onRendererIssue,
+    })
+    rasterScaleController = installTerminalRasterScaleController({
+      terminal,
+      target: renderer,
+      initialViewportZoom,
+      resolveRasterScale,
+      onScaleChange: scale => {
+        container.dataset.coveTerminalRasterScale = String(scale)
+        scheduleWebglCanvasTransformCleanup?.()
+      },
     })
     onRendererKindResolved?.(renderer.kind)
     try {
@@ -268,7 +286,10 @@ export function createMountedXtermSession({
     renderer,
     diagnostics,
     disposePlaceholderHandoffInputCapture: undefined,
-    setViewportZoom: effectiveDprController.setViewportZoom,
+    setViewportZoom: viewportZoom => {
+      effectiveDprController.setViewportZoom(viewportZoom)
+      rasterScaleController?.setViewportZoom(viewportZoom)
+    },
     setViewportInteractionActive: effectiveDprController.setViewportInteractionActive,
     dispose: () => {
       cancelMouseServicePatch()
@@ -276,6 +297,7 @@ export function createMountedXtermSession({
       disposeWebglCanvasTransformCleanupObserver()
       disposeTerminalPointerFocus()
       effectiveDprController.dispose()
+      rasterScaleController?.dispose()
       renderer.dispose()
       diagnostics.dispose()
       disposeTerminalDisplayMeasurementHandle()

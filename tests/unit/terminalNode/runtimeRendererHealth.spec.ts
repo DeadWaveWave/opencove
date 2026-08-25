@@ -238,6 +238,7 @@ describe('runtime renderer health', () => {
         kind: 'webgl',
         clearTextureAtlas,
         dispose: vi.fn(),
+        setRasterScale: vi.fn(),
       },
       containerRef: { current: container as HTMLDivElement },
       activeRendererKindRef: { current: 'webgl' },

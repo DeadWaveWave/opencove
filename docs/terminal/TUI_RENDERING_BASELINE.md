@@ -65,6 +65,10 @@ Current tactical baseline:
     acknowledgement establishes the connection-local epoch.
 15. durable dirty follows every actual presentation change. Shutdown must drain the complete session
     FIFO before its final recovery flush, not only the first in-flight geometry promise.
+16. terminal raster scale is renderer-only state. Canvas zoom selects a bounded discrete WebGL backing
+    scale, while window DPR remains the sole layout authority for CSS cells, FitAddon and PTY geometry.
+17. WebGL device cells are integer pixels and device canvas dimensions are derived exactly from the
+    terminal grid. Raster scale changes must not remount xterm or change its columns and rows.
 
 ## Constraints To Preserve
 
@@ -84,6 +88,8 @@ Current tactical baseline:
    resize paths may refresh that geometry but must not call fit or mutate local rows/columns
 9. solve DOM glyph clipping with stable CSS/renderer policy. Never inspect the current output and
    shrink xterm until a particular frame happens to fit
+10. keep raster policy injectable at the renderer-session boundary so future backing-store budgets can
+    change scale admission without adding a second terminal geometry writer
 
 ## High-Risk Changes
 
