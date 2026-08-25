@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
@@ -33,6 +33,15 @@ const ctx: ControlSurfaceContext = {
     },
   },
 }
+const originalUseRealAgents = process.env.OPENCOVE_TEST_USE_REAL_AGENTS
+
+afterEach(() => {
+  if (originalUseRealAgents === undefined) {
+    delete process.env.OPENCOVE_TEST_USE_REAL_AGENTS
+  } else {
+    process.env.OPENCOVE_TEST_USE_REAL_AGENTS = originalUseRealAgents
+  }
+})
 
 function createStubStore(state: unknown) {
   return {
@@ -357,5 +366,64 @@ describe('control surface session launch agent', () => {
       expect(fetched.value.executionContext.spaceId).toBe('s-mounted')
       expect(fetched.value.executionContext.mountId).toBe('mount-1')
     }
+  })
+
+  it.each([
+    ['pi', ['--session', 'provider-session']],
+    ['kimi', ['--auto', '--session', 'provider-session']],
+  ] as const)('resumes %s through its registered contribution', async (provider, expectedArgs) => {
+    process.env.OPENCOVE_TEST_USE_REAL_AGENTS = '1'
+    const spawnSession = vi.fn(async () => ({ sessionId: `pty-${provider}` }))
+    const controlSurface = createControlSurface()
+    registerSessionHandlers(controlSurface, {
+      ...createReadyTerminalAdmissionDeps(),
+      agentProviderRegistry: createTestAgentProviderRegistry(),
+      userDataPath: '/tmp/opencove-test-user-data',
+      approvedWorkspaces: {
+        registerRoot: async () => undefined,
+        isPathApproved: async () => true,
+      },
+      getPersistenceStore: async () => createStubStore({ settings: {} }),
+      ptyRuntime: {
+        spawnSession,
+        write: () => undefined,
+        resize: () => undefined,
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+        attach: () => undefined,
+        detach: () => undefined,
+        snapshot: () => '',
+        startSessionStateWatcher: () => undefined,
+        dispose: () => undefined,
+      },
+      ptyStreamHub: {
+        registerSessionMetadata: () => undefined,
+        hasSession: () => false,
+      } as unknown as PtyStreamHub,
+      topology: createTopologyStub(),
+    })
+
+    const launched = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'session.launchAgent',
+      payload: {
+        cwd: '/repo',
+        prompt: '',
+        provider,
+        mode: 'resume',
+        resumeSessionId: 'provider-session',
+      },
+    })
+
+    expect(launched.ok).toBe(true)
+    expect(spawnSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: provider,
+        args: expectedArgs,
+        agentProvider: provider,
+        initialAgentState: 'standby',
+      }),
+    )
   })
 })

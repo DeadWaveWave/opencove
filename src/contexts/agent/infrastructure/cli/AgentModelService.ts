@@ -326,6 +326,16 @@ export async function listAgentModels(options: {
 
   const fetchedAt = new Date().toISOString()
 
+  if (provider === 'pi' || provider === 'kimi') {
+    return {
+      provider,
+      source: 'none',
+      fetchedAt,
+      models: [],
+      error: null,
+    }
+  }
+
   return {
     provider,
     source: 'claude-static',

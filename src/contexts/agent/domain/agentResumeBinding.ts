@@ -1,4 +1,5 @@
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { isValidProvider } from '@contexts/settings/domain/agentSettings'
 
 export interface ResumeSessionBindingLike {
   provider: AgentProvider
@@ -17,12 +18,7 @@ export function normalizeResumeSessionBinding(value: unknown): ResumeSessionBind
   }
 
   const binding = value as Partial<ResumeSessionBindingLike>
-  if (
-    binding.provider !== 'claude-code' &&
-    binding.provider !== 'codex' &&
-    binding.provider !== 'opencode' &&
-    binding.provider !== 'gemini'
-  ) {
+  if (!isValidProvider(binding.provider)) {
     return null
   }
 

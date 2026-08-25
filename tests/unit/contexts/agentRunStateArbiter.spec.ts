@@ -144,4 +144,22 @@ describe('agent run-state authority', () => {
       nextTransitionAtMs: null,
     })
   })
+
+  it('projects a degraded launch fallback only when the session file is unavailable', () => {
+    expect(
+      resolveAgentRunStateAuthority({
+        hookInstallState: null,
+        lastHookSignal: null,
+        lastSessionFileSignal: null,
+        lastLaunchSignal: { state: 'standby', observedAtMs: 100, degraded: true },
+        nowMs: 300,
+      }),
+    ).toEqual({
+      source: 'launch',
+      state: 'standby',
+      degraded: true,
+      hookHealth: 'unavailable',
+      nextTransitionAtMs: null,
+    })
+  })
 })

@@ -13,7 +13,10 @@ import {
 describe('agent provider selection compatibility', () => {
   it('keeps the full provider domain while excluding compatibility-only providers from selection', () => {
     expect(AGENT_PROVIDERS).toContain('gemini')
+    expect(AGENT_PROVIDERS).toEqual(expect.arrayContaining(['pi', 'kimi']))
     expect(SELECTABLE_AGENT_PROVIDERS).not.toContain('gemini')
+    expect(SELECTABLE_AGENT_PROVIDERS).not.toContain('pi')
+    expect(SELECTABLE_AGENT_PROVIDERS).not.toContain('kimi')
     expect(isValidProvider('gemini')).toBe(true)
     expect(resolveSelectableAgentProvider('gemini')).toBe(SELECTABLE_AGENT_PROVIDERS[0])
   })
@@ -25,7 +28,14 @@ describe('agent provider selection compatibility', () => {
     })
 
     expect(settings.defaultProvider).toBe('gemini')
-    expect(settings.agentProviderOrder).toEqual(['gemini', 'codex', 'claude-code', 'opencode'])
+    expect(settings.agentProviderOrder).toEqual([
+      'gemini',
+      'codex',
+      'claude-code',
+      'opencode',
+      'pi',
+      'kimi',
+    ])
     expect(normalizeSelectableAgentProviderOrder(settings.agentProviderOrder)).toEqual([
       'codex',
       'claude-code',
@@ -37,9 +47,21 @@ describe('agent provider selection compatibility', () => {
         'claude-code',
         'codex',
       ]),
-    ).toEqual(['gemini', 'opencode', 'claude-code', 'codex'])
+    ).toEqual(['gemini', 'opencode', 'claude-code', 'codex', 'pi', 'kimi'])
     expect(settings.defaultProvider).toBe('gemini')
     expect(settings.agentProviderOrder[0]).toBe('gemini')
+  })
+
+  it('drops persisted provider ids that no longer exist without crashing', () => {
+    expect(
+      normalizeAgentSettings({
+        defaultProvider: 'removed-provider',
+        agentProviderOrder: ['removed-provider', 'kimi', 'codex'],
+      }),
+    ).toMatchObject({
+      defaultProvider: DEFAULT_AGENT_SETTINGS.defaultProvider,
+      agentProviderOrder: ['kimi', 'codex', 'claude-code', 'opencode', 'gemini', 'pi'],
+    })
   })
 })
 
@@ -56,6 +78,8 @@ describe('normalizeAgentSettings', () => {
       codex: '',
       opencode: '',
       gemini: '',
+      pi: '',
+      kimi: '',
     })
   })
 
@@ -304,6 +328,8 @@ describe('normalizeAgentSettings', () => {
       codex: '/opt/tools/codex',
       opencode: '',
       gemini: '',
+      pi: '',
+      kimi: '',
     })
   })
 

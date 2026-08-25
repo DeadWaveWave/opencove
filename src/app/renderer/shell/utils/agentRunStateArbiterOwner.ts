@@ -12,6 +12,7 @@ type TimerHandle = unknown
 
 interface SessionArbitrationState {
   hookInstallState: AgentHookInstallState | null
+  lastLaunchSignal: AgentRunStateSignal | null
   lastHookSignal: AgentRunStateSignal | null
   lastSessionFileSignal: AgentRunStateSignal | null
   lastDecision: AgentRunStateAuthorityDecision | null
@@ -34,6 +35,7 @@ export function createAgentRunStateArbiterOwner(options: {
   disposeSession: (sessionId: string) => void
   getDebugState: (sessionId: string) => {
     lastHookSignal: AgentRunStateSignal | null
+    lastLaunchSignal: AgentRunStateSignal | null
     lastSessionFileSignal: AgentRunStateSignal | null
     decision: AgentRunStateAuthorityDecision | null
   } | null
@@ -60,6 +62,7 @@ export function createAgentRunStateArbiterOwner(options: {
     const decision = resolveAgentRunStateAuthority({
       hookInstallState: state.hookInstallState,
       lastHookSignal: state.lastHookSignal,
+      lastLaunchSignal: state.lastLaunchSignal,
       lastSessionFileSignal: state.lastSessionFileSignal,
       nowMs,
     })
@@ -112,6 +115,7 @@ export function createAgentRunStateArbiterOwner(options: {
       const source = event.source ?? 'session_file'
       const state = sessions.get(event.sessionId) ?? {
         hookInstallState: null,
+        lastLaunchSignal: null,
         lastHookSignal: null,
         lastSessionFileSignal: null,
         lastDecision: null,
@@ -122,6 +126,7 @@ export function createAgentRunStateArbiterOwner(options: {
       }
       const signal: AgentRunStateSignal = {
         state: event.state,
+        degraded: event.degraded === true,
         observedAtMs:
           typeof event.observedAtMs === 'number' && Number.isFinite(event.observedAtMs)
             ? event.observedAtMs
@@ -132,6 +137,11 @@ export function createAgentRunStateArbiterOwner(options: {
         state.lastHookSignal = signal
       } else if (source === 'session_file') {
         state.lastSessionFileSignal = signal
+      } else if (source === 'launch') {
+        state.lastLaunchSignal = signal
+        if (signal.degraded) {
+          state.lastSessionFileSignal = null
+        }
       }
       sessions.set(event.sessionId, state)
       evaluate(event.sessionId, state)
@@ -154,6 +164,7 @@ export function createAgentRunStateArbiterOwner(options: {
       return state
         ? {
             lastHookSignal: state.lastHookSignal,
+            lastLaunchSignal: state.lastLaunchSignal,
             lastSessionFileSignal: state.lastSessionFileSignal,
             decision: state.lastDecision,
           }

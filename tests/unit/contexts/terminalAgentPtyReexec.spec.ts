@@ -10,6 +10,8 @@ describe('terminal agent in-PTY re-exec', () => {
     ['codex', 'codex resume session-1'],
     ['opencode', 'opencode --session session-1 .'],
     ['gemini', 'gemini --resume session-1'],
+    ['pi', 'pi --session session-1'],
+    ['kimi', 'kimi --session session-1'],
   ] as const)('builds the %s explicit resume command', (provider, expected) => {
     expect(buildTerminalAgentReentryCommand({ provider, resumeSessionId: 'session-1' })).toBe(
       expected,

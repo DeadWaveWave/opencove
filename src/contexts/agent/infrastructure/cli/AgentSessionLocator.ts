@@ -9,6 +9,10 @@ import {
   findOpenCodeResumeSessionId,
 } from './AgentSessionLocatorProviders'
 import { selectNearestAgentSessionId } from './AgentSessionCandidateSelector'
+import {
+  findKimiResumeSessionId,
+  findPiResumeSessionId,
+} from './AgentSessionLocatorProviders.piKimi'
 
 interface LocateAgentResumeSessionInput {
   provider: AgentProviderId
@@ -312,6 +316,14 @@ async function tryFindResumeSessionId(
 
   if (provider === 'opencode') {
     return await findOpenCodeResumeSessionId(cwd, startedAtMs)
+  }
+
+  if (provider === 'pi') {
+    return await findPiResumeSessionId(cwd, startedAtMs)
+  }
+
+  if (provider === 'kimi') {
+    return await findKimiResumeSessionId(cwd, startedAtMs)
   }
 
   return await findGeminiResumeSessionId(cwd, startedAtMs)

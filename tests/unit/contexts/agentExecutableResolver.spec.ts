@@ -45,6 +45,31 @@ afterEach(async () => {
 })
 
 describe('AgentExecutableResolver', () => {
+  it.each([
+    ['pi', 'pi'],
+    ['kimi', 'kimi'],
+  ] as const)('resolves %s with its real executable command', async (provider, command) => {
+    locateExecutableMock.mockResolvedValue({
+      toolId: provider,
+      command,
+      executablePath: `/usr/local/bin/${command}`,
+      source: 'process_path',
+      status: 'resolved',
+      diagnostics: [],
+    })
+
+    const { resolveAgentProviderAvailability } = await importAgentExecutableResolver()
+    await expect(resolveAgentProviderAvailability({ provider })).resolves.toMatchObject({
+      provider,
+      command,
+      status: 'available',
+      executablePath: `/usr/local/bin/${command}`,
+    })
+    expect(locateExecutableMock).toHaveBeenCalledWith(
+      expect.objectContaining({ toolId: provider, command }),
+    )
+  })
+
   it('maps invalid overrides to a misconfigured availability status', async () => {
     locateExecutableMock.mockResolvedValue({
       toolId: 'codex',

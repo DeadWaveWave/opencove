@@ -195,12 +195,7 @@ export function registerRemoteAgentIpcHandlers(options: {
           provider,
           {
             provider,
-            command:
-              provider === 'claude-code'
-                ? 'claude'
-                : provider === 'opencode'
-                  ? 'opencode'
-                  : 'codex',
+            command: provider === 'claude-code' ? 'claude' : provider,
             status: 'available',
             executablePath: null,
             source: null,
@@ -254,7 +249,9 @@ export function registerRemoteAgentIpcHandlers(options: {
             ? 'opencode-cli'
             : provider === 'gemini'
               ? 'gemini-cli'
-              : 'codex-cli'
+              : provider === 'codex'
+                ? 'codex-cli'
+                : 'none'
 
       return {
         provider,

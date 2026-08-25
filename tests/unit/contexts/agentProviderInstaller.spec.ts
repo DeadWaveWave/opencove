@@ -108,6 +108,13 @@ afterEach(() => {
 })
 
 describe('AgentProviderInstaller', () => {
+  it('uses the observed Pi npm package and refuses to guess a Kimi package', async () => {
+    const { resolveAgentProviderInstallPackage } = await importInstaller()
+
+    expect(resolveAgentProviderInstallPackage('pi')).toBe('@earendil-works/pi-coding-agent')
+    expect(() => resolveAgentProviderInstallPackage('kimi')).toThrow('This feature is unavailable.')
+  })
+
   it('installs the provider npm package and refreshes availability', async () => {
     spawnMock.mockImplementation(() => {
       const child = createMockChildProcess()

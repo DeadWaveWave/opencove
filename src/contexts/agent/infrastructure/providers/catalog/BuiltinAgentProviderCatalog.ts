@@ -6,7 +6,10 @@ import type {
 } from '../../../application/ports/AgentProviderContribution'
 import { ClaudeCodeAgentProviderContribution } from '../claude-code/ClaudeCodeAgentProviderContribution'
 import { CodexAgentProviderContribution } from '../codex/CodexAgentProviderContribution'
+import { KimiAgentProviderContribution } from '../kimi/KimiAgentProviderContribution'
+import { PiAgentProviderContribution } from '../pi/PiAgentProviderContribution'
 import { CatalogTerminalCliProvider } from './CatalogTerminalCliProvider'
+import type { BuiltinAgentCommandProviderId } from '../../cli/AgentCommandFactory'
 
 export interface BuiltinAgentProviderCatalogOptions {
   readonly channels?: Partial<Record<AgentProviderId, AgentHookChannel>>
@@ -40,6 +43,8 @@ export function createBuiltinAgentProviderContributions(
         runtimePlatform: options.runtimePlatform,
       }),
     ],
+    ['pi', new PiAgentProviderContribution()],
+    ['kimi', new KimiAgentProviderContribution()],
   ])
   const generic = new Map<AgentProviderId, AgentProviderContribution>(
     genericDescriptors.map(entry => [entry.id, new CatalogTerminalCliProvider(entry)]),
@@ -61,13 +66,13 @@ export function resolveAgentProviderCatalog(
   })
 }
 
-function descriptor(
-  id: AgentProviderId,
+function descriptor<TId extends BuiltinAgentCommandProviderId>(
+  id: TId,
   displayName: string,
   executable: string,
   documentationUrl: string,
   permission?: AgentProviderDescriptor['launch']['permission'],
-): AgentProviderDescriptor {
+): AgentProviderDescriptor & { readonly id: TId } {
   return {
     displayName,
     documentationUrl,

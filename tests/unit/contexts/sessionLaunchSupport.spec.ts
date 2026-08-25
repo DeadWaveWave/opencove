@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { resolveProviderFromSettings } from '../../../src/app/main/controlSurface/handlers/sessionLaunchSupport'
+import {
+  resolveAgentPtySpawnState,
+  resolveProviderFromSettings,
+} from '../../../src/app/main/controlSurface/handlers/sessionLaunchSupport'
 import { normalizeAgentSettings } from '../../../src/contexts/settings/domain/agentSettings'
 
 describe('resolveProviderFromSettings', () => {
@@ -22,5 +25,20 @@ describe('resolveProviderFromSettings', () => {
     const settings = normalizeAgentSettings({ defaultProvider: 'codex' })
 
     expect(resolveProviderFromSettings('gemini', settings, 'resume')).toBe('gemini')
+    expect(resolveProviderFromSettings('pi', settings, 'resume')).toBe('pi')
+    expect(resolveProviderFromSettings('kimi', settings, 'resume')).toBe('kimi')
+    expect(resolveProviderFromSettings('removed-provider', settings, 'resume')).toBe('codex')
   })
+})
+
+describe('resolveAgentPtySpawnState', () => {
+  it.each(['pi', 'kimi'] as const)(
+    'does not claim %s is working before an authoritative observation',
+    provider => {
+      expect(resolveAgentPtySpawnState(provider, 'Run the task', 'new')).toEqual({
+        agentProvider: provider,
+        initialAgentState: 'standby',
+      })
+    },
+  )
 })

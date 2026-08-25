@@ -45,11 +45,15 @@ describe('built-in Agent Provider catalog', () => {
       'codex',
       'opencode',
       'gemini',
+      'pi',
+      'kimi',
     ])
 
     const registry = new AgentProviderRegistry(contributions)
     expect(registry.require('claude-code')).toBe(contributions[0])
-    expect(registry.listDescriptors()).toHaveLength(4)
+    expect(registry.require('pi').descriptor.launch.executable).toBe('pi')
+    expect(registry.require('kimi').descriptor.launch.executable).toBe('kimi')
+    expect(registry.listDescriptors()).toHaveLength(6)
   })
 
   it('throws immediately when the union has no formal or generic entry', () => {

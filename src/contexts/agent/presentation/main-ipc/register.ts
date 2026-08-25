@@ -18,7 +18,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { registerHandledIpc } from '../../../../app/main/ipc/handle'
-import { buildAgentLaunchCommand } from '../../infrastructure/cli/AgentCommandFactory'
+import type { AgentLaunchCommand } from '../../infrastructure/cli/AgentCommandFactory'
 import { resolveAgentCliInvocation } from '../../infrastructure/cli/AgentCliInvocation'
 import { resolveAgentLaunchSpawn } from '../../infrastructure/cli/AgentLaunchSpawnResolver'
 import { listInstalledAgentProviders } from '../../infrastructure/cli/AgentCliAvailability'
@@ -56,6 +56,13 @@ import {
   resolveAgentExecutablePathOverride,
 } from '../../../../contexts/settings/domain/agentSettings'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
+import { AgentProviderRegistry } from '../../application/services/AgentProviderRegistry'
+import { createManagedAgentLaunchPlan } from '../../application/use-cases/createManagedAgentLaunchPlan'
+import { createBuiltinAgentProviderContributions } from '../../infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
+import {
+  AgentLaunchArtifactOwner,
+  rollbackAgentLaunchArtifacts,
+} from '../../application/services/AgentLaunchArtifactOwner'
 
 const HYDRATE_RESUME_RESOLVE_TIMEOUT_MS = 3_000
 const READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS = 1_500
@@ -111,6 +118,16 @@ export function registerAgentIpcHandlers(
   getPersistenceStore: () => Promise<PersistenceStore>,
   getAgentSessionTitleCacheStore?: () => Promise<AgentSessionTitleCacheStore>,
 ): IpcRegistrationDisposable {
+  const providerRegistry = new AgentProviderRegistry(
+    createBuiltinAgentProviderContributions({
+      runtimeExecutable: process.execPath,
+      runtimePlatform: process.platform,
+    }),
+  )
+  const artifactOwner = new AgentLaunchArtifactOwner(() => undefined)
+  const stopArtifactCleanup =
+    ptyRuntime.onExit?.(({ sessionId }) => artifactOwner.release(sessionId)) ?? (() => undefined)
+
   registerHandledIpc(
     IPC_CHANNELS.agentListInstalledProviders,
     async (
@@ -287,15 +304,23 @@ export function registerAgentIpcHandlers(
             }
           : null
 
-      const launchCommand = buildAgentLaunchCommand({
-        provider: normalized.provider,
-        mode: normalized.mode ?? 'new',
-        prompt: normalized.prompt,
-        model: normalized.model ?? null,
-        resumeSessionId: normalized.resumeSessionId ?? null,
-        agentFullAccess: normalized.agentFullAccess ?? true,
-        opencodeServer,
-      })
+      const managedLaunch = await createManagedAgentLaunchPlan(
+        providerRegistry.require(normalized.provider),
+        {
+          mode: normalized.mode ?? 'new',
+          prompt: normalized.prompt,
+          model: normalized.model ?? null,
+          resumeSessionId: normalized.resumeSessionId ?? null,
+          agentFullAccess: normalized.agentFullAccess ?? true,
+          opencodeServer,
+          executablePathOverride,
+          workspaceDirectory: normalized.cwd,
+        },
+      )
+      const launchCommand: AgentLaunchCommand = {
+        ...managedLaunch.plan,
+        args: [...managedLaunch.plan.args],
+      }
 
       const testStub = resolveAgentTestStub(
         normalized.provider,
@@ -319,7 +344,9 @@ export function registerAgentIpcHandlers(
       const opencodeTuiConfigPath =
         normalized.provider === 'opencode'
           ? (normalizeOptionalEnvValue(process.env.OPENCODE_TUI_CONFIG) ??
-            (await ensureOpenCodeEmbeddedTuiConfigPath()))
+            (await ensureOpenCodeEmbeddedTuiConfigPath().catch(error =>
+              rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts),
+            )))
           : null
 
       const internalSessionEnv =
@@ -336,12 +363,16 @@ export function registerAgentIpcHandlers(
         normalized.env || internalSessionEnv
           ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
           : undefined
+      const launchEnv =
+        sessionEnv || Object.keys(managedLaunch.plan.env).length > 0
+          ? { ...managedLaunch.plan.env, ...(sessionEnv ?? {}) }
+          : undefined
 
       const resolvedInvocation = testStub
         ? await resolveAgentCliInvocation({
             command,
             args,
-          })
+          }).catch(error => rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts))
         : null
 
       const resolvedSpawn = testStub
@@ -350,8 +381,12 @@ export function registerAgentIpcHandlers(
             args: resolvedInvocation!.args,
             cwd: normalized.cwd,
             env:
-              sessionEnv || testStub.env
-                ? { ...process.env, ...(testStub.env ?? {}), ...(sessionEnv ?? {}) }
+              launchEnv || testStub.env
+                ? {
+                    ...process.env,
+                    ...(testStub.env ?? {}),
+                    ...(launchEnv ?? {}),
+                  }
                 : undefined,
             profileId: normalized.profileId ?? null,
             runtimeKind: process.platform === 'win32' ? ('windows' as const) : ('posix' as const),
@@ -362,22 +397,26 @@ export function registerAgentIpcHandlers(
             command,
             args,
             executablePathOverride,
-            env: sessionEnv,
-          })
+            env: launchEnv,
+          }).catch(error => rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts))
 
       const mergedEnv =
         normalized.env && Object.keys(normalized.env).length > 0
           ? { ...(resolvedSpawn.env ?? process.env), ...normalized.env }
           : resolvedSpawn.env
 
-      const { sessionId } = await ptyRuntime.spawnSession({
-        cwd: resolvedSpawn.cwd,
-        cols: normalized.cols ?? 80,
-        rows: normalized.rows ?? 24,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
-        ...(mergedEnv ? { env: mergedEnv } : {}),
-      })
+      const { sessionId } = await ptyRuntime
+        .spawnSession({
+          cwd: resolvedSpawn.cwd,
+          cols: normalized.cols ?? 80,
+          rows: normalized.rows ?? 24,
+          command: resolvedSpawn.command,
+          args: resolvedSpawn.args,
+          ...(mergedEnv ? { env: mergedEnv } : {}),
+        })
+        .catch(error => rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts))
+      artifactOwner.adopt(sessionId, managedLaunch.artifacts)
+      managedLaunch.plan.onStarted?.(sessionId)
 
       const resumeSessionId = launchCommand.resumeSessionId
 
@@ -426,6 +465,8 @@ export function registerAgentIpcHandlers(
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
+      stopArtifactCleanup()
+      artifactOwner.releaseAll()
       disposeAgentExecutableResolver()
       disposeAgentModelService()
     },

@@ -8,6 +8,10 @@ import {
 } from '../../../../platform/os/HomeDirectory'
 import { normalizeAgentProjectRootPath } from '../AgentProjectRootPath'
 import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPaths'
+import {
+  findKimiWireFilePath,
+  findPiSessionFilePath,
+} from '../cli/AgentSessionLocatorProviders.piKimi'
 
 interface ResolveSessionFilePathInput {
   provider: AgentProviderId
@@ -286,6 +290,14 @@ async function tryResolveSessionFilePath(
 
   if (provider === 'gemini') {
     return await findGeminiSessionFilePath(cwd, sessionId)
+  }
+
+  if (provider === 'pi') {
+    return await findPiSessionFilePath(cwd, sessionId)
+  }
+
+  if (provider === 'kimi') {
+    return await findKimiWireFilePath(cwd, sessionId)
   }
 
   return null

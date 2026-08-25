@@ -287,7 +287,9 @@ export async function listAgentSessions(
         ? await listCodexSessions(resolvedCwd, limit, titleCache)
         : input.provider === 'gemini'
           ? await listGeminiSessions(resolvedCwd, limit, titleCache)
-          : await listOpenCodeSessions(resolvedCwd, limit)
+          : input.provider === 'opencode'
+            ? await listOpenCodeSessions(resolvedCwd, limit)
+            : []
 
   return {
     provider: input.provider,

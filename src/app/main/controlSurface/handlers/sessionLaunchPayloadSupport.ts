@@ -1,5 +1,9 @@
 import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
-import type { AgentProviderId, LaunchAgentSessionInput } from '../../../../shared/contracts/dto'
+import {
+  AGENT_PROVIDER_IDS,
+  type AgentProviderId,
+  type LaunchAgentSessionInput,
+} from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
 
@@ -42,13 +46,8 @@ export function normalizeAgentProviderId(
     return null
   }
 
-  if (
-    provider === 'claude-code' ||
-    provider === 'codex' ||
-    provider === 'opencode' ||
-    provider === 'gemini'
-  ) {
-    return provider
+  if (AGENT_PROVIDER_IDS.includes(provider as AgentProviderId)) {
+    return provider as AgentProviderId
   }
 
   throw createAppError('common.invalid_input', {

@@ -1,12 +1,14 @@
 import type { AgentLaunchMode, AgentProviderId } from '@shared/contracts/dto'
 
+export type BuiltinAgentCommandProviderId = Exclude<AgentProviderId, 'pi' | 'kimi'>
+
 interface OpenCodeServerBinding {
   hostname: string
   port: number
 }
 
 export interface BuildAgentLaunchCommandInput {
-  provider: AgentProviderId
+  provider: BuiltinAgentCommandProviderId
   mode: AgentLaunchMode
   prompt?: string
   model: string | null
@@ -25,19 +27,15 @@ export interface AgentLaunchCommand {
 }
 
 export function resolveAgentCliCommand(provider: AgentProviderId): string {
-  if (provider === 'claude-code') {
-    return 'claude'
+  const commands: Record<AgentProviderId, string> = {
+    'claude-code': 'claude',
+    codex: 'codex',
+    opencode: 'opencode',
+    gemini: 'gemini',
+    pi: 'pi',
+    kimi: 'kimi',
   }
-
-  if (provider === 'opencode') {
-    return 'opencode'
-  }
-
-  if (provider === 'gemini') {
-    return 'gemini'
-  }
-
-  return 'codex'
+  return commands[provider]
 }
 
 function normalizeOptionalValue(value: string | null | undefined): string | null {

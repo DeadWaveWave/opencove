@@ -141,6 +141,21 @@ describe('AgentModelService', () => {
     expect(result.models.find(model => model.id === 'claude-sonnet-4-6')?.isDefault).toBe(true)
   })
 
+  it.each(['pi', 'kimi'] as const)(
+    'does not fabricate a static model catalog for %s',
+    async provider => {
+      const { listAgentModels } = await importAgentModelService()
+
+      await expect(listAgentModels({ provider })).resolves.toMatchObject({
+        provider,
+        source: 'none',
+        models: [],
+        error: null,
+      })
+      expect(resolveAgentExecutableInvocationMock).not.toHaveBeenCalled()
+    },
+  )
+
   it('lists OpenCode models from the CLI output', async () => {
     mockResolvedInvocation('opencode', ['models'])
     execFileMock.mockImplementation((_file, _args, options, callback) => {

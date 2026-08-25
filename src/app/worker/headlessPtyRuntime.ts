@@ -77,7 +77,7 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     onState: event => {
       emitState({
         ...event,
-        source: 'session_file',
+        source: event.source ?? 'session_file',
         ...(hookInstallStateBySessionId.get(event.sessionId)
           ? { hookInstallState: hookInstallStateBySessionId.get(event.sessionId) }
           : {}),

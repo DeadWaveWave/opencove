@@ -1,5 +1,5 @@
 import type { Node } from '@xyflow/react'
-import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { isValidProvider, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import type { TerminalAgentSessionBinding, TerminalNodeData } from '../types'
 
@@ -18,10 +18,7 @@ export function isTerminalAgentBinding(value: unknown): value is TerminalAgentSe
 
   const binding = value as Partial<TerminalAgentSessionBinding>
   return (
-    (binding.provider === 'claude-code' ||
-      binding.provider === 'codex' ||
-      binding.provider === 'opencode' ||
-      binding.provider === 'gemini') &&
+    isValidProvider(binding.provider) &&
     (binding.resumeSessionId === null || typeof binding.resumeSessionId === 'string') &&
     (binding.resumeSessionIdVerified === undefined ||
       typeof binding.resumeSessionIdVerified === 'boolean')
