@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Agent: offer Pi and Kimi Code as selectable agent providers when creating agents.
 - Diagnostics: always collect bounded in-memory breadcrumbs for key terminal and UI-geometry events, add a UI geometry report section, rotate and type-sample diagnostic logs, and drop a misleading log entry, so issue reports carry enough context to reproduce a bug without a follow-up round trip. (#356)
 - Remote: prefill the remote-machine form from one `~/.ssh/config` host alias while preserving explicit review and confirmation before registration. (#349)
 - Remote: discover concrete `~/.ssh/config` aliases through a bounded, fail-closed backend query while preserving OpenSSH as the effective connection-config owner. (#346)
