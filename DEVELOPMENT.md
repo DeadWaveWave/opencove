@@ -153,6 +153,12 @@
     -   若 staged 文件中存在超过 500 行的文件，先重构/拆分，过门禁后再继续，不要带着超长文件直接运行 `pnpm pre-commit`。
     -   `pnpm pre-commit` 会执行 `pnpm naming-check:staged`：禁止在新代码里重新引入 `cove:*`（对外/协议/持久化），仅允许显式 legacy 迁移用途；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
+    -   **纯文档（`.md`）提交的门禁例外**：staged 集合只含 `.md` 时，`naming-check` 会报 `no staged files matched — this gate checked NOTHING and is not a pass.`。这是**预期行为，不是缺陷**：对 0 个文件运行的 gate 本就不该报告通过。
+        -   **原因**：其扩展名白名单只含代码类后缀（`.ts/.tsx/.js/.mjs/.cjs/.mts/.cts/.json/.yml/.yaml`），不含 `.md`。
+        -   **退出码**：`scripts/check-naming-staged.mjs:189` 为 `process.exit(process.env.OPENCOVE_REQUIRE_STAGED === '1' ? 1 : 0)` —— 裸跑退 0（仅告警），`OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit` 退 1 并中断整条链。
+        -   **不要放宽**：别为变绿而把 `.md` 加进白名单 —— 实测这会让本文件第 35 行（准确描述历史 `cove:m0:*` 前缀、但不含 `legacy` 豁免词）被判违规。
+        -   **正解**：如实记录该 gate 未检查任何文件，并以紧邻的上一次完整产品门禁作为运行时证据。
+        -   **别顺带声称后续门禁通过**：链序为 `line-check`(1) → `secret-check`(2) → `naming-check`(3) → … → `format-check`(6)，第 3 步中断后其余**根本不会执行**；需要其结论时单独跑（如 `npx prettier --check <file>`）。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑 Playwright E2E（通常 `pnpm test:e2e`，或统一跑 `pnpm pre-commit`）。
     -   创建/更新 PR 时：必须按 `.github/pull_request_template.md` 的结构完整填写；若使用 `gh pr create` / `gh pr edit`，也要显式按模板组织 title/body，不得跳过必填段落。
     -   **提交 PR 正文前，必须先把正文写入文件并运行 `node scripts/check-pr-template.mjs <file>`，确认输出为通过。** 章节标题必须逐字取自 `.github/pull_request_template.md`（先读模板，不要凭记忆写），因为 `pr-template` CI 按精确标题匹配：少一个字或改写措辞都会判失败。本地校验一次，比推上去等 CI 红再改快得多。
