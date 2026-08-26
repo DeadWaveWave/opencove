@@ -150,7 +150,7 @@ describe('session state watcher Kimi pipeline', () => {
     harness.controller.dispose()
   })
 
-  it('binds Pi resume metadata without starting an invented state observer', async () => {
+  it('imports Pi session observations into terminal working/standby state', async () => {
     const root = await fs.mkdtemp(join(tmpdir(), 'opencove-pi-controller-'))
     const cwd = join(root, 'workspace')
     const filePath = join(root, 'project', 'session.jsonl')
@@ -165,7 +165,7 @@ describe('session state watcher Kimi pipeline', () => {
         id: 'pi-session',
         timestamp: new Date(startedAtMs).toISOString(),
         cwd,
-      }),
+      }) + line({ type: 'message', message: { role: 'user' } }),
     )
     const harness = createHarness()
     harness.controller.start({
@@ -183,7 +183,32 @@ describe('session state watcher Kimi pipeline', () => {
         resumeSessionId: 'pi-session',
       }),
     )
-    expect(harness.states).toEqual([])
+    await vi.waitFor(() =>
+      expect(harness.states).toContainEqual({
+        sessionId: 'terminal-pi',
+        state: 'working',
+        source: 'session_file',
+      }),
+    )
+
+    await fs.appendFile(
+      filePath,
+      line({
+        type: 'message',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: '<redacted>' }],
+          stopReason: 'stop',
+        },
+      }),
+    )
+    await vi.waitFor(() =>
+      expect(harness.states.at(-1)).toEqual({
+        sessionId: 'terminal-pi',
+        state: 'standby',
+        source: 'session_file',
+      }),
+    )
     expect(harness.issues).toEqual([])
     harness.controller.dispose()
   })

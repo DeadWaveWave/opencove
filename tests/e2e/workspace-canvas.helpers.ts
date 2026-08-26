@@ -41,7 +41,7 @@ export {
 } from './workspace-canvas.viewState'
 
 export interface SeedAgentData {
-  provider: 'claude-code' | 'codex' | 'opencode' | 'gemini'
+  provider: 'claude-code' | 'codex' | 'opencode' | 'gemini' | 'pi' | 'kimi'
   prompt: string
   model: string | null
   effectiveModel: string | null

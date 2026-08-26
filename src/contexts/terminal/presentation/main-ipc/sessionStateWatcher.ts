@@ -247,13 +247,6 @@ export function createSessionStateWatcherController({
       stateWatcherResolvedResumeSessionIdBySession.set(sessionId, resolvedSessionId)
       broadcastSessionMetadataOnce(sessionId, resolvedSessionId)
 
-      if (input.provider === 'pi') {
-        stateWatcherBySession.set(sessionId, { dispose: () => undefined })
-        cancelSessionStateWatcherRetry(sessionId)
-        stateWatcherRetryCountBySession.delete(sessionId)
-        return
-      }
-
       if (input.provider === 'opencode') {
         if (!input.opencodeBaseUrl) {
           reportIssue(`[opencove] state watcher missing opencode baseUrl for session ${sessionId}`)
