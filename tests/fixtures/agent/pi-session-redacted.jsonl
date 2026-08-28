@@ -1,0 +1,6 @@
+{"type":"session","version":3,"id":"session-redacted","timestamp":"2026-08-26T00:00:00.000Z","cwd":"/workspace"}
+{"type":"message","id":"message-user","parentId":null,"timestamp":"2026-08-26T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"<redacted>"}],"timestamp":1787702401000}}
+{"type":"message","id":"message-tool-call","parentId":"message-user","timestamp":"2026-08-26T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"thinking","thinking":"<redacted>"},{"type":"toolCall","id":"tool-redacted","name":"read","arguments":{}}],"stopReason":"toolUse","timestamp":1787702402000}}
+{"type":"message","id":"message-tool-result","parentId":"message-tool-call","timestamp":"2026-08-26T00:00:03.000Z","message":{"role":"toolResult","toolCallId":"tool-redacted","toolName":"read","content":[{"type":"text","text":"<redacted>"}],"isError":false,"timestamp":1787702403000}}
+{"type":"custom","id":"custom-redacted","parentId":"message-tool-result","timestamp":"2026-08-26T00:00:04.000Z","customType":"synthetic","data":{}}
+{"type":"message","id":"message-assistant","parentId":"custom-redacted","timestamp":"2026-08-26T00:00:05.000Z","message":{"role":"assistant","content":[{"type":"text","text":"<redacted>"}],"stopReason":"stop","timestamp":1787702405000}}

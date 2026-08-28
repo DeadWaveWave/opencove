@@ -228,6 +228,7 @@ export const zhCN = {
   performanceMonitor: zhCNPerformanceMonitor,
   agentRuntime: {
     working: '运行中',
+    observing: '观测中',
     waiting: '等待中',
     standby: '待命',
     hookDegraded: '降级',

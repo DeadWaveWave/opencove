@@ -44,7 +44,7 @@ export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCap
   pi: {
     taskTitle: false,
     worktreeNameSuggestion: false,
-    runtimeObservation: 'none',
+    runtimeObservation: 'jsonl',
     experimental: false,
   },
   kimi: {

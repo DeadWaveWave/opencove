@@ -372,6 +372,12 @@
   border: 1px solid var(--cove-success-border);
 }
 
+.terminal-node__status--observing {
+  background: var(--cove-control);
+  color: var(--cove-text-muted);
+  border: 1px solid var(--cove-control-border);
+}
+
 .terminal-node__status--restoring {
   background: var(--cove-info-surface);
   color: var(--cove-info);

@@ -78,6 +78,8 @@ export function TerminalNodeHeader({
 
   const statusLabel = (() => {
     switch (status) {
+      case null:
+        return t('agentRuntime.observing')
       case 'standby':
         return t('agentRuntime.standby')
       case 'waiting':
@@ -91,7 +93,6 @@ export function TerminalNodeHeader({
       case 'restoring':
         return t('agentRuntime.restoring')
       case 'running':
-      default:
         return t('agentRuntime.working')
     }
   })()
