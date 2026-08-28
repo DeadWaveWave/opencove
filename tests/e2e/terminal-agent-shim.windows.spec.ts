@@ -364,6 +364,7 @@ test.describe('terminal Agent shim (Windows)', () => {
     let output = ''
     let pty: IPty | null = null
     let ptyExitCode: number | null = null
+    let ptyExit: Promise<void> | null = null
     try {
       pty = spawnPty(command.executable, command.args, {
         cwd: command.cwd,
@@ -372,7 +373,12 @@ test.describe('terminal Agent shim (Windows)', () => {
         rows: 30,
       })
       pty.onData(data => (output += data))
-      pty.onExit(event => (ptyExitCode = event.exitCode))
+      ptyExit = new Promise(resolve => {
+        pty!.onExit(event => {
+          ptyExitCode = event.exitCode
+          resolve()
+        })
+      })
       const shim = join(harness.published.shimDirectory, 'claude.ps1').replaceAll("'", "''")
       const providerInvocation = `& '${shim}' 'ctrl-c-case'\r`
       ptyWrites.push(providerInvocation)
@@ -384,14 +390,33 @@ test.describe('terminal Agent shim (Windows)', () => {
       pty.write(ctrlC)
       await waitForOutput(() => output, 'CHILD_SIGINT')
       expect(outputLines(output)).toContain('CHILD_SIGINT')
+      const batchConfirmation = 'Terminate batch job (Y/N)?'
+      await waitForOutput(() => output, batchConfirmation)
+      expect(outputLines(output)).toContain(batchConfirmation)
+      const batchCompletionOutputStart = output.length
+      const batchConfirmationAnswer = 'Y\r'
+      // Y answers cmd.exe's real batch confirmation rather than hiding or bypassing it.
+      ptyWrites.push(batchConfirmationAnswer)
+      pty.write(batchConfirmationAnswer)
+      await expect
+        .poll(async () => ({
+          planDirectoryEmpty: (await readdir(harness.published.planDirectory)).length === 0,
+          shellPromptReady: outputLines(output.slice(batchCompletionOutputStart)).some(line =>
+            /^PS .+>$/u.test(line),
+          ),
+        }))
+        .toEqual({ planDirectoryEmpty: true, shellPromptReady: true })
+      expect(await readdir(harness.published.planDirectory)).toEqual([])
       const reuseProbe = "Write-Output 'SHELL_REUSED'\r"
       ptyWrites.push(reuseProbe)
       pty.write(reuseProbe)
       await waitForOutput(() => output, 'SHELL_REUSED')
       expect(outputLines(output)).toContain('SHELL_REUSED')
+      const shellExit = 'exit\r'
+      ptyWrites.push(shellExit)
+      pty.write(shellExit)
+      await ptyExit
       await expect(readFile(harness.ctrlCMarker, 'utf8')).resolves.toBe('SIGINT')
-      await expect.poll(async () => (await readdir(harness.published.planDirectory)).length).toBe(0)
-      expect(await readdir(harness.published.planDirectory)).toEqual([])
       expect(await readFile(harness.profilePath)).toEqual(harness.profileBytes)
     } catch (error) {
       await reportWindowsShimFailure(testInfo, {
@@ -410,7 +435,6 @@ test.describe('terminal Agent shim (Windows)', () => {
       })
       throw error
     } finally {
-      pty?.kill()
       await harness.dispose()
     }
   })
