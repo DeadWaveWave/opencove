@@ -16,6 +16,7 @@ import type {
   TerminalAgentShimProvider,
   TerminalSessionMetadataEvent,
 } from '../../src/shared/contracts/dto'
+import { reportWindowsShimFailure } from './terminal-agent-shim.windows.diagnostics'
 
 const ANSI_ESCAPE_PATTERN = new RegExp(String.raw`\u001B\[[0-?]*[ -/]*[@-~]`, 'gu')
 
@@ -236,32 +237,36 @@ test.describe('terminal Agent shim (Windows)', () => {
 
   for (const provider of ['claude-code', 'codex'] as const) {
     for (const invocation of ['cmd', 'powershell'] as const) {
-      test(`${provider} via ${invocation} preserves production identity, exact args, exit, profile, and cleanup`, async () => {
+      test(`${provider} via ${invocation} preserves production identity, exact args, exit, profile, and cleanup`, async ({
+        browserName: _browserName,
+      }, testInfo) => {
         const harness = await createHarness({ provider })
         const args = ['argument with spaces', '参数-🌊']
+        const command =
+          invocation === 'cmd'
+            ? {
+                executable: 'cmd.exe',
+                args: ['/d', '/s', '/c', `${harness.command} "${args[0]}" "${args[1]}"`],
+                cwd: harness.root,
+              }
+            : {
+                executable: 'powershell.exe',
+                args: [
+                  '-NoLogo',
+                  '-ExecutionPolicy',
+                  'Bypass',
+                  '-File',
+                  join(harness.published.shimDirectory, `${harness.command}.ps1`),
+                  ...args,
+                ],
+                cwd: harness.root,
+              }
+        let result: Awaited<ReturnType<typeof run>> | null = null
         try {
-          const result =
-            invocation === 'cmd'
-              ? await run(
-                  'cmd.exe',
-                  ['/d', '/s', '/c', `${harness.command} "${args[0]}" "${args[1]}"`],
-                  {
-                    cwd: harness.root,
-                    env: harness.prepared.environment!,
-                  },
-                )
-              : await run(
-                  'powershell.exe',
-                  [
-                    '-NoLogo',
-                    '-ExecutionPolicy',
-                    'Bypass',
-                    '-File',
-                    join(harness.published.shimDirectory, `${harness.command}.ps1`),
-                    ...args,
-                  ],
-                  { cwd: harness.root, env: harness.prepared.environment! },
-                )
+          result = await run(command.executable, command.args, {
+            cwd: command.cwd,
+            env: harness.prepared.environment!,
+          })
 
           expect(result.code).toBe(harness.commandExitCode)
           expect(result.stdout).toContain('HOOK_STATUS=204')
@@ -291,6 +296,18 @@ test.describe('terminal Agent shim (Windows)', () => {
           )
           expect(await readFile(harness.profilePath)).toEqual(harness.profileBytes)
           await expectPrivateCleanup(harness)
+        } catch (error) {
+          await reportWindowsShimFailure(testInfo, {
+            command,
+            exitCode: result?.code ?? null,
+            launcherPath: harness.published.launcherPath,
+            planDirectory: harness.published.planDirectory,
+            providerCommand: harness.command,
+            shimDirectory: harness.published.shimDirectory,
+            stderr: result?.stderr ?? '',
+            stdout: result?.stdout ?? '',
+          })
+          throw error
         } finally {
           await harness.dispose()
         }
@@ -298,47 +315,99 @@ test.describe('terminal Agent shim (Windows)', () => {
     }
   }
 
-  test('gateway fail-open leaves ELECTRON_RUN_AS_NODE absent for the real provider', async () => {
+  test('gateway fail-open leaves ELECTRON_RUN_AS_NODE absent for the real provider', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     const harness = await createHarness({ provider: 'claude-code' })
+    const command = {
+      executable: 'cmd.exe',
+      args: ['/d', '/s', '/c', 'claude fail-open'],
+      cwd: harness.root,
+    }
+    let result: Awaited<ReturnType<typeof run>> | null = null
     try {
       await harness.gateway.dispose()
-      const result = await run('cmd.exe', ['/d', '/s', '/c', 'claude fail-open'], {
-        cwd: harness.root,
+      result = await run(command.executable, command.args, {
+        cwd: command.cwd,
         env: harness.prepared.environment!,
       })
       expect(result.stdout).toContain('ELECTRON_RUN_AS_NODE=')
       expect(result.stdout).not.toContain('ELECTRON_RUN_AS_NODE=1')
+    } catch (error) {
+      await reportWindowsShimFailure(testInfo, {
+        command,
+        exitCode: result?.code ?? null,
+        launcherPath: harness.published.launcherPath,
+        planDirectory: harness.published.planDirectory,
+        providerCommand: harness.command,
+        shimDirectory: harness.published.shimDirectory,
+        stderr: result?.stderr ?? '',
+        stdout: result?.stdout ?? '',
+      })
+      throw error
     } finally {
       await harness.dispose()
     }
   })
 
-  test('Ctrl-C reaches the provider, cleans plans, and leaves the PowerShell host reusable', async () => {
+  test('Ctrl-C reaches the provider, cleans plans, and leaves the PowerShell host reusable', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     const harness = await createHarness({ provider: 'claude-code', ctrlC: true })
+    const command = {
+      executable: 'powershell.exe',
+      args: ['-NoLogo', '-NoProfile'],
+      cwd: harness.root,
+    }
+    const ptyWrites: string[] = []
+    let output = ''
     let pty: IPty | null = null
+    let ptyExitCode: number | null = null
     try {
-      pty = spawnPty('powershell.exe', ['-NoLogo', '-NoProfile'], {
-        cwd: harness.root,
+      pty = spawnPty(command.executable, command.args, {
+        cwd: command.cwd,
         env: harness.prepared.environment as Record<string, string>,
         cols: 100,
         rows: 30,
       })
-      let output = ''
       pty.onData(data => (output += data))
+      pty.onExit(event => (ptyExitCode = event.exitCode))
       const shim = join(harness.published.shimDirectory, 'claude.ps1').replaceAll("'", "''")
-      pty.write(`& '${shim}' 'ctrl-c-case'\r`)
+      const providerInvocation = `& '${shim}' 'ctrl-c-case'\r`
+      ptyWrites.push(providerInvocation)
+      pty.write(providerInvocation)
       await waitForOutput(() => output, 'CTRL_C_READY')
       expect(outputLines(output)).toContain('CTRL_C_READY')
-      pty.write('\u0003')
+      const ctrlC = '\u0003'
+      ptyWrites.push(ctrlC)
+      pty.write(ctrlC)
       await waitForOutput(() => output, 'CHILD_SIGINT')
       expect(outputLines(output)).toContain('CHILD_SIGINT')
-      pty.write("Write-Output 'SHELL_REUSED'\r")
+      const reuseProbe = "Write-Output 'SHELL_REUSED'\r"
+      ptyWrites.push(reuseProbe)
+      pty.write(reuseProbe)
       await waitForOutput(() => output, 'SHELL_REUSED')
       expect(outputLines(output)).toContain('SHELL_REUSED')
       await expect(readFile(harness.ctrlCMarker, 'utf8')).resolves.toBe('SIGINT')
       await expect.poll(async () => (await readdir(harness.published.planDirectory)).length).toBe(0)
       expect(await readdir(harness.published.planDirectory)).toEqual([])
       expect(await readFile(harness.profilePath)).toEqual(harness.profileBytes)
+    } catch (error) {
+      await reportWindowsShimFailure(testInfo, {
+        command,
+        exitCode: ptyExitCode,
+        launcherPath: harness.published.launcherPath,
+        planDirectory: harness.published.planDirectory,
+        providerCommand: harness.command,
+        ptyOutput: output,
+        ptyWrites,
+        shimDirectory: harness.published.shimDirectory,
+        stderr: '',
+        stdout: output,
+        streamNote:
+          'node-pty exposes one combined PTY stream; normalizedStdout and normalizedPtyOutput contain it',
+      })
+      throw error
     } finally {
       pty?.kill()
       await harness.dispose()
