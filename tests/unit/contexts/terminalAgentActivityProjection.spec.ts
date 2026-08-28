@@ -96,6 +96,36 @@ describe('terminal agent authenticated activity projection', () => {
     })
   })
 
+  it('keeps runtime working observation authoritative when SessionStart updates the standby overlay', () => {
+    const workspace = createWorkspace()
+    workspace.nodes[0].data.agentRuntimeObservation = {
+      status: 'running',
+      source: 'codex_hook',
+      hookInstallState: 'installed',
+      degraded: false,
+    }
+    const active = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: [workspace],
+      event: activity('active'),
+    })
+    const sessionStart = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: active.nextWorkspaces,
+      event: activity('active', 1, 'provider_session_start'),
+    })
+    const data = sessionStart.nextWorkspaces[0]?.nodes[0]?.data
+
+    expect(data?.agentOverlay?.status).toBe('standby')
+    expect(data?.agentRuntimeObservation).toEqual({
+      status: 'running',
+      source: 'codex_hook',
+      hookInstallState: 'installed',
+      degraded: false,
+    })
+    expect(
+      data?.agentRuntimeObservation?.status ?? data?.agentOverlay?.status ?? data?.status,
+    ).toBe('running')
+  })
+
   it('creates durable identity only from current provider SessionStart authority', () => {
     const active = updateWorkspacesWithTerminalAgentActivityMetadata({
       workspaces: [createWorkspace()],
@@ -112,6 +142,24 @@ describe('terminal agent authenticated activity projection', () => {
       resumeSessionId: 'claude-session-1',
       resumeSessionIdVerified: true,
     })
+
+    const forgedReplacement = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: verified.nextWorkspaces,
+      event: {
+        ...activity('active', 1, 'provider_session_start'),
+        resumeSessionId: 'forged-replacement',
+        terminalAgentActivity: {
+          ...activity('active', 1, 'provider_session_start').terminalAgentActivity,
+          observedAtMs: 1_500,
+        },
+      },
+    })
+    expect(forgedReplacement.nextWorkspaces[0]?.nodes[0]?.data.terminalAgentBinding).toEqual({
+      provider: 'claude-code',
+      resumeSessionId: 'claude-session-1',
+      resumeSessionIdVerified: true,
+    })
+    expect(forgedReplacement.durableDidChange).toBe(false)
   })
 
   it('rejects a resume identity without provider SessionStart authority', () => {

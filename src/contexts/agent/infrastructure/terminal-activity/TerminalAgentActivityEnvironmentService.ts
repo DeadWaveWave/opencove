@@ -1,4 +1,5 @@
 import { posix, win32, type PlatformPath } from 'node:path'
+import type { TerminalRuntimeKind } from '../../../../shared/contracts/dto'
 import type { TerminalAgentActivityGateway } from './TerminalAgentActivityGateway'
 import type { TerminalAgentGatewayReservation } from './TerminalAgentActivityGateway'
 import type {
@@ -12,6 +13,7 @@ export interface PrepareTerminalAgentActivityCommand {
   cwd: string
   environment: Readonly<NodeJS.ProcessEnv> | undefined
   interactiveShell: boolean
+  runtimeKind?: TerminalRuntimeKind
 }
 
 export interface PreparedTerminalAgentActivityEnvironment {
@@ -42,6 +44,9 @@ export class TerminalAgentActivityEnvironmentService {
   public async prepare(
     command: PrepareTerminalAgentActivityCommand,
   ): Promise<PreparedTerminalAgentActivityEnvironment> {
+    if (this.isWslSpawn(command)) {
+      return unchanged(command)
+    }
     let reservation: TerminalAgentGatewayReservation | null = null
     try {
       const assets = await this.options.assets.ensure()
@@ -51,6 +56,14 @@ export class TerminalAgentActivityEnvironmentService {
       await reservation?.dispose().catch(() => undefined)
       return unchanged(command)
     }
+  }
+
+  private isWslSpawn(command: PrepareTerminalAgentActivityCommand): boolean {
+    if (this.options.platform !== 'win32') {
+      return false
+    }
+    const executable = this.path.basename(command.command).toLowerCase()
+    return command.runtimeKind === 'wsl' || executable === 'wsl' || executable === 'wsl.exe'
   }
 
   private createPrepared(
@@ -108,7 +121,6 @@ function prependUniquePath(currentPath: string, directory: string, path: Platfor
   const normalizedDirectory = normalizePath(directory, path)
   const entries = currentPath
     .split(path.delimiter)
-    .filter(Boolean)
     .filter(entry => normalizePath(entry, path) !== normalizedDirectory)
   return [directory, ...entries].join(path.delimiter)
 }

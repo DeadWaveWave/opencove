@@ -86,7 +86,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     command: Pick<
       CreateAgentLaunchPlanCommand,
       'artifacts' | 'executablePathOverride' | 'workspaceDirectory'
-    >,
+    > & { readonly environment?: Readonly<NodeJS.ProcessEnv> },
   ) {
     if (!this.channel) {
       return { args: [], env: {}, hookInstallState: 'not_installed' as const }
@@ -107,6 +107,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     try {
       trust = await this.hookTrustResolver({
         executable: command.executablePathOverride ?? this.descriptor.launch.executable,
+        environment: command.environment,
         hookCommand: hook.command,
         hookConfigurations: hook.configurations,
         workspaceDirectory: command.workspaceDirectory,

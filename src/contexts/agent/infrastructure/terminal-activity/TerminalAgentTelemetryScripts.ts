@@ -31,9 +31,22 @@ async function launch(providerArgument, userArgs) {
   });
   const signals = ['SIGHUP', 'SIGINT', 'SIGTERM'];
   const handlers = new Map();
+  let escalationTimer = null;
+  let shutdownSignal = null;
   for (const signal of signals) {
     const handler = () => {
+      if (child.exitCode !== null || child.signalCode !== null) return;
+      if (shutdownSignal !== null) {
+        try { child.kill('SIGKILL'); } catch {}
+        return;
+      }
+      shutdownSignal = signal;
       try { child.kill(signal); } catch {}
+      escalationTimer = setTimeout(() => {
+        if (child.exitCode === null && child.signalCode === null) {
+          try { child.kill('SIGKILL'); } catch {}
+        }
+      }, 1500);
     };
     handlers.set(signal, handler);
     try { process.on(signal, handler); } catch {}
@@ -45,6 +58,7 @@ async function launch(providerArgument, userArgs) {
   for (const [signal, handler] of handlers) {
     try { process.off(signal, handler); } catch {}
   }
+  if (escalationTimer) clearTimeout(escalationTimer);
   if (plan) await complete(invocationId, plan.generation);
   process.exitCode = result.code ?? signalExitCode(result.signal);
 }
@@ -63,7 +77,7 @@ async function prepareWindows(providerArgument, planPath) {
     token: process.env.OPENCOVE_TERMINAL_AGENT_TOKEN || '',
     invocationId,
     generation: plan?.generation || null
-  }), { encoding: 'utf8', mode: 0o600 });
+  }), { encoding: 'utf8', mode: 0o600, flag: 'wx' });
 }
 
 async function completeWindows(planPath) {
@@ -84,7 +98,8 @@ async function prepare(provider, executablePath, invocationId) {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-opencove-terminal-agent-token': token },
       body: JSON.stringify({
-        operation: 'prepare', provider, invocationId, cwd: process.cwd(), executablePath
+        operation: 'prepare', provider, invocationId, cwd: process.cwd(), executablePath,
+        environment: process.env
       }),
       signal: AbortSignal.timeout(10000)
     });
@@ -119,7 +134,7 @@ async function reportComplete(endpoint, token, invocationId, generation) {
 }
 
 function findExecutable(name, shimDirectory) {
-  const entries = String(process.env.PATH || '').split(delimiter).filter(Boolean);
+  const entries = String(process.env.PATH || '').split(delimiter);
   const extensions = process.platform === 'win32'
     ? String(process.env.PATHEXT || '.EXE;.CMD;.BAT;.COM').split(';')
     : [''];
@@ -129,7 +144,7 @@ function findExecutable(name, shimDirectory) {
       const candidate = join(directory, process.platform === 'win32' ? name + extension.toLowerCase() : name);
       try {
         accessSync(candidate, process.platform === 'win32' ? constants.F_OK : constants.X_OK);
-        return candidate;
+        return resolve(candidate);
       } catch {}
     }
   }
@@ -157,6 +172,7 @@ function signalExitCode(signal) {
   if (signal === 'SIGHUP') return 129;
   if (signal === 'SIGINT') return 130;
   if (signal === 'SIGTERM') return 143;
+  if (signal === 'SIGKILL') return 137;
   return signal ? 128 : 0;
 }
 `.trimStart()
@@ -179,24 +195,32 @@ export function createPowerShellShimScript(
   runtimeExecutable: string,
   launcherPath: string,
   providerCommand: 'claude' | 'codex',
+  planDirectory: string,
 ): string {
   const runtime = quotePowerShell(runtimeExecutable)
   const launcher = quotePowerShell(launcherPath)
+  const plans = quotePowerShell(planDirectory)
   return [
-    '$planPath = [System.IO.Path]::GetTempFileName()',
+    `$planDirectory = ${plans}`,
+    '$planPath = [System.IO.Path]::Combine($planDirectory, ([System.Guid]::NewGuid().ToString("N") + ".json"))',
     '$originalElectronRunAsNode = $env:ELECTRON_RUN_AS_NODE',
-    '$env:ELECTRON_RUN_AS_NODE = "1"',
-    `& ${runtime} ${launcher} --prepare-windows ${providerCommand} $planPath`,
-    'if ($LASTEXITCODE -ne 0) { $prepareExitCode = $LASTEXITCODE; Remove-Item -LiteralPath $planPath -Force -ErrorAction SilentlyContinue; exit $prepareExitCode }',
-    '$plan = Get-Content -LiteralPath $planPath -Raw | ConvertFrom-Json',
-    'foreach ($property in $plan.env.PSObject.Properties) {',
-    '  [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, "Process")',
+    '$providerExitCode = 1',
+    'try {',
+    '  $env:ELECTRON_RUN_AS_NODE = "1"',
+    `  & ${runtime} ${launcher} --prepare-windows ${providerCommand} $planPath`,
+    '  if ($LASTEXITCODE -ne 0) { $providerExitCode = $LASTEXITCODE; exit $providerExitCode }',
+    '  $plan = Get-Content -LiteralPath $planPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop',
+    '  if ($null -eq $originalElectronRunAsNode) { Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue } else { $env:ELECTRON_RUN_AS_NODE = $originalElectronRunAsNode }',
+    '  foreach ($property in $plan.env.PSObject.Properties) {',
+    '    [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, "Process")',
+    '  }',
+    '  & $plan.executable @($plan.args) @args',
+    '  $providerExitCode = $LASTEXITCODE',
+    '} finally {',
+    '  $env:ELECTRON_RUN_AS_NODE = "1"',
+    `  & ${runtime} ${launcher} --complete-windows $planPath`,
+    '  if ($null -eq $originalElectronRunAsNode) { Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue } else { $env:ELECTRON_RUN_AS_NODE = $originalElectronRunAsNode }',
     '}',
-    'if ($null -eq $originalElectronRunAsNode) { Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue } else { $env:ELECTRON_RUN_AS_NODE = $originalElectronRunAsNode }',
-    '& $plan.executable @($plan.args) @args',
-    '$providerExitCode = $LASTEXITCODE',
-    '$env:ELECTRON_RUN_AS_NODE = "1"',
-    `& ${runtime} ${launcher} --complete-windows $planPath`,
     'exit $providerExitCode',
     '',
   ].join('\r\n')

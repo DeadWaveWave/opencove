@@ -42,6 +42,7 @@ export class TerminalAgentActivityGateway {
   private readonly listeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   private server: Server | null = null
   private endpoint: string | null = null
+  private startPromise: Promise<void> | null = null
   private disposed = false
 
   public constructor(
@@ -61,25 +62,52 @@ export class TerminalAgentActivityGateway {
     if (this.disposed) {
       throw new Error('Terminal Agent activity gateway is disposed.')
     }
+    if (this.startPromise) {
+      return await this.startPromise
+    }
+    const startPromise = this.startOwnedServer()
+    this.startPromise = startPromise
+    try {
+      await startPromise
+    } catch (error) {
+      if (this.startPromise === startPromise) {
+        this.startPromise = null
+      }
+      throw error
+    }
+  }
+
+  private async startOwnedServer(): Promise<void> {
     const createHttpServer = this.options.createHttpServer ?? createServer
     const server = createHttpServer((request, response) => {
       void this.handleRequest(request, response)
     })
     this.server = server
-    await new Promise<void>((resolve, reject) => {
-      const onError = (error: Error): void => reject(error)
-      server.once('error', onError)
-      server.listen(0, '127.0.0.1', () => {
-        server.off('error', onError)
-        const address = server.address()
-        if (!address || typeof address === 'string') {
-          reject(new Error('Terminal Agent activity gateway has no TCP address.'))
-          return
-        }
-        this.endpoint = `http://127.0.0.1:${address.port}${REQUEST_PATH}`
-        resolve()
+    try {
+      const endpoint = await new Promise<string>((resolve, reject) => {
+        const onError = (error: Error): void => reject(error)
+        server.once('error', onError)
+        server.listen(0, '127.0.0.1', () => {
+          server.off('error', onError)
+          const address = server.address()
+          if (!address || typeof address === 'string') {
+            reject(new Error('Terminal Agent activity gateway has no TCP address.'))
+            return
+          }
+          resolve(`http://127.0.0.1:${address.port}${REQUEST_PATH}`)
+        })
       })
-    })
+      if (this.disposed || this.server !== server) {
+        throw new Error('Terminal Agent activity gateway is disposed.')
+      }
+      this.endpoint = endpoint
+    } catch (error) {
+      if (this.server === server) {
+        this.server = null
+      }
+      await closeServer(server)
+      throw error
+    }
   }
 
   public async reserveTerminal(): Promise<TerminalAgentGatewayReservation> {
@@ -138,15 +166,11 @@ export class TerminalAgentActivityGateway {
       credentials.map(async credential => await this.disposeInvocations(credential)),
     )
     this.listeners.clear()
+    await this.startPromise?.catch(() => undefined)
     const server = this.server
     this.server = null
     this.endpoint = null
-    if (server?.listening) {
-      await new Promise<void>(resolve => {
-        server.close(() => resolve())
-        server.closeAllConnections()
-      })
-    }
+    await closeServer(server)
   }
 
   private async handleRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -186,7 +210,8 @@ export class TerminalAgentActivityGateway {
     const invocationId = normalizeIdentifier(body.invocationId)
     const cwd = normalizeNonEmptyString(body.cwd)
     const executablePath = normalizeNonEmptyString(body.executablePath)
-    if (!provider || !invocationId || !cwd || !executablePath) {
+    const environment = normalizeEnvironment(body.environment)
+    if (!provider || !invocationId || !cwd || !executablePath || !environment) {
       this.respond(response, 400)
       return
     }
@@ -205,6 +230,7 @@ export class TerminalAgentActivityGateway {
     try {
       plan = await planner.prepareHookInjection({
         artifacts,
+        environment,
         executablePathOverride: executablePath,
         workspaceDirectory: cwd,
       })
@@ -213,6 +239,16 @@ export class TerminalAgentActivityGateway {
       artifacts.seal()
       await artifacts.dispose().catch(() => undefined)
       throw error
+    }
+    if (!this.isCredentialLive(credential)) {
+      await artifacts.dispose().catch(() => undefined)
+      this.respond(response, 410)
+      return
+    }
+    if (credential.invocations.has(invocationId)) {
+      await artifacts.dispose().catch(() => undefined)
+      this.respond(response, 409)
+      return
     }
     const record: InvocationRecord = {
       artifacts,
@@ -305,6 +341,10 @@ export class TerminalAgentActivityGateway {
     await Promise.all(invocations.map(async invocation => await invocation.artifacts.dispose()))
   }
 
+  private isCredentialLive(credential: TerminalCredential): boolean {
+    return !this.disposed && this.credentials.get(credential.token) === credential
+  }
+
   private respond(response: ServerResponse, statusCode: number, body?: unknown): void {
     response.statusCode = statusCode
     if (body === undefined) {
@@ -318,6 +358,16 @@ export class TerminalAgentActivityGateway {
   private now(): number {
     return (this.options.now ?? Date.now)()
   }
+}
+
+async function closeServer(server: Server | null): Promise<void> {
+  if (!server?.listening) {
+    return
+  }
+  await new Promise<void>(resolve => {
+    server.close(() => resolve())
+    server.closeAllConnections()
+  })
 }
 
 async function readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>> {
@@ -354,6 +404,17 @@ function normalizeIdentifier(value: unknown): string | null {
 
 function normalizeGeneration(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null
+}
+
+function normalizeEnvironment(value: unknown): NodeJS.ProcessEnv | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+  const entries = Object.entries(value)
+  if (!entries.every(([, entry]) => typeof entry === 'string')) {
+    return null
+  }
+  return Object.fromEntries(entries) as NodeJS.ProcessEnv
 }
 
 function definedEnvironment(environment: Readonly<NodeJS.ProcessEnv>): Record<string, string> {

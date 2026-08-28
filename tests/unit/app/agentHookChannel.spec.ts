@@ -79,6 +79,47 @@ describe('shared agent hook channel contract', () => {
     ])
     expect(states).toHaveLength(1)
 
+    await expect(
+      postJson(channel.getEndpoint()!, token, {
+        version: 1,
+        state: 'working',
+        hookEventName: 'SessionStart',
+        claudeSessionId: 'claude-session-1',
+      }),
+    ).resolves.toBe(204)
+    await expect(
+      postJson(channel.getEndpoint()!, token, {
+        version: 1,
+        state: 'working',
+        hookEventName: 'SessionStart',
+        claudeSessionId: 'forged-replacement',
+      }),
+    ).resolves.toBe(204)
+    expect(metadata).toHaveLength(1)
+    expect(states).toHaveLength(3)
+
+    const nextReservation = await channel.reserveSpawn()
+    const nextToken = nextReservation.env?.OPENCOVE_CLAUDE_HOOK_TOKEN ?? ''
+    nextReservation.commit('pty-session', {
+      provider: 'claude-code',
+      invocationId: 'invocation-2',
+      generation: 2,
+      isCurrent: () => true,
+    })
+    await expect(
+      postJson(channel.getEndpoint()!, nextToken, {
+        version: 1,
+        state: 'working',
+        hookEventName: 'SessionStart',
+        claudeSessionId: 'claude-session-2',
+      }),
+    ).resolves.toBe(204)
+    expect(metadata).toHaveLength(2)
+    expect(metadata[1]).toMatchObject({
+      resumeSessionId: 'claude-session-2',
+      terminalAgentActivity: { invocationId: 'invocation-2', generation: 2 },
+    })
+
     current = false
     await expect(
       postJson(channel.getEndpoint()!, token, {
@@ -88,7 +129,7 @@ describe('shared agent hook channel contract', () => {
         claudeSessionId: 'claude-session-1',
       }),
     ).resolves.toBe(204)
-    expect(states).toHaveLength(1)
+    expect(states).toHaveLength(4)
     await channel.dispose()
   })
 

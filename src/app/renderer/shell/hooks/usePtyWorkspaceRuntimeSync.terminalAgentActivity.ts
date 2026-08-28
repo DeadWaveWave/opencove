@@ -49,7 +49,16 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
         activity.phase === 'active' &&
         activity.identityAuthority === 'provider_session_start' &&
         resumeSessionId !== null
-      const nextBinding = canBind
+      const isSameInvocation =
+        previousActivity?.generation === activity.generation &&
+        previousActivity.invocationId === activity.invocationId
+      const verifiedProviderSessionId = isSameInvocation
+        ? (previousActivity.verifiedProviderSessionId ?? null)
+        : null
+      const canAdoptBinding =
+        canBind &&
+        (verifiedProviderSessionId === null || verifiedProviderSessionId === resumeSessionId)
+      const nextBinding = canAdoptBinding
         ? {
             provider: activity.provider,
             resumeSessionId,
@@ -68,10 +77,11 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
           generation: activity.generation,
           phase: activity.phase,
           observedAtMs: activity.observedAtMs,
+          verifiedProviderSessionId: canAdoptBinding ? resumeSessionId : verifiedProviderSessionId,
         },
       }
       const bindingChanged =
-        canBind &&
+        canAdoptBinding &&
         (node.data.terminalAgentBinding?.provider !== nextBinding?.provider ||
           node.data.terminalAgentBinding?.resumeSessionId !== nextBinding?.resumeSessionId ||
           node.data.terminalAgentBinding?.resumeSessionIdVerified !== true)

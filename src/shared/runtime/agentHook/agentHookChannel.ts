@@ -48,6 +48,7 @@ export interface TerminalAgentHookContext {
 interface CredentialRecord<TEnvelope extends AgentHookEnvelope> {
   sessionId: string | null
   pending: TEnvelope[]
+  providerSessionId: string | null
   terminalActivity: TerminalAgentHookContext | null
 }
 
@@ -129,6 +130,10 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     listeners.forEach(listener => listener(event))
     const identity = options.resolveSessionIdentity?.(envelope) ?? null
     if (terminalActivity && identity?.hookEventName === 'SessionStart') {
+      if (credential.providerSessionId !== null) {
+        return
+      }
+      credential.providerSessionId = identity.providerSessionId
       const metadata: TerminalSessionMetadataEvent = {
         sessionId,
         resumeSessionId: identity.providerSessionId,
@@ -268,6 +273,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       const credential: CredentialRecord<TEnvelope> = {
         sessionId: null,
         pending: [],
+        providerSessionId: null,
         terminalActivity: null,
       }
       credentials.set(token, credential)

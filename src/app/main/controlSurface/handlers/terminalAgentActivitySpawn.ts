@@ -2,6 +2,7 @@ import type { AgentLaunchArtifactScope } from '../../../../contexts/agent/applic
 import { AgentLaunchArtifactScope as ArtifactScope } from '../../../../contexts/agent/application/services/AgentLaunchArtifactScope'
 import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
+import type { TerminalRuntimeKind } from '../../../../shared/contracts/dto'
 
 export async function prepareTerminalAgentActivitySpawn(options: {
   activity: TerminalAgentActivityEnvironmentService | undefined
@@ -11,6 +12,7 @@ export async function prepareTerminalAgentActivitySpawn(options: {
   cwd: string
   env: NodeJS.ProcessEnv | undefined
   interactiveShell: boolean
+  runtimeKind?: TerminalRuntimeKind
   rows: number
 }): Promise<{
   commit: (sessionId: string) => void
@@ -44,6 +46,7 @@ export async function prepareTerminalAgentActivitySpawn(options: {
     cwd: options.cwd,
     environment: options.env,
     interactiveShell: options.interactiveShell,
+    ...(options.runtimeKind ? { runtimeKind: options.runtimeKind } : {}),
   })
   const launchArtifacts = new ArtifactScope()
   launchArtifacts.track('terminal-agent-activity', { dispose: prepared.dispose })

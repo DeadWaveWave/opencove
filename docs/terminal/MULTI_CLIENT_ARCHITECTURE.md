@@ -66,8 +66,11 @@ new-agent command.
 
 The renderer overlay lifecycle owns that watcher attachment. Clearing the overlay also clears its
 binding and detaches the watcher; removing the node or disposing the renderer owner performs the same
-detach. An alternate-screen exit or Ctrl+C is a presentation signal for drop-back, not authority to
-replace or retire the terminal session.
+detach. These are explicit clear/remove operations. By contrast, an authenticated invocation exit
+changes only the runtime activity phase to `exited`: its verified durable binding remains resumable,
+and cold recovery may still enter that exact provider session once. An alternate-screen exit,
+provider process exit, or Ctrl+C is a presentation/runtime signal for drop-back, not authority to
+clear the binding or retire the terminal session.
 
 An active terminal overlay exposes the same copy-last-message, reload, list-session, and
 switch-session actions as a durable Agent node. These actions read provider and resume identity from
@@ -308,6 +311,8 @@ The goal is stable visual parity without letting multiple renderers fight for te
     substitutes requested rows/columns as an acknowledgement.
 18. Only the current recovery reconciliation scope may spawn before its workspace runtime is ready;
     normal user/node paths cannot acquire or forge that scope.
+19. A verified terminal Agent binding survives authenticated invocation exit; only an explicit
+    clear/remove operation may erase its durable resume authority.
 
 ## Verification Anchors
 

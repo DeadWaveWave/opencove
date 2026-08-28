@@ -40,6 +40,64 @@ function run(
 }
 
 describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () => {
+  it('preserves empty PATH entries and resolves the same current-directory executable', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opencove-terminal-shim-empty-path-'))
+    roots.push(root)
+    const realBin = join(root, 'later-bin')
+    await mkdir(realBin)
+    await writeFile(
+      join(root, 'claude'),
+      '#!/bin/sh\nprintf "EXECUTABLE=CURRENT_DIRECTORY\\n"\nprintf "CHILD_PATH=%s\\n" "$PATH"\n',
+    )
+    await chmod(join(root, 'claude'), 0o700)
+    await writeFile(join(realBin, 'claude'), '#!/bin/sh\nprintf "EXECUTABLE=LATER_PATH\\n"\n')
+    await chmod(join(realBin, 'claude'), 0o700)
+    const gateway = new TerminalAgentActivityGateway({
+      resolveHookInjection: () => ({
+        prepareHookInjection: async () => ({
+          args: [],
+          env: {},
+          hookInstallState: 'installed',
+        }),
+      }),
+    })
+    const assets = new TerminalAgentTelemetryAssetStore({
+      runtimeExecutable: process.execPath,
+      platform: process.platform,
+    })
+    const published = await assets.ensure()
+    const originalPath = ['', realBin, '', '/usr/bin', ''].join(':')
+    const service = new TerminalAgentActivityEnvironmentService({
+      assets,
+      gateway,
+      inheritedPath: process.env.PATH ?? '',
+      inheritedShell: '/bin/bash',
+      platform: process.platform,
+    })
+    const prepared = await service.prepare({
+      args: [],
+      command: '/bin/bash',
+      cwd: root,
+      environment: { ...process.env, PATH: originalPath },
+      interactiveShell: false,
+    })
+    prepared.commit('pty-empty-path')
+
+    expect(prepared.environment?.PATH).toBe(`${published.shimDirectory}:${originalPath}`)
+    const result = await run('claude', [], {
+      cwd: root,
+      env: prepared.environment!,
+    })
+    expect(result).toMatchObject({ code: 0, signal: null })
+    expect(result.stdout).toContain('EXECUTABLE=CURRENT_DIRECTORY')
+    expect(result.stdout).toContain(`CHILD_PATH=${published.shimDirectory}:${originalPath}`)
+    expect(result.stdout).not.toContain('EXECUTABLE=LATER_PATH')
+
+    await prepared.dispose()
+    await assets.dispose()
+    await gateway.dispose()
+  })
+
   it.skipIf(!existsSync('/bin/zsh'))(
     'mirrors the zsh login startup chain after a custom ZDOTDIR replaces PATH',
     async () => {
@@ -226,16 +284,13 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
     await gateway.dispose()
   })
 
-  it('skips canonical aliases of its own directory and forwards SIGTERM', async () => {
+  it('skips canonical aliases of its own directory and launches the same real executable', async () => {
     const root = await mkdtemp(join(tmpdir(), 'opencove-terminal-shim-signal-'))
     roots.push(root)
     const realBin = join(root, 'real')
     await mkdir(realBin)
     const realClaude = join(realBin, 'claude')
-    await writeFile(
-      realClaude,
-      '#!/bin/sh\ntrap \'printf "FORWARDED\\n"; exit 23\' TERM\nprintf "READY\\n"\nwhile :; do sleep 1; done\n',
-    )
+    await writeFile(realClaude, '#!/bin/sh\nprintf "REAL_EXECUTABLE=%s\\n" "$0"\nexit 23\n')
     await chmod(realClaude, 0o700)
     const assets = new TerminalAgentTelemetryAssetStore({
       runtimeExecutable: process.execPath,
@@ -244,7 +299,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
     const published = await assets.ensure()
     const shimAlias = join(root, 'shim-alias')
     await (await import('node:fs/promises')).symlink(published.shimDirectory, shimAlias)
-    const child = spawn(process.execPath, [published.launcherPath, 'claude'], {
+    const result = await run(process.execPath, [published.launcherPath, 'claude'], {
       cwd: root,
       env: {
         ...process.env,
@@ -254,25 +309,88 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
         OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY: published.shimDirectory,
         PATH: `${shimAlias}:${published.shimDirectory}:${realBin}:/usr/bin:/bin`,
       },
-      stdio: ['ignore', 'pipe', 'pipe'],
     })
-    let output = ''
-    child.stdout.on('data', chunk => {
-      output += String(chunk)
-      if (output.includes('READY')) {
-        child.kill('SIGTERM')
-      }
-    })
-    const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
-      (resolve, reject) => {
-        child.once('error', reject)
-        child.once('exit', (code, signal) => resolve({ code, signal }))
-      },
-    )
 
-    expect(output).toContain('READY')
-    expect(output).toContain('FORWARDED')
-    expect(result).toEqual({ code: 23, signal: null })
+    expect(result.stdout).toContain(`REAL_EXECUTABLE=${realClaude}`)
+    expect(result).toMatchObject({ code: 23, signal: null })
     await assets.dispose()
   })
+
+  it.each(['SIGHUP', 'SIGINT', 'SIGTERM'] as const)(
+    'forwards %s and boundedly kills a child that ignores it',
+    async signal => {
+      const root = await mkdtemp(join(tmpdir(), `opencove-terminal-shim-${signal}-`))
+      roots.push(root)
+      const realBin = join(root, 'real')
+      await mkdir(realBin)
+      const realClaude = join(realBin, 'claude')
+      await writeFile(
+        realClaude,
+        [
+          '#!/bin/sh',
+          `trap 'printf "FORWARDED=${signal}\\n"' ${signal.slice(3)}`,
+          'printf "CHILD_PID=%s\\n" "$$"',
+          'printf "READY\\n"',
+          'while :; do sleep 1; done',
+          '',
+        ].join('\n'),
+      )
+      await chmod(realClaude, 0o700)
+      const assets = new TerminalAgentTelemetryAssetStore({
+        runtimeExecutable: process.execPath,
+        platform: process.platform,
+      })
+      const published = await assets.ensure()
+      const child = spawn(process.execPath, [published.launcherPath, 'claude'], {
+        cwd: root,
+        env: {
+          ...process.env,
+          ELECTRON_RUN_AS_NODE: '1',
+          OPENCOVE_TERMINAL_AGENT_ENDPOINT: 'http://127.0.0.1:1/unavailable',
+          OPENCOVE_TERMINAL_AGENT_TOKEN: 'unavailable',
+          OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY: published.shimDirectory,
+          PATH: `${published.shimDirectory}:${realBin}:/usr/bin:/bin`,
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+      let output = ''
+      let childPid: number | null = null
+      let sent = false
+      let signalSentAt = 0
+      let failSafe: NodeJS.Timeout | null = null
+      child.stdout.on('data', chunk => {
+        output += String(chunk)
+        const match = /CHILD_PID=(\d+)/u.exec(output)
+        childPid = match ? Number(match[1]) : childPid
+        if (!sent && output.includes('READY')) {
+          sent = true
+          signalSentAt = Date.now()
+          child.kill(signal)
+          failSafe = setTimeout(() => {
+            if (childPid) {
+              try {
+                process.kill(childPid, 'SIGKILL')
+              } catch {}
+            }
+          }, 3_000)
+        }
+      })
+      const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+        (resolve, reject) => {
+          child.once('error', reject)
+          child.once('exit', (code, exitSignal) => resolve({ code, signal: exitSignal }))
+        },
+      )
+      if (failSafe) {
+        clearTimeout(failSafe)
+      }
+
+      expect(output).toContain(`FORWARDED=${signal}`)
+      expect(result).toEqual({ code: 137, signal: null })
+      expect(Date.now() - signalSentAt).toBeLessThan(2_000)
+      expect(childPid).not.toBeNull()
+      expect(() => process.kill(childPid!, 0)).toThrow()
+      await assets.dispose()
+    },
+  )
 })

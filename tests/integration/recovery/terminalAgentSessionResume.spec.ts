@@ -20,6 +20,7 @@ const ctx: ControlSurfaceContext = {
 }
 
 function createStore(binding: {
+  provider: 'claude-code' | 'codex'
   resumeSessionId: string | null
   resumeSessionIdVerified: boolean
 }) {
@@ -53,7 +54,7 @@ function createStore(binding: {
               profileId: null,
               runtimeKind: 'posix',
               terminalGeometry: { cols: 80, rows: 24 },
-              terminalProviderHint: 'codex',
+              terminalProviderHint: binding.provider,
               status: null,
               startedAt: null,
               endedAt: null,
@@ -62,7 +63,7 @@ function createStore(binding: {
               scrollback: 'durable terminal history',
               executionDirectory: '/tmp/workspace',
               expectedDirectory: '/tmp/workspace',
-              agent: { provider: 'codex', ...binding },
+              agent: binding,
               task: null,
             },
           ],
@@ -87,53 +88,61 @@ function registerSpawn(controlSurface: ReturnType<typeof createControlSurface>):
 }
 
 describe('terminal agent cold session recovery', () => {
-  it('hydrates a fresh PTY and injects the exact durable resume command once', async () => {
-    const controlSurface = createControlSurface()
-    const write = vi.fn()
-    let markShellReady: (() => void) | null = null
-    const waitForShellReady = vi.fn(
-      async () =>
-        await new Promise<void>(resolve => {
-          markShellReady = resolve
-        }),
-    )
-    registerSpawn(controlSurface)
-    registerSessionPrepareOrReviveHandler(controlSurface, {
-      ...createReadyTerminalAdmissionDeps(),
-      getPersistenceStore: async () =>
-        createStore({ resumeSessionId: 'resume-session-1', resumeSessionIdVerified: true }),
-      ptyStreamHub: { isSessionActive: vi.fn(() => false) } as never,
-      ptyRuntime: { write, waitForShellReady },
-    })
+  it.each([
+    ['claude-code', 'claude --resume resume-session-1'],
+    ['codex', 'codex resume resume-session-1'],
+  ] as const)(
+    'hydrates a fresh PTY and injects the exact durable %s resume command once',
+    async (provider, resumeCommand) => {
+      const controlSurface = createControlSurface()
+      const write = vi.fn()
+      let markShellReady: (() => void) | null = null
+      const waitForShellReady = vi.fn(
+        async () =>
+          await new Promise<void>(resolve => {
+            markShellReady = resolve
+          }),
+      )
+      registerSpawn(controlSurface)
+      registerSessionPrepareOrReviveHandler(controlSurface, {
+        ...createReadyTerminalAdmissionDeps(),
+        getPersistenceStore: async () =>
+          createStore({
+            provider,
+            resumeSessionId: 'resume-session-1',
+            resumeSessionIdVerified: true,
+          }),
+        ptyStreamHub: { isSessionActive: vi.fn(() => false) } as never,
+        ptyRuntime: { write, waitForShellReady },
+      })
 
-    const resultPromise = controlSurface.invoke(ctx, {
-      kind: 'command',
-      id: 'session.prepareOrRevive',
-      payload: { workspaceId: 'workspace-1' },
-    })
+      const resultPromise = controlSurface.invoke(ctx, {
+        kind: 'command',
+        id: 'session.prepareOrRevive',
+        payload: { workspaceId: 'workspace-1' },
+      })
 
-    await vi.waitFor(() => {
-      expect(waitForShellReady).toHaveBeenCalledWith('fresh-pty-session')
-    })
-    expect(write).not.toHaveBeenCalled()
-    markShellReady?.()
-    const result = await resultPromise
+      await vi.waitFor(() => {
+        expect(waitForShellReady).toHaveBeenCalledWith('fresh-pty-session')
+      })
+      expect(write).not.toHaveBeenCalled()
+      markShellReady?.()
+      const result = await resultPromise
 
-    expect(result.ok).toBe(true)
-    expect(result.ok && result.value).toMatchObject({
-      nodes: [
-        {
-          nodeId: 'terminal-agent-1',
-          recoveryState: 'restarted',
-          sessionId: 'fresh-pty-session',
-          isLiveSessionReattach: false,
-        },
-      ],
-    })
-    expect(write.mock.calls).toEqual([
-      ['fresh-pty-session', '\u0015codex resume resume-session-1\r'],
-    ])
-  })
+      expect(result.ok).toBe(true)
+      expect(result.ok && result.value).toMatchObject({
+        nodes: [
+          {
+            nodeId: 'terminal-agent-1',
+            recoveryState: 'restarted',
+            sessionId: 'fresh-pty-session',
+            isLiveSessionReattach: false,
+          },
+        ],
+      })
+      expect(write.mock.calls).toEqual([['fresh-pty-session', `\u0015${resumeCommand}\r`]])
+    },
+  )
 
   it('does not relaunch an unverified provider hint after cold recovery', async () => {
     const controlSurface = createControlSurface()
@@ -149,7 +158,11 @@ describe('terminal agent cold session recovery', () => {
     registerSessionPrepareOrReviveHandler(controlSurface, {
       ...createReadyTerminalAdmissionDeps(),
       getPersistenceStore: async () =>
-        createStore({ resumeSessionId: null, resumeSessionIdVerified: false }),
+        createStore({
+          provider: 'codex',
+          resumeSessionId: null,
+          resumeSessionIdVerified: false,
+        }),
       ptyStreamHub: { isSessionActive: vi.fn(() => false) } as never,
       ptyRuntime: { write, waitForShellReady },
     })

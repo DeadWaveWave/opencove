@@ -76,6 +76,7 @@ export interface AgentHookInjectionPlan {
 
 export interface PrepareAgentHookInjectionCommand {
   readonly artifacts: AgentLaunchArtifactRegistrar
+  readonly environment?: Readonly<NodeJS.ProcessEnv>
   readonly executablePathOverride?: string | null
   readonly workspaceDirectory: string
 }

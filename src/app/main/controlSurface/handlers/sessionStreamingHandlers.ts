@@ -214,6 +214,7 @@ export function registerSessionStreamingHandlers(
         cwd: resolvedSpawn.cwd,
         env: resolvedSpawn.env,
         interactiveShell: !spawnCommand,
+        runtimeKind: resolvedSpawn.runtimeKind,
         rows,
       })
 
@@ -294,6 +295,7 @@ export function registerSessionStreamingHandlers(
         cwd: resolvedSpawn.cwd,
         env: resolvedSpawn.env,
         interactiveShell: !payload.command,
+        runtimeKind: resolvedSpawn.runtimeKind,
         rows: payload.rows,
       })
 

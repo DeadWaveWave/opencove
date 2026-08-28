@@ -1,4 +1,6 @@
-import { readFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
 import { ClaudeCodeAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/claude-code/ClaudeCodeAgentProviderContribution'
@@ -106,6 +108,80 @@ describe('ClaudeCodeAgentProviderContribution', () => {
 })
 
 describe('CodexAgentProviderContribution', () => {
+  it.skipIf(process.platform === 'win32')(
+    'uses the effective terminal environment for an nvm-style Codex executable only during trust planning',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'opencove-codex-nvm-trust-'))
+      const rawBin = join(root, 'raw-bin')
+      const nvmBin = join(root, 'nvm-bin')
+      const executable = join(root, 'codex')
+      const marker = join(root, 'app-server-started')
+      await Promise.all([mkdir(rawBin), mkdir(nvmBin)])
+      await symlink(process.execPath, join(nvmBin, 'node'))
+      await writeFile(
+        executable,
+        [
+          '#!/usr/bin/env node',
+          "const { writeFileSync } = require('node:fs')",
+          "writeFileSync(process.env.NVM_MARKER, 'started')",
+          "let input = ''",
+          "process.stdin.setEncoding('utf8')",
+          "process.stdin.on('data', chunk => {",
+          '  input += chunk',
+          "  let newline = input.indexOf('\\n')",
+          '  while (newline >= 0) {',
+          '    const message = JSON.parse(input.slice(0, newline))',
+          '    input = input.slice(newline + 1)',
+          "    if (message.method === 'initialize') process.stdout.write(JSON.stringify({ id: message.id, result: {} }) + '\\n')",
+          "    if (message.method === 'hooks/list') process.stdout.write(JSON.stringify({ id: message.id, result: { data: [] } }) + '\\n')",
+          "    newline = input.indexOf('\\n')",
+          '  }',
+          '})',
+          '',
+        ].join('\n'),
+      )
+      await chmod(executable, 0o700)
+      const originalPath = process.env.PATH
+      process.env.PATH = rawBin
+      const hook = channel('codex')
+      const artifacts = new AgentLaunchArtifactScope()
+      const provider = new CodexAgentProviderContribution({
+        channel: hook.channel,
+        runtimeExecutable: '/runtime/node',
+        runtimePlatform: 'linux',
+      })
+
+      try {
+        const plan = await provider.hookInjection.prepareHookInjection({
+          artifacts,
+          environment: {
+            ...process.env,
+            PATH: nvmBin,
+            NVM_MARKER: marker,
+          },
+          executablePathOverride: executable,
+          workspaceDirectory: root,
+        })
+        artifacts.seal()
+
+        await expect(readFile(marker, 'utf8')).resolves.toBe('started')
+        expect(plan.args.join('\n')).not.toContain('hooks.SessionEnd=')
+        expect(plan.args.join('\n')).toContain('notify=["/runtime/node"')
+        expect(plan.env).not.toHaveProperty('PATH')
+        expect(plan.env).not.toHaveProperty('NVM_MARKER')
+      } finally {
+        if (originalPath === undefined) {
+          delete process.env.PATH
+        } else {
+          process.env.PATH = originalPath
+        }
+        artifacts.seal()
+        await artifacts.dispose()
+        await rm(root, { recursive: true, force: true })
+      }
+    },
+  )
+
   it('injects trusted hooks and legacy notify as literal --config values', async () => {
     const hook = channel('codex')
     const artifacts = new AgentLaunchArtifactScope()

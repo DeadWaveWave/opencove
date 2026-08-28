@@ -8,6 +8,7 @@ import {
   parseTerminalForegroundEvent,
   parseTerminalGeometryCommitResult,
 } from '../remote/remotePtyStreamMessageHandler'
+import { normalizeTerminalAgentActivitySnapshot } from '../../../../shared/runtime/terminalAgentActivity'
 
 export type RemotePtyEndpointAttachedSessionState = {
   lastSeq: number
@@ -171,11 +172,15 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
         parsed.runtimeKind === 'posix'
           ? parsed.runtimeKind
           : null
+      const terminalAgentActivity = normalizeTerminalAgentActivitySnapshot(
+        parsed.terminalAgentActivity,
+      )
       options.onMetadata(sessionId, {
         sessionId,
         resumeSessionId,
         ...(profileId ? { profileId } : {}),
         ...(runtimeKind ? { runtimeKind } : {}),
+        ...(terminalAgentActivity ? { terminalAgentActivity } : {}),
       })
     }
   }

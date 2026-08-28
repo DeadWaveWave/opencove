@@ -81,10 +81,14 @@ export interface TerminalAgentOverlay {
   provider: AgentProvider
   status: AgentRuntimeStatus
   startedAtMs: number
-  activity?: Pick<
-    TerminalAgentActivitySnapshot,
-    'invocationId' | 'generation' | 'phase' | 'observedAtMs'
-  > | null
+  activity?:
+    | (Pick<
+        TerminalAgentActivitySnapshot,
+        'invocationId' | 'generation' | 'phase' | 'observedAtMs'
+      > & {
+        verifiedProviderSessionId?: string | null
+      })
+    | null
 }
 
 export interface AgentRuntimeObservation {

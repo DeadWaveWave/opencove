@@ -17,6 +17,7 @@ import {
 export interface TerminalAgentTelemetryAssets {
   bashRcPath: string
   launcherPath: string
+  planDirectory: string
   rootDirectory: string
   shellLauncherPath: string
   shimDirectory: string
@@ -72,8 +73,10 @@ export class TerminalAgentTelemetryAssetStore {
   private async populateAssets(rootDirectory: string): Promise<TerminalAgentTelemetryAssets> {
     await chmod(rootDirectory, 0o700)
     const shimDirectory = join(rootDirectory, 'bin')
+    const planDirectory = join(rootDirectory, 'plans')
     const zshDotDirectory = join(rootDirectory, 'zsh')
     await mkdir(shimDirectory, { mode: 0o700 })
+    await mkdir(planDirectory, { mode: 0o700 })
     await mkdir(zshDotDirectory, { mode: 0o700 })
     const launcherPath = join(rootDirectory, 'launcher.mjs')
     const shellLauncherPath = join(rootDirectory, 'shell-launcher.sh')
@@ -97,7 +100,12 @@ export class TerminalAgentTelemetryAssetStore {
           ),
           writePrivateFile(
             powerShellPath,
-            createPowerShellShimScript(this.options.runtimeExecutable, launcherPath, provider),
+            createPowerShellShimScript(
+              this.options.runtimeExecutable,
+              launcherPath,
+              provider,
+              planDirectory,
+            ),
             0o700,
           ),
           writePrivateFile(
@@ -112,6 +120,7 @@ export class TerminalAgentTelemetryAssetStore {
     const assets = {
       bashRcPath,
       launcherPath,
+      planDirectory,
       rootDirectory,
       shellLauncherPath,
       shimDirectory,

@@ -50,6 +50,9 @@ Agent launch spawn resolver:
 - 真实 agent launch / resume 复用 `TerminalProfileResolver.resolveCommandSpawn()`。
 - Windows 上即使用户未显式选择 profile，也会走检测到的默认终端 profile（当前稳定默认是 PowerShell），让 PowerShell profile、Git Bash login shell、WSL distro 的启动语义与 OpenCove terminal 保持一致。
 - 只有显式传入的 session env 会被注入 WSL 内部命令；宿主 command env 只用于启动 `wsl.exe`，避免把整个 Windows 环境展开到 `wsl.exe env ...`。
+- 上述 WSL 支持属于显式 Agent launch/profile 解析。终端中手动输入 `claude` / `codex` 的
+  PATH-shim 识别当前只支持 native Windows；对 WSL profile 或 `wsl.exe` 必须保持原始 spawn
+  完全不变，不能把 Windows host 路径、PowerShell wrapper 或 loopback credential 注入 guest。
 
 Invocation adapter:
 

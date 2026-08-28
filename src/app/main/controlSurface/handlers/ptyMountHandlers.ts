@@ -245,6 +245,7 @@ export function registerPtyMountHandlers(
           cwd: resolvedSpawn.cwd,
           env: resolvedSpawn.env,
           interactiveShell: !payload.command,
+          runtimeKind: resolvedSpawn.runtimeKind,
           rows,
         })
 
