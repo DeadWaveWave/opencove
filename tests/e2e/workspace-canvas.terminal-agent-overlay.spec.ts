@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import type { TerminalSessionMetadataEvent } from '../../src/shared/contracts/dto'
 import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
 import {
   createAgentCommandPath,
@@ -11,7 +12,18 @@ import {
 } from './workspace-canvas.terminal-agent-overlay.helpers'
 
 const overlayAdvanceSentinel = '<test-overlay-advance>'
-type MetadataTestWindow = typeof window & { __opencoveTerminalAgentMetadata?: unknown[] }
+type MetadataTestWindow = typeof window & {
+  __opencoveTerminalAgentMetadata?: TerminalSessionMetadataEvent[]
+}
+
+function hasCompleteTerminalAgentMetadata(event: TerminalSessionMetadataEvent): boolean {
+  return (
+    typeof event.sessionId === 'string' &&
+    typeof event.resumeSessionId === 'string' &&
+    event.terminalAgentActivity !== null &&
+    event.terminalAgentActivity !== undefined
+  )
+}
 
 async function runOverlayLifecycle(options: {
   window: Page
@@ -252,7 +264,11 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
       await window.keyboard.type('codex')
       await window.keyboard.press('Enter')
       await expectOverlayStubReady(terminal, 'codex')
-      await expect.poll(readCapturedEvents).toContainEqual(
+      await expect
+        .poll(async () => (await readCapturedEvents()).some(hasCompleteTerminalAgentMetadata))
+        .toBe(true)
+      const capturedEvents = await readCapturedEvents()
+      expect(capturedEvents).toContainEqual(
         expect.objectContaining({
           sessionId: initialSessionId,
           resumeSessionId: expect.any(String),
@@ -262,6 +278,17 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
           }),
         }),
       )
+      const sessionStartEvent = capturedEvents.find(hasCompleteTerminalAgentMetadata)
+      expect(sessionStartEvent).toBeDefined()
+      if (!sessionStartEvent) {
+        throw new Error('Expected complete terminal agent metadata after readiness')
+      }
+      expect(sessionStartEvent.sessionId).toBe(initialSessionId)
+      expect(sessionStartEvent.resumeSessionId).not.toBeNull()
+      expect(sessionStartEvent.terminalAgentActivity).toMatchObject({
+        provider: 'codex',
+        identityAuthority: 'provider_session_start',
+      })
       await window.keyboard.type(overlayAdvanceSentinel)
       await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
       await expect

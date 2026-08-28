@@ -17,6 +17,8 @@ import type {
   TerminalSessionMetadataEvent,
 } from '../../src/shared/contracts/dto'
 
+const ANSI_ESCAPE_PATTERN = new RegExp(String.raw`\u001B\[[0-?]*[ -/]*[@-~]`, 'gu')
+
 function run(
   command: string,
   args: readonly string[],
@@ -37,8 +39,17 @@ function run(
   })
 }
 
-async function waitForOutput(read: () => string, expected: string): Promise<void> {
-  await expect.poll(read, { timeout: 10_000 }).toContain(expected)
+function outputLines(output: string): string[] {
+  return output
+    .replaceAll(ANSI_ESCAPE_PATTERN, '')
+    .split(/\r?\n/u)
+    .map(line => line.trim())
+}
+
+async function waitForOutput(read: () => string, expectedLine: string): Promise<void> {
+  await expect
+    .poll(() => outputLines(read()).includes(expectedLine), { timeout: 10_000 })
+    .toBe(true)
 }
 
 async function createProviderCommand(options: {
@@ -259,16 +270,25 @@ test.describe('terminal Agent shim (Windows)', () => {
           expect(serializedArgs).toBeTruthy()
           expect(JSON.parse(serializedArgs!)).toEqual(expect.arrayContaining(args))
           await expect
-            .poll(() => harness.metadata)
-            .toContainEqual(
-              expect.objectContaining({
-                resumeSessionId: `${harness.command}-session-精确`,
-                terminalAgentActivity: expect.objectContaining({
-                  provider,
-                  identityAuthority: 'provider_session_start',
-                }),
-              }),
+            .poll(() =>
+              harness.metadata.some(
+                event =>
+                  event.resumeSessionId !== null &&
+                  event.terminalAgentActivity !== null &&
+                  event.terminalAgentActivity !== undefined,
+              ),
             )
+            .toBe(true)
+          expect(harness.metadata).toContainEqual(
+            expect.objectContaining({
+              sessionId: `pty-${harness.command}`,
+              resumeSessionId: `${harness.command}-session-精确`,
+              terminalAgentActivity: expect.objectContaining({
+                provider,
+                identityAuthority: 'provider_session_start',
+              }),
+            }),
+          )
           expect(await readFile(harness.profilePath)).toEqual(harness.profileBytes)
           await expectPrivateCleanup(harness)
         } finally {
@@ -308,12 +328,16 @@ test.describe('terminal Agent shim (Windows)', () => {
       const shim = join(harness.published.shimDirectory, 'claude.ps1').replaceAll("'", "''")
       pty.write(`& '${shim}' 'ctrl-c-case'\r`)
       await waitForOutput(() => output, 'CTRL_C_READY')
+      expect(outputLines(output)).toContain('CTRL_C_READY')
       pty.write('\u0003')
       await waitForOutput(() => output, 'CHILD_SIGINT')
+      expect(outputLines(output)).toContain('CHILD_SIGINT')
       pty.write("Write-Output 'SHELL_REUSED'\r")
       await waitForOutput(() => output, 'SHELL_REUSED')
+      expect(outputLines(output)).toContain('SHELL_REUSED')
       await expect(readFile(harness.ctrlCMarker, 'utf8')).resolves.toBe('SIGINT')
-      await expect.poll(async () => await readdir(harness.published.planDirectory)).toEqual([])
+      await expect.poll(async () => (await readdir(harness.published.planDirectory)).length).toBe(0)
+      expect(await readdir(harness.published.planDirectory)).toEqual([])
       expect(await readFile(harness.profilePath)).toEqual(harness.profileBytes)
     } finally {
       pty?.kill()

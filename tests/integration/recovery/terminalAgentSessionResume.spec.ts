@@ -123,8 +123,9 @@ describe('terminal agent cold session recovery', () => {
       })
 
       await vi.waitFor(() => {
-        expect(waitForShellReady).toHaveBeenCalledWith('fresh-pty-session')
+        expect(waitForShellReady).toHaveBeenCalledTimes(1)
       })
+      expect(waitForShellReady).toHaveBeenCalledWith('fresh-pty-session')
       expect(write).not.toHaveBeenCalled()
       markShellReady?.()
       const result = await resultPromise

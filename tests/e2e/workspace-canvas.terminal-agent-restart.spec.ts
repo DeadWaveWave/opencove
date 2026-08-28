@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
+import type { TerminalSessionMetadataEvent } from '../../src/shared/contracts/dto'
 import {
   createTestUserDataDir,
   launchApp,
@@ -15,7 +16,21 @@ import {
   readRuntimeSessionId,
 } from './workspace-canvas.terminal-agent-overlay.helpers'
 
-type MetadataWindow = typeof window & { __terminalAgentRestartMetadata?: unknown[] }
+type MetadataWindow = typeof window & {
+  __terminalAgentRestartMetadata?: TerminalSessionMetadataEvent[]
+}
+
+function hasCompleteTerminalAgentMetadata(event: TerminalSessionMetadataEvent): boolean {
+  return (
+    typeof event.resumeSessionId === 'string' &&
+    event.terminalAgentActivity !== null &&
+    event.terminalAgentActivity !== undefined
+  )
+}
+
+function outputLines(output: string): string[] {
+  return output.split(/\r?\n/u).map(line => line.trim())
+}
 
 test.describe('Workspace Canvas - terminal Agent full restart', () => {
   test.skip(process.platform === 'win32', 'POSIX command shim coverage')
@@ -74,8 +89,9 @@ test.describe('Workspace Canvas - terminal Agent full restart', () => {
 
           const terminal = window.locator(`[data-id="${nodeId}"] .terminal-node`)
           await expect(terminal).toBeVisible()
-          await expect.poll(() => readRuntimeSessionId(window, nodeId)).toBeTruthy()
+          await expect.poll(() => readRuntimeSessionId(window, nodeId)).not.toBeNull()
           initialRuntimeSessionId = await readRuntimeSessionId(window, nodeId)
+          expect(initialRuntimeSessionId).not.toBeNull()
           await window.evaluate(() => {
             const testWindow = window as MetadataWindow
             testWindow.__terminalAgentRestartMetadata = []
@@ -86,46 +102,64 @@ test.describe('Workspace Canvas - terminal Agent full restart', () => {
           await terminal.locator('.xterm-helper-textarea').click()
           await window.keyboard.type(`printf '${continuitySentinel}\\n'`)
           await window.keyboard.press('Enter')
+          const readTranscript = async () =>
+            (await terminal.locator('.terminal-node__transcript').textContent()) ?? ''
           await expect
-            .poll(
-              async () =>
-                (await terminal.locator('.terminal-node__transcript').textContent()) ?? '',
-            )
-            .toContain(continuitySentinel)
+            .poll(async () => outputLines(await readTranscript()).includes(continuitySentinel))
+            .toBe(true)
+          expect(outputLines(await readTranscript())).toContain(continuitySentinel)
 
           await window.keyboard.type(command)
           await window.keyboard.press('Enter')
           await expectOverlayStubReady(terminal, provider)
+          const injectionMarker = provider === 'claude-code' ? '--settings ' : 'notify='
           await expect
-            .poll(async () => (await readFile(invocationLogPath, 'utf8')).split(/\r?\n/u))
-            .toContainEqual(
-              expect.stringContaining(provider === 'claude-code' ? '--settings ' : 'notify='),
+            .poll(async () =>
+              (await readFile(invocationLogPath, 'utf8'))
+                .split(/\r?\n/u)
+                .some(invocation => invocation.includes(injectionMarker)),
             )
+            .toBe(true)
+          expect((await readFile(invocationLogPath, 'utf8')).split(/\r?\n/u)).toContainEqual(
+            expect.stringContaining(injectionMarker),
+          )
+          const readMetadata = async () =>
+            await window.evaluate(
+              () => (window as MetadataWindow).__terminalAgentRestartMetadata ?? [],
+            )
+          await expect
+            .poll(async () => (await readMetadata()).some(hasCompleteTerminalAgentMetadata))
+            .toBe(true)
+          expect(await readMetadata()).toContainEqual(
+            expect.objectContaining({
+              terminalAgentActivity: expect.objectContaining({
+                provider,
+                identityAuthority: 'provider_session_start',
+              }),
+            }),
+          )
           await expect
             .poll(
               async () =>
-                await window.evaluate(
-                  () => (window as MetadataWindow).__terminalAgentRestartMetadata ?? [],
-                ),
+                (await readPersistedTerminalAgentNode(window, nodeId))?.agent?.resumeSessionId ??
+                null,
             )
-            .toContainEqual(
-              expect.objectContaining({
-                terminalAgentActivity: expect.objectContaining({
-                  provider,
-                  identityAuthority: 'provider_session_start',
-                }),
-              }),
-            )
-          await expect
-            .poll(async () => {
-              const binding = (await readPersistedTerminalAgentNode(window, nodeId))?.agent
-              return binding?.resumeSessionIdVerified === true ? binding.resumeSessionId : null
-            })
-            .toBeTruthy()
-          durableResumeSessionId =
-            (await readPersistedTerminalAgentNode(window, nodeId))?.agent?.resumeSessionId ?? null
+            .not.toBeNull()
+          const durableBinding = (await readPersistedTerminalAgentNode(window, nodeId))?.agent
+          expect(durableBinding).toMatchObject({ provider, resumeSessionIdVerified: true })
+          const verifiedResumeSessionId = durableBinding?.resumeSessionId
+          expect(verifiedResumeSessionId).not.toBeNull()
+          expect(verifiedResumeSessionId).toBeDefined()
+          if (verifiedResumeSessionId === null || verifiedResumeSessionId === undefined) {
+            throw new Error(`Expected a verified ${provider} resume session ID`)
+          }
+          durableResumeSessionId = verifiedResumeSessionId
         } finally {
           await electronApp.close()
+        }
+
+        if (durableResumeSessionId === null) {
+          throw new Error(`Expected a durable ${provider} resume session ID before restart`)
         }
 
         const { electronApp: restartedApp, window: restartedWindow } = await launchApp({
@@ -141,8 +175,13 @@ test.describe('Workspace Canvas - terminal Agent full restart', () => {
               ? ` --resume ${durableResumeSessionId}`
               : ` resume ${durableResumeSessionId}`
           await expect
-            .poll(async () => (await readFile(invocationLogPath, 'utf8')).split(/\r?\n/u))
-            .toContainEqual(expect.stringMatching(new RegExp(`${resumeSuffix}$`, 'u')))
+            .poll(
+              async () =>
+                (await readFile(invocationLogPath, 'utf8'))
+                  .split(/\r?\n/u)
+                  .filter(invocation => invocation.endsWith(resumeSuffix)).length,
+            )
+            .toBe(1)
           const invocations = (await readFile(invocationLogPath, 'utf8')).split(/\r?\n/u)
           expect(invocations.filter(invocation => invocation.endsWith(resumeSuffix))).toHaveLength(
             1,
@@ -160,24 +199,34 @@ test.describe('Workspace Canvas - terminal Agent full restart', () => {
           await expectOverlayStubReady(terminal, provider)
           await terminal.locator('.xterm-helper-textarea').click()
           await restartedWindow.keyboard.press('Control+C')
+          const readRestartedTranscript = async () =>
+            (await terminal.locator('.terminal-node__transcript').textContent()) ?? ''
+          await expect
+            .poll(async () =>
+              outputLines(await readRestartedTranscript()).includes(continuitySentinel),
+            )
+            .toBe(true)
+          expect(outputLines(await readRestartedTranscript())).toContain(continuitySentinel)
+          await expect.poll(() => readRuntimeSessionId(restartedWindow, nodeId)).not.toBeNull()
+          const restartedRuntimeSessionId = await readRuntimeSessionId(restartedWindow, nodeId)
+          expect(initialRuntimeSessionId).not.toBeNull()
+          expect(restartedRuntimeSessionId).not.toBeNull()
+          expect(restartedRuntimeSessionId).not.toBe(initialRuntimeSessionId)
           await expect
             .poll(
               async () =>
-                (await terminal.locator('.terminal-node__transcript').textContent()) ?? '',
+                (await readPersistedTerminalAgentNode(restartedWindow, nodeId))?.agent ?? null,
             )
-            .toContain(continuitySentinel)
-          await expect
-            .poll(() => readRuntimeSessionId(restartedWindow, nodeId))
-            .not.toBe(initialRuntimeSessionId)
-          await expect
-            .poll(() => readPersistedTerminalAgentNode(restartedWindow, nodeId))
-            .toMatchObject({
-              agent: {
-                provider,
-                resumeSessionId: durableResumeSessionId,
-                resumeSessionIdVerified: true,
-              },
-            })
+            .not.toBeNull()
+          const persistedAfterRestart = await readPersistedTerminalAgentNode(
+            restartedWindow,
+            nodeId,
+          )
+          expect(persistedAfterRestart?.agent).toEqual({
+            provider,
+            resumeSessionId: durableResumeSessionId,
+            resumeSessionIdVerified: true,
+          })
         } finally {
           await restartedApp.close()
         }
