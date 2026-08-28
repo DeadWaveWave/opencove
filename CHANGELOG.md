@@ -102,6 +102,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Agent: report Pi run state from its session log and show Observing until evidence arrives instead of leaving it permanently Working. (#372)
+- Agent: keep Kimi startup observation neutral and show degraded only when its session wire is explicitly unavailable. (#372)
 - Terminal: render Windows terminals with WebGL and quantize backing cells to integer device pixels at fractional DPI and canvas zoom, preventing accumulated glyph-width drift. (#368)
 - Agent: keep a busy agent labelled as working through long model generation by widening the hook freshness lease to 180s, so a run that goes quiet for up to three minutes is no longer downgraded to a stale fallback status. (#367)
 - Agent: inject Claude Code and Codex hook configuration per launch instead of editing user-level files, clean exact legacy OpenCove residue at startup, and tie temporary artifacts to the PTY lifecycle. (#366)

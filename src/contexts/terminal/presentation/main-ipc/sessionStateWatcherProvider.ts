@@ -6,6 +6,8 @@ import type {
 import { GeminiSessionStateWatcher } from '../../../agent/infrastructure/watchers/GeminiSessionStateWatcher'
 import { KimiWireStateWatcher } from '../../../agent/infrastructure/watchers/KimiWireStateWatcher'
 import type { KimiWireUnobservableReason } from '../../../agent/infrastructure/watchers/KimiWireStateDetector'
+import { PiSessionStateWatcher } from '../../../agent/infrastructure/watchers/PiSessionStateWatcher'
+import type { PiUnobservableReason } from '../../../agent/infrastructure/watchers/PiSessionStateDetector'
 import { SessionTurnStateWatcher } from '../../../agent/infrastructure/watchers/SessionTurnStateWatcher'
 import { isJsonlProvider, logSessionStateWatcherDiagnostics } from './sessionStateWatcherShared'
 
@@ -34,6 +36,18 @@ export function createSessionFileStateWatcher(options: {
       onState: options.onState,
       onUnavailable: (sessionId, reason: KimiWireUnobservableReason) => {
         logSessionStateWatcherDiagnostics('kimi-wire-unavailable', { sessionId, reason })
+        options.onUnavailable(sessionId)
+      },
+      onError: options.onError,
+    })
+  }
+  if (options.provider === 'pi') {
+    return new PiSessionStateWatcher({
+      sessionId: options.sessionId,
+      filePath: options.filePath,
+      onState: options.onState,
+      onUnavailable: (sessionId, reason: PiUnobservableReason) => {
+        logSessionStateWatcherDiagnostics('pi-session-unavailable', { sessionId, reason })
         options.onUnavailable(sessionId)
       },
       onError: options.onError,

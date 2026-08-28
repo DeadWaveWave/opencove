@@ -2,6 +2,8 @@ import type { AgentRuntimeStatus } from '../../types'
 
 export function getStatusClassName(status: AgentRuntimeStatus | null): string {
   switch (status) {
+    case null:
+      return 'terminal-node__status--observing'
     case 'standby':
       return 'terminal-node__status--standby'
     case 'waiting':
@@ -15,7 +17,6 @@ export function getStatusClassName(status: AgentRuntimeStatus | null): string {
     case 'restoring':
       return 'terminal-node__status--restoring'
     case 'running':
-    default:
       return 'terminal-node__status--running'
   }
 }

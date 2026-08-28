@@ -227,6 +227,7 @@ export const en = {
   performanceMonitor: enPerformanceMonitor,
   agentRuntime: {
     working: 'Working',
+    observing: 'Observing',
     waiting: 'Waiting',
     standby: 'Standby',
     hookDegraded: 'Fallback',

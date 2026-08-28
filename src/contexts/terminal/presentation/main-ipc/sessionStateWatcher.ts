@@ -177,7 +177,7 @@ export function createSessionStateWatcherController({
     onState?.(eventPayload)
   }
 
-  const broadcastDegradedLaunch = (sessionId: string): void =>
+  const broadcastObservationUnavailable = (sessionId: string): void =>
     broadcastSessionState(sessionId, 'standby', { source: 'launch', degraded: true })
 
   const scheduleRetry = (sessionId: string, watcherVersion: number): void => {
@@ -246,13 +246,6 @@ export function createSessionStateWatcherController({
 
       stateWatcherResolvedResumeSessionIdBySession.set(sessionId, resolvedSessionId)
       broadcastSessionMetadataOnce(sessionId, resolvedSessionId)
-
-      if (input.provider === 'pi') {
-        stateWatcherBySession.set(sessionId, { dispose: () => undefined })
-        cancelSessionStateWatcherRetry(sessionId)
-        stateWatcherRetryCountBySession.delete(sessionId)
-        return
-      }
 
       if (input.provider === 'opencode') {
         if (!input.opencodeBaseUrl) {
@@ -337,7 +330,7 @@ export function createSessionStateWatcherController({
         filePath: sessionFilePath,
         launchMode: input.launchMode,
         onState: broadcastSessionState,
-        onUnavailable: broadcastDegradedLaunch,
+        onUnavailable: broadcastObservationUnavailable,
         onError: handleWatcherError,
       })
 
@@ -359,10 +352,6 @@ export function createSessionStateWatcherController({
     clearSessionStateWatcher(input.sessionId, { disposeStartInput: true })
     stateWatcherStartInputBySession.set(input.sessionId, input)
     stateWatcherLastInteractionAtMsBySession.set(input.sessionId, input.startedAtMs)
-
-    if (input.provider === 'kimi') {
-      broadcastDegradedLaunch(input.sessionId)
-    }
 
     const watcherVersion = stateWatcherVersionBySession.get(input.sessionId) ?? 0
     if (input.provider === 'gemini' && input.launchMode === 'new' && !input.resumeSessionId) {
