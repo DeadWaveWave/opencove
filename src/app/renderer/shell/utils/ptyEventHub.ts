@@ -49,6 +49,7 @@ export interface PtyEventHub {
     sessionId: string,
     listener: (event: TerminalSessionMetadataEvent) => void,
   ) => UnsubscribeFn
+  getLatestSessionMetadata: (sessionId: string) => TerminalSessionMetadataEvent | null
   syncAgentRunStateSessions: (sessionIds: ReadonlySet<string>) => void
   disposeAgentRunStateSession: (sessionId: string) => void
   refreshAgentRunStateAuthority: () => void
@@ -407,6 +408,7 @@ export function createPtyEventHub(
     onSessionState,
     onMetadata,
     onSessionMetadata,
+    getLatestSessionMetadata: sessionId => latestMetadataBySessionId.get(sessionId) ?? null,
     syncAgentRunStateSessions: sessionIds => agentRunStateArbiter.syncSessions(sessionIds),
     disposeAgentRunStateSession: sessionId => {
       agentRunStateArbiter.disposeSession(sessionId)

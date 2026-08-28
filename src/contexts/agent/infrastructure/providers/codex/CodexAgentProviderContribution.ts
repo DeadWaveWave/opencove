@@ -43,9 +43,14 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     },
   } as const
   readonly detector: AgentProviderDetector
+  readonly hookInjection = {
+    prepareHookInjection: async (
+      command: Parameters<CodexAgentProviderContribution['prepareTelemetry']>[0],
+    ) => await this.prepareTelemetry(command),
+  }
   readonly launcher = {
     createLaunchPlan: async (command: CreateAgentLaunchPlanCommand) => {
-      const telemetry = await this.prepareTelemetry(command)
+      const telemetry = await this.hookInjection.prepareHookInjection(command)
       const plan = buildAgentLaunchCommand({
         provider: this.descriptor.id,
         mode: command.mode,
@@ -77,7 +82,12 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     this.detector = options.detector ?? new ExistingAgentProviderDetector(this.descriptor.id)
   }
 
-  private async prepareTelemetry(command: CreateAgentLaunchPlanCommand) {
+  private async prepareTelemetry(
+    command: Pick<
+      CreateAgentLaunchPlanCommand,
+      'artifacts' | 'executablePathOverride' | 'workspaceDirectory'
+    > & { readonly environment?: Readonly<NodeJS.ProcessEnv> },
+  ) {
     if (!this.channel) {
       return { args: [], env: {}, hookInstallState: 'not_installed' as const }
     }
@@ -97,6 +107,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     try {
       trust = await this.hookTrustResolver({
         executable: command.executablePathOverride ?? this.descriptor.launch.executable,
+        environment: command.environment,
         hookCommand: hook.command,
         hookConfigurations: hook.configurations,
         workspaceDirectory: command.workspaceDirectory,

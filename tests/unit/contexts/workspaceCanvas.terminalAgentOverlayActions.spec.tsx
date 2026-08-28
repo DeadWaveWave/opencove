@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeProps } from '../../../src/contexts/workspace/presentation/renderer/components/TerminalNode.types'
 import { WorkspaceCanvasTerminalNodeType } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.terminal'
@@ -19,6 +19,7 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/Termin
       <span data-testid="switch">{String(typeof props.onSwitchSession === 'function')}</span>
       <span data-testid="cwd">{props.agentExecutionDirectory}</span>
       <span data-testid="resume">{props.agentResumeSessionId}</span>
+      <button data-testid="exit" onClick={props.onAgentOverlayExit} />
     </div>
   ),
 }))
@@ -56,6 +57,31 @@ function createOverlayData(): TerminalNodeData {
   }
 }
 
+function renderOverlayExit(data: TerminalNodeData, clearTerminalAgentOverlay: () => void): void {
+  render(
+    <WorkspaceCanvasTerminalNodeType
+      id="terminal-1"
+      data={data}
+      terminalFontSize={14}
+      terminalFontFamily={null}
+      terminalDisplayCalibration={null}
+      selectNode={vi.fn()}
+      closeNodeRef={{ current: vi.fn(async () => undefined) }}
+      resizeNodeRef={{ current: vi.fn() }}
+      copyAgentLastMessageRef={{ current: vi.fn(async () => undefined) }}
+      reloadAgentSessionRef={{ current: vi.fn(async () => undefined) }}
+      listAgentSessionsRef={{ current: vi.fn(async () => []) }}
+      switchAgentSessionRef={{ current: vi.fn(async () => undefined) }}
+      updateNodeScrollbackRef={{ current: vi.fn() }}
+      normalizeViewportForTerminalInteractionRef={{ current: vi.fn() }}
+      updateTerminalTitleRef={{ current: vi.fn() }}
+      clearTerminalAgentOverlayRef={{ current: clearTerminalAgentOverlay }}
+      renameTerminalTitleRef={{ current: vi.fn() }}
+    />,
+  )
+  fireEvent.click(screen.getByTestId('exit'))
+}
+
 describe('WorkspaceCanvas terminal agent overlay actions', () => {
   it('wires all four agent actions from the overlay and terminal binding', () => {
     const noop = vi.fn()
@@ -87,5 +113,41 @@ describe('WorkspaceCanvas terminal agent overlay actions', () => {
     expect(screen.getByTestId('switch')).toHaveTextContent('true')
     expect(screen.getByTestId('cwd')).toHaveTextContent('/tmp/overlay cwd')
     expect(screen.getByTestId('resume')).toHaveTextContent('resume-overlay')
+  })
+
+  it('does not clear a verified binding when alternate-screen exit precedes activity', () => {
+    const clearTerminalAgentOverlay = vi.fn()
+
+    renderOverlayExit(createOverlayData(), clearTerminalAgentOverlay)
+
+    expect(clearTerminalAgentOverlay).not.toHaveBeenCalled()
+  })
+
+  it('still clears an unverified legacy overlay on alternate-screen exit', () => {
+    const clearTerminalAgentOverlay = vi.fn()
+    const data = createOverlayData()
+    data.terminalAgentBinding = null
+
+    renderOverlayExit(data, clearTerminalAgentOverlay)
+
+    expect(clearTerminalAgentOverlay).toHaveBeenCalledWith(
+      'terminal-1',
+      Date.parse('2026-08-12T00:00:00.000Z'),
+    )
+  })
+
+  it('leaves a gateway-owned invocation for authoritative exit reconciliation', () => {
+    const clearTerminalAgentOverlay = vi.fn()
+    const data = createOverlayData()
+    data.agentOverlay!.activity = {
+      invocationId: 'invocation-1',
+      generation: 1,
+      phase: 'active',
+      observedAtMs: 100,
+    }
+
+    renderOverlayExit(data, clearTerminalAgentOverlay)
+
+    expect(clearTerminalAgentOverlay).not.toHaveBeenCalled()
   })
 })

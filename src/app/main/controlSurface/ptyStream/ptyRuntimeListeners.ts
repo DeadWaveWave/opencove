@@ -17,3 +17,28 @@ export function subscribePtyRuntimeSources<Event>(
     return dispose ? [dispose] : []
   })
 }
+
+export function subscribeAgentSources<StateEvent, MetadataEvent>(
+  options: {
+    agentStateSources?: readonly {
+      onState?: (listener: (event: StateEvent) => void) => () => void
+    }[]
+    agentMetadataSources?: readonly {
+      onMetadata?: (listener: (event: MetadataEvent) => void) => () => void
+    }[]
+  },
+  stateListeners: Set<(event: StateEvent) => void>,
+  metadataListeners: Set<(event: MetadataEvent) => void>,
+): Array<() => void> {
+  const stateSubscriptions = subscribePtyRuntimeSources(
+    options.agentStateSources ?? [],
+    stateListeners,
+  )
+  const metadataSubscriptions = (options.agentMetadataSources ?? []).flatMap(source => {
+    const dispose = source.onMetadata?.(event =>
+      metadataListeners.forEach(listener => listener(event)),
+    )
+    return dispose ? [dispose] : []
+  })
+  return [...stateSubscriptions, ...metadataSubscriptions]
+}

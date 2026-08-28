@@ -20,6 +20,78 @@ function createWebSocketHarness(): {
 }
 
 describe('PtyStreamHub lifecycle truth', () => {
+  it('broadcasts and replays activity-only metadata transitions', async () => {
+    const hub = new PtyStreamHub({
+      replayWindowMaxBytes: 64_000,
+      ptyRuntime: {
+        spawnSession: vi.fn(),
+        write: vi.fn(),
+        resize: vi.fn(),
+        kill: vi.fn(),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+      },
+    })
+    const client = createWebSocketHarness()
+    hub.registerClient({ clientId: 'client', kind: 'desktop', ws: client.ws })
+    hub.registerSessionMetadata({
+      sessionId: 'session-activity',
+      kind: 'terminal',
+      startedAt: '2026-08-28T00:00:00.000Z',
+      cwd: '/tmp',
+      command: 'shell',
+      args: [],
+      cols: 80,
+      rows: 24,
+    })
+    const base = {
+      provider: 'claude-code' as const,
+      invocationId: 'invocation-1',
+      generation: 1,
+      observedAtMs: 1_000,
+      identityAuthority: null,
+    }
+
+    hub.registerSessionAgentMetadata({
+      sessionId: 'session-activity',
+      resumeSessionId: null,
+      terminalAgentActivity: { ...base, phase: 'active' },
+    })
+    hub.registerSessionAgentMetadata({
+      sessionId: 'session-activity',
+      resumeSessionId: null,
+      terminalAgentActivity: { ...base, phase: 'exited', observedAtMs: 2_000 },
+    })
+
+    expect(client.messages.filter(message => message.type === 'metadata')).toEqual([
+      {
+        type: 'metadata',
+        sessionId: 'session-activity',
+        resumeSessionId: null,
+        terminalAgentActivity: { ...base, phase: 'active' },
+      },
+      {
+        type: 'metadata',
+        sessionId: 'session-activity',
+        resumeSessionId: null,
+        terminalAgentActivity: { ...base, phase: 'exited', observedAtMs: 2_000 },
+      },
+    ])
+
+    const lateClient = createWebSocketHarness()
+    hub.registerClient({ clientId: 'late', kind: 'web', ws: lateClient.ws })
+    hub.attach({ clientId: 'late', sessionId: 'session-activity' })
+    await hub.drainRecoveryOperations()
+    expect(lateClient.messages.filter(message => message.type === 'metadata')).toEqual([
+      {
+        type: 'metadata',
+        sessionId: 'session-activity',
+        resumeSessionId: null,
+        terminalAgentActivity: { ...base, phase: 'exited', observedAtMs: 2_000 },
+      },
+    ])
+  })
+
   it('streams transient foreground reconciliation without turning it into durable replay state', () => {
     const hub = new PtyStreamHub({
       replayWindowMaxBytes: 64_000,

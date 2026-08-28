@@ -76,26 +76,31 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   }, [id, storeApi])
   const overlayStartedAtMs =
     data.kind === 'terminal' && data.agentOverlay ? data.agentOverlay.startedAtMs : null
+  const gatewayOwnsOverlayLifecycle =
+    Boolean(data.agentOverlay?.activity) ||
+    Boolean(data.terminalAgentBinding && isResumeSessionBindingVerified(data.terminalAgentBinding))
   const handleAgentOverlayExit = useCallback(() => {
-    if (overlayStartedAtMs === null) {
+    if (overlayStartedAtMs === null || gatewayOwnsOverlayLifecycle) {
       return
     }
     clearTerminalAgentOverlayRef.current(id, overlayStartedAtMs)
-  }, [clearTerminalAgentOverlayRef, id, overlayStartedAtMs])
+  }, [clearTerminalAgentOverlayRef, gatewayOwnsOverlayLifecycle, id, overlayStartedAtMs])
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null
   const isAgentTreated = isAgentTreatedNode({ data })
+  const liveOverlayProvider =
+    data.agentOverlay?.activity?.phase === 'exited' ? null : (data.agentOverlay?.provider ?? null)
   const resolvedTerminalProvider =
     data.kind === 'agent'
       ? (data.agent?.provider ?? null)
-      : (data.agentOverlay?.provider ??
+      : (liveOverlayProvider ??
         data.terminalAgentBinding?.provider ??
         data.terminalProviderHint ??
         null)
   const overlayProvider =
-    data.kind === 'terminal'
-      ? (data.agentOverlay?.provider ?? data.terminalAgentBinding?.provider ?? null)
+    data.kind === 'terminal' && isAgentTreated
+      ? (liveOverlayProvider ?? data.terminalAgentBinding?.provider ?? null)
       : null
   const linkedTaskTitle = useStore(storeState => {
     if (data.kind !== 'agent' || !data.agent) {

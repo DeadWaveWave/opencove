@@ -33,6 +33,7 @@ import type {
 } from '../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { readSshConfigHosts } from './topology/sshConfigReader'
 import type { AgentProviderRegistry } from '../../../contexts/agent/application/services/AgentProviderRegistry'
+import type { TerminalAgentActivityEnvironmentService } from '../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
@@ -54,6 +55,7 @@ export function registerControlSurfaceHandlers(
     terminalSpawnAdmission: TerminalSpawnAdmission
     terminalRecoverySpawnAdmission: TerminalRecoverySpawnAdmission
     agentProviderRegistry: AgentProviderRegistry
+    terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
   registerSystemHandlers(controlSurface, { appVersion: deps.appVersion })
@@ -117,6 +119,7 @@ export function registerControlSurfaceHandlers(
     ptyStreamHub: deps.ptyStreamHub,
     topology: deps.topology,
     terminalSpawnAdmission: deps.terminalSpawnAdmission,
+    terminalAgentActivity: deps.terminalAgentActivity,
   })
   registerPtyMountHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
@@ -124,6 +127,7 @@ export function registerControlSurfaceHandlers(
     ptyRuntime: deps.ptyRuntime,
     ptyStreamHub: deps.ptyStreamHub,
     terminalSpawnAdmission: deps.terminalSpawnAdmission,
+    terminalAgentActivity: deps.terminalAgentActivity,
   })
   registerNodeControlHandlers(controlSurface, {
     topology: deps.topology,

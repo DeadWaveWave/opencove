@@ -1,14 +1,15 @@
 import {
   appendCodexRecord,
   appendClaudeRecord,
-  createClaudeSessionFile,
   createCodexSessionFile,
+  resolveScenarioSessionFile,
   runJsonlStdinSubmitDelayedTurnScenario,
   runJsonlStdinSubmitDrivenTurnScenario,
   runJsonlStdinSubmitTurnLifecycleScenario,
 } from '../test-agent-session-jsonl.mjs'
 import { runRawClickRedrawAfterClickScenario } from './raw.mjs'
 import { sleep } from './sleep.mjs'
+import { runTwoStageCtrlCFixture } from './twoStageCtrlC.mjs'
 
 const IDLE_SCENARIO_LIFETIME_MS = 180_000
 const OVERLAY_ADVANCE_SENTINEL = '<test-overlay-advance>'
@@ -186,11 +187,24 @@ export async function runCodexOverlayLifecycleScenario(cwd) {
   })
 }
 
-export async function runJsonlOverlayLifecycleScenario(provider, cwd) {
+export async function runJsonlOverlayLifecycleScenario(
+  provider,
+  cwd,
+  {
+    mode = 'new',
+    resumeSessionId = null,
+    onSessionStart = async () => {},
+    onTurnCompleted = async () => {},
+  } = {},
+) {
   const isClaude = provider === 'claude-code'
-  const sessionFilePath = isClaude
-    ? await createClaudeSessionFile(cwd)
-    : await createCodexSessionFile(cwd)
+  const { sessionFilePath } = await resolveScenarioSessionFile({
+    provider,
+    cwd,
+    mode,
+    resumeSessionId,
+  })
+  await onSessionStart(sessionFilePath)
 
   const lifecyclePromise = waitForOverlayAdvanceAndExit({
     onAdvance: async () => {
@@ -202,17 +216,17 @@ export async function runJsonlOverlayLifecycleScenario(provider, cwd) {
             stop_reason: 'end_turn',
           },
         })
-        return
+      } else {
+        await appendCodexRecord(sessionFilePath, {
+          type: 'event_msg',
+          payload: {
+            type: 'task_complete',
+            turn_id: 'opencove-test-overlay-turn-1',
+            last_agent_message: 'Overlay ready.',
+          },
+        })
       }
-
-      await appendCodexRecord(sessionFilePath, {
-        type: 'event_msg',
-        payload: {
-          type: 'task_complete',
-          turn_id: 'opencove-test-overlay-turn-1',
-          last_agent_message: 'Overlay ready.',
-        },
-      })
+      await onTurnCompleted(sessionFilePath)
     },
     onExit: () => {
       process.stdout.write(`\u001b[?1049l[opencove-test-overlay] ${provider} exited\n`)
@@ -241,6 +255,42 @@ export async function runJsonlOverlayLifecycleScenario(provider, cwd) {
 
   process.stdout.write(`\u001b[?1049h[opencove-test-overlay] ${provider} ready\n`)
   await lifecyclePromise
+}
+
+export async function runJsonlTwoStageCtrlCScenario(
+  provider,
+  cwd,
+  { onSessionStart = async () => {} } = {},
+) {
+  const { sessionFilePath } = await resolveScenarioSessionFile({
+    provider,
+    cwd,
+    mode: 'new',
+    resumeSessionId: null,
+  })
+  await onSessionStart(sessionFilePath)
+
+  if (provider === 'claude-code') {
+    await appendClaudeRecord(sessionFilePath, {
+      type: 'assistant',
+      message: {
+        content: [{ type: 'thinking', text: 'Working.' }],
+        stop_reason: null,
+      },
+    })
+  } else {
+    await appendCodexRecord(sessionFilePath, {
+      type: 'event_msg',
+      payload: {
+        type: 'task_started',
+        turn_id: 'opencove-test-two-stage-turn-1',
+        model_context_window: 128_000,
+        collaboration_mode_kind: 'default',
+      },
+    })
+  }
+
+  await runTwoStageCtrlCFixture(provider)
 }
 
 export async function runCodexCommentaryThenFinalScenario(cwd) {

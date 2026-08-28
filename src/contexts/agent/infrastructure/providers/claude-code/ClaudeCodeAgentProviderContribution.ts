@@ -27,9 +27,14 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
     },
   } as const
   readonly detector: AgentProviderDetector
+  readonly hookInjection = {
+    prepareHookInjection: async (
+      command: Parameters<ClaudeCodeAgentProviderContribution['prepareTelemetry']>[0],
+    ) => await this.prepareTelemetry(command),
+  }
   readonly launcher = {
     createLaunchPlan: async (command: CreateAgentLaunchPlanCommand) => {
-      const telemetry = await this.prepareTelemetry(command)
+      const telemetry = await this.hookInjection.prepareHookInjection(command)
       const plan = buildAgentLaunchCommand({
         provider: this.descriptor.id,
         mode: command.mode,
@@ -57,7 +62,12 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
     this.detector = options.detector ?? new ExistingAgentProviderDetector(this.descriptor.id)
   }
 
-  private async prepareTelemetry(command: CreateAgentLaunchPlanCommand) {
+  private async prepareTelemetry(
+    command: Pick<
+      CreateAgentLaunchPlanCommand,
+      'artifacts' | 'executablePathOverride' | 'workspaceDirectory'
+    >,
+  ) {
     if (!this.channel) {
       return { args: [], env: {}, hookInstallState: 'not_installed' as const }
     }
@@ -97,6 +107,7 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
 function createClaudeHooks(command: string, args: readonly string[]) {
   const handler = { hooks: [{ args, command, type: 'command' }] }
   return {
+    SessionStart: [handler],
     Notification: [handler],
     PermissionDenied: [handler],
     PermissionRequest: [handler],

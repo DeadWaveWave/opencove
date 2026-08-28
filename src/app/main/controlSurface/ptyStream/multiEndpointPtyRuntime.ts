@@ -12,7 +12,7 @@ import { RemotePtyEndpointProxy } from './remotePtyEndpointProxy'
 import type { TerminalRuntimeRoute } from '../../../../contexts/terminal/domain/recovery/terminalRecovery'
 import { createRemoteRecoveryCheckpointFence } from './remoteRecoveryCheckpointFence'
 import { ShellInputReadiness } from './shellInputReadiness'
-import { subscribePtyRuntimeListener, subscribePtyRuntimeSources } from './ptyRuntimeListeners'
+import { subscribeAgentSources, subscribePtyRuntimeListener } from './ptyRuntimeListeners'
 import { AgentLaunchArtifactOwner } from '../../../../contexts/agent/application/services/AgentLaunchArtifactOwner'
 import { spawnLocalSessionWithArtifacts } from './localAgentLaunchArtifactLifecycle'
 import { RemotePtyRecoveryBlockedError } from './RemotePtyRecoveryBlockedError'
@@ -64,6 +64,7 @@ export function createMultiEndpointPtyRuntime(options: {
   topology: WorkerTopologyStore
   disposeLocalRuntime: boolean
   agentStateSources?: readonly Pick<ControlSurfacePtyRuntime, 'onState'>[]
+  agentMetadataSources?: readonly Pick<ControlSurfacePtyRuntime, 'onMetadata'>[]
 }): MultiEndpointPtyRuntime {
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
@@ -235,10 +236,7 @@ export function createMultiEndpointPtyRuntime(options: {
     metadataListeners.forEach(listener => listener(event))
   })
 
-  const disposeAgentStateSourceListeners = subscribePtyRuntimeSources(
-    options.agentStateSources ?? [],
-    stateListeners,
-  )
+  const agentSourceDisposers = subscribeAgentSources(options, stateListeners, metadataListeners)
 
   return {
     listProfiles: async () =>
@@ -467,7 +465,7 @@ export function createMultiEndpointPtyRuntime(options: {
       disposeLocalForegroundListener?.()
       disposeLocalStateListener?.()
       disposeLocalMetadataListener?.()
-      disposeAgentStateSourceListeners.forEach(disposeListener => disposeListener())
+      agentSourceDisposers.forEach(disposeListener => disposeListener())
 
       for (const proxy of proxiesByEndpointId.values()) {
         proxy.dispose()

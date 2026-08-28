@@ -27,18 +27,12 @@ import { createControlSurfaceTerminalRecoveryRuntime } from './terminalRecovery/
 import { TerminalRuntimeAvailability } from '../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { initializeTerminalRuntimeAvailability } from './terminalRecovery/terminalRuntimeStartup'
 import { createControlSurfaceHttpServerContext } from './controlSurfaceHttpServerContext'
-import { AgentProviderRegistry } from '../../../contexts/agent/application/services/AgentProviderRegistry'
-import { createBuiltinAgentProviderContributions } from '../../../contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
+import { createTerminalAgentActivityRuntime } from './terminalAgentActivityRuntime'
 import {
   CONTROL_SURFACE_CONNECTION_VERSION,
   normalizeControlSurfaceAppVersion,
   type ControlSurfaceConnectionInfo,
   type ControlSurfaceHttpServerInstance,
-} from './controlSurfaceHttpServer.contract'
-export type {
-  ControlSurfaceConnectionInfo,
-  ControlSurfaceHttpServerInstance,
-  ControlSurfaceServerDisposable,
 } from './controlSurfaceHttpServer.contract'
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
@@ -74,16 +68,20 @@ export function registerControlSurfaceHttpServer(
   })
   const agentHookChannels =
     options.agentHookChannels ?? (options.claudeHookChannel ? [options.claudeHookChannel] : [])
+  const terminalAgents = createTerminalAgentActivityRuntime({
+    agentHookChannels,
+    agentProviderRegistry: options.agentProviderRegistry,
+    desktopMetadataSink: options.desktopPtyMetadataSink,
+    desktopStateSink: options.desktopPtyStateSink,
+  })
+  const agentProviderRegistry = terminalAgents.agentProviderRegistry
   const ptyRuntime = createMultiEndpointPtyRuntime({
     localRuntime: options.ptyRuntime,
     topology,
     disposeLocalRuntime: options.ownsPtyRuntime === true,
-    agentStateSources: agentHookChannels,
+    agentStateSources: terminalAgents.stateSources,
+    agentMetadataSources: terminalAgents.metadataSources,
   })
-  const agentHookStart = Promise.all(agentHookChannels.map(async channel => await channel.start()))
-  const agentProviderRegistry =
-    options.agentProviderRegistry ??
-    new AgentProviderRegistry(createBuiltinAgentProviderContributions())
 
   const ptyStreamService = createPtyStreamService({
     token,
@@ -141,6 +139,7 @@ export function registerControlSurfaceHttpServer(
     terminalSpawnAdmission: terminalRuntimeAvailability,
     terminalRecoverySpawnAdmission: terminalRuntimeAvailability,
     agentProviderRegistry,
+    terminalAgentActivity: terminalAgents.activity,
   })
   let closed = false
   let disposePromise: Promise<void> | null = null
@@ -423,7 +422,6 @@ export function registerControlSurfaceHttpServer(
       }
 
       disposePromise = (async () => {
-        await agentHookStart.catch(() => undefined)
         try {
           await pendingConnectionWrite
         } catch {
@@ -458,7 +456,7 @@ export function registerControlSurfaceHttpServer(
         await new Promise<void>(resolveClose => server.close(() => resolveClose()))
 
         try {
-          await Promise.all(agentHookChannels.map(async channel => await channel.dispose()))
+          await terminalAgents.dispose()
         } catch {
           // ignore
         }

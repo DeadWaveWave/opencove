@@ -12,6 +12,7 @@ import type {
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { PtyStreamClientKind, PtyStreamRole } from './ptyStreamTypes'
 import type { SessionMetadata, SessionState, ClientState } from './ptyStreamState'
+import { sameTerminalAgentActivitySnapshot } from '../../../../shared/runtime/terminalAgentActivity'
 import {
   broadcastControlChanged,
   broadcastData,
@@ -175,7 +176,11 @@ export class PtyStreamHub {
     const unchanged =
       previous?.resumeSessionId === metadata.resumeSessionId &&
       previous?.profileId === metadata.profileId &&
-      previous?.runtimeKind === metadata.runtimeKind
+      previous?.runtimeKind === metadata.runtimeKind &&
+      sameTerminalAgentActivitySnapshot(
+        previous?.terminalAgentActivity,
+        metadata.terminalAgentActivity,
+      )
 
     if (unchanged) {
       return

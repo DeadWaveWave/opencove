@@ -370,11 +370,11 @@ describe('WorkspaceCanvas terminal title mode', () => {
     })
     expect(latestNodes[0]?.data.terminalProviderHint).toBe('opencode')
     expect(latestNodes[0]?.data.kind).toBe('terminal')
-    expect(latestNodes[0]?.data.terminalAgentBinding).toBeNull()
-    expect(latestNodes[0]?.data.agentOverlay?.provider).toBe('opencode')
+    expect(latestNodes[0]?.data.terminalAgentBinding).toBeUndefined()
+    expect(latestNodes[0]?.data.agentOverlay).toBeUndefined()
   })
 
-  it('ignores command-like text submitted inside an active terminal agent overlay', async () => {
+  it('keeps a provider hint non-authoritative while later terminal titles change', async () => {
     const kill = vi.fn(async () => undefined)
     const onExit = vi.fn(() => () => undefined)
 
@@ -481,9 +481,9 @@ describe('WorkspaceCanvas terminal title mode', () => {
 
     fireEvent.click(screen.getByTestId('terminal-command-auto-1'))
 
-    expect(screen.getByTestId('terminal-title')).toHaveTextContent('opencode .')
+    expect(screen.getByTestId('terminal-title')).toHaveTextContent('ls -la')
     expect(screen.getByTestId('terminal-provider')).toHaveTextContent('opencode')
     expect(latestNodes[0]?.data.terminalProviderHint).toBe('opencode')
-    expect(latestNodes[0]?.data.agentOverlay?.provider).toBe('opencode')
+    expect(latestNodes[0]?.data.agentOverlay).toBeUndefined()
   })
 })

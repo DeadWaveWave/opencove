@@ -5,6 +5,7 @@ import type { WorkerTopologyStore } from '../../../src/app/main/controlSurface/t
 describe('RemotePtyEndpointProxy', () => {
   function createProxy() {
     const emitData = vi.fn()
+    const emitMetadata = vi.fn()
     const proxy = new RemotePtyEndpointProxy({
       endpointId: 'endpoint-1',
       topology: {
@@ -14,7 +15,7 @@ describe('RemotePtyEndpointProxy', () => {
       emitExit: vi.fn(),
       emitForeground: vi.fn(),
       emitState: vi.fn(),
-      emitMetadata: vi.fn(),
+      emitMetadata,
       emitPresentationReset: vi.fn(async () => undefined),
       emitPresentationResetCommitted: vi.fn(),
     })
@@ -22,6 +23,7 @@ describe('RemotePtyEndpointProxy', () => {
     return {
       proxy,
       emitData,
+      emitMetadata,
       internals: proxy as unknown as {
         handleMessage: (raw: string) => void
         ensureSocket: () => Promise<void>
@@ -34,6 +36,50 @@ describe('RemotePtyEndpointProxy', () => {
       },
     }
   }
+
+  it('strictly preserves authenticated terminal Agent activity metadata across an endpoint route', () => {
+    const { internals, emitMetadata } = createProxy()
+    const terminalAgentActivity = {
+      provider: 'codex',
+      invocationId: 'invocation-exact',
+      generation: 7,
+      phase: 'active',
+      observedAtMs: 1_234.5,
+      identityAuthority: 'provider_session_start',
+    }
+
+    internals.handleMessage(
+      JSON.stringify({
+        type: 'metadata',
+        sessionId: 'session-route',
+        resumeSessionId: ' codex-session-exact ',
+        profileId: ' profile-1 ',
+        runtimeKind: 'windows',
+        terminalAgentActivity,
+      }),
+    )
+
+    expect(emitMetadata).toHaveBeenCalledWith('session-route', {
+      sessionId: 'session-route',
+      resumeSessionId: 'codex-session-exact',
+      profileId: 'profile-1',
+      runtimeKind: 'windows',
+      terminalAgentActivity,
+    })
+
+    internals.handleMessage(
+      JSON.stringify({
+        type: 'metadata',
+        sessionId: 'session-route',
+        resumeSessionId: 'forged-session',
+        terminalAgentActivity: { ...terminalAgentActivity, generation: '7' },
+      }),
+    )
+    expect(emitMetadata).toHaveBeenLastCalledWith('session-route', {
+      sessionId: 'session-route',
+      resumeSessionId: 'forged-session',
+    })
+  })
 
   it('does not advance replay cursor from attached acknowledgements', () => {
     const { internals, emitData } = createProxy()

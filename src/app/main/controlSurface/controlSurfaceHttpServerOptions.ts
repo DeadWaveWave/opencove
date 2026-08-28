@@ -1,7 +1,11 @@
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
-import type { SyncEventPayload } from '../../../shared/contracts/dto'
+import type {
+  SyncEventPayload,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+} from '../../../shared/contracts/dto'
 import type { ClaudeHookChannel } from './agentHook/claudeHookChannel'
 import type { AgentHookChannel } from '../../../shared/runtime/agentHook/agentHookChannel'
 import type { AgentProviderRegistry } from '../../../contexts/agent/application/services/AgentProviderRegistry'
@@ -24,6 +28,8 @@ export interface RegisterControlSurfaceHttpServerOptions {
   enableWebShell?: boolean
   webUiPasswordHash?: string | null
   desktopSyncEventSink?: (payload: SyncEventPayload) => number
+  desktopPtyStateSink?: (payload: TerminalSessionStateEvent) => number
+  desktopPtyMetadataSink?: (payload: TerminalSessionMetadataEvent) => number
   closeWebsiteNode?: (nodeId: string) => Promise<void> | void
   claudeHookChannel?: ClaudeHookChannel
   agentHookChannels?: readonly AgentHookChannel[]

@@ -11,6 +11,7 @@ import type {
   CanvasImageMimeType,
   GitHubPullRequestSummary,
   TerminalPtyGeometry,
+  TerminalAgentActivitySnapshot,
   TerminalRuntimeKind,
   TerminalSessionStateSource,
   WebsiteWindowSessionMode,
@@ -80,6 +81,14 @@ export interface TerminalAgentOverlay {
   provider: AgentProvider
   status: AgentRuntimeStatus
   startedAtMs: number
+  activity?:
+    | (Pick<
+        TerminalAgentActivitySnapshot,
+        'invocationId' | 'generation' | 'phase' | 'observedAtMs'
+      > & {
+        verifiedProviderSessionId?: string | null
+      })
+    | null
 }
 
 export interface AgentRuntimeObservation {

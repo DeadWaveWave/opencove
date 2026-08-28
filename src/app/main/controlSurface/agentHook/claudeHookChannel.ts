@@ -20,6 +20,10 @@ export function createClaudeHookChannel(options: {
     source: 'claude_hook',
     validateEnvelope: value =>
       normalizeClaudeHookEnvelope(value) ?? validateClaudeHookEnvelope(value),
+    resolveSessionIdentity: envelope => ({
+      hookEventName: envelope.hookEventName,
+      providerSessionId: envelope.claudeSessionId,
+    }),
     buildReservationEnv: (endpoint, token) => ({
       OPENCOVE_CLAUDE_HOOK_ENDPOINT: endpoint,
       OPENCOVE_CLAUDE_HOOK_TOKEN: token,

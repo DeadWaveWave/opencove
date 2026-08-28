@@ -4,6 +4,7 @@ import type {
   AgentProviderAvailability,
   AgentProviderId,
 } from '../../../../shared/contracts/dto'
+import type { TerminalAgentHookContext } from '../../../../shared/runtime/agentHook/agentHookChannel'
 
 export interface AgentProviderPermissionConfiguration {
   readonly arguments?: readonly string[]
@@ -66,8 +67,27 @@ export interface AgentLaunchPlanner {
   createLaunchPlan(command: CreateAgentLaunchPlanCommand): Promise<AgentLaunchPlan>
 }
 
+export interface AgentHookInjectionPlan {
+  readonly args: readonly string[]
+  readonly env: Readonly<NodeJS.ProcessEnv>
+  readonly hookInstallState: AgentHookInstallState
+  readonly onStarted?: (sessionId: string, terminalActivity?: TerminalAgentHookContext) => void
+}
+
+export interface PrepareAgentHookInjectionCommand {
+  readonly artifacts: AgentLaunchArtifactRegistrar
+  readonly environment?: Readonly<NodeJS.ProcessEnv>
+  readonly executablePathOverride?: string | null
+  readonly workspaceDirectory: string
+}
+
+export interface AgentHookInjectionPlanner {
+  prepareHookInjection(command: PrepareAgentHookInjectionCommand): Promise<AgentHookInjectionPlan>
+}
+
 export interface AgentProviderContribution {
   readonly descriptor: AgentProviderDescriptor
   readonly detector: AgentProviderDetector
+  readonly hookInjection?: AgentHookInjectionPlanner
   readonly launcher: AgentLaunchPlanner
 }

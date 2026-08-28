@@ -18,6 +18,10 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 - Local Claude launches use a Worker-owned loopback hook channel for authoritative
   `working` / `waiting` / `standby` observations. Other providers and remote hosts continue to use
   the session-file detector.
+- Terminal-command Agent adoption through PATH shims supports POSIX bash/zsh and native Windows
+  processes. On Windows, WSL profiles and `wsl.exe` launches intentionally fail open to the exact
+  untouched spawn: host loopback credentials, host paths, and PowerShell scripts are not injected
+  into the Linux guest.
 
 ## Main Owners
 
@@ -74,6 +78,13 @@ restart. Cold session resume instead requires a durable, verified provider sessi
 Agent, hydration starts a fresh shell and enters the explicit provider resume command exactly once. A provider
 hint without a verified ID remains visible for manual recovery but never starts a new conversation
 automatically.
+
+For supported POSIX interactive shells, the PATH shim relay mirrors the user's normal non-login bash
+`.bashrc` flow and zsh login/non-login startup files, including a custom `ZDOTDIR`, then restores the
+shim at PATH precedence. Login bash is not produced by this relay (`bash` is started with
+`--noprofile --rcfile ... -i`), so `.bash_profile` / `.profile` are outside this feature's startup
+contract. Missing, malformed, or unreadable user rc files retain the underlying shell's outcome; the
+relay never edits those files.
 
 ## Related Docs
 

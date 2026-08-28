@@ -11,6 +11,7 @@ import {
   runCodexOverlayLifecycleScenario,
   runJsonlOverlayLifecycleScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
+  runJsonlTwoStageCtrlCScenario,
   runJsonlStdinSubmitDrivenTurnScenario,
   runJsonlStdinSubmitTurnLifecycleScenario,
 } from './test-agent-session-stub/codex.mjs'
@@ -37,6 +38,10 @@ import {
   runRawDsrReplyEchoScenario,
   runRawFocusRedrawAfterFocusScenario,
 } from './test-agent-session-stub/raw.mjs'
+import {
+  reportInjectedTerminalSessionStart,
+  reportInjectedTerminalTurnCompleted,
+} from './test-agent-session-stub/terminalShimHook.mjs'
 
 function isLikelyScenarioArg(value) {
   if (typeof value !== 'string' || value.length === 0) {
@@ -62,6 +67,7 @@ async function main() {
     model = 'default-model',
     rawResumeSessionId = '',
     rawScenario = '',
+    ...providerArgs
   ] = process.argv.slice(2)
   const cwd = resolve(rawCwd)
   const scenario =
@@ -70,12 +76,15 @@ async function main() {
       : isLikelyScenarioArg(rawResumeSessionId)
         ? rawResumeSessionId
         : ''
-  const resumeSessionId =
+  const positionalResumeSessionId =
     rawScenario.length > 0 || !isLikelyScenarioArg(rawResumeSessionId) ? rawResumeSessionId : ''
+  const providerInvocation = resolveProviderInvocation(provider, providerArgs)
+  const effectiveMode = providerInvocation?.mode ?? mode
+  const resumeSessionId = providerInvocation?.resumeSessionId ?? positionalResumeSessionId
 
-  process.stdout.write(`[opencove-test-agent] ${provider} ${mode} ${model}\n`)
+  process.stdout.write(`[opencove-test-agent] ${provider} ${effectiveMode} ${model}\n`)
 
-  if (provider === 'codex' && mode === 'resume' && scenario === 'codex-active-writer') {
+  if (provider === 'codex' && effectiveMode === 'resume' && scenario === 'codex-active-writer') {
     process.stderr.write('thread already has an active writer (code -32600)\n')
     process.exitCode = 1
     return
@@ -140,7 +149,25 @@ async function main() {
     (provider === 'codex' || provider === 'claude-code') &&
     scenario === 'jsonl-overlay-lifecycle'
   ) {
-    await runJsonlOverlayLifecycleScenario(provider, cwd)
+    await runJsonlOverlayLifecycleScenario(provider, cwd, {
+      mode: effectiveMode,
+      resumeSessionId,
+      onSessionStart: async sessionFilePath =>
+        await reportInjectedTerminalSessionStart(provider, cwd, sessionFilePath),
+      onTurnCompleted: async sessionFilePath =>
+        await reportInjectedTerminalTurnCompleted(provider, cwd, sessionFilePath),
+    })
+    return
+  }
+
+  if (
+    (provider === 'codex' || provider === 'claude-code') &&
+    scenario === 'jsonl-two-stage-ctrl-c'
+  ) {
+    await runJsonlTwoStageCtrlCScenario(provider, cwd, {
+      onSessionStart: async sessionFilePath =>
+        await reportInjectedTerminalSessionStart(provider, cwd, sessionFilePath),
+    })
     return
   }
 
@@ -167,7 +194,7 @@ async function main() {
     await runJsonlStdinSubmitDrivenTurnScenario(
       provider,
       cwd,
-      mode,
+      effectiveMode,
       resumeSessionId.length > 0 ? resumeSessionId : null,
     )
     return
@@ -224,6 +251,20 @@ async function main() {
   }
 
   await sleep(120_000)
+}
+
+function resolveProviderInvocation(provider, args) {
+  if (provider === 'codex') {
+    const resumeIndex = args.indexOf('resume')
+    const resumeSessionId = resumeIndex >= 0 ? args[resumeIndex + 1]?.trim() : ''
+    return resumeSessionId ? { mode: 'resume', resumeSessionId } : null
+  }
+  if (provider === 'claude-code') {
+    const resumeIndex = args.indexOf('--resume')
+    const resumeSessionId = resumeIndex >= 0 ? args[resumeIndex + 1]?.trim() : ''
+    return resumeSessionId ? { mode: 'resume', resumeSessionId } : null
+  }
+  return null
 }
 
 await main()

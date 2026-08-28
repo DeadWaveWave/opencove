@@ -18,6 +18,7 @@ import type {
   TerminalSessionStateEvent,
   WriteTerminalInput,
 } from '@shared/contracts/dto'
+import { normalizeTerminalAgentActivitySnapshot as normalizeActivity } from '@shared/runtime/terminalAgentActivity'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import { BrowserPtyGeometryAckCoordinator } from './BrowserPtyGeometryAckCoordinator'
 import { BrowserPtyClientMetadataWatcher } from './BrowserPtyClientMetadataWatcher'
@@ -254,12 +255,14 @@ export class BrowserPtyClient {
         record.runtimeKind === 'posix'
           ? record.runtimeKind
           : null
+      const terminalAgentActivity = normalizeActivity(record.terminalAgentActivity)
 
       const eventPayload: TerminalSessionMetadataEvent = {
         sessionId,
         resumeSessionId,
         ...(profileId ? { profileId } : {}),
         ...(runtimeKind ? { runtimeKind } : {}),
+        ...(terminalAgentActivity ? { terminalAgentActivity } : {}),
       }
       this.latestMetadataBySessionId.set(sessionId, eventPayload)
       emitBrowserPtyEvent(this.metadataListeners, eventPayload)

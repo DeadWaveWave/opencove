@@ -4,6 +4,7 @@ import { serializeCodexTomlLiteralString } from './CodexTomlConfiguration'
 
 export interface CodexHookTrustInput {
   readonly executable: string
+  readonly environment?: Readonly<NodeJS.ProcessEnv>
   readonly hookCommand: string
   readonly hookConfigurations: readonly string[]
   readonly workspaceDirectory: string
@@ -58,6 +59,7 @@ async function requestHooksList(input: CodexHookTrustInput): Promise<unknown> {
   invocation.args.push('app-server')
   return await new Promise((resolve, reject) => {
     const child = spawn(invocation.command, invocation.args, {
+      ...(input.environment ? { env: { ...input.environment } } : {}),
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     })

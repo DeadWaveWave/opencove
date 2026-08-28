@@ -18,7 +18,7 @@ import {
 test.describe('Workspace Canvas - blank terminal agent restart', () => {
   test.skip(process.platform === 'win32', 'POSIX command shim coverage')
 
-  test('relaunches an unverified provider once and derives turn status from watcher signals', async () => {
+  test('does not relaunch a provider without a verified SessionStart identity', async () => {
     const userDataDir = await createTestUserDataDir()
     const invocationLogPath = path.join(userDataDir, 'agent-command-invocations.log')
     const commandDirectory = await createAgentCommandPath({
@@ -94,27 +94,19 @@ test.describe('Workspace Canvas - blank terminal agent restart', () => {
           '[data-id="terminal-blank-restart"] .terminal-node',
         )
         await expect(restoredTerminal).toBeVisible()
-        await expectOverlayStubReady(restoredTerminal, 'codex')
         await expect(restoredTerminal.locator('.terminal-node__error')).toHaveCount(0)
-        await expect(restoredTerminal.locator('.terminal-node__status')).toHaveText('Standby')
+        await expect(restoredTerminal.locator('.terminal-node__status')).toHaveCount(0)
         await expect
           .poll(async () => {
             const invocations = (await readFile(invocationLogPath, 'utf8'))
               .split(/\r?\n/)
               .map(line => line.trim())
-            return invocations.filter(line => line === 'codex').length
+            return invocations.filter(line => line.startsWith('codex ')).length
           })
-          .toBe(2)
-
-        await restoredTerminal.locator('.xterm-helper-textarea').click()
-        await restartedWindow.keyboard.type('run a real turn')
-        await restartedWindow.keyboard.press('Enter')
-        await expect(restoredTerminal.locator('.terminal-node__status')).toHaveText('Working', {
-          timeout: 15_000,
-        })
-        await expect(restoredTerminal.locator('.terminal-node__status')).toHaveText('Standby', {
-          timeout: 15_000,
-        })
+          .toBe(1)
+        await expect
+          .poll(() => readPersistedTerminalAgentNode(restartedWindow, 'terminal-blank-restart'))
+          .toMatchObject({ agent: null })
       } finally {
         await restartedApp.close()
       }

@@ -4,15 +4,11 @@ import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalP
 import { createAppError } from '../../../../shared/errors/appError'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import type {
-  GetSessionPresentationSnapshotInput,
   GetSessionPresentationSnapshotResult,
-  GetSessionSnapshotInput,
   GetSessionSnapshotResult,
   ListTerminalProfilesResult,
   ListSessionsResult,
-  SpawnTerminalInput,
   SpawnTerminalResult,
-  SpawnTerminalSessionInput,
   SpawnTerminalSessionResult,
 } from '../../../../shared/contracts/dto'
 import type { ControlSurface } from '../controlSurface'
@@ -25,172 +21,16 @@ import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDire
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
-import { normalizeEnvPayload } from '../../ipc/normalize'
+import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
+import { spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
+import {
+  normalizePresentationSnapshotPayload,
+  normalizePtySpawnPayload,
+  normalizeSnapshotPayload,
+  normalizeSpawnTerminalPayload,
+} from './sessionStreamingPayloads'
 
 const terminalProfileResolver = new TerminalProfileResolver()
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-function normalizeRequiredString(value: unknown, debugName: string): string {
-  if (typeof value !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${debugName}.`,
-    })
-  }
-
-  const trimmed = value.trim()
-  if (trimmed.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Missing payload for ${debugName}.`,
-    })
-  }
-
-  return trimmed
-}
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizeOptionalPositiveInt(value: unknown): number | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return null
-  }
-
-  const normalized = Math.floor(value)
-  return normalized > 0 ? normalized : null
-}
-
-function normalizeOptionalArgs(value: unknown): string[] | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (!Array.isArray(value)) {
-    return null
-  }
-
-  const args: string[] = []
-  for (const item of value) {
-    if (typeof item !== 'string') {
-      return null
-    }
-
-    args.push(item)
-  }
-
-  return args
-}
-
-function normalizeTerminalRuntime(value: unknown): 'shell' | 'node' | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (value === 'shell' || value === 'node') {
-    return value
-  }
-
-  return null
-}
-
-function normalizeSnapshotPayload(payload: unknown): GetSessionSnapshotInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.snapshot.',
-    })
-  }
-
-  return {
-    sessionId: normalizeRequiredString(payload.sessionId, 'session.snapshot sessionId'),
-  }
-}
-
-function normalizePresentationSnapshotPayload(
-  payload: unknown,
-): GetSessionPresentationSnapshotInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.presentationSnapshot.',
-    })
-  }
-
-  return {
-    sessionId: normalizeRequiredString(payload.sessionId, 'session.presentationSnapshot sessionId'),
-  }
-}
-
-function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalSessionInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.spawnTerminal.',
-    })
-  }
-
-  const spaceId = normalizeRequiredString(payload.spaceId, 'session.spawnTerminal spaceId')
-  const runtime = normalizeTerminalRuntime(payload.runtime)
-  const command = normalizeOptionalString(payload.command)
-  const args = normalizeOptionalArgs(payload.args)
-  const cols = normalizeOptionalPositiveInt(payload.cols)
-  const rows = normalizeOptionalPositiveInt(payload.rows)
-
-  return {
-    spaceId,
-    ...(runtime ? { runtime } : {}),
-    ...(command ? { command } : {}),
-    ...(args ? { args } : {}),
-    ...(typeof cols === 'number' ? { cols } : {}),
-    ...(typeof rows === 'number' ? { rows } : {}),
-  }
-}
-
-function normalizePtySpawnPayload(payload: unknown): SpawnTerminalInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for pty.spawn.',
-    })
-  }
-
-  const cwd = normalizeRequiredString(payload.cwd, 'pty.spawn cwd')
-  const workspaceId =
-    payload.workspaceId === undefined
-      ? null
-      : normalizeRequiredString(payload.workspaceId, 'pty.spawn workspaceId')
-  const cols = normalizeOptionalPositiveInt(payload.cols) ?? 80
-  const rows = normalizeOptionalPositiveInt(payload.rows) ?? 24
-  const profileId = normalizeOptionalString(payload.profileId)
-  const shell = normalizeOptionalString(payload.shell)
-  const command = normalizeOptionalString(payload.command)
-  const args = normalizeOptionalArgs(payload.args)
-  const env = normalizeEnvPayload(payload.env)
-
-  return {
-    cwd,
-    ...(workspaceId ? { workspaceId } : {}),
-    ...(profileId ? { profileId } : {}),
-    ...(shell ? { shell } : {}),
-    ...(command ? { command } : {}),
-    ...(args ? { args } : {}),
-    ...(env ? { env } : {}),
-    cols,
-    rows,
-  }
-}
 
 async function invokeInternalCommand<TResult>(
   controlSurface: ControlSurface,
@@ -219,6 +59,7 @@ export function registerSessionStreamingHandlers(
     ptyStreamHub: PtyStreamHub
     topology: WorkerTopologyStore
     terminalSpawnAdmission: TerminalSpawnAdmission
+    terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
   controlSurface.register('session.list', {
@@ -365,13 +206,16 @@ export function registerSessionStreamingHandlers(
             rows,
           })
 
-      const { sessionId } = await deps.ptyRuntime.spawnSession({
-        cwd: resolvedSpawn.cwd,
-        cols,
-        rows,
-        command: resolvedSpawn.command,
+      const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+        activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
-        ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
+        cols,
+        command: resolvedSpawn.command,
+        cwd: resolvedSpawn.cwd,
+        env: resolvedSpawn.env,
+        interactiveShell: !spawnCommand,
+        runtimeKind: resolvedSpawn.runtimeKind,
+        rows,
       })
 
       const startedAt = ctx.now().toISOString()
@@ -443,13 +287,16 @@ export function registerSessionStreamingHandlers(
             ...(payload.env ? { env: payload.env } : {}),
           })
 
-      const { sessionId } = await deps.ptyRuntime.spawnSession({
-        cwd: resolvedSpawn.cwd,
-        cols: payload.cols,
-        rows: payload.rows,
-        command: resolvedSpawn.command,
+      const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+        activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
-        ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
+        cols: payload.cols,
+        command: resolvedSpawn.command,
+        cwd: resolvedSpawn.cwd,
+        env: resolvedSpawn.env,
+        interactiveShell: !payload.command,
+        runtimeKind: resolvedSpawn.runtimeKind,
+        rows: payload.rows,
       })
 
       deps.ptyStreamHub.registerSessionMetadata({
