@@ -76,7 +76,9 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   }, [id, storeApi])
   const overlayStartedAtMs =
     data.kind === 'terminal' && data.agentOverlay ? data.agentOverlay.startedAtMs : null
-  const gatewayOwnsOverlayLifecycle = Boolean(data.agentOverlay?.activity)
+  const gatewayOwnsOverlayLifecycle =
+    Boolean(data.agentOverlay?.activity) ||
+    Boolean(data.terminalAgentBinding && isResumeSessionBindingVerified(data.terminalAgentBinding))
   const handleAgentOverlayExit = useCallback(() => {
     if (overlayStartedAtMs === null || gatewayOwnsOverlayLifecycle) {
       return

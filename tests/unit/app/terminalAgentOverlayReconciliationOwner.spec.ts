@@ -113,6 +113,31 @@ describe('terminal agent overlay reconciliation owner', () => {
     expect(harness.requestPersistFlush).not.toHaveBeenCalled()
   })
 
+  it('does not let foreground heuristics erase a verified binding before activity projects', () => {
+    const harness = createHarness()
+    const workspace = createWorkspace()
+    const node = workspace.nodes[0]!
+    node.data.terminalAgentBinding = {
+      provider: 'codex',
+      resumeSessionId: 'codex-session',
+      resumeSessionIdVerified: true,
+    }
+    harness.setWorkspaces([workspace])
+
+    harness.emit(processScan({ availability: 'available', agent: null, shellOnly: true }))
+
+    expect(harness.getWorkspaces()[0]?.nodes[0]?.data.agentOverlay).toMatchObject({
+      provider: 'codex',
+      startedAtMs: 100,
+    })
+    expect(harness.getWorkspaces()[0]?.nodes[0]?.data.terminalAgentBinding).toEqual({
+      provider: 'codex',
+      resumeSessionId: 'codex-session',
+      resumeSessionIdVerified: true,
+    })
+    expect(harness.requestPersistFlush).not.toHaveBeenCalled()
+  })
+
   it('does not let foreground heuristics erase authenticated activity or its durable binding', () => {
     const harness = createHarness()
     const workspace = createWorkspace()

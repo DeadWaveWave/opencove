@@ -311,8 +311,9 @@ The goal is stable visual parity without letting multiple renderers fight for te
     substitutes requested rows/columns as an acknowledgement.
 18. Only the current recovery reconciliation scope may spawn before its workspace runtime is ready;
     normal user/node paths cannot acquire or forge that scope.
-19. A verified terminal Agent binding survives authenticated invocation exit; only an explicit
-    clear/remove operation may erase its durable resume authority.
+19. A verified terminal Agent binding survives foreground, alternate-screen, Ctrl+C, and provider
+    exit observations; only an explicit clear/remove or session switch may erase or replace its
+    durable resume authority.
 
 ## Verification Anchors
 

@@ -11,6 +11,7 @@ import {
   runCodexOverlayLifecycleScenario,
   runJsonlOverlayLifecycleScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
+  runJsonlTwoStageCtrlCScenario,
   runJsonlStdinSubmitDrivenTurnScenario,
   runJsonlStdinSubmitTurnLifecycleScenario,
 } from './test-agent-session-stub/codex.mjs'
@@ -155,6 +156,17 @@ async function main() {
         await reportInjectedTerminalSessionStart(provider, cwd, sessionFilePath),
       onTurnCompleted: async sessionFilePath =>
         await reportInjectedTerminalTurnCompleted(provider, cwd, sessionFilePath),
+    })
+    return
+  }
+
+  if (
+    (provider === 'codex' || provider === 'claude-code') &&
+    scenario === 'jsonl-two-stage-ctrl-c'
+  ) {
+    await runJsonlTwoStageCtrlCScenario(provider, cwd, {
+      onSessionStart: async sessionFilePath =>
+        await reportInjectedTerminalSessionStart(provider, cwd, sessionFilePath),
     })
     return
   }

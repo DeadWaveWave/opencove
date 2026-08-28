@@ -1,5 +1,6 @@
 import type { TerminalForegroundEvent } from '@shared/contracts/dto'
 import { resolveForegroundAgentReconciliation } from '@shared/runtime/agentForegroundRecognition'
+import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { clearTerminalAgentOverlay } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 
@@ -30,6 +31,9 @@ export function createTerminalAgentOverlayReconciliationOwner(options: {
             node.data.sessionId !== event.sessionId ||
             overlay?.provider !== 'codex' ||
             Boolean(overlay.activity) ||
+            (node.data.terminalAgentBinding
+              ? isResumeSessionBindingVerified(node.data.terminalAgentBinding)
+              : false) ||
             event.observedAtMs < overlay.startedAtMs
           ) {
             return node

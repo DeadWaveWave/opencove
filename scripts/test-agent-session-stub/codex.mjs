@@ -9,6 +9,7 @@ import {
 } from '../test-agent-session-jsonl.mjs'
 import { runRawClickRedrawAfterClickScenario } from './raw.mjs'
 import { sleep } from './sleep.mjs'
+import { runTwoStageCtrlCFixture } from './twoStageCtrlC.mjs'
 
 const IDLE_SCENARIO_LIFETIME_MS = 180_000
 const OVERLAY_ADVANCE_SENTINEL = '<test-overlay-advance>'
@@ -254,6 +255,42 @@ export async function runJsonlOverlayLifecycleScenario(
 
   process.stdout.write(`\u001b[?1049h[opencove-test-overlay] ${provider} ready\n`)
   await lifecyclePromise
+}
+
+export async function runJsonlTwoStageCtrlCScenario(
+  provider,
+  cwd,
+  { onSessionStart = async () => {} } = {},
+) {
+  const { sessionFilePath } = await resolveScenarioSessionFile({
+    provider,
+    cwd,
+    mode: 'new',
+    resumeSessionId: null,
+  })
+  await onSessionStart(sessionFilePath)
+
+  if (provider === 'claude-code') {
+    await appendClaudeRecord(sessionFilePath, {
+      type: 'assistant',
+      message: {
+        content: [{ type: 'thinking', text: 'Working.' }],
+        stop_reason: null,
+      },
+    })
+  } else {
+    await appendCodexRecord(sessionFilePath, {
+      type: 'event_msg',
+      payload: {
+        type: 'task_started',
+        turn_id: 'opencove-test-two-stage-turn-1',
+        model_context_window: 128_000,
+        collaboration_mode_kind: 'default',
+      },
+    })
+  }
+
+  await runTwoStageCtrlCFixture(provider)
 }
 
 export async function runCodexCommentaryThenFinalScenario(cwd) {

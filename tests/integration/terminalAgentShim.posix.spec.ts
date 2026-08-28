@@ -324,14 +324,20 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
       const realBin = join(root, 'real')
       await mkdir(realBin)
       const realClaude = join(realBin, 'claude')
+      const signalMarkerPath = join(root, `${signal}.marker`)
+      const forwardedText = `FORWARDED=${signal}\n`
       await writeFile(
         realClaude,
         [
-          '#!/bin/sh',
-          `trap 'printf "FORWARDED=${signal}\\n"' ${signal.slice(3)}`,
-          'printf "CHILD_PID=%s\\n" "$$"',
-          'printf "READY\\n"',
-          'while :; do sleep 1; done',
+          `#!${process.execPath}`,
+          "const { writeFileSync } = require('node:fs')",
+          `const forwardedText = ${JSON.stringify(forwardedText)}`,
+          `process.on(${JSON.stringify(signal)}, () => {`,
+          `  writeFileSync(${JSON.stringify(signalMarkerPath)}, forwardedText, 'utf8')`,
+          '  process.stdout.write(forwardedText)',
+          '})',
+          'process.stdout.write(`CHILD_PID=${process.pid}\\nREADY\\n`)',
+          'setInterval(() => {}, 1_000)',
           '',
         ].join('\n'),
       )
@@ -385,7 +391,8 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
         clearTimeout(failSafe)
       }
 
-      expect(output).toContain(`FORWARDED=${signal}`)
+      expect(await readFile(signalMarkerPath, 'utf8')).toBe(forwardedText)
+      expect(output.split(/\r?\n/u)).toContain(`FORWARDED=${signal}`)
       expect(result).toEqual({ code: 137, signal: null })
       expect(Date.now() - signalSentAt).toBeLessThan(2_000)
       expect(childPid).not.toBeNull()
