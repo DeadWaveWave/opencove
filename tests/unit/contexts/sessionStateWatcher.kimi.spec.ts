@@ -124,28 +124,43 @@ describe('session state watcher Kimi pipeline', () => {
     harness.controller.dispose()
   })
 
-  it('starts degraded without fabricating working while wire evidence is unavailable', async () => {
-    const root = await fs.mkdtemp(join(tmpdir(), 'opencove-kimi-controller-missing-'))
+  it('waits silently for first Kimi evidence, then degrades explicit wire unavailability', async () => {
+    const root = await fs.mkdtemp(join(tmpdir(), 'opencove-kimi-controller-unavailable-'))
     const cwd = join(root, 'workspace')
+    const sessionId = 'session_kimi_unavailable'
+    const sessionDir = join(root, 'sessions', 'wd_workspace_hash', sessionId)
+    const wirePath = join(sessionDir, 'agents', 'main', 'wire.jsonl')
     process.env.KIMI_CODE_HOME = root
     const harness = createHarness()
+    const startedAtMs = Date.now()
     harness.controller.start({
-      sessionId: 'terminal-kimi-missing',
+      sessionId: 'terminal-kimi-unavailable',
       provider: 'kimi',
       cwd,
       launchMode: 'new',
       resumeSessionId: null,
-      startedAtMs: Date.now(),
+      startedAtMs,
     })
 
+    expect(harness.states).toEqual([])
+
+    await fs.mkdir(dirname(wirePath), { recursive: true })
+    await fs.writeFile(wirePath, line({ type: 'metadata', protocol_version: '2.0' }))
+    await fs.writeFile(
+      join(root, 'session_index.jsonl'),
+      line({ sessionId, sessionDir, workDir: cwd }),
+    )
+
+    await vi.waitFor(() => expect(harness.states).toHaveLength(1))
     expect(harness.states).toEqual([
       {
-        sessionId: 'terminal-kimi-missing',
+        sessionId: 'terminal-kimi-unavailable',
         state: 'standby',
         source: 'launch',
         degraded: true,
       },
     ])
+    expect(harness.states.some(event => event.source === 'session_file')).toBe(false)
     expect(harness.states.some(event => event.state === 'working')).toBe(false)
     harness.controller.dispose()
   })
