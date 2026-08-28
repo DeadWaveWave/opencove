@@ -96,6 +96,56 @@ describe('agent resume metadata binding', () => {
     expect(result.nextWorkspaces[0]?.nodes[0]?.data.agentOverlay?.status).toBe('standby')
   })
 
+  it('updates a stale runtime observation when overlay status already matches', () => {
+    const terminalOverlayNode = {
+      ...createAgentNode({ resumeSessionId: null, resumeSessionIdVerified: false }),
+      data: {
+        ...createAgentNode({ resumeSessionId: null, resumeSessionIdVerified: false }).data,
+        kind: 'terminal',
+        status: null,
+        agent: null,
+        terminalAgentBinding: {
+          provider: 'codex',
+          resumeSessionId: 'codex-session',
+          resumeSessionIdVerified: true,
+        },
+        agentOverlay: {
+          provider: 'codex',
+          status: 'standby',
+          startedAtMs: 1_723_456_789_000,
+        },
+        agentRuntimeObservation: {
+          status: 'running',
+          source: 'codex_hook',
+          hookInstallState: 'installed',
+          degraded: false,
+        },
+      },
+    }
+    const workspace = {
+      id: 'workspace-1',
+      name: 'Workspace',
+      path: '/tmp/workspace',
+      nodes: [terminalOverlayNode],
+      viewport: { x: 0, y: 0, zoom: 1 },
+      isMinimapVisible: true,
+      spaces: [],
+      activeSpaceId: null,
+      spaceArchiveRecords: [],
+    } as never
+
+    const result = updateWorkspacesWithAgentRunState({
+      workspaces: [workspace],
+      sessionId: 'runtime-1',
+      state: 'standby',
+      source: 'codex_hook',
+      hookInstallState: 'installed',
+    })
+
+    expect(result.didChange).toBe(true)
+    expect(result.nextWorkspaces[0]?.nodes[0]?.data.agentRuntimeObservation?.status).toBe('standby')
+  })
+
   it('keeps authoritative waiting and hook health in runtime-only observation state', () => {
     const node = createAgentNode({ resumeSessionId: null, resumeSessionIdVerified: false })
     const workspace = {
@@ -226,7 +276,7 @@ describe('agent resume metadata binding', () => {
     expect(result.nextWorkspaces[0]?.nodes[0]?.data.agent?.resumeSessionIdVerified).toBe(true)
   })
 
-  it('promotes a provider-hinted terminal to a verified durable binding', () => {
+  it('does not promote unauthenticated metadata for a provider-hinted terminal', () => {
     const hintedTerminal = {
       ...createAgentNode({ resumeSessionId: null, resumeSessionIdVerified: false }),
       data: {
@@ -260,11 +310,8 @@ describe('agent resume metadata binding', () => {
       resumeSessionId: 'captured-terminal-session',
     })
 
-    expect(result.didChange).toBe(true)
-    expect(result.nextWorkspaces[0]?.nodes[0]?.data.terminalAgentBinding).toEqual({
-      provider: 'codex',
-      resumeSessionId: 'captured-terminal-session',
-      resumeSessionIdVerified: true,
-    })
+    expect(result.didChange).toBe(false)
+    expect(result.nextWorkspaces[0]).toBe(workspace)
+    expect(result.nextWorkspaces[0]?.nodes[0]?.data.terminalAgentBinding).toBeNull()
   })
 })

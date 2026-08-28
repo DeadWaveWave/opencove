@@ -1,11 +1,7 @@
 import { useCallback } from 'react'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { resolveTerminalProviderHintFromCommand } from './useNodesStore.terminalProviderHint'
-import {
-  activateTerminalAgentOverlay,
-  clearTerminalAgentOverlay,
-  isAgentTreatedNode,
-} from '../../../utils/terminalAgentOverlay'
+import { clearTerminalAgentOverlay, isAgentTreatedNode } from '../../../utils/terminalAgentOverlay'
 
 type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
 
@@ -14,7 +10,7 @@ export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
   clearTerminalAgentOverlay: UseWorkspaceCanvasNodesStoreResult['clearTerminalAgentOverlay']
 } {
   const updateTerminalTitle = useCallback(
-    (nodeId: string, title: string, startedAtMs?: number) => {
+    (nodeId: string, title: string, _startedAtMs?: number) => {
       const normalizedTitle = title.trim()
       if (normalizedTitle.length === 0) {
         return
@@ -45,12 +41,7 @@ export function useTerminalAgentOverlayMutations(setNodes: SetNodes): {
                   },
                 }
               : node
-            const nextNode = provider
-              ? activateTerminalAgentOverlay(titledNode, {
-                  provider,
-                  startedAtMs: startedAtMs ?? Date.now(),
-                })
-              : titledNode
+            const nextNode = titledNode
             if (nextNode === node) {
               return node
             }

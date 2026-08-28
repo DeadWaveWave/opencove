@@ -20,6 +20,10 @@ export function createCodexHookChannel(options: {
     source: 'codex_hook',
     validateEnvelope: value =>
       normalizeCodexHookEnvelope(value) ?? validateCodexHookEnvelope(value),
+    resolveSessionIdentity: envelope => ({
+      hookEventName: envelope.hookEventName,
+      providerSessionId: envelope.codexSessionId,
+    }),
     buildReservationEnv: (endpoint, token) => ({
       OPENCOVE_CODEX_HOOK_ENDPOINT: endpoint,
       OPENCOVE_CODEX_HOOK_TOKEN: token,

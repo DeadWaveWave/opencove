@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
@@ -135,7 +135,17 @@ describe('control surface session streaming handlers', () => {
       rows: number
       command: string
       args: string[]
+      env?: NodeJS.ProcessEnv
+      launchArtifacts?: unknown
     } | null = null
+    const commitTerminalActivity = vi.fn()
+    const prepareTerminalActivity = vi.fn(async () => ({
+      command: '/private/bash',
+      args: ['--noprofile', '--rcfile', '/private/bashrc'],
+      environment: { PATH: '/private/shims:/usr/bin' },
+      commit: commitTerminalActivity,
+      dispose: async () => undefined,
+    }))
 
     const ptyStreamHub = createPtyStreamHubStub()
     const controlSurface = createControlSurface()
@@ -174,6 +184,9 @@ describe('control surface session streaming handlers', () => {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,
       },
+      terminalAgentActivity: {
+        prepare: prepareTerminalActivity,
+      } as never,
       topology,
       ptyRuntime: {
         spawnSession: async input => {
@@ -229,9 +242,14 @@ describe('control surface session streaming handlers', () => {
     }
 
     expect(spawnedInput.cwd).toBe(worktreePath)
+    expect(spawnedInput.command).toBe('/private/bash')
+    expect(spawnedInput.args).toEqual(['--noprofile', '--rcfile', '/private/bashrc'])
+    expect(spawnedInput.env?.PATH).toBe('/private/shims:/usr/bin')
+    expect(spawnedInput.launchArtifacts).toBeDefined()
+    expect(commitTerminalActivity).toHaveBeenCalledWith('pty-mounted-terminal')
     expect(spawned.value.cwd).toBe(worktreePath)
-    expect(spawned.value.command).toBe(spawnedInput.command)
-    expect(spawned.value.args).toEqual(spawnedInput.args)
+    expect(spawned.value.command).toBe(prepareTerminalActivity.mock.calls[0]?.[0].command)
+    expect(spawned.value.args).toEqual(prepareTerminalActivity.mock.calls[0]?.[0].args)
     expect(spawned.value.executionContext).toMatchObject({
       projectId: 'ws1',
       spaceId: 's1',

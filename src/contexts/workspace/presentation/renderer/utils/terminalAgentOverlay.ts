@@ -26,10 +26,10 @@ export function isTerminalAgentBinding(value: unknown): value is TerminalAgentSe
 }
 
 export function isAgentTreatedNode(node: Pick<Node<TerminalNodeData>, 'data'>): boolean {
+  const liveOverlay = node.data.agentOverlay && node.data.agentOverlay.activity?.phase !== 'exited'
   return (
     node.data.kind === 'agent' ||
-    (node.data.kind === 'terminal' &&
-      Boolean(node.data.agentOverlay || node.data.terminalAgentBinding))
+    (node.data.kind === 'terminal' && Boolean(liveOverlay || node.data.terminalAgentBinding))
   )
 }
 
@@ -119,7 +119,11 @@ export function resolveAgentTreatedProvider(node: Node<TerminalNodeData>): Agent
     return node.data.agent?.provider ?? null
   }
 
-  return node.data.agentOverlay?.provider ?? node.data.terminalAgentBinding?.provider ?? null
+  const liveOverlayProvider =
+    node.data.agentOverlay?.activity?.phase === 'exited'
+      ? null
+      : (node.data.agentOverlay?.provider ?? null)
+  return liveOverlayProvider ?? node.data.terminalAgentBinding?.provider ?? null
 }
 
 export function resolveAgentTreatedActionContext(
@@ -148,16 +152,20 @@ export function resolveAgentTreatedActionContext(
   const binding = node.data.terminalAgentBinding
   const overlay = node.data.agentOverlay
   const cwd = node.data.executionDirectory?.trim() ?? ''
-  const provider = binding?.provider ?? overlay?.provider ?? node.data.terminalProviderHint ?? null
+  const activeProvider = overlay?.activity?.phase === 'active' ? overlay.provider : null
+  const provider = activeProvider ?? binding?.provider ?? overlay?.provider ?? null
   if (!provider || !overlay || cwd.length === 0 || !Number.isFinite(overlay.startedAtMs)) {
     return null
   }
+  const providerBinding = binding?.provider === provider ? binding : null
 
   return {
     provider,
     cwd,
     startedAt: new Date(overlay.startedAtMs).toISOString(),
-    resumeSessionId: binding?.resumeSessionId ?? null,
-    resumeSessionIdVerified: binding ? isResumeSessionBindingVerified(binding) : false,
+    resumeSessionId: providerBinding?.resumeSessionId ?? null,
+    resumeSessionIdVerified: providerBinding
+      ? isResumeSessionBindingVerified(providerBinding)
+      : false,
   }
 }

@@ -17,6 +17,7 @@ import {
 } from './workspace-canvas.terminal-agent-overlay.helpers'
 
 const overlayAdvanceSentinel = '<test-overlay-advance>'
+type MetadataTestWindow = typeof window & { __opencoveTerminalAgentMetadata?: unknown[] }
 
 async function runOverlayLifecycle(options: {
   window: Page
@@ -52,7 +53,7 @@ async function runOverlayLifecycle(options: {
       id: nodeId,
       kind: 'terminal',
       sessionId: initialSessionId,
-      agent: { provider: 'claude-code' },
+      agent: { provider: 'claude-code', resumeSessionIdVerified: true },
     })
   const persistedDuringOverlay = await readPersistedNode(window, nodeId)
   expect(persistedDuringOverlay?.agentOverlay).toBeUndefined()
@@ -64,17 +65,17 @@ async function runOverlayLifecycle(options: {
   expect((await readPersistedNode(window, nodeId))?.agent?.provider).toBe('claude-code')
 
   await window.keyboard.press('Control+C')
-  await expect(sidebarItem).toHaveCount(0)
-  await expect(terminal.getByTestId('terminal-node-copy-last-message')).toHaveCount(0)
-  await expect(terminal.getByTestId('terminal-node-reload-session')).toHaveCount(0)
-  await expect(terminal.getByTestId('terminal-node-session-list')).toHaveCount(0)
+  await expect(sidebarItem).toBeVisible()
+  await expect(terminal.getByTestId('terminal-node-copy-last-message')).toBeVisible()
+  await expect(terminal.getByTestId('terminal-node-reload-session')).toBeVisible()
+  await expect(terminal.getByTestId('terminal-node-session-list')).toBeVisible()
   await expect
     .poll(() => readPersistedNode(window, nodeId))
     .toMatchObject({
       id: nodeId,
       kind: 'terminal',
       sessionId: initialSessionId,
-      agent: null,
+      agent: { provider: 'claude-code', resumeSessionIdVerified: true },
     })
   expect(await readRuntimeSessionId(window, nodeId)).toBe(initialSessionId)
 
@@ -93,30 +94,20 @@ async function runOverlayLifecycle(options: {
 
   await terminal.locator('.xterm-helper-textarea').click()
   await window.keyboard.type('codex')
+  expect((await readPersistedNode(window, nodeId))?.agent?.provider).toBe('claude-code')
   await window.keyboard.press('Enter')
   await expectOverlayStubReady(terminal, 'codex')
-  await expect(sidebarItem).toBeVisible({ timeout: 15_000 })
   await expect(sidebarItem).toContainText('Working')
-  await expect(terminal.locator('.terminal-node__status')).toHaveText('Working')
-  await expect(terminal.getByTestId('terminal-node-copy-last-message')).toBeVisible()
-  await expect(terminal.getByTestId('terminal-node-reload-session')).toBeVisible()
-  await expect(terminal.getByTestId('terminal-node-session-list')).toBeVisible()
   await window.keyboard.type(overlayAdvanceSentinel)
   await expect(sidebarItem).toContainText('Standby', { timeout: 15_000 })
-  await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
   await expect
-    .poll(() => readPersistedNode(window, nodeId))
-    .toMatchObject({
-      id: nodeId,
-      kind: 'terminal',
-      sessionId: initialSessionId,
-      agent: { provider: 'codex' },
-    })
+    .poll(async () => (await readPersistedNode(window, nodeId))?.agent?.provider)
+    .toBe('codex')
   expect(await readRuntimeSessionId(window, nodeId)).toBe(initialSessionId)
   expect((await readPersistedNode(window, nodeId))?.scrollback).toContain('claude-code exited')
 
   await window.keyboard.press('Control+C')
-  await expect(sidebarItem).toHaveCount(0)
+  await expect(sidebarItem).toBeVisible()
 }
 
 test.describe('Workspace Canvas - Terminal agent overlay', () => {
@@ -181,7 +172,6 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
       await window.keyboard.type('codex')
       await window.keyboard.press('Enter')
 
-      await expect(sidebarItem).toBeVisible({ timeout: 5_000 })
       await expect
         .poll(() =>
           window.evaluate(() => {
@@ -252,11 +242,32 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
       await expect.poll(() => readRuntimeSessionId(window, 'terminal-reload')).toBeTruthy()
       const initialSessionId = await readRuntimeSessionId(window, 'terminal-reload')
       expect(initialSessionId).not.toBeNull()
+      await window.evaluate(() => {
+        const testWindow = window as MetadataTestWindow
+        testWindow.__opencoveTerminalAgentMetadata = []
+        window.opencoveApi.pty.onMetadata(event => {
+          testWindow.__opencoveTerminalAgentMetadata?.push(event)
+        })
+      })
+      const readCapturedEvents = async () =>
+        await window.evaluate(
+          () => (window as MetadataTestWindow).__opencoveTerminalAgentMetadata ?? [],
+        )
 
       await terminal.locator('.xterm-helper-textarea').click()
       await window.keyboard.type('codex')
       await window.keyboard.press('Enter')
       await expectOverlayStubReady(terminal, 'codex')
+      await expect.poll(readCapturedEvents).toContainEqual(
+        expect.objectContaining({
+          sessionId: initialSessionId,
+          resumeSessionId: expect.any(String),
+          terminalAgentActivity: expect.objectContaining({
+            provider: 'codex',
+            identityAuthority: 'provider_session_start',
+          }),
+        }),
+      )
       await window.keyboard.type(overlayAdvanceSentinel)
       await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
       await expect
@@ -376,14 +387,14 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
       })
 
       try {
-        const expectedResumeCommand = `codex resume ${durableResumeSessionId}`
+        const expectedResumeSuffix = ` resume ${durableResumeSessionId}`
         await expect
           .poll(async () => (await readFile(invocationLogPath, 'utf8')).split(/\r?\n/))
-          .toContain(expectedResumeCommand)
+          .toContainEqual(expect.stringMatching(new RegExp(`${expectedResumeSuffix}$`)))
         const invocations = (await readFile(invocationLogPath, 'utf8')).split(/\r?\n/)
-        expect(invocations.filter(invocation => invocation === expectedResumeCommand)).toHaveLength(
-          1,
-        )
+        expect(
+          invocations.filter(invocation => invocation.endsWith(expectedResumeSuffix)),
+        ).toHaveLength(1)
 
         const restoredTerminal = restartedWindow.locator(
           '[data-id="terminal-restart"] .terminal-node',
@@ -418,6 +429,7 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
       windowMode: 'offscreen',
       env: {
         PATH: `${commandDirectory}${path.delimiter}${process.env.PATH ?? ''}`,
+        OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
         OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
       },
     })

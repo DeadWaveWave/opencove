@@ -1,8 +1,8 @@
 import {
   appendCodexRecord,
   appendClaudeRecord,
-  createClaudeSessionFile,
   createCodexSessionFile,
+  resolveScenarioSessionFile,
   runJsonlStdinSubmitDelayedTurnScenario,
   runJsonlStdinSubmitDrivenTurnScenario,
   runJsonlStdinSubmitTurnLifecycleScenario,
@@ -186,11 +186,24 @@ export async function runCodexOverlayLifecycleScenario(cwd) {
   })
 }
 
-export async function runJsonlOverlayLifecycleScenario(provider, cwd) {
+export async function runJsonlOverlayLifecycleScenario(
+  provider,
+  cwd,
+  {
+    mode = 'new',
+    resumeSessionId = null,
+    onSessionStart = async () => {},
+    onTurnCompleted = async () => {},
+  } = {},
+) {
   const isClaude = provider === 'claude-code'
-  const sessionFilePath = isClaude
-    ? await createClaudeSessionFile(cwd)
-    : await createCodexSessionFile(cwd)
+  const { sessionFilePath } = await resolveScenarioSessionFile({
+    provider,
+    cwd,
+    mode,
+    resumeSessionId,
+  })
+  await onSessionStart(sessionFilePath)
 
   const lifecyclePromise = waitForOverlayAdvanceAndExit({
     onAdvance: async () => {
@@ -202,17 +215,17 @@ export async function runJsonlOverlayLifecycleScenario(provider, cwd) {
             stop_reason: 'end_turn',
           },
         })
-        return
+      } else {
+        await appendCodexRecord(sessionFilePath, {
+          type: 'event_msg',
+          payload: {
+            type: 'task_complete',
+            turn_id: 'opencove-test-overlay-turn-1',
+            last_agent_message: 'Overlay ready.',
+          },
+        })
       }
-
-      await appendCodexRecord(sessionFilePath, {
-        type: 'event_msg',
-        payload: {
-          type: 'task_complete',
-          turn_id: 'opencove-test-overlay-turn-1',
-          last_agent_message: 'Overlay ready.',
-        },
-      })
+      await onTurnCompleted(sessionFilePath)
     },
     onExit: () => {
       process.stdout.write(`\u001b[?1049l[opencove-test-overlay] ${provider} exited\n`)

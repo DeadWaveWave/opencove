@@ -3,6 +3,7 @@ import type { PtyStreamControllerDto, PtyStreamRole } from './ptyStreamTypes'
 import type {
   TerminalGeometryCommitResult,
   TerminalForegroundEvent,
+  TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
 
@@ -153,20 +154,15 @@ export function sendPtyState(ws: WebSocket, event: TerminalSessionStateEvent): v
   })
 }
 
-export function sendPtySessionMetadata(
-  ws: WebSocket,
-  payload: {
-    sessionId: string
-    resumeSessionId: string | null
-    profileId?: string | null
-    runtimeKind?: 'windows' | 'wsl' | 'posix'
-  },
-): void {
+export function sendPtySessionMetadata(ws: WebSocket, payload: TerminalSessionMetadataEvent): void {
   sendJson(ws, {
     type: 'metadata',
     sessionId: payload.sessionId,
     resumeSessionId: payload.resumeSessionId,
     ...(payload.profileId !== undefined ? { profileId: payload.profileId } : {}),
     ...(payload.runtimeKind !== undefined ? { runtimeKind: payload.runtimeKind } : {}),
+    ...(payload.terminalAgentActivity !== undefined
+      ? { terminalAgentActivity: payload.terminalAgentActivity }
+      : {}),
   })
 }

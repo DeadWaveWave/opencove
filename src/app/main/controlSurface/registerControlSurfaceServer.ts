@@ -1,15 +1,17 @@
 import { app, shell, webContents } from 'electron'
 import { fileURLToPath } from 'node:url'
-import type { SyncEventPayload } from '../../../shared/contracts/dto'
+import type {
+  SyncEventPayload,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+} from '../../../shared/contracts/dto'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import { createApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { trashItemWithTimeout } from '../../../contexts/filesystem/application/deleteEntryWithTrashFallback'
 import { createPtyRuntime } from '../../../contexts/terminal/presentation/main-ipc/runtime'
 import { closeWebsiteWindowNodeAcrossManagers } from '../websiteWindow/websiteWindowManagerRegistry'
-import {
-  registerControlSurfaceHttpServer,
-  type ControlSurfaceHttpServerInstance,
-} from './controlSurfaceHttpServer'
+import { registerControlSurfaceHttpServer } from './controlSurfaceHttpServer'
+import type { ControlSurfaceHttpServerInstance } from './controlSurfaceHttpServer.contract'
 import { readRuntimeAppVersion } from './runtimeAppVersion'
 import { createClaudeHookChannel } from './agentHook/claudeHookChannel'
 import { createCodexHookChannel } from './agentHook/codexHookChannel'
@@ -22,7 +24,7 @@ export type {
   ControlSurfaceConnectionInfo,
   ControlSurfaceHttpServerInstance,
   ControlSurfaceServerDisposable,
-} from './controlSurfaceHttpServer'
+} from './controlSurfaceHttpServer.contract'
 
 export function registerControlSurfaceServer(deps?: {
   approvedWorkspaces?: ReturnType<typeof createApprovedWorkspaceStore>
@@ -59,10 +61,36 @@ export function registerControlSurfaceServer(deps?: {
         CONTROL_SURFACE_TRASH_TIMEOUT_MS,
       ),
     desktopSyncEventSink: sendSyncEventToDesktopWindows,
+    desktopPtyStateSink: sendPtyStateToDesktopWindows,
+    desktopPtyMetadataSink: sendPtyMetadataToDesktopWindows,
     closeWebsiteNode: async nodeId => await closeWebsiteWindowNodeAcrossManagers(nodeId),
     agentHookChannels: [claudeHookChannel, codexHookChannel],
     agentProviderRegistry,
   })
+}
+
+function sendPtyStateToDesktopWindows(payload: TerminalSessionStateEvent): number {
+  return sendPtyEventToDesktopWindows(IPC_CHANNELS.ptyState, payload)
+}
+
+function sendPtyMetadataToDesktopWindows(payload: TerminalSessionMetadataEvent): number {
+  return sendPtyEventToDesktopWindows(IPC_CHANNELS.ptySessionMetadata, payload)
+}
+
+function sendPtyEventToDesktopWindows(channel: string, payload: unknown): number {
+  let delivered = 0
+  for (const content of webContents.getAllWebContents()) {
+    if (content.isDestroyed() || content.getType() !== 'window') {
+      continue
+    }
+    try {
+      content.send(channel, payload)
+      delivered += 1
+    } catch {
+      // Ignore destroyed or navigating windows.
+    }
+  }
+  return delivered
 }
 
 function sendSyncEventToDesktopWindows(payload: SyncEventPayload): number {

@@ -204,9 +204,21 @@ export interface TerminalSessionStateEvent {
   observedAtMs?: number
 }
 
+export type TerminalAgentShimProvider = 'claude-code' | 'codex'
+
+export interface TerminalAgentActivitySnapshot {
+  provider: TerminalAgentShimProvider
+  invocationId: string
+  generation: number
+  phase: 'active' | 'exited'
+  observedAtMs: number
+  identityAuthority: 'provider_session_start' | null
+}
+
 export interface TerminalSessionMetadataEvent {
   sessionId: string
   resumeSessionId: string | null
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  terminalAgentActivity?: TerminalAgentActivitySnapshot | null
 }

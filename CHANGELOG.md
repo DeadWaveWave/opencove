@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Terminal: adopt Claude Code and Codex commands typed inside ordinary terminals through private POSIX/Windows PATH shims, preserving terminal identity and user config while reporting authenticated per-invocation state and verified provider session identity.
 - Agent: offer Pi and Kimi Code as selectable agent providers when creating agents.
 - Diagnostics: always collect bounded in-memory breadcrumbs for key terminal and UI-geometry events, add a UI geometry report section, rotate and type-sample diagnostic logs, and drop a misleading log entry, so issue reports carry enough context to reproduce a bug without a follow-up round trip. (#356)
 - Remote: prefill the remote-machine form from one `~/.ssh/config` host alias while preserving explicit review and confirmation before registration. (#349)
@@ -102,6 +103,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Terminal recovery: never cold-relaunch a provider from an unauthenticated terminal title or hint; automatic resume now requires a verified provider session binding.
 - Terminal: render Windows terminals with WebGL and quantize backing cells to integer device pixels at fractional DPI and canvas zoom, preventing accumulated glyph-width drift. (#368)
 - Agent: keep a busy agent labelled as working through long model generation by widening the hook freshness lease to 180s, so a run that goes quiet for up to three minutes is no longer downgraded to a stale fallback status. (#367)
 - Agent: inject Claude Code and Codex hook configuration per launch instead of editing user-level files, clean exact legacy OpenCove residue at startup, and tie temporary artifacts to the PTY lifecycle. (#366)

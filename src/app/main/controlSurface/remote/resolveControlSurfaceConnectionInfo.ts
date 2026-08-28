@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import type { ControlSurfaceConnectionInfo } from '../controlSurfaceHttpServer'
+import type { ControlSurfaceConnectionInfo } from '../controlSurfaceHttpServer.contract'
 
 const DEFAULT_CONNECTION_FILE = 'control-surface.json'
 

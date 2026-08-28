@@ -4,6 +4,10 @@ import path from 'node:path'
 import { expect, type Locator, type Page } from '@playwright/test'
 
 const testAgentStubScript = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
+const testCodexAppServerStubScript = path.resolve(
+  __dirname,
+  '../../scripts/test-codex-app-server-stub.mjs',
+)
 
 export async function createAgentCommandPath(options?: {
   invocationLogPath?: string
@@ -21,6 +25,10 @@ export async function createAgentCommandPath(options?: {
       await writeFile(
         executablePath,
         `#!/bin/sh\n${
+          command === 'codex'
+            ? `for _opencove_arg in "$@"; do\n  if [ "$_opencove_arg" = "app-server" ]; then exec ${JSON.stringify(process.execPath)} ${JSON.stringify(testCodexAppServerStubScript)} "$@"; fi\ndone\n`
+            : ''
+        }${
           options?.invocationLogPath
             ? `printf '${command} %s\\n' "$*" >> ${JSON.stringify(options.invocationLogPath)}\n`
             : ''
@@ -28,7 +36,7 @@ export async function createAgentCommandPath(options?: {
           testAgentStubScript,
         )} ${provider} "$PWD" new default-model "" ${
           options?.scenario ?? 'jsonl-overlay-lifecycle'
-        }\n`,
+        } "$@"\n`,
         'utf8',
       )
       await chmod(executablePath, 0o755)

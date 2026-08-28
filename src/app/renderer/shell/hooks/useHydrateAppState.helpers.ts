@@ -199,10 +199,9 @@ function toHydratedRuntimeNode(
     preparedNode.kind === 'terminal' &&
     preparedNode.sessionId.trim().length > 0 &&
     preparedNode.lastError === null &&
-    (currentNode.data.agentOverlay || currentNode.data.terminalProviderHint)
+    currentNode.data.agentOverlay
       ? {
-          provider:
-            currentNode.data.agentOverlay?.provider ?? currentNode.data.terminalProviderHint!,
+          provider: currentNode.data.agentOverlay.provider,
           status: 'standby' as const,
           startedAtMs: Date.now(),
         }

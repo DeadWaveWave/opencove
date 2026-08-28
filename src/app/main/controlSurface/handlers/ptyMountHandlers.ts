@@ -15,6 +15,8 @@ import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRunti
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import { normalizeEnvPayload } from '../../ipc/normalize'
+import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
+import { spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
 
 const terminalProfileResolver = new TerminalProfileResolver()
 
@@ -176,6 +178,7 @@ export function registerPtyMountHandlers(
     ptyRuntime: MultiEndpointPtyRuntime
     ptyStreamHub: PtyStreamHub
     terminalSpawnAdmission: TerminalSpawnAdmission
+    terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
   controlSurface.register('pty.spawnInMount', {
@@ -234,13 +237,15 @@ export function registerPtyMountHandlers(
               ...(payload.env ? { env: payload.env } : {}),
             })
 
-        const { sessionId } = await deps.ptyRuntime.spawnSession({
-          cwd: resolvedSpawn.cwd,
-          cols,
-          rows,
-          command: resolvedSpawn.command,
+        const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+          activity: deps.terminalAgentActivity,
           args: resolvedSpawn.args,
+          cols,
+          command: resolvedSpawn.command,
+          cwd: resolvedSpawn.cwd,
           env: resolvedSpawn.env,
+          interactiveShell: !payload.command,
+          rows,
         })
 
         deps.ptyStreamHub.registerSessionMetadata({

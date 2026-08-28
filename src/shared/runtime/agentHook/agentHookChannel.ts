@@ -3,6 +3,8 @@ import { createServer, type IncomingMessage, type Server } from 'node:http'
 import type {
   AgentHookInstallState,
   AgentHookStateSource,
+  TerminalAgentShimProvider,
+  TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../contracts/dto'
 
@@ -21,7 +23,7 @@ export interface AgentHookSpawnReservation {
   env: NodeJS.ProcessEnv | null
   installState: AgentHookInstallState
   usesHook: boolean
-  commit: (sessionId: string) => void
+  commit: (sessionId: string, terminalActivity?: TerminalAgentHookContext) => void
   dispose: () => Promise<void>
 }
 
@@ -29,15 +31,24 @@ export interface AgentHookChannel {
   start: () => Promise<void>
   reserveSpawn: () => Promise<AgentHookSpawnReservation>
   onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void
+  onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
   disposeSession: (sessionId: string) => void
   getInstallState: () => AgentHookInstallState
   getEndpoint: () => string | null
   dispose: () => Promise<void>
 }
 
+export interface TerminalAgentHookContext {
+  provider: TerminalAgentShimProvider
+  invocationId: string
+  generation: number
+  isCurrent: () => boolean
+}
+
 interface CredentialRecord<TEnvelope extends AgentHookEnvelope> {
   sessionId: string | null
   pending: TEnvelope[]
+  terminalActivity: TerminalAgentHookContext | null
 }
 
 function readBody(request: IncomingMessage): Promise<unknown> {
@@ -70,6 +81,9 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
   source: AgentHookStateSource
   validateEnvelope: (value: unknown) => TEnvelope | null
   buildReservationEnv: (endpoint: string, token: string) => NodeJS.ProcessEnv
+  resolveSessionIdentity?: (
+    envelope: TEnvelope,
+  ) => { hookEventName: string; providerSessionId: string } | null
   prepare?: () => Promise<AgentHookInstallResult>
   port?: number
   createHttpServer?: typeof createServer
@@ -77,6 +91,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
   const credentials = new Map<string, CredentialRecord<TEnvelope>>()
   const tokenBySessionId = new Map<string, string>()
   const listeners = new Set<(event: TerminalSessionStateEvent) => void>()
+  const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   const createHttpServer = options.createHttpServer ?? createServer
   let server: Server | null = null
   let endpoint: string | null = null
@@ -96,7 +111,15 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     })
   }
 
-  const emit = (sessionId: string, envelope: TEnvelope): void => {
+  const emit = (
+    sessionId: string,
+    envelope: TEnvelope,
+    credential: CredentialRecord<TEnvelope>,
+  ): void => {
+    const terminalActivity = credential.terminalActivity
+    if (terminalActivity && !terminalActivity.isCurrent()) {
+      return
+    }
     const event: TerminalSessionStateEvent = {
       sessionId,
       state: envelope.state === 'done' ? 'standby' : envelope.state,
@@ -104,6 +127,22 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       hookInstallState: installState,
     }
     listeners.forEach(listener => listener(event))
+    const identity = options.resolveSessionIdentity?.(envelope) ?? null
+    if (terminalActivity && identity?.hookEventName === 'SessionStart') {
+      const metadata: TerminalSessionMetadataEvent = {
+        sessionId,
+        resumeSessionId: identity.providerSessionId,
+        terminalAgentActivity: {
+          provider: terminalActivity.provider,
+          invocationId: terminalActivity.invocationId,
+          generation: terminalActivity.generation,
+          phase: 'active',
+          observedAtMs: Date.now(),
+          identityAuthority: 'provider_session_start',
+        },
+      }
+      metadataListeners.forEach(listener => listener(metadata))
+    }
   }
 
   const handleEnvelope = (token: string, envelope: TEnvelope): boolean => {
@@ -115,7 +154,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       credential.pending.push(envelope)
       return true
     }
-    emit(credential.sessionId, envelope)
+    emit(credential.sessionId, envelope, credential)
     return true
   }
 
@@ -226,11 +265,19 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       }
 
       const token = randomBytes(32).toString('base64url')
-      const credential: CredentialRecord<TEnvelope> = { sessionId: null, pending: [] }
+      const credential: CredentialRecord<TEnvelope> = {
+        sessionId: null,
+        pending: [],
+        terminalActivity: null,
+      }
       credentials.set(token, credential)
       let settled = false
       const dispose = async (): Promise<void> => {
-        if (settled && credential.sessionId) {
+        if (
+          settled &&
+          credential.sessionId &&
+          tokenBySessionId.get(credential.sessionId) === token
+        ) {
           tokenBySessionId.delete(credential.sessionId)
         }
         credentials.delete(token)
@@ -240,14 +287,15 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         env: options.buildReservationEnv(endpoint, token),
         installState,
         usesHook: true,
-        commit: sessionId => {
+        commit: (sessionId, terminalActivity) => {
           if (settled || !credentials.has(token)) {
             return
           }
           settled = true
           credential.sessionId = sessionId
+          credential.terminalActivity = terminalActivity ?? null
           tokenBySessionId.set(sessionId, token)
-          credential.pending.splice(0).forEach(envelope => emit(sessionId, envelope))
+          credential.pending.splice(0).forEach(envelope => emit(sessionId, envelope, credential))
         },
         dispose,
       }
@@ -255,6 +303,10 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     onState: listener => {
       listeners.add(listener)
       return () => listeners.delete(listener)
+    },
+    onMetadata: listener => {
+      metadataListeners.add(listener)
+      return () => metadataListeners.delete(listener)
     },
     disposeSession: sessionId => {
       const token = tokenBySessionId.get(sessionId)
@@ -274,6 +326,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       credentials.clear()
       tokenBySessionId.clear()
       listeners.clear()
+      metadataListeners.clear()
       endpoint = null
       await closeOwnedServer()
     },

@@ -43,8 +43,17 @@ function createOverlayNode(): Node<TerminalNodeData> {
   }
 }
 
-function createHarness(options: { dropBackOnInterrupt: boolean }) {
-  const nodesRef = { current: [createOverlayNode()] }
+function createHarness(options: { dropBackOnInterrupt: boolean; authenticatedActivity?: boolean }) {
+  const initialNode = createOverlayNode()
+  if (options.authenticatedActivity && initialNode.data.agentOverlay) {
+    initialNode.data.agentOverlay.activity = {
+      invocationId: 'invocation-1',
+      generation: 1,
+      phase: 'active',
+      observedAtMs: 100,
+    }
+  }
+  const nodesRef = { current: [initialNode] }
   const setNodes = vi.fn(
     (updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
       nodesRef.current = updater(nodesRef.current)
@@ -52,7 +61,20 @@ function createHarness(options: { dropBackOnInterrupt: boolean }) {
   )
   const write = vi.fn(async ({ data }: { data: string }) => {
     if (data === '\u0003' && options.dropBackOnInterrupt) {
-      nodesRef.current = nodesRef.current.map(clearTerminalAgentOverlay)
+      nodesRef.current = options.authenticatedActivity
+        ? nodesRef.current.map(node => ({
+            ...node,
+            data: {
+              ...node.data,
+              agentOverlay: node.data.agentOverlay
+                ? {
+                    ...node.data.agentOverlay,
+                    activity: { ...node.data.agentOverlay.activity!, phase: 'exited' as const },
+                  }
+                : null,
+            },
+          }))
+        : nodesRef.current.map(clearTerminalAgentOverlay)
     }
   })
   const listSessions = vi.fn(async () => ({ provider: 'codex', cwd: '', sessions: [] }))
@@ -125,6 +147,26 @@ describe('terminal agent overlay session actions', () => {
       provider: 'codex',
       cwd: '/tmp/overlay-cwd',
       limit: 7,
+    })
+  })
+
+  it('waits for authenticated invocation exit without discarding the durable binding', async () => {
+    const harness = createHarness({
+      dropBackOnInterrupt: true,
+      authenticatedActivity: true,
+    })
+
+    await act(async () => {
+      await harness.result.current.reloadOverlayAgent('terminal-1')
+    })
+
+    expect(harness.write).toHaveBeenNthCalledWith(2, {
+      sessionId: 'pty-session-1',
+      data: '\u0015codex resume resume-current\r',
+    })
+    expect(harness.nodesRef.current[0]?.data.terminalAgentBinding).toMatchObject({
+      resumeSessionId: 'resume-current',
+      resumeSessionIdVerified: true,
     })
   })
 

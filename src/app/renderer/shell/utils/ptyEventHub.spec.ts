@@ -137,6 +137,10 @@ describe('createPtyEventHub', () => {
       sessionId: 'session-1',
       resumeSessionId: 'resume-1',
     })
+    expect(hub.getLatestSessionMetadata('session-1')).toEqual({
+      sessionId: 'session-1',
+      resumeSessionId: 'resume-1',
+    })
   })
 
   it('dispatches only the arbitrated winner and exposes deterministic refresh', () => {

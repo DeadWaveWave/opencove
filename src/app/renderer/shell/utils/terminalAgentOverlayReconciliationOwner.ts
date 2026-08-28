@@ -29,6 +29,7 @@ export function createTerminalAgentOverlayReconciliationOwner(options: {
             node.data.kind !== 'terminal' ||
             node.data.sessionId !== event.sessionId ||
             overlay?.provider !== 'codex' ||
+            Boolean(overlay.activity) ||
             event.observedAtMs < overlay.startedAtMs
           ) {
             return node

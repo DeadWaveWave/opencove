@@ -188,6 +188,14 @@ describe('createRemotePtyStreamMessageHandler', () => {
         resumeSessionId: 'resume-1',
         profileId: 'profile-1',
         runtimeKind: 'posix',
+        terminalAgentActivity: {
+          provider: 'claude-code',
+          invocationId: 'invocation-1',
+          generation: 1,
+          phase: 'active',
+          observedAtMs: 1_000,
+          identityAuthority: 'provider_session_start',
+        },
       }),
     )
 
@@ -204,6 +212,14 @@ describe('createRemotePtyStreamMessageHandler', () => {
       resumeSessionId: 'resume-1',
       profileId: 'profile-1',
       runtimeKind: 'posix',
+      terminalAgentActivity: {
+        provider: 'claude-code',
+        invocationId: 'invocation-1',
+        generation: 1,
+        phase: 'active',
+        observedAtMs: 1_000,
+        identityAuthority: 'provider_session_start',
+      },
     })
     expect(externalStateListener).toHaveBeenCalledWith({
       sessionId: 'session-1',
@@ -224,6 +240,14 @@ describe('createRemotePtyStreamMessageHandler', () => {
       resumeSessionId: 'resume-1',
       profileId: 'profile-1',
       runtimeKind: 'posix',
+      terminalAgentActivity: {
+        provider: 'claude-code',
+        invocationId: 'invocation-1',
+        generation: 1,
+        phase: 'active',
+        observedAtMs: 1_000,
+        identityAuthority: 'provider_session_start',
+      },
     })
   })
 

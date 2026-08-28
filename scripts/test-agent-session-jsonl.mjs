@@ -237,7 +237,7 @@ export async function runJsonlStdinSubmitDelayedTurnScenario(provider, cwd) {
   await sleep(INTERACTIVE_SCENARIO_LIFETIME_MS)
 }
 
-async function resolveScenarioSessionFile({ provider, cwd, mode, resumeSessionId }) {
+export async function resolveScenarioSessionFile({ provider, cwd, mode, resumeSessionId }) {
   if (
     mode === 'resume' &&
     typeof resumeSessionId === 'string' &&

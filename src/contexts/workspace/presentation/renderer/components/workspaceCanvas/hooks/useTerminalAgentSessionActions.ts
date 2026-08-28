@@ -33,7 +33,7 @@ async function waitForDropBack(options: {
     if (
       current?.data.kind === 'terminal' &&
       current.data.sessionId === options.sessionId &&
-      !isAgentTreatedNode(current)
+      (!isAgentTreatedNode(current) || current.data.agentOverlay?.activity?.phase === 'exited')
     ) {
       return true
     }

@@ -7,6 +7,46 @@ describe('BrowserPtyClient', () => {
     vi.unstubAllGlobals()
   })
 
+  it('preserves authenticated terminal activity metadata', async () => {
+    vi.stubGlobal('window', {
+      location: { protocol: 'http:', host: 'localhost:3000', search: '' },
+      clearTimeout,
+      setTimeout,
+    })
+    const client = new BrowserPtyClient()
+    const listener = vi.fn()
+    client.onMetadata(listener)
+
+    await (client as unknown as { handleMessage: (raw: string) => Promise<void> }).handleMessage(
+      JSON.stringify({
+        type: 'metadata',
+        sessionId: 'session-activity',
+        resumeSessionId: 'provider-session',
+        terminalAgentActivity: {
+          provider: 'codex',
+          invocationId: 'invocation-1',
+          generation: 1,
+          phase: 'active',
+          observedAtMs: 1_000,
+          identityAuthority: 'provider_session_start',
+        },
+      }),
+    )
+
+    expect(listener).toHaveBeenCalledWith({
+      sessionId: 'session-activity',
+      resumeSessionId: 'provider-session',
+      terminalAgentActivity: {
+        provider: 'codex',
+        invocationId: 'invocation-1',
+        generation: 1,
+        phase: 'active',
+        observedAtMs: 1_000,
+        identityAuthority: 'provider_session_start',
+      },
+    })
+  })
+
   it('emits resync instead of replaying raw snapshot data on overflow', async () => {
     vi.stubGlobal('window', {
       location: {

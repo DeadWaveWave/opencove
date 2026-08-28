@@ -32,6 +32,66 @@ function postJson(endpoint: string, token: string, payload: unknown): Promise<nu
 }
 
 describe('shared agent hook channel contract', () => {
+  it('binds terminal identity only from a current authenticated SessionStart', async () => {
+    const homeDirectory = await mkdtemp(join(tmpdir(), 'opencove-agent-hook-identity-'))
+    roots.push(homeDirectory)
+    const channel = createClaudeHookChannel({
+      homeDirectory,
+      helperCommand: 'node',
+      install: vi.fn(async () => ({ state: 'installed' as const, detail: null })),
+    })
+    await channel.start()
+    const reservation = await channel.reserveSpawn()
+    const token = reservation.env?.OPENCOVE_CLAUDE_HOOK_TOKEN ?? ''
+    let current = true
+    const metadata: unknown[] = []
+    const states: unknown[] = []
+    channel.onMetadata(event => metadata.push(event))
+    channel.onState(event => states.push(event))
+    reservation.commit('pty-session', {
+      provider: 'claude-code',
+      invocationId: 'invocation-1',
+      generation: 1,
+      isCurrent: () => current,
+    })
+
+    await expect(
+      postJson(channel.getEndpoint()!, token, {
+        version: 1,
+        state: 'working',
+        hookEventName: 'SessionStart',
+        claudeSessionId: 'claude-session-1',
+      }),
+    ).resolves.toBe(204)
+    expect(metadata).toEqual([
+      {
+        sessionId: 'pty-session',
+        resumeSessionId: 'claude-session-1',
+        terminalAgentActivity: {
+          provider: 'claude-code',
+          invocationId: 'invocation-1',
+          generation: 1,
+          phase: 'active',
+          observedAtMs: expect.any(Number),
+          identityAuthority: 'provider_session_start',
+        },
+      },
+    ])
+    expect(states).toHaveLength(1)
+
+    current = false
+    await expect(
+      postJson(channel.getEndpoint()!, token, {
+        version: 1,
+        state: 'waiting',
+        hookEventName: 'PermissionRequest',
+        claudeSessionId: 'claude-session-1',
+      }),
+    ).resolves.toBe(204)
+    expect(states).toHaveLength(1)
+    await channel.dispose()
+  })
+
   it('keeps the existing provider channel isolated by reservation token', async () => {
     const homeDirectory = await mkdtemp(join(tmpdir(), 'opencove-agent-hook-channel-'))
     roots.push(homeDirectory)

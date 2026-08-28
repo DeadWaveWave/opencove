@@ -9,7 +9,7 @@ export function updateWorkspacesWithAgentMetadata({
   workspaces: WorkspaceState[]
   sessionId: string
   resumeSessionId: string | null | undefined
-}): { nextWorkspaces: WorkspaceState[]; didChange: boolean } {
+}): { nextWorkspaces: WorkspaceState[]; didChange: boolean; durableDidChange: boolean } {
   let didChange = false
 
   const nextWorkspaces = workspaces.map(workspace => {
@@ -19,26 +19,11 @@ export function updateWorkspacesWithAgentMetadata({
         return node
       }
 
-      const binding = node.data.kind === 'agent' ? node.data.agent : node.data.terminalAgentBinding
-      const terminalProvider =
-        node.data.kind === 'terminal'
-          ? (node.data.terminalAgentBinding?.provider ??
-            node.data.agentOverlay?.provider ??
-            node.data.terminalProviderHint ??
-            null)
-          : null
-      if (!binding && !terminalProvider) {
+      if (node.data.kind !== 'agent' || !node.data.agent) {
         return node
       }
 
-      const update = resolveObservedResumeSessionBindingUpdate(
-        binding ?? {
-          provider: terminalProvider!,
-          resumeSessionId: null,
-          resumeSessionIdVerified: false,
-        },
-        resumeSessionId,
-      )
+      const update = resolveObservedResumeSessionBindingUpdate(node.data.agent, resumeSessionId)
       if (!update) {
         return node
       }
@@ -48,14 +33,7 @@ export function updateWorkspacesWithAgentMetadata({
         ...node,
         data: {
           ...node.data,
-          ...(node.data.kind === 'agent'
-            ? { agent: { ...node.data.agent!, ...update } }
-            : {
-                terminalAgentBinding: {
-                  provider: terminalProvider!,
-                  ...update,
-                },
-              }),
+          agent: { ...node.data.agent, ...update },
         },
       }
     })
@@ -68,5 +46,9 @@ export function updateWorkspacesWithAgentMetadata({
     return { ...workspace, nodes: nextNodes }
   })
 
-  return { nextWorkspaces: didChange ? nextWorkspaces : workspaces, didChange }
+  return {
+    nextWorkspaces: didChange ? nextWorkspaces : workspaces,
+    didChange,
+    durableDidChange: didChange,
+  }
 }

@@ -15,6 +15,10 @@ import { createTerminalAgentWatcherOwner } from '../utils/terminalAgentWatcherOw
 import { createTerminalAgentOverlayReconciliationOwner } from '../utils/terminalAgentOverlayReconciliationOwner'
 import { projectAgentRuntimeObservation } from '@contexts/workspace/presentation/renderer/utils/agentRuntimeObservation'
 import { updateWorkspacesWithAgentMetadata } from './usePtyWorkspaceRuntimeSync.agentMetadata'
+import {
+  reconcileTerminalAgentActivitySnapshots,
+  updateWorkspacesWithTerminalAgentActivityMetadata,
+} from './usePtyWorkspaceRuntimeSync.terminalAgentActivity'
 export { updateWorkspacesWithAgentMetadata } from './usePtyWorkspaceRuntimeSync.agentMetadata'
 
 function normalizeResumeSessionId(rawValue: unknown): string | null {
@@ -93,6 +97,7 @@ export function updateWorkspacesWithAgentRunState({
         if (
           !overlay ||
           (overlay.status === nextStatus &&
+            node.data.agentRuntimeObservation?.status === nextStatus &&
             node.data.agentRuntimeObservation?.source === source &&
             node.data.agentRuntimeObservation.hookInstallState === hookInstallState &&
             node.data.agentRuntimeObservation.degraded === degraded)
@@ -321,6 +326,7 @@ export function usePtyWorkspaceRuntimeSync({
 
   useEffect(() => {
     const ptyEventHub = getPtyEventHub()
+    let reconcilingActivitySnapshots = false
     const overlayReconciliationOwner = createTerminalAgentOverlayReconciliationOwner({
       source: window.opencoveApi.pty,
       setWorkspaces,
@@ -375,22 +381,54 @@ export function usePtyWorkspaceRuntimeSync({
 
     const unsubscribeMetadata = ptyEventHub.onMetadata(event => {
       let didChange = false
+      let durableDidChange = false
 
       setWorkspaces(previous => {
-        const result = updateWorkspacesWithAgentMetadata({
-          workspaces: previous,
-          sessionId: event.sessionId,
-          resumeSessionId: normalizeResumeSessionId(event.resumeSessionId),
-        })
+        const result = event.terminalAgentActivity
+          ? updateWorkspacesWithTerminalAgentActivityMetadata({
+              workspaces: previous,
+              event: {
+                ...event,
+                terminalAgentActivity: event.terminalAgentActivity,
+              },
+            })
+          : updateWorkspacesWithAgentMetadata({
+              workspaces: previous,
+              sessionId: event.sessionId,
+              resumeSessionId: normalizeResumeSessionId(event.resumeSessionId),
+            })
 
         didChange = result.didChange
+        durableDidChange = result.durableDidChange
         return didChange ? result.nextWorkspaces : previous
       })
 
-      if (didChange) {
+      if (didChange && durableDidChange) {
         requestPersistFlush()
       }
     })
+
+    const reconcileActivitySnapshots = (): void => {
+      if (reconcilingActivitySnapshots) {
+        return
+      }
+      const current = useAppStore.getState().workspaces
+      const result = reconcileTerminalAgentActivitySnapshots({
+        workspaces: current,
+        readLatestMetadata: ptyEventHub.getLatestSessionMetadata,
+      })
+      if (!result.didChange) {
+        return
+      }
+      reconcilingActivitySnapshots = true
+      setWorkspaces(result.nextWorkspaces)
+      reconcilingActivitySnapshots = false
+      if (result.durableDidChange) {
+        requestPersistFlush()
+      }
+    }
+    reconcileActivitySnapshots()
+    const unsubscribeActivityReconciliation = useAppStore.subscribe(reconcileActivitySnapshots)
 
     const unsubscribeGeometry = ptyEventHub.onGeometry(event => {
       let didChange = false
@@ -442,6 +480,7 @@ export function usePtyWorkspaceRuntimeSync({
       unsubscribeData()
       unsubscribeState()
       unsubscribeMetadata()
+      unsubscribeActivityReconciliation()
       unsubscribeGeometry()
       unsubscribeExit()
       overlayReconciliationOwner.dispose()

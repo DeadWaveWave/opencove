@@ -164,9 +164,9 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         terminalProviderHint: node.terminalProviderHint ?? null,
         terminalAgentBinding: node.terminalAgentBinding ?? null,
         agentOverlay:
-          node.kind === 'terminal' && (node.terminalAgentBinding || node.terminalProviderHint)
+          node.kind === 'terminal' && node.terminalAgentBinding
             ? {
-                provider: node.terminalAgentBinding?.provider ?? node.terminalProviderHint!,
+                provider: node.terminalAgentBinding.provider,
                 status: 'restoring',
                 startedAtMs: Date.now(),
               }

@@ -127,6 +127,10 @@ function resolveState(
     return 'done'
   }
 
+  if (eventName === 'SessionStart') {
+    return 'working'
+  }
+
   if (
     eventName === 'UserPromptSubmit' ||
     eventName === 'PostToolUse' ||

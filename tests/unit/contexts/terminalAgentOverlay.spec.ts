@@ -63,6 +63,8 @@ describe('terminal agent overlay invariants', () => {
     const activated = activateTerminalAgentOverlay(createTerminalNode(), {
       provider: 'codex',
       startedAtMs: 1_723_456_789_000,
+      resumeSessionId: 'codex-session',
+      resumeSessionIdVerified: true,
     })
     const workspace = {
       id: 'workspace-1',
@@ -116,7 +118,7 @@ describe('terminal agent overlay invariants', () => {
     expect(persistedNode).not.toHaveProperty('recoveryIssue')
   })
 
-  it('normalizes an unverified legacy binding to a provider hint without auto-resume identity', () => {
+  it('normalizes an unverified legacy binding to a non-authoritative provider hint', () => {
     const terminal = createTerminalNode()
     const persistedWorkspace = toPersistedState(
       [
@@ -147,10 +149,7 @@ describe('terminal agent overlay invariants', () => {
 
     expect(recovered.data.terminalAgentBinding).toBeNull()
     expect(recovered.data.terminalProviderHint).toBe('codex')
-    expect(recovered.data.agentOverlay).toMatchObject({
-      provider: 'codex',
-      status: 'restoring',
-    })
+    expect(recovered.data.agentOverlay).toBeNull()
   })
 
   it('INV-2 preserves node, PTY session, and scrollback identity across overlay on/off', () => {
@@ -215,6 +214,49 @@ describe('terminal agent overlay invariants', () => {
       startedAt: '2026-08-12T01:02:03.000Z',
       resumeSessionId: 'resume-overlay',
       resumeSessionIdVerified: true,
+    })
+  })
+
+  it('uses the current active invocation provider without borrowing another provider binding', () => {
+    const node = activateTerminalAgentOverlay(
+      {
+        ...createTerminalNode(),
+        data: {
+          ...createTerminalNode().data,
+          executionDirectory: '/tmp/terminal-cwd',
+        },
+      },
+      {
+        provider: 'claude-code',
+        startedAtMs: Date.parse('2026-08-12T01:02:03.000Z'),
+        resumeSessionId: 'claude-session',
+        resumeSessionIdVerified: true,
+      },
+    )
+    const switched = {
+      ...node,
+      data: {
+        ...node.data,
+        agentOverlay: {
+          provider: 'codex' as const,
+          status: 'standby' as const,
+          startedAtMs: Date.parse('2026-08-12T02:03:04.000Z'),
+          activity: {
+            invocationId: 'codex-invocation',
+            generation: 2,
+            phase: 'active' as const,
+            observedAtMs: Date.parse('2026-08-12T02:03:04.000Z'),
+          },
+        },
+      },
+    }
+
+    expect(resolveAgentTreatedActionContext(switched)).toEqual({
+      provider: 'codex',
+      cwd: '/tmp/terminal-cwd',
+      startedAt: '2026-08-12T02:03:04.000Z',
+      resumeSessionId: null,
+      resumeSessionIdVerified: false,
     })
   })
 

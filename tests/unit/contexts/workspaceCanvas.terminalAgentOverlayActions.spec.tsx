@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeProps } from '../../../src/contexts/workspace/presentation/renderer/components/TerminalNode.types'
 import { WorkspaceCanvasTerminalNodeType } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.terminal'
@@ -19,6 +19,7 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/Termin
       <span data-testid="switch">{String(typeof props.onSwitchSession === 'function')}</span>
       <span data-testid="cwd">{props.agentExecutionDirectory}</span>
       <span data-testid="resume">{props.agentResumeSessionId}</span>
+      <button data-testid="exit" onClick={props.onAgentOverlayExit} />
     </div>
   ),
 }))
@@ -87,5 +88,42 @@ describe('WorkspaceCanvas terminal agent overlay actions', () => {
     expect(screen.getByTestId('switch')).toHaveTextContent('true')
     expect(screen.getByTestId('cwd')).toHaveTextContent('/tmp/overlay cwd')
     expect(screen.getByTestId('resume')).toHaveTextContent('resume-overlay')
+  })
+
+  it('leaves a gateway-owned invocation for authoritative exit reconciliation', () => {
+    const clearTerminalAgentOverlay = vi.fn()
+    const data = createOverlayData()
+    data.agentOverlay!.activity = {
+      invocationId: 'invocation-1',
+      generation: 1,
+      phase: 'active',
+      observedAtMs: 100,
+    }
+
+    render(
+      <WorkspaceCanvasTerminalNodeType
+        id="terminal-1"
+        data={data}
+        terminalFontSize={14}
+        terminalFontFamily={null}
+        terminalDisplayCalibration={null}
+        selectNode={vi.fn()}
+        closeNodeRef={{ current: vi.fn(async () => undefined) }}
+        resizeNodeRef={{ current: vi.fn() }}
+        copyAgentLastMessageRef={{ current: vi.fn(async () => undefined) }}
+        reloadAgentSessionRef={{ current: vi.fn(async () => undefined) }}
+        listAgentSessionsRef={{ current: vi.fn(async () => []) }}
+        switchAgentSessionRef={{ current: vi.fn(async () => undefined) }}
+        updateNodeScrollbackRef={{ current: vi.fn() }}
+        normalizeViewportForTerminalInteractionRef={{ current: vi.fn() }}
+        updateTerminalTitleRef={{ current: vi.fn() }}
+        clearTerminalAgentOverlayRef={{ current: clearTerminalAgentOverlay }}
+        renameTerminalTitleRef={{ current: vi.fn() }}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('exit'))
+
+    expect(clearTerminalAgentOverlay).not.toHaveBeenCalled()
   })
 })

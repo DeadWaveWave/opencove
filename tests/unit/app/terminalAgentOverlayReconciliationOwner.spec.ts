@@ -113,6 +113,38 @@ describe('terminal agent overlay reconciliation owner', () => {
     expect(harness.requestPersistFlush).not.toHaveBeenCalled()
   })
 
+  it('does not let foreground heuristics erase authenticated activity or its durable binding', () => {
+    const harness = createHarness()
+    const workspace = createWorkspace()
+    const node = workspace.nodes[0]!
+    node.data.terminalAgentBinding = {
+      provider: 'codex',
+      resumeSessionId: 'codex-session',
+      resumeSessionIdVerified: true,
+    }
+    node.data.agentOverlay = {
+      provider: 'codex',
+      status: 'standby',
+      startedAtMs: 100,
+      activity: {
+        invocationId: 'invocation-1',
+        generation: 1,
+        phase: 'exited',
+        observedAtMs: 150,
+      },
+    }
+    harness.setWorkspaces([workspace])
+
+    harness.emit(processScan({ availability: 'available', agent: null, shellOnly: true }))
+
+    expect(harness.getWorkspaces()[0]?.nodes[0]?.data.terminalAgentBinding).toMatchObject({
+      resumeSessionId: 'codex-session',
+      resumeSessionIdVerified: true,
+    })
+    expect(harness.getWorkspaces()[0]?.nodes[0]?.data.agentOverlay?.activity?.phase).toBe('exited')
+    expect(harness.requestPersistFlush).not.toHaveBeenCalled()
+  })
+
   it('does not let stale evidence or codex-only reconciliation clear another generation/provider', () => {
     const harness = createHarness()
     harness.setWorkspaces([createWorkspace('codex', 300)])

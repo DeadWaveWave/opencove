@@ -9,6 +9,7 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
+import { normalizeTerminalAgentActivitySnapshot } from '../../../../shared/runtime/terminalAgentActivity'
 
 export type AttachedSessionState = {
   lastSeq: number
@@ -44,6 +45,7 @@ type PtyStreamMessage =
       resumeSessionId?: string | null
       profileId?: string | null
       runtimeKind?: string | null
+      terminalAgentActivity?: unknown
     }
   | {
       type: 'overflow'
@@ -432,12 +434,16 @@ export function createRemotePtyStreamMessageHandler(options: {
         message.runtimeKind === 'posix'
           ? message.runtimeKind
           : null
+      const terminalAgentActivity = normalizeTerminalAgentActivitySnapshot(
+        message.terminalAgentActivity,
+      )
 
       const eventPayload: TerminalSessionMetadataEvent = {
         sessionId,
         resumeSessionId,
         ...(profileId ? { profileId } : {}),
         ...(runtimeKind ? { runtimeKind } : {}),
+        ...(terminalAgentActivity ? { terminalAgentActivity } : {}),
       }
       options.sendToAllWindows(IPC_CHANNELS.ptySessionMetadata, eventPayload)
       options.externalMetadataListeners.forEach(listener => listener(eventPayload))

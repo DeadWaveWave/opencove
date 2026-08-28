@@ -135,7 +135,7 @@ describe('terminal agent cold session recovery', () => {
     ])
   })
 
-  it('relaunches an unverified provider hint once after the fresh shell is ready', async () => {
+  it('does not relaunch an unverified provider hint after cold recovery', async () => {
     const controlSurface = createControlSurface()
     const write = vi.fn()
     let markShellReady: (() => void) | null = null
@@ -160,14 +160,11 @@ describe('terminal agent cold session recovery', () => {
       payload: { workspaceId: 'workspace-1' },
     })
 
-    await vi.waitFor(() => {
-      expect(waitForShellReady).toHaveBeenCalledWith('fresh-pty-session')
-    })
-    expect(write).not.toHaveBeenCalled()
-    markShellReady?.()
     const result = await resultPromise
 
     expect(result.ok).toBe(true)
-    expect(write.mock.calls).toEqual([['fresh-pty-session', '\u0015codex\r']])
+    expect(waitForShellReady).not.toHaveBeenCalled()
+    expect(markShellReady).toBeNull()
+    expect(write).not.toHaveBeenCalled()
   })
 })

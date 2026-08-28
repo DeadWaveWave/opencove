@@ -43,6 +43,7 @@ function channel(provider: 'claude' | 'codex') {
     start: vi.fn(async () => undefined),
     reserveSpawn: vi.fn(async () => reservation),
     onState: vi.fn(() => () => undefined),
+    onMetadata: vi.fn(() => () => undefined),
     disposeSession: vi.fn(),
     getInstallState: vi.fn(() => 'installed' as const),
     getEndpoint: vi.fn(() => null),
@@ -85,6 +86,10 @@ describe('ClaudeCodeAgentProviderContribution', () => {
       type: 'command',
       command: '/runtime/node',
       args: [expect.stringContaining('opencove-claude-hook-')],
+    })
+    expect(settings.hooks.SessionStart[0].hooks[0]).toMatchObject({
+      type: 'command',
+      command: '/runtime/node',
     })
     expect(plan.args.at(-1)).toBe('Explain the change')
     expect(plan.env).toMatchObject({

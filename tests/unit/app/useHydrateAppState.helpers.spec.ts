@@ -120,7 +120,7 @@ describe('mergeHydratedNode', () => {
     expect(merged.data.agent?.resumeSessionIdVerified).toBe(true)
   })
 
-  it('keeps a provider-hinted overlay without inventing a manual recovery error', async () => {
+  it('keeps a provider hint non-authoritative without inventing a recovery error', async () => {
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
       value: {
@@ -195,10 +195,7 @@ describe('mergeHydratedNode', () => {
 
     expect(hydrated?.data.kind).toBe('terminal')
     expect(hydrated?.data.terminalAgentBinding).toBeNull()
-    expect(hydrated?.data.agentOverlay).toMatchObject({
-      provider: 'codex',
-      status: 'standby',
-    })
+    expect(hydrated?.data.agentOverlay).toBeNull()
     expect(hydrated?.data.lastError).toBeNull()
   })
 })
