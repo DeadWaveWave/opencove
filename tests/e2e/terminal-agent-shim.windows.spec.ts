@@ -60,7 +60,8 @@ async function createProviderCommand(options: {
 }): Promise<{ command: 'claude' | 'codex'; realBin: string }> {
   const command = options.provider === 'claude-code' ? 'claude' : 'codex'
   const realBin = join(options.root, 'real provider bin')
-  const helperPath = join(options.root, `${command}-provider.mjs`)
+  const helperName = `${command}-provider.mjs`
+  const helperPath = join(realBin, helperName)
   await mkdir(realBin)
   await writeFile(
     helperPath,
@@ -105,7 +106,7 @@ async function createProviderCommand(options: {
   )
   await writeFile(
     join(realBin, `${command}.cmd`),
-    `@echo off\r\n"${process.execPath}" "${helperPath}" %*\r\nexit /b %ERRORLEVEL%\r\n`,
+    `@echo off\r\n"${process.execPath}" "%~dp0${helperName}" %*\r\nexit /b %ERRORLEVEL%\r\n`,
   )
   return { command, realBin }
 }
