@@ -25,6 +25,9 @@ describe('terminal Agent private telemetry assets', () => {
     expect(script).not.toContain('GetTempFileName')
     expect(script).toContain('try {')
     expect(script).toContain('finally {')
+    expect(script).toContain(
+      '$plan = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop',
+    )
     expect(script.indexOf('if ($null -eq $originalElectronRunAsNode)')).toBeLessThan(
       script.indexOf('foreach ($property in $plan.env.PSObject.Properties)'),
     )

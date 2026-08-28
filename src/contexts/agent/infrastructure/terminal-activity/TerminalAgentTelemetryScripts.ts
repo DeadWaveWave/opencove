@@ -209,7 +209,7 @@ export function createPowerShellShimScript(
     '  $env:ELECTRON_RUN_AS_NODE = "1"',
     `  & ${runtime} ${launcher} --prepare-windows ${providerCommand} $planPath`,
     '  if ($LASTEXITCODE -ne 0) { $providerExitCode = $LASTEXITCODE; exit $providerExitCode }',
-    '  $plan = Get-Content -LiteralPath $planPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop',
+    '  $plan = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop',
     '  if ($null -eq $originalElectronRunAsNode) { Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue } else { $env:ELECTRON_RUN_AS_NODE = $originalElectronRunAsNode }',
     '  foreach ($property in $plan.env.PSObject.Properties) {',
     '    [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, "Process")',
