@@ -84,7 +84,7 @@ export interface TerminalAgentOverlay {
   activity?:
     | (Pick<
         TerminalAgentActivitySnapshot,
-        'invocationId' | 'generation' | 'phase' | 'observedAtMs'
+        'invocationId' | 'generation' | 'phase' | 'observedAtMs' | 'sourceRevision' | 'revision'
       > & {
         verifiedProviderSessionId?: string | null
       })

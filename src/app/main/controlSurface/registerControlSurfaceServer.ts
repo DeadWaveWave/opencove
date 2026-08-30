@@ -9,6 +9,7 @@ import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import { createApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { trashItemWithTimeout } from '../../../contexts/filesystem/application/deleteEntryWithTrashFallback'
 import { createPtyRuntime } from '../../../contexts/terminal/presentation/main-ipc/runtime'
+import { createMainTerminalProcessEngine } from '../terminal/mainTerminalProcessEngineFactory'
 import { closeWebsiteWindowNodeAcrossManagers } from '../websiteWindow/websiteWindowManagerRegistry'
 import { registerControlSurfaceHttpServer } from './controlSurfaceHttpServer'
 import type { ControlSurfaceHttpServerInstance } from './controlSurfaceHttpServer.contract'
@@ -33,7 +34,8 @@ export function registerControlSurfaceServer(deps?: {
   const userDataPath = app.getPath('userData')
   const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
   const ownsPtyRuntime = !deps?.ptyRuntime
-  const ptyRuntime = deps?.ptyRuntime ?? createPtyRuntime()
+  const ptyRuntime =
+    deps?.ptyRuntime ?? createPtyRuntime({ processEngine: createMainTerminalProcessEngine() })
   const claudeHookChannel = createClaudeHookChannel({})
   const codexHookChannel = createCodexHookChannel({})
   const agentHookChannels = {

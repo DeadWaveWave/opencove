@@ -1,19 +1,19 @@
 import WebSocket from 'ws'
-import { randomUUID } from 'node:crypto'
-import { createAppError } from '../../../../shared/errors/appError'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { PTY_STREAM_PROTOCOL_VERSION, PTY_STREAM_WS_SUBPROTOCOL } from './ptyStreamService'
-import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import type {
   ListSessionsResult,
   PresentationSnapshotTerminalResult,
   ResizeTerminalInput,
+  TerminalAgentReexecResult,
   TerminalGeometryCommitResult,
   TerminalForegroundEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
 import { createRemoteGeometryAckCoordinator } from '../remote/remoteGeometryAckCoordinator'
+import { TerminalAgentReexecResultCoordinator } from '../../../../shared/runtime/terminalAgentReexecResultCoordinator'
+import type { TerminalAgentReexecRuntimeInput } from '../handlers/sessionPtyRuntime'
 import {
   createRemotePtyEndpointAttachedSessionState,
   createRemotePtyEndpointProxyMessageHandler,
@@ -25,16 +25,21 @@ import {
 } from './remotePtyEndpointProxy.overflowRecovery'
 import { fetchRemotePtyPresentationSnapshot } from './remotePtyEndpointProxy.snapshotQuery'
 import {
+  findRemotePtyEndpointSession,
+  killRemotePtyEndpointSession,
+} from './remotePtyEndpointProxy.sessionQuery'
+import { reexecRemotePtyEndpointAgent } from './remotePtyEndpointProxy.agentReexec'
+import { resizeRemotePtyEndpoint } from './remotePtyEndpointProxy.resize'
+import {
+  PtyStreamSocketAttemptFence,
+  type PtyStreamSocketAttempt,
+} from '../../../../shared/runtime/ptyStreamSocketAttemptFence'
+import {
   normalizeOptionalFiniteInt,
+  resolveRemotePtyEndpointConnection,
   resolveRemotePtyWsUrl,
   trySendRemotePtyWs,
 } from './remotePtyEndpointProxy.support'
-
-type RemoteEndpointConnection = {
-  hostname: string
-  port: number
-  token: string
-}
 
 export class RemotePtyEndpointProxy {
   private readonly endpointId: string
@@ -42,10 +47,7 @@ export class RemotePtyEndpointProxy {
   private readonly emitData: (remoteSessionId: string, data: string) => void
   private readonly emitExit: (remoteSessionId: string, exitCode: number) => void
   private readonly emitForeground: (remoteSessionId: string, event: TerminalForegroundEvent) => void
-  private readonly emitState: (
-    remoteSessionId: string,
-    state: TerminalSessionStateEvent['state'],
-  ) => void
+  private readonly emitState: (remoteSessionId: string, event: TerminalSessionStateEvent) => void
   private readonly emitMetadata: (
     remoteSessionId: string,
     metadata: TerminalSessionMetadataEvent,
@@ -61,6 +63,8 @@ export class RemotePtyEndpointProxy {
   private readonly attachedSessions = new Map<string, RemotePtyEndpointAttachedSessionState>()
   private readonly overflowRecovery: RemotePtyOverflowRecoveryCoordinator
   private readonly geometryAcks = createRemoteGeometryAckCoordinator()
+  private readonly agentReexecAcks = new TerminalAgentReexecResultCoordinator()
+  private readonly socketAttempts = new PtyStreamSocketAttemptFence()
   private readonly messageHandler: (raw: string) => void
 
   private socket: WebSocket | null = null
@@ -72,6 +76,7 @@ export class RemotePtyEndpointProxy {
   private disposed = false
   private presentationRecoveryStopping = false
   private presentationRecoveryDrainPromise: Promise<void> | null = null
+  private agentReexecSupported: boolean | null = null
   private geometryCommitAckSupported: boolean | null = null
   private serverInstanceId: string | null = null
 
@@ -81,7 +86,7 @@ export class RemotePtyEndpointProxy {
     emitData: (remoteSessionId: string, data: string) => void
     emitExit: (remoteSessionId: string, exitCode: number) => void
     emitForeground: (remoteSessionId: string, event: TerminalForegroundEvent) => void
-    emitState: (remoteSessionId: string, state: TerminalSessionStateEvent['state']) => void
+    emitState: (remoteSessionId: string, event: TerminalSessionStateEvent) => void
     emitMetadata: (remoteSessionId: string, metadata: TerminalSessionMetadataEvent) => void
     emitPresentationReset: (
       remoteSessionId: string,
@@ -111,7 +116,8 @@ export class RemotePtyEndpointProxy {
     })
     this.messageHandler = createRemotePtyEndpointProxyMessageHandler({
       attachedSessions: this.attachedSessions,
-      onHelloAck: ({ geometryCommitAckSupported, serverInstanceId }) => {
+      onHelloAck: ({ agentReexecSupported, geometryCommitAckSupported, serverInstanceId }) => {
+        this.agentReexecSupported = agentReexecSupported
         this.geometryCommitAckSupported = geometryCommitAckSupported
         this.serverInstanceId = serverInstanceId
         this.socketHandshakeResolve?.()
@@ -127,17 +133,22 @@ export class RemotePtyEndpointProxy {
         this.socketHandshakeResolve = null
         this.socketHandshakeReject = null
       },
+      onAgentReexecResult: result => {
+        this.agentReexecAcks.resolve(result)
+      },
       onResizeResult: result => {
         this.geometryAcks.resolveResult(result)
       },
       onData: (sessionId, data, seq) => this.overflowRecovery.handleData(sessionId, data, seq),
-      onExit: (sessionId, exitCode, seq) =>
-        this.overflowRecovery.handleExit(sessionId, exitCode, seq),
+      onExit: (sessionId, exitCode, seq) => {
+        this.agentReexecAcks.rejectSession(sessionId, new Error('Terminal session exited'))
+        this.overflowRecovery.handleExit(sessionId, exitCode, seq)
+      },
       onForeground: (sessionId, event) => this.emitForeground(sessionId, event),
       onOverflow: sessionId => {
         this.overflowRecovery.begin(sessionId)
       },
-      onState: (sessionId, state) => this.emitState(sessionId, state),
+      onState: (sessionId, event) => this.emitState(sessionId, event),
       onMetadata: (sessionId, metadata) => this.emitMetadata(sessionId, metadata),
     })
   }
@@ -146,7 +157,10 @@ export class RemotePtyEndpointProxy {
     const current = this.socket
     this.socket = null
     this.socketReadyPromise = null
+    this.socketAttempts.retire()
     this.serverInstanceId = null
+    this.agentReexecSupported = null
+    this.agentReexecAcks.rejectAll(new Error('PTY stream connection closed'))
     this.geometryAcks.rejectAll(new Error('PTY stream connection closed'))
     this.attachedSessions.forEach(state => {
       state.authorityEpoch = null
@@ -170,23 +184,46 @@ export class RemotePtyEndpointProxy {
     }
   }
 
-  private async resolveEndpointOrThrow(): Promise<RemoteEndpointConnection> {
-    const endpoint = await this.topology.resolveRemoteEndpointConnection(this.endpointId)
-    if (!endpoint) {
-      throw createAppError('worker.unavailable', {
-        debugMessage: `Remote endpoint unavailable: ${this.endpointId}`,
-      })
-    }
-
-    return endpoint
+  private async resolveEndpointOrThrow() {
+    return await resolveRemotePtyEndpointConnection(this.topology, this.endpointId)
   }
 
   private handleMessage(raw: string): void {
     this.messageHandler(raw)
   }
 
-  private async connectSocket(): Promise<void> {
+  private handleSocketMessage(socket: WebSocket, raw: string): void {
+    if (this.socket !== socket) {
+      return
+    }
+    this.handleMessage(raw)
+  }
+
+  private handleSocketClosed(socket: WebSocket): void {
+    if (this.socket && this.socket !== socket) {
+      return
+    }
+    if (this.socket === socket) {
+      this.closeSocket()
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+    }
+
+    if (this.disposed || this.presentationRecoveryStopping || this.attachedSessions.size === 0) {
+      this.reconnectTimer = null
+      return
+    }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+      void this.ensureSocket().catch(() => undefined)
+    }, 500)
+  }
+
+  private async connectSocket(attempt: PtyStreamSocketAttempt): Promise<void> {
     const endpoint = await this.resolveEndpointOrThrow()
+    this.socketAttempts.assertCurrent(attempt)
     const url = resolveRemotePtyWsUrl(endpoint)
 
     const ws = new WebSocket(url, PTY_STREAM_WS_SUBPROTOCOL, {
@@ -203,24 +240,11 @@ export class RemotePtyEndpointProxy {
       if (text.trim().length === 0) {
         return
       }
-      this.handleMessage(text)
+      this.handleSocketMessage(ws, text)
     })
 
     ws.once('close', () => {
-      this.closeSocket()
-      if (this.reconnectTimer) {
-        clearTimeout(this.reconnectTimer)
-      }
-
-      if (this.disposed || this.presentationRecoveryStopping || this.attachedSessions.size === 0) {
-        this.reconnectTimer = null
-        return
-      }
-
-      this.reconnectTimer = setTimeout(() => {
-        this.reconnectTimer = null
-        void this.ensureSocket().catch(() => undefined)
-      }, 500)
+      this.handleSocketClosed(ws)
     })
 
     await new Promise<void>((resolvePromise, rejectPromise) => {
@@ -240,10 +264,15 @@ export class RemotePtyEndpointProxy {
       })
     })
 
+    this.socketAttempts.assertCurrent(attempt)
+    if (this.socket !== ws) {
+      throw new Error('PTY stream connection changed before handshake.')
+    }
     this.socketHandshakePromise = new Promise<void>((resolvePromise, rejectPromise) => {
       this.socketHandshakeResolve = resolvePromise
       this.socketHandshakeReject = rejectPromise
     })
+    const handshakePromise = this.socketHandshakePromise
 
     trySendRemotePtyWs(ws, {
       type: 'hello',
@@ -255,16 +284,21 @@ export class RemotePtyEndpointProxy {
     })
 
     const handshakeTimeout = setTimeout(() => {
-      this.socketHandshakeReject?.(new Error('Timed out waiting for PTY hello_ack'))
+      if (this.socket === ws && this.socketHandshakePromise === handshakePromise) {
+        this.socketHandshakeReject?.(new Error('Timed out waiting for PTY hello_ack'))
+      }
     }, 3_000)
 
     try {
-      await this.socketHandshakePromise
+      await handshakePromise
     } finally {
       clearTimeout(handshakeTimeout)
-      this.socketHandshakePromise = null
+      if (this.socketHandshakePromise === handshakePromise) {
+        this.socketHandshakePromise = null
+      }
     }
 
+    this.socketAttempts.assertCurrent(attempt)
     for (const [remoteSessionId, state] of this.attachedSessions.entries()) {
       trySendRemotePtyWs(ws, {
         type: 'attach',
@@ -291,15 +325,21 @@ export class RemotePtyEndpointProxy {
       return await this.socketReadyPromise
     }
 
-    this.socketReadyPromise = this.connectSocket().catch(error => {
-      this.closeSocket()
-      throw error
-    })
+    const attempt = this.socketAttempts.begin()
+    const readyPromise = this.connectSocket(attempt)
+    this.socketReadyPromise = readyPromise
 
     try {
-      await this.socketReadyPromise
+      await readyPromise
+    } catch (error) {
+      if (this.socketReadyPromise === readyPromise && this.socketAttempts.isCurrent(attempt)) {
+        this.closeSocket()
+      }
+      throw error
     } finally {
-      this.socketReadyPromise = null
+      if (this.socketReadyPromise === readyPromise) {
+        this.socketReadyPromise = null
+      }
     }
   }
 
@@ -350,27 +390,12 @@ export class RemotePtyEndpointProxy {
     expectedServerInstanceId?: string | null,
   ): Promise<ListSessionsResult['sessions'][number] | null> {
     await this.ensureSocket()
-    if (expectedServerInstanceId && this.serverInstanceId !== expectedServerInstanceId) {
-      return null
-    }
-    const endpoint = await this.resolveEndpointOrThrow()
-    const { result } = await invokeControlSurface(endpoint, {
-      kind: 'query',
-      id: 'session.list',
-      payload: null,
+    return await findRemotePtyEndpointSession({
+      endpoint: await this.resolveEndpointOrThrow(),
+      remoteSessionId,
+      serverInstanceId: this.serverInstanceId,
+      expectedServerInstanceId,
     })
-    if (!result) {
-      throw createAppError('worker.unavailable')
-    }
-    if (result.ok === false) {
-      throw createAppError(result.error)
-    }
-
-    const value = result.value as Partial<ListSessionsResult> | null
-    if (!Array.isArray(value?.sessions)) {
-      throw new Error('Invalid session.list response payload')
-    }
-    return value.sessions.find(session => session?.sessionId === remoteSessionId) ?? null
   }
 
   public async presentationSnapshot(
@@ -402,6 +427,7 @@ export class RemotePtyEndpointProxy {
   }
 
   public forget(remoteSessionId: string): void {
+    this.agentReexecAcks.rejectSession(remoteSessionId, new Error('Terminal session forgotten'))
     this.overflowRecovery.forget(remoteSessionId)
     this.attachedSessions.delete(remoteSessionId)
   }
@@ -418,60 +444,33 @@ export class RemotePtyEndpointProxy {
       .catch(() => undefined)
   }
 
-  public async resize(input: ResizeTerminalInput): Promise<TerminalGeometryCommitResult> {
-    const operationId = input.operationId?.trim() || randomUUID()
+  public async reexecAgent(
+    input: TerminalAgentReexecRuntimeInput,
+  ): Promise<TerminalAgentReexecResult> {
     await this.ensureSocket()
-    const ws = this.socket
-    if (!ws) {
-      throw new Error('Remote PTY socket is unavailable')
-    }
-    const attached = this.attachedSessions.get(input.sessionId)
-    const resultPromise = this.geometryAcks.waitForResult({
-      sessionId: input.sessionId,
-      operationId,
-      timeoutMs: 3_000,
-      timeoutMessage: `Timed out waiting for remote geometry ACK: ${input.sessionId}`,
+    return await reexecRemotePtyEndpointAgent({
+      socket: this.socket,
+      supported: this.agentReexecSupported === true,
+      acknowledgements: this.agentReexecAcks,
+      attached: this.attachedSessions.get(input.sessionId),
+      input,
     })
-    const sent = trySendRemotePtyWs(ws, {
-      type: 'resize',
-      sessionId: input.sessionId,
-      cols: input.cols,
-      rows: input.rows,
-      reason: input.reason,
-      operationId,
-      // Upstream revisions/epochs belong to the Home Hub. This proxy owns the downstream attach,
-      // so only its Remote Hub authority epoch is valid on this wire.
-      ...(typeof attached?.authorityEpoch === 'number'
-        ? { authorityEpoch: attached.authorityEpoch }
-        : {}),
+  }
+
+  public async resize(input: ResizeTerminalInput): Promise<TerminalGeometryCommitResult> {
+    await this.ensureSocket()
+    return await resizeRemotePtyEndpoint({
+      socket: this.socket,
+      acknowledgements: this.geometryAcks,
+      attached: this.attachedSessions.get(input.sessionId),
+      input,
     })
-    if (!sent) {
-      this.geometryAcks.rejectOperation(
-        input.sessionId,
-        operationId,
-        new Error('Failed to send remote geometry request'),
-      )
-    }
-    return await resultPromise
   }
 
   public kill(remoteSessionId: string): void {
-    void (async () => {
-      const endpoint = await this.resolveEndpointOrThrow()
-      const { result } = await invokeControlSurface(endpoint, {
-        kind: 'command',
-        id: 'session.kill',
-        payload: { sessionId: remoteSessionId },
-      })
-
-      if (!result) {
-        throw createAppError('worker.unavailable')
-      }
-
-      if (result.ok === false) {
-        throw createAppError(result.error)
-      }
-    })().catch(() => undefined)
+    void this.resolveEndpointOrThrow()
+      .then(async endpoint => await killRemotePtyEndpointSession({ endpoint, remoteSessionId }))
+      .catch(() => undefined)
   }
 
   public dispose(): void {

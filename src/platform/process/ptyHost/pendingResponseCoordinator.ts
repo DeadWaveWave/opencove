@@ -1,9 +1,11 @@
-import type { PtyHostResponseMessage } from './protocol'
+import type { PtyHostResponseMessage, PtyHostResponseRequestType } from './protocol'
 
 type PendingResponse = {
   resolve: (message: PtyHostResponseMessage) => void
   reject: (error: Error) => void
   timer: NodeJS.Timeout
+  expectedRequestType: PtyHostResponseRequestType
+  expectedSessionId: string | null
 }
 
 export class PtyHostPendingResponseCoordinator {
@@ -11,22 +13,44 @@ export class PtyHostPendingResponseCoordinator {
 
   public waitFor(
     requestId: string,
-    options: { timeoutMs: number; timeoutMessage: string },
+    options: {
+      timeoutMs: number
+      timeoutMessage: string
+      expectedRequestType: PtyHostResponseRequestType
+      expectedSessionId?: string
+    },
   ): Promise<PtyHostResponseMessage> {
     return new Promise<PtyHostResponseMessage>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingByRequestId.delete(requestId)
         reject(new Error(options.timeoutMessage))
       }, options.timeoutMs)
-      this.pendingByRequestId.set(requestId, { resolve, reject, timer })
+      this.pendingByRequestId.set(requestId, {
+        resolve,
+        reject,
+        timer,
+        expectedRequestType: options.expectedRequestType,
+        expectedSessionId: options.expectedSessionId ?? null,
+      })
     })
   }
 
   public resolve(message: PtyHostResponseMessage): boolean {
-    const pending = this.take(message.requestId)
+    const pending = this.pendingByRequestId.get(message.requestId) ?? null
     if (!pending) {
       return false
     }
+    if (
+      message.requestType !== pending.expectedRequestType ||
+      (message.ok &&
+        pending.expectedSessionId !== null &&
+        message.result.sessionId !== pending.expectedSessionId)
+    ) {
+      this.take(message.requestId)
+      pending.reject(new Error('[pty-host] response does not match its pending request'))
+      return true
+    }
+    this.take(message.requestId)
     pending.resolve(message)
     return true
   }

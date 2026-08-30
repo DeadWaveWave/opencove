@@ -10,6 +10,8 @@ import type {
   SpawnTerminalInput,
   SpawnTerminalResult,
   TerminalDataEvent,
+  TerminalAgentReexecInput,
+  TerminalAgentReexecResult,
   TerminalExitEvent,
   TerminalGeometryEvent,
   TerminalGeometryCommitResult,
@@ -18,12 +20,13 @@ import type {
   TerminalSessionStateEvent,
   WriteTerminalInput,
 } from '@shared/contracts/dto'
-import { normalizeTerminalAgentActivitySnapshot as normalizeActivity } from '@shared/runtime/terminalAgentActivity'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import { BrowserPtyGeometryAckCoordinator } from './BrowserPtyGeometryAckCoordinator'
 import { BrowserPtyClientMetadataWatcher } from './BrowserPtyClientMetadataWatcher'
 import { BrowserPtySocketLifecycle } from './BrowserPtySocketLifecycle'
 import { BrowserPtyClientStateReplay } from './BrowserPtyClientStateReplay'
+import { BrowserPtyClientAgentReexec } from './BrowserPtyClientAgentReexec'
+import { parseBrowserPtyMetadata } from './BrowserPtyMetadata'
 import {
   emitBrowserPtyEvent,
   normalizeBrowserPtyAttachAfterSeq,
@@ -34,14 +37,12 @@ import {
 } from './BrowserPtyWire'
 
 type UnsubscribeFn = () => void
-
 type AttachedSessionState = {
   lastSeq: number
   role: 'viewer' | 'controller'
   authorityEpoch: number | null
   nextLegacyRevision: number
 }
-
 function createAttachedSessionState(): AttachedSessionState {
   return { lastSeq: 0, role: 'viewer', authorityEpoch: null, nextLegacyRevision: 0 }
 }
@@ -73,10 +74,12 @@ export class BrowserPtyClient {
       for (const state of this.attachedSessions.values()) {
         state.authorityEpoch = null
       }
+      this.agentReexec.rejectAll(error)
       this.geometryAcks.rejectAll(error)
     },
     shouldReconnect: () => this.attachedSessions.size > 0,
   })
+  private readonly agentReexec = new BrowserPtyClientAgentReexec()
   private readonly dataListeners = new Set<(event: TerminalDataEvent) => void>()
   private readonly exitListeners = new Set<(event: TerminalExitEvent) => void>()
   private readonly geometryListeners = new Set<(event: TerminalGeometryEvent) => void>()
@@ -92,7 +95,6 @@ export class BrowserPtyClient {
       emitBrowserPtyEvent(this.metadataListeners, event)
     },
   })
-
   private async handleMessage(raw: string): Promise<void> {
     let payload: unknown
     try {
@@ -110,6 +112,7 @@ export class BrowserPtyClient {
     const sessionId = typeof record.sessionId === 'string' ? record.sessionId : null
 
     if (type === 'hello_ack') {
+      this.agentReexec.noteHelloAck(record)
       this.geometryAcks.noteHelloAck(record)
       return
     }
@@ -136,6 +139,11 @@ export class BrowserPtyClient {
         state.role = record.role === 'controller' ? 'controller' : 'viewer'
         state.authorityEpoch = normalizeBrowserPtyNonNegativeInt(record.authorityEpoch)
       }
+      return
+    }
+
+    if (type === 'agent_reexec_result') {
+      this.agentReexec.handleResult(record)
       return
     }
 
@@ -177,8 +185,11 @@ export class BrowserPtyClient {
         typeof record.exitCode === 'number' && Number.isFinite(record.exitCode)
           ? Math.floor(record.exitCode)
           : 0
-      emitBrowserPtyEvent(this.exitListeners, { sessionId, exitCode })
       this.stateReplay.disposeSession(sessionId)
+      this.agentReexec.rejectSession(sessionId, new Error('Terminal session exited'))
+      this.latestMetadataBySessionId.delete(sessionId)
+      this.metadataWatcher.cancel(sessionId)
+      emitBrowserPtyEvent(this.exitListeners, { sessionId, exitCode })
       return
     }
 
@@ -241,29 +252,7 @@ export class BrowserPtyClient {
     }
 
     if (type === 'metadata') {
-      const resumeSessionId =
-        typeof record.resumeSessionId === 'string' && record.resumeSessionId.trim().length > 0
-          ? record.resumeSessionId.trim()
-          : null
-      const profileId =
-        typeof record.profileId === 'string' && record.profileId.trim().length > 0
-          ? record.profileId.trim()
-          : null
-      const runtimeKind =
-        record.runtimeKind === 'windows' ||
-        record.runtimeKind === 'wsl' ||
-        record.runtimeKind === 'posix'
-          ? record.runtimeKind
-          : null
-      const terminalAgentActivity = normalizeActivity(record.terminalAgentActivity)
-
-      const eventPayload: TerminalSessionMetadataEvent = {
-        sessionId,
-        resumeSessionId,
-        ...(profileId ? { profileId } : {}),
-        ...(runtimeKind ? { runtimeKind } : {}),
-        ...(terminalAgentActivity ? { terminalAgentActivity } : {}),
-      }
+      const eventPayload = parseBrowserPtyMetadata(sessionId, record)
       this.latestMetadataBySessionId.set(sessionId, eventPayload)
       emitBrowserPtyEvent(this.metadataListeners, eventPayload)
       this.metadataWatcher.cancel(sessionId)
@@ -323,6 +312,14 @@ export class BrowserPtyClient {
       type: 'write',
       sessionId: payload.sessionId,
       data: payload.data,
+    })
+  }
+
+  public async reexecAgent(payload: TerminalAgentReexecInput): Promise<TerminalAgentReexecResult> {
+    return await this.agentReexec.reexec({
+      input: payload,
+      authorityEpoch: this.attachedSessions.get(payload.sessionId)?.authorityEpoch ?? null,
+      send: async message => await this.sendSocketMessage(message),
     })
   }
 
@@ -397,6 +394,7 @@ export class BrowserPtyClient {
 
   public async detach(payload: DetachTerminalInput): Promise<void> {
     this.attachedSessions.delete(payload.sessionId)
+    this.agentReexec.rejectSession(payload.sessionId, new Error('Terminal session detached'))
     this.stateReplay.disposeSession(payload.sessionId)
     this.latestMetadataBySessionId.delete(payload.sessionId)
     this.metadataWatcher.cancel(payload.sessionId)

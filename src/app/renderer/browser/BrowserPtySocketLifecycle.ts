@@ -1,3 +1,4 @@
+import { PtyStreamSocketAttemptFence } from '@shared/runtime/ptyStreamSocketAttemptFence'
 import { getBrowserQueryToken } from './browserControlSurface'
 
 type SendSocketPayload = (payload: unknown) => void
@@ -16,6 +17,7 @@ export class BrowserPtySocketLifecycle {
   private socket: WebSocket | null = null
   private readyPromise: Promise<void> | null = null
   private reconnectTimer: number | null = null
+  private readonly socketAttempts = new PtyStreamSocketAttemptFence()
 
   public constructor(
     private readonly options: {
@@ -34,25 +36,41 @@ export class BrowserPtySocketLifecycle {
       return this.readyPromise
     }
 
-    this.readyPromise = new Promise((resolve, reject) => {
+    const attempt = this.socketAttempts.begin()
+    let readyPromise!: Promise<void>
+    readyPromise = new Promise((resolve, reject) => {
       const socket = new WebSocket(resolvePtyWebSocketUrl(), ['opencove-pty.v1'])
       this.socket = socket
+      const isCurrent = (): boolean =>
+        this.socketAttempts.isCurrent(attempt) && this.socket === socket
 
       socket.addEventListener('open', () => {
-        this.options.onConnected(payload => {
-          socket.send(JSON.stringify(payload))
-        })
-        this.readyPromise = null
+        if (!isCurrent()) {
+          reject(new Error('PTY stream connection attempt was retired.'))
+          return
+        }
+        this.options.onConnected(payload => socket.send(JSON.stringify(payload)))
+        if (this.readyPromise === readyPromise) {
+          this.readyPromise = null
+        }
         resolve()
       })
 
       socket.addEventListener('message', event => {
-        this.options.onMessage(String(event.data))
+        if (isCurrent()) {
+          this.options.onMessage(String(event.data))
+        }
       })
 
       socket.addEventListener('close', () => {
+        if (!isCurrent()) {
+          return
+        }
+        this.socketAttempts.retire()
         this.socket = null
-        this.readyPromise = null
+        if (this.readyPromise === readyPromise) {
+          this.readyPromise = null
+        }
         this.options.onDisconnected(new Error('PTY stream connection closed'))
 
         if (this.reconnectTimer !== null) {
@@ -67,10 +85,13 @@ export class BrowserPtySocketLifecycle {
       })
 
       socket.addEventListener('error', () => {
-        reject(new Error('PTY stream connection failed'))
+        if (isCurrent()) {
+          reject(new Error('PTY stream connection failed'))
+        }
       })
     })
-    return this.readyPromise
+    this.readyPromise = readyPromise
+    return readyPromise
   }
 
   public async send(payload: unknown): Promise<void> {

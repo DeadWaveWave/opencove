@@ -20,7 +20,7 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    testProcess.emitReady()
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
@@ -29,14 +29,27 @@ describe('PtyHostSupervisor', () => {
     )
     expect(sentSpawn?.requestId).toBeTruthy()
 
-    testProcess.emit('message', {
+    testProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: sentSpawn?.requestId,
       ok: true,
       result: { sessionId: 's1' },
     })
 
     await expect(spawnPromise).resolves.toEqual({ sessionId: 's1' })
+
+    supervisor.probeForeground('s1')
+    expect(
+      findLastSentMessage<{ type: 'foreground_probe'; sessionId: string; hostInstanceId: string }>(
+        testProcess,
+        'foreground_probe',
+      ),
+    ).toEqual({
+      type: 'foreground_probe',
+      hostInstanceId: testProcess.hostInstanceId,
+      sessionId: 's1',
+    })
 
     supervisor.dispose()
   })
@@ -61,7 +74,7 @@ describe('PtyHostSupervisor', () => {
         rows: 24,
       })
 
-      testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+      testProcess.emitReady()
       await new Promise(resolve => setTimeout(resolve, 0))
 
       const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string; env?: unknown }>(
@@ -76,8 +89,9 @@ describe('PtyHostSupervisor', () => {
 
       expect(resolvedEnv?.['ELECTRON_RUN_AS_NODE']).toBeUndefined()
 
-      testProcess.emit('message', {
+      testProcess.emitHostMessage({
         type: 'response',
+        requestType: 'spawn',
         requestId: sentSpawn?.requestId,
         ok: true,
         result: { sessionId: 's-env' },
@@ -113,7 +127,7 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    testProcess.emitReady()
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string; env?: unknown }>(
@@ -128,8 +142,9 @@ describe('PtyHostSupervisor', () => {
 
     expect(resolvedEnv?.['ELECTRON_RUN_AS_NODE']).toBe('1')
 
-    testProcess.emit('message', {
+    testProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: sentSpawn?.requestId,
       ok: true,
       result: { sessionId: 's-explicit-env' },
@@ -161,15 +176,16 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    testProcess.emitReady()
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       testProcess,
       'spawn',
     )
-    testProcess.emit('message', {
+    testProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: sentSpawn?.requestId,
       ok: true,
       result: { sessionId: 's2' },
@@ -199,14 +215,15 @@ describe('PtyHostSupervisor', () => {
       cols: 80,
       rows: 24,
     })
-    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    testProcess.emitReady()
     await new Promise(resolve => setTimeout(resolve, 0))
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       testProcess,
       'spawn',
     )
-    testProcess.emit('message', {
+    testProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: sentSpawn?.requestId,
       ok: true,
       result: { sessionId: 's-resize' },
@@ -230,8 +247,9 @@ describe('PtyHostSupervisor', () => {
       rows: 32,
     })
 
-    testProcess.emit('message', {
+    testProcess.emitHostMessage({
       type: 'response',
+      requestType: 'resize',
       requestId: sentResize?.requestId,
       ok: true,
       result: {
@@ -265,14 +283,15 @@ describe('PtyHostSupervisor', () => {
       cols: 80,
       rows: 24,
     })
-    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    testProcess.emitReady()
     await vi.waitFor(() => expect(findLastSentMessage(testProcess, 'spawn')).not.toBeNull())
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       testProcess,
       'spawn',
     )
-    testProcess.emit('message', {
+    testProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: sentSpawn?.requestId,
       ok: true,
       result: { sessionId: 's-missing-geometry' },
@@ -285,14 +304,15 @@ describe('PtyHostSupervisor', () => {
       testProcess,
       'resize',
     )
-    testProcess.emit('message', {
+    testProcess.emitHostMessage({
       type: 'response',
+      requestType: 'resize',
       requestId: sentResize?.requestId,
       ok: true,
       result: { sessionId: 's-missing-geometry' },
     })
 
-    await expect(resizePromise).rejects.toThrow('missing applied geometry status')
+    await expect(resizePromise).rejects.toThrow('malformed response')
     supervisor.dispose()
   })
 
@@ -314,15 +334,16 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    testProcess.emitReady()
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       testProcess,
       'spawn',
     )
-    testProcess.emit('message', {
+    testProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: sentSpawn?.requestId,
       ok: true,
       result: { sessionId: 's-shutdown-failure' },
@@ -358,15 +379,16 @@ describe('PtyHostSupervisor', () => {
       rows: 24,
     })
 
-    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    testProcess.emitReady()
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       testProcess,
       'spawn',
     )
-    testProcess.emit('message', {
+    testProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: sentSpawn?.requestId,
       ok: true,
       result: { sessionId: 's-write-failure' },

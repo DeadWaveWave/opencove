@@ -269,6 +269,8 @@ describe('terminal agent overlay invariants', () => {
     const droppedBack = clearTerminalAgentOverlay(firstOverlay)
     const reentered = reactivateTerminalAgentOverlayAfterReexec(droppedBack, {
       expectedSessionId: original.data.sessionId,
+      expectedStartedAtMs: 1_723_456_789_000,
+      expectedActivity: null,
       provider: 'codex',
       startedAtMs: 1_723_456_790_000,
       resumeSessionId: 'codex-session-2',

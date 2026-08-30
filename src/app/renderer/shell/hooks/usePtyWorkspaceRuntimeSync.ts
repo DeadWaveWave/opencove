@@ -14,21 +14,11 @@ import { isAgentTreatedNode } from '@contexts/workspace/presentation/renderer/ut
 import { createTerminalAgentWatcherOwner } from '../utils/terminalAgentWatcherOwner'
 import { createTerminalAgentOverlayReconciliationOwner } from '../utils/terminalAgentOverlayReconciliationOwner'
 import { projectAgentRuntimeObservation } from '@contexts/workspace/presentation/renderer/utils/agentRuntimeObservation'
-import { updateWorkspacesWithAgentMetadata } from './usePtyWorkspaceRuntimeSync.agentMetadata'
-import {
-  reconcileTerminalAgentActivitySnapshots,
-  updateWorkspacesWithTerminalAgentActivityMetadata,
-} from './usePtyWorkspaceRuntimeSync.terminalAgentActivity'
+import { reconcileTerminalAgentActivitySnapshots } from './usePtyWorkspaceRuntimeSync.terminalAgentActivity'
+import { createApplyTerminalSessionMetadata } from './usePtyWorkspaceRuntimeSync.metadataProjection'
+import { createTerminalAgentActivityApi } from '@contexts/terminal/presentation/renderer/terminalAgentActivityApi'
+import { createTerminalAgentActivityBaselineOwner } from '@contexts/terminal/presentation/renderer/terminalAgentActivityBaselineOwner'
 export { updateWorkspacesWithAgentMetadata } from './usePtyWorkspaceRuntimeSync.agentMetadata'
-
-function normalizeResumeSessionId(rawValue: unknown): string | null {
-  if (typeof rawValue !== 'string') {
-    return null
-  }
-
-  const trimmed = rawValue.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
 
 function updateWorkspacesWithAgentTreatedNodes(
   workspaces: WorkspaceState[],
@@ -379,33 +369,14 @@ export function usePtyWorkspaceRuntimeSync({
       }
     })
 
-    const unsubscribeMetadata = ptyEventHub.onMetadata(event => {
-      let didChange = false
-      let durableDidChange = false
-
-      setWorkspaces(previous => {
-        const result = event.terminalAgentActivity
-          ? updateWorkspacesWithTerminalAgentActivityMetadata({
-              workspaces: previous,
-              event: {
-                ...event,
-                terminalAgentActivity: event.terminalAgentActivity,
-              },
-            })
-          : updateWorkspacesWithAgentMetadata({
-              workspaces: previous,
-              sessionId: event.sessionId,
-              resumeSessionId: normalizeResumeSessionId(event.resumeSessionId),
-            })
-
-        didChange = result.didChange
-        durableDidChange = result.durableDidChange
-        return didChange ? result.nextWorkspaces : previous
-      })
-
-      if (didChange && durableDidChange) {
-        requestPersistFlush()
-      }
+    const applyMetadata = createApplyTerminalSessionMetadata({
+      setWorkspaces,
+      requestPersistFlush,
+    })
+    const activityBaselineOwner = createTerminalAgentActivityBaselineOwner({
+      source: ptyEventHub,
+      api: createTerminalAgentActivityApi(),
+      applyMetadata,
     })
 
     const reconcileActivitySnapshots = (): void => {
@@ -415,7 +386,7 @@ export function usePtyWorkspaceRuntimeSync({
       const current = useAppStore.getState().workspaces
       const result = reconcileTerminalAgentActivitySnapshots({
         workspaces: current,
-        readLatestMetadata: ptyEventHub.getLatestSessionMetadata,
+        readLatestMetadata: activityBaselineOwner.getLatestMetadata,
       })
       if (!result.didChange) {
         return
@@ -479,7 +450,7 @@ export function usePtyWorkspaceRuntimeSync({
     return () => {
       unsubscribeData()
       unsubscribeState()
-      unsubscribeMetadata()
+      activityBaselineOwner.dispose()
       unsubscribeActivityReconciliation()
       unsubscribeGeometry()
       unsubscribeExit()

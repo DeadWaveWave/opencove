@@ -359,6 +359,7 @@ export function installBrowserOpenCoveApi(): void {
       listProfiles: () => ptyClient.listProfiles(),
       spawn: payload => ptyClient.spawn(payload),
       write: payload => ptyClient.write(payload),
+      reexecAgent: payload => ptyClient.reexecAgent(payload),
       resize: payload => ptyClient.resize(payload),
       kill: payload => ptyClient.kill(payload),
       attach: payload => ptyClient.attach(payload),

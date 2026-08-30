@@ -34,7 +34,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    firstProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    firstProcess.emitReady()
     await vi.waitFor(() => {
       expect(findLastSentMessage(firstProcess, 'spawn')).not.toBeNull()
     })
@@ -47,7 +47,7 @@ describe('PtyHostSupervisor spawn identity', () => {
     await vi.waitFor(() => {
       expect(processes).toHaveLength(0)
     })
-    secondProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    secondProcess.emitReady()
     await vi.waitFor(() => {
       expect(findLastSentMessage(secondProcess, 'spawn')).not.toBeNull()
     })
@@ -58,8 +58,9 @@ describe('PtyHostSupervisor spawn identity', () => {
     }>(secondProcess, 'spawn')
 
     expect(secondSpawn?.launchId).toBe(firstSpawn?.launchId)
-    secondProcess.emit('message', {
+    secondProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: secondSpawn?.requestId,
       ok: true,
       result: { sessionId: 'session-after-confirmed-exit' },
@@ -91,7 +92,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    firstProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    firstProcess.emitReady()
 
     await expect(spawnPromise).rejects.toThrow('Channel closed')
     expect(createProcess).toHaveBeenCalledTimes(1)
@@ -118,14 +119,15 @@ describe('PtyHostSupervisor spawn identity', () => {
       rows: 24,
     })
     await vi.waitFor(() => expect(createProcess).toHaveBeenCalledTimes(2))
-    secondProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    secondProcess.emitReady()
     await vi.waitFor(() => expect(findLastSentMessage(secondProcess, 'spawn')).not.toBeNull())
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       secondProcess,
       'spawn',
     )
-    secondProcess.emit('message', {
+    secondProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: sentSpawn?.requestId,
       ok: true,
       result: { sessionId: 'session-after-deadline' },
@@ -156,7 +158,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    firstProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    firstProcess.emitReady()
     await expect(failedSpawn).rejects.toThrow('Channel closed')
 
     firstProcess.emit('exit', 1)
@@ -168,14 +170,15 @@ describe('PtyHostSupervisor spawn identity', () => {
       rows: 24,
     })
     await vi.waitFor(() => expect(processes).toHaveLength(0), { timeout: 1_000 })
-    secondProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    secondProcess.emitReady()
     await vi.waitFor(() => expect(findLastSentMessage(secondProcess, 'spawn')).not.toBeNull())
     const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
       secondProcess,
       'spawn',
     )
-    secondProcess.emit('message', {
+    secondProcess.emitHostMessage({
       type: 'response',
+      requestType: 'spawn',
       requestId: sentSpawn?.requestId,
       ok: true,
       result: { sessionId: 'session-after-observed-exit' },
@@ -203,7 +206,7 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
-    testProcess.emit('message', { type: 'ready', protocolVersion: 4 })
+    testProcess.emitReady()
 
     await expect(spawnPromise).rejects.toThrow('spawn timeout')
     expect(createProcess).toHaveBeenCalledTimes(1)

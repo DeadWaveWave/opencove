@@ -120,6 +120,30 @@ describe('shared agent hook channel contract', () => {
       terminalAgentActivity: { invocationId: 'invocation-2', generation: 2 },
     })
 
+    const registryObservation = vi.fn(() => true)
+    const registryReservation = await channel.reserveSpawn()
+    const registryToken = registryReservation.env?.OPENCOVE_CLAUDE_HOOK_TOKEN ?? ''
+    registryReservation.commit('pty-registry-owned', {
+      provider: 'claude-code',
+      invocationId: 'invocation-3',
+      generation: 3,
+      isCurrent: () => true,
+      observe: registryObservation,
+    })
+    await expect(
+      postJson(channel.getEndpoint()!, registryToken, {
+        version: 1,
+        state: 'working',
+        hookEventName: 'SessionStart',
+        claudeSessionId: 'registry-session-3',
+      }),
+    ).resolves.toBe(204)
+    expect(registryObservation).toHaveBeenCalledWith({
+      identityAuthority: 'provider_session_start',
+      resumeSessionId: 'registry-session-3',
+    })
+    expect(metadata).toHaveLength(2)
+
     current = false
     await expect(
       postJson(channel.getEndpoint()!, token, {
@@ -129,7 +153,7 @@ describe('shared agent hook channel contract', () => {
         claudeSessionId: 'claude-session-1',
       }),
     ).resolves.toBe(204)
-    expect(states).toHaveLength(4)
+    expect(states).toHaveLength(5)
     await channel.dispose()
   })
 

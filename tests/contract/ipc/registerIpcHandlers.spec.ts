@@ -71,6 +71,9 @@ describe('registerIpcHandlers', () => {
       .mockRejectedValueOnce(new Error('database locked'))
       .mockResolvedValueOnce(store)
     const createAgentSessionTitleCacheStore = vi.fn().mockResolvedValue(agentTitleCacheStore)
+    const processEngine = { kind: 'injected-process-engine' }
+    const createPtyRuntime = vi.fn(() => ({}))
+    const createMainTerminalProcessEngine = vi.fn(() => processEngine)
 
     let getStore: (() => Promise<typeof store>) | null = null
     let getAgentTitleCacheStore: (() => Promise<typeof agentTitleCacheStore>) | null = null
@@ -108,7 +111,10 @@ describe('registerIpcHandlers', () => {
       registerPtyIpcHandlers: () => ({ dispose: vi.fn() }),
     }))
     vi.doMock('../../../src/contexts/terminal/presentation/main-ipc/runtime', () => ({
-      createPtyRuntime: () => ({}),
+      createPtyRuntime,
+    }))
+    vi.doMock('../../../src/app/main/terminal/mainTerminalProcessEngineFactory', () => ({
+      createMainTerminalProcessEngine,
     }))
     vi.doMock('../../../src/contexts/task/presentation/main-ipc/register', () => ({
       registerTaskIpcHandlers: () => ({ dispose: vi.fn() }),
@@ -149,6 +155,9 @@ describe('registerIpcHandlers', () => {
 
     const { registerIpcHandlers } = await import('../../../src/app/main/ipc/registerIpcHandlers')
     const disposable = registerIpcHandlers()
+
+    expect(createMainTerminalProcessEngine).toHaveBeenCalledTimes(1)
+    expect(createPtyRuntime).toHaveBeenCalledWith({ processEngine })
 
     await expect(getStore?.()).rejects.toThrow('database locked')
     await expect(getStore?.()).resolves.toBe(store)

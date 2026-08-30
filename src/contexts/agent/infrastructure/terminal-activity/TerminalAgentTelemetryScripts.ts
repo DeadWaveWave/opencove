@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { delimiter, join, resolve } from 'node:path';
 
 const operation = process.argv[2];
-if (operation === '--prepare-windows') await prepareWindows(process.argv[3], process.argv[4]);
+if (operation === '--prepare-windows') await prepareWindows(process.argv[3], process.argv[4], process.argv.slice(5));
 else if (operation === '--complete-windows') await completeWindows(process.argv[3]);
 else await launch(operation, process.argv.slice(3));
 
@@ -20,7 +20,7 @@ async function launch(providerArgument, userArgs) {
     return;
   }
   const invocationId = randomUUID();
-  const plan = await prepare(provider, executable, invocationId);
+  const plan = await prepare(provider, executable, invocationId, userArgs);
   const environment = { ...process.env };
   delete environment.ELECTRON_RUN_AS_NODE;
   Object.assign(environment, plan?.env || {});
@@ -63,12 +63,12 @@ async function launch(providerArgument, userArgs) {
   process.exitCode = result.code ?? signalExitCode(result.signal);
 }
 
-async function prepareWindows(providerArgument, planPath) {
+async function prepareWindows(providerArgument, planPath, userArgs) {
   const provider = normalizeProvider(providerArgument);
   const executable = findExecutable(providerCommand(provider), ownShimDirectory());
   if (!executable || !planPath) process.exit(127);
   const invocationId = randomUUID();
-  const plan = await prepare(provider, executable, invocationId);
+  const plan = await prepare(provider, executable, invocationId, userArgs);
   writeFileSync(planPath, JSON.stringify({
     executable,
     args: plan?.args || [],
@@ -89,7 +89,7 @@ async function completeWindows(planPath) {
   try { unlinkSync(planPath); } catch {}
 }
 
-async function prepare(provider, executablePath, invocationId) {
+async function prepare(provider, executablePath, invocationId, userArgs) {
   const endpoint = process.env.OPENCOVE_TERMINAL_AGENT_ENDPOINT;
   const token = process.env.OPENCOVE_TERMINAL_AGENT_TOKEN;
   if (!endpoint || !token) return null;
@@ -99,7 +99,7 @@ async function prepare(provider, executablePath, invocationId) {
       headers: { 'content-type': 'application/json', 'x-opencove-terminal-agent-token': token },
       body: JSON.stringify({
         operation: 'prepare', provider, invocationId, cwd: process.cwd(), executablePath,
-        environment: process.env
+        arguments: userArgs, environment: process.env
       }),
       signal: AbortSignal.timeout(10000)
     });
@@ -207,7 +207,7 @@ export function createPowerShellShimScript(
     '$providerExitCode = 1',
     'try {',
     '  $env:ELECTRON_RUN_AS_NODE = "1"',
-    `  & ${runtime} ${launcher} --prepare-windows ${providerCommand} $planPath`,
+    `  & ${runtime} ${launcher} --prepare-windows ${providerCommand} $planPath @args`,
     '  if ($LASTEXITCODE -ne 0) { $providerExitCode = $LASTEXITCODE; exit $providerExitCode }',
     '  $plan = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop',
     '  if ($null -eq $originalElectronRunAsNode) { Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue } else { $env:ELECTRON_RUN_AS_NODE = $originalElectronRunAsNode }',

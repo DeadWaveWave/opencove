@@ -1,6 +1,7 @@
 import type {
   TerminalGeometryCommitResult,
   TerminalForegroundEvent,
+  TerminalAgentReexecResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -9,6 +10,7 @@ import {
   parseTerminalGeometryCommitResult,
 } from '../remote/remotePtyStreamMessageHandler'
 import { normalizeTerminalAgentActivitySnapshot } from '../../../../shared/runtime/terminalAgentActivity'
+import { normalizeTerminalAgentReexecResult } from '../../../../shared/runtime/terminalAgentReexec'
 
 export type RemotePtyEndpointAttachedSessionState = {
   lastSeq: number
@@ -38,16 +40,18 @@ function normalizeOptionalRawString(value: unknown): string | null {
 export function createRemotePtyEndpointProxyMessageHandler(options: {
   attachedSessions: Map<string, RemotePtyEndpointAttachedSessionState>
   onHelloAck: (result: {
+    agentReexecSupported: boolean
     geometryCommitAckSupported: boolean
     serverInstanceId: string | null
   }) => void
+  onAgentReexecResult: (result: TerminalAgentReexecResult) => void
   onError: (input: { sessionId: string | null; message: string }) => void
   onResizeResult: (result: TerminalGeometryCommitResult) => void
   onData: (sessionId: string, data: string, seq: number) => void
   onExit: (sessionId: string, exitCode: number, seq: number) => void
   onForeground: (sessionId: string, event: TerminalForegroundEvent) => void
   onOverflow: (sessionId: string) => void
-  onState: (sessionId: string, state: TerminalSessionStateEvent['state']) => void
+  onState: (sessionId: string, event: TerminalSessionStateEvent) => void
   onMetadata: (sessionId: string, metadata: TerminalSessionMetadataEvent) => void
 }): (raw: string) => void {
   return raw => {
@@ -67,6 +71,7 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
         ? (parsed.capabilities as Record<string, unknown>)
         : null
       options.onHelloAck({
+        agentReexecSupported: capabilities?.agentReexec === 1,
         geometryCommitAckSupported: capabilities?.geometryCommitAck === 1,
         serverInstanceId: isRecord(parsed.server)
           ? normalizeOptionalRawString(parsed.server.instanceId)
@@ -117,6 +122,14 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
       return
     }
 
+    if (parsed.type === 'agent_reexec_result') {
+      const result = normalizeTerminalAgentReexecResult(parsed)
+      if (result) {
+        options.onAgentReexecResult(result)
+      }
+      return
+    }
+
     if (parsed.type === 'data') {
       const data = normalizeOptionalRawString(parsed.data) ?? ''
       const seq = normalizeOptionalFiniteInt(parsed.seq) ?? 0
@@ -151,9 +164,38 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
         parsed.state === 'working' || parsed.state === 'waiting' || parsed.state === 'standby'
           ? parsed.state
           : null
-      if (state) {
-        options.onState(sessionId, state)
+      if (!state) {
+        return
       }
+      const source =
+        parsed.source === 'launch' ||
+        parsed.source === 'session_file' ||
+        parsed.source === 'claude_hook' ||
+        parsed.source === 'codex_hook'
+          ? parsed.source
+          : null
+      const hookInstallState =
+        parsed.hookInstallState === 'installed' ||
+        parsed.hookInstallState === 'partial' ||
+        parsed.hookInstallState === 'not_installed' ||
+        parsed.hookInstallState === 'error' ||
+        parsed.hookInstallState === 'skipped'
+          ? parsed.hookInstallState
+          : null
+      const observedAtMs =
+        typeof parsed.observedAtMs === 'number' &&
+        Number.isFinite(parsed.observedAtMs) &&
+        parsed.observedAtMs >= 0
+          ? parsed.observedAtMs
+          : null
+      options.onState(sessionId, {
+        sessionId,
+        state,
+        ...(source ? { source } : {}),
+        ...(hookInstallState ? { hookInstallState } : {}),
+        ...(typeof parsed.degraded === 'boolean' ? { degraded: parsed.degraded } : {}),
+        ...(observedAtMs !== null ? { observedAtMs } : {}),
+      })
       return
     }
 
@@ -161,6 +203,15 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
       const resumeSessionId =
         typeof parsed.resumeSessionId === 'string' && parsed.resumeSessionId.trim().length > 0
           ? parsed.resumeSessionId.trim()
+          : null
+      const agentProvider =
+        parsed.agentProvider === 'claude-code' ||
+        parsed.agentProvider === 'codex' ||
+        parsed.agentProvider === 'opencode' ||
+        parsed.agentProvider === 'gemini' ||
+        parsed.agentProvider === 'pi' ||
+        parsed.agentProvider === 'kimi'
+          ? parsed.agentProvider
           : null
       const profileId =
         typeof parsed.profileId === 'string' && parsed.profileId.trim().length > 0
@@ -178,6 +229,7 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
       options.onMetadata(sessionId, {
         sessionId,
         resumeSessionId,
+        ...(agentProvider ? { agentProvider } : {}),
         ...(profileId ? { profileId } : {}),
         ...(runtimeKind ? { runtimeKind } : {}),
         ...(terminalAgentActivity ? { terminalAgentActivity } : {}),

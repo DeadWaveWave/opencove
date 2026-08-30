@@ -17,3 +17,15 @@ export function postPtyHostMessage(
     onError(error)
   }
 }
+
+export function postIdentifiedPtyHostMessage<TChild extends PtyHostPostMessageTarget>(
+  child: TChild | null,
+  hostInstanceId: string | null,
+  createMessage: (hostInstanceId: string) => unknown,
+  onError: (child: TChild, error: unknown) => void,
+): void {
+  if (!child || !hostInstanceId) {
+    return
+  }
+  postPtyHostMessage(child, createMessage(hostInstanceId), error => onError(child, error))
+}

@@ -15,7 +15,8 @@ import { ShellInputReadiness } from './shellInputReadiness'
 import { subscribeAgentSources, subscribePtyRuntimeListener } from './ptyRuntimeListeners'
 import { AgentLaunchArtifactOwner } from '../../../../contexts/agent/application/services/AgentLaunchArtifactOwner'
 import { spawnLocalSessionWithArtifacts } from './localAgentLaunchArtifactLifecycle'
-import { RemotePtyRecoveryBlockedError } from './RemotePtyRecoveryBlockedError'
+import { reexecTerminalAgentInPty } from '../../../../contexts/agent/application/terminalAgentPtyReexec'
+import { restoreRemotePtySession } from './restoreRemotePtySession'
 export { RemotePtyRecoveryBlockedError } from './RemotePtyRecoveryBlockedError'
 
 type RemoteSessionRoute = {
@@ -145,13 +146,13 @@ export function createMultiEndpointPtyRuntime(options: {
         }
         foregroundListeners.forEach(listener => listener({ ...event, sessionId: homeSessionId }))
       },
-      emitState: (remoteSessionId, state) => {
+      emitState: (remoteSessionId, event) => {
         const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
         if (!homeSessionId) {
           return
         }
 
-        stateListeners.forEach(listener => listener({ sessionId: homeSessionId, state }))
+        stateListeners.forEach(listener => listener({ ...event, sessionId: homeSessionId }))
       },
       emitMetadata: (remoteSessionId, metadata) => {
         const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
@@ -268,77 +269,16 @@ export function createMultiEndpointPtyRuntime(options: {
 
       return homeSessionId
     },
-    restoreRemoteSession: async ({
-      homeSessionId,
-      endpointId,
-      remoteSessionId,
-      targetWorkerInstanceId,
-      afterSeq,
-      beforeAttach,
-    }) => {
-      if (routes.has(homeSessionId) || remoteByHomeSessionId.has(homeSessionId)) {
-        return null
-      }
-      const remoteKey = `${endpointId}:${remoteSessionId}`
-      if (homeSessionIdByRemote.has(remoteKey)) {
-        return null
-      }
-
-      const proxy = getProxy(endpointId)
-      const restoredSession = await proxy.findSession(remoteSessionId, targetWorkerInstanceId)
-      if (!restoredSession || restoredSession.kind !== 'terminal') {
-        return null
-      }
-
-      const presentationSnapshot = await proxy
-        .presentationSnapshot(remoteSessionId)
-        .catch(() => null)
-      if (
-        !presentationSnapshot &&
-        (restoredSession.status !== 'running' || typeof afterSeq !== 'number')
-      ) {
-        throw new RemotePtyRecoveryBlockedError()
-      }
-      const resumeAfterSeq = presentationSnapshot?.appliedSeq ?? afterSeq
-
-      const settleRecoveryBaseline =
-        recoveryCheckpointFence.beginPresentationTransition(homeSessionId)
-      let recoveryBaselinePublished = false
-      const publishRecoveryBaseline = (): void => {
-        if (recoveryBaselinePublished) {
-          return
-        }
-        recoveryBaselinePublished = true
-        settleRecoveryBaseline(true)
-      }
-      routes.set(homeSessionId, { kind: 'remote', endpointId, remoteSessionId })
-      retiredRemoteCursorByHomeSessionId.delete(homeSessionId)
-      homeSessionIdByRemote.set(remoteKey, homeSessionId)
-      remoteByHomeSessionId.set(homeSessionId, { endpointId, remoteSessionId })
-      proxy.prepareAttach(remoteSessionId, resumeAfterSeq)
-      try {
-        await beforeAttach(restoredSession, presentationSnapshot, publishRecoveryBaseline)
-        if (!recoveryBaselinePublished) {
-          throw new Error(`Remote recovery baseline was not published: ${homeSessionId}`)
-        }
-      } catch (error) {
-        settleRecoveryBaseline(false)
-        routes.delete(homeSessionId)
-        homeSessionIdByRemote.delete(remoteKey)
-        remoteByHomeSessionId.delete(homeSessionId)
-        proxy.forget(remoteSessionId)
-        throw error
-      }
-      if (restoredSession.status !== 'running') {
-        routes.delete(homeSessionId)
-        homeSessionIdByRemote.delete(remoteKey)
-        remoteByHomeSessionId.delete(homeSessionId)
-        proxy.forget(remoteSessionId)
-        return restoredSession
-      }
-      proxy.attach(remoteSessionId, resumeAfterSeq)
-      return restoredSession
-    },
+    restoreRemoteSession: async input =>
+      await restoreRemotePtySession({
+        ...input,
+        routes,
+        homeSessionIdByRemote,
+        remoteByHomeSessionId,
+        retiredRemoteCursorByHomeSessionId,
+        recoveryCheckpointFence,
+        getProxy,
+      }),
     resolveRecoveryRoute: async (sessionId, homeWorkerInstanceId) => {
       const route = routes.get(sessionId)
       if (!route) {
@@ -387,6 +327,33 @@ export function createMultiEndpointPtyRuntime(options: {
       }
 
       getProxy(route.endpointId).write(route.remoteSessionId, data)
+    },
+    probeForeground: sessionId => {
+      const route = routes.get(sessionId)
+      if (!route || route.kind === 'local') {
+        options.localRuntime.probeForeground?.(sessionId)
+      }
+    },
+    reexecAgent: async input => {
+      const route = routes.get(input.sessionId)
+      if (!route || route.kind === 'local') {
+        const status = await reexecTerminalAgentInPty({
+          ...input,
+          runtime: {
+            write: options.localRuntime.write,
+            probeForeground: options.localRuntime.probeForeground,
+            onExit: listener => subscribePtyRuntimeListener(exitListeners, listener),
+            onForeground: listener => subscribePtyRuntimeListener(foregroundListeners, listener),
+            onMetadata: listener => subscribePtyRuntimeListener(metadataListeners, listener),
+          },
+        })
+        return { sessionId: input.sessionId, operationId: input.operationId, status }
+      }
+      const result = await getProxy(route.endpointId).reexecAgent({
+        ...input,
+        sessionId: route.remoteSessionId,
+      })
+      return { ...result, sessionId: input.sessionId }
     },
     resize: async input => {
       const route = routes.get(input.sessionId)
@@ -444,6 +411,13 @@ export function createMultiEndpointPtyRuntime(options: {
     startSessionStateWatcher: input => {
       const route = routes.get(input.sessionId)
       if (!route || route.kind === 'local') {
+        metadataListeners.forEach(listener =>
+          listener({
+            sessionId: input.sessionId,
+            resumeSessionId: input.resumeSessionId,
+            agentProvider: input.provider,
+          }),
+        )
         options.localRuntime.startSessionStateWatcher?.(input)
       }
     },

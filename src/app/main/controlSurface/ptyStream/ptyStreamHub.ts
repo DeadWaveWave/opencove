@@ -3,8 +3,10 @@ import type {
   GetSessionPresentationSnapshotResult,
   GetSessionSnapshotResult,
   ListSessionsResult,
+  ListTerminalAgentActivityMetadataResult,
   PresentationSnapshotTerminalResult,
   TerminalForegroundEvent,
+  TerminalAgentReexecResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   TerminalGeometryCommitResult,
@@ -12,7 +14,6 @@ import type {
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { PtyStreamClientKind, PtyStreamRole } from './ptyStreamTypes'
 import type { SessionMetadata, SessionState, ClientState } from './ptyStreamState'
-import { sameTerminalAgentActivitySnapshot } from '../../../../shared/runtime/terminalAgentActivity'
 import {
   broadcastControlChanged,
   broadcastData,
@@ -40,6 +41,13 @@ import {
 } from './ptyStreamHub.presentationRecovery'
 import { attachPtyStreamClient, detachPtyStreamClient } from './ptyStreamHub.attach'
 import { registerPtyStreamAgentState } from './ptyStreamAgentStateReplay'
+import { listPtyStreamAgentActivityMetadata } from './ptyStreamAgentActivityBaseline'
+import {
+  reexecPtyStreamAgent,
+  type PtyStreamHubAgentReexecOptions,
+} from './ptyStreamHub.agentReexec'
+import { PtyStreamRecoveryOperationTracker } from './ptyStreamRecoveryOperationTracker'
+import { projectPtyStreamAgentMetadata } from './ptyStreamAgentMetadataProjection'
 
 export class PtyStreamHub {
   private readonly ptyRuntime: ControlSurfacePtyRuntime
@@ -49,7 +57,7 @@ export class PtyStreamHub {
 
   private readonly sessions = new Map<string, SessionState>()
   private readonly clients = new Map<string, ClientState>()
-  private readonly inFlightRecoveryOperations = new Set<Promise<unknown>>()
+  private readonly recoveryOperations = new PtyStreamRecoveryOperationTracker()
 
   public constructor(options: {
     ptyRuntime: ControlSurfacePtyRuntime
@@ -75,35 +83,8 @@ export class PtyStreamHub {
     return created
   }
 
-  private async trackRecoveryOperation<TResult>(operation: Promise<TResult>): Promise<TResult> {
-    this.inFlightRecoveryOperations.add(operation)
-    try {
-      return await operation
-    } finally {
-      this.inFlightRecoveryOperations.delete(operation)
-    }
-  }
-
   public async drainRecoveryOperations(): Promise<void> {
-    for (;;) {
-      const observedSessions = [...this.sessions.values()]
-      const observedChains = observedSessions.map(session => session.operationChain)
-      const observedOperations = [...this.inFlightRecoveryOperations]
-      // eslint-disable-next-line no-await-in-loop
-      await Promise.allSettled([...observedChains, ...observedOperations])
-      const stable =
-        this.inFlightRecoveryOperations.size === 0 &&
-        observedSessions.length === this.sessions.size &&
-        observedSessions.every(
-          (session, index) =>
-            this.sessions.get(session.sessionId) === session &&
-            session.operationQueueDepth === 0 &&
-            session.operationChain === observedChains[index],
-        )
-      if (stable) {
-        return
-      }
-    }
+    await this.recoveryOperations.drain(this.sessions)
   }
 
   private setSessionController(
@@ -172,22 +153,15 @@ export class PtyStreamHub {
 
   public registerSessionAgentMetadata(metadata: TerminalSessionMetadataEvent): void {
     const session = this.ensureSession(metadata.sessionId)
-    const previous = session.agentMetadata
-    const unchanged =
-      previous?.resumeSessionId === metadata.resumeSessionId &&
-      previous?.profileId === metadata.profileId &&
-      previous?.runtimeKind === metadata.runtimeKind &&
-      sameTerminalAgentActivitySnapshot(
-        previous?.terminalAgentActivity,
-        metadata.terminalAgentActivity,
-      )
-
-    if (unchanged) {
+    if (session.status === 'exited') {
       return
     }
-
-    session.agentMetadata = metadata
-    this.broadcastSessionMetadata(metadata)
+    const next = projectPtyStreamAgentMetadata(session.agentMetadata, metadata)
+    if (!next) {
+      return
+    }
+    session.agentMetadata = next
+    this.broadcastSessionMetadata(next)
   }
 
   public hasSession(sessionId: string): boolean {
@@ -256,14 +230,16 @@ export class PtyStreamHub {
     session.status = 'exited'
     session.exitCode = exitCode
     session.agentStateBySource.clear()
+    session.agentMetadata = null
     this.broadcastExit(sessionId, session.seq, exitCode)
   }
 
   public listSessions(): ListSessionsResult {
-    return buildSessionList({
-      sessions: this.sessions.values(),
-      clients: this.clients,
-    })
+    return buildSessionList({ sessions: this.sessions.values(), clients: this.clients })
+  }
+
+  public listTerminalAgentActivityMetadata(): ListTerminalAgentActivityMetadataResult {
+    return listPtyStreamAgentActivityMetadata(this.sessions.values())
   }
 
   public snapshotSession(sessionId: string): GetSessionSnapshotResult {
@@ -304,10 +280,6 @@ export class PtyStreamHub {
     return await snapshotSessionPresentation(session)
   }
 
-  /**
-   * Seeds a fresh Home Hub presentation from the durable checkpoint before downstream replay is
-   * attached. The baseline is presentation-only: it must not enter this Hub's replay window.
-   */
   public async restoreSessionPresentationBaseline(options: {
     sessionId: string
     serializedScreen: string
@@ -321,7 +293,6 @@ export class PtyStreamHub {
     })
   }
 
-  /** Atomically replaces only the current epoch after a downstream replay overflow resync. */
   public async replaceSessionPresentationCurrent(options: {
     sessionId: string
     snapshot: PresentationSnapshotTerminalResult
@@ -330,7 +301,7 @@ export class PtyStreamHub {
     if (!session) {
       throw new Error('Unknown session')
     }
-    await this.trackRecoveryOperation(
+    await this.recoveryOperations.track(
       replacePtyStreamPresentationCurrent({
         ...options,
         session,
@@ -476,8 +447,21 @@ export class PtyStreamHub {
     })
   }
 
+  public async reexecAgent(
+    input: PtyStreamHubAgentReexecOptions,
+  ): Promise<TerminalAgentReexecResult> {
+    return await this.recoveryOperations.track(
+      reexecPtyStreamAgent({
+        clients: this.clients,
+        sessions: this.sessions,
+        ptyRuntime: this.ptyRuntime,
+        input,
+      }),
+    )
+  }
+
   public async resize(options: PtyStreamHubResizeOptions): Promise<TerminalGeometryCommitResult> {
-    return await this.trackRecoveryOperation(
+    return await this.recoveryOperations.track(
       resizePtyStreamSession({
         sessions: this.sessions,
         clients: this.clients,

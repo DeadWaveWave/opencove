@@ -1,9 +1,9 @@
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
+import type { TerminalAgentReexecStatus } from '../../../src/shared/contracts/dto'
 import { useTerminalAgentSessionActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTerminalAgentSessionActions'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { clearTerminalAgentOverlay } from '../../../src/contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 
 function createOverlayNode(): Node<TerminalNodeData> {
   return {
@@ -43,7 +43,10 @@ function createOverlayNode(): Node<TerminalNodeData> {
   }
 }
 
-function createHarness(options: { dropBackOnInterrupt: boolean; authenticatedActivity?: boolean }) {
+function createHarness(options: {
+  status?: TerminalAgentReexecStatus
+  authenticatedActivity?: boolean
+}) {
   const initialNode = createOverlayNode()
   if (options.authenticatedActivity && initialNode.data.agentOverlay) {
     initialNode.data.agentOverlay.activity = {
@@ -51,6 +54,8 @@ function createHarness(options: { dropBackOnInterrupt: boolean; authenticatedAct
       generation: 1,
       phase: 'active',
       observedAtMs: 100,
+      sourceRevision: 1,
+      revision: 1,
     }
   }
   const nodesRef = { current: [initialNode] }
@@ -59,29 +64,16 @@ function createHarness(options: { dropBackOnInterrupt: boolean; authenticatedAct
       nodesRef.current = updater(nodesRef.current)
     },
   )
-  const write = vi.fn(async ({ data }: { data: string }) => {
-    if (data === '\u0003' && options.dropBackOnInterrupt) {
-      nodesRef.current = options.authenticatedActivity
-        ? nodesRef.current.map(node => ({
-            ...node,
-            data: {
-              ...node.data,
-              agentOverlay: node.data.agentOverlay
-                ? {
-                    ...node.data.agentOverlay,
-                    activity: { ...node.data.agentOverlay.activity!, phase: 'exited' as const },
-                  }
-                : null,
-            },
-          }))
-        : nodesRef.current.map(clearTerminalAgentOverlay)
-    }
-  })
+  const reexecAgent = vi.fn(async (input: { sessionId: string }) => ({
+    sessionId: input.sessionId,
+    operationId: 'operation-1',
+    status: options.status ?? ('reexecuted' as const),
+  }))
   const listSessions = vi.fn(async () => ({ provider: 'codex', cwd: '', sessions: [] }))
   Object.defineProperty(window, 'opencoveApi', {
     configurable: true,
     value: {
-      pty: { write },
+      pty: { reexecAgent },
       agent: { listSessions },
     },
   })
@@ -96,28 +88,29 @@ function createHarness(options: { dropBackOnInterrupt: boolean; authenticatedAct
     }),
   )
 
-  return { ...hook, listSessions, nodesRef, onRequestPersistFlush, onShowMessage, write }
+  return {
+    ...hook,
+    listSessions,
+    nodesRef,
+    onRequestPersistFlush,
+    onShowMessage,
+    reexecAgent,
+  }
 }
 
-afterEach(() => {
-  vi.useRealTimers()
-})
-
 describe('terminal agent overlay session actions', () => {
-  it('reloads a verified session inside the same PTY and preserves node scrollback', async () => {
-    const harness = createHarness({ dropBackOnInterrupt: true })
+  it('reloads through the Worker operation and preserves node scrollback', async () => {
+    const harness = createHarness({})
 
     await act(async () => {
       await harness.result.current.reloadOverlayAgent('terminal-1')
     })
 
-    expect(harness.write).toHaveBeenNthCalledWith(1, {
+    expect(harness.reexecAgent).toHaveBeenCalledWith({
       sessionId: 'pty-session-1',
-      data: '\u0003',
-    })
-    expect(harness.write).toHaveBeenNthCalledWith(2, {
-      sessionId: 'pty-session-1',
-      data: '\u0015codex resume resume-current\r',
+      provider: 'codex',
+      resumeSessionId: 'resume-current',
+      expectedActivity: null,
     })
     expect(harness.nodesRef.current[0]).toMatchObject({
       id: 'terminal-1',
@@ -137,7 +130,7 @@ describe('terminal agent overlay session actions', () => {
   })
 
   it('lists sessions using overlay binding provider and terminal execution directory', async () => {
-    const harness = createHarness({ dropBackOnInterrupt: true })
+    const harness = createHarness({})
 
     await act(async () => {
       await harness.result.current.listOverlayAgentSessions('terminal-1', 7)
@@ -150,19 +143,26 @@ describe('terminal agent overlay session actions', () => {
     })
   })
 
-  it('waits for authenticated invocation exit without discarding the durable binding', async () => {
-    const harness = createHarness({
-      dropBackOnInterrupt: true,
-      authenticatedActivity: true,
-    })
+  it('sends the authenticated invocation fence without discarding the durable binding', async () => {
+    const harness = createHarness({ authenticatedActivity: true })
 
     await act(async () => {
       await harness.result.current.reloadOverlayAgent('terminal-1')
     })
 
-    expect(harness.write).toHaveBeenNthCalledWith(2, {
+    expect(harness.reexecAgent).toHaveBeenCalledWith({
       sessionId: 'pty-session-1',
-      data: '\u0015codex resume resume-current\r',
+      provider: 'codex',
+      resumeSessionId: 'resume-current',
+      expectedActivity: {
+        provider: 'codex',
+        invocationId: 'invocation-1',
+        generation: 1,
+        phase: 'active',
+        observedAtMs: 100,
+        sourceRevision: 1,
+        revision: 1,
+      },
     })
     expect(harness.nodesRef.current[0]?.data.terminalAgentBinding).toMatchObject({
       resumeSessionId: 'resume-current',
@@ -170,8 +170,8 @@ describe('terminal agent overlay session actions', () => {
     })
   })
 
-  it('switches to a selected session inside the same PTY and updates the binding identity', async () => {
-    const harness = createHarness({ dropBackOnInterrupt: true })
+  it('switches to a selected session only after the Worker accepts re-exec', async () => {
+    const harness = createHarness({})
 
     await act(async () => {
       await harness.result.current.switchOverlayAgentSession('terminal-1', {
@@ -181,23 +181,15 @@ describe('terminal agent overlay session actions', () => {
         title: 'Selected session',
         startedAt: '2026-08-11T09:30:00.000Z',
         updatedAt: '2026-08-12T01:00:00.000Z',
+        source: 'codex-file',
       })
     })
 
-    expect(harness.write).toHaveBeenNthCalledWith(1, {
-      sessionId: 'pty-session-1',
-      data: '\u0003',
-    })
-    expect(harness.write).toHaveBeenNthCalledWith(2, {
-      sessionId: 'pty-session-1',
-      data: '\u0015codex resume resume-selected\r',
-    })
+    expect(harness.reexecAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ resumeSessionId: 'resume-selected' }),
+    )
     expect(harness.nodesRef.current[0]).toMatchObject({
-      id: 'terminal-1',
       data: {
-        kind: 'terminal',
-        sessionId: 'pty-session-1',
-        scrollback: 'scrollback-before-reexec',
         terminalAgentBinding: {
           provider: 'codex',
           resumeSessionId: 'resume-selected',
@@ -212,21 +204,18 @@ describe('terminal agent overlay session actions', () => {
     })
   })
 
-  it('does not inject a command and reports an in-app error when drop-back times out', async () => {
-    vi.useFakeTimers()
-    const harness = createHarness({ dropBackOnInterrupt: false })
+  it('does not mutate the overlay and reports an in-app error when drop-back times out', async () => {
+    const harness = createHarness({ status: 'drop_back_timeout' })
 
-    const reload = act(async () => {
+    await act(async () => {
       await harness.result.current.reloadOverlayAgent('terminal-1')
     })
-    await vi.advanceTimersByTimeAsync(3_100)
-    await reload
 
-    expect(harness.write).toHaveBeenCalledTimes(1)
     expect(harness.onShowMessage).toHaveBeenCalledWith(
       'The agent did not return to the terminal prompt, so no command was entered.',
       'error',
     )
     expect(harness.nodesRef.current[0]?.data.agentOverlay?.provider).toBe('codex')
+    expect(harness.onRequestPersistFlush).not.toHaveBeenCalled()
   })
 })

@@ -27,19 +27,37 @@ Invariants:
 
 | State | Owner | Write entry | Restart source |
 | --- | --- | --- | --- |
+| Host process instance identity | ptyHost | one random UUID before the ready handshake | none |
 | Spawn launch identity | `PtyHostSupervisor` | one UUID per public `spawn` call | none |
 | Launch identity to live session | ptyHost | atomic spawn registration | none |
 | Confirmed child exit | `PtyHostSupervisor` | child-process `exit` event | none |
 
 Invariants:
 
-1. One launch identity maps to at most one live PTY in a host process; a duplicate request returns
+1. Ready establishes exactly one protocol version and host instance identity. Every later request,
+   response and event carries that identity; a stale or wrong-instance envelope cannot resolve a
+   request, emit a runtime event or mutate a host session.
+2. Both endpoints validate complete private-protocol shapes before dispatch. Request/response
+   discriminants and correlation IDs, strings, args/env, geometry, resize acknowledgements and
+   foreground observations fail closed when malformed. Geometry is a positive integer no greater
+   than 32767, matching the cross-platform Windows `COORD` ceiling.
+3. A response must match the pending request ID, operation and expected session. Success and error
+   shapes are exclusive; a spoofed response cannot settle unrelated work.
+4. One launch identity maps to at most one live PTY in a host process; a duplicate request returns
    the already-created session identity.
-2. A retry reuses the original launch identity and is allowed only when the previous host has a
+5. A retry reuses the original launch identity and is allowed only when the previous host has a
    confirmed exit, or when no spawn request reached a host.
-3. Ambiguous transport loss fails closed immediately. An observed exit clears the fence; otherwise
+6. Ambiguous transport loss fails closed immediately. An observed exit clears the fence; otherwise
    a bounded deadline escalates termination to `SIGKILL` and retires only that exact child before a
    later spawn may create a replacement host.
+7. A controller-bound Agent re-entry may request an on-demand foreground observation through the
+   same instance-fenced child protocol. The probe only publishes process evidence; it does not own
+   PTY state, infer Agent activity from terminal text, or authorize command injection by itself. A
+   weak Windows prompt-timeout observation is usable only beside an exact authenticated invocation
+   exit; providers without that identity evidence fail closed.
+
+The transport remains the supervisor-owned child IPC channel. The instance fence is lifecycle and
+correlation integrity, not socket/network authentication; no parallel network authority is added.
 
 ## Startup admission
 

@@ -8,20 +8,7 @@ import type {
 import { isSpaceBoundaryEqual } from './spaceBoundaryEquality'
 import { mergeSnapshotField } from './mergeSnapshotField'
 import { areNodeWorkerBindingsEqual } from '../types/nodeWorkerBinding'
-
-export function isPersistedAppState(value: unknown): value is PersistedAppState {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return false
-  }
-
-  const record = value as Record<string, unknown>
-  return (
-    typeof record.formatVersion === 'number' &&
-    Array.isArray(record.workspaces) &&
-    typeof record.settings === 'object' &&
-    record.settings !== null
-  )
-}
+export { isPersistedAppState } from './persistedAppStateValidation'
 
 function mergeNodes(
   baseNodes: PersistedTerminalNode[],

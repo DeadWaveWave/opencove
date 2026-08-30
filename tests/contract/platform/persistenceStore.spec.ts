@@ -14,6 +14,7 @@ describe('PersistenceStore', () => {
 
   afterEach(async () => {
     vi.useRealTimers()
+    vi.doUnmock('../../../src/platform/persistence/sqlite/read')
     vi.resetModules()
     vi.clearAllMocks()
 
@@ -210,6 +211,66 @@ describe('PersistenceStore', () => {
       expect(
         await readFile(join(tempDir, 'opencove.db.corrupt-2026-02-28T00-00-00-000Z'), 'utf8'),
       ).toBe('corrupt-db')
+    },
+    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
+  )
+
+  it(
+    'returns null when no app state has been persisted',
+    async () => {
+      tempDir = await mkdtemp(join(tmpdir(), 'opencove-persist-read-'))
+      const dbPath = join(tempDir, 'opencove.db')
+      const mockDbByPath = new Map<string, MockDbState>()
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
+      vi.doMock('../../../src/platform/persistence/sqlite/read', async () => {
+        const actual = await vi.importActual<
+          typeof import('../../../src/platform/persistence/sqlite/read')
+        >('../../../src/platform/persistence/sqlite/read')
+        return { ...actual, readAppStateFromDb: () => null }
+      })
+
+      const { createPersistenceStore } =
+        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
+
+      const store = await createPersistenceStore({ dbPath })
+
+      await expect(store.readAppState()).resolves.toBeNull()
+
+      store.dispose()
+    },
+    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
+  )
+
+  it(
+    'rejects when sqlite cannot read app state',
+    async () => {
+      tempDir = await mkdtemp(join(tmpdir(), 'opencove-persist-read-'))
+      const dbPath = join(tempDir, 'opencove.db')
+      const mockDbByPath = new Map<string, MockDbState>()
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
+      vi.doMock('../../../src/platform/persistence/sqlite/read', async () => {
+        const actual = await vi.importActual<
+          typeof import('../../../src/platform/persistence/sqlite/read')
+        >('../../../src/platform/persistence/sqlite/read')
+        return {
+          ...actual,
+          readAppStateFromDb: () => {
+            throw new Error('SQLITE_IOERR: simulated app state read failure')
+          },
+        }
+      })
+
+      const { createPersistenceStore } =
+        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
+
+      const store = await createPersistenceStore({ dbPath })
+
+      await expect(store.readAppState()).rejects.toMatchObject({
+        code: 'persistence.unavailable',
+        debugMessage: 'Error: SQLITE_IOERR: simulated app state read failure',
+      })
+
+      store.dispose()
     },
     PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   )

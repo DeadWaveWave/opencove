@@ -5,6 +5,7 @@ import { spawn } from 'node-pty'
 import { parentPort as workerParentPort } from 'node:worker_threads'
 import { killWindowsProcessTree } from './windowsProcessTree'
 import { ensureNodePtySpawnHelperExecutable } from './spawnHelperPermissions'
+import { cleanupOrphanedNodePtySpawnHelpers } from './orphanedSpawnHelperCleanup'
 import {
   isPtyHostRequest,
   PTY_HOST_PROTOCOL_VERSION,
@@ -21,6 +22,7 @@ import { PtyHostSpawnIdentityRegistry } from './spawnIdentityRegistry'
 import { resizePtyAndReadAck } from './resizeAck'
 import { resolveForegroundAgentObservation } from '../../../shared/runtime/agentForegroundRecognition'
 import { resolveShellCommandFinishedMarker } from '../../../shared/terminal/shellIntegration'
+import { PtyHostForegroundObservationScheduler } from './foregroundObservationScheduler'
 
 type ParentPort = {
   on: (event: 'message', listener: (messageEvent: { data: unknown }) => void) => void
@@ -31,92 +33,6 @@ type ParentPort = {
 type ChildProcessPort = {
   on: (event: 'message', listener: (message: unknown) => void) => void
   send?: (message: unknown) => void
-}
-
-function isProcessAlive(pid: number): boolean {
-  if (!Number.isFinite(pid) || pid <= 0) {
-    return false
-  }
-
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function cleanupOrphanedNodePtySpawnHelpers(): void {
-  if (process.platform === 'win32') {
-    return
-  }
-
-  const spawnHelperMarker = '/node-pty/build/Release/spawn-helper'
-
-  const psResult = spawnSync('ps', ['ax', '-o', 'pid=,ppid=,command='], {
-    encoding: 'utf8',
-    env: process.env,
-  })
-
-  if (psResult.status !== 0 || typeof psResult.stdout !== 'string') {
-    return
-  }
-
-  const candidates: number[] = []
-  for (const line of psResult.stdout.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed) {
-      continue
-    }
-
-    const match = trimmed.match(/^(\d+)\s+(\d+)\s+(.+)$/)
-    if (!match) {
-      continue
-    }
-
-    const pid = Number(match[1])
-    const ppid = Number(match[2])
-    const command = match[3] ?? ''
-
-    if (!Number.isFinite(pid) || pid <= 0 || pid === process.pid) {
-      continue
-    }
-
-    if (ppid !== 1) {
-      continue
-    }
-
-    const normalizedCommand = command.replaceAll('\\', '/')
-    if (!normalizedCommand.includes(spawnHelperMarker)) {
-      continue
-    }
-
-    candidates.push(pid)
-  }
-
-  if (candidates.length === 0) {
-    return
-  }
-
-  for (const pid of candidates) {
-    try {
-      process.kill(pid, 'SIGTERM')
-    } catch {
-      // ignore
-    }
-  }
-
-  for (const pid of candidates) {
-    if (!isProcessAlive(pid)) {
-      continue
-    }
-
-    try {
-      process.kill(pid, 'SIGKILL')
-    } catch {
-      // ignore
-    }
-  }
 }
 
 function resolveParentPort(): ParentPort {
@@ -164,6 +80,7 @@ function resolveParentPort(): ParentPort {
 
 const parentPort = resolveParentPort()
 parentPort.start()
+const hostInstanceId = crypto.randomUUID()
 
 type PtySession = {
   pty: IPty
@@ -172,7 +89,7 @@ type PtySession = {
 }
 
 const sessions = new Map<string, PtySession>()
-const foregroundTimers = new Map<string, NodeJS.Timeout>()
+const foregroundScheduler = new PtyHostForegroundObservationScheduler()
 const shellIntegrationBuffers = new Map<string, string>()
 const spawnIdentities = new PtyHostSpawnIdentityRegistry()
 let hasCleanedSessions = false
@@ -202,8 +119,7 @@ const cleanupSessions = (): void => {
     spawnIdentities.release(session.launchId, sessionId)
     terminatePtySession(session)
   }
-  foregroundTimers.forEach(timer => clearTimeout(timer))
-  foregroundTimers.clear()
+  foregroundScheduler.dispose()
   shellIntegrationBuffers.clear()
   spawnIdentities.clear()
 }
@@ -238,18 +154,117 @@ const send = (message: PtyHostMessage): void => {
   }
 }
 
-const respondOk = (requestId: string, sessionId: string): void => {
-  send({ type: 'response', requestId, ok: true, result: { sessionId } })
+const respondSpawnOk = (requestId: string, sessionId: string): void => {
+  send({
+    type: 'response',
+    requestType: 'spawn',
+    hostInstanceId,
+    requestId,
+    ok: true,
+    result: { sessionId },
+  })
 }
 
-const respondError = (requestId: string, error: unknown): void => {
+const respondError = (requestType: 'spawn' | 'resize', requestId: string, error: unknown): void => {
   const name = error instanceof Error ? error.name : undefined
   const message = error instanceof Error ? error.message : 'unknown error'
-  send({ type: 'response', requestId, ok: false, error: { name, message } })
+  send({
+    type: 'response',
+    requestType,
+    hostInstanceId,
+    requestId,
+    ok: false,
+    error: { ...(name ? { name } : {}), message },
+  })
+}
+
+const observeForeground = (
+  sessionId: string,
+  observedAtMs: number,
+  windowsExitCode: number | null,
+): void => {
+  const rootPid = sessions.get(sessionId)?.rootPid
+  if (process.platform === 'win32') {
+    const common = {
+      type: 'foreground' as const,
+      hostInstanceId,
+      sessionId,
+      observedAtMs,
+      availability: 'unavailable' as const,
+      agent: null,
+      shellOnly: false as const,
+    }
+    send(
+      windowsExitCode === null
+        ? { ...common, source: 'windows_prompt_timeout', exitCode: null }
+        : { ...common, source: 'windows_exit_code', exitCode: windowsExitCode },
+    )
+    return
+  }
+  if (!rootPid) {
+    send({
+      type: 'foreground',
+      hostInstanceId,
+      sessionId,
+      observedAtMs,
+      source: 'process_scan',
+      exitCode: null,
+      availability: 'unavailable',
+      agent: null,
+      shellOnly: false,
+    })
+    return
+  }
+  const result = spawnSync('ps', ['ax', '-o', 'pid=,ppid=,stat=,command='], {
+    encoding: 'utf8',
+    env: process.env,
+  })
+  if (result.status !== 0 || typeof result.stdout !== 'string') {
+    send({
+      type: 'foreground',
+      hostInstanceId,
+      sessionId,
+      observedAtMs,
+      source: 'process_scan',
+      exitCode: null,
+      availability: 'unavailable',
+      agent: null,
+      shellOnly: false,
+    })
+    return
+  }
+  send({
+    type: 'foreground',
+    hostInstanceId,
+    sessionId,
+    observedAtMs,
+    source: 'process_scan',
+    exitCode: null,
+    ...resolveForegroundAgentObservation(result.stdout, rootPid),
+  })
+}
+
+const scheduleForegroundObservation = (
+  kind: 'marker' | 'probe',
+  sessionId: string,
+  windowsExitCode: number | null,
+): void => {
+  const observedAtMs = Date.now()
+  const observation = (): void => observeForeground(sessionId, observedAtMs, windowsExitCode)
+  if (kind === 'marker') {
+    foregroundScheduler.scheduleMarker(sessionId, observation)
+  } else {
+    foregroundScheduler.scheduleProbe(sessionId, observation)
+  }
+}
+
+const clearSessionObservationState = (sessionId: string): void => {
+  foregroundScheduler.clearSession(sessionId)
+  shellIntegrationBuffers.delete(sessionId)
 }
 
 const onPtyData = (sessionId: string, data: string): void => {
-  send({ type: 'data', sessionId, data })
+  send({ type: 'data', hostInstanceId, sessionId, data })
   const bufferedData = `${shellIntegrationBuffers.get(sessionId) ?? ''}${data}`
   const commandFinished = resolveShellCommandFinishedMarker(bufferedData)
   if (!commandFinished) {
@@ -257,91 +272,23 @@ const onPtyData = (sessionId: string, data: string): void => {
     return
   }
   shellIntegrationBuffers.set(sessionId, '')
-  const observedAtMs = Date.now()
-  const previousTimer = foregroundTimers.get(sessionId)
-  if (previousTimer) {
-    clearTimeout(previousTimer)
+  scheduleForegroundObservation('marker', sessionId, commandFinished.exitCode)
+}
+
+const probeForeground = (sessionId: string): void => {
+  if (sessions.has(sessionId)) {
+    scheduleForegroundObservation('probe', sessionId, null)
   }
-  const timer = setTimeout(() => {
-    foregroundTimers.delete(sessionId)
-    const rootPid = sessions.get(sessionId)?.rootPid
-    if (process.platform === 'win32') {
-      const common = {
-        type: 'foreground' as const,
-        sessionId,
-        observedAtMs,
-        availability: 'unavailable' as const,
-        agent: null,
-        shellOnly: false as const,
-      }
-      send(
-        commandFinished.exitCode === null
-          ? { ...common, source: 'windows_prompt_timeout', exitCode: null }
-          : {
-              ...common,
-              source: 'windows_exit_code',
-              exitCode: commandFinished.exitCode,
-            },
-      )
-      return
-    }
-    if (!rootPid) {
-      send({
-        type: 'foreground',
-        sessionId,
-        observedAtMs,
-        source: 'process_scan',
-        exitCode: null,
-        availability: 'unavailable',
-        agent: null,
-        shellOnly: false,
-      })
-      return
-    }
-    const result = spawnSync('ps', ['ax', '-o', 'pid=,ppid=,stat=,command='], {
-      encoding: 'utf8',
-      env: process.env,
-    })
-    if (result.status !== 0 || typeof result.stdout !== 'string') {
-      send({
-        type: 'foreground',
-        sessionId,
-        observedAtMs,
-        source: 'process_scan',
-        exitCode: null,
-        availability: 'unavailable',
-        agent: null,
-        shellOnly: false,
-      })
-      return
-    }
-    const observation = resolveForegroundAgentObservation(result.stdout, rootPid)
-    send({
-      type: 'foreground',
-      sessionId,
-      observedAtMs,
-      source: 'process_scan',
-      exitCode: null,
-      ...observation,
-    })
-  }, 350)
-  timer.unref()
-  foregroundTimers.set(sessionId, timer)
 }
 
 const onPtyExit = (sessionId: string, exitCode: number): void => {
-  const timer = foregroundTimers.get(sessionId)
-  if (timer) {
-    clearTimeout(timer)
-    foregroundTimers.delete(sessionId)
-  }
-  shellIntegrationBuffers.delete(sessionId)
+  clearSessionObservationState(sessionId)
   const session = sessions.get(sessionId)
   if (session) {
     sessions.delete(sessionId)
     spawnIdentities.release(session.launchId, sessionId)
   }
-  send({ type: 'exit', sessionId, exitCode })
+  send({ type: 'exit', hostInstanceId, sessionId, exitCode })
 }
 
 function spawnPtySession(request: PtyHostSpawnRequest): void {
@@ -349,7 +296,7 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
     sessions.has(sessionId),
   )
   if (existingSessionId) {
-    respondOk(request.requestId, existingSessionId)
+    respondSpawnOk(request.requestId, existingSessionId)
     return
   }
 
@@ -377,7 +324,7 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
     onPtyExit(sessionId, exit.exitCode)
   })
 
-  respondOk(request.requestId, sessionId)
+  respondSpawnOk(request.requestId, sessionId)
 }
 
 function writeToSession(request: PtyHostWriteRequest): void {
@@ -407,6 +354,8 @@ function resizeSession(request: PtyHostResizeRequest): void {
   const resize = resizePtyAndReadAck(session.pty, request.cols, request.rows)
   send({
     type: 'response',
+    requestType: 'resize',
+    hostInstanceId,
     requestId: request.requestId,
     ok: true,
     result: { sessionId: request.sessionId, resize },
@@ -421,6 +370,7 @@ function killSession(request: PtyHostKillRequest): void {
 
   sessions.delete(request.sessionId)
   spawnIdentities.release(session.launchId, request.sessionId)
+  clearSessionObservationState(request.sessionId)
   terminatePtySession(session)
 }
 
@@ -441,7 +391,7 @@ function crash(request: PtyHostCrashRequest): void {
 
 parentPort.on('message', messageEvent => {
   const raw = messageEvent.data
-  if (!isPtyHostRequest(raw)) {
+  if (!isPtyHostRequest(raw, hostInstanceId)) {
     return
   }
 
@@ -451,7 +401,7 @@ parentPort.on('message', messageEvent => {
     try {
       spawnPtySession(message)
     } catch (error) {
-      respondError(message.requestId, error)
+      respondError('spawn', message.requestId, error)
     }
     return
   }
@@ -465,8 +415,13 @@ parentPort.on('message', messageEvent => {
     try {
       resizeSession(message)
     } catch (error) {
-      respondError(message.requestId, error)
+      respondError('resize', message.requestId, error)
     }
+    return
+  }
+
+  if (message.type === 'foreground_probe') {
+    probeForeground(message.sessionId)
     return
   }
 
@@ -486,4 +441,4 @@ parentPort.on('message', messageEvent => {
   }
 })
 
-send({ type: 'ready', protocolVersion: PTY_HOST_PROTOCOL_VERSION })
+send({ type: 'ready', protocolVersion: PTY_HOST_PROTOCOL_VERSION, hostInstanceId })

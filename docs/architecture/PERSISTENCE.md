@@ -65,7 +65,9 @@ repair。Electron 的 `userData` 目录是安装版和 dev 版数据隔离的 du
 读取失败不能被当作“没有 durable state”。如果 `readAppState()`、IPC、Control Surface
 或 remote persistence transport 捕获异常，只能作为错误/不可用路径处理；不得让
 Renderer 用默认空状态覆盖原 DB。对任何会让读取失败回落到 `null` 的改动，必须补一条
-证明不会静默覆盖已有 durable state 的测试或断言。
+证明不会静默覆盖已有 durable state 的测试或断言。远端写入使用的 preflight 与 conflict
+snapshot 必须完整校验 revision 和嵌套 app-state 结构；首次 preflight 读到的 state 同时成为
+后续冲突合并的 base snapshot，不能只缓存 revision 后退化为 local-wins。
 
 ## Installed Upgrade Contract
 

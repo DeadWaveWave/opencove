@@ -17,7 +17,7 @@ Control Surface 是 OpenCove 对外能力入口。Desktop、CLI、Web UI 和 rem
 - Desktop IPC：Renderer 通过 preload 白名单调用 Main。
 - HTTP `/invoke`：Worker Control Surface 的 command / query 调用。
 - HTTP `/events`：server-sent event stream。
-- WebSocket `/pty`：PTY attach、input、resize、role/control event。
+- WebSocket `/pty`：PTY attach、input、resize、controller-bound Agent re-exec、role/control event。
 - Worker 同源 Web UI：Full Web Canvas 和 debug shell。
 
 Transport 只做鉴权、校验、mapping 和连接生命周期；业务 owner 仍在 context application/usecase、runtime manager 或 topology store。
@@ -76,6 +76,7 @@ Sessions and PTY:
 - `session.list`
 - `session.snapshot`
 - `session.presentationSnapshot`
+- `session.terminalAgentActivity.list`
 - `session.prepareOrRevive`
 - `session.spawnTerminal`
 - `session.launchAgent`

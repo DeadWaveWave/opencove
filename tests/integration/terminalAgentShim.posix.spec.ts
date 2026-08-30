@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { TerminalAgentActivityGateway } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityGateway'
+import { TerminalAgentInvocationRegistry } from '../../src/contexts/agent/application/TerminalAgentInvocationRegistry'
 import { TerminalAgentActivityEnvironmentService } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import { TerminalAgentTelemetryAssetStore } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore'
 
@@ -53,6 +54,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
     await writeFile(join(realBin, 'claude'), '#!/bin/sh\nprintf "EXECUTABLE=LATER_PATH\\n"\n')
     await chmod(join(realBin, 'claude'), 0o700)
     const gateway = new TerminalAgentActivityGateway({
+      registry: new TerminalAgentInvocationRegistry(),
       resolveHookInjection: () => ({
         prepareHookInjection: async () => ({
           args: [],
@@ -125,6 +127,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
       await writeFile(realCodex, '#!/bin/sh\nprintf "CODEX=<%s>\\n" "$1"\nexit 29\n')
       await chmod(realCodex, 0o700)
       const gateway = new TerminalAgentActivityGateway({
+        registry: new TerminalAgentInvocationRegistry(),
         resolveHookInjection: () => ({
           prepareHookInjection: async () => ({
             args: ['--zsh-hook'],
@@ -188,6 +191,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
     await chmod(realClaude, 0o700)
 
     const gateway = new TerminalAgentActivityGateway({
+      registry: new TerminalAgentInvocationRegistry(),
       resolveHookInjection: () => ({
         prepareHookInjection: async () => ({
           args: ['--injected'],
@@ -246,6 +250,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
     await writeFile(realClaude, '#!/bin/sh\nprintf "ARG=%s\\n" "$1"\n')
     await chmod(realClaude, 0o700)
     const gateway = new TerminalAgentActivityGateway({
+      registry: new TerminalAgentInvocationRegistry(),
       resolveHookInjection: () => ({
         prepareHookInjection: async () => {
           await new Promise(resolve => setTimeout(resolve, 1_700))

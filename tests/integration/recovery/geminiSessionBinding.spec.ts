@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
+import { FakeTerminalProcessEngine } from '../../support/FakeTerminalProcessEngine'
 
 function createGeminiSessionPayload({
   sessionId,
@@ -113,20 +114,7 @@ describe('Gemini session binding', () => {
       once: vi.fn(),
     }
 
-    class MockPtyHostSupervisor {
-      public write = vi.fn()
-      public resize = vi.fn()
-      public kill = vi.fn()
-      public dispose = vi.fn()
-      public crash = vi.fn()
-      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
-      public onData(): void {}
-      public onForeground(): () => void {
-        return () => undefined
-      }
-
-      public onExit(): void {}
-    }
+    const processEngine = new FakeTerminalProcessEngine()
 
     vi.doMock('electron', () => ({
       app: {
@@ -141,14 +129,10 @@ describe('Gemini session binding', () => {
       },
     }))
 
-    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
-      PtyHostSupervisor: MockPtyHostSupervisor,
-    }))
-
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
-    const runtime = createPtyRuntime()
+    const runtime = createPtyRuntime({ processEngine })
 
     runtime.startSessionStateWatcher({
       sessionId: 'session-1',

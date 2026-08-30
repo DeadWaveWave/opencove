@@ -5,11 +5,13 @@ import type {
   TerminalForegroundEvent,
   TerminalGeometryEvent,
   TerminalGeometryCommitResult,
+  TerminalAgentReexecResult,
   TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
 import { normalizeTerminalAgentActivitySnapshot } from '../../../../shared/runtime/terminalAgentActivity'
+import { normalizeTerminalAgentReexecResult } from '../../../../shared/runtime/terminalAgentReexec'
 
 export type AttachedSessionState = {
   lastSeq: number
@@ -37,12 +39,14 @@ type PtyStreamMessage =
       state?: string
       source?: string
       hookInstallState?: string
+      degraded?: boolean
       observedAtMs?: number
     }
   | {
       type: 'metadata'
       sessionId: string
       resumeSessionId?: string | null
+      agentProvider?: string | null
       profileId?: string | null
       runtimeKind?: string | null
       terminalAgentActivity?: unknown
@@ -56,6 +60,7 @@ type PtyStreamMessage =
     }
   | { type: 'control_changed'; sessionId: string; role?: string; authorityEpoch?: number }
   | ({ type: 'resize_result' } & Record<string, unknown>)
+  | ({ type: 'agent_reexec_result' } & Record<string, unknown>)
   | { type: 'error'; code?: string; message?: string; sessionId?: string }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -215,10 +220,11 @@ export function createRemotePtyStreamMessageHandler(options: {
   onSessionExit: (sessionId: string) => void
   onSessionAttached: (sessionId: string) => void
   handshake: {
-    onHelloAck: (capabilities: { geometryCommitAck: boolean }) => void
+    onHelloAck: (capabilities: { agentReexec: boolean; geometryCommitAck: boolean }) => void
     onHandshakeError: (error: Error) => void
   }
   onResizeResult: (result: TerminalGeometryCommitResult) => void
+  onAgentReexecResult: (result: TerminalAgentReexecResult) => void
   onGeometry: (event: TerminalGeometryEvent) => void
   onAuthorityChanged: (
     sessionId: string,
@@ -244,7 +250,10 @@ export function createRemotePtyStreamMessageHandler(options: {
       const capabilities = isRecord(message.capabilities)
         ? (message.capabilities as Record<string, unknown>)
         : null
-      options.handshake.onHelloAck({ geometryCommitAck: capabilities?.geometryCommitAck === 1 })
+      options.handshake.onHelloAck({
+        agentReexec: capabilities?.agentReexec === 1,
+        geometryCommitAck: capabilities?.geometryCommitAck === 1,
+      })
       return
     }
 
@@ -306,6 +315,14 @@ export function createRemotePtyStreamMessageHandler(options: {
       const result = parseTerminalGeometryCommitResult(message)
       if (result) {
         options.onResizeResult(result)
+      }
+      return
+    }
+
+    if (message.type === 'agent_reexec_result') {
+      const result = normalizeTerminalAgentReexecResult(message)
+      if (result) {
+        options.onAgentReexecResult(result)
       }
       return
     }
@@ -406,6 +423,9 @@ export function createRemotePtyStreamMessageHandler(options: {
       ) {
         eventPayload.hookInstallState = message.hookInstallState
       }
+      if (typeof message.degraded === 'boolean') {
+        eventPayload.degraded = message.degraded
+      }
       if (
         typeof message.observedAtMs === 'number' &&
         Number.isFinite(message.observedAtMs) &&
@@ -424,6 +444,15 @@ export function createRemotePtyStreamMessageHandler(options: {
         typeof message.resumeSessionId === 'string' && message.resumeSessionId.trim().length > 0
           ? message.resumeSessionId.trim()
           : null
+      const agentProvider =
+        message.agentProvider === 'claude-code' ||
+        message.agentProvider === 'codex' ||
+        message.agentProvider === 'opencode' ||
+        message.agentProvider === 'gemini' ||
+        message.agentProvider === 'pi' ||
+        message.agentProvider === 'kimi'
+          ? message.agentProvider
+          : null
       const profileId =
         typeof message.profileId === 'string' && message.profileId.trim().length > 0
           ? message.profileId.trim()
@@ -441,6 +470,7 @@ export function createRemotePtyStreamMessageHandler(options: {
       const eventPayload: TerminalSessionMetadataEvent = {
         sessionId,
         resumeSessionId,
+        ...(agentProvider ? { agentProvider } : {}),
         ...(profileId ? { profileId } : {}),
         ...(runtimeKind ? { runtimeKind } : {}),
         ...(terminalAgentActivity ? { terminalAgentActivity } : {}),

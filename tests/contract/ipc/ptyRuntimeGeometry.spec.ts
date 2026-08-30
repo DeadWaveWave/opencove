@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
-
-type PtyDataHandler = (event: { sessionId: string; data: string }) => void
-type PtyExitHandler = (event: { sessionId: string; exitCode: number }) => void
+import { FakeTerminalProcessEngine } from '../../support/FakeTerminalProcessEngine'
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -23,33 +21,11 @@ describe('Pty runtime geometry', () => {
       rows: 27,
     }))
 
-    class MockPtyHostSupervisor {
-      public resize = resize
-      public dispose = vi.fn()
-      public spawn = vi.fn()
-      public write = vi.fn()
-      public kill = vi.fn()
-      public crash = vi.fn()
-
-      public onData(_handler: PtyDataHandler): () => void {
-        return () => undefined
-      }
-
-      public onForeground(): () => void {
-        return () => undefined
-      }
-
-      public onExit(_handler: PtyExitHandler): () => void {
-        return () => undefined
-      }
-    }
-
-    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
-      PtyHostSupervisor: MockPtyHostSupervisor,
-    }))
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.resize.mockImplementation(resize)
 
     const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
-    const runtime = createHeadlessPtyRuntime({ userDataPath: '/tmp/opencove-headless-test' })
+    const runtime = createHeadlessPtyRuntime({ processEngine })
 
     await expect(
       runtime.resize({
@@ -76,36 +52,14 @@ describe('Pty runtime geometry', () => {
   it('reports an issued but unverified ConPTY resize without echoing the request', async () => {
     vi.resetModules()
 
-    class MockPtyHostSupervisor {
-      public resize = vi.fn(async (sessionId: string) => ({
-        sessionId,
-        status: 'applied_unverified' as const,
-      }))
-      public dispose = vi.fn()
-      public spawn = vi.fn()
-      public write = vi.fn()
-      public kill = vi.fn()
-      public crash = vi.fn()
-
-      public onData(_handler: PtyDataHandler): () => void {
-        return () => undefined
-      }
-
-      public onForeground(): () => void {
-        return () => undefined
-      }
-
-      public onExit(_handler: PtyExitHandler): () => void {
-        return () => undefined
-      }
-    }
-
-    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
-      PtyHostSupervisor: MockPtyHostSupervisor,
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.resize.mockImplementation(async (sessionId: string) => ({
+      sessionId,
+      status: 'applied_unverified' as const,
     }))
 
     const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
-    const runtime = createHeadlessPtyRuntime({ userDataPath: '/tmp/opencove-headless-test' })
+    const runtime = createHeadlessPtyRuntime({ processEngine })
 
     await expect(
       runtime.resize({
@@ -145,22 +99,8 @@ describe('Pty runtime geometry', () => {
       once: vi.fn(),
     }
 
-    class MockPtyHostSupervisor {
-      public write = vi.fn()
-      public resize = resize
-      public kill = vi.fn()
-      public dispose = vi.fn()
-      public crash = vi.fn()
-      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
-
-      public onData(_handler: PtyDataHandler): void {}
-
-      public onForeground(): () => void {
-        return () => undefined
-      }
-
-      public onExit(_handler: PtyExitHandler): void {}
-    }
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.resize.mockImplementation(resize)
 
     vi.doMock('electron', () => ({
       app: {
@@ -175,14 +115,10 @@ describe('Pty runtime geometry', () => {
       },
     }))
 
-    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
-      PtyHostSupervisor: MockPtyHostSupervisor,
-    }))
-
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
-    const runtime = createPtyRuntime()
+    const runtime = createPtyRuntime({ processEngine })
     const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
 
     const unchangedInitial = await runtime.resize({
@@ -291,22 +227,9 @@ describe('Pty runtime geometry', () => {
       once: vi.fn(),
     }
 
-    class MockPtyHostSupervisor {
-      public write = vi.fn()
-      public resize = resize
-      public kill = vi.fn()
-      public dispose = vi.fn()
-      public crash = vi.fn()
-      public spawn = vi.fn(async () => ({ sessionId: 'session-killed-during-resize' }))
-
-      public onData(_handler: PtyDataHandler): void {}
-
-      public onForeground(): () => void {
-        return () => undefined
-      }
-
-      public onExit(_handler: PtyExitHandler): void {}
-    }
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.spawn.mockResolvedValue({ sessionId: 'session-killed-during-resize' })
+    processEngine.resize.mockImplementation(resize)
 
     vi.doMock('electron', () => ({
       app: {
@@ -321,14 +244,10 @@ describe('Pty runtime geometry', () => {
       },
     }))
 
-    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
-      PtyHostSupervisor: MockPtyHostSupervisor,
-    }))
-
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
-    const runtime = createPtyRuntime()
+    const runtime = createPtyRuntime({ processEngine })
     const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
     const resizePromise = runtime.resize({
       sessionId,

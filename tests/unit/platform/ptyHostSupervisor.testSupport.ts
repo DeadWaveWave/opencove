@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type { PtyHostProcess } from '@platform/process/ptyHost/supervisor'
+import { PTY_HOST_PROTOCOL_VERSION } from '@platform/process/ptyHost/protocol'
 
 export class TestPtyHostProcess extends EventEmitter implements PtyHostProcess {
   public readonly sentMessages: unknown[] = []
@@ -10,6 +11,21 @@ export class TestPtyHostProcess extends EventEmitter implements PtyHostProcess {
   public killCalls = 0
   public readonly killSignals: Array<'SIGTERM' | 'SIGKILL' | undefined> = []
   public exitOnKill = true
+
+  public constructor(public readonly hostInstanceId = 'test-host-instance') {
+    super()
+  }
+
+  public emitReady(protocolVersion: number = PTY_HOST_PROTOCOL_VERSION): void {
+    this.emit('message', { type: 'ready', protocolVersion, hostInstanceId: this.hostInstanceId })
+  }
+
+  public emitHostMessage(
+    message: Record<string, unknown>,
+    hostInstanceId: string = this.hostInstanceId,
+  ): void {
+    this.emit('message', { ...message, hostInstanceId })
+  }
 
   public postMessage(message: unknown, callback?: (error: Error | null) => void): void {
     const record =

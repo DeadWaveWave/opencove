@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import { randomUUID } from 'node:crypto'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   AttachTerminalInput,
@@ -11,6 +12,8 @@ import type {
   SnapshotTerminalInput,
   SnapshotTerminalResult,
   SpawnTerminalInput,
+  TerminalAgentReexecInput,
+  TerminalAgentReexecResult,
   WriteTerminalInput,
 } from '../../../../shared/contracts/dto'
 import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
@@ -24,6 +27,7 @@ import {
   normalizeKillTerminalPayload,
   normalizeResizeTerminalPayload,
   normalizeSnapshotPayload,
+  normalizeTerminalAgentReexecPayload,
   normalizeSpawnTerminalPayload,
   normalizeWriteTerminalPayload,
 } from './validate'
@@ -69,6 +73,22 @@ export function registerPtyIpcHandlers(
     async (_event, payload: WriteTerminalInput) => {
       const normalized = normalizeWriteTerminalPayload(payload)
       await runtime.write(normalized.sessionId, normalized.data, normalized.encoding)
+    },
+    { defaultErrorCode: 'terminal.write_failed' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.ptyAgentReexec,
+    async (_event, payload: TerminalAgentReexecInput): Promise<TerminalAgentReexecResult> => {
+      const normalized = normalizeTerminalAgentReexecPayload(payload)
+      if (runtime.reexecAgent) {
+        return await runtime.reexecAgent(normalized)
+      }
+      return {
+        sessionId: normalized.sessionId,
+        operationId: normalized.operationId ?? randomUUID(),
+        status: 'runtime_failed',
+      }
     },
     { defaultErrorCode: 'terminal.write_failed' },
   )
@@ -143,6 +163,7 @@ export function registerPtyIpcHandlers(
       ipcMain.removeHandler(IPC_CHANNELS.ptySpawn)
       ipcMain.removeHandler(IPC_CHANNELS.ptyListProfiles)
       ipcMain.removeHandler(IPC_CHANNELS.ptyWrite)
+      ipcMain.removeHandler(IPC_CHANNELS.ptyAgentReexec)
       ipcMain.removeHandler(IPC_CHANNELS.ptyResize)
       ipcMain.removeHandler(IPC_CHANNELS.ptyKill)
       ipcMain.removeHandler(IPC_CHANNELS.ptyAttach)

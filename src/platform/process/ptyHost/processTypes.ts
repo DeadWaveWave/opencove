@@ -10,3 +10,14 @@ export interface PtyHostProcess {
 }
 
 export type PtyHostProcessFactory = (modulePath: string) => PtyHostProcess
+
+export interface PtyHostSupervisorOptions {
+  baseDir: string
+  createProcess: PtyHostProcessFactory
+  resolveEntryPath?: () => string
+  reportIssue?: (message: string) => void
+  logFilePath?: string | null
+  readyTimeoutMs?: number
+  spawnTimeoutMs?: number
+  ambiguousExitTimeoutMs?: number
+}

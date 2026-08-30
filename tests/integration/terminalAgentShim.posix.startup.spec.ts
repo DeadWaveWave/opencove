@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { TerminalAgentActivityGateway } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityGateway'
+import { TerminalAgentInvocationRegistry } from '../../src/contexts/agent/application/TerminalAgentInvocationRegistry'
 import { TerminalAgentActivityEnvironmentService } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import { TerminalAgentTelemetryAssetStore } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore'
 
@@ -42,7 +43,10 @@ async function createWrappedShell(options: {
   args: readonly string[]
   env: NodeJS.ProcessEnv
 }) {
-  const gateway = new TerminalAgentActivityGateway({ resolveHookInjection: () => null })
+  const gateway = new TerminalAgentActivityGateway({
+    registry: new TerminalAgentInvocationRegistry(),
+    resolveHookInjection: () => null,
+  })
   const assets = new TerminalAgentTelemetryAssetStore({
     runtimeExecutable: process.execPath,
     platform: process.platform,

@@ -1,5 +1,6 @@
 import { createServer, request, type Server } from 'node:http'
 import { describe, expect, it, vi } from 'vitest'
+import { TerminalAgentInvocationRegistry } from '../../../src/contexts/agent/application/TerminalAgentInvocationRegistry'
 import { TerminalAgentActivityGateway } from '../../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityGateway'
 import { TerminalAgentActivityEnvironmentService } from '../../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 
@@ -43,6 +44,7 @@ describe('TerminalAgentActivityGateway', () => {
       return server
     }) as typeof createServer)
     const gateway = new TerminalAgentActivityGateway({
+      registry: new TerminalAgentInvocationRegistry(),
       resolveHookInjection: () => null,
       createHttpServer,
     })
@@ -85,7 +87,9 @@ describe('TerminalAgentActivityGateway', () => {
     })
     const disposeArtifact = vi.fn(async () => undefined)
     const onStarted = vi.fn()
+    const registry = new TerminalAgentInvocationRegistry()
     const gateway = new TerminalAgentActivityGateway({
+      registry,
       resolveHookInjection: () => ({
         prepareHookInjection: async command => {
           command.artifacts.track('delayed-artifact', { dispose: disposeArtifact })
@@ -101,7 +105,7 @@ describe('TerminalAgentActivityGateway', () => {
       }),
     })
     const metadata: unknown[] = []
-    gateway.onMetadata(event => metadata.push(event))
+    registry.onMetadata(event => metadata.push(event))
     const terminal = await gateway.reserveTerminal()
     terminal.commit('pty-disposed-during-planning')
 
@@ -122,6 +126,57 @@ describe('TerminalAgentActivityGateway', () => {
     expect(onStarted).not.toHaveBeenCalled()
     expect(metadata).toEqual([])
     await gateway.dispose()
+  })
+
+  it('makes concurrent reservation disposal wait for the same artifact cleanup', async () => {
+    let releaseCleanup!: () => void
+    const cleanupReleased = new Promise<void>(resolve => {
+      releaseCleanup = resolve
+    })
+    let cleanupStarted!: () => void
+    const cleanupDidStart = new Promise<void>(resolve => {
+      cleanupStarted = resolve
+    })
+    const disposeArtifact = vi.fn(async () => {
+      cleanupStarted()
+      await cleanupReleased
+    })
+    const gateway = new TerminalAgentActivityGateway({
+      registry: new TerminalAgentInvocationRegistry(),
+      resolveHookInjection: () => ({
+        prepareHookInjection: async command => {
+          command.artifacts.track('delayed-cleanup-artifact', { dispose: disposeArtifact })
+          return { args: [], env: {}, hookInstallState: 'installed' }
+        },
+      }),
+    })
+    const terminal = await gateway.reserveTerminal()
+    await post(terminal.endpoint, terminal.token, {
+      operation: 'prepare',
+      provider: 'codex',
+      invocationId: 'invocation-delayed-cleanup',
+      cwd: '/tmp/workspace',
+      executablePath: '/real/codex',
+      environment: { PATH: '/real/bin' },
+    })
+
+    const firstDispose = terminal.dispose()
+    await cleanupDidStart
+    let secondSettled = false
+    const secondDispose = terminal.dispose().then(() => {
+      secondSettled = true
+    })
+    let gatewaySettled = false
+    const gatewayDispose = gateway.dispose().then(() => {
+      gatewaySettled = true
+    })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(secondSettled).toBe(false)
+    expect(gatewaySettled).toBe(false)
+
+    releaseCleanup()
+    await Promise.all([firstDispose, secondDispose, gatewayDispose])
+    expect(disposeArtifact).toHaveBeenCalledTimes(1)
   })
 
   it('fails open to the original shell when private asset preparation fails', async () => {
@@ -195,9 +250,18 @@ describe('TerminalAgentActivityGateway', () => {
     const disposed: string[] = []
     const started: Array<{
       sessionId: string
-      context: { isCurrent: () => boolean; generation: number }
+      context: {
+        isCurrent: () => boolean
+        generation: number
+        observe?: (observation: {
+          identityAuthority: 'provider_session_start'
+          resumeSessionId: string
+        }) => boolean
+      }
     }> = []
+    const registry = new TerminalAgentInvocationRegistry()
     const gateway = new TerminalAgentActivityGateway({
+      registry,
       resolveHookInjection: provider => ({
         prepareHookInjection: async command => {
           command.artifacts.track(`${provider}-artifact`, {
@@ -220,7 +284,7 @@ describe('TerminalAgentActivityGateway', () => {
     })
     await gateway.start()
     const metadata: unknown[] = []
-    gateway.onMetadata(event => metadata.push(event))
+    registry.onMetadata(event => metadata.push(event))
     const terminal = await gateway.reserveTerminal()
 
     const first = await post(terminal.endpoint, terminal.token, {
@@ -247,6 +311,7 @@ describe('TerminalAgentActivityGateway', () => {
       {
         sessionId: 'pty-1',
         resumeSessionId: null,
+        agentProvider: 'claude-code',
         terminalAgentActivity: expect.objectContaining({
           provider: 'claude-code',
           invocationId: 'invocation-1',
@@ -258,6 +323,22 @@ describe('TerminalAgentActivityGateway', () => {
     ])
     expect(started[0]?.sessionId).toBe('pty-1')
     expect(started[0]?.context.isCurrent()).toBe(true)
+    expect(
+      started[0]?.context.observe?.({
+        identityAuthority: 'provider_session_start',
+        resumeSessionId: 'provider-session-1',
+      }),
+    ).toBe(true)
+    expect(metadata[1]).toMatchObject({
+      sessionId: 'pty-1',
+      resumeSessionId: 'provider-session-1',
+      terminalAgentActivity: {
+        generation: 1,
+        sourceRevision: 2,
+        revision: 2,
+        identityAuthority: 'provider_session_start',
+      },
+    })
 
     const second = await post(terminal.endpoint, terminal.token, {
       operation: 'prepare',
@@ -278,7 +359,7 @@ describe('TerminalAgentActivityGateway', () => {
         generation: 1,
       }),
     ).resolves.toMatchObject({ status: 204 })
-    expect(metadata).toHaveLength(2)
+    expect(metadata).toHaveLength(3)
     expect(disposed).toEqual(['claude-code'])
 
     await expect(
@@ -288,10 +369,24 @@ describe('TerminalAgentActivityGateway', () => {
         generation: 2,
       }),
     ).resolves.toMatchObject({ status: 204 })
-    expect(metadata).toHaveLength(3)
-    expect(metadata[2]).toMatchObject({
+    expect(metadata).toHaveLength(4)
+    expect(metadata[3]).toMatchObject({
       sessionId: 'pty-1',
-      terminalAgentActivity: { generation: 2, phase: 'exited' },
+      terminalAgentActivity: {
+        generation: 2,
+        phase: 'exited',
+        sourceRevision: 4,
+        revision: 4,
+      },
+    })
+    expect(registry.list()).toMatchObject({
+      revision: 4,
+      entries: [
+        {
+          sessionId: 'pty-1',
+          terminalAgentActivity: { generation: 2, phase: 'exited', revision: 4 },
+        },
+      ],
     })
     expect(started[1]?.context.isCurrent()).toBe(false)
     expect(disposed).toEqual(['claude-code', 'codex'])
@@ -300,8 +395,89 @@ describe('TerminalAgentActivityGateway', () => {
     await gateway.dispose()
   })
 
+  it('bounds repeated prepares missing completion and disposes only the rejected artifacts', async () => {
+    let preparedCount = 0
+    const disposed: number[] = []
+    const gateway = new TerminalAgentActivityGateway({
+      registry: new TerminalAgentInvocationRegistry(),
+      resolveHookInjection: () => ({
+        prepareHookInjection: async command => {
+          preparedCount += 1
+          const artifactNumber = preparedCount
+          command.artifacts.track(`artifact-${artifactNumber}`, {
+            dispose: async () => {
+              disposed.push(artifactNumber)
+            },
+          })
+          return {
+            args: [],
+            env: {},
+            hookInstallState: 'installed',
+          }
+        },
+      }),
+    })
+    const terminal = await gateway.reserveTerminal()
+    terminal.commit('pty-quota')
+
+    for (let generation = 1; generation <= 9; generation += 1) {
+      // Generation assignment is intentionally verified in request order.
+      // eslint-disable-next-line no-await-in-loop
+      await expect(
+        post(terminal.endpoint, terminal.token, {
+          operation: 'prepare',
+          provider: 'codex',
+          invocationId: `invocation-${generation}`,
+          cwd: '/tmp/workspace',
+          executablePath: '/real/codex',
+          environment: { PATH: '/real/bin' },
+        }),
+      ).resolves.toMatchObject({ status: 200, body: { generation } })
+    }
+
+    await expect(
+      post(terminal.endpoint, terminal.token, {
+        operation: 'prepare',
+        provider: 'codex',
+        invocationId: 'invocation-rejected',
+        cwd: '/tmp/workspace',
+        executablePath: '/real/codex',
+        environment: { PATH: '/real/bin' },
+      }),
+    ).resolves.toMatchObject({ status: 409 })
+    expect(disposed).toEqual([10])
+
+    for (let generation = 1; generation <= 9; generation += 1) {
+      // Completion order proves every retained live record remains addressable.
+      // eslint-disable-next-line no-await-in-loop
+      await expect(
+        post(terminal.endpoint, terminal.token, {
+          operation: 'complete',
+          invocationId: `invocation-${generation}`,
+          generation,
+        }),
+      ).resolves.toMatchObject({ status: 204 })
+    }
+    expect(disposed).toEqual([10, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    await expect(
+      post(terminal.endpoint, terminal.token, {
+        operation: 'prepare',
+        provider: 'codex',
+        invocationId: 'invocation-10',
+        cwd: '/tmp/workspace',
+        executablePath: '/real/codex',
+        environment: { PATH: '/real/bin' },
+      }),
+    ).resolves.toMatchObject({ status: 200, body: { generation: 10 } })
+
+    await terminal.dispose()
+    await gateway.dispose()
+  })
+
   it('rejects a forged terminal token', async () => {
     const gateway = new TerminalAgentActivityGateway({
+      registry: new TerminalAgentInvocationRegistry(),
       resolveHookInjection: () => null,
     })
     await gateway.start()

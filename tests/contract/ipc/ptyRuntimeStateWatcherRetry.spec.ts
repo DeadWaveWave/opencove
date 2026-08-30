@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
+import { FakeTerminalProcessEngine } from '../../support/FakeTerminalProcessEngine'
 
 describe('Pty runtime session state watcher', () => {
   it('retries session state watcher discovery after user input', async () => {
@@ -38,20 +39,7 @@ describe('Pty runtime session state watcher', () => {
       public dispose(): void {}
     }
 
-    class MockPtyHostSupervisor {
-      public write = vi.fn()
-      public resize = vi.fn()
-      public kill = vi.fn()
-      public dispose = vi.fn()
-      public crash = vi.fn()
-      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
-      public onData(): void {}
-      public onForeground(): () => void {
-        return () => undefined
-      }
-
-      public onExit(): void {}
-    }
+    const processEngine = new FakeTerminalProcessEngine()
 
     vi.doMock('electron', () => ({
       app: {
@@ -64,10 +52,6 @@ describe('Pty runtime session state watcher', () => {
         getAllWebContents: () => [content],
         fromId: () => content,
       },
-    }))
-
-    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
-      PtyHostSupervisor: MockPtyHostSupervisor,
     }))
 
     vi.doMock('../../../src/contexts/agent/infrastructure/cli/AgentSessionLocator', () => ({
@@ -88,7 +72,7 @@ describe('Pty runtime session state watcher', () => {
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
-    const runtime = createPtyRuntime()
+    const runtime = createPtyRuntime({ processEngine })
 
     runtime.startSessionStateWatcher({
       sessionId: 'session-1',

@@ -4,6 +4,7 @@ import { registerControlSurfaceHttpServer } from '../main/controlSurface/control
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../main/controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { createApprovedWorkspaceStoreForPath } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import { createHeadlessPtyRuntime } from './headlessPtyRuntime'
+import { createWorkerTerminalProcessEngine } from '../main/controlSurface/terminal/workerTerminalProcessEngineFactory'
 import { resolveWorkerUserDataDir } from './userData'
 import { acquireWorkerSingleInstanceLock } from './singleInstanceLock'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../shared/constants/controlSurface'
@@ -201,7 +202,9 @@ async function main(): Promise<void> {
       runtimePlatform: process.platform,
     }),
   )
-  const ptyRuntime = createHeadlessPtyRuntime({ userDataPath })
+  const ptyRuntime = createHeadlessPtyRuntime({
+    processEngine: createWorkerTerminalProcessEngine({ userDataPath }),
+  })
 
   const server = registerControlSurfaceHttpServer({
     userDataPath,

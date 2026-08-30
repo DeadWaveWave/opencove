@@ -1,8 +1,4 @@
-import { fork } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { resolve } from 'node:path'
-import { PtyHostSupervisor } from '../../platform/process/ptyHost/supervisor'
-import { createNodeChildPtyHostProcess } from '../../platform/process/ptyHost/nodeProcessAdapter'
 import type {
   AgentProviderId,
   AgentHookInstallState,
@@ -20,6 +16,7 @@ import { isDebugCrashHostEnabled } from '../../contexts/terminal/presentation/ma
 import { TerminalProfileResolver } from '../../platform/terminal/TerminalProfileResolver'
 import type { ListTerminalProfilesResult } from '../../shared/contracts/dto'
 import { stripAutomaticTerminalQueriesFromOutput } from '../../shared/terminal/automaticTerminalSequences'
+import type { TerminalProcessEnginePort } from '../../contexts/terminal/application/ports/TerminalProcessEnginePort'
 
 type SpawnSessionOptions = {
   cwd: string
@@ -37,6 +34,7 @@ export interface HeadlessPtyRuntime {
   listProfiles: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: SpawnSessionOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string) => void
+  probeForeground: (sessionId: string) => void
   resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
@@ -49,9 +47,10 @@ export interface HeadlessPtyRuntime {
   dispose: () => void
 }
 
-export function createHeadlessPtyRuntime(options: { userDataPath: string }): HeadlessPtyRuntime {
-  const logsDir = resolve(options.userDataPath, 'logs')
-  const logFilePath = resolve(logsDir, 'pty-host.log')
+export function createHeadlessPtyRuntime(options: {
+  processEngine: TerminalProcessEnginePort
+}): HeadlessPtyRuntime {
+  const { processEngine } = options
   const debugCrashHostEnabled = isDebugCrashHostEnabled()
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
@@ -88,22 +87,10 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     },
   })
 
-  const supervisor = new PtyHostSupervisor({
-    baseDir: __dirname,
-    logFilePath,
-    createProcess: modulePath => {
-      const child = fork(modulePath, [], {
-        stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
-        env: { ...process.env },
-      })
-      return createNodeChildPtyHostProcess(child)
-    },
-  })
-
-  const disposeDataListener = supervisor.onData(event => {
+  const disposeDataListener = processEngine.onData(event => {
     const { visibleData, replies } = stripAutomaticTerminalQueriesFromOutput(event.data)
     replies.forEach(reply => {
-      supervisor.write(event.sessionId, reply)
+      processEngine.write(event.sessionId, reply)
     })
 
     if (visibleData.length === 0) {
@@ -113,7 +100,7 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     dataListeners.forEach(listener => listener({ ...event, data: visibleData }))
   })
 
-  const disposeExitListener = supervisor.onExit(event => {
+  const disposeExitListener = processEngine.onExit(event => {
     if (providerBySessionId.get(event.sessionId) === 'codex') {
       emitState({
         sessionId: event.sessionId,
@@ -127,7 +114,7 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     hookInstallStateBySessionId.delete(event.sessionId)
     exitListeners.forEach(listener => listener(event))
   })
-  const disposeForegroundListener = supervisor.onForeground(event => {
+  const disposeForegroundListener = processEngine.onForeground(event => {
     foregroundListeners.forEach(listener => listener(event))
     if (!event.shellOnly) {
       return
@@ -143,10 +130,12 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     })
   })
 
+  let isDisposed = false
+
   return {
     listProfiles: async () => await profileResolver.listProfiles(),
     spawnSession: async input => {
-      const spawned = await supervisor.spawn(input)
+      const spawned = await processEngine.spawn(input)
       if (input.agentProvider && input.hookInstallState) {
         providerBySessionId.set(spawned.sessionId, input.agentProvider)
         hookInstallStateBySessionId.set(spawned.sessionId, input.hookInstallState)
@@ -160,13 +149,16 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
       return spawned
     },
     write: (sessionId, data) => {
-      supervisor.write(sessionId, data)
+      processEngine.write(sessionId, data)
       sessionStateWatcher.noteInteraction(sessionId, data)
+    },
+    probeForeground: sessionId => {
+      processEngine.probeForeground(sessionId)
     },
     resize: async input => {
       const operationId = input.operationId?.trim() || randomUUID()
       try {
-        const appliedGeometry = await supervisor.resize(input.sessionId, input.cols, input.rows)
+        const appliedGeometry = await processEngine.resize(input.sessionId, input.cols, input.rows)
         if (appliedGeometry.status === 'applied_unverified') {
           return {
             sessionId: input.sessionId,
@@ -204,7 +196,7 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
       sessionStateWatcher.disposeSession(sessionId)
       providerBySessionId.delete(sessionId)
       hookInstallStateBySessionId.delete(sessionId)
-      supervisor.kill(sessionId)
+      processEngine.kill(sessionId)
     },
     onData: listener => {
       dataListeners.add(listener)
@@ -245,11 +237,16 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     ...(debugCrashHostEnabled
       ? {
           debugCrashHost: () => {
-            supervisor.crash()
+            processEngine.crashForDebug?.()
           },
         }
       : {}),
     dispose: () => {
+      if (isDisposed) {
+        return
+      }
+      isDisposed = true
+
       disposeDataListener()
       disposeExitListener()
       disposeForegroundListener()
@@ -261,7 +258,7 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
       hookInstallStateBySessionId.clear()
       providerBySessionId.clear()
       sessionStateWatcher.dispose()
-      supervisor.dispose()
+      processEngine.dispose()
     },
   }
 }

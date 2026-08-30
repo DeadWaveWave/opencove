@@ -12,7 +12,7 @@ import { readAppStateFromDb, readWorkspaceStateRawFromDb } from './read'
 import { agentNodePlaceholderScrollback, nodeScrollback } from './schema'
 import { safeJsonParse, safeJsonStringify, toErrorMessage, utf8ByteLength } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
-import { createAppErrorDescriptor } from '../../../shared/errors/appError'
+import { createAppError, createAppErrorDescriptor } from '../../../shared/errors/appError'
 
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
@@ -138,8 +138,10 @@ export async function createPersistenceStore(storeOptions: {
   const readAppState = async (): Promise<unknown | null> => {
     try {
       return readAppStateFromDb(db)
-    } catch {
-      return null
+    } catch (error) {
+      throw createAppError('persistence.unavailable', {
+        debugMessage: toErrorMessage(error),
+      })
     }
   }
 

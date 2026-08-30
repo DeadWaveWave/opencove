@@ -1,32 +1,33 @@
 import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import type {
-  TerminalAgentShimProvider,
-  TerminalSessionMetadataEvent,
-} from '../../../../shared/contracts/dto'
+import type { TerminalAgentShimProvider } from '../../../../shared/contracts/dto'
 import type {
   AgentHookInjectionPlan,
   AgentHookInjectionPlanner,
 } from '../../application/ports/AgentProviderContribution'
 import { AgentLaunchArtifactScope } from '../../application/services/AgentLaunchArtifactScope'
+import type {
+  TerminalAgentInvocation,
+  TerminalAgentInvocationRegistry,
+  TerminalAgentInvocationTerminal,
+} from '../../application/TerminalAgentInvocationRegistry'
 
 const REQUEST_PATH = '/terminal-agent/activity'
 const MAX_BODY_BYTES = 64 * 1024
 
 interface InvocationRecord {
   artifacts: AgentLaunchArtifactScope
-  generation: number
   invocationId: string
+  invocation: TerminalAgentInvocation
   plan: AgentHookInjectionPlan
   provider: TerminalAgentShimProvider
-  startedAtMs: number
 }
 
 interface TerminalCredential {
-  currentGeneration: number
+  disposalPromise: Promise<void> | null
   invocations: Map<string, InvocationRecord>
-  nextGeneration: number
   sessionId: string | null
+  terminal: TerminalAgentInvocationTerminal
   token: string
 }
 
@@ -39,36 +40,38 @@ export interface TerminalAgentGatewayReservation {
 
 export class TerminalAgentActivityGateway {
   private readonly credentials = new Map<string, TerminalCredential>()
-  private readonly listeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
+  private readonly credentialDisposals = new Set<Promise<void>>()
   private server: Server | null = null
   private endpoint: string | null = null
   private startPromise: Promise<void> | null = null
+  private disposePromise: Promise<void> | null = null
   private disposed = false
 
   public constructor(
     private readonly options: {
+      registry: TerminalAgentInvocationRegistry
       resolveHookInjection: (
         provider: TerminalAgentShimProvider,
       ) => AgentHookInjectionPlanner | null
-      now?: () => number
       createHttpServer?: typeof createServer
     },
   ) {}
 
   public async start(): Promise<void> {
+    this.assertNotDisposed()
     if (this.endpoint) {
       return
     }
-    if (this.disposed) {
-      throw new Error('Terminal Agent activity gateway is disposed.')
-    }
     if (this.startPromise) {
-      return await this.startPromise
+      await this.startPromise
+      this.assertNotDisposed()
+      return
     }
     const startPromise = this.startOwnedServer()
     this.startPromise = startPromise
     try {
       await startPromise
+      this.assertNotDisposed()
     } catch (error) {
       if (this.startPromise === startPromise) {
         this.startPromise = null
@@ -112,65 +115,64 @@ export class TerminalAgentActivityGateway {
 
   public async reserveTerminal(): Promise<TerminalAgentGatewayReservation> {
     await this.start()
+    this.assertNotDisposed()
     const endpoint = this.endpoint
     if (!endpoint) {
       throw new Error('Terminal Agent activity gateway did not start.')
     }
     const token = randomBytes(32).toString('base64url')
     const credential: TerminalCredential = {
-      currentGeneration: 0,
+      disposalPromise: null,
       invocations: new Map(),
-      nextGeneration: 1,
       sessionId: null,
+      terminal: this.options.registry.reserve({ sourceId: 'terminal-shim' }),
       token,
     }
     this.credentials.set(token, credential)
-    let disposed = false
     return {
       endpoint,
       token,
       commit: sessionId => {
-        if (disposed || credential.sessionId || !this.credentials.has(token)) {
+        if (credential.disposalPromise || credential.sessionId || !this.credentials.has(token)) {
           return
         }
         credential.sessionId = sessionId
+        credential.terminal.bind(sessionId)
         const current = this.findCurrentInvocation(credential)
         if (current) {
           this.startInvocation(credential, current)
         }
       },
-      dispose: async () => {
-        if (disposed) {
-          return
-        }
-        disposed = true
-        this.credentials.delete(token)
-        await this.disposeInvocations(credential)
-      },
+      dispose: () => this.disposeCredential(credential),
     }
   }
 
-  public onMetadata(listener: (event: TerminalSessionMetadataEvent) => void): () => void {
-    this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
-  }
-
-  public async dispose(): Promise<void> {
-    if (this.disposed) {
-      return
+  public dispose(): Promise<void> {
+    if (this.disposePromise) {
+      return this.disposePromise
     }
     this.disposed = true
+    this.disposePromise = this.disposeOwnedResources()
+    return this.disposePromise
+  }
+
+  private async disposeOwnedResources(): Promise<void> {
     const credentials = [...this.credentials.values()]
     this.credentials.clear()
-    await Promise.all(
-      credentials.map(async credential => await this.disposeInvocations(credential)),
-    )
-    this.listeners.clear()
+    const disposals = new Set(this.credentialDisposals)
+    credentials.forEach(credential => disposals.add(this.disposeCredential(credential)))
+    const credentialDisposals = await Promise.allSettled([...disposals])
     await this.startPromise?.catch(() => undefined)
     const server = this.server
     this.server = null
     this.endpoint = null
     await closeServer(server)
+    const failures = credentialDisposals
+      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      .map(result => result.reason)
+    if (failures.length > 0) {
+      throw new AggregateError(failures, 'Terminal Agent activity gateway cleanup failed.')
+    }
   }
 
   private async handleRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -211,7 +213,15 @@ export class TerminalAgentActivityGateway {
     const cwd = normalizeNonEmptyString(body.cwd)
     const executablePath = normalizeNonEmptyString(body.executablePath)
     const environment = normalizeEnvironment(body.environment)
-    if (!provider || !invocationId || !cwd || !executablePath || !environment) {
+    const invocationArguments = normalizeArguments(body.arguments)
+    if (
+      !provider ||
+      !invocationId ||
+      !cwd ||
+      !executablePath ||
+      !environment ||
+      !invocationArguments
+    ) {
       this.respond(response, 400)
       return
     }
@@ -250,15 +260,23 @@ export class TerminalAgentActivityGateway {
       this.respond(response, 409)
       return
     }
+    const invocation = credential.terminal.beginInvocation({
+      invocationId,
+      provider,
+      expectedResumeSessionId: resolveExpectedResumeSessionId(provider, invocationArguments),
+    })
+    if (!invocation) {
+      await artifacts.dispose().catch(() => undefined)
+      this.respond(response, 409)
+      return
+    }
     const record: InvocationRecord = {
       artifacts,
-      generation: credential.nextGeneration++,
       invocationId,
+      invocation,
       plan,
       provider,
-      startedAtMs: this.now(),
     }
-    credential.currentGeneration = record.generation
     credential.invocations.set(invocationId, record)
     if (credential.sessionId) {
       this.startInvocation(credential, record)
@@ -267,7 +285,7 @@ export class TerminalAgentActivityGateway {
       ok: true,
       args: [...plan.args],
       env: definedEnvironment(plan.env),
-      generation: record.generation,
+      generation: invocation.generation,
     })
   }
 
@@ -279,70 +297,78 @@ export class TerminalAgentActivityGateway {
     const invocationId = normalizeIdentifier(body.invocationId)
     const generation = normalizeGeneration(body.generation)
     const record = invocationId ? credential.invocations.get(invocationId) : null
-    if (!record || generation !== record.generation) {
+    if (!record || generation !== record.invocation.generation) {
+      this.respond(response, 404)
+      return
+    }
+    if (!credential.terminal.complete({ invocationId: record.invocationId, generation })) {
       this.respond(response, 404)
       return
     }
     credential.invocations.delete(record.invocationId)
-    if (credential.sessionId && credential.currentGeneration === record.generation) {
-      this.emitActivity(credential.sessionId, record, 'exited')
-    }
     await record.artifacts.dispose()
     this.respond(response, 204)
   }
 
   private startInvocation(credential: TerminalCredential, record: InvocationRecord): void {
     const sessionId = credential.sessionId
-    if (!sessionId || credential.currentGeneration !== record.generation) {
+    if (!sessionId || !record.invocation.isCurrent()) {
       return
     }
     record.plan.onStarted?.(sessionId, {
       provider: record.provider,
       invocationId: record.invocationId,
-      generation: record.generation,
-      isCurrent: () =>
-        credential.currentGeneration === record.generation &&
-        credential.invocations.get(record.invocationId) === record,
+      generation: record.invocation.generation,
+      isCurrent: record.invocation.isCurrent,
+      observe: record.invocation.observe,
     })
-    this.emitActivity(sessionId, record, 'active')
-  }
-
-  private emitActivity(
-    sessionId: string,
-    record: InvocationRecord,
-    phase: 'active' | 'exited',
-  ): void {
-    const event: TerminalSessionMetadataEvent = {
-      sessionId,
-      resumeSessionId: null,
-      terminalAgentActivity: {
-        provider: record.provider,
-        invocationId: record.invocationId,
-        generation: record.generation,
-        phase,
-        observedAtMs: phase === 'active' ? record.startedAtMs : this.now(),
-        identityAuthority: null,
-      },
-    }
-    this.listeners.forEach(listener => listener(event))
   }
 
   private findCurrentInvocation(credential: TerminalCredential): InvocationRecord | null {
     return (
-      [...credential.invocations.values()].find(
-        invocation => invocation.generation === credential.currentGeneration,
-      ) ?? null
+      [...credential.invocations.values()].find(invocation => invocation.invocation.isCurrent()) ??
+      null
     )
   }
 
   private async disposeInvocations(credential: TerminalCredential): Promise<void> {
     const invocations = [...credential.invocations.values()]
     credential.invocations.clear()
-    await Promise.all(invocations.map(async invocation => await invocation.artifacts.dispose()))
+    const results = await Promise.allSettled(
+      invocations.map(async invocation => await invocation.artifacts.dispose()),
+    )
+    const failures = results
+      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      .map(result => result.reason)
+    if (failures.length > 0) {
+      throw new AggregateError(failures, 'Terminal Agent invocation cleanup failed.')
+    }
+  }
+
+  private disposeCredential(credential: TerminalCredential): Promise<void> {
+    if (credential.disposalPromise) {
+      return credential.disposalPromise
+    }
+    this.credentials.delete(credential.token)
+    credential.terminal.release()
+    const disposal = this.disposeInvocations(credential)
+    credential.disposalPromise = disposal
+    this.credentialDisposals.add(disposal)
+    const forgetDisposal = (): void => {
+      this.credentialDisposals.delete(disposal)
+    }
+    void disposal.then(forgetDisposal, forgetDisposal)
+    return disposal
   }
 
   private isCredentialLive(credential: TerminalCredential): boolean {
     return !this.disposed && this.credentials.get(credential.token) === credential
+  }
+
+  private assertNotDisposed(): void {
+    if (this.disposed) {
+      throw new Error('Terminal Agent activity gateway is disposed.')
+    }
   }
 
   private respond(response: ServerResponse, statusCode: number, body?: unknown): void {
@@ -353,10 +379,6 @@ export class TerminalAgentActivityGateway {
     }
     response.setHeader('content-type', 'application/json')
     response.end(JSON.stringify(body))
-  }
-
-  private now(): number {
-    return (this.options.now ?? Date.now)()
   }
 }
 
@@ -404,6 +426,30 @@ function normalizeIdentifier(value: unknown): string | null {
 
 function normalizeGeneration(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null
+}
+
+function normalizeArguments(value: unknown): string[] | null {
+  if (value === undefined) {
+    return []
+  }
+  return Array.isArray(value) && value.every(argument => typeof argument === 'string')
+    ? value
+    : null
+}
+
+function resolveExpectedResumeSessionId(
+  provider: TerminalAgentShimProvider,
+  args: readonly string[],
+): string | null {
+  if (provider === 'claude-code') {
+    const resumeIndex = args.findIndex(argument => argument === '--resume')
+    if (resumeIndex >= 0) {
+      return normalizeNonEmptyString(args[resumeIndex + 1])
+    }
+    const inline = args.find(argument => argument.startsWith('--resume='))
+    return inline ? normalizeNonEmptyString(inline.slice('--resume='.length)) : null
+  }
+  return args[0] === 'resume' ? normalizeNonEmptyString(args[1]) : null
 }
 
 function normalizeEnvironment(value: unknown): NodeJS.ProcessEnv | null {
