@@ -12,7 +12,7 @@ describe('issue report diagnostics', () => {
         getPath: () => '/Users/alice',
       },
     }))
-    vi.doMock('@app/main/worker/homeWorkerConfig', () => ({
+    vi.doMock('@contexts/settings/infrastructure/homeWorker/homeWorkerConfig', () => ({
       readHomeWorkerConfig: vi.fn(async () => ({
         mode: 'remote',
         updatedAt: '2026-05-07T00:00:00.000Z',

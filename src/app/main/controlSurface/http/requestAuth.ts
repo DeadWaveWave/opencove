@@ -122,6 +122,7 @@ export type RequestAuth =
     }
   | {
       kind: 'cookie'
+      webSessionGeneration: number
     }
   | {
       kind: 'query_token'
@@ -144,12 +145,15 @@ export function resolveRequestAuth(options: {
     typeof options.req.headers.cookie === 'string' ? options.req.headers.cookie : undefined,
   )
   const sessionCookie = cookies[options.webSessions.cookieName()]
-  if (sessionCookie && options.webSessions.validateCookie(options.now, sessionCookie)) {
+  const webSessionGeneration = sessionCookie
+    ? options.webSessions.resolveCookieGeneration(options.now, sessionCookie)
+    : null
+  if (webSessionGeneration !== null) {
     if (!isSameOriginRequest(options.req)) {
       return null
     }
 
-    return { kind: 'cookie' }
+    return { kind: 'cookie', webSessionGeneration }
   }
 
   if (options.allowQueryToken) {

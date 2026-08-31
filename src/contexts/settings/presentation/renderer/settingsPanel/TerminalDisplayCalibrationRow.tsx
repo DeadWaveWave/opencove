@@ -11,9 +11,11 @@ import {
 } from '@contexts/settings/domain/terminalDisplayCalibration'
 import {
   clearTerminalClientDisplayCalibration,
+  readTerminalDisplayCalibrationStorageMetadata,
   useTerminalClientDisplayCalibration,
   writeTerminalClientDisplayCalibration,
 } from '../terminalDisplayCalibrationStorage'
+import { resolveStableTerminalDisplayEnvironment } from '../terminalDisplayEnvironment'
 import {
   calibrateTerminalDisplayProfile,
   measureTerminalDisplayProfile,
@@ -135,7 +137,20 @@ export function TerminalDisplayCalibrationRow({
       score: result.score,
       measuredAt: new Date().toISOString(),
     }
-    writeTerminalClientDisplayCalibration(calibration)
+    const environment = await resolveStableTerminalDisplayEnvironment({
+      terminalFontSize,
+      terminalFontFamily,
+      reference: activeReference,
+    })
+    writeTerminalClientDisplayCalibration(
+      calibration,
+      environment
+        ? {
+            environmentSignature: environment.signature,
+            source: 'manual',
+          }
+        : undefined,
+    )
     setStatus(
       t('settingsPanel.general.terminalDisplayCalibration.calibrationSaved', {
         quality: getQualityLabel(result.score),
@@ -144,7 +159,10 @@ export function TerminalDisplayCalibrationRow({
   }
 
   const resetThisDevice = (): void => {
-    clearTerminalClientDisplayCalibration()
+    clearTerminalClientDisplayCalibration({
+      suppressEnvironmentSignature:
+        readTerminalDisplayCalibrationStorageMetadata()?.environmentSignature ?? null,
+    })
     setStatus(t('settingsPanel.general.terminalDisplayCalibration.resetDone'))
   }
 
@@ -157,6 +175,7 @@ export function TerminalDisplayCalibrationRow({
       reference: terminalDisplayReference,
       referenceMatchesCurrentProfile: activeReference !== null,
       clientCalibration,
+      clientCalibrationStorageMetadata: readTerminalDisplayCalibrationStorageMetadata(),
       clientCalibrationQuality: clientCalibration
         ? getTerminalDisplayCalibrationQuality(clientCalibration.score)
         : null,

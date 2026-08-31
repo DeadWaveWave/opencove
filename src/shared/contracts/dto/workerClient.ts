@@ -35,3 +35,30 @@ export interface SetHomeWorkerWebUiSettingsInput {
   enabled: boolean
   port: number | null
 }
+
+export type WorkerWebAccessRuntimeStatusDto =
+  | {
+      state: 'disabled'
+      generation: number
+      drainingGenerations: number[]
+    }
+  | {
+      state: 'active'
+      generation: number
+      hostname: string
+      bindHostname: string
+      port: number
+      passwordRequired: boolean
+      drainingGenerations: number[]
+    }
+  | {
+      state: 'failed'
+      generation: number
+      error: string
+      drainingGenerations: number[]
+    }
+
+export interface HomeWorkerConfigurationSnapshotDto {
+  config: HomeWorkerConfigDto
+  webAccess: WorkerWebAccessRuntimeStatusDto
+}

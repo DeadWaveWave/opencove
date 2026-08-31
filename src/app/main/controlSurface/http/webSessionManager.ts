@@ -36,10 +36,12 @@ function normalizeRedirectPath(value: string | null): string {
 type TicketRecord = {
   redirectPath: string
   expiresAtMs: number
+  generation: number
 }
 
 type SessionRecord = {
   expiresAtMs: number
+  generation: number
 }
 
 export interface IssuedWebSessionTicket {
@@ -50,6 +52,7 @@ export interface IssuedWebSessionTicket {
 export class WebSessionManager {
   private readonly tickets = new Map<string, TicketRecord>()
   private readonly sessions = new Map<string, SessionRecord>()
+  private generation = 0
 
   public cookieName(): string {
     return WEB_SESSION_COOKIE_NAME
@@ -61,6 +64,7 @@ export class WebSessionManager {
     this.tickets.set(ticket, {
       expiresAtMs,
       redirectPath: normalizeRedirectPath(redirectPath),
+      generation: this.generation,
     })
 
     return {
@@ -80,7 +84,7 @@ export class WebSessionManager {
 
     this.tickets.delete(ticket)
 
-    if (record.expiresAtMs <= nowMs(now)) {
+    if (record.expiresAtMs <= nowMs(now) || record.generation !== this.generation) {
       return null
     }
 
@@ -91,7 +95,7 @@ export class WebSessionManager {
   public issueSession(now: Date): { cookieValue: string; expiresAt: string } {
     const expiresAtMs = nowMs(now) + WEB_SESSION_TTL_MS
     const cookieValue = randomBytes(32).toString('base64url')
-    this.sessions.set(cookieValue, { expiresAtMs })
+    this.sessions.set(cookieValue, { expiresAtMs, generation: this.generation })
 
     return {
       cookieValue,
@@ -99,18 +103,30 @@ export class WebSessionManager {
     }
   }
 
-  public validateCookie(now: Date, cookieValue: string): boolean {
+  public resolveCookieGeneration(now: Date, cookieValue: string): number | null {
     const record = this.sessions.get(cookieValue)
     if (!record) {
-      return false
+      return null
     }
 
-    if (record.expiresAtMs <= nowMs(now)) {
+    if (record.expiresAtMs <= nowMs(now) || record.generation !== this.generation) {
       this.sessions.delete(cookieValue)
-      return false
+      return null
     }
 
-    return true
+    return record.generation
+  }
+
+  public validateCookie(now: Date, cookieValue: string): boolean {
+    return this.resolveCookieGeneration(now, cookieValue) !== null
+  }
+
+  public invalidateAll(): { previousGeneration: number; generation: number } {
+    const previousGeneration = this.generation
+    this.generation += 1
+    this.tickets.clear()
+    this.sessions.clear()
+    return { previousGeneration, generation: this.generation }
   }
 
   public expireCookie(cookieValue: string): void {

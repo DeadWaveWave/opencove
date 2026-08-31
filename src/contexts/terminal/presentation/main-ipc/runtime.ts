@@ -4,6 +4,7 @@ import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   AgentLaunchMode,
   AgentProviderId,
+  AttachTerminalResult,
   ListTerminalProfilesResult,
   PresentationSnapshotTerminalResult,
   ResizeTerminalInput,
@@ -26,7 +27,7 @@ import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure
 import type { TerminalProcessEnginePort } from '../../application/ports/TerminalProcessEnginePort'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 import { TerminalSessionManager } from './sessionManager'
-import { createLocalPtyGeometryCommitter } from './localPtyGeometryCommit'
+import { createLocalPtyGeometryCommitter, LOCAL_GEOMETRY_AUTHORITY } from './localPtyGeometryCommit'
 import { isDebugCrashHostEnabled } from './debugCrashHost'
 import { PtyRuntimeSessionRegistrationOwner } from './sessionRegistrationOwner'
 import {
@@ -61,7 +62,11 @@ export interface PtyRuntime {
   onForeground?: (listener: (event: TerminalForegroundEvent) => void) => () => void
   onState?: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
-  attach: (contentsId: number, sessionId: string, afterSeq?: number | null) => Promise<void>
+  attach: (
+    contentsId: number,
+    sessionId: string,
+    afterSeq?: number | null,
+  ) => Promise<AttachTerminalResult>
   detach: (contentsId: number, sessionId: string) => Promise<void>
   snapshot: (sessionId: string) => Promise<string>
   presentationSnapshot: (sessionId: string) => Promise<PresentationSnapshotTerminalResult>
@@ -418,6 +423,7 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
     },
     attach: async (contentsId, sessionId, afterSeq) => {
       manager.attach(contentsId, sessionId, afterSeq)
+      return { sessionId, authority: LOCAL_GEOMETRY_AUTHORITY }
     },
     detach: async (contentsId, sessionId) => {
       manager.detach(contentsId, sessionId)

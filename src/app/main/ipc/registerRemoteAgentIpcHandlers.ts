@@ -23,7 +23,7 @@ import type {
 } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import type { PtyRuntime } from '../../../contexts/terminal/presentation/main-ipc/runtime'
-import { isRemotePtyRuntime } from '../controlSurface/remote/remotePtyRuntime'
+import { isRemotePtyRuntime } from '../controlSurface/remote/remotePtyRuntime.type'
 import { SELECTABLE_AGENT_PROVIDERS } from '../../../contexts/settings/domain/agentSettings.providers'
 import {
   describeAgentLaunchError,

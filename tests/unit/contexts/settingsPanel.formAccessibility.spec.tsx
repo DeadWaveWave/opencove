@@ -1,9 +1,10 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyUiLanguage } from '../../../src/app/renderer/i18n'
 import * as systemFontsHook from '../../../src/app/renderer/shell/hooks/useSystemFonts'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { createAppError } from '../../../src/shared/errors/appError'
 import { AgentProviderConfigurePanel } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/AgentProviderConfigurePanel'
 import { AppearanceSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/AppearanceSection'
 import { CanvasSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/CanvasSection'
@@ -268,6 +269,51 @@ describe('Settings form accessible names', () => {
     )
     expectNamedTestId('settings-worker-remote-port', 'Port')
     expectNamedTestId('settings-worker-remote-token', 'Token')
+  })
+
+  it('applies Web UI settings without restarting a running Worker', async () => {
+    installWorkerApi('local')
+    const api = window.opencoveApi
+    vi.mocked(api.worker.getStatus).mockResolvedValue({
+      status: 'running',
+      connection: {
+        version: 1,
+        pid: 4242,
+        hostname: '127.0.0.1',
+        port: 4411,
+        token: 'worker-token',
+        createdAt: '2026-08-31T00:00:00.000Z',
+        appVersion: 'test',
+        startedBy: 'desktop',
+      },
+    })
+    render(<ExperimentalWorkerWebUiSection />)
+
+    const toggle = await screen.findByTestId('settings-experimental-worker-web-ui-enabled')
+    fireEvent.click(toggle)
+
+    await waitFor(() => {
+      expect(api.workerClient.setWebUiSettings).toHaveBeenCalledWith({
+        enabled: false,
+        port: 4318,
+      })
+    })
+    expect(api.worker.stop).not.toHaveBeenCalled()
+    expect(api.worker.start).not.toHaveBeenCalled()
+  })
+
+  it('localizes Worker Web access apply failures in Chinese', async () => {
+    await applyUiLanguage('zh-CN')
+    installWorkerApi('local')
+    const api = window.opencoveApi
+    vi.mocked(api.workerClient.setWebUiSettings).mockRejectedValue(
+      createAppError('worker.unavailable'),
+    )
+    render(<ExperimentalWorkerWebUiSection />)
+
+    fireEvent.click(await screen.findByTestId('settings-experimental-worker-web-ui-enabled'))
+
+    expect(await screen.findByText('无法更新 Web 访问设置，原有监听器仍保持可用。')).toBeVisible()
   })
 
   it('names project worktree and environment variable inputs', () => {

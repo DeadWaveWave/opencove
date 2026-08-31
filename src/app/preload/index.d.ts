@@ -1,5 +1,6 @@
 import type {
   AttachTerminalInput,
+  AttachTerminalResult,
   CopyWorkspacePathInput,
   ListSystemFontsResult,
   CreateGitWorktreeInput,
@@ -298,7 +299,7 @@ export interface OpenCoveApi {
     reexecAgent: (payload: TerminalAgentReexecInput) => Promise<TerminalAgentReexecResult>
     resize: (payload: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
     kill: (payload: KillTerminalInput) => Promise<void>
-    attach: (payload: AttachTerminalInput) => Promise<void>
+    attach: (payload: AttachTerminalInput) => Promise<AttachTerminalResult>
     detach: (payload: DetachTerminalInput) => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
     presentationSnapshot: (

@@ -45,7 +45,7 @@ import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
 import { useCommandCenterShortcutHint } from './hooks/useCommandCenterShortcutHint'
 import { useAppStore } from './store/useAppStore'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
-import { useTerminalDisplayReferenceAutoCapture } from '@contexts/settings/presentation/renderer/useTerminalDisplayReferenceAutoCapture'
+import { useTerminalDisplayAlignmentLifecycle } from './hooks/useTerminalDisplayAlignmentLifecycle'
 import { useIssueReportUiDiagnostics } from './hooks/useIssueReportUiDiagnostics'
 
 export default function App(): React.JSX.Element {
@@ -129,8 +129,8 @@ export default function App(): React.JSX.Element {
   useWorkspaceMountRepair({ enabled: isPersistReady, workspaces, requestPersistFlush })
   useWebsiteWindowEvents()
   useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)
-  useTerminalDisplayReferenceAutoCapture({
-    enabled: isPersistReady && agentSettings.terminalDisplayAutoReferenceEnabled,
+  useTerminalDisplayAlignmentLifecycle({
+    isPersistReady,
     agentSettings,
     setAgentSettings,
   })

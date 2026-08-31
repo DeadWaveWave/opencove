@@ -1,0 +1,177 @@
+# Worker Web Access Lifecycle
+
+本文档定义 Desktop 管理的本机 Worker 如何在不替换 Worker、PTY 或 Renderer 的前提下应用 Web UI 配置。它补充 `docs/architecture/CONTROL_SURFACE.md`：Control Surface runtime 是长期运行的能力 owner，Web listener 只是可替换的接入边界。
+
+## Scope
+
+本契约覆盖 Settings 中的四类 Web access 变化：
+
+- enable / disable
+- port
+- LAN exposure
+- password
+
+Desktop 启动的本机 Worker 使用本文的独立 Web listener。用户显式通过 CLI 启动的 Worker 保留单 listener 的兼容语义，除非其公开 CLI contract 另行升级；CLI-managed Worker 活跃时 Desktop Settings 的 hot apply 会 fail closed，而不是改写其运行时或启动第二个 durable writer。本文只保证 listener 配置变化不退出 Worker；完整 Worker 进程退出后 live PTY 继续存在不是本契约的承诺，冷恢复仍遵循 `RECOVERY_MODEL.md`。
+
+## Runtime Shape
+
+```text
+Desktop-started local Worker
+  ControlSurfaceRuntime                 one Worker lifetime
+    handlers / persistence / topology
+    PTY runtime / PtyStreamHub
+    presentation / terminal recovery
+    shared PtyStreamService
+
+  PrivateControlListener                stable Worker lifetime
+    loopback + bearer authentication
+    connection-file endpoint
+
+  WorkerWebAccessRuntime                reconfigurable
+    active / preparing / draining listener generations
+    Web assets / login / cookie policy
+    delegates invoke / events / pty to ControlSurfaceRuntime
+```
+
+`ControlSurfaceRuntime` may create more than one HTTP listener, but every listener delegates to the same handlers and `PtyStreamService`. A listener owns only its HTTP listen socket and accepted HTTP transport resources. Closing or replacing it cannot call runtime, Hub, presentation, recovery or PTY final disposal.
+
+## State Ownership
+
+| State | Class | Owner | Write entry | Restart source |
+| --- | --- | --- | --- | --- |
+| Home Worker Web intent | durable fact | Home Worker configuration store | one serialized config mutation | `home-worker.json` |
+| Active Web listener generation | runtime state | `WorkerWebAccessRuntime` | serialized apply transaction | durable Web intent |
+| Private listener endpoint | runtime state | Worker composition | Worker startup/final shutdown | Worker launch |
+| Web ticket/cookie generation | runtime state | `WebSessionManager` | issue/claim/revoke | none |
+| Web socket auth kind/generation | runtime observation | PTY stream client record | accepted upgrade | none |
+| PTY/session/presentation/geometry | runtime state | existing terminal owners | existing terminal operations | terminal recovery contract |
+| Settings status/error | UI projection | Renderer | apply/status result | recompute |
+
+While an owned local Worker is live, all `home-worker.json` mutations route through that Worker's single serialized configuration store. Main uses the same normalization/persistence implementation only when no live owned Worker exists. Renderer never writes the file directly.
+
+The durable file remains version 1. Writes use a same-directory temporary file followed by rename, preserve unrelated mode/remote/Web fields, and advance `updatedAt`. A stale expected revision fails closed instead of overwriting a newer configuration.
+
+## Listener Roles
+
+### Private listener
+
+- binds loopback only;
+- is recorded in the Worker connection file;
+- accepts bearer-authenticated Desktop/CLI/control traffic;
+- issues one-time Web claim tickets;
+- does not serve Web assets or password login;
+- remains stable through all Web access changes.
+
+### Web listener
+
+- exists only when Web access is enabled;
+- binds loopback or all interfaces according to LAN exposure;
+- serves same-origin Web assets, login/claim, `/invoke`, `/events` and `/pty`;
+- delegates business and terminal work to the long-lived Control Surface runtime;
+- is never written to the private connection file.
+
+## Apply State Machine
+
+```text
+inactive -> preparing -> active
+active -> preparing replacement -> active(new) + draining(old)
+preparing -> failed -> previous active state
+active -> disabling -> inactive
+active/draining -> final shutdown -> disposed
+```
+
+Only `WorkerWebAccessRuntime` mutates this state. Apply calls are serialized; duplicate requests are idempotent, and a stale config revision cannot overtake a newer request.
+
+### Transaction
+
+```text
+normalize + authorize + revision check
+  -> prepare gated listener/auth candidate
+  -> atomically persist the complete next config
+  -> activate by owner-local generation swap
+  -> revoke/drain the previous generation
+```
+
+Candidate preparation includes host/port bind and route/auth construction, but the candidate rejects public admission until activation. Activation performs no fallible IO. If validation, bind or persistence fails, the candidate is disposed and the previous active listener plus previous durable configuration remain authoritative.
+
+For a different port, the candidate can warm before the old listener stops accepting. For a same-port host change, the owner stops only the old listen handle, attempts the replacement bind, and relistens the old address on failure. Existing upgraded WebSockets are tracked separately from the listen handle and survive this handover unless the security transition explicitly revokes them.
+
+## Transition Semantics
+
+| Change | New admission | Existing Web clients | Terminal/Worker effect |
+| --- | --- | --- | --- |
+| enable | allowed after candidate activation | none | none |
+| disable | rejected immediately | Web sessions/sockets revoked | PTYs and private clients continue |
+| different port | new port after activation; old generation rejects new admission | bounded drain, then reconnect/rehydrate | none |
+| LAN enable | Web listener widens only after valid password policy | loopback clients may continue | none |
+| LAN disable | non-loopback admission rejected | existing non-loopback sockets close; leaving password mode also rotates old password-cookie sessions | PTYs continue; private bearer clients continue |
+| password change | old credential rejected | old Web ticket/cookie generation closes | PTYs and bearer clients continue |
+| failed apply | previous admission remains | previous clients continue | none |
+
+A Web transport close caused by disable or security tightening is intentional access revocation, not terminal recovery. After valid reauthentication, the browser hydrates the same Worker sessions from presentation snapshot and stream replay.
+
+Old listener generations have a bounded drain deadline. Final drain cleanup closes only transport resources owned by that generation; it cannot kill terminal sessions.
+
+## Authentication Boundaries
+
+- Web configuration commands require the private bearer path and runtime payload validation.
+- Cookie-authenticated Web clients cannot change Worker listener or credential configuration.
+- One-time tickets and cookie sessions carry an auth generation.
+- Password change and disable invalidate previous Web generations server-side.
+- Removing LAN exposure also revokes accepted non-loopback Web sockets.
+- Private-listener bearer-authenticated Desktop/CLI sockets are not members of Web auth generations. A bearer/query-token transport intentionally opened through the Web listener still belongs to that listener's enable/LAN lifecycle.
+
+A password change may disconnect affected browser clients to preserve the security boundary. It must never restart the Worker or close the underlying PTY.
+
+## Terminal Continuity Contract
+
+During any Web access apply that does not intentionally revoke the observing browser transport, these identities remain unchanged:
+
+- Worker `pid` and `createdAt`
+- private connection endpoint
+- `PtyStreamService.instanceId`
+- PTY session/runtime epoch and process identity
+- presentation sequence and geometry revision
+- Desktop Renderer `performance.timeOrigin`
+- Desktop xterm instance and DOM identity
+
+Continuous output must keep sequence order and existing Desktop scrollback/viewport. Settings code must not navigate/reload Renderer, remount xterm, suspend terminal hydration, or call Worker stop/start.
+
+## Shutdown And Recovery
+
+Web listener replacement is not a restart boundary. Listener generation and Web sessions are runtime-only and are reconstructed from durable Web intent after a real Worker start.
+
+Final Worker shutdown still follows the terminal recovery ordering in `docs/architecture/RECOVERY_MODEL.md`. It first freezes terminal ingress and drains/checkpoints terminal owners, then disposes shared runtime resources. Web listener drain cannot run that sequence independently.
+
+If Main loses an apply response, it queries Worker status/config revision before retrying. An idempotent retry observes the committed generation or safely prepares the desired durable state. It must not infer failure and restart the Worker.
+
+## Diagnostics
+
+Diagnostics distinguish Worker identity from Web access generation:
+
+- private Worker endpoint: pid, creation time, host/port and runtime instance;
+- desired Web config: enabled, port, LAN/password flags and config revision;
+- active Web generation: state, bind address, resolved port and password-policy flag;
+- draining generations: bounded generation IDs;
+- last startup/apply failure: sanitized detail without password/hash/token content.
+
+See `WEB_UI_TROUBLESHOOTING.md` for operational checks.
+
+## Invariants
+
+1. Web access apply never invokes Worker, PTY, Hub, presentation or recovery final disposal.
+2. Every private/Web listener generation delegates terminal traffic to one `PtyStreamService` and one Hub.
+3. Candidate bind or persistence failure leaves the previous active and durable configuration usable.
+4. Password, disable and LAN-tightening revocation affect only the corresponding Web-listener/auth transports; private Desktop/CLI bearer clients and PTYs remain live.
+5. A live owned Worker is the sole durable configuration writer; Main writes only while no live owner exists.
+6. Renderer navigation, xterm replacement and renderer cache are never Web access recovery mechanisms.
+7. Listener generation cleanup is bounded and disposes only generation-owned transport resources.
+
+## Verification Anchors
+
+- `tests/contract/controlSurface/controlSurfaceHttpRuntime.listenerLifecycle.spec.ts`
+- `tests/contract/controlSurface/desktopManagedControlSurface.webAccess.spec.ts`
+- `tests/unit/app/homeWorkerConfig.spec.ts`
+- `tests/unit/app/workerWebAccessRuntime.spec.ts`
+- `tests/e2e/workspace-canvas.worker-web-access-continuity.spec.ts`
+- `tests/e2e/workspace-canvas.desktop-web-terminal-consistency.spec.ts`

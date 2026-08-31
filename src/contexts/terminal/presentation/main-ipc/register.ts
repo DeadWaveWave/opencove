@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   AttachTerminalInput,
+  AttachTerminalResult,
   DetachTerminalInput,
   KillTerminalInput,
   ListTerminalProfilesResult,
@@ -113,9 +114,9 @@ export function registerPtyIpcHandlers(
 
   registerHandledIpc(
     IPC_CHANNELS.ptyAttach,
-    async (event, payload: AttachTerminalInput) => {
+    async (event, payload: AttachTerminalInput): Promise<AttachTerminalResult> => {
       const normalized = normalizeAttachTerminalPayload(payload)
-      await runtime.attach(event.sender.id, normalized.sessionId, normalized.afterSeq)
+      return await runtime.attach(event.sender.id, normalized.sessionId, normalized.afterSeq)
     },
     { defaultErrorCode: 'terminal.attach_failed' },
   )

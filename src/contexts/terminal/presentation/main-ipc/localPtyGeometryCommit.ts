@@ -5,7 +5,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import type { TerminalSessionManager } from './sessionManager'
 
-const LOCAL_GEOMETRY_AUTHORITY = { role: 'controller' as const, epoch: 1 }
+export const LOCAL_GEOMETRY_AUTHORITY = { role: 'controller' as const, epoch: 1 }
 
 type RuntimeResizeObservation =
   | { status: 'applied_verified'; cols: number; rows: number }

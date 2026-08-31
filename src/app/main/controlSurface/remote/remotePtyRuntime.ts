@@ -44,9 +44,12 @@ import {
 } from './remotePtyRuntime.snapshot'
 import type { RemotePtyRuntime } from './remotePtyRuntime.type'
 import { spawnRemotePtySession, spawnRemoteTerminal } from './remotePtyRuntime.spawn'
-export { isRemotePtyRuntime } from './remotePtyRuntime.type'
-export type { RemotePtyRuntime } from './remotePtyRuntime.type'
-
+import {
+  createFencedRemotePtySender,
+  reexecRemotePtyAgent,
+  requireAttachedRemotePtySocket,
+  writeRemotePtyThroughAttachedSocket,
+} from './remotePtyRuntime.socketSend'
 export function createRemotePtyRuntime(options: {
   endpointResolver: ControlSurfaceRemoteEndpointResolver
   connectTimeoutMs?: number
@@ -138,8 +141,8 @@ export function createRemotePtyRuntime(options: {
     cancelMetadataWatcher: sessionId => {
       agentMetadataWatcher.cancel(sessionId)
     },
-    onSessionAttached: sessionId => {
-      sessionCoordinator.onSessionAttached(sessionId)
+    onSessionAttached: (sessionId, authority) => {
+      sessionCoordinator.onSessionAttached(sessionId, authority)
     },
     onSessionExit: sessionId => {
       agentReexecCoordinator.rejectSession(sessionId, new Error('Terminal session exited'))
@@ -179,7 +182,9 @@ export function createRemotePtyRuntime(options: {
           : null,
       )
     },
-    onAuthorityChanged: () => undefined,
+    onAuthorityChanged: (sessionId, authority) => {
+      sessionCoordinator.onAuthorityChanged(sessionId, authority)
+    },
     onSessionError: (sessionId, code, message) => {
       geometryCoordinator.handleSessionError(sessionId, code, message)
     },
@@ -303,12 +308,12 @@ export function createRemotePtyRuntime(options: {
       throw new Error('PTY runtime disposed')
     }
 
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      return
-    }
-
     if (socketReadyPromise) {
       return await socketReadyPromise
+    }
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      return
     }
 
     const attempt = socketAttempts.begin()
@@ -372,21 +377,28 @@ export function createRemotePtyRuntime(options: {
     spawnTerminalSession,
     spawnSession: async spawnOptions =>
       await spawnRemotePtySession({ spawnOptions, spawnTerminal: spawnTerminalSession }),
-    write: async (sessionId: string, data: string, _encoding: TerminalWriteEncoding = 'utf8') => {
-      await sendSocketMessage({ type: 'write', sessionId, data })
-    },
-    reexecAgent: async input => {
-      await ensureSessionAttached(input.sessionId)
-      return await agentReexecCoordinator.reexec(
+    write: async (sessionId: string, data: string, _encoding: TerminalWriteEncoding = 'utf8') =>
+      await writeRemotePtyThroughAttachedSocket({
+        sessionId,
+        data,
+        ensureSessionAttached,
+        getSocket: () => socket,
+      }),
+    reexecAgent: async input =>
+      await reexecRemotePtyAgent({
         input,
-        sessionCoordinator.attachedSessions.get(input.sessionId),
+        ensureSessionAttached,
+        getSocket: () => socket,
+        attachedState: sessionCoordinator.attachedSessions.get(input.sessionId),
         connectTimeoutMs,
-        sendSocketMessage,
-      )
-    },
+        coordinator: agentReexecCoordinator,
+      }),
     resize: async (input: ResizeTerminalInput) => {
-      await ensureSessionAttached(input.sessionId)
-      const attachedSocket = socket
+      const attachedSocket = await requireAttachedRemotePtySocket({
+        sessionId: input.sessionId,
+        ensureSessionAttached,
+        getSocket: () => socket,
+      })
       const attached = sessionCoordinator.attachedSessions.get(input.sessionId)
       return await geometryCoordinator.resize({
         request: input,
@@ -395,16 +407,11 @@ export function createRemotePtyRuntime(options: {
             ? { role: attached.role, epoch: attached.authorityEpoch }
             : null,
         timeoutMs: connectTimeoutMs,
-        send: async payload => {
-          if (
-            !attachedSocket ||
-            socket !== attachedSocket ||
-            attachedSocket.readyState !== WebSocket.OPEN
-          ) {
-            throw new Error('PTY stream connection changed before terminal geometry commit')
-          }
-          attachedSocket.send(JSON.stringify(payload))
-        },
+        send: createFencedRemotePtySender({
+          socket: attachedSocket,
+          getSocket: () => socket,
+          changedError: 'PTY stream connection changed before terminal geometry commit',
+        }),
       })
     },
     kill: async (sessionId: string) => {
@@ -425,7 +432,7 @@ export function createRemotePtyRuntime(options: {
     onState: listener => subscribePtyRuntimeListener(externalStateListeners, listener),
     onMetadata: listener => subscribePtyRuntimeListener(externalMetadataListeners, listener),
     attach: async (contentsId: number, sessionId: string, afterSeq?: number | null) => {
-      await attachRemotePtyRenderer({
+      const attached = await attachRemotePtyRenderer({
         contentsId,
         sessionId,
         afterSeq,
@@ -435,6 +442,7 @@ export function createRemotePtyRuntime(options: {
       })
 
       agentMetadataWatcher.ensure(sessionId)
+      return attached
     },
     detach: async (contentsId: number, sessionId: string) => {
       await sessionCoordinator.removeSubscriber(contentsId, sessionId)

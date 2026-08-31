@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { verifyWebUiPassword } from './webUiPassword'
+import { verifyWebUiPassword } from '../../../../contexts/settings/infrastructure/homeWorker/webUiPassword'
 import {
   buildWebSessionCookieHeader,
   buildWebSessionClearCookieHeader,

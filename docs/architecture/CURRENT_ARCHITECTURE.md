@@ -21,9 +21,9 @@ Control Surface 是外部能力入口，支持：
 - HTTP `/invoke`：command / query 调用。
 - HTTP `/events`：事件流。
 - WebSocket `/pty`：PTY stream attach、input、resize、control events。
-- Worker 同源 Web UI：Full Web Canvas 与调试 shell。
+- Worker Web access listener：同源 Full Web Canvas、调试 shell、cookie auth 与 Control Surface routes。
 
-鉴权支持 bearer token、一次性 ticket 换 cookie、以及启用 LAN access 时的 Web UI password cookie。CLI、Desktop 和 Web UI 不直接读写 DB 或 renderer store。
+Desktop-managed Worker 的 private loopback listener 在 Worker 生命周期内保持稳定；Web listener 独立应用 enable、port、LAN 和 password 配置。两者委派到同一个 Control Surface runtime、PTY Hub 与 presentation，Web listener 切换不重启 Worker。鉴权支持 private bearer token、一次性 ticket 换 cookie、以及启用 LAN access 时的 Web UI password cookie。CLI、Desktop 和 Web UI 不直接读写 DB 或 renderer store。完整 lifecycle 见 `docs/runtime/WORKER_WEB_ACCESS_LIFECYCLE.md`。
 
 ## Remote Endpoints
 
@@ -73,9 +73,9 @@ Renderer 侧的 task / agent / terminal 启动入口与 main / node-control 共�
 
 ## Terminal And Sessions
 
-Worker 维护 PTY runtime、stream hub 和 terminal presentation session。`session.presentationSnapshot` 提供 worker-owned baseline，client 使用 `snapshot -> attach(afterSeq)` 恢复或重连。
+Worker 维护 PTY runtime、stream hub 和 terminal presentation session。`session.presentationSnapshot` 提供 worker-owned baseline，client 使用 `snapshot -> attach(afterSeq) -> exact role/authority ACK` 恢复或重连。Browser socket open 本身不授权 write、resize 或 Agent re-entry。
 
-当前终端几何仍有一个实现约束：resize 必须由当前 controller client 发起，并且 reason 只能是 `frame_commit` 或 `appearance_commit`。Viewer attach、focus 和普通输入不应主动改变 PTY size。
+终端几何只有一个 Worker-owned canonical grid：resize 必须由当前 controller client 发起，并且 reason 只能是 `frame_commit` 或 `appearance_commit`。Viewer attach、focus 和普通输入不应主动改变 PTY size。客户端显示校准只调整各自字体 metrics；如果稳定 grid 提案变化，仍必须通过 Worker geometry transaction。
 
 ## Persistence And Recovery
 

@@ -8,6 +8,14 @@ describe('architecture contract sync evidence', () => {
     )
   })
 
+  it('accepts nested Control Surface runtime contract tests', () => {
+    expect(
+      isContractSyncEvidence(
+        'tests/contract/controlSurface/controlSurfaceHttpRuntime.listenerLifecycle.spec.ts',
+      ),
+    ).toBe(true)
+  })
+
   it('does not accept unrelated unit tests as architecture contract evidence', () => {
     expect(isContractSyncEvidence('tests/unit/contexts/example.spec.ts')).toBe(false)
   })

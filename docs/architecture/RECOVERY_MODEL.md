@@ -19,7 +19,7 @@ Durable fact：
 - Agent/Terminal 可恢复 metadata。
 - Agent/Terminal node-owned Worker binding（`endpointId + mountId`）。
 - Terminal recovery generation、runtime binding、presentation checkpoint 与 bounded raw tail。
-- Settings。
+- Settings，包括 Home Worker Web access intent。
 - Endpoint/mount registry。
 
 Runtime observation：
@@ -28,6 +28,7 @@ Runtime observation：
 - watcher 观察到的外部 session 文件变化。
 - CLI 当前 probe 到的 model 或 provider availability。
 - remote endpoint 当前是否可达。
+- 当前 Web listener/auth generation 与连接数量。
 
 UI projection：
 
@@ -74,6 +75,8 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
 11. Node-owned Worker binding 优先于 Space mount 推导；只有旧数据缺少 binding 时才允许使用
     Space fallback。无法解析 remote binding 时必须 fail closed 为 `fallback_terminal` +
     `remote_worker_unavailable`，不得把 remote cwd 交给 Home Worker。
+12. Web listener/auth generation 不是 terminal restart source；Web access apply、rollback、drain 或
+    revocation 都不得运行 Worker terminal shutdown/recovery sequence。
 
 ## Ownership Table
 
@@ -86,6 +89,8 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
 | Agent/Terminal Worker binding | durable fact | workspace node model | launch/prepare result | SQLite `nodes.worker_binding_json` + topology |
 | space archive records | durable fact | workspace context | archive usecase | SQLite |
 | endpoint/mount registry | durable fact | topology store | endpoint/mount commands | topology files |
+| Home Worker Web access intent | durable fact | serialized Home Worker config store | live Worker owner; Main only while Worker absent | `home-worker.json` |
+| Web listener/auth generation | runtime state | Worker Web access runtime | serialized apply/revoke | durable Web access intent |
 | task fields | durable fact | task/workspace model | task mutation | SQLite |
 | task-agent relation | durable fact | task/agent usecase | launch/bind/close mutation | SQLite |
 | agent session metadata | durable fact | agent/session owner | launch/resume/prepare | SQLite |

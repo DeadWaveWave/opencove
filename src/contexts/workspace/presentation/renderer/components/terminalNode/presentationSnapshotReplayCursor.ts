@@ -1,4 +1,7 @@
-import type { PresentationSnapshotTerminalResult } from '@shared/contracts/dto'
+import type {
+  AttachTerminalResult,
+  PresentationSnapshotTerminalResult,
+} from '@shared/contracts/dto'
 import type { AttachablePtyApi } from './attachablePty'
 import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement'
 
@@ -18,7 +21,7 @@ export function attachAfterPresentationSnapshot(options: {
   ptyApi: AttachablePtyApi
   sessionId: string
   presentationSnapshotPromise: Promise<PresentationSnapshotTerminalResult | null>
-}): Promise<void | undefined> {
+}): Promise<AttachTerminalResult | undefined> {
   return options.presentationSnapshotPromise.then(async snapshot => {
     const afterSeq = resolvePresentationSnapshotAttachAfterSeq(snapshot)
     return await options.ptyApi.attach?.({

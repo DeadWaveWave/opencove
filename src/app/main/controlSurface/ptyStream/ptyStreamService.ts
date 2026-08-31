@@ -3,10 +3,8 @@ import { randomBytes } from 'node:crypto'
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Duplex } from 'node:stream'
 import type { WebSessionManager } from '../http/webSessionManager'
-import { resolveRequestAuth } from '../http/requestAuth'
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import { PtyStreamHub } from './ptyStreamHub'
-import type { PtyStreamClientKind } from './ptyStreamTypes'
 import type {
   TerminalRecoveryFlushResult,
   TerminalRecoveryOwner,
@@ -21,20 +19,20 @@ import {
   normalizePtyStreamPositiveInt as normalizePositiveInt,
   normalizePtyStreamRole as normalizeRole,
   normalizePtyStreamWriteData as normalizePtyWriteData,
-  resolveOfferedPtyStreamSubprotocols as resolveOfferedSubprotocols,
 } from './ptyStreamMessageValidation'
 import { createPtyStreamPresentationResetBarrier } from './ptyStreamService.presentationResetBarrier'
 import { normalizeTerminalAgentReexecInput } from '../../../../shared/runtime/terminalAgentReexec'
+import type { ControlSurfacePtyClientCloseFilter } from '../controlSurfaceHttpRuntime.contract'
+import {
+  closePtyStreamClients,
+  handlePtyStreamUpgrade,
+  type PtyStreamClientState,
+  type PtyStreamUpgradeContext,
+} from './ptyStreamService.clientAccess'
 
 export const PTY_STREAM_PROTOCOL_VERSION = 1 as const
 export const PTY_STREAM_WS_PATH = '/pty'
 export const PTY_STREAM_WS_SUBPROTOCOL = 'opencove-pty.v1'
-
-type PtyStreamClientState = {
-  clientId: string
-  kind: PtyStreamClientKind | null
-  didHandshake: boolean
-}
 
 function normalizeSessionId(value: unknown): string | null {
   const sessionId = normalizeOptionalString(value)
@@ -51,7 +49,13 @@ export interface PtyStreamService {
   freezeIngress: () => void
   /** Establishes the runtime-output cutoff after the pre-cutoff durability drain completes. */
   quiesce: () => Promise<void>
-  handleUpgrade: (req: IncomingMessage, socket: Duplex, head: Buffer) => void
+  handleUpgrade: (
+    req: IncomingMessage,
+    socket: Duplex,
+    head: Buffer,
+    context?: PtyStreamUpgradeContext,
+  ) => void
+  closeClients: (filter: ControlSurfacePtyClientCloseFilter) => number
   dispose: () => void
 }
 
@@ -411,60 +415,26 @@ export function createPtyStreamService(options: {
     })
   })
 
-  const handleUpgrade = (req: IncomingMessage, socket: Duplex, head: Buffer): void => {
-    if (ingressFrozen) {
-      socket.destroy()
-      return
-    }
-    if (!req.url) {
-      socket.destroy()
-      return
-    }
-
-    const url = new URL(req.url, 'http://localhost')
-    if (url.pathname !== PTY_STREAM_WS_PATH) {
-      socket.destroy()
-      return
-    }
-
-    const offeredProtocols = resolveOfferedSubprotocols(req.headers['sec-websocket-protocol'])
-    if (!offeredProtocols.includes(PTY_STREAM_WS_SUBPROTOCOL)) {
-      try {
-        socket.write('HTTP/1.1 400 Bad Request\r\n\r\n')
-      } catch {
-        // ignore
-      }
-      socket.destroy()
-      return
-    }
-
-    const auth = resolveRequestAuth({
+  const handleUpgrade = (
+    req: IncomingMessage,
+    socket: Duplex,
+    head: Buffer,
+    context: PtyStreamUpgradeContext = { listenerRole: 'combined' },
+  ): void => {
+    handlePtyStreamUpgrade({
       req,
-      url,
+      socket,
+      head,
+      context,
+      ingressFrozen,
       token: options.token,
       webSessions: options.webSessions,
       allowQueryToken,
-      now: options.now(),
-    })
-
-    if (!auth) {
-      try {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n')
-      } catch {
-        // ignore
-      }
-      socket.destroy()
-      return
-    }
-
-    wss.handleUpgrade(req, socket, head, ws => {
-      stateBySocket.set(ws, {
-        clientId: randomBytes(12).toString('base64url'),
-        kind: null,
-        didHandshake: false,
-      })
-
-      wss.emit('connection', ws, req)
+      now: options.now,
+      path: PTY_STREAM_WS_PATH,
+      subprotocol: PTY_STREAM_WS_SUBPROTOCOL,
+      wss,
+      stateBySocket,
     })
   }
 
@@ -480,6 +450,7 @@ export function createPtyStreamService(options: {
     freezeIngress,
     quiesce,
     handleUpgrade,
+    closeClients: filter => closePtyStreamClients({ clients, stateBySocket, filter }),
     dispose: () => {
       freezeIngress()
       clients.clear()

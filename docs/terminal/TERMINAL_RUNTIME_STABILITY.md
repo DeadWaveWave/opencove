@@ -23,6 +23,43 @@ Invariants:
 3. A malformed or missing remote acknowledgement is `runtime_failed`; it is distinct from the
    explicit non-failing `accepted_unverified` outcome.
 
+## Attach authority and live reattach
+
+| State | Owner | Write entry | Restart source |
+| --- | --- | --- | --- |
+| Browser socket generation | Browser socket lifecycle | successful socket creation | none |
+| Attach readiness | Browser attach coordinator | exact current-socket `attached` ACK | none |
+| Client accepted geometry revision | renderer geometry coordinator | Worker snapshot/result | Worker presentation snapshot |
+| Live frame proposal | renderer stable measurement | one controller `frame_commit` | recompute after attach |
+
+Invariants:
+
+1. A WebSocket open or sent hello does not authorize mutation. Write, resize and Agent re-entry wait
+   for the current socket generation's exact session/role/authority acknowledgement.
+2. Disconnect retires pending attach work and clears authority. A delayed prior-generation message
+   cannot authorize the replacement connection.
+3. Live reattach initializes the geometry coordinator from the snapshot's current geometry revision
+   before beginning a measured commit. A controller may propose the stable frame once; a viewer only
+   applies canonical geometry. Focus, input and ordinary attach are not resize observations.
+
+## Client display calibration
+
+| State | Owner | Write entry | Restart source |
+| --- | --- | --- | --- |
+| Shared display reference | persisted settings owner | explicit/automatic reference capture | SQLite app state |
+| Local calibration | renderer-local calibration owner | conservative automatic/manual measurement | local client storage |
+| Applied font metrics | terminal appearance owner | in-place appearance apply | current local calibration/defaults |
+
+Invariants:
+
+1. Calibration waits for hydrated settings, loaded fonts and stable layout, and is single-flight for
+   one profile/reference/environment signature.
+2. Only exact/close candidates that preserve reference rows and columns apply automatically. A stale
+   or ambiguous result preserves current metrics and manual fallback.
+3. Applying or invalidating local calibration does not remount xterm, replace its DOM, clear its
+   buffer/selection or move its viewport. Any canonical grid change still requires an acknowledged
+   Worker `appearance_commit`.
+
 ## Spawn identity
 
 | State | Owner | Write entry | Restart source |

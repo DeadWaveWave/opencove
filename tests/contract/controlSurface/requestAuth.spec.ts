@@ -52,7 +52,7 @@ describe('resolveRequestAuth', () => {
       now: new Date('2026-04-01T00:00:02.000Z'),
     })
 
-    expect(auth).toEqual({ kind: 'cookie' })
+    expect(auth).toEqual({ kind: 'cookie', webSessionGeneration: 0 })
   })
 
   it('accepts cookie auth for same-origin browser fetch metadata requests', () => {
@@ -70,7 +70,29 @@ describe('resolveRequestAuth', () => {
       now: new Date('2026-04-01T00:00:02.000Z'),
     })
 
-    expect(auth).toEqual({ kind: 'cookie' })
+    expect(auth).toEqual({ kind: 'cookie', webSessionGeneration: 0 })
+  })
+
+  it('invalidates old cookies when the Web auth generation rotates', () => {
+    const webSessions = new WebSessionManager()
+    const cookie = createCookieHeader(webSessions)
+
+    expect(webSessions.invalidateAll()).toEqual({ previousGeneration: 0, generation: 1 })
+
+    const auth = resolveRequestAuth({
+      req: createRequest({
+        cookie,
+        host: '127.0.0.1:8080',
+        'sec-fetch-site': 'same-origin',
+      }),
+      url: new URL('http://127.0.0.1:8080/events'),
+      token: 'test-token',
+      webSessions,
+      allowQueryToken: false,
+      now: new Date('2026-04-01T00:00:02.000Z'),
+    })
+
+    expect(auth).toBeNull()
   })
 
   it('rejects cookie auth for cross-origin requests', () => {

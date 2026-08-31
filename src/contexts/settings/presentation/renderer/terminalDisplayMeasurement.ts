@@ -1,4 +1,5 @@
 import { FitAddon } from '@xterm/addon-fit'
+import { WebglAddon } from '@xterm/addon-webgl'
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import type {
@@ -7,6 +8,8 @@ import type {
 } from '../../domain/terminalDisplayCalibration'
 import { DEFAULT_TERMINAL_FONT_FAMILY } from '@contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { installTerminalEffectiveDevicePixelRatioController } from '@contexts/workspace/presentation/renderer/components/terminalNode/effectiveDevicePixelRatio'
+
+export type TerminalDisplayRendererKind = 'dom' | 'webgl'
 
 export type TerminalDisplayCandidate = {
   fontSize: number
@@ -45,6 +48,7 @@ const terminalDisplayMeasurementHandles = new Map<
   {
     terminal: Terminal
     fitAddon: FitAddon
+    getRendererKind: () => TerminalDisplayRendererKind
   }
 >()
 
@@ -154,7 +158,7 @@ function readMeasurement({
   }
 }
 
-function emitMeasurementHandlesChanged(): void {
+export function notifyTerminalDisplayMeasurementHandlesChanged(): void {
   if (typeof window === 'undefined') {
     return
   }
@@ -187,22 +191,31 @@ export function registerTerminalDisplayMeasurementHandle({
   nodeId,
   terminal,
   fitAddon,
+  getRendererKind,
 }: {
   nodeId: string
   terminal: Terminal
   fitAddon: FitAddon
+  getRendererKind: () => TerminalDisplayRendererKind
 }): () => void {
-  terminalDisplayMeasurementHandles.set(nodeId, { terminal, fitAddon })
-  emitMeasurementHandlesChanged()
+  terminalDisplayMeasurementHandles.set(nodeId, { terminal, fitAddon, getRendererKind })
+  notifyTerminalDisplayMeasurementHandlesChanged()
 
   return () => {
     terminalDisplayMeasurementHandles.delete(nodeId)
-    emitMeasurementHandlesChanged()
+    notifyTerminalDisplayMeasurementHandlesChanged()
   }
 }
 
 export function hasMountedTerminalDisplayMeasurementHandle(): boolean {
   return terminalDisplayMeasurementHandles.size > 0
+}
+
+export function resolveMountedTerminalDisplayRendererKind(): TerminalDisplayRendererKind | null {
+  const kinds = new Set(
+    [...terminalDisplayMeasurementHandles.values()].map(handle => handle.getRendererKind()),
+  )
+  return kinds.size === 1 ? ([...kinds][0] ?? null) : null
 }
 
 export function measureFirstMountedTerminalDisplay({
@@ -235,7 +248,9 @@ export async function measureTerminalDisplayReferenceBaseline({
   terminalFontFamily: string | null
 }): Promise<TerminalDisplayMeasurement | null> {
   const container = createTemporaryMeasurementContainer()
-  if (!container) {
+  const rendererKind = resolveMountedTerminalDisplayRendererKind()
+  if (!container || !rendererKind) {
+    container?.remove()
     return null
   }
 
@@ -244,7 +259,25 @@ export async function measureTerminalDisplayReferenceBaseline({
       container,
       terminalFontSize,
       terminalFontFamily,
+      rendererKind,
     })
+  } finally {
+    container.remove()
+  }
+}
+
+export async function calibrateTerminalDisplayReferenceAutomatically(input: {
+  terminalFontSize: number
+  terminalFontFamily: string | null
+  reference: TerminalDisplayReference
+  rendererKind: TerminalDisplayRendererKind
+}): Promise<TerminalDisplayCandidateResult | null> {
+  const container = createTemporaryMeasurementContainer()
+  if (!container) {
+    return null
+  }
+  try {
+    return await calibrateTerminalDisplayProfile({ container, ...input })
   } finally {
     container.remove()
   }
@@ -264,10 +297,12 @@ async function createMeasuredTerminal({
   container,
   fontFamily,
   baseCandidate,
+  rendererKind,
 }: {
   container: HTMLDivElement
   fontFamily: string | null
   baseCandidate: TerminalDisplayCandidate
+  rendererKind: TerminalDisplayRendererKind
 }): Promise<{
   terminal: Terminal
   fitAddon: FitAddon
@@ -287,6 +322,10 @@ async function createMeasuredTerminal({
   const fitAddon = new FitAddon()
   terminal.loadAddon(fitAddon)
   terminal.open(container)
+  const rendererAddon = rendererKind === 'webgl' ? new WebglAddon() : null
+  if (rendererAddon) {
+    terminal.loadAddon(rendererAddon)
+  }
   const dprController = installTerminalEffectiveDevicePixelRatioController({
     terminal,
     initialViewportZoom: 1,
@@ -298,6 +337,7 @@ async function createMeasuredTerminal({
     fitAddon,
     dispose: () => {
       dprController.dispose()
+      rendererAddon?.dispose()
       terminal.dispose()
       container.replaceChildren()
     },
@@ -308,17 +348,23 @@ export async function measureTerminalDisplayProfile({
   container,
   terminalFontSize,
   terminalFontFamily,
+  rendererKind = resolveMountedTerminalDisplayRendererKind() ?? 'dom',
 }: {
   container: HTMLDivElement
   terminalFontSize: number
   terminalFontFamily: string | null
+  rendererKind?: TerminalDisplayRendererKind
 }): Promise<TerminalDisplayMeasurement | null> {
   const baseCandidate = { fontSize: terminalFontSize, lineHeight: 1, letterSpacing: 0 }
   const measuredTerminal = await createMeasuredTerminal({
     container,
     fontFamily: terminalFontFamily,
     baseCandidate,
-  })
+    rendererKind,
+  }).catch(() => null)
+  if (!measuredTerminal) {
+    return null
+  }
 
   try {
     return readMeasurement({
@@ -336,18 +382,24 @@ export async function calibrateTerminalDisplayProfile({
   terminalFontSize,
   terminalFontFamily,
   reference,
+  rendererKind = resolveMountedTerminalDisplayRendererKind() ?? 'dom',
 }: {
   container: HTMLDivElement
   terminalFontSize: number
   terminalFontFamily: string | null
   reference: TerminalDisplayReference
+  rendererKind?: TerminalDisplayRendererKind
 }): Promise<TerminalDisplayCandidateResult | null> {
   const baseCandidate = { fontSize: terminalFontSize, lineHeight: 1, letterSpacing: 0 }
   const measuredTerminal = await createMeasuredTerminal({
     container,
     fontFamily: terminalFontFamily,
     baseCandidate,
-  })
+    rendererKind,
+  }).catch(() => null)
+  if (!measuredTerminal) {
+    return null
+  }
 
   try {
     const results: TerminalDisplayCandidateResult[] = []

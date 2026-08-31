@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { registerControlSurfaceHttpServer } from '../../../src/app/main/controlSurface/controlSurfaceHttpServer'
 import { createApprovedWorkspaceStoreForPath } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
-import { hashWebUiPassword } from '../../../src/app/main/controlSurface/http/webUiPassword'
+import { hashWebUiPassword } from '../../../src/contexts/settings/infrastructure/homeWorker/webUiPassword'
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {

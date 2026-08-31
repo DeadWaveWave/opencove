@@ -32,12 +32,14 @@
 
 - `runtime/CLA_SETUP.md`：CLA bot 配置与维护说明。
 - `runtime/RELEASING.md`：Release、nightly 与 standalone server 资产。
+- `runtime/WORKER_WEB_ACCESS_LIFECYCLE.md`：Desktop-managed Worker 的 private/Web listener 生命周期、配置事务与安全撤销契约。
 - `runtime/WEB_UI_TROUBLESHOOTING.md`：Worker/Web UI 调试入口。
 
 ## Terminal
 
 - `terminal/README.md`：终端专题入口。
 - `terminal/MULTI_CLIENT_ARCHITECTURE.md`：当前终端多客户端架构与限制。
+- `terminal/TERMINAL_RUNTIME_STABILITY.md`：geometry ACK、attach authority、client calibration、spawn identity 与 startup admission 不变量。
 - `terminal/TUI_RENDERING_BASELINE.md`：TUI 渲染稳定性基线。
 - `terminal/ANSI_SCREEN_PERSISTENCE.md`：ANSI screen restore 案例记录。
 

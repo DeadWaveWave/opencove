@@ -14,7 +14,7 @@ vi.mock('electron', () => ({
   },
 }))
 
-vi.mock('../../../src/app/main/worker/homeWorkerConfig', () => ({
+vi.mock('../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig', () => ({
   createDefaultHomeWorkerConfig: vi.fn(() => ({
     version: 1,
     mode: 'local',

@@ -1,7 +1,6 @@
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
-import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
-import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
+import { TerminalDisplayAlignedWorkspaceCanvasView } from './workspaceCanvas/TerminalDisplayAlignedWorkspaceCanvasView'
 import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
 import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 export function WorkspaceCanvasInner({
@@ -31,7 +30,7 @@ export function WorkspaceCanvasInner({
   focusSpaceId,
   focusSequence,
 }: WorkspaceCanvasProps) {
-  const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
+  const reactFlow = useReactFlow<Node<import('../types').TerminalNodeData>, Edge>()
   const { terminalDisplayCalibration, terminalDisplayMetrics } =
     workspaceCanvasHooks.useWorkspaceCanvasTerminalDisplay(agentSettings)
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
@@ -214,7 +213,6 @@ export function WorkspaceCanvasInner({
     workspacePath,
     onShowMessage,
     agentSettings,
-    terminalDisplayCalibration,
     actionRefs,
     convertNoteToTask,
     setNodeLabelColorOverride: nodeStore.setNodeLabelColorOverride,
@@ -384,7 +382,10 @@ export function WorkspaceCanvasInner({
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
   })
   return (
-    <WorkspaceCanvasView
+    <TerminalDisplayAlignedWorkspaceCanvasView
+      terminalFontSize={agentSettings.terminalFontSize}
+      terminalFontFamily={agentSettings.terminalFontFamily}
+      terminalDisplayCalibration={terminalDisplayCalibration}
       canvasRef={canvasState.canvasRef}
       resolvedCanvasInputMode={inputMode.resolvedCanvasInputMode}
       isCanvasWheelGestureCaptureActive={canvasState.isCanvasWheelGestureCaptureActive}

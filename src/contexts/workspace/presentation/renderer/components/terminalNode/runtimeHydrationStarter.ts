@@ -1,6 +1,9 @@
 import type { MutableRefObject } from 'react'
 import type { Terminal } from '@xterm/xterm'
-import type { PresentationSnapshotTerminalResult } from '@shared/contracts/dto'
+import type {
+  AttachTerminalResult,
+  PresentationSnapshotTerminalResult,
+} from '@shared/contracts/dto'
 import type { WorkspaceNodeKind } from '../../types'
 import type { CachedTerminalScreenState } from './screenStateCache'
 import {
@@ -38,7 +41,7 @@ export function startRuntimeTerminalHydration({
   shouldAwaitAgentVisibleOutput,
   isDisposed,
 }: {
-  attachPromise: Promise<void | undefined>
+  attachPromise: Promise<AttachTerminalResult | undefined>
   sessionId: string
   terminal: Terminal
   kind: WorkspaceNodeKind

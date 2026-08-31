@@ -214,7 +214,8 @@
 -   **恢复模型与 owner 表**：`docs/architecture/RECOVERY_MODEL.md`
 -   **持久化（SQLite schema / migrations）**：`docs/architecture/PERSISTENCE.md`
 -   **终端架构文档入口**：`docs/terminal/README.md`
--   **终端多端架构（当前 owner / attach / geometry）**：`docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
+-   **终端多端架构（当前 owner / attach / geometry / display calibration）**：`docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
+-   **Worker Web access 生命周期**：`docs/runtime/WORKER_WEB_ACCESS_LIFECYCLE.md`
 -   **终端渲染基准（tactical baseline）**：`docs/terminal/TUI_RENDERING_BASELINE.md`
 -   **UI 开发标准**：
     -   总体 UI 规范：`docs/ui/README.md`

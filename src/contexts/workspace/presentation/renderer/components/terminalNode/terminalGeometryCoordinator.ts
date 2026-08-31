@@ -1,5 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
-import type { TerminalGeometryCommitResult } from '@shared/contracts/dto'
+import type { TerminalGeometryAuthority, TerminalGeometryCommitResult } from '@shared/contracts/dto'
 
 type GateListener = () => void
 
@@ -83,6 +83,24 @@ export function isTerminalGeometryCommitCurrent(
 ): boolean {
   const state = getTerminalGeometryState(terminal)
   return state.pendingRevision === geometryRevision
+}
+
+export function initializeTerminalGeometryCommitBaseline(
+  terminal: Terminal,
+  input: {
+    geometryRevision?: number | null
+    authority?: TerminalGeometryAuthority | null
+  },
+): void {
+  const state = getTerminalGeometryState(terminal)
+  const authorityEpoch = input.authority?.epoch
+  state.authorityEpoch =
+    typeof authorityEpoch === 'number' &&
+    Number.isSafeInteger(authorityEpoch) &&
+    authorityEpoch >= 0
+      ? authorityEpoch
+      : null
+  markTerminalGeometryAccepted(terminal, input.geometryRevision)
 }
 
 export function markTerminalGeometryAccepted(

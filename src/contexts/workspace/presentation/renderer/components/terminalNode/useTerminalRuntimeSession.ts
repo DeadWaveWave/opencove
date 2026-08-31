@@ -271,6 +271,7 @@ export function useTerminalRuntimeSession({
           agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
           agentLaunchMode: agentLaunchModeRef.current,
         }),
+        isCurrent: () => !isDisposed && terminalRef.current === terminal,
       }),
       requirePostGeometrySnapshotOutput: shouldRequirePostGeometrySnapshotOutput({
         kind,

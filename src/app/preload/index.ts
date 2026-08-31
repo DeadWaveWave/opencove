@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '../../shared/contracts/ipc'
 import type { ControlSurfaceInvokeRequest } from '../../shared/contracts/controlSurface'
 import type {
   AttachTerminalInput,
+  AttachTerminalResult,
   CopyWorkspacePathInput,
   ListSystemFontsResult,
   CreateGitWorktreeInput,
@@ -326,7 +327,7 @@ const opencoveApi = {
     resize: (payload: ResizeTerminalInput): Promise<TerminalGeometryCommitResult> =>
       invokeIpc(IPC_CHANNELS.ptyResize, payload),
     kill: (payload: KillTerminalInput): Promise<void> => invokeIpc(IPC_CHANNELS.ptyKill, payload),
-    attach: (payload: AttachTerminalInput): Promise<void> =>
+    attach: (payload: AttachTerminalInput): Promise<AttachTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptyAttach, payload),
     detach: (payload: DetachTerminalInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),

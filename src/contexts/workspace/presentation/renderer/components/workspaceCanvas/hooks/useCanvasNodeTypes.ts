@@ -2,7 +2,6 @@ import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
@@ -18,7 +17,6 @@ export function useWorkspaceCanvasComposedNodeTypes({
   workspacePath,
   onShowMessage,
   agentSettings,
-  terminalDisplayCalibration,
   actionRefs,
   convertNoteToTask,
   setNodeLabelColorOverride,
@@ -35,7 +33,6 @@ export function useWorkspaceCanvasComposedNodeTypes({
   workspacePath: string
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNodeTypes>[0]['onShowMessage']
   agentSettings: AgentSettings
-  terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   actionRefs: WorkspaceCanvasActionRefs
   convertNoteToTask: (nodeId: string) => boolean
   setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
@@ -54,9 +51,6 @@ export function useWorkspaceCanvasComposedNodeTypes({
     spacesRef,
     workspacePath,
     onShowMessage,
-    terminalFontSize: agentSettings.terminalFontSize,
-    terminalFontFamily: agentSettings.terminalFontFamily,
-    terminalDisplayCalibration,
     agentProviderOrder: agentSettings.agentProviderOrder,
     defaultProvider: agentSettings.defaultProvider,
     browserDefaultMode: agentSettings.browserDefaultMode,

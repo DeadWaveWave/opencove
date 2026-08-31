@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { launchApp, testWorkspacePath } from './workspace-canvas.helpers'
+import { buildNodeEvalCommand, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
 
 type PersistedTerminalDisplayReference = {
   version: 1
@@ -19,9 +19,12 @@ type PersistedTerminalDisplayReference = {
 const workspaceId = 'workspace-terminal-display-reference'
 const nodeId = 'node-terminal-display-reference'
 
-async function seedZoomedWorkspace(window: Awaited<ReturnType<typeof launchApp>>['window']) {
+async function seedZoomedWorkspace(
+  window: Awaited<ReturnType<typeof launchApp>>['window'],
+  initialCompensationEnabled = true,
+) {
   const result = await window.evaluate(
-    async ({ seededWorkspaceId, seededNodeId, workspacePath }) => {
+    async ({ seededWorkspaceId, seededNodeId, workspacePath, compensationEnabled }) => {
       return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
         raw: JSON.stringify({
           formatVersion: 1,
@@ -71,7 +74,7 @@ async function seedZoomedWorkspace(window: Awaited<ReturnType<typeof launchApp>>
             terminalFontSize: 13,
             terminalFontFamily: null,
             terminalDisplayAutoReferenceEnabled: true,
-            terminalDisplayCalibrationCompensationEnabled: true,
+            terminalDisplayCalibrationCompensationEnabled: compensationEnabled,
             terminalDisplayReference: null,
           },
         }),
@@ -81,6 +84,7 @@ async function seedZoomedWorkspace(window: Awaited<ReturnType<typeof launchApp>>
       seededWorkspaceId: workspaceId,
       seededNodeId: nodeId,
       workspacePath: testWorkspacePath,
+      compensationEnabled: initialCompensationEnabled,
     },
   )
 
@@ -185,6 +189,132 @@ test.describe('Settings - Terminal Display Calibration', () => {
         automaticReference?.measurement.effectiveDpr ?? 0,
         5,
       )
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('automatically calibrates this renderer without remounting its terminal', async () => {
+    const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
+
+    try {
+      await seedZoomedWorkspace(window, false)
+      await window.reload({ waitUntil: 'domcontentloaded' })
+      const terminal = window.locator('.terminal-node').first()
+      await expect(terminal.locator('.xterm')).toBeVisible()
+      await expect
+        .poll(async () => await readPersistedTerminalDisplayReference(window), {
+          timeout: 15_000,
+        })
+        .not.toBeNull()
+      expect(
+        await window.evaluate(() =>
+          window.localStorage.getItem('opencove:terminal-display-calibration:v1'),
+        ),
+      ).toBeNull()
+
+      await terminal.locator('.xterm').click()
+      await window.keyboard.type(
+        buildNodeEvalCommand(
+          `for (let i = 0; i < 40; i += 1) process.stdout.write((i === 0 ? 'CALIBRATION_HISTORY' : 'CALIBRATION_' + i) + '\\n')`,
+        ),
+      )
+      await window.keyboard.press('Enter')
+      await expect(terminal).toContainText('CALIBRATION_39')
+      await window.evaluate(id => {
+        const element = document.querySelector('.terminal-node .xterm') as HTMLElement | null
+        if (element) {
+          element.dataset['calibrationIdentity'] = 'same-terminal'
+        }
+        window.__opencoveTerminalSelectionTestApi?.scrollToLine(id, 3)
+        window.__opencoveTerminalSelectionTestApi?.selectAll(id)
+      }, nodeId)
+      const before = await window.evaluate(id => {
+        const api = window.__opencoveTerminalSelectionTestApi
+        const buffer = api?.getBufferText(id, 'CALIBRATION_HISTORY') ?? null
+        return {
+          timeOrigin: performance.timeOrigin,
+          sessionId: api?.getRuntimeSessionId(id) ?? null,
+          instanceId: api?.getRenderMetrics(id)?.instanceId ?? null,
+          domToken:
+            (document.querySelector('.terminal-node .xterm') as HTMLElement | null)?.dataset[
+              'calibrationIdentity'
+            ] ?? null,
+          markerAbsoluteLine: buffer?.markerAbsoluteLine ?? null,
+          bufferLength: buffer?.bufferLength ?? null,
+          viewportY: api?.getViewportY(id) ?? null,
+          selection: api?.getSelection(id) ?? null,
+        }
+      }, nodeId)
+
+      await window.locator('[data-testid="app-header-settings"]').click()
+      await window.locator('[data-testid="settings-section-nav-appearance"]').click()
+      const compensation = window.locator('[data-testid="settings-terminal-display-compensation"]')
+      await expect(compensation).toHaveJSProperty('checked', false)
+      await compensation.click()
+      await expect(compensation).toHaveJSProperty('checked', true)
+
+      let calibration: {
+        fontSize: number
+        lineHeight: number
+        letterSpacing: number
+        target: { cols: number; rows: number }
+        measured?: { cols: number; rows: number }
+      } | null = null
+      await expect
+        .poll(
+          async () => {
+            calibration = await window.evaluate(() => {
+              const raw = window.localStorage.getItem('opencove:terminal-display-calibration:v1')
+              return raw ? JSON.parse(raw) : null
+            })
+            return calibration
+          },
+          { timeout: 20_000 },
+        )
+        .not.toBeNull()
+      await window.locator('[data-testid="settings-panel-close"]').click()
+
+      const after = await window.evaluate(id => {
+        const api = window.__opencoveTerminalSelectionTestApi
+        const buffer = api?.getBufferText(id, 'CALIBRATION_HISTORY') ?? null
+        return {
+          timeOrigin: performance.timeOrigin,
+          sessionId: api?.getRuntimeSessionId(id) ?? null,
+          instanceId: api?.getRenderMetrics(id)?.instanceId ?? null,
+          domToken:
+            (document.querySelector('.terminal-node .xterm') as HTMLElement | null)?.dataset[
+              'calibrationIdentity'
+            ] ?? null,
+          markerAbsoluteLine: buffer?.markerAbsoluteLine ?? null,
+          bufferLength: buffer?.bufferLength ?? null,
+          viewportY: api?.getViewportY(id) ?? null,
+          selection: api?.getSelection(id) ?? null,
+          fontOptions: api?.getFontOptions(id) ?? null,
+          size: api?.getSize(id) ?? null,
+        }
+      }, nodeId)
+      expect(after).toMatchObject({
+        ...before,
+        bufferLength: expect.any(Number),
+        fontOptions: {
+          fontSize: calibration?.fontSize,
+          lineHeight: calibration?.lineHeight,
+          letterSpacing: calibration?.letterSpacing,
+        },
+        size: expect.any(Object),
+      })
+      expect(after.bufferLength).toBeGreaterThanOrEqual(before.bufferLength ?? 0)
+      expect(calibration?.measured).toMatchObject({
+        cols: calibration?.target.cols,
+        rows: calibration?.target.rows,
+      })
+      const snapshot = await window.evaluate(
+        async sessionId =>
+          sessionId ? await window.opencoveApi.pty.presentationSnapshot({ sessionId }) : null,
+        after.sessionId,
+      )
+      expect(snapshot).toMatchObject({ cols: after.size?.cols, rows: after.size?.rows })
     } finally {
       await electronApp.close()
     }

@@ -1,6 +1,6 @@
 # Multi-Client Terminal Architecture
 
-OpenCove terminal sessions use worker-owned runtime and presentation state. Desktop and Web UI render locally as clients; correctness comes from Worker snapshot + stream replay, not from renderer cache.
+OpenCove terminal sessions use worker-owned runtime and presentation state. Desktop and Web UI render locally as clients; correctness comes from Worker snapshot + stream replay, not from renderer cache. Web listener replacement is only a transport lifecycle and never replaces the Worker terminal owners.
 
 ## Current Runtime Shape
 
@@ -34,6 +34,7 @@ Key implementation files:
 | Presentation snapshot | Worker | `session.presentationSnapshot` |
 | Replay baseline | Worker | `appliedSeq` from snapshot |
 | Controller role + authority epoch | `PtyStreamHub` | `/pty` attach/control handoff |
+| Browser socket generation + attach readiness | Browser PTY attach coordinator | exact current-socket hello/attached ACK |
 | PTY geometry | Worker geometry transaction | controller request -> runtime ACK -> presentation commit |
 | Terminal recovery generation/archive/binding/checkpoint | Worker terminal recovery owner | reconcile/output checkpoint/atomic retire/two-phase shutdown drain |
 | Agent/Terminal Worker binding (`endpointId + mountId`) | Workspace node persistence | launch result -> node state -> SQLite; prepare/revive resolves it against topology |
@@ -48,6 +49,8 @@ Key implementation files:
 | Selection/local scroll/zoom | client | local UI only |
 | Find overlay | client | local search state/decorations only |
 | Applied terminal appearance | client terminal appearance owner | final-wins apply/refresh |
+| Shared display reference | persisted settings owner | explicit/automatic reference update |
+| Local display calibration | each renderer client | client-local automatic/manual calibrator |
 
 ### Terminal Agent Overlay Contract
 
@@ -161,15 +164,15 @@ live presentation session.
 Client attach flow:
 
 ```text
-presentationSnapshot -> local reset/resize -> write serializedScreen -> attach(afterSeq)
+presentationSnapshot
+  -> local canonical reset + serializedScreen hydrate
+  -> current socket hello
+  -> attach(afterSeq)
+  -> exact attached(sessionId, role, authorityEpoch) ACK
+  -> enable write / resize / Agent re-exec
 ```
 
-A Browser attach is complete only after the exact current socket lease has received `hello_ack` and
-then a valid `attached` acknowledgement containing both role and non-negative `authorityEpoch` for
-that session. Write, resize, and Agent re-exec join the same attach promise; none may infer support or
-reuse authority from an open socket, a retired lease, or an attach message that was merely sent.
-Detach invalidates the session's attach generation before a delayed connection can send, and the
-Desktop relay similarly rejects an in-flight Worker attach when session exit removes tracked ownership.
+Socket open or hello send is not attach completion. Every Browser socket generation owns a separate attach barrier. Disconnect retires its pending acknowledgements and clears cached authority; a stale old-socket ACK cannot authorize work on the replacement socket. Malformed role/epoch/session data fails closed. Ordinary presentation hydrate may happen before authority is established, but every mutating operation waits for the exact current attach ACK. Browser detach invalidates its per-session attach generation before a delayed connection can send, and the Desktop relay rejects an in-flight Worker attach when session exit removes tracked ownership.
 
 Clients resync when they detect:
 
@@ -208,8 +211,8 @@ Current geometry transaction:
 - Geometry revision and authority epoch are local to each Hub. A Home Hub does not forward its CAS
   counters as if they belonged to the downstream Remote Hub.
 - A transport disconnect immediately makes its cached authority epoch unknown (`null`). Until a new
-  `attached`/`control_changed` message establishes that transport's epoch, reconnect traffic must not
-  reuse the prior connection's epoch.
+  exact current-socket `attached`/`control_changed` message establishes that transport's role and epoch,
+  reconnect traffic must not reuse the prior connection's epoch or issue write/resize/re-exec.
 - The requester receives one typed `resize_result`: `accepted`, `accepted_unverified`,
   `rejected_not_controller`, `rejected_stale_authority`, `superseded`, `session_not_found` or
   `runtime_failed`. `accepted_unverified` means the resize was issued but its applied ConPTY
@@ -222,6 +225,10 @@ Current geometry transaction:
 - Stable geometry measurement is derived from the terminal container and xterm cell metrics. Current
   text, progress frames, `.xterm-rows` bounds, glyph overhang and scroll width are renderer output,
   not geometry observations.
+- On live reattach, the client first records the snapshot `geometryRevision` as its accepted baseline.
+  A controller may then submit exactly one stable measured `frame_commit` against that base revision;
+  a viewer applies canonical geometry only. Restored-Agent and explicit resize-suppression guards remain
+  authoritative. Attach, focus and typing never substitute for this measured commit.
 - Once a verified live commit settles, local xterm rows/columns equal Worker presentation and PTY
   runtime geometry. An unverified result preserves the prior canonical geometry rather than
   pretending the request was applied. There is no local-only corrective size and no
@@ -320,10 +327,18 @@ OpenCove exposes terminal display alignment through Settings:
 - local device adjustment is client-local storage
 - automatic reference setup and automatic calibration are user settings
 - local compensation can adjust xterm font size, line height and letter spacing
+- an automatic client calibrator waits for settings hydration, a compatible reference, loaded fonts and
+  stable layout; it runs single-flight per profile/reference/environment signature
+- the existing v1 calibration record remains unchanged; renderer environment signature and exact-signature reset suppression use client-local sidecar keys
+- DPR, visual viewport scale, renderer kind, reference or font changes invalidate signed local results; a legacy/manual v1 record without sidecar metadata remains an explicit local override until replaced or reset
+- automatic apply requires one mounted renderer kind plus an `exact`/`close` candidate whose measured rows/columns equal the reference and whose cell metrics remain inside tolerance; mixed DOM/WebGL handles or ambiguous results keep current metrics and manual fallback
+- manual reset suppresses immediate recreation for the same signature
+- calibration applies xterm options in place; it cannot remount xterm, clear scrollback, move viewport or
+  become a PTY geometry writer
 - if those metrics change the stable grid, the client must use an `appearance_commit` and apply its
   canonical result; it must not resize only local xterm or update PTY geometry as an uncorrelated side effect
 
-The goal is stable visual parity without letting multiple renderers fight for terminal size.
+The goal is stable visual parity without letting multiple renderers fight for terminal size. Client-local compensation may differ, but all settled clients still render the one Worker-owned `cols x rows` grid.
 
 ## Invariants
 
@@ -361,6 +376,12 @@ The goal is stable visual parity without letting multiple renderers fight for te
 22. Same-PTY Agent reload/switch is a controller-bound Worker operation. Client shell text is not an
     input, and a stale activity generation, stale authority epoch, viewer request, terminal exit, or
     unconfirmed shell prompt cannot inject the target command.
+23. Browser socket open is not attach authority; exact current-generation role/epoch acknowledgement
+    precedes write, resize and Agent re-exec.
+24. Automatic display calibration is client-local, signature-fenced and conservative; it may change
+    canonical rows/columns only through an acknowledged `appearance_commit`.
+25. Web listener enable, replacement, drain or security revocation cannot dispose PTY, Hub,
+    presentation or recovery state.
 
 ## Verification Anchors
 

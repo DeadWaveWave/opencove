@@ -10,6 +10,8 @@
 
 - **Worker 是 durable truth owner**：SQLite 与副作用（session/worktree/etc）由 Worker 拥有；Desktop/Web/CLI 都是 client，通过 control surface（`/invoke + /events + /pty`）读写。
 - **Web UI 不是“另一个后端”**：浏览器侧只是一个 runtime adapter，所有写入都必须走 Worker 的 command；同步靠 `snapshot + events`。
+- **Desktop-managed Worker 有两个 transport lifecycle**：private listener 在 Worker 生命周期内保持稳定；Web listener 可按 Settings 独立替换。两者共用同一个 Control Surface runtime、PTY Hub 和 presentation。
+- **Web 设置不是 Worker restart**：enable、port、LAN 或 password apply 不应改变 Worker pid/createdAt，也不应导航 Desktop Renderer 或 remount xterm。完整契约见 `WORKER_WEB_ACCESS_LIFECYCLE.md`。
 - **Dev 模式可能有两套前端资源来源**：
   - Vite dev server（`ELECTRON_RENDERER_URL`）——有 HMR，但只适合 loopback 访问。
   - Worker 同源托管的 build 产物（`out/renderer`）——无 HMR，但适合 LAN/远端访问。
@@ -20,9 +22,10 @@
 
 1) **确认连接的是同一个 Worker**
 
-- 看 Worker stderr 日志：`[opencove-worker] web ui: http://<host>:<port>/`
+- 看 Worker stderr 日志：private control endpoint 与 `[opencove-worker] web ui: http://<host>:<port>/` 分开记录。
 - 若日志显示：`[opencove-worker] web ui: disabled`，说明 Web UI 未开启（Desktop 场景请在 Settings → Experimental → Worker Web UI 中开启）。
-- Desktop 的 Settings 面板里显示的端口，应与 Worker 日志一致。
+- Desktop 的 Settings 面板里显示的 Web 端口，应与 active Web generation 一致；它不应等于或改写 private connection-file port。
+- 若设置变更后 Worker pid、`createdAt` 或 private endpoint 改变，应视为 lifecycle regression，而不是正常 apply。
 
 2) **确认鉴权模式**
 
@@ -127,7 +130,30 @@ pnpm build
 
 ---
 
-### E) Web 归档 Space 后留下空 Space（节点清空但 Space 还在）
+### E) Web 设置变更后 Desktop 终端刷新、历史丢失或只能本地回显
+
+**预期行为**
+
+- enable/port 变化只替换 Web listener；Desktop 与 PTY 不变。
+- disable/password/LAN 收紧可能关闭受影响的 Web transport，但 PTY 与 Desktop 继续运行。
+- 重新认证后的 Web client 从 Worker presentation snapshot + stream replay 恢复同一 session。
+
+**异常信号**
+
+- Worker pid 或 `createdAt` 改变。
+- Desktop main-frame navigation，或 `performance.timeOrigin` 改变。
+- `.xterm` DOM / xterm instance 被替换。
+- 原 session 输入只产生本地 echo，Worker 不再执行命令。
+
+**调试方法**
+
+1. 设置变化前后记录 Worker pid、`createdAt`、private endpoint 和 active Web generation。
+2. 在终端输出 history marker，并持续输出单调编号；变化后确认无缺号/重复。
+3. 记录 session id、presentation `appliedSeq`/geometry revision、xterm buffer/viewport。
+4. 检查日志是否出现 Worker stop/start、Renderer navigation 或 terminal runtime dispose；这些都违反 Web access lifecycle。
+5. 若 bind/persistence apply 失败，确认旧 Web URL 仍可用，且 durable config 未切换。
+
+### F) Web 归档 Space 后留下空 Space（节点清空但 Space 还在）
 
 **根因（已修复）**
 
@@ -156,10 +182,12 @@ pnpm build
 
 Worker stderr 会打印：
 
-- `web ui:` Web UI 基础 URL
-- `debug shell:` Debug shell 路由
+- private control endpoint：连接文件对应的稳定 loopback URL
+- `web ui:` active Web generation 的基础 URL
+- `debug shell:` active Web generation 的 Debug shell 路由
 - `auth required ...` 当前可用的鉴权方式
-- `listening on all interfaces` 表示 bind 到 `0.0.0.0`（可用 LAN IP 访问）
+- Web generation apply/drain/failure：不得包含 token、password 或 password hash
+- `listening on all interfaces` 表示 Web listener bind 到 `0.0.0.0`（可用 LAN IP 访问）
 
 ### 回归与自动化（最后兜底）
 
@@ -173,3 +201,4 @@ Worker stderr 会打印：
 - 默认 worker 应保持 loopback-by-default（仅 `127.0.0.1`）。
 - 需要远端访问时优先使用 SSH tunnel（`ssh -L`），避免把 worker 端口暴露到公网。
 - LAN Access 必须显式开启，并设置 Web UI 密码；不要在 URL 里携带 token 给局域网设备分享。
+- 修改密码、关闭 Web UI 或收紧 LAN exposure 会撤销受影响的 Web session。不要为了保留旧 cookie 而跳过 server-side revocation；PTY continuity 与 Web credential continuity 是两件事。

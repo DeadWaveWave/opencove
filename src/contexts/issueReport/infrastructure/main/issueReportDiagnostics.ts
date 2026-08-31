@@ -10,7 +10,7 @@ import {
 import { AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings.providers'
 import { listInstalledAgentProviders } from '@contexts/agent/infrastructure/cli/AgentCliAvailability'
 import type { ControlSurfaceRemoteEndpointResolver } from '@app/main/controlSurface/remote/controlSurfaceHttpClient'
-import { readHomeWorkerConfig } from '@app/main/worker/homeWorkerConfig'
+import { readHomeWorkerConfig } from '@contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
 import { collectPerformanceDiagnosticsSnapshot } from '@app/main/diagnostics/performanceDiagnosticsCollector'
 import type { IssueReportDiagnosticSection } from '../../application/IssueReportDocument'
 import {

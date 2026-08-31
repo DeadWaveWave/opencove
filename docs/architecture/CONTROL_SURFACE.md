@@ -18,11 +18,23 @@ Control Surface 是 OpenCove 对外能力入口。Desktop、CLI、Web UI 和 rem
 - HTTP `/invoke`：Worker Control Surface 的 command / query 调用。
 - HTTP `/events`：server-sent event stream。
 - WebSocket `/pty`：PTY attach、input、resize、controller-bound Agent re-exec、role/control event。
-- Worker 同源 Web UI：Full Web Canvas 和 debug shell。
+- Worker Web access listener：同源 Full Web Canvas、debug shell、cookie auth 与上述 HTTP/WS routes。
 
 Transport 只做鉴权、校验、mapping 和连接生命周期；业务 owner 仍在 context application/usecase、runtime manager 或 topology store。
 
-本地 Worker 连接文件是运行时发现文件，不是 durable truth。连接文件必须写入
+### Runtime And Listener Lifecycle
+
+Desktop 管理的本机 Worker 把长期运行的 `ControlSurfaceRuntime` 与 HTTP listen socket 分开：
+
+- private listener 在 Worker 生命周期内保持稳定，只绑定 loopback，并写入连接文件；
+- Web listener 由独立的 Web access runtime 管理，可按 Settings 配置 prepare、activate、drain 或 rollback；
+- private/Web listener 始终委派给同一套 handlers、`PtyStreamService`、Hub、presentation 与 recovery owners；
+- listener stop/drain 只释放该 listener generation 的 transport 资源，不能 dispose Control Surface runtime 或 PTY。
+
+Web enable、port、LAN 和 password 变化不构成 Worker restart boundary。候选 listener 先完成绑定与验证，再原子持久化并激活；失败保留旧 listener 和旧 durable config。完整契约见
+`docs/runtime/WORKER_WEB_ACCESS_LIFECYCLE.md`。
+
+本地 Worker 连接文件是 private listener 的运行时发现文件，不是 durable truth。连接文件必须写入
 `appVersion`、`startedBy`、pid、host、port 和 token。Desktop 只允许复用
 `startedBy: "desktop"` 且 `appVersion` 等于当前 Desktop 的 Worker；缺失或不一致表示
 升级后旧 Worker 仍存活，必须重启并重写连接文件。CLI-started/remote Worker 仍以
@@ -33,11 +45,11 @@ Transport 只做鉴权、校验、mapping 和连接生命周期；业务 owner �
 
 当前鉴权路径：
 
-- 程序化调用：`Authorization: Bearer <token>`。
-- Browser loopback/tunnel：一次性 `/auth/claim` ticket 换 cookie session。
-- LAN Web UI：`/auth/login` 使用 Web UI password 换 cookie session。
+- private/programmatic 调用：`Authorization: Bearer <token>`。
+- Browser loopback/tunnel：private listener 签发一次性 ticket，Web listener 的 `/auth/claim` 换 cookie session。
+- LAN Web UI：Web listener 的 `/auth/login` 使用 Web UI password 换 cookie session。
 
-Worker 默认绑定 loopback；暴露到 LAN 时必须启用密码或等价安全门禁。
+Worker private listener 始终绑定 loopback；只有 Web listener 可以显式暴露到 LAN，并且必须启用密码或等价安全门禁。Web access 配置 command 只接受 private bearer authority。Disable、password change 或 LAN tightening 会撤销对应 Web listener/session/socket；不得撤销 private listener 上的 Desktop/CLI bearer client 或终端 session。
 
 ## Current Operation Groups
 
@@ -45,6 +57,13 @@ Core system:
 
 - `system.ping`
 - `system.homeDirectory`
+
+Desktop-managed local Worker administration（private bearer only）：
+
+- `worker.config.get`
+- `worker.config.set`
+- `worker.webAccess.setSettings`
+- `worker.webAccess.setSecurity`
 
 Topology:
 

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { HomeWorkerConfigDto, WorkerStatusResult } from '@shared/contracts/dto'
+import { isAppErrorDescriptor, OpenCoveAppError } from '@shared/errors/appError'
 import { toErrorMessage } from './workerSectionUtils'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 
@@ -13,6 +14,29 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
   const [webUiPortDraft, setWebUiPortDraft] = useState('')
   const [webUiPasswordDraft, setWebUiPasswordDraft] = useState('')
   const [revealWebUiPassword, setRevealWebUiPassword] = useState(false)
+  const formatApplyError = useCallback(
+    (error: unknown): string => {
+      const code =
+        error instanceof OpenCoveAppError || isAppErrorDescriptor(error) ? error.code : null
+      if (
+        code !== null ||
+        (error instanceof Error &&
+          (error.message === 'Worker is unavailable.' ||
+            error.message === 'The request was invalid.'))
+      ) {
+        return t(
+          code === 'common.invalid_input' ||
+            (code === null &&
+              error instanceof Error &&
+              error.message === 'The request was invalid.')
+            ? 'settingsPanel.experimental.workerWebUi.errors.invalidConfig'
+            : 'settingsPanel.experimental.workerWebUi.errors.applyFailed',
+        )
+      }
+      return toErrorMessage(error)
+    },
+    [t],
+  )
 
   const loadWorkerWebUiState = useCallback(async (): Promise<void> => {
     setWorkerWebUiError(null)
@@ -99,26 +123,19 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
       setWorkerWebUiBusy(true)
 
       try {
-        const nextConfig = await window.opencoveApi.workerClient.setWebUiSettings({
-          enabled,
-          port: workerConfig.webUi.port,
-        })
-        setWorkerConfig(nextConfig)
-
-        if (workerStatus?.status === 'running' && nextConfig.mode === 'local') {
-          await window.opencoveApi.worker.stop()
-          const nextStatus = await window.opencoveApi.worker.start()
-          setWorkerStatus(nextStatus)
-        } else {
-          await loadWorkerWebUiState()
-        }
+        setWorkerConfig(
+          await window.opencoveApi.workerClient.setWebUiSettings({
+            enabled,
+            port: workerConfig.webUi.port,
+          }),
+        )
       } catch (caughtError) {
-        setWorkerWebUiError(toErrorMessage(caughtError))
+        setWorkerWebUiError(formatApplyError(caughtError))
       } finally {
         setWorkerWebUiBusy(false)
       }
     },
-    [canConfigureWorkerWebUiSettings, loadWorkerWebUiState, workerConfig, workerStatus?.status],
+    [canConfigureWorkerWebUiSettings, formatApplyError, workerConfig],
   )
 
   const saveWorkerWebUiPort = useCallback(async (): Promise<void> => {
@@ -151,27 +168,12 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
       })
       setWorkerConfig(nextConfig)
       setWebUiPortDraft(nextConfig.webUi.port !== null ? String(nextConfig.webUi.port) : '')
-
-      if (workerStatus?.status === 'running' && nextConfig.mode === 'local') {
-        await window.opencoveApi.worker.stop()
-        const nextStatus = await window.opencoveApi.worker.start()
-        setWorkerStatus(nextStatus)
-      } else {
-        await loadWorkerWebUiState()
-      }
     } catch (caughtError) {
-      setWorkerWebUiError(toErrorMessage(caughtError))
+      setWorkerWebUiError(formatApplyError(caughtError))
     } finally {
       setWorkerWebUiBusy(false)
     }
-  }, [
-    canConfigureWorkerWebUiSettings,
-    loadWorkerWebUiState,
-    t,
-    webUiPortDraft,
-    workerConfig,
-    workerStatus?.status,
-  ])
+  }, [canConfigureWorkerWebUiSettings, formatApplyError, t, webUiPortDraft, workerConfig])
 
   const setWorkerWebUiPassword = useCallback(async (): Promise<void> => {
     if (!canConfigureWorkerWebUiSecurity) {
@@ -193,26 +195,17 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
       })
       setWorkerConfig(nextConfig)
       setWebUiPasswordDraft('')
-
-      if (workerStatus?.status === 'running' && nextConfig.mode === 'local') {
-        await window.opencoveApi.worker.stop()
-        const nextStatus = await window.opencoveApi.worker.start()
-        setWorkerStatus(nextStatus)
-      } else {
-        await loadWorkerWebUiState()
-      }
     } catch (caughtError) {
-      setWorkerWebUiError(toErrorMessage(caughtError))
+      setWorkerWebUiError(formatApplyError(caughtError))
     } finally {
       setWorkerWebUiBusy(false)
     }
   }, [
     canConfigureWorkerWebUiSecurity,
-    loadWorkerWebUiState,
+    formatApplyError,
     t,
     webUiPasswordDraft,
     workerConfig?.webUi.exposeOnLan,
-    workerStatus?.status,
   ])
 
   const toggleWorkerWebUiLan = useCallback(
@@ -234,27 +227,13 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
           password: null,
         })
         setWorkerConfig(nextConfig)
-
-        if (workerStatus?.status === 'running' && nextConfig.mode === 'local') {
-          await window.opencoveApi.worker.stop()
-          const nextStatus = await window.opencoveApi.worker.start()
-          setWorkerStatus(nextStatus)
-        } else {
-          await loadWorkerWebUiState()
-        }
       } catch (caughtError) {
-        setWorkerWebUiError(toErrorMessage(caughtError))
+        setWorkerWebUiError(formatApplyError(caughtError))
       } finally {
         setWorkerWebUiBusy(false)
       }
     },
-    [
-      canConfigureWorkerWebUiSecurity,
-      loadWorkerWebUiState,
-      t,
-      workerConfig?.webUi.passwordSet,
-      workerStatus?.status,
-    ],
+    [canConfigureWorkerWebUiSecurity, formatApplyError, t, workerConfig?.webUi.passwordSet],
   )
 
   return (

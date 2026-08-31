@@ -8,11 +8,14 @@ import type { WorkerConnectionInfoDto, WorkerStatusResult } from '../../../share
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
-import { readHomeWorkerConfigFile } from './homeWorkerConfig'
+import { invokeLocalWorkerConfiguration } from './localWorkerConfigurationClient'
 import { resolvePackagedWorkerScriptPath } from '../../../shared/runtime/opencoveRuntimePaths'
 import { removeConnectionFile } from '../controlSurface/http/connectionFile'
 import { removeWorkerSingleInstanceLock } from '../../../platform/process/workerSingleInstanceLockFile'
-import { isReusableLocalWorkerConnection } from './localWorkerCompatibility'
+import {
+  isReusableLocalWorkerConnection,
+  resolveLocalWorkerReusePolicy,
+} from './localWorkerCompatibility'
 import { parseWorkerReadyPayload } from './workerReadyPayload'
 import { readRuntimeAppVersion } from '../controlSurface/runtimeAppVersion'
 import {
@@ -135,6 +138,32 @@ export async function repairStaleLocalWorkerFiles(
     () => undefined,
   )
   await removeWorkerSingleInstanceLock(userDataPath).catch(() => undefined)
+}
+
+export type OwnedLocalWorkerConfigurationState =
+  | { state: 'absent'; connection: null }
+  | { state: 'external'; connection: WorkerConnectionInfoDto }
+  | { state: 'starting'; connection: null }
+  | { state: 'ready'; connection: WorkerConnectionInfoDto }
+  | { state: 'unreachable'; connection: WorkerConnectionInfoDto }
+
+export async function resolveOwnedLocalWorkerConfigurationState(): Promise<OwnedLocalWorkerConfigurationState> {
+  const connection = await resolveConnectionFromUserData({ requireLivePid: true })
+  if (!connection) {
+    return startLocalWorkerPromise || hasOwnedLocalWorkerProcess()
+      ? { state: 'starting', connection: null }
+      : { state: 'absent', connection: null }
+  }
+  if (connection.startedBy !== 'desktop') {
+    return { state: 'external', connection }
+  }
+  const policy = resolveLocalWorkerReusePolicy(connection, { launcherStartedBy: 'desktop' })
+  if (!policy.canReuse) {
+    return { state: 'unreachable', connection }
+  }
+  return (await isReusableLocalWorkerConnection(connection))
+    ? { state: 'ready', connection }
+    : { state: 'unreachable', connection }
 }
 
 export async function getLocalWorkerStatus(): Promise<WorkerStatusResult> {
@@ -332,23 +361,16 @@ async function startLocalWorkerInternal(): Promise<WorkerStatusResult> {
     )
   }
 
-  const workerConfig = await readHomeWorkerConfigFile(userDataPath)
-  const enableWebUi = workerConfig.webUi.enabled
-  const port = workerConfig.webUi.port ?? 0
-  const exposeOnLan = enableWebUi && workerConfig.webUi.exposeOnLan
-  const bindHostname = exposeOnLan ? '0.0.0.0' : '127.0.0.1'
-  const advertiseHostname = '127.0.0.1'
-  const webUiPasswordHash = exposeOnLan ? workerConfig.webUi.passwordHash : null
   const appVersion = readRuntimeAppVersion()
   const args = buildLocalWorkerSpawnArgs({
     workerScriptPath,
     userDataPath,
     parentPid: process.pid,
-    bindHostname,
-    advertiseHostname,
-    port,
-    enableWebUi,
-    webUiPasswordHash,
+    bindHostname: '127.0.0.1',
+    advertiseHostname: '127.0.0.1',
+    port: 0,
+    enableWebUi: false,
+    webUiPasswordHash: null,
     appVersion,
   })
 
@@ -448,13 +470,17 @@ export async function getLocalWorkerWebUiUrl(): Promise<string | null> {
     return null
   }
 
-  const workerConfig = await readHomeWorkerConfigFile(app.getPath('userData'))
-  if (!workerConfig.webUi.enabled) {
+  const configuration = await invokeLocalWorkerConfiguration(connection, {
+    kind: 'query',
+    id: 'worker.config.get',
+    payload: null,
+  })
+  if (configuration.webAccess.state !== 'active') {
     return null
   }
-
-  if (workerConfig.webUi.exposeOnLan && workerConfig.webUi.passwordHash) {
-    return `http://${connection.hostname}:${connection.port}/`
+  const webBaseUrl = `http://${configuration.webAccess.hostname}:${configuration.webAccess.port}`
+  if (configuration.webAccess.passwordRequired) {
+    return `${webBaseUrl}/`
   }
 
   const { httpStatus, result } = await invokeControlSurface(
@@ -475,5 +501,5 @@ export async function getLocalWorkerWebUiUrl(): Promise<string | null> {
   }
 
   const { ticket } = normalizeTicketResult(result.value)
-  return `http://${connection.hostname}:${connection.port}/auth/claim?ticket=${encodeURIComponent(ticket)}`
+  return `${webBaseUrl}/auth/claim?ticket=${encodeURIComponent(ticket)}`
 }

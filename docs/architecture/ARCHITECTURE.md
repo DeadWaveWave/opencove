@@ -152,9 +152,10 @@ OpenCove 将外部可驱动能力收敛为一套 **Control Surface**（`command 
 - IPC handler 只能做：`runtime validate -> mapping -> invoke usecase/control-surface -> map result`；不得承载长流程业务编排。
 - `Query` 必须无副作用；`Command` 的副作用必须可解释、可恢复（满足恢复模型与 owner 表要求）。
 - 所有输入必须 **runtime validate**，输出必须走统一的结构化错误语义（例如 `AppErrorDescriptor`），避免把异常形态泄漏给调用方。
+- 长期 runtime 与可替换 transport listener 必须分离 owner：listener stop/drain 只能释放 transport 资源，不能隐式 dispose 其委派的 PTY、presentation、recovery 或其它业务 runtime。
 
 详细约束见 `docs/architecture/CONTROL_SURFACE.md`。
-Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Surface 在不同 transport（HTTP/WS/IPC）上的适配与复用；常见 Web UI 问题与调试见 `docs/runtime/WEB_UI_TROUBLESHOOTING.md`。
+Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Surface 在不同 transport（HTTP/WS/IPC）上的适配与复用；Web listener lifecycle 见 `docs/runtime/WORKER_WEB_ACCESS_LIFECYCLE.md`，常见问题与调试见 `docs/runtime/WEB_UI_TROUBLESHOOTING.md`。
 
 ## 10. 测试映射规则
 

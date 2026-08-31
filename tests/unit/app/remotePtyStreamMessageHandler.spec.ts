@@ -7,7 +7,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
   function createHandler() {
     const attachedSessions = new Map<
       string,
-      { lastSeq: number; role: 'viewer' | 'controller'; authorityEpoch: number }
+      { lastSeq: number; role: 'viewer' | 'controller'; authorityEpoch: number | null }
     >()
     const sendToSessionSubscribers = vi.fn()
     const sendToAllWindows = vi.fn()
@@ -66,7 +66,15 @@ describe('createRemotePtyStreamMessageHandler', () => {
   it('does not advance replay cursor from attached acknowledgements', () => {
     const { handler, attachedSessions, sendToSessionSubscribers } = createHandler()
 
-    handler(JSON.stringify({ type: 'attached', sessionId: 'session-1', seq: 7 }))
+    handler(
+      JSON.stringify({
+        type: 'attached',
+        sessionId: 'session-1',
+        seq: 7,
+        role: 'controller',
+        authorityEpoch: 1,
+      }),
+    )
 
     expect(attachedSessions.get('session-1')?.lastSeq).toBe(0)
 
@@ -99,8 +107,33 @@ describe('createRemotePtyStreamMessageHandler', () => {
     })
   })
 
+  it('rejects malformed attach authority without settling attachment', () => {
+    const { handler, attachedSessions, onSessionAttached, onAuthorityChanged } = createHandler()
+
+    handler(
+      JSON.stringify({
+        type: 'attached',
+        sessionId: 'session-invalid',
+        role: 'invalid',
+        authorityEpoch: 0,
+      }),
+    )
+    handler(
+      JSON.stringify({
+        type: 'attached',
+        sessionId: 'session-invalid',
+        role: 'viewer',
+        authorityEpoch: null,
+      }),
+    )
+
+    expect(attachedSessions.has('session-invalid')).toBe(false)
+    expect(onSessionAttached).not.toHaveBeenCalled()
+    expect(onAuthorityChanged).not.toHaveBeenCalled()
+  })
+
   it('parses authority and correlated resize results', () => {
-    const { handler, onResizeResult, onAuthorityChanged } = createHandler()
+    const { handler, onResizeResult, onAuthorityChanged, onSessionAttached } = createHandler()
 
     handler(
       JSON.stringify({
@@ -123,6 +156,10 @@ describe('createRemotePtyStreamMessageHandler', () => {
     )
 
     expect(onAuthorityChanged).toHaveBeenCalledWith('session-ack', {
+      role: 'controller',
+      epoch: 2,
+    })
+    expect(onSessionAttached).toHaveBeenCalledWith('session-ack', {
       role: 'controller',
       epoch: 2,
     })
