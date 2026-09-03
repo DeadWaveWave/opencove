@@ -38,6 +38,7 @@ export interface ControlSurfacePtyRuntime {
   resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
+  /** Completion boundary: all runtime data for the session is delivered before this event. */
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
   onForeground?: (listener: (event: TerminalForegroundEvent) => void) => () => void
   onState?: (listener: (event: TerminalSessionStateEvent) => void) => () => void

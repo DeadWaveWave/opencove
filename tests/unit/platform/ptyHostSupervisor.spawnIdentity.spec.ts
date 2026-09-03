@@ -70,6 +70,118 @@ describe('PtyHostSupervisor spawn identity', () => {
     supervisor.dispose()
   })
 
+  it('publishes pre-response output before its buffered exit completion', async () => {
+    const testProcess = new TestPtyHostProcess()
+    const supervisor = new PtyHostSupervisor({
+      baseDir: '/',
+      resolveEntryPath: () => '/fake/ptyHost.js',
+      createProcess: () => testProcess,
+      reportIssue: () => undefined,
+    })
+    const events: Array<{ type: 'data' | 'exit'; value: string | number }> = []
+    supervisor.onData(event => events.push({ type: 'data', value: event.data }))
+    supervisor.onExit(event => events.push({ type: 'exit', value: event.exitCode }))
+
+    const spawnPromise = supervisor.spawn({
+      command: '/bin/zsh',
+      args: [],
+      cwd: '/',
+      cols: 80,
+      rows: 24,
+    })
+    testProcess.emitReady()
+    await vi.waitFor(() => {
+      expect(findLastSentMessage(testProcess, 'spawn')).not.toBeNull()
+    })
+    const request = findLastSentMessage<{ type: 'spawn'; requestId: string }>(testProcess, 'spawn')
+    if (!request) {
+      throw new Error('missing spawn request')
+    }
+
+    testProcess.emitHostMessage({
+      type: 'data',
+      sessionId: 'early-exit-session',
+      data: 'thread already has an active writer (-32600)',
+    })
+    testProcess.emitHostMessage({
+      type: 'exit',
+      sessionId: 'early-exit-session',
+      exitCode: 1,
+    })
+    testProcess.emitHostMessage({
+      type: 'response',
+      requestType: 'spawn',
+      requestId: request.requestId,
+      ok: true,
+      result: { sessionId: 'early-exit-session' },
+    })
+
+    await expect(spawnPromise).resolves.toEqual({ sessionId: 'early-exit-session' })
+    expect(events).toEqual([
+      { type: 'data', value: 'thread already has an active writer (-32600)' },
+      { type: 'exit', value: 1 },
+    ])
+
+    supervisor.dispose()
+  })
+
+  it('retires a spawn result that is correlated to a different request type', async () => {
+    const testProcess = new TestPtyHostProcess()
+    const supervisor = new PtyHostSupervisor({
+      baseDir: '/',
+      resolveEntryPath: () => '/fake/ptyHost.js',
+      createProcess: () => testProcess,
+      reportIssue: () => undefined,
+    })
+
+    const spawnPromise = supervisor.spawn({
+      command: '/bin/zsh',
+      args: [],
+      cwd: '/',
+      cols: 80,
+      rows: 24,
+    })
+    testProcess.emitReady()
+    await vi.waitFor(() => {
+      expect(findLastSentMessage(testProcess, 'spawn')).not.toBeNull()
+    })
+    const spawnRequest = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
+      testProcess,
+      'spawn',
+    )
+    testProcess.emitHostMessage({
+      type: 'response',
+      requestType: 'spawn',
+      requestId: spawnRequest?.requestId,
+      ok: true,
+      result: { sessionId: 'owned-session' },
+    })
+    await expect(spawnPromise).resolves.toEqual({ sessionId: 'owned-session' })
+
+    const resizePromise = supervisor.resize('owned-session', 100, 30)
+    await vi.waitFor(() => {
+      expect(findLastSentMessage(testProcess, 'resize')).not.toBeNull()
+    })
+    const resizeRequest = findLastSentMessage<{ type: 'resize'; requestId: string }>(
+      testProcess,
+      'resize',
+    )
+    testProcess.emitHostMessage({
+      type: 'response',
+      requestType: 'spawn',
+      requestId: resizeRequest?.requestId,
+      ok: true,
+      result: { sessionId: 'unowned-session' },
+    })
+
+    await expect(resizePromise).rejects.toThrow('does not match its pending request')
+    expect(findLastSentMessage(testProcess, 'kill')).toMatchObject({
+      sessionId: 'unowned-session',
+    })
+
+    supervisor.dispose()
+  })
+
   it('fails closed until a bounded escalation retires an unconfirmed host', async () => {
     const firstProcess = new TestPtyHostProcess()
     firstProcess.exitOnKill = false
@@ -188,7 +300,7 @@ describe('PtyHostSupervisor spawn identity', () => {
     supervisor.dispose()
   })
 
-  it('does not retry a plain spawn response timeout', async () => {
+  it('retires a late successful spawn after request ownership times out', async () => {
     const testProcess = new TestPtyHostProcess()
     const createProcess = vi.fn(() => testProcess)
     const supervisor = new PtyHostSupervisor({
@@ -206,13 +318,34 @@ describe('PtyHostSupervisor spawn identity', () => {
       cols: 80,
       rows: 24,
     })
+    const rejection = expect(spawnPromise).rejects.toThrow('spawn timeout')
     testProcess.emitReady()
+    await vi.waitFor(() => {
+      expect(findLastSentMessage(testProcess, 'spawn')).not.toBeNull()
+    })
+    const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string }>(
+      testProcess,
+      'spawn',
+    )
+    if (!sentSpawn) {
+      throw new Error('missing spawn request')
+    }
 
-    await expect(spawnPromise).rejects.toThrow('spawn timeout')
+    await rejection
     expect(createProcess).toHaveBeenCalledTimes(1)
-    expect(
-      testProcess.sentMessages.filter(message => (message as { type?: string }).type === 'spawn'),
-    ).toHaveLength(1)
+    testProcess.emitHostMessage({
+      type: 'response',
+      requestType: 'spawn',
+      requestId: sentSpawn.requestId,
+      ok: true,
+      result: { sessionId: 'late-unowned-session' },
+    })
+
+    await vi.waitFor(() => {
+      expect(findLastSentMessage(testProcess, 'kill')).toMatchObject({
+        sessionId: 'late-unowned-session',
+      })
+    })
 
     supervisor.dispose()
   })

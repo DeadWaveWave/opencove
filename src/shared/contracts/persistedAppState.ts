@@ -24,7 +24,7 @@ export interface PersistedNodeContract {
   width: number
   height: number
   kind: string
-  sidebarSortOrder?: number
+  sidebarSortOrder?: number | null
   workerBinding?: NodeWorkerBinding | null
   status: string | null
   startedAt: string | null

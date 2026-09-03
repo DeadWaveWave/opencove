@@ -48,7 +48,7 @@ export class PtyHostPendingResponseCoordinator {
     ) {
       this.take(message.requestId)
       pending.reject(new Error('[pty-host] response does not match its pending request'))
-      return true
+      return false
     }
     this.take(message.requestId)
     pending.resolve(message)

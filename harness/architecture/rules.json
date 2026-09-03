@@ -89,6 +89,7 @@
         "ignoreTypeOnly": false,
         "specifiers": [],
         "specifierPrefixes": ["@contexts/"],
+        "toPatterns": ["src/contexts/**"],
         "doc": "docs/architecture/ARCHITECTURE.md#5-依赖规则"
       },
       {

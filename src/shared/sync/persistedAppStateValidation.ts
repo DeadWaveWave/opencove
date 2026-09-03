@@ -4,6 +4,8 @@ import type {
   PersistedSpaceContract,
   PersistedWorkspaceContract,
 } from '@shared/contracts/persistedAppState'
+import { isLabelColor } from '@shared/types/labelColor'
+import { isProjectIconId } from '@shared/types/projectIcon'
 
 const WORKSPACE_NODE_KINDS = new Set([
   'terminal',
@@ -36,6 +38,47 @@ function isStringRecord(value: unknown): value is Record<string, string> {
   return isRecord(value) && Object.values(value).every(item => typeof item === 'string')
 }
 
+function isNullableStringArray(value: unknown): value is string[] | null {
+  return value === null || isStringArray(value)
+}
+
+function isNodeWorkerBinding(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (isRecord(value) &&
+      typeof value.endpointId === 'string' &&
+      value.endpointId.trim().length > 0 &&
+      isNullableString(value.mountId))
+  )
+}
+
+function isSpaceBoundary(value: unknown): boolean {
+  if (value === undefined || value === null) {
+    return true
+  }
+  if (!isRecord(value) || !isStringArray(value.allowedMountIds)) {
+    return false
+  }
+  if (
+    !isRecord(value.scopesByMountId) ||
+    !Object.values(value.scopesByMountId).every(
+      scope =>
+        isRecord(scope) && typeof scope.rootPath === 'string' && typeof scope.rootUri === 'string',
+    )
+  ) {
+    return false
+  }
+  return (
+    isNullableStringArray(value.allowedPluginIds) &&
+    isNullableStringArray(value.capabilities) &&
+    (value.trustLevel === null ||
+      value.trustLevel === 'trusted' ||
+      value.trustLevel === 'restricted' ||
+      value.trustLevel === 'untrusted')
+  )
+}
+
 function isPoint(value: unknown): boolean {
   return isRecord(value) && isFiniteNumber(value.x) && isFiniteNumber(value.y)
 }
@@ -64,6 +107,10 @@ function isPersistedNode(value: unknown): value is PersistedNodeContract {
     isFiniteNumber(value.height) &&
     typeof value.kind === 'string' &&
     WORKSPACE_NODE_KINDS.has(value.kind) &&
+    (value.sidebarSortOrder === undefined ||
+      value.sidebarSortOrder === null ||
+      isFiniteNumber(value.sidebarSortOrder)) &&
+    isNodeWorkerBinding(value.workerBinding) &&
     isNullableString(value.status) &&
     isNullableString(value.startedAt) &&
     isNullableString(value.endedAt) &&
@@ -85,6 +132,11 @@ function isPersistedSpace(value: unknown): value is PersistedSpaceContract {
     typeof value.name === 'string' &&
     typeof value.directoryPath === 'string' &&
     isNullableString(value.targetMountId) &&
+    (value.parentSpaceId === undefined || isNullableString(value.parentSpaceId)) &&
+    isSpaceBoundary(value.boundary) &&
+    (value.sortOrder === undefined || isFiniteNumber(value.sortOrder)) &&
+    (value.pinned === undefined || typeof value.pinned === 'boolean') &&
+    (value.labelColor === null || isLabelColor(value.labelColor)) &&
     isStringArray(value.nodeIds) &&
     isRectOrNull(value.rect)
   )
@@ -109,6 +161,7 @@ function isPersistedWorkspace(value: unknown): value is PersistedWorkspaceContra
     typeof value.name === 'string' &&
     typeof value.path === 'string' &&
     typeof value.worktreesRoot === 'string' &&
+    (value.iconId === undefined || value.iconId === null || isProjectIconId(value.iconId)) &&
     isRecord(value.viewport) &&
     isFiniteNumber(value.viewport.x) &&
     isFiniteNumber(value.viewport.y) &&

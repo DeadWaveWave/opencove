@@ -63,9 +63,11 @@ async function launchClaudeTask(
 async function waitForInitialHookWorkingSignal(
   window: Awaited<ReturnType<typeof launchApp>>['window'],
   sessionId: string,
+  agentNode: ReturnType<typeof window.locator>,
 ): Promise<void> {
+  await expect(agentNode).toContainText('[opencove-test-hook] ready')
   await writeToPty(window, { sessionId, data: '<test-hook-initial-working>\r' })
-  // Drive the first hook POST only after the PTY session is observable. Until it lands,
+  // Drive the first hook POST only after the stub owns PTY input. Until it lands,
   // session_file legitimately wins arbitration, so gate hook authority on the real signal.
   await expect
     .poll(async () => {
@@ -91,7 +93,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       const status = agentNode.locator('.terminal-node__status')
       const sidebarStatus = window.locator('.workspace-agent-item__status--agent').first()
 
-      await waitForInitialHookWorkingSignal(window, sessionId)
+      await waitForInitialHookWorkingSignal(window, sessionId, agentNode)
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
       await expect(status).toHaveText('Working')
       await writeToPty(window, { sessionId, data: '<test-hook-tool>\r' })
@@ -152,7 +154,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       const { sessionId, agentNode } = await launchClaudeTask(window)
       const status = agentNode.locator('.terminal-node__status')
 
-      await waitForInitialHookWorkingSignal(window, sessionId)
+      await waitForInitialHookWorkingSignal(window, sessionId, agentNode)
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
       await expect(status).toHaveText('Working')
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })

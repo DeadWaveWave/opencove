@@ -3,6 +3,13 @@ import {
   isPtyHostMessage,
   isPtyHostReadyEnvelope,
   readPtyHostResponseIdentity,
+  type PtyHostMessage,
+  type PtyHostReadyEnvelope,
+  type PtyHostRequest,
+  type PtyHostSpawnRequest,
+  type PtyHostWriteEncoding,
+  type PtyHostForegroundEvent,
+  type PtyHostResponseMessage,
 } from './protocol'
 import { resolvePtyHostSpawnEnv } from './spawnEnv'
 import {
@@ -21,23 +28,14 @@ import { attachPtyHostProcessLogging } from './processLogging'
 import { parsePtyHostResizeResult, type PtyHostResizeResult } from './resizeAck'
 import { PtyHostSupervisorEventBus } from './supervisorEventBus'
 import { PtyHostSupervisorReadyState } from './supervisorReadyState'
-export type { PtyHostProcess, PtyHostProcessFactory } from './processTypes'
-export type { PtyHostSpawnOptions } from './spawnOptions'
-import type {
-  PtyHostMessage,
-  PtyHostReadyEnvelope,
-  PtyHostRequest,
-  PtyHostSpawnRequest,
-  PtyHostWriteEncoding,
-  PtyHostForegroundEvent,
-  PtyHostResponseMessage,
-} from './protocol'
+import { PtyHostSessionEventOwner } from './ptyHostSessionEventOwner'
 import type {
   PtyHostProcess,
   PtyHostProcessFactory,
   PtyHostSupervisorOptions,
 } from './processTypes'
 import type { PtyHostSpawnOptions } from './spawnOptions'
+export type { PtyHostProcess, PtyHostProcessFactory, PtyHostSpawnOptions }
 
 const READY_TIMEOUT_MS = 5_000
 const SPAWN_TIMEOUT_MS = 10_000
@@ -52,13 +50,11 @@ export class PtyHostSupervisor {
   private readonly spawnTimeoutMs: number
   private readonly ambiguousExitRecovery: PtyHostAmbiguousExitRecovery
   private readonly readyState = new PtyHostSupervisorReadyState()
-
   private readonly events = new PtyHostSupervisorEventBus()
-
+  private readonly sessionEvents: PtyHostSessionEventOwner
   private process: PtyHostProcess | null = null
   private readonly pendingResponses = new PtyHostPendingResponseCoordinator()
   private readonly hostExitEvidence = new PtyHostExitEvidence()
-  private activeSessions = new Set<string>()
   private hostInstanceId: string | null = null
 
   private isDisposed = false
@@ -78,6 +74,18 @@ export class PtyHostSupervisor {
     this.createProcess = createProcess
     this.reportIssue = reportIssue ?? (message => process.stderr.write(`${message}\n`))
     this.logFilePath = logFilePath ?? null
+    this.sessionEvents = new PtyHostSessionEventOwner({
+      emitData: event => this.events.emitData(event),
+      emitExit: event => this.events.emitExit(event),
+      retireUnowned: sessionId => {
+        postIdentifiedPtyHostMessage(
+          this.process,
+          this.hostInstanceId,
+          hostInstanceId => ({ type: 'kill', hostInstanceId, sessionId }),
+          (child, error) => this.handleHostError(child, error),
+        )
+      },
+    })
     this.readyTimeoutMs = readyTimeoutMs
     this.spawnTimeoutMs = spawnTimeoutMs
     this.ambiguousExitRecovery = new PtyHostAmbiguousExitRecovery(ambiguousExitTimeoutMs)
@@ -100,10 +108,7 @@ export class PtyHostSupervisor {
     const error = new Error(`[pty-host] exited with code ${exitCode}`)
     this.pendingResponses.failAll(error)
 
-    for (const sessionId of this.activeSessions.values()) {
-      this.events.emitExit({ sessionId, exitCode })
-    }
-    this.activeSessions.clear()
+    this.sessionEvents.failAll(exitCode)
 
     if (this.readyState.promise) {
       this.readyState.fail(error)
@@ -252,27 +257,27 @@ export class PtyHostSupervisor {
     }
 
     if (message.type === 'response') {
-      this.pendingResponses.resolve(message)
+      const accepted = this.pendingResponses.resolve(message)
+      if (message.requestType === 'spawn' && message.ok) {
+        this.sessionEvents.resolveSpawn(message.result.sessionId, accepted)
+      }
       return
     }
 
     if (message.type === 'data') {
-      if (this.activeSessions.has(message.sessionId)) {
-        this.events.emitData({ sessionId: message.sessionId, data: message.data })
-      }
+      this.sessionEvents.observeData({ sessionId: message.sessionId, data: message.data })
       return
     }
 
     if (message.type === 'exit') {
-      if (!this.activeSessions.has(message.sessionId)) {
-        return
-      }
-      this.activeSessions.delete(message.sessionId)
-      this.events.emitExit({ sessionId: message.sessionId, exitCode: message.exitCode })
+      this.sessionEvents.observeExit({
+        sessionId: message.sessionId,
+        exitCode: message.exitCode,
+      })
       return
     }
 
-    if (message.type === 'foreground' && this.activeSessions.has(message.sessionId)) {
+    if (message.type === 'foreground' && this.sessionEvents.has(message.sessionId)) {
       const { type: _type, ...event } = message
       const { hostInstanceId: _hostInstanceId, ...foregroundEvent } = event
       this.events.emitForeground(foregroundEvent)
@@ -371,7 +376,6 @@ export class PtyHostSupervisor {
         throw new Error('[pty-host] spawn response type mismatch')
       }
       const sessionId = response.result.sessionId
-      this.activeSessions.add(sessionId)
       return { sessionId }
     }
     try {
@@ -395,7 +399,7 @@ export class PtyHostSupervisor {
   }
 
   public probeForeground(sessionId: string): void {
-    if (!this.activeSessions.has(sessionId)) {
+    if (!this.sessionEvents.has(sessionId)) {
       return
     }
     postIdentifiedPtyHostMessage(
@@ -407,7 +411,7 @@ export class PtyHostSupervisor {
   }
 
   public async resize(sessionId: string, cols: number, rows: number): Promise<PtyHostResizeResult> {
-    if (!this.activeSessions.has(sessionId)) {
+    if (!this.sessionEvents.has(sessionId)) {
       throw new Error(`[pty-host] unknown active session: ${sessionId}`)
     }
 
@@ -438,7 +442,7 @@ export class PtyHostSupervisor {
   }
 
   public kill(sessionId: string): void {
-    this.activeSessions.delete(sessionId)
+    this.sessionEvents.retire(sessionId)
     postIdentifiedPtyHostMessage(
       this.process,
       this.hostInstanceId,
@@ -471,7 +475,7 @@ export class PtyHostSupervisor {
     const disposeError = new Error('[pty-host] supervisor disposed')
     this.readyState.fail(disposeError)
     this.pendingResponses.failAll(disposeError)
-    this.activeSessions.clear()
+    this.sessionEvents.clear()
 
     const child = this.process
     const hostInstanceId = this.hostInstanceId

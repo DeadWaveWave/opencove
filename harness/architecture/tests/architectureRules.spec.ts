@@ -182,6 +182,35 @@ describe('architecture rules audit', () => {
     ])
   })
 
+  it('rejects relative shared-to-context imports after resolving their target', async () => {
+    const root = await createFixture({
+      'src/shared/contracts/state.ts':
+        "import type { Model } from '../../contexts/workspace/domain/model'\nexport type State = Model\n",
+      'src/shared/runtime/run.ts':
+        "import { model } from '../../contexts/workspace/domain/model'\nexport const run = model\n",
+      'src/contexts/workspace/domain/model.ts':
+        "export type Model = { id: string }\nexport const model = { id: 'one' }\n",
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(
+      report.violations.filter(
+        violation => violation.ruleId === 'architecture.sharedNoContextDependency',
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        file: 'src/shared/contracts/state.ts',
+        found: '../../contexts/workspace/domain/model',
+      }),
+      expect.objectContaining({
+        severity: 'error',
+        file: 'src/shared/runtime/run.ts',
+        found: '../../contexts/workspace/domain/model',
+      }),
+    ])
+  })
+
   it('allows explicit forbidden rules to ignore type-only imports', async () => {
     const root = await createFixture({
       'src/contexts/workspace/domain/model.ts':
