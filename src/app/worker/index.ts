@@ -20,23 +20,10 @@ import {
   cleanupLegacyManagedHooksAtStartup,
   reportLegacyManagedHookCleanupFailures,
 } from '../../contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup'
-
-function readFlagValue(argv: string[], flag: string): string | null {
-  const index = argv.indexOf(flag)
-  if (index === -1) {
-    return null
-  }
-
-  const next = argv[index + 1]
-  if (!next || next.startsWith('-')) {
-    return null
-  }
-
-  return next.trim() || null
-}
+import { readRepeatedWorkerFlagValues, readWorkerFlagValue } from './workerCliArguments'
 
 function resolvePort(argv: string[]): number | null {
-  const raw = readFlagValue(argv, '--port')
+  const raw = readWorkerFlagValue(argv, '--port')
   if (!raw) {
     return null
   }
@@ -50,7 +37,7 @@ function resolvePort(argv: string[]): number | null {
 }
 
 function resolveParentPid(argv: string[]): number | null {
-  const raw = readFlagValue(argv, '--parent-pid')
+  const raw = readWorkerFlagValue(argv, '--parent-pid')
   if (!raw) {
     return null
   }
@@ -63,34 +50,12 @@ function resolveParentPid(argv: string[]): number | null {
   return Math.floor(value)
 }
 
-function readRepeatedFlagValues(argv: string[], flag: string): string[] {
-  const values = []
-
-  for (let index = 0; index < argv.length; index += 1) {
-    if (argv[index] !== flag) {
-      continue
-    }
-
-    const next = argv[index + 1]
-    if (!next || next.startsWith('-')) {
-      continue
-    }
-
-    const normalized = next.trim()
-    if (normalized.length > 0) {
-      values.push(normalized)
-    }
-  }
-
-  return values
-}
-
 function hasFlag(argv: string[], flag: string): boolean {
   return argv.includes(flag)
 }
 
 function resolveStartedBy(argv: string[]): 'cli' | 'desktop' {
-  const raw = readFlagValue(argv, '--started-by')
+  const raw = readWorkerFlagValue(argv, '--started-by')
   if (!raw) {
     return 'cli'
   }
@@ -110,13 +75,13 @@ async function main(): Promise<void> {
   reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
 
   const argv = process.argv.slice(2)
-  const userDataPath = readFlagValue(argv, '--user-data') ?? resolveWorkerUserDataDir()
-  const bindHostname = readFlagValue(argv, '--hostname') ?? '127.0.0.1'
-  const hostname = readFlagValue(argv, '--advertise-hostname') ?? bindHostname
+  const userDataPath = readWorkerFlagValue(argv, '--user-data') ?? resolveWorkerUserDataDir()
+  const bindHostname = readWorkerFlagValue(argv, '--hostname') ?? '127.0.0.1'
+  const hostname = readWorkerFlagValue(argv, '--advertise-hostname') ?? bindHostname
   const port = resolvePort(argv) ?? 0
-  const token = readFlagValue(argv, '--token')
-  const webUiPasswordHash = readFlagValue(argv, '--web-ui-password-hash')
-  const webUiPassword = readFlagValue(argv, '--web-ui-password')
+  const token = readWorkerFlagValue(argv, '--token')
+  const webUiPasswordHash = readWorkerFlagValue(argv, '--web-ui-password-hash')
+  const webUiPassword = readWorkerFlagValue(argv, '--web-ui-password')
   if (webUiPasswordHash && webUiPassword) {
     throw new Error('[worker] choose either --web-ui-password or --web-ui-password-hash')
   }
@@ -126,7 +91,7 @@ async function main(): Promise<void> {
   const parentPid = resolveParentPid(argv)
   const enableWebUi = !hasFlag(argv, '--disable-web-ui')
   const startedBy = resolveStartedBy(argv)
-  const appVersion = readFlagValue(argv, '--app-version')
+  const appVersion = readWorkerFlagValue(argv, '--app-version')
 
   const lock = await acquireWorkerSingleInstanceLock(userDataPath)
   if (lock.status === 'existing') {
@@ -164,7 +129,7 @@ async function main(): Promise<void> {
   const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
     resolve(userDataPath, 'approved-workspaces.json'),
   )
-  const approvedRoots = readRepeatedFlagValues(argv, '--approve-root')
+  const approvedRoots = readRepeatedWorkerFlagValues(argv, '--approve-root')
   await Promise.all(approvedRoots.map(rootPath => approvedWorkspaces.registerRoot(rootPath)))
 
   const forceHookBindFailure =

@@ -107,15 +107,15 @@ async function main() {
     }
 
     if (token) {
-      workerArgs.push('--token', token)
+      workerArgs.push(`--token=${token}`)
     }
 
     if (webUiPasswordHash) {
-      workerArgs.push('--web-ui-password-hash', webUiPasswordHash)
+      workerArgs.push(`--web-ui-password-hash=${webUiPasswordHash}`)
     }
 
     if (webUiPassword) {
-      workerArgs.push('--web-ui-password', webUiPassword)
+      workerArgs.push(`--web-ui-password=${webUiPassword}`)
     }
 
     for (const root of approvedRoots) {

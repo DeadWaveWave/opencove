@@ -154,8 +154,7 @@ export async function startRemoteWorker(options: {
       options.hostname,
       '--port',
       String(options.port),
-      '--token',
-      options.token,
+      `--token=${options.token}`,
       '--user-data',
       options.userDataDir,
       '--approve-root',
@@ -190,11 +189,17 @@ export async function startRemoteWorker(options: {
     return merged.trim().length > 0 ? merged : '[no remote worker logs captured]'
   }
 
-  await waitForControlSurfaceReady({
-    hostname: options.hostname,
-    port: options.port,
-    token: options.token,
-  })
+  try {
+    await waitForControlSurfaceReady({
+      hostname: options.hostname,
+      port: options.port,
+      token: options.token,
+    })
+  } catch (error) {
+    await stopRemoteWorker(child)
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`${message}\nRemote Worker logs:\n${logs()}`, { cause: error })
+  }
 
   return { child, logs }
 }

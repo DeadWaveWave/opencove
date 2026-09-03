@@ -262,7 +262,7 @@ if ! runtime_is_healthy; then
   exit 127
 fi
 
-nohup opencove worker start --hostname 127.0.0.1 --port "$remote_port" --token "$remote_token" --user-data "$user_data_dir" > "$log_file" 2>&1 < /dev/null &
+nohup opencove worker start --hostname 127.0.0.1 --port "$remote_port" --token="$remote_token" --user-data "$user_data_dir" > "$log_file" 2>&1 < /dev/null &
 
 ready=0
 attempt=0
@@ -289,7 +289,7 @@ function buildWindowsBootstrapScript(
 ): string {
   const endpointSegment = powershellQuote(sanitizeRemotePathSegment(access.endpointId))
   const installerUrl = powershellQuote(options.installerUrl)
-  const token = powershellQuote(access.token)
+  const tokenArgument = powershellQuote(`--token=${access.token}`)
   const remotePort = String(access.ssh.remotePort)
 
   return `
@@ -330,7 +330,7 @@ if (-not $existing) {
   Write-Error 'OpenCove remote runtime bootstrap did not make the opencove command available.'
 }
 
-$args = @('worker', 'start', '--hostname', '127.0.0.1', '--port', '${remotePort}', '--token', ${token}, '--user-data', $userDataDir)
+$args = @('worker', 'start', '--hostname', '127.0.0.1', '--port', '${remotePort}', ${tokenArgument}, '--user-data', $userDataDir)
 Start-Process -FilePath $existing.Source -ArgumentList $args -RedirectStandardOutput $stdoutLogFile -RedirectStandardError $stderrLogFile -WindowStyle Hidden
 
 $ready = $false
