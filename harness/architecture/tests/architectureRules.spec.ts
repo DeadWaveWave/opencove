@@ -50,6 +50,73 @@ describe('architecture rules audit', () => {
     expect(formatArchitectureReport(report)).toContain('src/contexts/workspace/domain/model.ts:1')
   })
 
+  it('allows the configured renderer composition adapter to inject an application owner', async () => {
+    const root = await createFixture({
+      'src/app/renderer/shell/hooks/useWorkspaceMountRepair.ts':
+        "import { owner } from '@contexts/workspace/application/mountRepair/WorkspaceMountRepairOwner'\nimport { render } from '@contexts/workspace/presentation/renderer/view'\nexport const app = render(owner)\n",
+      'src/contexts/workspace/application/mountRepair/WorkspaceMountRepairOwner.ts':
+        'export const owner = {}\n',
+      'src/contexts/workspace/presentation/renderer/view.ts':
+        'export const render = (value: unknown) => value\n',
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([])
+  })
+
+  it('does not grant application dependencies to every renderer file', async () => {
+    const root = await createFixture({
+      'src/app/renderer/feature.ts':
+        "import { owner } from '@contexts/workspace/application/owner'\nexport const value = owner\n",
+      'src/contexts/workspace/application/owner.ts': 'export const owner = {}\n',
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        ruleId: 'architecture.layerDependency',
+        file: 'src/app/renderer/feature.ts',
+      }),
+    ])
+  })
+
+  it('does not let an allowlisted composition source import unrelated targets', async () => {
+    const root = await createFixture({
+      'src/app/renderer/shell/hooks/useWorkspaceMountRepair.ts':
+        "import { unrelated } from '@contexts/workspace/application/unrelated'\nexport const value = unrelated\n",
+      'src/app/worker/workerWebAccessRuntime.ts':
+        "import { unrelated } from '@contexts/settings/application/unrelated'\nexport const value = unrelated\n",
+      'src/contexts/workspace/application/unrelated.ts': 'export const unrelated = {}\n',
+      'src/contexts/settings/application/unrelated.ts': 'export const unrelated = {}\n',
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        ruleId: 'architecture.layerDependency',
+        file: 'src/app/renderer/shell/hooks/useWorkspaceMountRepair.ts',
+      }),
+      expect.objectContaining({
+        ruleId: 'architecture.layerDependency',
+        file: 'src/app/worker/workerWebAccessRuntime.ts',
+      }),
+    ])
+  })
+
+  it('allows the Worker process root to compose application ports and infrastructure adapters', async () => {
+    const root = await createFixture({
+      'src/app/worker/index.ts':
+        "import { owner } from '@contexts/agent/application/services/AgentProviderRegistry'\nimport { adapter } from '@contexts/settings/infrastructure/homeWorker/homeWorkerConfig'\nexport const runtime = owner(adapter)\n",
+      'src/contexts/agent/application/services/AgentProviderRegistry.ts':
+        'export const owner = (value: unknown) => value\n',
+      'src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig.ts':
+        'export const adapter = {}\n',
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([])
+  })
+
   it('reports runtime file cycles as errors', async () => {
     const root = await createFixture({
       'src/shared/a.ts': "import { b } from './b'\nexport const a = b\n",
@@ -207,6 +274,25 @@ describe('architecture rules audit', () => {
         severity: 'error',
         file: 'src/shared/runtime/run.ts',
         found: '../../contexts/workspace/domain/model',
+      }),
+    ])
+  })
+
+  it('scopes forbidden import rules to configured source patterns', async () => {
+    const root = await createFixture({
+      'src/contexts/workspace/presentation/renderer/components/terminalNode/session.ts':
+        "import type { Calibration } from '@contexts/settings/presentation/renderer/calibration'\nexport type Value = Calibration\n",
+      'src/contexts/workspace/presentation/renderer/other.ts':
+        "import type { Calibration } from '@contexts/settings/presentation/renderer/calibration'\nexport type Value = Calibration\n",
+      'src/contexts/settings/presentation/renderer/calibration.ts':
+        'export type Calibration = { value: number }\n',
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        ruleId: 'architecture.terminalRendererNoSettingsPresentation',
+        file: 'src/contexts/workspace/presentation/renderer/components/terminalNode/session.ts',
       }),
     ])
   })

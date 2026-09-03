@@ -28,6 +28,20 @@ async function readGrid(page: Page): Promise<{ cols: number; rows: number } | nu
   )
 }
 
+async function readRendererKind(page: Page): Promise<'dom' | 'webgl' | null> {
+  return await page.evaluate(id => {
+    const kind =
+      window.__opencoveTerminalSelectionTestApi?.getRenderMetrics(id)?.rendererStructuralKind
+    return kind === 'dom' || kind === 'webgl' ? kind : null
+  }, nodeId)
+}
+
+async function readStoredCalibration(page: Page): Promise<string | null> {
+  return await page.evaluate(() =>
+    window.localStorage.getItem('opencove:terminal-display-calibration:v1'),
+  )
+}
+
 async function hasAppliedAutomaticCalibration(page: Page): Promise<boolean> {
   return await page.evaluate(id => {
     const raw = window.localStorage.getItem('opencove:terminal-display-calibration:v1')
@@ -102,9 +116,20 @@ test('Desktop and Web share one canonical PTY grid while both remain interactive
       { timeout: 30_000 },
     )
     await expect.poll(async () => await hasAppliedAutomaticCalibration(desktop)).toBe(true)
-    await expect
-      .poll(async () => await hasAppliedAutomaticCalibration(web), { timeout: 30_000 })
-      .toBe(true)
+    await expect.poll(async () => await readRendererKind(desktop)).not.toBeNull()
+    await expect.poll(async () => await readRendererKind(web)).not.toBeNull()
+    const desktopRendererKind = await readRendererKind(desktop)
+    const webRendererKind = await readRendererKind(web)
+    const renderersAreCompatible = desktopRendererKind === webRendererKind
+    if (renderersAreCompatible) {
+      await expect
+        .poll(async () => await hasAppliedAutomaticCalibration(web), { timeout: 30_000 })
+        .toBe(true)
+    } else {
+      // Renderer provenance is part of calibration proof. A DOM client must keep defaults when
+      // the Desktop reference was captured from WebGL (and vice versa), while sharing PTY geometry.
+      expect(await readStoredCalibration(web)).toBeNull()
+    }
 
     const desktopSessionId = await desktop.evaluate(
       id => window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null,
@@ -287,6 +312,9 @@ test('Desktop and Web share one canonical PTY grid while both remain interactive
       nodeId,
     )
     expect(desktopIdentityAfterSecurity).toEqual(desktopIdentityBeforeSecurity)
+    if (!renderersAreCompatible) {
+      expect(await readStoredCalibration(web)).toBeNull()
+    }
   } finally {
     await browser.close()
     await electronApp.close()

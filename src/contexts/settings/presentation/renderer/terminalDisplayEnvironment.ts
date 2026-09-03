@@ -1,5 +1,6 @@
 import {
   createTerminalDisplayProfileKey,
+  createTerminalDisplayReferenceSignature,
   type TerminalDisplayMeasurement,
   type TerminalDisplayReference,
 } from '../../domain/terminalDisplayCalibration'
@@ -47,7 +48,7 @@ export function createTerminalDisplayEnvironmentSignature(input: {
       terminalFontSize: input.terminalFontSize,
       terminalFontFamily: input.terminalFontFamily,
     }),
-    reference: input.reference,
+    referenceSignature: createTerminalDisplayReferenceSignature(input.reference),
     runtime: input.measurement.runtime,
     rendererKind: input.rendererKind,
     windowDevicePixelRatio: roundDisplayMetric(input.measurement.windowDevicePixelRatio),

@@ -44,7 +44,7 @@ pnpm arch:results:check
 
 ## 规则语义
 
-`layerDependencies.ignoreTypeOnly` 只影响层级依赖检查，用于在手动基线阶段降低纯类型跨层边的噪声。`forbiddenImportSpecifiers` 默认仍会检查 type-only import，因为 `electron`、`react`、`node:`、`@app/` 这类规则表达的是禁止外层/runtime/framework 耦合；只有规则显式设置 `ignoreTypeOnly: true` 时才会跳过 type-only 边。`architecture.sharedNoContextDependency` 专门禁止 `shared` 通过 runtime 或 type-only import 反向依赖任何 context。
+`layerDependencies.ignoreTypeOnly` 只影响层级依赖检查，用于在手动基线阶段降低纯类型跨层边的噪声。`forbiddenImportSpecifiers` 默认仍会检查 type-only import，因为 `electron`、`react`、`node:`、`@app/` 这类规则表达的是禁止外层/runtime/framework 耦合；只有规则显式设置 `ignoreTypeOnly: true` 时才会跳过 type-only 边。`architecture.sharedNoContextDependency` 专门禁止 `shared` 通过 runtime 或 type-only import 反向依赖任何 context。规则可用 `fromPatterns`/`allowedPatterns` 把禁用边收敛到具体组合 seam；当前 terminal calibration 规则会阻止 workspace/settings presentation 重新直连。`layerDependencies.allowedEdges` 只给列出的组合文件开放额外 inward edge；`app/worker` 与 `app/renderer` 的其余文件仍走默认窄依赖，不能借组合根名义承接状态决策。
 
 ## 架构契约变更清单
 

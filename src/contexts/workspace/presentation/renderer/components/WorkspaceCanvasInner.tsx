@@ -2,7 +2,7 @@ import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
 import { TerminalDisplayAlignedWorkspaceCanvasView } from './workspaceCanvas/TerminalDisplayAlignedWorkspaceCanvasView'
 import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
-import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
+import type { WorkspaceCanvasInnerProps } from './workspaceCanvas/types'
 export function WorkspaceCanvasInner({
   workspaceId,
   onShowMessage,
@@ -24,15 +24,15 @@ export function WorkspaceCanvasInner({
   onViewportChange,
   onMinimapVisibilityChange,
   agentSettings,
+  terminalDisplayCalibration = null,
+  terminalDisplayMetrics,
   onChangePreserveWindowSizesOnArrange,
   isFocusNodeTargetZoomPreviewing = false,
   focusNodeId,
   focusSpaceId,
   focusSequence,
-}: WorkspaceCanvasProps) {
+}: WorkspaceCanvasInnerProps) {
   const reactFlow = useReactFlow<Node<import('../types').TerminalNodeData>, Edge>()
-  const { terminalDisplayCalibration, terminalDisplayMetrics } =
-    workspaceCanvasHooks.useWorkspaceCanvasTerminalDisplay(agentSettings)
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     workspaceId,
     nodes,

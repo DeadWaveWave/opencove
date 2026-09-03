@@ -23,8 +23,18 @@ export interface ControlSurfaceHttpListenerAddress {
 export interface ControlSurfaceHttpListener extends ControlSurfaceServerDisposable {
   ready: Promise<ControlSurfaceHttpListenerAddress>
   activate: () => void
-  stopAccepting: () => Promise<void>
+  updateWebUiPasswordHash: (passwordHash: string | null) => void
+  closeStreamingClients: () => void
+  stopAccepting: (options?: {
+    preserveStreamingClients?: boolean
+    drainTimeoutMs?: number
+  }) => Promise<void>
   isAccepting: () => boolean
+}
+
+export interface ControlSurfaceHttpListenerRequestContext extends ControlSurfaceHttpListenerOptions {
+  webUiAuthRevision: number
+  isWebUiAuthRevisionCurrent: () => boolean
 }
 
 export interface ControlSurfaceWebAccessPolicy {

@@ -228,8 +228,19 @@ export async function tryHandleWebAuthRoutes(options: {
   now: () => Date
   webSessions: WebSessionManager
   webUiPasswordHash: string | null
+  isWebUiAuthRevisionCurrent?: () => boolean
+  verifyPassword?: typeof verifyWebUiPassword
 }): Promise<boolean> {
-  const { req, res, url, now, webSessions, webUiPasswordHash } = options
+  const {
+    req,
+    res,
+    url,
+    now,
+    webSessions,
+    webUiPasswordHash,
+    isWebUiAuthRevisionCurrent,
+    verifyPassword = verifyWebUiPassword,
+  } = options
 
   if (url.pathname === '/auth/claim') {
     if (webUiPasswordHash) {
@@ -297,8 +308,8 @@ export async function tryHandleWebAuthRoutes(options: {
       const password = params.get('password') ?? ''
       const redirectPathFromBody = normalizeRedirectPath(params.get('redirectPath'))
 
-      const ok = await verifyWebUiPassword(password, webUiPasswordHash)
-      if (!ok) {
+      const ok = await verifyPassword(password, webUiPasswordHash)
+      if (!ok || isWebUiAuthRevisionCurrent?.() === false) {
         recordLoginFailure(clientKey, now())
         res.statusCode = 401
         res.setHeader('content-type', 'text/html; charset=utf-8')

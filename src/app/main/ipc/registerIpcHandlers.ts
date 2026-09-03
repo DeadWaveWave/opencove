@@ -23,6 +23,7 @@ import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandle
 import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHandlers'
 import { registerDiagnosticsIpcHandlers } from './registerDiagnosticsIpcHandlers'
 import { createIssueReportService } from '../../../contexts/issueReport/infrastructure/main/IssueReportService'
+import { readHomeWorkerConfig } from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
 import { registerIssueReportIpcHandlers } from '../../../contexts/issueReport/presentation/main-ipc/register'
 import { registerSystemIpcHandlers } from '../../../contexts/system/presentation/main-ipc/register'
 import {
@@ -212,6 +213,11 @@ export function registerIpcHandlers(deps?: {
         getUpdateState: () => appUpdateService.getState(),
         getPersistenceStore,
         workerEndpointResolver,
+        readHomeWorkerConfig: async userDataPath =>
+          await readHomeWorkerConfig(userDataPath, {
+            allowStandaloneMode: false,
+            allowRemoteMode: true,
+          }),
       }),
     ),
     registerPtyIpcHandlers(ptyRuntime, guardedApprovedWorkspaces),

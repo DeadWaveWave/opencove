@@ -1,5 +1,7 @@
 import {
   getTerminalDisplayCalibrationQuality,
+  isTerminalDisplayReferenceCurrent,
+  MAX_TERMINAL_DISPLAY_CALIBRATION_CELL_DELTA_PX,
   type TerminalClientDisplayCalibration,
   type TerminalDisplayMeasurement,
   type TerminalDisplayReference,
@@ -11,16 +13,15 @@ export interface TerminalDisplayCalibrationCandidateResult {
   score: number
 }
 
-const MAX_AUTOMATIC_CELL_DELTA_PX = 0.05
 const inFlightBySignature = new Map<string, Promise<unknown>>()
 
-export function createAutomaticTerminalDisplayCalibration(input: {
+export function createTerminalDisplayCalibrationFromCandidate(input: {
   profileKey: string
   reference: TerminalDisplayReference
   result: TerminalDisplayCalibrationCandidateResult | null
 }): TerminalClientDisplayCalibration | null {
   const result = input.result
-  if (!result) {
+  if (!result || !isTerminalDisplayReferenceCurrent(input.reference)) {
     return null
   }
   const quality = getTerminalDisplayCalibrationQuality(result.score)
@@ -30,8 +31,11 @@ export function createAutomaticTerminalDisplayCalibration(input: {
     (quality !== 'exact' && quality !== 'close') ||
     measured.cols !== target.cols ||
     measured.rows !== target.rows ||
-    Math.abs(measured.cssCellWidth - target.cssCellWidth) > MAX_AUTOMATIC_CELL_DELTA_PX ||
-    Math.abs(measured.cssCellHeight - target.cssCellHeight) > MAX_AUTOMATIC_CELL_DELTA_PX
+    Math.abs(measured.cssCellWidth - target.cssCellWidth) >
+      MAX_TERMINAL_DISPLAY_CALIBRATION_CELL_DELTA_PX ||
+    Math.abs(measured.cssCellHeight - target.cssCellHeight) >
+      MAX_TERMINAL_DISPLAY_CALIBRATION_CELL_DELTA_PX ||
+    Math.abs(measured.effectiveDpr - target.effectiveDpr) > 0.001
   ) {
     return null
   }

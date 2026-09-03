@@ -219,7 +219,7 @@ async function main(): Promise<void> {
     process.stderr.write(
       `[opencove-worker] debug shell: http://${activeWebAddress.hostname}:${activeWebAddress.port}/debug/shell\n`,
     )
-  } else if (desktopWebStatus?.state === 'failed') {
+  } else if (desktopWebStatus?.state === 'failed' || desktopWebStatus?.state === 'degraded') {
     process.stderr.write(`[opencove-worker] web ui unavailable: ${desktopWebStatus.error}\n`)
   } else {
     process.stderr.write('[opencove-worker] web ui: disabled\n')
@@ -230,7 +230,7 @@ async function main(): Promise<void> {
     )
   }
   const passwordRequired =
-    desktopWebStatus?.state === 'active'
+    desktopWebStatus?.state === 'active' || desktopWebStatus?.state === 'degraded'
       ? desktopWebStatus.passwordRequired
       : Boolean(resolvedWebUiPasswordHash)
   process.stderr.write(

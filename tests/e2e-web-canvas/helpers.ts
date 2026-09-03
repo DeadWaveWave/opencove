@@ -47,18 +47,21 @@ export async function invokeValue<TValue>(
   return envelope.value
 }
 
-export async function issueWebTicket(request: APIRequestContext): Promise<string> {
+export async function issueWebTicket(
+  request: APIRequestContext,
+  redirectPath = '/',
+): Promise<string> {
   const result = await invokeValue<{ ticket: string }>(
     request,
     'query',
     'auth.issueWebSessionTicket',
-    { redirectPath: '/' },
+    { redirectPath },
   )
   return result.ticket
 }
 
-export async function openAuthedCanvas(page: Page): Promise<void> {
-  const ticket = await issueWebTicket(page.request)
+export async function openAuthedCanvas(page: Page, redirectPath = '/'): Promise<void> {
+  const ticket = await issueWebTicket(page.request, redirectPath)
   await page.goto(`/auth/claim?ticket=${encodeURIComponent(ticket)}`, {
     waitUntil: 'domcontentloaded',
   })

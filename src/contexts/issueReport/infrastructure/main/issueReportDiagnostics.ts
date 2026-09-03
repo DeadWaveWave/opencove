@@ -1,5 +1,9 @@
 import { app } from 'electron'
-import type { AppUpdateState, PrepareIssueReportInput } from '@shared/contracts/dto'
+import type {
+  AppUpdateState,
+  HomeWorkerConfigDto,
+  PrepareIssueReportInput,
+} from '@shared/contracts/dto'
 import type { PersistenceStore } from '@platform/persistence/sqlite/PersistenceStore'
 import { normalizePersistedAppState } from '@platform/persistence/sqlite/normalize'
 import {
@@ -10,7 +14,6 @@ import {
 import { AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings.providers'
 import { listInstalledAgentProviders } from '@contexts/agent/infrastructure/cli/AgentCliAvailability'
 import type { ControlSurfaceRemoteEndpointResolver } from '@app/main/controlSurface/remote/controlSurfaceHttpClient'
-import { readHomeWorkerConfig } from '@contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
 import { collectPerformanceDiagnosticsSnapshot } from '@app/main/diagnostics/performanceDiagnosticsCollector'
 import type { IssueReportDiagnosticSection } from '../../application/IssueReportDocument'
 import {
@@ -50,6 +53,7 @@ export interface CollectIssueReportDiagnosticSectionsInput {
   persistedState: unknown | null
   getUpdateState: () => AppUpdateState
   workerEndpointResolver?: ControlSurfaceRemoteEndpointResolver | null
+  readHomeWorkerConfig: (userDataPath: string) => Promise<HomeWorkerConfigDto>
   getBreadcrumbs?: () => unknown[]
 }
 
@@ -162,12 +166,10 @@ function incrementCount(target: Map<string, number>, key: string): void {
 
 async function collectWorkerDiagnostics(
   userDataPath: string,
+  readHomeWorkerConfig: (userDataPath: string) => Promise<HomeWorkerConfigDto>,
   workerEndpointResolver?: ControlSurfaceRemoteEndpointResolver | null,
 ) {
-  const config = await readHomeWorkerConfig(userDataPath, {
-    allowStandaloneMode: false,
-    allowRemoteMode: true,
-  })
+  const config = await readHomeWorkerConfig(userDataPath)
   const endpoint = await workerEndpointResolver?.().catch(() => null)
 
   return {
@@ -226,6 +228,7 @@ export async function collectIssueReportDiagnosticSections({
   persistedState,
   getUpdateState,
   workerEndpointResolver,
+  readHomeWorkerConfig,
   getBreadcrumbs = getIssueReportBreadcrumbs,
 }: CollectIssueReportDiagnosticSectionsInput): Promise<IssueReportDiagnosticSection[]> {
   const sections: IssueReportDiagnosticSection[] = []
@@ -242,7 +245,9 @@ export async function collectIssueReportDiagnosticSections({
 
   sections.push(createAppRuntimeDiagnosticSection())
   sections.push(createUpdateStateSection(getUpdateState()))
-  sections.push(await collectWorkerSection(userDataPath, workerEndpointResolver))
+  sections.push(
+    await collectWorkerSection(userDataPath, readHomeWorkerConfig, workerEndpointResolver),
+  )
   sections.push(createWorkspaceSection(persistedState))
   sections.push(
     input.uiGeometry
@@ -294,9 +299,10 @@ function createAppRuntimeDiagnosticSection(): IssueReportDiagnosticSection {
 
 async function collectWorkerSection(
   userDataPath: string,
+  readHomeWorkerConfig: (userDataPath: string) => Promise<HomeWorkerConfigDto>,
   workerEndpointResolver?: ControlSurfaceRemoteEndpointResolver | null,
 ): Promise<IssueReportDiagnosticSection> {
-  return await collectWorkerDiagnostics(userDataPath, workerEndpointResolver)
+  return await collectWorkerDiagnostics(userDataPath, readHomeWorkerConfig, workerEndpointResolver)
     .then(worker => createWorkerStateSection(worker))
     .catch(error => createUnavailableIssueReportSection('worker_state', 'Worker State', error))
 }

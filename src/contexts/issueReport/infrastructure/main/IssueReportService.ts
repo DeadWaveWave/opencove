@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { basename, relative, resolve } from 'node:path'
 import type {
   AppUpdateState,
+  HomeWorkerConfigDto,
   PrepareIssueReportInput,
   PrepareIssueReportResult,
 } from '@shared/contracts/dto'
@@ -33,6 +34,7 @@ export function createIssueReportService(deps: {
   getUpdateState: () => AppUpdateState
   getPersistenceStore: () => Promise<PersistenceStore>
   workerEndpointResolver?: ControlSurfaceRemoteEndpointResolver | null
+  readHomeWorkerConfig: (userDataPath: string) => Promise<HomeWorkerConfigDto>
 }): IssueReportService {
   const userDataPath = app.getPath('userData')
   const issueReportsDir = resolve(userDataPath, ISSUE_REPORTS_DIR)
@@ -60,6 +62,7 @@ export function createIssueReportService(deps: {
       persistedState,
       getUpdateState: deps.getUpdateState,
       workerEndpointResolver: deps.workerEndpointResolver,
+      readHomeWorkerConfig: deps.readHomeWorkerConfig,
     })
     const knownPathsToRedact = includeLocalPaths
       ? []

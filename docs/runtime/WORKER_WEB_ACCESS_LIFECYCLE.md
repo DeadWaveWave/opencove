@@ -27,8 +27,9 @@ Desktop-started local Worker
     loopback + bearer authentication
     connection-file endpoint
 
-  WorkerWebAccessRuntime                reconfigurable
-    active / preparing / draining listener generations
+  HomeWorkerConfigurationOwner         application owner
+    disabled / active / degraded listener authority
+    preparing / restoring / draining transitions
     Web assets / login / cookie policy
     delegates invoke / events / pty to ControlSurfaceRuntime
 ```
@@ -40,7 +41,7 @@ Desktop-started local Worker
 | State | Class | Owner | Write entry | Restart source |
 | --- | --- | --- | --- | --- |
 | Home Worker Web intent | durable fact | Home Worker configuration store | one serialized config mutation | `home-worker.json` |
-| Active Web listener generation | runtime state | `WorkerWebAccessRuntime` | serialized apply transaction | durable Web intent |
+| Active Web listener generation | runtime state | settings application Web-access owner | serialized apply transaction | durable Web intent |
 | Private listener endpoint | runtime state | Worker composition | Worker startup/final shutdown | Worker launch |
 | Web ticket/cookie generation | runtime state | `WebSessionManager` | issue/claim/revoke | none |
 | Web socket auth kind/generation | runtime observation | PTY stream client record | accepted upgrade | none |
@@ -49,7 +50,7 @@ Desktop-started local Worker
 
 While an owned local Worker is live, all `home-worker.json` mutations route through that Worker's single serialized configuration store. Main uses the same normalization/persistence implementation only when no live owned Worker exists. Renderer never writes the file directly.
 
-The durable file remains version 1. Writes use a same-directory temporary file followed by rename, preserve unrelated mode/remote/Web fields, and advance `updatedAt`. A stale expected revision fails closed instead of overwriting a newer configuration.
+The durable file remains version 1. Writes use a same-directory temporary file followed by rename, preserve unrelated mode/remote/Web fields, and advance `updatedAt`. The revision timestamp is strictly monotonic (`max(now, previous + 1 ms)`) even when the wall clock is frozen or moves backward; malformed legacy revisions normalize to `null` and are repaired. A stale expected revision fails closed instead of overwriting a newer configuration.
 
 ## Listener Roles
 
@@ -73,14 +74,15 @@ The durable file remains version 1. Writes use a same-directory temporary file f
 ## Apply State Machine
 
 ```text
-inactive -> preparing -> active
+disabled -> preparing -> active
 active -> preparing replacement -> active(new) + draining(old)
 preparing -> failed -> previous active state
-active -> disabling -> inactive
-active/draining -> final shutdown -> disposed
+same-port rollback failure -> degraded -> restoring -> active(previous)
+active/degraded -> disabling -> disabled
+booting/active/degraded/draining -> final shutdown -> disposed
 ```
 
-Only `WorkerWebAccessRuntime` mutates this state. Apply calls are serialized; duplicate requests are idempotent, and a stale config revision cannot overtake a newer request.
+Only the settings application Web-access owner mutates this state. `app/worker` composes its listener/config/session adapters and owns no transition policy. Apply calls share one serial queue; duplicate requests are idempotent, and a stale config revision cannot overtake a newer request. Final disposal fences new work, aborts pending listeners/restoration, and joins startup plus the complete apply queue before returning; no older continuation may activate a listener afterward.
 
 ### Transaction
 
@@ -94,7 +96,9 @@ normalize + authorize + revision check
 
 Candidate preparation includes host/port bind and route/auth construction, but the candidate rejects public admission until activation. Activation performs no fallible IO. If validation, bind or persistence fails, the candidate is disposed and the previous active listener plus previous durable configuration remain authoritative.
 
-For a different port, the candidate can warm before the old listener stops accepting. For a same-port host change, the owner stops only the old listen handle, attempts the replacement bind, and relistens the old address on failure. Existing upgraded WebSockets are tracked separately from the listen handle and survive this handover unless the security transition explicitly revokes them.
+For a different port, the candidate can warm before the old listener stops accepting. For a same-port host change, the owner does **not** rely on concurrent wildcard/loopback binds: a gated candidate can still steal pre-commit traffic on some operating systems. It stops only the old listen handle, attempts the replacement bind, and relistens the old address on failure. Accepted streams and upgraded WebSockets are tracked separately from the listen handle and survive this handover/drain unless the security transition explicitly revokes them. Accepted HTTP work drains to an explicit deadline; a client that never finishes its request body is destroyed at that boundary and cannot block disable, LAN tightening, rollback or Worker disposal forever.
+
+If both replacement and rollback binds fail, previous durable config, listener generation, Web policy and surviving upgraded clients remain authoritative. Status becomes `degraded`, and one cancellable bounded-backoff restoration loop retries the previous bind. Worker, PTY, Hub, presentation and private listener remain live. New HTTP admission cannot be promised while the operating system refuses every bind; OpenCove reports that physical boundary rather than pretending rollback succeeded or failing closed by destroying the last-known-good authority.
 
 ## Transition Semantics
 
@@ -105,7 +109,7 @@ For a different port, the candidate can warm before the old listener stops accep
 | different port | new port after activation; old generation rejects new admission | bounded drain, then reconnect/rehydrate | none |
 | LAN enable | Web listener widens only after valid password policy | loopback clients may continue | none |
 | LAN disable | non-loopback admission rejected | existing non-loopback sockets close; leaving password mode also rotates old password-cookie sessions | PTYs continue; private bearer clients continue |
-| password change | old credential rejected | old Web ticket/cookie generation closes | PTYs and bearer clients continue |
+| password change | persisted hash swaps in place on the active listener; no rebind/generation change | old Web ticket/cookie generation closes | PTYs and bearer clients continue |
 | failed apply | previous admission remains | previous clients continue | none |
 
 A Web transport close caused by disable or security tightening is intentional access revocation, not terminal recovery. After valid reauthentication, the browser hydrates the same Worker sessions from presentation snapshot and stream replay.
@@ -118,6 +122,7 @@ Old listener generations have a bounded drain deadline. Final drain cleanup clos
 - Cookie-authenticated Web clients cannot change Worker listener or credential configuration.
 - One-time tickets and cookie sessions carry an auth generation.
 - Password change and disable invalidate previous Web generations server-side.
+- Every accepted password request captures the listener auth revision. A hash result that completes after policy rotation cannot mint a new cookie.
 - Removing LAN exposure also revokes accepted non-loopback Web sockets.
 - Private-listener bearer-authenticated Desktop/CLI sockets are not members of Web auth generations. A bearer/query-token transport intentionally opened through the Web listener still belongs to that listener's enable/LAN lifecycle.
 
@@ -166,6 +171,10 @@ See `WEB_UI_TROUBLESHOOTING.md` for operational checks.
 5. A live owned Worker is the sole durable configuration writer; Main writes only while no live owner exists.
 6. Renderer navigation, xterm replacement and renderer cache are never Web access recovery mechanisms.
 7. Listener generation cleanup is bounded and disposes only generation-owned transport resources.
+8. `dispose()` joins startup/apply/restoration; after it resolves, no prior continuation can bind, activate or re-enable Web policy.
+9. A double bind failure preserves durable authority and surviving Web transports; only new admission is degraded while restoration is pending.
+10. Password-only changes never replace the listening socket or advance its listener generation.
+11. Partial or stalled accepted HTTP requests have a bounded drain deadline; they cannot hold listener replacement or security revocation indefinitely.
 
 ## Verification Anchors
 
@@ -175,3 +184,4 @@ See `WEB_UI_TROUBLESHOOTING.md` for operational checks.
 - `tests/unit/app/workerWebAccessRuntime.spec.ts`
 - `tests/e2e/workspace-canvas.worker-web-access-continuity.spec.ts`
 - `tests/e2e/workspace-canvas.desktop-web-terminal-consistency.spec.ts`
+- `tests/e2e/worker-web-listener-handover.windows.spec.ts`

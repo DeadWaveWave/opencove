@@ -149,6 +149,11 @@ describe('Desktop-managed Control Surface Web access', () => {
         },
       })
       expect(changed.data.ok).toBe(true)
+      expect(changed.data.value?.webAccess).toMatchObject({
+        state: 'active',
+        port: webPort,
+        generation: before.data.value?.webAccess.generation,
+      })
       await webClosed
 
       await new Promise<void>((resolvePromise, rejectPromise) => {

@@ -1,12 +1,26 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
+import {
+  createSerialOperationQueue,
+  type SerialOperationQueue,
+} from '../../../../shared/runtime/serialOperationQueue'
 import type {
   HomeWorkerConfigDto,
   HomeWorkerMode,
   RemoteWorkerEndpointDto,
 } from '../../../../shared/contracts/dto'
 import { isValidWebUiPasswordHash } from './webUiPassword'
+import type {
+  HomeWorkerConfigFile,
+  HomeWorkerConfigModeOptions,
+  HomeWorkerWebUiConfigFile,
+} from '../../domain/homeWorkerConfig'
+export type {
+  HomeWorkerConfigFile,
+  HomeWorkerConfigModeOptions,
+  HomeWorkerWebUiConfigFile,
+} from '../../domain/homeWorkerConfig'
 import {
   writeTextFileAtomically,
   type AtomicTextFileWriteDependencies,
@@ -48,6 +62,43 @@ export function normalizeOptionalString(value: unknown): string | null {
 
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
+}
+
+function normalizeConfigRevision(value: unknown): string | null {
+  const normalized = normalizeOptionalString(value)
+  if (!normalized) {
+    return null
+  }
+
+  const timestamp = Date.parse(normalized)
+  if (!Number.isFinite(timestamp)) {
+    return null
+  }
+
+  try {
+    return new Date(timestamp).toISOString() === normalized ? normalized : null
+  } catch {
+    return null
+  }
+}
+
+function createNextConfigRevision(previous: string | null, now: Date): string {
+  const nowMs = now.getTime()
+  if (!Number.isFinite(nowMs)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Home worker config clock returned an invalid timestamp.',
+    })
+  }
+
+  const previousMs = previous === null ? Number.NEGATIVE_INFINITY : Date.parse(previous)
+  const nextMs = Math.max(nowMs, previousMs + 1)
+  try {
+    return new Date(nextMs).toISOString()
+  } catch {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Home worker config revision cannot advance.',
+    })
+  }
 }
 
 function normalizeOptionalPort(value: unknown): number | null {
@@ -102,13 +153,6 @@ export function normalizeRemoteEndpoint(value: unknown): RemoteWorkerEndpointDto
   return { hostname, port, token }
 }
 
-export type HomeWorkerWebUiConfigFile = {
-  enabled: boolean
-  port: number | null
-  exposeOnLan: boolean
-  passwordHash: string | null
-}
-
 function normalizeWebUiConfig(value: unknown): HomeWorkerWebUiConfigFile {
   if (!isRecord(value)) {
     return { ...DEFAULT_WEB_UI_CONFIG }
@@ -129,19 +173,6 @@ function normalizeWebUiConfig(value: unknown): HomeWorkerWebUiConfigFile {
     exposeOnLan: exposeOnLan && passwordHash !== null,
     passwordHash,
   }
-}
-
-export type HomeWorkerConfigFile = {
-  version: 1
-  mode: HomeWorkerMode
-  remote: RemoteWorkerEndpointDto | null
-  webUi: HomeWorkerWebUiConfigFile
-  updatedAt: string | null
-}
-
-export interface HomeWorkerConfigModeOptions {
-  allowStandaloneMode?: boolean
-  allowRemoteMode?: boolean
 }
 
 function isStandaloneModeAllowed(options?: HomeWorkerConfigModeOptions): boolean {
@@ -219,7 +250,7 @@ function normalizeConfigFile(
         ? parsedMode
         : resolveDefaultHomeWorkerMode(options)
   const remote = mode === 'remote' ? parsedRemote : null
-  const updatedAt = normalizeOptionalString(value.updatedAt)
+  const updatedAt = normalizeConfigRevision(value.updatedAt)
   const webUi = normalizeWebUiConfig(value.webUi)
 
   return {
@@ -312,7 +343,7 @@ export async function writeHomeWorkerConfigFile(
   )
 }
 
-const configMutationQueues = new Map<string, Promise<void>>()
+const configMutationQueues = new Map<string, SerialOperationQueue>()
 
 export async function mutateHomeWorkerConfigFile(input: {
   userDataPath: string
@@ -323,34 +354,23 @@ export async function mutateHomeWorkerConfigFile(input: {
   writeDependencies?: HomeWorkerConfigFileWriteDependencies
 }): Promise<HomeWorkerConfigFile> {
   const queueKey = resolveHomeWorkerConfigPath(input.userDataPath)
-  const previousOperation = configMutationQueues.get(queueKey) ?? Promise.resolve()
-  const operation = previousOperation
-    .catch(() => undefined)
-    .then(async () => {
-      const previous = await readHomeWorkerConfigFile(input.userDataPath, input.configOptions)
-      if (input.expectedUpdatedAt !== undefined && previous.updatedAt !== input.expectedUpdatedAt) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Home worker config revision is stale.',
-        })
-      }
-
-      const candidate = await input.mutate(previous)
-      const next: HomeWorkerConfigFile = {
-        ...candidate,
-        updatedAt: (input.now?.() ?? new Date()).toISOString(),
-      }
-      await writeHomeWorkerConfigFile(input.userDataPath, next, input.writeDependencies)
-      return next
-    })
-  const queueTail = operation.then(
-    () => undefined,
-    () => undefined,
-  )
-  configMutationQueues.set(queueKey, queueTail)
-  void queueTail.finally(() => {
-    if (configMutationQueues.get(queueKey) === queueTail) {
-      configMutationQueues.delete(queueKey)
+  const operations = configMutationQueues.get(queueKey) ?? createSerialOperationQueue()
+  configMutationQueues.set(queueKey, operations)
+  const operation = operations.run(async () => {
+    const previous = await readHomeWorkerConfigFile(input.userDataPath, input.configOptions)
+    if (input.expectedUpdatedAt !== undefined && previous.updatedAt !== input.expectedUpdatedAt) {
+      throw createAppError('common.invalid_input', {
+        debugMessage: 'Home worker config revision is stale.',
+      })
     }
+
+    const candidate = await input.mutate(previous)
+    const next: HomeWorkerConfigFile = {
+      ...candidate,
+      updatedAt: createNextConfigRevision(previous.updatedAt, input.now?.() ?? new Date()),
+    }
+    await writeHomeWorkerConfigFile(input.userDataPath, next, input.writeDependencies)
+    return next
   })
   return await operation
 }

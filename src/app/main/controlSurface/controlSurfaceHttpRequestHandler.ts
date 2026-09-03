@@ -17,6 +17,7 @@ import { shouldAllowDevWebUiOrigin } from './http/devWebUiOrigin'
 import { buildUnauthorizedResult } from './http/unauthorizedResult'
 import type {
   ControlSurfaceHttpListenerOptions,
+  ControlSurfaceHttpListenerRequestContext,
   ControlSurfaceWebAccessPolicy,
 } from './controlSurfaceHttpRuntime.contract'
 
@@ -67,7 +68,7 @@ export function createControlSurfaceHttpRequestHandler(
 ): (input: {
   req: IncomingMessage
   res: ServerResponse
-  listener: ControlSurfaceHttpListenerOptions
+  listener: ControlSurfaceHttpListenerRequestContext
   listenerSyncClients: Set<ServerResponse>
 }) => Promise<void> {
   return async ({ req, res, listener, listenerSyncClients }) => {
@@ -95,6 +96,7 @@ export function createControlSurfaceHttpRequestHandler(
         now: deps.ctx.now,
         webSessions: deps.webSessions,
         webUiPasswordHash: listener.webUiPasswordHash,
+        isWebUiAuthRevisionCurrent: listener.isWebUiAuthRevisionCurrent,
       }))
     ) {
       return

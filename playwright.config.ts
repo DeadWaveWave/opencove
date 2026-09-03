@@ -53,8 +53,8 @@ function resolveE2ERetries(rawValue: string | undefined): number {
     }
   }
 
-  // CI 最多重跑一次，避免把确定性失配拖成更长的失败队列。
-  return isCi ? 1 : 0
+  // Required continuity gates never hide deterministic failures behind retries.
+  return 0
 }
 
 /**
@@ -105,9 +105,9 @@ export default defineConfig({
       use: {
         // 截图配置
         screenshot: 'only-on-failure',
-        // CI 只保留重试 trace，避免全量失败视频把 runner 磁盘打满。
+        // Required gates do not retry; retain the first failure trace without recording CI video.
         video: isCi ? 'off' : 'retain-on-failure',
-        trace: isCi ? 'on-first-retry' : 'retain-on-failure',
+        trace: 'retain-on-failure',
       },
     },
   ],

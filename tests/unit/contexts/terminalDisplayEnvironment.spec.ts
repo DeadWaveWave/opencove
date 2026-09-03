@@ -4,6 +4,7 @@ import { createTerminalDisplayEnvironmentSignature } from '../../../src/contexts
 
 const reference: TerminalDisplayReference = {
   version: 1,
+  capture: { algorithmVersion: 1, rendererKind: 'dom' },
   measurement: {
     fontSize: 13,
     fontFamily: null,

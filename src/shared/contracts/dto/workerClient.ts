@@ -52,6 +52,16 @@ export type WorkerWebAccessRuntimeStatusDto =
       drainingGenerations: number[]
     }
   | {
+      state: 'degraded'
+      generation: number
+      hostname: string
+      bindHostname: string
+      port: number
+      passwordRequired: boolean
+      error: string
+      drainingGenerations: number[]
+    }
+  | {
       state: 'failed'
       generation: number
       error: string

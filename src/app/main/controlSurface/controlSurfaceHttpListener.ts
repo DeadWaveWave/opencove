@@ -3,7 +3,10 @@ import type { Duplex } from 'node:stream'
 import type {
   ControlSurfaceHttpListener,
   ControlSurfaceHttpListenerOptions,
+  ControlSurfaceHttpListenerRequestContext,
 } from './controlSurfaceHttpRuntime.contract'
+
+const DEFAULT_REQUEST_DRAIN_TIMEOUT_MS = 30_000
 
 export function createControlSurfaceHttpListener(options: {
   config: ControlSurfaceHttpListenerOptions
@@ -11,7 +14,7 @@ export function createControlSurfaceHttpListener(options: {
   handleRequest: (input: {
     req: IncomingMessage
     res: ServerResponse
-    listener: ControlSurfaceHttpListenerOptions
+    listener: ControlSurfaceHttpListenerRequestContext
     listenerSyncClients: Set<ServerResponse>
   }) => Promise<void>
   handleUpgrade: (
@@ -23,11 +26,16 @@ export function createControlSurfaceHttpListener(options: {
   onDisposed: (listener: ControlSurfaceHttpListener) => void
 }): ControlSurfaceHttpListener {
   const listenerSyncClients = new Set<ServerResponse>()
-  const inFlightRequests = new Set<Promise<void>>()
+  const listenerConfig = { ...options.config }
+  const listenAbortController = new AbortController()
+  const inFlightRequests = new Map<Promise<void>, { req: IncomingMessage; res: ServerResponse }>()
   let accepting = options.config.startGated !== true
   let stopped = false
   let stopPromise: Promise<void> | null = null
+  let stopSettled = false
+  let disposedNotified = false
   let readySettled = false
+  let webUiAuthRevision = 0
   let resolveReady:
     | ((value: { hostname: string; bindHostname: string; port: number }) => void)
     | null = null
@@ -47,8 +55,18 @@ export function createControlSurfaceHttpListener(options: {
       return
     }
 
+    const requestAuthRevision = webUiAuthRevision
     const operation = options
-      .handleRequest({ req, res, listener: options.config, listenerSyncClients })
+      .handleRequest({
+        req,
+        res,
+        listener: {
+          ...listenerConfig,
+          webUiAuthRevision: requestAuthRevision,
+          isWebUiAuthRevisionCurrent: () => webUiAuthRevision === requestAuthRevision,
+        },
+        listenerSyncClients,
+      })
       .catch(error => {
         if (res.headersSent) {
           try {
@@ -66,7 +84,7 @@ export function createControlSurfaceHttpListener(options: {
       .finally(() => {
         inFlightRequests.delete(operation)
       })
-    inFlightRequests.add(operation)
+    inFlightRequests.set(operation, { req, res })
   })
 
   server.on('upgrade', (req, socket, head) => {
@@ -74,8 +92,45 @@ export function createControlSurfaceHttpListener(options: {
       socket.destroy()
       return
     }
-    options.handleUpgrade(req, socket, head, options.config)
+    options.handleUpgrade(req, socket, head, listenerConfig)
   })
+
+  const notifyDisposed = (): void => {
+    if (disposedNotified) {
+      return
+    }
+    disposedNotified = true
+    options.onDisposed(listener)
+  }
+
+  const closeStreamingClients = (): void => {
+    for (const client of listenerSyncClients) {
+      try {
+        client.end()
+      } catch {
+        // ignore
+      }
+    }
+    listenerSyncClients.clear()
+    if (stopSettled) {
+      notifyDisposed()
+    }
+  }
+
+  const forceCloseInFlightRequests = (): void => {
+    for (const { req, res } of inFlightRequests.values()) {
+      try {
+        req.destroy()
+      } catch {
+        // ignore
+      }
+      try {
+        res.destroy()
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   server.on('error', error => {
     const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
@@ -95,22 +150,24 @@ export function createControlSurfaceHttpListener(options: {
         accepting = true
       }
     },
+    updateWebUiPasswordHash: passwordHash => {
+      listenerConfig.webUiPasswordHash = passwordHash
+      webUiAuthRevision += 1
+    },
+    closeStreamingClients,
     isAccepting: () => accepting && !stopped,
-    stopAccepting: async () => {
+    stopAccepting: async stopOptions => {
       if (stopPromise) {
         return await stopPromise
       }
 
       accepting = false
       stopped = true
-      for (const client of listenerSyncClients) {
-        try {
-          client.end()
-        } catch {
-          // ignore
-        }
+      webUiAuthRevision += 1
+      listenAbortController.abort()
+      if (stopOptions?.preserveStreamingClients !== true) {
+        closeStreamingClients()
       }
-      listenerSyncClients.clear()
 
       if (!readySettled) {
         readySettled = true
@@ -125,8 +182,30 @@ export function createControlSurfaceHttpListener(options: {
       if (server.listening) {
         server.close(() => undefined)
       }
-      stopPromise = Promise.allSettled([...inFlightRequests]).then(() => {
-        options.onDisposed(listener)
+      const drainTimeoutMs = Math.max(
+        0,
+        stopOptions?.drainTimeoutMs ?? DEFAULT_REQUEST_DRAIN_TIMEOUT_MS,
+      )
+      const acceptedRequests = [...inFlightRequests.keys()]
+      const drain = new Promise<'drained' | 'timed_out'>(resolve => {
+        if (acceptedRequests.length === 0) {
+          resolve('drained')
+          return
+        }
+        const timer = setTimeout(() => resolve('timed_out'), drainTimeoutMs)
+        void Promise.allSettled(acceptedRequests).then(() => {
+          clearTimeout(timer)
+          resolve('drained')
+        })
+      })
+      stopPromise = drain.then(outcome => {
+        if (outcome === 'timed_out') {
+          forceCloseInFlightRequests()
+        }
+        stopSettled = true
+        if (listenerSyncClients.size === 0) {
+          notifyDisposed()
+        }
       })
 
       return await stopPromise
@@ -134,30 +213,43 @@ export function createControlSurfaceHttpListener(options: {
     dispose: async () => await listener.stopAccepting(),
   }
 
-  server.listen(options.config.port, options.config.bindHostname, () => {
-    const address = server.address()
-    if (!address || typeof address === 'string') {
-      const detail = 'Control surface listener did not return a TCP address.'
+  server.listen(
+    {
+      port: listenerConfig.port,
+      host: listenerConfig.bindHostname,
+      signal: listenAbortController.signal,
+    },
+    () => {
+      if (stopped) {
+        if (server.listening) {
+          server.close(() => undefined)
+        }
+        return
+      }
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        const detail = 'Control surface listener did not return a TCP address.'
+        if (!readySettled) {
+          readySettled = true
+          rejectReady?.(new Error(detail))
+          rejectReady = null
+          resolveReady = null
+        }
+        return
+      }
+
       if (!readySettled) {
         readySettled = true
-        rejectReady?.(new Error(detail))
-        rejectReady = null
+        resolveReady?.({
+          hostname: listenerConfig.hostname,
+          bindHostname: listenerConfig.bindHostname,
+          port: address.port,
+        })
         resolveReady = null
+        rejectReady = null
       }
-      return
-    }
-
-    if (!readySettled) {
-      readySettled = true
-      resolveReady?.({
-        hostname: options.config.hostname,
-        bindHostname: options.config.bindHostname,
-        port: address.port,
-      })
-      resolveReady = null
-      rejectReady = null
-    }
-  })
+    },
+  )
 
   return listener
 }

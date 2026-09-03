@@ -31,7 +31,7 @@ import {
 import {
   notifyTerminalDisplayMeasurementHandlesChanged,
   registerTerminalDisplayMeasurementHandle,
-} from '@contexts/settings/presentation/renderer/terminalDisplayMeasurement'
+} from '@shared/runtime/terminalDisplayMeasurementRegistry'
 import {
   installTerminalRasterScaleController,
   type TerminalRasterScaleController,
@@ -258,8 +258,7 @@ export function createMountedXtermSession({
     }
     renderer.clearTextureAtlas()
     syncTerminalSize()
-    disposeTerminalDisplayMeasurementHandle = registerTerminalDisplayMeasurementHandle({
-      nodeId,
+    disposeTerminalDisplayMeasurementHandle = registerTerminalDisplayMeasurementHandle(nodeId, {
       terminal,
       fitAddon,
       getRendererKind: () => renderer.kind,

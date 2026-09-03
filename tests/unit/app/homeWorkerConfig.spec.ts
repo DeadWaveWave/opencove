@@ -263,6 +263,72 @@ describe('home worker config', () => {
     expect((await readdir(dir)).filter(name => name.endsWith('.tmp'))).toEqual([])
   })
 
+  it('advances config revisions strictly when the clock is frozen or moves backward', async () => {
+    const dir = await createTempUserDataDir()
+    const frozen = new Date('2026-04-12T10:00:00.000Z')
+
+    const first = await mutateHomeWorkerConfigFile({
+      userDataPath: dir,
+      now: () => frozen,
+      mutate: previous => ({
+        ...previous,
+        webUi: { ...previous.webUi, enabled: true },
+      }),
+    })
+    const second = await mutateHomeWorkerConfigFile({
+      userDataPath: dir,
+      expectedUpdatedAt: first.updatedAt,
+      now: () => frozen,
+      mutate: previous => ({
+        ...previous,
+        webUi: { ...previous.webUi, port: 17771 },
+      }),
+    })
+    const third = await mutateHomeWorkerConfigFile({
+      userDataPath: dir,
+      expectedUpdatedAt: second.updatedAt,
+      now: () => new Date('2025-01-01T00:00:00.000Z'),
+      mutate: previous => ({
+        ...previous,
+        webUi: { ...previous.webUi, port: 17772 },
+      }),
+    })
+
+    expect(first.updatedAt).toBe('2026-04-12T10:00:00.000Z')
+    expect(second.updatedAt).toBe('2026-04-12T10:00:00.001Z')
+    expect(third.updatedAt).toBe('2026-04-12T10:00:00.002Z')
+  })
+
+  it('repairs malformed config revisions before the next mutation', async () => {
+    const dir = await createTempUserDataDir()
+    const configPath = resolveHomeWorkerConfigPath(dir)
+    await writeFile(
+      configPath,
+      `${JSON.stringify({
+        version: 1,
+        mode: 'standalone',
+        remote: null,
+        webUi: {
+          enabled: false,
+          port: null,
+          exposeOnLan: false,
+          passwordHash: null,
+        },
+        updatedAt: 'not-a-revision',
+      })}\n`,
+      'utf8',
+    )
+
+    expect((await ensureHomeWorkerConfig(dir)).updatedAt).toBeNull()
+    const next = await mutateHomeWorkerConfigFile({
+      userDataPath: dir,
+      expectedUpdatedAt: null,
+      now: () => new Date('2026-04-12T11:00:00.000Z'),
+      mutate: previous => previous,
+    })
+    expect(next.updatedAt).toBe('2026-04-12T11:00:00.000Z')
+  })
+
   it('rejects a stale expected config revision', async () => {
     const dir = await createTempUserDataDir()
     const previous = await setHomeWorkerWebUiSettings(dir, { enabled: true, port: 19991 })

@@ -28,6 +28,20 @@ describe('local Worker configuration response validation', () => {
     expect(normalizeHomeWorkerConfigurationSnapshot(validSnapshot())).toEqual(validSnapshot())
   })
 
+  it('preserves degraded listener admission as an explicit runtime state', () => {
+    const value = validSnapshot()
+    const degraded = {
+      ...value,
+      webAccess: {
+        ...value.webAccess,
+        state: 'degraded',
+        error: 'rollback bind failed',
+      },
+    }
+
+    expect(normalizeHomeWorkerConfigurationSnapshot(degraded).webAccess).toEqual(degraded.webAccess)
+  })
+
   it.each([
     {
       path: 'generation',

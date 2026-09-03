@@ -50,14 +50,14 @@ function normalizeWebAccessStatus(value: unknown): WorkerWebAccessRuntimeStatusD
     return { state: 'failed', generation, error: value.error, drainingGenerations }
   }
   if (
-    value.state === 'active' &&
+    (value.state === 'active' || value.state === 'degraded') &&
     isNonEmptyString(value.hostname) &&
     isNonEmptyString(value.bindHostname) &&
     isValidPort(value.port) &&
-    typeof value.passwordRequired === 'boolean'
+    typeof value.passwordRequired === 'boolean' &&
+    (value.state !== 'degraded' || isNonEmptyString(value.error))
   ) {
-    return {
-      state: 'active',
+    const common = {
       generation,
       hostname: value.hostname,
       bindHostname: value.bindHostname,
@@ -65,6 +65,9 @@ function normalizeWebAccessStatus(value: unknown): WorkerWebAccessRuntimeStatusD
       passwordRequired: value.passwordRequired,
       drainingGenerations,
     }
+    return value.state === 'degraded'
+      ? { state: 'degraded', ...common, error: value.error as string }
+      : { state: 'active', ...common }
   }
   return null
 }

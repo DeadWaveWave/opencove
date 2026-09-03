@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  createAutomaticTerminalDisplayCalibration,
+  createTerminalDisplayCalibrationFromCandidate,
   runTerminalDisplayCalibrationSingleFlight,
 } from '../../../src/contexts/settings/application/terminalDisplayAutoCalibration'
 import type { TerminalDisplayReference } from '../../../src/contexts/settings/domain/terminalDisplayCalibration'
 
 const reference: TerminalDisplayReference = {
   version: 1,
+  capture: { algorithmVersion: 1, rendererKind: 'webgl' },
   measurement: {
     fontSize: 13,
     fontFamily: 'monospace',
@@ -36,7 +37,7 @@ function result(overrides: Record<string, unknown> = {}) {
 describe('terminal display automatic calibration policy', () => {
   it('accepts a close candidate only when it preserves the reference grid and cell metrics', () => {
     expect(
-      createAutomaticTerminalDisplayCalibration({
+      createTerminalDisplayCalibrationFromCandidate({
         profileKey: 'profile',
         reference,
         result: result(),
@@ -50,31 +51,46 @@ describe('terminal display automatic calibration policy', () => {
     })
   })
 
+  it('rejects a legacy reference before candidate acceptance', () => {
+    const legacyReference: TerminalDisplayReference = {
+      version: 1,
+      measurement: reference.measurement,
+    }
+
+    expect(
+      createTerminalDisplayCalibrationFromCandidate({
+        profileKey: 'profile',
+        reference: legacyReference,
+        result: result(),
+      }),
+    ).toBeNull()
+  })
+
   it('rejects a wrong grid, low-quality result, or excessive cell delta', () => {
     const wrongGrid = result({
       measurement: { ...reference.measurement, cols: 79 },
     })
-    const lowQuality = result({ score: 101 })
+    const lowQuality = result({ score: 3032.5 })
     const wrongCell = result({
       measurement: { ...reference.measurement, cssCellWidth: 7.86 },
     })
 
     expect(
-      createAutomaticTerminalDisplayCalibration({
+      createTerminalDisplayCalibrationFromCandidate({
         profileKey: 'profile',
         reference,
         result: wrongGrid,
       }),
     ).toBeNull()
     expect(
-      createAutomaticTerminalDisplayCalibration({
+      createTerminalDisplayCalibrationFromCandidate({
         profileKey: 'profile',
         reference,
         result: lowQuality,
       }),
     ).toBeNull()
     expect(
-      createAutomaticTerminalDisplayCalibration({
+      createTerminalDisplayCalibrationFromCandidate({
         profileKey: 'profile',
         reference,
         result: wrongCell,

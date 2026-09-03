@@ -3,6 +3,7 @@ import { buildNodeEvalCommand, launchApp, testWorkspacePath } from './workspace-
 
 type PersistedTerminalDisplayReference = {
   version: 1
+  capture?: { algorithmVersion: 1; rendererKind: 'dom' | 'webgl' }
   measurement: {
     fontSize: number
     lineHeight: number
@@ -22,9 +23,10 @@ const nodeId = 'node-terminal-display-reference'
 async function seedZoomedWorkspace(
   window: Awaited<ReturnType<typeof launchApp>>['window'],
   initialCompensationEnabled = true,
+  initialReference: unknown = null,
 ) {
   const result = await window.evaluate(
-    async ({ seededWorkspaceId, seededNodeId, workspacePath, compensationEnabled }) => {
+    async ({ seededWorkspaceId, seededNodeId, workspacePath, compensationEnabled, reference }) => {
       return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
         raw: JSON.stringify({
           formatVersion: 1,
@@ -75,7 +77,7 @@ async function seedZoomedWorkspace(
             terminalFontFamily: null,
             terminalDisplayAutoReferenceEnabled: true,
             terminalDisplayCalibrationCompensationEnabled: compensationEnabled,
-            terminalDisplayReference: null,
+            terminalDisplayReference: reference,
           },
         }),
       })
@@ -85,6 +87,7 @@ async function seedZoomedWorkspace(
       seededNodeId: nodeId,
       workspacePath: testWorkspacePath,
       compensationEnabled: initialCompensationEnabled,
+      reference: initialReference,
     },
   )
 
@@ -120,6 +123,63 @@ async function readPersistedTerminalDisplayReference(
 }
 
 test.describe('Settings - Terminal Display Calibration', () => {
+  test('automatically refreshes a legacy reference from its Desktop anchor', async () => {
+    const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
+    const legacyMeasuredAt = '2026-08-30T15:25:51.328Z'
+
+    try {
+      await seedZoomedWorkspace(window, true, {
+        version: 1,
+        measurement: {
+          fontSize: 13,
+          fontFamily: null,
+          lineHeight: 1,
+          letterSpacing: 0,
+          cols: 79,
+          rows: 24,
+          cssCellWidth: 7.825,
+          cssCellHeight: 15,
+          effectiveDpr: 2,
+          windowDevicePixelRatio: 2,
+          visualViewportScale: 1,
+          runtime: 'desktop',
+          measuredAt: legacyMeasuredAt,
+        },
+      })
+      await window.reload({ waitUntil: 'domcontentloaded' })
+      await expect(window.locator('.terminal-node .xterm').first()).toBeVisible()
+
+      let refreshed: PersistedTerminalDisplayReference = null
+      await expect
+        .poll(
+          async () => {
+            refreshed = await readPersistedTerminalDisplayReference(window)
+            return refreshed?.capture?.algorithmVersion ?? null
+          },
+          { timeout: 15_000 },
+        )
+        .toBe(1)
+
+      expect(refreshed?.measurement.measuredAt).not.toBe(legacyMeasuredAt)
+      expect(refreshed?.measurement.fontSize).toBe(13)
+      expect(refreshed?.capture?.rendererKind).toMatch(/^(dom|webgl)$/)
+      if (
+        process.platform === 'darwin' &&
+        refreshed?.capture?.rendererKind === 'webgl' &&
+        refreshed.measurement.effectiveDpr === 2
+      ) {
+        expect(refreshed.measurement).toMatchObject({
+          cols: 82,
+          rows: 24,
+          cssCellWidth: 7.5,
+          cssCellHeight: 15,
+        })
+      }
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('automatic shared reference matches manual capture in a zoomed workspace', async () => {
     const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
 
@@ -168,6 +228,8 @@ test.describe('Settings - Terminal Display Calibration', () => {
 
       expect(automaticReference).not.toBeNull()
       expect(manualReference).not.toBeNull()
+      expect(automaticReference?.capture).toMatchObject({ algorithmVersion: 1 })
+      expect(manualReference?.capture).toEqual(automaticReference?.capture)
       expect(manualReference?.measurement.fontSize).toBe(automaticReference?.measurement.fontSize)
       expect(manualReference?.measurement.lineHeight).toBe(
         automaticReference?.measurement.lineHeight,

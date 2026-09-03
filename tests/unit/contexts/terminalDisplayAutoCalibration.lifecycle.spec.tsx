@@ -6,6 +6,7 @@ import {
   clearTerminalClientDisplayCalibration,
   readTerminalDisplayCalibrationStorageMetadata,
   TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY,
+  writeTerminalClientDisplayCalibration,
 } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayCalibrationStorage'
 
 const mocks = vi.hoisted(() => ({
@@ -23,9 +24,14 @@ vi.mock('../../../src/contexts/settings/presentation/renderer/terminalDisplayMea
 }))
 
 import { useTerminalClientDisplayAutoCalibration } from '../../../src/contexts/settings/presentation/renderer/useTerminalClientDisplayAutoCalibration'
+import {
+  readTerminalDisplayCalibrationAttempt,
+  resetTerminalDisplayCalibrationAttemptForTests,
+} from '../../../src/contexts/settings/presentation/renderer/terminalDisplayCalibrationDiagnostics'
 
 const reference: TerminalDisplayReference = {
   version: 1,
+  capture: { algorithmVersion: 1, rendererKind: 'dom' },
   measurement: {
     fontSize: 13,
     fontFamily: null,
@@ -94,6 +100,7 @@ function candidate() {
 describe('useTerminalClientDisplayAutoCalibration', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    resetTerminalDisplayCalibrationAttemptForTests()
     mocks.resolveEnvironment.mockReset().mockResolvedValue(environment('environment-one'))
     mocks.calibrate.mockReset().mockResolvedValue(candidate())
     installBrowserPrimitives()
@@ -103,6 +110,24 @@ describe('useTerminalClientDisplayAutoCalibration', () => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
     window.localStorage.clear()
+  })
+
+  it('reports a legacy reference as unavailable without running measurement', async () => {
+    renderHook(() =>
+      useTerminalClientDisplayAutoCalibration({
+        enabled: true,
+        agentSettings: {
+          ...settings(),
+          terminalDisplayReference: { version: 1, measurement: reference.measurement },
+        },
+      }),
+    )
+
+    await waitFor(() =>
+      expect(readTerminalDisplayCalibrationAttempt()?.outcome).toBe('reference-unavailable'),
+    )
+    expect(mocks.resolveEnvironment).not.toHaveBeenCalled()
+    expect(mocks.calibrate).not.toHaveBeenCalled()
   })
 
   it('automatically persists one high-confidence local calibration', async () => {
@@ -117,6 +142,45 @@ describe('useTerminalClientDisplayAutoCalibration', () => {
     expect(readTerminalDisplayCalibrationStorageMetadata()).toEqual({
       environmentSignature: 'environment-one',
       source: 'automatic',
+    })
+  })
+
+  it('replaces a stored low-confidence result instead of treating it as calibrated', async () => {
+    writeTerminalClientDisplayCalibration(
+      {
+        version: 1,
+        profileKey: JSON.stringify({ fontSize: 13, fontFamily: null }),
+        fontSize: 13,
+        lineHeight: 1,
+        letterSpacing: 0,
+        target: {
+          cols: reference.measurement.cols,
+          rows: reference.measurement.rows,
+          cssCellWidth: reference.measurement.cssCellWidth,
+          cssCellHeight: reference.measurement.cssCellHeight,
+          effectiveDpr: reference.measurement.effectiveDpr,
+        },
+        measured: {
+          cols: reference.measurement.cols + 3,
+          rows: reference.measurement.rows,
+          cssCellWidth: reference.measurement.cssCellWidth - 0.3,
+          cssCellHeight: reference.measurement.cssCellHeight,
+          effectiveDpr: reference.measurement.effectiveDpr,
+        },
+        score: 3032.5,
+        measuredAt: '2026-08-31T00:00:00.000Z',
+      },
+      { environmentSignature: 'environment-one', source: 'manual' },
+    )
+
+    renderHook(() =>
+      useTerminalClientDisplayAutoCalibration({ enabled: true, agentSettings: settings() }),
+    )
+
+    await waitFor(() => expect(mocks.calibrate).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      const raw = window.localStorage.getItem(TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY)
+      expect(raw ? (JSON.parse(raw) as { score: number }).score : null).toBe(0.5)
     })
   })
 

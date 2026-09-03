@@ -204,7 +204,12 @@ export function createControlSurfaceHttpRuntime(
         syncClients.clear()
 
         ptyStreamService.freezeIngress()
-        await Promise.all([...listeners].map(async listener => await listener.stopAccepting()))
+        await Promise.all(
+          [...listeners].map(async listener => {
+            await listener.stopAccepting()
+            listener.closeStreamingClients()
+          }),
+        )
 
         try {
           await terminalAgents.dispose()

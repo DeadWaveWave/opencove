@@ -9,11 +9,14 @@ export const zhCNTerminalDisplayCalibration = {
   referenceLabel: '共享参考目标',
   referenceEmpty: '尚未保存目标。系统会自动使用第一个打开的终端，你也可以手动设置当前设备。',
   referenceEmptyAutoOff: '尚未保存目标。自动设置已关闭，你可以在准备好后手动设置当前设备。',
-  referenceStale: '已保存的目标属于另一套终端字体设置。校准前需要重新设置目标。',
+  referenceStale:
+    '已保存目标来自旧测量方式或另一套终端字体设置。保持参考端打开可自动刷新，也可以重新设置目标。',
   referenceSummary: '{{cols}}×{{rows}} 单元格，单元格 {{cellWidth}}×{{cellHeight}} px。',
   setReference: '将当前设备设为目标',
   clientLabel: '当前设备',
   clientDefault: '当前设备没有保存的调整，会直接使用共享终端字体。',
+  clientCalibrationUnavailable:
+    '当前设备存在无法安全匹配参考目标的旧调整。你可以清除它，或等待自动校准替换。',
   clientCalibrated:
     '已启用保存的调整：字体 {{fontSize}}px，行高 {{lineHeight}}。匹配度：{{quality}}。',
   clientCalibrationPaused:
@@ -31,6 +34,8 @@ export const zhCNTerminalDisplayCalibration = {
   referenceSaved: '目标已保存。打开另一端后可按这个目标校准该设备。',
   referenceRequired: '校准当前设备前，需要先设置共享目标。',
   calibrationSaved: '当前设备调整已保存。匹配度：{{quality}}。',
+  calibrationUnmatchable:
+    '当前渲染器无法安全匹配参考目标，未应用任何调整。匹配度：{{quality}}。请刷新或重新设置共享目标。',
   resetDone: '已清除当前设备保存的终端显示调整。',
   diagnosticsCopied: '终端显示诊断已复制。',
   measureFailed: '无法测量当前设备的终端显示指标。',
