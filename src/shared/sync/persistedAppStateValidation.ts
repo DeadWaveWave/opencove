@@ -1,9 +1,9 @@
 import type {
-  PersistedAppState,
-  PersistedTerminalNode,
-  PersistedWorkspaceState,
-  WorkspaceSpaceState,
-} from '@contexts/workspace/presentation/renderer/types'
+  PersistedAppStateContract,
+  PersistedNodeContract,
+  PersistedSpaceContract,
+  PersistedWorkspaceContract,
+} from '@shared/contracts/persistedAppState'
 
 const WORKSPACE_NODE_KINDS = new Set([
   'terminal',
@@ -51,7 +51,7 @@ function isRectOrNull(value: unknown): boolean {
   )
 }
 
-function isPersistedNode(value: unknown): value is PersistedTerminalNode {
+function isPersistedNode(value: unknown): value is PersistedNodeContract {
   if (!isRecord(value)) {
     return false
   }
@@ -75,7 +75,7 @@ function isPersistedNode(value: unknown): value is PersistedTerminalNode {
   )
 }
 
-function isPersistedSpace(value: unknown): value is WorkspaceSpaceState {
+function isPersistedSpace(value: unknown): value is PersistedSpaceContract {
   if (!isRecord(value)) {
     return false
   }
@@ -94,7 +94,7 @@ function hasUniqueIds(values: readonly { id: string }[]): boolean {
   return new Set(values.map(value => value.id)).size === values.length
 }
 
-function isPersistedWorkspace(value: unknown): value is PersistedWorkspaceState {
+function isPersistedWorkspace(value: unknown): value is PersistedWorkspaceContract {
   if (!isRecord(value) || !Array.isArray(value.nodes) || !Array.isArray(value.spaces)) {
     return false
   }
@@ -125,7 +125,7 @@ function isPersistedWorkspace(value: unknown): value is PersistedWorkspaceState 
   )
 }
 
-export function isPersistedAppState(value: unknown): value is PersistedAppState {
+export function isPersistedAppState(value: unknown): value is PersistedAppStateContract {
   if (!isRecord(value) || !Array.isArray(value.workspaces)) {
     return false
   }

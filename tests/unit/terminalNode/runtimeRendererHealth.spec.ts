@@ -3,7 +3,12 @@ import {
   registerRuntimeTerminalRendererHealth,
   resolveTerminalRendererHealthIssue,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/runtimeRendererHealth'
-import { installFitAddonDetachedRendererGuard } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/renderServiceSafety'
+import {
+  hasPendingDetachedTerminalRendererReadForTests,
+  installFitAddonDetachedRendererGuard,
+  readTerminalRenderDimensionsSafely,
+  simulateDetachedTerminalRendererReadOnceForTests,
+} from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/renderServiceSafety'
 
 class MockResizeObserver {
   public observe = vi.fn()
@@ -164,6 +169,20 @@ describe('runtime renderer health', () => {
       trigger: 'mutation',
       forceDom: true,
     })
+  })
+
+  it('injects a detached-renderer observation only through the guarded application read', () => {
+    const dimensions = { css: { canvas: { width: 640, height: 320 } } }
+    const terminal = {
+      _core: { _renderService: { dimensions } },
+    } as never
+
+    simulateDetachedTerminalRendererReadOnceForTests(terminal)
+
+    expect(hasPendingDetachedTerminalRendererReadForTests(terminal)).toBe(true)
+    expect(readTerminalRenderDimensionsSafely(terminal)).toBeNull()
+    expect(hasPendingDetachedTerminalRendererReadForTests(terminal)).toBe(false)
+    expect(readTerminalRenderDimensionsSafely(terminal)).toBe(dimensions)
   })
 
   it('guards fit measurements during a transient detached renderer read', () => {

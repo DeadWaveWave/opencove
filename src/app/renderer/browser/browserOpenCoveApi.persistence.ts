@@ -1,12 +1,12 @@
 import { toAppErrorDescriptor } from '@shared/errors/appError'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import { isPersistedAppState, mergePersistedAppStates } from './browserOpenCoveApi.helpers'
-import type { PersistedAppState } from '@contexts/workspace/presentation/renderer/types'
+import type { PersistedAppStateContract } from '@shared/contracts/persistedAppState'
 
 type PersistenceApi = Window['opencoveApi']['persistence']
 
 let lastKnownSyncRevision: number | null = null
-let lastKnownSyncState: PersistedAppState | null = null
+let lastKnownSyncState: PersistedAppStateContract | null = null
 
 function setLastKnownSyncRevision(value: unknown): void {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {

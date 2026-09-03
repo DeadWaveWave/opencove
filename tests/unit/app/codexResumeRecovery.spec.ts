@@ -115,7 +115,7 @@ describe('codex resume writer recovery', () => {
         [
           '-MFcntl=:flock',
           '-e',
-          '$|=1; open my $fh, ">>", $ARGV[0] or die $!; flock($fh, LOCK_EX) or die $!; print "ready\\n"; select undef, undef, undef, 0.4;',
+          '$|=1; open my $fh, ">>", $ARGV[0] or die $!; flock($fh, LOCK_EX) or die $!; print "ready\\n"; select undef, undef, undef, 3;',
           lockPath,
         ],
         { stdio: ['ignore', 'pipe', 'pipe'] },
@@ -137,7 +137,7 @@ describe('codex resume writer recovery', () => {
         await expect(
           waitForCodexWriterLockRelease({
             resumeSessionId: 'thread-real',
-            maxWaitMs: 2_000,
+            maxWaitMs: 5_000,
             pollIntervalMs: 50,
             probe: async resumeSessionId =>
               await probeCodexWriterLock({ resumeSessionId, codexHome }),
@@ -148,6 +148,6 @@ describe('codex resume writer recovery', () => {
         await rm(codexHome, { recursive: true, force: true })
       }
     },
-    5_000,
+    8_000,
   )
 })

@@ -163,6 +163,25 @@ describe('architecture rules audit', () => {
     ])
   })
 
+  it('keeps shared contracts independent from context layers, including type-only imports', async () => {
+    const root = await createFixture({
+      'src/shared/contracts/state.ts':
+        "import type { ViewState } from '@contexts/workspace/presentation/renderer/types'\nexport type State = ViewState\n",
+      'src/contexts/workspace/presentation/renderer/types.ts':
+        'export type ViewState = { id: string }\n',
+    })
+
+    const report = await runArchitectureAudit({ root })
+    expect(report.violations).toEqual([
+      expect.objectContaining({
+        ruleId: 'architecture.sharedNoContextDependency',
+        severity: 'error',
+        file: 'src/shared/contracts/state.ts',
+        found: '@contexts/workspace/presentation/renderer/types',
+      }),
+    ])
+  })
+
   it('allows explicit forbidden rules to ignore type-only imports', async () => {
     const root = await createFixture({
       'src/contexts/workspace/domain/model.ts':

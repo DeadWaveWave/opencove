@@ -44,7 +44,7 @@ pnpm arch:results:check
 
 ## 规则语义
 
-`layerDependencies.ignoreTypeOnly` 只影响层级依赖检查，用于在手动基线阶段降低纯类型跨层边的噪声。`forbiddenImportSpecifiers` 默认仍会检查 type-only import，因为 `electron`、`react`、`node:`、`@app/` 这类规则表达的是禁止外层/runtime/framework 耦合；只有规则显式设置 `ignoreTypeOnly: true` 时才会跳过 type-only 边。
+`layerDependencies.ignoreTypeOnly` 只影响层级依赖检查，用于在手动基线阶段降低纯类型跨层边的噪声。`forbiddenImportSpecifiers` 默认仍会检查 type-only import，因为 `electron`、`react`、`node:`、`@app/` 这类规则表达的是禁止外层/runtime/framework 耦合；只有规则显式设置 `ignoreTypeOnly: true` 时才会跳过 type-only 边。`architecture.sharedNoContextDependency` 专门禁止 `shared` 通过 runtime 或 type-only import 反向依赖任何 context。
 
 ## 架构契约变更清单
 

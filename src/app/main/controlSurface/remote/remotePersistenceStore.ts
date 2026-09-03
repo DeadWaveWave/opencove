@@ -13,7 +13,7 @@ import {
   isPersistedAppState,
   mergePersistedAppStates,
 } from '../../../../shared/sync/mergePersistedAppStates'
-import type { PersistedAppState } from '../../../../contexts/workspace/presentation/renderer/types'
+import type { PersistedAppStateContract } from '../../../../shared/contracts/persistedAppState'
 import type {
   PersistenceRecoveryReason,
   PersistenceStore,
@@ -51,7 +51,7 @@ function createRemoteReadUnavailableError(error: unknown, fallback: string) {
 
 type RemoteAppStateSnapshot = {
   revision: number
-  state: PersistedAppState | null
+  state: PersistedAppStateContract | null
 }
 
 function requireRemoteAppStateSnapshot(value: unknown): RemoteAppStateSnapshot {
@@ -169,7 +169,7 @@ export function createRemotePersistenceStore(
   endpointResolver: ControlSurfaceRemoteEndpointResolver,
 ): PersistenceStore {
   let lastKnownSyncRevision: number | null = null
-  let lastKnownSyncState: PersistedAppState | null = null
+  let lastKnownSyncState: PersistedAppStateContract | null = null
 
   function setLastKnownSyncRevision(value: unknown): void {
     if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {

@@ -1,14 +1,22 @@
 import type {
-  PersistedAppState,
-  PersistedTerminalNode,
-  PersistedWorkspaceState,
-  TaskNodeData,
-  WorkspaceSpaceState,
-} from '@contexts/workspace/presentation/renderer/types'
+  PersistedAppStateContract as PersistedAppState,
+  PersistedNodeContract as PersistedTerminalNode,
+  PersistedSpaceContract as WorkspaceSpaceState,
+  PersistedWorkspaceContract as PersistedWorkspaceState,
+} from '@shared/contracts/persistedAppState'
 import { isSpaceBoundaryEqual } from './spaceBoundaryEquality'
 import { mergeSnapshotField } from './mergeSnapshotField'
 import { areNodeWorkerBindingsEqual } from '../types/nodeWorkerBinding'
 export { isPersistedAppState } from './persistedAppStateValidation'
+
+type TaskNodeData = {
+  requirement: string
+  status: string
+  priority: string
+  tags: unknown[]
+  agentSessions: unknown[]
+  linkedAgentNodeId?: unknown
+}
 
 function mergeNodes(
   baseNodes: PersistedTerminalNode[],
