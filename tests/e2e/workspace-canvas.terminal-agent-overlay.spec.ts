@@ -16,12 +16,11 @@ type MetadataTestWindow = typeof window & {
   __opencoveTerminalAgentMetadata?: TerminalSessionMetadataEvent[]
 }
 
-function hasCompleteTerminalAgentMetadata(event: TerminalSessionMetadataEvent): boolean {
+function hasVerifiedTerminalAgentMetadata(event: TerminalSessionMetadataEvent): boolean {
   return (
     typeof event.sessionId === 'string' &&
     typeof event.resumeSessionId === 'string' &&
-    event.terminalAgentActivity !== null &&
-    event.terminalAgentActivity !== undefined
+    event.terminalAgentActivity?.identityAuthority === 'provider_session_start'
   )
 }
 
@@ -265,7 +264,7 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
       await window.keyboard.press('Enter')
       await expectOverlayStubReady(terminal, 'codex')
       await expect
-        .poll(async () => (await readCapturedEvents()).some(hasCompleteTerminalAgentMetadata))
+        .poll(async () => (await readCapturedEvents()).some(hasVerifiedTerminalAgentMetadata))
         .toBe(true)
       const capturedEvents = await readCapturedEvents()
       expect(capturedEvents).toContainEqual(
@@ -278,7 +277,7 @@ test.describe('Workspace Canvas - Terminal agent overlay', () => {
           }),
         }),
       )
-      const sessionStartEvent = capturedEvents.find(hasCompleteTerminalAgentMetadata)
+      const sessionStartEvent = capturedEvents.find(hasVerifiedTerminalAgentMetadata)
       expect(sessionStartEvent).toBeDefined()
       if (!sessionStartEvent) {
         throw new Error('Expected complete terminal agent metadata after readiness')

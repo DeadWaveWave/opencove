@@ -71,6 +71,43 @@ describe('agent launch startup observation', () => {
     ).rejects.toThrow('active writer')
   })
 
+  it('extends the bounded drain when exit wins the race with active-writer output', async () => {
+    vi.useFakeTimers()
+    let dataListener: ((event: { sessionId: string; data: string }) => void) | null = null
+    let exitListener: ((event: { sessionId: string; exitCode: number }) => void) | null = null
+    const ptyRuntime = {
+      onData: vi.fn((listener: typeof dataListener) => {
+        dataListener = listener
+        return vi.fn()
+      }),
+      onExit: vi.fn((listener: typeof exitListener) => {
+        exitListener = listener
+        return vi.fn()
+      }),
+      kill: vi.fn(),
+    }
+
+    try {
+      const pending = launchAgentWithStartupObservation({
+        launch: async () => ({ sessionId: 'failed-session' }),
+        ptyRuntime,
+        observationMs: 200,
+      })
+      const rejection = expect(pending).rejects.toThrow('active writer')
+      await vi.advanceTimersByTimeAsync(190)
+      exitListener?.({ sessionId: 'failed-session', exitCode: 1 })
+      await vi.advanceTimersByTimeAsync(310)
+      dataListener?.({
+        sessionId: 'failed-session',
+        data: 'thread already has an active writer (-32600)',
+      })
+
+      await rejection
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('returns a still-running launch after the bounded observation window', async () => {
     vi.useFakeTimers()
     const disposeData = vi.fn()

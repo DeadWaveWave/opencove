@@ -2,6 +2,7 @@ import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import { isCodexActiveWriterError } from './codexResumeRecovery'
 
 const MAX_STARTUP_OBSERVATION_MS = 2_000
+const POST_EXIT_OUTPUT_DRAIN_MS = 1_000
 
 type StartupPtyRuntime = Pick<ControlSurfacePtyRuntime, 'onData' | 'onExit' | 'kill'>
 
@@ -23,6 +24,7 @@ export async function launchAgentWithStartupObservation<
   const exitedSessionIds = new Set<string>()
   let observedSessionId: string | null = null
   let resolveObservation: (() => void) | null = null
+  let armObservationTimer: ((delayMs: number) => void) | null = null
   let timer: NodeJS.Timeout | null = null
 
   const signalObservation = (sessionId: string): void => {
@@ -38,6 +40,9 @@ export async function launchAgentWithStartupObservation<
   })
   const disposeExit = options.ptyRuntime.onExit(event => {
     exitedSessionIds.add(event.sessionId)
+    if (observedSessionId === event.sessionId) {
+      armObservationTimer?.(POST_EXIT_OUTPUT_DRAIN_MS)
+    }
     signalObservation(event.sessionId)
   })
 
@@ -49,21 +54,36 @@ export async function launchAgentWithStartupObservation<
     if (observationMs > 0) {
       await new Promise<void>(resolvePromise => {
         let settled = false
+        const hardDeadlineMs = Date.now() + MAX_STARTUP_OBSERVATION_MS
         const settle = (): void => {
           if (settled) {
             return
           }
           settled = true
           resolveObservation = null
+          armObservationTimer = null
           if (timer) {
             clearTimeout(timer)
             timer = null
           }
           resolvePromise()
         }
+        const armTimer = (delayMs: number): void => {
+          if (settled) {
+            return
+          }
+          if (timer) {
+            clearTimeout(timer)
+          }
+          const remainingMs = Math.max(0, hardDeadlineMs - Date.now())
+          timer = setTimeout(settle, Math.min(delayMs, remainingMs))
+          timer.unref()
+        }
         resolveObservation = settle
-        timer = setTimeout(settle, observationMs)
-        timer.unref()
+        armObservationTimer = armTimer
+        armTimer(
+          exitedSessionIds.has(launched.sessionId) ? POST_EXIT_OUTPUT_DRAIN_MS : observationMs,
+        )
         signalObservation(launched.sessionId)
       })
     }
@@ -86,6 +106,7 @@ export async function launchAgentWithStartupObservation<
       clearTimeout(timer)
     }
     resolveObservation = null
+    armObservationTimer = null
     disposeData()
     disposeExit()
   }
