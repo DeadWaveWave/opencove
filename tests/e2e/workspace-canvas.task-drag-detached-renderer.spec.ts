@@ -108,12 +108,31 @@ test.describe('Workspace Canvas - Task Drag Renderer Recovery', () => {
           )
         })
         expect(injected).toBe(true)
+        expect(
+          await window.evaluate(
+            () =>
+              window.__opencoveTerminalSelectionTestApi?.hasPendingDetachedRendererRead?.(
+                'drag-crash-terminal',
+              ) ?? null,
+          ),
+        ).toBe(true)
 
         await drag.moveTo({ x: targetBox.x + 260, y: targetBox.y + 220 })
       } finally {
         await drag.release()
       }
 
+      await expect
+        .poll(
+          async () =>
+            await window.evaluate(
+              () =>
+                window.__opencoveTerminalSelectionTestApi?.hasPendingDetachedRendererRead?.(
+                  'drag-crash-terminal',
+                ) ?? null,
+            ),
+        )
+        .toBe(false)
       await expect(window.getByRole('heading', { name: '出现异常' })).toHaveCount(0)
       await expect(taskNode).toBeVisible()
       await expect(terminalNode).toBeVisible()

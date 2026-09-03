@@ -68,6 +68,9 @@ Invariants:
     against `onExit`. If output completion wins that gap, neither Agent launch state, routing entries
     nor launch-artifact ownership may be installed; temporary artifacts are rolled back. If the
     registering owner was disposed instead, only the exact returned session may be retired.
+12. Explicit session kill transitions active ownership to terminating ownership. Trailing data remains
+    ordered and the first real session exit still reaches Hub, registration, and artifact-cleanup
+    listeners. Silent tombstoning is reserved for an exact unowned late spawn, not an owned kill.
 
 The transport remains the supervisor-owned child IPC channel. The instance fence is lifecycle and
 correlation integrity, not socket/network authentication; no parallel network authority is added.

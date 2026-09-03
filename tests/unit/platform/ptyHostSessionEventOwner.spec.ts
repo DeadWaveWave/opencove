@@ -29,6 +29,23 @@ describe('PTY host session event owner', () => {
     expect(owner.has('session-1')).toBe(false)
   })
 
+  it('keeps an explicitly killed session owned through trailing data and real exit', () => {
+    const { owner, events } = createFixture()
+    owner.resolveSpawn('session-killed', true)
+
+    expect(owner.beginTermination('session-killed')).toBe(true)
+    expect(owner.has('session-killed')).toBe(false)
+    owner.observeData({ sessionId: 'session-killed', data: 'trailing output' })
+    owner.observeExit({ sessionId: 'session-killed', exitCode: 143 })
+    owner.observeExit({ sessionId: 'session-killed', exitCode: 143 })
+
+    expect(events).toEqual([
+      { type: 'data', value: 'trailing output' },
+      { type: 'exit', value: 143 },
+    ])
+    expect(owner.beginTermination('session-killed')).toBe(false)
+  })
+
   it('clears owned sessions during intentional supervisor disposal without publishing exits', () => {
     const { owner, events } = createFixture()
     owner.resolveSpawn('session-1', true)

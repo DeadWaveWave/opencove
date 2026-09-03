@@ -39,6 +39,7 @@ type TerminalOptionsIntrospection = {
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
   simulateDetachedRendererOnce: (nodeId: string) => boolean
+  hasPendingDetachedRendererRead: (nodeId: string) => boolean | null
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
   getFontOptions: (nodeId: string) => {
     fontSize: number | null
@@ -112,6 +113,12 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
 
         simulateDetachedTerminalRendererReadOnceForTests(terminal as Terminal)
         return hasPendingDetachedTerminalRendererReadForTests(terminal as Terminal)
+      },
+      hasPendingDetachedRendererRead: nodeId => {
+        const terminal = terminalHandles.get(nodeId)
+        return terminal
+          ? hasPendingDetachedTerminalRendererReadForTests(terminal as Terminal)
+          : null
       },
       getCellCenter: (nodeId, col, row) => {
         const terminal = terminalHandles.get(nodeId)

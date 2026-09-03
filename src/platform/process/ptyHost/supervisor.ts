@@ -445,7 +445,9 @@ export class PtyHostSupervisor {
   }
 
   public kill(sessionId: string): void {
-    this.sessionEvents.retire(sessionId)
+    if (!this.sessionEvents.beginTermination(sessionId)) {
+      return
+    }
     postIdentifiedPtyHostMessage(
       this.process,
       this.hostInstanceId,

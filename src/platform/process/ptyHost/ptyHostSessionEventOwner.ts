@@ -5,6 +5,7 @@ type PendingSessionEvents = {
 
 export class PtyHostSessionEventOwner {
   private readonly activeSessionIds = new Set<string>()
+  private readonly terminatingSessionIds = new Set<string>()
   private readonly completedSessionIds = new Set<string>()
   private readonly pendingBySessionId = new Map<string, PendingSessionEvents>()
 
@@ -25,7 +26,11 @@ export class PtyHostSessionEventOwner {
       this.activate(sessionId)
       return
     }
-    if (this.activeSessionIds.has(sessionId) || this.completedSessionIds.has(sessionId)) {
+    if (
+      this.activeSessionIds.has(sessionId) ||
+      this.terminatingSessionIds.has(sessionId) ||
+      this.completedSessionIds.has(sessionId)
+    ) {
       return
     }
     this.retire(sessionId)
@@ -33,6 +38,9 @@ export class PtyHostSessionEventOwner {
   }
 
   public activate(sessionId: string): void {
+    if (this.terminatingSessionIds.has(sessionId)) {
+      return
+    }
     if (this.completedSessionIds.has(sessionId)) {
       this.callbacks.retireUnowned(sessionId)
       return
@@ -57,7 +65,10 @@ export class PtyHostSessionEventOwner {
     if (this.completedSessionIds.has(event.sessionId)) {
       return
     }
-    if (this.activeSessionIds.has(event.sessionId)) {
+    if (
+      this.activeSessionIds.has(event.sessionId) ||
+      this.terminatingSessionIds.has(event.sessionId)
+    ) {
       this.callbacks.emitData(event)
       return
     }
@@ -71,7 +82,10 @@ export class PtyHostSessionEventOwner {
     if (this.completedSessionIds.has(event.sessionId)) {
       return
     }
-    if (this.activeSessionIds.delete(event.sessionId)) {
+    if (
+      this.activeSessionIds.delete(event.sessionId) ||
+      this.terminatingSessionIds.delete(event.sessionId)
+    ) {
       this.completedSessionIds.add(event.sessionId)
       this.callbacks.emitExit(event)
       return
@@ -79,14 +93,24 @@ export class PtyHostSessionEventOwner {
     this.getOrCreatePending(event.sessionId).exitCode = event.exitCode
   }
 
+  public beginTermination(sessionId: string): boolean {
+    if (!this.activeSessionIds.delete(sessionId)) {
+      return false
+    }
+    this.terminatingSessionIds.add(sessionId)
+    return true
+  }
+
   public retire(sessionId: string): void {
     this.activeSessionIds.delete(sessionId)
+    this.terminatingSessionIds.delete(sessionId)
     this.pendingBySessionId.delete(sessionId)
     this.completedSessionIds.add(sessionId)
   }
 
   public failAll(exitCode: number): void {
-    for (const sessionId of this.activeSessionIds) {
+    const ownedSessionIds = new Set([...this.activeSessionIds, ...this.terminatingSessionIds])
+    for (const sessionId of ownedSessionIds) {
       this.callbacks.emitExit({ sessionId, exitCode })
     }
     this.clear()
@@ -94,6 +118,7 @@ export class PtyHostSessionEventOwner {
 
   public clear(): void {
     this.activeSessionIds.clear()
+    this.terminatingSessionIds.clear()
     this.completedSessionIds.clear()
     this.pendingBySessionId.clear()
   }
