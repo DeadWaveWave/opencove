@@ -1,15 +1,15 @@
 import type {
-  PersistedAppStateContract,
-  PersistedNodeContract as PersistedTerminalNode,
-  PersistedSpaceContract as WorkspaceSpaceState,
-  PersistedWorkspaceContract as PersistedWorkspaceState,
-} from '@shared/contracts/persistedAppState'
+  NormalizedPersistedAppStateContract,
+  NormalizedPersistedNodeContract as PersistedTerminalNode,
+  NormalizedPersistedSpaceContract as WorkspaceSpaceState,
+  NormalizedPersistedWorkspaceContract as PersistedWorkspaceState,
+} from '@shared/contracts/normalizedPersistedAppState'
 import { isSpaceBoundaryEqual } from './spaceBoundaryEquality'
 import { mergeSnapshotField } from './mergeSnapshotField'
 import { areNodeWorkerBindingsEqual } from '../types/nodeWorkerBinding'
 export { isPersistedAppState } from './persistedAppStateValidation'
 
-type PersistedAppState<TSettings extends object> = PersistedAppStateContract<TSettings>
+type PersistedAppState<TSettings extends object> = NormalizedPersistedAppStateContract<TSettings>
 
 type TaskNodeData = {
   requirement: string

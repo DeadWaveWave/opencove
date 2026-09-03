@@ -68,11 +68,12 @@ Renderer 用默认空状态覆盖原 DB。对任何会让读取失败回落到 `
 证明不会静默覆盖已有 durable state 的测试或断言。远端写入使用的 preflight 与 conflict
 snapshot 必须完整校验 revision 和嵌套 app-state 结构；首次 preflight 读到的 state 同时成为
 后续冲突合并的 base snapshot，不能只缓存 revision 后退化为 local-wins。跨进程 app-state
-结构由 `src/shared/contracts/persistedAppState.ts` 完整描述；shared validator 校验所有 durable
-node payload、archive snapshot 与可选字段，Settings domain 则通过显式 validator port 证明
-settings 已是 canonical shape。Adapter 可以为旧 settings 生成私有的 normalized merge authority，
-但必须把原始读取结果留给既有 hydration/migration 流程；最新 snapshot 不能证明完整结构时，
-冲突重试必须 fail closed，不能回退为未合并的 local overwrite。
+raw/legacy 结构由 `src/shared/contracts/persistedAppState.ts` 完整描述，merge-ready 结构由
+`normalizedPersistedAppState.ts` 单独描述。Shared validator 允许既有 hydration 能补齐的字段缺省，
+但任何实际出现的 durable node payload、archive snapshot 或可选字段都必须通过类型校验；
+Settings domain 通过显式 normalizer port 提供 canonical settings。Adapter 只为冲突合并生成私有的
+normalized authority，并把原始读取结果留给既有 hydration/migration 流程；最新 snapshot 或
+local candidate 不能正规化时，冲突重试必须 fail closed，不能回退为未合并的 local overwrite。
 
 ## Installed Upgrade Contract
 

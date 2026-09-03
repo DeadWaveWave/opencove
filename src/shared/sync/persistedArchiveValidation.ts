@@ -13,7 +13,7 @@ import {
   isNullableExecutionDirectoryMode,
   isNullableFiniteNumber,
   isNullableLaunchMode,
-  isNullableString,
+  isOptionalNullableString,
   isNullableTerminalRuntimeKind,
   isRecord,
   isRectOrNull,
@@ -36,26 +36,28 @@ function isPullRequestSummary(value: unknown): boolean {
     value.ref.kind === 'pull_request' &&
     typeof value.ref.id === 'string' &&
     value.ref.id.trim().length > 0 &&
-    isNullableString(value.ref.url) &&
+    isOptionalNullableString(value.ref.url) &&
     Number.isSafeInteger(value.number) &&
     (value.number as number) > 0 &&
     typeof value.title === 'string' &&
     (value.state === 'open' || value.state === 'closed' || value.state === 'merged') &&
-    typeof value.isDraft === 'boolean' &&
-    isNullableString(value.authorLogin) &&
-    isNullableString(value.updatedAt) &&
-    isNullableString(value.baseRefName) &&
-    isNullableString(value.headRefName)
+    isOptionalBoolean(value.isDraft) &&
+    isOptionalNullableString(value.authorLogin) &&
+    isOptionalNullableString(value.updatedAt) &&
+    isOptionalNullableString(value.baseRefName) &&
+    isOptionalNullableString(value.headRefName)
   )
 }
 
 function isArchiveGitSnapshot(value: unknown): value is PersistedSpaceArchiveGitSnapshot {
   return (
     isRecord(value) &&
-    isNullableString(value.worktreePath) &&
-    isNullableString(value.branch) &&
-    isNullableString(value.head) &&
-    (value.pullRequest === null || isPullRequestSummary(value.pullRequest))
+    isOptionalNullableString(value.worktreePath) &&
+    isOptionalNullableString(value.branch) &&
+    isOptionalNullableString(value.head) &&
+    (value.pullRequest === undefined ||
+      value.pullRequest === null ||
+      isPullRequestSummary(value.pullRequest))
   )
 }
 
@@ -63,9 +65,9 @@ function hasArchiveNodeBase(value: Record<string, unknown>): boolean {
   return (
     typeof value.id === 'string' &&
     value.id.trim().length > 0 &&
-    typeof value.title === 'string' &&
-    isNodeFrameOrNull(value.frame) &&
-    isNodeLabelColorOverride(value.labelColorOverride)
+    (value.title === undefined || typeof value.title === 'string') &&
+    (value.frame === undefined || isNodeFrameOrNull(value.frame)) &&
+    (value.labelColorOverride === undefined || isNodeLabelColorOverride(value.labelColorOverride))
   )
 }
 
@@ -77,46 +79,47 @@ function isArchiveNodeSnapshot(value: unknown): value is PersistedSpaceArchiveNo
   switch (value.kind) {
     case 'terminal':
       return (
-        isNullableTerminalRuntimeKind(value.runtimeKind) &&
-        isNullableString(value.executionDirectory) &&
-        isNullableString(value.expectedDirectory) &&
-        isNullableString(value.startedAt) &&
-        isNullableString(value.endedAt) &&
-        isNullableFiniteNumber(value.exitCode) &&
-        isNullableString(value.lastError)
+        (value.runtimeKind === undefined || isNullableTerminalRuntimeKind(value.runtimeKind)) &&
+        isOptionalNullableString(value.executionDirectory) &&
+        isOptionalNullableString(value.expectedDirectory) &&
+        isOptionalNullableString(value.startedAt) &&
+        isOptionalNullableString(value.endedAt) &&
+        (value.exitCode === undefined || isNullableFiniteNumber(value.exitCode)) &&
+        isOptionalNullableString(value.lastError)
       )
     case 'agent':
       return (
-        isNullableAgentRuntimeStatus(value.status) &&
-        isNullableAgentProvider(value.provider) &&
-        typeof value.prompt === 'string' &&
-        isNullableString(value.model) &&
-        isNullableString(value.effectiveModel) &&
-        isNullableLaunchMode(value.launchMode) &&
-        isNullableString(value.resumeSessionId) &&
+        (value.status === undefined || isNullableAgentRuntimeStatus(value.status)) &&
+        (value.provider === undefined || isNullableAgentProvider(value.provider)) &&
+        (value.prompt === undefined || typeof value.prompt === 'string') &&
+        isOptionalNullableString(value.model) &&
+        isOptionalNullableString(value.effectiveModel) &&
+        (value.launchMode === undefined || isNullableLaunchMode(value.launchMode)) &&
+        isOptionalNullableString(value.resumeSessionId) &&
         isOptionalBoolean(value.resumeSessionIdVerified) &&
-        isNullableString(value.executionDirectory) &&
-        isNullableString(value.expectedDirectory) &&
-        isNullableExecutionDirectoryMode(value.directoryMode) &&
-        isNullableString(value.customDirectory) &&
-        typeof value.shouldCreateDirectory === 'boolean' &&
-        isNullableString(value.taskId) &&
-        isNullableString(value.startedAt) &&
-        isNullableString(value.endedAt) &&
-        isNullableFiniteNumber(value.exitCode) &&
-        isNullableString(value.lastError)
+        isOptionalNullableString(value.executionDirectory) &&
+        isOptionalNullableString(value.expectedDirectory) &&
+        (value.directoryMode === undefined ||
+          isNullableExecutionDirectoryMode(value.directoryMode)) &&
+        isOptionalNullableString(value.customDirectory) &&
+        isOptionalBoolean(value.shouldCreateDirectory) &&
+        isOptionalNullableString(value.taskId) &&
+        isOptionalNullableString(value.startedAt) &&
+        isOptionalNullableString(value.endedAt) &&
+        (value.exitCode === undefined || isNullableFiniteNumber(value.exitCode)) &&
+        isOptionalNullableString(value.lastError)
       )
     case 'task':
       return (
         typeof value.requirement === 'string' &&
-        isTaskRuntimeStatus(value.status) &&
-        isTaskPriority(value.priority) &&
-        isStringArray(value.tags) &&
-        isNullableString(value.linkedAgentNodeId) &&
-        isNullableString(value.lastRunAt) &&
-        typeof value.autoGeneratedTitle === 'boolean' &&
-        isNullableString(value.createdAt) &&
-        isNullableString(value.updatedAt)
+        (value.status === undefined || isTaskRuntimeStatus(value.status)) &&
+        (value.priority === undefined || isTaskPriority(value.priority)) &&
+        (value.tags === undefined || isStringArray(value.tags)) &&
+        isOptionalNullableString(value.linkedAgentNodeId) &&
+        isOptionalNullableString(value.lastRunAt) &&
+        isOptionalBoolean(value.autoGeneratedTitle) &&
+        isOptionalNullableString(value.createdAt) &&
+        isOptionalNullableString(value.updatedAt)
       )
     case 'note':
       return typeof value.text === 'string'
@@ -131,13 +134,15 @@ function isArchiveSpaceSnapshot(value: unknown): value is PersistedSpaceArchiveS
     typeof value.id === 'string' &&
     value.id.trim().length > 0 &&
     typeof value.name === 'string' &&
-    typeof value.directoryPath === 'string' &&
-    isNullableString(value.targetMountId) &&
-    isNullableString(value.parentSpaceId) &&
-    (value.boundary === null || isSpaceBoundary(value.boundary)) &&
-    (value.labelColor === null || isLabelColor(value.labelColor)) &&
-    isStringArray(value.nodeIds) &&
-    isRectOrNull(value.rect)
+    (value.directoryPath === undefined || typeof value.directoryPath === 'string') &&
+    isOptionalNullableString(value.targetMountId) &&
+    isOptionalNullableString(value.parentSpaceId) &&
+    (value.boundary === undefined || value.boundary === null || isSpaceBoundary(value.boundary)) &&
+    (value.labelColor === undefined ||
+      value.labelColor === null ||
+      isLabelColor(value.labelColor)) &&
+    (value.nodeIds === undefined || isStringArray(value.nodeIds)) &&
+    (value.rect === undefined || isRectOrNull(value.rect))
   )
 }
 
@@ -153,16 +158,18 @@ export function isPersistedSpaceArchiveRecord(
     value.id.trim().length > 0 &&
     typeof value.archivedAt === 'string' &&
     value.archivedAt.trim().length > 0 &&
-    (value.git === null || isArchiveGitSnapshot(value.git)) &&
+    (value.git === undefined || value.git === null || isArchiveGitSnapshot(value.git)) &&
     typeof value.space.id === 'string' &&
     value.space.id.trim().length > 0 &&
     typeof value.space.name === 'string' &&
-    typeof value.space.directoryPath === 'string' &&
-    (value.space.labelColor === null || isLabelColor(value.space.labelColor)) &&
-    isRectOrNull(value.space.rect) &&
+    (value.space.directoryPath === undefined || typeof value.space.directoryPath === 'string') &&
+    (value.space.labelColor === undefined ||
+      value.space.labelColor === null ||
+      isLabelColor(value.space.labelColor)) &&
+    (value.space.rect === undefined || isRectOrNull(value.space.rect)) &&
     (value.spaces === undefined ||
       (Array.isArray(value.spaces) && value.spaces.every(isArchiveSpaceSnapshot))) &&
-    Array.isArray(value.nodes) &&
-    value.nodes.every(isArchiveNodeSnapshot)
+    (value.nodes === undefined ||
+      (Array.isArray(value.nodes) && value.nodes.every(isArchiveNodeSnapshot)))
   )
 }

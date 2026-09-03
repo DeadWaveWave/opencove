@@ -1,4 +1,5 @@
 import { isPersistedAppState } from '@shared/sync/persistedAppStateValidation'
+import { normalizePersistedAppStateForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
 
 type TestSettings = { language: 'en' }
 
@@ -90,10 +91,151 @@ describe('persisted app-state boundary validation', () => {
     expect(isValidState(state)).toBe(false)
   })
 
-  it('rejects a space that omits its required label color', () => {
+  it('builds a private normalized merge authority from legacy omissions', () => {
     const state = validState()
-    delete (state.workspaces[0]!.spaces[0] as { labelColor?: unknown }).labelColor
+    const workspace = state.workspaces[0] as unknown as Record<string, unknown>
+    const node = state.workspaces[0]!.nodes[0] as unknown as Record<string, unknown>
+    const space = state.workspaces[0]!.spaces[0] as unknown as Record<string, unknown>
+    for (const field of ['worktreesRoot', 'viewport', 'isMinimapVisible', 'activeSpaceId']) {
+      delete workspace[field]
+    }
+    for (const field of ['status', 'startedAt', 'endedAt', 'exitCode', 'lastError', 'scrollback']) {
+      delete node[field]
+    }
+    for (const field of ['directoryPath', 'targetMountId', 'nodeIds', 'rect']) {
+      delete space[field]
+    }
 
+    const normalized = normalizePersistedAppStateForMerge(state, settings =>
+      isTestSettings(settings) ? settings : null,
+    )
+    expect(normalized).toMatchObject({
+      workspaces: [
+        {
+          worktreesRoot: '',
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          activeSpaceId: null,
+          nodes: [
+            {
+              status: null,
+              startedAt: null,
+              endedAt: null,
+              exitCode: null,
+              lastError: null,
+              scrollback: null,
+            },
+          ],
+          spaces: [
+            {
+              directoryPath: '/repo',
+              targetMountId: null,
+              nodeIds: [],
+              rect: null,
+            },
+          ],
+        },
+      ],
+    })
+  })
+
+  it('normalizes legacy stale active and space membership references for merge', () => {
+    const state = validState()
+    state.activeWorkspaceId = 'missing-workspace'
+    state.workspaces[0]!.activeSpaceId = 'missing-space'
+    state.workspaces[0]!.spaces[0]!.nodeIds = ['node-1', 'missing-node']
+
+    const normalized = normalizePersistedAppStateForMerge(state, settings =>
+      isTestSettings(settings) ? settings : null,
+    )
+    expect(normalized?.activeWorkspaceId).toBeNull()
+    expect(normalized?.workspaces[0]?.activeSpaceId).toBeNull()
+    expect(normalized?.workspaces[0]?.spaces[0]?.nodeIds).toEqual(['node-1'])
+  })
+
+  it('accepts legacy workspace omissions that the hydration normalizer supplies', () => {
+    const state = validState()
+    const workspace = state.workspaces[0] as unknown as Record<string, unknown>
+    for (const field of [
+      'worktreesRoot',
+      'viewport',
+      'isMinimapVisible',
+      'spaces',
+      'activeSpaceId',
+      'spaceArchiveRecords',
+    ]) {
+      delete workspace[field]
+    }
+
+    expect(isValidState(state)).toBe(true)
+  })
+
+  it('accepts legacy node omissions while rejecting malformed present values', () => {
+    const state = validState()
+    const node = state.workspaces[0]!.nodes[0] as unknown as Record<string, unknown>
+    for (const field of [
+      'status',
+      'startedAt',
+      'endedAt',
+      'exitCode',
+      'lastError',
+      'scrollback',
+      'agent',
+      'task',
+    ]) {
+      delete node[field]
+    }
+
+    expect(isValidState(state)).toBe(true)
+    node.status = 42
+    expect(isValidState(state)).toBe(false)
+  })
+
+  it('accepts legacy space omissions that the hydration normalizer supplies', () => {
+    const state = validState()
+    const space = state.workspaces[0]!.spaces[0] as unknown as Record<string, unknown>
+    for (const field of [
+      'directoryPath',
+      'targetMountId',
+      'parentSpaceId',
+      'boundary',
+      'sortOrder',
+      'pinned',
+      'labelColor',
+      'nodeIds',
+      'rect',
+    ]) {
+      delete space[field]
+    }
+
+    expect(isValidState(state)).toBe(true)
+  })
+
+  it('accepts a legacy archive shell and validates every present nested value', () => {
+    const state = validState()
+    state.workspaces[0]!.spaceArchiveRecords = [
+      {
+        id: 'archive-1',
+        archivedAt: '2026-09-03T00:00:00.000Z',
+        space: { id: 'space-1', name: 'Space' },
+      },
+    ]
+
+    expect(isValidState(state)).toBe(true)
+    expect(
+      normalizePersistedAppStateForMerge(state, settings =>
+        isTestSettings(settings) ? settings : null,
+      )?.workspaces[0]?.spaceArchiveRecords[0],
+    ).toMatchObject({
+      git: null,
+      space: {
+        directoryPath: '/repo',
+        labelColor: null,
+        rect: null,
+      },
+      nodes: [],
+    })
+    state.workspaces[0]!.spaceArchiveRecords[0]!.space.labelColor = 'invalid'
     expect(isValidState(state)).toBe(false)
   })
 

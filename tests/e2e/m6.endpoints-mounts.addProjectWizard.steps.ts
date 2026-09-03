@@ -3,29 +3,51 @@ import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import { selectCoveOption } from './workspace-canvas.helpers'
 
-async function clickCurrentProjectMenuAction(window: Page, testId: string): Promise<void> {
-  const action = window.locator(`[data-testid="${testId}"]`)
-  await expect(action).toBeVisible()
-  const clicked = await window.evaluate(currentTestId => {
-    const currentAction = document.querySelector(`[data-testid="${currentTestId}"]`)
-    if (!(currentAction instanceof HTMLButtonElement) || currentAction.disabled) {
-      return false
-    }
-    currentAction.click()
-    return true
-  }, testId)
-  expect(clicked).toBe(true)
+async function resolvePersistedActiveProject(window: Page) {
+  const readActiveProjectId = async (): Promise<string | null> =>
+    await window.evaluate(async () => {
+      const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+      if (!raw) {
+        return null
+      }
+      try {
+        const state = JSON.parse(raw) as {
+          activeWorkspaceId?: string | null
+          workspaces?: Array<{ id?: string }>
+        }
+        const activeWorkspaceId = state.activeWorkspaceId
+        return typeof activeWorkspaceId === 'string' &&
+          state.workspaces?.some(workspace => workspace.id === activeWorkspaceId)
+          ? activeWorkspaceId
+          : null
+      } catch {
+        return null
+      }
+    })
+
+  await expect.poll(readActiveProjectId).not.toBeNull()
+  const activeProjectId = await readActiveProjectId()
+  if (!activeProjectId) {
+    throw new Error('Active project did not reach durable state')
+  }
+  const activeProject = window.locator(
+    `.workspace-item.workspace-item--active[data-testid="workspace-item-${activeProjectId}"]`,
+  )
+  await expect(activeProject).toBeVisible()
+  return activeProject
 }
 
 async function renameActiveProject(window: Page, projectName: string): Promise<void> {
-  const activeProject = window.locator('.workspace-item.workspace-item--active')
-  await expect(activeProject).toBeVisible()
+  const activeProject = await resolvePersistedActiveProject(window)
   if ((await activeProject.textContent())?.includes(projectName)) {
     return
   }
 
-  await activeProject.click({ button: 'right', force: true })
-  await clickCurrentProjectMenuAction(window, 'workspace-project-context-menu-rename')
+  await activeProject.click({ button: 'right' })
+  const renameAction = window.locator('[data-testid="workspace-project-context-menu-rename"]')
+  await expect(renameAction).toBeVisible()
+  await expect(renameAction).toBeEnabled()
+  await renameAction.click()
   const renameInput = window.locator('.workspace-project-context-menu__rename input')
   await renameInput.fill(projectName)
   await window.locator('[data-testid="workspace-project-context-menu-rename-save"]').click()
@@ -122,8 +144,8 @@ export async function createMultiMountProjectViaWizard({
   await expect(window.locator('[data-testid="workspace-project-create-window"]')).toHaveCount(0)
   await renameActiveProject(window, projectName)
 
-  const activeProject = window.locator('.workspace-item.workspace-item--active')
-  await activeProject.click({ button: 'right', force: true })
+  const activeProject = await resolvePersistedActiveProject(window)
+  await activeProject.click({ button: 'right' })
   await window.locator('[data-testid^="workspace-project-manage-mounts-"]').click()
   await expect(
     window.locator('[data-testid="workspace-project-mount-manager-window"]'),

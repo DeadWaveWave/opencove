@@ -3,7 +3,6 @@ import type {
   AgentProviderId,
   BrowserMode,
   CanvasImageMimeType,
-  GitHubPullRequestSummary,
   TaskPriority,
   TerminalPtyGeometry,
   TerminalRuntimeKind,
@@ -61,18 +60,18 @@ export type PersistedSpaceRect = PersistedPoint & PersistedSize
 export interface PersistedTaskAgentSessionRecord {
   id: string
   provider: AgentProviderId
-  resumeSessionId: string | null
+  resumeSessionId?: string | null
   resumeSessionIdVerified?: boolean
   prompt: string
-  model: string | null
-  effectiveModel: string | null
+  model?: string | null
+  effectiveModel?: string | null
   boundDirectory: string
-  lastDirectory: string
+  lastDirectory?: string
   createdAt: string
   lastRunAt: string
-  endedAt: string | null
-  exitCode: number | null
-  status: PersistedAgentRuntimeStatus
+  endedAt?: string | null
+  exitCode?: number | null
+  status?: PersistedAgentRuntimeStatus
 }
 
 export interface PersistedAgentNodeData {
@@ -93,7 +92,7 @@ export interface PersistedAgentNodeData {
 
 export interface PersistedTerminalAgentSessionBinding {
   provider: AgentProviderId
-  resumeSessionId: string | null
+  resumeSessionId?: string | null
   resumeSessionIdVerified?: boolean
 }
 
@@ -111,41 +110,41 @@ export interface PersistedTaskNodeData {
 }
 
 export interface PersistedNoteNodeData {
-  text: string
+  text?: string
 }
 
 export interface PersistedRoleRunRecord {
   id: string
-  input: string
-  prompt: string
-  outputFormat: string
-  provider: AgentProviderId | null
-  agentNodeId: string | null
-  sessionId: string | null
+  input?: string
+  prompt?: string
+  outputFormat?: string
+  provider?: AgentProviderId | null
+  agentNodeId?: string | null
+  sessionId?: string | null
   createdAt: string
 }
 
 export interface PersistedRoleNodeData {
   roleId: string
   roleName: string
-  roleDescription: string
-  promptTemplate: string
-  inputHint: string
-  outputFormat: string
-  input: string
-  selectedProvider: AgentProviderId | null
-  linkedAgentNodeId: string | null
-  runHistory: PersistedRoleRunRecord[]
-  createdAt: string | null
-  updatedAt: string | null
+  roleDescription?: string
+  promptTemplate?: string
+  inputHint?: string
+  outputFormat?: string
+  input?: string
+  selectedProvider?: AgentProviderId | null
+  linkedAgentNodeId?: string | null
+  runHistory?: PersistedRoleRunRecord[]
+  createdAt?: string | null
+  updatedAt?: string | null
 }
 
 export interface PersistedImageNodeData {
   assetId: string
   mimeType: CanvasImageMimeType
-  fileName: string | null
-  naturalWidth: number | null
-  naturalHeight: number | null
+  fileName?: string | null
+  naturalWidth?: number | null
+  naturalHeight?: number | null
 }
 
 export interface PersistedDocumentNodeData {
@@ -153,10 +152,10 @@ export interface PersistedDocumentNodeData {
 }
 
 export interface PersistedWebsiteNodeData {
-  url: string
-  pinned: boolean
-  sessionMode: WebsiteWindowSessionMode
-  profileId: string | null
+  url?: string
+  pinned?: boolean
+  sessionMode?: WebsiteWindowSessionMode
+  profileId?: string | null
   browserMode?: BrowserMode
   isFullscreen?: boolean
   previousFrame?: PersistedNodeFrame | null
@@ -187,117 +186,134 @@ export interface PersistedNodeContract {
   terminalAgentBinding?: PersistedTerminalAgentSessionBinding | null
   labelColorOverride?: NodeLabelColorOverride
   sidebarSortOrder?: number | null
-  status: PersistedAgentRuntimeStatus | null
-  startedAt: string | null
-  endedAt: string | null
-  exitCode: number | null
-  lastError: string | null
-  scrollback: string | null
+  status?: PersistedAgentRuntimeStatus | null
+  startedAt?: string | null
+  endedAt?: string | null
+  exitCode?: number | null
+  lastError?: string | null
+  scrollback?: string | null
   executionDirectory?: string | null
   expectedDirectory?: string | null
-  agent: PersistedAgentNodeData | PersistedTerminalAgentSessionBinding | null
-  task: PersistedNodePayload | null
+  agent?: PersistedAgentNodeData | PersistedTerminalAgentSessionBinding | null
+  task?: PersistedNodePayload | null
 }
 
 export interface PersistedSpaceContract {
   id: string
   name: string
-  directoryPath: string
-  targetMountId: string | null
+  directoryPath?: string
+  targetMountId?: string | null
   parentSpaceId?: string | null
   boundary?: SpaceBoundary | null
   sortOrder?: number
   pinned?: boolean
-  labelColor: LabelColor | null
-  nodeIds: string[]
-  rect: PersistedSpaceRect | null
+  labelColor?: LabelColor | null
+  nodeIds?: string[]
+  rect?: PersistedSpaceRect | null
 }
 
 export interface PersistedSpaceArchiveSpaceSnapshot {
   id: string
   name: string
-  directoryPath: string
-  targetMountId: string | null
-  parentSpaceId: string | null
-  boundary: SpaceBoundary | null
-  labelColor: LabelColor | null
-  nodeIds: string[]
-  rect: PersistedSpaceRect | null
+  directoryPath?: string
+  targetMountId?: string | null
+  parentSpaceId?: string | null
+  boundary?: SpaceBoundary | null
+  labelColor?: LabelColor | null
+  nodeIds?: string[]
+  rect?: PersistedSpaceRect | null
 }
 
 export interface PersistedSpaceArchiveRecord {
   id: string
   archivedAt: string
-  git: PersistedSpaceArchiveGitSnapshot | null
+  git?: PersistedSpaceArchiveGitSnapshot | null
   space: {
     id: string
     name: string
-    directoryPath: string
-    labelColor: LabelColor | null
-    rect: PersistedSpaceRect | null
+    directoryPath?: string
+    labelColor?: LabelColor | null
+    rect?: PersistedSpaceRect | null
   }
   spaces?: PersistedSpaceArchiveSpaceSnapshot[]
-  nodes: PersistedSpaceArchiveNodeSnapshot[]
+  nodes?: PersistedSpaceArchiveNodeSnapshot[]
+}
+
+export interface PersistedGitHubPullRequestSummary {
+  ref: {
+    providerId: 'github'
+    kind: 'pull_request'
+    id: string
+    url?: string | null
+  }
+  number: number
+  title: string
+  state: 'open' | 'closed' | 'merged'
+  isDraft?: boolean
+  authorLogin?: string | null
+  updatedAt?: string | null
+  baseRefName?: string | null
+  headRefName?: string | null
 }
 
 export interface PersistedSpaceArchiveGitSnapshot {
-  worktreePath: string | null
-  branch: string | null
-  head: string | null
-  pullRequest: GitHubPullRequestSummary | null
+  worktreePath?: string | null
+  branch?: string | null
+  head?: string | null
+  pullRequest?: PersistedGitHubPullRequestSummary | null
 }
 
 interface PersistedSpaceArchiveNodeSnapshotBase {
   id: string
-  title: string
-  frame: PersistedNodeFrame | null
-  labelColorOverride: NodeLabelColorOverride
+  title?: string
+  frame?: PersistedNodeFrame | null
+  labelColorOverride?: NodeLabelColorOverride
 }
 
 export interface PersistedSpaceArchiveTerminalSnapshot extends PersistedSpaceArchiveNodeSnapshotBase {
   kind: 'terminal'
-  runtimeKind: TerminalRuntimeKind | null
-  executionDirectory: string | null
-  expectedDirectory: string | null
-  startedAt: string | null
-  endedAt: string | null
-  exitCode: number | null
-  lastError: string | null
+  runtimeKind?: TerminalRuntimeKind | null
+  executionDirectory?: string | null
+  expectedDirectory?: string | null
+  startedAt?: string | null
+  endedAt?: string | null
+  exitCode?: number | null
+  lastError?: string | null
 }
 
 export interface PersistedSpaceArchiveAgentSnapshot extends PersistedSpaceArchiveNodeSnapshotBase {
   kind: 'agent'
-  status: PersistedAgentRuntimeStatus | null
-  provider: AgentProviderId | null
-  prompt: string
-  model: string | null
-  effectiveModel: string | null
-  launchMode: AgentLaunchMode | null
-  resumeSessionId: string | null
+  status?: PersistedAgentRuntimeStatus | null
+  provider?: AgentProviderId | null
+  prompt?: string
+  model?: string | null
+  effectiveModel?: string | null
+  launchMode?: AgentLaunchMode | null
+  resumeSessionId?: string | null
   resumeSessionIdVerified?: boolean
-  executionDirectory: string | null
-  expectedDirectory: string | null
-  directoryMode: PersistedExecutionDirectoryMode | null
-  customDirectory: string | null
-  shouldCreateDirectory: boolean
-  taskId: string | null
-  startedAt: string | null
-  endedAt: string | null
-  exitCode: number | null
-  lastError: string | null
+  executionDirectory?: string | null
+  expectedDirectory?: string | null
+  directoryMode?: PersistedExecutionDirectoryMode | null
+  customDirectory?: string | null
+  shouldCreateDirectory?: boolean
+  taskId?: string | null
+  startedAt?: string | null
+  endedAt?: string | null
+  exitCode?: number | null
+  lastError?: string | null
 }
 
 export interface PersistedSpaceArchiveTaskSnapshot extends PersistedSpaceArchiveNodeSnapshotBase {
   kind: 'task'
   requirement: string
-  status: PersistedTaskRuntimeStatus
-  priority: TaskPriority
-  tags: string[]
-  linkedAgentNodeId: string | null
-  lastRunAt: string | null
-  autoGeneratedTitle: boolean
-  createdAt: string | null
-  updatedAt: string | null
+  status?: PersistedTaskRuntimeStatus
+  priority?: TaskPriority
+  tags?: string[]
+  linkedAgentNodeId?: string | null
+  lastRunAt?: string | null
+  autoGeneratedTitle?: boolean
+  createdAt?: string | null
+  updatedAt?: string | null
 }
 
 export interface PersistedSpaceArchiveNoteSnapshot extends PersistedSpaceArchiveNodeSnapshotBase {
@@ -316,15 +332,15 @@ export interface PersistedWorkspaceContract {
   name: string
   iconId?: ProjectIconId | null
   path: string
-  worktreesRoot: string
+  worktreesRoot?: string
   pullRequestBaseBranchOptions?: string[]
   environmentVariables?: Record<string, string>
   nodes: PersistedNodeContract[]
-  viewport: PersistedViewport
-  isMinimapVisible: boolean
-  spaces: PersistedSpaceContract[]
-  activeSpaceId: string | null
-  spaceArchiveRecords: PersistedSpaceArchiveRecord[]
+  viewport?: PersistedViewport
+  isMinimapVisible?: boolean
+  spaces?: PersistedSpaceContract[]
+  activeSpaceId?: string | null
+  spaceArchiveRecords?: PersistedSpaceArchiveRecord[]
 }
 
 /** Cross-process durable app-state shape specialized by the settings domain at each boundary. */

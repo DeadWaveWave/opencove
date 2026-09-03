@@ -46,7 +46,7 @@ function isTerminalAgentSessionBinding(
   return (
     isRecord(value) &&
     isAgentProvider(value.provider) &&
-    isNullableString(value.resumeSessionId) &&
+    isOptionalNullableString(value.resumeSessionId) &&
     isOptionalBoolean(value.resumeSessionIdVerified)
   )
 }
@@ -56,18 +56,18 @@ function isTaskAgentSessionRecord(value: unknown): value is PersistedTaskAgentSe
     isRecord(value) &&
     typeof value.id === 'string' &&
     isAgentProvider(value.provider) &&
-    isNullableString(value.resumeSessionId) &&
+    isOptionalNullableString(value.resumeSessionId) &&
     isOptionalBoolean(value.resumeSessionIdVerified) &&
     typeof value.prompt === 'string' &&
-    isNullableString(value.model) &&
-    isNullableString(value.effectiveModel) &&
+    (value.model === undefined || isNullableString(value.model)) &&
+    (value.effectiveModel === undefined || isNullableString(value.effectiveModel)) &&
     typeof value.boundDirectory === 'string' &&
-    typeof value.lastDirectory === 'string' &&
+    (value.lastDirectory === undefined || typeof value.lastDirectory === 'string') &&
     typeof value.createdAt === 'string' &&
     typeof value.lastRunAt === 'string' &&
-    isNullableString(value.endedAt) &&
-    isNullableFiniteNumber(value.exitCode) &&
-    isAgentRuntimeStatus(value.status)
+    (value.endedAt === undefined || isNullableString(value.endedAt)) &&
+    (value.exitCode === undefined || isNullableFiniteNumber(value.exitCode)) &&
+    (value.status === undefined || isAgentRuntimeStatus(value.status))
   )
 }
 
@@ -109,19 +109,19 @@ function isTaskNodeData(value: unknown): value is PersistedTaskNodeData {
 }
 
 function isNoteNodeData(value: unknown): value is PersistedNoteNodeData {
-  return isRecord(value) && typeof value.text === 'string'
+  return isRecord(value) && (value.text === undefined || typeof value.text === 'string')
 }
 
 function isRoleRunRecord(value: unknown): value is PersistedRoleRunRecord {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&
-    typeof value.input === 'string' &&
-    typeof value.prompt === 'string' &&
-    typeof value.outputFormat === 'string' &&
-    isNullableAgentProvider(value.provider) &&
-    isNullableString(value.agentNodeId) &&
-    isNullableString(value.sessionId) &&
+    (value.input === undefined || typeof value.input === 'string') &&
+    (value.prompt === undefined || typeof value.prompt === 'string') &&
+    (value.outputFormat === undefined || typeof value.outputFormat === 'string') &&
+    (value.provider === undefined || isNullableAgentProvider(value.provider)) &&
+    (value.agentNodeId === undefined || isNullableString(value.agentNodeId)) &&
+    (value.sessionId === undefined || isNullableString(value.sessionId)) &&
     typeof value.createdAt === 'string'
   )
 }
@@ -131,17 +131,17 @@ function isRoleNodeData(value: unknown): value is PersistedRoleNodeData {
     isRecord(value) &&
     typeof value.roleId === 'string' &&
     typeof value.roleName === 'string' &&
-    typeof value.roleDescription === 'string' &&
-    typeof value.promptTemplate === 'string' &&
-    typeof value.inputHint === 'string' &&
-    typeof value.outputFormat === 'string' &&
-    typeof value.input === 'string' &&
-    isNullableAgentProvider(value.selectedProvider) &&
-    isNullableString(value.linkedAgentNodeId) &&
-    Array.isArray(value.runHistory) &&
-    value.runHistory.every(isRoleRunRecord) &&
-    isNullableString(value.createdAt) &&
-    isNullableString(value.updatedAt)
+    (value.roleDescription === undefined || typeof value.roleDescription === 'string') &&
+    (value.promptTemplate === undefined || typeof value.promptTemplate === 'string') &&
+    (value.inputHint === undefined || typeof value.inputHint === 'string') &&
+    (value.outputFormat === undefined || typeof value.outputFormat === 'string') &&
+    (value.input === undefined || typeof value.input === 'string') &&
+    (value.selectedProvider === undefined || isNullableAgentProvider(value.selectedProvider)) &&
+    (value.linkedAgentNodeId === undefined || isNullableString(value.linkedAgentNodeId)) &&
+    (value.runHistory === undefined ||
+      (Array.isArray(value.runHistory) && value.runHistory.every(isRoleRunRecord))) &&
+    (value.createdAt === undefined || isNullableString(value.createdAt)) &&
+    (value.updatedAt === undefined || isNullableString(value.updatedAt))
   )
 }
 
@@ -150,10 +150,12 @@ function isImageNodeData(value: unknown): value is PersistedImageNodeData {
     isRecord(value) &&
     typeof value.assetId === 'string' &&
     isCanvasImageMimeType(value.mimeType) &&
-    isNullableString(value.fileName) &&
-    (value.naturalWidth === null ||
+    (value.fileName === undefined || isNullableString(value.fileName)) &&
+    (value.naturalWidth === undefined ||
+      value.naturalWidth === null ||
       (isFiniteNumber(value.naturalWidth) && value.naturalWidth > 0)) &&
-    (value.naturalHeight === null ||
+    (value.naturalHeight === undefined ||
+      value.naturalHeight === null ||
       (isFiniteNumber(value.naturalHeight) && value.naturalHeight > 0))
   )
 }
@@ -165,13 +167,13 @@ function isDocumentNodeData(value: unknown): value is PersistedDocumentNodeData 
 function isWebsiteNodeData(value: unknown): value is PersistedWebsiteNodeData {
   return (
     isRecord(value) &&
-    typeof value.url === 'string' &&
-    typeof value.pinned === 'boolean' &&
-    (value.sessionMode === 'shared' ||
+    (value.url === undefined || typeof value.url === 'string') &&
+    isOptionalBoolean(value.pinned) &&
+    (value.sessionMode === undefined ||
+      value.sessionMode === 'shared' ||
       value.sessionMode === 'incognito' ||
       value.sessionMode === 'profile') &&
-    isNullableString(value.profileId) &&
-    (value.sessionMode !== 'profile' || value.profileId !== null) &&
+    isOptionalNullableString(value.profileId) &&
     (value.browserMode === undefined ||
       value.browserMode === 'native' ||
       value.browserMode === 'iframe') &&
@@ -182,30 +184,30 @@ function isWebsiteNodeData(value: unknown): value is PersistedWebsiteNodeData {
 
 function isAgentPayloadForKind(kind: PersistedWorkspaceNodeKind, value: unknown): boolean {
   if (kind === 'terminal') {
-    return value === null || isTerminalAgentSessionBinding(value)
+    return value === undefined || value === null || isTerminalAgentSessionBinding(value)
   }
   if (kind === 'agent') {
-    return value === null || isAgentNodeData(value)
+    return value === undefined || value === null || isAgentNodeData(value)
   }
-  return value === null
+  return value === undefined || value === null
 }
 
 function isNodePayloadForKind(kind: PersistedWorkspaceNodeKind, value: unknown): boolean {
   switch (kind) {
     case 'task':
-      return value === null || isTaskNodeData(value)
+      return value === undefined || value === null || isTaskNodeData(value)
     case 'note':
-      return value === null || isNoteNodeData(value)
+      return value === undefined || value === null || isNoteNodeData(value)
     case 'role':
-      return value === null || isRoleNodeData(value)
+      return value === undefined || value === null || isRoleNodeData(value)
     case 'image':
-      return value === null || isImageNodeData(value)
+      return value === undefined || value === null || isImageNodeData(value)
     case 'document':
-      return value === null || isDocumentNodeData(value)
+      return value === undefined || value === null || isDocumentNodeData(value)
     case 'website':
-      return value === null || isWebsiteNodeData(value)
+      return value === undefined || value === null || isWebsiteNodeData(value)
     default:
-      return value === null
+      return value === undefined || value === null
   }
 }
 
@@ -253,12 +255,12 @@ export function isPersistedNode(value: unknown): value is PersistedNodeContract 
     (value.sidebarSortOrder === undefined ||
       value.sidebarSortOrder === null ||
       isFiniteNumber(value.sidebarSortOrder)) &&
-    isNullableAgentRuntimeStatus(value.status) &&
-    isNullableString(value.startedAt) &&
-    isNullableString(value.endedAt) &&
-    isNullableFiniteNumber(value.exitCode) &&
-    isNullableString(value.lastError) &&
-    isNullableString(value.scrollback) &&
+    (value.status === undefined || isNullableAgentRuntimeStatus(value.status)) &&
+    isOptionalNullableString(value.startedAt) &&
+    isOptionalNullableString(value.endedAt) &&
+    (value.exitCode === undefined || isNullableFiniteNumber(value.exitCode)) &&
+    isOptionalNullableString(value.lastError) &&
+    isOptionalNullableString(value.scrollback) &&
     isOptionalNullableString(value.executionDirectory) &&
     isOptionalNullableString(value.expectedDirectory) &&
     isAgentPayloadForKind(value.kind, value.agent) &&

@@ -6,33 +6,32 @@ import type {
   ReleaseNotesCurrentResult,
   WorkerStatusResult,
 } from '@shared/contracts/dto'
-import type { PersistedAppStateContract } from '@shared/contracts/persistedAppState'
+import type { NormalizedPersistedAppStateContract } from '@shared/contracts/normalizedPersistedAppState'
 import {
   isNormalizedAgentSettings,
   normalizeAgentSettings,
   type AgentSettings,
 } from '@contexts/settings/domain/agentSettings'
-import {
-  isPersistedAppState as isPersistedAppStateContract,
-  mergePersistedAppStates,
-} from '@shared/sync/mergePersistedAppStates'
+import { mergePersistedAppStates } from '@shared/sync/mergePersistedAppStates'
+import { normalizePersistedAppStateForMerge as normalizeSharedPersistedAppStateForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
 
-export type BrowserPersistedAppState = PersistedAppStateContract<AgentSettings>
+export type BrowserPersistedAppState = NormalizedPersistedAppStateContract<AgentSettings>
 export { mergePersistedAppStates }
-
-export function isPersistedAppState(value: unknown): value is BrowserPersistedAppState {
-  return isPersistedAppStateContract(value, isNormalizedAgentSettings)
-}
 
 export function normalizePersistedAppStateForMerge(
   value: unknown,
 ): BrowserPersistedAppState | null {
-  const isSettingsRecord = (settings: unknown): settings is Record<string, unknown> =>
-    !!settings && typeof settings === 'object' && !Array.isArray(settings)
-  if (!isPersistedAppStateContract(value, isSettingsRecord)) {
-    return null
-  }
-  return { ...value, settings: normalizeAgentSettings(value.settings) }
+  return normalizeSharedPersistedAppStateForMerge(value, settings =>
+    normalizeAgentSettings(settings),
+  )
+}
+
+export function normalizeCanonicalPersistedAppStateForMerge(
+  value: unknown,
+): BrowserPersistedAppState | null {
+  return normalizeSharedPersistedAppStateForMerge(value, settings =>
+    isNormalizedAgentSettings(settings) ? settings : null,
+  )
 }
 
 export function resolveBrowserPlatform(): string {

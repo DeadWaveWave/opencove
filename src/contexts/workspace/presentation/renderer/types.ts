@@ -4,21 +4,21 @@ import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/age
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { NodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
+import type { PersistedSpaceRect } from '@shared/contracts/persistedAppState'
 import type {
-  PersistedAppStateContract,
-  PersistedNodeContract,
-  PersistedSpaceArchiveAgentSnapshot,
-  PersistedSpaceArchiveGitSnapshot,
-  PersistedSpaceArchiveNodeSnapshot,
-  PersistedSpaceArchiveNoteSnapshot,
-  PersistedSpaceArchiveRecord,
-  PersistedSpaceArchiveSpaceSnapshot,
-  PersistedSpaceArchiveTaskSnapshot,
-  PersistedSpaceArchiveTerminalSnapshot,
-  PersistedSpaceContract,
-  PersistedSpaceRect,
-  PersistedWorkspaceContract,
-} from '@shared/contracts/persistedAppState'
+  NormalizedPersistedAppStateContract,
+  NormalizedPersistedNodeContract,
+  NormalizedPersistedSpaceArchiveAgentSnapshot,
+  NormalizedPersistedSpaceArchiveGitSnapshot,
+  NormalizedPersistedSpaceArchiveNodeSnapshot,
+  NormalizedPersistedSpaceArchiveNoteSnapshot,
+  NormalizedPersistedSpaceArchiveRecord,
+  NormalizedPersistedSpaceArchiveSpaceSnapshot,
+  NormalizedPersistedSpaceArchiveTaskSnapshot,
+  NormalizedPersistedSpaceArchiveTerminalSnapshot,
+  NormalizedPersistedSpaceContract,
+  NormalizedPersistedWorkspaceContract,
+} from '@shared/contracts/normalizedPersistedAppState'
 import type {
   AgentHookInstallState,
   AgentRecoveryIssue,
@@ -232,11 +232,12 @@ export interface WorkspaceState {
 }
 
 export type PersistedTerminalNode = Omit<
-  PersistedNodeContract,
-  'agent' | 'runtimeKind' | 'sidebarSortOrder' | 'task'
+  NormalizedPersistedNodeContract,
+  'agent' | 'runtimeKind' | 'sidebarSortOrder' | 'task' | 'terminalAgentBinding'
 > & {
   runtimeKind?: TerminalRuntimeKind
   sidebarSortOrder?: number
+  terminalAgentBinding?: TerminalAgentSessionBinding | null
   agent: AgentNodeData | TerminalAgentSessionBinding | null
   task:
     | TaskNodeData
@@ -247,20 +248,27 @@ export type PersistedTerminalNode = Omit<
     | WebsiteNodeData
     | null
 }
-export type PersistedWorkspaceState = Omit<PersistedWorkspaceContract, 'nodes'> & {
+export type PersistedWorkspaceState = Omit<
+  NormalizedPersistedWorkspaceContract,
+  'nodes' | 'spaceArchiveRecords'
+> & {
   nodes: PersistedTerminalNode[]
+  spaceArchiveRecords: SpaceArchiveRecord[]
 }
 export type WorkspaceSpaceRect = PersistedSpaceRect
-export type WorkspaceSpaceState = PersistedSpaceContract
-export type SpaceArchiveSpaceSnapshot = PersistedSpaceArchiveSpaceSnapshot
-export type SpaceArchiveRecord = PersistedSpaceArchiveRecord
-export type SpaceArchiveGitSnapshot = PersistedSpaceArchiveGitSnapshot
-export type SpaceArchiveNodeSnapshot = PersistedSpaceArchiveNodeSnapshot
-export type SpaceArchiveTerminalSnapshot = PersistedSpaceArchiveTerminalSnapshot
-export type SpaceArchiveAgentSnapshot = PersistedSpaceArchiveAgentSnapshot
-export type SpaceArchiveTaskSnapshot = PersistedSpaceArchiveTaskSnapshot
-export type SpaceArchiveNoteSnapshot = PersistedSpaceArchiveNoteSnapshot
-export type PersistedAppState = Omit<PersistedAppStateContract<AgentSettings>, 'workspaces'> & {
+export type WorkspaceSpaceState = NormalizedPersistedSpaceContract
+export type SpaceArchiveSpaceSnapshot = NormalizedPersistedSpaceArchiveSpaceSnapshot
+export type SpaceArchiveRecord = NormalizedPersistedSpaceArchiveRecord
+export type SpaceArchiveGitSnapshot = NormalizedPersistedSpaceArchiveGitSnapshot
+export type SpaceArchiveNodeSnapshot = NormalizedPersistedSpaceArchiveNodeSnapshot
+export type SpaceArchiveTerminalSnapshot = NormalizedPersistedSpaceArchiveTerminalSnapshot
+export type SpaceArchiveAgentSnapshot = NormalizedPersistedSpaceArchiveAgentSnapshot
+export type SpaceArchiveTaskSnapshot = NormalizedPersistedSpaceArchiveTaskSnapshot
+export type SpaceArchiveNoteSnapshot = NormalizedPersistedSpaceArchiveNoteSnapshot
+export type PersistedAppState = Omit<
+  NormalizedPersistedAppStateContract<AgentSettings>,
+  'workspaces'
+> & {
   workspaces: PersistedWorkspaceState[]
 }
 

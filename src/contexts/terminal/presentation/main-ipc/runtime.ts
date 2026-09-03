@@ -28,6 +28,7 @@ import { createSessionStateWatcherController } from './sessionStateWatcher'
 import { TerminalSessionManager } from './sessionManager'
 import { createLocalPtyGeometryCommitter } from './localPtyGeometryCommit'
 import { isDebugCrashHostEnabled } from './debugCrashHost'
+import { PtyRuntimeSessionRegistrationOwner } from './sessionRegistrationOwner'
 import {
   describeAgentLaunchCommand,
   describeAgentLaunchError,
@@ -227,6 +228,17 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
       await processEngine.resize(sessionId, cols, rows),
     log: logPtyResizeDiagnostics,
   })
+  const sessionRegistrations = new PtyRuntimeSessionRegistrationOwner({
+    processEngine,
+    register: (sessionId, input) => {
+      if (!manager.registerSession(sessionId)) {
+        return false
+      }
+      manager.resize(sessionId, input.cols, input.rows)
+      registerSessionProbeState(sessionId)
+      return true
+    },
+  })
 
   // --- Terminal process-engine event wiring ---
 
@@ -258,6 +270,7 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
   })
 
   const disposeProcessEngineExit = processEngine.onExit(({ sessionId, exitCode }) => {
+    sessionRegistrations.noteExit(sessionId)
     manager.handleExit(sessionId, exitCode)
     clearSessionProbeState(sessionId)
 
@@ -279,7 +292,7 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
     listProfiles: async () => await profileResolver.listProfiles(),
     spawnTerminalSession: async input => {
       const resolved = await profileResolver.resolveTerminalSpawn(input)
-      const { sessionId } = await processEngine.spawn({
+      const { sessionId } = await sessionRegistrations.spawn({
         cwd: resolved.cwd,
         command: resolved.command,
         args: resolved.args,
@@ -287,10 +300,6 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
         cols: input.cols,
         rows: input.rows,
       })
-
-      manager.registerSession(sessionId)
-      manager.resize(sessionId, input.cols, input.rows)
-      registerSessionProbeState(sessionId)
 
       return {
         sessionId,
@@ -319,7 +328,7 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
         },
       )
 
-      const { sessionId } = await processEngine
+      const { sessionId } = await sessionRegistrations
         .spawn({
           cwd: options.cwd,
           command,
@@ -339,9 +348,6 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
           throw error
         })
 
-      manager.registerSession(sessionId)
-      manager.resize(sessionId, options.cols, options.rows)
-      registerSessionProbeState(sessionId)
       logAgentLaunchInfo('local-pty-runtime-spawn-succeeded', 'Local PTY host spawn succeeded.', {
         sessionId,
         cwd: options.cwd,
@@ -458,6 +464,7 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
         return
       }
       isDisposed = true
+      sessionRegistrations.dispose()
 
       disposeProcessEngineData()
       disposeProcessEngineExit()

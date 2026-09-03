@@ -1,8 +1,8 @@
 import { toAppErrorDescriptor } from '@shared/errors/appError'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import {
-  isPersistedAppState,
   mergePersistedAppStates,
+  normalizeCanonicalPersistedAppStateForMerge,
   normalizePersistedAppStateForMerge,
   type BrowserPersistedAppState,
 } from './browserOpenCoveApi.helpers'
@@ -118,12 +118,13 @@ export function createBrowserPersistenceApi(): PersistenceApi {
           if (latest.state !== null && !latestState) {
             throw new Error('sync.state returned a malformed persisted state.', { cause: error })
           }
-          if (!isPersistedAppState(state)) {
+          const localState = normalizeCanonicalPersistedAppStateForMerge(state)
+          if (!localState) {
             throw new Error('Local persistence state was not canonical.', { cause: error })
           }
           const merged = latestState
-            ? mergePersistedAppStates(latestState, state, baseSnapshot)
-            : state
+            ? mergePersistedAppStates(latestState, localState, baseSnapshot)
+            : localState
 
           const revision = await attemptWrite(merged, latest.revision, {
             allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,

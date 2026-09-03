@@ -9,11 +9,9 @@ import type {
   WriteWorkspaceStateRawInput,
 } from '../../../../shared/contracts/dto'
 import { createAppError, createAppErrorDescriptor } from '../../../../shared/errors/appError'
-import {
-  isPersistedAppState as isPersistedAppStateContract,
-  mergePersistedAppStates,
-} from '../../../../shared/sync/mergePersistedAppStates'
-import type { PersistedAppStateContract } from '../../../../shared/contracts/persistedAppState'
+import { mergePersistedAppStates } from '../../../../shared/sync/mergePersistedAppStates'
+import { normalizePersistedAppStateForMerge } from '../../../../shared/sync/normalizePersistedAppStateForMerge'
+import type { NormalizedPersistedAppStateContract } from '../../../../shared/contracts/normalizedPersistedAppState'
 import {
   isNormalizedAgentSettings,
   normalizeAgentSettings,
@@ -54,7 +52,7 @@ function createRemoteReadUnavailableError(error: unknown, fallback: string) {
   return createAppError('persistence.unavailable', { debugMessage })
 }
 
-type RemotePersistedAppState = PersistedAppStateContract<AgentSettings>
+type RemotePersistedAppState = NormalizedPersistedAppStateContract<AgentSettings>
 
 type RemoteAppStateSnapshot = {
   revision: number
@@ -62,19 +60,14 @@ type RemoteAppStateSnapshot = {
   rawState: unknown | null
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-function isPersistedAppState(value: unknown): value is RemotePersistedAppState {
-  return isPersistedAppStateContract(value, isNormalizedAgentSettings)
-}
-
 function normalizeRemotePersistedAppState(value: unknown): RemotePersistedAppState | null {
-  if (!isPersistedAppStateContract(value, isRecord)) {
-    return null
-  }
-  return { ...value, settings: normalizeAgentSettings(value.settings) }
+  return normalizePersistedAppStateForMerge(value, settings => normalizeAgentSettings(settings))
+}
+
+function normalizeLocalPersistedAppState(value: unknown): RemotePersistedAppState | null {
+  return normalizePersistedAppStateForMerge(value, settings =>
+    isNormalizedAgentSettings(settings) ? settings : null,
+  )
 }
 
 function requireRemoteAppStateSnapshot(value: unknown): RemoteAppStateSnapshot {
@@ -204,7 +197,7 @@ export function createRemotePersistenceStore(
   }
 
   function setLastKnownSyncState(value: unknown): void {
-    lastKnownSyncState = isPersistedAppState(value) ? value : null
+    lastKnownSyncState = normalizeRemotePersistedAppState(value)
   }
 
   function isRevisionConflictError(value: unknown): boolean {
@@ -353,10 +346,15 @@ export function createRemotePersistenceStore(
           setLastKnownSyncRevision(latest.revision)
           setLastKnownSyncState(latest.state)
 
-          const merged =
-            latest.state && isPersistedAppState(state)
-              ? mergePersistedAppStates(latest.state, state, baseSnapshot)
-              : state
+          const localState = normalizeLocalPersistedAppState(state)
+          if (!localState) {
+            throw new Error('Local persistence state was not canonical after revision conflict.', {
+              cause: error,
+            })
+          }
+          const merged = latest.state
+            ? mergePersistedAppStates(latest.state, localState, baseSnapshot)
+            : localState
 
           const revision = await attemptWrite(merged, latest.revision)
 
