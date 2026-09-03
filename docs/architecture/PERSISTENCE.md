@@ -67,7 +67,12 @@ repair。Electron 的 `userData` 目录是安装版和 dev 版数据隔离的 du
 Renderer 用默认空状态覆盖原 DB。对任何会让读取失败回落到 `null` 的改动，必须补一条
 证明不会静默覆盖已有 durable state 的测试或断言。远端写入使用的 preflight 与 conflict
 snapshot 必须完整校验 revision 和嵌套 app-state 结构；首次 preflight 读到的 state 同时成为
-后续冲突合并的 base snapshot，不能只缓存 revision 后退化为 local-wins。
+后续冲突合并的 base snapshot，不能只缓存 revision 后退化为 local-wins。跨进程 app-state
+结构由 `src/shared/contracts/persistedAppState.ts` 完整描述；shared validator 校验所有 durable
+node payload、archive snapshot 与可选字段，Settings domain 则通过显式 validator port 证明
+settings 已是 canonical shape。Adapter 可以为旧 settings 生成私有的 normalized merge authority，
+但必须把原始读取结果留给既有 hydration/migration 流程；最新 snapshot 不能证明完整结构时，
+冲突重试必须 fail closed，不能回退为未合并的 local overwrite。
 
 ## Installed Upgrade Contract
 

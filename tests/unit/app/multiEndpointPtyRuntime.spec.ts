@@ -76,12 +76,61 @@ describe('createMultiEndpointPtyRuntime', () => {
       launchArtifacts: artifacts,
     })
     expect(disposed).not.toHaveBeenCalled()
+    await expect(runtime.resolveRecoveryRoute('session-1', 'home-worker')).resolves.toEqual({
+      kind: 'local',
+      workerInstanceId: 'home-worker',
+    })
 
     emitExit?.({ sessionId: 'session-1', exitCode: 0 })
     await vi.waitFor(() => expect(disposed).toHaveBeenCalledTimes(1))
+    await expect(runtime.resolveRecoveryRoute('session-1', 'home-worker')).resolves.toBeNull()
     runtime.dispose()
     await Promise.resolve()
     expect(disposed).toHaveBeenCalledTimes(1)
+  })
+
+  it('rolls back artifacts instead of registering a session that exited before spawn settled', async () => {
+    let emitExit: ((event: { sessionId: string; exitCode: number }) => void) | null = null
+    let resolveSpawn!: (value: { sessionId: string }) => void
+    const localRuntime = createRuntimeMock({
+      spawnSession: vi.fn(
+        async () =>
+          await new Promise<{ sessionId: string }>(resolve => {
+            resolveSpawn = resolve
+          }),
+      ),
+      onExit: vi.fn(listener => {
+        emitExit = listener
+        return () => undefined
+      }),
+    })
+    const disposed = vi.fn(async () => undefined)
+    const artifacts = new AgentLaunchArtifactScope()
+    artifacts.track('completed-session-provider-config', { dispose: disposed })
+    artifacts.seal()
+    const runtime = createMultiEndpointPtyRuntime({
+      localRuntime,
+      topology: {} as WorkerTopologyStore,
+      disposeLocalRuntime: false,
+    })
+
+    const spawning = runtime.spawnSession({
+      cwd: '/tmp/workspace',
+      cols: 80,
+      rows: 24,
+      command: 'claude',
+      args: [],
+      launchArtifacts: artifacts,
+    })
+    emitExit?.({ sessionId: 'session-before-response', exitCode: 0 })
+    resolveSpawn({ sessionId: 'session-before-response' })
+
+    await expect(spawning).rejects.toThrow('completed before spawn registration')
+    expect(disposed).toHaveBeenCalledTimes(1)
+    await expect(
+      runtime.resolveRecoveryRoute('session-before-response', 'home-worker'),
+    ).resolves.toBeNull()
+    runtime.dispose()
   })
 
   it('rolls back launch artifacts and preserves both failures when spawn fails', async () => {

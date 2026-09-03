@@ -17,6 +17,10 @@ import { TerminalProfileResolver } from '../../platform/terminal/TerminalProfile
 import type { ListTerminalProfilesResult } from '../../shared/contracts/dto'
 import { stripAutomaticTerminalQueriesFromOutput } from '../../shared/terminal/automaticTerminalSequences'
 import type { TerminalProcessEnginePort } from '../../contexts/terminal/application/ports/TerminalProcessEnginePort'
+import {
+  SessionRegistrationOwner,
+  SessionRegistrationRejectedError,
+} from '../../shared/runtime/sessionRegistrationOwner'
 
 type SpawnSessionOptions = {
   cwd: string
@@ -43,7 +47,7 @@ export interface HeadlessPtyRuntime {
   onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
   startSessionStateWatcher: (input: SessionStateWatcherStartInput) => void
-  debugCrashHost?: () => void
+  debugCrashHost?: () => void | Promise<void>
   dispose: () => void
 }
 
@@ -63,6 +67,7 @@ export function createHeadlessPtyRuntime(options: {
     TerminalSessionStateEvent['hookInstallState']
   >()
   const providerBySessionId = new Map<string, AgentProviderId>()
+  const sessionRegistrations = new SessionRegistrationOwner()
 
   const emitState = (event: TerminalSessionStateEvent): void => {
     stateListeners.forEach(listener => listener(event))
@@ -101,6 +106,7 @@ export function createHeadlessPtyRuntime(options: {
   })
 
   const disposeExitListener = processEngine.onExit(event => {
+    sessionRegistrations.noteCompletion(event.sessionId)
     if (providerBySessionId.get(event.sessionId) === 'codex') {
       emitState({
         sessionId: event.sessionId,
@@ -135,7 +141,20 @@ export function createHeadlessPtyRuntime(options: {
   return {
     listProfiles: async () => await profileResolver.listProfiles(),
     spawnSession: async input => {
-      const spawned = await processEngine.spawn(input)
+      const registration = sessionRegistrations.begin()
+      let spawned: { sessionId: string }
+      try {
+        spawned = await processEngine.spawn(input)
+      } catch (error) {
+        registration.cancel()
+        throw error
+      }
+
+      const disposition = registration.complete(spawned.sessionId)
+      if (disposition !== 'active') {
+        throw new SessionRegistrationRejectedError(spawned.sessionId, disposition)
+      }
+
       if (input.agentProvider && input.hookInstallState) {
         providerBySessionId.set(spawned.sessionId, input.agentProvider)
         hookInstallStateBySessionId.set(spawned.sessionId, input.hookInstallState)
@@ -236,8 +255,8 @@ export function createHeadlessPtyRuntime(options: {
     },
     ...(debugCrashHostEnabled
       ? {
-          debugCrashHost: () => {
-            processEngine.crashForDebug?.()
+          debugCrashHost: async () => {
+            await processEngine.crashForDebug?.()
           },
         }
       : {}),
@@ -257,6 +276,7 @@ export function createHeadlessPtyRuntime(options: {
       metadataListeners.clear()
       hookInstallStateBySessionId.clear()
       providerBySessionId.clear()
+      sessionRegistrations.dispose()
       sessionStateWatcher.dispose()
       processEngine.dispose()
     },

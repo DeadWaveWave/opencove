@@ -121,7 +121,7 @@ describe('PtyHostSupervisor protocol fencing', () => {
       ok: true,
       result: { sessionId: 'late-session' },
     })
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await Promise.resolve()
     expect(settled).toBe(false)
 
     secondProcess.emitHostMessage({

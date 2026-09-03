@@ -3,6 +3,7 @@ import {
   isPtyHostMessage,
   isPtyHostReadyEnvelope,
   readPtyHostResponseIdentity,
+  readPtyHostSpawnSuccessRetirementIdentity,
   type PtyHostMessage,
   type PtyHostReadyEnvelope,
   type PtyHostRequest,
@@ -141,14 +142,10 @@ export class PtyHostSupervisor {
       this.reportIssue('[pty-host] ambiguous exit deadline reached; escalating termination')
       try {
         child.kill('SIGKILL')
-      } catch {
-        // The bounded fence still retires this exact child below.
+      } catch (killError) {
+        const failure = normalizePtyHostError(killError)
+        this.reportIssue(`[pty-host] exact-child SIGKILL failed: ${failure.message}`)
       }
-      if (this.process !== child) {
-        return
-      }
-      this.hostExitEvidence.confirmExit(child, 1)
-      this.handleHostExit(1)
     })
     this.pendingResponses.failAll(normalizedError)
     try {
@@ -165,11 +162,10 @@ export class PtyHostSupervisor {
     this.hostInstanceId = null
 
     this.readyState.begin(this.readyTimeoutMs, () => {
-      this.reportIssue(`[pty-host] ready timeout after ${this.readyTimeoutMs}ms`)
-      child.kill()
-      if (this.process === child) {
-        this.handleHostExit(1)
-      }
+      const error = new Error(`[pty-host] ready timeout after ${this.readyTimeoutMs}ms`)
+      this.reportIssue(error.message)
+      this.readyState.fail(error)
+      this.handleHostError(child, error)
     })
 
     child.on('message', raw => {
@@ -185,10 +181,17 @@ export class PtyHostSupervisor {
       if (!isPtyHostMessage(raw)) {
         const responseIdentity = readPtyHostResponseIdentity(raw)
         if (responseIdentity?.hostInstanceId === this.hostInstanceId) {
-          this.pendingResponses.reject(
+          const expectedRequestType = this.pendingResponses.expectedRequestType(
             responseIdentity.requestId,
-            new Error('[pty-host] malformed response'),
           )
+          const spawnIdentity = readPtyHostSpawnSuccessRetirementIdentity(raw)
+          const error = new Error('[pty-host] malformed response')
+          this.pendingResponses.reject(responseIdentity.requestId, error)
+          if (spawnIdentity?.hostInstanceId === this.hostInstanceId) {
+            this.sessionEvents.resolveSpawn(spawnIdentity.sessionId, false)
+          } else if (expectedRequestType === 'spawn') {
+            this.handleHostError(child, error)
+          }
         }
         return
       }
@@ -451,21 +454,16 @@ export class PtyHostSupervisor {
     )
   }
 
-  public crash(): void {
+  public async crash(): Promise<void> {
     const child = this.process
     if (!child || !this.readyState.promise) {
       return
     }
-
-    try {
-      child.kill()
-    } catch {
-      // ignore and force supervisor crash handling below
-    }
-
-    if (this.process === child) {
-      this.handleHostExit(1)
-    }
+    const confirmedExit = new Promise<void>(resolve => {
+      child.on('exit', () => resolve())
+    })
+    this.handleHostError(child, new Error('[pty-host] crash requested'))
+    await confirmedExit
   }
 
   public dispose(): void {

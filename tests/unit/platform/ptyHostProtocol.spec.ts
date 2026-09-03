@@ -4,6 +4,7 @@ import {
   isPtyHostMessage,
   isPtyHostReadyEnvelope,
   isPtyHostRequest,
+  readPtyHostSpawnSuccessRetirementIdentity,
 } from '@platform/process/ptyHost/protocol'
 
 const HOST_INSTANCE_ID = 'host-instance-1'
@@ -183,6 +184,27 @@ describe('PTY host private protocol validation', () => {
     ]
 
     expect(messages.every(isPtyHostMessage)).toBe(true)
+  })
+
+  it('extracts only a safe exact session identity from malformed spawn success', () => {
+    const malformed = {
+      type: 'response',
+      requestType: 'spawn',
+      hostInstanceId: HOST_INSTANCE_ID,
+      requestId: 'request-malformed',
+      ok: true,
+      result: { sessionId: 'session-malformed', unexpected: true },
+    }
+
+    expect(isPtyHostMessage(malformed)).toBe(false)
+    expect(readPtyHostSpawnSuccessRetirementIdentity(malformed)).toEqual({
+      hostInstanceId: HOST_INSTANCE_ID,
+      requestId: 'request-malformed',
+      sessionId: 'session-malformed',
+    })
+    expect(
+      readPtyHostSpawnSuccessRetirementIdentity({ ...malformed, result: { sessionId: 1 } }),
+    ).toBeNull()
   })
 
   it.each([

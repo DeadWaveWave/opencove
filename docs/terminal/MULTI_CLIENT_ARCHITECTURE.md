@@ -164,6 +164,11 @@ Client attach flow:
 presentationSnapshot -> local reset/resize -> write serializedScreen -> attach(afterSeq)
 ```
 
+A Browser attach is complete only after the exact current socket lease has received `hello_ack` and
+then a valid `attached` acknowledgement containing both role and non-negative `authorityEpoch` for
+that session. Write, resize, and Agent re-exec join the same attach promise; none may infer support or
+reuse authority from an open socket, a retired lease, or an attach message that was merely sent.
+
 Clients resync when they detect:
 
 - replay overflow or sequence gap

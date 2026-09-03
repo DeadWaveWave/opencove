@@ -1,5 +1,5 @@
 import type {
-  PersistedAppStateContract as PersistedAppState,
+  PersistedAppStateContract,
   PersistedNodeContract as PersistedTerminalNode,
   PersistedSpaceContract as WorkspaceSpaceState,
   PersistedWorkspaceContract as PersistedWorkspaceState,
@@ -8,6 +8,8 @@ import { isSpaceBoundaryEqual } from './spaceBoundaryEquality'
 import { mergeSnapshotField } from './mergeSnapshotField'
 import { areNodeWorkerBindingsEqual } from '../types/nodeWorkerBinding'
 export { isPersistedAppState } from './persistedAppStateValidation'
+
+type PersistedAppState<TSettings extends object> = PersistedAppStateContract<TSettings>
 
 type TaskNodeData = {
   requirement: string
@@ -439,11 +441,11 @@ function mergeWorkspaces(
   }
 }
 
-export function mergePersistedAppStates(
-  base: PersistedAppState,
-  local: PersistedAppState,
-  baseSnapshot: PersistedAppState | null = null,
-): PersistedAppState {
+export function mergePersistedAppStates<TSettings extends object>(
+  base: PersistedAppState<TSettings>,
+  local: PersistedAppState<TSettings>,
+  baseSnapshot: PersistedAppState<TSettings> | null = null,
+): PersistedAppState<TSettings> {
   const baseSnapshotWorkspaceById = new Map(
     (baseSnapshot?.workspaces ?? []).map(workspace => [workspace.id, workspace] as const),
   )

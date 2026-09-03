@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createRemotePersistenceStore } from '../../../src/app/main/controlSurface/remote/remotePersistenceStore'
+import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+
+function createSettings(source: string) {
+  return { ...DEFAULT_AGENT_SETTINGS, releaseNotesSeenVersion: source }
+}
 
 function createMergeState(positionX: number, source: string) {
   return {
@@ -36,7 +41,7 @@ function createMergeState(positionX: number, source: string) {
         spaceArchiveRecords: [],
       },
     ],
-    settings: { source },
+    settings: createSettings(source),
   }
 }
 
@@ -51,13 +56,13 @@ describe('remote persistence store', () => {
       formatVersion: 1,
       activeWorkspaceId: null,
       workspaces: [],
-      settings: { source: 'first' },
+      settings: createSettings('first'),
     }
     const secondState = {
       formatVersion: 1,
       activeWorkspaceId: null,
       workspaces: [],
-      settings: { source: 'second' },
+      settings: createSettings('second'),
     }
     const fetchMock = vi
       .fn()
@@ -223,13 +228,13 @@ describe('remote persistence store', () => {
       formatVersion: 1,
       activeWorkspaceId: null,
       workspaces: [],
-      settings: { source: 'initial' },
+      settings: createSettings('initial'),
     }
     const nextState = {
       formatVersion: 1,
       activeWorkspaceId: null,
       workspaces: [],
-      settings: { source: 'next' },
+      settings: createSettings('next'),
     }
     const fetchMock = vi
       .fn()
@@ -370,7 +375,7 @@ describe('remote persistence store', () => {
         formatVersion: 1,
         activeWorkspaceId: null,
         workspaces: [],
-        settings: { source: 'local' },
+        settings: createSettings('local'),
       }),
     ).resolves.toMatchObject({ ok: false, reason: 'io' })
     expect(fetchMock).toHaveBeenCalledOnce()
@@ -381,13 +386,13 @@ describe('remote persistence store', () => {
       formatVersion: 1,
       activeWorkspaceId: null,
       workspaces: [],
-      settings: { source: 'initial' },
+      settings: createSettings('initial'),
     }
     const localState = {
       formatVersion: 1,
       activeWorkspaceId: null,
       workspaces: [],
-      settings: { source: 'local' },
+      settings: createSettings('local'),
     }
     const fetchMock = vi
       .fn()

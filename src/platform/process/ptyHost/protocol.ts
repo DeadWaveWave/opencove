@@ -228,6 +228,28 @@ export function readPtyHostResponseIdentity(
   return { hostInstanceId: value.hostInstanceId, requestId: value.requestId }
 }
 
+export function readPtyHostSpawnSuccessRetirementIdentity(
+  value: unknown,
+): { hostInstanceId: string; requestId: string; sessionId: string } | null {
+  if (
+    !isRecord(value) ||
+    value.type !== 'response' ||
+    value.requestType !== 'spawn' ||
+    value.ok !== true ||
+    !isIdentifier(value.hostInstanceId) ||
+    !isIdentifier(value.requestId) ||
+    !isRecord(value.result) ||
+    !isIdentifier(value.result.sessionId)
+  ) {
+    return null
+  }
+  return {
+    hostInstanceId: value.hostInstanceId,
+    requestId: value.requestId,
+    sessionId: value.result.sessionId,
+  }
+}
+
 function isResizeAck(value: unknown): value is PtyHostResizeAck {
   if (!isRecord(value)) {
     return false

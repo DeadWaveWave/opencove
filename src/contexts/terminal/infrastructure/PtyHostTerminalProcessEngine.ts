@@ -74,8 +74,8 @@ export class PtyHostTerminalProcessEngine implements TerminalProcessEnginePort {
     return this.subscribe(this.foregroundListeners, listener)
   }
 
-  public crashForDebug(): void {
-    this.supervisor.crash()
+  public async crashForDebug(): Promise<void> {
+    await this.supervisor.crash()
   }
 
   public dispose(): void {

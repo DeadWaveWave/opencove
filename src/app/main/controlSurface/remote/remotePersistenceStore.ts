@@ -10,10 +10,15 @@ import type {
 } from '../../../../shared/contracts/dto'
 import { createAppError, createAppErrorDescriptor } from '../../../../shared/errors/appError'
 import {
-  isPersistedAppState,
+  isPersistedAppState as isPersistedAppStateContract,
   mergePersistedAppStates,
 } from '../../../../shared/sync/mergePersistedAppStates'
 import type { PersistedAppStateContract } from '../../../../shared/contracts/persistedAppState'
+import {
+  isNormalizedAgentSettings,
+  normalizeAgentSettings,
+  type AgentSettings,
+} from '../../../../contexts/settings/domain/agentSettings'
 import type {
   PersistenceRecoveryReason,
   PersistenceStore,
@@ -49,9 +54,27 @@ function createRemoteReadUnavailableError(error: unknown, fallback: string) {
   return createAppError('persistence.unavailable', { debugMessage })
 }
 
+type RemotePersistedAppState = PersistedAppStateContract<AgentSettings>
+
 type RemoteAppStateSnapshot = {
   revision: number
-  state: PersistedAppStateContract | null
+  state: RemotePersistedAppState | null
+  rawState: unknown | null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isPersistedAppState(value: unknown): value is RemotePersistedAppState {
+  return isPersistedAppStateContract(value, isNormalizedAgentSettings)
+}
+
+function normalizeRemotePersistedAppState(value: unknown): RemotePersistedAppState | null {
+  if (!isPersistedAppStateContract(value, isRecord)) {
+    return null
+  }
+  return { ...value, settings: normalizeAgentSettings(value.settings) }
 }
 
 function requireRemoteAppStateSnapshot(value: unknown): RemoteAppStateSnapshot {
@@ -60,16 +83,17 @@ function requireRemoteAppStateSnapshot(value: unknown): RemoteAppStateSnapshot {
   }
 
   const record = value as Record<string, unknown>
+  const state = record.state === null ? null : normalizeRemotePersistedAppState(record.state)
   if (
     typeof record.revision !== 'number' ||
     !Number.isSafeInteger(record.revision) ||
     record.revision < 0 ||
-    (record.state !== null && !isPersistedAppState(record.state))
+    (record.state !== null && state === null)
   ) {
     throw createRemoteReadUnavailableError(null, 'Remote persistence response was malformed.')
   }
 
-  return { revision: record.revision, state: record.state }
+  return { revision: record.revision, state, rawState: record.state }
 }
 
 async function invokeRequiredValueAtEndpoint<TResult>(
@@ -169,7 +193,7 @@ export function createRemotePersistenceStore(
   endpointResolver: ControlSurfaceRemoteEndpointResolver,
 ): PersistenceStore {
   let lastKnownSyncRevision: number | null = null
-  let lastKnownSyncState: PersistedAppStateContract | null = null
+  let lastKnownSyncState: RemotePersistedAppState | null = null
 
   function setLastKnownSyncRevision(value: unknown): void {
     if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
@@ -224,8 +248,8 @@ export function createRemotePersistenceStore(
         await invokeRequiredValue<unknown>(endpointResolver, 'query', 'sync.state', null),
       )
       setLastKnownSyncRevision(result.revision)
-      setLastKnownSyncState(result.state)
-      return result.state
+      lastKnownSyncState = result.state
+      return result.rawState
     },
     readAppStateRevision: async () => {
       try {
@@ -253,7 +277,11 @@ export function createRemotePersistenceStore(
 
         const ensureBaseSnapshot = async (): Promise<RemoteAppStateSnapshot> => {
           if (typeof lastKnownSyncRevision === 'number') {
-            return { revision: lastKnownSyncRevision, state: lastKnownSyncState }
+            return {
+              revision: lastKnownSyncRevision,
+              state: lastKnownSyncState,
+              rawState: lastKnownSyncState,
+            }
           }
 
           const latest = await readLatestSnapshot()

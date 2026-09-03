@@ -23,57 +23,38 @@ import type {
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import { BrowserPtyGeometryAckCoordinator } from './BrowserPtyGeometryAckCoordinator'
 import { BrowserPtyClientMetadataWatcher } from './BrowserPtyClientMetadataWatcher'
-import { BrowserPtySocketLifecycle } from './BrowserPtySocketLifecycle'
+import { BrowserPtySocketLifecycle, type BrowserPtySocketLease } from './BrowserPtySocketLifecycle'
+import { BrowserPtySessionAuthority } from './BrowserPtySessionAuthority'
 import { BrowserPtyClientStateReplay } from './BrowserPtyClientStateReplay'
 import { BrowserPtyClientAgentReexec } from './BrowserPtyClientAgentReexec'
 import { parseBrowserPtyMetadata } from './BrowserPtyMetadata'
 import {
   emitBrowserPtyEvent,
-  normalizeBrowserPtyAttachAfterSeq,
-  normalizeBrowserPtyNonNegativeInt,
   normalizeBrowserPtyPositiveInt,
   normalizeBrowserPtySessionState,
   normalizeBrowserPtyStateMetadata,
 } from './BrowserPtyWire'
 
 type UnsubscribeFn = () => void
-type AttachedSessionState = {
-  lastSeq: number
-  role: 'viewer' | 'controller'
-  authorityEpoch: number | null
-  nextLegacyRevision: number
-}
-function createAttachedSessionState(): AttachedSessionState {
-  return { lastSeq: 0, role: 'viewer', authorityEpoch: null, nextLegacyRevision: 0 }
-}
 
 export class BrowserPtyClient {
-  private attachedSessions = new Map<string, AttachedSessionState>()
+  private readonly sessionAuthority = new BrowserPtySessionAuthority()
+  private readonly attachedSessions = this.sessionAuthority.sessions
   private readonly geometryAcks = new BrowserPtyGeometryAckCoordinator()
   private readonly socketLifecycle = new BrowserPtySocketLifecycle({
-    onConnected: send => {
+    onConnected: (lease, send) => {
       send({
         type: 'hello',
         protocolVersion: 1,
         client: { kind: 'web', version: null },
       })
-      for (const [sessionId, state] of this.attachedSessions) {
-        state.authorityEpoch = null
-        send({
-          type: 'attach',
-          sessionId,
-          afterSeq: state.lastSeq > 0 ? state.lastSeq : undefined,
-          role: 'controller',
-        })
-      }
+      this.sessionAuthority.onConnected(lease, send)
     },
-    onMessage: raw => {
-      void this.handleMessage(raw)
+    onMessage: (lease, raw) => {
+      void this.handleMessage(lease, raw)
     },
-    onDisconnected: error => {
-      for (const state of this.attachedSessions.values()) {
-        state.authorityEpoch = null
-      }
+    onDisconnected: (lease, error) => {
+      this.sessionAuthority.retireLease(lease, error)
       this.agentReexec.rejectAll(error)
       this.geometryAcks.rejectAll(error)
     },
@@ -95,7 +76,7 @@ export class BrowserPtyClient {
       emitBrowserPtyEvent(this.metadataListeners, event)
     },
   })
-  private async handleMessage(raw: string): Promise<void> {
+  private async handleMessage(lease: BrowserPtySocketLease, raw: string): Promise<void> {
     let payload: unknown
     try {
       payload = JSON.parse(raw) as unknown
@@ -112,6 +93,7 @@ export class BrowserPtyClient {
     const sessionId = typeof record.sessionId === 'string' ? record.sessionId : null
 
     if (type === 'hello_ack') {
+      this.sessionAuthority.noteHelloAck(lease)
       this.agentReexec.noteHelloAck(record)
       this.geometryAcks.noteHelloAck(record)
       return
@@ -122,23 +104,12 @@ export class BrowserPtyClient {
     }
 
     if (type === 'attached') {
-      if (!this.attachedSessions.has(sessionId)) {
-        this.attachedSessions.set(sessionId, createAttachedSessionState())
-      }
-      const state = this.attachedSessions.get(sessionId)
-      if (state) {
-        state.role = record.role === 'controller' ? 'controller' : 'viewer'
-        state.authorityEpoch = normalizeBrowserPtyNonNegativeInt(record.authorityEpoch)
-      }
+      this.sessionAuthority.noteAttached(lease, record)
       return
     }
 
     if (type === 'control_changed') {
-      const state = this.attachedSessions.get(sessionId)
-      if (state) {
-        state.role = record.role === 'controller' ? 'controller' : 'viewer'
-        state.authorityEpoch = normalizeBrowserPtyNonNegativeInt(record.authorityEpoch)
-      }
+      this.sessionAuthority.noteControlChanged(lease, sessionId, record)
       return
     }
 
@@ -186,6 +157,7 @@ export class BrowserPtyClient {
           ? Math.floor(record.exitCode)
           : 0
       this.stateReplay.disposeSession(sessionId)
+      this.sessionAuthority.remove(sessionId, new Error('Terminal session exited'))
       this.agentReexec.rejectSession(sessionId, new Error('Terminal session exited'))
       this.latestMetadataBySessionId.delete(sessionId)
       this.metadataWatcher.cancel(sessionId)
@@ -276,10 +248,6 @@ export class BrowserPtyClient {
     }
   }
 
-  private async sendSocketMessage(payload: unknown): Promise<void> {
-    await this.socketLifecycle.send(payload)
-  }
-
   public listProfiles(): Promise<{ profiles: []; defaultProfileId: null }> {
     return Promise.resolve({ profiles: [], defaultProfileId: null })
   }
@@ -308,22 +276,42 @@ export class BrowserPtyClient {
   }
 
   public async write(payload: WriteTerminalInput): Promise<void> {
-    await this.sendSocketMessage({
-      type: 'write',
-      sessionId: payload.sessionId,
-      data: payload.data,
-    })
+    const attached = await this.sessionAuthority.ensureAttached(
+      this.socketLifecycle,
+      payload.sessionId,
+    )
+    if (
+      !this.socketLifecycle.sendIfCurrent(attached.lease, {
+        type: 'write',
+        sessionId: payload.sessionId,
+        data: payload.data,
+      })
+    ) {
+      throw new Error('PTY stream socket changed before write')
+    }
   }
 
   public async reexecAgent(payload: TerminalAgentReexecInput): Promise<TerminalAgentReexecResult> {
+    const attached = await this.sessionAuthority.ensureAttached(
+      this.socketLifecycle,
+      payload.sessionId,
+    )
     return await this.agentReexec.reexec({
       input: payload,
-      authorityEpoch: this.attachedSessions.get(payload.sessionId)?.authorityEpoch ?? null,
-      send: async message => await this.sendSocketMessage(message),
+      authorityEpoch: attached.result.authority.epoch,
+      send: async message => {
+        if (!this.socketLifecycle.sendIfCurrent(attached.lease, message)) {
+          throw new Error('PTY stream socket changed before terminal Agent re-exec')
+        }
+      },
     })
   }
 
   public async resize(payload: ResizeTerminalInput): Promise<TerminalGeometryCommitResult> {
+    const attached = await this.sessionAuthority.ensureAttached(
+      this.socketLifecycle,
+      payload.sessionId,
+    )
     const state = this.attachedSessions.get(payload.sessionId)
     const legacyRevision =
       this.geometryAcks.typedAckSupported === false && state
@@ -336,25 +324,27 @@ export class BrowserPtyClient {
     })
 
     try {
-      await this.sendSocketMessage({
-        type: 'resize',
-        sessionId: payload.sessionId,
-        cols: payload.cols,
-        rows: payload.rows,
-        reason: payload.reason,
-        operationId: pending.operationId,
-        ...(payload.baseGeometryRevision !== undefined
-          ? { baseGeometryRevision: payload.baseGeometryRevision }
-          : {}),
-        ...(state?.authorityEpoch !== null && state?.authorityEpoch !== undefined
-          ? { authorityEpoch: state.authorityEpoch }
-          : {}),
-        ...(legacyRevision !== null
-          ? { revision: legacyRevision }
-          : typeof payload.revision === 'number' && Number.isFinite(payload.revision)
-            ? { revision: payload.revision }
+      if (
+        !this.socketLifecycle.sendIfCurrent(attached.lease, {
+          type: 'resize',
+          sessionId: payload.sessionId,
+          cols: payload.cols,
+          rows: payload.rows,
+          reason: payload.reason,
+          operationId: pending.operationId,
+          ...(payload.baseGeometryRevision !== undefined
+            ? { baseGeometryRevision: payload.baseGeometryRevision }
             : {}),
-      })
+          authorityEpoch: attached.result.authority.epoch,
+          ...(legacyRevision !== null
+            ? { revision: legacyRevision }
+            : typeof payload.revision === 'number' && Number.isFinite(payload.revision)
+              ? { revision: payload.revision }
+              : {}),
+        })
+      ) {
+        throw new Error('PTY stream socket changed before terminal geometry commit')
+      }
     } catch (error) {
       this.geometryAcks.reject(
         payload.sessionId,
@@ -375,25 +365,13 @@ export class BrowserPtyClient {
   }
 
   public async attach(payload: AttachTerminalInput): Promise<void> {
-    const state = this.attachedSessions.get(payload.sessionId) ?? createAttachedSessionState()
-    const afterSeq = normalizeBrowserPtyAttachAfterSeq(payload.afterSeq)
-    if (afterSeq !== null) {
-      state.lastSeq = Math.max(state.lastSeq, afterSeq)
-    }
-    this.attachedSessions.set(payload.sessionId, state)
-
-    await this.sendSocketMessage({
-      type: 'attach',
-      sessionId: payload.sessionId,
-      afterSeq: state.lastSeq > 0 ? state.lastSeq : undefined,
-      role: 'controller',
-    })
-
+    this.sessionAuthority.track(payload)
+    await this.sessionAuthority.ensureAttached(this.socketLifecycle, payload.sessionId)
     this.metadataWatcher.ensure(payload.sessionId)
   }
 
   public async detach(payload: DetachTerminalInput): Promise<void> {
-    this.attachedSessions.delete(payload.sessionId)
+    this.sessionAuthority.remove(payload.sessionId, new Error('Terminal session detached'))
     this.agentReexec.rejectSession(payload.sessionId, new Error('Terminal session detached'))
     this.stateReplay.disposeSession(payload.sessionId)
     this.latestMetadataBySessionId.delete(payload.sessionId)

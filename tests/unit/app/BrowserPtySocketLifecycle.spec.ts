@@ -37,6 +37,32 @@ describe('Browser PTY socket lifecycle', () => {
     vi.unstubAllGlobals()
   })
 
+  it('sends mutations only through the exact current socket lease', async () => {
+    vi.stubGlobal('WebSocket', FakeWebSocket)
+    vi.stubGlobal('window', {
+      location: { protocol: 'http:', host: 'localhost:3000' },
+      setTimeout,
+      clearTimeout,
+    })
+    const onDisconnected = vi.fn()
+    const lifecycle = new BrowserPtySocketLifecycle({
+      onConnected: vi.fn(),
+      onMessage: vi.fn(),
+      onDisconnected,
+      shouldReconnect: () => false,
+    })
+    const ready = lifecycle.ensureReady()
+    const socket = sockets[0]
+    socket?.emit('open')
+    const lease = await ready
+
+    expect(lifecycle.sendIfCurrent(lease, { type: 'write' })).toBe(true)
+    expect(socket?.send).toHaveBeenCalledWith(JSON.stringify({ type: 'write' }))
+    socket?.emit('close')
+    expect(lifecycle.sendIfCurrent(lease, { type: 'write' })).toBe(false)
+    expect(onDisconnected).toHaveBeenCalledWith(lease, expect.any(Error))
+  })
+
   it('ignores callbacks from an attempt retired before its socket opened', async () => {
     vi.stubGlobal('WebSocket', FakeWebSocket)
     vi.stubGlobal('window', {

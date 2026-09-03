@@ -17,6 +17,7 @@ import { AgentLaunchArtifactOwner } from '../../../../contexts/agent/application
 import { spawnLocalSessionWithArtifacts } from './localAgentLaunchArtifactLifecycle'
 import { reexecTerminalAgentInPty } from '../../../../contexts/agent/application/terminalAgentPtyReexec'
 import { restoreRemotePtySession } from './restoreRemotePtySession'
+import { SessionRegistrationOwner } from '../../../../shared/runtime/sessionRegistrationOwner'
 export { RemotePtyRecoveryBlockedError } from './RemotePtyRecoveryBlockedError'
 
 type RemoteSessionRoute = {
@@ -99,6 +100,7 @@ export function createMultiEndpointPtyRuntime(options: {
     const detail = error instanceof Error ? (error.stack ?? error.message) : String(error)
     process.stderr.write(`[opencove] failed to dispose Agent launch artifacts: ${detail}\n`)
   })
+  const localSessionRegistrations = new SessionRegistrationOwner()
 
   const proxiesByEndpointId = new Map<string, RemotePtyEndpointProxy>()
 
@@ -220,6 +222,8 @@ export function createMultiEndpointPtyRuntime(options: {
   })
 
   const disposeLocalExitListener = options.localRuntime.onExit(event => {
+    localSessionRegistrations.noteCompletion(event.sessionId)
+    routes.delete(event.sessionId)
     shellInputReadiness.forget(event.sessionId)
     launchArtifactOwner.release(event.sessionId)
     exitListeners.forEach(listener => listener(event))
@@ -249,8 +253,9 @@ export function createMultiEndpointPtyRuntime(options: {
         options.localRuntime,
         spawnOptions,
         launchArtifactOwner,
+        localSessionRegistrations.begin(),
+        registeredSessionId => routes.set(registeredSessionId, { kind: 'local' }),
       )
-      routes.set(sessionId, { kind: 'local' })
       return { sessionId }
     },
     waitForShellReady: async sessionId => {
@@ -446,6 +451,7 @@ export function createMultiEndpointPtyRuntime(options: {
       }
       proxiesByEndpointId.clear()
 
+      localSessionRegistrations.dispose()
       routes.clear()
       homeSessionIdByRemote.clear()
       remoteByHomeSessionId.clear()

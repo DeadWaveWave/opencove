@@ -448,8 +448,8 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
     },
     ...(debugCrashHostEnabled
       ? {
-          debugCrashHost: () => {
-            processEngine.crashForDebug?.()
+          debugCrashHost: async () => {
+            await processEngine.crashForDebug?.()
           },
         }
       : {}),

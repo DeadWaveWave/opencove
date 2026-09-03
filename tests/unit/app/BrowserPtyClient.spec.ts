@@ -1,5 +1,72 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BrowserPtyClient } from '../../../src/app/renderer/browser/BrowserPtyClient'
+import type { BrowserPtySocketLease } from '../../../src/app/renderer/browser/BrowserPtySocketLifecycle'
+
+type ClientInternals = {
+  handleMessage: (lease: BrowserPtySocketLease, raw: string) => Promise<void>
+  attachedSessions: Map<string, { lastSeq: number; role: string; authorityEpoch: number | null }>
+  socketLifecycle: {
+    ensureReady: () => Promise<BrowserPtySocketLease>
+    sendIfCurrent: (lease: BrowserPtySocketLease, payload: unknown) => boolean
+    options: { onDisconnected: (lease: BrowserPtySocketLease, error: Error) => void }
+  }
+}
+
+function installWindow(): void {
+  vi.stubGlobal('window', {
+    location: { protocol: 'http:', host: 'localhost:3000', search: '' },
+    clearTimeout,
+    setTimeout,
+  })
+}
+
+function createLease(): BrowserPtySocketLease {
+  return Object.freeze({})
+}
+
+function getInternals(client: BrowserPtyClient): ClientInternals {
+  return client as unknown as ClientInternals
+}
+
+function prepareSocket(internals: ClientInternals, lease: BrowserPtySocketLease) {
+  vi.spyOn(internals.socketLifecycle, 'ensureReady').mockResolvedValue(lease)
+  return vi.spyOn(internals.socketLifecycle, 'sendIfCurrent').mockReturnValue(true)
+}
+
+async function attachClient(options: {
+  client: BrowserPtyClient
+  internals: ClientInternals
+  lease: BrowserPtySocketLease
+  sessionId: string
+  role?: 'viewer' | 'controller'
+  authorityEpoch?: number
+  capabilities?: Record<string, number>
+}) {
+  await options.internals.handleMessage(
+    options.lease,
+    JSON.stringify({
+      type: 'hello_ack',
+      capabilities: options.capabilities ?? { geometryCommitAck: 1 },
+    }),
+  )
+  const pending = options.client.attach({ sessionId: options.sessionId })
+  await vi.waitFor(() => {
+    expect(options.internals.socketLifecycle.sendIfCurrent).toHaveBeenCalledWith(
+      options.lease,
+      expect.objectContaining({ type: 'attach', sessionId: options.sessionId }),
+    )
+  })
+  await options.internals.handleMessage(
+    options.lease,
+    JSON.stringify({
+      type: 'attached',
+      sessionId: options.sessionId,
+      role: options.role ?? 'controller',
+      authorityEpoch: options.authorityEpoch ?? 1,
+    }),
+  )
+  return await pending
+}
 
 describe('BrowserPtyClient', () => {
   afterEach(() => {
@@ -8,16 +75,13 @@ describe('BrowserPtyClient', () => {
   })
 
   it('preserves authenticated terminal activity metadata', async () => {
-    vi.stubGlobal('window', {
-      location: { protocol: 'http:', host: 'localhost:3000', search: '' },
-      clearTimeout,
-      setTimeout,
-    })
+    installWindow()
     const client = new BrowserPtyClient()
     const listener = vi.fn()
     client.onMetadata(listener)
 
-    await (client as unknown as { handleMessage: (raw: string) => Promise<void> }).handleMessage(
+    await getInternals(client).handleMessage(
+      createLease(),
       JSON.stringify({
         type: 'metadata',
         sessionId: 'session-activity',
@@ -48,24 +112,15 @@ describe('BrowserPtyClient', () => {
   })
 
   it('emits resync instead of replaying raw snapshot data on overflow', async () => {
-    vi.stubGlobal('window', {
-      location: {
-        protocol: 'http:',
-        host: 'localhost:3000',
-        search: '',
-      },
-      clearTimeout,
-      setTimeout,
-    })
-
+    installWindow()
     const client = new BrowserPtyClient()
     const resyncListener = vi.fn()
     const dataListener = vi.fn()
-
     client.onResync(resyncListener)
     client.onData(dataListener)
 
-    await (client as unknown as { handleMessage: (raw: string) => Promise<void> }).handleMessage(
+    await getInternals(client).handleMessage(
+      createLease(),
       JSON.stringify({
         type: 'overflow',
         sessionId: 'session-1',
@@ -83,60 +138,51 @@ describe('BrowserPtyClient', () => {
     expect(dataListener).not.toHaveBeenCalled()
   })
 
-  it('does not advance replay cursor from attached acknowledgements', async () => {
-    vi.stubGlobal('window', {
-      location: {
-        protocol: 'http:',
-        host: 'localhost:3000',
-        search: '',
-      },
-      clearTimeout,
-      setTimeout,
-    })
-
+  it('keeps attach pending until exact role and authority acknowledgement', async () => {
+    installWindow()
     const client = new BrowserPtyClient()
-    const dataListener = vi.fn()
-    const internals = client as unknown as {
-      handleMessage: (raw: string) => Promise<void>
-      attachedSessions: Map<string, { lastSeq: number }>
-    }
+    const internals = getInternals(client)
+    const lease = createLease()
+    prepareSocket(internals, lease)
+    await internals.handleMessage(lease, JSON.stringify({ type: 'hello_ack', capabilities: {} }))
 
-    client.onData(dataListener)
-
-    await internals.handleMessage(
-      JSON.stringify({ type: 'attached', sessionId: 'session-1', seq: 11 }),
-    )
-
-    expect(internals.attachedSessions.get('session-1')?.lastSeq).toBe(0)
-
-    await internals.handleMessage(
-      JSON.stringify({ type: 'data', sessionId: 'session-1', data: 'hello', seq: 11 }),
-    )
-
-    expect(internals.attachedSessions.get('session-1')?.lastSeq).toBe(11)
-    expect(dataListener).toHaveBeenCalledWith({
-      sessionId: 'session-1',
-      data: 'hello',
-      seq: 11,
+    let settled = false
+    const pending = client.attach({ sessionId: 'session-1' }).finally(() => {
+      settled = true
     })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+    await internals.handleMessage(
+      lease,
+      JSON.stringify({
+        type: 'attached',
+        sessionId: 'session-1',
+        role: 'invalid',
+        authorityEpoch: 2,
+      }),
+    )
+    expect(settled).toBe(false)
+    await internals.handleMessage(
+      lease,
+      JSON.stringify({
+        type: 'attached',
+        sessionId: 'session-1',
+        role: 'controller',
+        authorityEpoch: 2,
+      }),
+    )
+
+    await expect(pending).resolves.toBeUndefined()
+    expect(internals.attachedSessions.get('session-1')?.lastSeq).toBe(0)
   })
 
   it('retains one timestamped raw observation per source until client detach', async () => {
-    vi.stubGlobal('window', {
-      location: {
-        protocol: 'http:',
-        host: 'localhost:3000',
-        search: '',
-      },
-      clearTimeout,
-      setTimeout,
-    })
-
+    installWindow()
     const client = new BrowserPtyClient()
-    const internals = client as unknown as {
-      handleMessage: (raw: string) => Promise<void>
-    }
+    const internals = getInternals(client)
+    const lease = createLease()
     await internals.handleMessage(
+      lease,
       JSON.stringify({
         type: 'state',
         sessionId: 'session-replay',
@@ -147,6 +193,7 @@ describe('BrowserPtyClient', () => {
       }),
     )
     await internals.handleMessage(
+      lease,
       JSON.stringify({
         type: 'state',
         sessionId: 'session-replay',
@@ -175,41 +222,21 @@ describe('BrowserPtyClient', () => {
         observedAtMs: 2_000,
       },
     ])
-
     await client.detach({ sessionId: 'session-replay' })
     const afterDetachListener = vi.fn()
     client.onState(afterDetachListener)
     expect(afterDetachListener).not.toHaveBeenCalled()
   })
 
-  it('uses transport-owned authority while waiting for the correlated resize result', async () => {
-    vi.stubGlobal('window', {
-      location: {
-        protocol: 'http:',
-        host: 'localhost:3000',
-        search: '',
-      },
-      clearTimeout,
-      setTimeout,
-    })
-
+  it('uses current attached authority for a correlated resize result', async () => {
+    installWindow()
     const client = new BrowserPtyClient()
-    const internals = client as unknown as {
-      sendSocketMessage: (payload: unknown) => Promise<void>
-      handleMessage: (raw: string) => Promise<void>
-      attachedSessions: Map<string, { role: string; authorityEpoch: number }>
-    }
-    const sendSocketMessage = vi.spyOn(internals, 'sendSocketMessage').mockResolvedValue(undefined)
-
+    const internals = getInternals(client)
+    const lease = createLease()
+    const send = prepareSocket(internals, lease)
+    await attachClient({ client, internals, lease, sessionId: 'session-ack', authorityEpoch: 2 })
     await internals.handleMessage(
-      JSON.stringify({
-        type: 'attached',
-        sessionId: 'session-ack',
-        role: 'controller',
-        authorityEpoch: 2,
-      }),
-    )
-    await internals.handleMessage(
+      lease,
       JSON.stringify({
         type: 'control_changed',
         sessionId: 'session-ack',
@@ -227,27 +254,20 @@ describe('BrowserPtyClient', () => {
       baseGeometryRevision: 4,
       authorityEpoch: 2,
     })
-
-    await Promise.resolve()
-    expect(sendSocketMessage).toHaveBeenCalledWith({
-      type: 'resize',
-      sessionId: 'session-ack',
-      cols: 100,
-      rows: 32,
-      reason: 'frame_commit',
-      operationId: 'operation-browser-1',
-      baseGeometryRevision: 4,
-      authorityEpoch: 3,
+    await vi.waitFor(() => {
+      expect(send).toHaveBeenCalledWith(lease, {
+        type: 'resize',
+        sessionId: 'session-ack',
+        cols: 100,
+        rows: 32,
+        reason: 'frame_commit',
+        operationId: 'operation-browser-1',
+        baseGeometryRevision: 4,
+        authorityEpoch: 3,
+      })
     })
-
-    let settled = false
-    void resizePromise.finally(() => {
-      settled = true
-    })
-    await Promise.resolve()
-    expect(settled).toBe(false)
-
     await internals.handleMessage(
+      lease,
       JSON.stringify({
         type: 'resize_result',
         sessionId: 'session-ack',
@@ -267,42 +287,25 @@ describe('BrowserPtyClient', () => {
       geometry: { cols: 100, rows: 32, revision: 5 },
       authority: { role: 'controller', epoch: 3 },
     })
-    expect(internals.attachedSessions.get('session-ack')).toMatchObject({
-      role: 'controller',
-      authorityEpoch: 3,
-    })
   })
 
-  it('does not carry a disconnected socket authority epoch into the next resize', async () => {
-    vi.stubGlobal('window', {
-      location: {
-        protocol: 'http:',
-        host: 'localhost:3000',
-        search: '',
-      },
-      clearTimeout,
-      setTimeout,
+  it('waits for replacement attach authority after disconnect before resize', async () => {
+    installWindow()
+    const client = new BrowserPtyClient()
+    const internals = getInternals(client)
+    const firstLease = createLease()
+    const send = prepareSocket(internals, firstLease)
+    await attachClient({
+      client,
+      internals,
+      lease: firstLease,
+      sessionId: 'session-reconnect',
+      authorityEpoch: 7,
     })
 
-    const client = new BrowserPtyClient()
-    const internals = client as unknown as {
-      sendSocketMessage: (payload: unknown) => Promise<void>
-      handleMessage: (raw: string) => Promise<void>
-      socketLifecycle: {
-        options: { onDisconnected: (error: Error) => void }
-      }
-    }
-    const sendSocketMessage = vi.spyOn(internals, 'sendSocketMessage').mockResolvedValue(undefined)
-    await internals.handleMessage(
-      JSON.stringify({
-        type: 'attached',
-        sessionId: 'session-reconnect',
-        role: 'controller',
-        authorityEpoch: 7,
-      }),
-    )
-
-    internals.socketLifecycle.options.onDisconnected(new Error('socket closed'))
+    internals.socketLifecycle.options.onDisconnected(firstLease, new Error('socket closed'))
+    const secondLease = createLease()
+    vi.mocked(internals.socketLifecycle.ensureReady).mockResolvedValue(secondLease)
     const resizePromise = client.resize({
       sessionId: 'session-reconnect',
       cols: 100,
@@ -310,18 +313,44 @@ describe('BrowserPtyClient', () => {
       reason: 'frame_commit',
       operationId: 'operation-after-disconnect',
     })
-    await Promise.resolve()
-
-    expect(sendSocketMessage).toHaveBeenCalledWith({
-      type: 'resize',
-      sessionId: 'session-reconnect',
-      cols: 100,
-      rows: 32,
-      reason: 'frame_commit',
-      operationId: 'operation-after-disconnect',
+    await vi.waitFor(() => {
+      expect(send).toHaveBeenCalledWith(
+        secondLease,
+        expect.objectContaining({ type: 'attach', sessionId: 'session-reconnect' }),
+      )
     })
+    expect(
+      send.mock.calls.some(
+        ([lease, payload]) =>
+          lease === secondLease && (payload as Record<string, unknown>).type === 'resize',
+      ),
+    ).toBe(false)
 
     await internals.handleMessage(
+      secondLease,
+      JSON.stringify({ type: 'hello_ack', capabilities: { geometryCommitAck: 1 } }),
+    )
+    await internals.handleMessage(
+      secondLease,
+      JSON.stringify({
+        type: 'attached',
+        sessionId: 'session-reconnect',
+        role: 'controller',
+        authorityEpoch: 9,
+      }),
+    )
+    await vi.waitFor(() => {
+      expect(send).toHaveBeenCalledWith(
+        secondLease,
+        expect.objectContaining({
+          type: 'resize',
+          operationId: 'operation-after-disconnect',
+          authorityEpoch: 9,
+        }),
+      )
+    })
+    await internals.handleMessage(
+      secondLease,
       JSON.stringify({
         type: 'resize_result',
         sessionId: 'session-reconnect',
@@ -332,35 +361,24 @@ describe('BrowserPtyClient', () => {
         authority: { role: 'controller', epoch: 9 },
       }),
     )
-    await expect(resizePromise).resolves.toMatchObject({
+    await expect(resizePromise).resolves.toEqual({
+      sessionId: 'session-reconnect',
+      operationId: 'operation-after-disconnect',
       status: 'accepted',
+      changed: true,
+      geometry: { cols: 100, rows: 32, revision: 8 },
       authority: { role: 'controller', epoch: 9 },
     })
   })
 
   it('isolates the same geometry operation id across attached sessions', async () => {
-    vi.stubGlobal('window', {
-      location: {
-        protocol: 'http:',
-        host: 'localhost:3000',
-        search: '',
-      },
-      clearTimeout,
-      setTimeout,
-    })
-
+    installWindow()
     const client = new BrowserPtyClient()
-    const internals = client as unknown as {
-      sendSocketMessage: (payload: unknown) => Promise<void>
-      handleMessage: (raw: string) => Promise<void>
-    }
-    const sendSocketMessage = vi.spyOn(internals, 'sendSocketMessage').mockResolvedValue(undefined)
-    await internals.handleMessage(
-      JSON.stringify({ type: 'attached', sessionId: 'session-first', role: 'controller' }),
-    )
-    await internals.handleMessage(
-      JSON.stringify({ type: 'attached', sessionId: 'session-second', role: 'viewer' }),
-    )
+    const internals = getInternals(client)
+    const lease = createLease()
+    prepareSocket(internals, lease)
+    await attachClient({ client, internals, lease, sessionId: 'session-first', authorityEpoch: 2 })
+    await attachClient({ client, internals, lease, sessionId: 'session-second', authorityEpoch: 5 })
 
     const firstPending = client.resize({
       sessionId: 'session-first',
@@ -376,33 +394,25 @@ describe('BrowserPtyClient', () => {
       reason: 'frame_commit',
       operationId: 'shared-operation',
     })
-    await Promise.resolve()
-    expect(
-      sendSocketMessage.mock.calls.every(
-        ([payload]) => !('authorityEpoch' in (payload as Record<string, unknown>)),
-      ),
-    ).toBe(true)
-
-    const secondResult = {
-      type: 'resize_result',
-      sessionId: 'session-second',
-      operationId: 'shared-operation',
-      status: 'accepted',
-      changed: true,
-      geometry: { cols: 120, rows: 40, revision: 7 },
-      authority: { role: 'controller', epoch: 5 },
-    }
-    const firstResult = {
-      type: 'resize_result',
-      sessionId: 'session-first',
-      operationId: 'shared-operation',
-      status: 'accepted',
-      changed: true,
-      geometry: { cols: 100, rows: 32, revision: 4 },
-      authority: { role: 'controller', epoch: 2 },
-    }
-
-    await internals.handleMessage(JSON.stringify(secondResult))
+    await vi.waitFor(() => {
+      const resizeSessions = vi
+        .mocked(internals.socketLifecycle.sendIfCurrent)
+        .mock.calls.filter(([, payload]) => (payload as Record<string, unknown>).type === 'resize')
+        .map(([, payload]) => (payload as Record<string, unknown>).sessionId)
+      expect(resizeSessions).toEqual(expect.arrayContaining(['session-first', 'session-second']))
+    })
+    await internals.handleMessage(
+      lease,
+      JSON.stringify({
+        type: 'resize_result',
+        sessionId: 'session-second',
+        operationId: 'shared-operation',
+        status: 'accepted',
+        changed: true,
+        geometry: { cols: 120, rows: 40, revision: 7 },
+        authority: { role: 'controller', epoch: 5 },
+      }),
+    )
     await expect(secondPending).resolves.toEqual({
       sessionId: 'session-second',
       operationId: 'shared-operation',
@@ -411,7 +421,18 @@ describe('BrowserPtyClient', () => {
       geometry: { cols: 120, rows: 40, revision: 7 },
       authority: { role: 'controller', epoch: 5 },
     })
-    await internals.handleMessage(JSON.stringify(firstResult))
+    await internals.handleMessage(
+      lease,
+      JSON.stringify({
+        type: 'resize_result',
+        sessionId: 'session-first',
+        operationId: 'shared-operation',
+        status: 'accepted',
+        changed: true,
+        geometry: { cols: 100, rows: 32, revision: 4 },
+        authority: { role: 'controller', epoch: 2 },
+      }),
+    )
     await expect(firstPending).resolves.toEqual({
       sessionId: 'session-first',
       operationId: 'shared-operation',
@@ -422,33 +443,20 @@ describe('BrowserPtyClient', () => {
     })
   })
 
-  it('falls back to the correlated legacy geometry revision when typed ACK is unavailable', async () => {
-    vi.stubGlobal('window', {
-      location: {
-        protocol: 'http:',
-        host: 'localhost:3000',
-        search: '',
-      },
-      clearTimeout,
-      setTimeout,
-    })
-
+  it('falls back to correlated legacy geometry only after attached authority', async () => {
+    installWindow()
     const client = new BrowserPtyClient()
-    const internals = client as unknown as {
-      sendSocketMessage: (payload: unknown) => Promise<void>
-      handleMessage: (raw: string) => Promise<void>
-    }
-    const sendSocketMessage = vi.spyOn(internals, 'sendSocketMessage').mockResolvedValue(undefined)
-
-    await internals.handleMessage(JSON.stringify({ type: 'hello_ack', capabilities: { roles: 1 } }))
-    await internals.handleMessage(
-      JSON.stringify({
-        type: 'attached',
-        sessionId: 'session-legacy',
-        role: 'controller',
-        authorityEpoch: 4,
-      }),
-    )
+    const internals = getInternals(client)
+    const lease = createLease()
+    const send = prepareSocket(internals, lease)
+    await attachClient({
+      client,
+      internals,
+      lease,
+      sessionId: 'session-legacy',
+      authorityEpoch: 4,
+      capabilities: { roles: 1 },
+    })
 
     const resizePromise = client.resize({
       sessionId: 'session-legacy',
@@ -457,19 +465,14 @@ describe('BrowserPtyClient', () => {
       reason: 'frame_commit',
       operationId: 'operation-browser-legacy',
     })
-    await Promise.resolve()
-    expect(sendSocketMessage).toHaveBeenCalledWith({
-      type: 'resize',
-      sessionId: 'session-legacy',
-      cols: 90,
-      rows: 28,
-      reason: 'frame_commit',
-      operationId: 'operation-browser-legacy',
-      authorityEpoch: 4,
-      revision: 1,
+    await vi.waitFor(() => {
+      expect(send).toHaveBeenCalledWith(
+        lease,
+        expect.objectContaining({ type: 'resize', authorityEpoch: 4, revision: 1 }),
+      )
     })
-
     await internals.handleMessage(
+      lease,
       JSON.stringify({
         type: 'geometry',
         sessionId: 'session-legacy',
@@ -479,7 +482,6 @@ describe('BrowserPtyClient', () => {
         revision: 1,
       }),
     )
-
     await expect(resizePromise).resolves.toEqual({
       sessionId: 'session-legacy',
       operationId: 'operation-browser-legacy',

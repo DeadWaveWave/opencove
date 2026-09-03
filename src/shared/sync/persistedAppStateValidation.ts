@@ -1,126 +1,25 @@
 import type {
   PersistedAppStateContract,
-  PersistedNodeContract,
   PersistedSpaceContract,
   PersistedWorkspaceContract,
 } from '@shared/contracts/persistedAppState'
 import { isLabelColor } from '@shared/types/labelColor'
 import { isProjectIconId } from '@shared/types/projectIcon'
+import { isPersistedSpaceArchiveRecord } from './persistedArchiveValidation'
+import { isPersistedNode } from './persistedNodeValidation'
+import {
+  isFiniteNumber,
+  isNullableString,
+  isRecord,
+  isRectOrNull,
+  isSpaceBoundary,
+  isStringArray,
+  isStringRecord,
+} from './persistedStateValidationPrimitives'
 
-const WORKSPACE_NODE_KINDS = new Set([
-  'terminal',
-  'agent',
-  'task',
-  'note',
-  'role',
-  'image',
-  'document',
-  'website',
-])
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value)
-}
-
-function isNullableString(value: unknown): value is string | null {
-  return value === null || typeof value === 'string'
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(item => typeof item === 'string')
-}
-
-function isStringRecord(value: unknown): value is Record<string, string> {
-  return isRecord(value) && Object.values(value).every(item => typeof item === 'string')
-}
-
-function isNullableStringArray(value: unknown): value is string[] | null {
-  return value === null || isStringArray(value)
-}
-
-function isNodeWorkerBinding(value: unknown): boolean {
-  return (
-    value === undefined ||
-    value === null ||
-    (isRecord(value) &&
-      typeof value.endpointId === 'string' &&
-      value.endpointId.trim().length > 0 &&
-      isNullableString(value.mountId))
-  )
-}
-
-function isSpaceBoundary(value: unknown): boolean {
-  if (value === undefined || value === null) {
-    return true
-  }
-  if (!isRecord(value) || !isStringArray(value.allowedMountIds)) {
-    return false
-  }
-  if (
-    !isRecord(value.scopesByMountId) ||
-    !Object.values(value.scopesByMountId).every(
-      scope =>
-        isRecord(scope) && typeof scope.rootPath === 'string' && typeof scope.rootUri === 'string',
-    )
-  ) {
-    return false
-  }
-  return (
-    isNullableStringArray(value.allowedPluginIds) &&
-    isNullableStringArray(value.capabilities) &&
-    (value.trustLevel === null ||
-      value.trustLevel === 'trusted' ||
-      value.trustLevel === 'restricted' ||
-      value.trustLevel === 'untrusted')
-  )
-}
-
-function isPoint(value: unknown): boolean {
-  return isRecord(value) && isFiniteNumber(value.x) && isFiniteNumber(value.y)
-}
-
-function isRectOrNull(value: unknown): boolean {
-  return (
-    value === null ||
-    (isRecord(value) &&
-      isFiniteNumber(value.x) &&
-      isFiniteNumber(value.y) &&
-      isFiniteNumber(value.width) &&
-      isFiniteNumber(value.height))
-  )
-}
-
-function isPersistedNode(value: unknown): value is PersistedNodeContract {
-  if (!isRecord(value)) {
-    return false
-  }
-  return (
-    typeof value.id === 'string' &&
-    value.id.trim().length > 0 &&
-    typeof value.title === 'string' &&
-    isPoint(value.position) &&
-    isFiniteNumber(value.width) &&
-    isFiniteNumber(value.height) &&
-    typeof value.kind === 'string' &&
-    WORKSPACE_NODE_KINDS.has(value.kind) &&
-    (value.sidebarSortOrder === undefined ||
-      value.sidebarSortOrder === null ||
-      isFiniteNumber(value.sidebarSortOrder)) &&
-    isNodeWorkerBinding(value.workerBinding) &&
-    isNullableString(value.status) &&
-    isNullableString(value.startedAt) &&
-    isNullableString(value.endedAt) &&
-    (value.exitCode === null || isFiniteNumber(value.exitCode)) &&
-    isNullableString(value.lastError) &&
-    isNullableString(value.scrollback) &&
-    (value.agent === null || isRecord(value.agent)) &&
-    (value.task === null || isRecord(value.task))
-  )
-}
+export type PersistedSettingsValidator<TSettings extends object> = (
+  value: unknown,
+) => value is TSettings
 
 function isPersistedSpace(value: unknown): value is PersistedSpaceContract {
   if (!isRecord(value)) {
@@ -133,7 +32,7 @@ function isPersistedSpace(value: unknown): value is PersistedSpaceContract {
     typeof value.directoryPath === 'string' &&
     isNullableString(value.targetMountId) &&
     (value.parentSpaceId === undefined || isNullableString(value.parentSpaceId)) &&
-    isSpaceBoundary(value.boundary) &&
+    (value.boundary === undefined || value.boundary === null || isSpaceBoundary(value.boundary)) &&
     (value.sortOrder === undefined || isFiniteNumber(value.sortOrder)) &&
     (value.pinned === undefined || typeof value.pinned === 'boolean') &&
     (value.labelColor === null || isLabelColor(value.labelColor)) &&
@@ -146,15 +45,44 @@ function hasUniqueIds(values: readonly { id: string }[]): boolean {
   return new Set(values.map(value => value.id)).size === values.length
 }
 
+function hasValidSpaceAssignments(
+  nodes: PersistedWorkspaceContract['nodes'],
+  spaces: PersistedWorkspaceContract['spaces'],
+): boolean {
+  const nodeIds = new Set(nodes.map(node => node.id))
+  const assignedNodeIds = new Set<string>()
+  for (const space of spaces) {
+    for (const nodeId of space.nodeIds) {
+      if (!nodeIds.has(nodeId) || assignedNodeIds.has(nodeId)) {
+        return false
+      }
+      assignedNodeIds.add(nodeId)
+    }
+  }
+  return true
+}
+
 function isPersistedWorkspace(value: unknown): value is PersistedWorkspaceContract {
-  if (!isRecord(value) || !Array.isArray(value.nodes) || !Array.isArray(value.spaces)) {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.nodes) ||
+    !Array.isArray(value.spaces) ||
+    !Array.isArray(value.spaceArchiveRecords)
+  ) {
     return false
   }
+
   const nodes = value.nodes.filter(isPersistedNode)
   const spaces = value.spaces.filter(isPersistedSpace)
-  if (nodes.length !== value.nodes.length || spaces.length !== value.spaces.length) {
+  if (
+    nodes.length !== value.nodes.length ||
+    spaces.length !== value.spaces.length ||
+    !value.spaceArchiveRecords.every(isPersistedSpaceArchiveRecord)
+  ) {
     return false
   }
+
+  const activeSpaceId = isNullableString(value.activeSpaceId) ? value.activeSpaceId : undefined
   return (
     typeof value.id === 'string' &&
     value.id.trim().length > 0 &&
@@ -168,17 +96,22 @@ function isPersistedWorkspace(value: unknown): value is PersistedWorkspaceContra
     isFiniteNumber(value.viewport.zoom) &&
     value.viewport.zoom > 0 &&
     typeof value.isMinimapVisible === 'boolean' &&
-    isNullableString(value.activeSpaceId) &&
-    Array.isArray(value.spaceArchiveRecords) &&
+    activeSpaceId !== undefined &&
+    (activeSpaceId === null ||
+      spaces.some(space => space.id === activeSpaceId && !space.parentSpaceId)) &&
     (value.pullRequestBaseBranchOptions === undefined ||
       isStringArray(value.pullRequestBaseBranchOptions)) &&
     (value.environmentVariables === undefined || isStringRecord(value.environmentVariables)) &&
     hasUniqueIds(nodes) &&
-    hasUniqueIds(spaces)
+    hasUniqueIds(spaces) &&
+    hasValidSpaceAssignments(nodes, spaces)
   )
 }
 
-export function isPersistedAppState(value: unknown): value is PersistedAppStateContract {
+export function isPersistedAppState<TSettings extends object>(
+  value: unknown,
+  isSettings: PersistedSettingsValidator<TSettings>,
+): value is PersistedAppStateContract<TSettings> {
   if (!isRecord(value) || !Array.isArray(value.workspaces)) {
     return false
   }
@@ -186,11 +119,24 @@ export function isPersistedAppState(value: unknown): value is PersistedAppStateC
   if (workspaces.length !== value.workspaces.length || !hasUniqueIds(workspaces)) {
     return false
   }
-  return (
-    typeof value.formatVersion === 'number' &&
-    Number.isSafeInteger(value.formatVersion) &&
-    value.formatVersion >= 0 &&
-    isNullableString(value.activeWorkspaceId) &&
-    isRecord(value.settings)
-  )
+
+  const activeWorkspaceId = isNullableString(value.activeWorkspaceId)
+    ? value.activeWorkspaceId
+    : undefined
+  if (
+    typeof value.formatVersion !== 'number' ||
+    !Number.isSafeInteger(value.formatVersion) ||
+    value.formatVersion < 0 ||
+    activeWorkspaceId === undefined ||
+    (activeWorkspaceId !== null &&
+      !workspaces.some(workspace => workspace.id === activeWorkspaceId))
+  ) {
+    return false
+  }
+
+  try {
+    return isSettings(value.settings)
+  } catch {
+    return false
+  }
 }

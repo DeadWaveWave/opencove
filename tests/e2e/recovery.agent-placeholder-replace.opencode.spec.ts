@@ -89,7 +89,9 @@ async function readRestoredTerminalGeometry(
               .presentationSnapshot({ sessionId: payload.sessionId })
               .catch(() => null)
           : null
-      const container = document.querySelector('.terminal-node__terminal')
+      const container = document.querySelector(
+        `.react-flow__node[data-id="${CSS.escape(payload.nodeId)}"] .terminal-node__terminal`,
+      )
       if (!(container instanceof HTMLElement)) {
         return null
       }
@@ -320,19 +322,40 @@ test.describe('Recovery - Agent placeholder replacement (OpenCode)', () => {
           expect(hydratedInfo.linkedAgentNodeId).toBe(initialAgentNodeId)
           expect(hydratedInfo.sessionId).not.toBeNull()
 
-          await expect
-            .poll(
-              async () =>
-                hasConvergedRestoredTerminalGeometry(
-                  await readRestoredTerminalGeometry(
-                    restartedWindow,
-                    initialAgentNodeId,
-                    hydratedInfo.sessionId ?? '',
-                  ),
-                ),
-              { timeout: 15_000 },
+          try {
+            await expect
+              .poll(
+                async () => {
+                  const currentInfo = await readTaskLinkedAgentInfo(restartedWindow)
+                  if (
+                    currentInfo.linkedAgentNodeId !== initialAgentNodeId ||
+                    !currentInfo.sessionId
+                  ) {
+                    return false
+                  }
+                  return hasConvergedRestoredTerminalGeometry(
+                    await readRestoredTerminalGeometry(
+                      restartedWindow,
+                      initialAgentNodeId,
+                      currentInfo.sessionId,
+                    ),
+                  )
+                },
+                { timeout: 15_000 },
+              )
+              .toBe(true)
+          } catch (error) {
+            const lastInfo = await readTaskLinkedAgentInfo(restartedWindow)
+            const lastGeometry = await readRestoredTerminalGeometry(
+              restartedWindow,
+              initialAgentNodeId,
+              lastInfo.sessionId ?? '',
             )
-            .toBe(true)
+            throw new Error(
+              `Restored terminal geometry did not converge: ${JSON.stringify(lastGeometry)}`,
+              { cause: error },
+            )
+          }
         }
       } finally {
         await restartedApp.close()

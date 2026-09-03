@@ -25,6 +25,6 @@ export interface TerminalProcessEnginePort {
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
   onForeground: (listener: (event: TerminalForegroundEvent) => void) => () => void
-  crashForDebug?: () => void
+  crashForDebug?: () => void | Promise<void>
   dispose: () => void
 }

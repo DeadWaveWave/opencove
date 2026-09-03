@@ -3,7 +3,7 @@ import type { FitAddon } from '@xterm/addon-fit'
 import { peekCachedTerminalScreenState } from './screenStateCache'
 import {
   clearPendingDetachedTerminalRendererReadForTests,
-  readTerminalRenderDimensionsSafely,
+  hasPendingDetachedTerminalRendererReadForTests,
   simulateDetachedTerminalRendererReadOnceForTests,
 } from './renderServiceSafety'
 import {
@@ -111,7 +111,7 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         }
 
         simulateDetachedTerminalRendererReadOnceForTests(terminal as Terminal)
-        return readTerminalRenderDimensionsSafely(terminal as Terminal) === null
+        return hasPendingDetachedTerminalRendererReadForTests(terminal as Terminal)
       },
       getCellCenter: (nodeId, col, row) => {
         const terminal = terminalHandles.get(nodeId)

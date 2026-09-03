@@ -170,7 +170,7 @@ describe('TerminalAgentActivityGateway', () => {
     const gatewayDispose = gateway.dispose().then(() => {
       gatewaySettled = true
     })
-    await new Promise(resolve => setTimeout(resolve, 20))
+    await Promise.resolve()
     expect(secondSettled).toBe(false)
     expect(gatewaySettled).toBe(false)
 

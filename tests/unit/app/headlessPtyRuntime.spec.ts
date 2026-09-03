@@ -254,6 +254,54 @@ describe('headless PTY runtime', () => {
     }
   })
 
+  it('does not publish post-spawn Agent state when exit completed before the spawn response', async () => {
+    vi.resetModules()
+    vi.doMock('../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcher', () => ({
+      createSessionStateWatcherController: vi.fn(() => ({
+        start: vi.fn(),
+        noteInteraction: vi.fn(),
+        disposeSession: vi.fn(),
+        dispose: vi.fn(),
+      })),
+    }))
+
+    let resolveSpawn!: (value: { sessionId: string }) => void
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.spawn.mockImplementation(
+      async () =>
+        await new Promise<{ sessionId: string }>(resolve => {
+          resolveSpawn = resolve
+        }),
+    )
+
+    const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
+    const runtime = createHeadlessPtyRuntime({ processEngine })
+    const observedState: TerminalSessionStateEvent[] = []
+    const observedExit: Array<{ sessionId: string; exitCode: number }> = []
+    runtime.onState(event => observedState.push(event))
+    runtime.onExit(event => observedExit.push(event))
+
+    const spawning = runtime.spawnSession({
+      cwd: '/tmp/workspace',
+      cols: 80,
+      rows: 24,
+      command: 'claude',
+      args: [],
+      agentProvider: 'claude-code',
+      initialAgentState: 'working',
+      hookInstallState: 'installed',
+    })
+
+    processEngine.emitData({ sessionId: 'session-completed-before-response', data: 'done\n' })
+    processEngine.emitExit({ sessionId: 'session-completed-before-response', exitCode: 0 })
+    resolveSpawn({ sessionId: 'session-completed-before-response' })
+
+    await expect(spawning).rejects.toThrow('completed before spawn registration')
+    expect(observedState).toEqual([])
+    expect(observedExit).toEqual([{ sessionId: 'session-completed-before-response', exitCode: 0 }])
+    runtime.dispose()
+  })
+
   it('exposes terminal profile discovery through the worker runtime', async () => {
     vi.resetModules()
 

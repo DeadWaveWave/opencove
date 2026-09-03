@@ -3,6 +3,7 @@ import {
   AGENT_PROVIDERS,
   DEFAULT_AGENT_SETTINGS,
   SELECTABLE_AGENT_PROVIDERS,
+  isNormalizedAgentSettings,
   isValidProvider,
   mergeSelectableAgentProviderOrder,
   normalizeAgentSettings,
@@ -67,6 +68,22 @@ describe('agent provider selection compatibility', () => {
       defaultProvider: DEFAULT_AGENT_SETTINGS.defaultProvider,
       agentProviderOrder: ['kimi', 'codex', 'claude-code', 'opencode', 'gemini', 'pi'],
     })
+  })
+})
+
+describe('normalized Agent settings boundary', () => {
+  it('accepts only the complete canonical settings shape', () => {
+    expect(isNormalizedAgentSettings(DEFAULT_AGENT_SETTINGS)).toBe(true)
+    expect(isNormalizedAgentSettings({ ...DEFAULT_AGENT_SETTINGS, language: 'invalid' })).toBe(
+      false,
+    )
+
+    const missingRequiredField = { ...DEFAULT_AGENT_SETTINGS } as Record<string, unknown>
+    delete missingRequiredField.language
+    expect(isNormalizedAgentSettings(missingRequiredField)).toBe(false)
+    expect(isNormalizedAgentSettings({ ...DEFAULT_AGENT_SETTINGS, unknownSetting: true })).toBe(
+      false,
+    )
   })
 })
 

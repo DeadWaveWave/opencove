@@ -35,6 +35,10 @@ export class PtyHostPendingResponseCoordinator {
     })
   }
 
+  public expectedRequestType(requestId: string): PtyHostResponseRequestType | null {
+    return this.pendingByRequestId.get(requestId)?.expectedRequestType ?? null
+  }
+
   public resolve(message: PtyHostResponseMessage): boolean {
     const pending = this.pendingByRequestId.get(message.requestId) ?? null
     if (!pending) {

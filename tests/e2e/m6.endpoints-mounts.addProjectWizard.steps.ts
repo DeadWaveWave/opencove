@@ -3,6 +3,20 @@ import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import { selectCoveOption } from './workspace-canvas.helpers'
 
+async function clickCurrentProjectMenuAction(window: Page, testId: string): Promise<void> {
+  const action = window.locator(`[data-testid="${testId}"]`)
+  await expect(action).toBeVisible()
+  const clicked = await window.evaluate(currentTestId => {
+    const currentAction = document.querySelector(`[data-testid="${currentTestId}"]`)
+    if (!(currentAction instanceof HTMLButtonElement) || currentAction.disabled) {
+      return false
+    }
+    currentAction.click()
+    return true
+  }, testId)
+  expect(clicked).toBe(true)
+}
+
 async function renameActiveProject(window: Page, projectName: string): Promise<void> {
   const activeProject = window.locator('.workspace-item.workspace-item--active')
   await expect(activeProject).toBeVisible()
@@ -11,7 +25,7 @@ async function renameActiveProject(window: Page, projectName: string): Promise<v
   }
 
   await activeProject.click({ button: 'right', force: true })
-  await window.locator('[data-testid="workspace-project-context-menu-rename"]').click()
+  await clickCurrentProjectMenuAction(window, 'workspace-project-context-menu-rename')
   const renameInput = window.locator('.workspace-project-context-menu__rename input')
   await renameInput.fill(projectName)
   await window.locator('[data-testid="workspace-project-context-menu-rename-save"]').click()

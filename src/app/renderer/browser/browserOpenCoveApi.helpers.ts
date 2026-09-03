@@ -6,7 +6,34 @@ import type {
   ReleaseNotesCurrentResult,
   WorkerStatusResult,
 } from '@shared/contracts/dto'
-export { isPersistedAppState, mergePersistedAppStates } from '@shared/sync/mergePersistedAppStates'
+import type { PersistedAppStateContract } from '@shared/contracts/persistedAppState'
+import {
+  isNormalizedAgentSettings,
+  normalizeAgentSettings,
+  type AgentSettings,
+} from '@contexts/settings/domain/agentSettings'
+import {
+  isPersistedAppState as isPersistedAppStateContract,
+  mergePersistedAppStates,
+} from '@shared/sync/mergePersistedAppStates'
+
+export type BrowserPersistedAppState = PersistedAppStateContract<AgentSettings>
+export { mergePersistedAppStates }
+
+export function isPersistedAppState(value: unknown): value is BrowserPersistedAppState {
+  return isPersistedAppStateContract(value, isNormalizedAgentSettings)
+}
+
+export function normalizePersistedAppStateForMerge(
+  value: unknown,
+): BrowserPersistedAppState | null {
+  const isSettingsRecord = (settings: unknown): settings is Record<string, unknown> =>
+    !!settings && typeof settings === 'object' && !Array.isArray(settings)
+  if (!isPersistedAppStateContract(value, isSettingsRecord)) {
+    return null
+  }
+  return { ...value, settings: normalizeAgentSettings(value.settings) }
+}
 
 export function resolveBrowserPlatform(): string {
   const platform =
