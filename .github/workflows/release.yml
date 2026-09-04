@@ -157,7 +157,11 @@ jobs:
           if ($null -eq $asset) {
             throw 'Standalone Windows asset was not produced.'
           }
+          $checksumFile = Join-Path $env:RUNNER_TEMP 'opencove-standalone-SHA256SUMS.txt'
+          $assetHash = (Get-FileHash -LiteralPath $asset.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath $checksumFile -Value "$assetHash  $($asset.Name)" -Encoding ASCII
           $env:OPENCOVE_STANDALONE_ASSET = $asset.FullName
+          $env:OPENCOVE_STANDALONE_CHECKSUMS_FILE = $checksumFile
           $env:OPENCOVE_INSTALL_ROOT = Join-Path $env:RUNNER_TEMP 'opencove-standalone'
           $env:OPENCOVE_BIN_DIR = Join-Path $env:RUNNER_TEMP 'opencove-bin'
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-assets/opencove-install.ps1
