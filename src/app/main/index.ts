@@ -16,7 +16,11 @@ import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
 import { createHomeWorkerEndpointResolver } from './worker/homeWorkerEndpointResolver'
-import { hasOwnedLocalWorkerProcess, stopOwnedLocalWorker } from './worker/localWorkerManager'
+import {
+  beginLocalWorkerShutdown,
+  hasOwnedLocalWorkerProcess,
+  stopOwnedLocalWorker,
+} from './worker/localWorkerManager'
 import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
 import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhrasesContextMenu'
 import { registerQuitCoordinator } from './quitCoordinator'
@@ -32,6 +36,13 @@ import {
 } from '../../contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
+
+function disconnectRuntimeClients(): void {
+  const disposable = ipcDisposable
+  ipcDisposable = null
+  disposable?.dispose()
+}
+
 let workerEndpointResolverForContextMenu: ReturnType<
   typeof createHomeWorkerEndpointResolver
 > | null = null
@@ -53,6 +64,7 @@ if (process.env['NODE_ENV'] === 'test') {
 
 app.on('before-quit', () => {
   isAppQuitInProgress = true
+  beginLocalWorkerShutdown()
 })
 
 configureAppCommandLine()
@@ -389,10 +401,8 @@ app.on('window-all-closed', () => {
 
 registerQuitCoordinator({
   hasOwnedLocalWorkerProcess,
+  disconnectRuntimeClients,
   stopOwnedLocalWorker,
 })
 
-app.on('will-quit', () => {
-  ipcDisposable?.dispose()
-  ipcDisposable = null
-})
+app.on('will-quit', disconnectRuntimeClients)

@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events'
 import type { PtyHostProcess } from '@platform/process/ptyHost/supervisor'
+import { PTY_HOST_PROTOCOL_VERSION } from '@platform/process/ptyHost/protocol'
 
 export class TestPtyHostProcess extends EventEmitter implements PtyHostProcess {
   public readonly sentMessages: unknown[] = []
@@ -10,6 +11,22 @@ export class TestPtyHostProcess extends EventEmitter implements PtyHostProcess {
   public killCalls = 0
   public readonly killSignals: Array<'SIGTERM' | 'SIGKILL' | undefined> = []
   public exitOnKill = true
+  public killError: Error | null = null
+
+  public constructor(public readonly hostInstanceId = 'test-host-instance') {
+    super()
+  }
+
+  public emitReady(protocolVersion: number = PTY_HOST_PROTOCOL_VERSION): void {
+    this.emit('message', { type: 'ready', protocolVersion, hostInstanceId: this.hostInstanceId })
+  }
+
+  public emitHostMessage(
+    message: Record<string, unknown>,
+    hostInstanceId: string = this.hostInstanceId,
+  ): void {
+    this.emit('message', { ...message, hostInstanceId })
+  }
 
   public postMessage(message: unknown, callback?: (error: Error | null) => void): void {
     const record =
@@ -22,17 +39,44 @@ export class TestPtyHostProcess extends EventEmitter implements PtyHostProcess {
     }
 
     this.sentMessages.push(message)
+    this.emit('postMessage', message)
     callback?.(null)
   }
 
   public kill(signal?: 'SIGTERM' | 'SIGKILL'): boolean {
     this.killCalls += 1
     this.killSignals.push(signal)
+    if (this.killError) {
+      throw this.killError
+    }
     if (this.exitOnKill) {
       this.emit('exit', 0)
     }
     return true
   }
+}
+
+export async function waitForSentMessage<T extends { type: string }>(
+  process: TestPtyHostProcess,
+  type: T['type'],
+): Promise<T> {
+  const existing = findLastSentMessage<T>(process, type)
+  if (existing) {
+    return existing
+  }
+  return await new Promise<T>(resolve => {
+    const onMessage = (message: unknown): void => {
+      if (
+        message &&
+        typeof message === 'object' &&
+        (message as Record<string, unknown>).type === type
+      ) {
+        process.off('postMessage', onMessage)
+        resolve(message as T)
+      }
+    }
+    process.on('postMessage', onMessage)
+  })
 }
 
 export function findLastSentMessage<T extends { type: string }>(

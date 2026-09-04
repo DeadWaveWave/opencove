@@ -24,6 +24,7 @@ import {
   resolveOfferedPtyStreamSubprotocols as resolveOfferedSubprotocols,
 } from './ptyStreamMessageValidation'
 import { createPtyStreamPresentationResetBarrier } from './ptyStreamService.presentationResetBarrier'
+import { normalizeTerminalAgentReexecInput } from '../../../../shared/runtime/terminalAgentReexec'
 
 export const PTY_STREAM_PROTOCOL_VERSION = 1 as const
 export const PTY_STREAM_WS_PATH = '/pty'
@@ -276,6 +277,7 @@ export function createPtyStreamService(options: {
                 roles: ['viewer', 'controller'],
                 replayWindow: { maxBytes: options.replayWindowMaxBytes },
                 geometryCommitAck: 1,
+                agentReexec: 1,
                 authorityEpoch: 1,
               },
             }),
@@ -350,6 +352,16 @@ export function createPtyStreamService(options: {
         }
 
         hub.write({ clientId: state.clientId, sessionId, data })
+        return
+      }
+
+      if (type === 'agent_reexec') {
+        const input = normalizeTerminalAgentReexecInput(message)
+        if (!input?.operationId) {
+          closeWithError(ws, 'protocol.invalid_message', 'Invalid terminal Agent re-exec.')
+          return
+        }
+        void hub.reexecAgent({ ...input, clientId: state.clientId })
         return
       }
 

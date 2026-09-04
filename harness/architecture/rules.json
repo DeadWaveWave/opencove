@@ -83,6 +83,16 @@
         "doc": "docs/architecture/ARCHITECTURE.md#application"
       },
       {
+        "id": "architecture.sharedNoContextDependency",
+        "severity": "error",
+        "fromLayers": ["shared"],
+        "ignoreTypeOnly": false,
+        "specifiers": [],
+        "specifierPrefixes": ["@contexts/"],
+        "toPatterns": ["src/contexts/**"],
+        "doc": "docs/architecture/ARCHITECTURE.md#5-依赖规则"
+      },
+      {
         "id": "architecture.rendererNoElectronRuntime",
         "severity": "error",
         "fromLayers": ["app-renderer", "presentation-renderer"],

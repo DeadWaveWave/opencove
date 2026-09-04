@@ -35,20 +35,17 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
       const previousActivity = node.data.agentOverlay?.activity ?? null
       if (
         previousActivity &&
-        (activity.generation < previousActivity.generation ||
-          (activity.generation === previousActivity.generation &&
-            (activity.invocationId !== previousActivity.invocationId ||
-              activity.observedAtMs < previousActivity.observedAtMs ||
-              previousActivity.phase === 'exited')))
+        shouldIgnoreActivity({
+          incoming: activity,
+          previous: previousActivity,
+        })
       ) {
         return node
       }
 
       const resumeSessionId = normalizeResumeSessionId(event.resumeSessionId)
       const canBind =
-        activity.phase === 'active' &&
-        activity.identityAuthority === 'provider_session_start' &&
-        resumeSessionId !== null
+        activity.identityAuthority === 'provider_session_start' && resumeSessionId !== null
       const isSameInvocation =
         previousActivity?.generation === activity.generation &&
         previousActivity.invocationId === activity.invocationId
@@ -77,6 +74,9 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
           generation: activity.generation,
           phase: activity.phase,
           observedAtMs: activity.observedAtMs,
+          ...(activity.sourceRevision === undefined
+            ? {}
+            : { sourceRevision: activity.sourceRevision, revision: activity.revision }),
           verifiedProviderSessionId: canAdoptBinding ? resumeSessionId : verifiedProviderSessionId,
         },
       }
@@ -92,7 +92,9 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
         previousActivity?.invocationId !== nextOverlay.activity.invocationId ||
         previousActivity?.generation !== nextOverlay.activity.generation ||
         previousActivity?.phase !== nextOverlay.activity.phase ||
-        previousActivity?.observedAtMs !== nextOverlay.activity.observedAtMs
+        previousActivity?.observedAtMs !== nextOverlay.activity.observedAtMs ||
+        previousActivity?.sourceRevision !== nextOverlay.activity.sourceRevision ||
+        previousActivity?.revision !== nextOverlay.activity.revision
       if (!bindingChanged && !overlayChanged) {
         return node
       }
@@ -118,6 +120,34 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
     didChange,
     durableDidChange,
   }
+}
+
+function shouldIgnoreActivity({
+  incoming,
+  previous,
+}: {
+  incoming: ActivityMetadataEvent['terminalAgentActivity']
+  previous: NonNullable<
+    NonNullable<WorkspaceState['nodes'][number]['data']['agentOverlay']>['activity']
+  >
+}): boolean {
+  if (incoming.generation < previous.generation) {
+    return true
+  }
+  if (incoming.generation > previous.generation) {
+    return false
+  }
+  if (incoming.invocationId !== previous.invocationId || previous.phase === 'exited') {
+    return true
+  }
+
+  if (previous.revision !== undefined) {
+    return incoming.revision === undefined || incoming.revision <= previous.revision
+  }
+  if (incoming.revision !== undefined) {
+    return false
+  }
+  return incoming.observedAtMs < previous.observedAtMs
 }
 
 export function reconcileTerminalAgentActivitySnapshots({

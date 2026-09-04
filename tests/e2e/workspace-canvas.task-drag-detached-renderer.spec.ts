@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
-import { clearAndSeedWorkspace, dragLocatorTo, launchApp } from './workspace-canvas.helpers'
+import {
+  beginDragMouse,
+  clearAndSeedWorkspace,
+  launchApp,
+  readLocatorClientRect,
+} from './workspace-canvas.helpers'
 
 async function readNodePosition(
   window: Page,
@@ -38,7 +43,7 @@ async function readNodePosition(
 }
 
 test.describe('Workspace Canvas - Task Drag Renderer Recovery', () => {
-  test('does not crash when task drag settles during a transient terminal renderer detach', async () => {
+  test('does not crash when task drag continues after a guarded transient renderer detach', async () => {
     const { electronApp, window } = await launchApp({ windowMode: 'inactive' })
     const pageErrors: string[] = []
 
@@ -88,19 +93,46 @@ test.describe('Workspace Canvas - Task Drag Renderer Recovery', () => {
         throw new Error('task position unavailable before drag')
       }
 
-      const injected = await window.evaluate(() => {
-        return window.__opencoveTerminalSelectionTestApi?.simulateDetachedRendererOnce?.(
-          'drag-crash-terminal',
+      const sourceBox = await readLocatorClientRect(taskNode.locator('.task-node__header'))
+      const targetBox = await readLocatorClientRect(pane)
+      const drag = await beginDragMouse(window, {
+        start: { x: sourceBox.x + 120, y: sourceBox.y + 18 },
+        settleAfterPressMs: 0,
+        settleBeforeReleaseMs: 0,
+        settleAfterReleaseMs: 0,
+      })
+      try {
+        const injected = await window.evaluate(() => {
+          return window.__opencoveTerminalSelectionTestApi?.simulateDetachedRendererOnce?.(
+            'drag-crash-terminal',
+          )
+        })
+        expect(injected).toBe(true)
+        expect(
+          await window.evaluate(
+            () =>
+              window.__opencoveTerminalSelectionTestApi?.hasPendingDetachedRendererRead?.(
+                'drag-crash-terminal',
+              ) ?? null,
+          ),
+        ).toBe(true)
+
+        await drag.moveTo({ x: targetBox.x + 260, y: targetBox.y + 220 })
+      } finally {
+        await drag.release()
+      }
+
+      await expect
+        .poll(
+          async () =>
+            await window.evaluate(
+              () =>
+                window.__opencoveTerminalSelectionTestApi?.hasPendingDetachedRendererRead?.(
+                  'drag-crash-terminal',
+                ) ?? null,
+            ),
         )
-      })
-      expect(injected).toBe(true)
-
-      await dragLocatorTo(window, taskNode.locator('.task-node__header'), pane, {
-        sourcePosition: { x: 120, y: 18 },
-        targetPosition: { x: 260, y: 220 },
-      })
-
-      await window.waitForTimeout(300)
+        .toBe(false)
       await expect(window.getByRole('heading', { name: '出现异常' })).toHaveCount(0)
       await expect(taskNode).toBeVisible()
       await expect(terminalNode).toBeVisible()

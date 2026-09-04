@@ -87,16 +87,12 @@ export function registerPersistenceIpcHandlers(
   registerHandledIpc(
     IPC_CHANNELS.persistenceReadAppState,
     async (): Promise<ReadAppStateResult> => {
-      try {
-        const store = await getStore()
-        const state = await store.readAppState()
-        const recovery = store.consumeRecovery()
-        return { state, recovery }
-      } catch {
-        return { state: null, recovery: null }
-      }
+      const store = await getStore()
+      const state = await store.readAppState()
+      const recovery = store.consumeRecovery()
+      return { state, recovery }
     },
-    { defaultErrorCode: 'persistence.io_failed' },
+    { defaultErrorCode: 'persistence.unavailable' },
   )
 
   registerHandledIpc(

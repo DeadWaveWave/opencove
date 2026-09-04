@@ -7,6 +7,12 @@ function exitWithUsage(message) {
 }
 
 export function readFlagValue(args, flag) {
+  const inlinePrefix = `${flag}=`
+  const inlineArgument = args.find(argument => argument.startsWith(inlinePrefix))
+  if (inlineArgument) {
+    return inlineArgument.slice(inlinePrefix.length).trim() || null
+  }
+
   const index = args.indexOf(flag)
   if (index === -1) {
     return null
@@ -45,6 +51,9 @@ export function stripGlobalOptions(argv) {
 
     if (arg === '--endpoint' || arg === '--token') {
       index += 1
+      continue
+    }
+    if (arg.startsWith('--endpoint=') || arg.startsWith('--token=')) {
       continue
     }
 

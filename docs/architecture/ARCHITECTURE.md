@@ -81,6 +81,7 @@ domain <- application <- presentation
 - `application` 不能 import 具体技术实现。
 - `infrastructure` 只能实现端口，不能反向定义业务规则。
 - `presentation` 不能绕过 `application` 直接改写业务 owner。
+- `shared` contract/runtime 不能依赖任何 context，包括 type-only import；共享结构必须由内层 contract 自身定义。
 - 一个 context 不能直接依赖另一个 context 的 `infrastructure` 或 `presentation`。
 
 ## 6. 进程边界规则

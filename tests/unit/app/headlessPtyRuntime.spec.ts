@@ -4,9 +4,9 @@ import type {
   TerminalForegroundEvent,
   TerminalSessionStateEvent,
 } from '../../../src/shared/contracts/dto'
+import { FakeTerminalProcessEngine } from '../../support/FakeTerminalProcessEngine'
 
 afterEach(() => {
-  vi.doUnmock('../../../src/platform/process/ptyHost/supervisor')
   vi.doUnmock('../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcher')
   vi.doUnmock('../../../src/platform/terminal/TerminalProfileResolver')
   vi.resetModules()
@@ -18,19 +18,6 @@ describe('headless PTY runtime', () => {
     const originalNodeEnv = process.env.NODE_ENV
     process.env.NODE_ENV = 'test'
     try {
-      const ptyDataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
-      const ptyExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
-      const ptyForegroundListeners = new Set<
-        (event: {
-          sessionId: string
-          observedAtMs: number
-          source: 'process_scan'
-          availability: 'available'
-          agent: null
-          shellOnly: true
-        }) => void
-      >()
-
       const watcherStart = vi.fn()
       const watcherNoteInteraction = vi.fn()
       const watcherDisposeSession = vi.fn()
@@ -42,73 +29,10 @@ describe('headless PTY runtime', () => {
         | ((event: { sessionId: string; resumeSessionId: string | null }) => void)
         | null = null
 
-      let lastSupervisor: {
-        spawn: ReturnType<typeof vi.fn>
-        write: ReturnType<typeof vi.fn>
-        resize: ReturnType<typeof vi.fn>
-        kill: ReturnType<typeof vi.fn>
-        crash: ReturnType<typeof vi.fn>
-        dispose: ReturnType<typeof vi.fn>
-      } | null = null
-
-      class MockPtyHostSupervisor {
-        public write = vi.fn()
-        public resize = vi.fn()
-        public kill = vi.fn()
-        public crash = vi.fn()
-        public dispose = vi.fn()
-        public spawn = vi
-          .fn()
-          .mockResolvedValueOnce({ sessionId: 'session-2' })
-          .mockResolvedValue({ sessionId: 'session-1' })
-
-        public constructor() {
-          lastSupervisor = {
-            spawn: this.spawn,
-            write: this.write,
-            resize: this.resize,
-            kill: this.kill,
-            crash: this.crash,
-            dispose: this.dispose,
-          }
-        }
-
-        public onData(listener: (event: { sessionId: string; data: string }) => void): () => void {
-          ptyDataListeners.add(listener)
-          return () => {
-            ptyDataListeners.delete(listener)
-          }
-        }
-
-        public onExit(
-          listener: (event: { sessionId: string; exitCode: number }) => void,
-        ): () => void {
-          ptyExitListeners.add(listener)
-          return () => {
-            ptyExitListeners.delete(listener)
-          }
-        }
-
-        public onForeground(
-          listener: (event: {
-            sessionId: string
-            observedAtMs: number
-            source: 'process_scan'
-            availability: 'available'
-            agent: null
-            shellOnly: true
-          }) => void,
-        ): () => void {
-          ptyForegroundListeners.add(listener)
-          return () => {
-            ptyForegroundListeners.delete(listener)
-          }
-        }
-      }
-
-      vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
-        PtyHostSupervisor: MockPtyHostSupervisor,
-      }))
+      const processEngine = new FakeTerminalProcessEngine()
+      processEngine.spawn
+        .mockResolvedValueOnce({ sessionId: 'session-2' })
+        .mockResolvedValue({ sessionId: 'session-1' })
 
       vi.doMock('../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcher', () => ({
         createSessionStateWatcherController: vi.fn(options => {
@@ -128,7 +52,7 @@ describe('headless PTY runtime', () => {
         await import('../../../src/app/worker/headlessPtyRuntime')
 
       const runtime = createHeadlessPtyRuntime({
-        userDataPath: '/tmp/opencove-headless-runtime',
+        processEngine,
       })
 
       const observedData: Array<{ sessionId: string; data: string }> = []
@@ -220,26 +144,22 @@ describe('headless PTY runtime', () => {
         startedAtMs: expect.any(Number),
       })
 
-      ptyDataListeners.forEach(listener => {
-        listener({ sessionId: 'session-1', data: 'hello from worker\n\u001b[6n' })
-      })
+      processEngine.emitData({ sessionId: 'session-1', data: 'hello from worker\n\u001b[6n' })
       emitState?.({ sessionId: 'session-1', state: 'working' })
       emitMetadata?.({ sessionId: 'session-1', resumeSessionId: 'resume-session-1' })
-      ptyForegroundListeners.forEach(listener => {
-        listener({
-          sessionId: 'session-1',
-          observedAtMs: 42,
-          source: 'process_scan',
-          availability: 'available',
-          agent: null,
-          shellOnly: true,
-        })
+      processEngine.emitForeground({
+        sessionId: 'session-1',
+        observedAtMs: 42,
+        source: 'process_scan',
+        exitCode: null,
+        availability: 'available',
+        agent: null,
+        shellOnly: true,
       })
-      ptyExitListeners.forEach(listener => {
-        listener({ sessionId: 'session-1', exitCode: 0 })
-      })
+      processEngine.emitExit({ sessionId: 'session-1', exitCode: 0 })
 
       runtime.write('session-1', '\r')
+      runtime.probeForeground('session-1')
       await runtime.resize({
         sessionId: 'session-1',
         cols: 120,
@@ -289,6 +209,7 @@ describe('headless PTY runtime', () => {
           sessionId: 'session-1',
           observedAtMs: 42,
           source: 'process_scan',
+          exitCode: null,
           availability: 'available',
           agent: null,
           shellOnly: true,
@@ -301,11 +222,12 @@ describe('headless PTY runtime', () => {
       expect(watcherNoteInteraction).toHaveBeenCalledWith('session-1', '\r')
       expect(watcherDisposeSession).toHaveBeenCalledWith('session-1')
       expect(watcherDisposeSession).toHaveBeenCalledWith('session-2')
-      expect(lastSupervisor?.write).toHaveBeenCalledWith('session-1', '\r')
-      expect(lastSupervisor?.write).toHaveBeenCalledWith('session-1', '\u001b[1;1R')
-      expect(lastSupervisor?.resize).toHaveBeenCalledWith('session-1', 120, 40)
-      expect(lastSupervisor?.kill).toHaveBeenCalledWith('session-2')
-      expect(lastSupervisor?.spawn).toHaveBeenCalledWith(
+      expect(processEngine.write).toHaveBeenCalledWith('session-1', '\r')
+      expect(processEngine.write).toHaveBeenCalledWith('session-1', '\u001b[1;1R')
+      expect(processEngine.probeForeground).toHaveBeenCalledWith('session-1')
+      expect(processEngine.resize).toHaveBeenCalledWith('session-1', 120, 40)
+      expect(processEngine.kill).toHaveBeenCalledWith('session-2')
+      expect(processEngine.spawn).toHaveBeenCalledWith(
         expect.objectContaining({
           env: {
             EXISTING: 'value',
@@ -314,7 +236,7 @@ describe('headless PTY runtime', () => {
           },
         }),
       )
-      expect(lastSupervisor?.spawn).toHaveBeenNthCalledWith(
+      expect(processEngine.spawn).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({
           env: {
@@ -324,12 +246,124 @@ describe('headless PTY runtime', () => {
           },
         }),
       )
-      expect(lastSupervisor?.crash).toHaveBeenCalledTimes(1)
+      expect(processEngine.crashForDebug).toHaveBeenCalledTimes(1)
       expect(watcherDispose).toHaveBeenCalledTimes(1)
-      expect(lastSupervisor?.dispose).toHaveBeenCalledTimes(1)
+      expect(processEngine.dispose).toHaveBeenCalledTimes(1)
     } finally {
       process.env.NODE_ENV = originalNodeEnv
     }
+  })
+
+  it('does not publish post-spawn Agent state when exit completed before the spawn response', async () => {
+    vi.resetModules()
+    vi.doMock('../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcher', () => ({
+      createSessionStateWatcherController: vi.fn(() => ({
+        start: vi.fn(),
+        noteInteraction: vi.fn(),
+        disposeSession: vi.fn(),
+        dispose: vi.fn(),
+      })),
+    }))
+
+    let resolveSpawn!: (value: { sessionId: string }) => void
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.spawn.mockImplementation(
+      async () =>
+        await new Promise<{ sessionId: string }>(resolve => {
+          resolveSpawn = resolve
+        }),
+    )
+
+    const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
+    const runtime = createHeadlessPtyRuntime({ processEngine })
+    const observedState: TerminalSessionStateEvent[] = []
+    const observedExit: Array<{ sessionId: string; exitCode: number }> = []
+    runtime.onState(event => observedState.push(event))
+    runtime.onExit(event => observedExit.push(event))
+
+    const spawning = runtime.spawnSession({
+      cwd: '/tmp/workspace',
+      cols: 80,
+      rows: 24,
+      command: 'claude',
+      args: [],
+      agentProvider: 'claude-code',
+      initialAgentState: 'working',
+      hookInstallState: 'installed',
+    })
+
+    processEngine.emitData({ sessionId: 'session-completed-before-response', data: 'done\n' })
+    processEngine.emitExit({ sessionId: 'session-completed-before-response', exitCode: 0 })
+    resolveSpawn({ sessionId: 'session-completed-before-response' })
+
+    await expect(spawning).rejects.toThrow('completed before spawn registration')
+    expect(observedState).toEqual([])
+    expect(observedExit).toEqual([{ sessionId: 'session-completed-before-response', exitCode: 0 }])
+    runtime.dispose()
+  })
+
+  it('retires the exact session returned after headless runtime disposal', async () => {
+    vi.resetModules()
+    let resolveSpawn!: (value: { sessionId: string }) => void
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.spawn.mockImplementation(
+      async () =>
+        await new Promise<{ sessionId: string }>(resolve => {
+          resolveSpawn = resolve
+        }),
+    )
+    const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
+    const runtime = createHeadlessPtyRuntime({ processEngine })
+
+    const spawning = runtime.spawnSession({
+      cwd: '/tmp/workspace',
+      cols: 80,
+      rows: 24,
+      command: 'shell',
+      args: [],
+    })
+    runtime.dispose()
+    resolveSpawn({ sessionId: 'session-after-dispose' })
+
+    await expect(spawning).rejects.toThrow('lost its owner before spawn registration')
+    expect(processEngine.kill).toHaveBeenCalledTimes(1)
+    expect(processEngine.kill).toHaveBeenCalledWith('session-after-dispose')
+  })
+
+  it('preserves registration and exact-session retirement failures after disposal', async () => {
+    vi.resetModules()
+    let resolveSpawn!: (value: { sessionId: string }) => void
+    const retirementError = new Error('exact session retirement failed')
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.spawn.mockImplementation(
+      async () =>
+        await new Promise<{ sessionId: string }>(resolve => {
+          resolveSpawn = resolve
+        }),
+    )
+    processEngine.kill.mockImplementation(() => {
+      throw retirementError
+    })
+    const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
+    const runtime = createHeadlessPtyRuntime({ processEngine })
+
+    const spawning = runtime.spawnSession({
+      cwd: '/tmp/workspace',
+      cols: 80,
+      rows: 24,
+      command: 'shell',
+      args: [],
+    })
+    runtime.dispose()
+    resolveSpawn({ sessionId: 'session-cleanup-failure' })
+    const error = await spawning.catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(AggregateError)
+    expect((error as AggregateError).errors).toEqual([expect.any(Error), retirementError])
+    expect(((error as AggregateError).errors[0] as Error).message).toContain(
+      'lost its owner before spawn registration',
+    )
+    expect(processEngine.kill).toHaveBeenCalledWith('session-cleanup-failure')
   })
 
   it('exposes terminal profile discovery through the worker runtime', async () => {
@@ -348,7 +382,7 @@ describe('headless PTY runtime', () => {
 
     const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
 
-    const runtime = createHeadlessPtyRuntime({ userDataPath: '/tmp/opencove-headless-runtime' })
+    const runtime = createHeadlessPtyRuntime({ processEngine: new FakeTerminalProcessEngine() })
 
     try {
       await expect(runtime.listProfiles()).resolves.toEqual({

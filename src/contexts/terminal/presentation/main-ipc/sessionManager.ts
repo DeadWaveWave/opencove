@@ -73,7 +73,6 @@ export class TerminalSessionManager {
     this.sessionStateWatcher = deps.sessionStateWatcher
     this.onProbeSubscriptionChanged = deps.onProbeSubscriptionChanged
   }
-
   // --- Subscription lifecycle ---
 
   private cleanupPtyDataSubscriptions(contentsId: number): void {
@@ -130,7 +129,6 @@ export class TerminalSessionManager {
       this.ptyDataSubscribedWebContentsIds.add(contentsId)
     }
   }
-
   // --- Data broadcasting ---
 
   resolveSessionLifecycleState(sessionId: string): 'active' | 'terminated' | 'unknown' {
@@ -303,7 +301,6 @@ export class TerminalSessionManager {
       }, nextDelayMs),
     )
   }
-
   // --- Public API ---
 
   handleData(sessionId: string, data: string): void {
@@ -327,9 +324,11 @@ export class TerminalSessionManager {
     this.sendToAllWindows(IPC_CHANNELS.ptyExit, eventPayload)
   }
 
-  registerSession(sessionId: string): void {
+  registerSession(sessionId: string): boolean {
+    if (this.terminatedSessions.has(sessionId)) {
+      return false
+    }
     this.activeSessions.add(sessionId)
-    this.terminatedSessions.delete(sessionId)
     if (!this.snapshots.has(sessionId)) {
       this.snapshots.set(sessionId, createEmptySnapshotState())
     }
@@ -337,6 +336,7 @@ export class TerminalSessionManager {
       this.presentationSessions.set(sessionId, new TerminalPresentationSession({ sessionId }))
     }
     this.presentationSeqs.set(sessionId, 0)
+    return true
   }
 
   attach(contentsId: number, sessionId: string, afterSeq?: number | null): void {

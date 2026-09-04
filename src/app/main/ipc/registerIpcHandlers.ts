@@ -2,6 +2,7 @@ import type { IpcRegistrationDisposable } from './types'
 import { registerAgentIpcHandlers } from '../../../contexts/agent/presentation/main-ipc/register'
 import { registerPtyIpcHandlers } from '../../../contexts/terminal/presentation/main-ipc/register'
 import { createPtyRuntime } from '../../../contexts/terminal/presentation/main-ipc/runtime'
+import { createMainTerminalProcessEngine } from '../terminal/mainTerminalProcessEngineFactory'
 import { registerTaskIpcHandlers } from '../../../contexts/task/presentation/main-ipc/register'
 import { registerClipboardIpcHandlers } from '../../../contexts/clipboard/presentation/main-ipc/register'
 import { registerWorkspaceIpcHandlers } from '../../../contexts/workspace/presentation/main-ipc/register'
@@ -62,7 +63,7 @@ export function registerIpcHandlers(deps?: {
 
   const ptyRuntime = workerEndpointResolver
     ? createRemotePtyRuntime({ endpointResolver: workerEndpointResolver })
-    : (deps?.ptyRuntime ?? createPtyRuntime())
+    : (deps?.ptyRuntime ?? createPtyRuntime({ processEngine: createMainTerminalProcessEngine() }))
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
   let browserProfileStorePromise: Promise<BrowserProfileStore> | null = null

@@ -5,6 +5,7 @@ import type {
   ResizeTerminalInput,
   SpawnTerminalInput,
   SnapshotTerminalInput,
+  TerminalAgentReexecInput,
   TerminalGeometryCommitReason,
   TerminalWriteEncoding,
   WriteTerminalInput,
@@ -12,6 +13,7 @@ import type {
 import { isAbsolute } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
 import { normalizeEnvPayload } from '../../../../app/main/ipc/normalize'
+import { normalizeTerminalAgentReexecInput } from '../../../../shared/runtime/terminalAgentReexec'
 
 export function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalInput {
   if (!payload || typeof payload !== 'object') {
@@ -98,6 +100,16 @@ export function normalizeWriteTerminalPayload(payload: unknown): WriteTerminalIn
 
   const encoding: TerminalWriteEncoding = rawEncoding === 'binary' ? 'binary' : 'utf8'
   return { sessionId, data, encoding }
+}
+
+export function normalizeTerminalAgentReexecPayload(payload: unknown): TerminalAgentReexecInput {
+  const normalized = normalizeTerminalAgentReexecInput(payload)
+  if (!normalized) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for pty:agent-reexec',
+    })
+  }
+  return normalized
 }
 
 export function normalizeResizeTerminalPayload(payload: unknown): ResizeTerminalInput {

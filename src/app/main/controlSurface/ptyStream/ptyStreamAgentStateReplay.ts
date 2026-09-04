@@ -7,6 +7,9 @@ export function registerPtyStreamAgentState(options: {
   now: () => number
   broadcast: (event: TerminalSessionStateEvent) => void
 }): void {
+  if (options.session.status === 'exited') {
+    return
+  }
   const source = options.event.source ?? 'session_file'
   const previous = options.session.agentStateBySource.get(source)
   if (

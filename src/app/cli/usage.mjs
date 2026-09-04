@@ -72,7 +72,7 @@ export function printUsage() {
     `  --endpoint <url>          Override control surface base URL (for tunnels/remote)\n`,
   )
   process.stdout.write(
-    `  --token <token>           Override control surface bearer token (required with --endpoint)\n`,
+    `  --token <token>           Override bearer token; use --token=<token> when it starts with '-'\n`,
   )
   process.stdout.write(
     `  --timeout <ms>            Override control surface request timeout (default ${DEFAULT_TIMEOUT_MS}ms)\n\n`,

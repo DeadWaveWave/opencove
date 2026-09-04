@@ -67,6 +67,8 @@ import type {
   ShowSystemNotificationInput,
   ShowSystemNotificationResult,
   TerminalDataEvent,
+  TerminalAgentReexecInput,
+  TerminalAgentReexecResult,
   TerminalExitEvent,
   TerminalForegroundEvent,
   TerminalGeometryEvent,
@@ -293,6 +295,7 @@ export interface OpenCoveApi {
     listProfiles?: () => Promise<ListTerminalProfilesResult>
     spawn: (payload: SpawnTerminalInput) => Promise<SpawnTerminalResult>
     write: (payload: WriteTerminalInput) => Promise<void>
+    reexecAgent: (payload: TerminalAgentReexecInput) => Promise<TerminalAgentReexecResult>
     resize: (payload: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
     kill: (payload: KillTerminalInput) => Promise<void>
     attach: (payload: AttachTerminalInput) => Promise<void>

@@ -1,4 +1,4 @@
-import { createServer, type ServerResponse } from 'node:http'
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { createAppErrorDescriptor } from '../../../shared/errors/appError'
 import { createControlSurface } from './controlSurface'
@@ -15,6 +15,7 @@ import { gateWebUiEntrypoint } from './http/webUiEntryGate'
 import { publishLiveSyncEvent, publishSyncEvent } from './http/publishSyncEvent'
 import { shouldAllowDevWebUiOrigin } from './http/devWebUiOrigin'
 import { buildUnauthorizedResult } from './http/unauthorizedResult'
+import * as httpDrain from './http/httpServerDrain'
 import { createLazyPersistenceStore } from './http/lazyPersistenceStore'
 import { createPtyStreamService, PTY_STREAM_PROTOCOL_VERSION } from './ptyStream/ptyStreamService'
 import { createMultiEndpointPtyRuntime } from './ptyStream/multiEndpointPtyRuntime'
@@ -151,21 +152,20 @@ export function registerControlSurfaceHttpServer(
     rejectReady = rejectPromise
   })
 
-  const server = createServer(async (req, res) => {
+  const requestDrain = new httpDrain.HttpAcceptedRequestDrainOwner()
+  const handleRequest = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    httpDrain.registerHttpResponseShutdownDrain({ server, response: res, isClosing: () => closed })
     if (closed) {
       res.statusCode = 503
       res.end()
       return
     }
-
     if (!req.url) {
       res.statusCode = 400
       res.end()
       return
     }
-
     const url = new URL(req.url, 'http://localhost')
-
     if (
       await tryHandleWebAuthRoutes({
         req,
@@ -178,7 +178,6 @@ export function registerControlSurfaceHttpServer(
     ) {
       return
     }
-
     if (req.method === 'GET') {
       if (
         gateWebUiEntrypoint({
@@ -356,7 +355,8 @@ export function registerControlSurfaceHttpServer(
         }),
       })
     }
-  })
+  }
+  const server = createServer((req, res) => requestDrain.accept(handleRequest(req, res)))
 
   server.on('upgrade', (req, socket, head) => {
     if (closed) {
@@ -453,7 +453,10 @@ export function registerControlSurfaceHttpServer(
         // Stop new HTTP commands and wait for commands already accepted by the server before the
         // recovery cutoff. Existing PTY stream clients are frozen first so server.close can drain.
         ptyStreamService.freezeIngress()
-        await new Promise<void>(resolveClose => server.close(() => resolveClose()))
+        await Promise.all([
+          httpDrain.closeHttpServerConnections(server),
+          requestDrain.drainAccepted(),
+        ])
 
         try {
           await terminalAgents.dispose()

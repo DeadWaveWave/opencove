@@ -43,6 +43,10 @@ export interface TerminalAgentHookContext {
   invocationId: string
   generation: number
   isCurrent: () => boolean
+  observe?: (observation: {
+    identityAuthority: 'provider_session_start'
+    resumeSessionId: string
+  }) => boolean
 }
 
 interface CredentialRecord<TEnvelope extends AgentHookEnvelope> {
@@ -133,7 +137,19 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       if (credential.providerSessionId !== null) {
         return
       }
+      if (
+        terminalActivity.observe &&
+        !terminalActivity.observe({
+          identityAuthority: 'provider_session_start',
+          resumeSessionId: identity.providerSessionId,
+        })
+      ) {
+        return
+      }
       credential.providerSessionId = identity.providerSessionId
+      if (terminalActivity.observe) {
+        return
+      }
       const metadata: TerminalSessionMetadataEvent = {
         sessionId,
         resumeSessionId: identity.providerSessionId,

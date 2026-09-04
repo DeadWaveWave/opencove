@@ -59,10 +59,8 @@ import { normalizePersistedAppState } from '../../../../platform/persistence/sql
 import { AgentProviderRegistry } from '../../application/services/AgentProviderRegistry'
 import { createManagedAgentLaunchPlan } from '../../application/use-cases/createManagedAgentLaunchPlan'
 import { createBuiltinAgentProviderContributions } from '../../infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
-import {
-  AgentLaunchArtifactOwner,
-  rollbackAgentLaunchArtifacts,
-} from '../../application/services/AgentLaunchArtifactOwner'
+import { rollbackAgentLaunchArtifacts } from '../../application/services/AgentLaunchArtifactOwner'
+import { AgentLaunchSessionRegistrationOwner } from '../../application/services/AgentLaunchSessionRegistrationOwner'
 
 const HYDRATE_RESUME_RESOLVE_TIMEOUT_MS = 3_000
 const READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS = 1_500
@@ -124,9 +122,10 @@ export function registerAgentIpcHandlers(
       runtimePlatform: process.platform,
     }),
   )
-  const artifactOwner = new AgentLaunchArtifactOwner(() => undefined)
+  const launchSessionRegistrations = new AgentLaunchSessionRegistrationOwner(() => undefined)
   const stopArtifactCleanup =
-    ptyRuntime.onExit?.(({ sessionId }) => artifactOwner.release(sessionId)) ?? (() => undefined)
+    ptyRuntime.onExit?.(({ sessionId }) => launchSessionRegistrations.noteExit(sessionId)) ??
+    (() => undefined)
 
   registerHandledIpc(
     IPC_CHANNELS.agentListInstalledProviders,
@@ -405,39 +404,40 @@ export function registerAgentIpcHandlers(
           ? { ...(resolvedSpawn.env ?? process.env), ...normalized.env }
           : resolvedSpawn.env
 
-      const { sessionId } = await ptyRuntime
-        .spawnSession({
-          cwd: resolvedSpawn.cwd,
-          cols: normalized.cols ?? 80,
-          rows: normalized.rows ?? 24,
-          command: resolvedSpawn.command,
-          args: resolvedSpawn.args,
-          ...(mergedEnv ? { env: mergedEnv } : {}),
-        })
-        .catch(error => rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts))
-      artifactOwner.adopt(sessionId, managedLaunch.artifacts)
-      managedLaunch.plan.onStarted?.(sessionId)
-
       const resumeSessionId = launchCommand.resumeSessionId
-
       const shouldStartStateWatcher =
         process.env.NODE_ENV !== 'test' ||
         process.env['OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER'] === '1'
-
-      if (shouldStartStateWatcher) {
-        ptyRuntime.startSessionStateWatcher({
-          sessionId,
-          provider: normalized.provider,
-          cwd: normalized.cwd,
-          launchMode: launchCommand.launchMode,
-          resumeSessionId,
-          startedAtMs: launchStartedAtMs,
-          ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
-          opencodeBaseUrl: opencodeServer
-            ? `http://${opencodeServer.hostname}:${opencodeServer.port}`
-            : null,
-        })
-      }
+      const { sessionId } = await launchSessionRegistrations.spawn({
+        spawn: async () =>
+          await ptyRuntime.spawnSession({
+            cwd: resolvedSpawn.cwd,
+            cols: normalized.cols ?? 80,
+            rows: normalized.rows ?? 24,
+            command: resolvedSpawn.command,
+            args: resolvedSpawn.args,
+            ...(mergedEnv ? { env: mergedEnv } : {}),
+          }),
+        artifacts: managedLaunch.artifacts,
+        retireExact: async spawnedSessionId => await ptyRuntime.kill(spawnedSessionId),
+        onRegistered: spawned => {
+          managedLaunch.plan.onStarted?.(spawned.sessionId)
+          if (shouldStartStateWatcher) {
+            ptyRuntime.startSessionStateWatcher({
+              sessionId: spawned.sessionId,
+              provider: normalized.provider,
+              cwd: normalized.cwd,
+              launchMode: launchCommand.launchMode,
+              resumeSessionId,
+              startedAtMs: launchStartedAtMs,
+              ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
+              opencodeBaseUrl: opencodeServer
+                ? `http://${opencodeServer.hostname}:${opencodeServer.port}`
+                : null,
+            })
+          }
+        },
+      })
 
       const result: LaunchAgentResult = {
         sessionId,
@@ -466,7 +466,7 @@ export function registerAgentIpcHandlers(
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
       stopArtifactCleanup()
-      artifactOwner.releaseAll()
+      launchSessionRegistrations.dispose()
       disposeAgentExecutableResolver()
       disposeAgentModelService()
     },

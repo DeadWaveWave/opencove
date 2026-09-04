@@ -38,6 +38,7 @@ Key implementation files:
 | Terminal recovery generation/archive/binding/checkpoint | Worker terminal recovery owner | reconcile/output checkpoint/atomic retire/two-phase shutdown drain |
 | Agent/Terminal Worker binding (`endpointId + mountId`) | Workspace node persistence | launch result -> node state -> SQLite; prepare/revive resolves it against topology |
 | Terminal agent session binding | Workspace persistence | verified `provider` + resume identity record; an unverified provider remains a hint, never a resumable identity or durable node-kind rewrite |
+| Ordinary-terminal Agent invocation generation/revisions/exit fence | Worker `TerminalAgentInvocationRegistry` | authenticated shim prepare/complete plus current provider hook observation; runtime-only, bounded, and never a PTY or persistence writer |
 | Terminal agent overlay and run-state | Renderer run-state arbiter | one runtime projection from fresh hook > warm session-file > nothing; never terminal presentation or durable node truth |
 | Terminal agent raw-source replay | `PtyStreamHub` session state | one timestamped runtime-only observation per source; replayed on attach and removed with the session |
 | Desktop renderer state replay | Main remote PTY runtime | per-source transport mirror for reloaded subscribers; never reattaches or restarts the Worker PTY |
@@ -72,12 +73,37 @@ and cold recovery may still enter that exact provider session once. An alternate
 provider process exit, or Ctrl+C is a presentation/runtime signal for drop-back, not authority to
 clear the binding or retire the terminal session.
 
+For ordinary-terminal adoption, the Worker invocation registry assigns the current generation and
+publishes every accepted transition with a monotonic per-source `sourceRevision` and aggregate
+`revision`. Its live baseline retains an exited current invocation, including its one immutable
+verified provider session identity, so delayed or duplicated hook events cannot reactivate or
+rebind it. At most eight still-live superseded invocations are retained per terminal; admission at
+that boundary preserves existing live records and rejects the new invocation. Completed history
+becomes bounded tombstones. Releasing the registry entry records terminal exit only inside this
+runtime owner and removes the baseline. It does not kill the PTY, clear provider conversation
+identity, write persistence, or create an Agent product aggregate. Legacy activity without
+revisions remains transport-compatible; renderer ordering compares generation first, resets the
+revision fence for a higher generation, and uses observation time only between same-generation
+legacy events.
+
 An active terminal overlay exposes the same copy-last-message, reload, list-session, and
 switch-session actions as a durable Agent node. These actions read provider and resume identity from
 the terminal binding, start time from the runtime overlay, and working directory from the terminal.
-Reload and switch are explicit same-PTY re-executions: they interrupt the foreground agent, wait for
-drop-back, clear the prompt line, and enter the new command while preserving node ID, PTY session ID,
-and scrollback. Switching intentionally changes the bound resume identity.
+Reload and switch are explicit same-PTY re-executions. The renderer sends only provider, resume intent,
+and its expected invocation fence through the controller-bound PTY stream; it never builds or writes a
+shell command. `PtyStreamHub` serializes the operation with input/control/geometry work and validates
+the attached controller, authority epoch, session, Worker-observed provider, and latest activity
+projection. A fallback with no authenticated invocation cannot change provider. The target Worker
+builds the provider command, interrupts the foreground process, waits for the same authenticated
+invocation to exit plus a fresh shell-prompt observation, then clears the prompt line and enters the
+command. A route to another endpoint repeats that validation at the downstream Hub and uses the
+downstream controller epoch. Providers without authenticated activity use only a fresh shell-prompt
+observation after the interrupt; terminal output text is never parsed as lifecycle authority. Node ID,
+PTY session ID, and scrollback remain unchanged, while switching intentionally changes the durable
+resume identity only after the Worker accepts the operation. The authenticated shim reports the
+actual provider arguments when reserving the next invocation, so the registry records an explicit
+resume target before `SessionStart`; a provider-reported identity that differs from that target is
+rejected instead of silently rebinding durable conversation truth.
 
 Each activation owns exactly one session-state watcher. A provider or resume-identity change is
 serialized as detach-before-attach, and re-entry never reuses an old watcher. Presentation snapshot
@@ -89,6 +115,12 @@ order. The renderer feeds these observations through the same pure run-state arb
 the Hub does not duplicate authority policy. Observation timestamps cross the stream boundary so a late
 attach cannot renew a stale `working` lease, while quiet `waiting` remains authoritative. The source cache
 survives client detach but not session exit, retirement, or Worker shutdown.
+
+Authenticated terminal activity uses the Hub's query-only metadata baseline in addition to live stream
+metadata. A renderer subscribes to live metadata before requesting that baseline; generation and aggregate
+revision fences reject an older late query result. Disposal fences async completion, and a failed query does
+not tear down the live subscription. The Hub remains the runtime projection owner for local and translated
+remote session IDs; renderer caches remain derived and are cleared on terminal exit.
 
 The desktop relay mirrors these raw observations while its Worker stream remains attached. When a renderer
 subscriber reloads, the relay targets the replay to that subscriber instead of issuing a second stream
@@ -131,6 +163,13 @@ Client attach flow:
 ```text
 presentationSnapshot -> local reset/resize -> write serializedScreen -> attach(afterSeq)
 ```
+
+A Browser attach is complete only after the exact current socket lease has received `hello_ack` and
+then a valid `attached` acknowledgement containing both role and non-negative `authorityEpoch` for
+that session. Write, resize, and Agent re-exec join the same attach promise; none may infer support or
+reuse authority from an open socket, a retired lease, or an attach message that was merely sent.
+Detach invalidates the session's attach generation before a delayed connection can send, and the
+Desktop relay similarly rejects an in-flight Worker attach when session exit removes tracked ownership.
 
 Clients resync when they detect:
 
@@ -314,6 +353,14 @@ The goal is stable visual parity without letting multiple renderers fight for te
 19. A verified terminal Agent binding survives foreground, alternate-screen, Ctrl+C, and provider
     exit observations; only an explicit clear/remove or session switch may erase or replace its
     durable resume authority.
+20. Ordinary-terminal invocation generation and exit fencing belong to the Worker registry, while the
+    transport metadata baseline belongs to `PtyStreamHub`; an exited generation cannot be reactivated by a
+    late or duplicate source event.
+21. Renderer terminal-activity hydration subscribes live before querying the Hub baseline, and an older
+    async baseline can never replace a newer live generation or revision.
+22. Same-PTY Agent reload/switch is a controller-bound Worker operation. Client shell text is not an
+    input, and a stale activity generation, stale authority epoch, viewer request, terminal exit, or
+    unconfirmed shell prompt cannot inject the target command.
 
 ## Verification Anchors
 
@@ -326,6 +373,9 @@ The goal is stable visual parity without letting multiple renderers fight for te
 - `tests/unit/app/ptyStreamHub.resizeGeometryAck.spec.ts`
 - `tests/unit/app/ptyStreamService.recoveryBarrier.spec.ts`
 - `tests/unit/app/BrowserPtyClient.spec.ts`
+- `tests/unit/contexts/TerminalAgentInvocationRegistry.spec.ts`
+- `tests/unit/contexts/terminalAgentActivityGateway.spec.ts`
+- `tests/unit/contexts/terminalAgentActivityProjection.spec.ts`
 - `tests/unit/contexts/terminalNode.output-scheduler.spec.ts`
 - `tests/unit/terminalNode/terminalGeometrySync.domOverhang.spec.ts` (content-independent fit and
   canonical-only live resize)

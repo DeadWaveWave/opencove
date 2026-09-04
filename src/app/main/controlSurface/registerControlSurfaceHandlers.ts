@@ -20,6 +20,7 @@ import { registerWorkspaceHandlers } from './handlers/workspaceHandlers'
 import { registerAgentSessionCatalogHandlers } from './handlers/agentSessionCatalogHandlers'
 import { registerSessionHandlers } from './handlers/sessionHandlers'
 import { registerSessionStreamingHandlers } from './handlers/sessionStreamingHandlers'
+import { registerTerminalAgentActivityHandlers } from './handlers/terminalAgentActivityHandlers'
 import { registerPtyMountHandlers } from './handlers/ptyMountHandlers'
 import { registerSyncHandlers } from './handlers/syncHandlers'
 import { registerTopologyHandlers } from './handlers/topologyHandlers'
@@ -121,6 +122,7 @@ export function registerControlSurfaceHandlers(
     terminalSpawnAdmission: deps.terminalSpawnAdmission,
     terminalAgentActivity: deps.terminalAgentActivity,
   })
+  registerTerminalAgentActivityHandlers(controlSurface, { ptyStreamHub: deps.ptyStreamHub })
   registerPtyMountHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
     topology: deps.topology,

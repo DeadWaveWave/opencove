@@ -1,18 +1,18 @@
 {
-  "filesAnalyzed": 1208,
+  "filesAnalyzed": 1295,
   "summary": {
     "errors": 0,
-    "warnings": 504,
-    "violations": 504
+    "warnings": 505,
+    "violations": 505
   },
   "byRule": {
-    "architecture.windowOpenCoveApiBoundary": 253,
-    "architecture.layerDependency": 251
+    "architecture.windowOpenCoveApiBoundary": 252,
+    "architecture.layerDependency": 253
   },
   "topAreas": [
     {
       "area": "src/contexts/workspace/presentation",
-      "count": 217
+      "count": 215
     },
     {
       "area": "src/contexts/settings/presentation",
@@ -40,15 +40,15 @@
     },
     {
       "area": "src/app/worker",
-      "count": 8
+      "count": 9
     },
     {
       "area": "src/app/renderer/performanceDiagnostics",
       "count": 3
     },
     {
-      "area": "src/contexts/browser/presentation",
-      "count": 2
+      "area": "src/contexts/issueReport/infrastructure",
+      "count": 3
     }
   ]
 }

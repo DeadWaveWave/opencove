@@ -35,14 +35,15 @@ describe('stale local worker process-tree cleanup', () => {
     ).toBeNull()
   })
 
-  it('terminates confirmed descendants without touching unrelated codex processes', async () => {
+  it('waits for the exact confirmed tree after escalating it to SIGKILL', async () => {
     const signal = vi.fn()
+    const waitForExit = vi.fn(async () => undefined)
     await terminateStaleLocalWorkerTree(
       { stalePid: 100, userDataPath, platform: 'darwin' },
       {
         readProcessTree: async () => rows,
         signal,
-        waitForExit: async () => undefined,
+        waitForExit,
         killWindowsTree: vi.fn(),
       },
     )
@@ -50,7 +51,12 @@ describe('stale local worker process-tree cleanup', () => {
     expect(signal).toHaveBeenCalledWith(120, 'SIGTERM')
     expect(signal).toHaveBeenCalledWith(110, 'SIGTERM')
     expect(signal).toHaveBeenCalledWith(100, 'SIGTERM')
+    expect(signal).toHaveBeenCalledWith(120, 'SIGKILL')
+    expect(signal).toHaveBeenCalledWith(110, 'SIGKILL')
+    expect(signal).toHaveBeenCalledWith(100, 'SIGKILL')
     expect(signal).not.toHaveBeenCalledWith(900, expect.anything())
+    expect(waitForExit).toHaveBeenNthCalledWith(1, [120, 110, 100], 1_500)
+    expect(waitForExit).toHaveBeenNthCalledWith(2, [120, 110, 100], 1_500)
   })
 
   it('swallows already-dead and permission-denied process failures', async () => {

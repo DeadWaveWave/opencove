@@ -9,7 +9,8 @@ const execFileAsync = promisify(execFile)
 const DEFAULT_WRITER_LOCK_WAIT_MS = 1_500
 const MAX_WRITER_LOCK_WAIT_MS = 5_000
 const DEFAULT_WRITER_LOCK_POLL_MS = 100
-const LSOF_TIMEOUT_MS = 500
+// Loaded macOS hosts can take well over 500 ms to enumerate open files.
+const LSOF_TIMEOUT_MS = 2_000
 const ACTIVE_WRITER_PATTERN = /(?:-32600\b|already has an active writer)/iu
 
 export type CodexWriterLockProbeResult = 'available' | 'occupied' | 'unknown'

@@ -69,6 +69,8 @@ import type {
   ShowSystemNotificationInput,
   ShowSystemNotificationResult,
   TerminalDataEvent,
+  TerminalAgentReexecInput,
+  TerminalAgentReexecResult,
   TerminalExitEvent,
   TerminalForegroundEvent,
   TerminalGeometryEvent,
@@ -114,9 +116,18 @@ import { resolveOpenCoveMeta } from './opencoveMeta'
 import { createPerformanceDiagnosticsPreloadApi } from './performanceDiagnosticsApi'
 import { createWebsiteWindowPreloadApi } from './websiteWindowApi'
 import { createBrowserProfilePreloadApi } from './browserProfileApi'
+import { TerminalEventReplayCache } from './terminalEventReplayCache'
 type UnsubscribeFn = () => void
-const latestPtyStateBySessionId = new Map<string, TerminalSessionStateEvent>(),
-  latestPtyMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
+const terminalEventReplayCache = new TerminalEventReplayCache()
+ipcRenderer.on(IPC_CHANNELS.ptyState, (_event, payload: TerminalSessionStateEvent) => {
+  terminalEventReplayCache.registerState(payload)
+})
+ipcRenderer.on(IPC_CHANNELS.ptySessionMetadata, (_event, payload: TerminalSessionMetadataEvent) => {
+  terminalEventReplayCache.registerMetadata(payload)
+})
+ipcRenderer.on(IPC_CHANNELS.ptyExit, (_event, payload: TerminalExitEvent) => {
+  terminalEventReplayCache.disposeSession(payload.sessionId)
+})
 const opencoveApi = {
   meta: resolveOpenCoveMeta(),
   debug: {
@@ -310,6 +321,8 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptySpawn, payload),
     write: (payload: WriteTerminalInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptyWrite, payload),
+    reexecAgent: (payload: TerminalAgentReexecInput): Promise<TerminalAgentReexecResult> =>
+      invokeIpc(IPC_CHANNELS.ptyAgentReexec, payload),
     resize: (payload: ResizeTerminalInput): Promise<TerminalGeometryCommitResult> =>
       invokeIpc(IPC_CHANNELS.ptyResize, payload),
     kill: (payload: KillTerminalInput): Promise<void> => invokeIpc(IPC_CHANNELS.ptyKill, payload),
@@ -381,14 +394,11 @@ const opencoveApi = {
     },
     onState: (listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn => {
       const handler = (_event: Electron.IpcRendererEvent, payload: TerminalSessionStateEvent) => {
-        latestPtyStateBySessionId.set(payload.sessionId, payload)
         listener(payload)
       }
 
       ipcRenderer.on(IPC_CHANNELS.ptyState, handler)
-      latestPtyStateBySessionId.forEach(payload => {
-        listener(payload)
-      })
+      terminalEventReplayCache.replayStates(listener)
 
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.ptyState, handler)
@@ -399,14 +409,11 @@ const opencoveApi = {
         _event: Electron.IpcRendererEvent,
         payload: TerminalSessionMetadataEvent,
       ) => {
-        latestPtyMetadataBySessionId.set(payload.sessionId, payload)
         listener(payload)
       }
 
       ipcRenderer.on(IPC_CHANNELS.ptySessionMetadata, handler)
-      latestPtyMetadataBySessionId.forEach(payload => {
-        listener(payload)
-      })
+      terminalEventReplayCache.replayMetadata(listener)
 
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.ptySessionMetadata, handler)

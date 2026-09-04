@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import { isValidProvider, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
+import type { TerminalAgentActivityFence } from '@shared/contracts/dto'
 import type { TerminalAgentSessionBinding, TerminalNodeData } from '../types'
 
 export interface AgentTreatedActionContext {
@@ -97,21 +98,57 @@ export function reactivateTerminalAgentOverlayAfterReexec(
   node: Node<TerminalNodeData>,
   options: {
     expectedSessionId: string
+    expectedStartedAtMs: number
+    expectedActivity: TerminalAgentActivityFence | null
     provider: AgentProvider
     startedAtMs: number
     resumeSessionId: string | null
     resumeSessionIdVerified: boolean
   },
 ): Node<TerminalNodeData> {
-  if (
-    node.data.kind !== 'terminal' ||
-    node.data.sessionId !== options.expectedSessionId ||
-    isAgentTreatedNode(node)
-  ) {
+  if (node.data.kind !== 'terminal' || node.data.sessionId !== options.expectedSessionId) {
+    return node
+  }
+  const overlay = node.data.agentOverlay
+  const currentActivity = overlay?.activity
+  if (options.expectedActivity) {
+    if (options.expectedActivity.phase === 'active' && currentActivity?.phase === 'active') {
+      return node
+    }
+    if (
+      currentActivity &&
+      (currentActivity.invocationId !== options.expectedActivity.invocationId ||
+        currentActivity.generation !== options.expectedActivity.generation ||
+        (currentActivity.phase !== options.expectedActivity.phase &&
+          currentActivity.phase !== 'exited'))
+    ) {
+      return node
+    }
+  } else if (currentActivity) {
+    return node
+  }
+  if (!currentActivity && overlay && overlay.startedAtMs !== options.expectedStartedAtMs) {
     return node
   }
 
-  return activateTerminalAgentOverlay(node, options)
+  const binding = {
+    provider: options.provider,
+    resumeSessionId: options.resumeSessionId,
+    resumeSessionIdVerified: options.resumeSessionIdVerified,
+  }
+  return {
+    ...node,
+    data: {
+      ...node.data,
+      terminalProviderHint: options.provider,
+      terminalAgentBinding: isResumeSessionBindingVerified(binding) ? binding : null,
+      agentOverlay: {
+        provider: options.provider,
+        status: 'standby',
+        startedAtMs: options.startedAtMs,
+      },
+    },
+  }
 }
 
 export function resolveAgentTreatedProvider(node: Node<TerminalNodeData>): AgentProvider | null {

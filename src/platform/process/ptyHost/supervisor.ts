@@ -1,35 +1,47 @@
-import { PTY_HOST_PROTOCOL_VERSION, isPtyHostMessage } from './protocol'
+import {
+  PTY_HOST_PROTOCOL_VERSION,
+  isPtyHostMessage,
+  isPtyHostReadyEnvelope,
+  readPtyHostResponseIdentity,
+  readPtyHostSpawnSuccessRetirementIdentity,
+  type PtyHostMessage,
+  type PtyHostReadyEnvelope,
+  type PtyHostRequest,
+  type PtyHostSpawnRequest,
+  type PtyHostWriteEncoding,
+  type PtyHostForegroundEvent,
+  type PtyHostResponseMessage,
+} from './protocol'
 import { resolvePtyHostSpawnEnv } from './spawnEnv'
 import {
   nowMs,
+  normalizePtyHostError,
+  PtyHostHandshakeError,
   resolveBackoffDelay,
   resolveBundledPtyHostEntryPath,
   sleep,
 } from './supervisorSupport'
-import { postPtyHostMessage } from './postMessage'
+import { postIdentifiedPtyHostMessage, postPtyHostMessage } from './postMessage'
 import { PtyHostPendingResponseCoordinator } from './pendingResponseCoordinator'
 import { PtyHostExitEvidence } from './hostExitEvidence'
 import { PtyHostAmbiguousExitRecovery } from './ambiguousExitRecovery'
 import { attachPtyHostProcessLogging } from './processLogging'
 import { parsePtyHostResizeResult, type PtyHostResizeResult } from './resizeAck'
-export type { PtyHostProcess, PtyHostProcessFactory } from './processTypes'
-export type { PtyHostSpawnOptions } from './spawnOptions'
+import { PtyHostSupervisorEventBus } from './supervisorEventBus'
+import { PtyHostSupervisorReadyState } from './supervisorReadyState'
+import { PtyHostSessionEventOwner } from './ptyHostSessionEventOwner'
+import { handlePtyHostResponse } from './ptyHostResponseOwner'
 import type {
-  PtyHostMessage,
-  PtyHostRequest,
-  PtyHostSpawnRequest,
-  PtyHostWriteEncoding,
-  PtyHostForegroundEvent,
-  PtyHostResponseMessage,
-} from './protocol'
-import type { PtyHostProcess, PtyHostProcessFactory } from './processTypes'
+  PtyHostProcess,
+  PtyHostProcessFactory,
+  PtyHostSupervisorOptions,
+} from './processTypes'
 import type { PtyHostSpawnOptions } from './spawnOptions'
+export type { PtyHostProcess, PtyHostProcessFactory, PtyHostSpawnOptions }
 
 const READY_TIMEOUT_MS = 5_000
 const SPAWN_TIMEOUT_MS = 10_000
 const AMBIGUOUS_EXIT_TIMEOUT_MS = 2_000
-
-type UnsubscribeFn = () => void
 
 export class PtyHostSupervisor {
   private readonly createProcess: PtyHostProcessFactory
@@ -39,21 +51,13 @@ export class PtyHostSupervisor {
   private readonly readyTimeoutMs: number
   private readonly spawnTimeoutMs: number
   private readonly ambiguousExitRecovery: PtyHostAmbiguousExitRecovery
-
-  private readonly dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
-  private readonly exitListeners = new Set<
-    (event: { sessionId: string; exitCode: number }) => void
-  >()
-  private readonly foregroundListeners = new Set<(event: PtyHostForegroundEvent) => void>()
-
+  private readonly readyState = new PtyHostSupervisorReadyState()
+  private readonly events = new PtyHostSupervisorEventBus()
+  private readonly sessionEvents: PtyHostSessionEventOwner
   private process: PtyHostProcess | null = null
-  private readyPromise: Promise<void> | null = null
-  private resolveReady: (() => void) | null = null
-  private rejectReady: ((error: Error) => void) | null = null
-  private readyTimer: NodeJS.Timeout | null = null
   private readonly pendingResponses = new PtyHostPendingResponseCoordinator()
   private readonly hostExitEvidence = new PtyHostExitEvidence()
-  private activeSessions = new Set<string>()
+  private hostInstanceId: string | null = null
 
   private isDisposed = false
   private restartAttempt = 0
@@ -68,104 +72,49 @@ export class PtyHostSupervisor {
     readyTimeoutMs = READY_TIMEOUT_MS,
     spawnTimeoutMs = SPAWN_TIMEOUT_MS,
     ambiguousExitTimeoutMs = AMBIGUOUS_EXIT_TIMEOUT_MS,
-  }: {
-    baseDir: string
-    createProcess: PtyHostProcessFactory
-    resolveEntryPath?: () => string
-    reportIssue?: (message: string) => void
-    logFilePath?: string | null
-    readyTimeoutMs?: number
-    spawnTimeoutMs?: number
-    ambiguousExitTimeoutMs?: number
-  }) {
+  }: PtyHostSupervisorOptions) {
     this.createProcess = createProcess
     this.reportIssue = reportIssue ?? (message => process.stderr.write(`${message}\n`))
     this.logFilePath = logFilePath ?? null
+    this.sessionEvents = new PtyHostSessionEventOwner({
+      emitData: event => this.events.emitData(event),
+      emitExit: event => this.events.emitExit(event),
+      retireUnowned: sessionId => {
+        postIdentifiedPtyHostMessage(
+          this.process,
+          this.hostInstanceId,
+          hostInstanceId => ({ type: 'kill', hostInstanceId, sessionId }),
+          (child, error) => this.handleHostError(child, error),
+        )
+      },
+    })
     this.readyTimeoutMs = readyTimeoutMs
     this.spawnTimeoutMs = spawnTimeoutMs
     this.ambiguousExitRecovery = new PtyHostAmbiguousExitRecovery(ambiguousExitTimeoutMs)
     this.resolveEntryPath = resolveEntryPath ?? (() => resolveBundledPtyHostEntryPath(baseDir))
   }
-
-  public onData(listener: (event: { sessionId: string; data: string }) => void): UnsubscribeFn {
-    this.dataListeners.add(listener)
-    return () => {
-      this.dataListeners.delete(listener)
-    }
+  public onData(listener: (event: { sessionId: string; data: string }) => void): () => void {
+    return this.events.onData(listener)
   }
-
-  public onExit(listener: (event: { sessionId: string; exitCode: number }) => void): UnsubscribeFn {
-    this.exitListeners.add(listener)
-    return () => {
-      this.exitListeners.delete(listener)
-    }
+  public onExit(listener: (event: { sessionId: string; exitCode: number }) => void): () => void {
+    return this.events.onExit(listener)
   }
-
-  public onForeground(listener: (event: PtyHostForegroundEvent) => void): UnsubscribeFn {
-    this.foregroundListeners.add(listener)
-    return () => {
-      this.foregroundListeners.delete(listener)
-    }
-  }
-
-  private emitData(sessionId: string, data: string): void {
-    this.dataListeners.forEach(listener => {
-      listener({ sessionId, data })
-    })
-  }
-
-  private emitExit(sessionId: string, exitCode: number): void {
-    this.exitListeners.forEach(listener => {
-      listener({ sessionId, exitCode })
-    })
-  }
-
-  private clearReadyTimer(): void {
-    if (!this.readyTimer) {
-      return
-    }
-
-    clearTimeout(this.readyTimer)
-    this.readyTimer = null
-  }
-
-  private failReady(error: Error): void {
-    this.clearReadyTimer()
-
-    this.rejectReady?.(error)
-    this.resolveReady = null
-    this.rejectReady = null
-    this.readyPromise = null
-  }
-
-  private markReady(): void {
-    this.clearReadyTimer()
-    this.restartAttempt = 0
-    this.nextStartAllowedAtMs = 0
-
-    this.resolveReady?.()
-    this.resolveReady = null
-    this.rejectReady = null
-  }
-
-  private normalizeHostError(error: unknown): Error {
-    return error instanceof Error ? error : new Error(String(error))
+  public onForeground(listener: (event: PtyHostForegroundEvent) => void): () => void {
+    return this.events.onForeground(listener)
   }
 
   private handleHostExit(exitCode: number): void {
     const error = new Error(`[pty-host] exited with code ${exitCode}`)
     this.pendingResponses.failAll(error)
 
-    for (const sessionId of this.activeSessions.values()) {
-      this.emitExit(sessionId, exitCode)
-    }
-    this.activeSessions.clear()
+    this.sessionEvents.failAll(exitCode)
 
-    if (this.readyPromise) {
-      this.failReady(error)
+    if (this.readyState.promise) {
+      this.readyState.fail(error)
     }
 
     this.process = null
+    this.hostInstanceId = null
 
     this.restartAttempt += 1
     const delayMs = resolveBackoffDelay(this.restartAttempt - 1)
@@ -181,7 +130,7 @@ export class PtyHostSupervisor {
       return
     }
 
-    const normalizedError = this.normalizeHostError(error)
+    const normalizedError = normalizePtyHostError(error)
     this.reportIssue(`[pty-host] process error: ${normalizedError.message}`)
     this.hostExitEvidence.beginAmbiguousExit(child, 1)
     this.ambiguousExitRecovery.begin(child, () => {
@@ -191,14 +140,10 @@ export class PtyHostSupervisor {
       this.reportIssue('[pty-host] ambiguous exit deadline reached; escalating termination')
       try {
         child.kill('SIGKILL')
-      } catch {
-        // The bounded fence still retires this exact child below.
+      } catch (killError) {
+        const failure = normalizePtyHostError(killError)
+        this.reportIssue(`[pty-host] exact-child SIGKILL failed: ${failure.message}`)
       }
-      if (this.process !== child) {
-        return
-      }
-      this.hostExitEvidence.confirmExit(child, 1)
-      this.handleHostExit(1)
     })
     this.pendingResponses.failAll(normalizedError)
     try {
@@ -212,26 +157,40 @@ export class PtyHostSupervisor {
     const entryPath = this.resolveEntryPath()
     const child = this.createProcess(entryPath)
     this.process = child
+    this.hostInstanceId = null
 
-    this.readyPromise = new Promise<void>((resolve, reject) => {
-      this.resolveReady = resolve
-      this.rejectReady = reject
+    this.readyState.begin(this.readyTimeoutMs, () => {
+      const error = new Error(`[pty-host] ready timeout after ${this.readyTimeoutMs}ms`)
+      this.reportIssue(error.message)
+      this.readyState.fail(error)
+      this.handleHostError(child, error)
     })
-
-    this.readyTimer = setTimeout(() => {
-      this.reportIssue(`[pty-host] ready timeout after ${this.readyTimeoutMs}ms`)
-      child.kill()
-      if (this.process === child) {
-        this.handleHostExit(1)
-      }
-    }, this.readyTimeoutMs)
 
     child.on('message', raw => {
       if (this.process !== child) {
         return
       }
 
+      if (isPtyHostReadyEnvelope(raw)) {
+        this.handleHostMessage(raw)
+        return
+      }
+
       if (!isPtyHostMessage(raw)) {
+        const responseIdentity = readPtyHostResponseIdentity(raw)
+        if (responseIdentity?.hostInstanceId === this.hostInstanceId) {
+          const expectedRequestType = this.pendingResponses.expectedRequestType(
+            responseIdentity.requestId,
+          )
+          const spawnIdentity = readPtyHostSpawnSuccessRetirementIdentity(raw)
+          const error = new Error('[pty-host] malformed response')
+          this.pendingResponses.reject(responseIdentity.requestId, error)
+          if (spawnIdentity?.hostInstanceId === this.hostInstanceId) {
+            this.sessionEvents.resolveSpawn(spawnIdentity.sessionId, false)
+          } else if (expectedRequestType === 'spawn') {
+            this.handleHostError(child, error)
+          }
+        }
         return
       }
 
@@ -259,39 +218,73 @@ export class PtyHostSupervisor {
     attachPtyHostProcessLogging(child, this.logFilePath)
   }
 
-  private handleHostMessage(message: PtyHostMessage): void {
+  private handleHostMessage(message: PtyHostMessage | PtyHostReadyEnvelope): void {
     if (message.type === 'ready') {
       if (message.protocolVersion !== PTY_HOST_PROTOCOL_VERSION) {
-        this.reportIssue(
+        const error = new PtyHostHandshakeError(
           `[pty-host] protocol mismatch: expected ${PTY_HOST_PROTOCOL_VERSION}, got ${message.protocolVersion}`,
         )
-        this.handleHostExit(1)
+        this.reportIssue(error.message)
+        const child = this.process
+        if (child) {
+          this.readyState.fail(error)
+          this.handleHostError(child, error)
+        }
         return
       }
 
-      this.markReady()
+      if (this.hostInstanceId && this.hostInstanceId !== message.hostInstanceId) {
+        const error = new PtyHostHandshakeError(
+          '[pty-host] ready host instance changed on a live process',
+        )
+        this.reportIssue(error.message)
+        const child = this.process
+        if (child) {
+          this.readyState.fail(error)
+          this.handleHostError(child, error)
+        }
+        return
+      }
+
+      this.hostInstanceId = message.hostInstanceId
+      this.restartAttempt = 0
+      this.nextStartAllowedAtMs = 0
+      this.readyState.markReady()
+      return
+    }
+
+    if (!this.hostInstanceId || message.hostInstanceId !== this.hostInstanceId) {
       return
     }
 
     if (message.type === 'response') {
-      this.pendingResponses.resolve(message)
+      handlePtyHostResponse(
+        message,
+        this.pendingResponses,
+        this.sessionEvents,
+        this.process,
+        (child, error) => this.handleHostError(child, error),
+      )
       return
     }
 
     if (message.type === 'data') {
-      this.emitData(message.sessionId, message.data)
+      this.sessionEvents.observeData({ sessionId: message.sessionId, data: message.data })
       return
     }
 
     if (message.type === 'exit') {
-      this.activeSessions.delete(message.sessionId)
-      this.emitExit(message.sessionId, message.exitCode)
+      this.sessionEvents.observeExit({
+        sessionId: message.sessionId,
+        exitCode: message.exitCode,
+      })
       return
     }
 
-    if (message.type === 'foreground') {
+    if (message.type === 'foreground' && this.sessionEvents.has(message.sessionId)) {
       const { type: _type, ...event } = message
-      this.foregroundListeners.forEach(listener => listener(event))
+      const { hostInstanceId: _hostInstanceId, ...foregroundEvent } = event
+      this.events.emitForeground(foregroundEvent)
     }
   }
 
@@ -301,8 +294,8 @@ export class PtyHostSupervisor {
     }
     this.hostExitEvidence.assertNoAmbiguousExit()
 
-    if (this.process && this.readyPromise) {
-      return await this.readyPromise
+    if (this.process && this.readyState.promise) {
+      return await this.readyState.promise
     }
 
     const waitMs = Math.max(0, this.nextStartAllowedAtMs - nowMs())
@@ -317,24 +310,26 @@ export class PtyHostSupervisor {
       this.startHost()
     }
 
-    if (!this.readyPromise) {
+    if (!this.readyState.promise) {
       throw new Error('[pty-host] missing ready promise')
     }
 
-    return await this.readyPromise
+    return await this.readyState.promise
   }
 
   private requestHostResponse(
     child: PtyHostProcess,
-    request: PtyHostRequest & { requestId: string },
+    request: Extract<PtyHostRequest, { type: 'spawn' | 'resize' }>,
     timeoutMessage: string,
   ): Promise<PtyHostResponseMessage> {
     const responsePromise = this.pendingResponses.waitFor(request.requestId, {
       timeoutMs: this.spawnTimeoutMs,
       timeoutMessage,
+      expectedRequestType: request.type,
+      ...(request.type === 'resize' ? { expectedSessionId: request.sessionId } : {}),
     })
     postPtyHostMessage(child, request, error => {
-      const normalizedError = this.normalizeHostError(error)
+      const normalizedError = normalizePtyHostError(error)
       this.pendingResponses.reject(request.requestId, normalizedError)
       if (this.process === child) {
         this.handleHostError(child, normalizedError)
@@ -350,14 +345,16 @@ export class PtyHostSupervisor {
     const spawnOnce = async (): Promise<{ sessionId: string }> => {
       await this.ensureReady()
       const child = this.process
-      if (!child) {
-        throw new Error('[pty-host] missing process')
+      const hostInstanceId = this.hostInstanceId
+      if (!child || !hostInstanceId) {
+        throw new Error('[pty-host] missing ready process identity')
       }
       attemptedChild = child
       const requestId = crypto.randomUUID()
 
       const request: PtyHostSpawnRequest = {
         type: 'spawn',
+        hostInstanceId,
         requestId,
         launchId,
         command: options.command,
@@ -370,7 +367,7 @@ export class PtyHostSupervisor {
 
       const responsePromise = this.requestHostResponse(
         child,
-        request satisfies PtyHostRequest & { requestId: string },
+        request,
         `[pty-host] spawn timeout after ${this.spawnTimeoutMs}ms`,
       )
       const response = await responsePromise
@@ -379,15 +376,17 @@ export class PtyHostSupervisor {
           `[pty-host] spawn failed: ${response.error.name ?? 'Error'}: ${response.error.message}`,
         )
       }
+      if (response.requestType !== 'spawn') {
+        throw new Error('[pty-host] spawn response type mismatch')
+      }
       const sessionId = response.result.sessionId
-      this.activeSessions.add(sessionId)
       return { sessionId }
     }
     try {
       return await spawnOnce()
     } catch (error) {
       const retryIsIdentitySafe = this.hostExitEvidence.isRetrySafe(attemptedChild)
-      if (retryIsIdentitySafe && !this.isDisposed) {
+      if (retryIsIdentitySafe && !this.isDisposed && !(error instanceof PtyHostHandshakeError)) {
         return await spawnOnce()
       }
       throw error
@@ -395,31 +394,42 @@ export class PtyHostSupervisor {
   }
 
   public write(sessionId: string, data: string, encoding: PtyHostWriteEncoding = 'utf8'): void {
-    const child = this.process
-    if (!child || !this.readyPromise) {
+    postIdentifiedPtyHostMessage(
+      this.process,
+      this.hostInstanceId,
+      hostInstanceId => ({ type: 'write', hostInstanceId, sessionId, data, encoding }),
+      (child, error) => this.handleHostError(child, error),
+    )
+  }
+
+  public probeForeground(sessionId: string): void {
+    if (!this.sessionEvents.has(sessionId)) {
       return
     }
-
-    postPtyHostMessage(child, { type: 'write', sessionId, data, encoding }, error => {
-      this.handleHostError(child, error)
-    })
+    postIdentifiedPtyHostMessage(
+      this.process,
+      this.hostInstanceId,
+      hostInstanceId => ({ type: 'foreground_probe', hostInstanceId, sessionId }),
+      (child, error) => this.handleHostError(child, error),
+    )
   }
 
   public async resize(sessionId: string, cols: number, rows: number): Promise<PtyHostResizeResult> {
-    if (!this.activeSessions.has(sessionId)) {
+    if (!this.sessionEvents.has(sessionId)) {
       throw new Error(`[pty-host] unknown active session: ${sessionId}`)
     }
 
     await this.ensureReady()
     const child = this.process
-    if (!child) {
-      throw new Error('[pty-host] missing process')
+    const hostInstanceId = this.hostInstanceId
+    if (!child || !hostInstanceId) {
+      throw new Error('[pty-host] missing ready process identity')
     }
 
     const requestId = crypto.randomUUID()
     const responsePromise = this.requestHostResponse(
       child,
-      { type: 'resize', requestId, sessionId, cols, rows } satisfies PtyHostRequest,
+      { type: 'resize', hostInstanceId, requestId, sessionId, cols, rows },
       `[pty-host] resize timeout after ${this.spawnTimeoutMs}ms`,
     )
     const response = await responsePromise
@@ -428,55 +438,57 @@ export class PtyHostSupervisor {
         `[pty-host] resize failed: ${response.error.name ?? 'Error'}: ${response.error.message}`,
       )
     }
+    if (response.requestType !== 'resize') {
+      throw new Error('[pty-host] resize response type mismatch')
+    }
 
     return parsePtyHostResizeResult(response.result.sessionId, response.result.resize)
   }
 
   public kill(sessionId: string): void {
-    const child = this.process
-    this.activeSessions.delete(sessionId)
-
-    if (!child || !this.readyPromise) {
+    if (!this.sessionEvents.beginTermination(sessionId)) {
       return
     }
-
-    postPtyHostMessage(child, { type: 'kill', sessionId }, error => {
-      this.handleHostError(child, error)
-    })
+    postIdentifiedPtyHostMessage(
+      this.process,
+      this.hostInstanceId,
+      hostInstanceId => ({ type: 'kill', hostInstanceId, sessionId }),
+      (child, error) => this.handleHostError(child, error),
+    )
   }
 
-  public crash(): void {
+  public async crash(): Promise<void> {
     const child = this.process
-    if (!child || !this.readyPromise) {
+    if (!child || !this.readyState.promise) {
       return
     }
-
-    try {
-      child.kill()
-    } catch {
-      // ignore and force supervisor crash handling below
-    }
-
-    if (this.process === child) {
-      this.handleHostExit(1)
-    }
+    const confirmedExit = new Promise<void>(resolve => {
+      child.on('exit', () => resolve())
+    })
+    this.handleHostError(child, new Error('[pty-host] crash requested'))
+    await confirmedExit
   }
 
   public dispose(): void {
     this.isDisposed = true
 
-    this.clearReadyTimer()
     this.ambiguousExitRecovery.dispose()
-    this.pendingResponses.failAll(new Error('[pty-host] supervisor disposed'))
-    this.activeSessions.clear()
+    const disposeError = new Error('[pty-host] supervisor disposed')
+    this.readyState.fail(disposeError)
+    this.pendingResponses.failAll(disposeError)
+    this.sessionEvents.clear()
 
     const child = this.process
+    const hostInstanceId = this.hostInstanceId
     this.process = null
+    this.hostInstanceId = null
 
     if (child) {
-      postPtyHostMessage(child, { type: 'shutdown' }, () => {
-        // The host can already be gone during shutdown; cleanup continues via kill below.
-      })
+      if (hostInstanceId) {
+        postPtyHostMessage(child, { type: 'shutdown', hostInstanceId }, () => {
+          // The host can already be gone during shutdown; cleanup continues via kill below.
+        })
+      }
 
       try {
         child.kill()
@@ -484,9 +496,5 @@ export class PtyHostSupervisor {
         // ignore
       }
     }
-
-    this.readyPromise = null
-    this.resolveReady = null
-    this.rejectReady = null
   }
 }

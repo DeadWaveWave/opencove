@@ -4,7 +4,7 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 
 ## Current Capabilities
 
-- Providers: `claude-code`, `codex`, `opencode`, `gemini`.
+- Providers: `claude-code`, `codex`, `opencode`, `gemini`, `pi`, `kimi`.
 - Provider executable discovery uses `AgentExecutableResolver`.
 - Provider model list, session discovery, and AI helper CLI paths use host executable
   diagnostics from `AgentExecutableResolver`.
@@ -23,6 +23,17 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
   untouched spawn: host loopback credentials, host paths, and PowerShell scripts are not injected
   into the Linux guest.
 
+The Worker invocation registry is runtime-only. It assigns generations, monotonic source and
+aggregate revisions, retains the current invocation plus at most eight still-live superseded
+invocations and bounded completion tombstones, and lists its owner baseline. `PtyStreamHub` retains
+the latest validated transport metadata projection for the query-only renderer baseline. A verified
+provider session identity is immutable within its invocation and remains on both active and exited
+baseline events. An explicit resume invocation records its target from the authenticated shim arguments and
+accepts only the same provider identity at `SessionStart`; a mismatch cannot silently rebind durable
+conversation truth. Invocation exit fences later hook activity but neither exits the PTY nor clears
+the separately owned provider conversation binding. The loopback gateway owns only authentication, hook
+artifacts, and cleanup; no invocation registry state is persisted.
+
 ## Main Owners
 
 | State | Owner |
@@ -33,6 +44,7 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 | interactive launch runtime | terminal profile resolver |
 | launch intent | agent/session launch path |
 | PTY process | Worker PTY runtime |
+| ordinary-terminal invocation generation, exit fence, and live baseline | Worker `TerminalAgentInvocationRegistry` |
 | local Claude hook receiver and credentials | Worker Control Surface lifecycle |
 | agent run-state observation | Renderer run-state arbiter over Worker observations |
 | terminal presentation | Worker stream hub |

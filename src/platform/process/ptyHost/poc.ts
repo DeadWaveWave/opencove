@@ -2,43 +2,7 @@ import { utilityProcess } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
-
-type PtyHostReadyMessage = {
-  type: 'ready'
-  protocolVersion: 4
-}
-
-type PtyHostResponseMessage =
-  | {
-      type: 'response'
-      requestId: string
-      ok: true
-      result: { sessionId: string }
-    }
-  | {
-      type: 'response'
-      requestId: string
-      ok: false
-      error: { name?: string; message: string }
-    }
-
-type PtyHostDataMessage = {
-  type: 'data'
-  sessionId: string
-  data: string
-}
-
-type PtyHostExitMessage = {
-  type: 'exit'
-  sessionId: string
-  exitCode: number
-}
-
-type PtyHostMessage =
-  | PtyHostReadyMessage
-  | PtyHostResponseMessage
-  | PtyHostDataMessage
-  | PtyHostExitMessage
+import { isPtyHostMessage, type PtyHostMessage } from './protocol'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -103,13 +67,22 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
 
   let observedOutput = ''
   let spawnedSessionId: string | null = null
+  let hostInstanceId: string | null = null
 
   child.on('message', rawMessage => {
-    const message = rawMessage as PtyHostMessage
+    if (!isPtyHostMessage(rawMessage)) {
+      return
+    }
+    const message = rawMessage
 
     if (message.type === 'ready') {
+      hostInstanceId = message.hostInstanceId
       onReady?.()
       onReady = null
+      return
+    }
+
+    if (message.hostInstanceId !== hostInstanceId) {
       return
     }
 
@@ -135,6 +108,9 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
   })
 
   await withTimeout(readyPromise, 5_000, '[opencove] pty-host PoC timed out waiting for ready')
+  if (!hostInstanceId) {
+    throw new Error('[opencove] pty-host PoC ready handshake omitted host identity')
+  }
 
   const requestId = crypto.randomUUID()
   const spawnResponsePromise = new Promise<Extract<PtyHostMessage, { type: 'response' }>>(
@@ -145,6 +121,7 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
 
   child.postMessage({
     type: 'spawn',
+    hostInstanceId,
     requestId,
     launchId: crypto.randomUUID(),
     command: process.platform === 'win32' ? 'powershell.exe' : '/bin/zsh',
@@ -164,7 +141,10 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
     '[opencove] pty-host PoC timed out waiting for spawn response',
   )
 
-  if (!spawnResponse.ok) {
+  if (!spawnResponse.ok || spawnResponse.requestType !== 'spawn') {
+    if (spawnResponse.ok) {
+      throw new Error('[opencove] pty-host PoC received a mismatched spawn response')
+    }
     throw new Error(
       `[opencove] pty-host PoC spawn failed: ${spawnResponse.error.name ?? 'Error'}: ${spawnResponse.error.message}`,
     )
@@ -195,7 +175,7 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
   })
 
   process.stderr.write('[opencove] pty-host PoC triggering crash\n')
-  child.postMessage({ type: 'crash' })
+  child.postMessage({ type: 'crash', hostInstanceId })
 
   const exitCode = await withTimeout(
     exitPromise,

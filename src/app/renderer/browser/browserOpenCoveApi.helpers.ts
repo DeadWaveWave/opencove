@@ -6,7 +6,33 @@ import type {
   ReleaseNotesCurrentResult,
   WorkerStatusResult,
 } from '@shared/contracts/dto'
-export { isPersistedAppState, mergePersistedAppStates } from '@shared/sync/mergePersistedAppStates'
+import type { NormalizedPersistedAppStateContract } from '@shared/contracts/normalizedPersistedAppState'
+import {
+  isNormalizedAgentSettings,
+  normalizeAgentSettings,
+  type AgentSettings,
+} from '@contexts/settings/domain/agentSettings'
+import { mergePersistedAppStates } from '@shared/sync/mergePersistedAppStates'
+import { normalizePersistedAppStateForMerge as normalizeSharedPersistedAppStateForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
+
+export type BrowserPersistedAppState = NormalizedPersistedAppStateContract<AgentSettings>
+export { mergePersistedAppStates }
+
+export function normalizePersistedAppStateForMerge(
+  value: unknown,
+): BrowserPersistedAppState | null {
+  return normalizeSharedPersistedAppStateForMerge(value, settings =>
+    normalizeAgentSettings(settings),
+  )
+}
+
+export function normalizeCanonicalPersistedAppStateForMerge(
+  value: unknown,
+): BrowserPersistedAppState | null {
+  return normalizeSharedPersistedAppStateForMerge(value, settings =>
+    isNormalizedAgentSettings(settings) ? settings : null,
+  )
+}
 
 export function resolveBrowserPlatform(): string {
   const platform =

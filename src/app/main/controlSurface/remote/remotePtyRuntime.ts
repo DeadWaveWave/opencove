@@ -1,10 +1,7 @@
 import WebSocket from 'ws'
 import type {
   ListTerminalProfilesResult,
-  PresentationSnapshotTerminalResult,
   ResizeTerminalInput,
-  SpawnTerminalInput,
-  SpawnTerminalResult,
   TerminalDataEvent,
   TerminalForegroundEvent,
   TerminalSessionMetadataEvent,
@@ -12,8 +9,6 @@ import type {
   TerminalWriteEncoding,
 } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
-import type { SpawnPtyOptions } from '../../../../platform/process/pty/types'
-import type { PtyRuntime } from '../../../../contexts/terminal/presentation/main-ipc/runtime'
 import {
   PTY_STREAM_PROTOCOL_VERSION,
   PTY_STREAM_WS_SUBPROTOCOL,
@@ -28,9 +23,6 @@ import {
 import {
   invokeRemoteControlSurfaceValue,
   parseListTerminalProfilesResult,
-  parsePresentationSnapshot,
-  parseSnapshotScrollback,
-  parseSpawnTerminalResult,
   resolveRemotePtyWsUrl,
 } from './remotePtyRuntime.support'
 import { createRemotePtySessionCoordinator } from './remotePtyRuntime.sessionCoordinator'
@@ -41,12 +33,20 @@ import {
   RemotePtyAgentStateReplay,
 } from './remotePtyRuntime.attach'
 import { subscribePtyRuntimeListener } from '../ptyStream/ptyRuntimeListeners'
-export type RemotePtyRuntime = PtyRuntime & {
-  noteSessionRolePreference: (sessionId: string, role: 'viewer' | 'controller') => void
-}
-export function isRemotePtyRuntime(value: PtyRuntime): value is RemotePtyRuntime {
-  return typeof (value as RemotePtyRuntime).noteSessionRolePreference === 'function'
-}
+import {
+  PtyStreamSocketAttemptFence,
+  type PtyStreamSocketAttempt,
+} from '../../../../shared/runtime/ptyStreamSocketAttemptFence'
+import { RemotePtyRuntimeAgentReexecCoordinator } from './remotePtyRuntime.agentReexecCoordinator'
+import {
+  readRemotePtyPresentationSnapshot,
+  readRemotePtySnapshot,
+} from './remotePtyRuntime.snapshot'
+import type { RemotePtyRuntime } from './remotePtyRuntime.type'
+import { spawnRemotePtySession, spawnRemoteTerminal } from './remotePtyRuntime.spawn'
+export { isRemotePtyRuntime } from './remotePtyRuntime.type'
+export type { RemotePtyRuntime } from './remotePtyRuntime.type'
+
 export function createRemotePtyRuntime(options: {
   endpointResolver: ControlSurfaceRemoteEndpointResolver
   connectTimeoutMs?: number
@@ -64,7 +64,9 @@ export function createRemotePtyRuntime(options: {
   let socketHandshakeReject: ((error: Error) => void) | null = null
   let reconnectTimer: NodeJS.Timeout | null = null
   let disposed = false
+  const socketAttempts = new PtyStreamSocketAttemptFence()
   const geometryCoordinator = createRemotePtyRuntimeGeometryCoordinator()
+  const agentReexecCoordinator = new RemotePtyRuntimeAgentReexecCoordinator()
   const sendToSessionSubscribers = (sessionId: string, channel: string, payload: unknown): void => {
     sendToWebContentsSessionSubscribers(
       sessionCoordinator.subscribersBySessionId,
@@ -76,12 +78,10 @@ export function createRemotePtyRuntime(options: {
   const sendToAllWindows = (channel: string, payload: unknown): void => {
     sendToWebContentsAllWindows(channel, payload)
   }
-
   const agentMetadataWatcher = createRemotePtyRuntimeAgentMetadataWatcher({
     endpointResolver: options.endpointResolver,
     sendToAllWindows,
   })
-
   const sessionCoordinator = createRemotePtySessionCoordinator({
     connectTimeoutMs,
     cancelMetadataWatcher: sessionId => {
@@ -97,14 +97,14 @@ export function createRemotePtyRuntime(options: {
     },
   })
   const agentStateReplay = new RemotePtyAgentStateReplay()
-
   const closeSocket = (): void => {
     const current = socket
     socket = null
     socketReadyPromise = null
+    socketAttempts.retire()
     sessionCoordinator.onSocketClosed()
     geometryCoordinator.rejectAll(new Error('PTY stream connection closed'))
-
+    agentReexecCoordinator.rejectAll(new Error('PTY stream connection closed'))
     if (socketHandshakeReject) {
       socketHandshakeReject(new Error('PTY stream connection closed'))
     }
@@ -142,11 +142,13 @@ export function createRemotePtyRuntime(options: {
       sessionCoordinator.onSessionAttached(sessionId)
     },
     onSessionExit: sessionId => {
+      agentReexecCoordinator.rejectSession(sessionId, new Error('Terminal session exited'))
       agentStateReplay.disposeSession(sessionId)
-      sessionCoordinator.untrackSession(sessionId)
+      sessionCoordinator.untrackSession(sessionId, new Error('Terminal session exited'))
     },
     handshake: {
       onHelloAck: capabilities => {
+        agentReexecCoordinator.noteCapability(capabilities.agentReexec)
         geometryCoordinator.noteAckCapability(capabilities.geometryCommitAck)
         if (socketHandshakeResolve) {
           socketHandshakeResolve()
@@ -165,6 +167,9 @@ export function createRemotePtyRuntime(options: {
     onResizeResult: result => {
       geometryCoordinator.handleResizeResult(result)
     },
+    onAgentReexecResult: result => {
+      agentReexecCoordinator.handleResult(result)
+    },
     onGeometry: event => {
       const attached = sessionCoordinator.attachedSessions.get(event.sessionId)
       geometryCoordinator.handleGeometry(
@@ -180,8 +185,9 @@ export function createRemotePtyRuntime(options: {
     },
   })
 
-  const connectSocket = async (): Promise<void> => {
+  const connectSocket = async (attempt: PtyStreamSocketAttempt): Promise<void> => {
     const endpoint = await options.endpointResolver()
+    socketAttempts.assertCurrent(attempt)
     if (!endpoint) {
       throw createAppError('worker.unavailable')
     }
@@ -197,6 +203,9 @@ export function createRemotePtyRuntime(options: {
     socket = ws
 
     ws.on('message', raw => {
+      if (socket !== ws) {
+        return
+      }
       const text = typeof raw === 'string' ? raw : Buffer.isBuffer(raw) ? raw.toString('utf8') : ''
       if (text.trim().length === 0) {
         return
@@ -205,7 +214,12 @@ export function createRemotePtyRuntime(options: {
     })
 
     ws.once('close', () => {
-      closeSocket()
+      if (socket && socket !== ws) {
+        return
+      }
+      if (socket === ws) {
+        closeSocket()
+      }
       if (reconnectTimer) {
         clearTimeout(reconnectTimer)
       }
@@ -242,10 +256,15 @@ export function createRemotePtyRuntime(options: {
       })
     })
 
+    socketAttempts.assertCurrent(attempt)
+    if (socket !== ws) {
+      throw new Error('PTY stream connection changed before handshake.')
+    }
     socketHandshakePromise = new Promise<void>((resolvePromise, rejectPromise) => {
       socketHandshakeResolve = resolvePromise
       socketHandshakeReject = rejectPromise
     })
+    const handshakePromise = socketHandshakePromise
 
     ws.send(
       JSON.stringify({
@@ -259,16 +278,21 @@ export function createRemotePtyRuntime(options: {
     )
 
     const handshakeTimeout = setTimeout(() => {
-      socketHandshakeReject?.(new Error('Timed out waiting for PTY hello_ack'))
+      if (socket === ws && socketHandshakePromise === handshakePromise) {
+        socketHandshakeReject?.(new Error('Timed out waiting for PTY hello_ack'))
+      }
     }, connectTimeoutMs)
 
     try {
-      await socketHandshakePromise
+      await handshakePromise
     } finally {
       clearTimeout(handshakeTimeout)
-      socketHandshakePromise = null
+      if (socketHandshakePromise === handshakePromise) {
+        socketHandshakePromise = null
+      }
     }
 
+    socketAttempts.assertCurrent(attempt)
     sessionCoordinator.forEachTrackedSession(sessionId => {
       sessionCoordinator.sendAttachForSession(ws, sessionId)
     })
@@ -287,15 +311,21 @@ export function createRemotePtyRuntime(options: {
       return await socketReadyPromise
     }
 
-    socketReadyPromise = connectSocket().catch(error => {
-      closeSocket()
-      throw error
-    })
+    const attempt = socketAttempts.begin()
+    const readyPromise = connectSocket(attempt)
+    socketReadyPromise = readyPromise
 
     try {
-      await socketReadyPromise
+      await readyPromise
+    } catch (error) {
+      if (socketReadyPromise === readyPromise && socketAttempts.isCurrent(attempt)) {
+        closeSocket()
+      }
+      throw error
     } finally {
-      socketReadyPromise = null
+      if (socketReadyPromise === readyPromise) {
+        socketReadyPromise = null
+      }
     }
   }
 
@@ -316,23 +346,17 @@ export function createRemotePtyRuntime(options: {
 
   const noteSessionRolePreference = (sessionId: string, role: 'viewer' | 'controller'): void => {
     sessionCoordinator.noteSessionRolePreference(sessionId, role)
-    void ensureSessionAttached(sessionId)
   }
 
-  const spawnTerminalSession = async (input: SpawnTerminalInput): Promise<SpawnTerminalResult> => {
-    const value = await invokeRemoteControlSurfaceValue<unknown>({
+  const spawnTerminalSession: RemotePtyRuntime['spawnTerminalSession'] = async input =>
+    await spawnRemoteTerminal({
       endpointResolver: options.endpointResolver,
-      kind: 'command',
-      id: 'pty.spawn',
-      payload: input,
-      errorMessage: 'Failed to spawn remote terminal session',
+      input,
+      onSpawned: async sessionId => {
+        noteSessionRolePreference(sessionId, 'controller')
+        await ensureSessionAttached(sessionId)
+      },
     })
-    const { sessionId, profileId, runtimeKind } = parseSpawnTerminalResult(value)
-    noteSessionRolePreference(sessionId, 'controller')
-    await ensureSessionAttached(sessionId)
-
-    return { sessionId, profileId, runtimeKind }
-  }
 
   const runtime: RemotePtyRuntime = {
     listProfiles: async (): Promise<ListTerminalProfilesResult> =>
@@ -346,24 +370,19 @@ export function createRemotePtyRuntime(options: {
         }),
       ),
     spawnTerminalSession,
-    spawnSession: async (spawnOptions: SpawnPtyOptions): Promise<{ sessionId: string }> => {
-      if (spawnOptions.command || spawnOptions.env || spawnOptions.args?.length) {
-        throw createAppError('common.unavailable', {
-          debugMessage: 'Remote PTY runtime does not support custom spawnSession options yet.',
-        })
-      }
-
-      const spawned = await spawnTerminalSession({
-        cwd: spawnOptions.cwd,
-        cols: spawnOptions.cols,
-        rows: spawnOptions.rows,
-        ...(spawnOptions.shell ? { shell: spawnOptions.shell } : {}),
-      })
-
-      return { sessionId: spawned.sessionId }
-    },
+    spawnSession: async spawnOptions =>
+      await spawnRemotePtySession({ spawnOptions, spawnTerminal: spawnTerminalSession }),
     write: async (sessionId: string, data: string, _encoding: TerminalWriteEncoding = 'utf8') => {
       await sendSocketMessage({ type: 'write', sessionId, data })
+    },
+    reexecAgent: async input => {
+      await ensureSessionAttached(input.sessionId)
+      return await agentReexecCoordinator.reexec(
+        input,
+        sessionCoordinator.attachedSessions.get(input.sessionId),
+        connectTimeoutMs,
+        sendSocketMessage,
+      )
     },
     resize: async (input: ResizeTerminalInput) => {
       await ensureSessionAttached(input.sessionId)
@@ -389,8 +408,9 @@ export function createRemotePtyRuntime(options: {
       })
     },
     kill: async (sessionId: string) => {
+      agentReexecCoordinator.rejectSession(sessionId, new Error('Terminal session killed'))
       agentStateReplay.disposeSession(sessionId)
-      sessionCoordinator.untrackSession(sessionId)
+      sessionCoordinator.untrackSession(sessionId, new Error('Terminal session killed'))
       await invokeRemoteControlSurfaceValue<void>({
         endpointResolver: options.endpointResolver,
         kind: 'command',
@@ -419,36 +439,19 @@ export function createRemotePtyRuntime(options: {
     detach: async (contentsId: number, sessionId: string) => {
       await sessionCoordinator.removeSubscriber(contentsId, sessionId)
     },
-    snapshot: async (sessionId: string) => {
-      const value = await invokeRemoteControlSurfaceValue<unknown>({
+    snapshot: async (sessionId: string) =>
+      await readRemotePtySnapshot({
         endpointResolver: options.endpointResolver,
-        kind: 'query',
-        id: 'session.snapshot',
-        payload: { sessionId },
-        errorMessage: 'Failed to fetch remote session snapshot',
-      })
-      const { scrollback, toSeq } = parseSnapshotScrollback(value)
-      if (typeof toSeq === 'number') {
-        sessionCoordinator.updateAttachedSeq(sessionId, toSeq)
-      }
-
-      return scrollback
-    },
-    presentationSnapshot: async (
-      sessionId: string,
-    ): Promise<PresentationSnapshotTerminalResult> => {
-      const value = await invokeRemoteControlSurfaceValue<unknown>({
+        sessionId,
+        noteAppliedSequence: sequence => sessionCoordinator.updateAttachedSeq(sessionId, sequence),
+      }),
+    presentationSnapshot: async sessionId =>
+      await readRemotePtyPresentationSnapshot({
         endpointResolver: options.endpointResolver,
-        kind: 'query',
-        id: 'session.presentationSnapshot',
-        payload: { sessionId },
-        errorMessage: 'Failed to fetch remote session presentation snapshot',
-      })
-      const snapshot = parsePresentationSnapshot(sessionId, value)
-      geometryCoordinator.notePresentationRevision(sessionId, snapshot.geometryRevision)
-
-      return snapshot
-    },
+        sessionId,
+        noteGeometryRevision: revision =>
+          geometryCoordinator.notePresentationRevision(sessionId, revision),
+      }),
     debugCrashHost: async () => {
       await invokeRemoteControlSurfaceValue<void>({
         endpointResolver: options.endpointResolver,
@@ -475,6 +478,7 @@ export function createRemotePtyRuntime(options: {
       externalStateListeners.clear()
       externalMetadataListeners.clear()
       geometryCoordinator.rejectAll(new Error('PTY runtime disposed'))
+      agentReexecCoordinator.rejectAll(new Error('PTY runtime disposed'))
       agentMetadataWatcher.dispose()
       agentStateReplay.dispose()
       sessionCoordinator.clear()

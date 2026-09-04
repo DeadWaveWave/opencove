@@ -38,7 +38,7 @@ describe('agent launch startup observation', () => {
     expect(disposeExit).toHaveBeenCalledTimes(1)
   })
 
-  it('drains output briefly when exit arrives before the active-writer text', async () => {
+  it('uses all ordered startup output delivered before the exit completion event', async () => {
     let dataListener: ((event: { sessionId: string; data: string }) => void) | null = null
     let exitListener: ((event: { sessionId: string; exitCode: number }) => void) | null = null
     const ptyRuntime = {
@@ -55,13 +55,11 @@ describe('agent launch startup observation', () => {
 
     const launch = async () => {
       queueMicrotask(() => {
+        dataListener?.({
+          sessionId: 'failed-session',
+          data: 'thread already has an active writer (-32600)',
+        })
         exitListener?.({ sessionId: 'failed-session', exitCode: 1 })
-        setTimeout(() => {
-          dataListener?.({
-            sessionId: 'failed-session',
-            data: 'thread already has an active writer (-32600)',
-          })
-        }, 10)
       })
       return { sessionId: 'failed-session' }
     }

@@ -1,3 +1,5 @@
+import type { AgentProviderId } from './agent'
+
 export interface PseudoTerminalSession {
   sessionId: string
 }
@@ -213,12 +215,59 @@ export interface TerminalAgentActivitySnapshot {
   phase: 'active' | 'exited'
   observedAtMs: number
   identityAuthority: 'provider_session_start' | null
+  sourceRevision?: number
+  revision?: number
+}
+
+export interface TerminalAgentActivityFence {
+  provider: TerminalAgentShimProvider
+  invocationId: string
+  generation: number
+  phase: 'active' | 'exited'
+  observedAtMs: number
+  sourceRevision?: number
+  revision?: number
+}
+
+export interface TerminalAgentReexecInput {
+  sessionId: string
+  operationId?: string
+  provider: AgentProviderId
+  resumeSessionId: string | null
+  expectedActivity: TerminalAgentActivityFence | null
+  authorityEpoch?: number | null
+}
+
+export type TerminalAgentReexecStatus =
+  | 'reexecuted'
+  | 'drop_back_timeout'
+  | 'rejected_not_controller'
+  | 'rejected_stale_authority'
+  | 'rejected_stale_activity'
+  | 'session_not_found'
+  | 'runtime_failed'
+
+export interface TerminalAgentReexecResult {
+  sessionId: string
+  operationId: string
+  status: TerminalAgentReexecStatus
 }
 
 export interface TerminalSessionMetadataEvent {
   sessionId: string
   resumeSessionId: string | null
+  agentProvider?: AgentProviderId
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
   terminalAgentActivity?: TerminalAgentActivitySnapshot | null
+}
+
+export interface TerminalAgentActivityMetadata {
+  sessionId: string
+  resumeSessionId: string | null
+  terminalAgentActivity: TerminalAgentActivitySnapshot
+}
+
+export interface ListTerminalAgentActivityMetadataResult {
+  entries: TerminalAgentActivityMetadata[]
 }

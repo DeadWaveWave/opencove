@@ -1,12 +1,16 @@
 import { toAppErrorDescriptor } from '@shared/errors/appError'
 import { invokeBrowserControlSurface } from './browserControlSurface'
-import { isPersistedAppState, mergePersistedAppStates } from './browserOpenCoveApi.helpers'
-import type { PersistedAppState } from '@contexts/workspace/presentation/renderer/types'
+import {
+  mergePersistedAppStates,
+  normalizeCanonicalPersistedAppStateForMerge,
+  normalizePersistedAppStateForMerge,
+  type BrowserPersistedAppState,
+} from './browserOpenCoveApi.helpers'
 
 type PersistenceApi = Window['opencoveApi']['persistence']
 
 let lastKnownSyncRevision: number | null = null
-let lastKnownSyncState: PersistedAppState | null = null
+let lastKnownSyncState: BrowserPersistedAppState | null = null
 
 function setLastKnownSyncRevision(value: unknown): void {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
@@ -17,7 +21,7 @@ function setLastKnownSyncRevision(value: unknown): void {
 }
 
 function setLastKnownSyncState(value: unknown): void {
-  lastKnownSyncState = isPersistedAppState(value) ? value : null
+  lastKnownSyncState = normalizePersistedAppStateForMerge(value)
 }
 
 export function createBrowserPersistenceApi(): PersistenceApi {
@@ -109,10 +113,18 @@ export function createBrowserPersistenceApi(): PersistenceApi {
           setLastKnownSyncRevision(latest.revision)
           setLastKnownSyncState(latest.state)
 
-          const merged =
-            latest.state && isPersistedAppState(latest.state) && isPersistedAppState(state)
-              ? mergePersistedAppStates(latest.state, state, baseSnapshot)
-              : state
+          const latestState =
+            latest.state === null ? null : normalizePersistedAppStateForMerge(latest.state)
+          if (latest.state !== null && !latestState) {
+            throw new Error('sync.state returned a malformed persisted state.', { cause: error })
+          }
+          const localState = normalizeCanonicalPersistedAppStateForMerge(state)
+          if (!localState) {
+            throw new Error('Local persistence state was not canonical.', { cause: error })
+          }
+          const merged = latestState
+            ? mergePersistedAppStates(latestState, localState, baseSnapshot)
+            : localState
 
           const revision = await attemptWrite(merged, latest.revision, {
             allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,

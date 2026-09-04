@@ -9,6 +9,7 @@ import type { AgentHookChannel } from '../../../shared/runtime/agentHook/agentHo
 import { TerminalAgentActivityGateway } from '../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityGateway'
 import { TerminalAgentTelemetryAssetStore } from '../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore'
 import { TerminalAgentActivityEnvironmentService } from '../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
+import { TerminalAgentInvocationRegistry } from '../../../contexts/agent/application/TerminalAgentInvocationRegistry'
 
 export function createTerminalAgentActivityRuntime(options: {
   agentHookChannels: readonly AgentHookChannel[]
@@ -24,7 +25,9 @@ export function createTerminalAgentActivityRuntime(options: {
 } {
   const agentProviderRegistry =
     options.agentProviderRegistry ?? new Registry(createBuiltinAgentProviderContributions())
+  const invocationRegistry = new TerminalAgentInvocationRegistry()
   const gateway = new TerminalAgentActivityGateway({
+    registry: invocationRegistry,
     resolveHookInjection: provider => agentProviderRegistry.require(provider).hookInjection ?? null,
   })
   const assets = new TerminalAgentTelemetryAssetStore({
@@ -38,7 +41,7 @@ export function createTerminalAgentActivityRuntime(options: {
     inheritedShell: process.env.SHELL ?? (process.platform === 'win32' ? 'cmd.exe' : '/bin/sh'),
     platform: process.platform,
   })
-  const metadataSources = [...options.agentHookChannels, gateway]
+  const metadataSources = [...options.agentHookChannels, invocationRegistry]
   const hookStart = Promise.all(
     options.agentHookChannels.map(async channel => await channel.start()),
   )

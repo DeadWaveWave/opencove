@@ -98,13 +98,17 @@ describe('createPtyEventHub', () => {
     expect(unsubscribeMetadataSource).toHaveBeenCalledTimes(1)
   })
 
-  it('replays cached state and metadata to later listeners', () => {
+  it('replays cached state and metadata to later listeners, then clears both on exit', () => {
+    let exitListener: ((event: TerminalExitEvent) => void) | undefined
     let stateListener: ((event: TerminalSessionStateEvent) => void) | undefined
     let metadataListener: ((event: TerminalSessionMetadataEvent) => void) | undefined
 
     const hub = createPtyEventHub({
       onData: vi.fn((_listener: (event: TerminalDataEvent) => void) => () => undefined),
-      onExit: vi.fn((_listener: (event: TerminalExitEvent) => void) => () => undefined),
+      onExit: vi.fn((listener: (event: TerminalExitEvent) => void) => {
+        exitListener = listener
+        return () => undefined
+      }),
       onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
         stateListener = listener
         return () => undefined
@@ -115,6 +119,7 @@ describe('createPtyEventHub', () => {
       }),
     })
 
+    hub.onExit(() => undefined)
     hub.onState(() => undefined)
     hub.onMetadata(() => undefined)
 
@@ -141,6 +146,15 @@ describe('createPtyEventHub', () => {
       sessionId: 'session-1',
       resumeSessionId: 'resume-1',
     })
+
+    exitListener?.({ sessionId: 'session-1', exitCode: 0 })
+    const afterExitState = vi.fn()
+    const afterExitMetadata = vi.fn()
+    hub.onSessionState('session-1', afterExitState)
+    hub.onSessionMetadata('session-1', afterExitMetadata)
+    expect(afterExitState).not.toHaveBeenCalled()
+    expect(afterExitMetadata).not.toHaveBeenCalled()
+    expect(hub.getLatestSessionMetadata('session-1')).toBeNull()
   })
 
   it('dispatches only the arbitrated winner and exposes deterministic refresh', () => {

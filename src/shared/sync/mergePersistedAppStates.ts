@@ -1,26 +1,23 @@
 import type {
-  PersistedAppState,
-  PersistedTerminalNode,
-  PersistedWorkspaceState,
-  TaskNodeData,
-  WorkspaceSpaceState,
-} from '@contexts/workspace/presentation/renderer/types'
+  NormalizedPersistedAppStateContract,
+  NormalizedPersistedNodeContract as PersistedTerminalNode,
+  NormalizedPersistedSpaceContract as WorkspaceSpaceState,
+  NormalizedPersistedWorkspaceContract as PersistedWorkspaceState,
+} from '@shared/contracts/normalizedPersistedAppState'
 import { isSpaceBoundaryEqual } from './spaceBoundaryEquality'
 import { mergeSnapshotField } from './mergeSnapshotField'
 import { areNodeWorkerBindingsEqual } from '../types/nodeWorkerBinding'
+export { isPersistedAppState } from './persistedAppStateValidation'
 
-export function isPersistedAppState(value: unknown): value is PersistedAppState {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return false
-  }
+type PersistedAppState<TSettings extends object> = NormalizedPersistedAppStateContract<TSettings>
 
-  const record = value as Record<string, unknown>
-  return (
-    typeof record.formatVersion === 'number' &&
-    Array.isArray(record.workspaces) &&
-    typeof record.settings === 'object' &&
-    record.settings !== null
-  )
+type TaskNodeData = {
+  requirement: string
+  status: string
+  priority: string
+  tags: unknown[]
+  agentSessions: unknown[]
+  linkedAgentNodeId?: unknown
 }
 
 function mergeNodes(
@@ -444,11 +441,11 @@ function mergeWorkspaces(
   }
 }
 
-export function mergePersistedAppStates(
-  base: PersistedAppState,
-  local: PersistedAppState,
-  baseSnapshot: PersistedAppState | null = null,
-): PersistedAppState {
+export function mergePersistedAppStates<TSettings extends object>(
+  base: PersistedAppState<TSettings>,
+  local: PersistedAppState<TSettings>,
+  baseSnapshot: PersistedAppState<TSettings> | null = null,
+): PersistedAppState<TSettings> {
   const baseSnapshotWorkspaceById = new Map(
     (baseSnapshot?.workspaces ?? []).map(workspace => [workspace.id, workspace] as const),
   )

@@ -94,6 +94,7 @@ export const IPC_CHANNELS = {
   ptySpawn: 'pty:spawn',
   ptyListProfiles: 'pty:list-profiles',
   ptyWrite: 'pty:write',
+  ptyAgentReexec: 'pty:agent-reexec',
   ptyResize: 'pty:resize',
   ptyKill: 'pty:kill',
   ptyAttach: 'pty:attach',

@@ -232,6 +232,114 @@ describe('terminal agent authenticated activity projection', () => {
     expect(isAgentTreatedNode(lateSessionStart.nextWorkspaces[0]?.nodes[0] as never)).toBe(false)
   })
 
+  it('prefers registry revision fences and uses timestamps only for legacy activity', () => {
+    const revisionedActive = {
+      ...activity('active'),
+      terminalAgentActivity: {
+        ...activity('active').terminalAgentActivity,
+        observedAtMs: 5_000,
+        sourceRevision: 5,
+        revision: 10,
+      },
+    }
+    const active = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: [createWorkspace()],
+      event: revisionedActive,
+    })
+    const newerRevision = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: active.nextWorkspaces,
+      event: {
+        ...revisionedActive,
+        terminalAgentActivity: {
+          ...revisionedActive.terminalAgentActivity,
+          observedAtMs: 1,
+          phase: 'exited',
+          sourceRevision: 6,
+          revision: 11,
+        },
+      },
+    })
+    const lateLegacy = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: newerRevision.nextWorkspaces,
+      event: {
+        ...activity('active'),
+        terminalAgentActivity: {
+          ...activity('active').terminalAgentActivity,
+          observedAtMs: 9_000,
+        },
+      },
+    })
+
+    expect(newerRevision.didChange).toBe(true)
+    expect(newerRevision.nextWorkspaces[0]?.nodes[0]?.data.agentOverlay?.activity).toMatchObject({
+      phase: 'exited',
+      observedAtMs: 1,
+      sourceRevision: 6,
+      revision: 11,
+    })
+    expect(lateLegacy.didChange).toBe(false)
+  })
+
+  it('resets the revision fence when a higher legacy generation arrives', () => {
+    const revisionedGenerationOne = {
+      ...activity('active'),
+      terminalAgentActivity: {
+        ...activity('active').terminalAgentActivity,
+        sourceRevision: 5,
+        revision: 10,
+      },
+    }
+    const generationOne = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: [createWorkspace()],
+      event: revisionedGenerationOne,
+    })
+    const legacyGenerationTwo = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: generationOne.nextWorkspaces,
+      event: activity('active', 2),
+    })
+
+    expect(legacyGenerationTwo.didChange).toBe(true)
+    expect(legacyGenerationTwo.nextWorkspaces[0]?.nodes[0]?.data.agentOverlay?.activity).toEqual({
+      invocationId: 'invocation-2',
+      generation: 2,
+      phase: 'active',
+      observedAtMs: 1_002,
+      verifiedProviderSessionId: null,
+    })
+  })
+
+  it('ignores duplicate or lower registry revisions even when their timestamps are newer', () => {
+    const revisioned = {
+      ...activity('active'),
+      terminalAgentActivity: {
+        ...activity('active').terminalAgentActivity,
+        sourceRevision: 7,
+        revision: 12,
+      },
+    }
+    const active = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: [createWorkspace()],
+      event: revisioned,
+    })
+
+    for (const revision of [12, 11]) {
+      const stale = updateWorkspacesWithTerminalAgentActivityMetadata({
+        workspaces: active.nextWorkspaces,
+        event: {
+          ...revisioned,
+          terminalAgentActivity: {
+            ...revisioned.terminalAgentActivity,
+            observedAtMs: 99_000,
+            phase: 'exited',
+            sourceRevision: 8,
+            revision,
+          },
+        },
+      })
+      expect(stale.didChange).toBe(false)
+    }
+  })
+
   it('switches providers by generation and replaces identity only after new SessionStart', () => {
     const claude = updateWorkspacesWithTerminalAgentActivityMetadata({
       workspaces: [createWorkspace()],
@@ -289,6 +397,38 @@ describe('terminal agent authenticated activity projection', () => {
     expect(result.nextWorkspaces[0]?.nodes[0]?.data.agentOverlay).toMatchObject({
       provider: 'claude-code',
       activity: { invocationId: 'invocation-1', phase: 'active' },
+    })
+  })
+
+  it('adopts verified identity from an exited late-attach baseline without reactivating it', () => {
+    const cached = {
+      ...activity('exited', 1, 'provider_session_start'),
+      terminalAgentActivity: {
+        ...activity('exited', 1, 'provider_session_start').terminalAgentActivity,
+        sourceRevision: 3,
+        revision: 3,
+      },
+    }
+    const result = reconcileTerminalAgentActivitySnapshots({
+      workspaces: [createWorkspace()],
+      readLatestMetadata: sessionId => (sessionId === 'pty-1' ? cached : null),
+    })
+
+    expect(result).toMatchObject({ didChange: true, durableDidChange: true })
+    expect(result.nextWorkspaces[0]?.nodes[0]?.data).toMatchObject({
+      terminalAgentBinding: {
+        provider: 'claude-code',
+        resumeSessionId: 'claude-session-1',
+        resumeSessionIdVerified: true,
+      },
+      agentOverlay: {
+        activity: {
+          generation: 1,
+          phase: 'exited',
+          sourceRevision: 3,
+          revision: 3,
+        },
+      },
     })
   })
 })

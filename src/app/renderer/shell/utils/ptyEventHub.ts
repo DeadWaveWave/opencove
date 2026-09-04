@@ -168,6 +168,7 @@ export function createPtyEventHub(
     unsubscribeExitSource = source.onExit(event => {
       agentRunStateArbiter.disposeSession(event.sessionId)
       latestStateBySessionId.delete(event.sessionId)
+      latestMetadataBySessionId.delete(event.sessionId)
       dispatchEvent(exitListeners, event)
     })
   }

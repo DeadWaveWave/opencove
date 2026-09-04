@@ -1,5 +1,10 @@
+import {
+  PtyStreamSocketAttemptFence,
+  type PtyStreamSocketAttempt,
+} from '@shared/runtime/ptyStreamSocketAttemptFence'
 import { getBrowserQueryToken } from './browserControlSurface'
 
+export type BrowserPtySocketLease = PtyStreamSocketAttempt
 type SendSocketPayload = (payload: unknown) => void
 
 function resolvePtyWebSocketUrl(): string {
@@ -14,78 +19,128 @@ function resolvePtyWebSocketUrl(): string {
 
 export class BrowserPtySocketLifecycle {
   private socket: WebSocket | null = null
-  private readyPromise: Promise<void> | null = null
+  private currentLease: BrowserPtySocketLease | null = null
+  private readyPromise: Promise<BrowserPtySocketLease> | null = null
   private reconnectTimer: number | null = null
+  private readonly socketAttempts = new PtyStreamSocketAttemptFence()
 
   public constructor(
     private readonly options: {
-      onConnected: (send: SendSocketPayload) => void
-      onMessage: (raw: string) => void
-      onDisconnected: (error: Error) => void
+      onConnected: (lease: BrowserPtySocketLease, send: SendSocketPayload) => void
+      onMessage: (lease: BrowserPtySocketLease, raw: string) => void
+      onDisconnected: (lease: BrowserPtySocketLease, error: Error) => void
       shouldReconnect: () => boolean
     },
   ) {}
 
-  public ensureReady(): Promise<void> {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      return Promise.resolve()
+  public ensureReady(): Promise<BrowserPtySocketLease> {
+    if (
+      this.socket &&
+      this.socket.readyState === WebSocket.OPEN &&
+      this.currentLease &&
+      this.socketAttempts.isCurrent(this.currentLease)
+    ) {
+      return Promise.resolve(this.currentLease)
     }
     if (this.readyPromise) {
       return this.readyPromise
     }
 
-    this.readyPromise = new Promise((resolve, reject) => {
+    const lease = this.socketAttempts.begin()
+    this.currentLease = lease
+    let settled = false
+    let readyPromise!: Promise<BrowserPtySocketLease>
+    readyPromise = new Promise((resolve, reject) => {
       const socket = new WebSocket(resolvePtyWebSocketUrl(), ['opencove-pty.v1'])
       this.socket = socket
+      const isCurrent = (): boolean =>
+        this.socketAttempts.isCurrent(lease) &&
+        this.currentLease === lease &&
+        this.socket === socket
+      const retire = (error: Error): void => {
+        if (!isCurrent()) {
+          return
+        }
+        this.socketAttempts.retire()
+        this.currentLease = null
+        this.socket = null
+        if (this.readyPromise === readyPromise) {
+          this.readyPromise = null
+        }
+        if (!settled) {
+          settled = true
+          reject(error)
+        }
+        this.options.onDisconnected(lease, error)
+        this.scheduleReconnect()
+      }
 
       socket.addEventListener('open', () => {
-        this.options.onConnected(payload => {
-          socket.send(JSON.stringify(payload))
-        })
-        this.readyPromise = null
-        resolve()
+        if (!isCurrent()) {
+          if (!settled) {
+            settled = true
+            reject(new Error('PTY stream connection attempt was retired.'))
+          }
+          return
+        }
+        try {
+          this.options.onConnected(lease, payload => socket.send(JSON.stringify(payload)))
+        } catch (error) {
+          retire(error instanceof Error ? error : new Error(String(error)))
+          return
+        }
+        if (this.readyPromise === readyPromise) {
+          this.readyPromise = null
+        }
+        settled = true
+        resolve(lease)
       })
 
       socket.addEventListener('message', event => {
-        this.options.onMessage(String(event.data))
+        if (isCurrent()) {
+          this.options.onMessage(lease, String(event.data))
+        }
       })
-
       socket.addEventListener('close', () => {
-        this.socket = null
-        this.readyPromise = null
-        this.options.onDisconnected(new Error('PTY stream connection closed'))
-
-        if (this.reconnectTimer !== null) {
-          window.clearTimeout(this.reconnectTimer)
-        }
-        if (this.options.shouldReconnect()) {
-          this.reconnectTimer = window.setTimeout(() => {
-            this.reconnectTimer = null
-            void this.ensureReady().catch(() => undefined)
-          }, 500)
-        }
+        retire(new Error('PTY stream connection closed'))
       })
-
       socket.addEventListener('error', () => {
-        reject(new Error('PTY stream connection failed'))
+        retire(new Error('PTY stream connection failed'))
       })
     })
-    return this.readyPromise
+    this.readyPromise = readyPromise
+    return readyPromise
   }
 
-  public async send(payload: unknown): Promise<void> {
-    await this.ensureReady()
-    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      throw new Error('PTY stream socket is not open')
-    }
-    this.socket.send(JSON.stringify(payload))
-  }
-
-  public sendIfOpen(payload: unknown): boolean {
-    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+  public sendIfCurrent(lease: BrowserPtySocketLease, payload: unknown): boolean {
+    if (
+      !this.socketAttempts.isCurrent(lease) ||
+      this.currentLease !== lease ||
+      !this.socket ||
+      this.socket.readyState !== WebSocket.OPEN
+    ) {
       return false
     }
     this.socket.send(JSON.stringify(payload))
     return true
+  }
+
+  public sendIfOpen(payload: unknown): boolean {
+    const lease = this.currentLease
+    return lease ? this.sendIfCurrent(lease, payload) : false
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer !== null) {
+      window.clearTimeout(this.reconnectTimer)
+    }
+    if (!this.options.shouldReconnect()) {
+      this.reconnectTimer = null
+      return
+    }
+    this.reconnectTimer = window.setTimeout(() => {
+      this.reconnectTimer = null
+      void this.ensureReady().catch(() => undefined)
+    }, 500)
   }
 }

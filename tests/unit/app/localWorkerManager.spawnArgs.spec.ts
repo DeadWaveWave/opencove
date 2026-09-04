@@ -8,6 +8,16 @@ vi.mock('electron', () => ({
 }))
 
 describe('local worker manager spawn args', () => {
+  it('does not restart a local worker after app shutdown begins', async () => {
+    vi.resetModules()
+    const { beginLocalWorkerShutdown, startLocalWorker } =
+      await import('../../../src/app/main/worker/localWorkerManager')
+
+    beginLocalWorkerShutdown()
+
+    await expect(startLocalWorker()).resolves.toEqual({ status: 'stopped', connection: null })
+  })
+
   it('includes parent pid flag', async () => {
     vi.resetModules()
     const { buildLocalWorkerSpawnArgs } =

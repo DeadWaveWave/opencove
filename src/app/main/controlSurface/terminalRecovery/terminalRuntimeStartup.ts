@@ -1,6 +1,7 @@
 import type { TerminalRuntimeAvailability } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
+import { toAppErrorDescriptor } from '../../../../shared/errors/appError'
 
 export async function initializeTerminalRuntimeAvailability(options: {
   getPersistenceStore: () => Promise<PersistenceStore>
@@ -17,7 +18,7 @@ export async function initializeTerminalRuntimeAvailability(options: {
     options.availability.completeStartup(recoveryWorkspaceIds)
   } catch (error) {
     options.availability.failStartup()
-    const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+    const detail = toAppErrorDescriptor(error).debugMessage ?? String(error)
     process.stderr.write(`[opencove] terminal runtime admission unavailable: ${detail}\n`)
   }
 }

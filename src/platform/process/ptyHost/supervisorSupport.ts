@@ -4,6 +4,12 @@ import { join } from 'node:path'
 const RESTART_BACKOFF_BASE_DELAY_MS = 250
 const RESTART_BACKOFF_MAX_DELAY_MS = 15_000
 
+export class PtyHostHandshakeError extends Error {}
+
+export function normalizePtyHostError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error))
+}
+
 export function resolveBackoffDelay(attempt: number): number {
   if (attempt <= 0) {
     return RESTART_BACKOFF_BASE_DELAY_MS

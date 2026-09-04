@@ -39,6 +39,9 @@ export async function launchAgentWithStartupObservation<
   const disposeExit = options.ptyRuntime.onExit(event => {
     exitedSessionIds.add(event.sessionId)
     signalObservation(event.sessionId)
+    if (observedSessionId === event.sessionId) {
+      resolveObservation?.()
+    }
   })
 
   try {
@@ -65,6 +68,9 @@ export async function launchAgentWithStartupObservation<
         timer = setTimeout(settle, observationMs)
         timer.unref()
         signalObservation(launched.sessionId)
+        if (exitedSessionIds.has(launched.sessionId)) {
+          settle()
+        }
       })
     }
 

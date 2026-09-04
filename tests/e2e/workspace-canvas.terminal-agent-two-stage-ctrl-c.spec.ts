@@ -216,6 +216,27 @@ test.describe('Workspace Canvas - verified terminal Agent two-stage Ctrl+C', () 
           resumeSessionId,
           runtimeSessionId,
         })
+
+        const readyCountBeforeReexec = outputLines(await readTranscript(terminal)).filter(
+          line => line === readyMarker,
+        ).length
+        await terminal.getByTestId('terminal-node-reload-session').click()
+        await expect
+          .poll(async () => {
+            return outputLines(await readTranscript(terminal)).filter(line => line === readyMarker)
+              .length
+          })
+          .toBeGreaterThan(readyCountBeforeReexec)
+        const resumedProviderPid = Number(await readFile(providerPidPath, 'utf8'))
+        expect(Number.isSafeInteger(resumedProviderPid)).toBe(true)
+        expect(() => process.kill(resumedProviderPid, 0)).not.toThrow()
+        await expectExactBinding({
+          window,
+          nodeId,
+          provider,
+          resumeSessionId,
+          runtimeSessionId,
+        })
       } finally {
         await electronApp.close()
         await rm(commandDirectory, { recursive: true, force: true })

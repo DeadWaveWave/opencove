@@ -1,46 +1,38 @@
-import { useCallback, type MutableRefObject } from 'react'
+import { useCallback, useRef, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { AgentSessionSummary } from '@shared/contracts/dto'
+import type { AgentSessionSummary, TerminalAgentActivityFence } from '@shared/contracts/dto'
 import type { TerminalNodeData } from '../../../types'
 import {
-  isAgentTreatedNode,
   reactivateTerminalAgentOverlayAfterReexec,
   resolveAgentTreatedActionContext,
 } from '../../../utils/terminalAgentOverlay'
-import {
-  buildTerminalAgentReentryCommand,
-  reexecTerminalAgentInPty,
-} from '../../../utils/terminalAgentPtyReexec'
 import type { ShowWorkspaceCanvasMessage } from '../types'
-
-const DROP_BACK_TIMEOUT_MS = 3_000
-const DROP_BACK_POLL_MS = 20
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
   options?: { syncLayout?: boolean },
 ) => void
 
-async function waitForDropBack(options: {
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  nodeId: string
-  sessionId: string
-}): Promise<boolean> {
-  const deadline = Date.now() + DROP_BACK_TIMEOUT_MS
-  while (Date.now() < deadline) {
-    const current = options.nodesRef.current.find(node => node.id === options.nodeId)
-    if (
-      current?.data.kind === 'terminal' &&
-      current.data.sessionId === options.sessionId &&
-      (!isAgentTreatedNode(current) || current.data.agentOverlay?.activity?.phase === 'exited')
-    ) {
-      return true
-    }
-    // eslint-disable-next-line no-await-in-loop -- bounded polling observes asynchronous drop-back
-    await new Promise(resolve => window.setTimeout(resolve, DROP_BACK_POLL_MS))
+function resolveActivityFence(node: Node<TerminalNodeData>): TerminalAgentActivityFence | null {
+  if (node.data.kind !== 'terminal') {
+    return null
   }
-  return false
+  const overlay = node.data.agentOverlay
+  const activity = overlay?.activity
+  if (!activity || (overlay.provider !== 'claude-code' && overlay.provider !== 'codex')) {
+    return null
+  }
+  return {
+    provider: overlay.provider,
+    invocationId: activity.invocationId,
+    generation: activity.generation,
+    phase: activity.phase,
+    observedAtMs: activity.observedAtMs,
+    ...(activity.sourceRevision === undefined
+      ? {}
+      : { sourceRevision: activity.sourceRevision, revision: activity.revision }),
+  }
 }
 
 export function useTerminalAgentSessionActions(options: {
@@ -58,6 +50,7 @@ export function useTerminalAgentSessionActions(options: {
 } {
   const { t } = useTranslation()
   const { nodesRef, onRequestPersistFlush, onShowMessage, setNodes } = options
+  const reexecInFlight = useRef(new Set<string>())
 
   const reexecOverlayAgent = useCallback(
     async ({
@@ -76,55 +69,62 @@ export function useTerminalAgentSessionActions(options: {
       if (!node || node.data.kind !== 'terminal' || !context) {
         return false
       }
+      if (reexecInFlight.current.has(nodeId)) {
+        return true
+      }
 
       const sessionId = node.data.sessionId
+      const expectedStartedAtMs = node.data.agentOverlay?.startedAtMs ?? 0
+      const expectedActivity = resolveActivityFence(node)
+      reexecInFlight.current.add(nodeId)
       try {
-        const result = await reexecTerminalAgentInPty({
+        const result = await window.opencoveApi.pty.reexecAgent({
           sessionId,
-          command: buildTerminalAgentReentryCommand({
-            provider: context.provider,
-            resumeSessionId,
-          }),
-          write: async input => await window.opencoveApi.pty.write(input),
-          waitForDropBack: async () =>
-            await waitForDropBack({
-              nodesRef,
-              nodeId,
-              sessionId,
-            }),
+          provider: context.provider,
+          resumeSessionId,
+          expectedActivity,
         })
-
-        if (result === 'drop-back-timeout') {
+        if (result.status === 'drop_back_timeout') {
           onShowMessage?.(t('messages.terminalAgentReexecTimeout'), 'error')
           return true
         }
+        if (result.status !== 'reexecuted') {
+          onShowMessage?.(
+            t('messages.terminalAgentReexecFailed', { message: t('common.unknownError') }),
+            'error',
+          )
+          return true
+        }
 
+        let didChange = false
         setNodes(
           previousNodes =>
             previousNodes.map(candidate => {
-              if (
-                candidate.id !== nodeId ||
-                candidate.data.kind !== 'terminal' ||
-                candidate.data.sessionId !== sessionId ||
-                isAgentTreatedNode(candidate)
-              ) {
+              if (candidate.id !== nodeId || candidate.data.kind !== 'terminal') {
                 return candidate
               }
-
-              return reactivateTerminalAgentOverlayAfterReexec(candidate, {
+              const next = reactivateTerminalAgentOverlayAfterReexec(candidate, {
                 expectedSessionId: sessionId,
+                expectedStartedAtMs,
+                expectedActivity,
                 provider: context.provider,
                 startedAtMs,
                 resumeSessionId,
                 resumeSessionIdVerified,
               })
+              didChange ||= next !== candidate
+              return next
             }),
           { syncLayout: false },
         )
-        onRequestPersistFlush?.()
+        if (didChange) {
+          onRequestPersistFlush?.()
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : t('common.unknownError')
         onShowMessage?.(t('messages.terminalAgentReexecFailed', { message }), 'error')
+      } finally {
+        reexecInFlight.current.delete(nodeId)
       }
       return true
     },

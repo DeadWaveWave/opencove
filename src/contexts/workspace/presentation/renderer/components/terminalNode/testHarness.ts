@@ -2,6 +2,11 @@ import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import { peekCachedTerminalScreenState } from './screenStateCache'
 import {
+  clearPendingDetachedTerminalRendererReadForTests,
+  hasPendingDetachedTerminalRendererReadForTests,
+  simulateDetachedTerminalRendererReadOnceForTests,
+} from './renderServiceSafety'
+import {
   readTerminalBufferTextForTest,
   readTerminalRenderMetricsForTest,
   simulateRendererDevicePixelRatioChangeForTest,
@@ -34,6 +39,7 @@ type TerminalOptionsIntrospection = {
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
   simulateDetachedRendererOnce: (nodeId: string) => boolean
+  hasPendingDetachedRendererRead: (nodeId: string) => boolean | null
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
   getFontOptions: (nodeId: string) => {
     fontSize: number | null
@@ -76,10 +82,10 @@ declare global {
 }
 
 const terminalHandles = new Map<string, TerminalSelectionHandle>()
+const terminalSelectionHandleOwners = new Map<string, symbol>()
 const terminalFitAddons = new Map<string, FitAddon>()
 const terminalBinaryInputEmitters = new Map<string, (data: string) => boolean>()
 const terminalRuntimeSessionIds = new Map<string, string>()
-const terminalDetachedRendererRestorers = new Map<string, () => void>()
 function normalizeFiniteOption(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
@@ -100,43 +106,19 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         return true
       },
       simulateDetachedRendererOnce: nodeId => {
-        const terminal = terminalHandles.get(nodeId) as unknown as {
-          _core?: {
-            _renderService?: Record<string, unknown>
-          }
-        }
-        const renderService = terminal?._core?._renderService
-        if (!renderService) {
+        const terminal = terminalHandles.get(nodeId)
+        if (!terminal) {
           return false
         }
 
-        terminalDetachedRendererRestorers.get(nodeId)?.()
-
-        const hadOwnDescriptor = Object.prototype.hasOwnProperty.call(renderService, 'dimensions')
-        const originalDescriptor =
-          Object.getOwnPropertyDescriptor(renderService, 'dimensions') ?? null
-        const restore = (): void => {
-          if (hadOwnDescriptor && originalDescriptor) {
-            Object.defineProperty(renderService, 'dimensions', originalDescriptor)
-          } else {
-            Reflect.deleteProperty(renderService, 'dimensions')
-          }
-
-          if (terminalDetachedRendererRestorers.get(nodeId) === restore) {
-            terminalDetachedRendererRestorers.delete(nodeId)
-          }
-        }
-
-        Object.defineProperty(renderService, 'dimensions', {
-          configurable: true,
-          get() {
-            restore()
-            throw new TypeError("Cannot read properties of undefined (reading 'dimensions')")
-          },
-        })
-
-        terminalDetachedRendererRestorers.set(nodeId, restore)
-        return true
+        simulateDetachedTerminalRendererReadOnceForTests(terminal as Terminal)
+        return hasPendingDetachedTerminalRendererReadForTests(terminal as Terminal)
+      },
+      hasPendingDetachedRendererRead: nodeId => {
+        const terminal = terminalHandles.get(nodeId)
+        return terminal
+          ? hasPendingDetachedTerminalRendererReadForTests(terminal as Terminal)
+          : null
       },
       getCellCenter: (nodeId, col, row) => {
         const terminal = terminalHandles.get(nodeId)
@@ -354,13 +336,19 @@ export function registerTerminalSelectionTestHandle(
   }
 
   getTerminalSelectionTestApi()
+  const owner = Symbol(nodeId)
+  terminalSelectionHandleOwners.set(nodeId, owner)
   terminalHandles.set(nodeId, terminal)
   if (fitAddon) {
     terminalFitAddons.set(nodeId, fitAddon)
   }
 
   return () => {
-    terminalDetachedRendererRestorers.get(nodeId)?.()
+    if (terminalSelectionHandleOwners.get(nodeId) !== owner) {
+      return
+    }
+    clearPendingDetachedTerminalRendererReadForTests(terminal as Terminal)
+    terminalSelectionHandleOwners.delete(nodeId)
     terminalHandles.delete(nodeId)
     terminalFitAddons.delete(nodeId)
   }

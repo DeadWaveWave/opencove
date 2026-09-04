@@ -9,6 +9,7 @@ import { createCodexHookChannel } from '../../src/app/main/controlSurface/agentH
 import { ClaudeCodeAgentProviderContribution } from '../../src/contexts/agent/infrastructure/providers/claude-code/ClaudeCodeAgentProviderContribution'
 import { CodexAgentProviderContribution } from '../../src/contexts/agent/infrastructure/providers/codex/CodexAgentProviderContribution'
 import { TerminalAgentActivityGateway } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityGateway'
+import { TerminalAgentInvocationRegistry } from '../../src/contexts/agent/application/TerminalAgentInvocationRegistry'
 import { TerminalAgentActivityEnvironmentService } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import { TerminalAgentTelemetryAssetStore } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore'
 import type { AgentHookChannel } from '../../src/shared/runtime/agentHook/agentHookChannel'
@@ -131,7 +132,9 @@ async function createHarness(options: { provider: TerminalAgentShimProvider; ctr
           runtimePlatform: 'win32',
         })
   const plans: Array<{ args: readonly string[] }> = []
+  const registry = new TerminalAgentInvocationRegistry()
   const gateway = new TerminalAgentActivityGateway({
+    registry,
     resolveHookInjection: provider =>
       provider === options.provider
         ? {
@@ -188,7 +191,7 @@ async function createHarness(options: { provider: TerminalAgentShimProvider; ctr
   ].join(delimiter)
   const metadata: TerminalSessionMetadataEvent[] = []
   const unsubscribers = [
-    gateway.onMetadata(event => metadata.push(event)),
+    registry.onMetadata(event => metadata.push(event)),
     channel.onMetadata(event => metadata.push(event)),
   ]
   return {

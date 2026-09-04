@@ -26,6 +26,8 @@ describe('RemotePtyEndpointProxy', () => {
       emitMetadata,
       internals: proxy as unknown as {
         handleMessage: (raw: string) => void
+        handleSocketMessage: (socket: object, raw: string) => void
+        handleSocketClosed: (socket: object) => void
         ensureSocket: () => Promise<void>
         closeSocket: () => void
         socket: { readyState: number; send: (raw: string) => void } | null
@@ -79,6 +81,27 @@ describe('RemotePtyEndpointProxy', () => {
       sessionId: 'session-route',
       resumeSessionId: 'forged-session',
     })
+  })
+
+  it('ignores messages and close callbacks from a retired socket instance', () => {
+    const { internals, emitMetadata } = createProxy()
+    const retiredSocket = { readyState: 3, send: vi.fn(), terminate: vi.fn() }
+    const currentSocket = { readyState: 1, send: vi.fn(), terminate: vi.fn() }
+    internals.socket = currentSocket
+
+    internals.handleSocketMessage(
+      retiredSocket,
+      JSON.stringify({
+        type: 'metadata',
+        sessionId: 'session-retired',
+        resumeSessionId: 'stale-session',
+      }),
+    )
+    internals.handleSocketClosed(retiredSocket)
+
+    expect(emitMetadata).not.toHaveBeenCalled()
+    expect(internals.socket).toBe(currentSocket)
+    expect(currentSocket.terminate).not.toHaveBeenCalled()
   })
 
   it('does not advance replay cursor from attached acknowledgements', () => {

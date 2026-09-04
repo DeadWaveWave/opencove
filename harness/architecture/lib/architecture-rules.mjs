@@ -126,6 +126,12 @@ function specifierMatchesRule(specifier, rule) {
   return (rule.specifierPrefixes ?? []).some(prefix => specifier.startsWith(prefix))
 }
 
+function resolvedTargetMatchesRule(edge, rule) {
+  return Boolean(
+    edge.toRelativePath && matchesAnyPattern(edge.toRelativePath, rule.toPatterns ?? []),
+  )
+}
+
 function shouldIgnoreForbiddenImportEdge(edge, rule) {
   return edge.kind === 'type' && rule.ignoreTypeOnly === true
 }
@@ -273,6 +279,7 @@ export async function runArchitectureAudit(options = {}) {
           ...edge,
           fromFile: filePath,
           toFile,
+          toRelativePath,
           fromLayer,
           toLayer: toRelativePath ? classifyLayer(toRelativePath, config) : null,
         }
@@ -286,7 +293,7 @@ export async function runArchitectureAudit(options = {}) {
         for (const edge of edges) {
           if (
             shouldIgnoreForbiddenImportEdge(edge, rule) ||
-            !specifierMatchesRule(edge.specifier, rule)
+            (!specifierMatchesRule(edge.specifier, rule) && !resolvedTargetMatchesRule(edge, rule))
           ) {
             continue
           }

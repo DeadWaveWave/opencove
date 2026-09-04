@@ -68,12 +68,14 @@ describe('PtyStreamHub lifecycle truth', () => {
         type: 'metadata',
         sessionId: 'session-activity',
         resumeSessionId: null,
+        agentProvider: 'claude-code',
         terminalAgentActivity: { ...base, phase: 'active' },
       },
       {
         type: 'metadata',
         sessionId: 'session-activity',
         resumeSessionId: null,
+        agentProvider: 'claude-code',
         terminalAgentActivity: { ...base, phase: 'exited', observedAtMs: 2_000 },
       },
     ])
@@ -87,6 +89,7 @@ describe('PtyStreamHub lifecycle truth', () => {
         type: 'metadata',
         sessionId: 'session-activity',
         resumeSessionId: null,
+        agentProvider: 'claude-code',
         terminalAgentActivity: { ...base, phase: 'exited', observedAtMs: 2_000 },
       },
     ])

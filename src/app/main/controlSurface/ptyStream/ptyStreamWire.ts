@@ -2,6 +2,7 @@ import type { WebSocket } from 'ws'
 import type { PtyStreamControllerDto, PtyStreamRole } from './ptyStreamTypes'
 import type {
   TerminalGeometryCommitResult,
+  TerminalAgentReexecResult,
   TerminalForegroundEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
@@ -147,6 +148,10 @@ export function sendPtyResizeResult(ws: WebSocket, result: TerminalGeometryCommi
   sendJson(ws, { type: 'resize_result', ...result })
 }
 
+export function sendPtyAgentReexecResult(ws: WebSocket, result: TerminalAgentReexecResult): void {
+  sendJson(ws, { type: 'agent_reexec_result', ...result })
+}
+
 export function sendPtyState(ws: WebSocket, event: TerminalSessionStateEvent): void {
   sendJson(ws, {
     type: 'state',
@@ -159,6 +164,7 @@ export function sendPtySessionMetadata(ws: WebSocket, payload: TerminalSessionMe
     type: 'metadata',
     sessionId: payload.sessionId,
     resumeSessionId: payload.resumeSessionId,
+    ...(payload.agentProvider !== undefined ? { agentProvider: payload.agentProvider } : {}),
     ...(payload.profileId !== undefined ? { profileId: payload.profileId } : {}),
     ...(payload.runtimeKind !== undefined ? { runtimeKind: payload.runtimeKind } : {}),
     ...(payload.terminalAgentActivity !== undefined

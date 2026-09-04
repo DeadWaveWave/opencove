@@ -24,7 +24,9 @@ export function normalizeBrowserPtySessionState(
 
 export function normalizeBrowserPtyStateMetadata(
   record: Record<string, unknown>,
-): Partial<Pick<TerminalSessionStateEvent, 'source' | 'hookInstallState' | 'observedAtMs'>> {
+): Partial<
+  Pick<TerminalSessionStateEvent, 'source' | 'hookInstallState' | 'degraded' | 'observedAtMs'>
+> {
   const source: TerminalSessionStateSource | null =
     record.source === 'launch' ||
     record.source === 'session_file' ||
@@ -49,6 +51,7 @@ export function normalizeBrowserPtyStateMetadata(
   return {
     ...(source ? { source } : {}),
     ...(hookInstallState ? { hookInstallState } : {}),
+    ...(typeof record.degraded === 'boolean' ? { degraded: record.degraded } : {}),
     ...(observedAtMs !== null ? { observedAtMs } : {}),
   }
 }

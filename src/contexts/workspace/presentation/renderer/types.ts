@@ -1,15 +1,28 @@
 import type { Node } from '@xyflow/react'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
-import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
+import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { ProjectIconId } from '@shared/types/projectIcon'
-import type { SpaceBoundary } from '@shared/types/spaceBoundary'
 import type { NodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
+import type { PersistedSpaceRect } from '@shared/contracts/persistedAppState'
+import type {
+  NormalizedPersistedAppStateContract,
+  NormalizedPersistedNodeContract,
+  NormalizedPersistedSpaceArchiveAgentSnapshot,
+  NormalizedPersistedSpaceArchiveGitSnapshot,
+  NormalizedPersistedSpaceArchiveNodeSnapshot,
+  NormalizedPersistedSpaceArchiveNoteSnapshot,
+  NormalizedPersistedSpaceArchiveRecord,
+  NormalizedPersistedSpaceArchiveSpaceSnapshot,
+  NormalizedPersistedSpaceArchiveTaskSnapshot,
+  NormalizedPersistedSpaceArchiveTerminalSnapshot,
+  NormalizedPersistedSpaceContract,
+  NormalizedPersistedWorkspaceContract,
+} from '@shared/contracts/normalizedPersistedAppState'
 import type {
   AgentHookInstallState,
   AgentRecoveryIssue,
   CanvasImageMimeType,
-  GitHubPullRequestSummary,
   TerminalPtyGeometry,
   TerminalAgentActivitySnapshot,
   TerminalRuntimeKind,
@@ -84,7 +97,7 @@ export interface TerminalAgentOverlay {
   activity?:
     | (Pick<
         TerminalAgentActivitySnapshot,
-        'invocationId' | 'generation' | 'phase' | 'observedAtMs'
+        'invocationId' | 'generation' | 'phase' | 'observedAtMs' | 'sourceRevision' | 'revision'
       > & {
         verifiedProviderSessionId?: string | null
       })
@@ -218,175 +231,13 @@ export interface WorkspaceState {
   spaceArchiveRecords: SpaceArchiveRecord[]
 }
 
-export interface PersistedWorkspaceState {
-  id: string
-  name: string
-  iconId?: ProjectIconId | null
-  path: string
-  worktreesRoot: string
-  pullRequestBaseBranchOptions?: string[]
-  environmentVariables?: Record<string, string>
-  nodes: PersistedTerminalNode[]
-  viewport: WorkspaceViewport
-  isMinimapVisible: boolean
-  spaces: WorkspaceSpaceState[]
-  activeSpaceId: string | null
-  spaceArchiveRecords: SpaceArchiveRecord[]
-}
-
-export interface WorkspaceSpaceRect {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-export interface WorkspaceSpaceState {
-  id: string
-  name: string
-  directoryPath: string
-  targetMountId: string | null
-  parentSpaceId?: string | null
-  boundary?: SpaceBoundary | null
-  sortOrder?: number
-  pinned?: boolean
-  labelColor: LabelColor | null
-  nodeIds: string[]
-  rect: WorkspaceSpaceRect | null
-}
-
-export interface SpaceArchiveSpaceSnapshot {
-  id: string
-  name: string
-  directoryPath: string
-  targetMountId: string | null
-  parentSpaceId: string | null
-  boundary: SpaceBoundary | null
-  labelColor: LabelColor | null
-  nodeIds: string[]
-  rect: WorkspaceSpaceRect | null
-}
-
-export interface SpaceArchiveRecord {
-  id: string
-  archivedAt: string
-  git: SpaceArchiveGitSnapshot | null
-  space: {
-    id: string
-    name: string
-    directoryPath: string
-    labelColor: LabelColor | null
-    rect: WorkspaceSpaceRect | null
-  }
-  spaces?: SpaceArchiveSpaceSnapshot[]
-  nodes: SpaceArchiveNodeSnapshot[]
-}
-
-export interface SpaceArchiveGitSnapshot {
-  worktreePath: string | null
-  branch: string | null
-  head: string | null
-  pullRequest: GitHubPullRequestSummary | null
-}
-
-export type SpaceArchiveNodeSnapshot =
-  | SpaceArchiveTerminalSnapshot
-  | SpaceArchiveAgentSnapshot
-  | SpaceArchiveTaskSnapshot
-  | SpaceArchiveNoteSnapshot
-
-export interface SpaceArchiveTerminalSnapshot {
-  kind: 'terminal'
-  id: string
-  title: string
-  frame: NodeFrame | null
-  labelColorOverride: NodeLabelColorOverride
-  runtimeKind: TerminalRuntimeKind | null
-  executionDirectory: string | null
-  expectedDirectory: string | null
-  startedAt: string | null
-  endedAt: string | null
-  exitCode: number | null
-  lastError: string | null
-}
-
-export interface SpaceArchiveAgentSnapshot {
-  kind: 'agent'
-  id: string
-  title: string
-  frame: NodeFrame | null
-  labelColorOverride: NodeLabelColorOverride
-  status: AgentRuntimeStatus | null
-  provider: AgentProvider | null
-  prompt: string
-  model: string | null
-  effectiveModel: string | null
-  launchMode: AgentLaunchMode | null
-  resumeSessionId: string | null
-  resumeSessionIdVerified?: boolean
-  executionDirectory: string | null
-  expectedDirectory: string | null
-  directoryMode: ExecutionDirectoryMode | null
-  customDirectory: string | null
-  shouldCreateDirectory: boolean
-  taskId: string | null
-  startedAt: string | null
-  endedAt: string | null
-  exitCode: number | null
-  lastError: string | null
-}
-
-export interface SpaceArchiveTaskSnapshot {
-  kind: 'task'
-  id: string
-  title: string
-  frame: NodeFrame | null
-  labelColorOverride: NodeLabelColorOverride
-  requirement: string
-  status: TaskRuntimeStatus
-  priority: TaskPriority
-  tags: string[]
-  linkedAgentNodeId: string | null
-  lastRunAt: string | null
-  autoGeneratedTitle: boolean
-  createdAt: string | null
-  updatedAt: string | null
-}
-
-export interface SpaceArchiveNoteSnapshot {
-  kind: 'note'
-  id: string
-  title: string
-  frame: NodeFrame | null
-  labelColorOverride: NodeLabelColorOverride
-  text: string
-}
-
-export interface PersistedTerminalNode {
-  id: string
-  sessionId?: string | null
-  title: string
-  titlePinnedByUser?: boolean
-  position: Point
-  width: number
-  height: number
-  kind: WorkspaceNodeKind
-  profileId?: string | null
+export type PersistedTerminalNode = Omit<
+  NormalizedPersistedNodeContract,
+  'agent' | 'runtimeKind' | 'sidebarSortOrder' | 'task' | 'terminalAgentBinding'
+> & {
   runtimeKind?: TerminalRuntimeKind
-  terminalGeometry?: TerminalPtyGeometry | null
-  workerBinding?: NodeWorkerBinding | null
-  terminalProviderHint?: AgentProvider | null
-  terminalAgentBinding?: TerminalAgentSessionBinding | null
-  labelColorOverride?: NodeLabelColorOverride
   sidebarSortOrder?: number
-  status: AgentRuntimeStatus | null
-  startedAt: string | null
-  endedAt: string | null
-  exitCode: number | null
-  lastError: string | null
-  scrollback: string | null
-  executionDirectory?: string | null
-  expectedDirectory?: string | null
+  terminalAgentBinding?: TerminalAgentSessionBinding | null
   agent: AgentNodeData | TerminalAgentSessionBinding | null
   task:
     | TaskNodeData
@@ -397,12 +248,28 @@ export interface PersistedTerminalNode {
     | WebsiteNodeData
     | null
 }
-
-export interface PersistedAppState {
-  formatVersion: number
-  activeWorkspaceId: string | null
+export type PersistedWorkspaceState = Omit<
+  NormalizedPersistedWorkspaceContract,
+  'nodes' | 'spaceArchiveRecords'
+> & {
+  nodes: PersistedTerminalNode[]
+  spaceArchiveRecords: SpaceArchiveRecord[]
+}
+export type WorkspaceSpaceRect = PersistedSpaceRect
+export type WorkspaceSpaceState = NormalizedPersistedSpaceContract
+export type SpaceArchiveSpaceSnapshot = NormalizedPersistedSpaceArchiveSpaceSnapshot
+export type SpaceArchiveRecord = NormalizedPersistedSpaceArchiveRecord
+export type SpaceArchiveGitSnapshot = NormalizedPersistedSpaceArchiveGitSnapshot
+export type SpaceArchiveNodeSnapshot = NormalizedPersistedSpaceArchiveNodeSnapshot
+export type SpaceArchiveTerminalSnapshot = NormalizedPersistedSpaceArchiveTerminalSnapshot
+export type SpaceArchiveAgentSnapshot = NormalizedPersistedSpaceArchiveAgentSnapshot
+export type SpaceArchiveTaskSnapshot = NormalizedPersistedSpaceArchiveTaskSnapshot
+export type SpaceArchiveNoteSnapshot = NormalizedPersistedSpaceArchiveNoteSnapshot
+export type PersistedAppState = Omit<
+  NormalizedPersistedAppStateContract<AgentSettings>,
+  'workspaces'
+> & {
   workspaces: PersistedWorkspaceState[]
-  settings: AgentSettings
 }
 
 export interface WorkspaceViewport {

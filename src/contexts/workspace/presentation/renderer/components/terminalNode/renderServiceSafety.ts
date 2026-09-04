@@ -11,6 +11,20 @@ export type TerminalRenderDimensions = {
   }
 }
 
+const pendingDetachedRendererReads = new WeakSet<Terminal>()
+
+export function simulateDetachedTerminalRendererReadOnceForTests(terminal: Terminal): void {
+  pendingDetachedRendererReads.add(terminal)
+}
+
+export function hasPendingDetachedTerminalRendererReadForTests(terminal: Terminal): boolean {
+  return pendingDetachedRendererReads.has(terminal)
+}
+
+export function clearPendingDetachedTerminalRendererReadForTests(terminal: Terminal): void {
+  pendingDetachedRendererReads.delete(terminal)
+}
+
 type InternalTerminal = Terminal & {
   _core?: {
     _renderService?: {
@@ -41,6 +55,10 @@ export function isTerminalRenderServiceDetachedError(error: unknown): boolean {
 export function readTerminalRenderDimensionsSafely(
   terminal: Terminal,
 ): TerminalRenderDimensions | null {
+  if (pendingDetachedRendererReads.delete(terminal)) {
+    return null
+  }
+
   try {
     return ((terminal as InternalTerminal)._core?._renderService?.dimensions ??
       null) as TerminalRenderDimensions | null

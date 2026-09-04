@@ -1,5 +1,9 @@
 import type { PersistWriteResult, ReadAppStateResult } from '@shared/contracts/dto'
-import { createAppErrorDescriptor, toAppErrorDescriptor } from '@shared/errors/appError'
+import {
+  createAppError,
+  createAppErrorDescriptor,
+  toAppErrorDescriptor,
+} from '@shared/errors/appError'
 import { LEGACY_STORAGE_KEY, STORAGE_KEY } from './constants'
 import { getStorage, isQuotaExceededError } from './storage'
 
@@ -64,8 +68,8 @@ function createIpcPort(): PersistencePort | null {
     readAppState: async () => {
       try {
         return await persistenceApi.readAppState()
-      } catch {
-        return null
+      } catch (error) {
+        throw createAppError(toAppErrorDescriptor(error, 'persistence.unavailable'))
       }
     },
     writeAppState: async (state, options) => {

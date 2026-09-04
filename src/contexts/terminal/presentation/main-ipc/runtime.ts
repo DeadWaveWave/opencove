@@ -1,6 +1,5 @@
-import { app, utilityProcess, webContents } from 'electron'
+import { webContents } from 'electron'
 import process from 'node:process'
-import { resolve } from 'node:path'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   AgentLaunchMode,
@@ -11,6 +10,8 @@ import type {
   SpawnTerminalInput,
   SpawnTerminalResult,
   TerminalDataEvent,
+  TerminalAgentReexecInput,
+  TerminalAgentReexecResult,
   TerminalForegroundEvent,
   TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
@@ -19,15 +20,15 @@ import type {
 } from '../../../../shared/contracts/dto'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
 import type { SpawnPtyOptions } from '../../../../platform/process/pty/types'
-import { PtyHostSupervisor } from '../../../../platform/process/ptyHost/supervisor'
-import { createElectronUtilityPtyHostProcess } from '../../../../platform/process/ptyHost/electronUtilityProcessAdapter'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import { stripAutomaticTerminalQueriesFromOutput } from '../../../../shared/terminal/automaticTerminalSequences'
 import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
+import type { TerminalProcessEnginePort } from '../../application/ports/TerminalProcessEnginePort'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 import { TerminalSessionManager } from './sessionManager'
 import { createLocalPtyGeometryCommitter } from './localPtyGeometryCommit'
 import { isDebugCrashHostEnabled } from './debugCrashHost'
+import { PtyRuntimeSessionRegistrationOwner } from './sessionRegistrationOwner'
 import {
   describeAgentLaunchCommand,
   describeAgentLaunchError,
@@ -51,6 +52,8 @@ export interface PtyRuntime {
   spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
   spawnSession: (options: SpawnPtyOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => Promise<void>
+  probeForeground?: (sessionId: string) => void
+  reexecAgent?: (input: TerminalAgentReexecInput) => Promise<TerminalAgentReexecResult>
   resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
   kill: (sessionId: string) => Promise<void>
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
@@ -76,7 +79,8 @@ function reportStateWatcherIssue(message: string): void {
   process.stderr.write(`${message}\n`)
 }
 
-export function createPtyRuntime(): PtyRuntime {
+export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePort }): PtyRuntime {
+  const { processEngine } = deps
   const profileResolver = new TerminalProfileResolver()
   const debugCrashHostEnabled = isDebugCrashHostEnabled()
   const writeDiagnosticsEnabled =
@@ -168,22 +172,7 @@ export function createPtyRuntime(): PtyRuntime {
     return true
   }
 
-  const logsDir = resolve(app.getPath('userData'), 'logs')
-  const ptyHostLogFilePath = resolve(logsDir, 'pty-host.log')
-  const ptyHost = new PtyHostSupervisor({
-    baseDir: __dirname,
-    logFilePath: ptyHostLogFilePath,
-    reportIssue: reportStateWatcherIssue,
-    createProcess: modulePath =>
-      createElectronUtilityPtyHostProcess(
-        utilityProcess.fork(modulePath, [], {
-          stdio: 'pipe',
-          serviceName: 'OpenCove PTY Host',
-        }),
-      ),
-  })
-
-  // --- Probe state (ptyHost-specific, not managed by SessionManager) ---
+  // --- Probe state (not managed by SessionManager) ---
 
   const terminalProbeBufferBySession = new Map<string, string>()
 
@@ -197,23 +186,23 @@ export function createPtyRuntime(): PtyRuntime {
 
   const resolveTerminalProbeReplies = (sessionId: string, outputChunk: string): void => {
     if (outputChunk.includes('\u001b[6n')) {
-      ptyHost.write(sessionId, '\u001b[1;1R')
+      processEngine.write(sessionId, '\u001b[1;1R')
     }
 
     if (outputChunk.includes('\u001b[?6n')) {
-      ptyHost.write(sessionId, '\u001b[?1;1R')
+      processEngine.write(sessionId, '\u001b[?1;1R')
     }
 
     if (outputChunk.includes('\u001b[c')) {
-      ptyHost.write(sessionId, '\u001b[?1;2c')
+      processEngine.write(sessionId, '\u001b[?1;2c')
     }
 
     if (outputChunk.includes('\u001b[>c')) {
-      ptyHost.write(sessionId, '\u001b[>0;115;0c')
+      processEngine.write(sessionId, '\u001b[>0;115;0c')
     }
 
     if (outputChunk.includes('\u001b[?u')) {
-      ptyHost.write(sessionId, '\u001b[?0u')
+      processEngine.write(sessionId, '\u001b[?0u')
     }
   }
 
@@ -235,20 +224,32 @@ export function createPtyRuntime(): PtyRuntime {
   })
   const geometryCommitter = createLocalPtyGeometryCommitter({
     manager,
-    resizeRuntime: async (sessionId, cols, rows) => await ptyHost.resize(sessionId, cols, rows),
+    resizeRuntime: async (sessionId, cols, rows) =>
+      await processEngine.resize(sessionId, cols, rows),
     log: logPtyResizeDiagnostics,
   })
+  const sessionRegistrations = new PtyRuntimeSessionRegistrationOwner({
+    processEngine,
+    register: (sessionId, input) => {
+      if (!manager.registerSession(sessionId)) {
+        return false
+      }
+      manager.resize(sessionId, input.cols, input.rows)
+      registerSessionProbeState(sessionId)
+      return true
+    },
+  })
 
-  // --- PtyHost event wiring ---
+  // --- Terminal process-engine event wiring ---
 
   const externalDataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const externalExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
   const externalForegroundListeners = new Set<(event: TerminalForegroundEvent) => void>()
 
-  ptyHost.onData(({ sessionId, data }) => {
+  const disposeProcessEngineData = processEngine.onData(({ sessionId, data }) => {
     const { visibleData, replies } = stripAutomaticTerminalQueriesFromOutput(data)
     replies.forEach(reply => {
-      ptyHost.write(sessionId, reply)
+      processEngine.write(sessionId, reply)
     })
 
     if (!manager.hasPtyDataSubscribers(sessionId)) {
@@ -268,7 +269,8 @@ export function createPtyRuntime(): PtyRuntime {
     })
   })
 
-  ptyHost.onExit(({ sessionId, exitCode }) => {
+  const disposeProcessEngineExit = processEngine.onExit(({ sessionId, exitCode }) => {
+    sessionRegistrations.noteExit(sessionId)
     manager.handleExit(sessionId, exitCode)
     clearSessionProbeState(sessionId)
 
@@ -277,18 +279,20 @@ export function createPtyRuntime(): PtyRuntime {
     })
   })
 
-  ptyHost.onForeground(event => {
+  const disposeProcessEngineForeground = processEngine.onForeground(event => {
     sendToAllWindows(IPC_CHANNELS.ptyForeground, event satisfies TerminalForegroundEvent)
     externalForegroundListeners.forEach(listener => listener(event))
   })
 
   // --- PtyRuntime interface ---
 
+  let isDisposed = false
+
   return {
     listProfiles: async () => await profileResolver.listProfiles(),
     spawnTerminalSession: async input => {
       const resolved = await profileResolver.resolveTerminalSpawn(input)
-      const { sessionId } = await ptyHost.spawn({
+      const { sessionId } = await sessionRegistrations.spawn({
         cwd: resolved.cwd,
         command: resolved.command,
         args: resolved.args,
@@ -296,10 +300,6 @@ export function createPtyRuntime(): PtyRuntime {
         cols: input.cols,
         rows: input.rows,
       })
-
-      manager.registerSession(sessionId)
-      manager.resize(sessionId, input.cols, input.rows)
-      registerSessionProbeState(sessionId)
 
       return {
         sessionId,
@@ -328,7 +328,7 @@ export function createPtyRuntime(): PtyRuntime {
         },
       )
 
-      const { sessionId } = await ptyHost
+      const { sessionId } = await sessionRegistrations
         .spawn({
           cwd: options.cwd,
           command,
@@ -348,9 +348,6 @@ export function createPtyRuntime(): PtyRuntime {
           throw error
         })
 
-      manager.registerSession(sessionId)
-      manager.resize(sessionId, options.cols, options.rows)
-      registerSessionProbeState(sessionId)
       logAgentLaunchInfo('local-pty-runtime-spawn-succeeded', 'Local PTY host spawn succeeded.', {
         sessionId,
         cwd: options.cwd,
@@ -377,14 +374,17 @@ export function createPtyRuntime(): PtyRuntime {
           })
         }
       }
-      ptyHost.write(sessionId, data, encoding)
+      processEngine.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
+    },
+    probeForeground: sessionId => {
+      processEngine.probeForeground(sessionId)
     },
     resize: geometryCommitter.resize,
     kill: async sessionId => {
       manager.kill(sessionId)
       clearSessionProbeState(sessionId)
-      ptyHost.kill(sessionId)
+      processEngine.kill(sessionId)
     },
     onData: listener => {
       externalDataListeners.add(listener)
@@ -454,12 +454,21 @@ export function createPtyRuntime(): PtyRuntime {
     },
     ...(debugCrashHostEnabled
       ? {
-          debugCrashHost: () => {
-            ptyHost.crash()
+          debugCrashHost: async () => {
+            await processEngine.crashForDebug?.()
           },
         }
       : {}),
     dispose: () => {
+      if (isDisposed) {
+        return
+      }
+      isDisposed = true
+      sessionRegistrations.dispose()
+
+      disposeProcessEngineData()
+      disposeProcessEngineExit()
+      disposeProcessEngineForeground()
       manager.dispose()
       terminalProbeBufferBySession.clear()
       externalDataListeners.clear()
@@ -469,7 +478,7 @@ export function createPtyRuntime(): PtyRuntime {
       externalMetadataListeners.clear()
       warnedWriteSessions.clear()
       geometryCommitter.dispose()
-      ptyHost.dispose()
+      processEngine.dispose()
     },
   }
 }
