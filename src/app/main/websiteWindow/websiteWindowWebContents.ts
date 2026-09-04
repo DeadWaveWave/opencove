@@ -85,11 +85,13 @@ export function registerWebsiteWebContentsRuntimeListeners({
 
   const handleStartLoading = () => {
     runtime.isLoading = true
+    runtime.snapshotDocumentReady = false
     publishState()
   }
 
   const handleStopLoading = () => {
     runtime.isLoading = false
+    runtime.snapshotDocumentReady = true
     publishState()
 
     const resolvedViewportBounds =
@@ -170,6 +172,7 @@ export function registerWebsiteWebContentsRuntimeListeners({
   }
 
   const handleFailLoad = (_event: Electron.Event, _errorCode: number, errorDescription: string) => {
+    runtime.snapshotDocumentReady = false
     emit({ type: 'error', nodeId, message: errorDescription || 'Page load failed' })
     publishState()
   }

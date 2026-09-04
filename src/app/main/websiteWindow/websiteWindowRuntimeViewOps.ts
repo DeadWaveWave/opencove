@@ -45,6 +45,7 @@ function isWebsiteWindowRuntimeReadyForSnapshot(runtime: WebsiteWindowRuntime): 
   return (
     runtime.lifecycle === 'active' &&
     runtime.isLoading === false &&
+    runtime.snapshotDocumentReady &&
     typeof runtime.url === 'string' &&
     runtime.url.trim().length > 0 &&
     hasCapturableWebsiteWindowBounds(runtime)

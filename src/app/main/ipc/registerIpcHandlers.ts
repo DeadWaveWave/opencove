@@ -40,6 +40,7 @@ import { registerCliIpcHandlers } from './registerCliIpcHandlers'
 import { registerRemoteAgentIpcHandlers } from './registerRemoteAgentIpcHandlers'
 import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHandlers'
 import { registerControlSurfaceIpcHandlers } from './registerControlSurfaceIpcHandlers'
+import { readRuntimeAppVersion } from '../controlSurface/runtimeAppVersion'
 import { createPersistedWorkspaceApprovalGate } from '../../../contexts/workspace/infrastructure/approval/PersistedWorkspaceApproval'
 import type { BrowserProfileStore } from '../../../contexts/browser/infrastructure/main/BrowserProfileStore'
 import { createBrowserProfileStore } from '../../../contexts/browser/infrastructure/main/BrowserProfileStore'
@@ -232,6 +233,7 @@ export function registerIpcHandlers(deps?: {
           guardedApprovedWorkspaces,
           getPersistenceStore,
           getAgentSessionTitleCacheStore,
+          readRuntimeAppVersion(),
         ),
     registerTaskIpcHandlers(guardedApprovedWorkspaces),
     registerSystemIpcHandlers(),

@@ -11,6 +11,7 @@ const WEBSITE_MIN_LIVE_CANVAS_ZOOM = 0.25
 
 interface WebsiteRuntimeState {
   lifecycle: string
+  snapshotDocumentReady: boolean
   hasSnapshot: boolean
 }
 
@@ -28,6 +29,7 @@ async function readWebsiteRuntimeState(
 
     return {
       lifecycle: runtime.lifecycle,
+      snapshotDocumentReady: runtime.snapshotDocumentReady,
       hasSnapshot:
         typeof runtime.snapshotDataUrl === 'string' && runtime.snapshotDataUrl.length > 0,
     }
@@ -90,6 +92,7 @@ test.describe('Workspace Canvas - Website Window', () => {
         })
         .toMatchObject({
           lifecycle: 'active',
+          snapshotDocumentReady: true,
         })
 
       await window.evaluate(() => {

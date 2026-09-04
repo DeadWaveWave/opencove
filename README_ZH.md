@@ -110,6 +110,8 @@ curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.ps1 | Invoke-Expression"
 ```
 
+Standalone installer 会先使用 release 中的 `SHA256SUMS.txt` 校验下载的 runtime，再进行解压安装。
+
 如果你想在服务器上直接托管 Web UI，安装后可直接启动 worker：
 
 ```bash

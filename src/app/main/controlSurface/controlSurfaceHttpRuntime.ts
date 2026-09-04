@@ -60,6 +60,7 @@ export function createControlSurfaceHttpRuntime(
   const terminalAgents = createTerminalAgentActivityRuntime({
     agentHookChannels,
     agentProviderRegistry: options.agentProviderRegistry,
+    appVersion,
     desktopMetadataSink: options.desktopPtyMetadataSink,
     desktopStateSink: options.desktopPtyStateSink,
   })

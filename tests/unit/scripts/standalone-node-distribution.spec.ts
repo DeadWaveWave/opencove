@@ -33,8 +33,13 @@ describe('standalone Node distribution contracts', () => {
 
     for (const installer of [shellInstaller, powershellInstaller]) {
       expect(installer).toContain('OPENCOVE_NODE_BIN')
+      expect(installer).toContain('SHA256SUMS.txt')
+      expect(installer).toContain('Verified SHA256')
       expect(installer).not.toContain('ELECTRON_RUN_AS_NODE')
     }
+    expect(shellInstaller).toContain('sha256sum')
+    expect(shellInstaller).toContain('shasum -a 256')
+    expect(powershellInstaller).toContain('Get-FileHash')
   })
 
   it('runs the Linux release smoke in a minimal container', async () => {
@@ -51,6 +56,20 @@ describe('standalone Node distribution contracts', () => {
     expect(smoke).toContain('no Electron executable present')
   })
 
+  it('isolates published code and proves the public uninstaller cleaned its owned paths', async () => {
+    const smoke = await readFile(
+      resolve(rootDir, 'scripts/smoke-published-standalone-runtime.mjs'),
+      'utf8',
+    )
+
+    expect(smoke).toContain('HOME: isolatedHome')
+    expect(smoke).toContain('PASSTHROUGH_ENV_KEYS')
+    expect(smoke).not.toContain('...process.env')
+    expect(smoke).toContain('invokeUninstaller()')
+    expect(smoke).toContain('assertUninstallPostconditions()')
+    expect(smoke).toContain('assertPublishedAssetChecksum')
+  })
+
   it('downloads and starts every published standalone Worker after the release is public', async () => {
     const workflow = await readFile(resolve(rootDir, '.github/workflows/release.yml'), 'utf8')
     const publishAt = workflow.indexOf('  publish:')
@@ -60,11 +79,21 @@ describe('standalone Node distribution contracts', () => {
     expect(verificationAt).toBeGreaterThan(publishAt)
     const verification = workflow.slice(verificationAt)
     expect(verification).toContain('needs: publish')
+    expect(verification).toContain('permissions:\n      contents: read')
+    expect(verification).toContain('persist-credentials: false')
     expect(verification).toContain('scripts/smoke-published-standalone-runtime.mjs')
     expect(verification).toContain('macos-15')
     expect(verification).toContain('macos-15-intel')
     expect(verification).toContain('windows-latest')
     expect(verification).toContain('ubuntu-latest')
+    expect(workflow).toContain('prerelease: true\n          make_latest: false')
+    expect(workflow).toContain('  promote-stable:')
+    expect(workflow).toContain('needs: [publish, verify-published-standalone]')
+    expect(workflow).toContain(
+      'gh release edit "$OPENCOVE_RELEASE_TAG" --prerelease=false --latest',
+    )
+    expect(workflow).toContain('  verify-latest-stable:')
+    expect(workflow).toContain('--installer-source=latest')
   })
 })
 

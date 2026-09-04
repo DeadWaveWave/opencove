@@ -115,8 +115,9 @@ describe('websiteWindowRuntimeViewOps', () => {
     const runtime = {
       nodeId: 'website-node',
       lifecycle: 'active',
-      isLoading: true,
-      url: null,
+      isLoading: false,
+      snapshotDocumentReady: false,
+      url: 'https://example.com',
       bounds: { x: 0, y: 0, width: 480, height: 320 },
       viewportBounds: { x: 0, y: 0, width: 480, height: 320 },
       pendingSnapshotQuality: null,
@@ -139,8 +140,7 @@ describe('websiteWindowRuntimeViewOps', () => {
     expect(capturePage).not.toHaveBeenCalled()
     expect(runtime.pendingSnapshotQuality).toBe(60)
 
-    runtime.isLoading = false
-    runtime.url = 'https://example.com'
+    runtime.snapshotDocumentReady = true
     capturePage.mockResolvedValue({
       toJPEG,
     })

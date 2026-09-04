@@ -97,6 +97,7 @@ export function ensureWebsiteWindowView({
   configureWebsiteViewAppearance(view)
   configureWebContents(runtime.nodeId, view.webContents, emit)
 
+  runtime.snapshotDocumentReady = false
   runtime.view = view
   runtime.disposeWebContentsListeners = registerWebsiteWebContentsRuntimeListeners({
     runtime,

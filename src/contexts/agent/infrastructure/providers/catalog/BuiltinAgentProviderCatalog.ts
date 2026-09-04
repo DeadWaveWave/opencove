@@ -12,6 +12,7 @@ import { CatalogTerminalCliProvider } from './CatalogTerminalCliProvider'
 import type { BuiltinAgentCommandProviderId } from '../../cli/AgentCommandFactory'
 
 export interface BuiltinAgentProviderCatalogOptions {
+  readonly appVersion?: string | null
   readonly channels?: Partial<Record<AgentProviderId, AgentHookChannel>>
   readonly runtimeExecutable?: string
   readonly runtimePlatform?: NodeJS.Platform
@@ -39,6 +40,7 @@ export function createBuiltinAgentProviderContributions(
       'codex',
       new CodexAgentProviderContribution({
         channel: options.channels?.codex,
+        clientVersion: options.appVersion,
         runtimeExecutable: options.runtimeExecutable,
         runtimePlatform: options.runtimePlatform,
       }),

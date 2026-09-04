@@ -110,6 +110,8 @@ curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.ps1 | Invoke-Expression"
 ```
 
+The standalone installer verifies the downloaded runtime against the release's `SHA256SUMS.txt` before extracting it.
+
 For a headless server that hosts the Web UI, start the worker directly after install:
 
 ```bash

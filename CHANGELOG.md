@@ -118,7 +118,9 @@ OpenCove 0.3.0 makes long-running AI development work easier to resume, observe,
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
-- Remote Worker: propagate the packaged standalone version into the Worker so remote status and compatibility checks identify the installed release instead of reporting an unknown version.
+- Agent recovery: keep Codex sessions recoverable when an active-writer rejection arrives after the initial process spawn, using verified SessionStart as the success boundary instead of a short timing window.
+- Remote Worker: verify a downloaded standalone bundle against its release SHA256 before installation and report the packaged version so remote status and compatibility checks identify the installed release.
+- Website window: wait for the loaded document before capturing its freeze preview, preventing a blank or permanently pending snapshot under slower startup conditions.
 - Worker Web UI: keep the current xterm instance when a live session's reattach projection settles, preventing an initial browser handoff from remounting the terminal.
 - Worker Web UI: preserve Worker, PTY, Hub, renderer, history, and viewport identity across transactional Web-access reconfiguration, with fenced shutdown, listener handoff, replay cursors, and cross-process configuration ownership. (#377)
 - Terminal recovery: never cold-relaunch a provider from an unauthenticated terminal title or hint; automatic resume now requires a verified provider session binding.

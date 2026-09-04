@@ -113,6 +113,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https:
 安装脚本会：
 
 - 按平台/架构下载 `opencove-server-<platform>-<arch>.tar.gz` 或 `opencove-server-windows-<arch>.zip`
+- 同时下载同一路径的 `SHA256SUMS.txt` 并验证 bundle；找不到 checksum、本机没有 SHA256 工具或 hash 不一致时 fail closed，不解压也不安装
 - macOS / Linux 默认安装到 `~/.local/share/opencove`（可由 `OPENCOVE_INSTALL_ROOT` 覆盖）
 - Windows 默认安装到 `%LOCALAPPDATA%\OpenCove\standalone`（可由 `OPENCOVE_INSTALL_ROOT` 覆盖）
 - macOS / Linux 在 `~/.local/bin/opencove` 写入 launcher（可由 `OPENCOVE_BIN_DIR` 覆盖）
@@ -150,8 +151,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https:
 - `releases/latest/download/...` 只能表示 latest stable，不得在 nightly 文档中当作“当前 nightly”使用。
 - Managed SSH 的 bootstrap / reinstall 使用 Desktop 当前版本拼出 tag-pinned installer URL；该 installer 下载的 standalone Worker 必须报告相同版本，不能成为身份不明的 runtime，也不能在这条安装路径中回退到 `latest` 猜测。
 - release workflow 会在上传前使用本地生成的 standalone asset 运行安装 smoke。
-- release 发布后，`Verify Published Standalone` 必须在 macOS arm64、macOS x64、Windows x64 和 Linux x64 上从公开的 tag-pinned URL 下载 installer，并验证 checksum 清单、安装、launcher、Worker 启动、`system.ping` 与版本身份。stable 还必须验证 `latest` installer URL 可下载且仍指向 `releases/latest/download`。
-- 发布后 smoke 未通过时，该 release 不得对外宣称 Remote Worker 可用；修复后必须重新跑真实公开 URL，不能用本地产物代替。
+- stable 资产先以 **prerelease 且非 latest** 的状态暂存。`Verify Published Standalone` 必须在 macOS arm64、macOS x64、Windows x64 和 Linux x64 上从公开的 tag-pinned URL 下载 installer、uninstaller 与 bundle，验证实际 SHA256、隔离安装、launcher、Worker 启动、`system.ping`、版本身份和卸载后置条件。四个平台全部通过后，workflow 才能把该 release 提升为 stable/latest。
+- 提升 stable 后，`Verify Latest Stable Download` 还必须通过 `releases/latest/download` 再完成一次 Linux 下载、SHA256、安装、Worker 健康和卸载验证。任一验证失败时不得宣称 Remote Worker 可用；修复后必须重新跑真实公开 URL，不能用本地产物代替。
 
 Standalone server 资产与 Desktop 资产是独立 runtime：bundle 提取应用代码、内置 release
 job 使用的 Node，并针对该 Node ABI 重新构建 `better-sqlite3` / `node-pty`。Linux release
@@ -223,10 +224,11 @@ git tag -a v0.2.0 -m "OpenCove v0.2.0"
 git push origin v0.2.0
 ```
 
-9) 等待 release workflow 的 `Publish Release` 与四平台 `Verify Published Standalone` 全绿，再核对公开资产、`SHA256SUMS.txt`、tag commit 和 `latest` 指向。发布完成后也可从本机复核：
+9) 等待 release workflow 依次完成 `Stage Release Assets`、四平台 `Verify Published Standalone`、`Promote Verified Stable Release` 与 `Verify Latest Stable Download`，再核对公开资产、`SHA256SUMS.txt`、tag commit 和 `latest` 指向。发布完成后也可从本机复核 tag-pinned 与 latest 两条路径：
 
 ```bash
 node scripts/smoke-published-standalone-runtime.mjs v0.2.0
+node scripts/smoke-published-standalone-runtime.mjs v0.2.0 --installer-source=latest
 ```
 
 如需先预览下一版而不落盘：

@@ -1,20 +1,27 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process'
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  assertPublishedAssetChecksum,
   assertPublishedChecksumInventory,
   resolvePublishedStandaloneReleaseTarget,
 } from './lib/published-standalone-smoke.mjs'
 
-const [, , rawTag] = process.argv
-if (!rawTag) {
-  process.stderr.write('Usage: node scripts/smoke-published-standalone-runtime.mjs <vX.Y.Z>\n')
+const [, , rawTag, rawInstallerSource = '--installer-source=tag'] = process.argv
+if (!rawTag || !rawInstallerSource.startsWith('--installer-source=')) {
+  process.stderr.write(
+    'Usage: node scripts/smoke-published-standalone-runtime.mjs <vX.Y.Z> [--installer-source=tag|latest]\n',
+  )
   process.exit(2)
 }
 
+const installerSource = rawInstallerSource.slice('--installer-source='.length)
+if (installerSource !== 'tag' && installerSource !== 'latest') {
+  throw new Error(`Unsupported installer source: ${installerSource}`)
+}
 const target = resolvePublishedStandaloneReleaseTarget({
   tag: rawTag,
   platform: process.platform,
@@ -23,40 +30,90 @@ const target = resolvePublishedStandaloneReleaseTarget({
     ? { releaseRoot: process.env['OPENCOVE_RELEASE_ROOT'] }
     : {}),
 })
+if (installerSource === 'latest' && !target.stable) {
+  throw new Error('Nightly releases do not own latest-stable installer aliases.')
+}
+
+const selectedInstaller =
+  installerSource === 'latest'
+    ? { name: target.latestInstallerName, url: target.latestInstallerUrl }
+    : { name: target.installerName, url: target.installerUrl }
+const selectedUninstaller =
+  installerSource === 'latest'
+    ? { name: target.latestUninstallerName, url: target.latestUninstallerUrl }
+    : { name: target.uninstallerName, url: target.uninstallerUrl }
+if (
+  !selectedInstaller.name ||
+  !selectedInstaller.url ||
+  !selectedUninstaller.name ||
+  !selectedUninstaller.url
+) {
+  throw new Error(`Published ${installerSource} installer assets are unavailable for ${target.tag}`)
+}
+
 const smokeRoot = await mkdtemp(join(tmpdir(), 'opencove-published-release-'))
 const installRoot = join(smokeRoot, 'install')
 const binDir = join(smokeRoot, 'bin')
 const userDataDir = join(smokeRoot, 'user-data')
-const installerPath = join(smokeRoot, target.installerName)
-const latestInstallerPath = target.latestInstallerName
-  ? join(smokeRoot, target.latestInstallerName)
-  : null
+const isolatedHome = join(smokeRoot, 'home')
+const installerPath = join(smokeRoot, selectedInstaller.name)
+const uninstallerPath = join(smokeRoot, selectedUninstaller.name)
 const connectionPath = join(userDataDir, 'worker-control-surface.json')
 const launcherPath = join(binDir, process.platform === 'win32' ? 'opencove.cmd' : 'opencove')
-const commandEnvironment = {
-  ...process.env,
+const PASSTHROUGH_ENV_KEYS = [
+  'PATH',
+  'Path',
+  'PATHEXT',
+  'ComSpec',
+  'COMSPEC',
+  'SystemRoot',
+  'SYSTEMROOT',
+  'WINDIR',
+  'PROCESSOR_ARCHITECTURE',
+  'PROCESSOR_ARCHITEW6432',
+  'PSModulePath',
+  'TMPDIR',
+  'TMP',
+  'TEMP',
+  'LANG',
+  'LC_ALL',
+]
+const commandEnvironment = Object.fromEntries(
+  PASSTHROUGH_ENV_KEYS.flatMap(key =>
+    typeof process.env[key] === 'string' ? [[key, process.env[key]]] : [],
+  ),
+)
+Object.assign(commandEnvironment, {
+  HOME: isolatedHome,
+  USERPROFILE: isolatedHome,
+  XDG_CONFIG_HOME: join(isolatedHome, '.config'),
+  XDG_DATA_HOME: join(isolatedHome, '.local', 'share'),
+  XDG_STATE_HOME: join(isolatedHome, '.local', 'state'),
+  APPDATA: join(isolatedHome, 'AppData', 'Roaming'),
+  LOCALAPPDATA: join(isolatedHome, 'AppData', 'Local'),
   OPENCOVE_INSTALL_ROOT: installRoot,
   OPENCOVE_BIN_DIR: binDir,
-}
+})
 let workerProcess = null
 let workerPid = null
 let workerOutput = ''
-let installed = false
+let installAttempted = false
+let uninstalled = false
 
 function delay(milliseconds) {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
-async function downloadText(url) {
+async function downloadBuffer(url) {
   const response = await fetch(url, {
     redirect: 'follow',
     headers: { 'user-agent': 'opencove-published-release-smoke' },
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(120_000),
   })
   if (!response.ok) {
     throw new Error(`Unable to download ${url}: HTTP ${response.status}`)
   }
-  return await response.text()
+  return Buffer.from(await response.arrayBuffer())
 }
 
 function resolveInvocation(command, args) {
@@ -114,26 +171,36 @@ function runCommand(command, args, options = {}) {
   })
 }
 
-async function invokeInstaller(uninstall = false) {
+async function invokePowerShellScript(path) {
+  return await runCommand(
+    'powershell.exe',
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path],
+    { env: commandEnvironment, timeoutMs: 600_000 },
+  )
+}
+
+async function invokeInstaller() {
+  installAttempted = true
+  const result =
+    process.platform === 'win32'
+      ? await invokePowerShellScript(installerPath)
+      : await runCommand('sh', [installerPath], {
+          env: commandEnvironment,
+          timeoutMs: 600_000,
+        })
+  if (!`${result.stdout}\n${result.stderr}`.includes(`Verified SHA256 for ${target.bundleName}`)) {
+    throw new Error(`Published installer did not verify ${target.bundleName}`)
+  }
+}
+
+async function invokeUninstaller() {
   if (process.platform === 'win32') {
-    await runCommand(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        installerPath,
-        ...(uninstall ? ['-Uninstall'] : []),
-      ],
-      { env: commandEnvironment, timeoutMs: 600_000 },
-    )
+    await invokePowerShellScript(uninstallerPath)
     return
   }
-
-  await runCommand('sh', [installerPath, ...(uninstall ? ['--uninstall'] : [])], {
+  await runCommand('sh', [uninstallerPath], {
     env: commandEnvironment,
-    timeoutMs: 600_000,
+    timeoutMs: 120_000,
   })
 }
 
@@ -212,35 +279,74 @@ async function stopWorker() {
   }
 }
 
+async function pathExists(path) {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function assertUninstallPostconditions() {
+  const forbiddenPaths = [launcherPath, join(installRoot, 'current')]
+  const residualPaths = (
+    await Promise.all(forbiddenPaths.map(async path => ({ path, exists: await pathExists(path) })))
+  ).filter(candidate => candidate.exists)
+  if (residualPaths.length > 0) {
+    throw new Error(
+      `Published uninstaller left runtime paths behind: ${residualPaths.map(candidate => candidate.path).join(', ')}`,
+    )
+  }
+  const installEntries = (await readdir(installRoot).catch(() => [])).filter(
+    entry => entry === 'current' || entry.startsWith('opencove-server-'),
+  )
+  if (installEntries.length > 0) {
+    throw new Error(
+      `Published uninstaller left runtime entries behind: ${installEntries.join(', ')}`,
+    )
+  }
+}
+
 let primaryError = null
 let cleanupError = null
 try {
-  await mkdir(userDataDir, { recursive: true })
-  const [installer, checksums, latestInstaller] = await Promise.all([
-    downloadText(target.installerUrl),
-    downloadText(target.checksumsUrl),
-    target.latestInstallerUrl ? downloadText(target.latestInstallerUrl) : Promise.resolve(null),
+  await Promise.all([
+    mkdir(userDataDir, { recursive: true }),
+    mkdir(isolatedHome, { recursive: true }),
   ])
+  const [installer, uninstaller, checksumBytes] = await Promise.all([
+    downloadBuffer(selectedInstaller.url),
+    downloadBuffer(selectedUninstaller.url),
+    downloadBuffer(target.checksumsUrl),
+  ])
+  const checksums = checksumBytes.toString('utf8')
   assertPublishedChecksumInventory(checksums, target)
+  assertPublishedAssetChecksum(installer, checksums, selectedInstaller.name)
+  assertPublishedAssetChecksum(uninstaller, checksums, selectedUninstaller.name)
 
-  const expectedVersionBase = `/releases/download/${target.tag}`
-  if (!installer.includes(expectedVersionBase)) {
-    throw new Error(`Versioned installer is not pinned to ${expectedVersionBase}`)
-  }
-  if (latestInstaller !== null && !latestInstaller.includes('/releases/latest/download')) {
-    throw new Error('Latest stable installer does not resolve through releases/latest/download.')
+  if (installerSource === 'tag' && target.stable) {
+    const aliases = await Promise.all([
+      downloadBuffer(target.stableAliasInstallerAssetUrl),
+      downloadBuffer(target.stableAliasUninstallerAssetUrl),
+    ])
+    assertPublishedAssetChecksum(aliases[0], checksums, target.latestInstallerName)
+    assertPublishedAssetChecksum(aliases[1], checksums, target.latestUninstallerName)
   }
 
-  await writeFile(installerPath, installer, 'utf8')
+  const installerText = installer.toString('utf8')
+  const expectedBase =
+    installerSource === 'latest' ? '/releases/latest/download' : `/releases/download/${target.tag}`
+  if (!installerText.includes(expectedBase)) {
+    throw new Error(`Published installer is not pinned to ${expectedBase}`)
+  }
+
+  await Promise.all([writeFile(installerPath, installer), writeFile(uninstallerPath, uninstaller)])
   if (process.platform !== 'win32') {
-    await chmod(installerPath, 0o755)
-  }
-  if (latestInstallerPath && latestInstaller !== null) {
-    await writeFile(latestInstallerPath, latestInstaller, 'utf8')
+    await Promise.all([chmod(installerPath, 0o755), chmod(uninstallerPath, 0o755)])
   }
 
   await invokeInstaller()
-  installed = true
   await runCommand(launcherPath, ['worker', 'start', '--help'], {
     env: commandEnvironment,
     timeoutMs: 30_000,
@@ -284,6 +390,9 @@ try {
   }
 
   await stopWorker()
+  await invokeUninstaller()
+  await assertUninstallPostconditions()
+  uninstalled = true
 } catch (error) {
   primaryError = error
 } finally {
@@ -302,10 +411,11 @@ try {
       workerProcess.kill()
     }
   }
-  if (installed) {
+  if (installAttempted && !uninstalled && (await pathExists(uninstallerPath))) {
     try {
-      await invokeInstaller(true)
-      installed = false
+      await invokeUninstaller()
+      await assertUninstallPostconditions()
+      uninstalled = true
     } catch (error) {
       cleanupError ??= error
     }
@@ -313,6 +423,12 @@ try {
   await rm(smokeRoot, { recursive: true, force: true })
 }
 
+if (primaryError && cleanupError) {
+  throw new AggregateError(
+    [primaryError, cleanupError],
+    'Published release smoke and cleanup failed.',
+  )
+}
 if (primaryError) {
   throw primaryError
 }
@@ -320,5 +436,5 @@ if (cleanupError) {
   throw cleanupError
 }
 process.stdout.write(
-  `Published standalone smoke passed: ${target.tag} ${target.platform}-${target.arch}; installer, checksum, launcher, Worker ping, and version are valid.\n`,
+  `Published standalone smoke passed: ${target.tag} ${target.platform}-${target.arch} via ${installerSource}; installer/uninstaller SHA256, Worker ping/version, and cleanup are valid.\n`,
 )

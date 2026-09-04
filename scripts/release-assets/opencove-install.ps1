@@ -17,6 +17,7 @@ $ReleaseBaseUrl = if ($env:OPENCOVE_RELEASE_BASE_URL) {
 } else {
   "https://github.com/$Owner/$Repo/releases/latest/download"
 }
+$ChecksumsUrl = "$ReleaseBaseUrl/SHA256SUMS.txt"
 $LocalAppData = if ($env:LOCALAPPDATA) {
   $env:LOCALAPPDATA
 } else {
@@ -205,6 +206,33 @@ function Join-BundlePath([string]$Root, [string]$RelativePath) {
   return Join-Path $Root ($RelativePath -replace '/', '\')
 }
 
+function Assert-OpenCoveArchiveChecksum([string]$Path, [string]$AssetName) {
+  $checksumsPath = Join-Path $TempDir 'SHA256SUMS.txt'
+  $request = @{
+    Uri = $ChecksumsUrl
+    OutFile = $checksumsPath
+  }
+  if ($PSVersionTable.PSVersion.Major -lt 6) {
+    $request.UseBasicParsing = $true
+  }
+  Invoke-WebRequest @request
+
+  $assetPattern = [Regex]::Escape($AssetName)
+  $match = Get-Content -LiteralPath $checksumsPath |
+    Select-String -Pattern "^(?<hash>[A-Fa-f0-9]{64})\s+\*?$assetPattern$" |
+    Select-Object -First 1
+  if ($null -eq $match) {
+    throw "Checksum for $AssetName not found in $ChecksumsUrl"
+  }
+
+  $expected = $match.Matches[0].Groups['hash'].Value.ToLowerInvariant()
+  $actual = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+  if ($actual -ne $expected) {
+    throw "SHA256 mismatch for $AssetName"
+  }
+  Write-Output "Verified SHA256 for $AssetName"
+}
+
 function Escape-CmdValue([string]$Value) {
   return $Value.Replace('%', '%%')
 }
@@ -273,6 +301,7 @@ try {
       $request.UseBasicParsing = $true
     }
     Invoke-WebRequest @request
+    Assert-OpenCoveArchiveChecksum $ArchivePath $AssetName
   }
 
   if (Test-Path -LiteralPath $BundleDir) {
