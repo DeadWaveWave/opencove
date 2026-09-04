@@ -25,6 +25,7 @@ let hasRegisteredQuitCoordinator = false
 export function registerQuitCoordinator(options: {
   rendererPersistFlushTimeoutMs?: number
   hasOwnedLocalWorkerProcess: () => boolean
+  disconnectRuntimeClients: () => void
   stopOwnedLocalWorker: () => Promise<unknown>
 }): void {
   if (hasRegisteredQuitCoordinator) {
@@ -67,6 +68,12 @@ export function registerQuitCoordinator(options: {
 
     void (async () => {
       await flushRenderersBeforeQuit(rendererPersistFlushTimeoutMs)
+
+      try {
+        options.disconnectRuntimeClients()
+      } catch {
+        // Worker shutdown still has to proceed when one client cleanup fails.
+      }
 
       if (!isCleaningUpOwnedLocalWorkerOnQuit && options.hasOwnedLocalWorkerProcess()) {
         isCleaningUpOwnedLocalWorkerOnQuit = true

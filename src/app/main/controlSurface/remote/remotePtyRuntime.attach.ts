@@ -14,17 +14,26 @@ export function createEnsureRemotePtySessionAttached(options: {
 }): (sessionId: string) => Promise<void> {
   return async sessionId => {
     if (!options.sessionCoordinator.hasTrackedSession(sessionId)) {
-      return
+      throw new Error(`Terminal session is no longer tracked: ${sessionId}`)
     }
 
     await options.ensureSocket()
+    if (!options.sessionCoordinator.hasTrackedSession(sessionId)) {
+      throw new Error(`Terminal session exited before attach completed: ${sessionId}`)
+    }
     const socket = options.getSocket()
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      return
+      throw new Error('PTY stream connection changed before attach')
     }
 
     options.sessionCoordinator.sendAttachForSession(socket, sessionId)
     await options.sessionCoordinator.waitForSessionAttached(sessionId)
+    if (
+      !options.sessionCoordinator.hasTrackedSession(sessionId) ||
+      !options.sessionCoordinator.isStreamAttached(sessionId)
+    ) {
+      throw new Error(`Terminal session exited before attach completed: ${sessionId}`)
+    }
   }
 }
 

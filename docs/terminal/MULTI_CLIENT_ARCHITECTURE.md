@@ -168,6 +168,8 @@ A Browser attach is complete only after the exact current socket lease has recei
 then a valid `attached` acknowledgement containing both role and non-negative `authorityEpoch` for
 that session. Write, resize, and Agent re-exec join the same attach promise; none may infer support or
 reuse authority from an open socket, a retired lease, or an attach message that was merely sent.
+Detach invalidates the session's attach generation before a delayed connection can send, and the
+Desktop relay similarly rejects an in-flight Worker attach when session exit removes tracked ownership.
 
 Clients resync when they detect:
 

@@ -30,6 +30,7 @@ import { parsePtyHostResizeResult, type PtyHostResizeResult } from './resizeAck'
 import { PtyHostSupervisorEventBus } from './supervisorEventBus'
 import { PtyHostSupervisorReadyState } from './supervisorReadyState'
 import { PtyHostSessionEventOwner } from './ptyHostSessionEventOwner'
+import { handlePtyHostResponse } from './ptyHostResponseOwner'
 import type {
   PtyHostProcess,
   PtyHostProcessFactory,
@@ -92,15 +93,12 @@ export class PtyHostSupervisor {
     this.ambiguousExitRecovery = new PtyHostAmbiguousExitRecovery(ambiguousExitTimeoutMs)
     this.resolveEntryPath = resolveEntryPath ?? (() => resolveBundledPtyHostEntryPath(baseDir))
   }
-
   public onData(listener: (event: { sessionId: string; data: string }) => void): () => void {
     return this.events.onData(listener)
   }
-
   public onExit(listener: (event: { sessionId: string; exitCode: number }) => void): () => void {
     return this.events.onExit(listener)
   }
-
   public onForeground(listener: (event: PtyHostForegroundEvent) => void): () => void {
     return this.events.onForeground(listener)
   }
@@ -260,10 +258,13 @@ export class PtyHostSupervisor {
     }
 
     if (message.type === 'response') {
-      const accepted = this.pendingResponses.resolve(message)
-      if (message.requestType === 'spawn' && message.ok) {
-        this.sessionEvents.resolveSpawn(message.result.sessionId, accepted)
-      }
+      handlePtyHostResponse(
+        message,
+        this.pendingResponses,
+        this.sessionEvents,
+        this.process,
+        (child, error) => this.handleHostError(child, error),
+      )
       return
     }
 

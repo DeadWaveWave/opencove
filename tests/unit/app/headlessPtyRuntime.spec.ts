@@ -302,6 +302,70 @@ describe('headless PTY runtime', () => {
     runtime.dispose()
   })
 
+  it('retires the exact session returned after headless runtime disposal', async () => {
+    vi.resetModules()
+    let resolveSpawn!: (value: { sessionId: string }) => void
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.spawn.mockImplementation(
+      async () =>
+        await new Promise<{ sessionId: string }>(resolve => {
+          resolveSpawn = resolve
+        }),
+    )
+    const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
+    const runtime = createHeadlessPtyRuntime({ processEngine })
+
+    const spawning = runtime.spawnSession({
+      cwd: '/tmp/workspace',
+      cols: 80,
+      rows: 24,
+      command: 'shell',
+      args: [],
+    })
+    runtime.dispose()
+    resolveSpawn({ sessionId: 'session-after-dispose' })
+
+    await expect(spawning).rejects.toThrow('lost its owner before spawn registration')
+    expect(processEngine.kill).toHaveBeenCalledTimes(1)
+    expect(processEngine.kill).toHaveBeenCalledWith('session-after-dispose')
+  })
+
+  it('preserves registration and exact-session retirement failures after disposal', async () => {
+    vi.resetModules()
+    let resolveSpawn!: (value: { sessionId: string }) => void
+    const retirementError = new Error('exact session retirement failed')
+    const processEngine = new FakeTerminalProcessEngine()
+    processEngine.spawn.mockImplementation(
+      async () =>
+        await new Promise<{ sessionId: string }>(resolve => {
+          resolveSpawn = resolve
+        }),
+    )
+    processEngine.kill.mockImplementation(() => {
+      throw retirementError
+    })
+    const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
+    const runtime = createHeadlessPtyRuntime({ processEngine })
+
+    const spawning = runtime.spawnSession({
+      cwd: '/tmp/workspace',
+      cols: 80,
+      rows: 24,
+      command: 'shell',
+      args: [],
+    })
+    runtime.dispose()
+    resolveSpawn({ sessionId: 'session-cleanup-failure' })
+    const error = await spawning.catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(AggregateError)
+    expect((error as AggregateError).errors).toEqual([expect.any(Error), retirementError])
+    expect(((error as AggregateError).errors[0] as Error).message).toContain(
+      'lost its owner before spawn registration',
+    )
+    expect(processEngine.kill).toHaveBeenCalledWith('session-cleanup-failure')
+  })
+
   it('exposes terminal profile discovery through the worker runtime', async () => {
     vi.resetModules()
 

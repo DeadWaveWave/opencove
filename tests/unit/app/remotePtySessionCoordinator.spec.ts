@@ -35,6 +35,7 @@ vi.mock('electron', () => ({
   },
 }))
 
+import { createEnsureRemotePtySessionAttached } from '../../../src/app/main/controlSurface/remote/remotePtyRuntime.attach'
 import { createRemotePtySessionCoordinator } from '../../../src/app/main/controlSurface/remote/remotePtyRuntime.sessionCoordinator'
 
 function createMockSocket() {
@@ -139,6 +140,78 @@ describe('remotePtyRuntime session coordinator', () => {
     coordinator.onSessionAttached('session-reconnect')
     await pendingAttach
     expect(attached).toBe(true)
+  })
+
+  it('rejects an attach when session exit wins the socket connection race', async () => {
+    let resolveSocket!: () => void
+    const coordinator = createRemotePtySessionCoordinator({
+      connectTimeoutMs: 50,
+      cancelMetadataWatcher: vi.fn(),
+      shouldKeepSocketAlive: () => true,
+      closeSocket: vi.fn(),
+      sendDetachMessage: vi.fn(async () => undefined),
+    })
+    const socket = { readyState: 1, send: vi.fn() }
+    const ensureAttached = createEnsureRemotePtySessionAttached({
+      sessionCoordinator: coordinator,
+      ensureSocket: async () =>
+        await new Promise<void>(resolve => {
+          resolveSocket = resolve
+        }),
+      getSocket: () => socket as never,
+    })
+    coordinator.trackSession('session-exited-during-attach')
+
+    const attaching = ensureAttached('session-exited-during-attach')
+    coordinator.untrackSession('session-exited-during-attach', new Error('Terminal session exited'))
+    coordinator.onSessionAttached('session-exited-during-attach')
+    resolveSocket()
+
+    await expect(attaching).rejects.toThrow('exited before attach completed')
+    expect(socket.send).not.toHaveBeenCalled()
+    expect(coordinator.isStreamAttached('session-exited-during-attach')).toBe(false)
+  })
+
+  it('does not return live after an attach acknowledgement is followed by exit', async () => {
+    const coordinator = createRemotePtySessionCoordinator({
+      connectTimeoutMs: 50,
+      cancelMetadataWatcher: vi.fn(),
+      shouldKeepSocketAlive: () => true,
+      closeSocket: vi.fn(),
+      sendDetachMessage: vi.fn(async () => undefined),
+    })
+    const socket = { readyState: 1, send: vi.fn() }
+    const ensureAttached = createEnsureRemotePtySessionAttached({
+      sessionCoordinator: coordinator,
+      ensureSocket: vi.fn(async () => undefined),
+      getSocket: () => socket as never,
+    })
+    coordinator.trackSession('session-exit-after-ack')
+
+    const attaching = ensureAttached('session-exit-after-ack')
+    await Promise.resolve()
+    expect(socket.send).toHaveBeenCalledTimes(1)
+    coordinator.onSessionAttached('session-exit-after-ack')
+    coordinator.untrackSession('session-exit-after-ack', new Error('Terminal session exited'))
+
+    await expect(attaching).rejects.toThrow('exited before attach completed')
+    expect(coordinator.isStreamAttached('session-exit-after-ack')).toBe(false)
+  })
+
+  it('rejects pending attach waiters immediately when their session exits', async () => {
+    const coordinator = createRemotePtySessionCoordinator({
+      connectTimeoutMs: 10_000,
+      cancelMetadataWatcher: vi.fn(),
+      shouldKeepSocketAlive: () => true,
+      closeSocket: vi.fn(),
+      sendDetachMessage: vi.fn(async () => undefined),
+    })
+    coordinator.trackSession('session-pending-exit')
+    const waiting = coordinator.waitForSessionAttached('session-pending-exit')
+
+    coordinator.untrackSession('session-pending-exit', new Error('Terminal session exited'))
+
+    await expect(waiting).rejects.toThrow('Terminal session exited')
   })
 
   it('reports whether a tracked session is attached to the worker stream', () => {

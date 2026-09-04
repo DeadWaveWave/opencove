@@ -144,7 +144,7 @@ export function createRemotePtyRuntime(options: {
     onSessionExit: sessionId => {
       agentReexecCoordinator.rejectSession(sessionId, new Error('Terminal session exited'))
       agentStateReplay.disposeSession(sessionId)
-      sessionCoordinator.untrackSession(sessionId)
+      sessionCoordinator.untrackSession(sessionId, new Error('Terminal session exited'))
     },
     handshake: {
       onHelloAck: capabilities => {
@@ -411,7 +411,7 @@ export function createRemotePtyRuntime(options: {
     kill: async (sessionId: string) => {
       agentReexecCoordinator.rejectSession(sessionId, new Error('Terminal session killed'))
       agentStateReplay.disposeSession(sessionId)
-      sessionCoordinator.untrackSession(sessionId)
+      sessionCoordinator.untrackSession(sessionId, new Error('Terminal session killed'))
       await invokeRemoteControlSurfaceValue<void>({
         endpointResolver: options.endpointResolver,
         kind: 'command',

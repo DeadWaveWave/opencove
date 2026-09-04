@@ -152,7 +152,25 @@ export function createHeadlessPtyRuntime(options: {
 
       const disposition = registration.complete(spawned.sessionId)
       if (disposition !== 'active') {
-        throw new SessionRegistrationRejectedError(spawned.sessionId, disposition)
+        const registrationError = new SessionRegistrationRejectedError(
+          spawned.sessionId,
+          disposition,
+        )
+        if (disposition === 'owner_disposed') {
+          let cleanupError: unknown = null
+          try {
+            processEngine.kill(spawned.sessionId)
+          } catch (error) {
+            cleanupError = error
+          }
+          if (cleanupError) {
+            throw new AggregateError(
+              [registrationError, cleanupError],
+              '[pty] failed to retire a session returned after headless runtime disposal',
+            )
+          }
+        }
+        throw registrationError
       }
 
       if (input.agentProvider && input.hookInstallState) {

@@ -70,6 +70,15 @@ type WorkerChildProcess = ChildProcessByStdio<null, Readable, Readable>
 
 let activeWorkerChild: WorkerChildProcess | null = null
 let startLocalWorkerPromise: Promise<WorkerStatusResult> | null = null
+let localWorkerShutdownRequested = false
+
+function stoppedWorkerStatus(): WorkerStatusResult {
+  return { status: 'stopped', connection: null }
+}
+
+export function beginLocalWorkerShutdown(): void {
+  localWorkerShutdownRequested = true
+}
 
 function childHasExited(child: WorkerChildProcess): boolean {
   return child.exitCode !== null || child.signalCode !== null
@@ -303,6 +312,9 @@ async function recoverAfterFailedWorkerStart(
 }
 
 async function startLocalWorkerInternal(): Promise<WorkerStatusResult> {
+  if (localWorkerShutdownRequested) {
+    return stoppedWorkerStatus()
+  }
   const userDataPath = app.getPath('userData')
   const existing = await resolveConnectionFromUserData({ requireLivePid: false })
   if (existing) {
@@ -340,26 +352,52 @@ async function startLocalWorkerInternal(): Promise<WorkerStatusResult> {
     appVersion,
   })
 
+  if (localWorkerShutdownRequested) {
+    return stoppedWorkerStatus()
+  }
+
   try {
     const info = await spawnWorkerAndWaitForLiveConnection(args, userDataPath)
+    if (localWorkerShutdownRequested) {
+      await stopOwnedLocalWorker().catch(() => undefined)
+      return stoppedWorkerStatus()
+    }
     return { status: 'running', connection: info }
   } catch (firstError) {
+    if (localWorkerShutdownRequested) {
+      await stopOwnedLocalWorker().catch(() => undefined)
+      return stoppedWorkerStatus()
+    }
     const recoveredConnection = await recoverAfterFailedWorkerStart(userDataPath)
+    if (localWorkerShutdownRequested) {
+      await stopOwnedLocalWorker().catch(() => undefined)
+      return stoppedWorkerStatus()
+    }
     if (recoveredConnection) {
       return { status: 'running', connection: recoveredConnection }
     }
 
     try {
       const retryInfo = await spawnWorkerAndWaitForLiveConnection(args, userDataPath)
+      if (localWorkerShutdownRequested) {
+        await stopOwnedLocalWorker().catch(() => undefined)
+        return stoppedWorkerStatus()
+      }
       return { status: 'running', connection: retryInfo }
     } catch (retryError) {
       await stopOwnedLocalWorker().catch(() => undefined)
+      if (localWorkerShutdownRequested) {
+        return stoppedWorkerStatus()
+      }
       throw retryError instanceof Error ? retryError : firstError
     }
   }
 }
 
 export function startLocalWorker(): Promise<WorkerStatusResult> {
+  if (localWorkerShutdownRequested) {
+    return Promise.resolve(stoppedWorkerStatus())
+  }
   if (startLocalWorkerPromise) {
     return startLocalWorkerPromise
   }

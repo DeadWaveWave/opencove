@@ -42,7 +42,9 @@ Invariants:
    foreground observations fail closed when malformed. Geometry is a positive integer no greater
    than 32767, matching the cross-platform Windows `COORD` ceiling.
 3. A response must match the pending request ID, operation and expected session. Success and error
-   shapes are exclusive; a spoofed response cannot settle unrelated work.
+   shapes are exclusive; a spoofed response cannot settle unrelated work. If a pending spawn instead
+   receives an operation response without a safe exact spawned-session identity, the exact host is
+   quarantined because it may now own an unregistered PTY.
 4. One launch identity maps to at most one live PTY in a host process; a duplicate request returns
    the already-created session identity.
 5. A retry reuses the original launch identity and is allowed only when the previous host has a
@@ -71,6 +73,13 @@ Invariants:
 12. Explicit session kill transitions active ownership to terminating ownership. Trailing data remains
     ordered and the first real session exit still reaches Hub, registration, and artifact-cleanup
     listeners. Silent tombstoning is reserved for an exact unowned late spawn, not an owned kill.
+13. Browser and Desktop-to-Worker attach waits remain owned by the current session registration.
+    Detach, exit, or owner disposal invalidates that ownership before a delayed socket connection or
+    attach acknowledgement may publish authority or return a live session.
+14. Desktop shutdown closes Local Worker restart admission before renderer flush, disconnects sync
+    and PTY clients before stopping its owned Worker, and cannot launch a replacement through a
+    disconnect callback. Stale Worker repair may terminate only a verified exact process tree and
+    performs a bounded post-escalation exit wait before replacing its discovery authority.
 
 The transport remains the supervisor-owned child IPC channel. The instance fence is lifecycle and
 correlation integrity, not socket/network authentication; no parallel network authority is added.

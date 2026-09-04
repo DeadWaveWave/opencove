@@ -249,6 +249,7 @@ export async function terminateStaleLocalWorkerTree(
     return
   }
   const originalCommandByPid = new Map(rows.map(row => [row.pid, row.commandLine]))
+  const escalatedPids: number[] = []
   for (const pid of orderedPids) {
     const remaining = remainingRows.find(row => row.pid === pid)
     if (!remaining || remaining.commandLine !== originalCommandByPid.get(pid)) {
@@ -256,8 +257,16 @@ export async function terminateStaleLocalWorkerTree(
     }
     try {
       signal(pid, 'SIGKILL')
+      escalatedPids.push(pid)
     } catch {
       // The process may have exited between observation and signal.
     }
+  }
+
+  if (escalatedPids.length > 0) {
+    await (dependencies.waitForExit ?? waitForProcessExit)(
+      escalatedPids,
+      PROCESS_EXIT_WAIT_MS,
+    ).catch(() => undefined)
   }
 }

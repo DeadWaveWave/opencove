@@ -21,14 +21,14 @@ function createState(): BrowserAttachedSessionState {
 export class BrowserPtySessionAuthority {
   public readonly sessions = new Map<string, BrowserAttachedSessionState>()
   private readonly attaches = new BrowserPtyAttachCoordinator()
+  private readonly generationBySessionId = new Map<string, number>()
 
   public track(input: AttachTerminalInput): BrowserAttachedSessionState {
-    const state = this.sessions.get(input.sessionId) ?? createState()
+    const { state } = this.ensureTracked(input.sessionId)
     const afterSeq = normalizeBrowserPtyAttachAfterSeq(input.afterSeq)
     if (afterSeq !== null) {
       state.lastSeq = Math.max(state.lastSeq, afterSeq)
     }
-    this.sessions.set(input.sessionId, state)
     return state
   }
 
@@ -47,19 +47,21 @@ export class BrowserPtySessionAuthority {
     lifecycle: BrowserPtySocketLifecycle,
     sessionId: string,
   ): Promise<{ lease: BrowserPtySocketLease; result: BrowserPtyAttachResult }> {
-    const state = this.sessions.get(sessionId) ?? createState()
-    this.sessions.set(sessionId, state)
+    const tracked = this.ensureTracked(sessionId)
     const lease = await lifecycle.ensureReady()
+    this.assertTracked(sessionId, tracked)
     const pending = this.attaches.begin({ sessionId, lease })
     if (
       pending.shouldSend &&
-      !lifecycle.sendIfCurrent(lease, this.createAttachPayload(sessionId, state))
+      !lifecycle.sendIfCurrent(lease, this.createAttachPayload(sessionId, tracked.state))
     ) {
       const error = new Error('PTY stream socket changed before attach')
       this.attaches.rejectSession(sessionId, error)
       throw error
     }
-    return { lease, result: await pending.result }
+    const result = await pending.result
+    this.assertTracked(sessionId, tracked)
+    return { lease, result }
   }
 
   public noteHelloAck(lease: BrowserPtySocketLease): void {
@@ -105,8 +107,36 @@ export class BrowserPtySessionAuthority {
   }
 
   public remove(sessionId: string, error: Error): void {
+    this.generationBySessionId.set(sessionId, (this.generationBySessionId.get(sessionId) ?? 0) + 1)
     this.sessions.delete(sessionId)
     this.attaches.rejectSession(sessionId, error)
+  }
+
+  private ensureTracked(sessionId: string): {
+    state: BrowserAttachedSessionState
+    generation: number
+  } {
+    const existing = this.sessions.get(sessionId)
+    if (existing) {
+      return { state: existing, generation: this.generationBySessionId.get(sessionId) ?? 0 }
+    }
+    const state = createState()
+    const generation = (this.generationBySessionId.get(sessionId) ?? 0) + 1
+    this.sessions.set(sessionId, state)
+    this.generationBySessionId.set(sessionId, generation)
+    return { state, generation }
+  }
+
+  private assertTracked(
+    sessionId: string,
+    tracked: { state: BrowserAttachedSessionState; generation: number },
+  ): void {
+    if (
+      this.sessions.get(sessionId) !== tracked.state ||
+      this.generationBySessionId.get(sessionId) !== tracked.generation
+    ) {
+      throw new Error('Terminal session detached before attach completed')
+    }
   }
 
   private createAttachPayload(

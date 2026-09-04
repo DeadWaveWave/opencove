@@ -15,6 +15,7 @@ import { gateWebUiEntrypoint } from './http/webUiEntryGate'
 import { publishLiveSyncEvent, publishSyncEvent } from './http/publishSyncEvent'
 import { shouldAllowDevWebUiOrigin } from './http/devWebUiOrigin'
 import { buildUnauthorizedResult } from './http/unauthorizedResult'
+import * as httpDrain from './http/httpServerDrain'
 import { createLazyPersistenceStore } from './http/lazyPersistenceStore'
 import { createPtyStreamService, PTY_STREAM_PROTOCOL_VERSION } from './ptyStream/ptyStreamService'
 import { createMultiEndpointPtyRuntime } from './ptyStream/multiEndpointPtyRuntime'
@@ -152,6 +153,7 @@ export function registerControlSurfaceHttpServer(
   })
 
   const server = createServer(async (req, res) => {
+    httpDrain.registerHttpResponseShutdownDrain({ server, response: res, isClosing: () => closed })
     if (closed) {
       res.statusCode = 503
       res.end()
@@ -453,7 +455,7 @@ export function registerControlSurfaceHttpServer(
         // Stop new HTTP commands and wait for commands already accepted by the server before the
         // recovery cutoff. Existing PTY stream clients are frozen first so server.close can drain.
         ptyStreamService.freezeIngress()
-        await new Promise<void>(resolveClose => server.close(() => resolveClose()))
+        await httpDrain.closeHttpServerAfterActiveRequests(server)
 
         try {
           await terminalAgents.dispose()
