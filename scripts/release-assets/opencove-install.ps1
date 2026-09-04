@@ -208,14 +208,18 @@ function Join-BundlePath([string]$Root, [string]$RelativePath) {
 
 function Assert-OpenCoveArchiveChecksum([string]$Path, [string]$AssetName) {
   $checksumsPath = Join-Path $TempDir 'SHA256SUMS.txt'
-  $request = @{
-    Uri = $ChecksumsUrl
-    OutFile = $checksumsPath
+  if ($env:OPENCOVE_STANDALONE_CHECKSUMS_FILE) {
+    Copy-Item -LiteralPath $env:OPENCOVE_STANDALONE_CHECKSUMS_FILE -Destination $checksumsPath -Force
+  } else {
+    $request = @{
+      Uri = $ChecksumsUrl
+      OutFile = $checksumsPath
+    }
+    if ($PSVersionTable.PSVersion.Major -lt 6) {
+      $request.UseBasicParsing = $true
+    }
+    Invoke-WebRequest @request
   }
-  if ($PSVersionTable.PSVersion.Major -lt 6) {
-    $request.UseBasicParsing = $true
-  }
-  Invoke-WebRequest @request
 
   $assetPattern = [Regex]::Escape($AssetName)
   $match = Get-Content -LiteralPath $checksumsPath |
@@ -226,7 +230,14 @@ function Assert-OpenCoveArchiveChecksum([string]$Path, [string]$AssetName) {
   }
 
   $expected = $match.Matches[0].Groups['hash'].Value.ToLowerInvariant()
-  $actual = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+  $algorithm = [Security.Cryptography.SHA256]::Create()
+  $stream = [IO.File]::OpenRead($Path)
+  try {
+    $actual = ([BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+  } finally {
+    $stream.Dispose()
+    $algorithm.Dispose()
+  }
   if ($actual -ne $expected) {
     throw "SHA256 mismatch for $AssetName"
   }
@@ -291,6 +302,9 @@ try {
   if ($env:OPENCOVE_STANDALONE_ASSET) {
     Write-Output "Using local standalone asset $env:OPENCOVE_STANDALONE_ASSET"
     Copy-Item -LiteralPath $env:OPENCOVE_STANDALONE_ASSET -Destination $ArchivePath -Force
+    if ($env:OPENCOVE_STANDALONE_CHECKSUMS_FILE) {
+      Assert-OpenCoveArchiveChecksum $ArchivePath $AssetName
+    }
   } else {
     Write-Output "Downloading $AssetUrl"
     $request = @{

@@ -39,7 +39,9 @@ describe('standalone Node distribution contracts', () => {
     }
     expect(shellInstaller).toContain('sha256sum')
     expect(shellInstaller).toContain('shasum -a 256')
-    expect(powershellInstaller).toContain('Get-FileHash')
+    expect(powershellInstaller).toContain('[Security.Cryptography.SHA256]::Create()')
+    expect(powershellInstaller).toContain('OPENCOVE_STANDALONE_CHECKSUMS_FILE')
+    expect(powershellInstaller).not.toContain('Get-FileHash')
   })
 
   it('runs the Linux release smoke in a minimal container', async () => {
@@ -50,6 +52,7 @@ describe('standalone Node distribution contracts', () => {
 
     expect(workflow).toContain('debian:bookworm-slim')
     expect(workflow).toContain('smoke-standalone-node-runtime.sh')
+    expect(workflow).toContain('$env:OPENCOVE_STANDALONE_CHECKSUMS_FILE = $checksumFile')
     expect(smoke).toContain('/proc/${LAUNCHER_PID}/exe')
     expect(smoke).toContain('/proc/${WORKER_PID}/exe')
     expect(smoke).toContain('connection.appVersion !== packageJson.version')
@@ -64,6 +67,7 @@ describe('standalone Node distribution contracts', () => {
 
     expect(smoke).toContain('HOME: isolatedHome')
     expect(smoke).toContain('PASSTHROUGH_ENV_KEYS')
+    expect(smoke).not.toContain("'PSModulePath'")
     expect(smoke).not.toContain('...process.env')
     expect(smoke).toContain('invokeUninstaller()')
     expect(smoke).toContain('assertUninstallPostconditions()')
