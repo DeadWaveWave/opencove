@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Terminal runtime: add Worker-owned native PTY sessions, snapshot-first renderer attach, ordered output/exit completion, durable recovery, and verified Agent continuity without introducing a second terminal owner. (#376)
 - Terminal: adopt Claude Code and Codex commands typed inside ordinary terminals through private POSIX/Windows PATH shims, preserving terminal identity and user config while reporting authenticated per-invocation state and verified provider session identity. (#373)
 - Agent: offer Pi and Kimi Code as selectable agent providers when creating agents.
 - Diagnostics: always collect bounded in-memory breadcrumbs for key terminal and UI-geometry events, add a UI geometry report section, rotate and type-sample diagnostic logs, and drop a misleading log entry, so issue reports carry enough context to reproduce a bug without a follow-up round trip. (#356)
