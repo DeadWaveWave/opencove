@@ -136,6 +136,28 @@ export function createControlSurfaceHttpListener(options: {
     }
   }
 
+  const stopAdmission = (stopOptions?: { preserveStreamingClients?: boolean }): void => {
+    if (!stopped) {
+      accepting = false
+      stopped = true
+      webUiAuthRevision += 1
+      listenAbortController.abort()
+      if (!readySettled) {
+        readySettled = true
+        rejectReady?.(new Error('Control surface listener stopped before becoming ready.'))
+        rejectReady = null
+        resolveReady = null
+      }
+      // Upgraded sockets belong to the shared PTY service; only the listen handle retires here.
+      if (server.listening) {
+        server.close(() => undefined)
+      }
+    }
+    if (stopOptions?.preserveStreamingClients !== true) {
+      closeStreamingClients()
+    }
+  }
+
   server.on('error', error => {
     const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
     process.stderr.write(`[opencove] control surface listener error: ${detail}\n`)
@@ -159,33 +181,14 @@ export function createControlSurfaceHttpListener(options: {
       webUiAuthRevision += 1
     },
     closeStreamingClients,
+    stopAdmission,
     isAccepting: () => accepting && !stopped,
     stopAccepting: async stopOptions => {
       if (stopPromise) {
         return await stopPromise
       }
 
-      accepting = false
-      stopped = true
-      webUiAuthRevision += 1
-      listenAbortController.abort()
-      if (stopOptions?.preserveStreamingClients !== true) {
-        closeStreamingClients()
-      }
-
-      if (!readySettled) {
-        readySettled = true
-        rejectReady?.(new Error('Control surface listener stopped before becoming ready.'))
-        rejectReady = null
-        resolveReady = null
-      }
-
-      // Node releases the listening handle when close() is requested, but its callback waits for
-      // upgraded sockets. Those sockets belong to the shared PTY stream service and intentionally
-      // outlive this listener generation, so listener retirement must not await that callback.
-      if (server.listening) {
-        server.close(() => undefined)
-      }
+      stopAdmission(stopOptions)
       const drainTimeoutMs = Math.max(
         0,
         stopOptions?.drainTimeoutMs ?? CONTROL_SURFACE_REQUEST_DRAIN_TIMEOUT_MS,

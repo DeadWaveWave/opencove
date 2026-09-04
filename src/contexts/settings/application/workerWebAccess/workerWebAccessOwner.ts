@@ -145,6 +145,12 @@ export function createWorkerWebAccessOwner(options: {
     })
   }
 
+  const retireListenerAdmission = (listener: WorkerWebListener): Promise<void> => {
+    listener.stopAdmission({ preserveStreamingClients: true })
+    return listener
+      .stopAccepting({ preserveStreamingClients: true, drainTimeoutMs })
+      .catch(() => undefined)
+  }
   const scheduleDrain = (retired: ActiveWebListener): void => {
     if (drainingTimers.has(retired.generation)) {
       return
@@ -159,7 +165,6 @@ export function createWorkerWebAccessOwner(options: {
     }, drainTimeoutMs)
     drainingTimers.set(retired.generation, { timer, retired })
   }
-
   const schedulePreservedStreamDrain = (listener: WorkerWebListener): void => {
     if (preservedStreamTimers.has(listener)) {
       return
@@ -308,11 +313,9 @@ export function createWorkerWebAccessOwner(options: {
     }
 
     const samePort = previous !== null && targetPort === previous.address.port
+    let previousDrain: Promise<void> | null = null
     if (samePort && previous) {
-      await previous.listener.stopAccepting({
-        preserveStreamingClients: true,
-        drainTimeoutMs,
-      })
+      previousDrain = retireListenerAdmission(previous.listener)
     }
 
     const candidateGeneration = generation + 1
@@ -363,11 +366,9 @@ export function createWorkerWebAccessOwner(options: {
     if (previous) {
       revokeForSecurityTransition(previous, persisted.webUi)
       if (!samePort) {
-        await previous.listener.stopAccepting({
-          preserveStreamingClients: true,
-          drainTimeoutMs,
-        })
+        previousDrain = retireListenerAdmission(previous.listener)
       }
+      await previousDrain
       scheduleDrain(previous)
     }
     return { config: persisted, status: status() }

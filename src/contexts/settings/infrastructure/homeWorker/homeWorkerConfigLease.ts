@@ -1,13 +1,19 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, open, readFile, rm } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 export const HOME_WORKER_CONFIG_LEASE_FILE = 'home-worker-config.lease'
+export const HOME_WORKER_CONFIG_LEASE_OWNER_FILE = 'owner.json'
 const DEFAULT_LEASE_TIMEOUT_MS = 5_000
 const DEFAULT_RETRY_DELAY_MS = 25
+const DEFAULT_MALFORMED_STALE_MS = 5_000
 
 type LeaseRecord = { pid: number; token: string; createdAt: string }
-
+type LeaseObservation = {
+  identity: string
+  mtimeMs: number
+  record: LeaseRecord | null
+}
 type LeaseDependencies = {
   now?: () => number
   wait?: (delayMs: number) => Promise<void>
@@ -15,7 +21,10 @@ type LeaseDependencies = {
   token?: () => string
 }
 
-function parseLeaseRecord(value: string): LeaseRecord | null {
+function parseLeaseRecord(value: string | null): LeaseRecord | null {
+  if (value === null) {
+    return null
+  }
   try {
     const parsed = JSON.parse(value) as unknown
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
@@ -50,12 +59,49 @@ async function defaultWait(delayMs: number): Promise<void> {
   await new Promise<void>(resolvePromise => setTimeout(resolvePromise, delayMs))
 }
 
-async function removeStaleLease(lockPath: string, observedRaw: string): Promise<boolean> {
-  const currentRaw = await readFile(lockPath, 'utf8').catch(() => null)
-  if (currentRaw !== observedRaw) {
+async function observeLease(lockPath: string): Promise<LeaseObservation | null> {
+  try {
+    const metadata = await stat(lockPath)
+    const ownerPath = resolve(lockPath, HOME_WORKER_CONFIG_LEASE_OWNER_FILE)
+    const raw = metadata.isDirectory() ? await readFile(ownerPath, 'utf8').catch(() => null) : null
+    return {
+      identity: [metadata.dev, metadata.ino, metadata.mtimeMs, raw ?? 'malformed'].join(':'),
+      mtimeMs: metadata.mtimeMs,
+      record: parseLeaseRecord(raw),
+    }
+  } catch {
+    return null
+  }
+}
+
+async function restoreCapturedLease(capturedPath: string, lockPath: string): Promise<void> {
+  await rename(capturedPath, lockPath).catch(async restoreError => {
+    throw new Error('Home Worker configuration lease changed during ownership verification.', {
+      cause: restoreError,
+    })
+  })
+}
+
+async function reclaimObservedLease(options: {
+  lockPath: string
+  observed: LeaseObservation
+  quarantinePath: string
+}): Promise<boolean> {
+  try {
+    await rename(options.lockPath, options.quarantinePath)
+  } catch (error) {
+    const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : null
+    if (code === 'ENOENT') {
+      return false
+    }
+    throw error
+  }
+  const captured = await observeLease(options.quarantinePath)
+  if (captured?.identity !== options.observed.identity) {
+    await restoreCapturedLease(options.quarantinePath, options.lockPath)
     return false
   }
-  await rm(lockPath, { force: true })
+  await rm(options.quarantinePath, { recursive: true, force: true })
   return true
 }
 
@@ -64,6 +110,7 @@ export async function acquireHomeWorkerConfigLease(
   options: {
     timeoutMs?: number
     retryDelayMs?: number
+    malformedStaleMs?: number
     dependencies?: LeaseDependencies
   } = {},
 ): Promise<{ release: () => Promise<void> }> {
@@ -74,37 +121,66 @@ export async function acquireHomeWorkerConfigLease(
   const createToken = options.dependencies?.token ?? randomUUID
   const deadline = now() + (options.timeoutMs ?? DEFAULT_LEASE_TIMEOUT_MS)
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS
+  const malformedStaleMs = options.malformedStaleMs ?? DEFAULT_MALFORMED_STALE_MS
   const token = createToken()
+  const owner: LeaseRecord = { pid: process.pid, token, createdAt: new Date(now()).toISOString() }
+  const claimPath = `${lockPath}.claim-${process.pid}-${token}`
+
+  await mkdir(userDataPath, { recursive: true })
+  await rm(claimPath, { recursive: true, force: true })
+  await mkdir(claimPath)
+  await writeFile(
+    resolve(claimPath, HOME_WORKER_CONFIG_LEASE_OWNER_FILE),
+    `${JSON.stringify(owner)}\n`,
+    { encoding: 'utf8', mode: 0o600 },
+  )
 
   const attempt = async (): Promise<{ release: () => Promise<void> }> => {
     try {
-      await mkdir(userDataPath, { recursive: true })
-      const handle = await open(lockPath, 'wx', 0o600)
-      try {
-        await handle.writeFile(
-          `${JSON.stringify({ pid: process.pid, token, createdAt: new Date(now()).toISOString() })}\n`,
-          'utf8',
-        )
-      } finally {
-        await handle.close().catch(() => undefined)
-      }
+      await rename(claimPath, lockPath)
       return {
         release: async () => {
-          const current = await readFile(lockPath, 'utf8').catch(() => null)
-          if (current && parseLeaseRecord(current)?.token === token) {
-            await rm(lockPath, { force: true }).catch(() => undefined)
+          const observed = await observeLease(lockPath)
+          if (observed?.record?.token !== token) {
+            return
+          }
+          const releasePath = `${lockPath}.release-${process.pid}-${token}`
+          await rm(releasePath, { recursive: true, force: true })
+          try {
+            await rename(lockPath, releasePath)
+          } catch {
+            return
+          }
+          const captured = await observeLease(releasePath)
+          if (captured?.record?.token === token) {
+            await rm(releasePath, { recursive: true, force: true })
+          } else {
+            await restoreCapturedLease(releasePath, lockPath)
           }
         },
       }
     } catch (error) {
       const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : null
-      if (code !== 'EEXIST') {
+      if (code !== 'EEXIST' && code !== 'ENOTEMPTY' && code !== 'ENOTDIR' && code !== 'EISDIR') {
         throw error
       }
-      const observedRaw = await readFile(lockPath, 'utf8').catch(() => null)
-      const observed = observedRaw ? parseLeaseRecord(observedRaw) : null
-      if (observedRaw && observed && !isProcessAlive(observed.pid)) {
-        await removeStaleLease(lockPath, observedRaw).catch(() => false)
+      const observed = await observeLease(lockPath)
+      if (!observed) {
+        return await attempt()
+      }
+      const malformedIsStale = !observed.record && now() - observed.mtimeMs >= malformedStaleMs
+      const ownerExited = observed.record ? !isProcessAlive(observed.record.pid) : false
+      if (ownerExited || malformedIsStale) {
+        const quarantinePath = `${lockPath}.stale-${process.pid}-${randomUUID()}`
+        if (
+          await reclaimObservedLease({
+            lockPath,
+            observed,
+            quarantinePath,
+          })
+        ) {
+          return await attempt()
+        }
       }
       if (now() >= deadline) {
         throw new Error('Timed out acquiring Home Worker configuration lease.', { cause: error })
@@ -114,7 +190,12 @@ export async function acquireHomeWorkerConfigLease(
     }
   }
 
-  return await attempt()
+  try {
+    return await attempt()
+  } catch (error) {
+    await rm(claimPath, { recursive: true, force: true })
+    throw error
+  }
 }
 
 export async function withHomeWorkerConfigLease<T>(

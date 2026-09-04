@@ -115,6 +115,54 @@ describe('Control Surface HTTP listener', () => {
     expect(onDisposed).toHaveBeenCalledOnce()
   })
 
+  it('rebinds a same-port replacement before an old accepted handler drains', async () => {
+    const requestCanFinish = deferred()
+    const requestStarted = deferred()
+    const acceptedRequests = new ControlSurfaceAcceptedRequestOwner()
+    const createListener = (
+      port: number,
+      handleRequest: Parameters<typeof createControlSurfaceHttpListener>[0]['handleRequest'],
+    ) =>
+      createControlSurfaceHttpListener({
+        acceptedRequests,
+        config: {
+          hostname: '127.0.0.1',
+          bindHostname: '127.0.0.1',
+          port,
+          role: 'web',
+          enableWebShell: true,
+          webUiPasswordHash: null,
+        },
+        isRuntimeClosed: () => false,
+        handleRequest,
+        handleUpgrade: (_req, socket) => socket.destroy(),
+        onDisposed: vi.fn(),
+      })
+    const previous = createListener(0, async ({ res }) => {
+      requestStarted.resolve()
+      await requestCanFinish.promise
+      res.end('previous-complete')
+    })
+    const address = await previous.ready
+    const response = fetch(`http://127.0.0.1:${address.port}/`)
+    await requestStarted.promise
+
+    previous.stopAdmission({ preserveStreamingClients: true })
+    const previousDrain = previous.stopAccepting({
+      preserveStreamingClients: true,
+      drainTimeoutMs: 5_000,
+    })
+    const replacement = createListener(address.port, async ({ res }) => res.end('replacement'))
+
+    await expect(replacement.ready).resolves.toMatchObject({ port: address.port })
+    requestCanFinish.resolve()
+    await expect(response.then(async result => await result.text())).resolves.toBe(
+      'previous-complete',
+    )
+    await previousDrain
+    await replacement.dispose()
+  })
+
   it('keeps accepted streams alive until a retired generation is explicitly drained', async () => {
     const streamStarted = deferred()
     const onDisposed = vi.fn()

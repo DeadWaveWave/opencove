@@ -39,6 +39,7 @@ function createFakeRuntime() {
   const listeners: Array<{
     options: ControlSurfaceHttpListenerOptions
     activate: ReturnType<typeof vi.fn>
+    stopAdmission: ReturnType<typeof vi.fn>
     stopAccepting: ReturnType<typeof vi.fn>
     updateWebUiPasswordHash: ReturnType<typeof vi.fn>
     closeStreamingClients: ReturnType<typeof vi.fn>
@@ -62,6 +63,7 @@ function createFakeRuntime() {
     registerHandlers: () => undefined,
     listen: options => {
       const activate = vi.fn()
+      const stopAdmission = vi.fn()
       const stopAccepting = vi.fn(async () => undefined)
       const updateWebUiPasswordHash = vi.fn()
       const closeStreamingClients = vi.fn()
@@ -81,6 +83,7 @@ function createFakeRuntime() {
       const listener: ControlSurfaceHttpListener = {
         ready,
         activate,
+        stopAdmission,
         stopAccepting,
         updateWebUiPasswordHash,
         closeStreamingClients,
@@ -90,6 +93,7 @@ function createFakeRuntime() {
       listeners.push({
         options,
         activate,
+        stopAdmission,
         stopAccepting,
         updateWebUiPasswordHash,
         closeStreamingClients,
@@ -341,7 +345,7 @@ describe('WorkerWebAccessRuntime', () => {
     expect(fake.closeFilters).toContainEqual({ webSessionGeneration: 0 })
   })
 
-  it('revokes old security authority before awaiting a different-port drain', async () => {
+  it('revokes old security authority before awaiting a same-port handler drain', async () => {
     const fake = createFakeRuntime()
     const owner = createWorkerWebAccessRuntime({
       controlSurfaceRuntime: fake.runtime,
@@ -356,22 +360,36 @@ describe('WorkerWebAccessRuntime', () => {
     await owner.ready
     const stopStarted = createDeferred()
     const allowStop = createDeferred()
+    const rotationObserved = createDeferred()
+    let stopFinished = false
     fake.listeners[0].stopAccepting.mockImplementation(async () => {
       stopStarted.resolve()
       await allowStop.promise
+      stopFinished = true
     })
+    const rotate = fake.runtime.rotateWebSessionGeneration
+    fake.runtime.rotateWebSessionGeneration = () => {
+      const result = rotate()
+      rotationObserved.resolve()
+      return result
+    }
 
     const applying = owner.apply({
       next: config({
         enabled: true,
-        port: 16662,
+        port: 16661,
         exposeOnLan: false,
         passwordHash: 'scrypt$two',
       }),
       expectedUpdatedAt: '2026-08-31T00:00:00.000Z',
     })
     await stopStarted.promise
+    await rotationObserved.promise
 
+    expect(stopFinished).toBe(false)
+    expect(fake.listeners[0].stopAdmission).toHaveBeenCalledWith({
+      preserveStreamingClients: true,
+    })
     expect(fake.closeFilters).toContainEqual({ webSessionGeneration: 0 })
     expect(fake.closeFilters).toContainEqual({ listenerRole: 'web', nonLoopbackOnly: true })
     expect(fake.listeners[0].closeStreamingClients).toHaveBeenCalled()
@@ -404,6 +422,9 @@ describe('WorkerWebAccessRuntime', () => {
     ).rejects.toThrow('injected persistence failure')
 
     expect(fake.listeners).toHaveLength(3)
+    expect(fake.listeners[0].stopAdmission).toHaveBeenCalledWith({
+      preserveStreamingClients: true,
+    })
     expect(fake.listeners[0].stopAccepting).toHaveBeenCalledWith({
       preserveStreamingClients: true,
       drainTimeoutMs: 30_000,

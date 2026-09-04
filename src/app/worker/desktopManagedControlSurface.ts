@@ -104,12 +104,12 @@ export function createDesktopManagedControlSurface(options: {
         return await disposePromise
       }
       disposed = true
+      runtime.beginShutdown()
       disposePromise = (async () => {
         await pendingConnectionWrite?.catch(() => undefined)
         await removeConnectionFile(options.server.userDataPath, connectionFileName).catch(
           () => undefined,
         )
-        runtime.beginShutdown()
         await webAccess.dispose()
         await runtime.dispose()
       })()

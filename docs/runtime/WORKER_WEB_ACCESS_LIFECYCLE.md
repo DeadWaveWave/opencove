@@ -97,7 +97,7 @@ normalize + authorize + revision check
 
 Candidate preparation includes host/port bind and route/auth construction, but the candidate rejects public admission until activation. Activation performs no fallible IO. If validation, bind or persistence fails, the candidate is disposed and the previous active listener plus previous durable configuration remain authoritative.
 
-For a different port, the candidate can warm before the old listener stops accepting. For a same-port host change, the owner does **not** rely on concurrent wildcard/loopback binds: a gated candidate can still steal pre-commit traffic on some operating systems. It stops only the old listen handle, attempts the replacement bind, and relistens the old address on failure. Accepted streams and upgraded WebSockets are tracked separately from the listen handle and survive this handover/drain unless the security transition explicitly revokes them. Accepted HTTP work drains to an explicit deadline; a client that never finishes its request body is destroyed at that boundary and cannot block disable, LAN tightening, rollback or Worker disposal forever.
+For a different port, the candidate can warm before the old listener stops accepting. For a same-port host change, the owner does **not** rely on concurrent wildcard/loopback binds: a gated candidate can still steal pre-commit traffic on some operating systems. It synchronously retires only the old listen handle, starts its accepted-handler drain without awaiting it, attempts the replacement bind, and relistens the old address on failure. After successful activation, obsolete auth/LAN authority is revoked before that drain is joined. Accepted streams and upgraded WebSockets are tracked separately from the listen handle and survive this handover unless the security transition explicitly revokes them. Accepted HTTP work drains to an explicit deadline; a client that never finishes its request body is destroyed at that boundary and cannot block disable, LAN tightening or rollback forever, while the runtime-global registry still owns any application handler until final settlement/watchdog.
 
 If both replacement and rollback binds fail, previous durable config, listener generation, Web policy and surviving upgraded clients remain authoritative. Status becomes `degraded`, and one cancellable bounded-backoff restoration loop retries the previous bind. Worker, PTY, Hub, presentation and private listener remain live. New HTTP admission cannot be promised while the operating system refuses every bind; OpenCove reports that physical boundary rather than pretending rollback succeeded or failing closed by destroying the last-known-good authority.
 
@@ -149,7 +149,7 @@ Web listener replacement is not a restart boundary. Listener generation and Web 
 
 Final Worker shutdown still follows the terminal recovery ordering in `docs/architecture/RECOVERY_MODEL.md`. Composition synchronously begins runtime shutdown before awaiting Web-owner cleanup: it freezes new runtime/listener admission, stops every listener, joins the runtime-global accepted-handler registry independently of client socket lifetime, then drains/checkpoints terminal owners before disposing shared resources. The Worker watchdog exceeds the accepted-request drain deadline, and the Desktop launcher escalation exceeds the Worker watchdog. Web listener drain cannot run this sequence independently.
 
-If Main loses an apply response, it queries Worker status/config revision before retrying. An idempotent retry observes the committed generation or safely prepares the desired durable state. It must not infer failure and restart the Worker. Offline Desktop writes and Desktop Worker startup share an owner-exact configuration file lease; Main rechecks runtime ownership inside that lease, while Worker holds it from config read through private-owner publication.
+If Main loses an apply response, it queries Worker status/config revision before retrying. An idempotent retry observes the committed generation or safely prepares the desired durable state. It must not infer failure and restart the Worker. Offline Desktop writes and Desktop Worker startup share an owner-exact configuration lease: a complete owner directory is prepared privately and atomically renamed into authority, malformed legacy claims are reclaimed only after their stale boundary, and release/reclaim quarantine the captured identity before deletion. Main rechecks runtime ownership inside that lease, while Worker holds it from config read through private-owner publication.
 
 ## Diagnostics
 
@@ -185,6 +185,7 @@ See `WEB_UI_TROUBLESHOOTING.md` for operational checks.
 - `tests/unit/app/homeWorkerConfig.spec.ts`
 - `tests/unit/contexts/homeWorkerConfigLease.spec.ts`
 - `tests/unit/app/controlSurfaceHttpListener.spec.ts`
+- `tests/unit/app/desktopManagedControlSurface.shutdown.spec.ts`
 - `tests/unit/app/workerWebAccessRuntime.spec.ts`
 - `tests/e2e/workspace-canvas.worker-web-access-continuity.spec.ts`
 - `tests/e2e/workspace-canvas.desktop-web-terminal-consistency.spec.ts`

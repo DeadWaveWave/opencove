@@ -11,6 +11,7 @@ export type WorkerWebListener = {
   activate: () => void
   updateWebUiPasswordHash: (passwordHash: string | null) => void
   closeStreamingClients: () => void
+  stopAdmission: (options?: { preserveStreamingClients?: boolean }) => void
   stopAccepting: (options?: {
     preserveStreamingClients?: boolean
     drainTimeoutMs?: number
