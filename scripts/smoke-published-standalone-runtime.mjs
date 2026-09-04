@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import {
   assertPublishedAssetChecksum,
   assertPublishedChecksumInventory,
+  resolvePublishedCommandInvocation,
   resolvePublishedStandaloneReleaseTarget,
 } from './lib/published-standalone-smoke.mjs'
 
@@ -116,20 +117,12 @@ async function downloadBuffer(url) {
 }
 
 function resolveInvocation(command, args) {
-  if (process.platform !== 'win32' || !command.toLowerCase().endsWith('.cmd')) {
-    return { command, args }
-  }
-
-  const quote = value => {
-    if (/[\r\n"]/u.test(value)) {
-      throw new Error(`Unsupported Windows command argument: ${value}`)
-    }
-    return `"${value}"`
-  }
-  return {
-    command: process.env['ComSpec'] || 'cmd.exe',
-    args: ['/d', '/s', '/c', `call ${quote(command)} ${args.map(quote).join(' ')}`],
-  }
+  return resolvePublishedCommandInvocation({
+    platform: process.platform,
+    command,
+    args,
+    comspec: process.env['ComSpec'],
+  })
 }
 
 function runCommand(command, args, options = {}) {
@@ -138,6 +131,7 @@ function runCommand(command, args, options = {}) {
     const child = spawn(invocation.command, invocation.args, {
       env: options.env ?? process.env,
       windowsHide: true,
+      windowsVerbatimArguments: invocation.windowsVerbatimArguments,
     })
     let stdout = ''
     let stderr = ''
@@ -365,6 +359,7 @@ try {
   workerProcess = spawn(invocation.command, invocation.args, {
     env: commandEnvironment,
     windowsHide: true,
+    windowsVerbatimArguments: invocation.windowsVerbatimArguments,
   })
   workerProcess.stdout?.on('data', chunk => {
     workerOutput += String(chunk)

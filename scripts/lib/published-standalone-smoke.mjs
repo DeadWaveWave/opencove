@@ -23,6 +23,23 @@ function normalizeReleaseArch(arch) {
   throw new Error(`Unsupported published standalone architecture: ${arch}`)
 }
 
+export function resolvePublishedCommandInvocation({ platform, command, args, comspec }) {
+  if (platform !== 'win32' || !command.toLowerCase().endsWith('.cmd')) {
+    return { command, args, windowsVerbatimArguments: false }
+  }
+  const quote = value => {
+    if (/[\r\n"%!^&|<>]/u.test(value)) {
+      throw new Error(`Unsupported Windows command argument: ${value}`)
+    }
+    return `"${value}"`
+  }
+  return {
+    command: comspec || 'cmd.exe',
+    args: ['/d', '/s', '/c', `"${quote(command)} ${args.map(quote).join(' ')}"`],
+    windowsVerbatimArguments: true,
+  }
+}
+
 export function resolvePublishedStandaloneReleaseTarget({
   tag,
   platform,
