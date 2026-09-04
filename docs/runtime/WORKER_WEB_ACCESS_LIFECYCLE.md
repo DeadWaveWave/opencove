@@ -114,7 +114,7 @@ If both replacement and rollback binds fail, previous durable config, listener g
 
 A Web transport close caused by disable or security tightening is intentional access revocation, not terminal recovery. After valid reauthentication, the browser hydrates the same Worker sessions from presentation snapshot and stream replay.
 
-Old listener generations have a bounded drain deadline. Final drain cleanup closes only transport resources owned by that generation; it cannot kill terminal sessions.
+Old listener generations have a bounded transport drain deadline. Final listener cleanup closes only transport resources owned by that generation; it cannot kill terminal sessions. A handler that outlives that deadline remains owned by the shared Control Surface runtime rather than by the retired socket.
 
 ## Authentication Boundaries
 
@@ -146,7 +146,7 @@ Continuous output must keep sequence order and existing Desktop scrollback/viewp
 
 Web listener replacement is not a restart boundary. Listener generation and Web sessions are runtime-only and are reconstructed from durable Web intent after a real Worker start.
 
-Final Worker shutdown still follows the terminal recovery ordering in `docs/architecture/RECOVERY_MODEL.md`. It first freezes terminal ingress and drains/checkpoints terminal owners, then disposes shared runtime resources. Web listener drain cannot run that sequence independently.
+Final Worker shutdown still follows the terminal recovery ordering in `docs/architecture/RECOVERY_MODEL.md`. It freezes new runtime/listener admission, stops every listener, joins all accepted handler promises independently of client socket lifetime, then drains/checkpoints terminal owners before disposing shared runtime resources. Web listener drain cannot run that sequence independently.
 
 If Main loses an apply response, it queries Worker status/config revision before retrying. An idempotent retry observes the committed generation or safely prepares the desired durable state. It must not infer failure and restart the Worker.
 

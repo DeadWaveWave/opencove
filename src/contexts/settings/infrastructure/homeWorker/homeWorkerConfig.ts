@@ -5,16 +5,18 @@ import {
   createSerialOperationQueue,
   type SerialOperationQueue,
 } from '../../../../shared/runtime/serialOperationQueue'
-import type {
-  HomeWorkerConfigDto,
-  HomeWorkerMode,
-  RemoteWorkerEndpointDto,
-} from '../../../../shared/contracts/dto'
+import type { HomeWorkerConfigDto, HomeWorkerMode } from '../../../../shared/contracts/dto'
 import { isValidWebUiPasswordHash } from './webUiPassword'
-import type {
-  HomeWorkerConfigFile,
-  HomeWorkerConfigModeOptions,
-  HomeWorkerWebUiConfigFile,
+import {
+  isHomeWorkerConfigRecord as isRecord,
+  isHomeWorkerModeSupported as isModeSupported,
+  normalizeHomeWorkerMode,
+  normalizeHomeWorkerOptionalBoolean as normalizeOptionalBoolean,
+  normalizeHomeWorkerOptionalString as normalizeOptionalString,
+  normalizeHomeWorkerRemoteEndpoint as normalizeRemoteEndpoint,
+  type HomeWorkerConfigFile,
+  type HomeWorkerConfigModeOptions,
+  type HomeWorkerWebUiConfigFile,
 } from '../../domain/homeWorkerConfig'
 export type {
   HomeWorkerConfigFile,
@@ -34,35 +36,6 @@ const DEFAULT_WEB_UI_CONFIG = {
   exposeOnLan: false,
   passwordHash: null as string | null,
 } as const
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-export function normalizeOptionalBoolean(value: unknown): boolean | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'boolean') {
-    return null
-  }
-
-  return value
-}
-
-export function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
 
 function normalizeConfigRevision(value: unknown): string | null {
   const normalized = normalizeOptionalString(value)
@@ -118,41 +91,6 @@ function normalizeOptionalPort(value: unknown): number | null {
   return normalized
 }
 
-export function normalizeHomeWorkerMode(value: unknown): HomeWorkerMode | null {
-  if (value === 'standalone' || value === 'local' || value === 'remote') {
-    return value
-  }
-
-  return null
-}
-
-export function normalizeRemoteEndpoint(value: unknown): RemoteWorkerEndpointDto | null {
-  if (value === null) {
-    return null
-  }
-
-  if (!isRecord(value)) {
-    return null
-  }
-
-  const hostname = normalizeOptionalString(value.hostname)
-  if (!hostname) {
-    return null
-  }
-
-  const port = value.port
-  if (typeof port !== 'number' || !Number.isFinite(port) || port <= 0 || port > 65_535) {
-    return null
-  }
-
-  const token = normalizeOptionalString(value.token)
-  if (!token) {
-    return null
-  }
-
-  return { hostname, port, token }
-}
-
 function normalizeWebUiConfig(value: unknown): HomeWorkerWebUiConfigFile {
   if (!isRecord(value)) {
     return { ...DEFAULT_WEB_UI_CONFIG }
@@ -179,27 +117,8 @@ function isStandaloneModeAllowed(options?: HomeWorkerConfigModeOptions): boolean
   return options?.allowStandaloneMode ?? true
 }
 
-function isRemoteModeAllowed(options?: HomeWorkerConfigModeOptions): boolean {
-  return options?.allowRemoteMode ?? true
-}
-
 function resolveDefaultHomeWorkerMode(options?: HomeWorkerConfigModeOptions): HomeWorkerMode {
   return isStandaloneModeAllowed(options) ? 'standalone' : 'local'
-}
-
-export function isModeSupported(
-  mode: HomeWorkerMode,
-  options?: HomeWorkerConfigModeOptions,
-): boolean {
-  if (mode === 'standalone') {
-    return isStandaloneModeAllowed(options)
-  }
-
-  if (mode === 'remote') {
-    return isRemoteModeAllowed(options)
-  }
-
-  return true
 }
 
 export function toDto(config: HomeWorkerConfigFile): HomeWorkerConfigDto {

@@ -329,12 +329,12 @@ OpenCove exposes terminal display alignment through Settings:
 - local compensation can adjust xterm font size, line height and letter spacing
 - an automatic client calibrator waits for settings hydration, a compatible reference, loaded fonts and
   stable layout; it runs single-flight per profile/reference/environment signature
-- the existing v1 calibration record remains unchanged; renderer environment signature and exact-signature reset suppression use client-local sidecar keys
-- DPR, visual viewport scale, renderer kind, reference or font changes invalidate signed local results; a legacy/manual v1 record without sidecar metadata remains an explicit local override until replaced or reset
-- automatic apply requires one mounted renderer kind plus an `exact`/`close` candidate whose measured rows/columns equal the reference and whose cell metrics remain inside tolerance; mixed DOM/WebGL handles or ambiguous results keep current metrics and manual fallback
+- the settings application calibration owner starts with no applicable projection and synchronously revokes it before environment revalidation; raw localStorage records never style xterm directly
+- new records store environment proof atomically with the calibration; legacy sidecar proof must match a freshly measured stable environment and be promoted atomically before application, while metadata-less or measured-grid-less records remain diagnostic-only and unapplied
+- renderer environment signature and exact-signature reset suppression include profile/reference, DPR, visual viewport scale, renderer kind and font fingerprint; changes invalidate signed local results
+- automatic and manual apply require one mounted renderer kind matching reference provenance plus an `exact`/`close` candidate whose measured rows/columns, effective DPR and cell metrics equal the reference within tolerance; mixed DOM/WebGL handles or ambiguous results remain unapplied
 - manual reset suppresses immediate recreation for the same signature
-- calibration applies xterm options in place; it cannot remount xterm, clear scrollback, move viewport or
-  become a PTY geometry writer
+- calibration applies a verified value projection through app composition and updates xterm options in place; it cannot remount xterm, clear scrollback, move viewport or become a PTY geometry writer
 - if those metrics change the stable grid, the client must use an `appearance_commit` and apply its
   canonical result; it must not resize only local xterm or update PTY geometry as an uncorrelated side effect
 

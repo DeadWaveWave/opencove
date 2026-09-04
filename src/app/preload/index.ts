@@ -105,6 +105,7 @@ import type {
   SyncEventPayload,
   WriteFileTextInput,
   HomeWorkerConfigDto,
+  HomeWorkerConfigurationSnapshotDto,
   SetHomeWorkerConfigInput,
   SetHomeWorkerWebUiSettingsInput,
   SetHomeWorkerWebUiSecurityInput,
@@ -462,6 +463,8 @@ const opencoveApi = {
   },
   workerClient: {
     getConfig: (): Promise<HomeWorkerConfigDto> => invokeIpc(IPC_CHANNELS.workerClientGetConfig),
+    getConfigurationSnapshot: (): Promise<HomeWorkerConfigurationSnapshotDto> =>
+      invokeIpc(IPC_CHANNELS.workerClientGetConfigurationSnapshot),
     setConfig: (payload: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> =>
       invokeIpc(IPC_CHANNELS.workerClientSetConfig, payload),
     setWebUiSettings: (payload: SetHomeWorkerWebUiSettingsInput): Promise<HomeWorkerConfigDto> =>

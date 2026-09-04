@@ -244,6 +244,7 @@ export const enSettingsPanel = {
         disabled: 'Disabled',
         stopped: 'Stopped',
         running: 'Ready',
+        degraded: 'Restoring listener',
       },
       actionsLabel: 'Actions',
       refresh: 'Refresh',
@@ -263,6 +264,8 @@ export const enSettingsPanel = {
         invalidPort: 'Port must be empty (random) or an integer between 1 and 65535.',
         passwordRequired: 'A password is required for LAN Web UI access.',
         applyFailed: 'Web access could not be updated. The previous listener remains active.',
+        degraded:
+          'New Web admissions are unavailable while the previous listener is being restored. Existing upgraded sessions remain connected.',
         invalidConfig: 'The Web access configuration is invalid.',
       },
     },

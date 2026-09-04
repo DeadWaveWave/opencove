@@ -53,10 +53,7 @@ export const terminalDisplayCalibrationOwner = createTerminalDisplayCalibrationO
       rendererKind: input.rendererKind,
     }),
   recordAttempt: (outcome, environmentSignature) => {
-    recordTerminalDisplayCalibrationAttempt(
-      outcome as Parameters<typeof recordTerminalDisplayCalibrationAttempt>[0],
-      environmentSignature ?? null,
-    )
+    recordTerminalDisplayCalibrationAttempt(outcome, environmentSignature ?? null)
   },
 })
 

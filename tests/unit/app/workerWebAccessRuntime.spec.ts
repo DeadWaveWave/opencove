@@ -34,6 +34,7 @@ function createFakeRuntime() {
     stopAccepting: ReturnType<typeof vi.fn>
     updateWebUiPasswordHash: ReturnType<typeof vi.fn>
     closeStreamingClients: ReturnType<typeof vi.fn>
+    drainAcceptedRequests: ReturnType<typeof vi.fn>
   }> = []
   const policies: Array<{ enabled: boolean; passwordRequired: boolean }> = []
   const closeFilters: unknown[] = []
@@ -56,6 +57,7 @@ function createFakeRuntime() {
       const stopAccepting = vi.fn(async () => undefined)
       const updateWebUiPasswordHash = vi.fn()
       const closeStreamingClients = vi.fn()
+      const drainAcceptedRequests = vi.fn(async () => undefined)
       const address = {
         hostname: options.hostname,
         bindHostname: options.bindHostname,
@@ -75,6 +77,7 @@ function createFakeRuntime() {
         stopAccepting,
         updateWebUiPasswordHash,
         closeStreamingClients,
+        drainAcceptedRequests,
         isAccepting: () => !options.startGated || activate.mock.calls.length > 0,
         dispose: stopAccepting,
       }
@@ -84,6 +87,7 @@ function createFakeRuntime() {
         stopAccepting,
         updateWebUiPasswordHash,
         closeStreamingClients,
+        drainAcceptedRequests,
       })
       return listener
     },

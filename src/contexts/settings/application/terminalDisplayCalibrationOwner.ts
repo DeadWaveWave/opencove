@@ -15,6 +15,17 @@ import {
   type TerminalDisplayCalibrationCandidateResult,
 } from './terminalDisplayAutoCalibration'
 
+export type TerminalDisplayCalibrationAttemptOutcome =
+  | 'disabled'
+  | 'reference-unavailable'
+  | 'environment-unstable'
+  | 'already-calibrated'
+  | 'suppressed'
+  | 'candidate-unavailable'
+  | 'candidate-rejected'
+  | 'storage-unavailable'
+  | 'applied'
+
 export type TerminalDisplayCalibrationMetadata = {
   environmentSignature: string
   source: 'automatic' | 'manual'
@@ -69,7 +80,10 @@ export interface TerminalDisplayCalibrationOwnerPorts {
     reference: TerminalDisplayReference
     rendererKind: TerminalDisplayRendererKind
   }) => Promise<TerminalDisplayCalibrationCandidateResult | null>
-  recordAttempt?: (outcome: string, environmentSignature?: string) => void
+  recordAttempt?: (
+    outcome: TerminalDisplayCalibrationAttemptOutcome,
+    environmentSignature?: string,
+  ) => void
 }
 
 export type ManualTerminalDisplayReferenceResult =

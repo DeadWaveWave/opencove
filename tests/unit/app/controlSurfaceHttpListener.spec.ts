@@ -146,6 +146,45 @@ describe('Control Surface HTTP listener', () => {
     expect(onDisposed).toHaveBeenCalledOnce()
   })
 
+  it('retains accepted handler ownership after a bounded transport drain', async () => {
+    const requestCanFinish = deferred()
+    const requestStarted = deferred()
+    const listener = createControlSurfaceHttpListener({
+      config: {
+        hostname: '127.0.0.1',
+        bindHostname: '127.0.0.1',
+        port: 0,
+        role: 'private',
+        enableWebShell: false,
+        webUiPasswordHash: null,
+      },
+      isRuntimeClosed: () => false,
+      handleRequest: async ({ res }) => {
+        requestStarted.resolve()
+        await requestCanFinish.promise
+        res.end('done')
+      },
+      handleUpgrade: (_req, socket) => socket.destroy(),
+      onDisposed: vi.fn(),
+    })
+    const address = await listener.ready
+    const response = fetch(`http://127.0.0.1:${address.port}/`).catch(error => error)
+    await requestStarted.promise
+    await listener.stopAccepting({ drainTimeoutMs: 0 })
+
+    let drained = false
+    const draining = listener.drainAcceptedRequests().then(() => {
+      drained = true
+    })
+    await Promise.resolve()
+    expect(drained).toBe(false)
+
+    requestCanFinish.resolve()
+    await draining
+    await response
+    expect(drained).toBe(true)
+  })
+
   it('stops admission but drains an already accepted request before disposal settles', async () => {
     const requestCanFinish = deferred()
     const requestStarted = deferred()

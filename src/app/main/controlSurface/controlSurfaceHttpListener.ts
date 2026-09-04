@@ -132,6 +132,13 @@ export function createControlSurfaceHttpListener(options: {
     }
   }
 
+  const drainAcceptedRequests = async (): Promise<void> => {
+    if (!stopped) {
+      throw new Error('Control surface listener must stop admission before handler drain.')
+    }
+    await Promise.allSettled([...inFlightRequests.keys()])
+  }
+
   server.on('error', error => {
     const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
     process.stderr.write(`[opencove] control surface listener error: ${detail}\n`)
@@ -155,6 +162,7 @@ export function createControlSurfaceHttpListener(options: {
       webUiAuthRevision += 1
     },
     closeStreamingClients,
+    drainAcceptedRequests,
     isAccepting: () => accepting && !stopped,
     stopAccepting: async stopOptions => {
       if (stopPromise) {

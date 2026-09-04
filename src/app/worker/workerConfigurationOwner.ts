@@ -5,11 +5,7 @@ import {
   toDto,
   type HomeWorkerConfigModeOptions,
 } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
-import {
-  buildHomeWorkerModeConfig,
-  buildHomeWorkerWebUiSecurityConfig,
-  buildHomeWorkerWebUiSettingsConfig,
-} from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigMutations'
+import { hashWebUiPassword } from '../../contexts/settings/infrastructure/homeWorker/webUiPassword'
 import type { WorkerWebAccessRuntime } from './workerWebAccessRuntime'
 
 export type { HomeWorkerConfigurationOwner as WorkerConfigurationOwner } from '../../contexts/settings/application/homeWorkerConfigurationOwner'
@@ -31,9 +27,7 @@ export function createWorkerConfigurationOwner(options: {
         mutate: input.mutate,
       }),
     toDto,
-    buildMode: (previous, input) =>
-      buildHomeWorkerModeConfig(previous, input, options.configOptions),
-    buildWebUiSettings: buildHomeWorkerWebUiSettingsConfig,
-    buildWebUiSecurity: buildHomeWorkerWebUiSecurityConfig,
+    configModeOptions: options.configOptions,
+    hashWebUiPassword,
   })
 }

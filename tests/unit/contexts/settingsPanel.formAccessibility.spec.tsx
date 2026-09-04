@@ -22,7 +22,18 @@ function expectNamedTestId(testId: string, name: string): void {
   expect(screen.getByTestId(testId)).toHaveAccessibleName(name)
 }
 
-function installWorkerApi(mode: 'local' | 'remote'): void {
+function installWorkerApi(
+  mode: 'local' | 'remote',
+  webAccess: Record<string, unknown> = {
+    state: 'active',
+    generation: 1,
+    hostname: '127.0.0.1',
+    bindHostname: '127.0.0.1',
+    port: 4318,
+    passwordRequired: false,
+    drainingGenerations: [],
+  },
+): void {
   const config = {
     version: 1,
     mode,
@@ -45,6 +56,7 @@ function installWorkerApi(mode: 'local' | 'remote'): void {
       meta: { isPackaged: false },
       workerClient: {
         getConfig: vi.fn().mockResolvedValue(config),
+        getConfigurationSnapshot: vi.fn().mockResolvedValue({ config, webAccess }),
         setConfig: vi.fn().mockResolvedValue(config),
         setWebUiSettings: vi.fn().mockResolvedValue(config),
         setWebUiSecurity: vi.fn().mockResolvedValue(config),
@@ -314,6 +326,64 @@ describe('Settings form accessible names', () => {
     fireEvent.click(await screen.findByTestId('settings-experimental-worker-web-ui-enabled'))
 
     expect(await screen.findByText('无法更新 Web 访问设置，原有监听器仍保持可用。')).toBeVisible()
+  })
+
+  it('shows degraded restoration and disables Open after a double-bind failure', async () => {
+    installWorkerApi('local')
+    const api = window.opencoveApi
+    vi.mocked(api.worker.getStatus).mockResolvedValue({
+      status: 'running',
+      connection: {
+        version: 1,
+        pid: 4242,
+        hostname: '127.0.0.1',
+        port: 4411,
+        token: 'worker-token',
+        createdAt: '2026-08-31T00:00:00.000Z',
+        appVersion: 'test',
+        startedBy: 'desktop',
+      },
+    })
+    const config = await api.workerClient.getConfig()
+    const activeSnapshot = {
+      config,
+      webAccess: {
+        state: 'active' as const,
+        generation: 3,
+        hostname: '127.0.0.1',
+        bindHostname: '127.0.0.1',
+        port: 4318,
+        passwordRequired: false,
+        drainingGenerations: [],
+      },
+    }
+    const degradedSnapshot = {
+      config,
+      webAccess: {
+        ...activeSnapshot.webAccess,
+        state: 'degraded' as const,
+        error: 'Listener restoration pending.',
+      },
+    }
+    vi.mocked(api.workerClient.setWebUiSettings).mockRejectedValue(
+      createAppError('worker.unavailable', {
+        details: { configurationSnapshot: degradedSnapshot },
+      }),
+    )
+    vi.mocked(api.workerClient.getConfigurationSnapshot)
+      .mockResolvedValueOnce(activeSnapshot)
+      .mockRejectedValue(new Error('Listener no longer accepts HTTP requests.'))
+    render(<ExperimentalWorkerWebUiSection />)
+
+    fireEvent.click(await screen.findByTestId('settings-experimental-worker-web-ui-enabled'))
+
+    expect(
+      await screen.findByText(/New Web admissions are unavailable while the previous listener/i),
+    ).toBeVisible()
+    expect(screen.getByTestId('settings-experimental-worker-web-ui-status')).toHaveTextContent(
+      'Restoring listener',
+    )
+    expect(screen.getByTestId('settings-experimental-worker-web-ui-open')).toBeDisabled()
   })
 
   it('names project worktree and environment variable inputs', () => {

@@ -208,6 +208,7 @@ export function createControlSurfaceHttpRuntime(
           [...listeners].map(async listener => {
             await listener.stopAccepting()
             listener.closeStreamingClients()
+            await listener.drainAcceptedRequests()
           }),
         )
 

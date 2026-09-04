@@ -1,6 +1,7 @@
 import { createAppError } from '../../../shared/errors/appError'
 import type {
   HomeWorkerConfigDto,
+  HomeWorkerConfigurationSnapshotDto,
   SetHomeWorkerConfigInput,
   SetHomeWorkerWebUiSecurityInput,
   SetHomeWorkerWebUiSettingsInput,
@@ -61,16 +62,24 @@ export function createHomeWorkerConfigurationRouter(options: {
     ).config
   }
 
+  const readStoredConfig = async (): Promise<HomeWorkerConfigDto> =>
+    options.ensureMissingConfig
+      ? await ensureHomeWorkerConfig(options.userDataPath, options.configOptions)
+      : await readHomeWorkerConfig(options.userDataPath, options.configOptions)
+  const readSnapshot = async (): Promise<HomeWorkerConfigurationSnapshotDto> => {
+    const owner = await resolveOwnedLocalWorkerConfigurationState()
+    if (owner.state === 'ready') {
+      return await readLiveConfig(owner.connection)
+    }
+    return {
+      config: await readStoredConfig(),
+      webAccess: { state: 'disabled', generation: 0, drainingGenerations: [] },
+    }
+  }
+
   return {
-    read: async (): Promise<HomeWorkerConfigDto> => {
-      const owner = await resolveOwnedLocalWorkerConfigurationState()
-      if (owner.state === 'ready') {
-        return (await readLiveConfig(owner.connection)).config
-      }
-      return options.ensureMissingConfig
-        ? await ensureHomeWorkerConfig(options.userDataPath, options.configOptions)
-        : await readHomeWorkerConfig(options.userDataPath, options.configOptions)
-    },
+    read: async (): Promise<HomeWorkerConfigDto> => (await readSnapshot()).config,
+    readSnapshot,
     setConfig: async (value: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> => {
       const connection = await resolveMutationConnection()
       return connection

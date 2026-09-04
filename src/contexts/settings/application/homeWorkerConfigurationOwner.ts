@@ -1,12 +1,20 @@
 import type {
+  HomeWorkerConfigurationFailureDetailsDto,
   HomeWorkerConfigurationSnapshotDto,
   SetHomeWorkerConfigInput,
   SetHomeWorkerWebUiSecurityInput,
   SetHomeWorkerWebUiSettingsInput,
   WorkerWebAccessRuntimeStatusDto,
 } from '@shared/contracts/dto'
-import type { HomeWorkerConfigFile } from '../domain/homeWorkerConfig'
+import type { HomeWorkerConfigFile, HomeWorkerConfigModeOptions } from '../domain/homeWorkerConfig'
+import {
+  buildHomeWorkerModeConfig,
+  buildHomeWorkerWebUiSecurityConfig,
+  buildHomeWorkerWebUiSettingsConfig,
+  type HashHomeWorkerWebUiPassword,
+} from './homeWorkerConfigurationPolicy'
 import { createSerialOperationQueue } from '@shared/runtime/serialOperationQueue'
+import { createAppError, toAppErrorDescriptor } from '@shared/errors/appError'
 import type {
   WorkerWebAccessRuntime,
   WorkerWebAccessRuntimeStatus,
@@ -55,18 +63,8 @@ export function createHomeWorkerConfigurationOwner(options: {
     mutate: (previous: HomeWorkerConfigFile) => HomeWorkerConfigFile | Promise<HomeWorkerConfigFile>
   }) => Promise<HomeWorkerConfigFile>
   toDto: (config: HomeWorkerConfigFile) => HomeWorkerConfigurationSnapshotDto['config']
-  buildMode: (
-    previous: HomeWorkerConfigFile,
-    input: SetHomeWorkerConfigInput,
-  ) => HomeWorkerConfigFile
-  buildWebUiSettings: (
-    previous: HomeWorkerConfigFile,
-    input: SetHomeWorkerWebUiSettingsInput,
-  ) => HomeWorkerConfigFile
-  buildWebUiSecurity: (
-    previous: HomeWorkerConfigFile,
-    input: SetHomeWorkerWebUiSecurityInput,
-  ) => Promise<HomeWorkerConfigFile>
+  configModeOptions?: HomeWorkerConfigModeOptions
+  hashWebUiPassword: HashHomeWorkerWebUiPassword
 }): HomeWorkerConfigurationOwner {
   const operations = createSerialOperationQueue()
 
@@ -74,6 +72,17 @@ export function createHomeWorkerConfigurationOwner(options: {
     config: options.toDto(config),
     webAccess: toWebAccessStatusDto(options.webAccess.status()),
   })
+  const mutationFailure = async (
+    error: unknown,
+    fallbackConfig: HomeWorkerConfigFile,
+  ): Promise<Error> => {
+    const currentConfig = await options.readConfig().catch(() => fallbackConfig)
+    const descriptor = toAppErrorDescriptor(error, 'worker.unavailable')
+    const details: HomeWorkerConfigurationFailureDetailsDto = {
+      configurationSnapshot: snapshot(currentConfig),
+    }
+    return createAppError({ ...descriptor, details })
+  }
 
   return {
     getSnapshot: () => operations.run(async () => snapshot(await options.readConfig())),
@@ -81,29 +90,42 @@ export function createHomeWorkerConfigurationOwner(options: {
       operations.run(async () => {
         const next = await options.mutateConfig({
           expectedUpdatedAt: input.expectedUpdatedAt,
-          mutate: previous => options.buildMode(previous, input.value),
+          mutate: previous =>
+            buildHomeWorkerModeConfig(previous, input.value, options.configModeOptions),
         })
         return snapshot(next)
       }),
     setWebUiSettings: input =>
       operations.run(async () => {
         const previous = await options.readConfig()
-        const next = options.buildWebUiSettings(previous, input.value)
-        const applied = await options.webAccess.apply({
-          next,
-          expectedUpdatedAt: input.expectedUpdatedAt,
-        })
-        return snapshot(applied.config)
+        try {
+          const next = buildHomeWorkerWebUiSettingsConfig(previous, input.value)
+          const applied = await options.webAccess.apply({
+            next,
+            expectedUpdatedAt: input.expectedUpdatedAt,
+          })
+          return snapshot(applied.config)
+        } catch (error) {
+          throw await mutationFailure(error, previous)
+        }
       }),
     setWebUiSecurity: input =>
       operations.run(async () => {
         const previous = await options.readConfig()
-        const next = await options.buildWebUiSecurity(previous, input.value)
-        const applied = await options.webAccess.apply({
-          next,
-          expectedUpdatedAt: input.expectedUpdatedAt,
-        })
-        return snapshot(applied.config)
+        try {
+          const next = await buildHomeWorkerWebUiSecurityConfig(
+            previous,
+            input.value,
+            options.hashWebUiPassword,
+          )
+          const applied = await options.webAccess.apply({
+            next,
+            expectedUpdatedAt: input.expectedUpdatedAt,
+          })
+          return snapshot(applied.config)
+        } catch (error) {
+          throw await mutationFailure(error, previous)
+        }
       }),
   }
 }

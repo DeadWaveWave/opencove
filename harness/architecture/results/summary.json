@@ -1,13 +1,13 @@
 {
-  "filesAnalyzed": 1321,
+  "filesAnalyzed": 1333,
   "summary": {
     "errors": 0,
-    "warnings": 487,
-    "violations": 487
+    "warnings": 485,
+    "violations": 485
   },
   "byRule": {
-    "architecture.windowOpenCoveApiBoundary": 242,
-    "architecture.layerDependency": 245
+    "architecture.windowOpenCoveApiBoundary": 241,
+    "architecture.layerDependency": 244
   },
   "topAreas": [
     {
@@ -16,7 +16,7 @@
     },
     {
       "area": "src/contexts/settings/presentation",
-      "count": 91
+      "count": 90
     },
     {
       "area": "src/app/renderer/shell",
@@ -43,11 +43,11 @@
       "count": 3
     },
     {
-      "area": "src/app/worker",
+      "area": "src/contexts/browser/presentation",
       "count": 2
     },
     {
-      "area": "src/contexts/browser/presentation",
+      "area": "src/contexts/filesystem/presentation",
       "count": 2
     }
   ]

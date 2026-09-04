@@ -25,6 +25,7 @@ export interface ControlSurfaceHttpListener extends ControlSurfaceServerDisposab
   activate: () => void
   updateWebUiPasswordHash: (passwordHash: string | null) => void
   closeStreamingClients: () => void
+  drainAcceptedRequests: () => Promise<void>
   stopAccepting: (options?: {
     preserveStreamingClients?: boolean
     drainTimeoutMs?: number

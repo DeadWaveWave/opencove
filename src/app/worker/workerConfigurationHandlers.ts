@@ -5,9 +5,9 @@ import type {
 } from '../../shared/contracts/dto'
 import {
   normalizeHomeWorkerConfigInput,
-  normalizeWebUiSecurityInput,
-  normalizeWebUiSettingsInput,
-} from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigMutations'
+  normalizeHomeWorkerWebUiSecurityInput,
+  normalizeHomeWorkerWebUiSettingsInput,
+} from '../../contexts/settings/application/homeWorkerConfigurationPolicy'
 import type { ControlSurface } from '../main/controlSurface/controlSurface'
 import type { WorkerConfigurationOwner } from './workerConfigurationOwner'
 
@@ -65,7 +65,7 @@ export function registerWorkerConfigurationHandlers(
     kind: 'command',
     validate: payload =>
       normalizeMutationPayload<SetHomeWorkerWebUiSettingsInput>(payload, value =>
-        normalizeWebUiSettingsInput(value),
+        normalizeHomeWorkerWebUiSettingsInput(value),
       ),
     handle: async (_ctx, payload) => await owner.setWebUiSettings(payload),
     defaultErrorCode: 'worker.unavailable',
@@ -74,7 +74,7 @@ export function registerWorkerConfigurationHandlers(
     kind: 'command',
     validate: payload =>
       normalizeMutationPayload<SetHomeWorkerWebUiSecurityInput>(payload, value =>
-        normalizeWebUiSecurityInput(value as SetHomeWorkerWebUiSecurityInput),
+        normalizeHomeWorkerWebUiSecurityInput(value),
       ),
     handle: async (_ctx, payload) => await owner.setWebUiSecurity(payload),
     defaultErrorCode: 'worker.unavailable',

@@ -72,3 +72,7 @@ export interface HomeWorkerConfigurationSnapshotDto {
   config: HomeWorkerConfigDto
   webAccess: WorkerWebAccessRuntimeStatusDto
 }
+
+export interface HomeWorkerConfigurationFailureDetailsDto {
+  configurationSnapshot: HomeWorkerConfigurationSnapshotDto
+}

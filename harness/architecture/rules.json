@@ -84,8 +84,13 @@
           "toPatterns": [
             "src/contexts/settings/application/homeWorkerConfigurationOwner.ts",
             "src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig.ts",
-            "src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigMutations.ts"
+            "src/contexts/settings/infrastructure/homeWorker/webUiPassword.ts"
           ]
+        },
+        {
+          "fromPatterns": ["src/app/worker/workerConfigurationHandlers.ts"],
+          "toLayers": ["application"],
+          "toPatterns": ["src/contexts/settings/application/homeWorkerConfigurationPolicy.ts"]
         },
         {
           "fromPatterns": ["src/app/worker/desktopManagedControlSurface.ts"],

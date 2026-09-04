@@ -100,6 +100,26 @@ describe('Home Worker configuration router', () => {
     expect(mocks.setLocal).toHaveBeenCalledOnce()
   })
 
+  it('preserves an explicit degraded Web listener status in the read snapshot', async () => {
+    mocks.resolveOwner.mockResolvedValue({ state: 'ready', connection })
+    const degraded = {
+      state: 'degraded' as const,
+      generation: 4,
+      hostname: '127.0.0.1',
+      bindHostname: '127.0.0.1',
+      port: 16662,
+      passwordRequired: false,
+      error: 'Listener restoration pending.',
+      drainingGenerations: [],
+    }
+    mocks.invoke.mockResolvedValueOnce({ config, webAccess: degraded })
+
+    await expect(createRouter().readSnapshot()).resolves.toEqual({
+      config,
+      webAccess: degraded,
+    })
+  })
+
   it('routes mutations through a ready owned Worker', async () => {
     mocks.resolveOwner.mockResolvedValue({ state: 'ready', connection })
     mocks.invoke

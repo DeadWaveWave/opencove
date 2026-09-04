@@ -1,13 +1,4 @@
-export type TerminalDisplayCalibrationAttemptOutcome =
-  | 'disabled'
-  | 'reference-unavailable'
-  | 'environment-unstable'
-  | 'already-calibrated'
-  | 'suppressed'
-  | 'candidate-unavailable'
-  | 'candidate-rejected'
-  | 'storage-unavailable'
-  | 'applied'
+import type { TerminalDisplayCalibrationAttemptOutcome } from '../../application/terminalDisplayCalibrationOwner'
 
 export interface TerminalDisplayCalibrationAttemptDiagnostic {
   outcome: TerminalDisplayCalibrationAttemptOutcome

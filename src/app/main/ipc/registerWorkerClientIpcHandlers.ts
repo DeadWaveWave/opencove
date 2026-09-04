@@ -22,6 +22,9 @@ export function registerWorkerClientIpcHandlers(): IpcRegistrationDisposable {
   registerHandledIpc(IPC_CHANNELS.workerClientGetConfig, router.read, {
     defaultErrorCode: 'common.unexpected',
   })
+  registerHandledIpc(IPC_CHANNELS.workerClientGetConfigurationSnapshot, router.readSnapshot, {
+    defaultErrorCode: 'common.unexpected',
+  })
   registerHandledIpc(
     IPC_CHANNELS.workerClientSetConfig,
     async (_event, payload: SetHomeWorkerConfigInput) => await router.setConfig(payload),
@@ -54,6 +57,7 @@ export function registerWorkerClientIpcHandlers(): IpcRegistrationDisposable {
   return {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.workerClientGetConfig)
+      ipcMain.removeHandler(IPC_CHANNELS.workerClientGetConfigurationSnapshot)
       ipcMain.removeHandler(IPC_CHANNELS.workerClientSetConfig)
       ipcMain.removeHandler(IPC_CHANNELS.workerClientSetWebUiSettings)
       ipcMain.removeHandler(IPC_CHANNELS.workerClientSetWebUiSecurity)

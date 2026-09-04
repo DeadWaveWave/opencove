@@ -130,6 +130,7 @@ import type {
   SetBrowserHomepageInput,
   UpsertBrowserBookmarkInput,
   HomeWorkerConfigDto,
+  HomeWorkerConfigurationSnapshotDto,
   SetHomeWorkerConfigInput,
   SetHomeWorkerWebUiSettingsInput,
   SetHomeWorkerWebUiSecurityInput,
@@ -345,6 +346,7 @@ export interface OpenCoveApi {
   }
   workerClient: {
     getConfig: () => Promise<HomeWorkerConfigDto>
+    getConfigurationSnapshot: () => Promise<HomeWorkerConfigurationSnapshotDto>
     setConfig: (payload: SetHomeWorkerConfigInput) => Promise<HomeWorkerConfigDto>
     setWebUiSettings: (payload: SetHomeWorkerWebUiSettingsInput) => Promise<HomeWorkerConfigDto>
     setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput) => Promise<HomeWorkerConfigDto>
