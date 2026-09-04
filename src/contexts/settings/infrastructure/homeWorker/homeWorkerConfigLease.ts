@@ -63,9 +63,19 @@ async function observeLease(lockPath: string): Promise<LeaseObservation | null> 
   try {
     const metadata = await stat(lockPath)
     const ownerPath = resolve(lockPath, HOME_WORKER_CONFIG_LEASE_OWNER_FILE)
-    const raw = metadata.isDirectory() ? await readFile(ownerPath, 'utf8').catch(() => null) : null
+    const raw = metadata.isDirectory()
+      ? await readFile(ownerPath, 'utf8').catch(() => null)
+      : metadata.isFile()
+        ? await readFile(lockPath, 'utf8').catch(() => null)
+        : null
     return {
-      identity: [metadata.dev, metadata.ino, metadata.mtimeMs, raw ?? 'malformed'].join(':'),
+      identity: [
+        metadata.dev,
+        metadata.ino,
+        metadata.mtimeMs,
+        metadata.isDirectory() ? 'directory' : 'legacy-file',
+        raw ?? 'malformed',
+      ].join(':'),
       mtimeMs: metadata.mtimeMs,
       record: parseLeaseRecord(raw),
     }

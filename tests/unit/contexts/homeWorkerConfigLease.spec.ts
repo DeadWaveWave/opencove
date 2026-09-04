@@ -81,6 +81,30 @@ describe('Home Worker configuration lease', () => {
     await second.release()
   })
 
+  it('does not steal a live legacy JSON-file lease during mixed-version overlap', async () => {
+    const userDataPath = await createUserDataPath()
+    const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
+    const legacy = `${JSON.stringify({
+      pid: process.pid,
+      token: 'legacy-live-owner',
+      createdAt: new Date().toISOString(),
+    })}\n`
+    await writeFile(lockPath, legacy)
+
+    await expect(
+      acquireHomeWorkerConfigLease(userDataPath, {
+        timeoutMs: 0,
+        malformedStaleMs: 0,
+        dependencies: {
+          token: () => 'new-owner',
+          isProcessAlive: () => true,
+          wait: async () => undefined,
+        },
+      }),
+    ).rejects.toThrow('Timed out acquiring')
+    expect(await readFile(lockPath, 'utf8')).toBe(legacy)
+  })
+
   it('reclaims only a lease whose recorded process is no longer alive', async () => {
     const userDataPath = await createUserDataPath()
     const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
