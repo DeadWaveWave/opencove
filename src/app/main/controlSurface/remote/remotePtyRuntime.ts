@@ -346,7 +346,6 @@ export function createRemotePtyRuntime(options: {
 
   const noteSessionRolePreference = (sessionId: string, role: 'viewer' | 'controller'): void => {
     sessionCoordinator.noteSessionRolePreference(sessionId, role)
-    void ensureSessionAttached(sessionId)
   }
 
   const spawnTerminalSession: RemotePtyRuntime['spawnTerminalSession'] = async input =>

@@ -2,11 +2,34 @@ import { EventEmitter } from 'node:events'
 import type { Server, ServerResponse } from 'node:http'
 import { describe, expect, it, vi } from 'vitest'
 import {
-  closeHttpServerAfterActiveRequests,
+  closeHttpServerConnections,
+  HttpAcceptedRequestDrainOwner,
   registerHttpResponseShutdownDrain,
 } from '../../../src/app/main/controlSurface/http/httpServerDrain'
 
 describe('HTTP server shutdown drain', () => {
+  it('awaits an accepted handler after its client connection aborts', async () => {
+    let completeOperation!: () => void
+    const operation = new Promise<void>(resolve => {
+      completeOperation = resolve
+    })
+    const owner = new HttpAcceptedRequestDrainOwner()
+    const response = new EventEmitter() as ServerResponse
+
+    const handling = owner.accept(operation)
+    let drained = false
+    const drain = owner.drainAccepted().then(() => {
+      drained = true
+    })
+    response.emit('close')
+    await Promise.resolve()
+    expect(drained).toBe(false)
+
+    completeOperation()
+    await Promise.all([handling, drain])
+    expect(drained).toBe(true)
+  })
+
   it('closes a connection when its accepted response becomes idle during shutdown', () => {
     const response = new EventEmitter() as ServerResponse
     const closeIdleConnections = vi.fn()
@@ -34,7 +57,7 @@ describe('HTTP server shutdown drain', () => {
     } as unknown as Server
     let settled = false
 
-    const closing = closeHttpServerAfterActiveRequests(server).then(() => {
+    const closing = closeHttpServerConnections(server).then(() => {
       settled = true
     })
 

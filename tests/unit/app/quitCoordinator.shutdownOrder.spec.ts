@@ -25,6 +25,11 @@ describe('quit coordinator local Worker ownership', () => {
   it('disconnects runtime clients before stopping the owned Worker', async () => {
     const order: string[] = []
     const preventDefault = vi.fn()
+    let observeQuit!: () => void
+    const quitObserved = new Promise<void>(resolve => {
+      observeQuit = resolve
+    })
+    electronState.quit.mockImplementationOnce(observeQuit)
     registerQuitCoordinator({
       hasOwnedLocalWorkerProcess: () => true,
       disconnectRuntimeClients: () => {
@@ -36,11 +41,10 @@ describe('quit coordinator local Worker ownership', () => {
     })
 
     electronState.beforeQuit?.({ preventDefault })
+    await quitObserved
 
-    await vi.waitFor(() => {
-      expect(order).toEqual(['disconnect-clients', 'stop-worker'])
-      expect(electronState.quit).toHaveBeenCalledTimes(1)
-    })
+    expect(order).toEqual(['disconnect-clients', 'stop-worker'])
+    expect(electronState.quit).toHaveBeenCalledTimes(1)
     expect(preventDefault).toHaveBeenCalledTimes(1)
   })
 })

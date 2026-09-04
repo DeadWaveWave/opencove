@@ -78,8 +78,10 @@ Invariants:
     attach acknowledgement may publish authority or return a live session.
 14. Desktop shutdown closes Local Worker restart admission before renderer flush, disconnects sync
     and PTY clients before stopping its owned Worker, and cannot launch a replacement through a
-    disconnect callback. Stale Worker repair may terminate only a verified exact process tree and
-    performs a bounded post-escalation exit wait before replacing its discovery authority.
+    disconnect callback. Worker shutdown freezes HTTP admission and drains every accepted handler
+    independently of socket lifetime before disposing application owners. Stale Worker repair may
+    terminate only a verified exact process tree and performs a bounded post-escalation exit wait
+    before replacing its discovery authority.
 
 The transport remains the supervisor-owned child IPC channel. The instance fence is lifecycle and
 correlation integrity, not socket/network authentication; no parallel network authority is added.
