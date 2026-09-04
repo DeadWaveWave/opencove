@@ -6,9 +6,7 @@ import { resolve } from 'node:path'
 import type { Readable } from 'node:stream'
 import type { WorkerConnectionInfoDto, WorkerStatusResult } from '../../../shared/contracts/dto'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
-import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
-import { invokeLocalWorkerConfiguration } from './localWorkerConfigurationClient'
 import { resolvePackagedWorkerScriptPath } from '../../../shared/runtime/opencoveRuntimePaths'
 import { removeConnectionFile } from '../controlSurface/http/connectionFile'
 import { removeWorkerSingleInstanceLock } from '../../../platform/process/workerSingleInstanceLockFile'
@@ -24,6 +22,8 @@ import {
   resolveForwardedLocalWorkerDiagnosticsEnv,
 } from './localWorkerSpawn'
 import { terminateStaleLocalWorkerTree } from './staleLocalWorkerProcessTree'
+import { LOCAL_WORKER_STOP_TIMEOUT_MS } from '../../../shared/runtime/controlSurfaceShutdown'
+import { resolveLocalWorkerWebUiUrl } from './localWorkerWebUiUrl'
 
 export { buildLocalWorkerSpawnArgs, isTruthyEnv, resolveForwardedLocalWorkerDiagnosticsEnv }
 
@@ -99,7 +99,7 @@ async function stopChild(child: WorkerChildProcess): Promise<void> {
       } catch {
         child.kill()
       }
-    }, 7_500)
+    }, LOCAL_WORKER_STOP_TIMEOUT_MS)
 
     child.once('exit', () => {
       clearTimeout(timeout)
@@ -451,55 +451,6 @@ export async function stopLocalWorker(): Promise<WorkerStatusResult> {
   return await getLocalWorkerStatus()
 }
 
-function normalizeTicketResult(value: unknown): { ticket: string } {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Invalid auth.issueWebSessionTicket response payload')
-  }
-
-  const ticket = (value as Record<string, unknown>).ticket
-  if (typeof ticket !== 'string' || ticket.trim().length === 0) {
-    throw new Error('Invalid auth.issueWebSessionTicket ticket value')
-  }
-
-  return { ticket: ticket.trim() }
-}
-
 export async function getLocalWorkerWebUiUrl(): Promise<string | null> {
-  const connection = await resolveConnectionFromUserData()
-  if (!connection) {
-    return null
-  }
-
-  const configuration = await invokeLocalWorkerConfiguration(connection, {
-    kind: 'query',
-    id: 'worker.config.get',
-    payload: null,
-  })
-  if (configuration.webAccess.state !== 'active') {
-    return null
-  }
-  const webBaseUrl = `http://${configuration.webAccess.hostname}:${configuration.webAccess.port}`
-  if (configuration.webAccess.passwordRequired) {
-    return `${webBaseUrl}/`
-  }
-
-  const { httpStatus, result } = await invokeControlSurface(
-    {
-      hostname: connection.hostname,
-      port: connection.port,
-      token: connection.token,
-    },
-    {
-      kind: 'query',
-      id: 'auth.issueWebSessionTicket',
-      payload: { redirectPath: '/' },
-    },
-  )
-
-  if (httpStatus !== 200 || !result || result.ok !== true) {
-    throw new Error('Failed to issue web session ticket')
-  }
-
-  const { ticket } = normalizeTicketResult(result.value)
-  return `${webBaseUrl}/auth/claim?ticket=${encodeURIComponent(ticket)}`
+  return await resolveLocalWorkerWebUiUrl(async () => await resolveConnectionFromUserData())
 }

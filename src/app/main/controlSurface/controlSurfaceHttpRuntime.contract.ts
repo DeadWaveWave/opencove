@@ -25,7 +25,6 @@ export interface ControlSurfaceHttpListener extends ControlSurfaceServerDisposab
   activate: () => void
   updateWebUiPasswordHash: (passwordHash: string | null) => void
   closeStreamingClients: () => void
-  drainAcceptedRequests: () => Promise<void>
   stopAccepting: (options?: {
     preserveStreamingClients?: boolean
     drainTimeoutMs?: number
@@ -54,6 +53,7 @@ export interface ControlSurfaceHttpRuntime extends ControlSurfaceServerDisposabl
   readonly token: string
   readonly appVersion: string | null
   readonly ready: Promise<void>
+  beginShutdown: () => void
   registerHandlers: (register: (controlSurface: ControlSurface) => void) => void
   listen: (options: ControlSurfaceHttpListenerOptions) => ControlSurfaceHttpListener
   setWebAccessPolicy: (policy: ControlSurfaceWebAccessPolicy) => void

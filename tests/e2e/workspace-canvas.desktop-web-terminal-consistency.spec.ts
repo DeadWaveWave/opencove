@@ -142,7 +142,41 @@ test('Desktop and Web share one canonical PTY grid while both remain interactive
     expect(desktopSessionId).toBeTruthy()
     expect(webSessionId).toBe(desktopSessionId)
 
-    await desktop.waitForTimeout(3_000)
+    await expect
+      .poll(
+        async () => {
+          const snapshot = await desktop.evaluate(
+            async sessionId => await window.opencoveApi.pty.presentationSnapshot({ sessionId }),
+            desktopSessionId!,
+          )
+          const [desktopGrid, webGrid, desktopProposal, webProposal] = await Promise.all([
+            readGrid(desktop),
+            readGrid(web),
+            desktop.evaluate(
+              id => window.__opencoveTerminalSelectionTestApi?.getProposedGeometry(id) ?? null,
+              nodeId,
+            ),
+            web.evaluate(
+              id => window.__opencoveTerminalSelectionTestApi?.getProposedGeometry(id) ?? null,
+              nodeId,
+            ),
+          ])
+          const canonical = { cols: snapshot.cols, rows: snapshot.rows }
+          return {
+            desktopGrid: JSON.stringify(desktopGrid) === JSON.stringify(canonical),
+            webGrid: JSON.stringify(webGrid) === JSON.stringify(canonical),
+            desktopProposal: JSON.stringify(desktopProposal) === JSON.stringify(canonical),
+            webProposalReady: webProposal !== null,
+          }
+        },
+        { timeout: 30_000 },
+      )
+      .toEqual({
+        desktopGrid: true,
+        webGrid: true,
+        desktopProposal: true,
+        webProposalReady: true,
+      })
     const canonicalSnapshot = await desktop.evaluate(
       async sessionId => await window.opencoveApi.pty.presentationSnapshot({ sessionId }),
       desktopSessionId!,
@@ -161,6 +195,16 @@ test('Desktop and Web share one canonical PTY grid while both remain interactive
     expect(webGrid).toEqual(canonicalGrid)
     expect(desktopProposal).toEqual(canonicalGrid)
     expect(webProposal).not.toBeNull()
+
+    const readinessMarker = `MULTI_CLIENT_READY_${Date.now()}`
+    await writeMarker(web, readinessMarker)
+    await expect(desktop.locator('.terminal-node')).toContainText(readinessMarker, {
+      timeout: 10_000,
+    })
+    await expect(web.locator('.terminal-node')).toContainText(readinessMarker, { timeout: 10_000 })
+    await expect
+      .poll(async () => ({ desktop: await readGrid(desktop), web: await readGrid(web) }))
+      .toEqual({ desktop: canonicalGrid, web: canonicalGrid })
 
     const identities = await Promise.all(
       [desktop, web].map(

@@ -14,6 +14,7 @@ import { hashWebUiPassword } from '../../contexts/settings/infrastructure/homeWo
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
 import { readHomeWorkerConfigFile } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
+import { acquireHomeWorkerConfigLease } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 import { createCodexHookChannel } from '../main/controlSurface/agentHook/codexHookChannel'
 import { AgentProviderRegistry } from '../../contexts/agent/application/services/AgentProviderRegistry'
@@ -23,6 +24,7 @@ import {
   reportLegacyManagedHookCleanupFailures,
 } from '../../contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup'
 import { readRepeatedWorkerFlagValues, readWorkerFlagValue } from './workerCliArguments'
+import { CONTROL_SURFACE_SHUTDOWN_WATCHDOG_MS } from '../../shared/runtime/controlSurfaceShutdown'
 
 function resolvePort(argv: string[]): number | null {
   const raw = readWorkerFlagValue(argv, '--port')
@@ -191,13 +193,23 @@ async function main(): Promise<void> {
     agentHookChannels: [claudeHookChannel, codexHookChannel],
     agentProviderRegistry,
   }
-  const server =
-    startedBy === 'desktop'
-      ? createDesktopManagedControlSurface({
-          server: serverOptions,
-          initialConfig: await readHomeWorkerConfigFile(userDataPath),
-        })
-      : registerControlSurfaceHttpServer(serverOptions)
+  const server = await (async () => {
+    const configLease =
+      startedBy === 'desktop' ? await acquireHomeWorkerConfigLease(userDataPath) : null
+    try {
+      const candidate =
+        startedBy === 'desktop'
+          ? createDesktopManagedControlSurface({
+              server: serverOptions,
+              initialConfig: await readHomeWorkerConfigFile(userDataPath),
+            })
+          : registerControlSurfaceHttpServer(serverOptions)
+      await candidate.ready
+      return candidate
+    } finally {
+      await configLease?.release()
+    }
+  })()
 
   const info = await server.ready
   process.stdout.write(`${JSON.stringify(info)}\n`)
@@ -247,7 +259,7 @@ async function main(): Promise<void> {
 
     const forceExitTimer = setTimeout(() => {
       process.exit(code)
-    }, 5_000)
+    }, CONTROL_SURFACE_SHUTDOWN_WATCHDOG_MS)
     forceExitTimer.unref()
 
     try {

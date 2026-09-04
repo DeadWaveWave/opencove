@@ -361,13 +361,13 @@ export function createWorkerWebAccessOwner(options: {
     activate({ ...candidate, config: persisted.webUi })
     currentConfig = persisted
     if (previous) {
+      revokeForSecurityTransition(previous, persisted.webUi)
       if (!samePort) {
         await previous.listener.stopAccepting({
           preserveStreamingClients: true,
           drainTimeoutMs,
         })
       }
-      revokeForSecurityTransition(previous, persisted.webUi)
       scheduleDrain(previous)
     }
     return { config: persisted, status: status() }
@@ -388,13 +388,12 @@ export function createWorkerWebAccessOwner(options: {
     degraded = null
     lastFailure = null
     options.runtime.setWebAccessPolicy({ enabled: false, passwordRequired: false })
-    if (previous) {
-      await previous.listener.stopAccepting({ drainTimeoutMs: 0 })
-      previous.listener.closeStreamingClients()
-    }
+    const stopping = previous?.listener.stopAccepting({ drainTimeoutMs: 0 })
+    previous?.listener.closeStreamingClients()
     options.runtime.rotateWebSessionGeneration()
     options.runtime.closePtyStreamClients({ listenerRole: 'web' })
     clearDrainingTimers()
+    await stopping
     return { config: persisted, status: status() }
   }
 
@@ -470,7 +469,7 @@ export function createWorkerWebAccessOwner(options: {
       lifecycleEpoch += 1
       recoveryAbort?.abort()
       const pendingStops = [...pendingListeners].map(async listener => {
-        await listener.stopAccepting().catch(() => undefined)
+        await listener.stopAccepting({ drainTimeoutMs: 0 }).catch(() => undefined)
       })
       disposePromise = (async () => {
         await Promise.allSettled([
@@ -485,7 +484,7 @@ export function createWorkerWebAccessOwner(options: {
         degraded = null
         lastFailure = null
         if (current) {
-          await current.listener.stopAccepting({ drainTimeoutMs }).catch(() => undefined)
+          await current.listener.stopAccepting({ drainTimeoutMs: 0 }).catch(() => undefined)
           current.listener.closeStreamingClients()
           options.runtime.closePtyStreamClients({ listenerRole: 'web' })
         }

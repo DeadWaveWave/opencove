@@ -22,7 +22,7 @@ export type RemotePtySessionCoordinator = {
   trackSession: (sessionId: string) => void
   untrackSession: (sessionId: string, error?: Error) => void
   trackWebContentsDestroyed: (contentsId: number) => void
-  addSubscriber: (contentsId: number, sessionId: string) => void
+  addSubscriber: (contentsId: number, sessionId: string, afterSeq?: number | null) => void
   removeSubscriber: (contentsId: number, sessionId: string) => Promise<void>
   noteSessionRolePreference: (sessionId: string, role: SessionRole) => void
   onSessionAttached: (sessionId: string, authority: TerminalGeometryAuthority) => void
@@ -35,6 +35,7 @@ export type RemotePtySessionCoordinator = {
   hasTrackedSessions: () => boolean
   isStreamAttached: (sessionId: string) => boolean
   updateAttachedSeq: (sessionId: string, seq: number) => void
+  noteSubscriberSeq: (sessionId: string, contentsId: number, seq: number) => void
   clear: () => void
 }
 
@@ -56,6 +57,7 @@ export function createRemotePtySessionCoordinator(options: {
   const streamAttachRequestedSessionIds = new Set<string>()
   const streamAttachedSessionIds = new Set<string>()
   const rolePreferenceBySessionId = new Map<string, SessionRole>()
+  const subscriberSeqBySessionId = new Map<string, Map<number, number>>()
   const pendingSessionAttachWaiters = new Map<string, Set<AttachWaiter>>()
   const attachedResultBySessionId = new Map<string, AttachTerminalResult>()
 
@@ -110,6 +112,7 @@ export function createRemotePtySessionCoordinator(options: {
     trackedSessionIds.delete(normalizedSessionId)
     clearStreamAttachmentState(normalizedSessionId)
     attachedSessions.delete(normalizedSessionId)
+    subscriberSeqBySessionId.delete(normalizedSessionId)
     rejectPendingAttach(normalizedSessionId, error)
     options.cancelMetadataWatcher(normalizedSessionId)
     maybeCloseSocket()
@@ -124,6 +127,11 @@ export function createRemotePtySessionCoordinator(options: {
     for (const sessionId of sessions) {
       const subscribers = subscribersBySessionId.get(sessionId)
       subscribers?.delete(contentsId)
+      const subscriberSeq = subscriberSeqBySessionId.get(sessionId)
+      subscriberSeq?.delete(contentsId)
+      if (subscriberSeq?.size === 0) {
+        subscriberSeqBySessionId.delete(sessionId)
+      }
       if (subscribers && subscribers.size === 0) {
         subscribersBySessionId.delete(sessionId)
         void detachStreamSessionIfUntracked(sessionId).catch(() => undefined)
@@ -226,12 +234,14 @@ export function createRemotePtySessionCoordinator(options: {
 
     const state = attachedSessions.get(sessionId) ?? createAttachedSessionState()
     attachedSessions.set(sessionId, state)
+    const subscriberSeq = subscriberSeqBySessionId.get(sessionId)
+    const replayAfterSeq = subscriberSeq?.size ? Math.min(...subscriberSeq.values()) : state.lastSeq
 
     ws.send(
       JSON.stringify({
         type: 'attach',
         sessionId,
-        ...(state.lastSeq > 0 ? { afterSeq: state.lastSeq } : {}),
+        ...(replayAfterSeq > 0 ? { afterSeq: replayAfterSeq } : {}),
         role: rolePreferenceBySessionId.get(sessionId) ?? 'controller',
       }),
     )
@@ -239,7 +249,11 @@ export function createRemotePtySessionCoordinator(options: {
     streamAttachRequestedSessionIds.add(sessionId)
   }
 
-  const addSubscriber = (contentsId: number, sessionId: string): void => {
+  const addSubscriber = (
+    contentsId: number,
+    sessionId: string,
+    afterSeq: number | null = null,
+  ): void => {
     const sessionSubscribers = subscribersBySessionId.get(sessionId) ?? new Set<number>()
     sessionSubscribers.add(contentsId)
     subscribersBySessionId.set(sessionId, sessionSubscribers)
@@ -247,6 +261,12 @@ export function createRemotePtySessionCoordinator(options: {
     const sessions = sessionsByContentsId.get(contentsId) ?? new Set<string>()
     sessions.add(sessionId)
     sessionsByContentsId.set(contentsId, sessions)
+
+    const subscriberSeq = subscriberSeqBySessionId.get(sessionId) ?? new Map<number, number>()
+    const normalizedAfterSeq =
+      typeof afterSeq === 'number' && Number.isSafeInteger(afterSeq) && afterSeq >= 0 ? afterSeq : 0
+    subscriberSeq.set(contentsId, Math.max(subscriberSeq.get(contentsId) ?? 0, normalizedAfterSeq))
+    subscriberSeqBySessionId.set(sessionId, subscriberSeq)
   }
 
   const removeSubscriber = async (contentsId: number, sessionId: string): Promise<void> => {
@@ -258,6 +278,11 @@ export function createRemotePtySessionCoordinator(options: {
 
     const sessionSubscribers = subscribersBySessionId.get(sessionId)
     sessionSubscribers?.delete(contentsId)
+    const subscriberSeq = subscriberSeqBySessionId.get(sessionId)
+    subscriberSeq?.delete(contentsId)
+    if (subscriberSeq?.size === 0) {
+      subscriberSeqBySessionId.delete(sessionId)
+    }
     if (sessionSubscribers && sessionSubscribers.size === 0) {
       subscribersBySessionId.delete(sessionId)
       await detachStreamSessionIfUntracked(sessionId)
@@ -272,6 +297,14 @@ export function createRemotePtySessionCoordinator(options: {
       attachedSessions.set(sessionId, createAttachedSessionState())
     }
     trackSession(sessionId)
+  }
+
+  const noteSubscriberSeq = (sessionId: string, contentsId: number, seq: number): void => {
+    const subscriberSeq = subscriberSeqBySessionId.get(sessionId)
+    if (!subscriberSeq?.has(contentsId) || !Number.isSafeInteger(seq) || seq < 0) {
+      return
+    }
+    subscriberSeq.set(contentsId, Math.max(subscriberSeq.get(contentsId) ?? 0, seq))
   }
 
   const updateAttachedSeq = (sessionId: string, seq: number): void => {
@@ -297,6 +330,7 @@ export function createRemotePtySessionCoordinator(options: {
     streamAttachRequestedSessionIds.clear()
     streamAttachedSessionIds.clear()
     rolePreferenceBySessionId.clear()
+    subscriberSeqBySessionId.clear()
     pendingSessionAttachWaiters.clear()
     attachedResultBySessionId.clear()
   }
@@ -326,6 +360,7 @@ export function createRemotePtySessionCoordinator(options: {
     hasTrackedSessions: () => trackedSessionIds.size > 0,
     isStreamAttached: sessionId => streamAttachedSessionIds.has(sessionId),
     updateAttachedSeq,
+    noteSubscriberSeq,
     clear,
   }
 }

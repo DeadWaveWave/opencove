@@ -16,10 +16,8 @@ import {
 import type { ControlSurfaceRemoteEndpointResolver } from './controlSurfaceHttpClient'
 import { createRemotePtyStreamMessageHandler } from './remotePtyStreamMessageHandler'
 import { createRemotePtyRuntimeAgentMetadataWatcher } from './remotePtyRuntime.agentMetadataWatcher'
-import {
-  sendToWebContentsAllWindows,
-  sendToWebContentsSessionSubscribers,
-} from './remotePtyRuntime.webContents'
+import { sendToWebContentsAllWindows } from './remotePtyRuntime.webContents'
+import { deliverRemotePtyToSubscribers } from './remotePtySubscriberDelivery'
 import {
   invokeRemoteControlSurfaceValue,
   parseListTerminalProfilesResult,
@@ -71,12 +69,7 @@ export function createRemotePtyRuntime(options: {
   const geometryCoordinator = createRemotePtyRuntimeGeometryCoordinator()
   const agentReexecCoordinator = new RemotePtyRuntimeAgentReexecCoordinator()
   const sendToSessionSubscribers = (sessionId: string, channel: string, payload: unknown): void => {
-    sendToWebContentsSessionSubscribers(
-      sessionCoordinator.subscribersBySessionId,
-      sessionId,
-      channel,
-      payload,
-    )
+    deliverRemotePtyToSubscribers(sessionCoordinator, sessionId, channel, payload)
   }
   const sendToAllWindows = (channel: string, payload: unknown): void => {
     sendToWebContentsAllWindows(channel, payload)

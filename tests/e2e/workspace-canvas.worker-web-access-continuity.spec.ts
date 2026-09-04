@@ -368,7 +368,25 @@ test('Web access settings preserve Worker, PTY, Renderer, xterm, history, and vi
       timeout: 30_000,
     })
     await applyWebEnabled(window, false)
-    await window.waitForTimeout(9_200)
+    await Promise.all(
+      [
+        { id: nodeId, marker: 'LIVE_A_599' },
+        { id: secondNodeId, marker: 'LIVE_B_599' },
+      ].map(async target => {
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(
+                ({ id, marker }) =>
+                  window.__opencoveTerminalSelectionTestApi?.getBufferText(id, marker)
+                    ?.markerAbsoluteLine ?? null,
+                target,
+              ),
+            { timeout: 15_000 },
+          )
+          .not.toBeNull()
+      }),
+    )
 
     const after = await Promise.all([
       readIdentity(window, nodeId),

@@ -127,8 +127,10 @@ remote session IDs; renderer caches remain derived and are cleared on terminal e
 
 The desktop relay mirrors these raw observations while its Worker stream remains attached. When a renderer
 subscriber reloads, the relay targets the replay to that subscriber instead of issuing a second stream
-attach, preserving input ownership, session identity, and scrollback. The mirror is cleared on session exit,
-explicit kill, or relay disposal.
+attach, preserving input ownership, session identity, and scrollback. The relay keeps one replay cursor per
+renderer subscriber, advances it only after successful IPC delivery, and uses the minimum active cursor for
+an upstream reconnect; one newer renderer can never skip bytes still required by an older subscriber. The
+mirror and subscriber cursors are cleared on session exit, explicit kill, or relay disposal.
 
 ## Snapshot Contract
 
@@ -382,6 +384,8 @@ The goal is stable visual parity without letting multiple renderers fight for te
     canonical rows/columns only through an acknowledged `appearance_commit`.
 25. Web listener enable, replacement, drain or security revocation cannot dispose PTY, Hub,
     presentation or recovery state.
+26. A Desktop relay reconnects from the minimum active renderer cursor; one subscriber's newer snapshot
+    cannot advance another subscriber's replay boundary.
 
 ## Verification Anchors
 
@@ -394,6 +398,7 @@ The goal is stable visual parity without letting multiple renderers fight for te
 - `tests/unit/app/ptyStreamHub.resizeGeometryAck.spec.ts`
 - `tests/unit/app/ptyStreamService.recoveryBarrier.spec.ts`
 - `tests/unit/app/BrowserPtyClient.spec.ts`
+- `tests/unit/app/remotePtyRuntime.multiSubscriberReconnect.spec.ts`
 - `tests/unit/contexts/TerminalAgentInvocationRegistry.spec.ts`
 - `tests/unit/contexts/terminalAgentActivityGateway.spec.ts`
 - `tests/unit/contexts/terminalAgentActivityProjection.spec.ts`

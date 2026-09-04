@@ -66,7 +66,7 @@ export function createDesktopManagedControlSurface(options: {
   let disposed = false
 
   const ready = Promise.all([privateListener.ready, runtime.ready, webAccess.ready]).then(
-    ([address]) => {
+    async ([address]) => {
       if (disposed) {
         throw new Error('Desktop-managed Control Surface disposed before becoming ready.')
       }
@@ -89,7 +89,9 @@ export function createDesktopManagedControlSurface(options: {
         process.stderr.write(
           `[opencove] failed to write private control connection file: ${detail}\n`,
         )
+        throw error
       })
+      await pendingConnectionWrite
       return info
     },
   )
@@ -107,6 +109,7 @@ export function createDesktopManagedControlSurface(options: {
         await removeConnectionFile(options.server.userDataPath, connectionFileName).catch(
           () => undefined,
         )
+        runtime.beginShutdown()
         await webAccess.dispose()
         await runtime.dispose()
       })()

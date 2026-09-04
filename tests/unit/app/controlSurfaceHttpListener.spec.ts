@@ -2,6 +2,7 @@
 
 import { connect } from 'node:net'
 import { describe, expect, it, vi } from 'vitest'
+import { ControlSurfaceAcceptedRequestOwner } from '../../../src/app/main/controlSurface/controlSurfaceAcceptedRequestOwner'
 import { createControlSurfaceHttpListener } from '../../../src/app/main/controlSurface/controlSurfaceHttpListener'
 
 function deferred() {
@@ -149,7 +150,9 @@ describe('Control Surface HTTP listener', () => {
   it('retains accepted handler ownership after a bounded transport drain', async () => {
     const requestCanFinish = deferred()
     const requestStarted = deferred()
+    const acceptedRequests = new ControlSurfaceAcceptedRequestOwner()
     const listener = createControlSurfaceHttpListener({
+      acceptedRequests,
       config: {
         hostname: '127.0.0.1',
         bindHostname: '127.0.0.1',
@@ -173,7 +176,7 @@ describe('Control Surface HTTP listener', () => {
     await listener.stopAccepting({ drainTimeoutMs: 0 })
 
     let drained = false
-    const draining = listener.drainAcceptedRequests().then(() => {
+    const draining = acceptedRequests.sealAndDrain().then(() => {
       drained = true
     })
     await Promise.resolve()

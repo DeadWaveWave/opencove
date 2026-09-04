@@ -85,14 +85,16 @@ export async function attachRemotePtyRenderer(options: {
 }): Promise<AttachTerminalResult> {
   options.sessionCoordinator.trackWebContentsDestroyed(options.contentsId)
   options.sessionCoordinator.trackSession(options.sessionId)
-  if (
+  const afterSeq =
     typeof options.afterSeq === 'number' &&
-    Number.isFinite(options.afterSeq) &&
+    Number.isSafeInteger(options.afterSeq) &&
     options.afterSeq >= 0
-  ) {
-    options.sessionCoordinator.updateAttachedSeq(options.sessionId, options.afterSeq)
+      ? options.afterSeq
+      : null
+  if (afterSeq !== null) {
+    options.sessionCoordinator.updateAttachedSeq(options.sessionId, afterSeq)
   }
-  options.sessionCoordinator.addSubscriber(options.contentsId, options.sessionId)
+  options.sessionCoordinator.addSubscriber(options.contentsId, options.sessionId, afterSeq)
 
   const replayCachedState = options.sessionCoordinator.isStreamAttached(options.sessionId)
   const attached = await options.ensureSessionAttached(options.sessionId)

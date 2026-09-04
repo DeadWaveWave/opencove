@@ -26,6 +26,14 @@ function config(overrides: Partial<HomeWorkerConfigFile['webUi']> = {}): HomeWor
   }
 }
 
+function createDeferred() {
+  let resolve!: () => void
+  const promise = new Promise<void>(resolvePromise => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 function createFakeRuntime() {
   let nextPort = 20_000
   const listeners: Array<{
@@ -34,7 +42,6 @@ function createFakeRuntime() {
     stopAccepting: ReturnType<typeof vi.fn>
     updateWebUiPasswordHash: ReturnType<typeof vi.fn>
     closeStreamingClients: ReturnType<typeof vi.fn>
-    drainAcceptedRequests: ReturnType<typeof vi.fn>
   }> = []
   const policies: Array<{ enabled: boolean; passwordRequired: boolean }> = []
   const closeFilters: unknown[] = []
@@ -51,13 +58,13 @@ function createFakeRuntime() {
     token: 'token',
     appVersion: 'test',
     ready: Promise.resolve(),
+    beginShutdown: vi.fn(),
     registerHandlers: () => undefined,
     listen: options => {
       const activate = vi.fn()
       const stopAccepting = vi.fn(async () => undefined)
       const updateWebUiPasswordHash = vi.fn()
       const closeStreamingClients = vi.fn()
-      const drainAcceptedRequests = vi.fn(async () => undefined)
       const address = {
         hostname: options.hostname,
         bindHostname: options.bindHostname,
@@ -77,7 +84,6 @@ function createFakeRuntime() {
         stopAccepting,
         updateWebUiPasswordHash,
         closeStreamingClients,
-        drainAcceptedRequests,
         isAccepting: () => !options.startGated || activate.mock.calls.length > 0,
         dispose: stopAccepting,
       }
@@ -87,7 +93,6 @@ function createFakeRuntime() {
         stopAccepting,
         updateWebUiPasswordHash,
         closeStreamingClients,
-        drainAcceptedRequests,
       })
       return listener
     },
@@ -334,6 +339,45 @@ describe('WorkerWebAccessRuntime', () => {
     expect(fake.listeners[0].stopAccepting).not.toHaveBeenCalled()
     expect(fake.listeners[0].updateWebUiPasswordHash).toHaveBeenCalledWith('scrypt$two')
     expect(fake.closeFilters).toContainEqual({ webSessionGeneration: 0 })
+  })
+
+  it('revokes old security authority before awaiting a different-port drain', async () => {
+    const fake = createFakeRuntime()
+    const owner = createWorkerWebAccessRuntime({
+      controlSurfaceRuntime: fake.runtime,
+      initialConfig: config({
+        enabled: true,
+        port: 16661,
+        exposeOnLan: true,
+        passwordHash: 'scrypt$one',
+      }),
+      persist: async ({ next }) => ({ ...next, updatedAt: '2026-08-31T00:00:01.000Z' }),
+    })
+    await owner.ready
+    const stopStarted = createDeferred()
+    const allowStop = createDeferred()
+    fake.listeners[0].stopAccepting.mockImplementation(async () => {
+      stopStarted.resolve()
+      await allowStop.promise
+    })
+
+    const applying = owner.apply({
+      next: config({
+        enabled: true,
+        port: 16662,
+        exposeOnLan: false,
+        passwordHash: 'scrypt$two',
+      }),
+      expectedUpdatedAt: '2026-08-31T00:00:00.000Z',
+    })
+    await stopStarted.promise
+
+    expect(fake.closeFilters).toContainEqual({ webSessionGeneration: 0 })
+    expect(fake.closeFilters).toContainEqual({ listenerRole: 'web', nonLoopbackOnly: true })
+    expect(fake.listeners[0].closeStreamingClients).toHaveBeenCalled()
+    allowStop.resolve()
+    await applying
+    await owner.dispose()
   })
 
   it('rolls back a same-port replacement when persistence fails', async () => {

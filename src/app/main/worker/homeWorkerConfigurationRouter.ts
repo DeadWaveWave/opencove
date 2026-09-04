@@ -18,6 +18,7 @@ import {
   setHomeWorkerWebUiSettings,
 } from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigMutations'
 import { invokeLocalWorkerConfiguration } from './localWorkerConfigurationClient'
+import { withHomeWorkerConfigLease } from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import { resolveOwnedLocalWorkerConfigurationState } from './localWorkerManager'
 
 async function readLiveConfig(connection: WorkerConnectionInfoDto) {
@@ -62,6 +63,20 @@ export function createHomeWorkerConfigurationRouter(options: {
     ).config
   }
 
+  const mutateThroughCurrentOwner = async (
+    mutateLiveOwner: (connection: WorkerConnectionInfoDto) => Promise<HomeWorkerConfigDto>,
+    mutateOffline: () => Promise<HomeWorkerConfigDto>,
+  ): Promise<HomeWorkerConfigDto> => {
+    const connection = await resolveMutationConnection()
+    if (connection) {
+      return await mutateLiveOwner(connection)
+    }
+    return await withHomeWorkerConfigLease(options.userDataPath, async () => {
+      const ownerConnection = await resolveMutationConnection()
+      return ownerConnection ? await mutateLiveOwner(ownerConnection) : await mutateOffline()
+    })
+  }
+
   const readStoredConfig = async (): Promise<HomeWorkerConfigDto> =>
     options.ensureMissingConfig
       ? await ensureHomeWorkerConfig(options.userDataPath, options.configOptions)
@@ -80,27 +95,26 @@ export function createHomeWorkerConfigurationRouter(options: {
   return {
     read: async (): Promise<HomeWorkerConfigDto> => (await readSnapshot()).config,
     readSnapshot,
-    setConfig: async (value: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> => {
-      const connection = await resolveMutationConnection()
-      return connection
-        ? await mutateLive(connection, 'worker.config.set', value)
-        : await setHomeWorkerConfig(options.userDataPath, value, options.configOptions)
-    },
+    setConfig: async (value: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> =>
+      await mutateThroughCurrentOwner(
+        async connection => await mutateLive(connection, 'worker.config.set', value),
+        async () => await setHomeWorkerConfig(options.userDataPath, value, options.configOptions),
+      ),
     setWebUiSettings: async (
       value: SetHomeWorkerWebUiSettingsInput,
-    ): Promise<HomeWorkerConfigDto> => {
-      const connection = await resolveMutationConnection()
-      return connection
-        ? await mutateLive(connection, 'worker.webAccess.setSettings', value)
-        : await setHomeWorkerWebUiSettings(options.userDataPath, value, options.configOptions)
-    },
+    ): Promise<HomeWorkerConfigDto> =>
+      await mutateThroughCurrentOwner(
+        async connection => await mutateLive(connection, 'worker.webAccess.setSettings', value),
+        async () =>
+          await setHomeWorkerWebUiSettings(options.userDataPath, value, options.configOptions),
+      ),
     setWebUiSecurity: async (
       value: SetHomeWorkerWebUiSecurityInput,
-    ): Promise<HomeWorkerConfigDto> => {
-      const connection = await resolveMutationConnection()
-      return connection
-        ? await mutateLive(connection, 'worker.webAccess.setSecurity', value)
-        : await setHomeWorkerWebUiSecurity(options.userDataPath, value, options.configOptions)
-    },
+    ): Promise<HomeWorkerConfigDto> =>
+      await mutateThroughCurrentOwner(
+        async connection => await mutateLive(connection, 'worker.webAccess.setSecurity', value),
+        async () =>
+          await setHomeWorkerWebUiSecurity(options.userDataPath, value, options.configOptions),
+      ),
   }
 }

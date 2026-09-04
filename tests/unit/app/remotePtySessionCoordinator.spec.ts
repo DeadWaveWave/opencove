@@ -248,6 +248,44 @@ describe('remotePtyRuntime session coordinator', () => {
     await rejection
   })
 
+  it('reattaches from the minimum cursor still required by active subscribers', async () => {
+    const coordinator = createRemotePtySessionCoordinator({
+      connectTimeoutMs: 50,
+      cancelMetadataWatcher: vi.fn(),
+      shouldKeepSocketAlive: () => true,
+      closeSocket: vi.fn(),
+      sendDetachMessage: vi.fn(async () => undefined),
+    })
+    coordinator.noteSessionRolePreference('session-shared-cursor', 'controller')
+    coordinator.addSubscriber(1, 'session-shared-cursor', 12)
+    coordinator.addSubscriber(2, 'session-shared-cursor', 4)
+    const firstSocket = createMockSocket()
+
+    coordinator.sendAttachForSession(firstSocket as never, 'session-shared-cursor')
+    expect(JSON.parse(firstSocket.send.mock.calls[0]?.[0] as string)).toMatchObject({
+      type: 'attach',
+      afterSeq: 4,
+    })
+    coordinator.onSessionAttached('session-shared-cursor', { role: 'controller', epoch: 1 })
+    coordinator.noteSubscriberSeq('session-shared-cursor', 2, 15)
+    coordinator.onSocketClosed()
+
+    const secondSocket = createMockSocket()
+    coordinator.sendAttachForSession(secondSocket as never, 'session-shared-cursor')
+    expect(JSON.parse(secondSocket.send.mock.calls[0]?.[0] as string)).toMatchObject({
+      afterSeq: 12,
+    })
+    coordinator.onSessionAttached('session-shared-cursor', { role: 'controller', epoch: 2 })
+    await coordinator.removeSubscriber(1, 'session-shared-cursor')
+    coordinator.onSocketClosed()
+
+    const thirdSocket = createMockSocket()
+    coordinator.sendAttachForSession(thirdSocket as never, 'session-shared-cursor')
+    expect(JSON.parse(thirdSocket.send.mock.calls[0]?.[0] as string)).toMatchObject({
+      afterSeq: 15,
+    })
+  })
+
   it('reports whether a tracked session is attached to the worker stream', () => {
     const coordinator = createRemotePtySessionCoordinator({
       connectTimeoutMs: 50,

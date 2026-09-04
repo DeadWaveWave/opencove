@@ -6,10 +6,14 @@ const mocks = vi.hoisted(() => ({
   setLocal: vi.fn(),
   readLocal: vi.fn(),
   ensureLocal: vi.fn(),
+  withLease: vi.fn(),
 }))
 
 vi.mock('../../../src/app/main/worker/localWorkerManager', () => ({
   resolveOwnedLocalWorkerConfigurationState: mocks.resolveOwner,
+}))
+vi.mock('../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease', () => ({
+  withHomeWorkerConfigLease: mocks.withLease,
 }))
 vi.mock('../../../src/app/main/worker/localWorkerConfigurationClient', () => ({
   invokeLocalWorkerConfiguration: mocks.invoke,
@@ -60,6 +64,7 @@ describe('Home Worker configuration router', () => {
     vi.clearAllMocks()
     mocks.readLocal.mockResolvedValue(config)
     mocks.setLocal.mockResolvedValue(config)
+    mocks.withLease.mockImplementation(async (_path, operation) => await operation())
   })
 
   it('fails closed instead of creating a second writer for an unreachable owned Worker', async () => {
@@ -98,6 +103,32 @@ describe('Home Worker configuration router', () => {
       config,
     )
     expect(mocks.setLocal).toHaveBeenCalledOnce()
+  })
+
+  it('rechecks ownership inside the offline mutation lease', async () => {
+    mocks.resolveOwner
+      .mockResolvedValueOnce({ state: 'absent', connection: null })
+      .mockResolvedValueOnce({ state: 'ready', connection })
+    mocks.invoke
+      .mockResolvedValueOnce({
+        config,
+        webAccess: { state: 'disabled', generation: 0, drainingGenerations: [] },
+      })
+      .mockResolvedValueOnce({
+        config,
+        webAccess: { state: 'disabled', generation: 0, drainingGenerations: [] },
+      })
+
+    await expect(createRouter().setWebUiSettings({ enabled: true, port: null })).resolves.toBe(
+      config,
+    )
+
+    expect(mocks.withLease).toHaveBeenCalledOnce()
+    expect(mocks.setLocal).not.toHaveBeenCalled()
+    expect(mocks.invoke).toHaveBeenLastCalledWith(
+      connection,
+      expect.objectContaining({ id: 'worker.webAccess.setSettings' }),
+    )
   })
 
   it('preserves an explicit degraded Web listener status in the read snapshot', async () => {

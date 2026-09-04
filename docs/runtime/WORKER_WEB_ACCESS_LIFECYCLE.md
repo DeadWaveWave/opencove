@@ -91,7 +91,8 @@ normalize + authorize + revision check
   -> prepare gated listener/auth candidate
   -> atomically persist the complete next config
   -> activate by owner-local generation swap
-  -> revoke/drain the previous generation
+  -> synchronously revoke obsolete auth/LAN authority
+  -> bounded transport drain of the previous generation
 ```
 
 Candidate preparation includes host/port bind and route/auth construction, but the candidate rejects public admission until activation. Activation performs no fallible IO. If validation, bind or persistence fails, the candidate is disposed and the previous active listener plus previous durable configuration remain authoritative.
@@ -114,7 +115,7 @@ If both replacement and rollback binds fail, previous durable config, listener g
 
 A Web transport close caused by disable or security tightening is intentional access revocation, not terminal recovery. After valid reauthentication, the browser hydrates the same Worker sessions from presentation snapshot and stream replay.
 
-Old listener generations have a bounded transport drain deadline. Final listener cleanup closes only transport resources owned by that generation; it cannot kill terminal sessions. A handler that outlives that deadline remains owned by the shared Control Surface runtime rather than by the retired socket.
+Old listener generations have a bounded transport drain deadline. Final listener cleanup closes only transport resources owned by that generation; it cannot kill terminal sessions. A handler that outlives that deadline remains registered in the runtime-global accepted-request owner rather than in the retired socket/listener. Final runtime disposal seals and joins that registry before disposing application or terminal owners.
 
 ## Authentication Boundaries
 
@@ -146,9 +147,9 @@ Continuous output must keep sequence order and existing Desktop scrollback/viewp
 
 Web listener replacement is not a restart boundary. Listener generation and Web sessions are runtime-only and are reconstructed from durable Web intent after a real Worker start.
 
-Final Worker shutdown still follows the terminal recovery ordering in `docs/architecture/RECOVERY_MODEL.md`. It freezes new runtime/listener admission, stops every listener, joins all accepted handler promises independently of client socket lifetime, then drains/checkpoints terminal owners before disposing shared runtime resources. Web listener drain cannot run that sequence independently.
+Final Worker shutdown still follows the terminal recovery ordering in `docs/architecture/RECOVERY_MODEL.md`. Composition synchronously begins runtime shutdown before awaiting Web-owner cleanup: it freezes new runtime/listener admission, stops every listener, joins the runtime-global accepted-handler registry independently of client socket lifetime, then drains/checkpoints terminal owners before disposing shared resources. The Worker watchdog exceeds the accepted-request drain deadline, and the Desktop launcher escalation exceeds the Worker watchdog. Web listener drain cannot run this sequence independently.
 
-If Main loses an apply response, it queries Worker status/config revision before retrying. An idempotent retry observes the committed generation or safely prepares the desired durable state. It must not infer failure and restart the Worker.
+If Main loses an apply response, it queries Worker status/config revision before retrying. An idempotent retry observes the committed generation or safely prepares the desired durable state. It must not infer failure and restart the Worker. Offline Desktop writes and Desktop Worker startup share an owner-exact configuration file lease; Main rechecks runtime ownership inside that lease, while Worker holds it from config read through private-owner publication.
 
 ## Diagnostics
 
@@ -168,19 +169,22 @@ See `WEB_UI_TROUBLESHOOTING.md` for operational checks.
 2. Every private/Web listener generation delegates terminal traffic to one `PtyStreamService` and one Hub.
 3. Candidate bind or persistence failure leaves the previous active and durable configuration usable.
 4. Password, disable and LAN-tightening revocation affect only the corresponding Web-listener/auth transports; private Desktop/CLI bearer clients and PTYs remain live.
-5. A live owned Worker is the sole durable configuration writer; Main writes only while no live owner exists.
+5. A live owned Worker is the sole durable configuration writer; Main writes only under the shared config lease after an in-lease owner recheck, and Worker startup cannot read config concurrently with that write.
 6. Renderer navigation, xterm replacement and renderer cache are never Web access recovery mechanisms.
 7. Listener generation cleanup is bounded and disposes only generation-owned transport resources.
 8. `dispose()` joins startup/apply/restoration; after it resolves, no prior continuation can bind, activate or re-enable Web policy.
 9. A double bind failure preserves durable authority and surviving Web transports; only new admission is degraded while restoration is pending.
 10. Password-only changes never replace the listening socket or advance its listener generation.
-11. Partial or stalled accepted HTTP requests have a bounded drain deadline; they cannot hold listener replacement or security revocation indefinitely.
+11. Partial or stalled accepted HTTP transports have a bounded listener drain deadline; their application handlers remain runtime-owned until completion or final process watchdog.
+12. Replacement activation revokes obsolete password-cookie and LAN socket authority before awaiting old-listener drain.
 
 ## Verification Anchors
 
 - `tests/contract/controlSurface/controlSurfaceHttpRuntime.listenerLifecycle.spec.ts`
 - `tests/contract/controlSurface/desktopManagedControlSurface.webAccess.spec.ts`
 - `tests/unit/app/homeWorkerConfig.spec.ts`
+- `tests/unit/contexts/homeWorkerConfigLease.spec.ts`
+- `tests/unit/app/controlSurfaceHttpListener.spec.ts`
 - `tests/unit/app/workerWebAccessRuntime.spec.ts`
 - `tests/e2e/workspace-canvas.worker-web-access-continuity.spec.ts`
 - `tests/e2e/workspace-canvas.desktop-web-terminal-consistency.spec.ts`

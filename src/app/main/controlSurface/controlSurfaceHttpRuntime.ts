@@ -25,6 +25,7 @@ import type {
 } from './controlSurfaceHttpRuntime.contract'
 import { createControlSurfaceHttpRequestHandler } from './controlSurfaceHttpRequestHandler'
 import { createControlSurfaceHttpListener } from './controlSurfaceHttpListener'
+import { ControlSurfaceAcceptedRequestOwner } from './controlSurfaceAcceptedRequestOwner'
 
 const PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES = 400_000
 
@@ -130,6 +131,27 @@ export function createControlSurfaceHttpRuntime(
   let closed = false
   let disposePromise: Promise<void> | null = null
   const listeners = new Set<ControlSurfaceHttpListener>()
+  const acceptedRequests = new ControlSurfaceAcceptedRequestOwner()
+  const beginShutdown = (): void => {
+    if (closed) {
+      return
+    }
+    closed = true
+    terminalRuntimeAvailability.beginShutdown()
+    ptyStreamService.freezeIngress()
+    for (const client of syncClients) {
+      try {
+        client.end()
+      } catch {
+        // ignore
+      }
+    }
+    syncClients.clear()
+    listeners.forEach(listener => {
+      void listener.stopAccepting({ drainTimeoutMs: 0 }).catch(() => undefined)
+    })
+  }
+
   const handleRequest = createControlSurfaceHttpRequestHandler({
     ctx,
     token,
@@ -147,6 +169,7 @@ export function createControlSurfaceHttpRuntime(
     token,
     appVersion,
     ready,
+    beginShutdown,
     registerHandlers: register => {
       if (closed || listeners.size > 0) {
         throw new Error('Control Surface handlers must be registered before listeners start.')
@@ -170,6 +193,7 @@ export function createControlSurfaceHttpRuntime(
         onDisposed: disposed => {
           listeners.delete(disposed)
         },
+        acceptedRequests,
       })
       listeners.add(listener)
       return listener
@@ -187,30 +211,16 @@ export function createControlSurfaceHttpRuntime(
         return await disposePromise
       }
 
+      const retiringListeners = [...listeners]
+      beginShutdown()
       disposePromise = (async () => {
-        if (closed) {
-          return
-        }
-        closed = true
-        terminalRuntimeAvailability.beginShutdown()
-
-        for (const client of syncClients) {
-          try {
-            client.end()
-          } catch {
-            // ignore
-          }
-        }
-        syncClients.clear()
-
-        ptyStreamService.freezeIngress()
         await Promise.all(
-          [...listeners].map(async listener => {
+          retiringListeners.map(async listener => {
             await listener.stopAccepting()
             listener.closeStreamingClients()
-            await listener.drainAcceptedRequests()
           }),
         )
+        await acceptedRequests.sealAndDrain()
 
         try {
           await terminalAgents.dispose()

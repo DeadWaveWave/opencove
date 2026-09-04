@@ -1,12 +1,12 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import type { Duplex } from 'node:stream'
+import { CONTROL_SURFACE_REQUEST_DRAIN_TIMEOUT_MS } from '../../../shared/runtime/controlSurfaceShutdown'
+import { ControlSurfaceAcceptedRequestOwner } from './controlSurfaceAcceptedRequestOwner'
 import type {
   ControlSurfaceHttpListener,
   ControlSurfaceHttpListenerOptions,
   ControlSurfaceHttpListenerRequestContext,
 } from './controlSurfaceHttpRuntime.contract'
-
-const DEFAULT_REQUEST_DRAIN_TIMEOUT_MS = 30_000
 
 export function createControlSurfaceHttpListener(options: {
   config: ControlSurfaceHttpListenerOptions
@@ -24,8 +24,11 @@ export function createControlSurfaceHttpListener(options: {
     listener: ControlSurfaceHttpListenerOptions,
   ) => void
   onDisposed: (listener: ControlSurfaceHttpListener) => void
+  acceptedRequests?: ControlSurfaceAcceptedRequestOwner
 }): ControlSurfaceHttpListener {
   const listenerSyncClients = new Set<ServerResponse>()
+  const runtimeAcceptedRequests =
+    options.acceptedRequests ?? new ControlSurfaceAcceptedRequestOwner()
   const listenerConfig = { ...options.config }
   const listenAbortController = new AbortController()
   const inFlightRequests = new Map<Promise<void>, { req: IncomingMessage; res: ServerResponse }>()
@@ -85,6 +88,7 @@ export function createControlSurfaceHttpListener(options: {
         inFlightRequests.delete(operation)
       })
     inFlightRequests.set(operation, { req, res })
+    runtimeAcceptedRequests.track(operation)
   })
 
   server.on('upgrade', (req, socket, head) => {
@@ -132,13 +136,6 @@ export function createControlSurfaceHttpListener(options: {
     }
   }
 
-  const drainAcceptedRequests = async (): Promise<void> => {
-    if (!stopped) {
-      throw new Error('Control surface listener must stop admission before handler drain.')
-    }
-    await Promise.allSettled([...inFlightRequests.keys()])
-  }
-
   server.on('error', error => {
     const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
     process.stderr.write(`[opencove] control surface listener error: ${detail}\n`)
@@ -162,7 +159,6 @@ export function createControlSurfaceHttpListener(options: {
       webUiAuthRevision += 1
     },
     closeStreamingClients,
-    drainAcceptedRequests,
     isAccepting: () => accepting && !stopped,
     stopAccepting: async stopOptions => {
       if (stopPromise) {
@@ -192,7 +188,7 @@ export function createControlSurfaceHttpListener(options: {
       }
       const drainTimeoutMs = Math.max(
         0,
-        stopOptions?.drainTimeoutMs ?? DEFAULT_REQUEST_DRAIN_TIMEOUT_MS,
+        stopOptions?.drainTimeoutMs ?? CONTROL_SURFACE_REQUEST_DRAIN_TIMEOUT_MS,
       )
       const acceptedRequests = [...inFlightRequests.keys()]
       const drain = new Promise<'drained' | 'timed_out'>(resolve => {
