@@ -21,10 +21,8 @@ import { useHydrateAppState } from './hooks/useHydrateAppState'
 import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
-import { useAppQuitPersistenceFlush } from './hooks/useAppQuitPersistenceFlush'
 import { useAppDocumentChrome } from './hooks/useAppDocumentChrome'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
-import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useAppKeybindings } from './hooks/useAppKeybindings'
@@ -36,16 +34,12 @@ import { useAppShellWorkspaceActions } from './hooks/useAppShellWorkspaceActions
 import { useShellOverlayState } from './hooks/useShellOverlayState'
 import { useAddProjectRequest } from './hooks/useAddProjectWizardRequest'
 import { useWhatsNew } from './hooks/useWhatsNew'
-import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
-import { useWorkspaceMountRepair } from './hooks/useWorkspaceMountRepair'
+import { useAppShellRuntimeLifecycles } from './hooks/useAppShellRuntimeLifecycles'
 import { usePrimarySidebarAutoReveal } from './hooks/usePrimarySidebarAutoReveal'
-import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
 import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
-import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
 import { useCommandCenterShortcutHint } from './hooks/useCommandCenterShortcutHint'
 import { useAppStore } from './store/useAppStore'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
-import { useTerminalDisplayReferenceAutoCapture } from '@contexts/settings/presentation/renderer/useTerminalDisplayReferenceAutoCapture'
 import { useIssueReportUiDiagnostics } from './hooks/useIssueReportUiDiagnostics'
 
 export default function App(): React.JSX.Element {
@@ -123,14 +117,10 @@ export default function App(): React.JSX.Element {
   const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
     useAgentStandbyNotifications()
 
-  usePtyWorkspaceRuntimeSync({ requestPersistFlush })
-  useAppQuitPersistenceFlush({ enabled: isPersistReady })
-  useWorkerSyncStateUpdates({ enabled: isPersistReady })
-  useWorkspaceMountRepair({ enabled: isPersistReady, workspaces, requestPersistFlush })
-  useWebsiteWindowEvents()
-  useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)
-  useTerminalDisplayReferenceAutoCapture({
-    enabled: isPersistReady && agentSettings.terminalDisplayAutoReferenceEnabled,
+  const terminalDisplayCalibration = useAppShellRuntimeLifecycles({
+    isPersistReady,
+    workspaces,
+    requestPersistFlush,
     agentSettings,
     setAgentSettings,
   })
@@ -370,6 +360,7 @@ export default function App(): React.JSX.Element {
           <WorkspaceMain
             activeWorkspace={activeWorkspace}
             agentSettings={agentSettings}
+            terminalDisplayCalibration={terminalDisplayCalibration}
             focusRequest={focusRequest}
             isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
             shortcutsEnabled={

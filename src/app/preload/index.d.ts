@@ -1,5 +1,6 @@
 import type {
   AttachTerminalInput,
+  AttachTerminalResult,
   CopyWorkspacePathInput,
   ListSystemFontsResult,
   CreateGitWorktreeInput,
@@ -129,6 +130,7 @@ import type {
   SetBrowserHomepageInput,
   UpsertBrowserBookmarkInput,
   HomeWorkerConfigDto,
+  HomeWorkerConfigurationSnapshotDto,
   SetHomeWorkerConfigInput,
   SetHomeWorkerWebUiSettingsInput,
   SetHomeWorkerWebUiSecurityInput,
@@ -298,7 +300,7 @@ export interface OpenCoveApi {
     reexecAgent: (payload: TerminalAgentReexecInput) => Promise<TerminalAgentReexecResult>
     resize: (payload: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
     kill: (payload: KillTerminalInput) => Promise<void>
-    attach: (payload: AttachTerminalInput) => Promise<void>
+    attach: (payload: AttachTerminalInput) => Promise<AttachTerminalResult>
     detach: (payload: DetachTerminalInput) => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
     presentationSnapshot: (
@@ -344,6 +346,7 @@ export interface OpenCoveApi {
   }
   workerClient: {
     getConfig: () => Promise<HomeWorkerConfigDto>
+    getConfigurationSnapshot: () => Promise<HomeWorkerConfigurationSnapshotDto>
     setConfig: (payload: SetHomeWorkerConfigInput) => Promise<HomeWorkerConfigDto>
     setWebUiSettings: (payload: SetHomeWorkerWebUiSettingsInput) => Promise<HomeWorkerConfigDto>
     setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput) => Promise<HomeWorkerConfigDto>

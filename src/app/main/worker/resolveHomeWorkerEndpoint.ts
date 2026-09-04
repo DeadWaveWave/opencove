@@ -7,7 +7,7 @@ import {
   createDefaultHomeWorkerConfig,
   ensureHomeWorkerConfig,
   readHomeWorkerConfig,
-} from './homeWorkerConfig'
+} from '../../../contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
 import { startLocalWorker } from './localWorkerManager'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {

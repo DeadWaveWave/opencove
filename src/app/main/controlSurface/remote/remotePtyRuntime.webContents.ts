@@ -4,16 +4,17 @@ export function sendToWebContentsWindow(
   contentsId: number,
   channel: string,
   payload: unknown,
-): void {
+): boolean {
   const content = webContents.fromId(contentsId)
   if (!content || content.isDestroyed() || content.getType() !== 'window') {
-    return
+    return false
   }
 
   try {
     content.send(channel, payload)
+    return true
   } catch {
-    // ignore send failures
+    return false
   }
 }
 
@@ -36,13 +37,17 @@ export function sendToWebContentsSessionSubscribers(
   sessionId: string,
   channel: string,
   payload: unknown,
-): void {
+): number[] {
   const subscribers = subscribersBySessionId.get(sessionId)
   if (!subscribers || subscribers.size === 0) {
-    return
+    return []
   }
 
+  const delivered: number[] = []
   for (const contentsId of subscribers) {
-    sendToWebContentsWindow(contentsId, channel, payload)
+    if (sendToWebContentsWindow(contentsId, channel, payload)) {
+      delivered.push(contentsId)
+    }
   }
+  return delivered
 }

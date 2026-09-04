@@ -67,15 +67,26 @@ describe('remotePtyRuntime session coordinator', () => {
     coordinator.trackWebContentsDestroyed(1)
     coordinator.addSubscriber(1, 'session-1')
     coordinator.sendAttachForSession(socket as never, 'session-1')
-    coordinator.onSessionAttached('session-1')
+    coordinator.onSessionAttached('session-1', { role: 'controller', epoch: 1 })
 
-    await expect(coordinator.waitForSessionAttached('session-1')).resolves.toBeUndefined()
+    await expect(coordinator.waitForSessionAttached('session-1')).resolves.toEqual({
+      sessionId: 'session-1',
+      authority: { role: 'controller', epoch: 1 },
+    })
+    coordinator.onAuthorityChanged('session-1', { role: 'viewer', epoch: 2 })
+    await expect(coordinator.waitForSessionAttached('session-1')).resolves.toEqual({
+      sessionId: 'session-1',
+      authority: { role: 'viewer', epoch: 2 },
+    })
 
     electronState.contentsById.get(1)?.destroyed?.()
 
     expect(sendDetachMessage).not.toHaveBeenCalled()
     expect(coordinator.hasTrackedSession('session-1')).toBe(true)
-    await expect(coordinator.waitForSessionAttached('session-1')).resolves.toBeUndefined()
+    await expect(coordinator.waitForSessionAttached('session-1')).resolves.toEqual({
+      sessionId: 'session-1',
+      authority: { role: 'viewer', epoch: 2 },
+    })
   })
 
   it('clears stale attach state once an untracked session loses its last subscriber', async () => {
@@ -93,7 +104,7 @@ describe('remotePtyRuntime session coordinator', () => {
     coordinator.noteSessionRolePreference('session-1', 'controller')
     coordinator.addSubscriber(1, 'session-1')
     coordinator.sendAttachForSession(firstSocket as never, 'session-1')
-    coordinator.onSessionAttached('session-1')
+    coordinator.onSessionAttached('session-1', { role: 'controller', epoch: 1 })
 
     coordinator.untrackSession('session-1')
     await coordinator.removeSubscriber(1, 'session-1')
@@ -122,7 +133,7 @@ describe('remotePtyRuntime session coordinator', () => {
       role: 'controller',
       authorityEpoch: 7,
     })
-    coordinator.onSessionAttached('session-reconnect')
+    coordinator.onSessionAttached('session-reconnect', { role: 'controller', epoch: 7 })
 
     coordinator.onSocketClosed()
 
@@ -137,7 +148,8 @@ describe('remotePtyRuntime session coordinator', () => {
     await Promise.resolve()
     expect(attached).toBe(false)
 
-    coordinator.onSessionAttached('session-reconnect')
+    coordinator.sendAttachForSession(createMockSocket() as never, 'session-reconnect')
+    coordinator.onSessionAttached('session-reconnect', { role: 'controller', epoch: 8 })
     await pendingAttach
     expect(attached).toBe(true)
   })
@@ -164,7 +176,10 @@ describe('remotePtyRuntime session coordinator', () => {
 
     const attaching = ensureAttached('session-exited-during-attach')
     coordinator.untrackSession('session-exited-during-attach', new Error('Terminal session exited'))
-    coordinator.onSessionAttached('session-exited-during-attach')
+    coordinator.onSessionAttached('session-exited-during-attach', {
+      role: 'controller',
+      epoch: 1,
+    })
     resolveSocket()
 
     await expect(attaching).rejects.toThrow('exited before attach completed')
@@ -191,7 +206,7 @@ describe('remotePtyRuntime session coordinator', () => {
     const attaching = ensureAttached('session-exit-after-ack')
     await Promise.resolve()
     expect(socket.send).toHaveBeenCalledTimes(1)
-    coordinator.onSessionAttached('session-exit-after-ack')
+    coordinator.onSessionAttached('session-exit-after-ack', { role: 'controller', epoch: 1 })
     coordinator.untrackSession('session-exit-after-ack', new Error('Terminal session exited'))
 
     await expect(attaching).rejects.toThrow('exited before attach completed')
@@ -214,6 +229,63 @@ describe('remotePtyRuntime session coordinator', () => {
     await expect(waiting).rejects.toThrow('Terminal session exited')
   })
 
+  it('rejects a pending attach immediately when the socket disconnects', async () => {
+    const coordinator = createRemotePtySessionCoordinator({
+      connectTimeoutMs: 5_000,
+      cancelMetadataWatcher: vi.fn(),
+      shouldKeepSocketAlive: () => true,
+      closeSocket: vi.fn(),
+      sendDetachMessage: vi.fn(async () => undefined),
+    })
+    const socket = createMockSocket()
+    coordinator.noteSessionRolePreference('session-pending', 'controller')
+    coordinator.sendAttachForSession(socket as never, 'session-pending')
+    const pending = coordinator.waitForSessionAttached('session-pending')
+    const rejection = expect(pending).rejects.toThrow('connection closed')
+
+    coordinator.onSocketClosed()
+
+    await rejection
+  })
+
+  it('reattaches from the minimum cursor still required by active subscribers', async () => {
+    const coordinator = createRemotePtySessionCoordinator({
+      connectTimeoutMs: 50,
+      cancelMetadataWatcher: vi.fn(),
+      shouldKeepSocketAlive: () => true,
+      closeSocket: vi.fn(),
+      sendDetachMessage: vi.fn(async () => undefined),
+    })
+    coordinator.noteSessionRolePreference('session-shared-cursor', 'controller')
+    coordinator.addSubscriber(1, 'session-shared-cursor', 12)
+    coordinator.addSubscriber(2, 'session-shared-cursor', 4)
+    const firstSocket = createMockSocket()
+
+    coordinator.sendAttachForSession(firstSocket as never, 'session-shared-cursor')
+    expect(JSON.parse(firstSocket.send.mock.calls[0]?.[0] as string)).toMatchObject({
+      type: 'attach',
+      afterSeq: 4,
+    })
+    coordinator.onSessionAttached('session-shared-cursor', { role: 'controller', epoch: 1 })
+    coordinator.noteSubscriberSeq('session-shared-cursor', 2, 15)
+    coordinator.onSocketClosed()
+
+    const secondSocket = createMockSocket()
+    coordinator.sendAttachForSession(secondSocket as never, 'session-shared-cursor')
+    expect(JSON.parse(secondSocket.send.mock.calls[0]?.[0] as string)).toMatchObject({
+      afterSeq: 12,
+    })
+    coordinator.onSessionAttached('session-shared-cursor', { role: 'controller', epoch: 2 })
+    await coordinator.removeSubscriber(1, 'session-shared-cursor')
+    coordinator.onSocketClosed()
+
+    const thirdSocket = createMockSocket()
+    coordinator.sendAttachForSession(thirdSocket as never, 'session-shared-cursor')
+    expect(JSON.parse(thirdSocket.send.mock.calls[0]?.[0] as string)).toMatchObject({
+      afterSeq: 15,
+    })
+  })
+
   it('reports whether a tracked session is attached to the worker stream', () => {
     const coordinator = createRemotePtySessionCoordinator({
       connectTimeoutMs: 50,
@@ -226,7 +298,7 @@ describe('remotePtyRuntime session coordinator', () => {
     coordinator.noteSessionRolePreference('session-replay', 'controller')
     expect(coordinator.isStreamAttached('session-replay')).toBe(false)
     coordinator.sendAttachForSession(socket as never, 'session-replay')
-    coordinator.onSessionAttached('session-replay')
+    coordinator.onSessionAttached('session-replay', { role: 'controller', epoch: 1 })
 
     expect(coordinator.isStreamAttached('session-replay')).toBe(true)
     coordinator.onSocketClosed()

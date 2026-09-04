@@ -191,6 +191,7 @@
     -   说明：`pnpm test:e2e` 已包含构建步骤，默认使用 `offscreen` 后台窗口模式；检测到 Electron 崩溃特征时，会按窗口模式链路自动降级并重跑失败用例（例如 `hidden -> offscreen`、`offscreen -> inactive`）。
     -   可通过 `OPENCOVE_E2E_WINDOW_MODE` 指定窗口模式（`inactive / offscreen / hidden`，禁止 `normal` 以避免抢占焦点）。
     -   如需关闭自动降级，可设置 `OPENCOVE_E2E_DISABLE_CRASH_FALLBACK=1`。
+    -   `pnpm pre-commit` 与 CI 的 required Electron/Web continuity gates 固定使用 `OPENCOVE_E2E_RETRIES=0` 且关闭 crash fallback；本地诊断命令可以显式覆盖，但 retry/fallback 结果不能作为合并证据。
     -   若需单独执行 Playwright（如 `pnpm exec playwright test tests/e2e/xxx.spec.ts`），必须先执行 `pnpm build`，否则可能仍会使用旧的 `out/` 产物，导致结果与当前源码不一致。
 
 ## 常见问题（FAQ）
@@ -214,7 +215,8 @@
 -   **恢复模型与 owner 表**：`docs/architecture/RECOVERY_MODEL.md`
 -   **持久化（SQLite schema / migrations）**：`docs/architecture/PERSISTENCE.md`
 -   **终端架构文档入口**：`docs/terminal/README.md`
--   **终端多端架构（当前 owner / attach / geometry）**：`docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
+-   **终端多端架构（当前 owner / attach / geometry / display calibration）**：`docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
+-   **Worker Web access 生命周期**：`docs/runtime/WORKER_WEB_ACCESS_LIFECYCLE.md`
 -   **终端渲染基准（tactical baseline）**：`docs/terminal/TUI_RENDERING_BASELINE.md`
 -   **UI 开发标准**：
     -   总体 UI 规范：`docs/ui/README.md`

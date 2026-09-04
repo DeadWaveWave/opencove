@@ -1,5 +1,8 @@
 import type { Terminal } from '@xterm/xterm'
-import type { PresentationSnapshotTerminalResult } from '@shared/contracts/dto'
+import type {
+  AttachTerminalResult,
+  PresentationSnapshotTerminalResult,
+} from '@shared/contracts/dto'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './scrollback'
 import type { CachedTerminalScreenState } from './screenStateCache'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
@@ -16,7 +19,7 @@ const ALT_BUFFER_EXIT_MARKER = '\u001b[?1049l'
 const PRESENTATION_SNAPSHOT_ATTACH_TIMEOUT_MS = 1_500
 
 async function awaitAttachForPresentationSnapshot(
-  attachPromise: Promise<void | undefined>,
+  attachPromise: Promise<AttachTerminalResult | undefined>,
 ): Promise<void> {
   let timeout: ReturnType<typeof setTimeout> | null = null
 
@@ -147,7 +150,7 @@ export async function hydrateTerminalFromSnapshot({
   onPresentationSnapshotGeometryApplied,
   finalizeHydration,
 }: {
-  attachPromise: Promise<void | undefined>
+  attachPromise: Promise<AttachTerminalResult | undefined>
   sessionId: string
   terminal: Terminal
   kind: 'terminal' | 'agent'

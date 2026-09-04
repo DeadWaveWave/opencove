@@ -269,6 +269,7 @@ export async function commitInitialTerminalNodeGeometry({
   sessionId,
   reason,
   geometryRevision,
+  shouldCommit,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
   fitAddonRef: MutableRefObject<FitAddon | null>
@@ -278,6 +279,7 @@ export async function commitInitialTerminalNodeGeometry({
   sessionId: string
   reason: TerminalGeometryCommitReason
   geometryRevision?: number | null
+  shouldCommit?: () => boolean
 }): Promise<InitialTerminalNodeGeometryCommitResult | null> {
   const nextPtySize = await resolveStableMeasuredTerminalNodeGeometry({
     terminalRef,
@@ -299,5 +301,6 @@ export async function commitInitialTerminalNodeGeometry({
     commitEvent: 'geometry-initial-commit-resized',
     skippedEvent: 'geometry-initial-commit-skipped',
     unchangedEvent: 'geometry-initial-commit-unchanged',
+    shouldCommit,
   })
 }

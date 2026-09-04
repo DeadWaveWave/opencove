@@ -1,5 +1,6 @@
 import WebSocket from 'ws'
 import type {
+  AttachTerminalResult,
   TerminalSessionStateEvent,
   TerminalSessionStateSource,
 } from '../../../../shared/contracts/dto'
@@ -11,10 +12,10 @@ export function createEnsureRemotePtySessionAttached(options: {
   sessionCoordinator: RemotePtySessionCoordinator
   ensureSocket: () => Promise<void>
   getSocket: () => WebSocket | null
-}): (sessionId: string) => Promise<void> {
+}): (sessionId: string) => Promise<AttachTerminalResult> {
   return async sessionId => {
     if (!options.sessionCoordinator.hasTrackedSession(sessionId)) {
-      throw new Error(`Terminal session is no longer tracked: ${sessionId}`)
+      throw new Error(`PTY session is not tracked: ${sessionId}`)
     }
 
     await options.ensureSocket()
@@ -23,17 +24,18 @@ export function createEnsureRemotePtySessionAttached(options: {
     }
     const socket = options.getSocket()
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      throw new Error('PTY stream connection changed before attach')
+      throw new Error('PTY stream socket is not connected')
     }
 
     options.sessionCoordinator.sendAttachForSession(socket, sessionId)
-    await options.sessionCoordinator.waitForSessionAttached(sessionId)
+    const attached = await options.sessionCoordinator.waitForSessionAttached(sessionId)
     if (
       !options.sessionCoordinator.hasTrackedSession(sessionId) ||
       !options.sessionCoordinator.isStreamAttached(sessionId)
     ) {
       throw new Error(`Terminal session exited before attach completed: ${sessionId}`)
     }
+    return attached
   }
 }
 
@@ -78,25 +80,28 @@ export async function attachRemotePtyRenderer(options: {
   sessionId: string
   afterSeq?: number | null
   sessionCoordinator: RemotePtySessionCoordinator
-  ensureSessionAttached: (sessionId: string) => Promise<void>
+  ensureSessionAttached: (sessionId: string) => Promise<AttachTerminalResult>
   agentStateReplay: RemotePtyAgentStateReplay
-}): Promise<void> {
+}): Promise<AttachTerminalResult> {
   options.sessionCoordinator.trackWebContentsDestroyed(options.contentsId)
   options.sessionCoordinator.trackSession(options.sessionId)
-  if (
+  const afterSeq =
     typeof options.afterSeq === 'number' &&
-    Number.isFinite(options.afterSeq) &&
+    Number.isSafeInteger(options.afterSeq) &&
     options.afterSeq >= 0
-  ) {
-    options.sessionCoordinator.updateAttachedSeq(options.sessionId, options.afterSeq)
+      ? options.afterSeq
+      : null
+  if (afterSeq !== null) {
+    options.sessionCoordinator.updateAttachedSeq(options.sessionId, afterSeq)
   }
-  options.sessionCoordinator.addSubscriber(options.contentsId, options.sessionId)
+  options.sessionCoordinator.addSubscriber(options.contentsId, options.sessionId, afterSeq)
 
   const replayCachedState = options.sessionCoordinator.isStreamAttached(options.sessionId)
-  await options.ensureSessionAttached(options.sessionId)
+  const attached = await options.ensureSessionAttached(options.sessionId)
   if (replayCachedState) {
     options.agentStateReplay.replaySession(options.sessionId, event => {
       sendToWebContentsWindow(options.contentsId, IPC_CHANNELS.ptyState, event)
     })
   }
+  return attached
 }

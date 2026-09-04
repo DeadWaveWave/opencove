@@ -1,9 +1,8 @@
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
-import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
-import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
+import { TerminalDisplayAlignedWorkspaceCanvasView } from './workspaceCanvas/TerminalDisplayAlignedWorkspaceCanvasView'
 import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
-import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
+import type { WorkspaceCanvasInnerProps } from './workspaceCanvas/types'
 export function WorkspaceCanvasInner({
   workspaceId,
   onShowMessage,
@@ -25,15 +24,15 @@ export function WorkspaceCanvasInner({
   onViewportChange,
   onMinimapVisibilityChange,
   agentSettings,
+  terminalDisplayCalibration = null,
+  terminalDisplayMetrics,
   onChangePreserveWindowSizesOnArrange,
   isFocusNodeTargetZoomPreviewing = false,
   focusNodeId,
   focusSpaceId,
   focusSequence,
-}: WorkspaceCanvasProps) {
-  const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
-  const { terminalDisplayCalibration, terminalDisplayMetrics } =
-    workspaceCanvasHooks.useWorkspaceCanvasTerminalDisplay(agentSettings)
+}: WorkspaceCanvasInnerProps) {
+  const reactFlow = useReactFlow<Node<import('../types').TerminalNodeData>, Edge>()
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     workspaceId,
     nodes,
@@ -214,7 +213,6 @@ export function WorkspaceCanvasInner({
     workspacePath,
     onShowMessage,
     agentSettings,
-    terminalDisplayCalibration,
     actionRefs,
     convertNoteToTask,
     setNodeLabelColorOverride: nodeStore.setNodeLabelColorOverride,
@@ -384,7 +382,10 @@ export function WorkspaceCanvasInner({
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
   })
   return (
-    <WorkspaceCanvasView
+    <TerminalDisplayAlignedWorkspaceCanvasView
+      terminalFontSize={agentSettings.terminalFontSize}
+      terminalFontFamily={agentSettings.terminalFontFamily}
+      terminalDisplayCalibration={terminalDisplayCalibration}
       canvasRef={canvasState.canvasRef}
       resolvedCanvasInputMode={inputMode.resolvedCanvasInputMode}
       isCanvasWheelGestureCaptureActive={canvasState.isCanvasWheelGestureCaptureActive}

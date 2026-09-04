@@ -13,9 +13,11 @@ import type {
   WorkspaceViewport,
 } from '../../types'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { MountDto, TerminalPtyGeometry, TerminalRuntimeKind } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { SpaceBoundary } from '@shared/types/spaceBoundary'
+import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 
 export type WorkspaceCanvasMessageTone = 'info' | 'warning' | 'error'
 
@@ -45,11 +47,16 @@ export interface WorkspaceCanvasProps {
   onViewportChange: (viewport: WorkspaceViewport) => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
   agentSettings: AgentSettings
+  terminalDisplayCalibration?: TerminalClientDisplayCalibration | null
   onChangePreserveWindowSizesOnArrange: (enabled: boolean) => void
   isFocusNodeTargetZoomPreviewing?: boolean
   focusNodeId?: string | null
   focusSpaceId?: string | null
   focusSequence?: number
+}
+
+export interface WorkspaceCanvasInnerProps extends WorkspaceCanvasProps {
+  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
 }
 
 export interface PaneContextMenuState {

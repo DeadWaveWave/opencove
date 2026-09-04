@@ -61,6 +61,67 @@
     "layerDependencies": {
       "severity": "warn",
       "ignoreTypeOnly": true,
+      "allowedEdges": [
+        {
+          "fromPatterns": ["src/app/renderer/shell/hooks/useWorkspaceMountRepair.ts"],
+          "toLayers": ["application"],
+          "toPatterns": [
+            "src/contexts/workspace/application/mountRepair/WorkspaceMountRepairOwner.ts"
+          ]
+        },
+        {
+          "fromPatterns": ["src/app/worker/workerWebAccessRuntime.ts"],
+          "toLayers": ["application", "domain"],
+          "toPatterns": [
+            "src/contexts/settings/application/workerWebAccess/workerWebAccessOwner.ts",
+            "src/contexts/settings/application/workerWebAccess/workerWebAccessTypes.ts",
+            "src/contexts/settings/domain/homeWorkerConfig.ts"
+          ]
+        },
+        {
+          "fromPatterns": ["src/app/worker/workerConfigurationOwner.ts"],
+          "toLayers": ["application", "infrastructure"],
+          "toPatterns": [
+            "src/contexts/settings/application/homeWorkerConfigurationOwner.ts",
+            "src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig.ts",
+            "src/contexts/settings/infrastructure/homeWorker/webUiPassword.ts"
+          ]
+        },
+        {
+          "fromPatterns": ["src/app/worker/workerConfigurationHandlers.ts"],
+          "toLayers": ["application"],
+          "toPatterns": ["src/contexts/settings/application/homeWorkerConfigurationPolicy.ts"]
+        },
+        {
+          "fromPatterns": ["src/app/worker/desktopManagedControlSurface.ts"],
+          "toLayers": ["infrastructure"],
+          "toPatterns": ["src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig.ts"]
+        },
+        {
+          "fromPatterns": ["src/app/worker/headlessPtyRuntime.ts"],
+          "toLayers": ["presentation-main", "application", "platform"],
+          "toPatterns": [
+            "src/contexts/terminal/presentation/main-ipc/sessionStateWatcher.ts",
+            "src/contexts/terminal/presentation/main-ipc/debugCrashHost.ts",
+            "src/contexts/terminal/application/ports/TerminalProcessEnginePort.ts",
+            "src/platform/terminal/TerminalProfileResolver.ts"
+          ]
+        },
+        {
+          "fromPatterns": ["src/app/worker/index.ts"],
+          "toLayers": ["application", "infrastructure", "platform"],
+          "toPatterns": [
+            "src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore.ts",
+            "src/platform/os/CliEnvironment.ts",
+            "src/contexts/settings/infrastructure/homeWorker/webUiPassword.ts",
+            "src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig.ts",
+            "src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease.ts",
+            "src/contexts/agent/application/services/AgentProviderRegistry.ts",
+            "src/contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog.ts",
+            "src/contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup.ts"
+          ]
+        }
+      ],
       "doc": "docs/architecture/ARCHITECTURE.md#5-依赖规则"
     },
     "forbiddenImportSpecifiers": [
@@ -90,6 +151,32 @@
         "specifiers": [],
         "specifierPrefixes": ["@contexts/"],
         "toPatterns": ["src/contexts/**"],
+        "doc": "docs/architecture/ARCHITECTURE.md#5-依赖规则"
+      },
+      {
+        "id": "architecture.terminalRendererNoSettingsPresentation",
+        "severity": "error",
+        "fromLayers": ["presentation-renderer"],
+        "fromPatterns": [
+          "src/contexts/workspace/presentation/renderer/components/terminalNode/**",
+          "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTerminalDisplayMetrics.ts"
+        ],
+        "ignoreTypeOnly": false,
+        "specifiers": [],
+        "specifierPrefixes": ["@contexts/settings/presentation/"],
+        "doc": "docs/architecture/ARCHITECTURE.md#5-依赖规则"
+      },
+      {
+        "id": "architecture.settingsCalibrationNoWorkspacePresentation",
+        "severity": "error",
+        "fromLayers": ["presentation-renderer"],
+        "fromPatterns": [
+          "src/contexts/settings/presentation/renderer/terminalDisplay*.ts",
+          "src/contexts/settings/presentation/renderer/useTerminalDisplay*.ts"
+        ],
+        "ignoreTypeOnly": false,
+        "specifiers": [],
+        "specifierPrefixes": ["@contexts/workspace/presentation/"],
         "doc": "docs/architecture/ARCHITECTURE.md#5-依赖规则"
       },
       {

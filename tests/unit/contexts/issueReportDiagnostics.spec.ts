@@ -12,14 +12,6 @@ describe('issue report diagnostics', () => {
         getPath: () => '/Users/alice',
       },
     }))
-    vi.doMock('@app/main/worker/homeWorkerConfig', () => ({
-      readHomeWorkerConfig: vi.fn(async () => ({
-        mode: 'remote',
-        updatedAt: '2026-05-07T00:00:00.000Z',
-        remote: null,
-        webUi: { enabled: false },
-      })),
-    }))
     vi.doMock('@app/main/diagnostics/performanceDiagnosticsCollector', () => ({
       collectPerformanceDiagnosticsSnapshot: vi.fn(async () => ({
         capturedAt: '2026-05-07T00:00:00.000Z',
@@ -63,6 +55,18 @@ describe('issue report diagnostics', () => {
 
     const { collectIssueReportDiagnosticSections } =
       await import('../../../src/contexts/issueReport/infrastructure/main/issueReportDiagnostics')
+    const readHomeWorkerConfig = vi.fn(async () => ({
+      version: 1 as const,
+      mode: 'remote' as const,
+      updatedAt: '2026-05-07T00:00:00.000Z',
+      remote: null,
+      webUi: {
+        enabled: false,
+        port: null,
+        exposeOnLan: false,
+        passwordSet: false,
+      },
+    }))
 
     const sections = await collectIssueReportDiagnosticSections({
       input: {
@@ -90,6 +94,7 @@ describe('issue report diagnostics', () => {
       persistedState: null,
       getUpdateState: () => ({ status: 'idle', checkedAt: null }),
       workerEndpointResolver: null,
+      readHomeWorkerConfig,
       getBreadcrumbs: () => [
         {
           ts: '2026-05-07T00:00:00.000Z',
@@ -128,6 +133,7 @@ describe('issue report diagnostics', () => {
       userDataPath: '/Users/alice/Library/Application Support/OpenCove',
       persistedState: null,
       getUpdateState: () => ({ status: 'idle', checkedAt: null }),
+      readHomeWorkerConfig,
       getBreadcrumbs: () => {
         throw new Error('breadcrumb collector failed')
       },

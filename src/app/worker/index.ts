@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { registerControlSurfaceHttpServer } from '../main/controlSurface/controlSurfaceHttpServer'
+import { createDesktopManagedControlSurface } from './desktopManagedControlSurface'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../main/controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { createApprovedWorkspaceStoreForPath } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import { createHeadlessPtyRuntime } from './headlessPtyRuntime'
@@ -9,9 +10,11 @@ import { resolveWorkerUserDataDir } from './userData'
 import { acquireWorkerSingleInstanceLock } from './singleInstanceLock'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../shared/constants/controlSurface'
 import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironment'
-import { hashWebUiPassword } from '../main/controlSurface/http/webUiPassword'
+import { hashWebUiPassword } from '../../contexts/settings/infrastructure/homeWorker/webUiPassword'
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
+import { readHomeWorkerConfigFile } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
+import { acquireHomeWorkerConfigLease } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 import { createCodexHookChannel } from '../main/controlSurface/agentHook/codexHookChannel'
 import { AgentProviderRegistry } from '../../contexts/agent/application/services/AgentProviderRegistry'
@@ -21,6 +24,7 @@ import {
   reportLegacyManagedHookCleanupFailures,
 } from '../../contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup'
 import { readRepeatedWorkerFlagValues, readWorkerFlagValue } from './workerCliArguments'
+import { CONTROL_SURFACE_SHUTDOWN_WATCHDOG_MS } from '../../shared/runtime/controlSurfaceShutdown'
 
 function resolvePort(argv: string[]): number | null {
   const raw = readWorkerFlagValue(argv, '--port')
@@ -171,7 +175,7 @@ async function main(): Promise<void> {
     processEngine: createWorkerTerminalProcessEngine({ userDataPath }),
   })
 
-  const server = registerControlSurfaceHttpServer({
+  const serverOptions = {
     userDataPath,
     hostname,
     bindHostname,
@@ -188,25 +192,61 @@ async function main(): Promise<void> {
     appVersion,
     agentHookChannels: [claudeHookChannel, codexHookChannel],
     agentProviderRegistry,
-  })
+  }
+  const server = await (async () => {
+    const configLease =
+      startedBy === 'desktop' ? await acquireHomeWorkerConfigLease(userDataPath) : null
+    try {
+      const candidate =
+        startedBy === 'desktop'
+          ? createDesktopManagedControlSurface({
+              server: serverOptions,
+              initialConfig: await readHomeWorkerConfigFile(userDataPath),
+            })
+          : registerControlSurfaceHttpServer(serverOptions)
+      await candidate.ready
+      return candidate
+    } finally {
+      await configLease?.release()
+    }
+  })()
 
   const info = await server.ready
   process.stdout.write(`${JSON.stringify(info)}\n`)
-  if (enableWebUi) {
-    process.stderr.write(`[opencove-worker] web ui: http://${info.hostname}:${info.port}/\n`)
+  process.stderr.write(
+    `[opencove-worker] ${startedBy === 'desktop' ? 'private control' : 'control surface'}: http://${info.hostname}:${info.port}/\n`,
+  )
+  const desktopWebStatus = 'getWebAccessStatus' in server ? server.getWebAccessStatus() : null
+  const activeWebAddress = desktopWebStatus
+    ? desktopWebStatus.state === 'active'
+      ? desktopWebStatus.address
+      : null
+    : enableWebUi
+      ? { hostname: info.hostname, bindHostname, port: info.port }
+      : null
+  if (activeWebAddress) {
     process.stderr.write(
-      `[opencove-worker] debug shell: http://${info.hostname}:${info.port}/debug/shell\n`,
+      `[opencove-worker] web ui: http://${activeWebAddress.hostname}:${activeWebAddress.port}/\n`,
     )
+    process.stderr.write(
+      `[opencove-worker] debug shell: http://${activeWebAddress.hostname}:${activeWebAddress.port}/debug/shell\n`,
+    )
+  } else if (desktopWebStatus?.state === 'failed' || desktopWebStatus?.state === 'degraded') {
+    process.stderr.write(`[opencove-worker] web ui unavailable: ${desktopWebStatus.error}\n`)
   } else {
     process.stderr.write('[opencove-worker] web ui: disabled\n')
   }
-  if (bindHostname === '0.0.0.0' || bindHostname === '::') {
+  if (activeWebAddress?.bindHostname === '0.0.0.0' || activeWebAddress?.bindHostname === '::') {
     process.stderr.write(
-      `[opencove-worker] listening on all interfaces. Use your machine's LAN IP to connect from other devices.\n`,
+      `[opencove-worker] Web UI listening on all interfaces. Use your machine's LAN IP to connect from other devices.\n`,
     )
   }
+  const passwordRequired =
+    desktopWebStatus?.state === 'active' || desktopWebStatus?.state === 'degraded'
+      ? desktopWebStatus.passwordRequired
+      : Boolean(resolvedWebUiPasswordHash)
   process.stderr.write(
-    `[opencove-worker] auth required (use Authorization: Bearer <token>${resolvedWebUiPasswordHash ? ' or /auth/login password' : ' or a Desktop-issued /auth/claim ticket'})\n`,
+    `[opencove-worker] auth required (use Authorization: Bearer <token>${passwordRequired ? ' or /auth/login password' : ' or a Desktop-issued /auth/claim ticket'})\n`,
   )
 
   let shutdownRequested = false
@@ -219,7 +259,7 @@ async function main(): Promise<void> {
 
     const forceExitTimer = setTimeout(() => {
       process.exit(code)
-    }, 5_000)
+    }, CONTROL_SURFACE_SHUTDOWN_WATCHDOG_MS)
     forceExitTimer.unref()
 
     try {

@@ -13,11 +13,13 @@ export const enTerminalDisplayCalibration = {
   referenceEmptyAutoOff:
     'No target has been saved yet. Automatic setup is off, so set this device manually when you are ready.',
   referenceStale:
-    'The saved target belongs to a different terminal font setting. Set a new target before calibrating.',
+    'The saved target uses an older measurement or a different terminal font setting. Keep the anchor client open to refresh it automatically, or set a new target.',
   referenceSummary: '{{cols}}×{{rows}} cells, {{cellWidth}}×{{cellHeight}} px cell.',
   setReference: 'Use This Device as Target',
   clientLabel: 'This Device',
   clientDefault: 'No saved adjustment for this device. It uses the shared terminal font as-is.',
+  clientCalibrationUnavailable:
+    'A saved adjustment exists but cannot safely match the current target. Clear it or let automatic calibration replace it.',
   clientCalibrated:
     'Saved adjustment is active: font {{fontSize}}px, line height {{lineHeight}}. Match: {{quality}}.',
   clientCalibrationPaused:
@@ -36,6 +38,8 @@ export const enTerminalDisplayCalibration = {
     'Target saved. Open another client and calibrate that device against this target.',
   referenceRequired: 'Set a shared target before calibrating this device.',
   calibrationSaved: 'Device adjustment saved. Match: {{quality}}.',
+  calibrationUnmatchable:
+    'This renderer cannot safely match the current target. No adjustment was applied. Match: {{quality}}. Refresh or replace the shared target.',
   resetDone: 'The saved adjustment for this device was cleared.',
   diagnosticsCopied: 'Terminal display diagnostics copied.',
   measureFailed: 'Unable to measure terminal display metrics on this device.',

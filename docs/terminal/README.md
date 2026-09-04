@@ -4,9 +4,9 @@
 
 ## Read Order
 
-- `MULTI_CLIENT_ARCHITECTURE.md`：当前终端 owner、attach、snapshot、geometry 和 renderer cache 边界。
+- `MULTI_CLIENT_ARCHITECTURE.md`：当前终端 owner、attach authority、snapshot、geometry、client-local calibration 和 renderer cache 边界。
 - `TUI_RENDERING_BASELINE.md`：Codex/OpenCode TUI 渲染稳定性基线。
-- `TERMINAL_RUNTIME_STABILITY.md`：geometry ACK、spawn identity 与启动准入不变量。
+- `TERMINAL_RUNTIME_STABILITY.md`：geometry ACK、attach authority、client calibration、spawn identity 与启动准入不变量。
 - `ANSI_SCREEN_PERSISTENCE.md`：ANSI / alternate-screen restore 案例记录。
 
 ## Related Docs
@@ -17,6 +17,7 @@
 - `../cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`：canvas jitter 与 terminal durability 复盘。
 - `../cases/terminal-no-color-visual-debug.md`：no-color 输出视觉调试清单。
 - `../cases/xterm-hit-test-cursor-flicker.md`：xterm cursor 与 hit-test flicker 复盘。
+- `../runtime/WORKER_WEB_ACCESS_LIFECYCLE.md`：Web listener 热配置与 terminal continuity 边界。
 
 ## Maintenance Rules
 

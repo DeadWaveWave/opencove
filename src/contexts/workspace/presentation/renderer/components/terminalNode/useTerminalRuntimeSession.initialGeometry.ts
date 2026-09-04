@@ -1,7 +1,11 @@
 import type { MutableRefObject } from 'react'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
-import type { PresentationSnapshotTerminalResult, TerminalPtyGeometry } from '@shared/contracts/dto'
+import type {
+  AttachTerminalResult,
+  PresentationSnapshotTerminalResult,
+  TerminalPtyGeometry,
+} from '@shared/contracts/dto'
 import type { AgentLaunchMode } from '../../types'
 import { resolveInitialTerminalDimensions } from './initialDimensions'
 import {
@@ -15,7 +19,7 @@ import type { XtermSession } from './xtermSession'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
 import {
   beginTerminalGeometryCommit,
-  markTerminalGeometryAccepted,
+  initializeTerminalGeometryCommitBaseline,
   markTerminalGeometryCommitSettled,
 } from './terminalGeometryCoordinator'
 
@@ -48,11 +52,15 @@ export function shouldPreferMeasuredInitialGeometryCommit({
     return false
   }
 
+  if (isLiveSessionReattach) {
+    return kind === 'terminal' || kind === 'agent'
+  }
+
   if (kind === 'agent') {
     return true
   }
 
-  return !isLiveSessionReattach && kind === 'terminal' && canonicalInitialGeometry === null
+  return kind === 'terminal' && canonicalInitialGeometry === null
 }
 
 function applyCanonicalGeometryLocally({
@@ -110,6 +118,7 @@ export function createRuntimeInitialGeometryCommitter({
   canonicalInitialGeometry,
   allowMeasuredResizeCommit = true,
   preferMeasuredGeometryCommit = false,
+  isCurrent = () => true,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
   fitAddonRef: MutableRefObject<FitAddon | null>
@@ -120,13 +129,30 @@ export function createRuntimeInitialGeometryCommitter({
   canonicalInitialGeometry?: PtySize | null
   allowMeasuredResizeCommit?: boolean
   preferMeasuredGeometryCommit?: boolean
+  isCurrent?: () => boolean
 }) {
-  return async (baselineSnapshot: PresentationSnapshotTerminalResult | null) => {
+  return async (
+    baselineSnapshot: PresentationSnapshotTerminalResult | null,
+    attached?: AttachTerminalResult,
+  ) => {
     const canonicalGeometry = baselineSnapshot
       ? { cols: baselineSnapshot.cols, rows: baselineSnapshot.rows }
       : (canonicalInitialGeometry ?? null)
 
-    if (canonicalGeometry && !preferMeasuredGeometryCommit) {
+    const terminal = terminalRef.current
+    if (terminal) {
+      initializeTerminalGeometryCommitBaseline(terminal, {
+        geometryRevision: baselineSnapshot?.geometryRevision,
+        authority: attached?.authority,
+      })
+    }
+    const shouldMeasure = preferMeasuredGeometryCommit && attached?.authority.role !== 'viewer'
+
+    if (attached?.authority.role === 'viewer' && !canonicalGeometry) {
+      return null
+    }
+
+    if (canonicalGeometry && !shouldMeasure) {
       lastCommittedPtySizeRef.current = canonicalGeometry
       applyCanonicalGeometryLocally({
         terminalRef,
@@ -134,10 +160,6 @@ export function createRuntimeInitialGeometryCommitter({
         isPointerResizingRef,
         geometry: canonicalGeometry,
       })
-      const terminal = terminalRef.current
-      if (terminal) {
-        markTerminalGeometryAccepted(terminal, baselineSnapshot?.geometryRevision)
-      }
       return { ...canonicalGeometry, changed: false }
     }
 
@@ -153,10 +175,6 @@ export function createRuntimeInitialGeometryCommitter({
         isPointerResizingRef,
         geometry: canonicalGeometry,
       })
-      const terminal = terminalRef.current
-      if (terminal) {
-        markTerminalGeometryAccepted(terminal, baselineSnapshot?.geometryRevision)
-      }
       return { ...canonicalGeometry, changed: false }
     }
 
@@ -164,7 +182,6 @@ export function createRuntimeInitialGeometryCommitter({
       lastCommittedPtySizeRef.current = canonicalGeometry
     }
 
-    const terminal = terminalRef.current
     const geometryRevision = terminal ? beginTerminalGeometryCommit(terminal) : null
     let measuredGeometry: InitialTerminalNodeGeometryCommitResult | null = null
     try {
@@ -177,6 +194,7 @@ export function createRuntimeInitialGeometryCommitter({
         sessionId,
         reason: 'frame_commit',
         geometryRevision,
+        shouldCommit: () => isCurrent() && terminalRef.current === terminal,
       })
     } catch {
       if (terminal && geometryRevision !== null) {

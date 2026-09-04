@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '../../shared/contracts/ipc'
 import type { ControlSurfaceInvokeRequest } from '../../shared/contracts/controlSurface'
 import type {
   AttachTerminalInput,
+  AttachTerminalResult,
   CopyWorkspacePathInput,
   ListSystemFontsResult,
   CreateGitWorktreeInput,
@@ -104,6 +105,7 @@ import type {
   SyncEventPayload,
   WriteFileTextInput,
   HomeWorkerConfigDto,
+  HomeWorkerConfigurationSnapshotDto,
   SetHomeWorkerConfigInput,
   SetHomeWorkerWebUiSettingsInput,
   SetHomeWorkerWebUiSecurityInput,
@@ -326,7 +328,7 @@ const opencoveApi = {
     resize: (payload: ResizeTerminalInput): Promise<TerminalGeometryCommitResult> =>
       invokeIpc(IPC_CHANNELS.ptyResize, payload),
     kill: (payload: KillTerminalInput): Promise<void> => invokeIpc(IPC_CHANNELS.ptyKill, payload),
-    attach: (payload: AttachTerminalInput): Promise<void> =>
+    attach: (payload: AttachTerminalInput): Promise<AttachTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptyAttach, payload),
     detach: (payload: DetachTerminalInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),
@@ -461,6 +463,8 @@ const opencoveApi = {
   },
   workerClient: {
     getConfig: (): Promise<HomeWorkerConfigDto> => invokeIpc(IPC_CHANNELS.workerClientGetConfig),
+    getConfigurationSnapshot: (): Promise<HomeWorkerConfigurationSnapshotDto> =>
+      invokeIpc(IPC_CHANNELS.workerClientGetConfigurationSnapshot),
     setConfig: (payload: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> =>
       invokeIpc(IPC_CHANNELS.workerClientSetConfig, payload),
     setWebUiSettings: (payload: SetHomeWorkerWebUiSettingsInput): Promise<HomeWorkerConfigDto> =>

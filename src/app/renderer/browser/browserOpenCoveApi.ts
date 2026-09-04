@@ -428,6 +428,10 @@ export function installBrowserOpenCoveApi(): void {
     },
     workerClient: {
       getConfig: async () => unsupportedWorkerConfig(),
+      getConfigurationSnapshot: async () => ({
+        config: unsupportedWorkerConfig(),
+        webAccess: { state: 'disabled', generation: 0, drainingGenerations: [] },
+      }),
       setConfig: async () => unsupportedWorkerConfig(),
       setWebUiSettings: async () => unsupportedWorkerConfig(),
       setWebUiSecurity: async () => unsupportedWorkerConfig(),

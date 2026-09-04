@@ -119,6 +119,11 @@ export interface AttachTerminalInput {
   afterSeq?: number | null
 }
 
+export interface AttachTerminalResult {
+  sessionId: string
+  authority: TerminalGeometryAuthority
+}
+
 export interface DetachTerminalInput {
   sessionId: string
 }

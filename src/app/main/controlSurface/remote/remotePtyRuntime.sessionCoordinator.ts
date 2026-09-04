@@ -1,8 +1,17 @@
 import { webContents } from 'electron'
 import WebSocket from 'ws'
+import type {
+  AttachTerminalResult,
+  TerminalGeometryAuthority,
+} from '../../../../shared/contracts/dto'
 import type { AttachedSessionState } from './remotePtyStreamMessageHandler'
 
 type SessionRole = 'viewer' | 'controller'
+type AttachWaiter = {
+  resolve: (result: AttachTerminalResult) => void
+  reject: (error: Error) => void
+  timer: ReturnType<typeof setTimeout>
+}
 
 function createAttachedSessionState(): AttachedSessionState {
   return { lastSeq: 0, role: 'viewer', authorityEpoch: null }
@@ -13,18 +22,20 @@ export type RemotePtySessionCoordinator = {
   trackSession: (sessionId: string) => void
   untrackSession: (sessionId: string, error?: Error) => void
   trackWebContentsDestroyed: (contentsId: number) => void
-  addSubscriber: (contentsId: number, sessionId: string) => void
+  addSubscriber: (contentsId: number, sessionId: string, afterSeq?: number | null) => void
   removeSubscriber: (contentsId: number, sessionId: string) => Promise<void>
   noteSessionRolePreference: (sessionId: string, role: SessionRole) => void
-  onSessionAttached: (sessionId: string) => void
+  onSessionAttached: (sessionId: string, authority: TerminalGeometryAuthority) => void
+  onAuthorityChanged: (sessionId: string, authority: TerminalGeometryAuthority) => void
   onSocketClosed: () => void
-  waitForSessionAttached: (sessionId: string) => Promise<void>
+  waitForSessionAttached: (sessionId: string) => Promise<AttachTerminalResult>
   sendAttachForSession: (ws: WebSocket, sessionId: string) => void
   forEachTrackedSession: (callback: (sessionId: string) => void) => void
   hasTrackedSession: (sessionId: string) => boolean
   hasTrackedSessions: () => boolean
   isStreamAttached: (sessionId: string) => boolean
   updateAttachedSeq: (sessionId: string, seq: number) => void
+  noteSubscriberSeq: (sessionId: string, contentsId: number, seq: number) => void
   clear: () => void
 }
 
@@ -46,12 +57,9 @@ export function createRemotePtySessionCoordinator(options: {
   const streamAttachRequestedSessionIds = new Set<string>()
   const streamAttachedSessionIds = new Set<string>()
   const rolePreferenceBySessionId = new Map<string, SessionRole>()
-  type PendingAttachWaiter = {
-    resolve: () => void
-    reject: (error: Error) => void
-    timer: ReturnType<typeof setTimeout>
-  }
-  const pendingSessionAttachWaiters = new Map<string, Set<PendingAttachWaiter>>()
+  const subscriberSeqBySessionId = new Map<string, Map<number, number>>()
+  const pendingSessionAttachWaiters = new Map<string, Set<AttachWaiter>>()
+  const attachedResultBySessionId = new Map<string, AttachTerminalResult>()
 
   const maybeCloseSocket = (): void => {
     if (!options.shouldKeepSocketAlive()) {
@@ -62,6 +70,7 @@ export function createRemotePtySessionCoordinator(options: {
   const clearStreamAttachmentState = (sessionId: string): void => {
     streamAttachedSessionIds.delete(sessionId)
     streamAttachRequestedSessionIds.delete(sessionId)
+    attachedResultBySessionId.delete(sessionId)
   }
 
   const detachStreamSessionIfUntracked = async (sessionId: string): Promise<void> => {
@@ -103,6 +112,7 @@ export function createRemotePtySessionCoordinator(options: {
     trackedSessionIds.delete(normalizedSessionId)
     clearStreamAttachmentState(normalizedSessionId)
     attachedSessions.delete(normalizedSessionId)
+    subscriberSeqBySessionId.delete(normalizedSessionId)
     rejectPendingAttach(normalizedSessionId, error)
     options.cancelMetadataWatcher(normalizedSessionId)
     maybeCloseSocket()
@@ -117,6 +127,11 @@ export function createRemotePtySessionCoordinator(options: {
     for (const sessionId of sessions) {
       const subscribers = subscribersBySessionId.get(sessionId)
       subscribers?.delete(contentsId)
+      const subscriberSeq = subscriberSeqBySessionId.get(sessionId)
+      subscriberSeq?.delete(contentsId)
+      if (subscriberSeq?.size === 0) {
+        subscriberSeqBySessionId.delete(sessionId)
+      }
       if (subscribers && subscribers.size === 0) {
         subscribersBySessionId.delete(sessionId)
         void detachStreamSessionIfUntracked(sessionId).catch(() => undefined)
@@ -141,11 +156,15 @@ export function createRemotePtySessionCoordinator(options: {
   }
 
   const onSocketClosed = (): void => {
-    const pendingAttachSessionIds = [...pendingSessionAttachWaiters.keys()]
-    pendingAttachSessionIds.forEach(sessionId => {
-      streamAttachRequestedSessionIds.delete(sessionId)
-      rejectPendingAttach(sessionId, new Error('PTY stream connection closed before attach'))
-    })
+    const error = new Error('PTY stream connection closed before attach acknowledgement.')
+    for (const waiters of pendingSessionAttachWaiters.values()) {
+      waiters.forEach(waiter => {
+        clearTimeout(waiter.timer)
+        waiter.reject(error)
+      })
+    }
+    pendingSessionAttachWaiters.clear()
+    attachedResultBySessionId.clear()
     streamAttachedSessionIds.clear()
     streamAttachRequestedSessionIds.clear()
     attachedSessions.forEach(state => {
@@ -154,10 +173,12 @@ export function createRemotePtySessionCoordinator(options: {
     })
   }
 
-  const onSessionAttached = (sessionId: string): void => {
-    if (!trackedSessionIds.has(sessionId)) {
+  const onSessionAttached = (sessionId: string, authority: TerminalGeometryAuthority): void => {
+    if (!trackedSessionIds.has(sessionId) || !streamAttachRequestedSessionIds.has(sessionId)) {
       return
     }
+    const result = { sessionId, authority }
+    attachedResultBySessionId.set(sessionId, result)
     streamAttachedSessionIds.add(sessionId)
     const waiters = pendingSessionAttachWaiters.get(sessionId)
     if (!waiters) {
@@ -167,33 +188,40 @@ export function createRemotePtySessionCoordinator(options: {
     pendingSessionAttachWaiters.delete(sessionId)
     waiters.forEach(waiter => {
       clearTimeout(waiter.timer)
-      waiter.resolve()
+      waiter.resolve(result)
     })
   }
 
-  const waitForSessionAttached = (sessionId: string): Promise<void> => {
+  const onAuthorityChanged = (sessionId: string, authority: TerminalGeometryAuthority): void => {
+    if (streamAttachedSessionIds.has(sessionId)) {
+      attachedResultBySessionId.set(sessionId, { sessionId, authority })
+    }
+  }
+
+  const waitForSessionAttached = (sessionId: string): Promise<AttachTerminalResult> => {
     if (!trackedSessionIds.has(sessionId)) {
       return Promise.reject(new Error(`Terminal session is no longer tracked: ${sessionId}`))
     }
-    if (streamAttachedSessionIds.has(sessionId)) {
-      return Promise.resolve()
+    const attachedResult = attachedResultBySessionId.get(sessionId)
+    if (streamAttachedSessionIds.has(sessionId) && attachedResult) {
+      return Promise.resolve(attachedResult)
     }
 
-    return new Promise<void>((resolve, reject) => {
-      const waiter: PendingAttachWaiter = {
-        resolve,
-        reject,
-        timer: setTimeout(() => {
-          const waiters = pendingSessionAttachWaiters.get(sessionId)
-          waiters?.delete(waiter)
-          if (waiters && waiters.size === 0) {
-            pendingSessionAttachWaiters.delete(sessionId)
-          }
-          streamAttachRequestedSessionIds.delete(sessionId)
-          reject(new Error(`Timed out waiting for PTY attach: ${sessionId}`))
-        }, options.connectTimeoutMs),
-      }
-      const waiters = pendingSessionAttachWaiters.get(sessionId) ?? new Set<PendingAttachWaiter>()
+    return new Promise<AttachTerminalResult>((resolve, reject) => {
+      const waiter = {} as AttachWaiter
+      waiter.resolve = resolve
+      waiter.reject = reject
+      waiter.timer = setTimeout(() => {
+        const waiters = pendingSessionAttachWaiters.get(sessionId)
+        waiters?.delete(waiter)
+        if (waiters && waiters.size === 0) {
+          pendingSessionAttachWaiters.delete(sessionId)
+        }
+        streamAttachRequestedSessionIds.delete(sessionId)
+        reject(new Error(`Timed out waiting for PTY attach: ${sessionId}`))
+      }, options.connectTimeoutMs)
+
+      const waiters = pendingSessionAttachWaiters.get(sessionId) ?? new Set<AttachWaiter>()
       waiters.add(waiter)
       pendingSessionAttachWaiters.set(sessionId, waiters)
     })
@@ -206,12 +234,14 @@ export function createRemotePtySessionCoordinator(options: {
 
     const state = attachedSessions.get(sessionId) ?? createAttachedSessionState()
     attachedSessions.set(sessionId, state)
+    const subscriberSeq = subscriberSeqBySessionId.get(sessionId)
+    const replayAfterSeq = subscriberSeq?.size ? Math.min(...subscriberSeq.values()) : state.lastSeq
 
     ws.send(
       JSON.stringify({
         type: 'attach',
         sessionId,
-        ...(state.lastSeq > 0 ? { afterSeq: state.lastSeq } : {}),
+        ...(replayAfterSeq > 0 ? { afterSeq: replayAfterSeq } : {}),
         role: rolePreferenceBySessionId.get(sessionId) ?? 'controller',
       }),
     )
@@ -219,7 +249,11 @@ export function createRemotePtySessionCoordinator(options: {
     streamAttachRequestedSessionIds.add(sessionId)
   }
 
-  const addSubscriber = (contentsId: number, sessionId: string): void => {
+  const addSubscriber = (
+    contentsId: number,
+    sessionId: string,
+    afterSeq: number | null = null,
+  ): void => {
     const sessionSubscribers = subscribersBySessionId.get(sessionId) ?? new Set<number>()
     sessionSubscribers.add(contentsId)
     subscribersBySessionId.set(sessionId, sessionSubscribers)
@@ -227,6 +261,12 @@ export function createRemotePtySessionCoordinator(options: {
     const sessions = sessionsByContentsId.get(contentsId) ?? new Set<string>()
     sessions.add(sessionId)
     sessionsByContentsId.set(contentsId, sessions)
+
+    const subscriberSeq = subscriberSeqBySessionId.get(sessionId) ?? new Map<number, number>()
+    const normalizedAfterSeq =
+      typeof afterSeq === 'number' && Number.isSafeInteger(afterSeq) && afterSeq >= 0 ? afterSeq : 0
+    subscriberSeq.set(contentsId, Math.max(subscriberSeq.get(contentsId) ?? 0, normalizedAfterSeq))
+    subscriberSeqBySessionId.set(sessionId, subscriberSeq)
   }
 
   const removeSubscriber = async (contentsId: number, sessionId: string): Promise<void> => {
@@ -238,6 +278,11 @@ export function createRemotePtySessionCoordinator(options: {
 
     const sessionSubscribers = subscribersBySessionId.get(sessionId)
     sessionSubscribers?.delete(contentsId)
+    const subscriberSeq = subscriberSeqBySessionId.get(sessionId)
+    subscriberSeq?.delete(contentsId)
+    if (subscriberSeq?.size === 0) {
+      subscriberSeqBySessionId.delete(sessionId)
+    }
     if (sessionSubscribers && sessionSubscribers.size === 0) {
       subscribersBySessionId.delete(sessionId)
       await detachStreamSessionIfUntracked(sessionId)
@@ -254,6 +299,14 @@ export function createRemotePtySessionCoordinator(options: {
     trackSession(sessionId)
   }
 
+  const noteSubscriberSeq = (sessionId: string, contentsId: number, seq: number): void => {
+    const subscriberSeq = subscriberSeqBySessionId.get(sessionId)
+    if (!subscriberSeq?.has(contentsId) || !Number.isSafeInteger(seq) || seq < 0) {
+      return
+    }
+    subscriberSeq.set(contentsId, Math.max(subscriberSeq.get(contentsId) ?? 0, seq))
+  }
+
   const updateAttachedSeq = (sessionId: string, seq: number): void => {
     const normalizedSessionId = sessionId.trim()
     if (normalizedSessionId.length === 0) {
@@ -266,8 +319,9 @@ export function createRemotePtySessionCoordinator(options: {
   }
 
   const clear = (): void => {
+    const error = new Error('PTY session coordinator disposed before attach acknowledgement.')
     for (const sessionId of pendingSessionAttachWaiters.keys()) {
-      rejectPendingAttach(sessionId, new Error('PTY session coordinator disposed'))
+      rejectPendingAttach(sessionId, error)
     }
     subscribersBySessionId.clear()
     sessionsByContentsId.clear()
@@ -276,7 +330,9 @@ export function createRemotePtySessionCoordinator(options: {
     streamAttachRequestedSessionIds.clear()
     streamAttachedSessionIds.clear()
     rolePreferenceBySessionId.clear()
+    subscriberSeqBySessionId.clear()
     pendingSessionAttachWaiters.clear()
+    attachedResultBySessionId.clear()
   }
 
   return {
@@ -291,6 +347,7 @@ export function createRemotePtySessionCoordinator(options: {
     removeSubscriber,
     noteSessionRolePreference,
     onSessionAttached,
+    onAuthorityChanged,
     onSocketClosed,
     waitForSessionAttached,
     sendAttachForSession,
@@ -303,6 +360,7 @@ export function createRemotePtySessionCoordinator(options: {
     hasTrackedSessions: () => trackedSessionIds.size > 0,
     isStreamAttached: sessionId => streamAttachedSessionIds.has(sessionId),
     updateAttachedSeq,
+    noteSubscriberSeq,
     clear,
   }
 }

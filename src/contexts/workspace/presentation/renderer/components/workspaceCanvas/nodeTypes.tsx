@@ -4,7 +4,6 @@ import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { NodeFrame, WorkspaceSpaceState } from '../../types'
-import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
 import { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
 import { WorkspaceCanvasNoteNodeType } from './nodeTypes.note'
@@ -21,14 +20,12 @@ import type {
   UpdateTaskStatus,
 } from './types'
 import type { WorkspaceCanvasNodeTypeProps } from './nodeTypes.types'
+import { useTerminalDisplayAlignment } from './TerminalDisplayAlignmentContext'
 
 interface WorkspaceCanvasNodeTypesParams {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
   onShowMessage?: ShowWorkspaceCanvasMessage
-  terminalFontSize: number
-  terminalFontFamily: string | null
-  terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   agentProviderOrder: AgentProvider[]
   defaultProvider: AgentProvider
   browserDefaultMode: BrowserMode
@@ -94,9 +91,6 @@ export function useWorkspaceCanvasNodeTypes({
   spacesRef,
   workspacePath,
   onShowMessage,
-  terminalFontSize,
-  terminalFontFamily,
-  terminalDisplayCalibration,
   agentProviderOrder,
   defaultProvider,
   browserDefaultMode,
@@ -220,32 +214,35 @@ export function useWorkspaceCanvasNodeTypes({
       )
     }
 
+    const TerminalNodeType = ({ data, id, selected, dragging }: WorkspaceCanvasNodeTypeProps) => {
+      const displayAlignment = useTerminalDisplayAlignment()
+      return (
+        <WorkspaceCanvasTerminalNodeType
+          data={data}
+          id={id}
+          selected={selected}
+          dragging={dragging}
+          terminalFontSize={displayAlignment.terminalFontSize}
+          terminalFontFamily={displayAlignment.terminalFontFamily}
+          terminalDisplayCalibration={displayAlignment.terminalDisplayCalibration}
+          selectNode={selectNode}
+          closeNodeRef={closeNodeRef}
+          resizeNodeRef={resizeNodeRef}
+          copyAgentLastMessageRef={copyAgentLastMessageRef}
+          reloadAgentSessionRef={reloadAgentSessionRef}
+          listAgentSessionsRef={listAgentSessionsRef}
+          switchAgentSessionRef={switchAgentSessionRef}
+          updateNodeScrollbackRef={updateNodeScrollbackRef}
+          normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
+          updateTerminalTitleRef={updateTerminalTitleRef}
+          clearTerminalAgentOverlayRef={clearTerminalAgentOverlayRef}
+          renameTerminalTitleRef={renameTerminalTitleRef}
+        />
+      )
+    }
+
     return {
-      terminalNode: ({ data, id, selected, dragging }: WorkspaceCanvasNodeTypeProps) => {
-        return (
-          <WorkspaceCanvasTerminalNodeType
-            data={data}
-            id={id}
-            selected={selected}
-            dragging={dragging}
-            terminalFontSize={terminalFontSize}
-            terminalFontFamily={terminalFontFamily}
-            terminalDisplayCalibration={terminalDisplayCalibration}
-            selectNode={selectNode}
-            closeNodeRef={closeNodeRef}
-            resizeNodeRef={resizeNodeRef}
-            copyAgentLastMessageRef={copyAgentLastMessageRef}
-            reloadAgentSessionRef={reloadAgentSessionRef}
-            listAgentSessionsRef={listAgentSessionsRef}
-            switchAgentSessionRef={switchAgentSessionRef}
-            updateNodeScrollbackRef={updateNodeScrollbackRef}
-            normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
-            updateTerminalTitleRef={updateTerminalTitleRef}
-            clearTerminalAgentOverlayRef={clearTerminalAgentOverlayRef}
-            renameTerminalTitleRef={renameTerminalTitleRef}
-          />
-        )
-      },
+      terminalNode: TerminalNodeType,
       noteNode: ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
         return (
           <WorkspaceCanvasNoteNodeType
@@ -292,9 +289,6 @@ export function useWorkspaceCanvasNodeTypes({
     spacesRef,
     workspacePath,
     onShowMessage,
-    terminalFontSize,
-    terminalFontFamily,
-    terminalDisplayCalibration,
     agentProviderOrder,
     defaultProvider,
     browserDefaultMode,

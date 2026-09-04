@@ -1,9 +1,8 @@
-import type { AttachTerminalInput } from '@shared/contracts/dto'
+import type { AttachTerminalInput, AttachTerminalResult } from '@shared/contracts/dto'
 import { normalizeBrowserPtyAttachAfterSeq } from './BrowserPtyWire'
 import {
   BrowserPtyAttachCoordinator,
   parseBrowserPtyAuthority,
-  type BrowserPtyAttachResult,
 } from './BrowserPtyAttachCoordinator'
 import { BrowserPtySocketLifecycle, type BrowserPtySocketLease } from './BrowserPtySocketLifecycle'
 
@@ -46,7 +45,7 @@ export class BrowserPtySessionAuthority {
   public async ensureAttached(
     lifecycle: BrowserPtySocketLifecycle,
     sessionId: string,
-  ): Promise<{ lease: BrowserPtySocketLease; result: BrowserPtyAttachResult }> {
+  ): Promise<{ lease: BrowserPtySocketLease; result: AttachTerminalResult }> {
     const tracked = this.ensureTracked(sessionId)
     const lease = await lifecycle.ensureReady()
     this.assertTracked(sessionId, tracked)
@@ -71,7 +70,7 @@ export class BrowserPtySessionAuthority {
   public noteAttached(
     lease: BrowserPtySocketLease,
     record: Record<string, unknown>,
-  ): BrowserPtyAttachResult | null {
+  ): AttachTerminalResult | null {
     const result = this.attaches.noteAttached(lease, record)
     if (!result) {
       return null

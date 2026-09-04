@@ -28,7 +28,10 @@ import {
   publishTerminalAppearanceSnapshot,
   resolveDesiredTerminalAppearanceValue,
 } from './terminalAppearance'
-import { registerTerminalDisplayMeasurementHandle } from '@contexts/settings/presentation/renderer/terminalDisplayMeasurement'
+import {
+  notifyTerminalDisplayMeasurementHandlesChanged,
+  registerTerminalDisplayMeasurementHandle,
+} from '@shared/runtime/terminalDisplayMeasurementRegistry'
 import {
   installTerminalRasterScaleController,
   type TerminalRasterScaleController,
@@ -208,6 +211,7 @@ export function createMountedXtermSession({
       terminalKind: nodeKindForDiagnostics,
       onRendererKindChange: kind => {
         onRendererKindResolved?.(kind)
+        notifyTerminalDisplayMeasurementHandlesChanged()
         scheduleWebglCanvasTransformCleanup?.()
       },
       onRendererIssue,
@@ -254,10 +258,10 @@ export function createMountedXtermSession({
     }
     renderer.clearTextureAtlas()
     syncTerminalSize()
-    disposeTerminalDisplayMeasurementHandle = registerTerminalDisplayMeasurementHandle({
-      nodeId,
+    disposeTerminalDisplayMeasurementHandle = registerTerminalDisplayMeasurementHandle(nodeId, {
       terminal,
       fitAddon,
+      getRendererKind: () => renderer.kind,
     })
     requestAnimationFrame(syncTerminalSize)
     scheduleWebglCanvasTransformCleanup?.()

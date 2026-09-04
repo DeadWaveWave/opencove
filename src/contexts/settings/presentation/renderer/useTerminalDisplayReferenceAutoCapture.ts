@@ -2,11 +2,14 @@ import { useEffect, useRef } from 'react'
 import type { AgentSettings } from '../../domain/agentSettings'
 import {
   createTerminalDisplayProfileKey,
-  isTerminalDisplayReferenceForProfile,
+  createTerminalDisplayReferenceSignature,
 } from '../../domain/terminalDisplayCalibration'
+import { createTerminalDisplayReferenceCaptureOwner } from '../../application/terminalDisplayReferenceCaptureOwner'
 import {
   hasMountedTerminalDisplayMeasurementHandle,
   measureTerminalDisplayReferenceBaseline,
+  readTerminalDisplayRuntime,
+  resolveMountedTerminalDisplayRendererKind,
   TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED,
 } from './terminalDisplayMeasurement'
 
@@ -21,82 +24,67 @@ export function useTerminalDisplayReferenceAutoCapture({
   agentSettings: AgentSettings
   setAgentSettings: (action: SetStateAction<AgentSettings>) => void
 }): void {
-  const pendingProfileKeysRef = useRef<Set<string>>(new Set())
-  const { terminalFontSize, terminalFontFamily, terminalDisplayReference } = agentSettings
-  const profileKey = createTerminalDisplayProfileKey({ terminalFontSize, terminalFontFamily })
-  const hasReferenceForProfile = isTerminalDisplayReferenceForProfile(terminalDisplayReference, {
-    terminalFontSize,
-    terminalFontFamily,
-  })
+  const ownerRef = useRef<ReturnType<typeof createTerminalDisplayReferenceCaptureOwner> | null>(
+    null,
+  )
+  if (!ownerRef.current) {
+    ownerRef.current = createTerminalDisplayReferenceCaptureOwner({
+      hasMountedTerminal: hasMountedTerminalDisplayMeasurementHandle,
+      rendererKind: resolveMountedTerminalDisplayRendererKind,
+      measure: measureTerminalDisplayReferenceBaseline,
+      commit: ({ expectedProfileKey, expectedReferenceSignature, reference }) => {
+        setAgentSettings(previous => {
+          const previousProfileKey = createTerminalDisplayProfileKey({
+            terminalFontSize: previous.terminalFontSize,
+            terminalFontFamily: previous.terminalFontFamily,
+          })
+          if (
+            previousProfileKey !== expectedProfileKey ||
+            createTerminalDisplayReferenceSignature(previous.terminalDisplayReference) !==
+              expectedReferenceSignature
+          ) {
+            return previous
+          }
+          return { ...previous, terminalDisplayReference: reference }
+        })
+      },
+    })
+  }
 
+  const { terminalFontSize, terminalFontFamily, terminalDisplayReference } = agentSettings
+  const referenceSignature = createTerminalDisplayReferenceSignature(terminalDisplayReference)
   useEffect(() => {
-    const pendingProfileKeys = pendingProfileKeysRef.current
-    if (!enabled || hasReferenceForProfile || pendingProfileKeys.has(profileKey)) {
+    const owner = ownerRef.current
+    if (!owner) {
       return undefined
     }
-
-    let disposed = false
-
-    const capture = (): void => {
-      if (
-        disposed ||
-        pendingProfileKeys.has(profileKey) ||
-        !hasMountedTerminalDisplayMeasurementHandle()
-      ) {
-        return
-      }
-
-      pendingProfileKeys.add(profileKey)
-      void measureTerminalDisplayReferenceBaseline({
-        terminalFontSize,
-        terminalFontFamily,
-      })
-        .then(measurement => {
-          if (disposed || !measurement) {
-            return
-          }
-
-          setAgentSettings(previous => {
-            const previousProfileKey = createTerminalDisplayProfileKey({
-              terminalFontSize: previous.terminalFontSize,
-              terminalFontFamily: previous.terminalFontFamily,
-            })
-            if (
-              previousProfileKey !== profileKey ||
-              isTerminalDisplayReferenceForProfile(previous.terminalDisplayReference, {
-                terminalFontSize: previous.terminalFontSize,
-                terminalFontFamily: previous.terminalFontFamily,
-              })
-            ) {
-              return previous
-            }
-
-            return {
-              ...previous,
-              terminalDisplayReference: { version: 1, measurement },
-            }
-          })
-        })
-        .finally(() => {
-          pendingProfileKeys.delete(profileKey)
-        })
-    }
-
-    const frame = window.requestAnimationFrame(capture)
-    window.addEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, capture)
+    owner.update({
+      enabled,
+      terminalFontSize,
+      terminalFontFamily,
+      reference: terminalDisplayReference,
+      runtime: readTerminalDisplayRuntime(),
+    })
+    const refresh = (): void => owner.refresh()
+    window.addEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, refresh)
+    window.addEventListener('resize', refresh)
+    window.visualViewport?.addEventListener('resize', refresh)
+    document.fonts?.addEventListener('loadingdone', refresh)
+    document.fonts?.addEventListener('loadingerror', refresh)
 
     return () => {
-      disposed = true
-      window.cancelAnimationFrame(frame)
-      window.removeEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, capture)
-      pendingProfileKeys.delete(profileKey)
+      window.removeEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, refresh)
+      window.removeEventListener('resize', refresh)
+      window.visualViewport?.removeEventListener('resize', refresh)
+      document.fonts?.removeEventListener('loadingdone', refresh)
+      document.fonts?.removeEventListener('loadingerror', refresh)
+      owner.update({
+        enabled: false,
+        terminalFontSize,
+        terminalFontFamily,
+        reference: terminalDisplayReference,
+        runtime: readTerminalDisplayRuntime(),
+      })
     }
-  }, [
-    enabled,
-    hasReferenceForProfile,
-    profileKey,
-    setAgentSettings,
-    terminalFontFamily,
-    terminalFontSize,
-  ])
+  }, [enabled, referenceSignature, terminalDisplayReference, terminalFontFamily, terminalFontSize])
 }

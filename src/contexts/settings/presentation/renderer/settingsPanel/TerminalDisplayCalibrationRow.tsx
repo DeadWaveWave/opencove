@@ -1,25 +1,23 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type {
-  TerminalClientDisplayCalibration,
-  TerminalDisplayReference,
-} from '@contexts/settings/domain/terminalDisplayCalibration'
+import type { TerminalDisplayReference } from '@contexts/settings/domain/terminalDisplayCalibration'
 import {
-  createTerminalDisplayProfileKey,
   getTerminalDisplayCalibrationQuality,
+  isTerminalDisplayReferenceCurrent,
   isTerminalDisplayReferenceForProfile,
 } from '@contexts/settings/domain/terminalDisplayCalibration'
 import {
-  clearTerminalClientDisplayCalibration,
-  useTerminalClientDisplayCalibration,
-  writeTerminalClientDisplayCalibration,
+  readTerminalDisplayCalibrationStorageMetadata,
+  readTerminalDisplayCalibrationSuppression,
+  useTerminalClientDisplayCalibrationInspection,
 } from '../terminalDisplayCalibrationStorage'
+import { useTerminalDisplayCalibrationProjection } from '../useTerminalDisplayCalibrationProjection'
+import { terminalDisplayCalibrationOwner } from '../terminalDisplayCalibrationRuntime'
+import { readTerminalDisplayClientRuntime } from '../terminalDisplayClientApi'
+import { readTerminalDisplayCalibrationAttempt } from '../terminalDisplayCalibrationDiagnostics'
 import {
-  calibrateTerminalDisplayProfile,
-  measureTerminalDisplayProfile,
+  resolveMountedTerminalDisplayRendererInventory,
   roundDisplayMetric,
-  TERMINAL_DISPLAY_MEASUREMENT_HEIGHT,
-  TERMINAL_DISPLAY_MEASUREMENT_WIDTH,
 } from '../terminalDisplayMeasurement'
 import { SettingsModule } from './SettingsGroup'
 
@@ -43,109 +41,100 @@ export function TerminalDisplayCalibrationRow({
   onChangeTerminalDisplayReference: (reference: TerminalDisplayReference | null) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
-  const measurementHostRef = useRef<HTMLDivElement | null>(null)
-  const clientCalibration = useTerminalClientDisplayCalibration({
+  const clientCalibration = useTerminalDisplayCalibrationProjection({
+    terminalFontSize,
+    terminalFontFamily,
+    terminalDisplayReference,
+  })
+  const calibrationInspection = useTerminalClientDisplayCalibrationInspection({
     terminalFontSize,
     terminalFontFamily,
     terminalDisplayReference,
   })
   const [status, setStatus] = useState<string | null>(null)
   const [isBusy, setIsBusy] = useState(false)
-  const profileKey = useMemo(
-    () => createTerminalDisplayProfileKey({ terminalFontSize, terminalFontFamily }),
-    [terminalFontFamily, terminalFontSize],
-  )
-  const activeReference = isTerminalDisplayReferenceForProfile(terminalDisplayReference, {
+  const referenceMatchesProfile = isTerminalDisplayReferenceForProfile(terminalDisplayReference, {
     terminalFontSize,
     terminalFontFamily,
   })
-    ? terminalDisplayReference
-    : null
+  const activeReference =
+    referenceMatchesProfile && isTerminalDisplayReferenceCurrent(terminalDisplayReference)
+      ? terminalDisplayReference
+      : null
+  const clientRuntime = readTerminalDisplayClientRuntime()
+  const hasVerifiedStoredCalibration =
+    calibrationInspection.atomicProofPresent && calibrationInspection.calibrationMatchesReference
   const getQualityLabel = (score: number): string =>
     t(
       `settingsPanel.general.terminalDisplayCalibration.quality.${getTerminalDisplayCalibrationQuality(score)}`,
     )
 
-  const runWithHost = async <T,>(task: (host: HTMLDivElement) => Promise<T>): Promise<T | null> => {
-    const host = measurementHostRef.current
-    if (!host || isBusy) {
-      return null
+  const setCurrentAsReference = async (): Promise<void> => {
+    if (isBusy) {
+      return
     }
-
     setIsBusy(true)
     try {
-      return await task(host)
+      const result = await terminalDisplayCalibrationOwner.captureReferenceNow()
+      if (result.outcome !== 'captured') {
+        setStatus(t('settingsPanel.general.terminalDisplayCalibration.measureFailed'))
+        return
+      }
+      onChangeTerminalDisplayReference(result.reference)
+      setStatus(t('settingsPanel.general.terminalDisplayCalibration.referenceSaved'))
     } finally {
       setIsBusy(false)
     }
   }
 
-  const setCurrentAsReference = async (): Promise<void> => {
-    const measurement = await runWithHost(host =>
-      measureTerminalDisplayProfile({ container: host, terminalFontSize, terminalFontFamily }),
-    )
-    if (!measurement) {
-      setStatus(t('settingsPanel.general.terminalDisplayCalibration.measureFailed'))
+  const calibrateThisDevice = async (): Promise<void> => {
+    if (isBusy) {
       return
     }
-
-    onChangeTerminalDisplayReference({ version: 1, measurement })
-    setStatus(t('settingsPanel.general.terminalDisplayCalibration.referenceSaved'))
-  }
-
-  const calibrateThisDevice = async (): Promise<void> => {
     if (!activeReference) {
       setStatus(t('settingsPanel.general.terminalDisplayCalibration.referenceRequired'))
       return
     }
 
-    const result = await runWithHost(host =>
-      calibrateTerminalDisplayProfile({
-        container: host,
-        terminalFontSize,
-        terminalFontFamily,
-        reference: activeReference,
-      }),
-    )
-    if (!result) {
-      setStatus(t('settingsPanel.general.terminalDisplayCalibration.measureFailed'))
-      return
+    setIsBusy(true)
+    try {
+      const result = await terminalDisplayCalibrationOwner.calibrateNow()
+      if (result.outcome === 'saved') {
+        setStatus(
+          t('settingsPanel.general.terminalDisplayCalibration.calibrationSaved', {
+            quality: getQualityLabel(result.score),
+          }),
+        )
+        return
+      }
+      if (result.outcome === 'candidate-rejected') {
+        setStatus(
+          t('settingsPanel.general.terminalDisplayCalibration.calibrationUnmatchable', {
+            quality: getQualityLabel(result.score),
+          }),
+        )
+        return
+      }
+      setStatus(
+        t(
+          result.outcome === 'storage-unavailable'
+            ? 'settingsPanel.general.terminalDisplayCalibration.storageFailed'
+            : 'settingsPanel.general.terminalDisplayCalibration.measureFailed',
+        ),
+      )
+    } finally {
+      setIsBusy(false)
     }
-
-    const calibration: TerminalClientDisplayCalibration = {
-      version: 1,
-      profileKey,
-      fontSize: result.candidate.fontSize,
-      lineHeight: result.candidate.lineHeight,
-      letterSpacing: result.candidate.letterSpacing,
-      target: {
-        cols: activeReference.measurement.cols,
-        rows: activeReference.measurement.rows,
-        cssCellWidth: activeReference.measurement.cssCellWidth,
-        cssCellHeight: activeReference.measurement.cssCellHeight,
-        effectiveDpr: activeReference.measurement.effectiveDpr,
-      },
-      measured: {
-        cols: result.measurement.cols,
-        rows: result.measurement.rows,
-        cssCellWidth: result.measurement.cssCellWidth,
-        cssCellHeight: result.measurement.cssCellHeight,
-        effectiveDpr: result.measurement.effectiveDpr,
-      },
-      score: result.score,
-      measuredAt: new Date().toISOString(),
-    }
-    writeTerminalClientDisplayCalibration(calibration)
-    setStatus(
-      t('settingsPanel.general.terminalDisplayCalibration.calibrationSaved', {
-        quality: getQualityLabel(result.score),
-      }),
-    )
   }
 
   const resetThisDevice = (): void => {
-    clearTerminalClientDisplayCalibration()
-    setStatus(t('settingsPanel.general.terminalDisplayCalibration.resetDone'))
+    setStatus(
+      t(
+        terminalDisplayCalibrationOwner.reset()
+          ? 'settingsPanel.general.terminalDisplayCalibration.resetDone'
+          : 'settingsPanel.general.terminalDisplayCalibration.storageFailed',
+      ),
+    )
   }
 
   const copyDiagnostics = async (): Promise<void> => {
@@ -155,12 +144,20 @@ export function TerminalDisplayCalibrationRow({
       autoReferenceEnabled: terminalDisplayAutoReferenceEnabled,
       calibrationCompensationEnabled: terminalDisplayCalibrationCompensationEnabled,
       reference: terminalDisplayReference,
-      referenceMatchesCurrentProfile: activeReference !== null,
+      referenceMatchesCurrentProfile: referenceMatchesProfile,
+      referenceUsesCurrentCalibrationAlgorithm:
+        isTerminalDisplayReferenceCurrent(terminalDisplayReference),
+      referenceCapture: terminalDisplayReference?.capture ?? null,
+      mountedRendererInventory: resolveMountedTerminalDisplayRendererInventory(),
+      clientCalibrationSuppression: readTerminalDisplayCalibrationSuppression(),
+      clientCalibrationInspection: calibrationInspection,
+      latestAutomaticCalibrationAttempt: readTerminalDisplayCalibrationAttempt(),
       clientCalibration,
+      clientCalibrationStorageMetadata: readTerminalDisplayCalibrationStorageMetadata(),
       clientCalibrationQuality: clientCalibration
         ? getTerminalDisplayCalibrationQuality(clientCalibration.score)
         : null,
-      runtime: window.opencoveApi?.meta?.runtime ?? 'unknown',
+      runtime: clientRuntime,
       devicePixelRatio: window.devicePixelRatio || 1,
       visualViewportScale: window.visualViewport?.scale ?? null,
     }
@@ -169,16 +166,20 @@ export function TerminalDisplayCalibrationRow({
   }
 
   const summary = clientCalibration
-    ? terminalDisplayCalibrationCompensationEnabled
-      ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrated', {
-          fontSize: clientCalibration.fontSize,
-          lineHeight: clientCalibration.lineHeight,
-          quality: getQualityLabel(clientCalibration.score),
+    ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrated', {
+        fontSize: clientCalibration.fontSize,
+        lineHeight: clientCalibration.lineHeight,
+        quality: getQualityLabel(clientCalibration.score),
+      })
+    : !terminalDisplayCalibrationCompensationEnabled &&
+        hasVerifiedStoredCalibration &&
+        calibrationInspection.calibrationScore !== null
+      ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationPaused', {
+          quality: getQualityLabel(calibrationInspection.calibrationScore),
         })
-      : t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationPaused', {
-          quality: getQualityLabel(clientCalibration.score),
-        })
-    : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
+      : calibrationInspection.rawCalibrationPresent
+        ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationUnavailable')
+        : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
 
   return (
     <SettingsModule
@@ -280,7 +281,7 @@ export function TerminalDisplayCalibrationRow({
             type="button"
             className="secondary"
             data-testid="settings-terminal-display-reset"
-            disabled={isBusy || !clientCalibration}
+            disabled={isBusy || !calibrationInspection.rawCalibrationPresent}
             onClick={resetThisDevice}
           >
             {t('settingsPanel.general.terminalDisplayCalibration.reset')}
@@ -306,21 +307,6 @@ export function TerminalDisplayCalibrationRow({
           </button>
         </div>
       </div>
-
-      <div
-        ref={measurementHostRef}
-        className="terminal-node__terminal nodrag"
-        aria-hidden="true"
-        style={{
-          position: 'fixed',
-          left: -10_000,
-          top: -10_000,
-          width: TERMINAL_DISPLAY_MEASUREMENT_WIDTH,
-          height: TERMINAL_DISPLAY_MEASUREMENT_HEIGHT,
-          opacity: 0,
-          pointerEvents: 'none',
-        }}
-      />
     </SettingsModule>
   )
 }

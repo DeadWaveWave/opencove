@@ -125,6 +125,7 @@ export const IPC_CHANNELS = {
   workerStop: 'worker:stop',
   workerGetWebUiUrl: 'worker:get-web-ui-url',
   workerClientGetConfig: 'worker-client:get-config',
+  workerClientGetConfigurationSnapshot: 'worker-client:get-configuration-snapshot',
   workerClientSetConfig: 'worker-client:set-config',
   workerClientSetWebUiSettings: 'worker-client:set-web-ui-settings',
   workerClientSetWebUiSecurity: 'worker-client:set-web-ui-security',

@@ -357,6 +357,29 @@ describe('useTerminalRuntimeSession support', () => {
     expect(requestSnapshot).toHaveBeenCalledTimes(2)
   })
 
+  it('does not grant geometry authority when attach fails', async () => {
+    const baselineSnapshot = createPresentationSnapshot(64, 44, 42)
+    const presentationSnapshot = vi.fn(async () => baselineSnapshot)
+    const attach = vi.fn(async () => {
+      throw new Error('attach rejected')
+    })
+    const commitInitialGeometry = vi.fn(async () => ({ cols: 90, rows: 30, changed: true }))
+
+    vi.stubGlobal('window', {
+      opencoveApi: { pty: { presentationSnapshot } },
+    })
+    const { attachPromise, presentationSnapshotPromise } = prepareRuntimePresentationAttach({
+      ptyApi: { attach } as never,
+      sessionId: 'session-1',
+      isLiveSessionReattach: true,
+      commitInitialGeometry,
+    })
+
+    await expect(attachPromise).rejects.toThrow('attach rejected')
+    await expect(presentationSnapshotPromise).resolves.toBe(baselineSnapshot)
+    expect(commitInitialGeometry).not.toHaveBeenCalled()
+  })
+
   it('skips the post-geometry output fence when initial geometry is already canonical', async () => {
     const baselineSnapshot = createPresentationSnapshot(64, 44, 42)
     const presentationSnapshot = vi.fn(async () => baselineSnapshot)
@@ -386,7 +409,7 @@ describe('useTerminalRuntimeSession support', () => {
 
     expect(snapshot).toBe(baselineSnapshot)
     expect(attach).toHaveBeenCalledWith({ sessionId: 'session-1', afterSeq: 42 })
-    expect(commitInitialGeometry).toHaveBeenCalledWith(baselineSnapshot)
+    expect(commitInitialGeometry).toHaveBeenCalledWith(baselineSnapshot, undefined)
     expect(presentationSnapshot).toHaveBeenCalledTimes(2)
   })
 
@@ -397,7 +420,11 @@ describe('useTerminalRuntimeSession support', () => {
       .fn()
       .mockResolvedValueOnce(baselineSnapshot)
       .mockResolvedValueOnce(committedSnapshot)
-    const attach = vi.fn(async () => undefined)
+    const attached = {
+      sessionId: 'session-1',
+      authority: { role: 'controller' as const, epoch: 3 },
+    }
+    const attach = vi.fn(async () => attached)
     const commitInitialGeometry = vi.fn(async () => ({ cols: 104, rows: 41, changed: true }))
 
     vi.stubGlobal('window', {
@@ -423,7 +450,7 @@ describe('useTerminalRuntimeSession support', () => {
 
     expect(snapshot).toBe(committedSnapshot)
     expect(attach).toHaveBeenCalledWith({ sessionId: 'session-1', afterSeq: 42 })
-    expect(commitInitialGeometry).toHaveBeenCalledWith(baselineSnapshot)
+    expect(commitInitialGeometry).toHaveBeenCalledWith(baselineSnapshot, attached)
     expect(presentationSnapshot).toHaveBeenCalledTimes(2)
   })
 })

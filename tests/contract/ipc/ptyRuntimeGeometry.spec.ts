@@ -120,6 +120,10 @@ describe('Pty runtime geometry', () => {
 
     const runtime = createPtyRuntime({ processEngine })
     const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
+    await expect(runtime.attach(1, sessionId)).resolves.toEqual({
+      sessionId,
+      authority: { role: 'controller', epoch: 1 },
+    })
 
     const unchangedInitial = await runtime.resize({
       sessionId,

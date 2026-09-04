@@ -112,6 +112,14 @@ export class BrowserPtySocketLifecycle {
     return readyPromise
   }
 
+  public async send(payload: unknown): Promise<BrowserPtySocketLease> {
+    const lease = await this.ensureReady()
+    if (!this.sendIfCurrent(lease, payload)) {
+      throw new Error('PTY stream socket changed before send')
+    }
+    return lease
+  }
+
   public sendIfCurrent(lease: BrowserPtySocketLease, payload: unknown): boolean {
     if (
       !this.socketAttempts.isCurrent(lease) ||
@@ -128,6 +136,10 @@ export class BrowserPtySocketLifecycle {
   public sendIfOpen(payload: unknown): boolean {
     const lease = this.currentLease
     return lease ? this.sendIfCurrent(lease, payload) : false
+  }
+
+  public isCurrent(lease: BrowserPtySocketLease): boolean {
+    return this.currentLease === lease && this.socketAttempts.isCurrent(lease)
   }
 
   private scheduleReconnect(): void {

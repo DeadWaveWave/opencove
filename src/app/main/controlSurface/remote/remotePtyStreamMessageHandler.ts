@@ -5,6 +5,7 @@ import type {
   TerminalForegroundEvent,
   TerminalGeometryEvent,
   TerminalGeometryCommitResult,
+  TerminalGeometryAuthority,
   TerminalAgentReexecResult,
   TerminalResyncEvent,
   TerminalSessionMetadataEvent,
@@ -12,6 +13,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import { normalizeTerminalAgentActivitySnapshot } from '../../../../shared/runtime/terminalAgentActivity'
 import { normalizeTerminalAgentReexecResult } from '../../../../shared/runtime/terminalAgentReexec'
+import { normalizeRemotePtyAuthority } from './remotePtyAuthority'
 
 export type AttachedSessionState = {
   lastSeq: number
@@ -218,7 +220,7 @@ export function createRemotePtyStreamMessageHandler(options: {
   onSessionState: (event: TerminalSessionStateEvent) => void
   cancelMetadataWatcher: (sessionId: string) => void
   onSessionExit: (sessionId: string) => void
-  onSessionAttached: (sessionId: string) => void
+  onSessionAttached: (sessionId: string, authority: TerminalGeometryAuthority) => void
   handshake: {
     onHelloAck: (capabilities: { agentReexec: boolean; geometryCommitAck: boolean }) => void
     onHandshakeError: (error: Error) => void
@@ -277,37 +279,32 @@ export function createRemotePtyStreamMessageHandler(options: {
     }
 
     if (message.type === 'attached') {
-      if (!options.attachedSessions.has(sessionId)) {
-        options.attachedSessions.set(sessionId, {
-          lastSeq: 0,
-          role: 'viewer',
-          authorityEpoch: null,
-        })
+      const authority = normalizeRemotePtyAuthority(message.role, message.authorityEpoch)
+      if (!authority) {
+        return
       }
-      const state = options.attachedSessions.get(sessionId)
-      if (state) {
-        state.role = message.role === 'controller' ? 'controller' : 'viewer'
-        state.authorityEpoch = Math.max(0, normalizeOptionalFiniteInt(message.authorityEpoch) ?? 0)
-        options.onAuthorityChanged(sessionId, {
-          role: state.role,
-          epoch: state.authorityEpoch,
-        })
+      const state = options.attachedSessions.get(sessionId) ?? {
+        lastSeq: 0,
+        role: 'viewer' as const,
+        authorityEpoch: null,
       }
-      options.onSessionAttached(sessionId)
+      state.role = authority.role
+      state.authorityEpoch = authority.epoch
+      options.attachedSessions.set(sessionId, state)
+      options.onAuthorityChanged(sessionId, authority)
+      options.onSessionAttached(sessionId, authority)
       return
     }
 
     if (message.type === 'control_changed') {
       const state = options.attachedSessions.get(sessionId)
-      if (!state) {
+      const authority = normalizeRemotePtyAuthority(message.role, message.authorityEpoch)
+      if (!state || !authority) {
         return
       }
-      state.role = message.role === 'controller' ? 'controller' : 'viewer'
-      state.authorityEpoch = Math.max(0, normalizeOptionalFiniteInt(message.authorityEpoch) ?? 0)
-      options.onAuthorityChanged(sessionId, {
-        role: state.role,
-        epoch: state.authorityEpoch,
-      })
+      state.role = authority.role
+      state.authorityEpoch = authority.epoch
+      options.onAuthorityChanged(sessionId, authority)
       return
     }
 

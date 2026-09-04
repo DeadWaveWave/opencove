@@ -281,15 +281,15 @@ describe('terminal geometry commit helpers', () => {
     ).toBe(false)
   })
 
-  it('does not prefer measured initial geometry during terminal live reattach or suppressed resize', () => {
+  it('prefers one measured commit during terminal live reattach unless resize is suppressed', () => {
     expect(
       shouldPreferMeasuredInitialGeometryCommit({
         kind: 'terminal',
         isLiveSessionReattach: true,
-        canonicalInitialGeometry: null,
+        canonicalInitialGeometry: { cols: 80, rows: 24 },
         suppressPtyResize: false,
       }),
-    ).toBe(false)
+    ).toBe(true)
     expect(
       shouldPreferMeasuredInitialGeometryCommit({
         kind: 'terminal',

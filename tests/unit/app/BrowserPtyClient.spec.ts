@@ -172,7 +172,10 @@ describe('BrowserPtyClient', () => {
       }),
     )
 
-    await expect(pending).resolves.toBeUndefined()
+    await expect(pending).resolves.toEqual({
+      sessionId: 'session-1',
+      authority: { role: 'controller', epoch: 2 },
+    })
     expect(internals.attachedSessions.get('session-1')?.lastSeq).toBe(0)
   })
 

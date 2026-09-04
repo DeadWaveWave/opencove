@@ -44,7 +44,7 @@ pnpm arch:results:check
 
 ## 规则语义
 
-`layerDependencies.ignoreTypeOnly` 只影响层级依赖检查，用于在手动基线阶段降低纯类型跨层边的噪声。`forbiddenImportSpecifiers` 默认仍会检查 type-only import，因为 `electron`、`react`、`node:`、`@app/` 这类规则表达的是禁止外层/runtime/framework 耦合；只有规则显式设置 `ignoreTypeOnly: true` 时才会跳过 type-only 边。`architecture.sharedNoContextDependency` 专门禁止 `shared` 通过 runtime 或 type-only import 反向依赖任何 context。
+`layerDependencies.ignoreTypeOnly` 只影响层级依赖检查，用于在手动基线阶段降低纯类型跨层边的噪声。`forbiddenImportSpecifiers` 默认仍会检查 type-only import，因为 `electron`、`react`、`node:`、`@app/` 这类规则表达的是禁止外层/runtime/framework 耦合；只有规则显式设置 `ignoreTypeOnly: true` 时才会跳过 type-only 边。`architecture.sharedNoContextDependency` 专门禁止 `shared` 通过 runtime 或 type-only import 反向依赖任何 context。规则可用 `fromPatterns`/`allowedPatterns` 把禁用边收敛到具体组合 seam；当前 terminal calibration 规则会阻止 workspace/settings presentation 重新直连。`layerDependencies.allowedEdges` 只给列出的组合文件开放额外 inward edge；`app/worker` 与 `app/renderer` 的其余文件仍走默认窄依赖，不能借组合根名义承接状态决策。
 
 ## 架构契约变更清单
 
@@ -64,6 +64,8 @@ handler runtime validation、contract test 与 staged `arch:doc-sync` 作为同�
 同时改变上述任一可执行规则，仍必须更新 `rules.json` / analyzer / baseline。
 
 `pnpm arch:doc-sync` 是确定性的。它不会尝试理解文档语义，只检查已暂存的架构契约文档变更是否有 harness 同步证据。当已暂存的 audit-relevant 文件或结果文件存在时，它还会验证已提交的 audit 结果是否匹配当前分析器输出。它要求 audit-relevant 文件在比较结果前没有未暂存变更，避免已暂存提交内容因为未暂存的再生成产物而误通过。措辞类本地检查可使用 `OPENCOVE_ARCH_DOC_NO_RULE_IMPACT=1 pnpm arch:doc-sync`。`pnpm arch:results:check` 是不依赖 staged index 的结果基线校验。
+
+Control Surface runtime 与可替换 HTTP listener 的 disposal/排空顺序属于运行时行为契约，当前静态 import/global analyzer 无法判定。该契约由 `controlSurfaceHttpRuntime.listenerLifecycle` 和 `controlSurfaceHttpListener` contract/unit tests 执行；仅修改这类生命周期规则而未改变 dependency、allowlist 或禁止 API 时，应记录 `no executable-rule impact`，而不是添加无法表达该不变量的空规则。
 
 ## 规划
 

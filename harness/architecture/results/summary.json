@@ -1,13 +1,13 @@
 {
-  "filesAnalyzed": 1295,
+  "filesAnalyzed": 1338,
   "summary": {
     "errors": 0,
-    "warnings": 505,
-    "violations": 505
+    "warnings": 485,
+    "violations": 485
   },
   "byRule": {
-    "architecture.windowOpenCoveApiBoundary": 252,
-    "architecture.layerDependency": 253
+    "architecture.windowOpenCoveApiBoundary": 241,
+    "architecture.layerDependency": 244
   },
   "topAreas": [
     {
@@ -16,7 +16,7 @@
     },
     {
       "area": "src/contexts/settings/presentation",
-      "count": 101
+      "count": 90
     },
     {
       "area": "src/app/renderer/shell",
@@ -39,16 +39,16 @@
       "count": 16
     },
     {
-      "area": "src/app/worker",
-      "count": 9
-    },
-    {
       "area": "src/app/renderer/performanceDiagnostics",
       "count": 3
     },
     {
-      "area": "src/contexts/issueReport/infrastructure",
-      "count": 3
+      "area": "src/contexts/browser/presentation",
+      "count": 2
+    },
+    {
+      "area": "src/contexts/filesystem/presentation",
+      "count": 2
     }
   ]
 }

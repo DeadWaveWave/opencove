@@ -1,5 +1,6 @@
 import React from 'react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import type { WorkspaceCanvasMessageTone } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import type {
@@ -13,6 +14,7 @@ import { WorkspaceEmptyState } from './WorkspaceEmptyState'
 function WorkspaceMainComponent({
   activeWorkspace,
   agentSettings,
+  terminalDisplayCalibration,
   focusRequest,
   isFocusNodeTargetZoomPreviewing,
   shortcutsEnabled,
@@ -30,6 +32,7 @@ function WorkspaceMainComponent({
 }: {
   activeWorkspace: WorkspaceState | null
   agentSettings: AgentSettings
+  terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   focusRequest: FocusRequest | null
   isFocusNodeTargetZoomPreviewing: boolean
   shortcutsEnabled: boolean
@@ -94,6 +97,7 @@ function WorkspaceMainComponent({
         }}
         shortcutsEnabled={shortcutsEnabled}
         agentSettings={agentSettings}
+        terminalDisplayCalibration={terminalDisplayCalibration}
         isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
         focusNodeId={focusNodeId}
         focusSpaceId={focusSpaceId}

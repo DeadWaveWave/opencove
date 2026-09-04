@@ -1,6 +1,7 @@
 import type { MutableRefObject } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import type {
+  AttachTerminalResult,
   PresentationSnapshotTerminalResult,
   TerminalDiagnosticsLogInput,
 } from '@shared/contracts/dto'
@@ -372,10 +373,11 @@ export function prepareRuntimePresentationAttach(options: {
   isLiveSessionReattach: boolean
   commitInitialGeometry: (
     baselineSnapshot: PresentationSnapshotTerminalResult | null,
+    attached: AttachTerminalResult | undefined,
   ) => Promise<{ cols: number; rows: number; changed: boolean } | null>
   requirePostGeometrySnapshotOutput?: boolean
 }): {
-  attachPromise: Promise<void | undefined>
+  attachPromise: Promise<AttachTerminalResult | undefined>
   presentationSnapshotPromise: Promise<PresentationSnapshotTerminalResult | null>
 } {
   const preAttachPresentationSnapshotPromise = requestPresentationSnapshot(options.sessionId)
@@ -384,11 +386,12 @@ export function prepareRuntimePresentationAttach(options: {
     sessionId: options.sessionId,
     presentationSnapshotPromise: preAttachPresentationSnapshotPromise,
   })
-  const initialGeometryCommitPromise = attachPromise
-    .catch(() => undefined)
-    .then(async () => {
-      const baselineSnapshot = await preAttachPresentationSnapshotPromise
-      return await options.commitInitialGeometry(baselineSnapshot)
+  const initialGeometryCommitPromise = Promise.all([
+    attachPromise,
+    preAttachPresentationSnapshotPromise,
+  ])
+    .then(async ([attached, baselineSnapshot]) => {
+      return await options.commitInitialGeometry(baselineSnapshot, attached)
     })
     .catch(() => null)
   const presentationSnapshotPromise = Promise.all([

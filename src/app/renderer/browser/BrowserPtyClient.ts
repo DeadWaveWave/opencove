@@ -1,5 +1,6 @@
 import type {
   AttachTerminalInput,
+  AttachTerminalResult,
   DetachTerminalInput,
   KillTerminalInput,
   PresentationSnapshotTerminalInput,
@@ -364,10 +365,14 @@ export class BrowserPtyClient {
     })
   }
 
-  public async attach(payload: AttachTerminalInput): Promise<void> {
+  public async attach(payload: AttachTerminalInput): Promise<AttachTerminalResult> {
     this.sessionAuthority.track(payload)
-    await this.sessionAuthority.ensureAttached(this.socketLifecycle, payload.sessionId)
+    const attached = await this.sessionAuthority.ensureAttached(
+      this.socketLifecycle,
+      payload.sessionId,
+    )
     this.metadataWatcher.ensure(payload.sessionId)
+    return attached.result
   }
 
   public async detach(payload: DetachTerminalInput): Promise<void> {

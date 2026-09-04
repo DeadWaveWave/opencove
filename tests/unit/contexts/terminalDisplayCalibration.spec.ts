@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   createTerminalDisplayProfileKey,
+  createTerminalDisplayReferenceSignature,
   getTerminalDisplayCalibrationQuality,
+  isTerminalDisplayCalibrationHighConfidence,
+  isTerminalDisplayReferenceCurrent,
   normalizeTerminalClientDisplayCalibration,
   normalizeTerminalDisplayReference,
   resolveTerminalDisplayCalibrationCompensation,
@@ -9,7 +12,7 @@ import {
 import {
   clearTerminalClientDisplayCalibration,
   inspectTerminalClientDisplayCalibration,
-  readTerminalClientDisplayCalibration,
+  readStoredTerminalDisplayCalibration,
   writeTerminalClientDisplayCalibration,
 } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayCalibrationStorage'
 import { buildTerminalDisplayCalibrationCandidates } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement'
@@ -19,27 +22,27 @@ describe('terminal display calibration state', () => {
     window.localStorage.clear()
   })
 
-  it('normalizes a shared reference measurement', () => {
-    expect(
-      normalizeTerminalDisplayReference({
-        version: 1,
-        measurement: {
-          fontSize: 13,
-          fontFamily: '',
-          lineHeight: 1,
-          letterSpacing: 0,
-          cols: 81,
-          rows: 24,
-          cssCellWidth: 7.5,
-          cssCellHeight: 15,
-          effectiveDpr: 2,
-          windowDevicePixelRatio: 1,
-          visualViewportScale: 1,
-          runtime: 'browser',
-          measuredAt: '2026-04-29T00:00:00.000Z',
-        },
-      }),
-    ).toMatchObject({
+  it('keeps a legacy shared reference readable but not current for calibration', () => {
+    const reference = normalizeTerminalDisplayReference({
+      version: 1,
+      measurement: {
+        fontSize: 13,
+        fontFamily: '',
+        lineHeight: 1,
+        letterSpacing: 0,
+        cols: 81,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+        windowDevicePixelRatio: 1,
+        visualViewportScale: 1,
+        runtime: 'browser',
+        measuredAt: '2026-04-29T00:00:00.000Z',
+      },
+    })
+
+    expect(reference).toMatchObject({
       version: 1,
       measurement: {
         fontFamily: null,
@@ -48,6 +51,57 @@ describe('terminal display calibration state', () => {
         runtime: 'browser',
       },
     })
+    expect(isTerminalDisplayReferenceCurrent(reference)).toBe(false)
+  })
+
+  it('normalizes capture provenance for a current shared reference', () => {
+    const reference = normalizeTerminalDisplayReference({
+      version: 1,
+      capture: { algorithmVersion: 1, rendererKind: 'webgl' },
+      measurement: {
+        fontSize: 13,
+        fontFamily: null,
+        lineHeight: 1,
+        letterSpacing: 0,
+        cols: 82,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+        windowDevicePixelRatio: 2,
+        visualViewportScale: 1,
+        runtime: 'desktop',
+        measuredAt: '2026-09-01T00:00:00.000Z',
+      },
+    })
+
+    expect(reference).toMatchObject({
+      capture: { algorithmVersion: 1, rendererKind: 'webgl' },
+    })
+    expect(isTerminalDisplayReferenceCurrent(reference)).toBe(true)
+  })
+
+  it('creates a property-order-independent reference signature', () => {
+    const measurement = {
+      fontSize: 13,
+      fontFamily: null,
+      lineHeight: 1,
+      letterSpacing: 0,
+      cols: 82,
+      rows: 24,
+      cssCellWidth: 7.5,
+      cssCellHeight: 15,
+      effectiveDpr: 2,
+      windowDevicePixelRatio: 2,
+      visualViewportScale: 1,
+      runtime: 'desktop' as const,
+      measuredAt: '2026-09-01T00:00:00.000Z',
+    }
+    const capture = { algorithmVersion: 1 as const, rendererKind: 'webgl' as const }
+
+    expect(createTerminalDisplayReferenceSignature({ version: 1, capture, measurement })).toBe(
+      createTerminalDisplayReferenceSignature({ version: 1, measurement, capture }),
+    )
   })
 
   it('maps engineering scores to user-facing match quality', () => {
@@ -141,6 +195,7 @@ describe('terminal display calibration state', () => {
       lineHeight: 1,
       letterSpacing: 0,
     })
+    expect(isTerminalDisplayCalibrationHighConfidence(calibration!)).toBe(false)
   })
 
   it('keeps client calibration scoped to the matching terminal appearance profile', () => {
@@ -150,6 +205,7 @@ describe('terminal display calibration state', () => {
     })
     const reference = normalizeTerminalDisplayReference({
       version: 1,
+      capture: { algorithmVersion: 1, rendererKind: 'webgl' },
       measurement: {
         fontSize: 13,
         fontFamily: null,
@@ -179,6 +235,13 @@ describe('terminal display calibration state', () => {
         cssCellHeight: 15,
         effectiveDpr: 2,
       },
+      measured: {
+        cols: 81,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+      },
       score: 0,
       measuredAt: '2026-04-29T00:00:00.000Z',
     })
@@ -188,48 +251,153 @@ describe('terminal display calibration state', () => {
     writeTerminalClientDisplayCalibration(calibration!)
 
     expect(
-      readTerminalClientDisplayCalibration({
+      inspectTerminalClientDisplayCalibration({
         terminalFontSize: 13,
         terminalFontFamily: null,
         terminalDisplayReference: reference,
       }),
-    ).toMatchObject({ fontSize: 12.5 })
+    ).toMatchObject({
+      calibrationFontSize: 12.5,
+      profileMatches: true,
+      calibrationMatchesReference: true,
+      atomicProofPresent: false,
+      applicableCalibrationPresent: false,
+    })
     expect(
-      readTerminalClientDisplayCalibration({
+      inspectTerminalClientDisplayCalibration({
         terminalFontSize: 14,
         terminalFontFamily: null,
         terminalDisplayReference: reference,
-      }),
-    ).toBeNull()
+      }).profileMatches,
+    ).toBe(false)
     expect(
-      readTerminalClientDisplayCalibration({
+      inspectTerminalClientDisplayCalibration({
         terminalFontSize: 13,
         terminalFontFamily: null,
         terminalDisplayReference: null,
-      }),
-    ).toBeNull()
-    expect(
-      readTerminalClientDisplayCalibration({
-        terminalFontSize: 13,
-        terminalFontFamily: null,
-        terminalDisplayReference: normalizeTerminalDisplayReference({
-          version: 1,
-          measurement: {
-            ...reference!.measurement,
-            cols: 80,
-          },
-        }),
-      }),
-    ).toBeNull()
+      }).calibrationMatchesReference,
+    ).toBe(false)
 
     clearTerminalClientDisplayCalibration()
     expect(
-      readTerminalClientDisplayCalibration({
+      inspectTerminalClientDisplayCalibration({
+        terminalFontSize: 13,
+        terminalFontFamily: null,
+        terminalDisplayReference: reference,
+      }).calibrationPresent,
+    ).toBe(false)
+  })
+
+  it('keeps a legacy low-confidence calibration stored but never applicable', () => {
+    const reference = normalizeTerminalDisplayReference({
+      version: 1,
+      capture: { algorithmVersion: 1, rendererKind: 'webgl' },
+      measurement: {
+        fontSize: 13,
+        fontFamily: null,
+        lineHeight: 1,
+        letterSpacing: 0,
+        cols: 79,
+        rows: 24,
+        cssCellWidth: 7.825,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+        windowDevicePixelRatio: 2,
+        visualViewportScale: 1,
+        runtime: 'desktop',
+        measuredAt: '2026-08-30T15:25:51.328Z',
+      },
+    })
+    writeTerminalClientDisplayCalibration({
+      version: 1,
+      profileKey: createTerminalDisplayProfileKey({
+        terminalFontSize: 13,
+        terminalFontFamily: null,
+      }),
+      fontSize: 13,
+      lineHeight: 1,
+      letterSpacing: 0,
+      target: {
+        cols: 79,
+        rows: 24,
+        cssCellWidth: 7.825,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+      },
+      measured: {
+        cols: 82,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+      },
+      score: 3032.5,
+      measuredAt: '2026-09-01T00:00:00.000Z',
+    })
+
+    expect(
+      inspectTerminalClientDisplayCalibration({
         terminalFontSize: 13,
         terminalFontFamily: null,
         terminalDisplayReference: reference,
       }),
-    ).toBeNull()
+    ).toMatchObject({
+      calibrationPresent: true,
+      referenceUsesCurrentAlgorithm: true,
+      calibrationMatchesReference: false,
+      applicableCalibrationPresent: false,
+      calibrationScore: 3032.5,
+    })
+  })
+
+  it('stores environment proof atomically with a verified calibration', () => {
+    const calibration = normalizeTerminalClientDisplayCalibration({
+      version: 1,
+      profileKey: createTerminalDisplayProfileKey({
+        terminalFontSize: 13,
+        terminalFontFamily: null,
+      }),
+      fontSize: 13,
+      lineHeight: 1,
+      letterSpacing: 0,
+      target: {
+        cols: 81,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+      },
+      measured: {
+        cols: 81,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+      },
+      score: 0,
+      measuredAt: '2026-04-29T00:00:00.000Z',
+    })!
+
+    expect(
+      writeTerminalClientDisplayCalibration(calibration, {
+        environmentSignature: 'environment-a',
+        source: 'automatic',
+      }),
+    ).toBe(true)
+    expect(readStoredTerminalDisplayCalibration()).toMatchObject({
+      calibration,
+      metadata: { environmentSignature: 'environment-a', source: 'automatic' },
+      proof: 'atomic',
+    })
+    expect(
+      JSON.parse(window.localStorage.getItem('opencove:terminal-display-calibration:v1') ?? 'null'),
+    ).toMatchObject({
+      verification: {
+        version: 1,
+        environmentSignature: 'environment-a',
+        source: 'automatic',
+      },
+    })
   })
 
   it('describes saved calibration even when it cannot apply without a reference', () => {

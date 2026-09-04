@@ -136,6 +136,19 @@ function shouldIgnoreForbiddenImportEdge(edge, rule) {
   return edge.kind === 'type' && rule.ignoreTypeOnly === true
 }
 
+function isAllowedLayerEdge(relativePath, edge, layerCheck) {
+  return (layerCheck.allowedEdges ?? []).some(rule => {
+    return (
+      matchesAnyPattern(relativePath, rule.fromPatterns ?? []) &&
+      (rule.fromLayers ?? [edge.fromLayer]).includes(edge.fromLayer) &&
+      (rule.toLayers ?? [edge.toLayer]).includes(edge.toLayer) &&
+      (rule.toPatterns?.length > 0
+        ? matchesAnyPattern(edge.toRelativePath ?? '', rule.toPatterns)
+        : true)
+    )
+  })
+}
+
 function createViolation(input) {
   return {
     ruleId: input.ruleId,
@@ -287,7 +300,12 @@ export async function runArchitectureAudit(options = {}) {
       const fileViolations = []
 
       for (const rule of config.checks?.forbiddenImportSpecifiers ?? []) {
-        if (!fromLayer || !rule.fromLayers.includes(fromLayer)) {
+        if (
+          !fromLayer ||
+          !rule.fromLayers.includes(fromLayer) ||
+          (rule.fromPatterns?.length > 0 && !matchesAnyPattern(relativePath, rule.fromPatterns)) ||
+          matchesAnyPattern(relativePath, rule.allowedPatterns ?? [])
+        ) {
           continue
         }
         for (const edge of edges) {
@@ -319,7 +337,10 @@ export async function runArchitectureAudit(options = {}) {
             continue
           }
           const allowedTargets = allowedLayers.get(fromLayer) ?? new Set([fromLayer])
-          if (!allowedTargets.has(edge.toLayer)) {
+          if (
+            !allowedTargets.has(edge.toLayer) &&
+            !isAllowedLayerEdge(relativePath, edge, layerCheck)
+          ) {
             fileViolations.push(
               createViolation({
                 ruleId: 'architecture.layerDependency',

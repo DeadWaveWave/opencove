@@ -1,28 +1,113 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import type {
+  StoredTerminalDisplayCalibration,
+  TerminalDisplayCalibrationMetadata,
+} from '../../application/terminalDisplayCalibrationOwner'
 import {
-  createTerminalDisplayCalibrationSignature,
   createTerminalDisplayProfileKey,
   isTerminalDisplayCalibrationForReference,
+  isTerminalDisplayReferenceCurrent,
   isTerminalDisplayReferenceForProfile,
   normalizeTerminalClientDisplayCalibration,
   type TerminalClientDisplayCalibration,
   type TerminalDisplayReference,
 } from '../../domain/terminalDisplayCalibration'
 
-const STORAGE_KEY = 'opencove:terminal-display-calibration:v1'
-const CHANGE_EVENT = 'opencove:terminal-display-calibration-changed'
+export const TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY = 'opencove:terminal-display-calibration:v1'
+const ENVIRONMENT_STORAGE_KEY = 'opencove:terminal-display-calibration-environment:v1'
+const SUPPRESSION_STORAGE_KEY = 'opencove:terminal-display-calibration-suppression:v1'
+export const TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT =
+  'opencove:terminal-display-calibration-changed'
 
-function readStorageValue(): TerminalClientDisplayCalibration | null {
+export type TerminalDisplayCalibrationStorageMetadata = TerminalDisplayCalibrationMetadata
+
+type AtomicCalibrationProof = TerminalDisplayCalibrationStorageMetadata & { version: 1 }
+
+function normalizeStorageMetadata(
+  value: unknown,
+): TerminalDisplayCalibrationStorageMetadata | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+  const record = value as Record<string, unknown>
+  return typeof record.environmentSignature === 'string' &&
+    record.environmentSignature.length > 0 &&
+    (record.source === 'automatic' || record.source === 'manual')
+    ? { environmentSignature: record.environmentSignature, source: record.source }
+    : null
+}
+
+export function readStoredTerminalDisplayCalibration(): StoredTerminalDisplayCalibration | null {
   if (typeof window === 'undefined') {
     return null
   }
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    return raw ? normalizeTerminalClientDisplayCalibration(JSON.parse(raw)) : null
+    const raw = window.localStorage.getItem(TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY)
+    if (!raw) {
+      return null
+    }
+    const parsed = JSON.parse(raw) as unknown
+    const calibration = normalizeTerminalClientDisplayCalibration(parsed)
+    if (!calibration) {
+      return null
+    }
+    const verification =
+      parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>).verification
+        : null
+    const atomicMetadata =
+      verification &&
+      typeof verification === 'object' &&
+      !Array.isArray(verification) &&
+      (verification as Record<string, unknown>).version === 1
+        ? normalizeStorageMetadata(verification)
+        : null
+    if (atomicMetadata) {
+      return { calibration, metadata: atomicMetadata, proof: 'atomic' }
+    }
+    const legacyMetadata = readLegacyStorageMetadata()
+    return {
+      calibration,
+      metadata: legacyMetadata,
+      proof: legacyMetadata ? 'legacy' : null,
+    }
   } catch {
     return null
   }
+}
+
+function hasRawCalibration(): boolean {
+  try {
+    return window.localStorage.getItem(TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
+function readLegacyStorageMetadata(): TerminalDisplayCalibrationStorageMetadata | null {
+  try {
+    const raw = window.localStorage.getItem(ENVIRONMENT_STORAGE_KEY)
+    return raw ? normalizeStorageMetadata(JSON.parse(raw)) : null
+  } catch {
+    return null
+  }
+}
+
+export function readTerminalDisplayCalibrationStorageMetadata(): TerminalDisplayCalibrationStorageMetadata | null {
+  return readStoredTerminalDisplayCalibration()?.metadata ?? readLegacyStorageMetadata()
+}
+
+export function readTerminalDisplayCalibrationSuppression(): string | null {
+  try {
+    return window.localStorage.getItem(SUPPRESSION_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function isTerminalDisplayCalibrationSuppressed(environmentSignature: string): boolean {
+  return readTerminalDisplayCalibrationSuppression() === environmentSignature
 }
 
 function emitCalibrationChange(): void {
@@ -30,7 +115,7 @@ function emitCalibrationChange(): void {
     return
   }
 
-  window.dispatchEvent(new Event(CHANGE_EVENT))
+  window.dispatchEvent(new Event(TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT))
 }
 
 export interface TerminalClientDisplayCalibrationInspection {
@@ -40,7 +125,9 @@ export interface TerminalClientDisplayCalibrationInspection {
   profileMatches: boolean
   referencePresent: boolean
   referenceMatchesProfile: boolean
+  referenceUsesCurrentAlgorithm: boolean
   calibrationMatchesReference: boolean
+  atomicProofPresent: boolean
   applicableCalibrationPresent: boolean
   calibrationFontSize: number | null
   calibrationLineHeight: number | null
@@ -57,27 +144,32 @@ export function inspectTerminalClientDisplayCalibration({
   terminalFontFamily: string | null
   terminalDisplayReference: TerminalDisplayReference | null
 }): TerminalClientDisplayCalibrationInspection {
-  const calibration = readStorageValue()
+  const stored = readStoredTerminalDisplayCalibration()
+  const calibration = stored?.calibration ?? null
   const profileKey = createTerminalDisplayProfileKey({ terminalFontSize, terminalFontFamily })
   const profileMatches = calibration?.profileKey === profileKey
   const referenceMatchesProfile = isTerminalDisplayReferenceForProfile(terminalDisplayReference, {
     terminalFontSize,
     terminalFontFamily,
   })
+  const referenceUsesCurrentAlgorithm = isTerminalDisplayReferenceCurrent(terminalDisplayReference)
   const calibrationMatchesReference =
     profileMatches &&
     referenceMatchesProfile &&
+    referenceUsesCurrentAlgorithm &&
     isTerminalDisplayCalibrationForReference(calibration, terminalDisplayReference)
 
   return {
     profileKey,
-    rawCalibrationPresent: window.localStorage.getItem(STORAGE_KEY) !== null,
+    rawCalibrationPresent: hasRawCalibration(),
     calibrationPresent: calibration !== null,
     profileMatches,
     referencePresent: terminalDisplayReference !== null,
     referenceMatchesProfile,
+    referenceUsesCurrentAlgorithm,
     calibrationMatchesReference,
-    applicableCalibrationPresent: calibrationMatchesReference,
+    atomicProofPresent: stored?.proof === 'atomic',
+    applicableCalibrationPresent: false,
     calibrationFontSize: calibration?.fontSize ?? null,
     calibrationLineHeight: calibration?.lineHeight ?? null,
     calibrationLetterSpacing: calibration?.letterSpacing ?? null,
@@ -85,52 +177,62 @@ export function inspectTerminalClientDisplayCalibration({
   }
 }
 
-export function readTerminalClientDisplayCalibration({
-  terminalFontSize,
-  terminalFontFamily,
-  terminalDisplayReference,
-}: {
-  terminalFontSize: number
-  terminalFontFamily: string | null
-  terminalDisplayReference: TerminalDisplayReference | null
-}): TerminalClientDisplayCalibration | null {
-  const calibration = readStorageValue()
-  if (!calibration) {
-    return null
-  }
-
-  const profileKey = createTerminalDisplayProfileKey({ terminalFontSize, terminalFontFamily })
-  if (calibration.profileKey !== profileKey) {
-    return null
-  }
-
-  if (
-    !isTerminalDisplayReferenceForProfile(terminalDisplayReference, {
-      terminalFontSize,
-      terminalFontFamily,
-    })
-  ) {
-    return null
-  }
-
-  return isTerminalDisplayCalibrationForReference(calibration, terminalDisplayReference)
-    ? calibration
-    : null
-}
-
 export function writeTerminalClientDisplayCalibration(
   calibration: TerminalClientDisplayCalibration,
-): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(calibration))
+  metadata?: TerminalDisplayCalibrationStorageMetadata,
+): boolean {
+  const storedValue = metadata
+    ? {
+        ...calibration,
+        verification: {
+          version: 1,
+          ...metadata,
+        } satisfies AtomicCalibrationProof,
+      }
+    : calibration
+  try {
+    window.localStorage.setItem(
+      TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY,
+      JSON.stringify(storedValue),
+    )
+  } catch {
+    return false
+  }
+
+  try {
+    if (metadata) {
+      window.localStorage.setItem(ENVIRONMENT_STORAGE_KEY, JSON.stringify(metadata))
+      if (window.localStorage.getItem(SUPPRESSION_STORAGE_KEY) === metadata.environmentSignature) {
+        window.localStorage.removeItem(SUPPRESSION_STORAGE_KEY)
+      }
+    } else {
+      window.localStorage.removeItem(ENVIRONMENT_STORAGE_KEY)
+      window.localStorage.removeItem(SUPPRESSION_STORAGE_KEY)
+    }
+  } catch {
+    // The atomic proof travels with the calibration. The sidecar is legacy diagnostics only.
+  }
   emitCalibrationChange()
+  return true
 }
 
-export function clearTerminalClientDisplayCalibration(): void {
-  window.localStorage.removeItem(STORAGE_KEY)
-  emitCalibrationChange()
+export function clearTerminalClientDisplayCalibration(options?: {
+  suppressEnvironmentSignature?: string | null
+}): boolean {
+  try {
+    if (options?.suppressEnvironmentSignature) {
+      window.localStorage.setItem(SUPPRESSION_STORAGE_KEY, options.suppressEnvironmentSignature)
+    }
+    window.localStorage.removeItem(TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY)
+    window.localStorage.removeItem(ENVIRONMENT_STORAGE_KEY)
+    emitCalibrationChange()
+    return true
+  } catch {
+    return false
+  }
 }
 
-export function useTerminalClientDisplayCalibration({
+export function useTerminalClientDisplayCalibrationInspection({
   terminalFontSize,
   terminalFontFamily,
   terminalDisplayReference,
@@ -138,52 +240,22 @@ export function useTerminalClientDisplayCalibration({
   terminalFontSize: number
   terminalFontFamily: string | null
   terminalDisplayReference: TerminalDisplayReference | null
-}): TerminalClientDisplayCalibration | null {
-  const profileKey = useMemo(
-    () => createTerminalDisplayProfileKey({ terminalFontSize, terminalFontFamily }),
-    [terminalFontFamily, terminalFontSize],
-  )
-  const referenceSignature = useMemo(
-    () => JSON.stringify(terminalDisplayReference ?? null),
-    [terminalDisplayReference],
-  )
-  const [calibration, setCalibration] = useState(() =>
-    readTerminalClientDisplayCalibration({
-      terminalFontSize,
-      terminalFontFamily,
-      terminalDisplayReference,
-    }),
-  )
+}): TerminalClientDisplayCalibrationInspection {
+  const [, setStorageRevision] = useState(0)
 
   useEffect(() => {
-    const refresh = (): void => {
-      setCalibration(current => {
-        const next = readTerminalClientDisplayCalibration({
-          terminalFontSize,
-          terminalFontFamily,
-          terminalDisplayReference,
-        })
-
-        return createTerminalDisplayCalibrationSignature(current) ===
-          createTerminalDisplayCalibrationSignature(next)
-          ? current
-          : next
-      })
-    }
-    refresh()
-    window.addEventListener(CHANGE_EVENT, refresh)
+    const refresh = (): void => setStorageRevision(current => current + 1)
+    window.addEventListener(TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT, refresh)
     window.addEventListener('storage', refresh)
     return () => {
-      window.removeEventListener(CHANGE_EVENT, refresh)
+      window.removeEventListener(TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT, refresh)
       window.removeEventListener('storage', refresh)
     }
-  }, [
-    profileKey,
-    referenceSignature,
-    terminalDisplayReference,
-    terminalFontFamily,
-    terminalFontSize,
-  ])
+  }, [])
 
-  return calibration
+  return inspectTerminalClientDisplayCalibration({
+    terminalFontSize,
+    terminalFontFamily,
+    terminalDisplayReference,
+  })
 }

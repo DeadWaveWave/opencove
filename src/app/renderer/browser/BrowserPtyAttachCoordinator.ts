@@ -1,15 +1,10 @@
-import type { TerminalGeometryAuthority } from '@shared/contracts/dto'
+import type { AttachTerminalResult, TerminalGeometryAuthority } from '@shared/contracts/dto'
 import type { BrowserPtySocketLease } from './BrowserPtySocketLifecycle'
-
-export type BrowserPtyAttachResult = {
-  sessionId: string
-  authority: TerminalGeometryAuthority
-}
 
 type PendingAttach = {
   lease: BrowserPtySocketLease
-  result: Promise<BrowserPtyAttachResult>
-  resolve: (value: BrowserPtyAttachResult) => void
+  result: Promise<AttachTerminalResult>
+  resolve: (value: AttachTerminalResult) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
 }
@@ -35,13 +30,13 @@ export class BrowserPtyAttachCoordinator {
   private readonly pendingBySessionId = new Map<string, PendingAttach>()
   private readonly resolvedBySessionId = new Map<
     string,
-    { lease: BrowserPtySocketLease; result: BrowserPtyAttachResult }
+    { lease: BrowserPtySocketLease; result: AttachTerminalResult }
   >()
 
   public constructor(private readonly timeoutMs = 10_000) {}
 
   public begin(input: { sessionId: string; lease: BrowserPtySocketLease }): {
-    result: Promise<BrowserPtyAttachResult>
+    result: Promise<AttachTerminalResult>
     shouldSend: boolean
   } {
     const resolved = this.resolvedBySessionId.get(input.sessionId)
@@ -60,9 +55,9 @@ export class BrowserPtyAttachCoordinator {
       this.rejectPending(input.sessionId, existing, new Error('PTY attach lease was replaced.'))
     }
 
-    let resolveResult!: (value: BrowserPtyAttachResult) => void
+    let resolveResult!: (value: AttachTerminalResult) => void
     let rejectResult!: (error: Error) => void
-    const result = new Promise<BrowserPtyAttachResult>((resolve, reject) => {
+    const result = new Promise<AttachTerminalResult>((resolve, reject) => {
       resolveResult = resolve
       rejectResult = reject
     })
@@ -90,7 +85,7 @@ export class BrowserPtyAttachCoordinator {
   public noteAttached(
     lease: BrowserPtySocketLease,
     record: Record<string, unknown>,
-  ): BrowserPtyAttachResult | null {
+  ): AttachTerminalResult | null {
     const sessionId = typeof record.sessionId === 'string' ? record.sessionId.trim() : ''
     const authority = parseBrowserPtyAuthority(record)
     if (!sessionId || !authority) {

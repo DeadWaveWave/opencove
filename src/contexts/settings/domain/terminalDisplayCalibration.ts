@@ -1,6 +1,13 @@
 import { isRecord, normalizeTextValue } from './settingsNormalization'
 
 export type TerminalDisplayRuntime = 'desktop' | 'browser' | 'unknown'
+export type TerminalDisplayRendererKind = 'dom' | 'webgl'
+export const TERMINAL_DISPLAY_REFERENCE_ALGORITHM_VERSION = 1
+
+export interface TerminalDisplayReferenceCapture {
+  algorithmVersion: typeof TERMINAL_DISPLAY_REFERENCE_ALGORITHM_VERSION
+  rendererKind: TerminalDisplayRendererKind
+}
 
 export interface TerminalDisplayMeasurement {
   fontSize: number
@@ -21,6 +28,7 @@ export interface TerminalDisplayMeasurement {
 export interface TerminalDisplayReference {
   version: 1
   measurement: TerminalDisplayMeasurement
+  capture?: TerminalDisplayReferenceCapture
 }
 
 export interface TerminalClientDisplayCalibration {
@@ -43,6 +51,7 @@ export interface TerminalClientDisplayCalibration {
 
 export type TerminalDisplayCalibrationQuality = 'exact' | 'close' | 'needsAdjustment'
 export const TERMINAL_DISPLAY_CALIBRATION_LINE_HEIGHT = 1
+export const MAX_TERMINAL_DISPLAY_CALIBRATION_CELL_DELTA_PX = 0.05
 
 function isPositiveNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
@@ -54,6 +63,21 @@ function isFiniteNumber(value: unknown): value is number {
 
 function normalizeRuntime(value: unknown): TerminalDisplayRuntime {
   return value === 'desktop' || value === 'browser' || value === 'unknown' ? value : 'unknown'
+}
+
+function normalizeReferenceCapture(value: unknown): TerminalDisplayReferenceCapture | null {
+  if (
+    !isRecord(value) ||
+    value.algorithmVersion !== TERMINAL_DISPLAY_REFERENCE_ALGORITHM_VERSION ||
+    (value.rendererKind !== 'dom' && value.rendererKind !== 'webgl')
+  ) {
+    return null
+  }
+
+  return {
+    algorithmVersion: TERMINAL_DISPLAY_REFERENCE_ALGORITHM_VERSION,
+    rendererKind: value.rendererKind,
+  }
 }
 
 function normalizeMeasurement(value: unknown): TerminalDisplayMeasurement | null {
@@ -125,6 +149,28 @@ export function getTerminalDisplayCalibrationQuality(
   return score <= 100 ? 'close' : 'needsAdjustment'
 }
 
+export function isTerminalDisplayCalibrationHighConfidence(
+  calibration: TerminalClientDisplayCalibration,
+): boolean {
+  const quality = getTerminalDisplayCalibrationQuality(calibration.score)
+  if (quality !== 'exact' && quality !== 'close') {
+    return false
+  }
+  const measured = calibration.measured
+  if (!measured) {
+    return false
+  }
+  return (
+    measured.cols === calibration.target.cols &&
+    measured.rows === calibration.target.rows &&
+    Math.abs(measured.cssCellWidth - calibration.target.cssCellWidth) <=
+      MAX_TERMINAL_DISPLAY_CALIBRATION_CELL_DELTA_PX &&
+    Math.abs(measured.cssCellHeight - calibration.target.cssCellHeight) <=
+      MAX_TERMINAL_DISPLAY_CALIBRATION_CELL_DELTA_PX &&
+    isCloseNumber(measured.effectiveDpr, calibration.target.effectiveDpr)
+  )
+}
+
 export function resolveTerminalDisplayCalibrationCompensation({
   calibration,
   compensationEnabled,
@@ -176,11 +222,55 @@ export function isTerminalDisplayReferenceForProfile(
   )
 }
 
+export function createTerminalDisplayReference({
+  measurement,
+  rendererKind,
+}: {
+  measurement: TerminalDisplayMeasurement
+  rendererKind: TerminalDisplayRendererKind
+}): TerminalDisplayReference {
+  return {
+    version: 1,
+    capture: {
+      algorithmVersion: TERMINAL_DISPLAY_REFERENCE_ALGORITHM_VERSION,
+      rendererKind,
+    },
+    measurement,
+  }
+}
+
+export function isTerminalDisplayReferenceCurrent(
+  reference: TerminalDisplayReference | null,
+): reference is TerminalDisplayReference & { capture: TerminalDisplayReferenceCapture } {
+  return (
+    reference?.capture?.algorithmVersion === TERMINAL_DISPLAY_REFERENCE_ALGORITHM_VERSION &&
+    (reference.capture.rendererKind === 'dom' || reference.capture.rendererKind === 'webgl')
+  )
+}
+
+export function createTerminalDisplayReferenceSignature(
+  reference: TerminalDisplayReference | null,
+): string {
+  if (!reference) {
+    return 'none'
+  }
+  return JSON.stringify({
+    version: reference.version,
+    capture: reference.capture ?? null,
+    measurement: reference.measurement,
+  })
+}
+
 export function isTerminalDisplayCalibrationForReference(
   calibration: TerminalClientDisplayCalibration | null,
   reference: TerminalDisplayReference | null,
 ): calibration is TerminalClientDisplayCalibration {
-  if (!calibration || !reference) {
+  if (
+    !calibration ||
+    !reference ||
+    !isTerminalDisplayReferenceCurrent(reference) ||
+    !isTerminalDisplayCalibrationHighConfidence(calibration)
+  ) {
     return false
   }
 
@@ -199,7 +289,16 @@ export function normalizeTerminalDisplayReference(value: unknown): TerminalDispl
   }
 
   const measurement = normalizeMeasurement(value.measurement)
-  return measurement ? { version: 1, measurement } : null
+  if (!measurement) {
+    return null
+  }
+
+  const capture = normalizeReferenceCapture(value.capture)
+  return {
+    version: 1,
+    measurement,
+    ...(capture ? { capture } : {}),
+  }
 }
 
 export function normalizeTerminalClientDisplayCalibration(

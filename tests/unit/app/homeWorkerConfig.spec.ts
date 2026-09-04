@@ -1,15 +1,18 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { OpenCoveAppError } from '../../../src/shared/errors/appError'
 import {
   ensureHomeWorkerConfig,
+  mutateHomeWorkerConfigFile,
   readHomeWorkerConfig,
   resolveHomeWorkerConfigPath,
+} from '../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
+import {
   setHomeWorkerConfig,
   setHomeWorkerWebUiSettings,
-} from '../../../src/app/main/worker/homeWorkerConfig'
+} from '../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigMutations'
 
 describe('home worker config', () => {
   let userDataDir: string | null = null
@@ -204,5 +207,140 @@ describe('home worker config', () => {
     await expect(
       setHomeWorkerWebUiSettings(dir, { enabled: true, port: 70_000 }),
     ).rejects.toBeInstanceOf(OpenCoveAppError)
+  })
+
+  it('serializes config mutations without losing unrelated fields', async () => {
+    const dir = await createTempUserDataDir()
+    let releaseFirst: (() => void) | null = null
+    const firstCanFinish = new Promise<void>(resolvePromise => {
+      releaseFirst = resolvePromise
+    })
+
+    const first = mutateHomeWorkerConfigFile({
+      userDataPath: dir,
+      mutate: async previous => {
+        await firstCanFinish
+        return {
+          ...previous,
+          webUi: { ...previous.webUi, enabled: true, port: 17771 },
+        }
+      },
+    })
+    const second = setHomeWorkerConfig(dir, {
+      mode: 'remote',
+      remote: { hostname: 'worker.example', port: 17772, token: 'remote-token' },
+    })
+
+    releaseFirst?.()
+    await Promise.all([first, second])
+
+    const loaded = await readHomeWorkerConfig(dir)
+    expect(loaded.mode).toBe('remote')
+    expect(loaded.remote?.hostname).toBe('worker.example')
+    expect(loaded.webUi).toMatchObject({ enabled: true, port: 17771 })
+  })
+
+  it('keeps the previous durable file when an atomic candidate write fails', async () => {
+    const dir = await createTempUserDataDir()
+    const previous = await setHomeWorkerWebUiSettings(dir, { enabled: true, port: 18881 })
+
+    await expect(
+      mutateHomeWorkerConfigFile({
+        userDataPath: dir,
+        mutate: current => ({
+          ...current,
+          webUi: { ...current.webUi, port: 18882 },
+        }),
+        writeDependencies: {
+          writeFile: async () => {
+            throw new Error('injected write failure')
+          },
+        },
+      }),
+    ).rejects.toThrow('injected write failure')
+
+    expect(await readHomeWorkerConfig(dir)).toEqual(previous)
+    expect((await readdir(dir)).filter(name => name.endsWith('.tmp'))).toEqual([])
+  })
+
+  it('advances config revisions strictly when the clock is frozen or moves backward', async () => {
+    const dir = await createTempUserDataDir()
+    const frozen = new Date('2026-04-12T10:00:00.000Z')
+
+    const first = await mutateHomeWorkerConfigFile({
+      userDataPath: dir,
+      now: () => frozen,
+      mutate: previous => ({
+        ...previous,
+        webUi: { ...previous.webUi, enabled: true },
+      }),
+    })
+    const second = await mutateHomeWorkerConfigFile({
+      userDataPath: dir,
+      expectedUpdatedAt: first.updatedAt,
+      now: () => frozen,
+      mutate: previous => ({
+        ...previous,
+        webUi: { ...previous.webUi, port: 17771 },
+      }),
+    })
+    const third = await mutateHomeWorkerConfigFile({
+      userDataPath: dir,
+      expectedUpdatedAt: second.updatedAt,
+      now: () => new Date('2025-01-01T00:00:00.000Z'),
+      mutate: previous => ({
+        ...previous,
+        webUi: { ...previous.webUi, port: 17772 },
+      }),
+    })
+
+    expect(first.updatedAt).toBe('2026-04-12T10:00:00.000Z')
+    expect(second.updatedAt).toBe('2026-04-12T10:00:00.001Z')
+    expect(third.updatedAt).toBe('2026-04-12T10:00:00.002Z')
+  })
+
+  it('repairs malformed config revisions before the next mutation', async () => {
+    const dir = await createTempUserDataDir()
+    const configPath = resolveHomeWorkerConfigPath(dir)
+    await writeFile(
+      configPath,
+      `${JSON.stringify({
+        version: 1,
+        mode: 'standalone',
+        remote: null,
+        webUi: {
+          enabled: false,
+          port: null,
+          exposeOnLan: false,
+          passwordHash: null,
+        },
+        updatedAt: 'not-a-revision',
+      })}\n`,
+      'utf8',
+    )
+
+    expect((await ensureHomeWorkerConfig(dir)).updatedAt).toBeNull()
+    const next = await mutateHomeWorkerConfigFile({
+      userDataPath: dir,
+      expectedUpdatedAt: null,
+      now: () => new Date('2026-04-12T11:00:00.000Z'),
+      mutate: previous => previous,
+    })
+    expect(next.updatedAt).toBe('2026-04-12T11:00:00.000Z')
+  })
+
+  it('rejects a stale expected config revision', async () => {
+    const dir = await createTempUserDataDir()
+    const previous = await setHomeWorkerWebUiSettings(dir, { enabled: true, port: 19991 })
+    await setHomeWorkerWebUiSettings(dir, { enabled: true, port: 19992 })
+
+    await expect(
+      mutateHomeWorkerConfigFile({
+        userDataPath: dir,
+        expectedUpdatedAt: previous.updatedAt,
+        mutate: current => current,
+      }),
+    ).rejects.toBeInstanceOf(OpenCoveAppError)
+    expect((await readHomeWorkerConfig(dir)).webUi.port).toBe(19992)
   })
 })

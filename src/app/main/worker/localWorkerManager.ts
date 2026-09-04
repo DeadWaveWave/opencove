@@ -6,13 +6,14 @@ import { resolve } from 'node:path'
 import type { Readable } from 'node:stream'
 import type { WorkerConnectionInfoDto, WorkerStatusResult } from '../../../shared/contracts/dto'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
-import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
-import { readHomeWorkerConfigFile } from './homeWorkerConfig'
 import { resolvePackagedWorkerScriptPath } from '../../../shared/runtime/opencoveRuntimePaths'
 import { removeConnectionFile } from '../controlSurface/http/connectionFile'
 import { removeWorkerSingleInstanceLock } from '../../../platform/process/workerSingleInstanceLockFile'
-import { isReusableLocalWorkerConnection } from './localWorkerCompatibility'
+import {
+  isReusableLocalWorkerConnection,
+  resolveLocalWorkerReusePolicy,
+} from './localWorkerCompatibility'
 import { parseWorkerReadyPayload } from './workerReadyPayload'
 import { readRuntimeAppVersion } from '../controlSurface/runtimeAppVersion'
 import {
@@ -21,6 +22,8 @@ import {
   resolveForwardedLocalWorkerDiagnosticsEnv,
 } from './localWorkerSpawn'
 import { terminateStaleLocalWorkerTree } from './staleLocalWorkerProcessTree'
+import { LOCAL_WORKER_STOP_TIMEOUT_MS } from '../../../shared/runtime/controlSurfaceShutdown'
+import { resolveLocalWorkerWebUiUrl } from './localWorkerWebUiUrl'
 
 export { buildLocalWorkerSpawnArgs, isTruthyEnv, resolveForwardedLocalWorkerDiagnosticsEnv }
 
@@ -96,7 +99,7 @@ async function stopChild(child: WorkerChildProcess): Promise<void> {
       } catch {
         child.kill()
       }
-    }, 7_500)
+    }, LOCAL_WORKER_STOP_TIMEOUT_MS)
 
     child.once('exit', () => {
       clearTimeout(timeout)
@@ -135,6 +138,32 @@ export async function repairStaleLocalWorkerFiles(
     () => undefined,
   )
   await removeWorkerSingleInstanceLock(userDataPath).catch(() => undefined)
+}
+
+export type OwnedLocalWorkerConfigurationState =
+  | { state: 'absent'; connection: null }
+  | { state: 'external'; connection: WorkerConnectionInfoDto }
+  | { state: 'starting'; connection: null }
+  | { state: 'ready'; connection: WorkerConnectionInfoDto }
+  | { state: 'unreachable'; connection: WorkerConnectionInfoDto }
+
+export async function resolveOwnedLocalWorkerConfigurationState(): Promise<OwnedLocalWorkerConfigurationState> {
+  const connection = await resolveConnectionFromUserData({ requireLivePid: true })
+  if (!connection) {
+    return startLocalWorkerPromise || hasOwnedLocalWorkerProcess()
+      ? { state: 'starting', connection: null }
+      : { state: 'absent', connection: null }
+  }
+  if (connection.startedBy !== 'desktop') {
+    return { state: 'external', connection }
+  }
+  const policy = resolveLocalWorkerReusePolicy(connection, { launcherStartedBy: 'desktop' })
+  if (!policy.canReuse) {
+    return { state: 'unreachable', connection }
+  }
+  return (await isReusableLocalWorkerConnection(connection))
+    ? { state: 'ready', connection }
+    : { state: 'unreachable', connection }
 }
 
 export async function getLocalWorkerStatus(): Promise<WorkerStatusResult> {
@@ -332,23 +361,16 @@ async function startLocalWorkerInternal(): Promise<WorkerStatusResult> {
     )
   }
 
-  const workerConfig = await readHomeWorkerConfigFile(userDataPath)
-  const enableWebUi = workerConfig.webUi.enabled
-  const port = workerConfig.webUi.port ?? 0
-  const exposeOnLan = enableWebUi && workerConfig.webUi.exposeOnLan
-  const bindHostname = exposeOnLan ? '0.0.0.0' : '127.0.0.1'
-  const advertiseHostname = '127.0.0.1'
-  const webUiPasswordHash = exposeOnLan ? workerConfig.webUi.passwordHash : null
   const appVersion = readRuntimeAppVersion()
   const args = buildLocalWorkerSpawnArgs({
     workerScriptPath,
     userDataPath,
     parentPid: process.pid,
-    bindHostname,
-    advertiseHostname,
-    port,
-    enableWebUi,
-    webUiPasswordHash,
+    bindHostname: '127.0.0.1',
+    advertiseHostname: '127.0.0.1',
+    port: 0,
+    enableWebUi: false,
+    webUiPasswordHash: null,
     appVersion,
   })
 
@@ -429,51 +451,6 @@ export async function stopLocalWorker(): Promise<WorkerStatusResult> {
   return await getLocalWorkerStatus()
 }
 
-function normalizeTicketResult(value: unknown): { ticket: string } {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Invalid auth.issueWebSessionTicket response payload')
-  }
-
-  const ticket = (value as Record<string, unknown>).ticket
-  if (typeof ticket !== 'string' || ticket.trim().length === 0) {
-    throw new Error('Invalid auth.issueWebSessionTicket ticket value')
-  }
-
-  return { ticket: ticket.trim() }
-}
-
 export async function getLocalWorkerWebUiUrl(): Promise<string | null> {
-  const connection = await resolveConnectionFromUserData()
-  if (!connection) {
-    return null
-  }
-
-  const workerConfig = await readHomeWorkerConfigFile(app.getPath('userData'))
-  if (!workerConfig.webUi.enabled) {
-    return null
-  }
-
-  if (workerConfig.webUi.exposeOnLan && workerConfig.webUi.passwordHash) {
-    return `http://${connection.hostname}:${connection.port}/`
-  }
-
-  const { httpStatus, result } = await invokeControlSurface(
-    {
-      hostname: connection.hostname,
-      port: connection.port,
-      token: connection.token,
-    },
-    {
-      kind: 'query',
-      id: 'auth.issueWebSessionTicket',
-      payload: { redirectPath: '/' },
-    },
-  )
-
-  if (httpStatus !== 200 || !result || result.ok !== true) {
-    throw new Error('Failed to issue web session ticket')
-  }
-
-  const { ticket } = normalizeTicketResult(result.value)
-  return `http://${connection.hostname}:${connection.port}/auth/claim?ticket=${encodeURIComponent(ticket)}`
+  return await resolveLocalWorkerWebUiUrl(async () => await resolveConnectionFromUserData())
 }

@@ -104,6 +104,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Worker Web UI: preserve Worker, PTY, Hub, renderer, history, and viewport identity across transactional Web-access reconfiguration, with fenced shutdown, listener handoff, replay cursors, and cross-process configuration ownership. (#377)
 - Terminal recovery: never cold-relaunch a provider from an unauthenticated terminal title or hint; automatic resume now requires a verified provider session binding.
 - Agent: report Pi run state from its session log and show Observing until evidence arrives instead of leaving it permanently Working. (#372)
 - Agent: keep Kimi startup observation neutral and show degraded only when its session wire is explicitly unavailable. (#372)
