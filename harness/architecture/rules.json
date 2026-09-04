@@ -115,6 +115,7 @@
             "src/platform/os/CliEnvironment.ts",
             "src/contexts/settings/infrastructure/homeWorker/webUiPassword.ts",
             "src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig.ts",
+            "src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease.ts",
             "src/contexts/agent/application/services/AgentProviderRegistry.ts",
             "src/contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog.ts",
             "src/contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup.ts"

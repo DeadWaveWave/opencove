@@ -14,7 +14,7 @@ import { hashWebUiPassword } from '../../contexts/settings/infrastructure/homeWo
 import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerReusePolicy'
 import { readHomeWorkerConfigFile } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
-import { acquireHomeWorkerConfigLease } from '../main/worker/homeWorkerConfigLeaseAdapter'
+import { acquireHomeWorkerConfigLease } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
 import { createCodexHookChannel } from '../main/controlSurface/agentHook/codexHookChannel'
 import { AgentProviderRegistry } from '../../contexts/agent/application/services/AgentProviderRegistry'
