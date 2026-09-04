@@ -81,11 +81,16 @@ if [ ! -s "${CONNECTION_FILE}" ]; then
 fi
 
 WORKER_PID="$("${NODE_BIN}" -e '
-  const connection = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))
+  const fs = require("node:fs")
+  const connection = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))
+  const packageJson = JSON.parse(fs.readFileSync(process.argv[2], "utf8"))
   if (connection.startedBy !== "cli") throw new Error("worker was not CLI-owned")
+  if (connection.appVersion !== packageJson.version) {
+    throw new Error(`worker version mismatch: ${connection.appVersion} !== ${packageJson.version}`)
+  }
   if (!Number.isInteger(connection.pid) || connection.pid <= 0) throw new Error("invalid worker pid")
   process.stdout.write(String(connection.pid))
-' "${CONNECTION_FILE}")"
+' "${CONNECTION_FILE}" "${APP_ROOT}/package.json")"
 
 EXPECTED_NODE="$(readlink -f "${NODE_BIN}")"
 CLI_EXECUTABLE="$(readlink -f "/proc/${LAUNCHER_PID}/exe")"

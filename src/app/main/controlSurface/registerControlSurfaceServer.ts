@@ -32,6 +32,7 @@ export function registerControlSurfaceServer(deps?: {
   ptyRuntime?: ReturnType<typeof createPtyRuntime>
 }): ControlSurfaceHttpServerInstance {
   const userDataPath = app.getPath('userData')
+  const appVersion = readRuntimeAppVersion()
   const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
   const ownsPtyRuntime = !deps?.ptyRuntime
   const ptyRuntime =
@@ -44,6 +45,7 @@ export function registerControlSurfaceServer(deps?: {
   }
   const agentProviderRegistry = new AgentProviderRegistry(
     createBuiltinAgentProviderContributions({
+      appVersion,
       channels: agentHookChannels,
       runtimeExecutable: process.execPath,
       runtimePlatform: process.platform,
@@ -52,7 +54,7 @@ export function registerControlSurfaceServer(deps?: {
 
   return registerControlSurfaceHttpServer({
     userDataPath,
-    appVersion: readRuntimeAppVersion(),
+    appVersion,
     approvedWorkspaces,
     ptyRuntime,
     ownsPtyRuntime,

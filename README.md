@@ -19,6 +19,10 @@ See parallel work at a glance, keep context visible, and resume exactly where yo
 
 </div>
 
+## 📣 Important Announcement
+
+**OpenCove 0.3.0 keeps terminal and Agent work intact through restarts, adds managed remote machines and browser access, and expands the spatial workspace with Child Spaces, roles, websites, documents, and media.** You can also install the CLI and Worker without Desktop on headless macOS, Linux, and Windows machines.
+
 ## 📖 What is OpenCove?
 
 OpenCove is a **spatial development workspace** for people who work with AI coding agents every day.
@@ -60,15 +64,7 @@ OpenCove is designed around a simple idea: **agent workflows are easier to reaso
 
 ### Download
 
-Prebuilt binaries are available on the [GitHub Releases](https://github.com/DeadWaveWave/opencove/releases) page.
-
-At the moment, most public builds are **nightly / prerelease builds**, which means:
-
-- You get the newest features first
-- You should expect rough edges
-- Feedback and bug reports are especially valuable
-
-Downloads are available for macOS, Windows, and Linux.
+OpenCove 0.3.0 stable and newer builds are available on the [GitHub Releases](https://github.com/DeadWaveWave/opencove/releases) page for macOS, Windows, and Linux. Nightly prereleases remain available for early testing; they contain newer changes and may have rough edges.
 
 > **⚠️ macOS note**
 > Current macOS builds are **not signed or notarized** with an Apple Developer ID. If Gatekeeper blocks the app, run this in your terminal:
@@ -113,6 +109,8 @@ curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.ps1 | Invoke-Expression"
 ```
+
+The standalone installer verifies the downloaded runtime against the release's `SHA256SUMS.txt` before extracting it.
 
 For a headless server that hosts the Web UI, start the worker directly after install:
 

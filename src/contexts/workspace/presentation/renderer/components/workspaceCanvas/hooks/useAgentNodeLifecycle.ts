@@ -9,7 +9,6 @@ import type {
 import type { AgentSessionSummary } from '@shared/contracts/dto'
 import type { AgentNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
-import { appendAgentSessionRecordToTaskHistory } from '../../../utils/agentSessionHistory'
 import {
   clearResumeSessionBinding,
   isResumeSessionBindingVerified,
@@ -22,6 +21,7 @@ import {
   buildAgentNodeTitle as formatAgentNodeTitle,
   findLinkedTaskTitleForAgent,
 } from '../../../utils/agentTitle'
+import { useAgentNodeSessionSwitch } from './useAgentNodeSessionSwitch'
 import {
   findAgentNode,
   launchAgentRuntime,
@@ -402,53 +402,12 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
     [nodesRef],
   )
 
-  const switchAgentNodeSession = useCallback(
-    async (nodeId: string, summary: AgentSessionSummary) => {
-      const node = findAgentNode(nodeId, nodesRef.current)
-      if (!node) {
-        return
-      }
-
-      if (summary.provider !== node.data.agent.provider) {
-        return
-      }
-
-      const currentResumeSessionId = isResumeSessionBindingVerified(node.data.agent)
-        ? node.data.agent.resumeSessionId
-        : null
-
-      if (
-        currentResumeSessionId === summary.sessionId &&
-        node.data.agent.executionDirectory === summary.cwd
-      ) {
-        return
-      }
-
-      if (currentResumeSessionId && node.data.agent.taskId) {
-        const now = new Date().toISOString()
-        setNodes(
-          prevNodes =>
-            appendAgentSessionRecordToTaskHistory({
-              prevNodes,
-              agentNodeId: nodeId,
-              now,
-            }),
-          { syncLayout: false },
-        )
-      }
-
-      await relaunchAgentNode({
-        nodeId,
-        mode: 'resume',
-        executionDirectory: summary.cwd,
-        expectedDirectory: summary.cwd,
-        resumeSessionId: summary.sessionId,
-        startedAtOverride: summary.startedAt ?? undefined,
-      })
-      onRequestPersistFlush?.()
-    },
-    [nodesRef, onRequestPersistFlush, relaunchAgentNode, setNodes],
-  )
+  const switchAgentNodeSession = useAgentNodeSessionSwitch({
+    nodesRef,
+    setNodes,
+    relaunchAgentNode,
+    onRequestPersistFlush,
+  })
 
   const stopAgentNode = useCallback(
     async (nodeId: string) => {

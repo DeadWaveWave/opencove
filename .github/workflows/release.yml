@@ -33,7 +33,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ inputs.tag_name || github.ref }}
@@ -201,10 +201,12 @@ jobs:
           retention-days: 7
 
   publish:
-    name: Publish Release
+    name: Stage Release Assets
     runs-on: ubuntu-latest
     needs: build
     if: ${{ github.event_name == 'push' || inputs.dry_run != true }}
+    permissions:
+      contents: write
 
     steps:
       - name: Resolve release channel
@@ -224,6 +226,7 @@ jobs:
         with:
           ref: ${{ env.OPENCOVE_RELEASE_TARGET }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -252,16 +255,19 @@ jobs:
           set -euo pipefail
           test -s "release-assets/opencove-install-${OPENCOVE_RELEASE_TAG}.sh"
           test -s "release-assets/opencove-install-${OPENCOVE_RELEASE_TAG}.ps1"
+          test -s "release-assets/opencove-uninstall-${OPENCOVE_RELEASE_TAG}.sh"
+          test -s "release-assets/opencove-uninstall-${OPENCOVE_RELEASE_TAG}.ps1"
           if [[ "${OPENCOVE_RELEASE_TAG}" != *"-nightly."* ]]; then
             test -s release-assets/opencove-install.sh
             test -s release-assets/opencove-install.ps1
+            test -s release-assets/opencove-uninstall.sh
+            test -s release-assets/opencove-uninstall.ps1
           fi
 
       - name: Generate checksums
         run: node scripts/generate-checksums.mjs release-assets
 
-      - name: Publish nightly prerelease
-        if: steps.channel.outputs.is_nightly == 'true'
+      - name: Stage release assets as a prerelease
         uses: softprops/action-gh-release@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -275,17 +281,70 @@ jobs:
             release-assets/*
             release/release-manifest.json
 
-      - name: Publish stable release
-        if: steps.channel.outputs.is_nightly != 'true'
-        uses: softprops/action-gh-release@v3
+  verify-published-standalone:
+    name: Verify Published Standalone (${{ matrix.label }})
+    needs: publish
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS arm64
+            runner: macos-15
+          - label: macOS Intel
+            runner: macos-15-intel
+          - label: Windows
+            runner: windows-latest
+          - label: Linux
+            runner: ubuntu-latest
+
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ env.OPENCOVE_RELEASE_TAG }}
-          target_commitish: ${{ env.OPENCOVE_RELEASE_TARGET }}
-          name: ${{ steps.channel.outputs.release_name }}
-          prerelease: false
-          make_latest: true
-          generate_release_notes: true
-          files: |
-            release-assets/*
-            release/release-manifest.json
+          ref: ${{ env.OPENCOVE_RELEASE_TARGET }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Download, install, and start the tag-pinned Worker
+        run: node scripts/smoke-published-standalone-runtime.mjs "${{ env.OPENCOVE_RELEASE_TAG }}"
+
+  promote-stable:
+    name: Promote Verified Stable Release
+    needs: [publish, verify-published-standalone]
+    if: ${{ success() && !contains(inputs.tag_name || github.ref_name, '-nightly.') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Promote the verified prerelease to latest stable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$OPENCOVE_RELEASE_TAG" --prerelease=false --latest --repo "$GITHUB_REPOSITORY"
+
+  verify-latest-stable:
+    name: Verify Latest Stable Download
+    needs: promote-stable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.OPENCOVE_RELEASE_TARGET }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Download, install, and start through the latest-stable path
+        run: node scripts/smoke-published-standalone-runtime.mjs "${{ env.OPENCOVE_RELEASE_TAG }}" --installer-source=latest

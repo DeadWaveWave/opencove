@@ -85,6 +85,8 @@ async function main() {
   process.stdout.write(`[opencove-test-agent] ${provider} ${effectiveMode} ${model}\n`)
 
   if (provider === 'codex' && effectiveMode === 'resume' && scenario === 'codex-active-writer') {
+    // Reproduce a provider that rejects after the original short startup observation window.
+    await sleep(350)
     process.stderr.write('thread already has an active writer (code -32600)\n')
     process.exitCode = 1
     return

@@ -123,7 +123,6 @@ describe('CodexAgentProviderContribution', () => {
         [
           '#!/usr/bin/env node',
           "const { writeFileSync } = require('node:fs')",
-          "writeFileSync(process.env.NVM_MARKER, 'started')",
           "let input = ''",
           "process.stdin.setEncoding('utf8')",
           "process.stdin.on('data', chunk => {",
@@ -132,7 +131,7 @@ describe('CodexAgentProviderContribution', () => {
           '  while (newline >= 0) {',
           '    const message = JSON.parse(input.slice(0, newline))',
           '    input = input.slice(newline + 1)',
-          "    if (message.method === 'initialize') process.stdout.write(JSON.stringify({ id: message.id, result: {} }) + '\\n')",
+          "    if (message.method === 'initialize') { writeFileSync(process.env.NVM_MARKER, message.params.clientInfo.version); process.stdout.write(JSON.stringify({ id: message.id, result: {} }) + '\\n') }",
           "    if (message.method === 'hooks/list') process.stdout.write(JSON.stringify({ id: message.id, result: { data: [] } }) + '\\n')",
           "    newline = input.indexOf('\\n')",
           '  }',
@@ -147,6 +146,7 @@ describe('CodexAgentProviderContribution', () => {
       const artifacts = new AgentLaunchArtifactScope()
       const provider = new CodexAgentProviderContribution({
         channel: hook.channel,
+        clientVersion: '0.3.0',
         runtimeExecutable: '/runtime/node',
         runtimePlatform: 'linux',
       })
@@ -164,7 +164,7 @@ describe('CodexAgentProviderContribution', () => {
         })
         artifacts.seal()
 
-        await expect(readFile(marker, 'utf8')).resolves.toBe('started')
+        await expect(readFile(marker, 'utf8')).resolves.toBe('0.3.0')
         expect(plan.args.join('\n')).not.toContain('hooks.SessionEnd=')
         expect(plan.args.join('\n')).toContain('notify=["/runtime/node"')
         expect(plan.env).not.toHaveProperty('PATH')

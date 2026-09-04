@@ -19,6 +19,10 @@
 
 </div>
 
+## 📣 重要公告
+
+**OpenCove 0.3.0 可在重启后继续原有终端与 Agent 工作，新增可管理的远程机器和浏览器访问，并将子空间、角色、网页、文档和媒体带入更完整的空间工作区。** 无需安装 Desktop，也可以在无界面的 macOS、Linux 和 Windows 机器上独立安装 CLI 与 Worker。
+
 ## 📖 什么是 OpenCove？
 
 OpenCove 是一款面向 AI Coding 工作流的**空间化开发工作台**。
@@ -60,15 +64,7 @@ OpenCove 围绕一个核心判断来设计：**多 Agent 工作流更适合用�
 
 ### 下载客户端
 
-预编译安装包可在 [GitHub Releases](https://github.com/DeadWaveWave/opencove/releases) 页面获取。
-
-目前公开版本以 **nightly / prerelease** 为主，这意味着：
-
-- 你可以最早体验到新能力
-- 也要接受它还会有一些粗糙边角
-- 反馈和 issue 对项目演进非常重要
-
-当前提供 macOS、Windows 和 Linux 的安装包。
+OpenCove 0.3.0 stable 及后续版本可在 [GitHub Releases](https://github.com/DeadWaveWave/opencove/releases) 页面下载，覆盖 macOS、Windows 和 Linux。Nightly 预发布版仍用于提前体验更新内容，其中可能包含尚未打磨完成的变化。
 
 > **⚠️ macOS 用户注意**：
 > 当前发布版本暂未进行 Apple Developer ID 签名与公证。若首次打开时被 Gatekeeper 拦截，请在终端执行以下命令放行：
@@ -113,6 +109,8 @@ curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.ps1 | Invoke-Expression"
 ```
+
+Standalone installer 会先使用 release 中的 `SHA256SUMS.txt` 校验下载的 runtime，再进行解压安装。
 
 如果你想在服务器上直接托管 Web UI，安装后可直接启动 worker：
 

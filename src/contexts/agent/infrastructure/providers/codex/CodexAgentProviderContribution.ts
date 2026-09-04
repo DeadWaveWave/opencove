@@ -24,6 +24,7 @@ const codexHookEvents = [
 
 export interface CodexAgentProviderContributionOptions {
   readonly channel?: AgentHookChannel
+  readonly clientVersion?: string | null
   readonly detector?: AgentProviderDetector
   readonly hookTrustResolver?: CodexHookTrustResolver
   readonly runtimeExecutable?: string
@@ -70,12 +71,14 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
   }
 
   private readonly channel?: AgentHookChannel
+  private readonly clientVersion: string
   private readonly hookTrustResolver: CodexHookTrustResolver
   private readonly runtimeExecutable: string
   private readonly runtimePlatform: NodeJS.Platform
 
   constructor(options: CodexAgentProviderContributionOptions = {}) {
     this.channel = options.channel
+    this.clientVersion = normalizeCodexClientVersion(options.clientVersion)
     this.hookTrustResolver = options.hookTrustResolver ?? resolveCodexHookTrust
     this.runtimeExecutable = options.runtimeExecutable ?? process.execPath
     this.runtimePlatform = options.runtimePlatform ?? process.platform
@@ -106,6 +109,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     let trust: string | null = null
     try {
       trust = await this.hookTrustResolver({
+        clientVersion: this.clientVersion,
         executable: command.executablePathOverride ?? this.descriptor.launch.executable,
         environment: command.environment,
         hookCommand: hook.command,
@@ -134,6 +138,11 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       onStarted: reservation.commit,
     }
   }
+}
+
+function normalizeCodexClientVersion(value: string | null | undefined): string {
+  const normalized = value?.trim() ?? ''
+  return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(normalized) ? normalized : '0.0.0'
 }
 
 function createCodexHooks(

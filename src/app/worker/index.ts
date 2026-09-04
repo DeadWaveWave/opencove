@@ -166,6 +166,7 @@ async function main(): Promise<void> {
   }
   const agentProviderRegistry = new AgentProviderRegistry(
     createBuiltinAgentProviderContributions({
+      appVersion,
       channels: agentHookChannels,
       runtimeExecutable: process.execPath,
       runtimePlatform: process.platform,

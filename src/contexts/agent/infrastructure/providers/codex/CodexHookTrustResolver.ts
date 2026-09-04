@@ -3,6 +3,7 @@ import { resolveAgentCliInvocation } from '../../cli/AgentCliInvocation'
 import { serializeCodexTomlLiteralString } from './CodexTomlConfiguration'
 
 export interface CodexHookTrustInput {
+  readonly clientVersion: string
   readonly executable: string
   readonly environment?: Readonly<NodeJS.ProcessEnv>
   readonly hookCommand: string
@@ -143,7 +144,7 @@ async function requestHooksList(input: CodexHookTrustInput): Promise<unknown> {
         id: initializeRequestId,
         method: 'initialize',
         params: {
-          clientInfo: { name: 'opencove', title: 'OpenCove', version: '0.2.0' },
+          clientInfo: { name: 'opencove', title: 'OpenCove', version: input.clientVersion },
         },
       })}\n`,
     )

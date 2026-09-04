@@ -3,7 +3,7 @@ import { isCodexActiveWriterError } from './codexResumeRecovery'
 
 const MAX_STARTUP_OBSERVATION_MS = 2_000
 
-type StartupPtyRuntime = Pick<ControlSurfacePtyRuntime, 'onData' | 'onExit' | 'kill'>
+type StartupPtyRuntime = Pick<ControlSurfacePtyRuntime, 'onData' | 'onExit' | 'onMetadata' | 'kill'>
 
 function boundedObservationMs(value: number): number {
   if (!Number.isFinite(value) || value < 0) {
@@ -21,13 +21,21 @@ export async function launchAgentWithStartupObservation<
 }): Promise<TResult> {
   const dataBySessionId = new Map<string, string>()
   const exitedSessionIds = new Set<string>()
+  const readySessionIds = new Set<string>()
   let observedSessionId: string | null = null
   let resolveObservation: (() => void) | null = null
   let timer: NodeJS.Timeout | null = null
 
   const signalObservation = (sessionId: string): void => {
+    if (observedSessionId !== sessionId) {
+      return
+    }
     const output = dataBySessionId.get(sessionId) ?? ''
-    if (observedSessionId === sessionId && isCodexActiveWriterError(output)) {
+    if (
+      isCodexActiveWriterError(output) ||
+      exitedSessionIds.has(sessionId) ||
+      readySessionIds.has(sessionId)
+    ) {
       resolveObservation?.()
     }
   }
@@ -39,10 +47,18 @@ export async function launchAgentWithStartupObservation<
   const disposeExit = options.ptyRuntime.onExit(event => {
     exitedSessionIds.add(event.sessionId)
     signalObservation(event.sessionId)
-    if (observedSessionId === event.sessionId) {
-      resolveObservation?.()
-    }
   })
+  const disposeMetadata =
+    options.ptyRuntime.onMetadata?.(event => {
+      if (
+        event.agentProvider === 'codex' &&
+        typeof event.resumeSessionId === 'string' &&
+        event.resumeSessionId.trim().length > 0
+      ) {
+        readySessionIds.add(event.sessionId)
+        signalObservation(event.sessionId)
+      }
+    }) ?? (() => undefined)
 
   try {
     const launched = await options.launch()
@@ -94,5 +110,6 @@ export async function launchAgentWithStartupObservation<
     resolveObservation = null
     disposeData()
     disposeExit()
+    disposeMetadata()
   }
 }

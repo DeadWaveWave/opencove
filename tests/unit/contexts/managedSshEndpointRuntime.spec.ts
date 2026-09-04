@@ -222,9 +222,10 @@ describe('managedSshEndpointRuntime', () => {
     })
   })
 
-  it('runs bootstrap and reconnects when the remote worker is not ready yet', async () => {
+  it('runs the matching-version bootstrap and reconnects when the remote worker is not ready yet', async () => {
     const firstTunnel = createTunnelProcess()
     const secondTunnel = createTunnelProcess()
+    const access = createAccess()
     const probeConnection = vi
       .fn<[{ hostname: string; port: number; token: string }, number], Promise<boolean>>()
       .mockResolvedValueOnce(false)
@@ -232,6 +233,7 @@ describe('managedSshEndpointRuntime', () => {
     const runBootstrap = vi.fn(async () => undefined)
 
     const runtime = createManagedSshEndpointRuntime({
+      appVersion: '0.3.0',
       getSshAvailability: async () => createSshAvailability(),
       reserveLoopbackPort: vi.fn(async () => 41002),
       spawnTunnelProcess: vi
@@ -243,11 +245,15 @@ describe('managedSshEndpointRuntime', () => {
       waitForCondition: async fn => await fn(),
     })
 
-    const prepared = await runtime.prepare(createAccess(), {
+    const prepared = await runtime.prepare(access, {
       allowBootstrap: true,
     })
 
     expect(runBootstrap).toHaveBeenCalledTimes(1)
+    expect(runBootstrap).toHaveBeenCalledWith('/usr/bin/ssh', access, {
+      reinstallRuntime: undefined,
+      appVersion: '0.3.0',
+    })
     expect(prepared.bootstrapRan).toBe(true)
     expect(prepared.connection).toEqual({
       hostname: '127.0.0.1',

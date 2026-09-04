@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const PACKAGED_APP_ROOT_CANDIDATES = ['app.asar', 'app']
+const APP_VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/u
 
 function resolveCliDirectory() {
   return resolve(fileURLToPath(new URL('.', import.meta.url)))
@@ -69,6 +70,22 @@ export function resolveCliRuntime(options = {}) {
     resourcesPath,
     appRoot,
     workerScriptPath: resolve(appRoot, 'out', 'main', 'worker.js'),
+  }
+}
+
+export function resolveCliAppVersion(cliRuntime, options = {}) {
+  const appRoot = cliRuntime?.appRoot ?? cliRuntime?.repoRoot ?? null
+  if (typeof appRoot !== 'string' || appRoot.trim().length === 0) {
+    return null
+  }
+
+  try {
+    const readFileSyncImpl = options.readFileSyncImpl ?? readFileSync
+    const packageJson = JSON.parse(readFileSyncImpl(resolve(appRoot, 'package.json'), 'utf8'))
+    const version = typeof packageJson?.version === 'string' ? packageJson.version.trim() : ''
+    return APP_VERSION_PATTERN.test(version) ? version : null
+  } catch {
+    return null
   }
 }
 

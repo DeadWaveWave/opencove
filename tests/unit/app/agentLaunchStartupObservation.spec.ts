@@ -69,6 +69,41 @@ describe('agent launch startup observation', () => {
     ).rejects.toThrow('active writer')
   })
 
+  it('settles a healthy Codex launch from verified SessionStart metadata', async () => {
+    let metadataListener:
+      | ((event: {
+          sessionId: string
+          resumeSessionId: string | null
+          agentProvider?: string
+        }) => void)
+      | null = null
+    const disposeMetadata = vi.fn()
+    const ptyRuntime = {
+      onData: vi.fn(() => vi.fn()),
+      onExit: vi.fn(() => vi.fn()),
+      onMetadata: vi.fn((listener: typeof metadataListener) => {
+        metadataListener = listener
+        return disposeMetadata
+      }),
+      kill: vi.fn(),
+    }
+
+    const pending = launchAgentWithStartupObservation({
+      launch: async () => ({ sessionId: 'live-session' }),
+      ptyRuntime,
+      observationMs: 2_000,
+    })
+    await Promise.resolve()
+    metadataListener?.({
+      sessionId: 'live-session',
+      resumeSessionId: 'verified-thread',
+      agentProvider: 'codex',
+    })
+
+    await expect(pending).resolves.toEqual({ sessionId: 'live-session' })
+    expect(disposeMetadata).toHaveBeenCalledTimes(1)
+  })
+
   it('returns a still-running launch after the bounded observation window', async () => {
     vi.useFakeTimers()
     const disposeData = vi.fn()

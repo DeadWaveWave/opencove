@@ -14,6 +14,7 @@ import { TerminalAgentInvocationRegistry } from '../../../contexts/agent/applica
 export function createTerminalAgentActivityRuntime(options: {
   agentHookChannels: readonly AgentHookChannel[]
   agentProviderRegistry?: AgentProviderRegistry
+  appVersion?: string | null
   desktopMetadataSink?: (event: TerminalSessionMetadataEvent) => number
   desktopStateSink?: (event: TerminalSessionStateEvent) => number
 }): {
@@ -24,7 +25,8 @@ export function createTerminalAgentActivityRuntime(options: {
   dispose: () => Promise<void>
 } {
   const agentProviderRegistry =
-    options.agentProviderRegistry ?? new Registry(createBuiltinAgentProviderContributions())
+    options.agentProviderRegistry ??
+    new Registry(createBuiltinAgentProviderContributions({ appVersion: options.appVersion }))
   const invocationRegistry = new TerminalAgentInvocationRegistry()
   const gateway = new TerminalAgentActivityGateway({
     registry: invocationRegistry,

@@ -4,6 +4,7 @@ import { createRailAgent } from './sidebar-test-fixtures'
 
 type HoverPeekSample = {
   sidebarTransition: string
+  sidebarOverflowX: string
   width: number
   sidebarRight: number
   listOpacity: number
@@ -56,6 +57,7 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekResult> => {
 
     const readSample = (): HoverPeekSample => {
       const sidebarRect = sidebar.getBoundingClientRect()
+      const sidebarStyle = window.getComputedStyle(sidebar)
       const listStyle = window.getComputedStyle(list)
       const itemRect = spaceItem.getBoundingClientRect()
       const nameRect = spaceName.getBoundingClientRect()
@@ -76,6 +78,7 @@ const sampleHoverPeek = async (page: Page): Promise<HoverPeekResult> => {
 
       return {
         sidebarTransition: sidebar.dataset.coveSidebarTransition ?? 'idle',
+        sidebarOverflowX: sidebarStyle.overflowX,
         width: Number(sidebarRect.width.toFixed(3)),
         sidebarRight: Number(sidebarRect.right.toFixed(3)),
         listOpacity: Number.parseFloat(listStyle.opacity),
@@ -188,11 +191,14 @@ test.describe('Primary Sidebar Hover Animation', () => {
       expect(result.transitionWasObserved).toBe(true)
       expect(samples.every(sample => sample.listOpacity >= 0.99)).toBe(true)
       expect(samples.every(sample => sample.listTransform === 'none')).toBe(true)
+      expect(samples.every(sample => sample.sidebarOverflowX === 'hidden')).toBe(true)
       expect(samples.every(sample => sample.railMarkerOpacity >= 0)).toBe(true)
       expect(samples.every(sample => sample.railMarkerOpacity <= 1)).toBe(true)
       expect(samples[0]?.railMarkerOpacity).toBeGreaterThanOrEqual(0.95)
       expect(samples[0]?.width).toBeLessThanOrEqual(76)
+      expect(samples[0]?.switchAllVisibleWidth).toBe(0)
       expect(finalSample?.width).toBeGreaterThanOrEqual(276)
+      expect(finalSample?.switchAllVisibleWidth).toBeGreaterThan(24)
       expect(finalSample?.surfaceWidth).toBeGreaterThan(100)
       expect(finalSample?.nameVisibleWidth).toBeGreaterThan(20)
       expect(finalSample?.railMarkerOpacity).toBeLessThanOrEqual(0.05)
@@ -252,11 +258,6 @@ test.describe('Primary Sidebar Hover Animation', () => {
             'negative',
           ),
         ).toBeGreaterThanOrEqual(-2)
-        expect(
-          transitionSamples.some(
-            sample => sample.switchAllVisibleWidth > 0 && sample.switchAllVisibleWidth < 24,
-          ),
-        ).toBe(true)
       }
     } finally {
       await electronApp.close()

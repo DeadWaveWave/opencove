@@ -229,19 +229,30 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
 
       await window.locator('[data-testid="workspace-sidebar-pin"]').click()
       await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
-      // Neither signal is sufficient alone. `data-cove-sidebar-transition` resolves to 'idle'
-      // both before a transition starts and after it settles, and the transitioning class is
-      // likewise absent on both sides, so either one can be satisfied without waiting at all.
-      // Their conjunction is unambiguous: the sidebar is only at rail width AND done
-      // transitioning once it has actually settled. The final rail padding/gap rules depend on
-      // the transitioning class being gone (workspace-sidebar.css:36), so the inner geometry
-      // this test asserts is not valid until both hold.
+      // The React transition marker and the app-shell grid/sidebar CSS transitions run on
+      // different clocks. Wait for every finite sidebar animation plus the grid animation to
+      // finish; a near-final width and an idle marker can otherwise expose the last subpixel frame.
       await expect
         .poll(async () => {
-          const width = (await sidebar.boundingBox())?.width ?? 0
-          const className = (await sidebar.getAttribute('class')) ?? ''
-          const settled = width <= 60 && !className.includes('workspace-sidebar--transitioning')
-          return settled
+          return await sidebar.evaluate(element => {
+            const shell = element.closest('.app-shell')
+            const animations = [
+              ...element.getAnimations({ subtree: true }),
+              ...(shell?.getAnimations() ?? []),
+            ]
+            const hasActiveFiniteAnimation = animations.some(animation => {
+              const endTime = Number(animation.effect?.getComputedTiming().endTime)
+              return (
+                Number.isFinite(endTime) &&
+                (animation.playState === 'pending' || animation.playState === 'running')
+              )
+            })
+            return (
+              element.getBoundingClientRect().width <= 60 &&
+              !element.classList.contains('workspace-sidebar--transitioning') &&
+              !hasActiveFiniteAnimation
+            )
+          })
         })
         .toBe(true)
 

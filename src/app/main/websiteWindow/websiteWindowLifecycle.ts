@@ -85,6 +85,7 @@ function disposeWebContents(runtime: WebsiteWindowRuntime, window: BrowserWindow
   runtime.scrollbarCssKey = null
   runtime.scrollbarCssSizePx = null
   runtime.scrollbarCssVersion += 1
+  runtime.snapshotDocumentReady = false
 
   runtime.view = null
   runtime.hostView = null
@@ -178,6 +179,7 @@ export function transitionWebsiteWindowToCold({
   runtime.canGoBack = false
   runtime.canGoForward = false
   runtime.isLoading = false
+  runtime.snapshotDocumentReady = false
   runtime.title = null
   runtime.url = null
 

@@ -5,6 +5,7 @@ set -eu
 OWNER="${OPENCOVE_RELEASE_OWNER:-DeadWaveWave}"
 REPO="${OPENCOVE_RELEASE_REPO:-opencove}"
 RELEASE_BASE_URL="${OPENCOVE_RELEASE_BASE_URL:-https://github.com/${OWNER}/${REPO}/releases/latest/download}"
+CHECKSUMS_URL="${RELEASE_BASE_URL}/SHA256SUMS.txt"
 INSTALL_ROOT="${OPENCOVE_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/opencove}"
 BIN_DIR="${OPENCOVE_BIN_DIR:-$HOME/.local/bin}"
 LAUNCHER_PATH="${BIN_DIR}/opencove"
@@ -61,6 +62,33 @@ detect_arch() {
       exit 1
       ;;
   esac
+}
+
+verify_archive_checksum() {
+  checksums_path="${TMP_DIR}/SHA256SUMS.txt"
+  curl -fsSL "${CHECKSUMS_URL}" -o "${checksums_path}"
+  expected_checksum="$(awk -v asset="${ASSET_NAME}" '$2 == asset || $2 == "*" asset { print $1; exit }' "${checksums_path}")"
+  if [ -z "${expected_checksum}" ]; then
+    printf "Checksum for %s not found in %s\n" "${ASSET_NAME}" "${CHECKSUMS_URL}" >&2
+    exit 1
+  fi
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual_checksum="$(sha256sum "${ARCHIVE_PATH}" | awk '{ print $1 }')"
+  elif command -v shasum >/dev/null 2>&1; then
+    actual_checksum="$(shasum -a 256 "${ARCHIVE_PATH}" | awk '{ print $1 }')"
+  elif command -v openssl >/dev/null 2>&1; then
+    actual_checksum="$(openssl dgst -sha256 "${ARCHIVE_PATH}" | awk '{ print $NF }')"
+  else
+    printf "No SHA256 tool is available; refusing to install an unverified archive.\n" >&2
+    exit 1
+  fi
+
+  if [ "$(printf '%s' "${actual_checksum}" | tr '[:upper:]' '[:lower:]')" != "$(printf '%s' "${expected_checksum}" | tr '[:upper:]' '[:lower:]')" ]; then
+    printf "SHA256 mismatch for %s\n" "${ASSET_NAME}" >&2
+    exit 1
+  fi
+  printf "Verified SHA256 for %s\n" "${ASSET_NAME}"
 }
 
 read_existing_wrapper() {
@@ -167,6 +195,7 @@ if [ -n "${OPENCOVE_STANDALONE_ASSET:-}" ]; then
 else
   printf "Downloading %s\n" "${ASSET_URL}"
   curl -fsSL "${ASSET_URL}" -o "${ARCHIVE_PATH}"
+  verify_archive_checksum
 fi
 
 rm -rf "${BUNDLE_DIR}"

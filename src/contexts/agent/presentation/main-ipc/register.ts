@@ -115,9 +115,11 @@ export function registerAgentIpcHandlers(
   approvedWorkspaces: ApprovedWorkspaceStore,
   getPersistenceStore: () => Promise<PersistenceStore>,
   getAgentSessionTitleCacheStore?: () => Promise<AgentSessionTitleCacheStore>,
+  appVersion: string | null = null,
 ): IpcRegistrationDisposable {
   const providerRegistry = new AgentProviderRegistry(
     createBuiltinAgentProviderContributions({
+      appVersion,
       runtimeExecutable: process.execPath,
       runtimePlatform: process.platform,
     }),

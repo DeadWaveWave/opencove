@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] - 2026-09-04
+
+OpenCove 0.3.0 makes long-running AI development work easier to resume, observe, and share across Desktop, browsers, and remote machines, while substantially expanding what can live on the spatial canvas.
+
+### ✨ Highlights
+- **Durable terminal and Agent continuity**: Keep terminal output, interactive sessions, Agent identity, and workspace context through app restarts and runtime recovery.
+- **Remote Workers and browser access**: Set up and repair managed SSH Workers, install the standalone runtime without Desktop, and open the same workspace through the optional Worker Web UI.
+- **A richer spatial workspace**: Organize work with Child Spaces, reusable roles, pinned navigation, improved search, and smoother arrange, drag, resize, and trackpad workflows.
+- **More work on the canvas**: Browse and edit project files, open full website windows, preview media, edit documents in Monaco, and move content between Explorer and the canvas.
+- **Stronger Agent workflows**: Use more Agent providers, adopt supported commands typed in ordinary terminals, switch resumable sessions, and receive clearer activity and completion feedback.
+- **Broader installation support**: Download smaller packages for Apple Silicon and Intel Macs, Windows, Linux AppImage, or Debian, plus standalone CLI/Worker bundles for headless machines.
+
 ### 🚀 Added
 - Terminal runtime: add Worker-owned native PTY sessions, snapshot-first renderer attach, ordered output/exit completion, durable recovery, and verified Agent continuity without introducing a second terminal owner. (#376)
 - Terminal: adopt Claude Code and Codex commands typed inside ordinary terminals through private POSIX/Windows PATH shims, preserving terminal identity and user config while reporting authenticated per-invocation state and verified provider session identity. (#373)
@@ -104,6 +118,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Agent sessions: archive the previous task binding only after a session switch succeeds, preventing a concurrent sync refresh from dropping that history.
+- Agent recovery: keep Codex sessions recoverable when an active-writer rejection arrives after the initial process spawn, using verified SessionStart as the success boundary instead of a short timing window.
+- Remote Worker: verify a downloaded standalone bundle against its release SHA256 before installation and report the packaged version so remote status and compatibility checks identify the installed release.
+- Website window: wait for the loaded document before capturing its freeze preview, preventing a blank or permanently pending snapshot under slower startup conditions.
+- Worker Web UI: keep the current xterm instance when a live session's reattach projection settles, preventing an initial browser handoff from remounting the terminal.
 - Worker Web UI: preserve Worker, PTY, Hub, renderer, history, and viewport identity across transactional Web-access reconfiguration, with fenced shutdown, listener handoff, replay cursors, and cross-process configuration ownership. (#377)
 - Terminal recovery: never cold-relaunch a provider from an unauthenticated terminal title or hint; automatic resume now requires a verified provider session binding.
 - Agent: report Pi run state from its session log and show Observing until evidence arrives instead of leaving it permanently Working. (#372)
