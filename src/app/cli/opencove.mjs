@@ -10,6 +10,7 @@ import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
 import {
   createWorkerSpawnEnvironment,
+  resolveCliAppVersion,
   resolveCliRuntime,
   resolveWorkerRuntimeForStart,
 } from './runtime.mjs'
@@ -53,12 +54,20 @@ async function main() {
   if (command === 'worker' && args[1] === 'start') {
     const runtime = resolveCliRuntime()
     const workerPath = runtime.workerScriptPath
+    const appVersion = resolveCliAppVersion(runtime)
 
     if (!existsSync(workerPath)) {
       process.stderr.write(
         runtime.kind === 'source'
           ? '[opencove] worker is not built. Run `pnpm build` first.\n'
           : `[opencove] worker entry is missing: ${workerPath}\n`,
+      )
+      process.exit(2)
+    }
+
+    if (runtime.kind === 'standalone' && appVersion === null) {
+      process.stderr.write(
+        '[opencove] standalone runtime package version is missing or invalid; refusing to start an unidentified Worker.\n',
       )
       process.exit(2)
     }
@@ -93,6 +102,9 @@ async function main() {
     }
 
     workerArgs.push('--started-by', 'cli')
+    if (appVersion !== null) {
+      workerArgs.push(`--app-version=${appVersion}`)
+    }
 
     if (advertiseHostname) {
       workerArgs.push('--advertise-hostname', advertiseHostname)

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "channel": "stable",
   "publishedAt": "2026-03-23T00:00:00.000Z",
   "provenance": "curated",
   "defaultLocale": "en",
-  "compareUrl": "https://github.com/DeadWaveWave/opencove/releases/tag/v0.2.0",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/releases/tag/v0.3.0",
   "locales": {
     "en": {
       "summary": "This build includes the new update sheet, better nightly messaging, and clearer settings interactions.",

@@ -27,6 +27,7 @@ import type { XtermSession } from './terminalNode/xtermSession'
 import { invalidateCachedTerminalScreenState } from './terminalNode/screenStateCache'
 import type { PreferredTerminalRendererMode } from './terminalNode/preferredRenderer'
 import type { TerminalRendererRecoveryRequest } from './terminalNode/runtimeRendererHealth'
+import { useTerminalLiveReattachScope } from './terminalNode/terminalLiveReattachScope'
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
@@ -36,7 +37,6 @@ import { TerminalNodeFrame } from './terminalNode/TerminalNodeFrame'
 import { resolveAgentNodeMinSize, resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import type { TerminalNodeProps } from './TerminalNode.types'
 import { useLatestCallbackRef } from './terminalNode/useLatestCallbackRef'
-
 export function TerminalNode({
   nodeId,
   sessionId,
@@ -115,6 +115,7 @@ export function TerminalNode({
   const pendingUserInputBufferRef = useRef<Array<{ data: string; encoding: 'utf8' | 'binary' }>>([])
   const initialTerminalGeometryRef = useRef(terminalGeometry)
   const initialTerminalGeometryKeyRef = useRef({ sessionId, resetVersion: 0 })
+  const stableLiveReattach = useTerminalLiveReattachScope(sessionId, isLiveSessionReattach)
   const viewportZoomRef = useRef(viewportZoom)
   const [, forceRendererRecoveryRender] = useState(0)
   const {
@@ -412,7 +413,7 @@ export function TerminalNode({
     recentUserInteractionAtRef,
     pendingUserInputBufferRef,
     recoveryScrollStateRef,
-    isLiveSessionReattach,
+    isLiveSessionReattach: stableLiveReattach,
     activeRendererKindRef,
     scheduleWebglCanvasTransformCleanup,
     cancelWebglCanvasTransformCleanup,

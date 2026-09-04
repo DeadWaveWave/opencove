@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "version": "0.3.0",
+  "channel": "stable",
+  "publishedAt": "2026-09-04T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/releases/tag/v0.3.0",
+  "locales": {
+    "en": {
+      "summary": "OpenCove 0.3.0 keeps terminal and Agent work available across restarts, Desktop, browsers, and remote machines, while expanding what you can organize and use directly on the canvas.",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "Organize larger projects with nested Child Spaces and reusable, provider-selectable roles.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Browse project files, edit documents with a full code editor, preview media, and open full website windows without leaving the canvas.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Set up and repair managed SSH remote machines, then browse and run work through their Remote Workers.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/227",
+          "prNumber": 227,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Install the standalone OpenCove CLI and Worker on macOS, Linux, or Windows servers without installing Desktop.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/209",
+          "prNumber": 209,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Choose Pi or Kimi Code for Agent work, and get Agent controls and status when launching supported commands from ordinary terminals.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Reload or switch resumable Agent sessions from the window header and receive a system notification when work finishes.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/207",
+          "prNumber": 207,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "Navigate projects, Spaces, and Agents with the new grouped sidebar, pinned Space rail, Command Center, and Settings search.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "Arrange, drag, resize, zoom, and use trackpad gestures more smoothly while keeping Space boundaries predictable.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Resume terminal and Agent work after restarts with output, input, and workspace context intact.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/376",
+          "prNumber": 376,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Keep terminals, history, and canvas position intact when using Desktop and the optional browser UI together.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/377",
+          "prNumber": 377,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Improve terminal clarity, sizing, focus, scrolling, and input behavior across Windows, macOS, Linux, and zoomed canvases.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Capture redacted issue reports and inspect performance snapshots when a session or canvas interaction misbehaves.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/230",
+          "prNumber": 230,
+          "sha": null
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "OpenCove 0.3.0 让终端与 Agent 工作在重启、Desktop、浏览器和远程机器之间保持连续，同时大幅扩展了画布内可组织、可直接使用的内容。",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "使用可嵌套的子空间和可复用、可选择 Agent 的角色来组织更大型的项目。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "无需离开画布即可浏览项目文件、使用完整代码编辑器编辑文档、预览媒体并打开网页窗口。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "配置和修复通过 SSH 管理的远程机器，并通过 Remote Worker 浏览和运行远程工作。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/227",
+          "prNumber": 227,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "无需安装 Desktop，即可在 macOS、Linux 或 Windows 服务器上安装独立的 OpenCove CLI 与 Worker。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/209",
+          "prNumber": 209,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "可选择 Pi 或 Kimi Code 执行 Agent 工作，并在普通终端中启动受支持命令后获得 Agent 控制和状态。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "从窗口标题栏重新加载或切换可恢复的 Agent 会话，并在任务完成时接收系统通知。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/207",
+          "prNumber": 207,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "通过新的分组侧边栏、置顶空间栏、命令中心和设置搜索，更快地切换项目、空间和 Agent。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "更流畅地整理、拖动、缩放窗口和画布，并让触控板操作与空间边界更稳定可预测。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "应用重启后继续原有终端与 Agent 工作，并保留输出、输入能力和工作区上下文。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/376",
+          "prNumber": 376,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "同时使用 Desktop 与可选浏览器界面时，保留终端、历史记录和画布位置。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/377",
+          "prNumber": 377,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "改善 Windows、macOS、Linux 及缩放画布中的终端清晰度、尺寸、焦点、滚动和输入体验。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "当会话或画布交互异常时，可生成脱敏问题报告并查看性能快照，便于定位问题。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/230",
+          "prNumber": 230,
+          "sha": null
+        }
+      ]
+    }
+  }
+}

@@ -47,7 +47,24 @@ describe('standalone Node distribution contracts', () => {
     expect(workflow).toContain('smoke-standalone-node-runtime.sh')
     expect(smoke).toContain('/proc/${LAUNCHER_PID}/exe')
     expect(smoke).toContain('/proc/${WORKER_PID}/exe')
+    expect(smoke).toContain('connection.appVersion !== packageJson.version')
     expect(smoke).toContain('no Electron executable present')
+  })
+
+  it('downloads and starts every published standalone Worker after the release is public', async () => {
+    const workflow = await readFile(resolve(rootDir, '.github/workflows/release.yml'), 'utf8')
+    const publishAt = workflow.indexOf('  publish:')
+    const verificationAt = workflow.indexOf('  verify-published-standalone:')
+
+    expect(publishAt).toBeGreaterThanOrEqual(0)
+    expect(verificationAt).toBeGreaterThan(publishAt)
+    const verification = workflow.slice(verificationAt)
+    expect(verification).toContain('needs: publish')
+    expect(verification).toContain('scripts/smoke-published-standalone-runtime.mjs')
+    expect(verification).toContain('macos-15')
+    expect(verification).toContain('macos-15-intel')
+    expect(verification).toContain('windows-latest')
+    expect(verification).toContain('ubuntu-latest')
   })
 })
 

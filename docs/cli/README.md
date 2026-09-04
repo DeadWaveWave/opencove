@@ -27,7 +27,8 @@ OpenCove 目前支持两条正式的 CLI 安装链路：
 - 打包态 launcher 必须指向发布 runtime 内的 CLI entrypoint，不能依赖 repo checkout 路径。
 - launcher 会记录安装 owner；两条安装链可以互相覆盖安装，但卸载时只移除自己拥有的 launcher。
 - standalone release 覆盖 macOS / Linux / Windows；Windows 资产格式为 `opencove-server-windows-<arch>.zip`。
-- stable release 同时发布 tag-pinned installer/uninstaller 和 `latest` 通用别名；nightly 只发布 tag-pinned 版本。
+- standalone launcher 必须从 bundle 内 `package.json` 读取版本并通过 `--app-version` 传给 Worker；缺失或非法版本必须拒绝启动，不能产生身份不明的 Remote Worker。
+- stable release 同时发布 tag-pinned installer/uninstaller 和 `latest` 通用别名；nightly 只发布 tag-pinned 版本。Managed SSH 必须按 Desktop 当前版本使用 tag-pinned installer，不能把 `latest` 当作版本一致性保证。
 
 若 latest stable 已包含 standalone installer assets，则可使用以下通用安装命令
 （macOS / Linux）：
@@ -117,6 +118,7 @@ OpenCove 的本地转译规则：
 4. Desktop 内置安装与 standalone 安装写出的 launcher 必须共享同一套 runtime 语义。
 5. 打包态 CLI/Worker 必须从发布 runtime 自洽启动，不依赖源码 checkout 或外部 Desktop 进程。
 6. standalone runtime 解析失败必须 fail-closed；不得静默改用 Electron 或宿主机 Node。
+7. standalone Worker 的 `appVersion` 必须等于 bundle 版本，并通过 connection file 与 `system.capabilities` 可验证。
 
 ## 4. 命令设计规范
 

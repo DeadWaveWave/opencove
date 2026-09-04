@@ -19,6 +19,28 @@ describe('cli runtime discovery', () => {
       workerScriptPath: '/bundle/app/out/main/worker.js',
     })
   })
+
+  it('reads the release version from the app packaged with the CLI runtime', async () => {
+    const { resolveCliAppVersion } = await import('../../../src/app/cli/runtime.mjs')
+    const readFileSyncImpl = vi.fn(() => JSON.stringify({ version: '0.3.0' }))
+
+    expect(
+      resolveCliAppVersion({ kind: 'standalone', appRoot: '/bundle/app' }, { readFileSyncImpl }),
+    ).toBe('0.3.0')
+    expect(readFileSyncImpl).toHaveBeenCalledWith('/bundle/app/package.json', 'utf8')
+  })
+
+  it('fails closed when the CLI runtime has no trustworthy packaged version', async () => {
+    const { resolveCliAppVersion } = await import('../../../src/app/cli/runtime.mjs')
+
+    expect(
+      resolveCliAppVersion(
+        { kind: 'standalone', appRoot: '/bundle/app' },
+        { readFileSyncImpl: () => '{broken-json' },
+      ),
+    ).toBeNull()
+    expect(resolveCliAppVersion({ kind: 'standalone' })).toBeNull()
+  })
 })
 
 describe('cli runtime electron binary resolution', () => {

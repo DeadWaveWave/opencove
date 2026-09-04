@@ -148,7 +148,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https:
 
 - stable 同时发布 `latest` 通用别名与 tag-pinned 脚本；nightly 只发布 tag-pinned 脚本。
 - `releases/latest/download/...` 只能表示 latest stable，不得在 nightly 文档中当作“当前 nightly”使用。
+- Managed SSH 的 bootstrap / reinstall 使用 Desktop 当前版本拼出 tag-pinned installer URL；该 installer 下载的 standalone Worker 必须报告相同版本，不能成为身份不明的 runtime，也不能在这条安装路径中回退到 `latest` 猜测。
 - release workflow 会在上传前使用本地生成的 standalone asset 运行安装 smoke。
+- release 发布后，`Verify Published Standalone` 必须在 macOS arm64、macOS x64、Windows x64 和 Linux x64 上从公开的 tag-pinned URL 下载 installer，并验证 checksum 清单、安装、launcher、Worker 启动、`system.ping` 与版本身份。stable 还必须验证 `latest` installer URL 可下载且仍指向 `releases/latest/download`。
+- 发布后 smoke 未通过时，该 release 不得对外宣称 Remote Worker 可用；修复后必须重新跑真实公开 URL，不能用本地产物代替。
 
 Standalone server 资产与 Desktop 资产是独立 runtime：bundle 提取应用代码、内置 release
 job 使用的 Node，并针对该 Node ABI 重新构建 `better-sqlite3` / `node-pty`。Linux release
@@ -207,14 +210,23 @@ pnpm release:version 0.2.0
    - 路径：`build/release-notes/stable/v<version>.json`
    - 要求：至少提供 `en`；若有对外中文体验，则同步补 `zh-CN`
    - 该文件是应用内 `What's New` 的版本真相源；`CHANGELOG.md` 负责历史文档，二者不再互相解析
+   - **只写用户可感知内容**：用户能直接看到或使用的新能力、工作流变化、问题修复和必须知道的限制。内部架构、owner/协议细节、重构、测试、CI、依赖升级和发布 bookkeeping 只留在 changelog；只有它们直接改变了安装方式、支持平台、安全行为或用户体验时，才描述最终用户结果，不描述内部实现。
+   - 使用结果导向的表达，例如“重启后终端仍可继续输入”，不要写“新增 revision fence / CAS owner”。优先保留 6-12 条最重要内容，不把完整 changelog 搬进弹窗。
 4) 更新 README 顶部的 `Important Announcement / 重要公告`，用 1-3 句短文概括这次对外想传达的重点
 5) 运行 `pnpm pre-commit`
 6) 提交 release 准备改动到 `main`
-7) 创建并 push tag
+7) 先以 exact candidate SHA 手动运行 `Release` workflow 的 `dry_run=true`，确认四平台构建与本地 standalone 安装 smoke 全绿
+8) 创建并 push annotated tag
 
 ```bash
-git tag v0.2.0
-git push origin main --tags
+git tag -a v0.2.0 -m "OpenCove v0.2.0"
+git push origin v0.2.0
+```
+
+9) 等待 release workflow 的 `Publish Release` 与四平台 `Verify Published Standalone` 全绿，再核对公开资产、`SHA256SUMS.txt`、tag commit 和 `latest` 指向。发布完成后也可从本机复核：
+
+```bash
+node scripts/smoke-published-standalone-runtime.mjs v0.2.0
 ```
 
 如需先预览下一版而不落盘：
