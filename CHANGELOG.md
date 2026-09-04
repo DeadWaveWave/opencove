@@ -118,6 +118,7 @@ OpenCove 0.3.0 makes long-running AI development work easier to resume, observe,
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Agent sessions: archive the previous task binding only after a session switch succeeds, preventing a concurrent sync refresh from dropping that history.
 - Agent recovery: keep Codex sessions recoverable when an active-writer rejection arrives after the initial process spawn, using verified SessionStart as the success boundary instead of a short timing window.
 - Remote Worker: verify a downloaded standalone bundle against its release SHA256 before installation and report the packaged version so remote status and compatibility checks identify the installed release.
 - Website window: wait for the loaded document before capturing its freeze preview, preventing a blank or permanently pending snapshot under slower startup conditions.

@@ -40,23 +40,17 @@ export function createTaskAgentSessionRecord(
   }
 }
 
-export function appendAgentSessionRecordToTaskHistory({
+export function appendTaskAgentSessionRecordToHistory({
   prevNodes,
-  agentNodeId,
+  taskNodeId,
+  agentSessionRecord,
   now,
 }: {
   prevNodes: Node<TerminalNodeData>[]
-  agentNodeId: string
+  taskNodeId: string
+  agentSessionRecord: TaskAgentSessionRecord
   now: string
 }): Node<TerminalNodeData>[] {
-  const target = prevNodes.find(node => node.id === agentNodeId)
-  const agentSessionRecord = createTaskAgentSessionRecord(target, now)
-  const taskNodeId = target?.data.kind === 'agent' ? (target.data.agent?.taskId ?? null) : null
-
-  if (!agentSessionRecord || !taskNodeId) {
-    return prevNodes
-  }
-
   let didChange = false
   const nextNodes = prevNodes.map(node => {
     if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
