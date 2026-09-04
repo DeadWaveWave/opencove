@@ -289,6 +289,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Windows release launcher invocation tests
+        run: pnpm exec vitest run tests/unit/scripts/published-standalone-smoke.spec.ts --pool=forks --maxWorkers=1
+
       - name: Build
         run: pnpm build
 
