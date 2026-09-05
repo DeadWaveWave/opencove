@@ -350,6 +350,15 @@ async function startLocalWorkerInternal(): Promise<WorkerStatusResult> {
   const userDataPath = app.getPath('userData')
   const existing = await resolveConnectionFromUserData({ requireLivePid: false })
   if (existing) {
+    // The ChildProcess owns liveness after startup. A brief health-probe timeout under load
+    // is not evidence of process death and must not kill the Worker's live terminal sessions.
+    if (
+      activeWorkerChild?.pid === existing.pid &&
+      !childHasExited(activeWorkerChild) &&
+      resolveLocalWorkerReusePolicy(existing).canReuse
+    ) {
+      return { status: 'running', connection: existing }
+    }
     if (await isReusableLocalWorkerConnection(existing)) {
       return { status: 'running', connection: existing }
     }
