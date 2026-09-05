@@ -111,6 +111,7 @@ describe('Control Surface HTTP server (session.prepareOrRevive parallel restore)
       createPersistenceStore: async () => createInMemoryPersistenceStore(),
       ptyRuntime,
     })
+    let preparedPromise: ReturnType<typeof invoke> | null = null
 
     try {
       const info = await server.ready
@@ -132,19 +133,21 @@ describe('Control Surface HTTP server (session.prepareOrRevive parallel restore)
       })
       expect(writeState.status, JSON.stringify(writeState.data)).toBe(200)
 
-      const preparedPromise = invoke(baseUrl, 'test-token', {
+      preparedPromise = invoke(baseUrl, 'test-token', {
         kind: 'command',
         id: 'session.prepareOrRevive',
         payload: { workspaceId },
       })
 
-      await expect.poll(() => spawnCalls.length, { timeout: 1_000 }).toBeGreaterThanOrEqual(2)
+      // The first spawn stays gated: the second must start independently, regardless of IO latency.
+      await expect.poll(() => spawnCalls.length, { timeout: 3_000 }).toBeGreaterThanOrEqual(2)
 
       releaseFirstSpawn?.()
       const prepared = await preparedPromise
       expect(prepared.status, JSON.stringify(prepared.data)).toBe(200)
     } finally {
       releaseFirstSpawn?.()
+      await preparedPromise?.catch(() => undefined)
       await disposeAndCleanup({
         server,
         userDataPath,

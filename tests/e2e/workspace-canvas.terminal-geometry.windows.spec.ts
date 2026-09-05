@@ -17,7 +17,7 @@ async function drag(window: Page, resizer: Locator, x: number, y: number) {
   await window.mouse.up()
 }
 
-async function assertGrids(window: Page, sessionId: string, phase: string) {
+async function assertGrids(window: Page, sessionId: string, phase: string, targetNodeId = nodeId) {
   await expect
     .poll(
       () =>
@@ -26,7 +26,7 @@ async function assertGrids(window: Page, sessionId: string, phase: string) {
           const size = api?.getSize(id)
           const proposed = api?.getProposedGeometry(id)
           return !!size && !!proposed && size.cols === proposed.cols && size.rows === proposed.rows
-        }, nodeId),
+        }, targetNodeId),
       { timeout: 15_000 },
     )
     .toBe(true)
@@ -65,14 +65,14 @@ async function assertGrids(window: Page, sessionId: string, phase: string) {
               snapshot.rows === size.rows
             )
           },
-          { sessionId, marker, nodeId },
+          { sessionId, marker, nodeId: targetNodeId },
         ),
       { timeout: 15_000 },
     )
     .toBe(true)
   return (await window.evaluate(
     id => window.__opencoveTerminalSelectionTestApi!.getSize(id),
-    nodeId,
+    targetNodeId,
   ))!
 }
 
@@ -80,6 +80,53 @@ test.describe('Windows terminal window fitting', () => {
   test.skip(process.platform !== 'win32', 'Windows Console geometry')
 
   for (const runtime of ['desktop', 'worker'] as const) {
+    test(`${runtime}: fits a newly created terminal before any manual resize`, async () => {
+      const { electronApp, window } = await launchApp({
+        deviceScaleFactor: 1.5,
+        env: { OPENCOVE_WORKER_CLIENT: runtime === 'worker' ? '1' : '0' },
+      })
+      try {
+        await clearAndSeedWorkspace(window, [], {
+          settings: {
+            terminalFontSize: 13,
+            terminalDisplayAutoReferenceEnabled: false,
+            terminalDisplayCalibrationCompensationEnabled: false,
+          },
+        })
+        await window
+          .locator('.react-flow__pane')
+          .click({ button: 'right', position: { x: 400, y: 300 } })
+        await window.getByTestId('workspace-context-new-terminal').click()
+        const terminal = window.locator('.terminal-node').first()
+        await expect(terminal.locator('.xterm')).toBeVisible()
+        const createdNodeId = await terminal.evaluate(
+          el => el.closest('.react-flow__node')!.getAttribute('data-id')!,
+        )
+        await expect
+          .poll(() =>
+            window.evaluate(
+              id => window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id),
+              createdNodeId,
+            ),
+          )
+          .toBeTruthy()
+        const sessionId = (await window.evaluate(
+          id => window.__opencoveTerminalSelectionTestApi!.getRuntimeSessionId(id),
+          createdNodeId,
+        ))!
+        await assertGrids(window, sessionId, 'created', createdNodeId)
+        await expect(terminal.getByTestId('terminal-geometry-feedback')).toHaveCount(0)
+        await test.info().attach(`${runtime}-new-terminal`, {
+          body: await terminal.screenshot({
+            path: test.info().outputPath(`${runtime}-new-terminal.png`),
+          }),
+          contentType: 'image/png',
+        })
+      } finally {
+        await electronApp.close()
+      }
+    })
+
     test(`${runtime}: fits at 150% DPR with calibration off through resize and reattach`, async () => {
       const testInfo = test.info()
       const { electronApp, window } = await launchApp({

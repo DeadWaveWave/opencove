@@ -58,6 +58,10 @@ Invocation adapter:
 
 - `src/contexts/agent/infrastructure/cli/AgentCliInvocation.ts`
 - 处理 Windows `.cmd/.bat` 等包装语义。
+- PowerShell 终端 Agent shim 的准备与清理 helper 必须等待真实 runtime 退出。Electron 在
+  Windows 上属于 GUI executable，裸调用会异步返回；这两个非交互步骤通过 `Out-Host`
+  pipeline 等待完成后再读取启动计划或恢复环境。真实 provider 保留直接调用，以维持 TTY
+  和 Ctrl+C 行为。回归测试必须使用 Electron executable，不能只用 console-subsystem Node。
 
 Hydration:
 

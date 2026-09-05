@@ -230,7 +230,11 @@ Current geometry transaction:
 - Stable geometry measurement is derived from the terminal container and xterm cell metrics. Current
   text, progress frames, `.xterm-rows` bounds, glyph overhang and scroll width are renderer output,
   not geometry observations.
-- On live reattach, the client first records the snapshot `geometryRevision` as its accepted baseline.
+- On initial attach and live reattach, the client records the snapshot `geometryRevision` as its accepted baseline.
+  Ordinary terminal controllers measure the mounted frame even when launch or persisted rows/columns
+  exist: those dimensions seed hydration and cannot prove that the current font and frame fit.
+  A renderer recovery/reset rehydrates canonical geometry instead: replacing a failed WebGL renderer
+  or repairing a stream is not a frame change and cannot initiate a new measured commit.
   A controller may then submit exactly one stable measured `frame_commit` against that base revision;
   a viewer applies canonical geometry only. Restored-Agent and explicit resize-suppression guards remain
   authoritative. Attach, focus and typing never substitute for this measured commit.

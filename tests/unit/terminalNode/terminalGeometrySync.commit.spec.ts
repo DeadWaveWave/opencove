@@ -225,26 +225,14 @@ describe('terminal geometry commit helpers', () => {
     })
   })
 
-  it('prefers measured initial geometry for transient plain terminal restore geometry', () => {
+  it('measures the mounted plain terminal even when a launch or restore geometry exists', () => {
     expect(
       shouldPreferMeasuredInitialGeometryCommit({
         kind: 'terminal',
         isLiveSessionReattach: false,
-        canonicalInitialGeometry: null,
         suppressPtyResize: false,
       }),
     ).toBe(true)
-  })
-
-  it('keeps durable plain terminal geometry canonical during restore', () => {
-    expect(
-      shouldPreferMeasuredInitialGeometryCommit({
-        kind: 'terminal',
-        isLiveSessionReattach: false,
-        canonicalInitialGeometry: { cols: 80, rows: 24 },
-        suppressPtyResize: false,
-      }),
-    ).toBe(false)
   })
 
   it('prefers measured initial geometry for agent live reattach', () => {
@@ -252,10 +240,22 @@ describe('terminal geometry commit helpers', () => {
       shouldPreferMeasuredInitialGeometryCommit({
         kind: 'agent',
         isLiveSessionReattach: true,
-        canonicalInitialGeometry: null,
         suppressPtyResize: false,
       }),
     ).toBe(true)
+  })
+
+  it.each(['terminal', 'agent'])('keeps canonical geometry when rebuilding a %s renderer', kind => {
+    for (const isLiveSessionReattach of [false, true]) {
+      expect(
+        shouldPreferMeasuredInitialGeometryCommit({
+          kind,
+          isLiveSessionReattach,
+          suppressPtyResize: false,
+          terminalClientResetVersion: 1,
+        }),
+      ).toBe(false)
+    }
   })
 
   it('keeps restored agent runtime geometry canonical during restart recovery', () => {
@@ -263,7 +263,6 @@ describe('terminal geometry commit helpers', () => {
       shouldPreferMeasuredInitialGeometryCommit({
         kind: 'agent',
         isLiveSessionReattach: false,
-        canonicalInitialGeometry: null,
         suppressPtyResize: false,
         agentResumeSessionIdVerified: true,
         agentLaunchMode: null,
@@ -273,7 +272,6 @@ describe('terminal geometry commit helpers', () => {
       shouldPreferMeasuredInitialGeometryCommit({
         kind: 'agent',
         isLiveSessionReattach: false,
-        canonicalInitialGeometry: null,
         suppressPtyResize: false,
         agentResumeSessionIdVerified: false,
         agentLaunchMode: 'resume',
@@ -286,7 +284,6 @@ describe('terminal geometry commit helpers', () => {
       shouldPreferMeasuredInitialGeometryCommit({
         kind: 'terminal',
         isLiveSessionReattach: true,
-        canonicalInitialGeometry: { cols: 80, rows: 24 },
         suppressPtyResize: false,
       }),
     ).toBe(true)
@@ -294,7 +291,6 @@ describe('terminal geometry commit helpers', () => {
       shouldPreferMeasuredInitialGeometryCommit({
         kind: 'terminal',
         isLiveSessionReattach: false,
-        canonicalInitialGeometry: null,
         suppressPtyResize: true,
       }),
     ).toBe(false)

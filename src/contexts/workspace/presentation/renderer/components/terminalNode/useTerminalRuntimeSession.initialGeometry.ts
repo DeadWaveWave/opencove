@@ -30,19 +30,19 @@ type PtySize = { cols: number; rows: number }
 export function shouldPreferMeasuredInitialGeometryCommit({
   kind,
   isLiveSessionReattach,
-  canonicalInitialGeometry,
   suppressPtyResize,
+  terminalClientResetVersion = 0,
   agentResumeSessionIdVerified = false,
   agentLaunchMode = null,
 }: {
   kind: 'terminal' | 'agent' | string
   isLiveSessionReattach: boolean
-  canonicalInitialGeometry: PtySize | null
   suppressPtyResize: boolean
+  terminalClientResetVersion?: number
   agentResumeSessionIdVerified?: boolean
   agentLaunchMode?: AgentLaunchMode | null
 }): boolean {
-  if (suppressPtyResize) {
+  if (suppressPtyResize || terminalClientResetVersion > 0) {
     return false
   }
 
@@ -54,15 +54,8 @@ export function shouldPreferMeasuredInitialGeometryCommit({
     return false
   }
 
-  if (isLiveSessionReattach) {
-    return kind === 'terminal' || kind === 'agent'
-  }
-
-  if (kind === 'agent') {
-    return true
-  }
-
-  return kind === 'terminal' && canonicalInitialGeometry === null
+  // Launch/restore geometry is a hydration baseline, not a measurement of this mounted frame.
+  return kind === 'terminal' || kind === 'agent'
 }
 
 function applyCanonicalGeometryLocally({
