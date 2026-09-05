@@ -21,7 +21,7 @@ See parallel work at a glance, keep context visible, and resume exactly where yo
 
 ## 📣 Important Announcement
 
-**OpenCove 0.3.0 keeps terminal and Agent work intact through restarts, adds managed remote machines and browser access, and expands the spatial workspace with Child Spaces, roles, websites, documents, and media.** You can also install the CLI and Worker without Desktop on headless macOS, Linux, and Windows machines.
+**OpenCove 0.3.1 improves Agent startup and completion notifications, terminal recovery and display stability, and managed remote connection feedback.** Agents launched inside ordinary terminals now use the same completion notifications as dedicated Agent windows.
 
 ## 📖 What is OpenCove?
 
