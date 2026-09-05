@@ -1,6 +1,7 @@
 import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { createServer, type Server } from 'node:net'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
 import { ClaudeCodeAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/claude-code/ClaudeCodeAgentProviderContribution'
@@ -20,6 +21,18 @@ const detector = {
     source: 'override' as const,
     diagnostics: [],
   })),
+}
+
+async function listen(server: Server, socketPath: string): Promise<void> {
+  await new Promise(resolveListen => {
+    server.listen(socketPath, () => resolveListen())
+  })
+}
+
+async function closeServer(server: Server): Promise<void> {
+  await new Promise(resolveClose => {
+    server.close(() => resolveClose())
+  })
 }
 
 function channel(provider: 'claude' | 'codex') {
@@ -54,7 +67,10 @@ function channel(provider: 'claude' | 'codex') {
   return { channel: result, commit, dispose }
 }
 
-function launchCommand(artifacts: AgentLaunchArtifactScope) {
+function launchCommand(
+  artifacts: AgentLaunchArtifactScope,
+  environment?: Readonly<NodeJS.ProcessEnv>,
+) {
   return {
     artifacts,
     mode: 'new' as const,
@@ -62,6 +78,7 @@ function launchCommand(artifacts: AgentLaunchArtifactScope) {
     model: null,
     resumeSessionId: null,
     agentFullAccess: true,
+    ...(environment ? { environment } : {}),
     workspaceDirectory: '/tmp/workspace',
   }
 }
@@ -244,6 +261,81 @@ describe('CodexAgentProviderContribution', () => {
     )
     await artifacts.dispose()
   })
+
+  it.skipIf(process.platform === 'win32')(
+    'injects no --config overrides when the implicit Codex daemon is live',
+    async () => {
+      const hook = channel('codex')
+      const artifacts = new AgentLaunchArtifactScope()
+      const root = await mkdtemp('/tmp/opencove-codex-daemon-')
+      const socketPath = join(root, 'app-server-control', 'app-server-control.sock')
+      await mkdir(dirname(socketPath), { recursive: true })
+      const daemon = createServer(socket => {
+        socket.destroy()
+      })
+      await listen(daemon, socketPath)
+      const provider = new CodexAgentProviderContribution({
+        channel: hook.channel,
+        detector,
+        runtimeExecutable: '/runtime/node',
+        runtimePlatform: 'linux',
+      })
+
+      try {
+        const plan = await provider.launcher.createLaunchPlan(
+          launchCommand(artifacts, { CODEX_HOME: root }),
+        )
+        artifacts.seal()
+
+        expect(plan.args).not.toContain('--config')
+        expect(plan.env).toMatchObject({
+          OPENCOVE_CODEX_HOOK_TOKEN: 'codex-token',
+        })
+        expect(plan.hookInstallState).toBe('skipped')
+
+        plan.onStarted?.('pty-daemon-1')
+        expect(hook.commit).toHaveBeenCalledWith('pty-daemon-1')
+        expect(hook.dispose).not.toHaveBeenCalled()
+        await artifacts.dispose()
+        expect(hook.dispose).toHaveBeenCalledTimes(1)
+      } finally {
+        await closeServer(daemon)
+        await rm(root, { recursive: true, force: true })
+      }
+    },
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'keeps legacy --config injection when no daemon socket answers',
+    async () => {
+      const hook = channel('codex')
+      const artifacts = new AgentLaunchArtifactScope()
+      const root = await mkdtemp('/tmp/opencove-codex-daemon-')
+      const socketPath = join(root, 'app-server-control', 'app-server-control.sock')
+      await mkdir(dirname(socketPath), { recursive: true })
+      const provider = new CodexAgentProviderContribution({
+        channel: hook.channel,
+        detector,
+        runtimeExecutable: '/runtime/node',
+        runtimePlatform: 'linux',
+      })
+
+      try {
+        const plan = await provider.launcher.createLaunchPlan(
+          launchCommand(artifacts, { CODEX_HOME: root }),
+        )
+        artifacts.seal()
+
+        expect(plan.args.join('\n')).toContain(
+          'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
+        )
+        expect(plan.hookInstallState).toBe('installed')
+        await artifacts.dispose()
+      } finally {
+        await rm(root, { recursive: true, force: true })
+      }
+    },
+  )
 
   it('uses platform-safe TOML strings', () => {
     expect(serializeCodexTomlString('C:\\Open Cove\\relay.mjs', 'win32')).toBe(
