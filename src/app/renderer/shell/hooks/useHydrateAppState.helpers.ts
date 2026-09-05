@@ -13,6 +13,8 @@ import { hydrateAgentNode } from '@contexts/agent/presentation/renderer/hydrateA
 import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import { repairRuntimeNodeFrame } from './runtimeNodeFrameRepair'
 import { isRemoteNodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
+import { mapWithConcurrency } from '@shared/utils/mapWithConcurrency'
+import { toErrorMessage } from '../utils/format'
 
 export function toShellWorkspaceState(
   workspace: PersistedWorkspaceState,
@@ -44,6 +46,7 @@ export function toShellWorkspaceState(
           ...node,
           data: {
             ...node.data,
+            pendingRuntimeSessionId: node.data.sessionId || null,
             sessionId: '',
           },
         }
@@ -147,6 +150,7 @@ export function mergeHydratedNode(
       kind: hydratedNode.data.kind,
       title: hydratedNode.data.kind === 'agent' ? hydratedNode.data.title : currentNode.data.title,
       sessionId: hydratedNode.data.sessionId,
+      pendingRuntimeSessionId: hydratedNode.data.pendingRuntimeSessionId,
       isLiveSessionReattach: hydratedNode.data.isLiveSessionReattach === true,
       profileId: hydratedNode.data.profileId ?? currentNode.data.profileId ?? null,
       runtimeKind: hydratedNode.data.runtimeKind ?? currentNode.data.runtimeKind,
@@ -352,11 +356,15 @@ export async function prepareWorkspaceRuntimeNodes({
   agentSettings,
   nodeIds,
   workerOnly,
+  onNodePrepared,
+  isCancelled = () => false,
 }: {
   workspace: PersistedWorkspaceState
   agentSettings: AgentSettings
   nodeIds?: string[] | null
   workerOnly?: boolean
+  onNodePrepared?: (node: Node<TerminalNodeData>) => void
+  isCancelled?: () => boolean
 }): Promise<Node<TerminalNodeData>[]> {
   const runtimeNodes = toRuntimeNodes(workspace)
     .filter(requiresRuntimeHydration)
@@ -366,62 +374,51 @@ export async function prepareWorkspaceRuntimeNodes({
     return []
   }
 
-  const preparedById = new Map<string, Node<TerminalNodeData>>()
   const controlSurfaceInvoke = window.opencoveApi?.controlSurface?.invoke
   const shouldRequireWorker = workerOnly ?? typeof controlSurfaceInvoke === 'function'
-
-  if (typeof controlSurfaceInvoke === 'function') {
-    try {
-      const prepared = await controlSurfaceInvoke<PrepareOrReviveSessionResult>({
-        kind: 'command',
-        id: 'session.prepareOrRevive',
-        payload: {
-          workspaceId: workspace.id,
-          nodeIds: runtimeNodes.map(node => node.id),
-        },
-      })
-
-      for (const preparedNode of prepared.nodes ?? []) {
-        const currentNode = runtimeNodes.find(node => node.id === preparedNode.nodeId)
-        if (!currentNode) {
-          continue
-        }
-
-        preparedById.set(currentNode.id, toHydratedRuntimeNode(currentNode, preparedNode))
-      }
-    } catch {
-      if (shouldRequireWorker) {
-        return []
-      }
-
-      // Fall back to the legacy local hydrate path when the worker contract is unavailable.
+  const preparedNodes = await mapWithConcurrency(runtimeNodes, 4, async node => {
+    if (isCancelled()) {
+      return null
     }
-  }
-
-  if (shouldRequireWorker) {
-    return runtimeNodes
-      .map(node => preparedById.get(node.id) ?? node)
-      .filter(node => preparedById.has(node.id))
-  }
-
-  if (preparedById.size === runtimeNodes.length) {
-    return runtimeNodes.map(node => preparedById.get(node.id) ?? node)
-  }
-
-  return await Promise.all(
-    runtimeNodes.map(async node => {
-      const preparedNode = preparedById.get(node.id)
-      if (preparedNode) {
-        return preparedNode
+    let hydratedNode: Node<TerminalNodeData> | null = null
+    if (typeof controlSurfaceInvoke === 'function') {
+      try {
+        const prepared = await controlSurfaceInvoke<PrepareOrReviveSessionResult>({
+          kind: 'command',
+          id: 'session.prepareOrRevive',
+          payload: { workspaceId: workspace.id, nodeIds: [node.id] },
+        })
+        const result = prepared.nodes?.find(candidate => candidate.nodeId === node.id)
+        if (result) {
+          hydratedNode = toHydratedRuntimeNode(node, result)
+        }
+      } catch (error) {
+        if (shouldRequireWorker) {
+          hydratedNode = {
+            ...node,
+            data: {
+              ...node.data,
+              sessionId: '',
+              pendingRuntimeSessionId: node.data.sessionId || null,
+              lastError: toErrorMessage(error),
+            },
+          }
+        }
       }
-
-      return await hydrateRuntimeNodeLocally({
+    }
+    if (!hydratedNode && !shouldRequireWorker && !isCancelled()) {
+      hydratedNode = await hydrateRuntimeNodeLocally({
         node,
         workspacePath: workspace.path,
         agentSettings,
       })
-    }),
-  )
+    }
+    if (hydratedNode && !isCancelled()) {
+      onNodePrepared?.(hydratedNode)
+    }
+    return hydratedNode
+  })
+  return preparedNodes.filter((node): node is Node<TerminalNodeData> => node !== null)
 }
 
 export async function hydrateRuntimeNode({

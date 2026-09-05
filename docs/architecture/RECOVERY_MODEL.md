@@ -51,8 +51,18 @@ SQLite durable state
 
 Worker 在发布 connection file 前扫描 persisted workspace runtime nodes。命中的 workspace 保持
 `initializing`，普通 spawn 返回 `terminal.runtime_not_ready`；只有 `session.prepareOrRevive`
-拥有当前 attempt 的内部 spawn scope。成功完成后进入 `ready` 并递增 epoch，失败进入
-`unavailable`，shutdown/旧 attempt 的迟到完成都不能重新打开准入。
+拥有当前恢复批次的内部 spawn scope。同一 workspace 的并发恢复操作加入同一批次，
+每个 scope 仅在自己的操作存续期间有效。全部操作结束后进入 `ready` 并递增 epoch；
+批次中有未处理的失败则进入 `unavailable`。shutdown/旧批次的迟到完成不能重新打开准入。
+
+Renderer 按节点请求恢复，最多同时发出四个请求，并立即应用每个已完成结果；一个节点的
+超时不能丢弃其他节点的结果。Worker 对同一 workspace/node 的并发准备请求共享正在执行
+的操作，避免重复 spawn。界面卸载后停止提交结果和启动排队请求。
+
+占位节点的空 `sessionId` 只表示尚未验证、不能输入。Renderer 用临时
+`pendingRuntimeSessionId` 保留上次 durable binding，持久化和同步不能把等待验证解释为解绑。
+只有 Worker preparation 结果可以清除该临时字段并提交新的 binding；传输失败保留原绑定。
+迟到结果不能覆盖用户已经切换到的新 runtime。
 
 Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/recovering UI，并在 session attach 后渲染 worker-owned output。
 
@@ -71,7 +81,7 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
 9. Remote route 暂时不可观测不是 runtime 已被替换的证据；只有完整观察或明确 replacement 才能 retire
    durable binding。
 10. Persisted runtime reconciliation 完成前，普通 terminal/agent spawn 不得创建新 PTY；只有当前
-    `session.prepareOrRevive` attempt 的内部 scope 可以启动恢复所需 runtime。
+    `session.prepareOrRevive` 恢复批次内仍在执行的内部 scope 可以启动恢复所需 runtime。
 11. Node-owned Worker binding 优先于 Space mount 推导；只有旧数据缺少 binding 时才允许使用
     Space fallback。无法解析 remote binding 时必须 fail closed 为 `fallback_terminal` +
     `remote_worker_unavailable`，不得把 remote cwd 交给 Home Worker。

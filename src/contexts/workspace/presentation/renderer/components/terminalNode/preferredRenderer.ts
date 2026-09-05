@@ -5,7 +5,7 @@ import type { TerminalRasterScale } from './terminalZoomRasterPolicy'
 
 export type ActiveTerminalRenderer = {
   kind: 'webgl' | 'dom'
-  clearTextureAtlas: () => void
+  refresh: () => void
   dispose: () => void
   setRasterScale: (scale: TerminalRasterScale) => boolean | undefined
 }
@@ -24,10 +24,10 @@ const DEFAULT_WEBGL_RENDERER_BUDGET = 8
 
 let activeWebglRendererCount = 0
 
-function createDomRenderer(): ActiveTerminalRenderer {
+function createDomRenderer(terminal: Terminal): ActiveTerminalRenderer {
   return {
     kind: 'dom',
-    clearTextureAtlas: () => undefined,
+    refresh: () => terminal.refresh(0, Math.max(0, terminal.rows - 1)),
     dispose: () => undefined,
     setRasterScale: () => false,
   }
@@ -81,15 +81,15 @@ export function activatePreferredTerminalRenderer(
   const mustUseWebgl = requiresWebglRenderer(terminalProvider, options)
 
   if (options.preferredMode === 'dom' && !mustUseWebgl) {
-    return createDomRenderer()
+    return createDomRenderer(terminal)
   }
 
   if (!canUseWebglRenderer()) {
-    return createDomRenderer()
+    return createDomRenderer(terminal)
   }
 
   if (!mustUseWebgl && !hasWebglRendererBudget(options.webglRendererBudget)) {
-    return createDomRenderer()
+    return createDomRenderer(terminal)
   }
 
   try {
@@ -123,9 +123,11 @@ export function activatePreferredTerminalRenderer(
       get kind() {
         return kind
       },
-      clearTextureAtlas: () => {
+      refresh: () => {
         if (!disposed) {
-          webglAddon.clearTextureAtlas()
+          // xterm shares its atlas across terminals. Clearing it leaves sibling glyph models
+          // pointing at reused texture coordinates; layout refresh must never mutate that cache.
+          terminal.refresh(0, Math.max(0, terminal.rows - 1))
         }
       },
       dispose: () => {
@@ -147,6 +149,6 @@ export function activatePreferredTerminalRenderer(
       },
     }
   } catch {
-    return createDomRenderer()
+    return createDomRenderer(terminal)
   }
 }

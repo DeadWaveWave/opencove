@@ -180,6 +180,8 @@ export interface WebsiteNodeData {
 export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
+  /** Last durable binding while Worker validation is pending; never used for input/attach. */
+  pendingRuntimeSessionId?: string | null
   isLiveSessionReattach?: boolean
   autoFocus?: boolean
   profileId?: string | null

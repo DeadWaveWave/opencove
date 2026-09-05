@@ -68,7 +68,9 @@ export function toPersistedState(
         ? workspace.spaceArchiveRecords.slice(0, 50)
         : [],
       nodes: workspace.nodes.map(node => {
-        const sessionId = normalizeOptionalString(node.data.sessionId)
+        const sessionId =
+          normalizeOptionalString(node.data.sessionId) ??
+          normalizeOptionalString(node.data.pendingRuntimeSessionId)
 
         return {
           id: node.id,

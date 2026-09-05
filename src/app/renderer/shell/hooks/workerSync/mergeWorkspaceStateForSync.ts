@@ -34,8 +34,11 @@ function mergeRuntimeNode(
   const shouldPreservePosition = workspaceHasActiveDrag || isDragging
   const persistedSessionId = persistedNode.data.sessionId.trim()
   const existingSessionId = existingNode.data.sessionId.trim()
-  const runtimeSessionId =
-    persistedSessionId.length > 0
+  const awaitingRuntimeValidation =
+    existingSessionId.length === 0 && existingNode.data.pendingRuntimeSessionId !== undefined
+  const runtimeSessionId = awaitingRuntimeValidation
+    ? ''
+    : persistedSessionId.length > 0
       ? persistedSessionId
       : existingSessionId.length > 0
         ? existingSessionId
@@ -61,6 +64,7 @@ function mergeRuntimeNode(
     data: {
       ...persistedNode.data,
       sessionId: runtimeSessionId,
+      pendingRuntimeSessionId: existingNode.data.pendingRuntimeSessionId,
       scrollback: existingNode.data.scrollback ?? persistedNode.data.scrollback,
       terminalProviderHint: activeTerminalOverlay
         ? existingNode.data.terminalProviderHint

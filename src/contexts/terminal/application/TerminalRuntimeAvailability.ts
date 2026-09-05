@@ -15,7 +15,11 @@ export type TerminalRecoverySpawnScope = {
 export type TerminalSpawnAdmission = Pick<TerminalRuntimeAvailability, 'assertSpawnAllowed'>
 export type TerminalRecoverySpawnAdmission = Pick<TerminalRuntimeAvailability, 'reconcileWorkspace'>
 
-type WorkspaceAvailability = TerminalRuntimeAvailabilitySnapshot & { attempt: number }
+type WorkspaceAvailability = TerminalRuntimeAvailabilitySnapshot & {
+  attempt: number
+  pending: number
+  failed: boolean
+}
 
 export class TerminalRuntimeAvailability {
   private readonly availabilityByWorkspaceId = new Map<string, WorkspaceAvailability>()
@@ -34,6 +38,8 @@ export class TerminalRuntimeAvailability {
         phase: 'initializing',
         epoch: 0,
         attempt: 0,
+        pending: 0,
+        failed: false,
       })
     }
   }
@@ -85,13 +91,16 @@ export class TerminalRuntimeAvailability {
     }
 
     const previous = this.availabilityByWorkspaceId.get(workspaceId)
-    const attempt = ++this.nextAttempt
+    const joining = previous && previous.pending > 0
+    const attempt = joining ? previous.attempt : ++this.nextAttempt
     const scope = Object.freeze({ workspaceId, attempt })
     this.recoveryScopes.add(scope)
     this.availabilityByWorkspaceId.set(workspaceId, {
       phase: 'initializing',
       epoch: previous?.epoch ?? 0,
       attempt,
+      pending: (joining ? previous.pending : 0) + 1,
+      failed: joining ? previous.failed : false,
     })
 
     try {
@@ -122,10 +131,15 @@ export class TerminalRuntimeAvailability {
     if (!current || current.attempt !== attempt) {
       return
     }
+    const pending = current.pending - 1
+    const failed = current.failed || phase === 'unavailable'
+    const settledPhase = pending > 0 ? 'initializing' : failed ? 'unavailable' : 'ready'
     this.availabilityByWorkspaceId.set(workspaceId, {
-      phase,
-      epoch: phase === 'ready' ? current.epoch + 1 : current.epoch,
+      phase: settledPhase,
+      epoch: settledPhase === 'ready' ? current.epoch + 1 : current.epoch,
       attempt,
+      pending,
+      failed,
     })
   }
 

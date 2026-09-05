@@ -394,6 +394,8 @@ The goal is stable visual parity without letting multiple renderers fight for te
     presentation or recovery state.
 26. A Desktop relay reconnects from the minimum active renderer cursor; one subscriber's newer snapshot
     cannot advance another subscriber's replay boundary.
+27. xterm owns its shared glyph atlas. Mount, reuse and layout refresh may repaint a terminal, but
+    must not clear that atlas: sibling renderers retain texture coordinates into the shared pages.
 
 ## Verification Anchors
 
@@ -423,5 +425,7 @@ The goal is stable visual parity without letting multiple renderers fight for te
 - `tests/e2e/pty-host.resize-ack.windows.spec.ts` (deferred ConPTY resize remains explicitly
   unverified and cannot overwrite canonical geometry with the request)
 - `tests/e2e/workspace-canvas.terminal-theme.spec.ts` (Find overlay and applied appearance)
+- `tests/e2e/workspace-canvas.terminal-shared-atlas.windows.spec.ts` (creating and closing sibling
+  terminals preserves existing glyph pixels at 150% display scale)
 - `scripts/test-terminal-presentation-contract.mjs`
 - Terminal renderer E2E cases under `tests/e2e/`.
