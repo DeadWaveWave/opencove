@@ -362,7 +362,9 @@ OpenCove exposes terminal display alignment through Settings:
 - local compensation can adjust xterm font size, line height and letter spacing
 - an automatic client calibrator waits for settings hydration, a compatible reference, loaded fonts and
   stable layout; it runs single-flight per profile/reference/environment signature
-- the settings application calibration owner starts with no applicable projection and synchronously revokes it before environment revalidation; raw localStorage records never style xterm directly
+- the settings application calibration owner starts with no applicable projection and synchronously revokes it when profile/reference, renderer kind, DPR, viewport scale, fonts or calibration storage change; raw localStorage records never style xterm directly
+- ordinary window resizing, same-kind terminal registration and semantically unchanged settings preserve verified applicability and do not restart pending measurements; listener cleanup belongs to the client lifetime, not reference object identity
+- settings and copied diagnostics derive current applicability and blockers from the same owner snapshot; a historical successful attempt is not evidence of current applicability
 - new records store environment proof atomically with the calibration; legacy sidecar proof must match a freshly measured stable environment and be promoted atomically before application, while metadata-less or measured-grid-less records remain diagnostic-only and unapplied
 - renderer environment signature and exact-signature reset suppression include profile/reference, DPR, visual viewport scale, renderer kind and font fingerprint; changes invalidate signed local results
 - automatic and manual apply require one mounted renderer kind matching reference provenance plus an `exact`/`close` candidate whose measured rows/columns, effective DPR and cell metrics equal the reference within tolerance; mixed DOM/WebGL handles or ambiguous results remain unapplied
