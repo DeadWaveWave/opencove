@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 🚀 Added
+- Agent: monitor native Pi activity in ordinary terminals and managed Agent nodes, with launch-scoped hooks, stale-event protection, and verified conversation tracking across reload, new sessions, resume, and fork. (#389)
+
 ### 🐛 Fixed
 - Agent: show idle Claude terminal sessions as Standby, remove all Agent chrome after Claude Code or Codex exits while preserving conversation recovery data, and prevent stale Working status after dedicated Agent exits. (#383)
 - Remote: keep managed SSH installation and connection progress visible across Settings and folder-picker reopen, instead of reporting cold setup as a Worker or tunnel failure; automatically enable browsing when ready. (#381)
