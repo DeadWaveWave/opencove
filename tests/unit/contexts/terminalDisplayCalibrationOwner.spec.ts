@@ -81,6 +81,12 @@ function createPorts(options?: {
         return true
       }),
       isSuppressed: vi.fn(() => false),
+      readEnvironmentObservation: vi.fn(() => ({
+        runtime: 'desktop' as const,
+        rendererKind: 'webgl' as const,
+        windowDevicePixelRatio: 2,
+        visualViewportScale: 1,
+      })),
       resolveEnvironment: vi.fn(async () => ({
         signature: 'environment-a',
         rendererKind: 'webgl' as const,
@@ -97,6 +103,82 @@ function createPorts(options?: {
 }
 
 describe('terminal display calibration owner', () => {
+  it('does not let a completed attempt overwrite a newer subscriber-driven disable', async () => {
+    const { ports } = createPorts({
+      stored: {
+        calibration,
+        metadata: { environmentSignature: 'environment-a', source: 'manual' },
+        proof: 'atomic',
+      },
+    })
+    const owner = createTerminalDisplayCalibrationOwner(ports)
+    owner.subscribe(() => {
+      if (owner.getSnapshot().appliedCalibration) {
+        owner.update({ ...context, enabled: false })
+      }
+    })
+    owner.update(context)
+    await owner.whenIdle()
+    expect(owner.getSnapshot()).toMatchObject({ appliedCalibration: null, status: 'disabled' })
+    expect(ports.recordAttempt).toHaveBeenLastCalledWith('disabled', undefined)
+    owner.dispose()
+  })
+
+  it('does not restart a pending verification for repeated observations or equivalent settings', async () => {
+    const { ports } = createPorts({
+      stored: {
+        calibration,
+        metadata: { environmentSignature: 'environment-a', source: 'manual' },
+        proof: 'atomic',
+      },
+    })
+    let finish!: (value: { signature: string; rendererKind: 'webgl' }) => void
+    ports.resolveEnvironment.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finish = resolve
+        }),
+    )
+    const owner = createTerminalDisplayCalibrationOwner(ports)
+    owner.update(context)
+    owner.observeEnvironment()
+    owner.update(structuredClone(context))
+    owner.observeEnvironment()
+    expect(ports.resolveEnvironment).toHaveBeenCalledTimes(1)
+    expect(owner.getSnapshot().status).toBe('checking')
+    finish({ signature: 'environment-a', rendererKind: 'webgl' })
+    await owner.whenIdle()
+    expect(owner.getSnapshot()).toMatchObject({
+      appliedCalibration: calibration,
+      status: 'already-calibrated',
+    })
+    owner.dispose()
+  })
+
+  it.each([
+    ['mixed', 'mixed-renderers'],
+    ['none', 'no-terminal'],
+    ['dom', 'renderer-mismatch'],
+  ] as const)(
+    'keeps the %s blocker consistent for automatic and manual calibration',
+    async (rendererKind, status) => {
+      const { ports } = createPorts()
+      ports.readEnvironmentObservation.mockReturnValue({
+        ...ports.readEnvironmentObservation(),
+        rendererKind,
+      })
+      const owner = createTerminalDisplayCalibrationOwner(ports)
+      owner.update(context)
+      await owner.whenIdle()
+      expect(owner.getSnapshot()).toMatchObject({ appliedCalibration: null, status })
+      await expect(owner.calibrateNow()).resolves.toEqual({ outcome: status })
+      expect(owner.getSnapshot()).toMatchObject({ appliedCalibration: null, status })
+      expect(ports.resolveEnvironment).not.toHaveBeenCalled()
+      expect(ports.writeStored).not.toHaveBeenCalled()
+      owner.dispose()
+    },
+  )
+
   it('never applies a metadata-less stored calibration', async () => {
     const { ports } = createPorts({
       stored: { calibration, metadata: null, proof: null },

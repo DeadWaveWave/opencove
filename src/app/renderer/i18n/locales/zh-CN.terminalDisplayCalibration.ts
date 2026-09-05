@@ -26,6 +26,19 @@ export const zhCNTerminalDisplayCalibration = {
     '已启用保存的调整：字体 {{fontSize}}px，行高 {{lineHeight}}。匹配度：{{quality}}。',
   clientCalibrationPaused:
     '当前设备已有保存的调整，但现在已暂停。开启“自动应用校准补偿”即可使用。匹配度：{{quality}}。',
+  state: {
+    checking: '正在检查当前终端显示，验证后将应用校准。',
+    referenceUnavailable: '需要先设置有效的共享参考目标，才能应用校准。',
+    noTerminal: '打开一个终端后，即可验证并应用保存的显示调整。',
+    mixedRenderers:
+      '当前打开的终端使用了不同的显示方式，暂时无法统一应用调整。终端仍会自动适配窗口大小。',
+    rendererMismatch: '当前设备的显示方式与参考目标不同，需要设置兼容的目标后才能应用校准。',
+    environmentUnstable: '终端显示尚未稳定，请在加载完成后重新校准。',
+    suppressed: '清除调整后已暂停自动校准，手动校准当前设备即可恢复。',
+    measurementUnavailable: '无法测量当前终端显示，请重新校准当前设备。',
+    candidateRejected: '当前显示无法足够准确地匹配参考目标，需要设置兼容的目标后才能应用校准。',
+    storageUnavailable: '无法保存显示调整，本次校准尚未应用。',
+  },
   quality: {
     exact: '完全一致',
     close: '接近一致',
@@ -44,4 +57,5 @@ export const zhCNTerminalDisplayCalibration = {
   resetDone: '已清除当前设备保存的终端显示调整。',
   diagnosticsCopied: '终端显示诊断已复制。',
   measureFailed: '无法测量当前设备的终端显示指标。',
+  storageFailed: '无法在当前设备保存终端显示调整。',
 }
