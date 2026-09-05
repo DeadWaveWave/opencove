@@ -7,7 +7,6 @@ import type {
 import { getTerminalGeometryCommitRequest } from './terminalGeometryCoordinator'
 
 const TERMINAL_GEOMETRY_ACK_TIMEOUT_MS = 3_000
-let uncoordinatedGeometryOperationId = 0
 
 function normalizeGeometryRevision(value: number | null | undefined): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
@@ -35,15 +34,13 @@ function createResizePayload({
   const revision = normalizeGeometryRevision(geometryRevision)
   const commitRequest =
     terminal && revision !== null ? getTerminalGeometryCommitRequest(terminal, revision) : null
-  uncoordinatedGeometryOperationId += 1
   return {
     sessionId,
     cols,
     rows,
     reason,
     operationId:
-      commitRequest?.operationId ??
-      `renderer-geometry-uncoordinated-${uncoordinatedGeometryOperationId}`,
+      commitRequest?.operationId ?? `renderer-geometry-uncoordinated-${crypto.randomUUID()}`,
     baseGeometryRevision: commitRequest?.baseGeometryRevision ?? null,
     authorityEpoch: commitRequest?.authorityEpoch ?? null,
   }

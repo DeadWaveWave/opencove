@@ -58,7 +58,10 @@ describe('registerIpcHandlers', () => {
     vi.clearAllMocks()
   })
 
-  it('retries persistence store creation after an initialization failure', async () => {
+  // Scoped mocks require a cold import of the Main composition inside this test.
+  // Its module transformation can exceed the default 5 s on Windows; the retry
+  // assertions below do not rely on wall-clock timing.
+  it('retries failed persistence initialization', { timeout: 15_000 }, async () => {
     const store = createPersistenceStoreStub()
     const agentTitleCacheStore = {
       read: vi.fn(),

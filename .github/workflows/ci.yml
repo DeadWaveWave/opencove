@@ -269,7 +269,8 @@ jobs:
           rm -rf "/tmp/cove-e2e-user-data-"* || true
 
   platform-e2e-windows:
-    runs-on: windows-latest
+    # pnpm 9's node-gyp requires VS 2022 for the node-pty source build.
+    runs-on: windows-2022
 
     steps:
       - name: Checkout

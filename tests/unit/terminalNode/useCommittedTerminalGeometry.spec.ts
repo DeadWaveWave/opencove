@@ -126,6 +126,24 @@ describe('commitTerminalGeometryForCurrentSession', () => {
     expect(commitSettledMock.mock.calls[1]?.[0].geometryRevision).toBe(2)
   })
 
+  it('does not overwrite a replacement renderer cache when an old commit finishes', async () => {
+    const params = createCommitParams()
+    params.terminalRef.current = createTerminalMock()
+    const blocked = createDeferred()
+    commitSettledMock.mockImplementationOnce(async options => {
+      await blocked.promise
+      options.lastCommittedPtySizeRef.current = { cols: 100, rows: 32 }
+      return { cols: 100, rows: 32, changed: true }
+    })
+    const pending = commitTerminalGeometryForCurrentSession(params, 'frame_commit')
+    params.terminalRef.current = createTerminalMock()
+    params.lastCommittedPtySizeRef.current = { cols: 60, rows: 18 }
+    blocked.resolve()
+    await pending
+    expect(params.lastCommittedPtySizeRef.current).toEqual({ cols: 60, rows: 18 })
+    expect(params.scheduleWebglCanvasTransformCleanup).not.toHaveBeenCalled()
+  })
+
   it('serializes geometry intents so a newer measurement starts after the prior ACK settles', async () => {
     const params = createCommitParams()
     params.terminalRef.current = createTerminalMock()
@@ -209,7 +227,25 @@ describe('commitTerminalGeometryForCurrentSession', () => {
     ).resolves.toBeUndefined()
 
     expect(canWriteTerminalOutput(terminal)).toBe(true)
-    expect(params.lastCommittedPtySizeRef.current).toStrictEqual({ cols: 80, rows: 24 })
+    expect(params.lastCommittedPtySizeRef.current).toBeNull()
     expect(params.scheduleWebglCanvasTransformCleanup).not.toHaveBeenCalled()
+  })
+
+  it('releases an old renderer gate on rejection without invalidating the replacement cache', async () => {
+    const params = createCommitParams()
+    const oldTerminal = createTerminalMock()
+    params.terminalRef.current = oldTerminal
+    const blocked = createDeferred()
+    commitSettledMock.mockImplementationOnce(async () => {
+      await blocked.promise
+      throw new Error('late failure')
+    })
+    const pending = commitTerminalGeometryForCurrentSession(params, 'frame_commit')
+    params.terminalRef.current = createTerminalMock()
+    params.lastCommittedPtySizeRef.current = { cols: 60, rows: 18 }
+    blocked.resolve()
+    await pending
+    expect(canWriteTerminalOutput(oldTerminal)).toBe(true)
+    expect(params.lastCommittedPtySizeRef.current).toEqual({ cols: 60, rows: 18 })
   })
 })

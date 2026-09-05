@@ -240,23 +240,31 @@ Current geometry transaction:
   reconnect traffic must not reuse the prior connection's epoch or issue write/resize/re-exec.
 - The requester receives one typed `resize_result`: `accepted`, `accepted_unverified`,
   `rejected_not_controller`, `rejected_stale_authority`, `superseded`, `session_not_found` or
-  `runtime_failed`. `accepted_unverified` means the resize was issued but its applied ConPTY
-  geometry cannot be observed synchronously; it does not commit or broadcast the proposal. Every
+  `runtime_failed`. `accepted_unverified` means the resize was issued without verified application;
+  it does not commit or broadcast the proposal. Windows waits for bounded real Console observation
+  through the Host-owned observer before returning a verified ACK (see `TERMINAL_RUNTIME_STABILITY.md`). Every
   result includes the correlated operation id and, when known, canonical geometry and authority.
-- An unchanged accepted size acknowledges the operation without issuing another runtime resize.
+- An unchanged accepted size skips runtime resize only while the previous mutation is confirmed.
+  After a failed/unverified mutation, the transaction owner retains a runtime-only uncertainty flag;
+  a retry to the old canonical size must also obtain a fresh runtime ACK before clearing it.
 - The Renderer measures without mutating xterm, gates PTY output while its operation is pending, and
   applies only the canonical result geometry. Rejection, supersession, timeout and stale-session
   completion all settle the gate; none may leave output permanently paused.
 - Stable geometry measurement is derived from the terminal container and xterm cell metrics. Current
   text, progress frames, `.xterm-rows` bounds, glyph overhang and scroll width are renderer output,
   not geometry observations.
-- On live reattach, the client first records the snapshot `geometryRevision` as its accepted baseline.
+- On initial attach and live reattach, the client records the snapshot `geometryRevision` as its accepted baseline.
+  Ordinary terminal controllers measure the mounted frame even when launch or persisted rows/columns
+  exist: those dimensions seed hydration and cannot prove that the current font and frame fit.
+  A renderer recovery/reset rehydrates canonical geometry instead: replacing a failed WebGL renderer
+  or repairing a stream is not a frame change and cannot initiate a new measured commit.
   A controller may then submit exactly one stable measured `frame_commit` against that base revision;
   a viewer applies canonical geometry only. Restored-Agent and explicit resize-suppression guards remain
   authoritative. Attach, focus and typing never substitute for this measured commit.
 - Once a verified live commit settles, local xterm rows/columns equal Worker presentation and PTY
-  runtime geometry. An unverified result preserves the prior canonical geometry rather than
-  pretending the request was applied. There is no local-only corrective size and no
+  runtime geometry. An unverified or failed result preserves the prior canonical geometry, releases
+  the output gate and invalidates the renderer's size cache for explicit retry. Preserving canonical
+  state is not evidence that an already-issued native resize rolled back. There is no local-only corrective size and no
   output-triggered shrink/recovery cycle.
 - Legacy `revision` input remains compatibility-only. New clients order work through operation id,
   base revision and authority epoch.
@@ -409,6 +417,8 @@ The goal is stable visual parity without letting multiple renderers fight for te
     presentation or recovery state.
 26. A Desktop relay reconnects from the minimum active renderer cursor; one subscriber's newer snapshot
     cannot advance another subscriber's replay boundary.
+27. xterm owns its shared glyph atlas. Mount, reuse and layout refresh may repaint a terminal, but
+    must not clear that atlas: sibling renderers retain texture coordinates into the shared pages.
 
 ## Verification Anchors
 
@@ -446,5 +456,7 @@ The goal is stable visual parity without letting multiple renderers fight for te
 - `tests/e2e/pty-host.resize-ack.windows.spec.ts` (deferred ConPTY resize remains explicitly
   unverified and cannot overwrite canonical geometry with the request)
 - `tests/e2e/workspace-canvas.terminal-theme.spec.ts` (Find overlay and applied appearance)
+- `tests/e2e/workspace-canvas.terminal-shared-atlas.windows.spec.ts` (creating and closing sibling
+  terminals preserves existing glyph pixels at 150% display scale)
 - `scripts/test-terminal-presentation-contract.mjs`
 - Terminal renderer E2E cases under `tests/e2e/`.

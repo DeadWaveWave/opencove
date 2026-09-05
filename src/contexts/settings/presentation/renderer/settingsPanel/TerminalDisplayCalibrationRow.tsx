@@ -150,7 +150,10 @@ export function TerminalDisplayCalibrationRow({
       referenceCapture: terminalDisplayReference?.capture ?? null,
       mountedRendererInventory: resolveMountedTerminalDisplayRendererInventory(),
       clientCalibrationSuppression: readTerminalDisplayCalibrationSuppression(),
-      clientCalibrationInspection: calibrationInspection,
+      clientCalibrationInspection: {
+        ...calibrationInspection,
+        applicableCalibrationPresent: clientCalibration !== null,
+      },
       latestAutomaticCalibrationAttempt: readTerminalDisplayCalibrationAttempt(),
       clientCalibration,
       clientCalibrationStorageMetadata: readTerminalDisplayCalibrationStorageMetadata(),
@@ -165,21 +168,27 @@ export function TerminalDisplayCalibrationRow({
     setStatus(t('settingsPanel.general.terminalDisplayCalibration.diagnosticsCopied'))
   }
 
-  const summary = clientCalibration
-    ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrated', {
-        fontSize: clientCalibration.fontSize,
-        lineHeight: clientCalibration.lineHeight,
-        quality: getQualityLabel(clientCalibration.score),
-      })
-    : !terminalDisplayCalibrationCompensationEnabled &&
-        hasVerifiedStoredCalibration &&
-        calibrationInspection.calibrationScore !== null
+  const summary = !terminalDisplayCalibrationCompensationEnabled
+    ? hasVerifiedStoredCalibration && calibrationInspection.calibrationScore !== null
       ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationPaused', {
           quality: getQualityLabel(calibrationInspection.calibrationScore),
         })
-      : calibrationInspection.rawCalibrationPresent
-        ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationUnavailable')
-        : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
+      : t(
+          calibrationInspection.rawCalibrationPresent
+            ? 'settingsPanel.general.terminalDisplayCalibration.clientCalibrationDisabledUnavailable'
+            : 'settingsPanel.general.terminalDisplayCalibration.clientCalibrationDisabled',
+        )
+    : clientCalibration
+      ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrated', {
+          fontSize: clientCalibration.fontSize,
+          lineHeight: clientCalibration.lineHeight,
+          quality: getQualityLabel(clientCalibration.score),
+        })
+      : hasVerifiedStoredCalibration
+        ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationWaiting')
+        : calibrationInspection.rawCalibrationPresent
+          ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationUnavailable')
+          : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
 
   return (
     <SettingsModule

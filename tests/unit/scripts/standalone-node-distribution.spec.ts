@@ -88,7 +88,7 @@ describe('standalone Node distribution contracts', () => {
     expect(verification).toContain('scripts/smoke-published-standalone-runtime.mjs')
     expect(verification).toContain('macos-15')
     expect(verification).toContain('macos-15-intel')
-    expect(verification).toContain('windows-latest')
+    expect(verification).toContain('windows-2022')
     expect(verification).toContain('ubuntu-latest')
     expect(workflow).toContain('prerelease: true\n          make_latest: false')
     expect(workflow).toContain('  promote-stable:')
@@ -107,8 +107,8 @@ describe('native module rebuild targets', () => {
   // installs behind symlinks/junctions. POSIX canonicalizes cwd on chdir, so the package's
   // own dependencies stay reachable; Windows keeps the junction path and they do not.
   it('hands node-gyp the realpath of each module, not the pnpm link path', () => {
-    const linkPath = join('/repo', 'node_modules', 'node-pty')
-    const realPath = join(
+    const linkPath = resolve('/repo', 'node_modules', 'node-pty')
+    const realPath = resolve(
       '/repo',
       'node_modules',
       '.pnpm',
@@ -118,8 +118,8 @@ describe('native module rebuild targets', () => {
     )
 
     const targets = resolveNativeModuleRebuildTargets({
-      rootDir: '/repo',
-      appRoot: join('/bundle', 'app'),
+      rootDir: resolve('/repo'),
+      appRoot: resolve('/bundle', 'app'),
       moduleNames: ['node-pty'],
       realpathSync: path => (path === linkPath ? realPath : path),
     })
@@ -130,7 +130,7 @@ describe('native module rebuild targets', () => {
     expect(targets[0]?.sourceRelease).toBe(join(realPath, 'build', 'Release'))
     // The destination stays addressed by module name inside the copied bundle.
     expect(targets[0]?.destinationRelease).toBe(
-      join('/bundle', 'app', 'node_modules', 'node-pty', 'build', 'Release'),
+      resolve('/bundle', 'app', 'node_modules', 'node-pty', 'build', 'Release'),
     )
   })
 
@@ -161,7 +161,7 @@ describe('optional native executables', () => {
   })
 
   it('marks spawn-helper executable when the platform built it', () => {
-    const expected = join(
+    const expected = resolve(
       '/bundle',
       'app',
       'node_modules',

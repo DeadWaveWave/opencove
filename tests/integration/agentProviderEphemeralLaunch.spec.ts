@@ -31,7 +31,9 @@ describe('ephemeral Agent Provider launch', () => {
   it('leaves every user-level provider config byte-for-byte unchanged', async () => {
     const testHome = await mkdtemp(join(tmpdir(), 'opencove-provider-home-'))
     vi.stubEnv('HOME', testHome)
-    const globalConfigPaths = globalConfigRelativePaths.map(parts => join(homedir(), ...parts))
+    vi.stubEnv('USERPROFILE', testHome)
+    expect(homedir()).toBe(testHome)
+    const globalConfigPaths = globalConfigRelativePaths.map(parts => join(testHome, ...parts))
     const sentinels = globalConfigPaths.map((_, index) =>
       Buffer.from(`user-owned-config-${String(index)}\n\u0000`, 'utf8'),
     )

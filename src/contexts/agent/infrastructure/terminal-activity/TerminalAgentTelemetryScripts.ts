@@ -207,7 +207,8 @@ export function createPowerShellShimScript(
     '$providerExitCode = 1',
     'try {',
     '  $env:ELECTRON_RUN_AS_NODE = "1"',
-    `  & ${runtime} ${launcher} --prepare-windows ${providerCommand} $planPath @args`,
+    // Electron is a GUI executable on Windows; a pipeline makes PowerShell await its exit.
+    `  & ${runtime} ${launcher} --prepare-windows ${providerCommand} $planPath @args | Out-Host`,
     '  if ($LASTEXITCODE -ne 0) { $providerExitCode = $LASTEXITCODE; exit $providerExitCode }',
     '  $plan = Get-Content -LiteralPath $planPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop',
     '  if ($null -eq $originalElectronRunAsNode) { Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue } else { $env:ELECTRON_RUN_AS_NODE = $originalElectronRunAsNode }',
@@ -218,7 +219,7 @@ export function createPowerShellShimScript(
     '  $providerExitCode = $LASTEXITCODE',
     '} finally {',
     '  $env:ELECTRON_RUN_AS_NODE = "1"',
-    `  & ${runtime} ${launcher} --complete-windows $planPath`,
+    `  & ${runtime} ${launcher} --complete-windows $planPath | Out-Host`,
     '  if ($null -eq $originalElectronRunAsNode) { Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue } else { $env:ELECTRON_RUN_AS_NODE = $originalElectronRunAsNode }',
     '}',
     'exit $providerExitCode',

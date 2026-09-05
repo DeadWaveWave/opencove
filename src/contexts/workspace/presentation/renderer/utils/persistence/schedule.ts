@@ -10,6 +10,7 @@ let scheduledPersistedStateTimer: number | null = null
 let scheduledPersistedStateOnResult: ((result: PersistWriteResult) => void) | null = null
 let persistFlushInFlight = false
 let persistFlushRequested = false
+let lastPersistFlushSucceeded = true
 let flushPromise: Promise<void> | null = null
 let flushPromiseResolve: (() => void) | null = null
 
@@ -104,6 +105,7 @@ export function flushScheduledPersistedStateWrite(): void {
 
   void writePersistedState(producer())
     .then(result => {
+      lastPersistFlushSucceeded = result.ok
       onResult?.(result)
     })
     .finally(() => {
@@ -124,16 +126,17 @@ export function flushScheduledPersistedStateWrite(): void {
     })
 }
 
-export async function flushScheduledPersistedStateWriteAsync(): Promise<void> {
+export async function flushScheduledPersistedStateWriteAsync(): Promise<boolean> {
   if (typeof window === 'undefined') {
-    return
+    return true
   }
 
   flushScheduledPersistedStateWrite()
 
   if (!persistFlushInFlight && !persistFlushRequested && !scheduledPersistedStateProducer) {
-    return
+    return lastPersistFlushSucceeded
   }
 
   await ensureFlushPromise()
+  return lastPersistFlushSucceeded
 }

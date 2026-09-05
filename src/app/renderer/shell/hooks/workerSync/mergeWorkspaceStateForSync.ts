@@ -8,6 +8,7 @@ import type {
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { isNodeGuardedFromSyncOverwrite } from '@contexts/workspace/presentation/renderer/utils/syncNodeGuards'
 import { repairRuntimeNodeFrame } from '../runtimeNodeFrameRepair'
+import { mergeRuntimeSessionBinding } from './runtimeSessionBinding'
 import {
   areSpaceArchiveRecordsEquivalent,
   areStringArraysEqual,
@@ -32,14 +33,6 @@ function mergeRuntimeNode(
 
   const isDragging = existingNode.dragging === true
   const shouldPreservePosition = workspaceHasActiveDrag || isDragging
-  const persistedSessionId = persistedNode.data.sessionId.trim()
-  const existingSessionId = existingNode.data.sessionId.trim()
-  const runtimeSessionId =
-    persistedSessionId.length > 0
-      ? persistedSessionId
-      : existingSessionId.length > 0
-        ? existingSessionId
-        : ''
   const kind = persistedNode.data.kind
   // Persisted snapshots do not own the live terminal overlay. Keep its provider projection
   // together with the overlay until the explicit terminal lifecycle clears both.
@@ -60,7 +53,6 @@ function mergeRuntimeNode(
     height: existingNode.height,
     data: {
       ...persistedNode.data,
-      sessionId: runtimeSessionId,
       scrollback: existingNode.data.scrollback ?? persistedNode.data.scrollback,
       terminalProviderHint: activeTerminalOverlay
         ? existingNode.data.terminalProviderHint
@@ -80,6 +72,7 @@ function mergeRuntimeNode(
         kind === 'agent'
           ? (existingNode.data.agent ?? persistedNode.data.agent)
           : persistedNode.data.agent,
+      ...mergeRuntimeSessionBinding(persistedNode.data, existingNode.data),
     },
   }
 

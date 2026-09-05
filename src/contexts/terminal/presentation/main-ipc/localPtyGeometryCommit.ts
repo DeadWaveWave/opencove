@@ -31,6 +31,8 @@ export function createLocalPtyGeometryCommitter(options: {
   dispose: () => void
 } {
   const commitChains = new Map<string, Promise<void>>()
+  // A failed native mutation may have moved the PTY away from its last committed presentation.
+  const unconfirmedPresentations = new WeakSet<object>()
 
   const enqueue = <T>(sessionId: string, commit: () => Promise<T>): Promise<T> => {
     const previous = commitChains.get(sessionId) ?? Promise.resolve()
@@ -100,7 +102,7 @@ export function createLocalPtyGeometryCommitter(options: {
         }
       }
 
-      if (!plan.changed) {
+      if (!plan.changed && !unconfirmedPresentations.has(presentationIdentity)) {
         const committed = options.manager.commitGeometry(normalizedInput)
         return {
           sessionId: input.sessionId,
@@ -113,6 +115,7 @@ export function createLocalPtyGeometryCommitter(options: {
       }
 
       let runtimeObservation: RuntimeResizeObservation
+      unconfirmedPresentations.add(presentationIdentity)
       try {
         runtimeObservation = await options.resizeRuntime(
           input.sessionId,
@@ -184,6 +187,8 @@ export function createLocalPtyGeometryCommitter(options: {
           authority: LOCAL_GEOMETRY_AUTHORITY,
         }
       }
+
+      unconfirmedPresentations.delete(presentationIdentity)
 
       options.log({
         event: committed.changed ? 'forwarded' : 'unchanged',

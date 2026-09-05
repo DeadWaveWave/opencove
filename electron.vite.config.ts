@@ -72,6 +72,10 @@ export default defineConfig({
           index: resolve(__dirname, 'src/app/main/index.ts'),
           worker: resolve(__dirname, 'src/app/worker/index.ts'),
           ptyHost: resolve(__dirname, 'src/platform/process/ptyHost/entry.ts'),
+          windowsConsoleObserver: resolve(
+            __dirname,
+            'src/platform/process/ptyHost/windowsConsoleObserverEntry.ts',
+          ),
         },
       },
     },
