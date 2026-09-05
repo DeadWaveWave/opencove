@@ -274,7 +274,7 @@ test.describe('terminal Agent shim (Windows)', () => {
 
           expect(result.code).toBe(harness.commandExitCode)
           expect(result.stdout).toContain('HOOK_STATUS=204')
-          expect(result.stdout).toContain('ELECTRON_RUN_AS_NODE=1')
+          expect(outputLines(result.stdout)).toContain('ELECTRON_RUN_AS_NODE=')
           const serializedArgs = result.stdout.match(/ARGS_JSON=(\[[^\r\n]+\])/u)?.[1]
           expect(serializedArgs).toBeTruthy()
           expect(JSON.parse(serializedArgs!)).toEqual(expect.arrayContaining(args))

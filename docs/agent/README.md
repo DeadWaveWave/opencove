@@ -15,7 +15,7 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 - Agent launch can run in a Space mount via `session.launchAgentInMount`.
 - Agent session restore participates in worker `session.prepareOrRevive`.
 - Canvas nodes store provider/model/prompt/session metadata; PTY output and presentation belong to Worker runtime.
-- Local Claude launches use a Worker-owned loopback hook channel for authoritative
+- Local Claude and Codex launches use a Worker-owned loopback hook channel for authoritative
   `working` / `waiting` / `standby` observations. Other providers and remote hosts continue to use
   the session-file detector.
 - Terminal-command Agent adoption through PATH shims supports POSIX bash/zsh and native Windows
@@ -45,24 +45,47 @@ artifacts, and cleanup; no invocation registry state is persisted.
 | launch intent | agent/session launch path |
 | PTY process | Worker PTY runtime |
 | ordinary-terminal invocation generation, exit fence, and live baseline | Worker `TerminalAgentInvocationRegistry` |
-| local Claude hook receiver and credentials | Worker Control Surface lifecycle |
+| local Claude/Codex hook receivers and credentials | Worker Control Surface lifecycle |
 | agent run-state observation | Renderer run-state arbiter over Worker observations |
 | terminal presentation | Worker stream hub |
 | node placement and frame | workspace context |
 | task-agent relation | workspace/task model |
 
-## Local Claude Hook Contract
+## Local Agent Hook Contract
 
-The local Worker owns a dedicated loopback-only `POST /hooks/claude` receiver. Each Claude PTY spawn
+The local Worker owns loopback-only `POST /hooks/claude` and `POST /hooks/codex` receivers. Each PTY spawn
 receives a fresh opaque token and the receiver URL through its child environment. The token is bound
 to that PTY session after spawn, is rejected for every other session, and is removed on session exit,
 kill, spawn failure, or Worker shutdown. Payloads are size-bounded and runtime validated before they
 can emit a state observation.
 
-The Worker atomically installs only its managed command-hook entries in the user-level Claude
-settings and preserves unrelated hooks. Invalid settings, an unavailable loopback listener, explicit
-hook disablement, or managed-hook restrictions fail open: the agent still launches, the existing
-session-file detector remains active, and the renderer displays a localized fallback indicator.
+The provider contribution injects private per-launch configuration and relay files; it does not
+install new hooks into user-level settings. Existing unrelated user hooks remain provider-owned.
+Launch artifacts are disposed with the session, and restored sessions generate fresh artifacts and
+credentials. Existing live CLI processes retain their original injected configuration until relaunched.
+An unavailable receiver or unsupported provider hook configuration fails open to the session-file detector.
+
+### Relay launch and failure invariants
+
+The route is `provider event -> generated command -> headless relay -> authenticated Worker receiver
+-> run-state observation`. The relay owns only delivery, never session state or recovery decisions.
+The receiver owns credentials and validation; the launch artifact scope owns temporary files.
+
+- The generated command selects `ELECTRON_RUN_AS_NODE=1` at the relay boundary. Agent and terminal
+  environments remain sanitized; forwarding Electron control variables through the provider is not
+  a launch contract. A hook must never enter the desktop application's startup path.
+- Codex command hooks, its legacy notify argument vector, and Claude exec hooks share the same relay
+  launcher. POSIX uses `env`; Windows uses a private PowerShell launcher with explicit native argument
+  quoting. Paths and notify JSON are data, including spaces, Unicode, quotes and shell metacharacters.
+- Telemetry fails open with no decision output: the relay exits within its 2-second runtime budget,
+  including unclosed stdin or an unresponsive receiver. The HTTP request has a 1.5-second timeout;
+  command hooks also have a 3-second provider timeout. Transport failure never writes a terminal or
+  durable conversation state. Input is bounded to the receiver's 256 KiB budget.
+
+Regression coverage must execute generated commands after terminal environment resolution. A test
+that posts directly to the receiver proves protocol/state behavior but cannot prove the relay launch
+contract. Electron E2E coverage uses a controlled provider executable on the real launch path to exercise
+repeated hooks and keyboard input without model/network dependencies.
 
 Hook and session-file observations are runtime-only. The renderer arbiter keeps the session-file watcher
 warm, but projects exactly one source per session: a fresh installed hook wins, a stale `working` hook or
