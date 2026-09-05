@@ -101,6 +101,12 @@ continue using session-file state without a failure badge until evidence indicat
 Startup silence has no lease: legacy notify may first emit at the end of a turn. Explicit installation
 failure, an unavailable source, and expiry of a previously observed working hook still report degradation.
 
+On POSIX, Codex launches first probe the existing local app-server control socket. When reachable,
+the provider omits its Hook and notify overrides so Codex can reuse that daemon. The already-running
+daemon cannot adopt per-launch Hook configuration, so this path explicitly reports telemetry as
+`skipped` and uses session-file observations. A missing or unreachable socket retains the headless
+relay path. The probe is per launch and does not create a daemon or persist daemon state.
+
 Every source switch is reflected in runtime observation metadata and degraded fallback is visible in the
 Agent header. Neither source may write run-state into durable node status; persistence strips the runtime
 observation entirely.
