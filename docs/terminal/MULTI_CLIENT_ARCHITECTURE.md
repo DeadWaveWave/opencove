@@ -28,7 +28,8 @@ Key implementation files:
 | State | Owner | Write path |
 | --- | --- | --- |
 | PTY process lifecycle | Worker PTY runtime | spawn/kill/exit callbacks |
-| Terminal startup phase + epoch | Worker terminal runtime availability | startup scan/reconciliation/shutdown |
+| Terminal creation admission | Worker terminal runtime availability | startup scan/scoped repair/shutdown |
+| Old-node recovery phase + epoch | Worker terminal runtime availability | reconciliation/shutdown |
 | PTY byte stream seq | `PtyStreamHub` | output append |
 | Terminal presentation state | `TerminalPresentationSession` | PTY output applied in seq order |
 | Presentation snapshot | Worker | `session.presentationSnapshot` |
@@ -296,12 +297,14 @@ different target instance cannot reuse the old route silently.
 
 ## Startup Admission
 
-Worker startup scans persisted workspace state before publishing its connection file. Workspaces
-with runtime nodes remain `initializing` until `session.prepareOrRevive` completes; normal terminal
-and agent spawn commands return typed `terminal.runtime_not_ready` while blocked. Recovery receives
-one internal, attempt-scoped capability that is unavailable to public command contexts. Successful
-reconciliation increments the workspace runtime epoch; failure stays `unavailable`, and shutdown or
-an out-of-order older completion cannot reopen admission.
+Worker startup scans persisted workspace state before publishing its connection file. A successful
+scan opens new Terminal and Agent creation independently of old-node recovery. A workspace recovery
+snapshot remains `initializing` until its `session.prepareOrRevive` operations settle; success
+increments the recovery epoch and failure becomes `unavailable`, without revoking basic creation
+admission. Recovery retains its internal, attempt-scoped capability, unavailable to client payloads.
+An incomplete or failed startup scan still returns typed `terminal.runtime_not_ready` for ordinary
+creation. Explicit reconciliation after scan failure may authorize only its own workspace. Shutdown
+closes all admission, and an out-of-order older completion cannot reopen it.
 
 For a cold Agent/Terminal replacement, the node-owned `endpointId + mountId` is the route authority.
 Recovery resolves that binding before the owning Space and uses Space `targetMountId` only for legacy

@@ -106,9 +106,11 @@ Sessions and PTY:
 - `pty.listProfiles`
 
 `session.prepareOrRevive` is also the sole owner of the internal terminal recovery admission scope.
-Before persisted runtime nodes are reconciled, normal spawn operations fail with the stable,
-user-explicable `terminal.runtime_not_ready` error. The scope is runtime-only and is never accepted
-as client payload.
+Normal spawn operations require a successful Worker startup scan; they can create independent
+sessions while persisted runtime nodes are still reconciling or have failed recovery. Incomplete or
+failed startup and shutdown retain the stable `terminal.runtime_not_ready` error. After scan failure,
+explicit reconciliation may reopen only its own workspace. The recovery scope is runtime-only and
+is never accepted as client payload.
 
 PTY resize results distinguish verified `accepted`, non-failing `accepted_unverified`, and
 `runtime_failed`. Only verified applied geometry may advance canonical presentation state; an
