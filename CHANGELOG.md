@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Agent: preserve an existing local Codex app-server session by skipping OpenCove's `--config` hook override when its control socket is reachable, avoiding a conflicting embedded app-server. (#384)
 - Terminal: fit new windows on first mount and confirm actual Windows Console dimensions before committing a resize, with a retry action when confirmation fails. Window fitting works independently of font calibration. (#382)
 - Terminal: preserve shared WebGL glyph caches when creating or refreshing terminals, preventing fragmented text in existing windows. (#382)
 - Terminal: restore ready sessions independently and retain durable bindings while recovery is pending, preventing one slow recovery from leaving other terminals unresponsive. (#382)
