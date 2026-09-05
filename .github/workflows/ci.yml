@@ -296,6 +296,9 @@ jobs:
       - name: Execute generated managed SSH PowerShell bootstrap
         run: pnpm exec vitest run tests/unit/contexts/managedSshBootstrap.windows.spec.ts --pool=forks --maxWorkers=1
 
+      - name: Execute provider Hook relays with sanitized environments
+        run: pnpm exec vitest run tests/integration/agentHookRelay.spec.ts --pool=forks --maxWorkers=1
+
       - name: Build
         run: pnpm build
 

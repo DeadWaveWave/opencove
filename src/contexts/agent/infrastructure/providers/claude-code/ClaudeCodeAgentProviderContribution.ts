@@ -6,12 +6,14 @@ import type {
 } from '../../../application/ports/AgentProviderContribution'
 import { buildAgentLaunchCommand } from '../../cli/AgentCommandFactory'
 import { ExistingAgentProviderDetector } from '../shared/AgentProviderDetector'
+import { createAgentHookRelay } from '../shared/AgentHookRelay'
 import { createTemporaryProviderConfig } from '../shared/TemporaryProviderConfig'
 
 export interface ClaudeCodeAgentProviderContributionOptions {
   readonly channel?: AgentHookChannel
   readonly detector?: AgentProviderDetector
   readonly runtimeExecutable?: string
+  readonly runtimePlatform?: NodeJS.Platform
 }
 
 export class ClaudeCodeAgentProviderContribution implements AgentProviderContribution {
@@ -55,10 +57,12 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
 
   private readonly channel?: AgentHookChannel
   private readonly runtimeExecutable: string
+  private readonly runtimePlatform: NodeJS.Platform
 
   constructor(options: ClaudeCodeAgentProviderContributionOptions = {}) {
     this.channel = options.channel
     this.runtimeExecutable = options.runtimeExecutable ?? process.execPath
+    this.runtimePlatform = options.runtimePlatform ?? process.platform
     this.detector = options.detector ?? new ExistingAgentProviderDetector(this.descriptor.id)
   }
 
@@ -80,24 +84,21 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
       }
     }
     command.artifacts.track('claude-hook-reservation', reservation)
-    const relay = await createTemporaryProviderConfig(
-      'opencove-claude-hook-',
-      'relay.mjs',
-      claudeHookRelayScript,
-    )
-    command.artifacts.track('claude-hook-relay', relay)
+    const relay = await createAgentHookRelay({
+      provider: 'claude',
+      runtimeExecutable: this.runtimeExecutable,
+      runtimePlatform: this.runtimePlatform,
+      artifacts: command.artifacts,
+    })
     const settings = await createTemporaryProviderConfig(
       'opencove-claude-settings-',
       'settings.json',
-      JSON.stringify({ hooks: createClaudeHooks(this.runtimeExecutable, [relay.path]) }),
+      JSON.stringify({ hooks: createClaudeHooks(relay.command, relay.args) }),
     )
     command.artifacts.track('claude-hook-settings', settings)
     return {
       args: ['--settings', settings.path],
-      env: {
-        ...reservation.env,
-        ELECTRON_RUN_AS_NODE: '1',
-      },
+      env: { ...reservation.env },
       hookInstallState: reservation.installState,
       onStarted: reservation.commit,
     }
@@ -105,7 +106,7 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
 }
 
 function createClaudeHooks(command: string, args: readonly string[]) {
-  const handler = { hooks: [{ args, command, type: 'command' }] }
+  const handler = { hooks: [{ args, command, type: 'command', timeout: 3 }] }
   return {
     SessionStart: [handler],
     Notification: [handler],
@@ -120,13 +121,3 @@ function createClaudeHooks(command: string, args: readonly string[]) {
     UserPromptSubmit: [handler],
   }
 }
-
-const claudeHookRelayScript = [
-  "let body='';",
-  'for await (const chunk of process.stdin) body+=chunk;',
-  'await fetch(process.env.OPENCOVE_CLAUDE_HOOK_ENDPOINT,{',
-  'method:"POST",',
-  'headers:{"content-type":"application/json","x-opencove-hook-token":process.env.OPENCOVE_CLAUDE_HOOK_TOKEN},',
-  'body',
-  '}).catch(()=>{});',
-].join('')
