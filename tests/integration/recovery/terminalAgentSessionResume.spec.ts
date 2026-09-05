@@ -141,7 +141,7 @@ describe('terminal agent cold session recovery', () => {
           },
         ],
       })
-      expect(write.mock.calls).toEqual([['fresh-pty-session', `\u0015${resumeCommand}\r`]])
+      expect(write.mock.calls).toEqual([['fresh-pty-session', `${resumeCommand}\r`]])
     },
   )
 

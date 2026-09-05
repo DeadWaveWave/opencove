@@ -223,7 +223,7 @@ describe('session prepare/revive terminal geometry', () => {
     expect(write).toHaveBeenNthCalledWith(
       1,
       'restarted-terminal-agent-session',
-      '\u0015codex resume resume-terminal-1\r',
+      'codex resume resume-terminal-1\r',
     )
     expect(write).toHaveBeenCalledTimes(1)
   })

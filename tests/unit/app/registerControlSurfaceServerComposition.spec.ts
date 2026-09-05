@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CodexSessionFileDiscovery } from '../../../src/contexts/agent/infrastructure/cli/CodexSessionFileDiscovery'
 
 afterEach(() => {
   vi.resetModules()
@@ -9,7 +10,8 @@ describe('registerControlSurfaceServer composition', () => {
     const processEngine = { kind: 'injected-process-engine' }
     const ptyRuntime = { dispose: vi.fn() }
     const createMainTerminalProcessEngine = vi.fn(() => processEngine)
-    const createPtyRuntime = vi.fn(() => ptyRuntime)
+    const createPtyRuntime = vi.fn((_options: unknown) => ptyRuntime)
+    const createBuiltinAgentProviderContributions = vi.fn(() => [])
     const registerControlSurfaceHttpServer = vi.fn(() => ({
       ready: Promise.resolve({}),
       dispose: vi.fn(),
@@ -50,7 +52,7 @@ describe('registerControlSurfaceServer composition', () => {
     vi.doMock(
       '../../../src/contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog',
       () => ({
-        createBuiltinAgentProviderContributions: () => [],
+        createBuiltinAgentProviderContributions,
       }),
     )
     vi.doMock('../../../src/app/main/websiteWindow/websiteWindowManagerRegistry', () => ({
@@ -62,7 +64,16 @@ describe('registerControlSurfaceServer composition', () => {
     registerControlSurfaceServer()
 
     expect(createMainTerminalProcessEngine).toHaveBeenCalledTimes(1)
-    expect(createPtyRuntime).toHaveBeenCalledWith({ processEngine })
+    expect(createPtyRuntime).toHaveBeenCalledWith({
+      processEngine,
+      sessionDiscovery: expect.any(CodexSessionFileDiscovery),
+    })
+    const { sessionDiscovery } = createPtyRuntime.mock.calls[0][0] as { sessionDiscovery: unknown }
+    expect(createBuiltinAgentProviderContributions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        codexSessionDiscovery: sessionDiscovery,
+      }),
+    )
     expect(registerControlSurfaceHttpServer).toHaveBeenCalledWith(
       expect.objectContaining({
         userDataPath: '/tmp/opencove-user-data',

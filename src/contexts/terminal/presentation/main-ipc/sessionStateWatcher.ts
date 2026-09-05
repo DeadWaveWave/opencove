@@ -1,7 +1,11 @@
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
+import type { AgentSessionDiscovery } from '../../../agent/application/ports/AgentSessionDiscovery'
 import type {
-  AgentLaunchMode,
-  AgentProviderId,
+  SessionStateWatcherStartInput,
+  OwnedSessionStateWatcherInput,
+} from './sessionStateWatcherInput'
+export type { SessionStateWatcherStartInput } from './sessionStateWatcherInput'
+import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -23,17 +27,6 @@ const SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS = 1_500
 const SESSION_STATE_WATCHER_FILE_TIMEOUT_MS = 1_500
 const SESSION_STATE_WATCHER_RETRY_MAX_IDLE_MS = 30 * 60_000
 
-export interface SessionStateWatcherStartInput {
-  sessionId: string
-  provider: AgentProviderId
-  cwd: string
-  launchMode: AgentLaunchMode
-  resumeSessionId: string | null
-  startedAtMs: number
-  opencodeBaseUrl?: string | null
-  geminiDiscoveryCursor?: GeminiSessionDiscoveryCursor | null
-}
-
 type SendToAllWindows = <Payload>(channel: string, payload: Payload) => void
 type DisposableSessionWatcher = { dispose: () => void; noteInteraction?: (data?: string) => void }
 
@@ -42,11 +35,13 @@ export function createSessionStateWatcherController({
   reportIssue,
   onState,
   onMetadata,
+  sessionDiscovery,
 }: {
   sendToAllWindows: SendToAllWindows
   reportIssue: (message: string) => void
   onState?: (event: TerminalSessionStateEvent) => void
   onMetadata?: (event: TerminalSessionMetadataEvent) => void
+  sessionDiscovery?: AgentSessionDiscovery
 }): {
   start: (input: SessionStateWatcherStartInput) => void
   noteInteraction: (sessionId: string, data?: string) => void
@@ -55,7 +50,7 @@ export function createSessionStateWatcherController({
 } {
   const stateWatcherBySession = new Map<string, DisposableSessionWatcher>()
   const stateWatcherVersionBySession = new Map<string, number>()
-  const stateWatcherStartInputBySession = new Map<string, SessionStateWatcherStartInput>()
+  const stateWatcherStartInputBySession = new Map<string, OwnedSessionStateWatcherInput>()
   const stateWatcherLastInteractionAtMsBySession = new Map<string, number>()
   const stateWatcherResolvedResumeSessionIdBySession = new Map<string, string>()
   const stateWatcherRetryCountBySession = new Map<string, number>()
@@ -163,6 +158,9 @@ export function createSessionStateWatcherController({
     state: 'working' | 'waiting' | 'standby',
     options: { degraded?: boolean; source?: TerminalSessionStateEvent['source'] } = {},
   ): void => {
+    if (stateWatcherStartInputBySession.get(sessionId)?.discovery?.isCurrent() === false) {
+      return
+    }
     const eventPayload: TerminalSessionStateEvent = {
       sessionId,
       state,
@@ -209,6 +207,31 @@ export function createSessionStateWatcherController({
 
     stateWatcherStartingSessionIds.add(sessionId)
 
+    const isCurrent = (): boolean =>
+      stateWatcherVersionBySession.get(sessionId) === watcherVersion &&
+      input.discovery?.isCurrent() !== false
+    const handleWatcherError = (error: unknown): void => {
+      if (!isCurrent()) {
+        return
+      }
+      const detail =
+        error instanceof Error ? `${error.name}: ${error.message}` : 'unknown watcher error'
+      reportIssue(
+        `[opencove] state watcher failed for ${input.provider} session ${sessionId}: ${detail}`,
+      )
+      clearSessionStateWatcher(sessionId)
+      scheduleSessionStateWatcherAttempt(
+        sessionId,
+        stateWatcherVersionBySession.get(sessionId) ?? 0,
+        resolveSessionStateWatcherRetryDelay(0),
+      )
+    }
+    const onWatcherState: typeof broadcastSessionState = (...args) => {
+      if (isCurrent()) {
+        broadcastSessionState(...args)
+      }
+    }
+
     try {
       const lastInteractionAtMs = stateWatcherLastInteractionAtMsBySession.get(sessionId) ?? null
       const startedAtHints = [
@@ -218,18 +241,20 @@ export function createSessionStateWatcherController({
         input.startedAtMs,
       ]
 
-      const resolvedSessionId =
-        input.resumeSessionId ??
-        stateWatcherResolvedResumeSessionIdBySession.get(sessionId) ??
-        (await resolveDiscoveredSessionId({
-          sessionId,
-          input,
-          startedAtHints,
-          geminiDiscoveryCursorBySession,
-          locateTimeoutMs: SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS,
-        }))
+      const discovered = input.discovery ? await input.discovery.resolve() : null
+      const resolvedSessionId = input.discovery
+        ? (discovered?.resumeSessionId ?? null)
+        : (input.resumeSessionId ??
+          stateWatcherResolvedResumeSessionIdBySession.get(sessionId) ??
+          (await resolveDiscoveredSessionId({
+            sessionId,
+            input,
+            startedAtHints,
+            geminiDiscoveryCursorBySession,
+            locateTimeoutMs: SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS,
+          })))
 
-      if ((stateWatcherVersionBySession.get(sessionId) ?? 0) !== watcherVersion) {
+      if (!isCurrent()) {
         return
       }
 
@@ -259,23 +284,11 @@ export function createSessionStateWatcherController({
           baseUrl: input.opencodeBaseUrl,
           cwd: input.cwd,
           launchMode: input.launchMode,
-          onState: broadcastSessionState,
-          onError: error => {
-            const detail =
-              error instanceof Error ? `${error.name}: ${error.message}` : 'unknown watcher error'
-            reportIssue(
-              `[opencove] state watcher failed for ${input.provider} session ${sessionId}: ${detail}`,
-            )
-            clearSessionStateWatcher(sessionId)
-            scheduleSessionStateWatcherAttempt(
-              sessionId,
-              stateWatcherVersionBySession.get(sessionId) ?? 0,
-              resolveSessionStateWatcherRetryDelay(0),
-            )
-          },
+          onState: onWatcherState,
+          onError: handleWatcherError,
         })
 
-        if ((stateWatcherVersionBySession.get(sessionId) ?? 0) !== watcherVersion) {
+        if (!isCurrent()) {
           watcher.dispose()
           return
         }
@@ -287,15 +300,17 @@ export function createSessionStateWatcherController({
         return
       }
 
-      const sessionFilePath = await resolveSessionFilePath({
-        provider: input.provider,
-        cwd: input.cwd,
-        sessionId: resolvedSessionId,
-        startedAtMs: input.startedAtMs,
-        timeoutMs: SESSION_STATE_WATCHER_FILE_TIMEOUT_MS,
-      })
+      const sessionFilePath =
+        discovered?.filePath ??
+        (await resolveSessionFilePath({
+          provider: input.provider,
+          cwd: input.cwd,
+          sessionId: resolvedSessionId,
+          startedAtMs: input.startedAtMs,
+          timeoutMs: SESSION_STATE_WATCHER_FILE_TIMEOUT_MS,
+        }))
 
-      if ((stateWatcherVersionBySession.get(sessionId) ?? 0) !== watcherVersion) {
+      if (!isCurrent()) {
         return
       }
 
@@ -310,31 +325,21 @@ export function createSessionStateWatcherController({
         return
       }
 
-      const handleWatcherError = (error: unknown): void => {
-        const detail =
-          error instanceof Error ? `${error.name}: ${error.message}` : 'unknown watcher error'
-        reportIssue(
-          `[opencove] state watcher failed for ${input.provider} session ${sessionId}: ${detail}`,
-        )
-        clearSessionStateWatcher(sessionId)
-        scheduleSessionStateWatcherAttempt(
-          sessionId,
-          stateWatcherVersionBySession.get(sessionId) ?? 0,
-          resolveSessionStateWatcherRetryDelay(0),
-        )
-      }
-
       const watcher = createSessionFileStateWatcher({
         provider: input.provider,
         sessionId,
         filePath: sessionFilePath,
         launchMode: input.launchMode,
-        onState: broadcastSessionState,
-        onUnavailable: broadcastObservationUnavailable,
+        onState: onWatcherState,
+        onUnavailable: unavailableSessionId => {
+          if (isCurrent()) {
+            broadcastObservationUnavailable(unavailableSessionId)
+          }
+        },
         onError: handleWatcherError,
       })
 
-      if ((stateWatcherVersionBySession.get(sessionId) ?? 0) !== watcherVersion) {
+      if (!isCurrent()) {
         watcher.dispose()
         return
       }
@@ -344,13 +349,16 @@ export function createSessionStateWatcherController({
       cancelSessionStateWatcherRetry(sessionId)
       stateWatcherRetryCountBySession.delete(sessionId)
     } finally {
-      stateWatcherStartingSessionIds.delete(sessionId)
+      if (stateWatcherVersionBySession.get(sessionId) === watcherVersion) {
+        stateWatcherStartingSessionIds.delete(sessionId)
+      }
     }
   }
 
   const start = (input: SessionStateWatcherStartInput): void => {
     clearSessionStateWatcher(input.sessionId, { disposeStartInput: true })
-    stateWatcherStartInputBySession.set(input.sessionId, input)
+    const ownedInput = { ...input, discovery: sessionDiscovery?.capture(input.sessionId) ?? null }
+    stateWatcherStartInputBySession.set(input.sessionId, ownedInput)
     stateWatcherLastInteractionAtMsBySession.set(input.sessionId, input.startedAtMs)
 
     const watcherVersion = stateWatcherVersionBySession.get(input.sessionId) ?? 0
@@ -374,7 +382,7 @@ export function createSessionStateWatcherController({
             return
           }
 
-          if (stateWatcherStartInputBySession.get(input.sessionId) !== input) {
+          if (stateWatcherStartInputBySession.get(input.sessionId) !== ownedInput) {
             return
           }
 
@@ -387,7 +395,7 @@ export function createSessionStateWatcherController({
             return
           }
 
-          if (stateWatcherStartInputBySession.get(input.sessionId) !== input) {
+          if (stateWatcherStartInputBySession.get(input.sessionId) !== ownedInput) {
             return
           }
 

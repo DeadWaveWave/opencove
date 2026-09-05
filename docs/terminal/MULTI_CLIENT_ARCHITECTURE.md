@@ -40,7 +40,7 @@ Key implementation files:
 | Terminal recovery generation/archive/binding/checkpoint | Worker terminal recovery owner | reconcile/output checkpoint/atomic retire/two-phase shutdown drain |
 | Agent/Terminal Worker binding (`endpointId + mountId`) | Workspace node persistence | launch result -> node state -> SQLite; prepare/revive resolves it against topology |
 | Terminal agent session binding | Workspace persistence | verified `provider` + resume identity record; an unverified provider remains a hint, never a resumable identity or durable node-kind rewrite |
-| Ordinary-terminal Agent invocation generation/revisions/exit fence | Worker `TerminalAgentInvocationRegistry` | authenticated shim prepare/complete plus current provider hook observation; runtime-only, bounded, and never a PTY or persistence writer |
+| Ordinary-terminal Agent invocation generation/revisions/exit fence | Worker `TerminalAgentInvocationRegistry` | authenticated shim prepare/complete plus current provider hook or file observation; runtime-only, bounded, and never a PTY or persistence writer |
 | Terminal agent overlay and run-state | Renderer run-state arbiter | one runtime projection from fresh hook > warm session-file > nothing; never terminal presentation or durable node truth |
 | Terminal agent raw-source replay | `PtyStreamHub` session state | one timestamped runtime-only observation per source; replayed on attach and removed with the session |
 | Desktop renderer state replay | Main remote PTY runtime | per-source transport mirror for reloaded subscribers; never reattaches or restarts the Worker PTY |
@@ -136,6 +136,24 @@ Each activation owns exactly one session-state watcher. A provider or resume-ide
 serialized as detach-before-attach, and re-entry never reuses an old watcher. Presentation snapshot
 hydration may update terminal input modes, but replayed alternate-screen exits must not emit live
 drop-back effects.
+
+On Windows, Codex launches use session files without OpenCove hook/notify configuration or a
+`hooks/list` preflight. User CLI configuration remains in force. The authenticated command shim still
+opens and completes the invocation, so Agent presentation does not wait for a file or change the
+terminal's durable kind. `CodexSessionFileDiscovery` owns file discovery for both dedicated launches
+and terminal invocations; state watchers capture its invocation handle rather than independently
+guessing another ID. Terminal file identity enters persistence through the invocation registry's
+generation-fenced `session_file` observation. Raw file metadata alone cannot bind a terminal.
+
+New-session discovery accepts one matching new rollout; overlapping unbound same-directory launches
+or multiple plausible files remain unbound. This is a conservative filesystem heuristic, not a
+provider-issued launch token. An explicit resume ID is verified against that file's metadata across
+all history dates. Pickers, `resume --last`, remote CLI connections and unknown argument syntax cannot
+establish an exact binding this way; their Agent presentation still works. Exit/replacement invalidates
+pending discovery and state callbacks; it does not erase a verified durable binding. Existing saved
+bindings require no migration. File-mode status reports hooks as `not_required`, preserves working,
+standby and completion, and cannot promise hook-level permission-wait precision. macOS/Linux Codex
+and Claude retain their hook policies.
 
 An attach replays the latest raw state observation from every available source in original observation
 order. The renderer feeds these observations through the same pure run-state arbiter used for live events;

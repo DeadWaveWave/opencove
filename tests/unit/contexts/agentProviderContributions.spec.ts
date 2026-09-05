@@ -224,7 +224,7 @@ describe('CodexAgentProviderContribution', () => {
       expect.objectContaining({
         executable: 'codex',
         hookCommand: expect.stringMatching(
-          /^'\/usr\/bin\/env' 'ELECTRON_RUN_AS_NODE=1' '\/runtime\/node' '.*opencove-codex-hook-.*\/relay\.mjs'$/u,
+          /^'\/usr\/bin\/env' 'ELECTRON_RUN_AS_NODE=1' '\/runtime\/node' '.*opencove-codex-hook-.*[\\/]relay\.mjs'$/u,
         ),
       }),
     )

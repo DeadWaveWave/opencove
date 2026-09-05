@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto'
+import { resolveCodexInvocationArguments } from '../cli/CodexInvocationArguments'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import type { TerminalAgentShimProvider } from '../../../../shared/contracts/dto'
 import type {
@@ -239,10 +240,12 @@ export class TerminalAgentActivityGateway {
     let plan: AgentHookInjectionPlan
     try {
       plan = await planner.prepareHookInjection({
+        arguments: invocationArguments,
         artifacts,
         environment,
         executablePathOverride: executablePath,
         workspaceDirectory: cwd,
+        resumeSessionId: resolveExpectedResumeSessionId(provider, invocationArguments),
       })
       artifacts.seal()
     } catch (error) {
@@ -449,7 +452,7 @@ function resolveExpectedResumeSessionId(
     const inline = args.find(argument => argument.startsWith('--resume='))
     return inline ? normalizeNonEmptyString(inline.slice('--resume='.length)) : null
   }
-  return args[0] === 'resume' ? normalizeNonEmptyString(args[1]) : null
+  return provider === 'codex' ? resolveCodexInvocationArguments(args, '.').resumeSessionId : null
 }
 
 function normalizeEnvironment(value: unknown): NodeJS.ProcessEnv | null {

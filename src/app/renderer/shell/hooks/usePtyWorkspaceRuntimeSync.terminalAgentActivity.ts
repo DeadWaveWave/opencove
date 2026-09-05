@@ -1,4 +1,5 @@
 import type { TerminalSessionMetadataEvent } from '@shared/contracts/dto'
+import { isImmutableTerminalAgentIdentityAuthority } from '@shared/runtime/terminalAgentActivity'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 
 type ActivityMetadataEvent = TerminalSessionMetadataEvent & {
@@ -48,7 +49,8 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
         activity.provider === 'pi' && activity.identityAuthority === 'provider_session_snapshot'
       const clearBinding = piSnapshotAuthority && resumeSessionId === null
       const canBind =
-        (activity.identityAuthority === 'provider_session_start' || piSnapshotAuthority) &&
+        (isImmutableTerminalAgentIdentityAuthority(activity.identityAuthority) ||
+          piSnapshotAuthority) &&
         resumeSessionId !== null
       const isSameInvocation =
         previousActivity?.generation === activity.generation &&

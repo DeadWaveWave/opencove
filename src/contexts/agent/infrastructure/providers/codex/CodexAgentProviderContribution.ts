@@ -8,6 +8,8 @@ import type {
   CreateAgentLaunchPlanCommand,
 } from '../../../application/ports/AgentProviderContribution'
 import { buildAgentLaunchCommand } from '../../cli/AgentCommandFactory'
+import { CodexSessionFileDiscovery } from '../../cli/CodexSessionFileDiscovery'
+import { resolveCodexInvocationArguments } from '../../cli/CodexInvocationArguments'
 import { ExistingAgentProviderDetector } from '../shared/AgentProviderDetector'
 import { createAgentHookRelay, type AgentHookRelayInvocation } from '../shared/AgentHookRelay'
 import { resolveCodexHookTrust, type CodexHookTrustResolver } from './CodexHookTrustResolver'
@@ -34,6 +36,7 @@ export interface CodexAgentProviderContributionOptions {
   readonly hookTrustResolver?: CodexHookTrustResolver
   readonly runtimeExecutable?: string
   readonly runtimePlatform?: NodeJS.Platform
+  readonly sessionDiscovery?: CodexSessionFileDiscovery
 }
 
 export class CodexAgentProviderContribution implements AgentProviderContribution {
@@ -80,6 +83,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
   private readonly hookTrustResolver: CodexHookTrustResolver
   private readonly runtimeExecutable: string
   private readonly runtimePlatform: NodeJS.Platform
+  private readonly sessionDiscovery: CodexSessionFileDiscovery
 
   constructor(options: CodexAgentProviderContributionOptions = {}) {
     this.channel = options.channel
@@ -87,6 +91,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     this.hookTrustResolver = options.hookTrustResolver ?? resolveCodexHookTrust
     this.runtimeExecutable = options.runtimeExecutable ?? process.execPath
     this.runtimePlatform = options.runtimePlatform ?? process.platform
+    this.sessionDiscovery = options.sessionDiscovery ?? new CodexSessionFileDiscovery()
     this.detector = options.detector ?? new ExistingAgentProviderDetector(this.descriptor.id)
   }
 
@@ -94,8 +99,34 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     command: Pick<
       CreateAgentLaunchPlanCommand,
       'artifacts' | 'executablePathOverride' | 'workspaceDirectory'
-    > & { readonly environment?: Readonly<NodeJS.ProcessEnv> },
+    > & {
+      readonly environment?: Readonly<NodeJS.ProcessEnv>
+      readonly resumeSessionId?: string | null
+      readonly arguments?: readonly string[]
+    },
   ) {
+    if (this.runtimePlatform === 'win32') {
+      const invocation = command.arguments
+        ? resolveCodexInvocationArguments(command.arguments, command.workspaceDirectory)
+        : {
+            cwd: command.workspaceDirectory,
+            resumeSessionId: command.resumeSessionId,
+            discoverNewSession: true,
+          }
+      const discovery = command.artifacts.track(
+        'codex-session-file-discovery',
+        this.sessionDiscovery.reserve({
+          ...invocation,
+          environment: command.environment,
+        }),
+      )
+      return {
+        args: [],
+        env: {},
+        hookInstallState: 'not_required' as const,
+        onStarted: discovery.start,
+      }
+    }
     if (!this.channel) {
       return { args: [], env: {}, hookInstallState: 'not_installed' as const }
     }

@@ -19,6 +19,7 @@ import { createClaudeHookChannel } from './agentHook/claudeHookChannel'
 import { createCodexHookChannel } from './agentHook/codexHookChannel'
 import { AgentProviderRegistry } from '../../../contexts/agent/application/services/AgentProviderRegistry'
 import { createBuiltinAgentProviderContributions } from '../../../contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
+import { CodexSessionFileDiscovery } from '../../../contexts/agent/infrastructure/cli/CodexSessionFileDiscovery'
 
 const CONTROL_SURFACE_TRASH_TIMEOUT_MS = 3_000
 
@@ -36,8 +37,13 @@ export function registerControlSurfaceServer(deps?: {
   const appVersion = readRuntimeAppVersion()
   const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
   const ownsPtyRuntime = !deps?.ptyRuntime
+  const codexSessionDiscovery = new CodexSessionFileDiscovery()
   const ptyRuntime =
-    deps?.ptyRuntime ?? createPtyRuntime({ processEngine: createMainTerminalProcessEngine() })
+    deps?.ptyRuntime ??
+    createPtyRuntime({
+      processEngine: createMainTerminalProcessEngine(),
+      sessionDiscovery: codexSessionDiscovery,
+    })
   const claudeHookChannel = createClaudeHookChannel({})
   const codexHookChannel = createCodexHookChannel({})
   const piHookChannel = createPiHookChannel()
@@ -50,6 +56,7 @@ export function registerControlSurfaceServer(deps?: {
     createBuiltinAgentProviderContributions({
       appVersion,
       channels: agentHookChannels,
+      codexSessionDiscovery,
       runtimeExecutable: process.execPath,
       runtimePlatform: process.platform,
     }),

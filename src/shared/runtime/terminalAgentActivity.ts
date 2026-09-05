@@ -1,5 +1,11 @@
 import type { TerminalAgentActivityMetadata, TerminalAgentActivitySnapshot } from '../contracts/dto'
 
+export function isImmutableTerminalAgentIdentityAuthority(
+  value: unknown,
+): value is 'provider_session_start' | 'session_file' {
+  return value === 'provider_session_start' || value === 'session_file'
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
@@ -31,7 +37,7 @@ export function normalizeTerminalAgentActivitySnapshot(
     !Number.isFinite(observedAtMs) ||
     observedAtMs < 0 ||
     (identityAuthority !== null &&
-      identityAuthority !== 'provider_session_start' &&
+      !isImmutableTerminalAgentIdentityAuthority(identityAuthority) &&
       !(
         provider === 'pi' &&
         identityAuthority === 'provider_session_snapshot' &&

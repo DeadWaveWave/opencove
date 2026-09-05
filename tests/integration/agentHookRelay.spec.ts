@@ -136,7 +136,11 @@ function run(
 }
 
 describe('provider Hook relay through sanitized launch environments', () => {
-  it.each(['codex', 'claude'] as const)(
+  // Windows Codex launches intentionally have no hook plan; file-mode coverage lives
+  // in codexWindowsSessionFiles and the Windows session-file lifecycle E2E.
+  const hookProviders: Array<'codex' | 'claude'> =
+    process.platform === 'win32' ? ['claude'] : ['codex', 'claude']
+  it.each(hookProviders)(
     '%s reports through the actual generated command without launching a GUI',
     async provider => {
       const invocation = await prepare(provider)
@@ -160,37 +164,37 @@ describe('provider Hook relay through sanitized launch environments', () => {
     },
   )
 
-  it('legacy notify preserves its JSON argument and reports completion', async () => {
-    const invocation = await prepare('codex', true)
-    invocation.args.push(
-      JSON.stringify({
-        type: 'agent-turn-complete',
-        'thread-id': 'notify-test',
-        text: '"quotes" $HOME `code` 中文',
-      }),
-    )
-    expect(await run(invocation, null)).toEqual({
-      code: 0,
-      stdout: '',
-      stderr: '',
-      timedOut: false,
-    })
-    expect(invocation.events).toEqual(['standby'])
-  })
-
-  it.each(['codex', 'claude'] as const)(
-    '%s exits quietly when stdin never closes',
-    async provider => {
-      const invocation = await prepare(provider)
+  it.skipIf(process.platform === 'win32')(
+    'legacy notify preserves its JSON argument and reports completion',
+    async () => {
+      const invocation = await prepare('codex', true)
+      invocation.args.push(
+        JSON.stringify({
+          type: 'agent-turn-complete',
+          'thread-id': 'notify-test',
+          text: '"quotes" $HOME `code` 中文',
+        }),
+      )
       expect(await run(invocation, null)).toEqual({
         code: 0,
         stdout: '',
         stderr: '',
         timedOut: false,
       })
-      expect(invocation.events).toEqual([])
+      expect(invocation.events).toEqual(['standby'])
     },
   )
+
+  it.each(hookProviders)('%s exits quietly when stdin never closes', async provider => {
+    const invocation = await prepare(provider)
+    expect(await run(invocation, null)).toEqual({
+      code: 0,
+      stdout: '',
+      stderr: '',
+      timedOut: false,
+    })
+    expect(invocation.events).toEqual([])
+  })
 
   it('exits quietly when the receiver accepts a connection but never responds', async () => {
     const server = createServer(() => undefined)
@@ -206,8 +210,8 @@ describe('provider Hook relay through sanitized launch environments', () => {
     if (!address || typeof address === 'string') {
       throw new Error('Missing receiver port')
     }
-    const invocation = await prepare('codex')
-    invocation.env.OPENCOVE_CODEX_HOOK_ENDPOINT = `http://127.0.0.1:${address.port}/hooks/codex`
+    const invocation = await prepare('claude')
+    invocation.env.OPENCOVE_CLAUDE_HOOK_ENDPOINT = `http://127.0.0.1:${address.port}/hooks/claude`
     expect(await run(invocation, '{}')).toEqual({
       code: 0,
       stdout: '',

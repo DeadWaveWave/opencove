@@ -200,7 +200,13 @@ export type AgentHookStateSource = 'claude_hook' | 'codex_hook' | 'pi_hook'
 
 export type TerminalSessionStateSource = 'launch' | 'session_file' | AgentHookStateSource
 
-export type AgentHookInstallState = 'installed' | 'partial' | 'not_installed' | 'error' | 'skipped'
+export type AgentHookInstallState =
+  | 'installed'
+  | 'partial'
+  | 'not_installed'
+  | 'error'
+  | 'skipped'
+  | 'not_required'
 
 export interface TerminalSessionStateEvent {
   piConversation?: { pid: number; revision: number }
@@ -221,7 +227,7 @@ export interface TerminalAgentActivitySnapshot {
   generation: number
   phase: 'active' | 'exited'
   observedAtMs: number
-  identityAuthority: 'provider_session_start' | 'provider_session_snapshot' | null
+  identityAuthority: 'provider_session_start' | 'provider_session_snapshot' | 'session_file' | null
   sourceRevision?: number
   revision?: number
 }

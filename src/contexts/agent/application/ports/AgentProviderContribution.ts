@@ -76,10 +76,12 @@ export interface AgentHookInjectionPlan {
 }
 
 export interface PrepareAgentHookInjectionCommand {
+  readonly arguments?: readonly string[]
   readonly artifacts: AgentLaunchArtifactRegistrar
   readonly environment?: Readonly<NodeJS.ProcessEnv>
   readonly executablePathOverride?: string | null
   readonly workspaceDirectory: string
+  readonly resumeSessionId?: string | null
 }
 
 export interface AgentHookInjectionPlanner {

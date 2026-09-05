@@ -57,7 +57,7 @@ function selectSessionFile(
 export function resolveAgentRunStateAuthority(
   input: AgentRunStateAuthorityInput,
 ): AgentRunStateAuthorityDecision {
-  if (input.hookInstallState === null) {
+  if (input.hookInstallState === null || input.hookInstallState === 'not_required') {
     return selectSessionFile(input.lastSessionFileSignal, input.lastLaunchSignal ?? null, {
       degraded: false,
       hookHealth: 'not_applicable',

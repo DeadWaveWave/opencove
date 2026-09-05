@@ -1,5 +1,6 @@
 import { webContents } from 'electron'
 import process from 'node:process'
+import type { AgentSessionDiscovery } from '../../../agent/application/ports/AgentSessionDiscovery'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   AgentLaunchMode,
@@ -84,7 +85,10 @@ function reportStateWatcherIssue(message: string): void {
   process.stderr.write(`${message}\n`)
 }
 
-export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePort }): PtyRuntime {
+export function createPtyRuntime(deps: {
+  processEngine: TerminalProcessEnginePort
+  sessionDiscovery?: AgentSessionDiscovery
+}): PtyRuntime {
   const { processEngine } = deps
   const profileResolver = new TerminalProfileResolver()
   const debugCrashHostEnabled = isDebugCrashHostEnabled()
@@ -144,6 +148,7 @@ export function createPtyRuntime(deps: { processEngine: TerminalProcessEnginePor
   }
 
   const sessionStateWatcher = createSessionStateWatcherController({
+    sessionDiscovery: deps.sessionDiscovery,
     sendToAllWindows,
     reportIssue: reportStateWatcherIssue,
     onState: event => {
