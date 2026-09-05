@@ -36,6 +36,7 @@ type SpawnSessionOptions = {
 }
 
 export interface HeadlessPtyRuntime {
+  isIdle: () => boolean
   listProfiles: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: SpawnSessionOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string) => void
@@ -48,6 +49,7 @@ export interface HeadlessPtyRuntime {
   onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
   startSessionStateWatcher: (input: SessionStateWatcherStartInput) => void
+  disposeSessionStateWatcher: (sessionId: string) => void
   debugCrashHost?: () => void | Promise<void>
   dispose: () => void
 }
@@ -142,6 +144,7 @@ export function createHeadlessPtyRuntime(options: {
   let isDisposed = false
 
   return {
+    isIdle: () => sessionRegistrations.isIdle(),
     listProfiles: async () => await profileResolver.listProfiles(),
     spawnSession: async input => {
       const registration = sessionRegistrations.begin()

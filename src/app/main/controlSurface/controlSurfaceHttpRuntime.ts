@@ -28,6 +28,8 @@ import type {
 import { createControlSurfaceHttpRequestHandler } from './controlSurfaceHttpRequestHandler'
 import { createControlSurfaceHttpListener } from './controlSurfaceHttpListener'
 import { ControlSurfaceAcceptedRequestOwner } from './controlSurfaceAcceptedRequestOwner'
+import { ManagedRuntimeMaintenance } from '../../../contexts/topology/application/ManagedRuntimeMaintenance'
+import { registerManagedRuntimeHandlers } from './handlers/managedRuntimeHandlers'
 
 const PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES = 400_000
 
@@ -127,16 +129,24 @@ export function createControlSurfaceHttpRuntime(
     allowQueryToken: true,
   })
   const persistence = createLazyPersistenceStore({
+    strictRecovery: options.strictPersistence,
     userDataPath: options.userDataPath,
     dbPath: options.dbPath,
     createPersistenceStore: options.createPersistenceStore,
   })
   const getPersistenceStore = persistence.getPersistenceStore
   const terminalRuntimeAvailability = new TerminalRuntimeAvailability()
-  const ready = initializeTerminalRuntimeAvailability({
-    getPersistenceStore,
-    availability: terminalRuntimeAvailability,
-  }).then(() => undefined)
+  let runtimeReady = false
+  const ready = (async () => {
+    if (options.strictPersistence) {
+      await (await getPersistenceStore()).readAppState()
+    }
+    await initializeTerminalRuntimeAvailability({
+      getPersistenceStore,
+      availability: terminalRuntimeAvailability,
+    })
+    runtimeReady = true
+  })()
   const terminalRecovery = createControlSurfaceTerminalRecoveryRuntime({
     enabled: !options.createPersistenceStore,
     userDataPath: options.userDataPath,
@@ -153,8 +163,33 @@ export function createControlSurfaceHttpRuntime(
       payload,
       desktopSink: options.desktopSyncEventSink,
     })
-  const controlSurface = createControlSurface()
+  const instanceId = randomUUID()
+  const maintenance = options.deploymentId
+    ? new ManagedRuntimeMaintenance(
+        () => options.ptyRuntime.isIdle?.() === true && managedSshOperations.isIdle(),
+        options.activationId ?? null,
+      )
+    : null
+  const controlSurface = createControlSurface({
+    enter: id =>
+      maintenance &&
+      !id.startsWith('worker.maintenance.') &&
+      id !== 'system.capabilities' &&
+      id !== 'system.ping'
+        ? maintenance.enter()
+        : undefined,
+  })
+  if (maintenance && options.requestManagedShutdown) {
+    registerManagedRuntimeHandlers(controlSurface, {
+      maintenance,
+      instanceId,
+      requestShutdown: options.requestManagedShutdown,
+    })
+  }
   registerControlSurfaceHandlers(controlSurface, {
+    deploymentId: options.deploymentId,
+    instanceId,
+    isReady: () => runtimeReady,
     approvedWorkspaces: options.approvedWorkspaces,
     userDataPath: options.userDataPath,
     topology,

@@ -1,3 +1,5 @@
+import type { RuntimeBuildIdentity } from '../runtimeBuild'
+
 export type WorkerEndpointKindDto = 'local' | 'remote_worker'
 export type WorkerEndpointAccessKindDto = 'manual' | 'managed_ssh'
 export type WorkerEndpointManagedSshPlatformDto = 'auto' | 'posix' | 'windows'
@@ -7,6 +9,17 @@ export type ManagedSshStageFailureCode =
   | 'runtime_corrupt'
   | 'runtime_unmanaged'
   | 'runtime_start_failed'
+  | 'credential_mismatch'
+  | 'build_mismatch'
+  | 'runtime_busy'
+  | 'runtime_legacy'
+  | 'recovery_required'
+  | 'client_update_required'
+  | 'channel_conflict'
+  | 'conflicting_build'
+  | 'protocol_mismatch'
+  | 'checksum_failed'
+  | 'platform_unsupported'
   | 'unknown'
 
 export type ManagedSshEndpointOperationKind = 'prepare' | 'repair'
@@ -130,6 +143,8 @@ export interface PingWorkerEndpointResult {
 }
 
 export type WorkerEndpointHealthStatusDto =
+  | 'update_pending'
+  | 'recovery_required'
   | 'connected'
   | 'connecting'
   | 'disconnected'
@@ -179,6 +194,7 @@ export interface ListWorkerEndpointOverviewsResult {
 }
 
 export interface PrepareWorkerEndpointInput {
+  runtimeBuild?: RuntimeBuildIdentity | null
   endpointId: string
   reason?: 'connect' | 'browse' | 'reconnect' | null
 }
@@ -188,6 +204,7 @@ export interface PrepareWorkerEndpointResult {
 }
 
 export interface RepairWorkerEndpointInput {
+  runtimeBuild?: RuntimeBuildIdentity | null
   endpointId: string
   action: 'repair_credentials' | 'repair_tunnel' | 'install_runtime' | 'update_runtime' | 'retry'
 }

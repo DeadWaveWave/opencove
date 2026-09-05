@@ -1,3 +1,4 @@
+import { parseRuntimeBuildIdentity } from '../../../../shared/contracts/runtimeBuild'
 import type {
   AppErrorDescriptor,
   CreateMountInput,
@@ -291,6 +292,19 @@ export function normalizePingEndpointPayload(payload: unknown): PingWorkerEndpoi
   }
 }
 
+function normalizeTargetBuild(value: unknown) {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+  const build = parseRuntimeBuildIdentity(value)
+  if (!build) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid runtime build descriptor.',
+    })
+  }
+  return build
+}
+
 export function normalizePrepareEndpointPayload(payload: unknown): PrepareWorkerEndpointInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -305,6 +319,7 @@ export function normalizePrepareEndpointPayload(payload: unknown): PrepareWorker
 
   return {
     endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.prepare endpointId'),
+    ...(payload.runtimeBuild ? { runtimeBuild: normalizeTargetBuild(payload.runtimeBuild) } : {}),
     ...(reason ? { reason } : {}),
   }
 }
@@ -331,6 +346,7 @@ export function normalizeRepairEndpointPayload(payload: unknown): RepairWorkerEn
 
   return {
     endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.repair endpointId'),
+    ...(payload.runtimeBuild ? { runtimeBuild: normalizeTargetBuild(payload.runtimeBuild) } : {}),
     action,
   }
 }

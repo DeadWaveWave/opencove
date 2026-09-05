@@ -1,6 +1,7 @@
 import { chmod, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { createNativeSshFixture } from './fixtures/create-native-ssh'
 
 const FAKE_SSH_RUNTIME = String.raw`
 import net from 'node:net'
@@ -100,6 +101,10 @@ if (gateDir) {
   await phaseGate('checking_remote_runtime')
   await phaseGate('installing_runtime')
   await phaseGate('starting_runtime')
+  if (process.env.OPENCOVE_FAKE_SSH_FAILURE) {
+    process.stderr.write('[opencove-bootstrap:' + process.env.OPENCOVE_FAKE_SSH_FAILURE + '] Runtime activation deferred.\n')
+    process.exit(1)
+  }
   process.exit(0)
 }
 
@@ -114,9 +119,7 @@ export async function createFakeManagedSshInstallDir(): Promise<string> {
   await writeFile(runtimePath, FAKE_SSH_RUNTIME.trimStart(), 'utf8')
 
   if (process.platform === 'win32') {
-    const wrapperPath = path.join(installDir, 'ssh.cmd')
-    const wrapper = `@echo off\r\n"${process.execPath}" "${runtimePath}" %*\r\n`
-    await writeFile(wrapperPath, wrapper, 'utf8')
+    await createNativeSshFixture(installDir)
     return installDir
   }
 

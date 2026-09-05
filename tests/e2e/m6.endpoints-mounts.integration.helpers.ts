@@ -128,6 +128,7 @@ export interface RemoteWorkerHandle {
 }
 
 export async function startRemoteWorker(options: {
+  deploymentId?: string
   hostname: string
   port: number
   token: string
@@ -150,6 +151,9 @@ export async function startRemoteWorker(options: {
     electronBinary,
     [
       workerPath,
+      ...(options.deploymentId
+        ? [`--deployment-id=${options.deploymentId}`, '--managed-runtime']
+        : []),
       '--hostname',
       options.hostname,
       '--port',

@@ -26,7 +26,7 @@ interface ProgressFixture {
 }
 
 export async function withManagedSshProgress(
-  settings: { uiTheme: 'light' | 'dark'; language: 'en' | 'zh-CN' },
+  settings: { uiTheme: 'light' | 'dark'; language: 'en' | 'zh-CN'; failureKind?: string },
   run: (fixture: ProgressFixture) => Promise<void>,
 ): Promise<void> {
   const root = await mkdtemp(path.join(tmpdir(), 'opencove-ssh-progress-'))
@@ -45,6 +45,7 @@ export async function withManagedSshProgress(
       env: {
         PATH: `${fakeSsh}${path.delimiter}${process.env.PATH ?? ''}`,
         OPENCOVE_FAKE_SSH_GATE_DIR: gates,
+        ...(settings.failureKind ? { OPENCOVE_FAKE_SSH_FAILURE: settings.failureKind } : {}),
       },
     })
     const { window } = app
@@ -115,6 +116,7 @@ export async function withManagedSshProgress(
           await readFile(path.join(appUserData, 'worker-endpoint-secrets.json'), 'utf8'),
         ) as { tokensByCredentialRef: Record<string, string> }
         worker = await startRemoteWorker({
+          deploymentId: endpointId,
           hostname: '127.0.0.1',
           port: remotePort,
           token: secrets.tokensByCredentialRef[endpointId]!,

@@ -129,7 +129,9 @@ jobs:
           set -euo pipefail
           asset="$(find dist -maxdepth 1 -name 'opencove-server-*.tar.gz' -print -quit)"
           test -n "$asset"
+          node scripts/generate-checksums.mjs dist
           export OPENCOVE_STANDALONE_ASSET="$asset"
+          export OPENCOVE_STANDALONE_CHECKSUMS_FILE="$PWD/dist/SHA256SUMS.txt"
           export OPENCOVE_INSTALL_ROOT="$RUNNER_TEMP/opencove-standalone"
           export OPENCOVE_BIN_DIR="$RUNNER_TEMP/opencove-bin"
           sh scripts/release-assets/opencove-install.sh
@@ -143,6 +145,7 @@ jobs:
           set -euo pipefail
           asset="$(find dist -maxdepth 1 -name 'opencove-server-linux-*.tar.gz' -print -quit)"
           test -n "$asset"
+          node scripts/generate-checksums.mjs dist
           docker run --rm \
             --volume "$PWD:/workspace:ro" \
             --workdir /workspace \

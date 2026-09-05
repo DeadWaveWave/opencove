@@ -39,7 +39,9 @@ test('Picker reopens an accepted cold bootstrap and automatically loads home whe
     await h.waitForPhase('starting_runtime')
     await h.startWorker()
     await h.release('starting_runtime')
-    await expect(window.getByTestId('remote-directory-picker-path')).toHaveValue(h.remoteHome)
+    await expect(window.getByTestId('remote-directory-picker-path')).toHaveValue(
+      h.remoteHome.replaceAll('\\', '/'),
+    )
     await expect(window.getByTestId('remote-directory-picker-select')).toBeEnabled()
     await expect(window.getByTestId('remote-directory-picker-entry-0')).toContainText('project')
     await testInfo.attach('picker-ready', {

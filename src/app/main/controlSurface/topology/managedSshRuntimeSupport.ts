@@ -13,6 +13,19 @@ import type {
   ManagedSshStageFailureCode,
 } from '../../../../shared/contracts/dto'
 import type { ManagedSshEndpointRuntimeAccess } from './topologyEndpointAccess'
+import { randomUUID } from 'node:crypto'
+import { getRuntimeBuildIdentity } from '../../../../shared/runtime/runtimeBuildIdentity'
+import type { RuntimeBuildIdentity } from '../../../../shared/contracts/runtimeBuild'
+import { redactManagedSshOutput } from './managedSshDiagnosticDetails'
+import {
+  transferManagedSshArtifact,
+  resolveManagedSshArtifactName,
+} from './managedSshArtifactTransfer'
+import { withManagedSshArtifactRelay } from './managedSshArtifactRelay'
+import { buildSshArgs } from './managedSshArgs'
+export { buildSshArgs, buildSshTunnelArgs } from './managedSshArgs'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 type BootstrapRemotePlatform = 'posix' | 'windows'
 
@@ -29,6 +42,13 @@ export class ManagedSshBootstrapError extends Error {
 }
 
 export function classifyManagedSshBootstrapFailure(detail: string): ManagedSshBootstrapFailureKind {
+  const managedCode =
+    /\[opencove-bootstrap:(credential_mismatch|build_mismatch|runtime_busy|runtime_legacy|recovery_required|client_update_required|channel_conflict|conflicting_build|protocol_mismatch|checksum_failed|platform_unsupported)\]/.exec(
+      detail,
+    )?.[1]
+  if (managedCode) {
+    return managedCode as ManagedSshBootstrapFailureKind
+  }
   if (detail.includes('[opencove-bootstrap:installer_unavailable]')) {
     return 'installer_unavailable'
   }
@@ -57,39 +77,6 @@ function toManagedSshBootstrapError(detail: string): ManagedSshBootstrapError {
     .replaceAll(/\[opencove-bootstrap:[^\]]+\]\s*/g, '')
     .trim()
   return new ManagedSshBootstrapError(failureKind, actionableDetail || 'Remote bootstrap failed.')
-}
-
-function resolveSshDestination(access: ManagedSshEndpointRuntimeAccess): string {
-  const username = access.ssh.username?.trim() ?? ''
-  return username.length > 0 ? `${username}@${access.ssh.host}` : access.ssh.host
-}
-
-function shouldForceIpv4ForLocalhost(access: ManagedSshEndpointRuntimeAccess): boolean {
-  return access.ssh.host.trim().toLowerCase() === 'localhost'
-}
-
-function buildSshOptionArgs(access: ManagedSshEndpointRuntimeAccess): string[] {
-  const args: string[] = []
-  const sshPort = access.ssh.port
-  if (typeof sshPort === 'number' && Number.isFinite(sshPort) && sshPort > 0) {
-    args.push('-p', String(Math.floor(sshPort)))
-  }
-  if (shouldForceIpv4ForLocalhost(access)) {
-    args.push('-o', 'AddressFamily=inet')
-  }
-
-  return args
-}
-
-export function buildSshArgs(access: ManagedSshEndpointRuntimeAccess, extra: string[]): string[] {
-  return [...buildSshOptionArgs(access), resolveSshDestination(access), ...extra]
-}
-
-export function buildSshTunnelArgs(
-  access: ManagedSshEndpointRuntimeAccess,
-  options: string[],
-): string[] {
-  return [...buildSshOptionArgs(access), ...options, resolveSshDestination(access)]
 }
 
 function buildReleaseBaseUrl(version: string | null): string {
@@ -179,6 +166,8 @@ export async function runManagedSshBootstrap(
   options?: {
     reinstallRuntime?: boolean
     appVersion?: string | null
+    runtimeBuild?: RuntimeBuildIdentity | null
+    operationId?: string
     signal?: AbortSignal
     reportPhase?: (phase: ManagedSshEndpointOperationPhase) => void
   },
@@ -190,40 +179,108 @@ export async function runManagedSshBootstrap(
   }
   reportPhase('detecting_platform')
   const remotePlatform = await classifyBootstrapPlatform(sshExecutablePath, access, options?.signal)
-  const installerUrl = buildInstallerAssetUrl(remotePlatform, options?.appVersion ?? null)
-  const scriptOptions = { installerUrl, reinstallRuntime: options?.reinstallRuntime === true }
-  const script =
-    remotePlatform === 'windows'
-      ? buildWindowsBootstrapScript(access, scriptOptions)
-      : buildPosixBootstrapScript(access, {
-          ...scriptOptions,
-          devRepoRoot: process.env['OPENCOVE_MANAGED_SSH_DEV_REPO_ROOT'] ?? null,
-        })
-  const remoteCommand =
-    remotePlatform === 'windows'
-      ? ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '-']
-      : ['sh']
-  // Streams must have separate partial-line buffers; their chunk boundaries are unrelated.
-  const stdout = createManagedSshBootstrapProgressParser(reportPhase)
-  const stderr = createManagedSshBootstrapProgressParser(reportPhase)
-  const result = await runCommand(
-    sshExecutablePath,
-    buildSshArgs(access, remoteCommand),
-    process.cwd(),
-    {
-      timeoutMs: 120_000,
-      stdin: script,
+  const runtimeBuild = options?.runtimeBuild ?? getRuntimeBuildIdentity()
+  const operationId = options?.operationId ?? randomUUID()
+  const installerUrl = buildInstallerAssetUrl(
+    remotePlatform,
+    runtimeBuild?.appVersion ?? options?.appVersion ?? null,
+  )
+  const cachedDevelopmentArtifact =
+    runtimeBuild?.channel === 'dev'
+      ? resolve(__dirname, '../../release/managed-ssh', runtimeBuild.buildId)
+      : null
+  const localArtifact =
+    process.env.OPENCOVE_MANAGED_SSH_ARTIFACT_DIR ??
+    (cachedDevelopmentArtifact && existsSync(cachedDevelopmentArtifact)
+      ? cachedDevelopmentArtifact
+      : null)
+  const transfer = (directory: string) =>
+    transferManagedSshArtifact({
+      ssh: sshExecutablePath,
+      access,
+      directory,
+      windows: remotePlatform === 'windows',
+      operationId,
       signal: options?.signal,
-      captureMaxBytes: 262_144,
-      onStdout: stdout.push,
-      onStderr: stderr.push,
-    },
-  ).finally(() => {
-    stdout.finish()
-    stderr.finish()
-  })
+    })
+  const initialArtifactDirectory =
+    localArtifact && (runtimeBuild?.channel !== 'dev' || options?.reinstallRuntime)
+      ? await transfer(localArtifact)
+      : null
+  const execute = async (artifactDirectory: string | null) => {
+    const scriptOptions = {
+      installerUrl,
+      reinstallRuntime: options?.reinstallRuntime === true,
+      runtimeBuild,
+      operationId,
+      artifactDirectory,
+    }
+    const script =
+      remotePlatform === 'windows'
+        ? buildWindowsBootstrapScript(access, scriptOptions)
+        : buildPosixBootstrapScript(access, {
+            ...scriptOptions,
+            devRepoRoot: process.env['OPENCOVE_MANAGED_SSH_DEV_REPO_ROOT'] ?? null,
+          })
+    const remoteCommand =
+      remotePlatform === 'windows'
+        ? ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '-']
+        : ['sh']
+    // Streams must have separate partial-line buffers; their chunk boundaries are unrelated.
+    const stdout = createManagedSshBootstrapProgressParser(reportPhase)
+    const stderr = createManagedSshBootstrapProgressParser(reportPhase)
+    const result = await runCommand(
+      sshExecutablePath,
+      buildSshArgs(access, remoteCommand),
+      process.cwd(),
+      {
+        timeoutMs: 600_000,
+        stdin: script,
+        signal: options?.signal,
+        captureMaxBytes: 262_144,
+        onStdout: stdout.push,
+        onStderr: stderr.push,
+      },
+    ).finally(() => {
+      stdout.finish()
+      stderr.finish()
+    })
+    return result
+  }
+  let result = await execute(initialArtifactDirectory)
+  if (
+    result.exitCode !== 0 &&
+    localArtifact &&
+    !initialArtifactDirectory &&
+    classifyManagedSshBootstrapFailure(`${result.stderr}\n${result.stdout}`) ===
+      'installer_unavailable'
+  ) {
+    result = await execute(await transfer(localArtifact))
+  }
+  if (
+    result.exitCode !== 0 &&
+    !localArtifact &&
+    runtimeBuild &&
+    runtimeBuild.channel !== 'dev' &&
+    classifyManagedSshBootstrapFailure(`${result.stderr}\n${result.stdout}`) ===
+      'installer_unavailable'
+  ) {
+    const assetName = await resolveManagedSshArtifactName({
+      ssh: sshExecutablePath,
+      access,
+      windows: remotePlatform === 'windows',
+      signal: options?.signal,
+    })
+    reportPhase('downloading_installer')
+    result = await withManagedSshArtifactRelay(
+      { installerUrl, assetName, windows: remotePlatform === 'windows', signal: options?.signal },
+      async directory => {
+        return await execute(await transfer(directory))
+      },
+    )
+  }
   if (result.exitCode !== 0) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'Remote bootstrap failed.'
-    throw toManagedSshBootstrapError(detail)
+    throw toManagedSshBootstrapError(redactManagedSshOutput(detail, access.token))
   }
 }

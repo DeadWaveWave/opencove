@@ -54,20 +54,26 @@ describe('Managed SSH bootstrap display markers', () => {
       buildPosixBootstrapScript(access, {
         installerUrl: 'https://URL_SENTINEL.test',
         reinstallRuntime: true,
+        runtimeBuild: runtimeBuildFixture,
       }),
       buildWindowsBootstrapScript(access, {
         installerUrl: 'https://URL_SENTINEL.test',
         reinstallRuntime: true,
+        runtimeBuild: runtimeBuildFixture,
       }),
     ]) {
       const markerLines = script
         .split('\n')
         .filter(line => line.includes(MANAGED_SSH_BOOTSTRAP_PROGRESS_PREFIX))
-      expect(markerLines).toHaveLength(MANAGED_SSH_BOOTSTRAP_PHASES.length)
+      expect(markerLines).toHaveLength(MANAGED_SSH_BOOTSTRAP_PHASES.length - 1)
       expect(markerLines.join('\n')).not.toContain('SENTINEL')
       for (const phase of MANAGED_SSH_BOOTSTRAP_PHASES) {
+        if (phase === 'waiting_for_runtime') {
+          continue
+        } // emitted by the remote controller
         expect(markerLines.join('\n')).toContain(marker(phase))
       }
     }
   })
 })
+import { runtimeBuildFixture } from '../../helpers/runtimeBuild'

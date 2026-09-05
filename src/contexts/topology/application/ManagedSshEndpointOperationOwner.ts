@@ -30,6 +30,7 @@ const PHASE_INDEX = new Map<ManagedSshEndpointOperationPhase, number>(
 )
 
 export interface ManagedSshEndpointOperationIntent {
+  runtimeBuild?: import('../../../shared/contracts/runtimeBuild').RuntimeBuildIdentity | null
   kind: ManagedSshEndpointOperationKind
   access: ManagedSshEndpointPreparationAccess
   restartTunnel: boolean
@@ -60,6 +61,7 @@ type OperationRecord = {
 function operationSignature(intent: ManagedSshEndpointOperationIntent): string {
   return JSON.stringify([
     intent.kind,
+    intent.runtimeBuild ?? null,
     intent.restartTunnel,
     intent.reinstallRuntime,
     intent.access.endpointId,
@@ -158,6 +160,15 @@ export class ManagedSshEndpointOperationOwner {
     return cloneSnapshot(record.snapshot)
   }
 
+  public isIdle(): boolean {
+    return (
+      !this.disposed &&
+      this.records.size === 0 &&
+      this.retiring.size === 0 &&
+      this.mutations.size === 0
+    )
+  }
+
   public getSnapshot(endpointId: string): ManagedSshEndpointOperationDto | null {
     const record = this.records.get(endpointId)
     return record ? cloneSnapshot(record.snapshot) : null
@@ -228,6 +239,7 @@ export class ManagedSshEndpointOperationOwner {
         access: intent.access,
         restartTunnel: intent.restartTunnel,
         reinstallRuntime: intent.reinstallRuntime,
+        runtimeBuild: intent.runtimeBuild,
         signal: record.controller.signal,
         reportPhase: phase => this.advance(record, phase),
       })

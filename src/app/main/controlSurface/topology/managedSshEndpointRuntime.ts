@@ -11,7 +11,13 @@ import {
   type ManagedSshEndpointRuntimeDependencies,
   type ManagedSshTunnelProcess,
 } from './managedSshEndpointRuntimeDependencies'
-import { ManagedSshBootstrapError } from './managedSshRuntimeSupport'
+import {
+  ManagedSshBootstrapError,
+  classifyManagedSshBootstrapFailure,
+} from './managedSshRuntimeSupport'
+import { getRuntimeBuildIdentity } from '../../../../shared/runtime/runtimeBuildIdentity'
+import type { RuntimeBuildIdentity } from '../../../../shared/contracts/runtimeBuild'
+import { redactManagedSshOutput } from './managedSshDiagnosticDetails'
 import type {
   ManagedSshEndpointConnectionResolver,
   ManagedSshEndpointRuntimeDisposer,
@@ -29,6 +35,7 @@ export interface ManagedSshRuntimeSnapshot {
 }
 
 type ResourceRecord = {
+  runtimeBuild: RuntimeBuildIdentity | null
   access: ManagedSshEndpointRuntimeAccess
   signature: string
   process: ManagedSshTunnelProcess | null
@@ -188,6 +195,7 @@ export function createManagedSshEndpointRuntime(
         const reachable = await dependencies.probeConnection(
           { hostname: '127.0.0.1', port, token: record.access.token },
           500,
+          { runtimeBuild: record.runtimeBuild, endpointId: record.access.endpointId },
         )
         checkCurrent(record, execution)
         return reachable
@@ -241,6 +249,7 @@ export function createManagedSshEndpointRuntime(
               token: record.access.token,
             },
             750,
+            { runtimeBuild: record.runtimeBuild, endpointId: record.access.endpointId },
           ))
         checkCurrent(record, execution)
         if (ready && record.process?.exitCode === null) {
@@ -257,6 +266,8 @@ export function createManagedSshEndpointRuntime(
       await dependencies.runBootstrap(ssh.executablePath, record.access, {
         reinstallRuntime: request.reinstallRuntime,
         appVersion,
+        runtimeBuild: record.runtimeBuild,
+        operationId: request.operationId,
         signal: execution.controller.signal,
         reportPhase,
       })
@@ -273,9 +284,14 @@ export function createManagedSshEndpointRuntime(
         return { status: 'cancelled' }
       }
       record.snapshot.status = 'error'
-      record.snapshot.lastError = error instanceof Error ? error.message : String(error)
+      record.snapshot.lastError = redactManagedSshOutput(
+        error instanceof Error ? error.message : String(error),
+        record.access.token,
+      )
       record.snapshot.failureKind ??=
-        error instanceof ManagedSshBootstrapError ? error.failureKind : 'unknown'
+        error instanceof ManagedSshBootstrapError
+          ? error.failureKind
+          : classifyManagedSshBootstrapFailure(record.snapshot.lastError)
       await stopTunnel(record)
       return { status: 'failed', failureKind: record.snapshot.failureKind }
     }
@@ -291,6 +307,7 @@ export function createManagedSshEndpointRuntime(
     let record = records.get(access.endpointId)
     if (!record) {
       record = {
+        runtimeBuild: request.runtimeBuild ?? getRuntimeBuildIdentity(),
         access: { ...access, ssh: { ...access.ssh } },
         signature: accessSignature(access),
         process: null,
@@ -325,6 +342,7 @@ export function createManagedSshEndpointRuntime(
     execution.settlement = (async () => {
       await previousExecution?.settlement
       checkCurrent(currentRecord, execution)
+      currentRecord.runtimeBuild = request.runtimeBuild ?? getRuntimeBuildIdentity()
       if (currentRecord.signature !== accessSignature(access)) {
         await stopTunnel(currentRecord)
         checkCurrent(currentRecord, execution)
@@ -343,7 +361,10 @@ export function createManagedSshEndpointRuntime(
           return { status: 'cancelled' } as const
         }
         currentRecord.snapshot.status = 'error'
-        currentRecord.snapshot.lastError = error instanceof Error ? error.message : String(error)
+        currentRecord.snapshot.lastError = redactManagedSshOutput(
+          error instanceof Error ? error.message : String(error),
+          currentRecord.access.token,
+        )
         currentRecord.snapshot.failureKind = 'unknown'
         return { status: 'failed', failureKind: 'unknown' } as const
       })

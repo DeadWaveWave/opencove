@@ -226,7 +226,7 @@ function Assert-OpenCoveArchiveChecksum([string]$Path, [string]$AssetName) {
     Select-String -Pattern "^(?<hash>[A-Fa-f0-9]{64})\s+\*?$assetPattern$" |
     Select-Object -First 1
   if ($null -eq $match) {
-    throw "Checksum for $AssetName not found in $ChecksumsUrl"
+    throw "[opencove-bootstrap:checksum_failed] Checksum for $AssetName not found in $ChecksumsUrl"
   }
 
   $expected = $match.Matches[0].Groups['hash'].Value.ToLowerInvariant()
@@ -239,9 +239,10 @@ function Assert-OpenCoveArchiveChecksum([string]$Path, [string]$AssetName) {
     $algorithm.Dispose()
   }
   if ($actual -ne $expected) {
-    throw "SHA256 mismatch for $AssetName"
+    throw "[opencove-bootstrap:checksum_failed] SHA256 mismatch for $AssetName"
   }
   Write-Output "Verified SHA256 for $AssetName"
+  $script:VerifiedArtifactDigest = $actual
 }
 
 function Escape-CmdValue([string]$Value) {
@@ -275,7 +276,21 @@ if not exist "%CLI_SCRIPT%" (
 "%NODE_BIN%" "%CLI_SCRIPT%" %*
 exit /b %ERRORLEVEL%
 "@
-  Set-Content -LiteralPath $LauncherPath -Value $launcher -Encoding ASCII
+  $temporaryLauncher = "$LauncherPath.new.$([Guid]::NewGuid().ToString('N'))"
+  [IO.File]::WriteAllText($temporaryLauncher, $launcher, [Text.Encoding]::ASCII)
+  try {
+    if ([IO.File]::Exists($LauncherPath)) {
+      [IO.File]::Replace($temporaryLauncher, $LauncherPath, $null)
+    } else {
+      try { [IO.File]::Move($temporaryLauncher, $LauncherPath) }
+      catch {
+        if (![IO.File]::Exists($LauncherPath)) { throw }
+        [IO.File]::Replace($temporaryLauncher, $LauncherPath, $null)
+      }
+    }
+  } finally {
+    if ([IO.File]::Exists($temporaryLauncher)) { [IO.File]::Delete($temporaryLauncher) }
+  }
 }
 
 if ($Uninstall) {
@@ -293,7 +308,7 @@ $AssetUrl = "$ReleaseBaseUrl/$AssetName"
 $BundleName = [IO.Path]::GetFileNameWithoutExtension($AssetName)
 $BundleDir = Join-Path $InstallRoot $BundleName
 $RuntimeEnvPath = Join-Path $BundleDir 'opencove-runtime.env'
-$TempDir = Join-Path ([IO.Path]::GetTempPath()) "opencove-install-$([Guid]::NewGuid().ToString('N'))"
+$TempDir = Join-Path $InstallRoot ".opencove-install-$([Guid]::NewGuid().ToString('N'))"
 $ArchivePath = Join-Path $TempDir $AssetName
 
 New-Item -ItemType Directory -Force -Path $InstallRoot, $BinDir, $TempDir | Out-Null
@@ -302,9 +317,7 @@ try {
   if ($env:OPENCOVE_STANDALONE_ASSET) {
     Write-Output "Using local standalone asset $env:OPENCOVE_STANDALONE_ASSET"
     Copy-Item -LiteralPath $env:OPENCOVE_STANDALONE_ASSET -Destination $ArchivePath -Force
-    if ($env:OPENCOVE_STANDALONE_CHECKSUMS_FILE) {
-      Assert-OpenCoveArchiveChecksum $ArchivePath $AssetName
-    }
+    Assert-OpenCoveArchiveChecksum $ArchivePath $AssetName
   } else {
     Write-Output "Downloading $AssetUrl"
     $request = @{
@@ -318,22 +331,37 @@ try {
     Assert-OpenCoveArchiveChecksum $ArchivePath $AssetName
   }
 
-  if (Test-Path -LiteralPath $BundleDir) {
-    Remove-Item -LiteralPath $BundleDir -Recurse -Force
-  }
-
-  Expand-Archive -LiteralPath $ArchivePath -DestinationPath $InstallRoot -Force
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $archive = [IO.Compression.ZipFile]::OpenRead($ArchivePath)
+  try {
+    foreach ($entry in $archive.Entries) {
+      $entryPath = $entry.FullName.Replace('\', '/')
+      if ($entryPath.StartsWith('/') -or $entryPath.Contains(':') -or
+          $entryPath.Split('/').Contains('..') -or
+          ($entryPath -ne $BundleName -and !$entryPath.StartsWith("$BundleName/"))) {
+        throw '[opencove-bootstrap:runtime_corrupt] Unsafe standalone archive paths.'
+      }
+    }
+  } finally { $archive.Dispose() }
+  Expand-Archive -LiteralPath $ArchivePath -DestinationPath $TempDir
+  $BundleDir = Join-Path $TempDir $BundleName
+  $RuntimeEnvPath = Join-Path $BundleDir 'opencove-runtime.env'
 
   if (!(Test-Path -LiteralPath $RuntimeEnvPath -PathType Leaf)) {
     throw "Standalone runtime manifest not found: $RuntimeEnvPath"
   }
 
-  $manifest = Read-RuntimeManifest $RuntimeEnvPath
-  $nodeBin = Join-BundlePath $BundleDir $manifest['OPENCOVE_NODE_RELATIVE_PATH']
-  $cliScript = Join-BundlePath $BundleDir $manifest['OPENCOVE_CLI_SCRIPT_RELATIVE_PATH']
+  $nodeBin = Join-Path $BundleDir 'runtime\node\node.exe'
+  $publishScript = Join-Path $BundleDir 'app\src\app\cli\publishRuntime.mjs'
+  $destination = Join-Path $InstallRoot "$BundleName-$VerifiedArtifactDigest"
+  $published = & $nodeBin $publishScript $BundleDir $destination $VerifiedArtifactDigest
+  if ($LASTEXITCODE -ne 0) { throw 'Runtime publication failed.' }
+  $BundleDir = [string]$published
+  $nodeBin = Join-Path $BundleDir 'runtime\node\node.exe'
+  $cliScript = Join-Path $BundleDir 'app\src\app\cli\opencove.mjs'
 
   Write-Launcher $nodeBin $cliScript
-  Set-OpenCoveUserPath $BinDir 'add'
+  if ($env:OPENCOVE_MANAGED_INSTALL -ne '1') { Set-OpenCoveUserPath $BinDir 'add' }
 
   Write-Output "Installed OpenCove CLI at $LauncherPath"
   Write-Output "Runtime bundle: $BundleDir"
@@ -341,6 +369,10 @@ try {
   Write-Output '  opencove worker start --help'
 } finally {
   if (Test-Path -LiteralPath $TempDir) {
+    $canonicalRoot = [IO.Path]::GetFullPath($InstallRoot).TrimEnd('\') + '\'
+    if (![IO.Path]::GetFullPath($TempDir).StartsWith($canonicalRoot, [StringComparison]::OrdinalIgnoreCase)) {
+      throw 'Installer cleanup target escaped its installation root.'
+    }
     Remove-Item -LiteralPath $TempDir -Recurse -Force
   }
 }

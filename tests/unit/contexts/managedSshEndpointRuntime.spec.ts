@@ -132,57 +132,46 @@ describe('managedSshEndpointRuntime', () => {
     ])
   })
 
-  it('health-checks an existing posix runtime and bounds repair to one installer attempt', () => {
+  it('requires a build identity before it can prepare a remote runtime', () => {
     const script = buildPosixBootstrapScript(createAccess(), {
       devRepoRoot: null,
       installerUrl: 'https://example.invalid/opencove-install.sh',
       reinstallRuntime: false,
     })
 
-    expect(script).toContain('runtime_is_healthy()')
-    expect(script).toContain('opencove worker start --help > "$health_log" 2>&1')
-    expect(script).toContain('[ "$force_reinstall" = "1" ] || ! runtime_is_healthy')
-    expect(script).toContain('prepare_repair_target()')
-    expect(script).toContain('resolved_launcher="$(command -v opencove 2>/dev/null || true)"')
-    expect(script).toContain('[opencove-bootstrap:runtime_unmanaged]')
+    expect(script).toContain('[opencove-bootstrap:build_mismatch]')
+    expect(script).not.toContain('worker start')
+  })
+
+  it('passes the fixed target and credential to the deployment controller', () => {
+    const script = buildPosixBootstrapScript(createAccess(), {
+      devRepoRoot: null,
+      runtimeBuild: runtimeBuildFixture,
+      installerUrl: 'https://example.invalid/opencove-install.sh',
+      reinstallRuntime: false,
+    })
+
+    expect(script).toContain('runtime inspect')
+    expect(script).toContain('runtime prepare')
+    expect(script).toContain(runtimeBuildFixture.buildId)
+    expect(script).toContain('"endpointId":"managed-1"')
+    expect(script).toContain('"token":"managed-token"')
+    expect(script).not.toContain('worker start --help')
     expect(script.match(/curl -fsSL/g)).toHaveLength(1)
-    expect(script).toContain('[opencove-bootstrap:runtime_corrupt]')
-    expect(script).toContain('after one repair attempt')
   })
 
-  it('polls the managed worker and returns the remote bootstrap log on startup failure', () => {
-    const script = buildPosixBootstrapScript(createAccess(), {
-      devRepoRoot: null,
-      installerUrl: 'https://example.invalid/opencove-install.sh',
-      reinstallRuntime: false,
-    })
-
-    expect(script).toContain("endpoint_id='managed-1'")
-    expect(script).toContain('/opencove/managed-ssh/$endpoint_id')
-    expect(script).toContain('managed-worker.log')
-    expect(script).toContain('--user-data "$user_data_dir"')
-    expect(script).toContain('http://127.0.0.1:39291/invoke')
-    expect(script).toContain('authorization: Bearer managed-token')
-    expect(script).toContain('[ "$force_reinstall" != "1" ] && worker_is_ready')
-    expect(script.indexOf('worker_is_ready; then')).toBeLessThan(script.indexOf('repair_needed=0'))
-    expect(script).toContain('OpenCove worker did not become ready after SSH bootstrap.')
-    expect(script).toContain('tail -n 80 "$log_file" >&2')
-  })
-
-  it('uses the mounted source repo as a dev bootstrap runtime before downloading installers', () => {
+  it('requires a development artifact instead of reusing a historical checkout', () => {
     const script = buildPosixBootstrapScript(createAccess(), {
       devRepoRoot: '/root/opencove-wsl-deploy',
+      runtimeBuild: { ...runtimeBuildFixture, channel: 'dev' },
       installerUrl: 'https://example.invalid/opencove-install.sh',
       reinstallRuntime: false,
     })
 
-    expect(script).toContain('find_opencove_dev_repo_root')
-    expect(script).toContain("configured_root='/root/opencove-wsl-deploy'")
-    expect(script).toContain('"$HOME/opencove-wsl-deploy"')
-    expect(script).toContain('[ -f "$repo_root/out/main/worker.js" ]')
-    expect(script).toContain('cd "$OPENCOVE_MANAGED_SSH_DEV_REPO_ROOT"')
-    expect(script).toContain('exec node out/main/worker.js "$@"')
-    expect(script.indexOf('out/main/worker.js')).toBeLessThan(script.indexOf('curl -fsSL'))
+    expect(script).toContain('OPENCOVE_MANAGED_SSH_ARTIFACT_DIR')
+    expect(script).not.toContain('/root/opencove-wsl-deploy')
+    expect(script).not.toContain('exec node out/main/worker.js')
+    expect(script).not.toContain('curl -fsSL')
   })
 
   it('returns a typed error snapshot when ssh is unavailable', async () => {
@@ -442,3 +431,4 @@ describe('managedSshEndpointRuntime', () => {
     await broken.dispose()
   })
 })
+import { runtimeBuildFixture } from '../../helpers/runtimeBuild'

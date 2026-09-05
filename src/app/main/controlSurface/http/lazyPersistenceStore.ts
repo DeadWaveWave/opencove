@@ -5,6 +5,7 @@ import { createPersistenceStore as createSqlitePersistenceStore } from '../../..
 export function createLazyPersistenceStore(options: {
   userDataPath: string
   dbPath?: string
+  strictRecovery?: boolean
   createPersistenceStore?: (options: { dbPath: string }) => Promise<PersistenceStore>
 }): {
   getPersistenceStore: () => Promise<PersistenceStore>
@@ -15,7 +16,7 @@ export function createLazyPersistenceStore(options: {
   const createPersistenceStore =
     options.createPersistenceStore ??
     (async ({ dbPath }: { dbPath: string }) => {
-      return await createSqlitePersistenceStore({ dbPath })
+      return await createSqlitePersistenceStore({ dbPath, strictRecovery: options.strictRecovery })
     })
 
   const getPersistenceStore = async (): Promise<PersistenceStore> => {

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { createServer } from 'node:http'
-import { access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import type { AddressInfo } from 'node:net'
@@ -8,34 +8,32 @@ import { describe, expect, it } from 'vitest'
 import { buildWindowsBootstrapScript } from '../../../src/app/main/controlSurface/topology/managedSshBootstrapScripts'
 import { createManagedSshBootstrapProgressParser } from '../../../src/app/main/controlSurface/topology/managedSshBootstrapProgress'
 import { runCommand } from '../../../src/platform/process/runCommand'
+import { runtimeBuildFixture } from '../../helpers/runtimeBuild'
 
 const windows = process.platform === 'win32' ? describe : describe.skip
 windows('generated managed SSH PowerShell bootstrap', () => {
   it('executes isolated installer and launcher, emitting incremental allowlisted stages', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'opencove-ssh-windows-'))
-    const bin = path.join(root, 'bin')
-    await mkdir(bin)
-    // A real Win32 executable, but no real OpenCove installation is changed or launched.
-    await copyFile(process.execPath, path.join(bin, 'opencove.exe'))
+    const fixtureScript = path.join(root, 'runtime-fixture.cjs')
     await writeFile(
-      path.join(root, 'worker'),
-      `require('node:fs').writeFileSync(process.env.OPENCOVE_SSH_TEST_LAUNCHED, JSON.stringify(process.argv.slice(2)))\n`,
+      fixtureScript,
+      `if (process.argv[3] === 'inspect') console.log(JSON.stringify(${JSON.stringify(runtimeBuildFixture)}));
+else { const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8').replace(/^\\uFEFF/, '')); require('node:fs').writeFileSync(process.env.OPENCOVE_SSH_TEST_LAUNCHED, JSON.stringify(input)); console.log('[opencove-bootstrap-progress:v1] waiting_for_runtime'); }`,
     )
+    const launcher = `@echo off\r\nrem __OPENCOVE_CLI_WRAPPER__\r\n"${process.execPath}" "${fixtureScript}" %*\r\nexit /b %ERRORLEVEL%\r\n`
     const launched = path.join(root, 'launched.json')
     let downloads = 0
-    const server = createServer(async (request, response) => {
+    const server = createServer((request, response) => {
       if (request.url === '/installer.ps1') {
         downloads += 1
         response.writeHead(200, { 'content-type': 'text/plain' })
-        response.end("[IO.File]::WriteAllText($env:OPENCOVE_SSH_TEST_INSTALLED, 'installed')\n")
+        response.end(`New-Item -ItemType Directory -Path $env:OPENCOVE_BIN_DIR -Force | Out-Null
+[IO.File]::WriteAllBytes((Join-Path $env:OPENCOVE_BIN_DIR 'opencove.cmd'), [Convert]::FromBase64String('${Buffer.from(launcher).toString('base64')}'))
+[IO.File]::WriteAllText($env:OPENCOVE_SSH_TEST_INSTALLED, 'installed')\n`)
         return
       }
-      const ready = await access(launched).then(
-        () => true,
-        () => false,
-      )
-      response.writeHead(ready ? 200 : 503, { 'content-type': 'application/json' })
-      response.end('{"ok":true}')
+      response.writeHead(404)
+      response.end()
     })
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
     const port = (server.address() as AddressInfo).port
@@ -53,7 +51,11 @@ windows('generated managed SSH PowerShell bootstrap', () => {
             remotePlatform: 'windows',
           },
         },
-        { reinstallRuntime: true, installerUrl: `http://127.0.0.1:${port}/installer.ps1` },
+        {
+          reinstallRuntime: true,
+          runtimeBuild: runtimeBuildFixture,
+          installerUrl: `http://127.0.0.1:${port}/installer.ps1`,
+        },
       )
       const scriptPath = path.join(root, 'bootstrap.ps1')
       await writeFile(scriptPath, script)
@@ -73,7 +75,6 @@ windows('generated managed SSH PowerShell bootstrap', () => {
           captureMaxBytes: 262_144,
           env: {
             ...process.env,
-            PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
             LOCALAPPDATA: path.join(root, 'local'),
             APPDATA: path.join(root, 'roaming'),
             OPENCOVE_SSH_TEST_INSTALLED: path.join(root, 'installed'),
@@ -94,7 +95,10 @@ windows('generated managed SSH PowerShell bootstrap', () => {
       ])
       expect(downloads).toBe(1)
       expect(await readFile(path.join(root, 'installed'), 'utf8')).toBe('installed')
-      expect(JSON.parse(await readFile(launched, 'utf8'))).toContain('--token=fixture-token')
+      expect(JSON.parse(await readFile(launched, 'utf8'))).toMatchObject({
+        token: 'fixture-token',
+        runtimeBuild: runtimeBuildFixture,
+      })
       expect(result.stdout).not.toContain('fixture-token')
     } finally {
       server.closeAllConnections()

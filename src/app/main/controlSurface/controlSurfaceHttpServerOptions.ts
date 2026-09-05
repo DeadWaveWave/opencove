@@ -19,6 +19,10 @@ export interface RegisterControlSurfaceHttpServerOptions {
   port?: number
   token?: string
   appVersion?: string | null
+  deploymentId?: string | null
+  activationId?: string | null
+  strictPersistence?: boolean
+  requestManagedShutdown?: () => void
   connectionFileName?: string
   connectionStartedBy?: 'cli' | 'desktop'
   approvedWorkspaces: ApprovedWorkspaceStore

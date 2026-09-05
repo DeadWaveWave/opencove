@@ -51,6 +51,9 @@ export function registerControlSurfaceHandlers(
     closeWebsiteNode?: (nodeId: string) => Promise<void> | void
     endpointHealth: EndpointHealthService
     appVersion: string | null
+    deploymentId?: string | null
+    instanceId?: string
+    isReady?: () => boolean
     onStatePersisted?: (state: NormalizedPersistedAppState) => Promise<void>
     restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
     terminalSpawnAdmission: TerminalSpawnAdmission
@@ -59,7 +62,12 @@ export function registerControlSurfaceHandlers(
     terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
-  registerSystemHandlers(controlSurface, { appVersion: deps.appVersion })
+  registerSystemHandlers(controlSurface, {
+    appVersion: deps.appVersion,
+    deploymentId: deps.deploymentId,
+    instanceId: deps.instanceId,
+    isReady: deps.isReady,
+  })
   registerAuthHandlers(controlSurface, { webSessions: deps.webSessions })
   registerTopologyHandlers(controlSurface, {
     topology: deps.topology,

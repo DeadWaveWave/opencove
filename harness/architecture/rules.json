@@ -19,6 +19,7 @@
     { "name": "app-preload", "patterns": ["src/app/preload/**"] },
     { "name": "app-renderer", "patterns": ["src/app/renderer/**"] },
     { "name": "app-worker", "patterns": ["src/app/worker/**"] },
+    { "name": "app-managed-runtime", "patterns": ["src/app/managedRuntime/**"] },
     { "name": "app-cli", "patterns": ["src/app/cli/**"] },
     { "name": "platform", "patterns": ["src/platform/**"] },
     { "name": "shared", "patterns": ["src/shared/**"] }
@@ -51,6 +52,7 @@
     { "from": "app-renderer", "to": ["app-renderer", "presentation-renderer", "domain", "shared"] },
     { "from": "app-worker", "to": ["app-worker", "app-main", "shared"] },
     { "from": "app-cli", "to": ["app-cli", "shared"] },
+    { "from": "app-managed-runtime", "to": ["application", "infrastructure", "shared"] },
     { "from": "platform", "to": ["platform", "shared"] },
     { "from": "shared", "to": ["shared"] }
   ],

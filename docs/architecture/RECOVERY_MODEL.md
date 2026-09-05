@@ -169,6 +169,11 @@ Close/delete:
 
 ## Managed SSH Recovery
 
+远端 runtime 的安装、维护准入、数据快照和切换记录由独立的 deployment controller 管理，
+见 [Managed SSH runtime](../runtime/MANAGED_SSH_RUNTIME.md)。一个 profile 同时只有一个活动写入
+owner；candidate 在 active 提交前关闭业务准入。有存活终端/Agent 时延期，不以 UI 在线人数
+判断空闲。旧客户端不得自动降级已经提交的新 runtime 或数据 schema。
+
 关闭 Settings/Picker 或丢失单次 HTTP 响应不取消 Worker-owned preparation。更新、删除和 shutdown
 先同步 fence operation generation，再 abort 本地 SSH child；旧 reporter、probe、exit 或 completion
 不能发布进度、恢复隧道或复活已删除记录。更新/删除期间的准入保护一直覆盖到 topology mutation

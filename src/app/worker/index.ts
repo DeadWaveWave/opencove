@@ -2,7 +2,10 @@ import { createPiHookChannel } from '../main/controlSurface/agentHook/piHookChan
 import { resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { registerControlSurfaceHttpServer } from '../main/controlSurface/controlSurfaceHttpServer'
-import { createDesktopManagedControlSurface } from './desktopManagedControlSurface'
+import {
+  createDesktopManagedControlSurface,
+  type DesktopManagedControlSurface,
+} from './desktopManagedControlSurface'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../main/controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { createApprovedWorkspaceStoreForPath } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import { createHeadlessPtyRuntime } from './headlessPtyRuntime'
@@ -27,6 +30,7 @@ import {
 } from '../../contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup'
 import { readRepeatedWorkerFlagValues, readWorkerFlagValue } from './workerCliArguments'
 import { CONTROL_SURFACE_SHUTDOWN_WATCHDOG_MS } from '../../shared/runtime/controlSurfaceShutdown'
+import { getRuntimeBuildIdentity } from '../../shared/runtime/runtimeBuildIdentity'
 
 function resolvePort(argv: string[]): number | null {
   const raw = readWorkerFlagValue(argv, '--port')
@@ -74,13 +78,17 @@ function resolveStartedBy(argv: string[]): 'cli' | 'desktop' {
 }
 
 async function main(): Promise<void> {
+  const argv = process.argv.slice(2)
+  if (argv.includes('--help') || argv.includes('-h')) {
+    process.stdout.write('OpenCove worker: use opencove worker start --help for CLI usage.\n')
+    return
+  }
   // The worker is frequently launched from GUI contexts (Desktop app, system services) where PATH
   // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
   // Web UI, and remote/headless installs.
   await hydrateCliEnvironmentForAppLaunch(true)
   reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
 
-  const argv = process.argv.slice(2)
   const userDataPath = readWorkerFlagValue(argv, '--user-data') ?? resolveWorkerUserDataDir()
   const bindHostname = readWorkerFlagValue(argv, '--hostname') ?? '127.0.0.1'
   const hostname = readWorkerFlagValue(argv, '--advertise-hostname') ?? bindHostname
@@ -97,7 +105,8 @@ async function main(): Promise<void> {
   const parentPid = resolveParentPid(argv)
   const enableWebUi = !hasFlag(argv, '--disable-web-ui')
   const startedBy = resolveStartedBy(argv)
-  const appVersion = readWorkerFlagValue(argv, '--app-version')
+  const appVersion =
+    getRuntimeBuildIdentity()?.appVersion ?? readWorkerFlagValue(argv, '--app-version')
 
   const lock = await acquireWorkerSingleInstanceLock(userDataPath)
   if (lock.status === 'existing') {
@@ -199,6 +208,12 @@ async function main(): Promise<void> {
     connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
     connectionStartedBy: startedBy,
     appVersion,
+    deploymentId: readWorkerFlagValue(argv, '--deployment-id'),
+    strictPersistence: hasFlag(argv, '--managed-runtime'),
+    activationId: readWorkerFlagValue(argv, '--activation-id'),
+    requestManagedShutdown: () => {
+      void disposeAndExit(0)
+    },
     agentHookChannels: [claudeHookChannel, codexHookChannel, piHookChannel],
     agentProviderRegistry,
   }
@@ -225,7 +240,10 @@ async function main(): Promise<void> {
   process.stderr.write(
     `[opencove-worker] ${startedBy === 'desktop' ? 'private control' : 'control surface'}: http://${info.hostname}:${info.port}/\n`,
   )
-  const desktopWebStatus = 'getWebAccessStatus' in server ? server.getWebAccessStatus() : null
+  const desktopWebStatus =
+    'getWebAccessStatus' in server
+      ? (server as DesktopManagedControlSurface).getWebAccessStatus()
+      : null
   const activeWebAddress = desktopWebStatus
     ? desktopWebStatus.state === 'active'
       ? desktopWebStatus.address

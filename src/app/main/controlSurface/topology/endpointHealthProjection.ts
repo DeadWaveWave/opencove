@@ -40,6 +40,8 @@ export function buildOverview(
       (
         {
           connected: 'Connected.',
+          update_pending: 'Runtime update is waiting for a safe switch.',
+          recovery_required: 'Runtime update needs data recovery.',
           connecting: 'Connecting…',
           disconnected: 'Not connected.',
           auth_failed: 'Authentication failed.',
@@ -112,6 +114,35 @@ export function projectManagedRuntimeFailure(snapshot: ManagedSshRuntimeSnapshot
   status: WorkerEndpointHealthStatusDto
   recommendedAction: WorkerEndpointHealthActionDto
 } {
+  if (snapshot.failureKind === 'credential_mismatch') {
+    return { status: 'auth_failed', recommendedAction: 'show_details' }
+  }
+  if (snapshot.failureKind === 'runtime_busy') {
+    return { status: 'update_pending', recommendedAction: 'retry' }
+  }
+  if (snapshot.failureKind === 'recovery_required') {
+    return { status: 'recovery_required', recommendedAction: 'show_details' }
+  }
+  if (snapshot.failureKind === 'runtime_legacy') {
+    return { status: 'update_pending', recommendedAction: 'show_details' }
+  }
+  if (
+    [
+      'build_mismatch',
+      'client_update_required',
+      'channel_conflict',
+      'conflicting_build',
+      'protocol_mismatch',
+    ].includes(snapshot.failureKind ?? '')
+  ) {
+    return { status: 'version_mismatch', recommendedAction: 'show_details' }
+  }
+  if (snapshot.failureKind === 'checksum_failed') {
+    return { status: 'runtime_corrupt', recommendedAction: 'show_details' }
+  }
+  if (snapshot.failureKind === 'platform_unsupported') {
+    return { status: 'needs_setup', recommendedAction: 'show_details' }
+  }
   if (snapshot.failureKind === 'installer_unavailable') {
     return { status: 'installer_unavailable', recommendedAction: 'retry' }
   }
@@ -124,5 +155,7 @@ export function projectManagedRuntimeFailure(snapshot: ManagedSshRuntimeSnapshot
   if (snapshot.failureKind === 'runtime_start_failed') {
     return { status: 'error', recommendedAction: 'retry' }
   }
-  return { status: 'tunnel_failed', recommendedAction: 'repair_tunnel' }
+  return snapshot.failureKind === 'tunnel_failed'
+    ? { status: 'tunnel_failed', recommendedAction: 'repair_tunnel' }
+    : { status: 'error', recommendedAction: 'retry' }
 }

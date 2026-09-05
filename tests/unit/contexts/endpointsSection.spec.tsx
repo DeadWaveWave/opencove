@@ -30,7 +30,7 @@ describe('EndpointsSection', () => {
       expect(invoke).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'endpoint.repair',
-          payload: { endpointId: 'local', action: 'retry' },
+          payload: { endpointId: 'local', action: 'retry', runtimeBuild: null },
         }),
       )
     })

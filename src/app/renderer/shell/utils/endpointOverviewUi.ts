@@ -61,11 +61,13 @@ export function getEndpointStatusTone(status: WorkerEndpointHealthStatusDto): En
     case 'installer_unavailable':
     case 'runtime_corrupt':
     case 'runtime_unmanaged':
+    case 'recovery_required':
     case 'version_mismatch':
     case 'persistence_failed':
     case 'error':
       return 'danger'
     case 'needs_setup':
+    case 'update_pending':
       return 'warning'
     case 'disconnected':
     default:

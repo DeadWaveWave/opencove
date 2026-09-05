@@ -5,6 +5,8 @@ export const enCommonRemoteEndpoints = {
     managed_ssh: 'Over SSH',
   },
   status: {
+    update_pending: 'Update waiting',
+    recovery_required: 'Recovery required',
     connected: 'Connected',
     connecting: 'Connecting',
     disconnected: 'Disconnected',
@@ -32,6 +34,10 @@ export const enCommonRemoteEndpoints = {
     verifying_connection: 'Verifying the connection…',
   },
   summary: {
+    update_pending:
+      'The update is prepared. Finish active work or arrange a safe stop, then retry.',
+    recovery_required:
+      'The update could not finish. Data and the recovery snapshot were retained; inspect the deployment details before retrying.',
     local: 'Runs on this device.',
     connected: 'Ready. You can browse folders or bind a remote path.',
     connecting: 'OpenCove is connecting to this remote machine.',

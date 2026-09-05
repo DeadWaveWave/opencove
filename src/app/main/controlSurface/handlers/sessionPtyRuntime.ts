@@ -17,6 +17,7 @@ import type { AgentLaunchArtifactScope } from '../../../../contexts/agent/applic
 export type TerminalAgentReexecRuntimeInput = TerminalAgentReexecInput & { operationId: string }
 
 export interface ControlSurfacePtyRuntime {
+  isIdle?: () => boolean
   listProfiles?: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: {
     cwd: string

@@ -2,6 +2,7 @@ import { setImmediate as flush } from 'node:timers/promises'
 import { describe, expect, it, vi } from 'vitest'
 import { EndpointOverviewProjectionOwner } from '../../../src/contexts/topology/presentation/renderer/EndpointOverviewProjectionOwner'
 import type { WorkerEndpointOverviewDto } from '../../../src/shared/contracts/dto'
+import { runtimeBuildFixture } from '../../helpers/runtimeBuild'
 
 function overview(
   phase: 'installing_runtime' | 'starting_runtime' | null = 'installing_runtime',
@@ -71,6 +72,21 @@ function harness() {
 }
 
 describe('EndpointOverviewProjectionOwner', () => {
+  it('sends the requesting renderer build through the intermediate worker boundary', async () => {
+    vi.stubGlobal('__OPENCOVE_RUNTIME_BUILD__', runtimeBuildFixture)
+    const h = harness()
+    try {
+      await h.owner.prepareEndpoint({ endpointId: 'managed-1' })
+      expect(h.prepare).toHaveBeenCalledWith({
+        endpointId: 'managed-1',
+        runtimeBuild: runtimeBuildFixture,
+      })
+    } finally {
+      h.owner.dispose()
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('shares initial observation, polls only active operations and stops on final result', async () => {
     const h = harness()
     const release = h.owner.acquire()
