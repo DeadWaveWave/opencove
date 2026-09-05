@@ -3,24 +3,24 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { createNativeHookProvider } from './fixtures/create-native-hook-provider'
 
 export function registerAgentHookRelayTests() {
   for (const provider of ['codex', 'claude-code'] as const) {
     test(`${provider} executes Electron hooks through the real launch path and retains keyboard input`, async () => {
-      // The Windows fixture is a .cmd shim, unlike the native provider executable. Keep its
-      // own path literal for cmd /c trust discovery; production relay paths remain generated.
-      const root = await mkdtemp(
-        join(tmpdir(), process.platform === 'win32' ? 'opencove-hook-' : 'OpenCove hook 路径 '),
-      )
-      const executable = join(root, process.platform === 'win32' ? 'provider.cmd' : 'provider')
+      const root = await mkdtemp(join(tmpdir(), 'OpenCove hook 路径 '))
       const fixture = resolve('tests/e2e/fixtures/agent-hook-provider.mjs')
       const quote = (value: string) => `'${value.replaceAll("'", `'"'"'`)}'`
-      await writeFile(
-        executable,
+      const executable =
         process.platform === 'win32'
-          ? `@echo off\r\n"${process.execPath}" "${fixture}" ${provider} %*\r\n`
-          : `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(fixture)} ${provider} "$@"\n`,
-      )
+          ? await createNativeHookProvider(root, fixture, provider)
+          : join(root, 'provider')
+      if (process.platform !== 'win32') {
+        await writeFile(
+          executable,
+          `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(fixture)} ${provider} "$@"\n`,
+        )
+      }
       await chmod(executable, 0o700)
       const { electronApp, window } = await launchApp({
         env: {
