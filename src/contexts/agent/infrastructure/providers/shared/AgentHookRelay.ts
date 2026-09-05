@@ -65,9 +65,21 @@ function createWindowsLauncher(runtime: string, relay: string): string {
     '$start.Arguments = ($nativeArgs | ForEach-Object { Quote-NativeArgument $_ }) -join " "',
     '$start.UseShellExecute = $false',
     '$start.CreateNoWindow = $true',
+    // Electron is a GUI-subsystem executable on Windows; inherited console stdin is not reliable.
+    '$start.RedirectStandardInput = $true',
     '$start.EnvironmentVariables["ELECTRON_RUN_AS_NODE"] = "1"',
     '$child = [System.Diagnostics.Process]::Start($start)',
-    'try { $child.WaitForExit(); $exitCode = $child.ExitCode } finally { $child.Dispose() }',
+    'try {',
+    '  $copy = [Console]::OpenStandardInput().CopyToAsync($child.StandardInput.BaseStream)',
+    '  $inputClosed = $false',
+    '  while (-not $child.WaitForExit(20)) {',
+    '    if (-not $inputClosed -and $copy.IsCompleted) {',
+    '      $child.StandardInput.Close()',
+    '      $inputClosed = $true',
+    '    }',
+    '  }',
+    '  $exitCode = $child.ExitCode',
+    '} finally { $child.Dispose() }',
     'exit $exitCode',
   ].join('\n')
 }

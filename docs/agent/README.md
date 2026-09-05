@@ -76,7 +76,9 @@ The receiver owns credentials and validation; the launch artifact scope owns tem
   a launch contract. A hook must never enter the desktop application's startup path.
 - Codex command hooks, its legacy notify argument vector, and Claude exec hooks share the same relay
   launcher. POSIX uses `env`; Windows uses a private PowerShell launcher with explicit native argument
-  quoting. Paths and notify JSON are data, including spaces, Unicode, quotes and shell metacharacters.
+  quoting and an explicit byte stream for stdin (the Windows Electron executable cannot rely on
+  inherited console input). Paths and notify JSON are data, including spaces, Unicode, quotes and
+  shell metacharacters.
 - Telemetry fails open with no decision output: the relay exits within its 2-second runtime budget,
   including unclosed stdin or an unresponsive receiver. The HTTP request has a 1.5-second timeout;
   command hooks also have a 3-second provider timeout. Transport failure never writes a terminal or

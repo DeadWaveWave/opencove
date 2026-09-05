@@ -229,7 +229,7 @@ async function expectPrivateCleanup(harness: Awaited<ReturnType<typeof createHar
   }
   const relayMatch = args
     .join('\n')
-    .match(/[A-Za-z]:\\[^'"\n]*opencove-codex-hook-[^'"\n]*\\relay\.mjs/iu)
+    .match(/[A-Za-z]:\\[^'"\n]*opencove-codex-hook-[^'"\n]*\\launch\.ps1/iu)
   if (harness.command === 'codex') {
     expect(relayMatch).toBeTruthy()
     await expect(access(relayMatch![0])).rejects.toMatchObject({ code: 'ENOENT' })
