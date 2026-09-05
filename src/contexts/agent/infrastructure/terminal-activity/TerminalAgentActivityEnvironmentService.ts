@@ -76,6 +76,8 @@ export class TerminalAgentActivityEnvironmentService {
     environment.PATH = prependUniquePath(currentPath, assets.shimDirectory, this.path)
     environment.OPENCOVE_TERMINAL_AGENT_ENDPOINT = reservation.endpoint
     environment.OPENCOVE_TERMINAL_AGENT_TOKEN = reservation.token
+    // This is a new terminal scope, not a tool subprocess of the Agent that launched OpenCove.
+    environment.OPENCOVE_PI_STATUS_OWNER_PID = ''
     environment.OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY = assets.shimDirectory
 
     const isSupportedShell =

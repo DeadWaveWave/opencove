@@ -411,7 +411,7 @@ async function readJsonBody(request: IncomingMessage): Promise<Record<string, un
 }
 
 function normalizeProvider(value: unknown): TerminalAgentShimProvider | null {
-  return value === 'claude-code' || value === 'codex' ? value : null
+  return value === 'claude-code' || value === 'codex' || value === 'pi' ? value : null
 }
 
 function normalizeNonEmptyString(value: unknown): string | null {

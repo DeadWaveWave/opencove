@@ -8,10 +8,12 @@ import type {
   TerminalSessionStateEvent,
 } from '../../contracts/dto'
 
+import type { AgentSessionIdentityObservation } from '../../contracts/dto/agentSessionIdentityObservation'
+
 const MAX_HOOK_BODY_BYTES = 256 * 1024
 
 export interface AgentHookEnvelope {
-  state: 'working' | 'waiting' | 'done' | null
+  state: 'working' | 'waiting' | 'standby' | 'done' | null
 }
 
 export interface AgentHookInstallResult {
@@ -43,15 +45,31 @@ export interface TerminalAgentHookContext {
   invocationId: string
   generation: number
   isCurrent: () => boolean
-  observe?: (observation: {
-    identityAuthority: 'provider_session_start'
-    resumeSessionId: string
-  }) => boolean
+  observe?: (observation: AgentSessionIdentityObservation) => boolean
+}
+
+export interface AgentHookObservationOwner<TEnvelope extends AgentHookEnvelope> {
+  accept: (envelope: TEnvelope) => {
+    state: AgentHookEnvelope['state']
+    identity: AgentSessionIdentityObservation | null
+    metadata: Omit<TerminalSessionMetadataEvent, 'sessionId' | 'terminalAgentActivity'>
+    stateMetadata?: Pick<TerminalSessionStateEvent, 'piConversation'>
+  } | null
+  onCommittedObservation?: (
+    sessionId: string,
+    envelope: TEnvelope,
+    isCurrent: () => boolean,
+  ) => void
+  dispose: () => void
 }
 
 interface CredentialRecord<TEnvelope extends AgentHookEnvelope> {
+  observationOwner: AgentHookObservationOwner<TEnvelope> | null
   sessionId: string | null
-  pending: TEnvelope[]
+  pending: {
+    envelope: TEnvelope
+    observation: ReturnType<AgentHookObservationOwner<TEnvelope>['accept']>
+  }[]
   providerSessionId: string | null
   terminalActivity: TerminalAgentHookContext | null
 }
@@ -89,6 +107,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
   resolveSessionIdentity?: (
     envelope: TEnvelope,
   ) => { hookEventName: string; providerSessionId: string } | null
+  createObservationOwner?: () => AgentHookObservationOwner<TEnvelope>
   prepare?: () => Promise<AgentHookInstallResult>
   port?: number
   createHttpServer?: typeof createServer
@@ -120,17 +139,38 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     sessionId: string,
     envelope: TEnvelope,
     credential: CredentialRecord<TEnvelope>,
+    observation: ReturnType<AgentHookObservationOwner<TEnvelope>['accept']>,
   ): void => {
     const terminalActivity = credential.terminalActivity
     if (terminalActivity && !terminalActivity.isCurrent()) {
       return
     }
-    if (envelope.state !== null) {
+    if (credential.observationOwner) {
+      if (!observation) {
+        return
+      }
+      if (
+        observation.identity &&
+        terminalActivity?.observe &&
+        !terminalActivity.observe(observation.identity)
+      ) {
+        return
+      }
+      credential.observationOwner.onCommittedObservation?.(
+        sessionId,
+        envelope,
+        () => !disposed && (terminalActivity?.isCurrent() ?? true),
+      )
+      metadataListeners.forEach(listener => listener({ sessionId, ...observation.metadata }))
+    }
+    const state = observation ? observation.state : envelope.state
+    if (state !== null) {
       const event: TerminalSessionStateEvent = {
         sessionId,
-        state: envelope.state === 'done' ? 'standby' : envelope.state,
+        state: state === 'done' ? 'standby' : state,
         source: options.source,
         hookInstallState: installState,
+        ...observation?.stateMetadata,
       }
       listeners.forEach(listener => listener(event))
     }
@@ -173,11 +213,19 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     if (!credential) {
       return false
     }
-    if (!credential.sessionId) {
-      credential.pending.push(envelope)
+    const observation = credential.observationOwner?.accept(envelope) ?? null
+    if (credential.observationOwner && !observation) {
       return true
     }
-    emit(credential.sessionId, envelope, credential)
+    if (!credential.sessionId) {
+      // Only complete snapshots can be coalesced; preserve legacy event ordering/identity.
+      if (credential.observationOwner) {
+        credential.pending.length = 0
+      }
+      credential.pending.push({ envelope, observation })
+      return true
+    }
+    emit(credential.sessionId, envelope, credential, observation)
     return true
   }
 
@@ -289,6 +337,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
 
       const token = randomBytes(32).toString('base64url')
       const credential: CredentialRecord<TEnvelope> = {
+        observationOwner: options.createObservationOwner?.() ?? null,
         sessionId: null,
         pending: [],
         providerSessionId: null,
@@ -305,6 +354,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
           tokenBySessionId.delete(credential.sessionId)
         }
         credentials.delete(token)
+        credential.observationOwner?.dispose()
         credential.pending.length = 0
       }
       return {
@@ -319,7 +369,11 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
           credential.sessionId = sessionId
           credential.terminalActivity = terminalActivity ?? null
           tokenBySessionId.set(sessionId, token)
-          credential.pending.splice(0).forEach(envelope => emit(sessionId, envelope, credential))
+          credential.pending
+            .splice(0)
+            .forEach(({ envelope, observation }) =>
+              emit(sessionId, envelope, credential, observation),
+            )
         },
         dispose,
       }
@@ -338,6 +392,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         return
       }
       tokenBySessionId.delete(sessionId)
+      credentials.get(token)?.observationOwner?.dispose()
       credentials.delete(token)
     },
     getInstallState: () => installState,
@@ -347,6 +402,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         return
       }
       disposed = true
+      credentials.forEach(credential => credential.observationOwner?.dispose())
       credentials.clear()
       tokenBySessionId.clear()
       listeners.clear()

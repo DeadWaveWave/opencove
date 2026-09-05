@@ -92,7 +92,7 @@ async function completeWindows(planPath) {
 async function prepare(provider, executablePath, invocationId, userArgs) {
   const endpoint = process.env.OPENCOVE_TERMINAL_AGENT_ENDPOINT;
   const token = process.env.OPENCOVE_TERMINAL_AGENT_TOKEN;
-  if (!endpoint || !token) return null;
+  if (!endpoint || !token || process.env.OPENCOVE_PI_STATUS_OWNER_PID) return null;
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -160,10 +160,10 @@ function normalizeCase(value) { return process.platform === 'win32' ? value.toLo
 function ownShimDirectory() { return process.env.OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY || ''; }
 function normalizeProvider(value) {
   if (value === 'claude' || value === 'claude-code') return 'claude-code';
-  if (value === 'codex') return 'codex';
+  if (value === 'codex' || value === 'pi') return value;
   throw new Error('Unsupported terminal Agent provider.');
 }
-function providerCommand(provider) { return provider === 'claude-code' ? 'claude' : 'codex'; }
+function providerCommand(provider) { return provider === 'claude-code' ? 'claude' : provider; }
 function validEnv(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value) &&
     Object.values(value).every((entry) => typeof entry === 'string');
@@ -180,7 +180,7 @@ function signalExitCode(signal) {
 export function createPosixShimScript(
   runtimeExecutable: string,
   launcherPath: string,
-  providerCommand: 'claude' | 'codex',
+  providerCommand: 'claude' | 'codex' | 'pi',
 ): string {
   return [
     '#!/bin/sh',
@@ -194,7 +194,7 @@ export function createPosixShimScript(
 export function createPowerShellShimScript(
   runtimeExecutable: string,
   launcherPath: string,
-  providerCommand: 'claude' | 'codex',
+  providerCommand: 'claude' | 'codex' | 'pi',
   planDirectory: string,
 ): string {
   const runtime = quotePowerShell(runtimeExecutable)

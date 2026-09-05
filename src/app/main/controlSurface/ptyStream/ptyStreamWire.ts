@@ -162,6 +162,7 @@ export function sendPtyState(ws: WebSocket, event: TerminalSessionStateEvent): v
 export function sendPtySessionMetadata(ws: WebSocket, payload: TerminalSessionMetadataEvent): void {
   sendJson(ws, {
     type: 'metadata',
+    ...(payload.piSnapshot ? { piSnapshot: payload.piSnapshot } : {}),
     sessionId: payload.sessionId,
     resumeSessionId: payload.resumeSessionId,
     ...(payload.agentProvider !== undefined ? { agentProvider: payload.agentProvider } : {}),

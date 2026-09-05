@@ -48,7 +48,7 @@ function normalizeActivityFence(value: unknown): TerminalAgentActivityFence | nu
   const hasSourceRevision = value.sourceRevision !== undefined
   const hasRevision = value.revision !== undefined
   if (
-    (provider !== 'claude-code' && provider !== 'codex') ||
+    (provider !== 'claude-code' && provider !== 'codex' && provider !== 'pi') ||
     !invocationId ||
     !isPositiveSafeInteger(generation) ||
     (phase !== 'active' && phase !== 'exited') ||

@@ -1,3 +1,5 @@
+import { projectPtyStreamAgentMetadata } from '../../shared/runtime/terminalSessionMetadataProjection'
+import { isAgentHookStateSource } from '../../shared/runtime/agentHookStateSource'
 import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
@@ -12,10 +14,7 @@ function normalizeSessionId(value: string): string | null {
 }
 
 function normalizeSource(value: TerminalSessionStateEvent['source']): TerminalSessionStateSource {
-  return value === 'launch' ||
-    value === 'session_file' ||
-    value === 'claude_hook' ||
-    value === 'codex_hook'
+  return value === 'launch' || value === 'session_file' || isAgentHookStateSource(value)
     ? value
     : 'session_file'
 }
@@ -54,13 +53,14 @@ export class TerminalEventReplayCache {
     if (!sessionId) {
       return
     }
-    this.metadataBySessionId.set(sessionId, {
-      ...event,
-      sessionId,
-      ...(event.terminalAgentActivity
-        ? { terminalAgentActivity: { ...event.terminalAgentActivity } }
-        : {}),
-    })
+    const projected = projectPtyStreamAgentMetadata(
+      this.metadataBySessionId.get(sessionId) ?? null,
+      event,
+    )
+    if (!projected) {
+      return
+    }
+    this.metadataBySessionId.set(sessionId, { ...projected, sessionId })
     this.touch(sessionId)
   }
 

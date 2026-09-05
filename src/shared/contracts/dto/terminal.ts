@@ -196,13 +196,15 @@ export interface TerminalResyncEvent {
 
 export type TerminalSessionState = 'working' | 'waiting' | 'standby'
 
-export type AgentHookStateSource = 'claude_hook' | 'codex_hook'
+export type AgentHookStateSource = 'claude_hook' | 'codex_hook' | 'pi_hook'
 
 export type TerminalSessionStateSource = 'launch' | 'session_file' | AgentHookStateSource
 
 export type AgentHookInstallState = 'installed' | 'partial' | 'not_installed' | 'error' | 'skipped'
 
 export interface TerminalSessionStateEvent {
+  piConversation?: { pid: number; revision: number }
+  observationUnavailable?: boolean
   sessionId: string
   state: TerminalSessionState
   source?: TerminalSessionStateSource
@@ -211,7 +213,7 @@ export interface TerminalSessionStateEvent {
   observedAtMs?: number
 }
 
-export type TerminalAgentShimProvider = 'claude-code' | 'codex'
+export type TerminalAgentShimProvider = 'claude-code' | 'codex' | 'pi'
 
 export interface TerminalAgentActivitySnapshot {
   provider: TerminalAgentShimProvider
@@ -219,7 +221,7 @@ export interface TerminalAgentActivitySnapshot {
   generation: number
   phase: 'active' | 'exited'
   observedAtMs: number
-  identityAuthority: 'provider_session_start' | null
+  identityAuthority: 'provider_session_start' | 'provider_session_snapshot' | null
   sourceRevision?: number
   revision?: number
 }
@@ -259,6 +261,8 @@ export interface TerminalAgentReexecResult {
 }
 
 export interface TerminalSessionMetadataEvent {
+  /** Validated, launch-scoped native Pi observation; runtime-only, not workspace persistence. */
+  piSnapshot?: import('./piAgentSnapshot').PiAgentSnapshot
   sessionId: string
   resumeSessionId: string | null
   agentProvider?: AgentProviderId

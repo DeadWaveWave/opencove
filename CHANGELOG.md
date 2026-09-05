@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 🚀 Added
+- Agent: monitor native Pi activity in ordinary terminals and managed Agent nodes, with launch-scoped hooks, stale-event protection, and verified conversation tracking across reload, new sessions, resume, and fork. (#389)
 ---
 
 ## [0.3.1] - 2026-09-05

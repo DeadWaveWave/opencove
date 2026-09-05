@@ -5,6 +5,7 @@ import type { AgentLaunchMode, AgentProviderId } from '../../../../shared/contra
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 
 export async function prepareAgentLaunch(options: {
+  profileId?: string | null
   agentFullAccess: boolean
   cwd: string
   executablePathOverride: string | null
@@ -26,6 +27,7 @@ export async function prepareAgentLaunch(options: {
   const managedLaunch = await createManagedAgentLaunchPlan(
     options.registry.require(options.provider),
     {
+      profileId: options.profileId,
       mode: options.mode,
       prompt: options.mode === 'new' ? options.prompt : '',
       model: options.model,

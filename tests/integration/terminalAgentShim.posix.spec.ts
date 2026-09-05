@@ -173,73 +173,90 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
     },
   )
 
-  it('survives bash rc PATH replacement and preserves real binary, args, and exit code', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'opencove-terminal-shim-'))
-    roots.push(root)
-    const home = join(root, 'home')
-    const realBin = join(root, 'real bin')
-    await mkdir(home)
-    await mkdir(realBin)
-    const bashRcPath = join(home, '.bashrc')
-    const bashRc = `export PATH=${JSON.stringify(`${realBin}:/usr/bin:/bin`)}\nexport USER_RC_SENTINEL=loaded\n`
-    await writeFile(bashRcPath, bashRc)
-    const realClaude = join(realBin, 'claude')
-    await writeFile(
-      realClaude,
-      '#!/bin/sh\nprintf "REAL=%s\\n" "$0"\nprintf "ARGS=<%s><%s>\\n" "$1" "$2"\nprintf "RC=%s\\n" "$USER_RC_SENTINEL"\nprintf "ELECTRON_RUN_AS_NODE=%s\\n" "$ELECTRON_RUN_AS_NODE"\nexit 37\n',
-    )
-    await chmod(realClaude, 0o700)
+  it.each(['claude', 'pi'])(
+    'survives bash rc PATH replacement and preserves %s binary, args, and exit code',
+    async command => {
+      const root = await mkdtemp(join(tmpdir(), 'opencove-terminal-shim-'))
+      roots.push(root)
+      const home = join(root, 'home')
+      const realBin = join(root, 'real bin')
+      await mkdir(home)
+      await mkdir(realBin)
+      const bashRcPath = join(home, '.bashrc')
+      const bashRc = `export PATH=${JSON.stringify(`${realBin}:/usr/bin:/bin`)}\nexport USER_RC_SENTINEL=loaded\n`
+      await writeFile(bashRcPath, bashRc)
+      const realAgent = join(realBin, command)
+      await writeFile(
+        realAgent,
+        '#!/bin/sh\nprintf "REAL=%s\\n" "$0"\nprintf "ARGS=<%s><%s>\\n" "$1" "$2"\nprintf "RC=%s\\n" "$USER_RC_SENTINEL"\nprintf "ELECTRON_RUN_AS_NODE=%s\\n" "$ELECTRON_RUN_AS_NODE"\nexit 37\n',
+      )
+      await chmod(realAgent, 0o700)
 
-    const gateway = new TerminalAgentActivityGateway({
-      registry: new TerminalAgentInvocationRegistry(),
-      resolveHookInjection: () => ({
-        prepareHookInjection: async () => ({
-          args: ['--injected'],
-          env: {},
-          hookInstallState: 'installed',
+      const registry = new TerminalAgentInvocationRegistry()
+      const gateway = new TerminalAgentActivityGateway({
+        registry,
+        resolveHookInjection: () => ({
+          prepareHookInjection: async () => ({
+            args: ['--injected'],
+            env: {},
+            hookInstallState: 'installed',
+          }),
         }),
-      }),
-    })
-    const assets = new TerminalAgentTelemetryAssetStore({
-      runtimeExecutable: process.execPath,
-      platform: process.platform,
-    })
-    const service = new TerminalAgentActivityEnvironmentService({
-      assets,
-      gateway,
-      inheritedPath: process.env.PATH ?? '',
-      inheritedShell: '/bin/bash',
-      platform: process.platform,
-    })
-    const prepared = await service.prepare({
-      args: [],
-      command: '/bin/bash',
-      cwd: root,
-      environment: { ...process.env, HOME: home },
-      interactiveShell: true,
-    })
-    prepared.commit('pty-1')
+      })
+      const assets = new TerminalAgentTelemetryAssetStore({
+        runtimeExecutable: process.execPath,
+        platform: process.platform,
+      })
+      const service = new TerminalAgentActivityEnvironmentService({
+        assets,
+        gateway,
+        inheritedPath: process.env.PATH ?? '',
+        inheritedShell: '/bin/bash',
+        platform: process.platform,
+      })
+      const prepared = await service.prepare({
+        args: [],
+        command: '/bin/bash',
+        cwd: root,
+        environment: { ...process.env, HOME: home },
+        interactiveShell: true,
+      })
+      prepared.commit('pty-1')
 
-    const result = await run(prepared.command, prepared.args, {
-      cwd: root,
-      env: prepared.environment,
-      input: "claude 'user arg'\nexit\n",
-    })
+      const result = await run(prepared.command, prepared.args, {
+        cwd: root,
+        env: prepared.environment,
+        input: `${command} 'user arg'\nexit\n`,
+      })
 
-    expect(result.stdout).toContain(`REAL=${realClaude}`)
-    expect(result.stdout).toContain('ARGS=<--injected><user arg>')
-    expect(result.stdout).toContain('RC=loaded')
-    expect(result.stdout).toContain('ELECTRON_RUN_AS_NODE=\n')
-    expect(result).toMatchObject({ code: 37, signal: null })
-    expect(await readFile(bashRcPath, 'utf8')).toBe(bashRc)
-    const published = await assets.ensure()
-    expect((await stat(published.rootDirectory)).mode & 0o777).toBe(0o700)
-    expect(existsSync(join(published.shimDirectory, 'pi'))).toBe(false)
-    expect(existsSync(join(published.shimDirectory, 'kimi'))).toBe(false)
-    await prepared.dispose()
-    await assets.dispose()
-    await gateway.dispose()
-  })
+      expect(result.stdout).toContain(`REAL=${realAgent}`)
+      expect(result.stdout).toContain('ARGS=<--injected><user arg>')
+      expect(result.stdout).toContain('RC=loaded')
+      expect(result.stdout).toContain('ELECTRON_RUN_AS_NODE=\n')
+      expect(result).toMatchObject({ code: 37, signal: null })
+      expect(await readFile(bashRcPath, 'utf8')).toBe(bashRc)
+      const published = await assets.ensure()
+      expect((await stat(published.rootDirectory)).mode & 0o777).toBe(0o700)
+      expect(existsSync(join(published.shimDirectory, 'pi'))).toBe(true)
+      expect(existsSync(join(published.shimDirectory, 'kimi'))).toBe(false)
+      if (command === 'pi') {
+        const revision = registry.list().revision
+        const nested = await run('pi', ['nested arg'], {
+          cwd: root,
+          env: {
+            ...prepared.environment,
+            PATH: `${published.shimDirectory}:${realBin}:/usr/bin:/bin`,
+            OPENCOVE_PI_STATUS_OWNER_PID: '123',
+          },
+        })
+        expect(nested.stdout).toContain('ARGS=<nested arg><>')
+        expect(registry.list().revision).toBe(revision)
+      }
+      await prepared.dispose()
+      await assets.dispose()
+      await gateway.dispose()
+    },
+  )
 
   it('waits for hook planning before launching the real provider', async () => {
     const root = await mkdtemp(join(tmpdir(), 'opencove-terminal-shim-planning-'))

@@ -16,6 +16,34 @@ afterEach(() => {
 })
 
 describe('Pi and Kimi session discovery', () => {
+  it('resolves an exact native Pi session file outside configured discovery directories', async () => {
+    const directory = await fs.mkdtemp(join(tmpdir(), 'opencove-pi-native-path-'))
+    const filePath = join(directory, 'session.jsonl')
+    try {
+      await fs.writeFile(
+        filePath,
+        JSON.stringify({
+          type: 'session',
+          version: 3,
+          id: 'pi-native',
+          cwd: join(directory, 'original-project'),
+          timestamp: new Date().toISOString(),
+        }) + '\n',
+      )
+      await expect(
+        resolveSessionFilePath({
+          provider: 'pi',
+          cwd: '/different-current-project',
+          sessionId: filePath,
+          startedAtMs: Date.now(),
+          timeoutMs: 0,
+        }),
+      ).resolves.toBe(filePath)
+    } finally {
+      await fs.rm(directory, { recursive: true, force: true })
+    }
+  })
+
   it('locates Pi v3 JSONL sessions by durable cwd/id metadata', async () => {
     const root = await fs.mkdtemp(join(tmpdir(), 'opencove-pi-sessions-'))
     const cwd = join(root, 'workspace')

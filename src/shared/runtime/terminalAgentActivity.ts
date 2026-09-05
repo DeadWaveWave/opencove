@@ -21,7 +21,7 @@ export function normalizeTerminalAgentActivitySnapshot(
   const sourceRevision = value.sourceRevision
   const revision = value.revision
   if (
-    (provider !== 'claude-code' && provider !== 'codex') ||
+    (provider !== 'claude-code' && provider !== 'codex' && provider !== 'pi') ||
     invocationId.length === 0 ||
     typeof generation !== 'number' ||
     !Number.isSafeInteger(generation) ||
@@ -30,7 +30,13 @@ export function normalizeTerminalAgentActivitySnapshot(
     typeof observedAtMs !== 'number' ||
     !Number.isFinite(observedAtMs) ||
     observedAtMs < 0 ||
-    (identityAuthority !== null && identityAuthority !== 'provider_session_start') ||
+    (identityAuthority !== null &&
+      identityAuthority !== 'provider_session_start' &&
+      !(
+        provider === 'pi' &&
+        identityAuthority === 'provider_session_snapshot' &&
+        hasSourceRevision
+      )) ||
     hasSourceRevision !== hasRevision ||
     (hasSourceRevision && (!isRevision(sourceRevision) || !isRevision(revision)))
   ) {

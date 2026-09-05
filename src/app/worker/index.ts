@@ -1,3 +1,4 @@
+import { createPiHookChannel } from '../main/controlSurface/agentHook/piHookChannel'
 import { resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { registerControlSurfaceHttpServer } from '../main/controlSurface/controlSurfaceHttpServer'
@@ -160,7 +161,9 @@ async function main(): Promise<void> {
         }
       : {}),
   })
+  const piHookChannel = createPiHookChannel()
   const agentHookChannels = {
+    pi: piHookChannel,
     'claude-code': claudeHookChannel,
     codex: codexHookChannel,
   }
@@ -191,7 +194,7 @@ async function main(): Promise<void> {
     connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
     connectionStartedBy: startedBy,
     appVersion,
-    agentHookChannels: [claudeHookChannel, codexHookChannel],
+    agentHookChannels: [claudeHookChannel, codexHookChannel, piHookChannel],
     agentProviderRegistry,
   }
   const server = await (async () => {

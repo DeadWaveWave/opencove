@@ -15,9 +15,9 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 - Agent launch can run in a Space mount via `session.launchAgentInMount`.
 - Agent session restore participates in worker `session.prepareOrRevive`.
 - Canvas nodes store provider/model/prompt/session metadata; PTY output and presentation belong to Worker runtime.
-- Local Claude and Codex launches use a Worker-owned loopback hook channel for authoritative
-  `working` / `waiting` / `standby` observations. Other providers and remote hosts continue to use
-  the session-file detector.
+- Claude, Codex, and Pi launches use Worker-owned loopback hook channels for authoritative
+  `working` / `waiting` / `standby` observations. Other providers use session-file detection.
+  Remote workers own their own local credentials and observation sources.
 - Terminal-command Agent adoption through PATH shims supports POSIX bash/zsh and native Windows
   processes. On Windows, WSL profiles and `wsl.exe` launches intentionally fail open to the exact
   untouched spawn: host loopback credentials, host paths, and PowerShell scripts are not injected
@@ -27,12 +27,64 @@ The Worker invocation registry is runtime-only. It assigns generations, monotoni
 aggregate revisions, retains the current invocation plus at most eight still-live superseded
 invocations and bounded completion tombstones, and lists its owner baseline. `PtyStreamHub` retains
 the latest validated transport metadata projection for the query-only renderer baseline. A verified
-provider session identity is immutable within its invocation and remains on both active and exited
-baseline events. An explicit resume invocation records its target from the authenticated shim arguments and
+Claude/Codex provider session identity is immutable within its invocation and remains on both active and exited
+baseline events. Pi uses an explicitly ordered `provider_session_snapshot` authority for in-process
+conversation replacement, without changing the invocation generation. An explicit resume invocation records its target from the authenticated shim arguments and
 accepts only the same provider identity at `SessionStart`; a mismatch cannot silently rebind durable
 conversation truth. Invocation exit fences later hook activity but neither exits the PTY nor clears
 the separately owned provider conversation binding. The loopback gateway owns only authentication, hook
 artifacts, and cleanup; no invocation registry state is persisted.
+
+## Pi Native Observation Contract
+
+Both ordinary-terminal `pi` commands and managed Pi Agent nodes inject a private, launch-scoped
+`-e` extension through the provider contribution. No global Pi configuration is changed. Native
+Windows and POSIX shims share the injection planner; WSL retains its no-host-injection boundary.
+
+The extension sends complete snapshots to authenticated `POST /hooks/pi`: process ID, monotonically
+increasing sequence, conversation revision, exact session ID/file, persistence evidence, and state.
+`PiAgentObservationOwner` rejects foreign processes and reordered snapshots before either identity
+or state escapes. Sequence and conversation revision survive same-process extension reload. Child
+Agents inherit an owner-PID guard and cannot adopt the parent terminal's invocation.
+
+An allocated session path is not a verified resume binding. A nonempty persisted session file can
+establish the exact resume path, including custom session directories. Missing files and transport
+failure do not revoke an existing binding. Explicit conversation replacement (`/new`, resume,
+fork) and ephemeral mode can revoke the previous binding; an unpersisted new conversation must
+not silently resume the old conversation after a cold restart. Claude/Codex identity fences remain
+unchanged. Invocation exit, extension shutdown, and turn completion are separate facts.
+
+`agent_settled` supplies completion; a deferred affirmative `isIdle` check after `agent_end` is the
+compatibility path. Blocking extension UI supplies waiting. Working snapshots renew the existing
+lease every 60 seconds; quiet states do not poll. Delivery permits one active filesystem/network
+operation and one latest pending snapshot, with a one-second HTTP deadline. Shutdown disposes
+requests/timers without emitting a fabricated completion. Monitoring never waits on Pi's event path.
+
+A credential-owned `PiSessionObservationWatcher` watches only the exact current transcript, not
+cwd/time neighbours. Conversation-tagged observations fence stale fallback/replay; unavailable
+files invalidate fallback evidence rather than manufacturing standby. Metadata projection is shared
+across Worker, preload replay, and Renderer so discovery cannot overwrite native conversation truth.
+Runtime snapshots are not persisted into workspace state; only the accepted resume binding is durable.
+
+### Pi validation
+
+`workspace-canvas.pi-hook.spec.ts` executes the injected extension against a deterministic Pi API
+fixture; it is not evidence of real Pi or real-model parity. The opt-in acceptance test instead uses
+an installed Pi and its authenticated model configuration, verifies a persisted assistant reply, and
+keeps its new transcripts in a disposable directory. It disables project trust, resource discovery,
+and built-in tools without changing global settings:
+
+```bash
+pnpm build
+OPENCOVE_TEST_REAL_PI=1 OPENCOVE_REAL_PI_EXECUTABLE="$(command -v pi)" \
+  OPENCOVE_E2E_RETRIES=0 OPENCOVE_E2E_DISABLE_CRASH_FALLBACK=1 \
+  pnpm exec playwright test tests/e2e/workspace-canvas.pi-hook.real.spec.ts --project electron
+```
+
+The real-model test requires POSIX and network access and may incur model usage. It waits for the
+rendered Pi editor as well as the native startup snapshot before typing; native `session_start`
+alone does not establish input readiness. It does not establish older-Pi, Windows, Linux, or full
+reference lifecycle parity.
 
 ## Main Owners
 
@@ -45,7 +97,7 @@ artifacts, and cleanup; no invocation registry state is persisted.
 | launch intent | agent/session launch path |
 | PTY process | Worker PTY runtime |
 | ordinary-terminal invocation generation, exit fence, and live baseline | Worker `TerminalAgentInvocationRegistry` |
-| local Claude/Codex hook receivers and credentials | Worker Control Surface lifecycle |
+| native hook receivers and credentials | Worker Control Surface lifecycle |
 | agent run-state observation | Renderer run-state arbiter over Worker observations |
 | terminal presentation | Worker stream hub |
 | node placement and frame | workspace context |

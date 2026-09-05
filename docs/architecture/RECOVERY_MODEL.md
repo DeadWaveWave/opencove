@@ -37,6 +37,21 @@ UI projection：
 - selection、hover、focus。
 - 临时恢复提示、loading shell、recovering overlay。
 
+## Pi Conversation Identity
+
+Pi 的 invocation lifetime 与 conversation lifetime 不同：`/new`、resume、fork 会在同一进程内
+更换会话。经过 launch token、PID、单调 sequence/conversation revision 验证的 native snapshot
+才有权推进绑定；Claude/Codex 的 immutable identity 与 explicit-resume fence 不变。
+
+已分配的 ID/路径不是可恢复证据。只有确认落盘的当前 transcript 才建立 verified resume path；
+文件缺失、传输失败、extension shutdown 和 PTY exit 均不得清空它。明确切换至尚未落盘的新会话，
+或进入 ephemeral mode，会撤销旧绑定，避免冷恢复悄悄续旧会话。旧 JSONL watcher 和旧 replay
+不得覆盖当前 native binding；完整快照和 invocation completion 使用各自的排序屏障。
+
+Pi sequence、PID、conversation revision、运行状态和 watcher 都是 runtime-only。SQLite 仍只保存
+现有 Agent/Terminal binding，不增加另一份运行态恢复源；旧数据缺少 native 字段时继续按现有
+verified-binding 规则恢复。
+
 ## Current Recovery Path
 
 Desktop 正常启动要求 Home Worker endpoint 可用。冷启动 runtime 恢复通过 worker `session.prepareOrRevive` contract：

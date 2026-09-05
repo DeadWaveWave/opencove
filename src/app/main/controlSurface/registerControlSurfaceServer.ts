@@ -1,3 +1,4 @@
+import { createPiHookChannel } from './agentHook/piHookChannel'
 import { app, shell, webContents } from 'electron'
 import { fileURLToPath } from 'node:url'
 import type {
@@ -39,7 +40,9 @@ export function registerControlSurfaceServer(deps?: {
     deps?.ptyRuntime ?? createPtyRuntime({ processEngine: createMainTerminalProcessEngine() })
   const claudeHookChannel = createClaudeHookChannel({})
   const codexHookChannel = createCodexHookChannel({})
+  const piHookChannel = createPiHookChannel()
   const agentHookChannels = {
+    pi: piHookChannel,
     'claude-code': claudeHookChannel,
     codex: codexHookChannel,
   }
@@ -68,7 +71,7 @@ export function registerControlSurfaceServer(deps?: {
     desktopPtyStateSink: sendPtyStateToDesktopWindows,
     desktopPtyMetadataSink: sendPtyMetadataToDesktopWindows,
     closeWebsiteNode: async nodeId => await closeWebsiteWindowNodeAcrossManagers(nodeId),
-    agentHookChannels: [claudeHookChannel, codexHookChannel],
+    agentHookChannels: [claudeHookChannel, codexHookChannel, piHookChannel],
     agentProviderRegistry,
   })
 }

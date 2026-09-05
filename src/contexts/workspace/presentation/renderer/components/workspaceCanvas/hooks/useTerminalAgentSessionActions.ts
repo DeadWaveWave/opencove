@@ -20,7 +20,12 @@ function resolveActivityFence(node: Node<TerminalNodeData>): TerminalAgentActivi
   }
   const overlay = node.data.agentOverlay
   const activity = overlay?.activity
-  if (!activity || (overlay.provider !== 'claude-code' && overlay.provider !== 'codex')) {
+  if (
+    !activity ||
+    (overlay.provider !== 'claude-code' &&
+      overlay.provider !== 'codex' &&
+      overlay.provider !== 'pi')
+  ) {
     return null
   }
   return {

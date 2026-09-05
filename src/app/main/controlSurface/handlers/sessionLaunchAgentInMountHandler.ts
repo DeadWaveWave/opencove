@@ -283,6 +283,7 @@ export function registerSessionLaunchAgentInMountHandler(
       const resumeSessionId = mode === 'resume' ? (payload.resumeSessionId ?? null) : null
       const { launchCommand, managedLaunch, testStub } = await prepareAgentLaunch({
         registry: deps.agentProviderRegistry,
+        profileId: agentSettings.defaultTerminalProfileId,
         provider,
         cwd,
         mode,
@@ -419,6 +420,7 @@ export function registerSessionLaunchAgentInMountHandler(
       )
 
       startAgentSessionStateWatcherIfEnabled({
+        hookInstallState: managedLaunch.plan.hookInstallState,
         ptyRuntime: deps.ptyRuntime,
         sessionId,
         provider,

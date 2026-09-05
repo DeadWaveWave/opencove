@@ -49,6 +49,7 @@ export interface AgentLaunchPlan {
 }
 
 export interface CreateAgentLaunchPlanCommand {
+  readonly profileId?: string | null
   readonly agentFullAccess: boolean
   readonly artifacts: AgentLaunchArtifactRegistrar
   readonly executablePathOverride?: string | null

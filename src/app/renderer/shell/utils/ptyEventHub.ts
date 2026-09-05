@@ -1,3 +1,11 @@
+import {
+  createListenerMap,
+  dispatchEvent,
+  hasListeners,
+  subscribeGlobal,
+  subscribeSession,
+} from './ptyEventHub.listeners'
+import { projectPtyStreamAgentMetadata } from '@shared/runtime/terminalSessionMetadataProjection'
 import type {
   TerminalDataEvent,
   TerminalExitEvent,
@@ -17,11 +25,6 @@ interface PtyEventSource {
   onResync?: (listener: (event: TerminalResyncEvent) => void) => UnsubscribeFn
   onState?: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn
   onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => UnsubscribeFn
-}
-
-type ListenerMap<Event> = {
-  global: Set<(event: Event) => void>
-  bySessionId: Map<string, Set<(event: Event) => void>>
 }
 
 export interface PtyEventHub {
@@ -55,68 +58,6 @@ export interface PtyEventHub {
   refreshAgentRunStateAuthority: () => void
   getAgentRunStateDebug: ReturnType<typeof createAgentRunStateArbiterOwner>['getDebugState']
   dispose: () => void
-}
-
-function createListenerMap<Event>(): ListenerMap<Event> {
-  return {
-    global: new Set(),
-    bySessionId: new Map(),
-  }
-}
-
-function dispatchEvent<Event extends { sessionId: string }>(
-  listeners: ListenerMap<Event>,
-  event: Event,
-): void {
-  listeners.global.forEach(listener => {
-    listener(event)
-  })
-
-  const sessionListeners = listeners.bySessionId.get(event.sessionId)
-  sessionListeners?.forEach(listener => {
-    listener(event)
-  })
-}
-
-function hasListeners<Event>(listeners: ListenerMap<Event>): boolean {
-  return listeners.global.size > 0 || listeners.bySessionId.size > 0
-}
-
-function subscribeGlobal<Event>(
-  listeners: ListenerMap<Event>,
-  listener: (event: Event) => void,
-): UnsubscribeFn {
-  listeners.global.add(listener)
-  return () => {
-    listeners.global.delete(listener)
-  }
-}
-
-function subscribeSession<Event>(
-  listeners: ListenerMap<Event>,
-  sessionId: string,
-  listener: (event: Event) => void,
-): UnsubscribeFn {
-  const normalizedSessionId = sessionId.trim()
-  if (normalizedSessionId.length === 0) {
-    return () => undefined
-  }
-
-  const sessionListeners = listeners.bySessionId.get(normalizedSessionId) ?? new Set()
-  sessionListeners.add(listener)
-  listeners.bySessionId.set(normalizedSessionId, sessionListeners)
-
-  return () => {
-    const current = listeners.bySessionId.get(normalizedSessionId)
-    if (!current) {
-      return
-    }
-
-    current.delete(listener)
-    if (current.size === 0) {
-      listeners.bySessionId.delete(normalizedSessionId)
-    }
-  }
 }
 
 export function createPtyEventHub(
@@ -209,8 +150,15 @@ export function createPtyEventHub(
     }
 
     unsubscribeMetadataSource = source.onMetadata(event => {
-      latestMetadataBySessionId.set(event.sessionId, event)
-      dispatchEvent(metadataListeners, event)
+      const projected = projectPtyStreamAgentMetadata(
+        latestMetadataBySessionId.get(event.sessionId) ?? null,
+        event,
+      )
+      if (!projected) {
+        return
+      }
+      latestMetadataBySessionId.set(event.sessionId, projected)
+      dispatchEvent(metadataListeners, projected)
     })
   }
 

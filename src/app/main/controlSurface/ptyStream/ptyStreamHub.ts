@@ -234,6 +234,10 @@ export class PtyStreamHub {
     this.broadcastExit(sessionId, session.seq, exitCode)
   }
 
+  public hasNativePiObservation(sessionId: string): boolean {
+    return this.sessions.get(sessionId)?.agentMetadata?.piSnapshot !== undefined
+  }
+
   public listSessions(): ListSessionsResult {
     return buildSessionList({ sessions: this.sessions.values(), clients: this.clients })
   }

@@ -26,6 +26,7 @@ export function createApplyTerminalSessionMetadata(options: {
             workspaces: previous,
             sessionId: event.sessionId,
             resumeSessionId: normalizeResumeSessionId(event.resumeSessionId),
+            piSnapshot: event.piSnapshot,
           })
       didChange = result.didChange
       durableDidChange = result.durableDidChange

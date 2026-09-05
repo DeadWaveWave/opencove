@@ -1,3 +1,5 @@
+import { normalizePiStateObservationMetadata } from '@shared/runtime/piConversation'
+import { isAgentHookStateSource } from '../../../shared/runtime/agentHookStateSource'
 export type BrowserPtyListenerMap<TEvent> = Set<(event: TEvent) => void>
 
 export function normalizeBrowserPtyAttachAfterSeq(value: unknown): number | null {
@@ -25,13 +27,20 @@ export function normalizeBrowserPtySessionState(
 export function normalizeBrowserPtyStateMetadata(
   record: Record<string, unknown>,
 ): Partial<
-  Pick<TerminalSessionStateEvent, 'source' | 'hookInstallState' | 'degraded' | 'observedAtMs'>
+  Pick<
+    TerminalSessionStateEvent,
+    | 'source'
+    | 'hookInstallState'
+    | 'degraded'
+    | 'observedAtMs'
+    | 'piConversation'
+    | 'observationUnavailable'
+  >
 > {
   const source: TerminalSessionStateSource | null =
     record.source === 'launch' ||
     record.source === 'session_file' ||
-    record.source === 'claude_hook' ||
-    record.source === 'codex_hook'
+    isAgentHookStateSource(record.source)
       ? record.source
       : null
   const hookInstallState: AgentHookInstallState | null =
@@ -49,6 +58,7 @@ export function normalizeBrowserPtyStateMetadata(
       ? record.observedAtMs
       : null
   return {
+    ...normalizePiStateObservationMetadata(record),
     ...(source ? { source } : {}),
     ...(hookInstallState ? { hookInstallState } : {}),
     ...(typeof record.degraded === 'boolean' ? { degraded: record.degraded } : {}),
