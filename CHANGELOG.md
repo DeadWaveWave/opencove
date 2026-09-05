@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 🐛 Fixed
+
+- Terminal: confirm actual Windows Console dimensions before committing a resize, and offer retry when confirmation fails, so Desktop and Worker terminals fit their windows with calibration disabled. (#382)
+- Settings: clarify disabled terminal calibration when no local adjustment is saved, in English and Chinese. (#382)
+
 ---
 
 ## [0.3.0] - 2026-09-04
