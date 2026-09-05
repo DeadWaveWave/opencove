@@ -1,5 +1,6 @@
+import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { applyUiLanguage } from '../../../src/app/renderer/i18n'
 import { EndpointsSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/EndpointsSection'
@@ -96,3 +97,7 @@ describe('EndpointsSection SSH config picker', () => {
     expect(screen.getByTestId('settings-endpoints-ssh-config-open')).toBeDisabled()
   })
 })
+
+function render(ui: React.ReactNode) {
+  return renderUi(ui, { wrapper: EndpointOverviewProvider })
+}

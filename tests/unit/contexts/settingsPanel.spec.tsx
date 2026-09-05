@@ -1,5 +1,6 @@
+import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   AGENT_PROVIDERS,
@@ -491,3 +492,7 @@ describe('SettingsPanel', () => {
     expect(writeText.mock.calls[0]?.[0]).toContain('external-agent-codex')
   })
 })
+
+function render(ui: React.ReactNode) {
+  return renderUi(ui, { wrapper: EndpointOverviewProvider })
+}

@@ -1,5 +1,6 @@
+import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import { SettingsPanel } from '../../../src/contexts/settings/presentation/renderer/SettingsPanel'
@@ -93,3 +94,7 @@ describe('SettingsPanel browser settings', () => {
     })
   })
 })
+
+function render(ui: React.ReactNode) {
+  return renderUi(ui, { wrapper: EndpointOverviewProvider })
+}

@@ -1,0 +1,180 @@
+.remote-endpoint-status {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--cove-border-subtle);
+  background: color-mix(in srgb, var(--cove-field) 68%, var(--cove-window-surface));
+}
+
+.remote-endpoint-status--compact {
+  padding: 10px;
+  gap: 7px;
+}
+
+.remote-endpoint-status--success {
+  border-color: color-mix(in srgb, var(--cove-success-border) 70%, var(--cove-border-subtle));
+  background: color-mix(in srgb, var(--cove-success-surface) 52%, var(--cove-window-surface));
+}
+
+.remote-endpoint-status--info {
+  border-color: color-mix(in srgb, var(--cove-info-border) 70%, var(--cove-border-subtle));
+  background: color-mix(in srgb, var(--cove-info-surface) 52%, var(--cove-window-surface));
+}
+
+.remote-endpoint-status--warning {
+  border-color: color-mix(
+    in srgb,
+    var(--cove-overlay-warning-pill-border) 72%,
+    var(--cove-border-subtle)
+  );
+  background: color-mix(
+    in srgb,
+    var(--cove-overlay-warning-pill-surface) 48%,
+    var(--cove-window-surface)
+  );
+}
+
+.remote-endpoint-status--danger {
+  border-color: color-mix(
+    in srgb,
+    var(--cove-overlay-danger-status-border) 72%,
+    var(--cove-border-subtle)
+  );
+  background: color-mix(
+    in srgb,
+    var(--cove-overlay-danger-status-surface) 46%,
+    var(--cove-window-surface)
+  );
+}
+
+.remote-endpoint-status__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.remote-endpoint-status__title-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.remote-endpoint-status__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.remote-endpoint-status__title {
+  font-size: calc(15px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  color: var(--cove-text);
+  line-height: 1.2;
+}
+
+.remote-endpoint-status--compact .remote-endpoint-status__title {
+  font-size: calc(14px * var(--cove-ui-font-scale));
+}
+
+.remote-endpoint-status--compact .remote-endpoint-status__meta,
+.remote-endpoint-status--compact .remote-endpoint-status__summary,
+.remote-endpoint-status--compact .remote-endpoint-status__detail {
+  font-size: calc(11.5px * var(--cove-ui-font-scale));
+}
+
+.remote-endpoint-status__meta {
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.45;
+  color: var(--cove-text-muted);
+  word-break: break-word;
+}
+
+.remote-endpoint-status__summary {
+  margin: 0;
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  line-height: 1.5;
+  color: var(--cove-text);
+}
+
+.remote-endpoint-status__details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.remote-endpoint-status__detail {
+  font-size: calc(11.5px * var(--cove-ui-font-scale));
+  line-height: 1.45;
+  color: var(--cove-text-faint);
+}
+
+.remote-endpoint-status__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.remote-endpoint-status__badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.remote-endpoint-status__badge--success {
+  border: 1px solid var(--cove-success-border);
+  background: var(--cove-success-surface);
+  color: var(--cove-success);
+}
+
+.remote-endpoint-status__badge--info {
+  border: 1px solid var(--cove-info-border);
+  background: var(--cove-info-surface);
+  color: var(--cove-info);
+}
+
+.remote-endpoint-status__badge--warning {
+  border: 1px solid var(--cove-overlay-warning-pill-border);
+  background: var(--cove-overlay-warning-pill-surface);
+  color: var(--cove-text);
+}
+
+.remote-endpoint-status__badge--danger {
+  border: 1px solid var(--cove-overlay-danger-status-border);
+  background: var(--cove-overlay-danger-status-surface);
+  color: var(--cove-overlay-danger-status-text);
+}
+
+.remote-endpoint-status__badge--neutral {
+  border: 1px solid var(--cove-border-subtle);
+  background: color-mix(in srgb, var(--cove-field) 72%, transparent);
+  color: var(--cove-text-muted);
+}
+
+.remote-endpoint-status__spinner {
+  display: inline-block;
+  vertical-align: middle;
+  margin-inline-end: 6px;
+  animation: cove-endpoint-progress-spin 1s linear infinite;
+}
+
+@keyframes cove-endpoint-progress-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .remote-endpoint-status__spinner {
+    animation: none;
+  }
+}

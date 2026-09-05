@@ -27,6 +27,10 @@ export function getEndpointStatusSummary(
   t: TranslateFn,
   overview: WorkerEndpointOverviewDto,
 ): string {
+  if (overview.operation) {
+    return t(`common.remoteEndpoints.phase.${overview.operation.phase}`)
+  }
+
   if (overview.status === 'persistence_failed') {
     return t('common.remoteEndpoints.summary.persistence_failed')
   }
@@ -135,6 +139,9 @@ export function getEndpointAccessTarget(endpoint: WorkerEndpointDto): string | n
 }
 
 export function getEndpointTechnicalDetails(overview: WorkerEndpointOverviewDto): string[] {
+  if (overview.operation) {
+    return []
+  }
   return overview.details.filter(detail => {
     const trimmed = detail.trim()
     if (trimmed.length === 0) {

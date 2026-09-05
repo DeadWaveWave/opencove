@@ -8,6 +8,7 @@ import {
   useRendererMemoryTrend,
 } from '@app/renderer/performanceDiagnostics/rendererDiagnosticsSampling'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
+import { EndpointOverviewProvider } from './components/EndpointOverviewProvider'
 import { AppHeader } from './components/AppHeader'
 import { AppShellBootBoundary } from './components/AppShellBootBoundary'
 import { AppShellOverlays } from './components/AppShellOverlays'
@@ -299,7 +300,7 @@ export default function App(): React.JSX.Element {
 
   return (
     <AppShellBootBoundary isBootReady={isPersistReady}>
-      <>
+      <EndpointOverviewProvider>
         <div
           className={`app-shell ${isPrimarySidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}${isPrimarySidebarPeekOpen ? ' app-shell--sidebar-peek' : ''}`}
         >
@@ -485,7 +486,7 @@ export default function App(): React.JSX.Element {
           whatsNew={whatsNew}
         />
         <WorkspaceDirectoryPickerBridge />
-      </>
+      </EndpointOverviewProvider>
     </AppShellBootBoundary>
   )
 }

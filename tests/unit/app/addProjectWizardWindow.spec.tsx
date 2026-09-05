@@ -1,5 +1,6 @@
+import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AddProjectWizardWindow } from '../../../src/app/renderer/shell/components/AddProjectWizardWindow'
 import type { WorkerEndpointOverviewDto } from '../../../src/shared/contracts/dto'
@@ -234,15 +235,14 @@ describe('AddProjectWizardWindow', () => {
   it('retries only the fresh overview query when registration succeeded before refresh failed', async () => {
     const freshOverview = createRemoteOverview()
     let registered = false
-    let queriesAfterRegistration = 0
+    let overviewAvailable = false
     invoke.mockImplementation(async ({ id }: { id: string }) => {
       if (id === 'endpoint.overview.list') {
         if (!registered) {
           return { endpoints: [] }
         }
 
-        queriesAfterRegistration += 1
-        return { endpoints: queriesAfterRegistration >= 3 ? [freshOverview] : [] }
+        return { endpoints: overviewAvailable ? [freshOverview] : [] }
       }
       if (id === 'endpoint.registerManagedSsh') {
         registered = true
@@ -269,6 +269,7 @@ describe('AddProjectWizardWindow', () => {
     await screen.findByText(
       'The remote machine was added, but its current status could not be refreshed. Try again.',
     )
+    overviewAvailable = true
     fireEvent.click(screen.getByTestId('settings-endpoints-register-submit'))
 
     await waitFor(() => {
@@ -284,3 +285,7 @@ describe('AddProjectWizardWindow', () => {
     )
   })
 })
+
+function render(ui: React.ReactNode) {
+  return renderUi(ui, { wrapper: EndpointOverviewProvider })
+}

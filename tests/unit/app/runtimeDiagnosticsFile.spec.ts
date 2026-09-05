@@ -6,7 +6,7 @@ import {
   appendBoundedRuntimeDiagnosticsLine,
   RUNTIME_DIAGNOSTICS_BACKUP_SUFFIX,
   RUNTIME_DIAGNOSTICS_MAX_BYTES,
-} from '../../../src/app/main/diagnostics/runtimeDiagnosticsFile'
+} from '../../../src/platform/persistence/runtimeDiagnosticsFile'
 
 const temporaryDirectories: string[] = []
 

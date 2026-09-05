@@ -1,3 +1,4 @@
+import { ManagedSshEndpointOperationOwner } from '../../../src/contexts/topology/application/ManagedSshEndpointOperationOwner'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -156,7 +157,11 @@ describe('control surface managed SSH update', () => {
       host: 'old.example.com',
       remotePort: 41_000,
     })
-    const prepare = vi.fn<ManagedSshEndpointRuntime['prepare']>(async access => {
+    let prepared!: () => void
+    const preparationObserved = new Promise<void>(resolve => {
+      prepared = resolve
+    })
+    const execute = vi.fn<ManagedSshEndpointRuntime['execute']>(async ({ access }) => {
       const durable = JSON.parse(
         await readFile(join(userDataPath, 'worker-topology.json'), 'utf8'),
       ) as { endpoints: Array<{ managedSsh?: { host?: string; remotePort?: number } }> }
@@ -165,22 +170,13 @@ describe('control surface managed SSH update', () => {
         remotePort: 42_000,
       })
       events.push(`prepare:${access.ssh.host}:${String(access.ssh.remotePort)}`)
-      return {
-        connection: null,
-        snapshot: {
-          endpointId: access.endpointId,
-          status: 'idle',
-          localPort: null,
-          lastError: null,
-          stderrTail: '',
-        },
-        bootstrapRan: false,
-      }
+      prepared()
+      return { status: 'ready' }
     })
     const managedRuntime: ManagedSshEndpointRuntime = {
       resolveConnection: async () => null,
       disposeEndpoint: async () => undefined,
-      prepare,
+      execute,
       getSnapshot: () => null,
       getSshAvailability: async () => ({
         toolId: 'ssh',
@@ -195,7 +191,15 @@ describe('control surface managed SSH update', () => {
     const controlSurface = createControlSurface()
     registerTopologyHandlers(controlSurface, {
       topology,
-      endpointHealth: createEndpointHealthService({ topology, managedRuntime }),
+      endpointHealth: createEndpointHealthService({
+        topology,
+        managedRuntime,
+        operations: new ManagedSshEndpointOperationOwner({
+          preparationPort: managedRuntime,
+          createOperationId: () => 'update-op',
+          now: Date.now,
+        }),
+      }),
       approvedWorkspaces: {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,
@@ -214,13 +218,17 @@ describe('control surface managed SSH update', () => {
     })
 
     expect(result.ok).toBe(true)
+    await preparationObserved
     expect(events).toEqual(['dispose:old.example.com:41000', 'prepare:new.example.com:42000'])
-    expect(prepare).toHaveBeenCalledWith(
+    expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        endpointId: registered.endpoint.endpointId,
-        ssh: expect.objectContaining({ host: 'new.example.com', remotePort: 42_000 }),
+        access: expect.objectContaining({
+          endpointId: registered.endpoint.endpointId,
+          ssh: expect.objectContaining({ host: 'new.example.com', remotePort: 42_000 }),
+        }),
+        restartTunnel: true,
+        reinstallRuntime: false,
       }),
-      { restartTunnel: true, allowBootstrap: true },
     )
   })
 })
