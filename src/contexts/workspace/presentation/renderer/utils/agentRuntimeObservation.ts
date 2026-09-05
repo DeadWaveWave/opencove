@@ -8,11 +8,23 @@ export interface AgentRuntimeObservationInput {
   degraded?: boolean
 }
 
+export function canObserveAgentRunState(data: TerminalNodeData): boolean {
+  if (data.kind === 'terminal') {
+    return Boolean(data.agentOverlay && data.agentOverlay.activity?.phase !== 'exited')
+  }
+  return (
+    data.kind === 'agent' &&
+    data.status !== 'failed' &&
+    data.status !== 'stopped' &&
+    data.status !== 'exited'
+  )
+}
+
 export function projectAgentRuntimeObservation(
   data: TerminalNodeData,
   input: AgentRuntimeObservationInput,
 ): { data: TerminalNodeData; durableDidChange: boolean } | null {
-  if (data.status === 'failed' || data.status === 'stopped' || data.status === 'exited') {
+  if (!canObserveAgentRunState(data)) {
     return null
   }
 
@@ -23,6 +35,7 @@ export function projectAgentRuntimeObservation(
   const degraded = input.degraded === true
   const nextObservation = { status: nextStatus, source, hookInstallState, degraded }
   if (
+    (data.kind !== 'terminal' || data.agentOverlay?.status === nextStatus) &&
     data.agentRuntimeObservation?.status === nextStatus &&
     data.agentRuntimeObservation.source === source &&
     data.agentRuntimeObservation.hookInstallState === hookInstallState &&
@@ -31,7 +44,13 @@ export function projectAgentRuntimeObservation(
     return null
   }
   return {
-    data: { ...data, agentRuntimeObservation: nextObservation },
+    data: {
+      ...data,
+      ...(data.kind === 'terminal' && data.agentOverlay
+        ? { agentOverlay: { ...data.agentOverlay, status: nextStatus } }
+        : {}),
+      agentRuntimeObservation: nextObservation,
+    },
     durableDidChange: false,
   }
 }

@@ -108,6 +108,10 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
           ...node.data,
           terminalAgentBinding: nextBinding,
           agentOverlay: nextOverlay,
+          agentRuntimeObservation:
+            activity.phase === 'exited' || (previousActivity && !isSameInvocation)
+              ? null
+              : (node.data.agentRuntimeObservation ?? null),
         },
       }
     })

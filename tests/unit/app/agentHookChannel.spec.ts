@@ -32,6 +32,55 @@ function postJson(endpoint: string, token: string, payload: unknown): Promise<nu
 }
 
 describe('shared agent hook channel contract', () => {
+  it('delivers real Claude lifecycle identity without fabricating or resetting a turn', async () => {
+    const channel = createClaudeHookChannel({})
+    const reservation = await channel.reserveSpawn()
+    const states: unknown[] = []
+    const metadata: unknown[] = []
+    channel.onState(event => states.push(event))
+    channel.onMetadata(event => metadata.push(event))
+    const send = (hook_event_name: string, source?: string) =>
+      postJson(channel.getEndpoint()!, reservation.env!.OPENCOVE_CLAUDE_HOOK_TOKEN!, {
+        session_id: 'real-session',
+        transcript_path: '/tmp/real-session.jsonl',
+        cwd: '/tmp',
+        hook_event_name,
+        source,
+      })
+    try {
+      // SessionStart may arrive while the launcher is still committing the reservation.
+      expect(await send('SessionStart', 'startup')).toBe(204)
+      reservation.commit('pty-real', {
+        provider: 'claude-code',
+        invocationId: 'inv-1',
+        generation: 1,
+        isCurrent: () => true,
+      })
+      expect(states).toEqual([])
+      expect(metadata).toHaveLength(1)
+      expect(await send('UserPromptSubmit')).toBe(204)
+      expect(states).toEqual([expect.objectContaining({ state: 'working', source: 'claude_hook' })])
+      expect(await send('SessionStart', 'compact')).toBe(204)
+      expect(await send('SessionStart', 'startup')).toBe(204)
+      expect(states).toHaveLength(1)
+      expect(await send('Stop')).toBe(204)
+      expect(states).toHaveLength(2)
+      expect(states[1]).toMatchObject({ state: 'standby' })
+      expect(await send('SessionStart', 'resume')).toBe(204)
+      expect(states).toHaveLength(2)
+      expect(metadata).toHaveLength(1)
+      expect(await send('SessionEnd')).toBe(204)
+      expect(states[2]).toMatchObject({ state: 'standby' })
+      // /clear and /resume can end a conversation without ending the invocation.
+      expect(metadata).toHaveLength(1)
+      expect(metadata[0]).toMatchObject({ terminalAgentActivity: { phase: 'active' } })
+      expect(await send('UserPromptSubmit')).toBe(204)
+      expect(states[3]).toMatchObject({ state: 'working' })
+    } finally {
+      await channel.dispose()
+    }
+  })
+
   it('binds terminal identity only from a current authenticated SessionStart', async () => {
     const homeDirectory = await mkdtemp(join(tmpdir(), 'opencove-agent-hook-identity-'))
     roots.push(homeDirectory)
@@ -77,7 +126,7 @@ describe('shared agent hook channel contract', () => {
         },
       },
     ])
-    expect(states).toHaveLength(1)
+    expect(states).toHaveLength(0)
 
     await expect(
       postJson(channel.getEndpoint()!, token, {
@@ -96,7 +145,7 @@ describe('shared agent hook channel contract', () => {
       }),
     ).resolves.toBe(204)
     expect(metadata).toHaveLength(1)
-    expect(states).toHaveLength(3)
+    expect(states).toHaveLength(0)
 
     const nextReservation = await channel.reserveSpawn()
     const nextToken = nextReservation.env?.OPENCOVE_CLAUDE_HOOK_TOKEN ?? ''
@@ -153,7 +202,7 @@ describe('shared agent hook channel contract', () => {
         claudeSessionId: 'claude-session-1',
       }),
     ).resolves.toBe(204)
-    expect(states).toHaveLength(5)
+    expect(states).toHaveLength(0)
     await channel.dispose()
   })
 

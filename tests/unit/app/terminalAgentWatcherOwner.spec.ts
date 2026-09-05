@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createTerminalAgentWatcherOwner } from '../../../src/app/renderer/shell/utils/terminalAgentWatcherOwner'
+import { createTerminalAgentWorkspace } from '../contexts/terminalAgentExit.testSupport'
 
 function createWorkspace(options: { overlay: boolean; provider?: 'claude-code' | 'codex' }) {
   const provider = options.provider ?? 'codex'
@@ -50,6 +51,55 @@ function createWorkspace(options: { overlay: boolean; provider?: 'claude-code' |
 }
 
 describe('terminal agent watcher owner', () => {
+  it.each(['claude-code', 'codex'] as const)(
+    'detaches %s on authenticated exit even with a resumable binding, then reattaches on reentry',
+    async provider => {
+      const invoke = vi.fn(async () => undefined)
+      const owner = createTerminalAgentWatcherOwner({ invoke })
+      const active = createTerminalAgentWorkspace(provider, true)
+      const exited = createTerminalAgentWorkspace(provider, true)
+      exited.nodes[0].data.agentOverlay!.activity!.phase = 'exited'
+
+      owner.sync([active])
+      await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1))
+      owner.sync([exited])
+      await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2))
+      expect(invoke).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 'session.detachAgentStateWatcher' }),
+      )
+      owner.sync([exited])
+      expect(invoke).toHaveBeenCalledTimes(2)
+      owner.sync([active])
+      await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(3))
+      expect(invoke).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 'session.attachAgentStateWatcher' }),
+      )
+      owner.dispose()
+    },
+  )
+
+  it('disposes an in-flight attach after invocation exit without losing its binding', async () => {
+    const barrier = Promise.withResolvers<void>()
+    const invoke = vi.fn(async request => {
+      if (request.id === 'session.attachAgentStateWatcher') {
+        await barrier.promise
+      }
+    })
+    const owner = createTerminalAgentWatcherOwner({ invoke })
+    const workspace = createTerminalAgentWorkspace('codex', true)
+    owner.sync([workspace])
+    workspace.nodes[0].data.agentOverlay!.activity!.phase = 'exited'
+    owner.sync([workspace])
+    expect(invoke).toHaveBeenCalledTimes(1)
+    barrier.resolve()
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2))
+    expect(invoke).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'session.detachAgentStateWatcher' }),
+    )
+    expect(workspace.nodes[0].data.terminalAgentBinding?.resumeSessionId).toBe('resume-1')
+    owner.dispose()
+  })
+
   it('INV-3 attaches once and disposes on drop-back and node removal', async () => {
     const invoke = vi.fn(async () => undefined)
     const owner = createTerminalAgentWatcherOwner({ invoke, now: () => 1_723_456_789_000 })

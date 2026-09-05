@@ -6,7 +6,7 @@ import { TerminalNode } from '../TerminalNode'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
 import type { NodeFrame, TerminalNodeData } from '../../types'
 import { isResumeSessionBindingVerified } from '../../utils/agentResumeBinding'
-import { isAgentTreatedNode } from '../../utils/terminalAgentOverlay'
+import { resolveAgentPresentation } from '../../utils/agentPresentation'
 import {
   findLinkedTaskTitleForAgent,
   providerTitlePrefix,
@@ -88,7 +88,8 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null
-  const isAgentTreated = isAgentTreatedNode({ data })
+  const presentation = resolveAgentPresentation(data)
+  const isAgentTreated = presentation.isAgent
   const liveOverlayProvider =
     data.agentOverlay?.activity?.phase === 'exited' ? null : (data.agentOverlay?.provider ?? null)
   const resolvedTerminalProvider =
@@ -148,6 +149,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
             : null
       }
       kind={data.kind}
+      isAgentPresentation={isAgentTreated}
       labelColor={labelColor}
       agentLaunchMode={data.kind === 'agent' ? (data.agent?.launchMode ?? null) : null}
       agentExecutionDirectory={
@@ -174,10 +176,10 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       terminalThemeMode="sync-with-ui"
       isSelected={selected === true}
       isDragging={dragging === true}
-      status={data.agentRuntimeObservation?.status ?? data.agentOverlay?.status ?? data.status}
-      agentStateSource={data.agentRuntimeObservation?.source ?? null}
-      agentHookInstallState={data.agentRuntimeObservation?.hookInstallState ?? null}
-      agentStateDegraded={data.agentRuntimeObservation?.degraded === true}
+      status={presentation.status}
+      agentStateSource={presentation.observation?.source ?? null}
+      agentHookInstallState={presentation.observation?.hookInstallState ?? null}
+      agentStateDegraded={presentation.observation?.degraded === true}
       directoryMismatch={
         data.kind === 'agent' &&
         data.agent?.expectedDirectory &&

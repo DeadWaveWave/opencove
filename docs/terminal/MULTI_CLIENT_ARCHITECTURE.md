@@ -89,6 +89,29 @@ revisions remains transport-compatible; renderer ordering compares generation fi
 revision fence for a higher generation, and uses observation time only between same-generation
 legacy events.
 
+Agent chrome, action availability and sidebar status share the renderer's
+`resolveAgentPresentation` projection. A lifecycle callback is not evidence that a node is an Agent.
+For an authenticated exited invocation, all Agent chrome, toolbar actions and sidebar membership
+disappear, even with a verified conversation binding. The runtime overlay retains its exit fence to
+reject delayed metadata, and persistence retains the binding as recovery information, not live Agent
+identity. A later invocation restores the active Agent surface. Historical capability predicates such
+as `isAgentTreatedNode` must not substitute for the presentation projection. Exit and replacement by a newer generation invalidate the previous run-state
+observation. Exited invocations reject hook/file run-state writes and detach their state watchers;
+re-entry attaches a fresh watcher. A dedicated Agent node similarly displays its PTY terminal status
+(`exited`, `failed`, or `stopped`) ahead of any stale working observation. None of these presentation
+rules erase resume authority, change the durable node kind, or replace the shell PTY.
+
+Ctrl+C cancellation and alternate-screen exit alone do not terminate an authenticated invocation.
+Only the Worker registry's accepted completion moves it to `exited`; the same rule applies to both
+Claude Code and Codex terminal adoption. Claude `SessionStart` delivers identity, not a turn-state
+transition: new invocations start in standby, while `UserPromptSubmit`/tool hooks indicate work and
+`Stop` indicates completion. In particular, startup, resume, clear and compact must not fabricate work
+or reset an existing turn. Idle/authentication notifications likewise do not imply task activity.
+Claude `SessionEnd` may also occur on `/clear` or `/resume`; it never substitutes for Worker-owned
+invocation completion. The hook channel accepts metadata-only events without emitting fake state.
+Other providers use their existing dedicated Agent PTY
+lifecycle and the same presentation projection, not fabricated terminal-adoption events.
+
 An active terminal overlay exposes the same copy-last-message, reload, list-session, and
 switch-session actions as a durable Agent node. These actions read provider and resume identity from
 the terminal binding, start time from the runtime overlay, and working directory from the terminal.
@@ -402,6 +425,14 @@ The goal is stable visual parity without letting multiple renderers fight for te
 - `tests/unit/contexts/TerminalAgentInvocationRegistry.spec.ts`
 - `tests/unit/contexts/terminalAgentActivityGateway.spec.ts`
 - `tests/unit/contexts/terminalAgentActivityProjection.spec.ts`
+- `tests/unit/contexts/terminalAgentExit.lifecycle.spec.ts`
+- `tests/unit/contexts/terminalAgentExit.presentation.spec.tsx`
+- `tests/unit/app/terminalAgentWatcherOwner.spec.ts`
+- `tests/e2e/workspace-canvas.terminal-agent-unbound-exit.spec.ts`
+- `tests/e2e/workspace-canvas.terminal-agent-two-stage-ctrl-c.spec.ts`
+- `tests/e2e/workspace-canvas.agent-provider-exit.spec.ts`
+- `tests/e2e/workspace-canvas.claude-real-terminal-lifecycle.spec.ts` (opt-in real installed CLI;
+  `OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm test:e2e <file>`, isolated config and no model calls)
 - `tests/unit/contexts/terminalNode.output-scheduler.spec.ts`
 - `tests/unit/terminalNode/terminalGeometrySync.domOverhang.spec.ts` (content-independent fit and
   canonical-only live resize)
