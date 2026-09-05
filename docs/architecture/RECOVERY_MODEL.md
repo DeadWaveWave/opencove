@@ -50,11 +50,15 @@ SQLite durable state
   -> terminal clients attach through presentation snapshot + stream
 ```
 
-Worker 在发布 connection file 前扫描 persisted workspace runtime nodes。命中的 workspace 保持
-`initializing`，普通 spawn 返回 `terminal.runtime_not_ready`；只有 `session.prepareOrRevive`
-拥有当前恢复批次的内部 spawn scope。同一 workspace 的并发恢复操作加入同一批次，
-每个 scope 仅在自己的操作存续期间有效。全部操作结束后进入 `ready` 并递增 epoch；
-批次中有未处理的失败则进入 `unavailable`。shutdown/旧批次的迟到完成不能重新打开准入。
+Worker 在发布 connection file 前扫描 persisted workspace runtime nodes。启动扫描成功后即可
+创建独立的新终端和 Agent；旧节点的恢复等待或失败不影响创建准入。`TerminalRuntimeAvailability`
+分别管理基础启动准入与 `recoverySnapshot`，Renderer 不以恢复完成数量推断创建权限。
+同一 workspace 的并发恢复操作加入同一批次，每个内部 spawn scope 仅在自己的操作存续期间有效。
+全部操作结束后恢复状态进入 `ready` 并递增 recovery epoch；批次中有未处理的失败则恢复状态进入
+`unavailable`。这些状态只描述旧节点的恢复结果，不改变已就绪 Worker 的基础创建能力。
+启动扫描未完成或失败时普通 spawn 仍返回 `terminal.runtime_not_ready`；扫描失败后的显式恢复
+只可重新开放该 workspace 的准入，不能开放无 workspace 的创建或其他 workspace。
+shutdown 关闭所有准入，旧批次的迟到完成不能重新打开它。
 
 Renderer 按节点请求恢复，最多同时发出四个请求，并立即应用每个已完成结果；一个节点的
 超时不能丢弃其他节点的结果。Worker 对同一 workspace/node 的并发准备请求共享正在执行
@@ -83,8 +87,8 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
 8. 新建 shell 是新的 runtime epoch；旧 history 可以保留，但不能把新 prompt 写进旧 alternate screen 并伪装成 TUI continuation。
 9. Remote route 暂时不可观测不是 runtime 已被替换的证据；只有完整观察或明确 replacement 才能 retire
    durable binding。
-10. Persisted runtime reconciliation 完成前，普通 terminal/agent spawn 不得创建新 PTY；只有当前
-    `session.prepareOrRevive` 恢复批次内仍在执行的内部 scope 可以启动恢复所需 runtime。
+10. 基础启动准入成功后，普通 terminal/agent spawn 不得依赖旧节点恢复完成。扫描失败后的
+    恢复例外仅属于当前 workspace 的有效 scope；shutdown 和迟到结果不得重新开放准入。
 11. Node-owned Worker binding 优先于 Space mount 推导；只有旧数据缺少 binding 时才允许使用
     Space fallback。无法解析 remote binding 时必须 fail closed 为 `fallback_terminal` +
     `remote_worker_unavailable`，不得把 remote cwd 交给 Home Worker。

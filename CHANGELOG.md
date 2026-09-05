@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Terminal: allow new terminals and Agents while existing sessions recover after startup, so slow recovery no longer causes creation failures, including on Windows. (#387)
 - Terminal: keep verified display calibration stable during Windows startup, window resizing, and same-kind terminal changes; show current calibration blockers consistently in Settings and diagnostics. (#386)
 - Terminal: fit new windows on first mount and confirm actual Windows Console dimensions before committing a resize, with a retry action when confirmation fails. Window fitting works independently of font calibration. (#382)
 - Terminal: preserve shared WebGL glyph caches when creating or refreshing terminals, preventing fragmented text in existing windows. (#382)

@@ -159,20 +159,28 @@ correlation integrity, not socket/network authentication; no parallel network au
 
 | State | Owner | Write entry | Restart source |
 | --- | --- | --- | --- |
-| Startup phase and monotonic epoch | Worker `TerminalRuntimeAvailability` | startup scan, recovery completion, shutdown | recomputed from persisted workspace nodes |
+| Basic spawn admission | Worker `TerminalRuntimeAvailability` | startup scan, scoped repair after scan failure, shutdown | recomputed at startup |
+| Recovery phase and monotonic epoch | Worker `TerminalRuntimeAvailability` | reconciliation start/completion, shutdown | recomputed from persisted workspace nodes |
 | Workspaces requiring reconciliation | Worker startup scan | normalized persisted app state | SQLite app state |
 | Recovery-only spawn capability | `session.prepareOrRevive` handler | current reconciliation scope only | none; unforgeable runtime scope |
 | User-visible readiness message | renderer i18n | typed `terminal.runtime_not_ready` mapping | locale bundle |
 
 Invariants:
 
-1. A workspace with persisted runtime nodes remains `initializing` until its complete
-   `session.prepareOrRevive` operation succeeds; normal spawn entry points reject before then.
+1. A successful startup scan opens ordinary spawn admission, including for workspaces with persisted
+   runtime nodes. Their `recoverySnapshot` remains `initializing` while recovery is pending. Waiting
+   or failed old-node recovery cannot block new Terminal or Agent sessions in that same workspace,
+   another workspace, or an unscoped launch.
 2. Only the recovery handler owns the internal spawn capability. Its exact precondition is a live,
    current reconciliation scope for that workspace; public user/node spawn paths cannot create one.
-3. Failed reconciliation becomes `unavailable`, shutdown becomes `shutting-down`, late completions
-   cannot reopen either state, and every successful return to `ready` increases the epoch. A user
-   retry may reconcile that one unavailable workspace without globally opening admission for other
-   workspaces after a startup scan failure.
-4. Every workspace-owned spawn carries that workspace identity across the client boundary and gates
-   on only that workspace's phase. A different workspace that is still initializing cannot block it.
+3. Failed reconciliation makes its recovery snapshot `unavailable`; it does not revoke a ready
+   Worker's basic spawn admission. Every successful recovery batch increases its recovery epoch.
+   Shutdown closes both ordinary and recovery admission, and late completions cannot reopen it.
+4. An incomplete or failed startup scan still blocks ordinary spawn. After scan failure, an explicit
+   successful workspace reconciliation may authorize only that workspace. Workspace identity remains
+   required for that exception; it cannot authorize another workspace or an unscoped launch.
+
+Regression evidence covers controlled pending recovery at the HTTP boundary for both Terminal and
+Agent creation, and Windows cold startup with new-session input before old-node recovery is released.
+Existing per-node preparation deduplication and session registration fences continue to own process
+identity and cleanup; opening admission does not replace or republish an old node's binding.
