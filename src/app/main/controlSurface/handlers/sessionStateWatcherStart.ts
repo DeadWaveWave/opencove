@@ -19,8 +19,12 @@ export function startAgentSessionStateWatcherIfEnabled(options: {
   startedAtMs: number
   geminiDiscoveryCursor?: GeminiSessionDiscoveryCursor | null
   opencodeBaseUrl?: string | null
+  hookInstallState?: import('../../../../shared/contracts/dto').AgentHookInstallState
 }): void {
-  if (!shouldStartAgentSessionStateWatcher()) {
+  if (
+    !shouldStartAgentSessionStateWatcher() ||
+    (options.provider === 'pi' && options.hookInstallState === 'installed')
+  ) {
     return
   }
 

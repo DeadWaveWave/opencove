@@ -116,6 +116,10 @@ export async function findPiSessionFilePath(
   cwd: string,
   sessionId: string,
 ): Promise<string | null> {
+  if (isAbsolute(sessionId)) {
+    const line = await readFirstLine(sessionId)
+    return line && parsePiSessionMeta(line) ? sessionId : null
+  }
   const resolvedCwd = resolve(cwd)
   for (const filePath of await listPiSessionFiles()) {
     // eslint-disable-next-line no-await-in-loop

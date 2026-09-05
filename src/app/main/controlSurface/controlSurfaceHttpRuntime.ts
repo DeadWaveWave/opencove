@@ -108,6 +108,7 @@ export function createControlSurfaceHttpRuntime(
     appVersion,
     desktopMetadataSink: options.desktopPtyMetadataSink,
     desktopStateSink: options.desktopPtyStateSink,
+    disposeSessionStateWatcher: options.ptyRuntime.disposeSessionStateWatcher,
   })
   const agentProviderRegistry = terminalAgents.agentProviderRegistry
   const ptyRuntime = createMultiEndpointPtyRuntime({

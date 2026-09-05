@@ -86,6 +86,12 @@ export function registerSessionAgentWatcherHandlers(
           debugMessage: 'session.attachAgentStateWatcher cwd is outside approved roots',
         })
       }
+      if (
+        payload.provider === 'pi' &&
+        deps.ptyStreamHub.hasNativePiObservation(payload.sessionId)
+      ) {
+        return
+      }
       if (shouldStartAgentSessionStateWatcher()) {
         deps.ptyRuntime.startSessionStateWatcher?.(payload)
       }

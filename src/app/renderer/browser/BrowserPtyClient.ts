@@ -226,6 +226,9 @@ export class BrowserPtyClient {
 
     if (type === 'metadata') {
       const eventPayload = parseBrowserPtyMetadata(sessionId, record)
+      if (!eventPayload) {
+        return
+      }
       this.latestMetadataBySessionId.set(sessionId, eventPayload)
       emitBrowserPtyEvent(this.metadataListeners, eventPayload)
       this.metadataWatcher.cancel(sessionId)

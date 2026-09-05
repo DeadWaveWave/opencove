@@ -1,7 +1,7 @@
 import { useEffect, type MutableRefObject } from 'react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { Node } from '@xyflow/react'
-import { resolveObservedResumeSessionBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
+import { resolveAgentMetadataResumeBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
 import type {
   AgentSessionSummary,
   TerminalSessionMetadataEvent,
@@ -79,7 +79,11 @@ export function applyAgentExitToNodes(
 
 export function applyAgentMetadataToNodes(
   prevNodes: Node<TerminalNodeData>[],
-  event: { sessionId: string; resumeSessionId: string | null | undefined },
+  event: {
+    sessionId: string
+    resumeSessionId: string | null | undefined
+    piSnapshot?: TerminalSessionMetadataEvent['piSnapshot']
+  },
 ): { nextNodes: Node<TerminalNodeData>[]; didChange: boolean } {
   let didChange = false
 
@@ -88,7 +92,10 @@ export function applyAgentMetadataToNodes(
       return node
     }
 
-    const update = resolveObservedResumeSessionBindingUpdate(node.data.agent, event.resumeSessionId)
+    const update = resolveAgentMetadataResumeBindingUpdate(node.data.agent, {
+      ...event,
+      resumeSessionId: event.resumeSessionId ?? null,
+    })
     if (!update) {
       return node
     }

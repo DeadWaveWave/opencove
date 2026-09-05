@@ -1,14 +1,17 @@
-import { resolveObservedResumeSessionBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
+import { resolveAgentMetadataResumeBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
+import type { PiAgentSnapshot } from '@shared/contracts/dto/piAgentSnapshot'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 
 export function updateWorkspacesWithAgentMetadata({
   workspaces,
   sessionId,
   resumeSessionId,
+  piSnapshot,
 }: {
   workspaces: WorkspaceState[]
   sessionId: string
   resumeSessionId: string | null | undefined
+  piSnapshot?: PiAgentSnapshot
 }): { nextWorkspaces: WorkspaceState[]; didChange: boolean; durableDidChange: boolean } {
   let didChange = false
 
@@ -23,7 +26,10 @@ export function updateWorkspacesWithAgentMetadata({
         return node
       }
 
-      const update = resolveObservedResumeSessionBindingUpdate(node.data.agent, resumeSessionId)
+      const update = resolveAgentMetadataResumeBindingUpdate(node.data.agent, {
+        resumeSessionId: resumeSessionId ?? null,
+        piSnapshot,
+      })
       if (!update) {
         return node
       }

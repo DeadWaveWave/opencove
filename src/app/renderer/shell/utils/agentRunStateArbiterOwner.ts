@@ -1,3 +1,4 @@
+import { isAgentHookStateSource } from '../../../../shared/runtime/agentHookStateSource'
 import type {
   AgentHookInstallState,
   TerminalSessionStateEvent,
@@ -11,6 +12,7 @@ import {
 type TimerHandle = unknown
 
 interface SessionArbitrationState {
+  piConversation?: TerminalSessionStateEvent['piConversation']
   hookInstallState: AgentHookInstallState | null
   lastLaunchSignal: AgentRunStateSignal | null
   lastHookSignal: AgentRunStateSignal | null
@@ -113,13 +115,30 @@ export function createAgentRunStateArbiterOwner(options: {
         return
       }
       const source = event.source ?? 'session_file'
-      const state = sessions.get(event.sessionId) ?? {
+      const state: SessionArbitrationState = sessions.get(event.sessionId) ?? {
         hookInstallState: null,
         lastLaunchSignal: null,
         lastHookSignal: null,
         lastSessionFileSignal: null,
         lastDecision: null,
         timer: null,
+      }
+      const conversation = event.piConversation
+      const sameConversation =
+        state.piConversation?.pid === conversation?.pid &&
+        state.piConversation?.revision === conversation?.revision
+      if (source === 'pi_hook' && conversation && !sameConversation) {
+        if (
+          state.piConversation?.pid === conversation.pid &&
+          state.piConversation.revision > conversation.revision
+        ) {
+          return
+        }
+        state.piConversation = conversation
+        state.lastSessionFileSignal = null
+        state.lastLaunchSignal = null
+      } else if (source === 'session_file' && state.piConversation && !sameConversation) {
+        return
       }
       if (event.hookInstallState) {
         state.hookInstallState = event.hookInstallState
@@ -132,11 +151,11 @@ export function createAgentRunStateArbiterOwner(options: {
             ? event.observedAtMs
             : now(),
       }
-      if (source === 'claude_hook' || source === 'codex_hook') {
+      if (isAgentHookStateSource(source)) {
         signal.source = source
         state.lastHookSignal = signal
       } else if (source === 'session_file') {
-        state.lastSessionFileSignal = signal
+        state.lastSessionFileSignal = event.observationUnavailable ? null : signal
       } else if (source === 'launch') {
         state.lastLaunchSignal = signal
         if (signal.degraded) {

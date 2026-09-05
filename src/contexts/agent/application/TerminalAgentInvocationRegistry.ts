@@ -4,15 +4,14 @@ import type {
   TerminalSessionMetadataEvent,
 } from '../../../shared/contracts/dto'
 
+import type { AgentSessionIdentityObservation } from '../../../shared/contracts/dto/agentSessionIdentityObservation'
+
 export interface TerminalAgentInvocationBaseline {
   readonly revision: number
   readonly entries: readonly TerminalSessionMetadataEvent[]
 }
 
-export interface TerminalAgentInvocationObservation {
-  readonly identityAuthority: 'provider_session_start'
-  readonly resumeSessionId: string
-}
+export type TerminalAgentInvocationObservation = AgentSessionIdentityObservation
 
 export interface TerminalAgentInvocation {
   readonly generation: number
@@ -36,7 +35,8 @@ interface InvocationRecord {
   readonly invocationId: string
   readonly provider: TerminalAgentShimProvider
   expectedResumeSessionId: string | null
-  identityAuthority: 'provider_session_start' | null
+  identityAuthority: TerminalAgentActivitySnapshot['identityAuthority']
+  identitySequence: number
   observedAtMs: number
   phase: 'active' | 'exited'
   resumeSessionId: string | null
@@ -160,6 +160,7 @@ export class TerminalAgentInvocationRegistry {
       generation: terminal.nextGeneration++,
       expectedResumeSessionId,
       identityAuthority: null,
+      identitySequence: 0,
       invocationId,
       observedAtMs: this.now(),
       phase: 'active',
@@ -227,6 +228,35 @@ export class TerminalAgentInvocationRegistry {
     observation: TerminalAgentInvocationObservation,
   ): boolean {
     if (!this.isCurrent(terminal, record) || !terminal.sessionId) {
+      return false
+    }
+    if (observation.identityAuthority === 'provider_session_snapshot') {
+      if (
+        record.provider !== 'pi' ||
+        !isGeneration(observation.sequence) ||
+        observation.sequence <= record.identitySequence
+      ) {
+        return false
+      }
+      const resumeSessionId =
+        observation.resumeSessionId === null
+          ? null
+          : requireIdentifier(observation.resumeSessionId, 'resumeSessionId')
+      record.identitySequence = observation.sequence
+      if (
+        record.identityAuthority === observation.identityAuthority &&
+        record.resumeSessionId === resumeSessionId
+      ) {
+        return true
+      }
+      record.identityAuthority = observation.identityAuthority
+      record.observedAtMs = this.now()
+      record.resumeSessionId = resumeSessionId
+      this.publish(terminal, record)
+      return true
+    }
+    // Pi identity changes require the ordered snapshot authority, never the immutable hook route.
+    if (record.provider === 'pi') {
       return false
     }
     const resumeSessionId = requireIdentifier(observation.resumeSessionId, 'resumeSessionId')

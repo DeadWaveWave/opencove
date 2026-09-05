@@ -1,10 +1,11 @@
+import { normalizePiAgentSnapshot } from '@shared/runtime/piAgentSnapshot'
 import type { TerminalSessionMetadataEvent } from '@shared/contracts/dto'
 import { normalizeTerminalAgentActivitySnapshot } from '@shared/runtime/terminalAgentActivity'
 
 export function parseBrowserPtyMetadata(
   sessionId: string,
   record: Record<string, unknown>,
-): TerminalSessionMetadataEvent {
+): TerminalSessionMetadataEvent | null {
   const resumeSessionId =
     typeof record.resumeSessionId === 'string' && record.resumeSessionId.trim().length > 0
       ? record.resumeSessionId.trim()
@@ -28,6 +29,10 @@ export function parseBrowserPtyMetadata(
     record.runtimeKind === 'posix'
       ? record.runtimeKind
       : null
+  const piSnapshot = normalizePiAgentSnapshot(record.piSnapshot)
+  if (record.piSnapshot !== undefined && (!piSnapshot || agentProvider !== 'pi')) {
+    return null
+  }
   const terminalAgentActivity = normalizeTerminalAgentActivitySnapshot(record.terminalAgentActivity)
   return {
     sessionId,
@@ -36,5 +41,6 @@ export function parseBrowserPtyMetadata(
     ...(profileId ? { profileId } : {}),
     ...(runtimeKind ? { runtimeKind } : {}),
     ...(terminalAgentActivity ? { terminalAgentActivity } : {}),
+    ...(piSnapshot ? { piSnapshot } : {}),
   }
 }

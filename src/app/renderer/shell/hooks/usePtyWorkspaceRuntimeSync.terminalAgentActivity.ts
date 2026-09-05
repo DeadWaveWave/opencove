@@ -44,8 +44,12 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
       }
 
       const resumeSessionId = normalizeResumeSessionId(event.resumeSessionId)
+      const piSnapshotAuthority =
+        activity.provider === 'pi' && activity.identityAuthority === 'provider_session_snapshot'
+      const clearBinding = piSnapshotAuthority && resumeSessionId === null
       const canBind =
-        activity.identityAuthority === 'provider_session_start' && resumeSessionId !== null
+        (activity.identityAuthority === 'provider_session_start' || piSnapshotAuthority) &&
+        resumeSessionId !== null
       const isSameInvocation =
         previousActivity?.generation === activity.generation &&
         previousActivity.invocationId === activity.invocationId
@@ -54,14 +58,18 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
         : null
       const canAdoptBinding =
         canBind &&
-        (verifiedProviderSessionId === null || verifiedProviderSessionId === resumeSessionId)
-      const nextBinding = canAdoptBinding
-        ? {
-            provider: activity.provider,
-            resumeSessionId,
-            resumeSessionIdVerified: true as const,
-          }
-        : (node.data.terminalAgentBinding ?? null)
+        (piSnapshotAuthority ||
+          verifiedProviderSessionId === null ||
+          verifiedProviderSessionId === resumeSessionId)
+      const nextBinding = clearBinding
+        ? null
+        : canAdoptBinding
+          ? {
+              provider: activity.provider,
+              resumeSessionId,
+              resumeSessionIdVerified: true as const,
+            }
+          : (node.data.terminalAgentBinding ?? null)
       const nextOverlay = {
         provider: activity.provider,
         status: 'standby' as const,
@@ -77,14 +85,19 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
           ...(activity.sourceRevision === undefined
             ? {}
             : { sourceRevision: activity.sourceRevision, revision: activity.revision }),
-          verifiedProviderSessionId: canAdoptBinding ? resumeSessionId : verifiedProviderSessionId,
+          verifiedProviderSessionId: clearBinding
+            ? null
+            : canAdoptBinding
+              ? resumeSessionId
+              : verifiedProviderSessionId,
         },
       }
       const bindingChanged =
-        canAdoptBinding &&
+        (canAdoptBinding || clearBinding) &&
         (node.data.terminalAgentBinding?.provider !== nextBinding?.provider ||
           node.data.terminalAgentBinding?.resumeSessionId !== nextBinding?.resumeSessionId ||
-          node.data.terminalAgentBinding?.resumeSessionIdVerified !== true)
+          node.data.terminalAgentBinding?.resumeSessionIdVerified !==
+            nextBinding?.resumeSessionIdVerified)
       const overlayChanged =
         node.data.agentOverlay?.provider !== nextOverlay.provider ||
         node.data.agentOverlay?.status !== nextOverlay.status ||

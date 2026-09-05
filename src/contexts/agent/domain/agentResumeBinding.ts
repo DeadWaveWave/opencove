@@ -1,5 +1,7 @@
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { isValidProvider } from '@contexts/settings/domain/agentSettings'
+import type { TerminalSessionMetadataEvent } from '../../../shared/contracts/dto'
+import { normalizePiAgentSnapshot } from '../../../shared/runtime/piAgentSnapshot'
 
 export interface ResumeSessionBindingLike {
   provider: AgentProvider
@@ -73,15 +75,38 @@ export function clearResumeSessionBinding(): {
   }
 }
 
+export function resolveAgentMetadataResumeBindingUpdate(
+  binding: ResumeSessionBindingLike,
+  event: Pick<TerminalSessionMetadataEvent, 'resumeSessionId' | 'piSnapshot'>,
+): ReturnType<typeof resolveObservedResumeSessionBindingUpdate> {
+  const nativePi = normalizePiAgentSnapshot(event.piSnapshot)
+  const authority =
+    nativePi &&
+    (event.resumeSessionId !== null ||
+      nativePi.persistence === 'ephemeral' ||
+      nativePi.conversationRevision > 1)
+      ? ('pi_snapshot' as const)
+      : undefined
+  return resolveObservedResumeSessionBindingUpdate(binding, event.resumeSessionId, authority)
+}
+
 export function resolveObservedResumeSessionBindingUpdate(
   binding: ResumeSessionBindingLike,
   observedResumeSessionId: string | null | undefined,
-): VerifiedResumeSessionBindingUpdate | null {
+  authority?: 'pi_snapshot',
+): VerifiedResumeSessionBindingUpdate | ReturnType<typeof clearResumeSessionBinding> | null {
+  const canSwitch = binding.provider === 'pi' && authority === 'pi_snapshot'
+  if (canSwitch && observedResumeSessionId === null) {
+    return binding.resumeSessionId !== null || binding.resumeSessionIdVerified === true
+      ? clearResumeSessionBinding()
+      : null
+  }
   if (!hasResumeSessionId(observedResumeSessionId)) {
     return null
   }
 
   if (
+    !canSwitch &&
     isResumeSessionBindingVerified(binding) &&
     binding.resumeSessionId !== observedResumeSessionId
   ) {

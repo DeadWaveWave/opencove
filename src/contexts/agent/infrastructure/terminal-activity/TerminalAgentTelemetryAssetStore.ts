@@ -90,7 +90,7 @@ export class TerminalAgentTelemetryAssetStore {
     await writePrivateFile(join(zshDotDirectory, '.zlogin'), terminalAgentZshLoginScript, 0o600)
 
     await Promise.all(
-      (['claude', 'codex'] as const).flatMap(provider => {
+      (['claude', 'codex', 'pi'] as const).flatMap(provider => {
         const powerShellPath = join(shimDirectory, `${provider}.ps1`)
         return [
           writePrivateFile(

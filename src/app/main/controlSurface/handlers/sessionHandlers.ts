@@ -256,6 +256,7 @@ export function registerSessionHandlers(
 
       const { launchCommand, managedLaunch, testStub } = await prepareAgentLaunch({
         registry: deps.agentProviderRegistry,
+        profileId: agentSettings.defaultTerminalProfileId,
         provider,
         cwd: workingDirectory,
         mode,
@@ -372,6 +373,7 @@ export function registerSessionHandlers(
       })
 
       startAgentSessionStateWatcherIfEnabled({
+        hookInstallState: managedLaunch.plan.hookInstallState,
         ptyRuntime: deps.ptyRuntime,
         sessionId,
         provider,

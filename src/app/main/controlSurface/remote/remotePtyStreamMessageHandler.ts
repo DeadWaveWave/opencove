@@ -1,3 +1,7 @@
+import type { PtyStreamMessage } from './remotePtyStreamMessage'
+import { normalizePiStateObservationMetadata } from '../../../../shared/runtime/piConversation'
+import { normalizePiAgentSnapshot } from '../../../../shared/runtime/piAgentSnapshot'
+import { isAgentHookStateSource } from '../../../../shared/runtime/agentHookStateSource'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   TerminalDataEvent,
@@ -20,50 +24,6 @@ export type AttachedSessionState = {
   role: 'viewer' | 'controller'
   authorityEpoch: number | null
 }
-
-type PtyStreamMessage =
-  | { type: 'hello_ack'; protocolVersion: number; capabilities?: unknown }
-  | { type: 'attached'; sessionId: string; seq?: number; role?: string; authorityEpoch?: number }
-  | { type: 'data'; sessionId: string; seq?: number; data?: string }
-  | { type: 'exit'; sessionId: string; seq?: number; exitCode?: number }
-  | ({ type: 'foreground' } & Record<string, unknown>)
-  | {
-      type: 'geometry'
-      sessionId: string
-      cols?: number
-      rows?: number
-      reason?: string
-      revision?: number
-    }
-  | {
-      type: 'state'
-      sessionId: string
-      state?: string
-      source?: string
-      hookInstallState?: string
-      degraded?: boolean
-      observedAtMs?: number
-    }
-  | {
-      type: 'metadata'
-      sessionId: string
-      resumeSessionId?: string | null
-      agentProvider?: string | null
-      profileId?: string | null
-      runtimeKind?: string | null
-      terminalAgentActivity?: unknown
-    }
-  | {
-      type: 'overflow'
-      sessionId: string
-      seq?: number
-      reason?: string
-      recovery?: string
-    }
-  | { type: 'control_changed'; sessionId: string; role?: string; authorityEpoch?: number }
-  | ({ type: 'resize_result' } & Record<string, unknown>)
-  | ({ type: 'agent_reexec_result' } & Record<string, unknown>)
-  | { type: 'error'; code?: string; message?: string; sessionId?: string }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -402,12 +362,15 @@ export function createRemotePtyStreamMessageHandler(options: {
         return
       }
 
-      const eventPayload: TerminalSessionStateEvent = { sessionId, state }
+      const eventPayload: TerminalSessionStateEvent = {
+        sessionId,
+        state,
+        ...normalizePiStateObservationMetadata(message),
+      }
       if (
         message.source === 'launch' ||
         message.source === 'session_file' ||
-        message.source === 'claude_hook' ||
-        message.source === 'codex_hook'
+        isAgentHookStateSource(message.source)
       ) {
         eventPayload.source = message.source
       }
@@ -460,6 +423,10 @@ export function createRemotePtyStreamMessageHandler(options: {
         message.runtimeKind === 'posix'
           ? message.runtimeKind
           : null
+      const piSnapshot = normalizePiAgentSnapshot(message.piSnapshot)
+      if (message.piSnapshot !== undefined && (!piSnapshot || agentProvider !== 'pi')) {
+        return
+      }
       const terminalAgentActivity = normalizeTerminalAgentActivitySnapshot(
         message.terminalAgentActivity,
       )
@@ -471,6 +438,7 @@ export function createRemotePtyStreamMessageHandler(options: {
         ...(profileId ? { profileId } : {}),
         ...(runtimeKind ? { runtimeKind } : {}),
         ...(terminalAgentActivity ? { terminalAgentActivity } : {}),
+        ...(piSnapshot ? { piSnapshot } : {}),
       }
       options.sendToAllWindows(IPC_CHANNELS.ptySessionMetadata, eventPayload)
       options.externalMetadataListeners.forEach(listener => listener(eventPayload))

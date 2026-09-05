@@ -45,7 +45,7 @@ export function createBuiltinAgentProviderContributions(
         runtimePlatform: options.runtimePlatform,
       }),
     ],
-    ['pi', new PiAgentProviderContribution()],
+    ['pi', new PiAgentProviderContribution({ channel: options.channels?.pi })],
     ['kimi', new KimiAgentProviderContribution()],
   ])
   const generic = new Map<AgentProviderId, AgentProviderContribution>(

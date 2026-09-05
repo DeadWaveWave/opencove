@@ -1,3 +1,6 @@
+import { normalizePiStateObservationMetadata } from '../../../../shared/runtime/piConversation'
+import { normalizePiAgentSnapshot } from '../../../../shared/runtime/piAgentSnapshot'
+import { isAgentHookStateSource } from '../../../../shared/runtime/agentHookStateSource'
 import type {
   TerminalGeometryCommitResult,
   TerminalForegroundEvent,
@@ -170,8 +173,7 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
       const source =
         parsed.source === 'launch' ||
         parsed.source === 'session_file' ||
-        parsed.source === 'claude_hook' ||
-        parsed.source === 'codex_hook'
+        isAgentHookStateSource(parsed.source)
           ? parsed.source
           : null
       const hookInstallState =
@@ -191,6 +193,7 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
       options.onState(sessionId, {
         sessionId,
         state,
+        ...normalizePiStateObservationMetadata(parsed),
         ...(source ? { source } : {}),
         ...(hookInstallState ? { hookInstallState } : {}),
         ...(typeof parsed.degraded === 'boolean' ? { degraded: parsed.degraded } : {}),
@@ -223,6 +226,10 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
         parsed.runtimeKind === 'posix'
           ? parsed.runtimeKind
           : null
+      const piSnapshot = normalizePiAgentSnapshot(parsed.piSnapshot)
+      if (parsed.piSnapshot !== undefined && (!piSnapshot || agentProvider !== 'pi')) {
+        return
+      }
       const terminalAgentActivity = normalizeTerminalAgentActivitySnapshot(
         parsed.terminalAgentActivity,
       )
@@ -233,6 +240,7 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
         ...(profileId ? { profileId } : {}),
         ...(runtimeKind ? { runtimeKind } : {}),
         ...(terminalAgentActivity ? { terminalAgentActivity } : {}),
+        ...(piSnapshot ? { piSnapshot } : {}),
       })
     }
   }

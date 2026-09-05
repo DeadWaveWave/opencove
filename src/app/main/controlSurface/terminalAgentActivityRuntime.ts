@@ -17,6 +17,7 @@ export function createTerminalAgentActivityRuntime(options: {
   appVersion?: string | null
   desktopMetadataSink?: (event: TerminalSessionMetadataEvent) => number
   desktopStateSink?: (event: TerminalSessionStateEvent) => number
+  disposeSessionStateWatcher?: (sessionId: string) => void
 }): {
   activity: TerminalAgentActivityEnvironmentService
   agentProviderRegistry: AgentProviderRegistry
@@ -50,9 +51,14 @@ export function createTerminalAgentActivityRuntime(options: {
   const stateSubscriptions = options.desktopStateSink
     ? options.agentHookChannels.map(channel => channel.onState(options.desktopStateSink!))
     : []
-  const metadataSubscriptions = options.desktopMetadataSink
-    ? metadataSources.map(source => source.onMetadata(options.desktopMetadataSink!))
-    : []
+  const metadataSubscriptions = metadataSources.map(source =>
+    source.onMetadata(event => {
+      if (event.piSnapshot) {
+        options.disposeSessionStateWatcher?.(event.sessionId)
+      }
+      options.desktopMetadataSink?.(event)
+    }),
+  )
 
   return {
     activity,
