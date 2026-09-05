@@ -70,10 +70,11 @@ async function runOverlayLifecycle(options: {
   expect((await readPersistedNode(window, nodeId))?.agent?.provider).toBe('claude-code')
 
   await window.keyboard.press('Control+C')
-  await expect(sidebarItem).toBeVisible()
-  await expect(terminal.getByTestId('terminal-node-copy-last-message')).toBeVisible()
-  await expect(terminal.getByTestId('terminal-node-reload-session')).toBeVisible()
-  await expect(terminal.getByTestId('terminal-node-session-list')).toBeVisible()
+  await expect(sidebarItem).toHaveCount(0)
+  await expect(terminal.locator('.terminal-node__status')).toHaveCount(0)
+  await expect(terminal.getByTestId('terminal-node-copy-last-message')).toHaveCount(0)
+  await expect(terminal.getByTestId('terminal-node-reload-session')).toHaveCount(0)
+  await expect(terminal.getByTestId('terminal-node-session-list')).toHaveCount(0)
   await expect
     .poll(() => readPersistedNode(window, nodeId))
     .toMatchObject({
@@ -112,7 +113,8 @@ async function runOverlayLifecycle(options: {
   expect((await readPersistedNode(window, nodeId))?.scrollback).toContain('claude-code exited')
 
   await window.keyboard.press('Control+C')
-  await expect(sidebarItem).toBeVisible()
+  await expect(sidebarItem).toHaveCount(0)
+  await expect(terminal.locator('.terminal-node__status')).toHaveCount(0)
 }
 
 test.describe('Workspace Canvas - Terminal agent overlay', () => {

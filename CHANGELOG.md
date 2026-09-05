@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Worker: keep draining output after startup and preserve live owned processes through health-check timeouts, preventing diagnostic output or temporary load from interrupting terminal sessions. (#382)
 - Agent: wait for Electron preparation and cleanup helpers in Windows PowerShell shims so commands such as `codex` reliably start in interactive terminals. (#382)
 - Settings: distinguish disabled calibration, invalid adjustments, and valid saved adjustments waiting for a matching display environment, in English and Chinese. (#382)
+- Agent: show idle Claude terminal sessions as Standby, remove all Agent chrome after Claude Code or Codex exits while preserving conversation recovery data, and prevent stale Working status after dedicated Agent exits. (#383)
 - Remote: keep managed SSH installation and connection progress visible across Settings and folder-picker reopen, instead of reporting cold setup as a Worker or tunnel failure; automatically enable browsing when ready. (#381)
 
 ---

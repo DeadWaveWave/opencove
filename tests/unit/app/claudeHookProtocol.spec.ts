@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   normalizeClaudeHookEnvelope,
+  validateClaudeHookEnvelope,
   type ClaudeHookInput,
 } from '../../../src/app/main/controlSurface/agentHook/claudeHookProtocol'
 
@@ -15,6 +16,39 @@ function input(overrides: Partial<ClaudeHookInput>): ClaudeHookInput {
 }
 
 describe('Claude hook protocol', () => {
+  it.each(['startup', 'resume', 'clear', 'compact', undefined])(
+    'keeps SessionStart identity separate from turn activity (source=%s)',
+    source => {
+      expect(
+        normalizeClaudeHookEnvelope({ ...input({ hook_event_name: 'SessionStart' }), source }),
+      ).toMatchObject({
+        state: null,
+        hookEventName: 'SessionStart',
+        claudeSessionId: 'claude-session-1',
+      })
+    },
+  )
+
+  it('does not replay legacy SessionStart working as task activity', () => {
+    expect(
+      validateClaudeHookEnvelope({
+        version: 1,
+        state: 'working',
+        hookEventName: 'SessionStart',
+        claudeSessionId: 'claude-session-1',
+      }),
+    ).toMatchObject({ state: null })
+  })
+
+  it.each(['idle_prompt', 'auth_success'])(
+    'does not infer a turn transition from %s',
+    notification_type => {
+      expect(
+        normalizeClaudeHookEnvelope(input({ hook_event_name: 'Notification', notification_type })),
+      ).toMatchObject({ state: null })
+    },
+  )
+
   it.each([
     ['UserPromptSubmit', undefined, 'working'],
     ['PermissionRequest', 'Bash', 'waiting'],

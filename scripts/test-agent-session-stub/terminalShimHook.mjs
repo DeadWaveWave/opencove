@@ -47,6 +47,10 @@ export async function reportInjectedTerminalSessionStart(provider, cwd, sessionF
   return await reportInjectedTerminalHook(provider, cwd, sessionFilePath, 'SessionStart')
 }
 
+export async function reportInjectedTerminalTurnStarted(provider, cwd, sessionFilePath) {
+  return await reportInjectedTerminalHook(provider, cwd, sessionFilePath, 'UserPromptSubmit')
+}
+
 export async function reportInjectedTerminalTurnCompleted(provider, cwd, sessionFilePath) {
   return await reportInjectedTerminalHook(provider, cwd, sessionFilePath, 'Stop')
 }

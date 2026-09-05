@@ -39,6 +39,7 @@ export function TerminalNode({
   title,
   fixedTitlePrefix = null,
   kind,
+  isAgentPresentation = kind === 'agent',
   labelColor,
   terminalProvider = null,
   agentLaunchMode = null,
@@ -455,7 +456,7 @@ export function TerminalNode({
       }
       title={title}
       fixedTitlePrefix={fixedTitlePrefix}
-      kind={onAgentOverlayExit ? 'agent' : kind}
+      kind={isAgentPresentation ? 'agent' : kind}
       labelColor={labelColor}
       agentExecutionDirectory={agentExecutionDirectory}
       agentResumeSessionId={agentResumeSessionId}

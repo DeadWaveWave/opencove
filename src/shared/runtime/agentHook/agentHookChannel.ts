@@ -11,7 +11,7 @@ import type {
 const MAX_HOOK_BODY_BYTES = 256 * 1024
 
 export interface AgentHookEnvelope {
-  state: 'working' | 'waiting' | 'done'
+  state: 'working' | 'waiting' | 'done' | null
 }
 
 export interface AgentHookInstallResult {
@@ -125,13 +125,15 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     if (terminalActivity && !terminalActivity.isCurrent()) {
       return
     }
-    const event: TerminalSessionStateEvent = {
-      sessionId,
-      state: envelope.state === 'done' ? 'standby' : envelope.state,
-      source: options.source,
-      hookInstallState: installState,
+    if (envelope.state !== null) {
+      const event: TerminalSessionStateEvent = {
+        sessionId,
+        state: envelope.state === 'done' ? 'standby' : envelope.state,
+        source: options.source,
+        hookInstallState: installState,
+      }
+      listeners.forEach(listener => listener(event))
     }
-    listeners.forEach(listener => listener(event))
     const identity = options.resolveSessionIdentity?.(envelope) ?? null
     if (terminalActivity && identity?.hookEventName === 'SessionStart') {
       if (credential.providerSessionId !== null) {
