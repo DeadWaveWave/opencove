@@ -65,7 +65,7 @@ jobs:
             artifact_name: macos-x64
             upload_updater_metadata: false
           - label: Windows
-            runner: windows-latest
+            runner: windows-2022
             build_command: pnpm build:win
             artifact_name: windows
             upload_updater_metadata: true
@@ -300,7 +300,7 @@ jobs:
           - label: macOS Intel
             runner: macos-15-intel
           - label: Windows
-            runner: windows-latest
+            runner: windows-2022
           - label: Linux
             runner: ubuntu-latest
 

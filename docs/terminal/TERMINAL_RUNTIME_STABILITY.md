@@ -46,8 +46,10 @@ the owner alone decides whether the runtime resize can safely be skipped.
 
 Windows dependency installation builds node-pty from source to include the query extension. The
 observer checks that native capability before its ready handshake. Developer/CI builds need MSVC C++
-tools, Windows SDK and Spectre libraries; packaged users receive the native module. The additional
-observer is shared by all sessions in one Host and starts only when a Windows resize needs it.
+tools, Windows SDK and Spectre libraries; packaged users receive the native module. Windows CI and
+release jobs use `windows-2022` with VS 2022 because pnpm 9's bundled node-gyp cannot discover VS 2026.
+The additional observer is shared by all sessions in one Host and starts only when a Windows resize
+needs it.
 
 ## Attach authority and live reattach
 
