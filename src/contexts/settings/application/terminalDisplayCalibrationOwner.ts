@@ -5,113 +5,37 @@ import {
   isTerminalDisplayCalibrationForReference,
   isTerminalDisplayReferenceCurrent,
   isTerminalDisplayReferenceForProfile,
-  type TerminalClientDisplayCalibration,
   type TerminalDisplayReference,
-  type TerminalDisplayRendererKind,
 } from '../domain/terminalDisplayCalibration'
 import {
   createTerminalDisplayCalibrationFromCandidate,
   runTerminalDisplayCalibrationSingleFlight,
-  type TerminalDisplayCalibrationCandidateResult,
 } from './terminalDisplayAutoCalibration'
 
-export type TerminalDisplayCalibrationAttemptOutcome =
-  | 'disabled'
-  | 'reference-unavailable'
-  | 'environment-unstable'
-  | 'already-calibrated'
-  | 'suppressed'
-  | 'candidate-unavailable'
-  | 'candidate-rejected'
-  | 'storage-unavailable'
-  | 'applied'
+import type {
+  ManualTerminalDisplayCalibrationResult,
+  ManualTerminalDisplayReferenceResult,
+  TerminalDisplayCalibrationAttemptOutcome,
+  TerminalDisplayCalibrationContext,
+  TerminalDisplayCalibrationMetadata,
+  TerminalDisplayCalibrationOwner,
+  TerminalDisplayCalibrationOwnerPorts,
+  TerminalDisplayCalibrationOwnerSnapshot,
+  TerminalDisplayEnvironmentObservation,
+} from './terminalDisplayCalibrationOwner.types'
+export type * from './terminalDisplayCalibrationOwner.types'
 
-export type TerminalDisplayCalibrationMetadata = {
-  environmentSignature: string
-  source: 'automatic' | 'manual'
-}
-
-export type StoredTerminalDisplayCalibration = {
-  calibration: TerminalClientDisplayCalibration
-  metadata: TerminalDisplayCalibrationMetadata | null
-  proof: 'atomic' | 'legacy' | null
-}
-
-export type TerminalDisplayCalibrationContext = {
-  enabled: boolean
-  terminalFontSize: number
-  terminalFontFamily: string | null
-  reference: TerminalDisplayReference | null
-}
-
-export type TerminalDisplayEnvironmentEvidence = {
-  signature: string
-  rendererKind: TerminalDisplayRendererKind
-}
-
-export type TerminalDisplayCalibrationOwnerSnapshot = {
-  appliedCalibration: TerminalClientDisplayCalibration | null
-  environmentSignature: string | null
-}
-
-export interface TerminalDisplayCalibrationOwnerPorts {
-  readStored: () => StoredTerminalDisplayCalibration | null
-  writeStored: (
-    calibration: TerminalClientDisplayCalibration,
-    metadata: TerminalDisplayCalibrationMetadata,
-  ) => boolean
-  clearStored: (options?: { suppressEnvironmentSignature?: string | null }) => boolean
-  isSuppressed: (environmentSignature: string) => boolean
-  resolveEnvironment: (
-    context: Omit<TerminalDisplayCalibrationContext, 'enabled'> & {
-      reference: TerminalDisplayReference
-    },
-  ) => Promise<TerminalDisplayEnvironmentEvidence | null>
-  measureReference: (input: {
-    terminalFontSize: number
-    terminalFontFamily: string | null
-  }) => Promise<{
-    measurement: TerminalDisplayReference['measurement']
-    rendererKind: TerminalDisplayRendererKind
-  } | null>
-  calibrate: (input: {
-    terminalFontSize: number
-    terminalFontFamily: string | null
-    reference: TerminalDisplayReference
-    rendererKind: TerminalDisplayRendererKind
-  }) => Promise<TerminalDisplayCalibrationCandidateResult | null>
-  recordAttempt?: (
-    outcome: TerminalDisplayCalibrationAttemptOutcome,
-    environmentSignature?: string,
-  ) => void
-}
-
-export type ManualTerminalDisplayReferenceResult =
-  | { outcome: 'captured'; reference: TerminalDisplayReference }
-  | { outcome: 'measurement-unavailable' }
-
-export type ManualTerminalDisplayCalibrationResult =
-  | { outcome: 'saved'; score: number }
-  | {
-      outcome:
-        | 'reference-unavailable'
-        | 'environment-unstable'
-        | 'candidate-unavailable'
-        | 'storage-unavailable'
-    }
-  | { outcome: 'candidate-rejected'; score: number }
-
-export interface TerminalDisplayCalibrationOwner {
-  update: (context: TerminalDisplayCalibrationContext) => void
-  invalidate: () => void
-  refresh: () => void
-  captureReferenceNow: () => Promise<ManualTerminalDisplayReferenceResult>
-  calibrateNow: () => Promise<ManualTerminalDisplayCalibrationResult>
-  reset: () => boolean
-  getSnapshot: () => TerminalDisplayCalibrationOwnerSnapshot
-  subscribe: (listener: () => void) => () => void
-  whenIdle: () => Promise<void>
-  dispose: () => void
+function rendererBlocker(
+  observation: TerminalDisplayEnvironmentObservation,
+  reference: TerminalDisplayReference,
+): 'no-terminal' | 'mixed-renderers' | 'renderer-mismatch' | null {
+  if (observation.rendererKind === 'none') {
+    return 'no-terminal'
+  }
+  if (observation.rendererKind === 'mixed') {
+    return 'mixed-renderers'
+  }
+  return observation.rendererKind === reference.capture?.rendererKind ? null : 'renderer-mismatch'
 }
 
 function contextKey(context: TerminalDisplayCalibrationContext): string {
@@ -140,6 +64,7 @@ function snapshotKey(snapshot: TerminalDisplayCalibrationOwnerSnapshot): string 
         }
       : null,
     environmentSignature: snapshot.environmentSignature,
+    status: snapshot.status,
   })
 }
 
@@ -148,11 +73,13 @@ export function createTerminalDisplayCalibrationOwner(
 ): TerminalDisplayCalibrationOwner {
   let currentContext: TerminalDisplayCalibrationContext | null = null
   let currentContextKey = 'none'
+  let observationKey: string | null = null
   let generation = 0
   let disposed = false
   let snapshot: TerminalDisplayCalibrationOwnerSnapshot = {
     appliedCalibration: null,
     environmentSignature: null,
+    status: 'idle',
   }
   const listeners = new Set<() => void>()
   const inFlight = new Set<Promise<void>>()
@@ -170,12 +97,27 @@ export function createTerminalDisplayCalibrationOwner(
   const isCurrent = (expectedGeneration: number): boolean =>
     !disposed && generation === expectedGeneration
 
+  const recordAttempt = (
+    expectedGeneration: number,
+    status: TerminalDisplayCalibrationAttemptOutcome,
+    environmentSignature?: string,
+  ): void => {
+    if (!isCurrent(expectedGeneration)) {
+      return
+    }
+    ports.recordAttempt?.(status, environmentSignature)
+    if (isCurrent(expectedGeneration)) {
+      publish({ ...snapshot, status })
+    }
+  }
+
   const reconcile = async (
     context: TerminalDisplayCalibrationContext,
     expectedGeneration: number,
+    observation: TerminalDisplayEnvironmentObservation,
   ): Promise<void> => {
     if (!context.enabled) {
-      ports.recordAttempt?.('disabled')
+      recordAttempt(expectedGeneration, 'disabled')
       return
     }
     const reference =
@@ -186,23 +128,29 @@ export function createTerminalDisplayCalibrationOwner(
         ? context.reference
         : null
     if (!reference) {
-      ports.recordAttempt?.('reference-unavailable')
+      recordAttempt(expectedGeneration, 'reference-unavailable')
+      return
+    }
+
+    const blocker = rendererBlocker(observation, reference)
+    if (blocker) {
+      recordAttempt(expectedGeneration, blocker)
       return
     }
 
     const environment = await ports.resolveEnvironment({ ...context, reference }).catch(() => null)
     if (!environment || !isCurrent(expectedGeneration)) {
       if (isCurrent(expectedGeneration)) {
-        ports.recordAttempt?.('environment-unstable')
+        recordAttempt(expectedGeneration, 'environment-unstable')
       }
       return
     }
     if (reference.capture.rendererKind !== environment.rendererKind) {
-      ports.recordAttempt?.('environment-unstable', environment.signature)
+      recordAttempt(expectedGeneration, 'renderer-mismatch', environment.signature)
       return
     }
     if (ports.isSuppressed(environment.signature)) {
-      ports.recordAttempt?.('suppressed', environment.signature)
+      recordAttempt(expectedGeneration, 'suppressed', environment.signature)
       return
     }
 
@@ -215,15 +163,16 @@ export function createTerminalDisplayCalibrationOwner(
       if (stored.proof !== 'atomic') {
         const promoted = ports.writeStored(stored.calibration, stored.metadata!)
         if (!promoted || !isCurrent(expectedGeneration)) {
-          ports.recordAttempt?.('storage-unavailable', environment.signature)
+          recordAttempt(expectedGeneration, 'storage-unavailable', environment.signature)
           return
         }
       }
       publish({
         appliedCalibration: stored.calibration,
         environmentSignature: environment.signature,
+        status: 'already-calibrated',
       })
-      ports.recordAttempt?.('already-calibrated', environment.signature)
+      recordAttempt(expectedGeneration, 'already-calibrated', environment.signature)
       return
     }
 
@@ -239,7 +188,7 @@ export function createTerminalDisplayCalibrationOwner(
     ).catch(() => null)
     if (!result || !isCurrent(expectedGeneration)) {
       if (isCurrent(expectedGeneration)) {
-        ports.recordAttempt?.('candidate-unavailable', environment.signature)
+        recordAttempt(expectedGeneration, 'candidate-unavailable', environment.signature)
       }
       return
     }
@@ -255,7 +204,7 @@ export function createTerminalDisplayCalibrationOwner(
       ports.isSuppressed(environment.signature)
     ) {
       if (isCurrent(expectedGeneration)) {
-        ports.recordAttempt?.('environment-unstable', environment.signature)
+        recordAttempt(expectedGeneration, 'environment-unstable', environment.signature)
       }
       return
     }
@@ -269,7 +218,7 @@ export function createTerminalDisplayCalibrationOwner(
       result,
     })
     if (!calibration) {
-      ports.recordAttempt?.('candidate-rejected', environment.signature)
+      recordAttempt(expectedGeneration, 'candidate-rejected', environment.signature)
       return
     }
 
@@ -278,12 +227,16 @@ export function createTerminalDisplayCalibrationOwner(
       source: 'automatic',
     }
     if (!ports.writeStored(calibration, metadata) || !isCurrent(expectedGeneration)) {
-      ports.recordAttempt?.('storage-unavailable', environment.signature)
+      recordAttempt(expectedGeneration, 'storage-unavailable', environment.signature)
       return
     }
 
-    publish({ appliedCalibration: calibration, environmentSignature: environment.signature })
-    ports.recordAttempt?.('applied', environment.signature)
+    publish({
+      appliedCalibration: calibration,
+      environmentSignature: environment.signature,
+      status: 'applied',
+    })
+    recordAttempt(expectedGeneration, 'applied', environment.signature)
   }
 
   const captureReferenceNow = async (): Promise<ManualTerminalDisplayReferenceResult> => {
@@ -325,8 +278,14 @@ export function createTerminalDisplayCalibrationOwner(
 
     generation += 1
     const expectedGeneration = generation
-    publish({ appliedCalibration: null, environmentSignature: null })
+    const observation = ports.readEnvironmentObservation()
+    observationKey = JSON.stringify(observation)
+    publish({ appliedCalibration: null, environmentSignature: null, status: 'checking' })
     const operation = (async (): Promise<ManualTerminalDisplayCalibrationResult> => {
+      const blocker = rendererBlocker(observation, reference)
+      if (blocker) {
+        return { outcome: blocker }
+      }
       const environment = await ports
         .resolveEnvironment({ ...context, reference })
         .catch(() => null)
@@ -383,11 +342,24 @@ export function createTerminalDisplayCalibrationOwner(
         publish({
           appliedCalibration: calibration,
           environmentSignature: environment.signature,
+          status: 'applied',
         })
       }
       return { outcome: 'saved', score: result.score }
     })().catch(() => ({ outcome: 'candidate-unavailable' as const }))
-    const tracked = operation.then(() => undefined)
+    const tracked = operation.then(result => {
+      if (isCurrent(expectedGeneration)) {
+        publish({
+          ...snapshot,
+          status:
+            result.outcome === 'saved'
+              ? context.enabled
+                ? 'applied'
+                : 'disabled'
+              : result.outcome,
+        })
+      }
+    })
     inFlight.add(tracked)
     const cleanup = (): void => {
       inFlight.delete(tracked)
@@ -403,8 +375,14 @@ export function createTerminalDisplayCalibrationOwner(
     }
     generation += 1
     const expectedGeneration = generation
-    publish({ appliedCalibration: null, environmentSignature: null })
-    const operation = reconcile(context, expectedGeneration).catch(() => undefined)
+    const observation = ports.readEnvironmentObservation()
+    observationKey = JSON.stringify(observation)
+    publish({ appliedCalibration: null, environmentSignature: null, status: 'checking' })
+    const operation = reconcile(context, expectedGeneration, observation).catch(() => {
+      if (isCurrent(expectedGeneration)) {
+        recordAttempt(expectedGeneration, 'environment-unstable')
+      }
+    })
     inFlight.add(operation)
     const cleanup = (): void => {
       inFlight.delete(operation)
@@ -425,12 +403,17 @@ export function createTerminalDisplayCalibrationOwner(
       currentContextKey = nextKey
       start()
     },
-    invalidate: () => {
-      if (disposed) {
+    observeEnvironment: () => {
+      if (disposed || !currentContext?.enabled) {
         return
       }
-      generation += 1
-      publish({ appliedCalibration: null, environmentSignature: null })
+      if (
+        JSON.stringify(ports.readEnvironmentObservation()) === observationKey &&
+        snapshot.status !== 'environment-unstable'
+      ) {
+        return
+      }
+      start()
     },
     refresh: () => {
       start()
@@ -446,7 +429,11 @@ export function createTerminalDisplayCalibrationOwner(
       const environmentSignature =
         snapshot.environmentSignature ?? stored?.metadata?.environmentSignature ?? null
       const cleared = ports.clearStored({ suppressEnvironmentSignature: environmentSignature })
-      publish({ appliedCalibration: null, environmentSignature: null })
+      publish({
+        appliedCalibration: null,
+        environmentSignature: null,
+        status: !cleared ? 'storage-unavailable' : environmentSignature ? 'suppressed' : 'idle',
+      })
       return cleared
     },
     getSnapshot: () => snapshot,
@@ -468,7 +455,7 @@ export function createTerminalDisplayCalibrationOwner(
       disposed = true
       generation += 1
       currentContext = null
-      publish({ appliedCalibration: null, environmentSignature: null })
+      publish({ appliedCalibration: null, environmentSignature: null, status: 'idle' })
       listeners.clear()
     },
   }

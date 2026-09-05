@@ -6,6 +6,15 @@ import {
   type TerminalDisplayReference,
 } from '../../domain/terminalDisplayCalibration'
 import { terminalDisplayCalibrationOwner } from './terminalDisplayCalibrationRuntime'
+import type { TerminalDisplayCalibrationOwnerSnapshot } from '../../application/terminalDisplayCalibrationOwner'
+
+export function useTerminalDisplayCalibrationSnapshot(): TerminalDisplayCalibrationOwnerSnapshot {
+  return useSyncExternalStore(
+    terminalDisplayCalibrationOwner.subscribe,
+    terminalDisplayCalibrationOwner.getSnapshot,
+    terminalDisplayCalibrationOwner.getSnapshot,
+  )
+}
 
 export function useTerminalDisplayCalibrationProjection({
   terminalFontSize,
@@ -16,11 +25,7 @@ export function useTerminalDisplayCalibrationProjection({
   terminalFontFamily: string | null
   terminalDisplayReference: TerminalDisplayReference | null
 }): TerminalClientDisplayCalibration | null {
-  const snapshot = useSyncExternalStore(
-    terminalDisplayCalibrationOwner.subscribe,
-    terminalDisplayCalibrationOwner.getSnapshot,
-    terminalDisplayCalibrationOwner.getSnapshot,
-  )
+  const snapshot = useTerminalDisplayCalibrationSnapshot()
   const calibration = snapshot.appliedCalibration
   if (
     !calibration ||

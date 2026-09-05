@@ -8,9 +8,31 @@ import {
   measureFirstMountedTerminalDisplay,
   measureTerminalDisplayReferenceBaseline,
   resolveMountedTerminalDisplayRendererKind,
+  resolveMountedTerminalDisplayRendererInventory,
+  readTerminalDisplayRuntime,
   roundDisplayMetric,
   type TerminalDisplayRendererKind,
 } from './terminalDisplayMeasurement'
+import type { TerminalDisplayEnvironmentObservation } from '../../application/terminalDisplayCalibrationOwner'
+
+export function readTerminalDisplayEnvironmentObservation(): TerminalDisplayEnvironmentObservation {
+  const inventory = resolveMountedTerminalDisplayRendererInventory()
+  return {
+    runtime: readTerminalDisplayRuntime(),
+    rendererKind:
+      inventory.dom > 0
+        ? inventory.webgl > 0
+          ? 'mixed'
+          : 'dom'
+        : inventory.webgl > 0
+          ? 'webgl'
+          : 'none',
+    windowDevicePixelRatio: roundDisplayMetric(window.devicePixelRatio || 1),
+    visualViewportScale: window.visualViewport
+      ? roundDisplayMetric(window.visualViewport.scale)
+      : null,
+  }
+}
 
 export interface TerminalDisplayEnvironment {
   signature: string

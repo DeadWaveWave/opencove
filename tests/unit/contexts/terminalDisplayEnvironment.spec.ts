@@ -1,6 +1,22 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TerminalDisplayReference } from '../../../src/contexts/settings/domain/terminalDisplayCalibration'
-import { createTerminalDisplayEnvironmentSignature } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayEnvironment'
+import {
+  createTerminalDisplayEnvironmentSignature,
+  readTerminalDisplayEnvironmentObservation,
+} from '../../../src/contexts/settings/presentation/renderer/terminalDisplayEnvironment'
+
+const inventory = vi.hoisted(() => vi.fn(() => ({ dom: 0, webgl: 1 })))
+vi.mock(
+  '../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement',
+  async importOriginal => ({
+    ...(await importOriginal<
+      typeof import('../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement')
+    >()),
+    resolveMountedTerminalDisplayRendererInventory: inventory,
+  }),
+)
+
+afterEach(() => vi.unstubAllGlobals())
 
 const reference: TerminalDisplayReference = {
   version: 1,
@@ -33,6 +49,30 @@ function signature(overrides: Record<string, unknown> = {}): string {
 }
 
 describe('terminal display calibration environment signature', () => {
+  it('observes renderer compatibility without treating sibling counts as an environment change', () => {
+    inventory.mockReturnValue({ dom: 0, webgl: 1 })
+    const first = readTerminalDisplayEnvironmentObservation()
+    inventory.mockReturnValue({ dom: 0, webgl: 8 })
+    expect(readTerminalDisplayEnvironmentObservation()).toEqual(first)
+    inventory.mockReturnValue({ dom: 1, webgl: 8 })
+    expect(readTerminalDisplayEnvironmentObservation().rendererKind).toBe('mixed')
+    inventory.mockReturnValue({ dom: 1, webgl: 0 })
+    expect(readTerminalDisplayEnvironmentObservation().rendererKind).toBe('dom')
+    inventory.mockReturnValue({ dom: 0, webgl: 0 })
+    expect(readTerminalDisplayEnvironmentObservation().rendererKind).toBe('none')
+  })
+
+  it('observes device and visual viewport scale changes synchronously', () => {
+    vi.stubGlobal('devicePixelRatio', 1)
+    vi.stubGlobal('visualViewport', { scale: 1 })
+    const first = readTerminalDisplayEnvironmentObservation()
+    vi.stubGlobal('devicePixelRatio', 1.5)
+    expect(readTerminalDisplayEnvironmentObservation()).not.toEqual(first)
+    vi.stubGlobal('devicePixelRatio', 1)
+    vi.stubGlobal('visualViewport', { scale: 1.25 })
+    expect(readTerminalDisplayEnvironmentObservation()).not.toEqual(first)
+  })
+
   it('invalidates by DPR, visual viewport, renderer, runtime, reference, and font fingerprint', () => {
     const baseline = signature()
     expect(signature({ windowDevicePixelRatio: 2 })).not.toBe(baseline)

@@ -16,6 +16,14 @@ import {
 export const TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY = 'opencove:terminal-display-calibration:v1'
 const ENVIRONMENT_STORAGE_KEY = 'opencove:terminal-display-calibration-environment:v1'
 const SUPPRESSION_STORAGE_KEY = 'opencove:terminal-display-calibration-suppression:v1'
+export function isTerminalDisplayCalibrationStorageKey(key: string | null): boolean {
+  return (
+    key === null ||
+    key === TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY ||
+    key === ENVIRONMENT_STORAGE_KEY ||
+    key === SUPPRESSION_STORAGE_KEY
+  )
+}
 export const TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT =
   'opencove:terminal-display-calibration-changed'
 

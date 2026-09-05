@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { AgentSettings } from '../../domain/agentSettings'
-import { createTerminalDisplayReferenceSignature } from '../../domain/terminalDisplayCalibration'
-import { TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT } from './terminalDisplayCalibrationStorage'
+import {
+  isTerminalDisplayCalibrationStorageKey,
+  TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT,
+} from './terminalDisplayCalibrationStorage'
 import {
   isTerminalDisplayCalibrationStorageMutationInProgress,
   terminalDisplayCalibrationOwner,
@@ -16,19 +18,26 @@ export function useTerminalClientDisplayAutoCalibration({
   agentSettings: AgentSettings
 }): void {
   const { terminalFontSize, terminalFontFamily, terminalDisplayReference } = agentSettings
-  const referenceSignature = createTerminalDisplayReferenceSignature(terminalDisplayReference)
+  const contextRef = useRef({
+    enabled,
+    terminalFontSize,
+    terminalFontFamily,
+    reference: terminalDisplayReference,
+  })
 
   useEffect(() => {
-    let disposed = false
-    let scheduledFrame: number | null = null
-    let mediaQuery: MediaQueryList | null = null
     const context = {
       enabled,
       terminalFontSize,
       terminalFontFamily,
       reference: terminalDisplayReference,
     }
+    contextRef.current = context
+    terminalDisplayCalibrationOwner.update(context)
+  }, [enabled, terminalFontSize, terminalFontFamily, terminalDisplayReference])
 
+  useEffect(() => {
+    let mediaQuery: MediaQueryList | null = null
     const cleanupMediaQuery = (): void => {
       mediaQuery?.removeEventListener('change', handleDprChange)
       mediaQuery = null
@@ -38,48 +47,44 @@ export function useTerminalClientDisplayAutoCalibration({
       mediaQuery = window.matchMedia?.(`(resolution: ${window.devicePixelRatio || 1}dppx)`) ?? null
       mediaQuery?.addEventListener('change', handleDprChange)
     }
-    const schedule = (): void => {
-      if (disposed || isTerminalDisplayCalibrationStorageMutationInProgress()) {
+    const refresh = (): void => {
+      if (isTerminalDisplayCalibrationStorageMutationInProgress()) {
         return
       }
-      terminalDisplayCalibrationOwner.invalidate()
-      if (scheduledFrame !== null) {
-        return
+      terminalDisplayCalibrationOwner.refresh()
+    }
+    const observe = (): void => terminalDisplayCalibrationOwner.observeEnvironment()
+    const handleStorage = (event: StorageEvent): void => {
+      if (isTerminalDisplayCalibrationStorageKey(event.key)) {
+        refresh()
       }
-      scheduledFrame = window.requestAnimationFrame(() => {
-        scheduledFrame = null
-        terminalDisplayCalibrationOwner.refresh()
-      })
     }
     const handleDprChange = (): void => {
       armDprQuery()
-      schedule()
+      observe()
     }
 
-    terminalDisplayCalibrationOwner.update(context)
     armDprQuery()
-    window.addEventListener('resize', schedule)
-    window.visualViewport?.addEventListener('resize', schedule)
-    window.addEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, schedule)
-    window.addEventListener(TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT, schedule)
-    window.addEventListener('storage', schedule)
-    document.fonts?.addEventListener('loadingdone', schedule)
-    document.fonts?.addEventListener('loadingerror', schedule)
+    window.addEventListener('resize', observe)
+    window.visualViewport?.addEventListener('resize', observe)
+    window.addEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, observe)
+    window.addEventListener(TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT, refresh)
+    window.addEventListener('storage', handleStorage)
+    document.fonts?.addEventListener('loading', refresh)
+    document.fonts?.addEventListener('loadingdone', refresh)
+    document.fonts?.addEventListener('loadingerror', refresh)
 
     return () => {
-      disposed = true
-      if (scheduledFrame !== null) {
-        window.cancelAnimationFrame(scheduledFrame)
-      }
       cleanupMediaQuery()
-      window.removeEventListener('resize', schedule)
-      window.visualViewport?.removeEventListener('resize', schedule)
-      window.removeEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, schedule)
-      window.removeEventListener(TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT, schedule)
-      window.removeEventListener('storage', schedule)
-      document.fonts?.removeEventListener('loadingdone', schedule)
-      document.fonts?.removeEventListener('loadingerror', schedule)
-      terminalDisplayCalibrationOwner.update({ ...context, enabled: false })
+      window.removeEventListener('resize', observe)
+      window.visualViewport?.removeEventListener('resize', observe)
+      window.removeEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, observe)
+      window.removeEventListener(TERMINAL_DISPLAY_CALIBRATION_CHANGE_EVENT, refresh)
+      window.removeEventListener('storage', handleStorage)
+      document.fonts?.removeEventListener('loading', refresh)
+      document.fonts?.removeEventListener('loadingdone', refresh)
+      document.fonts?.removeEventListener('loadingerror', refresh)
+      terminalDisplayCalibrationOwner.update({ ...contextRef.current, enabled: false })
     }
-  }, [enabled, referenceSignature, terminalDisplayReference, terminalFontFamily, terminalFontSize])
+  }, [])
 }
