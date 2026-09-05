@@ -38,7 +38,6 @@ type ResourceRecord = {
 }
 
 type Execution = {
-  id: string | symbol
   controller: AbortController
   settlement: Promise<ManagedSshEndpointPreparationResult>
 }
@@ -215,11 +214,11 @@ export function createManagedSshEndpointRuntime(
   const run = async (
     record: ResourceRecord,
     execution: Execution,
-    request?: ManagedSshEndpointPreparationRequest,
+    request: ManagedSshEndpointPreparationRequest,
   ): Promise<ManagedSshEndpointPreparationResult> => {
     const reportPhase: ManagedSshEndpointPreparationRequest['reportPhase'] = phase => {
       checkCurrent(record, execution)
-      request?.reportPhase(phase)
+      request.reportPhase(phase)
     }
     try {
       checkCurrent(record, execution)
@@ -230,7 +229,7 @@ export function createManagedSshEndpointRuntime(
         record.snapshot.failureKind = 'tunnel_failed'
         throw new Error(ssh.diagnostics.join(' ') || 'SSH is not installed.')
       }
-      if (record.process && !request?.restartTunnel && !request?.reinstallRuntime) {
+      if (record.process && !request.restartTunnel && !request.reinstallRuntime) {
         reportPhase('checking_existing_connection')
         const port = record.snapshot.localPort
         const ready =
@@ -255,15 +254,13 @@ export function createManagedSshEndpointRuntime(
       record.snapshot.lastError = null
       record.snapshot.stderrTail = ''
       record.snapshot.failureKind = null
-      if (request) {
-        await dependencies.runBootstrap(ssh.executablePath, record.access, {
-          reinstallRuntime: request.reinstallRuntime,
-          appVersion,
-          signal: execution.controller.signal,
-          reportPhase,
-        })
-        checkCurrent(record, execution)
-      }
+      await dependencies.runBootstrap(ssh.executablePath, record.access, {
+        reinstallRuntime: request.reinstallRuntime,
+        appVersion,
+        signal: execution.controller.signal,
+        reportPhase,
+      })
+      checkCurrent(record, execution)
       await openTunnel(record, execution, ssh.executablePath, reportPhase)
       return { status: 'ready' }
     } catch (error) {
@@ -285,10 +282,10 @@ export function createManagedSshEndpointRuntime(
   }
 
   const startExecution = (
-    access: ManagedSshEndpointRuntimeAccess,
-    request?: ManagedSshEndpointPreparationRequest,
+    request: ManagedSshEndpointPreparationRequest,
   ): Promise<ManagedSshEndpointPreparationResult> => {
-    if (disposed || request?.signal.aborted || retiring.has(access.endpointId)) {
+    const { access } = request
+    if (disposed || request.signal.aborted || retiring.has(access.endpointId)) {
       return Promise.resolve({ status: 'cancelled' })
     }
     let record = records.get(access.endpointId)
@@ -311,12 +308,11 @@ export function createManagedSshEndpointRuntime(
       records.set(access.endpointId, record)
     }
     const currentRecord = record
-    // Application admission owns intent deduplication. A pre-existing resolver only owns I/O;
-    // retire it before the accepted preparation starts using this resource record.
+    // Application admission owns intent deduplication. Retire any superseded I/O before
+    // the accepted preparation starts using this resource record.
     const previousExecution = record.execution
     previousExecution?.controller.abort()
     const execution: Execution = {
-      id: request?.operationId ?? Symbol('resolve'),
       controller: new AbortController(),
       settlement: Promise.resolve({ status: 'cancelled' }),
     }
@@ -325,7 +321,7 @@ export function createManagedSshEndpointRuntime(
     const abort = (): void => {
       execution.controller.abort()
     }
-    request?.signal.addEventListener('abort', abort, { once: true })
+    request.signal.addEventListener('abort', abort, { once: true })
     execution.settlement = (async () => {
       await previousExecution?.settlement
       checkCurrent(currentRecord, execution)
@@ -352,7 +348,7 @@ export function createManagedSshEndpointRuntime(
         return { status: 'failed', failureKind: 'unknown' } as const
       })
       .finally(() => {
-        request?.signal.removeEventListener('abort', abort)
+        request.signal.removeEventListener('abort', abort)
         if (currentRecord.execution === execution) {
           currentRecord.execution = null
         }
@@ -384,26 +380,15 @@ export function createManagedSshEndpointRuntime(
   }
 
   return {
-    execute: request => startExecution(request.access, request),
+    execute: startExecution,
     resolveConnection: async access => {
       if (disposed || retiring.has(access.endpointId)) {
         return null
       }
+      // Reads may reuse a prepared route, never create one or retry a failed operation.
       const record = records.get(access.endpointId)
-      if (record?.execution) {
-        if (
-          typeof record.execution.id === 'string' ||
-          record.signature !== accessSignature(access)
-        ) {
-          return null
-        }
-        await record.execution.settlement
-      } else if (record?.signature !== accessSignature(access) || !connectionOf(record)) {
-        await startExecution(access)
-      }
-      const current = records.get(access.endpointId)
-      return current && !current.execution && current.signature === accessSignature(access)
-        ? connectionOf(current)
+      return record && !record.execution && record.signature === accessSignature(access)
+        ? connectionOf(record)
         : null
     },
     disposeEndpoint: access => retire(access.endpointId),

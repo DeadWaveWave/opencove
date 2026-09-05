@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { EndpointOverviewProjectionOwner } from '@contexts/topology/application/EndpointOverviewProjectionOwner'
+import { EndpointOverviewProjectionOwner } from '@contexts/topology/presentation/renderer/EndpointOverviewProjectionOwner'
 import { createEndpointOverviewControlSurfaceAdapter } from '../utils/endpointOverviewControlSurfaceAdapter'
 import { toErrorMessage } from '../utils/format'
 import { ENDPOINT_OVERVIEWS_CHANGED_EVENT, TOPOLOGY_CHANGED_EVENT } from '../utils/topologyEvents'

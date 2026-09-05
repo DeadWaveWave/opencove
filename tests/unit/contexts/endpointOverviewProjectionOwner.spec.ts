@@ -1,6 +1,6 @@
 import { setImmediate as flush } from 'node:timers/promises'
 import { describe, expect, it, vi } from 'vitest'
-import { EndpointOverviewProjectionOwner } from '../../../src/contexts/topology/application/EndpointOverviewProjectionOwner'
+import { EndpointOverviewProjectionOwner } from '../../../src/contexts/topology/presentation/renderer/EndpointOverviewProjectionOwner'
 import type { WorkerEndpointOverviewDto } from '../../../src/shared/contracts/dto'
 
 function overview(

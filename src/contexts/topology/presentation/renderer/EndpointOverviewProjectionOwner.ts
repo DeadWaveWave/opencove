@@ -4,7 +4,7 @@ import type {
   WorkerEndpointOverviewDto,
 } from '@shared/contracts/dto'
 import { createAppError } from '@shared/errors/appError'
-import type { EndpointOverviewControlPort } from './ports/EndpointOverviewControlPort'
+import type { EndpointOverviewControlPort } from '../../application/ports/EndpointOverviewControlPort'
 
 type CommandKind = 'prepare' | 'repair'
 export interface EndpointOverviewProjection {

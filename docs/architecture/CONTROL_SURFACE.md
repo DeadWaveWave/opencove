@@ -141,8 +141,10 @@ holding the request open through installation. `ManagedSshEndpointOperationOwner
 operation per endpoint: exact intent duplicates join; incompatible intents fail closed with
 `endpoint.operation_in_progress`. The preparation port owns SSH I/O and tunnel resources, not
 admission. Cold preparation runs direct SSH probe-first bootstrap before opening the local tunnel;
-a matching healthy warm tunnel is reused. Browse flows still resolve through
-`endpoint.homeDirectory` and `endpoint.readDirectory` on the target Worker.
+a matching healthy warm tunnel is reused. Connection resolution is read-only: it returns only a
+matching prepared route and never starts or retries SSH resources. Cold, failed, or replaced routes
+require explicit `endpoint.prepare` / `endpoint.repair`, including after Home Worker restart.
+Browse flows resolve through `endpoint.homeDirectory` and `endpoint.readDirectory` on the target Worker.
 
 An overview's optional `operation` is runtime-only: `operationId`, positive `revision`, `kind`,
 `phase`, `startedAt`, and `updatedAt`. Missing operation is equivalent to null for older clients.
@@ -151,8 +153,9 @@ operations project `connecting`, `canBrowse=false`, empty technical details and 
 without capability probes. Settlement removes the operation and restores terminal health.
 This monitor does not write topology/SQLite, increment durable sync revisions, or publish `/events`.
 
-Each renderer has one `EndpointOverviewProjectionOwner`, composed by AppShell's
-`EndpointOverviewProvider`. Settings, Wizard, Mount Manager and Picker bind active consumers of
+Each renderer has one `EndpointOverviewProjectionOwner` in topology renderer presentation, composed
+by AppShell's `EndpointOverviewProvider`. It owns only renderer-local projection, not Worker operation
+authority; the Control Surface port remains injected at the app boundary. Settings, Wizard, Mount Manager and Picker bind active consumers of
 that shared projection. It serializes `endpoint.overview.list` queries, fences pre-acceptance and
 pre-mutation responses, and polls 500ms after query settlement only while consumers and an active
 operation exist. Observation failure preserves the previous operation and retries observation,

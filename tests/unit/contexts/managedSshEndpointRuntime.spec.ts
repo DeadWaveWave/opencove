@@ -246,6 +246,66 @@ describe('managedSshEndpointRuntime', () => {
     await runtime.dispose()
   })
 
+  it('keeps cold connection resolution read-only until explicit preparation succeeds', async () => {
+    const reserve = vi.fn(async () => 41006)
+    const spawn = vi.fn(() => createTunnelProcess())
+    const probe = vi.fn(async () => true)
+    const bootstrap = vi.fn(async () => undefined)
+    const runtime = createManagedSshEndpointRuntime({
+      getSshAvailability: async () => createSshAvailability(),
+      reserveLoopbackPort: reserve,
+      spawnTunnelProcess: spawn,
+      probeConnection: probe,
+      waitForCondition: async fn => await fn(),
+      runBootstrap: bootstrap,
+    })
+    try {
+      expect(await runtime.resolveConnection(createAccess())).toBeNull()
+      expect(runtime.getSnapshot('managed-1')).toBeNull()
+      expect(reserve).not.toHaveBeenCalled()
+      expect(spawn).not.toHaveBeenCalled()
+      expect(probe).not.toHaveBeenCalled()
+      expect(bootstrap).not.toHaveBeenCalled()
+      expect(await runtime.execute(request())).toEqual({ status: 'ready' })
+      expect(await runtime.resolveConnection(createAccess())).toEqual({
+        hostname: '127.0.0.1',
+        port: 41006,
+        token: 'managed-token',
+      })
+      const changedAccess = { ...createAccess(), token: 'replaced-token' }
+      expect(await runtime.resolveConnection(changedAccess)).toBeNull()
+      expect(await runtime.resolveConnection(createAccess())).not.toBeNull()
+      expect(spawn).toHaveBeenCalledTimes(1)
+      expect(bootstrap).toHaveBeenCalledTimes(1)
+    } finally {
+      await runtime.dispose()
+    }
+  })
+
+  it('does not restart a failed tunnel or overwrite its failure through connection resolution', async () => {
+    const child = createTunnelProcess()
+    const spawn = vi.fn(() => child)
+    const runtime = createManagedSshEndpointRuntime({
+      getSshAvailability: async () => createSshAvailability(),
+      reserveLoopbackPort: async () => 41007,
+      spawnTunnelProcess: spawn,
+      probeConnection: async () => true,
+      waitForCondition: async fn => await fn(),
+      runBootstrap: async () => undefined,
+    })
+    try {
+      await runtime.execute(request())
+      child.exitCode = 255
+      child.emit('exit', 255)
+      const failed = runtime.getSnapshot('managed-1')
+      expect(await runtime.resolveConnection(createAccess())).toBeNull()
+      expect(spawn).toHaveBeenCalledTimes(1)
+      expect(runtime.getSnapshot('managed-1')).toEqual(failed)
+    } finally {
+      await runtime.dispose()
+    }
+  })
+
   it('reuses a matching healthy tunnel without bootstrapping', async () => {
     const bootstrap = vi.fn(async () => undefined)
     const spawn = vi.fn(() => createTunnelProcess())
