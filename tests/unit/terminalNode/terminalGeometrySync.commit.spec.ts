@@ -109,7 +109,7 @@ describe('terminal geometry commit helpers', () => {
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 80, rows: 24 })
   })
 
-  it('does not write PTY geometry when the initial restore size is already canonical', async () => {
+  it('asks the owner to confirm an already cached initial grid', async () => {
     const terminal = createTerminalMock()
     const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
       current: { cols: 64, rows: 44 },
@@ -129,12 +129,12 @@ describe('terminal geometry commit helpers', () => {
       reason: 'frame_commit',
     })
 
-    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
+    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: true })
     expect(terminal.resize).toHaveBeenCalledWith(64, 44)
-    expect(ptyResize).not.toHaveBeenCalled()
+    expect(ptyResize).toHaveBeenCalledOnce()
   })
 
-  it('coalesces a correlated commit when measured geometry is already canonical', async () => {
+  it('leaves no-op decisions to the canonical owner for a correlated cached grid', async () => {
     const terminal = createTerminalMock()
     const geometryRevision = beginTerminalGeometryCommit(terminal as never)
     const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
@@ -156,9 +156,9 @@ describe('terminal geometry commit helpers', () => {
       geometryRevision,
     })
 
-    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
+    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: true })
     expect(terminal.resize).toHaveBeenCalledWith(64, 44)
-    expect(ptyResize).not.toHaveBeenCalled()
+    expect(ptyResize).toHaveBeenCalledOnce()
   })
 
   it('uses durable runtime geometry locally without writing PTY geometry during restore', async () => {

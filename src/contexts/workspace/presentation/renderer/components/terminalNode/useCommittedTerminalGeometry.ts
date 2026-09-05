@@ -11,7 +11,9 @@ import {
   beginTerminalGeometryCommit,
   isTerminalGeometryCommitCurrent,
   markTerminalGeometryCommitSettled,
+  markTerminalGeometryCommitFailed,
 } from './terminalGeometryCoordinator'
+import { logTerminalGeometryDiagnostics } from './terminalGeometryDiagnostics'
 
 type PtySize = { cols: number; rows: number }
 
@@ -83,16 +85,39 @@ export async function commitTerminalGeometryForCurrentSession(
       sessionId,
       reason,
       geometryRevision,
-      shouldCommit: () => latestSessionIdRef.current === committedSessionId,
+      shouldCommit: () =>
+        latestSessionIdRef.current === committedSessionId && terminalRef.current === terminal,
     })
-  } catch {
+  } catch (error) {
+    if (
+      latestSessionIdRef.current !== committedSessionId ||
+      terminalRef.current !== terminal ||
+      (terminal &&
+        geometryRevision !== null &&
+        !isTerminalGeometryCommitCurrent(terminal, geometryRevision))
+    ) {
+      if (terminal && geometryRevision !== null) {
+        markTerminalGeometryCommitSettled(terminal, geometryRevision)
+      }
+      return
+    }
+    lastCommittedPtySizeRef.current = null
+    logTerminalGeometryDiagnostics({
+      event: 'geometry-commit-failed',
+      terminal,
+      fitAddon: fitAddonRef.current,
+      container: containerRef.current,
+      sessionId,
+      reason,
+      extraDetails: { error: error instanceof Error ? error.message : String(error) },
+    })
     if (terminal && geometryRevision !== null) {
-      markTerminalGeometryCommitSettled(terminal, geometryRevision)
+      markTerminalGeometryCommitFailed(terminal, geometryRevision)
     }
     return
   }
 
-  if (latestSessionIdRef.current !== committedSessionId) {
+  if (latestSessionIdRef.current !== committedSessionId || terminalRef.current !== terminal) {
     if (terminal && geometryRevision !== null) {
       markTerminalGeometryCommitSettled(terminal, geometryRevision)
     }
@@ -148,8 +173,14 @@ export function useCommittedTerminalGeometry(
         }
       }
       const queue = commitQueueRef.current
-      const commit = () =>
-        commitTerminalGeometryForCurrentSession(
+      const commit = () => {
+        if (
+          terminalRef.current !== queue.terminal ||
+          latestSessionIdRef.current !== queue.sessionId
+        ) {
+          return Promise.resolve()
+        }
+        return commitTerminalGeometryForCurrentSession(
           {
             terminalRef,
             fitAddonRef,
@@ -163,6 +194,7 @@ export function useCommittedTerminalGeometry(
           },
           reason,
         )
+      }
       queue.chain = queue.chain.then(commit, commit)
     },
     [

@@ -217,10 +217,13 @@ Current geometry transaction:
   reconnect traffic must not reuse the prior connection's epoch or issue write/resize/re-exec.
 - The requester receives one typed `resize_result`: `accepted`, `accepted_unverified`,
   `rejected_not_controller`, `rejected_stale_authority`, `superseded`, `session_not_found` or
-  `runtime_failed`. `accepted_unverified` means the resize was issued but its applied ConPTY
-  geometry cannot be observed synchronously; it does not commit or broadcast the proposal. Every
+  `runtime_failed`. `accepted_unverified` means the resize was issued without verified application;
+  it does not commit or broadcast the proposal. Windows waits for bounded real Console observation
+  through the Host-owned observer before returning a verified ACK (see `TERMINAL_RUNTIME_STABILITY.md`). Every
   result includes the correlated operation id and, when known, canonical geometry and authority.
-- An unchanged accepted size acknowledges the operation without issuing another runtime resize.
+- An unchanged accepted size skips runtime resize only while the previous mutation is confirmed.
+  After a failed/unverified mutation, the transaction owner retains a runtime-only uncertainty flag;
+  a retry to the old canonical size must also obtain a fresh runtime ACK before clearing it.
 - The Renderer measures without mutating xterm, gates PTY output while its operation is pending, and
   applies only the canonical result geometry. Rejection, supersession, timeout and stale-session
   completion all settle the gate; none may leave output permanently paused.
@@ -232,8 +235,9 @@ Current geometry transaction:
   a viewer applies canonical geometry only. Restored-Agent and explicit resize-suppression guards remain
   authoritative. Attach, focus and typing never substitute for this measured commit.
 - Once a verified live commit settles, local xterm rows/columns equal Worker presentation and PTY
-  runtime geometry. An unverified result preserves the prior canonical geometry rather than
-  pretending the request was applied. There is no local-only corrective size and no
+  runtime geometry. An unverified or failed result preserves the prior canonical geometry, releases
+  the output gate and invalidates the renderer's size cache for explicit retry. Preserving canonical
+  state is not evidence that an already-issued native resize rolled back. There is no local-only corrective size and no
   output-triggered shrink/recovery cycle.
 - Legacy `revision` input remains compatibility-only. New clients order work through operation id,
   base revision and authority epoch.

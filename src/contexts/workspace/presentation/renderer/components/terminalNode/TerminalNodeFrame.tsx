@@ -18,6 +18,7 @@ import type { TerminalNodeInteractionOptions } from '../TerminalNode.types'
 import type { ResizeEdges } from '../../utils/nodeFrameResize'
 
 interface TerminalNodeFrameProps {
+  geometryFeedback?: React.ReactNode
   title: string
   fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
@@ -68,6 +69,7 @@ interface TerminalNodeFrameProps {
 }
 
 export function TerminalNodeFrame({
+  geometryFeedback,
   title,
   fixedTitlePrefix,
   kind,
@@ -260,6 +262,7 @@ export function TerminalNodeFrame({
       ) : null}
 
       <div className="terminal-node__body">
+        {geometryFeedback}
         <div
           id={terminalElementId}
           ref={containerRef}

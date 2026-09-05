@@ -249,6 +249,7 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
           const lastGlyphRect = glyphSpans.at(-1)?.getBoundingClientRect() ?? null
           return {
             glyphSpanCount: glyphSpans.length,
+            glyphWidths: glyphSpans.map(span => span.getBoundingClientRect().width),
             glyphWidth: lastGlyphRect ? lastGlyphRect.right - rowRect.left : null,
             metrics: api?.getRenderMetrics(id) ?? null,
             rowWidth: rowRect.width,
@@ -281,10 +282,15 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
       expect(fallbackCanvasWidth).toBeCloseTo(size.cols * fallbackCellWidth, 8)
       expect(fallbackProjection.rowWidth).toBeCloseTo(fallbackCanvasWidth, 1)
       expect(fallbackProjection.screenWidth).toBeCloseTo(fallbackCanvasWidth, 1)
-      expect(fallbackProjection.glyphWidth).toBeCloseTo(
-        contextLossGlyphCount * fallbackCellWidth,
-        1,
-      )
+      // Blink lays out each inline span in 1/64 px units. A fractional cell width can
+      // accumulate that rounding across the row; enforce the bound per cell as well.
+      const layoutUnit = 1 / 64
+      for (const glyphWidth of fallbackProjection.glyphWidths) {
+        expect(Math.abs(glyphWidth - fallbackCellWidth)).toBeLessThan(layoutUnit)
+      }
+      expect(
+        Math.abs(fallbackProjection.glyphWidth - contextLossGlyphCount * fallbackCellWidth),
+      ).toBeLessThan(contextLossGlyphCount * layoutUnit)
     } finally {
       await electronApp.close()
     }

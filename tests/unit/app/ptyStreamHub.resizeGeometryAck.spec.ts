@@ -43,6 +43,46 @@ function createHub(resize: ControlSurfacePtyRuntime['resize']) {
 }
 
 describe('PtyStreamHub applied geometry acknowledgement', () => {
+  it.each(['accepted_unverified', 'runtime_failed', 'throw'] as const)(
+    'reconfirms the previous canonical size after %s instead of accepting a false no-op',
+    async failure => {
+      const resize = vi
+        .fn<ControlSurfacePtyRuntime['resize']>()
+        .mockImplementation(async input => ({
+          sessionId: input.sessionId,
+          operationId: input.operationId!,
+          status: 'accepted',
+          changed: true,
+          geometry: { cols: input.cols, rows: input.rows, revision: null },
+          authority: null,
+        }))
+      if (failure === 'throw') {
+        resize.mockRejectedValueOnce(new Error('observer lost'))
+      } else {
+        resize.mockImplementationOnce(async input => ({
+          sessionId: input.sessionId,
+          operationId: input.operationId!,
+          status: failure,
+          changed: false,
+          geometry: null,
+          authority: null,
+        }))
+      }
+      const { hub } = createHub(resize)
+      const input = { clientId: 'controller', sessionId: 'session-ack', authorityEpoch: 1 }
+      await hub.resize({ ...input, cols: 120, rows: 40 })
+      const retry = await hub.resize({ ...input, cols: 80, rows: 24 })
+      expect(retry).toMatchObject({
+        status: 'accepted',
+        changed: false,
+        geometry: { cols: 80, rows: 24 },
+      })
+      expect(resize).toHaveBeenCalledTimes(2)
+      await hub.resize({ ...input, cols: 80, rows: 24 })
+      expect(resize).toHaveBeenCalledTimes(2)
+      hub.forgetSession('session-ack')
+    },
+  )
   it('commits the runtime-applied geometry when it differs from the request', async () => {
     const { hub, sent } = createHub(async input => ({
       sessionId: input.sessionId,

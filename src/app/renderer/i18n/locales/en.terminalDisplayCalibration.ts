@@ -6,7 +6,7 @@ export const enTerminalDisplayCalibration = {
     'When no target exists yet, use the first opened terminal as the display target for other clients.',
   compensationLabel: 'Apply Calibration Automatically',
   compensationHelp:
-    'Use the saved adjustment for this device so it matches the target display. Turn this off to use the raw terminal font settings.',
+    'Use the saved adjustment for this device so it matches the target display. Turn this off to use the raw terminal font settings. Terminals still fit their windows when calibration is off.',
   referenceLabel: 'Shared Reference Target',
   referenceEmpty:
     'No target has been saved yet. The first opened terminal will become the target automatically, or you can set this device manually.',
@@ -18,6 +18,10 @@ export const enTerminalDisplayCalibration = {
   setReference: 'Use This Device as Target',
   clientLabel: 'This Device',
   clientDefault: 'No saved adjustment for this device. It uses the shared terminal font as-is.',
+  clientCalibrationDisabled:
+    'Calibration is off and this device has no saved adjustment. It uses the shared terminal font settings.',
+  clientCalibrationDisabledUnavailable:
+    'Calibration is off. A saved adjustment exists but cannot safely match the current target. Clear it or enable calibration to replace it.',
   clientCalibrationUnavailable:
     'A saved adjustment exists but cannot safely match the current target. Clear it or let automatic calibration replace it.',
   clientCalibrated:

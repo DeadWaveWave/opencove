@@ -15,6 +15,7 @@ import {
   writeTerminalClientDisplayCalibration,
 } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayCalibrationStorage'
 import type { AppUpdateState } from '../../../src/shared/contracts/dto'
+import { applyUiLanguage } from '../../../src/app/renderer/i18n'
 
 function createModelCatalog() {
   return AGENT_PROVIDERS.reduce<
@@ -127,6 +128,37 @@ function createReference() {
     },
   }
 }
+
+describe('disabled terminal calibration summary', () => {
+  afterEach(async () => {
+    await applyUiLanguage('en')
+  })
+
+  it.each([
+    ['en', 'Calibration is off'],
+    ['zh-CN', '校准补偿已关闭'],
+  ] as const)(
+    'explains disabled compensation without a local record in %s',
+    async (language, summary) => {
+      clearTerminalClientDisplayCalibration()
+      await applyUiLanguage(language)
+      const onChange = vi.fn()
+      renderSettingsPanel({
+        settings: {
+          ...DEFAULT_AGENT_SETTINGS,
+          terminalDisplayAutoReferenceEnabled: false,
+          terminalDisplayCalibrationCompensationEnabled: false,
+          terminalDisplayReference: createReference(),
+        },
+        onChange,
+      })
+      openAppearanceSettings()
+      expect(screen.getByText(new RegExp(summary))).toBeVisible()
+      expect(screen.getByTestId('settings-terminal-display-compensation')).not.toBeChecked()
+      expect(onChange).not.toHaveBeenCalled()
+    },
+  )
+})
 
 describe('SettingsPanel terminal display controls', () => {
   beforeEach(() => {

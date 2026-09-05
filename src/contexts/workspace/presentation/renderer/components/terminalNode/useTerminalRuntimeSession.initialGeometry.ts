@@ -21,6 +21,8 @@ import {
   beginTerminalGeometryCommit,
   initializeTerminalGeometryCommitBaseline,
   markTerminalGeometryCommitSettled,
+  markTerminalGeometryCommitFailed,
+  isTerminalGeometryCommitCurrent,
 } from './terminalGeometryCoordinator'
 
 type PtySize = { cols: number; rows: number }
@@ -197,9 +199,36 @@ export function createRuntimeInitialGeometryCommitter({
         shouldCommit: () => isCurrent() && terminalRef.current === terminal,
       })
     } catch {
+      if (
+        !isCurrent() ||
+        terminalRef.current !== terminal ||
+        (terminal &&
+          geometryRevision !== null &&
+          !isTerminalGeometryCommitCurrent(terminal, geometryRevision))
+      ) {
+        if (terminal && geometryRevision !== null) {
+          markTerminalGeometryCommitSettled(terminal, geometryRevision)
+        }
+        return null
+      }
+      lastCommittedPtySizeRef.current = null
+      if (terminal && geometryRevision !== null) {
+        markTerminalGeometryCommitFailed(terminal, geometryRevision)
+      }
+      return null
+    }
+
+    if (
+      !isCurrent() ||
+      terminalRef.current !== terminal ||
+      (terminal &&
+        geometryRevision !== null &&
+        !isTerminalGeometryCommitCurrent(terminal, geometryRevision))
+    ) {
       if (terminal && geometryRevision !== null) {
         markTerminalGeometryCommitSettled(terminal, geometryRevision)
       }
+      return null
     }
 
     if (measuredGeometry) {

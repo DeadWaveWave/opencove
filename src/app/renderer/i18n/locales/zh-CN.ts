@@ -347,6 +347,8 @@ export const zhCN = {
     writerLockRecoveryMessage: '另一个写入进程仍在关闭此 Agent 会话，请稍后重试恢复。',
     remoteWorkerRecoveryMessage: '原远程 Worker 当前不可用。请重新连接后安全恢复此会话。',
     retryRecovery: '重试恢复',
+    geometrySyncFailed: '终端尺寸未能确认，请重试以适配当前窗口。',
+    retryGeometrySync: '重新适配',
   },
   terminalFind: {
     placeholder: '查找…',

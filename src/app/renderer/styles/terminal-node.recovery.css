@@ -23,3 +23,11 @@
 .terminal-node__recovery-issue-action:hover {
   background: var(--cove-surface-hover);
 }
+
+.terminal-node__geometry-feedback {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+}
