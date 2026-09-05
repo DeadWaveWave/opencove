@@ -31,6 +31,7 @@ import { useTerminalLiveReattachScope } from './terminalNode/terminalLiveReattac
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
+  selectViewportZoom,
 } from './terminalNode/reactFlowState'
 import { useViewportInteractionSettledState } from './terminalNode/useViewportInteractionSettledState'
 import { TerminalNodeFrame } from './terminalNode/TerminalNodeFrame'
@@ -43,6 +44,7 @@ export function TerminalNode({
   title,
   fixedTitlePrefix = null,
   kind,
+  isAgentPresentation = kind === 'agent',
   labelColor,
   terminalProvider = null,
   agentLaunchMode = null,
@@ -87,11 +89,7 @@ export function TerminalNode({
   const isViewportInteractionSettledActive = useViewportInteractionSettledState(
     isViewportInteractionActive,
   )
-  const viewportZoom = useStore(storeState => {
-    const state = storeState as unknown as { transform?: [number, number, number] }
-    const zoom = state.transform?.[2] ?? 1
-    return Number.isFinite(zoom) && zoom > 0 ? zoom : 1
-  })
+  const viewportZoom = useStore(selectViewportZoom)
   const isTestEnvironment =
     window.opencoveApi.meta.isTest || window.opencoveApi.meta.enableTerminalTestApi === true
   const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
@@ -457,7 +455,7 @@ export function TerminalNode({
     <TerminalNodeFrame
       title={title}
       fixedTitlePrefix={fixedTitlePrefix}
-      kind={onAgentOverlayExit ? 'agent' : kind}
+      kind={isAgentPresentation ? 'agent' : kind}
       labelColor={labelColor}
       agentExecutionDirectory={agentExecutionDirectory}
       agentResumeSessionId={agentResumeSessionId}

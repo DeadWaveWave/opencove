@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import { resolveAgentPresentation } from '@contexts/workspace/presentation/renderer/utils/agentPresentation'
 import { isLabelColor, type LabelColor } from '@shared/types/labelColor'
 import type {
   TerminalNodeData,
@@ -103,11 +104,7 @@ export function buildSidebarAgentItems(workspace: WorkspaceState): SidebarAgentI
             : node.data.title,
       effectiveLabelColor: resolveEffectiveLabelColor(node),
       owningSpace: spaceByNodeId.get(node.id) ?? null,
-      status: resolveSidebarAgentStatus(
-        node.data.agentRuntimeObservation?.status ??
-          node.data.agentOverlay?.status ??
-          node.data.status,
-      ),
+      status: resolveSidebarAgentStatus(resolveAgentPresentation(node.data).status),
     }
   })
 }

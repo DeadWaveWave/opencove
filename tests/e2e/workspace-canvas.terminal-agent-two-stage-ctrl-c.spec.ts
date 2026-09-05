@@ -63,7 +63,9 @@ test.describe('Workspace Canvas - verified terminal Agent two-stage Ctrl+C', () 
   test.skip(process.platform === 'win32', 'POSIX command shim coverage')
 
   for (const provider of ['claude-code', 'codex'] as const) {
-    test(`${provider} keeps its verified Agent surface after cancellation and provider exit`, async () => {
+    test(`${provider} keeps its verified Agent surface after cancellation and provider exit`, async ({
+      browserName: _browserName,
+    }, testInfo) => {
       const command = provider === 'claude-code' ? 'claude' : 'codex'
       const commandDirectory = await createAgentCommandPath({
         scenario: 'jsonl-two-stage-ctrl-c',
@@ -209,6 +211,18 @@ test.describe('Workspace Canvas - verified terminal Agent two-stage Ctrl+C', () 
         expect(outputLines(await readTranscript(terminal))).toContain(exitMarker)
         expect(() => process.kill(providerPid, 0)).toThrow()
         await expectAgentSurface({ terminal, sidebarItem })
+        await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
+        await expect(sidebarItem).toContainText('Standby')
+
+        // Late attach must project the exited invocation, not replay its old Working badge.
+        await window.reload({ waitUntil: 'domcontentloaded' })
+        await expectAgentSurface({ terminal, sidebarItem })
+        await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
+        await expect(sidebarItem).toContainText('Standby')
+        await testInfo.attach(`${provider}-exited-resumable`, {
+          body: await terminal.screenshot({ path: testInfo.outputPath(`${provider}-exit.png`) }),
+          contentType: 'image/png',
+        })
         await expectExactBinding({
           window,
           nodeId,

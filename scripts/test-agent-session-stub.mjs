@@ -16,6 +16,7 @@ import {
   runJsonlStdinSubmitTurnLifecycleScenario,
 } from './test-agent-session-stub/codex.mjs'
 import { runStdinEchoScenario } from './test-agent-session-stub/stdinEcho.mjs'
+import { runTwoStageCtrlCFixture } from './test-agent-session-stub/twoStageCtrlC.mjs'
 import {
   runCodexHookFallbackScenario,
   runCodexHookLifecycleScenario,
@@ -41,6 +42,7 @@ import {
 import {
   reportInjectedTerminalSessionStart,
   reportInjectedTerminalTurnCompleted,
+  reportInjectedTerminalTurnStarted,
 } from './test-agent-session-stub/terminalShimHook.mjs'
 
 function isLikelyScenarioArg(value) {
@@ -164,11 +166,13 @@ async function main() {
 
   if (
     (provider === 'codex' || provider === 'claude-code') &&
-    scenario === 'jsonl-two-stage-ctrl-c'
+    (scenario === 'jsonl-two-stage-ctrl-c' || scenario === 'jsonl-two-stage-ctrl-c-unbound')
   ) {
     await runJsonlTwoStageCtrlCScenario(provider, cwd, {
       onSessionStart: async sessionFilePath =>
-        await reportInjectedTerminalSessionStart(provider, cwd, sessionFilePath),
+        scenario === 'jsonl-two-stage-ctrl-c-unbound'
+          ? await reportInjectedTerminalTurnStarted(provider, cwd, sessionFilePath)
+          : await reportInjectedTerminalSessionStart(provider, cwd, sessionFilePath),
     })
     return
   }
@@ -209,6 +213,11 @@ async function main() {
 
   if (scenario === 'raw-bracketed-paste-echo') {
     await runRawBracketedPasteEchoScenario()
+    return
+  }
+
+  if (scenario === 'raw-two-stage-ctrl-c') {
+    await runTwoStageCtrlCFixture(provider)
     return
   }
 

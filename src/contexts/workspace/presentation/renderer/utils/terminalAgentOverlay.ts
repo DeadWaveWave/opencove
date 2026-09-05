@@ -58,6 +58,7 @@ export function activateTerminalAgentOverlay(
     data: {
       ...node.data,
       terminalProviderHint: options.provider,
+      agentRuntimeObservation: null,
       terminalAgentBinding: isResumeSessionBindingVerified(resumableBinding)
         ? resumableBinding
         : null,
@@ -90,6 +91,7 @@ export function clearTerminalAgentOverlay(
       terminalAgentBinding: null,
       agentOverlay: null,
       terminalProviderHint: null,
+      agentRuntimeObservation: null,
     },
   }
 }
@@ -141,6 +143,7 @@ export function reactivateTerminalAgentOverlayAfterReexec(
     data: {
       ...node.data,
       terminalProviderHint: options.provider,
+      agentRuntimeObservation: null,
       terminalAgentBinding: isResumeSessionBindingVerified(binding) ? binding : null,
       agentOverlay: {
         provider: options.provider,

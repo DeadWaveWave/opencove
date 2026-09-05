@@ -29,6 +29,7 @@ export interface TerminalNodeProps {
   title: string
   fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
+  isAgentPresentation?: boolean
   labelColor?: LabelColor | null
   terminalProvider?: AgentProvider | null
   agentLaunchMode?: AgentLaunchMode | null

@@ -1,5 +1,6 @@
 import type { ControlSurfaceInvokeRequest } from '@shared/contracts/controlSurface'
 import type { AttachAgentStateWatcherInput } from '@shared/contracts/dto'
+import { canObserveAgentRunState } from '@contexts/workspace/presentation/renderer/utils/agentRuntimeObservation'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { resolveAgentTreatedProvider } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 
@@ -94,7 +95,7 @@ export function createTerminalAgentWatcherOwner(options: {
         const binding = node.data.terminalAgentBinding ?? null
         const provider = resolveAgentTreatedProvider(node)
         const sessionId = node.data.sessionId.trim()
-        if (!provider || !node.data.agentOverlay || sessionId.length === 0) {
+        if (!provider || !canObserveAgentRunState(node.data) || sessionId.length === 0) {
           continue
         }
 

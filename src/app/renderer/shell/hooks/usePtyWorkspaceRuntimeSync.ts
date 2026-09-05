@@ -13,7 +13,10 @@ import { useAppStore } from '../store/useAppStore'
 import { isAgentTreatedNode } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 import { createTerminalAgentWatcherOwner } from '../utils/terminalAgentWatcherOwner'
 import { createTerminalAgentOverlayReconciliationOwner } from '../utils/terminalAgentOverlayReconciliationOwner'
-import { projectAgentRuntimeObservation } from '@contexts/workspace/presentation/renderer/utils/agentRuntimeObservation'
+import {
+  canObserveAgentRunState,
+  projectAgentRuntimeObservation,
+} from '@contexts/workspace/presentation/renderer/utils/agentRuntimeObservation'
 import { reconcileTerminalAgentActivitySnapshots } from './usePtyWorkspaceRuntimeSync.terminalAgentActivity'
 import { createApplyTerminalSessionMetadata } from './usePtyWorkspaceRuntimeSync.metadataProjection'
 import { createTerminalAgentActivityApi } from '@contexts/terminal/presentation/renderer/terminalAgentActivityApi'
@@ -79,31 +82,6 @@ export function updateWorkspacesWithAgentRunState({
   const result = updateWorkspacesWithAgentTreatedNodes(workspaces, {
     sessionId,
     updateNode: node => {
-      const nextStatus: 'running' | 'waiting' | 'standby' =
-        state === 'standby' ? 'standby' : state === 'waiting' ? 'waiting' : 'running'
-      const nextObservation = { status: nextStatus, source, hookInstallState, degraded }
-      if (node.data.kind === 'terminal') {
-        const overlay = node.data.agentOverlay
-        if (
-          !overlay ||
-          (overlay.status === nextStatus &&
-            node.data.agentRuntimeObservation?.status === nextStatus &&
-            node.data.agentRuntimeObservation?.source === source &&
-            node.data.agentRuntimeObservation.hookInstallState === hookInstallState &&
-            node.data.agentRuntimeObservation.degraded === degraded)
-        ) {
-          return null
-        }
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            agentOverlay: { ...overlay, status: nextStatus },
-            agentRuntimeObservation: nextObservation,
-          },
-        }
-      }
-
       const projected = projectAgentRuntimeObservation(node.data, {
         state,
         source,
@@ -297,7 +275,7 @@ export function usePtyWorkspaceRuntimeSync({
       const agentSessionIds = new Set<string>()
       for (const workspace of workspaces) {
         for (const node of workspace.nodes) {
-          if (isAgentTreatedNode(node) && node.data.sessionId.trim().length > 0) {
+          if (canObserveAgentRunState(node.data) && node.data.sessionId.trim().length > 0) {
             agentSessionIds.add(node.data.sessionId)
           }
         }
