@@ -54,6 +54,7 @@ function decodePowerShellPath(value: string): string {
 function createWindowsLauncher(runtime: string, relay: string): string {
   return [
     '$ErrorActionPreference = "Stop"',
+    '$ProgressPreference = "SilentlyContinue"',
     // ProcessStartInfo avoids PowerShell 5.1's lossy native argument marshalling for JSON.
     'function Quote-NativeArgument([string] $value) {',
     String.raw`  return '"' + [regex]::Replace([regex]::Replace($value, '(\\*)"', '$1$1\"'), '(\\+)$', '$1$1') + '"'`,
