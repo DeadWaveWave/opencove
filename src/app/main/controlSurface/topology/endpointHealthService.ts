@@ -1,3 +1,5 @@
+import type { ManagedSshEndpointOperationOwner } from '../../../../contexts/topology/application/ManagedSshEndpointOperationOwner'
+import { managedSshDiagnosticDetails } from './managedSshDiagnosticDetails'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../../shared/contracts/controlSurface'
 import type {
   ListWorkerEndpointOverviewsResult,
@@ -135,6 +137,7 @@ export interface EndpointHealthService {
 export function createEndpointHealthService(options: {
   topology: WorkerTopologyStore
   managedRuntime: ManagedSshEndpointRuntime
+  operations: ManagedSshEndpointOperationOwner
 }): EndpointHealthService {
   const buildOverviewForAccess = async (
     access: EndpointRuntimeAccess,
@@ -152,6 +155,17 @@ export function createEndpointHealthService(options: {
       })
     }
 
+    const operation = options.operations.getSnapshot(access.endpoint.endpointId)
+    if (operation) {
+      return buildOverview(access.endpoint, {
+        status: 'connecting',
+        operation,
+        details: [],
+        recommendedAction: 'show_details',
+        dependentMountCount,
+      })
+    }
+
     const snapshot = options.managedRuntime.getSnapshot(access.endpoint.endpointId)
     if (!snapshot) {
       return buildOverview(access.endpoint, {
@@ -165,17 +179,17 @@ export function createEndpointHealthService(options: {
     if (snapshot.status === 'connecting') {
       return buildOverview(access.endpoint, {
         status: 'connecting',
-        details: snapshot.stderrTail.trim().length > 0 ? [snapshot.stderrTail.trim()] : [],
+        details: [],
         recommendedAction: 'show_details',
         dependentMountCount,
       })
     }
 
     if (snapshot.status === 'error') {
-      const details = [snapshot.lastError ?? 'SSH tunnel failed.']
-      if (snapshot.stderrTail.trim().length > 0) {
-        details.push(snapshot.stderrTail.trim())
-      }
+      const details = managedSshDiagnosticDetails(
+        [snapshot.lastError ?? 'SSH tunnel failed.', snapshot.stderrTail],
+        access.token,
+      )
       const failure = projectManagedRuntimeFailure(snapshot)
       return buildOverview(access.endpoint, {
         status: failure.status,
@@ -200,6 +214,15 @@ export function createEndpointHealthService(options: {
       token: access.token,
     })
 
+    // A command can start (and retire the tunnel) while a previous health probe is in flight.
+    const current = options.managedRuntime.getSnapshot(access.endpoint.endpointId)
+    if (
+      options.operations.getSnapshot(access.endpoint.endpointId) ||
+      current?.status !== snapshot.status ||
+      current?.localPort !== snapshot.localPort
+    ) {
+      return await buildOverviewForAccess(access, dependentMountCount)
+    }
     const status = probed.status === 'disconnected' ? 'needs_setup' : probed.status
     return buildOverview(access.endpoint, {
       status,
@@ -253,12 +276,26 @@ export function createEndpointHealthService(options: {
         }),
       )
 
-      return { endpoints: overviews }
+      return {
+        endpoints: overviews.map(overview => {
+          const operation = options.operations.getSnapshot(overview.endpoint.endpointId)
+          return operation
+            ? buildOverview(overview.endpoint, {
+                operation,
+                status: 'connecting',
+                details: [],
+                recommendedAction: 'show_details',
+                dependentMountCount: overview.dependentMountCount,
+              })
+            : overview
+        }),
+      }
     },
 
     prepareEndpoint: async (
       input: PrepareWorkerEndpointInput,
     ): Promise<PrepareWorkerEndpointResult> => {
+      const assertAdmission = options.operations.captureAdmission(input.endpointId)
       const access = await options.topology.resolveEndpointRuntimeAccess(input.endpointId)
       const impact = await options.topology.getEndpointRemovalImpact(input.endpointId)
       if (!access) {
@@ -279,32 +316,18 @@ export function createEndpointHealthService(options: {
         return { overview: await buildOverviewForAccess(access, impact.mountCount) }
       }
 
-      const prepared = await options.managedRuntime.prepare(toManagedRuntimeAccess(access), {
+      assertAdmission()
+      const operation = options.operations.start({
+        kind: 'prepare',
+        access: toManagedRuntimeAccess(access),
         restartTunnel: input.reason === 'reconnect',
-        allowBootstrap: true,
+        reinstallRuntime: false,
       })
-      if (prepared.connection) {
-        const probed = await probeEndpointConnection(prepared.connection)
-        return {
-          overview: buildOverview(access.endpoint, {
-            status: probed.status,
-            details: probed.details,
-            runtime: probed.runtime,
-            recommendedAction: recommendedActionForAccessStatus(access, probed.status),
-            canBrowse: probed.status === 'connected',
-            dependentMountCount: impact.mountCount,
-          }),
-        }
-      }
-
-      const snapshot = prepared.snapshot
-      const failure = projectManagedRuntimeFailure(snapshot)
       return {
         overview: buildOverview(access.endpoint, {
-          status: snapshot.status === 'error' ? failure.status : 'needs_setup',
-          details: [snapshot.lastError ?? 'Remote runtime is not ready yet.'],
-          recommendedAction:
-            snapshot.status === 'error' ? failure.recommendedAction : 'install_runtime',
+          status: 'connecting',
+          operation,
+          recommendedAction: 'show_details',
           dependentMountCount: impact.mountCount,
         }),
       }
@@ -336,6 +359,7 @@ export function createEndpointHealthService(options: {
         }
       }
 
+      const assertAdmission = options.operations.captureAdmission(input.endpointId)
       const access = await options.topology.resolveEndpointRuntimeAccess(input.endpointId)
       if (!access) {
         return {
@@ -352,38 +376,21 @@ export function createEndpointHealthService(options: {
         return { overview: await buildOverviewForAccess(access, impact.mountCount) }
       }
 
-      const prepared = await options.managedRuntime.prepare(toManagedRuntimeAccess(access), {
+      assertAdmission()
+      const operation = options.operations.start({
+        kind: 'repair',
+        access: toManagedRuntimeAccess(access),
         restartTunnel:
           input.action === 'repair_credentials' ||
           input.action === 'repair_tunnel' ||
           input.action === 'retry',
         reinstallRuntime: input.action === 'update_runtime' || input.action === 'install_runtime',
-        allowBootstrap: true,
       })
-
-      if (prepared.connection) {
-        const probed = await probeEndpointConnection(prepared.connection)
-        return {
-          overview: buildOverview(access.endpoint, {
-            status: probed.status,
-            details: probed.details,
-            runtime: probed.runtime,
-            recommendedAction: recommendedActionForAccessStatus(access, probed.status),
-            canBrowse: probed.status === 'connected',
-            dependentMountCount: impact.mountCount,
-          }),
-        }
-      }
-
-      const failure = projectManagedRuntimeFailure(prepared.snapshot)
       return {
         overview: buildOverview(access.endpoint, {
-          status: prepared.snapshot.status === 'error' ? failure.status : 'error',
-          details: [prepared.snapshot.lastError ?? 'Remote repair did not finish successfully.'],
-          recommendedAction:
-            prepared.snapshot.status === 'error'
-              ? failure.recommendedAction
-              : recommendedActionForAccessStatus(access, 'error'),
+          status: 'connecting',
+          operation,
+          recommendedAction: 'show_details',
           dependentMountCount: impact.mountCount,
         }),
       }

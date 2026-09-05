@@ -1,12 +1,10 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
   FileSystemEntry,
   GetEndpointHomeDirectoryResult,
-  PrepareWorkerEndpointResult,
   ReadEndpointDirectoryResult,
-  RepairWorkerEndpointResult,
-  WorkerEndpointOverviewDto,
+  RepairWorkerEndpointInput,
 } from '@shared/contracts/dto'
 import { fromFileUri } from '@contexts/filesystem/domain/fileUri'
 import { toErrorMessage } from '../utils/format'
@@ -15,6 +13,7 @@ import {
   getEndpointTechnicalDetails,
 } from '../utils/endpointOverviewUi'
 import { dirname, isAbsolutePath, normalizeSlashes } from '../utils/pathHelpers'
+import { useEndpointOverviews } from '../hooks/useEndpointOverviews'
 import { RemoteEndpointStatusPanel } from './RemoteEndpointStatusPanel'
 
 function sortEntries(a: FileSystemEntry, b: FileSystemEntry): number {
@@ -52,12 +51,28 @@ export function RemoteDirectoryPickerWindow({
   const { t } = useTranslation()
   const requestCounterRef = useRef(0)
   const pathInputElementRef = useRef<HTMLInputElement | null>(null)
-  const [overview, setOverview] = useState<WorkerEndpointOverviewDto | null>(null)
+  const generationRef = useRef(0)
+  const didLoadInitialRef = useRef(false)
+  const openQueryRevisionRef = useRef(0)
+  const {
+    overviewByEndpointId,
+    observationRevision,
+    busyByEndpointId,
+    prepareEndpoint,
+    repairEndpoint,
+    reload,
+    error: monitorError,
+  } = useEndpointOverviews({ enabled: isOpen })
+  const latestObservationRevisionRef = useRef(observationRevision)
+  latestObservationRevisionRef.current = observationRevision
+  const overview = overviewByEndpointId.get(endpointId) ?? null
   const [currentPath, setCurrentPath] = useState<string>('')
   const [pathInput, setPathInput] = useState('')
   const [entries, setEntries] = useState<FileSystemEntry[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [isBusy, setIsBusy] = useState(false)
+  const [isLoadingDirectory, setIsLoadingDirectory] = useState(false)
+  const isBusy =
+    isLoadingDirectory || Boolean(busyByEndpointId[endpointId]) || Boolean(overview?.operation)
 
   const refreshCandidate = useMemo(() => {
     if (pathInput.trim().length > 0) {
@@ -82,7 +97,8 @@ export function RemoteDirectoryPickerWindow({
     return parent && parent !== currentPath ? parent : null
   }, [currentPath])
 
-  const canBrowse = overview?.canBrowse === true
+  const canBrowse =
+    overview?.canBrowse === true && observationRevision > openQueryRevisionRef.current
   const technicalDetails = overview ? getEndpointTechnicalDetails(overview) : []
 
   const loadDirectory = useCallback(
@@ -98,7 +114,7 @@ export function RemoteDirectoryPickerWindow({
       }
 
       const requestId = (requestCounterRef.current += 1)
-      setIsBusy(true)
+      setIsLoadingDirectory(true)
       setError(null)
 
       try {
@@ -123,7 +139,7 @@ export function RemoteDirectoryPickerWindow({
         setError(toErrorMessage(caughtError))
       } finally {
         if (requestCounterRef.current === requestId) {
-          setIsBusy(false)
+          setIsLoadingDirectory(false)
         }
       }
     },
@@ -137,6 +153,9 @@ export function RemoteDirectoryPickerWindow({
       return
     }
 
+    const generation = generationRef.current
+    const requestId = requestCounterRef.current
+    setIsLoadingDirectory(true)
     try {
       const resolved =
         await window.opencoveApi.controlSurface.invoke<GetEndpointHomeDirectoryResult>({
@@ -144,69 +163,52 @@ export function RemoteDirectoryPickerWindow({
           id: 'endpoint.homeDirectory',
           payload: { endpointId },
         })
+      if (generation !== generationRef.current || requestId !== requestCounterRef.current) {
+        return
+      }
       const home =
         typeof resolved.homeDirectory === 'string' && resolved.homeDirectory.trim().length > 0
           ? resolved.homeDirectory.trim()
           : '/'
       await loadDirectory(home)
     } catch {
+      if (generation !== generationRef.current || requestId !== requestCounterRef.current) {
+        return
+      }
       await loadDirectory('/')
     }
   }, [endpointId, initialPath, loadDirectory])
 
   const handlePrepare = useCallback(
-    async (reason: 'connect' | 'browse' | 'reconnect', shouldLoadDirectory: boolean) => {
-      setIsBusy(true)
+    async (reason: 'connect' | 'browse' | 'reconnect') => {
+      const generation = generationRef.current
+      didLoadInitialRef.current = false
       setError(null)
-
       try {
-        const result = await window.opencoveApi.controlSurface.invoke<PrepareWorkerEndpointResult>({
-          kind: 'command',
-          id: 'endpoint.prepare',
-          payload: { endpointId, reason },
-        })
-        setOverview(result.overview)
-        if (result.overview.canBrowse && shouldLoadDirectory) {
-          await loadInitialDirectory()
-        }
+        await prepareEndpoint({ endpointId, reason })
       } catch (caughtError) {
-        setError(toErrorMessage(caughtError))
-      } finally {
-        setIsBusy(false)
+        if (generation === generationRef.current) {
+          setError(toErrorMessage(caughtError))
+        }
       }
     },
-    [endpointId, loadInitialDirectory],
+    [endpointId, prepareEndpoint],
   )
 
   const handleRepair = useCallback(
-    async (
-      action:
-        | 'repair_credentials'
-        | 'repair_tunnel'
-        | 'install_runtime'
-        | 'update_runtime'
-        | 'retry',
-    ) => {
-      setIsBusy(true)
+    async (action: RepairWorkerEndpointInput['action']) => {
+      const generation = generationRef.current
+      didLoadInitialRef.current = false
       setError(null)
-
       try {
-        const result = await window.opencoveApi.controlSurface.invoke<RepairWorkerEndpointResult>({
-          kind: 'command',
-          id: 'endpoint.repair',
-          payload: { endpointId, action },
-        })
-        setOverview(result.overview)
-        if (result.overview.canBrowse) {
-          await loadInitialDirectory()
-        }
+        await repairEndpoint({ endpointId, action })
       } catch (caughtError) {
-        setError(toErrorMessage(caughtError))
-      } finally {
-        setIsBusy(false)
+        if (generation === generationRef.current) {
+          setError(toErrorMessage(caughtError))
+        }
       }
     },
-    [endpointId, loadInitialDirectory],
+    [endpointId, repairEndpoint],
   )
 
   const runRecommendedAction = useCallback(async () => {
@@ -220,7 +222,7 @@ export function RemoteDirectoryPickerWindow({
     }
 
     if (action.kind === 'prepare') {
-      await handlePrepare(action.reason, true)
+      await handlePrepare(action.reason)
       return
     }
 
@@ -228,18 +230,51 @@ export function RemoteDirectoryPickerWindow({
   }, [handlePrepare, handleRepair, overview])
 
   useLayoutEffect(() => {
-    if (!isOpen) {
-      return
-    }
-
+    // Cache can paint continuity, but only a query after this open can authorize browsing.
+    openQueryRevisionRef.current = latestObservationRevisionRef.current
+    generationRef.current += 1
     requestCounterRef.current += 1
-    setOverview(null)
+    didLoadInitialRef.current = false
     setError(null)
     setEntries([])
     setCurrentPath('')
     setPathInput('')
-    void handlePrepare('browse', true)
-  }, [handlePrepare, isOpen])
+    setIsLoadingDirectory(false)
+    return () => {
+      generationRef.current += 1
+      requestCounterRef.current += 1
+    }
+  }, [endpointId, isOpen])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+    const generation = generationRef.current
+    void reload().then(overviews => {
+      if (generation !== generationRef.current) {
+        return
+      }
+      const current = overviews?.find(item => item.endpoint.endpointId === endpointId)
+      if (current && !current.operation && !current.canBrowse) {
+        void handlePrepare('browse')
+      }
+    })
+  }, [endpointId, handlePrepare, isOpen, reload])
+
+  useEffect(() => {
+    if (!isOpen || !canBrowse || isBusy || didLoadInitialRef.current) {
+      return
+    }
+    didLoadInitialRef.current = true
+    void loadInitialDirectory()
+  }, [canBrowse, isBusy, isOpen, loadInitialDirectory])
+
+  const closePicker = () => {
+    generationRef.current += 1
+    requestCounterRef.current += 1
+    onCancel()
+  }
 
   if (!isOpen) {
     return null
@@ -249,13 +284,7 @@ export function RemoteDirectoryPickerWindow({
     <div
       className="cove-window-backdrop remote-directory-picker-backdrop"
       data-testid="remote-directory-picker-backdrop"
-      onClick={() => {
-        if (isBusy) {
-          return
-        }
-
-        onCancel()
-      }}
+      onClick={closePicker}
     >
       <section
         className="cove-window cove-window--xwide"
@@ -268,9 +297,9 @@ export function RemoteDirectoryPickerWindow({
         </p>
 
         <div className="cove-window__fields">
-          {error ? (
+          {error || monitorError ? (
             <p className="cove-window__error" data-testid="remote-directory-picker-error">
-              {error}
+              {error ?? monitorError}
             </p>
           ) : null}
 
@@ -287,7 +316,7 @@ export function RemoteDirectoryPickerWindow({
                   void runRecommendedAction()
                 }}
                 onReconnect={() => {
-                  void handlePrepare('reconnect', true)
+                  void handlePrepare('reconnect')
                 }}
               />
             ) : null}
@@ -407,11 +436,8 @@ export function RemoteDirectoryPickerWindow({
           <button
             type="button"
             className="cove-window__action cove-window__action--ghost"
-            disabled={isBusy}
             data-testid="remote-directory-picker-cancel"
-            onClick={() => {
-              onCancel()
-            }}
+            onClick={closePicker}
           >
             {t('common.cancel')}
           </button>

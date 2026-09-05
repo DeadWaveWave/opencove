@@ -9,6 +9,30 @@ export type ManagedSshStageFailureCode =
   | 'runtime_start_failed'
   | 'unknown'
 
+export type ManagedSshEndpointOperationKind = 'prepare' | 'repair'
+
+export type ManagedSshEndpointOperationPhase =
+  | 'checking_prerequisites'
+  | 'checking_existing_connection'
+  | 'detecting_platform'
+  | 'checking_remote_runtime'
+  | 'checking_installation'
+  | 'downloading_installer'
+  | 'installing_runtime'
+  | 'starting_runtime'
+  | 'waiting_for_runtime'
+  | 'opening_tunnel'
+  | 'verifying_connection'
+
+export interface ManagedSshEndpointOperationDto {
+  operationId: string
+  revision: number
+  kind: ManagedSshEndpointOperationKind
+  phase: ManagedSshEndpointOperationPhase
+  startedAt: string
+  updatedAt: string
+}
+
 export interface WorkerEndpointManagedSshDto {
   host: string
   port: number | null
@@ -141,6 +165,7 @@ export interface WorkerEndpointOverviewDto {
   isManaged: boolean
   canBrowse: boolean
   dependentMountCount: number
+  operation?: ManagedSshEndpointOperationDto | null
   runtime: {
     appVersion: string | null
     protocolVersion: number | null

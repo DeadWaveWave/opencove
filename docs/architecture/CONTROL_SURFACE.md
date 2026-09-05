@@ -136,17 +136,47 @@ Worker endpoints and mounts are managed by the topology store:
 - The local endpoint is implicit and always identified as `local`.
 
 Managed SSH remains a topology-level endpoint record. `endpoint.prepare` / `endpoint.repair`
-own local tunnel orchestration, remote runtime bootstrap, and health projection; browse flows
-still resolve through `endpoint.homeDirectory` and `endpoint.readDirectory` on the target Worker.
+quickly return an accepted overview in the existing HTTP 200 `/invoke` envelope, rather than
+holding the request open through installation. `ManagedSshEndpointOperationOwner` owns one active
+operation per endpoint: exact intent duplicates join; incompatible intents fail closed with
+`endpoint.operation_in_progress`. The preparation port owns SSH I/O and tunnel resources, not
+admission. Cold preparation runs direct SSH probe-first bootstrap before opening the local tunnel;
+a matching healthy warm tunnel is reused. Browse flows still resolve through
+`endpoint.homeDirectory` and `endpoint.readDirectory` on the target Worker.
+
+An overview's optional `operation` is runtime-only: `operationId`, positive `revision`, `kind`,
+`phase`, `startedAt`, and `updatedAt`. Missing operation is equivalent to null for older clients.
+Only forward phases increase revision; timestamps are diagnostic, not ordering authority. Active
+operations project `connecting`, `canBrowse=false`, empty technical details and `show_details`,
+without capability probes. Settlement removes the operation and restores terminal health.
+This monitor does not write topology/SQLite, increment durable sync revisions, or publish `/events`.
+
+Each renderer has one `EndpointOverviewProjectionOwner`, composed by AppShell's
+`EndpointOverviewProvider`. Settings, Wizard, Mount Manager and Picker bind active consumers of
+that shared projection. It serializes `endpoint.overview.list` queries, fences pre-acceptance and
+pre-mutation responses, and polls 500ms after query settlement only while consumers and an active
+operation exist. Observation failure preserves the previous operation and retries observation,
+never installation. Closing a window releases its consumer, not the Worker operation; reopening
+queries current truth. Picker loads the intended/home directory once per open generation when
+browsing becomes possible. Progress is localized and indeterminate; reduced-motion disables the
+spinner without hiding the named progressbar or polite status.
+
+Bootstrap progress markers have an exact versioned allowlist and are display signals only.
+Managed SSH opts into 256 KiB per-stream diagnostic capture while command observers receive all
+chunks; other process callers keep the unlimited default. Active UI suppresses transient tunnel
+noise. Terminal details strip control/progress markers, redact credentials, deduplicate channel
+refusals, and cap output at three bounded lines. Lifecycle diagnostics allowlist operation
+correlation/phase/elapsed/failure fields and never write credentials, arguments or scripts.
 `endpoint.sshConfigHosts` is a read-only projection of the current user's SSH configuration. Its
 domain parser has no filesystem/runtime dependencies, while the Main boundary exclusively owns
 bounded file and `Include` reads. It returns concrete `Host` aliases for preview only; importing
 still uses `endpoint.registerManagedSsh`, and the stored host remains the alias so OpenSSH owns
 effective `HostName`, `User`, `Port`, identity, and proxy resolution.
 `endpoint.updateManagedSsh` validates the complete replacement configuration before side effects,
-stops the previous tunnel, revalidates the endpoint against the topology store's current state,
+fences operation admission, cancels/drains local SSH execution, stops the previous tunnel, revalidates the endpoint against the topology store's current state,
 then commits the replacement through the store's serialized write queue before preparing the new
-tunnel. If stopping the previous tunnel succeeds but the durable write fails, the old durable
+tunnel. Admission stays fenced through the durable mutation; an access read started before the
+mutation cannot start stale work afterward. If stopping the previous tunnel succeeds but the durable write fails, the old durable
 configuration remains authoritative even though its tunnel has already stopped; callers can
 reconnect or repair it. Endpoint and credential identity plus concurrent mount bindings are
 preserved. Callers must re-resolve endpoint connections after an update and must not cache the
@@ -181,6 +211,11 @@ Current code has some handlers that directly orchestrate persistence/topology be
 
 ## Verification Anchors
 
+- `tests/contract/controlSurface/controlSurfaceHttpServer.managedSshOperations.spec.ts`
+- `tests/unit/contexts/managedSshEndpointOperationOwner.spec.ts`
+- `tests/unit/contexts/endpointOverviewProjectionOwner.spec.ts`
+- `tests/e2e/settings.managed-ssh-cold-bootstrap-progress.spec.ts`
+- `tests/e2e/remote-directory-picker.managed-ssh-progress.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.multiEndpoint.controlPlane.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.multiEndpoint.ptyProxy.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.sessionStreaming.integration.spec.ts`

@@ -28,6 +28,7 @@ export function buildOverview(
     canBrowse?: boolean
     dependentMountCount: number
     runtime?: ProbedRuntime
+    operation?: WorkerEndpointOverviewDto['operation']
     summary?: string
   },
 ): WorkerEndpointOverviewDto {
@@ -59,6 +60,7 @@ export function buildOverview(
     canBrowse: options.canBrowse ?? false,
     dependentMountCount: options.dependentMountCount,
     runtime: options.runtime ?? emptyRuntime(),
+    operation: options.operation ?? null,
   }
 }
 

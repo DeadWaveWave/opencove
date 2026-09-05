@@ -5,10 +5,29 @@ import path from 'node:path'
 const FAKE_SSH_RUNTIME = String.raw`
 import net from 'node:net'
 import process from 'node:process'
+import { access, appendFile } from 'node:fs/promises'
+import { watch } from 'node:fs'
+import path from 'node:path'
+
+const gateDir = process.env.OPENCOVE_FAKE_SSH_GATE_DIR
+async function phaseGate(phase) {
+  const line = '[opencove-bootstrap-progress:v1] ' + phase + '\n'
+  process.stdout.write(line)
+  await appendFile(path.join(gateDir, 'phases.log'), line)
+  const release = path.join(gateDir, phase + '.release')
+  const released = () => access(release).then(() => true, () => false)
+  await new Promise((resolve, reject) => {
+    const check = async () => { if (await released()) { watcher.close(); resolve() } }
+    const watcher = watch(gateDir, () => { void check().catch(reject) })
+    watcher.on('error', reject)
+    void check().catch(reject)
+  })
+}
 
 const args = process.argv.slice(2)
 const portForwardIndex = args.indexOf('-L')
 if (portForwardIndex >= 0) {
+  if (gateDir) await appendFile(path.join(gateDir, 'tunnel-started'), 'started\n')
   const mapping = args[portForwardIndex + 1] ?? ''
   const [localPortRaw, targetHost, targetPortRaw] = mapping.split(':')
   const localPort = Number(localPortRaw)
@@ -19,20 +38,27 @@ if (portForwardIndex >= 0) {
     process.exit(1)
   }
 
+  const sockets = new Set()
   const server = net.createServer(socket => {
     const upstream = net.createConnection({
       host: '127.0.0.1',
       port: targetPort,
     })
 
+    sockets.add(socket)
+    sockets.add(upstream)
     socket.pipe(upstream)
     upstream.pipe(socket)
 
     const closePair = () => {
+      sockets.delete(socket)
+      sockets.delete(upstream)
       socket.destroy()
       upstream.destroy()
     }
 
+    socket.on('close', closePair)
+    upstream.on('close', closePair)
     socket.on('error', closePair)
     upstream.on('error', closePair)
   })
@@ -43,6 +69,7 @@ if (portForwardIndex >= 0) {
   })
 
   const closeAndExit = () => {
+    for (const socket of sockets) socket.destroy()
     server.close(() => {
       process.exit(0)
     })
@@ -64,6 +91,15 @@ if (posixProbe) {
 const windowsProbe = args.find(argument => argument.includes('$PSVersionTable.PSVersion.ToString()'))
 if (windowsProbe) {
   process.stdout.write('7.4.0')
+  process.exit(0)
+}
+
+if (gateDir) {
+  // Model observable bootstrap stages; actual scripts run in POSIX/Windows unit fixtures.
+  for await (const chunk of process.stdin) { /* drain generated script */ }
+  await phaseGate('checking_remote_runtime')
+  await phaseGate('installing_runtime')
+  await phaseGate('starting_runtime')
   process.exit(0)
 }
 

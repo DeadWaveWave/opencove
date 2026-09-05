@@ -1,3 +1,8 @@
+import { ManagedSshEndpointOperationOwner } from '../../../src/contexts/topology/application/ManagedSshEndpointOperationOwner'
+import type {
+  ManagedSshEndpointPreparationRequest,
+  ManagedSshEndpointPreparationResult,
+} from '../../../src/contexts/topology/application/ports/ManagedSshEndpointPreparationPort'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../src/shared/contracts/controlSurface'
 import { createEndpointHealthService } from '../../../src/app/main/controlSurface/topology/endpointHealthService'
 import type { ManagedSshEndpointRuntime } from '../../../src/app/main/controlSurface/topology/managedSshEndpointRuntime'
@@ -117,18 +122,7 @@ function createSubject(options: {
   const managedRuntime: ManagedSshEndpointRuntime = {
     resolveConnection: async () => null,
     disposeEndpoint: async () => undefined,
-    prepare: async () => ({
-      connection: null,
-      snapshot: {
-        endpointId: 'managed-1',
-        status: 'idle',
-        localPort: null,
-        lastError: null,
-        stderrTail: '',
-        failureKind: null,
-      },
-      bootstrapRan: false,
-    }),
+    execute: async () => ({ status: 'ready' }),
     getSnapshot: () => null,
     getSshAvailability: async () => ({
       toolId: 'ssh',
@@ -145,12 +139,63 @@ function createSubject(options: {
   return createEndpointHealthService({
     topology,
     managedRuntime,
+    operations: new ManagedSshEndpointOperationOwner({
+      preparationPort: managedRuntime,
+      createOperationId: () => 'operation-test',
+      now: Date.now,
+    }),
   })
 }
 
 describe('endpointHealthService', () => {
   beforeEach(() => {
     invokeControlSurfaceMock.mockReset()
+  })
+
+  it('projects the current operation instead of an older in-flight capability probe', async () => {
+    let releaseProbe!: () => void
+    let probeStarted!: () => void
+    const started = new Promise<void>(resolve => {
+      probeStarted = resolve
+    })
+    invokeControlSurfaceMock.mockImplementation(async () => {
+      probeStarted()
+      await new Promise<void>(resolve => {
+        releaseProbe = resolve
+      })
+      return { httpStatus: 503, result: null }
+    })
+    let releasePreparation!: () => void
+    const preparation = new Promise<void>(resolve => {
+      releasePreparation = resolve
+    })
+    const service = createSubject({
+      access: createManagedAccess(),
+      managedRuntime: {
+        getSnapshot: () => ({
+          endpointId: 'managed-1',
+          status: 'ready',
+          localPort: 41011,
+          lastError: null,
+          stderrTail: '',
+          failureKind: null,
+        }),
+        execute: async () => {
+          await preparation
+          return { status: 'ready' }
+        },
+      },
+    })
+    const query = service.listOverviews()
+    await started
+    const accepted = await service.prepareEndpoint({ endpointId: 'managed-1' })
+    releaseProbe()
+    const result = await query
+    expect(result.endpoints[0]?.operation?.operationId).toBe(
+      accepted.overview.operation?.operationId,
+    )
+    expect(result.endpoints[0]?.status).toBe('connecting')
+    releasePreparation()
   })
 
   it('keeps manual auth failures as diagnostic-only instead of offering credential repair', async () => {
@@ -245,123 +290,98 @@ describe('endpointHealthService', () => {
     },
   )
 
-  it('restarts the managed tunnel and preserves dependent mounts after successful repair', async () => {
-    const managedAccess = createManagedAccess()
-    invokeControlSurfaceMock.mockResolvedValue({
-      httpStatus: 200,
-      result: {
-        __opencoveControlEnvelope: true,
-        ok: true,
-        value: {
-          protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
-          appVersion: '1.2.3',
-          pid: 42,
+  it.each(['prepare', 'repair'] as const)(
+    'returns accepted %s before bootstrap resolves and monitors terminal outcome',
+    async kind => {
+      let release!: (result: ManagedSshEndpointPreparationResult) => void
+      const gate = new Promise<ManagedSshEndpointPreparationResult>(resolve => {
+        release = resolve
+      })
+      let request!: ManagedSshEndpointPreparationRequest
+      const execute = vi.fn(async (input: ManagedSshEndpointPreparationRequest) => {
+        request = input
+        return await gate
+      })
+      let ready = false
+      const service = createSubject({
+        access: createManagedAccess(),
+        dependentMountCount: 3,
+        managedRuntime: {
+          execute,
+          getSnapshot: () => ({
+            endpointId: 'managed-1',
+            status: ready ? 'ready' : 'connecting',
+            localPort: ready ? 41012 : null,
+            lastError: null,
+            stderrTail: 'channel 1: open failed: connect failed: Connection refused',
+            failureKind: null,
+          }),
         },
-      },
-    })
-
-    const prepare = vi.fn(async () => ({
-      connection: {
-        hostname: '127.0.0.1',
-        port: 41012,
-        token: managedAccess.token,
-      },
-      snapshot: {
-        endpointId: managedAccess.endpoint.endpointId,
-        status: 'ready' as const,
-        localPort: 41012,
-        lastError: null,
-        stderrTail: '',
-        failureKind: null,
-      },
-      bootstrapRan: true,
-    }))
-    const service = createSubject({
-      access: managedAccess,
-      dependentMountCount: 3,
-      managedRuntime: {
-        prepare,
-      },
-    })
-
-    const result = await service.repairEndpoint({
-      endpointId: managedAccess.endpoint.endpointId,
-      action: 'repair_credentials',
-    })
-
-    expect(result.overview.status).toBe('connected')
-    expect(result.overview.dependentMountCount).toBe(3)
-    expect(prepare).toHaveBeenCalledWith(
-      {
-        endpointId: managedAccess.endpoint.endpointId,
-        displayName: managedAccess.endpoint.displayName,
-        token: managedAccess.token,
-        ssh: managedAccess.managedSsh,
-      },
-      {
-        restartTunnel: true,
-        reinstallRuntime: false,
-        allowBootstrap: true,
-      },
-    )
-  })
-
-  it('reinstalls the managed runtime when updating a mismatched endpoint', async () => {
-    const managedAccess = createManagedAccess()
-    invokeControlSurfaceMock.mockResolvedValue({
-      httpStatus: 200,
-      result: {
-        __opencoveControlEnvelope: true,
-        ok: true,
-        value: {
-          protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
-          appVersion: '1.2.4',
-          pid: 84,
+      })
+      const result =
+        kind === 'prepare'
+          ? await service.prepareEndpoint({ endpointId: 'managed-1', reason: 'connect' })
+          : await service.repairEndpoint({ endpointId: 'managed-1', action: 'update_runtime' })
+      expect(result.overview).toMatchObject({
+        status: 'connecting',
+        canBrowse: false,
+        details: [],
+        dependentMountCount: 3,
+        operation: { operationId: 'operation-test', revision: 1, kind },
+      })
+      expect(execute).toHaveBeenCalledTimes(1)
+      expect(request.reinstallRuntime).toBe(kind === 'repair')
+      expect(invokeControlSurfaceMock).not.toHaveBeenCalled()
+      request.reportPhase('installing_runtime')
+      expect((await service.listOverviews()).endpoints[0]?.operation).toMatchObject({
+        phase: 'installing_runtime',
+        revision: 2,
+      })
+      expect(invokeControlSurfaceMock).not.toHaveBeenCalled()
+      ready = true
+      invokeControlSurfaceMock.mockResolvedValue({
+        httpStatus: 200,
+        result: {
+          ok: true,
+          value: {
+            protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
+            appVersion: '0.3.0',
+            pid: 42,
+          },
         },
-      },
-    })
+      })
+      release({ status: 'ready' })
+      // Join the adapter promise; the next public query observes owner settlement.
+      await gate
+      await Promise.resolve()
+      const overview = (await service.listOverviews()).endpoints[0]
+      expect(overview).toMatchObject({
+        status: 'connected',
+        canBrowse: true,
+        operation: null,
+        dependentMountCount: 3,
+      })
+    },
+  )
 
-    const prepare = vi.fn(async () => ({
-      connection: {
-        hostname: '127.0.0.1',
-        port: 41013,
-        token: managedAccess.token,
-      },
-      snapshot: {
-        endpointId: managedAccess.endpoint.endpointId,
-        status: 'ready' as const,
-        localPort: 41013,
-        lastError: null,
-        stderrTail: '',
-        failureKind: null,
-      },
-      bootstrapRan: true,
-    }))
+  it('does not repeat lastError and stderrTail or channel-number variants in final details', async () => {
+    const detail =
+      'channel 1: open failed: connect failed: Connection refused\nchannel 2: open failed: connect failed: Connection refused'
     const service = createSubject({
-      access: managedAccess,
+      access: createManagedAccess(),
       managedRuntime: {
-        prepare,
+        getSnapshot: () => ({
+          endpointId: 'managed-1',
+          status: 'error',
+          localPort: null,
+          lastError: detail,
+          stderrTail: detail,
+          failureKind: 'tunnel_failed',
+        }),
       },
     })
-
-    const result = await service.repairEndpoint({
-      endpointId: managedAccess.endpoint.endpointId,
-      action: 'update_runtime',
-    })
-
-    expect(result.overview.status).toBe('connected')
-    expect(prepare).toHaveBeenCalledWith(
-      {
-        endpointId: managedAccess.endpoint.endpointId,
-        displayName: managedAccess.endpoint.displayName,
-        token: managedAccess.token,
-        ssh: managedAccess.managedSsh,
-      },
-      {
-        restartTunnel: false,
-        reinstallRuntime: true,
-        allowBootstrap: true,
-      },
-    )
+    expect((await service.listOverviews()).endpoints[0]?.details).toEqual([
+      'SSH channel: open failed: connect failed: Connection refused',
+    ])
   })
 })

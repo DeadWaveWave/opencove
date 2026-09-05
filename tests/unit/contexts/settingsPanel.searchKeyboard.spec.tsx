@@ -1,5 +1,6 @@
+import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SettingsPanelSidebar } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/SettingsPanelSidebar'
 import type { SettingsSearchResult } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/settingsSearchIndex'
@@ -118,3 +119,7 @@ describe('SettingsPanelSidebar search keyboard navigation', () => {
     expect(props.onSelectSearchResult).toHaveBeenCalledWith(retainedResult)
   })
 })
+
+function render(ui: React.ReactNode) {
+  return renderUi(ui, { wrapper: EndpointOverviewProvider })
+}
