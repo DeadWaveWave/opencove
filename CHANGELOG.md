@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Terminal: fit new windows on first mount and confirm actual Windows Console dimensions before committing a resize, with a retry action when confirmation fails. Window fitting works independently of font calibration. (#382)
 - Terminal: preserve shared WebGL glyph caches when creating or refreshing terminals, preventing fragmented text in existing windows. (#382)
 - Terminal: restore ready sessions independently and retain durable bindings while recovery is pending, preventing one slow recovery from leaving other terminals unresponsive. (#382)
+- Terminal: prevent stale sync snapshots from replacing newly recovered sessions, and keep sizing warnings above terminal content. (#382)
 - Worker: keep draining output after startup and preserve live owned processes through health-check timeouts, preventing diagnostic output or temporary load from interrupting terminal sessions. (#382)
 - Agent: wait for Electron preparation and cleanup helpers in Windows PowerShell shims so commands such as `codex` reliably start in interactive terminals. (#382)
 - Settings: distinguish disabled calibration, invalid adjustments, and valid saved adjustments waiting for a matching display environment, in English and Chinese. (#382)
