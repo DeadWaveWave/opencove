@@ -379,7 +379,8 @@ export function createRemotePtyStreamMessageHandler(options: {
         message.hookInstallState === 'partial' ||
         message.hookInstallState === 'not_installed' ||
         message.hookInstallState === 'error' ||
-        message.hookInstallState === 'skipped'
+        message.hookInstallState === 'skipped' ||
+        message.hookInstallState === 'not_required'
       ) {
         eventPayload.hookInstallState = message.hookInstallState
       }

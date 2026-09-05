@@ -241,6 +241,8 @@ export async function enterTerminalAgentInFreshPty(options: {
   await options.waitForShellReady()
   await options.write({
     sessionId: options.sessionId,
-    data: `${CLEAR_PROMPT_INPUT}${options.command}\r`,
+    // A newly created PTY has no pending user input. PowerShell without PSReadLine
+    // treats Ctrl+U as a literal command character instead of a readline shortcut.
+    data: `${options.command}\r`,
   })
 }

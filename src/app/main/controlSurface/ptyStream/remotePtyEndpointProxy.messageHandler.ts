@@ -181,7 +181,8 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
         parsed.hookInstallState === 'partial' ||
         parsed.hookInstallState === 'not_installed' ||
         parsed.hookInstallState === 'error' ||
-        parsed.hookInstallState === 'skipped'
+        parsed.hookInstallState === 'skipped' ||
+        parsed.hookInstallState === 'not_required'
           ? parsed.hookInstallState
           : null
       const observedAtMs =

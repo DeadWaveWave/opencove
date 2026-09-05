@@ -7,7 +7,8 @@ import { createNativeHookProvider } from './fixtures/create-native-hook-provider
 
 export function registerAgentHookRelayTests() {
   for (const provider of ['codex', 'claude-code'] as const) {
-    test(`${provider} executes Electron hooks through the real launch path and retains keyboard input`, async () => {
+    const fileMode = provider === 'codex' && process.platform === 'win32'
+    test(`${provider} executes ${fileMode ? 'session file observation' : 'Electron hooks'} through the real launch path and retains keyboard input`, async () => {
       const root = await mkdtemp(join(tmpdir(), 'OpenCove hook 路径 '))
       const fixture = resolve('tests/e2e/fixtures/agent-hook-provider.mjs')
       const quote = (value: string) => `'${value.replaceAll("'", `'"'"'`)}'`
@@ -24,6 +25,8 @@ export function registerAgentHookRelayTests() {
       await chmod(executable, 0o700)
       const { electronApp, window } = await launchApp({
         env: {
+          CODEX_HOME: join(root, 'codex-home'),
+          OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: fileMode ? '1' : '0',
           OPENCOVE_TEST_USE_REAL_AGENTS: '1',
           OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
           OPENCOVE_TEST_CODEX_HOOK_INSTALL_FAILURE: '0',
@@ -61,10 +64,6 @@ export function registerAgentHookRelayTests() {
         await window.locator('[data-testid="task-node-run-agent"]').first().click()
         const node = window.locator('.terminal-node').first()
         await expect(node).toContainText('HOOK_PROVIDER_READY')
-        await expect(node).toHaveAttribute(
-          'data-agent-state-source',
-          provider === 'codex' ? 'codex_hook' : 'claude_hook',
-        )
         const input = node.locator('.xterm-helper-textarea')
         await input.focus()
         await window.keyboard.press('Escape')
@@ -77,6 +76,10 @@ export function registerAgentHookRelayTests() {
           await expect(node).toContainText(`INPUT_OK=${text}`)
         }
         /* eslint-enable no-await-in-loop */
+        await expect(node).toHaveAttribute(
+          'data-agent-state-source',
+          fileMode ? 'session_file' : provider === 'codex' ? 'codex_hook' : 'claude_hook',
+        )
         await expect(node.locator('.terminal-node__status')).toHaveText('Standby')
         expect(
           await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),

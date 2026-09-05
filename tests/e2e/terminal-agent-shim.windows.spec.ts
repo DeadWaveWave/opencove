@@ -67,7 +67,8 @@ async function createProviderCommand(options: {
   await writeFile(
     helperPath,
     [
-      "import { writeFileSync } from 'node:fs'",
+      "import { writeFileSync, mkdirSync } from 'node:fs'",
+      "import { join } from 'node:path'",
       `const provider = ${JSON.stringify(options.provider)}`,
       'const args = process.argv.slice(2)',
       "if (args.includes('app-server')) {",
@@ -89,6 +90,12 @@ async function createProviderCommand(options: {
       "  const endpoint = process.env[claude ? 'OPENCOVE_CLAUDE_HOOK_ENDPOINT' : 'OPENCOVE_CODEX_HOOK_ENDPOINT']",
       "  const token = process.env[claude ? 'OPENCOVE_CLAUDE_HOOK_TOKEN' : 'OPENCOVE_CODEX_HOOK_TOKEN']",
       "  const sessionId = process.env.OPENCOVE_WINDOWS_PROVIDER_SESSION_ID || 'missing'",
+      '  if (!claude) {',
+      "    const now = new Date(); const directory = join(process.env.CODEX_HOME, 'sessions', String(now.getFullYear()), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0'))",
+      '    mkdirSync(directory, { recursive: true })',
+      "    writeFileSync(join(directory, 'rollout-' + sessionId + '.jsonl'), JSON.stringify({ type: 'session_meta', timestamp: now.toISOString(), payload: { id: sessionId, cwd: process.cwd(), timestamp: now.toISOString() } }) + '\\n')",
+      '    await new Promise(resolve => setTimeout(resolve, 1000))',
+      '  }',
       "  const body = claude ? { version: 1, state: 'working', hookEventName: 'SessionStart', claudeSessionId: sessionId } : { version: 1, state: 'working', hookEventName: 'SessionStart', codexSessionId: sessionId }",
       "  const response = endpoint && token ? await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json', 'x-opencove-hook-token': token }, body: JSON.stringify(body) }) : { status: 0 }",
       "  process.stdout.write('HOOK_STATUS=' + response.status + '\\n')",
@@ -169,6 +176,7 @@ async function createHarness(options: { provider: TerminalAgentShimProvider; ctr
   env.PATH = `${fixture.realBin}${delimiter}${process.env.PATH ?? ''}`
   env.HOME = home
   env.USERPROFILE = home
+  env.CODEX_HOME = join(home, '.codex')
   env.OPENCOVE_WINDOWS_PROVIDER_SESSION_ID = `${fixture.command}-session-精确`
   if (options.ctrlC) {
     env.OPENCOVE_WINDOWS_CTRL_C_MARKER = ctrlCMarker
@@ -231,8 +239,8 @@ async function expectPrivateCleanup(harness: Awaited<ReturnType<typeof createHar
     .join('\n')
     .match(/[A-Za-z]:\\[^'"\n]*opencove-codex-hook-[^'"\n]*\\launch\.ps1/iu)
   if (harness.command === 'codex') {
-    expect(relayMatch).toBeTruthy()
-    await expect(access(relayMatch![0])).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(relayMatch).toBeNull()
+    expect(args).toEqual([])
   }
 }
 
@@ -273,7 +281,9 @@ test.describe('terminal Agent shim (Windows)', () => {
           })
 
           expect(result.code).toBe(harness.commandExitCode)
-          expect(result.stdout).toContain('HOOK_STATUS=204')
+          expect(result.stdout).toContain(
+            provider === 'codex' ? 'HOOK_STATUS=0' : 'HOOK_STATUS=204',
+          )
           expect(outputLines(result.stdout)).toContain('ELECTRON_RUN_AS_NODE=')
           const serializedArgs = result.stdout.match(/ARGS_JSON=(\[[^\r\n]+\])/u)?.[1]
           expect(serializedArgs).toBeTruthy()
@@ -294,7 +304,7 @@ test.describe('terminal Agent shim (Windows)', () => {
               resumeSessionId: `${harness.command}-session-精确`,
               terminalAgentActivity: expect.objectContaining({
                 provider,
-                identityAuthority: 'provider_session_start',
+                identityAuthority: provider === 'codex' ? 'session_file' : 'provider_session_start',
               }),
             }),
           )

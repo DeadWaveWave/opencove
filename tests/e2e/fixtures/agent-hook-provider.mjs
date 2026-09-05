@@ -1,8 +1,36 @@
 import { spawn } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, mkdirSync, appendFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 
 const [provider, ...args] = process.argv.slice(2)
+const fileMode = provider === 'codex' && process.platform === 'win32'
+let sessionFile
+if (fileMode && !args.includes('app-server')) {
+  if (args.includes('--config')) {
+    throw new Error('Windows Codex received hook/config injection')
+  }
+  const now = new Date()
+  const directory = join(
+    process.env.CODEX_HOME,
+    'sessions',
+    String(now.getFullYear()),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  )
+  mkdirSync(directory, { recursive: true })
+  const id = randomUUID()
+  sessionFile = join(directory, `rollout-${id}.jsonl`)
+  appendFileSync(
+    sessionFile,
+    JSON.stringify({
+      type: 'session_meta',
+      timestamp: now.toISOString(),
+      payload: { id, cwd: process.cwd(), timestamp: now.toISOString() },
+    }) + '\n',
+  )
+}
 const commands = new Map()
 if (provider === 'codex') {
   for (const value of args) {
@@ -83,6 +111,18 @@ function parseString(value) {
 }
 
 async function hook(event) {
+  if (fileMode) {
+    const type = event === 'Stop' ? 'task_complete' : 'task_started'
+    appendFileSync(
+      sessionFile,
+      JSON.stringify({
+        type: 'event_msg',
+        timestamp: new Date().toISOString(),
+        payload: { type },
+      }) + '\n',
+    )
+    return
+  }
   const handler = commands.get(event)
   if (!handler) {
     throw new Error('Missing generated hook: ' + event)

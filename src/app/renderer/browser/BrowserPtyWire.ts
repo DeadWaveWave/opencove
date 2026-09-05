@@ -48,7 +48,8 @@ export function normalizeBrowserPtyStateMetadata(
     record.hookInstallState === 'partial' ||
     record.hookInstallState === 'not_installed' ||
     record.hookInstallState === 'error' ||
-    record.hookInstallState === 'skipped'
+    record.hookInstallState === 'skipped' ||
+    record.hookInstallState === 'not_required'
       ? record.hookInstallState
       : null
   const observedAtMs =

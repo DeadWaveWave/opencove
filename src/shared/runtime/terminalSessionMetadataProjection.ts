@@ -1,5 +1,6 @@
 import type { TerminalSessionMetadataEvent } from '../contracts/dto'
 import {
+  isImmutableTerminalAgentIdentityAuthority,
   isTerminalAgentActivityStrictlyNewer,
   normalizeTerminalAgentActivitySnapshot,
   sameTerminalAgentActivitySnapshot,
@@ -52,7 +53,8 @@ export function projectPtyStreamAgentMetadata(
     incoming.agentProvider ?? incomingActivity?.provider ?? previous?.agentProvider ?? null
   const preservesVerifiedIdentity =
     (previousPi !== null && !incomingPi && !incomingActivity) ||
-    (previousActivity?.identityAuthority === 'provider_session_start' &&
+    (previousActivity !== null &&
+      isImmutableTerminalAgentIdentityAuthority(previousActivity.identityAuthority) &&
       Boolean(previous?.resumeSessionId) &&
       (!incomingActivity ||
         (incomingActivity.provider === previousActivity.provider &&

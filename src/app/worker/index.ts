@@ -6,6 +6,7 @@ import { createDesktopManagedControlSurface } from './desktopManagedControlSurfa
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../main/controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { createApprovedWorkspaceStoreForPath } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import { createHeadlessPtyRuntime } from './headlessPtyRuntime'
+import { CodexSessionFileDiscovery } from '../../contexts/agent/infrastructure/cli/CodexSessionFileDiscovery'
 import { createWorkerTerminalProcessEngine } from '../main/controlSurface/terminal/workerTerminalProcessEngineFactory'
 import { resolveWorkerUserDataDir } from './userData'
 import { acquireWorkerSingleInstanceLock } from './singleInstanceLock'
@@ -167,15 +168,19 @@ async function main(): Promise<void> {
     'claude-code': claudeHookChannel,
     codex: codexHookChannel,
   }
+  const codexSessionDiscovery = new CodexSessionFileDiscovery()
   const agentProviderRegistry = new AgentProviderRegistry(
+    // Share the launch identity owner with the file state watcher.
     createBuiltinAgentProviderContributions({
       appVersion,
       channels: agentHookChannels,
+      codexSessionDiscovery,
       runtimeExecutable: process.execPath,
       runtimePlatform: process.platform,
     }),
   )
   const ptyRuntime = createHeadlessPtyRuntime({
+    sessionDiscovery: codexSessionDiscovery,
     processEngine: createWorkerTerminalProcessEngine({ userDataPath }),
   })
 

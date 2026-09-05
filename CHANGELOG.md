@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🚀 Added
 - Agent: monitor native Pi activity in ordinary terminals and managed Agent nodes, with launch-scoped hooks, stale-event protection, and verified conversation tracking across reload, new sessions, resume, and fork. (#389)
+
+### 🐛 Fixed
+
+- Agent: speed up Windows Codex startup by observing session files without injecting hooks, while preserving ordinary-terminal Agent detection and verified conversation recovery. (#391)
+- Terminal: resume Agents in fresh Windows PowerShell sessions without a control character being interpreted as part of the command. (#391)
+- Agent: restore Claude status updates on Windows when PowerShell adds a UTF-8 BOM to hook events. (#391)
+
 ---
 
 ## [0.3.1] - 2026-09-05

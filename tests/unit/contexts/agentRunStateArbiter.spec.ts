@@ -7,6 +7,21 @@ import {
 const sessionFileStandby = { state: 'standby' as const, observedAtMs: 200 }
 
 describe('agent run-state authority', () => {
+  it('uses intentional file observation without reporting hook failure', () => {
+    expect(
+      resolveAgentRunStateAuthority({
+        hookInstallState: 'not_required',
+        lastHookSignal: null,
+        lastSessionFileSignal: sessionFileStandby,
+        nowMs: 300,
+      }),
+    ).toMatchObject({
+      source: 'session_file',
+      state: 'standby',
+      degraded: false,
+      hookHealth: 'not_applicable',
+    })
+  })
   it('selects a fresh hook over a later conflicting session-file signal', () => {
     expect(
       resolveAgentRunStateAuthority({

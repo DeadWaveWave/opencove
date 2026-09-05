@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import type { AgentSessionDiscovery } from '../../contexts/agent/application/ports/AgentSessionDiscovery'
 import type {
   AgentProviderId,
   AgentHookInstallState,
@@ -53,6 +54,7 @@ export interface HeadlessPtyRuntime {
 
 export function createHeadlessPtyRuntime(options: {
   processEngine: TerminalProcessEnginePort
+  sessionDiscovery?: AgentSessionDiscovery
 }): HeadlessPtyRuntime {
   const { processEngine } = options
   const debugCrashHostEnabled = isDebugCrashHostEnabled()
@@ -74,6 +76,7 @@ export function createHeadlessPtyRuntime(options: {
   }
 
   const sessionStateWatcher = createSessionStateWatcherController({
+    sessionDiscovery: options.sessionDiscovery,
     sendToAllWindows: () => undefined,
     reportIssue: message => {
       process.stderr.write(`${message}\n`)

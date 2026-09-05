@@ -102,7 +102,8 @@ try {
         if (bytes > 256 * 1024) process.exit(0);
         chunks.push(chunk);
       }
-      body = Buffer.concat(chunks).toString('utf8');
+      // Windows PowerShell/.NET Framework can prepend a UTF-8 BOM to redirected stdin.
+      body = Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/u, '');
     }
     if (Buffer.byteLength(body, 'utf8') > 256 * 1024) process.exit(0);
     if (provider === 'codex') {

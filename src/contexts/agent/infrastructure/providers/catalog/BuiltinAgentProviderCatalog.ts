@@ -6,6 +6,7 @@ import type {
 } from '../../../application/ports/AgentProviderContribution'
 import { ClaudeCodeAgentProviderContribution } from '../claude-code/ClaudeCodeAgentProviderContribution'
 import { CodexAgentProviderContribution } from '../codex/CodexAgentProviderContribution'
+import type { CodexSessionFileDiscovery } from '../../cli/CodexSessionFileDiscovery'
 import { KimiAgentProviderContribution } from '../kimi/KimiAgentProviderContribution'
 import { PiAgentProviderContribution } from '../pi/PiAgentProviderContribution'
 import { CatalogTerminalCliProvider } from './CatalogTerminalCliProvider'
@@ -16,6 +17,7 @@ export interface BuiltinAgentProviderCatalogOptions {
   readonly channels?: Partial<Record<AgentProviderId, AgentHookChannel>>
   readonly runtimeExecutable?: string
   readonly runtimePlatform?: NodeJS.Platform
+  readonly codexSessionDiscovery?: CodexSessionFileDiscovery
 }
 
 const genericDescriptors = [
@@ -43,6 +45,7 @@ export function createBuiltinAgentProviderContributions(
         clientVersion: options.appVersion,
         runtimeExecutable: options.runtimeExecutable,
         runtimePlatform: options.runtimePlatform,
+        sessionDiscovery: options.codexSessionDiscovery,
       }),
     ],
     ['pi', new PiAgentProviderContribution({ channel: options.channels?.pi })],

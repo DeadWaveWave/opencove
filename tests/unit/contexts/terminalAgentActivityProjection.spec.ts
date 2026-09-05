@@ -50,13 +50,19 @@ function createWorkspace() {
 function activity(
   phase: 'active' | 'exited',
   generation = 1,
-  identityAuthority: 'provider_session_start' | null = null,
+  identityAuthority: 'provider_session_start' | 'session_file' | null = null,
 ) {
   return {
     sessionId: 'pty-1',
-    resumeSessionId: identityAuthority ? 'claude-session-1' : null,
+    resumeSessionId:
+      identityAuthority === 'session_file'
+        ? 'codex-session-1'
+        : identityAuthority
+          ? 'claude-session-1'
+          : null,
     terminalAgentActivity: {
-      provider: 'claude-code' as const,
+      provider:
+        identityAuthority === 'session_file' ? ('codex' as const) : ('claude-code' as const),
       invocationId: `invocation-${generation}`,
       generation,
       phase,
@@ -67,6 +73,30 @@ function activity(
 }
 
 describe('terminal agent authenticated activity projection', () => {
+  it('persists a file identity only with the current invocation and keeps the original terminal', () => {
+    const workspace = createWorkspace()
+    const event = activity('active', 2, 'session_file')
+    const result = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: [workspace],
+      event,
+    })
+    expect(result.durableDidChange).toBe(true)
+    expect(result.nextWorkspaces[0].nodes[0].data).toMatchObject({
+      kind: 'terminal',
+      sessionId: 'pty-1',
+      scrollback: 'kept output',
+      terminalAgentBinding: {
+        provider: 'codex',
+        resumeSessionId: 'codex-session-1',
+        resumeSessionIdVerified: true,
+      },
+    })
+    const late = updateWorkspacesWithTerminalAgentActivityMetadata({
+      workspaces: result.nextWorkspaces,
+      event: activity('active', 1, 'session_file'),
+    })
+    expect(late.didChange).toBe(false)
+  })
   it('adopts an authenticated active invocation without changing terminal ownership', () => {
     const workspace = createWorkspace()
     const result = updateWorkspacesWithTerminalAgentActivityMetadata({
