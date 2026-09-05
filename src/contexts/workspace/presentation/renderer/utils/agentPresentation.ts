@@ -1,6 +1,5 @@
 import type { AgentRuntimeObservation, AgentRuntimeStatus, TerminalNodeData } from '../types'
 import { canObserveAgentRunState } from './agentRuntimeObservation'
-import { isAgentTreatedNode } from './terminalAgentOverlay'
 
 /** One projection for Agent chrome, action availability and sidebar status. */
 export function resolveAgentPresentation(data: TerminalNodeData): {
@@ -8,17 +7,17 @@ export function resolveAgentPresentation(data: TerminalNodeData): {
   status: AgentRuntimeStatus | null
   observation: AgentRuntimeObservation | null
 } {
-  const isAgent = isAgentTreatedNode({ data })
+  const isAgent = data.kind === 'agent' || canObserveAgentRunState(data)
   if (!isAgent) {
     return { isAgent, status: null, observation: null }
   }
 
-  // A resumable conversation is not proof of a live invocation. Likewise a dedicated
-  // Agent's PTY terminal state must dominate its last hook/file observation.
+  // Historical terminal bindings are not live presentation. Dedicated Agent windows
+  // still show their PTY terminal state ahead of any stale hook/file observation.
   if (!canObserveAgentRunState(data)) {
     return {
       isAgent,
-      status: data.kind === 'agent' ? data.status : 'standby',
+      status: data.status,
       observation: null,
     }
   }

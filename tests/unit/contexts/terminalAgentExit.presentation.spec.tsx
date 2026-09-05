@@ -81,16 +81,9 @@ describe.each(['codex', 'claude-code'] as const)(
       const exited = result.nextWorkspaces[0]
       view.update(exited.nodes[0].data)
 
-      expectActions(verified)
-      if (verified) {
-        expect(view.container.querySelector('.terminal-node__status')).toHaveTextContent('Standby')
-        expect(buildSidebarAgentItems(exited)[0]?.status).toBe('standby')
-        fireEvent.click(screen.getByTestId('terminal-node-reload-session'))
-        expect(view.reload).toHaveBeenCalledWith('terminal-1')
-      } else {
-        expect(view.container.querySelector('.terminal-node__status')).toBeNull()
-        expect(buildSidebarAgentItems(exited)).toEqual([])
-      }
+      expectActions(false)
+      expect(view.container.querySelector('.terminal-node__status')).toBeNull()
+      expect(buildSidebarAgentItems(exited)).toEqual([])
       expect(exited.nodes[0].data.terminalAgentBinding).toEqual(
         workspace.nodes[0].data.terminalAgentBinding,
       )
@@ -102,13 +95,46 @@ describe.each(['codex', 'claude-code'] as const)(
       })
     })
 
+    it('restores actions on a newer invocation without replacing the terminal or its history', () => {
+      const workspace = createTerminalAgentWorkspace(provider, true)
+      workspace.nodes[0].data.agentOverlay!.activity!.phase = 'exited'
+      const view = renderNode(workspace.nodes[0].data)
+      expectActions(false)
+      const active = updateWorkspacesWithTerminalAgentActivityMetadata({
+        workspaces: [workspace],
+        event: invocationEvent(provider, 'active', 2),
+      }).nextWorkspaces[0]
+      view.update(active.nodes[0].data)
+      expectActions(true)
+      expect(view.container.querySelector('.terminal-node__status')).toHaveTextContent('Standby')
+      expect(buildSidebarAgentItems(active)[0]?.status).toBe('standby')
+      fireEvent.click(screen.getByTestId('terminal-node-reload-session'))
+      expect(view.reload).toHaveBeenCalledWith('terminal-1')
+      expect(active.nodes[0].data).toMatchObject({
+        kind: 'terminal',
+        sessionId: 'pty-1',
+        scrollback: 'preserved output',
+        terminalAgentBinding: workspace.nodes[0].data.terminalAgentBinding,
+      })
+    })
+
+    it('does not render dormant recovery data as an active Agent', () => {
+      const workspace = createTerminalAgentWorkspace(provider, true)
+      workspace.nodes[0].data.agentOverlay = null
+      const view = renderNode(workspace.nodes[0].data)
+      expectActions(false)
+      expect(view.container.querySelector('.terminal-node__status')).toBeNull()
+      expect(buildSidebarAgentItems(workspace)).toEqual([])
+      expect(workspace.nodes[0].data.terminalAgentBinding?.resumeSessionId).toBe('resume-1')
+    })
+
     it('renders the same bound exit even with a stale observation in a reattached projection', () => {
       const workspace = createTerminalAgentWorkspace(provider, true)
       workspace.nodes[0].data.agentOverlay!.activity!.phase = 'exited'
       const view = renderNode(workspace.nodes[0].data)
-      expect(view.container.querySelector('.terminal-node__status')).toHaveTextContent('Standby')
-      expect(buildSidebarAgentItems(workspace)[0]?.status).toBe('standby')
-      expectActions(true)
+      expect(view.container.querySelector('.terminal-node__status')).toBeNull()
+      expect(buildSidebarAgentItems(workspace)).toEqual([])
+      expectActions(false)
     })
   },
 )

@@ -24,6 +24,22 @@ async function expectAgentSurface(options: {
   await expect(terminal.getByTestId('terminal-node-session-list')).toBeVisible()
 }
 
+async function expectPlainTerminal({
+  terminal,
+  sidebarItem,
+}: {
+  terminal: Locator
+  sidebarItem: Locator
+}): Promise<void> {
+  await expect(sidebarItem).toHaveCount(0)
+  await expect(terminal.locator('.terminal-node__status')).toHaveCount(0)
+  await Promise.all(
+    ['copy-last-message', 'reload-session', 'session-list'].map(action =>
+      expect(terminal.getByTestId(`terminal-node-${action}`)).toHaveCount(0),
+    ),
+  )
+}
+
 async function readTranscript(terminal: Locator): Promise<string> {
   return (await terminal.locator('.terminal-node__transcript').textContent()) ?? ''
 }
@@ -63,7 +79,7 @@ test.describe('Workspace Canvas - verified terminal Agent two-stage Ctrl+C', () 
   test.skip(process.platform === 'win32', 'POSIX command shim coverage')
 
   for (const provider of ['claude-code', 'codex'] as const) {
-    test(`${provider} keeps its verified Agent surface after cancellation and provider exit`, async ({
+    test(`${provider} keeps identity but drops Agent chrome only after provider exit`, async ({
       browserName: _browserName,
     }, testInfo) => {
       const command = provider === 'claude-code' ? 'claude' : 'codex'
@@ -210,15 +226,11 @@ test.describe('Workspace Canvas - verified terminal Agent two-stage Ctrl+C', () 
 
         expect(outputLines(await readTranscript(terminal))).toContain(exitMarker)
         expect(() => process.kill(providerPid, 0)).toThrow()
-        await expectAgentSurface({ terminal, sidebarItem })
-        await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
-        await expect(sidebarItem).toContainText('Standby')
+        await expectPlainTerminal({ terminal, sidebarItem })
 
-        // Late attach must project the exited invocation, not replay its old Working badge.
+        // Late attach must preserve history without replaying an exited Agent surface.
         await window.reload({ waitUntil: 'domcontentloaded' })
-        await expectAgentSurface({ terminal, sidebarItem })
-        await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
-        await expect(sidebarItem).toContainText('Standby')
+        await expectPlainTerminal({ terminal, sidebarItem })
         await testInfo.attach(`${provider}-exited-resumable`, {
           body: await terminal.screenshot({ path: testInfo.outputPath(`${provider}-exit.png`) }),
           contentType: 'image/png',
@@ -234,7 +246,9 @@ test.describe('Workspace Canvas - verified terminal Agent two-stage Ctrl+C', () 
         const readyCountBeforeReexec = outputLines(await readTranscript(terminal)).filter(
           line => line === readyMarker,
         ).length
-        await terminal.getByTestId('terminal-node-reload-session').click()
+        await terminal.locator('.xterm-helper-textarea').click()
+        await window.keyboard.type(command)
+        await window.keyboard.press('Enter')
         await expect
           .poll(async () => {
             return outputLines(await readTranscript(terminal)).filter(line => line === readyMarker)
@@ -244,13 +258,8 @@ test.describe('Workspace Canvas - verified terminal Agent two-stage Ctrl+C', () 
         const resumedProviderPid = Number(await readFile(providerPidPath, 'utf8'))
         expect(Number.isSafeInteger(resumedProviderPid)).toBe(true)
         expect(() => process.kill(resumedProviderPid, 0)).not.toThrow()
-        await expectExactBinding({
-          window,
-          nodeId,
-          provider,
-          resumeSessionId,
-          runtimeSessionId,
-        })
+        await expectAgentSurface({ terminal, sidebarItem })
+        expect(await readRuntimeSessionId(window, nodeId)).toBe(runtimeSessionId)
       } finally {
         await electronApp.close()
         await rm(commandDirectory, { recursive: true, force: true })

@@ -10,10 +10,7 @@ import {
   findLinkedTaskTitleForAgent,
   resolveAgentDisplayLabel,
 } from '@contexts/workspace/presentation/renderer/utils/agentTitle'
-import {
-  isAgentTreatedNode,
-  resolveAgentTreatedProvider,
-} from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
+import { resolveAgentTreatedProvider } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 
 export type SidebarAgentStatus = 'working' | 'waiting' | 'standby'
 
@@ -44,33 +41,36 @@ export function resolveSidebarAgentStatus(
 }
 
 export function getWorkspaceAgents(workspace: WorkspaceState): Array<Node<TerminalNodeData>> {
-  return workspace.nodes.filter(isAgentTreatedNode).sort((left, right) => {
-    const leftSortOrder =
-      typeof left.data.sidebarSortOrder === 'number' && Number.isFinite(left.data.sidebarSortOrder)
-        ? Math.floor(left.data.sidebarSortOrder)
-        : null
-    const rightSortOrder =
-      typeof right.data.sidebarSortOrder === 'number' &&
-      Number.isFinite(right.data.sidebarSortOrder)
-        ? Math.floor(right.data.sidebarSortOrder)
-        : null
+  return workspace.nodes
+    .filter(node => resolveAgentPresentation(node.data).isAgent)
+    .sort((left, right) => {
+      const leftSortOrder =
+        typeof left.data.sidebarSortOrder === 'number' &&
+        Number.isFinite(left.data.sidebarSortOrder)
+          ? Math.floor(left.data.sidebarSortOrder)
+          : null
+      const rightSortOrder =
+        typeof right.data.sidebarSortOrder === 'number' &&
+        Number.isFinite(right.data.sidebarSortOrder)
+          ? Math.floor(right.data.sidebarSortOrder)
+          : null
 
-    if (leftSortOrder !== null || rightSortOrder !== null) {
-      if (leftSortOrder === null) {
-        return 1
+      if (leftSortOrder !== null || rightSortOrder !== null) {
+        if (leftSortOrder === null) {
+          return 1
+        }
+        if (rightSortOrder === null) {
+          return -1
+        }
+        if (leftSortOrder !== rightSortOrder) {
+          return leftSortOrder - rightSortOrder
+        }
       }
-      if (rightSortOrder === null) {
-        return -1
-      }
-      if (leftSortOrder !== rightSortOrder) {
-        return leftSortOrder - rightSortOrder
-      }
-    }
 
-    const leftTime = left.data.startedAt ? Date.parse(left.data.startedAt) : 0
-    const rightTime = right.data.startedAt ? Date.parse(right.data.startedAt) : 0
-    return rightTime - leftTime
-  })
+      const leftTime = left.data.startedAt ? Date.parse(left.data.startedAt) : 0
+      const rightTime = right.data.startedAt ? Date.parse(right.data.startedAt) : 0
+      return rightTime - leftTime
+    })
 }
 
 export function buildSidebarAgentItems(workspace: WorkspaceState): SidebarAgentItemModel[] {

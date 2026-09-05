@@ -13,7 +13,8 @@ export interface ClaudeHookInput {
 
 export interface ClaudeHookEnvelope {
   version: 1
-  state: ClaudeHookTurnState
+  // Session lifecycle/identity is not evidence of a task transition.
+  state: ClaudeHookTurnState | null
   hookEventName: string
   claudeSessionId: string
   tool?: {
@@ -31,7 +32,7 @@ export function validateClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope |
   const hookEventName = requiredString(value, 'hookEventName')
   const claudeSessionId = requiredString(value, 'claudeSessionId')
   if (
-    (state !== 'working' && state !== 'waiting' && state !== 'done') ||
+    (state !== 'working' && state !== 'waiting' && state !== 'done' && state !== null) ||
     !hookEventName ||
     !claudeSessionId
   ) {
@@ -53,7 +54,8 @@ export function validateClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope |
 
   return {
     version: 1,
-    state,
+    // Older relays labeled SessionStart as working. Do not replay that inference.
+    state: hookEventName === 'SessionStart' ? null : state,
     hookEventName,
     claudeSessionId,
     ...(tool ? { tool } : {}),
@@ -62,17 +64,12 @@ export function validateClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope |
 
 const WAITING_NOTIFICATION_TYPES = new Set([
   'permission_prompt',
-  'idle_prompt',
   'agent_needs_input',
   'elicitation_dialog',
   'elicitation_url_dialog',
 ])
 
-const WORKING_NOTIFICATION_TYPES = new Set([
-  'elicitation_complete',
-  'elicitation_response',
-  'auth_success',
-])
+const WORKING_NOTIFICATION_TYPES = new Set(['elicitation_complete', 'elicitation_response'])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -101,26 +98,29 @@ function resolveState(
   eventName: string,
   toolName: string | null,
   notificationType: string | null,
-): ClaudeHookTurnState | null {
+): ClaudeHookTurnState | null | undefined {
   if (eventName === 'PermissionRequest') {
-    return toolName ? 'waiting' : null
+    return toolName ? 'waiting' : undefined
   }
 
   if (eventName === 'PreToolUse') {
     if (!toolName) {
-      return null
+      return undefined
     }
     return toolName === 'AskUserQuestion' || toolName === 'ExitPlanMode' ? 'waiting' : 'working'
   }
 
   if (eventName === 'Notification') {
     if (!notificationType) {
+      return undefined
+    }
+    if (notificationType === 'idle_prompt' || notificationType === 'auth_success') {
       return null
     }
     if (WAITING_NOTIFICATION_TYPES.has(notificationType)) {
       return 'waiting'
     }
-    return WORKING_NOTIFICATION_TYPES.has(notificationType) ? 'working' : null
+    return WORKING_NOTIFICATION_TYPES.has(notificationType) ? 'working' : undefined
   }
 
   if (eventName === 'Stop' || eventName === 'StopFailure' || eventName === 'SessionEnd') {
@@ -128,7 +128,9 @@ function resolveState(
   }
 
   if (eventName === 'SessionStart') {
-    return 'working'
+    // Includes startup/resume/clear and compaction during a live turn. The invocation
+    // owner initializes idle; only turn hooks may change it or finish existing work.
+    return null
   }
 
   if (
@@ -140,7 +142,7 @@ function resolveState(
     return 'working'
   }
 
-  return null
+  return undefined
 }
 
 export function normalizeClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope | null {
@@ -162,7 +164,7 @@ export function normalizeClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope 
   }
   const notificationType = optionalString(value, 'notification_type')
   const state = resolveState(hookEventName, toolName, notificationType)
-  if (!state) {
+  if (state === undefined) {
     return null
   }
 
