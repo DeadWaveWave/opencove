@@ -9,7 +9,7 @@ import type {
 } from '../../../application/ports/AgentProviderContribution'
 import { buildAgentLaunchCommand } from '../../cli/AgentCommandFactory'
 import { ExistingAgentProviderDetector } from '../shared/AgentProviderDetector'
-import { createTemporaryProviderConfig } from '../shared/TemporaryProviderConfig'
+import { createAgentHookRelay, type AgentHookRelayInvocation } from '../shared/AgentHookRelay'
 import { resolveCodexHookTrust, type CodexHookTrustResolver } from './CodexHookTrustResolver'
 import { serializeCodexTomlString, serializeCodexTomlStringArray } from './CodexTomlConfiguration'
 
@@ -116,13 +116,13 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       }
     }
     command.artifacts.track('codex-hook-reservation', reservation)
-    const relay = await createTemporaryProviderConfig(
-      'opencove-codex-hook-',
-      'relay.mjs',
-      codexHookRelayScript,
-    )
-    command.artifacts.track('codex-hook-relay', relay)
-    const hook = createCodexHooks(this.runtimeExecutable, relay.path, this.runtimePlatform)
+    const relay = await createAgentHookRelay({
+      provider: 'codex',
+      runtimeExecutable: this.runtimeExecutable,
+      runtimePlatform: this.runtimePlatform,
+      artifacts: command.artifacts,
+    })
+    const hook = createCodexHooks(relay, this.runtimePlatform)
     let trust: string | null = null
     try {
       trust = await this.hookTrustResolver({
@@ -137,7 +137,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       // Older Codex versions retain the legacy notify integration below.
     }
     const notify = `notify=${serializeCodexTomlStringArray(
-      [this.runtimeExecutable, relay.path],
+      [relay.command, ...relay.args],
       this.runtimePlatform,
     )}`
     return {
@@ -147,10 +147,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
         '--config',
         notify,
       ],
-      env: {
-        ...reservation.env,
-        ELECTRON_RUN_AS_NODE: '1',
-      },
+      env: { ...reservation.env },
       hookInstallState: reservation.installState,
       onStarted: reservation.commit,
     }
@@ -199,70 +196,16 @@ async function shouldDeferToCodexDaemon(
   return canConnectToCodexDaemonSocket(socketPath)
 }
 
-function createCodexHooks(
-  runtimeExecutable: string,
-  relayPath: string,
-  runtimePlatform: NodeJS.Platform,
-) {
-  const command =
-    runtimePlatform === 'win32'
-      ? createWindowsRelayInvocation(runtimeExecutable, relayPath).join(' ')
-      : [runtimeExecutable, relayPath].map(quotePosixShellArgument).join(' ')
-  const commandWindows = createWindowsRelayInvocation(runtimeExecutable, relayPath).join(' ')
+function createCodexHooks(relay: AgentHookRelayInvocation, runtimePlatform: NodeJS.Platform) {
+  const command = relay.shellCommand
   const serialize = (value: string): string => serializeCodexTomlString(value, runtimePlatform)
   const handler = [
     `{hooks=[{type=${serialize('command')},command=${serialize(command)},`,
-    `commandWindows=${serialize(commandWindows)},timeout=3}]}`,
+    ...(runtimePlatform === 'win32' ? [`commandWindows=${serialize(command)},`] : []),
+    'timeout=3}]}',
   ].join('')
   return {
     command,
     configurations: codexHookEvents.map(eventName => `hooks.${eventName}=[${handler}]`),
   }
 }
-
-function quotePosixShellArgument(value: string): string {
-  return `'${value.replaceAll("'", `'"'"'`)}'`
-}
-
-function createWindowsRelayInvocation(
-  runtimeExecutable: string,
-  relayPath: string,
-): readonly string[] {
-  const encodedScript = Buffer.from(
-    [
-      '$encoding = [System.Text.Encoding]::UTF8',
-      `$runtime = $encoding.GetString([System.Convert]::FromBase64String('${encodeUtf8(runtimeExecutable)}'))`,
-      `$relay = $encoding.GetString([System.Convert]::FromBase64String('${encodeUtf8(relayPath)}'))`,
-      '& $runtime $relay',
-      'exit $LASTEXITCODE',
-    ].join('\n'),
-    'utf16le',
-  ).toString('base64')
-  return [
-    'powershell.exe',
-    '-NoLogo',
-    '-NoProfile',
-    '-NonInteractive',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-EncodedCommand',
-    encodedScript,
-  ]
-}
-
-function encodeUtf8(value: string): string {
-  return Buffer.from(value, 'utf8').toString('base64')
-}
-
-const codexHookRelayScript = [
-  "let body=process.argv.length>2?process.argv.at(-1):'';",
-  'if(!body) for await (const chunk of process.stdin) body+=chunk;',
-  'try{const value=JSON.parse(body);',
-  'if(!value.hook_event_name&&value.type==="agent-turn-complete") body=JSON.stringify({version:1,state:"done",hookEventName:"notify",codexSessionId:value["thread-id"]??"unknown"});',
-  '}catch{}',
-  'await fetch(process.env.OPENCOVE_CODEX_HOOK_ENDPOINT,{',
-  'method:"POST",',
-  'headers:{"content-type":"application/json","x-opencove-hook-token":process.env.OPENCOVE_CODEX_HOOK_TOKEN},',
-  'body',
-  '}).catch(()=>{});',
-].join('')

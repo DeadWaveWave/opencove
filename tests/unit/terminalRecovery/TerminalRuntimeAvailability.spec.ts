@@ -1,7 +1,7 @@
 import { TerminalRuntimeAvailability } from '@contexts/terminal/application/TerminalRuntimeAvailability'
 
 describe('TerminalRuntimeAvailability', () => {
-  it('keeps a failed concurrent batch unavailable until a fresh recovery succeeds', async () => {
+  it('keeps recovery failure separate from new-session admission', async () => {
     const availability = new TerminalRuntimeAvailability()
     availability.completeStartup(['workspace'])
     let release!: () => void
@@ -17,12 +17,14 @@ describe('TerminalRuntimeAvailability', () => {
         throw new Error('failed node')
       }),
     ).rejects.toThrow('failed node')
-    expect(availability.snapshot('workspace').phase).toBe('initializing')
+    expect(availability.recoverySnapshot('workspace').phase).toBe('initializing')
     release()
     await pending
-    expect(availability.snapshot('workspace')).toEqual({ phase: 'unavailable', epoch: 0 })
+    expect(availability.recoverySnapshot('workspace')).toEqual({ phase: 'unavailable', epoch: 0 })
+    expect(() => availability.assertSpawnAllowed('workspace', null)).not.toThrow()
+    expect(() => availability.assertSpawnAllowed(null, null)).not.toThrow()
     await availability.reconcileWorkspace('workspace', async () => undefined)
-    expect(availability.snapshot('workspace')).toEqual({ phase: 'ready', epoch: 1 })
+    expect(availability.recoverySnapshot('workspace')).toEqual({ phase: 'ready', epoch: 1 })
   })
 
   it('keeps sibling recovery scopes valid until the whole concurrent cohort settles', async () => {
@@ -49,11 +51,12 @@ describe('TerminalRuntimeAvailability', () => {
     try {
       releaseSecond()
       await second
-      expect(availability.snapshot('workspace').phase).toBe('initializing')
-      expect(() => availability.assertSpawnAllowed('workspace', null)).toThrow()
+      expect(availability.recoverySnapshot('workspace').phase).toBe('initializing')
+      expect(() => availability.assertSpawnAllowed('workspace', null)).not.toThrow()
+      expect(() => availability.assertSpawnAllowed(null, null)).not.toThrow()
       releaseFirst()
       await first
-      expect(availability.snapshot('workspace')).toEqual({ phase: 'ready', epoch: 1 })
+      expect(availability.recoverySnapshot('workspace')).toEqual({ phase: 'ready', epoch: 1 })
       availability.beginShutdown()
       expect(() => availability.assertSpawnAllowed('workspace', staleScope)).toThrow()
     } finally {
@@ -63,14 +66,19 @@ describe('TerminalRuntimeAvailability', () => {
     }
   })
 
-  it('blocks startup candidates until reconciliation opens a new ready epoch', async () => {
+  it('opens new-session admission after startup without waiting for old nodes', async () => {
     const availability = new TerminalRuntimeAvailability()
-    availability.completeStartup(['workspace-recovery'])
-
     expect(() => availability.assertSpawnAllowed('workspace-recovery', null)).toThrowError(
       expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
     )
-    expect(availability.snapshot('workspace-recovery')).toEqual({
+    expect(() => availability.assertSpawnAllowed(null, null)).toThrowError(
+      expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
+    )
+
+    availability.completeStartup(['workspace-recovery'])
+    expect(() => availability.assertSpawnAllowed('workspace-recovery', null)).not.toThrow()
+    expect(() => availability.assertSpawnAllowed(null, null)).not.toThrow()
+    expect(availability.recoverySnapshot('workspace-recovery')).toEqual({
       phase: 'initializing',
       epoch: 0,
     })
@@ -80,13 +88,16 @@ describe('TerminalRuntimeAvailability', () => {
       return Promise.resolve()
     })
 
-    expect(availability.snapshot('workspace-recovery')).toEqual({ phase: 'ready', epoch: 1 })
+    expect(availability.recoverySnapshot('workspace-recovery')).toEqual({
+      phase: 'ready',
+      epoch: 1,
+    })
     expect(() => availability.assertSpawnAllowed('workspace-recovery', null)).not.toThrow()
   })
 
   it('does not expose the recovery capability to a normal spawn in the same async operation', async () => {
     const availability = new TerminalRuntimeAvailability()
-    availability.completeStartup(['workspace-recovery', 'other-workspace'])
+    availability.failStartup()
 
     await availability.reconcileWorkspace('workspace-recovery', scope => {
       expect(() => availability.assertSpawnAllowed('workspace-recovery', null)).toThrowError(
@@ -99,16 +110,15 @@ describe('TerminalRuntimeAvailability', () => {
     })
   })
 
-  it('gates a scoped spawn only on its owning workspace', async () => {
+  it('allows new sessions in a workspace whose recovery has not started', async () => {
     const availability = new TerminalRuntimeAvailability()
     availability.completeStartup(['workspace-ready', 'workspace-initializing'])
 
     await availability.reconcileWorkspace('workspace-ready', () => Promise.resolve())
 
     expect(() => availability.assertSpawnAllowed('workspace-ready', null)).not.toThrow()
-    expect(() => availability.assertSpawnAllowed('workspace-initializing', null)).toThrowError(
-      expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
-    )
+    expect(() => availability.assertSpawnAllowed('workspace-initializing', null)).not.toThrow()
+    expect(() => availability.assertSpawnAllowed(null, null)).not.toThrow()
   })
 
   it('keeps failed recovery unavailable and ignores a late completion after shutdown', async () => {
@@ -120,7 +130,10 @@ describe('TerminalRuntimeAvailability', () => {
         throw new Error('reconciliation failed')
       }),
     ).rejects.toThrow('reconciliation failed')
-    expect(availability.snapshot('workspace-failed')).toEqual({ phase: 'unavailable', epoch: 0 })
+    expect(availability.recoverySnapshot('workspace-failed')).toEqual({
+      phase: 'unavailable',
+      epoch: 0,
+    })
 
     let release!: () => void
     const gap = new Promise<void>(resolve => {
@@ -136,7 +149,13 @@ describe('TerminalRuntimeAvailability', () => {
     release()
     await reconciliation
 
-    expect(availability.snapshot('workspace-closing')).toEqual({
+    expect(() => availability.assertSpawnAllowed('workspace-closing', null)).toThrowError(
+      expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
+    )
+    expect(() => availability.assertSpawnAllowed(null, null)).toThrowError(
+      expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
+    )
+    expect(availability.recoverySnapshot('workspace-closing')).toEqual({
       phase: 'shutting-down',
       epoch: 0,
     })
@@ -158,9 +177,12 @@ describe('TerminalRuntimeAvailability', () => {
       return Promise.resolve()
     })
 
-    expect(availability.snapshot('workspace-retry')).toEqual({ phase: 'ready', epoch: 1 })
+    expect(availability.recoverySnapshot('workspace-retry')).toEqual({ phase: 'ready', epoch: 1 })
     expect(() => availability.assertSpawnAllowed('workspace-retry', null)).not.toThrow()
     expect(() => availability.assertSpawnAllowed('other-workspace', null)).toThrowError(
+      expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
+    )
+    expect(() => availability.assertSpawnAllowed(null, null)).toThrowError(
       expect.objectContaining({ code: 'terminal.runtime_not_ready' }),
     )
   })

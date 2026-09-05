@@ -91,6 +91,7 @@ describe('ClaudeCodeAgentProviderContribution', () => {
       channel: hook.channel,
       detector,
       runtimeExecutable: '/runtime/node',
+      runtimePlatform: 'linux',
     })
 
     const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
@@ -103,17 +104,20 @@ describe('ClaudeCodeAgentProviderContribution', () => {
     const settings = JSON.parse(await readFile(settingsPath!, 'utf8'))
     expect(settings.hooks.PermissionRequest[0].hooks[0]).toMatchObject({
       type: 'command',
-      command: '/runtime/node',
-      args: [expect.stringContaining('opencove-claude-hook-')],
+      command: '/usr/bin/env',
+      args: [
+        'ELECTRON_RUN_AS_NODE=1',
+        '/runtime/node',
+        expect.stringContaining('opencove-claude-hook-'),
+      ],
     })
     expect(settings.hooks.SessionStart[0].hooks[0]).toMatchObject({
       type: 'command',
-      command: '/runtime/node',
+      command: '/usr/bin/env',
     })
     expect(plan.args.at(-1)).toBe('Explain the change')
     expect(plan.env).toMatchObject({
       OPENCOVE_CLAUDE_HOOK_TOKEN: 'claude-token',
-      ELECTRON_RUN_AS_NODE: '1',
     })
 
     plan.onStarted?.('pty-1')
@@ -183,7 +187,9 @@ describe('CodexAgentProviderContribution', () => {
 
         await expect(readFile(marker, 'utf8')).resolves.toBe('0.3.0')
         expect(plan.args.join('\n')).not.toContain('hooks.SessionEnd=')
-        expect(plan.args.join('\n')).toContain('notify=["/runtime/node"')
+        expect(plan.args.join('\n')).toContain(
+          'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
+        )
         expect(plan.env).not.toHaveProperty('PATH')
         expect(plan.env).not.toHaveProperty('NVM_MARKER')
       } finally {
@@ -218,17 +224,18 @@ describe('CodexAgentProviderContribution', () => {
       expect.objectContaining({
         executable: 'codex',
         hookCommand: expect.stringMatching(
-          /^'\/runtime\/node' '.*opencove-codex-hook-.*\/relay\.mjs'$/u,
+          /^'\/usr\/bin\/env' 'ELECTRON_RUN_AS_NODE=1' '\/runtime\/node' '.*opencove-codex-hook-.*\/relay\.mjs'$/u,
         ),
       }),
     )
     expect(plan.args.join('\n')).toContain('hooks.SessionEnd=')
     expect(plan.args).toContain("hooks.state={'hook'={trusted_hash='sha256:abc'}}")
-    expect(plan.args.join('\n')).toContain('notify=["/runtime/node"')
+    expect(plan.args.join('\n')).toContain(
+      'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
+    )
     expect(plan.args.at(-1)).toBe('Explain the change')
     expect(plan.env).toMatchObject({
       OPENCOVE_CODEX_HOOK_TOKEN: 'codex-token',
-      ELECTRON_RUN_AS_NODE: '1',
     })
 
     await artifacts.dispose()
@@ -249,7 +256,9 @@ describe('CodexAgentProviderContribution', () => {
     artifacts.seal()
 
     expect(plan.args.join('\n')).not.toContain('hooks.SessionEnd=')
-    expect(plan.args.join('\n')).toContain('notify=["/runtime/node"')
+    expect(plan.args.join('\n')).toContain(
+      'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
+    )
     await artifacts.dispose()
   })
 
@@ -317,7 +326,9 @@ describe('CodexAgentProviderContribution', () => {
         )
         artifacts.seal()
 
-        expect(plan.args.join('\n')).toContain('notify=["/runtime/node"')
+        expect(plan.args.join('\n')).toContain(
+          'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
+        )
         expect(plan.hookInstallState).toBe('installed')
         await artifacts.dispose()
       } finally {

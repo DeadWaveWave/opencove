@@ -139,8 +139,8 @@ describe('agent run-state authority', () => {
     ).toEqual({
       source: null,
       state: null,
-      degraded: true,
-      hookHealth: 'stale',
+      degraded: false,
+      hookHealth: 'pending',
       nextTransitionAtMs: null,
     })
   })

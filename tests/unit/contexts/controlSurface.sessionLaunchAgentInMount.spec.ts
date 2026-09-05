@@ -53,12 +53,11 @@ afterEach(() => {
 })
 
 describe('control surface session.launchAgentInMount', () => {
-  it('rejects a direct mounted launch until that target finishes recovery', async () => {
+  it('rejects a direct mounted launch before startup completes', async () => {
     const rootPath = process.cwd()
     const rootUri = pathToFileURL(rootPath).href
     const spawnSession = vi.fn(async () => ({ sessionId: 'must-not-spawn' }))
     const availability = new TerminalRuntimeAvailability()
-    availability.completeStartup(['project-local'])
     const admissionSpy = vi.spyOn(availability, 'assertSpawnAllowed')
 
     const controlSurface = createControlSurface()
