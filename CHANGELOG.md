@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🐛 Fixed
+- Agent: keep terminal headers, actions, and sidebar status consistent after Claude Code or Codex exits, preserve resumable conversations, and prevent stale Working status after dedicated Agent exits. (#383)
 - Remote: keep managed SSH installation and connection progress visible across Settings and folder-picker reopen, instead of reporting cold setup as a Worker or tunnel failure; automatically enable browsing when ready. (#381)
 
 ---
