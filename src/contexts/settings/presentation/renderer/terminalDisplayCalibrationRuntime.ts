@@ -5,7 +5,10 @@ import {
   readStoredTerminalDisplayCalibration,
   writeTerminalClientDisplayCalibration,
 } from './terminalDisplayCalibrationStorage'
-import { resolveStableTerminalDisplayEnvironment } from './terminalDisplayEnvironment'
+import {
+  readTerminalDisplayEnvironmentObservation,
+  resolveStableTerminalDisplayEnvironment,
+} from './terminalDisplayEnvironment'
 import {
   calibrateTerminalDisplayReferenceAutomatically,
   measureTerminalDisplayReferenceBaseline,
@@ -34,6 +37,7 @@ export const terminalDisplayCalibrationOwner = createTerminalDisplayCalibrationO
     }
   },
   isSuppressed: isTerminalDisplayCalibrationSuppressed,
+  readEnvironmentObservation: readTerminalDisplayEnvironmentObservation,
   resolveEnvironment: async input => await resolveStableTerminalDisplayEnvironment(input),
   measureReference: async input => {
     const rendererKind = resolveMountedTerminalDisplayRendererKind()

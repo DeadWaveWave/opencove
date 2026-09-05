@@ -30,6 +30,24 @@ export const enTerminalDisplayCalibration = {
     'Saved adjustment is active: font {{fontSize}}px, line height {{lineHeight}}. Match: {{quality}}.',
   clientCalibrationPaused:
     'A saved adjustment is available but paused. Turn on Apply Calibration Automatically to use it. Match: {{quality}}.',
+  state: {
+    checking: 'Checking the current terminal display before applying calibration.',
+    referenceUnavailable: 'Set a current shared reference target before applying calibration.',
+    noTerminal: 'Open a terminal to verify and apply the saved display adjustment.',
+    mixedRenderers:
+      'Open terminals use different display methods, so a shared adjustment cannot be applied. Terminals still fit their windows automatically.',
+    rendererMismatch:
+      'This device uses a different display method from the reference target. Set a compatible target to apply calibration.',
+    environmentUnstable:
+      'The terminal display has not stabilized. Try calibrating again after it finishes loading.',
+    suppressed:
+      'Automatic calibration is paused after clearing the adjustment. Calibrate this device manually to resume.',
+    measurementUnavailable:
+      'Terminal display measurement failed. Try calibrating this device again.',
+    candidateRejected:
+      'The current display cannot match the reference target closely enough. Set a compatible target to apply calibration.',
+    storageUnavailable: 'The display adjustment could not be saved. It has not been applied.',
+  },
   quality: {
     exact: 'Exact',
     close: 'Close',
@@ -49,4 +67,5 @@ export const enTerminalDisplayCalibration = {
   resetDone: 'The saved adjustment for this device was cleared.',
   diagnosticsCopied: 'Terminal display diagnostics copied.',
   measureFailed: 'Unable to measure terminal display metrics on this device.',
+  storageFailed: 'Unable to save the terminal display adjustment on this device.',
 }

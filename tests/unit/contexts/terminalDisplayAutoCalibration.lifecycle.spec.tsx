@@ -10,11 +10,13 @@ import {
 } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayCalibrationStorage'
 
 const mocks = vi.hoisted(() => ({
+  observeEnvironment: vi.fn(),
   resolveEnvironment: vi.fn(),
   calibrate: vi.fn(),
 }))
 
 vi.mock('../../../src/contexts/settings/presentation/renderer/terminalDisplayEnvironment', () => ({
+  readTerminalDisplayEnvironmentObservation: mocks.observeEnvironment,
   resolveStableTerminalDisplayEnvironment: mocks.resolveEnvironment,
 }))
 vi.mock('../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement', () => ({
@@ -24,6 +26,7 @@ vi.mock('../../../src/contexts/settings/presentation/renderer/terminalDisplayMea
 }))
 
 import { useTerminalClientDisplayAutoCalibration } from '../../../src/contexts/settings/presentation/renderer/useTerminalClientDisplayAutoCalibration'
+import { terminalDisplayCalibrationOwner } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayCalibrationRuntime'
 import {
   readTerminalDisplayCalibrationAttempt,
   resetTerminalDisplayCalibrationAttemptForTests,
@@ -102,6 +105,12 @@ describe('useTerminalClientDisplayAutoCalibration', () => {
     window.localStorage.clear()
     resetTerminalDisplayCalibrationAttemptForTests()
     mocks.resolveEnvironment.mockReset().mockResolvedValue(environment('environment-one'))
+    mocks.observeEnvironment.mockReset().mockReturnValue({
+      runtime: 'browser',
+      rendererKind: 'dom',
+      windowDevicePixelRatio: 1,
+      visualViewportScale: 1,
+    })
     mocks.calibrate.mockReset().mockResolvedValue(candidate())
     installBrowserPrimitives()
   })
@@ -109,6 +118,7 @@ describe('useTerminalClientDisplayAutoCalibration', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    Reflect.deleteProperty(document, 'fonts')
     window.localStorage.clear()
   })
 
@@ -203,6 +213,12 @@ describe('useTerminalClientDisplayAutoCalibration', () => {
     await waitFor(() => expect(mocks.calibrate).toHaveBeenCalledTimes(1))
 
     currentSignature = 'environment-two'
+    mocks.observeEnvironment.mockReturnValue({
+      runtime: 'browser',
+      rendererKind: 'dom',
+      windowDevicePixelRatio: 1.5,
+      visualViewportScale: 1,
+    })
     act(() => window.dispatchEvent(new Event('resize')))
     await waitFor(() => expect(mocks.calibrate).toHaveBeenCalledTimes(2))
     resolveFirst(candidate())
@@ -227,5 +243,133 @@ describe('useTerminalClientDisplayAutoCalibration', () => {
 
     expect(mocks.calibrate).not.toHaveBeenCalled()
     expect(window.localStorage.getItem(TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY)).toBeNull()
+  })
+
+  it('keeps a verified calibration through same-environment notifications and equivalent settings', async () => {
+    const { rerender } = renderHook(
+      ({ agentSettings }) =>
+        useTerminalClientDisplayAutoCalibration({ enabled: true, agentSettings }),
+      { initialProps: { agentSettings: settings() } },
+    )
+    await act(() => terminalDisplayCalibrationOwner.whenIdle())
+    const calibrated = terminalDisplayCalibrationOwner.getSnapshot().appliedCalibration
+    expect(calibrated).not.toBeNull()
+    const observed: boolean[] = []
+    const unsubscribe = terminalDisplayCalibrationOwner.subscribe(() => {
+      observed.push(terminalDisplayCalibrationOwner.getSnapshot().appliedCalibration !== null)
+    })
+    const measurementsBefore = mocks.resolveEnvironment.mock.calls.length
+    try {
+      act(() => {
+        window.dispatchEvent(new Event('opencove:terminal-display-measurement-handles-changed'))
+        window.dispatchEvent(new Event('resize'))
+        window.dispatchEvent(new StorageEvent('storage', { key: 'unrelated-preference' }))
+      })
+      rerender({
+        agentSettings: { ...settings(), terminalDisplayReference: structuredClone(reference) },
+      })
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 30))
+        await terminalDisplayCalibrationOwner.whenIdle()
+      })
+      expect(observed).not.toContain(false)
+      expect(terminalDisplayCalibrationOwner.getSnapshot().appliedCalibration).toEqual(calibrated)
+      expect(mocks.resolveEnvironment).toHaveBeenCalledTimes(measurementsBefore)
+    } finally {
+      unsubscribe()
+    }
+  })
+
+  it('reports mixed renderers immediately and recovers when only the reference renderer remains', async () => {
+    renderHook(() =>
+      useTerminalClientDisplayAutoCalibration({ enabled: true, agentSettings: settings() }),
+    )
+    await act(() => terminalDisplayCalibrationOwner.whenIdle())
+    expect(terminalDisplayCalibrationOwner.getSnapshot().appliedCalibration).not.toBeNull()
+    const saved = window.localStorage.getItem(TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY)
+    const observation = mocks.observeEnvironment()
+    mocks.observeEnvironment.mockReturnValue({ ...observation, rendererKind: 'mixed' })
+    act(() =>
+      window.dispatchEvent(new Event('opencove:terminal-display-measurement-handles-changed')),
+    )
+    expect(terminalDisplayCalibrationOwner.getSnapshot()).toMatchObject({
+      appliedCalibration: null,
+      status: 'mixed-renderers',
+    })
+    expect(window.localStorage.getItem(TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY)).toBe(saved)
+    mocks.observeEnvironment.mockReturnValue(observation)
+    act(() =>
+      window.dispatchEvent(new Event('opencove:terminal-display-measurement-handles-changed')),
+    )
+    await act(() => terminalDisplayCalibrationOwner.whenIdle())
+    expect(terminalDisplayCalibrationOwner.getSnapshot()).toMatchObject({
+      appliedCalibration: expect.any(Object),
+      status: 'already-calibrated',
+    })
+  })
+
+  it('revalidates changed calibration storage and cancels delayed work on unmount', async () => {
+    const { unmount } = renderHook(() =>
+      useTerminalClientDisplayAutoCalibration({ enabled: true, agentSettings: settings() }),
+    )
+    await act(() => terminalDisplayCalibrationOwner.whenIdle())
+    expect(terminalDisplayCalibrationOwner.getSnapshot().appliedCalibration).not.toBeNull()
+    let finishMeasurement!: (value: ReturnType<typeof environment>) => void
+    mocks.resolveEnvironment.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finishMeasurement = resolve
+        }),
+    )
+    act(() =>
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: TERMINAL_DISPLAY_CALIBRATION_STORAGE_KEY,
+        }),
+      ),
+    )
+    expect(terminalDisplayCalibrationOwner.getSnapshot()).toMatchObject({
+      appliedCalibration: null,
+      status: 'checking',
+    })
+    unmount()
+    finishMeasurement(environment('environment-one'))
+    await act(() => terminalDisplayCalibrationOwner.whenIdle())
+    expect(terminalDisplayCalibrationOwner.getSnapshot()).toMatchObject({
+      appliedCalibration: null,
+      status: 'disabled',
+    })
+  })
+
+  it('revokes calibration while fonts load and verifies again when loading finishes', async () => {
+    const fonts = new EventTarget()
+    Object.defineProperty(document, 'fonts', { configurable: true, value: fonts })
+    const { unmount } = renderHook(() =>
+      useTerminalClientDisplayAutoCalibration({ enabled: true, agentSettings: settings() }),
+    )
+    await act(() => terminalDisplayCalibrationOwner.whenIdle())
+    let finish!: (value: null) => void
+    mocks.resolveEnvironment.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finish = resolve
+        }),
+    )
+    act(() => fonts.dispatchEvent(new Event('loading')))
+    expect(terminalDisplayCalibrationOwner.getSnapshot()).toMatchObject({
+      appliedCalibration: null,
+      status: 'checking',
+    })
+    act(() => fonts.dispatchEvent(new Event('loadingdone')))
+    finish(null)
+    await act(() => terminalDisplayCalibrationOwner.whenIdle())
+    expect(terminalDisplayCalibrationOwner.getSnapshot()).toMatchObject({
+      appliedCalibration: expect.any(Object),
+      status: 'already-calibrated',
+    })
+    unmount()
+    const calls = mocks.resolveEnvironment.mock.calls.length
+    fonts.dispatchEvent(new Event('loadingdone'))
+    expect(mocks.resolveEnvironment).toHaveBeenCalledTimes(calls)
   })
 })
