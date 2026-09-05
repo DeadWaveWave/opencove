@@ -53,8 +53,14 @@ test('preserves existing glyph pixels when another WebGL terminal is created and
       )
       .toBe('webgl')
     const screen = terminal.locator('.xterm-screen')
-    const before = await screen.screenshot()
-    const originalBounds = (await screen.boundingBox())!
+    const camera = await window
+      .locator('.react-flow__viewport')
+      .first()
+      .evaluate(element => (element as HTMLElement).style.transform)
+    // Compare the same physical pixel grid, including fractional camera translation.
+    // Screenshot styles are temporary and do not alter xterm's renderer or glyph atlas.
+    const captureStyle = `.react-flow__viewport { transform: ${camera} !important; }`
+    const before = await screen.screenshot({ style: captureStyle })
     await test
       .info()
       .attach('glyphs-before-new-terminal', { body: before, contentType: 'image/png' })
@@ -76,28 +82,19 @@ test('preserves existing glyph pixels when another WebGL terminal is created and
       await expect
         .poll(() =>
           window.evaluate(
-            id => window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id),
+            id =>
+              window.__opencoveTerminalSelectionTestApi?.getRenderMetrics(id)
+                ?.rendererStructuralKind,
             siblingId,
           ),
         )
-        .toBeTruthy()
+        .toBe('webgl')
       // Focus forces a real WebGL redraw of the unchanged sibling model/texture coordinates.
       await terminal.locator('.xterm-helper-textarea').focus()
-      // New-terminal navigation can pan the canvas. Restore the original screen position
-      // through the normal pan gesture so occluding chrome is not part of the pixel comparison.
-      const currentBounds = (await screen.boundingBox())!
-      await window.mouse.move(1100, 100)
-      await window.mouse.down({ button: 'middle' })
-      await window.mouse.move(
-        1100 + originalBounds.x - currentBounds.x,
-        100 + originalBounds.y - currentBounds.y,
-        { steps: 5 },
-      )
-      await window.mouse.up({ button: 'middle' })
       await window.evaluate(
         () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))),
       )
-      const after = await screen.screenshot()
+      const after = await screen.screenshot({ style: captureStyle })
       await test
         .info()
         .attach(`glyphs-after-creation-${round}`, { body: after, contentType: 'image/png' })

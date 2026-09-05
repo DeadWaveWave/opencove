@@ -411,6 +411,8 @@ test.describe('Recovery - Agent reopen', () => {
 
         const taskTwo = taskNodes.filter({ hasText: 'Second task' }).first()
         await expect(taskTwo).toBeVisible()
+        // Launching the first agent pans the canvas; bring the next task back into view.
+        await window.locator('.react-flow__controls-fitview').click()
         await taskTwo.locator('[data-testid="task-node-run-agent"]').click()
 
         await expect(window.locator('.terminal-node')).toHaveCount(2, { timeout: 30_000 })

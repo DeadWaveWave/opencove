@@ -14,7 +14,6 @@ type TerminalGeometryCoordinatorState = {
 }
 
 const terminalGeometryStates = new WeakMap<Terminal, TerminalGeometryCoordinatorState>()
-let nextGeometryOperationId = 0
 
 function getTerminalGeometryState(terminal: Terminal): TerminalGeometryCoordinatorState {
   const existing = terminalGeometryStates.get(terminal)
@@ -54,8 +53,8 @@ export function beginTerminalGeometryCommit(terminal: Terminal): number {
   const state = getTerminalGeometryState(terminal)
   state.nextRevision += 1
   state.pendingRevision = state.nextRevision
-  nextGeometryOperationId += 1
-  state.pendingOperationId = `renderer-geometry-${nextGeometryOperationId}-${state.nextRevision}`
+  // Main can still hold an earlier renderer's pending ACK after this page reloads.
+  state.pendingOperationId = `renderer-geometry-${crypto.randomUUID()}`
   return state.pendingRevision
 }
 
