@@ -256,6 +256,9 @@ async function waitForWorkerReadyPayload(
 ): Promise<WorkerConnectionInfoDto> {
   return await new Promise<WorkerConnectionInfoDto>((resolvePromise, rejectPromise) => {
     const rl = createInterface({ input: child.stdout })
+    // Closing readline pauses its input. Continue draining after the private ready handshake:
+    // an unread stdout pipe can block the Worker (including health checks) when it logs.
+    rl.once('close', () => child.stdout.resume())
     let settled = false
 
     const timeout = setTimeout(() => {

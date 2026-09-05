@@ -16,6 +16,14 @@
 4. 只重跑目标失败项，确认是否稳定复现。
 5. 若是 E2E，优先看 `screenshot`、`trace`、`console` 与持久化状态。
 
+### Worker 在日志输出后失去响应
+
+如果终端停止接受输入，并伴随 Worker 端口或 PID 被替换，检查启动器是否持续消费子进程
+的 stdout/stderr。`readline.close()` 会暂停输入；就绪握手完成后必须继续排空管道，不能
+把暂停读取误当成停止解析握手。Windows 上写满未消费的管道会阻塞 Worker，连健康检查
+也无法响应。用超过管道容量的真实子进程输出验证后续工作与 HTTP 响应，而不是关闭日志
+或仅延长健康检查超时。回归入口：`tests/integration/worker/localWorkerManager.stdout.spec.ts`。
+
 ## 测试层级选择（策略）
 
 目标：用 **最低成本** 的测试层级先定位问题；确认根因后再补足能防回归的覆盖。
