@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Agent: avoid a misleading Fallback badge before the first Hook observation on menu launch, while retaining warnings for explicit failures and expired working signals. (#385)
 - Agent: prevent Codex and Claude hooks from launching desktop instances, timing out repeatedly, and disrupting input; keep status relays headless with bounded execution. (#385)
 - Terminal: fit new windows on first mount and confirm actual Windows Console dimensions before committing a resize, with a retry action when confirmation fails. Window fitting works independently of font calibration. (#382)
 - Terminal: preserve shared WebGL glyph caches when creating or refreshing terminals, preventing fragmented text in existing windows. (#382)
