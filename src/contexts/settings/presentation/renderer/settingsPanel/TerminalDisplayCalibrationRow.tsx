@@ -11,7 +11,11 @@ import {
   readTerminalDisplayCalibrationSuppression,
   useTerminalClientDisplayCalibrationInspection,
 } from '../terminalDisplayCalibrationStorage'
-import { useTerminalDisplayCalibrationProjection } from '../useTerminalDisplayCalibrationProjection'
+import {
+  useTerminalDisplayCalibrationProjection,
+  useTerminalDisplayCalibrationSnapshot,
+} from '../useTerminalDisplayCalibrationProjection'
+import type { TerminalDisplayCalibrationStatus } from '../../../application/terminalDisplayCalibrationOwner'
 import { terminalDisplayCalibrationOwner } from '../terminalDisplayCalibrationRuntime'
 import { readTerminalDisplayClientRuntime } from '../terminalDisplayClientApi'
 import { readTerminalDisplayCalibrationAttempt } from '../terminalDisplayCalibrationDiagnostics'
@@ -20,6 +24,19 @@ import {
   roundDisplayMetric,
 } from '../terminalDisplayMeasurement'
 import { SettingsModule } from './SettingsGroup'
+
+const stateMessages: Partial<Record<TerminalDisplayCalibrationStatus, string>> = {
+  checking: 'checking',
+  'reference-unavailable': 'referenceUnavailable',
+  'no-terminal': 'noTerminal',
+  'mixed-renderers': 'mixedRenderers',
+  'renderer-mismatch': 'rendererMismatch',
+  'environment-unstable': 'environmentUnstable',
+  suppressed: 'suppressed',
+  'candidate-unavailable': 'measurementUnavailable',
+  'candidate-rejected': 'candidateRejected',
+  'storage-unavailable': 'storageUnavailable',
+}
 
 export function TerminalDisplayCalibrationRow({
   terminalFontSize,
@@ -41,6 +58,7 @@ export function TerminalDisplayCalibrationRow({
   onChangeTerminalDisplayReference: (reference: TerminalDisplayReference | null) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const calibrationSnapshot = useTerminalDisplayCalibrationSnapshot()
   const clientCalibration = useTerminalDisplayCalibrationProjection({
     terminalFontSize,
     terminalFontFamily,
@@ -115,10 +133,11 @@ export function TerminalDisplayCalibrationRow({
         )
         return
       }
+      const message = stateMessages[result.outcome]
       setStatus(
         t(
-          result.outcome === 'storage-unavailable'
-            ? 'settingsPanel.general.terminalDisplayCalibration.storageFailed'
+          message
+            ? `settingsPanel.general.terminalDisplayCalibration.state.${message}`
             : 'settingsPanel.general.terminalDisplayCalibration.measureFailed',
         ),
       )
@@ -150,8 +169,15 @@ export function TerminalDisplayCalibrationRow({
       referenceCapture: terminalDisplayReference?.capture ?? null,
       mountedRendererInventory: resolveMountedTerminalDisplayRendererInventory(),
       clientCalibrationSuppression: readTerminalDisplayCalibrationSuppression(),
-      clientCalibrationInspection: calibrationInspection,
+      clientCalibrationInspection: {
+        ...calibrationInspection,
+        applicableCalibrationPresent: clientCalibration !== null,
+      },
       latestAutomaticCalibrationAttempt: readTerminalDisplayCalibrationAttempt(),
+      currentCalibrationState: {
+        status: calibrationSnapshot.status,
+        environmentSignature: calibrationSnapshot.environmentSignature,
+      },
       clientCalibration,
       clientCalibrationStorageMetadata: readTerminalDisplayCalibrationStorageMetadata(),
       clientCalibrationQuality: clientCalibration
@@ -165,21 +191,30 @@ export function TerminalDisplayCalibrationRow({
     setStatus(t('settingsPanel.general.terminalDisplayCalibration.diagnosticsCopied'))
   }
 
-  const summary = clientCalibration
-    ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrated', {
-        fontSize: clientCalibration.fontSize,
-        lineHeight: clientCalibration.lineHeight,
-        quality: getQualityLabel(clientCalibration.score),
-      })
-    : !terminalDisplayCalibrationCompensationEnabled &&
-        hasVerifiedStoredCalibration &&
-        calibrationInspection.calibrationScore !== null
+  const stateMessage = stateMessages[calibrationSnapshot.status]
+  const summary = !terminalDisplayCalibrationCompensationEnabled
+    ? hasVerifiedStoredCalibration && calibrationInspection.calibrationScore !== null
       ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationPaused', {
           quality: getQualityLabel(calibrationInspection.calibrationScore),
         })
-      : calibrationInspection.rawCalibrationPresent
-        ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationUnavailable')
-        : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
+      : t(
+          calibrationInspection.rawCalibrationPresent
+            ? 'settingsPanel.general.terminalDisplayCalibration.clientCalibrationDisabledUnavailable'
+            : 'settingsPanel.general.terminalDisplayCalibration.clientCalibrationDisabled',
+        )
+    : clientCalibration
+      ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrated', {
+          fontSize: clientCalibration.fontSize,
+          lineHeight: clientCalibration.lineHeight,
+          quality: getQualityLabel(clientCalibration.score),
+        })
+      : stateMessage
+        ? t(`settingsPanel.general.terminalDisplayCalibration.state.${stateMessage}`)
+        : hasVerifiedStoredCalibration
+          ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationWaiting')
+          : calibrationInspection.rawCalibrationPresent
+            ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationUnavailable')
+            : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
 
   return (
     <SettingsModule
@@ -265,7 +300,12 @@ export function TerminalDisplayCalibrationRow({
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
           <strong>{t('settingsPanel.general.terminalDisplayCalibration.clientLabel')}</strong>
-          <span>{summary}</span>
+          <span
+            data-testid="settings-terminal-display-summary"
+            data-calibration-state={calibrationSnapshot.status}
+          >
+            {summary}
+          </span>
         </div>
         <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
           <button

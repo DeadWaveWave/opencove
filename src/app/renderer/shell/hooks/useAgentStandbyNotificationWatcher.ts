@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { TerminalSessionState, TerminalSessionStateEvent } from '@shared/contracts/dto'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import { isAgentNodeAwaitingSessionTitle } from '@contexts/workspace/presentation/renderer/utils/agentSessionTitleSync'
+import { resolveAgentPresentation } from '@contexts/workspace/presentation/renderer/utils/agentPresentation'
 import { useAppStore } from '../store/useAppStore'
 import { getPtyEventHub } from '../utils/ptyEventHub'
 
@@ -30,7 +31,11 @@ export function resolveAgentNodeForSessionId(sessionId: string): {
 
   for (const workspace of state.workspaces) {
     for (const node of workspace.nodes) {
-      if (node.data.kind !== 'agent' || node.data.sessionId !== sessionId) {
+      if (node.data.sessionId !== sessionId) {
+        continue
+      }
+      const presentation = resolveAgentPresentation(node.data)
+      if (!presentation.isAgent) {
         continue
       }
 
@@ -47,7 +52,7 @@ export function resolveAgentNodeForSessionId(sessionId: string): {
         nodeId: node.id,
         title: node.data.title,
         awaitingSessionTitle: isAgentNodeAwaitingSessionTitle(node),
-        runtimeStatus: node.data.status,
+        runtimeStatus: presentation.status,
         executionDirectory: resolvedExecutionDirectory,
         taskId,
       }

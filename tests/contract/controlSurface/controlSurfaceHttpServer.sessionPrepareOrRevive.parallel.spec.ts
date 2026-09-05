@@ -69,88 +69,120 @@ function createManyAgentNodeState(options: {
 }
 
 describe('Control Surface HTTP server (session.prepareOrRevive parallel restore)', () => {
-  it('prepares multiple agent restores concurrently instead of serializing every spawn', async () => {
-    const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-'))
-    const workspacePath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-workspace-'))
-    const connectionFileName = 'control-surface.pty.prepare-or-revive.parallel.json'
-    const connectionFilePath = resolve(userDataPath, connectionFileName)
+  it.each(['batch', 'independent'] as const)(
+    'prepares %s restores concurrently and shares duplicate in-flight nodes',
+    async mode => {
+      const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-'))
+      const workspacePath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-workspace-'))
+      const connectionFileName = 'control-surface.pty.prepare-or-revive.parallel.json'
+      const connectionFilePath = resolve(userDataPath, connectionFileName)
 
-    const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
-      resolve(userDataPath, 'approved-workspaces.json'),
-    )
-    await approvedWorkspaces.registerRoot(workspacePath)
+      const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
+        resolve(userDataPath, 'approved-workspaces.json'),
+      )
+      await approvedWorkspaces.registerRoot(workspacePath)
 
-    let releaseFirstSpawn: (() => void) | null = null
-    const firstSpawnGate = new Promise<void>(resolveGate => {
-      releaseFirstSpawn = resolveGate
-    })
-    const spawnCalls: Array<{ cwd: string }> = []
-    const ptyRuntime: ControlSurfacePtyRuntime = {
-      spawnSession: async options => {
-        spawnCalls.push({ cwd: options.cwd })
-        const callIndex = spawnCalls.length
-        if (callIndex === 1) {
-          await firstSpawnGate
-        }
-        return { sessionId: `agent-session-${callIndex}` }
-      },
-      write: () => undefined,
-      resize: () => undefined,
-      kill: () => undefined,
-      onData: () => () => undefined,
-      onExit: () => () => undefined,
-    }
-
-    const server = registerControlSurfaceHttpServer({
-      userDataPath,
-      hostname: '127.0.0.1',
-      port: 0,
-      token: 'test-token',
-      connectionFileName,
-      approvedWorkspaces,
-      createPersistenceStore: async () => createInMemoryPersistenceStore(),
-      ptyRuntime,
-    })
-
-    try {
-      const info = await server.ready
-      const baseUrl = `http://${info.hostname}:${info.port}`
-      const workspaceId = randomUUID()
-      const spaceId = randomUUID()
-
-      const writeState = await invoke(baseUrl, 'test-token', {
-        kind: 'command',
-        id: 'sync.writeState',
-        payload: {
-          state: createManyAgentNodeState({
-            workspacePath,
-            workspaceId,
-            spaceId,
-            count: 2,
-          }),
+      let releaseFirstSpawn: (() => void) | null = null
+      const firstSpawnGate = new Promise<void>(resolveGate => {
+        releaseFirstSpawn = resolveGate
+      })
+      const spawnCalls: Array<{ cwd: string }> = []
+      const ptyRuntime: ControlSurfacePtyRuntime = {
+        spawnSession: async options => {
+          spawnCalls.push({ cwd: options.cwd })
+          const callIndex = spawnCalls.length
+          if (callIndex === 1) {
+            await firstSpawnGate
+          }
+          return { sessionId: `agent-session-${callIndex}` }
         },
-      })
-      expect(writeState.status, JSON.stringify(writeState.data)).toBe(200)
+        write: () => undefined,
+        resize: () => undefined,
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+      }
 
-      const preparedPromise = invoke(baseUrl, 'test-token', {
-        kind: 'command',
-        id: 'session.prepareOrRevive',
-        payload: { workspaceId },
-      })
-
-      await expect.poll(() => spawnCalls.length, { timeout: 1_000 }).toBeGreaterThanOrEqual(2)
-
-      releaseFirstSpawn?.()
-      const prepared = await preparedPromise
-      expect(prepared.status, JSON.stringify(prepared.data)).toBe(200)
-    } finally {
-      releaseFirstSpawn?.()
-      await disposeAndCleanup({
-        server,
+      const server = registerControlSurfaceHttpServer({
         userDataPath,
-        connectionFilePath,
-        baseUrl: `http://127.0.0.1:${(await server.ready).port}`,
+        hostname: '127.0.0.1',
+        port: 0,
+        token: 'test-token',
+        connectionFileName,
+        approvedWorkspaces,
+        createPersistenceStore: async () => createInMemoryPersistenceStore(),
+        ptyRuntime,
       })
-    }
-  })
+      let preparedPromise: ReturnType<typeof invoke> | null = null
+      const siblingPromises: Array<ReturnType<typeof invoke>> = []
+
+      try {
+        const info = await server.ready
+        const baseUrl = `http://${info.hostname}:${info.port}`
+        const workspaceId = randomUUID()
+        const spaceId = randomUUID()
+
+        const writeState = await invoke(baseUrl, 'test-token', {
+          kind: 'command',
+          id: 'sync.writeState',
+          payload: {
+            state: createManyAgentNodeState({
+              workspacePath,
+              workspaceId,
+              spaceId,
+              count: 2,
+            }),
+          },
+        })
+        expect(writeState.status, JSON.stringify(writeState.data)).toBe(200)
+
+        preparedPromise = invoke(baseUrl, 'test-token', {
+          kind: 'command',
+          id: 'session.prepareOrRevive',
+          payload: {
+            workspaceId,
+            ...(mode === 'independent' ? { nodeIds: ['agent-node-1'] } : {}),
+          },
+        })
+        if (mode === 'independent') {
+          await expect.poll(() => spawnCalls.length, { timeout: 3_000 }).toBe(1)
+          siblingPromises.push(
+            invoke(baseUrl, 'test-token', {
+              kind: 'command',
+              id: 'session.prepareOrRevive',
+              payload: { workspaceId, nodeIds: ['agent-node-1'] },
+            }),
+          )
+          siblingPromises.push(
+            invoke(baseUrl, 'test-token', {
+              kind: 'command',
+              id: 'session.prepareOrRevive',
+              payload: { workspaceId, nodeIds: ['agent-node-2'] },
+            }),
+          )
+        }
+
+        // The first spawn stays gated: the second must start independently, regardless of IO latency.
+        await expect.poll(() => spawnCalls.length, { timeout: 3_000 }).toBeGreaterThanOrEqual(2)
+
+        releaseFirstSpawn?.()
+        const prepared = await preparedPromise
+        expect(prepared.status, JSON.stringify(prepared.data)).toBe(200)
+        for (const result of await Promise.all(siblingPromises)) {
+          expect(result.status, JSON.stringify(result.data)).toBe(200)
+        }
+        expect(spawnCalls).toHaveLength(2)
+      } finally {
+        releaseFirstSpawn?.()
+        await preparedPromise?.catch(() => undefined)
+        await Promise.allSettled(siblingPromises)
+        await disposeAndCleanup({
+          server,
+          userDataPath,
+          connectionFilePath,
+          baseUrl: `http://127.0.0.1:${(await server.ready).port}`,
+        })
+      }
+    },
+  )
 })

@@ -254,6 +254,7 @@ async function rebuildAndVerifyNativeModules({
     'database.close()',
     "const pty=requireFromApp('node-pty')",
     "if(typeof pty.spawn!=='function')throw new Error('node-pty did not expose spawn')",
+    "if(process.platform==='win32')requireFromApp('node-pty/lib/windowsConsoleGeometry').assertWindowsConsoleGeometryAvailable()",
     "if(process.versions.electron)throw new Error('bundled runtime is Electron, not pure Node')",
     "process.stdout.write('native modules loaded with Node ABI '+process.versions.modules+'\\n')",
   ].join(';')

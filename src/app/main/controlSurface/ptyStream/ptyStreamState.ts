@@ -49,6 +49,8 @@ export type SessionState = {
   operationChain: Promise<void>
   operationQueueDepth: number
   presentationSession: TerminalPresentationSession
+  /** Runtime-only: an issued mutation has not yet been confirmed and committed. */
+  runtimeGeometryUnconfirmed?: boolean
   /** Immutable archived-epoch envelope prepended only to client-facing presentation snapshots. */
   displayPrefix: string
 }

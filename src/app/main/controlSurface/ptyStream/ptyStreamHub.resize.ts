@@ -155,6 +155,7 @@ async function correctRuntimeAfterGeometryLeaseLoss(options: {
       sameGeometry(confirmedRuntimeGeometry, latestGeometry)
     ) {
       if (latestSession) {
+        latestSession.runtimeGeometryUnconfirmed = false
         options.broadcastGeometry(
           options.sessionId,
           latestGeometry.cols,
@@ -311,7 +312,8 @@ export async function resizePtyStreamSession(options: {
 
     let acceptedRuntimeGeometry: TerminalCanonicalPtyGeometry = plan.geometry
 
-    if (plan.changed) {
+    if (plan.changed || currentSession.runtimeGeometryUnconfirmed) {
+      currentSession.runtimeGeometryUnconfirmed = true
       const runtimeInput: ResizeTerminalInput = {
         sessionId: options.resize.sessionId,
         cols: plan.geometry.cols,
@@ -407,6 +409,8 @@ export async function resizePtyStreamSession(options: {
       sendPtyResizeResult(currentClient.ws, superseded)
       return superseded
     }
+
+    currentSession.runtimeGeometryUnconfirmed = false
 
     if (committed.changed) {
       updateSessionGeometryMetadata(currentSession, committed.geometry)

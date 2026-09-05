@@ -352,6 +352,8 @@ export const en = {
     remoteWorkerRecoveryMessage:
       'The original remote worker is unavailable. Reconnect it to recover this session safely.',
     retryRecovery: 'Retry recovery',
+    geometrySyncFailed: 'Terminal size could not be confirmed. Retry to fit this window.',
+    retryGeometrySync: 'Retry sizing',
   },
   terminalFind: {
     placeholder: 'Find…',

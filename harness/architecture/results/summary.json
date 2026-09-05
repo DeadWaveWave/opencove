@@ -1,18 +1,18 @@
 {
-  "filesAnalyzed": 1364,
+  "filesAnalyzed": 1375,
   "summary": {
     "errors": 0,
-    "warnings": 483,
-    "violations": 483
+    "warnings": 484,
+    "violations": 484
   },
   "byRule": {
     "architecture.windowOpenCoveApiBoundary": 239,
-    "architecture.layerDependency": 244
+    "architecture.layerDependency": 245
   },
   "topAreas": [
     {
       "area": "src/contexts/workspace/presentation",
-      "count": 215
+      "count": 216
     },
     {
       "area": "src/contexts/settings/presentation",

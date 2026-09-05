@@ -152,11 +152,11 @@ const expectContinuousSidebarAnimation = (
         lastTransition.projectIconViewportCenterY,
         1,
       )
-      expectClose(
-        finalSample.spaceRailIconViewportCenterX,
-        lastTransition.spaceRailIconViewportCenterX,
-        1,
-      )
+      // The last sampled moving frame may precede the endpoint by several pixels.
+      // Include the endpoint in the directional check; final alignment is checked below.
+      expect(
+        maxStep([...toggleCenterXs, finalSample.spaceRailIconViewportCenterX], 'positive'),
+      ).toBeLessThanOrEqual(2)
       expectClose(
         finalSample.spaceRailIconViewportCenterY,
         lastTransition.spaceRailIconViewportCenterY,

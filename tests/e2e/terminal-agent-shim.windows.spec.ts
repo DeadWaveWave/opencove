@@ -229,7 +229,7 @@ async function expectPrivateCleanup(harness: Awaited<ReturnType<typeof createHar
   }
   const relayMatch = args
     .join('\n')
-    .match(/[A-Za-z]:\\[^'"\n]*opencove-codex-hook-[^'"\n]*\\relay\.mjs/iu)
+    .match(/[A-Za-z]:\\[^'"\n]*opencove-codex-hook-[^'"\n]*\\launch\.ps1/iu)
   if (harness.command === 'codex') {
     expect(relayMatch).toBeTruthy()
     await expect(access(relayMatch![0])).rejects.toMatchObject({ code: 'ENOENT' })
@@ -274,7 +274,7 @@ test.describe('terminal Agent shim (Windows)', () => {
 
           expect(result.code).toBe(harness.commandExitCode)
           expect(result.stdout).toContain('HOOK_STATUS=204')
-          expect(result.stdout).toContain('ELECTRON_RUN_AS_NODE=1')
+          expect(outputLines(result.stdout)).toContain('ELECTRON_RUN_AS_NODE=')
           const serializedArgs = result.stdout.match(/ARGS_JSON=(\[[^\r\n]+\])/u)?.[1]
           expect(serializedArgs).toBeTruthy()
           expect(JSON.parse(serializedArgs!)).toEqual(expect.arrayContaining(args))

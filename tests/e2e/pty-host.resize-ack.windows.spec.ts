@@ -4,7 +4,7 @@ import { launchApp, testWorkspacePath } from './workspace-canvas.helpers'
 test.describe('PTY Host resize acknowledgement (Windows)', () => {
   test.skip(process.platform !== 'win32', 'Windows ConPTY contract')
 
-  test('keeps deferred ConPTY geometry unverified without committing the request', async () => {
+  test('confirms ConPTY geometry and commits the actual resized grid', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -18,7 +18,7 @@ test.describe('PTY Host resize acknowledgement (Windows)', () => {
           cols: 120,
           rows: 40,
           reason: 'frame_commit',
-          operationId: 'windows-conpty-unverified',
+          operationId: 'windows-conpty-verified',
           baseGeometryRevision: null,
         })
         const after = await window.opencoveApi.pty.presentationSnapshot({
@@ -29,20 +29,18 @@ test.describe('PTY Host resize acknowledgement (Windows)', () => {
       }, testWorkspacePath)
 
       expect(result.resized).toMatchObject({
-        status: 'accepted_unverified',
-        changed: false,
+        status: 'accepted',
+        changed: true,
         geometry: {
-          cols: result.before.cols,
-          rows: result.before.rows,
-          revision: result.before.geometryRevision,
+          cols: 120,
+          rows: 40,
         },
       })
       expect(result.after).toMatchObject({
-        cols: result.before.cols,
-        rows: result.before.rows,
-        geometryRevision: result.before.geometryRevision,
+        cols: 120,
+        rows: 40,
       })
-      expect(result.after).not.toMatchObject({ cols: 120, rows: 40 })
+      expect(result.resized.geometry?.revision).toBeGreaterThan(result.before.geometryRevision ?? 0)
     } finally {
       await electronApp.close()
     }

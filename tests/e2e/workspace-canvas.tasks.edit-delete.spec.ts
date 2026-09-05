@@ -3,6 +3,7 @@ import {
   clearAndSeedWorkspace,
   clickHeaderDragSurface,
   launchApp,
+  readLocatorClientRect,
   storageKey,
 } from './workspace-canvas.helpers'
 
@@ -72,10 +73,7 @@ test.describe('Workspace Canvas - Tasks (Edit & Delete)', () => {
       )
 
       const rightResizer = taskNode.locator('[data-testid="task-resizer-right"]')
-      const rightResizerBox = await rightResizer.boundingBox()
-      if (!rightResizerBox) {
-        throw new Error('task right resizer bounding box unavailable')
-      }
+      const rightResizerBox = await readLocatorClientRect(rightResizer)
 
       const rightStartX = rightResizerBox.x + rightResizerBox.width / 2
       const rightStartY = rightResizerBox.y + rightResizerBox.height / 2
@@ -86,10 +84,7 @@ test.describe('Workspace Canvas - Tasks (Edit & Delete)', () => {
       await window.mouse.up()
 
       const bottomResizer = taskNode.locator('[data-testid="task-resizer-bottom"]')
-      const bottomResizerBox = await bottomResizer.boundingBox()
-      if (!bottomResizerBox) {
-        throw new Error('task bottom resizer bounding box unavailable')
-      }
+      const bottomResizerBox = await readLocatorClientRect(bottomResizer)
 
       const bottomStartX = bottomResizerBox.x + bottomResizerBox.width / 2
       const bottomStartY = bottomResizerBox.y + bottomResizerBox.height / 2
@@ -99,31 +94,36 @@ test.describe('Workspace Canvas - Tasks (Edit & Delete)', () => {
       await window.mouse.move(bottomStartX + 40, bottomStartY + 100)
       await window.mouse.up()
 
-      const resizedTask = await window.evaluate(async key => {
-        void key
+      const readResizedTask = () =>
+        window.evaluate(async key => {
+          void key
 
-        const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-        if (!raw) {
-          return null
-        }
+          const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+          if (!raw) {
+            return null
+          }
 
-        const parsed = JSON.parse(raw) as {
-          workspaces?: Array<{
-            nodes?: Array<{
-              id: string
-              width: number
-              height: number
-              title: string
-              task?: {
-                requirement?: string
-              }
+          const parsed = JSON.parse(raw) as {
+            workspaces?: Array<{
+              nodes?: Array<{
+                id: string
+                width: number
+                height: number
+                title: string
+                task?: {
+                  requirement?: string
+                }
+              }>
             }>
-          }>
-        }
+          }
 
-        return parsed.workspaces?.[0]?.nodes?.find(node => node.id === 'task-edit-node') ?? null
-      }, storageKey)
+          return parsed.workspaces?.[0]?.nodes?.find(node => node.id === 'task-edit-node') ?? null
+        }, storageKey)
 
+      // The pointer gesture commits locally before the asynchronous persistence write settles.
+      await expect.poll(async () => (await readResizedTask())?.width ?? 0).toBeGreaterThan(460)
+      await expect.poll(async () => (await readResizedTask())?.height ?? 0).toBeGreaterThan(280)
+      const resizedTask = await readResizedTask()
       expect(resizedTask).toBeTruthy()
       expect(resizedTask?.width ?? 0).toBeGreaterThan(460)
       expect(resizedTask?.height ?? 0).toBeGreaterThan(280)

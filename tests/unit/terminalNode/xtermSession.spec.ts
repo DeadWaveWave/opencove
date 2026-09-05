@@ -68,7 +68,7 @@ vi.mock(
   () => ({
     activatePreferredTerminalRenderer: vi.fn(() => ({
       kind: 'dom',
-      clearTextureAtlas: vi.fn(),
+      refresh: vi.fn(),
       dispose: vi.fn(),
       setRasterScale: vi.fn(),
     })),

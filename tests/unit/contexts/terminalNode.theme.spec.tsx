@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Terminal } from '@xterm/xterm'
 import { getTerminalAppearanceOwner } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalAppearance'
 import {
@@ -9,6 +9,11 @@ import {
 } from './terminalNode.theme.testHarness'
 
 describe('TerminalNode theme behavior', () => {
+  beforeAll(async () => {
+    // Compile the component graph during setup, before per-test RAF mocks and theme changes.
+    await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
+  })
+
   beforeEach(() => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback =>
       window.setTimeout(() => callback(performance.now()), 0),

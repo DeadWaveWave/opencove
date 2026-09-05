@@ -15,10 +15,14 @@ export type TerminalRecoverySpawnScope = {
 export type TerminalSpawnAdmission = Pick<TerminalRuntimeAvailability, 'assertSpawnAllowed'>
 export type TerminalRecoverySpawnAdmission = Pick<TerminalRuntimeAvailability, 'reconcileWorkspace'>
 
-type WorkspaceAvailability = TerminalRuntimeAvailabilitySnapshot & { attempt: number }
+type WorkspaceRecovery = TerminalRuntimeAvailabilitySnapshot & {
+  attempt: number
+  pending: number
+  failed: boolean
+}
 
 export class TerminalRuntimeAvailability {
-  private readonly availabilityByWorkspaceId = new Map<string, WorkspaceAvailability>()
+  private readonly recoveryByWorkspaceId = new Map<string, WorkspaceRecovery>()
   private readonly recoveryScopes = new WeakSet<TerminalRecoverySpawnScope>()
   private startupPhase: 'initializing' | 'ready' | 'unavailable' = 'initializing'
   private shuttingDown = false
@@ -30,10 +34,12 @@ export class TerminalRuntimeAvailability {
     }
     this.startupPhase = 'ready'
     for (const workspaceId of new Set(recoveryWorkspaceIds)) {
-      this.availabilityByWorkspaceId.set(workspaceId, {
+      this.recoveryByWorkspaceId.set(workspaceId, {
         phase: 'initializing',
         epoch: 0,
         attempt: 0,
+        pending: 0,
+        failed: false,
       })
     }
   }
@@ -44,12 +50,12 @@ export class TerminalRuntimeAvailability {
     }
   }
 
-  public snapshot(workspaceId: string): TerminalRuntimeAvailabilitySnapshot {
+  public recoverySnapshot(workspaceId: string): TerminalRuntimeAvailabilitySnapshot {
     if (this.shuttingDown) {
-      const current = this.availabilityByWorkspaceId.get(workspaceId)
+      const current = this.recoveryByWorkspaceId.get(workspaceId)
       return { phase: 'shutting-down', epoch: current?.epoch ?? 0 }
     }
-    const current = this.availabilityByWorkspaceId.get(workspaceId)
+    const current = this.recoveryByWorkspaceId.get(workspaceId)
     if (current) {
       return { phase: current.phase, epoch: current.epoch }
     }
@@ -64,9 +70,7 @@ export class TerminalRuntimeAvailability {
       return
     }
 
-    const snapshot = workspaceId
-      ? this.snapshot(workspaceId)
-      : this.resolveUnscopedAvailabilitySnapshot()
+    const snapshot = this.resolveSpawnAvailabilitySnapshot(workspaceId)
     if (snapshot.phase === 'ready') {
       return
     }
@@ -84,14 +88,17 @@ export class TerminalRuntimeAvailability {
       this.assertSpawnAllowed(workspaceId, null)
     }
 
-    const previous = this.availabilityByWorkspaceId.get(workspaceId)
-    const attempt = ++this.nextAttempt
+    const previous = this.recoveryByWorkspaceId.get(workspaceId)
+    const joining = previous && previous.pending > 0
+    const attempt = joining ? previous.attempt : ++this.nextAttempt
     const scope = Object.freeze({ workspaceId, attempt })
     this.recoveryScopes.add(scope)
-    this.availabilityByWorkspaceId.set(workspaceId, {
+    this.recoveryByWorkspaceId.set(workspaceId, {
       phase: 'initializing',
       epoch: previous?.epoch ?? 0,
       attempt,
+      pending: (joining ? previous.pending : 0) + 1,
+      failed: joining ? previous.failed : false,
     })
 
     try {
@@ -118,14 +125,19 @@ export class TerminalRuntimeAvailability {
     if (this.shuttingDown) {
       return
     }
-    const current = this.availabilityByWorkspaceId.get(workspaceId)
+    const current = this.recoveryByWorkspaceId.get(workspaceId)
     if (!current || current.attempt !== attempt) {
       return
     }
-    this.availabilityByWorkspaceId.set(workspaceId, {
-      phase,
-      epoch: phase === 'ready' ? current.epoch + 1 : current.epoch,
+    const pending = current.pending - 1
+    const failed = current.failed || phase === 'unavailable'
+    const settledPhase = pending > 0 ? 'initializing' : failed ? 'unavailable' : 'ready'
+    this.recoveryByWorkspaceId.set(workspaceId, {
+      phase: settledPhase,
+      epoch: settledPhase === 'ready' ? current.epoch + 1 : current.epoch,
       attempt,
+      pending,
+      failed,
     })
   }
 
@@ -137,7 +149,7 @@ export class TerminalRuntimeAvailability {
     if (workspaceId !== null && candidate.workspaceId !== workspaceId) {
       return false
     }
-    const current = this.availabilityByWorkspaceId.get(candidate.workspaceId)
+    const current = this.recoveryByWorkspaceId.get(candidate.workspaceId)
     return (
       this.recoveryScopes.has(candidate) &&
       current?.phase === 'initializing' &&
@@ -145,18 +157,25 @@ export class TerminalRuntimeAvailability {
     )
   }
 
-  private resolveUnscopedAvailabilitySnapshot(): TerminalRuntimeAvailabilitySnapshot {
+  private resolveSpawnAvailabilitySnapshot(
+    workspaceId: string | null,
+  ): TerminalRuntimeAvailabilitySnapshot {
     if (this.shuttingDown) {
       return { phase: 'shutting-down', epoch: 0 }
     }
-    if (this.startupPhase !== 'ready') {
-      return { phase: this.startupPhase, epoch: 0 }
+    // A ready Worker can create independent sessions while old nodes reconcile. Recovery progress
+    // and failure describe those old nodes, not the availability of the shared spawn service.
+    if (this.startupPhase === 'ready') {
+      return { phase: 'ready', epoch: 1 }
     }
-    const blocking = [...this.availabilityByWorkspaceId.values()].find(
-      availability => availability.phase !== 'ready',
-    )
-    return blocking
-      ? { phase: blocking.phase, epoch: blocking.epoch }
-      : { phase: 'ready', epoch: 1 }
+    // After a failed startup scan, explicit reconciliation can repair only its own workspace.
+    // Never use that result to open unscoped admission or authorize a different workspace.
+    if (this.startupPhase === 'unavailable' && workspaceId) {
+      const recovery = this.recoveryByWorkspaceId.get(workspaceId)
+      if (recovery?.phase === 'ready') {
+        return { phase: 'ready', epoch: recovery.epoch }
+      }
+    }
+    return { phase: this.startupPhase, epoch: 0 }
   }
 }

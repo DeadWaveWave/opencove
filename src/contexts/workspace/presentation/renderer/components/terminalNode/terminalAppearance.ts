@@ -347,7 +347,6 @@ export interface TerminalAppearanceRefreshCoordinator {
 export function createTerminalAppearanceRefreshCoordinator({
   owner,
   apply,
-  clearTextureAtlas,
   refresh,
   inspect,
   requestFrame = callback => window.requestAnimationFrame(callback),
@@ -355,7 +354,6 @@ export function createTerminalAppearanceRefreshCoordinator({
 }: {
   owner: TerminalAppearanceOwner
   apply: (snapshot: TerminalAppearanceSnapshot) => void
-  clearTextureAtlas?: (snapshot: TerminalAppearanceSnapshot) => void
   refresh: (snapshot: TerminalAppearanceSnapshot) => void
   inspect?: (snapshot: TerminalAppearanceSnapshot) => void
   requestFrame?: (callback: FrameRequestCallback) => number
@@ -390,7 +388,6 @@ export function createTerminalAppearanceRefreshCoordinator({
 
     try {
       apply(snapshot)
-      clearTextureAtlas?.(snapshot)
       refresh(snapshot)
     } catch {
       if (retriedFailedRevision !== snapshot.revision && snapshot === owner.getDesiredSnapshot()) {

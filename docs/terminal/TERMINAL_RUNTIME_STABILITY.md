@@ -8,8 +8,11 @@ move geometry authority out of the Worker Hub or make renderer state authoritati
 
 | State | Owner | Write entry | Restart source |
 | --- | --- | --- | --- |
-| Applied PTY rows and columns | ptyHost | post-resize PTY read-back when synchronously observable | none |
+| Applied PTY rows and columns | ptyHost | post-resize PTY read-back; bounded Console observation on Windows | none |
+| Windows observer process and pending queries | ptyHost | one shared child with validated private IPC | none |
+| Windows resize order, readiness and cancellation | each ptyHost session | serialized resize, first native data dispatch, exit/kill | none |
 | Resize verification outcome | ptyHost | `applied_verified` / `applied_unverified` response | none |
+| Unconfirmed runtime mutation | local/Hub geometry transaction owner | before native resize; cleared only after verified commit | none |
 | Canonical presentation geometry | Worker `PtyStreamHub` | runtime ACK followed by presentation commit | terminal recovery checkpoint |
 | Local xterm geometry | renderer | canonical resize result | Worker presentation snapshot |
 
@@ -17,11 +20,36 @@ Invariants:
 
 1. A verified runtime result reports the rows and columns read back from ptyHost, never the caller's
    proposal substituted as an acknowledgement.
-2. The Worker commits and broadcasts only verified runtime geometry. ConPTY resize is deferred, so
-   its synchronous result is `accepted_unverified`: the operation was issued, but canonical
-   presentation geometry remains unchanged until a verified observation exists.
+2. The Worker commits and broadcasts only verified runtime geometry. On Windows, neither node-pty's
+   cached `cols/rows` nor successful delivery to the ConPTY resize pipe proves application. The Host
+   waits for node-pty readiness, resizes, then reads the actual Console until the requested grid is
+   observed. A two-second budget includes queued work and is shorter than the renderer ACK deadline.
 3. A malformed or missing remote acknowledgement is `runtime_failed`; it is distinct from the
    explicit non-failing `accepted_unverified` outcome.
+
+Windows Console observation uses the narrow `node-pty` extension in `patches/node-pty@1.1.0.patch`.
+`AttachConsole` is process-global, so attach/read/detach runs serially in a dedicated child, never in
+the Host or app process. PIDs come only from active Host sessions. The observer has no resize entry;
+querying does not inject terminal commands or output. Every query closes its Console handle and
+detaches, and Host disposal or IPC disconnect terminates the child.
+
+Session exit cancels waiting and queued mutations immediately. Every asynchronous boundary rechecks
+cancellation, so an expired startup request cannot enter node-pty's deferred mutation queue. Observer
+failure after mutation permits one bounded restart/read-back attempt. If confirmation still fails,
+the transaction fails and preserves the last confirmed canonical geometry; that does not prove the
+actual PTY rolled back. The renderer releases its output gate, invalidates its size cache and offers
+an explicit sizing retry, including a retry to the previously confirmed dimensions.
+The local and Hub committers also retain this uncertainty for their current presentation/session;
+they must not optimize that retry away just because the request equals the last canonical size.
+The renderer always submits a measured commit to that owner, even when its local cache matches;
+the owner alone decides whether the runtime resize can safely be skipped.
+
+Windows dependency installation builds node-pty from source to include the query extension. The
+observer checks that native capability before its ready handshake. Developer/CI builds need MSVC C++
+tools, Windows SDK and Spectre libraries; packaged users receive the native module. Windows CI and
+release jobs use `windows-2022` with VS 2022 because pnpm 9's bundled node-gyp cannot discover VS 2026.
+The additional observer is shared by all sessions in one Host and starts only when a Windows resize
+needs it.
 
 ## Attach authority and live reattach
 
@@ -59,6 +87,10 @@ Invariants:
 3. Applying or invalidating local calibration does not remount xterm, replace its DOM, clear its
    buffer/selection or move its viewport. Any canonical grid change still requires an acknowledged
    Worker `appearance_commit`.
+4. Disabling calibration changes font compensation only; basic window fitting still requires the
+   same verified geometry transaction. Settings distinguish disabled/no record, saved/paused,
+   unavailable and applied states. A shared reference alone is not a saved device adjustment, and
+   diagnostics derive currently applied calibration from the calibration owner's projection.
 
 ## Spawn identity
 
@@ -127,20 +159,28 @@ correlation integrity, not socket/network authentication; no parallel network au
 
 | State | Owner | Write entry | Restart source |
 | --- | --- | --- | --- |
-| Startup phase and monotonic epoch | Worker `TerminalRuntimeAvailability` | startup scan, recovery completion, shutdown | recomputed from persisted workspace nodes |
+| Basic spawn admission | Worker `TerminalRuntimeAvailability` | startup scan, scoped repair after scan failure, shutdown | recomputed at startup |
+| Recovery phase and monotonic epoch | Worker `TerminalRuntimeAvailability` | reconciliation start/completion, shutdown | recomputed from persisted workspace nodes |
 | Workspaces requiring reconciliation | Worker startup scan | normalized persisted app state | SQLite app state |
 | Recovery-only spawn capability | `session.prepareOrRevive` handler | current reconciliation scope only | none; unforgeable runtime scope |
 | User-visible readiness message | renderer i18n | typed `terminal.runtime_not_ready` mapping | locale bundle |
 
 Invariants:
 
-1. A workspace with persisted runtime nodes remains `initializing` until its complete
-   `session.prepareOrRevive` operation succeeds; normal spawn entry points reject before then.
+1. A successful startup scan opens ordinary spawn admission, including for workspaces with persisted
+   runtime nodes. Their `recoverySnapshot` remains `initializing` while recovery is pending. Waiting
+   or failed old-node recovery cannot block new Terminal or Agent sessions in that same workspace,
+   another workspace, or an unscoped launch.
 2. Only the recovery handler owns the internal spawn capability. Its exact precondition is a live,
    current reconciliation scope for that workspace; public user/node spawn paths cannot create one.
-3. Failed reconciliation becomes `unavailable`, shutdown becomes `shutting-down`, late completions
-   cannot reopen either state, and every successful return to `ready` increases the epoch. A user
-   retry may reconcile that one unavailable workspace without globally opening admission for other
-   workspaces after a startup scan failure.
-4. Every workspace-owned spawn carries that workspace identity across the client boundary and gates
-   on only that workspace's phase. A different workspace that is still initializing cannot block it.
+3. Failed reconciliation makes its recovery snapshot `unavailable`; it does not revoke a ready
+   Worker's basic spawn admission. Every successful recovery batch increases its recovery epoch.
+   Shutdown closes both ordinary and recovery admission, and late completions cannot reopen it.
+4. An incomplete or failed startup scan still blocks ordinary spawn. After scan failure, an explicit
+   successful workspace reconciliation may authorize only that workspace. Workspace identity remains
+   required for that exception; it cannot authorize another workspace or an unscoped launch.
+
+Regression evidence covers controlled pending recovery at the HTTP boundary for both Terminal and
+Agent creation, and Windows cold startup with new-session input before old-node recovery is released.
+Existing per-node preparation deduplication and session registration fences continue to own process
+identity and cleanup; opening admission does not replace or republish an old node's binding.

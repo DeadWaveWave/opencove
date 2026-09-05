@@ -21,7 +21,11 @@ describe('terminal Agent private telemetry assets', () => {
     const script = await readFile(`${assets.shimDirectory}/codex.ps1`, 'utf8')
 
     expect(relative(assets.rootDirectory, assets.planDirectory)).not.toMatch(/^\.\./u)
-    expect((await stat(assets.planDirectory)).mode & 0o777).toBe(0o700)
+    const planDirectoryStat = await stat(assets.planDirectory)
+    expect(planDirectoryStat.isDirectory()).toBe(true)
+    if (process.platform !== 'win32') {
+      expect(planDirectoryStat.mode & 0o777).toBe(0o700)
+    }
     expect(script).toContain(assets.planDirectory)
     expect(script).not.toContain('GetTempFileName')
     expect(script).toContain('try {')

@@ -180,6 +180,10 @@ export interface WebsiteNodeData {
 export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
+  /** Recovery handoff: old durable ID while preparing, then Worker result awaiting sync ack. */
+  runtimeSessionBinding?:
+    | { phase: 'preparing'; sessionId: string | null }
+    | { phase: 'publishing'; sessionId: string }
   isLiveSessionReattach?: boolean
   autoFocus?: boolean
   profileId?: string | null

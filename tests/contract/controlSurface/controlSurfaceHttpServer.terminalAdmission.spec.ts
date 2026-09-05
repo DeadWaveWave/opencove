@@ -16,114 +16,133 @@ import {
 } from './controlSurfaceHttpServer.sessionStreaming.testUtils'
 
 describe('Control Surface terminal startup admission', () => {
-  it('blocks normal spawn until restart reconciliation finishes while allowing only recovery spawn', async () => {
-    const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-terminal-admission-'))
-    const workspacePath = await mkdtemp(join(tmpdir(), 'opencove-terminal-admission-workspace-'))
-    const connectionFileName = 'control-surface.terminal-admission.json'
-    const connectionFilePath = resolve(userDataPath, connectionFileName)
-    const workspaceId = randomUUID()
-    const spaceId = randomUUID()
-    const state = createMinimalState(workspacePath, workspaceId, spaceId)
-    const workspace = state.workspaces[0]!
-    workspace.spaces[0]!.nodeIds = ['terminal-node-restart']
-    workspace.nodes = [
-      {
-        id: 'terminal-node-restart',
-        title: 'Recovering shell',
-        position: { x: 0, y: 0 },
-        width: 480,
-        height: 320,
-        kind: 'terminal',
-        sessionId: 'stale-session-before-worker-restart',
-        status: null,
-        startedAt: null,
-        endedAt: null,
-        exitCode: null,
-        lastError: null,
-        scrollback: 'durable terminal history',
-        executionDirectory: workspacePath,
-        expectedDirectory: workspacePath,
-        agent: null,
-        task: null,
-      },
-    ]
+  it.each(['terminal', 'agent'] as const)(
+    'creates a new %s while an old terminal is still recovering',
+    async kind => {
+      const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-terminal-admission-'))
+      const workspacePath = await mkdtemp(join(tmpdir(), 'opencove-terminal-admission-workspace-'))
+      const connectionFileName = 'control-surface.terminal-admission.json'
+      const connectionFilePath = resolve(userDataPath, connectionFileName)
+      const workspaceId = randomUUID()
+      const spaceId = randomUUID()
+      const state = createMinimalState(workspacePath, workspaceId, spaceId)
+      const workspace = state.workspaces[0]!
+      workspace.spaces[0]!.nodeIds = ['terminal-node-restart']
+      workspace.nodes = [
+        {
+          id: 'terminal-node-restart',
+          title: 'Recovering shell',
+          position: { x: 0, y: 0 },
+          width: 480,
+          height: 320,
+          kind: 'terminal',
+          sessionId: 'stale-session-before-worker-restart',
+          status: null,
+          startedAt: null,
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          scrollback: 'durable terminal history',
+          executionDirectory: workspacePath,
+          expectedDirectory: workspacePath,
+          agent: null,
+          task: null,
+        },
+      ]
 
-    const persistenceStore = createInMemoryPersistenceStore()
-    await persistenceStore.writeAppState(state)
-    const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
-      resolve(userDataPath, 'approved-workspaces.json'),
-    )
-    await approvedWorkspaces.registerRoot(workspacePath)
-
-    const spawnCalls: string[] = []
-    const ptyRuntime: ControlSurfacePtyRuntime = {
-      spawnSession: async options => {
-        spawnCalls.push(options.cwd)
-        return { sessionId: `session-${spawnCalls.length}` }
-      },
-      write: () => undefined,
-      resize: async input => ({
-        sessionId: input.sessionId,
-        operationId: input.operationId ?? 'test-resize',
-        status: 'accepted',
-        changed: true,
-        geometry: { cols: input.cols, rows: input.rows, revision: null },
-        authority: null,
-      }),
-      kill: () => undefined,
-      onData: () => () => undefined,
-      onExit: () => () => undefined,
-    }
-
-    const server = registerControlSurfaceHttpServer({
-      userDataPath,
-      hostname: '127.0.0.1',
-      port: 0,
-      token: 'test-token',
-      connectionFileName,
-      approvedWorkspaces,
-      createPersistenceStore: async () => persistenceStore,
-      ptyRuntime,
-    })
-
-    try {
-      const info = await server.ready
-      const baseUrl = `http://${info.hostname}:${info.port}`
-      const blocked = await invoke(baseUrl, 'test-token', {
-        kind: 'command',
-        id: 'session.spawnTerminal',
-        payload: { spaceId, cols: 80, rows: 24 },
-      })
-      expect((blocked.data as { error?: { code?: string } }).error?.code).toBe(
-        'terminal.runtime_not_ready',
+      const persistenceStore = createInMemoryPersistenceStore()
+      await persistenceStore.writeAppState(state)
+      const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
+        resolve(userDataPath, 'approved-workspaces.json'),
       )
-      expect(spawnCalls).toHaveLength(0)
+      await approvedWorkspaces.registerRoot(workspacePath)
 
-      const recovered = await invoke(baseUrl, 'test-token', {
-        kind: 'command',
-        id: 'session.prepareOrRevive',
-        payload: { workspaceId },
+      const spawnCalls: string[] = []
+      let releaseRecovery!: () => void
+      const recoveryGate = new Promise<void>(resolveRecovery => {
+        releaseRecovery = resolveRecovery
       })
-      expect((recovered.data as { ok?: boolean }).ok).toBe(true)
-      expect(spawnCalls).toHaveLength(1)
+      const ptyRuntime: ControlSurfacePtyRuntime = {
+        spawnSession: async options => {
+          spawnCalls.push(options.cwd)
+          const sessionId = `session-${spawnCalls.length}`
+          if (spawnCalls.length === 1) {
+            await recoveryGate
+          }
+          return { sessionId }
+        },
+        write: () => undefined,
+        resize: async input => ({
+          sessionId: input.sessionId,
+          operationId: input.operationId ?? 'test-resize',
+          status: 'accepted',
+          changed: true,
+          geometry: { cols: input.cols, rows: input.rows, revision: null },
+          authority: null,
+        }),
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+      }
 
-      const admitted = await invoke(baseUrl, 'test-token', {
-        kind: 'command',
-        id: 'session.spawnTerminal',
-        payload: { spaceId, cols: 80, rows: 24 },
-      })
-      expect((admitted.data as { ok?: boolean }).ok).toBe(true)
-      expect(spawnCalls).toHaveLength(2)
-    } finally {
-      const info = await server.ready
-      await disposeAndCleanup({
-        server,
+      const server = registerControlSurfaceHttpServer({
         userDataPath,
-        connectionFilePath,
-        baseUrl: `http://${info.hostname}:${info.port}`,
+        hostname: '127.0.0.1',
+        port: 0,
+        token: 'test-token',
+        connectionFileName,
+        approvedWorkspaces,
+        createPersistenceStore: async () => persistenceStore,
+        ptyRuntime,
       })
-    }
-  })
+
+      let recovery: ReturnType<typeof invoke> | null = null
+      let recoverySettled = false
+      try {
+        const info = await server.ready
+        const baseUrl = `http://${info.hostname}:${info.port}`
+        recovery = invoke(baseUrl, 'test-token', {
+          kind: 'command',
+          id: 'session.prepareOrRevive',
+          payload: { workspaceId },
+        }).then(result => {
+          recoverySettled = true
+          return result
+        })
+        await expect.poll(() => spawnCalls.length).toBe(1)
+
+        const admitted = await invoke(baseUrl, 'test-token', {
+          kind: 'command',
+          id: kind === 'terminal' ? 'session.spawnTerminal' : 'session.launchAgent',
+          payload: {
+            spaceId,
+            cols: 80,
+            rows: 24,
+            ...(kind === 'agent' ? { provider: 'codex', prompt: '', mode: 'new' } : {}),
+          },
+        })
+        expect(admitted.data).toMatchObject({ ok: true, value: { sessionId: 'session-2' } })
+        expect(spawnCalls).toHaveLength(2)
+        expect(recoverySettled).toBe(false)
+        releaseRecovery()
+        const recovered = await recovery
+        expect(recovered.data).toMatchObject({
+          ok: true,
+          value: { nodes: [{ nodeId: 'terminal-node-restart', sessionId: 'session-1' }] },
+        })
+      } finally {
+        releaseRecovery()
+        await recovery?.catch(() => undefined)
+        const info = await server.ready
+        await disposeAndCleanup({
+          server,
+          userDataPath,
+          connectionFilePath,
+          baseUrl: `http://${info.hostname}:${info.port}`,
+        })
+      }
+    },
+  )
 
   it.each([
     {

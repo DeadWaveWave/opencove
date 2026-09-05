@@ -22,6 +22,8 @@ import { resizePtyAndReadAck } from './resizeAck'
 import { resolveForegroundAgentObservation } from '../../../shared/runtime/agentForegroundRecognition'
 import { resolveShellCommandFinishedMarker } from '../../../shared/terminal/shellIntegration'
 import { PtyHostForegroundObservationScheduler } from './foregroundObservationScheduler'
+import { WindowsConsoleGeometryObserver } from './windowsConsoleObserver'
+import { WindowsPtyResizeOwner } from './windowsPtyResizeOwner'
 
 type ParentPort = {
   on: (event: 'message', listener: (messageEvent: { data: unknown }) => void) => void
@@ -85,15 +87,18 @@ type PtySession = {
   pty: IPty
   rootPid: number | null
   launchId: string
+  resizeOwner: WindowsPtyResizeOwner | null
 }
 
 const sessions = new Map<string, PtySession>()
 const foregroundScheduler = new PtyHostForegroundObservationScheduler()
 const shellIntegrationBuffers = new Map<string, string>()
 const spawnIdentities = new PtyHostSpawnIdentityRegistry()
+const consoleObserver = process.platform === 'win32' ? new WindowsConsoleGeometryObserver() : null
 let hasCleanedSessions = false
 
 function terminatePtySession(session: PtySession): void {
+  session.resizeOwner?.dispose()
   const killResult = killWindowsProcessTree(session.rootPid)
   if (killResult === 'terminated' || killResult === 'not_found') {
     return
@@ -119,6 +124,7 @@ const cleanupSessions = (): void => {
     terminatePtySession(session)
   }
   foregroundScheduler.dispose()
+  consoleObserver?.dispose()
   shellIntegrationBuffers.clear()
   spawnIdentities.clear()
 }
@@ -283,6 +289,7 @@ const onPtyExit = (sessionId: string, exitCode: number): void => {
   clearSessionObservationState(sessionId)
   const session = sessions.get(sessionId)
   if (session) {
+    session.resizeOwner?.dispose()
     sessions.delete(sessionId)
     spawnIdentities.release(session.launchId, sessionId)
   }
@@ -311,10 +318,14 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
     pty,
     rootPid: Number.isFinite(pty.pid) && pty.pid > 0 ? pty.pid : null,
     launchId: request.launchId,
+    resizeOwner: consoleObserver ? new WindowsPtyResizeOwner(pty, consoleObserver) : null,
   })
   spawnIdentities.bind(request.launchId, sessionId)
 
   pty.onData(data => {
+    // node-pty sets its Windows ready flag within this native data dispatch. The promise
+    // continuation runs after that dispatch, so resize never enters its deferred startup queue.
+    sessions.get(sessionId)?.resizeOwner?.markReady()
     onPtyData(sessionId, data)
   })
 
@@ -343,13 +354,18 @@ function writeToSession(request: PtyHostWriteRequest): void {
   pty.pty.write(request.data)
 }
 
-function resizeSession(request: PtyHostResizeRequest): void {
+async function resizeSession(request: PtyHostResizeRequest): Promise<void> {
   const session = sessions.get(request.sessionId)
   if (!session) {
     throw new Error(`Unknown PTY session: ${request.sessionId}`)
   }
 
-  const resize = resizePtyAndReadAck(session.pty, request.cols, request.rows)
+  const resize = session.resizeOwner
+    ? await session.resizeOwner.resize(request.cols, request.rows)
+    : resizePtyAndReadAck(session.pty, request.cols, request.rows)
+  if (sessions.get(request.sessionId) !== session) {
+    throw new Error(`PTY session closed during resize: ${request.sessionId}`)
+  }
   send({
     type: 'response',
     requestType: 'resize',
@@ -410,11 +426,9 @@ parentPort.on('message', messageEvent => {
   }
 
   if (message.type === 'resize') {
-    try {
-      resizeSession(message)
-    } catch (error) {
+    void resizeSession(message).catch(error => {
       respondError('resize', message.requestId, error)
-    }
+    })
     return
   }
 

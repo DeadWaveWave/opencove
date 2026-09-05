@@ -269,7 +269,8 @@ jobs:
           rm -rf "/tmp/cove-e2e-user-data-"* || true
 
   platform-e2e-windows:
-    runs-on: windows-latest
+    # pnpm 9's node-gyp requires VS 2022 for the node-pty source build.
+    runs-on: windows-2022
 
     steps:
       - name: Checkout
@@ -294,6 +295,9 @@ jobs:
 
       - name: Execute generated managed SSH PowerShell bootstrap
         run: pnpm exec vitest run tests/unit/contexts/managedSshBootstrap.windows.spec.ts --pool=forks --maxWorkers=1
+
+      - name: Execute provider Hook relays with sanitized environments
+        run: pnpm exec vitest run tests/integration/agentHookRelay.spec.ts --pool=forks --maxWorkers=1
 
       - name: Build
         run: pnpm build
