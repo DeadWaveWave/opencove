@@ -24,6 +24,8 @@ export const enTerminalDisplayCalibration = {
     'Calibration is off. A saved adjustment exists but cannot safely match the current target. Clear it or enable calibration to replace it.',
   clientCalibrationUnavailable:
     'A saved adjustment exists but cannot safely match the current target. Clear it or let automatic calibration replace it.',
+  clientCalibrationWaiting:
+    'Calibration is on. The saved adjustment is waiting for a matching display environment. Terminals still fit their windows automatically.',
   clientCalibrated:
     'Saved adjustment is active: font {{fontSize}}px, line height {{lineHeight}}. Match: {{quality}}.',
   clientCalibrationPaused:

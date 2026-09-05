@@ -20,6 +20,8 @@ export const zhCNTerminalDisplayCalibration = {
     '校准补偿已关闭，当前设备保存的旧调整无法安全匹配参考目标。你可以清除它，或开启校准后重新生成。',
   clientCalibrationUnavailable:
     '当前设备存在无法安全匹配参考目标的旧调整。你可以清除它，或等待自动校准替换。',
+  clientCalibrationWaiting:
+    '校准补偿已开启。已保存的调整正在等待匹配的显示环境，终端仍会自动适配窗口大小。',
   clientCalibrated:
     '已启用保存的调整：字体 {{fontSize}}px，行高 {{lineHeight}}。匹配度：{{quality}}。',
   clientCalibrationPaused:

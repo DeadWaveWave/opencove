@@ -184,9 +184,11 @@ export function TerminalDisplayCalibrationRow({
           lineHeight: clientCalibration.lineHeight,
           quality: getQualityLabel(clientCalibration.score),
         })
-      : calibrationInspection.rawCalibrationPresent
-        ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationUnavailable')
-        : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
+      : hasVerifiedStoredCalibration
+        ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationWaiting')
+        : calibrationInspection.rawCalibrationPresent
+          ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationUnavailable')
+          : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
 
   return (
     <SettingsModule

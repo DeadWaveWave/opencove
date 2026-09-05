@@ -165,10 +165,11 @@ describe('SettingsPanel terminal display controls', () => {
     window.localStorage.clear()
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     clearTerminalClientDisplayCalibration()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    await applyUiLanguage('en')
   })
 
   it('persists the automatic reference setup toggle', () => {
@@ -306,49 +307,61 @@ describe('SettingsPanel terminal display controls', () => {
     })
   })
 
-  it('describes an atomically verified saved adjustment as paused', () => {
-    const reference = createReference()
-    writeTerminalClientDisplayCalibration(
-      {
-        version: 1,
-        profileKey: createTerminalDisplayProfileKey({
-          terminalFontSize: 13,
-          terminalFontFamily: null,
-        }),
-        fontSize: 13,
-        lineHeight: 1,
-        letterSpacing: 0,
-        target: {
-          cols: 81,
-          rows: 24,
-          cssCellWidth: 7.5,
-          cssCellHeight: 15,
-          effectiveDpr: 2,
+  it.each([
+    [false, 'en', /saved adjustment is available but paused/i],
+    [true, 'en', /saved adjustment is waiting for a matching display environment/i],
+    [true, 'zh-CN', /已保存的调整正在等待匹配的显示环境/],
+  ] as const)(
+    'describes verified stored calibration with compensation %s in %s',
+    async (enabled, language, summary) => {
+      await applyUiLanguage(language)
+      const reference = createReference()
+      writeTerminalClientDisplayCalibration(
+        {
+          version: 1,
+          profileKey: createTerminalDisplayProfileKey({
+            terminalFontSize: 13,
+            terminalFontFamily: null,
+          }),
+          fontSize: 13,
+          lineHeight: 1,
+          letterSpacing: 0,
+          target: {
+            cols: 81,
+            rows: 24,
+            cssCellWidth: 7.5,
+            cssCellHeight: 15,
+            effectiveDpr: 2,
+          },
+          measured: {
+            cols: 81,
+            rows: 24,
+            cssCellWidth: 7.5,
+            cssCellHeight: 15,
+            effectiveDpr: 2,
+          },
+          score: 0,
+          measuredAt: '2026-04-30T00:00:00.000Z',
         },
-        measured: {
-          cols: 81,
-          rows: 24,
-          cssCellWidth: 7.5,
-          cssCellHeight: 15,
-          effectiveDpr: 2,
+        { environmentSignature: 'environment-a', source: 'manual' },
+      )
+
+      renderSettingsPanel({
+        settings: {
+          ...DEFAULT_AGENT_SETTINGS,
+          terminalDisplayCalibrationCompensationEnabled: enabled,
+          terminalDisplayReference: reference,
         },
-        score: 0,
-        measuredAt: '2026-04-30T00:00:00.000Z',
-      },
-      { environmentSignature: 'environment-a', source: 'manual' },
-    )
+      })
+      openAppearanceSettings()
 
-    renderSettingsPanel({
-      settings: {
-        ...DEFAULT_AGENT_SETTINGS,
-        terminalDisplayCalibrationCompensationEnabled: false,
-        terminalDisplayReference: reference,
-      },
-    })
-    openAppearanceSettings()
-
-    expect(screen.getByText(/saved adjustment is available but paused/i)).toBeVisible()
-  })
+      expect(screen.getByText(summary)).toBeVisible()
+      expect(screen.getByTestId('settings-terminal-display-compensation')).toHaveProperty(
+        'checked',
+        enabled,
+      )
+    },
+  )
 
   it('does not describe an unverified legacy adjustment as paused', () => {
     const reference = createReference()
