@@ -93,8 +93,13 @@ Hook and session-file observations are runtime-only. The renderer arbiter keeps 
 warm, but projects exactly one source per session: a fresh installed hook wins, a stale `working` hook or
 an unavailable hook falls back to the cached session-file signal, and providers without a hook use their
 session file normally. `waiting` and `standby` hook signals are sticky because silence is expected in
-those states; only `working` owns the 120-second freshness lease. The lease timer belongs to the renderer
+those states; only `working` owns the 180-second freshness lease. The lease timer belongs to the renderer
 event hub and is disposed on session exit, node removal, or owner teardown.
+
+An installed hook with no observation yet is `pending`, not stale. Both menu and terminal launches
+continue using session-file state without a failure badge until evidence indicates degradation.
+Startup silence has no lease: legacy notify may first emit at the end of a turn. Explicit installation
+failure, an unavailable source, and expiry of a previously observed working hook still report degradation.
 
 Every source switch is reflected in runtime observation metadata and degraded fallback is visible in the
 Agent header. Neither source may write run-state into durable node status; persistence strips the runtime

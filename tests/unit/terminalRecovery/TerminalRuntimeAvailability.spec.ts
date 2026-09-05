@@ -1,6 +1,68 @@
 import { TerminalRuntimeAvailability } from '@contexts/terminal/application/TerminalRuntimeAvailability'
 
 describe('TerminalRuntimeAvailability', () => {
+  it('keeps a failed concurrent batch unavailable until a fresh recovery succeeds', async () => {
+    const availability = new TerminalRuntimeAvailability()
+    availability.completeStartup(['workspace'])
+    let release!: () => void
+    const gate = new Promise<void>(resolve => {
+      release = resolve
+    })
+    const pending = availability.reconcileWorkspace('workspace', async scope => {
+      await gate
+      expect(() => availability.assertSpawnAllowed('workspace', scope)).not.toThrow()
+    })
+    await expect(
+      availability.reconcileWorkspace('workspace', async () => {
+        throw new Error('failed node')
+      }),
+    ).rejects.toThrow('failed node')
+    expect(availability.snapshot('workspace').phase).toBe('initializing')
+    release()
+    await pending
+    expect(availability.snapshot('workspace')).toEqual({ phase: 'unavailable', epoch: 0 })
+    await availability.reconcileWorkspace('workspace', async () => undefined)
+    expect(availability.snapshot('workspace')).toEqual({ phase: 'ready', epoch: 1 })
+  })
+
+  it('keeps sibling recovery scopes valid until the whole concurrent cohort settles', async () => {
+    const availability = new TerminalRuntimeAvailability()
+    availability.completeStartup(['workspace'])
+    let releaseFirst!: () => void
+    let releaseSecond!: () => void
+    const firstGate = new Promise<void>(resolve => {
+      releaseFirst = resolve
+    })
+    const secondGate = new Promise<void>(resolve => {
+      releaseSecond = resolve
+    })
+    let staleScope: unknown
+    const first = availability.reconcileWorkspace('workspace', async scope => {
+      staleScope = scope
+      await firstGate
+      expect(() => availability.assertSpawnAllowed('workspace', scope)).not.toThrow()
+    })
+    const second = availability.reconcileWorkspace('workspace', async scope => {
+      await secondGate
+      expect(() => availability.assertSpawnAllowed('workspace', scope)).not.toThrow()
+    })
+    try {
+      releaseSecond()
+      await second
+      expect(availability.snapshot('workspace').phase).toBe('initializing')
+      expect(() => availability.assertSpawnAllowed('workspace', null)).toThrow()
+      releaseFirst()
+      await first
+      expect(availability.snapshot('workspace')).toEqual({ phase: 'ready', epoch: 1 })
+      availability.beginShutdown()
+      expect(() => availability.assertSpawnAllowed('workspace', staleScope)).toThrow()
+    } finally {
+      releaseFirst()
+      releaseSecond()
+      await Promise.allSettled([first, second])
+    }
+  })
+
   it('blocks startup candidates until reconciliation opens a new ready epoch', async () => {
     const availability = new TerminalRuntimeAvailability()
     availability.completeStartup(['workspace-recovery'])

@@ -266,8 +266,8 @@ export function useTerminalRuntimeSession({
         preferMeasuredGeometryCommit: shouldPreferMeasuredInitialGeometryCommit({
           kind,
           isLiveSessionReattach,
-          canonicalInitialGeometry: initialTerminalGeometryRef.current,
           suppressPtyResize: suppressPtyResizeRef.current,
+          terminalClientResetVersion,
           agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
           agentLaunchMode: agentLaunchModeRef.current,
         }),

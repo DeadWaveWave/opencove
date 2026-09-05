@@ -5,7 +5,7 @@ export const zhCNTerminalDisplayCalibration = {
   autoReferenceHelp: '还没有目标时，自动把第一个打开的终端作为其他客户端对齐的显示目标。',
   compensationLabel: '自动应用校准补偿',
   compensationHelp:
-    '如果当前设备已有校准结果，就自动应用这份显示补偿，让它尽量匹配参考目标。关闭后会使用原始终端字体设置。',
+    '如果当前设备已有校准结果，就自动应用这份显示补偿，让它尽量匹配参考目标。关闭后会使用原始终端字体设置，终端仍会自动适配窗口大小。',
   referenceLabel: '共享参考目标',
   referenceEmpty: '尚未保存目标。系统会自动使用第一个打开的终端，你也可以手动设置当前设备。',
   referenceEmptyAutoOff: '尚未保存目标。自动设置已关闭，你可以在准备好后手动设置当前设备。',
@@ -15,8 +15,13 @@ export const zhCNTerminalDisplayCalibration = {
   setReference: '将当前设备设为目标',
   clientLabel: '当前设备',
   clientDefault: '当前设备没有保存的调整，会直接使用共享终端字体。',
+  clientCalibrationDisabled: '校准补偿已关闭，当前设备没有保存的调整，正在使用共享终端字体设置。',
+  clientCalibrationDisabledUnavailable:
+    '校准补偿已关闭，当前设备保存的旧调整无法安全匹配参考目标。你可以清除它，或开启校准后重新生成。',
   clientCalibrationUnavailable:
     '当前设备存在无法安全匹配参考目标的旧调整。你可以清除它，或等待自动校准替换。',
+  clientCalibrationWaiting:
+    '校准补偿已开启。已保存的调整正在等待匹配的显示环境，终端仍会自动适配窗口大小。',
   clientCalibrated:
     '已启用保存的调整：字体 {{fontSize}}px，行高 {{lineHeight}}。匹配度：{{quality}}。',
   clientCalibrationPaused:

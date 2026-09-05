@@ -87,7 +87,7 @@ test.describe('Workspace Canvas - Codex hook channel', () => {
     }
   })
 
-  test('fails open to session-file state when Codex never calls the installed hook', async () => {
+  test('uses session-file state without a failure badge while the first installed hook is pending', async () => {
     const { electronApp, window } = await launchApp({
       windowMode: 'inactive',
       env: {
@@ -101,7 +101,8 @@ test.describe('Workspace Canvas - Codex hook channel', () => {
       await expect(agentNode.locator('.terminal-node__status')).toHaveText('Standby')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'session_file')
       await expect(agentNode).toHaveAttribute('data-agent-hook-install-state', 'installed')
-      await expect(agentNode.locator('[data-testid="agent-hook-degraded"]')).toHaveText('Fallback')
+      await expect(agentNode.locator('[data-testid="agent-hook-degraded"]')).toHaveCount(0)
+      await window.screenshot({ path: test.info().outputPath('hook-pending.png') })
     } finally {
       await electronApp.close()
     }

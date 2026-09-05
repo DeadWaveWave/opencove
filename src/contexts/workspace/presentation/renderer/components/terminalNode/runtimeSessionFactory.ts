@@ -81,7 +81,7 @@ export function createOrReuseRuntimeXtermSession({
       terminalThemeMode,
       windowsPty,
     })
-    reusedSession.renderer.clearTextureAtlas()
+    reusedSession.renderer.refresh()
     syncTerminalSize()
     scheduleTranscriptSync()
     return reusedSession

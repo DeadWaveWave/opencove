@@ -55,6 +55,7 @@ export function useHydrateAppState({
   const [isHydrated, setIsHydrated] = useState(false)
   const [isPersistReady, setIsPersistReady] = useState(false)
   const isCancelledRef = useRef(false)
+  const hydrationEpochRef = useRef(0)
   const persistedWorkspaceByIdRef = useRef<Map<string, PersistedWorkspaceState>>(new Map())
   const hydratedWorkspaceIdsRef = useRef<Set<string>>(new Set())
   const hydratingWorkspacePromisesRef = useRef<Map<string, Promise<void>>>(new Map())
@@ -238,31 +239,38 @@ export function useHydrateAppState({
       }
 
       const { agentSettings } = useAppStore.getState()
-      const hydratedNodes = await prepareWorkspaceRuntimeNodes({
+      const epoch = hydrationEpochRef.current
+      await prepareWorkspaceRuntimeNodes({
         workspace: persistedWorkspace,
         agentSettings,
-      })
-
-      if (isCancelledRef.current || hydratedNodes.length === 0) {
-        return
-      }
-
-      const hydratedById = new Map(hydratedNodes.map(node => [node.id, node]))
-      setWorkspaces(previous =>
-        previous.map(workspace => {
-          if (workspace.id !== workspaceId) {
-            return workspace
+        isCancelled: () => isCancelledRef.current || hydrationEpochRef.current !== epoch,
+        onNodePrepared: hydratedNode => {
+          if (isCancelledRef.current || hydrationEpochRef.current !== epoch) {
+            return
           }
-
-          return {
-            ...workspace,
-            nodes: workspace.nodes.map(node => {
-              const hydratedNode = hydratedById.get(node.id)
-              return hydratedNode ? mergeHydratedNode(node, hydratedNode) : node
+          setWorkspaces(previous =>
+            previous.map(workspace => {
+              if (workspace.id !== workspaceId) {
+                return workspace
+              }
+              const baseline = persistedWorkspace.nodes.find(node => node.id === hydratedNode.id)
+              return {
+                ...workspace,
+                nodes: workspace.nodes.map(node => {
+                  if (node.id !== hydratedNode.id) {
+                    return node
+                  }
+                  const currentSessionId = node.data.sessionId.trim()
+                  if (currentSessionId && currentSessionId !== baseline?.sessionId) {
+                    return node
+                  }
+                  return mergeHydratedNode(node, hydratedNode)
+                }),
+              }
             }),
-          }
-        }),
-      )
+          )
+        },
+      })
     },
     [setWorkspaces],
   )
@@ -302,13 +310,21 @@ export function useHydrateAppState({
         return
       }
 
+      const epoch = hydrationEpochRef.current
       const hydrationPromise = hydrateWorkspaceRuntimeNodes(workspaceId, persistedWorkspace)
         .then(() => {
-          hydratedWorkspaceIdsRef.current.add(workspaceId)
+          if (!isCancelledRef.current && hydrationEpochRef.current === epoch) {
+            hydratedWorkspaceIdsRef.current.add(workspaceId)
+          }
         })
         .finally(() => {
-          hydratingWorkspacePromisesRef.current.delete(workspaceId)
-          markInitialHydrationComplete(workspaceId)
+          if (
+            hydrationEpochRef.current === epoch &&
+            hydratingWorkspacePromisesRef.current.get(workspaceId) === hydrationPromise
+          ) {
+            hydratingWorkspacePromisesRef.current.delete(workspaceId)
+            markInitialHydrationComplete(workspaceId)
+          }
         })
 
       hydratingWorkspacePromisesRef.current.set(workspaceId, hydrationPromise)
@@ -318,6 +334,7 @@ export function useHydrateAppState({
   )
 
   useEffect(() => {
+    hydrationEpochRef.current += 1
     isCancelledRef.current = false
     initialHydrationCompletedRef.current = false
     initialHydrationWorkspaceIdRef.current = null

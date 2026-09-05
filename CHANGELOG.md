@@ -7,7 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🐛 Fixed
+
 - Agent: prevent Codex and Claude hooks from launching desktop instances, timing out repeatedly, and disrupting input; keep status relays headless with bounded execution. (#385)
+- Terminal: fit new windows on first mount and confirm actual Windows Console dimensions before committing a resize, with a retry action when confirmation fails. Window fitting works independently of font calibration. (#382)
+- Terminal: preserve shared WebGL glyph caches when creating or refreshing terminals, preventing fragmented text in existing windows. (#382)
+- Terminal: restore ready sessions independently and retain durable bindings while recovery is pending, preventing one slow recovery from leaving other terminals unresponsive. (#382)
+- Terminal: prevent stale sync snapshots from replacing newly recovered sessions, and keep sizing warnings above terminal content. (#382)
+- Terminal: keep resize acknowledgements distinct across renderer reloads, preventing pending requests from colliding after refresh. (#382)
+- Workspace: preserve local task-Agent links and project edits while shared-state reads are pending, and retain unsaved changes when persistence fails. (#382)
+- Worker: keep draining output after startup and preserve live owned processes through health-check timeouts, preventing diagnostic output or temporary load from interrupting terminal sessions. (#382)
+- Agent: wait for Electron preparation and cleanup helpers in Windows PowerShell shims so commands such as `codex` reliably start in interactive terminals. (#382)
+- Settings: distinguish disabled calibration, invalid adjustments, and valid saved adjustments waiting for a matching display environment, in English and Chinese. (#382)
 - Agent: show idle Claude terminal sessions as Standby, remove all Agent chrome after Claude Code or Codex exits while preserving conversation recovery data, and prevent stale Working status after dedicated Agent exits. (#383)
 - Remote: keep managed SSH installation and connection progress visible across Settings and folder-picker reopen, instead of reporting cold setup as a Worker or tunnel failure; automatically enable browsing when ready. (#381)
 

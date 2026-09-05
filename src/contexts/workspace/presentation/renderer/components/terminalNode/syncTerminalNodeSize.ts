@@ -103,30 +103,8 @@ async function commitMeasuredTerminalNodeGeometry({
     return null
   }
 
-  const alreadyCommitted =
-    lastCommittedPtySizeRef.current?.cols === nextPtySize.cols &&
-    lastCommittedPtySizeRef.current.rows === nextPtySize.rows
-
-  if (alreadyCommitted) {
-    applyTerminalNodeGeometryLocally({
-      terminalRef,
-      containerRef,
-      isPointerResizingRef,
-      size: nextPtySize,
-    })
-    logTerminalGeometryDiagnostics({
-      event: unchangedEvent,
-      terminal: terminalRef.current,
-      fitAddon: fitAddonRef.current,
-      container: containerRef.current,
-      sessionId,
-      reason,
-      lastCommittedPtySize: lastCommittedPtySizeRef.current,
-      nextPtySize,
-    })
-    return { ...nextPtySize, changed: false }
-  }
-
+  // Only the canonical owner knows whether an earlier native mutation is still unconfirmed.
+  // A renderer cache match cannot authorize skipping the transaction (including after reattach).
   const terminal = terminalRef.current
   const { revision, result } = await requestTerminalGeometryCommitAck({
     terminal,
@@ -161,6 +139,10 @@ async function commitMeasuredTerminalNodeGeometry({
   }
 
   const canonicalGeometry = result.geometry
+  if (result.status === 'runtime_failed' || result.status === 'accepted_unverified') {
+    lastCommittedPtySizeRef.current = null
+    throw new Error(`Terminal geometry was not confirmed: ${result.status}`)
+  }
   if (!canonicalGeometry) {
     return null
   }

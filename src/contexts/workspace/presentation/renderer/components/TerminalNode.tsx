@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react'
-import { useStore } from '@xyflow/react'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
 import { createTerminalCommandInputState } from './terminalNode/commandInput'
@@ -28,12 +27,8 @@ import { invalidateCachedTerminalScreenState } from './terminalNode/screenStateC
 import type { PreferredTerminalRendererMode } from './terminalNode/preferredRenderer'
 import type { TerminalRendererRecoveryRequest } from './terminalNode/runtimeRendererHealth'
 import { useTerminalLiveReattachScope } from './terminalNode/terminalLiveReattachScope'
-import {
-  selectDragSurfaceSelectionMode,
-  selectViewportInteractionActive,
-  selectViewportZoom,
-} from './terminalNode/reactFlowState'
-import { useViewportInteractionSettledState } from './terminalNode/useViewportInteractionSettledState'
+import { useTerminalViewportState } from './terminalNode/useTerminalViewportState'
+import { TerminalGeometryFeedback } from './terminalNode/TerminalGeometryFeedback'
 import { TerminalNodeFrame } from './terminalNode/TerminalNodeFrame'
 import { resolveAgentNodeMinSize, resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import type { TerminalNodeProps } from './TerminalNode.types'
@@ -84,12 +79,12 @@ export function TerminalNode({
   onAgentOverlayExit,
   onInteractionStart,
 }: TerminalNodeProps): JSX.Element {
-  const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
-  const isViewportInteractionActive = useStore(selectViewportInteractionActive)
-  const isViewportInteractionSettledActive = useViewportInteractionSettledState(
+  const {
+    isDragSurfaceSelectionMode,
     isViewportInteractionActive,
-  )
-  const viewportZoom = useStore(selectViewportZoom)
+    isViewportInteractionSettledActive,
+    viewportZoom,
+  } = useTerminalViewportState()
   const isTestEnvironment =
     window.opencoveApi.meta.isTest || window.opencoveApi.meta.enableTerminalTestApi === true
   const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
@@ -453,6 +448,12 @@ export function TerminalNode({
   } = useTerminalBodyClickFallback(onInteractionStart)
   return (
     <TerminalNodeFrame
+      geometryFeedback={
+        <TerminalGeometryFeedback
+          terminal={terminalRef.current}
+          onRetry={() => commitTerminalGeometry('frame_commit')}
+        />
+      }
       title={title}
       fixedTitlePrefix={fixedTitlePrefix}
       kind={isAgentPresentation ? 'agent' : kind}

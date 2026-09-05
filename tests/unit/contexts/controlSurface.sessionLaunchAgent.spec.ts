@@ -10,6 +10,23 @@ import {
   createTestAgentProviderRegistry,
 } from './controlSurfaceTestTerminalAvailability'
 
+// This suite checks provider contribution dispatch. Platform shell wrapping has its own
+// resolver tests; using the host resolver here makes the command assertions Windows-dependent.
+vi.mock('../../../src/contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver', () => ({
+  resolveAgentLaunchSpawn: async (input: {
+    cwd: string
+    command: string
+    args: string[]
+    profileId?: string | null
+    env?: NodeJS.ProcessEnv
+  }) => ({
+    ...input,
+    profileId: input.profileId ?? null,
+    env: input.env ?? {},
+    runtimeKind: 'posix',
+  }),
+}))
+
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-03-27T00:00:00.000Z'),
   capabilities: {

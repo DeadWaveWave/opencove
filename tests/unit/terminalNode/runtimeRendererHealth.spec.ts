@@ -236,7 +236,7 @@ describe('runtime renderer health', () => {
     })
     container.append(screen)
 
-    const clearTextureAtlas = vi.fn()
+    const refresh = vi.fn()
     const syncTerminalSize = vi.fn()
     const scheduleWebglCanvasTransformCleanup = vi.fn()
     const log = vi.fn()
@@ -255,7 +255,7 @@ describe('runtime renderer health', () => {
       } as never,
       renderer: {
         kind: 'webgl',
-        clearTextureAtlas,
+        refresh,
         dispose: vi.fn(),
         setRasterScale: vi.fn(),
       },
@@ -271,7 +271,7 @@ describe('runtime renderer health', () => {
     health.notifyLayoutTrigger('manual')
     flushAnimationFrames()
 
-    expect(clearTextureAtlas).toHaveBeenCalledTimes(1)
+    expect(refresh).toHaveBeenCalledTimes(1)
     expect(syncTerminalSize).toHaveBeenCalledTimes(1)
     expect(scheduleWebglCanvasTransformCleanup).toHaveBeenCalledTimes(1)
     expect(log).toHaveBeenCalledWith(

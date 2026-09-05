@@ -1,0 +1,138 @@
+diff --git a/lib/windowsConsoleGeometry.d.ts b/lib/windowsConsoleGeometry.d.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..eeb65c797dfd139d5fc379599e9dcf070668971a
+--- /dev/null
++++ b/lib/windowsConsoleGeometry.d.ts
+@@ -0,0 +1,9 @@
++export interface IWindowsConsoleGeometry {
++    cols: number;
++    rows: number;
++    bufferCols: number;
++    bufferRows: number;
++}
++export declare function assertWindowsConsoleGeometryAvailable(): void;
++/** Attach/read/detach is process-global: never call this from the PTY host or app process. */
++export declare function readWindowsConsoleGeometry(pid: number): IWindowsConsoleGeometry;
+diff --git a/lib/windowsConsoleGeometry.js b/lib/windowsConsoleGeometry.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..c3749178741175f00b8dfbc7063e3f37638cfd24
+--- /dev/null
++++ b/lib/windowsConsoleGeometry.js
+@@ -0,0 +1,20 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.assertWindowsConsoleGeometryAvailable = assertWindowsConsoleGeometryAvailable;
++exports.readWindowsConsoleGeometry = readWindowsConsoleGeometry;
++/** OpenCove extension to node-pty (MIT). Only use in a dedicated observer process. */
++const utils_1 = require("./utils");
++function assertWindowsConsoleGeometryAvailable() {
++    if (process.platform !== 'win32' ||
++        typeof (0, utils_1.loadNativeModule)('conpty_console_list').module.getConsoleGeometry !== 'function') {
++        throw new Error('Windows Console geometry capability missing; rebuild node-pty from source');
++    }
++}
++/** Attach/read/detach is process-global: never call this from the PTY host or app process. */
++function readWindowsConsoleGeometry(pid) {
++    if (!Number.isInteger(pid) || pid <= 0 || pid >= 0xffffffff) {
++        throw new Error('Invalid Windows Console PID');
++    }
++    assertWindowsConsoleGeometryAvailable();
++    return (0, utils_1.loadNativeModule)('conpty_console_list').module.getConsoleGeometry(pid);
++}
+diff --git a/scripts/prebuild.js b/scripts/prebuild.js
+index 17f1d980e62e017d77058627a7a15c4c29f9470c..b2fdec3a2348da2ea96bb315cdb50a2fe293d564 100644
+--- a/scripts/prebuild.js
++++ b/scripts/prebuild.js
+@@ -17,6 +17,12 @@ const path = require('path');
+ const PREBUILDS_ROOT = path.join(__dirname, '..', 'prebuilds');
+ const PREBUILD_DIR = path.join(__dirname, '..', 'prebuilds', `${process.platform}-${process.arch}`);
+ 
++// OpenCove needs the Console geometry query extension, which upstream prebuilds lack.
++if (process.platform === 'win32') {
++  console.log('> Building OpenCove Windows Console geometry capability from source');
++  process.exit(1);
++}
++
+ // Do not use prebuilds when npm_config_build_from_source is set
+ if (process.env.npm_config_build_from_source === 'true') {
+   console.log('\x1b[33m> Removing prebuilds and rebuilding because npm_config_build_from_source is set\x1b[0m');
+diff --git a/src/win/conpty_console_list.cc b/src/win/conpty_console_list.cc
+index 4c8ab3932954aa4ad0fe24f0907ab5db705c9296..963149b564f241f7ce24f06280567516b3bab4a1 100644
+--- a/src/win/conpty_console_list.cc
++++ b/src/win/conpty_console_list.cc
+@@ -36,8 +36,44 @@ static Napi::Value ApiConsoleProcessList(const Napi::CallbackInfo& info) {
+   return result;
+ }
+ 
++// This function must only run in a dedicated observer process: Console attachment is global.
++static Napi::Value ApiConsoleGeometry(const Napi::CallbackInfo& info) {
++  Napi::Env env(info.Env());
++  if (info.Length() != 1 || !info[0].IsNumber()) {
++    throw Napi::Error::New(env, "Usage: getConsoleGeometry(shellPid)");
++  }
++  const double rawPid = info[0].As<Napi::Number>().DoubleValue();
++  const DWORD pid = info[0].As<Napi::Number>().Uint32Value();
++  if (pid == 0 || pid == ATTACH_PARENT_PROCESS || rawPid != static_cast<double>(pid)) {
++    throw Napi::Error::New(env, "Invalid Console PID");
++  }
++
++  FreeConsole();
++  if (!AttachConsole(pid)) {
++    throw Napi::Error::New(env, "AttachConsole failed: " + std::to_string(GetLastError()));
++  }
++  HANDLE output = CreateFileW(L"CONOUT$", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
++                              nullptr, OPEN_EXISTING, 0, nullptr);
++  CONSOLE_SCREEN_BUFFER_INFO geometry{};
++  const BOOL succeeded = output != INVALID_HANDLE_VALUE && GetConsoleScreenBufferInfo(output, &geometry);
++  const DWORD error = succeeded ? 0 : GetLastError();
++  if (output != INVALID_HANDLE_VALUE) CloseHandle(output);
++  const BOOL detached = FreeConsole();
++  if (!succeeded || !detached) {
++    throw Napi::Error::New(env, "Console geometry query failed: " + std::to_string(error));
++  }
++
++  auto result = Napi::Object::New(env);
++  result.Set("cols", Napi::Number::New(env, geometry.srWindow.Right - geometry.srWindow.Left + 1));
++  result.Set("rows", Napi::Number::New(env, geometry.srWindow.Bottom - geometry.srWindow.Top + 1));
++  result.Set("bufferCols", Napi::Number::New(env, geometry.dwSize.X));
++  result.Set("bufferRows", Napi::Number::New(env, geometry.dwSize.Y));
++  return result;
++}
++
+ Napi::Object init(Napi::Env env, Napi::Object exports) {
+   exports.Set("getConsoleProcessList", Napi::Function::New(env, ApiConsoleProcessList));
++  exports.Set("getConsoleGeometry", Napi::Function::New(env, ApiConsoleGeometry));
+   return exports;
+ };
+ 
+diff --git a/src/windowsConsoleGeometry.ts b/src/windowsConsoleGeometry.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..bd6aea2831c3746bee99d7e328112d7513e70ae9
+--- /dev/null
++++ b/src/windowsConsoleGeometry.ts
+@@ -0,0 +1,25 @@
++/** OpenCove extension to node-pty (MIT). Only use in a dedicated observer process. */
++import { loadNativeModule } from './utils';
++
++export interface IWindowsConsoleGeometry {
++  cols: number;
++  rows: number;
++  bufferCols: number;
++  bufferRows: number;
++}
++
++export function assertWindowsConsoleGeometryAvailable(): void {
++  if (process.platform !== 'win32' ||
++      typeof loadNativeModule('conpty_console_list').module.getConsoleGeometry !== 'function') {
++    throw new Error('Windows Console geometry capability missing; rebuild node-pty from source');
++  }
++}
++
++/** Attach/read/detach is process-global: never call this from the PTY host or app process. */
++export function readWindowsConsoleGeometry(pid: number): IWindowsConsoleGeometry {
++  if (!Number.isInteger(pid) || pid <= 0 || pid >= 0xffffffff) {
++    throw new Error('Invalid Windows Console PID');
++  }
++  assertWindowsConsoleGeometryAvailable();
++  return loadNativeModule('conpty_console_list').module.getConsoleGeometry(pid);
++}

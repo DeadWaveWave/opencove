@@ -31,7 +31,7 @@ export interface AgentRunStateAuthorityDecision {
   source: AgentHookStateSource | 'session_file' | 'launch' | null
   state: TerminalSessionState | null
   degraded: boolean
-  hookHealth: 'fresh' | 'stale' | 'unavailable' | 'not_applicable'
+  hookHealth: 'pending' | 'fresh' | 'stale' | 'unavailable' | 'not_applicable'
   nextTransitionAtMs: number | null
 }
 
@@ -73,9 +73,11 @@ export function resolveAgentRunStateAuthority(
 
   const hookSignal = input.lastHookSignal
   if (!hookSignal) {
+    // Installation is not an observation. Before the first signal there is no working lease
+    // to expire (legacy notify can stay silent for an entire turn).
     return selectSessionFile(input.lastSessionFileSignal, input.lastLaunchSignal ?? null, {
-      degraded: true,
-      hookHealth: 'stale',
+      degraded: false,
+      hookHealth: 'pending',
     })
   }
 

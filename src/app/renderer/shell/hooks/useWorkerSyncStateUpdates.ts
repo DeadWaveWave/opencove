@@ -8,10 +8,13 @@ import type {
 import {
   readPersistedState,
   toPersistedState,
+  flushScheduledPersistedStateWriteAsync,
 } from '@contexts/workspace/presentation/renderer/utils/persistence'
+import { stripLocalViewStateFromPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/viewState'
 import { useAppStore } from '../store/useAppStore'
 import type { SyncEventPayload } from '@shared/contracts/dto'
 import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
+import { hasRuntimeBindingPublication } from './workerSync/runtimeSessionBinding'
 
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
 
@@ -33,6 +36,15 @@ function resolveNextActiveWorkspaceId(
 
 function buildPersistedStateSignature(state: PersistedAppState): string {
   return JSON.stringify(state)
+}
+
+function buildCurrentSharedStateSignature(): string {
+  const current = useAppStore.getState()
+  return buildPersistedStateSignature(
+    stripLocalViewStateFromPersistedState(
+      toPersistedState(current.workspaces, current.activeWorkspaceId, current.agentSettings),
+    ),
+  )
 }
 
 function buildPersistedWorkspaceSignature(state: PersistedWorkspaceState): string {
@@ -62,8 +74,9 @@ export function shouldApplyWorkerSyncRefresh({
   )
 
   return (
+    hasRuntimeBindingPublication(currentState.workspaces) ||
     buildPersistedStateSignature(currentPersistedState) !==
-    buildPersistedStateSignature(persistedState)
+      buildPersistedStateSignature(persistedState)
   )
 }
 
@@ -84,8 +97,9 @@ export function resolveWorkspacesForWorkerSync({
       return toShellWorkspaceStateForSync(workspace, undefined)
     }
 
-    return buildCurrentWorkspacePersistedSignature(existingWorkspace) ===
-      buildPersistedWorkspaceSignature(workspace)
+    return !hasRuntimeBindingPublication([existingWorkspace]) &&
+      buildCurrentWorkspacePersistedSignature(existingWorkspace) ===
+        buildPersistedWorkspaceSignature(workspace)
       ? existingWorkspace
       : toShellWorkspaceStateForSync(workspace, existingWorkspace)
   })
@@ -115,6 +129,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
     if (!options.enabled) {
       return
     }
+    let active = true
 
     const handleLocalSyncWrite = (event: Event): void => {
       const revision = (event as CustomEvent<{ revision?: unknown }>).detail?.revision
@@ -131,6 +146,20 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       trackedRevisions.add(normalizedRevision)
       localSyncWriteRevisionQueueRef.current.push(normalizedRevision)
 
+      // A local recovery publication needs a shared-state acknowledgement even though its
+      // ordinary sync.writeState echo is suppressed below. Refreshes remain serialized.
+      if (
+        needsFullRefreshRef.current ||
+        hasRuntimeBindingPublication(useAppStore.getState().workspaces)
+      ) {
+        needsFullRefreshRef.current = true
+        pendingFullRefreshRevisionRef.current = Math.max(
+          pendingFullRefreshRevisionRef.current ?? 0,
+          normalizedRevision,
+        )
+        scheduleRefresh(0)
+      }
+
       if (localSyncWriteRevisionQueueRef.current.length > 60) {
         const expired = localSyncWriteRevisionQueueRef.current.shift()
         if (typeof expired === 'number') {
@@ -142,6 +171,9 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
     window.addEventListener(LOCAL_SYNC_WRITE_EVENT_NAME, handleLocalSyncWrite as EventListener)
 
     function scheduleRefresh(delayMs = 150): void {
+      if (!active) {
+        return
+      }
       if (refreshInFlightRef.current) {
         refreshPendingRef.current = true
         return
@@ -265,8 +297,34 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         pendingSyncWriteRevisionRef.current = null
         pendingFullRefreshRevisionRef.current = null
 
+        // Publish queued local edits before reading a shared snapshot. A read started
+        // before a later local edit cannot acknowledge or replace that edit.
+        const localWriteSucceeded = await flushScheduledPersistedStateWriteAsync()
+        if (!active) {
+          return
+        }
+        if (!localWriteSucceeded) {
+          // Keep the refresh pending for a successful local publication, without
+          // retrying failed IO in a timer loop or replacing the unsaved edit.
+          needsFullRefreshRef.current = true
+          pendingFullRefreshRevisionRef.current = Math.max(
+            pendingFullRefreshRevisionRef.current ?? 0,
+            targetRevision,
+          )
+          return
+        }
+        const sharedSignatureAtRead = buildCurrentSharedStateSignature()
         const persisted = await readPersistedState()
-        if (!persisted) {
+        if (!active || !persisted) {
+          return
+        }
+        if (buildCurrentSharedStateSignature() !== sharedSignatureAtRead) {
+          needsFullRefreshRef.current = true
+          pendingFullRefreshRevisionRef.current = Math.max(
+            pendingFullRefreshRevisionRef.current ?? 0,
+            targetRevision,
+          )
+          refreshPendingRef.current = true
           return
         }
 
@@ -302,16 +360,18 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       } catch {
         // ignore refresh failures
       } finally {
-        refreshInFlightRef.current = false
-
-        if (refreshPendingRef.current) {
-          refreshPendingRef.current = false
-          scheduleRefresh()
+        if (active) {
+          refreshInFlightRef.current = false
+          if (refreshPendingRef.current) {
+            refreshPendingRef.current = false
+            scheduleRefresh()
+          }
         }
       }
     }
 
     return () => {
+      active = false
       if (refreshTimerRef.current !== null) {
         window.clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = null

@@ -19,6 +19,9 @@ patchedDependencies:
   '@xterm/addon-webgl@0.19.0':
     hash: ermpwryhyxt43es2gzk3updy74
     path: patches/@xterm__addon-webgl@0.19.0.patch
+  node-pty@1.1.0:
+    hash: qtjj2fyhpriwj55vyf5sneb4mm
+    path: patches/node-pty@1.1.0.patch
 
 importers:
 
@@ -98,7 +101,7 @@ importers:
         version: 0.55.1
       node-pty:
         specifier: ^1.1.0
-        version: 1.1.0
+        version: 1.1.0(patch_hash=qtjj2fyhpriwj55vyf5sneb4mm)
       react:
         specifier: ^19.0.0
         version: 19.2.4
@@ -5552,7 +5555,7 @@ snapshots:
       undici: 6.25.0
       which: 6.0.1
 
-  node-pty@1.1.0:
+  node-pty@1.1.0(patch_hash=qtjj2fyhpriwj55vyf5sneb4mm):
     dependencies:
       node-addon-api: 7.1.1
 

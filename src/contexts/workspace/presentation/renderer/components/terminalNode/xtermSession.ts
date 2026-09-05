@@ -155,7 +155,7 @@ export function createMountedXtermSession({
 
   let renderer: ActiveTerminalRenderer = {
     kind: 'dom',
-    clearTextureAtlas: () => undefined,
+    refresh: () => undefined,
     dispose: () => undefined,
     setRasterScale: () => undefined,
   }
@@ -256,7 +256,7 @@ export function createMountedXtermSession({
         fitAddon,
       )
     }
-    renderer.clearTextureAtlas()
+    renderer.refresh()
     syncTerminalSize()
     disposeTerminalDisplayMeasurementHandle = registerTerminalDisplayMeasurementHandle(nodeId, {
       terminal,

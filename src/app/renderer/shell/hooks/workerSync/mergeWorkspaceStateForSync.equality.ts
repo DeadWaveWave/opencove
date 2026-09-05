@@ -112,6 +112,7 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
 
   if (
     persisted.sessionId !== existing.sessionId ||
+    persisted.runtimeSessionBinding !== existing.runtimeSessionBinding ||
     persisted.title !== existing.title ||
     persisted.titlePinnedByUser !== existing.titlePinnedByUser ||
     persisted.width !== existing.width ||

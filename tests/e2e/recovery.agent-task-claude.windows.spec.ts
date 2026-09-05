@@ -264,7 +264,14 @@ test.describe('Recovery - task Claude agent (Windows)', () => {
       }
     } finally {
       await removePathWithRetry(userDataDir)
-      await fs.rm(taskDirectory, { recursive: true, force: true })
+      // Windows can release a process's working-directory handle after Electron exits.
+      // Retry transient locks, but still fail if cleanup cannot complete within the bound.
+      await fs.rm(taskDirectory, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 100,
+      })
     }
   })
 })

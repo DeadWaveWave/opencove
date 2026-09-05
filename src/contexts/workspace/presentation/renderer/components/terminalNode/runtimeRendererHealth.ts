@@ -128,7 +128,7 @@ export function registerRuntimeTerminalRendererHealth({
   let secondFrame: number | null = null
 
   const refreshLayout = (): void => {
-    renderer.clearTextureAtlas()
+    renderer.refresh()
     syncTerminalSize()
     scheduleWebglCanvasTransformCleanup()
   }

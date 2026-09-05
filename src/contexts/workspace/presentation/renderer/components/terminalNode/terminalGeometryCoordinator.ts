@@ -9,11 +9,11 @@ type TerminalGeometryCoordinatorState = {
   pendingOperationId: string | null
   acceptedRevision: number | null
   authorityEpoch: number | null
+  failed: boolean
   listeners: Set<GateListener>
 }
 
 const terminalGeometryStates = new WeakMap<Terminal, TerminalGeometryCoordinatorState>()
-let nextGeometryOperationId = 0
 
 function getTerminalGeometryState(terminal: Terminal): TerminalGeometryCoordinatorState {
   const existing = terminalGeometryStates.get(terminal)
@@ -27,6 +27,7 @@ function getTerminalGeometryState(terminal: Terminal): TerminalGeometryCoordinat
     pendingOperationId: null,
     acceptedRevision: null,
     authorityEpoch: null,
+    failed: false,
     listeners: new Set(),
   }
   terminalGeometryStates.set(terminal, created)
@@ -52,8 +53,8 @@ export function beginTerminalGeometryCommit(terminal: Terminal): number {
   const state = getTerminalGeometryState(terminal)
   state.nextRevision += 1
   state.pendingRevision = state.nextRevision
-  nextGeometryOperationId += 1
-  state.pendingOperationId = `renderer-geometry-${nextGeometryOperationId}-${state.nextRevision}`
+  // Main can still hold an earlier renderer's pending ACK after this page reloads.
+  state.pendingOperationId = `renderer-geometry-${crypto.randomUUID()}`
   return state.pendingRevision
 }
 
@@ -126,6 +127,7 @@ export function resetTerminalGeometryRevisionDomain(terminal: Terminal): void {
   state.pendingOperationId = null
   state.acceptedRevision = null
   state.authorityEpoch = null
+  state.failed = false
   if (hadPendingCommit) {
     notifyGateListeners(state)
   }
@@ -167,6 +169,8 @@ export function recordTerminalGeometryCommitResult(
     state.authorityEpoch = normalizedAuthorityEpoch
   }
 
+  state.failed = result.status === 'runtime_failed' || result.status === 'accepted_unverified'
+
   return true
 }
 
@@ -190,6 +194,22 @@ export function markTerminalGeometryCommitSettled(
   }
 
   settleTerminalGeometryCommit(terminal, geometryRevision)
+}
+
+export function markTerminalGeometryCommitFailed(
+  terminal: Terminal,
+  geometryRevision: number,
+): void {
+  if (!isTerminalGeometryCommitCurrent(terminal, geometryRevision)) {
+    return
+  }
+  const state = getTerminalGeometryState(terminal)
+  state.failed = true
+  settleTerminalGeometryCommit(terminal, geometryRevision)
+}
+
+export function hasTerminalGeometryCommitFailed(terminal: Terminal): boolean {
+  return getTerminalGeometryState(terminal).failed
 }
 
 export function canWriteTerminalOutput(terminal: Terminal): boolean {

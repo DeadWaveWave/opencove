@@ -200,9 +200,7 @@ describe('activatePreferredTerminalRenderer', () => {
       const { activatePreferredTerminalRenderer } =
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const loadAddon = vi.fn()
-      const terminal = {
-        loadAddon,
-      }
+      const terminal = { loadAddon, rows: 24, refresh: vi.fn() }
 
       const activeRenderer = activatePreferredTerminalRenderer(terminal as never, 'opencode')
 
@@ -210,8 +208,9 @@ describe('activatePreferredTerminalRenderer', () => {
       expect(loadAddon).toHaveBeenCalledTimes(1)
       expect(activeRenderer.kind).toBe('webgl')
 
-      activeRenderer.clearTextureAtlas()
-      expect(webglAddonClearTextureAtlas).toHaveBeenCalledTimes(1)
+      activeRenderer.refresh()
+      expect(terminal.refresh).toHaveBeenCalledWith(0, 23)
+      expect(webglAddonClearTextureAtlas).not.toHaveBeenCalled()
       expect(activeRenderer.setRasterScale(1.25)).toBe(true)
       expect(webglAddonSetRasterScale).toHaveBeenCalledWith(1.25)
 

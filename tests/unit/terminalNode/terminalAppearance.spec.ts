@@ -122,7 +122,6 @@ describe('terminal appearance', () => {
 
     const owner = createTerminalAppearanceOwner(createValue(), { initiallyApplied: true })
     const apply = vi.fn()
-    const clearTextureAtlas = vi.fn()
     const refresh = vi.fn()
     const inspect = vi.fn()
     const coordinator = createTerminalAppearanceRefreshCoordinator({
@@ -130,7 +129,6 @@ describe('terminal appearance', () => {
       requestFrame,
       cancelFrame,
       apply,
-      clearTextureAtlas,
       refresh,
       inspect,
     })
@@ -150,7 +148,6 @@ describe('terminal appearance', () => {
     runNextFrame()
     expect(apply).toHaveBeenCalledTimes(1)
     expect(apply).toHaveBeenCalledWith(revision3)
-    expect(clearTextureAtlas).toHaveBeenCalledTimes(1)
     expect(refresh).toHaveBeenCalledTimes(1)
     expect(owner.getAppliedSnapshot()).toBe(revision3)
 
