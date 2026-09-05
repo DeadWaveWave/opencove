@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+---
+
+## [0.3.1] - 2026-09-05
+
+OpenCove 0.3.1 improves Agent startup and completion notifications, terminal recovery and display stability, and managed SSH connection feedback.
+
 ### 🐛 Fixed
 
 - Agent: show completion cards and system notifications for Agents launched inside ordinary terminals, using the same notification flow as dedicated Agent windows. (#388)

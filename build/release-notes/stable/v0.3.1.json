@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "version": "0.3.1",
+  "channel": "stable",
+  "publishedAt": "2026-09-05T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/compare/v0.3.0...v0.3.1",
+  "locales": {
+    "en": {
+      "summary": "OpenCove 0.3.1 improves Agent startup, completion notifications, terminal stability, and remote connection feedback.",
+      "items": [
+        {
+          "kind": "fixed",
+          "summary": "Prevent Codex and Claude hooks from repeatedly opening desktop instances or disrupting terminal input.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/385",
+          "prNumber": 385,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Receive completion cards and system notifications for Agents launched inside ordinary terminals.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/388",
+          "prNumber": 388,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Avoid a misleading fallback badge while a newly launched Agent is waiting for its first status update.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/385",
+          "prNumber": 385,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Allow Codex to reuse an available local daemon. This compatibility mode uses reduced status tracking; full session identity and recovery coverage is not guaranteed.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/384",
+          "prNumber": 384,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Create new terminals and Agents while earlier sessions recover, without waiting for every session to finish restoring.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/387",
+          "prNumber": 387,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Improve terminal sizing, text clarity, and recovery, with more stable display calibration on Windows.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/382",
+          "prNumber": 382,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Show idle terminal Agents as Standby and return to normal terminal controls after the Agent exits.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/383",
+          "prNumber": 383,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Keep remote installation and connection progress visible when reopening Settings or the folder picker.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/381",
+          "prNumber": 381,
+          "sha": null
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "OpenCove 0.3.1 改善 Agent 启动、完成通知、终端稳定性和远程连接反馈。",
+      "items": [
+        {
+          "kind": "fixed",
+          "summary": "修复 Codex 和 Claude Hook 反复打开桌面实例、干扰终端输入的问题。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/385",
+          "prNumber": 385,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "在普通终端中启动的 Agent 完成工作后，也会显示完成卡片和系统通知。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/388",
+          "prNumber": 388,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "新启动的 Agent 等待首次状态更新时，不再误显示降级标记。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/385",
+          "prNumber": 385,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "允许 Codex 复用可连接的本机后台服务。此兼容模式会减少状态追踪能力，完整的会话身份识别与恢复能力尚不保证。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/384",
+          "prNumber": 384,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "已有会话恢复期间也能创建新终端和 Agent，无需等待所有会话恢复完成。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/387",
+          "prNumber": 387,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "改善终端尺寸、文字显示和恢复体验，并提升 Windows 显示校准的稳定性。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/382",
+          "prNumber": 382,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "空闲的终端 Agent 正确显示待命状态，退出 Agent 后恢复普通终端控件。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/383",
+          "prNumber": 383,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "重新打开设置或文件夹选择器时，继续显示远程安装与连接进度。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/381",
+          "prNumber": 381,
+          "sha": null
+        }
+      ]
+    }
+  }
+}

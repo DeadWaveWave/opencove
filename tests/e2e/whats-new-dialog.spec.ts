@@ -1,15 +1,34 @@
 import { expect, test } from '@playwright/test'
 import path from 'path'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import packageJson from '../../package.json'
+import releaseNotesFixture from '../fixtures/release-notes/release-manifest.fixture.json'
 import { launchApp } from './workspace-canvas.helpers'
 
 test.describe('Whats New', () => {
+  let releaseManifestPath: string
+  test.beforeAll(async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'opencove-release-notes-'))
+    releaseManifestPath = path.join(directory, 'release-manifest.json')
+    await writeFile(
+      releaseManifestPath,
+      JSON.stringify({
+        ...releaseNotesFixture,
+        version: packageJson.version,
+        compareUrl: `https://github.com/DeadWaveWave/opencove/releases/tag/v${packageJson.version}`,
+      }),
+    )
+  })
+  test.afterAll(async () => {
+    if (releaseManifestPath) {
+      await rm(path.dirname(releaseManifestPath), { recursive: true, force: true })
+    }
+  })
+
   test('shows the update changelog dialog after first launch', async ({
     browserName,
   }, testInfo) => {
-    const releaseManifestPath = path.resolve(
-      __dirname,
-      '../fixtures/release-notes/release-manifest.fixture.json',
-    )
     const { electronApp, window } = await launchApp({
       env: {
         OPENCOVE_TEST_WHATS_NEW: '1',
@@ -70,10 +89,6 @@ test.describe('Whats New', () => {
   })
 
   test('does not show the dialog on a fresh install', async () => {
-    const releaseManifestPath = path.resolve(
-      __dirname,
-      '../fixtures/release-notes/release-manifest.fixture.json',
-    )
     const { electronApp, window } = await launchApp({
       env: {
         OPENCOVE_TEST_WHATS_NEW: '1',

@@ -7,6 +7,19 @@ const stableNotesDir = resolve(rootDir, 'build/release-notes/stable')
 const userFacingKinds = new Set(['added', 'changed', 'fixed'])
 
 describe('curated stable release notes', () => {
+  it('ships curated notes and a changelog entry for the current stable package version', async () => {
+    const { version } = JSON.parse(await readFile(resolve(rootDir, 'package.json'), 'utf8'))
+    if (version.includes('-')) {
+      return
+    }
+
+    const manifest = JSON.parse(await readFile(resolve(stableNotesDir, `v${version}.json`), 'utf8'))
+    expect(manifest.version).toBe(version)
+    expect(manifest.channel).toBe('stable')
+    const changelog = await readFile(resolve(rootDir, 'CHANGELOG.md'), 'utf8')
+    expect(changelog).toContain(`## [${version}] - `)
+  })
+
   it('remain concise, localized, and limited to user-facing change kinds', async () => {
     const fileNames = (await readdir(stableNotesDir)).filter(name => name.endsWith('.json'))
     expect(fileNames.length).toBeGreaterThan(0)
