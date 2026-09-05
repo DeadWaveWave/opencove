@@ -261,8 +261,8 @@ export function TerminalNodeFrame({
         </div>
       ) : null}
 
+      {geometryFeedback}
       <div className="terminal-node__body">
-        {geometryFeedback}
         <div
           id={terminalElementId}
           ref={containerRef}

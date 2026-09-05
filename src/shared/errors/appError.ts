@@ -8,6 +8,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'common.unavailable': 'This feature is unavailable.',
     'common.unexpected': 'Something went wrong. Please try again.',
     'worker.unavailable': 'Worker is unavailable.',
+    'endpoint.operation_in_progress': 'Another endpoint operation is already in progress.',
     'space.not_found': 'Space not found.',
     'space.ambiguous': 'Space locator matched multiple spaces.',
     'node.not_found': 'Node not found.',

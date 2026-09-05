@@ -30,7 +30,15 @@ Desktop-managed Worker 的 private loopback listener 在 Worker 生命周期内�
 Remote endpoint health 通过 `endpoint.overview.list`、`endpoint.prepare` 和 `endpoint.repair`
 投影为 `connected / connecting / disconnected / auth_failed / tunnel_failed / needs_setup /
 version_mismatch / error`。Managed SSH 是当前推荐产品路径；manual endpoint registration
-保留为 advanced path。
+保留为 advanced path。Managed SSH prepare/repair 先返回 accepted overview，安装与隧道连接由
+Worker 的 `ManagedSshEndpointOperationOwner` 通过 preparation port 执行，不占用通用 HTTP
+请求 timeout。冷启动先 bootstrap、后开 tunnel；phase/revision 仅是运行时状态。
+
+AppShell composition 提供一个 `EndpointOverviewProjectionOwner` 给所有远端 UI。它串行查询
+`endpoint.overview.list`，只在有 active consumer 和 operation 时以 500ms settlement-to-next-query
+间隔观察；关闭重开 UI 不取消安装，Picker 就绪后自动加载目录。更新/删除/shutdown 的 generation
+fence 先于本地 child abort，迟到结果不能复活旧配置；下次 prepare 通过 probe-first bootstrap
+收敛远端状态。详细契约见 `CONTROL_SURFACE.md` 与 `RECOVERY_MODEL.md`。
 
 Add Project、Manage Mounts 和 remote directory picker 的浏览流程统一走目标 Worker 的
 `endpoint.homeDirectory` / `endpoint.readDirectory`，而不是在 Desktop 侧猜测远端路径。

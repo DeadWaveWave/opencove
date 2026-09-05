@@ -5,7 +5,7 @@ import type {
   RuntimeDiagnosticsLogInput,
   RuntimeDiagnosticsSource,
 } from '../../shared/contracts/dto'
-import { appendBoundedRuntimeDiagnosticsLine } from './diagnostics/runtimeDiagnosticsFile'
+import { appendBoundedRuntimeDiagnosticsLine } from '../../platform/persistence/runtimeDiagnosticsFile'
 
 function appendRuntimeDiagnosticsFile(line: string): void {
   try {

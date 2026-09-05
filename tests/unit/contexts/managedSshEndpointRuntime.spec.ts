@@ -1,3 +1,4 @@
+import type { ManagedSshEndpointPreparationRequest } from '../../../src/contexts/topology/application/ports/ManagedSshEndpointPreparationPort'
 import { EventEmitter } from 'node:events'
 import type { ExecutableLocationResult } from '../../../src/platform/process/ExecutableLocator'
 import type { ManagedSshEndpointRuntimeAccess } from '../../../src/app/main/controlSurface/topology/topologyEndpointAccess'
@@ -57,6 +58,20 @@ function createTunnelProcess(): MockTunnelProcess {
     return true
   })
   return process
+}
+
+function request(
+  overrides: Partial<ManagedSshEndpointPreparationRequest> = {},
+): ManagedSshEndpointPreparationRequest {
+  return {
+    operationId: 'operation-1',
+    access: createAccess(),
+    restartTunnel: false,
+    reinstallRuntime: false,
+    signal: new AbortController().signal,
+    reportPhase: () => undefined,
+    ...overrides,
+  }
 }
 
 describe('managedSshEndpointRuntime', () => {
@@ -170,200 +185,260 @@ describe('managedSshEndpointRuntime', () => {
     expect(script.indexOf('out/main/worker.js')).toBeLessThan(script.indexOf('curl -fsSL'))
   })
 
-  it('returns an error snapshot when ssh is unavailable', async () => {
+  it('returns a typed error snapshot when ssh is unavailable', async () => {
     const runtime = createManagedSshEndpointRuntime({
       getSshAvailability: async () =>
         createSshAvailability({
           executablePath: null,
-          source: null,
           status: 'not_found',
           diagnostics: ['ssh is not installed'],
         }),
     })
-
-    const prepared = await runtime.prepare(createAccess())
-
-    expect(prepared.connection).toBeNull()
-    expect(prepared.bootstrapRan).toBe(false)
-    expect(prepared.snapshot.status).toBe('error')
-    expect(prepared.snapshot.lastError).toContain('ssh is not installed')
-  })
-
-  it('reuses the same in-flight prepare call for concurrent requests', async () => {
-    const tunnelProcess = createTunnelProcess()
-    let releaseWait: (() => void) | null = null
-
-    const runtime = createManagedSshEndpointRuntime({
-      getSshAvailability: async () => createSshAvailability(),
-      reserveLoopbackPort: async () => 41001,
-      spawnTunnelProcess: vi.fn(() => tunnelProcess),
-      probeConnection: async () => true,
-      waitForCondition: async fn => {
-        await new Promise<void>(resolve => {
-          releaseWait = resolve
-        })
-        return await fn()
-      },
+    expect(await runtime.execute(request())).toMatchObject({
+      status: 'failed',
+      failureKind: 'tunnel_failed',
     })
-
-    const firstPromise = runtime.prepare(createAccess())
-    const secondPromise = runtime.prepare(createAccess())
-
-    await new Promise(resolve => setTimeout(resolve, 0))
-    releaseWait?.()
-
-    const [first, second] = await Promise.all([firstPromise, secondPromise])
-
-    expect(first).toEqual(second)
-    expect(first.connection).toEqual({
-      hostname: '127.0.0.1',
-      port: 41001,
-      token: 'managed-token',
-    })
-  })
-
-  it('runs the matching-version bootstrap and reconnects when the remote worker is not ready yet', async () => {
-    const firstTunnel = createTunnelProcess()
-    const secondTunnel = createTunnelProcess()
-    const access = createAccess()
-    const probeConnection = vi
-      .fn<[{ hostname: string; port: number; token: string }, number], Promise<boolean>>()
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true)
-    const runBootstrap = vi.fn(async () => undefined)
-
-    const runtime = createManagedSshEndpointRuntime({
-      appVersion: '0.3.0',
-      getSshAvailability: async () => createSshAvailability(),
-      reserveLoopbackPort: vi.fn(async () => 41002),
-      spawnTunnelProcess: vi
-        .fn()
-        .mockReturnValueOnce(firstTunnel)
-        .mockReturnValueOnce(secondTunnel),
-      probeConnection,
-      runBootstrap,
-      waitForCondition: async fn => await fn(),
-    })
-
-    const prepared = await runtime.prepare(access, {
-      allowBootstrap: true,
-    })
-
-    expect(runBootstrap).toHaveBeenCalledTimes(1)
-    expect(runBootstrap).toHaveBeenCalledWith('/usr/bin/ssh', access, {
-      reinstallRuntime: undefined,
-      appVersion: '0.3.0',
-    })
-    expect(prepared.bootstrapRan).toBe(true)
-    expect(prepared.connection).toEqual({
-      hostname: '127.0.0.1',
-      port: 41002,
-      token: 'managed-token',
-    })
-    expect(firstTunnel.kill).toHaveBeenCalledTimes(1)
-  })
-
-  it('classifies a corrupt runtime bootstrap failure in the runtime snapshot', async () => {
-    const tunnelProcess = createTunnelProcess()
-    const runtime = createManagedSshEndpointRuntime({
-      getSshAvailability: async () => createSshAvailability(),
-      reserveLoopbackPort: async () => 41006,
-      spawnTunnelProcess: vi.fn(() => tunnelProcess),
-      probeConnection: async () => false,
-      waitForCondition: async () => false,
-      runBootstrap: async () => {
-        throw new ManagedSshBootstrapError(
-          'runtime_corrupt',
-          '[opencove-bootstrap:runtime_corrupt] dyld: Library not loaded',
-        )
-      },
-    })
-
-    const prepared = await runtime.prepare(createAccess())
-
-    expect(prepared.connection).toBeNull()
-    expect(prepared.snapshot).toMatchObject({
+    expect(runtime.getSnapshot('managed-1')).toMatchObject({
       status: 'error',
-      failureKind: 'runtime_corrupt',
-      lastError: expect.stringContaining('dyld: Library not loaded'),
+      lastError: 'ssh is not installed',
     })
+    await runtime.dispose()
   })
 
-  it('restarts the tunnel when reconnect is requested', async () => {
-    const firstTunnel = createTunnelProcess()
-    const secondTunnel = createTunnelProcess()
-
+  it('bootstraps before reserving, spawning or probing a cold tunnel', async () => {
+    let release!: () => void
+    let started!: () => void
+    const gate = new Promise<void>(resolve => {
+      release = resolve
+    })
+    const bootstrapStarted = new Promise<void>(resolve => {
+      started = resolve
+    })
+    const reserve = vi.fn(async () => 41001)
+    const spawn = vi.fn(() => createTunnelProcess())
+    const probe = vi.fn(async () => true)
     const runtime = createManagedSshEndpointRuntime({
       getSshAvailability: async () => createSshAvailability(),
-      reserveLoopbackPort: vi.fn().mockResolvedValueOnce(41003).mockResolvedValueOnce(41004),
+      reserveLoopbackPort: reserve,
+      spawnTunnelProcess: spawn,
+      probeConnection: probe,
+      waitForCondition: async fn => await fn(),
+      runBootstrap: async () => {
+        started()
+        await gate
+      },
+    })
+    const phases: string[] = []
+    const execution = runtime.execute(request({ reportPhase: phase => phases.push(phase) }))
+    await bootstrapStarted
+    expect(runtime.getSnapshot('managed-1')).toMatchObject({
+      status: 'connecting',
+      failureKind: null,
+    })
+    expect(reserve).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
+    expect(probe).not.toHaveBeenCalled()
+    expect(await runtime.resolveConnection(createAccess())).toBeNull()
+    release()
+    expect(await execution).toEqual({ status: 'ready' })
+    expect(phases).toEqual(['checking_prerequisites', 'opening_tunnel', 'verifying_connection'])
+    expect(runtime.getSnapshot('managed-1')).toMatchObject({ status: 'ready', localPort: 41001 })
+    await runtime.dispose()
+  })
+
+  it('keeps cold connection resolution read-only until explicit preparation succeeds', async () => {
+    const reserve = vi.fn(async () => 41006)
+    const spawn = vi.fn(() => createTunnelProcess())
+    const probe = vi.fn(async () => true)
+    const bootstrap = vi.fn(async () => undefined)
+    const runtime = createManagedSshEndpointRuntime({
+      getSshAvailability: async () => createSshAvailability(),
+      reserveLoopbackPort: reserve,
+      spawnTunnelProcess: spawn,
+      probeConnection: probe,
+      waitForCondition: async fn => await fn(),
+      runBootstrap: bootstrap,
+    })
+    try {
+      expect(await runtime.resolveConnection(createAccess())).toBeNull()
+      expect(runtime.getSnapshot('managed-1')).toBeNull()
+      expect(reserve).not.toHaveBeenCalled()
+      expect(spawn).not.toHaveBeenCalled()
+      expect(probe).not.toHaveBeenCalled()
+      expect(bootstrap).not.toHaveBeenCalled()
+      expect(await runtime.execute(request())).toEqual({ status: 'ready' })
+      expect(await runtime.resolveConnection(createAccess())).toEqual({
+        hostname: '127.0.0.1',
+        port: 41006,
+        token: 'managed-token',
+      })
+      const changedAccess = { ...createAccess(), token: 'replaced-token' }
+      expect(await runtime.resolveConnection(changedAccess)).toBeNull()
+      expect(await runtime.resolveConnection(createAccess())).not.toBeNull()
+      expect(spawn).toHaveBeenCalledTimes(1)
+      expect(bootstrap).toHaveBeenCalledTimes(1)
+    } finally {
+      await runtime.dispose()
+    }
+  })
+
+  it('does not restart a failed tunnel or overwrite its failure through connection resolution', async () => {
+    const child = createTunnelProcess()
+    const spawn = vi.fn(() => child)
+    const runtime = createManagedSshEndpointRuntime({
+      getSshAvailability: async () => createSshAvailability(),
+      reserveLoopbackPort: async () => 41007,
+      spawnTunnelProcess: spawn,
+      probeConnection: async () => true,
+      waitForCondition: async fn => await fn(),
+      runBootstrap: async () => undefined,
+    })
+    try {
+      await runtime.execute(request())
+      child.exitCode = 255
+      child.emit('exit', 255)
+      const failed = runtime.getSnapshot('managed-1')
+      expect(await runtime.resolveConnection(createAccess())).toBeNull()
+      expect(spawn).toHaveBeenCalledTimes(1)
+      expect(runtime.getSnapshot('managed-1')).toEqual(failed)
+    } finally {
+      await runtime.dispose()
+    }
+  })
+
+  it('reuses a matching healthy tunnel without bootstrapping', async () => {
+    const bootstrap = vi.fn(async () => undefined)
+    const spawn = vi.fn(() => createTunnelProcess())
+    const runtime = createManagedSshEndpointRuntime({
+      getSshAvailability: async () => createSshAvailability(),
+      reserveLoopbackPort: async () => 41002,
+      spawnTunnelProcess: spawn,
+      probeConnection: async () => true,
+      waitForCondition: async fn => await fn(),
+      runBootstrap: bootstrap,
+    })
+    await runtime.execute(request())
+    bootstrap.mockClear()
+    expect(await runtime.execute(request({ operationId: 'second' }))).toEqual({ status: 'ready' })
+    expect(bootstrap).not.toHaveBeenCalled()
+    expect(spawn).toHaveBeenCalledTimes(1)
+    await runtime.dispose()
+  })
+
+  it('stops the old tunnel before forced reinstall and uses matching-version bootstrap', async () => {
+    const first = createTunnelProcess()
+    const bootstrap = vi.fn(async () => undefined)
+    const runtime = createManagedSshEndpointRuntime({
+      appVersion: '0.3.0',
+      getSshAvailability: async () => createSshAvailability(),
+      reserveLoopbackPort: async () => 41003,
       spawnTunnelProcess: vi
         .fn()
-        .mockReturnValueOnce(firstTunnel)
-        .mockReturnValueOnce(secondTunnel),
+        .mockReturnValueOnce(first)
+        .mockReturnValueOnce(createTunnelProcess()),
       probeConnection: async () => true,
       waitForCondition: async fn => await fn(),
+      runBootstrap: bootstrap,
     })
-
-    await runtime.prepare(createAccess())
-    const restarted = await runtime.prepare(createAccess(), {
-      restartTunnel: true,
+    await runtime.execute(request())
+    bootstrap.mockImplementation(async () => {
+      expect(first.kill).toHaveBeenCalledTimes(1)
     })
-
-    expect(firstTunnel.kill).toHaveBeenCalledTimes(1)
-    expect(restarted.connection).toEqual({
-      hostname: '127.0.0.1',
-      port: 41004,
-      token: 'managed-token',
-    })
+    await runtime.execute(request({ operationId: 'second', reinstallRuntime: true }))
+    expect(bootstrap).toHaveBeenLastCalledWith(
+      '/usr/bin/ssh',
+      createAccess(),
+      expect.objectContaining({
+        appVersion: '0.3.0',
+        reinstallRuntime: true,
+        signal: expect.anything(),
+        reportPhase: expect.any(Function),
+      }),
+    )
+    await runtime.dispose()
   })
 
-  it('stops the old tunnel before preparing changed connection parameters', async () => {
-    const firstTunnel = createTunnelProcess()
-    const secondTunnel = createTunnelProcess()
-    const spawnTunnelProcess = vi
-      .fn()
-      .mockReturnValueOnce(firstTunnel)
-      .mockReturnValueOnce(secondTunnel)
+  it('classifies bootstrap failure without opening a tunnel', async () => {
+    const spawn = vi.fn()
     const runtime = createManagedSshEndpointRuntime({
       getSshAvailability: async () => createSshAvailability(),
-      reserveLoopbackPort: vi.fn().mockResolvedValueOnce(41003).mockResolvedValueOnce(41004),
-      spawnTunnelProcess,
-      probeConnection: async () => true,
-      waitForCondition: async fn => await fn(),
+      spawnTunnelProcess: spawn,
+      runBootstrap: async () => {
+        throw new ManagedSshBootstrapError('runtime_corrupt', 'runtime unhealthy')
+      },
     })
-
-    await runtime.prepare(createAccess())
-    const updatedAccess = createAccess()
-    updatedAccess.ssh.port = 2222
-    const restarted = await runtime.prepare(updatedAccess)
-
-    expect(firstTunnel.kill).toHaveBeenCalledTimes(1)
-    expect(spawnTunnelProcess).toHaveBeenNthCalledWith(2, '/usr/bin/ssh', updatedAccess, 41004)
-    expect(restarted.connection?.port).toBe(41004)
+    expect(await runtime.execute(request())).toEqual({
+      status: 'failed',
+      failureKind: 'runtime_corrupt',
+    })
+    expect(runtime.getSnapshot('managed-1')).toMatchObject({
+      status: 'error',
+      lastError: 'runtime unhealthy',
+    })
+    expect(spawn).not.toHaveBeenCalled()
+    await runtime.dispose()
   })
 
-  it('records an error snapshot when the tunnel exits unexpectedly', async () => {
-    const tunnelProcess = createTunnelProcess()
+  it('does not spawn or resurrect state when disposed during a port reservation', async () => {
+    let release!: (port: number) => void
+    let reserved!: () => void
+    const gate = new Promise<number>(resolve => {
+      release = resolve
+    })
+    const started = new Promise<void>(resolve => {
+      reserved = resolve
+    })
+    const spawn = vi.fn()
+    const runtime = createManagedSshEndpointRuntime({
+      getSshAvailability: async () => createSshAvailability(),
+      reserveLoopbackPort: async () => {
+        reserved()
+        return await gate
+      },
+      runBootstrap: async () => undefined,
+      spawnTunnelProcess: spawn,
+    })
+    const execution = runtime.execute(request())
+    await started
+    const disposal = runtime.disposeEndpoint(createAccess())
+    expect(runtime.getSnapshot('managed-1')).toBeNull()
+    release(41001)
+    expect(await execution).toEqual({ status: 'cancelled' })
+    await disposal
+    expect(spawn).not.toHaveBeenCalled()
+    expect(runtime.getSnapshot('managed-1')).toBeNull()
+  })
 
+  it('records tunnel exit and unexpected adapter errors as final failure', async () => {
+    const child = createTunnelProcess()
     const runtime = createManagedSshEndpointRuntime({
       getSshAvailability: async () => createSshAvailability(),
       reserveLoopbackPort: async () => 41005,
-      spawnTunnelProcess: vi.fn(() => tunnelProcess),
+      spawnTunnelProcess: () => child,
       probeConnection: async () => true,
       waitForCondition: async fn => await fn(),
+      runBootstrap: async () => undefined,
     })
-
-    await runtime.prepare(createAccess())
-    tunnelProcess.stderr.emit('data', Buffer.from('broken pipe\n'))
-    tunnelProcess.exitCode = 255
-    tunnelProcess.emit('exit', 255)
-
+    await runtime.execute(request())
+    child.stderr.emit('data', Buffer.from('broken pipe\n'))
+    child.exitCode = 255
+    child.emit('exit', 255)
     expect(runtime.getSnapshot('managed-1')).toMatchObject({
-      endpointId: 'managed-1',
       status: 'error',
-      localPort: null,
-      lastError: 'broken pipe',
       failureKind: 'tunnel_failed',
+      lastError: 'broken pipe',
     })
+    await runtime.dispose()
+    const broken = createManagedSshEndpointRuntime({
+      getSshAvailability: async () => {
+        throw new Error('locator failed')
+      },
+    })
+    expect(await broken.execute(request())).toEqual({ status: 'failed', failureKind: 'unknown' })
+    expect(broken.getSnapshot('managed-1')).toMatchObject({
+      status: 'error',
+      lastError: 'locator failed',
+    })
+    await broken.dispose()
   })
 })

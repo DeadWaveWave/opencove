@@ -1,4 +1,5 @@
 import React from 'react'
+import { LoaderCircle } from 'lucide-react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { WorkerEndpointOverviewDto } from '@shared/contracts/dto'
 import {
@@ -82,6 +83,9 @@ export function RemoteEndpointStatusPanel({
   return (
     <div
       className={panelClassName}
+      aria-busy={Boolean(overview.operation)}
+      data-operation-id={overview.operation?.operationId}
+      data-operation-phase={overview.operation?.phase}
       data-testid={testIdPrefix ? `${testIdPrefix}-panel` : undefined}
     >
       <div className="remote-endpoint-status__header">
@@ -99,7 +103,23 @@ export function RemoteEndpointStatusPanel({
           ) : accessLine ? (
             <div className="remote-endpoint-status__meta">{accessLine}</div>
           ) : null}
-          <p className="remote-endpoint-status__summary">{summary}</p>
+          <p
+            className="remote-endpoint-status__summary"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {overview.operation ? (
+              <span role="progressbar" aria-label={summary}>
+                <LoaderCircle
+                  className="remote-endpoint-status__spinner"
+                  size={14}
+                  aria-hidden="true"
+                />
+              </span>
+            ) : null}
+            {summary}
+          </p>
           {overview.canBrowse && connectedHint ? (
             <div className="remote-endpoint-status__detail">{connectedHint}</div>
           ) : null}
@@ -126,7 +146,7 @@ export function RemoteEndpointStatusPanel({
             <button
               type="button"
               className="cove-window__action cove-window__action--primary"
-              disabled={isBusy}
+              disabled={isBusy || Boolean(overview.operation)}
               data-testid={testIdPrefix ? `${testIdPrefix}-recommended-action` : undefined}
               onClick={() => onRunRecommendedAction(overview)}
             >
@@ -137,7 +157,7 @@ export function RemoteEndpointStatusPanel({
             <button
               type="button"
               className="cove-window__action cove-window__action--ghost"
-              disabled={isBusy}
+              disabled={isBusy || Boolean(overview.operation)}
               data-testid={testIdPrefix ? `${testIdPrefix}-reconnect` : undefined}
               onClick={() => onReconnect(overview)}
             >

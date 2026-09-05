@@ -1,3 +1,4 @@
+import { ManagedSshEndpointOperationOwner } from '../../../src/contexts/topology/application/ManagedSshEndpointOperationOwner'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -129,6 +130,11 @@ describe('WorkerTopologyStore persistence queue', () => {
     const health = createEndpointHealthService({
       topology: store,
       managedRuntime: {} as ManagedSshEndpointRuntime,
+      operations: new ManagedSshEndpointOperationOwner({
+        preparationPort: { execute: async () => ({ status: 'ready' }) },
+        createOperationId: () => 'unused',
+        now: Date.now,
+      }),
     })
     const failedOverview = (await health.listOverviews()).endpoints.find(
       overview => overview.endpoint.endpointId === 'local',

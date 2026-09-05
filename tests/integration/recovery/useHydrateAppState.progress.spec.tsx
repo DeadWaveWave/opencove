@@ -69,6 +69,41 @@ function prepared(nodeId: string): PreparedRuntimeNodeResult {
 }
 
 describe('runtime hydration progress and durable bindings', () => {
+  it.each(['restarted', ''])(
+    'publishes recovery result %j before accepting shared runtime changes',
+    async sessionId => {
+      const persisted = fixture()
+      let workspace = toShellWorkspaceState(persisted, { dropRuntimeSessionIds: true })
+      Object.defineProperty(window, 'opencoveApi', {
+        configurable: true,
+        value: {
+          controlSurface: {
+            invoke: vi.fn(async () => ({
+              workspaceId: persisted.id,
+              nodes: [{ ...prepared('slow'), sessionId, isLiveSessionReattach: false }],
+            })),
+          },
+        },
+      })
+      await prepareWorkspaceRuntimeNodes({
+        workspace: persisted,
+        nodeIds: ['slow'],
+        agentSettings: DEFAULT_AGENT_SETTINGS,
+        onNodePrepared: node => {
+          workspace.nodes[0] = mergeHydratedNode(workspace.nodes[0]!, node)
+        },
+      })
+      workspace = toShellWorkspaceStateForSync(persisted, workspace)
+      expect(workspace.nodes[0]!.data.sessionId).toBe(sessionId)
+      const published = toPersistedState([workspace], workspace.id).workspaces[0]!
+      expect(published.nodes[0]!.sessionId).toBe(sessionId || undefined)
+      workspace = toShellWorkspaceStateForSync(published, workspace)
+      published.nodes[0]!.sessionId = 'switched-by-another-client'
+      workspace = toShellWorkspaceStateForSync(published, workspace)
+      expect(workspace.nodes[0]!.data.sessionId).toBe('switched-by-another-client')
+    },
+  )
+
   it('stops queued recovery and ignores pending results after hydration is cancelled', async () => {
     const workspace = fixture()
     workspace.nodes = Array.from({ length: 6 }, (_, index) => ({
@@ -116,7 +151,7 @@ describe('runtime hydration progress and durable bindings', () => {
     )
     const resolved = mergeHydratedNode(workspace.nodes[0]!, {
       ...workspace.nodes[0]!,
-      data: { ...workspace.nodes[0]!.data, sessionId: '', pendingRuntimeSessionId: undefined },
+      data: { ...workspace.nodes[0]!.data, sessionId: '', runtimeSessionBinding: undefined },
     })
     workspace.nodes[0] = resolved
     expect(

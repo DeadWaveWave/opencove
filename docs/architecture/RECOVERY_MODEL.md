@@ -28,6 +28,7 @@ Runtime observation：
 - watcher 观察到的外部 session 文件变化。
 - CLI 当前 probe 到的 model 或 provider availability。
 - remote endpoint 当前是否可达。
+- Managed SSH operation identity、forward revision 与安装/连接阶段（不持久化）。
 - 当前 Web listener/auth generation 与连接数量。
 
 UI projection：
@@ -60,8 +61,10 @@ Renderer 按节点请求恢复，最多同时发出四个请求，并立即应�
 的操作，避免重复 spawn。界面卸载后停止提交结果和启动排队请求。
 
 占位节点的空 `sessionId` 只表示尚未验证、不能输入。Renderer 用临时
-`pendingRuntimeSessionId` 保留上次 durable binding，持久化和同步不能把等待验证解释为解绑。
-只有 Worker preparation 结果可以清除该临时字段并提交新的 binding；传输失败保留原绑定。
+`runtimeSessionBinding` 的 `preparing` 阶段保留上次 durable binding，持久化和同步不能把
+等待验证解释为解绑。Worker preparation 结果进入 `publishing` 阶段：绑定及其 runtime
+projection 在对应共享快照确认前保持一致，旧快照不能覆盖它。同步刷新串行执行；本地写入
+成功也触发一次确认读取，确认后才允许后续共享 runtime 切换。传输失败仍保留 preparing 绑定。
 迟到结果不能覆盖用户已经切换到的新 runtime。
 
 Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/recovering UI，并在 session attach 后渲染 worker-owned output。
@@ -98,6 +101,8 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
 | `targetMountId` | durable fact | workspace/space model | space/mount binding mutation | SQLite + topology |
 | Agent/Terminal Worker binding | durable fact | workspace node model | launch/prepare result | SQLite `nodes.worker_binding_json` + topology |
 | space archive records | durable fact | workspace context | archive usecase | SQLite |
+| Managed SSH operation | runtime state | topology application operation owner | accepted prepare/repair + fenced phase/settlement | none; new prepare probes remote truth |
+| Endpoint overview/progress | UI projection | renderer endpoint overview projection owner | accepted overview + serialized queries | query Worker again |
 | endpoint/mount registry | durable fact | topology store | endpoint/mount commands | topology files |
 | Home Worker Web access intent | durable fact | serialized Home Worker config store | live Worker owner; Main only while Worker absent | `home-worker.json` |
 | Web listener/auth generation | runtime state | Worker Web access runtime | serialized apply/revoke | durable Web access intent |
@@ -142,6 +147,17 @@ Close/delete:
 - Forget/archive semantics must be explicit.
 - Space archive must calculate a target subtree first, then remove only those Spaces and nodes from durable state.
 - Worktree / branch cleanup during archive is an explicit per-worktree user choice and must not be inferred from visual containment.
+
+## Managed SSH Recovery
+
+关闭 Settings/Picker 或丢失单次 HTTP 响应不取消 Worker-owned preparation。更新、删除和 shutdown
+先同步 fence operation generation，再 abort 本地 SSH child；旧 reporter、probe、exit 或 completion
+不能发布进度、恢复隧道或复活已删除记录。更新/删除期间的准入保护一直覆盖到 topology mutation
+完成，不只覆盖 child 退出前的一段时间。
+
+Local abort 不承诺终止远端 shell/installer。Worker 重启后 operation/revision 不恢复；下一次显式
+prepare 从 durable endpoint/access 重新 probe，以幂等 bootstrap 收敛已经成功或仍在执行的远端
+安装。Renderer 只能重试观察，不能用 transport timeout 推断安装失败或自动重跑安装。
 
 ## Terminal Recovery
 

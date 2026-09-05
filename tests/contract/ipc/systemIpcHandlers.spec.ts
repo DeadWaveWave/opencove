@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import path from 'node:path'
+import { tmpdir } from 'node:os'
 import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
 import { invokeHandledIpc } from './ipcTestUtils'
+
+const downloadsDirectory = path.join(tmpdir(), 'opencove-downloads')
 
 function createIpcHarness() {
   const handlers = new Map<string, (...args: unknown[]) => unknown>()
@@ -112,7 +115,7 @@ describe('system IPC handlers', () => {
     const mkdir = vi.fn()
     const writeFile = vi.fn().mockResolvedValueOnce(undefined)
     const { handlers, ipcMain } = createIpcHarness()
-    const selectedPath = path.join('/tmp/opencove-downloads', 'chosen.md')
+    const selectedPath = path.join(downloadsDirectory, 'chosen.md')
     const showSaveDialog = vi.fn(async () => ({ canceled: false, filePath: selectedPath }))
 
     vi.doMock('node:child_process', () => ({
@@ -121,7 +124,7 @@ describe('system IPC handlers', () => {
     }))
     vi.doMock('node:fs/promises', () => ({ default: { mkdir, writeFile }, mkdir, writeFile }))
     vi.doMock('electron', () => ({
-      app: { getPath: vi.fn(() => '/tmp/opencove-downloads') },
+      app: { getPath: vi.fn(() => downloadsDirectory) },
       BrowserWindow: { fromWebContents: vi.fn(() => null), getAllWindows: vi.fn(() => []) },
       dialog: { showSaveDialog },
       Notification: { isSupported: vi.fn(() => false) },
@@ -146,11 +149,11 @@ describe('system IPC handlers', () => {
 
     expect(showSaveDialog).toHaveBeenCalledWith(
       expect.objectContaining({
-        defaultPath: path.join('/tmp/opencove-downloads', 'note.md'),
+        defaultPath: path.join(downloadsDirectory, 'note.md'),
         properties: ['createDirectory', 'showOverwriteConfirmation'],
       }),
     )
-    expect(mkdir).toHaveBeenCalledWith('/tmp/opencove-downloads', { recursive: true })
+    expect(mkdir).toHaveBeenCalledWith(downloadsDirectory, { recursive: true })
     expect(writeFile).toHaveBeenCalledWith(selectedPath, 'hello', { encoding: 'utf8' })
   })
 
@@ -166,7 +169,7 @@ describe('system IPC handlers', () => {
     }))
     vi.doMock('node:fs/promises', () => ({ default: { mkdir, writeFile }, mkdir, writeFile }))
     vi.doMock('electron', () => ({
-      app: { getPath: vi.fn(() => '/tmp/opencove-downloads') },
+      app: { getPath: vi.fn(() => downloadsDirectory) },
       BrowserWindow: { fromWebContents: vi.fn(() => null), getAllWindows: vi.fn(() => []) },
       dialog: { showSaveDialog },
       Notification: { isSupported: vi.fn(() => false) },
@@ -207,7 +210,7 @@ describe('system IPC handlers', () => {
       writeFile: vi.fn(),
     }))
     vi.doMock('electron', () => ({
-      app: { getPath: vi.fn(() => '/tmp/opencove-downloads') },
+      app: { getPath: vi.fn(() => downloadsDirectory) },
       BrowserWindow: { fromWebContents: vi.fn(() => null), getAllWindows: vi.fn(() => []) },
       dialog: { showSaveDialog: vi.fn() },
       Notification: { isSupported: vi.fn(() => false) },

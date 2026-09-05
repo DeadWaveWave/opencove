@@ -70,7 +70,9 @@ export function toPersistedState(
       nodes: workspace.nodes.map(node => {
         const sessionId =
           normalizeOptionalString(node.data.sessionId) ??
-          normalizeOptionalString(node.data.pendingRuntimeSessionId)
+          (node.data.runtimeSessionBinding?.phase === 'preparing'
+            ? normalizeOptionalString(node.data.runtimeSessionBinding.sessionId)
+            : null)
 
         return {
           id: node.id,

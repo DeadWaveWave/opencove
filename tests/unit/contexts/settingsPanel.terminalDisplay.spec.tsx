@@ -1,5 +1,6 @@
+import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   AGENT_PROVIDERS,
@@ -397,3 +398,7 @@ describe('SettingsPanel terminal display controls', () => {
     expect(screen.getByText(/cannot safely match the current target/i)).toBeVisible()
   })
 })
+
+function render(ui: React.ReactNode) {
+  return renderUi(ui, { wrapper: EndpointOverviewProvider })
+}

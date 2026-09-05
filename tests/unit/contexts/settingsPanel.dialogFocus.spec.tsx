@@ -1,5 +1,6 @@
+import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React, { StrictMode } from 'react'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render as renderUi, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CoveSelect } from '../../../src/app/renderer/components/CoveSelect'
 import { Dialog } from '../../../src/app/renderer/components/ui/Dialog'
@@ -192,3 +193,7 @@ describe('Dialog modal focus management', () => {
     expect(nestedWindowControl).toHaveFocus()
   })
 })
+
+function render(ui: React.ReactNode) {
+  return renderUi(ui, { wrapper: EndpointOverviewProvider })
+}

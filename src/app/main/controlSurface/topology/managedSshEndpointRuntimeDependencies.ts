@@ -1,4 +1,5 @@
 import net from 'node:net'
+import { setTimeout as delay } from 'node:timers/promises'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { buildAdditionalPathSegments } from '../../../../platform/os/CliEnvironment'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
@@ -15,7 +16,8 @@ type ManagedSshRuntimeConnection = { hostname: string; port: number; token: stri
 export interface ManagedSshTunnelProcess {
   exitCode: number | null
   stderr?: Pick<NodeJS.ReadableStream, 'on'> | null
-  once: (event: 'exit', listener: (code: number | null) => void) => this
+  once(event: 'exit', listener: (code: number | null) => void): this
+  once(event: 'error', listener: (error: Error) => void): this
   kill: (signal?: NodeJS.Signals | number) => boolean
 }
 
@@ -33,6 +35,7 @@ export interface ManagedSshEndpointRuntimeDependencies {
     fn: () => Promise<boolean>,
     timeoutMs: number,
     intervalMs?: number,
+    signal?: AbortSignal,
   ) => Promise<boolean>
 }
 
@@ -55,16 +58,24 @@ async function waitForCondition(
   fn: () => Promise<boolean>,
   timeoutMs: number,
   intervalMs = 150,
+  signal?: AbortSignal,
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
-  if (await fn()) {
-    return true
+  while (true) {
+    signal?.throwIfAborted()
+    // A readiness probe must finish before another probe can run.
+    // eslint-disable-next-line no-await-in-loop
+    if (await fn()) {
+      return true
+    }
+    signal?.throwIfAborted()
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) {
+      return false
+    }
+    // eslint-disable-next-line no-await-in-loop -- abortable backoff belongs to this sequential probe.
+    await delay(Math.min(intervalMs, remaining), undefined, { signal })
   }
-  if (Date.now() >= deadline) {
-    return await fn()
-  }
-  await new Promise(resolve => setTimeout(resolve, intervalMs))
-  return await waitForCondition(fn, Math.max(0, deadline - Date.now()), intervalMs)
 }
 
 function spawnTunnelProcess(

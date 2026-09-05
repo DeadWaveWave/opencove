@@ -46,7 +46,10 @@ export function toShellWorkspaceState(
           ...node,
           data: {
             ...node.data,
-            pendingRuntimeSessionId: node.data.sessionId || null,
+            runtimeSessionBinding: {
+              phase: 'preparing' as const,
+              sessionId: node.data.sessionId || null,
+            },
             sessionId: '',
           },
         }
@@ -150,7 +153,7 @@ export function mergeHydratedNode(
       kind: hydratedNode.data.kind,
       title: hydratedNode.data.kind === 'agent' ? hydratedNode.data.title : currentNode.data.title,
       sessionId: hydratedNode.data.sessionId,
-      pendingRuntimeSessionId: hydratedNode.data.pendingRuntimeSessionId,
+      runtimeSessionBinding: hydratedNode.data.runtimeSessionBinding,
       isLiveSessionReattach: hydratedNode.data.isLiveSessionReattach === true,
       profileId: hydratedNode.data.profileId ?? currentNode.data.profileId ?? null,
       runtimeKind: hydratedNode.data.runtimeKind ?? currentNode.data.runtimeKind,
@@ -218,6 +221,10 @@ function toHydratedRuntimeNode(
       kind: preparedNode.kind,
       title: preparedNode.title,
       sessionId: preparedNode.sessionId,
+      runtimeSessionBinding:
+        preparedNode.sessionId === currentNode.data.sessionId
+          ? undefined
+          : { phase: 'publishing', sessionId: preparedNode.sessionId },
       isLiveSessionReattach: preparedNode.isLiveSessionReattach === true,
       profileId: preparedNode.profileId ?? currentNode.data.profileId ?? null,
       runtimeKind: preparedNode.runtimeKind ?? currentNode.data.runtimeKind,
@@ -399,7 +406,10 @@ export async function prepareWorkspaceRuntimeNodes({
             data: {
               ...node.data,
               sessionId: '',
-              pendingRuntimeSessionId: node.data.sessionId || null,
+              runtimeSessionBinding: {
+                phase: 'preparing',
+                sessionId: node.data.sessionId || null,
+              },
               lastError: toErrorMessage(error),
             },
           }

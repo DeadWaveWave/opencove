@@ -1,4 +1,6 @@
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
+import { ManagedSshEndpointOperationOwner } from '../../../contexts/topology/application/ManagedSshEndpointOperationOwner'
+import { createManagedSshOperationDiagnosticSink } from './topology/managedSshOperationDiagnostics'
 import type { ServerResponse } from 'node:http'
 import { createControlSurface } from './controlSurface'
 import { WebSessionManager } from './http/webSessionManager'
@@ -46,14 +48,57 @@ export function createControlSurfaceHttpRuntime(
   }
 
   const managedSshRuntime = createManagedSshEndpointRuntime({ appVersion })
-  const topology = createWorkerTopologyStore({
-    userDataPath: options.userDataPath,
-    resolveManagedSshEndpointConnection: managedSshRuntime.resolveConnection,
-    disposeManagedSshEndpointRuntime: managedSshRuntime.disposeEndpoint,
+  const managedSshOperations = new ManagedSshEndpointOperationOwner({
+    preparationPort: managedSshRuntime,
+    createOperationId: randomUUID,
+    now: Date.now,
+    diagnosticSink: createManagedSshOperationDiagnosticSink(options.userDataPath),
   })
+  const topologyStore = createWorkerTopologyStore({
+    userDataPath: options.userDataPath,
+    disposeManagedSshEndpointRuntime: async access => {
+      const operationDrain = managedSshOperations.disposeEndpoint(access.endpointId)
+      const resourceDrain = managedSshRuntime.disposeEndpoint(access)
+      await Promise.all([operationDrain, resourceDrain])
+    },
+  })
+  const topology: typeof topologyStore = {
+    ...topologyStore,
+    updateManagedSshEndpoint: input =>
+      managedSshOperations.withEndpointMutation(
+        input.endpointId,
+        async () => await topologyStore.updateManagedSshEndpoint(input),
+      ),
+    removeEndpoint: input =>
+      managedSshOperations.withEndpointMutation(
+        input.endpointId,
+        async () => await topologyStore.removeEndpoint(input),
+      ),
+    resolveRemoteEndpointConnection: async endpointId => {
+      const assertAdmission = managedSshOperations.captureAdmission(endpointId)
+      const access = await topologyStore.resolveEndpointRuntimeAccess(endpointId)
+      assertAdmission()
+      if (!access) {
+        return null
+      }
+      if (access.kind === 'manual') {
+        return access.connection
+      }
+      if (managedSshOperations.hasActiveOperation(endpointId)) {
+        return null
+      }
+      return await managedSshRuntime.resolveConnection({
+        endpointId,
+        displayName: access.endpoint.displayName,
+        token: access.token,
+        ssh: access.managedSsh,
+      })
+    },
+  }
   const endpointHealth = createEndpointHealthService({
     topology,
     managedRuntime: managedSshRuntime,
+    operations: managedSshOperations,
   })
   const agentHookChannels =
     options.agentHookChannels ?? (options.claudeHookChannel ? [options.claudeHookChannel] : [])
@@ -138,6 +183,9 @@ export function createControlSurfaceHttpRuntime(
       return
     }
     closed = true
+    // Accepted long operations outlive HTTP handlers, but not runtime shutdown authority.
+    void managedSshOperations.dispose().catch(() => undefined)
+    void managedSshRuntime.dispose().catch(() => undefined)
     terminalRuntimeAvailability.beginShutdown()
     ptyStreamService.freezeIngress()
     for (const client of syncClients) {
@@ -245,6 +293,7 @@ export function createControlSurfaceHttpRuntime(
         }
 
         try {
+          await managedSshOperations.dispose()
           await managedSshRuntime.dispose()
         } catch {
           // ignore

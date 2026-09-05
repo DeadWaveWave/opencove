@@ -12,6 +12,7 @@ import {
 import { useAppStore } from '../store/useAppStore'
 import type { SyncEventPayload } from '@shared/contracts/dto'
 import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
+import { hasRuntimeBindingPublication } from './workerSync/runtimeSessionBinding'
 
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
 
@@ -62,8 +63,9 @@ export function shouldApplyWorkerSyncRefresh({
   )
 
   return (
+    hasRuntimeBindingPublication(currentState.workspaces) ||
     buildPersistedStateSignature(currentPersistedState) !==
-    buildPersistedStateSignature(persistedState)
+      buildPersistedStateSignature(persistedState)
   )
 }
 
@@ -84,8 +86,9 @@ export function resolveWorkspacesForWorkerSync({
       return toShellWorkspaceStateForSync(workspace, undefined)
     }
 
-    return buildCurrentWorkspacePersistedSignature(existingWorkspace) ===
-      buildPersistedWorkspaceSignature(workspace)
+    return !hasRuntimeBindingPublication([existingWorkspace]) &&
+      buildCurrentWorkspacePersistedSignature(existingWorkspace) ===
+        buildPersistedWorkspaceSignature(workspace)
       ? existingWorkspace
       : toShellWorkspaceStateForSync(workspace, existingWorkspace)
   })
@@ -130,6 +133,17 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
 
       trackedRevisions.add(normalizedRevision)
       localSyncWriteRevisionQueueRef.current.push(normalizedRevision)
+
+      // A local recovery publication needs a shared-state acknowledgement even though its
+      // ordinary sync.writeState echo is suppressed below. Refreshes remain serialized.
+      if (hasRuntimeBindingPublication(useAppStore.getState().workspaces)) {
+        needsFullRefreshRef.current = true
+        pendingFullRefreshRevisionRef.current = Math.max(
+          pendingFullRefreshRevisionRef.current ?? 0,
+          normalizedRevision,
+        )
+        scheduleRefresh(0)
+      }
 
       if (localSyncWriteRevisionQueueRef.current.length > 60) {
         const expired = localSyncWriteRevisionQueueRef.current.shift()

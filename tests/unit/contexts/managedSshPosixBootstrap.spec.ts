@@ -9,6 +9,7 @@ import {
   classifyManagedSshBootstrapFailure,
 } from '../../../src/app/main/controlSurface/topology/managedSshRuntimeSupport'
 import { runCommand } from '../../../src/platform/process/runCommand'
+import { createManagedSshBootstrapProgressParser } from '../../../src/app/main/controlSurface/topology/managedSshBootstrapProgress'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -99,16 +100,32 @@ printf repaired > "$HOME/repair-ran"
         reinstallRuntime: true,
         devRepoRoot: null,
       })
+      const phases: string[] = []
+      let settled = false
+      const parser = createManagedSshBootstrapProgressParser(phase => {
+        expect(settled).toBe(false)
+        phases.push(phase)
+      })
       const result = await runCommand('sh', [], process.cwd(), {
         stdin: script,
         timeoutMs: 10_000,
+        onStdout: parser.push,
         env: {
           ...process.env,
           HOME: home,
           OPENCOVE_DISABLE_MANAGED_SSH_DEV_BOOTSTRAP: '1',
         },
       })
-
+      parser.finish()
+      settled = true
+      expect(phases).toEqual([
+        'checking_remote_runtime',
+        'checking_installation',
+        'downloading_installer',
+        'installing_runtime',
+        'starting_runtime',
+        'waiting_for_runtime',
+      ])
       expect(result.exitCode, result.stderr).toBe(0)
       expect(installerFetchCount).toBe(1)
       expect(await readFile(join(home, 'repair-ran'), 'utf8')).toBe('repaired')
