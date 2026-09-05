@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Agent: show completion cards and system notifications for Agents launched inside ordinary terminals, using the same notification flow as dedicated Agent windows. (#388)
 - Agent: preserve an existing local Codex app-server session by skipping OpenCove's `--config` hook override when its control socket is reachable, avoiding a conflicting embedded app-server. (#384)
 - Agent: avoid a misleading Fallback badge before the first Hook observation on menu launch, while retaining warnings for explicit failures and expired working signals. (#385)
 - Agent: prevent Codex and Claude hooks from launching desktop instances, timing out repeatedly, and disrupting input; keep status relays headless with bounded execution. (#385)
