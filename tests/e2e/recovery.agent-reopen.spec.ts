@@ -418,18 +418,17 @@ test.describe('Recovery - Agent reopen', () => {
         await expect(window.locator('.terminal-node')).toHaveCount(2, { timeout: 30_000 })
 
         await expect
-          .poll(async () => {
-            const bindings = await readBindings(window)
-            return bindings.every(
-              binding =>
-                typeof binding.linkedAgentNodeId === 'string' &&
-                binding.linkedAgentNodeId.length > 0 &&
-                binding.resumeSessionIdVerified === true &&
-                typeof binding.resumeSessionId === 'string' &&
-                binding.resumeSessionId.length > 0,
-            )
-          })
-          .toBe(true)
+          .poll(() => readBindings(window))
+          .toEqual(
+            ['task-one', 'task-two'].map(taskId =>
+              expect.objectContaining({
+                taskId,
+                linkedAgentNodeId: expect.stringMatching(/\S/),
+                resumeSessionId: expect.stringMatching(/\S/),
+                resumeSessionIdVerified: true,
+              }),
+            ),
+          )
 
         initialBindings = await readBindings(window)
       } finally {
