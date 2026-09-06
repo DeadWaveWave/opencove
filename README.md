@@ -21,7 +21,7 @@ See parallel work at a glance, keep context visible, and resume exactly where yo
 
 ## 📣 Important Announcement
 
-**OpenCove 0.3.1 improves Agent startup and completion notifications, terminal recovery and display stability, and managed remote connection feedback.** Agents launched inside ordinary terminals now use the same completion notifications as dedicated Agent windows.
+**OpenCove 0.3.2 adds native Pi activity tracking, improves Windows Agent startup and recovery, and keeps managed SSH runtimes aligned with Desktop updates.**
 
 ## 📖 What is OpenCove?
 
