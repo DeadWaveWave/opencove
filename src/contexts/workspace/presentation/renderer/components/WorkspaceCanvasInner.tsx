@@ -156,24 +156,7 @@ export function WorkspaceCanvasInner({
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     terminalDisplayMetrics,
   })
-  const {
-    taskTagOptions,
-    taskCreator,
-    setTaskCreator,
-    openTaskCreator,
-    closeTaskCreator,
-    generateTaskTitle,
-    createTask,
-    taskEditor,
-    setTaskEditor,
-    closeTaskEditor,
-    generateTaskEditorTitle,
-    saveTaskEdits,
-    nodeDeleteConfirmation,
-    setNodeDeleteConfirmation,
-    confirmNodeDelete,
-    requestNodeClose,
-  } = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
+  const taskUi = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
     agentTaskTagOptions: agentSettings.taskTagOptions,
     contextMenu: canvasState.contextMenu,
     setContextMenu: canvasState.setContextMenu,
@@ -310,7 +293,7 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     actionRefs,
     clearNodeSelection,
-    closeNode: requestNodeClose,
+    closeNode: taskUi.requestNodeClose,
     resizeNode: nodeStore.resizeNode,
     noteMutations: nodeStore,
     updateWebsiteUrl: nodeStore.updateWebsiteUrl,
@@ -383,6 +366,7 @@ export function WorkspaceCanvasInner({
   })
   return (
     <TerminalDisplayAlignedWorkspaceCanvasView
+      workspaceId={workspaceId}
       terminalFontSize={agentSettings.terminalFontSize}
       terminalFontFamily={agentSettings.terminalFontFamily}
       terminalDisplayCalibration={terminalDisplayCalibration}
@@ -446,7 +430,7 @@ export function WorkspaceCanvasInner({
       arrangeAll={arrangeAll}
       arrangeCanvas={arrangeCanvas}
       arrangeInSpace={arrangeInSpace}
-      openTaskCreator={openTaskCreator}
+      openTaskCreator={taskUi.openTaskCreator}
       openAgentLauncher={agentSupport.openAgentLauncher}
       openAgentLauncherForProvider={agentSupport.openAgentLauncherForProvider}
       runQuickCommand={runQuickCommand}
@@ -466,22 +450,22 @@ export function WorkspaceCanvasInner({
       setSelectedNodeLabelColorOverride={override =>
         nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIds, override)
       }
-      taskCreator={taskCreator}
+      taskCreator={taskUi.taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}
       taskTitleModelLabel={taskTitleModelLabel}
-      taskTagOptions={taskTagOptions}
-      setTaskCreator={setTaskCreator}
-      closeTaskCreator={closeTaskCreator}
-      generateTaskTitle={generateTaskTitle}
-      createTask={createTask}
-      taskEditor={taskEditor}
-      setTaskEditor={setTaskEditor}
-      closeTaskEditor={closeTaskEditor}
-      generateTaskEditorTitle={generateTaskEditorTitle}
-      saveTaskEdits={saveTaskEdits}
-      nodeDeleteConfirmation={nodeDeleteConfirmation}
-      setNodeDeleteConfirmation={setNodeDeleteConfirmation}
-      confirmNodeDelete={confirmNodeDelete}
+      taskTagOptions={taskUi.taskTagOptions}
+      setTaskCreator={taskUi.setTaskCreator}
+      closeTaskCreator={taskUi.closeTaskCreator}
+      generateTaskTitle={taskUi.generateTaskTitle}
+      createTask={taskUi.createTask}
+      taskEditor={taskUi.taskEditor}
+      setTaskEditor={taskUi.setTaskEditor}
+      closeTaskEditor={taskUi.closeTaskEditor}
+      generateTaskEditorTitle={taskUi.generateTaskEditorTitle}
+      saveTaskEdits={taskUi.saveTaskEdits}
+      nodeDeleteConfirmation={taskUi.nodeDeleteConfirmation}
+      setNodeDeleteConfirmation={taskUi.setNodeDeleteConfirmation}
+      confirmNodeDelete={taskUi.confirmNodeDelete}
       spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
       cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}
       continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}

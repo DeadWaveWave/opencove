@@ -51,8 +51,26 @@ it, while programmatic creation autofocus does not cancel the effect.
 
 Pending notifications expire within 720ms, including nodes that never receive visible geometry.
 Hidden/reduced-motion views clear the timeline. There is no history or durable appearance metadata.
-Both background and foreground use one scheduler; the foreground stays below selection, controls and
-transient UI and cannot receive pointer events.
+Both background and foreground use one scheduler; the foreground stays below controls and transient
+UI and cannot receive pointer events. Assembly veils clear before native selection feedback begins.
+
+## Node close burst
+
+Successful local close commands publish removed node IDs after the synchronous state commit.
+The existing close owners retain all authority over confirmation, task relations, native browser/image
+cleanup, PTY termination and persistence; none of those operations wait for animation. Missing-node
+closes, canceled deletion and hydration do not publish this notification.
+
+The Pixel layer hands off the last visible world rectangle across that commit for at most 160ms,
+retaining at most 256 geometry records. It then draws a 420ms radial burst: a fast initial snap,
+short pixel ring and drifting square fragments that shrink and fade. The burst uses its own
+violet/blue/mint gradient, tracks the current viewport, and never captures document or terminal text.
+At most eight bursts run concurrently, with bounded fragments and no deferred playback queue.
+
+The original node is already removed while fragments remain. Ordinary pointer/keyboard interaction
+does not cancel this nonblocking burst; it still immediately clears assembly veils on surviving nodes.
+Hidden/reduced-motion views clear both effects. Changing projects remounts only the background
+decoration, leaving the existing node, terminal and viewport lifecycle owners intact.
 
 ## Interaction boundaries
 
@@ -68,6 +86,8 @@ Space binding, asynchronous busy state and session recovery keep their existing 
 The visible field must change between frames without requiring PTY output. Reduced-motion frames
 remain deterministic. E2E evidence includes real node creation during the 720ms effect, immediate
 input and natural completion, plus reload without replaying old-node assembly.
+Close E2E evidence checks that the original node is absent while pixels are painted, surviving nodes
+remain usable, cancellation does not burst, and reduced motion removes nodes without decoration.
 
 The theme must preserve theme normalization and reload behavior, existing light/dark appearance,
 clear keyboard focus/error states, and Control Center usability. Pixel canvas checks cover transparent

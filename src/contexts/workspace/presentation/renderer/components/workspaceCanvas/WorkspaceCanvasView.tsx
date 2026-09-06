@@ -35,6 +35,7 @@ const WHEEL_BLOCK_SELECTOR =
   '.cove-window, .cove-window-backdrop, .workspace-context-menu, .workspace-space-explorer, .workspace-space-quick-preview'
 
 export function WorkspaceCanvasView({
+  workspaceId,
   canvasRef,
   resolvedCanvasInputMode,
   isCanvasWheelGestureCaptureActive,
@@ -324,7 +325,11 @@ export function WorkspaceCanvasView({
         maxZoom={MAX_CANVAS_ZOOM}
         proOptions={{ hideAttribution: true }}
       >
-        <WorkspaceCanvasBackground theme={agentSettings.uiTheme} nodes={filteredNodes} />
+        <WorkspaceCanvasBackground
+          key={workspaceId}
+          theme={agentSettings.uiTheme}
+          nodes={filteredNodes}
+        />
         <WorkspaceSpaceRegionsOverlay
           workspacePath={workspacePath}
           spaceVisuals={spaceVisuals}

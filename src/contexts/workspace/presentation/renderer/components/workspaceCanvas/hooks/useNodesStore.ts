@@ -18,6 +18,7 @@ import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
 import { useCreatedNodePublisher } from './useCreatedNodePublisher'
+import { publishWorkspaceNodesClosed } from '../nodeClosureEvents'
 import { useWorkspaceCanvasNoteNodeMutations } from './useNodesStore.noteMutations'
 import { useWorkspaceCanvasRoleNodeMutations } from './useNodesStore.roleMutations'
 import { useWorkspaceCanvasWebsiteNodeMutations } from './useNodesStore.websiteMutations'
@@ -175,15 +176,24 @@ export function useWorkspaceCanvasNodesStore({
         useWebsiteWindowStore.getState().clearNode(nodeId)
       }
 
+      let closedNodeIds: string[] = []
       setNodes(prevNodes => {
         const now = new Date().toISOString()
-        return removeNodeWithRelations({
+        const nextNodes = removeNodeWithRelations({
           prevNodes,
           nodeId,
           target,
           now,
         })
+        if (
+          prevNodes.some(node => node.id === nodeId) &&
+          !nextNodes.some(node => node.id === nodeId)
+        ) {
+          closedNodeIds = [nodeId]
+        }
+        return nextNodes
       })
+      publishWorkspaceNodesClosed(closedNodeIds)
 
       onRequestPersistFlush?.()
     },

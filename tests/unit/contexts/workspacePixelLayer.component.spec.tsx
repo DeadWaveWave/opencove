@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import { WorkspacePixelLayer } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspacePixelLayer'
 import { publishWorkspaceNodeCreated } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCreationEvents'
+import { publishWorkspaceNodesClosed } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeClosureEvents'
 import type { TerminalDataEvent } from '../../../src/shared/contracts/dto'
 
 const mocks = vi.hoisted(() => ({
@@ -239,5 +240,69 @@ describe('workspace pixel layer lifecycle', () => {
     fireEvent.pointerDown(view.getByTestId('pane'))
     expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
     view.unmount()
+  })
+
+  it('scatters a removed node from cached geometry while preserving survivor input and the single scheduler', () => {
+    const node = pixelNode()
+    const survivor = { ...pixelNode(), id: 'survivor' }
+    const renderScene = (nodes: (typeof node)[]) => (
+      <div>
+        <WorkspacePixelLayer nodes={nodes} />
+        <input data-testid="survivor-input" />
+      </div>
+    )
+    const view = render(renderScene([node, survivor]))
+    const foreground = view.getByTestId('workspace-pixel-assembly')
+    tick(0)
+    now = 100
+    // Simulate the synchronous owner/React commit happening before its close notification.
+    view.rerender(renderScene([survivor]))
+    act(() => publishWorkspaceNodesClosed([node.id]))
+    tick(140)
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'bursting')
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst-node-ids', node.id)
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
+    expect(frames.size).toBe(1)
+    fireEvent.pointerDown(view.getByTestId('survivor-input'))
+    fireEvent.change(view.getByTestId('survivor-input'), { target: { value: 'still usable' } })
+    expect(view.getByTestId('survivor-input')).toHaveValue('still usable')
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'bursting')
+    tick(540)
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst-node-ids', '')
+    expect(frames.size).toBe(1)
+    expect(mocks.store.setState).not.toHaveBeenCalled()
+    view.unmount()
+    act(() => publishWorkspaceNodesClosed([survivor.id]))
+    expect(frames.size).toBe(0)
+  })
+
+  it('does not infer a close from hydration and discards bursts when hidden or reduced', () => {
+    const node = pixelNode()
+    const view = render(<WorkspacePixelLayer nodes={[node]} />)
+    const foreground = view.getByTestId('workspace-pixel-assembly')
+    tick(0)
+    view.rerender(<WorkspacePixelLayer nodes={[]} />)
+    tick(40)
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
+    view.rerender(<WorkspacePixelLayer nodes={[node]} />)
+    act(() => publishWorkspaceNodesClosed([node.id]))
+    tick(80)
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'bursting')
+    visible = false
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
+    expect(frames.size).toBe(0)
+    act(() => publishWorkspaceNodesClosed([node.id]))
+    visible = true
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    tick(120)
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
+    reduced = true
+    act(() => motionChange())
+    act(() => publishWorkspaceNodesClosed([node.id]))
+    tick(160)
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
+    expect(frames.size).toBe(0)
   })
 })

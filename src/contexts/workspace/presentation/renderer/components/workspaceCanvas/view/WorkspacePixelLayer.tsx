@@ -3,12 +3,16 @@ import { useStoreApi, type Node } from '@xyflow/react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { TerminalNodeData } from '../../../types'
 import { subscribeWorkspaceNodeCreated } from '../nodeCreationEvents'
+import { subscribeWorkspaceNodesClosed } from '../nodeClosureEvents'
 import { createPixelActivity, projectPixelNodes, readPixelViewport } from './pixelLayer/model'
 import { projectPixelNodeFrames } from './pixelLayer/geometry'
 import { drawPixelLayer, readPixelTheme } from './pixelLayer/renderer'
 import { createPixelFrameScheduler } from './pixelLayer/scheduler'
 import { createPixelAssembly } from './pixelLayer/assembly'
 import { drawPixelAssemblies, readPixelAssemblyTheme } from './pixelLayer/assemblyRenderer'
+import { createPixelBurst } from './pixelLayer/burst'
+import { drawPixelBursts } from './pixelLayer/burstRenderer'
+import { createPixelClosureSnapshots } from './pixelLayer/closureSnapshots'
 
 function WorkspacePixelLayerComponent({
   nodes,
@@ -48,12 +52,23 @@ function WorkspacePixelLayerComponent({
     let frames = projectPixelNodeFrames(nodesRef.current, state.nodeLookup, viewport)
     const activity = createPixelActivity()
     const assembly = createPixelAssembly()
+    const burst = createPixelBurst()
+    const closureSnapshots = createPixelClosureSnapshots()
     const isVisible = () =>
       !disposed &&
       intersecting &&
       document.visibilityState !== 'hidden' &&
       viewport.width > 0 &&
       viewport.height > 0
+
+    const captureClosureGeometry = () => {
+      closureSnapshots.capture(
+        frames,
+        viewport,
+        performance.now(),
+        new Set(nodesRef.current.map(node => node.id)),
+      )
+    }
 
     const drawAssembly = (now: number) => {
       const visibleFrames = reducedMotion ? [] : assembly.sample(frames, now)
@@ -64,8 +79,17 @@ function WorkspacePixelLayerComponent({
         frames: visibleFrames,
         theme: assemblyTheme,
       })
+      const burstFrames = reducedMotion ? [] : burst.sample(viewport, now)
+      drawPixelBursts({
+        context: assemblyContext,
+        viewport,
+        frames: burstFrames,
+        theme: assemblyTheme,
+      })
       assemblyCanvas.dataset.covePixelAssembly = visibleFrames.length ? 'assembling' : 'idle'
       assemblyCanvas.dataset.covePixelNodeIds = visibleFrames.map(frame => frame.id).join(',')
+      assemblyCanvas.dataset.covePixelBurst = burstFrames.length ? 'bursting' : 'idle'
+      assemblyCanvas.dataset.covePixelBurstNodeIds = burstFrames.map(frame => frame.id).join(',')
     }
     const scheduler = createPixelFrameScheduler({
       requestFrame: callback => window.requestAnimationFrame(callback),
@@ -94,8 +118,13 @@ function WorkspacePixelLayerComponent({
       if (!visible && previousVisibility !== false) {
         activity.clear()
         assembly.clear()
+        burst.clear()
+        closureSnapshots.clear()
         canvas.dataset.covePixelActivity = 'idle'
         drawAssembly(performance.now())
+      }
+      if (visible && previousVisibility !== true && !reducedMotion) {
+        captureClosureGeometry()
       }
       previousVisibility = visible
       scheduler.setVisible(visible)
@@ -107,6 +136,9 @@ function WorkspacePixelLayerComponent({
       frames = projectPixelNodeFrames(nodesRef.current, state.nodeLookup, viewport)
       activity.prune(projected, performance.now())
       syncVisibility()
+      if (isVisible() && !reducedMotion) {
+        captureClosureGeometry()
+      }
       scheduler.invalidate()
     }
     refreshRef.current = refresh
@@ -115,8 +147,13 @@ function WorkspacePixelLayerComponent({
       canvas.dataset.covePixelMotion = reducedMotion ? 'static' : 'enabled'
       activity.clear()
       assembly.clear()
+      burst.clear()
+      closureSnapshots.clear()
       canvas.dataset.covePixelActivity = 'idle'
       if (isVisible()) {
+        if (!reducedMotion) {
+          captureClosureGeometry()
+        }
         drawAssembly(performance.now())
       }
       scheduler.invalidate()
@@ -174,6 +211,20 @@ function WorkspacePixelLayerComponent({
       assembly.announce(nodeId, performance.now())
       refresh()
     })
+    const unsubscribeClosure = subscribeWorkspaceNodesClosed(nodeIds => {
+      if (!isVisible() || reducedMotion) {
+        return
+      }
+      const now = performance.now()
+      for (const nodeId of nodeIds) {
+        assembly.reveal(nodeId)
+        const frame = closureSnapshots.take(nodeId, viewport, now)
+        if (frame) {
+          burst.announce(frame, viewport, now)
+        }
+      }
+      scheduler.invalidate()
+    })
     const observer =
       typeof IntersectionObserver === 'function'
         ? new IntersectionObserver(entries => {
@@ -199,7 +250,10 @@ function WorkspacePixelLayerComponent({
       scheduler.dispose()
       activity.clear()
       assembly.clear()
+      burst.clear()
+      closureSnapshots.clear()
       unsubscribeCreation()
+      unsubscribeClosure()
       unsubscribeOutput()
       unsubscribeStore()
       observer?.disconnect()
@@ -229,6 +283,8 @@ function WorkspacePixelLayerComponent({
         aria-hidden="true"
         data-cove-pixel-assembly="idle"
         data-cove-pixel-node-ids=""
+        data-cove-pixel-burst="idle"
+        data-cove-pixel-burst-node-ids=""
       />
     </>
   )

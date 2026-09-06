@@ -5,6 +5,7 @@ import type { TerminalNodeData } from '../../../types'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { type UseApplyNodeChangesParams } from './useApplyNodeChanges.helpers'
+import { publishWorkspaceNodesClosed } from '../nodeClosureEvents'
 
 type WorkspaceNodeChange = NodeChange<Node<TerminalNodeData>>
 type ContinuousDragPositionChange = NodePositionChange & { dragging: true }
@@ -298,6 +299,14 @@ export function useWorkspaceCanvasApplyNodeChanges({
         onNodesCommit(nextNodes)
       } else {
         onNodesChange(nextNodes)
+      }
+      if (removedIds.size > 0) {
+        const survivingIds = new Set(nextNodes.map(node => node.id))
+        publishWorkspaceNodesClosed(
+          currentNodes
+            .filter(node => removedIds.has(node.id) && !survivingIds.has(node.id))
+            .map(node => node.id),
+        )
       }
       if (shouldSyncLayout) {
         window.dispatchEvent(new Event(TERMINAL_LAYOUT_SYNC_EVENT))
