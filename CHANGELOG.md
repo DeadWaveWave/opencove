@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### 🐛 Fixed
 
 - Remote: match managed SSH Workers to the Desktop build, safely upgrade idle runtimes with profile backups, and report active-session waits, credential mismatches, and recovery failures clearly. (#392)
+- Development: restore Windows dev-server startup and build identity hot reload by keeping source directory watches out of Vite's module imports. (#392)
 - Agent: speed up Windows Codex startup by observing session files without injecting hooks, while preserving ordinary-terminal Agent detection and verified conversation recovery. (#391)
 - Terminal: resume Agents in fresh Windows PowerShell sessions without a control character being interpreted as part of the command. (#391)
 - Agent: restore Claude status updates on Windows when PowerShell adds a UTF-8 BOM to hook events. (#391)
