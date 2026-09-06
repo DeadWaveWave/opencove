@@ -3,7 +3,6 @@ import { randomUUID, createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { readFile, writeFile, rename, mkdir, readdir, realpath, readlink } from 'node:fs/promises'
 import { resolve, relative, isAbsolute, join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { spawnSync } from 'node:child_process'
 
 function isInside(root, path) {
@@ -106,7 +105,10 @@ export async function publishRuntime(staging, destination, digest) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(await realpath(process.argv[1])).href) {
+if (
+  process.argv[1] &&
+  (await realpath(new URL(import.meta.url))) === (await realpath(process.argv[1]))
+) {
   publishRuntime(...process.argv.slice(2)).then(
     path => process.stdout.write(`${path}\n`),
     error => {

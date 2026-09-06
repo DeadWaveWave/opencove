@@ -58,6 +58,13 @@
           "url": "https://github.com/DeadWaveWave/opencove/pull/395",
           "prNumber": 395,
           "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Fix Windows standalone installation when temporary directories use short path names.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/396",
+          "prNumber": 396,
+          "sha": null
         }
       ]
     },
@@ -111,6 +118,13 @@
           "summary": "修复 macOS 临时目录使用路径别名时独立运行时安装失败的问题。",
           "url": "https://github.com/DeadWaveWave/opencove/pull/395",
           "prNumber": 395,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "修复 Windows 临时目录使用短路径名时独立运行时安装失败的问题。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/396",
+          "prNumber": 396,
           "sha": null
         }
       ]
