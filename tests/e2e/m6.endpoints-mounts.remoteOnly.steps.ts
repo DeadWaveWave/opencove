@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { Locator, Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import type { GetSessionResult } from '../../src/shared/contracts/dto'
@@ -167,6 +168,14 @@ export async function verifyRemoteOnlyProjectDefaultMount({
   expect(session.executionContext.endpoint.endpointId).toBe(remoteEndpointId)
   expect(session.executionContext.mountId).toBe(remoteOnlyMountId)
   expect(session.executionContext.target.rootPath).toBe(remoteOnlyDir)
+  expect(
+    remoteOnlyDirHashes.has(
+      createHash('sha1')
+        .update(session.executionContext.workingDirectory)
+        .digest('hex')
+        .slice(0, 12),
+    ),
+  ).toBe(true)
 
   const sessionsBeforeTaskAgent = await window.evaluate(async () => {
     return window.__opencoveWorkspaceCanvasTestApi?.getAgentSessions?.() ?? []
@@ -213,4 +222,7 @@ export async function verifyRemoteOnlyProjectDefaultMount({
   expect(taskSession.executionContext.endpoint.endpointId).toBe(remoteEndpointId)
   expect(taskSession.executionContext.mountId).toBe(remoteOnlyMountId)
   expect(taskSession.executionContext.target.rootPath).toBe(remoteOnlyDir)
+  expect(taskSession.executionContext.workingDirectory).toBe(
+    session.executionContext.workingDirectory,
+  )
 }
