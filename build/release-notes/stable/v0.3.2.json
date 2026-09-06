@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "version": "0.3.2",
+  "channel": "stable",
+  "publishedAt": "2026-09-06T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/compare/v0.3.1...v0.3.2",
+  "locales": {
+    "en": {
+      "summary": "OpenCove 0.3.2 adds native Pi activity tracking, improves Windows Agent startup and recovery, and keeps managed SSH runtimes aligned with Desktop updates.",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "Track native Pi activity and conversations in ordinary terminals and dedicated Agent windows.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/389",
+          "prNumber": 389,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Start Codex faster on Windows while retaining Agent detection and conversation recovery.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/391",
+          "prNumber": 391,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Resume Agents reliably in fresh Windows PowerShell sessions.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/391",
+          "prNumber": 391,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Restore Claude status updates on Windows.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/391",
+          "prNumber": 391,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Keep managed SSH Workers compatible with Desktop updates, back up profiles before idle runtime upgrades, and explain when active sessions delay an upgrade.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/392",
+          "prNumber": 392,
+          "sha": null
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "OpenCove 0.3.2 新增原生 Pi 活动追踪，改善 Windows Agent 的启动与恢复，以及托管 SSH 运行时升级体验。",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "在普通终端和专用 Agent 窗口中追踪原生 Pi 活动与会话。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/389",
+          "prNumber": 389,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "加快 Windows 上 Codex 的启动，同时保留 Agent 检测与会话恢复。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/391",
+          "prNumber": 391,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "在新建的 Windows PowerShell 会话中可靠地恢复 Agent。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/391",
+          "prNumber": 391,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "恢复 Windows 上 Claude 的状态更新。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/391",
+          "prNumber": 391,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "让托管 SSH Worker 与桌面更新保持兼容，空闲运行时升级前备份配置，并明确提示因活动会话而延迟的升级。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/392",
+          "prNumber": 392,
+          "sha": null
+        }
+      ]
+    }
+  }
+}
