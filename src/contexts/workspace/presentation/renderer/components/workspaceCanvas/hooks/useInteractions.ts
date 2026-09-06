@@ -1,11 +1,9 @@
 import { useCallback, useRef } from 'react'
 import { useStoreApi, type Node } from '@xyflow/react'
 import type { Point, TerminalNodeData } from '../../../types'
-import { resolveDefaultNoteWindowSize } from '../constants'
-import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
+import { focusNodeInViewport } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
-import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
 import { useWorkspaceCanvasTerminalCreation } from './useInteractions.terminalCreation'
 import { handleSelectionRectNodeToggle } from './useInteractions.selectionRectToggle'
 import { useWorkspaceCanvasPasteHandlers } from './useInteractions.pasteHandlers'
@@ -16,7 +14,11 @@ import {
   shouldFocusNodeFromClickTarget,
 } from './useInteractions.eventTargets'
 import { resolveMouseClientPoint } from './useInteractions.clientPoint'
-import { createNoteNodeFromPaneContextMenu } from './useInteractions.paneNodeCreation'
+import {
+  createNoteNodeAtFlowPosition,
+  createNoteNodeFromPaneContextMenu,
+} from './useInteractions.paneNodeCreation'
+import { resolvePointerCreationAnchor } from './useInteractions.creationAnchor'
 import { useIgnoredPaneClick } from './useIgnoredPaneClick'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
 import { useWebsiteNodeContextMenuCreation } from './useInteractions.websiteContextMenu'
@@ -149,6 +151,17 @@ export function useWorkspaceCanvasInteractions({
 
   const { ignoreNextPaneClickRef, queueIgnoreNextPaneClick } = useIgnoredPaneClick()
 
+  const resolveCreationAnchor = useCallback(
+    (clientPoint: Point): Point =>
+      resolvePointerCreationAnchor({
+        clientPoint,
+        canvasRect: canvasRef.current?.getBoundingClientRect() ?? null,
+        screenToFlowPosition: point => reactFlow.screenToFlowPosition(point),
+        spaces: spacesRef.current,
+      }),
+    [canvasRef, reactFlow, spacesRef],
+  )
+
   const handlePaneContextMenu = useCallback(
     (event: React.MouseEvent | MouseEvent) => {
       event.preventDefault()
@@ -169,6 +182,7 @@ export function useWorkspaceCanvasInteractions({
         y: clientPoint.y,
         flowX: flowPosition.x,
         flowY: flowPosition.y,
+        creationAnchor: resolveCreationAnchor(clientPoint),
       })
       setEmptySelectionPrompt(null)
       cancelSpaceRename()
@@ -177,6 +191,7 @@ export function useWorkspaceCanvasInteractions({
       cancelSpaceRename,
       queueIgnoreNextPaneClick,
       reactFlow,
+      resolveCreationAnchor,
       setContextMenu,
       setEmptySelectionPrompt,
     ],
@@ -312,29 +327,15 @@ export function useWorkspaceCanvasInteractions({
       setEmptySelectionPrompt(null)
       cancelSpaceRename()
 
-      const flowPosition = reactFlow.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
+      createNoteNodeAtFlowPosition({
+        anchor: resolveCreationAnchor({ x: event.clientX, y: event.clientY }),
+        standardWindowSizeBucket,
+        createNoteNode,
+        spacesRef,
+        nodesRef,
+        setNodes,
+        onSpacesChange,
       })
-
-      const cursorAnchor: Point = {
-        x: flowPosition.x,
-        y: flowPosition.y,
-      }
-      void (async () => {
-        const noteSize = resolveDefaultNoteWindowSize(standardWindowSizeBucket)
-        const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, noteSize)
-
-        createNoteNodeAtAnchor({
-          anchor,
-          spaceAnchor: cursorAnchor,
-          createNoteNode,
-          spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange,
-        })
-      })()
     },
     [
       cancelSpaceRename,
@@ -342,7 +343,7 @@ export function useWorkspaceCanvasInteractions({
       createNoteNode,
       nodesRef,
       onSpacesChange,
-      reactFlow,
+      resolveCreationAnchor,
       setContextMenu,
       setEmptySelectionPrompt,
       setNodes,

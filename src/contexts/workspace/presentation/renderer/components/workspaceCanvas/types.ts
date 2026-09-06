@@ -65,6 +65,8 @@ export interface PaneContextMenuState {
   y: number
   flowX: number
   flowY: number
+  /** Window creation anchor; raw flow coordinates remain authoritative for space/menu actions. */
+  creationAnchor?: Point
 }
 
 export interface SelectionContextMenuState {
