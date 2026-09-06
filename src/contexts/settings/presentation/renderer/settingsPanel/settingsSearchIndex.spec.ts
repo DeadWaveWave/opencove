@@ -37,6 +37,25 @@ function createWorkspace(overrides: Partial<WorkspaceState> = {}): WorkspaceStat
 }
 
 describe('settingsSearchIndex', () => {
+  it.each([
+    ['Node Creation Pixels', en, 'settings-node-creation-pixel-effect'],
+    ['Node Closing Pixels', en, 'settings-node-close-pixel-effect'],
+    ['Canvas Pixel Background', en, 'settings-canvas-pixel-background'],
+    ['创建像素效果', zhCN, 'settings-node-creation-pixel-effect'],
+    ['关闭像素效果', zhCN, 'settings-node-close-pixel-effect'],
+    ['画布点阵背景', zhCN, 'settings-canvas-pixel-background'],
+  ] as const)('finds the independent effect control %s', (query, dictionary, anchorId) => {
+    const entries = createSettingsSearchEntries({
+      t: createTranslator(dictionary),
+      workspaces: [],
+      endpointsEnabled: false,
+    })
+    expect(searchSettingsEntries(entries, query)[0]).toMatchObject({
+      pageId: 'appearance',
+      anchorId,
+    })
+  })
+
   it('finds a localized settings entry by Chinese label', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(zhCN),

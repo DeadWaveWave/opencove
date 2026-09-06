@@ -80,6 +80,7 @@ export function SettingsPanel({
     updateAgentProviderOrder,
     updateLanguage,
     updateUiTheme,
+    updatePixelEffect,
     updateAgentFullAccess,
     updateDefaultTerminalProfileId,
     updateTaskTitleProvider,
@@ -325,6 +326,8 @@ export function SettingsPanel({
           {canonicalPageId === 'appearance' ? (
             <AppearanceSection
               uiTheme={settings.uiTheme}
+              pixelEffects={settings}
+              onChangePixelEffect={updatePixelEffect}
               uiFontSize={settings.uiFontSize}
               terminalFontSize={settings.terminalFontSize}
               terminalFontFamily={settings.terminalFontFamily}

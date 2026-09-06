@@ -246,12 +246,7 @@
 
 .control-center__theme-preview[data-theme-preview='pixel'] {
   border-radius: var(--cove-radius-xs);
-  background: linear-gradient(
-    135deg,
-    var(--cove-pixel-blue),
-    var(--cove-pixel-cyan) 50%,
-    var(--cove-pixel-mint)
-  );
+  background: var(--cove-theme-preview-pixel);
 }
 
 .control-center__theme-label {

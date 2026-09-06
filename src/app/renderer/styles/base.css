@@ -75,11 +75,13 @@
   --cove-theme-preview-dark: #15171b;
   --cove-theme-preview-ember: #c97c3a;
   --cove-theme-preview-ember-light: #f3e6d6;
+  --cove-theme-preview-pixel: linear-gradient(135deg, #5b9cf0, #55bddc 50%, #70ddbc);
+  /* Shared effect palette; named themes can remap these three color stops. */
   --cove-pixel-blue: #5b9cf0;
   --cove-pixel-cyan: #55bddc;
   --cove-pixel-mint: #70ddbc;
   --cove-pixel-grid-gap: 17px;
-  --cove-pixel-grid-opacity: 0;
+  --cove-pixel-grid-opacity: 0.64;
 
   --cove-radius-xs: 6px;
   --cove-radius-sm: 8px;
@@ -216,6 +218,10 @@
 }
 
 :root[data-cove-theme='light'] {
+  --cove-pixel-blue: #2c64a1;
+  --cove-pixel-cyan: #247f8f;
+  --cove-pixel-mint: #24795f;
+  --cove-pixel-grid-opacity: 0.42;
   --cove-app-background: radial-gradient(circle at 18% 12%, #f8fafc 0%, #f2f5f9 52%, #eceff4 100%);
   --cove-app-background-elevated: #f7f9fc;
   --cove-surface: rgba(255, 255, 255, 0.78);

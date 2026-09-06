@@ -1,3 +1,4 @@
+import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { expect, test, type ElectronApplication } from '@playwright/test'
@@ -58,7 +59,13 @@ test('clips native website reveal without shrinking or reloading the browser vie
           },
         },
       ],
-      { settings: { uiTheme: 'pixel', websiteWindowPolicy: { enabled: true } } },
+      {
+        settings: {
+          uiTheme: 'pixel',
+          ...PIXEL_EFFECTS_ENABLED,
+          websiteWindowPolicy: { enabled: true },
+        },
+      },
     )
     await enableWebsiteWindowPolicy(window)
     const node = window.locator(`.react-flow__node[data-id="${nodeId}"]`)

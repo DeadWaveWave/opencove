@@ -80,7 +80,7 @@ describe('snappy pixel scatter scene', () => {
     return { ...burst.sample(viewport, 0)[0]!, age }
   }
 
-  it('starts with dense surface and edge fragments and snaps radially outward within 90ms', () => {
+  it('scatters a rectangular surface and its four edges without any ring or ellipse layer', () => {
     const initial = buildPixelBurstScene(frameAt(0))
     const snapped = buildPixelBurstScene(frameAt(90))
     expect(initial.particles.length).toBeGreaterThan(180)
@@ -91,8 +91,22 @@ describe('snappy pixel scatter scene', () => {
       pixels.length
     expect(meanDistance(snapped.particles) - meanDistance(initial.particles)).toBeGreaterThan(30)
     expect(snapped.particles.some(pixel => pixel.x < node.rect.x || pixel.x > 820)).toBe(true)
-    expect(snapped.ring.length).toBeGreaterThan(30)
-    expect(buildPixelBurstScene(frameAt(200)).ring).toEqual([])
+    expect(Object.keys(snapped)).toEqual(['particles'])
+    expect(
+      initial.particles.every(
+        pixel =>
+          pixel.x >= node.rect.x &&
+          pixel.x <= node.rect.x + node.rect.width &&
+          pixel.y >= node.rect.y &&
+          pixel.y <= node.rect.y + node.rect.height,
+      ),
+    ).toBe(true)
+    for (const x of [node.rect.x, node.rect.x + node.rect.width]) {
+      expect(initial.particles.filter(pixel => pixel.x === x).length).toBeGreaterThan(5)
+    }
+    for (const y of [node.rect.y, node.rect.y + node.rect.height]) {
+      expect(initial.particles.filter(pixel => pixel.y === y).length).toBeGreaterThan(5)
+    }
   })
 
   it('keeps seed positions stable through viewport changes without changing particle count', () => {
@@ -122,11 +136,11 @@ describe('snappy pixel scatter scene', () => {
     }
     const scene = buildPixelBurstScene(large)
     expect(scene.particles.length).toBeLessThanOrEqual(256)
-    expect(scene.ring.length).toBeLessThanOrEqual(48)
+    expect(Object.keys(scene)).toEqual(['particles'])
     expect(scene.particles.every(pixel => pixel.alpha >= 0 && pixel.alpha <= 1)).toBe(true)
     expect(
       Math.max(...buildPixelBurstScene(frameAt(400)).particles.map(pixel => pixel.alpha)),
     ).toBeLessThan(0.03)
-    expect(buildPixelBurstScene(frameAt(420))).toEqual({ particles: [], ring: [] })
+    expect(buildPixelBurstScene(frameAt(420))).toEqual({ particles: [] })
   })
 })

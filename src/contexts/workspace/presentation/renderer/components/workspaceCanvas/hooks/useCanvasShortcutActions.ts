@@ -17,6 +17,7 @@ import {
 } from './useShortcuts.helpers'
 import type { SpatialNavigationDirection } from './spatialNavigation'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
+import { focusPrimaryNodeContent } from '../focusPrimaryNodeContent'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -84,25 +85,7 @@ function focusPrimaryNodeEditor(nodeId: string): boolean {
     return false
   }
 
-  const focusTargetSelectors = [
-    '.terminal-node__terminal .xterm-helper-textarea',
-    '[data-testid="task-node-inline-requirement-input"]',
-    '[data-testid="note-node-textarea"]',
-    '[data-testid="document-node-editor-input"]',
-    'textarea, input, [contenteditable="true"]',
-  ] as const
-
-  for (const selector of focusTargetSelectors) {
-    const target = nodeElement.querySelector(selector)
-    if (!(target instanceof HTMLElement)) {
-      continue
-    }
-
-    target.focus({ preventScroll: true })
-    return true
-  }
-
-  return false
+  return focusPrimaryNodeContent(nodeElement)
 }
 
 function schedulePrimaryNodeEditorFocus(nodeId: string): void {

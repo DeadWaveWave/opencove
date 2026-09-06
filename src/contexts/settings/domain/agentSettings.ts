@@ -74,7 +74,12 @@ export type {
   TaskTitleAgentProvider,
   WorktreeNameSuggestionAgentProvider,
 } from './agentSettings.providers'
-export type { AgentSettings, TaskTitleProvider, TerminalProfileId } from './agentSettings.types'
+export type {
+  AgentSettings,
+  PixelEffectSettings,
+  TaskTitleProvider,
+  TerminalProfileId,
+} from './agentSettings.types'
 export {
   CANVAS_INPUT_MODES,
   CANVAS_WHEEL_BEHAVIORS,
@@ -149,6 +154,15 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     ? value.language
     : DEFAULT_AGENT_SETTINGS.language
   const uiTheme = isValidUiTheme(value.uiTheme) ? value.uiTheme : DEFAULT_AGENT_SETTINGS.uiTheme
+  // Adopt pre-toggle behavior only while normalizing missing legacy fields.
+  // Canonical booleans survive subsequent theme changes without deriving new effect choices.
+  const legacyPixelEffectsEnabled = uiTheme === 'pixel'
+  const canvasPixelBackgroundEnabled =
+    normalizeBoolean(value.canvasPixelBackgroundEnabled) ?? legacyPixelEffectsEnabled
+  const nodeCreationPixelEffectEnabled =
+    normalizeBoolean(value.nodeCreationPixelEffectEnabled) ?? legacyPixelEffectsEnabled
+  const nodeClosePixelEffectEnabled =
+    normalizeBoolean(value.nodeClosePixelEffectEnabled) ?? legacyPixelEffectsEnabled
   const isPrimarySidebarCollapsed =
     normalizeBoolean(value.isPrimarySidebarCollapsed) ??
     DEFAULT_AGENT_SETTINGS.isPrimarySidebarCollapsed
@@ -375,6 +389,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   return {
     language,
     uiTheme,
+    canvasPixelBackgroundEnabled,
+    nodeCreationPixelEffectEnabled,
+    nodeClosePixelEffectEnabled,
     isPrimarySidebarCollapsed,
     workspaceSearchPanelWidth,
     defaultProvider,

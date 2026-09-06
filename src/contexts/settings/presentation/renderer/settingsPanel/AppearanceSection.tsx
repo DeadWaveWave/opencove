@@ -8,15 +8,19 @@ import {
   MIN_TERMINAL_FONT_SIZE,
   MIN_UI_FONT_SIZE,
   UI_THEMES,
+  type PixelEffectSettings,
   type TerminalDisplayReference,
   type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
 import { TerminalDisplayCalibrationRow } from './TerminalDisplayCalibrationRow'
 import { TerminalFontFamilyRow } from './TerminalFontFamilyRow'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
+import { PixelEffectsSection } from './PixelEffectsSection'
 
 export function AppearanceSection({
   uiTheme,
+  pixelEffects,
+  onChangePixelEffect,
   uiFontSize,
   terminalFontSize,
   terminalFontFamily,
@@ -32,6 +36,8 @@ export function AppearanceSection({
   onChangeTerminalDisplayReference,
 }: {
   uiTheme: UiTheme
+  pixelEffects: PixelEffectSettings
+  onChangePixelEffect: (key: keyof PixelEffectSettings, enabled: boolean) => void
   uiFontSize: number
   terminalFontSize: number
   terminalFontFamily: string | null
@@ -100,6 +106,8 @@ export function AppearanceSection({
           </div>
         </SettingsGroupBody>
       </SettingsGroup>
+
+      <PixelEffectsSection effects={pixelEffects} onChange={onChangePixelEffect} />
 
       <SettingsGroup
         id="settings-section-terminal-appearance"

@@ -50,7 +50,7 @@ export function drawPixelAssemblies({
   for (const frame of frames) {
     const scene = buildPixelAssemblyScene(frame)
     context.fillStyle = gradient
-    for (const pixel of scene.particles) {
+    for (const pixel of [...scene.rim, ...scene.particles]) {
       context.globalAlpha = pixel.alpha
       context.fillRect(pixel.x, pixel.y, pixel.size, pixel.size)
     }

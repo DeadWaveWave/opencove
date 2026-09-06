@@ -1,3 +1,4 @@
+import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expect, type Page } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
@@ -177,6 +178,7 @@ export async function seedMaterialFixture(
     ],
     settings: {
       uiTheme: 'pixel',
+      ...PIXEL_EFFECTS_ENABLED,
       language: 'en',
       uiFontSize: 16,
       terminalFontSize: 14,

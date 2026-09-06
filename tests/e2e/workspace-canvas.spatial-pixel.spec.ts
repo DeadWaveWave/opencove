@@ -1,6 +1,11 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import {
+  PIXEL_EFFECTS_DISABLED,
+  PIXEL_EFFECTS_ENABLED,
+  setPixelEffects,
+} from './workspace-canvas.pixel-effects.helpers'
+import {
   buildNodeEvalCommand,
   clearAndSeedWorkspace,
   launchApp,
@@ -36,7 +41,13 @@ async function seedTerminal(window: Page, uiTheme: 'dark' | 'pixel', language = 
         task: { text: 'A quiet canvas. Live sessions keep their own state.' },
       },
     ],
-    { settings: { uiTheme, language } },
+    {
+      settings: {
+        uiTheme,
+        language,
+        ...(uiTheme === 'pixel' ? PIXEL_EFFECTS_ENABLED : PIXEL_EFFECTS_DISABLED),
+      },
+    },
   )
   await expect(terminalNode(window).locator('.terminal-node__terminal .xterm')).toBeVisible()
 }
@@ -157,7 +168,7 @@ async function readFieldSignature(layer: Locator) {
 }
 
 test.describe('Workspace Canvas - Spatial Pixel', () => {
-  test('selects and persists Pixel while keeping the layer exclusive to that theme', async ({
+  test('persists explicit pixel effects across named theme changes', async ({
     browserName,
   }, testInfo) => {
     void browserName
@@ -171,6 +182,8 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       await selectCoveOption(window, 'settings-ui-theme', 'pixel')
       await expect(window.getByTestId('settings-ui-theme-trigger')).toContainText('Pixel')
       await expectTheme(window, 'pixel')
+      await expect(layer).toHaveCount(0)
+      await setPixelEffects(window, PIXEL_EFFECTS_ENABLED)
       await expect(layer).toBeVisible()
       await expect(layer).toHaveAttribute('aria-hidden', 'true')
       await expect(layer).toHaveCSS('pointer-events', 'none')
@@ -191,9 +204,11 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       await openAppearance(window)
       await selectCoveOption(window, 'settings-ui-theme', 'light')
       await expectTheme(window, 'light')
-      await expect(layer).toHaveCount(0)
+      await expect(layer).toBeVisible()
       await selectCoveOption(window, 'settings-ui-theme', 'dark')
       await expectTheme(window, 'dark')
+      await expect(layer).toBeVisible()
+      await setPixelEffects(window, PIXEL_EFFECTS_DISABLED)
       await expect(layer).toHaveCount(0)
     } finally {
       await electronApp.close()
@@ -217,6 +232,7 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       await openAppearance(window)
       await selectCoveOption(window, 'settings-ui-theme', 'pixel')
       await expectTheme(window, 'pixel')
+      await setPixelEffects(window, PIXEL_EFFECTS_ENABLED)
       await window.locator('.settings-panel__close').click()
       await expect.poll(() => readTerminalContinuity(window)).toEqual(baseline)
 

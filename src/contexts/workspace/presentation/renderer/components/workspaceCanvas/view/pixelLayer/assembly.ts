@@ -1,5 +1,6 @@
 import type { PixelNodeFrame } from './geometry'
 import { pixelNoise } from './model'
+import { buildPixelCreationRim } from './creationRim'
 
 export const PIXEL_ASSEMBLY_MS = 380
 export const PIXEL_ASSEMBLY_READY_TIMEOUT_MS = 1200
@@ -103,6 +104,7 @@ export function createPixelAssembly() {
 type AssemblyPixel = { x: number; y: number; size: number; alpha: number }
 export interface PixelAssemblyScene {
   particles: AssemblyPixel[]
+  rim: AssemblyPixel[]
 }
 
 export interface PixelAssemblyBand {
@@ -131,7 +133,7 @@ export function buildPixelAssemblyFrontier(frame: PixelAssemblyFrame): PixelAsse
 
 /** The foreground contains fragments only. Ahead of the mask frontier the canvas stays transparent. */
 export function buildPixelAssemblyScene(frame: PixelAssemblyFrame): PixelAssemblyScene {
-  const scene: PixelAssemblyScene = { particles: [] }
+  const scene: PixelAssemblyScene = { particles: [], rim: [] }
   if (frame.age < 0 || frame.age >= PIXEL_ASSEMBLY_MS) {
     return scene
   }
@@ -146,6 +148,7 @@ export function buildPixelAssemblyScene(frame: PixelAssemblyFrame): PixelAssembl
   const rows = Math.max(1, Math.min(64, Math.ceil(height / 10)))
   const cellHeight = height / rows
   const frontier = buildPixelAssemblyFrontier(frame)
+  scene.rim = buildPixelCreationRim(frame.rect, frontier, envelope, seed)
 
   for (let row = 0; row < rows; row++) {
     const band =

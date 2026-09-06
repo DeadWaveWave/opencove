@@ -48,6 +48,7 @@ export const enSettingsPanelLayout = {
     },
     appearance: {
       interface: 'Interface',
+      pixelEffects: 'Pixel Effects',
       terminal: 'Terminal',
     },
     notifications: {
@@ -89,6 +90,15 @@ export const enSettingsPanelLayout = {
   },
   appearance: {
     title: 'Display & Fonts',
+    pixelEffects: {
+      help: 'Choose each effect independently for all themes. Respects reduced motion.',
+      creationLabel: 'Node Creation Pixels',
+      creationHelp: 'Reveal new nodes with a brief pixel animation.',
+      closeLabel: 'Node Closing Pixels',
+      closeHelp: 'Scatter pixels after a node closes.',
+      backgroundLabel: 'Canvas Pixel Background',
+      backgroundHelp: 'Show a moving pixel field. Turn off to use the standard canvas grid.',
+    },
     help: 'Adjust the interface, editor-adjacent text, and terminal rendering in one place.',
     interfaceFontSizeHelp: 'Controls app chrome, panels, menus, and form text.',
     terminalTitle: 'Terminal Text',

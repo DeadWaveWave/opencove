@@ -32,7 +32,7 @@ export function drawPixelBursts({
       gradient.addColorStop(0.5, theme.cyan)
       gradient.addColorStop(1, theme.mint)
       context.fillStyle = gradient
-      for (const pixel of [...scene.particles, ...scene.ring]) {
+      for (const pixel of scene.particles) {
         context.globalAlpha = pixel.alpha
         context.fillRect(pixel.x - pixel.size / 2, pixel.y - pixel.size / 2, pixel.size, pixel.size)
       }

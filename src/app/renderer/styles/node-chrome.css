@@ -18,6 +18,13 @@
   background-image: var(--cove-node-background-image);
 }
 
+.workspace-canvas .react-flow__node.selected :is(.role-node, .document-node),
+.workspace-canvas :is(.role-node, .document-node):focus-within,
+.workspace-canvas :is(.role-node, .document-node)[data-cove-focus-transition='true'] {
+  border-color: var(--cove-node-selection-border);
+  box-shadow: var(--cove-node-selection-shadow);
+}
+
 :is(
   .terminal-node__header,
   .task-node__header,

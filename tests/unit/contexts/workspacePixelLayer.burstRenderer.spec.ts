@@ -21,6 +21,8 @@ describe('foreground burst renderer', () => {
       clearRect: vi.fn(),
       setTransform: vi.fn(),
       createLinearGradient: vi.fn(() => gradient),
+      arc: vi.fn(),
+      ellipse: vi.fn(),
     }
     const theme = { blue: '#5b9cf0', cyan: '#55bddc', mint: '#70ddbc' }
     drawPixelBursts({
@@ -30,7 +32,9 @@ describe('foreground burst renderer', () => {
       theme,
     })
     expect(context.fillRect.mock.calls.length).toBeGreaterThan(180)
-    expect(context.fillRect.mock.calls.length).toBeLessThanOrEqual(304)
+    expect(context.fillRect.mock.calls.length).toBeLessThanOrEqual(256)
+    expect(context.arc).not.toHaveBeenCalled()
+    expect(context.ellipse).not.toHaveBeenCalled()
     expect(gradient.addColorStop.mock.calls).toEqual([
       [0, theme.blue],
       [0.5, theme.cyan],

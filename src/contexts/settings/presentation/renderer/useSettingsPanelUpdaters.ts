@@ -5,6 +5,7 @@ import type {
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
   FocusNodeTargetZoom,
+  PixelEffectSettings,
   StandardWindowSizeBucket,
   TaskTitleProvider,
   UiLanguage,
@@ -39,6 +40,8 @@ export function createSettingsPanelUpdaters({
       updateSetting('agentProviderOrder', providers),
     updateLanguage: (language: UiLanguage): void => updateSetting('language', language),
     updateUiTheme: (uiTheme: UiTheme): void => updateSetting('uiTheme', uiTheme),
+    updatePixelEffect: (key: keyof PixelEffectSettings, enabled: boolean): void =>
+      updateSetting(key, enabled),
     updateAgentFullAccess: (enabled: boolean): void => updateSetting('agentFullAccess', enabled),
     updateDefaultTerminalProfileId: (profileId: string | null): void =>
       updateSetting('defaultTerminalProfileId', profileId),

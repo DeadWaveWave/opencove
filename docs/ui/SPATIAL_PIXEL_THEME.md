@@ -2,8 +2,9 @@
 
 Pixel is an opt-in dark theme for OpenCove's spatial workspace. It uses deep blue surfaces,
 ice-blue-to-cyan-to-mint pixel colors, clear node boundaries, and bounded output activity feedback.
-Select it through the existing Appearance theme picker or Control Center. It does not change the
-default theme, the existing Light/Dark/Ember themes, or terminal execution behavior.
+Select it through the existing Appearance theme picker or Control Center. Its node materials stay
+theme-specific; pixel background, creation and close effects can independently accompany any theme.
+These effects do not change terminal execution behavior.
 
 ## Theme ownership
 
@@ -24,9 +25,30 @@ canvas zooms out. Large Spaces have no broad blur, gradient, shadow or decorativ
 Small title/worktree labels retain a subtle translucent surface. Entity labels and semantic
 warning/error colors remain independent of the blue/cyan/mint brand gradient.
 
+## Effect preferences
+
+Appearance exposes three independent, persisted boolean preferences:
+
+- `canvasPixelBackgroundEnabled`: animated field and brief received-output edge activity. Off uses
+  the standard canvas dot grid.
+- `nodeCreationPixelEffectEnabled`: transparent assembly, converging fragments and virtual pixel rim.
+- `nodeClosePixelEffectEnabled`: square fragments scattering from a successfully closed window.
+
+The settings owner normalizes missing preferences to on for legacy Pixel settings and off for other
+legacy themes. Explicit choices survive theme changes and reload. Theme switching changes colors,
+not preferences, and never replays creation or closing. Turning off an effect clears only its own
+visual state immediately. With all three off the effect layer is unmounted; with only creation/close
+enabled it schedules frames only while those effects are active. Pixel Space zoom detail is material
+state and remains independent of these optional effects.
+
+Shared `--cove-pixel-*` tokens follow the applied theme: dark uses cool blue/cyan/mint, light uses
+darker cool colors for contrast, and Ember variants use copper/amber/gold. Pixel retains its original
+ice-blue/cyan/mint palette. System follows the resolved light/dark palette. No pixel color encodes
+selection, Agent status or success.
+
 ## Canvas effects
 
-The Pixel canvas is a viewport-sized, read-only visual layer. It draws a continuously moving blue/cyan/mint gradient
+The pixel canvas is a viewport-sized, read-only visual layer. It draws a continuously moving theme-colored gradient
 matrix and briefly highlights visible node edges when the existing PTY event hub delivers output.
 It retains only bounded session/timestamp observations, not output text or persisted application state.
 
@@ -61,8 +83,9 @@ before the node frame appears. DOM preparation is bounded to 1200ms and then fai
 do not replay the effect. The same 380ms visible frame timeline then moves a normalized,
 stepped frontier across each node. A wide
 node travels farther per millisecond; it does not take longer to complete. Only the traversed portion
-of the real node is composited. The foreground canvas draws converging fragments without an opaque
-veil or placeholder rectangle. Masks leave node layout and terminal/editor dimensions intact.
+of the real node is composited. The foreground canvas draws converging fragments and a virtual pixel
+rim along the revealed frame and advancing front, without an opaque veil or placeholder rectangle.
+Every window kind uses this same assembly treatment. Masks leave node layout and terminal/editor dimensions intact.
 Pointer or keyboard interaction in the main renderer clears masks before existing handlers run,
 including pane selection and Tab navigation; programmatic creation autofocus does not cancel it.
 
@@ -82,10 +105,10 @@ The existing close owners retain all authority over confirmation, task relations
 cleanup, PTY termination and persistence; none of those operations wait for animation. Missing-node
 closes, canceled deletion and hydration do not publish this notification.
 
-The Pixel layer hands off the last visible world rectangle across that commit for at most 160ms,
+The pixel layer hands off the last visible world rectangle across that commit for at most 160ms,
 retaining at most 256 geometry records. It then draws a 420ms radial burst: a fast initial snap,
-short pixel ring and drifting square fragments that shrink and fade. The burst uses its own
-blue/cyan/mint gradient, tracks the current viewport, and never captures document or terminal text.
+followed by drifting square fragments that shrink and fade. There is no circular ring or outline.
+The burst uses the applied theme's pixel gradient, tracks the current viewport, and never captures document or terminal text.
 At most eight bursts run concurrently, with bounded fragments and no deferred playback queue.
 
 The original node is already removed while fragments remain. Ordinary pointer/keyboard interaction
@@ -94,6 +117,14 @@ Hidden/reduced-motion views clear both effects. Changing projects remounts only 
 decoration, leaving the existing node, terminal and viewport lifecycle owners intact.
 
 ## Interaction boundaries
+
+The illuminated active-window border follows real input focus (`:focus-within`), independently of
+canvas batch selection. Successful local creation can focus the window's primary input; it must not
+add selected IDs or show a batch-selection count. Terminal/Agent autofocus remains owned by their
+existing runtime. Other editors activate through the canvas interaction owner, independently of
+effect settings, with pending activation canceled by subsequent user input or workspace disposal.
+Hydration and theme changes never steal focus. Read-only windows may focus their frame without
+entering the normal Tab order. The decorative layer never owns focus or selection.
 
 The website showcase contains scripted mouse actions, timed tool calls, illustrative test results and
 an input-blocking node reveal. These behaviors are not part of the application theme. In particular,
@@ -114,6 +145,8 @@ remain usable, cancellation does not burst, and reduced motion removes nodes wit
 The theme must preserve theme normalization and reload behavior, existing light/dark appearance,
 clear keyboard focus/error states, and Control Center usability. Pixel canvas checks cover transparent
 hit testing, stable viewport/geometry, real terminal input/output and reduced-motion cleanup.
+Preference checks cover independent toggles, reload, cross-theme color changes and all-off cleanup.
+Creation activation checks assert the real focused input and an unchanged batch-selection count.
 Terminal Find and theme changes must preserve the terminal instance, body size, rows/cols and Worker
 geometry; existing terminal continuity tests remain part of validation.
 

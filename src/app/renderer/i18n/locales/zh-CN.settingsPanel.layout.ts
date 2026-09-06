@@ -48,6 +48,7 @@ export const zhCNSettingsPanelLayout = {
     },
     appearance: {
       interface: '界面',
+      pixelEffects: '像素效果',
       terminal: '终端',
     },
     notifications: {
@@ -89,6 +90,15 @@ export const zhCNSettingsPanelLayout = {
   },
   appearance: {
     title: '显示与字体',
+    pixelEffects: {
+      help: '三项效果独立设置，适用于所有主题，并遵循系统减少动态效果偏好。',
+      creationLabel: '创建像素效果',
+      creationHelp: '新建节点时播放简短的像素聚拢动画。',
+      closeLabel: '关闭像素效果',
+      closeHelp: '节点关闭后播放像素散开动画。',
+      backgroundLabel: '画布点阵背景',
+      backgroundHelp: '使用动态像素点阵背景；关闭后显示标准画布网格。',
+    },
     help: '集中调整界面观感、应用文字和终端显示。',
     interfaceFontSizeHelp: '影响应用外壳、面板、菜单和表单文字。',
     terminalTitle: '终端文字',

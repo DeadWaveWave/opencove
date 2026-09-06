@@ -130,6 +130,8 @@ describe('Settings form accessible names', () => {
     render(
       <AppearanceSection
         uiTheme="system"
+        pixelEffects={DEFAULT_AGENT_SETTINGS}
+        onChangePixelEffect={noop}
         uiFontSize={16}
         terminalFontSize={14}
         terminalFontFamily={null}
@@ -147,6 +149,9 @@ describe('Settings form accessible names', () => {
     )
 
     expectNamedTestId('settings-ui-theme-trigger', 'Appearance')
+    expectNamedTestId('settings-node-creation-pixel-effect', 'Node Creation Pixels')
+    expectNamedTestId('settings-node-close-pixel-effect', 'Node Closing Pixels')
+    expectNamedTestId('settings-canvas-pixel-background', 'Canvas Pixel Background')
     expectNamedTestId('settings-ui-font-size', 'Interface Font Size')
     expectNamedTestId('settings-terminal-font-size', 'Terminal Font Size')
     expectNamedTestId('settings-terminal-font-family', 'Terminal Font')

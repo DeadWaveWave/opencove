@@ -18,19 +18,28 @@ import { createPixelBurst } from './pixelLayer/burst'
 import { drawPixelBursts } from './pixelLayer/burstRenderer'
 import { createPixelClosureSnapshots } from './pixelLayer/closureSnapshots'
 import { createPixelNodeMasks } from './pixelLayer/nodeMasks'
-import { resolvePixelDetail } from './pixelLayer/grid'
 import { readReadyPixelNodeIds } from './pixelLayer/readiness'
+import { ALL_PIXEL_EFFECTS, type PixelLayerOptions } from './pixelLayer/options'
 
 function WorkspacePixelLayerComponent({
   nodes,
+  options = ALL_PIXEL_EFFECTS,
 }: {
   nodes: Node<TerminalNodeData>[]
+  options?: PixelLayerOptions
 }): React.JSX.Element {
   const store = useStoreApi<Node<TerminalNodeData>>()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const assemblyRef = useRef<HTMLCanvasElement>(null)
   const nodesRef = useRef(nodes)
   const refreshRef = useRef<(() => void) | null>(null)
+  const optionsRef = useRef(options)
+  const syncOptionsRef = useRef<(() => void) | null>(null)
+
+  useLayoutEffect(() => {
+    optionsRef.current = options
+    syncOptionsRef.current?.()
+  }, [options.background, options.creation, options.closing])
 
   useLayoutEffect(() => {
     nodesRef.current = nodes
@@ -56,16 +65,6 @@ function WorkspacePixelLayerComponent({
     let state = store.getState()
     let viewport = readPixelViewport(state)
     const scope = canvas.parentElement
-    const previousSpaceDetail = scope.style.getPropertyValue('--cove-pixel-space-detail')
-    let appliedSpaceDetail = ''
-    const syncSpaceDetail = () => {
-      const detail = resolvePixelDetail(viewport.zoom).toFixed(3)
-      if (detail !== appliedSpaceDetail) {
-        scope.style.setProperty('--cove-pixel-space-detail', detail)
-        appliedSpaceDetail = detail
-      }
-    }
-    syncSpaceDetail()
     let projected = projectPixelNodes(nodesRef.current, state.nodeLookup, viewport)
     let frames = projectPixelNodeFrames(nodesRef.current, state.nodeLookup, viewport)
     const activity = createPixelActivity()
@@ -81,6 +80,9 @@ function WorkspacePixelLayerComponent({
       viewport.height > 0
 
     const captureClosureGeometry = () => {
+      if (!optionsRef.current.closing) {
+        return
+      }
       closureSnapshots.capture(
         frames,
         viewport,
@@ -90,7 +92,7 @@ function WorkspacePixelLayerComponent({
     }
 
     const drawAssembly = () => {
-      if (!reducedMotion) {
+      if (!reducedMotion && optionsRef.current.creation) {
         const pending = new Set(assembly.pendingIds(performance.now()))
         const candidates = frames.filter(frame => pending.has(frame.id))
         for (const id of readReadyPixelNodeIds(scope, candidates)) {
@@ -103,8 +105,9 @@ function WorkspacePixelLayerComponent({
         }
       }
       const now = performance.now()
-      const visibleFrames = reducedMotion ? [] : assembly.sample(frames, now)
-      masks.update(visibleFrames, reducedMotion ? [] : assembly.pendingIds(now))
+      const creationEnabled = !reducedMotion && optionsRef.current.creation
+      const visibleFrames = creationEnabled ? assembly.sample(frames, now) : []
+      masks.update(visibleFrames, creationEnabled ? assembly.pendingIds(now) : [])
       drawPixelAssemblies({
         canvas: assemblyCanvas,
         context: assemblyContext,
@@ -112,7 +115,8 @@ function WorkspacePixelLayerComponent({
         frames: visibleFrames,
         theme: assemblyTheme,
       })
-      const burstFrames = reducedMotion ? [] : burst.sample(viewport, now)
+      const burstFrames =
+        !reducedMotion && optionsRef.current.closing ? burst.sample(viewport, now) : []
       drawPixelBursts({
         context: assemblyContext,
         viewport,
@@ -128,20 +132,26 @@ function WorkspacePixelLayerComponent({
       requestFrame: callback => window.requestAnimationFrame(callback),
       cancelFrame: id => window.cancelAnimationFrame(id),
       draw: now => {
-        const active = drawPixelLayer({
-          canvas,
-          context,
-          viewport,
-          nodes: projected,
-          activity,
-          theme,
-          now,
-          reducedMotion,
-        })
+        const active =
+          optionsRef.current.background &&
+          drawPixelLayer({
+            canvas,
+            context,
+            viewport,
+            nodes: projected,
+            activity,
+            theme,
+            now,
+            reducedMotion,
+          })
         canvas.dataset.covePixelActivity = active ? 'output' : 'idle'
         drawAssembly()
-        // The visible field flows even without PTY output; output keeps its own semantics.
-        return !reducedMotion
+        return (
+          !reducedMotion &&
+          (optionsRef.current.background ||
+            assembly.hasPending(performance.now()) ||
+            burst.hasPending(performance.now()))
+        )
       },
     })
 
@@ -161,12 +171,12 @@ function WorkspacePixelLayerComponent({
         captureClosureGeometry()
       }
       previousVisibility = visible
-      scheduler.setVisible(visible)
+      const effects = optionsRef.current
+      scheduler.setVisible(visible && (effects.background || effects.creation || effects.closing))
     }
     const refresh = () => {
       state = store.getState()
       viewport = readPixelViewport(state)
-      syncSpaceDetail()
       projected = projectPixelNodes(nodesRef.current, state.nodeLookup, viewport)
       frames = projectPixelNodeFrames(nodesRef.current, state.nodeLookup, viewport)
       activity.prune(projected, performance.now())
@@ -177,6 +187,27 @@ function WorkspacePixelLayerComponent({
       scheduler.invalidate()
     }
     refreshRef.current = refresh
+    const syncOptions = () => {
+      const effects = optionsRef.current
+      if (!effects.creation) {
+        assembly.clear()
+        masks.clear()
+      }
+      if (!effects.closing) {
+        burst.clear()
+        closureSnapshots.clear()
+      }
+      if (!effects.background) {
+        activity.clear()
+        context.clearRect(0, 0, canvas.width, canvas.height)
+        canvas.dataset.covePixelActivity = 'idle'
+      }
+      if (isVisible()) {
+        drawAssembly()
+      }
+      refresh()
+    }
+    syncOptionsRef.current = syncOptions
     const onMotionChange = () => {
       reducedMotion = media.matches
       canvas.dataset.covePixelMotion = reducedMotion ? 'static' : 'enabled'
@@ -234,7 +265,12 @@ function WorkspacePixelLayerComponent({
     }
     const unsubscribeStore = store.subscribe(refresh)
     const unsubscribeOutput = getPtyEventHub().onData(event => {
-      if (!isVisible() || reducedMotion || event.data.length === 0) {
+      if (
+        !isVisible() ||
+        reducedMotion ||
+        !optionsRef.current.background ||
+        event.data.length === 0
+      ) {
         return
       }
       if (activity.observe(event.sessionId, projected, performance.now())) {
@@ -242,7 +278,7 @@ function WorkspacePixelLayerComponent({
       }
     })
     const unsubscribePrepared = subscribeWorkspaceNodeCreationPrepared((nodeIds, createdAt) => {
-      if (!isVisible() || reducedMotion) {
+      if (!isVisible() || reducedMotion || !optionsRef.current.creation) {
         return
       }
       for (const nodeId of masks.prepare(nodeIds, createdAt)) {
@@ -260,7 +296,7 @@ function WorkspacePixelLayerComponent({
       refresh()
     })
     const unsubscribeClosure = subscribeWorkspaceNodesClosed(nodeIds => {
-      if (!isVisible() || reducedMotion) {
+      if (!isVisible() || reducedMotion || !optionsRef.current.closing) {
         return
       }
       const now = performance.now()
@@ -281,7 +317,7 @@ function WorkspacePixelLayerComponent({
             syncVisibility()
           })
         : null
-    observer?.observe(canvas)
+    observer?.observe(scope)
     document.addEventListener('visibilitychange', syncVisibility)
     document.addEventListener('pointerdown', revealForPointer, true)
     document.addEventListener('keydown', revealForKey, true)
@@ -290,23 +326,18 @@ function WorkspacePixelLayerComponent({
     window.addEventListener('opencove-theme-changed', onThemeChange)
     window.addEventListener('resize', refresh)
     onMotionChange()
+    syncOptions()
     syncVisibility()
     scheduler.invalidate()
 
     return () => {
       disposed = true
       refreshRef.current = null
+      syncOptionsRef.current = null
       scheduler.dispose()
       activity.clear()
       assembly.clear()
       masks.dispose()
-      if (scope.style.getPropertyValue('--cove-pixel-space-detail') === appliedSpaceDetail) {
-        if (previousSpaceDetail) {
-          scope.style.setProperty('--cove-pixel-space-detail', previousSpaceDetail)
-        } else {
-          scope.style.removeProperty('--cove-pixel-space-detail')
-        }
-      }
       burst.clear()
       closureSnapshots.clear()
       unsubscribeCreation()
@@ -333,6 +364,7 @@ function WorkspacePixelLayerComponent({
         className="workspace-pixel-layer"
         data-testid="workspace-pixel-layer"
         aria-hidden="true"
+        hidden={!options.background}
         data-cove-pixel-activity="idle"
       />
       <canvas

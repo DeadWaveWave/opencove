@@ -46,12 +46,6 @@
   background: var(--cove-control-hover);
 }
 
-:root[data-cove-theme-id='pixel'] .react-flow__node.selected :is(.role-node, .document-node),
-:root[data-cove-theme-id='pixel'] :is(.role-node, .document-node):focus-within {
-  border-color: var(--cove-node-selection-border);
-  box-shadow: var(--cove-node-selection-shadow);
-}
-
 :root[data-cove-theme-id='pixel'] .terminal-node__body {
   background: var(--cove-terminal-background);
 }

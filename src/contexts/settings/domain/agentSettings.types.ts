@@ -31,7 +31,13 @@ import type { UiLanguage, UiTheme } from './uiSettings'
 export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 export type TerminalProfileId = string | null
 
-export interface AgentSettings {
+export interface PixelEffectSettings {
+  canvasPixelBackgroundEnabled: boolean
+  nodeCreationPixelEffectEnabled: boolean
+  nodeClosePixelEffectEnabled: boolean
+}
+
+export interface AgentSettings extends PixelEffectSettings {
   language: UiLanguage
   uiTheme: UiTheme
   isPrimarySidebarCollapsed: boolean

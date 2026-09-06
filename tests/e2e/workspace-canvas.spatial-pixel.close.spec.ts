@@ -1,3 +1,4 @@
+import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import path from 'node:path'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
@@ -41,7 +42,7 @@ async function seedCloseScene(page: Page) {
         task: { text: 'This note remains editable.' },
       },
     ],
-    { settings: { uiTheme: 'pixel', language: 'en' } },
+    { settings: { uiTheme: 'pixel', ...PIXEL_EFFECTS_ENABLED, language: 'en' } },
   )
   await expect(node(page, TERMINAL_ID).locator('.xterm')).toBeVisible()
   await expect(page.getByTestId('workspace-pixel-assembly')).toHaveAttribute(
@@ -199,7 +200,7 @@ test.describe('Workspace Canvas - Spatial Pixel Close', () => {
             },
           },
         ],
-        { settings: { uiTheme: 'pixel' } },
+        { settings: { uiTheme: 'pixel', ...PIXEL_EFFECTS_ENABLED } },
       )
       await observeBursts(page)
       const taskNode = node(page, 'pixel-cancel-task')

@@ -5,6 +5,7 @@ import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasLifecycle } from './useLifecycle'
 import { useWorkspaceCanvasState } from './useCanvasState'
 import { useWorkspaceCanvasViewportNavigation } from './useViewportNavigation'
+import { useWorkspaceCanvasCreationActivation } from './useCreationActivation'
 
 export function useWorkspaceCanvasLifecycleBindings({
   workspaceId,
@@ -41,6 +42,7 @@ export function useWorkspaceCanvasLifecycleBindings({
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   requestNodeDeleteRef: WorkspaceCanvasActionRefs['requestNodeDeleteRef']
 }): void {
+  useWorkspaceCanvasCreationActivation({ workspaceId, canvasRef: canvasState.canvasRef, nodesRef })
   useWorkspaceCanvasViewportNavigation({
     workspaceId,
     persistedViewport: viewport,

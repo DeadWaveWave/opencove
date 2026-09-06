@@ -1,3 +1,4 @@
+import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
 import { buildNodeEvalCommand, clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
@@ -29,6 +30,7 @@ async function seed(page: Page, kind: 'note' | 'terminal') {
   await clearAndSeedWorkspace(page, [], {
     settings: {
       uiTheme: 'pixel',
+      ...PIXEL_EFFECTS_ENABLED,
       language: 'en',
       standardWindowSizeBucket: kind === 'note' ? 'compact' : 'large',
     },

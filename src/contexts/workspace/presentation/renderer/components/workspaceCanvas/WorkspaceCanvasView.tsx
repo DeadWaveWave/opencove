@@ -327,7 +327,8 @@ export function WorkspaceCanvasView({
       >
         <WorkspaceCanvasBackground
           key={workspaceId}
-          theme={agentSettings.uiTheme}
+          settings={agentSettings}
+          canvasRef={canvasRef}
           nodes={filteredNodes}
         />
         <WorkspaceSpaceRegionsOverlay

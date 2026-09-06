@@ -9,6 +9,10 @@
  */
 
 :root[data-cove-theme-id='ember-light'] {
+  --cove-pixel-blue: #9b5f34;
+  --cove-pixel-cyan: #977027;
+  --cove-pixel-mint: #817331;
+  --cove-pixel-grid-opacity: 0.44;
   --cove-accent: #c97c3a;
 
   --cove-label-gray: #8a7060;

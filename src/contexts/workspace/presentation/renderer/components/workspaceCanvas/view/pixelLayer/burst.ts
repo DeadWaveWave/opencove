@@ -121,7 +121,6 @@ export interface PixelBurstPixel {
 }
 export interface PixelBurstScene {
   particles: PixelBurstPixel[]
-  ring: PixelBurstPixel[]
 }
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
@@ -129,7 +128,7 @@ const smooth = (value: number) => value * value * (3 - 2 * value)
 
 /** A dense square surface snaps outward first, then drifts and fades. No node or text is sampled. */
 export function buildPixelBurstScene(frame: PixelBurstFrame): PixelBurstScene {
-  const scene: PixelBurstScene = { particles: [], ring: [] }
+  const scene: PixelBurstScene = { particles: [] }
   if (frame.age < 0 || frame.age >= PIXEL_BURST_MS) {
     return scene
   }
@@ -151,8 +150,11 @@ export function buildPixelBurstScene(frame: PixelBurstFrame): PixelBurstScene {
     const dx = startX - centerX
     const dy = startY - centerY
     const length = Math.hypot(dx, dy)
-    const directionX = length > 0.001 ? dx / length : Math.cos(noise * Math.PI * 2)
-    const directionY = length > 0.001 ? dy / length : Math.sin(noise * Math.PI * 2)
+    const fallbackX = noise - 0.5
+    const fallbackY = pixelNoise(index, seed + 1) - 0.5
+    const fallbackLength = Math.hypot(fallbackX, fallbackY) || 1
+    const directionX = length > 0.001 ? dx / length : fallbackX / fallbackLength
+    const directionY = length > 0.001 ? dy / length : fallbackY / fallbackLength
     const distance = (snap * (26 + noise * 54) + drift * (12 + noise * 22)) * scale
     const tangent = (noise - 0.5) * drift * 18 * scale
     scene.particles.push({
@@ -186,19 +188,6 @@ export function buildPixelBurstScene(frame: PixelBurstFrame): PixelBurstScene {
   for (let index = 0; index < vertical; index++) {
     addParticle(0, (index + 0.5) / vertical, edgeIndex++, true)
     addParticle(1, (index + 0.5) / vertical, edgeIndex++, true)
-  }
-  if (frame.age > 0 && frame.age < 180) {
-    const ringAlpha = Math.sin((frame.age / 180) * Math.PI) * 0.82
-    for (let index = 0; index < 48; index++) {
-      const angle = (index / 48) * Math.PI * 2
-      const noise = pixelNoise(index, seed + 2)
-      scene.ring.push({
-        x: centerX + Math.cos(angle) * (width / 2 + (12 + snap * 30) * scale),
-        y: centerY + Math.sin(angle) * (height / 2 + (12 + snap * 30) * scale),
-        size: (2.5 + noise * 2.5) * scale,
-        alpha: ringAlpha,
-      })
-    }
   }
   return scene
 }

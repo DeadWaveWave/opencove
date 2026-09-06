@@ -1,3 +1,4 @@
+import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import path from 'node:path'
@@ -108,7 +109,9 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
     try {
       await observeAssembly(window)
       await window.emulateMedia({ reducedMotion: 'no-preference' })
-      await clearAndSeedWorkspace(window, [], { settings: { uiTheme: 'pixel', language: 'en' } })
+      await clearAndSeedWorkspace(window, [], {
+        settings: { uiTheme: 'pixel', ...PIXEL_EFFECTS_ENABLED, language: 'en' },
+      })
       const layer = window.getByTestId('workspace-pixel-layer')
       const assembly = window.getByTestId('workspace-pixel-assembly')
       await expectPaintedField(layer)
@@ -207,7 +210,9 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
     try {
       await observeAssembly(window)
       await window.emulateMedia({ reducedMotion: 'reduce' })
-      await clearAndSeedWorkspace(window, [], { settings: { uiTheme: 'pixel' } })
+      await clearAndSeedWorkspace(window, [], {
+        settings: { uiTheme: 'pixel', ...PIXEL_EFFECTS_ENABLED },
+      })
       const layer = window.getByTestId('workspace-pixel-layer')
       const assembly = window.getByTestId('workspace-pixel-assembly')
       await expectPaintedField(layer)

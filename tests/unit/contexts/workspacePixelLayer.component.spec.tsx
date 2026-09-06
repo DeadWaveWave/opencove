@@ -377,4 +377,43 @@ describe('workspace pixel layer lifecycle', () => {
     expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
     expect(frames.size).toBe(0)
   })
+
+  it('controls creation, closing and background independently without keeping an idle frame loop', () => {
+    const node = pixelNode()
+    const renderScene = (nodes: (typeof node)[], creation: boolean, closing: boolean) => (
+      <div>
+        <WorkspacePixelLayer nodes={nodes} options={{ background: false, creation, closing }} />
+        <div className="react-flow__node" data-id={node.id}>
+          <input />
+        </div>
+      </div>
+    )
+    const view = render(renderScene([], true, false))
+    const foreground = view.getByTestId('workspace-pixel-assembly')
+    tick(0)
+    expect(frames.size).toBe(0)
+    expect(view.getByTestId('workspace-pixel-layer')).toHaveAttribute('hidden')
+    output({ sessionId: node.data.sessionId, data: 'background is disabled' })
+    expect(frames.size).toBe(0)
+    now = 100
+    act(() => createNode(node.id))
+    view.rerender(renderScene([node], true, false))
+    tick(140)
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
+    expect(frames.size).toBe(1)
+    // Enabling close feedback does not cancel an in-progress creation.
+    view.rerender(renderScene([node], true, true))
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
+    view.rerender(renderScene([node], false, true))
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
+    tick(200)
+    expect(frames.size).toBe(0)
+    view.rerender(renderScene([], false, true))
+    act(() => publishWorkspaceNodesClosed([node.id]))
+    tick(240)
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'bursting')
+    view.rerender(renderScene([], false, false))
+    expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
+    expect(frames.size).toBe(0)
+  })
 })

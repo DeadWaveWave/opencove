@@ -1,3 +1,4 @@
+import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import path from 'node:path'
 import { writeFile } from 'node:fs/promises'
@@ -315,6 +316,7 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
         {
           settings: {
             uiTheme: 'pixel',
+            ...PIXEL_EFFECTS_ENABLED,
             language: 'en',
             isPrimarySidebarCollapsed: true,
             focusNodeOnClick: false,
