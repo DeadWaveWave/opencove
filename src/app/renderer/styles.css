@@ -38,6 +38,7 @@
 @import './styles/website-node.browser.css';
 @import './styles/image-node.css';
 @import './styles/node-chrome.css';
+@import './styles/node-kind-icon.css';
 @import './styles/node-selected-drag-surface.css';
 @import './styles/settings-panel.css';
 @import './styles/settings-panel.sidebar.css';
@@ -66,3 +67,5 @@
 @import './styles/themes/ember-light.css';
 @import './styles/themes/pixel.css';
 @import './styles/themes/pixel-material.css';
+@import './styles/themes/space-color-identity.css';
+@import './styles/node-color-identity.css';

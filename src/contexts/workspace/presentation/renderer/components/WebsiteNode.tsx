@@ -3,7 +3,6 @@ import type { JSX } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
-  Globe,
   LoaderCircle,
   Maximize2,
   Minimize2,
@@ -16,6 +15,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import { resolveBrowserNavigationTarget } from '@contexts/settings/domain/browserSettings'
 import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
+import { NodeKindIcon } from './shared/NodeKindIcon'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { useWebsiteWindowStore } from '../store/useWebsiteWindowStore'
@@ -323,7 +323,7 @@ export function WebsiteNode({
               commitUrl()
             }}
           >
-            <Globe className="website-node__address-icon" aria-hidden="true" />
+            <NodeKindIcon kind="website" className="website-node__address-icon" />
             <input
               className="website-node__address-input"
               value={draftUrl}

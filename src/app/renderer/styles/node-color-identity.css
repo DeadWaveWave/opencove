@@ -1,0 +1,103 @@
+/* Label color is projected onto the React Flow frame, shared by every node kind.
+   It never changes a content surface, terminal palette, status, or selection. */
+.workspace-canvas
+  .react-flow__node[data-cove-label-color]
+  :is(
+    .terminal-node,
+    .task-node,
+    .note-node,
+    .document-node,
+    .role-node,
+    .website-node,
+    .image-node
+  ) {
+  border-color: color-mix(
+    in srgb,
+    var(--cove-label-color) var(--cove-node-label-border-tint),
+    var(--cove-node-border)
+  );
+}
+
+.workspace-canvas
+  .react-flow__node[data-cove-label-color]
+  :is(
+    .terminal-node__header,
+    .task-node__header,
+    .note-node__header,
+    .document-node__header,
+    .role-node__header,
+    .website-node__header
+  ) {
+  position: relative;
+  --cove-node-label-header-base: var(--cove-node-header-surface);
+  background-image: linear-gradient(
+    100deg,
+    color-mix(
+      in srgb,
+      var(--cove-label-color) var(--cove-node-label-header-tint),
+      var(--cove-node-label-header-base)
+    ),
+    var(--cove-node-label-header-base) 90%
+  );
+}
+
+.workspace-canvas .react-flow__node[data-cove-label-color] .terminal-node__header {
+  --cove-node-label-header-base: var(--cove-terminal-node-header-surface);
+}
+
+.workspace-canvas
+  .react-flow__node[data-cove-label-color]
+  :is(
+    .terminal-node__header,
+    .task-node__header,
+    .note-node__header,
+    .document-node__header,
+    .role-node__header,
+    .website-node__header
+  )::before,
+.workspace-canvas .react-flow__node[data-cove-label-color] .image-node::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: clamp(2px, calc(1px / var(--cove-canvas-zoom, 1)), 6px);
+  background: linear-gradient(
+    90deg,
+    var(--cove-label-color),
+    color-mix(in srgb, var(--cove-label-color) 50%, transparent) 42%,
+    transparent 82%
+  );
+  pointer-events: none;
+}
+
+.workspace-canvas .react-flow__node[data-cove-label-color] .image-node::before {
+  z-index: 1;
+}
+
+/* Input activation and batch selection keep their own existing theme tokens.
+   The header stripe remains visible while the active outer frame lights up. */
+.workspace-canvas
+  .react-flow__node:is(.selected, .dragging, :focus-within)
+  :is(
+    .terminal-node,
+    .task-node,
+    .note-node,
+    .document-node,
+    .role-node,
+    .website-node,
+    .image-node
+  ),
+.workspace-canvas
+  .react-flow__node
+  :is(
+    .terminal-node,
+    .task-node,
+    .note-node,
+    .document-node,
+    .role-node,
+    .website-node,
+    .image-node
+  )[data-cove-focus-transition='true'],
+.workspace-canvas .react-flow__node .terminal-node.terminal-node--selected-surface {
+  border-color: var(--cove-node-selection-border);
+  box-shadow: var(--cove-node-selection-shadow);
+}

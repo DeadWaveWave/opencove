@@ -343,7 +343,7 @@ async function computeHeaderFallbackPosition(
   )
 }
 
-async function resolveHeaderDragTarget(header: Locator): Promise<{
+export async function resolveHeaderDragTarget(header: Locator): Promise<{
   header: Locator
   className: string
   position: { x: number; y: number }

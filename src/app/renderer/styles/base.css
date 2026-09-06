@@ -140,6 +140,8 @@
   --cove-node-border: rgba(107, 138, 236, 0.65);
   --cove-node-surface: rgba(10, 17, 33, 0.94);
   --cove-node-background-image: none;
+  --cove-node-label-header-tint: 17%;
+  --cove-node-label-border-tint: 30%;
   --cove-node-radius: var(--cove-radius-lg);
   --cove-node-header-surface: rgba(23, 36, 66, 0.96);
   --cove-node-header-border: rgba(104, 137, 226, 0.45);

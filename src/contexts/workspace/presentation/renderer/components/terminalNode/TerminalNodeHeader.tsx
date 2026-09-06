@@ -7,6 +7,7 @@ import type { LabelColor } from '@shared/types/labelColor'
 import { TerminalNodeAgentSessionActions } from './TerminalNodeAgentSessionActions'
 import { getStatusClassName } from './status'
 import { InlineNodeTitleEditor } from '../shared/InlineNodeTitleEditor'
+import { NodeKindIcon } from '../shared/NodeKindIcon'
 
 interface TerminalNodeHeaderProps {
   title: string
@@ -110,6 +111,7 @@ export function TerminalNodeHeader({
           aria-hidden="true"
         />
       ) : null}
+      <NodeKindIcon kind={kind} />
       {isTitleEditable ? (
         <InlineNodeTitleEditor
           value={editableTitle}

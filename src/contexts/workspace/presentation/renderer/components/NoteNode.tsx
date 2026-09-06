@@ -11,6 +11,7 @@ import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { normalizeMarkdownFileName } from './NoteNode.markdown'
 import { InlineNodeTitleEditor } from './shared/InlineNodeTitleEditor'
 import { NoteNodeActionsMenu } from './NoteNodeActionsMenu'
+import { NodeKindIcon } from './shared/NodeKindIcon'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -173,6 +174,7 @@ export function NoteNode({
             aria-hidden="true"
           />
         ) : null}
+        <NodeKindIcon kind="note" />
         <InlineNodeTitleEditor
           value={resolvedTitle}
           placeholder={t('noteNode.untitledTitle')}

@@ -22,8 +22,38 @@ flat, with low-contrast separators and consistent controls; they have no beveled
 Terminal content stays opaque and readable. Images retain their image-first layout with matching
 frame treatment. Spaces are lightweight region boundaries, with very faint fill that recedes as the
 canvas zooms out. Large Spaces have no broad blur, gradient, shadow or decorative corner patches.
-Small title/worktree labels retain a subtle translucent surface. Entity labels and semantic
+Space titles retain a compact tinted surface; branches and worktree metadata use lightweight text
+and line icons, with an interaction surface only on hover/focus. Entity labels and semantic
 warning/error colors remain independent of the blue/cyan/mint brand gradient.
+
+## Color identity and lightweight chrome
+
+All themes share the same presentation of explicit label colors. The existing label-color owner
+projects its resolved color onto the React Flow wrapper through `data-cove-label-color`; it does not
+change label inheritance, filtering, selection, geometry or persisted data. Removing the label removes
+this presentation attribute, so old tint cannot remain on the frame.
+
+Labeled windows have a lightly colored border and a short gradient stripe across the top of the
+header. A restrained tint fades across the header while reading surfaces retain their theme colors.
+Terminal, Task, Note, Document, Role, Website and Image use one family of decorative line icons.
+Agent windows retain their provider identity. Image's icon and stripe are overlays, preserving its
+image-first layout. Header titles use medium weight, with existing sizes, action targets and terminal
+body geometry preserved.
+
+Space identity is visible in its fine colored contour, tinted title and approximately 2.5% label-color
+fill at normal zoom. Its large-area tint recedes toward 0.5% in the far view. Bounded annotation and
+stroke compensation keep overview labels and edges recognizable without allowing a small Space's
+caption to spill over neighboring regions. This is shared presentation state derived from the canvas
+zoom, independent of optional pixel effects.
+
+Below 40% zoom, captions prioritize the Space title and branch. Files and menu controls appear on
+a row above the title when the caption is hovered or focused, retain their original accessible names and
+remain keyboard-reachable. The combined caption has a continuous pointer hit area across both rows.
+
+Input focus remains a separate full-frame highlight using the existing theme focus tokens. The label
+stripe and header tint remain visible while the focused frame lights up. Color identity must not
+create batch selection, hide dirty/error indicators or change terminal/editor colors. Controls,
+context menus, branch actions and title editing retain their original behavior and accessible names.
 
 ## Effect preferences
 

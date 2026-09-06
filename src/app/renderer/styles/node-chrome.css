@@ -18,6 +18,20 @@
   background-image: var(--cove-node-background-image);
 }
 
+.workspace-canvas
+  :is(
+    .terminal-node__title,
+    .task-node__title,
+    .note-node__title,
+    .document-node__title,
+    .role-node__title,
+    .node-title-editor,
+    .node-title-editor__input,
+    .website-node__address-input
+  ) {
+  font-weight: 500;
+}
+
 .workspace-canvas .react-flow__node.selected :is(.role-node, .document-node),
 .workspace-canvas :is(.role-node, .document-node):focus-within,
 .workspace-canvas :is(.role-node, .document-node)[data-cove-focus-transition='true'] {

@@ -1,10 +1,11 @@
 import React from 'react'
-import { Folder, LoaderCircle } from 'lucide-react'
+import { Folder, GitBranch, LoaderCircle } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
 import type { SpaceFrameHandleMode } from '../../../utils/spaceLayout'
+import { resolveSpaceAnnotationCap } from './spaceVisualScale'
 
 export interface WorkspaceSpaceBranchBadge {
   kind: string
@@ -116,6 +117,13 @@ export function WorkspaceSpaceRegionItem({
       data-parent-space-id={space.parentSpaceId ?? undefined}
       data-cove-label-color={space.labelColor ?? undefined}
       style={{
+        ...({
+          '--cove-space-annotation-cap': resolveSpaceAnnotationCap(resolvedRect.width),
+          '--cove-space-overview-annotation-cap': resolveSpaceAnnotationCap(
+            resolvedRect.width,
+            true,
+          ),
+        } as React.CSSProperties),
         transform: `translate(${resolvedRect.x}px, ${resolvedRect.y}px)`,
         width: resolvedRect.width,
         height: resolvedRect.height,
@@ -219,7 +227,7 @@ export function WorkspaceSpaceRegionItem({
                   aria-hidden="true"
                 />
               ) : null}
-              {space.name}
+              <span className="workspace-space-region__label-name">{space.name}</span>
             </button>
 
             <button
@@ -282,6 +290,7 @@ export function WorkspaceSpaceRegionItem({
                 type="button"
                 className="workspace-space-region__branch-badge workspace-space-region__branch-badge--button"
                 data-testid={`workspace-space-worktree-branch-${space.id}`}
+                data-branch-kind="branch"
                 title={resolvedBranchBadge.title}
                 onClick={event => {
                   event.stopPropagation()
@@ -298,6 +307,7 @@ export function WorkspaceSpaceRegionItem({
                   })
                 }}
               >
+                <GitBranch className="workspace-space-region__branch-icon" aria-hidden="true" />
                 <span className="workspace-space-region__branch-badge-kind">
                   {resolvedBranchBadge.kind}
                 </span>
@@ -309,8 +319,10 @@ export function WorkspaceSpaceRegionItem({
               <span
                 className="workspace-space-region__branch-badge"
                 data-testid={`workspace-space-worktree-branch-${space.id}`}
+                data-branch-kind={branchName ? 'branch' : 'detached'}
                 title={resolvedBranchBadge.title}
               >
+                <GitBranch className="workspace-space-region__branch-icon" aria-hidden="true" />
                 <span className="workspace-space-region__branch-badge-kind">
                   {resolvedBranchBadge.kind}
                 </span>

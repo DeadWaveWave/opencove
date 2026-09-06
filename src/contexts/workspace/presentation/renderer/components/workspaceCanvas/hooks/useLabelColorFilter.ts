@@ -32,6 +32,10 @@ export function useWorkspaceCanvasLabelColorFilter({
 
       return {
         ...node,
+        domAttributes: {
+          ...node.domAttributes,
+          'data-cove-label-color': effectiveLabelColor ?? undefined,
+        },
         data: {
           ...node.data,
           effectiveLabelColor,

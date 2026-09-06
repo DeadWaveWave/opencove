@@ -1,3 +1,4 @@
+import { wheelToZoom } from './workspace-canvas.zoom.helpers'
 import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import path from 'node:path'
@@ -132,19 +133,6 @@ async function runBuildOutput(window: Page) {
     .toBe(true)
 }
 
-async function wheelToZoom(window: Page, target: number) {
-  const bounds = await window.locator('.workspace-canvas').evaluate(element => {
-    const rect = element.getBoundingClientRect()
-    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
-  })
-  // A real wheel over the empty outer rail follows the application's normal viewport owner.
-  await window.mouse.move(bounds.x + bounds.width - 8, bounds.y + bounds.height - 24)
-  const current = await readCanvasViewport(window)
-  await window.mouse.wheel(0, -Math.log2(target / current.zoom) / 0.002)
-  await expect.poll(async () => (await readCanvasViewport(window)).zoom).toBeCloseTo(target, 2)
-  await window.waitForTimeout(350)
-}
-
 test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
   test.setTimeout(180_000)
 
@@ -171,10 +159,18 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
         .locator(
           ':is(.terminal-node__header,.task-node__header,.note-node__header,.document-node__header,.website-node__header,.role-node__header)',
         )
-        .evaluateAll(elements => elements.map(element => getComputedStyle(element).backgroundImage))
+        .evaluateAll(elements =>
+          elements.map(element => ({
+            image: getComputedStyle(element).backgroundImage,
+            label: element.closest<HTMLElement>('.react-flow__node')?.dataset.coveLabelColor,
+          })),
+        )
       expect(headers).toHaveLength(7)
-      expect(headers.every(header => header === 'none')).toBe(true)
-      expect(new Set(headers).size).toBe(1)
+      expect(
+        headers.every(header =>
+          header.label ? header.image.includes('linear-gradient') : header.image === 'none',
+        ),
+      ).toBe(true)
       await Promise.all(
         MATERIAL_NODE_KINDS.map(kind => {
           const frame =
@@ -202,6 +198,12 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
         .locator('..')
         .locator('..')
       await expect(space).toHaveCSS('border-top-style', 'solid')
+      expect(
+        await space.evaluate(element => {
+          const border = getComputedStyle(element, '::before')
+          return { style: border.borderTopStyle, width: Number.parseFloat(border.borderTopWidth) }
+        }),
+      ).toEqual({ style: 'solid', width: 1 })
       await expect(window.getByTestId('workspace-space-label-pixel-review-space')).toContainText(
         'Review worktree',
       )

@@ -1,4 +1,5 @@
-import { Bot, Play, X } from 'lucide-react'
+import { Play, X } from 'lucide-react'
+import { NodeKindIcon } from './shared/NodeKindIcon'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { JSX } from 'react'
 import { Handle, Position } from '@xyflow/react'
@@ -130,7 +131,7 @@ export function RoleNode({
       <Handle type="target" position={Position.Left} className="workspace-node-handle" />
       <Handle type="source" position={Position.Right} className="workspace-node-handle" />
       <div className="role-node__header" data-node-drag-handle="true">
-        <Bot className="role-node__icon" aria-hidden="true" />
+        <NodeKindIcon kind="role" className="role-node__icon" />
         <div className="role-node__title-stack">
           <div className="role-node__title" data-testid="role-node-title">
             {title.trim().length > 0 ? title : role.roleName}

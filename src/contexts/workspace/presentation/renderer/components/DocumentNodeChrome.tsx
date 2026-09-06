@@ -5,6 +5,7 @@ import { DocumentNodeBody } from './DocumentNodeBody'
 import type { DocumentNodeInteractionOptions } from './DocumentNode.helpers'
 import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
+import { NodeKindIcon } from './shared/NodeKindIcon'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { suppressExplorerOverlayInteractions } from './workspaceCanvas/explorerInteractionGuard'
 
@@ -116,6 +117,7 @@ export function DocumentNodeChrome({
             aria-hidden="true"
           />
         ) : null}
+        <NodeKindIcon kind="document" />
         <span
           className="document-node__title"
           data-testid="document-node-title"

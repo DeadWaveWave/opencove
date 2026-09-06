@@ -3,7 +3,7 @@ import { Background, BackgroundVariant, type Node } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '../../../types'
 import { WorkspacePixelLayer } from './WorkspacePixelLayer'
-import { usePixelSpaceDetail } from './usePixelSpaceDetail'
+import { useSpaceVisualScale } from './useSpaceVisualScale'
 
 interface WorkspaceCanvasBackgroundProps {
   settings: Pick<
@@ -22,7 +22,7 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
   canvasRef,
   nodes,
 }: WorkspaceCanvasBackgroundProps): React.JSX.Element {
-  usePixelSpaceDetail(canvasRef, settings.uiTheme)
+  useSpaceVisualScale(canvasRef)
   const effects = {
     background: settings.canvasPixelBackgroundEnabled,
     creation: settings.nodeCreationPixelEffectEnabled,

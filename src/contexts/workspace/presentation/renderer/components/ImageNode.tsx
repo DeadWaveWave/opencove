@@ -4,6 +4,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { CanvasImageMimeType } from '@shared/contracts/dto'
 import type { NodeFrame, Point } from '../types'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
+import { NodeKindIcon } from './shared/NodeKindIcon'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 
@@ -160,6 +161,10 @@ export function ImageNode({
           data-image-missing={isMissing ? 'true' : 'false'}
         />
       )}
+
+      <span className="cove-node-kind-badge" aria-hidden="true">
+        <NodeKindIcon kind="image" />
+      </span>
 
       <button
         type="button"

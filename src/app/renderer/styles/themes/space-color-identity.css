@@ -1,0 +1,228 @@
+:root {
+  --cove-canvas-zoom: 1;
+  --cove-space-detail: 1;
+  --cove-space-annotation-scale: 1;
+  --cove-space-annotation-cap: 8;
+  --cove-space-overview-annotation-cap: 8;
+  --cove-space-stroke-scale: 1;
+  --cove-space-identity-fill-near: 2.5%;
+  --cove-space-identity-fill-far: 0.6%;
+  --cove-space-identity-title-tint: 14%;
+  --cove-space-identity-title-border: 42%;
+}
+
+/* A Space is a region, not a panel. Selection strengthens its own hue without
+   changing the fill; keyboard focus remains local to the focused control. */
+.workspace-canvas .workspace-space-region {
+  --cove-space-identity-color: var(--cove-text-faint);
+  --cove-space-identity-edge-strength: 32%;
+  --cove-space-caption-scale: min(
+    var(--cove-space-annotation-scale),
+    var(--cove-space-annotation-cap)
+  );
+  --cove-space-identity-fill: calc(
+    var(--cove-space-identity-fill-far) +
+      (var(--cove-space-identity-fill-near) - var(--cove-space-identity-fill-far)) *
+      var(--cove-space-detail)
+  );
+  border-style: solid;
+  border-color: transparent;
+  background: color-mix(
+    in srgb,
+    var(--cove-space-identity-color) var(--cove-space-identity-fill),
+    transparent
+  );
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.workspace-canvas .workspace-space-region[data-cove-label-color] {
+  --cove-space-identity-color: var(--cove-label-color);
+  --cove-space-identity-edge-strength: 52%;
+}
+
+/* The independent painted edge never changes rects or drag-handle geometry. */
+.workspace-canvas .workspace-space-region::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  box-sizing: border-box;
+  border: calc(1px * var(--cove-space-stroke-scale)) solid
+    color-mix(
+      in srgb,
+      var(--cove-space-identity-color) var(--cove-space-identity-edge-strength),
+      transparent
+    );
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.workspace-canvas .workspace-space-region.workspace-space-region--active {
+  --cove-space-identity-edge-strength: 72%;
+}
+
+.workspace-canvas .workspace-space-region.workspace-space-region--selected {
+  --cove-space-identity-edge-strength: 90%;
+}
+
+.workspace-canvas .workspace-space-region__label-group {
+  top: calc(-11px * var(--cove-space-caption-scale));
+  max-width: min(760px, calc((100% - 32px) / 2 / var(--cove-space-caption-scale)));
+  transform: scale(var(--cove-space-caption-scale));
+  transform-origin: top left;
+}
+
+.workspace-canvas .workspace-space-region__label-group--right {
+  transform-origin: top right;
+}
+
+/* At overview scale, identity gets the width budget. Auxiliary controls remain
+   in the tab order and reveal above the title, clear of the node content layer. */
+.workspace-canvas[data-cove-space-overview='true'] .workspace-space-region {
+  --cove-space-caption-scale: min(
+    var(--cove-space-annotation-scale),
+    var(--cove-space-overview-annotation-cap)
+  );
+}
+
+.workspace-canvas[data-cove-space-overview='true'] .workspace-space-region__label-group--left {
+  width: max-content;
+  flex-wrap: wrap-reverse;
+}
+
+.workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region__label-group--left:is(:hover, :focus-within) {
+  /* The 24px action row plus the existing 4px gap leaves the title in place. */
+  top: calc(-39px * var(--cove-space-caption-scale));
+}
+
+.workspace-canvas[data-cove-space-overview='true'] .workspace-space-region__label {
+  flex-basis: 100%;
+}
+
+.workspace-canvas[data-cove-space-overview='true']
+  :is(.workspace-space-region__files-pill, .workspace-space-region__menu) {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  flex: 0 0 24px;
+  padding: 0;
+  line-height: 1;
+  justify-content: center;
+  clip-path: inset(50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region__label-group--left:is(:hover, :focus-within)
+  :is(.workspace-space-region__files-pill, .workspace-space-region__menu) {
+  position: static;
+  clip-path: none;
+  opacity: 1;
+  pointer-events: auto;
+  background: var(--cove-window-surface);
+}
+
+.workspace-canvas[data-cove-space-overview='true']
+  :is(.workspace-space-region__files-pill-label, .workspace-space-region__files-pill-count) {
+  display: none;
+}
+
+.workspace-canvas :is(.workspace-space-region__label, .workspace-space-region__label-input) {
+  border-radius: var(--cove-radius-sm);
+  border-color: color-mix(
+    in srgb,
+    var(--cove-space-identity-color) var(--cove-space-identity-title-border),
+    var(--cove-border-subtle)
+  );
+  background: color-mix(
+    in srgb,
+    var(--cove-space-identity-color) var(--cove-space-identity-title-tint),
+    var(--cove-window-surface)
+  );
+  box-shadow: inset 2px 0 0 var(--cove-space-identity-color);
+  backdrop-filter: none;
+  color: var(--cove-text);
+  font-weight: 500;
+}
+
+.workspace-canvas .workspace-space-region__label-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-canvas .workspace-space-region__label-input {
+  top: calc(-11px * var(--cove-space-caption-scale));
+  min-width: min(120px, calc((100% - 20px) / var(--cove-space-caption-scale)));
+  max-width: calc((100% - 20px) / var(--cove-space-caption-scale));
+  transform: scale(var(--cove-space-caption-scale));
+  transform-origin: top left;
+}
+
+.workspace-canvas
+  :is(
+    .workspace-space-region__branch-badge,
+    .workspace-space-region__worktree-badge,
+    .workspace-space-region__menu,
+    .workspace-space-region__files-pill
+  ) {
+  border-color: transparent;
+  border-radius: var(--cove-radius-sm);
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  color: var(--cove-text-muted);
+}
+
+.workspace-canvas .workspace-space-region__branch-badge {
+  gap: 5px;
+  padding-inline: 4px;
+}
+
+.workspace-canvas .workspace-space-region__branch-icon {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  stroke-width: 1.5;
+  color: var(--cove-text-muted);
+}
+
+.workspace-canvas
+  .workspace-space-region__branch-badge[data-branch-kind='branch']
+  .workspace-space-region__branch-badge-kind {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.workspace-canvas
+  :is(
+    .workspace-space-region__branch-badge--button,
+    .workspace-space-region__menu,
+    .workspace-space-region__files-pill
+  ):hover,
+.workspace-canvas .workspace-space-region__files-pill--active {
+  border-color: var(--cove-border-subtle);
+  background: var(--cove-surface-hover);
+  box-shadow: none;
+  color: var(--cove-text);
+}
+
+.workspace-canvas
+  :is(
+    .workspace-space-region__label,
+    .workspace-space-region__label-input,
+    .workspace-space-region__menu,
+    .workspace-space-region__files-pill,
+    .workspace-space-region__branch-badge--button
+  ):focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+}

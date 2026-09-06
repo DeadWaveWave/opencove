@@ -21,6 +21,7 @@ import { MIN_HEIGHT, MIN_WIDTH, shouldStopWheelPropagation } from './taskNode/he
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import type { LabelColor } from '@shared/types/labelColor'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
+import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 
 interface TaskNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -210,6 +211,7 @@ export function TaskNode({
               />
             ) : null}
 
+            <NodeKindIcon kind="task" />
             <InlineNodeTitleEditor
               value={title}
               placeholder={t('taskNode.untitledTitle')}
