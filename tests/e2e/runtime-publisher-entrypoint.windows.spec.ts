@@ -11,16 +11,23 @@ test('runtime publisher dispatches from Windows short and long temporary paths',
   try {
     await copyFile(resolve('src/app/cli/publishRuntime.mjs'), join(root, 'publishRuntime.mjs'))
     const short = spawnSync(
-      process.env.ComSpec ?? 'cmd.exe',
-      ['/d', '/s', '/c', `for %I in ("${root}") do @echo %~sI`],
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-Command',
+        '(New-Object -ComObject Scripting.FileSystemObject).GetFolder($env:OPENCOVE_TEST_LONG_PATH).ShortPath',
+      ],
       {
         encoding: 'utf8',
         windowsHide: true,
+        timeout: 5000,
+        env: { ...process.env, OPENCOVE_TEST_LONG_PATH: root },
       },
     )
     expect(short.status, short.stderr).toBe(0)
     const shortRoot = short.stdout.trim()
     const longRoot = await realpath(root)
+    expect(await realpath(shortRoot)).toBe(longRoot)
     expect(shortRoot.toLowerCase()).not.toBe(longRoot.toLowerCase())
     for (const directory of [shortRoot, longRoot]) {
       const result = spawnSync(
