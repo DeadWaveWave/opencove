@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { QuickCommand, QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import {
   createNoteNodeAtFlowPosition,
@@ -62,7 +63,7 @@ export function useWorkspaceCanvasQuickMenuActions(
 
       setContextMenu(null)
 
-      const anchor = { x: contextMenu.flowX, y: contextMenu.flowY }
+      const anchor = resolvePaneNodeCreationAnchor(contextMenu)
 
       if (command.kind === 'url') {
         if (!websiteWindowsEnabled) {
@@ -138,10 +139,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         setContextMenu(null)
 
         createNoteNodeAtFlowPosition({
-          anchor: {
-            x: contextMenu.flowX,
-            y: contextMenu.flowY,
-          },
+          anchor: resolvePaneNodeCreationAnchor(contextMenu),
           standardWindowSizeBucket,
           createNoteNode: (anchor, placementOptions) =>
             createNoteNode(anchor, {

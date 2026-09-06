@@ -7,6 +7,7 @@ import {
   type MutableRefObject,
   type SetStateAction,
 } from 'react'
+import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
@@ -160,7 +161,7 @@ export function useWorkspaceCanvasRoleActions({
     }
 
     setRoleCreator({
-      anchor: { x: contextMenu.flowX, y: contextMenu.flowY },
+      anchor: resolvePaneNodeCreationAnchor(contextMenu),
       mode: 'create',
       roleId: null,
       name: '',
@@ -348,7 +349,7 @@ export function useWorkspaceCanvasRoleActions({
       }
 
       setContextMenu(null)
-      createRoleNodeAtFlowPoint({ x: contextMenu.flowX, y: contextMenu.flowY }, role)
+      createRoleNodeAtFlowPoint(resolvePaneNodeCreationAnchor(contextMenu), role)
     },
     [contextMenu, createRoleNodeAtFlowPoint, projectRoles, setContextMenu],
   )
