@@ -34,6 +34,7 @@ const PERSISTED_VIEWPORT: Viewport = { x: -120, y: -80, zoom: 0.6 }
 
 function ViewportNavigationHarness({
   reactFlow,
+  workspaceId = 'workspace-1',
   focusNodeId,
   focusSpaceId = null,
   focusSequence = 1,
@@ -41,6 +42,7 @@ function ViewportNavigationHarness({
   focusSpaceInViewport = () => false,
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
+  workspaceId?: string
   focusNodeId?: string | null
   focusSpaceId?: string | null
   focusSequence?: number
@@ -52,7 +54,7 @@ function ViewportNavigationHarness({
   nodesRef.current = nodes
 
   useWorkspaceCanvasViewportNavigation({
-    workspaceId: 'workspace-1',
+    workspaceId,
     persistedViewport: PERSISTED_VIEWPORT,
     restoredViewportWorkspaceIdRef,
     reactFlow,
@@ -127,6 +129,7 @@ describe('useWorkspaceCanvasViewportNavigation', () => {
 
     expect(reactFlow.setCenter).toHaveBeenCalledWith(2_640, 1_760, {
       duration: 220,
+      interpolate: 'smooth',
       zoom: 1,
     })
     expect(reactFlow.setViewport).not.toHaveBeenCalled()
@@ -192,6 +195,42 @@ describe('useWorkspaceCanvasViewportNavigation', () => {
     act(flushAnimationFrames)
 
     expect(reactFlow.setCenter).toHaveBeenCalledTimes(2)
+  })
+
+  it('stops an active transition at its live position when the canvas unmounts', () => {
+    const reactFlow = createReactFlow()
+    const rendered = render(
+      <ViewportNavigationHarness reactFlow={reactFlow} focusNodeId={NODE.id} />,
+    )
+    act(flushAnimationFrames)
+    const interruptedViewport = { x: -500, y: -300, zoom: 0.8 }
+    vi.mocked(reactFlow.getViewport).mockReturnValue(interruptedViewport)
+    rendered.unmount()
+    expect(reactFlow.setViewport).toHaveBeenLastCalledWith(interruptedViewport, { duration: 0 })
+  })
+
+  it('stops the previous workspace before restoring the next one', () => {
+    const reactFlow = createReactFlow()
+    const rendered = render(
+      <ViewportNavigationHarness reactFlow={reactFlow} focusNodeId={NODE.id} />,
+    )
+    act(flushAnimationFrames)
+    const liveViewport = { x: -900, y: -200, zoom: 0.9 }
+    vi.mocked(reactFlow.getViewport).mockReturnValue(liveViewport)
+    rendered.rerender(<ViewportNavigationHarness reactFlow={reactFlow} workspaceId="workspace-2" />)
+    expect(reactFlow.setViewport).toHaveBeenLastCalledWith(liveViewport, { duration: 0 })
+    act(flushAnimationFrames)
+    expect(reactFlow.setViewport).toHaveBeenLastCalledWith(PERSISTED_VIEWPORT, { duration: 0 })
+  })
+
+  it('does not start a pending navigation after unmount', () => {
+    const reactFlow = createReactFlow()
+    const rendered = render(
+      <ViewportNavigationHarness reactFlow={reactFlow} focusNodeId={NODE.id} />,
+    )
+    rendered.unmount()
+    act(flushAnimationFrames)
+    expect(reactFlow.setCenter).not.toHaveBeenCalled()
   })
 
   it('cancels a superseded initial frame so only the latest focus request lands', () => {

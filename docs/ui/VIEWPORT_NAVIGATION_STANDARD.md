@@ -10,13 +10,13 @@
 
 1. 将目标节点中心作为视口中心；
 2. 将画布缩放切换到目标缩放（默认 `zoom = 1`，可配置）；
-3. 使用平滑动画过渡。
+3. 使用用户选择的视口转移效果；系统减少动态效果开启时直接定位。
 
 当触发“区域定位导航”时，统一执行：
 
 1. 将目标 flow 坐标作为视口中心；
 2. 保持当前画布缩放不变；
-3. 使用平滑动画过渡。
+3. 使用用户选择的视口转移效果；系统减少动态效果开启时直接定位。
 
 ## 2. 触发入口
 
@@ -57,6 +57,43 @@
 - UI 位置：`Settings > Canvas > Target Zoom`
 
 说明：`focusNodeOnClick` 只控制“节点点击”入口；不影响左侧 `Agents` 导航。`focusNodeTargetZoom` 对两个入口都生效。
+
+### 4.1 视口转移效果
+
+- Key：`viewportTransition`；可选 `fly`（缩放飞行，默认）与 `slide`（平滑移动）。
+- 设置位置：`Settings > Canvas & Windows > Node Focus > Viewport Transition`。
+- 节点点击、侧栏定位、方向快捷键、Space 与全部 Space 定位共用同一策略；MiniMap
+  区域定位也遵循该策略。原有目标位置、目标缩放和 120–220ms 时长保持各入口的语义。
+- `fly` 使用 React Flow 的 `smooth` 插值，保留远距离时先拉远再靠近的效果。
+- `slide` 使用 `linear` 空间插值与框架默认 cubic-in-out 时间缓动；同倍率移动保持倍率，
+  变倍率时缩放只在起止范围内变化，不额外拉远。
+- 系统 `prefers-reduced-motion: reduce` 优先于效果偏好，下一次导航直接定位。
+- 切换设置不触发导航，下次导航读取最新值；缺失/非法值归一为 `fly`，重启恢复已保存值。
+
+| 状态 | Owner | 写入入口 | 重启来源 |
+| --- | --- | --- | --- |
+| 效果偏好 | settings domain 定义，AppStore 持有 Renderer 设置投影 | 现有设置 updater、归一化与持久化链路 | 已保存的 settings |
+| 当前位置与动画 | React Flow / D3 | 共用导航 helper、Space 定位与用户手势 | 现有 workspace view state |
+| 导航请求 | 现有节点/Space 导航 owner | 点击、侧栏与快捷键 | 不恢复未完成动画 |
+
+路由：用户入口 → 现有目标计算 → 共用动画策略 → React Flow → move-end → 现有视口保存。
+只把策略收口，不创建另一套逐帧状态或动画引擎，不在主进程执行动画。
+
+不变量：
+
+1. 效果只改变路径，不能改变目标位置、选择语义或最终缩放。
+2. 新导航与手动手势接管旧动画；画布卸载/切换工作区在 layout cleanup 中以即时定位停止旧动画。
+3. 设置与视口使用各自已有 owner；动画帧不写入偏好。被打断的 React Flow Promise 可能
+   不结束，必要清理不得依赖它完成。
+
+验证：归一化与策略用 unit 覆盖；Electron E2E 以 rAF 时钟记录真实视口轨迹，检查两种效果
+落点误差 ≤1px、平移倍率边界、双向导航、快速切换、手动接管、减少动态效果及重启恢复。
+普通 E2E 仍跳过动画；专用动画用例在测试环境设置
+`document.documentElement.dataset.opencoveTestViewportAnimation = 'true'` 启用真实时长，
+并记录 Long Animation Frame 与截图/录屏。该标记不改变生产环境策略。
+
+参考：[React Flow viewport API](https://reactflow.dev/api-reference/types/react-flow-instance)、
+[D3 zoom 的插值与中断](https://d3js.org/d3-zoom)。
 
 ## 5. 触控板输入模式（新增）
 

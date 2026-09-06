@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
@@ -30,6 +30,14 @@ export function useWorkspaceCanvasViewportNavigation({
   focusSpaceInViewport: (spaceId: string) => boolean
   focusNodeTargetZoom: number
 }): void {
+  // Stop the underlying D3 transition before this canvas's lifecycle is released.
+  // Interrupted React Flow promises do not settle, so cleanup must be synchronous.
+  useLayoutEffect(() => {
+    return () => {
+      void reactFlow.setViewport(reactFlow.getViewport(), { duration: 0 })
+    }
+  }, [reactFlow, workspaceId])
+
   const focusedNodeRequestKeyRef = useRef<string | null>(null)
   const focusedSpaceRequestKeyRef = useRef<string | null>(null)
 

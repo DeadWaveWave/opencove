@@ -45,6 +45,8 @@ export function createSettingsPanelUpdaters({
     updateTaskTitleProvider: (provider: TaskTitleProvider): void =>
       updateSetting('taskTitleProvider', provider),
     updateTaskTitleModel: (model: string): void => updateSetting('taskTitleModel', model),
+    updateViewportTransition: (effect: AgentSettings['viewportTransition']): void =>
+      updateSetting('viewportTransition', effect),
     updateFocusNodeOnClick: (enabled: boolean): void => updateSetting('focusNodeOnClick', enabled),
     updateFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom): void =>
       updateSetting('focusNodeTargetZoom', zoom),
