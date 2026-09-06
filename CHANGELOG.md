@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 🐛 Fixed
+
+- Canvas: center windows created by double-click or the context menu within 120 pixels of the viewport center, avoiding small unnecessary pans while preserving Space ownership and pointer placement farther away. (#399)
+
 ---
 
 ## [0.3.2] - 2026-09-06
