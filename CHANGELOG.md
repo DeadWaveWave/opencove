@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Canvas: choose between Zoom Flight and Smooth Slide for viewport navigation across windows and Spaces, with a saved preference and support for system reduced motion. (#400)
 
+### 🐛 Fixed
+
+- Agent: launch remote Project agents in the default remote mount instead of the local project metadata directory, while preserving explicit Space and worktree directories. (#398)
+
 ---
 
 ## [0.3.2] - 2026-09-06
