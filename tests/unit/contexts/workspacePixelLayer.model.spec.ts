@@ -71,7 +71,9 @@ describe('workspace pixel projection', () => {
   it('caps the buffer DPR and grid cost and keeps noise stable across redraws', () => {
     expect(resolvePixelBuffer(1200, 800, 4)).toEqual({ width: 2400, height: 1600, dpr: 2 })
     const grid = resolvePixelGrid({ ...viewport, zoom: 0.1, width: 8000, height: 5000 }, 17)
-    expect(Math.ceil(8000 / grid.gap) * Math.ceil(5000 / grid.gap)).toBeLessThan(17000)
+    expect(grid.layers.reduce((sum, layer) => sum + layer.columns * layer.rows, 0)).toBeLessThan(
+      9000,
+    )
     expect(pixelNoise(-8, 12)).toBe(pixelNoise(-8, 12))
     expect(pixelNoise(-8, 12)).not.toBe(pixelNoise(-7, 12))
   })

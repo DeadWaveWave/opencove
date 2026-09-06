@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   createPixelAssembly,
   buildPixelAssemblyScene,
+  buildPixelAssemblyFrontier,
+  PIXEL_ASSEMBLY_MS,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/assembly'
 import { projectPixelNodeFrames } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/geometry'
 import { pixelNode } from './workspacePixelLayer.fixtures'
@@ -19,30 +21,47 @@ describe('explicit new-node assembly', () => {
     expect(assembly.hasPending(20)).toBe(false)
   })
 
-  it('accepts only creation announcements and waits briefly for committed geometry', () => {
+  it('starts the full 380ms only when the renderer is ready, without restarting on repeated observations', () => {
     const assembly = createPixelAssembly()
-    assembly.announce('terminal-1', 0)
+    assembly.prepare('terminal-1', 0)
     expect(assembly.sample([], 10)).toEqual([])
     expect(assembly.hasPending(10)).toBe(true)
-    const [frame] = assembly.sample(frames, 100)
-    expect(frame).toMatchObject({ id: 'terminal-1', age: 100, rect: frames[0]!.rect })
-    assembly.announce('terminal-1', 200)
-    expect(assembly.sample(frames, 300)[0]?.age).toBe(300)
-    expect(assembly.sample(frames, 720)).toEqual([])
-    expect(assembly.hasPending(720)).toBe(false)
+    expect(assembly.sample(frames, 100)).toEqual([])
+    expect(assembly.markReady('terminal-1', 240)).toBe(true)
+    const [frame] = assembly.sample(frames, 240)
+    expect(frame).toMatchObject({ id: 'terminal-1', age: 0, rect: frames[0]!.rect })
+    assembly.prepare('terminal-1', 280)
+    expect(assembly.markReady('terminal-1', 300)).toBe(false)
+    expect(assembly.sample(frames, 300)[0]?.age).toBe(60)
+    expect(assembly.pendingIds(300)).toEqual(['terminal-1'])
+    expect(assembly.sample(frames, 619)[0]?.age).toBe(379)
+    expect(assembly.sample(frames, 620)).toEqual([])
+    expect(assembly.hasPending(620)).toBe(false)
+  })
+
+  it('fails open after a bounded 1200ms readiness wait and ignores late readiness', () => {
+    const assembly = createPixelAssembly()
+    assembly.prepare('terminal-1', 0)
+    expect(assembly.sample(frames, 800)).toEqual([])
+    expect(assembly.pendingIds(1199)).toEqual(['terminal-1'])
+    expect(assembly.pendingIds(1200)).toEqual([])
+    expect(assembly.markReady('terminal-1', 1300)).toBe(false)
+    expect(assembly.sample(frames, 1400)).toEqual([])
   })
 
   it('reveals immediately on interaction and discards hidden or cancelled work', () => {
     const assembly = createPixelAssembly()
-    assembly.announce('terminal-1', 0)
+    assembly.prepare('terminal-1', 0)
+    assembly.markReady('terminal-1', 0)
     expect(assembly.sample(frames, 10)).toHaveLength(1)
     expect(assembly.reveal('terminal-1')).toBe(true)
     expect(assembly.sample(frames, 20)).toEqual([])
-    assembly.announce('terminal-1', 30)
+    assembly.prepare('terminal-1', 30)
+    assembly.markReady('terminal-1', 30)
     assembly.sample(frames, 40)
     assembly.sample([], 50)
     expect(assembly.sample(frames, 60)).toEqual([])
-    assembly.announce('terminal-1', 70)
+    assembly.prepare('terminal-1', 70)
     assembly.clear()
     expect(assembly.hasPending(80)).toBe(false)
   })
@@ -50,7 +69,8 @@ describe('explicit new-node assembly', () => {
   it('bounds simultaneous curtains and never adds a delayed veil to overflow nodes', () => {
     const assembly = createPixelAssembly()
     const many = Array.from({ length: 40 }, (_, index) => ({ ...frames[0]!, id: `node-${index}` }))
-    many.forEach(frame => assembly.announce(frame.id, 0))
+    many.forEach(frame => assembly.prepare(frame.id, 0))
+    many.forEach(frame => assembly.markReady(frame.id, 0))
     const visible = assembly.sample(many, 10)
     expect(visible).toHaveLength(8)
     visible.forEach(frame => assembly.reveal(frame.id))
@@ -58,26 +78,32 @@ describe('explicit new-node assembly', () => {
     expect(assembly.hasPending(20)).toBe(false)
   })
 
-  it('renders a substantial dissolving curtain and gathering front rather than an edge-only glow', () => {
+  it('draws only converging particles and completes at the same 380ms across widths and zooms', () => {
     const frame = { ...frames[0]!, age: 0 }
-    const opening = buildPixelAssemblyScene(frame)
-    const midway = buildPixelAssemblyScene({ ...frame, age: 360 })
-    const area = (scene: typeof opening) =>
-      scene.veil.reduce((sum, rect) => sum + rect.width * rect.height, 0)
-    expect(area(opening)).toBeCloseTo(frame.rect.width * frame.rect.height)
-    expect(area(midway)).toBeGreaterThan(area(opening) * 0.4)
-    expect(area(midway)).toBeLessThan(area(opening) * 0.6)
+    expect(PIXEL_ASSEMBLY_MS).toBe(380)
+    const midway = buildPixelAssemblyScene({ ...frame, age: 190 })
+    expect(Object.keys(midway)).toEqual(['particles'])
     expect(midway.particles.length).toBeGreaterThan(50)
-    expect(buildPixelAssemblyScene({ ...frame, age: 720 }).veil).toEqual([])
-    expect(buildPixelAssemblyScene({ ...frame, age: 720 }).particles).toEqual([])
-    expect(buildPixelAssemblyScene({ ...frame, age: 360 })).toEqual(midway)
+    expect(buildPixelAssemblyScene({ ...frame, age: 380 }).particles).toEqual([])
+    expect(buildPixelAssemblyScene({ ...frame, age: 190 })).toEqual(midway)
+    expect(buildPixelAssemblyFrontier(frame).every(band => band.reveal === 0)).toBe(true)
+    for (const width of [160, 400, 1400, 3600]) {
+      const sized = { ...frame, rect: { ...frame.rect, width }, age: 190 }
+      expect(buildPixelAssemblyFrontier(sized)).toEqual(
+        buildPixelAssemblyFrontier({ ...frame, age: 190 }),
+      )
+      expect(
+        buildPixelAssemblyFrontier({ ...sized, age: 380 }).every(band => band.reveal === 1),
+      ).toBe(true)
+    }
   })
 
   it('follows current node geometry without replaying or mutating its source', () => {
     const node = pixelNode({ kind: 'document' })
     const before = structuredClone(node)
     const assembly = createPixelAssembly()
-    assembly.announce(node.id, 0)
+    assembly.prepare(node.id, 0)
+    assembly.markReady(node.id, 120)
     const movedFrames = projectPixelNodeFrames(
       [node],
       new Map([

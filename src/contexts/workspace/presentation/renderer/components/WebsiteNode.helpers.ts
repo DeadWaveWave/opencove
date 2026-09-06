@@ -142,6 +142,33 @@ function normalizeBounds(bounds: WebsiteWindowBounds): WebsiteWindowBounds {
   }
 }
 
+/** Clip only the native host; the browser viewport retains its full layout dimensions. */
+function resolvePixelRevealBounds(
+  element: HTMLDivElement | null,
+  bounds: WebsiteWindowBounds,
+): WebsiteWindowBounds {
+  const node = element?.closest('.react-flow__node')
+  if (!(node instanceof HTMLElement)) {
+    return bounds
+  }
+  const value = getComputedStyle(node).getPropertyValue('--cove-pixel-reveal-front').trim()
+  const front = Number(value)
+  if (!value || !Number.isFinite(front)) {
+    return bounds
+  }
+  const rect = node.getBoundingClientRect()
+  if (!Number.isFinite(rect.left) || !Number.isFinite(rect.width)) {
+    return bounds
+  }
+  const dpr =
+    Number.isFinite(window.devicePixelRatio) && window.devicePixelRatio > 0
+      ? window.devicePixelRatio
+      : 1
+  const right = Math.floor((rect.left + rect.width * Math.min(1, Math.max(0, front))) * dpr) / dpr
+  const width = Math.max(0, Math.min(bounds.x + bounds.width, right) - bounds.x)
+  return width > 0 ? { ...bounds, width } : HIDDEN_WEBSITE_BOUNDS
+}
+
 export function resolveViewportState(
   element: HTMLDivElement | null,
   canvasZoom: number,
@@ -164,7 +191,7 @@ export function resolveViewportState(
   }
 
   return {
-    bounds: visibleBounds,
+    bounds: resolvePixelRevealBounds(element, visibleBounds),
     viewportBounds,
     canvasZoom,
   }

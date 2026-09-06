@@ -1,0 +1,282 @@
+import { expect, type Page } from '@playwright/test'
+import { execFile } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
+import { once } from 'node:events'
+import { copyFile, mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { promisify } from 'node:util'
+import type { PersistedNodeContract } from '../../src/shared/contracts/persistedAppState'
+import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
+import {
+  removePathWithRetry,
+  seedWorkspaceState,
+  testWorkspacePath,
+  viewStateStorageKey,
+} from './workspace-canvas.helpers'
+import { closeWebsiteTestServer } from './workspace-canvas.website-window.shared'
+
+export const MATERIAL_WORKSPACE = 'pixel-material-workspace'
+export const MATERIAL_TERMINAL = 'pixel-material-terminal'
+export const MATERIAL_NODE_KINDS = [
+  'terminal',
+  'agent',
+  'task',
+  'document',
+  'note',
+  'role',
+  'website',
+  'image',
+] as const
+const runFile = promisify(execFile)
+
+export async function createMaterialFixture() {
+  // Git reports canonical worktree paths, including macOS /private/var aliases.
+  const directory = await realpath(await mkdtemp(path.join(tmpdir(), 'opencove-pixel-material-')))
+  const repo = path.join(directory, 'project')
+  const worktree = path.join(repo, '.opencove', 'worktrees', 'review')
+  await mkdir(repo, { recursive: true })
+  const documentPath = path.join(repo, 'README.md')
+  await writeFile(
+    documentPath,
+    '# Glacier workspace\n\nA shared surface for parallel work.\n\n- Keep terminal sessions alive.\n- Review changes in an isolated worktree.\n- Keep documents and decisions together.\n',
+  )
+  const imagePath = path.join(repo, 'opencove-mark.png')
+  await copyFile(path.join(testWorkspacePath, 'build', 'icon.png'), imagePath)
+  await writeFile(path.join(repo, '.gitignore'), '.opencove/\n')
+  const git = async (...args: string[]) => {
+    await runFile('git', args, { cwd: repo, windowsHide: true })
+  }
+  await git('init', '-b', 'main')
+  await git('config', 'user.name', 'OpenCove E2E')
+  await git('config', 'user.email', 'e2e@example.com')
+  await git('add', '.')
+  await git('commit', '--no-gpg-sign', '-m', 'Create material showcase fixture')
+  await git('worktree', 'add', '-b', 'pixel/review', worktree)
+
+  const pagePath = path.join(repo, 'handbook.html')
+  await writeFile(
+    pagePath,
+    '<!doctype html><html><head><title>Workspace handbook</title></head><body><h2>Workspace handbook</h2><p>This local page is rendered by the real website node.</p><ul><li>Build in the terminal.</li><li>Keep review work in its Space.</li><li>Save context beside the work.</li></ul></body></html>',
+  )
+  const page = await readFile(pagePath)
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    response.end(page)
+  })
+  server.listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  server.unref()
+  const address = server.address()
+  if (!address || typeof address === 'string') {
+    throw new Error('Material fixture HTTP listener has no port')
+  }
+  const image = await readFile(imagePath)
+  const assetId = randomUUID()
+  const nodes: PersistedNodeContract[] = MATERIAL_NODE_KINDS.map((kind, index) => ({
+    id: `pixel-material-${kind}`,
+    title: {
+      terminal: 'Build terminal',
+      agent: 'Review Agent',
+      task: 'Release checklist',
+      document: 'README.md',
+      note: 'Design notes',
+      role: 'Code reviewer',
+      website: 'Workspace handbook',
+      image: 'OpenCove mark',
+    }[kind],
+    kind,
+    position: { x: [52, 512, 1000][index % 3]!, y: [84, 392, 720][Math.floor(index / 3)]! },
+    width: 420,
+    height: kind === 'role' ? 300 : 260,
+  }))
+  const byKind = (kind: (typeof MATERIAL_NODE_KINDS)[number]) =>
+    nodes.find(node => node.kind === kind)!
+  // Honor the product's 520px Agent minimum rather than overlapping a following row.
+  byKind('agent').height = 520
+  byKind('note').position = { x: 1000, y: 736 }
+  Object.assign(byKind('terminal'), { executionDirectory: repo })
+  Object.assign(byKind('agent'), {
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    agent: {
+      provider: 'codex',
+      prompt: 'Review the workspace changes.',
+      model: null,
+      effectiveModel: null,
+      launchMode: 'new',
+      resumeSessionId: 'pixel-material-review',
+      resumeSessionIdVerified: true,
+      executionDirectory: repo,
+      directoryMode: 'workspace',
+      customDirectory: null,
+      shouldCreateDirectory: false,
+    },
+  })
+  byKind('task').task = {
+    requirement: 'Verify the build, review the changes, and capture the final result.',
+    status: 'doing',
+    priority: 'medium',
+    tags: ['release'],
+    linkedAgentNodeId: null,
+    lastRunAt: null,
+    autoGeneratedTitle: false,
+  }
+  byKind('note').task = {
+    text: 'One material language\n\nInk-blue surfaces\nClear headers and fine borders\nBlue → cyan → mint\n\nKeep useful context beside the work.',
+  }
+  byKind('document').task = { uri: toFileUri(documentPath) }
+  byKind('image').task = {
+    assetId,
+    mimeType: 'image/png',
+    fileName: 'opencove-mark.png',
+    naturalWidth: image.readUInt32BE(16),
+    naturalHeight: image.readUInt32BE(20),
+  }
+  byKind('website').task = {
+    url: `http://127.0.0.1:${address.port}`,
+    pinned: false,
+    sessionMode: 'shared',
+    profileId: null,
+    browserMode: 'iframe',
+  }
+  byKind('role').task = {
+    roleId: 'pixel-reviewer',
+    roleName: 'Code reviewer',
+    roleDescription: 'Review changes in their working context.',
+    promptTemplate: 'Review this change: {{input}}',
+    inputHint: 'Describe the change to review',
+    outputFormat: 'Findings and suggested next steps',
+    input: 'Check the release changes.',
+    selectedProvider: 'codex',
+    linkedAgentNodeId: null,
+    runHistory: [],
+  }
+  return {
+    repo,
+    worktree,
+    nodes,
+    image: Array.from(image),
+    assetId,
+    cleanup: async () => {
+      await closeWebsiteTestServer(server)
+      await removePathWithRetry(directory)
+    },
+  }
+}
+
+export async function seedMaterialFixture(
+  window: Page,
+  fixture: Awaited<ReturnType<typeof createMaterialFixture>>,
+) {
+  await seedWorkspaceState(window, {
+    activeWorkspaceId: MATERIAL_WORKSPACE,
+    workspaces: [
+      { id: MATERIAL_WORKSPACE, name: 'Glacier workspace', path: fixture.repo, nodes: [] },
+    ],
+    settings: {
+      uiTheme: 'pixel',
+      language: 'en',
+      uiFontSize: 16,
+      terminalFontSize: 14,
+      defaultTerminalWindowScalePercent: 100,
+      focusNodeOnClick: false,
+      canvasInputMode: 'mouse',
+      canvasWheelBehavior: 'zoom',
+      browserDefaultMode: 'iframe',
+      websiteWindowPolicy: { enabled: true },
+      standbyBannerEnabled: false,
+      githubPullRequestsEnabled: false,
+    },
+  })
+  await window.evaluate(
+    async ({ id, repo, worktree, nodes, assetId, image, viewStateKey }) => {
+      await window.opencoveApi.workspace.writeCanvasImage({
+        assetId,
+        bytes: new Uint8Array(image),
+        mimeType: 'image/png',
+        fileName: 'opencove-mark.png',
+      })
+      const mounts = await window.opencoveApi.controlSurface.invoke<{
+        mounts: Array<{ mountId: string }>
+      }>({ kind: 'query', id: 'mount.list', payload: { projectId: id } })
+      const mountId = mounts.mounts[0]?.mountId
+      if (!mountId) {
+        throw new Error('Material fixture local mount is missing')
+      }
+      const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+      if (!raw) {
+        throw new Error('Material fixture workspace is missing')
+      }
+      const state = JSON.parse(raw) as {
+        workspaces: Array<Record<string, unknown> & { id: string }>
+      }
+      const workspace = state.workspaces.find(item => item.id === id)
+      if (!workspace) {
+        throw new Error('Material fixture workspace was not persisted')
+      }
+      workspace.nodes = nodes
+      workspace.spaces = [
+        {
+          id: 'pixel-build-space',
+          name: 'Build workspace',
+          directoryPath: repo,
+          targetMountId: mountId,
+          labelColor: 'blue',
+          pinned: false,
+          nodeIds: nodes.filter(node => node.position.x < 976).map(node => node.id),
+          rect: { x: 24, y: 42, width: 932, height: 970 },
+        },
+        {
+          id: 'pixel-review-space',
+          name: 'Review worktree',
+          directoryPath: worktree,
+          targetMountId: mountId,
+          labelColor: 'green',
+          pinned: false,
+          nodeIds: nodes.filter(node => node.position.x >= 976).map(node => node.id),
+          rect: { x: 976, y: 42, width: 470, height: 970 },
+        },
+      ]
+      const result = await window.opencoveApi.persistence.writeWorkspaceStateRaw({
+        raw: JSON.stringify(state),
+      })
+      if (!result.ok) {
+        throw new Error(`Material fixture write failed: ${result.error.code}`)
+      }
+      window.localStorage.setItem(
+        viewStateKey,
+        JSON.stringify({
+          activeWorkspaceId: id,
+          workspaces: {
+            [id]: {
+              viewport: { x: 0, y: 0, zoom: 1 },
+              isMinimapVisible: false,
+              activeSpaceId: 'pixel-build-space',
+            },
+          },
+        }),
+      )
+    },
+    {
+      id: MATERIAL_WORKSPACE,
+      repo: fixture.repo,
+      worktree: fixture.worktree,
+      nodes: fixture.nodes,
+      assetId: fixture.assetId,
+      image: fixture.image,
+      viewStateKey: viewStateStorageKey,
+    },
+  )
+  await window.reload({ waitUntil: 'domcontentloaded' })
+  await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel')
+  await expect(window.locator('.react-flow__node')).toHaveCount(8)
+  await expect(window.locator('.document-node .monaco-editor')).toBeVisible()
+  await expect(window.locator('.image-node__img')).toBeVisible()
+  await expect(window.locator('.website-node iframe')).toBeVisible()
+  await expect(
+    window.getByTestId('workspace-space-worktree-branch-pixel-review-space'),
+  ).toContainText('pixel/review', { timeout: 20_000 })
+  await expect(window.locator(`[data-id="${MATERIAL_TERMINAL}"] .xterm`)).toBeVisible()
+}

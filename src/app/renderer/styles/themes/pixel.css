@@ -2,14 +2,14 @@
    use a separate image token so color-mix consumers retain a valid color. */
 :root[data-cove-theme-id='pixel'] {
   color-scheme: dark;
-  --cove-pixel-violet: #a980f4;
-  --cove-pixel-blue: #63a9ec;
-  --cove-pixel-mint: #63e9c3;
+  --cove-pixel-blue: #5b9cf0;
+  --cove-pixel-cyan: #55bddc;
+  --cove-pixel-mint: #70ddbc;
   --cove-pixel-grid-gap: 17px;
   --cove-pixel-grid-opacity: 0.72;
-  --cove-accent: #a6e9c2;
-  --cove-accent-text: #b8efd1;
-  --cove-accent-foreground: #11281d;
+  --cove-accent: #5b9cf0;
+  --cove-accent-text: #91c4ff;
+  --cove-accent-foreground: #0b1b30;
 
   --cove-label-gray: #8c98a8;
   --cove-label-red: #ef8f95;
@@ -19,83 +19,88 @@
   --cove-label-blue: #80b8ef;
   --cove-label-purple: #b494ef;
 
-  --cove-app-background: #090b0f;
-  --cove-app-background-elevated: #13171d;
-  --cove-surface: rgba(19, 23, 29, 0.92);
-  --cove-surface-strong: rgba(28, 35, 44, 0.98);
-  --cove-window-surface: #151e28;
-  --cove-surface-hover: rgba(148, 194, 208, 0.09);
-  --cove-field: rgba(155, 165, 178, 0.07);
-  --cove-border: rgba(148, 194, 208, 0.24);
-  --cove-border-subtle: rgba(148, 194, 208, 0.13);
+  --cove-app-background: #080f18;
+  --cove-app-background-elevated: #0b141f;
+  --cove-surface: rgba(11, 20, 31, 0.96);
+  --cove-surface-strong: rgba(16, 26, 39, 0.98);
+  --cove-window-surface: #0b141f;
+  --cove-surface-hover: rgba(137, 181, 215, 0.1);
+  --cove-field: rgba(129, 162, 198, 0.08);
+  --cove-border: rgba(137, 181, 215, 0.28);
+  --cove-border-subtle: rgba(137, 181, 215, 0.15);
   --cove-text: #eef0f7;
-  --cove-text-muted: #9ba5b2;
-  --cove-text-faint: #7d8999;
+  --cove-text-muted: #a0b3c6;
+  --cove-text-faint: #7f98af;
   --cove-backdrop: rgba(5, 10, 16, 0.66);
   --cove-shadow-color-elevated: rgba(0, 0, 0, 0.42);
   --cove-shadow-color-panel: rgba(0, 0, 0, 0.58);
-  --cove-toggle-track-on: #377d64;
+  --cove-toggle-track-on: #326ba6;
   --cove-toggle-track-off: #44515f;
-  --cove-focus-ring: #b8efd1;
+  --cove-focus-ring: #9dcdff;
 
-  --cove-node-surface: rgba(14, 24, 34, 0.96);
-  --cove-node-background-image: linear-gradient(
-    140deg,
-    rgba(24, 35, 43, 0.91),
-    rgba(14, 24, 34, 0.96) 60%
-  );
+  --cove-node-surface: #0b1826;
+  --cove-node-background-image: linear-gradient(135deg, #112438, #0b1826 60%, #0a1622);
   --cove-node-radius: var(--cove-radius-md);
-  --cove-node-border: rgba(148, 194, 208, 0.32);
-  --cove-node-header-surface: rgba(24, 35, 43, 0.96);
-  --cove-node-header-border: rgba(148, 194, 208, 0.2);
-  --cove-node-shadow-color: rgba(0, 0, 0, 0.44);
-  --cove-node-shadow:
-    0 15px 42px var(--cove-node-shadow-color), inset 0 1px rgba(214, 235, 255, 0.07);
-  --cove-node-selection-border: #a6e9c2;
-  --cove-node-selection-shadow: 0 0 0 1px rgba(166, 233, 194, 0.42), 0 18px 40px rgba(0, 0, 0, 0.5);
+  --cove-node-border: rgba(182, 201, 220, 0.27);
+  --cove-node-header-surface: rgba(18, 29, 40, 0.8);
+  --cove-node-header-border: rgba(202, 218, 234, 0.05);
+  --cove-node-shadow-color: rgba(1, 6, 13, 0.3);
+  --cove-node-shadow: 0 8px 20px var(--cove-node-shadow-color);
+  --cove-node-selection-border: #8ec9f5;
+  --cove-node-selection-shadow: 0 0 0 1px rgba(119, 184, 229, 0.22), 0 8px 20px rgba(1, 6, 13, 0.3);
 
-  --cove-terminal-node-surface: rgba(14, 24, 34, 0.98);
-  --cove-terminal-node-header-surface: rgba(24, 35, 43, 0.96);
-  --cove-terminal-background: #0e1822;
-  --cove-terminal-foreground: #c1cddc;
-  --cove-terminal-selection: rgba(99, 169, 236, 0.3);
-  --cove-terminal-cursor: #a6e9c2;
+  --cove-terminal-node-surface: #0a1420;
+  --cove-terminal-node-header-surface: rgba(18, 29, 40, 0.8);
+  --cove-terminal-background: #0a1420;
+  --cove-terminal-foreground: #c9d9e9;
+  --cove-terminal-selection: rgba(91, 156, 240, 0.32);
+  --cove-terminal-cursor: #9ecefa;
 
   --cove-canvas-control-surface: rgba(19, 29, 39, 0.94);
   --cove-canvas-control-surface-hover: rgba(29, 43, 55, 0.98);
   --cove-canvas-control-border: rgba(148, 194, 208, 0.24);
-  --cove-canvas-control-border-hover: rgba(166, 233, 194, 0.7);
-  --cove-canvas-control-text: #9ba5b2;
+  --cove-canvas-control-border-hover: rgba(119, 184, 229, 0.7);
+  --cove-canvas-control-text: var(--cove-text-muted);
   --cove-canvas-control-text-hover: #eef0f7;
-  --cove-canvas-dot: rgba(99, 169, 236, 0.14);
+  --cove-canvas-dot: rgba(91, 156, 240, 0.14);
 
-  --cove-space-region-border: rgba(148, 194, 208, 0.4);
-  --cove-space-region-surface: rgba(99, 169, 236, 0.045);
-  --cove-space-region-shadow: inset 0 0 0 1px rgba(148, 194, 208, 0.07);
-  --cove-space-region-border-active: rgba(128, 184, 239, 0.76);
-  --cove-space-region-surface-active: rgba(99, 169, 236, 0.075);
-  --cove-space-region-shadow-active:
-    inset 0 0 0 1px rgba(128, 184, 239, 0.2), 0 0 0 1px rgba(99, 169, 236, 0.24);
-  --cove-space-region-border-selected: #a6e9c2;
-  --cove-space-region-surface-selected: rgba(166, 233, 194, 0.075);
-  --cove-space-region-shadow-selected:
-    inset 0 0 0 1px rgba(166, 233, 194, 0.24), 0 0 0 1px rgba(166, 233, 194, 0.36);
+  --cove-space-region-border: rgba(126, 155, 184, 0.2);
+  --cove-space-region-surface: rgba(85, 130, 171, 0.015);
+  --cove-space-region-shadow: none;
+  --cove-space-region-border-active: rgba(145, 180, 214, 0.3);
+  --cove-space-region-surface-active: rgba(85, 130, 171, 0.025);
+  --cove-space-region-shadow-active: none;
+  --cove-space-region-border-selected: rgba(160, 210, 250, 0.52);
+  --cove-space-region-surface-selected: rgba(85, 130, 171, 0.04);
+  --cove-space-region-shadow-selected: none;
+  --cove-pixel-space-tint: 85 130 171;
+  --cove-pixel-space-detail: 1;
+  --cove-pixel-space-fill-factor: 0.012;
+  --cove-pixel-header-filter: blur(6px);
+  --cove-pixel-header-clearance: 34px;
+  --cove-pixel-space-title-surface: rgba(18, 29, 40, 0.82);
+  --cove-pixel-space-meta-surface: rgba(18, 29, 40, 0.74);
+  --cove-pixel-space-title-text: #dae7f1;
+  --cove-pixel-space-worktree-text: #a4cfca;
+  --cove-pixel-space-worktree-border: rgba(121, 186, 177, 0.4);
+  --cove-pixel-space-branch-surface: rgba(33, 37, 33, 0.75);
+  --cove-pixel-space-caption-shadow: none;
 
   --cove-canvas-minimap-surface: rgba(14, 24, 34, 0.82);
   --cove-canvas-minimap-border: rgba(148, 194, 208, 0.24);
-  --cove-canvas-minimap-mask: rgba(166, 233, 194, 0.8);
-  --cove-canvas-minimap-mask-surface: rgba(99, 169, 236, 0.1);
-  --cove-canvas-minimap-node-agent: rgba(99, 169, 236, 0.78);
-  --cove-canvas-minimap-node-task: rgba(169, 128, 244, 0.78);
+  --cove-canvas-minimap-mask: rgba(119, 184, 229, 0.8);
+  --cove-canvas-minimap-mask-surface: rgba(91, 156, 240, 0.1);
+  --cove-canvas-minimap-node-agent: rgba(91, 156, 240, 0.78);
+  --cove-canvas-minimap-node-task: rgba(85, 189, 220, 0.78);
   --cove-canvas-minimap-node-image: rgba(234, 209, 138, 0.78);
   --cove-canvas-minimap-node-default: rgba(148, 194, 208, 0.7);
   --cove-canvas-minimap-node-stroke: rgba(0, 0, 0, 0.22);
 
-  --cove-settings-panel-background: #131a23;
-  --cove-settings-sidebar-background: #10161e;
-  --cove-settings-primary-background: #a6e9c2;
-  --cove-settings-primary-background-hover: #b8efd1;
-  --cove-settings-on-accent: #11281d;
+  --cove-settings-panel-background: #0d1723;
+  --cove-settings-sidebar-background: #0b141f;
+  --cove-settings-primary-background: #5b9cf0;
+  --cove-settings-primary-background-hover: #78b3f6;
+  --cove-settings-on-accent: #0b1b30;
 
   --cove-overlay-danger-border: var(--cove-danger-border);
   --cove-overlay-danger-surface: linear-gradient(180deg, #2b1d25, #1a171f);

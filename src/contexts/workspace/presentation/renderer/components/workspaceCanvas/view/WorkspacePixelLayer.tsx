@@ -1,8 +1,12 @@
-import React, { memo, useEffect, useLayoutEffect, useRef } from 'react'
+import React, { memo, useLayoutEffect, useRef } from 'react'
 import { useStoreApi, type Node } from '@xyflow/react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { TerminalNodeData } from '../../../types'
-import { subscribeWorkspaceNodeCreated } from '../nodeCreationEvents'
+import {
+  subscribeWorkspaceNodeCreated,
+  subscribeWorkspaceNodeCreationPrepared,
+  subscribeWorkspaceNodeCreationCancelled,
+} from '../nodeCreationEvents'
 import { subscribeWorkspaceNodesClosed } from '../nodeClosureEvents'
 import { createPixelActivity, projectPixelNodes, readPixelViewport } from './pixelLayer/model'
 import { projectPixelNodeFrames } from './pixelLayer/geometry'
@@ -13,6 +17,9 @@ import { drawPixelAssemblies, readPixelAssemblyTheme } from './pixelLayer/assemb
 import { createPixelBurst } from './pixelLayer/burst'
 import { drawPixelBursts } from './pixelLayer/burstRenderer'
 import { createPixelClosureSnapshots } from './pixelLayer/closureSnapshots'
+import { createPixelNodeMasks } from './pixelLayer/nodeMasks'
+import { resolvePixelDetail } from './pixelLayer/grid'
+import { readReadyPixelNodeIds } from './pixelLayer/readiness'
 
 function WorkspacePixelLayerComponent({
   nodes,
@@ -30,12 +37,12 @@ function WorkspacePixelLayerComponent({
     refreshRef.current?.()
   }, [nodes])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
     const assemblyCanvas = assemblyRef.current
     const assemblyContext = assemblyCanvas?.getContext('2d')
-    if (!canvas || !context || !assemblyCanvas || !assemblyContext) {
+    if (!canvas || !context || !assemblyCanvas || !assemblyContext || !canvas.parentElement) {
       return
     }
     let disposed = false
@@ -48,10 +55,22 @@ function WorkspacePixelLayerComponent({
     let assemblyTheme = readPixelAssemblyTheme(assemblyCanvas)
     let state = store.getState()
     let viewport = readPixelViewport(state)
+    const scope = canvas.parentElement
+    const previousSpaceDetail = scope.style.getPropertyValue('--cove-pixel-space-detail')
+    let appliedSpaceDetail = ''
+    const syncSpaceDetail = () => {
+      const detail = resolvePixelDetail(viewport.zoom).toFixed(3)
+      if (detail !== appliedSpaceDetail) {
+        scope.style.setProperty('--cove-pixel-space-detail', detail)
+        appliedSpaceDetail = detail
+      }
+    }
+    syncSpaceDetail()
     let projected = projectPixelNodes(nodesRef.current, state.nodeLookup, viewport)
     let frames = projectPixelNodeFrames(nodesRef.current, state.nodeLookup, viewport)
     const activity = createPixelActivity()
     const assembly = createPixelAssembly()
+    const masks = createPixelNodeMasks(canvas.parentElement)
     const burst = createPixelBurst()
     const closureSnapshots = createPixelClosureSnapshots()
     const isVisible = () =>
@@ -70,8 +89,22 @@ function WorkspacePixelLayerComponent({
       )
     }
 
-    const drawAssembly = (now: number) => {
+    const drawAssembly = () => {
+      if (!reducedMotion) {
+        const pending = new Set(assembly.pendingIds(performance.now()))
+        const candidates = frames.filter(frame => pending.has(frame.id))
+        for (const id of readReadyPixelNodeIds(scope, candidates)) {
+          // RAF's timestamp can precede a busy DOM/layout commit. Start only after
+          // the real frame is present, using the same live clock as deadline cleanup.
+          const readyAt = performance.now()
+          if (assembly.markReady(id, readyAt) && !masks.markReady(id, readyAt)) {
+            assembly.reveal(id)
+          }
+        }
+      }
+      const now = performance.now()
       const visibleFrames = reducedMotion ? [] : assembly.sample(frames, now)
+      masks.update(visibleFrames, reducedMotion ? [] : assembly.pendingIds(now))
       drawPixelAssemblies({
         canvas: assemblyCanvas,
         context: assemblyContext,
@@ -106,7 +139,7 @@ function WorkspacePixelLayerComponent({
           reducedMotion,
         })
         canvas.dataset.covePixelActivity = active ? 'output' : 'idle'
-        drawAssembly(now)
+        drawAssembly()
         // The visible field flows even without PTY output; output keeps its own semantics.
         return !reducedMotion
       },
@@ -118,10 +151,11 @@ function WorkspacePixelLayerComponent({
       if (!visible && previousVisibility !== false) {
         activity.clear()
         assembly.clear()
+        masks.clear()
         burst.clear()
         closureSnapshots.clear()
         canvas.dataset.covePixelActivity = 'idle'
-        drawAssembly(performance.now())
+        drawAssembly()
       }
       if (visible && previousVisibility !== true && !reducedMotion) {
         captureClosureGeometry()
@@ -132,6 +166,7 @@ function WorkspacePixelLayerComponent({
     const refresh = () => {
       state = store.getState()
       viewport = readPixelViewport(state)
+      syncSpaceDetail()
       projected = projectPixelNodes(nodesRef.current, state.nodeLookup, viewport)
       frames = projectPixelNodeFrames(nodesRef.current, state.nodeLookup, viewport)
       activity.prune(projected, performance.now())
@@ -147,6 +182,7 @@ function WorkspacePixelLayerComponent({
       canvas.dataset.covePixelMotion = reducedMotion ? 'static' : 'enabled'
       activity.clear()
       assembly.clear()
+      masks.clear()
       burst.clear()
       closureSnapshots.clear()
       canvas.dataset.covePixelActivity = 'idle'
@@ -154,7 +190,7 @@ function WorkspacePixelLayerComponent({
         if (!reducedMotion) {
           captureClosureGeometry()
         }
-        drawAssembly(performance.now())
+        drawAssembly()
       }
       scheduler.invalidate()
     }
@@ -169,9 +205,10 @@ function WorkspacePixelLayerComponent({
         return
       }
       assembly.clear()
-      // Clear before the native/React input handler; the real node always keeps its hit region.
+      masks.clear()
+      // Reveal before native/React input handlers; layout and terminal geometry never change.
       if (isVisible()) {
-        drawAssembly(now)
+        drawAssembly()
       }
     }
     const isCanvasTarget = (target: EventTarget | null) =>
@@ -204,11 +241,22 @@ function WorkspacePixelLayerComponent({
         scheduler.invalidate()
       }
     })
-    const unsubscribeCreation = subscribeWorkspaceNodeCreated(nodeId => {
+    const unsubscribePrepared = subscribeWorkspaceNodeCreationPrepared((nodeIds, createdAt) => {
       if (!isVisible() || reducedMotion) {
         return
       }
-      assembly.announce(nodeId, performance.now())
+      for (const nodeId of masks.prepare(nodeIds, createdAt)) {
+        assembly.prepare(nodeId, createdAt)
+      }
+    })
+    const unsubscribeCancelled = subscribeWorkspaceNodeCreationCancelled(nodeIds => {
+      for (const nodeId of nodeIds) {
+        assembly.reveal(nodeId)
+        masks.reveal(nodeId)
+      }
+      scheduler.invalidate()
+    })
+    const unsubscribeCreation = subscribeWorkspaceNodeCreated(() => {
       refresh()
     })
     const unsubscribeClosure = subscribeWorkspaceNodesClosed(nodeIds => {
@@ -218,6 +266,7 @@ function WorkspacePixelLayerComponent({
       const now = performance.now()
       for (const nodeId of nodeIds) {
         assembly.reveal(nodeId)
+        masks.reveal(nodeId)
         const frame = closureSnapshots.take(nodeId, viewport, now)
         if (frame) {
           burst.announce(frame, viewport, now)
@@ -250,9 +299,19 @@ function WorkspacePixelLayerComponent({
       scheduler.dispose()
       activity.clear()
       assembly.clear()
+      masks.dispose()
+      if (scope.style.getPropertyValue('--cove-pixel-space-detail') === appliedSpaceDetail) {
+        if (previousSpaceDetail) {
+          scope.style.setProperty('--cove-pixel-space-detail', previousSpaceDetail)
+        } else {
+          scope.style.removeProperty('--cove-pixel-space-detail')
+        }
+      }
       burst.clear()
       closureSnapshots.clear()
       unsubscribeCreation()
+      unsubscribePrepared()
+      unsubscribeCancelled()
       unsubscribeClosure()
       unsubscribeOutput()
       unsubscribeStore()

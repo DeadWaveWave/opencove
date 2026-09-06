@@ -22,7 +22,7 @@ describe('foreground burst renderer', () => {
       setTransform: vi.fn(),
       createLinearGradient: vi.fn(() => gradient),
     }
-    const theme = { veil: '#13171d', violet: '#a980f4', blue: '#63a9ec', mint: '#63e9c3' }
+    const theme = { blue: '#5b9cf0', cyan: '#55bddc', mint: '#70ddbc' }
     drawPixelBursts({
       context: context as unknown as CanvasRenderingContext2D,
       viewport,
@@ -32,8 +32,8 @@ describe('foreground burst renderer', () => {
     expect(context.fillRect.mock.calls.length).toBeGreaterThan(180)
     expect(context.fillRect.mock.calls.length).toBeLessThanOrEqual(304)
     expect(gradient.addColorStop.mock.calls).toEqual([
-      [0, theme.violet],
-      [0.5, theme.blue],
+      [0, theme.blue],
+      [0.5, theme.cyan],
       [1, theme.mint],
     ])
     expect(context.clearRect).not.toHaveBeenCalled()

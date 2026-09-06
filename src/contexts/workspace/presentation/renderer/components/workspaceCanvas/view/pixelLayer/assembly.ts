@@ -1,7 +1,8 @@
-import type { PixelNodeFrame, PixelRect } from './geometry'
+import type { PixelNodeFrame } from './geometry'
 import { pixelNoise } from './model'
 
-export const PIXEL_ASSEMBLY_MS = 720
+export const PIXEL_ASSEMBLY_MS = 380
+export const PIXEL_ASSEMBLY_READY_TIMEOUT_MS = 1200
 const MAX_PENDING_ASSEMBLIES = 32
 const MAX_VISIBLE_ASSEMBLIES = 8
 
@@ -9,20 +10,31 @@ export interface PixelAssemblyFrame extends PixelNodeFrame {
   age: number
 }
 
+export interface PixelAssemblyClock {
+  preparedAt: number
+  startedAt: number | null
+}
+
+export function pixelAssemblyDeadline(clock: PixelAssemblyClock): number {
+  return clock.startedAt === null
+    ? clock.preparedAt + PIXEL_ASSEMBLY_READY_TIMEOUT_MS
+    : clock.startedAt + PIXEL_ASSEMBLY_MS
+}
+
 /** Only explicit local creation events enter this instance-owned, non-persistent timeline. */
 export function createPixelAssembly() {
-  const entries = new Map<string, { createdAt: number; sessionId: string | null }>()
+  const entries = new Map<string, PixelAssemblyClock & { sessionId: string | null }>()
   const expire = (now: number): void => {
     for (const [id, entry] of entries) {
-      if (now - entry.createdAt >= PIXEL_ASSEMBLY_MS) {
+      if (now >= pixelAssemblyDeadline(entry)) {
         entries.delete(id)
       }
     }
   }
   return {
-    announce(nodeId: string, now: number): void {
+    prepare(nodeId: string, now: number): void {
       expire(now)
-      if (!nodeId || entries.has(nodeId)) {
+      if (!nodeId || !Number.isFinite(now) || entries.has(nodeId)) {
         return
       }
       if (entries.size >= MAX_PENDING_ASSEMBLIES) {
@@ -31,7 +43,16 @@ export function createPixelAssembly() {
           entries.delete(oldest)
         }
       }
-      entries.set(nodeId, { createdAt: now, sessionId: null })
+      entries.set(nodeId, { preparedAt: now, startedAt: null, sessionId: null })
+    },
+    markReady(nodeId: string, now: number): boolean {
+      expire(now)
+      const entry = entries.get(nodeId)
+      if (!entry || entry.startedAt !== null || !Number.isFinite(now) || now < entry.preparedAt) {
+        return false
+      }
+      entry.startedAt = now
+      return true
     },
     sample(nodes: PixelNodeFrame[], now: number): PixelAssemblyFrame[] {
       expire(now)
@@ -49,19 +70,26 @@ export function createPixelAssembly() {
           entries.delete(id)
           continue
         }
+        entry.sessionId = node.sessionId
+        if (entry.startedAt === null) {
+          continue
+        }
         if (frames.length >= MAX_VISIBLE_ASSEMBLIES) {
           // Overflow stays fully revealed instead of acquiring a delayed curtain later.
           entries.delete(id)
           continue
         }
-        entry.sessionId = node.sessionId
-        frames.push({ ...node, age: Math.max(0, now - entry.createdAt) })
+        frames.push({ ...node, age: Math.max(0, now - entry.startedAt) })
       }
       return frames
     },
     hasPending(now: number): boolean {
       expire(now)
       return entries.size > 0
+    },
+    pendingIds(now: number): string[] {
+      expire(now)
+      return [...entries.keys()]
     },
     reveal(nodeId: string): boolean {
       return entries.delete(nodeId)
@@ -74,18 +102,36 @@ export function createPixelAssembly() {
 
 type AssemblyPixel = { x: number; y: number; size: number; alpha: number }
 export interface PixelAssemblyScene {
-  veil: PixelRect[]
-  matrix: AssemblyPixel[]
   particles: AssemblyPixel[]
+}
+
+export interface PixelAssemblyBand {
+  top: number
+  height: number
+  reveal: number
 }
 
 function clamp(value: number): number {
   return Math.max(0, Math.min(1, value))
 }
 
-/** The canvas veil reveals the already-mounted node; it never clips or resizes that node. */
+/** A normalized frontier gives every width/zoom the same wall-clock completion time. */
+export function buildPixelAssemblyFrontier(frame: PixelAssemblyFrame): PixelAssemblyBand[] {
+  const progress = clamp(frame.age / PIXEL_ASSEMBLY_MS)
+  const reveal = progress * progress * (3 - 2 * progress)
+  const envelope = Math.sin(Math.PI * reveal)
+  const positions = [0, 0.17, 0.34, 0.52, 0.71, 0.86, 1]
+  const steps = [0, -0.03, 0.02, -0.02, 0.01, 0]
+  return steps.map((step, index) => ({
+    top: positions[index],
+    height: positions[index + 1] - positions[index],
+    reveal: clamp(reveal + step * envelope),
+  }))
+}
+
+/** The foreground contains fragments only. Ahead of the mask frontier the canvas stays transparent. */
 export function buildPixelAssemblyScene(frame: PixelAssemblyFrame): PixelAssemblyScene {
-  const scene: PixelAssemblyScene = { veil: [], matrix: [], particles: [] }
+  const scene: PixelAssemblyScene = { particles: [] }
   if (frame.age < 0 || frame.age >= PIXEL_ASSEMBLY_MS) {
     return scene
   }
@@ -97,29 +143,15 @@ export function buildPixelAssemblyScene(frame: PixelAssemblyFrame): PixelAssembl
     0,
   )
   const { x, y, width, height } = frame.rect
-  const columns = Math.max(1, Math.min(80, Math.ceil(width / 8)))
   const rows = Math.max(1, Math.min(64, Math.ceil(height / 10)))
-  const cellWidth = width / columns
   const cellHeight = height / rows
+  const frontier = buildPixelAssemblyFrontier(frame)
 
   for (let row = 0; row < rows; row++) {
-    // A stable stepped front: its irregular edge contracts as the reveal completes.
-    const rowReveal = clamp(reveal + (pixelNoise(row, seed) - 0.5) * envelope * 0.07)
-    const revealedColumns = Math.floor(rowReveal * columns)
-    const frontX = x + revealedColumns * cellWidth
+    const band =
+      frontier.find(part => row / rows < part.top + part.height) ?? frontier[frontier.length - 1]
+    const frontX = x + band.reveal * width
     const rowY = y + row * cellHeight
-    scene.veil.push({ x: frontX, y: rowY, width: x + width - frontX, height: cellHeight })
-    if (row % 2 === 0) {
-      for (let column = revealedColumns; column < columns; column += 3) {
-        const noise = pixelNoise(column + seed, row)
-        scene.matrix.push({
-          x: x + column * cellWidth + cellWidth * 0.3,
-          y: rowY + cellHeight * 0.3,
-          size: 1.5 + noise * 2,
-          alpha: 0.07 + noise * 0.11,
-        })
-      }
-    }
     for (let column = 0; column < 6; column++) {
       const noise = pixelNoise(row + seed, column)
       if (noise < 0.18 || envelope <= 0) {

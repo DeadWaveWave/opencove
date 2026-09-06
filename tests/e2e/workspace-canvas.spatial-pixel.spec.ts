@@ -176,7 +176,7 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       await expect(layer).toHaveCSS('pointer-events', 'none')
       await expect(terminalNode(window).locator('.terminal-node__terminal')).toHaveCSS(
         'background-color',
-        'rgb(14, 24, 34)',
+        'rgb(10, 20, 32)',
       )
       await attachScreenshot(window, testInfo, 'spatial-pixel-appearance')
       await window.locator('.settings-panel__close').click()

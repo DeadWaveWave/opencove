@@ -1,0 +1,256 @@
+import { expect, test, type Page, type TestInfo } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
+import { buildNodeEvalCommand, clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  installRevealCapture,
+  installRevealProbe,
+  maskedInputPoint,
+  readRevealCaptures,
+  readRevealPointer,
+  readRevealRecords,
+  sampleRevealCapture,
+  settleRevealContentDiagnostic,
+  type RevealRecord,
+} from './workspace-canvas.spatial-pixel.reveal.probe'
+
+async function createNode(page: Page, kind: 'note' | 'terminal') {
+  await page.locator('.workspace-canvas .react-flow__pane').click({
+    button: 'right',
+    position: { x: 260, y: 180 },
+  })
+  const action = page.getByTestId(`workspace-context-new-${kind}`)
+  await expect(action).toBeVisible()
+  // The actual menu handler creates the node; avoid extra actionability frames after its commit.
+  await action.evaluate(element => (element as HTMLElement).click())
+}
+
+async function seed(page: Page, kind: 'note' | 'terminal') {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await clearAndSeedWorkspace(page, [], {
+    settings: {
+      uiTheme: 'pixel',
+      language: 'en',
+      standardWindowSizeBucket: kind === 'note' ? 'compact' : 'large',
+    },
+  })
+  await expect(page.getByTestId('workspace-pixel-layer')).toHaveAttribute(
+    'data-cove-pixel-motion',
+    'enabled',
+  )
+}
+
+function timing(record: RevealRecord) {
+  return {
+    id: record.id,
+    kind: record.kind,
+    width: record.firstRaf?.width,
+    clockBasis: 'Visible node frame; asynchronous content readiness is diagnostic only',
+    contentObservation:
+      'Observed until ready or 500ms after frame completion; null is not a frame failure',
+    prepareToDOM: record.preparedAt === null ? null : record.dom.time - record.preparedAt,
+    domToFrameVisible:
+      record.firstFrameVisible === null ? null : record.firstFrameVisible.time - record.dom.time,
+    firstRafToFrameVisible:
+      record.firstFrameVisible === null || record.firstRaf === null
+        ? null
+        : record.firstFrameVisible.time - record.firstRaf.time,
+    frameVisibleToFull:
+      record.firstFrameVisible === null || record.fullAt === null
+        ? null
+        : record.fullAt - record.firstFrameVisible.time,
+    prepareToContentReady:
+      record.preparedAt === null || record.readyAt === null
+        ? null
+        : record.readyAt - record.preparedAt,
+    contentReadyToFull:
+      record.readyAt === null || record.fullAt === null ? null : record.fullAt - record.readyAt,
+    contentVisibleToFull:
+      record.firstVisible === null || record.fullAt === null
+        ? null
+        : record.fullAt - record.firstVisible.time,
+    firstFrameVisibleFront: record.firstFrameVisible?.front,
+    firstContentVisibleFront: record.firstVisible?.front,
+  }
+}
+
+async function attachProbe(testInfo: TestInfo, name: string, value: unknown) {
+  const outputPath = testInfo.outputPath(`${name}.json`)
+  await writeFile(outputPath, JSON.stringify(value, null, 2))
+  await testInfo.attach(name, {
+    path: outputPath,
+    contentType: 'application/json',
+  })
+}
+
+async function attachPng(testInfo: TestInfo, name: string, encoded: string) {
+  const outputPath = testInfo.outputPath(`${name}.png`)
+  await writeFile(outputPath, Buffer.from(encoded, 'base64'))
+  await testInfo.attach(name, { path: outputPath, contentType: 'image/png' })
+}
+
+test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
+  test('keeps the unrevealed region transparent from first paint and gives note/terminal equal visible duration', async ({
+    browserName,
+  }, testInfo) => {
+    void browserName
+    const { electronApp, window: page } = await launchApp({ deviceScaleFactor: 1 })
+    const records: RevealRecord[] = []
+    try {
+      await installRevealCapture(electronApp)
+      const inspectKind = async (kind: 'note' | 'terminal') => {
+        await seed(page, kind)
+        await installRevealProbe(page, true)
+        await createNode(page, kind)
+        await expect
+          .poll(
+            async () => {
+              const record = (await readRevealRecords(page))[0]
+              return Boolean(record?.fullAt && record.firstFrameVisible)
+            },
+            { timeout: 6_000, intervals: [30, 50, 100] },
+          )
+          .toBe(true)
+        await settleRevealContentDiagnostic(page)
+        const record = (await readRevealRecords(page))[0]!
+        records.push(record)
+        await attachProbe(testInfo, `${kind}-reveal-timing`, { summary: timing(record), record })
+      }
+      await inspectKind('note')
+      await inspectKind('terminal')
+      await attachProbe(testInfo, 'note-versus-terminal-visible-duration', records.map(timing))
+
+      const verifyComposite = async (record: RevealRecord) => {
+        const kind = record.kind
+        await expect
+          .poll(
+            async () =>
+              (await readRevealCaptures(electronApp)).some(
+                capture =>
+                  capture.id === record.id && capture.phase === 'first-raf' && Boolean(capture.png),
+              ),
+            { timeout: 3_000 },
+          )
+          .toBe(true)
+        const captures = await Promise.all(
+          (await readRevealCaptures(electronApp))
+            .filter(capture => capture.id === record.id)
+            .map(capture => sampleRevealCapture(page, capture)),
+        )
+        await Promise.all(
+          captures.flatMap(capture =>
+            capture.png ? [attachPng(testInfo, `${kind}-${capture.phase}`, capture.png)] : [],
+          ),
+        )
+        await attachProbe(
+          testInfo,
+          `${kind}-capture-pixels`,
+          captures.map(({ png: _png, ...capture }) => capture),
+        )
+        expect(record.dom.masked, 'The rule must already match the first DOM insertion').toBe(true)
+        expect(record.dom.maskImage).toContain('linear-gradient')
+        expect(
+          record.firstRaf?.masked,
+          'The first renderer frame must not flash a complete node',
+        ).toBe(true)
+        expect(record.firstRaf?.front).toBeLessThan(0.2)
+        const partial = captures.find(capture => capture.phase === 'partial')
+        expect(
+          partial,
+          'The node frame must traverse a visible partial reveal without waiting for content readiness',
+        ).toBeTruthy()
+        expect(partial?.error).toBeUndefined()
+        expect(
+          partial?.pinkPixels ?? 0,
+          'The real screenshot must show the underlay through the unrevealed right side',
+        ).toBeGreaterThanOrEqual(18)
+      }
+      await verifyComposite(records[0]!)
+      await verifyComposite(records[1]!)
+      expect(records[1]!.firstRaf!.width).toBeGreaterThan(records[0]!.firstRaf!.width * 1.8)
+      const durations = records.map(record => timing(record).frameVisibleToFull ?? 0)
+      for (const record of records) {
+        const summary = timing(record)
+        expect(
+          record.firstFrameVisible?.front,
+          `${record.kind} must begin at the start of its frame reveal`,
+        ).toBeLessThan(0.2)
+        expect(
+          summary.domToFrameVisible ?? Infinity,
+          `${record.kind} must not pause after its DOM frame exists`,
+        ).toBeLessThanOrEqual(100)
+        expect(
+          summary.firstRafToFrameVisible ?? Infinity,
+          `${record.kind} must not wait for content hydration before pixels advance`,
+        ).toBeLessThanOrEqual(100)
+      }
+      for (const duration of durations) {
+        expect(
+          duration,
+          'Frame-visible-to-complete duration must retain the 380ms reveal budget',
+        ).toBeGreaterThanOrEqual(300)
+        expect(duration).toBeLessThanOrEqual(470)
+      }
+      expect(Math.abs(durations[0]! - durations[1]!)).toBeLessThanOrEqual(70)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('the masked right side receives a real pointer and reveals immediately before note/terminal input', async ({
+    browserName,
+  }, testInfo) => {
+    void browserName
+    const { electronApp, window: page } = await launchApp({ deviceScaleFactor: 1 })
+    try {
+      const inspectInput = async (kind: 'note' | 'terminal') => {
+        await seed(page, kind)
+        await installRevealProbe(page)
+        await createNode(page, kind)
+        const point = await maskedInputPoint(page)
+        await page.mouse.click(point.x, point.y)
+        const pointer = await readRevealPointer(page)
+        const record = (await readRevealRecords(page))[0]!
+        await attachProbe(testInfo, `${kind}-masked-input`, {
+          point,
+          pointer,
+          summary: timing(record),
+          record,
+        })
+        expect(pointer?.id, 'Masked pixels must retain the full real node hit region').toBe(
+          point.id,
+        )
+        expect(
+          pointer?.masked,
+          'The physical pointer must arrive while the node is still masked',
+        ).toBe(true)
+        expect(pointer?.front).toBeLessThan(0.65)
+        const node = page.locator(`.react-flow__node[data-id="${point.id}"]`)
+        await expect(node).toHaveCSS('mask-image', 'none')
+        if (kind === 'note') {
+          const textarea = node.getByTestId('note-node-textarea')
+          await expect(textarea).toBeFocused()
+          await page.keyboard.insertText('Immediate masked-region input')
+          await expect(textarea).toHaveValue('Immediate masked-region input')
+        } else {
+          // Frame interaction reveals immediately; typing still respects the existing runtime readiness owner.
+          await expect(node.locator('.terminal-node__terminal')).toHaveAttribute(
+            'aria-busy',
+            'false',
+          )
+          await expect(node.locator('.xterm-helper-textarea')).toBeFocused()
+          const command =
+            process.platform === 'win32'
+              ? buildNodeEvalCommand("process.stdout.write(['MASK', 'INPUT'].join('_') + '\\n')")
+              : "printf '%s_%s\\n' MASK INPUT"
+          await page.keyboard.type(command)
+          await page.keyboard.press('Enter')
+          await expect(node).toContainText('MASK_INPUT')
+        }
+      }
+      await inspectInput('note')
+      await inspectInput('terminal')
+    } finally {
+      await electronApp.close()
+    }
+  })
+})

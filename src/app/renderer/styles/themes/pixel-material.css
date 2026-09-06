@@ -1,0 +1,134 @@
+/* Paint an opaque reading surface only below the existing header band, so the
+   frosted titlebar can sample the canvas. These clearances do not change layout. */
+:root[data-cove-theme-id='pixel']
+  :is(.terminal-node, .task-node, .note-node, .document-node, .role-node, .website-node) {
+  background-color: transparent;
+  background-image: linear-gradient(
+    to bottom,
+    transparent var(--cove-pixel-header-clearance),
+    var(--cove-node-surface) var(--cove-pixel-header-clearance)
+  );
+}
+
+/* Role's existing two-line header has a 46px minimum. */
+:root[data-cove-theme-id='pixel'] .role-node {
+  --cove-pixel-header-clearance: 46px;
+}
+
+:root[data-cove-theme-id='pixel']
+  :is(
+    .terminal-node__header,
+    .task-node__header,
+    .role-node__header,
+    .note-node__header,
+    .document-node__header,
+    .website-node__header
+  ) {
+  background-image: none;
+  backdrop-filter: var(--cove-pixel-header-filter);
+  box-shadow: none;
+}
+
+/* Image has no header row. Its actual image, resize and drag surfaces stay intact. */
+:root[data-cove-theme-id='pixel'] .image-node {
+  border-color: var(--cove-node-border);
+  background: var(--cove-node-surface);
+}
+
+:root[data-cove-theme-id='pixel'] .image-node__close {
+  background: var(--cove-pixel-space-meta-surface);
+  backdrop-filter: var(--cove-pixel-header-filter);
+  border-color: var(--cove-node-header-border);
+  color: var(--cove-text);
+}
+
+:root[data-cove-theme-id='pixel'] .image-node__close:hover {
+  background: var(--cove-control-hover);
+}
+
+:root[data-cove-theme-id='pixel'] .react-flow__node.selected :is(.role-node, .document-node),
+:root[data-cove-theme-id='pixel'] :is(.role-node, .document-node):focus-within {
+  border-color: var(--cove-node-selection-border);
+  box-shadow: var(--cove-node-selection-shadow);
+}
+
+:root[data-cove-theme-id='pixel'] .terminal-node__body {
+  background: var(--cove-terminal-background);
+}
+
+:root[data-cove-theme-id='pixel'] .workspace-space-region {
+  border-style: solid;
+  border-color: color-mix(
+    in srgb,
+    var(--cove-label-color, var(--cove-pixel-cyan)) 12%,
+    var(--cove-space-region-border)
+  );
+  background: rgb(
+    var(--cove-pixel-space-tint) /
+      calc(0.003 + var(--cove-pixel-space-detail, 1) * var(--cove-pixel-space-fill-factor))
+  );
+  background-image: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+:root[data-cove-theme-id='pixel'] .workspace-space-region--active {
+  --cove-pixel-space-fill-factor: 0.022;
+  border-color: var(--cove-space-region-border-active);
+  box-shadow: var(--cove-space-region-shadow-active);
+}
+
+:root[data-cove-theme-id='pixel'] .workspace-space-region--selected {
+  --cove-pixel-space-fill-factor: 0.037;
+  border-color: var(--cove-space-region-border-selected);
+  box-shadow: var(--cove-space-region-shadow-selected);
+}
+
+:root[data-cove-theme-id='pixel']
+  :is(.workspace-space-region__label, .workspace-space-region__label-input) {
+  border-radius: var(--cove-radius-sm);
+  border-color: var(--cove-border);
+  background: var(--cove-pixel-space-title-surface);
+  backdrop-filter: var(--cove-pixel-header-filter);
+  box-shadow: var(--cove-pixel-space-caption-shadow);
+  color: var(--cove-pixel-space-title-text);
+  font-weight: 600;
+}
+
+:root[data-cove-theme-id='pixel'] .workspace-space-region__label-input:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 2px;
+}
+
+:root[data-cove-theme-id='pixel']
+  :is(.workspace-space-region__worktree-badge, .workspace-space-region__menu) {
+  border-radius: var(--cove-radius-sm);
+  background: var(--cove-pixel-space-meta-surface);
+  backdrop-filter: var(--cove-pixel-header-filter);
+  box-shadow: var(--cove-pixel-space-caption-shadow);
+}
+
+:root[data-cove-theme-id='pixel'] .workspace-space-region__worktree-badge {
+  color: var(--cove-pixel-space-worktree-text);
+  border-color: var(--cove-pixel-space-worktree-border);
+}
+
+:root[data-cove-theme-id='pixel'] .workspace-space-region__branch-badge {
+  border-radius: var(--cove-radius-sm);
+  background: var(--cove-pixel-space-branch-surface);
+  backdrop-filter: var(--cove-pixel-header-filter);
+  box-shadow: var(--cove-pixel-space-caption-shadow);
+}
+
+:root[data-cove-theme-id='pixel']
+  :is(.workspace-space-region__menu, .workspace-space-region__branch-badge--button):hover {
+  background: var(--cove-control-selected);
+  border-color: var(--cove-control-border-hover);
+  color: var(--cove-text);
+}
+
+:root[data-cove-theme-id='pixel'] :is(.app-header, .workspace-sidebar) {
+  background: var(--cove-app-background-elevated);
+  backdrop-filter: none;
+  box-shadow: none;
+}

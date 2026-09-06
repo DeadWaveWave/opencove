@@ -248,8 +248,8 @@
   border-radius: var(--cove-radius-xs);
   background: linear-gradient(
     135deg,
-    var(--cove-pixel-violet),
-    var(--cove-pixel-blue) 50%,
+    var(--cove-pixel-blue),
+    var(--cove-pixel-cyan) 50%,
     var(--cove-pixel-mint)
   );
 }

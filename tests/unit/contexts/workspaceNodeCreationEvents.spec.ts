@@ -1,10 +1,38 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createCreatedNodePublisher } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCreatedNodePublisher'
-import { subscribeWorkspaceNodeCreated } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCreationEvents'
+import {
+  subscribeWorkspaceNodeCreated,
+  subscribeWorkspaceNodeCreationPrepared,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCreationEvents'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import type { UseWorkspaceCanvasNodesStoreResult } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
 
 describe('workspace creation notifications', () => {
+  it('prepares all new node kinds including native websites before commit, using one creation timestamp', () => {
+    const prepared = vi.fn()
+    const unsubscribe = subscribeWorkspaceNodeCreationPrepared(prepared)
+    try {
+      const kinds = [
+        'agent',
+        'terminal',
+        'note',
+        'task',
+        'document',
+        'image',
+        'website',
+        'role',
+      ] as const
+      const created = kinds.map(kind => ({ ...pixelNode({ kind }), id: kind }))
+      const publisher = createCreatedNodePublisher(update => {
+        const next = update([])
+        expect(prepared).toHaveBeenCalledExactlyOnceWith(kinds, expect.any(Number))
+        expect(next).toEqual(created)
+      })
+      publisher(() => created)
+    } finally {
+      unsubscribe()
+    }
+  })
   it('notifies only after a creation transaction commits, independently of viewport focus', () => {
     const events: string[] = []
     let nodes = [pixelNode()]

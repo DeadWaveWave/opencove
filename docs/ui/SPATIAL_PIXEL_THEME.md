@@ -1,7 +1,7 @@
 # Spatial Pixel Theme
 
 Pixel is an opt-in dark theme for OpenCove's spatial workspace. It uses deep blue surfaces,
-violet-to-blue-to-mint pixel colors, clear node boundaries, and bounded output activity feedback.
+ice-blue-to-cyan-to-mint pixel colors, clear node boundaries, and bounded output activity feedback.
 Select it through the existing Appearance theme picker or Control Center. It does not change the
 default theme, the existing Light/Dark/Ember themes, or terminal execution behavior.
 
@@ -16,9 +16,17 @@ Node surface color and node material are separate tokens: consumers such as Docu
 surface color in `color-mix`, so the surface token must not become a gradient. Node header, input,
 resize, selection and Find geometry keep their existing contracts.
 
+All eight node kinds share blue-ink reading surfaces and restrained translucent chrome. Headers are
+flat, with low-contrast separators and consistent controls; they have no beveled highlight bands.
+Terminal content stays opaque and readable. Images retain their image-first layout with matching
+frame treatment. Spaces are lightweight region boundaries, with very faint fill that recedes as the
+canvas zooms out. Large Spaces have no broad blur, gradient, shadow or decorative corner patches.
+Small title/worktree labels retain a subtle translucent surface. Entity labels and semantic
+warning/error colors remain independent of the blue/cyan/mint brand gradient.
+
 ## Canvas effects
 
-The Pixel canvas is a viewport-sized, read-only visual layer. It draws a continuously moving violet/blue/mint gradient
+The Pixel canvas is a viewport-sized, read-only visual layer. It draws a continuously moving blue/cyan/mint gradient
 matrix and briefly highlights visible node edges when the existing PTY event hub delivers output.
 It retains only bounded session/timestamp observations, not output text or persisted application state.
 
@@ -41,18 +49,31 @@ The layer must:
 
 ## Node assembly
 
-Successful local node-creation transactions publish a renderer-only notification after committing the
-new node IDs. Hydration, ordinary updates and theme changes do not publish creation notifications.
-An instance-owned 720ms timeline draws an opaque pixel veil and converging fragments on a separate
-foreground canvas. It progressively reveals the already-mounted node without changing its opacity,
-clip, transform, size, focus or hit region. Pointer or keyboard interaction within the canvas synchronously clears active veils before the
-existing interaction handler runs, including pane selection. Tab navigation into a node also reveals
-it, while programmatic creation autofocus does not cancel the effect.
+Local node-creation transactions prepare transparent, instance-scoped CSS masks before committing
+new node IDs. The existing successful-created notification remains after the synchronous commit;
+failed transactions cancel their prepared styling. Hydration, ordinary updates and theme changes
+do not prepare masks or replay creation.
 
-Pending notifications expire within 720ms, including nodes that never receive visible geometry.
-Hidden/reduced-motion views clear the timeline. There is no history or durable appearance metadata.
-Both background and foreground use one scheduler; the foreground stays below controls and transient
-UI and cannot receive pointer events. Assembly veils clear before native selection feedback begins.
+Preparation holds the first frame transparent only until the actual node DOM can be presented.
+PTY, editor and media initialization run independently: they never postpone the pixel front or reset
+its clock. Slow terminal startup may affect when text arrives, but it does not add a deliberate pause
+before the node frame appears. DOM preparation is bounded to 1200ms and then fails open; late mounts
+do not replay the effect. The same 380ms visible frame timeline then moves a normalized,
+stepped frontier across each node. A wide
+node travels farther per millisecond; it does not take longer to complete. Only the traversed portion
+of the real node is composited. The foreground canvas draws converging fragments without an opaque
+veil or placeholder rectangle. Masks leave node layout and terminal/editor dimensions intact.
+Pointer or keyboard interaction in the main renderer clears masks before existing handlers run,
+including pane selection and Tab navigation; programmatic creation autofocus does not cancel it.
+
+Prepared and revealing masks share one deadline function and have cleanup independent of frame
+scheduling. Repeated readiness does not restart the reveal. Hidden and
+reduced-motion views remove them immediately. There is no history or durable appearance metadata.
+Native website contents use the same frontier to clip only the existing host View; full page viewport
+bounds, device metrics and zoom remain unchanged. Both decorative canvases keep one scheduler and
+stay below controls/transient UI, with no pointer interception.
+Input in the revealed native browser region retains its existing routing while the reveal completes;
+the application does not forward clicks on still-invisible page controls.
 
 ## Node close burst
 
@@ -64,11 +85,11 @@ closes, canceled deletion and hydration do not publish this notification.
 The Pixel layer hands off the last visible world rectangle across that commit for at most 160ms,
 retaining at most 256 geometry records. It then draws a 420ms radial burst: a fast initial snap,
 short pixel ring and drifting square fragments that shrink and fade. The burst uses its own
-violet/blue/mint gradient, tracks the current viewport, and never captures document or terminal text.
+blue/cyan/mint gradient, tracks the current viewport, and never captures document or terminal text.
 At most eight bursts run concurrently, with bounded fragments and no deferred playback queue.
 
 The original node is already removed while fragments remain. Ordinary pointer/keyboard interaction
-does not cancel this nonblocking burst; it still immediately clears assembly veils on surviving nodes.
+does not cancel this nonblocking burst; it still immediately clears assembly masks on surviving nodes.
 Hidden/reduced-motion views clear both effects. Changing projects remounts only the background
 decoration, leaving the existing node, terminal and viewport lifecycle owners intact.
 
@@ -84,8 +105,9 @@ Space binding, asynchronous busy state and session recovery keep their existing 
 ## Validation
 
 The visible field must change between frames without requiring PTY output. Reduced-motion frames
-remain deterministic. E2E evidence includes real node creation during the 720ms effect, immediate
-input and natural completion, plus reload without replaying old-node assembly.
+remain deterministic. E2E evidence includes transparent first paint, real node creation, comparable
+visible reveal times at different node widths, input inside the unrevealed area and natural completion,
+plus reload without replaying old-node assembly. Native website host clipping must preserve page size.
 Close E2E evidence checks that the original node is absent while pixels are painted, surviving nodes
 remain usable, cancellation does not burst, and reduced motion removes nodes without decoration.
 

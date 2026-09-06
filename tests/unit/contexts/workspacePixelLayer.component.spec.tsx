@@ -3,7 +3,11 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import { WorkspacePixelLayer } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspacePixelLayer'
-import { publishWorkspaceNodeCreated } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCreationEvents'
+import {
+  publishWorkspaceNodeCreated,
+  publishWorkspaceNodeCreationPrepared,
+  publishWorkspaceNodeCreationCancelled,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCreationEvents'
 import { publishWorkspaceNodesClosed } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeClosureEvents'
 import type { TerminalDataEvent } from '../../../src/shared/contracts/dto'
 
@@ -14,6 +18,11 @@ const mocks = vi.hoisted(() => ({
 }))
 vi.mock('@xyflow/react', () => ({ useStoreApi: () => mocks.store }))
 vi.mock('@app/renderer/shell/utils/ptyEventHub', () => ({ getPtyEventHub: () => mocks }))
+
+function createNode(nodeId: string) {
+  publishWorkspaceNodeCreationPrepared([nodeId], performance.now())
+  publishWorkspaceNodeCreated(nodeId)
+}
 
 describe('workspace pixel layer lifecycle', () => {
   let output: (event: TerminalDataEvent) => void
@@ -42,6 +51,19 @@ describe('workspace pixel layer lifecycle', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('CSS', { escape: (value: string) => value })
+    vi.stubGlobal(
+      'CSSStyleSheet',
+      class {
+        cssRules = []
+        replaceSync = vi.fn()
+      },
+    )
+    Object.defineProperty(document, 'adoptedStyleSheets', {
+      configurable: true,
+      writable: true,
+      value: [],
+    })
     now = 0
     reduced = false
     visible = true
@@ -191,7 +213,7 @@ describe('workspace pixel layer lifecycle', () => {
     const foreground = view.getByTestId('workspace-pixel-assembly')
     expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
     now = 100
-    act(() => publishWorkspaceNodeCreated(node.id))
+    act(() => createNode(node.id))
     view.rerender(renderScene([node]))
     tick(140)
     expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
@@ -201,13 +223,13 @@ describe('workspace pixel layer lifecycle', () => {
     fireEvent.pointerDown(button)
     expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
     now = 1000
-    act(() => publishWorkspaceNodeCreated(node.id))
+    act(() => createNode(node.id))
     tick(1040)
     expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
     fireEvent.keyDown(button, { key: 'x' })
     expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
     view.unmount()
-    act(() => publishWorkspaceNodeCreated(node.id))
+    act(() => createNode(node.id))
     expect(frames.size).toBe(0)
   })
   it('reveals for pane selection and keyboard navigation without canceling programmatic autofocus', () => {
@@ -227,7 +249,7 @@ describe('workspace pixel layer lifecycle', () => {
     const foreground = view.getByTestId('workspace-pixel-assembly')
     tick(0)
     now = 100
-    act(() => publishWorkspaceNodeCreated(node.id))
+    act(() => createNode(node.id))
     tick(140)
     fireEvent.focusIn(view.getByTestId('node-input'))
     expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
@@ -235,11 +257,61 @@ describe('workspace pixel layer lifecycle', () => {
     fireEvent.focusIn(view.getByTestId('node-input'))
     expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
     now = 1000
-    act(() => publishWorkspaceNodeCreated(node.id))
+    act(() => createNode(node.id))
     tick(1040)
     fireEvent.pointerDown(view.getByTestId('pane'))
     expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
     view.unmount()
+  })
+
+  it('prepares transparent CSS before node commit and clears failed creation immediately', () => {
+    const view = render(<WorkspacePixelLayer nodes={[]} />)
+    const sheet = document.adoptedStyleSheets[0]
+    expect(sheet).toBeDefined()
+    act(() => publishWorkspaceNodeCreationPrepared(['not-yet-mounted'], 0))
+    expect(sheet.replaceSync).toHaveBeenLastCalledWith(
+      expect.stringContaining('data-id="not-yet-mounted"'),
+    )
+    expect(sheet.replaceSync).toHaveBeenLastCalledWith(
+      expect.stringContaining('linear-gradient(transparent, transparent)'),
+    )
+    act(() => publishWorkspaceNodeCreationCancelled(['not-yet-mounted']))
+    expect(sheet.replaceSync).toHaveBeenLastCalledWith('')
+    tick(40)
+    expect(view.getByTestId('workspace-pixel-assembly')).toHaveAttribute(
+      'data-cove-pixel-assembly',
+      'idle',
+    )
+    view.unmount()
+    expect(document.adoptedStyleSheets).toEqual([])
+  })
+
+  it('does not consume reveal time before a delayed animation callback can present the frame', () => {
+    const node = pixelNode()
+    const view = render(
+      <div>
+        <WorkspacePixelLayer nodes={[node]} />
+        <div className="react-flow__node" data-id={node.id}>
+          <input />
+        </div>
+      </div>,
+    )
+    act(() => createNode(node.id))
+    const queued = [...frames.values()]
+    frames.clear()
+    now = 200
+    // A busy earlier callback has made the browser-provided RAF timestamp stale.
+    act(() => queued.forEach(callback => callback(40)))
+    tick(480)
+    expect(view.getByTestId('workspace-pixel-assembly')).toHaveAttribute(
+      'data-cove-pixel-assembly',
+      'assembling',
+    )
+    tick(600)
+    expect(view.getByTestId('workspace-pixel-assembly')).toHaveAttribute(
+      'data-cove-pixel-assembly',
+      'idle',
+    )
   })
 
   it('scatters a removed node from cached geometry while preserving survivor input and the single scheduler', () => {

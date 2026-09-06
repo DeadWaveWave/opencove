@@ -310,6 +310,12 @@ test.describe('Primary Sidebar Pin', () => {
         ],
       })
 
+      // These seeded agents have no resumable session; hydration changes running to stopped.
+      // Compare the same settled status ring across rail/peek, independent of that transition.
+      await expect(
+        window.locator(`${secondaryAgentSelector} .workspace-agent-item__provider`),
+      ).toHaveClass(/workspace-agent-item__provider--status-standby/)
+
       const sidebar = window.locator('.workspace-sidebar')
       await window.locator('[data-testid="workspace-sidebar-pin"]').click()
       await window.mouse.move(600, 360)

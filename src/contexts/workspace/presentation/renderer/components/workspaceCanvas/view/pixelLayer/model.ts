@@ -4,6 +4,7 @@ import { resolveAgentPresentation } from '../../../../utils/agentPresentation'
 import { projectPixelNodeFrame, type PixelGeometryNode, type PixelViewport } from './geometry'
 export { readPixelViewport } from './geometry'
 export type { PixelViewport } from './geometry'
+export { resolvePixelGrid } from './grid'
 
 export interface PixelNode {
   id: string
@@ -58,20 +59,6 @@ export function resolvePixelBuffer(width: number, height: number, devicePixelRat
     width: Math.ceil(Math.max(0, width) * dpr),
     height: Math.ceil(Math.max(0, height) * dpr),
     dpr,
-  }
-}
-
-export function resolvePixelGrid(viewport: PixelViewport, configuredGap: number) {
-  const baseGap = Math.max(8, Number.isFinite(configuredGap) ? configuredGap : 17)
-  const minimumScreenGap = Math.max(12, Math.sqrt((viewport.width * viewport.height) / 16000))
-  const level = Math.max(0, Math.ceil(Math.log2(minimumScreenGap / (baseGap * viewport.zoom))))
-  const worldGap = baseGap * 2 ** level
-  const gap = worldGap * viewport.zoom
-  return {
-    gap,
-    worldGap,
-    firstColumn: Math.floor(-viewport.x / gap),
-    firstRow: Math.floor(-viewport.y / gap),
   }
 }
 

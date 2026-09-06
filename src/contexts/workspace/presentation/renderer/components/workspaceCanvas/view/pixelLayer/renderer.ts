@@ -1,16 +1,15 @@
 import {
   pixelNoise,
   resolvePixelBuffer,
-  resolvePixelGrid,
   type PixelActivity,
   type PixelNode,
   type PixelViewport,
 } from './model'
-import { createPixelFieldColumn, resolvePixelScanFront } from './field'
+import { drawPixelBackground } from './background'
 
 export interface PixelTheme {
-  violet: string
   blue: string
+  cyan: string
   mint: string
   warning: string
   danger: string
@@ -23,8 +22,8 @@ export function readPixelTheme(canvas: HTMLCanvasElement): PixelTheme {
   const color = (token: string) => style.getPropertyValue(token).trim() || style.color
   const opacity = Number.parseFloat(style.getPropertyValue('--cove-pixel-grid-opacity'))
   return {
-    violet: color('--cove-pixel-violet'),
     blue: color('--cove-pixel-blue'),
+    cyan: color('--cove-pixel-cyan'),
     mint: color('--cove-pixel-mint'),
     warning: color('--cove-warning'),
     danger: color('--cove-danger'),
@@ -103,38 +102,11 @@ export function drawPixelLayer({
   }
 
   const gradient = context.createLinearGradient(0, 0, viewport.width, viewport.height)
-  gradient.addColorStop(0, theme.violet)
-  gradient.addColorStop(0.5, theme.blue)
+  gradient.addColorStop(0, theme.blue)
+  gradient.addColorStop(0.5, theme.cyan)
   gradient.addColorStop(1, theme.mint)
   context.fillStyle = gradient
-  const grid = resolvePixelGrid(viewport, theme.gap)
-  const columns = Math.ceil(viewport.width / grid.gap) + 1
-  const rows = Math.ceil(viewport.height / grid.gap) + 1
-  for (let column = grid.firstColumn; column <= grid.firstColumn + columns; column++) {
-    const x = column * grid.gap + viewport.x
-    const sample = createPixelFieldColumn(x, viewport.height, now, reducedMotion)
-    for (let row = grid.firstRow; row <= grid.firstRow + rows; row++) {
-      const y = row * grid.gap + viewport.y
-      const noise = pixelNoise(column * grid.worldGap, row * grid.worldGap)
-      const cell = sample(y, noise)
-      context.globalAlpha = theme.opacity * cell.alpha
-      context.fillRect(x - cell.size / 2, y - cell.size / 2, cell.size, cell.size)
-    }
-  }
-  if (!reducedMotion) {
-    for (let lane = 0; lane < 3; lane++) {
-      for (let row = grid.firstRow; row <= grid.firstRow + rows; row++) {
-        const noise = pixelNoise(row * grid.worldGap, lane)
-        if (noise < 0.5) {
-          continue
-        }
-        const y = row * grid.gap + viewport.y
-        const front = resolvePixelScanFront(lane, y, viewport.width, now, noise)
-        context.globalAlpha = theme.opacity * front.alpha
-        context.fillRect(front.x - front.size / 2, y - front.size / 2, front.size, front.size)
-      }
-    }
-  }
+  drawPixelBackground(context, viewport, theme.gap, theme.opacity, now, reducedMotion)
 
   activity.prune(nodes, now)
   let active = false

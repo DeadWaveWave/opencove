@@ -1,5 +1,9 @@
 import { useMemo } from 'react'
-import { publishWorkspaceNodeCreated } from '../nodeCreationEvents'
+import {
+  publishWorkspaceNodeCreated,
+  publishWorkspaceNodeCreationPrepared,
+  publishWorkspaceNodeCreationCancelled,
+} from '../nodeCreationEvents'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
@@ -8,13 +12,22 @@ type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
 export function createCreatedNodePublisher(setNodes: SetNodes): SetNodes {
   return (update, options) => {
     let addedIds: string[] = []
+    let preparedIds: string[] = []
     // The workspace owner commits this updater synchronously before returning.
-    setNodes(previous => {
-      const next = update(previous)
-      const previousIds = new Set(previous.map(node => node.id))
-      addedIds = next.filter(node => !previousIds.has(node.id)).map(node => node.id)
-      return next
-    }, options)
+    try {
+      setNodes(previous => {
+        const next = update(previous)
+        const previousIds = new Set(previous.map(node => node.id))
+        const addedNodes = next.filter(node => !previousIds.has(node.id))
+        addedIds = addedNodes.map(node => node.id)
+        preparedIds = addedIds
+        publishWorkspaceNodeCreationPrepared(preparedIds, performance.now())
+        return next
+      }, options)
+    } catch (error) {
+      publishWorkspaceNodeCreationCancelled(preparedIds)
+      throw error
+    }
     addedIds.forEach(publishWorkspaceNodeCreated)
   }
 }

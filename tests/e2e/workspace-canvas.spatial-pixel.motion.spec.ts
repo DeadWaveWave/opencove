@@ -12,7 +12,7 @@ type AssemblyObservation = Window & { __pixelAssemblyStates?: string[] }
 
 async function observeAssembly(window: Page) {
   await window.addInitScript(() => {
-    const target = window as AssemblyObservation
+    const target = globalThis.window as AssemblyObservation
     target.__pixelAssemblyStates = []
     const observer = new MutationObserver(() => {
       const state = document
@@ -32,7 +32,9 @@ async function observeAssembly(window: Page) {
 }
 
 async function readAssemblyStates(window: Page) {
-  return await window.evaluate(() => (window as AssemblyObservation).__pixelAssemblyStates ?? [])
+  return await window.evaluate(
+    () => (globalThis.window as AssemblyObservation).__pixelAssemblyStates ?? [],
+  )
 }
 
 async function fieldSignature(layer: Locator) {
@@ -76,7 +78,7 @@ async function expectPersistedNote(window: Page, value: string) {
   await expect
     .poll(() =>
       window.evaluate(async text => {
-        const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+        const raw = await globalThis.window.opencoveApi.persistence.readWorkspaceStateRaw()
         if (!raw) {
           return false
         }
@@ -128,18 +130,20 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       }
 
       await createNode(window, 'note', 200, 180)
-      await expect(assembly).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
+      await expect.poll(() => readAssemblyStates(window)).toContain('assembling')
       await expect(assembly).toHaveCSS('pointer-events', 'none')
       await expect(assembly).toHaveAttribute('aria-hidden', 'true')
       const note = window.getByTestId('note-node-textarea')
       await expect(note).toBeEditable()
-      const noteId = await note.evaluate(element =>
-        element.closest('.react-flow__node')?.getAttribute('data-id'),
-      )
-      await expect(assembly).toHaveAttribute('data-cove-pixel-node-ids', noteId ?? '')
-      await attachFrame(window, testInfo, 'pixel-note-assembly')
-      // The first input immediately reveals the node, so typing never waits for the effect.
-      await expect(assembly).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
+      if (videoDirectory) {
+        // The optional recording shows the whole natural reveal; ordinary runs still exercise early input.
+        await expect(assembly).toHaveAttribute('data-cove-pixel-assembly', 'idle', {
+          timeout: 2_000,
+        })
+        await window.waitForTimeout(300)
+      }
+      // First-frame and masked-region input timing are observed atomically in reveal.spec.ts.
+      // This broader flow must not require a 380ms animation to survive screenshot round-trips.
       await note.click({ position: { x: 36, y: 30 } })
       await window.keyboard.insertText('Ready to write while pixels settle.')
       await expect(note).toHaveValue('Ready to write while pixels settle.')
@@ -147,12 +151,19 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       await expectPersistedNote(window, 'Ready to write while pixels settle.')
 
       await createNode(window, 'terminal', 680, 80)
-      await expect(assembly).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
-      await attachFrame(window, testInfo, 'pixel-terminal-assembly')
       const terminal = window.locator('.terminal-node').first()
       await expect(terminal.locator('.xterm')).toBeVisible()
       const instance = await terminal.locator('.xterm').elementHandle()
       await expect(assembly).toHaveAttribute('data-cove-pixel-assembly', 'idle', { timeout: 2_000 })
+      if (videoDirectory) {
+        // The outer node mask marks completion of the visible frame reveal.
+        await expect(window.locator('.react-flow__node:has(.terminal-node)').first()).toHaveCSS(
+          'mask-image',
+          'none',
+          { timeout: 2_500 },
+        )
+        await window.waitForTimeout(300)
+      }
       await terminal.locator('.xterm').click()
       await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
       const command =
@@ -173,7 +184,7 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       await expect(note).toHaveValue('Ready to write while pixels settle.')
       await expect(terminal.locator('.xterm')).toBeVisible()
       await expect(assembly).toHaveAttribute('data-cove-pixel-assembly', 'idle')
-      await window.waitForTimeout(850)
+      await window.waitForTimeout(500)
       expect(await readAssemblyStates(window)).not.toContain('assembling')
     } finally {
       await electronApp.close()
