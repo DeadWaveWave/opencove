@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 🐛 Fixed
+
+- Installation: resolve macOS directory aliases before publishing standalone runtimes, preventing installers from generating launchers with an empty runtime path. (#395)
+
 ---
 
 ## [0.3.2] - 2026-09-06
