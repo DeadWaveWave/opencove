@@ -6,6 +6,7 @@ import {
   type PixelNode,
   type PixelViewport,
 } from './model'
+import { createPixelFieldColumn, resolvePixelScanFront } from './field'
 
 export interface PixelTheme {
   violet: string
@@ -28,7 +29,7 @@ export function readPixelTheme(canvas: HTMLCanvasElement): PixelTheme {
     warning: color('--cove-warning'),
     danger: color('--cove-danger'),
     gap: Number.parseFloat(style.getPropertyValue('--cove-pixel-grid-gap')) || 17,
-    opacity: Number.isFinite(opacity) ? Math.max(0, Math.min(0.4, opacity)) : 0,
+    opacity: Number.isFinite(opacity) ? Math.max(0, Math.min(0.8, opacity)) : 0,
   }
 }
 
@@ -110,11 +111,28 @@ export function drawPixelLayer({
   const columns = Math.ceil(viewport.width / grid.gap) + 1
   const rows = Math.ceil(viewport.height / grid.gap) + 1
   for (let column = grid.firstColumn; column <= grid.firstColumn + columns; column++) {
+    const x = column * grid.gap + viewport.x
+    const sample = createPixelFieldColumn(x, viewport.height, now, reducedMotion)
     for (let row = grid.firstRow; row <= grid.firstRow + rows; row++) {
+      const y = row * grid.gap + viewport.y
       const noise = pixelNoise(column * grid.worldGap, row * grid.worldGap)
-      const size = 1 + noise * 0.8
-      context.globalAlpha = theme.opacity * (0.25 + noise * 0.55)
-      context.fillRect(column * grid.gap + viewport.x, row * grid.gap + viewport.y, size, size)
+      const cell = sample(y, noise)
+      context.globalAlpha = theme.opacity * cell.alpha
+      context.fillRect(x - cell.size / 2, y - cell.size / 2, cell.size, cell.size)
+    }
+  }
+  if (!reducedMotion) {
+    for (let lane = 0; lane < 3; lane++) {
+      for (let row = grid.firstRow; row <= grid.firstRow + rows; row++) {
+        const noise = pixelNoise(row * grid.worldGap, lane)
+        if (noise < 0.5) {
+          continue
+        }
+        const y = row * grid.gap + viewport.y
+        const front = resolvePixelScanFront(lane, y, viewport.width, now, noise)
+        context.globalAlpha = theme.opacity * front.alpha
+        context.fillRect(front.x - front.size / 2, y - front.size / 2, front.size, front.size)
+      }
     }
   }
 

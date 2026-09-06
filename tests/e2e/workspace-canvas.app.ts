@@ -8,6 +8,7 @@ const electronAppPath = path.resolve(__dirname, '../../')
 const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
 const testWorkspacePath = path.resolve(__dirname, '../../')
 type E2EWindowMode = 'inactive' | 'offscreen' | 'hidden'
+type E2EVideoOptions = NonNullable<Parameters<typeof electron.launch>[0]>['recordVideo']
 const E2E_APP_LAUNCH_TIMEOUT_MS = 45_000
 const E2E_APP_CLOSE_TIMEOUT_MS = 5_000
 const E2E_APP_FORCE_KILL_TIMEOUT_MS = 10_000
@@ -255,6 +256,7 @@ async function launchAppInMode(
     userDataDir?: string
     cleanupUserDataDir?: boolean
     deviceScaleFactor?: number
+    recordVideo?: E2EVideoOptions
   } = {},
   attempt = 0,
 ): Promise<{ electronApp: ElectronApplication; window: Page }> {
@@ -276,6 +278,7 @@ async function launchAppInMode(
     electronApp = await electron.launch({
       timeout: E2E_APP_LAUNCH_TIMEOUT_MS,
       args: resolveElectronLaunchArgs(options.deviceScaleFactor),
+      recordVideo: options.recordVideo,
       env: {
         ...INITIAL_E2E_PROCESS_ENV,
         NODE_ENV: 'test',
@@ -344,6 +347,7 @@ async function launchAppWithModes(
     userDataDir?: string
     cleanupUserDataDir?: boolean
     deviceScaleFactor?: number
+    recordVideo?: E2EVideoOptions
   } = {},
   index = 0,
 ): Promise<{ electronApp: ElectronApplication; window: Page }> {
@@ -369,6 +373,7 @@ export async function launchApp(options?: {
   userDataDir?: string
   cleanupUserDataDir?: boolean
   deviceScaleFactor?: number
+  recordVideo?: E2EVideoOptions
 }): Promise<{ electronApp: ElectronApplication; window: Page }> {
   const launchModes = resolveLaunchModes(options?.windowMode)
   return await launchAppWithModes(launchModes, options)

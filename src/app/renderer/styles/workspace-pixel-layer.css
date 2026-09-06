@@ -8,3 +8,18 @@
   overflow: hidden;
   z-index: 0;
 }
+
+/* Above the node renderer (4), below controls and transient UI. Pointer/key
+   interaction clears the veil before selection feedback starts. Actual node
+   layout, focus and hit regions never change. */
+.workspace-pixel-assembly {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+  z-index: 5;
+}

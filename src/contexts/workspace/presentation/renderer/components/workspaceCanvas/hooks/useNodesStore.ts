@@ -17,6 +17,7 @@ import { ensureNodesHaveInitialDimensions } from '../../../utils/reactFlowNodeDi
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
+import { useCreatedNodePublisher } from './useCreatedNodePublisher'
 import { useWorkspaceCanvasNoteNodeMutations } from './useNodesStore.noteMutations'
 import { useWorkspaceCanvasRoleNodeMutations } from './useNodesStore.roleMutations'
 import { useWorkspaceCanvasWebsiteNodeMutations } from './useNodesStore.websiteMutations'
@@ -385,6 +386,7 @@ export function useWorkspaceCanvasNodesStore({
     [onRequestPersistFlush, setNodes],
   )
 
+  const publishCreatedNodes = useCreatedNodePublisher(setNodes)
   const {
     createNodeForSession,
     createNoteNode,
@@ -399,7 +401,7 @@ export function useWorkspaceCanvasNodesStore({
     onRequestPersistFlush,
     onShowMessage,
     onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
-    setNodes,
+    setNodes: publishCreatedNodes,
     standardWindowSizeBucket,
     browserDefaultMode,
   })

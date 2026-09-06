@@ -1,8 +1,9 @@
 import React from 'react'
-import { act, cleanup, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import { WorkspacePixelLayer } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspacePixelLayer'
+import { publishWorkspaceNodeCreated } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCreationEvents'
 import type { TerminalDataEvent } from '../../../src/shared/contracts/dto'
 
 const mocks = vi.hoisted(() => ({
@@ -98,7 +99,7 @@ describe('workspace pixel layer lifecycle', () => {
     vi.unstubAllGlobals()
   })
 
-  it('draws once at idle, coalesces real session output and never writes runtime state', () => {
+  it('keeps the visible field flowing without inventing output activity or writing runtime state', () => {
     const node = pixelNode()
     const before = structuredClone(node)
     const view = render(<WorkspacePixelLayer nodes={[node]} />)
@@ -106,9 +107,9 @@ describe('workspace pixel layer lifecycle', () => {
     expect(canvas).toHaveAttribute('aria-hidden', 'true')
     tick(0)
     expect(context.fillRect).toHaveBeenCalled()
-    expect(frames.size).toBe(0)
+    expect(frames.size).toBe(1)
     act(() => output({ sessionId: 'other', data: 'Read Edit Bash' }))
-    expect(frames.size).toBe(0)
+    expect(frames.size).toBe(1)
     for (let i = 0; i < 100; i++) {
       output({ sessionId: 'session-1', data: '\u001b[2Janything' })
     }
@@ -117,10 +118,11 @@ describe('workspace pixel layer lifecycle', () => {
     expect(canvas).toHaveAttribute('data-cove-pixel-activity', 'output')
     tick(1100)
     expect(canvas).toHaveAttribute('data-cove-pixel-activity', 'idle')
-    expect(frames.size).toBe(0)
+    expect(frames.size).toBe(1)
     expect(node).toEqual(before)
     expect(mocks.store.setState).not.toHaveBeenCalled()
     view.unmount()
+    expect(frames.size).toBe(0)
     expect(mocks.unsubscribe).toHaveBeenCalledOnce()
     expect(unsubscribeStore).toHaveBeenCalledOnce()
     expect(disconnect).toHaveBeenCalledOnce()
@@ -148,6 +150,13 @@ describe('workspace pixel layer lifecycle', () => {
     act(() => document.dispatchEvent(new Event('visibilitychange')))
     expect(frames.size).toBe(0)
     expect(canvas).toHaveAttribute('data-cove-pixel-visibility', 'hidden')
+    const hiddenClearCount = context.clearRect.mock.calls.length
+    act(() => {
+      storeChange()
+      storeChange()
+      storeChange()
+    })
+    expect(context.clearRect).toHaveBeenCalledTimes(hiddenClearCount)
     output({ sessionId: 'session-1', data: 'background output' })
     visible = true
     act(() => document.dispatchEvent(new Event('visibilitychange')))
@@ -165,5 +174,70 @@ describe('workspace pixel layer lifecycle', () => {
     view.unmount()
     output({ sessionId: 'session-2', data: 'late callback' })
     expect(frames.size).toBe(0)
+  })
+  it('assembles explicit new nodes while keeping their DOM clickable and immediately reveals on input', () => {
+    const node = pixelNode()
+    const renderScene = (nodes: (typeof node)[]) => (
+      <div>
+        <WorkspacePixelLayer nodes={nodes} />
+        <div className="react-flow__node" data-id={node.id}>
+          <button>Node input</button>
+        </div>
+      </div>
+    )
+    const view = render(renderScene([]))
+    tick(0)
+    const foreground = view.getByTestId('workspace-pixel-assembly')
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
+    now = 100
+    act(() => publishWorkspaceNodeCreated(node.id))
+    view.rerender(renderScene([node]))
+    tick(140)
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
+    expect(foreground).toHaveAttribute('data-cove-pixel-node-ids', node.id)
+    const button = view.getByText('Node input')
+    expect(button.closest('.react-flow__node')).not.toHaveAttribute('inert')
+    fireEvent.pointerDown(button)
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
+    now = 1000
+    act(() => publishWorkspaceNodeCreated(node.id))
+    tick(1040)
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
+    fireEvent.keyDown(button, { key: 'x' })
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
+    view.unmount()
+    act(() => publishWorkspaceNodeCreated(node.id))
+    expect(frames.size).toBe(0)
+  })
+  it('reveals for pane selection and keyboard navigation without canceling programmatic autofocus', () => {
+    const node = pixelNode()
+    const view = render(
+      <div>
+        <button data-testid="outside">Outside</button>
+        <div className="react-flow">
+          <WorkspacePixelLayer nodes={[node]} />
+          <div className="react-flow__pane" data-testid="pane" />
+          <div className="react-flow__node" data-id={node.id}>
+            <input data-testid="node-input" />
+          </div>
+        </div>
+      </div>,
+    )
+    const foreground = view.getByTestId('workspace-pixel-assembly')
+    tick(0)
+    now = 100
+    act(() => publishWorkspaceNodeCreated(node.id))
+    tick(140)
+    fireEvent.focusIn(view.getByTestId('node-input'))
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'assembling')
+    fireEvent.keyDown(view.getByTestId('outside'), { key: 'Tab' })
+    fireEvent.focusIn(view.getByTestId('node-input'))
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
+    now = 1000
+    act(() => publishWorkspaceNodeCreated(node.id))
+    tick(1040)
+    fireEvent.pointerDown(view.getByTestId('pane'))
+    expect(foreground).toHaveAttribute('data-cove-pixel-assembly', 'idle')
+    view.unmount()
   })
 })

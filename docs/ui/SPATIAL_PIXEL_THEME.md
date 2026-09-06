@@ -18,7 +18,7 @@ resize, selection and Find geometry keep their existing contracts.
 
 ## Canvas effects
 
-The Pixel canvas is a viewport-sized, read-only visual layer. It draws a deterministic gradient
+The Pixel canvas is a viewport-sized, read-only visual layer. It draws a continuously moving violet/blue/mint gradient
 matrix and briefly highlights visible node edges when the existing PTY event hub delivers output.
 It retains only bounded session/timestamp observations, not output text or persisted application state.
 
@@ -32,11 +32,27 @@ The layer must:
 - Read existing viewport, node geometry and session references; never write them.
 - Stay outside the terminal body and never resize or remount xterm/Monaco.
 - Coalesce output bursts into a bounded visual scheduler, capped at 25 frames per second and DPR 2.
-- Stop scheduling frames after activity decays; idle background remains static.
+- Keep the visible gradient field moving at the same capped frame rate even when output is idle;
+  received-output activity still decays independently after 1050ms.
 - Stop drawing when hidden/offscreen without pausing Agent execution or dropping runtime output.
 - Render a static field with reduced motion and disable activity particles.
 - Discard stale activity on node/session changes and dispose all subscriptions and animation frames.
 - Skip filtered-out and offscreen nodes and allocate buffers for the viewport, not the infinite world.
+
+## Node assembly
+
+Successful local node-creation transactions publish a renderer-only notification after committing the
+new node IDs. Hydration, ordinary updates and theme changes do not publish creation notifications.
+An instance-owned 720ms timeline draws an opaque pixel veil and converging fragments on a separate
+foreground canvas. It progressively reveals the already-mounted node without changing its opacity,
+clip, transform, size, focus or hit region. Pointer or keyboard interaction within the canvas synchronously clears active veils before the
+existing interaction handler runs, including pane selection. Tab navigation into a node also reveals
+it, while programmatic creation autofocus does not cancel the effect.
+
+Pending notifications expire within 720ms, including nodes that never receive visible geometry.
+Hidden/reduced-motion views clear the timeline. There is no history or durable appearance metadata.
+Both background and foreground use one scheduler; the foreground stays below selection, controls and
+transient UI and cannot receive pointer events.
 
 ## Interaction boundaries
 
@@ -48,6 +64,10 @@ File content and unsaved-edit conflicts remain owned by the document workflow. W
 Space binding, asynchronous busy state and session recovery keep their existing owners and semantics.
 
 ## Validation
+
+The visible field must change between frames without requiring PTY output. Reduced-motion frames
+remain deterministic. E2E evidence includes real node creation during the 720ms effect, immediate
+input and natural completion, plus reload without replaying old-node assembly.
 
 The theme must preserve theme normalization and reload behavior, existing light/dark appearance,
 clear keyboard focus/error states, and Control Center usability. Pixel canvas checks cover transparent
