@@ -51,6 +51,13 @@
           "url": "https://github.com/DeadWaveWave/opencove/pull/394",
           "prNumber": 394,
           "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Fix standalone installation on macOS when temporary folders use directory aliases.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/395",
+          "prNumber": 395,
+          "sha": null
         }
       ]
     },
@@ -97,6 +104,13 @@
           "summary": "修复 Windows 独立运行时安装在验证后超时的问题。",
           "url": "https://github.com/DeadWaveWave/opencove/pull/394",
           "prNumber": 394,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "修复 macOS 临时目录使用路径别名时独立运行时安装失败的问题。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/395",
+          "prNumber": 395,
           "sha": null
         }
       ]
