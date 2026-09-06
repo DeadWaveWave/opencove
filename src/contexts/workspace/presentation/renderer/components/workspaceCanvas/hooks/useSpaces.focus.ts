@@ -3,7 +3,7 @@ import { getViewportForBounds, useStore, type Node, type ReactFlowInstance } fro
 import type { FocusNodeTargetZoom } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
-import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
+import { resolveWorkspaceCanvasViewportAnimation } from '../helpers'
 
 const DEFAULT_VIEWPORT_WIDTH = 1440
 const DEFAULT_VIEWPORT_HEIGHT = 900
@@ -80,7 +80,7 @@ export function useWorkspaceCanvasSpaceFocus({
       const nextViewport = getViewportForBounds(rect, width, height, viewportMinZoom, maxZoom, 0.16)
 
       void reactFlow.setViewport(nextViewport, {
-        duration: resolveWorkspaceCanvasAnimationDuration(220),
+        ...resolveWorkspaceCanvasViewportAnimation(220),
       })
       return true
     },
@@ -103,7 +103,7 @@ export function useWorkspaceCanvasSpaceFocus({
 
     void reactFlow.fitView({
       padding: 0.16,
-      duration: resolveWorkspaceCanvasAnimationDuration(220),
+      ...resolveWorkspaceCanvasViewportAnimation(220),
     })
   }, [nodesRef, reactFlow])
 

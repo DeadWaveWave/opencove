@@ -203,6 +203,10 @@ export const enSettingsPanel = {
       regular: 'Regular',
       large: 'Large',
     },
+    viewportTransitionLabel: 'Viewport Transition',
+    viewportTransitionHelp:
+      'Choose how the canvas moves between windows and spaces. Respects reduced motion in system settings.',
+    viewportTransition: { fly: 'Zoom Flight', slide: 'Smooth Slide' },
     focusOnClickLabel: 'Auto-focus on Click',
     focusOnClickHelp: 'Center the canvas on a node when it is clicked.',
     focusVisibleCenterLabel: 'Center Within Visible Canvas',

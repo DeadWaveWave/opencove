@@ -1,3 +1,10 @@
+export const VIEWPORT_TRANSITIONS = ['fly', 'slide'] as const
+export type ViewportTransition = (typeof VIEWPORT_TRANSITIONS)[number]
+
+export function isValidViewportTransition(value: unknown): value is ViewportTransition {
+  return value === 'fly' || value === 'slide'
+}
+
 export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
 export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
 
