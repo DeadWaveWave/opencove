@@ -17,6 +17,7 @@ OpenCove 0.3.2 adds native Pi activity tracking, improves Windows Agent startup 
 
 ### 🐛 Fixed
 
+- Installation: resolve macOS directory aliases before publishing standalone runtimes, preventing installers from generating launchers with an empty runtime path. (#395)
 - Installation: let Windows standalone runtime verification exit after native checks and output flush, preventing installer timeouts caused by retained PTY threads. (#394)
 - Remote: match managed SSH Workers to the Desktop build, safely upgrade idle runtimes with profile backups, and report active-session waits, credential mismatches, and recovery failures clearly. (#392)
 - Development: restore Windows dev-server startup and build identity hot reload by keeping source directory watches out of Vite's module imports. (#392)
