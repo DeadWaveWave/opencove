@@ -2,7 +2,8 @@ import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import type { Plugin } from 'vite'
+import { normalizePath, type Plugin } from 'vite'
+import { createRuntimeBuildIdentity } from './scripts/lib/runtime-build-identity'
 
 export function buildOpenCoveContentSecurityPolicy(isDev: boolean): string {
   const scriptSources = isDev ? ["'self'", "'unsafe-eval'"] : ["'self'"]
@@ -54,70 +55,116 @@ function opencoveCspPlugin(): Plugin {
   }
 }
 
-export default defineConfig({
-  main: {
-    plugins: [externalizeDepsPlugin()],
-    resolve: {
-      alias: {
-        '@app': resolve(__dirname, 'src/app'),
-        '@contexts': resolve(__dirname, 'src/contexts'),
-        '@platform': resolve(__dirname, 'src/platform'),
-        '@shared': resolve(__dirname, 'src/shared'),
+export default defineConfig(({ command }) => {
+  const development = command === 'serve' || process.env.OPENCOVE_BUILD_CHANNEL === 'dev'
+  const runtimeIdentityPlugin = (publish = false): Plugin => {
+    let identity = createRuntimeBuildIdentity(__dirname, development)
+    return {
+      name: 'opencove:runtime-build',
+      enforce: 'pre',
+      buildStart() {
+        identity = createRuntimeBuildIdentity(__dirname, development)
+        // Vite treats watch files added during transform as module imports.
+        // Register the source tree at build scope so directories stay out of the module graph.
+        for (const path of ['src', 'scripts', 'patches', 'package.json', 'pnpm-lock.yaml']) {
+          this.addWatchFile(resolve(__dirname, path))
+        }
       },
-    },
-    build: {
-      outDir: 'out/main',
-      rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/app/main/index.ts'),
-          worker: resolve(__dirname, 'src/app/worker/index.ts'),
-          ptyHost: resolve(__dirname, 'src/platform/process/ptyHost/entry.ts'),
-          windowsConsoleObserver: resolve(
-            __dirname,
-            'src/platform/process/ptyHost/windowsConsoleObserverEntry.ts',
-          ),
+      shouldTransformCachedModule({ id }) {
+        return normalizePath(id).endsWith('/runtimeBuildIdentity.ts')
+      },
+      handleHotUpdate(ctx) {
+        const modules =
+          ctx.server.moduleGraph.getModulesByFile(
+            normalizePath(resolve(__dirname, 'src/shared/runtime/runtimeBuildIdentity.ts')),
+          ) ?? new Set()
+        for (const module of modules) ctx.server.moduleGraph.invalidateModule(module)
+        return [...new Set([...ctx.modules, ...modules])]
+      },
+      transform(code, id) {
+        if (!id.replaceAll('\\', '/').endsWith('/shared/runtime/runtimeBuildIdentity.ts'))
+          return null
+        if (command === 'serve') identity = createRuntimeBuildIdentity(__dirname, development)
+        return code
+          .replace(/declare const __OPENCOVE_RUNTIME_BUILD__: unknown\s*/, '')
+          .replaceAll('__OPENCOVE_RUNTIME_BUILD__', `(${JSON.stringify(identity)})`)
+      },
+      generateBundle() {
+        if (publish)
+          this.emitFile({
+            type: 'asset',
+            fileName: 'runtime-build.json',
+            source: JSON.stringify(identity),
+          })
+      },
+    }
+  }
+  return {
+    main: {
+      plugins: [externalizeDepsPlugin(), runtimeIdentityPlugin(true)],
+      resolve: {
+        alias: {
+          '@app': resolve(__dirname, 'src/app'),
+          '@contexts': resolve(__dirname, 'src/contexts'),
+          '@platform': resolve(__dirname, 'src/platform'),
+          '@shared': resolve(__dirname, 'src/shared'),
+        },
+      },
+      build: {
+        outDir: 'out/main',
+        rollupOptions: {
+          input: {
+            index: resolve(__dirname, 'src/app/main/index.ts'),
+            worker: resolve(__dirname, 'src/app/worker/index.ts'),
+            managedRuntime: resolve(__dirname, 'src/app/managedRuntime/index.ts'),
+            ptyHost: resolve(__dirname, 'src/platform/process/ptyHost/entry.ts'),
+            windowsConsoleObserver: resolve(
+              __dirname,
+              'src/platform/process/ptyHost/windowsConsoleObserverEntry.ts',
+            ),
+          },
         },
       },
     },
-  },
-  preload: {
-    plugins: [externalizeDepsPlugin()],
-    resolve: {
-      alias: {
-        '@app': resolve(__dirname, 'src/app'),
-        '@contexts': resolve(__dirname, 'src/contexts'),
-        '@platform': resolve(__dirname, 'src/platform'),
-        '@shared': resolve(__dirname, 'src/shared'),
+    preload: {
+      plugins: [externalizeDepsPlugin(), runtimeIdentityPlugin()],
+      resolve: {
+        alias: {
+          '@app': resolve(__dirname, 'src/app'),
+          '@contexts': resolve(__dirname, 'src/contexts'),
+          '@platform': resolve(__dirname, 'src/platform'),
+          '@shared': resolve(__dirname, 'src/shared'),
+        },
       },
-    },
-    build: {
-      outDir: 'out/preload',
-      rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/app/preload/index.ts'),
+      build: {
+        outDir: 'out/preload',
+        rollupOptions: {
+          input: {
+            index: resolve(__dirname, 'src/app/preload/index.ts'),
+          },
         },
       },
     },
-  },
-  renderer: {
-    root: 'src/app/renderer',
-    build: {
-      outDir: 'out/renderer',
-      rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/app/renderer/index.html'),
-          web: resolve(__dirname, 'src/app/renderer/web.html'),
+    renderer: {
+      root: 'src/app/renderer',
+      build: {
+        outDir: 'out/renderer',
+        rollupOptions: {
+          input: {
+            index: resolve(__dirname, 'src/app/renderer/index.html'),
+            web: resolve(__dirname, 'src/app/renderer/web.html'),
+          },
+        },
+      },
+      plugins: [runtimeIdentityPlugin(), opencoveCspPlugin(), tailwindcss(), react()],
+      resolve: {
+        alias: {
+          '@app': resolve(__dirname, 'src/app'),
+          '@contexts': resolve(__dirname, 'src/contexts'),
+          '@platform': resolve(__dirname, 'src/platform'),
+          '@shared': resolve(__dirname, 'src/shared'),
         },
       },
     },
-    plugins: [opencoveCspPlugin(), tailwindcss(), react()],
-    resolve: {
-      alias: {
-        '@app': resolve(__dirname, 'src/app'),
-        '@contexts': resolve(__dirname, 'src/contexts'),
-        '@platform': resolve(__dirname, 'src/platform'),
-        '@shared': resolve(__dirname, 'src/shared'),
-      },
-    },
-  },
+  }
 })

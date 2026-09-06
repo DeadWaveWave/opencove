@@ -6,10 +6,16 @@ import type {
   ControlSurfacePingResult,
 } from '../../../../shared/contracts/dto'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
+import { getRuntimeBuildIdentity } from '../../../../shared/runtime/runtimeBuildIdentity'
 
 export function registerSystemHandlers(
   controlSurface: ControlSurface,
-  deps: { appVersion: string | null },
+  deps: {
+    appVersion: string | null
+    deploymentId?: string | null
+    instanceId?: string
+    isReady?: () => boolean
+  },
 ): void {
   controlSurface.register('system.ping', {
     kind: 'query',
@@ -47,6 +53,10 @@ export function registerSystemHandlers(
         pid: process.pid,
         protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
         appVersion: deps.appVersion,
+        runtimeBuild: getRuntimeBuildIdentity(),
+        deploymentId: deps.deploymentId ?? null,
+        instanceId: deps.instanceId,
+        runtimeReady: deps.isReady?.() ?? false,
         features: ctx.capabilities,
       }) satisfies ControlSurfaceCapabilitiesResult,
     defaultErrorCode: 'common.unexpected',

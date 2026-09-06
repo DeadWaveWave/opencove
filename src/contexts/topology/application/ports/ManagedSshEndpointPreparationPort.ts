@@ -14,6 +14,7 @@ export interface ManagedSshEndpointPreparationAccess {
 }
 
 export interface ManagedSshEndpointPreparationRequest {
+  runtimeBuild?: import('../../../../shared/contracts/runtimeBuild').RuntimeBuildIdentity | null
   operationId: string
   access: ManagedSshEndpointPreparationAccess
   restartTunnel: boolean

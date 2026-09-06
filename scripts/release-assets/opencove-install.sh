@@ -66,10 +66,14 @@ detect_arch() {
 
 verify_archive_checksum() {
   checksums_path="${TMP_DIR}/SHA256SUMS.txt"
-  curl -fsSL "${CHECKSUMS_URL}" -o "${checksums_path}"
+  if [ -n "${OPENCOVE_STANDALONE_CHECKSUMS_FILE:-}" ]; then
+    cp "${OPENCOVE_STANDALONE_CHECKSUMS_FILE}" "${checksums_path}"
+  else
+    curl -fsSL "${CHECKSUMS_URL}" -o "${checksums_path}"
+  fi
   expected_checksum="$(awk -v asset="${ASSET_NAME}" '$2 == asset || $2 == "*" asset { print $1; exit }' "${checksums_path}")"
   if [ -z "${expected_checksum}" ]; then
-    printf "Checksum for %s not found in %s\n" "${ASSET_NAME}" "${CHECKSUMS_URL}" >&2
+    printf "[opencove-bootstrap:checksum_failed] Checksum for %s not found in %s\n" "${ASSET_NAME}" "${CHECKSUMS_URL}" >&2
     exit 1
   fi
 
@@ -85,7 +89,7 @@ verify_archive_checksum() {
   fi
 
   if [ "$(printf '%s' "${actual_checksum}" | tr '[:upper:]' '[:lower:]')" != "$(printf '%s' "${expected_checksum}" | tr '[:upper:]' '[:lower:]')" ]; then
-    printf "SHA256 mismatch for %s\n" "${ASSET_NAME}" >&2
+    printf "[opencove-bootstrap:checksum_failed] SHA256 mismatch for %s\n" "${ASSET_NAME}" >&2
     exit 1
   fi
   printf "Verified SHA256 for %s\n" "${ASSET_NAME}"
@@ -179,7 +183,8 @@ PLATFORM="$(detect_platform)"
 ARCH="$(detect_arch)"
 ASSET_NAME="opencove-server-${PLATFORM}-${ARCH}.tar.gz"
 ASSET_URL="${RELEASE_BASE_URL}/${ASSET_NAME}"
-TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/opencove-install.XXXXXX")"
+mkdir -p "${INSTALL_ROOT}"
+TMP_DIR="$(mktemp -d "${INSTALL_ROOT}/.opencove-install.XXXXXX")"
 ARCHIVE_PATH="${TMP_DIR}/${ASSET_NAME}"
 BUNDLE_NAME="${ASSET_NAME%.tar.gz}"
 BUNDLE_DIR="${INSTALL_ROOT}/${BUNDLE_NAME}"
@@ -195,31 +200,33 @@ if [ -n "${OPENCOVE_STANDALONE_ASSET:-}" ]; then
 else
   printf "Downloading %s\n" "${ASSET_URL}"
   curl -fsSL "${ASSET_URL}" -o "${ARCHIVE_PATH}"
-  verify_archive_checksum
 fi
+verify_archive_checksum
 
-rm -rf "${BUNDLE_DIR}"
-tar -xzf "${ARCHIVE_PATH}" -C "${INSTALL_ROOT}"
+if ! tar -tzf "${ARCHIVE_PATH}" | awk -v root="${BUNDLE_NAME}" '
+  /^\// || /(^|\/)\.\.(\/|$)/ { bad=1 }
+  $0 != root && index($0, root "/") != 1 { bad=1 }
+  END { exit bad }
+'; then
+  printf '%s\n' 'Unsafe standalone archive paths.' >&2
+  exit 1
+fi
+tar -xzf "${ARCHIVE_PATH}" -C "${TMP_DIR}"
+BUNDLE_DIR="${TMP_DIR}/${BUNDLE_NAME}"
+RUNTIME_ENV_PATH="${BUNDLE_DIR}/opencove-runtime.env"
 
 if [ ! -f "${RUNTIME_ENV_PATH}" ]; then
   printf "Standalone runtime manifest not found: %s\n" "${RUNTIME_ENV_PATH}" >&2
   exit 1
 fi
 
-# shellcheck disable=SC1090
-. "${RUNTIME_ENV_PATH}"
+NODE_BIN="${BUNDLE_DIR}/runtime/node/bin/node"
+BUNDLE_DIR="$("${NODE_BIN}" "${BUNDLE_DIR}/app/src/app/cli/publishRuntime.mjs" "${BUNDLE_DIR}" "${INSTALL_ROOT}/${BUNDLE_NAME}-${actual_checksum}" "${actual_checksum}")"
+NODE_BIN="${BUNDLE_DIR}/runtime/node/bin/node"
+CLI_SCRIPT="${BUNDLE_DIR}/app/src/app/cli/opencove.mjs"
 
-if [ -z "${OPENCOVE_NODE_RELATIVE_PATH:-}" ] || [ -z "${OPENCOVE_CLI_SCRIPT_RELATIVE_PATH:-}" ]; then
-  printf "Standalone runtime manifest is incomplete.\n" >&2
-  exit 1
-fi
-
-ln -sfn "${BUNDLE_DIR}" "${CURRENT_LINK}"
-
-NODE_BIN="${CURRENT_LINK}/${OPENCOVE_NODE_RELATIVE_PATH}"
-CLI_SCRIPT="${CURRENT_LINK}/${OPENCOVE_CLI_SCRIPT_RELATIVE_PATH}"
-
-cat > "${LAUNCHER_PATH}" <<EOF
+LAUNCHER_TEMP="${LAUNCHER_PATH}.new.$$"
+cat > "${LAUNCHER_TEMP}" <<EOF
 #!/bin/sh
 # ${CLI_WRAPPER_MARKER}
 # OPENCOVE_INSTALL_OWNER=${CLI_WRAPPER_OWNER_STANDALONE}
@@ -243,7 +250,8 @@ fi
 exec "\$NODE_BIN" "\$CLI_SCRIPT" "\$@"
 EOF
 
-chmod +x "${LAUNCHER_PATH}"
+chmod +x "${LAUNCHER_TEMP}"
+mv -f "${LAUNCHER_TEMP}" "${LAUNCHER_PATH}"
 
 printf "Installed OpenCove CLI at %s\n" "${LAUNCHER_PATH}"
 printf "Runtime bundle: %s\n" "${BUNDLE_DIR}"

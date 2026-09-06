@@ -5,6 +5,8 @@ export const zhCNCommonRemoteEndpoints = {
     managed_ssh: 'SSH 接入',
   },
   status: {
+    update_pending: '更新等待中',
+    recovery_required: '需要恢复',
     connected: '已连接',
     connecting: '连接中',
     disconnected: '未连接',
@@ -32,6 +34,8 @@ export const zhCNCommonRemoteEndpoints = {
     verifying_connection: '正在验证连接…',
   },
   summary: {
+    update_pending: '更新已准备。请结束正在运行的工作，或安排安全停止后重试。',
+    recovery_required: '更新未能完成，已保留数据和恢复快照。请先查看部署详情再安排恢复。',
     local: '运行在这台设备上。',
     connected: '已就绪。现在可以浏览目录，或直接绑定远程路径。',
     connecting: 'OpenCove 正在连接这台远程机器。',

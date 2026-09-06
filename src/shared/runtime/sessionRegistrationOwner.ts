@@ -88,6 +88,10 @@ export class SessionRegistrationOwner {
     this.completedBeforeRegistration.clear()
   }
 
+  public isIdle(): boolean {
+    return !this.disposed && this.pendingAttemptCount === 0 && this.activeSessionIds.size === 0
+  }
+
   private clearUnclaimedCompletionsWhenSettled(): void {
     if (this.pendingAttemptCount === 0) {
       this.completedBeforeRegistration.clear()

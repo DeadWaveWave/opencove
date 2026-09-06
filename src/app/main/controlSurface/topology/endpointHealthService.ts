@@ -319,6 +319,7 @@ export function createEndpointHealthService(options: {
       assertAdmission()
       const operation = options.operations.start({
         kind: 'prepare',
+        runtimeBuild: input.runtimeBuild,
         access: toManagedRuntimeAccess(access),
         restartTunnel: input.reason === 'reconnect',
         reinstallRuntime: false,
@@ -379,6 +380,7 @@ export function createEndpointHealthService(options: {
       assertAdmission()
       const operation = options.operations.start({
         kind: 'repair',
+        runtimeBuild: input.runtimeBuild,
         access: toManagedRuntimeAccess(access),
         restartTunnel:
           input.action === 'repair_credentials' ||

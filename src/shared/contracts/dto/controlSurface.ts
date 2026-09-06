@@ -5,6 +5,7 @@ import type { WorkerEndpointKindDto } from './topology'
 import type { GitWorktreeInfo, RemoveGitWorktreeResult } from './worktree'
 import type { SpaceBoundary } from '../../types/spaceBoundary'
 import type { NodeWorkerBinding } from '../../types/nodeWorkerBinding'
+import type { RuntimeBuildIdentity } from '../runtimeBuild'
 
 export interface ControlSurfacePingResult {
   ok: true
@@ -21,6 +22,10 @@ export interface ControlSurfaceHomeDirectoryResult {
 }
 
 export interface ControlSurfaceCapabilitiesResult {
+  runtimeBuild?: RuntimeBuildIdentity | null
+  deploymentId?: string | null
+  instanceId?: string
+  runtimeReady?: boolean
   ok: true
   now: string
   pid: number

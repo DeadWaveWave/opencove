@@ -2,7 +2,10 @@
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
   "include": [
     "electron.vite.config.*",
+    "scripts/lib/runtime-build-identity.ts",
     "src/app/main/**/*",
+    "src/app/managedRuntime/**/*",
+    "src/app/worker/**/*",
     "src/app/preload/**/*",
     "src/shared/**/*",
     "src/contexts/**/domain/**/*",

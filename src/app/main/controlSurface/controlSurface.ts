@@ -16,7 +16,9 @@ export interface ControlSurface {
   ) => Promise<ControlSurfaceInvokeResult<unknown>>
 }
 
-export function createControlSurface(): ControlSurface {
+export function createControlSurface(
+  options: { enter?: (id: string) => (() => void) | undefined } = {},
+): ControlSurface {
   const handlers = new Map<string, ControlSurfaceHandler<unknown, unknown>>()
 
   return {
@@ -40,7 +42,9 @@ export function createControlSurface(): ControlSurface {
         }
       }
 
+      let leave: (() => void) | undefined
       try {
+        leave = options.enter?.(request.id)
         const payload = handler.validate(request.payload)
         const value = await handler.handle(ctx, payload)
 
@@ -55,6 +59,8 @@ export function createControlSurface(): ControlSurface {
           ok: false,
           error: toAppErrorDescriptor(error, handler.defaultErrorCode),
         }
+      } finally {
+        leave?.()
       }
     },
   }

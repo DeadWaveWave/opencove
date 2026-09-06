@@ -1,3 +1,4 @@
+import { getRuntimeBuildIdentity } from '../../../../shared/runtime/runtimeBuildIdentity'
 import type {
   PrepareWorkerEndpointInput,
   RepairWorkerEndpointInput,
@@ -106,10 +107,26 @@ export class EndpointOverviewProjectionOwner {
   public prepareEndpoint = (
     input: PrepareWorkerEndpointInput,
   ): Promise<WorkerEndpointOverviewDto> =>
-    this.runCommand(input.endpointId, 'prepare', async () => await this.options.port.prepare(input))
+    this.runCommand(
+      input.endpointId,
+      'prepare',
+      async () =>
+        await this.options.port.prepare({
+          ...input,
+          runtimeBuild: getRuntimeBuildIdentity(),
+        }),
+    )
 
   public repairEndpoint = (input: RepairWorkerEndpointInput): Promise<WorkerEndpointOverviewDto> =>
-    this.runCommand(input.endpointId, 'repair', async () => await this.options.port.repair(input))
+    this.runCommand(
+      input.endpointId,
+      'repair',
+      async () =>
+        await this.options.port.repair({
+          ...input,
+          runtimeBuild: getRuntimeBuildIdentity(),
+        }),
+    )
 
   public dispose(): void {
     this.disposed = true

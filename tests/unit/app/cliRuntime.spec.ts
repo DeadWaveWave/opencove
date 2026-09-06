@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { resolve } from 'node:path'
 
 describe('cli runtime discovery', () => {
   it('recognizes an extracted standalone app from its colocated runtime manifest', async () => {
@@ -6,17 +7,18 @@ describe('cli runtime discovery', () => {
 
     expect(
       resolveCliRuntime({
-        cliDirectory: '/bundle/app/src/app/cli',
+        cliDirectory: resolve('/bundle/app/src/app/cli'),
         resourcesPath: null,
-        existsSyncImpl: (candidate: string) => candidate === '/bundle/opencove-runtime.env',
+        existsSyncImpl: (candidate: string) =>
+          candidate === resolve('/bundle/opencove-runtime.env'),
         readFileSyncImpl: () =>
           'OPENCOVE_NODE_RELATIVE_PATH=runtime/node/bin/node\nOPENCOVE_CLI_SCRIPT_RELATIVE_PATH=app/src/app/cli/opencove.mjs\n',
       }),
     ).toEqual({
       kind: 'standalone',
-      appRoot: '/bundle/app',
-      nodeExecutablePath: '/bundle/runtime/node/bin/node',
-      workerScriptPath: '/bundle/app/out/main/worker.js',
+      appRoot: resolve('/bundle/app'),
+      nodeExecutablePath: resolve('/bundle/runtime/node/bin/node'),
+      workerScriptPath: resolve('/bundle/app/out/main/worker.js'),
     })
   })
 
@@ -27,7 +29,7 @@ describe('cli runtime discovery', () => {
     expect(
       resolveCliAppVersion({ kind: 'standalone', appRoot: '/bundle/app' }, { readFileSyncImpl }),
     ).toBe('0.3.0')
-    expect(readFileSyncImpl).toHaveBeenCalledWith('/bundle/app/package.json', 'utf8')
+    expect(readFileSyncImpl).toHaveBeenCalledWith(resolve('/bundle/app/package.json'), 'utf8')
   })
 
   it('fails closed when the CLI runtime has no trustworthy packaged version', async () => {

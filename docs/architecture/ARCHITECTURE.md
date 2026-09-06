@@ -86,6 +86,10 @@ domain <- application <- presentation
 
 ## 6. 进程边界规则
 
+`app/managedRuntime` 是按需启动的托管 runtime controller 组合根，只能依赖 application、
+infrastructure 和 shared；不能依赖 renderer。部署决策属于 topology application，安装锁、
+journal、快照和进程调用属于 infrastructure。CLI 只路由请求，不承载另一份部署策略。
+
 ### `main`
 - 负责进程生命周期、模块装配、资源清理。
 - 不负责业务判定。

@@ -75,6 +75,7 @@
     "build:release-manifest": "node scripts/generate-release-manifest.mjs",
     "build:standalone:asset": "node scripts/build-standalone-asset.mjs",
     "build:standalone": "pnpm build && pnpm build:release-manifest && pnpm build:standalone:asset",
+    "build:managed-ssh": "node scripts/build-managed-ssh-artifact.mjs",
     "build:unpack": "pnpm build && pnpm build:release-manifest && electron-builder --dir --publish never",
     "build:mac": "pnpm build && pnpm build:release-manifest && electron-builder --mac --publish never",
     "build:mac:arm64": "pnpm build && pnpm build:release-manifest && electron-builder --mac --arm64 --publish never",

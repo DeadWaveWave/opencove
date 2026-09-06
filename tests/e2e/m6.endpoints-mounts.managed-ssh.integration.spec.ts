@@ -160,6 +160,7 @@ test.describe('M6 - Managed SSH remote endpoint integration', () => {
 
       const endpointToken = await readManagedEndpointToken(appUserDataDir, remoteEndpointId)
       remoteWorker = await startRemoteWorker({
+        deploymentId: remoteEndpointId,
         hostname: remoteHost,
         port: remoteWorkerPort,
         token: endpointToken,
@@ -195,7 +196,8 @@ test.describe('M6 - Managed SSH remote endpoint integration', () => {
         async () =>
           await window.evaluate(
             async ({ expectedProjectName, expectedPath, expectedEndpointId }) => {
-              const normalize = (value: string): string => value.trim().replace(/[\\/]+$/, '')
+              const normalize = (value: string): string =>
+                value.trim().replaceAll('\\', '/').replace(/\/+$/, '')
               const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
               if (!raw) {
                 return null

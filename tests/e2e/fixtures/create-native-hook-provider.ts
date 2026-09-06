@@ -40,6 +40,10 @@ class Provider {
 }
 `,
   )
+  return compileWindowsFixture(source, executable)
+}
+
+export function compileWindowsFixture(source: string, executable: string): string {
   execFileSync(
     join(
       process.env.SystemRoot ?? 'C:\\Windows',

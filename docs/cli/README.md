@@ -12,6 +12,12 @@ CLI 的定位是：给 Agent/自动化脚本提供一个稳定入口，去驱动
 
 ## 1.1 安装拓扑
 
+`runtime inspect` 只读取构建描述，`runtime verify` 在独立进程内验证执行环境；它们不会启动
+Worker 或创建用户 profile。`runtime prepare` 把经过校验的托管部署请求交给独立 runtime
+controller。controller 拥有安装/激活元数据，通过 Worker 的维护协议管理生命周期，并由
+persistence 基础设施生成一致快照；普通业务 CLI 仍只能通过 Control Surface 访问业务状态。
+详细所有权和恢复规则见 [Managed SSH runtime](../runtime/MANAGED_SSH_RUNTIME.md)。
+
 OpenCove 目前支持两条正式的 CLI 安装链路：
 
 - **Desktop 内置安装**：用户在 Desktop 的 **Settings → Worker → CLI** 中点击 **Install CLI**，由已安装的 app 写入 `opencove` launcher（Windows 为 `opencove.cmd`）。

@@ -28,16 +28,17 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 export OPENCOVE_STANDALONE_ASSET="${ASSET_PATH}"
+export OPENCOVE_STANDALONE_CHECKSUMS_FILE="${OPENCOVE_STANDALONE_CHECKSUMS_FILE:-$(dirname "${ASSET_PATH}")/SHA256SUMS.txt}"
 export OPENCOVE_INSTALL_ROOT="${INSTALL_ROOT}"
 export OPENCOVE_BIN_DIR="${BIN_DIR}"
 
 sh scripts/release-assets/opencove-install.sh
 
-# shellcheck disable=SC1091
-. "${INSTALL_ROOT}/current/opencove-runtime.env"
-NODE_BIN="${INSTALL_ROOT}/current/${OPENCOVE_NODE_RELATIVE_PATH}"
-APP_ROOT="${INSTALL_ROOT}/current/app"
 LAUNCHER="${BIN_DIR}/opencove"
+NODE_BIN="$(sed -n 's/^# OPENCOVE_NODE_BIN=//p' "${LAUNCHER}")"
+CLI_SCRIPT="$(sed -n 's/^# OPENCOVE_CLI_SCRIPT=//p' "${LAUNCHER}")"
+APP_ROOT="$(dirname "$(dirname "$(dirname "$(dirname "${CLI_SCRIPT}")")")")"
+BUNDLE_ROOT="$(dirname "${APP_ROOT}")"
 CONNECTION_FILE="${USER_DATA}/worker-control-surface.json"
 
 if grep -q 'ELECTRON_RUN_AS_NODE' "${LAUNCHER}"; then
@@ -103,9 +104,9 @@ if [ "${CLI_EXECUTABLE}" != "${EXPECTED_NODE}" ] || [ "${WORKER_EXECUTABLE}" != 
   exit 1
 fi
 
-if find "${INSTALL_ROOT}/current/runtime" -type f ! -path '*/runtime/node/bin/node' ! -path '*/runtime/node/LICENSE' | grep -q .; then
+if find "${BUNDLE_ROOT}/runtime" -type f ! -path '*/runtime/node/bin/node' ! -path '*/runtime/node/LICENSE' | grep -q .; then
   echo 'standalone node smoke: unexpected non-Node runtime file found' >&2
-  find "${INSTALL_ROOT}/current/runtime" -type f >&2
+  find "${BUNDLE_ROOT}/runtime" -type f >&2
   exit 1
 fi
 

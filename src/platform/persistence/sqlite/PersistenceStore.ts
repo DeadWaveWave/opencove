@@ -94,6 +94,7 @@ function readAgentNodePlaceholderScrollbackFromDb(
 export async function createPersistenceStore(storeOptions: {
   dbPath: string
   maxRawBytes?: number
+  strictRecovery?: boolean
 }): Promise<PersistenceStore> {
   const maxRawBytes = storeOptions.maxRawBytes ?? DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES
 
@@ -105,7 +106,10 @@ export async function createPersistenceStore(storeOptions: {
   let sqlite: Database.Database
   try {
     sqlite = new Database(storeOptions.dbPath)
-  } catch {
+  } catch (error) {
+    if (storeOptions.strictRecovery) {
+      throw error
+    }
     recovery = 'corrupt_db'
     await moveCorruptDbAside(storeOptions.dbPath, now)
     sqlite = new Database(storeOptions.dbPath)
@@ -114,12 +118,19 @@ export async function createPersistenceStore(storeOptions: {
   try {
     const version = sqlite.pragma('user_version', { simple: true }) as unknown
     const currentVersion = typeof version === 'number' ? version : 0
+    if (storeOptions.strictRecovery && currentVersion > DB_SCHEMA_VERSION) {
+      throw new Error('Managed runtime cannot downgrade this database schema.')
+    }
     if (currentVersion < DB_SCHEMA_VERSION) {
       await backupDbFile(storeOptions.dbPath, now)
     }
 
     migrate(sqlite)
-  } catch {
+  } catch (error) {
+    if (storeOptions.strictRecovery) {
+      sqlite.close()
+      throw error
+    }
     recovery = 'migration_failed'
 
     try {

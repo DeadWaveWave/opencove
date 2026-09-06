@@ -1,5 +1,17 @@
 import { stripVTControlCharacters } from 'node:util'
 
+export function redactManagedSshOutput(value: string, token?: string): string {
+  let text = token ? value.replaceAll(token, '[redacted]') : value
+  text = text.replace(
+    /("(?:token|password|authorization|webUiPassword)"\s*:\s*)"(?:\\.|[^"\\])*"/gi,
+    '$1"[redacted]"',
+  )
+  text = text.replace(/(\bBearer\s+)[^\s"'<>]+/gi, '$1[redacted]')
+  text = text.replace(/([?&](?:token|password|access_token)=)[^\s&#"']*/gi, '$1[redacted]')
+  text = text.replace(/((?:--token|password|authorization)\s*[=:]\s*)\S+/gi, '$1[redacted]')
+  return text.replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[redacted]@')
+}
+
 export function managedSshDiagnosticDetails(
   values: Array<string | null | undefined>,
   token?: string,
@@ -13,11 +25,7 @@ export function managedSshDiagnosticDetails(
       line = stripVTControlCharacters(line)
         .replace(/\p{Cc}/gu, '')
         .trim()
-      if (token) {
-        line = line.replaceAll(token, '[redacted]')
-      }
-      line = line.replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[redacted]@')
-      line = line.replace(/((?:--token|password|authorization)\s*[=:]\s*)\S+/gi, '$1[redacted]')
+      line = redactManagedSshOutput(line, token)
       line = line.replace(
         /^channel \d+: (open failed: connect failed: Connection refused)$/i,
         'SSH channel: $1',

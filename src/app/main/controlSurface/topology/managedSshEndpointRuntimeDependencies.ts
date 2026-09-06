@@ -10,6 +10,12 @@ import {
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import { buildSshTunnelArgs, runManagedSshBootstrap } from './managedSshRuntimeSupport'
 import type { ManagedSshEndpointRuntimeAccess } from './topologyEndpointAccess'
+import {
+  parseRuntimeBuildIdentity,
+  hasManagedRuntimeCapabilities,
+  type RuntimeBuildIdentity,
+} from '../../../../shared/contracts/runtimeBuild'
+import { decideManagedRuntimeUpdate } from '../../../../contexts/topology/domain/managedRuntimePolicy'
 
 type ManagedSshRuntimeConnection = { hostname: string; port: number; token: string }
 
@@ -29,7 +35,11 @@ export interface ManagedSshEndpointRuntimeDependencies {
     access: ManagedSshEndpointRuntimeAccess,
     localPort: number,
   ) => ManagedSshTunnelProcess
-  probeConnection: (connection: ManagedSshRuntimeConnection, timeoutMs: number) => Promise<boolean>
+  probeConnection: (
+    connection: ManagedSshRuntimeConnection,
+    timeoutMs: number,
+    expected?: { runtimeBuild: RuntimeBuildIdentity | null; endpointId: string },
+  ) => Promise<boolean>
   runBootstrap: typeof runManagedSshBootstrap
   waitForCondition: (
     fn: () => Promise<boolean>,
@@ -103,14 +113,36 @@ function spawnTunnelProcess(
 async function probeConnection(
   connection: ManagedSshRuntimeConnection,
   timeoutMs: number,
+  expected?: { runtimeBuild: RuntimeBuildIdentity | null; endpointId: string },
 ): Promise<boolean> {
   try {
     const ping = await invokeControlSurface(
       connection,
-      { kind: 'query', id: 'system.ping', payload: null },
+      { kind: 'query', id: 'system.capabilities', payload: null },
       { timeoutMs },
     )
-    return ping.httpStatus === 200 && ping.result?.ok === true
+    if (ping.httpStatus !== 200 || ping.result?.ok !== true || !expected?.runtimeBuild) {
+      return false
+    }
+    const value = ping.result.value as Record<string, unknown>
+    const build = parseRuntimeBuildIdentity(value.runtimeBuild)
+    if (
+      !build ||
+      value.deploymentId !== expected.endpointId ||
+      value.runtimeReady !== true ||
+      !hasManagedRuntimeCapabilities(value, build) ||
+      decideManagedRuntimeUpdate(expected.runtimeBuild, build) !== 'reuse'
+    ) {
+      return false
+    }
+    const maintenance = await invokeControlSurface(
+      connection,
+      { kind: 'query', id: 'worker.maintenance.status', payload: null },
+      { timeoutMs },
+    )
+    const status =
+      maintenance.result?.ok === true ? (maintenance.result.value as Record<string, unknown>) : null
+    return status?.phase === 'active' && status.instanceId === value.instanceId
   } catch {
     return false
   }
