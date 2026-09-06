@@ -2,7 +2,7 @@ import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import type { Plugin } from 'vite'
+import { normalizePath, type Plugin } from 'vite'
 import { createRuntimeBuildIdentity } from './scripts/lib/runtime-build-identity'
 
 export function buildOpenCoveContentSecurityPolicy(isDev: boolean): string {
@@ -64,14 +64,19 @@ export default defineConfig(({ command }) => {
       enforce: 'pre',
       buildStart() {
         identity = createRuntimeBuildIdentity(__dirname, development)
+        // Vite treats watch files added during transform as module imports.
+        // Register the source tree at build scope so directories stay out of the module graph.
+        for (const path of ['src', 'scripts', 'patches', 'package.json', 'pnpm-lock.yaml']) {
+          this.addWatchFile(resolve(__dirname, path))
+        }
       },
       shouldTransformCachedModule({ id }) {
-        return id.endsWith('/runtimeBuildIdentity.ts')
+        return normalizePath(id).endsWith('/runtimeBuildIdentity.ts')
       },
       handleHotUpdate(ctx) {
         const modules =
           ctx.server.moduleGraph.getModulesByFile(
-            resolve(__dirname, 'src/shared/runtime/runtimeBuildIdentity.ts'),
+            normalizePath(resolve(__dirname, 'src/shared/runtime/runtimeBuildIdentity.ts')),
           ) ?? new Set()
         for (const module of modules) ctx.server.moduleGraph.invalidateModule(module)
         return [...new Set([...ctx.modules, ...modules])]
@@ -79,9 +84,6 @@ export default defineConfig(({ command }) => {
       transform(code, id) {
         if (!id.replaceAll('\\', '/').endsWith('/shared/runtime/runtimeBuildIdentity.ts'))
           return null
-        for (const path of ['src', 'scripts', 'patches', 'package.json', 'pnpm-lock.yaml']) {
-          this.addWatchFile(resolve(__dirname, path))
-        }
         if (command === 'serve') identity = createRuntimeBuildIdentity(__dirname, development)
         return code
           .replace(/declare const __OPENCOVE_RUNTIME_BUILD__: unknown\s*/, '')
