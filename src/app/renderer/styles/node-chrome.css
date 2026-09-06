@@ -7,11 +7,15 @@
   .website-node,
   .image-node
 ) {
-  border-radius: var(--cove-radius-lg);
+  border-radius: var(--cove-node-radius);
   box-shadow: var(--cove-node-shadow);
   transition:
     border-color var(--cove-motion-fast) var(--cove-ease-standard),
     box-shadow var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+:is(.terminal-node, .task-node, .role-node, .note-node, .document-node, .website-node) {
+  background-image: var(--cove-node-background-image);
 }
 
 :is(

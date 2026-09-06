@@ -14,6 +14,7 @@
 > - Window：`docs/ui/WINDOW_UI_STANDARD.md`
 > - Task：`docs/ui/TASK_UI_STANDARD.md`
 > - Viewport：`docs/ui/VIEWPORT_NAVIGATION_STANDARD.md`
+- Spatial Pixel：`docs/ui/SPATIAL_PIXEL_THEME.md`
 
 ---
 
@@ -34,10 +35,10 @@
 
 ### 2.1 单一真相
 
-- 持久化设置：`settings.uiTheme: UiTheme`，取值见 `src/contexts/settings/domain/uiSettings.ts`（当前为 `'system' | 'light' | 'dark' | 'ember' | 'ember-light'`）。
+- 持久化设置：`settings.uiTheme: UiTheme`，取值见 `src/contexts/settings/domain/uiSettings.ts`（当前为 `'system' | 'light' | 'dark' | 'ember' | 'ember-light' | 'pixel'`）。
 - Renderer 主题入口（**两个互补的 hook**，共同构成命名主题扩展点）：
   - `<html data-cove-theme="light|dark">` —— 解析后的基础配色，所有 `--cove-*` token 默认基于此切换；`system` 会跟随 `prefers-color-scheme` 计算出 light/dark。
-  - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。命名主题通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。当前内置主题包含 `ember`；用户提供主题包的 loader、安全沙箱和 UI 入口不在当前公开能力内。
+  - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。命名主题通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。当前内置主题包含 `ember`、`ember-light` 与 `pixel`；用户提供主题包的 loader、安全沙箱和 UI 入口不在当前公开能力内。
 - 添加一个新内置主题的步骤：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `baseScheme`、`terminalScheme` 与 `i18nKey`；③ 提供 `styles/themes/<id>.css`，以 `:root[data-cove-theme-id='<id>']` 选择器覆盖需要的 `--cove-*` token。
 - `baseScheme` 与 `terminalScheme` 是两个独立语义：前者决定应用 shell 的 light/dark token，后者决定 xterm 与内嵌 TUI 的配色协议。`ember-light` 的 shell 是 light，但 terminal/OpenCode 语义固定为 dark。
 - 每个 xterm 实例必须通过一个 revisioned `TerminalAppearanceSnapshot` 应用主题。快速连续切换采用 final-wins：每帧至多应用/刷新一次最新 snapshot；xterm theme、OpenCode OSC/CSI 与 Find decoration 必须消费同一份 **applied** snapshot，不能各自读取时序不同的 desired theme。
@@ -137,7 +138,7 @@
 实现锚点：
 - 面板样式：`src/app/renderer/styles/settings-panel.css`
 - 分组原语：`src/contexts/settings/presentation/renderer/settingsPanel/SettingsGroup.tsx`
-- 主题选择：`src/contexts/settings/presentation/renderer/settingsPanel/GeneralSection.tsx`
+- 主题选择：`src/contexts/settings/presentation/renderer/settingsPanel/AppearanceSection.tsx`
 
 参考原则：Apple HIG Settings（稳定 pane 与相关设置分组）、Windows App Settings（单列、受约束宽度与 section header）、GNOME HIG Boxed Lists（短静态偏好使用共享列表面，标题位于列表之外）。
 

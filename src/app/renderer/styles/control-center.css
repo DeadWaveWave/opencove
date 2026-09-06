@@ -138,7 +138,7 @@
 
 .control-center__themes {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -241,6 +241,16 @@
     135deg,
     var(--cove-theme-preview-ember-light) 48%,
     var(--cove-theme-preview-ember) 52%
+  );
+}
+
+.control-center__theme-preview[data-theme-preview='pixel'] {
+  border-radius: var(--cove-radius-xs);
+  background: linear-gradient(
+    135deg,
+    var(--cove-pixel-violet),
+    var(--cove-pixel-blue) 50%,
+    var(--cove-pixel-mint)
   );
 }
 

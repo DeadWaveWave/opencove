@@ -1,7 +1,5 @@
 import React from 'react'
 import {
-  Background,
-  BackgroundVariant,
   Controls,
   PanOnScrollMode,
   ReactFlow,
@@ -21,6 +19,7 @@ import { useWorkspaceCanvasLabelColorFilter } from './hooks/useLabelColorFilter'
 import { useViewportDprSnapping } from './hooks/useViewportDprSnapping'
 import { useSpaceWorktreeBusyLabels } from './hooks/useSpaceWorktreeBusyLabels'
 import { WorkspaceCanvasMenus } from './view/WorkspaceCanvasMenus'
+import { WorkspaceCanvasBackground } from './view/WorkspaceCanvasBackground'
 import { WorkspaceCanvasWindows } from './view/WorkspaceCanvasWindows'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
 import { WorkspaceSelectionDraftOverlay } from './view/WorkspaceSelectionDraftOverlay'
@@ -325,12 +324,7 @@ export function WorkspaceCanvasView({
         maxZoom={MAX_CANVAS_ZOOM}
         proOptions={{ hideAttribution: true }}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          size={1}
-          gap={24}
-          color="var(--cove-canvas-dot)"
-        />
+        <WorkspaceCanvasBackground theme={agentSettings.uiTheme} nodes={filteredNodes} />
         <WorkspaceSpaceRegionsOverlay
           workspacePath={workspacePath}
           spaceVisuals={spaceVisuals}

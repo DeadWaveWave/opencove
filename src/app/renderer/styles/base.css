@@ -75,6 +75,11 @@
   --cove-theme-preview-dark: #15171b;
   --cove-theme-preview-ember: #c97c3a;
   --cove-theme-preview-ember-light: #f3e6d6;
+  --cove-pixel-violet: #a980f4;
+  --cove-pixel-blue: #63a9ec;
+  --cove-pixel-mint: #63e9c3;
+  --cove-pixel-grid-gap: 17px;
+  --cove-pixel-grid-opacity: 0;
 
   --cove-radius-xs: 6px;
   --cove-radius-sm: 8px;
@@ -132,6 +137,8 @@
 
   --cove-node-border: rgba(107, 138, 236, 0.65);
   --cove-node-surface: rgba(10, 17, 33, 0.94);
+  --cove-node-background-image: none;
+  --cove-node-radius: var(--cove-radius-lg);
   --cove-node-header-surface: rgba(23, 36, 66, 0.96);
   --cove-node-header-border: rgba(104, 137, 226, 0.45);
   --cove-node-shadow-color: rgba(0, 0, 0, 0.45);

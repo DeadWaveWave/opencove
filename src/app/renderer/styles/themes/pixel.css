@@ -1,0 +1,134 @@
+/* Pixel keeps content surfaces opaque enough for sustained reading. Gradients
+   use a separate image token so color-mix consumers retain a valid color. */
+:root[data-cove-theme-id='pixel'] {
+  color-scheme: dark;
+  --cove-pixel-violet: #a980f4;
+  --cove-pixel-blue: #63a9ec;
+  --cove-pixel-mint: #63e9c3;
+  --cove-pixel-grid-gap: 17px;
+  --cove-pixel-grid-opacity: 0.22;
+  --cove-accent: #a6e9c2;
+  --cove-accent-text: #b8efd1;
+  --cove-accent-foreground: #11281d;
+
+  --cove-label-gray: #8c98a8;
+  --cove-label-red: #ef8f95;
+  --cove-label-orange: #e4af74;
+  --cove-label-yellow: #ead18a;
+  --cove-label-green: #8cd9b2;
+  --cove-label-blue: #80b8ef;
+  --cove-label-purple: #b494ef;
+
+  --cove-app-background: #090b0f;
+  --cove-app-background-elevated: #13171d;
+  --cove-surface: rgba(19, 23, 29, 0.92);
+  --cove-surface-strong: rgba(28, 35, 44, 0.98);
+  --cove-window-surface: #151e28;
+  --cove-surface-hover: rgba(148, 194, 208, 0.09);
+  --cove-field: rgba(155, 165, 178, 0.07);
+  --cove-border: rgba(148, 194, 208, 0.24);
+  --cove-border-subtle: rgba(148, 194, 208, 0.13);
+  --cove-text: #eef0f7;
+  --cove-text-muted: #9ba5b2;
+  --cove-text-faint: #7d8999;
+  --cove-backdrop: rgba(5, 10, 16, 0.66);
+  --cove-shadow-color-elevated: rgba(0, 0, 0, 0.42);
+  --cove-shadow-color-panel: rgba(0, 0, 0, 0.58);
+  --cove-toggle-track-on: #377d64;
+  --cove-toggle-track-off: #44515f;
+  --cove-focus-ring: #b8efd1;
+
+  --cove-node-surface: rgba(14, 24, 34, 0.96);
+  --cove-node-background-image: linear-gradient(
+    140deg,
+    rgba(24, 35, 43, 0.91),
+    rgba(14, 24, 34, 0.96) 60%
+  );
+  --cove-node-radius: var(--cove-radius-md);
+  --cove-node-border: rgba(148, 194, 208, 0.32);
+  --cove-node-header-surface: rgba(24, 35, 43, 0.96);
+  --cove-node-header-border: rgba(148, 194, 208, 0.2);
+  --cove-node-shadow-color: rgba(0, 0, 0, 0.44);
+  --cove-node-shadow:
+    0 15px 42px var(--cove-node-shadow-color), inset 0 1px rgba(214, 235, 255, 0.07);
+  --cove-node-selection-border: #a6e9c2;
+  --cove-node-selection-shadow: 0 0 0 1px rgba(166, 233, 194, 0.42), 0 18px 40px rgba(0, 0, 0, 0.5);
+
+  --cove-terminal-node-surface: rgba(14, 24, 34, 0.98);
+  --cove-terminal-node-header-surface: rgba(24, 35, 43, 0.96);
+  --cove-terminal-background: #0e1822;
+  --cove-terminal-foreground: #c1cddc;
+  --cove-terminal-selection: rgba(99, 169, 236, 0.3);
+  --cove-terminal-cursor: #a6e9c2;
+
+  --cove-canvas-control-surface: rgba(19, 29, 39, 0.94);
+  --cove-canvas-control-surface-hover: rgba(29, 43, 55, 0.98);
+  --cove-canvas-control-border: rgba(148, 194, 208, 0.24);
+  --cove-canvas-control-border-hover: rgba(166, 233, 194, 0.7);
+  --cove-canvas-control-text: #9ba5b2;
+  --cove-canvas-control-text-hover: #eef0f7;
+  --cove-canvas-dot: rgba(99, 169, 236, 0.14);
+
+  --cove-space-region-border: rgba(148, 194, 208, 0.4);
+  --cove-space-region-surface: rgba(99, 169, 236, 0.045);
+  --cove-space-region-shadow: inset 0 0 0 1px rgba(148, 194, 208, 0.07);
+  --cove-space-region-border-active: rgba(128, 184, 239, 0.76);
+  --cove-space-region-surface-active: rgba(99, 169, 236, 0.075);
+  --cove-space-region-shadow-active:
+    inset 0 0 0 1px rgba(128, 184, 239, 0.2), 0 0 0 1px rgba(99, 169, 236, 0.24);
+  --cove-space-region-border-selected: #a6e9c2;
+  --cove-space-region-surface-selected: rgba(166, 233, 194, 0.075);
+  --cove-space-region-shadow-selected:
+    inset 0 0 0 1px rgba(166, 233, 194, 0.24), 0 0 0 1px rgba(166, 233, 194, 0.36);
+
+  --cove-canvas-minimap-surface: rgba(14, 24, 34, 0.82);
+  --cove-canvas-minimap-border: rgba(148, 194, 208, 0.24);
+  --cove-canvas-minimap-mask: rgba(166, 233, 194, 0.8);
+  --cove-canvas-minimap-mask-surface: rgba(99, 169, 236, 0.1);
+  --cove-canvas-minimap-node-agent: rgba(99, 169, 236, 0.78);
+  --cove-canvas-minimap-node-task: rgba(169, 128, 244, 0.78);
+  --cove-canvas-minimap-node-image: rgba(234, 209, 138, 0.78);
+  --cove-canvas-minimap-node-default: rgba(148, 194, 208, 0.7);
+  --cove-canvas-minimap-node-stroke: rgba(0, 0, 0, 0.22);
+
+  --cove-settings-panel-background: #131a23;
+  --cove-settings-sidebar-background: #10161e;
+  --cove-settings-primary-background: #a6e9c2;
+  --cove-settings-primary-background-hover: #b8efd1;
+  --cove-settings-on-accent: #11281d;
+
+  --cove-overlay-danger-border: var(--cove-danger-border);
+  --cove-overlay-danger-surface: linear-gradient(180deg, #2b1d25, #1a171f);
+  --cove-overlay-danger-status-border: var(--cove-danger-border);
+  --cove-overlay-danger-status-surface: var(--cove-danger-surface);
+  --cove-overlay-danger-status-text: var(--cove-danger-text);
+  --cove-overlay-danger-divider: var(--cove-danger-border);
+  --cove-overlay-warning-border: var(--cove-warning-border);
+  --cove-overlay-warning-surface: linear-gradient(180deg, #29251f, #181c22);
+  --cove-overlay-warning-pill-border: var(--cove-warning-border);
+  --cove-overlay-warning-pill-surface: var(--cove-warning-surface);
+}
+
+/* The provider's dark terminal scope overrides root tokens. Inherit Pixel's
+   palette here so the existing appearance probe and applied snapshot share
+   the same values, without duplicating colors or changing terminal geometry. */
+:root[data-cove-theme-id='pixel'] .terminal-node[data-cove-terminal-node-theme='dark'] {
+  --cove-node-border: inherit;
+  --cove-node-header-border: inherit;
+  --cove-node-shadow-color: inherit;
+  --cove-node-selection-border: inherit;
+  --cove-node-selection-shadow: inherit;
+  --cove-terminal-node-surface: inherit;
+  --cove-terminal-node-header-surface: inherit;
+  --cove-terminal-background: inherit;
+  --cove-terminal-foreground: inherit;
+  --cove-terminal-selection: inherit;
+  --cove-terminal-cursor: inherit;
+  --cove-text: inherit;
+  --cove-text-muted: inherit;
+  --cove-text-faint: inherit;
+  --cove-border: inherit;
+  --cove-border-subtle: inherit;
+  --cove-field: inherit;
+  --cove-surface-hover: inherit;
+}

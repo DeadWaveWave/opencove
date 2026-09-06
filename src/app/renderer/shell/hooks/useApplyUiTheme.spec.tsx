@@ -47,9 +47,17 @@ describe('useApplyUiTheme', () => {
     expect(document.documentElement.dataset.coveTheme).toBe('dark')
     expect(document.documentElement.dataset.coveThemeId).toBe('ember')
     expect(setTheme).toHaveBeenCalledTimes(1)
+
+    rerender(<HookHost uiTheme="pixel" />)
+
+    expect(document.documentElement.dataset.coveTheme).toBe('dark')
+    expect(document.documentElement.dataset.coveThemeId).toBe('pixel')
+    expect(document.documentElement.style.colorScheme).toBe('dark')
+    expect(setTheme).toHaveBeenCalledTimes(1)
     expect(events).toEqual([
       { theme: 'dark', themeId: 'dark' },
       { theme: 'dark', themeId: 'ember' },
+      { theme: 'dark', themeId: 'pixel' },
     ])
 
     window.removeEventListener('opencove-theme-changed', listener)
