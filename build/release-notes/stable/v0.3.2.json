@@ -44,6 +44,13 @@
           "url": "https://github.com/DeadWaveWave/opencove/pull/392",
           "prNumber": 392,
           "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Fix Windows standalone installation timing out after runtime verification.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/394",
+          "prNumber": 394,
+          "sha": null
         }
       ]
     },
@@ -83,6 +90,13 @@
           "summary": "让托管 SSH Worker 与桌面更新保持兼容，空闲运行时升级前备份配置，并明确提示因活动会话而延迟的升级。",
           "url": "https://github.com/DeadWaveWave/opencove/pull/392",
           "prNumber": 392,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "修复 Windows 独立运行时安装在验证后超时的问题。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/394",
+          "prNumber": 394,
           "sha": null
         }
       ]
