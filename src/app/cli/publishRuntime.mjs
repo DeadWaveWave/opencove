@@ -106,7 +106,7 @@ export async function publishRuntime(staging, destination, digest) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(await realpath(process.argv[1])).href) {
   publishRuntime(...process.argv.slice(2)).then(
     path => process.stdout.write(`${path}\n`),
     error => {
