@@ -86,11 +86,17 @@
 3. 设置与视口使用各自已有 owner；动画帧不写入偏好。被打断的 React Flow Promise 可能
    不结束，必要清理不得依赖它完成。
 
-验证：归一化与策略用 unit 覆盖；Electron E2E 以 rAF 时钟记录真实视口轨迹，检查两种效果
-落点误差 ≤1px、平移倍率边界、双向导航、快速切换、手动接管、减少动态效果及重启恢复。
-普通 E2E 仍跳过动画；专用动画用例在测试环境设置
-`document.documentElement.dataset.opencoveTestViewportAnimation = 'true'` 启用真实时长，
-并记录 Long Animation Frame 与截图/录屏。该标记不改变生产环境策略。
+初始化恢复以 React Flow 的 `viewportInitialized` 为准，在 layout 阶段完成；不能通过延迟一帧
+恢复旧位置，否则可能覆盖更新的节点定位。新建节点的定位意图在视口就绪前保留，就绪后在
+恢复完成的 effect 阶段消费；连续创建只保留最新定位。
+
+验证：归一化、策略与初始化顺序用 unit 覆盖；Electron E2E 安装 Playwright Clock 后重载页面，
+让 D3 和 rAF 使用同一可控时钟，检查两种效果落点误差 ≤1px、平移倍率边界、双向导航、
+快速切换、手动接管、减少动态效果及重启恢复。普通 E2E 仍跳过动画；专用动画用例设置
+`document.documentElement.dataset.opencoveTestViewportAnimation = 'true'` 启用生产动画路径。
+轨迹数据标记为 controlled，失败时也保留已采样结果；可控时钟与截图只用于行为验证，
+真实流畅度、掉帧与 Long Animation Frame 必须另外在实时运行中观察，不能由虚拟帧间隔推断。
+该测试标记不改变生产环境策略。
 
 参考：[React Flow viewport API](https://reactflow.dev/api-reference/types/react-flow-instance)、
 [D3 zoom 的插值与中断](https://d3js.org/d3-zoom)。

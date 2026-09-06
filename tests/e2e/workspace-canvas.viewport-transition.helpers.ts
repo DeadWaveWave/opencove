@@ -5,7 +5,7 @@ import { clearAndSeedWorkspace, testWorkspacePath } from './workspace-canvas.hel
 
 export const spaceButton = (id: string): string => `[data-testid="workspace-space-switch-${id}"]`
 export type MotionSample = { t: number; x: number; y: number; zoom: number }
-export type MotionResult = { samples: MotionSample[]; longFrames: number[] }
+export type MotionResult = { samples: MotionSample[] }
 type MotionWindow = Window & { viewportMotion?: Promise<MotionResult> }
 
 export async function seedMotionCanvas(
@@ -59,13 +59,6 @@ export async function sampleMotion(
       throw new Error('Viewport missing')
     }
     const samples: MotionSample[] = []
-    const longFrames: number[] = []
-    const observer = PerformanceObserver.supportedEntryTypes.includes('long-animation-frame')
-      ? new PerformanceObserver(list =>
-          longFrames.push(...list.getEntries().map(entry => entry.duration)),
-        )
-      : null
-    observer?.observe({ type: 'long-animation-frame' })
     const start = performance.now()
     const read = (t: number): void => {
       const matrix = new DOMMatrixReadOnly(getComputedStyle(viewport).transform)
@@ -78,14 +71,15 @@ export async function sampleMotion(
         if (t - start < 700) {
           requestAnimationFrame(tick)
         } else {
-          observer?.disconnect()
-          resolve({ samples, longFrames })
+          resolve({ samples })
         }
       }
       requestAnimationFrame(tick)
     })
   })
   await action()
+  // Advance every animation frame, independent of host rendering throughput.
+  await page.clock.runFor(720)
   return await page.evaluate(async () => {
     const result = await (window as MotionWindow).viewportMotion
     if (!result) {
