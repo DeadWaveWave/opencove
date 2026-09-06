@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
@@ -91,10 +92,7 @@ export function useWorkspaceCanvasTaskCreator({
     }
 
     setTaskCreator({
-      anchor: {
-        x: contextMenu.flowX,
-        y: contextMenu.flowY,
-      },
+      anchor: resolvePaneNodeCreationAnchor(contextMenu),
       title: '',
       requirement: '',
       priority: 'medium',

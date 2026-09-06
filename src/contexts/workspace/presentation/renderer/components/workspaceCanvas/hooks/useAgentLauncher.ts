@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -81,10 +82,7 @@ export function useWorkspaceCanvasAgentLauncher({
       void (async () => {
         try {
           const provider = resolveSelectableAgentProvider(requestedProvider)
-          const cursorAnchor: Point = {
-            x: contextMenu.flowX,
-            y: contextMenu.flowY,
-          }
+          const cursorAnchor: Point = resolvePaneNodeCreationAnchor(contextMenu)
           const launchGeometry = resolveDefaultAgentLaunchGeometry({
             bucket: standardWindowSizeBucket,
             provider,

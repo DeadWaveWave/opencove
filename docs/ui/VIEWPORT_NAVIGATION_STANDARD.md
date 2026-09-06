@@ -37,6 +37,17 @@
 - 不受 `focusNodeTargetZoom` 影响；
 - 目标位置为双击点对应的 flow 坐标。
 
+### 2.4 在画布上创建窗口
+
+- Cmd/Ctrl+T、Cmd/Ctrl+N 以画布可见区域中心作为创建锚点。
+- 空白区域双击、右键菜单创建窗口时，鼠标距同一中心不超过 **120 CSS 像素**（圆形范围，包含边界），且两点命中同一个最内层 Space（或都不在 Space 内），使用中心作为窗口创建锚点；否则保留鼠标锚点。
+- 距离在屏幕坐标中判定，再通过 React Flow 转换到画布坐标，因此吸附范围不随画布缩放改变。
+- Renderer 画布交互层在双击/打开右键菜单时确定锚点；后续菜单操作、异步启动不重新读取视口来决定位置。
+- 右键菜单仍在鼠标处显示；Space 创建、区域整理使用原始鼠标坐标。窗口居中不得改变目标 Space 或终端工作目录。
+- 继续应用现有窗口避让与聚焦规则；中心有遮挡时允许必要位移，中心无障碍时避免鼠标小幅偏离引发的额外平移。
+
+回归入口：`workspaceCanvas.pointerCreationAnchor.spec.ts`、`workspace-canvas.pointer-create-center.spec.ts`、`workspace-canvas.shortcuts.spec.ts`。
+
 ## 3. 参数约定
 
 - 目标缩放：`zoom = focusNodeTargetZoom`（默认 `1`）。
