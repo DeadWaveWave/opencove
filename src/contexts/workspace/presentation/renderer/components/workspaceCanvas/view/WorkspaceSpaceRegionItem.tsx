@@ -6,6 +6,7 @@ import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
 import type { SpaceFrameHandleMode } from '../../../utils/spaceLayout'
 import { resolveSpaceAnnotationCap } from './spaceVisualScale'
+import { useSpaceCaptionBorder } from './useSpaceCaptionBorder'
 
 export interface WorkspaceSpaceBranchBadge {
   kind: string
@@ -79,6 +80,8 @@ export function WorkspaceSpaceRegionItem({
   onOpenSpaceMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const regionRef = React.useRef<HTMLDivElement>(null)
+  useSpaceCaptionBorder(regionRef)
   const branchName = resolvedWorktreeInfo?.branch ?? null
   const worktreePath = resolvedWorktreeInfo?.path ?? null
   const pullRequestUrl = resolvedPullRequestSummary?.ref.url ?? null
@@ -113,6 +116,7 @@ export function WorkspaceSpaceRegionItem({
 
   return (
     <div
+      ref={regionRef}
       className={className}
       data-parent-space-id={space.parentSpaceId ?? undefined}
       data-cove-label-color={space.labelColor ?? undefined}
@@ -170,6 +174,7 @@ export function WorkspaceSpaceRegionItem({
         <input
           ref={spaceRenameInputRef}
           className="workspace-space-region__label-input nodrag nopan nowheel"
+          data-cove-space-caption="rename"
           data-testid={`workspace-space-label-input-${space.id}`}
           value={spaceRenameDraft}
           onPointerDown={event => {
@@ -214,6 +219,7 @@ export function WorkspaceSpaceRegionItem({
             <button
               type="button"
               className="workspace-space-region__label"
+              data-cove-space-caption="title"
               data-testid={`workspace-space-label-${space.id}`}
               onClick={event => {
                 event.stopPropagation()
@@ -238,6 +244,7 @@ export function WorkspaceSpaceRegionItem({
                   : 'workspace-space-region__files-pill'
               }
               data-testid={`workspace-space-files-${space.id}`}
+              data-cove-space-caption="files"
               aria-pressed={isExplorerOpen}
               aria-label={t('spaceActions.openExplorer')}
               title={filesPillTitle}
@@ -260,6 +267,7 @@ export function WorkspaceSpaceRegionItem({
             <button
               type="button"
               className="workspace-space-region__menu"
+              data-cove-space-caption="menu"
               data-testid={`workspace-space-menu-${space.id}`}
               aria-label={t('spaceActions.openSpaceActions', { name: space.name })}
               title={t('spaceActions.title')}
@@ -289,6 +297,7 @@ export function WorkspaceSpaceRegionItem({
               <button
                 type="button"
                 className="workspace-space-region__branch-badge workspace-space-region__branch-badge--button"
+                data-cove-space-caption="branch"
                 data-testid={`workspace-space-worktree-branch-${space.id}`}
                 data-branch-kind="branch"
                 title={resolvedBranchBadge.title}
@@ -318,6 +327,7 @@ export function WorkspaceSpaceRegionItem({
             ) : resolvedBranchBadge ? (
               <span
                 className="workspace-space-region__branch-badge"
+                data-cove-space-caption="branch"
                 data-testid={`workspace-space-worktree-branch-${space.id}`}
                 data-branch-kind={branchName ? 'branch' : 'detached'}
                 title={resolvedBranchBadge.title}
@@ -338,6 +348,7 @@ export function WorkspaceSpaceRegionItem({
             resolvedPullRequestSummary ? (
               <a
                 className="workspace-space-region__pr-chip"
+                data-cove-space-caption="pull-request"
                 data-testid={`workspace-space-pr-chip-${space.id}`}
                 href={pullRequestUrl ?? undefined}
                 target="_blank"

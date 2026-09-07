@@ -22,6 +22,30 @@ const labelAttribute = (node: Node<TerminalNodeData>) =>
   (node.domAttributes as Record<string, unknown> | undefined)?.['data-cove-label-color']
 
 describe('canvas label color presentation', () => {
+  it('keeps theme-decorated windows outside the explicit label inventory', () => {
+    const nodes = kinds.map(kind => ({ ...pixelNode({ kind }), id: kind }))
+    const { result, rerender } = renderHook(
+      ({ items }) => useWorkspaceCanvasLabelColorFilter({ nodes: items, edges: [], spaces: [] }),
+      { initialProps: { items: nodes } },
+    )
+    expect(result.current.usedLabelColors).toEqual([])
+    expect(result.current.filteredNodes.every(node => labelAttribute(node) === undefined)).toBe(
+      true,
+    )
+    expect(result.current.filteredNodes.every(node => node.data.effectiveLabelColor === null)).toBe(
+      true,
+    )
+    rerender({
+      items: nodes.map(node =>
+        node.id === 'note'
+          ? { ...node, data: { ...node.data, labelColorOverride: 'red' as const } }
+          : node,
+      ),
+    })
+    expect(result.current.usedLabelColors).toEqual(['red'])
+    expect(nodes.every(node => node.data.labelColorOverride === undefined)).toBe(true)
+  })
+
   it('projects the existing label to every window kind without changing source nodes or geometry', () => {
     const nodes = kinds.map(kind => ({
       ...pixelNode({ kind, labelColorOverride: 'green' }),

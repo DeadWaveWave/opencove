@@ -166,11 +166,8 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
           })),
         )
       expect(headers).toHaveLength(7)
-      expect(
-        headers.every(header =>
-          header.label ? header.image.includes('linear-gradient') : header.image === 'none',
-        ),
-      ).toBe(true)
+      expect(headers.every(header => header.image.includes('linear-gradient'))).toBe(true)
+      expect(headers.every(header => header.label === undefined)).toBe(true)
       await Promise.all(
         MATERIAL_NODE_KINDS.map(kind => {
           const frame =

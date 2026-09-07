@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor } from '@shared/types/labelColor'
+import kimiLogo from '../assets/agent-providers/kimi.png'
 
 interface AgentProviderIconProps {
   provider: AgentProvider
@@ -30,11 +31,25 @@ export function AgentProviderIcon({
 
 function ProviderGlyph({ provider }: { provider: AgentProvider }): JSX.Element {
   switch (provider) {
+    case 'kimi':
+      // Original asset: https://github.com/MoonshotAI/kimi-cli/blob/main/web/public/logo.png
+      return (
+        <img
+          className="agent-provider-icon__image"
+          src={kimiLogo}
+          width={16}
+          height={16}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+        />
+      )
     case 'claude-code':
       return (
         <svg
           className="agent-provider-icon__svg"
           aria-hidden="true"
+          focusable="false"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -60,6 +75,7 @@ function ProviderGlyph({ provider }: { provider: AgentProvider }): JSX.Element {
         <svg
           className="agent-provider-icon__svg"
           aria-hidden="true"
+          focusable="false"
           viewBox="0 0 24 30"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -72,6 +88,7 @@ function ProviderGlyph({ provider }: { provider: AgentProvider }): JSX.Element {
         <svg
           className="agent-provider-icon__svg"
           aria-hidden="true"
+          focusable="false"
           viewBox="0 0 50 50"
           fill="currentColor"
           xmlns="http://www.w3.org/2000/svg"
@@ -79,12 +96,30 @@ function ProviderGlyph({ provider }: { provider: AgentProvider }): JSX.Element {
           <path d="M49.04 24.001L47.958 23.958H47.957C36.134 23.492 26.508 13.866 26.042 2.043L25.999 0.96C25.978 0.424 25.537 0 25 0S24.022 0.424 24.001 0.96L23.958 2.043C23.492 13.866 13.866 23.492 2.042 23.958L0.96 24.001C0.424 24.022 0 24.463 0 25C0 25.537 0.424 25.978 0.961 25.999L2.043 26.041C13.866 26.508 23.492 36.134 23.958 47.957L24.001 49.04C24.022 49.576 24.463 50 25 50S25.978 49.576 25.999 49.04L26.042 47.957C26.508 36.134 36.134 26.508 47.957 26.041L49.039 25.999C49.576 25.978 50 25.537 50 25C50 24.463 49.576 24.022 49.04 24.001Z" />
         </svg>
       )
-    case 'codex':
-    default:
+    case 'pi':
+      // Official mark: https://pi.dev/logo-auto.svg. Crop only the surrounding whitespace.
       return (
         <svg
           className="agent-provider-icon__svg"
           aria-hidden="true"
+          focusable="false"
+          viewBox="165.29 165.29 469.43 469.43"
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            fillRule="evenodd"
+            d="M165.29 165.29H517.36V400H400V517.36H282.65V634.72H165.29ZM282.65 282.65V400H400V282.65Z"
+          />
+          <path d="M517.36 400H634.72V634.72H517.36Z" />
+        </svg>
+      )
+    case 'codex':
+      return (
+        <svg
+          className="agent-provider-icon__svg"
+          aria-hidden="true"
+          focusable="false"
           viewBox="0 0 22 22"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -94,6 +129,12 @@ function ProviderGlyph({ provider }: { provider: AgentProvider }): JSX.Element {
             fill="currentColor"
           />
         </svg>
+      )
+    default:
+      return (
+        <span className="agent-provider-icon__monogram" aria-hidden="true">
+          ?
+        </span>
       )
   }
 }

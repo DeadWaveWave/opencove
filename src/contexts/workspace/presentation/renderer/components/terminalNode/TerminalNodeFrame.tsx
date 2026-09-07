@@ -1,5 +1,6 @@
 import React, { useId, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { Handle, Position } from '@xyflow/react'
 import type {
   AgentHookInstallState,
@@ -22,6 +23,7 @@ interface TerminalNodeFrameProps {
   title: string
   fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
+  agentProvider?: AgentProvider | null
   labelColor?: LabelColor | null
   agentExecutionDirectory?: string | null
   agentResumeSessionId?: string | null
@@ -73,6 +75,7 @@ export function TerminalNodeFrame({
   title,
   fixedTitlePrefix,
   kind,
+  agentProvider,
   labelColor,
   agentExecutionDirectory,
   agentResumeSessionId,
@@ -197,6 +200,7 @@ export function TerminalNodeFrame({
         title={title}
         fixedTitlePrefix={fixedTitlePrefix}
         kind={kind}
+        agentProvider={agentProvider}
         status={status}
         agentStateDegraded={agentStateDegraded}
         labelColor={labelColor ?? null}

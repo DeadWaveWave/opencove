@@ -457,6 +457,7 @@ export function TerminalNode({
       title={title}
       fixedTitlePrefix={fixedTitlePrefix}
       kind={isAgentPresentation ? 'agent' : kind}
+      agentProvider={terminalProvider}
       labelColor={labelColor}
       agentExecutionDirectory={agentExecutionDirectory}
       agentResumeSessionId={agentResumeSessionId}

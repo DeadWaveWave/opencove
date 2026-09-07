@@ -1,6 +1,6 @@
 import { useLayoutEffect, type RefObject } from 'react'
 import { useStore } from '@xyflow/react'
-import { resolveSpaceVisualScale } from './spaceVisualScale'
+import { resolveSpaceVisualScale, SPACE_VISUAL_SCALE_EVENT } from './spaceVisualScale'
 
 /** Canvas projection owns these transient values independently of themes and effects. */
 export function useSpaceVisualScale(scopeRef: RefObject<HTMLDivElement | null>) {
@@ -28,6 +28,7 @@ export function useSpaceVisualScale(scopeRef: RefObject<HTMLDivElement | null>) 
       scope.style.setProperty(property, value)
     }
     scope.setAttribute(overviewAttribute, overviewValue)
+    scope.dispatchEvent(new Event(SPACE_VISUAL_SCALE_EVENT))
     return () => {
       for (const { property, value, previous } of properties) {
         if (scope.style.getPropertyValue(property) !== value) {

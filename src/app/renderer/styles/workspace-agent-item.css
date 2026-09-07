@@ -34,7 +34,8 @@
 }
 
 .agent-provider-icon__glyph,
-.agent-provider-icon__svg {
+.agent-provider-icon__svg,
+.agent-provider-icon__image {
   width: 11px;
   height: 11px;
   display: block;

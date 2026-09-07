@@ -159,21 +159,28 @@ export async function readNodeIdentity(page: Page) {
             .trim()
         const underlay = rgba(style.getPropertyValue('--cove-app-background').trim())
         const surface = composite(rgba(headerBase), underlay)
-        const labelColor = composite(
-          rgba(headerStyle.getPropertyValue('--cove-label-color').trim()),
-          underlay,
-        )
-        const tint = wrapper.dataset.coveLabelColor
-          ? Number.parseFloat(headerStyle.getPropertyValue('--cove-node-label-header-tint')) / 100
-          : 0
+        const identityColor = headerStyle.getPropertyValue('--cove-node-identity-color').trim()
+        const labelColor = composite(rgba(identityColor), underlay)
+        const tint =
+          Number.parseFloat(headerStyle.getPropertyValue('--cove-node-label-header-tint')) / 100
         const tintedSurface = surface.map(
           (channel, index) => channel * (1 - tint) + labelColor[index] * tint,
         )
         const text = rgba(titleColor)
         const icon = wrapper.querySelector<SVGElement>('[data-cove-node-kind-icon]')
+        const providerIcon = header?.querySelector<HTMLElement>('.cove-node-provider-icon')
         return {
           kind,
           label: wrapper.dataset.coveLabelColor ?? null,
+          identity: {
+            color: identityColor,
+            secondary: headerStyle.getPropertyValue('--cove-node-identity-secondary').trim(),
+            tertiary: headerStyle.getPropertyValue('--cove-node-identity-tertiary').trim(),
+          },
+          themePalette: ['blue', 'cyan', 'mint'].map(color =>
+            headerStyle.getPropertyValue(`--cove-pixel-${color}`).trim(),
+          ),
+          labelColor: headerStyle.getPropertyValue('--cove-label-color').trim(),
           headerImage: header ? headerStyle.backgroundImage : null,
           ribbonImage: ribbon.backgroundImage,
           ribbonHeight: Number.parseFloat(ribbon.height),
@@ -195,6 +202,17 @@ export async function readNodeIdentity(page: Page) {
                 pointer: getComputedStyle(icon).pointerEvents,
                 hidden: icon.getAttribute('aria-hidden'),
                 focusable: icon.getAttribute('focusable'),
+              }
+            : null,
+          providerIcon: providerIcon
+            ? {
+                provider: providerIcon.dataset.agentProvider,
+                width: Number.parseFloat(getComputedStyle(providerIcon).width),
+                background: getComputedStyle(providerIcon).backgroundColor,
+                borderWidth: getComputedStyle(providerIcon).borderTopWidth,
+                label: providerIcon.getAttribute('aria-label'),
+                svgHidden: providerIcon.querySelector('svg')?.getAttribute('aria-hidden'),
+                svg: Boolean(providerIcon.querySelector('svg')),
               }
             : null,
         }
@@ -269,6 +287,83 @@ export async function readSpaceIdentity(page: Page) {
         return { rgb: numbers.slice(0, 3), alpha: numbers[3] ?? 1, css: value }
       }
       const edge = getComputedStyle(region, '::before')
+      const zoom = rect.width / Number.parseFloat((region as HTMLElement).style.width)
+      const clipPoints = edge.clipPath.startsWith('polygon(')
+        ? edge.clipPath
+            .slice(8, -1)
+            .split(',')
+            .map(value => {
+              const match = value.trim().match(/^([\d.]+)(px|%)\s+([\d.]+)(px|%)$/)
+              if (!match) {
+                throw new Error(`Unexpected Space border clip point: ${value}`)
+              }
+              return {
+                x:
+                  match[2] === '%'
+                    ? (Number(match[1]) / 100) * rect.width
+                    : Number(match[1]) * zoom,
+                y:
+                  match[4] === '%'
+                    ? (Number(match[3]) / 100) * rect.height
+                    : Number(match[3]) * zoom,
+              }
+            })
+        : []
+      const gaps = clipPoints.flatMap((point, index) => {
+        const next = clipPoints[index + 1]
+        return next &&
+          point.y > 0 &&
+          point.y < rect.height / 2 &&
+          next.y === point.y &&
+          next.x > point.x
+          ? [{ left: rect.left + point.x, right: rect.left + next.x, depth: point.y }]
+          : []
+      })
+      const captions = [
+        ...region.querySelectorAll<HTMLElement>('[data-cove-space-caption]'),
+      ].flatMap(caption => {
+        const captionRect = caption.getBoundingClientRect()
+        const box = {
+          left: captionRect.left,
+          right: captionRect.right,
+          top: captionRect.top,
+          bottom: captionRect.bottom,
+        }
+        for (
+          let ancestor: HTMLElement | null = caption;
+          ancestor && ancestor !== region;
+          ancestor = ancestor.parentElement
+        ) {
+          const paint = getComputedStyle(ancestor)
+          if (
+            ancestor.hidden ||
+            paint.display === 'none' ||
+            paint.visibility === 'hidden' ||
+            paint.opacity === '0' ||
+            paint.clipPath === 'inset(50%)'
+          ) {
+            return []
+          }
+          if (ancestor !== caption) {
+            const bounds = ancestor.getBoundingClientRect()
+            if (['hidden', 'clip', 'auto', 'scroll'].includes(paint.overflowX)) {
+              box.left = Math.max(box.left, bounds.left)
+              box.right = Math.min(box.right, bounds.right)
+            }
+            if (['hidden', 'clip', 'auto', 'scroll'].includes(paint.overflowY)) {
+              box.top = Math.max(box.top, bounds.top)
+              box.bottom = Math.min(box.bottom, bounds.bottom)
+            }
+          }
+        }
+        const regionTop = rect.top
+        return box.right > box.left &&
+          box.bottom > box.top &&
+          box.top <= regionTop + Number.parseFloat(edge.borderTopWidth) * zoom &&
+          box.bottom >= regionTop
+          ? [{ kind: caption.dataset.coveSpaceCaption, left: box.left, right: box.right }]
+          : []
+      })
       const label = region.querySelector<HTMLElement>('[data-testid^="workspace-space-label-"]')!
       const branch = region.querySelector<HTMLElement>(
         '[data-testid^="workspace-space-worktree-branch-"]',
@@ -277,6 +372,8 @@ export async function readSpaceIdentity(page: Page) {
       return {
         id: label.dataset.testid?.replace('workspace-space-label-', ''),
         label: (region as HTMLElement).dataset.coveLabelColor ?? null,
+        identityColor: style.getPropertyValue('--cove-space-identity-color').trim(),
+        defaultIdentityColor: style.getPropertyValue('--cove-pixel-cyan').trim(),
         fill: color(style.backgroundColor),
         background: style.backgroundImage,
         blur: style.backdropFilter,
@@ -287,6 +384,18 @@ export async function readSpaceIdentity(page: Page) {
           configuredScale: style.getPropertyValue('--cove-space-stroke-scale').trim(),
           actualScale: rect.width / (region as HTMLElement).offsetWidth,
           dpr: window.devicePixelRatio,
+          clip: edge.clipPath,
+          clipPoints,
+          gaps,
+          captions,
+          preservesOtherEdges:
+            clipPoints.some(
+              point =>
+                Math.abs(point.x - rect.width) <= 0.001 && Math.abs(point.y - rect.height) <= 0.001,
+            ) &&
+            clipPoints.some(
+              point => Math.abs(point.x) <= 0.001 && Math.abs(point.y - rect.height) <= 0.001,
+            ),
         },
         rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
         labelScreenFont:

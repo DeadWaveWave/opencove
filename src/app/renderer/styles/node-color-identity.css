@@ -1,7 +1,19 @@
-/* Label color is projected onto the React Flow frame, shared by every node kind.
-   It never changes a content surface, terminal palette, status, or selection. */
+/* Theme decoration is independent of label metadata. Explicit labels replace
+   the three theme stops without changing content, status, or selection. */
+.workspace-canvas .react-flow__node {
+  --cove-node-identity-color: var(--cove-pixel-blue);
+  --cove-node-identity-secondary: var(--cove-pixel-cyan);
+  --cove-node-identity-tertiary: var(--cove-pixel-mint);
+}
+
+.workspace-canvas .react-flow__node[data-cove-label-color] {
+  --cove-node-identity-color: var(--cove-label-color);
+  --cove-node-identity-secondary: var(--cove-label-color);
+  --cove-node-identity-tertiary: var(--cove-label-color);
+}
+
 .workspace-canvas
-  .react-flow__node[data-cove-label-color]
+  .react-flow__node
   :is(
     .terminal-node,
     .task-node,
@@ -13,13 +25,13 @@
   ) {
   border-color: color-mix(
     in srgb,
-    var(--cove-label-color) var(--cove-node-label-border-tint),
+    var(--cove-node-identity-color) var(--cove-node-label-border-tint),
     var(--cove-node-border)
   );
 }
 
 .workspace-canvas
-  .react-flow__node[data-cove-label-color]
+  .react-flow__node
   :is(
     .terminal-node__header,
     .task-node__header,
@@ -34,19 +46,19 @@
     100deg,
     color-mix(
       in srgb,
-      var(--cove-label-color) var(--cove-node-label-header-tint),
+      var(--cove-node-identity-color) var(--cove-node-label-header-tint),
       var(--cove-node-label-header-base)
     ),
     var(--cove-node-label-header-base) 90%
   );
 }
 
-.workspace-canvas .react-flow__node[data-cove-label-color] .terminal-node__header {
+.workspace-canvas .react-flow__node .terminal-node__header {
   --cove-node-label-header-base: var(--cove-terminal-node-header-surface);
 }
 
 .workspace-canvas
-  .react-flow__node[data-cove-label-color]
+  .react-flow__node
   :is(
     .terminal-node__header,
     .task-node__header,
@@ -55,21 +67,22 @@
     .role-node__header,
     .website-node__header
   )::before,
-.workspace-canvas .react-flow__node[data-cove-label-color] .image-node::before {
+.workspace-canvas .react-flow__node .image-node::before {
   content: '';
   position: absolute;
   inset: 0 0 auto;
   height: clamp(2px, calc(1px / var(--cove-canvas-zoom, 1)), 6px);
   background: linear-gradient(
     90deg,
-    var(--cove-label-color),
-    color-mix(in srgb, var(--cove-label-color) 50%, transparent) 42%,
-    transparent 82%
+    var(--cove-node-identity-color),
+    color-mix(in srgb, var(--cove-node-identity-secondary) 50%, transparent) 42%,
+    color-mix(in srgb, var(--cove-node-identity-tertiary) 25%, transparent) 65%,
+    transparent 90%
   );
   pointer-events: none;
 }
 
-.workspace-canvas .react-flow__node[data-cove-label-color] .image-node::before {
+.workspace-canvas .react-flow__node .image-node::before {
   z-index: 1;
 }
 

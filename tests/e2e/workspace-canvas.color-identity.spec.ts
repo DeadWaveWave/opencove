@@ -31,6 +31,54 @@ async function geometry(page: Page) {
   )
 }
 
+async function expectCaptionGaps(page: Page) {
+  await expect(async () => {
+    for (const space of await readSpaceIdentity(page)) {
+      const evidence = `${space.id} ${JSON.stringify({ rect: space.rect, clip: space.edge.clip, points: space.edge.clipPoints, captions: space.edge.captions, gaps: space.edge.gaps })}`
+      expect(space.edge.clip, `clipped top edge: ${evidence}`).toContain('polygon(')
+      expect(space.edge.preservesOtherEdges, `remaining frame edges: ${evidence}`).toBe(true)
+      for (const caption of space.edge.captions) {
+        expect(
+          space.edge.gaps.some(gap => gap.left <= caption.left && gap.right >= caption.right),
+          `${caption.kind} border must be absent under its visible caption: ${evidence}`,
+        ).toBe(true)
+      }
+      for (const gap of space.edge.gaps) {
+        const captions = space.edge.captions.filter(
+          caption => caption.right >= gap.left && caption.left <= gap.right,
+        )
+        expect(
+          captions.length,
+          `gap must correspond to visible captions: ${evidence}`,
+        ).toBeGreaterThan(0)
+        const expectedLeft = Math.max(
+          space.rect.x,
+          Math.min(...captions.map(caption => caption.left)) - 3,
+        )
+        const expectedRight = Math.min(
+          space.rect.x + space.rect.width,
+          Math.max(...captions.map(caption => caption.right)) + 3,
+        )
+        expect(
+          Math.abs(gap.left - expectedLeft),
+          `left padding expected ${expectedLeft}: ${evidence}`,
+        ).toBeLessThan(0.1)
+        expect(
+          Math.abs(gap.right - expectedRight),
+          `right padding expected ${expectedRight}: ${evidence}`,
+        ).toBeLessThan(0.1)
+        expect(gap.depth, `gap must clear the entire top stroke: ${evidence}`).toBeGreaterThan(
+          space.edge.width * space.edge.actualScale,
+        )
+        expect(
+          gap.depth,
+          `gap must remain confined to top stroke: ${evidence}`,
+        ).toBeLessThanOrEqual(2.1)
+      }
+    }
+  }).toPass({ timeout: 5000 })
+}
+
 test.describe('Workspace Canvas - Color Identity', () => {
   test.setTimeout(180_000)
 
@@ -59,18 +107,36 @@ test.describe('Workspace Canvas - Color Identity', () => {
         expect(appearances).toHaveLength(8)
         for (const appearance of appearances) {
           expect(appearance.label).toBe(IDENTITY_COLORS[appearance.kind])
+          expect(Object.values(appearance.identity)).toEqual([
+            appearance.labelColor,
+            appearance.labelColor,
+            appearance.labelColor,
+          ])
           expect(appearance.ribbonImage).toContain('linear-gradient')
           expect(appearance.ribbonHeight).toBe(2)
           expect(appearance.borderWidth).toBe('1px')
-          expect(appearance.icon).toMatchObject({
-            kind: appearance.kind,
-            fill: 'none',
-            stroke: '1.75',
-            width: 16,
-            pointer: 'none',
-            hidden: 'true',
-            focusable: 'false',
-          })
+          if (appearance.kind === 'agent') {
+            expect(appearance.icon).toBeNull()
+            expect(appearance.providerIcon).toMatchObject({
+              provider: 'codex',
+              width: 16,
+              background: 'rgba(0, 0, 0, 0)',
+              borderWidth: '0px',
+              label: 'Codex',
+              svgHidden: 'true',
+              svg: true,
+            })
+          } else {
+            expect(appearance.icon).toMatchObject({
+              kind: appearance.kind,
+              fill: 'none',
+              stroke: '1.75',
+              width: 16,
+              pointer: 'none',
+              hidden: 'true',
+              focusable: 'false',
+            })
+          }
           if (appearance.kind !== 'image') {
             expect(appearance.headerImage).toContain('linear-gradient')
             expect(
@@ -139,7 +205,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
     }
   })
 
-  test('changes and clears explicit labels without changing body paint or recreating terminal and Monaco', async ({
+  test('restores theme decoration after clearing labels without marking nodes or recreating terminal and Monaco', async ({
     browserName,
   }, testInfo) => {
     void browserName
@@ -184,11 +250,65 @@ test.describe('Workspace Canvas - Color Identity', () => {
           )
           await expect(page.locator(nodeSelector(kind)).locator(headerSelector(kind))).toHaveCSS(
             'background-image',
-            'none',
+            /linear-gradient/,
           )
-          expect(cleared.find(node => node.kind === kind)?.ribbonImage).toBe('none')
+          expect(cleared.find(node => node.kind === kind)?.ribbonImage).toContain('linear-gradient')
         }),
       )
+      const palettes = new Set<string>()
+      const inspectDefaultTheme = async (theme: string) => {
+        await selectIdentityTheme(page, theme)
+        const defaults = (await readNodeIdentity(page)).filter(node =>
+          ['terminal', 'document'].includes(node.kind),
+        )
+        for (const node of defaults) {
+          expect(node.label).toBeNull()
+          expect(Object.values(node.identity)).toEqual(node.themePalette)
+          expect(node.headerImage).toContain('linear-gradient')
+          expect(node.ribbonImage).toContain('linear-gradient')
+          expect(
+            node.contrast,
+            `${theme}/${node.kind} default title contrast`,
+          ).toBeGreaterThanOrEqual(4.5)
+        }
+        palettes.add(defaults[0].identity.color)
+        await testInfo.attach(`color-identity-default-${theme}-metrics`, {
+          body: JSON.stringify(defaults, null, 2),
+          contentType: 'application/json',
+        })
+        await attachIdentityFrame(page, testInfo, `color-identity-default-${theme}`)
+      }
+      await inspectDefaultTheme('pixel')
+      await inspectDefaultTheme('dark')
+      await inspectDefaultTheme('light')
+      await inspectDefaultTheme('ember')
+      await inspectDefaultTheme('ember-light')
+      expect(palettes.size).toBeGreaterThanOrEqual(3)
+      await selectIdentityTheme(page, 'pixel')
+      const defaultTerminal = (await readNodeIdentity(page)).find(node => node.kind === 'terminal')!
+      await changeNodeIdentity(page, 'terminal', 'purple')
+      expect(
+        (await readNodeIdentity(page)).find(node => node.kind === 'terminal')?.ribbonImage,
+      ).not.toBe(defaultTerminal.ribbonImage)
+      await changeNodeIdentity(page, 'terminal', 'none')
+      const restored = (await readNodeIdentity(page)).find(node => node.kind === 'terminal')!
+      expect(restored.ribbonImage).toBe(defaultTerminal.ribbonImage)
+      expect(restored.headerImage).toBe(defaultTerminal.headerImage)
+      await page.locator(`${nodeSelector('terminal')} .xterm`).click()
+      await expect(page.locator(`${nodeSelector('terminal')} .xterm-helper-textarea`)).toBeFocused()
+      await expect(page.locator('.react-flow__node.selected')).toHaveCount(0)
+      await expect(page.locator('.workspace-selection-hint')).toHaveCount(0)
+      await expect
+        .poll(
+          async () => (await readNodeIdentity(page)).find(node => node.kind === 'terminal')?.border,
+        )
+        .not.toBe(defaultTerminal.border)
+      const focused = (await readNodeIdentity(page)).find(node => node.kind === 'terminal')!
+      expect(focused.label).toBeNull()
+      expect(focused.ribbonImage).toBe(defaultTerminal.ribbonImage)
+      expect(focused.border).not.toBe(defaultTerminal.border)
+      expect(focused.body).toEqual(defaultTerminal.body)
+      await clearCanvasSelection(page)
       await expect
         .poll(() => persistedLabels(page))
         .toMatchObject({
@@ -229,6 +349,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
       await clearCanvasSelection(page)
       const inspectZoom = async (zoom: number) => {
         await wheelToZoom(page, zoom)
+        await expectCaptionGaps(page)
         const spaces = await readSpaceIdentity(page)
         await testInfo.attach(`color-identity-space-${zoom}-metrics`, {
           body: JSON.stringify(spaces, null, 2),
@@ -275,9 +396,11 @@ test.describe('Workspace Canvas - Color Identity', () => {
             await page.keyboard.press('Tab')
             await expect(files).toBeFocused()
             await expect(files).toHaveCSS('opacity', '1')
+            await expectCaptionGaps(page)
             await page.keyboard.press('Tab')
             await expect(menu).toBeFocused()
             await expect(menu).toHaveCSS('opacity', '1')
+            await expectCaptionGaps(page)
             await menu.evaluate(element => (element as HTMLElement).blur())
             await label.hover()
             await expect(files).toHaveCSS('pointer-events', 'auto')
@@ -301,6 +424,11 @@ test.describe('Workspace Canvas - Color Identity', () => {
         verification: 'region',
       })
       await clearCanvasSelection(page)
+      const clearedSpace = (await readSpaceIdentity(page)).find(
+        space => space.id === 'pixel-build-space',
+      )!
+      expect(clearedSpace.label).toBeNull()
+      expect(clearedSpace.identityColor).toBe(clearedSpace.defaultIdentityColor)
       const beforeFocus = await readNodeIdentity(page)
       expect(beforeFocus.map(node => node.label)).toEqual(
         MATERIAL_NODE_KINDS.map(kind => IDENTITY_COLORS[kind]),

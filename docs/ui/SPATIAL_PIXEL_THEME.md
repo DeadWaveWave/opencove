@@ -28,15 +28,21 @@ warning/error colors remain independent of the blue/cyan/mint brand gradient.
 
 ## Color identity and lightweight chrome
 
+All windows have a theme-colored border and fading header stripe, even without a label. The three
+theme pixel-palette stops supply this default decoration, independently of the optional animation
+settings. It never adds a label attribute, changes the explicit color inventory, or persists a label.
+Explicit labels replace those theme stops; clearing a label restores the default theme decoration.
+
 All themes share the same presentation of explicit label colors. The existing label-color owner
 projects its resolved color onto the React Flow wrapper through `data-cove-label-color`; it does not
 change label inheritance, filtering, selection, geometry or persisted data. Removing the label removes
 this presentation attribute, so old tint cannot remain on the frame.
 
-Labeled windows have a lightly colored border and a short gradient stripe across the top of the
-header. A restrained tint fades across the header while reading surfaces retain their theme colors.
+A restrained tint fades across the header while reading surfaces retain their theme colors.
 Terminal, Task, Note, Document, Role, Website and Image use one family of decorative line icons.
-Agent windows retain their provider identity. Image's icon and stripe are overlays, preserving its
+Agent windows use their resolved provider's identity glyph, including terminal Agent overlays.
+The existing presentation owner supplies the provider; titles are never parsed to guess a brand.
+Plain terminals retain the terminal icon. Image's icon and stripe are overlays, preserving its
 image-first layout. Header titles use medium weight, with existing sizes, action targets and terminal
 body geometry preserved.
 
@@ -45,6 +51,11 @@ fill at normal zoom. Its large-area tint recedes toward 0.5% in the far view. Bo
 stroke compensation keep overview labels and edges recognizable without allowing a small Space's
 caption to spill over neighboring regions. This is shared presentation state derived from the canvas
 zoom, independent of optional pixel effects.
+
+The top contour leaves transparent gaps around visible caption controls that intersect it, including
+the title, Files, menu, branch and rename field. Only the border is clipped; the caption does not
+paint an opaque plate over the canvas field. Bounded, local layout observations update these gaps
+when caption content, visibility, region size or zoom changes, and are disposed with the Space.
 
 Below 40% zoom, captions prioritize the Space title and branch. Files and menu controls appear on
 a row above the title when the caption is hovered or focused, retain their original accessible names and

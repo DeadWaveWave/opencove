@@ -1,5 +1,7 @@
 import { useCallback, useState, type JSX, type PointerEvent } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
+import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
 import { Copy, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
@@ -13,6 +15,7 @@ interface TerminalNodeHeaderProps {
   title: string
   fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
+  agentProvider?: AgentProvider | null
   status: AgentRuntimeStatus | null
   agentStateDegraded?: boolean
   labelColor?: LabelColor | null
@@ -33,6 +36,7 @@ export function TerminalNodeHeader({
   title,
   fixedTitlePrefix = null,
   kind,
+  agentProvider,
   status,
   agentStateDegraded = false,
   labelColor,
@@ -111,7 +115,11 @@ export function TerminalNodeHeader({
           aria-hidden="true"
         />
       ) : null}
-      <NodeKindIcon kind={kind} />
+      {isAgentNode && agentProvider ? (
+        <AgentProviderIcon provider={agentProvider} className="cove-node-provider-icon" />
+      ) : (
+        <NodeKindIcon kind={kind} />
+      )}
       {isTitleEditable ? (
         <InlineNodeTitleEditor
           value={editableTitle}

@@ -1,5 +1,7 @@
 import { resolvePixelDetail } from './pixelLayer/grid'
 
+export const SPACE_VISUAL_SCALE_EVENT = 'cove-space-visual-scale'
+
 /** Screen legibility is compensated only for captions and the painted boundary. */
 export function resolveSpaceVisualScale(viewportZoom: number) {
   const zoom = Number.isFinite(viewportZoom) && viewportZoom > 0 ? viewportZoom : 1

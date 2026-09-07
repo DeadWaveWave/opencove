@@ -1,4 +1,5 @@
 :root {
+  --cove-space-border-clip: none;
   --cove-canvas-zoom: 1;
   --cove-space-detail: 1;
   --cove-space-annotation-scale: 1;
@@ -14,7 +15,7 @@
 /* A Space is a region, not a panel. Selection strengthens its own hue without
    changing the fill; keyboard focus remains local to the focused control. */
 .workspace-canvas .workspace-space-region {
-  --cove-space-identity-color: var(--cove-text-faint);
+  --cove-space-identity-color: var(--cove-pixel-cyan);
   --cove-space-identity-edge-strength: 32%;
   --cove-space-caption-scale: min(
     var(--cove-space-annotation-scale),
@@ -54,6 +55,7 @@
       transparent
     );
   border-radius: inherit;
+  clip-path: var(--cove-space-border-clip, none);
   pointer-events: none;
 }
 
