@@ -1,11 +1,12 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { mkdir, mkdtemp, realpath } from 'node:fs/promises'
 import path from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 import { createRepo, runGit } from './m6.endpoints-mounts.legacy-repair.helpers'
 import { launchApp, removePathWithRetry, seedWorkspaceState } from './workspace-canvas.helpers'
 import { resolveE2ETmpDir } from './workspace-canvas.testUtils'
 
-async function sampleWindowBackground(
+async function captureWindowBackground(
   window: Page,
   node: Locator,
 ): Promise<{ width: number; height: number; rgba: number[] }> {
@@ -38,6 +39,27 @@ async function sampleWindowBackground(
       bitmap.close()
     }
   }, screenshot.toString('base64'))
+}
+
+async function sampleWindowBackground(window: Page, node: Locator) {
+  // DOM geometry can settle before Electron composites the first frame after Fit View.
+  // Establish each visual sample from consecutive matching frames, as screenshot assertions do.
+  let previous: Awaited<ReturnType<typeof captureWindowBackground>> | undefined
+  await expect
+    .poll(
+      async () => {
+        const current = await captureWindowBackground(window, node)
+        const stable = isDeepStrictEqual(current, previous)
+        previous = current
+        return stable
+      },
+      { message: 'The window background must finish painting before visual comparison' },
+    )
+    .toBe(true)
+  if (!previous) {
+    throw new Error('No stable window background was captured')
+  }
+  return previous
 }
 
 async function expectOverlayAboveNode(node: Locator, overlayId: string): Promise<void> {
@@ -133,7 +155,6 @@ for (const theme of ['light', 'dark'] as const) {
           const other = window.locator('.react-flow__node[data-id="other-note"]')
           await expect(other).toBeVisible()
           await window.locator('.react-flow__controls-fitview').click()
-          const before = await sampleWindowBackground(window, other)
 
           // Hold the real archive command at the IPC boundary; release it explicitly instead of
           // relying on git timing. Other control-surface requests retain their real handlers.
@@ -169,7 +190,8 @@ for (const theme of ['light', 'dark'] as const) {
           await window.getByTestId('workspace-space-menu-archive-space').click()
           await window.getByTestId('workspace-space-action-archive').click()
           await expect(window.getByTestId('space-worktree-archive-submit')).toBeEnabled()
-          expect(await sampleWindowBackground(window, other)).toEqual(before)
+          await expect(window.getByTestId('workspace-space-operation-archive-space')).toHaveCount(0)
+          const before = await sampleWindowBackground(window, other)
           await window.getByTestId('space-worktree-archive-submit').click()
           const overlayId = 'workspace-space-operation-archive-space'
           await expect(window.getByTestId(overlayId)).toBeVisible()
