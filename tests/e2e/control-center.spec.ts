@@ -190,7 +190,7 @@ test.describe('Control Center', () => {
       await expect(controlCenter).not.toHaveAttribute('aria-modal', 'true')
 
       const themeInputs = controlCenter.locator('input[name="control-center-theme"]')
-      await expect(themeInputs).toHaveCount(6)
+      await expect(themeInputs).toHaveCount(7)
       await expect(window.locator('[data-testid="control-center-theme-ember"]')).toBeChecked()
       await expect(window.locator('[data-testid="control-center-current-theme"]')).toContainText(
         'Ember',
@@ -245,7 +245,7 @@ test.describe('Control Center', () => {
       await window.locator('[data-testid="app-header-control-center"]').click()
       const controlCenter = window.locator('[data-testid="control-center"]')
       await expect(controlCenter).toBeVisible()
-      await expect(controlCenter.locator('input[name="control-center-theme"]')).toHaveCount(6)
+      await expect(controlCenter.locator('input[name="control-center-theme"]')).toHaveCount(7)
       await waitForVisualState(controlCenter)
 
       const metrics = await controlCenter.evaluate(element => {

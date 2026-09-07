@@ -1,21 +1,31 @@
 # Spatial Pixel Theme
 
-Pixel is an opt-in dark theme for OpenCove's spatial workspace. It uses deep blue surfaces,
-ice-blue-to-cyan-to-mint pixel colors, clear node boundaries, and bounded output activity feedback.
+Pixel is an opt-in theme family for OpenCove's spatial workspace. Pixel uses deep blue surfaces;
+Pixel Light uses cool paper surfaces, dark ink text and deeper blue/cyan/mint accents. Both share
+clear node boundaries, transparent caption cutouts and bounded output activity feedback.
 Select it through the existing Appearance theme picker or Control Center. Its node materials stay
 theme-specific; pixel background, creation and close effects can independently accompany any theme.
 These effects do not change terminal execution behavior.
 
 ## Theme ownership
 
-`settings.uiTheme` remains the single source of truth. Pixel is registered through `UI_THEMES`
-and `UI_THEME_DESCRIPTORS`, with both `baseScheme` and `terminalScheme` set to `dark`.
-Its palette is defined in `src/app/renderer/styles/themes/pixel.css` and consumed through semantic
+`settings.uiTheme` remains the single source of truth. Both are registered through `UI_THEMES`
+and `UI_THEME_DESCRIPTORS`: `pixel` uses dark UI/terminal schemes and `pixel-light` uses light
+UI/terminal schemes. Their palettes are defined in `styles/themes/pixel.css` and `pixel-light.css`,
+with shared material rules in `pixel-material.css`, and consumed through semantic
 `--cove-*` tokens. Terminal colors continue through the existing applied appearance snapshot owner.
 
 Node surface color and node material are separate tokens: consumers such as Document Node use the
 surface color in `color-mix`, so the surface token must not become a gradient. Node header, input,
 resize, selection and Find geometry keep their existing contracts.
+
+Pixel Light retains the same default color stripe, label semantics, focus distinction and Space
+geometry. It supplies darker effect colors for visible particles on a light canvas. Its ordinary
+terminal and Monaco editor use light reading surfaces; explicit dark terminal mode keeps its own
+dark scope. Switching either direction must preserve live terminal/editor instances and dimensions.
+Its 16 ANSI foreground colors are tuned for the light terminal surface. These optional colors travel
+through the same revisioned appearance snapshot as the background and cursor, including OSC palette
+queries. Returning to Pixel or explicitly using a dark terminal removes the light ANSI overrides.
 
 All eight node kinds share blue-ink reading surfaces and restrained translucent chrome. Headers are
 flat, with low-contrast separators and consistent controls; they have no beveled highlight bands.
@@ -75,7 +85,7 @@ Appearance exposes three independent, persisted boolean preferences:
 - `nodeCreationPixelEffectEnabled`: transparent assembly, converging fragments and virtual pixel rim.
 - `nodeClosePixelEffectEnabled`: square fragments scattering from a successfully closed window.
 
-The settings owner normalizes missing preferences to on for legacy Pixel settings and off for other
+The settings owner normalizes missing preferences to on for Pixel-family settings and off for other
 legacy themes. Explicit choices survive theme changes and reload. Theme switching changes colors,
 not preferences, and never replays creation or closing. Turning off an effect clears only its own
 visual state immediately. With all three off the effect layer is unmounted; with only creation/close

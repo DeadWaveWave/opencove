@@ -1,0 +1,20 @@
+/* Every ANSI foreground clears 4.5:1 on Pixel Light's #f8fbfd reading surface.
+   Dark terminal semantics discard these optional overrides in the appearance owner. */
+:root[data-cove-theme-id='pixel-light'] {
+  --cove-terminal-ansi-black: #243c50;
+  --cove-terminal-ansi-red: #934d5a;
+  --cove-terminal-ansi-green: #356f56;
+  --cove-terminal-ansi-yellow: #806820;
+  --cove-terminal-ansi-blue: #2c62a0;
+  --cove-terminal-ansi-magenta: #785282;
+  --cove-terminal-ansi-cyan: #286f7f;
+  --cove-terminal-ansi-white: #586979;
+  --cove-terminal-ansi-bright-black: #627486;
+  --cove-terminal-ansi-bright-red: #a14f5d;
+  --cove-terminal-ansi-bright-green: #3d7959;
+  --cove-terminal-ansi-bright-yellow: #876d28;
+  --cove-terminal-ansi-bright-blue: #356bad;
+  --cove-terminal-ansi-bright-magenta: #85608d;
+  --cove-terminal-ansi-bright-cyan: #327988;
+  --cove-terminal-ansi-bright-white: #697480;
+}

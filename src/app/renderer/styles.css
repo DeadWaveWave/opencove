@@ -66,6 +66,8 @@
 @import './styles/themes/ember.css';
 @import './styles/themes/ember-light.css';
 @import './styles/themes/pixel.css';
+@import './styles/themes/pixel-light.css';
+@import './styles/themes/pixel-light.terminal.css';
 @import './styles/themes/pixel-material.css';
 @import './styles/themes/space-color-identity.css';
 @import './styles/node-color-identity.css';

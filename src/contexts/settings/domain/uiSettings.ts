@@ -3,7 +3,15 @@ import type { ResolvedUiTheme } from '../../../shared/contracts/dto'
 export const UI_LANGUAGES = ['en', 'zh-CN'] as const
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
 
-export const UI_THEMES = ['system', 'light', 'dark', 'ember', 'ember-light', 'pixel'] as const
+export const UI_THEMES = [
+  'system',
+  'light',
+  'dark',
+  'ember',
+  'ember-light',
+  'pixel',
+  'pixel-light',
+] as const
 export type UiTheme = (typeof UI_THEMES)[number]
 
 export type UiThemeBaseScheme = ResolvedUiTheme | 'system'
@@ -27,6 +35,12 @@ export const UI_THEME_DESCRIPTORS: Record<UiTheme, UiThemeDescriptor> = {
     i18nKey: 'emberLight',
   },
   pixel: { id: 'pixel', baseScheme: 'dark', terminalScheme: 'dark', i18nKey: 'pixel' },
+  'pixel-light': {
+    id: 'pixel-light',
+    baseScheme: 'light',
+    terminalScheme: 'light',
+    i18nKey: 'pixelLight',
+  },
 }
 
 export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'

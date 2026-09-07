@@ -76,6 +76,13 @@
   --cove-theme-preview-ember: #c97c3a;
   --cove-theme-preview-ember-light: #f3e6d6;
   --cove-theme-preview-pixel: linear-gradient(135deg, #5b9cf0, #55bddc 50%, #70ddbc);
+  --cove-theme-preview-pixel-light: linear-gradient(
+    135deg,
+    #e7f0f6 48%,
+    #3c79bb 49%,
+    #26859b 74%,
+    #308b6f
+  );
   /* Shared effect palette; named themes can remap these three color stops. */
   --cove-pixel-blue: #5b9cf0;
   --cove-pixel-cyan: #55bddc;

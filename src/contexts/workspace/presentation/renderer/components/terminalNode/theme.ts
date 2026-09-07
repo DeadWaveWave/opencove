@@ -4,6 +4,7 @@ import {
   resolveUiThemeTerminalScheme,
   type UiTheme,
 } from '@contexts/settings/domain/uiSettings'
+import { readTerminalAnsiTheme, resolveTerminalAnsiScheme } from './terminalAnsiTheme'
 
 export type TerminalThemeMode = 'sync-with-ui' | 'dark'
 
@@ -71,10 +72,14 @@ export function resolveTerminalThemeFromComputedStyle(
     return value.length > 0 ? value : fallback
   }
 
-  return {
-    background: readCssVar('--cove-terminal-background', defaults.background),
-    foreground: readCssVar('--cove-terminal-foreground', defaults.foreground),
-    cursor: readCssVar('--cove-terminal-cursor', defaults.cursor),
-    selectionBackground: readCssVar('--cove-terminal-selection', defaults.selectionBackground),
-  }
+  return resolveTerminalAnsiScheme(
+    {
+      ...readTerminalAnsiTheme(computedStyle),
+      background: readCssVar('--cove-terminal-background', defaults.background),
+      foreground: readCssVar('--cove-terminal-foreground', defaults.foreground),
+      cursor: readCssVar('--cove-terminal-cursor', defaults.cursor),
+      selectionBackground: readCssVar('--cove-terminal-selection', defaults.selectionBackground),
+    },
+    resolvedTheme,
+  )
 }

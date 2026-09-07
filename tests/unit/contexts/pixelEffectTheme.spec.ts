@@ -8,13 +8,22 @@ import {
 } from '../../../src/contexts/settings/domain/uiSettings'
 
 const stylesheet = document.createElement('style')
-const themes: UiTheme[] = ['dark', 'light', 'system', 'ember', 'ember-light', 'pixel']
+const themes: UiTheme[] = [
+  'dark',
+  'light',
+  'system',
+  'ember',
+  'ember-light',
+  'pixel',
+  'pixel-light',
+]
 
 beforeAll(() => {
   const cssFiles = [
     'base.css',
     'control-center.css',
     'terminal-node.css',
+    'terminal-node.theme-opencode.css',
     'task-node.css',
     'note-node.css',
     'role-node.css',
@@ -26,6 +35,7 @@ beforeAll(() => {
     'themes/ember.css',
     'themes/ember-light.css',
     'themes/pixel.css',
+    'themes/pixel-light.css',
     'themes/pixel-material.css',
   ]
   const cssRoot = resolve(
@@ -66,6 +76,25 @@ function luminance(hex: string) {
 }
 
 describe('theme-adaptive pixel effects', () => {
+  it('gives Pixel Light its own light palette while explicit dark terminals remain dark', () => {
+    const genericLight = selectTheme('light')
+    const pixelLight = selectTheme('pixel-light')
+    expect(pixelLight).not.toEqual(genericLight)
+    const rootStyle = getComputedStyle(document.documentElement)
+    const surface = rootStyle.getPropertyValue('--cove-node-surface').trim()
+    const text = rootStyle.getPropertyValue('--cove-text').trim()
+    expect(luminance(surface)).toBeGreaterThan(0.9)
+    expect((luminance(surface) + 0.05) / (luminance(text) + 0.05)).toBeGreaterThan(7)
+    const terminal = document.createElement('div')
+    terminal.className = 'terminal-node'
+    document.body.append(terminal)
+    expect(rootStyle.getPropertyValue('--cove-terminal-background').trim()).toBe('#f8fbfd')
+    terminal.dataset.coveTerminalNodeTheme = 'dark'
+    expect(getComputedStyle(terminal).getPropertyValue('--cove-terminal-background').trim()).toBe(
+      '#0a0f1d',
+    )
+  })
+
   it.each(themes)('provides visible effect tokens independently of the %s theme toggle', theme => {
     const palette = selectTheme(theme)
     expect(palette.opacity).toBeGreaterThan(0)

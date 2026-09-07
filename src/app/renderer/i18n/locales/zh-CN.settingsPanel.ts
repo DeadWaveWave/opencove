@@ -29,6 +29,7 @@ export const zhCNSettingsPanel = {
       ember: '余烬',
       emberLight: '余烬浅色',
       pixel: '空间点阵',
+      pixelLight: '浅色点阵',
     },
     interfaceFontSize: '界面字体大小',
     terminalFontSize: '终端字体大小',

@@ -24,6 +24,32 @@ describe('useApplyUiTheme', () => {
     expect(document.documentElement.style.colorScheme).toBe('dark')
   })
 
+  it('switches Pixel to its light counterpart and notifies chrome with the light base scheme', () => {
+    const setTheme = vi.fn(async () => undefined)
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      value: { windowChrome: { setTheme } },
+    })
+    const listener = vi.fn()
+    window.addEventListener('opencove-theme-changed', listener)
+    try {
+      const { rerender } = render(<HookHost uiTheme="pixel" />)
+      rerender(<HookHost uiTheme="pixel-light" />)
+      expect(document.documentElement.dataset.coveTheme).toBe('light')
+      expect(document.documentElement.dataset.coveThemeId).toBe('pixel-light')
+      expect(document.documentElement.style.colorScheme).toBe('light')
+      expect(setTheme).toHaveBeenLastCalledWith({ theme: 'light' })
+      expect(listener).toHaveBeenLastCalledWith(
+        expect.objectContaining({ detail: { theme: 'light', themeId: 'pixel-light' } }),
+      )
+      const eventCount = listener.mock.calls.length
+      rerender(<HookHost uiTheme="pixel-light" />)
+      expect(listener).toHaveBeenCalledTimes(eventCount)
+    } finally {
+      window.removeEventListener('opencove-theme-changed', listener)
+    }
+  })
+
   it('reapplies theme-id when only the named theme changes but base scheme stays the same', () => {
     const setTheme = vi.fn(async () => undefined)
     Object.defineProperty(window, 'opencoveApi', {

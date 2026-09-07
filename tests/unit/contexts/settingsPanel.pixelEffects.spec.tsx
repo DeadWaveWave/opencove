@@ -57,7 +57,7 @@ afterEach(async () => {
 })
 
 describe('independent Pixel effect controls in Appearance', () => {
-  it.each(['dark', 'light', 'system', 'pixel'])(
+  it.each(['dark', 'light', 'system', 'pixel', 'pixel-light'])(
     'exposes all three controls for the %s theme',
     uiTheme => {
       render(<Harness initial={normalizeAgentSettings({ uiTheme })} />, {
@@ -70,7 +70,7 @@ describe('independent Pixel effect controls in Appearance', () => {
       ]) {
         const control = screen.getByRole('checkbox', { name: label })
         expect(control).toBeEnabled()
-        expect(control).toHaveProperty('checked', uiTheme === 'pixel')
+        expect(control).toHaveProperty('checked', uiTheme === 'pixel' || uiTheme === 'pixel-light')
       }
     },
   )
@@ -95,6 +95,12 @@ describe('independent Pixel effect controls in Appearance', () => {
         nodeClosePixelEffectEnabled: false,
       }),
     )
+    fireEvent.click(screen.getByTestId('settings-ui-theme-trigger'))
+    fireEvent.click(screen.getByRole('option', { name: 'Pixel Light' }))
+    expect(screen.getByRole('checkbox', { name: 'Node Creation Pixels' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Node Closing Pixels' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Canvas Pixel Background' })).not.toBeChecked()
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ uiTheme: 'pixel-light' }))
   })
 
   it('provides localized labels and explains the standard-grid fallback', async () => {

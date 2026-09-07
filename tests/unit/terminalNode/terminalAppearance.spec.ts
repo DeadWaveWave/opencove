@@ -27,6 +27,34 @@ function createValue(overrides: Partial<TerminalAppearanceValue> = {}): Terminal
 }
 
 describe('terminal appearance', () => {
+  it('uses light terminal semantics for Pixel Light while retaining explicit dark overrides', () => {
+    const value = {
+      themeId: 'pixel-light' as const,
+      uiScheme: 'light' as const,
+      xtermTheme: {
+        background: '#f7fbfd',
+        foreground: '#24364a',
+        cursor: '#216cbe',
+        selectionBackground: 'rgba(33, 108, 190, 0.18)',
+      },
+    }
+    expect(UI_THEME_DESCRIPTORS['pixel-light']).toMatchObject({
+      baseScheme: 'light',
+      terminalScheme: 'light',
+    })
+    expect(
+      resolveTerminalAppearanceValue({ ...value, terminalThemeMode: 'sync-with-ui' }),
+    ).toMatchObject({
+      themeId: 'pixel-light',
+      uiScheme: 'light',
+      terminalScheme: 'light',
+      xtermTheme: value.xtermTheme,
+    })
+    expect(
+      resolveTerminalAppearanceValue({ ...value, terminalThemeMode: 'dark' }).terminalScheme,
+    ).toBe('dark')
+  })
+
   it('declares ember-light as a light UI theme with an explicitly dark terminal', () => {
     expect(UI_THEME_DESCRIPTORS['ember-light']).toMatchObject({
       baseScheme: 'light',

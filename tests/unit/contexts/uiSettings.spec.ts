@@ -26,7 +26,7 @@ afterEach(async () => {
 })
 
 describe('named UI themes', () => {
-  it.each(['system', 'light', 'dark', 'ember', 'ember-light', 'pixel'])(
+  it.each(['system', 'light', 'dark', 'ember', 'ember-light', 'pixel', 'pixel-light'])(
     'preserves the persisted %s theme through settings normalization',
     async uiTheme => {
       const settings = normalizeAgentSettings({ uiTheme })
@@ -59,7 +59,16 @@ describe('named UI themes', () => {
   it('resolves the Pixel label through both supported interface languages', async () => {
     await applyUiLanguage('en')
     expect(getUiThemeLabel(translate, 'pixel')).toBe('Pixel')
+    expect(getUiThemeLabel(translate, 'pixel-light')).toBe('Pixel Light')
     await applyUiLanguage('zh-CN')
     expect(getUiThemeLabel(translate, 'pixel')).toBe('空间点阵')
+    expect(getUiThemeLabel(translate, 'pixel-light')).toBe('浅色点阵')
+  })
+
+  it('keeps the Pixel Light shell and terminal light independently of system preference', () => {
+    expect(resolveUiThemeBaseScheme('pixel-light', false)).toBe('light')
+    expect(resolveUiThemeBaseScheme('pixel-light', true)).toBe('light')
+    expect(resolveUiThemeTerminalScheme('pixel-light', 'light')).toBe('light')
+    expect(resolveUiThemeTerminalScheme('pixel-light', 'dark')).toBe('light')
   })
 })

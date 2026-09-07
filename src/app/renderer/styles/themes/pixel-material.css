@@ -1,6 +1,6 @@
 /* Paint an opaque reading surface only below the existing header band, so the
    frosted titlebar can sample the canvas. These clearances do not change layout. */
-:root[data-cove-theme-id='pixel']
+:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
   :is(.terminal-node, .task-node, .note-node, .document-node, .role-node, .website-node) {
   background-color: transparent;
   background-image: linear-gradient(
@@ -11,11 +11,11 @@
 }
 
 /* Role's existing two-line header has a 46px minimum. */
-:root[data-cove-theme-id='pixel'] .role-node {
+:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light']) .role-node {
   --cove-pixel-header-clearance: 46px;
 }
 
-:root[data-cove-theme-id='pixel']
+:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
   :is(
     .terminal-node__header,
     .task-node__header,
@@ -30,27 +30,29 @@
 }
 
 /* Image has no header row. Its actual image, resize and drag surfaces stay intact. */
-:root[data-cove-theme-id='pixel'] .image-node {
+:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light']) .image-node {
   border-color: var(--cove-node-border);
   background: var(--cove-node-surface);
 }
 
-:root[data-cove-theme-id='pixel'] .image-node__close {
+:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light']) .image-node__close {
   background: var(--cove-pixel-space-meta-surface);
   backdrop-filter: var(--cove-pixel-header-filter);
   border-color: var(--cove-node-header-border);
   color: var(--cove-text);
 }
 
-:root[data-cove-theme-id='pixel'] .image-node__close:hover {
+:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
+  .image-node__close:hover {
   background: var(--cove-control-hover);
 }
 
-:root[data-cove-theme-id='pixel'] .terminal-node__body {
+:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light']) .terminal-node__body {
   background: var(--cove-terminal-background);
 }
 
-:root[data-cove-theme-id='pixel'] :is(.app-header, .workspace-sidebar) {
+:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
+  :is(.app-header, .workspace-sidebar) {
   background: var(--cove-app-background-elevated);
   backdrop-filter: none;
   box-shadow: none;

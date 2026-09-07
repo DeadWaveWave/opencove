@@ -43,48 +43,54 @@ describe('independent persisted Pixel effect settings', () => {
     expect(effects(DEFAULT_AGENT_SETTINGS)).toEqual(disabled)
   })
 
-  it('migrates legacy Pixel settings once and emits the complete canonical shape', () => {
-    const migrated = normalizeAgentSettings({ uiTheme: 'pixel' })
-    expect(effects(migrated)).toEqual({
-      canvasPixelBackgroundEnabled: true,
-      nodeCreationPixelEffectEnabled: true,
-      nodeClosePixelEffectEnabled: true,
-    })
-    expect(isNormalizedAgentSettings(migrated)).toBe(true)
-    expect(effects(normalizeAgentSettings({ ...migrated, uiTheme: 'light' }))).toEqual(
-      effects(migrated),
-    )
-    const legacy = { ...migrated } as Record<string, unknown>
-    delete legacy.nodeClosePixelEffectEnabled
-    expect(isNormalizedAgentSettings(legacy)).toBe(false)
-  })
+  it.each(['pixel', 'pixel-light'])(
+    'migrates legacy %s settings once and emits the complete canonical shape',
+    uiTheme => {
+      const migrated = normalizeAgentSettings({ uiTheme })
+      expect(effects(migrated)).toEqual({
+        canvasPixelBackgroundEnabled: true,
+        nodeCreationPixelEffectEnabled: true,
+        nodeClosePixelEffectEnabled: true,
+      })
+      expect(isNormalizedAgentSettings(migrated)).toBe(true)
+      expect(effects(normalizeAgentSettings({ ...migrated, uiTheme: 'light' }))).toEqual(
+        effects(migrated),
+      )
+      const legacy = { ...migrated } as Record<string, unknown>
+      delete legacy.nodeClosePixelEffectEnabled
+      expect(isNormalizedAgentSettings(legacy)).toBe(false)
+    },
+  )
 
-  it('preserves each explicit boolean and normalizes only missing or invalid flags', () => {
-    expect(
-      effects(
-        normalizeAgentSettings({
-          uiTheme: 'pixel',
-          canvasPixelBackgroundEnabled: false,
-          nodeCreationPixelEffectEnabled: true,
-          nodeClosePixelEffectEnabled: 'false',
-        }),
-      ),
-    ).toEqual({
-      canvasPixelBackgroundEnabled: false,
-      nodeCreationPixelEffectEnabled: true,
-      nodeClosePixelEffectEnabled: true,
-    })
-    expect(
-      effects(
-        normalizeAgentSettings({
-          uiTheme: 'system',
-          canvasPixelBackgroundEnabled: true,
-          nodeCreationPixelEffectEnabled: null,
-          nodeClosePixelEffectEnabled: false,
-        }),
-      ),
-    ).toEqual({ ...disabled, canvasPixelBackgroundEnabled: true })
-  })
+  it.each(['pixel', 'pixel-light'])(
+    'preserves each explicit %s boolean and normalizes only missing or invalid flags',
+    uiTheme => {
+      expect(
+        effects(
+          normalizeAgentSettings({
+            uiTheme,
+            canvasPixelBackgroundEnabled: false,
+            nodeCreationPixelEffectEnabled: true,
+            nodeClosePixelEffectEnabled: 'false',
+          }),
+        ),
+      ).toEqual({
+        canvasPixelBackgroundEnabled: false,
+        nodeCreationPixelEffectEnabled: true,
+        nodeClosePixelEffectEnabled: true,
+      })
+      expect(
+        effects(
+          normalizeAgentSettings({
+            uiTheme: 'system',
+            canvasPixelBackgroundEnabled: true,
+            nodeCreationPixelEffectEnabled: null,
+            nodeClosePixelEffectEnabled: false,
+          }),
+        ),
+      ).toEqual({ ...disabled, canvasPixelBackgroundEnabled: true })
+    },
+  )
 
   it('preserves mixed choices through the settings updater, theme changes and persistence reload', async () => {
     let settings = normalizeAgentSettings({ uiTheme: 'pixel' })
@@ -108,36 +114,49 @@ describe('independent persisted Pixel effect settings', () => {
     expect(effects(settings)).toEqual(expected)
     updaters().updateUiTheme('pixel')
     expect(effects(settings)).toEqual(expected)
+    updaters().updateUiTheme('pixel-light')
+    expect(effects(settings)).toEqual(expected)
+    expect(settings.uiTheme).toBe('pixel-light')
   })
 
-  it('migrates raw legacy settings through the persistence reader before later updates', async () => {
-    await writeRawPersistedState(
-      JSON.stringify({
-        formatVersion: 1,
-        activeWorkspaceId: null,
-        workspaces: [],
-        settings: { uiTheme: 'pixel' },
-      }),
-    )
-    const migrated = await readPersistedState()
-    expect(migrated?.settings).toMatchObject({
-      canvasPixelBackgroundEnabled: true,
-      nodeCreationPixelEffectEnabled: true,
-      nodeClosePixelEffectEnabled: true,
-    })
-    const changed = normalizeAgentSettings({ ...migrated!.settings, ...disabled, uiTheme: 'light' })
-    await writeRawPersistedState(JSON.stringify(toPersistedState([], null, changed)))
-    expect(effects((await readPersistedState())!.settings)).toEqual(disabled)
-  })
+  it.each(['pixel', 'pixel-light'])(
+    'migrates raw legacy %s settings through the persistence reader before later updates',
+    async uiTheme => {
+      await writeRawPersistedState(
+        JSON.stringify({
+          formatVersion: 1,
+          activeWorkspaceId: null,
+          workspaces: [],
+          settings: { uiTheme },
+        }),
+      )
+      const migrated = await readPersistedState()
+      expect(migrated?.settings).toMatchObject({
+        canvasPixelBackgroundEnabled: true,
+        nodeCreationPixelEffectEnabled: true,
+        nodeClosePixelEffectEnabled: true,
+      })
+      const changed = normalizeAgentSettings({
+        ...migrated!.settings,
+        ...disabled,
+        uiTheme: 'light',
+      })
+      await writeRawPersistedState(JSON.stringify(toPersistedState([], null, changed)))
+      expect(effects((await readPersistedState())!.settings)).toEqual(disabled)
+    },
+  )
 
-  it('does not reapply Pixel legacy defaults when a normalized dark user changes theme', () => {
-    let settings = normalizeAgentSettings({ uiTheme: 'dark' })
-    createSettingsPanelUpdaters({
-      settings,
-      onChange: next => {
-        settings = next
-      },
-    }).updateUiTheme('pixel')
-    expect(effects(normalizeAgentSettings(settings))).toEqual(disabled)
-  })
+  it.each(['pixel', 'pixel-light'] as const)(
+    'does not reapply %s legacy defaults when a normalized dark user changes theme',
+    uiTheme => {
+      let settings = normalizeAgentSettings({ uiTheme: 'dark' })
+      createSettingsPanelUpdaters({
+        settings,
+        onChange: next => {
+          settings = next
+        },
+      }).updateUiTheme(uiTheme)
+      expect(effects(normalizeAgentSettings(settings))).toEqual(disabled)
+    },
+  )
 })

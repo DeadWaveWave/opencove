@@ -1,5 +1,6 @@
 import type { Terminal } from '@xterm/xterm'
 import type { TerminalAppearanceSnapshot, TerminalAppearanceTheme } from './terminalAppearance'
+import { TERMINAL_ANSI_THEME_ENTRIES, type TerminalAnsiTheme } from './terminalAnsiTheme'
 
 type PtyWriteQueue = {
   enqueue: (data: string, encoding?: 'utf8' | 'binary') => void
@@ -108,7 +109,12 @@ function sendOscResponse(ptyWriteQueue: PtyWriteQueue, sequence: string): void {
   ptyWriteQueue.flush()
 }
 
-function resolvePaletteColor(index: number): string | null {
+function resolvePaletteColor(index: number, appliedTheme: TerminalAnsiTheme | null): string | null {
+  const key = TERMINAL_ANSI_THEME_ENTRIES[index]?.[0]
+  const override = key ? normalizeCssColorToHex(appliedTheme?.[key]) : null
+  if (override) {
+    return override
+  }
   const value = ANSI_PALETTE_16[index]
   return typeof value === 'string' ? value : null
 }
@@ -170,7 +176,7 @@ export function registerOpenCodeOscColorQueryResponder({
         return false
       }
 
-      const color = resolvePaletteColor(index)
+      const color = resolvePaletteColor(index, getAppliedAppearance?.()?.xtermTheme ?? null)
       if (!color) {
         return false
       }

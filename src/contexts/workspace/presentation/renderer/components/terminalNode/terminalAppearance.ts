@@ -2,6 +2,12 @@ import type { Terminal } from '@xterm/xterm'
 import type { ResolvedUiTheme } from '@shared/contracts/dto'
 import { resolveUiThemeTerminalScheme, type UiTheme } from '@contexts/settings/domain/uiSettings'
 import {
+  readTerminalAnsiTheme,
+  resolveTerminalAnsiScheme,
+  terminalAnsiThemesEqual,
+  type TerminalAnsiTheme,
+} from './terminalAnsiTheme'
+import {
   resolveActiveUiTheme,
   resolveActiveUiThemeId,
   resolveTerminalThemeFromComputedStyle,
@@ -36,7 +42,7 @@ export type TerminalAppearanceCssTokens = Readonly<
   Partial<Record<TerminalAppearanceCssVariable, string>>
 >
 
-export interface TerminalAppearanceTheme {
+export interface TerminalAppearanceTheme extends TerminalAnsiTheme {
   background: string
   foreground: string
   cursor: string
@@ -89,6 +95,7 @@ function appearanceValuesEqual(
     snapshot.xtermTheme.foreground === value.xtermTheme.foreground &&
     snapshot.xtermTheme.cursor === value.xtermTheme.cursor &&
     snapshot.xtermTheme.selectionBackground === value.xtermTheme.selectionBackground &&
+    terminalAnsiThemesEqual(snapshot.xtermTheme, value.xtermTheme) &&
     TERMINAL_APPEARANCE_CSS_VARIABLES.every(
       variable => snapshot.cssTokens[variable] === value.cssTokens[variable],
     )
@@ -115,7 +122,7 @@ export function resolveTerminalAppearanceValue({
     themeId,
     uiScheme,
     terminalScheme,
-    xtermTheme: { ...xtermTheme },
+    xtermTheme: resolveTerminalAnsiScheme(xtermTheme, terminalScheme),
     cssTokens: { ...cssTokens },
   }
 }
@@ -147,6 +154,7 @@ export function resolveCurrentTerminalAppearanceValue({
     uiScheme: resolveActiveUiTheme(),
     terminalThemeMode,
     xtermTheme: {
+      ...readTerminalAnsiTheme(computedStyle, xtermTheme),
       background:
         xtermTheme?.background ??
         cssTokens['--cove-terminal-background'] ??

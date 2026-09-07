@@ -212,6 +212,7 @@ test.describe('Independent pixel effects settings', () => {
       await inspect('ember', 'dark', true)
       await inspect('ember-light', 'light', true)
       await inspect('pixel', 'dark')
+      await inspect('pixel-light', 'light')
       await window.emulateMedia({ colorScheme: 'light' })
       await inspect('system', 'light')
       await window.emulateMedia({ colorScheme: 'dark' })

@@ -28,6 +28,51 @@ function createTerminalHarness(theme: Record<string, unknown>) {
 }
 
 describe('registerOpenCodeOscColorQueryResponder', () => {
+  it('answers palette queries from the applied ANSI snapshot and resets to the legacy fallback', () => {
+    const { terminal, handlers } = createTerminalHarness({ red: '#ff0000' })
+    const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
+    let appliedAppearance: TerminalAppearanceSnapshot = {
+      revision: 1,
+      themeId: 'pixel-light',
+      uiScheme: 'light',
+      terminalScheme: 'light',
+      xtermTheme: {
+        background: '#f8fbfd',
+        foreground: '#243c50',
+        cursor: '#243c50',
+        selectionBackground: '#dce8f2',
+        red: '#934d5a',
+        brightWhite: '#697480',
+      },
+      cssTokens: {},
+    }
+    registerOpenCodeOscColorQueryResponder({
+      terminal,
+      ptyWriteQueue,
+      getAppliedAppearance: () => appliedAppearance,
+    })
+    expect(handlers.get(4)?.('1;?')).toBe(true)
+    expect(ptyWriteQueue.enqueue).toHaveBeenLastCalledWith('\u001b]4;1;#934d5a\u0007')
+    expect(handlers.get(4)?.('15;?')).toBe(true)
+    expect(ptyWriteQueue.enqueue).toHaveBeenLastCalledWith('\u001b]4;15;#697480\u0007')
+    appliedAppearance = {
+      ...appliedAppearance,
+      revision: 2,
+      themeId: 'pixel',
+      terminalScheme: 'dark',
+      xtermTheme: {
+        background: '#0a1420',
+        foreground: '#c9d9e9',
+        cursor: '#9ecefa',
+        selectionBackground: '#233b5c',
+      },
+    }
+    expect(handlers.get(4)?.('1;?')).toBe(true)
+    expect(ptyWriteQueue.enqueue).toHaveBeenLastCalledWith('\u001b]4;1;#cd0000\u0007')
+    expect(handlers.get(4)?.('16;?')).toBe(false)
+    expect(handlers.get(4)?.('-1;?')).toBe(false)
+  })
+
   it('responds to OSC 4 palette queries', () => {
     const { terminal, handlers } = createTerminalHarness({
       background: '#0a0f1d',

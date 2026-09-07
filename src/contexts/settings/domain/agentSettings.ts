@@ -156,7 +156,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const uiTheme = isValidUiTheme(value.uiTheme) ? value.uiTheme : DEFAULT_AGENT_SETTINGS.uiTheme
   // Adopt pre-toggle behavior only while normalizing missing legacy fields.
   // Canonical booleans survive subsequent theme changes without deriving new effect choices.
-  const legacyPixelEffectsEnabled = uiTheme === 'pixel'
+  const legacyPixelEffectsEnabled = uiTheme === 'pixel' || uiTheme === 'pixel-light'
   const canvasPixelBackgroundEnabled =
     normalizeBoolean(value.canvasPixelBackgroundEnabled) ?? legacyPixelEffectsEnabled
   const nodeCreationPixelEffectEnabled =

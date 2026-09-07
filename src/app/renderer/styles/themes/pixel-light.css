@@ -1,0 +1,86 @@
+/* The light counterpart keeps Pixel's spatial materials with a cool paper
+   surface and ink-colored accents, rather than reusing luminous dark colors. */
+:root[data-cove-theme-id='pixel-light'] {
+  color-scheme: light;
+  --cove-pixel-blue: #3c79bb;
+  --cove-pixel-cyan: #26859b;
+  --cove-pixel-mint: #308b6f;
+  --cove-pixel-grid-gap: 17px;
+  --cove-pixel-grid-opacity: 0.48;
+  --cove-accent: #2f72b7;
+  --cove-accent-text: #28659f;
+  --cove-accent-foreground: #f8fcff;
+
+  --cove-label-gray: #60758a;
+  --cove-label-red: #bc5164;
+  --cove-label-orange: #ac652b;
+  --cove-label-yellow: #947422;
+  --cove-label-green: #368064;
+  --cove-label-blue: #3676b5;
+  --cove-label-purple: #8661ae;
+
+  --cove-app-background: #eef4f8;
+  --cove-app-background-elevated: #e7f0f6;
+  --cove-surface: rgba(249, 252, 254, 0.96);
+  --cove-surface-strong: #f8fbfd;
+  --cove-window-surface: #f6fafd;
+  --cove-surface-hover: rgba(49, 111, 157, 0.07);
+  --cove-field: rgba(67, 115, 150, 0.05);
+  --cove-border: rgba(78, 115, 144, 0.28);
+  --cove-border-subtle: rgba(78, 115, 144, 0.15);
+  --cove-text: #243c50;
+  --cove-text-muted: #4d677b;
+  --cove-text-faint: #5c7184;
+  --cove-backdrop: rgba(25, 46, 66, 0.22);
+  --cove-shadow-color-elevated: rgba(29, 60, 87, 0.12);
+  --cove-shadow-color-panel: rgba(29, 60, 87, 0.15);
+  --cove-toggle-track-on: #347bb8;
+  --cove-toggle-track-off: #c3d2de;
+  --cove-focus-ring: #347bb8;
+
+  --cove-node-surface: #f8fbfd;
+  --cove-node-background-image: none;
+  --cove-node-radius: var(--cove-radius-md);
+  --cove-node-border: rgba(93, 128, 152, 0.32);
+  --cove-node-header-surface: rgba(234, 243, 249, 0.88);
+  --cove-node-header-border: rgba(91, 125, 150, 0.12);
+  --cove-node-shadow-color: rgba(29, 60, 87, 0.1);
+  --cove-node-shadow: 0 8px 20px var(--cove-node-shadow-color);
+  --cove-node-selection-border: #3d83bd;
+  --cove-node-selection-shadow: 0 0 0 1px rgba(61, 131, 189, 0.2), 0 8px 20px rgba(29, 60, 87, 0.1);
+
+  --cove-terminal-node-surface: #f8fbfd;
+  --cove-terminal-node-header-surface: rgba(234, 243, 249, 0.88);
+  --cove-terminal-background: #f8fbfd;
+  --cove-terminal-foreground: #243c50;
+  --cove-terminal-selection: rgba(56, 123, 183, 0.2);
+  --cove-terminal-cursor: #2869a6;
+
+  --cove-canvas-control-surface: rgba(248, 252, 254, 0.94);
+  --cove-canvas-control-surface-hover: #f8fcff;
+  --cove-canvas-control-border: rgba(87, 127, 156, 0.28);
+  --cove-canvas-control-border-hover: rgba(47, 114, 183, 0.7);
+  --cove-canvas-control-text: var(--cove-text-muted);
+  --cove-canvas-control-text-hover: var(--cove-text);
+  --cove-canvas-dot: rgba(48, 116, 154, 0.2);
+
+  --cove-pixel-header-filter: blur(6px);
+  --cove-pixel-header-clearance: 34px;
+  --cove-pixel-space-meta-surface: rgba(237, 246, 251, 0.92);
+
+  --cove-canvas-minimap-surface: rgba(242, 249, 253, 0.88);
+  --cove-canvas-minimap-border: rgba(87, 127, 156, 0.25);
+  --cove-canvas-minimap-mask: rgba(55, 121, 167, 0.58);
+  --cove-canvas-minimap-mask-surface: rgba(64, 131, 177, 0.08);
+  --cove-canvas-minimap-node-agent: rgba(60, 121, 187, 0.75);
+  --cove-canvas-minimap-node-task: rgba(38, 133, 155, 0.75);
+  --cove-canvas-minimap-node-image: rgba(148, 116, 34, 0.7);
+  --cove-canvas-minimap-node-default: rgba(85, 122, 150, 0.62);
+  --cove-canvas-minimap-node-stroke: rgba(246, 251, 255, 0.5);
+
+  --cove-settings-panel-background: #f4f9fc;
+  --cove-settings-sidebar-background: #eaf2f7;
+  --cove-settings-primary-background: #2f72b7;
+  --cove-settings-primary-background-hover: #245e99;
+  --cove-settings-on-accent: #f8fcff;
+}

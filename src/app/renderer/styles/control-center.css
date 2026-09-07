@@ -138,7 +138,7 @@
 
 .control-center__themes {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -247,6 +247,11 @@
 .control-center__theme-preview[data-theme-preview='pixel'] {
   border-radius: var(--cove-radius-xs);
   background: var(--cove-theme-preview-pixel);
+}
+
+.control-center__theme-preview[data-theme-preview='pixel-light'] {
+  border-radius: var(--cove-radius-xs);
+  background: var(--cove-theme-preview-pixel-light);
 }
 
 .control-center__theme-label {
