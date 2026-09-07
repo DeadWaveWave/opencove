@@ -5,13 +5,39 @@ import { createRepo, runGit } from './m6.endpoints-mounts.legacy-repair.helpers'
 import { launchApp, removePathWithRetry, seedWorkspaceState } from './workspace-canvas.helpers'
 import { resolveE2ETmpDir } from './workspace-canvas.testUtils'
 
-async function sampleWindowBackground(window: Page, node: Locator): Promise<Buffer> {
+async function sampleWindowBackground(
+  window: Page,
+  node: Locator,
+): Promise<{ width: number; height: number; rgba: number[] }> {
   // Sample a flat area: text antialiasing and caret blinking are unrelated to the overlay.
   const clip = await node.evaluate(element => {
     const rect = element.getBoundingClientRect()
     return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, width: 8, height: 8 }
   })
-  return await window.screenshot({ clip })
+  const screenshot = await window.screenshot({ clip })
+  // PNG metadata (notably macOS iCCP profiles) can vary without any pixel changing.
+  // Decode the captured pixels without profile conversion; compare dimensions and RGBA strictly.
+  return await window.evaluate(async base64 => {
+    const bytes = Uint8Array.from(atob(base64), character => character.charCodeAt(0))
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }), {
+      colorSpaceConversion: 'none',
+    })
+    try {
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Unable to decode the window background screenshot')
+      }
+      context.drawImage(bitmap, 0, 0)
+      return {
+        width: bitmap.width,
+        height: bitmap.height,
+        rgba: Array.from(context.getImageData(0, 0, bitmap.width, bitmap.height).data),
+      }
+    } finally {
+      bitmap.close()
+    }
+  }, screenshot.toString('base64'))
 }
 
 async function expectOverlayAboveNode(node: Locator, overlayId: string): Promise<void> {
@@ -143,10 +169,11 @@ for (const theme of ['light', 'dark'] as const) {
           await window.getByTestId('workspace-space-menu-archive-space').click()
           await window.getByTestId('workspace-space-action-archive').click()
           await expect(window.getByTestId('space-worktree-archive-submit')).toBeEnabled()
-          expect((await sampleWindowBackground(window, other)).equals(before)).toBe(true)
+          expect(await sampleWindowBackground(window, other)).toEqual(before)
           await window.getByTestId('space-worktree-archive-submit').click()
           const overlayId = 'workspace-space-operation-archive-space'
           await expect(window.getByTestId(overlayId)).toBeVisible()
+          await expect(window.getByTestId(overlayId)).toHaveCSS('opacity', '1')
           await expect(window.getByTestId('workspace-space-operation-other-space')).toHaveCount(0)
           await expectOverlayAboveNode(target, overlayId)
           await testInfo.attach(`archive-running-${theme}`, {
@@ -154,9 +181,9 @@ for (const theme of ['light', 'dark'] as const) {
             contentType: 'image/png',
           })
           expect(
-            (await sampleWindowBackground(window, other)).equals(before),
+            await sampleWindowBackground(window, other),
             'An unrelated window must not be tinted by its Space background',
-          ).toBe(true)
+          ).toEqual(before)
           await other.locator('textarea').click()
           await other.locator('textarea').fill('Still editable during archive')
           await expect(other.locator('textarea')).toHaveValue('Still editable during archive')
