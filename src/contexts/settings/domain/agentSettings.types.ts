@@ -13,6 +13,7 @@ import type { AgentExecutablePathOverrideByProvider } from './agentSettings.exec
 import type { AgentProvider, TaskTitleAgentProvider } from './agentSettings.providers'
 import type { BrowserSearchEngineId } from './browserSettings'
 import type {
+  ViewportTransition,
   CanvasInputMode,
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
@@ -53,6 +54,7 @@ export interface AgentSettings {
   quickCommands: QuickCommand[]
   quickPhrases: QuickPhrase[]
   agentEnvByProvider: AgentEnvByProvider
+  viewportTransition: ViewportTransition
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   focusNodeUseVisibleCanvasCenter: boolean

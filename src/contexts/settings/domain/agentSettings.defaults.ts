@@ -49,6 +49,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   quickCommands: [],
   quickPhrases: [],
   agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+  viewportTransition: 'fly',
   focusNodeOnClick: true,
   focusNodeTargetZoom: 1,
   focusNodeUseVisibleCanvasCenter: true,

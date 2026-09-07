@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { NodeFrame, Point, Size, TerminalNodeData } from '../../../types'
@@ -56,12 +56,14 @@ export function useWorkspaceCanvasNodesStore({
     setFallbackCreatedNodeId(normalizedNodeId)
   }, [])
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (onNodeCreated) {
       return
     }
 
-    if (!fallbackCreatedNodeId) {
+    // React Flow cannot accept viewport updates until its pan/zoom instance exists.
+    // Keep the creation intent pending so initialization can retry the focus.
+    if (!fallbackCreatedNodeId || !reactFlow.viewportInitialized) {
       return
     }
 

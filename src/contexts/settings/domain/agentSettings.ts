@@ -20,6 +20,7 @@ import {
 } from './updateSettings'
 import { normalizeKeybindingOverrides } from './keybindings'
 import {
+  isValidViewportTransition,
   isValidCanvasInputMode,
   isValidCanvasWheelBehavior,
   isValidCanvasWheelZoomModifier,
@@ -76,12 +77,14 @@ export type {
 } from './agentSettings.providers'
 export type { AgentSettings, TaskTitleProvider, TerminalProfileId } from './agentSettings.types'
 export {
+  VIEWPORT_TRANSITIONS,
   CANVAS_INPUT_MODES,
   CANVAS_WHEEL_BEHAVIORS,
   CANVAS_WHEEL_ZOOM_MODIFIERS,
   STANDARD_WINDOW_SIZE_BUCKETS,
 } from './canvasSettings'
 export type {
+  ViewportTransition,
   CanvasInputMode,
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
@@ -244,6 +247,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const quickCommands = normalizeQuickCommands(value.quickCommands)
   const quickPhrases = normalizeQuickPhrases(value.quickPhrases)
   const agentEnvByProvider = normalizeAgentEnvByProvider(value.agentEnvByProvider)
+  const viewportTransition = isValidViewportTransition(value.viewportTransition)
+    ? value.viewportTransition
+    : DEFAULT_AGENT_SETTINGS.viewportTransition
   const focusNodeOnClick =
     normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
@@ -397,6 +403,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     quickCommands,
     quickPhrases,
     agentEnvByProvider,
+    viewportTransition,
     focusNodeOnClick,
     focusNodeTargetZoom,
     focusNodeUseVisibleCanvasCenter,

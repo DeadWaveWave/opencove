@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  type ViewportTransition,
   type CanvasInputMode,
   type CanvasWheelBehavior,
   type CanvasWheelZoomModifier,
@@ -15,6 +16,7 @@ export function CanvasWindowsSection({
   canvasWheelBehavior,
   canvasWheelZoomModifier,
   standardWindowSizeBucket,
+  viewportTransition,
   focusNodeOnClick,
   focusNodeTargetZoom,
   focusNodeUseVisibleCanvasCenter,
@@ -28,6 +30,7 @@ export function CanvasWindowsSection({
   onChangeCanvasWheelZoomModifier,
   onChangeStandardWindowSizeBucket,
   onChangeDefaultTerminalProfileId,
+  onChangeViewportTransition,
   onChangeFocusNodeOnClick,
   onChangeFocusNodeTargetZoom,
   onChangeFocusNodeUseVisibleCanvasCenter,
@@ -39,6 +42,7 @@ export function CanvasWindowsSection({
   canvasWheelBehavior: CanvasWheelBehavior
   canvasWheelZoomModifier: CanvasWheelZoomModifier
   standardWindowSizeBucket: StandardWindowSizeBucket
+  viewportTransition: ViewportTransition
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   focusNodeUseVisibleCanvasCenter: boolean
@@ -52,6 +56,7 @@ export function CanvasWindowsSection({
   onChangeCanvasWheelZoomModifier: (modifier: CanvasWheelZoomModifier) => void
   onChangeStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket) => void
   onChangeDefaultTerminalProfileId: (profileId: string | null) => void
+  onChangeViewportTransition: (effect: ViewportTransition) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
   onChangeFocusNodeUseVisibleCanvasCenter: (enabled: boolean) => void
@@ -65,6 +70,8 @@ export function CanvasWindowsSection({
         canvasInputMode={canvasInputMode}
         canvasWheelBehavior={canvasWheelBehavior}
         canvasWheelZoomModifier={canvasWheelZoomModifier}
+        viewportTransition={viewportTransition}
+        onChangeViewportTransition={onChangeViewportTransition}
         focusNodeOnClick={focusNodeOnClick}
         focusNodeTargetZoom={focusNodeTargetZoom}
         focusNodeUseVisibleCanvasCenter={focusNodeUseVisibleCanvasCenter}
