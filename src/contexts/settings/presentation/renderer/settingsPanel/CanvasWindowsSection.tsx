@@ -6,9 +6,8 @@ import {
   type FocusNodeTargetZoom,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
-import type { TerminalProfile } from '@shared/contracts/dto'
 import { CanvasSection } from './CanvasSection'
-import { TerminalProfileSection } from './TerminalProfileSection'
+import { WindowSizeSection } from './TerminalProfileSection'
 
 export function CanvasWindowsSection({
   canvasInputMode,
@@ -20,14 +19,10 @@ export function CanvasWindowsSection({
   focusNodeUseVisibleCanvasCenter,
   archiveSpaceDeleteWorktreeByDefault,
   archiveSpaceDeleteBranchByDefault,
-  defaultTerminalProfileId,
-  terminalProfiles,
-  detectedDefaultTerminalProfileId,
   onChangeCanvasInputMode,
   onChangeCanvasWheelBehavior,
   onChangeCanvasWheelZoomModifier,
   onChangeStandardWindowSizeBucket,
-  onChangeDefaultTerminalProfileId,
   onChangeFocusNodeOnClick,
   onChangeFocusNodeTargetZoom,
   onChangeFocusNodeUseVisibleCanvasCenter,
@@ -44,14 +39,10 @@ export function CanvasWindowsSection({
   focusNodeUseVisibleCanvasCenter: boolean
   archiveSpaceDeleteWorktreeByDefault: boolean
   archiveSpaceDeleteBranchByDefault: boolean
-  defaultTerminalProfileId: string | null
-  terminalProfiles: TerminalProfile[]
-  detectedDefaultTerminalProfileId: string | null
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
   onChangeCanvasWheelBehavior: (behavior: CanvasWheelBehavior) => void
   onChangeCanvasWheelZoomModifier: (modifier: CanvasWheelZoomModifier) => void
   onChangeStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket) => void
-  onChangeDefaultTerminalProfileId: (profileId: string | null) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
   onChangeFocusNodeUseVisibleCanvasCenter: (enabled: boolean) => void
@@ -80,13 +71,9 @@ export function CanvasWindowsSection({
         onChangeArchiveSpaceDeleteBranchByDefault={onChangeArchiveSpaceDeleteBranchByDefault}
         onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
       />
-      <TerminalProfileSection
+      <WindowSizeSection
         standardWindowSizeBucket={standardWindowSizeBucket}
-        defaultTerminalProfileId={defaultTerminalProfileId}
-        terminalProfiles={terminalProfiles}
-        detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
         onChangeStandardWindowSizeBucket={onChangeStandardWindowSizeBucket}
-        onChangeDefaultTerminalProfileId={onChangeDefaultTerminalProfileId}
       />
     </>
   )

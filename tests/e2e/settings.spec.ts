@@ -66,14 +66,14 @@ test.describe('Settings', () => {
       const appearanceNav = window.locator('[data-testid="settings-section-nav-appearance"]')
       const agentNav = window.locator('[data-testid="settings-section-nav-agent"]')
       const canvasNav = window.locator('[data-testid="settings-section-nav-canvas"]')
-      const taskConfigurationNav = window.locator(
-        '[data-testid="settings-section-nav-task-configuration"]',
-      )
+      const shortcutsNav = window.getByTestId('settings-section-nav-shortcuts')
+      const terminalNav = window.getByTestId('settings-section-nav-terminal')
       await expect(generalNav).toBeVisible()
       await expect(appearanceNav).toBeVisible()
       await expect(agentNav).toBeVisible()
       await expect(canvasNav).toBeVisible()
-      await expect(taskConfigurationNav).toBeVisible()
+      await expect(shortcutsNav).toBeVisible()
+      await expect(terminalNav).toBeVisible()
 
       const languageSelect = window.locator('[data-testid="settings-language"]')
       const languageTrigger = window.locator('[data-testid="settings-language-trigger"]')
@@ -84,11 +84,13 @@ test.describe('Settings', () => {
 
       await appearanceNav.click()
 
-      const uiThemeSelect = window.locator('[data-testid="settings-ui-theme"]')
-      const uiThemeTrigger = window.locator('[data-testid="settings-ui-theme-trigger"]')
-      await expect(uiThemeTrigger).toBeVisible()
+      const uiThemeGallery = window.getByTestId('settings-ui-theme')
+      await expect(uiThemeGallery).toBeVisible()
       await selectCoveOption(window, 'settings-ui-theme', 'light')
-      await expect(uiThemeSelect).toHaveValue('light')
+      await expect(window.getByTestId('settings-ui-theme-light')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
       await expect
         .poll(() =>
           window.evaluate(() => {
@@ -101,6 +103,7 @@ test.describe('Settings', () => {
       await expect(uiFontSize).toBeVisible()
       await uiFontSize.fill('20')
 
+      await terminalNav.click()
       const terminalFontSize = window.locator('[data-testid="settings-terminal-font-size"]')
       await expect(terminalFontSize).toBeVisible()
       await terminalFontSize.fill('15')
@@ -223,7 +226,9 @@ test.describe('Settings', () => {
 
       await configurePanel.scrollIntoViewIfNeeded()
 
-      const providerTitle = configurePanel.locator('.settings-agent-configure-panel__header strong')
+      const providerTitle = window.locator(
+        '[data-testid="settings-agent-detail-codex"] h3[data-settings-agent-detail-heading]',
+      )
       await expect(providerTitle).toBeVisible()
 
       const providerTitleColor = await providerTitle.evaluate(element => {
@@ -254,7 +259,8 @@ test.describe('Settings', () => {
         contentType: 'image/png',
       })
 
-      await taskConfigurationNav.click()
+      await agentNav.click()
+      await window.getByTestId('settings-agent-tab-tasks').click()
 
       const addTaskTagInput = window.locator('[data-testid="settings-task-tag-add-input"]')
       await addTaskTagInput.fill('ops')

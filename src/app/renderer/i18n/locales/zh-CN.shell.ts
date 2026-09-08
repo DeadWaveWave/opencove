@@ -41,8 +41,8 @@ export const zhCNShell = {
     remotePathMustBeAbsolute: '远程路径必须是绝对路径。',
     openEndpointsAction: '添加远程机器…',
     remoteExperimentalTitle: '远程挂载点为实验性功能',
-    remoteExperimentalHint: '请先在「设置 → Worker 与连接」启用远程机器后再进行管理。',
-    openExperimentalAction: '打开 Worker 与连接',
+    remoteExperimentalHint: '请先在「设置 → 连接」启用远程机器后再进行管理。',
+    openExperimentalAction: '打开 连接',
   },
   spaceTargetMountPicker: {
     title: '选择目标位置',
@@ -63,7 +63,7 @@ export const zhCNShell = {
     localPathMustBeAbsolute: '本地路径必须是绝对路径。',
     remotePathMustBeAbsolute: '远程路径必须是绝对路径。',
     noRemoteWorkersTitle: '还没有远程机器',
-    noRemoteWorkersHint: '请先到「设置 → Worker 与连接」添加一台远程机器。',
+    noRemoteWorkersHint: '请先到「设置 → 连接」添加一台远程机器。',
     openEndpointsAction: '添加远程机器…',
   },
   remoteDirectoryPicker: {

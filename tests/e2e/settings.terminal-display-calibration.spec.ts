@@ -205,9 +205,13 @@ test.describe('Settings - Terminal Display Calibration', () => {
       await expect(settingsButton).toBeVisible()
       await settingsButton.click({ noWaitAfter: true })
 
-      const appearanceNav = window.locator('[data-testid="settings-section-nav-appearance"]')
-      await expect(appearanceNav).toBeVisible()
-      await appearanceNav.click()
+      const terminalNav = window.locator('[data-testid="settings-section-nav-terminal"]')
+      await expect(terminalNav).toBeVisible()
+      await terminalNav.click()
+      await window
+        .getByTestId('settings-terminal-calibration-disclosure')
+        .locator('summary')
+        .click()
 
       const setReferenceButton = window.locator(
         '[data-testid="settings-terminal-display-set-reference"]',
@@ -310,7 +314,11 @@ test.describe('Settings - Terminal Display Calibration', () => {
       }, nodeId)
 
       await window.locator('[data-testid="app-header-settings"]').click()
-      await window.locator('[data-testid="settings-section-nav-appearance"]').click()
+      await window.locator('[data-testid="settings-section-nav-terminal"]').click()
+      await window
+        .getByTestId('settings-terminal-calibration-disclosure')
+        .locator('summary')
+        .click()
       const compensation = window.locator('[data-testid="settings-terminal-display-compensation"]')
       await expect(compensation).toHaveJSProperty('checked', false)
       await compensation.click()

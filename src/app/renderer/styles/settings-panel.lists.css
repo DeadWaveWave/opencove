@@ -1,20 +1,27 @@
 /* --- Settings Lists & Cards --- */
 .settings-list-container {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
   width: 100%;
 }
 
 .settings-list-item {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border-radius: 10px;
-  transition: background 0.2s;
-  background: var(--cove-field);
-  border: 1px solid var(--cove-border-subtle);
+  gap: 12px;
+  padding: 11px 0;
+  border: 0;
+  border-bottom: 1px solid var(--cove-settings-row-divider);
+  background: transparent;
+  transition: background var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+.settings-list-item:last-child {
+  border-bottom: 0;
 }
 
 .settings-list-item:hover {
@@ -32,6 +39,8 @@
   gap: 5px;
   padding: 4px 5px 4px 10px;
   border-radius: 999px;
+  border: 1px solid var(--cove-border-subtle);
+  background: var(--cove-field);
 }
 
 .settings-task-tags .settings-list-item:hover {
@@ -83,12 +92,14 @@
 
 .settings-list-item__left {
   display: flex;
+  min-width: 0;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   font-size: calc(13px * var(--cove-ui-font-scale));
   color: var(--cove-text-muted);
   cursor: pointer;
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 .settings-list-item__left input[type='radio'] {

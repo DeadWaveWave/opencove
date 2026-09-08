@@ -88,9 +88,9 @@ test.describe('Settings Terminal Profiles (Windows)', () => {
       await expect(settingsButton).toBeVisible()
       await settingsButton.click({ noWaitAfter: true })
 
-      const canvasNav = window.locator('[data-testid="settings-section-nav-canvas"]')
-      await expect(canvasNav).toBeVisible()
-      await canvasNav.click()
+      const terminalNav = window.getByTestId('settings-section-nav-terminal')
+      await expect(terminalNav).toBeVisible()
+      await terminalNav.click()
 
       const terminalProfileSelect = window.locator('[data-testid="settings-terminal-profile"]')
       const terminalProfileTrigger = window.locator(

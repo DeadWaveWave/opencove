@@ -1,13 +1,15 @@
 /* --- Settings Buttons --- */
 .settings-panel button.primary {
-  min-height: 34px;
-  padding: 7px 14px;
+  min-height: 32px;
+  padding: 6px 11px;
   border: 1px solid color-mix(in srgb, var(--cove-accent) 68%, transparent);
   border-radius: var(--cove-radius-sm);
   background: var(--cove-settings-primary-background);
   color: var(--cove-settings-on-accent);
-  font-weight: 600;
-  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 500;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  max-width: 100%;
+  overflow-wrap: anywhere;
   cursor: pointer;
   transition:
     background var(--cove-motion-fast) var(--cove-ease-standard),
@@ -34,11 +36,13 @@
 .settings-panel button.secondary {
   min-height: 32px;
   padding: 6px 11px;
-  border: 1px solid var(--cove-border);
+  border: 1px solid var(--cove-border-subtle);
   border-radius: var(--cove-radius-sm);
   background: transparent;
   color: var(--cove-text);
   font-size: calc(12px * var(--cove-ui-font-scale));
+  max-width: 100%;
+  overflow-wrap: anywhere;
   cursor: pointer;
   transition:
     color var(--cove-motion-fast) var(--cove-ease-standard),
@@ -133,4 +137,109 @@
 .settings-panel label.cove-toggle input:disabled + .cove-toggle__slider {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* Shared field controls retain their native focus and disabled behavior. */
+.settings-panel input[type='range'] {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  height: 28px;
+  --cove-range-track-bg: color-mix(in srgb, var(--cove-border) 70%, transparent);
+}
+
+.settings-panel input[type='range']:focus {
+  box-shadow: none;
+}
+
+.settings-panel input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--cove-range-track-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-border-subtle) 60%, transparent);
+}
+
+.settings-panel__range--neutral-marker input[type='range']::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    var(--cove-range-track-bg) 0%,
+    var(--cove-range-track-bg) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100%),
+    var(--cove-text-faint) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100%),
+    var(--cove-text-faint) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100% + 2px),
+    var(--cove-range-track-bg) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100% + 2px),
+    var(--cove-range-track-bg) 100%
+  );
+}
+
+.settings-panel input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--cove-accent);
+  border: 1px solid color-mix(in srgb, var(--cove-accent) 70%, var(--cove-settings-on-accent));
+  box-shadow: var(--cove-settings-control-shadow);
+  margin-top: -6px;
+}
+
+.settings-panel input[type='range']:focus-visible {
+  outline: none;
+}
+
+.settings-panel input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    var(--cove-settings-control-shadow),
+    0 0 0 3px color-mix(in srgb, var(--cove-accent) 35%, transparent);
+}
+
+.settings-panel input[type='range']:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.settings-panel input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--cove-accent);
+}
+
+.settings-panel .cove-field {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.4;
+}
+
+.settings-panel .cove-select {
+  width: max-content;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.settings-panel :is(input[type='text'], input:not([type]), textarea) {
+  width: min(30ch, 100%);
+}
+
+.settings-panel input[type='number'] {
+  width: 7ch;
+  text-align: right;
+}
+
+.settings-panel input[type='range'] {
+  min-width: 0;
+  width: min(22ch, 100%);
+}
+
+.settings-panel__range input[type='range'] {
+  flex: 1 1 auto;
+  width: 0;
+}
+
+.settings-panel__control--stack > :is(.cove-field, .cove-select),
+.settings-panel__input-row input {
+  width: 100%;
 }

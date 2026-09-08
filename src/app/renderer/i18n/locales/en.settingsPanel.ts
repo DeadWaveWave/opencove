@@ -1,3 +1,5 @@
+import { enSettingsPanelAppearanceNext } from './en.settingsPanel.appearanceNext'
+import { enSettingsPanelAgentDetail } from './en.settingsPanel.agentDetail'
 import { enTerminalDisplayCalibration } from './en.terminalDisplayCalibration'
 import { enSettingsPanelEndpoints } from './en.settingsPanel.endpoints'
 import { enSettingsPanelAgentExecutable } from './en.settingsPanel.agentExecutable'
@@ -7,6 +9,8 @@ import { enSettingsPanelWorkspace } from './en.settingsPanel.workspace'
 import { enWorkspaceCanvasNavigationShortcutCommands } from './en.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const enSettingsPanel = {
+  agentDetail: enSettingsPanelAgentDetail,
+  appearanceNext: enSettingsPanelAppearanceNext,
   title: 'Settings',
   search: {
     label: 'Search settings',
@@ -14,6 +18,7 @@ export const enSettingsPanel = {
     noResults: 'No matching settings',
   },
   nav: enSettingsPanelLayout.nav,
+  navigation: enSettingsPanelLayout.navigation,
   navGroups: enSettingsPanelLayout.navGroups,
   pageDescriptions: enSettingsPanelLayout.pageDescriptions,
   groups: enSettingsPanelLayout.groups,
@@ -421,7 +426,7 @@ export const enSettingsPanel = {
     errors: {
       remoteRequired: 'Remote machine hostname, port, and access token are required.',
       remoteExperimentalDisabled:
-        'Remote machines are experimental. Enable remote machines in Worker & Connections to continue.',
+        'Remote machines are experimental. Enable remote machines in Connections to continue.',
       stopLocalWorkerFirst: 'Stop the Local Worker before switching to Standalone.',
       enableLocalRequiresRestart: 'Enable Local Worker mode and restart before starting it.',
     },
@@ -464,7 +469,7 @@ export const enSettingsPanel = {
     },
     local: {
       title: 'Local Worker',
-      help: 'Loopback-only (127.0.0.1) + token. Use SSH tunnels for remote access. Worker Web UI is in Worker & Connections.',
+      help: 'Loopback-only (127.0.0.1) + token. Use SSH tunnels for remote access. Worker Web UI is in Connections.',
       statusLabel: 'Worker Status',
       status: {
         running: 'Running',

@@ -45,6 +45,8 @@
 @import './styles/settings-panel.search.css';
 @import './styles/settings-panel.preview.css';
 @import './styles/settings-panel.lists.css';
+@import './styles/settings-panel.agent-detail.css';
+@import './styles/settings-panel.appearance-next.css';
 @import './styles/settings-panel.buttons.css';
 @import './styles/settings-panel.diagnostics.css';
 @import './styles/settings-panel.groups.css';

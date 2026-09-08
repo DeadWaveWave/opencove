@@ -1,0 +1,112 @@
+import { useTranslation } from '@app/renderer/i18n'
+import {
+  MAX_TERMINAL_FONT_SIZE,
+  MIN_TERMINAL_FONT_SIZE,
+  type TerminalDisplayReference,
+} from '@contexts/settings/domain/agentSettings'
+import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
+import { TerminalFontFamilyRow } from './TerminalFontFamilyRow'
+import { TerminalDisplayCalibrationRow } from './TerminalDisplayCalibrationRow'
+
+export interface TerminalAppearanceSectionProps {
+  terminalFontSize: number
+  terminalFontFamily: string | null
+  terminalDisplayAutoReferenceEnabled: boolean
+  terminalDisplayCalibrationCompensationEnabled: boolean
+  terminalDisplayReference: TerminalDisplayReference | null
+  onChangeTerminalFontSize: (size: number) => void
+  onChangeTerminalFontFamily: (family: string | null) => void
+  onChangeTerminalDisplayAutoReferenceEnabled: (enabled: boolean) => void
+  onChangeTerminalDisplayCalibrationCompensationEnabled: (enabled: boolean) => void
+  onChangeTerminalDisplayReference: (reference: TerminalDisplayReference | null) => void
+}
+
+export function TerminalAppearanceSection(props: TerminalAppearanceSectionProps) {
+  const { t } = useTranslation()
+  return (
+    <>
+      <SettingsGroup
+        id="settings-section-terminal-appearance"
+        title={t('settingsPanel.appearanceNext.terminalTypography')}
+        description={t('settingsPanel.appearanceNext.terminalTypographyHelp')}
+      >
+        <SettingsGroupBody>
+          <div
+            className="settings-terminal-sample"
+            role="img"
+            aria-label={t('settingsPanel.appearanceNext.terminalPreview')}
+            style={{
+              fontFamily: props.terminalFontFamily ?? 'var(--cove-font-mono)',
+              fontSize: props.terminalFontSize,
+            }}
+          >
+            <div>
+              <span className="settings-terminal-sample__prompt">❯</span> pnpm dev
+            </div>
+            <div>
+              <span className="settings-terminal-sample__success">VITE</span> ready in 184 ms
+            </div>
+            <div>Local: http://localhost:3000/</div>
+          </div>
+          <TerminalFontFamilyRow
+            terminalFontFamily={props.terminalFontFamily}
+            onChangeTerminalFontFamily={props.onChangeTerminalFontFamily}
+          />
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.general.terminalFontSize')}</strong>
+              <span>{t('settingsPanel.appearance.terminalFontSizeHelp')}</span>
+            </div>
+            <div className="settings-panel__control settings-type-size-control">
+              <input
+                id="settings-terminal-font-size"
+                data-testid="settings-terminal-font-size"
+                className="cove-field"
+                type="number"
+                aria-label={t('settingsPanel.general.terminalFontSize')}
+                min={MIN_TERMINAL_FONT_SIZE}
+                max={MAX_TERMINAL_FONT_SIZE}
+                value={props.terminalFontSize}
+                onChange={event => props.onChangeTerminalFontSize(Number(event.target.value))}
+              />
+              <span>{t('common.pixelUnit')}</span>
+            </div>
+          </div>
+        </SettingsGroupBody>
+      </SettingsGroup>
+    </>
+  )
+}
+
+export function TerminalCalibrationSection(props: TerminalAppearanceSectionProps) {
+  const { t } = useTranslation()
+  return (
+    <details
+      className="settings-terminal-calibration"
+      data-testid="settings-terminal-calibration-disclosure"
+    >
+      <summary>
+        <span>{t('settingsPanel.appearanceNext.calibration')}</span>
+        <small>{t('settingsPanel.appearanceNext.calibrationHelp')}</small>
+      </summary>
+      <div className="settings-terminal-calibration__content">
+        <TerminalDisplayCalibrationRow
+          terminalFontSize={props.terminalFontSize}
+          terminalFontFamily={props.terminalFontFamily}
+          terminalDisplayAutoReferenceEnabled={props.terminalDisplayAutoReferenceEnabled}
+          terminalDisplayCalibrationCompensationEnabled={
+            props.terminalDisplayCalibrationCompensationEnabled
+          }
+          terminalDisplayReference={props.terminalDisplayReference}
+          onChangeTerminalDisplayAutoReferenceEnabled={
+            props.onChangeTerminalDisplayAutoReferenceEnabled
+          }
+          onChangeTerminalDisplayCalibrationCompensationEnabled={
+            props.onChangeTerminalDisplayCalibrationCompensationEnabled
+          }
+          onChangeTerminalDisplayReference={props.onChangeTerminalDisplayReference}
+        />
+      </div>
+    </details>
+  )
+}

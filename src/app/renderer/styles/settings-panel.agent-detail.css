@@ -1,0 +1,295 @@
+.settings-agent-page {
+  min-width: 0;
+}
+
+.settings-agent-page .settings-agent-list-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.settings-agent-page .settings-agent-list-row {
+  display: grid;
+  grid-template-columns: 28px 18px minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px 0;
+  min-height: 72px;
+  border: 0;
+  border-bottom: 1px solid var(--cove-border-subtle);
+  border-radius: 0;
+  background: transparent;
+}
+
+.settings-agent-page .settings-agent-list-row > .settings-agent-order__actions {
+  flex-direction: column;
+  gap: 0;
+}
+
+.settings-agent-page .settings-agent-order__action.secondary {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 4px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.settings-agent-page button.settings-agent-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--cove-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-agent-page button.settings-agent-identity:hover {
+  background: var(--cove-surface-hover);
+}
+
+.settings-agent-identity__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.settings-agent-identity__name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-agent-page .settings-agent-list-row__name {
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-weight: 500;
+}
+
+.settings-agent-page .settings-agent-list-row__summary {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+}
+
+.settings-agent-identity__chevron {
+  flex-shrink: 0;
+  color: var(--cove-text-faint);
+}
+
+.settings-agent-page .agent-provider-icon.settings-agent-list-row__icon,
+.settings-agent-page .agent-provider-icon.settings-agent-detail__icon {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--cove-text-muted);
+  pointer-events: none;
+}
+
+.settings-agent-page .settings-agent-list-row__icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+
+.settings-agent-page .settings-agent-list-row__icon :is(svg, img) {
+  width: 20px;
+  height: 20px;
+}
+
+.settings-agent-page .settings-agent-detail__icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+}
+
+.settings-agent-page .settings-agent-detail__icon :is(svg, img) {
+  width: 28px;
+  height: 28px;
+}
+
+.settings-agent-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.settings-agent-page button.settings-agent-detail__back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 7px;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: var(--cove-text-muted);
+  cursor: pointer;
+}
+
+.settings-agent-page button.settings-agent-detail__back:hover {
+  color: var(--cove-text);
+}
+
+.settings-agent-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding-bottom: 4px;
+}
+
+.settings-agent-detail__header h3 {
+  margin: 0 0 6px;
+  font-size: calc(22px * var(--cove-ui-font-scale));
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.settings-agent-detail__help {
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.6;
+}
+
+.settings-agent-detail__runtime {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+
+.settings-agent-detail__runtime-heading,
+.settings-agent-detail__runtime-actions,
+.settings-agent-page .settings-agent-refresh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-agent-detail__runtime-heading {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.settings-agent-detail__runtime h4,
+.settings-agent-detail .settings-agent-configure-panel__section-title {
+  margin: 0;
+  color: var(--cove-text);
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 500;
+  text-transform: none;
+}
+
+.settings-agent-detail__path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  color: var(--cove-text-muted);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+}
+
+.settings-agent-detail__path code {
+  overflow-wrap: anywhere;
+  color: var(--cove-text);
+}
+
+.settings-agent-detail .settings-agent-configure-panel {
+  gap: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.settings-agent-detail .settings-agent-configure-panel__section {
+  gap: 12px;
+}
+
+.settings-agent-detail details.settings-agent-configure-panel__section {
+  display: block;
+}
+
+.settings-agent-detail .settings-agent-detail__default {
+  padding: 0 0 20px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+
+.settings-agent-detail .settings-agent-configure-panel__section + :is(section, details) {
+  padding-top: 24px;
+  border-top: 1px solid var(--cove-border-subtle);
+}
+
+.settings-agent-detail details > summary {
+  padding: 10px 0;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  cursor: pointer;
+}
+
+.settings-agent-detail details > summary h4 {
+  display: inline;
+}
+
+.settings-agent-detail details > summary::marker {
+  color: var(--cove-text-faint);
+}
+
+.settings-agent-detail__disclosure-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.settings-agent-detail .settings-agent-configure-panel__row {
+  padding: 12px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.settings-agent-detail .settings-list-container {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.settings-agent-detail .settings-agent-configure-panel__add-env {
+  align-self: flex-start;
+}
+
+.settings-agent-page
+  :is(button.settings-agent-identity, button.settings-agent-detail__back):focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .settings-agent-page .settings-agent-list-row {
+    grid-template-columns: 24px 18px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .settings-agent-page .settings-agent-list-row__actions {
+    grid-column: 3;
+    justify-self: start;
+  }
+
+  .settings-agent-page .settings-agent-env-row {
+    flex-wrap: wrap;
+  }
+
+  .settings-agent-page .settings-agent-env-row__fields {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+}

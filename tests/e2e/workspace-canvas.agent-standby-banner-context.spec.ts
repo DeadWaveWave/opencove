@@ -140,7 +140,7 @@ test.describe('Workspace Canvas - Agent Standby Banner Context', () => {
 
         await window.locator('[data-testid="app-header-settings"]').click()
         await expect(window.locator('.settings-panel')).toBeVisible()
-        await window.locator('[data-testid="settings-section-nav-notifications"]').click()
+        await window.locator('[data-testid="settings-section-nav-general"]').click()
         await expect(window.locator('#settings-section-notifications')).toBeVisible()
 
         const prToggle = window.locator(

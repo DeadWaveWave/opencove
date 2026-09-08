@@ -1,32 +1,24 @@
-import {
-  isWorkspacePageId,
-  type SettingsPageId,
-} from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
+import { isWorkspacePageId, type SettingsPageId } from '../SettingsPanel.shared'
 
 export type StaticSettingsPageId = Exclude<SettingsPageId, `workspace:${string}`>
-
 export type CanonicalSettingsPageId =
   | 'general'
   | 'appearance'
-  | 'notifications'
   | 'canvas-windows'
   | 'agent'
+  | 'terminal'
   | 'tasks-shortcuts'
   | 'worker'
-  | 'integrations'
   | 'advanced'
-
-export type SettingsNavGroupId = 'application' | 'workspace' | 'connections' | 'advanced'
 
 export type SettingsPageIconId =
   | 'settings'
   | 'palette'
-  | 'bell'
   | 'layout-dashboard'
-  | 'bot'
-  | 'list-checks'
+  | 'sparkles'
+  | 'terminal'
+  | 'keyboard'
   | 'server'
-  | 'plug'
   | 'wrench'
   | 'folder'
 
@@ -37,9 +29,8 @@ export interface SettingsPageRegistryEntry {
 
 export interface CanonicalSettingsPageDefinition {
   canonicalPageId: CanonicalSettingsPageId
-  groupId: SettingsNavGroupId
   navLabelKey: string
-  descriptionKey?: string
+  descriptionKey: string
   iconId: SettingsPageIconId
   testId: string
 }
@@ -49,7 +40,6 @@ export const CANONICAL_SETTINGS_PAGE_DEFINITIONS: Readonly<
 > = {
   general: {
     canonicalPageId: 'general',
-    groupId: 'application',
     navLabelKey: 'settingsPanel.nav.general',
     descriptionKey: 'settingsPanel.pageDescriptions.general',
     iconId: 'settings',
@@ -57,23 +47,13 @@ export const CANONICAL_SETTINGS_PAGE_DEFINITIONS: Readonly<
   },
   appearance: {
     canonicalPageId: 'appearance',
-    groupId: 'application',
     navLabelKey: 'settingsPanel.nav.appearance',
     descriptionKey: 'settingsPanel.pageDescriptions.appearance',
     iconId: 'palette',
     testId: 'settings-section-nav-appearance',
   },
-  notifications: {
-    canonicalPageId: 'notifications',
-    groupId: 'application',
-    navLabelKey: 'settingsPanel.nav.notifications',
-    descriptionKey: 'settingsPanel.pageDescriptions.notifications',
-    iconId: 'bell',
-    testId: 'settings-section-nav-notifications',
-  },
   'canvas-windows': {
     canonicalPageId: 'canvas-windows',
-    groupId: 'workspace',
     navLabelKey: 'settingsPanel.nav.canvasWindows',
     descriptionKey: 'settingsPanel.pageDescriptions.canvasWindows',
     iconId: 'layout-dashboard',
@@ -81,39 +61,34 @@ export const CANONICAL_SETTINGS_PAGE_DEFINITIONS: Readonly<
   },
   agent: {
     canonicalPageId: 'agent',
-    groupId: 'workspace',
     navLabelKey: 'settingsPanel.nav.agent',
     descriptionKey: 'settingsPanel.pageDescriptions.agent',
-    iconId: 'bot',
+    iconId: 'sparkles',
     testId: 'settings-section-nav-agent',
+  },
+  terminal: {
+    canonicalPageId: 'terminal',
+    navLabelKey: 'settingsPanel.nav.terminal',
+    descriptionKey: 'settingsPanel.pageDescriptions.terminal',
+    iconId: 'terminal',
+    testId: 'settings-section-nav-terminal',
   },
   'tasks-shortcuts': {
     canonicalPageId: 'tasks-shortcuts',
-    groupId: 'workspace',
     navLabelKey: 'settingsPanel.nav.tasksShortcuts',
     descriptionKey: 'settingsPanel.pageDescriptions.tasksShortcuts',
-    iconId: 'list-checks',
-    testId: 'settings-section-nav-task-configuration',
+    iconId: 'keyboard',
+    testId: 'settings-section-nav-shortcuts',
   },
   worker: {
     canonicalPageId: 'worker',
-    groupId: 'connections',
     navLabelKey: 'settingsPanel.nav.workerConnections',
     descriptionKey: 'settingsPanel.pageDescriptions.worker',
     iconId: 'server',
     testId: 'settings-section-nav-worker',
   },
-  integrations: {
-    canonicalPageId: 'integrations',
-    groupId: 'connections',
-    navLabelKey: 'settingsPanel.nav.integrations',
-    descriptionKey: 'settingsPanel.pageDescriptions.integrations',
-    iconId: 'plug',
-    testId: 'settings-section-nav-integrations',
-  },
   advanced: {
     canonicalPageId: 'advanced',
-    groupId: 'advanced',
     navLabelKey: 'settingsPanel.nav.advanced',
     descriptionKey: 'settingsPanel.pageDescriptions.advanced',
     iconId: 'wrench',
@@ -121,24 +96,26 @@ export const CANONICAL_SETTINGS_PAGE_DEFINITIONS: Readonly<
   },
 }
 
+/** Keep old entry points valid when their canonical editor moves. */
 export const SETTINGS_PAGE_REGISTRY: Readonly<
   Record<StaticSettingsPageId, SettingsPageRegistryEntry>
 > = {
   general: { canonicalPageId: 'general' },
   appearance: { canonicalPageId: 'appearance' },
+  terminal: { canonicalPageId: 'terminal' },
   'canvas-windows': { canonicalPageId: 'canvas-windows' },
   worker: { canonicalPageId: 'worker' },
-  endpoints: {
-    canonicalPageId: 'worker',
-    scrollTargetId: 'settings-section-endpoints',
-  },
+  endpoints: { canonicalPageId: 'worker', scrollTargetId: 'settings-section-endpoints' },
   agent: { canonicalPageId: 'agent' },
   'tasks-shortcuts': { canonicalPageId: 'tasks-shortcuts' },
   'quick-menu': {
     canonicalPageId: 'tasks-shortcuts',
     scrollTargetId: 'settings-section-quick-commands',
   },
-  notifications: { canonicalPageId: 'notifications' },
+  notifications: {
+    canonicalPageId: 'general',
+    scrollTargetId: 'settings-section-notifications',
+  },
   canvas: { canonicalPageId: 'canvas-windows' },
   advanced: { canonicalPageId: 'advanced' },
   experimental: { canonicalPageId: 'advanced' },
@@ -147,45 +124,27 @@ export const SETTINGS_PAGE_REGISTRY: Readonly<
     scrollTargetId: 'settings-section-shortcuts',
   },
   'task-configuration': {
-    canonicalPageId: 'tasks-shortcuts',
+    canonicalPageId: 'agent',
     scrollTargetId: 'settings-section-task-configuration',
   },
-  integrations: { canonicalPageId: 'integrations' },
-  diagnostics: {
-    canonicalPageId: 'advanced',
-    scrollTargetId: 'settings-section-diagnostics',
-  },
+  integrations: { canonicalPageId: 'worker', scrollTargetId: 'settings-section-integrations' },
+  diagnostics: { canonicalPageId: 'advanced', scrollTargetId: 'settings-section-diagnostics' },
 }
 
-export interface SettingsPrimaryNavGroup {
-  id: SettingsNavGroupId
-  pageIds: readonly CanonicalSettingsPageId[]
-}
-
-export const SETTINGS_PRIMARY_NAV_GROUPS: readonly SettingsPrimaryNavGroup[] = [
-  {
-    id: 'application',
-    pageIds: ['general', 'appearance', 'notifications'],
-  },
-  {
-    id: 'workspace',
-    pageIds: ['canvas-windows', 'agent', 'tasks-shortcuts'],
-  },
-  {
-    id: 'connections',
-    pageIds: ['worker', 'integrations'],
-  },
-  {
-    id: 'advanced',
-    pageIds: ['advanced'],
-  },
+export const SETTINGS_PRIMARY_PAGE_IDS: readonly CanonicalSettingsPageId[] = [
+  'general',
+  'appearance',
+  'canvas-windows',
+  'agent',
+  'terminal',
+  'tasks-shortcuts',
+  'worker',
 ]
 
 export interface ResolvedSettingsPage {
   requestedPageId: SettingsPageId
   canonicalPageId: SettingsPageId
-  groupId?: SettingsNavGroupId
-  navLabelKey?: string
+  navLabelKey: string
   descriptionKey?: string
   iconId: SettingsPageIconId
   testId?: string
@@ -202,12 +161,10 @@ export function resolveSettingsPage(pageId: SettingsPageId): ResolvedSettingsPag
     }
   }
 
-  const registryEntry = SETTINGS_PAGE_REGISTRY[pageId]
-  const canonicalDefinition = CANONICAL_SETTINGS_PAGE_DEFINITIONS[registryEntry.canonicalPageId]
-
+  const entry = SETTINGS_PAGE_REGISTRY[pageId]
   return {
     requestedPageId: pageId,
-    ...canonicalDefinition,
-    scrollTargetId: registryEntry.scrollTargetId,
+    ...CANONICAL_SETTINGS_PAGE_DEFINITIONS[entry.canonicalPageId],
+    scrollTargetId: entry.scrollTargetId,
   }
 }

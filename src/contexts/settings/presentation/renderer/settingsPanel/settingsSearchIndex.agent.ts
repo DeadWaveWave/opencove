@@ -1,14 +1,27 @@
-import type { StaticSettingsPageId } from './settingsPageRegistry'
+import { SELECTABLE_AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings'
+import type { CoreSettingsSearchEntryDefinition } from './settingsSearchTypes'
 
-export interface AgentSettingsSearchEntryDefinition {
-  id: string
-  pageId: StaticSettingsPageId
-  titleKey: string
-  descriptionKey?: string
-  anchorId: string
-  keywordKeys?: string[]
-  keywords?: string[]
-}
+export type AgentSettingsSearchEntryDefinition = CoreSettingsSearchEntryDefinition
+const DETAILS = [
+  {
+    kind: 'models',
+    titleKey: 'settingsPanel.models.title',
+    anchor: 'models',
+    keywords: ['model', 'override', '模型'],
+  },
+  {
+    kind: 'env',
+    titleKey: 'settingsPanel.agentEnv.title',
+    anchor: 'env',
+    keywords: ['environment', 'env', 'variable', '环境变量'],
+  },
+  {
+    kind: 'executable',
+    titleKey: 'settingsPanel.agentDetail.runtime',
+    anchor: 'runtime',
+    keywords: ['install', 'binary', 'executable', 'npm', '安装', '可执行文件'],
+  },
+] as const
 
 export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDefinition[] = [
   {
@@ -35,32 +48,22 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
     anchorId: 'settings-agent-full-access',
     keywords: ['sandbox', 'approval', 'permission', '权限', '沙箱'],
   },
-  {
-    id: 'agent.models',
-    pageId: 'agent',
-    titleKey: 'settingsPanel.models.title',
-    descriptionKey: 'settingsPanel.agent.agentProviderOrderHelp',
-    anchorId: 'settings-agent-list',
-    keywordKeys: [
-      'settingsPanel.models.useCustomModel',
-      'settingsPanel.models.addModelPlaceholder',
-    ],
-    keywords: ['model', 'override', '模型'],
-  },
-  {
-    id: 'agent.env',
-    pageId: 'agent',
-    titleKey: 'settingsPanel.agentEnv.title',
-    descriptionKey: 'settingsPanel.agentEnv.help',
-    anchorId: 'settings-agent-list',
-    keywords: ['environment', 'env', 'variable', '环境变量'],
-  },
-  {
-    id: 'agent.executable',
-    pageId: 'agent',
-    titleKey: 'settingsPanel.agent.agentListLabel',
-    descriptionKey: 'settingsPanel.agentExecutable.help',
-    anchorId: 'settings-agent-list',
-    keywords: ['install', 'binary', 'executable', 'npm', '安装', '可执行文件'],
-  },
+  ...DETAILS.map(detail => ({
+    id: `agent.${detail.kind}`,
+    pageId: 'agent' as const,
+    titleKey: detail.titleKey,
+    anchorId: `settings-agent-${detail.anchor}-{provider}`,
+    provider: 'default' as const,
+    keywords: [...detail.keywords],
+  })),
+  ...SELECTABLE_AGENT_PROVIDERS.flatMap(provider =>
+    DETAILS.map(detail => ({
+      id: `agent.${provider}.${detail.kind}`,
+      pageId: 'agent' as const,
+      titleKey: detail.titleKey,
+      anchorId: `settings-agent-${detail.anchor}-${provider}`,
+      provider,
+      keywords: [provider, ...detail.keywords],
+    })),
+  ),
 ]

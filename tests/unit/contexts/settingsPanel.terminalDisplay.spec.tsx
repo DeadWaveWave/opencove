@@ -104,8 +104,14 @@ function renderSettingsPanel({
   )
 }
 
-function openAppearanceSettings(): void {
-  fireEvent.click(screen.getByTestId('settings-section-nav-appearance'))
+function openTerminalDisplaySettings(): void {
+  fireEvent.click(screen.getByTestId('settings-section-nav-terminal'))
+  const disclosure = screen.getByTestId('settings-terminal-calibration-disclosure')
+  const summary = disclosure.querySelector('summary')
+  expect(summary).not.toBeNull()
+  expect(disclosure).not.toHaveAttribute('open')
+  fireEvent.click(summary!)
+  expect(disclosure).toHaveAttribute('open')
 }
 
 function createReference() {
@@ -153,7 +159,7 @@ describe('disabled terminal calibration summary', () => {
         },
         onChange,
       })
-      openAppearanceSettings()
+      openTerminalDisplaySettings()
       expect(screen.getByText(new RegExp(summary))).toBeVisible()
       expect(screen.getByTestId('settings-terminal-display-compensation')).not.toBeChecked()
       expect(onChange).not.toHaveBeenCalled()
@@ -176,7 +182,7 @@ describe('SettingsPanel terminal display controls', () => {
   it('persists the automatic reference setup toggle', () => {
     const onChange = vi.fn()
     renderSettingsPanel({ onChange })
-    openAppearanceSettings()
+    openTerminalDisplaySettings()
 
     fireEvent.click(screen.getByTestId('settings-terminal-display-auto-reference'))
 
@@ -189,7 +195,7 @@ describe('SettingsPanel terminal display controls', () => {
   it('persists the automatic calibration compensation toggle', () => {
     const onChange = vi.fn()
     renderSettingsPanel({ onChange })
-    openAppearanceSettings()
+    openTerminalDisplaySettings()
 
     fireEvent.click(screen.getByTestId('settings-terminal-display-compensation'))
 
@@ -224,7 +230,7 @@ describe('SettingsPanel terminal display controls', () => {
     renderSettingsPanel({
       settings: { ...DEFAULT_AGENT_SETTINGS, terminalDisplayReference: reference },
     })
-    openAppearanceSettings()
+    openTerminalDisplaySettings()
 
     expect(screen.getByText(/cannot safely match the current target/i)).toBeVisible()
     expect(screen.queryByText(/score/i)).not.toBeInTheDocument()
@@ -262,7 +268,7 @@ describe('SettingsPanel terminal display controls', () => {
     renderSettingsPanel({
       settings: { ...DEFAULT_AGENT_SETTINGS, terminalDisplayReference: reference },
     })
-    openAppearanceSettings()
+    openTerminalDisplaySettings()
 
     expect(screen.getByText(/cannot safely match the current target/i)).toBeVisible()
     const reset = screen.getByTestId('settings-terminal-display-reset')
@@ -287,7 +293,7 @@ describe('SettingsPanel terminal display controls', () => {
     renderSettingsPanel({
       settings: { ...DEFAULT_AGENT_SETTINGS, terminalDisplayReference: legacyReference },
     })
-    openAppearanceSettings()
+    openTerminalDisplaySettings()
 
     fireEvent.click(screen.getByTestId('settings-terminal-display-copy-diagnostics'))
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))
@@ -354,7 +360,7 @@ describe('SettingsPanel terminal display controls', () => {
           terminalDisplayReference: reference,
         },
       })
-      openAppearanceSettings()
+      openTerminalDisplaySettings()
 
       expect(screen.getByText(summary)).toBeVisible()
       expect(screen.getByTestId('settings-terminal-display-compensation')).toHaveProperty(
@@ -393,7 +399,7 @@ describe('SettingsPanel terminal display controls', () => {
         terminalDisplayReference: reference,
       },
     })
-    openAppearanceSettings()
+    openTerminalDisplaySettings()
 
     expect(screen.getByText(/cannot safely match the current target/i)).toBeVisible()
   })

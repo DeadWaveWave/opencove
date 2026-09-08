@@ -119,6 +119,14 @@ export async function selectCoveOption(
   testId: string,
   optionValue: string,
 ): Promise<void> {
+  if (testId === 'settings-ui-theme') {
+    const choice = window.getByTestId(`settings-ui-theme-${optionValue}`)
+    await expect(choice).toBeVisible()
+    await choice.click()
+    await expect(choice).toHaveAttribute('aria-pressed', 'true')
+    await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', optionValue)
+    return
+  }
   const trigger = window.locator(`[data-testid="${testId}-trigger"]`)
   await expect(trigger).toBeVisible()
   await trigger.click()

@@ -82,8 +82,7 @@ describe('independent Pixel effect controls in Appearance', () => {
     })
     fireEvent.click(screen.getByRole('checkbox', { name: 'Canvas Pixel Background' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Node Closing Pixels' }))
-    fireEvent.click(screen.getByTestId('settings-ui-theme-trigger'))
-    fireEvent.click(screen.getByRole('option', { name: 'Light' }))
+    fireEvent.click(screen.getByTestId('settings-ui-theme-light'))
     expect(screen.getByRole('checkbox', { name: 'Node Creation Pixels' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Node Closing Pixels' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Canvas Pixel Background' })).not.toBeChecked()
@@ -95,8 +94,7 @@ describe('independent Pixel effect controls in Appearance', () => {
         nodeClosePixelEffectEnabled: false,
       }),
     )
-    fireEvent.click(screen.getByTestId('settings-ui-theme-trigger'))
-    fireEvent.click(screen.getByRole('option', { name: 'Pixel Light' }))
+    fireEvent.click(screen.getByTestId('settings-ui-theme-pixel-light'))
     expect(screen.getByRole('checkbox', { name: 'Node Creation Pixels' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Node Closing Pixels' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Canvas Pixel Background' })).not.toBeChecked()

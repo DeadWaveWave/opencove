@@ -42,9 +42,8 @@ export const enShell = {
     remotePathMustBeAbsolute: 'Remote path must be absolute.',
     openEndpointsAction: 'Add remote machine…',
     remoteExperimentalTitle: 'Remote mounts are experimental',
-    remoteExperimentalHint:
-      'Enable Remote machines in Settings → Worker & Connections to manage them.',
-    openExperimentalAction: 'Open Worker & Connections',
+    remoteExperimentalHint: 'Enable Remote machines in Settings → Connections to manage them.',
+    openExperimentalAction: 'Open Connections',
   },
   spaceTargetMountPicker: {
     title: 'Select target location',
@@ -65,7 +64,7 @@ export const enShell = {
     localPathMustBeAbsolute: 'Local path must be absolute.',
     remotePathMustBeAbsolute: 'Remote path must be absolute.',
     noRemoteWorkersTitle: 'No remote machines',
-    noRemoteWorkersHint: 'Add a remote machine in Settings → Worker & Connections.',
+    noRemoteWorkersHint: 'Add a remote machine in Settings → Connections.',
     openEndpointsAction: 'Add remote machine…',
   },
   remoteDirectoryPicker: {

@@ -68,7 +68,7 @@ describe('settingsSearchIndex', () => {
     expect(results[0]).toMatchObject({
       id: 'general.theme',
       pageId: 'appearance',
-      pageLabel: '显示与字体',
+      pageLabel: '外观',
       anchorId: 'settings-ui-theme',
     })
   })
@@ -115,5 +115,42 @@ describe('settingsSearchIndex', () => {
       pageLabel: 'Advanced',
       anchorId: 'settings-section-diagnostics',
     })
+  })
+
+  it('routes every terminal control to its single editor', () => {
+    const entries = createSettingsSearchEntries({
+      t: createTranslator(en),
+      workspaces: [],
+      endpointsEnabled: false,
+    })
+    for (const id of [
+      'general.terminal-font-size',
+      'general.terminal-font-family',
+      'general.terminal-display-calibration',
+      'canvas.terminal-profile',
+    ]) {
+      expect(entries.find(entry => entry.id === id)?.pageId).toBe('terminal')
+    }
+  })
+
+  it('provides exact provider destinations while hiding unavailable feature gates', () => {
+    const entries = createSettingsSearchEntries({
+      t: createTranslator(en),
+      workspaces: [],
+      endpointsEnabled: false,
+    })
+    expect(entries.find(entry => entry.id === 'agent.codex.models')).toMatchObject({
+      pageId: 'agent',
+      provider: 'codex',
+      anchorId: 'settings-agent-models-codex',
+    })
+    expect(
+      searchSettingsEntries(entries, 'codex model').some(
+        entry => entry.id === 'agent.codex.models',
+      ),
+    ).toBe(true)
+    expect(entries.some(entry => entry.provider === 'gemini')).toBe(false)
+    expect(entries.some(entry => entry.id === 'tasks.title-generation')).toBe(false)
+    expect(entries.find(entry => entry.id === 'tasks.tags')?.pageId).toBe('task-configuration')
   })
 })

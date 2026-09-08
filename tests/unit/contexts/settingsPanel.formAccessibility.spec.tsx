@@ -7,6 +7,7 @@ import * as systemFontsHook from '../../../src/app/renderer/shell/hooks/useSyste
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import { createAppError } from '../../../src/shared/errors/appError'
 import { AgentProviderConfigurePanel } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/AgentProviderConfigurePanel'
+import { TerminalAppearanceSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/TerminalAppearanceSection'
 import { AppearanceSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/AppearanceSection'
 import { CanvasSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/CanvasSection'
 import { ExperimentalSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/ExperimentalSection'
@@ -128,27 +129,33 @@ describe('Settings form accessible names', () => {
 
   it('names appearance inputs, theme selection, and terminal font controls', () => {
     render(
-      <AppearanceSection
-        uiTheme="system"
-        pixelEffects={DEFAULT_AGENT_SETTINGS}
-        onChangePixelEffect={noop}
-        uiFontSize={16}
-        terminalFontSize={14}
-        terminalFontFamily={null}
-        terminalDisplayAutoReferenceEnabled
-        terminalDisplayCalibrationCompensationEnabled
-        terminalDisplayReference={null}
-        onChangeUiTheme={noop}
-        onChangeUiFontSize={noop}
-        onChangeTerminalFontSize={noop}
-        onChangeTerminalFontFamily={noop}
-        onChangeTerminalDisplayAutoReferenceEnabled={noop}
-        onChangeTerminalDisplayCalibrationCompensationEnabled={noop}
-        onChangeTerminalDisplayReference={noop}
-      />,
+      <>
+        <AppearanceSection
+          uiTheme="system"
+          pixelEffects={DEFAULT_AGENT_SETTINGS}
+          onChangePixelEffect={noop}
+          uiFontSize={16}
+          onChangeUiTheme={noop}
+          onChangeUiFontSize={noop}
+        />
+        <TerminalAppearanceSection
+          terminalFontSize={14}
+          terminalFontFamily={null}
+          terminalDisplayAutoReferenceEnabled
+          terminalDisplayCalibrationCompensationEnabled
+          terminalDisplayReference={null}
+          onChangeTerminalFontSize={noop}
+          onChangeTerminalFontFamily={noop}
+          onChangeTerminalDisplayAutoReferenceEnabled={noop}
+          onChangeTerminalDisplayCalibrationCompensationEnabled={noop}
+          onChangeTerminalDisplayReference={noop}
+        />
+      </>,
     )
 
-    expectNamedTestId('settings-ui-theme-trigger', 'Appearance')
+    expectNamedTestId('settings-ui-theme', 'Appearance')
+    expectNamedTestId('settings-ui-theme-system', 'Follow System')
+    expectNamedTestId('settings-ui-theme-pixel-light', 'Pixel Light')
     expectNamedTestId('settings-node-creation-pixel-effect', 'Node Creation Pixels')
     expectNamedTestId('settings-node-close-pixel-effect', 'Node Closing Pixels')
     expectNamedTestId('settings-canvas-pixel-background', 'Canvas Pixel Background')

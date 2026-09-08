@@ -9,7 +9,7 @@ import {
 } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/settingsPageRegistry'
 
 describe('add project wizard translations', () => {
-  it('points both locales at the real Worker & Connections settings destination', () => {
+  it('points both locales at the real Connections settings destination', () => {
     expect(SETTINGS_PAGE_REGISTRY.endpoints).toMatchObject({
       canonicalPageId: 'worker',
       scrollTargetId: 'settings-section-endpoints',
@@ -17,12 +17,10 @@ describe('add project wizard translations', () => {
     expect(CANONICAL_SETTINGS_PAGE_DEFINITIONS.worker.navLabelKey).toBe(
       'settingsPanel.nav.workerConnections',
     )
-    expect(enSettingsPanelLayout.nav.workerConnections).toBe('Worker & Connections')
-    expect(zhCNSettingsPanelLayout.nav.workerConnections).toBe('Worker 与连接')
-    expect(enShell.addProjectWizard.noRemoteWorkersHint).toContain(
-      'Settings → Worker & Connections',
-    )
-    expect(zhCNShell.addProjectWizard.noRemoteWorkersHint).toContain('设置 → Worker 与连接')
+    expect(enSettingsPanelLayout.nav.workerConnections).toBe('Connections')
+    expect(zhCNSettingsPanelLayout.nav.workerConnections).toBe('连接')
+    expect(enShell.addProjectWizard.noRemoteWorkersHint).toContain('Settings → Connections')
+    expect(zhCNShell.addProjectWizard.noRemoteWorkersHint).toContain('设置 → 连接')
   })
 
   it('gives an actionable path correction when a project name cannot be derived', () => {

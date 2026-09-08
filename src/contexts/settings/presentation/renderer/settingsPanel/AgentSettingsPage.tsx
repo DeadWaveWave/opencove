@@ -10,6 +10,8 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import type { AgentProviderAvailability } from '@shared/contracts/dto'
 import { AgentSection } from './AgentSection'
+import { AgentProviderDetail } from './AgentProviderDetail'
+import { useAgentSettingsNavigation } from './useAgentSettingsNavigation'
 
 interface ModelCatalogEntry {
   models: string[]
@@ -20,6 +22,8 @@ interface ModelCatalogEntry {
 }
 
 export function AgentSettingsPage({
+  requestedProvider,
+  requestKey,
   settings,
   modelCatalogByProvider,
   addModelInputByProvider,
@@ -33,6 +37,8 @@ export function AgentSettingsPage({
   onAddCustomModelOption,
   onChangeAgentEnvByProvider,
 }: {
+  requestedProvider?: AgentProvider | null
+  requestKey?: number
   settings: AgentSettings
   modelCatalogByProvider: Record<AgentProvider, ModelCatalogEntry>
   addModelInputByProvider: Record<AgentProvider, string>
@@ -47,6 +53,10 @@ export function AgentSettingsPage({
   onChangeAgentEnvByProvider: (agentEnvByProvider: AgentSettings['agentEnvByProvider']) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const { viewRef, activeProvider, openProvider, backToList } = useAgentSettingsNavigation(
+    requestedProvider,
+    requestKey,
+  )
   const [availabilityByProvider, setAvailabilityByProvider] = useState<
     Record<string, AgentProviderAvailability>
   >({})
@@ -120,35 +130,66 @@ export function AgentSettingsPage({
   )
 
   return (
-    <>
-      <AgentSection
-        defaultProvider={resolveSelectableAgentProvider(settings.defaultProvider)}
-        agentProviderOrder={normalizeSelectableAgentProviderOrder(settings.agentProviderOrder)}
-        agentFullAccess={settings.agentFullAccess}
-        availabilityByProvider={availabilityByProvider}
-        installingProvider={installingProvider}
-        installErrorByProvider={installErrorByProvider}
-        isRefreshingAvailability={isRefreshingAvailability}
-        settings={settings}
-        modelCatalogByProvider={modelCatalogByProvider}
-        addModelInputByProvider={addModelInputByProvider}
-        onChangeDefaultProvider={onChangeDefaultProvider}
-        onChangeAgentProviderOrder={providers => {
-          onChangeAgentProviderOrder(
-            mergeSelectableAgentProviderOrder(settings.agentProviderOrder, providers),
-          )
-        }}
-        onChangeAgentFullAccess={onChangeAgentFullAccess}
-        onToggleCustomModelEnabled={onToggleCustomModelEnabled}
-        onSelectProviderModel={onSelectProviderModel}
-        onRemoveCustomModelOption={onRemoveCustomModelOption}
-        onChangeAddModelInput={onChangeAddModelInput}
-        onAddCustomModelOption={onAddCustomModelOption}
-        onChangeAgentEnvByProvider={onChangeAgentEnvByProvider}
-        onInstallProvider={provider => {
-          void installProvider(provider)
-        }}
-      />
-    </>
+    <div ref={viewRef} className="settings-agent-page">
+      {activeProvider ? (
+        <AgentProviderDetail
+          key={activeProvider}
+          provider={activeProvider}
+          settings={settings}
+          modelCatalog={
+            modelCatalogByProvider[activeProvider] ?? {
+              models: [],
+              source: null,
+              fetchedAt: null,
+              isLoading: false,
+              error: null,
+            }
+          }
+          addModelInputValue={addModelInputByProvider[activeProvider] ?? ''}
+          availability={availabilityByProvider[activeProvider]}
+          isInstalling={installingProvider === activeProvider}
+          isBusy={isRefreshingAvailability || Boolean(installingProvider)}
+          installError={installErrorByProvider[activeProvider]}
+          onInstall={() => {
+            void installProvider(activeProvider)
+          }}
+          onRefresh={refreshAvailability}
+          onBack={backToList}
+          isDefaultProvider={
+            resolveSelectableAgentProvider(settings.defaultProvider) === activeProvider
+          }
+          onMakeDefault={() => onChangeDefaultProvider(activeProvider)}
+          onToggleCustomModelEnabled={onToggleCustomModelEnabled}
+          onSelectProviderModel={onSelectProviderModel}
+          onRemoveCustomModelOption={onRemoveCustomModelOption}
+          onChangeAddModelInput={onChangeAddModelInput}
+          onAddCustomModelOption={onAddCustomModelOption}
+          onChangeAgentEnvByProvider={onChangeAgentEnvByProvider}
+        />
+      ) : (
+        <AgentSection
+          defaultProvider={resolveSelectableAgentProvider(settings.defaultProvider)}
+          agentProviderOrder={normalizeSelectableAgentProviderOrder(settings.agentProviderOrder)}
+          agentFullAccess={settings.agentFullAccess}
+          availabilityByProvider={availabilityByProvider}
+          installingProvider={installingProvider}
+          installErrorByProvider={installErrorByProvider}
+          isRefreshingAvailability={isRefreshingAvailability}
+          settings={settings}
+          onChangeDefaultProvider={onChangeDefaultProvider}
+          onChangeAgentProviderOrder={providers => {
+            onChangeAgentProviderOrder(
+              mergeSelectableAgentProviderOrder(settings.agentProviderOrder, providers),
+            )
+          }}
+          onChangeAgentFullAccess={onChangeAgentFullAccess}
+          onConfigureProvider={openProvider}
+          onRefreshAvailability={refreshAvailability}
+          onInstallProvider={provider => {
+            void installProvider(provider)
+          }}
+        />
+      )}
+    </div>
   )
 }

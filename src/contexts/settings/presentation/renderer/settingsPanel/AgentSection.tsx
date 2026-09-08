@@ -1,24 +1,19 @@
-import React, { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import React from 'react'
+import { ChevronDown, ChevronRight, ChevronUp, RefreshCw } from 'lucide-react'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   AGENT_PROVIDER_LABEL,
-  type AgentEnvByProvider,
   type AgentProvider,
   type AgentSettings,
 } from '@contexts/settings/domain/agentSettings'
 import type { AgentProviderAvailability } from '@shared/contracts/dto'
-import { AgentProviderConfigurePanel } from './AgentProviderConfigurePanel'
+import {
+  resolveEnvSummary,
+  resolveInstallActionLabel,
+  resolveModelSummary,
+} from './agentSettingsPresentation'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
-
-interface ProviderModelCatalogEntry {
-  models: string[]
-  source: string | null
-  fetchedAt: string | null
-  isLoading: boolean
-  error: string | null
-}
 
 export function AgentSection(props: {
   defaultProvider: AgentProvider
@@ -29,21 +24,14 @@ export function AgentSection(props: {
   installErrorByProvider: Record<string, string>
   isRefreshingAvailability: boolean
   settings: AgentSettings
-  modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
-  addModelInputByProvider: Record<AgentProvider, string>
   onChangeDefaultProvider: (provider: AgentProvider) => void
   onChangeAgentProviderOrder: (providers: AgentProvider[]) => void
   onChangeAgentFullAccess: (enabled: boolean) => void
-  onToggleCustomModelEnabled: (provider: AgentProvider, enabled: boolean) => void
-  onSelectProviderModel: (provider: AgentProvider, model: string) => void
-  onRemoveCustomModelOption: (provider: AgentProvider, model: string) => void
-  onChangeAddModelInput: (provider: AgentProvider, value: string) => void
-  onAddCustomModelOption: (provider: AgentProvider) => void
-  onChangeAgentEnvByProvider: (next: AgentEnvByProvider) => void
   onInstallProvider: (provider: AgentProvider) => void
+  onConfigureProvider: (provider: AgentProvider) => void
+  onRefreshAvailability: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
-  const [configuringProvider, setConfiguringProvider] = useState<AgentProvider | null>(null)
   const {
     defaultProvider,
     agentProviderOrder,
@@ -53,18 +41,12 @@ export function AgentSection(props: {
     installErrorByProvider,
     isRefreshingAvailability,
     settings,
-    modelCatalogByProvider,
-    addModelInputByProvider,
     onChangeDefaultProvider,
     onChangeAgentProviderOrder,
     onChangeAgentFullAccess,
-    onToggleCustomModelEnabled,
-    onSelectProviderModel,
-    onRemoveCustomModelOption,
-    onChangeAddModelInput,
-    onAddCustomModelOption,
-    onChangeAgentEnvByProvider,
     onInstallProvider,
+    onConfigureProvider,
+    onRefreshAvailability,
   } = props
 
   const moveProvider = (fromIndex: number, toIndex: number): void => {
@@ -98,6 +80,18 @@ export function AgentSection(props: {
         description={t('settingsPanel.agent.agentProviderOrderHelp')}
       >
         <div className="settings-agent-list-block" id="settings-agent-list">
+          <div className="settings-agent-list-toolbar">
+            <button
+              type="button"
+              className="secondary settings-agent-refresh"
+              data-testid="settings-agent-refresh"
+              disabled={isRefreshingAvailability || Boolean(installingProvider)}
+              onClick={onRefreshAvailability}
+            >
+              <RefreshCw size={13} aria-hidden="true" />
+              {t('settingsPanel.agentDetail.refresh')}
+            </button>
+          </div>
           <div className="settings-list-container">
             {agentProviderOrder.map((provider, index) => {
               const availability = availabilityByProvider[provider]
@@ -113,7 +107,6 @@ export function AgentSection(props: {
                 : (availability?.status ?? 'loading')
               const modelSummary = resolveModelSummary(settings, provider, t)
               const envSummary = resolveEnvSummary(settings, provider, t)
-              const isConfiguring = configuringProvider === provider
 
               return (
                 <div className="settings-agent-list-item" key={provider}>
@@ -150,28 +143,44 @@ export function AgentSection(props: {
                         value={provider}
                         data-testid={`settings-default-provider-${provider}`}
                         checked={defaultProvider === provider}
+                        aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${t('settingsPanel.agent.defaultAgentLabel')}`}
                         onChange={() => onChangeDefaultProvider(provider)}
                       />
                       <span className="settings-agent-default-choice__visual" aria-hidden="true" />
-                      <span className="settings-agent-default-choice__label">
-                        <AgentProviderIcon
-                          provider={provider}
-                          className="settings-agent-list-row__icon"
-                        />
-                        <strong className="settings-agent-list-row__name">
-                          {AGENT_PROVIDER_LABEL[provider]}
-                        </strong>
-                        {defaultProvider === provider ? (
-                          <span className="settings-agent-list-row__default">
-                            {t('settingsPanel.agent.defaultBadge')}
-                          </span>
-                        ) : null}
-                      </span>
                     </label>
-                    <div className="settings-agent-list-row__summary">
-                      <span>{modelSummary}</span>
-                      <span>{envSummary}</span>
-                    </div>
+                    <button
+                      type="button"
+                      className="settings-agent-identity"
+                      data-testid={`settings-agent-configure-${provider}`}
+                      aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${t('settingsPanel.agent.configure')}`}
+                      onClick={() => onConfigureProvider(provider)}
+                    >
+                      <AgentProviderIcon
+                        provider={provider}
+                        className="settings-agent-list-row__icon"
+                      />
+                      <span className="settings-agent-identity__text">
+                        <span className="settings-agent-identity__name">
+                          <strong className="settings-agent-list-row__name">
+                            {AGENT_PROVIDER_LABEL[provider]}
+                          </strong>
+                          {defaultProvider === provider ? (
+                            <span className="settings-agent-list-row__default">
+                              {t('settingsPanel.agent.defaultBadge')}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="settings-agent-list-row__summary">
+                          <span>{modelSummary}</span>
+                          <span>{envSummary}</span>
+                        </span>
+                      </span>
+                      <ChevronRight
+                        size={15}
+                        className="settings-agent-identity__chevron"
+                        aria-hidden="true"
+                      />
+                    </button>
                     <div className="settings-agent-list-row__actions">
                       <button
                         type="button"
@@ -183,20 +192,6 @@ export function AgentSection(props: {
                         disabled={!isUnavailable || isBusy}
                       >
                         {installLabel}
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary settings-agent-configure__button"
-                        data-testid={`settings-agent-configure-${provider}`}
-                        aria-expanded={isConfiguring}
-                        aria-controls={`settings-agent-configure-panel-${provider}`}
-                        onClick={() => {
-                          setConfiguringProvider(current =>
-                            current === provider ? null : provider,
-                          )
-                        }}
-                      >
-                        {t('settingsPanel.agent.configure')}
                       </button>
                     </div>
                   </div>
@@ -216,21 +211,6 @@ export function AgentSection(props: {
                     >
                       {diagnostics}
                     </div>
-                  ) : null}
-                  {isConfiguring ? (
-                    <AgentProviderConfigurePanel
-                      provider={provider}
-                      settings={settings}
-                      modelCatalog={modelCatalogByProvider[provider]}
-                      addModelInputValue={addModelInputByProvider[provider]}
-                      onToggleCustomModelEnabled={onToggleCustomModelEnabled}
-                      onSelectProviderModel={onSelectProviderModel}
-                      onRemoveCustomModelOption={onRemoveCustomModelOption}
-                      onChangeAddModelInput={onChangeAddModelInput}
-                      onAddCustomModelOption={onAddCustomModelOption}
-                      onChangeAgentEnvByProvider={onChangeAgentEnvByProvider}
-                      onDone={() => setConfiguringProvider(null)}
-                    />
                   ) : null}
                 </div>
               )
@@ -266,57 +246,4 @@ export function AgentSection(props: {
       </SettingsGroup>
     </>
   )
-}
-
-function resolveModelSummary(
-  settings: AgentSettings,
-  provider: AgentProvider,
-  t: ReturnType<typeof useTranslation>['t'],
-): string {
-  const customModel = settings.customModelByProvider[provider]?.trim() ?? ''
-  if (settings.customModelEnabledByProvider[provider] && customModel.length > 0) {
-    return customModel
-  }
-
-  return t('common.defaultFollowCli')
-}
-
-function resolveEnvSummary(
-  settings: AgentSettings,
-  provider: AgentProvider,
-  t: ReturnType<typeof useTranslation>['t'],
-): string {
-  const count = (settings.agentEnvByProvider[provider] ?? []).filter(
-    row => row.key.trim().length > 0,
-  ).length
-
-  if (count === 0) {
-    return t('settingsPanel.agent.envSummaryNone')
-  }
-
-  return t('settingsPanel.agent.envSummary', { count })
-}
-
-function resolveInstallActionLabel(
-  availability: AgentProviderAvailability | null | undefined,
-  t: ReturnType<typeof useTranslation>['t'],
-  isInstalling = false,
-): string {
-  if (isInstalling) {
-    return t('settingsPanel.agentExecutable.status.installing')
-  }
-
-  if (!availability) {
-    return t('common.loading')
-  }
-
-  if (availability.status === 'available') {
-    return t('settingsPanel.agentExecutable.status.available')
-  }
-
-  if (availability.status === 'misconfigured') {
-    return t('settingsPanel.agentExecutable.status.misconfigured')
-  }
-
-  return t('settingsPanel.agentExecutable.install')
 }

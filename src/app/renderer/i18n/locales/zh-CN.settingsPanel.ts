@@ -1,3 +1,5 @@
+import { zhCNSettingsPanelAppearanceNext } from './zh-CN.settingsPanel.appearanceNext'
+import { zhCNSettingsPanelAgentDetail } from './zh-CN.settingsPanel.agentDetail'
 import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibration'
 import { zhCNSettingsPanelDiagnostics } from './zh-CN.settingsPanel.diagnostics'
 import { zhCNSettingsPanelEndpoints } from './zh-CN.settingsPanel.endpoints'
@@ -6,6 +8,8 @@ import { zhCNSettingsPanelWorkspace } from './zh-CN.settingsPanel.workspace'
 import { zhCNWorkspaceCanvasNavigationShortcutCommands } from './zh-CN.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const zhCNSettingsPanel = {
+  agentDetail: zhCNSettingsPanelAgentDetail,
+  appearanceNext: zhCNSettingsPanelAppearanceNext,
   title: '设置',
   search: {
     label: '搜索设置',
@@ -13,6 +17,7 @@ export const zhCNSettingsPanel = {
     noResults: '未找到匹配的设置',
   },
   nav: zhCNSettingsPanelLayout.nav,
+  navigation: zhCNSettingsPanelLayout.navigation,
   navGroups: zhCNSettingsPanelLayout.navGroups,
   pageDescriptions: zhCNSettingsPanelLayout.pageDescriptions,
   groups: zhCNSettingsPanelLayout.groups,
@@ -414,8 +419,7 @@ export const zhCNSettingsPanel = {
     title: 'Worker',
     errors: {
       remoteRequired: '远程机器需要填写主机、端口和访问令牌。',
-      remoteExperimentalDisabled:
-        '远程机器为实验性功能。请先在「Worker 与连接」中启用远程机器后再继续。',
+      remoteExperimentalDisabled: '远程机器为实验性功能。请先在「连接」中启用远程机器后再继续。',
       stopLocalWorkerFirst: '切换到 Standalone 前请先停止本机 Worker。',
       enableLocalRequiresRestart: '请先启用本机 Worker 模式并重启，然后再启动 Worker。',
     },
@@ -457,7 +461,7 @@ export const zhCNSettingsPanel = {
     },
     local: {
       title: '本机 Worker',
-      help: '默认仅监听 127.0.0.1，并要求 token。远程访问建议使用 SSH tunnel。Worker Web UI 位于「Worker 与连接」。',
+      help: '默认仅监听 127.0.0.1，并要求 token。远程访问建议使用 SSH tunnel。Worker Web UI 位于「连接」。',
       statusLabel: 'Worker 状态',
       status: {
         running: '运行中',

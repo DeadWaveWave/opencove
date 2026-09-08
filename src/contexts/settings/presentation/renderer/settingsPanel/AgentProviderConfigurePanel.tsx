@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -60,7 +60,6 @@ export function AgentProviderConfigurePanel(props: {
   onChangeAddModelInput: (provider: AgentProvider, value: string) => void
   onAddCustomModelOption: (provider: AgentProvider) => void
   onChangeAgentEnvByProvider: (next: AgentEnvByProvider) => void
-  onDone: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const {
@@ -74,13 +73,13 @@ export function AgentProviderConfigurePanel(props: {
     onChangeAddModelInput,
     onAddCustomModelOption,
     onChangeAgentEnvByProvider,
-    onDone,
   } = props
 
   const customEnabled = settings.customModelEnabledByProvider[provider]
   const customModel = settings.customModelByProvider[provider]
   const customOptions = settings.customModelOptionsByProvider[provider]
   const rows = settings.agentEnvByProvider[provider] ?? []
+  const [environmentExpanded, setEnvironmentExpanded] = useState(rows.length > 0)
   const allModels = [
     ...new Set(
       [...modelCatalog.models, ...customOptions, customModel]
@@ -105,22 +104,18 @@ export function AgentProviderConfigurePanel(props: {
       id={`settings-agent-configure-panel-${provider}`}
       data-testid={`settings-agent-configure-panel-${provider}`}
     >
-      <div className="settings-agent-configure-panel__header">
-        <strong>{AGENT_PROVIDER_LABEL[provider]}</strong>
-        <button
-          type="button"
-          className="secondary"
-          data-testid={`settings-agent-configure-done-${provider}`}
-          onClick={onDone}
+      <section
+        className="settings-agent-configure-panel__section"
+        id={`settings-agent-models-${provider}`}
+        aria-labelledby={`settings-agent-models-title-${provider}`}
+      >
+        <h4
+          className="settings-agent-configure-panel__section-title"
+          id={`settings-agent-models-title-${provider}`}
         >
-          {t('settingsPanel.agent.done')}
-        </button>
-      </div>
-
-      <div className="settings-agent-configure-panel__section">
-        <div className="settings-agent-configure-panel__section-title">
           {t('settingsPanel.models.title')}
-        </div>
+        </h4>
+        <p className="settings-agent-detail__help">{t('settingsPanel.agentDetail.modelHelp')}</p>
 
         <div className="settings-panel__row settings-panel__row--horizontal settings-agent-configure-panel__row">
           <div className="settings-panel__row-label">
@@ -211,123 +206,137 @@ export function AgentProviderConfigurePanel(props: {
             {t('settingsPanel.models.modelError', { message: modelCatalog.error })}
           </div>
         ) : null}
-      </div>
+      </section>
 
-      <div className="settings-agent-configure-panel__section">
-        <div className="settings-agent-configure-panel__section-title">
-          {t('settingsPanel.agentEnv.title')}
-        </div>
-
+      <details
+        className="settings-agent-configure-panel__section"
+        open={environmentExpanded}
+        onToggle={event => setEnvironmentExpanded(event.currentTarget.open)}
+      >
+        <summary>
+          <h4 className="settings-agent-configure-panel__section-title">
+            {t('settingsPanel.agentEnv.title')}
+          </h4>
+        </summary>
         <div
-          className="settings-list-container"
-          data-testid={`settings-agent-env-list-${provider}`}
+          id={`settings-agent-env-${provider}`}
+          className="settings-agent-detail__disclosure-content"
         >
-          {rows.map((row, index) => (
-            <div className="settings-list-item settings-agent-env-row" key={row.id}>
-              <div className="settings-list-item__left settings-agent-env-row__fields">
-                <label className="cove-toggle">
+          <p className="settings-agent-detail__help">
+            {t('settingsPanel.agentDetail.environmentHelp')}
+          </p>
+
+          <div
+            className="settings-list-container"
+            data-testid={`settings-agent-env-list-${provider}`}
+          >
+            {rows.map((row, index) => (
+              <div className="settings-list-item settings-agent-env-row" key={row.id}>
+                <div className="settings-list-item__left settings-agent-env-row__fields">
+                  <label className="cove-toggle">
+                    <input
+                      type="checkbox"
+                      data-testid={`settings-agent-env-enabled-${provider}-${row.id}`}
+                      checked={row.enabled}
+                      aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.enabled')}`}
+                      onChange={event => {
+                        updateProviderRows(
+                          rows.map(existing =>
+                            existing.id === row.id
+                              ? { ...existing, enabled: event.target.checked }
+                              : existing,
+                          ),
+                        )
+                      }}
+                    />
+                    <span className="cove-toggle__slider"></span>
+                  </label>
+
                   <input
-                    type="checkbox"
-                    data-testid={`settings-agent-env-enabled-${provider}-${row.id}`}
-                    checked={row.enabled}
-                    aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.enabled')}`}
+                    type="text"
+                    className="cove-field"
+                    aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.keyLabel')}`}
+                    value={row.key}
+                    placeholder={t('settingsPanel.agentEnv.keyPlaceholder')}
                     onChange={event => {
                       updateProviderRows(
                         rows.map(existing =>
                           existing.id === row.id
-                            ? { ...existing, enabled: event.target.checked }
+                            ? { ...existing, key: event.target.value }
                             : existing,
                         ),
                       )
                     }}
                   />
-                  <span className="cove-toggle__slider"></span>
-                </label>
+                  <input
+                    type="text"
+                    className="cove-field"
+                    aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.valueLabel')}`}
+                    value={row.value}
+                    placeholder={t('settingsPanel.agentEnv.valuePlaceholder')}
+                    onChange={event => {
+                      updateProviderRows(
+                        rows.map(existing =>
+                          existing.id === row.id
+                            ? { ...existing, value: event.target.value }
+                            : existing,
+                        ),
+                      )
+                    }}
+                  />
+                </div>
 
-                <input
-                  type="text"
-                  className="cove-field"
-                  aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.keyLabel')}`}
-                  value={row.key}
-                  placeholder={t('settingsPanel.agentEnv.keyPlaceholder')}
-                  onChange={event => {
-                    updateProviderRows(
-                      rows.map(existing =>
-                        existing.id === row.id
-                          ? { ...existing, key: event.target.value }
-                          : existing,
-                      ),
-                    )
-                  }}
-                />
-                <input
-                  type="text"
-                  className="cove-field"
-                  aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.valueLabel')}`}
-                  value={row.value}
-                  placeholder={t('settingsPanel.agentEnv.valuePlaceholder')}
-                  onChange={event => {
-                    updateProviderRows(
-                      rows.map(existing =>
-                        existing.id === row.id
-                          ? { ...existing, value: event.target.value }
-                          : existing,
-                      ),
-                    )
-                  }}
-                />
+                <div className="settings-agent-order__actions">
+                  <button
+                    type="button"
+                    className="secondary settings-agent-order__action"
+                    data-testid={`settings-agent-env-move-up-${provider}-${row.id}`}
+                    disabled={index === 0}
+                    aria-label={t('settingsPanel.agent.moveUp')}
+                    onClick={() => updateProviderRows(moveItem(rows, index, index - 1))}
+                  >
+                    <ChevronUp className="settings-agent-order__icon" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary settings-agent-order__action"
+                    data-testid={`settings-agent-env-move-down-${provider}-${row.id}`}
+                    disabled={index === rows.length - 1}
+                    aria-label={t('settingsPanel.agent.moveDown')}
+                    onClick={() => updateProviderRows(moveItem(rows, index, index + 1))}
+                  >
+                    <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="secondary settings-agent-order__action"
+                    data-testid={`settings-agent-env-remove-${provider}-${row.id}`}
+                    aria-label={t('common.remove')}
+                    onClick={() => {
+                      updateProviderRows(rows.filter(existing => existing.id !== row.id))
+                    }}
+                  >
+                    <Trash2 className="settings-agent-order__icon" aria-hidden="true" />
+                  </button>
+                </div>
               </div>
+            ))}
+          </div>
 
-              <div className="settings-agent-order__actions">
-                <button
-                  type="button"
-                  className="secondary settings-agent-order__action"
-                  data-testid={`settings-agent-env-move-up-${provider}-${row.id}`}
-                  disabled={index === 0}
-                  aria-label={t('settingsPanel.agent.moveUp')}
-                  onClick={() => updateProviderRows(moveItem(rows, index, index - 1))}
-                >
-                  <ChevronUp className="settings-agent-order__icon" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="secondary settings-agent-order__action"
-                  data-testid={`settings-agent-env-move-down-${provider}-${row.id}`}
-                  disabled={index === rows.length - 1}
-                  aria-label={t('settingsPanel.agent.moveDown')}
-                  onClick={() => updateProviderRows(moveItem(rows, index, index + 1))}
-                >
-                  <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
-                </button>
-
-                <button
-                  type="button"
-                  className="secondary settings-agent-order__action"
-                  data-testid={`settings-agent-env-remove-${provider}-${row.id}`}
-                  aria-label={t('common.remove')}
-                  onClick={() => {
-                    updateProviderRows(rows.filter(existing => existing.id !== row.id))
-                  }}
-                >
-                  <Trash2 className="settings-agent-order__icon" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-          ))}
+          <button
+            type="button"
+            className="primary settings-agent-configure-panel__add-env"
+            data-testid={`settings-agent-env-add-${provider}`}
+            onClick={() => {
+              updateProviderRows([...rows, createEnvRow()])
+            }}
+          >
+            <Plus className="settings-agent-order__icon" aria-hidden="true" />
+            {t('settingsPanel.agentEnv.add')}
+          </button>
         </div>
-
-        <button
-          type="button"
-          className="primary settings-agent-configure-panel__add-env"
-          data-testid={`settings-agent-env-add-${provider}`}
-          onClick={() => {
-            updateProviderRows([...rows, createEnvRow()])
-          }}
-        >
-          <Plus className="settings-agent-order__icon" aria-hidden="true" />
-          {t('settingsPanel.agentEnv.add')}
-        </button>
-      </div>
+      </details>
     </div>
   )
 }

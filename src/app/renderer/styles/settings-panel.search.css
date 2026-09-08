@@ -1,113 +1,115 @@
-.settings-panel__search {
-  padding: 0 0 16px;
+.settings-panel__header {
+  position: relative;
+  z-index: 2;
+  gap: 16px;
 }
-
+.settings-panel__header-copy {
+  flex: 1;
+}
+.settings-panel__search {
+  position: relative;
+  flex: 0 1 180px;
+  min-width: 120px;
+  padding-top: 1px;
+}
 .settings-panel__search-input-shell {
   position: relative;
 }
-
-.settings-panel__search-input {
-  min-height: 36px;
-  padding-left: 34px;
-  border-color: var(--cove-border-subtle);
-  background: color-mix(in srgb, var(--cove-field) 72%, transparent);
+.settings-panel input.settings-panel__search-input {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px 6px 28px;
+  border: 0;
+  border-bottom: 1px solid var(--cove-border-subtle);
+  border-radius: 0;
+  background: transparent;
   font-size: calc(12px * var(--cove-ui-font-scale));
 }
-
-.settings-panel__search-input:focus-visible {
+.settings-panel input.settings-panel__search-input:focus-visible {
   border-color: var(--cove-accent);
-  box-shadow: 0 0 0 2px var(--cove-settings-focus-ring);
+  box-shadow: 0 1px 0 var(--cove-accent);
 }
-
 .settings-panel__search-icon {
   position: absolute;
   top: 50%;
-  left: 12px;
+  left: 6px;
   transform: translateY(-50%);
-  color: var(--cove-text-faint);
+  color: var(--cove-text-muted);
   pointer-events: none;
-  transition: color 150ms ease;
 }
-
 .settings-panel__search-input-shell:focus-within .settings-panel__search-icon {
   color: var(--cove-accent);
 }
-
 .settings-panel__search-results {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 7px);
+  right: 0;
   display: flex;
-  max-height: 312px;
+  width: min(340px, calc(100vw - 64px));
+  max-height: min(340px, calc(100vh - 190px));
   flex-direction: column;
   gap: 3px;
-  margin: -6px 0 12px;
-  padding: 0 0 12px;
+  padding: 6px;
   overflow-y: auto;
-  border-bottom: 1px solid var(--cove-settings-row-divider);
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: var(--cove-radius-md);
+  background: var(--cove-window-surface);
+  box-shadow: 0 12px 32px var(--cove-shadow-color-elevated);
 }
-
 .settings-panel__search-result {
   all: unset;
   display: flex;
   box-sizing: border-box;
   min-width: 0;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  border-radius: 9px;
+  gap: 3px;
+  padding: 9px 11px;
+  border-radius: var(--cove-radius-sm);
   cursor: pointer;
-  transition:
-    color 150ms ease,
-    background 150ms ease;
 }
-
 .settings-panel__search-result:hover,
-.settings-panel__search-result--active,
-.settings-panel__search-result[aria-selected='true'],
-.settings-panel__search-result[data-active='true'] {
+.settings-panel__search-result[aria-selected='true'] {
   background: var(--cove-settings-active-surface);
 }
-
 .settings-panel__search-result:focus-visible {
   outline: 2px solid var(--cove-settings-focus-ring);
   outline-offset: -1px;
 }
-
 .settings-panel__search-result-title {
-  overflow: hidden;
   color: var(--cove-text);
   font-size: calc(12px * var(--cove-ui-font-scale));
-  font-weight: 550;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 500;
+  overflow-wrap: anywhere;
 }
-
 .settings-panel__search-result-page,
 .settings-panel__search-empty {
   color: var(--cove-text-muted);
   font-size: calc(11px * var(--cove-ui-font-scale));
 }
-
 .settings-panel__search-empty {
   padding: 8px 10px;
   line-height: 1.45;
 }
-
 @media (max-width: 760px) {
-  .settings-panel__search {
-    padding-bottom: 0;
+  .settings-panel__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
   }
-
+  .settings-panel__header-copy {
+    grid-area: 1 / 1;
+  }
+  .settings-panel__close {
+    grid-area: 1 / 2;
+  }
+  .settings-panel__search {
+    grid-area: 2 / 1 / auto / -1;
+    width: 100%;
+    min-width: 0;
+  }
   .settings-panel__search-results {
-    position: absolute;
-    z-index: 4;
-    top: 56px;
-    right: 16px;
-    left: 16px;
-    max-height: min(240px, calc(100vh - 168px));
-    margin: 0;
-    padding: 6px;
-    border: 1px solid var(--cove-border);
-    border-radius: 12px;
-    background: var(--cove-settings-sidebar-background);
-    box-shadow: 0 18px 44px var(--cove-shadow-color-elevated);
+    width: 100%;
+    max-height: min(300px, calc(100vh - 240px));
   }
 }

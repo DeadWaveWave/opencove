@@ -13,12 +13,11 @@ const NARROW_WINDOW_SIZE = { width: 720, height: 650 }
 const PRIMARY_SETTINGS_PAGE_CAPTURES = [
   { id: 'general', navTestId: 'settings-section-nav-general' },
   { id: 'appearance', navTestId: 'settings-section-nav-appearance' },
-  { id: 'notifications', navTestId: 'settings-section-nav-notifications' },
   { id: 'canvas-windows', navTestId: 'settings-section-nav-canvas' },
   { id: 'agent', navTestId: 'settings-section-nav-agent' },
-  { id: 'tasks-shortcuts', navTestId: 'settings-section-nav-task-configuration' },
+  { id: 'terminal', navTestId: 'settings-section-nav-terminal' },
+  { id: 'tasks-shortcuts', navTestId: 'settings-section-nav-shortcuts' },
   { id: 'worker', navTestId: 'settings-section-nav-worker' },
-  { id: 'integrations', navTestId: 'settings-section-nav-integrations' },
   { id: 'advanced', navTestId: 'settings-section-nav-experimental' },
 ] as const
 
@@ -111,11 +110,15 @@ async function verifyWorkerHierarchyAndAttach(
       borderRadius: style.borderRadius,
       boxShadow: style.boxShadow,
       overflow: style.overflow,
+      background: style.backgroundColor,
     }
   })
-  expect(groupSurface.borderRadius).toBe('12px')
-  expect(groupSurface.boxShadow).toContain('inset')
-  expect(groupSurface.overflow).toBe('hidden')
+  expect(groupSurface).toEqual({
+    borderRadius: '0px',
+    boxShadow: 'none',
+    overflow: 'visible',
+    background: 'rgba(0, 0, 0, 0)',
+  })
 
   const moduleSurface = await workerMode.evaluate(element => {
     const style = getComputedStyle(element)
@@ -277,10 +280,10 @@ test.describe('Settings visual shell', () => {
         contentBox?.y ?? Number.NEGATIVE_INFINITY,
       )
 
-      const search = sidebar.locator('[data-testid="settings-panel-search"]')
+      const search = dialog.locator('[data-testid="settings-panel-search"]')
       await expect(search).toBeVisible()
       await search.fill('e')
-      const searchResults = sidebar.locator('[data-testid="settings-panel-search-results"]')
+      const searchResults = dialog.locator('[data-testid="settings-panel-search-results"]')
       const searchOptions = searchResults.getByRole('option')
       await expect(searchOptions).toHaveCount(8)
       await pressKeyTimes(search, 'ArrowDown', 8)
@@ -302,7 +305,7 @@ test.describe('Settings visual shell', () => {
       await search.fill('theme')
       await search.press('ArrowDown')
       await search.press('Enter')
-      await expect(dialog.locator('[data-testid="settings-ui-theme-trigger"]')).toBeVisible()
+      await expect(dialog.getByTestId('settings-ui-theme')).toBeVisible()
 
       await expectNoHorizontalOverflow(dialog, 'narrow settings dialog')
       await expectNoHorizontalOverflow(contentWrapper, 'narrow settings content wrapper')
@@ -373,11 +376,11 @@ test.describe('Settings visual shell', () => {
       await search.press('Shift+Tab')
       expect(await dialog.evaluate(panel => panel.contains(document.activeElement))).toBe(true)
 
-      await dialog.locator('[data-testid="settings-section-nav-appearance"]').click()
-      const themeTrigger = dialog.locator('[data-testid="settings-ui-theme-trigger"]')
+      await dialog.getByTestId('settings-section-nav-general').click()
+      const themeTrigger = dialog.getByTestId('settings-language-trigger')
       await themeTrigger.focus()
       await themeTrigger.press('Enter')
-      const themeMenu = window.locator('[data-testid="settings-ui-theme-menu"]')
+      const themeMenu = window.getByTestId('settings-language-menu')
       await expect(themeMenu).toBeVisible()
       expect(await themeMenu.evaluate(menu => menu.parentElement === document.body)).toBe(true)
 

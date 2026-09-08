@@ -34,14 +34,6 @@ export function useSettingsPanelPageState(options: {
   }, [activePageId, activeWorkspace])
 
   useEffect(() => {
-    if (!openPageId) {
-      return
-    }
-
-    setActivePageId(openPageId)
-  }, [openPageId])
-
-  useEffect(() => {
     if (!contentRef.current) {
       return
     }
@@ -53,9 +45,10 @@ export function useSettingsPanelPageState(options: {
       return
     }
 
-    window.requestAnimationFrame(() => {
+    const frame = window.requestAnimationFrame(() => {
       document.getElementById(targetId)?.scrollIntoView({ block: 'start' })
     })
+    return () => window.cancelAnimationFrame(frame)
   }, [activePageId, contentRef, resolvedPage.scrollTargetId])
 
   useEffect(() => {
@@ -67,7 +60,7 @@ export function useSettingsPanelPageState(options: {
   return {
     activePageId,
     canonicalPageId: resolvedPage.canonicalPageId,
-    setActivePageId: nextPageId => setActivePageId(nextPageId),
+    setActivePageId,
     activeWorkspace,
   }
 }

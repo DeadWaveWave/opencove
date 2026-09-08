@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useTranslation } from '@app/renderer/i18n'
@@ -6,10 +6,12 @@ import { useTranslation } from '@app/renderer/i18n'
 export function SettingsPanelHeader({
   title,
   description,
+  search,
   onClose,
 }: {
   title: string
   description: string
+  search?: ReactNode
   onClose: () => void
 }): JSX.Element {
   const { t } = useTranslation()
@@ -26,6 +28,7 @@ export function SettingsPanelHeader({
           </p>
         ) : null}
       </div>
+      {search}
       <IconButton
         size="md"
         variant="ghost"

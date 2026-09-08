@@ -180,7 +180,10 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
 
       await openAppearance(window)
       await selectCoveOption(window, 'settings-ui-theme', 'pixel')
-      await expect(window.getByTestId('settings-ui-theme-trigger')).toContainText('Pixel')
+      await expect(window.getByTestId('settings-ui-theme-pixel')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
       await expectTheme(window, 'pixel')
       await expect(layer).toHaveCount(0)
       await setPixelEffects(window, PIXEL_EFFECTS_ENABLED)
@@ -299,7 +302,7 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       await attachScreenshot(window, testInfo, 'spatial-pixel-reduced-motion')
 
       await openAppearance(window)
-      await expect(window.getByTestId('settings-ui-theme-trigger')).toContainText('空间点阵')
+      await expect(window.getByTestId('settings-ui-theme-pixel')).toHaveAccessibleName('空间点阵')
     } finally {
       await electronApp.close()
     }

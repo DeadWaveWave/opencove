@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { SettingsPageId } from '../SettingsPanel.shared'
 import {
   SETTINGS_PAGE_REGISTRY,
-  SETTINGS_PRIMARY_NAV_GROUPS,
+  SETTINGS_PRIMARY_PAGE_IDS,
   resolveSettingsPage,
 } from './settingsPageRegistry'
 
@@ -11,19 +11,20 @@ type StaticSettingsPageId = Exclude<SettingsPageId, `workspace:${string}`>
 const EXPECTED_CANONICAL_PAGE_IDS = {
   general: 'general',
   appearance: 'appearance',
+  terminal: 'terminal',
   'canvas-windows': 'canvas-windows',
   worker: 'worker',
   endpoints: 'worker',
   agent: 'agent',
   'tasks-shortcuts': 'tasks-shortcuts',
   'quick-menu': 'tasks-shortcuts',
-  notifications: 'notifications',
+  notifications: 'general',
   canvas: 'canvas-windows',
   advanced: 'advanced',
   experimental: 'advanced',
   shortcuts: 'tasks-shortcuts',
-  'task-configuration': 'tasks-shortcuts',
-  integrations: 'integrations',
+  'task-configuration': 'agent',
+  integrations: 'worker',
   diagnostics: 'advanced',
 } as const satisfies Record<StaticSettingsPageId, StaticSettingsPageId>
 
@@ -62,35 +63,25 @@ describe('settingsPageRegistry', () => {
       canvas: 'canvas-windows',
       shortcuts: 'tasks-shortcuts',
       'quick-menu': 'tasks-shortcuts',
-      'task-configuration': 'tasks-shortcuts',
+      'task-configuration': 'agent',
       endpoints: 'worker',
       experimental: 'advanced',
       diagnostics: 'advanced',
     })
   })
 
-  it('defines primary navigation in four groups without secondary aliases', () => {
-    expect(SETTINGS_PRIMARY_NAV_GROUPS).toEqual([
-      {
-        id: 'application',
-        pageIds: ['general', 'appearance', 'notifications'],
-      },
-      {
-        id: 'workspace',
-        pageIds: ['canvas-windows', 'agent', 'tasks-shortcuts'],
-      },
-      {
-        id: 'connections',
-        pageIds: ['worker', 'integrations'],
-      },
-      {
-        id: 'advanced',
-        pageIds: ['advanced'],
-      },
+  it('exposes seven distinct purposes with terminal settings in one page', () => {
+    expect(SETTINGS_PRIMARY_PAGE_IDS).toEqual([
+      'general',
+      'appearance',
+      'canvas-windows',
+      'agent',
+      'terminal',
+      'tasks-shortcuts',
+      'worker',
     ])
-
-    const primaryPageIds = SETTINGS_PRIMARY_NAV_GROUPS.flatMap(group => group.pageIds)
-    expect(primaryPageIds).not.toEqual(expect.arrayContaining([...SECONDARY_ALIASES]))
+    expect(new Set(SETTINGS_PRIMARY_PAGE_IDS).size).toBe(7)
+    expect(SETTINGS_PRIMARY_PAGE_IDS).not.toEqual(expect.arrayContaining([...SECONDARY_ALIASES]))
   })
 
   it('keeps legacy scroll targets on their registry entries', () => {
@@ -106,6 +97,8 @@ describe('settingsPageRegistry', () => {
       'quick-menu': 'settings-section-quick-commands',
       shortcuts: 'settings-section-shortcuts',
       'task-configuration': 'settings-section-task-configuration',
+      notifications: 'settings-section-notifications',
+      integrations: 'settings-section-integrations',
       diagnostics: 'settings-section-diagnostics',
     })
   })

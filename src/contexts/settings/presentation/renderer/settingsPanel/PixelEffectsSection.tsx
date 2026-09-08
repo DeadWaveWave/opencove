@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PixelEffectSettings } from '@contexts/settings/domain/agentSettings'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
+import { PixelEffectsPreview } from './PixelEffectsPreview'
 
 const controls: Array<{ key: keyof PixelEffectSettings; id: string; label: string; help: string }> =
   [
@@ -39,6 +40,7 @@ export function PixelEffectsSection({
       title={t('settingsPanel.groups.appearance.pixelEffects')}
       description={t('settingsPanel.appearance.pixelEffects.help')}
     >
+      <PixelEffectsPreview effects={effects} />
       <SettingsGroupBody>
         {controls.map(control => (
           <div className="settings-panel__row" key={control.key}>

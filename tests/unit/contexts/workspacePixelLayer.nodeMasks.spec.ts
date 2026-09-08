@@ -60,6 +60,38 @@ describe('creation-scoped first-paint alpha masks', () => {
     }
   })
 
+  it('isolates the default canvas class and a preview class within their own scopes', () => {
+    const previewScope = document.createElement('div')
+    document.body.append(previewScope)
+    const createNode = (host: HTMLElement, className: string) => {
+      const node = document.createElement('div')
+      node.className = className
+      node.dataset.id = 'same-id'
+      host.append(node)
+      return node
+    }
+    const real = createNode(scope, 'react-flow__node')
+    createNode(scope, 'settings-pixel-preview__node')
+    createNode(previewScope, 'react-flow__node')
+    const preview = createNode(previewScope, 'settings-pixel-preview__node')
+    const previewMasks = createPixelNodeMasks(previewScope, 'settings-pixel-preview__node')
+    try {
+      masks.prepare(['same-id'], 0)
+      previewMasks.prepare(['same-id'], 0)
+      const matches = document.adoptedStyleSheets.flatMap(sheet =>
+        [...sheet.cssRules].flatMap(rule =>
+          'selectorText' in rule
+            ? [...document.querySelectorAll((rule as CSSStyleRule).selectorText)]
+            : [],
+        ),
+      )
+      expect(matches).toEqual([real, preview])
+    } finally {
+      previewMasks.dispose()
+      previewScope.remove()
+    }
+  })
+
   it('keeps delayed renderers transparent, then grants both widths the same complete 380ms reveal', () => {
     expect(masks.prepare(['narrow', 'wide'], 0)).toEqual(['narrow', 'wide'])
     masks.update([], ['narrow', 'wide'])

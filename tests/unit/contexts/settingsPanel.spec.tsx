@@ -115,8 +115,7 @@ describe('SettingsPanel', () => {
     })
     renderSettingsPanel({ onChange })
 
-    const canvasNav = screen.getByTestId('settings-section-nav-canvas')
-    fireEvent.click(canvasNav)
+    fireEvent.click(screen.getByTestId('settings-section-nav-terminal'))
 
     const trigger = screen.getByTestId('settings-terminal-profile-trigger')
     expect(trigger).toBeVisible()
@@ -131,11 +130,14 @@ describe('SettingsPanel', () => {
     })
   })
 
-  it('exposes terminal display consistency controls in display settings', () => {
+  it('exposes terminal display consistency controls inside the Terminal calibration disclosure', () => {
     mockTerminalProfiles()
     renderSettingsPanel()
 
-    fireEvent.click(screen.getByTestId('settings-section-nav-appearance'))
+    fireEvent.click(screen.getByTestId('settings-section-nav-terminal'))
+    const disclosure = screen.getByTestId('settings-terminal-calibration-disclosure')
+    expect(disclosure).not.toHaveAttribute('open')
+    fireEvent.click(disclosure.querySelector('summary')!)
 
     expect(screen.getByText('Terminal Display Consistency')).toBeVisible()
     expect(screen.getByText('Set Reference Automatically')).toBeVisible()

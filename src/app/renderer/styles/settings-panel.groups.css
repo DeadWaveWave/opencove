@@ -2,12 +2,12 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  padding-top: 26px;
+  padding-top: 18px;
   scroll-margin-top: 20px;
 }
 
 .settings-panel__group + .settings-panel__group {
-  padding-top: 28px;
+  padding-top: 24px;
 }
 
 .settings-panel__group-header {
@@ -15,15 +15,14 @@
   min-width: 0;
   flex-direction: column;
   gap: 3px;
-  margin-bottom: 9px;
-  padding-inline: 2px;
+  margin-bottom: 8px;
 }
 
 .settings-panel__group-title {
   margin: 0;
-  color: var(--cove-text);
-  font-size: calc(14px * var(--cove-ui-font-scale));
-  font-weight: 620;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  font-weight: 500;
   line-height: 1.35;
   letter-spacing: -0.008em;
 }
@@ -38,16 +37,13 @@
 
 .settings-panel__group-body {
   min-width: 0;
-  overflow: hidden;
-  padding-inline: 16px;
-  border-radius: 12px;
-  background: var(--cove-settings-group-surface);
-  box-shadow: inset 0 0 0 1px var(--cove-settings-group-outline);
+  padding: 0;
+  background: transparent;
 }
 
 .settings-panel__group-body > .settings-panel__row,
 .settings-panel__module-content > .settings-panel__row {
-  padding: 14px 0;
+  padding: 13px 0;
   border-top: 1px solid var(--cove-settings-row-divider);
 }
 
@@ -93,7 +89,7 @@
   margin: 0;
   color: var(--cove-text-muted);
   font-size: calc(12px * var(--cove-ui-font-scale));
-  font-weight: 620;
+  font-weight: 500;
   line-height: 1.4;
   letter-spacing: -0.002em;
 }
@@ -133,13 +129,51 @@
     margin-bottom: 8px;
   }
 
-  .settings-panel__group-body {
-    padding-inline: 14px;
-    border-radius: 11px;
-  }
-
   .settings-panel__group-body > .settings-panel__row,
   .settings-panel__module-content > .settings-panel__row {
     padding: 13px 0;
+  }
+}
+
+/* The shared accessible SettingRow uses the same reading layout inside Settings. */
+.settings-panel .cove-setting-row {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) fit-content(52%);
+  gap: 20px;
+  padding: 13px 0;
+  border: 0;
+  border-top: 1px solid var(--cove-settings-row-divider);
+  border-radius: 0;
+  background: transparent;
+}
+
+.settings-panel .cove-setting-row:first-child {
+  border-top: 0;
+}
+
+.settings-panel .cove-setting-row__label {
+  font-weight: 500;
+}
+
+.settings-panel .cove-setting-row__copy {
+  overflow-wrap: anywhere;
+}
+
+.settings-panel .cove-setting-row__control {
+  max-width: 100%;
+}
+
+@container settings-content (max-width: 440px) {
+  .settings-panel .cove-setting-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .settings-panel .cove-setting-row__control {
+    justify-content: flex-start;
+  }
+
+  .settings-panel .cove-setting-row:has(.cove-toggle) {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 }

@@ -24,7 +24,7 @@ function frameMask(frame: PixelAssemblyFrame): string {
 }
 
 /** A view-owned stylesheet is registered before node commit. No node geometry or state is written. */
-export function createPixelNodeMasks(scope: HTMLElement) {
+export function createPixelNodeMasks(scope: HTMLElement, nodeClassName = 'react-flow__node') {
   const document = scope.ownerDocument
   const scopeId = crypto.randomUUID()
   const entries = new Map<string, PixelAssemblyClock & { declaration: string }>()
@@ -77,7 +77,7 @@ export function createPixelNodeMasks(scope: HTMLElement) {
       return false
     }
     try {
-      const selector = `[${SCOPE_ATTRIBUTE}="${CSS.escape(scopeId)}"] .react-flow__node`
+      const selector = `[${SCOPE_ATTRIBUTE}="${CSS.escape(scopeId)}"] .${CSS.escape(nodeClassName)}`
       sheet.replaceSync(
         [...entries]
           .map(([id, entry]) => `${selector}[data-id="${CSS.escape(id)}"]{${entry.declaration}}`)

@@ -2,7 +2,7 @@ import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/compon
 import React from 'react'
 import { fireEvent, render as renderUi, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SettingsPanelSidebar } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/SettingsPanelSidebar'
+import { SettingsPanelSearch } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/SettingsPanelSearch'
 import type { SettingsSearchResult } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/settingsSearchIndex'
 
 const searchHarness = vi.hoisted(() => ({
@@ -36,17 +36,15 @@ function createSearchResult(id: string): SettingsSearchResult {
   }
 }
 
-function createSidebarProps(endpointsEnabled = false) {
+function createSearchProps(endpointsEnabled = false) {
   return {
-    activePageId: 'general' as const,
     workspaces: [],
     endpointsEnabled,
-    onSelectPage: vi.fn(),
     onSelectSearchResult: vi.fn(),
   }
 }
 
-describe('SettingsPanelSidebar search keyboard navigation', () => {
+describe('SettingsPanelSearch search keyboard navigation', () => {
   let originalScrollIntoView: PropertyDescriptor | undefined
   const scrollIntoView = vi.fn()
 
@@ -77,7 +75,7 @@ describe('SettingsPanelSidebar search keyboard navigation', () => {
     searchHarness.currentResults = Array.from({ length: 8 }, (_, index) =>
       createSearchResult(`result-${index + 1}`),
     )
-    render(<SettingsPanelSidebar {...createSidebarProps()} />)
+    render(<SettingsPanelSearch {...createSearchProps()} />)
 
     const search = screen.getByRole('searchbox', { name: 'Search settings' })
     fireEvent.change(search, { target: { value: 'setting' } })
@@ -98,9 +96,9 @@ describe('SettingsPanelSidebar search keyboard navigation', () => {
       createSearchResult(`result-${index + 1}`),
     )
     const retainedResult = initialResults[7]
-    const props = createSidebarProps()
+    const props = createSearchProps()
     searchHarness.currentResults = initialResults
-    const { rerender } = render(<SettingsPanelSidebar {...props} />)
+    const { rerender } = render(<SettingsPanelSearch {...props} />)
 
     const search = screen.getByRole('searchbox', { name: 'Search settings' })
     fireEvent.change(search, { target: { value: 'setting' } })
@@ -109,7 +107,7 @@ describe('SettingsPanelSidebar search keyboard navigation', () => {
     }
 
     searchHarness.currentResults = [retainedResult, createSearchResult('result-new')]
-    rerender(<SettingsPanelSidebar {...props} endpointsEnabled />)
+    rerender(<SettingsPanelSearch {...props} endpointsEnabled />)
 
     expect(search).toHaveAttribute('aria-activedescendant', 'settings-panel-search-result-result-8')
     expect(search.getAttribute('aria-activedescendant')).not.toContain('undefined')

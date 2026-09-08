@@ -34,6 +34,7 @@ export interface SettingsPanelProps {
 type CorePageId =
   | 'general'
   | 'appearance'
+  | 'terminal'
   | 'canvas-windows'
   | 'worker'
   | 'endpoints'

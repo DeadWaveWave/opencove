@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 
-async function openAppearance(window: Page): Promise<void> {
+async function openTerminalCalibration(window: Page): Promise<void> {
   await window.getByTestId('app-header-settings').click()
-  await window.getByTestId('settings-section-nav-appearance').click()
+  await window.getByTestId('settings-section-nav-terminal').click()
+  await window.getByTestId('settings-terminal-calibration-disclosure').locator('summary').click()
 }
 
 async function createSibling(window: Page): Promise<string> {
@@ -36,7 +37,7 @@ async function createSibling(window: Page): Promise<string> {
       ),
     )
     .toMatch(/^(dom|webgl)$/)
-  await openAppearance(window)
+  await openTerminalCalibration(window)
   return id
 }
 
@@ -62,7 +63,7 @@ test('keeps calibration stable across Windows startup, resize and same-kind term
         },
       },
     )
-    await openAppearance(window)
+    await openTerminalCalibration(window)
     const summary = window.getByTestId('settings-terminal-display-summary')
     await expect(summary).toHaveAttribute(
       'data-calibration-state',
@@ -72,7 +73,7 @@ test('keeps calibration stable across Windows startup, resize and same-kind term
 
     // A restart must verify the persisted atomic record before applying it again.
     await window.reload({ waitUntil: 'domcontentloaded' })
-    await openAppearance(window)
+    await openTerminalCalibration(window)
     await expect(summary).toHaveAttribute('data-calibration-state', 'already-calibrated')
     const before = await window.evaluate(() => ({
       sessionId: window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId('calibration-0'),
