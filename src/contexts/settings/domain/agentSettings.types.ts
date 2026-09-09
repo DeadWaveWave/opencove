@@ -79,6 +79,7 @@ export interface AgentSettings extends PixelEffectSettings {
   browserDefaultMode: BrowserMode
   browserSearchEngine: BrowserSearchEngineId
   experimentalWebsiteWindowPasteEnabled: boolean
+  /** @deprecated Retained for saved profiles; remote connections are always available. */
   experimentalRemoteWorkersEnabled: boolean
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number

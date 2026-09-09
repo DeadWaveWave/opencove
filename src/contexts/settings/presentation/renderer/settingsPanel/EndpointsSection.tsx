@@ -273,7 +273,7 @@ export function EndpointsSection(): React.JSX.Element {
   return (
     <SettingsGroup
       id="settings-section-endpoints"
-      title={t('settingsPanel.endpoints.title')}
+      title={t('settingsPanel.groups.worker.remote')}
       description={t('settingsPanel.endpoints.list.help')}
     >
       <SettingsGroupBody id="settings-section-endpoints-list">
@@ -303,7 +303,7 @@ export function EndpointsSection(): React.JSX.Element {
           />
         ) : null}
 
-        <div className="settings-panel__endpoint-toolbar">
+        <div className="settings-panel__endpoint-toolbar" id="settings-section-worker-connections">
           <div className="settings-panel__endpoint-toolbar-meta">
             <strong>
               {t('settingsPanel.endpoints.list.countLabel')}: {String(remoteEndpoints.length)}

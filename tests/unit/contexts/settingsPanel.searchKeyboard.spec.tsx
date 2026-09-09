@@ -36,10 +36,9 @@ function createSearchResult(id: string): SettingsSearchResult {
   }
 }
 
-function createSearchProps(endpointsEnabled = false) {
+function createSearchProps() {
   return {
     workspaces: [],
-    endpointsEnabled,
     onSelectSearchResult: vi.fn(),
   }
 }
@@ -107,7 +106,7 @@ describe('SettingsPanelSearch search keyboard navigation', () => {
     }
 
     searchHarness.currentResults = [retainedResult, createSearchResult('result-new')]
-    rerender(<SettingsPanelSearch {...props} endpointsEnabled />)
+    rerender(<SettingsPanelSearch {...props} workspaces={[]} />)
 
     expect(search).toHaveAttribute('aria-activedescendant', 'settings-panel-search-result-result-8')
     expect(search.getAttribute('aria-activedescendant')).not.toContain('undefined')

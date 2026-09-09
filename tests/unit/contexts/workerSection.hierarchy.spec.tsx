@@ -46,12 +46,15 @@ describe('WorkerSection hierarchy', () => {
     vi.restoreAllMocks()
   })
 
-  it('groups Worker Mode, CLI, and Local Worker controls under named modules', async () => {
+  it('groups CLI and Local Worker controls without redundant status or mode labels', async () => {
     installWorkerApi()
 
-    render(<WorkerSection remoteWorkersEnabled={false} />)
+    render(<WorkerSection />)
 
-    expect(await screen.findByRole('group', { name: 'Worker Mode' })).toBeVisible()
+    expect(await screen.findByTestId('settings-worker-cli-status')).toBeVisible()
+    expect(screen.queryByRole('group', { name: 'Worker Mode' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Worker Status')).not.toBeInTheDocument()
+    expect(screen.queryByText('Worker Controls')).not.toBeInTheDocument()
 
     const cliModule = screen.getByRole('group', { name: 'CLI' })
     expect(within(cliModule).getByTestId('settings-worker-cli-status')).toBeVisible()

@@ -414,13 +414,11 @@ export default function App(): React.JSX.Element {
           activeWorkspace={activeWorkspace}
           workspaces={workspaces}
           isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
-          remoteWorkersEnabled={agentSettings.experimentalRemoteWorkersEnabled}
+          remoteWorkersEnabled
           onCloseCommandCenter={closeCommandCenter}
           onOpenSettings={handleOpenSettings}
           onRequestOpenEndpoints={() => {
-            handleOpenSettings(
-              agentSettings.experimentalRemoteWorkersEnabled ? 'endpoints' : 'worker',
-            )
+            handleOpenSettings('endpoints')
           }}
           onOpenSpaceArchives={openSpaceArchives}
           onTogglePrimarySidebar={() => {

@@ -94,11 +94,11 @@ async function verifyWorkerHierarchyAndAttach(
 
   const runtime = dialog.getByRole('group', { name: 'Worker 运行', exact: true })
   const body = runtime.locator(':scope > .settings-panel__group-body')
-  const workerMode = runtime.getByRole('group', { name: 'Worker 模式' })
   const cli = runtime.getByRole('group', { name: 'CLI', exact: true })
   const localWorker = runtime.getByRole('group', { name: '本机 Worker' })
   await expect(body).toHaveCount(1)
-  await expect(workerMode).toBeVisible()
+  await expect(runtime.getByRole('group', { name: 'Worker 模式' })).toHaveCount(0)
+  await expect(runtime.getByText('当前模式', { exact: true })).toHaveCount(0)
   await expect(cli.getByTestId('settings-worker-cli-status')).toBeVisible()
   await expect(localWorker.getByTestId('settings-worker-local-status')).toBeVisible()
 
@@ -120,7 +120,7 @@ async function verifyWorkerHierarchyAndAttach(
     background: 'rgba(0, 0, 0, 0)',
   })
 
-  const moduleSurface = await workerMode.evaluate(element => {
+  const moduleSurface = await cli.evaluate(element => {
     const style = getComputedStyle(element)
     return { backgroundColor: style.backgroundColor, borderRadius: style.borderRadius }
   })

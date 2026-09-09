@@ -10,27 +10,56 @@
 
 .settings-agent-page .settings-agent-list-row {
   display: grid;
-  grid-template-columns: 28px 18px minmax(0, 1fr) auto;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
   gap: 10px;
-  padding: 10px 0;
-  min-height: 72px;
+  padding: 6px 0;
+  min-height: 64px;
   border: 0;
   border-bottom: 1px solid var(--cove-border-subtle);
   border-radius: 0;
   background: transparent;
 }
 
-.settings-agent-page .settings-agent-list-row > .settings-agent-order__actions {
-  flex-direction: column;
-  gap: 0;
+.settings-agent-page .settings-agent-list-item {
+  position: relative;
+  min-width: 0;
 }
 
-.settings-agent-page .settings-agent-order__action.secondary {
-  min-width: 24px;
-  min-height: 24px;
-  padding: 4px;
-  border-color: transparent;
+.settings-agent-page .settings-agent-list-item[data-dragging] {
+  z-index: 1;
+  background: var(--cove-surface);
+  box-shadow: 0 0 0 1px var(--cove-border);
+}
+
+.settings-agent-page button.settings-agent-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 32px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
   background: transparent;
+  color: var(--cove-text-faint);
+  cursor: grab;
+  touch-action: none;
+}
+
+.settings-agent-page button.settings-agent-drag-handle:hover {
+  color: var(--cove-text);
+  background: var(--cove-surface-hover);
+}
+
+.settings-agent-page button.settings-agent-drag-handle[aria-pressed='true'] {
+  cursor: grabbing;
+  color: var(--cove-accent);
+}
+
+.settings-agent-page button.settings-agent-drag-handle:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 1px;
 }
 
 .settings-agent-page button.settings-agent-identity {
@@ -72,15 +101,25 @@
 
 .settings-agent-page .settings-agent-list-row__summary {
   display: flex;
+  flex: 0 1 auto;
   flex-direction: row;
   flex-wrap: wrap;
   gap: 4px 12px;
+  padding-left: 0;
   font-size: calc(11px * var(--cove-ui-font-scale));
 }
 
 .settings-agent-identity__chevron {
   flex-shrink: 0;
   color: var(--cove-text-faint);
+}
+
+.settings-agent-page .settings-agent-list-row__summary span {
+  max-width: 100%;
+}
+
+.settings-agent-page .settings-agent-list-row__actions {
+  width: auto;
 }
 
 .settings-agent-page .agent-provider-icon.settings-agent-list-row__icon,
@@ -275,13 +314,13 @@
 
 @media (max-width: 720px) {
   .settings-agent-page .settings-agent-list-row {
-    grid-template-columns: 24px 18px minmax(0, 1fr);
+    grid-template-columns: 24px minmax(0, 1fr) auto;
     gap: 6px;
   }
 
   .settings-agent-page .settings-agent-list-row__actions {
-    grid-column: 3;
-    justify-self: start;
+    grid-column: auto;
+    justify-self: end;
   }
 
   .settings-agent-page .settings-agent-env-row {

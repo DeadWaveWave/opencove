@@ -63,13 +63,13 @@ describe('Settings group hierarchy', () => {
 
   it('uses one Worker Runtime body with module headings instead of nested module cards', async () => {
     installSettingsPanelWorkerApi()
-    const { container } = render(<WorkerSection remoteWorkersEnabled={false} />)
+    const { container } = render(<WorkerSection />)
 
     expect(await screen.findByTestId('settings-worker-cli-status')).toBeVisible()
     const { group, body } = expectSettingsGroup('Worker Runtime')
     expect(group.querySelectorAll('.settings-panel__group-body')).toHaveLength(1)
 
-    for (const moduleName of ['Worker Mode', 'CLI', 'Local Worker']) {
+    for (const moduleName of ['CLI', 'Local Worker']) {
       expect(within(body).getByRole('heading', { level: 4, name: moduleName })).toBeVisible()
     }
 

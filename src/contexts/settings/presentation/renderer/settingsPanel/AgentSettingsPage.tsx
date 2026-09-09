@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toErrorMessage } from './workerSectionUtils'
 import {
-  mergeSelectableAgentProviderOrder,
   normalizeSelectableAgentProviderOrder,
+  resolveDefaultFirstAgentProviderOrder,
   resolveSelectableAgentProvider,
   type AgentProvider,
   type AgentSettings,
@@ -169,19 +169,19 @@ export function AgentSettingsPage({
       ) : (
         <AgentSection
           defaultProvider={resolveSelectableAgentProvider(settings.defaultProvider)}
-          agentProviderOrder={normalizeSelectableAgentProviderOrder(settings.agentProviderOrder)}
+          agentProviderOrder={normalizeSelectableAgentProviderOrder(
+            resolveDefaultFirstAgentProviderOrder(
+              settings.agentProviderOrder,
+              settings.defaultProvider,
+            ),
+          )}
           agentFullAccess={settings.agentFullAccess}
           availabilityByProvider={availabilityByProvider}
           installingProvider={installingProvider}
           installErrorByProvider={installErrorByProvider}
           isRefreshingAvailability={isRefreshingAvailability}
           settings={settings}
-          onChangeDefaultProvider={onChangeDefaultProvider}
-          onChangeAgentProviderOrder={providers => {
-            onChangeAgentProviderOrder(
-              mergeSelectableAgentProviderOrder(settings.agentProviderOrder, providers),
-            )
-          }}
+          onChangeAgentProviderOrder={onChangeAgentProviderOrder}
           onChangeAgentFullAccess={onChangeAgentFullAccess}
           onConfigureProvider={openProvider}
           onRefreshAvailability={refreshAvailability}

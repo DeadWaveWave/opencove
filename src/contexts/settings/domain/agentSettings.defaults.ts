@@ -1,4 +1,4 @@
-import { AGENT_PROVIDERS } from './agentSettings.providers'
+import { resolveDefaultFirstAgentProviderOrder } from './agentSettings.providers'
 import type { AgentSettings } from './agentSettings'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from './agentEnv'
 import { DEFAULT_AGENT_EXECUTABLE_PATH_OVERRIDE_BY_PROVIDER } from './agentSettings.executables'
@@ -15,7 +15,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   isPrimarySidebarCollapsed: false,
   workspaceSearchPanelWidth: 420,
   defaultProvider: 'codex',
-  agentProviderOrder: [...AGENT_PROVIDERS],
+  agentProviderOrder: resolveDefaultFirstAgentProviderOrder(undefined, 'codex'),
   agentFullAccess: true,
   defaultTerminalProfileId: null,
   agentExecutablePathOverrideByProvider: DEFAULT_AGENT_EXECUTABLE_PATH_OVERRIDE_BY_PROVIDER,
@@ -72,7 +72,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   browserDefaultMode: DEFAULT_BROWSER_MODE,
   browserSearchEngine: DEFAULT_BROWSER_SEARCH_ENGINE,
   experimentalWebsiteWindowPasteEnabled: false,
-  experimentalRemoteWorkersEnabled: false,
+  experimentalRemoteWorkersEnabled: true,
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   terminalFontFamily: null,

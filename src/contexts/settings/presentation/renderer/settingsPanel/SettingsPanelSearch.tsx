@@ -11,12 +11,10 @@ import {
 export function SettingsPanelSearch({
   searchInputRef,
   workspaces,
-  endpointsEnabled,
   onSelectSearchResult,
 }: {
   searchInputRef?: Ref<HTMLInputElement>
   workspaces: WorkspaceState[]
-  endpointsEnabled: boolean
   onSelectSearchResult: (result: SettingsSearchResult) => void
 }) {
   const { t } = useTranslation()
@@ -25,8 +23,8 @@ export function SettingsPanelSearch({
   const searchResultRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const searchInteractionModeRef = useRef<'keyboard' | 'pointer'>('keyboard')
   const searchEntries = useMemo(
-    () => createSettingsSearchEntries({ t, workspaces, endpointsEnabled }),
-    [endpointsEnabled, t, workspaces],
+    () => createSettingsSearchEntries({ t, workspaces }),
+    [t, workspaces],
   )
   const searchResults = useMemo(
     () => searchSettingsEntries(searchEntries, searchQuery),

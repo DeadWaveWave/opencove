@@ -46,7 +46,7 @@ export const enSettingsPanelLayout = {
     canvasWindows: 'Adjust canvas navigation and window behavior.',
     agent: 'Choose and configure AI assistants.',
     tasksShortcuts: 'Keyboard shortcuts, commands, and quick phrases.',
-    worker: 'Configure Worker runtime, access, and remote machines.',
+    worker: 'Manage the local Worker, browser access, and remote connections.',
     integrations: 'Connect OpenCove with external services.',
     advanced: 'Manage experimental features and diagnostics.',
   },

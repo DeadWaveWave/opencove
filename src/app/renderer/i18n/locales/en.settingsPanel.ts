@@ -1,3 +1,4 @@
+import { enSettingsPanelAgent } from './en.settingsPanel.agent'
 import { enSettingsPanelAppearanceNext } from './en.settingsPanel.appearanceNext'
 import { enSettingsPanelAgentDetail } from './en.settingsPanel.agentDetail'
 import { enTerminalDisplayCalibration } from './en.terminalDisplayCalibration'
@@ -84,25 +85,7 @@ export const enSettingsPanel = {
   },
   appearance: enSettingsPanelLayout.appearance,
   terminal: enSettingsPanelLayout.terminal,
-  agent: {
-    title: 'Agent',
-    defaultAgentLabel: 'Default Agent',
-    defaultAgentHelp: 'The default AI provider for new tasks and terminals.',
-    agentListLabel: 'Agents',
-    agentProviderOrderLabel: 'Agent Menu Order',
-    agentProviderOrderHelp:
-      'Set default, order, install, model, and launch environment from one list.',
-    defaultBadge: 'Default',
-    configure: 'Configure',
-    done: 'Done',
-    envSummary_one: '{{count}} environment variable',
-    envSummary_other: '{{count}} environment variables',
-    envSummaryNone: 'No environment variables',
-    moveUp: 'Move up',
-    moveDown: 'Move down',
-    fullAccessLabel: 'Full Access Mode',
-    fullAccessHelp: 'Disable sandbox and manual approvals for agents.',
-  },
+  agent: enSettingsPanelAgent,
   agentEnv: {
     title: 'Agent Environment Variables',
     help: 'Add or override environment variables when starting an agent.',
@@ -428,7 +411,7 @@ export const enSettingsPanel = {
       remoteExperimentalDisabled:
         'Remote machines are experimental. Enable remote machines in Connections to continue.',
       stopLocalWorkerFirst: 'Stop the Local Worker before switching to Standalone.',
-      enableLocalRequiresRestart: 'Enable Local Worker mode and restart before starting it.',
+      enableLocalRequiresRestart: 'This session is not using a local Worker.',
     },
     home: {
       title: 'Worker Mode',

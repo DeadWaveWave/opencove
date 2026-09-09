@@ -12,6 +12,11 @@ import type {
   UiTheme,
 } from '@contexts/settings/domain/agentSettings'
 import type { SettingsPanelProps } from './SettingsPanel.shared'
+import {
+  mergeSelectableAgentProviderOrder,
+  normalizeSelectableAgentProviderOrder,
+  resolveDefaultFirstAgentProviderOrder,
+} from '@contexts/settings/domain/agentSettings'
 
 export function createSettingsPanelUpdaters({
   settings,
@@ -35,9 +40,25 @@ export function createSettingsPanelUpdaters({
 
   return {
     updateDefaultProvider: (provider: AgentProvider): void =>
-      updateSetting('defaultProvider', provider),
-    updateAgentProviderOrder: (providers: AgentProvider[]): void =>
-      updateSetting('agentProviderOrder', providers),
+      onChange({
+        ...settings,
+        defaultProvider: provider,
+        agentProviderOrder: resolveDefaultFirstAgentProviderOrder(
+          settings.agentProviderOrder,
+          provider,
+        ),
+      }),
+    updateAgentProviderOrder: (providers: AgentProvider[]): void => {
+      const agentProviderOrder = mergeSelectableAgentProviderOrder(
+        settings.agentProviderOrder,
+        providers,
+      )
+      onChange({
+        ...settings,
+        agentProviderOrder,
+        defaultProvider: normalizeSelectableAgentProviderOrder(agentProviderOrder)[0],
+      })
+    },
     updateLanguage: (language: UiLanguage): void => updateSetting('language', language),
     updateUiTheme: (uiTheme: UiTheme): void => updateSetting('uiTheme', uiTheme),
     updatePixelEffect: (key: keyof PixelEffectSettings, enabled: boolean): void =>
@@ -84,8 +105,6 @@ export function createSettingsPanelUpdaters({
       updateSetting('browserSearchEngine', engine),
     updateExperimentalWebsiteWindowPasteEnabled: (enabled: boolean): void =>
       updateSetting('experimentalWebsiteWindowPasteEnabled', enabled),
-    updateExperimentalRemoteWorkersEnabled: (enabled: boolean): void =>
-      updateSetting('experimentalRemoteWorkersEnabled', enabled),
     updateTerminalFontSize: (fontSize: number): void =>
       updateSetting('terminalFontSize', Math.round(fontSize)),
     updateTerminalFontFamily: (family: string | null): void =>

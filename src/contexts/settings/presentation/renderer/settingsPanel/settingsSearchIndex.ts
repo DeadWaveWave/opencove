@@ -91,13 +91,11 @@ function getEntryScore(entry: SettingsSearchEntry, normalizedQuery: string): num
 export function createSettingsSearchEntries(options: {
   t: TranslateFn
   workspaces: WorkspaceState[]
-  endpointsEnabled: boolean
 }): SettingsSearchEntry[] {
-  const { t, workspaces, endpointsEnabled } = options
+  const { t, workspaces } = options
   const coreEntries = CORE_SEARCH_ENTRY_DEFINITIONS.filter(
     definition =>
-      (endpointsEnabled || definition.id !== 'endpoints.list') &&
-      (AI_NAMING_FEATURES.taskTitleGeneration || definition.id !== 'tasks.title-generation'),
+      AI_NAMING_FEATURES.taskTitleGeneration || definition.id !== 'tasks.title-generation',
   ).map(definition => resolveEntry(definition, t))
 
   const workspaceEntries = workspaces.map(workspace => {

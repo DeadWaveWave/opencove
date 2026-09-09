@@ -46,7 +46,7 @@ export const zhCNSettingsPanelLayout = {
     canvasWindows: '调整画布操作与窗口行为。',
     agent: '选择并配置 Agent。',
     tasksShortcuts: '管理快捷键、快捷命令与快捷短语。',
-    worker: '配置 Worker 运行方式、访问与远程机器。',
+    worker: '管理本机 Worker、浏览器访问与远程连接。',
     integrations: '连接 OpenCove 与外部服务。',
     advanced: '管理实验性功能与诊断选项。',
   },

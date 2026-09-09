@@ -1,3 +1,4 @@
+import { zhCNSettingsPanelAgent } from './zh-CN.settingsPanel.agent'
 import { zhCNSettingsPanelAppearanceNext } from './zh-CN.settingsPanel.appearanceNext'
 import { zhCNSettingsPanelAgentDetail } from './zh-CN.settingsPanel.agentDetail'
 import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibration'
@@ -83,24 +84,7 @@ export const zhCNSettingsPanel = {
   },
   appearance: zhCNSettingsPanelLayout.appearance,
   terminal: zhCNSettingsPanelLayout.terminal,
-  agent: {
-    title: 'Agent',
-    defaultAgentLabel: '默认 Agent',
-    defaultAgentHelp: '新任务和终端默认使用的 AI 提供方。',
-    agentListLabel: 'Agents',
-    agentProviderOrderLabel: 'Agent 菜单排序',
-    agentProviderOrderHelp: '在一个列表里设置默认 Agent、排序、安装状态、模型和启动环境。',
-    defaultBadge: '默认',
-    configure: '配置',
-    done: '完成',
-    envSummary_one: '{{count}} 个环境变量',
-    envSummary_other: '{{count}} 个环境变量',
-    envSummaryNone: '无环境变量',
-    moveUp: '上移',
-    moveDown: '下移',
-    fullAccessLabel: '完全访问模式',
-    fullAccessHelp: '为 Agent 关闭沙箱和人工审批。',
-  },
+  agent: zhCNSettingsPanelAgent,
   agentEnv: {
     title: 'Agent 环境变量',
     help: '启动 Agent 时新增或覆写环境变量。',
@@ -421,7 +405,7 @@ export const zhCNSettingsPanel = {
       remoteRequired: '远程机器需要填写主机、端口和访问令牌。',
       remoteExperimentalDisabled: '远程机器为实验性功能。请先在「连接」中启用远程机器后再继续。',
       stopLocalWorkerFirst: '切换到 Standalone 前请先停止本机 Worker。',
-      enableLocalRequiresRestart: '请先启用本机 Worker 模式并重启，然后再启动 Worker。',
+      enableLocalRequiresRestart: '当前会话未使用本机 Worker。',
     },
     home: {
       title: 'Worker 模式',

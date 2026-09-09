@@ -101,3 +101,15 @@ export function mergeSelectableAgentProviderOrder(
     return replacement ?? provider
   })
 }
+
+export function resolveDefaultFirstAgentProviderOrder(
+  value: unknown,
+  defaultProvider: unknown,
+): AgentProvider[] {
+  const order = normalizeSelectableAgentProviderOrder(value)
+  const preferred = resolveSelectableAgentProvider(defaultProvider)
+  return mergeSelectableAgentProviderOrder(value, [
+    preferred,
+    ...order.filter(provider => provider !== preferred),
+  ])
+}

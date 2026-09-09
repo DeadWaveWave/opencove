@@ -96,6 +96,10 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 12px;
+    min-height: 0;
+    height: max-content;
+    flex: 0 0 max-content;
+    align-content: start;
   }
   .settings-panel__header-copy {
     grid-area: 1 / 1;

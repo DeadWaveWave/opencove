@@ -57,35 +57,40 @@ describe('WorkerSection', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows a restart error instead of silently disabling start', async () => {
+  it('explains unavailable local control without changing the session configuration', async () => {
     const { workerStart } = installWorkerApi('standalone')
 
-    render(<WorkerSection remoteWorkersEnabled={false} />)
+    render(<WorkerSection />)
 
     const startButton = await screen.findByTestId('settings-worker-local-start')
-    expect(startButton).toBeEnabled()
+    await waitFor(() => expect(startButton).toBeEnabled())
 
     fireEvent.click(startButton)
 
     expect(workerStart).not.toHaveBeenCalled()
     await waitFor(() => {
-      expect(
-        screen.getByText('Enable Local Worker mode and restart before starting it.'),
-      ).toBeVisible()
+      expect(screen.getByText('This session is not using a local Worker.')).toBeVisible()
     })
   })
 
-  it('shows local worker mode as fixed in packaged builds', async () => {
-    installWorkerApi('local', { isPackaged: true })
+  it.each([false, true])(
+    'hides mode controls without mutating runtime in packaged=%s',
+    async isPackaged => {
+      installWorkerApi('local', { isPackaged })
 
-    render(<WorkerSection remoteWorkersEnabled={false} />)
+      render(<WorkerSection />)
 
-    expect(await screen.findByText('Current Mode')).toBeVisible()
-    expect(await screen.findByTestId('settings-worker-home-mode-value')).toHaveTextContent(
-      'Local Worker',
-    )
-    expect(screen.queryByTestId('settings-worker-home-mode-trigger')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('settings-worker-apply-restart')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('settings-worker-remote-hostname')).not.toBeInTheDocument()
-  })
+      await waitFor(() => expect(screen.getByTestId('settings-worker-local-start')).toBeEnabled())
+      expect(screen.queryByText('Current Mode')).not.toBeInTheDocument()
+      expect(screen.queryByText('Worker Mode')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('settings-worker-home-mode-value')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('settings-worker-home-mode-trigger')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('settings-worker-apply-restart')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('settings-worker-remote-hostname')).not.toBeInTheDocument()
+      expect(window.opencoveApi.workerClient.setConfig).not.toHaveBeenCalled()
+      expect(window.opencoveApi.workerClient.relaunch).not.toHaveBeenCalled()
+      expect(window.opencoveApi.worker.start).not.toHaveBeenCalled()
+      expect(window.opencoveApi.worker.stop).not.toHaveBeenCalled()
+    },
+  )
 })

@@ -48,7 +48,6 @@ describe('settingsSearchIndex', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(dictionary),
       workspaces: [],
-      endpointsEnabled: false,
     })
     expect(searchSettingsEntries(entries, query)[0]).toMatchObject({
       pageId: 'appearance',
@@ -60,7 +59,6 @@ describe('settingsSearchIndex', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(zhCN),
       workspaces: [],
-      endpointsEnabled: false,
     })
 
     const results = searchSettingsEntries(entries, '外观')
@@ -73,21 +71,25 @@ describe('settingsSearchIndex', () => {
     })
   })
 
-  it('filters endpoint entries when remote workers are disabled', () => {
+  it('always includes remote connections without obsolete mode or feature-toggle entries', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(en),
       workspaces: [],
-      endpointsEnabled: false,
     })
 
-    expect(searchSettingsEntries(entries, 'endpoint')).toHaveLength(0)
+    expect(searchSettingsEntries(entries, 'endpoint')[0]).toMatchObject({
+      id: 'endpoints.list',
+      pageId: 'worker',
+      title: 'Remote Connections',
+    })
+    expect(entries.some(entry => entry.id === 'worker.home')).toBe(false)
+    expect(entries.some(entry => entry.id === 'experimental.remote-workers')).toBe(false)
   })
 
   it('includes workspace settings and falls back to the folder name', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(en),
       workspaces: [createWorkspace({ name: '', path: '/Users/example/My Project' })],
-      endpointsEnabled: false,
     })
 
     const results = searchSettingsEntries(entries, 'My Project')
@@ -104,7 +106,6 @@ describe('settingsSearchIndex', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(en),
       workspaces: [],
-      endpointsEnabled: false,
     })
 
     const results = searchSettingsEntries(entries, 'memory diagnostics')
@@ -121,7 +122,6 @@ describe('settingsSearchIndex', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(en),
       workspaces: [],
-      endpointsEnabled: false,
     })
     for (const id of [
       'general.terminal-font-size',
@@ -137,7 +137,6 @@ describe('settingsSearchIndex', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(en),
       workspaces: [],
-      endpointsEnabled: false,
     })
     expect(entries.find(entry => entry.id === 'agent.codex.models')).toMatchObject({
       pageId: 'agent',

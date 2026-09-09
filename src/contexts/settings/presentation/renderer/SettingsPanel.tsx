@@ -54,12 +54,6 @@ export function SettingsPanel(props: SettingsPanelProps): React.JSX.Element {
     }
   }, [initialPageId, selectPage])
 
-  useEffect(() => {
-    if (activePageId === 'endpoints' && !settings.experimentalRemoteWorkersEnabled) {
-      selectPage('worker')
-    }
-  }, [activePageId, settings.experimentalRemoteWorkersEnabled, selectPage])
-
   const pageTitle = activeWorkspace
     ? activeWorkspace.name.trim() || getFolderName(activeWorkspace.path)
     : t(resolvedActivePage.navLabelKey)
@@ -109,7 +103,6 @@ export function SettingsPanel(props: SettingsPanelProps): React.JSX.Element {
             <SettingsPanelSearch
               searchInputRef={searchInputRef}
               workspaces={workspaces}
-              endpointsEnabled={settings.experimentalRemoteWorkersEnabled}
               onSelectSearchResult={selectSearchResult}
             />
           }

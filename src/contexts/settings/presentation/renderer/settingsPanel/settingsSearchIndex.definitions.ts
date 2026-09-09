@@ -85,15 +85,6 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['release', 'version', 'auto update', '更新', '版本'],
   },
   {
-    id: 'worker.home',
-    pageId: 'worker',
-    titleKey: 'settingsPanel.worker.home.title',
-    descriptionKey: 'settingsPanel.worker.home.help',
-    anchorId: 'settings-section-worker-home',
-    keywordKeys: ['settingsPanel.worker.home.modeLabel'],
-    keywords: ['worker', 'local', 'remote', 'standalone', 'durable state'],
-  },
-  {
     id: 'worker.cli',
     pageId: 'worker',
     titleKey: 'settingsPanel.worker.cli.title',
@@ -113,10 +104,14 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
   {
     id: 'endpoints.list',
     pageId: 'worker',
-    titleKey: 'settingsPanel.endpoints.list.title',
+    titleKey: 'settingsPanel.groups.worker.remote',
     descriptionKey: 'settingsPanel.endpoints.list.help',
     anchorId: 'settings-section-endpoints',
-    keywordKeys: ['settingsPanel.endpoints.actions.add', 'settingsPanel.endpoints.actions.ping'],
+    keywordKeys: [
+      'settingsPanel.endpoints.list.title',
+      'settingsPanel.endpoints.actions.add',
+      'settingsPanel.endpoints.actions.ping',
+    ],
     keywords: ['remote worker', 'register', 'endpoint', '远程'],
   },
   ...AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS,
@@ -200,18 +195,9 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['focus', 'center', 'zoom', 'node', '聚焦', '居中'],
   },
   {
-    id: 'experimental.remote-workers',
-    pageId: 'worker',
-    titleKey: 'settingsPanel.experimental.remoteWorkersTitle',
-    descriptionKey: 'settingsPanel.experimental.remoteWorkersHelp',
-    anchorId: 'settings-section-experimental-remote-workers',
-    keywordKeys: ['settingsPanel.experimental.remoteWorkersEnabledLabel'],
-    keywords: ['remote', 'worker', 'location', 'experimental', '远程'],
-  },
-  {
     id: 'experimental.worker-web-ui',
     pageId: 'worker',
-    titleKey: 'settingsPanel.experimental.workerWebUi.title',
+    titleKey: 'settingsPanel.groups.worker.webAccess',
     descriptionKey: 'settingsPanel.experimental.workerWebUi.help',
     anchorId: 'settings-section-worker-web-ui',
     keywordKeys: [

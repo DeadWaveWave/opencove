@@ -277,23 +277,25 @@ describe('Settings form accessible names', () => {
     ).toBeVisible()
   })
 
-  it('names Worker mode, remote connection, and Web UI security controls', async () => {
+  it('names Web UI security controls and leaves runtime unchanged on mount', async () => {
     installWorkerApi('remote')
     render(
       <>
-        <WorkerSection remoteWorkersEnabled />
+        <WorkerSection />
         <ExperimentalWorkerWebUiSection />
       </>,
     )
 
-    expectNamedTestId('settings-worker-home-mode-trigger', 'Worker Mode')
     expectNamedTestId('settings-experimental-worker-web-ui-port', 'Port')
     expectNamedTestId('settings-experimental-worker-web-ui-password', 'Password')
-    expect(await screen.findByTestId('settings-worker-remote-hostname')).toHaveAccessibleName(
-      'Hostname',
-    )
-    expectNamedTestId('settings-worker-remote-port', 'Port')
-    expectNamedTestId('settings-worker-remote-token', 'Token')
+    await waitFor(() => expect(window.opencoveApi.workerClient.getConfig).toHaveBeenCalled())
+    expect(screen.queryByTestId('settings-worker-home-mode-trigger')).not.toBeInTheDocument()
+    expect(window.opencoveApi.workerClient.setConfig).not.toHaveBeenCalled()
+    expect(window.opencoveApi.workerClient.setWebUiSettings).not.toHaveBeenCalled()
+    expect(window.opencoveApi.workerClient.setWebUiSecurity).not.toHaveBeenCalled()
+    expect(window.opencoveApi.workerClient.relaunch).not.toHaveBeenCalled()
+    expect(window.opencoveApi.worker.start).not.toHaveBeenCalled()
+    expect(window.opencoveApi.worker.stop).not.toHaveBeenCalled()
   })
 
   it('applies Web UI settings without restarting a running Worker', async () => {

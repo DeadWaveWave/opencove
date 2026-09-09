@@ -64,6 +64,28 @@ afterEach(() => {
 })
 
 describe('Agent list and provider detail', () => {
+  it('exposes accessible drag handles and keeps the default first', () => {
+    const props = createProps()
+    render(<AgentSettingsPage {...props} />)
+    expect(screen.getByTestId('settings-agent-drag-handle-codex')).toHaveAccessibleName(
+      'Reorder Codex',
+    )
+    expect(screen.getByTestId('settings-agent-order-item-codex')).toHaveAttribute(
+      'data-default',
+      'true',
+    )
+    expect(screen.getAllByTestId(/^settings-agent-order-item-/)[0]).toHaveAttribute(
+      'data-testid',
+      'settings-agent-order-item-codex',
+    )
+    expect(
+      screen.queryByTestId('settings-agent-order-move-down-claude-code'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByTestId('settings-default-provider-codex')).not.toBeInTheDocument()
+    expect(props.onChangeAgentProviderOrder).not.toHaveBeenCalled()
+    expect(props.onChangeDefaultProvider).not.toHaveBeenCalled()
+  })
+
   it('replaces the list with one provider detail while keeping model and environment writes scoped', () => {
     const props = createProps()
     props.settings = { ...props.settings, defaultProvider: 'claude-code' }

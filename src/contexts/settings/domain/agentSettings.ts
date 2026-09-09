@@ -8,7 +8,7 @@ import {
   AGENT_PROVIDERS,
   isTaskTitleAgentProvider,
   isValidProvider,
-  normalizeAgentProviderOrder,
+  resolveDefaultFirstAgentProviderOrder,
   type AgentProvider,
 } from './agentSettings.providers'
 import { normalizeFocusNodeTargetZoom } from './focusNodeTargetZoom'
@@ -66,6 +66,7 @@ export {
   mergeSelectableAgentProviderOrder,
   normalizeAgentProviderOrder,
   normalizeSelectableAgentProviderOrder,
+  resolveDefaultFirstAgentProviderOrder,
   resolveSelectableAgentProvider,
 } from './agentSettings.providers'
 export type {
@@ -172,7 +173,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     MIN_WORKSPACE_SEARCH_PANEL_WIDTH,
     MAX_WORKSPACE_SEARCH_PANEL_WIDTH,
   )
-  const agentProviderOrder = normalizeAgentProviderOrder(value.agentProviderOrder)
+  const agentProviderOrder = resolveDefaultFirstAgentProviderOrder(
+    value.agentProviderOrder,
+    defaultProvider,
+  )
 
   const agentFullAccess =
     normalizeBoolean(value.agentFullAccess) ?? DEFAULT_AGENT_SETTINGS.agentFullAccess

@@ -1,63 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { CliPathStatusResult, HomeWorkerMode, WorkerStatusResult } from '@shared/contracts/dto'
-import { CoveSelect } from '@app/renderer/components/CoveSelect'
-import { WorkerRemoteConnectionFields } from './WorkerRemoteConnectionFields'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 import { formatToken, toBaseUrl, toErrorMessage } from './workerSectionUtils'
 
-export function WorkerSection({
-  remoteWorkersEnabled,
-}: {
-  remoteWorkersEnabled: boolean
-}): React.JSX.Element {
+export function WorkerSection(): React.JSX.Element {
   const { t } = useTranslation()
-  const supportsHomeWorkerModeSelection = !window.opencoveApi.meta.isPackaged
-  const defaultMode: HomeWorkerMode = supportsHomeWorkerModeSelection ? 'standalone' : 'local'
-  const [savedMode, setSavedMode] = useState<HomeWorkerMode>(defaultMode)
-  const [draftMode, setDraftMode] = useState<HomeWorkerMode>(defaultMode)
-  const [remoteHostname, setRemoteHostname] = useState('')
-  const [remotePort, setRemotePort] = useState('')
-  const [remoteToken, setRemoteToken] = useState('')
+  const [savedMode, setSavedMode] = useState<HomeWorkerMode | null>(null)
   const [localStatus, setLocalStatus] = useState<WorkerStatusResult | null>(null)
   const [cliStatus, setCliStatus] = useState<CliPathStatusResult | null>(null)
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [revealLocalToken, setRevealLocalToken] = useState(false)
-  const [revealRemoteToken, setRevealRemoteToken] = useState(false)
   const localConnection = localStatus?.connection ?? null
-  const modeOptions = useMemo(() => {
-    const options = [
-      { value: 'standalone', label: t('settingsPanel.worker.home.mode.standalone') },
-      { value: 'local', label: t('settingsPanel.worker.home.mode.local') },
-    ]
-
-    const allowRemoteOption =
-      remoteWorkersEnabled || savedMode === 'remote' || draftMode === 'remote'
-    if (allowRemoteOption) {
-      options.push({ value: 'remote', label: t('settingsPanel.worker.home.mode.remote') })
-    }
-
-    return options
-  }, [draftMode, remoteWorkersEnabled, savedMode, t])
-
-  const canApplyRemote = useMemo(() => {
-    if (draftMode !== 'remote') {
-      return true
-    }
-
-    if (!remoteWorkersEnabled && savedMode !== 'remote') {
-      return false
-    }
-
-    const hostname = remoteHostname.trim()
-    const token = remoteToken.trim()
-    const port = Number(remotePort)
-
-    return (
-      hostname.length > 0 && token.length > 0 && Number.isFinite(port) && port > 0 && port <= 65_535
-    )
-  }, [draftMode, remoteHostname, remotePort, remoteToken, remoteWorkersEnabled, savedMode])
 
   const load = async (): Promise<void> => {
     const [config, status, cli] = await Promise.all([
@@ -67,10 +22,6 @@ export function WorkerSection({
     ])
 
     setSavedMode(config.mode)
-    setDraftMode(config.mode)
-    setRemoteHostname(config.remote?.hostname ?? '')
-    setRemotePort(config.remote ? String(config.remote.port) : '')
-    setRemoteToken(config.remote?.token ?? '')
     setLocalStatus(status)
     setCliStatus(cli)
   }
@@ -84,47 +35,6 @@ export function WorkerSection({
       }
     })()
   }, [])
-
-  const applyAndRestart = async (): Promise<void> => {
-    if (!canApplyRemote) {
-      if (!remoteWorkersEnabled && savedMode !== 'remote') {
-        setError(t('settingsPanel.worker.errors.remoteExperimentalDisabled'))
-      } else {
-        setError(t('settingsPanel.worker.errors.remoteRequired'))
-      }
-      return
-    }
-
-    if (draftMode === 'standalone' && localStatus?.status === 'running') {
-      setError(t('settingsPanel.worker.errors.stopLocalWorkerFirst'))
-      return
-    }
-
-    setError(null)
-    setIsBusy(true)
-
-    try {
-      const remote =
-        draftMode === 'remote'
-          ? {
-              hostname: remoteHostname.trim(),
-              port: Number(remotePort),
-              token: remoteToken.trim(),
-            }
-          : null
-
-      const nextConfig = await window.opencoveApi.workerClient.setConfig({
-        mode: draftMode,
-        remote,
-      })
-      setSavedMode(nextConfig.mode)
-      await window.opencoveApi.workerClient.relaunch()
-    } catch (caughtError) {
-      setError(toErrorMessage(caughtError))
-    } finally {
-      setIsBusy(false)
-    }
-  }
 
   const startLocalWorker = async (): Promise<void> => {
     if (savedMode !== 'local') {
@@ -201,7 +111,7 @@ export function WorkerSection({
 
   return (
     <SettingsGroup id="settings-section-worker" title={t('settingsPanel.groups.worker.runtime')}>
-      <SettingsGroupBody>
+      <SettingsGroupBody id="settings-section-worker-home">
         {error ? (
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
@@ -214,78 +124,6 @@ export function WorkerSection({
             </div>
           </div>
         ) : null}
-
-        <SettingsModule
-          id="settings-section-worker-home"
-          title={t('settingsPanel.worker.home.title')}
-          description={
-            supportsHomeWorkerModeSelection
-              ? t('settingsPanel.worker.home.help')
-              : t('settingsPanel.worker.home.packagedHelp')
-          }
-        >
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>
-                {supportsHomeWorkerModeSelection
-                  ? t('settingsPanel.worker.home.modeLabel')
-                  : t('settingsPanel.worker.home.packagedModeLabel')}
-              </strong>
-            </div>
-            <div className="settings-panel__control">
-              {supportsHomeWorkerModeSelection ? (
-                <CoveSelect
-                  id="settings-worker-home-mode"
-                  testId="settings-worker-home-mode"
-                  ariaLabel={t('settingsPanel.worker.home.title')}
-                  value={draftMode}
-                  options={modeOptions}
-                  onChange={nextValue => setDraftMode(nextValue as HomeWorkerMode)}
-                />
-              ) : (
-                <span
-                  className="settings-panel__value"
-                  data-testid="settings-worker-home-mode-value"
-                >
-                  {t('settingsPanel.worker.home.packagedModeValue')}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {supportsHomeWorkerModeSelection && draftMode === 'remote' ? (
-            <WorkerRemoteConnectionFields
-              hostname={remoteHostname}
-              port={remotePort}
-              token={remoteToken}
-              revealToken={revealRemoteToken}
-              onHostnameChange={setRemoteHostname}
-              onPortChange={setRemotePort}
-              onTokenChange={setRemoteToken}
-              onToggleRevealToken={() => setRevealRemoteToken(value => !value)}
-            />
-          ) : null}
-
-          {supportsHomeWorkerModeSelection ? (
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.worker.home.applyLabel')}</strong>
-                <span>{t('settingsPanel.worker.home.applyHelp')}</span>
-              </div>
-              <div className="settings-panel__control settings-panel__control--actions">
-                <button
-                  type="button"
-                  className="primary"
-                  data-testid="settings-worker-apply-restart"
-                  disabled={isBusy || (draftMode === 'remote' && !canApplyRemote)}
-                  onClick={applyAndRestart}
-                >
-                  {t('settingsPanel.worker.home.applyRestart')}
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </SettingsModule>
 
         <SettingsModule
           id="settings-section-worker-cli"
@@ -345,27 +183,18 @@ export function WorkerSection({
         >
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.worker.local.statusLabel')}</strong>
-            </div>
-            <div className="settings-panel__control">
               <span className="settings-panel__value" data-testid="settings-worker-local-status">
                 {localStatus?.status === 'running'
                   ? t('settingsPanel.worker.local.status.running')
                   : t('settingsPanel.worker.local.status.stopped')}
               </span>
             </div>
-          </div>
-
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.worker.local.actionsLabel')}</strong>
-            </div>
             <div className="settings-panel__control settings-panel__control--actions">
               <button
                 type="button"
                 className="secondary"
                 data-testid="settings-worker-local-start"
-                disabled={isBusy || localStatus?.status === 'running'}
+                disabled={isBusy || savedMode === null || localStatus?.status === 'running'}
                 onClick={startLocalWorker}
               >
                 {t('settingsPanel.worker.local.start')}

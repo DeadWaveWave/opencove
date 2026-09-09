@@ -25,7 +25,7 @@ describe('agent provider selection compatibility', () => {
     expect(resolveSelectableAgentProvider('gemini')).toBe(SELECTABLE_AGENT_PROVIDERS[0])
   })
 
-  it('projects durable settings for selection without rewriting compatibility data', () => {
+  it('aligns selectable order with the default fallback while preserving compatibility data', () => {
     const settings = normalizeAgentSettings({
       defaultProvider: 'gemini',
       agentProviderOrder: ['gemini', 'codex'],
@@ -34,15 +34,15 @@ describe('agent provider selection compatibility', () => {
     expect(settings.defaultProvider).toBe('gemini')
     expect(settings.agentProviderOrder).toEqual([
       'gemini',
-      'codex',
       'claude-code',
+      'codex',
       'opencode',
       'pi',
       'kimi',
     ])
     expect(normalizeSelectableAgentProviderOrder(settings.agentProviderOrder)).toEqual([
-      'codex',
       'claude-code',
+      'codex',
       'opencode',
       'pi',
       'kimi',
@@ -66,7 +66,7 @@ describe('agent provider selection compatibility', () => {
       }),
     ).toMatchObject({
       defaultProvider: DEFAULT_AGENT_SETTINGS.defaultProvider,
-      agentProviderOrder: ['kimi', 'codex', 'claude-code', 'opencode', 'gemini', 'pi'],
+      agentProviderOrder: ['codex', 'kimi', 'claude-code', 'opencode', 'gemini', 'pi'],
     })
   })
 })
@@ -355,13 +355,17 @@ describe('normalizeAgentSettings', () => {
     })
   })
 
-  it('defaults experimental remote workers to disabled', () => {
-    expect(DEFAULT_AGENT_SETTINGS.experimentalRemoteWorkersEnabled).toBe(false)
-    expect(normalizeAgentSettings({}).experimentalRemoteWorkersEnabled).toBe(false)
+  it('defaults remote connections on while preserving the ignored legacy preference', () => {
+    expect(DEFAULT_AGENT_SETTINGS.experimentalRemoteWorkersEnabled).toBe(true)
+    expect(normalizeAgentSettings({}).experimentalRemoteWorkersEnabled).toBe(true)
     expect(
       normalizeAgentSettings({ experimentalRemoteWorkersEnabled: true })
         .experimentalRemoteWorkersEnabled,
     ).toBe(true)
+    expect(
+      normalizeAgentSettings({ experimentalRemoteWorkersEnabled: false })
+        .experimentalRemoteWorkersEnabled,
+    ).toBe(false)
   })
 
   it('normalizes project roles by workspace and drops duplicate names', () => {

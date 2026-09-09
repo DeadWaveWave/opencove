@@ -199,10 +199,9 @@ test.describe('Settings', () => {
       await expect(window.locator('[data-testid="settings-default-provider-gemini"]')).toHaveCount(
         0,
       )
-      const defaultProvider = window.locator('[data-testid="settings-default-provider-codex"]')
-      await expect(defaultProvider).toBeVisible()
-      await defaultProvider.check()
-      await expect(defaultProvider).toBeChecked()
+      const defaultProvider = window.getByTestId('settings-agent-order-item-codex')
+      await expect(defaultProvider).toHaveAttribute('data-default', 'true')
+      await expect(window.getByTestId('settings-agent-drag-handle-codex')).toBeVisible()
 
       const configureCodex = window.locator('[data-testid="settings-agent-configure-codex"]')
       await configureCodex.click()
