@@ -158,6 +158,7 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.windowMetricsGetDisplayInfo),
   },
   clipboard: {
+    readTerminalPaste: () => invokeIpc(IPC_CHANNELS.clipboardReadTerminalPaste),
     readText: (): Promise<string> => invokeIpc(IPC_CHANNELS.clipboardReadText),
     writeText: (text: string): Promise<void> =>
       invokeIpc(IPC_CHANNELS.clipboardWriteText, { text }),
