@@ -7,6 +7,7 @@
 - 若 UI 表现与代码不一致，先怀疑是否跑到了旧构建产物。
 - Web UI（Worker Web Canvas / Debug Shell）常见问题速查见：`docs/runtime/WEB_UI_TROUBLESHOOTING.md`。
 - Issue Report 诊断包的 owner、脱敏、预算和扩展规则见：`docs/development/ISSUE_REPORT_DIAGNOSTICS.md`。
+- 画布拖动 / 应用切换卡顿的跨平台 trace、CPU profile 与原生采样方法见：`docs/development/CANVAS_WINDOW_PROFILING.md`。
 
 ## 失败后的首轮动作
 

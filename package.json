@@ -92,6 +92,7 @@
     "test:terminal:presentation": "node scripts/test-terminal-presentation-contract.mjs",
     "recover:opencove-db": "node scripts/recover-opencove-db-from-sqlite-recover.mjs",
     "profile:terminal:display-parity": "node scripts/profile-terminal-display-parity.mjs",
+    "profile:canvas:window-stall": "node scripts/profile-canvas-window-stall.mjs",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "harness:check": "node harness/check.mjs",
