@@ -14,6 +14,9 @@ import { zhCNWorkspaceCanvas } from './zh-CN.workspaceCanvas'
 
 export const zhCN = {
   common: {
+    closeShortcutSelectWindow: '请选择要关闭的窗口。',
+    closeShortcutFailed: '无法关闭选中的窗口，请重试。',
+    quitShortcutHint: '在 1.5 秒内再次按下 {{shortcut}} 退出应用。',
     add: '添加',
     cancel: '取消',
     close: '关闭',

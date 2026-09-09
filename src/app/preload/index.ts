@@ -113,6 +113,7 @@ import type {
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
+import { onApplicationShortcut } from './applicationShortcutApi'
 import { createIssueReportPreloadApi } from './issueReportApi'
 import { resolveOpenCoveMeta } from './opencoveMeta'
 import { createPerformanceDiagnosticsPreloadApi } from './performanceDiagnosticsApi'
@@ -208,6 +209,7 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.persistenceWriteAgentNodePlaceholderScrollback, payload),
   },
   lifecycle: {
+    onApplicationShortcut,
     onRequestPersistFlush: (
       listener: (payload: { requestId: string }) => void | Promise<void>,
     ): UnsubscribeFn => {

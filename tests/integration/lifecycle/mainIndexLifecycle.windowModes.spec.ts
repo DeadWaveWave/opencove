@@ -109,6 +109,7 @@ function mockMainIndexDependencies(params: {
       openExternal: vi.fn(),
     },
     BrowserWindow: params.BrowserWindow,
+    webContents: { getAllWebContents: () => [] },
     Menu: {
       setApplicationMenu: vi.fn(),
       buildFromTemplate: vi.fn(template => template),

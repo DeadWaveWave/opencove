@@ -62,6 +62,7 @@ describe('main process lifecycle', () => {
         openExternal: vi.fn(),
       },
       BrowserWindow,
+      webContents: { getAllWebContents: () => [] },
       Menu: {
         setApplicationMenu: vi.fn(),
         buildFromTemplate: vi.fn(template => template),

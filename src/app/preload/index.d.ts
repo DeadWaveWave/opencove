@@ -213,6 +213,11 @@ export interface OpenCoveApi {
     ) => Promise<PersistWriteResult>
   }
   lifecycle: {
+    onApplicationShortcut?: (
+      listener: (
+        event: import('../../shared/contracts/applicationShortcut').ApplicationShortcutEvent,
+      ) => void,
+    ) => UnsubscribeFn
     onRequestPersistFlush: (
       listener: (payload: { requestId: string }) => void | Promise<void>,
     ) => UnsubscribeFn
