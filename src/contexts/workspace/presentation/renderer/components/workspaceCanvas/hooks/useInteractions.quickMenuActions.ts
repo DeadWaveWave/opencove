@@ -1,4 +1,6 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+import { translate } from '@app/renderer/i18n'
+import { toErrorMessage } from '../helpers'
 import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { QuickCommand, QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import {
@@ -55,6 +57,15 @@ export function useWorkspaceCanvasQuickMenuActions(
     onShowMessage,
   } = options
 
+  const launchScopeRef = useRef({ active: true })
+  useEffect(() => {
+    const scope = { active: true }
+    launchScopeRef.current = scope
+    return () => {
+      scope.active = false
+    }
+  }, [workspaceId])
+
   const runQuickCommand = useCallback(
     async (command: QuickCommand): Promise<void> => {
       if (!contextMenu || contextMenu.kind !== 'pane') {
@@ -85,6 +96,11 @@ export function useWorkspaceCanvasQuickMenuActions(
         return
       }
 
+      if (command.command.trim().length === 0) {
+        return
+      }
+
+      const launchScope = launchScopeRef.current
       const created = await createTerminalNodeAtFlowPosition({
         anchor,
         workspaceId,
@@ -102,15 +118,34 @@ export function useWorkspaceCanvasQuickMenuActions(
         title: command.title,
       })
 
-      if (!created) {
+      if (!created || !launchScope.active) {
         return
       }
 
-      const data = command.command.endsWith('\n') ? command.command : `${command.command}\n`
-      await window.opencoveApi.pty.write({
-        sessionId: created.sessionId,
-        data,
-      })
+      try {
+        // Control Surface spawns do not register the session with the Desktop PTY client.
+        await window.opencoveApi.pty.attach({ sessionId: created.sessionId })
+        if (
+          !launchScope.active ||
+          !nodesRef.current.some(
+            node => node.id === created.nodeId && node.data.sessionId === created.sessionId,
+          )
+        ) {
+          return
+        }
+        const data = command.command.replace(/\r?\n/g, '\r')
+        await window.opencoveApi.pty.write({
+          sessionId: created.sessionId,
+          data: data.endsWith('\r') ? data : `${data}\r`,
+        })
+      } catch (error) {
+        if (launchScope.active) {
+          onShowMessage?.(
+            translate('messages.terminalLaunchFailed', { message: toErrorMessage(error) }),
+            'error',
+          )
+        }
+      }
     },
     [
       contextMenu,
