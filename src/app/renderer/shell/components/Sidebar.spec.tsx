@@ -7,6 +7,8 @@ import {
   type WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import { Sidebar } from './Sidebar'
+import { useAppStore } from '../store/useAppStore'
+import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
 const dndState = vi.hoisted(() => ({
   draggingId: null as string | null,
   onDragStart: null as ((event: { active: { id: string } }) => void) | null,
@@ -179,9 +181,9 @@ function createWorkspace(
     spaceArchiveRecords: [],
   }
 }
-
 describe('Sidebar', () => {
   beforeEach(() => {
+    useAppStore.setState({ agentSettings: DEFAULT_AGENT_SETTINGS })
     dndState.draggingId = null
     dndState.onDragStart = null
     dndState.onDragEnd = null

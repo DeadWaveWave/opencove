@@ -36,6 +36,8 @@ export interface AgentSettings {
   language: UiLanguage
   uiTheme: UiTheme
   isPrimarySidebarCollapsed: boolean
+  sidebarCollapsedWorkspaceIds: Record<string, boolean>
+  sidebarCollapsedSpaceGroupIds: Record<string, boolean>
   workspaceSearchPanelWidth: number
   defaultProvider: AgentProvider
   agentProviderOrder: AgentProvider[]

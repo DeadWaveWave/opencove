@@ -30,6 +30,8 @@ import {
   type SidebarDragItemData,
 } from './SidebarDnd'
 import { useSidebarListScroll } from './useSidebarListScroll'
+import { useAppStore } from '../store/useAppStore'
+import { toggleSidebarCollapsedId } from '@contexts/settings/domain/sidebarTreeSettings'
 
 export type SidebarVariant = 'docked' | 'rail' | 'peek'
 type SidebarTransition = 'collapsing' | 'expanding' | null
@@ -94,8 +96,13 @@ export function Sidebar({
     }),
   )
   const [activeDragItem, setActiveDragItem] = useState<ActiveSidebarDragItem | null>(null)
-  const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useState<Record<string, boolean>>({})
-  const [collapsedSpaceGroupIds, setCollapsedSpaceGroupIds] = useState<Record<string, boolean>>({})
+  const collapsedWorkspaceIds = useAppStore(
+    state => state.agentSettings.sidebarCollapsedWorkspaceIds,
+  )
+  const collapsedSpaceGroupIds = useAppStore(
+    state => state.agentSettings.sidebarCollapsedSpaceGroupIds,
+  )
+  const setAgentSettings = useAppStore(state => state.setAgentSettings)
   const [sidebarTransition, setSidebarTransition] = useState<SidebarTransition>(null)
   const previousVariantRef = useRef(variant)
   const transitionTimeoutRef = useRef<number | null>(null)
@@ -184,19 +191,31 @@ export function Sidebar({
     ],
   )
 
-  const handleToggleProject = useCallback((workspaceId: string): void => {
-    setCollapsedWorkspaceIds(prev => ({
-      ...prev,
-      [workspaceId]: prev[workspaceId] !== true,
-    }))
-  }, [])
+  const handleToggleProject = useCallback(
+    (workspaceId: string): void => {
+      setAgentSettings(prev => ({
+        ...prev,
+        sidebarCollapsedWorkspaceIds: toggleSidebarCollapsedId(
+          prev.sidebarCollapsedWorkspaceIds,
+          workspaceId,
+        ),
+      }))
+    },
+    [setAgentSettings],
+  )
 
-  const handleToggleSpaceGroup = useCallback((groupKey: string): void => {
-    setCollapsedSpaceGroupIds(prev => ({
-      ...prev,
-      [groupKey]: prev[groupKey] !== true,
-    }))
-  }, [])
+  const handleToggleSpaceGroup = useCallback(
+    (groupKey: string): void => {
+      setAgentSettings(prev => ({
+        ...prev,
+        sidebarCollapsedSpaceGroupIds: toggleSidebarCollapsedId(
+          prev.sidebarCollapsedSpaceGroupIds,
+          groupKey,
+        ),
+      }))
+    },
+    [setAgentSettings],
+  )
 
   const activeDragData = activeDragItem?.data ?? null
   const activeDragWorkspaceId = activeDragData?.workspaceId ?? null

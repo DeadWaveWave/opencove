@@ -10,6 +10,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
   uiTheme: 'dark',
   isPrimarySidebarCollapsed: false,
+  sidebarCollapsedWorkspaceIds: {},
+  sidebarCollapsedSpaceGroupIds: {},
   workspaceSearchPanelWidth: 420,
   defaultProvider: 'codex',
   agentProviderOrder: [...AGENT_PROVIDERS],
