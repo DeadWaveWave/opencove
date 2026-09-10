@@ -1,4 +1,6 @@
 import React from 'react'
+import { ArrowRight, FileCode, FolderOpen } from 'lucide-react'
+import { Button } from '@app/renderer/components/ui/Button'
 import { useTranslation } from '@app/renderer/i18n'
 import type { SshConfigHost } from '@shared/contracts/dto'
 import { sshConfigHostToDraft } from '../../../../topology/domain/endpointFormDraft'
@@ -52,23 +54,24 @@ export function SshConfigHostPicker({
   return (
     <div className="cove-window__ssh-config-picker">
       <div className="cove-window__ssh-config-picker-header">
-        <div className="cove-window__section-card-heading">
-          <strong>{t('settingsPanel.endpoints.register.sshConfig.title')}</strong>
-          <span>{t('settingsPanel.endpoints.register.sshConfig.help')}</span>
+        <div className="settings-endpoint-dialog__config-source">
+          <FileCode size={15} aria-hidden="true" />
+          <code>~/.ssh/config</code>
         </div>
-        <button
-          type="button"
-          className="secondary"
+        <Button
+          size="sm"
+          loading={pickerState === 'loading'}
           data-testid="settings-endpoints-ssh-config-open"
           disabled={isBusy || pickerState === 'loading'}
           onClick={() => {
             void openPicker()
           }}
         >
+          <FolderOpen size={14} aria-hidden="true" />
           {pickerState === 'loading'
             ? t('settingsPanel.endpoints.register.sshConfig.loading')
             : t('settingsPanel.endpoints.register.sshConfig.action')}
-        </button>
+        </Button>
       </div>
 
       {pickerState === 'error' ? (
@@ -123,7 +126,9 @@ export function SshConfigHostPicker({
                     <span className="cove-window__ssh-config-added">
                       {t('settingsPanel.endpoints.register.sshConfig.alreadyAdded')}
                     </span>
-                  ) : null}
+                  ) : (
+                    <ArrowRight size={14} aria-hidden="true" />
+                  )}
                 </button>
               )
             })}

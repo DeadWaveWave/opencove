@@ -21,20 +21,18 @@ export const enSettingsPanelEndpoints = {
     recommendedHint: 'Over SSH keeps tunnel and bootstrap details out of the way.',
     managedLabel: 'Over SSH',
     manualLabel: 'Manual (advanced)',
-    managedHelp:
-      'Connect over SSH. OpenCove creates the tunnel, installs remote components when needed, and keeps the machine ready for browsing and mounts.',
+    managedHelp: 'SSH connection with an automatically managed tunnel and remote service.',
     sshConfig: {
       title: 'Use your SSH config',
       help: 'Choose one host to prefill this form. You can review and edit it before adding.',
-      action: 'Choose from ~/.ssh/config…',
+      action: 'Choose host',
       loading: 'Loading hosts…',
       empty: 'No importable hosts',
       readError: 'Unable to read ~/.ssh/config. You can still enter the SSH host manually.',
       userSummary: 'SSH user {{user}}',
       alreadyAdded: 'Already added',
     },
-    manualHelp:
-      'Use this only when you already have a remote service host, port, and access token. This path keeps connection details under manual control.',
+    manualHelp: 'Connect to an existing remote service using its host, port, and access token.',
     displayNameLabel: 'Display name (optional)',
     displayNamePlaceholder: 'My remote machine',
     managedHostLabel: 'SSH host',

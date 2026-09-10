@@ -1,6 +1,10 @@
 import React from 'react'
+import { Check, Network, Plus, Server, Terminal, X } from 'lucide-react'
+import { Button } from '@app/renderer/components/ui/Button'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useTranslation } from '@app/renderer/i18n'
+import '@app/renderer/styles/settings-panel.endpoint-dialog.css'
 import type { SshConfigHost } from '@shared/contracts/dto'
 import { SshConfigHostPicker } from './SshConfigHostPicker'
 
@@ -90,10 +94,6 @@ export function EndpointsRegisterDialog({
     mode === 'edit'
       ? t('settingsPanel.endpoints.edit.title')
       : t('settingsPanel.endpoints.register.title')
-  const help =
-    mode === 'edit'
-      ? t('settingsPanel.endpoints.edit.help')
-      : t('settingsPanel.endpoints.register.help')
 
   return (
     <Dialog
@@ -110,11 +110,16 @@ export function EndpointsRegisterDialog({
       }}
     >
       <section
-        className="cove-window cove-window--wide"
+        className="cove-window settings-endpoint-dialog"
         data-testid="settings-endpoints-register-window"
       >
-        <h3>{title}</h3>
-        <p className="cove-window__intro">{help}</p>
+        <header className="settings-endpoint-dialog__header">
+          <Server size={18} aria-hidden="true" />
+          <h3>{title}</h3>
+          <IconButton label={t('common.close')} disabled={isBusy} onClick={onCancel}>
+            <X size={16} aria-hidden="true" />
+          </IconButton>
+        </header>
 
         <div className="cove-window__fields">
           {error ? (
@@ -124,37 +129,37 @@ export function EndpointsRegisterDialog({
           ) : null}
 
           {mode === 'create' ? (
-            <div className="cove-window__segmented" data-testid="settings-endpoints-register-mode">
+            <div
+              className="settings-endpoint-dialog__modes"
+              data-testid="settings-endpoints-register-mode"
+            >
               <button
                 type="button"
-                className={`cove-window__segment${registerMode === 'managed' ? ' cove-window__segment--selected' : ''}`}
+                aria-pressed={registerMode === 'managed'}
                 data-testid="settings-endpoints-register-mode-managed"
                 disabled={isBusy}
                 onClick={() => onChangeRegisterMode('managed')}
               >
+                <Terminal size={15} aria-hidden="true" />
                 {t('settingsPanel.endpoints.register.managedLabel')}
               </button>
               <button
                 type="button"
-                className={`cove-window__segment${registerMode === 'manual' ? ' cove-window__segment--selected' : ''}`}
+                aria-pressed={registerMode === 'manual'}
                 data-testid="settings-endpoints-register-mode-manual"
                 disabled={isBusy}
                 onClick={() => onChangeRegisterMode('manual')}
               >
+                <Network size={15} aria-hidden="true" />
                 {t('settingsPanel.endpoints.register.manualLabel')}
               </button>
             </div>
           ) : null}
 
-          <div className="cove-window__section-card">
-            <div className="cove-window__section-card-heading">
-              <strong>
-                {registerMode === 'managed'
-                  ? t('settingsPanel.endpoints.register.managedLabel')
-                  : t('settingsPanel.endpoints.register.manualLabel')}
-              </strong>
-              <span>{description}</span>
-            </div>
+          <div className="settings-endpoint-dialog__form">
+            <p className="settings-endpoint-dialog__description">
+              {mode === 'edit' ? t('settingsPanel.endpoints.edit.help') : description}
+            </p>
 
             <div className="cove-window__field-row">
               <label htmlFor="settings-endpoints-register-displayName">
@@ -347,28 +352,32 @@ export function EndpointsRegisterDialog({
         </div>
 
         <div className="cove-window__actions">
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--ghost"
+          <Button
+            variant="ghost"
             data-testid="settings-endpoints-register-cancel"
             disabled={isBusy}
             onClick={onCancel}
           >
             {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--primary"
+          </Button>
+          <Button
+            variant="primary"
+            loading={isBusy}
             data-testid="settings-endpoints-register-submit"
             disabled={isBusy || !canSubmit}
             onClick={onSubmit}
           >
+            {mode === 'edit' ? (
+              <Check size={15} aria-hidden="true" />
+            ) : (
+              <Plus size={15} aria-hidden="true" />
+            )}
             {isBusy
               ? t('common.saving')
               : mode === 'edit'
                 ? t('common.save')
                 : t('settingsPanel.endpoints.actions.add')}
-          </button>
+          </Button>
         </div>
       </section>
     </Dialog>

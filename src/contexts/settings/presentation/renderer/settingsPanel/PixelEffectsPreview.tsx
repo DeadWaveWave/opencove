@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FileText, GitBranch, Play, SquareTerminal } from 'lucide-react'
+import { FileText, GitBranch, Play, Terminal } from 'lucide-react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PixelEffectSettings } from '@contexts/settings/domain/agentSettings'
@@ -107,7 +107,7 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
               data-id="settings-preview-terminal"
             >
               <div className="settings-pixel-preview__header">
-                <SquareTerminal size={14} />
+                <Terminal size={14} />
                 {t('settingsPanel.appearanceNext.previewTerminal')}
               </div>
               <div className="settings-pixel-preview__body">

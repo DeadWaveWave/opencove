@@ -1,0 +1,155 @@
+.cove-window.settings-endpoint-dialog {
+  width: min(580px, calc(100vw - 32px));
+  padding: 0;
+  gap: 0;
+  border-radius: var(--cove-radius-md);
+}
+
+.settings-endpoint-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+
+.settings-endpoint-dialog__header > svg {
+  color: var(--cove-accent-text);
+  flex-shrink: 0;
+}
+
+.settings-endpoint-dialog__header h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: calc(15px * var(--cove-ui-font-scale));
+  font-weight: 600;
+}
+
+.settings-endpoint-dialog .cove-window__fields {
+  padding: 18px 20px;
+  gap: 14px;
+}
+
+.settings-endpoint-dialog__modes {
+  display: flex;
+  align-self: flex-start;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: var(--cove-radius-sm);
+}
+
+.settings-endpoint-dialog__modes button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--cove-radius-xs);
+  background: transparent;
+  color: var(--cove-text-muted);
+  font: inherit;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  cursor: pointer;
+}
+
+.settings-endpoint-dialog__modes button[aria-pressed='true'] {
+  background: var(--cove-control-selected);
+  color: var(--cove-accent-text);
+  border-color: color-mix(in srgb, var(--cove-accent) 28%, transparent);
+}
+
+.settings-endpoint-dialog__modes button:hover:not(:disabled):not([aria-pressed='true']) {
+  background: var(--cove-surface-hover);
+  color: var(--cove-text);
+}
+
+.settings-endpoint-dialog__modes button:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 2px;
+}
+
+.settings-endpoint-dialog__modes button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.settings-endpoint-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.settings-endpoint-dialog__description {
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.6;
+}
+
+.settings-endpoint-dialog .cove-window__field-row input {
+  min-width: 0;
+  min-height: 36px;
+  background: var(--cove-field);
+  box-shadow: none;
+}
+
+.settings-endpoint-dialog .cove-window__field-row input:focus {
+  border-color: var(--cove-accent);
+  box-shadow: var(--cove-focus-shadow);
+}
+
+.settings-endpoint-dialog .cove-window__ssh-config-picker {
+  padding: 0;
+  border: 0;
+}
+
+.settings-endpoint-dialog .cove-window__ssh-config-picker-header {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-endpoint-dialog__config-source {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.settings-endpoint-dialog .cove-window__ssh-config-list {
+  gap: 2px;
+}
+
+.settings-endpoint-dialog .cove-window__ssh-config-host {
+  background: transparent;
+  border-color: transparent;
+}
+
+.settings-endpoint-dialog .cove-window__ssh-config-host:hover:not(:disabled) {
+  border-color: var(--cove-border-subtle);
+  background: var(--cove-surface-hover);
+}
+
+.settings-endpoint-dialog .cove-window__actions {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 14px 20px;
+  border-top: 1px solid var(--cove-border-subtle);
+}
+
+.settings-endpoint-dialog .cove-button__content {
+  white-space: normal;
+}
+
+.settings-endpoint-dialog svg {
+  flex-shrink: 0;
+}

@@ -22,7 +22,9 @@
     .role-node__header,
     .note-node__header,
     .document-node__header,
-    .website-node__header
+    .website-node__header,
+    .settings-terminal-preview__header,
+    .settings-pixel-preview__node--terminal .settings-pixel-preview__header
   ) {
   background-image: none;
   backdrop-filter: var(--cove-pixel-header-filter);

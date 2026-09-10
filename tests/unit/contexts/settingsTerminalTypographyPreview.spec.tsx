@@ -10,6 +10,8 @@ describe('terminal typography preview', () => {
     const content = screen.getByTestId('settings-terminal-typography-content')
     const header = preview.querySelector('.settings-terminal-preview__header')
     expect(preview).toHaveAccessibleName(/\S/)
+    expect(header?.querySelector('svg.lucide-terminal')).not.toBeNull()
+    expect(header?.querySelector('svg.lucide-square-terminal')).toBeNull()
     expect(content.style.fontFamily).toBe('var(--cove-font-mono)')
     expect(content.style.fontSize).toBe('14px')
     expect(content).toHaveTextContent('pnpm dev')
