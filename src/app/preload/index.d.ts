@@ -182,6 +182,7 @@ export interface OpenCoveApi {
     getDisplayInfo: () => Promise<WindowDisplayInfo>
   }
   clipboard: {
+    readTerminalPaste: () => Promise<import('../../shared/contracts/dto').TerminalClipboardSnapshot>
     readText: () => Promise<string>
     writeText: (text: string) => Promise<void>
   }
