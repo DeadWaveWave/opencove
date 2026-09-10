@@ -154,6 +154,10 @@ export function installBrowserOpenCoveApi(): void {
       }),
     },
     clipboard: {
+      readTerminalPaste: async () => ({
+        text: navigator.clipboard?.readText ? await navigator.clipboard.readText() : '',
+        hasImage: false,
+      }),
       readText: async () => {
         if (navigator.clipboard?.readText) {
           return await navigator.clipboard.readText()

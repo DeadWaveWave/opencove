@@ -6,6 +6,7 @@ export const IPC_CHANNELS = {
   cliInstall: 'cli:install',
   cliUninstall: 'cli:uninstall',
   clipboardReadText: 'clipboard:read-text',
+  clipboardReadTerminalPaste: 'clipboard:read-terminal-paste',
   clipboardWriteText: 'clipboard:write-text',
   filesystemCreateDirectory: 'filesystem:create-directory',
   filesystemReadFileBytes: 'filesystem:read-file-bytes',
