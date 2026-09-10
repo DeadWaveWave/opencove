@@ -50,10 +50,53 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 describe('selected node close shortcut', () => {
-  it('does nothing without selection, even with a focused node', () => {
+  it('closes the focused input node without canvas selection', () => {
     const f = fixture([])
     f.canvas.querySelector('input')?.focus()
     f.send()
+    expect(f.props.closeNode).toHaveBeenCalledExactlyOnceWith('a')
+    f.result.unmount()
+  })
+  it.each([{ selected: ['a'] }, { selected: ['a', 'removed'] }])(
+    'prefers the focused input over stale selection $selected',
+    ({ selected }) => {
+      const f = fixture(selected)
+      f.canvas.querySelector<HTMLInputElement>('[data-id="b"] input')?.focus()
+      f.send()
+      expect(f.props.closeNode).toHaveBeenCalledExactlyOnceWith('b')
+      f.result.unmount()
+    },
+  )
+  it('does nothing with neither focus nor selection', () => {
+    const f = fixture([])
+    f.send()
+    expect(f.props.closeNode).not.toHaveBeenCalled()
+    expect(f.props.onShowMessage).not.toHaveBeenCalled()
+    f.result.unmount()
+  })
+  it('ignores input focus outside this canvas', () => {
+    const f = fixture([])
+    const otherCanvas = document.createElement('div')
+    otherCanvas.innerHTML = '<div class="react-flow__node" data-id="a"><input /></div>'
+    document.body.append(otherCanvas)
+    otherCanvas.querySelector('input')?.focus()
+    f.send()
+    expect(f.props.closeNode).not.toHaveBeenCalled()
+    f.result.unmount()
+  })
+  it('does not close a hidden focused node', () => {
+    const f = fixture([])
+    f.props.nodesRef.current[0].hidden = true
+    f.canvas.querySelector('input')?.focus()
+    f.send()
+    expect(f.props.closeNode).not.toHaveBeenCalled()
+    f.result.unmount()
+  })
+  it('unsubscribes when the canvas is disabled', () => {
+    const f = fixture([])
+    f.canvas.querySelector('input')?.focus()
+    f.result.rerender(<Harness {...f.props} enabled={false} />)
+    expect(f.unsubscribe).toHaveBeenCalledOnce()
     expect(f.props.closeNode).not.toHaveBeenCalled()
     f.result.unmount()
   })
@@ -83,18 +126,24 @@ describe('selected node close shortcut', () => {
     )
     f.result.unmount()
   })
-  it('delegates documents to their save-before-close owner', () => {
-    const f = fixture(['a'], 'document')
-    const button = document.createElement('button')
-    button.className = 'document-node__close'
-    const click = vi.fn()
-    button.addEventListener('click', click)
-    f.canvas.querySelector('[data-id="a"]')?.append(button)
-    f.send()
-    expect(click).toHaveBeenCalledOnce()
-    expect(f.props.closeNode).not.toHaveBeenCalled()
-    f.result.unmount()
-  })
+  it.each(['focus', 'selection'])(
+    'delegates documents with %s to their save-before-close owner',
+    mode => {
+      const f = fixture(mode === 'selection' ? ['a'] : [], 'document')
+      if (mode === 'focus') {
+        f.canvas.querySelector('input')?.focus()
+      }
+      const button = document.createElement('button')
+      button.className = 'document-node__close'
+      const click = vi.fn()
+      button.addEventListener('click', click)
+      f.canvas.querySelector('[data-id="a"]')?.append(button)
+      f.send()
+      expect(click).toHaveBeenCalledOnce()
+      expect(f.props.closeNode).not.toHaveBeenCalled()
+      f.result.unmount()
+    },
+  )
   it('reports close failures and permits retry', async () => {
     const f = fixture()
     vi.mocked(f.props.closeNode).mockRejectedValue(new Error('close failed'))

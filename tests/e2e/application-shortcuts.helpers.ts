@@ -14,6 +14,58 @@ export async function sendAppKey(app: ElectronApplication, key: string): Promise
 }
 
 export function applicationShortcutTests(): void {
+  for (const kind of ['terminal', 'note'] as const) {
+    test(`close shortcut closes a ${kind} while typing without canvas selection`, async () => {
+      const { electronApp, window } = await launchApp()
+      try {
+        await clearAndSeedWorkspace(window, [
+          {
+            id: 'input-close',
+            title: 'Input close',
+            position: { x: 50, y: 80 },
+            width: 400,
+            height: 280,
+            kind,
+            ...(kind === 'note' ? { task: { text: '' } } : {}),
+          },
+          {
+            id: 'input-keep',
+            title: 'Input keep',
+            position: { x: 500, y: 80 },
+            width: 400,
+            height: 280,
+          },
+        ])
+        const target = window.locator('.react-flow__node[data-id="input-close"]')
+        const inputElement = target.locator(
+          kind === 'terminal' ? '.xterm-helper-textarea' : '[data-testid="note-node-textarea"]',
+        )
+        await target
+          .locator(kind === 'terminal' ? '.xterm' : '[data-testid="note-node-textarea"]')
+          .click()
+        await expect(inputElement).toBeFocused()
+        await window.keyboard.type('echo close-input-probe')
+        await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
+        const received = await electronApp.evaluateHandle(({ BrowserWindow }) => {
+          const inputs: Electron.Input[] = []
+          BrowserWindow.getAllWindows()[0].webContents.on('before-input-event', (_event, input) => {
+            inputs.push(input)
+          })
+          return inputs
+        })
+        await sendAppKey(electronApp, 'w')
+        expect(
+          await received.evaluate(inputs => inputs.some(input => input.key.toLowerCase() === 'w')),
+        ).toBe(true)
+        await expect(target).toHaveCount(0)
+        await expect(window.locator('.react-flow__node[data-id="input-keep"]')).toBeVisible()
+        await expect(window.locator('.workspace-canvas')).toBeVisible()
+      } finally {
+        await electronApp.close()
+      }
+    })
+  }
+
   test('close shortcut keeps an empty canvas alive and closes only the selected node', async () => {
     const { electronApp, window } = await launchApp()
     try {

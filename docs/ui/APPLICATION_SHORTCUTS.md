@@ -13,10 +13,12 @@ terminal-focused canvas-shortcut preference.
 | Linux | Ctrl+W | No new mapping; preserve existing exit commands |
 
 Close never closes the host BrowserWindow or quits the application, including an empty
-canvas, no selected node, a disabled canvas, or an unavailable renderer. A single
-selected node is the target. With multiple selected nodes, only the focused selected
-node is closed. If focus does not identify a selected node, an application message asks
-the user to select the window to close. Selection array order does not imply focus.
+canvas, no target node, a disabled canvas, or an unavailable renderer. Actual DOM focus
+inside a node of the active canvas takes priority, including terminal and editor input
+without canvas selection or with a stale selection elsewhere. Without node focus, a
+single selected node is the target; multiple selected nodes require the user to focus
+the window to close. Selection array order does not imply focus. Focus outside the
+active canvas never identifies a node in that canvas, and hidden nodes cannot close.
 Bulk deletion remains a separate command with its existing confirmation semantics.
 Document nodes use their existing save-before-close and conflict handling.
 
@@ -41,7 +43,7 @@ XON and other existing consumers.
 1. A close shortcut cannot become host-window close or application quit.
 2. Unconfirmed keyboard quit cannot begin persistence/Worker shutdown; confirmation
    enters the existing quit coordinator exactly once.
-3. Node closure uses the selected target and existing node/document owners. No selection
+3. Node closure uses the focused or selected target and existing node/document owners. No selection
    snapshot, quit confirmation or additional durable truth is mirrored into Main.
 
 Main consumes `before-input-event` before page events and native menu accelerators,

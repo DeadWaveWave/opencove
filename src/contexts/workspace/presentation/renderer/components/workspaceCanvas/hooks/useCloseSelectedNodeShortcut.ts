@@ -26,7 +26,7 @@ export function useCloseSelectedNodeShortcut({
     }
     let active = true
     const unsubscribe = window.opencoveApi?.lifecycle?.onApplicationShortcut?.(event => {
-      if (event !== 'close-selected-node' || selectedNodeIdsRef.current.length === 0) {
+      if (event !== 'close-selected-node') {
         return
       }
       const selected = selectedNodeIdsRef.current
@@ -34,14 +34,12 @@ export function useCloseSelectedNodeShortcut({
       const focusedId = canvasRef.current?.contains(focusedElement ?? null)
         ? focusedElement?.getAttribute('data-id')
         : null
-      const nodeId =
-        selected.length === 1
-          ? selected[0]
-          : focusedId && selected.includes(focusedId)
-            ? focusedId
-            : null
+      // Terminal/editor input focus is independent of canvas multiselection.
+      const nodeId = focusedId ?? (selected.length === 1 ? selected[0] : null)
       if (!nodeId) {
-        onShowMessage?.(t('common.closeShortcutSelectWindow'), 'warning')
+        if (selected.length > 1) {
+          onShowMessage?.(t('common.closeShortcutSelectWindow'), 'warning')
+        }
         return
       }
       const node = nodesRef.current.find(item => item.id === nodeId && !item.hidden)
