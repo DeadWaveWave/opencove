@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { createRollingTextBuffer } from '../../utils/rollingTextBuffer'
 import { createRuntimeTerminalInputBridge } from './createRuntimeTerminalInputBridge'
@@ -94,6 +94,8 @@ export function useTerminalRuntimeSession({
   terminalClientResetVersion,
   requestTerminalRendererRecovery,
 }: TerminalRuntimeSessionOptions): void {
+  const terminalProviderRef = useRef(terminalProvider)
+  terminalProviderRef.current = terminalProvider
   useEffect(() => {
     if (sessionId.trim().length === 0 || !containerRef.current) {
       return undefined
@@ -190,6 +192,8 @@ export function useTerminalRuntimeSession({
     })
     const runtimeInputBridge = createRuntimeTerminalInputBridge({
       terminal,
+      terminalProvider,
+      getTerminalProvider: () => terminalProviderRef.current,
       sessionId,
       openTerminalFind,
       onCommandRunRef,
