@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  appShortcut: 'app:shortcut',
   appRequestPersistFlush: 'app:request-persist-flush',
   appPersistFlushComplete: 'app:persist-flush-complete',
   cliGetStatus: 'cli:get-status',

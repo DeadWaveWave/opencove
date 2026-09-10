@@ -4,10 +4,19 @@ type Listener = (...args: unknown[]) => void
 
 function createMockApp() {
   const listeners = new Map<string, Listener[]>()
+  let startup = Promise.resolve()
 
   return {
     isPackaged: false,
-    whenReady: vi.fn(() => Promise.resolve()),
+    whenReady: vi.fn(() => ({
+      then: (start: () => Promise<void>) => {
+        startup = Promise.resolve().then(start)
+        // Awaited by the test; prevent an unhandled rejection before import completes.
+        void startup.catch(() => undefined)
+        return startup
+      },
+    })),
+    waitForStartup: () => startup,
     getPath: vi.fn((_name: string) => '/tmp/opencove-test-userdata'),
     setPath: vi.fn(),
     commandLine: {
@@ -109,6 +118,7 @@ function mockMainIndexDependencies(params: {
       openExternal: vi.fn(),
     },
     BrowserWindow: params.BrowserWindow,
+    webContents: { getAllWebContents: () => [] },
     Menu: {
       setApplicationMenu: vi.fn(),
       buildFromTemplate: vi.fn(template => template),
@@ -181,9 +191,9 @@ function mockMainIndexDependencies(params: {
   )
 }
 
-async function importMainIndex(): Promise<void> {
+async function importMainIndex(app: ReturnType<typeof createMockApp>): Promise<void> {
   await import('../../../src/app/main/index')
-  await Promise.resolve()
+  await app.waitForStartup()
 }
 
 describe('main process lifecycle window modes', () => {
@@ -202,7 +212,7 @@ describe('main process lifecycle window modes', () => {
         const BrowserWindow = createBrowserWindowMock()
         mockMainIndexDependencies({ app, dispose, BrowserWindow })
 
-        await importMainIndex()
+        await importMainIndex(app)
 
         const mainWindow = BrowserWindow.windows[0]
         expect(mainWindow).toBeDefined()
@@ -242,7 +252,7 @@ describe('main process lifecycle window modes', () => {
         const BrowserWindow = createBrowserWindowMock()
         mockMainIndexDependencies({ app, dispose, BrowserWindow })
 
-        await importMainIndex()
+        await importMainIndex(app)
 
         const mainWindow = BrowserWindow.windows[0]
         expect(mainWindow).toBeDefined()
@@ -278,7 +288,7 @@ describe('main process lifecycle window modes', () => {
         const BrowserWindow = createBrowserWindowMock()
         mockMainIndexDependencies({ app, dispose, BrowserWindow })
 
-        await importMainIndex()
+        await importMainIndex(app)
 
         const mainWindow = BrowserWindow.windows[0]
         expect(mainWindow).toBeDefined()
@@ -320,7 +330,7 @@ describe('main process lifecycle window modes', () => {
         const BrowserWindow = createBrowserWindowMock()
         mockMainIndexDependencies({ app, dispose, BrowserWindow })
 
-        await importMainIndex()
+        await importMainIndex(app)
 
         const mainWindow = BrowserWindow.windows[0]
         expect(mainWindow).toBeDefined()

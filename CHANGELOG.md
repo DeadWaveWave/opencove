@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Sidebar: preserve collapsed projects and Space groups across app restarts, while keeping their disclosure choices independent. (#411)
 - Terminal: route local desktop image paste to native Pi, Kimi, Codex, Claude Code, and OMP keybindings while preserving text paste. (#409)
+- Desktop: close the focused input window or selected canvas window with Cmd/Ctrl+W without closing the app, and require two Cmd+Q presses within 1.5 seconds to quit on macOS. (#410)
 - Terminal: execute quick commands after session attachment, preserving one-time execution and cancelling pending input when its window is removed. (#408)
 - Workspace: keep Space archive and other operation overlays local to their target Space, preventing unrelated Space backgrounds from tinting window nodes. (#401)
 - Canvas: center windows created by double-click or the context menu within 120 pixels of the viewport center, avoiding small unnecessary pans while preserving Space ownership and pointer placement farther away. (#399)
