@@ -24,9 +24,7 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
       const sidebar = window.locator('.workspace-sidebar')
       const sidebarList = window.locator('.workspace-sidebar__list')
       const settingsButton = window.locator('[data-testid="app-header-settings"]')
-      const lastWorkspaceName = window.locator('.workspace-item__name', {
-        hasText: 'workspace-scroll-23',
-      })
+      const lastWorkspace = window.getByTestId('workspace-item-workspace-scroll-23')
 
       await expect(settingsButton).toBeVisible()
 
@@ -57,7 +55,8 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
         pageMetrics.documentClientHeight + 1,
       )
       expect(pageMetrics.bodyScrollHeight).toBeLessThanOrEqual(pageMetrics.bodyClientHeight + 1)
-      await expect(lastWorkspaceName).toBeVisible()
+      await expect(lastWorkspace).toBeVisible()
+      await expect(lastWorkspace).toHaveAccessibleName('workspace-scroll-23')
       await expect(sidebar).toBeVisible()
       await expect(settingsButton).toBeVisible()
     } finally {
@@ -104,6 +103,8 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
       await expect(dockedList).toHaveAttribute('data-cove-scroll-fade', 'both')
 
       await toggleButton.click()
+      await window.mouse.move(700, 80)
+      await expect(window.getByTestId('workspace-sidebar')).toHaveClass(/workspace-sidebar--rail/)
 
       const railList = window.locator('.workspace-sidebar__list')
       await expect(railList).toBeVisible()
@@ -136,7 +137,7 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
     }
   })
 
-  test('shows agents under each workspace and focuses selected workspace', async () => {
+  test('shows one project navigation tree and switches its agents with the project rail', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -210,37 +211,26 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
         ],
       })
 
-      const workspaceAGroup = window
-        .locator('.workspace-item-group')
-        .filter({ has: window.locator('.workspace-item__name', { hasText: 'workspace-a' }) })
-      const workspaceBGroup = window
-        .locator('.workspace-item-group')
-        .filter({ has: window.locator('.workspace-item__name', { hasText: 'workspace-b' }) })
+      const projectA = window.getByTestId('workspace-item-workspace-a')
+      const projectB = window.getByTestId('workspace-item-workspace-b')
+      const agentA = window.getByTestId('workspace-agent-item-workspace-a-agent-node-a')
+      const agentB = window.getByTestId('workspace-agent-item-workspace-b-agent-node-b')
+      await expect(window.locator('[data-testid^="workspace-project-navigation-"]')).toHaveCount(1)
+      await expect(agentA).toBeVisible()
+      await expect(agentB).toHaveCount(0)
 
-      await expect(
-        workspaceAGroup.locator('.workspace-item__agents .workspace-agent-item'),
-      ).toHaveCount(1)
-      await expect(
-        workspaceBGroup.locator('.workspace-item__agents .workspace-agent-item'),
-      ).toHaveCount(1)
-
-      await expect(
-        workspaceAGroup.locator('[data-testid="workspace-agent-item-workspace-a-agent-node-a"]'),
-      ).toBeVisible()
-      await expect(
-        workspaceBGroup.locator('[data-testid="workspace-agent-item-workspace-b-agent-node-b"]'),
-      ).toBeVisible()
-
-      await window.locator('[data-testid="workspace-agent-item-workspace-b-agent-node-b"]').click()
-      await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
-        'workspace-b',
-      )
+      await projectB.hover()
+      await expect(agentB).toBeVisible()
+      await expect(projectA).toHaveAttribute('aria-current', 'page')
+      await expect(agentA).toHaveCount(0)
+      await agentB.click()
+      await expect(projectB).toHaveAttribute('aria-current', 'page')
       await expect(window.locator('.terminal-node__title').first()).toContainText('claude')
 
-      await window.locator('[data-testid="workspace-agent-item-workspace-a-agent-node-a"]').click()
-      await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
-        'workspace-a',
-      )
+      await projectA.click()
+      await expect(agentA).toBeVisible()
+      await agentA.click()
+      await expect(projectA).toHaveAttribute('aria-current', 'page')
       await expect(window.locator('.terminal-node__title').first()).toContainText('codex')
     } finally {
       await electronApp.close()

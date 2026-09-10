@@ -204,9 +204,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       const agentNode = window.locator('.terminal-node').first()
       await expect(agentNode).toBeVisible()
 
-      const workspaceAGroup = window
-        .locator('.workspace-item-group')
-        .filter({ has: window.locator('.workspace-item__name', { hasText: 'workspace-a' }) })
+      const workspaceAGroup = window.getByTestId('workspace-project-navigation-workspace-a')
 
       const workspaceAStatus = workspaceAGroup
         .locator('.workspace-agent-item__status--agent')
@@ -214,19 +212,24 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       await expect(workspaceAStatus).toHaveText('Working')
 
-      await window.locator('.workspace-item__name', { hasText: 'workspace-b' }).click()
+      await window.getByTestId('workspace-item-workspace-b').click()
       await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
         'workspace-b',
       )
+      await window.getByTestId('workspace-item-workspace-a').hover()
 
       await expect(workspaceAStatus).toHaveText('Standby', { timeout: 15_000 })
+      await expect(window.getByTestId('workspace-item-workspace-b')).toHaveAttribute(
+        'aria-current',
+        'page',
+      )
 
       const notification = window
         .locator('[data-testid="app-notifications"] .app-notification')
         .first()
       await expect(notification).toBeVisible()
 
-      await window.locator('.workspace-item__name', { hasText: 'workspace-a' }).click()
+      await window.getByTestId('workspace-item-workspace-a').click()
       await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
         'workspace-a',
       )
@@ -242,7 +245,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       const viewportBeforeSwitch = await readCanvasViewport(window)
       await window.screenshot({ path: testInfo.outputPath('notification-agent-before.png') })
 
-      await window.locator('.workspace-item__name', { hasText: 'workspace-b' }).click()
+      await window.getByTestId('workspace-item-workspace-b').click()
       await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
         'workspace-b',
       )
@@ -314,9 +317,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       await taskNode.locator('[data-testid="task-node-run-agent"]').click()
 
-      const workspaceAGroup = window
-        .locator('.workspace-item-group')
-        .filter({ has: window.locator('.workspace-item__name', { hasText: 'workspace-a' }) })
+      const workspaceAGroup = window.getByTestId('workspace-project-navigation-workspace-a')
 
       const workspaceAStatus = workspaceAGroup
         .locator('.workspace-agent-item__status--agent')
@@ -324,12 +325,17 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       await expect(workspaceAStatus).toHaveText('Working')
 
-      await window.locator('.workspace-item__name', { hasText: 'workspace-b' }).click()
+      await window.getByTestId('workspace-item-workspace-b').click()
       await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
         'workspace-b',
       )
+      await window.getByTestId('workspace-item-workspace-a').hover()
 
       await expect(workspaceAStatus).toHaveText('Standby', { timeout: 15_000 })
+      await expect(window.getByTestId('workspace-item-workspace-b')).toHaveAttribute(
+        'aria-current',
+        'page',
+      )
 
       const notification = window
         .locator('[data-testid="app-notifications"] .app-notification')

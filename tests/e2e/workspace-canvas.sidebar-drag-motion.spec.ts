@@ -157,7 +157,7 @@ test.describe('Workspace Canvas - Sidebar Drag Motion', () => {
         source: window.locator('.workspace-item').filter({ hasText: 'Project Gamma' }).first(),
         target: window.locator('.workspace-item').filter({ hasText: 'Project Alpha' }).first(),
         kind: 'project',
-        sortableSelector: '.workspace-item-group',
+        sortableSelector: '.workspace-project-rail__item',
       })
 
       await expect
@@ -213,17 +213,22 @@ test.describe('Workspace Canvas - Sidebar Drag Motion', () => {
       await dragUpWithMeasuredFeedback({
         window,
         source: window
-          .locator('.workspace-space-item:not(.workspace-space-item--drag-overlay)')
+          .locator('.workspace-space-group--space .workspace-space-item__select')
           .filter({ hasText: 'Space Gamma' }),
         target: window
-          .locator('.workspace-space-item:not(.workspace-space-item--drag-overlay)')
+          .locator('.workspace-space-group--space .workspace-space-item__select')
           .filter({ hasText: 'Space Alpha' }),
         kind: 'space',
         sortableSelector: '.workspace-space-group',
       })
 
       await expect
-        .poll(async () => await window.locator('.workspace-space-item__name').allTextContents())
+        .poll(
+          async () =>
+            await window
+              .locator('.workspace-space-group--space .workspace-space-item__name')
+              .allTextContents(),
+        )
         .toEqual(['Space Gamma', 'Space Alpha', 'Space Beta'])
     } finally {
       await electronApp.close()
@@ -253,10 +258,14 @@ test.describe('Workspace Canvas - Sidebar Drag Motion', () => {
       await dragUpWithMeasuredFeedback({
         window,
         source: window
-          .locator('.workspace-agent-item:not(.workspace-agent-item--drag-overlay)')
+          .locator(
+            '.workspace-agent-item:not(.workspace-agent-item--drag-overlay) .workspace-agent-item__select',
+          )
           .filter({ hasText: 'Agent Gamma' }),
         target: window
-          .locator('.workspace-agent-item:not(.workspace-agent-item--drag-overlay)')
+          .locator(
+            '.workspace-agent-item:not(.workspace-agent-item--drag-overlay) .workspace-agent-item__select',
+          )
           .filter({ hasText: 'Agent Alpha' }),
         kind: 'agent',
         sortableSelector: '.workspace-agent-item',

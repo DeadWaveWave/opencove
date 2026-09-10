@@ -309,7 +309,7 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
         .first()
 
       const workspaceToggle = window.locator(
-        '[data-testid="workspace-item-toggle-workspace-seeded"]',
+        '.workspace-space-group--root .workspace-space-item__toggle',
       )
       await expect(workspaceToggle).toHaveAttribute('aria-expanded', 'true')
 
@@ -324,14 +324,11 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
       await requestItem.click()
       await expect(requestNode).toBeVisible()
 
-      await expect(doingItem.locator('.workspace-agent-item__status--agent')).toHaveText(
-        'Standby',
-        { timeout: 30_000 },
-      )
-      await expect(requestItem.locator('.workspace-agent-item__status--agent')).toHaveText(
-        'Standby',
-      )
-      await expect(doneItem.locator('.workspace-agent-item__status--agent')).toHaveText('Standby', {
+      await expect(doingItem.locator('.workspace-agent-item__status-label')).toHaveText('Standby', {
+        timeout: 30_000,
+      })
+      await expect(requestItem.locator('.workspace-agent-item__status-label')).toHaveText('Standby')
+      await expect(doneItem.locator('.workspace-agent-item__status-label')).toHaveText('Standby', {
         timeout: 30_000,
       })
 

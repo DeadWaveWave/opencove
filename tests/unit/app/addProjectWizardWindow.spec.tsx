@@ -1,6 +1,6 @@
 import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React from 'react'
-import { fireEvent, render as renderUi, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AddProjectWizardWindow } from '../../../src/app/renderer/shell/components/AddProjectWizardWindow'
 import type { WorkerEndpointOverviewDto } from '../../../src/shared/contracts/dto'
@@ -161,7 +161,9 @@ describe('AddProjectWizardWindow', () => {
     submit.focus()
     fireEvent.keyDown(submit, { key: 'Tab' })
     expect(document.activeElement).toBe(
-      screen.getByTestId('settings-endpoints-register-mode-managed'),
+      within(screen.getByTestId('settings-endpoints-register-window')).getByRole('button', {
+        name: 'Close',
+      }),
     )
     fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' })
 

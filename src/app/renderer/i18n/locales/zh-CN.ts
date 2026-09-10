@@ -58,6 +58,13 @@ export const zhCN = {
     done: '完成',
   },
   sidebar: {
+    rootCanvas: '项目画布',
+    projectMore: '项目操作',
+    spaceMore: 'Space 操作',
+    agentMore: 'Agent 操作',
+    remoteProject: '远程项目',
+    agentsNeedInput_one: '{{count}} 个 Agent 待确认',
+    agentsNeedInput_other: '{{count}} 个 Agent 待确认',
     projects: '项目',
     addProject: '添加',
     pin: '固定侧边栏',
@@ -74,7 +81,7 @@ export const zhCN = {
     collapseProjectAgents: '折叠项目 Agent 列表',
     status: {
       working: '运行中',
-      waiting: '等待中',
+      waiting: '待确认',
       standby: '待命',
     },
     terminals_one: '{{count}} 个终端',

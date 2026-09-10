@@ -6,6 +6,7 @@ import {
   Download,
   LoaderCircle,
   Maximize2,
+  PanelLeft,
   Minimize2,
   RotateCcw,
   Search,
@@ -23,8 +24,13 @@ import type {
 import type { AppUpdateState } from '@shared/contracts/dto'
 import { IssueReportDialog } from './IssueReportDialog'
 import { PerformanceMonitorPanel } from './PerformanceMonitorPanel'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
 
 export function AppHeader({
+  showSidebarTrigger = false,
+  isSidebarOpen = false,
+  onToggleSidebar,
+  sidebarTriggerRef,
   activeWorkspaceName,
   activeWorkspacePath,
   isControlCenterOpen,
@@ -51,6 +57,10 @@ export function AppHeader({
   onDownloadUpdate,
   onInstallUpdate,
 }: {
+  showSidebarTrigger?: boolean
+  isSidebarOpen?: boolean
+  onToggleSidebar?: () => void
+  sidebarTriggerRef?: React.Ref<HTMLButtonElement>
   activeWorkspaceName: string | null
   activeWorkspacePath: string | null
   isControlCenterOpen: boolean
@@ -212,7 +222,22 @@ export function AppHeader({
         className={`app-header ${isMac ? 'app-header--mac' : ''} ${isWindows ? 'app-header--windows' : ''}`.trim()}
         role="banner"
       >
-        <div className="app-header__section app-header__section--left" />
+        <div className="app-header__section app-header__section--left">
+          {showSidebarTrigger ? (
+            <IconButton
+              ref={sidebarTriggerRef}
+              className="app-header__navigation-button"
+              label={t('commandCenter.sidebar')}
+              data-testid="primary-sidebar-open"
+              aria-expanded={isSidebarOpen}
+              aria-controls="primary-sidebar-navigation"
+              aria-haspopup="dialog"
+              onClick={onToggleSidebar}
+            >
+              <PanelLeft size={20} aria-hidden="true" />
+            </IconButton>
+          ) : null}
+        </div>
 
         <div
           className="app-header__center"

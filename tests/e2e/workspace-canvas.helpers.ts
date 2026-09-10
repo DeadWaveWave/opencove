@@ -6,6 +6,7 @@ import type {
 } from '../../src/contexts/workspace/presentation/renderer/types'
 import type { CreateMountResult, ListMountsResult } from '../../src/shared/contracts/dto'
 import { launchApp } from './workspace-canvas.app'
+import { isSeededWorkspaceNavigationReady } from './workspace-canvas.seed-readiness'
 import {
   buildEchoSequenceCommand,
   buildNodeEvalCommand,
@@ -380,16 +381,16 @@ export async function seedWorkspaceState(
     }
 
     const expectedWorkspaceCount = payload.workspaces.length
-    let workspaceCount = 0
+    let navigationReady = false
     try {
-      workspaceCount = await (async () => {
+      navigationReady = await (async () => {
         const deadline = Date.now() + 6_000
-        let count = 0
+        let ready = false
 
         while (Date.now() < deadline) {
           // eslint-disable-next-line no-await-in-loop -- bounded UI polling
-          count = await window.locator('.workspace-item').count()
-          if (count >= expectedWorkspaceCount) {
+          ready = await window.evaluate(isSeededWorkspaceNavigationReady, expectedWorkspaceCount)
+          if (ready) {
             break
           }
 
@@ -397,7 +398,7 @@ export async function seedWorkspaceState(
           await window.waitForTimeout(50)
         }
 
-        return count
+        return ready
       })()
     } catch (error) {
       if (isRetryableNavigationError(error)) {
@@ -406,7 +407,7 @@ export async function seedWorkspaceState(
 
       throw error
     }
-    if (seededReady && workspaceCount >= payload.workspaces.length) {
+    if (seededReady && navigationReady) {
       await expect(window.locator('.app-startup-state')).toHaveCount(0)
       await expect(window.locator('.workspace-canvas .react-flow__pane').first()).toBeVisible()
       await window.waitForTimeout(80)

@@ -13,7 +13,7 @@ async function movePointerIntoMenuOutsideSidebar(page: Page, menu: Locator): Pro
       .locator('.workspace-sidebar')
       .evaluate(element => element.getBoundingClientRect().toJSON()),
   ])
-  const x = Math.max(sidebarRect.right + 8, menuRect.right - 12)
+  const x = Math.max(sidebarRect.right + 12, menuRect.right + 12)
   const y = menuRect.top + Math.min(menuRect.height / 2, 40)
   await page.mouse.move(x, y)
 }
@@ -27,7 +27,7 @@ async function openMenuFromPeek({
   sidebar: Locator
   target: Locator
 }): Promise<Locator> {
-  await sidebar.hover()
+  await page.getByTestId(`workspace-item-${workspaceId}`).hover()
   await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
   await target.click({ button: 'right' })
 
@@ -99,6 +99,13 @@ test.describe('Primary Sidebar Context Menu', () => {
       await expect(projectMenu).toHaveCount(0)
       await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
 
+      await window.getByTestId(`workspace-item-${workspaceId}`).hover()
+      await window.getByTestId(`workspace-project-more-${workspaceId}`).click()
+      await expect(window.locator('.workspace-project-context-menu')).toBeVisible()
+      await window.keyboard.press('Escape')
+      await window.mouse.move(700, 400)
+      await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
+
       const spaceMenu = await openMenuFromPeek({
         page: window,
         sidebar,
@@ -113,7 +120,7 @@ test.describe('Primary Sidebar Context Menu', () => {
         sidebar,
         target: window.locator(`[data-testid="workspace-agent-item-${workspaceId}-${agentId}"]`),
       })
-      await sidebar.hover()
+      await window.getByTestId(`workspace-item-${workspaceId}`).hover()
       await window.keyboard.press('Escape')
       await expect(agentMenu).toHaveCount(0)
       await window.waitForTimeout(520)

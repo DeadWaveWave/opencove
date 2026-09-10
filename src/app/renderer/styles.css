@@ -15,6 +15,7 @@
 @import './styles/workspace-sidebar.dnd.css';
 @import './styles/workspace-sidebar.rail.css';
 @import './styles/workspace-sidebar.fade.css';
+@import './styles/primary-sidebar-layout.css';
 @import './styles/workspace-agent-item.css';
 @import './styles/workspace-canvas.css';
 @import './styles/workspace-pixel-layer.css';

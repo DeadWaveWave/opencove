@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TranslateFn } from '../../../src/app/renderer/i18n'
 import { useAppShellWorkspaceActions } from '../../../src/app/renderer/shell/hooks/useAppShellWorkspaceActions'
@@ -84,6 +84,82 @@ describe('useAppShellWorkspaceActions', () => {
 
   afterEach(() => {
     delete (window as { opencoveApi?: unknown }).opencoveApi
+  })
+
+  it('carries explicit input intent and defaults agent navigation to input focus', () => {
+    const { result } = renderHook(() =>
+      useAppShellWorkspaceActions({ requestPersistFlush: vi.fn(), t, showMessage }),
+    )
+
+    act(() => result.current.handleSelectAgentNode('workspace-1', 'agent-1', { focusInput: false }))
+    expect(useAppStore.getState().activeWorkspaceId).toBe('workspace-1')
+    expect(useAppStore.getState().focusRequest).toEqual({
+      kind: 'node',
+      workspaceId: 'workspace-1',
+      nodeId: 'agent-1',
+      sequence: 1,
+      focusInput: false,
+    })
+
+    act(() => result.current.handleSelectAgentNode('workspace-1', 'agent-1'))
+    expect(useAppStore.getState().focusRequest).toMatchObject({ sequence: 2, focusInput: true })
+  })
+
+  it('returns to the project canvas without changing its viewport or another project', () => {
+    const workspace = {
+      id: 'workspace-1',
+      name: 'workspace-1',
+      path: '/workspace',
+      worktreesRoot: '',
+      nodes: [],
+      viewport: { x: -400, y: 120, zoom: 0.7 },
+      isMinimapVisible: true,
+      spaces: [],
+      activeSpaceId: 'space-1',
+      spaceArchiveRecords: [],
+    }
+    const otherWorkspace = { ...workspace, id: 'workspace-2' }
+    useAppStore.setState({
+      workspaces: [workspace, otherWorkspace],
+      activeWorkspaceId: 'workspace-2',
+      focusRequest: { kind: 'node', workspaceId: 'workspace-2', nodeId: 'agent-2', sequence: 1 },
+    })
+    const { result } = renderHook(() =>
+      useAppShellWorkspaceActions({ requestPersistFlush: vi.fn(), t, showMessage }),
+    )
+
+    act(() => result.current.handleSelectProjectCanvas('workspace-1'))
+    const state = useAppStore.getState()
+    expect(state.activeWorkspaceId).toBe('workspace-1')
+    expect(state.focusRequest).toBeNull()
+    expect(state.workspaces[0]).toEqual({ ...workspace, activeSpaceId: null })
+    expect(state.workspaces[0].viewport).toBe(workspace.viewport)
+    expect(state.workspaces[1]).toBe(otherWorkspace)
+  })
+
+  it('preserves the active space when switching through a project rail icon', () => {
+    useAppStore.setState({
+      workspaces: [
+        {
+          id: 'workspace-1',
+          name: 'workspace-1',
+          path: '/workspace',
+          worktreesRoot: '',
+          nodes: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          spaces: [],
+          activeSpaceId: 'space-1',
+          spaceArchiveRecords: [],
+        },
+      ],
+    })
+    const { result } = renderHook(() =>
+      useAppShellWorkspaceActions({ requestPersistFlush: vi.fn(), t, showMessage }),
+    )
+
+    act(() => result.current.handleSelectWorkspace('workspace-1'))
+    expect(useAppStore.getState().workspaces[0].activeSpaceId).toBe('space-1')
   })
 
   it('opens the first local mount in the system file manager', async () => {

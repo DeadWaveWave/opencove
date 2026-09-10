@@ -67,16 +67,33 @@ export function useAppShellWorkspaceActions({
     store.setFocusRequest(null)
   }, [])
 
-  const handleSelectAgentNode = useCallback((workspaceId: string, nodeId: string): void => {
+  const handleSelectProjectCanvas = useCallback((workspaceId: string): void => {
     const store = useAppStore.getState()
     store.setActiveWorkspaceId(workspaceId)
-    store.setFocusRequest(prev => ({
-      kind: 'node',
-      workspaceId,
-      nodeId,
-      sequence: (prev?.sequence ?? 0) + 1,
-    }))
+    store.setWorkspaces(previous =>
+      previous.map(workspace =>
+        workspace.id === workspaceId && workspace.activeSpaceId !== null
+          ? { ...workspace, activeSpaceId: null }
+          : workspace,
+      ),
+    )
+    store.setFocusRequest(null)
   }, [])
+
+  const handleSelectAgentNode = useCallback(
+    (workspaceId: string, nodeId: string, options?: { focusInput?: boolean }): void => {
+      const store = useAppStore.getState()
+      store.setActiveWorkspaceId(workspaceId)
+      store.setFocusRequest(prev => ({
+        kind: 'node',
+        workspaceId,
+        nodeId,
+        sequence: (prev?.sequence ?? 0) + 1,
+        focusInput: options?.focusInput !== false,
+      }))
+    },
+    [],
+  )
 
   const handleSelectSpace = useCallback((workspaceId: string, spaceId: string): void => {
     const store = useAppStore.getState()
@@ -206,6 +223,7 @@ export function useAppShellWorkspaceActions({
   return {
     handleRemoveWorkspace,
     handleSelectWorkspace,
+    handleSelectProjectCanvas,
     handleSelectAgentNode,
     handleSelectSpace,
     handleRequestRemoveProject,

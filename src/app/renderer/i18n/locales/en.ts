@@ -57,6 +57,13 @@ export const en = {
     done: 'DONE',
   },
   sidebar: {
+    rootCanvas: 'Project canvas',
+    projectMore: 'Project options',
+    spaceMore: 'Space options',
+    agentMore: 'Agent options',
+    remoteProject: 'Remote project',
+    agentsNeedInput_one: '{{count}} agent needs input',
+    agentsNeedInput_other: '{{count}} agents need input',
     projects: 'Projects',
     addProject: 'Add',
     pin: 'Pin Sidebar',
@@ -73,7 +80,7 @@ export const en = {
     collapseProjectAgents: 'Collapse project agents',
     status: {
       working: 'Working',
-      waiting: 'Waiting',
+      waiting: 'Needs input',
       standby: 'Standby',
     },
     terminals_one: '{{count}} terminal',

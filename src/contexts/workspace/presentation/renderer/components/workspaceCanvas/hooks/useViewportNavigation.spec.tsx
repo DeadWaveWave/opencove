@@ -4,6 +4,11 @@ import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData } from '../../../types'
 import { useWorkspaceCanvasViewportNavigation } from './useViewportNavigation'
+import { requestViewportNodeInputFocus } from '../requestViewportNodeInputFocus'
+
+vi.mock('../requestViewportNodeInputFocus', () => ({
+  requestViewportNodeInputFocus: vi.fn(() => vi.fn()),
+}))
 
 const NODE: Node<TerminalNodeData> = {
   id: 'agent-1',
@@ -35,6 +40,7 @@ const PERSISTED_VIEWPORT: Viewport = { x: -120, y: -80, zoom: 0.6 }
 function ViewportNavigationHarness({
   reactFlow,
   focusNodeId,
+  focusNodeInput,
   focusSpaceId = null,
   focusSequence = 1,
   nodes = [NODE],
@@ -42,6 +48,7 @@ function ViewportNavigationHarness({
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   focusNodeId?: string | null
+  focusNodeInput?: boolean
   focusSpaceId?: string | null
   focusSequence?: number
   nodes?: Node<TerminalNodeData>[]
@@ -57,6 +64,7 @@ function ViewportNavigationHarness({
     restoredViewportWorkspaceIdRef,
     reactFlow,
     focusNodeId,
+    focusNodeInput,
     focusSpaceId,
     focusSequence,
     nodes,
@@ -87,6 +95,7 @@ describe('useWorkspaceCanvasViewportNavigation', () => {
   let frames: Map<number, FrameRequestCallback>
 
   beforeEach(() => {
+    vi.mocked(requestViewportNodeInputFocus).mockClear()
     frames = new Map()
     nextFrameId = 1
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
@@ -121,7 +130,7 @@ describe('useWorkspaceCanvasViewportNavigation', () => {
   it('does not let the persisted viewport overwrite an explicit agent focus request', () => {
     const reactFlow = createReactFlow()
 
-    render(<ViewportNavigationHarness reactFlow={reactFlow} focusNodeId={NODE.id} />)
+    render(<ViewportNavigationHarness reactFlow={reactFlow} focusNodeId={NODE.id} focusNodeInput />)
 
     act(flushAnimationFrames)
 
@@ -130,6 +139,91 @@ describe('useWorkspaceCanvasViewportNavigation', () => {
       zoom: 1,
     })
     expect(reactFlow.setViewport).not.toHaveBeenCalled()
+    expect(requestViewportNodeInputFocus).toHaveBeenCalledWith(NODE.id)
+  })
+
+  it.each([undefined, false])('only locates a node when input focus is %s', focusNodeInput => {
+    const reactFlow = createReactFlow()
+    render(
+      <ViewportNavigationHarness
+        reactFlow={reactFlow}
+        focusNodeId={NODE.id}
+        focusNodeInput={focusNodeInput}
+      />,
+    )
+
+    act(flushAnimationFrames)
+
+    expect(reactFlow.setCenter).toHaveBeenCalledWith(2_640, 1_760, { duration: 220, zoom: 1 })
+    expect(requestViewportNodeInputFocus).not.toHaveBeenCalled()
+  })
+
+  it('retries a delayed node with the original locate-only input intent', () => {
+    const reactFlow = createReactFlow()
+    const rendered = render(
+      <ViewportNavigationHarness
+        reactFlow={reactFlow}
+        focusNodeId={NODE.id}
+        focusNodeInput={false}
+        nodes={[]}
+      />,
+    )
+    act(flushAnimationFrames)
+    expect(reactFlow.setViewport).toHaveBeenCalledWith(PERSISTED_VIEWPORT, { duration: 0 })
+
+    rendered.rerender(
+      <ViewportNavigationHarness
+        reactFlow={reactFlow}
+        focusNodeId={NODE.id}
+        focusNodeInput={false}
+        nodes={[NODE]}
+      />,
+    )
+
+    expect(reactFlow.setCenter).toHaveBeenCalledTimes(1)
+    expect(requestViewportNodeInputFocus).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, false])(
+    'cancels pending input focus when newer input intent is %s',
+    focusNodeInput => {
+      const cancelFocus = vi.fn()
+      vi.mocked(requestViewportNodeInputFocus).mockReturnValueOnce(cancelFocus)
+      const reactFlow = createReactFlow()
+      const rendered = render(
+        <ViewportNavigationHarness reactFlow={reactFlow} focusNodeId={NODE.id} focusNodeInput />,
+      )
+      act(flushAnimationFrames)
+
+      rendered.rerender(
+        <ViewportNavigationHarness
+          reactFlow={reactFlow}
+          focusNodeId={NODE.id}
+          focusNodeInput={focusNodeInput}
+          focusSequence={2}
+        />,
+      )
+
+      expect(cancelFocus).toHaveBeenCalled()
+      expect(requestViewportNodeInputFocus).toHaveBeenCalledTimes(1)
+      expect(reactFlow.setCenter).toHaveBeenCalledTimes(2)
+    },
+  )
+
+  it('cancels pending input focus when the current request no longer requests it', () => {
+    const cancelFocus = vi.fn()
+    vi.mocked(requestViewportNodeInputFocus).mockReturnValueOnce(cancelFocus)
+    const reactFlow = createReactFlow()
+    const rendered = render(
+      <ViewportNavigationHarness reactFlow={reactFlow} focusNodeId={NODE.id} focusNodeInput />,
+    )
+    act(flushAnimationFrames)
+
+    rendered.rerender(<ViewportNavigationHarness reactFlow={reactFlow} focusNodeId={NODE.id} />)
+
+    expect(cancelFocus).toHaveBeenCalled()
+    expect(requestViewportNodeInputFocus).toHaveBeenCalledTimes(1)
+    expect(reactFlow.setCenter).toHaveBeenCalledTimes(1)
   })
 
   it('restores the persisted viewport when there is no explicit focus request', () => {
@@ -192,6 +286,35 @@ describe('useWorkspaceCanvasViewportNavigation', () => {
     act(flushAnimationFrames)
 
     expect(reactFlow.setCenter).toHaveBeenCalledTimes(2)
+  })
+
+  it('accepts the same agent again after returning to the project canvas cleared the request', () => {
+    const cancelFocus = vi.fn()
+    vi.mocked(requestViewportNodeInputFocus).mockReturnValueOnce(cancelFocus)
+    const reactFlow = createReactFlow()
+    const rendered = render(
+      <ViewportNavigationHarness
+        reactFlow={reactFlow}
+        focusNodeId={NODE.id}
+        focusNodeInput
+        focusSequence={1}
+      />,
+    )
+    act(flushAnimationFrames)
+
+    rendered.rerender(<ViewportNavigationHarness reactFlow={reactFlow} focusNodeId={null} />)
+    expect(cancelFocus).toHaveBeenCalled()
+    rendered.rerender(
+      <ViewportNavigationHarness
+        reactFlow={reactFlow}
+        focusNodeId={NODE.id}
+        focusNodeInput
+        focusSequence={1}
+      />,
+    )
+
+    expect(reactFlow.setCenter).toHaveBeenCalledTimes(2)
+    expect(requestViewportNodeInputFocus).toHaveBeenCalledTimes(2)
   })
 
   it('cancels a superseded initial frame so only the latest focus request lands', () => {

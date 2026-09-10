@@ -77,11 +77,9 @@ test('pins a sidebar space into the top rail, restores it, shares its menu, and 
     await expect(
       window.locator(`[data-testid="workspace-space-switch-${pinnedSpaceId}"]`),
     ).toBeVisible()
-    await expect(window.locator('.workspace-space-item__name')).toHaveText([
-      'Beta',
-      'Alpha',
-      'Gamma',
-    ])
+    await expect(
+      window.locator('.workspace-space-group--space .workspace-space-item__name'),
+    ).toHaveText(['Beta', 'Alpha', 'Gamma'])
     await expect
       .poll(async () => {
         const raw = await window!.evaluate(async () => {

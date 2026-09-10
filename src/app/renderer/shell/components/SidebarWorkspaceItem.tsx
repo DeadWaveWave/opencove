@@ -1,4 +1,5 @@
 import React from 'react'
+import { ChevronDown, ChevronRight, LayoutDashboard, MoreHorizontal, Scan } from 'lucide-react'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
@@ -6,194 +7,143 @@ import type { ProjectContextMenuState } from '../types'
 import { type SidebarProjectTreeModel, type SidebarSpaceGroupModel } from '../utils/sidebarTree'
 import { SidebarAgentItems } from './SidebarAgentItems'
 import { createSpaceSortableId, sidebarSortableTransition } from './SidebarDnd'
-import { SidebarDisclosureIcon } from './SidebarDisclosureIcon'
 import { ProjectIcon } from './ProjectIcon'
 
-type SortableWorkspaceItemProps = {
-  tree: SidebarProjectTreeModel
-  isActive: boolean
-  isExpanded: boolean
-  collapsedSpaceGroupIds: Record<string, boolean>
-  onToggleProject: (workspaceId: string) => void
-  onToggleSpaceGroup: (groupKey: string) => void
-  onSelectWorkspace: (workspaceId: string) => void
+export function getTreeChildGroups(tree: SidebarProjectTreeModel): SidebarSpaceGroupModel[] {
+  return [tree.projectRootGroup, ...tree.spaceGroups]
+}
+
+type NavigationProps = {
+  onSelectProjectCanvas: (workspaceId: string) => void
   onSelectSpace: (workspaceId: string, spaceId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
-}
-
-export function getTreeChildGroups(tree: SidebarProjectTreeModel): SidebarSpaceGroupModel[] {
-  return tree.projectRootGroup ? [...tree.spaceGroups, tree.projectRootGroup] : tree.spaceGroups
-}
-
-function WorkspaceItemContent({
-  tree,
-  hasChildren,
-  isExpanded,
-  onToggleProject,
-}: {
-  tree: SidebarProjectTreeModel
-  hasChildren: boolean
-  isExpanded: boolean
-  onToggleProject: (workspaceId: string) => void
-}): React.JSX.Element {
-  const { t } = useTranslation()
-
-  return (
-    <>
-      <span className="workspace-item__headline">
-        <ProjectIcon
-          iconId={tree.workspace.iconId}
-          isExpanded={hasChildren && isExpanded}
-          className="workspace-item__folder-icon"
-        />
-        <span className="workspace-item__name">{tree.workspace.name}</span>
-      </span>
-      {hasChildren ? (
-        <button
-          type="button"
-          className="workspace-item__tree-toggle"
-          data-testid={`workspace-item-toggle-${tree.workspace.id}`}
-          aria-expanded={isExpanded}
-          aria-label={
-            isExpanded ? t('sidebar.collapseProjectTree') : t('sidebar.expandProjectTree')
-          }
-          onClick={event => {
-            event.stopPropagation()
-            onToggleProject(tree.workspace.id)
-          }}
-          onPointerDown={event => {
-            event.stopPropagation()
-          }}
-        >
-          <SidebarDisclosureIcon expanded={isExpanded} className="workspace-item__tree-icon" />
-        </button>
-      ) : null}
-    </>
-  )
 }
 
 function SpaceGroup({
   workspaceId,
   group,
   isActive,
+  currentNodeId,
   isExpanded,
-  onSelectWorkspace,
+  onSelectProjectCanvas,
   onSelectSpace,
   onToggleSpaceGroup,
   onSelectAgentNode,
   onOpenProjectContextMenu,
-}: {
+}: NavigationProps & {
   workspaceId: string
   group: SidebarSpaceGroupModel
   isActive: boolean
+  currentNodeId: string | null
   isExpanded: boolean
-  onSelectWorkspace: (workspaceId: string) => void
-  onSelectSpace: (workspaceId: string, spaceId: string) => void
   onToggleSpaceGroup: (groupKey: string) => void
-  onSelectAgentNode: (workspaceId: string, nodeId: string) => void
-  onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
-  const isProjectRoot = group.kind === 'project-root'
-  const label = isProjectRoot ? t('sidebar.projectRoot') : group.name
-  const groupKey = `${workspaceId}:${group.id}`
+  const isRoot = group.kind === 'project-root'
+  const label = isRoot ? t('sidebar.rootCanvas') : group.name
   const hasAgents = group.agents.length > 0
-  const sortableId = isProjectRoot ? groupKey : createSpaceSortableId(workspaceId, group.id)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: sortableId,
-    disabled: isProjectRoot,
+    id: isRoot ? `${workspaceId}:${group.id}` : createSpaceSortableId(workspaceId, group.id),
+    disabled: isRoot,
     transition: sidebarSortableTransition,
-    data: !isProjectRoot
-      ? {
-          kind: 'space',
-          workspaceId,
-          spaceId: group.id,
-        }
-      : undefined,
+    data: isRoot ? undefined : { kind: 'space', workspaceId, spaceId: group.id },
   })
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
+  const openMenu = (x: number, y: number): void => {
+    if (!group.space) {
+      return
+    }
+    onOpenProjectContextMenu({
+      workspaceId,
+      x,
+      y,
+      target: { kind: 'space', workspaceId, spaceId: group.space.id },
+    })
   }
-  const groupClassName = `workspace-space-group ${
-    isProjectRoot ? 'workspace-space-group--root' : 'workspace-space-group--space'
-  }${hasAgents && isExpanded ? ' workspace-space-group--branched' : ''}${
-    isDragging ? ' workspace-space-group--dragging' : ''
-  }`
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className={groupClassName}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      className={`workspace-space-group workspace-space-group--${isRoot ? 'root' : 'space'}${isDragging ? ' workspace-space-group--dragging' : ''}`}
       data-cove-label-color={group.labelColor ?? undefined}
     >
       <div
-        {...(!isProjectRoot ? attributes : {})}
-        role="button"
-        tabIndex={0}
-        className={`workspace-space-item${isProjectRoot ? ' workspace-space-item--root' : ' workspace-space-item--space'}${hasAgents ? ' workspace-space-item--has-toggle' : ''}${isActive ? ' workspace-space-item--active' : ''}`}
-        data-testid={
-          isProjectRoot
-            ? `workspace-space-root-${workspaceId}`
-            : `workspace-space-item-${workspaceId}-${group.id}`
-        }
-        data-cove-label-color={group.labelColor ?? undefined}
-        title={label}
-        {...(!isProjectRoot ? listeners : {})}
-        onContextMenu={event => {
-          event.preventDefault()
-          if (!group.space) {
-            return
-          }
-          onOpenProjectContextMenu({
-            workspaceId,
-            x: event.clientX,
-            y: event.clientY,
-            target: {
-              kind: 'space',
-              workspaceId,
-              spaceId: group.space.id,
-            },
-          })
-        }}
-        onClick={() => {
-          if (group.space) {
-            onSelectSpace(workspaceId, group.space.id)
-            return
-          }
-
-          onSelectWorkspace(workspaceId)
-        }}
-        onKeyDown={event => {
-          if (event.key !== 'Enter' && event.key !== ' ') {
-            return
-          }
-          event.preventDefault()
-          if (group.space) {
-            onSelectSpace(workspaceId, group.space.id)
-            return
-          }
-
-          onSelectWorkspace(workspaceId)
-        }}
+        className={`workspace-space-item${isRoot ? ' workspace-space-item--root' : ''}${isActive ? ' workspace-space-item--active' : ''}`}
       >
-        <SpaceItemContent
-          label={label}
-          hasAgents={hasAgents}
-          isExpanded={isExpanded}
-          onToggleSpaceGroup={() => onToggleSpaceGroup(groupKey)}
-        />
+        <button
+          type="button"
+          className="workspace-space-item__select"
+          data-testid={
+            isRoot
+              ? `workspace-space-root-${workspaceId}`
+              : `workspace-space-item-${workspaceId}-${group.id}`
+          }
+          aria-current={isActive ? 'location' : undefined}
+          title={label}
+          {...(!isRoot ? attributes : {})}
+          {...(!isRoot ? listeners : {})}
+          onContextMenu={event => {
+            event.preventDefault()
+            openMenu(event.clientX, event.clientY)
+          }}
+          onClick={() =>
+            group.space
+              ? onSelectSpace(workspaceId, group.space.id)
+              : onSelectProjectCanvas(workspaceId)
+          }
+        >
+          {isRoot ? (
+            <LayoutDashboard size={14} aria-hidden="true" />
+          ) : (
+            <Scan size={16} aria-hidden="true" />
+          )}
+          <span className="workspace-space-item__name">{label}</span>
+        </button>
+        {!isRoot ? (
+          <button
+            type="button"
+            className="workspace-sidebar__more"
+            data-testid={`workspace-space-more-${workspaceId}-${group.id}`}
+            aria-label={`${t('sidebar.spaceMore')}: ${label}`}
+            title={t('sidebar.spaceMore')}
+            onClick={event => {
+              const rect = event.currentTarget.getBoundingClientRect()
+              openMenu(rect.right, rect.bottom)
+            }}
+          >
+            <MoreHorizontal size={14} aria-hidden="true" />
+          </button>
+        ) : null}
+        {hasAgents ? (
+          <button
+            type="button"
+            className="workspace-space-item__toggle"
+            aria-label={
+              isExpanded ? t('sidebar.collapseProjectTree') : t('sidebar.expandProjectTree')
+            }
+            aria-expanded={isExpanded}
+            onClick={() => onToggleSpaceGroup(`${workspaceId}:${group.id}`)}
+          >
+            {isExpanded ? (
+              <ChevronDown size={14} aria-hidden="true" />
+            ) : (
+              <ChevronRight size={14} aria-hidden="true" />
+            )}
+          </button>
+        ) : null}
       </div>
-
       {hasAgents && isExpanded ? (
         <div className="workspace-space-group__branch">
           <SidebarAgentItems
             workspaceId={workspaceId}
             groupId={group.agents.length > 1 ? group.id : null}
             agentItems={group.agents}
+            currentNodeId={currentNodeId}
             onSelectAgentNode={onSelectAgentNode}
             onOpenProjectContextMenu={onOpenProjectContextMenu}
           />
@@ -203,174 +153,52 @@ function SpaceGroup({
   )
 }
 
-export function SortableWorkspaceItem({
+export function SidebarWorkspaceNavigation({
   tree,
   isActive,
-  isExpanded,
+  currentNodeId = null,
   collapsedSpaceGroupIds,
-  onToggleProject,
   onToggleSpaceGroup,
-  onSelectWorkspace,
-  onSelectSpace,
-  onOpenProjectContextMenu,
-  onSelectAgentNode,
-}: SortableWorkspaceItemProps): React.JSX.Element {
+  ...navigationProps
+}: NavigationProps & {
+  tree: SidebarProjectTreeModel
+  isActive: boolean
+  currentNodeId?: string | null
+  collapsedSpaceGroupIds: Record<string, boolean>
+  onToggleSpaceGroup: (groupKey: string) => void
+}): React.JSX.Element {
   const { workspace } = tree
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: workspace.id,
-    transition: sidebarSortableTransition,
-    data: {
-      kind: 'project',
-      workspaceId: workspace.id,
-    },
-  })
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  }
-  const childGroups = getTreeChildGroups(tree)
-  const hasChildren = childGroups.length > 0
-  const rootSpaceSortableIds = tree.spaceGroups.map(group =>
-    createSpaceSortableId(workspace.id, group.id),
-  )
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      className={`workspace-item-group${isActive ? ' workspace-item-group--active' : ''}${
-        isDragging ? ' workspace-item-group--dragging' : ''
-      }`}
+      className="workspace-item__spaces"
+      data-testid={`workspace-project-navigation-${workspace.id}`}
     >
-      <div className="workspace-item-row">
-        <div
-          role="button"
-          tabIndex={0}
-          className={`workspace-item ${isActive ? ' workspace-item--active' : ''}`}
-          data-testid={`workspace-item-${workspace.id}`}
-          onClick={() => {
-            onSelectWorkspace(workspace.id)
-          }}
-          onKeyDown={event => {
-            if (event.key !== 'Enter' && event.key !== ' ') {
-              return
+      <SortableContext
+        items={tree.spaceGroups.map(group => createSpaceSortableId(workspace.id, group.id))}
+        strategy={verticalListSortingStrategy}
+      >
+        {getTreeChildGroups(tree).map(group => (
+          <SpaceGroup
+            key={group.id}
+            workspaceId={workspace.id}
+            group={group}
+            isActive={
+              isActive &&
+              !currentNodeId &&
+              (group.kind === 'project-root'
+                ? !workspace.activeSpaceId
+                : group.id === workspace.activeSpaceId)
             }
-            event.preventDefault()
-            onSelectWorkspace(workspace.id)
-          }}
-          onContextMenu={event => {
-            event.preventDefault()
-            onOpenProjectContextMenu({
-              workspaceId: workspace.id,
-              x: event.clientX,
-              y: event.clientY,
-              target: {
-                kind: 'project',
-                workspaceId: workspace.id,
-              },
-            })
-          }}
-          title={workspace.name}
-          {...listeners}
-        >
-          <WorkspaceItemContent
-            tree={tree}
-            hasChildren={hasChildren}
-            isExpanded={isExpanded}
-            onToggleProject={onToggleProject}
+            currentNodeId={isActive ? currentNodeId : null}
+            isExpanded={collapsedSpaceGroupIds[`${workspace.id}:${group.id}`] !== true}
+            onToggleSpaceGroup={onToggleSpaceGroup}
+            {...navigationProps}
           />
-        </div>
-      </div>
-
-      {isExpanded ? (
-        <div className="workspace-item__spaces">
-          <SortableContext items={rootSpaceSortableIds} strategy={verticalListSortingStrategy}>
-            {childGroups.map(group => (
-              <SpaceGroup
-                key={group.id}
-                workspaceId={workspace.id}
-                group={group}
-                isActive={isActive && group.space?.id === workspace.activeSpaceId}
-                isExpanded={collapsedSpaceGroupIds[`${workspace.id}:${group.id}`] !== true}
-                onSelectWorkspace={onSelectWorkspace}
-                onSelectSpace={onSelectSpace}
-                onToggleSpaceGroup={onToggleSpaceGroup}
-                onSelectAgentNode={onSelectAgentNode}
-                onOpenProjectContextMenu={onOpenProjectContextMenu}
-              />
-            ))}
-          </SortableContext>
-        </div>
-      ) : null}
+        ))}
+      </SortableContext>
     </div>
   )
-}
-
-function SpaceItemContent({
-  label,
-  hasAgents,
-  isExpanded,
-  isOverlay = false,
-  onToggleSpaceGroup,
-}: {
-  label: string
-  hasAgents: boolean
-  isExpanded: boolean
-  isOverlay?: boolean
-  onToggleSpaceGroup?: () => void
-}): React.JSX.Element {
-  const { t } = useTranslation()
-
-  return (
-    <>
-      {!hasAgents ? <SpaceRailMarker /> : null}
-      <span className="workspace-space-item__name">{label}</span>
-      {hasAgents ? (
-        isOverlay ? (
-          <span className="workspace-space-item__toggle" aria-hidden="true">
-            <SidebarDisclosureIcon
-              expanded={isExpanded}
-              className="workspace-space-item__chevron"
-            />
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="workspace-space-item__toggle"
-            aria-label={
-              isExpanded ? t('sidebar.collapseProjectTree') : t('sidebar.expandProjectTree')
-            }
-            aria-expanded={isExpanded}
-            onClick={event => {
-              event.stopPropagation()
-              onToggleSpaceGroup?.()
-            }}
-            onKeyDown={event => {
-              if (event.key !== 'Enter' && event.key !== ' ') {
-                return
-              }
-              event.preventDefault()
-              event.stopPropagation()
-              onToggleSpaceGroup?.()
-            }}
-          >
-            <SidebarDisclosureIcon
-              expanded={isExpanded}
-              className="workspace-space-item__chevron"
-            />
-          </button>
-        )
-      ) : (
-        <span className="workspace-space-item__toggle-spacer" aria-hidden="true" />
-      )}
-    </>
-  )
-}
-
-function SpaceRailMarker(): React.JSX.Element {
-  return <span className="workspace-space-item__rail-icon" aria-hidden="true" />
 }
 
 export function WorkspaceItemOverlay({
@@ -378,57 +206,47 @@ export function WorkspaceItemOverlay({
 }: {
   tree: SidebarProjectTreeModel
 }): React.JSX.Element {
-  const childGroups = getTreeChildGroups(tree)
-
   return (
     <div
-      className="workspace-item-group workspace-item-group--drag-overlay"
+      className="workspace-project-rail__drag-overlay"
       data-testid="workspace-sidebar-drag-overlay"
       data-cove-sidebar-drag-kind="project"
     >
-      <div className="workspace-item workspace-item--drag-overlay">
-        <WorkspaceItemContent
-          tree={tree}
-          hasChildren={childGroups.length > 0}
-          isExpanded={true}
-          onToggleProject={() => undefined}
-        />
-      </div>
+      <ProjectIcon
+        iconId={tree.workspace.iconId}
+        isExpanded
+        className="workspace-item__folder-icon"
+      />
+      <span>{tree.workspace.name}</span>
     </div>
   )
 }
 
 export function SpaceItemOverlay({
   group,
-  isExpanded,
 }: {
   group: SidebarSpaceGroupModel
-  isExpanded: boolean
+  isExpanded?: boolean
 }): React.JSX.Element {
   const { t } = useTranslation()
-  const label = group.kind === 'project-root' ? t('sidebar.projectRoot') : group.name
-  const hasAgents = group.agents.length > 0
-
   return (
     <div
-      className={`workspace-space-group workspace-space-group--drag-overlay ${
-        group.kind === 'project-root'
-          ? 'workspace-space-group--root'
-          : 'workspace-space-group--space'
-      }`}
+      className="workspace-space-group workspace-space-group--drag-overlay"
       data-testid="workspace-sidebar-drag-overlay"
       data-cove-label-color={group.labelColor ?? undefined}
       data-cove-sidebar-drag-kind="space"
     >
-      <div
-        className={`workspace-space-item ${
-          group.kind === 'project-root'
-            ? 'workspace-space-item--root'
-            : 'workspace-space-item--space'
-        }${hasAgents ? ' workspace-space-item--has-toggle' : ''} workspace-space-item--drag-overlay`}
-        data-cove-label-color={group.labelColor ?? undefined}
-      >
-        <SpaceItemContent label={label} hasAgents={hasAgents} isExpanded={isExpanded} isOverlay />
+      <div className="workspace-space-item workspace-space-item--drag-overlay">
+        <span className="workspace-space-item__select">
+          {group.kind === 'project-root' ? (
+            <LayoutDashboard size={14} aria-hidden="true" />
+          ) : (
+            <Scan size={16} aria-hidden="true" />
+          )}
+          <span className="workspace-space-item__name">
+            {group.kind === 'project-root' ? t('sidebar.rootCanvas') : group.name}
+          </span>
+        </span>
       </div>
     </div>
   )

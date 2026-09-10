@@ -16,6 +16,8 @@ export type FocusRequest =
       workspaceId: string
       nodeId: string
       sequence: number
+      // Locating a node preserves input focus unless the caller explicitly requests it.
+      focusInput?: boolean
     }
   | {
       kind: 'space'

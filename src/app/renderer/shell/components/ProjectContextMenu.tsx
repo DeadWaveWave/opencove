@@ -23,6 +23,7 @@ import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/t
 import type { ProjectContextMenuTarget } from '../types'
 import { useAppStore } from '../store/useAppStore'
 import { getProjectIconComponent } from './ProjectIcon'
+import { useProjectContextMenuFocus } from './useProjectContextMenuFocus'
 import {
   renameTarget,
   resolveTargetProjectIconId,
@@ -66,6 +67,7 @@ export function ProjectContextMenu({
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameDraft, setRenameDraft] = useState(targetName ?? '')
   const renameInputRef = useRef<HTMLInputElement | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const openInFileManagerLabel =
     platform === 'win32'
       ? t('projectContextMenu.openInExplorer')
@@ -103,27 +105,12 @@ export function ProjectContextMenu({
     setRenameDraft(targetName ?? '')
   }, [targetName])
 
-  useEffect(() => {
-    if (!isRenaming) {
-      return
-    }
-
-    window.setTimeout(() => {
-      renameInputRef.current?.focus()
-      renameInputRef.current?.select()
-    }, 0)
-  }, [isRenaming])
-
-  useEffect(() => {
-    if (!isSpaceTarget || isRenaming) {
-      return
-    }
-
-    window.setTimeout(() => {
-      renameInputRef.current?.focus()
-      renameInputRef.current?.select()
-    }, 0)
-  }, [isRenaming, isSpaceTarget, targetName])
+  useProjectContextMenuFocus({
+    menuRef,
+    inputRef: renameInputRef,
+    isEditing: isRenaming || isSpaceTarget,
+    targetKey: `${workspaceId}:${resolvedTarget.kind}:${resolvedTarget.kind === 'space' ? resolvedTarget.spaceId : resolvedTarget.kind === 'agent' ? resolvedTarget.nodeId : ''}`,
+  })
 
   if (targetName === null) {
     return null
@@ -314,6 +301,7 @@ export function ProjectContextMenu({
 
   return (
     <ViewportMenuSurface
+      ref={menuRef}
       open={true}
       className={`workspace-context-menu workspace-project-context-menu workspace-project-context-menu--${resolvedTarget.kind}`}
       placement={{

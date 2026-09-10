@@ -113,6 +113,7 @@ describe('ProjectContextMenu', () => {
 
   it('renames a project target', () => {
     renderMenu({ kind: 'project', workspaceId: 'workspace-a' })
+    expect(document.activeElement).toBe(screen.getByTestId('workspace-project-context-menu-rename'))
 
     submitRename('Project Renamed')
 
@@ -131,6 +132,7 @@ describe('ProjectContextMenu', () => {
 
   it('renames a space target', () => {
     renderMenu({ kind: 'space', workspaceId: 'workspace-a', spaceId: 'space-a' })
+    expect(document.activeElement).toBe(screen.getByLabelText('Rename'))
 
     fireEvent.change(screen.getByLabelText('Rename'), { target: { value: 'Space Renamed' } })
     fireEvent.blur(screen.getByLabelText('Rename'))
@@ -140,6 +142,7 @@ describe('ProjectContextMenu', () => {
 
   it('renames an agent target and pins its title', () => {
     renderMenu({ kind: 'agent', workspaceId: 'workspace-a', nodeId: 'agent-a' })
+    expect(document.activeElement).toBe(screen.getByTestId('workspace-project-context-menu-rename'))
 
     submitRename('Agent Renamed')
 

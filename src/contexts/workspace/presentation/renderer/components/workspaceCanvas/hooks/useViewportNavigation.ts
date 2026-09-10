@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
+import { requestViewportNodeInputFocus } from '../requestViewportNodeInputFocus'
 
 export function useWorkspaceCanvasViewportNavigation({
   workspaceId,
@@ -9,6 +10,7 @@ export function useWorkspaceCanvasViewportNavigation({
   restoredViewportWorkspaceIdRef,
   reactFlow,
   focusNodeId,
+  focusNodeInput,
   focusSpaceId,
   focusSequence,
   nodes,
@@ -22,6 +24,7 @@ export function useWorkspaceCanvasViewportNavigation({
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   focusNodeId?: string | null
+  focusNodeInput?: boolean
   focusSpaceId?: string | null
   focusSequence?: number
   nodes: Node<TerminalNodeData>[]
@@ -32,12 +35,21 @@ export function useWorkspaceCanvasViewportNavigation({
 }): void {
   const focusedNodeRequestKeyRef = useRef<string | null>(null)
   const focusedSpaceRequestKeyRef = useRef<string | null>(null)
+  const cancelInputFocusRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => () => cancelInputFocusRef.current?.(), [workspaceId])
 
   useEffect(() => {
     const isWorkspaceViewportPending = restoredViewportWorkspaceIdRef.current !== workspaceId
     const sequence = focusSequence ?? 0
     const nodeRequestKey = focusNodeId ? `${workspaceId}:node:${focusNodeId}:${sequence}` : null
     const spaceRequestKey = focusSpaceId ? `${workspaceId}:space:${focusSpaceId}:${sequence}` : null
+    if (!nodeRequestKey) {
+      focusedNodeRequestKeyRef.current = null
+    }
+    if (!spaceRequestKey) {
+      focusedSpaceRequestKeyRef.current = null
+    }
     const hasPendingNodeRequest =
       nodeRequestKey !== null &&
       (isWorkspaceViewportPending || focusedNodeRequestKeyRef.current !== nodeRequestKey)
@@ -46,8 +58,13 @@ export function useWorkspaceCanvasViewportNavigation({
       (isWorkspaceViewportPending || focusedSpaceRequestKeyRef.current !== spaceRequestKey)
 
     if (!isWorkspaceViewportPending && !hasPendingNodeRequest && !hasPendingSpaceRequest) {
+      if (!nodeRequestKey || focusNodeInput !== true) {
+        cancelInputFocusRef.current?.()
+      }
       return
     }
+
+    cancelInputFocusRef.current?.()
 
     const applyViewportIntent = (): void => {
       restoredViewportWorkspaceIdRef.current = workspaceId
@@ -60,6 +77,9 @@ export function useWorkspaceCanvasViewportNavigation({
             duration: 220,
             zoom: focusNodeTargetZoom,
           })
+          if (focusNodeInput === true) {
+            cancelInputFocusRef.current = requestViewportNodeInputFocus(target.id)
+          }
           return
         }
       }
@@ -92,6 +112,7 @@ export function useWorkspaceCanvasViewportNavigation({
     }
   }, [
     focusNodeId,
+    focusNodeInput,
     focusNodeTargetZoom,
     focusSequence,
     focusSpaceId,

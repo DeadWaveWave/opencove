@@ -14,7 +14,7 @@ import { AppShellBootBoundary } from './components/AppShellBootBoundary'
 import { AppShellOverlays } from './components/AppShellOverlays'
 import { AppShellModals } from './components/AppShellModals'
 import { AppShellPopups } from './components/AppShellPopups'
-import { Sidebar } from './components/Sidebar'
+import { AppPrimarySidebar } from './components/AppPrimarySidebar'
 import { WorkspaceDirectoryPickerBridge } from './components/WorkspaceDirectoryPickerBridge'
 import { WorkspaceMain } from './components/WorkspaceMain'
 import { WorkspaceSearchOverlay } from './components/WorkspaceSearchOverlay'
@@ -36,7 +36,7 @@ import { useShellOverlayState } from './hooks/useShellOverlayState'
 import { useAddProjectRequest } from './hooks/useAddProjectWizardRequest'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useAppShellRuntimeLifecycles } from './hooks/useAppShellRuntimeLifecycles'
-import { usePrimarySidebarAutoReveal } from './hooks/usePrimarySidebarAutoReveal'
+import { usePrimarySidebar } from './hooks/usePrimarySidebar'
 import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
 import { useCommandCenterShortcutHint } from './hooks/useCommandCenterShortcutHint'
 import { useAppStore } from './store/useAppStore'
@@ -133,6 +133,13 @@ export default function App(): React.JSX.Element {
   useAppDocumentChrome(activeWorkspace?.name ?? null)
 
   const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
+  const sidebarTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const toggleSidebarPinned = useCallback(() => {
+    setAgentSettings(prev => ({
+      ...prev,
+      isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
+    }))
+  }, [setAgentSettings])
   const handleChangePreserveWindowSizesOnArrange = useCallback(
     (enabled: boolean) => {
       setAgentSettings(previous =>
@@ -180,15 +187,13 @@ export default function App(): React.JSX.Element {
     projectMountManager !== null ||
     projectDeleteConfirmation !== null
 
-  useWebsiteWindowOcclusionSync(hasBlockingShellOverlay)
-  const {
-    isPeekOpen: isPrimarySidebarPeekOpen,
-    handlePointerEnter: handleSidebarPointerEnter,
-    handlePointerLeave: handleSidebarPointerLeave,
-  } = usePrimarySidebarAutoReveal({
+  const sidebar = usePrimarySidebar({
     isCollapsed: isPrimarySidebarCollapsed,
-    isInteractionActive: projectContextMenu !== null,
+    isMenuOpen: projectContextMenu !== null,
+    hasBlockingOverlay: hasBlockingShellOverlay || isAddProjectWizardOpen,
+    onTogglePinned: toggleSidebarPinned,
   })
+  useWebsiteWindowOcclusionSync(hasBlockingShellOverlay || sidebar.isDrawerOpen)
 
   useAppKeybindings({
     enabled:
@@ -206,10 +211,7 @@ export default function App(): React.JSX.Element {
     },
     onTogglePrimarySidebar: () => {
       closeTransientOverlays()
-      setAgentSettings(prev => ({
-        ...prev,
-        isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
-      }))
+      sidebar.toggle()
     },
     onAddProject: () => {
       closeTransientOverlays()
@@ -272,6 +274,7 @@ export default function App(): React.JSX.Element {
   const {
     handleRemoveWorkspace,
     handleSelectWorkspace,
+    handleSelectProjectCanvas,
     handleSelectAgentNode,
     handleSelectSpace,
     handleRequestRemoveProject,
@@ -302,9 +305,13 @@ export default function App(): React.JSX.Element {
     <AppShellBootBoundary isBootReady={isPersistReady}>
       <EndpointOverviewProvider>
         <div
-          className={`app-shell ${isPrimarySidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}${isPrimarySidebarPeekOpen ? ' app-shell--sidebar-peek' : ''}`}
+          className={`app-shell ${isPrimarySidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}${sidebar.isPeekOpen ? ' app-shell--sidebar-peek' : ''}${sidebar.isMobile ? ' app-shell--mobile-navigation' : ''}`}
         >
           <AppHeader
+            sidebarTriggerRef={sidebarTriggerRef}
+            showSidebarTrigger={sidebar.isMobile}
+            isSidebarOpen={sidebar.isDrawerOpen}
+            onToggleSidebar={sidebar.toggle}
             activeWorkspaceName={activeWorkspace?.name ?? null}
             activeWorkspacePath={activeWorkspace?.path ?? null}
             isControlCenterOpen={isControlCenterOpen}
@@ -332,30 +339,34 @@ export default function App(): React.JSX.Element {
             onInstallUpdate={installUpdate}
           />
 
-          <Sidebar
-            variant={
-              isPrimarySidebarCollapsed ? (isPrimarySidebarPeekOpen ? 'peek' : 'rail') : 'docked'
-            }
+          <AppPrimarySidebar
+            controller={sidebar}
+            isMenuOpen={projectContextMenu !== null}
+            triggerRef={sidebarTriggerRef}
             isPinned={!isPrimarySidebarCollapsed}
             workspaces={workspaces}
             activeWorkspaceId={activeWorkspaceId}
             persistNotice={persistNotice}
-            onTogglePinned={() => {
-              setAgentSettings(prev => ({
-                ...prev,
-                isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
-              }))
-            }}
+            onTogglePinned={toggleSidebarPinned}
             onAddProject={handleAddWorkspace}
             onSelectWorkspace={handleSelectWorkspace}
-            onSelectSpace={handleSelectSpace}
+            onSelectProjectCanvas={workspaceId => {
+              handleSelectProjectCanvas(workspaceId)
+              sidebar.close()
+            }}
+            onSelectSpace={(workspaceId, spaceId) => {
+              handleSelectSpace(workspaceId, spaceId)
+              sidebar.close()
+            }}
             onOpenProjectContextMenu={setProjectContextMenu}
-            onSelectAgentNode={handleSelectAgentNode}
+            onSelectAgentNode={(workspaceId, nodeId) => {
+              handleSelectAgentNode(workspaceId, nodeId, { focusInput: !sidebar.isMobile })
+              sidebar.close()
+            }}
+            currentNodeId={focusRequest?.kind === 'node' ? focusRequest.nodeId : null}
             onReorderWorkspaces={handleReorderWorkspaces}
             onReorderWorkspaceRootSpaces={handleReorderWorkspaceRootSpaces}
             onReorderWorkspaceSidebarAgents={handleReorderWorkspaceSidebarAgents}
-            onPointerEnter={handleSidebarPointerEnter}
-            onPointerLeave={handleSidebarPointerLeave}
           />
 
           <WorkspaceMain
@@ -364,9 +375,7 @@ export default function App(): React.JSX.Element {
             terminalDisplayCalibration={terminalDisplayCalibration}
             focusRequest={focusRequest}
             isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
-            shortcutsEnabled={
-              isPersistReady && !hasBlockingShellOverlay && projectDeleteConfirmation === null
-            }
+            shortcutsEnabled={isPersistReady && !hasBlockingShellOverlay && !sidebar.isDrawerOpen}
             onAddWorkspace={handleAddWorkspace}
             onShowMessage={handleShowMessage}
             onRequestPersistFlush={requestPersistFlush}
@@ -421,12 +430,7 @@ export default function App(): React.JSX.Element {
             handleOpenSettings('endpoints')
           }}
           onOpenSpaceArchives={openSpaceArchives}
-          onTogglePrimarySidebar={() => {
-            setAgentSettings(prev => ({
-              ...prev,
-              isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
-            }))
-          }}
+          onTogglePrimarySidebar={sidebar.toggle}
           onAddWorkspace={handleAddWorkspace}
           onSelectWorkspace={handleSelectWorkspace}
           onSelectSpace={handleWorkspaceActiveSpaceChange}

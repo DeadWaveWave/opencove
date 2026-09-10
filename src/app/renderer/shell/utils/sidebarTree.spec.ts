@@ -113,6 +113,15 @@ function createWorkspace(): WorkspaceState {
 }
 
 describe('buildSidebarProjectTree', () => {
+  it('keeps an empty project canvas group available', () => {
+    const workspace = createWorkspace()
+    workspace.nodes = []
+    expect(buildSidebarProjectTree(workspace).projectRootGroup).toMatchObject({
+      id: SIDEBAR_UNASSIGNED_SPACE_GROUP_ID,
+      kind: 'project-root',
+      agents: [],
+    })
+  })
   it('groups agents by top-level space and keeps unassigned agents in project root', () => {
     const tree = buildSidebarProjectTree(createWorkspace())
 

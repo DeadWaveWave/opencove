@@ -71,7 +71,8 @@ describe('appearance families and terminal scope', () => {
       onChangeDefaultTerminalProfileId: changeProfile,
     }
     render(<TerminalSettingsSection {...props} />)
-    expect(screen.getByRole('img', { name: 'Terminal font preview' })).toHaveStyle({
+    expect(screen.getByRole('img', { name: 'Terminal font preview' })).toBeVisible()
+    expect(screen.getByTestId('settings-terminal-typography-content')).toHaveStyle({
       fontFamily: 'Consolas',
       fontSize: '16px',
     })

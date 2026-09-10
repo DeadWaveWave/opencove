@@ -226,12 +226,16 @@ test.describe('Workspace Canvas - Sidebar Drag Reorder', () => {
         ],
       })
 
-      const spaceNames = window.locator('.workspace-space-item__name')
+      const spaceNames = window.locator('.workspace-space-group--space .workspace-space-item__name')
       await expect(spaceNames).toHaveCount(3)
       await expect(spaceNames.nth(0)).toHaveText('Space Alpha')
 
-      const firstSpace = window.locator('.workspace-space-item').filter({ hasText: 'Space Alpha' })
-      const thirdSpace = window.locator('.workspace-space-item').filter({ hasText: 'Space Gamma' })
+      const firstSpace = window
+        .locator('.workspace-space-item__select')
+        .filter({ hasText: 'Space Alpha' })
+      const thirdSpace = window
+        .locator('.workspace-space-item__select')
+        .filter({ hasText: 'Space Gamma' })
       const firstRect = await readLocatorClientRect(firstSpace)
       const thirdRect = await readLocatorClientRect(thirdSpace)
 
@@ -300,8 +304,12 @@ test.describe('Workspace Canvas - Sidebar Drag Reorder', () => {
       await expect(agentTitles).toHaveCount(3)
       await expect(agentTitles.nth(0)).toHaveText('Agent Alpha')
 
-      const firstAgent = window.locator('.workspace-agent-item').filter({ hasText: 'Agent Alpha' })
-      const thirdAgent = window.locator('.workspace-agent-item').filter({ hasText: 'Agent Gamma' })
+      const firstAgent = window
+        .locator('.workspace-agent-item__select')
+        .filter({ hasText: 'Agent Alpha' })
+      const thirdAgent = window
+        .locator('.workspace-agent-item__select')
+        .filter({ hasText: 'Agent Gamma' })
       const firstRect = await readLocatorClientRect(firstAgent)
       const thirdRect = await readLocatorClientRect(thirdAgent)
 

@@ -4,7 +4,7 @@ import type { SidebarSpaceGroupModel } from '../utils/sidebarTree'
 import { SpaceItemOverlay } from './SidebarWorkspaceItem'
 
 describe('SidebarWorkspaceItem', () => {
-  it('renders a leaf space marker without disclosure semantics', () => {
+  it('renders a leaf space icon without disclosure semantics', () => {
     const leafGroup: SidebarSpaceGroupModel = {
       id: 'leaf-space',
       kind: 'space',
@@ -24,7 +24,7 @@ describe('SidebarWorkspaceItem', () => {
 
     const { container } = render(<SpaceItemOverlay group={leafGroup} isExpanded />)
     const spaceItem = container.querySelector('.workspace-space-item')
-    const railMarker = spaceItem?.querySelector('.workspace-space-item__rail-icon')
+    const railMarker = spaceItem?.querySelector('svg')
 
     expect(railMarker).not.toBeNull()
     expect(railMarker?.getAttribute('aria-hidden')).toBe('true')

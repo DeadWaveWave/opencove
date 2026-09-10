@@ -102,7 +102,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
 
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })
       await expect(status).toHaveText('Waiting')
-      await expect(sidebarStatus).toHaveText('Waiting')
+      await expect(sidebarStatus).toHaveText('Needs input')
 
       await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
       await expect(status).toHaveText('Standby')

@@ -7,6 +7,13 @@ const row = (page: Page, provider: string) =>
 const handle = (page: Page, provider: string) =>
   page.getByTestId(`settings-agent-drag-handle-${provider}`)
 
+async function beginKeyboardSort(page: Page, provider: string) {
+  await page.keyboard.press('Space')
+  await expect(handle(page, provider)).toHaveAttribute('aria-pressed', 'true')
+  // The keyboard sensor attaches its document listener in a deferred task.
+  await page.evaluate(() => new Promise<void>(resolve => window.setTimeout(resolve, 0)))
+}
+
 async function openAgents(page: Page) {
   await page.getByTestId('app-header-settings').click()
   await page.getByTestId('settings-section-nav-agent').click()
@@ -49,8 +56,7 @@ test.describe('Agent preference order', () => {
 
       const pi = handle(window, 'pi')
       await pi.focus()
-      await window.keyboard.press('Space')
-      await expect(pi).toHaveAttribute('aria-pressed', 'true')
+      await beginKeyboardSort(window, 'pi')
       await expect(
         window.locator('[id^="DndLiveRegion"]').filter({ hasText: 'Pi moved to position 1.' }),
       ).toHaveCount(1)
@@ -72,12 +78,14 @@ test.describe('Agent preference order', () => {
           agentProviderOrder: ['codex', 'gemini', 'pi', 'claude-code', 'opencode', 'kimi'],
         })
 
-      await window.keyboard.press('Space')
-      await expect(pi).toHaveAttribute('aria-pressed', 'true')
+      await beginKeyboardSort(window, 'pi')
       await expect(
         window.locator('[id^="DndLiveRegion"]').filter({ hasText: 'Pi moved to position 2.' }),
       ).toHaveCount(1)
       await window.keyboard.press('ArrowDown')
+      await expect(
+        window.locator('[id^="DndLiveRegion"]').filter({ hasText: 'Pi moved to position 3.' }),
+      ).toHaveCount(1)
       await window.keyboard.press('Escape')
       await expect(window.getByRole('dialog')).toBeVisible()
       await expect(pi).not.toHaveAttribute('aria-pressed', 'true')

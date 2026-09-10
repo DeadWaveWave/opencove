@@ -154,6 +154,7 @@ test.describe('Workspace Canvas - Sidebar Drag Boundaries', () => {
         window,
         window.locator('[data-testid="workspace-item-workspace-threshold-b"]'),
       )
+      await window.getByTestId('workspace-item-workspace-threshold-a').click()
       await dragBelowActivationDistance(
         window,
         window.locator(
@@ -183,7 +184,7 @@ test.describe('Workspace Canvas - Sidebar Drag Boundaries', () => {
     }
   })
 
-  test('keeps root space order stable when dragging across project boundaries', async () => {
+  test('keeps root space order stable when dropping onto another project in the rail', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -251,15 +252,14 @@ test.describe('Workspace Canvas - Sidebar Drag Boundaries', () => {
         window.locator(
           '[data-testid="workspace-space-item-workspace-space-boundary-a-space-boundary-a1"]',
         ),
-        window.locator(
-          '[data-testid="workspace-space-item-workspace-space-boundary-b-space-boundary-b2"]',
-        ),
+        window.getByTestId('workspace-item-workspace-space-boundary-b'),
       )
 
       expect(await readTestIds(window, projectASelector)).toEqual([
         'workspace-space-item-workspace-space-boundary-a-space-boundary-a1',
         'workspace-space-item-workspace-space-boundary-a-space-boundary-a2',
       ])
+      await window.getByTestId('workspace-item-workspace-space-boundary-b').click()
       expect(await readTestIds(window, projectBSelector)).toEqual([
         'workspace-space-item-workspace-space-boundary-b-space-boundary-b1',
         'workspace-space-item-workspace-space-boundary-b-space-boundary-b2',

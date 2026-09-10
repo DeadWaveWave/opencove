@@ -51,6 +51,7 @@ export interface WorkspaceCanvasProps {
   onChangePreserveWindowSizesOnArrange: (enabled: boolean) => void
   isFocusNodeTargetZoomPreviewing?: boolean
   focusNodeId?: string | null
+  focusNodeInput?: boolean
   focusSpaceId?: string | null
   focusSequence?: number
 }

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Circle, LoaderCircle, MoreHorizontal, Pause } from 'lucide-react'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
@@ -10,58 +11,29 @@ import type { ProjectContextMenuState } from '../types'
 import { createAgentSortableId, sidebarSortableTransition } from './SidebarDnd'
 import { resolveAgentTreatedProvider } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
 
-function SidebarAgentItemContent({
-  item,
-  showOwningSpacePill,
-}: {
-  item: SidebarAgentItemModel
-  showOwningSpacePill: boolean
-}): React.JSX.Element {
+function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): React.JSX.Element {
   const { t } = useTranslation()
-  const { node, displayTitle, effectiveLabelColor, owningSpace, status } = item
-  const provider = resolveAgentTreatedProvider(node)
-  const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel')
-  const startedText = toRelativeTime(node.data.startedAt)
-  const sidebarAgentStatusText =
-    status === 'working'
-      ? t('sidebar.status.working')
-      : status === 'waiting'
-        ? t('sidebar.status.waiting')
-        : t('sidebar.status.standby')
+  const provider = resolveAgentTreatedProvider(item.node)
+  const statusText = t(`sidebar.status.${item.status}`)
+  const StatusIcon =
+    item.status === 'working' ? LoaderCircle : item.status === 'waiting' ? Pause : Circle
 
   return (
-    <span className="workspace-agent-item__body">
-      <span className="workspace-agent-item__singleline">
-        <span className="workspace-agent-item__identity">
-          {provider ? (
-            <AgentProviderIcon
-              provider={provider}
-              labelColor={effectiveLabelColor}
-              className={`workspace-agent-item__provider workspace-agent-item__provider--status workspace-agent-item__provider--status-${status}`}
-            />
-          ) : null}
-          <span className="workspace-agent-item__status-label">{sidebarAgentStatusText}</span>
-        </span>
-        <span className="workspace-agent-item__headline">
-          <span className="workspace-agent-item__title">{displayTitle}</span>
-          {showOwningSpacePill && owningSpace ? (
-            <span
-              className="workspace-agent-item__pill"
-              data-cove-label-color={owningSpace.labelColor ?? undefined}
-              title={owningSpace.name}
-            >
-              <span className="workspace-agent-item__pill-text">{owningSpace.name}</span>
-            </span>
-          ) : null}
+    <>
+      {provider ? (
+        <AgentProviderIcon provider={provider} className="workspace-agent-item__provider" />
+      ) : null}
+      <span className="workspace-agent-item__copy">
+        <span className="workspace-agent-item__title">{item.displayTitle}</span>
+        <span
+          className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${item.status}`}
+          title={statusText}
+        >
+          <StatusIcon size={11} aria-hidden="true" />
+          <span className="workspace-agent-item__status-label">{statusText}</span>
         </span>
       </span>
-      <span
-        className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${status} workspace-agent-item__status--hidden`}
-        title={`${providerText} · ${startedText} · ${sidebarAgentStatusText}`}
-      >
-        {sidebarAgentStatusText}
-      </span>
-    </span>
+    </>
   )
 }
 
@@ -69,88 +41,81 @@ function SidebarAgentItem({
   workspaceId,
   groupId,
   item,
+  isCurrent,
   onSelectAgentNode,
   onOpenProjectContextMenu,
-  showOwningSpacePill,
 }: {
   workspaceId: string
   groupId: string | null
   item: SidebarAgentItemModel
+  isCurrent: boolean
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
-  showOwningSpacePill: boolean
 }): React.JSX.Element {
   const { t } = useTranslation()
-  const { node, displayTitle, effectiveLabelColor, owningSpace, status } = item
+  const { node, displayTitle, effectiveLabelColor, status } = item
   const provider = resolveAgentTreatedProvider(node)
-  const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel')
-  const startedText = toRelativeTime(node.data.startedAt)
-  const sidebarAgentStatusText =
-    status === 'working'
-      ? t('sidebar.status.working')
-      : status === 'waiting'
-        ? t('sidebar.status.waiting')
-        : t('sidebar.status.standby')
-  const sortableId = groupId ? createAgentSortableId(workspaceId, groupId, node.id) : node.id
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: sortableId,
+    id: groupId ? createAgentSortableId(workspaceId, groupId, node.id) : node.id,
     disabled: groupId === null,
     transition: sidebarSortableTransition,
-    data: groupId
-      ? {
-          kind: 'agent',
-          workspaceId,
-          groupId,
-          nodeId: node.id,
-        }
-      : undefined,
+    data: groupId ? { kind: 'agent', workspaceId, groupId, nodeId: node.id } : undefined,
   })
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  }
+  const openMenu = (x: number, y: number): void =>
+    onOpenProjectContextMenu({
+      workspaceId,
+      x,
+      y,
+      target: { kind: 'agent', workspaceId, nodeId: node.id },
+    })
 
   return (
-    <button
+    <div
       ref={setNodeRef}
-      style={style}
-      type="button"
-      className={`workspace-agent-item workspace-agent-item--nested workspace-agent-item--sidebar${
-        isDragging ? ' workspace-agent-item--dragging' : ''
-      }`}
-      data-testid={`workspace-agent-item-${workspaceId}-${node.id}`}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      className={`workspace-agent-item workspace-agent-item--sidebar${isCurrent ? ' workspace-agent-item--current' : ''}${isDragging ? ' workspace-agent-item--dragging' : ''}`}
       data-cove-label-color={effectiveLabelColor ?? undefined}
-      title={[
-        providerText,
-        displayTitle,
-        owningSpace?.name ?? null,
-        sidebarAgentStatusText,
-        startedText,
-      ]
-        .filter(Boolean)
-        .join(' · ')}
-      onClick={() => {
-        onSelectAgentNode(workspaceId, node.id)
-      }}
-      onContextMenu={event => {
-        event.preventDefault()
-        onOpenProjectContextMenu({
-          workspaceId,
-          x: event.clientX,
-          y: event.clientY,
-          target: {
-            kind: 'agent',
-            workspaceId,
-            nodeId: node.id,
-          },
-        })
-      }}
-      {...(groupId ? attributes : {})}
-      {...(groupId ? listeners : {})}
     >
-      <SidebarAgentItemContent item={item} showOwningSpacePill={showOwningSpacePill} />
-    </button>
+      <button
+        type="button"
+        className="workspace-agent-item__select"
+        data-testid={`workspace-agent-item-${workspaceId}-${node.id}`}
+        data-cove-label-color={effectiveLabelColor ?? undefined}
+        aria-current={isCurrent ? 'location' : undefined}
+        title={[
+          provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel'),
+          displayTitle,
+          t(`sidebar.status.${status}`),
+          toRelativeTime(node.data.startedAt),
+        ].join(' · ')}
+        onClick={() => onSelectAgentNode(workspaceId, node.id)}
+        onContextMenu={event => {
+          event.preventDefault()
+          openMenu(event.clientX, event.clientY)
+        }}
+        {...(groupId ? attributes : {})}
+        {...(groupId ? listeners : {})}
+      >
+        <SidebarAgentItemContent item={item} />
+      </button>
+      <button
+        type="button"
+        className="workspace-sidebar__more"
+        data-testid={`workspace-agent-more-${workspaceId}-${node.id}`}
+        aria-label={`${t('sidebar.agentMore')}: ${displayTitle}`}
+        title={t('sidebar.agentMore')}
+        onClick={event => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          openMenu(rect.right, rect.bottom)
+        }}
+      >
+        <MoreHorizontal size={14} aria-hidden="true" />
+      </button>
+    </div>
   )
 }
 
@@ -158,13 +123,14 @@ export function SidebarAgentItems({
   workspaceId,
   groupId = null,
   agentItems,
+  currentNodeId = null,
   onSelectAgentNode,
   onOpenProjectContextMenu,
-  showOwningSpacePill = false,
 }: {
   workspaceId: string
   groupId?: string | null
   agentItems: SidebarAgentItemModel[]
+  currentNodeId?: string | null
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
   showOwningSpacePill?: boolean
@@ -172,73 +138,49 @@ export function SidebarAgentItems({
   if (agentItems.length === 0) {
     return null
   }
-
   const content = (
     <div className="workspace-item__agents">
       {agentItems.map(item => (
         <SidebarAgentItem
-          key={`${workspaceId}:${item.node.id}`}
+          key={item.node.id}
           workspaceId={workspaceId}
           groupId={groupId}
           item={item}
+          isCurrent={item.node.id === currentNodeId}
           onSelectAgentNode={onSelectAgentNode}
           onOpenProjectContextMenu={onOpenProjectContextMenu}
-          showOwningSpacePill={showOwningSpacePill}
         />
       ))}
     </div>
   )
-
-  if (!groupId) {
-    return content
-  }
-
-  return (
+  return groupId ? (
     <SortableContext
       items={agentItems.map(item => createAgentSortableId(workspaceId, groupId, item.node.id))}
       strategy={verticalListSortingStrategy}
     >
       {content}
     </SortableContext>
+  ) : (
+    content
   )
 }
 
 export function SidebarAgentItemOverlay({
   item,
-  showOwningSpacePill = false,
 }: {
   item: SidebarAgentItemModel
   showOwningSpacePill?: boolean
 }): React.JSX.Element {
-  const { t } = useTranslation()
-  const { node, displayTitle, effectiveLabelColor, owningSpace, status } = item
-  const provider = resolveAgentTreatedProvider(node)
-  const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel')
-  const startedText = toRelativeTime(node.data.startedAt)
-  const sidebarAgentStatusText =
-    status === 'working'
-      ? t('sidebar.status.working')
-      : status === 'waiting'
-        ? t('sidebar.status.waiting')
-        : t('sidebar.status.standby')
-
   return (
     <div
-      className="workspace-agent-item workspace-agent-item--nested workspace-agent-item--sidebar workspace-agent-item--drag-overlay"
+      className="workspace-agent-item workspace-agent-item--sidebar workspace-agent-item--drag-overlay"
       data-testid="workspace-sidebar-drag-overlay"
-      data-cove-label-color={effectiveLabelColor ?? undefined}
+      data-cove-label-color={item.effectiveLabelColor ?? undefined}
       data-cove-sidebar-drag-kind="agent"
-      title={[
-        providerText,
-        displayTitle,
-        owningSpace?.name ?? null,
-        sidebarAgentStatusText,
-        startedText,
-      ]
-        .filter(Boolean)
-        .join(' · ')}
     >
-      <SidebarAgentItemContent item={item} showOwningSpacePill={showOwningSpacePill} />
+      <span className="workspace-agent-item__select">
+        <SidebarAgentItemContent item={item} />
+      </span>
     </div>
   )
 }

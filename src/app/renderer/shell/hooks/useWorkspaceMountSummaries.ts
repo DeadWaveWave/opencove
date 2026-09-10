@@ -1,16 +1,52 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import type { ListMountsResult, ListWorkerEndpointsResult } from '@shared/contracts/dto'
+import type { ListMountsResult, ListWorkerEndpointsResult, MountDto } from '@shared/contracts/dto'
 import { TOPOLOGY_CHANGED_EVENT } from '../utils/topologyEvents'
 
-export function useWorkspaceMountSummaries({
+export interface WorkspaceMountDetails {
+  summary: string
+  remote: {
+    endpointId: string
+    displayName: string
+    rootPath: string
+  } | null
+}
+
+function summarizeMounts(
+  mounts: MountDto[],
+  endpointLabelById: Map<string, string>,
+): WorkspaceMountDetails {
+  const defaultMount = mounts[0]
+  if (!defaultMount) {
+    return { summary: '—', remote: null }
+  }
+
+  const endpointLabel = endpointLabelById.get(defaultMount.endpointId) ?? defaultMount.endpointId
+  const extraCount = mounts.length - 1
+  const suffix = extraCount > 0 ? ` (+${String(extraCount)})` : ''
+
+  return {
+    summary: `${defaultMount.name} · ${endpointLabel}${suffix}`,
+    remote:
+      mounts.length === 1 && defaultMount.endpointId !== 'local'
+        ? {
+            endpointId: defaultMount.endpointId,
+            displayName: endpointLabel,
+            rootPath: defaultMount.rootPath,
+          }
+        : null,
+  }
+}
+
+export function useWorkspaceMountDetails({
   workspaces,
 }: {
   workspaces: WorkspaceState[]
-}): Record<string, string> {
-  const workspaceIds = useMemo(() => workspaces.map(workspace => workspace.id), [workspaces])
-  const workspaceKey = useMemo(() => workspaceIds.join('|'), [workspaceIds])
-  const [summaries, setSummaries] = useState<Record<string, string>>({})
+}): Record<string, WorkspaceMountDetails> {
+  const workspaceKey = JSON.stringify(
+    [...new Set(workspaces.map(workspace => workspace.id))].sort(),
+  )
+  const [details, setDetails] = useState<Record<string, WorkspaceMountDetails>>({})
   const [refreshToken, setRefreshToken] = useState(0)
 
   useEffect(() => {
@@ -35,11 +71,12 @@ export function useWorkspaceMountSummaries({
     }
 
     let cancelled = false
+    const workspaceIds: string[] = JSON.parse(workspaceKey)
 
     void (async () => {
-      const fallback: Record<string, string> = {}
+      const fallback: Record<string, WorkspaceMountDetails> = {}
       for (const workspaceId of workspaceIds) {
-        fallback[workspaceId] = '—'
+        fallback[workspaceId] = { summary: '—', remote: null }
       }
 
       try {
@@ -49,7 +86,10 @@ export function useWorkspaceMountSummaries({
             id: 'endpoint.list',
             payload: null,
           })
-        const endpointLabelById = new Map(
+        if (cancelled) {
+          return
+        }
+        const endpointLabelById = new Map<string, string>(
           endpointResult.endpoints.map(
             endpoint => [endpoint.endpointId, endpoint.displayName] as const,
           ),
@@ -64,19 +104,9 @@ export function useWorkspaceMountSummaries({
                 payload: { projectId: workspaceId },
               })
 
-              if (mountResult.mounts.length === 0) {
-                return [workspaceId, '—'] as const
-              }
-
-              const defaultMount = mountResult.mounts[0]
-              const endpointLabel =
-                endpointLabelById.get(defaultMount.endpointId) ?? defaultMount.endpointId
-              const extraCount = mountResult.mounts.length - 1
-              const suffix = extraCount > 0 ? ` (+${String(extraCount)})` : ''
-
-              return [workspaceId, `${defaultMount.name} · ${endpointLabel}${suffix}`] as const
+              return [workspaceId, summarizeMounts(mountResult.mounts, endpointLabelById)] as const
             } catch {
-              return [workspaceId, '—'] as const
+              return [workspaceId, fallback[workspaceId]] as const
             }
           }),
         )
@@ -85,14 +115,14 @@ export function useWorkspaceMountSummaries({
           return
         }
 
-        const next: Record<string, string> = {}
-        for (const [workspaceId, summary] of results) {
-          next[workspaceId] = summary
+        const next: Record<string, WorkspaceMountDetails> = {}
+        for (const [workspaceId, mountDetails] of results) {
+          next[workspaceId] = mountDetails
         }
-        setSummaries(next)
+        setDetails(next)
       } catch {
         if (!cancelled) {
-          setSummaries(fallback)
+          setDetails(fallback)
         }
       }
     })()
@@ -100,7 +130,19 @@ export function useWorkspaceMountSummaries({
     return () => {
       cancelled = true
     }
-  }, [refreshToken, workspaceKey, workspaceIds])
+  }, [refreshToken, workspaceKey])
 
-  return summaries
+  return details
+}
+
+export function useWorkspaceMountSummaries({
+  workspaces,
+}: {
+  workspaces: WorkspaceState[]
+}): Record<string, string> {
+  const details = useWorkspaceMountDetails({ workspaces })
+  return useMemo(
+    () => Object.fromEntries(Object.entries(details).map(([id, value]) => [id, value.summary])),
+    [details],
+  )
 }

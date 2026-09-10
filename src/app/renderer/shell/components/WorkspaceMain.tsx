@@ -59,6 +59,8 @@ function WorkspaceMainComponent({
   const activeFocusRequest =
     focusRequest && focusRequest.workspaceId === activeWorkspace.id ? focusRequest : null
   const focusNodeId = activeFocusRequest?.kind === 'node' ? activeFocusRequest.nodeId : null
+  const focusNodeInput =
+    activeFocusRequest?.kind === 'node' ? activeFocusRequest.focusInput : undefined
   const focusSpaceId = activeFocusRequest?.kind === 'space' ? activeFocusRequest.spaceId : null
   const focusSequence = activeFocusRequest?.sequence ?? 0
 
@@ -100,6 +102,7 @@ function WorkspaceMainComponent({
         terminalDisplayCalibration={terminalDisplayCalibration}
         isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
         focusNodeId={focusNodeId}
+        focusNodeInput={focusNodeInput}
         focusSpaceId={focusSpaceId}
         focusSequence={focusSequence}
       />

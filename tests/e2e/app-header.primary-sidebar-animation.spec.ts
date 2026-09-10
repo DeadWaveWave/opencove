@@ -4,336 +4,83 @@ import { createRailAgent } from './sidebar-test-fixtures'
 import {
   sampleSidebarToggle,
   type SidebarAnimationResult,
-  type SidebarAnimationSample,
 } from './app-header.primary-sidebar-animation.helpers'
 
-const summarize = (samples: SidebarAnimationSample[]) => {
-  const widths = samples.map(sample => sample.width)
-  const deltas = widths.slice(1).map((width, index) => width - widths[index])
-  return {
-    frameCount: samples.length,
-    firstWidth: widths[0] ?? 0,
-    lastWidth: widths.at(-1) ?? 0,
-    uniqueRoundedWidthCount: new Set(widths.map(width => Math.round(width))).size,
-    maxPositiveDelta: Math.max(0, ...deltas),
-    maxNegativeDelta: Math.min(0, ...deltas),
-  }
-}
-
-const maxRange = (values: number[]) => Math.max(...values) - Math.min(...values)
-
-const expectStableRange = (
-  samples: SidebarAnimationSample[],
-  readValue: (sample: SidebarAnimationSample) => number,
-  tolerance = 1,
-) => {
-  expect(maxRange(samples.map(readValue))).toBeLessThanOrEqual(tolerance)
-}
-
-const expectClose = (actual: number, expected: number, tolerance: number) => {
-  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)
-}
-
-const maxStep = (values: number[], direction: 'positive' | 'negative') => {
-  const deltas = values.slice(1).map((value, index) => value - values[index])
-  return direction === 'positive' ? Math.max(0, ...deltas) : Math.min(0, ...deltas)
-}
-
-const expectContinuousSidebarAnimation = (
-  result: SidebarAnimationResult,
-  direction: 'collapse' | 'expand',
-) => {
-  const summary = summarize(result.samples)
-  const transitionSamples = result.samples.filter(sample => sample.sidebarTransition !== 'idle')
-  const endpointSample = result.samples.at(-1)
-  const firstTransition = transitionSamples[0]
-  const lastTransition = transitionSamples.at(-1)
-
-  expect(summary.frameCount).toBeGreaterThan(8)
-  expect(result.transitionWasObserved).toBe(true)
-  expect(result.samples.every(sample => sample.sameList)).toBe(true)
-  expect(result.samples.every(sample => sample.sameWorkspaceItem)).toBe(true)
-  expect(result.samples.every(sample => sample.sameProjectIcon)).toBe(true)
-  expect(result.samples.every(sample => sample.itemGroupCount > 0)).toBe(true)
-  expect(result.samples.every(sample => sample.spaceRailIconDisplay !== 'none')).toBe(true)
-  expect(result.samples.every(sample => sample.projectToggleOpacity >= 0.95)).toBe(true)
-  expect(result.samples.every(sample => sample.spaceToggleOpacity >= 0.95)).toBe(true)
-  expect(result.samples.every(sample => sample.spaceRailSurfaceOpacity >= 0.95)).toBe(true)
-  expect(result.samples.every(sample => sample.spaceItemBackground === 'rgba(0, 0, 0, 0)')).toBe(
+function expectStableProjectRail(result: SidebarAnimationResult): void {
+  const samples = [result.before, ...result.samples]
+  expect(samples.every(sample => sample.sameRail)).toBe(true)
+  expect(samples.every(sample => sample.sameWorkspaceItem)).toBe(true)
+  expect(samples.every(sample => sample.sameProjectIcon)).toBe(true)
+  expect(samples.every(sample => sample.railSpaceCount === 0 && sample.railAgentCount === 0)).toBe(
     true,
   )
-  expect(result.samples.every(sample => sample.spaceItemBorderColor === 'rgba(0, 0, 0, 0)')).toBe(
-    true,
-  )
-  expect(endpointSample).toBeDefined()
-  if (endpointSample) {
-    if (direction === 'collapse') {
-      expect(result.before.width).toBeGreaterThan(endpointSample.width)
-    } else {
-      expect(endpointSample.width).toBeGreaterThan(result.before.width)
-    }
-  }
-
-  // Background and inactive Electron windows may provide too few rendering opportunities to
-  // observe intermediate frames. The transition event and endpoints remain mandatory; detailed
-  // continuity checks run whenever the renderer exposes enough real frames.
-  if (transitionSamples.length <= 4) {
-    return
-  }
-
-  expect(firstTransition).toBeDefined()
-  expect(lastTransition).toBeDefined()
-  if (!firstTransition || !lastTransition) {
-    return
-  }
-  expectClose(firstTransition.pinButtonViewportCenterX, result.before.pinButtonViewportCenterX, 1)
-  expectClose(firstTransition.pinButtonViewportCenterY, result.before.pinButtonViewportCenterY, 1)
-  expectClose(
-    firstTransition.projectIconViewportCenterX,
-    result.before.projectIconViewportCenterX,
-    1,
-  )
-  expectClose(
-    firstTransition.projectIconViewportCenterY,
-    result.before.projectIconViewportCenterY,
-    1,
-  )
-  expectClose(firstTransition.spaceItemViewportLeft, result.before.spaceItemViewportLeft, 1)
-  expectClose(firstTransition.spaceItemViewportTop, result.before.spaceItemViewportTop, 1)
-  expectClose(firstTransition.spaceRailSurfaceLeft, result.before.spaceRailSurfaceLeft, 1)
-  expectStableRange(transitionSamples, sample => sample.paddingLeft, 0.1)
-  expectStableRange(transitionSamples, sample => sample.pinButtonViewportCenterX)
-  expectStableRange(transitionSamples, sample => sample.pinButtonViewportCenterY)
-  expectStableRange(transitionSamples, sample => sample.projectIconViewportCenterX)
-  expectStableRange(transitionSamples, sample => sample.projectIconViewportCenterY)
-  expectStableRange(transitionSamples, sample => sample.projectNameViewportLeft)
-  expectStableRange(transitionSamples, sample => sample.spaceRailIconViewportCenterY)
-  expectStableRange(transitionSamples, sample => sample.spaceItemViewportLeft)
-  expectStableRange(transitionSamples, sample => sample.spaceItemViewportTop)
-  expectStableRange(transitionSamples, sample => sample.spaceRailSurfaceLeft)
-  expectStableRange(transitionSamples, sample => sample.spaceNameViewportLeft)
-  expect(
-    transitionSamples
-      .filter(sample => sample.spaceRailSurfaceWidth > sample.spaceItemHeight + 2)
-      .every(
-        sample => Math.abs(sample.spaceToggleViewportRight - sample.spaceRailSurfaceRight) <= 8,
-      ),
-  ).toBe(true)
-  expect(
-    transitionSamples.filter(
-      sample =>
-        sample.projectIconCenterFromSidebarLeft < 0 || sample.projectIconCenterFromSidebarLeft > 72,
-    ),
-  ).toEqual([])
-  expect(summary.uniqueRoundedWidthCount).toBeGreaterThan(3)
-
-  const toggleCenterXs = transitionSamples.map(sample => sample.spaceRailIconViewportCenterX)
-  expect(maxRange(toggleCenterXs)).toBeGreaterThan(40)
-  if (direction === 'collapse') {
-    expect(maxStep(toggleCenterXs, 'positive')).toBeLessThanOrEqual(2)
-  } else {
-    expect(maxStep(toggleCenterXs, 'negative')).toBeGreaterThanOrEqual(-2)
-  }
-
-  if (direction === 'collapse') {
-    expect(summary.firstWidth).toBeGreaterThan(summary.lastWidth)
-    expect(summary.maxPositiveDelta).toBeLessThanOrEqual(2)
-    const finalSample = result.samples.at(-1)
-    if (finalSample) {
-      expectClose(finalSample.pinButtonViewportCenterX, lastTransition.pinButtonViewportCenterX, 1)
-      expectClose(finalSample.pinButtonViewportCenterY, lastTransition.pinButtonViewportCenterY, 1)
-      expectClose(
-        finalSample.projectIconViewportCenterX,
-        lastTransition.projectIconViewportCenterX,
-        1,
-      )
-      expectClose(
-        finalSample.projectIconViewportCenterY,
-        lastTransition.projectIconViewportCenterY,
-        1,
-      )
-      // The last sampled moving frame may precede the endpoint by several pixels.
-      // Include the endpoint in the directional check; final alignment is checked below.
-      expect(
-        maxStep([...toggleCenterXs, finalSample.spaceRailIconViewportCenterX], 'positive'),
-      ).toBeLessThanOrEqual(2)
-      expectClose(
-        finalSample.spaceRailIconViewportCenterY,
-        lastTransition.spaceRailIconViewportCenterY,
-        1,
-      )
-      expectClose(finalSample.spaceItemViewportLeft, lastTransition.spaceItemViewportLeft, 1)
-      expectClose(finalSample.spaceItemViewportTop, lastTransition.spaceItemViewportTop, 1)
-      expectClose(finalSample.spaceRailSurfaceLeft, lastTransition.spaceRailSurfaceLeft, 1)
-      expect(finalSample.projectNameVisibleWidth).toBeLessThanOrEqual(1)
-      expect(finalSample.projectNameOpacity).toBeLessThanOrEqual(0.1)
-      expect(finalSample.projectToggleVisibleWidth).toBeLessThanOrEqual(1)
-      expect(finalSample.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
-      expect(finalSample.spaceNameOpacity).toBeLessThanOrEqual(0.1)
-      expectClose(finalSample.projectIconCenterFromSidebarLeft, finalSample.width / 2, 1)
-      expectClose(
-        finalSample.spaceRailSurfaceRight - finalSample.spaceRailSurfaceWidth / 2,
-        finalSample.spaceRailIconViewportCenterX,
-        1,
-      )
-      expectClose(finalSample.spaceRailSurfaceWidth, 24, 0.5)
-      expectClose(finalSample.spaceRailSurfaceHeight, 24, 0.5)
-    }
-    expect(
-      maxStep(
-        result.samples.map(sample => sample.spaceNameVisibleWidth),
-        'positive',
-      ),
-    ).toBeLessThanOrEqual(2)
-    expect(
-      maxStep(
-        result.samples.map(sample => sample.spaceRailSurfaceWidth),
-        'positive',
-      ),
-    ).toBeLessThanOrEqual(2)
-    expect(
-      transitionSamples.some(
-        sample =>
-          sample.spaceRailSurfaceWidth > sample.spaceItemHeight + 2 &&
-          sample.spaceRailSurfaceWidth < result.before.spaceRailSurfaceWidth - 2,
-      ),
-    ).toBe(true)
-    return
-  }
-
-  const finalSample = result.samples.at(-1)
-  const finalSpaceNameWidth = finalSample?.spaceNameWidth ?? 0
-  expect(summary.lastWidth).toBeGreaterThan(summary.firstWidth)
-  expect(summary.maxNegativeDelta).toBeGreaterThanOrEqual(-2)
-  expect(result.before.projectNameVisibleWidth).toBeLessThanOrEqual(1)
-  expect(result.before.projectToggleVisibleWidth).toBeLessThanOrEqual(1)
-  expect(result.before.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
-  expect(result.before.spaceNameOpacity).toBeLessThanOrEqual(0.1)
-  expectClose(result.before.projectIconCenterFromSidebarLeft, result.before.width / 2, 1)
-  expectClose(
-    result.before.spaceRailSurfaceRight - result.before.spaceRailSurfaceWidth / 2,
-    result.before.spaceRailIconViewportCenterX,
-    1,
-  )
-  expect(
-    maxStep(
-      result.samples.map(sample => sample.spaceNameVisibleWidth),
-      'negative',
-    ),
-  ).toBeGreaterThanOrEqual(-2)
-  expect(
-    maxStep(
-      result.samples.map(sample => sample.spaceRailSurfaceWidth),
-      'negative',
-    ),
-  ).toBeGreaterThanOrEqual(-2)
-  expect(
-    transitionSamples.some(
-      sample => sample.spaceNameWidth > 2 && sample.spaceNameWidth < finalSpaceNameWidth - 2,
-    ),
-  ).toBe(true)
-  expect(
-    transitionSamples.some(
-      sample =>
-        sample.spaceRailSurfaceWidth > result.before.spaceRailSurfaceWidth + 2 &&
-        sample.spaceRailSurfaceWidth < sample.spaceItemWidth - 2,
-    ),
-  ).toBe(true)
-  if (finalSample) {
-    expectClose(finalSample.spaceRailSurfaceLeft, lastTransition.spaceRailSurfaceLeft, 1)
-  }
+  const range = (values: number[]) => Math.max(...values) - Math.min(...values)
+  expect(range(samples.map(sample => sample.railWidth))).toBeLessThanOrEqual(1)
+  expect(range(samples.map(sample => sample.projectIconCenterX))).toBeLessThanOrEqual(1)
+  expect(range(samples.map(sample => sample.projectIconCenterY))).toBeLessThanOrEqual(1)
+  expect(result.samples.at(-1)?.sidebarTransition).toBe('idle')
 }
 
 test.describe('Primary Sidebar Animation', () => {
-  test('animates between docked and rail without replacing the sidebar list', async () => {
-    const { electronApp, window } = await launchApp()
-    const workspaceId = 'workspace-sidebar-animation'
-    const spaceId = 'space-sidebar-animation'
+  for (const uiTheme of ['pixel', 'pixel-light'] as const) {
+    test(`keeps the project rail stable while pinning navigation in ${uiTheme}`, async ({
+      browserName: _browserName,
+    }, testInfo) => {
+      const { electronApp, window } = await launchApp()
+      const workspaceId = 'workspace-sidebar-animation'
 
-    try {
-      await seedWorkspaceState(window, {
-        activeWorkspaceId: workspaceId,
-        workspaces: [
-          {
-            id: workspaceId,
-            name: 'Sidebar animation',
-            path: testWorkspacePath,
-            nodes: [
-              createRailAgent(
-                'agent-sidebar-animation',
-                'Sidebar animation agent',
-                0,
-                'Measure sidebar animation continuity',
-                '2026-03-29T10:00:00.000Z',
-              ),
-            ],
-            spaces: [
-              {
-                id: spaceId,
-                name: 'Animation',
-                directoryPath: testWorkspacePath,
-                labelColor: 'blue',
-                nodeIds: ['agent-sidebar-animation'],
-              },
-            ],
-            activeSpaceId: 'space-sidebar-animation',
-          },
-        ],
-      })
+      try {
+        await seedWorkspaceState(window, {
+          activeWorkspaceId: workspaceId,
+          settings: { uiTheme },
+          workspaces: [
+            {
+              id: workspaceId,
+              name: 'OpenCove',
+              path: testWorkspacePath,
+              nodes: [
+                createRailAgent(
+                  'agent-animation',
+                  'Polish navigation',
+                  0,
+                  'Review UI',
+                  '2026-09-10T10:00:00.000Z',
+                ),
+              ],
+              spaces: [
+                {
+                  id: 'space-animation',
+                  name: 'ui/chrome',
+                  directoryPath: testWorkspacePath,
+                  labelColor: 'blue',
+                  nodeIds: ['agent-animation'],
+                },
+              ],
+              activeSpaceId: 'space-animation',
+            },
+          ],
+        })
+        await window.mouse.move(800, 450)
+        const sidebar = window.getByTestId('workspace-sidebar')
+        await expect(sidebar).toHaveClass(/workspace-sidebar--docked/)
+        const collapse = await sampleSidebarToggle(window, workspaceId)
+        expectStableProjectRail(collapse)
+        expect(collapse.endClassName).toContain('workspace-sidebar--rail')
+        expect(collapse.samples.at(-1)?.panelCount).toBe(0)
+        expect(collapse.samples.at(-1)?.sidebarWidth).toBeLessThan(collapse.before.sidebarWidth)
 
-      const sidebar = window.locator('.workspace-sidebar')
-      await expect(sidebar).toHaveClass(/workspace-sidebar--docked/)
-
-      const collapse = await sampleSidebarToggle(window, workspaceId, spaceId)
-      await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
-      expect(collapse.startClassName).toContain('workspace-sidebar--docked')
-      expect(collapse.endClassName).toContain('workspace-sidebar--rail')
-      expectContinuousSidebarAnimation(collapse, 'collapse')
-      const collapsedFinal = collapse.samples.at(-1)
-      if (!collapsedFinal) {
-        throw new Error('Missing final collapsed sidebar animation sample')
+        const expand = await sampleSidebarToggle(window, workspaceId)
+        expectStableProjectRail(expand)
+        expect(expand.endClassName).toContain('workspace-sidebar--docked')
+        expect(expand.samples.at(-1)?.panelCount).toBe(1)
+        expect(expand.samples.at(-1)?.sidebarWidth).toBeGreaterThan(expand.before.sidebarWidth)
+        await testInfo.attach(`sidebar-pinned-${uiTheme}`, {
+          body: await window.screenshot(),
+          contentType: 'image/png',
+        })
+      } finally {
+        await electronApp.close()
       }
-      expect(collapsedFinal.sidebarTransition).toBe('idle')
-      expect(collapsedFinal.spaceRailIconOpacity).toBeGreaterThanOrEqual(0.95)
-      expect(collapsedFinal.spaceItemWidth).toBeGreaterThan(100)
-      expectClose(collapsedFinal.spaceRailSurfaceWidth, 24, 0.5)
-      expectClose(collapsedFinal.spaceRailSurfaceHeight, 24, 0.5)
-      expect(collapsedFinal.projectNameVisibleWidth).toBeLessThanOrEqual(1)
-      expect(collapsedFinal.projectNameOpacity).toBeLessThanOrEqual(0.1)
-      expect(collapsedFinal.spaceNameVisibleWidth).toBeLessThanOrEqual(1)
-      expect(collapsedFinal.spaceNameOpacity).toBeLessThanOrEqual(0.1)
-      expectClose(
-        collapsedFinal.spaceRailSurfaceRight - collapsedFinal.spaceRailSurfaceWidth / 2,
-        collapsedFinal.spaceRailIconViewportCenterX,
-        1,
-      )
-
-      const expand = await sampleSidebarToggle(window, workspaceId, spaceId)
-      await expect(sidebar).toHaveClass(/workspace-sidebar--docked/)
-      expect(expand.startClassName).toContain('workspace-sidebar--rail')
-      expect(expand.endClassName).toContain('workspace-sidebar--docked')
-      expectContinuousSidebarAnimation(expand, 'expand')
-      const expandedFinal = expand.samples.at(-1)
-      if (!expandedFinal) {
-        throw new Error('Missing final expanded sidebar animation sample')
-      }
-      expect(expandedFinal.sidebarTransition).toBe('idle')
-      expect(expandedFinal.spaceItemWidth).toBeGreaterThan(100)
-      expect(expandedFinal.spaceRailSurfaceOpacity).toBeGreaterThanOrEqual(0.95)
-      expect(expandedFinal.spaceRailSurfaceWidth).toBeGreaterThan(100)
-      expectClose(
-        expandedFinal.spaceRailSurfaceLeftFromSidebarLeft + 2,
-        expandedFinal.spaceRailSurfaceRightInset,
-        1,
-      )
-      expectClose(expandedFinal.spaceRailSurfaceHeight, collapsedFinal.spaceRailSurfaceHeight, 0.5)
-      expect(expandedFinal.spaceNameOpacity).toBeGreaterThanOrEqual(0.95)
-      expect(expandedFinal.spaceNameVisibleWidth).toBeGreaterThan(20)
-      expect(expandedFinal.spaceNameWidth).toBeGreaterThan(20)
-      expect(expandedFinal.spaceToggleOpacity).toBeGreaterThanOrEqual(0.95)
-      expect(expandedFinal.spaceToggleVisibleWidth).toBeGreaterThan(20)
-    } finally {
-      await electronApp.close()
-    }
-  })
+    })
+  }
 })

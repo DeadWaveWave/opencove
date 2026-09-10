@@ -17,6 +17,7 @@ export function useWorkspaceCanvasLifecycleBindings({
   agentSettings,
   focusSpaceId,
   focusNodeId,
+  focusNodeInput,
   focusSequence,
   spaces,
   focusSpaceInViewport,
@@ -34,6 +35,7 @@ export function useWorkspaceCanvasLifecycleBindings({
   agentSettings: Pick<AgentSettings, 'canvasInputMode' | 'focusNodeTargetZoom'>
   focusSpaceId?: string | null
   focusNodeId?: string | null
+  focusNodeInput?: boolean
   focusSequence?: number
   spaces: WorkspaceSpaceState[]
   focusSpaceInViewport: (spaceId: string) => boolean
@@ -49,6 +51,7 @@ export function useWorkspaceCanvasLifecycleBindings({
     restoredViewportWorkspaceIdRef: canvasState.restoredViewportWorkspaceIdRef,
     reactFlow,
     focusNodeId,
+    focusNodeInput,
     focusSpaceId,
     focusSequence,
     nodes,

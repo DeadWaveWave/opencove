@@ -1,0 +1,108 @@
+.app-shell {
+  --cove-primary-sidebar-expanded-width: 312px;
+}
+
+.app-shell--mobile-navigation {
+  --cove-primary-sidebar-width: 0px;
+  --cove-app-header-height: 52px;
+  transition: none;
+}
+
+.app-header__navigation-button {
+  -webkit-app-region: no-drag;
+}
+
+.primary-sidebar-backdrop {
+  z-index: calc(var(--cove-z-header) + 1);
+  place-items: stretch start;
+  backdrop-filter: none;
+  background: color-mix(in srgb, var(--cove-backdrop) 48%, transparent);
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.primary-sidebar-drawer {
+  --cove-primary-sidebar-rail-width: 52px;
+  --cove-primary-sidebar-expanded-width: 100%;
+  width: min(360px, calc(100vw - 48px));
+  height: 100%;
+  min-height: 0;
+  background: var(--cove-app-background-elevated);
+  border-right: 1px solid var(--cove-border-subtle);
+  box-shadow: var(--cove-shadow-lg);
+  outline: none;
+  animation: primary-sidebar-drawer-enter var(--cove-motion-slow) var(--cove-ease-standard);
+  touch-action: pan-y;
+}
+
+@keyframes primary-sidebar-drawer-enter {
+  from {
+    transform: translateX(-16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace-sidebar--mobile .workspace-space-item__toggle {
+    flex-basis: 44px;
+  }
+  .app-shell--mobile-navigation .workspace-main {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .app-shell--mobile-navigation .app-header {
+    gap: 4px;
+    padding-block: 4px;
+  }
+
+  .app-shell--mobile-navigation .app-header__section--right {
+    gap: 0;
+  }
+
+  .app-shell--mobile-navigation .app-header__navigation-button,
+  .app-shell--mobile-navigation .app-header__icon-button {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+  }
+
+  .app-shell--mobile-navigation .app-header__center {
+    position: static;
+    transform: none;
+    min-width: 0;
+    flex: 1;
+    width: auto;
+  }
+
+  .app-shell--mobile-navigation .app-header__command-center {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    padding-inline: 8px;
+  }
+
+  .app-shell--mobile-navigation .app-header__command-center-title {
+    display: block;
+    min-width: 0;
+  }
+
+  .app-shell--mobile-navigation
+    :is(
+      [data-testid='app-header-report-issue'],
+      [data-testid='app-header-performance-monitor'],
+      [data-testid='app-header-fullscreen']
+    ) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-sidebar-drawer {
+    animation: none;
+  }
+}
