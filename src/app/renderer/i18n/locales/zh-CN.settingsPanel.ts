@@ -224,7 +224,7 @@ export const zhCNSettingsPanel = {
     workerWebUi: {
       title: 'Worker Web UI',
       securityTitle: '访问安全',
-      help: '通过本机 Worker 提供的浏览器 UI（实验性）。',
+      help: '通过本机 Worker 提供的浏览器 UI。',
       enabledLabel: '启用 Web UI',
       enabledHelp: '开启或关闭本机 Worker 托管的 Web UI 与 Debug Shell，不会重启终端。',
       portLabel: '端口',

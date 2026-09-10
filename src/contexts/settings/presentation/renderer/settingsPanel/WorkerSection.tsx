@@ -179,16 +179,7 @@ export function WorkerSection(): React.JSX.Element {
         <SettingsModule
           id="settings-section-worker-local"
           title={t('settingsPanel.worker.local.title')}
-          description={t('settingsPanel.worker.local.help')}
-        >
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <span className="settings-panel__value" data-testid="settings-worker-local-status">
-                {localStatus?.status === 'running'
-                  ? t('settingsPanel.worker.local.status.running')
-                  : t('settingsPanel.worker.local.status.stopped')}
-              </span>
-            </div>
+          actions={
             <div className="settings-panel__control settings-panel__control--actions">
               <button
                 type="button"
@@ -209,8 +200,8 @@ export function WorkerSection(): React.JSX.Element {
                 {t('settingsPanel.worker.local.stop')}
               </button>
             </div>
-          </div>
-
+          }
+        >
           {localConnection ? (
             <>
               <div className="settings-panel__row">

@@ -62,7 +62,10 @@ describe('WorkerSection hierarchy', () => {
     expect(within(cliModule).getByTestId('settings-worker-cli-uninstall')).toBeVisible()
 
     const localWorkerModule = screen.getByRole('group', { name: 'Local Worker' })
-    expect(within(localWorkerModule).getByTestId('settings-worker-local-status')).toBeVisible()
+    expect(
+      within(localWorkerModule).queryByTestId('settings-worker-local-status'),
+    ).not.toBeInTheDocument()
+    expect(localWorkerModule.querySelector('.settings-panel__module-description')).toBeNull()
     expect(within(localWorkerModule).getByTestId('settings-worker-local-start')).toBeVisible()
     expect(within(localWorkerModule).getByTestId('settings-worker-local-stop')).toBeVisible()
   })

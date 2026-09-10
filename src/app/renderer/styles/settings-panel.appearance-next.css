@@ -311,24 +311,6 @@
   font-weight: 500;
 }
 
-.settings-terminal-sample {
-  padding: 18px 20px;
-  overflow: auto;
-  border-bottom: 1px solid var(--cove-settings-row-divider);
-  background: var(--cove-terminal-background);
-  color: var(--cove-terminal-foreground);
-  line-height: 1.65;
-  white-space: nowrap;
-}
-
-.settings-terminal-sample__prompt {
-  color: var(--cove-terminal-ansi-blue, var(--cove-accent));
-}
-
-.settings-terminal-sample__success {
-  color: var(--cove-terminal-ansi-green, var(--cove-success));
-}
-
 .settings-terminal-calibration {
   border-block: 1px solid var(--cove-settings-row-divider);
 }

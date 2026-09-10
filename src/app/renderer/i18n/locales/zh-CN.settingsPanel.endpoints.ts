@@ -4,6 +4,7 @@ export const zhCNSettingsPanelEndpoints = {
     title: '远程机器',
     help: 'OpenCove 可以连接、修复、浏览并挂载到这些远程机器。',
     countLabel: '数量',
+    empty: '暂无远程机器',
     localSubtitle: '本机',
     localRemoveHelp: '本机不可移除。',
     lastPing: '最近一次 ping：pid {{pid}} · {{now}}',

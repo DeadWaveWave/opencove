@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop -- Themes and viewports share one Electron window and must settle sequentially. */
 import { expect, test, type Locator, type TestInfo } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 
@@ -10,8 +11,10 @@ async function expectNoHorizontalOverflow(content: Locator): Promise<void> {
 }
 
 async function attachPanel(dialog: Locator, testInfo: TestInfo, name: string): Promise<void> {
+  const path = testInfo.outputPath(`${name}.png`)
+  await dialog.screenshot({ path, animations: 'disabled' })
   await testInfo.attach(name, {
-    body: await dialog.screenshot({ animations: 'disabled' }),
+    path,
     contentType: 'image/png',
   })
 }
@@ -47,6 +50,8 @@ test('keeps connections available for legacy profiles and groups browser securit
       await expect(dialog.getByTestId('settings-experimental-remote-workers-enabled')).toHaveCount(
         0,
       )
+      await expect(dialog.getByTestId('settings-worker-local-status')).toHaveCount(0)
+      await expect(dialog.locator('#settings-section-worker-local-description')).toHaveCount(0)
       const runtimeTitle = dialog.locator('#settings-section-worker-title')
       await runtimeTitle.scrollIntoViewIfNeeded()
       await expect(runtimeTitle).toBeInViewport()
@@ -57,11 +62,16 @@ test('keeps connections available for legacy profiles and groups browser securit
       await expect(endpoints.locator('#settings-section-endpoints-list')).toBeVisible()
       const register = endpoints.getByTestId('settings-endpoints-open-register')
       await expect(register).toBeEnabled()
+      await expect(endpoints.getByTestId('settings-endpoints-empty-register')).toHaveCount(0)
+      await expect(endpoints.locator('.cove-window__empty-card')).toHaveCount(0)
       await endpoints.evaluate(element => element.scrollIntoView({ block: 'start' }))
       await expect(register).toBeInViewport()
       await attachPanel(dialog, testInfo, `connections-${configuration.uiTheme}`)
 
       const browserAccess = dialog.locator('#settings-section-worker-web-ui')
+      await expect(browserAccess.locator('.settings-panel__group-description')).not.toContainText(
+        /实验性|experimental/i,
+      )
       const security = browserAccess.locator('#settings-section-worker-web-ui-security')
       await expect(security).toHaveCount(1)
       expect(
@@ -83,7 +93,7 @@ test('keeps connections available for legacy profiles and groups browser securit
       await expect(refresh).toBeEnabled()
       await expect(
         browserAccess.getByTestId('settings-experimental-worker-web-ui-open'),
-      ).toHaveAccessibleName(/\S/)
+      ).toHaveCount(0)
       await security.scrollIntoViewIfNeeded()
       await expect(
         security.getByTestId('settings-experimental-worker-web-ui-password'),

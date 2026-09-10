@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
 import type {
   HomeWorkerConfigDto,
   HomeWorkerConfigurationSnapshotDto,
@@ -333,8 +335,21 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
           <div className="settings-panel__row-label">
             <strong>{t('settingsPanel.experimental.workerWebUi.enabledLabel')}</strong>
             <span>{t('settingsPanel.experimental.workerWebUi.enabledHelp')}</span>
+            {!canOpenWorkerWebUi ? (
+              <span data-testid="settings-experimental-worker-web-ui-status">
+                {workerWebUiStatusLabel}
+              </span>
+            ) : null}
           </div>
-          <div className="settings-panel__control">
+          <div className="settings-panel__control settings-panel__control--actions">
+            <IconButton
+              label={t('settingsPanel.experimental.workerWebUi.refresh')}
+              data-testid="settings-experimental-worker-web-ui-refresh"
+              disabled={workerWebUiBusy}
+              onClick={() => void loadWorkerWebUiState()}
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+            </IconButton>
             <label className="cove-toggle">
               <input
                 type="checkbox"
@@ -380,37 +395,29 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
           </div>
         </div>
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <span
-              className="settings-panel__value"
-              data-testid="settings-experimental-worker-web-ui-status"
-            >
-              {workerWebUiStatusLabel}
-            </span>
-            <span>{t('settingsPanel.experimental.workerWebUi.statusHelp')}</span>
+        {canOpenWorkerWebUi ? (
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <span
+                className="settings-panel__value"
+                data-testid="settings-experimental-worker-web-ui-status"
+              >
+                {workerWebUiStatusLabel}
+              </span>
+            </div>
+            <div className="settings-panel__control settings-panel__control--actions">
+              <button
+                type="button"
+                className="primary"
+                data-testid="settings-experimental-worker-web-ui-open"
+                disabled={workerWebUiBusy}
+                onClick={() => void openWorkerWebUi()}
+              >
+                {t('settingsPanel.experimental.workerWebUi.open')}
+              </button>
+            </div>
           </div>
-          <div className="settings-panel__control settings-panel__control--actions">
-            <button
-              type="button"
-              className="secondary"
-              data-testid="settings-experimental-worker-web-ui-refresh"
-              disabled={workerWebUiBusy}
-              onClick={() => void loadWorkerWebUiState()}
-            >
-              {t('settingsPanel.experimental.workerWebUi.refresh')}
-            </button>
-            <button
-              type="button"
-              className="primary"
-              data-testid="settings-experimental-worker-web-ui-open"
-              disabled={!canOpenWorkerWebUi || workerWebUiBusy}
-              onClick={() => void openWorkerWebUi()}
-            >
-              {t('settingsPanel.experimental.workerWebUi.open')}
-            </button>
-          </div>
-        </div>
+        ) : null}
         <SettingsModule
           id="settings-section-worker-web-ui-security"
           title={t('settingsPanel.experimental.workerWebUi.securityTitle')}

@@ -24,7 +24,7 @@ describe('EndpointsSection SSH config picker', () => {
 
     render(<EndpointsSection />)
 
-    await screen.findByText('Remote machines')
+    await screen.findByRole('group', { name: 'Remote Connections', exact: true })
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
     fireEvent.click(screen.getByTestId('settings-endpoints-ssh-config-open'))
 
@@ -76,7 +76,7 @@ describe('EndpointsSection SSH config picker', () => {
 
     render(<EndpointsSection />)
 
-    fireEvent.click(screen.getByTestId('settings-endpoints-empty-register'))
+    fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
     expect(screen.getByTestId('settings-endpoints-ssh-config-open')).toBeDisabled()
 
     releaseOverview?.()
@@ -93,7 +93,7 @@ describe('EndpointsSection SSH config picker', () => {
     await waitFor(() => {
       expect(screen.getByTestId('settings-endpoints-refresh')).toBeEnabled()
     })
-    fireEvent.click(screen.getByTestId('settings-endpoints-empty-register'))
+    fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
     expect(screen.getByTestId('settings-endpoints-ssh-config-open')).toBeDisabled()
   })
 })

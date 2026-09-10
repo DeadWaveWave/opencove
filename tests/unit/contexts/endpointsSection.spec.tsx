@@ -41,7 +41,9 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    expect(await screen.findAllByText('Remote machines')).toHaveLength(1)
+    expect(
+      await screen.findByRole('group', { name: 'Remote Connections', exact: true }),
+    ).toBeVisible()
     expect(screen.queryByTestId('settings-endpoints-register-window')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
@@ -55,7 +57,7 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    await screen.findByText('Remote machines')
+    await screen.findByRole('group', { name: 'Remote Connections', exact: true })
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
 
     fireEvent.change(screen.getByTestId('settings-endpoints-register-displayName'), {
@@ -88,7 +90,7 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    await screen.findByText('Remote machines')
+    await screen.findByRole('group', { name: 'Remote Connections', exact: true })
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
     fireEvent.change(screen.getByTestId('settings-endpoints-register-hostname'), {
       target: { value: 'build.example.com' },
@@ -111,7 +113,7 @@ describe('EndpointsSection', () => {
 
     render(<EndpointsSection />)
 
-    await screen.findByText('Remote machines')
+    await screen.findByRole('group', { name: 'Remote Connections', exact: true })
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
     fireEvent.click(screen.getByTestId('settings-endpoints-register-mode-manual'))
 
@@ -263,7 +265,7 @@ describe('EndpointsSection', () => {
   it('protects only drafts changed from their opening baseline', async () => {
     installEndpointsApi()
     render(<EndpointsSection />)
-    await screen.findByText('Remote machines')
+    await screen.findByRole('group', { name: 'Remote Connections', exact: true })
     fireEvent.click(screen.getByTestId('settings-endpoints-open-register'))
     fireEvent.pointerDown(screen.getByTestId('settings-endpoints-register-backdrop'))
     expect(screen.queryByTestId('settings-endpoints-register-window')).not.toBeInTheDocument()

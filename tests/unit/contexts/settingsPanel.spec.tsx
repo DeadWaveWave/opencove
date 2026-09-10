@@ -343,7 +343,8 @@ describe('SettingsPanel', () => {
     })
 
     fireEvent.click(screen.getByTestId('settings-section-nav-worker'))
-    expect(await screen.findByTestId('settings-endpoints-empty-register')).toBeVisible()
+    expect(await screen.findByTestId('settings-endpoints-open-register')).toBeVisible()
+    expect(screen.queryByTestId('settings-endpoints-empty-register')).not.toBeInTheDocument()
     expect(
       screen.queryByTestId('settings-experimental-remote-workers-enabled'),
     ).not.toBeInTheDocument()
@@ -360,7 +361,7 @@ describe('SettingsPanel', () => {
       initialPageId: 'endpoints',
       settings: { ...DEFAULT_AGENT_SETTINGS, experimentalRemoteWorkersEnabled: false },
     })
-    expect(await screen.findByTestId('settings-endpoints-empty-register')).toBeVisible()
+    expect(await screen.findByTestId('settings-endpoints-open-register')).toBeVisible()
     expect(screen.getByRole('group', { name: 'Remote Connections' })).toBeVisible()
     expect(screen.getByRole('group', { name: 'Browser Access' })).toContainElement(
       screen.getByRole('group', { name: 'Access Security' }),

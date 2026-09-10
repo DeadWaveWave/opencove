@@ -1,21 +1,18 @@
 .settings-panel__endpoint-toolbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  padding: 10px 0 14px;
 }
 
 .settings-panel__endpoint-toolbar-meta {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.settings-panel__endpoint-toolbar-meta strong {
-  font-size: calc(13px * var(--cove-ui-font-scale));
-  font-weight: 500;
-  color: var(--cove-text);
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: var(--cove-text-muted);
 }
 
 .settings-panel__endpoint-toolbar-meta span {
@@ -29,6 +26,20 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+  align-items: center;
+}
+
+.settings-panel button.settings-panel__endpoint-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+  color: var(--cove-accent-text);
+}
+
+.settings-panel__endpoint-toolbar svg {
+  flex-shrink: 0;
 }
 
 .settings-panel__endpoint-list {

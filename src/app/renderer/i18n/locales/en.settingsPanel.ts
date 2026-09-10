@@ -218,7 +218,7 @@ export const enSettingsPanel = {
     workerWebUi: {
       title: 'Worker Web UI',
       securityTitle: 'Access Security',
-      help: 'Open the experimental browser UI served by the Local Worker.',
+      help: 'Open the browser UI served by the Local Worker.',
       enabledLabel: 'Enable Web UI',
       enabledHelp:
         'Turns the Worker-hosted Web UI and debug shell on or off without restarting terminals.',

@@ -7,6 +7,7 @@ import {
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 import { TerminalFontFamilyRow } from './TerminalFontFamilyRow'
 import { TerminalDisplayCalibrationRow } from './TerminalDisplayCalibrationRow'
+import { TerminalTypographyPreview } from './TerminalTypographyPreview'
 
 export interface TerminalAppearanceSectionProps {
   terminalFontSize: number
@@ -31,23 +32,10 @@ export function TerminalAppearanceSection(props: TerminalAppearanceSectionProps)
         description={t('settingsPanel.appearanceNext.terminalTypographyHelp')}
       >
         <SettingsGroupBody>
-          <div
-            className="settings-terminal-sample"
-            role="img"
-            aria-label={t('settingsPanel.appearanceNext.terminalPreview')}
-            style={{
-              fontFamily: props.terminalFontFamily ?? 'var(--cove-font-mono)',
-              fontSize: props.terminalFontSize,
-            }}
-          >
-            <div>
-              <span className="settings-terminal-sample__prompt">❯</span> pnpm dev
-            </div>
-            <div>
-              <span className="settings-terminal-sample__success">VITE</span> ready in 184 ms
-            </div>
-            <div>Local: http://localhost:3000/</div>
-          </div>
+          <TerminalTypographyPreview
+            fontFamily={props.terminalFontFamily}
+            fontSize={props.terminalFontSize}
+          />
           <TerminalFontFamilyRow
             terminalFontFamily={props.terminalFontFamily}
             onChangeTerminalFontFamily={props.onChangeTerminalFontFamily}

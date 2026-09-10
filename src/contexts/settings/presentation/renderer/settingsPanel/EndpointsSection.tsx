@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { Plus, RefreshCw, Server } from 'lucide-react'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useTranslation } from '@app/renderer/i18n'
 import type { SshConfigHost, WorkerEndpointOverviewDto } from '@shared/contracts/dto'
 import { RemoteEndpointStatusPanel } from '@app/renderer/shell/components/RemoteEndpointStatusPanel'
@@ -305,52 +307,40 @@ export function EndpointsSection(): React.JSX.Element {
 
         <div className="settings-panel__endpoint-toolbar" id="settings-section-worker-connections">
           <div className="settings-panel__endpoint-toolbar-meta">
-            <strong>
-              {t('settingsPanel.endpoints.list.countLabel')}: {String(remoteEndpoints.length)}
-            </strong>
-            <span>{t('settingsPanel.endpoints.register.recommendedHint')}</span>
+            <Server size={16} aria-hidden="true" />
+            <span>
+              {isLoading
+                ? t('common.loading')
+                : remoteEndpoints.length === 0
+                  ? t('settingsPanel.endpoints.list.empty')
+                  : `${t('settingsPanel.endpoints.list.countLabel')}: ${remoteEndpoints.length}`}
+            </span>
           </div>
           <div className="settings-panel__endpoint-toolbar-actions">
-            <button
-              type="button"
-              className="secondary"
+            <IconButton
+              label={t('common.refresh')}
               data-testid="settings-endpoints-refresh"
               disabled={isLoading || registerBusy}
               onClick={() => {
                 void reload()
               }}
             >
-              {t('common.refresh')}
-            </button>
+              <RefreshCw size={15} aria-hidden="true" />
+            </IconButton>
             <button
               type="button"
-              className="primary"
+              className="secondary settings-panel__endpoint-add"
               data-testid="settings-endpoints-open-register"
               disabled={registerBusy}
               onClick={openRegisterWindow}
             >
+              <Plus size={15} aria-hidden="true" />
               {t('settingsPanel.endpoints.actions.add')}
             </button>
           </div>
         </div>
 
-        {remoteEndpoints.length === 0 ? (
-          <div className="cove-window__empty-card">
-            <div className="cove-window__section-card-heading">
-              <strong>{t('settingsPanel.endpoints.register.recommendedTitle')}</strong>
-              <span>{t('settingsPanel.endpoints.register.managedHelp')}</span>
-            </div>
-            <button
-              type="button"
-              className="primary"
-              data-testid="settings-endpoints-empty-register"
-              disabled={registerBusy}
-              onClick={openRegisterWindow}
-            >
-              {t('settingsPanel.endpoints.actions.add')}
-            </button>
-          </div>
-        ) : (
+        {remoteEndpoints.length > 0 ? (
           <div className="settings-panel__endpoint-list">
             {remoteEndpoints.map(overview => {
               const isBusy = Boolean(busyByEndpointId[overview.endpoint.endpointId])
@@ -399,7 +389,7 @@ export function EndpointsSection(): React.JSX.Element {
               )
             })}
           </div>
-        )}
+        ) : null}
       </SettingsGroupBody>
 
       {isRegisterOpen ? (

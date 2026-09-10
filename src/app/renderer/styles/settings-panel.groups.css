@@ -94,6 +94,14 @@
   letter-spacing: -0.002em;
 }
 
+.settings-panel__module-header--actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .settings-panel__module-description {
   max-width: 640px;
   margin: 0;

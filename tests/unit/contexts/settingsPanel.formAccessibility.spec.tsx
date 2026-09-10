@@ -343,7 +343,7 @@ describe('Settings form accessible names', () => {
     expect(await screen.findByText('无法更新 Web 访问设置，原有监听器仍保持可用。')).toBeVisible()
   })
 
-  it('shows degraded restoration and disables Open after a double-bind failure', async () => {
+  it('shows degraded restoration and hides Open after a double-bind failure', async () => {
     installWorkerApi('local')
     const api = window.opencoveApi
     vi.mocked(api.worker.getStatus).mockResolvedValue({
@@ -398,7 +398,8 @@ describe('Settings form accessible names', () => {
     expect(screen.getByTestId('settings-experimental-worker-web-ui-status')).toHaveTextContent(
       'Restoring listener',
     )
-    expect(screen.getByTestId('settings-experimental-worker-web-ui-open')).toBeDisabled()
+    expect(screen.queryByTestId('settings-experimental-worker-web-ui-open')).not.toBeInTheDocument()
+    expect(screen.getByTestId('settings-experimental-worker-web-ui-refresh')).toBeEnabled()
   })
 
   it('names project worktree and environment variable inputs', () => {

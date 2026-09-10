@@ -100,7 +100,8 @@ async function verifyWorkerHierarchyAndAttach(
   await expect(runtime.getByRole('group', { name: 'Worker 模式' })).toHaveCount(0)
   await expect(runtime.getByText('当前模式', { exact: true })).toHaveCount(0)
   await expect(cli.getByTestId('settings-worker-cli-status')).toBeVisible()
-  await expect(localWorker.getByTestId('settings-worker-local-status')).toBeVisible()
+  await expect(localWorker.getByTestId('settings-worker-local-status')).toHaveCount(0)
+  await expect(localWorker.getByTestId('settings-worker-local-start')).toBeVisible()
 
   await expect(runtime.locator('.settings-panel__worker-module')).toHaveCount(0)
 

@@ -4,6 +4,7 @@ export const enSettingsPanelEndpoints = {
     title: 'Remote machines',
     help: 'Machines that OpenCove can connect to, repair, browse, and mount.',
     countLabel: 'Count',
+    empty: 'No remote machines',
     localSubtitle: 'local',
     localRemoveHelp: 'The local machine cannot be removed.',
     lastPing: 'Last ping: pid {{pid}} · {{now}}',
