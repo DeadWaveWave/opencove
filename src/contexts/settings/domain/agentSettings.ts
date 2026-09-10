@@ -12,6 +12,7 @@ import {
   type AgentProvider,
 } from './agentSettings.providers'
 import { normalizeFocusNodeTargetZoom } from './focusNodeTargetZoom'
+import { normalizeSidebarCollapsedIds } from './sidebarTreeSettings'
 import { isValidUiLanguage, isValidUiTheme } from './uiSettings'
 import {
   isValidUpdateChannel,
@@ -382,6 +383,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     language,
     uiTheme,
     isPrimarySidebarCollapsed,
+    sidebarCollapsedWorkspaceIds: normalizeSidebarCollapsedIds(value.sidebarCollapsedWorkspaceIds),
+    sidebarCollapsedSpaceGroupIds: normalizeSidebarCollapsedIds(
+      value.sidebarCollapsedSpaceGroupIds,
+    ),
     workspaceSearchPanelWidth,
     defaultProvider,
     agentProviderOrder,
