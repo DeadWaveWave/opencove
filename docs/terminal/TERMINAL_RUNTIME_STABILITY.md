@@ -70,6 +70,32 @@ Invariants:
    before beginning a measured commit. A controller may propose the stable frame once; a viewer only
    applies canonical geometry. Focus, input and ordinary attach are not resize observations.
 
+## Quick command startup
+
+| State | Owner | Write entry | Restart source |
+| --- | --- | --- | --- |
+| Configured quick command | Settings | normalized settings update | persisted app settings |
+| One invocation and pending first input | Canvas quick-menu action | explicit user invocation | none; never replay on restore |
+| Created session identity and process | Worker PTY runtime | terminal creation result | existing terminal recovery owner |
+| Window subscription and attach readiness | Desktop/Browser PTY client | `pty.attach` and exact session ACK | fresh attach to the live session |
+
+A Control Surface spawn creates the Worker process but does not register that session with the
+Desktop PTY adapter. The quick-menu action explicitly attaches the created session before writing
+its configured command. It shares the same window/session subscription as TerminalNode: concurrent
+attaches are deduplicated by the existing coordinator, do not resize the terminal, and require no
+separate quick-command detach. TerminalNode detach and window destruction remove the renderer
+subscriber; the runtime coordinator retains or retires its upstream session by its existing policy.
+
+Invariants:
+
+1. First input waits for attach acknowledgement and targets only the session returned by this
+   invocation. A failed spawn or attach never writes, and a failed write is reported without retry.
+2. Removing/rebinding the created node, switching workspace, or unmounting the invocation's canvas
+   cancels pending command input. Restoring a node never replays the configured quick command.
+3. Command input uses terminal Enter (`CR`), as in node-pty's official example and xterm's Enter
+   mapping. LF/CRLF become CR; explicit blank lines and trailing line endings are preserved, and an
+   Enter is appended only when the command has no final line ending.
+
 ## Client display calibration
 
 | State | Owner | Write entry | Restart source |
