@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
-- Desktop: close selected canvas windows with Cmd/Ctrl+W without closing the app, and require two Cmd+Q presses within 1.5 seconds to quit on macOS. (#410)
+- Desktop: close the focused input window or selected canvas window with Cmd/Ctrl+W without closing the app, and require two Cmd+Q presses within 1.5 seconds to quit on macOS. (#410)
 - Workspace: keep Space archive and other operation overlays local to their target Space, preventing unrelated Space backgrounds from tinting window nodes. (#401)
 - Canvas: center windows created by double-click or the context menu within 120 pixels of the viewport center, avoiding small unnecessary pans while preserving Space ownership and pointer placement farther away. (#399)
 - Agent: launch remote Project agents in the default remote mount instead of the local project metadata directory, while preserving explicit Space and worktree directories. (#398)
