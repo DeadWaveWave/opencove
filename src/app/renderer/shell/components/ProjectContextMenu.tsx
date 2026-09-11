@@ -185,6 +185,7 @@ export function ProjectContextMenu({
         className={`workspace-project-context-menu__color-button${selected ? ' workspace-project-context-menu__color-button--selected' : ''}`}
         data-testid={`workspace-project-context-menu-label-color-${id}`}
         aria-label={label}
+        aria-pressed={selected}
         title={label}
         onClick={() => {
           commitLabelColor(labelColor)
@@ -197,7 +198,9 @@ export function ProjectContextMenu({
           }
           aria-hidden="true"
         />
-        {selected ? <Check className="workspace-project-context-menu__color-check" /> : null}
+        {selected ? (
+          <Check className="workspace-project-context-menu__color-check" aria-hidden="true" />
+        ) : null}
       </button>
     )
   }
@@ -258,13 +261,16 @@ export function ProjectContextMenu({
         className={`workspace-project-context-menu__project-icon-button${selected ? ' workspace-project-context-menu__project-icon-button--selected' : ''}`}
         data-testid={`workspace-project-context-menu-icon-${id}`}
         aria-label={label}
+        aria-pressed={selected}
         title={label}
         onClick={() => {
           commitProjectIcon(iconId)
         }}
       >
         <Icon className="workspace-project-context-menu__project-icon" aria-hidden="true" />
-        {selected ? <Check className="workspace-project-context-menu__icon-check" /> : null}
+        {selected ? (
+          <Check className="workspace-project-context-menu__icon-check" aria-hidden="true" />
+        ) : null}
       </button>
     )
   }
@@ -303,6 +309,11 @@ export function ProjectContextMenu({
     <ViewportMenuSurface
       ref={menuRef}
       open={true}
+      mobileTitle={isRenaming ? t('projectContextMenu.rename') : targetName}
+      onBack={isRenaming ? () => setIsRenaming(false) : undefined}
+      initialFocusRef={isRenaming || isSpaceTarget ? renameInputRef : undefined}
+      onDismiss={() => useAppStore.getState().setProjectContextMenu(null)}
+      dismissOnEscape
       className={`workspace-context-menu workspace-project-context-menu workspace-project-context-menu--${resolvedTarget.kind}`}
       placement={{
         type: 'point',
@@ -458,18 +469,22 @@ export function ProjectContextMenu({
         </>
       ) : null}
       {!isRenaming && isProjectTarget ? (
-        <button
-          type="button"
-          data-testid={`workspace-project-remove-${workspaceId}`}
-          onClick={() => {
-            onRequestRemove(workspaceId)
-          }}
-        >
-          <FolderX className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">
-            {t('projectContextMenu.removeProject')}
-          </span>
-        </button>
+        <>
+          <div className="workspace-context-menu__separator" />
+          <button
+            type="button"
+            data-testid={`workspace-project-remove-${workspaceId}`}
+            className="workspace-context-menu__item--danger"
+            onClick={() => {
+              onRequestRemove(workspaceId)
+            }}
+          >
+            <FolderX className="workspace-context-menu__icon" aria-hidden="true" />
+            <span className="workspace-context-menu__label">
+              {t('projectContextMenu.removeProject')}
+            </span>
+          </button>
+        </>
       ) : null}
       {!isRenaming && supportsLabelColor && !isSpaceTarget ? renderColorRow('section') : null}
     </ViewportMenuSurface>

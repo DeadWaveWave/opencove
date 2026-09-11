@@ -1,5 +1,12 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
+import { ArrowLeft, X } from 'lucide-react'
+import { useTranslation } from '@app/renderer/i18n'
+import { Dialog } from './ui/Dialog'
+import { DismissableLayer } from './ui/DismissableLayer'
+import { useCompactViewport } from './useCompactViewport'
+import { useMenuFocus } from './useMenuFocus'
+import { handleMenuNavigation } from './menuKeyboardNavigation'
 import {
   placeViewportMenuAtPoint,
   type MenuPoint,
@@ -38,6 +45,10 @@ export interface ViewportMenuSurfaceProps extends Omit<
   dismissIgnoreTarget?: (target: EventTarget | null) => boolean
   stopEventPropagation?: boolean
   waitForMeasurement?: boolean
+  mobileTitle?: string
+  onBack?: () => void
+  isSubmenu?: boolean
+  initialFocusRef?: React.RefObject<HTMLElement | null>
 }
 
 function assignRef<T>(ref: React.ForwardedRef<T>, value: T): void {
@@ -71,22 +82,52 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
       dismissIgnoreTarget,
       stopEventPropagation = true,
       waitForMeasurement = false,
+      mobileTitle,
+      onBack,
+      isSubmenu = false,
+      initialFocusRef,
+      className,
       style,
       onMouseDown,
       onClick,
+      onKeyDown,
       ...rest
     },
     forwardedRef,
   ): React.JSX.Element | null {
     const surfaceRef = React.useRef<HTMLDivElement | null>(null)
+    const titleRef = React.useRef<HTMLSpanElement | null>(null)
+    const dialogInitialFocusRef = React.useRef<HTMLElement | null>(null)
+    const compact = useCompactViewport()
+    const { t } = useTranslation()
+    const titleId = React.useId()
+    const isMenu = className?.split(' ').includes('workspace-context-menu') === true
+    const isSheet = isMenu && compact && Boolean(onDismiss || onBack)
+    useMenuFocus({
+      menuRef: surfaceRef,
+      enabled: open && isMenu && !isSheet && !className?.includes('workspace-project-context-menu'),
+      focusKey: titleId,
+      isSubmenu,
+    })
+    React.useLayoutEffect(() => {
+      if (!open || !isSheet) {
+        return
+      }
+      const focusTarget = initialFocusRef?.current ?? titleRef.current
+      focusTarget?.focus({ preventScroll: true })
+      if (focusTarget instanceof HTMLInputElement) {
+        focusTarget.select()
+      }
+    }, [initialFocusRef, isSheet, open])
     const [measuredSize, setMeasuredSize] = React.useState<MenuSize | null>(null)
 
     const setRefs = React.useCallback(
       (node: HTMLDivElement | null) => {
         surfaceRef.current = node
+        dialogInitialFocusRef.current = initialFocusRef?.current ?? titleRef.current
         assignRef(forwardedRef, node)
       },
-      [forwardedRef],
+      [forwardedRef, initialFocusRef],
     )
 
     React.useLayoutEffect(() => {
@@ -137,7 +178,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
         return
       }
 
-      if (!onDismiss || (!dismissOnPointerDownOutside && !dismissOnEscape)) {
+      if (isMenu || !onDismiss || (!dismissOnPointerDownOutside && !dismissOnEscape)) {
         return
       }
 
@@ -194,6 +235,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
       dismissOnPointerDownOutside,
       onDismiss,
       open,
+      isMenu,
     ])
 
     const resolvedPosition = React.useMemo(() => {
@@ -223,35 +265,115 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
 
     const isMeasurementReady = placement.type !== 'point' || measuredSize !== null
 
+    const surfaceProps: React.HTMLAttributes<HTMLDivElement> = {
+      ...rest,
+      className,
+      tabIndex: rest.tabIndex ?? (isMenu ? -1 : undefined),
+      style: {
+        ...style,
+        top: isSheet ? undefined : resolvedPosition.top,
+        left: isSheet ? undefined : resolvedPosition.left,
+        maxHeight: isSheet ? undefined : style?.maxHeight,
+        visibility:
+          waitForMeasurement && !isMeasurementReady && !isSheet
+            ? 'hidden'
+            : (style?.visibility ?? undefined),
+      },
+      onMouseDown: event => {
+        if (stopEventPropagation) {
+          event.stopPropagation()
+        }
+        callHandler(onMouseDown, event)
+      },
+      onClick: event => {
+        if (stopEventPropagation) {
+          event.stopPropagation()
+        }
+        callHandler(onClick, event)
+      },
+      onKeyDown: event => {
+        onKeyDown?.(event)
+        if (isMenu) {
+          handleMenuNavigation(event, onBack)
+          if (
+            !(event.target instanceof Element) ||
+            !event.target.closest('input, textarea, [contenteditable="true"]')
+          ) {
+            event.stopPropagation()
+          }
+        }
+      },
+    }
+    const measurementProps = {
+      'data-viewport-menu-measured': waitForMeasurement ? String(isMeasurementReady) : undefined,
+      'data-cove-menu-surface': isMenu ? '' : undefined,
+    }
+
+    if (isSheet) {
+      return (
+        <Dialog
+          {...surfaceProps}
+          {...measurementProps}
+          ref={setRefs}
+          open
+          role="dialog"
+          aria-labelledby={titleId}
+          className={`${className} cove-menu-sheet`}
+          backdropClassName={`cove-menu-sheet-backdrop${isSubmenu ? ' cove-menu-sheet-backdrop--nested' : ''}`}
+          initialFocusRef={dialogInitialFocusRef}
+          inertRootSelector={isSubmenu ? undefined : '.workspace-main, .app-header'}
+          onDismiss={() => (onBack ?? onDismiss)?.()}
+        >
+          <div className="cove-menu-sheet__header">
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label={t('common.back')}
+                title={t('common.back')}
+              >
+                <ArrowLeft size={18} aria-hidden="true" />
+              </button>
+            ) : null}
+            <span id={titleId} ref={titleRef} tabIndex={-1} className="cove-menu-sheet__title">
+              {mobileTitle ?? rest['aria-label'] ?? t('common.actions')}
+            </span>
+            <button
+              type="button"
+              onClick={onDismiss ?? onBack}
+              aria-label={t('common.close')}
+              title={t('common.close')}
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="cove-menu-sheet__content">{children}</div>
+        </Dialog>
+      )
+    }
+
     return createPortal(
-      <div
-        {...rest}
-        ref={setRefs}
-        data-viewport-menu-measured={waitForMeasurement ? String(isMeasurementReady) : undefined}
-        style={{
-          ...style,
-          top: resolvedPosition.top,
-          left: resolvedPosition.left,
-          visibility:
-            waitForMeasurement && !isMeasurementReady ? 'hidden' : (style?.visibility ?? undefined),
-        }}
-        onMouseDown={event => {
-          if (stopEventPropagation) {
-            event.stopPropagation()
-          }
-
-          callHandler(onMouseDown, event)
-        }}
-        onClick={event => {
-          if (stopEventPropagation) {
-            event.stopPropagation()
-          }
-
-          callHandler(onClick, event)
-        }}
-      >
-        {children}
-      </div>,
+      isMenu ? (
+        <DismissableLayer
+          {...surfaceProps}
+          {...measurementProps}
+          ref={setRefs}
+          branchRefs={dismissIgnoreRefs}
+          dismissOnEscape={Boolean(onBack || (onDismiss && dismissOnEscape))}
+          dismissOnPointerDownOutside={Boolean(onDismiss && dismissOnPointerDownOutside)}
+          onDismiss={(reason, event) => {
+            if (!dismissIgnoreTarget?.(event.target)) {
+              ;(reason === 'escape' ? (onBack ?? onDismiss) : onDismiss)?.()
+            }
+          }}
+        >
+          {children}
+        </DismissableLayer>
+      ) : (
+        <div {...surfaceProps} {...measurementProps} ref={setRefs}>
+          {children}
+        </div>
+      ),
       document.body,
     )
   },

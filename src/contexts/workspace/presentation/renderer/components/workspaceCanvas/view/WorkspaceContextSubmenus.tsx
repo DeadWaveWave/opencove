@@ -104,6 +104,7 @@ export function WorkspaceContextSubmenus({
   deleteProjectRole: (roleId: string) => void
   setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
 }): React.JSX.Element {
+  const closeSubmenu = (): void => setOpenSubmenu(null)
   const shouldShowArrangeSubmenu = contextMenu.kind === 'pane' && openSubmenu === 'arrangeBy'
   const shouldShowAgentProviderSubmenu =
     contextMenu.kind === 'pane' &&
@@ -122,6 +123,8 @@ export function WorkspaceContextSubmenus({
     <>
       {shouldShowArrangeSubmenu ? (
         <WorkspaceContextArrangeBySubmenu
+          onBack={closeSubmenu}
+          onDismiss={closeContextMenu}
           submenuRef={submenuRef}
           style={sharedSubmenuStyle}
           hitSpace={contextHitSpace}
@@ -141,6 +144,8 @@ export function WorkspaceContextSubmenus({
 
       {shouldShowAgentProviderSubmenu ? (
         <WorkspaceContextAgentProviderSubmenu
+          onBack={closeSubmenu}
+          onDismiss={closeContextMenu}
           sortedInstalledProviders={sortedInstalledProviders}
           submenuRef={submenuRef}
           style={sharedSubmenuStyle}
@@ -152,6 +157,8 @@ export function WorkspaceContextSubmenus({
 
       {shouldShowQuickCommandsSubmenu ? (
         <WorkspaceContextQuickCommandsSubmenu
+          onBack={closeSubmenu}
+          onDismiss={closeContextMenu}
           commands={enabledQuickCommands}
           submenuRef={submenuRef}
           style={sharedSubmenuStyle}
@@ -168,6 +175,8 @@ export function WorkspaceContextSubmenus({
 
       {shouldShowQuickPhrasesSubmenu ? (
         <WorkspaceContextQuickPhrasesSubmenu
+          onBack={closeSubmenu}
+          onDismiss={closeContextMenu}
           phrases={enabledQuickPhrases}
           submenuRef={submenuRef}
           style={sharedSubmenuStyle}
@@ -184,6 +193,8 @@ export function WorkspaceContextSubmenus({
 
       {shouldShowProjectRolesSubmenu ? (
         <WorkspaceContextProjectRolesSubmenu
+          onBack={closeSubmenu}
+          onDismiss={closeContextMenu}
           projectRoles={projectRoles}
           submenuRef={submenuRef}
           style={sharedSubmenuStyle}
@@ -198,6 +209,7 @@ export function WorkspaceContextSubmenus({
 
       {shouldShowLabelColorSubmenu ? (
         <WorkspaceContextLabelColorSubmenu
+          onBack={closeSubmenu}
           submenuRef={submenuRef}
           style={sharedSubmenuStyle}
           keepSubmenuOpen={keepLabelColorSubmenuOpen}

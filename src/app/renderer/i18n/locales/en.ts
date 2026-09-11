@@ -12,6 +12,8 @@ import { enWorkspaceCanvas } from './en.workspaceCanvas'
 
 export const en = {
   common: {
+    actions: 'Actions',
+    back: 'Back',
     add: 'Add',
     cancel: 'Cancel',
     close: 'Close',

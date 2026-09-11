@@ -4,9 +4,7 @@
 
 .workspace-project-context-menu,
 .workspace-space-action-menu {
-  padding: 4px;
-  border-radius: 10px;
-  gap: 1px;
+  padding: 6px;
 }
 
 .workspace-project-context-menu--project {
@@ -23,18 +21,14 @@
 
 .workspace-project-context-menu button,
 .workspace-space-action-menu button {
-  gap: 7px;
-  border-radius: 7px;
-  padding: 5px 8px;
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  line-height: 1.15;
+  gap: 10px;
 }
 
 .workspace-project-context-menu .workspace-context-menu__icon,
 .workspace-space-action-menu .workspace-context-menu__icon,
 .workspace-space-action-menu .workspace-context-menu__mark {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .workspace-project-context-menu .workspace-context-menu__separator,
@@ -50,6 +44,10 @@
   min-width: 168px;
 }
 
+.workspace-space-action-menu:not(.workspace-space-action-menu--submenu):not(.cove-menu-sheet) {
+  width: 220px;
+}
+
 .workspace-space-action-menu__color-strip {
   min-height: 24px;
   gap: 2px;
@@ -61,6 +59,7 @@
   width: 20px !important;
   height: 20px !important;
   min-width: 20px;
+  min-height: 20px;
   max-width: 20px;
   max-height: 20px;
   flex: 0 0 20px;
@@ -89,10 +88,9 @@
 
 .workspace-context-menu__section-title {
   padding: 6px 10px 2px;
-  font-size: calc(10px * var(--cove-ui-font-scale));
+  font-size: calc(11px * var(--cove-ui-font-scale));
   color: var(--cove-text-muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .workspace-context-menu--submenu {
@@ -148,18 +146,19 @@
 
 .workspace-project-context-menu__space-editor input {
   width: 100%;
-  border: 2px solid color-mix(in srgb, var(--cove-text) 78%, transparent);
+  border: 1px solid var(--cove-control-border);
   background: var(--cove-field);
   color: var(--cove-text);
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: calc(12px * var(--cove-ui-font-scale));
+  border-radius: 4px;
+  padding: 7px 8px;
+  font-size: calc(13px * var(--cove-ui-font-scale));
   line-height: 1.15;
 }
 
 .workspace-project-context-menu__space-editor input:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--cove-text) 86%, transparent);
+  border-color: var(--cove-accent);
+  box-shadow: 0 0 0 2px var(--cove-menu-highlight);
 }
 
 .workspace-project-context-menu__rename-actions {
@@ -190,6 +189,7 @@
   width: 30px !important;
   height: 28px !important;
   min-width: 30px;
+  min-height: 28px;
   max-width: 30px;
   max-height: 28px;
   padding: 0 !important;
@@ -244,6 +244,7 @@
   width: 20px !important;
   height: 20px !important;
   min-width: 20px;
+  min-height: 20px;
   max-width: 20px;
   max-height: 20px;
   flex: 0 0 20px;

@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText, Folder, FolderOpen } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { FileSystemEntry } from '@shared/contracts/dto'
 import { shouldStopWheelPropagation } from '../../../components/taskNode/helpers'
@@ -376,6 +376,7 @@ export function WorkspaceSpaceExplorerTree({
               tabIndex={-1}
               role="treeitem"
               aria-selected={isSelected}
+              aria-level={row.depth + 1}
               aria-expanded={row.entry.kind === 'directory' ? row.isExpanded : undefined}
               className={className}
               data-testid={`workspace-space-explorer-entry-${spaceId}-${encodeURIComponent(row.entry.uri)}`}
@@ -459,7 +460,9 @@ export function WorkspaceSpaceExplorerTree({
               <span className="workspace-space-explorer__entry-disclosure" aria-hidden="true">
                 {renderRowDisclosure(row)}
               </span>
-              {row.entry.kind === 'directory' ? (
+              {row.entry.kind === 'directory' && row.isExpanded ? (
+                <FolderOpen className="workspace-space-explorer__entry-icon" aria-hidden="true" />
+              ) : row.entry.kind === 'directory' ? (
                 <Folder className="workspace-space-explorer__entry-icon" aria-hidden="true" />
               ) : (
                 <FileText className="workspace-space-explorer__entry-icon" aria-hidden="true" />

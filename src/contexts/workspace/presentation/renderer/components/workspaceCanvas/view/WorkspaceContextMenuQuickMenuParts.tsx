@@ -1,5 +1,6 @@
 import React from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
+import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 import { ChevronRight, FileText, Globe, Settings, Terminal } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickCommand, QuickPhrase } from '@contexts/settings/domain/agentSettings'
@@ -55,8 +56,7 @@ export function WorkspaceContextQuickMenuItems({
         data-testid="workspace-context-quick-commands"
         aria-haspopup="menu"
         aria-expanded={isQuickCommandsSubmenuOpen}
-        onMouseEnter={openQuickCommandsSubmenu}
-        onFocus={openQuickCommandsSubmenu}
+        onMouseEnter={menuHoverHandler(openQuickCommandsSubmenu)}
         onClick={openQuickCommandsSubmenu}
       >
         <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
@@ -77,8 +77,7 @@ export function WorkspaceContextQuickMenuItems({
         data-testid="workspace-context-quick-phrases"
         aria-haspopup="menu"
         aria-expanded={isQuickPhrasesSubmenuOpen}
-        onMouseEnter={openQuickPhrasesSubmenu}
-        onFocus={openQuickPhrasesSubmenu}
+        onMouseEnter={menuHoverHandler(openQuickPhrasesSubmenu)}
         onClick={openQuickPhrasesSubmenu}
       >
         <FileText className="workspace-context-menu__icon" aria-hidden="true" />
@@ -119,6 +118,8 @@ export function WorkspaceContextQuickCommandsSubmenu({
   scheduleSubmenuClose,
   runQuickCommand,
   openQuickMenuSettings,
+  onBack,
+  onDismiss,
 }: {
   commands: QuickCommand[]
   submenuRef: React.RefObject<HTMLDivElement | null>
@@ -127,12 +128,18 @@ export function WorkspaceContextQuickCommandsSubmenu({
   scheduleSubmenuClose: () => void
   runQuickCommand: (command: QuickCommand) => Promise<void>
   openQuickMenuSettings: () => void
+  onBack: () => void
+  onDismiss: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
   return (
     <ViewportMenuSurface
       open={true}
+      mobileTitle={t('settingsPanel.quickMenu.commands.title')}
+      isSubmenu
+      onBack={onBack}
+      onDismiss={onDismiss}
       ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-quick-commands-menu"
@@ -144,7 +151,7 @@ export function WorkspaceContextQuickCommandsSubmenu({
       style={{
         maxHeight: style.maxHeight,
       }}
-      onMouseEnter={keepSubmenuOpen}
+      onMouseEnter={menuHoverHandler(keepSubmenuOpen)}
       onMouseLeave={scheduleSubmenuClose}
     >
       {commands.map(command => (
@@ -189,6 +196,8 @@ export function WorkspaceContextQuickPhrasesSubmenu({
   scheduleSubmenuClose,
   insertQuickPhrase,
   openQuickMenuSettings,
+  onBack,
+  onDismiss,
 }: {
   phrases: QuickPhrase[]
   submenuRef: React.RefObject<HTMLDivElement | null>
@@ -197,12 +206,18 @@ export function WorkspaceContextQuickPhrasesSubmenu({
   scheduleSubmenuClose: () => void
   insertQuickPhrase: (phrase: QuickPhrase) => void
   openQuickMenuSettings: () => void
+  onBack: () => void
+  onDismiss: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
   return (
     <ViewportMenuSurface
       open={true}
+      mobileTitle={t('settingsPanel.quickMenu.phrases.title')}
+      isSubmenu
+      onBack={onBack}
+      onDismiss={onDismiss}
       ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-quick-phrases-menu"
@@ -214,7 +229,7 @@ export function WorkspaceContextQuickPhrasesSubmenu({
       style={{
         maxHeight: style.maxHeight,
       }}
-      onMouseEnter={keepSubmenuOpen}
+      onMouseEnter={menuHoverHandler(keepSubmenuOpen)}
       onMouseLeave={scheduleSubmenuClose}
     >
       {phrases.map(phrase => (

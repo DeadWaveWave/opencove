@@ -23,17 +23,20 @@ function MenuButton({
   icon,
   label,
   disabled,
+  danger,
   onClick,
 }: {
   icon: React.ReactNode
   label: string
   disabled?: boolean
+  danger?: boolean
   onClick: (anchor: { x: number; y: number }) => void
 }): React.JSX.Element {
   return (
     <button
       type="button"
       disabled={disabled}
+      className={danger ? 'workspace-context-menu__item--danger' : undefined}
       onClick={event => {
         event.stopPropagation()
         const rect = event.currentTarget.getBoundingClientRect()
@@ -160,6 +163,7 @@ function renderEntryActions({
     <div key="separator-danger" className="workspace-context-menu__separator" />,
     <MenuButton
       key="delete"
+      danger
       icon={<Trash2 size={16} />}
       label={t('common.delete')}
       onClick={onDelete}
@@ -209,6 +213,7 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
   return (
     <ViewportMenuSurface
       open
+      mobileTitle={menu.entry?.name ?? t('spaceActions.openExplorer')}
       placement={{
         type: 'point',
         point: { x: menu.x, y: menu.y },

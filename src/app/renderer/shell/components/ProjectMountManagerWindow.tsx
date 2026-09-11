@@ -11,6 +11,9 @@ import { ProjectMountManagerLocalSection } from './ProjectMountManagerLocalSecti
 import { ProjectMountManagerMountRow } from './ProjectMountManagerMountRow'
 import { ProjectMountManagerRemoteSection } from './ProjectMountManagerRemoteSection'
 import { getEndpointActionExecution } from '../utils/endpointOverviewUi'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
+import { WindowHeading } from '@app/renderer/components/WindowHeading'
+import { FolderOpen } from 'lucide-react'
 
 export function ProjectMountManagerWindow({
   workspace,
@@ -319,163 +322,158 @@ export function ProjectMountManagerWindow({
 
   return (
     <>
-      <div
-        className="cove-window-backdrop"
-        data-testid="workspace-project-mount-manager-backdrop"
-        onClick={() => {
-          if (isBusy) {
-            return
-          }
-
-          onClose()
-        }}
+      <Dialog
+        open
+        backdropClassName="cove-window-backdrop"
+        backdropTestId="workspace-project-mount-manager-backdrop"
+        className="cove-window cove-window--xwide"
+        data-testid="workspace-project-mount-manager-window"
+        aria-label={t('projectMountManager.title', { workspaceName: workspace.name })}
+        dismissOnEscape={!isBusy}
+        dismissOnPointerDownOutside={!isBusy}
+        onDismiss={onClose}
       >
-        <section
-          className="cove-window cove-window--xwide"
-          data-testid="workspace-project-mount-manager-window"
-          onClick={event => {
-            event.stopPropagation()
-          }}
-        >
-          <h3>{t('projectMountManager.title', { workspaceName: workspace.name })}</h3>
-          <p className="cove-window__intro">{t('projectMountManager.description')}</p>
+        <WindowHeading
+          title={t('projectMountManager.title', { workspaceName: workspace.name })}
+          icon={<FolderOpen size={16} aria-hidden="true" />}
+        />
+        <p className="cove-window__intro">{t('projectMountManager.description')}</p>
 
-          <div className="cove-window__fields">
-            {displayError ? (
-              <p className="cove-window__error" data-testid="workspace-project-mount-error">
-                {displayError}
-              </p>
-            ) : null}
+        <div className="cove-window__fields">
+          {displayError ? (
+            <p className="cove-window__error" data-testid="workspace-project-mount-error">
+              {displayError}
+            </p>
+          ) : null}
 
-            {!remoteWorkersEnabled && hasRemoteMounts ? (
-              <div
-                className="cove-window__empty-card"
-                data-testid="workspace-project-mount-remote-experimental-hint"
-              >
-                <div className="cove-window__section-card-heading">
-                  <strong>{t('projectMountManager.remoteExperimentalTitle')}</strong>
-                  <span>{t('projectMountManager.remoteExperimentalHint')}</span>
-                </div>
-                <button
-                  type="button"
-                  className="cove-window__action cove-window__action--primary"
-                  disabled={isBusy}
-                  data-testid="workspace-project-mount-open-experimental"
-                  onClick={() => {
-                    onRequestOpenEndpoints()
-                  }}
-                >
-                  {t('projectMountManager.openExperimentalAction')}
-                </button>
-              </div>
-            ) : null}
-
-            <div className="cove-window__section-card cove-window__section-card--subtle">
+          {!remoteWorkersEnabled && hasRemoteMounts ? (
+            <div
+              className="cove-window__empty-card"
+              data-testid="workspace-project-mount-remote-experimental-hint"
+            >
               <div className="cove-window__section-card-heading">
-                <strong>{t('projectMountManager.listLabel')}</strong>
+                <strong>{t('projectMountManager.remoteExperimentalTitle')}</strong>
+                <span>{t('projectMountManager.remoteExperimentalHint')}</span>
               </div>
-              <div className="cove-window__stack cove-window__stack--tight">
-                {mounts.length === 0 ? (
-                  <div className="cove-window__field-help">{t('projectMountManager.empty')}</div>
-                ) : (
-                  mounts.map((mount, index) => (
-                    <ProjectMountManagerMountRow
-                      key={mount.mountId}
-                      mount={mount}
-                      endpointLabel={endpointLabelById.get(mount.endpointId) ?? mount.endpointId}
-                      isDefault={index === 0}
-                      isBusy={isBusy}
-                      actionsDisabled={!remoteWorkersEnabled && mount.endpointId !== 'local'}
-                      onPromote={handlePromoteMount}
-                      onRemove={handleRemoveMount}
-                    />
-                  ))
-                )}
-              </div>
+              <button
+                type="button"
+                className="cove-window__action cove-window__action--primary"
+                disabled={isBusy}
+                data-testid="workspace-project-mount-open-experimental"
+                onClick={() => {
+                  onRequestOpenEndpoints()
+                }}
+              >
+                {t('projectMountManager.openExperimentalAction')}
+              </button>
             </div>
+          ) : null}
 
-            <ProjectMountManagerLocalSection
+          <div className="cove-window__section-card cove-window__section-card--subtle">
+            <div className="cove-window__section-card-heading">
+              <strong>{t('projectMountManager.listLabel')}</strong>
+            </div>
+            <div className="cove-window__stack cove-window__stack--tight">
+              {mounts.length === 0 ? (
+                <div className="cove-window__field-help">{t('projectMountManager.empty')}</div>
+              ) : (
+                mounts.map((mount, index) => (
+                  <ProjectMountManagerMountRow
+                    key={mount.mountId}
+                    mount={mount}
+                    endpointLabel={endpointLabelById.get(mount.endpointId) ?? mount.endpointId}
+                    isDefault={index === 0}
+                    isBusy={isBusy}
+                    actionsDisabled={!remoteWorkersEnabled && mount.endpointId !== 'local'}
+                    onPromote={handlePromoteMount}
+                    onRemove={handleRemoveMount}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          <ProjectMountManagerLocalSection
+            t={t}
+            isBusy={isBusy}
+            canBrowseLocal={canBrowseLocal}
+            localRootPath={localRootPath}
+            localMountName={localMountName}
+            onChangeLocalRootPath={setLocalRootPath}
+            onChangeLocalMountName={setLocalMountName}
+            onBrowseLocal={() => {
+              void browseLocalMount()
+            }}
+            onCreateLocal={() => {
+              void createLocalMount()
+            }}
+          />
+
+          {remoteWorkersEnabled ? (
+            <ProjectMountManagerRemoteSection
               t={t}
               isBusy={isBusy}
-              canBrowseLocal={canBrowseLocal}
-              localRootPath={localRootPath}
-              localMountName={localMountName}
-              onChangeLocalRootPath={setLocalRootPath}
-              onChangeLocalMountName={setLocalMountName}
-              onBrowseLocal={() => {
-                void browseLocalMount()
+              remoteEndpoints={remoteOverviews.map(overview => overview.endpoint)}
+              endpointLabelById={endpointLabelById}
+              remoteEndpointId={remoteEndpointId}
+              remoteRootPath={remoteRootPath}
+              remoteMountName={remoteMountName}
+              canCreateRemote={canCreateRemote}
+              remoteStatusSlot={
+                <RemoteEndpointStatusSlot
+                  t={t}
+                  overview={remoteEndpoint}
+                  busyByEndpointId={busyByEndpointId}
+                  compact
+                  showIdentity={false}
+                  testIdPrefix="workspace-project-mount-remote-status"
+                  onRunAction={endpointId => {
+                    void runRemoteEndpointAction(endpointId)
+                  }}
+                  onReconnect={endpointId => {
+                    void reconnectRemoteEndpoint(endpointId)
+                  }}
+                />
+              }
+              onChangeRemoteEndpointId={setRemoteEndpointId}
+              onChangeRemoteRootPath={setRemoteRootPath}
+              onChangeRemoteMountName={setRemoteMountName}
+              onCreateRemoteMount={() => {
+                void createRemoteMount()
               }}
-              onCreateLocal={() => {
-                void createLocalMount()
+              onRefresh={() => {
+                void (async () => {
+                  setError(null)
+                  setIsBusy(true)
+                  try {
+                    await reloadMounts()
+                    await reloadEndpoints()
+                  } catch (caughtError) {
+                    setError(toErrorMessage(caughtError))
+                  } finally {
+                    setIsBusy(false)
+                  }
+                })()
               }}
+              onRequestOpenEndpoints={onRequestOpenEndpoints}
             />
+          ) : null}
+        </div>
 
-            {remoteWorkersEnabled ? (
-              <ProjectMountManagerRemoteSection
-                t={t}
-                isBusy={isBusy}
-                remoteEndpoints={remoteOverviews.map(overview => overview.endpoint)}
-                endpointLabelById={endpointLabelById}
-                remoteEndpointId={remoteEndpointId}
-                remoteRootPath={remoteRootPath}
-                remoteMountName={remoteMountName}
-                canCreateRemote={canCreateRemote}
-                remoteStatusSlot={
-                  <RemoteEndpointStatusSlot
-                    t={t}
-                    overview={remoteEndpoint}
-                    busyByEndpointId={busyByEndpointId}
-                    compact
-                    showIdentity={false}
-                    testIdPrefix="workspace-project-mount-remote-status"
-                    onRunAction={endpointId => {
-                      void runRemoteEndpointAction(endpointId)
-                    }}
-                    onReconnect={endpointId => {
-                      void reconnectRemoteEndpoint(endpointId)
-                    }}
-                  />
-                }
-                onChangeRemoteEndpointId={setRemoteEndpointId}
-                onChangeRemoteRootPath={setRemoteRootPath}
-                onChangeRemoteMountName={setRemoteMountName}
-                onCreateRemoteMount={() => {
-                  void createRemoteMount()
-                }}
-                onRefresh={() => {
-                  void (async () => {
-                    setError(null)
-                    setIsBusy(true)
-                    try {
-                      await reloadMounts()
-                      await reloadEndpoints()
-                    } catch (caughtError) {
-                      setError(toErrorMessage(caughtError))
-                    } finally {
-                      setIsBusy(false)
-                    }
-                  })()
-                }}
-                onRequestOpenEndpoints={onRequestOpenEndpoints}
-              />
-            ) : null}
-          </div>
-
-          <div className="cove-window__actions">
-            <button
-              type="button"
-              className="cove-window__action cove-window__action--ghost"
-              disabled={isBusy}
-              data-testid="workspace-project-mount-close"
-              onClick={() => {
-                onClose()
-              }}
-            >
-              {t('common.close')}
-            </button>
-          </div>
-        </section>
-      </div>
+        <div className="cove-window__actions">
+          <button
+            type="button"
+            className="cove-window__action cove-window__action--ghost"
+            disabled={isBusy}
+            data-testid="workspace-project-mount-close"
+            onClick={() => {
+              onClose()
+            }}
+          >
+            {t('common.close')}
+          </button>
+        </div>
+      </Dialog>
     </>
   )
 }

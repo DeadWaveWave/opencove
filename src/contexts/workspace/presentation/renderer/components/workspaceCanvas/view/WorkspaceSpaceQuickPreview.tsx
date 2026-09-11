@@ -1,6 +1,6 @@
 import React from 'react'
 import { useStore } from '@xyflow/react'
-import { GripHorizontal } from 'lucide-react'
+import { FileText, Image as ImageIcon } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { loadDocumentNodeContent } from '../../DocumentNode.helpers'
 import { createMediaObjectUrl } from '../../DocumentNode.media'
@@ -259,7 +259,11 @@ export function WorkspaceSpaceQuickPreview({
             event.stopPropagation()
           }}
         >
-          <GripHorizontal size={14} aria-hidden="true" />
+          {preview.kind === 'image' ? (
+            <ImageIcon size={16} aria-hidden="true" />
+          ) : (
+            <FileText size={16} aria-hidden="true" />
+          )}
           <span>{preview.title}</span>
         </div>
       </header>

@@ -1,0 +1,56 @@
+@media (max-width: 720px) {
+  .cove-dialog.cove-window[role],
+  .cove-dialog.workspace-task-creator[role] {
+    width: calc(100vw - 24px);
+    max-width: 100%;
+    max-height: calc(100dvh - 24px);
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .cove-window .workspace-task-creator__field-grid,
+  .cove-window .cove-window__field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cove-window .cove-window__actions,
+  .workspace-task-creator .workspace-task-creator__actions {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  :is(.cove-window, .anchored-operation-popover)
+    :is(
+      button.cove-window__action,
+      button.workspace-task-creator__action,
+      button.cove-window__segment,
+      button.cove-window__icon-button,
+      button.cove-window__heading-close,
+      button.cove-select__trigger,
+      button.cove-button
+    ) {
+    min-height: 44px;
+  }
+
+  :is(.cove-window, .anchored-operation-popover)
+    :is(.cove-window__icon-button, .cove-window__heading-close) {
+    min-width: 44px;
+  }
+
+  :is(.cove-window, .anchored-operation-popover)
+    :is(.cove-window__field-row, .workspace-task-creator__field-row)
+    :is(input:not([type='checkbox'], [type='radio']), textarea) {
+    min-height: 44px;
+    font-size: max(16px, calc(13px * var(--cove-ui-font-scale)));
+  }
+
+  .cove-window :is(.cove-window__checkbox, .workspace-task-creator__checkbox) {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.cove-window, .workspace-task-creator) :is(button, input, textarea) {
+    transition: none;
+  }
+}

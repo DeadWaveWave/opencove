@@ -10,6 +10,8 @@ import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { FileText } from 'lucide-react'
 import { TaskPromptTemplatesMenu } from '@contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
+import { WindowHeading } from '@app/renderer/components/WindowHeading'
 
 interface TaskEditorWindowProps {
   taskEditor: TaskEditorState | null
@@ -33,6 +35,7 @@ export function TaskEditorWindow({
   saveTaskEdits,
 }: TaskEditorWindowProps): React.JSX.Element | null {
   const { t } = useTranslation()
+  const titleRef = React.useRef<HTMLInputElement | null>(null)
   const workspaceId = useAppStore(state => state.activeWorkspaceId)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
   const [promptTemplatesMenuAnchor, setPromptTemplatesMenuAnchor] = React.useState<{
@@ -51,273 +54,277 @@ export function TaskEditorWindow({
   }
 
   return (
-    <div
-      className="cove-window-backdrop workspace-task-creator-backdrop"
-      onClick={() => {
-        closeTaskEditor()
-      }}
+    <Dialog
+      open
+      backdropClassName="cove-window-backdrop workspace-task-creator-backdrop"
+      className="cove-window workspace-task-creator"
+      data-testid="workspace-task-editor"
+      aria-label={t('taskWindow.editTask')}
+      initialFocusRef={titleRef}
+      focusOutsideSelectors={['.task-prompt-template-menu']}
+      dismissOnEscape={!taskEditor.isSaving && !taskEditor.isGeneratingTitle}
+      dismissOnPointerDownOutside={!taskEditor.isSaving && !taskEditor.isGeneratingTitle}
+      onDismiss={closeTaskEditor}
     >
-      <section
-        className="cove-window workspace-task-creator"
-        data-testid="workspace-task-editor"
-        onClick={event => {
-          event.stopPropagation()
-        }}
-      >
-        <h3>{t('taskWindow.editTask')}</h3>
-        {isTaskAiNamingEnabled ? (
-          <p className="workspace-task-creator__meta">
-            {t('taskWindow.autoTaskProvider', {
-              provider: taskTitleProviderLabel,
-              model: taskTitleModelLabel,
-            })}
-          </p>
-        ) : null}
+      <WindowHeading
+        title={t('taskWindow.editTask')}
+        icon={<FileText size={16} aria-hidden="true" />}
+        onClose={closeTaskEditor}
+        disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+      />
+      {isTaskAiNamingEnabled ? (
+        <p className="workspace-task-creator__meta">
+          {t('taskWindow.autoTaskProvider', {
+            provider: taskTitleProviderLabel,
+            model: taskTitleModelLabel,
+          })}
+        </p>
+      ) : null}
 
-        <div className="workspace-task-creator__field-row">
-          <label htmlFor="workspace-task-editor-title">
-            {isTaskAiNamingEnabled ? t('taskWindow.taskNameOptional') : t('taskWindow.taskName')}
-          </label>
-          <input
-            id="workspace-task-editor-title"
-            data-testid="workspace-task-editor-title"
-            value={taskEditor.title}
-            disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-            placeholder={
-              isTaskAiNamingEnabled
-                ? t('taskWindow.leaveEmptyAutoGenerate')
-                : t('taskWindow.enterTaskName')
-            }
-            onChange={event => {
-              const nextValue = event.target.value
-              setTaskEditor(prev =>
-                prev
-                  ? {
-                      ...prev,
-                      title: nextValue,
-                      titleGeneratedInEditor: false,
-                      error: null,
-                    }
-                  : prev,
-              )
-            }}
-          />
-        </div>
-
-        <div className="workspace-task-creator__field-row">
-          <div className="cove-window__label-row">
-            <label htmlFor="workspace-task-editor-requirement">
-              {t('taskWindow.taskRequirementPrompt')}
-            </label>
-            <button
-              ref={promptTemplatesTriggerRef}
-              type="button"
-              className="cove-window__icon-button"
-              data-testid="workspace-task-editor-open-prompt-templates"
-              disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-              onClick={event => {
-                event.stopPropagation()
-
-                if (isPromptTemplatesMenuOpen) {
-                  setPromptTemplatesMenuAnchor(null)
-                  return
-                }
-
-                const rect = event.currentTarget.getBoundingClientRect()
-                setPromptTemplatesMenuAnchor({
-                  x: rect.right,
-                  y: rect.bottom,
-                })
-              }}
-              aria-label={t('taskPromptTemplates.openMenu')}
-              title={t('taskPromptTemplates.openMenu')}
-            >
-              <FileText size={14} strokeWidth={2.2} />
-            </button>
-          </div>
-          <textarea
-            id="workspace-task-editor-requirement"
-            data-testid="workspace-task-editor-requirement"
-            value={taskEditor.requirement}
-            disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-            placeholder={t('taskWindow.requirementPlaceholder')}
-            onChange={event => {
-              const nextValue = event.target.value
-              setTaskEditor(prev =>
-                prev
-                  ? {
-                      ...prev,
-                      requirement: nextValue,
-                      error: null,
-                    }
-                  : prev,
-              )
-            }}
-          />
-        </div>
-
-        <TaskPromptTemplatesMenu
-          isOpen={isPromptTemplatesMenuOpen}
-          anchor={promptTemplatesMenuAnchor}
-          workspaceId={workspaceId}
-          closeMenu={() => {
-            setPromptTemplatesMenuAnchor(null)
-          }}
-          triggerRef={promptTemplatesTriggerRef}
-          currentRequirement={taskEditor.requirement}
-          isWithinDialog
-          onChangeRequirement={nextRequirement => {
+      <div className="workspace-task-creator__field-row">
+        <label htmlFor="workspace-task-editor-title">
+          {isTaskAiNamingEnabled ? t('taskWindow.taskNameOptional') : t('taskWindow.taskName')}
+        </label>
+        <input
+          ref={titleRef}
+          id="workspace-task-editor-title"
+          data-testid="workspace-task-editor-title"
+          value={taskEditor.title}
+          disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+          placeholder={
+            isTaskAiNamingEnabled
+              ? t('taskWindow.leaveEmptyAutoGenerate')
+              : t('taskWindow.enterTaskName')
+          }
+          onChange={event => {
+            const nextValue = event.target.value
             setTaskEditor(prev =>
               prev
                 ? {
                     ...prev,
-                    requirement: nextRequirement,
+                    title: nextValue,
+                    titleGeneratedInEditor: false,
                     error: null,
                   }
                 : prev,
             )
           }}
-          testIdPrefix="task-editor"
         />
+      </div>
 
-        <div className="workspace-task-creator__field-grid">
-          <div className="workspace-task-creator__field-row">
-            <label htmlFor="workspace-task-editor-priority">{t('taskWindow.priority')}</label>
-            <CoveSelect
-              id="workspace-task-editor-priority"
-              testId="workspace-task-editor-priority"
-              value={taskEditor.priority}
-              disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-              options={TASK_PRIORITY_OPTIONS.map(option => ({
-                value: option.value,
-                label: getTaskPriorityLabel(t, option.value),
-              }))}
-              onChange={nextValue => {
-                const nextPriority = nextValue as TaskPriority
-                setTaskEditor(prev =>
-                  prev
-                    ? {
-                        ...prev,
-                        priority: nextPriority,
-                      }
-                    : prev,
-                )
-              }}
-            />
-          </div>
-
-          <div className="workspace-task-creator__field-row">
-            <label>{t('taskWindow.tagsPreset')}</label>
-            <div
-              className="workspace-task-creator__tag-options"
-              data-testid="workspace-task-editor-tag-options"
-            >
-              {taskTagOptions.length > 0 ? (
-                taskTagOptions.map(tag => {
-                  const checked = taskEditor.selectedTags.includes(tag)
-
-                  return (
-                    <label className="workspace-task-creator__tag-option" key={tag}>
-                      <input
-                        type="checkbox"
-                        data-testid={`workspace-task-editor-tag-option-${tag}`}
-                        checked={checked}
-                        disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-                        onChange={event => {
-                          const isChecked = event.target.checked
-                          setTaskEditor(prev => {
-                            if (!prev) {
-                              return prev
-                            }
-
-                            const nextSelected = isChecked
-                              ? [...prev.selectedTags, tag]
-                              : prev.selectedTags.filter(item => item !== tag)
-
-                            return {
-                              ...prev,
-                              selectedTags: normalizeTaskTagSelection(nextSelected, taskTagOptions),
-                            }
-                          })
-                        }}
-                      />
-                      <span>{tag}</span>
-                    </label>
-                  )
-                })
-              ) : (
-                <span className="workspace-task-creator__hint">
-                  {t('taskWindow.noTaskTagsConfigured')}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {isTaskAiNamingEnabled ? (
-          <label className="cove-window__checkbox workspace-task-creator__checkbox">
-            <input
-              type="checkbox"
-              data-testid="workspace-task-editor-auto-generate-title"
-              checked={taskEditor.autoGenerateTitle}
-              disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-              onChange={event => {
-                setTaskEditor(prev =>
-                  prev
-                    ? {
-                        ...prev,
-                        autoGenerateTitle: event.target.checked,
-                      }
-                    : prev,
-                )
-              }}
-            />
-            <span>{t('taskWindow.autoGenerateWhenEmpty')}</span>
+      <div className="workspace-task-creator__field-row">
+        <div className="cove-window__label-row">
+          <label htmlFor="workspace-task-editor-requirement">
+            {t('taskWindow.taskRequirementPrompt')}
           </label>
-        ) : null}
-
-        {taskEditor.error ? (
-          <p className="cove-window__error workspace-task-creator__error">{taskEditor.error}</p>
-        ) : null}
-
-        <div className="cove-window__actions workspace-task-creator__actions">
           <button
+            ref={promptTemplatesTriggerRef}
             type="button"
-            className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
-            data-testid="workspace-task-edit-cancel"
+            className="cove-window__icon-button"
+            data-testid="workspace-task-editor-open-prompt-templates"
             disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-            onClick={() => {
-              closeTaskEditor()
+            onClick={event => {
+              event.stopPropagation()
+
+              if (isPromptTemplatesMenuOpen) {
+                setPromptTemplatesMenuAnchor(null)
+                return
+              }
+
+              const rect = event.currentTarget.getBoundingClientRect()
+              setPromptTemplatesMenuAnchor({
+                x: rect.right,
+                y: rect.bottom,
+              })
             }}
+            aria-label={t('taskPromptTemplates.openMenu')}
+            title={t('taskPromptTemplates.openMenu')}
           >
-            {t('common.cancel')}
-          </button>
-          {isTaskAiNamingEnabled ? (
-            <button
-              type="button"
-              className="cove-window__action cove-window__action--secondary workspace-task-creator__action workspace-task-creator__action--secondary"
-              data-testid="workspace-task-edit-generate-title"
-              disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-              onClick={() => {
-                void generateTaskEditorTitle()
-              }}
-            >
-              {taskEditor.isGeneratingTitle ? t('common.generating') : t('common.generateByAi')}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--primary workspace-task-creator__action workspace-task-creator__action--primary"
-            data-testid="workspace-task-edit-submit"
-            disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-            onClick={() => {
-              void saveTaskEdits()
-            }}
-          >
-            {taskEditor.isSaving ? t('common.saving') : t('common.save')}
+            <FileText size={14} strokeWidth={2.2} />
           </button>
         </div>
-      </section>
-    </div>
+        <textarea
+          id="workspace-task-editor-requirement"
+          data-testid="workspace-task-editor-requirement"
+          value={taskEditor.requirement}
+          disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+          placeholder={t('taskWindow.requirementPlaceholder')}
+          onChange={event => {
+            const nextValue = event.target.value
+            setTaskEditor(prev =>
+              prev
+                ? {
+                    ...prev,
+                    requirement: nextValue,
+                    error: null,
+                  }
+                : prev,
+            )
+          }}
+        />
+      </div>
+
+      <TaskPromptTemplatesMenu
+        isOpen={isPromptTemplatesMenuOpen}
+        anchor={promptTemplatesMenuAnchor}
+        workspaceId={workspaceId}
+        closeMenu={() => {
+          setPromptTemplatesMenuAnchor(null)
+        }}
+        triggerRef={promptTemplatesTriggerRef}
+        currentRequirement={taskEditor.requirement}
+        isWithinDialog
+        onChangeRequirement={nextRequirement => {
+          setTaskEditor(prev =>
+            prev
+              ? {
+                  ...prev,
+                  requirement: nextRequirement,
+                  error: null,
+                }
+              : prev,
+          )
+        }}
+        testIdPrefix="task-editor"
+      />
+
+      <div className="workspace-task-creator__field-grid">
+        <div className="workspace-task-creator__field-row">
+          <label htmlFor="workspace-task-editor-priority">{t('taskWindow.priority')}</label>
+          <CoveSelect
+            id="workspace-task-editor-priority"
+            testId="workspace-task-editor-priority"
+            value={taskEditor.priority}
+            disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+            options={TASK_PRIORITY_OPTIONS.map(option => ({
+              value: option.value,
+              label: getTaskPriorityLabel(t, option.value),
+            }))}
+            onChange={nextValue => {
+              const nextPriority = nextValue as TaskPriority
+              setTaskEditor(prev =>
+                prev
+                  ? {
+                      ...prev,
+                      priority: nextPriority,
+                    }
+                  : prev,
+              )
+            }}
+          />
+        </div>
+
+        <div className="workspace-task-creator__field-row">
+          <label>{t('taskWindow.tagsPreset')}</label>
+          <div
+            className="workspace-task-creator__tag-options"
+            data-testid="workspace-task-editor-tag-options"
+          >
+            {taskTagOptions.length > 0 ? (
+              taskTagOptions.map(tag => {
+                const checked = taskEditor.selectedTags.includes(tag)
+
+                return (
+                  <label className="workspace-task-creator__tag-option" key={tag}>
+                    <input
+                      type="checkbox"
+                      data-testid={`workspace-task-editor-tag-option-${tag}`}
+                      checked={checked}
+                      disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+                      onChange={event => {
+                        const isChecked = event.target.checked
+                        setTaskEditor(prev => {
+                          if (!prev) {
+                            return prev
+                          }
+
+                          const nextSelected = isChecked
+                            ? [...prev.selectedTags, tag]
+                            : prev.selectedTags.filter(item => item !== tag)
+
+                          return {
+                            ...prev,
+                            selectedTags: normalizeTaskTagSelection(nextSelected, taskTagOptions),
+                          }
+                        })
+                      }}
+                    />
+                    <span>{tag}</span>
+                  </label>
+                )
+              })
+            ) : (
+              <span className="workspace-task-creator__hint">
+                {t('taskWindow.noTaskTagsConfigured')}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isTaskAiNamingEnabled ? (
+        <label className="cove-window__checkbox workspace-task-creator__checkbox">
+          <input
+            type="checkbox"
+            data-testid="workspace-task-editor-auto-generate-title"
+            checked={taskEditor.autoGenerateTitle}
+            disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+            onChange={event => {
+              setTaskEditor(prev =>
+                prev
+                  ? {
+                      ...prev,
+                      autoGenerateTitle: event.target.checked,
+                    }
+                  : prev,
+              )
+            }}
+          />
+          <span>{t('taskWindow.autoGenerateWhenEmpty')}</span>
+        </label>
+      ) : null}
+
+      {taskEditor.error ? (
+        <p className="cove-window__error workspace-task-creator__error">{taskEditor.error}</p>
+      ) : null}
+
+      <div className="cove-window__actions workspace-task-creator__actions">
+        <button
+          type="button"
+          className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
+          data-testid="workspace-task-edit-cancel"
+          disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+          onClick={() => {
+            closeTaskEditor()
+          }}
+        >
+          {t('common.cancel')}
+        </button>
+        {isTaskAiNamingEnabled ? (
+          <button
+            type="button"
+            className="cove-window__action cove-window__action--secondary workspace-task-creator__action workspace-task-creator__action--secondary"
+            data-testid="workspace-task-edit-generate-title"
+            disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+            onClick={() => {
+              void generateTaskEditorTitle()
+            }}
+          >
+            {taskEditor.isGeneratingTitle ? t('common.generating') : t('common.generateByAi')}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="cove-window__action cove-window__action--primary workspace-task-creator__action workspace-task-creator__action--primary"
+          data-testid="workspace-task-edit-submit"
+          disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+          onClick={() => {
+            void saveTaskEdits()
+          }}
+        >
+          {taskEditor.isSaving ? t('common.saving') : t('common.save')}
+        </button>
+      </div>
+    </Dialog>
   )
 }

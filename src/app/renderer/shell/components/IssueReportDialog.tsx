@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { Check, Copy, ExternalLink, FolderOpen, LoaderCircle } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { IssueReportKind, PrepareIssueReportResult } from '@shared/contracts/dto'
@@ -153,198 +153,188 @@ export function IssueReportDialog({
     }
   }
 
-  return createPortal(
-    <div
-      className="cove-window-backdrop issue-report-backdrop"
-      data-testid="issue-report-dialog"
-      onClick={onClose}
+  return (
+    <Dialog
+      open
+      backdropClassName="cove-window-backdrop issue-report-backdrop"
+      backdropTestId="issue-report-dialog"
+      className="cove-window issue-report-window"
+      aria-labelledby="issue-report-title"
+      onDismiss={onClose}
     >
-      <section
-        className="cove-window issue-report-window"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="issue-report-title"
-        onClick={event => {
-          event.stopPropagation()
-        }}
-      >
-        <div className="issue-report-window__header">
-          <div>
-            <h3 id="issue-report-title">{t('issueReport.title')}</h3>
+      <div className="issue-report-window__header">
+        <div>
+          <h3 id="issue-report-title">{t('issueReport.title')}</h3>
+        </div>
+      </div>
+
+      <div className="cove-window__fields issue-report-window__fields">
+        <div className="cove-window__field-row">
+          <label>{t('issueReport.typeLabel')}</label>
+          <div className="issue-report-window__segments">
+            {typeOptions.map(option => (
+              <button
+                key={option.kind}
+                type="button"
+                className={`issue-report-window__segment${
+                  kind === option.kind ? ' issue-report-window__segment--selected' : ''
+                }`}
+                aria-pressed={kind === option.kind}
+                onClick={() => {
+                  const currentDefaultSummaries = [
+                    t('issueReport.defaultSummary.runAgentFailed'),
+                    t('issueReport.defaultSummary.appError'),
+                    t('issueReport.defaultSummary.other'),
+                  ]
+                  setKind(option.kind)
+                  if (summary.trim().length === 0 || currentDefaultSummaries.includes(summary)) {
+                    setSummary(t(`issueReport.defaultSummary.${defaultSummaryKey(option.kind)}`))
+                  }
+                  clearPreparedReport()
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="cove-window__fields issue-report-window__fields">
-          <div className="cove-window__field-row">
-            <label>{t('issueReport.typeLabel')}</label>
-            <div className="issue-report-window__segments">
-              {typeOptions.map(option => (
-                <button
-                  key={option.kind}
-                  type="button"
-                  className={`issue-report-window__segment${
-                    kind === option.kind ? ' issue-report-window__segment--selected' : ''
-                  }`}
-                  aria-pressed={kind === option.kind}
-                  onClick={() => {
-                    const currentDefaultSummaries = [
-                      t('issueReport.defaultSummary.runAgentFailed'),
-                      t('issueReport.defaultSummary.appError'),
-                      t('issueReport.defaultSummary.other'),
-                    ]
-                    setKind(option.kind)
-                    if (summary.trim().length === 0 || currentDefaultSummaries.includes(summary)) {
-                      setSummary(t(`issueReport.defaultSummary.${defaultSummaryKey(option.kind)}`))
-                    }
-                    clearPreparedReport()
-                  }}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="cove-window__field-row">
-            <label htmlFor="issue-report-summary">{t('issueReport.summaryLabel')}</label>
-            <input
-              id="issue-report-summary"
-              data-testid="issue-report-summary"
-              value={summary}
-              placeholder={t('issueReport.summaryPlaceholder')}
-              onChange={event => {
-                setSummary(event.target.value)
-                clearPreparedReport()
-              }}
-            />
-          </div>
-
-          <div className="cove-window__field-row">
-            <label htmlFor="issue-report-description">{t('issueReport.descriptionLabel')}</label>
-            <textarea
-              id="issue-report-description"
-              data-testid="issue-report-description"
-              value={description}
-              placeholder={t('issueReport.descriptionPlaceholder')}
-              onChange={event => {
-                setDescription(event.target.value)
-                clearPreparedReport()
-              }}
-            />
-          </div>
-
-          <div className="issue-report-window__details">
-            <button
-              type="button"
-              className="issue-report-window__details-toggle"
-              aria-expanded={isDetailsOpen}
-              onClick={() => {
-                setIsDetailsOpen(open => !open)
-              }}
-            >
-              <span>{t('issueReport.includedDetails')}</span>
-              <span>{t('issueReport.includedDetailsSummary')}</span>
-            </button>
-
-            {isDetailsOpen ? (
-              <div className="issue-report-window__details-body">
-                <label className="cove-window__checkbox">
-                  <input
-                    type="checkbox"
-                    checked={includeLocalPaths}
-                    onChange={event => {
-                      setIncludeLocalPaths(event.target.checked)
-                      clearPreparedReport()
-                    }}
-                  />
-                  <span>{t('issueReport.includeLocalPaths')}</span>
-                </label>
-                <span className="cove-window__hint">{t('issueReport.localPathsHint')}</span>
-              </div>
-            ) : null}
-          </div>
-
-          {report ? (
-            <div className="issue-report-window__ready" data-testid="issue-report-ready">
-              <Check aria-hidden="true" size={16} />
-              <div>
-                <strong>{t('issueReport.generated')}</strong>
-                <span>
-                  {t('issueReport.generatedMeta', { fileName: reportFileName(report.reportPath) })}
-                </span>
-                <span
-                  className="issue-report-window__ready-hint"
-                  data-testid="issue-report-github-subset-hint"
-                >
-                  {t('issueReport.githubSubsetHint')}
-                </span>
-              </div>
-            </div>
-          ) : null}
-
-          {error ? <p className="cove-window__error">{error}</p> : null}
+        <div className="cove-window__field-row">
+          <label htmlFor="issue-report-summary">{t('issueReport.summaryLabel')}</label>
+          <input
+            id="issue-report-summary"
+            data-testid="issue-report-summary"
+            value={summary}
+            placeholder={t('issueReport.summaryPlaceholder')}
+            onChange={event => {
+              setSummary(event.target.value)
+              clearPreparedReport()
+            }}
+          />
         </div>
 
-        <div className="cove-window__actions issue-report-window__actions">
+        <div className="cove-window__field-row">
+          <label htmlFor="issue-report-description">{t('issueReport.descriptionLabel')}</label>
+          <textarea
+            id="issue-report-description"
+            data-testid="issue-report-description"
+            value={description}
+            placeholder={t('issueReport.descriptionPlaceholder')}
+            onChange={event => {
+              setDescription(event.target.value)
+              clearPreparedReport()
+            }}
+          />
+        </div>
+
+        <div className="issue-report-window__details">
           <button
             type="button"
-            className="cove-window__action cove-window__action--ghost"
-            onClick={onClose}
+            className="issue-report-window__details-toggle"
+            aria-expanded={isDetailsOpen}
+            onClick={() => {
+              setIsDetailsOpen(open => !open)
+            }}
           >
-            {t('common.close')}
+            <span>{t('issueReport.includedDetails')}</span>
+            <span>{t('issueReport.includedDetailsSummary')}</span>
           </button>
-          {report ? (
-            <>
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--secondary"
-                onClick={showReportFile}
+
+          {isDetailsOpen ? (
+            <div className="issue-report-window__details-body">
+              <label className="cove-window__checkbox">
+                <input
+                  type="checkbox"
+                  checked={includeLocalPaths}
+                  onChange={event => {
+                    setIncludeLocalPaths(event.target.checked)
+                    clearPreparedReport()
+                  }}
+                />
+                <span>{t('issueReport.includeLocalPaths')}</span>
+              </label>
+              <span className="cove-window__hint">{t('issueReport.localPathsHint')}</span>
+            </div>
+          ) : null}
+        </div>
+
+        {report ? (
+          <div className="issue-report-window__ready" data-testid="issue-report-ready">
+            <Check aria-hidden="true" size={16} />
+            <div>
+              <strong>{t('issueReport.generated')}</strong>
+              <span>
+                {t('issueReport.generatedMeta', { fileName: reportFileName(report.reportPath) })}
+              </span>
+              <span
+                className="issue-report-window__ready-hint"
+                data-testid="issue-report-github-subset-hint"
               >
-                <FolderOpen aria-hidden="true" size={14} />
-                <span>{t('issueReport.showFile')}</span>
-              </button>
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--secondary"
-                onClick={copyReport}
-              >
-                <Copy aria-hidden="true" size={14} />
-                <span>
-                  {status === 'copied' ? t('issueReport.copied') : t('issueReport.copyReport')}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--primary"
-                onClick={openGitHubIssue}
-              >
-                <ExternalLink aria-hidden="true" size={14} />
-                <span>{t('issueReport.openGitHub')}</span>
-              </button>
-            </>
-          ) : (
+                {t('issueReport.githubSubsetHint')}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
+        {error ? <p className="cove-window__error">{error}</p> : null}
+      </div>
+
+      <div className="cove-window__actions issue-report-window__actions">
+        <button
+          type="button"
+          className="cove-window__action cove-window__action--ghost"
+          onClick={onClose}
+        >
+          {t('common.close')}
+        </button>
+        {report ? (
+          <>
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--secondary"
+              onClick={showReportFile}
+            >
+              <FolderOpen aria-hidden="true" size={14} />
+              <span>{t('issueReport.showFile')}</span>
+            </button>
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--secondary"
+              onClick={copyReport}
+            >
+              <Copy aria-hidden="true" size={14} />
+              <span>
+                {status === 'copied' ? t('issueReport.copied') : t('issueReport.copyReport')}
+              </span>
+            </button>
             <button
               type="button"
               className="cove-window__action cove-window__action--primary"
-              data-testid="issue-report-generate"
-              disabled={status === 'generating'}
-              onClick={() => {
-                void prepareReport()
-              }}
+              onClick={openGitHubIssue}
             >
-              {status === 'generating' ? (
-                <LoaderCircle aria-hidden="true" size={14} className="issue-report-window__spin" />
-              ) : null}
-              <span>
-                {status === 'generating'
-                  ? t('issueReport.regenerating')
-                  : t('issueReport.generate')}
-              </span>
+              <ExternalLink aria-hidden="true" size={14} />
+              <span>{t('issueReport.openGitHub')}</span>
             </button>
-          )}
-        </div>
-      </section>
-    </div>,
-    document.body,
+          </>
+        ) : (
+          <button
+            type="button"
+            className="cove-window__action cove-window__action--primary"
+            data-testid="issue-report-generate"
+            disabled={status === 'generating'}
+            onClick={() => {
+              void prepareReport()
+            }}
+          >
+            {status === 'generating' ? (
+              <LoaderCircle aria-hidden="true" size={14} className="issue-report-window__spin" />
+            ) : null}
+            <span>
+              {status === 'generating' ? t('issueReport.regenerating') : t('issueReport.generate')}
+            </span>
+          </button>
+        )}
+      </div>
+    </Dialog>
   )
 }

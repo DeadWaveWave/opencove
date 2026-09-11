@@ -11,13 +11,13 @@
   font-weight: inherit;
   line-height: 1.3;
   white-space: nowrap;
-  border: 1px solid color-mix(in srgb, var(--cove-label-blue) 64%, var(--cove-border));
+  border: 1px solid color-mix(in srgb, var(--cove-accent) 64%, var(--cove-border));
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--cove-label-blue) 32%, var(--cove-window-surface)),
-    color-mix(in srgb, var(--cove-label-blue) 22%, var(--cove-window-surface))
+    color-mix(in srgb, var(--cove-accent) 32%, var(--cove-window-surface)),
+    color-mix(in srgb, var(--cove-accent) 22%, var(--cove-window-surface))
   );
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-label-blue) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-accent) 12%, transparent);
   backdrop-filter: blur(8px) saturate(140%);
   color: var(--cove-text);
   cursor: pointer;
@@ -30,20 +30,20 @@
 }
 
 .workspace-space-region__files-pill:hover {
-  border-color: color-mix(in srgb, var(--cove-label-blue) 78%, var(--cove-border));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-label-blue) 18%, transparent);
+  border-color: color-mix(in srgb, var(--cove-accent) 78%, var(--cove-border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-accent) 18%, transparent);
 }
 
 .workspace-space-region__files-pill--active {
-  border-color: color-mix(in srgb, var(--cove-label-blue) 88%, var(--cove-border));
+  border-color: color-mix(in srgb, var(--cove-accent) 88%, var(--cove-border));
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--cove-label-blue) 38%, var(--cove-window-surface)),
-    color-mix(in srgb, var(--cove-label-blue) 26%, var(--cove-window-surface))
+    color-mix(in srgb, var(--cove-accent) 38%, var(--cove-window-surface)),
+    color-mix(in srgb, var(--cove-accent) 26%, var(--cove-window-surface))
   );
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--cove-label-blue) 22%, transparent),
-    0 0 18px color-mix(in srgb, var(--cove-label-blue) 18%, transparent);
+    inset 0 0 0 1px color-mix(in srgb, var(--cove-accent) 22%, transparent),
+    0 0 18px color-mix(in srgb, var(--cove-accent) 18%, transparent);
 }
 
 .workspace-space-region__files-pill:focus-visible {
@@ -74,8 +74,8 @@
   min-width: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--cove-label-blue) 62%, transparent);
-  background: color-mix(in srgb, var(--cove-label-blue) 22%, var(--cove-window-surface));
+  border: 1px solid color-mix(in srgb, var(--cove-accent) 62%, transparent);
+  background: color-mix(in srgb, var(--cove-accent) 22%, var(--cove-window-surface));
   color: var(--cove-text);
   font-size: calc(10px * var(--cove-ui-font-scale));
   line-height: 18px;
@@ -90,16 +90,10 @@
   z-index: 8;
   pointer-events: auto;
   transform-origin: top left;
-  border: 1px solid var(--cove-node-border);
-  border-radius: 14px;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--cove-window-surface) 98%, var(--cove-surface)),
-    color-mix(in srgb, var(--cove-surface-strong) 98%, var(--cove-window-surface))
-  );
-  box-shadow:
-    0 14px 36px color-mix(in srgb, var(--cove-shadow-color-elevated) 72%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--cove-border-subtle) 46%, transparent) inset;
+  border: 1px solid color-mix(in srgb, var(--cove-accent) 30%, var(--cove-node-border));
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: var(--cove-node-shadow);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -113,15 +107,39 @@
 }
 
 .workspace-space-explorer__header {
-  min-height: 40px;
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 0 10px 0 12px;
+  gap: 8px;
+  padding: 3px 6px 3px 10px;
   border-bottom: 1px solid var(--cove-node-header-border);
-  background: color-mix(in srgb, var(--cove-terminal-node-header-surface) 92%, transparent);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--cove-accent) 12%, var(--cove-node-header-surface)),
+    var(--cove-node-header-surface) 85%
+  );
+  backdrop-filter: var(--cove-pixel-header-filter, blur(6px));
   cursor: grab;
+}
+
+.workspace-space-explorer__header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--cove-pixel-blue),
+    color-mix(in srgb, var(--cove-pixel-cyan) 50%, transparent) 42%,
+    color-mix(in srgb, var(--cove-pixel-mint) 25%, transparent) 65%,
+    transparent
+  );
 }
 
 .workspace-space-explorer__header:active {
@@ -132,7 +150,7 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 1 1 auto;
 }
 
@@ -140,19 +158,20 @@
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  color: var(--cove-text-muted);
-  opacity: 0.78;
+  color: var(--cove-accent-text);
 }
 
 .workspace-space-explorer__identity-copy {
   min-width: 0;
-  display: grid;
-  gap: 1px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .workspace-space-explorer__title {
   font-size: calc(12px * var(--cove-ui-font-scale));
-  font-weight: 600;
+  flex: 0 0 auto;
+  font-weight: 500;
   color: var(--cove-text);
   white-space: nowrap;
   overflow: hidden;
@@ -160,8 +179,23 @@
 }
 
 .workspace-space-explorer__subtitle {
-  font-size: calc(10px * var(--cove-ui-font-scale));
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: calc(11px * var(--cove-ui-font-scale));
   color: var(--cove-text-muted);
+}
+
+.workspace-space-explorer__subtitle svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  color: var(--cove-text-faint);
+}
+
+.workspace-space-explorer__subtitle span {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -177,7 +211,8 @@
 .workspace-space-explorer__header-action {
   width: 28px;
   height: 28px;
-  border-radius: 10px;
+  flex: 0 0 auto;
+  border-radius: 5px;
   border: none;
   background: transparent;
   color: var(--cove-text-muted);
@@ -199,6 +234,11 @@
 .workspace-space-explorer__header-action:hover {
   background: var(--cove-surface-hover);
   color: var(--cove-text);
+}
+
+.workspace-space-explorer__header-action--close:hover {
+  color: var(--cove-danger);
+  background: var(--cove-danger-surface);
 }
 
 .workspace-space-explorer__header-action:disabled {
@@ -224,18 +264,43 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  background: var(--cove-node-surface);
+}
+
+.workspace-space-explorer__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+
+.workspace-space-explorer__tools {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
 }
 
 .workspace-space-explorer__filter {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  flex: 1 1 110px;
+  min-width: 0;
+  min-height: 28px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  margin: 10px 10px 0 10px;
-  padding: 6px 8px;
+  padding: 0 6px;
   border: 1px solid var(--cove-border-subtle);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--cove-field) 86%, var(--cove-surface-strong));
+  border-radius: 5px;
+  background: var(--cove-field);
+}
+
+.workspace-space-explorer__filter:focus-within {
+  border-color: var(--cove-focus-ring);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cove-focus-ring) 20%, transparent);
 }
 
 .workspace-space-explorer__filter-icon {
@@ -265,7 +330,7 @@
   width: 24px;
   height: 24px;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   background: transparent;
   color: var(--cove-text-muted);
   display: inline-flex;
@@ -293,10 +358,11 @@
   padding: 12px 10px;
   font-size: calc(12px * var(--cove-ui-font-scale));
   color: var(--cove-text-muted);
+  background: var(--cove-node-surface);
 }
 
 .workspace-space-explorer__state--error {
-  color: color-mix(in srgb, var(--cove-label-orange) 72%, var(--cove-text));
+  color: var(--cove-danger);
 }
 
 .workspace-space-explorer__state-title {
@@ -314,7 +380,8 @@
   border: 1px solid var(--cove-border-subtle);
   background: color-mix(in srgb, var(--cove-field) 88%, transparent);
   color: var(--cove-text);
-  border-radius: 999px;
+  border-radius: 5px;
+  min-height: 28px;
   font-size: calc(11px * var(--cove-ui-font-scale));
   padding: 4px 10px;
   cursor: pointer;
@@ -354,9 +421,38 @@
 
 .workspace-space-explorer__resize-handle:hover::before {
   opacity: 0.9;
-  background: color-mix(in srgb, var(--cove-label-blue) 40%, var(--cove-border));
+  background: color-mix(in srgb, var(--cove-accent) 40%, var(--cove-border));
 }
 
 .workspace-space-explorer__resize-handle:active::before {
   opacity: 1;
+}
+
+@media (max-width: 720px), (pointer: coarse) {
+  .workspace-space-explorer__header {
+    min-height: 48px;
+  }
+
+  .workspace-space-explorer__header-action,
+  .workspace-space-explorer__filter-clear {
+    width: 44px;
+    height: 44px;
+  }
+
+  .workspace-space-explorer__filter,
+  .workspace-space-explorer__filter-input,
+  .workspace-space-explorer__state-action {
+    min-height: 44px;
+  }
+
+  .workspace-space-explorer__filter-input {
+    font-size: max(16px, calc(12px * var(--cove-ui-font-scale)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-space-explorer__header-action,
+  .workspace-space-explorer__resize-handle::before {
+    transition: none;
+  }
 }

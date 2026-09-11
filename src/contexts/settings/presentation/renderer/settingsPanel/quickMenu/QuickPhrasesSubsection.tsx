@@ -4,6 +4,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import { SettingsModule } from '../SettingsGroup'
 import { moveItem } from './moveItem'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
 
 type QuickPhraseDraft = {
   id: string
@@ -199,121 +200,121 @@ export function QuickPhrasesSubsection({
       </div>
 
       {phraseEditor ? (
-        <div
-          className="cove-window-backdrop"
-          data-testid="settings-quick-phrase-editor-backdrop"
-          onClick={() => {
+        <Dialog
+          open
+          backdropClassName="cove-window-backdrop"
+          backdropTestId="settings-quick-phrase-editor-backdrop"
+          className="cove-window"
+          aria-label={
+            phraseEditor.mode === 'create'
+              ? t('settingsPanel.quickMenu.phrases.createTitle')
+              : t('settingsPanel.quickMenu.phrases.editTitle')
+          }
+          onDismiss={() => {
             closePhraseEditor()
           }}
         >
-          <section
-            className="cove-window"
-            onClick={event => {
-              event.stopPropagation()
-            }}
-          >
-            <h3>
-              {phraseEditor.mode === 'create'
-                ? t('settingsPanel.quickMenu.phrases.createTitle')
-                : t('settingsPanel.quickMenu.phrases.editTitle')}
-            </h3>
-            <p className="cove-window__meta">{t('settingsPanel.quickMenu.phrases.editorHelp')}</p>
+          <h3>
+            {phraseEditor.mode === 'create'
+              ? t('settingsPanel.quickMenu.phrases.createTitle')
+              : t('settingsPanel.quickMenu.phrases.editTitle')}
+          </h3>
+          <p className="cove-window__meta">{t('settingsPanel.quickMenu.phrases.editorHelp')}</p>
 
-            <div className="cove-window__field-row">
-              <label htmlFor="settings-quick-phrase-title">
-                {t('settingsPanel.quickMenu.phrases.titleLabel')}
-              </label>
+          <div className="cove-window__field-row">
+            <label htmlFor="settings-quick-phrase-title">
+              {t('settingsPanel.quickMenu.phrases.titleLabel')}
+            </label>
+            <input
+              id="settings-quick-phrase-title"
+              value={phraseEditor.draft.title}
+              placeholder={t('settingsPanel.quickMenu.phrases.titlePlaceholder')}
+              onChange={event => {
+                const value = event.target.value
+                setPhraseEditor(previous =>
+                  previous
+                    ? {
+                        ...previous,
+                        draft: { ...previous.draft, title: value },
+                        hasError: false,
+                      }
+                    : null,
+                )
+              }}
+            />
+          </div>
+
+          <div className="cove-window__field-row">
+            <label htmlFor="settings-quick-phrase-content">
+              {t('settingsPanel.quickMenu.phrases.contentLabel')}
+            </label>
+            <textarea
+              id="settings-quick-phrase-content"
+              value={phraseEditor.draft.content}
+              placeholder={t('settingsPanel.quickMenu.phrases.contentPlaceholder')}
+              onChange={event => {
+                const value = event.target.value
+                setPhraseEditor(previous =>
+                  previous
+                    ? {
+                        ...previous,
+                        draft: { ...previous.draft, content: value },
+                        hasError: false,
+                      }
+                    : null,
+                )
+              }}
+            />
+          </div>
+
+          <div className="cove-window__field-row">
+            <label>{t('settingsPanel.quickMenu.phrases.enabled')}</label>
+            <label className="cove-toggle">
               <input
-                id="settings-quick-phrase-title"
-                value={phraseEditor.draft.title}
-                placeholder={t('settingsPanel.quickMenu.phrases.titlePlaceholder')}
+                type="checkbox"
+                checked={phraseEditor.draft.enabled}
+                aria-label={t('settingsPanel.quickMenu.phrases.enabled')}
                 onChange={event => {
-                  const value = event.target.value
                   setPhraseEditor(previous =>
                     previous
                       ? {
                           ...previous,
-                          draft: { ...previous.draft, title: value },
+                          draft: { ...previous.draft, enabled: event.target.checked },
                           hasError: false,
                         }
                       : null,
                   )
                 }}
               />
-            </div>
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
 
-            <div className="cove-window__field-row">
-              <label htmlFor="settings-quick-phrase-content">
-                {t('settingsPanel.quickMenu.phrases.contentLabel')}
-              </label>
-              <textarea
-                id="settings-quick-phrase-content"
-                value={phraseEditor.draft.content}
-                placeholder={t('settingsPanel.quickMenu.phrases.contentPlaceholder')}
-                onChange={event => {
-                  const value = event.target.value
-                  setPhraseEditor(previous =>
-                    previous
-                      ? {
-                          ...previous,
-                          draft: { ...previous.draft, content: value },
-                          hasError: false,
-                        }
-                      : null,
-                  )
-                }}
-              />
-            </div>
+          {phraseEditor.hasError ? (
+            <p className="cove-window__error">{t('settingsPanel.quickMenu.invalidForm')}</p>
+          ) : null}
 
-            <div className="cove-window__field-row">
-              <label>{t('settingsPanel.quickMenu.phrases.enabled')}</label>
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  checked={phraseEditor.draft.enabled}
-                  aria-label={t('settingsPanel.quickMenu.phrases.enabled')}
-                  onChange={event => {
-                    setPhraseEditor(previous =>
-                      previous
-                        ? {
-                            ...previous,
-                            draft: { ...previous.draft, enabled: event.target.checked },
-                            hasError: false,
-                          }
-                        : null,
-                    )
-                  }}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
-            </div>
-
-            {phraseEditor.hasError ? (
-              <p className="cove-window__error">{t('settingsPanel.quickMenu.invalidForm')}</p>
-            ) : null}
-
-            <div className="cove-window__actions">
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--ghost"
-                onClick={() => {
-                  closePhraseEditor()
-                }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--primary"
-                onClick={() => {
-                  savePhrase()
-                }}
-              >
-                {t('common.save')}
-              </button>
-            </div>
-          </section>
-        </div>
+          <div className="cove-window__actions">
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--ghost"
+              onClick={() => {
+                closePhraseEditor()
+              }}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--primary"
+              onClick={() => {
+                savePhrase()
+              }}
+            >
+              {t('common.save')}
+            </button>
+          </div>
+        </Dialog>
       ) : null}
     </SettingsModule>
   )

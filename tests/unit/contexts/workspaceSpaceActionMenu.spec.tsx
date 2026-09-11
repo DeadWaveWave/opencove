@@ -6,7 +6,12 @@ import type { WorkspacePathOpener } from '../../../src/shared/types/api'
 
 function renderMenu(
   openers: WorkspacePathOpener[],
-  options?: { canCreateWorktree?: boolean; canArchive?: boolean; currentLabelColor?: 'blue' },
+  options?: {
+    canCreateWorktree?: boolean
+    canArchive?: boolean
+    currentLabelColor?: 'blue'
+    closeMenu?: () => void
+  },
 ) {
   render(
     <WorkspaceSpaceActionMenu
@@ -15,7 +20,7 @@ function renderMenu(
       canCreateWorktree={options?.canCreateWorktree ?? false}
       canArchive={options?.canArchive ?? false}
       currentLabelColor={options?.currentLabelColor ?? null}
-      closeMenu={() => undefined}
+      closeMenu={options?.closeMenu ?? (() => undefined)}
       setSpaceLabelColor={() => undefined}
       onCreateWorktree={() => undefined}
       onArchive={() => undefined}
@@ -33,6 +38,7 @@ describe('WorkspaceSpaceActionMenu', () => {
   afterEach(() => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   it('sorts openers with Finder first, Terminal second, then alphabetically', () => {
@@ -103,6 +109,49 @@ describe('WorkspaceSpaceActionMenu', () => {
     })
 
     expect(screen.getByTestId('workspace-space-action-open-menu')).toBeVisible()
+  })
+
+  it('keeps keyboard focus on the opener until the submenu is explicitly opened', () => {
+    renderMenu([{ id: 'terminal', label: 'Terminal' }])
+
+    const opener = screen.getByTestId('workspace-space-action-open')
+    fireEvent.focus(opener)
+
+    expect(opener).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByTestId('workspace-space-action-open-menu')).not.toBeInTheDocument()
+
+    fireEvent.click(opener)
+
+    expect(opener).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('workspace-space-action-open-menu')).toBeVisible()
+  })
+
+  it('keeps mobile submenus open after pointer leave and returns without dismissing the root', () => {
+    vi.stubGlobal('innerWidth', 390)
+    const closeMenu = vi.fn()
+    renderMenu([{ id: 'terminal', label: 'Terminal' }], { closeMenu })
+
+    fireEvent.mouseEnter(screen.getByTestId('workspace-space-action-open'))
+    expect(screen.queryByTestId('workspace-space-action-open-menu')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('workspace-space-action-open'))
+    const submenu = screen.getByTestId('workspace-space-action-open-menu')
+    act(() => {
+      fireEvent.mouseEnter(submenu)
+      fireEvent.mouseLeave(submenu)
+      vi.advanceTimersByTime(400)
+    })
+
+    expect(submenu).toBeVisible()
+    fireEvent.click(within(submenu).getByRole('button', { name: 'Back' }))
+
+    expect(screen.queryByTestId('workspace-space-action-open-menu')).not.toBeInTheDocument()
+    expect(screen.getByTestId('workspace-space-action-menu')).toBeVisible()
+    expect(closeMenu).not.toHaveBeenCalled()
+    fireEvent.mouseEnter(screen.getByTestId('workspace-space-action-open'))
+    expect(screen.queryByTestId('workspace-space-action-open-menu')).not.toBeInTheDocument()
+
+    fireEvent.keyDown(screen.getByTestId('workspace-space-action-menu'), { key: 'Escape' })
+    expect(closeMenu).toHaveBeenCalledOnce()
   })
 
   it('can render both create and archive actions together', () => {
@@ -202,6 +251,15 @@ describe('WorkspaceSpaceActionMenu', () => {
 
   it('shows the selected label color check in the swatch center', () => {
     renderMenu([], { currentLabelColor: 'blue' })
+
+    expect(screen.getByTestId('workspace-space-action-label-color-blue')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByTestId('workspace-space-action-label-color-green')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
 
     expect(
       screen.getByTestId('workspace-space-action-label-color-blue').querySelector('svg'),

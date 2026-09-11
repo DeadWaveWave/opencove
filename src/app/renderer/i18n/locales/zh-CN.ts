@@ -14,6 +14,8 @@ import { zhCNWorkspaceCanvas } from './zh-CN.workspaceCanvas'
 
 export const zhCN = {
   common: {
+    actions: '操作',
+    back: '返回',
     add: '添加',
     cancel: '取消',
     close: '关闭',

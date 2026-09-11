@@ -92,6 +92,7 @@ export function TaskNodeActionsMenu({
       {menuPoint ? (
         <ViewportMenuSurface
           open={true}
+          mobileTitle={t('taskNode.moreActions')}
           className="workspace-context-menu workspace-canvas-context-menu task-node__menu"
           data-testid="task-node-menu"
           placement={{

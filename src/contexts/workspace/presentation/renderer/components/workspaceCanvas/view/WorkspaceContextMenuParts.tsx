@@ -1,16 +1,18 @@
 import React from 'react'
+import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
+import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 import {
   Check,
   ChevronRight,
   FileText,
   Globe,
-  Group,
   LayoutGrid,
   ListTodo,
   LoaderCircle,
   Magnet,
   Play,
+  Scan,
   SlidersHorizontal,
   Terminal,
 } from 'lucide-react'
@@ -172,8 +174,9 @@ export function WorkspaceContextPaneMenuContent({
           data-testid="workspace-context-run-agent-provider-toggle"
           className="workspace-context-menu__split-toggle"
           aria-label={t('workspaceContextMenu.runAgent')}
-          onMouseEnter={openAgentProviderSubmenu}
-          onFocus={openAgentProviderSubmenu}
+          aria-haspopup="menu"
+          aria-expanded={isAgentProviderSubmenuOpen}
+          onMouseEnter={menuHoverHandler(openAgentProviderSubmenu)}
           onClick={openAgentProviderSubmenu}
         >
           {isLoadingInstalledProviders ? (
@@ -197,7 +200,7 @@ export function WorkspaceContextPaneMenuContent({
           data-testid="workspace-context-create-space"
           onClick={createSpaceFromContextMenu}
         >
-          <Group className="workspace-context-menu__icon" aria-hidden="true" />
+          <Scan className="workspace-context-menu__icon" aria-hidden="true" />
           <span className="workspace-context-menu__label">
             {t('workspaceContextMenu.createSpace')}
           </span>
@@ -231,8 +234,7 @@ export function WorkspaceContextPaneMenuContent({
         data-testid="workspace-context-arrange-by"
         aria-haspopup="menu"
         aria-expanded={isArrangeSubmenuOpen}
-        onMouseEnter={openArrangeSubmenu}
-        onFocus={openArrangeSubmenu}
+        onMouseEnter={menuHoverHandler(openArrangeSubmenu)}
         onClick={openArrangeSubmenu}
       >
         <SlidersHorizontal className="workspace-context-menu__icon" aria-hidden="true" />
@@ -248,6 +250,7 @@ export function WorkspaceContextPaneMenuContent({
       <button
         type="button"
         data-testid="workspace-context-magnetic-snapping"
+        aria-pressed={magneticSnappingEnabled}
         onClick={onToggleMagneticSnapping}
       >
         <Magnet className="workspace-context-menu__icon" aria-hidden="true" />
@@ -267,6 +270,8 @@ export function WorkspaceContextAgentProviderSubmenu({
   keepSubmenuOpen,
   scheduleSubmenuClose,
   openAgentLauncherForProvider,
+  onBack,
+  onDismiss,
 }: {
   sortedInstalledProviders: AgentProvider[]
   submenuRef: React.RefObject<HTMLDivElement | null>
@@ -274,10 +279,17 @@ export function WorkspaceContextAgentProviderSubmenu({
   keepSubmenuOpen: () => void
   scheduleSubmenuClose: () => void
   openAgentLauncherForProvider: (provider: AgentProvider) => void
+  onBack: () => void
+  onDismiss: () => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
   return (
     <ViewportMenuSurface
       open={true}
+      mobileTitle={t('workspaceContextMenu.runAgent')}
+      isSubmenu
+      onBack={onBack}
+      onDismiss={onDismiss}
       ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-run-agent-provider-menu"
@@ -289,7 +301,7 @@ export function WorkspaceContextAgentProviderSubmenu({
       style={{
         maxHeight: style.maxHeight,
       }}
-      onMouseEnter={keepSubmenuOpen}
+      onMouseEnter={menuHoverHandler(keepSubmenuOpen)}
       onMouseLeave={scheduleSubmenuClose}
     >
       {sortedInstalledProviders.map(provider => (
@@ -301,7 +313,7 @@ export function WorkspaceContextAgentProviderSubmenu({
             openAgentLauncherForProvider(provider)
           }}
         >
-          <Play className="workspace-context-menu__icon" aria-hidden="true" />
+          <AgentProviderIcon provider={provider} className="workspace-context-menu__icon" />
           <span className="workspace-context-menu__label">{AGENT_PROVIDER_LABEL[provider]}</span>
         </button>
       ))}
@@ -316,6 +328,7 @@ export function WorkspaceContextLabelColorSubmenu({
   scheduleSubmenuClose,
   setSelectedNodeLabelColorOverride,
   closeContextMenu,
+  onBack,
 }: {
   submenuRef: React.RefObject<HTMLDivElement | null>
   style: React.CSSProperties
@@ -323,12 +336,17 @@ export function WorkspaceContextLabelColorSubmenu({
   scheduleSubmenuClose: () => void
   setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
   closeContextMenu: () => void
+  onBack: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
   return (
     <ViewportMenuSurface
       open={true}
+      mobileTitle={t('labelColors.title')}
+      isSubmenu
+      onBack={onBack}
+      onDismiss={closeContextMenu}
       ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-selection-label-color-menu"
@@ -340,7 +358,7 @@ export function WorkspaceContextLabelColorSubmenu({
       style={{
         maxHeight: style.maxHeight,
       }}
-      onMouseEnter={keepSubmenuOpen}
+      onMouseEnter={menuHoverHandler(keepSubmenuOpen)}
       onMouseLeave={scheduleSubmenuClose}
     >
       <button
@@ -373,24 +391,33 @@ export function WorkspaceContextLabelColorSubmenu({
         <span className="workspace-context-menu__label">{t('labelColors.none')}</span>
       </button>
 
-      {LABEL_COLORS.map(color => (
-        <button
-          key={color}
-          type="button"
-          data-testid={`workspace-selection-label-color-${color}`}
-          onClick={() => {
-            setSelectedNodeLabelColorOverride(color)
-            closeContextMenu()
-          }}
-        >
-          <span
-            className="workspace-context-menu__icon workspace-label-color-menu__dot"
-            data-cove-label-color={color}
-            aria-hidden="true"
-          />
-          <span className="workspace-context-menu__label">{t(`labelColors.${color}`)}</span>
-        </button>
-      ))}
+      <div className="workspace-context-menu__separator" />
+      <div
+        className="workspace-label-color-menu__swatches"
+        role="group"
+        aria-label={t('labelColors.title')}
+      >
+        {LABEL_COLORS.map(color => (
+          <button
+            key={color}
+            type="button"
+            className="workspace-label-color-menu__swatch"
+            data-testid={`workspace-selection-label-color-${color}`}
+            aria-label={t(`labelColors.${color}`)}
+            title={t(`labelColors.${color}`)}
+            onClick={() => {
+              setSelectedNodeLabelColorOverride(color)
+              closeContextMenu()
+            }}
+          >
+            <span
+              className="workspace-label-color-menu__dot"
+              data-cove-label-color={color}
+              aria-hidden="true"
+            />
+          </button>
+        ))}
+      </div>
     </ViewportMenuSurface>
   )
 }

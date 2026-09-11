@@ -83,7 +83,9 @@ test.describe('Workspace Canvas - Space Explorer', () => {
     }
   })
 
-  test('keeps the canvas clipped and does not show the root branch badge when Explorer opens', async () => {
+  test('keeps the canvas clipped and does not show the root branch badge when Explorer opens', async ({
+    browserName,
+  }, testInfo) => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -118,6 +120,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
             },
           ],
           activeSpaceId: 'space-root-explorer',
+          settings: { uiTheme: 'pixel-light' },
         },
       )
 
@@ -132,6 +135,28 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       const explorer = window.locator('[data-testid="workspace-space-explorer"]')
       await expect(explorer).toBeVisible()
+      await expect(explorer).toHaveCSS('border-radius', '8px')
+      const header = explorer.locator('.workspace-space-explorer__header')
+      await expect(header.getByRole('button')).toHaveCount(1)
+      await expect(header.locator('.lucide-scan')).toHaveCount(1)
+      const chrome = await header.evaluate(element => ({
+        band: getComputedStyle(element, '::before').backgroundImage,
+        material: getComputedStyle(element).backdropFilter,
+        titleRow: getComputedStyle(
+          element.querySelector('.workspace-space-explorer__identity-copy')!,
+        ).display,
+      }))
+      expect(chrome.band).toContain('linear-gradient')
+      expect(chrome.material).toBe('blur(6px)')
+      expect(chrome.titleRow).toBe('flex')
+      const contentOverflow = await explorer.evaluate(element =>
+        Array.from(
+          element.querySelectorAll<HTMLElement>(
+            '.workspace-space-explorer__header, .workspace-space-explorer__toolbar, .workspace-space-explorer__tree',
+          ),
+        ).some(child => child.scrollWidth > child.clientWidth + 1),
+      )
+      expect(contentOverflow).toBe(false)
 
       const layoutOverflow = await window.evaluate(() => {
         const main = document.querySelector('.workspace-main') as HTMLElement | null
@@ -152,6 +177,10 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       await window.waitForTimeout(1_500)
       await expect(branchBadge).toHaveCount(0)
+      await testInfo.attach(`space-explorer-pixel-light-${browserName}`, {
+        body: await explorer.screenshot(),
+        contentType: 'image/png',
+      })
     } finally {
       await electronApp.close()
     }

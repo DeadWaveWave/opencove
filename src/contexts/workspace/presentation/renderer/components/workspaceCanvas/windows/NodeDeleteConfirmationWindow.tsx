@@ -1,6 +1,9 @@
 import React, { type Dispatch, type SetStateAction } from 'react'
 import { useTranslation, type TranslateFn } from '@app/renderer/i18n'
 import type { NodeDeleteConfirmationState } from '../types'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
+import { WindowHeading } from '@app/renderer/components/WindowHeading'
+import { Trash2 } from 'lucide-react'
 
 interface NodeDeleteConfirmationWindowProps {
   nodeDeleteConfirmation: NodeDeleteConfirmationState | null
@@ -65,7 +68,6 @@ export function NodeDeleteConfirmationWindow({
       </button>
       <button
         type="button"
-        autoFocus
         className="cove-window__action cove-window__action--danger workspace-task-creator__action workspace-task-creator__action--danger"
         data-testid="workspace-node-delete-confirm"
         onClick={() => {
@@ -78,25 +80,23 @@ export function NodeDeleteConfirmationWindow({
   )
 
   return (
-    <div
-      className="cove-window-backdrop workspace-task-delete-backdrop workspace-task-creator-backdrop"
-      onClick={() => {
+    <Dialog
+      open
+      role="alertdialog"
+      backdropClassName="cove-window-backdrop workspace-task-delete-backdrop workspace-task-creator-backdrop"
+      className="cove-window workspace-task-delete workspace-task-creator"
+      data-testid="workspace-node-delete-confirmation"
+      aria-label={heading}
+      aria-describedby="workspace-node-delete-description"
+      onDismiss={() => {
         setNodeDeleteConfirmation(null)
       }}
     >
-      <section
-        className="cove-window workspace-task-delete workspace-task-creator"
-        data-testid="workspace-node-delete-confirmation"
-        onClick={event => {
-          event.stopPropagation()
-        }}
-      >
-        <h3>{heading}</h3>
-        <p>{renderDescription(nodeDeleteConfirmation, t)}</p>
-        <div className="cove-window__actions workspace-task-delete__actions workspace-task-creator__actions">
-          {actions}
-        </div>
-      </section>
-    </div>
+      <WindowHeading title={heading} icon={<Trash2 size={16} aria-hidden="true" />} />
+      <p id="workspace-node-delete-description">{renderDescription(nodeDeleteConfirmation, t)}</p>
+      <div className="cove-window__actions workspace-task-delete__actions workspace-task-creator__actions">
+        {actions}
+      </div>
+    </Dialog>
   )
 }

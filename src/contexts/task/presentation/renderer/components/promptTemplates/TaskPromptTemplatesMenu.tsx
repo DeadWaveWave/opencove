@@ -4,6 +4,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { TaskPromptTemplate } from '@contexts/settings/domain/agentSettings'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
 
 type TemplateScope = 'global' | 'project'
 
@@ -214,6 +215,7 @@ export function TaskPromptTemplatesMenu({
     return (
       <ViewportMenuSurface
         open={isOpen}
+        mobileTitle={t('taskPromptTemplates.openMenu')}
         className={`workspace-context-menu task-prompt-template-menu${
           isWithinDialog ? ' task-prompt-template-menu--within-dialog' : ''
         }`}
@@ -343,90 +345,90 @@ export function TaskPromptTemplatesMenu({
       {menu}
 
       {createScope ? (
-        <div
-          className={`cove-window-backdrop task-prompt-template-create-backdrop${
+        <Dialog
+          open
+          backdropClassName={`cove-window-backdrop task-prompt-template-create-backdrop${
             isWithinDialog ? ' task-prompt-template-create-backdrop--within-dialog' : ''
           }`}
-          data-testid={`${testIdPrefix}-prompt-templates-create-window`}
-          onClick={() => {
+          backdropTestId={`${testIdPrefix}-prompt-templates-create-window`}
+          className="cove-window task-prompt-template-create"
+          aria-label={
+            createScope === 'global'
+              ? t('taskPromptTemplates.createGlobalTitle')
+              : t('taskPromptTemplates.createProjectTitle')
+          }
+          onDismiss={() => {
             closeCreateDialog()
           }}
         >
-          <section
-            className="cove-window task-prompt-template-create"
-            onClick={event => {
-              event.stopPropagation()
-            }}
-          >
-            <h3>
-              {createScope === 'global'
-                ? t('taskPromptTemplates.createGlobalTitle')
-                : t('taskPromptTemplates.createProjectTitle')}
-            </h3>
-            <p className="cove-window__meta">{t('taskPromptTemplates.createDescription')}</p>
+          <h3>
+            {createScope === 'global'
+              ? t('taskPromptTemplates.createGlobalTitle')
+              : t('taskPromptTemplates.createProjectTitle')}
+          </h3>
+          <p className="cove-window__meta">{t('taskPromptTemplates.createDescription')}</p>
 
-            <div className="cove-window__field-row">
-              <label htmlFor={`${testIdPrefix}-prompt-template-name`}>
-                {t('taskPromptTemplates.templateName')}
-              </label>
-              <input
-                id={`${testIdPrefix}-prompt-template-name`}
-                data-testid={`${testIdPrefix}-prompt-templates-create-name`}
-                value={nameDraft}
-                disabled={isSaving}
-                placeholder={t('taskPromptTemplates.templateNamePlaceholder')}
-                onChange={event => {
-                  setNameDraft(event.target.value)
-                  setCreateError(null)
-                }}
-              />
-            </div>
+          <div className="cove-window__field-row">
+            <label htmlFor={`${testIdPrefix}-prompt-template-name`}>
+              {t('taskPromptTemplates.templateName')}
+            </label>
+            <input
+              id={`${testIdPrefix}-prompt-template-name`}
+              data-testid={`${testIdPrefix}-prompt-templates-create-name`}
+              value={nameDraft}
+              disabled={isSaving}
+              placeholder={t('taskPromptTemplates.templateNamePlaceholder')}
+              onChange={event => {
+                setNameDraft(event.target.value)
+                setCreateError(null)
+              }}
+            />
+          </div>
 
-            <div className="cove-window__field-row">
-              <label htmlFor={`${testIdPrefix}-prompt-template-content`}>
-                {t('taskPromptTemplates.templateContent')}
-              </label>
-              <textarea
-                id={`${testIdPrefix}-prompt-template-content`}
-                data-testid={`${testIdPrefix}-prompt-templates-create-content`}
-                value={contentDraft}
-                disabled={isSaving}
-                placeholder={t('taskPromptTemplates.templateContentPlaceholder')}
-                onChange={event => {
-                  setContentDraft(event.target.value)
-                  setCreateError(null)
-                }}
-              />
-            </div>
+          <div className="cove-window__field-row">
+            <label htmlFor={`${testIdPrefix}-prompt-template-content`}>
+              {t('taskPromptTemplates.templateContent')}
+            </label>
+            <textarea
+              id={`${testIdPrefix}-prompt-template-content`}
+              data-testid={`${testIdPrefix}-prompt-templates-create-content`}
+              value={contentDraft}
+              disabled={isSaving}
+              placeholder={t('taskPromptTemplates.templateContentPlaceholder')}
+              onChange={event => {
+                setContentDraft(event.target.value)
+                setCreateError(null)
+              }}
+            />
+          </div>
 
-            {createError ? <p className="cove-window__error">{createError}</p> : null}
+          {createError ? <p className="cove-window__error">{createError}</p> : null}
 
-            <div className="cove-window__actions">
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--ghost"
-                data-testid={`${testIdPrefix}-prompt-templates-create-cancel`}
-                disabled={isSaving}
-                onClick={() => {
-                  closeCreateDialog()
-                }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--primary"
-                data-testid={`${testIdPrefix}-prompt-templates-create-save`}
-                disabled={isSaving}
-                onClick={() => {
-                  saveTemplate()
-                }}
-              >
-                {t('common.save')}
-              </button>
-            </div>
-          </section>
-        </div>
+          <div className="cove-window__actions">
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--ghost"
+              data-testid={`${testIdPrefix}-prompt-templates-create-cancel`}
+              disabled={isSaving}
+              onClick={() => {
+                closeCreateDialog()
+              }}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--primary"
+              data-testid={`${testIdPrefix}-prompt-templates-create-save`}
+              disabled={isSaving}
+              onClick={() => {
+                saveTemplate()
+              }}
+            >
+              {t('common.save')}
+            </button>
+          </div>
+        </Dialog>
       ) : null}
     </>
   )

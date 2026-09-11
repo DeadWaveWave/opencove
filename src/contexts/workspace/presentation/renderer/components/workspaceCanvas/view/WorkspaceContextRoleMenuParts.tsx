@@ -1,5 +1,6 @@
 import React from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
+import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 import { Bot, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { ProjectRoleDefinition } from '@contexts/settings/domain/agentSettings'
@@ -22,8 +23,7 @@ export function WorkspaceContextRoleMenuItems({
       data-testid="workspace-context-run-role"
       aria-haspopup="menu"
       aria-expanded={isProjectRolesSubmenuOpen}
-      onMouseEnter={openProjectRolesSubmenu}
-      onFocus={openProjectRolesSubmenu}
+      onMouseEnter={menuHoverHandler(openProjectRolesSubmenu)}
       onClick={openProjectRolesSubmenu}
     >
       <Bot className="workspace-context-menu__icon" aria-hidden="true" />
@@ -48,6 +48,8 @@ export function WorkspaceContextProjectRolesSubmenu({
   openRoleCreator,
   openRoleEditor,
   deleteProjectRole,
+  onBack,
+  onDismiss,
 }: {
   projectRoles: ProjectRoleDefinition[]
   submenuRef: React.RefObject<HTMLDivElement | null>
@@ -58,6 +60,8 @@ export function WorkspaceContextProjectRolesSubmenu({
   openRoleCreator: () => void
   openRoleEditor: (roleId: string) => void
   deleteProjectRole: (roleId: string) => void
+  onBack: () => void
+  onDismiss: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const [activeActionsRoleId, setActiveActionsRoleId] = React.useState<string | null>(null)
@@ -66,6 +70,10 @@ export function WorkspaceContextProjectRolesSubmenu({
   return (
     <ViewportMenuSurface
       open={true}
+      mobileTitle={t('workspaceContextMenu.runRole')}
+      isSubmenu
+      onBack={onBack}
+      onDismiss={onDismiss}
       ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-run-role-menu"
@@ -77,7 +85,7 @@ export function WorkspaceContextProjectRolesSubmenu({
       style={{
         maxHeight: style.maxHeight,
       }}
-      onMouseEnter={keepSubmenuOpen}
+      onMouseEnter={menuHoverHandler(keepSubmenuOpen)}
       onMouseLeave={scheduleSubmenuClose}
     >
       {projectRoles.length > 0 ? (
@@ -100,6 +108,7 @@ export function WorkspaceContextProjectRolesSubmenu({
                 className="workspace-context-menu__split-toggle"
                 data-testid={`workspace-context-run-role-more-${role.id}`}
                 aria-label={t('roleActions.more')}
+                aria-expanded={activeActionsRoleId === role.id}
                 onClick={event => {
                   event.stopPropagation()
                   setPendingDeleteRoleId(null)
@@ -128,6 +137,7 @@ export function WorkspaceContextProjectRolesSubmenu({
                 <button
                   type="button"
                   data-testid={`workspace-context-delete-role-${role.id}`}
+                  className="workspace-context-menu__item--danger"
                   onClick={event => {
                     event.stopPropagation()
                     if (pendingDeleteRoleId === role.id) {

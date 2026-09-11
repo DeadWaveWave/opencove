@@ -1,0 +1,175 @@
+.workspace-context-menu button.workspace-context-menu__item--danger,
+.workspace-context-menu__item--danger .workspace-context-menu__icon {
+  color: var(--cove-danger);
+}
+
+.workspace-context-menu button.workspace-context-menu__item--danger:hover {
+  background: var(--cove-danger-surface);
+}
+
+.workspace-context-menu__split-toggle:hover .workspace-context-menu__chevron--open {
+  transform: none;
+}
+
+.workspace-context-menu__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-label-color-menu__swatches {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+}
+
+.workspace-label-color-menu__swatches button.workspace-label-color-menu__swatch {
+  position: relative;
+  width: 100%;
+  min-height: 32px;
+  justify-content: center;
+  padding: 4px;
+}
+
+.workspace-label-color-menu__swatch .workspace-label-color-menu__dot {
+  width: 16px;
+  height: 16px;
+}
+
+.workspace-context-menu button[aria-pressed='true'] {
+  outline: 1px solid var(--cove-accent);
+  outline-offset: -1px;
+}
+
+.cove-dialog-backdrop.cove-menu-sheet-backdrop {
+  z-index: var(--cove-z-dialog-popover);
+  place-items: end center;
+  background: color-mix(in srgb, var(--cove-backdrop) 60%, transparent);
+  backdrop-filter: blur(3px);
+  padding: 8px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.cove-menu-sheet-backdrop:has(~ .cove-menu-sheet-backdrop) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.workspace-context-menu.cove-menu-sheet {
+  position: relative;
+  width: min(440px, 100%);
+  min-width: 0;
+  max-width: 100%;
+  max-height: min(80dvh, 720px);
+  border-radius: 8px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  animation: cove-menu-sheet-enter 140ms var(--cove-ease-standard);
+}
+
+.cove-menu-sheet__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+
+.workspace-context-menu .cove-menu-sheet__header button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  justify-content: center;
+}
+
+.cove-menu-sheet__title {
+  flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  outline: none;
+}
+
+.cove-menu-sheet__content {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 720px), (pointer: coarse) {
+  .workspace-context-menu button {
+    min-height: 44px;
+    font-size: calc(14px * var(--cove-ui-font-scale));
+  }
+
+  .workspace-context-menu button.workspace-context-menu__split-toggle {
+    min-width: 44px;
+  }
+
+  .workspace-project-context-menu__color-space .workspace-project-context-menu__color-grid,
+  .workspace-space-action-menu__color-strip {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: auto;
+    width: 100%;
+    gap: 4px;
+  }
+
+  .workspace-project-context-menu__color-space {
+    height: auto;
+  }
+
+  .workspace-context-menu button.workspace-project-context-menu__color-button,
+  .workspace-context-menu button.workspace-space-action-menu__color-button,
+  .workspace-context-menu button.workspace-project-context-menu__project-icon-button,
+  .workspace-context-menu button.workspace-label-color-menu__swatch {
+    width: 100% !important;
+    height: 44px !important;
+    min-width: 0;
+    min-height: 44px;
+    max-width: none;
+    max-height: none;
+    flex-basis: auto;
+  }
+
+  .workspace-project-context-menu__space-editor input,
+  .workspace-project-context-menu__rename input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+@keyframes cove-menu-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cove-menu-sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-context-menu,
+  .workspace-context-menu.cove-menu-sheet {
+    animation: none;
+  }
+}

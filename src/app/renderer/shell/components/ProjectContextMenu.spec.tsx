@@ -123,6 +123,12 @@ describe('ProjectContextMenu', () => {
   it('updates a project icon from the context menu', () => {
     renderMenu({ kind: 'project', workspaceId: 'workspace-a' })
 
+    expect(
+      screen
+        .getByTestId('workspace-project-context-menu-icon-default')
+        .getAttribute('aria-pressed'),
+    ).toBe('true')
+
     fireEvent.click(screen.getByTestId('workspace-project-context-menu-icon-code'))
     expect(useAppStore.getState().workspaces[0]?.iconId).toBe('code')
 
@@ -153,6 +159,12 @@ describe('ProjectContextMenu', () => {
 
   it('updates a space label color from the context menu', () => {
     renderMenu({ kind: 'space', workspaceId: 'workspace-a', spaceId: 'space-a' })
+
+    expect(
+      screen
+        .getByTestId('workspace-project-context-menu-label-color-blue')
+        .getAttribute('aria-pressed'),
+    ).toBe('true')
 
     fireEvent.click(screen.getByTestId('workspace-project-context-menu-label-color-green'))
 

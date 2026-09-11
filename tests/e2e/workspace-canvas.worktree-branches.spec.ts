@@ -161,7 +161,7 @@ test.describe('Workspace Canvas - Worktree Branches', () => {
         expect(Math.abs((popoverRect?.x ?? 0) - (actionRect?.x ?? 0))).toBeLessThanOrEqual(2)
         expect(Math.abs((popoverRect?.y ?? 0) - (actionRect?.y ?? 0))).toBeLessThanOrEqual(2)
         expect(motionStyle.animationName).toContain('anchored-operation-popover-in')
-        expect(motionStyle.animationDuration).toBe('0.14s')
+        expect(motionStyle.animationDuration).toBe('0.12s')
         const motionSamples = await window.evaluate(() => {
           return (
             (

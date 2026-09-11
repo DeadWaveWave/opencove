@@ -5,6 +5,7 @@ import type { QuickCommand } from '@contexts/settings/domain/agentSettings'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { SettingsModule } from '../SettingsGroup'
 import { moveItem } from './moveItem'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
 
 type QuickCommandDraft = {
   id: string
@@ -295,41 +296,90 @@ export function QuickCommandsSubsection({
       </div>
 
       {commandEditor ? (
-        <div
-          className="cove-window-backdrop"
-          data-testid="settings-quick-command-editor-backdrop"
-          onClick={() => {
+        <Dialog
+          open
+          backdropClassName="cove-window-backdrop"
+          backdropTestId="settings-quick-command-editor-backdrop"
+          className="cove-window"
+          aria-label={
+            commandEditor.mode === 'create'
+              ? t('settingsPanel.quickMenu.commands.createTitle')
+              : t('settingsPanel.quickMenu.commands.editTitle')
+          }
+          onDismiss={() => {
             closeCommandEditor()
           }}
         >
-          <section
-            className="cove-window"
-            onClick={event => {
-              event.stopPropagation()
-            }}
-          >
-            <h3>
-              {commandEditor.mode === 'create'
-                ? t('settingsPanel.quickMenu.commands.createTitle')
-                : t('settingsPanel.quickMenu.commands.editTitle')}
-            </h3>
-            <p className="cove-window__meta">{t('settingsPanel.quickMenu.commands.editorHelp')}</p>
+          <h3>
+            {commandEditor.mode === 'create'
+              ? t('settingsPanel.quickMenu.commands.createTitle')
+              : t('settingsPanel.quickMenu.commands.editTitle')}
+          </h3>
+          <p className="cove-window__meta">{t('settingsPanel.quickMenu.commands.editorHelp')}</p>
 
+          <div className="cove-window__field-row">
+            <label htmlFor="settings-quick-command-title">
+              {t('settingsPanel.quickMenu.commands.titleLabel')}
+            </label>
+            <input
+              id="settings-quick-command-title"
+              value={commandEditor.draft.title}
+              placeholder={t('settingsPanel.quickMenu.commands.titlePlaceholder')}
+              onChange={event => {
+                const value = event.target.value
+                setCommandEditor(previous =>
+                  previous
+                    ? {
+                        ...previous,
+                        draft: { ...previous.draft, title: value },
+                        hasError: false,
+                      }
+                    : null,
+                )
+              }}
+            />
+          </div>
+
+          <div className="cove-window__field-row">
+            <label htmlFor="settings-quick-command-kind">
+              {t('settingsPanel.quickMenu.commands.kindLabel')}
+            </label>
+            <CoveSelect
+              id="settings-quick-command-kind"
+              testId="settings-quick-command-kind"
+              value={commandEditor.draft.kind}
+              options={commandKindOptions}
+              onChange={nextValue => {
+                const resolvedKind = nextValue === 'url' ? 'url' : 'terminal'
+                setCommandEditor(previous =>
+                  previous
+                    ? {
+                        ...previous,
+                        draft: { ...previous.draft, kind: resolvedKind },
+                        hasError: false,
+                      }
+                    : null,
+                )
+              }}
+            />
+          </div>
+
+          {commandEditor.draft.kind === 'terminal' ? (
             <div className="cove-window__field-row">
-              <label htmlFor="settings-quick-command-title">
-                {t('settingsPanel.quickMenu.commands.titleLabel')}
+              <label htmlFor="settings-quick-command-command">
+                {t('settingsPanel.quickMenu.commands.commandLabel')}
               </label>
-              <input
-                id="settings-quick-command-title"
-                value={commandEditor.draft.title}
-                placeholder={t('settingsPanel.quickMenu.commands.titlePlaceholder')}
+              <textarea
+                id="settings-quick-command-command"
+                value={commandEditor.draft.command}
+                placeholder={t('settingsPanel.quickMenu.commands.commandPlaceholder')}
                 onChange={event => {
                   const value = event.target.value
                   setCommandEditor(previous =>
                     previous
                       ? {
                           ...previous,
-                          draft: { ...previous.draft, title: value },
+                          draft: { ...previous.draft, command: value },
                           hasError: false,
                         }
                       : null,
@@ -337,161 +387,110 @@ export function QuickCommandsSubsection({
                 }}
               />
             </div>
-
+          ) : (
             <div className="cove-window__field-row">
-              <label htmlFor="settings-quick-command-kind">
-                {t('settingsPanel.quickMenu.commands.kindLabel')}
+              <label htmlFor="settings-quick-command-url">
+                {t('settingsPanel.quickMenu.commands.urlLabel')}
               </label>
-              <CoveSelect
-                id="settings-quick-command-kind"
-                testId="settings-quick-command-kind"
-                value={commandEditor.draft.kind}
-                options={commandKindOptions}
-                onChange={nextValue => {
-                  const resolvedKind = nextValue === 'url' ? 'url' : 'terminal'
+              <input
+                id="settings-quick-command-url"
+                value={commandEditor.draft.url}
+                placeholder={t('settingsPanel.quickMenu.commands.urlPlaceholder')}
+                onChange={event => {
+                  const value = event.target.value
                   setCommandEditor(previous =>
                     previous
-                      ? {
-                          ...previous,
-                          draft: { ...previous.draft, kind: resolvedKind },
-                          hasError: false,
-                        }
+                      ? { ...previous, draft: { ...previous.draft, url: value }, hasError: false }
                       : null,
                   )
                 }}
               />
             </div>
+          )}
 
-            {commandEditor.draft.kind === 'terminal' ? (
-              <div className="cove-window__field-row">
-                <label htmlFor="settings-quick-command-command">
-                  {t('settingsPanel.quickMenu.commands.commandLabel')}
-                </label>
-                <textarea
-                  id="settings-quick-command-command"
-                  value={commandEditor.draft.command}
-                  placeholder={t('settingsPanel.quickMenu.commands.commandPlaceholder')}
+          <div className="cove-window__field-row">
+            <div className="cove-window__label-row">
+              <label htmlFor={enabledToggleId}>
+                {t('settingsPanel.quickMenu.commands.enabled')}
+              </label>
+              <label className="cove-toggle">
+                <input
+                  id={enabledToggleId}
+                  type="checkbox"
+                  checked={commandEditor.draft.enabled}
                   onChange={event => {
-                    const value = event.target.value
                     setCommandEditor(previous =>
                       previous
                         ? {
                             ...previous,
-                            draft: { ...previous.draft, command: value },
+                            draft: { ...previous.draft, enabled: event.target.checked },
                             hasError: false,
                           }
                         : null,
                     )
                   }}
                 />
-              </div>
-            ) : (
-              <div className="cove-window__field-row">
-                <label htmlFor="settings-quick-command-url">
-                  {t('settingsPanel.quickMenu.commands.urlLabel')}
-                </label>
+                <span className="cove-toggle__slider"></span>
+              </label>
+            </div>
+            <span className="cove-window__hint">
+              {t('settingsPanel.quickMenu.commands.enabledHelp')}
+            </span>
+          </div>
+
+          <div className="cove-window__field-row">
+            <div className="cove-window__label-row">
+              <label htmlFor={pinnedToggleId}>{t('settingsPanel.quickMenu.commands.pinned')}</label>
+              <label className="cove-toggle">
                 <input
-                  id="settings-quick-command-url"
-                  value={commandEditor.draft.url}
-                  placeholder={t('settingsPanel.quickMenu.commands.urlPlaceholder')}
+                  id={pinnedToggleId}
+                  type="checkbox"
+                  checked={commandEditor.draft.pinned}
                   onChange={event => {
-                    const value = event.target.value
                     setCommandEditor(previous =>
                       previous
-                        ? { ...previous, draft: { ...previous.draft, url: value }, hasError: false }
+                        ? {
+                            ...previous,
+                            draft: { ...previous.draft, pinned: event.target.checked },
+                            hasError: false,
+                          }
                         : null,
                     )
                   }}
                 />
-              </div>
-            )}
-
-            <div className="cove-window__field-row">
-              <div className="cove-window__label-row">
-                <label htmlFor={enabledToggleId}>
-                  {t('settingsPanel.quickMenu.commands.enabled')}
-                </label>
-                <label className="cove-toggle">
-                  <input
-                    id={enabledToggleId}
-                    type="checkbox"
-                    checked={commandEditor.draft.enabled}
-                    onChange={event => {
-                      setCommandEditor(previous =>
-                        previous
-                          ? {
-                              ...previous,
-                              draft: { ...previous.draft, enabled: event.target.checked },
-                              hasError: false,
-                            }
-                          : null,
-                      )
-                    }}
-                  />
-                  <span className="cove-toggle__slider"></span>
-                </label>
-              </div>
-              <span className="cove-window__hint">
-                {t('settingsPanel.quickMenu.commands.enabledHelp')}
-              </span>
+                <span className="cove-toggle__slider"></span>
+              </label>
             </div>
+            <span className="cove-window__hint">
+              {t('settingsPanel.quickMenu.commands.pinnedHelp')}
+            </span>
+          </div>
 
-            <div className="cove-window__field-row">
-              <div className="cove-window__label-row">
-                <label htmlFor={pinnedToggleId}>
-                  {t('settingsPanel.quickMenu.commands.pinned')}
-                </label>
-                <label className="cove-toggle">
-                  <input
-                    id={pinnedToggleId}
-                    type="checkbox"
-                    checked={commandEditor.draft.pinned}
-                    onChange={event => {
-                      setCommandEditor(previous =>
-                        previous
-                          ? {
-                              ...previous,
-                              draft: { ...previous.draft, pinned: event.target.checked },
-                              hasError: false,
-                            }
-                          : null,
-                      )
-                    }}
-                  />
-                  <span className="cove-toggle__slider"></span>
-                </label>
-              </div>
-              <span className="cove-window__hint">
-                {t('settingsPanel.quickMenu.commands.pinnedHelp')}
-              </span>
-            </div>
+          {commandEditor.hasError ? (
+            <p className="cove-window__error">{t('settingsPanel.quickMenu.invalidForm')}</p>
+          ) : null}
 
-            {commandEditor.hasError ? (
-              <p className="cove-window__error">{t('settingsPanel.quickMenu.invalidForm')}</p>
-            ) : null}
-
-            <div className="cove-window__actions">
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--ghost"
-                onClick={() => {
-                  closeCommandEditor()
-                }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--primary"
-                onClick={() => {
-                  saveCommand()
-                }}
-              >
-                {t('common.save')}
-              </button>
-            </div>
-          </section>
-        </div>
+          <div className="cove-window__actions">
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--ghost"
+              onClick={() => {
+                closeCommandEditor()
+              }}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--primary"
+              onClick={() => {
+                saveCommand()
+              }}
+            >
+              {t('common.save')}
+            </button>
+          </div>
+        </Dialog>
       ) : null}
     </SettingsModule>
   )

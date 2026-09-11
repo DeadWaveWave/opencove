@@ -11,7 +11,7 @@
 .cove-window__intro {
   margin: 0;
   max-width: 48rem;
-  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-size: calc(13px * var(--cove-ui-font-scale));
   line-height: 1.55;
   color: var(--cove-text-muted);
   text-wrap: balance;
@@ -44,9 +44,9 @@
 .cove-window__segmented {
   display: inline-flex;
   align-self: flex-start;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 12px;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
   border: 1px solid var(--cove-border-subtle);
   background: color-mix(in srgb, var(--cove-field) 74%, transparent);
 }
@@ -56,7 +56,7 @@
   border: 0;
   background: transparent;
   color: var(--cove-text-muted);
-  border-radius: 9px;
+  border-radius: 5px;
   padding: 8px 12px;
   font-size: calc(12px * var(--cove-ui-font-scale));
   font-weight: 600;
@@ -95,14 +95,15 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid var(--cove-border-subtle);
-  background: color-mix(in srgb, var(--cove-field) 78%, transparent);
+  padding: 16px 0 0;
+  border-radius: 0;
+  border: 0;
+  border-top: 1px solid var(--cove-border-subtle);
+  background: transparent;
 }
 
 .cove-window__section-card--subtle {
-  background: color-mix(in srgb, var(--cove-window-surface) 78%, var(--cove-field));
+  background: transparent;
 }
 
 .cove-window__section-card-heading {
@@ -144,10 +145,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px dashed color-mix(in srgb, var(--cove-border-subtle) 82%, transparent);
-  background: color-mix(in srgb, var(--cove-window-surface) 86%, var(--cove-field));
+  padding: 12px 0;
+  border-radius: 0;
+  border: 0;
+  border-block: 1px solid var(--cove-border-subtle);
+  background: transparent;
 }
 
 .cove-window__path-row {
@@ -183,7 +185,7 @@
   gap: 12px;
   border: 1px solid var(--cove-border-subtle);
   background: var(--cove-field);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 11px 12px;
 }
 
@@ -226,8 +228,8 @@
 .cove-window__badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 3px 10px;
+  border-radius: 4px;
+  padding: 3px 6px;
   font-size: calc(11px * var(--cove-ui-font-scale));
   font-weight: 600;
   line-height: 1.15;
@@ -246,7 +248,7 @@
 
 .remote-directory-picker__list {
   border: 1px solid var(--cove-border-subtle);
-  border-radius: 14px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--cove-window-surface) 82%, var(--cove-field));
   overflow: hidden;
 }
@@ -272,9 +274,16 @@
   color: var(--cove-text);
   padding: 11px 12px;
   cursor: pointer;
+  min-height: 44px;
   transition:
     background-color 0.16s ease,
     color 0.16s ease;
+}
+
+.remote-directory-picker__entry:focus-visible,
+.cove-window__segment:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
 }
 
 .remote-directory-picker__entry:last-child {

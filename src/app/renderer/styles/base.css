@@ -38,6 +38,9 @@
      instead of rebuilding theme colors and geometry locally. */
   --cove-popover: var(--cove-window-surface);
   --cove-popover-border: var(--cove-border);
+  --cove-menu-surface: color-mix(in srgb, var(--cove-window-surface) 94%, transparent);
+  --cove-menu-border: color-mix(in srgb, var(--cove-border) 76%, var(--cove-accent) 24%);
+  --cove-menu-highlight: color-mix(in srgb, var(--cove-accent) 10%, transparent);
   --cove-control: var(--cove-field);
   --cove-control-hover: var(--cove-surface-hover);
   --cove-control-active: color-mix(in srgb, var(--cove-accent) 10%, transparent);

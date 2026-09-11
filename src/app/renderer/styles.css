@@ -62,6 +62,7 @@
 @import './styles/issue-report.css';
 @import './styles/whats-new.css';
 @import './styles/space-archives-window.css';
+@import './styles/menu-surfaces.css';
 
 /* Named themes — extension point for `data-cove-theme-id`.
    Currently ships only built-in themes; user-provided themes follow

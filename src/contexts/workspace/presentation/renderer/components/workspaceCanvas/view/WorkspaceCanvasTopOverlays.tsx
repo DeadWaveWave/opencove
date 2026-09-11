@@ -153,6 +153,7 @@ export function WorkspaceCanvasTopOverlays({
           {isFilterMenuOpen && filterMenuPlacement ? (
             <ViewportMenuSurface
               open={true}
+              mobileTitle={t('labelColors.title')}
               className="workspace-context-menu workspace-label-color-filter__menu"
               data-testid="workspace-label-color-filter-menu"
               placement={filterMenuPlacement}

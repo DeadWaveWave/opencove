@@ -1,6 +1,6 @@
 import React from 'react'
-import { createPortal } from 'react-dom'
 import { AlertTriangle } from 'lucide-react'
+import { Dialog } from './ui/Dialog'
 
 function joinClassNames(...values: Array<string | null | undefined | false>): string {
   return values.filter(value => typeof value === 'string' && value.length > 0).join(' ')
@@ -33,53 +33,48 @@ export function WarningDialog({
   backdropClassName?: string
   dialogClassName?: string
 }): React.JSX.Element {
+  const titleId = React.useId()
   if (typeof document === 'undefined' || !document.body) {
     return <></>
   }
 
-  return createPortal(
-    <div
-      className={joinClassNames(
+  return (
+    <Dialog
+      open
+      role="alertdialog"
+      aria-labelledby={titleId}
+      className={joinClassNames('cove-window', 'workspace-warning-dialog', dialogClassName)}
+      backdropClassName={joinClassNames(
         'cove-window-backdrop',
         'workspace-warning-dialog-backdrop',
         backdropClassName,
       )}
-      data-testid={dataTestId}
-      onClick={() => {
-        if (disableBackdropDismiss) {
-          return
-        }
-
+      backdropTestId={dataTestId}
+      dismissOnEscape={!disableBackdropDismiss}
+      dismissOnPointerDownOutside={!disableBackdropDismiss}
+      onDismiss={() => {
         onBackdropClick?.()
       }}
     >
-      <section
-        className={joinClassNames('cove-window', 'workspace-warning-dialog', dialogClassName)}
-        onClick={event => {
-          event.stopPropagation()
-        }}
-      >
-        <div className="workspace-warning-dialog__header">
-          <div className="workspace-warning-dialog__topline">
-            <div className="workspace-warning-dialog__title-group">
-              <h3>{title}</h3>
-              {summary ? <p className="workspace-warning-dialog__summary">{summary}</p> : null}
-            </div>
-            {statusLabel ? (
-              <div className="workspace-warning-dialog__status" aria-label={statusAriaLabel}>
-                <AlertTriangle size={14} aria-hidden="true" />
-                <span>{statusLabel}</span>
-              </div>
-            ) : null}
+      <div className="workspace-warning-dialog__header">
+        <div className="workspace-warning-dialog__topline">
+          <div className="workspace-warning-dialog__title-group">
+            <h3 id={titleId}>{title}</h3>
+            {summary ? <p className="workspace-warning-dialog__summary">{summary}</p> : null}
           </div>
+          {statusLabel ? (
+            <div className="workspace-warning-dialog__status" aria-label={statusAriaLabel}>
+              <AlertTriangle size={14} aria-hidden="true" />
+              <span>{statusLabel}</span>
+            </div>
+          ) : null}
         </div>
+      </div>
 
-        {lead ? <div className="workspace-warning-dialog__lead">{lead}</div> : null}
-        {children}
+      {lead ? <div className="workspace-warning-dialog__lead">{lead}</div> : null}
+      {children}
 
-        <div className="cove-window__actions workspace-warning-dialog__actions">{actions}</div>
-      </section>
-    </div>,
-    document.body,
+      <div className="cove-window__actions workspace-warning-dialog__actions">{actions}</div>
+    </Dialog>
   )
 }

@@ -11,6 +11,7 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import { providerLabel } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 import { formatTaskTimestamp, resolveAgentSessionTone } from './helpers'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
 
 interface LinkedAgentSummary {
   nodeId: string
@@ -187,6 +188,7 @@ export function TaskNodeAgentSessions({
       {agentSessionMenu ? (
         <ViewportMenuSurface
           open={true}
+          mobileTitle={t('terminalNodeHeader.sessionList')}
           className="workspace-context-menu task-agent-session-menu"
           data-testid="task-node-agent-session-menu"
           placement={{
@@ -222,6 +224,7 @@ export function TaskNodeAgentSessions({
           <button
             type="button"
             data-testid={`task-node-agent-session-menu-remove-${agentSessionMenu.recordId}`}
+            className="workspace-context-menu__item--danger"
             onClick={() => {
               onRemoveAgentSessionRecord(agentSessionMenu.recordId)
               setAgentSessionMenu(null)
@@ -234,62 +237,58 @@ export function TaskNodeAgentSessions({
       ) : null}
 
       {resumeConfirmRecord ? (
-        <div
-          className="cove-window-backdrop task-agent-resume-backdrop"
-          data-testid="task-node-agent-session-resume-confirm"
-          onClick={() => {
+        <Dialog
+          open
+          backdropClassName="cove-window-backdrop task-agent-resume-backdrop"
+          backdropTestId="task-node-agent-session-resume-confirm"
+          className="cove-window task-agent-resume"
+          aria-label={t('taskNode.resumeDialog.title')}
+          onDismiss={() => {
             setResumeConfirmRecordId(null)
           }}
         >
-          <section
-            className="cove-window task-agent-resume"
-            onClick={event => {
-              event.stopPropagation()
-            }}
-          >
-            <h3>{t('taskNode.resumeDialog.title')}</h3>
-            <p className="cove-window__meta">{t('taskNode.resumeDialog.description')}</p>
+          <h3>{t('taskNode.resumeDialog.title')}</h3>
+          <p className="cove-window__meta">{t('taskNode.resumeDialog.description')}</p>
 
-            <div className="cove-window__field-row">
-              <label>{t('taskNode.resumeDialog.boundDirectory')}</label>
-              <input value={resumeConfirmRecord.boundDirectory} disabled />
-            </div>
+          <div className="cove-window__field-row">
+            <label>{t('taskNode.resumeDialog.boundDirectory')}</label>
+            <input value={resumeConfirmRecord.boundDirectory} disabled />
+          </div>
 
-            <div className="cove-window__field-row">
-              <label>{t('taskNode.resumeDialog.currentDirectory')}</label>
-              <input value={currentDirectory} disabled />
-            </div>
+          <div className="cove-window__field-row">
+            <label>{t('taskNode.resumeDialog.currentDirectory')}</label>
+            <input value={currentDirectory} disabled />
+          </div>
 
-            {isResumeDirectoryMismatch ? (
-              <p className="cove-window__error">{t('taskNode.resumeDialog.mismatch')}</p>
-            ) : (
-              <p className="cove-window__meta">{t('taskNode.resumeDialog.aligned')}</p>
-            )}
+          {isResumeDirectoryMismatch ? (
+            <p className="cove-window__error">{t('taskNode.resumeDialog.mismatch')}</p>
+          ) : (
+            <p className="cove-window__meta">{t('taskNode.resumeDialog.aligned')}</p>
+          )}
 
-            <div className="cove-window__actions">
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--ghost"
-                onClick={() => {
-                  setResumeConfirmRecordId(null)
-                }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className={`cove-window__action ${isResumeDirectoryMismatch ? 'cove-window__action--danger' : 'cove-window__action--primary'}`}
-                data-testid={`task-node-agent-session-resume-confirm-resume-${resumeConfirmRecord.id}`}
-                onClick={() => {
-                  onResumeAgentSession(resumeConfirmRecord.id)
-                  setResumeConfirmRecordId(null)
-                }}
-              >
-                {t('taskNode.resume')}
-              </button>
-            </div>
-          </section>
-        </div>
+          <div className="cove-window__actions">
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--ghost"
+              onClick={() => {
+                setResumeConfirmRecordId(null)
+              }}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className={`cove-window__action ${isResumeDirectoryMismatch ? 'cove-window__action--danger' : 'cove-window__action--primary'}`}
+              data-testid={`task-node-agent-session-resume-confirm-resume-${resumeConfirmRecord.id}`}
+              onClick={() => {
+                onResumeAgentSession(resumeConfirmRecord.id)
+                setResumeConfirmRecordId(null)
+              }}
+            >
+              {t('taskNode.resume')}
+            </button>
+          </div>
+        </Dialog>
       ) : null}
     </>
   )

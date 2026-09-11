@@ -33,6 +33,8 @@ export function WorkspaceContextArrangeBySubmenu({
   onSelectOrder,
   onSelectSpaceFit,
   onSelectPreserveWindowSizes,
+  onBack,
+  onDismiss,
 }: {
   submenuRef: React.RefObject<HTMLDivElement | null>
   style: React.CSSProperties
@@ -48,12 +50,18 @@ export function WorkspaceContextArrangeBySubmenu({
   onSelectOrder: (order: WorkspaceArrangeOrder) => void
   onSelectSpaceFit: (fit: WorkspaceArrangeSpaceFit) => void
   onSelectPreserveWindowSizes: (enabled: boolean) => void
+  onBack: () => void
+  onDismiss: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
   return (
     <ViewportMenuSurface
       open={true}
+      mobileTitle={t('workspaceContextMenu.arrangeBy')}
+      isSubmenu
+      onBack={onBack}
+      onDismiss={onDismiss}
       ref={submenuRef}
       className="workspace-context-menu workspace-context-menu--submenu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-arrange-by-menu"
@@ -69,6 +77,7 @@ export function WorkspaceContextArrangeBySubmenu({
       <button
         type="button"
         data-testid="workspace-context-arrange-scope-all"
+        aria-pressed={arrangeScope === 'all'}
         disabled={!canArrangeAll}
         onClick={() => {
           onSelectScope('all')
@@ -80,6 +89,7 @@ export function WorkspaceContextArrangeBySubmenu({
       <button
         type="button"
         data-testid="workspace-context-arrange-scope-canvas"
+        aria-pressed={arrangeScope === 'canvas'}
         disabled={!canArrangeCanvas}
         onClick={() => {
           onSelectScope('canvas')
@@ -94,6 +104,7 @@ export function WorkspaceContextArrangeBySubmenu({
         <button
           type="button"
           data-testid="workspace-context-arrange-scope-space"
+          aria-pressed={arrangeScope === 'space'}
           disabled={!canArrangeHitSpace}
           onClick={() => {
             onSelectScope('space')
@@ -111,6 +122,7 @@ export function WorkspaceContextArrangeBySubmenu({
       <button
         type="button"
         data-testid="workspace-context-arrange-order-position"
+        aria-pressed={arrangeOrder === 'position'}
         onClick={() => {
           onSelectOrder('position')
         }}
@@ -123,6 +135,7 @@ export function WorkspaceContextArrangeBySubmenu({
       <button
         type="button"
         data-testid="workspace-context-arrange-order-created"
+        aria-pressed={arrangeOrder === 'createdAt'}
         onClick={() => {
           onSelectOrder('createdAt')
         }}
@@ -141,6 +154,7 @@ export function WorkspaceContextArrangeBySubmenu({
       <button
         type="button"
         data-testid="workspace-context-arrange-preserve-window-sizes"
+        aria-pressed={preserveWindowSizes}
         onClick={() => {
           onSelectPreserveWindowSizes(!preserveWindowSizes)
         }}
@@ -159,6 +173,7 @@ export function WorkspaceContextArrangeBySubmenu({
       <button
         type="button"
         data-testid="workspace-context-arrange-space-fit-tight"
+        aria-pressed={arrangeSpaceFit === 'tight'}
         onClick={() => {
           onSelectSpaceFit('tight')
         }}
@@ -171,6 +186,7 @@ export function WorkspaceContextArrangeBySubmenu({
       <button
         type="button"
         data-testid="workspace-context-arrange-space-fit-keep"
+        aria-pressed={arrangeSpaceFit === 'keep'}
         onClick={() => {
           onSelectSpaceFit('keep')
         }}

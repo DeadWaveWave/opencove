@@ -34,12 +34,12 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
 - 推荐：`background: var(--cove-backdrop)` + `backdrop-filter: blur(4px)`
 
 ### 2.2 Surface
-- 16px 圆角
+- 8px 圆角
 - 边框/底色/阴影必须跟随主题 token（例如 `--cove-window-surface`、`--cove-surface*`、`--cove-border*`、`--cove-shadow-color-*`）
 - 上下文操作浮层使用更紧凑的圆角、内边距与菜单同源的材质，避免呈现为缩小版模态框。
 
 ### 2.3 Input
-- 10px 圆角
+- 6px 圆角
 - `background: var(--cove-field)` + `border: 1px solid var(--cove-border)`
 - Focus 用 `--cove-accent` 的描边 + ring（避免刺眼）
 
@@ -70,8 +70,26 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
 - `cove-window__error`
 
 ### 4.2 各窗口复用策略
-- Agent Launcher / Delete Confirm / Task dialogs 直接复用 `cove-window-*`。
+- 模态窗口复用 `Dialog`，外观通过 `cove-window-*` 与 `WindowHeading` 统一；不用手写 backdrop
+  重新实现焦点、Escape 或遮罩关闭。危险确认初始聚焦取消。
 - Settings 使用同一视觉 token（遮罩、玻璃面板、输入焦点），布局结构保持独立。
+
+### 4.3 菜单与文件窗口
+
+- 菜单统一使用 `ViewportMenuSurface` 与 `--cove-menu-*`，8px 外框、4px 行圆角、30px
+  桌面行高；触屏操作至少 44px。图标、文字、快捷键或子菜单箭头固定分列。
+- Space 使用四角 `Scan` 图标；具体 Agent 使用提供方品牌图标。颜色选择使用色板，已有
+  选择用勾选和 `aria-pressed` 表达；危险操作独立分组。
+- 窄屏菜单在底部显示，实际子菜单通过 `isSubmenu` 表达父子关系，`onBack` 只表达返回动作。
+  内联编辑可以返回，但仍拥有根菜单的画布输入锁。移动菜单焦点由 `Dialog` 管理，桌面菜单
+  复用 `useMenuFocus`；自动定位不能重抓原触发焦点。方向键只滚动菜单内部。
+- 多个模态窗口使用同一个 inert lease owner；最后一个持有者释放后才恢复原始输入状态。
+- Explorer 保留画布窗口身份与拖动/缩放/预览语义，使用 8px 边框、轻量标题与独立工具栏。
+  文件选择使用主题 accent，文件树与搜索在窄宽度换行、滚动，不能挤出窗口。
+
+参考：W3C APG [Menu](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/) 与
+[Modal Dialog](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)。
+菜单导航和模态焦点采用其规则；包含表单或色板的操作面不伪装成纯 ARIA menu。
 
 ## 5) 新窗口开发 Checklist
 

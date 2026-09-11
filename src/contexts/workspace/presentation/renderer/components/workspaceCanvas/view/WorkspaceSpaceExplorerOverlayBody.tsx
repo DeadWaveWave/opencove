@@ -1,6 +1,5 @@
 import React from 'react'
-import { Search, X } from 'lucide-react'
-import { useTranslation, type TranslateFn } from '@app/renderer/i18n'
+import { useTranslation } from '@app/renderer/i18n'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import type { SpaceExplorerOpenDocumentBlock } from '../hooks/useSpaceExplorer.guards'
 import { useWorkspaceSpaceExplorerOverlayKeyboard } from './WorkspaceSpaceExplorerOverlay.keyboard'
@@ -8,6 +7,7 @@ import { useSpaceExplorerOverlayModel } from './WorkspaceSpaceExplorerOverlay.mo
 import type { SpaceExplorerClipboardItem } from './WorkspaceSpaceExplorerOverlay.operations'
 import { WorkspaceSpaceExplorerOverlayContextMenu } from './WorkspaceSpaceExplorerOverlayContextMenu'
 import { WorkspaceSpaceExplorerOverlayHeader } from './WorkspaceSpaceExplorerOverlayHeader'
+import { WorkspaceSpaceExplorerOverlayToolbar } from './WorkspaceSpaceExplorerOverlayToolbar'
 import { WorkspaceSpaceExplorerOverlayWindows } from './WorkspaceSpaceExplorerOverlayWindows'
 import { WorkspaceSpaceExplorerTree } from './WorkspaceSpaceExplorerOverlay.tree'
 
@@ -36,11 +36,9 @@ type WorkspaceSpaceExplorerOverlayBodyReadyProps = Omit<
   'rootUri'
 > & {
   rootUri: string
-  t: TranslateFn
 }
 
 function WorkspaceSpaceExplorerOverlayBodyReady({
-  t,
   spaceName,
   spaceId,
   rootUri,
@@ -195,65 +193,22 @@ function WorkspaceSpaceExplorerOverlayBodyReady({
     <>
       <WorkspaceSpaceExplorerOverlayHeader
         spaceName={spaceName}
-        hasRootError={hasRootError}
         onWindowDragStart={onWindowDragStart}
-        onCreateFile={() => {
-          model.create.start('file')
-        }}
-        onCreateFolder={() => {
-          model.create.start('directory')
-        }}
-        onCollapseAll={model.collapseAll}
-        onRefresh={model.refresh}
         onClose={onClose}
       />
 
       <div className="workspace-space-explorer__body">
-        <div className="workspace-space-explorer__filter nodrag">
-          <Search className="workspace-space-explorer__filter-icon" aria-hidden="true" />
-          <input
-            ref={filterInputRef}
-            className="workspace-space-explorer__filter-input nowheel nodrag"
-            value={model.filter.query}
-            placeholder={t('spaceExplorer.filterPlaceholder')}
-            aria-label={t('spaceExplorer.filterPlaceholder')}
-            data-testid="workspace-space-explorer-filter-input"
-            onPointerDown={event => {
-              event.stopPropagation()
-            }}
-            onChange={event => {
-              model.filter.setQuery(event.target.value)
-            }}
-            onKeyDown={event => {
-              if (event.key !== 'Escape' || model.filter.query.trim().length === 0) {
-                return
-              }
-
-              event.preventDefault()
-              event.stopPropagation()
-              model.filter.clear()
-            }}
-          />
-          {model.filter.query.trim().length > 0 ? (
-            <button
-              type="button"
-              className="workspace-space-explorer__filter-clear"
-              aria-label={t('spaceExplorer.clearFilter')}
-              title={t('spaceExplorer.clearFilter')}
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.preventDefault()
-                event.stopPropagation()
-                model.filter.clear()
-                filterInputRef.current?.focus()
-              }}
-            >
-              <X aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
+        <WorkspaceSpaceExplorerOverlayToolbar
+          query={model.filter.query}
+          inputRef={filterInputRef}
+          hasRootError={hasRootError}
+          onQueryChange={model.filter.setQuery}
+          onClearQuery={model.filter.clear}
+          onCreateFile={() => model.create.start('file')}
+          onCreateFolder={() => model.create.start('directory')}
+          onCollapseAll={model.collapseAll}
+          onRefresh={model.refresh}
+        />
 
         <WorkspaceSpaceExplorerTree
           spaceId={spaceId}
@@ -363,7 +318,6 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
         <>
           <WorkspaceSpaceExplorerOverlayHeader
             spaceName={spaceName}
-            showFileActions={false}
             onWindowDragStart={onWindowDragStart}
             onClose={onClose}
           />
@@ -374,7 +328,6 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
 
     return (
       <WorkspaceSpaceExplorerOverlayBodyReady
-        t={t}
         spaceName={spaceName}
         spaceId={spaceId}
         rootUri={rootUri}

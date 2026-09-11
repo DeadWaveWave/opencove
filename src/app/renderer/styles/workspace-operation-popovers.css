@@ -34,7 +34,7 @@
   overflow: hidden;
   font-size: calc(14px * var(--cove-ui-font-scale));
   font-weight: 650;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -92,7 +92,7 @@
   gap: 2px;
   padding: 2px;
   border: 1px solid color-mix(in srgb, var(--cove-border) 62%, transparent);
-  border-radius: 9px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--cove-surface-strong) 48%, transparent);
 }
 
@@ -160,8 +160,8 @@
 .workspace-space-worktree-popover .workspace-space-worktree__option-row {
   gap: 8px;
   padding: 7px 8px;
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--cove-surface-strong) 44%, transparent);
+  border-radius: 6px;
+  background: transparent;
 }
 
 .workspace-operation-guard {
@@ -243,7 +243,7 @@
 
 .workspace-space-branch-rename-popover .workspace-space-branch-rename__header h3 {
   font-size: calc(13px * var(--cove-ui-font-scale));
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .workspace-space-branch-rename-popover .workspace-space-branch-rename__meta,
@@ -284,7 +284,7 @@
 
 .workspace-space-target-mount > h3 {
   font-size: calc(13px * var(--cove-ui-font-scale));
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .workspace-space-target-mount > p {
@@ -306,7 +306,7 @@
   align-items: start;
   padding: 8px 9px;
   border: 1px solid color-mix(in srgb, var(--cove-border) 64%, transparent);
-  border-radius: 9px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--cove-field) 72%, transparent);
   cursor: pointer;
 }
@@ -399,7 +399,7 @@
 
 .workspace-project-create__header h3 {
   font-size: calc(13px * var(--cove-ui-font-scale));
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .workspace-project-create__header p {
@@ -431,13 +431,13 @@
 
 .workspace-project-create .cove-window__section-card {
   gap: 8px;
-  padding: 9px;
-  border-radius: 10px;
+  padding: 10px 0 0;
+  border-radius: 0;
 }
 
 .workspace-project-create .remote-endpoint-status--compact {
   padding: 8px;
-  border-radius: 9px;
+  border-radius: 6px;
 }
 
 .workspace-project-create

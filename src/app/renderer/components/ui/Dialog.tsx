@@ -6,6 +6,7 @@ import {
 } from '../TransientLayerOwnerContext'
 import { classNames } from './classNames'
 import { DismissableLayer, type DismissableLayerDismissReason } from './DismissableLayer'
+import { acquireInertRootLease } from './inertRootLease'
 
 export type DialogDismissReason = DismissableLayerDismissReason
 
@@ -85,8 +86,13 @@ function isOwnedControlledPortal(dialog: HTMLElement, target: Element): boolean 
   return false
 }
 
-let nextFocusOwnerId = 0
-const activeFocusOwnerIds: number[] = []
+interface DialogFocusOwner {
+  dialog: HTMLElement | null
+  restoreTargets: HTMLElement[]
+  fallbackSelectors: string[]
+}
+
+const activeFocusOwners: DialogFocusOwner[] = []
 let pendingFocusRestoreTimer: number | null = null
 
 function cancelPendingFocusRestore(): void {
@@ -144,24 +150,36 @@ export const Dialog = React.forwardRef<HTMLDivElement, DialogProps>(function Dia
     }
 
     cancelPendingFocusRestore()
-    nextFocusOwnerId += 1
-    const focusOwnerId = nextFocusOwnerId
-    activeFocusOwnerIds.push(focusOwnerId)
-
     const activeElement = document.activeElement
     const capturedFocusTarget =
       activeElement instanceof HTMLElement && activeElement !== document.body ? activeElement : null
     const restoreFocusTarget =
       returnFocus === false ? null : (returnFocus?.current ?? capturedFocusTarget)
-    const inertRootStates = inertRootSelector
-      ? Array.from(document.querySelectorAll<HTMLElement>(inertRootSelector)).map(element => ({
-          element,
-          wasInert: element.hasAttribute('inert'),
-        }))
-      : []
-    for (const { element } of inertRootStates) {
-      element.setAttribute('inert', '')
+    // Retain the ancestor's targets when its trigger may disappear with the whole stack.
+    const parentFocusOwner = activeFocusOwners.findLast(owner =>
+      capturedFocusTarget ? owner.dialog?.contains(capturedFocusTarget) : false,
+    )
+    const focusOwner: DialogFocusOwner = {
+      dialog: dialogRef.current,
+      restoreTargets:
+        returnFocus === false
+          ? []
+          : [
+              ...(restoreFocusTarget ? [restoreFocusTarget] : []),
+              ...(parentFocusOwner?.restoreTargets ?? []),
+            ],
+      fallbackSelectors:
+        returnFocus === false
+          ? []
+          : [
+              ...(fallbackReturnFocusSelector ? [fallbackReturnFocusSelector] : []),
+              ...(parentFocusOwner?.fallbackSelectors ?? []),
+            ],
     }
+    activeFocusOwners.push(focusOwner)
+    const releaseInertRoots = inertRootSelector
+      ? Array.from(document.querySelectorAll<HTMLElement>(inertRootSelector), acquireInertRootLease)
+      : []
 
     const focusDialog = (): void => {
       const dialog = dialogRef.current
@@ -214,18 +232,14 @@ export const Dialog = React.forwardRef<HTMLDivElement, DialogProps>(function Dia
     return () => {
       window.clearTimeout(focusTimer)
       document.removeEventListener('focusin', handleFocusIn, true)
-      for (const { element, wasInert } of inertRootStates) {
-        if (wasInert) {
-          element.setAttribute('inert', '')
-        } else {
-          element.removeAttribute('inert')
-        }
+      for (const release of releaseInertRoots) {
+        release()
       }
 
-      const ownerIndex = activeFocusOwnerIds.lastIndexOf(focusOwnerId)
-      const wasTopFocusOwner = ownerIndex === activeFocusOwnerIds.length - 1
+      const ownerIndex = activeFocusOwners.lastIndexOf(focusOwner)
+      const wasTopFocusOwner = ownerIndex === activeFocusOwners.length - 1
       if (ownerIndex >= 0) {
-        activeFocusOwnerIds.splice(ownerIndex, 1)
+        activeFocusOwners.splice(ownerIndex, 1)
       }
       if (!wasTopFocusOwner || returnFocus === false) {
         return
@@ -234,15 +248,19 @@ export const Dialog = React.forwardRef<HTMLDivElement, DialogProps>(function Dia
       cancelPendingFocusRestore()
       pendingFocusRestoreTimer = window.setTimeout(() => {
         pendingFocusRestoreTimer = null
-        if (restoreFocusTarget?.isConnected) {
-          focusWithoutScrolling(restoreFocusTarget)
+        const availableTarget = focusOwner.restoreTargets.find(
+          target => target.isConnected && !target.closest('[inert]'),
+        )
+        if (availableTarget) {
+          focusWithoutScrolling(availableTarget)
           return
         }
 
-        if (fallbackReturnFocusSelector) {
-          const fallbackTarget = document.querySelector<HTMLElement>(fallbackReturnFocusSelector)
-          if (fallbackTarget?.isConnected) {
+        for (const selector of focusOwner.fallbackSelectors) {
+          const fallbackTarget = document.querySelector<HTMLElement>(selector)
+          if (fallbackTarget?.isConnected && !fallbackTarget.closest('[inert]')) {
             focusWithoutScrolling(fallbackTarget)
+            return
           }
         }
       }, 0)

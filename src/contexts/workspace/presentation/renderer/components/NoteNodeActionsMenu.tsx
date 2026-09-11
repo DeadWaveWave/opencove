@@ -3,6 +3,8 @@ import type { JSX, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEv
 import { useTranslation } from '@app/renderer/i18n'
 import { Check, ChevronRight, Download, ListTodo, MoreHorizontal, Tag } from 'lucide-react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
+import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
+import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 import { LABEL_COLORS, type NodeLabelColorOverride } from '@shared/types/labelColor'
 import {
   MENU_WIDTH,
@@ -42,6 +44,7 @@ export function NoteNodeActionsMenu({
   onSetLabelColorOverride,
 }: NoteNodeActionsMenuProps): JSX.Element {
   const { t } = useTranslation()
+  const compact = useCompactViewport()
   const menuButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const submenuRef = useRef<HTMLDivElement | null>(null)
@@ -68,9 +71,15 @@ export function NoteNodeActionsMenu({
     setPinnedSubmenu(null)
   }, [cancelScheduledSubmenuClose])
 
+  const closeSubmenu = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu(null)
+    setPinnedSubmenu(null)
+  }, [cancelScheduledSubmenuClose])
+
   const scheduleSubmenuClose = useCallback(() => {
     cancelScheduledSubmenuClose()
-    if (pinnedSubmenu !== null) {
+    if (compact || pinnedSubmenu !== null) {
       return
     }
 
@@ -78,7 +87,7 @@ export function NoteNodeActionsMenu({
       closeSubmenuTimeoutRef.current = null
       setOpenSubmenu(null)
     }, SUBMENU_CLOSE_DELAY_MS)
-  }, [cancelScheduledSubmenuClose, pinnedSubmenu])
+  }, [cancelScheduledSubmenuClose, compact, pinnedSubmenu])
 
   const openLabelColorSubmenu = useCallback(
     (options?: { pinned?: boolean }) => {
@@ -219,6 +228,7 @@ export function NoteNodeActionsMenu({
       {menuPoint ? (
         <ViewportMenuSurface
           open={true}
+          mobileTitle={t('noteNode.moreActions')}
           ref={menuRef}
           className="workspace-context-menu workspace-canvas-context-menu note-node__menu"
           data-testid="note-node-menu"
@@ -273,12 +283,7 @@ export function NoteNodeActionsMenu({
             data-testid="note-node-menu-label-color"
             aria-haspopup="menu"
             aria-expanded={shouldShowLabelColorSubmenu}
-            onMouseEnter={() => {
-              openLabelColorSubmenu()
-            }}
-            onFocus={() => {
-              openLabelColorSubmenu()
-            }}
+            onMouseEnter={menuHoverHandler(() => openLabelColorSubmenu())}
             onPointerUp={event => {
               activateFromPointer(event, openPinnedLabelColorSubmenu)
             }}
@@ -301,6 +306,12 @@ export function NoteNodeActionsMenu({
       {shouldShowLabelColorSubmenu ? (
         <ViewportMenuSurface
           open={true}
+          mobileTitle={t('labelColors.title')}
+          isSubmenu
+          onBack={closeSubmenu}
+          onDismiss={closeMenu}
+          dismissOnPointerDownOutside
+          dismissIgnoreRefs={[menuButtonRef, menuRef]}
           ref={submenuRef}
           className="workspace-context-menu workspace-context-menu--submenu workspace-canvas-context-menu workspace-canvas-context-menu--submenu note-node__menu-submenu"
           data-testid="note-node-menu-label-color-menu"
@@ -312,16 +323,17 @@ export function NoteNodeActionsMenu({
           style={{
             maxHeight: submenuMaxHeight,
           }}
-          onMouseEnter={() => {
+          onMouseEnter={menuHoverHandler(() => {
             cancelScheduledSubmenuClose()
             setPinnedSubmenu(null)
             setOpenSubmenu('label-color')
-          }}
+          })}
           onMouseLeave={scheduleSubmenuClose}
         >
           <button
             type="button"
             data-testid="note-node-menu-label-color-auto-inherit"
+            aria-pressed={labelColorOverride === null}
             onPointerUp={event => {
               activateFromPointer(event, () => {
                 setLabelColorOverride(null)
@@ -344,6 +356,7 @@ export function NoteNodeActionsMenu({
           <button
             type="button"
             data-testid="note-node-menu-label-color-none"
+            aria-pressed={labelColorOverride === 'none'}
             onPointerUp={event => {
               activateFromPointer(event, () => {
                 setLabelColorOverride('none')
@@ -363,31 +376,46 @@ export function NoteNodeActionsMenu({
             {renderMenuMark(labelColorOverride === 'none')}
           </button>
 
-          {LABEL_COLORS.map(color => (
-            <button
-              key={color}
-              type="button"
-              data-testid={`note-node-menu-label-color-${color}`}
-              onPointerUp={event => {
-                activateFromPointer(event, () => {
-                  setLabelColorOverride(color)
-                })
-              }}
-              onClick={event => {
-                activateFromClick(event, () => {
-                  setLabelColorOverride(color)
-                })
-              }}
-            >
-              <span
-                className="workspace-context-menu__icon workspace-label-color-menu__dot"
-                data-cove-label-color={color}
-                aria-hidden="true"
-              />
-              <span className="workspace-context-menu__label">{t(`labelColors.${color}`)}</span>
-              {renderMenuMark(labelColorOverride === color)}
-            </button>
-          ))}
+          <div className="workspace-context-menu__separator" />
+          <div
+            className="workspace-label-color-menu__swatches"
+            role="group"
+            aria-label={t('labelColors.title')}
+          >
+            {LABEL_COLORS.map(color => (
+              <button
+                key={color}
+                type="button"
+                className="workspace-label-color-menu__swatch"
+                data-testid={`note-node-menu-label-color-${color}`}
+                aria-label={t(`labelColors.${color}`)}
+                title={t(`labelColors.${color}`)}
+                aria-pressed={labelColorOverride === color}
+                onPointerUp={event => {
+                  activateFromPointer(event, () => {
+                    setLabelColorOverride(color)
+                  })
+                }}
+                onClick={event => {
+                  activateFromClick(event, () => {
+                    setLabelColorOverride(color)
+                  })
+                }}
+              >
+                <span
+                  className="workspace-label-color-menu__dot"
+                  data-cove-label-color={color}
+                  aria-hidden="true"
+                />
+                {labelColorOverride === color ? (
+                  <Check
+                    className="workspace-project-context-menu__color-check"
+                    aria-hidden="true"
+                  />
+                ) : null}
+              </button>
+            ))}
+          </div>
         </ViewportMenuSurface>
       ) : null}
     </>

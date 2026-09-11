@@ -9,15 +9,22 @@
   position: fixed;
   z-index: 70;
   padding: 6px;
-  border: 1px solid var(--cove-border-subtle);
-  border-radius: 12px;
-  background: var(--cove-surface-strong);
-  backdrop-filter: blur(24px) saturate(150%);
-  box-shadow: 0 14px 34px var(--cove-shadow-color-elevated);
+  border: 1px solid var(--cove-menu-border);
+  border-radius: 8px;
+  background: var(--cove-menu-surface);
+  backdrop-filter: blur(18px) saturate(120%);
+  box-shadow: var(--cove-shadow-lg);
   min-width: 170px;
+  max-width: calc(100vw - 20px);
+  max-height: calc(100dvh - 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  outline: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  animation: cove-menu-enter 120ms var(--cove-ease-standard);
 }
 
 .task-prompt-template-menu--within-dialog {
@@ -34,11 +41,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  min-height: 30px;
+  flex-shrink: 0;
   border: none;
   background: transparent;
   color: var(--cove-text);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 4px;
+  padding: 6px 8px;
   cursor: pointer;
   font-size: calc(13px * var(--cove-ui-font-scale));
   line-height: 1.2;
@@ -62,7 +72,7 @@
 }
 
 .workspace-context-menu button:hover {
-  background: var(--cove-surface-hover);
+  background: var(--cove-menu-highlight);
 }
 
 .workspace-context-menu button:active {
@@ -70,8 +80,9 @@
 }
 
 .workspace-context-menu button:focus-visible {
-  outline: 2px solid var(--cove-focus-ring);
-  outline-offset: 2px;
+  outline: 1px solid var(--cove-focus-ring);
+  outline-offset: -1px;
+  background: var(--cove-menu-highlight);
 }
 
 .workspace-context-menu__icon {
@@ -79,7 +90,7 @@
   height: 16px;
   flex: 0 0 auto;
   color: var(--cove-text-muted);
-  opacity: 0.6;
+  opacity: 0.85;
   transition:
     opacity 0.15s ease,
     transform 0.15s ease;
@@ -106,11 +117,12 @@
 
 .workspace-context-menu button:hover .workspace-context-menu__icon {
   opacity: 1;
-  transform: translateX(1px);
 }
 
 .workspace-context-menu__label {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .workspace-context-menu__separator {
@@ -162,7 +174,7 @@
 }
 
 .workspace-context-menu__chevron--open {
-  transform: rotate(90deg);
+  color: var(--cove-accent-text);
 }
 
 .workspace-context-menu__role-row .workspace-context-menu__split-main {

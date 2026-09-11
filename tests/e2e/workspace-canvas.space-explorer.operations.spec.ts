@@ -57,7 +57,8 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       await expect.poll(async () => await pathExists(createdFilePath)).toBe(true)
       await expect(createdFileEntry).toBeVisible()
       await expect(createdFileEntry).toHaveClass(/workspace-space-explorer__entry--selected/)
-      await expect(createdFileEntry).toHaveCSS('border-radius', '0px')
+      await expect(createdFileEntry).toHaveCSS('border-radius', '4px')
+      await expect(createdFileEntry).toHaveAttribute('aria-level', '2')
 
       await folderEntry.click({ button: 'right', force: true })
       await expect(contextMenu).toBeVisible()

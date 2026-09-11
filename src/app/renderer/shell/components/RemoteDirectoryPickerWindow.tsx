@@ -15,6 +15,9 @@ import {
 import { dirname, isAbsolutePath, normalizeSlashes } from '../utils/pathHelpers'
 import { useEndpointOverviews } from '../hooks/useEndpointOverviews'
 import { RemoteEndpointStatusPanel } from './RemoteEndpointStatusPanel'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
+import { WindowHeading } from '@app/renderer/components/WindowHeading'
+import { FolderOpen } from 'lucide-react'
 
 function sortEntries(a: FileSystemEntry, b: FileSystemEntry): number {
   const aIsDirectory = a.kind === 'directory'
@@ -281,179 +284,180 @@ export function RemoteDirectoryPickerWindow({
   }
 
   return (
-    <div
-      className="cove-window-backdrop remote-directory-picker-backdrop"
-      data-testid="remote-directory-picker-backdrop"
-      onClick={closePicker}
+    <Dialog
+      open
+      backdropClassName="cove-window-backdrop remote-directory-picker-backdrop"
+      backdropTestId="remote-directory-picker-backdrop"
+      className="cove-window cove-window--xwide"
+      data-testid="remote-directory-picker-window"
+      aria-label={t('remoteDirectoryPicker.title')}
+      onDismiss={closePicker}
     >
-      <section
-        className="cove-window cove-window--xwide"
-        data-testid="remote-directory-picker-window"
-        onClick={event => event.stopPropagation()}
-      >
-        <h3>{t('remoteDirectoryPicker.title')}</h3>
-        <p className="cove-window__intro">
-          {t('remoteDirectoryPicker.description', { endpoint: endpointLabel })}
-        </p>
+      <WindowHeading
+        title={t('remoteDirectoryPicker.title')}
+        icon={<FolderOpen size={16} aria-hidden="true" />}
+      />
+      <p className="cove-window__intro">
+        {t('remoteDirectoryPicker.description', { endpoint: endpointLabel })}
+      </p>
 
-        <div className="cove-window__fields">
-          {error || monitorError ? (
-            <p className="cove-window__error" data-testid="remote-directory-picker-error">
-              {error ?? monitorError}
-            </p>
+      <div className="cove-window__fields">
+        {error || monitorError ? (
+          <p className="cove-window__error" data-testid="remote-directory-picker-error">
+            {error ?? monitorError}
+          </p>
+        ) : null}
+
+        <div className="cove-window__section-card">
+          {overview ? (
+            <RemoteEndpointStatusPanel
+              t={t}
+              overview={overview}
+              compact
+              showIdentity={false}
+              isBusy={isBusy}
+              testIdPrefix="remote-directory-picker-status"
+              onRunRecommendedAction={() => {
+                void runRecommendedAction()
+              }}
+              onReconnect={() => {
+                void handlePrepare('reconnect')
+              }}
+            />
           ) : null}
-
-          <div className="cove-window__section-card">
-            {overview ? (
-              <RemoteEndpointStatusPanel
-                t={t}
-                overview={overview}
-                compact
-                showIdentity={false}
-                isBusy={isBusy}
-                testIdPrefix="remote-directory-picker-status"
-                onRunRecommendedAction={() => {
-                  void runRecommendedAction()
-                }}
-                onReconnect={() => {
-                  void handlePrepare('reconnect')
-                }}
-              />
-            ) : null}
-
-            <div className="cove-window__field-row">
-              <label htmlFor="remote-directory-picker-path">
-                {t('remoteDirectoryPicker.pathLabel')}
-              </label>
-              <div className="cove-window__path-row">
-                <input
-                  id="remote-directory-picker-path"
-                  className="cove-field"
-                  type="text"
-                  ref={pathInputElementRef}
-                  value={pathInput}
-                  disabled={isBusy || !canBrowse}
-                  placeholder={t('remoteDirectoryPicker.pathPlaceholder')}
-                  data-testid="remote-directory-picker-path"
-                  onChange={event => setPathInput(event.target.value)}
-                  onKeyDown={event => {
-                    if (event.key !== 'Enter' || event.nativeEvent.isComposing) {
-                      return
-                    }
-
-                    event.preventDefault()
-                    void loadDirectory(event.currentTarget.value)
-                  }}
-                />
-                <button
-                  type="button"
-                  className="cove-window__action cove-window__action--ghost"
-                  disabled={isBusy || !canBrowse || !parentPath}
-                  data-testid="remote-directory-picker-up"
-                  onClick={() => {
-                    if (!parentPath) {
-                      return
-                    }
-
-                    void loadDirectory(parentPath)
-                  }}
-                >
-                  {t('remoteDirectoryPicker.upAction')}
-                </button>
-                <button
-                  type="button"
-                  className="cove-window__action cove-window__action--ghost"
-                  disabled={isBusy || !canBrowse || refreshCandidate.trim().length === 0}
-                  data-testid="remote-directory-picker-refresh"
-                  onClick={() => {
-                    const typed = pathInputElementRef.current?.value ?? ''
-                    const target = typed.trim().length > 0 ? typed : currentPath
-                    void loadDirectory(target)
-                  }}
-                >
-                  {shouldShowGoLabel ? t('remoteDirectoryPicker.goAction') : t('common.refresh')}
-                </button>
-              </div>
-            </div>
-          </div>
 
           <div className="cove-window__field-row">
-            <label>{t('remoteDirectoryPicker.foldersLabel')}</label>
-            <div className="remote-directory-picker__list">
-              <div className="remote-directory-picker__entries">
-                {entries.length === 0 ? (
-                  <div
-                    className="remote-directory-picker__empty"
-                    data-testid="remote-directory-picker-empty"
-                  >
-                    {isBusy
-                      ? t('common.loading')
-                      : canBrowse
-                        ? t('remoteDirectoryPicker.empty')
-                        : overview
-                          ? t('remoteDirectoryPicker.waitForConnection')
-                          : t('remoteDirectoryPicker.preparing')}
-                  </div>
-                ) : (
-                  entries.map((entry, index) => (
-                    <button
-                      key={entry.uri}
-                      type="button"
-                      disabled={isBusy || !canBrowse}
-                      data-testid={`remote-directory-picker-entry-${String(index)}`}
-                      onClick={() => {
-                        const resolved = fromFileUri(entry.uri)
-                        if (!resolved) {
-                          setError(t('remoteDirectoryPicker.invalidUri'))
-                          return
-                        }
+            <label htmlFor="remote-directory-picker-path">
+              {t('remoteDirectoryPicker.pathLabel')}
+            </label>
+            <div className="cove-window__path-row">
+              <input
+                id="remote-directory-picker-path"
+                className="cove-field"
+                type="text"
+                ref={pathInputElementRef}
+                value={pathInput}
+                disabled={isBusy || !canBrowse}
+                placeholder={t('remoteDirectoryPicker.pathPlaceholder')}
+                data-testid="remote-directory-picker-path"
+                onChange={event => setPathInput(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key !== 'Enter' || event.nativeEvent.isComposing) {
+                    return
+                  }
 
-                        void loadDirectory(resolved)
-                      }}
-                      className="remote-directory-picker__entry"
-                    >
-                      <div className="remote-directory-picker__entry-content">
-                        <div className="remote-directory-picker__entry-name">{entry.name}</div>
-                        {entry.kind !== 'directory' ? (
-                          <div className="remote-directory-picker__entry-note">
-                            {t('remoteDirectoryPicker.unknownKindHint')}
-                          </div>
-                        ) : null}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
+                  event.preventDefault()
+                  void loadDirectory(event.currentTarget.value)
+                }}
+              />
+              <button
+                type="button"
+                className="cove-window__action cove-window__action--ghost"
+                disabled={isBusy || !canBrowse || !parentPath}
+                data-testid="remote-directory-picker-up"
+                onClick={() => {
+                  if (!parentPath) {
+                    return
+                  }
+
+                  void loadDirectory(parentPath)
+                }}
+              >
+                {t('remoteDirectoryPicker.upAction')}
+              </button>
+              <button
+                type="button"
+                className="cove-window__action cove-window__action--ghost"
+                disabled={isBusy || !canBrowse || refreshCandidate.trim().length === 0}
+                data-testid="remote-directory-picker-refresh"
+                onClick={() => {
+                  const typed = pathInputElementRef.current?.value ?? ''
+                  const target = typed.trim().length > 0 ? typed : currentPath
+                  void loadDirectory(target)
+                }}
+              >
+                {shouldShowGoLabel ? t('remoteDirectoryPicker.goAction') : t('common.refresh')}
+              </button>
             </div>
           </div>
-
-          {!error && technicalDetails.length > 0 && !overview?.canBrowse ? (
-            <div className="cove-window__field-help">{technicalDetails[0]}</div>
-          ) : null}
         </div>
 
-        <div className="cove-window__actions">
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--ghost"
-            data-testid="remote-directory-picker-cancel"
-            onClick={closePicker}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--primary"
-            disabled={isBusy || !canBrowse || currentPath.trim().length === 0}
-            data-testid="remote-directory-picker-select"
-            onClick={() => {
-              onSelect(currentPath)
-            }}
-          >
-            {t('remoteDirectoryPicker.selectAction')}
-          </button>
+        <div className="cove-window__field-row">
+          <label>{t('remoteDirectoryPicker.foldersLabel')}</label>
+          <div className="remote-directory-picker__list">
+            <div className="remote-directory-picker__entries">
+              {entries.length === 0 ? (
+                <div
+                  className="remote-directory-picker__empty"
+                  data-testid="remote-directory-picker-empty"
+                >
+                  {isBusy
+                    ? t('common.loading')
+                    : canBrowse
+                      ? t('remoteDirectoryPicker.empty')
+                      : overview
+                        ? t('remoteDirectoryPicker.waitForConnection')
+                        : t('remoteDirectoryPicker.preparing')}
+                </div>
+              ) : (
+                entries.map((entry, index) => (
+                  <button
+                    key={entry.uri}
+                    type="button"
+                    disabled={isBusy || !canBrowse}
+                    data-testid={`remote-directory-picker-entry-${String(index)}`}
+                    onClick={() => {
+                      const resolved = fromFileUri(entry.uri)
+                      if (!resolved) {
+                        setError(t('remoteDirectoryPicker.invalidUri'))
+                        return
+                      }
+
+                      void loadDirectory(resolved)
+                    }}
+                    className="remote-directory-picker__entry"
+                  >
+                    <div className="remote-directory-picker__entry-content">
+                      <div className="remote-directory-picker__entry-name">{entry.name}</div>
+                      {entry.kind !== 'directory' ? (
+                        <div className="remote-directory-picker__entry-note">
+                          {t('remoteDirectoryPicker.unknownKindHint')}
+                        </div>
+                      ) : null}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </div>
-      </section>
-    </div>
+
+        {!error && technicalDetails.length > 0 && !overview?.canBrowse ? (
+          <div className="cove-window__field-help">{technicalDetails[0]}</div>
+        ) : null}
+      </div>
+
+      <div className="cove-window__actions">
+        <button
+          type="button"
+          className="cove-window__action cove-window__action--ghost"
+          data-testid="remote-directory-picker-cancel"
+          onClick={closePicker}
+        >
+          {t('common.cancel')}
+        </button>
+        <button
+          type="button"
+          className="cove-window__action cove-window__action--primary"
+          disabled={isBusy || !canBrowse || currentPath.trim().length === 0}
+          data-testid="remote-directory-picker-select"
+          onClick={() => {
+            onSelect(currentPath)
+          }}
+        >
+          {t('remoteDirectoryPicker.selectAction')}
+        </button>
+      </div>
+    </Dialog>
   )
 }

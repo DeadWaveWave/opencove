@@ -1,11 +1,13 @@
 import React from 'react'
-import { ArrowRight, ChevronRight, Group, Tag, X } from 'lucide-react'
+import { ArrowRight, ChevronRight, Scan, Tag, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 
 export function WorkspaceContextSelectionMenuContent({
   createSpaceFromSelectedNodes,
   openLabelColorSubmenu,
   labelColorButtonRef,
+  isLabelColorSubmenuOpen,
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
   convertSelectedNoteToTask,
@@ -15,6 +17,7 @@ export function WorkspaceContextSelectionMenuContent({
   createSpaceFromSelectedNodes: () => void
   openLabelColorSubmenu: () => void
   labelColorButtonRef: React.RefObject<HTMLButtonElement | null>
+  isLabelColorSubmenuOpen: boolean
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
@@ -30,7 +33,7 @@ export function WorkspaceContextSelectionMenuContent({
         data-testid="workspace-selection-create-space"
         onClick={createSpaceFromSelectedNodes}
       >
-        <Group className="workspace-context-menu__icon" aria-hidden="true" />
+        <Scan className="workspace-context-menu__icon" aria-hidden="true" />
         <span className="workspace-context-menu__label">
           {t('workspaceContextMenu.createSpaceWithSelected')}
         </span>
@@ -52,8 +55,9 @@ export function WorkspaceContextSelectionMenuContent({
         ref={labelColorButtonRef}
         type="button"
         data-testid="workspace-selection-label-color"
-        onMouseEnter={openLabelColorSubmenu}
-        onFocus={openLabelColorSubmenu}
+        aria-haspopup="menu"
+        aria-expanded={isLabelColorSubmenuOpen}
+        onMouseEnter={menuHoverHandler(openLabelColorSubmenu)}
         onClick={openLabelColorSubmenu}
       >
         <Tag className="workspace-context-menu__icon" aria-hidden="true" />

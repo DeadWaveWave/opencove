@@ -1,4 +1,5 @@
 import React from 'react'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
   ReleaseNotesCurrentResult,
@@ -71,95 +72,86 @@ export function WhatsNewDialog({
       : t('whatsNew.viewRelease')
 
   return (
-    <div
-      className="cove-window-backdrop whats-new-backdrop"
-      data-testid="whats-new-dialog"
-      onClick={() => {
+    <Dialog
+      open
+      backdropClassName="cove-window-backdrop whats-new-backdrop"
+      backdropTestId="whats-new-dialog"
+      className="cove-window whats-new-window"
+      aria-label={t('whatsNew.title')}
+      onDismiss={() => {
         onClose()
       }}
     >
-      <section
-        className="cove-window whats-new-window"
-        onClick={event => {
-          event.stopPropagation()
-        }}
-      >
-        <header className="whats-new-header">
-          <div>
-            <h3>{t('whatsNew.title')}</h3>
-            {fromVersion && toVersion ? (
-              <p className="whats-new-subtitle">
-                {t('whatsNew.subtitleRange', { fromVersion, toVersion })}
-              </p>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--ghost"
-            onClick={() => {
-              onClose()
-            }}
-          >
-            {t('common.close')}
-          </button>
-        </header>
-
-        <div className="whats-new-body">
-          {isLoading ? <p className="whats-new-muted">{t('whatsNew.loading')}</p> : null}
-          {error ? <p className="whats-new-error">{error}</p> : null}
-          {!isLoading && !error && notes?.summary ? (
-            <p className="whats-new-subtitle">{notes.summary}</p>
-          ) : null}
-
-          {!isLoading && !error && items.length === 0 && !notes?.summary ? (
-            <p className="whats-new-muted">{t('whatsNew.empty')}</p>
-          ) : null}
-
-          {!isLoading && items.length > 0 ? (
-            <div className="whats-new-sections">
-              {KIND_ORDER.map(kind => {
-                const sectionItems = grouped.get(kind) ?? []
-                if (sectionItems.length === 0) {
-                  return null
-                }
-
-                return (
-                  <section key={kind} className="whats-new-section">
-                    <h4>{t(getKindTitleKey(kind))}</h4>
-                    <ul className="whats-new-items">
-                      {sectionItems.map(item => (
-                        <li key={`${item.sha ?? ''}:${item.summary}`} className="whats-new-item">
-                          {item.url ? (
-                            <a href={item.url} target="_blank" rel="noreferrer">
-                              {item.summary}
-                            </a>
-                          ) : (
-                            item.summary
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                )
-              })}
-            </div>
+      <header className="whats-new-header">
+        <div>
+          <h3>{t('whatsNew.title')}</h3>
+          {fromVersion && toVersion ? (
+            <p className="whats-new-subtitle">
+              {t('whatsNew.subtitleRange', { fromVersion, toVersion })}
+            </p>
           ) : null}
         </div>
+        <button
+          type="button"
+          className="cove-window__action cove-window__action--ghost"
+          onClick={() => {
+            onClose()
+          }}
+        >
+          {t('common.close')}
+        </button>
+      </header>
 
-        <footer className="whats-new-footer">
-          <span />
-          {compareUrl ? (
-            <a
-              className="whats-new-compare-link"
-              href={compareUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {compareLinkLabel}
-            </a>
-          ) : null}
-        </footer>
-      </section>
-    </div>
+      <div className="whats-new-body">
+        {isLoading ? <p className="whats-new-muted">{t('whatsNew.loading')}</p> : null}
+        {error ? <p className="whats-new-error">{error}</p> : null}
+        {!isLoading && !error && notes?.summary ? (
+          <p className="whats-new-subtitle">{notes.summary}</p>
+        ) : null}
+
+        {!isLoading && !error && items.length === 0 && !notes?.summary ? (
+          <p className="whats-new-muted">{t('whatsNew.empty')}</p>
+        ) : null}
+
+        {!isLoading && items.length > 0 ? (
+          <div className="whats-new-sections">
+            {KIND_ORDER.map(kind => {
+              const sectionItems = grouped.get(kind) ?? []
+              if (sectionItems.length === 0) {
+                return null
+              }
+
+              return (
+                <section key={kind} className="whats-new-section">
+                  <h4>{t(getKindTitleKey(kind))}</h4>
+                  <ul className="whats-new-items">
+                    {sectionItems.map(item => (
+                      <li key={`${item.sha ?? ''}:${item.summary}`} className="whats-new-item">
+                        {item.url ? (
+                          <a href={item.url} target="_blank" rel="noreferrer">
+                            {item.summary}
+                          </a>
+                        ) : (
+                          item.summary
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )
+            })}
+          </div>
+        ) : null}
+      </div>
+
+      <footer className="whats-new-footer">
+        <span />
+        {compareUrl ? (
+          <a className="whats-new-compare-link" href={compareUrl} target="_blank" rel="noreferrer">
+            {compareLinkLabel}
+          </a>
+        ) : null}
+      </footer>
+    </Dialog>
   )
 }

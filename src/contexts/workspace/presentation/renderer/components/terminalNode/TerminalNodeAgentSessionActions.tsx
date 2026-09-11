@@ -6,6 +6,7 @@ import { toRelativeTime } from '@app/renderer/shell/utils/format'
 import type { AgentRuntimeStatus } from '../../types'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
 import { toAgentSessionDisplaySummary } from './agentSessionDisplay'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
 
 interface TerminalNodeAgentSessionActionsProps {
   status: AgentRuntimeStatus | null
@@ -161,6 +162,7 @@ export function TerminalNodeAgentSessionActions({
       {sessionMenuPoint ? (
         <ViewportMenuSurface
           open={true}
+          mobileTitle={t('terminalNodeHeader.sessionList')}
           className="workspace-context-menu terminal-node__session-menu"
           data-testid="terminal-node-session-menu"
           placement={{
@@ -295,10 +297,15 @@ export function TerminalNodeAgentSessionActions({
       ) : null}
 
       {switchTarget ? (
-        <div
-          className="cove-window-backdrop terminal-node__session-switch-backdrop"
-          data-testid="terminal-node-session-switch-confirm"
-          onClick={() => {
+        <Dialog
+          open
+          backdropClassName="cove-window-backdrop terminal-node__session-switch-backdrop"
+          backdropTestId="terminal-node-session-switch-confirm"
+          className="cove-window terminal-node__session-switch-window"
+          aria-label={t('terminalNodeHeader.sessionSwitchDialog.title')}
+          dismissOnEscape={!isSwitching}
+          dismissOnPointerDownOutside={!isSwitching}
+          onDismiss={() => {
             if (isSwitching) {
               return
             }
@@ -306,85 +313,78 @@ export function TerminalNodeAgentSessionActions({
             setSwitchTarget(null)
           }}
         >
-          <section
-            className="cove-window terminal-node__session-switch-window"
-            onClick={event => {
-              event.stopPropagation()
-            }}
-          >
-            <h3>{t('terminalNodeHeader.sessionSwitchDialog.title')}</h3>
-            <p className="cove-window__meta">
-              {t('terminalNodeHeader.sessionSwitchDialog.description')}
+          <h3>{t('terminalNodeHeader.sessionSwitchDialog.title')}</h3>
+          <p className="cove-window__meta">
+            {t('terminalNodeHeader.sessionSwitchDialog.description')}
+          </p>
+
+          <div className="cove-window__field-row">
+            <label>{t('terminalNodeHeader.sessionSwitchDialog.targetSession')}</label>
+            <input value={switchTargetDisplay?.title ?? switchTarget.sessionId} disabled />
+          </div>
+
+          <div className="cove-window__field-row">
+            <label>{t('terminalNodeHeader.sessionSwitchDialog.targetSessionId')}</label>
+            <input value={switchTarget.sessionId} disabled />
+          </div>
+
+          <div className="cove-window__field-row">
+            <label>{t('terminalNodeHeader.sessionSwitchDialog.targetDirectory')}</label>
+            <input value={switchTarget.cwd} disabled />
+          </div>
+
+          <div className="cove-window__field-row">
+            <label>{t('terminalNodeHeader.sessionSwitchDialog.currentDirectory')}</label>
+            <input value={currentDirectory ?? ''} disabled />
+          </div>
+
+          {switchTargetDirectoryMismatch ? (
+            <p className="cove-window__error">
+              {t('terminalNodeHeader.sessionSwitchDialog.mismatch')}
             </p>
+          ) : (
+            <p className="cove-window__meta">
+              {t('terminalNodeHeader.sessionSwitchDialog.aligned')}
+            </p>
+          )}
 
-            <div className="cove-window__field-row">
-              <label>{t('terminalNodeHeader.sessionSwitchDialog.targetSession')}</label>
-              <input value={switchTargetDisplay?.title ?? switchTarget.sessionId} disabled />
-            </div>
+          <div className="cove-window__actions">
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--ghost"
+              disabled={isSwitching}
+              onClick={() => {
+                setSwitchTarget(null)
+              }}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="cove-window__action"
+              data-testid={`terminal-node-session-switch-confirm-submit-${switchTarget.sessionId}`}
+              disabled={isSwitching || !onSwitchSession}
+              onClick={async () => {
+                if (!onSwitchSession) {
+                  return
+                }
 
-            <div className="cove-window__field-row">
-              <label>{t('terminalNodeHeader.sessionSwitchDialog.targetSessionId')}</label>
-              <input value={switchTarget.sessionId} disabled />
-            </div>
+                setIsSwitching(true)
 
-            <div className="cove-window__field-row">
-              <label>{t('terminalNodeHeader.sessionSwitchDialog.targetDirectory')}</label>
-              <input value={switchTarget.cwd} disabled />
-            </div>
-
-            <div className="cove-window__field-row">
-              <label>{t('terminalNodeHeader.sessionSwitchDialog.currentDirectory')}</label>
-              <input value={currentDirectory ?? ''} disabled />
-            </div>
-
-            {switchTargetDirectoryMismatch ? (
-              <p className="cove-window__error">
-                {t('terminalNodeHeader.sessionSwitchDialog.mismatch')}
-              </p>
-            ) : (
-              <p className="cove-window__meta">
-                {t('terminalNodeHeader.sessionSwitchDialog.aligned')}
-              </p>
-            )}
-
-            <div className="cove-window__actions">
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--ghost"
-                disabled={isSwitching}
-                onClick={() => {
+                try {
+                  await onSwitchSession(switchTarget)
                   setSwitchTarget(null)
-                }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="cove-window__action"
-                data-testid={`terminal-node-session-switch-confirm-submit-${switchTarget.sessionId}`}
-                disabled={isSwitching || !onSwitchSession}
-                onClick={async () => {
-                  if (!onSwitchSession) {
-                    return
-                  }
-
-                  setIsSwitching(true)
-
-                  try {
-                    await onSwitchSession(switchTarget)
-                    setSwitchTarget(null)
-                  } finally {
-                    setIsSwitching(false)
-                  }
-                }}
-              >
-                {isSwitching
-                  ? t('terminalNodeHeader.sessionSwitchDialog.switching')
-                  : t('terminalNodeHeader.sessionSwitchDialog.switch')}
-              </button>
-            </div>
-          </section>
-        </div>
+                } finally {
+                  setIsSwitching(false)
+                }
+              }}
+            >
+              {isSwitching
+                ? t('terminalNodeHeader.sessionSwitchDialog.switching')
+                : t('terminalNodeHeader.sessionSwitchDialog.switch')}
+            </button>
+          </div>
+        </Dialog>
       ) : null}
     </>
   )

@@ -4,6 +4,9 @@ import type { WorkspaceDirectory } from '@shared/contracts/dto'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { invokeBrowserControlSurface } from '@app/renderer/browser/browserControlSurface'
 import { toErrorMessage } from '../utils/format'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
+import { WindowHeading } from '@app/renderer/components/WindowHeading'
+import { LayoutDashboard } from 'lucide-react'
 
 function isAbsolutePath(pathValue: string): boolean {
   return /^([a-zA-Z]:[\\/]|\/)/.test(pathValue)
@@ -31,6 +34,7 @@ export function AddProjectDialog({
   onConfirm: (directory: WorkspaceDirectory) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const pathRef = React.useRef<HTMLInputElement | null>(null)
   const [projectPath, setProjectPath] = useState('')
   const [projectName, setProjectName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -97,88 +101,87 @@ export function AddProjectDialog({
   }, [derivedName, isSubmitting, onConfirm, projectPath, t])
 
   return (
-    <div
-      className="cove-window-backdrop workspace-task-creator-backdrop"
-      data-testid="workspace-project-add-backdrop"
-      onClick={() => {
-        if (isSubmitting) {
-          return
-        }
-
-        onCancel()
-      }}
+    <Dialog
+      open
+      backdropClassName="cove-window-backdrop workspace-task-creator-backdrop"
+      backdropTestId="workspace-project-add-backdrop"
+      className="cove-window workspace-task-creator"
+      data-testid="workspace-project-add-dialog"
+      aria-label={t('addProjectDialog.title')}
+      initialFocusRef={pathRef}
+      dismissOnEscape={!isSubmitting}
+      dismissOnPointerDownOutside={!isSubmitting}
+      onDismiss={onCancel}
     >
-      <section
-        className="cove-window workspace-task-creator"
-        data-testid="workspace-project-add-dialog"
-        onClick={event => {
-          event.stopPropagation()
-        }}
-      >
-        <h3>{t('addProjectDialog.title')}</h3>
-        <p>{t('addProjectDialog.description')}</p>
+      <WindowHeading
+        title={t('addProjectDialog.title')}
+        icon={<LayoutDashboard size={16} aria-hidden="true" />}
+        onClose={onCancel}
+        disabled={isSubmitting}
+      />
+      <p>{t('addProjectDialog.description')}</p>
 
-        <div className="cove-window__fields">
-          <div className="cove-window__field-row">
-            <label htmlFor="workspace-project-add-path">{t('addProjectDialog.pathLabel')}</label>
-            <input
-              id="workspace-project-add-path"
-              data-testid="workspace-project-add-path"
-              value={projectPath}
-              disabled={isSubmitting}
-              placeholder={t('addProjectDialog.pathPlaceholder')}
-              onChange={event => {
-                setProjectPath(event.target.value)
-              }}
-            />
-          </div>
-
-          <div className="cove-window__field-row">
-            <label htmlFor="workspace-project-add-name">{t('addProjectDialog.nameLabel')}</label>
-            <input
-              id="workspace-project-add-name"
-              data-testid="workspace-project-add-name"
-              value={projectName}
-              disabled={isSubmitting}
-              placeholder={t('addProjectDialog.namePlaceholder')}
-              onChange={event => {
-                setProjectName(event.target.value)
-              }}
-            />
-          </div>
-
-          {error ? (
-            <p className="workspace-task-creator__error" data-testid="workspace-project-add-error">
-              {error}
-            </p>
-          ) : null}
+      <div className="cove-window__fields">
+        <div className="cove-window__field-row">
+          <label htmlFor="workspace-project-add-path">{t('addProjectDialog.pathLabel')}</label>
+          <input
+            ref={pathRef}
+            id="workspace-project-add-path"
+            data-testid="workspace-project-add-path"
+            value={projectPath}
+            disabled={isSubmitting}
+            placeholder={t('addProjectDialog.pathPlaceholder')}
+            onChange={event => {
+              setProjectPath(event.target.value)
+            }}
+          />
         </div>
 
-        <div className="cove-window__actions workspace-task-creator__actions">
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
-            data-testid="workspace-project-add-cancel"
+        <div className="cove-window__field-row">
+          <label htmlFor="workspace-project-add-name">{t('addProjectDialog.nameLabel')}</label>
+          <input
+            id="workspace-project-add-name"
+            data-testid="workspace-project-add-name"
+            value={projectName}
             disabled={isSubmitting}
-            onClick={() => {
-              onCancel()
+            placeholder={t('addProjectDialog.namePlaceholder')}
+            onChange={event => {
+              setProjectName(event.target.value)
             }}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--primary workspace-task-creator__action workspace-task-creator__action--primary"
-            data-testid="workspace-project-add-confirm"
-            disabled={isSubmitting}
-            onClick={() => {
-              void handleSubmit()
-            }}
-          >
-            {isSubmitting ? t('common.loading') : t('common.add')}
-          </button>
+          />
         </div>
-      </section>
-    </div>
+
+        {error ? (
+          <p className="workspace-task-creator__error" data-testid="workspace-project-add-error">
+            {error}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="cove-window__actions workspace-task-creator__actions">
+        <button
+          type="button"
+          className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
+          data-testid="workspace-project-add-cancel"
+          disabled={isSubmitting}
+          onClick={() => {
+            onCancel()
+          }}
+        >
+          {t('common.cancel')}
+        </button>
+        <button
+          type="button"
+          className="cove-window__action cove-window__action--primary workspace-task-creator__action workspace-task-creator__action--primary"
+          data-testid="workspace-project-add-confirm"
+          disabled={isSubmitting}
+          onClick={() => {
+            void handleSubmit()
+          }}
+        >
+          {isSubmitting ? t('common.loading') : t('common.add')}
+        </button>
+      </div>
+    </Dialog>
   )
 }
