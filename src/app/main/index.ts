@@ -24,6 +24,7 @@ import {
 import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
 import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhrasesContextMenu'
 import { registerQuitCoordinator } from './quitCoordinator'
+import { registerApplicationShortcuts } from './applicationShortcuts'
 import {
   isAllowedNavigationTarget,
   resolveDevRendererOrigin,
@@ -129,6 +130,7 @@ function createWindow(): void {
     },
   })
 
+  const disposeApplicationShortcuts = registerApplicationShortcuts(mainWindow)
   const quickPhrasesContextMenuDisposable = registerQuickPhrasesContextMenu({
     window: mainWindow,
     userDataPath: app.getPath('userData'),
@@ -157,6 +159,7 @@ function createWindow(): void {
       })
   })
   mainWindow.on('closed', () => {
+    disposeApplicationShortcuts()
     quickPhrasesContextMenuDisposable.dispose()
   })
 
@@ -272,8 +275,21 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin') {
     Menu.setApplicationMenu(
       Menu.buildFromTemplate([
-        { role: 'appMenu' },
-        { role: 'fileMenu' },
+        {
+          role: 'appMenu',
+          submenu: [
+            { role: 'about' },
+            { type: 'separator' },
+            { role: 'services' },
+            { type: 'separator' },
+            { role: 'hide' },
+            { role: 'hideOthers' },
+            { role: 'unhide' },
+            { type: 'separator' },
+            { role: 'quit', accelerator: '' },
+          ],
+        },
+        { role: 'fileMenu', submenu: [] },
         { role: 'editMenu' },
         {
           label: 'View',

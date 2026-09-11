@@ -259,6 +259,7 @@ export function WorkspaceCanvasInner({
     createWebsiteNode: nodeStore.createWebsiteNode,
   })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
+    closeNode: taskUi.requestNodeClose,
     enabled: shortcutsEnabled,
     workspaceId,
     activeSpaceId,

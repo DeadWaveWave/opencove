@@ -182,6 +182,7 @@ export interface OpenCoveApi {
     getDisplayInfo: () => Promise<WindowDisplayInfo>
   }
   clipboard: {
+    readTerminalPaste: () => Promise<import('../../shared/contracts/dto').TerminalClipboardSnapshot>
     readText: () => Promise<string>
     writeText: (text: string) => Promise<void>
   }
@@ -213,6 +214,11 @@ export interface OpenCoveApi {
     ) => Promise<PersistWriteResult>
   }
   lifecycle: {
+    onApplicationShortcut?: (
+      listener: (
+        event: import('../../shared/contracts/applicationShortcut').ApplicationShortcutEvent,
+      ) => void,
+    ) => UnsubscribeFn
     onRequestPersistFlush: (
       listener: (payload: { requestId: string }) => void | Promise<void>,
     ) => UnsubscribeFn

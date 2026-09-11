@@ -190,6 +190,15 @@ VS Code 公开的 Linux server 要求，说明这条基线是业界通行值而�
 「容器配置正确」这一假设；读不到符号即失败，不会静默放过。若要调整基线，改
 `scripts/lib/standalone-glibc-floor.mjs` 中的 `STANDALONE_GLIBC_FLOOR`，并同步更新本节。
 
+### 一次性原生验证进程的生命周期
+
+`managedRuntime verify` 和 `prepare` 是一次性 CLI，由入口拥有进程终止权。
+只有命令完成（包含 `finally` 清理）并刷新 stdout/stderr 后才能退出；失败必须以非零退出码结束。
+Windows `node-pty` 的 Conout 后台线程可能在 PTY 已退出后仍保持 Node 活跃（上游
+[microsoft/node-pty#887](https://github.com/microsoft/node-pty/issues/887)），因此不能仅依赖事件循环自然清空。
+不得通过忽略超时、仅解析 stdout 或跳过原生探测来接受安装。子进程回归测试覆盖残留线程、输出完整性和失败退出码，
+Windows E2E 与 release standalone smoke 覆盖实际原生运行时。
+
 ### Stable 流程
 
 流程建议：

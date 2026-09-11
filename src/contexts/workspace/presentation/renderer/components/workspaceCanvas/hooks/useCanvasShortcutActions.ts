@@ -18,6 +18,7 @@ import {
 import type { SpatialNavigationDirection } from './spatialNavigation'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { focusPrimaryNodeContent } from '../focusPrimaryNodeContent'
+import { useCloseSelectedNodeShortcut } from './useCloseSelectedNodeShortcut'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -106,6 +107,7 @@ function schedulePrimaryNodeEditorFocus(nodeId: string): void {
 }
 
 export function useWorkspaceCanvasShortcutActions({
+  closeNode,
   enabled,
   workspaceId,
   activeSpaceId,
@@ -136,6 +138,7 @@ export function useWorkspaceCanvasShortcutActions({
   onShowMessage,
   terminalDisplayMetrics,
 }: {
+  closeNode: (nodeId: string) => Promise<void>
   enabled: boolean
   workspaceId: string
   activeSpaceId: string | null
@@ -176,6 +179,14 @@ export function useWorkspaceCanvasShortcutActions({
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
 }): void {
+  useCloseSelectedNodeShortcut({
+    enabled,
+    canvasRef,
+    nodesRef,
+    selectedNodeIdsRef,
+    closeNode,
+    onShowMessage,
+  })
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
     setSelectedNodeIds,

@@ -1,12 +1,14 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
+  VIEWPORT_TRANSITIONS,
   CANVAS_INPUT_MODES,
   CANVAS_WHEEL_BEHAVIORS,
   CANVAS_WHEEL_ZOOM_MODIFIERS,
   FOCUS_NODE_TARGET_ZOOM_STEP,
   MAX_FOCUS_NODE_TARGET_ZOOM,
   MIN_FOCUS_NODE_TARGET_ZOOM,
+  type ViewportTransition,
   type CanvasInputMode,
   type CanvasWheelBehavior,
   type CanvasWheelZoomModifier,
@@ -24,6 +26,7 @@ export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
   canvasWheelBehavior: CanvasWheelBehavior
   canvasWheelZoomModifier: CanvasWheelZoomModifier
+  viewportTransition: ViewportTransition
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   focusNodeUseVisibleCanvasCenter: boolean
@@ -32,6 +35,7 @@ export function CanvasSection(props: {
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
   onChangeCanvasWheelBehavior: (behavior: CanvasWheelBehavior) => void
   onChangeCanvasWheelZoomModifier: (modifier: CanvasWheelZoomModifier) => void
+  onChangeViewportTransition: (effect: ViewportTransition) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
   onChangeFocusNodeUseVisibleCanvasCenter: (enabled: boolean) => void
@@ -44,6 +48,7 @@ export function CanvasSection(props: {
     canvasInputMode,
     canvasWheelBehavior,
     canvasWheelZoomModifier,
+    viewportTransition,
     focusNodeOnClick,
     focusNodeTargetZoom,
     focusNodeUseVisibleCanvasCenter,
@@ -52,6 +57,7 @@ export function CanvasSection(props: {
     onChangeCanvasInputMode,
     onChangeCanvasWheelBehavior,
     onChangeCanvasWheelZoomModifier,
+    onChangeViewportTransition,
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
     onChangeFocusNodeUseVisibleCanvasCenter,
@@ -170,6 +176,28 @@ export function CanvasSection(props: {
         title={t('settingsPanel.groups.canvasWindows.nodeFocus')}
       >
         <SettingsGroupBody>
+          <div className="settings-panel__row" id="settings-viewport-transition">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.canvas.viewportTransitionLabel')}</strong>
+              <span>{t('settingsPanel.canvas.viewportTransitionHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <CoveSelect
+                testId="settings-viewport-transition"
+                value={viewportTransition}
+                ariaLabel={t('settingsPanel.canvas.viewportTransitionLabel')}
+                options={VIEWPORT_TRANSITIONS.map(value => ({
+                  value,
+                  label: t(`settingsPanel.canvas.viewportTransition.${value}`),
+                }))}
+                onChange={value => {
+                  if (value === 'fly' || value === 'slide') {
+                    onChangeViewportTransition(value)
+                  }
+                }}
+              />
+            </div>
+          </div>
           <div className="settings-panel__row" id="settings-focus-node-on-click">
             <div className="settings-panel__row-label">
               <strong>{t('settingsPanel.canvas.focusOnClickLabel')}</strong>

@@ -1,16 +1,24 @@
-.workspace-canvas .react-flow__viewport-portal:has(.workspace-space-region--busy) {
-  z-index: 2;
+/* The shared portal must not lift every Space background above the nodes. */
+.workspace-canvas .react-flow__viewport-portal {
+  z-index: auto;
+}
+
+.workspace-space-region {
+  z-index: 0;
+}
+
+.workspace-canvas .react-flow__nodes {
+  z-index: 1;
 }
 
 .workspace-space-region__operation-state {
   position: absolute;
-  z-index: 20;
-  inset: -1px;
+  z-index: 2;
   display: grid;
   place-items: center;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--cove-border) 72%, transparent);
-  border-radius: inherit;
+  border-radius: 12px;
   background: color-mix(in srgb, var(--cove-window-surface) 34%, transparent);
   backdrop-filter: blur(5px) saturate(0.82);
   -webkit-backdrop-filter: blur(5px) saturate(0.82);

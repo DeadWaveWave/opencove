@@ -35,6 +35,8 @@ import { useSidebarListScroll } from './useSidebarListScroll'
 import { SidebarProjectRailItem } from './SidebarProjectRailItem'
 import { SidebarRemoteDetails } from './SidebarRemoteDetails'
 import { useWorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
+import { useAppStore } from '../store/useAppStore'
+import { toggleSidebarCollapsedId } from '@contexts/settings/domain/sidebarTreeSettings'
 
 export type SidebarVariant = 'docked' | 'rail' | 'peek'
 type SidebarProps = {
@@ -109,7 +111,10 @@ export function Sidebar({
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
   )
   const [activeDragItem, setActiveDragItem] = useState<ActiveSidebarDragItem | null>(null)
-  const [collapsedSpaceGroupIds, setCollapsedSpaceGroupIds] = useState<Record<string, boolean>>({})
+  const collapsedSpaceGroupIds = useAppStore(
+    state => state.agentSettings.sidebarCollapsedSpaceGroupIds,
+  )
+  const setAgentSettings = useAppStore(state => state.setAgentSettings)
   const [previewWorkspaceId, setPreviewWorkspaceId] = useState<string | null>(null)
   const [isRemoteDetailsOpen, setIsRemoteDetailsOpen] = useState(false)
   useEffect(() => setPreviewWorkspaceId(null), [activeWorkspaceId])
@@ -208,12 +213,18 @@ export function Sidebar({
     ],
   )
 
-  const handleToggleSpaceGroup = useCallback((groupKey: string): void => {
-    setCollapsedSpaceGroupIds(prev => ({
-      ...prev,
-      [groupKey]: prev[groupKey] !== true,
-    }))
-  }, [])
+  const handleToggleSpaceGroup = useCallback(
+    (groupKey: string): void => {
+      setAgentSettings(prev => ({
+        ...prev,
+        sidebarCollapsedSpaceGroupIds: toggleSidebarCollapsedId(
+          prev.sidebarCollapsedSpaceGroupIds,
+          groupKey,
+        ),
+      }))
+    },
+    [setAgentSettings],
+  )
 
   const activeDragData = activeDragItem?.data ?? null
   const activeDragWorkspaceId = activeDragData?.workspaceId ?? null

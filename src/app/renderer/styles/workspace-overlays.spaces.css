@@ -186,14 +186,6 @@
   box-shadow: var(--cove-focus-shadow);
 }
 
-.workspace-canvas .react-flow__viewport-portal {
-  z-index: 0;
-}
-
-.workspace-canvas .react-flow__nodes {
-  z-index: 1;
-}
-
 .workspace-space-region__drag-handle {
   position: absolute;
   pointer-events: auto;

@@ -71,6 +71,21 @@ describe('settingsSearchIndex', () => {
     })
   })
 
+  it.each([
+    { dictionary: en, query: 'smooth slide' },
+    { dictionary: zhCN, query: '平滑' },
+  ])('finds the viewport transition setting using $query', ({ dictionary, query }) => {
+    const entries = createSettingsSearchEntries({
+      t: createTranslator(dictionary),
+      workspaces: [],
+    })
+    expect(searchSettingsEntries(entries, query)[0]).toMatchObject({
+      id: 'canvas.viewport-transition',
+      pageId: 'canvas-windows',
+      anchorId: 'settings-viewport-transition',
+    })
+  })
+
   it('always includes remote connections without obsolete mode or feature-toggle entries', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(en),

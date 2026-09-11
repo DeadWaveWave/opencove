@@ -73,6 +73,7 @@ export function SettingsPanelContent({
     updateDefaultTerminalProfileId,
     updateTaskTitleProvider,
     updateTaskTitleModel,
+    updateViewportTransition,
     updateFocusNodeOnClick,
     updateFocusNodeTargetZoom,
     updateFocusNodeUseVisibleCanvasCenter,
@@ -255,6 +256,8 @@ export function SettingsPanelContent({
           canvasWheelBehavior={settings.canvasWheelBehavior}
           canvasWheelZoomModifier={settings.canvasWheelZoomModifier}
           standardWindowSizeBucket={settings.standardWindowSizeBucket}
+          viewportTransition={settings.viewportTransition}
+          onChangeViewportTransition={updateViewportTransition}
           focusNodeOnClick={settings.focusNodeOnClick}
           focusNodeTargetZoom={settings.focusNodeTargetZoom}
           focusNodeUseVisibleCanvasCenter={settings.focusNodeUseVisibleCanvasCenter}

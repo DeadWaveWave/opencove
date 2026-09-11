@@ -173,6 +173,7 @@ describe('Settings form accessible names', () => {
         canvasInputMode="trackpad"
         canvasWheelBehavior="pan"
         canvasWheelZoomModifier="primary"
+        viewportTransition="fly"
         focusNodeOnClick
         focusNodeTargetZoom={1}
         focusNodeUseVisibleCanvasCenter
@@ -181,6 +182,7 @@ describe('Settings form accessible names', () => {
         onChangeCanvasInputMode={noop}
         onChangeCanvasWheelBehavior={noop}
         onChangeCanvasWheelZoomModifier={noop}
+        onChangeViewportTransition={noop}
         onChangeFocusNodeOnClick={noop}
         onChangeFocusNodeTargetZoom={noop}
         onChangeFocusNodeUseVisibleCanvasCenter={noop}
@@ -193,6 +195,7 @@ describe('Settings form accessible names', () => {
     expectNamedTestId('settings-canvas-input-mode-trigger', 'Input Mode')
     expectNamedTestId('settings-canvas-wheel-behavior-trigger', 'Mouse Wheel')
     expectNamedTestId('settings-canvas-wheel-zoom-modifier-trigger', 'Zoom Modifier')
+    expectNamedTestId('settings-viewport-transition-trigger', 'Viewport Transition')
     expectNamedTestId('settings-focus-node-target-zoom', 'Target Zoom')
   })
 

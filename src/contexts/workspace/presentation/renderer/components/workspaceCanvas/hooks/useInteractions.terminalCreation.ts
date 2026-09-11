@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, type MutableRefObject } from 'react'
+import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
@@ -100,9 +101,6 @@ export function useWorkspaceCanvasTerminalCreation({
       return
     }
 
-    await createTerminalAtFlowPoint({
-      x: contextMenu.flowX,
-      y: contextMenu.flowY,
-    })
+    await createTerminalAtFlowPoint(resolvePaneNodeCreationAnchor(contextMenu))
   }, [contextMenu, createTerminalAtFlowPoint])
 }

@@ -1,4 +1,5 @@
 import type { MutableRefObject } from 'react'
+import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import {
   DEFAULT_AGENT_SETTINGS,
@@ -395,10 +396,7 @@ export async function createTerminalNodeFromPaneContextMenu({
 
   setContextMenu(null)
   await createTerminalNodeAtFlowPosition({
-    anchor: {
-      x: contextMenu.flowX,
-      y: contextMenu.flowY,
-    },
+    anchor: resolvePaneNodeCreationAnchor(contextMenu),
     workspaceId: '',
     defaultTerminalProfileId,
     standardWindowSizeBucket,
@@ -446,10 +444,7 @@ export function createWebsiteNodeFromPaneContextMenu({
 
   setContextMenu(null)
   createWebsiteNodeAtFlowPosition({
-    anchor: {
-      x: contextMenu.flowX,
-      y: contextMenu.flowY,
-    },
+    anchor: resolvePaneNodeCreationAnchor(contextMenu),
     url,
     standardWindowSizeBucket,
     browserDefaultMode,
@@ -486,10 +481,7 @@ export function createNoteNodeFromPaneContextMenu({
 
   setContextMenu(null)
   createNoteNodeAtFlowPosition({
-    anchor: {
-      x: contextMenu.flowX,
-      y: contextMenu.flowY,
-    },
+    anchor: resolvePaneNodeCreationAnchor(contextMenu),
     standardWindowSizeBucket,
     createNoteNode,
     spacesRef,

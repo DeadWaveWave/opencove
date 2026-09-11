@@ -13,6 +13,7 @@ import type { AgentExecutablePathOverrideByProvider } from './agentSettings.exec
 import type { AgentProvider, TaskTitleAgentProvider } from './agentSettings.providers'
 import type { BrowserSearchEngineId } from './browserSettings'
 import type {
+  ViewportTransition,
   CanvasInputMode,
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
@@ -41,6 +42,8 @@ export interface AgentSettings extends PixelEffectSettings {
   language: UiLanguage
   uiTheme: UiTheme
   isPrimarySidebarCollapsed: boolean
+  sidebarCollapsedWorkspaceIds: Record<string, boolean>
+  sidebarCollapsedSpaceGroupIds: Record<string, boolean>
   workspaceSearchPanelWidth: number
   defaultProvider: AgentProvider
   agentProviderOrder: AgentProvider[]
@@ -59,6 +62,7 @@ export interface AgentSettings extends PixelEffectSettings {
   quickCommands: QuickCommand[]
   quickPhrases: QuickPhrase[]
   agentEnvByProvider: AgentEnvByProvider
+  viewportTransition: ViewportTransition
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   focusNodeUseVisibleCanvasCenter: boolean

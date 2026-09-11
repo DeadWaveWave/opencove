@@ -4,10 +4,19 @@ type Listener = (...args: unknown[]) => void
 
 function createMockApp() {
   const listeners = new Map<string, Listener[]>()
+  let startup = Promise.resolve()
 
   return {
     isPackaged: false,
-    whenReady: vi.fn(() => Promise.resolve()),
+    whenReady: vi.fn(() => ({
+      then: (start: () => Promise<void>) => {
+        startup = Promise.resolve().then(start)
+        // Awaited by the test; prevent an unhandled rejection before import completes.
+        void startup.catch(() => undefined)
+        return startup
+      },
+    })),
+    waitForStartup: () => startup,
     getPath: vi.fn((_name: string) => '/tmp/opencove-test-userdata'),
     setPath: vi.fn(),
     commandLine: {
@@ -69,6 +78,7 @@ describe('main process Wayland IME flags', () => {
           openExternal: vi.fn(),
         },
         BrowserWindow,
+        webContents: { getAllWebContents: () => [] },
         nativeImage: {
           createFromPath: vi.fn(() => ({})),
         },
@@ -113,7 +123,7 @@ describe('main process Wayland IME flags', () => {
       }))
 
       await import('../../../src/app/main/index')
-      await Promise.resolve()
+      await app.waitForStartup()
 
       expect(app.commandLine.appendSwitch).toHaveBeenCalledWith('enable-wayland-ime')
     } finally {

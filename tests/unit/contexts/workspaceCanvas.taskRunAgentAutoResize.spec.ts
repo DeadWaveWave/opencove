@@ -142,6 +142,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       launchAgentInNode: vi.fn(async () => undefined),
       agentSettings: DEFAULT_AGENT_SETTINGS,
       terminalDisplayMetrics,
+      workspaceId: 'workspace-1',
       workspacePath: '/tmp',
       onRequestPersistFlush: vi.fn(),
     })

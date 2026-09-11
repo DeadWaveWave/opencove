@@ -123,6 +123,7 @@ function SpaceGroup({
           <button
             type="button"
             className="workspace-space-item__toggle"
+            data-testid={`workspace-space-toggle-${workspaceId}-${group.id}`}
             aria-label={
               isExpanded ? t('sidebar.collapseProjectTree') : t('sidebar.expandProjectTree')
             }

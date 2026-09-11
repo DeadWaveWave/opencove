@@ -182,6 +182,18 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['shell', 'terminal', 'profile', '终端'],
   },
   {
+    id: 'canvas.viewport-transition',
+    pageId: 'canvas-windows',
+    titleKey: 'settingsPanel.canvas.viewportTransitionLabel',
+    descriptionKey: 'settingsPanel.canvas.viewportTransitionHelp',
+    anchorId: 'settings-viewport-transition',
+    keywordKeys: [
+      'settingsPanel.canvas.viewportTransition.fly',
+      'settingsPanel.canvas.viewportTransition.slide',
+    ],
+    keywords: ['animation', 'motion', 'fly', 'slide', 'space', '平滑', '移动', '动画', '视口'],
+  },
+  {
     id: 'canvas.focus',
     pageId: 'canvas-windows',
     titleKey: 'settingsPanel.canvas.focusOnClickLabel',

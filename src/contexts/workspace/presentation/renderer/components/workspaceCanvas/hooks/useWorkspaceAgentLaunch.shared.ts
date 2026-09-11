@@ -1,4 +1,5 @@
 import type { MutableRefObject } from 'react'
+import { isAllocateProjectPlaceholderPath } from '@app/renderer/shell/utils/projectPlaceholderPath'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import {
   resolveAgentExecutablePathOverride,
@@ -168,11 +169,16 @@ export async function resolveWorkspaceAgentLaunchBinding({
   let mountId = currentMountId
   let nextExecutionDirectory = executionDirectory
   let mounts: ListMountsResult['mounts'] | null = null
+  const normalizedDirectory = normalizePathForMountComparison(executionDirectory)
+  const normalizedWorkspacePath = normalizePathForMountComparison(workspacePath)
+  const usesProjectPlaceholder =
+    isAllocateProjectPlaceholderPath(workspacePath, workspaceId) &&
+    (normalizedDirectory.length === 0 || normalizedDirectory === normalizedWorkspacePath)
 
   try {
     mounts = await listWorkspaceMounts(workspaceId)
   } catch (error) {
-    if (mountQueryFailurePolicy === 'throw') {
+    if (mountQueryFailurePolicy === 'throw' || usesProjectPlaceholder) {
       throw error
     }
 
@@ -183,25 +189,30 @@ export async function resolveWorkspaceAgentLaunchBinding({
   }
 
   if (!mounts || mounts.length === 0) {
+    if (usesProjectPlaceholder) {
+      throw new Error('No default mount available for this project.')
+    }
+
     return {
       mountId,
       executionDirectory: nextExecutionDirectory,
     }
   }
 
-  const hasCurrentMountId =
-    typeof mountId === 'string' &&
-    mountId.trim().length > 0 &&
-    mounts.some(mount => mount.mountId === mountId)
+  const currentMount = mounts.find(mount => mount.mountId === mountId) ?? null
 
-  if (hasCurrentMountId) {
+  if (currentMount) {
     return {
       mountId,
-      executionDirectory: nextExecutionDirectory,
+      executionDirectory: usesProjectPlaceholder ? currentMount.rootPath : nextExecutionDirectory,
     }
   }
 
-  const resolvedMount = resolveBestWorkspaceMount(mounts, nextExecutionDirectory)
+  // Allocated project paths identify local metadata, not an execution directory.
+  // Match terminal launch semantics while preserving explicit worktree directories.
+  const resolvedMount = usesProjectPlaceholder
+    ? mounts[0]
+    : resolveBestWorkspaceMount(mounts, nextExecutionDirectory)
   if (!resolvedMount) {
     return {
       mountId,
@@ -218,8 +229,6 @@ export async function resolveWorkspaceAgentLaunchBinding({
     onRequestPersistFlush,
   })
 
-  const normalizedDirectory = normalizePathForMountComparison(nextExecutionDirectory)
-  const normalizedWorkspacePath = normalizePathForMountComparison(workspacePath)
   if (normalizedDirectory.length === 0 || normalizedDirectory === normalizedWorkspacePath) {
     nextExecutionDirectory = resolvedMount.rootPath
   }

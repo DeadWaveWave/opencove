@@ -59,7 +59,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
   })
 
   it('locks only the space with a submitted operation', () => {
-    render(
+    const view = (
       <WorkspaceSpaceRegionsOverlay
         workspacePath="/tmp"
         spaceVisuals={[
@@ -89,13 +89,49 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         commitSpaceRename={() => undefined}
         cancelSpaceRename={() => undefined}
         startSpaceRename={() => undefined}
-      />,
+      />
     )
+    const { rerender } = render(view)
 
     expect(screen.getByTestId('workspace-space-operation-space-1')).toHaveTextContent(
       'Creating worktree…',
     )
     expect(screen.queryByTestId('workspace-space-operation-space-2')).not.toBeInTheDocument()
+    const firstOverlay = screen.getByTestId('workspace-space-operation-space-1')
+    expect(firstOverlay.closest('.workspace-space-region')).toBeNull()
+    expect(firstOverlay).toHaveStyle({ left: '0px', top: '0px', width: '200px', height: '160px' })
+
+    rerender(
+      React.cloneElement(view, {
+        busyOperationBySpaceId: new Map([
+          ['space-1', 'Archiving Space…'],
+          ['space-2', 'Renaming branch…'],
+        ]),
+        spaceFramePreview: new Map([['space-2', { x: 260, y: 20, width: 220, height: 180 }]]),
+      }),
+    )
+    const secondOverlay = screen.getByTestId('workspace-space-operation-space-2')
+    expect(secondOverlay.closest('.workspace-space-region')).toBeNull()
+    expect(secondOverlay).toHaveStyle({
+      left: '260px',
+      top: '20px',
+      width: '220px',
+      height: '180px',
+    })
+    expect(firstOverlay).toHaveTextContent('Archiving Space…')
+
+    rerender(
+      React.cloneElement(view, {
+        busyOperationBySpaceId: new Map([['space-2', 'Renaming branch…']]),
+      }),
+    )
+    expect(screen.queryByTestId('workspace-space-operation-space-1')).not.toBeInTheDocument()
+    expect(screen.getByTestId('workspace-space-operation-space-2')).toHaveTextContent(
+      'Renaming branch…',
+    )
+
+    rerender(React.cloneElement(view, { busyOperationBySpaceId: new Map() }))
+    expect(screen.queryAllByRole('status')).toHaveLength(0)
   })
 
   it('keeps rename input mouse placement events away from the canvas', () => {

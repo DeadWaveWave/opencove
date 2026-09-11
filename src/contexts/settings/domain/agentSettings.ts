@@ -12,6 +12,8 @@ import {
   type AgentProvider,
 } from './agentSettings.providers'
 import { normalizeFocusNodeTargetZoom } from './focusNodeTargetZoom'
+import { normalizeSidebarCollapsedIds } from './sidebarTreeSettings'
+import { normalizePixelEffectSettings } from './pixelEffectSettings'
 import { isValidUiLanguage, isValidUiTheme } from './uiSettings'
 import {
   isValidUpdateChannel,
@@ -20,6 +22,7 @@ import {
 } from './updateSettings'
 import { normalizeKeybindingOverrides } from './keybindings'
 import {
+  isValidViewportTransition,
   isValidCanvasInputMode,
   isValidCanvasWheelBehavior,
   isValidCanvasWheelZoomModifier,
@@ -82,12 +85,14 @@ export type {
   TerminalProfileId,
 } from './agentSettings.types'
 export {
+  VIEWPORT_TRANSITIONS,
   CANVAS_INPUT_MODES,
   CANVAS_WHEEL_BEHAVIORS,
   CANVAS_WHEEL_ZOOM_MODIFIERS,
   STANDARD_WINDOW_SIZE_BUCKETS,
 } from './canvasSettings'
 export type {
+  ViewportTransition,
   CanvasInputMode,
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
@@ -155,15 +160,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     ? value.language
     : DEFAULT_AGENT_SETTINGS.language
   const uiTheme = isValidUiTheme(value.uiTheme) ? value.uiTheme : DEFAULT_AGENT_SETTINGS.uiTheme
-  // Adopt pre-toggle behavior only while normalizing missing legacy fields.
-  // Canonical booleans survive subsequent theme changes without deriving new effect choices.
-  const legacyPixelEffectsEnabled = uiTheme === 'pixel' || uiTheme === 'pixel-light'
-  const canvasPixelBackgroundEnabled =
-    normalizeBoolean(value.canvasPixelBackgroundEnabled) ?? legacyPixelEffectsEnabled
-  const nodeCreationPixelEffectEnabled =
-    normalizeBoolean(value.nodeCreationPixelEffectEnabled) ?? legacyPixelEffectsEnabled
-  const nodeClosePixelEffectEnabled =
-    normalizeBoolean(value.nodeClosePixelEffectEnabled) ?? legacyPixelEffectsEnabled
+  const pixelEffects = normalizePixelEffectSettings(value, uiTheme)
   const isPrimarySidebarCollapsed =
     normalizeBoolean(value.isPrimarySidebarCollapsed) ??
     DEFAULT_AGENT_SETTINGS.isPrimarySidebarCollapsed
@@ -262,6 +259,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const quickCommands = normalizeQuickCommands(value.quickCommands)
   const quickPhrases = normalizeQuickPhrases(value.quickPhrases)
   const agentEnvByProvider = normalizeAgentEnvByProvider(value.agentEnvByProvider)
+  const viewportTransition = isValidViewportTransition(value.viewportTransition)
+    ? value.viewportTransition
+    : DEFAULT_AGENT_SETTINGS.viewportTransition
   const focusNodeOnClick =
     normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
@@ -393,10 +393,12 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   return {
     language,
     uiTheme,
-    canvasPixelBackgroundEnabled,
-    nodeCreationPixelEffectEnabled,
-    nodeClosePixelEffectEnabled,
+    ...pixelEffects,
     isPrimarySidebarCollapsed,
+    sidebarCollapsedWorkspaceIds: normalizeSidebarCollapsedIds(value.sidebarCollapsedWorkspaceIds),
+    sidebarCollapsedSpaceGroupIds: normalizeSidebarCollapsedIds(
+      value.sidebarCollapsedSpaceGroupIds,
+    ),
     workspaceSearchPanelWidth,
     defaultProvider,
     agentProviderOrder,
@@ -418,6 +420,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     quickCommands,
     quickPhrases,
     agentEnvByProvider,
+    viewportTransition,
     focusNodeOnClick,
     focusNodeTargetZoom,
     focusNodeUseVisibleCanvasCenter,

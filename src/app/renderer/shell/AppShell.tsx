@@ -29,6 +29,7 @@ import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useAppKeybindings } from './hooks/useAppKeybindings'
 import { useAgentStandbyNotifications } from './hooks/useAgentStandbyNotifications'
 import { useFloatingMessage } from './hooks/useFloatingMessage'
+import { useQuitShortcutHint } from './hooks/useQuitShortcutHint'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useAppShellWorkspaceActions } from './hooks/useAppShellWorkspaceActions'
@@ -114,7 +115,9 @@ export default function App(): React.JSX.Element {
     producePersistedState,
   })
 
-  const { floatingMessage, showMessage: handleShowMessage } = useFloatingMessage()
+  const { floatingMessage: generalFloatingMessage, showMessage: handleShowMessage } =
+    useFloatingMessage()
+  const floatingMessage = useQuitShortcutHint() ?? generalFloatingMessage
   const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
     useAgentStandbyNotifications()
 

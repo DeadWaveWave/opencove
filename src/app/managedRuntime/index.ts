@@ -5,6 +5,7 @@ import { parseRuntimeBuildIdentity } from '../../shared/contracts/runtimeBuild'
 import { createManagedDeploymentPort } from '../../contexts/topology/infrastructure/managedRuntime/createManagedDeploymentPort'
 import { prepareManagedDeployment } from '../../contexts/topology/application/prepareManagedDeployment'
 import { verifyNativeRuntime } from './verifyNativeRuntime'
+import { runManagedRuntimeCommand } from './runManagedRuntimeCommand'
 
 async function main(): Promise<void> {
   const build = getRuntimeBuildIdentity()
@@ -80,7 +81,4 @@ async function main(): Promise<void> {
   }
 }
 
-void main().catch(error => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
-  process.exitCode = 1
-})
+runManagedRuntimeCommand(main)

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
@@ -33,13 +33,26 @@ export function useWorkspaceCanvasViewportNavigation({
   focusSpaceInViewport: (spaceId: string) => boolean
   focusNodeTargetZoom: number
 }): void {
+  // Stop the underlying D3 transition before this canvas's lifecycle is released.
+  // Interrupted React Flow promises do not settle, so cleanup must be synchronous.
+  useLayoutEffect(() => {
+    return () => {
+      void reactFlow.setViewport(reactFlow.getViewport(), { duration: 0 })
+    }
+  }, [reactFlow, workspaceId])
+
   const focusedNodeRequestKeyRef = useRef<string | null>(null)
   const focusedSpaceRequestKeyRef = useRef<string | null>(null)
   const cancelInputFocusRef = useRef<(() => void) | null>(null)
 
-  useEffect(() => () => cancelInputFocusRef.current?.(), [workspaceId])
+  // Cancel the previous workspace before layout navigation installs its next input request.
+  useLayoutEffect(() => () => cancelInputFocusRef.current?.(), [workspaceId])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!reactFlow.viewportInitialized) {
+      return
+    }
+
     const isWorkspaceViewportPending = restoredViewportWorkspaceIdRef.current !== workspaceId
     const sequence = focusSequence ?? 0
     const nodeRequestKey = focusNodeId ? `${workspaceId}:node:${focusNodeId}:${sequence}` : null
@@ -99,17 +112,9 @@ export function useWorkspaceCanvasViewportNavigation({
       }
     }
 
-    if (!isWorkspaceViewportPending) {
-      applyViewportIntent()
-      return
-    }
-
-    // Initial restoration and explicit navigation are mutually exclusive viewport intents.
-    // Waiting one frame lets React Flow initialize, while cleanup ensures the newest intent wins.
-    const frame = window.requestAnimationFrame(applyViewportIntent)
-    return () => {
-      window.cancelAnimationFrame(frame)
-    }
+    // Readiness is explicit: restore before passive creation focus, without a delayed
+    // frame that could overwrite a newer navigation or user gesture.
+    applyViewportIntent()
   }, [
     focusNodeId,
     focusNodeInput,

@@ -1,6 +1,6 @@
 {
   "name": "opencove",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "productName": "OpenCove",
   "description": "An infinite canvas for Claude Code, Codex, terminals, tasks, and notes.",
   "main": "./out/main/index.js",

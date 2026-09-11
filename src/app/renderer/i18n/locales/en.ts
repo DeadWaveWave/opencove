@@ -14,6 +14,9 @@ export const en = {
   common: {
     actions: 'Actions',
     back: 'Back',
+    closeShortcutSelectWindow: 'Select the window you want to close.',
+    closeShortcutFailed: 'Could not close the selected window. Please try again.',
+    quitShortcutHint: 'Press {{shortcut}} again within 1.5 seconds to quit.',
     add: 'Add',
     cancel: 'Cancel',
     close: 'Close',

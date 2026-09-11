@@ -21,7 +21,28 @@ function isTestEnvironment(): boolean {
 export function resolveWorkspaceCanvasAnimationDuration(duration: number): number {
   // E2E runs in Electron where rAF can be throttled when the window is occluded on CI.
   // Keeping animations instantaneous in tests reduces reliance on frame scheduling.
-  return isTestEnvironment() ? 0 : duration
+  if (
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  ) {
+    return 0
+  }
+  const testAnimationEnabled =
+    typeof document !== 'undefined' &&
+    document.documentElement.dataset.opencoveTestViewportAnimation === 'true'
+  return isTestEnvironment() && !testAnimationEnabled ? 0 : duration
+}
+
+/** React Flow owns motion; navigation only selects its interpolation and timing. */
+export function resolveWorkspaceCanvasViewportAnimation(duration: number): {
+  duration: number
+  interpolate: 'smooth' | 'linear'
+} {
+  return {
+    duration: resolveWorkspaceCanvasAnimationDuration(duration),
+    interpolate:
+      useAppStore.getState().agentSettings.viewportTransition === 'slide' ? 'linear' : 'smooth',
+  }
 }
 
 export function focusNodeInViewport(
@@ -32,7 +53,7 @@ export function focusNodeInViewport(
   const requestedZoom = options.zoom ?? 1
   const zoom = Number.isFinite(requestedZoom) && requestedZoom > 0 ? requestedZoom : 1
   const center = resolveNodeCenter(node)
-  const duration = resolveWorkspaceCanvasAnimationDuration(options.duration ?? 120)
+  const animation = resolveWorkspaceCanvasViewportAnimation(options.duration ?? 120)
 
   if (typeof document !== 'undefined') {
     const flowElement = document.querySelector('.workspace-canvas .react-flow')
@@ -59,7 +80,7 @@ export function focusNodeInViewport(
             zoom,
           }
 
-          reactFlow.setViewport(nextViewport, { duration })
+          reactFlow.setViewport(nextViewport, animation)
           return
         }
       }
@@ -67,7 +88,7 @@ export function focusNodeInViewport(
   }
 
   reactFlow.setCenter(center.x, center.y, {
-    duration,
+    ...animation,
     zoom,
   })
 }
@@ -81,7 +102,7 @@ export function centerNodeInViewport(
     node.position.x + node.data.width / 2,
     node.position.y + node.data.height / 2,
     {
-      duration: resolveWorkspaceCanvasAnimationDuration(options.duration ?? 180),
+      ...resolveWorkspaceCanvasViewportAnimation(options.duration ?? 180),
       zoom: Number.isFinite(options.zoom) && options.zoom > 0 ? options.zoom : 1,
     },
   )
@@ -96,7 +117,7 @@ export function centerFlowPositionInViewportPreservingZoom(
   const zoom = Number.isFinite(viewport.zoom) && viewport.zoom > 0 ? viewport.zoom : 1
 
   reactFlow.setCenter(position.x, position.y, {
-    duration: resolveWorkspaceCanvasAnimationDuration(options.duration ?? 180),
+    ...resolveWorkspaceCanvasViewportAnimation(options.duration ?? 180),
     zoom,
   })
 }

@@ -22,6 +22,9 @@ Project / workspace:
 
 - 保存 workspace state、nodes、spaces、viewport 和 settings。
 - 通过 SQLite 持久化。
+- 远程 Project 的 `projects/<projectId>` 本地占位目录只保存项目元数据，不是执行目录。
+  Project 默认目录下的 Agent 和 Terminal 启动必须解析默认 mount；已有显式 mount 或
+  Space/worktree 目录仍优先使用，无法解析默认 mount 时不得退回占位目录启动。
 
 Space:
 

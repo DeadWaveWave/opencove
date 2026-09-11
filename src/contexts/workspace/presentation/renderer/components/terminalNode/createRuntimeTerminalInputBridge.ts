@@ -5,6 +5,7 @@ import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './inputBridge
 import { isAutomaticTerminalReply } from './inputClassification'
 import { createTerminalInputModeTracker } from './terminalInputModes'
 import { hasRecentTerminalUserInteraction } from './userInteractionWindow'
+import { createTerminalClipboardHandler } from './terminalClipboard'
 
 export interface RuntimeTerminalInputBridge {
   ptyWriteQueue: ReturnType<typeof createPtyWriteQueue>
@@ -31,6 +32,8 @@ function formatInputHeadHex(value: string, limit = 12): string {
 
 export function createRuntimeTerminalInputBridge({
   terminal,
+  terminalProvider = null,
+  getTerminalProvider,
   sessionId,
   openTerminalFind,
   onCommandRunRef,
@@ -45,6 +48,8 @@ export function createRuntimeTerminalInputBridge({
   terminalDiagnostics,
 }: {
   terminal: Terminal
+  terminalProvider?: string | null
+  getTerminalProvider?: () => string | null
   sessionId: string
   openTerminalFind: () => void
   onCommandRunRef: { current: ((command: string, startedAtMs: number) => void) | undefined }
@@ -215,15 +220,25 @@ export function createRuntimeTerminalInputBridge({
     forwardAcceptedUtf8UserInput(data)
   }
 
+  const handleClipboard = createTerminalClipboardHandler({
+    provider: terminalProvider,
+    getProvider: getTerminalProvider,
+    platform: window.opencoveApi?.meta?.platform ?? navigator.platform,
+    write: forwardUtf8UserInput,
+    isBracketedPasteMode: inputModeTracker.isBracketedPasteMode,
+    isDisposed: () => isDisposed,
+  })
   terminal.attachCustomKeyEventHandler(event =>
-    handleTerminalCustomKeyEvent({
-      event,
-      ptyWriteQueue,
-      terminal,
-      isBracketedPasteMode: inputModeTracker.isBracketedPasteMode,
-      writePastePayload: forwardUtf8UserInput,
-      onOpenFind: openTerminalFind,
-    }),
+    handleClipboard(event)
+      ? false
+      : handleTerminalCustomKeyEvent({
+          event,
+          ptyWriteQueue,
+          terminal,
+          isBracketedPasteMode: inputModeTracker.isBracketedPasteMode,
+          writePastePayload: forwardUtf8UserInput,
+          onOpenFind: openTerminalFind,
+        }),
   )
 
   const dataDisposable = terminal.onData(data => {
