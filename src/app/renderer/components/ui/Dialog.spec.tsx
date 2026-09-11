@@ -64,4 +64,30 @@ describe('Dialog', () => {
     expect(onDismiss).toHaveBeenCalledWith('pointer-down-outside')
     vi.useRealTimers()
   })
+
+  it.each([{ isComposing: true }, { isComposing: false, keyCode: 229 }])(
+    'leaves composition Escape to the input method: %o',
+    composition => {
+      const onDismiss = vi.fn()
+      render(<DialogHarness onDismiss={onDismiss} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Open' }))
+      const input = screen.getByRole('textbox', { name: 'Search' })
+      const escape = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+        ...composition,
+      })
+
+      fireEvent(input, escape)
+
+      expect(onDismiss).not.toHaveBeenCalled()
+      expect(escape.defaultPrevented).toBe(false)
+      expect(document.activeElement).toBe(input)
+      expect(screen.getByRole('dialog', { name: 'Preferences' })).toBeTruthy()
+
+      fireEvent.keyDown(input, { key: 'Escape' })
+      expect(onDismiss).toHaveBeenCalledExactlyOnceWith('escape')
+    },
+  )
 })

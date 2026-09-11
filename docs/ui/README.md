@@ -173,6 +173,25 @@
 参考原则：VS Code Sidebar 的稳定项目导航与分组动作，GNOME Sidebar 的清晰导航层级。
 此处沿用应用已有单目录执行模型，不引入多 repo 的隐式目录选择。
 
+### 搜索与快捷控制契约
+
+- 命令中心负责命令、项目和 Space 导航；项目搜索负责当前项目的 Space、任务与笔记。
+  入口与显示方式可变化，筛选、定位和设置写入仍由原有 owner 负责。
+- 命令中心与项目搜索共用 Sidebar 的项目图标、Space 四角框和标签侧线语义。
+  项目目录保留为搜索关键字，不作为常驻副标题；remote 只表示唯一 Mount 的远端 endpoint。
+- 桌面项目搜索是可调整宽度的非模态侧栏，控制中心是锚定按钮的非模态 Popover；
+  窄屏分别使用近全屏搜索 Dialog 与底部控制 Dialog，触控目标至少 44px。
+- 命令中心遵循 editable combobox 模式：输入框保留 DOM focus，方向键通过
+  `aria-activedescendant` 选择结果，Enter 执行；IME 合成过程不执行导航或命令。
+  键盘滚动只作用于结果列表，不得移动外层画布。
+- 模态界面复用共享 Dialog 的 inert、Tab 约束与焦点恢复。手机打开搜索先聚焦关闭控件，
+  避免自动唤起软键盘；定位后关闭搜索，返回导航控件，不聚焦终端输入。
+  弹层交接后旧界面不得通过延迟恢复抢走新界面的焦点。
+- 控制中心开关保留标签与真实 checked 状态，不重复显示开/关状态文字；
+  所有主题来自既有主题 registry，选项使用轻量预览与单选语义。
+
+参考：WAI-ARIA APG Dialog (Modal) 与 Combobox 的焦点约束、返回目标与输入焦点模型。
+
 ### 6.1 最低验收
 
 - Light / Dark 下主要页面可读（至少：Sidebar / Canvas / Settings / Node chrome）

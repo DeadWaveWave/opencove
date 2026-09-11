@@ -1,18 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
+import { Dialog } from '@app/renderer/components/ui/Dialog'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
+import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import {
-  MAX_WORKSPACE_SEARCH_PANEL_WIDTH,
-  MIN_WORKSPACE_SEARCH_PANEL_WIDTH,
-} from '@contexts/settings/domain/agentSettings'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import { searchWorkspace } from '../utils/workspaceSearch'
 import { WorkspaceSearchResultItem } from './WorkspaceSearchResultItem'
+import { useWorkspaceSearchSurface } from './useWorkspaceSearchSurface'
 import {
   flattenWorkspaceSearchSections,
   toWorkspaceSearchSections,
 } from './workspaceSearchSections'
+
+type Category = 'spaces' | 'tasks' | 'notes'
 
 export function WorkspaceSearch({
   isOpen,
@@ -36,28 +38,37 @@ export function WorkspaceSearch({
   pullRequestsByBranch: Record<string, GitHubPullRequestSummary | null> | null
 }): React.JSX.Element | null {
   const { t } = useTranslation()
+  const isCompact = useCompactViewport()
+  const id = useId()
   const [query, setQuery] = useState('')
-  const [kindFilter, setKindFilter] = useState<{
-    spaces: boolean
-    tasks: boolean
-    notes: boolean
-  }>({
+  const [kindFilter, setKindFilter] = useState<Record<Category, boolean>>({
     spaces: true,
     tasks: true,
     notes: true,
   })
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
-  const [draftPanelWidth, setDraftPanelWidth] = useState(panelWidth)
-  const panelWidthRef = useRef(panelWidth)
-  const draftPanelWidthRef = useRef(panelWidth)
-  const panelRef = useRef<HTMLElement | null>(null)
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const restoreFocusRef = useRef<HTMLElement | null>(null)
-  const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  const resultsRef = useRef<HTMLDivElement | null>(null)
+  const itemRefs = useRef(new Map<string, HTMLButtonElement>())
   const interactionModeRef = useRef<'keyboard' | 'pointer'>('keyboard')
-  const resizeStateRef = useRef<{ startX: number; startWidth: number } | null>(null)
-  const resizeCleanupRef = useRef<(() => void) | null>(null)
-
+  const surface = useWorkspaceSearchSurface({ isOpen, isCompact, panelWidth, onPanelWidthChange })
+  const selectNode = useCallback(
+    (nodeId: string): void => {
+      if (isCompact) {
+        onClose()
+      }
+      onSelectNode(nodeId)
+    },
+    [isCompact, onClose, onSelectNode],
+  )
+  const selectSpace = useCallback(
+    (spaceId: string): void => {
+      if (isCompact) {
+        onClose()
+      }
+      onSelectSpace(spaceId)
+    },
+    [isCompact, onClose, onSelectSpace],
+  )
   const hits = useMemo(
     () =>
       searchWorkspace({
@@ -70,233 +81,97 @@ export function WorkspaceSearch({
       }),
     [
       activeWorkspace?.nodes,
-      activeWorkspace?.path,
       activeWorkspace?.spaces,
-      pullRequestsByBranch,
+      activeWorkspace?.path,
       query,
       worktreeInfoByPath,
+      pullRequestsByBranch,
     ],
   )
-  const filteredHits = useMemo(() => {
-    if (kindFilter.spaces && kindFilter.tasks && kindFilter.notes) {
-      return hits
-    }
-
-    return hits.filter(hit => {
-      if (hit.kind === 'space') {
-        return kindFilter.spaces
-      }
-
-      if (hit.kind === 'task') {
-        return kindFilter.tasks
-      }
-
-      return kindFilter.notes
-    })
-  }, [hits, kindFilter.notes, kindFilter.spaces, kindFilter.tasks])
   const sections = useMemo(
     () =>
       toWorkspaceSearchSections({
-        hits: filteredHits,
+        hits: hits.filter(
+          hit =>
+            kindFilter[hit.kind === 'space' ? 'spaces' : hit.kind === 'task' ? 'tasks' : 'notes'],
+        ),
         t,
-        onSelectNode,
-        onSelectSpace,
+        onSelectNode: selectNode,
+        onSelectSpace: selectSpace,
       }),
-    [filteredHits, onSelectNode, onSelectSpace, t],
+    [hits, kindFilter, t, selectNode, selectSpace],
   )
-  const flattenedItems = useMemo(() => flattenWorkspaceSearchSections(sections), [sections])
-  const selectedItem = useMemo(() => {
-    if (flattenedItems.length === 0) {
-      return null
-    }
-
-    if (activeItemId) {
-      return flattenedItems.find(item => item.id === activeItemId) ?? flattenedItems[0]
-    }
-
-    return flattenedItems[0]
-  }, [activeItemId, flattenedItems])
+  const items = useMemo(() => flattenWorkspaceSearchSections(sections), [sections])
+  const selectedItem = items.find(item => item.id === activeItemId) ?? items[0] ?? null
+  const optionId = (itemId: string): string => `${id}-option-${itemId}`
 
   useEffect(() => {
-    panelWidthRef.current = panelWidth
-  }, [panelWidth])
-
-  useEffect(() => {
-    if (!isOpen) {
-      return
-    }
-
-    restoreFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null
-
-    setQuery('')
-    setActiveItemId(null)
-    setDraftPanelWidth(panelWidthRef.current)
-
-    window.setTimeout(() => {
-      inputRef.current?.focus()
-    }, 0)
-
-    return () => {
-      const focusTarget = restoreFocusRef.current
-      restoreFocusRef.current = null
-      if (focusTarget && document.contains(focusTarget)) {
-        window.setTimeout(() => {
-          focusTarget.focus()
-        }, 0)
-      }
+    if (isOpen) {
+      setQuery('')
+      setActiveItemId(null)
     }
   }, [isOpen])
 
   useEffect(() => {
-    if (resizeStateRef.current) {
+    if (!isOpen || !selectedItem || interactionModeRef.current !== 'keyboard') {
       return
     }
-
-    setDraftPanelWidth(panelWidth)
-  }, [panelWidth])
-
-  useEffect(() => {
-    draftPanelWidthRef.current = draftPanelWidth
-  }, [draftPanelWidth])
-
-  useEffect(() => {
-    return () => {
-      resizeCleanupRef.current?.()
-      resizeCleanupRef.current = null
-      resizeStateRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!isOpen) {
+    const item = itemRefs.current.get(selectedItem.id)
+    const results = resultsRef.current
+    if (!item || !results) {
       return
     }
-
-    const handleFocusIn = (event: FocusEvent): void => {
-      const target = event.target
-      if (!(target instanceof HTMLElement)) {
-        return
-      }
-
-      const panel = panelRef.current
-      if (panel && panel.contains(target)) {
-        return
-      }
-
-      restoreFocusRef.current = target
+    const row = item.getBoundingClientRect()
+    const viewport = results.getBoundingClientRect()
+    if (row.top < viewport.top) {
+      results.scrollTop += row.top - viewport.top
+    } else if (row.bottom > viewport.bottom) {
+      results.scrollTop += row.bottom - viewport.bottom
     }
-
-    document.addEventListener('focusin', handleFocusIn)
-    return () => {
-      document.removeEventListener('focusin', handleFocusIn)
-    }
-  }, [isOpen])
-
-  useEffect(() => {
-    if (!isOpen || !selectedItem) {
-      return
-    }
-
-    if (interactionModeRef.current !== 'keyboard') {
-      return
-    }
-
-    const target = itemRefs.current.get(selectedItem.id)
-    target?.scrollIntoView({ block: 'nearest' })
   }, [isOpen, selectedItem])
 
   if (!isOpen) {
     return null
   }
 
-  const clampPanelWidth = (value: number): number => {
-    return Math.max(
-      MIN_WORKSPACE_SEARCH_PANEL_WIDTH,
-      Math.min(MAX_WORKSPACE_SEARCH_PANEL_WIDTH, Math.round(value)),
-    )
-  }
-
-  return (
-    <aside
-      className="workspace-search-panel"
-      ref={panelRef}
-      role="dialog"
-      aria-modal="false"
-      aria-label={t('workspaceSearch.title')}
-      data-testid="workspace-search"
-      style={{
-        width: clampPanelWidth(draftPanelWidth),
-      }}
-      onKeyDown={event => {
-        if (event.key !== 'Escape') {
-          return
-        }
-
-        interactionModeRef.current = 'keyboard'
-        event.preventDefault()
-        onClose()
-      }}
-    >
-      <div
-        className="workspace-search-panel__resize-handle"
-        data-testid="workspace-search-resize-handle"
-        onPointerDown={event => {
-          if (event.button !== 0) {
-            return
-          }
-
-          event.preventDefault()
-          event.stopPropagation()
-
-          resizeStateRef.current = {
-            startX: event.clientX,
-            startWidth: clampPanelWidth(draftPanelWidth),
-          }
-
-          document.body.style.cursor = 'ew-resize'
-          document.body.style.userSelect = 'none'
-
-          const handlePointerMove = (moveEvent: PointerEvent): void => {
-            const resizeState = resizeStateRef.current
-            if (!resizeState) {
-              return
-            }
-
-            const deltaX = resizeState.startX - moveEvent.clientX
-            const nextWidth = clampPanelWidth(resizeState.startWidth + deltaX)
-            draftPanelWidthRef.current = nextWidth
-            setDraftPanelWidth(nextWidth)
-          }
-
-          const handlePointerUp = (): void => {
-            const resizeState = resizeStateRef.current
-            resizeStateRef.current = null
-            resizeCleanupRef.current?.()
-            resizeCleanupRef.current = null
-
-            if (resizeState) {
-              onPanelWidthChange(clampPanelWidth(draftPanelWidthRef.current))
-            }
-          }
-
-          resizeCleanupRef.current = () => {
-            window.removeEventListener('pointermove', handlePointerMove)
-            window.removeEventListener('pointerup', handlePointerUp)
-            document.body.style.cursor = ''
-            document.body.style.userSelect = ''
-          }
-
-          window.addEventListener('pointermove', handlePointerMove)
-          window.addEventListener('pointerup', handlePointerUp, { once: true })
-        }}
-      />
-
-      <div className="command-center__input-row">
-        <Search aria-hidden="true" size={16} className="command-center__search-icon" />
+  const content = (
+    <>
+      {!isCompact ? (
+        <div
+          className="workspace-search-panel__resize-handle"
+          data-testid="workspace-search-resize-handle"
+          onPointerDown={surface.onResizeStart}
+        />
+      ) : null}
+      <header className="workspace-search-panel__header">
+        <Search size={15} aria-hidden="true" />
+        <h2 id={`${id}-title`}>{t('workspaceSearch.title')}</h2>
+        {activeWorkspace ? (
+          <span className="workspace-search-panel__project" title={activeWorkspace.name}>
+            {activeWorkspace.name}
+          </span>
+        ) : null}
+        <IconButton
+          ref={surface.closeRef}
+          label={t('common.close')}
+          className="workspace-search-panel__close"
+          data-testid="workspace-search-close"
+          onClick={onClose}
+        >
+          <X size={16} aria-hidden="true" />
+        </IconButton>
+      </header>
+      <div className="workspace-search-panel__search">
+        <Search size={15} aria-hidden="true" />
         <input
-          ref={inputRef}
-          className="command-center__input"
+          ref={surface.inputRef}
+          className="workspace-search-panel__input"
+          aria-label={t('workspaceSearch.title')}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded="true"
+          aria-controls={`${id}-results`}
+          aria-activedescendant={selectedItem ? optionId(selectedItem.id) : undefined}
           value={query}
           placeholder={t('workspaceSearch.placeholder')}
           data-testid="workspace-search-input"
@@ -305,60 +180,25 @@ export function WorkspaceSearch({
             setActiveItemId(null)
           }}
           onKeyDown={event => {
-            if (event.key === 'Escape') {
-              interactionModeRef.current = 'keyboard'
-              event.preventDefault()
-              onClose()
+            if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
               return
             }
-
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-              interactionModeRef.current = 'keyboard'
               event.preventDefault()
-              if (flattenedItems.length === 0) {
-                return
-              }
-
-              const currentIndex = selectedItem
-                ? flattenedItems.findIndex(item => item.id === selectedItem.id)
-                : -1
-              const delta = event.key === 'ArrowDown' ? 1 : -1
-              const nextIndex =
-                currentIndex === -1
-                  ? 0
-                  : (currentIndex + delta + flattenedItems.length) % flattenedItems.length
-              setActiveItemId(flattenedItems[nextIndex].id)
-              return
-            }
-
-            if (event.key === 'Enter') {
-              if (!selectedItem) {
-                return
-              }
               interactionModeRef.current = 'keyboard'
+              if (items.length === 0) {
+                return
+              }
+              const index = items.findIndex(item => item.id === selectedItem?.id)
+              const delta = event.key === 'ArrowDown' ? 1 : -1
+              setActiveItemId(items[(index + delta + items.length) % items.length].id)
+            } else if (event.key === 'Enter' && selectedItem) {
               event.preventDefault()
               selectedItem.onSelect()
-              return
             }
           }}
         />
-
-        <div className="command-center__meta" aria-hidden="true">
-          <span className="command-center__meta-item">{t('workspaceSearch.metaEsc')}</span>
-        </div>
-
-        <button
-          type="button"
-          className="workspace-search-panel__close"
-          aria-label={t('common.close')}
-          onClick={() => {
-            onClose()
-          }}
-        >
-          <X aria-hidden="true" size={16} />
-        </button>
       </div>
-
       <div
         className="workspace-search-panel__filters"
         role="group"
@@ -366,130 +206,126 @@ export function WorkspaceSearch({
       >
         <button
           type="button"
-          className={`workspace-search-panel__filter ${kindFilter.spaces && kindFilter.tasks && kindFilter.notes ? 'workspace-search-panel__filter--active' : ''}`.trim()}
+          className="workspace-search-panel__filter"
           data-testid="workspace-search-filter-all"
           aria-pressed={kindFilter.spaces && kindFilter.tasks && kindFilter.notes}
           onClick={() => {
             setActiveItemId(null)
-            setKindFilter({
-              spaces: true,
-              tasks: true,
-              notes: true,
-            })
+            setKindFilter({ spaces: true, tasks: true, notes: true })
           }}
         >
           {t('workspaceSearch.filters.all')}
         </button>
-        <button
-          type="button"
-          className={`workspace-search-panel__filter ${kindFilter.spaces ? 'workspace-search-panel__filter--active' : ''}`.trim()}
-          data-testid="workspace-search-filter-spaces"
-          aria-pressed={kindFilter.spaces}
-          onClick={() => {
-            setActiveItemId(null)
-            setKindFilter(prev => {
-              const next = {
-                ...prev,
-                spaces: !prev.spaces,
-              }
-              if (!next.spaces && !next.tasks && !next.notes) {
-                return prev
-              }
-
-              return next
-            })
-          }}
-        >
-          {t('workspaceSearch.sections.spaces')}
-        </button>
-        <button
-          type="button"
-          className={`workspace-search-panel__filter ${kindFilter.tasks ? 'workspace-search-panel__filter--active' : ''}`.trim()}
-          data-testid="workspace-search-filter-tasks"
-          aria-pressed={kindFilter.tasks}
-          onClick={() => {
-            setActiveItemId(null)
-            setKindFilter(prev => {
-              const next = {
-                ...prev,
-                tasks: !prev.tasks,
-              }
-              if (!next.spaces && !next.tasks && !next.notes) {
-                return prev
-              }
-
-              return next
-            })
-          }}
-        >
-          {t('workspaceSearch.sections.tasks')}
-        </button>
-        <button
-          type="button"
-          className={`workspace-search-panel__filter ${kindFilter.notes ? 'workspace-search-panel__filter--active' : ''}`.trim()}
-          data-testid="workspace-search-filter-notes"
-          aria-pressed={kindFilter.notes}
-          onClick={() => {
-            setActiveItemId(null)
-            setKindFilter(prev => {
-              const next = {
-                ...prev,
-                notes: !prev.notes,
-              }
-              if (!next.spaces && !next.tasks && !next.notes) {
-                return prev
-              }
-
-              return next
-            })
-          }}
-        >
-          {t('workspaceSearch.sections.notes')}
-        </button>
+        {(['spaces', 'tasks', 'notes'] as const).map(category => (
+          <button
+            key={category}
+            type="button"
+            className="workspace-search-panel__filter"
+            data-testid={`workspace-search-filter-${category}`}
+            aria-pressed={kindFilter[category]}
+            onClick={() => {
+              setActiveItemId(null)
+              setKindFilter(previous => {
+                const next = { ...previous, [category]: !previous[category] }
+                return Object.values(next).some(Boolean) ? next : previous
+              })
+            }}
+          >
+            {t(`workspaceSearch.sections.${category}`)}
+          </button>
+        ))}
       </div>
-
       <div
-        className="command-center__results"
+        ref={resultsRef}
+        id={`${id}-results`}
+        className="workspace-search-panel__results"
         role="listbox"
+        aria-label={t('workspaceSearch.title')}
         onMouseMove={() => {
           interactionModeRef.current = 'pointer'
         }}
       >
         {sections.length === 0 ? (
-          <div className="command-center__empty">{t('workspaceSearch.empty')}</div>
+          <div className="workspace-search-panel__empty">{t('workspaceSearch.empty')}</div>
         ) : null}
-
         {sections.map(section => (
-          <div key={section.id} className="command-center__section">
-            <div className="command-center__section-label">{section.label}</div>
-            <div className="command-center__section-items">
-              {section.items.map(item => {
-                const isSelected = selectedItem?.id === item.id
-                return (
-                  <WorkspaceSearchResultItem
-                    key={item.id}
-                    ref={element => {
-                      if (!element) {
-                        itemRefs.current.delete(item.id)
-                        return
-                      }
-                      itemRefs.current.set(item.id, element)
-                    }}
-                    item={item}
-                    isSelected={isSelected}
-                    onMouseEnter={() => {
-                      if (interactionModeRef.current !== 'pointer') {
-                        return
-                      }
-                      setActiveItemId(item.id)
-                    }}
-                  />
-                )
-              })}
-            </div>
+          <div
+            key={section.id}
+            className="workspace-search-panel__section"
+            role="group"
+            aria-labelledby={`${id}-${section.id}`}
+          >
+            <h3 className="workspace-search-panel__section-label" id={`${id}-${section.id}`}>
+              {section.label}
+              <span>{section.items.length}</span>
+            </h3>
+            {section.items.map(item => (
+              <WorkspaceSearchResultItem
+                key={item.id}
+                ref={element => {
+                  if (element) {
+                    itemRefs.current.set(item.id, element)
+                  } else {
+                    itemRefs.current.delete(item.id)
+                  }
+                }}
+                item={item}
+                optionId={optionId(item.id)}
+                isSelected={selectedItem?.id === item.id}
+                onMouseEnter={() => {
+                  if (interactionModeRef.current === 'pointer') {
+                    setActiveItemId(item.id)
+                  }
+                }}
+              />
+            ))}
           </div>
         ))}
       </div>
-    </aside>
+    </>
+  )
+
+  if (isCompact) {
+    return (
+      <Dialog
+        ref={surface.panelRef}
+        open
+        onDismiss={onClose}
+        className="workspace-search-panel workspace-search-panel--compact"
+        backdropClassName="workspace-search-backdrop"
+        backdropTestId="workspace-search-backdrop"
+        data-testid="workspace-search"
+        aria-labelledby={`${id}-title`}
+        initialFocusRef={surface.closeRef}
+        returnFocus={surface.returnFocusRef}
+        fallbackReturnFocusSelector="[data-testid='app-header-command-center']"
+        inertRootSelector=".app-shell"
+      >
+        {content}
+      </Dialog>
+    )
+  }
+
+  return (
+    <div
+      ref={surface.panelRef}
+      className="workspace-search-panel"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={`${id}-title`}
+      data-testid="workspace-search"
+      style={{ width: surface.width }}
+      onKeyDown={event => {
+        if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+          return
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          onClose()
+        }
+      }}
+    >
+      {content}
+    </div>
   )
 }

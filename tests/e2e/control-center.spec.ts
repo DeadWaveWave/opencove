@@ -33,7 +33,7 @@ test.describe('Control Center', () => {
           },
         ],
         settings: {
-          uiTheme: 'dark',
+          uiTheme: 'pixel',
           uiFontSize: 18,
           isPrimarySidebarCollapsed: false,
         },
@@ -53,10 +53,11 @@ test.describe('Control Center', () => {
       const darkVisuals = await controlCenter.evaluate(element => {
         const title = element.querySelector<HTMLElement>('.control-center__title')
         const rowLabel = element.querySelector<HTMLElement>('.control-center__row-label')
-        const rowStatus = element.querySelector<HTMLElement>('.control-center__row-status')
+        const rowIcon = element.querySelector<HTMLElement>('.control-center__row-icon')
+        const themeList = element.querySelector<HTMLElement>('.control-center__themes')
         const toggleTrack = element.querySelector<HTMLElement>('.cove-toggle__track')
         const toggleThumb = element.querySelector<HTMLElement>('.cove-toggle__thumb')
-        if (!title || !rowLabel || !rowStatus || !toggleTrack || !toggleThumb) {
+        if (!title || !rowLabel || !rowIcon || !themeList || !toggleTrack || !toggleThumb) {
           throw new Error('Control Center visual primitives are missing')
         }
 
@@ -66,45 +67,49 @@ test.describe('Control Center', () => {
           height: bounds.height,
           titleFontSize: Number.parseFloat(getComputedStyle(title).fontSize),
           rowLabelFontSize: Number.parseFloat(getComputedStyle(rowLabel).fontSize),
-          rowStatusFontSize: Number.parseFloat(getComputedStyle(rowStatus).fontSize),
+          rowIconBackground: getComputedStyle(rowIcon).backgroundColor,
+          rowStatusCount: element.querySelectorAll('.control-center__row-status').length,
+          themeColumns: getComputedStyle(themeList).gridTemplateColumns.split(' ').length,
+          radius: getComputedStyle(element).borderTopLeftRadius,
+          overflow: element.scrollWidth > element.clientWidth,
           toggleTrack: getComputedStyle(toggleTrack).backgroundColor,
           toggleThumb: getComputedStyle(toggleThumb).backgroundColor,
         }
       })
       expect(darkVisuals.width).toBeCloseTo(360, 0)
-      expect(darkVisuals.height).toBeGreaterThanOrEqual(330)
-      expect(darkVisuals.height).toBeLessThanOrEqual(360)
-      expect(darkVisuals.titleFontSize / darkVisuals.rowLabelFontSize).toBeGreaterThanOrEqual(1.1)
-      expect(darkVisuals.titleFontSize / darkVisuals.rowLabelFontSize).toBeLessThanOrEqual(1.2)
-      expect(darkVisuals.rowLabelFontSize / darkVisuals.rowStatusFontSize).toBeGreaterThanOrEqual(
-        1.2,
-      )
-      expect(darkVisuals.toggleTrack).toBe('rgb(91, 156, 242)')
-      expect(darkVisuals.toggleThumb).toBe('rgb(247, 248, 250)')
+      expect(darkVisuals.height).toBeGreaterThanOrEqual(340)
+      expect(darkVisuals.height).toBeLessThanOrEqual(480)
+      expect(darkVisuals.titleFontSize).toBeCloseTo(darkVisuals.rowLabelFontSize, 1)
+      expect(darkVisuals.rowIconBackground).toBe('rgba(0, 0, 0, 0)')
+      expect(darkVisuals.rowStatusCount).toBe(0)
+      expect(darkVisuals.themeColumns).toBe(2)
+      expect(darkVisuals.radius).toBe('8px')
+      expect(darkVisuals.overflow).toBe(false)
+      expect(darkVisuals.toggleTrack).not.toBe(darkVisuals.toggleThumb)
 
-      const darkScreenshotPath = testInfo.outputPath('control-center-dark.png')
+      const darkScreenshotPath = testInfo.outputPath('control-center-pixel.png')
       await window.screenshot({ path: darkScreenshotPath })
-      await testInfo.attach('control-center-dark', {
+      await testInfo.attach('control-center-pixel', {
         path: darkScreenshotPath,
         contentType: 'image/png',
       })
 
-      await window.locator('[data-testid="control-center-theme-light"]').click()
+      await window.locator('[data-testid="control-center-theme-pixel-light"]').click()
       await expect(window.locator('html')).toHaveAttribute('data-cove-theme', 'light')
-      await expect(window.locator('[data-testid="control-center-theme-light"]')).toBeChecked()
+      await expect(window.locator('[data-testid="control-center-theme-pixel-light"]')).toBeChecked()
       await expect(window.locator('[data-testid="control-center-current-theme"]')).toContainText(
-        'Light',
+        'Pixel Light',
       )
       await waitForVisualState(controlCenter)
       const lightToggleTrack = await controlCenter
         .locator('.cove-toggle__track')
         .first()
         .evaluate(element => getComputedStyle(element).backgroundColor)
-      await expect(lightToggleTrack).toBe('rgb(47, 127, 241)')
+      expect(lightToggleTrack).not.toBe(darkVisuals.toggleTrack)
 
-      const lightScreenshotPath = testInfo.outputPath('control-center-light.png')
+      const lightScreenshotPath = testInfo.outputPath('control-center-pixel-light.png')
       await window.screenshot({ path: lightScreenshotPath })
-      await testInfo.attach('control-center-light', {
+      await testInfo.attach('control-center-pixel-light', {
         path: lightScreenshotPath,
         contentType: 'image/png',
       })
@@ -189,7 +194,7 @@ test.describe('Control Center', () => {
       await expect(controlCenter).toHaveAttribute('role', 'dialog')
       await expect(controlCenter).not.toHaveAttribute('aria-modal', 'true')
 
-      const themeInputs = controlCenter.locator('input[name="control-center-theme"]')
+      const themeInputs = controlCenter.getByRole('radio')
       await expect(themeInputs).toHaveCount(7)
       await expect(window.locator('[data-testid="control-center-theme-ember"]')).toBeChecked()
       await expect(window.locator('[data-testid="control-center-current-theme"]')).toContainText(
@@ -218,13 +223,13 @@ test.describe('Control Center', () => {
     }
   })
 
-  test('stays usable in a narrow viewport with large UI text', async ({
+  test('uses a mobile sheet with large UI text and hands focus to Settings', async ({
     browserName: _browserName,
   }, testInfo) => {
     const { electronApp, window } = await launchApp()
 
     try {
-      await window.setViewportSize({ width: 360, height: 720 })
+      await window.setViewportSize({ width: 320, height: 720 })
       await seedWorkspaceState(window, {
         activeWorkspaceId: 'workspace-control-center-narrow',
         workspaces: [
@@ -236,7 +241,7 @@ test.describe('Control Center', () => {
           },
         ],
         settings: {
-          uiTheme: 'dark',
+          uiTheme: 'pixel-light',
           uiFontSize: 24,
           isPrimarySidebarCollapsed: true,
         },
@@ -245,7 +250,9 @@ test.describe('Control Center', () => {
       await window.locator('[data-testid="app-header-control-center"]').click()
       const controlCenter = window.locator('[data-testid="control-center"]')
       await expect(controlCenter).toBeVisible()
-      await expect(controlCenter.locator('input[name="control-center-theme"]')).toHaveCount(7)
+      await expect(controlCenter.getByRole('radio')).toHaveCount(7)
+      await expect(controlCenter).toHaveAttribute('aria-modal', 'true')
+      await expect(window.locator('.app-shell')).toHaveJSProperty('inert', true)
       await waitForVisualState(controlCenter)
 
       const metrics = await controlCenter.evaluate(element => {
@@ -256,18 +263,53 @@ test.describe('Control Center', () => {
           viewportWidth: window.innerWidth,
           scrollWidth: element.scrollWidth,
           clientWidth: element.clientWidth,
+          bottom: rect.bottom,
+          viewportHeight: window.innerHeight,
+          touchHeights: Array.from(
+            element.querySelectorAll<HTMLElement>(
+              '.control-center__row, .control-center__theme-option, .control-center__settings, .control-center__close',
+            ),
+            control => control.getBoundingClientRect().height,
+          ),
+          labelsFit: Array.from(
+            element.querySelectorAll<HTMLElement>(
+              '.control-center__theme-label, .control-center__row-label',
+            ),
+          ).every(label => label.scrollWidth <= label.clientWidth),
         }
       })
       expect(metrics.left).toBeGreaterThanOrEqual(8)
       expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth - 8)
       expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth)
+      expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight - 8)
+      expect(metrics.bottom).toBeGreaterThanOrEqual(metrics.viewportHeight - 12)
+      expect(Math.min(...metrics.touchHeights)).toBeGreaterThanOrEqual(43.99)
+      expect(metrics.labelsFit).toBe(true)
 
-      const screenshotPath = testInfo.outputPath('control-center-narrow-dark.png')
+      const screenshotPath = testInfo.outputPath('control-center-narrow-pixel-light.png')
       await window.screenshot({ path: screenshotPath })
-      await testInfo.attach('control-center-narrow-dark', {
+      await testInfo.attach('control-center-narrow-pixel-light', {
         path: screenshotPath,
         contentType: 'image/png',
       })
+
+      const settingsButton = controlCenter.getByTestId('control-center-open-settings')
+      await settingsButton.focus()
+      await window.keyboard.press('Tab')
+      await expect(controlCenter.getByTestId('control-center-close')).toBeFocused()
+      await window.keyboard.press('Shift+Tab')
+      await expect(settingsButton).toBeFocused()
+      await window.keyboard.press('Escape')
+      await expect(controlCenter).toHaveCount(0)
+      const trigger = window.getByTestId('app-header-control-center')
+      await expect(trigger).toBeFocused()
+      await expect(window.locator('.app-shell')).toHaveJSProperty('inert', false)
+      await trigger.click()
+      await settingsButton.click()
+      await expect(window.getByTestId('settings-panel-search')).toBeFocused()
+      await expect(controlCenter).toHaveCount(0)
+      await window.waitForTimeout(100)
+      await expect(window.getByTestId('settings-panel-search')).toBeFocused()
     } finally {
       await electronApp.close()
     }

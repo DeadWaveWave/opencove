@@ -152,6 +152,7 @@ export const zhCN = {
       projects: '项目',
     },
     commands: {
+      searchWorkspace: '搜索当前项目',
       openSettings: '设置',
       openSettingsHint: '打开设置',
       spaceArchives: 'Space 归档记录',

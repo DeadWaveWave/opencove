@@ -151,6 +151,7 @@ export const en = {
       projects: 'Projects',
     },
     commands: {
+      searchWorkspace: 'Search Current Project',
       openSettings: 'Settings',
       openSettingsHint: 'Open Settings',
       spaceArchives: 'Space Archives',

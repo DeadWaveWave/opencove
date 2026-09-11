@@ -428,6 +428,7 @@ export default function App(): React.JSX.Element {
           isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
           remoteWorkersEnabled
           onCloseCommandCenter={closeCommandCenter}
+          onOpenWorkspaceSearch={openWorkspaceSearch}
           onOpenSettings={handleOpenSettings}
           onRequestOpenEndpoints={() => {
             handleOpenSettings('endpoints')

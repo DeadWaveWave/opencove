@@ -116,7 +116,13 @@ export const DismissableLayer = React.forwardRef<HTMLDivElement, DismissableLaye
       }
 
       const handleKeyDown = (event: KeyboardEvent): void => {
-        if (!dismissOnEscape || event.key !== 'Escape' || !claimOverlayLayerEvent(layerId, event)) {
+        if (
+          !dismissOnEscape ||
+          event.key !== 'Escape' ||
+          event.isComposing ||
+          event.keyCode === 229 ||
+          !claimOverlayLayerEvent(layerId, event)
+        ) {
           return
         }
 

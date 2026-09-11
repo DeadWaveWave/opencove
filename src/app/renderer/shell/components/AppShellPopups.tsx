@@ -25,6 +25,7 @@ export function AppShellPopups({
   remoteWorkersEnabled,
   onCloseCommandCenter,
   onOpenSettings,
+  onOpenWorkspaceSearch,
   onRequestOpenEndpoints,
   onOpenSpaceArchives,
   onTogglePrimarySidebar,
@@ -58,6 +59,7 @@ export function AppShellPopups({
   remoteWorkersEnabled: boolean
   onCloseCommandCenter: () => void
   onOpenSettings: () => void
+  onOpenWorkspaceSearch: () => void
   onRequestOpenEndpoints: () => void
   onOpenSpaceArchives: () => void
   onTogglePrimarySidebar: () => void
@@ -97,6 +99,7 @@ export function AppShellPopups({
         onOpenSettings={() => {
           onOpenSettings()
         }}
+        onOpenWorkspaceSearch={onOpenWorkspaceSearch}
         onOpenSpaceArchives={() => {
           onOpenSpaceArchives()
         }}

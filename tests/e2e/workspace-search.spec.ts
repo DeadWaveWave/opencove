@@ -131,7 +131,8 @@ test.describe('Workspace Search', () => {
     }
   })
 
-  test('filters results by category', async () => {
+  test('filters results by category with Pixel dark and light surfaces', async () => {
+    const testInfo = test.info()
     const { electronApp, window } = await launchApp()
 
     try {
@@ -141,6 +142,7 @@ test.describe('Workspace Search', () => {
           {
             id: 'task-search-filter',
             title: 'Filter Task',
+            labelColorOverride: 'blue',
             position: { x: 160, y: 120 },
             width: 520,
             height: 360,
@@ -164,6 +166,7 @@ test.describe('Workspace Search', () => {
           },
         ],
         {
+          settings: { uiTheme: 'pixel' },
           spaces: [
             {
               id: 'space-search-filter',
@@ -195,6 +198,46 @@ test.describe('Workspace Search', () => {
       await expect(noteItem).toBeVisible()
       await expect(spaceItem).toBeVisible()
 
+      const panel = window.getByTestId('workspace-search')
+      await expect(spaceItem.locator('svg.lucide-scan')).toHaveCount(1)
+      await expect(taskItem).toHaveAttribute('data-cove-label-color', 'blue')
+      await expect(noteItem).not.toHaveAttribute('data-cove-label-color')
+      await expect(panel.locator('[class*="__pill"]')).toHaveCount(0)
+      await expect(spaceItem).not.toContainText(testWorkspacePath)
+      const material = await panel.evaluate(element => ({
+        radius: getComputedStyle(element).borderTopLeftRadius,
+        border: getComputedStyle(element).borderLeftWidth,
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+      }))
+      expect(material.radius).toBe('8px')
+      expect(material.border).toBe('1px')
+      expect(material.scrollWidth).toBeLessThanOrEqual(material.clientWidth)
+      const labelLine = await taskItem.evaluate(element => ({
+        width: getComputedStyle(element, '::before').width,
+        color: getComputedStyle(element, '::before').backgroundColor,
+        label: getComputedStyle(element).getPropertyValue('--cove-label-color').trim(),
+      }))
+      expect(labelLine.width).toBe('2px')
+      expect(labelLine.color).not.toBe('rgba(0, 0, 0, 0)')
+      expect(labelLine.label).not.toBe('')
+      await testInfo.attach('workspace-search-pixel', {
+        body: await panel.screenshot(),
+        contentType: 'image/png',
+      })
+      await window.getByTestId('workspace-search-close').click()
+      await window.getByTestId('app-header-control-center').click()
+      await window.getByTestId('control-center-theme-pixel-light').check()
+      await window.keyboard.press('Escape')
+      await window.keyboard.press(`${findModifier}+F`)
+      await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
+      await expect(panel).toBeVisible()
+      await expect(window.getByTestId('workspace-search-input')).toBeFocused()
+      await testInfo.attach('workspace-search-pixel-light', {
+        body: await panel.screenshot(),
+        contentType: 'image/png',
+      })
+
       await window.locator('[data-testid="workspace-search-filter-tasks"]').click()
       await expect(taskItem).toHaveCount(0)
       await expect(noteItem).toBeVisible()
@@ -218,7 +261,7 @@ test.describe('Workspace Search', () => {
     }
   })
 
-  test.skip('searches spaces/branches and shows space metadata pills', async () => {
+  test.skip('searches spaces and branches with lightweight metadata', async () => {
     const userDataDir = await createTestUserDataDir()
     const stamp = Date.now()
     const branchName = `e2e/search-meta-${stamp}`
@@ -248,7 +291,7 @@ test.describe('Workspace Search', () => {
               width: 420,
               height: 280,
               kind: 'note',
-              task: { text: 'Workspace search metadata pills.' },
+              task: { text: 'Workspace search metadata.' },
             },
             {
               id: 'note-search-root',
@@ -293,26 +336,22 @@ test.describe('Workspace Search', () => {
           '[data-testid="workspace-search-item-note:note-search-meta"]',
         )
         await expect(noteItem).toBeVisible()
-        await expect(noteItem.locator('.workspace-search-panel__pill--space')).toHaveCount(0)
+        await expect(noteItem.locator('.workspace-search-panel__meta--space')).toHaveCount(0)
 
-        await expect(
-          noteItem.locator('.workspace-search-panel__pill--branch[data-cove-label-color="blue"]'),
-        ).toContainText(branchName)
-        await expect(
-          noteItem.locator('.workspace-search-panel__pill--pr[data-cove-label-color="purple"]'),
-        ).toContainText('#123')
-        await expect(noteItem.locator('[data-cove-label-color="blue"]').first()).toBeVisible()
+        await expect(noteItem.locator('.workspace-search-panel__meta--branch')).toContainText(
+          branchName,
+        )
+        await expect(noteItem.locator('.workspace-search-panel__meta--pr')).toContainText('#123')
+        await expect(noteItem).toHaveAttribute('data-cove-label-color', 'blue')
 
         const spaceItem = window.locator(
           '[data-testid="workspace-search-item-space:space-search-meta"]',
         )
         await expect(spaceItem).toBeVisible()
-        await expect(
-          spaceItem.locator('.workspace-search-panel__pill--branch[data-cove-label-color="blue"]'),
-        ).toContainText(branchName)
-        await expect(
-          spaceItem.locator('.workspace-search-panel__pill--pr[data-cove-label-color="purple"]'),
-        ).toContainText('#123')
+        await expect(spaceItem.locator('.workspace-search-panel__meta--branch')).toContainText(
+          branchName,
+        )
+        await expect(spaceItem.locator('.workspace-search-panel__meta--pr')).toContainText('#123')
 
         await window.locator('[data-testid="workspace-search-input"]').fill('Root Space')
 
@@ -320,23 +359,20 @@ test.describe('Workspace Search', () => {
           '[data-testid="workspace-search-item-note:note-search-root"]',
         )
         await expect(rootNoteItem).toBeVisible()
-        await expect(
-          rootNoteItem.locator('.workspace-search-panel__pill--space[data-cove-label-color="red"]'),
-        ).toContainText('Root Space')
-        await expect(rootNoteItem.locator('.workspace-search-panel__pill--branch')).toHaveCount(0)
-        await expect(rootNoteItem.locator('.workspace-search-panel__pill--pr')).toHaveCount(0)
+        await expect(rootNoteItem.locator('.workspace-search-panel__meta--space')).toContainText(
+          'Root Space',
+        )
+        await expect(rootNoteItem.locator('.workspace-search-panel__meta--branch')).toHaveCount(0)
+        await expect(rootNoteItem.locator('.workspace-search-panel__meta--pr')).toHaveCount(0)
 
         const rootSpaceItem = window.locator(
           '[data-testid="workspace-search-item-space:space-search-root"]',
         )
         await expect(rootSpaceItem).toBeVisible()
-        await expect(
-          rootSpaceItem.locator(
-            '.workspace-search-panel__pill--space[data-cove-label-color="red"]',
-          ),
-        ).toContainText('Root Space')
-        await expect(rootSpaceItem.locator('.workspace-search-panel__pill--branch')).toHaveCount(0)
-        await expect(rootSpaceItem.locator('.workspace-search-panel__pill--pr')).toHaveCount(0)
+        await expect(rootSpaceItem).toHaveAttribute('data-cove-label-color', 'red')
+        await expect(rootSpaceItem.locator('.workspace-search-panel__meta--space')).toHaveCount(0)
+        await expect(rootSpaceItem.locator('.workspace-search-panel__meta--branch')).toHaveCount(0)
+        await expect(rootSpaceItem.locator('.workspace-search-panel__meta--pr')).toHaveCount(0)
       } finally {
         await electronApp.close()
       }

@@ -1,27 +1,14 @@
 import React from 'react'
-import { FileText, SquareDashed, StickyNote } from 'lucide-react'
+import { FileText, Scan, StickyNote } from 'lucide-react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { WorkspaceSearchHit } from '../utils/workspaceSearch'
 
-export type WorkspaceSearchPill =
-  | {
-      kind: 'space'
-      value: string
-      color: LabelColor | null
-    }
-  | {
-      kind: 'branch'
-      label: string
-      value: string
-      title?: string
-    }
-  | {
-      kind: 'pr'
-      label: string
-      value: string
-      title?: string
-    }
+export type WorkspaceSearchMetadata = {
+  kind: 'space' | 'branch' | 'pr'
+  value: string
+  title?: string
+}
 
 export type WorkspaceSearchItem = {
   id: string
@@ -29,7 +16,7 @@ export type WorkspaceSearchItem = {
   subtitle?: string
   icon: React.JSX.Element
   labelColor: LabelColor | null
-  pills: WorkspaceSearchPill[]
+  metadata: WorkspaceSearchMetadata[]
   onSelect: () => void
 }
 
@@ -45,6 +32,29 @@ export function flattenWorkspaceSearchSections(
   return sections.flatMap(section => section.items)
 }
 
+function resolveMetadata(hit: WorkspaceSearchHit, t: TranslateFn): WorkspaceSearchMetadata[] {
+  const { space, branch, pullRequest } = hit.context
+  const metadata: WorkspaceSearchMetadata[] = []
+  if (space && !branch && hit.kind !== 'space') {
+    metadata.push({ kind: 'space', value: space.name })
+  }
+  if (branch) {
+    metadata.push({
+      kind: 'branch',
+      value: branch.head ? branch.head.trim().slice(0, 7) : branch.name,
+      title: branch.head ? `${t('worktree.detached')}: ${branch.name}` : branch.name,
+    })
+  }
+  if (pullRequest) {
+    metadata.push({
+      kind: 'pr',
+      value: `#${pullRequest.number}`,
+      title: `${pullRequest.title} (#${pullRequest.number})`,
+    })
+  }
+  return metadata
+}
+
 export function toWorkspaceSearchSections({
   hits,
   t,
@@ -56,177 +66,30 @@ export function toWorkspaceSearchSections({
   onSelectNode: (nodeId: string) => void
   onSelectSpace: (spaceId: string) => void
 }): WorkspaceSearchSection[] {
-  const spaceHits = hits.filter(hit => hit.kind === 'space')
-  const taskHits = hits.filter(hit => hit.kind === 'task')
-  const noteHits = hits.filter(hit => hit.kind === 'note')
+  const categories = [
+    { kind: 'space', id: 'spaces', label: t('workspaceSearch.sections.spaces'), Icon: Scan },
+    { kind: 'task', id: 'tasks', label: t('workspaceSearch.sections.tasks'), Icon: FileText },
+    { kind: 'note', id: 'notes', label: t('workspaceSearch.sections.notes'), Icon: StickyNote },
+  ] as const
 
-  const sections: WorkspaceSearchSection[] = []
-
-  if (spaceHits.length > 0) {
-    sections.push({
-      id: 'spaces',
-      label: t('workspaceSearch.sections.spaces'),
-      items: spaceHits.map(hit => ({
+  return categories.flatMap(({ kind, id, label, Icon }) => {
+    const items = hits
+      .filter(hit => hit.kind === kind)
+      .map(hit => ({
         id: hit.id,
         title: hit.title,
-        subtitle: hit.subtitle,
-        icon: <SquareDashed aria-hidden="true" size={16} />,
+        subtitle: hit.kind === 'space' ? undefined : hit.subtitle,
+        icon: <Icon aria-hidden="true" size={16} />,
         labelColor: hit.effectiveLabelColor,
-        pills: [
-          ...(hit.context.space && !hit.context.branch
-            ? [
-                {
-                  kind: 'space',
-                  value: hit.context.space.name,
-                  color: hit.context.space.labelColor,
-                } satisfies WorkspaceSearchPill,
-              ]
-            : []),
-          ...(hit.context.branch
-            ? [
-                {
-                  kind: 'branch',
-                  label: hit.context.branch.head ? t('worktree.detached') : t('worktree.branch'),
-                  value: hit.context.branch.head
-                    ? toShortSha(hit.context.branch.head)
-                    : hit.context.branch.name,
-                  title: hit.context.branch.name,
-                } satisfies WorkspaceSearchPill,
-              ]
-            : []),
-          ...(hit.context.pullRequest
-            ? [
-                {
-                  kind: 'pr',
-                  label: 'PR',
-                  value: `#${hit.context.pullRequest.number}`,
-                  title: `${hit.context.pullRequest.title} (#${hit.context.pullRequest.number})`,
-                } satisfies WorkspaceSearchPill,
-              ]
-            : []),
-        ],
+        metadata: resolveMetadata(hit, t),
         onSelect: () => {
-          if (!hit.spaceId) {
-            return
+          if (hit.kind === 'space' && hit.spaceId) {
+            onSelectSpace(hit.spaceId)
+          } else if (hit.nodeId) {
+            onSelectNode(hit.nodeId)
           }
-
-          onSelectSpace(hit.spaceId)
         },
-      })),
-    })
-  }
-
-  if (taskHits.length > 0) {
-    sections.push({
-      id: 'tasks',
-      label: t('workspaceSearch.sections.tasks'),
-      items: taskHits.map(hit => ({
-        id: hit.id,
-        title: hit.title,
-        subtitle: hit.subtitle,
-        icon: <FileText aria-hidden="true" size={16} />,
-        labelColor: hit.effectiveLabelColor,
-        pills: [
-          ...(hit.context.space && !hit.context.branch
-            ? [
-                {
-                  kind: 'space',
-                  value: hit.context.space.name,
-                  color: hit.context.space.labelColor,
-                } satisfies WorkspaceSearchPill,
-              ]
-            : []),
-          ...(hit.context.branch
-            ? [
-                {
-                  kind: 'branch',
-                  label: hit.context.branch.head ? t('worktree.detached') : t('worktree.branch'),
-                  value: hit.context.branch.head
-                    ? toShortSha(hit.context.branch.head)
-                    : hit.context.branch.name,
-                  title: hit.context.branch.name,
-                } satisfies WorkspaceSearchPill,
-              ]
-            : []),
-          ...(hit.context.pullRequest
-            ? [
-                {
-                  kind: 'pr',
-                  label: 'PR',
-                  value: `#${hit.context.pullRequest.number}`,
-                  title: `${hit.context.pullRequest.title} (#${hit.context.pullRequest.number})`,
-                } satisfies WorkspaceSearchPill,
-              ]
-            : []),
-        ],
-        onSelect: () => {
-          if (!hit.nodeId) {
-            return
-          }
-
-          onSelectNode(hit.nodeId)
-        },
-      })),
-    })
-  }
-
-  if (noteHits.length > 0) {
-    sections.push({
-      id: 'notes',
-      label: t('workspaceSearch.sections.notes'),
-      items: noteHits.map(hit => ({
-        id: hit.id,
-        title: hit.title,
-        subtitle: hit.subtitle,
-        icon: <StickyNote aria-hidden="true" size={16} />,
-        labelColor: hit.effectiveLabelColor,
-        pills: [
-          ...(hit.context.space && !hit.context.branch
-            ? [
-                {
-                  kind: 'space',
-                  value: hit.context.space.name,
-                  color: hit.context.space.labelColor,
-                } satisfies WorkspaceSearchPill,
-              ]
-            : []),
-          ...(hit.context.branch
-            ? [
-                {
-                  kind: 'branch',
-                  label: hit.context.branch.head ? t('worktree.detached') : t('worktree.branch'),
-                  value: hit.context.branch.head
-                    ? toShortSha(hit.context.branch.head)
-                    : hit.context.branch.name,
-                  title: hit.context.branch.name,
-                } satisfies WorkspaceSearchPill,
-              ]
-            : []),
-          ...(hit.context.pullRequest
-            ? [
-                {
-                  kind: 'pr',
-                  label: 'PR',
-                  value: `#${hit.context.pullRequest.number}`,
-                  title: `${hit.context.pullRequest.title} (#${hit.context.pullRequest.number})`,
-                } satisfies WorkspaceSearchPill,
-              ]
-            : []),
-        ],
-        onSelect: () => {
-          if (!hit.nodeId) {
-            return
-          }
-
-          onSelectNode(hit.nodeId)
-        },
-      })),
-    })
-  }
-
-  return sections
-}
-
-function toShortSha(value: string): string {
-  return value.trim().slice(0, 7)
+      }))
+    return items.length > 0 ? [{ id, label, items }] : []
+  })
 }
