@@ -136,6 +136,7 @@ export function CommandCenter({
       ),
       remoteLabel: mountDetails[workspace.id]?.remote?.displayName,
       isCurrent: workspace.id === activeWorkspace?.id,
+      showCurrentMarker: workspace.id === activeWorkspace?.id,
       onSelect: () => {
         onSelectWorkspace(workspace.id)
       },
@@ -430,7 +431,7 @@ export function CommandCenter({
                         <Server size={12} aria-hidden="true" />
                       </span>
                     ) : null}
-                    {item.isCurrent ? (
+                    {item.showCurrentMarker ? (
                       <Check className="command-center__current" size={13} aria-hidden="true" />
                     ) : null}
                   </button>

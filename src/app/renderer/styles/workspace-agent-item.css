@@ -141,10 +141,6 @@
 .workspace-agent-item--sidebar:hover {
   background: var(--cove-surface-hover);
 }
-.workspace-agent-item--sidebar.workspace-agent-item--current {
-  border-color: var(--cove-border);
-}
-
 .workspace-agent-item__select {
   display: flex;
   flex: 1;

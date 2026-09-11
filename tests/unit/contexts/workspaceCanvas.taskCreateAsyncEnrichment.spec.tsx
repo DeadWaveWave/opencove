@@ -115,7 +115,7 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/TaskNo
 })
 
 describe('WorkspaceCanvas task creation async enrichment', () => {
-  it('creates the task immediately without triggering AI enrichment when naming is disabled', async () => {
+  it('creates an editable task node directly without triggering AI enrichment', async () => {
     const suggestTitle = vi.fn(
       async (): Promise<SuggestTaskTitleResult> => ({
         title: 'Auto: Login Retry',
@@ -153,8 +153,6 @@ describe('WorkspaceCanvas task creation async enrichment', () => {
 
     const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
     const spaces: WorkspaceSpaceState[] = []
-    const requirement = 'Implement login retry with exponential backoff and jitter'
-    const fallbackTitle = `${requirement.replace(/\s+/g, ' ').trim().slice(0, 24)}...`
     let latestNodes: Node<TerminalNodeData>[] = []
 
     function Harness() {
@@ -207,10 +205,6 @@ describe('WorkspaceCanvas task creation async enrichment', () => {
     })
 
     fireEvent.click(await screen.findByTestId('workspace-context-new-task'))
-    fireEvent.change(screen.getByTestId('workspace-task-requirement'), {
-      target: { value: requirement },
-    })
-    fireEvent.click(screen.getByTestId('workspace-task-create-submit'))
 
     await waitFor(() => {
       expect(suggestTitle).not.toHaveBeenCalled()
@@ -218,7 +212,7 @@ describe('WorkspaceCanvas task creation async enrichment', () => {
       expect(screen.getByTestId('task-node')).toBeInTheDocument()
     })
 
-    expect(screen.getByTestId('task-node-title')).toHaveTextContent(fallbackTitle)
+    expect(screen.getByTestId('task-node-title')).toHaveTextContent('New task')
     expect(screen.getByTestId('task-node-priority')).toHaveTextContent('medium')
     expect(screen.getByTestId('task-node-tags')).toHaveTextContent('')
     expect(screen.queryByTestId('task-node-enrichment')).toBeNull()

@@ -41,6 +41,15 @@
   outline-offset: -1px;
 }
 
+/* Arrange and snapping use their checkmark as the state indicator. The
+   generic pressed outline remains available to color pickers and other menu
+   toggles, while these compact options stay visually quiet. Keyboard focus
+   still receives the normal visible focus ring. */
+.workspace-context-menu
+  button.workspace-context-menu__checkmark-only[aria-pressed='true']:not(:focus-visible) {
+  outline: none;
+}
+
 .cove-dialog-backdrop.cove-menu-sheet-backdrop {
   z-index: var(--cove-z-dialog-popover);
   place-items: end center;

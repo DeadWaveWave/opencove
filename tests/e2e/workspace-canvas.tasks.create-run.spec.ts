@@ -43,19 +43,17 @@ test.describe('Workspace Canvas - Tasks (Create & Run)', () => {
 
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
-      const taskCreator = window.locator('[data-testid="workspace-task-creator"]')
-      await expect(taskCreator).toBeVisible()
-
-      const requirement = window.locator('[data-testid="workspace-task-requirement"]')
       const requirementText = 'Implement login retry with exponential backoff and jitter'
-      const fallbackTitle = `${requirementText.replace(/\s+/g, ' ').trim().slice(0, 24)}...`
-      await requirement.fill(requirementText)
-
-      await window.locator('[data-testid="workspace-task-create-submit"]').click()
-
       const taskNode = window.locator('.task-node').first()
       await expect(taskNode).toBeVisible()
-      await expect(taskNode.locator('.task-node__title')).toHaveText(fallbackTitle)
+      await taskNode
+        .locator('[data-testid="task-node-inline-requirement-input"]')
+        .fill(requirementText)
+      await taskNode.locator('[data-testid="task-node-inline-requirement-input"]').blur()
+      await taskNode.locator('[data-testid="task-node-title-display"]').dblclick()
+      await taskNode.locator('[data-testid="task-node-inline-title-input"]').fill('Login retry')
+      await taskNode.locator('[data-testid="task-node-inline-title-input"]').blur()
+      await expect(taskNode.locator('.task-node__title')).toHaveText('Login retry')
       await expect(taskNode.locator('.task-node__priority')).toHaveText('MEDIUM')
       await expect(taskNode.locator('[data-testid="task-node-tags"]')).toContainText('No tags')
 

@@ -287,6 +287,7 @@ export const en = {
     moreActions: 'Task actions',
     deleteTask: 'Delete task',
     noTags: 'No tags',
+    editMeta: 'Edit priority and tags',
     requirement: 'Task Requirement',
     agents: 'Agent Sessions',
     noAgentSessionsYet: 'No agent sessions yet.',

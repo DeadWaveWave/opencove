@@ -18,6 +18,12 @@ function renderMark(checked: boolean): React.JSX.Element {
   )
 }
 
+// Arrange options communicate their current value with the checkmark in the
+// leading gutter. Keep the pressed state for assistive technology, while
+// opting out of the generic menu selected outline (which is useful for other
+// toggle menus but makes this dense settings list look like a set of cards).
+const CHECKMARK_ONLY_CLASS = 'workspace-context-menu__checkmark-only'
+
 export function WorkspaceContextArrangeBySubmenu({
   submenuRef,
   style,
@@ -76,6 +82,7 @@ export function WorkspaceContextArrangeBySubmenu({
     >
       <button
         type="button"
+        className={CHECKMARK_ONLY_CLASS}
         data-testid="workspace-context-arrange-scope-all"
         aria-pressed={arrangeScope === 'all'}
         disabled={!canArrangeAll}
@@ -88,6 +95,7 @@ export function WorkspaceContextArrangeBySubmenu({
       </button>
       <button
         type="button"
+        className={CHECKMARK_ONLY_CLASS}
         data-testid="workspace-context-arrange-scope-canvas"
         aria-pressed={arrangeScope === 'canvas'}
         disabled={!canArrangeCanvas}
@@ -103,6 +111,7 @@ export function WorkspaceContextArrangeBySubmenu({
       {hitSpace ? (
         <button
           type="button"
+          className={CHECKMARK_ONLY_CLASS}
           data-testid="workspace-context-arrange-scope-space"
           aria-pressed={arrangeScope === 'space'}
           disabled={!canArrangeHitSpace}
@@ -121,6 +130,7 @@ export function WorkspaceContextArrangeBySubmenu({
 
       <button
         type="button"
+        className={CHECKMARK_ONLY_CLASS}
         data-testid="workspace-context-arrange-order-position"
         aria-pressed={arrangeOrder === 'position'}
         onClick={() => {
@@ -134,6 +144,7 @@ export function WorkspaceContextArrangeBySubmenu({
       </button>
       <button
         type="button"
+        className={CHECKMARK_ONLY_CLASS}
         data-testid="workspace-context-arrange-order-created"
         aria-pressed={arrangeOrder === 'createdAt'}
         onClick={() => {
@@ -153,6 +164,7 @@ export function WorkspaceContextArrangeBySubmenu({
 
       <button
         type="button"
+        className={CHECKMARK_ONLY_CLASS}
         data-testid="workspace-context-arrange-preserve-window-sizes"
         aria-pressed={preserveWindowSizes}
         onClick={() => {
@@ -172,6 +184,7 @@ export function WorkspaceContextArrangeBySubmenu({
 
       <button
         type="button"
+        className={CHECKMARK_ONLY_CLASS}
         data-testid="workspace-context-arrange-space-fit-tight"
         aria-pressed={arrangeSpaceFit === 'tight'}
         onClick={() => {
@@ -185,6 +198,7 @@ export function WorkspaceContextArrangeBySubmenu({
       </button>
       <button
         type="button"
+        className={CHECKMARK_ONLY_CLASS}
         data-testid="workspace-context-arrange-space-fit-keep"
         aria-pressed={arrangeSpaceFit === 'keep'}
         onClick={() => {

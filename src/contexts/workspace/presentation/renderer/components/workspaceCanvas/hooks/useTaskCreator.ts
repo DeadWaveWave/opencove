@@ -86,25 +86,61 @@ export function useWorkspaceCanvasTaskCreator({
     [t],
   )
 
+  const createTaskAtAnchor = useCallback(
+    (anchor: Point): void => {
+      const placementAnchor = resolveNodePlacementAnchorFromViewportCenter(
+        anchor,
+        resolveDefaultTaskWindowSize(standardWindowSizeBucket),
+      )
+      const targetSpace = findContainingSpaceByAnchor(spacesRef.current, anchor) ?? null
+      const created = createTaskNode(
+        placementAnchor,
+        t('taskWindow.defaultTaskTitle'),
+        '',
+        false,
+        'medium',
+        [],
+        { targetSpaceRect: targetSpace?.rect ?? null },
+      )
+
+      if (!created) {
+        return
+      }
+
+      if (targetSpace) {
+        assignNodeToSpaceAndExpand({
+          createdNodeId: created.id,
+          createdNode: created,
+          targetSpaceId: targetSpace.id,
+          spacesRef,
+          nodesRef,
+          setNodes,
+          onSpacesChange,
+        })
+      }
+
+      onRequestPersistFlush?.()
+    },
+    [
+      createTaskNode,
+      nodesRef,
+      onRequestPersistFlush,
+      onSpacesChange,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
+      t,
+    ],
+  )
+
   const openTaskCreator = useCallback(() => {
     if (!contextMenu || contextMenu.kind !== 'pane') {
       return
     }
 
-    setTaskCreator({
-      anchor: resolvePaneNodeCreationAnchor(contextMenu),
-      title: '',
-      requirement: '',
-      priority: 'medium',
-      selectedTags: [],
-      autoGenerateTitle: isTaskAiNamingEnabled,
-      isGeneratingTitle: false,
-      isCreating: false,
-      error: null,
-    })
-
+    createTaskAtAnchor(resolvePaneNodeCreationAnchor(contextMenu))
     setContextMenu(null)
-  }, [contextMenu, isTaskAiNamingEnabled, setContextMenu])
+  }, [contextMenu, createTaskAtAnchor, setContextMenu])
 
   const closeTaskCreator = useCallback(() => {
     setTaskCreator(prev => {

@@ -1,5 +1,5 @@
 import { Handle, Position } from '@xyflow/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
@@ -22,6 +22,7 @@ import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import type { LabelColor } from '@shared/types/labelColor'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
+import { Pencil } from 'lucide-react'
 
 interface TaskNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -91,6 +92,8 @@ export function TaskNode({
 
   const [isRequirementEditing, setIsRequirementEditing] = useState(false)
   const [requirementDraft, setRequirementDraft] = useState(requirement)
+  const requirementInputRef = useRef<HTMLTextAreaElement | null>(null)
+  const hasFocusedEmptyRequirementRef = useRef(false)
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
     width,
@@ -109,6 +112,59 @@ export function TaskNode({
 
     setRequirementDraft(requirement)
   }, [isRequirementEditing, requirement])
+
+  useEffect(() => {
+    if (requirement.trim().length > 0 || hasFocusedEmptyRequirementRef.current) {
+      return
+    }
+
+    hasFocusedEmptyRequirementRef.current = true
+    const frame = window.requestAnimationFrame(() => {
+      requirementInputRef.current?.focus()
+      const length = requirementInputRef.current?.value.length ?? 0
+      requirementInputRef.current?.setSelectionRange(length, length)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [requirement])
+
+  const insertFilePaths = useCallback(
+    (input: HTMLTextAreaElement, files: FileList | null, uriList?: string): boolean => {
+      const paths = files
+        ? Array.from(files)
+            .map(file => window.opencoveApi.filesystem.getPathForFile(file))
+            .filter(path => path.length > 0)
+        : []
+      const uriPaths = (uriList ?? '')
+        .split(/\r?\n/)
+        .map(value => value.trim())
+        .filter(value => value.startsWith('file://'))
+        .map(value => {
+          try {
+            return decodeURIComponent(value.slice('file://'.length))
+          } catch {
+            return value.slice('file://'.length)
+          }
+        })
+      const uniquePaths = [...new Set([...paths, ...uriPaths])]
+      if (uniquePaths.length === 0) {
+        return false
+      }
+
+      const insertion = uniquePaths.join('\n')
+      const start = input.selectionStart ?? input.value.length
+      const end = input.selectionEnd ?? start
+      const nextValue = `${input.value.slice(0, start)}${insertion}${input.value.slice(end)}`
+      setRequirementDraft(nextValue)
+      onQuickRequirementSave(nextValue)
+      window.requestAnimationFrame(() => {
+        const nextCaret = start + insertion.length
+        input.setSelectionRange(nextCaret, nextCaret)
+      })
+      return true
+    },
+    [onQuickRequirementSave],
+  )
 
   const commitRequirementDraft = useCallback(() => {
     const normalized = requirementDraft.trim()
@@ -272,12 +328,26 @@ export function TaskNode({
             <span className="task-node__tag task-node__tag--empty">{t('taskNode.noTags')}</span>
           )}
         </span>
+        <button
+          type="button"
+          className="task-node__meta-edit nodrag"
+          data-testid="task-node-edit-meta"
+          aria-label={t('taskNode.editMeta')}
+          title={t('taskNode.editMeta')}
+          onClick={event => {
+            event.stopPropagation()
+            onOpenEditor()
+          }}
+        >
+          <Pencil size={11} aria-hidden="true" />
+        </button>
       </div>
 
       <div className="task-node__content">
         <label>{t('taskNode.requirement')}</label>
         <div className="task-node__inline-editor">
           <textarea
+            ref={requirementInputRef}
             className="task-node__requirement-input nodrag nowheel"
             data-testid="task-node-inline-requirement-input"
             value={requirementDraft}
@@ -289,6 +359,37 @@ export function TaskNode({
             }}
             onClick={event => {
               event.stopPropagation()
+            }}
+            onDragOver={event => {
+              if (
+                event.dataTransfer?.files.length ||
+                event.dataTransfer?.types.includes('text/uri-list')
+              ) {
+                event.preventDefault()
+                event.stopPropagation()
+                event.dataTransfer.dropEffect = 'copy'
+              }
+            }}
+            onDrop={event => {
+              event.preventDefault()
+              event.stopPropagation()
+              insertFilePaths(
+                event.currentTarget,
+                event.dataTransfer.files,
+                event.dataTransfer.getData('text/uri-list'),
+              )
+            }}
+            onPaste={event => {
+              const files = event.clipboardData.files
+              const uriList = event.clipboardData.getData('text/uri-list')
+              if (files.length === 0 && !uriList) {
+                return
+              }
+
+              if (insertFilePaths(event.currentTarget, files, uriList)) {
+                event.preventDefault()
+                event.stopPropagation()
+              }
             }}
             onChange={event => {
               setRequirementDraft(event.target.value)

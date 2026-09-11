@@ -40,11 +40,14 @@ test.describe('Workspace Canvas - Node Create (Push-away)', () => {
       })
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
-      await expect(window.locator('[data-testid="workspace-task-creator"]')).toBeVisible()
-      await window.locator('[data-testid="workspace-task-advanced-toggle"]').click()
-      await window.locator('[data-testid="workspace-task-title"]').fill('Crowded Task')
-      await window.locator('[data-testid="workspace-task-requirement"]').fill('push-away-on-create')
-      await window.locator('[data-testid="workspace-task-create-submit"]').click()
+      const createdTask = window.locator('.task-node').last()
+      await createdTask
+        .locator('[data-testid="task-node-inline-requirement-input"]')
+        .fill('push-away-on-create')
+      await createdTask.locator('[data-testid="task-node-inline-requirement-input"]').blur()
+      await createdTask.locator('[data-testid="task-node-title-display"]').dblclick()
+      await createdTask.locator('[data-testid="task-node-inline-title-input"]').fill('Crowded Task')
+      await createdTask.locator('[data-testid="task-node-inline-title-input"]').blur()
 
       await expect(window.locator('.task-node')).toHaveCount(2)
 

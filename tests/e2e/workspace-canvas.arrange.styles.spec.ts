@@ -94,6 +94,18 @@ test.describe('Workspace Canvas - Arrange', () => {
       await expect(
         window.locator('[data-testid="workspace-context-arrange-preserve-window-sizes"]'),
       ).toBeVisible()
+      const arrangePressedStyles = await window
+        .locator('[data-testid="workspace-context-arrange-by-menu"] button[aria-pressed="true"]')
+        .evaluateAll(elements =>
+          elements.map(element => ({
+            id: element.getAttribute('data-testid'),
+            outline: getComputedStyle(element).outlineStyle,
+            focusVisible: element.matches(':focus-visible'),
+          })),
+        )
+      expect(
+        arrangePressedStyles.every(style => style.focusVisible || style.outline === 'none'),
+      ).toBe(true)
       await expect(
         window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"]'),
       ).toHaveCount(0)
@@ -107,6 +119,10 @@ test.describe('Workspace Canvas - Arrange', () => {
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
       await window.locator('[data-testid="workspace-context-magnetic-snapping"]').click()
+      await expect(window.locator('[data-testid="workspace-context-magnetic-snapping"]')).toHaveCSS(
+        'outline-style',
+        'none',
+      )
       await expect(window.locator('[data-testid="workspace-context-arrange"]')).toBeVisible()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),

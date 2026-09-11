@@ -45,10 +45,6 @@
   background: var(--cove-surface-hover);
 }
 
-.workspace-space-item--active {
-  border-color: var(--cove-border);
-}
-
 .workspace-space-item__select {
   display: flex;
   flex: 1;

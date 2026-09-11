@@ -249,6 +249,7 @@ export function WorkspaceContextPaneMenuContent({
 
       <button
         type="button"
+        className="workspace-context-menu__checkmark-only"
         data-testid="workspace-context-magnetic-snapping"
         aria-pressed={magneticSnappingEnabled}
         onClick={onToggleMagneticSnapping}

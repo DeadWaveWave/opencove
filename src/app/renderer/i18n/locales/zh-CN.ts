@@ -288,6 +288,7 @@ export const zhCN = {
     moreActions: '任务操作',
     deleteTask: '删除任务',
     noTags: '没有标签',
+    editMeta: '编辑优先级和标签',
     requirement: '任务要求',
     agents: 'Agent 会话',
     noAgentSessionsYet: '还没有 Agent 会话记录。',

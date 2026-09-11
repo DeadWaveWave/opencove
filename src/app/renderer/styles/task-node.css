@@ -208,6 +208,30 @@
   border-style: dashed;
 }
 
+.task-node__meta-edit {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--cove-text-faint);
+  background: transparent;
+  cursor: pointer;
+}
+
+.task-node__meta-edit:hover {
+  color: var(--cove-text);
+  border-color: var(--cove-border);
+  background: var(--cove-surface-hover);
+}
+
+.task-node__meta-edit:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 1px;
+}
+
 .task-node__content {
   flex: 1;
   min-height: 0;

@@ -97,11 +97,14 @@ test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
       await expect(window.locator('[data-testid="workspace-context-new-task"]')).toBeVisible()
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
-      await expect(window.locator('[data-testid="workspace-task-creator"]')).toBeVisible()
-      await window.locator('[data-testid="workspace-task-advanced-toggle"]').click()
-      await window.locator('[data-testid="workspace-task-title"]').fill('Crowded Task')
-      await window.locator('[data-testid="workspace-task-requirement"]').fill('created-in-crowded')
-      await window.locator('[data-testid="workspace-task-create-submit"]').click()
+      const createdTask = window.locator('.task-node').last()
+      await createdTask
+        .locator('[data-testid="task-node-inline-requirement-input"]')
+        .fill('created-in-crowded')
+      await createdTask.locator('[data-testid="task-node-inline-requirement-input"]').blur()
+      await createdTask.locator('[data-testid="task-node-title-display"]').dblclick()
+      await createdTask.locator('[data-testid="task-node-inline-title-input"]').fill('Crowded Task')
+      await createdTask.locator('[data-testid="task-node-inline-title-input"]').blur()
 
       await expect(window.locator('.task-node')).toHaveCount(3)
 

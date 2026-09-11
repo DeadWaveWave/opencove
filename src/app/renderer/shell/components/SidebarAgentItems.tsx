@@ -77,7 +77,7 @@ function SidebarAgentItem({
         transition,
         opacity: isDragging ? 0.4 : 1,
       }}
-      className={`workspace-agent-item workspace-agent-item--sidebar${isCurrent ? ' workspace-agent-item--current' : ''}${isDragging ? ' workspace-agent-item--dragging' : ''}`}
+      className={`workspace-agent-item workspace-agent-item--sidebar${isDragging ? ' workspace-agent-item--dragging' : ''}`}
       data-cove-label-color={effectiveLabelColor ?? undefined}
     >
       <button

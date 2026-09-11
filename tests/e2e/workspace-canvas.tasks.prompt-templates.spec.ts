@@ -43,69 +43,65 @@ test.describe('Workspace Canvas - Tasks (Prompt Templates)', () => {
 
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
-      const taskCreator = window.locator('[data-testid="workspace-task-creator"]')
-      await expect(taskCreator).toBeVisible()
-
-      const requirement = window.locator('[data-testid="workspace-task-requirement"]')
+      const taskNode = window.locator('.task-node').first()
+      await expect(taskNode).toBeVisible()
+      const requirement = taskNode.locator('[data-testid="task-node-inline-requirement-input"]')
       const originalRequirement = 'Implement auth flow'
       await requirement.fill(originalRequirement)
 
-      const creatorTrigger = window.locator(
-        '[data-testid="workspace-task-creator-open-prompt-templates"]',
-      )
+      const creatorTrigger = taskNode.locator('[data-testid="task-node-more"]')
       await creatorTrigger.click()
-      const creatorMenu = window.locator('[data-testid="task-creator-prompt-templates-menu"]')
+      await window.locator('[data-testid="task-node-open-prompt-templates"]').click()
+      const creatorMenu = window.locator('[data-testid="task-node-prompt-templates-menu"]')
       await expect(creatorMenu).toBeVisible()
       await expectMenuAnchoredToTrigger(creatorTrigger, creatorMenu)
 
-      await window.locator('[data-testid="task-creator-prompt-templates-add-global"]').click()
+      await window.locator('[data-testid="task-node-prompt-templates-add-global"]').click()
       const creatorCreateWindow = window.locator(
-        '[data-testid="task-creator-prompt-templates-create-window"]',
+        '[data-testid="task-node-prompt-templates-create-window"]',
       )
       await expect(creatorCreateWindow).toBeVisible()
 
       await window
-        .locator('[data-testid="task-creator-prompt-templates-create-name"]')
+        .locator('[data-testid="task-node-prompt-templates-create-name"]')
         .fill('Global A')
       await window
-        .locator('[data-testid="task-creator-prompt-templates-create-content"]')
+        .locator('[data-testid="task-node-prompt-templates-create-content"]')
         .fill('GLOBAL-TEMPLATE')
-      await window.locator('[data-testid="task-creator-prompt-templates-create-save"]').click()
+      await window.locator('[data-testid="task-node-prompt-templates-create-save"]').click()
       await expect(creatorCreateWindow).toBeHidden()
 
       await creatorTrigger.click()
+      await window.locator('[data-testid="task-node-open-prompt-templates"]').click()
       await expect(creatorMenu).toBeVisible()
       await expectMenuAnchoredToTrigger(creatorTrigger, creatorMenu)
       await creatorMenu.getByRole('button', { name: 'Global A' }).click()
       await expect(requirement).toHaveValue(`GLOBAL-TEMPLATE\n\n${originalRequirement}`)
 
       await creatorTrigger.click()
+      await window.locator('[data-testid="task-node-open-prompt-templates"]').click()
       await expect(creatorMenu).toBeVisible()
       await expectMenuAnchoredToTrigger(creatorTrigger, creatorMenu)
-      await window.locator('[data-testid="task-creator-prompt-templates-add-project"]').click()
+      await window.locator('[data-testid="task-node-prompt-templates-add-project"]').click()
       await expect(creatorCreateWindow).toBeVisible()
 
       await window
-        .locator('[data-testid="task-creator-prompt-templates-create-name"]')
+        .locator('[data-testid="task-node-prompt-templates-create-name"]')
         .fill('Project A')
       await window
-        .locator('[data-testid="task-creator-prompt-templates-create-content"]')
+        .locator('[data-testid="task-node-prompt-templates-create-content"]')
         .fill('PROJECT-TEMPLATE')
-      await window.locator('[data-testid="task-creator-prompt-templates-create-save"]').click()
+      await window.locator('[data-testid="task-node-prompt-templates-create-save"]').click()
       await expect(creatorCreateWindow).toBeHidden()
 
       await creatorTrigger.click()
+      await window.locator('[data-testid="task-node-open-prompt-templates"]').click()
       await expect(creatorMenu).toBeVisible()
       await expectMenuAnchoredToTrigger(creatorTrigger, creatorMenu)
       await creatorMenu.getByRole('button', { name: 'Project A' }).click()
       await expect(requirement).toHaveValue(
         `PROJECT-TEMPLATE\n\nGLOBAL-TEMPLATE\n\n${originalRequirement}`,
       )
-
-      await window.locator('[data-testid="workspace-task-create-submit"]').click()
-
-      const taskNode = window.locator('.task-node').first()
-      await expect(taskNode).toBeVisible()
 
       const inlineRequirementInput = taskNode.locator(
         '[data-testid="task-node-inline-requirement-input"]',

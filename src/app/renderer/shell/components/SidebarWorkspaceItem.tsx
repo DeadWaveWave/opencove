@@ -72,9 +72,7 @@ function SpaceGroup({
       className={`workspace-space-group workspace-space-group--${isRoot ? 'root' : 'space'}${isDragging ? ' workspace-space-group--dragging' : ''}`}
       data-cove-label-color={group.labelColor ?? undefined}
     >
-      <div
-        className={`workspace-space-item${isRoot ? ' workspace-space-item--root' : ''}${isActive ? ' workspace-space-item--active' : ''}`}
-      >
+      <div className={`workspace-space-item${isRoot ? ' workspace-space-item--root' : ''}`}>
         <button
           type="button"
           className="workspace-space-item__select"

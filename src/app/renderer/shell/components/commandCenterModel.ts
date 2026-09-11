@@ -9,6 +9,7 @@ export type CommandCenterItem = {
   labelColor?: LabelColor | null
   remoteLabel?: string
   isCurrent?: boolean
+  showCurrentMarker?: boolean
   onSelect: () => void
 }
 

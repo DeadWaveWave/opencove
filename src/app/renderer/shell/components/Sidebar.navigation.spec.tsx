@@ -139,11 +139,21 @@ describe('Sidebar navigation semantics', () => {
     ).toBe('location')
     expect(
       screen
+        .getByTestId('workspace-agent-item-local-agent-0')
+        .classList.contains('workspace-agent-item--current'),
+    ).toBe(false)
+    expect(
+      screen
         .getByTestId('workspace-agent-item-local-agent-1')
         .hasAttribute('data-cove-label-color'),
     ).toBe(false)
     expect(
       screen.getByTestId('workspace-space-item-local-space').hasAttribute('aria-current'),
+    ).toBe(false)
+    expect(
+      screen
+        .getByTestId('workspace-space-item-local-space')
+        .classList.contains('workspace-space-item--active'),
     ).toBe(false)
   })
 })

@@ -162,6 +162,7 @@ describe('Command Center interaction', () => {
     expect(remote.querySelector('[aria-label="Remote project: Development"]')).not.toBeNull()
     expect(space.getAttribute('data-cove-label-color')).toBe('blue')
     expect(space.getAttribute('aria-current')).toBe('location')
+    expect(space.querySelector('.command-center__current')).toBeNull()
     fireEvent.change(input, { target: { value: '/tmp/remote' } })
     expect(screen.getAllByRole('option')).toHaveLength(1)
     expect(screen.getByRole('option').textContent).toBe('Remote project')

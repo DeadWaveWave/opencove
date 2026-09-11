@@ -183,15 +183,13 @@ export async function verifyRemoteOnlyProjectDefaultMount({
 
   await openWorkspacePaneContextMenu(pane)
   await window.locator('[data-testid="workspace-context-new-task"]').click()
-  await expect(window.locator('[data-testid="workspace-task-creator"]')).toBeVisible()
-  await window
-    .locator('[data-testid="workspace-task-requirement"]')
-    .fill('Remote-only task agent should run in default mount')
-  await window.locator('[data-testid="workspace-task-create-submit"]').click()
-  await expect(window.locator('[data-testid="workspace-task-creator"]')).toHaveCount(0)
 
   const taskNode = window.locator('.task-node').first()
   await expect(taskNode).toBeVisible()
+  await taskNode
+    .locator('[data-testid="task-node-inline-requirement-input"]')
+    .fill('Remote-only task agent should run in default mount')
+  await taskNode.locator('[data-testid="task-node-inline-requirement-input"]').blur()
   await taskNode.locator('[data-testid="task-node-run-agent"]').click()
 
   const taskAgentSessionId = await pollFor(
