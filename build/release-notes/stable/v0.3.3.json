@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "version": "0.3.3",
+  "channel": "stable",
+  "publishedAt": "2026-09-12T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/compare/v0.3.2...v0.3.3",
+  "locales": {
+    "en": {
+      "summary": "OpenCove 0.3.3 improves keyboard control, terminal integrations, and workspace navigation.",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "Execute quick commands after terminal session attachment.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/408",
+          "prNumber": 408,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "Persist Project and Space disclosure state independently across restarts.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/411",
+          "prNumber": 411,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Map desktop image paste to native Pi, Kimi, Codex, Claude Code, and OpenCode terminal bindings.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/409",
+          "prNumber": 409,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Close the focused canvas node with Cmd/Ctrl+W and require deliberate double-press Cmd+Q quitting on macOS.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/410",
+          "prNumber": 410,
+          "sha": null
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "OpenCove 0.3.3 改善快捷键控制、终端集成和工作区导航。",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "支持在终端会话连接后执行快速命令。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/408",
+          "prNumber": 408,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "跨重启独立持久化 Project 和 Space 的展开状态。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/411",
+          "prNumber": 411,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "将桌面图片粘贴映射到 Pi、Kimi、Codex、Claude Code 和 OpenCode 的原生终端按键。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/409",
+          "prNumber": 409,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Cmd/Ctrl+W 关闭当前输入焦点所在的画布节点，macOS Cmd+Q 需要连续两次确认。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/410",
+          "prNumber": 410,
+          "sha": null
+        }
+      ]
+    }
+  }
+}
