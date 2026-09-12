@@ -296,6 +296,24 @@ OpenCove 0.3.0 makes long-running AI development work easier to resume, observe,
 
 ---
 
+## [0.3.3] - 2026-09-12
+
+OpenCove 0.3.3 improves the canvas workflow, keyboard control, terminal integrations, and release tooling.
+
+### ✨ Highlights
+- Unified native image paste mappings across Pi, Kimi, Codex, Claude Code, and OpenCode terminals.
+- Safer Cmd/Ctrl+W window closing and deliberate double-press Cmd+Q application quitting.
+
+### 🚀 Added
+- Terminal: support quick command execution after session attachment. (#408)
+
+### 💅 Changed
+- Sidebar: persist Project and Space disclosure state independently across restarts. (#411)
+
+### 🐞 Fixed
+- Terminal: route desktop image paste through provider-specific native key mappings while preserving text paste. (#409)
+- Desktop: close the focused input node or selected canvas node with Cmd/Ctrl+W without closing the app. (#410)
+- Desktop: require two non-repeat Cmd+Q presses within 1.5 seconds before quitting on macOS. (#410)
 ## [0.2.0] - 2026-03-12
 
 Welcome to OpenCove 0.2.0! This release focuses on unifying the workspace experience, hardening runtime stability for AI Agents, and introducing formal multi-platform release pipelines.
