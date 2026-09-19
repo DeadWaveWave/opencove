@@ -59,6 +59,40 @@
   pointer-events: none;
 }
 
+/* Emphasize the four corners without adding a panel fill. Share the caption
+   cutouts and zoom-compensated stroke with the continuous boundary. */
+.workspace-canvas .workspace-space-region::after {
+  --cove-space-corner-reach: min(45%, clamp(40px, calc(48px / var(--cove-canvas-zoom)), 180px));
+  content: '';
+  position: absolute;
+  inset: -1px;
+  box-sizing: border-box;
+  border: calc(1px * var(--cove-space-stroke-scale) + 1px) solid var(--cove-space-identity-color);
+  border-radius: inherit;
+  clip-path: var(--cove-space-border-clip, none);
+  mask-image:
+    radial-gradient(farthest-side at top left, var(--cove-space-identity-color) 35%, transparent),
+    radial-gradient(farthest-side at top right, var(--cove-space-identity-color) 35%, transparent),
+    radial-gradient(
+      farthest-side at bottom left,
+      var(--cove-space-identity-color) 35%,
+      transparent
+    ),
+    radial-gradient(
+      farthest-side at bottom right,
+      var(--cove-space-identity-color) 35%,
+      transparent
+    );
+  mask-size: var(--cove-space-corner-reach) var(--cove-space-corner-reach);
+  mask-position:
+    top left,
+    top right,
+    bottom left,
+    bottom right;
+  mask-repeat: no-repeat;
+  pointer-events: none;
+}
+
 .workspace-canvas .workspace-space-region.workspace-space-region--active {
   --cove-space-identity-edge-strength: 72%;
 }
