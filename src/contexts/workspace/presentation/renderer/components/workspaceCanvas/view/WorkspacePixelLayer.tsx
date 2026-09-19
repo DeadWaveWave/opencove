@@ -35,11 +35,12 @@ function WorkspacePixelLayerComponent({
   const refreshRef = useRef<(() => void) | null>(null)
   const optionsRef = useRef(options)
   const syncOptionsRef = useRef<(() => void) | null>(null)
+  const { background, creation, closing, working } = options
 
   useLayoutEffect(() => {
-    optionsRef.current = options
+    optionsRef.current = { background, creation, closing, working }
     syncOptionsRef.current?.()
-  }, [options.background, options.creation, options.closing])
+  }, [background, creation, closing, working])
 
   useLayoutEffect(() => {
     nodesRef.current = nodes
@@ -132,23 +133,32 @@ function WorkspacePixelLayerComponent({
       requestFrame: callback => window.requestAnimationFrame(callback),
       cancelFrame: id => window.cancelAnimationFrame(id),
       draw: now => {
-        const active =
-          optionsRef.current.background &&
-          drawPixelLayer({
-            canvas,
-            context,
-            viewport,
-            nodes: projected,
-            activity,
-            theme,
-            now,
-            reducedMotion,
-          })
+        const effects = optionsRef.current
+        const pending = new Set(assembly.pendingIds(now))
+        const workingNodes =
+          effects.working && !reducedMotion
+            ? projected.filter(node => node.tone === 'working' && !pending.has(node.id))
+            : []
+        const active = drawPixelLayer({
+          canvas,
+          context,
+          viewport,
+          nodes: projected.filter(node => !pending.has(node.id)),
+          activity,
+          theme,
+          now,
+          reducedMotion,
+          background: effects.background,
+          working: effects.working,
+        })
+        canvas.hidden = !effects.background && workingNodes.length === 0
+        canvas.dataset.covePixelWorkingNodeIds = workingNodes.map(node => node.id).join(',')
         canvas.dataset.covePixelActivity = active ? 'output' : 'idle'
         drawAssembly()
         return (
           !reducedMotion &&
-          (optionsRef.current.background ||
+          (effects.background ||
+            workingNodes.length > 0 ||
             assembly.hasPending(performance.now()) ||
             burst.hasPending(performance.now()))
         )
@@ -165,6 +175,8 @@ function WorkspacePixelLayerComponent({
         burst.clear()
         closureSnapshots.clear()
         canvas.dataset.covePixelActivity = 'idle'
+        canvas.dataset.covePixelWorkingNodeIds = ''
+        context.clearRect(0, 0, canvas.width, canvas.height)
         drawAssembly()
       }
       if (visible && previousVisibility !== true && !reducedMotion) {
@@ -172,7 +184,9 @@ function WorkspacePixelLayerComponent({
       }
       previousVisibility = visible
       const effects = optionsRef.current
-      scheduler.setVisible(visible && (effects.background || effects.creation || effects.closing))
+      scheduler.setVisible(
+        visible && (effects.background || effects.creation || effects.closing || effects.working),
+      )
     }
     const refresh = () => {
       state = store.getState()
@@ -201,6 +215,9 @@ function WorkspacePixelLayerComponent({
         activity.clear()
         context.clearRect(0, 0, canvas.width, canvas.height)
         canvas.dataset.covePixelActivity = 'idle'
+      }
+      if (!effects.working) {
+        canvas.dataset.covePixelWorkingNodeIds = ''
       }
       if (isVisible()) {
         drawAssembly()
@@ -366,6 +383,7 @@ function WorkspacePixelLayerComponent({
         aria-hidden="true"
         hidden={!options.background}
         data-cove-pixel-activity="idle"
+        data-cove-pixel-working-node-ids=""
       />
       <canvas
         ref={assemblyRef}

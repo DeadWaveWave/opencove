@@ -12,6 +12,7 @@ interface WorkspaceCanvasBackgroundProps {
     | 'canvasPixelBackgroundEnabled'
     | 'nodeCreationPixelEffectEnabled'
     | 'nodeClosePixelEffectEnabled'
+    | 'agentWorkingPixelEffectEnabled'
   >
   canvasRef: React.RefObject<HTMLDivElement | null>
   nodes: Node<TerminalNodeData>[]
@@ -27,8 +28,9 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
     background: settings.canvasPixelBackgroundEnabled,
     creation: settings.nodeCreationPixelEffectEnabled,
     closing: settings.nodeClosePixelEffectEnabled,
+    working: settings.agentWorkingPixelEffectEnabled,
   }
-  const enabled = effects.background || effects.creation || effects.closing
+  const enabled = effects.background || effects.creation || effects.closing || effects.working
 
   return (
     <>

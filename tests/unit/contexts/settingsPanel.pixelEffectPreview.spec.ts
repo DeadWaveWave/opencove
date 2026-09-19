@@ -10,6 +10,7 @@ const effects = {
   canvasPixelBackgroundEnabled: false,
   nodeCreationPixelEffectEnabled: true,
   nodeClosePixelEffectEnabled: true,
+  agentWorkingPixelEffectEnabled: false,
 }
 const context = {
   setTransform: vi.fn(),
@@ -127,30 +128,29 @@ describe('isolated settings pixel preview', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
-  it('runs enabled background only while visible and stops immediately for reduced motion', () => {
-    const onState = vi.fn()
-    const drawBackground = vi.spyOn(backgrounds, 'drawPixelLayer')
-    const controller = createPixelEffectPreview(
-      fixture(),
-      { ...effects, canvasPixelBackgroundEnabled: true },
-      onState,
-    )
-    dispose = controller.dispose
-    tick(0)
-    expect(frames.size).toBe(1)
-    intersect([{ isIntersecting: false }])
-    expect(frames.size).toBe(0)
-    intersect([{ isIntersecting: true }])
-    expect(frames.size).toBe(1)
-    reduced = true
-    motionChange()
-    tick(40)
-    expect(drawBackground.mock.lastCall?.[0].reducedMotion).toBe(true)
-    expect(frames.size).toBe(0)
-    controller.replay()
-    expect(onState).toHaveBeenLastCalledWith({ playing: false, reducedMotion: true })
-    expect(frames.size).toBe(0)
-  })
+  it.each(['canvasPixelBackgroundEnabled', 'agentWorkingPixelEffectEnabled'] as const)(
+    'runs %s only while visible and stops immediately for reduced motion',
+    flag => {
+      const onState = vi.fn()
+      const drawBackground = vi.spyOn(backgrounds, 'drawPixelLayer')
+      const controller = createPixelEffectPreview(fixture(), { ...effects, [flag]: true }, onState)
+      dispose = controller.dispose
+      tick(0)
+      expect(frames.size).toBe(1)
+      intersect([{ isIntersecting: false }])
+      expect(frames.size).toBe(0)
+      intersect([{ isIntersecting: true }])
+      expect(frames.size).toBe(1)
+      reduced = true
+      motionChange()
+      tick(40)
+      expect(drawBackground.mock.lastCall?.[0].reducedMotion).toBe(true)
+      expect(frames.size).toBe(0)
+      controller.replay()
+      expect(onState).toHaveBeenLastCalledWith({ playing: false, reducedMotion: true })
+      expect(frames.size).toBe(0)
+    },
+  )
 
   it('respects both disabled transition flags and removes every listener on disposal', () => {
     const nodes = fixture()

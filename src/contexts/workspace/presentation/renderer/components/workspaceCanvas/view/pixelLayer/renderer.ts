@@ -6,6 +6,7 @@ import {
   type PixelViewport,
 } from './model'
 import { drawPixelBackground } from './background'
+import { drawWorkingPixels } from './workingRenderer'
 
 export interface PixelTheme {
   blue: string
@@ -78,6 +79,8 @@ export function drawPixelLayer({
   theme,
   now,
   reducedMotion,
+  background = true,
+  working = false,
 }: {
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
@@ -87,6 +90,8 @@ export function drawPixelLayer({
   theme: PixelTheme
   now: number
   reducedMotion: boolean
+  background?: boolean
+  working?: boolean
 }): boolean {
   const buffer = resolvePixelBuffer(viewport.width, viewport.height, window.devicePixelRatio)
   if (canvas.width !== buffer.width) {
@@ -106,14 +111,19 @@ export function drawPixelLayer({
   gradient.addColorStop(0.5, theme.cyan)
   gradient.addColorStop(1, theme.mint)
   context.fillStyle = gradient
-  drawPixelBackground(context, viewport, theme.gap, theme.opacity, now, reducedMotion)
+  if (background) {
+    drawPixelBackground(context, viewport, theme.gap, theme.opacity, now, reducedMotion)
+  }
 
   activity.prune(nodes, now)
   let active = false
-  for (const node of nodes) {
+  for (const node of background ? nodes : []) {
     const intensity = reducedMotion ? 0 : activity.intensity(node, now)
     active ||= intensity > 0
     drawNodePixels(context, node, intensity, theme, gradient)
+  }
+  if (working && !reducedMotion) {
+    drawWorkingPixels(context, nodes, viewport, theme, now)
   }
   context.globalAlpha = 1
   return active

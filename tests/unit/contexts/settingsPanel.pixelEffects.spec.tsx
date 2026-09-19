@@ -58,7 +58,7 @@ afterEach(async () => {
 
 describe('independent Pixel effect controls in Appearance', () => {
   it.each(['dark', 'light', 'system', 'pixel', 'pixel-light'])(
-    'exposes all three controls for the %s theme',
+    'exposes all four controls for the %s theme',
     uiTheme => {
       render(<Harness initial={normalizeAgentSettings({ uiTheme })} />, {
         wrapper: EndpointOverviewProvider,
@@ -67,6 +67,7 @@ describe('independent Pixel effect controls in Appearance', () => {
         'Node Creation Pixels',
         'Node Closing Pixels',
         'Canvas Pixel Background',
+        'Agent Working Pixels',
       ]) {
         const control = screen.getByRole('checkbox', { name: label })
         expect(control).toBeEnabled()
@@ -82,6 +83,7 @@ describe('independent Pixel effect controls in Appearance', () => {
     })
     fireEvent.click(screen.getByRole('checkbox', { name: 'Canvas Pixel Background' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Node Closing Pixels' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Agent Working Pixels' }))
     fireEvent.click(screen.getByTestId('settings-ui-theme-light'))
     expect(screen.getByRole('checkbox', { name: 'Node Creation Pixels' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Node Closing Pixels' })).not.toBeChecked()
@@ -92,6 +94,7 @@ describe('independent Pixel effect controls in Appearance', () => {
         canvasPixelBackgroundEnabled: false,
         nodeCreationPixelEffectEnabled: true,
         nodeClosePixelEffectEnabled: false,
+        agentWorkingPixelEffectEnabled: false,
       }),
     )
     fireEvent.click(screen.getByTestId('settings-ui-theme-pixel-light'))
@@ -109,6 +112,7 @@ describe('independent Pixel effect controls in Appearance', () => {
     expect(screen.getByRole('checkbox', { name: '创建像素效果' })).toBeVisible()
     expect(screen.getByRole('checkbox', { name: '关闭像素效果' })).toBeVisible()
     expect(screen.getByRole('checkbox', { name: '画布点阵背景' })).toBeVisible()
+    expect(screen.getByRole('checkbox', { name: 'Agent 工作流光' })).toBeVisible()
     expect(screen.getByText(/关闭后显示标准画布网格/)).toBeVisible()
   })
 })

@@ -36,6 +36,7 @@ export interface PixelEffectSettings {
   canvasPixelBackgroundEnabled: boolean
   nodeCreationPixelEffectEnabled: boolean
   nodeClosePixelEffectEnabled: boolean
+  agentWorkingPixelEffectEnabled: boolean
 }
 
 export interface AgentSettings extends PixelEffectSettings {

@@ -42,6 +42,14 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['pixel', 'animation', 'close', 'scatter', '像素', '关闭', '散开'],
   },
   {
+    id: 'appearance.agent-working-pixels',
+    pageId: 'appearance',
+    titleKey: 'settingsPanel.appearance.pixelEffects.workingLabel',
+    descriptionKey: 'settingsPanel.appearance.pixelEffects.workingHelp',
+    anchorId: 'settings-agent-working-pixel-effect',
+    keywords: ['agent', 'working', 'pixel', 'flow', '像素', '流光', '工作'],
+  },
+  {
     id: 'appearance.canvas-pixels',
     pageId: 'appearance',
     titleKey: 'settingsPanel.appearance.pixelEffects.backgroundLabel',

@@ -104,16 +104,18 @@ export function createPixelEffectPreview(
       }
       const frames = assembly.sample([nodeFrame], now)
       masks.update(frames, assembly.pendingIds(now))
-      if (effects.canvasPixelBackgroundEnabled) {
+      if (effects.canvasPixelBackgroundEnabled || effects.agentWorkingPixelEffectEnabled) {
         drawPixelLayer({
           canvas: background,
           context: backgroundContext,
           viewport,
-          nodes: [],
+          nodes: reopenAt === null ? [{ ...nodeFrame, tone: 'working', acceptsOutput: false }] : [],
           activity,
           theme,
           now,
           reducedMotion,
+          background: effects.canvasPixelBackgroundEnabled,
+          working: effects.agentWorkingPixelEffectEnabled,
         })
       } else {
         backgroundContext.clearRect(0, 0, background.width, background.height)
@@ -135,7 +137,11 @@ export function createPixelEffectPreview(
         reopenAt = null
         onState({ playing: false, reducedMotion })
       }
-      return reopenAt !== null || (effects.canvasPixelBackgroundEnabled && !reducedMotion)
+      return (
+        reopenAt !== null ||
+        (!reducedMotion &&
+          (effects.canvasPixelBackgroundEnabled || effects.agentWorkingPixelEffectEnabled))
+      )
     },
   })
   const updateGeometry = () => {

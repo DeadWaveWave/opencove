@@ -382,7 +382,10 @@ describe('workspace pixel layer lifecycle', () => {
     const node = pixelNode()
     const renderScene = (nodes: (typeof node)[], creation: boolean, closing: boolean) => (
       <div>
-        <WorkspacePixelLayer nodes={nodes} options={{ background: false, creation, closing }} />
+        <WorkspacePixelLayer
+          nodes={nodes}
+          options={{ background: false, creation, closing, working: false }}
+        />
         <div className="react-flow__node" data-id={node.id}>
           <input />
         </div>
@@ -414,6 +417,52 @@ describe('workspace pixel layer lifecycle', () => {
     expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'bursting')
     view.rerender(renderScene([], false, false))
     expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
+    expect(frames.size).toBe(0)
+  })
+
+  it('animates Working independently, stops on idle, reduced motion, hiding and disable', () => {
+    const options = { background: false, creation: false, closing: false, working: true }
+    const node = pixelNode({ kind: 'agent', status: 'running' })
+    const view = render(<WorkspacePixelLayer nodes={[node]} options={options} />)
+    const canvas = view.getByTestId('workspace-pixel-layer')
+    tick(0)
+    expect(canvas).toHaveAttribute('data-cove-pixel-working-node-ids', node.id)
+    expect(canvas).not.toHaveAttribute('hidden')
+    expect(frames.size).toBe(1)
+    reduced = true
+    act(() => motionChange())
+    tick(40)
+    expect(canvas).toHaveAttribute('data-cove-pixel-working-node-ids', '')
+    expect(frames.size).toBe(0)
+    reduced = false
+    act(() => motionChange())
+    tick(80)
+    expect(frames.size).toBe(1)
+    visible = false
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    expect(frames.size).toBe(0)
+    expect(canvas).toHaveAttribute('data-cove-pixel-working-node-ids', '')
+    visible = true
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    tick(120)
+    expect(frames.size).toBe(1)
+    view.rerender(
+      <WorkspacePixelLayer
+        nodes={[pixelNode({ kind: 'agent', status: 'standby' })]}
+        options={options}
+      />,
+    )
+    tick(160)
+    expect(canvas).toHaveAttribute('data-cove-pixel-working-node-ids', '')
+    expect(canvas).toHaveAttribute('hidden')
+    expect(frames.size).toBe(0)
+    view.rerender(<WorkspacePixelLayer nodes={[node]} options={options} />)
+    tick(200)
+    expect(frames.size).toBe(1)
+    view.rerender(<WorkspacePixelLayer nodes={[node]} options={{ ...options, working: false }} />)
+    expect(frames.size).toBe(0)
+    expect(canvas).toHaveAttribute('data-cove-pixel-working-node-ids', '')
+    view.unmount()
     expect(frames.size).toBe(0)
   })
 })

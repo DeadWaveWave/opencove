@@ -2,16 +2,19 @@ import { expect, type Page } from '@playwright/test'
 import type { PixelEffectSettings } from '../../src/contexts/settings/domain/agentSettings'
 
 export const PIXEL_EFFECTS_ENABLED: PixelEffectSettings = {
+  agentWorkingPixelEffectEnabled: true,
   nodeCreationPixelEffectEnabled: true,
   nodeClosePixelEffectEnabled: true,
   canvasPixelBackgroundEnabled: true,
 }
 export const PIXEL_EFFECTS_DISABLED: PixelEffectSettings = {
+  agentWorkingPixelEffectEnabled: false,
   nodeCreationPixelEffectEnabled: false,
   nodeClosePixelEffectEnabled: false,
   canvasPixelBackgroundEnabled: false,
 }
 export const EFFECT_CONTROL_IDS: Record<keyof PixelEffectSettings, string> = {
+  agentWorkingPixelEffectEnabled: 'settings-agent-working-pixel-effect',
   nodeCreationPixelEffectEnabled: 'settings-node-creation-pixel-effect',
   nodeClosePixelEffectEnabled: 'settings-node-close-pixel-effect',
   canvasPixelBackgroundEnabled: 'settings-canvas-pixel-background',
@@ -32,6 +35,11 @@ export async function setPixelEffect(page: Page, key: keyof PixelEffectSettings,
 export async function setPixelEffects(page: Page, effects: PixelEffectSettings) {
   await setPixelEffect(
     page,
+    'agentWorkingPixelEffectEnabled',
+    effects.agentWorkingPixelEffectEnabled,
+  )
+  await setPixelEffect(
+    page,
     'nodeCreationPixelEffectEnabled',
     effects.nodeCreationPixelEffectEnabled,
   )
@@ -44,6 +52,7 @@ export async function readPixelEffects(page: Page) {
     const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
     const state = raw ? (JSON.parse(raw) as { settings?: Partial<PixelEffectSettings> }) : null
     return {
+      agentWorkingPixelEffectEnabled: state?.settings?.agentWorkingPixelEffectEnabled,
       nodeCreationPixelEffectEnabled: state?.settings?.nodeCreationPixelEffectEnabled,
       nodeClosePixelEffectEnabled: state?.settings?.nodeClosePixelEffectEnabled,
       canvasPixelBackgroundEnabled: state?.settings?.canvasPixelBackgroundEnabled,

@@ -40,10 +40,10 @@ describe('named UI themes', () => {
   )
 
   it.each([{}, { uiTheme: null }, { uiTheme: 'future-theme' }])(
-    'keeps the established default for missing or unrecognized theme settings: %j',
+    'defaults to Pixel for missing or unrecognized theme settings: %j',
     value => {
-      expect(normalizeAgentSettings(value).uiTheme).toBe('dark')
-      expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('dark')
+      expect(normalizeAgentSettings(value).uiTheme).toBe('pixel')
+      expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('pixel')
     },
   )
 

@@ -101,6 +101,8 @@ export const enSettingsPanelLayout = {
     title: 'Appearance',
     pixelEffects: {
       help: 'Choose each effect independently for all themes. Respects reduced motion.',
+      workingLabel: 'Agent Working Pixels',
+      workingHelp: 'Flow pixels along both sides of working Agents. Stops when waiting or idle.',
       creationLabel: 'Node Creation Pixels',
       creationHelp: 'Reveal new nodes with a brief pixel animation.',
       closeLabel: 'Node Closing Pixels',

@@ -7,6 +7,12 @@ import { PixelEffectsPreview } from './PixelEffectsPreview'
 const controls: Array<{ key: keyof PixelEffectSettings; id: string; label: string; help: string }> =
   [
     {
+      key: 'agentWorkingPixelEffectEnabled',
+      id: 'settings-agent-working-pixel-effect',
+      label: 'workingLabel',
+      help: 'workingHelp',
+    },
+    {
       key: 'nodeCreationPixelEffectEnabled',
       id: 'settings-node-creation-pixel-effect',
       label: 'creationLabel',

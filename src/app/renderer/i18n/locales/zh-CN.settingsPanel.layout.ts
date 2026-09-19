@@ -100,6 +100,8 @@ export const zhCNSettingsPanelLayout = {
   appearance: {
     title: '外观',
     pixelEffects: {
+      workingLabel: 'Agent 工作流光',
+      workingHelp: 'Agent 工作时，窗口两侧呈现像素流光；等待输入或空闲时停止。',
       help: '三项效果独立设置，适用于所有主题，并遵循系统减少动态效果偏好。',
       creationLabel: '创建像素效果',
       creationHelp: '新建节点时播放简短的像素聚拢动画。',

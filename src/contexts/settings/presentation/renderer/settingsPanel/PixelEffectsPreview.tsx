@@ -31,6 +31,7 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
         canvasPixelBackgroundEnabled: effects.canvasPixelBackgroundEnabled,
         nodeCreationPixelEffectEnabled: effects.nodeCreationPixelEffectEnabled,
         nodeClosePixelEffectEnabled: effects.nodeClosePixelEffectEnabled,
+        agentWorkingPixelEffectEnabled: effects.agentWorkingPixelEffectEnabled,
       },
       setState,
     )
@@ -42,6 +43,7 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
     effects.canvasPixelBackgroundEnabled,
     effects.nodeCreationPixelEffectEnabled,
     effects.nodeClosePixelEffectEnabled,
+    effects.agentWorkingPixelEffectEnabled,
   ])
   return (
     <div className="settings-pixel-preview-group">
@@ -82,7 +84,7 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
         <canvas
           ref={backgroundRef}
           className="settings-pixel-preview__canvas"
-          hidden={!effects.canvasPixelBackgroundEnabled}
+          hidden={!effects.canvasPixelBackgroundEnabled && !effects.agentWorkingPixelEffectEnabled}
           aria-hidden="true"
         />
         <fieldset className="settings-pixel-preview__space" aria-hidden="true">

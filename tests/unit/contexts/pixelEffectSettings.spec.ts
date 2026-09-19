@@ -20,28 +20,34 @@ const effects = (settings: AgentSettings) => ({
   canvasPixelBackgroundEnabled: settings.canvasPixelBackgroundEnabled,
   nodeCreationPixelEffectEnabled: settings.nodeCreationPixelEffectEnabled,
   nodeClosePixelEffectEnabled: settings.nodeClosePixelEffectEnabled,
+  agentWorkingPixelEffectEnabled: settings.agentWorkingPixelEffectEnabled,
 })
 const disabled = {
   canvasPixelBackgroundEnabled: false,
   nodeCreationPixelEffectEnabled: false,
   nodeClosePixelEffectEnabled: false,
+  agentWorkingPixelEffectEnabled: false,
 }
 
 describe('independent persisted Pixel effect settings', () => {
   it.each([
-    undefined,
-    null,
-    {},
     { uiTheme: 'dark' },
     { uiTheme: 'light' },
     { uiTheme: 'ember' },
     { uiTheme: 'ember-light' },
     { uiTheme: 'system' },
-    { uiTheme: 'invalid' },
   ])('keeps effects opt-in for legacy non-Pixel settings: %j', raw => {
     expect(effects(normalizeAgentSettings(raw))).toEqual(disabled)
-    expect(effects(DEFAULT_AGENT_SETTINGS)).toEqual(disabled)
   })
+
+  it.each([undefined, null, {}, { uiTheme: 'invalid' }])(
+    'starts unconfigured users in Pixel with all effects: %j',
+    raw => {
+      expect(normalizeAgentSettings(raw).uiTheme).toBe('pixel')
+      expect(Object.values(effects(normalizeAgentSettings(raw)))).toEqual([true, true, true, true])
+      expect(effects(normalizeAgentSettings(raw))).toEqual(effects(DEFAULT_AGENT_SETTINGS))
+    },
+  )
 
   it.each(['pixel', 'pixel-light'])(
     'migrates legacy %s settings once and emits the complete canonical shape',
@@ -51,13 +57,14 @@ describe('independent persisted Pixel effect settings', () => {
         canvasPixelBackgroundEnabled: true,
         nodeCreationPixelEffectEnabled: true,
         nodeClosePixelEffectEnabled: true,
+        agentWorkingPixelEffectEnabled: true,
       })
       expect(isNormalizedAgentSettings(migrated)).toBe(true)
       expect(effects(normalizeAgentSettings({ ...migrated, uiTheme: 'light' }))).toEqual(
         effects(migrated),
       )
       const legacy = { ...migrated } as Record<string, unknown>
-      delete legacy.nodeClosePixelEffectEnabled
+      delete legacy.agentWorkingPixelEffectEnabled
       expect(isNormalizedAgentSettings(legacy)).toBe(false)
     },
   )
@@ -72,12 +79,14 @@ describe('independent persisted Pixel effect settings', () => {
             canvasPixelBackgroundEnabled: false,
             nodeCreationPixelEffectEnabled: true,
             nodeClosePixelEffectEnabled: 'false',
+            agentWorkingPixelEffectEnabled: false,
           }),
         ),
       ).toEqual({
         canvasPixelBackgroundEnabled: false,
         nodeCreationPixelEffectEnabled: true,
         nodeClosePixelEffectEnabled: true,
+        agentWorkingPixelEffectEnabled: false,
       })
       expect(
         effects(
@@ -103,6 +112,7 @@ describe('independent persisted Pixel effect settings', () => {
       })
     updaters().updatePixelEffect('canvasPixelBackgroundEnabled', false)
     updaters().updatePixelEffect('nodeClosePixelEffectEnabled', false)
+    updaters().updatePixelEffect('agentWorkingPixelEffectEnabled', false)
     updaters().updateUiTheme('light')
     const expected = { ...disabled, nodeCreationPixelEffectEnabled: true }
     expect(effects(settings)).toEqual(expected)

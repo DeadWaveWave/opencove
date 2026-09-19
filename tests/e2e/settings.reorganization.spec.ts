@@ -168,11 +168,18 @@ test.describe('Settings organization', () => {
       await expect(page.getByTestId('settings-terminal-font-size')).toHaveCount(0)
       await setPixelEffect(page, 'canvasPixelBackgroundEnabled', false)
       await expect(preview).toHaveAttribute('data-background', 'false')
+      const field = preview.locator(
+        '.settings-pixel-preview__canvas:not(.settings-pixel-preview__canvas--foreground)',
+      )
+      await expect(field).toBeVisible()
+      await setPixelEffect(page, 'agentWorkingPixelEffectEnabled', false)
       await expect(
         preview.locator(
           '.settings-pixel-preview__canvas:not(.settings-pixel-preview__canvas--foreground)',
         ),
       ).toBeHidden()
+      await setPixelEffect(page, 'agentWorkingPixelEffectEnabled', true)
+      await expect(field).toBeVisible()
       await setPixelEffect(page, 'canvasPixelBackgroundEnabled', true)
       const replay = page.getByTestId('settings-pixel-effects-replay')
       await replay.click()

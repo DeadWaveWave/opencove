@@ -140,6 +140,12 @@
 
 - 外观点阵预览必须消费现有画布绘制、mask、assembly、burst 与调度器。它使用独立 DOM 类和局部时钟，不创建真实 React Flow 节点、不启动 PTY、不发运行时创建/关闭事件；离屏、减少动态效果与关闭开关均需停止不必要的循环。
 
+- 默认主题为 Pixel；显式保存的其他主题与各项像素开关不因升级或切换主题被覆盖。
+  Agent 两侧流光只消费 `resolveAgentPresentation` 的 Working 状态（含终端中的 Agent）；
+  PTY 输出不能作为 Working 的判据，恢复中或降级观测不显示流光。流光复用画布级调度器、
+  主题色与可见窗口投影，不改变节点布局、焦点或运行状态。独立开关关闭、非 Working、
+  离屏及减少动态效果时停止；无动态内容时不维持动画循环。
+
 实现锚点：
 - 面板样式：`src/app/renderer/styles/settings-panel.css`
 - 分组原语：`src/contexts/settings/presentation/renderer/settingsPanel/SettingsGroup.tsx`

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { readComputedColorToken } from './workspace-canvas.color-token.helpers'
 
 test.describe('Workspace Canvas - Task Selection Interactions', () => {
   test('toggles task node selection with shift-click on non-input body in mouse mode', async () => {
@@ -192,15 +193,11 @@ test.describe('Workspace Canvas - Task Selection Interactions', () => {
         })
       }
 
-      const selectionBorderColor = await taskNode.evaluate(element => {
-        const style = window.getComputedStyle(element)
-        return style.getPropertyValue('--cove-node-selection-border').trim()
-      })
-
-      const defaultBorderColor = await taskNode.evaluate(element => {
-        const style = window.getComputedStyle(element)
-        return style.getPropertyValue('--cove-node-border').trim()
-      })
+      const selectionBorderColor = await readComputedColorToken(
+        taskNode,
+        '--cove-node-selection-border',
+      )
+      const defaultBorderColor = await readComputedColorToken(taskNode, '--cove-node-border')
 
       const normalizeColor = (value: string) => value.replaceAll(/\s+/g, '').toLowerCase()
 

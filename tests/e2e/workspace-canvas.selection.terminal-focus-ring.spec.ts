@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { readComputedColorToken } from './workspace-canvas.color-token.helpers'
 import {
   clickHeaderDragSurface,
   clearAndSeedWorkspace,
@@ -41,15 +42,11 @@ test.describe('Workspace Canvas - Selection', () => {
         })
       }
 
-      const selectionBorderColor = await terminal.evaluate(element => {
-        const style = window.getComputedStyle(element)
-        return style.getPropertyValue('--cove-node-selection-border').trim()
-      })
-
-      const defaultBorderColor = await terminal.evaluate(element => {
-        const style = window.getComputedStyle(element)
-        return style.getPropertyValue('--cove-node-border').trim()
-      })
+      const selectionBorderColor = await readComputedColorToken(
+        terminal,
+        '--cove-node-selection-border',
+      )
+      const defaultBorderColor = await readComputedColorToken(terminal, '--cove-node-border')
 
       const normalizeColor = (value: string) => value.replaceAll(/\s+/g, '').toLowerCase()
 

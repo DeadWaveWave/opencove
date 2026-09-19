@@ -15,5 +15,7 @@ export function normalizePixelEffectSettings(
       normalizeBoolean(value.nodeCreationPixelEffectEnabled) ?? legacyEnabled,
     nodeClosePixelEffectEnabled:
       normalizeBoolean(value.nodeClosePixelEffectEnabled) ?? legacyEnabled,
+    agentWorkingPixelEffectEnabled:
+      normalizeBoolean(value.agentWorkingPixelEffectEnabled) ?? legacyEnabled,
   }
 }

@@ -8,10 +8,11 @@ import { DEFAULT_BROWSER_MODE, DEFAULT_BROWSER_SEARCH_ENGINE } from './browserSe
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
-  uiTheme: 'dark',
-  canvasPixelBackgroundEnabled: false,
-  nodeCreationPixelEffectEnabled: false,
-  nodeClosePixelEffectEnabled: false,
+  uiTheme: 'pixel',
+  canvasPixelBackgroundEnabled: true,
+  nodeCreationPixelEffectEnabled: true,
+  nodeClosePixelEffectEnabled: true,
+  agentWorkingPixelEffectEnabled: true,
   isPrimarySidebarCollapsed: false,
   sidebarCollapsedWorkspaceIds: {},
   sidebarCollapsedSpaceGroupIds: {},

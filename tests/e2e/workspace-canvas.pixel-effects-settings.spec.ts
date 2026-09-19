@@ -96,7 +96,7 @@ async function createNode(page: Page, kind: 'note' | 'terminal', x = 240) {
 }
 
 test.describe('Independent pixel effects settings', () => {
-  test('persists three independent switches across theme changes and reloads', async ({
+  test('persists four independent switches across theme changes and reloads', async ({
     browserName,
   }, testInfo) => {
     void browserName
@@ -134,6 +134,7 @@ test.describe('Independent pixel effects settings', () => {
       await expect(window.locator('.react-flow__background')).toBeVisible()
       await setPixelEffect(window, 'nodeClosePixelEffectEnabled', true)
       await setPixelEffect(window, 'canvasPixelBackgroundEnabled', true)
+      await setPixelEffect(window, 'agentWorkingPixelEffectEnabled', true)
       await expect(window.getByTestId('workspace-pixel-layer')).toBeVisible()
       await expect(window.locator('.react-flow__background')).toHaveCount(0)
       await setPixelEffect(window, 'nodeCreationPixelEffectEnabled', false)
