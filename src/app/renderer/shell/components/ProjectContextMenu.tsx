@@ -24,6 +24,7 @@ import type { ProjectContextMenuTarget } from '../types'
 import { useAppStore } from '../store/useAppStore'
 import { getProjectIconComponent } from './ProjectIcon'
 import { useProjectContextMenuFocus } from './useProjectContextMenuFocus'
+import { SidebarVisibilityMenuItem } from './SidebarVisibilityMenuItem'
 import {
   renameTarget,
   resolveTargetProjectIconId,
@@ -92,13 +93,13 @@ export function ProjectContextMenu({
   const estimatedHeight = isRenaming
     ? 96
     : isSpaceTarget
-      ? 206
+      ? 242
       : canOpenInFileManager && isProjectTarget
         ? 218
         : isProjectTarget
           ? 182
           : resolvedTarget.kind === 'agent'
-            ? 124
+            ? 160
             : 102
 
   useEffect(() => {
@@ -487,6 +488,7 @@ export function ProjectContextMenu({
         </>
       ) : null}
       {!isRenaming && supportsLabelColor && !isSpaceTarget ? renderColorRow('section') : null}
+      {!isRenaming ? <SidebarVisibilityMenuItem target={resolvedTarget} /> : null}
     </ViewportMenuSurface>
   )
 }

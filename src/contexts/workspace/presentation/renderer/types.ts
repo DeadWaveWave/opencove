@@ -179,6 +179,8 @@ export interface WebsiteNodeData {
 
 export interface TerminalNodeData {
   [key: string]: unknown
+  /** Derived canvas presentation only. Runtime dimensions remain width/height. */
+  collapsePresentation?: { collapsed: boolean; spaceHidden: boolean }
   sessionId: string
   /** Recovery handoff: old durable ID while preparing, then Worker result awaiting sync ack. */
   runtimeSessionBinding?:

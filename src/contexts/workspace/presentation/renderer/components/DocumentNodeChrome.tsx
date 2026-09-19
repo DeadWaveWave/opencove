@@ -6,6 +6,7 @@ import type { DocumentNodeInteractionOptions } from './DocumentNode.helpers'
 import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { NodeKindIcon } from './shared/NodeKindIcon'
+import { WindowCollapseButton } from './shared/WindowCollapseButton'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { suppressExplorerOverlayInteractions } from './workspaceCanvas/explorerInteractionGuard'
 
@@ -170,6 +171,7 @@ export function DocumentNodeChrome({
             </button>
           ) : null}
 
+          <WindowCollapseButton onClose={onRequestClose} revealBeforeClose={isDirty} />
           <button
             type="button"
             className="document-node__close nodrag"

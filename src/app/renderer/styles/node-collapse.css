@@ -1,0 +1,279 @@
+.cove-node-presentation {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.react-flow__node[data-cove-collapse-revealed] > .cove-node-presentation::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 1px solid var(--cove-accent);
+  border-radius: var(--cove-node-radius);
+  pointer-events: none;
+  animation: cove-window-reveal-focus 1.2s ease-out both;
+}
+
+@keyframes cove-window-reveal-focus {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.cove-node-presentation__runtime {
+  position: relative;
+}
+
+.cove-node-presentation:is([data-cove-collapsed], [data-cove-space-hidden])
+  > .cove-node-presentation__runtime {
+  position: absolute;
+  inset: 0 auto auto 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.cove-node-collapse-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--cove-radius-xs);
+  background: transparent;
+  color: var(--cove-text-muted);
+  cursor: pointer;
+}
+
+.cove-node-collapse-button:hover {
+  color: var(--cove-text);
+  background: var(--cove-control-hover);
+}
+
+.cove-node-collapse-button:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 1px;
+}
+
+.image-node > .cove-node-collapse-button {
+  position: absolute;
+  top: 8px;
+  right: 40px;
+  z-index: 2;
+  background: var(--cove-node-header-surface);
+  backdrop-filter: var(--cove-pixel-header-filter, blur(12px));
+}
+
+.cove-collapsed-window {
+  --cove-collapsed-ink: var(--cove-node-identity-color, var(--cove-accent));
+  position: relative;
+  width: 176px;
+  height: 112px;
+  color: var(--cove-text);
+}
+
+.cove-collapsed-window--agent {
+  height: 140px;
+}
+
+.cove-collapsed-window__launch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 8px 12px;
+  border-radius: var(--cove-radius-lg);
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+}
+
+.cove-collapsed-window__launch:hover,
+.cove-collapsed-window:focus-within .cove-collapsed-window__launch {
+  background: color-mix(in srgb, var(--cove-collapsed-ink) 7%, transparent);
+}
+
+.cove-collapsed-window__launch:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 2px;
+}
+
+.cove-collapsed-window__icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+  width: 52px;
+  margin-bottom: 9px;
+  border: 1px solid color-mix(in srgb, var(--cove-collapsed-ink) 36%, var(--cove-border-subtle));
+  border-radius: 13px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--cove-collapsed-ink) 13%, var(--cove-window-surface)),
+    var(--cove-window-surface)
+  );
+  color: var(--cove-collapsed-ink);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--cove-collapsed-ink) 9%, transparent);
+}
+
+.cove-collapsed-window__icon > svg {
+  width: 25px;
+  height: 25px;
+}
+
+.cove-collapsed-window__icon > .agent-provider-icon {
+  width: 25px;
+  height: 25px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.cove-collapsed-window__icon .agent-provider-icon > :is(svg, img) {
+  width: 25px;
+  height: 25px;
+}
+
+.cove-collapsed-window__title {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.cove-collapsed-window__status {
+  color: var(--cove-text-muted);
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.cove-collapsed-window[data-status='running'] .cove-collapsed-window__status {
+  color: var(--cove-collapsed-ink);
+}
+
+.cove-collapsed-window[data-status='waiting'] {
+  --cove-collapsed-ink: var(--cove-warning);
+}
+.cove-collapsed-window[data-status='failed'] {
+  --cove-collapsed-ink: var(--cove-danger);
+}
+
+.cove-collapsed-window__pixels {
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  display: grid;
+  grid-template-columns: repeat(4, 3px);
+  gap: 2px;
+  padding: 4px;
+  border-radius: 5px;
+  background: var(--cove-window-surface);
+  color: var(--cove-collapsed-ink);
+}
+
+.cove-collapsed-window__pixels > i {
+  width: 3px;
+  height: 3px;
+  opacity: 0.24;
+  background: currentColor;
+}
+
+.cove-collapsed-window__pixels > i:nth-child(3n + 1) {
+  opacity: 0.8;
+}
+
+.cove-collapsed-window[data-status='connected'] .cove-collapsed-window__pixels {
+  color: var(--cove-success);
+}
+
+.cove-collapsed-window[data-status='exited'] .cove-collapsed-window__pixels {
+  color: var(--cove-text-muted);
+}
+
+.cove-collapsed-window[data-animated][data-status='running'] .cove-collapsed-window__pixels > i,
+.cove-collapsed-window[data-animated] [data-output-active] .cove-collapsed-window__pixels > i {
+  animation: cove-icon-pixel-flow 1.1s ease-in-out infinite;
+  animation-delay: calc(var(--pixel-index) * -85ms);
+}
+
+.cove-collapsed-window[data-animated]:is([data-status='waiting'], [data-status='restoring'])
+  .cove-collapsed-window__pixels
+  > i {
+  animation: cove-icon-pixel-wait 2.4s ease-in-out infinite;
+}
+
+.cove-collapsed-window__message {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 6px;
+  padding: 2px 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-radius: var(--cove-radius-xs);
+  background: color-mix(in srgb, var(--cove-window-surface) 88%, transparent);
+  color: var(--cove-text-muted);
+  font-size: 10px;
+  line-height: 17px;
+}
+
+.cove-collapsed-window__close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cove-collapsed-window:is(:hover, :focus-within) .cove-collapsed-window__close {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@keyframes cove-icon-pixel-flow {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+@keyframes cove-icon-pixel-wait {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__node[data-cove-collapse-revealed] > .cove-node-presentation::after,
+  .cove-collapsed-window .cove-collapsed-window__pixels > i {
+    animation: none !important;
+  }
+}
+
+@media (pointer: coarse) {
+  .cove-node-collapse-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .cove-collapsed-window__close {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

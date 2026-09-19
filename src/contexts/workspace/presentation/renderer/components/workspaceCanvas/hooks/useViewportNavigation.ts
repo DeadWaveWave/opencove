@@ -3,6 +3,8 @@ import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
 import { requestViewportNodeInputFocus } from '../requestViewportNodeInputFocus'
+import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
+import { revealCollapsedNode } from '../../../utils/canvasCollapse'
 
 export function useWorkspaceCanvasViewportNavigation({
   workspaceId,
@@ -85,6 +87,9 @@ export function useWorkspaceCanvasViewportNavigation({
       if (hasPendingNodeRequest && nodeRequestKey && focusNodeId) {
         const target = nodesRef.current.find(node => node.id === focusNodeId)
         if (target) {
+          useCanvasCollapseStore
+            .getState()
+            .update(workspaceId, current => revealCollapsedNode(current, target.id, spaces))
           focusedNodeRequestKeyRef.current = nodeRequestKey
           focusNodeInViewport(reactFlow, target, {
             duration: 220,

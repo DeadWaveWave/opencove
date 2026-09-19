@@ -2,7 +2,7 @@
 
 Pixel is an opt-in theme family for OpenCove's spatial workspace. Pixel uses deep blue surfaces;
 Pixel Light uses cool paper surfaces, dark ink text and deeper blue/cyan/mint accents. Both share
-clear node boundaries, transparent caption cutouts and bounded output activity feedback.
+clear node boundaries, solid Space corner brackets and bounded output activity feedback.
 Select it through the existing Appearance theme picker or Control Center. Its node materials stay
 theme-specific; pixel background, creation and close effects can independently accompany any theme.
 These effects do not change terminal execution behavior.
@@ -32,8 +32,8 @@ flat, with low-contrast separators and consistent controls; they have no beveled
 Terminal content stays opaque and readable. Images retain their image-first layout with matching
 frame treatment. Spaces are lightweight region boundaries, with very faint fill that recedes as the
 canvas zooms out. Large Spaces have no broad blur, gradient, shadow or decorative corner patches.
-Space titles retain a compact tinted surface; branches and worktree metadata use lightweight text
-and line icons, with an interaction surface only on hover/focus. Entity labels and semantic
+Space titles, branches and worktree metadata use lightweight text and line icons on the frame,
+with an interaction surface only on hover/focus. Entity labels and semantic
 warning/error colors remain independent of the blue/cyan/mint brand gradient.
 
 ## Color identity and lightweight chrome
@@ -56,20 +56,30 @@ Plain terminals retain the terminal icon. Image's icon and stripe are overlays, 
 image-first layout. Header titles use medium weight, with existing sizes, action targets and terminal
 body geometry preserved.
 
-Space identity is visible in its fine colored contour, tinted title and approximately 2.5% label-color
+Space identity is visible in its fine colored contour, four solid corner brackets and approximately 2.5% label-color
 fill at normal zoom. Its large-area tint recedes toward 0.5% in the far view. Bounded annotation and
 stroke compensation keep overview labels and edges recognizable without allowing a small Space's
 caption to spill over neighboring regions. This is shared presentation state derived from the canvas
 zoom, independent of optional pixel effects.
 
-The top contour leaves transparent gaps around visible caption controls that intersect it, including
-the title, Files, menu, branch and rename field. Only the border is clipped; the caption does not
-paint an opaque plate over the canvas field. Bounded, local layout observations update these gaps
-when caption content, visibility, region size or zoom changes, and are disposed with the Space.
+Title, Files, menu, branch and collapse controls sit on the frame's top edge. The shared caption
+measurement cuts the painted border around each control, including collapse actions. The four short
+corner brackets retain their solid stroke. No extra inner-header height is added to the frame or
+drag geometry. At overview zoom, Files uses its icon while controls retain accessible names and
+keyboard access.
 
-Below 40% zoom, captions prioritize the Space title and branch. Files and menu controls appear on
-a row above the title when the caption is hovered or focused, retain their original accessible names and
-remain keyboard-reachable. The combined caption has a continuous pointer hit area across both rows.
+Individual collapsed windows become desktop icons with a title and single-click expansion.
+Agent icons show one line of the latest actual message and a flowing pixel status matrix. Waiting
+uses a slow pulse; a plain terminal's matrix animates briefly only after real output. Static status
+text remains available when working effects or motion are disabled. These icons replace the full
+window side-stream effect while collapsed; runtime size and lifecycle stay unchanged.
+
+A collapsed Space is a compact frame with one clickable icon for each contained window, including
+descendant Spaces' windows. Agent icons retain provider identity and use the shared authoritative
+runtime status projection. A plain terminal shows session Running/Exited/Connecting; this is not a
+claim that a shell command is busy. Clicking an icon reveals its Space and target window without
+changing other windows' individual collapse preferences. The header's collapse-and-arrange action
+is independent from collapsing the Space and offers an explicit undo.
 
 Input focus remains a separate full-frame highlight using the existing theme focus tokens. The label
 stripe and header tint remain visible while the focused frame lights up. Color identity must not

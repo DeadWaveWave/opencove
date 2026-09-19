@@ -23,7 +23,8 @@ vi.mock('@xyflow/react', () => {
       getViewport: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
       setViewport: vi.fn(),
     }),
-    useStore: (selector: (state: unknown) => unknown) => selector({ nodes: currentNodes }),
+    useStore: (selector: (state: unknown) => unknown) =>
+      selector({ nodes: currentNodes, transform: [0, 0, 1] }),
     useStoreApi: () => ({
       setState: vi.fn(),
       getState: vi.fn(() => ({})),

@@ -23,6 +23,7 @@ import { useIgnoredPaneClick } from './useIgnoredPaneClick'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
 import { useWebsiteNodeContextMenuCreation } from './useInteractions.websiteContextMenu'
 import { useWebsiteWindowOpenUrlNodeCreation } from './useWebsiteWindowOpenUrlNodeCreation'
+import { getPresentedNodeSize } from '../../../utils/canvasInteractionLayout'
 
 export function useWorkspaceCanvasInteractions({
   canvasRef,
@@ -132,7 +133,8 @@ export function useWorkspaceCanvasInteractions({
         return
       }
 
-      focusNodeInViewport(reactFlow, node, { duration: 120, zoom: focusNodeTargetZoom })
+      const displayNode = { ...node, data: { ...node.data, ...getPresentedNodeSize(node.data) } }
+      focusNodeInViewport(reactFlow, displayNode, { duration: 120, zoom: focusNodeTargetZoom })
     },
     [focusNodeOnClick, focusNodeTargetZoom, reactFlow],
   )
@@ -217,6 +219,7 @@ export function useWorkspaceCanvasInteractions({
     handleCanvasPointerMoveCapture,
     handleCanvasPointerUpCapture,
   } = useWorkspaceCanvasSelectionDraft({
+    workspaceId,
     isTrackpadCanvasMode,
     isShiftPressedRef,
     selectionDraftRef,

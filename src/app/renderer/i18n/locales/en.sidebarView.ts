@@ -1,0 +1,17 @@
+export const enSidebarView = {
+  filters: 'Filter Sidebar',
+  filterStatus: 'Agent status',
+  filterProvider: 'Agent',
+  filterVisibility: 'Visibility',
+  all: 'All',
+  visible: 'Not hidden',
+  allVisibility: 'Include hidden',
+  hidden: 'Hidden only',
+  resetFilters: 'Reset filters',
+  hide: 'Hide from Sidebar',
+  restore: 'Show in Sidebar',
+  restored: '{{name}} is visible in Sidebar.',
+  hiddenAttention_one: '{{count}} hidden Agent needs input',
+  hiddenAttention_other: '{{count}} hidden Agents need input',
+  noMatches: 'No matching items.',
+}

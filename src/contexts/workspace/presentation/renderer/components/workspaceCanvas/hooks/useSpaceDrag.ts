@@ -9,9 +9,14 @@ import {
 } from '../../../utils/spaceLayout'
 import { finalizeWorkspaceSpaceDrag } from './useSpaceDrag.finalize'
 import { applyProjectedWorkspaceSpaceDragLayout } from './useSpaceDrag.applyLayout'
-import { resolveResizedSpaceRect, resolveSnappedSpaceMoveRect } from './useSpaceDrag.preview'
+import { resolveResizedSpaceRect } from './useSpaceDrag.preview'
+import {
+  readSpaceDragDisplayRect,
+  resolveSpaceMoveWithPresentation,
+} from './useSpaceDrag.presentation'
 import { createSpaceDragState } from './useSpaceDrag.startState'
 import { setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
+import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
 
 interface UseSpaceDragParams {
   workspaceId: string
@@ -92,7 +97,8 @@ export function useWorkspaceCanvasSpaceDrag({
       desiredRect: WorkspaceSpaceRect,
       options?: { commit?: boolean },
     ): WorkspaceSpaceRect => {
-      return resolveSnappedSpaceMoveRect({
+      return resolveSpaceMoveWithPresentation({
+        workspaceId,
         spaceId,
         desiredRect,
         spaces: spacesRef.current,
@@ -101,7 +107,7 @@ export function useWorkspaceCanvasSpaceDrag({
         commit: options?.commit,
       })
     },
-    [magneticSnappingEnabledRef, setSnapGuides, spacesRef],
+    [magneticSnappingEnabledRef, setSnapGuides, spacesRef, workspaceId],
   )
 
   const resolveProjectedDragDelta = useCallback(
@@ -421,12 +427,22 @@ export function useWorkspaceCanvasSpaceDrag({
       })
 
       const zoom = reactFlow.getZoom()
-      const handle: SpaceFrameHandle = resolveInteractiveSpaceFrameHandle({
-        rect: targetSpace.rect,
-        point: startFlow,
-        zoom,
-        mode: options?.mode ?? 'auto',
-      })
+      const isCollapsed =
+        useCanvasCollapseStore.getState().workspaces[workspaceId]?.collapsedSpaceIds[spaceId] ===
+        true
+      const handle: SpaceFrameHandle = isCollapsed
+        ? { kind: 'move' }
+        : resolveInteractiveSpaceFrameHandle({
+            rect: readSpaceDragDisplayRect(
+              workspaceId,
+              spaceId,
+              targetSpace.rect,
+              spacesRef.current,
+            ),
+            point: startFlow,
+            zoom,
+            mode: options?.mode ?? 'auto',
+          })
 
       spaceDragStateRef.current = createSpaceDragState({
         pointerId: 'pointerId' in event ? event.pointerId : -1,
@@ -443,6 +459,9 @@ export function useWorkspaceCanvasSpaceDrag({
         spaces: spacesRef.current,
         selectedNodeIds: selectedNodeIdsRef.current,
       })
+      spaceDragStateRef.current.isCollapsed = isCollapsed
+      spaceDragStateRef.current.collapseState =
+        useCanvasCollapseStore.getState().workspaces[workspaceId]
       spaceDragSawPointerMoveRef.current = false
       setSpaceFramePreview(new Map([[spaceId, targetSpace.rect]]))
       setContextMenu(null)
@@ -461,6 +480,7 @@ export function useWorkspaceCanvasSpaceDrag({
       setEmptySelectionPrompt,
       setSnapGuides,
       spacesRef,
+      workspaceId,
     ],
   )
 

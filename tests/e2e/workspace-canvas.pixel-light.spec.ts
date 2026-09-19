@@ -26,7 +26,7 @@ import {
   setPixelEffects,
   stopPixelEffectProbe,
 } from './workspace-canvas.pixel-effects.helpers'
-import { expectCaptionGaps } from './workspace-canvas.space-caption-border.helpers'
+import { expectSpaceFrameHeader } from './workspace-canvas.space-caption-border.helpers'
 import { wheelToZoom } from './workspace-canvas.zoom.helpers'
 
 async function nodeGeometry(page: Page) {
@@ -216,7 +216,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
           `${color.name} on ${paint.terminal.background}`,
         ).toBeGreaterThanOrEqual(4.5)
       }
-      await expectCaptionGaps(page)
+      await expectSpaceFrameHeader(page)
       await expect(page.getByTestId('workspace-pixel-layer')).toBeVisible()
       await expect.poll(() => readPixelEffects(page)).toEqual(PIXEL_EFFECTS_ENABLED)
       await printAnsiPalette(page)
@@ -230,7 +230,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
         contentType: 'application/json',
       })
       await wheelToZoom(page, 0.2)
-      await expectCaptionGaps(page)
+      await expectSpaceFrameHeader(page)
       const spaces = await readSpaceIdentity(page)
       expect(spaces.every(space => space.fill.alpha < 0.01 && space.labelScreenFont >= 8)).toBe(
         true,

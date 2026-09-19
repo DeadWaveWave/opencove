@@ -74,12 +74,13 @@ test('previews terminal typography in a stable themed window', async ({
       await expect(preview).toBeInViewport()
       await expect(content).toHaveCSS('font-family', 'monospace')
       await expect(content).toHaveCSS('font-size', '14px')
-      const initialHeight = (await preview.boundingBox())!.height
+      // Compare layout size independently of the settings dialog's entrance transform.
+      const initialHeight = await preview.evaluate(element => element.clientHeight)
       const headerFont = await header.evaluate(element => getComputedStyle(element).fontSize)
       await page.getByTestId('settings-terminal-font-size').fill('22')
       await expect(content).toHaveCSS('font-size', '22px')
       await expect(header).toHaveCSS('font-size', headerFont)
-      expect((await preview.boundingBox())!.height).toBe(initialHeight)
+      expect(await preview.evaluate(element => element.clientHeight)).toBe(initialHeight)
       await expect(header.locator('svg.lucide-terminal')).toHaveCount(1)
       const palette = await content.evaluate(element => {
         const swatch = document.createElement('span')

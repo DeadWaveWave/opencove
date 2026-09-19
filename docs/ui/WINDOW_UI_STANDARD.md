@@ -92,7 +92,37 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
 [Modal Dialog](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)。
 菜单导航和模态焦点采用其规则；包含表单或色板的操作面不伪装成纯 ARIA menu。
 
-## 5) 新窗口开发 Checklist
+## 5) 画布窗口与 Space 折叠
+
+- 折叠由 Renderer 的客户端本地 view store 持有，按 workspace 保存；不属于 PTY、Agent
+  或共享 workspace 的运行状态。Sidebar 隐藏、Sidebar 分组展开和画布折叠各自独立。
+- 所有节点通过同一个 presentation wrapper 显示桌面图标与标题，单击或 Enter/Space 展开，
+  拖动和 Shift 选择不能误触展开。Agent 增加固定一行的最新
+  消息预览，消息来自既有 Agent last-message 接口。预览读请求不重叠，切换会话后拒绝
+  旧响应，画布离屏/页面不可见时停止不必要的读取。
+- Runtime subtree 必须保持挂载并保留完整 width/height。收起只把它设为 inert 与
+  visibility:hidden、脱离可见布局；禁止 React Flow hidden、条件卸载或 display:none
+  导致 PTY 测量归零。WebContentsView 只隐藏 host bounds，不能销毁 session 或改变 viewport。
+- React Flow 的 compact frame、像素流光和命中区域使用展示尺寸；持久化 node data 中的
+  width/height 始终是展开尺寸。Space 折叠保留内部节点位置与各自折叠偏好。
+- Space 标题、分支和操作位于边框线上，标题与操作通过统一测量生成边框断线。
+  保留实色加粗四角，不增加内置标题栏的高度补偿，展示与拖动使用同一边框矩形。
+- 折叠图标上的小点阵表示 Agent 工作/等待状态；终端仅在收到真实 PTY 输出时短暂流动，
+  空闲时保留静态连接提示，不将输出当作命令忙碌状态。动效跟随现有工作点阵开关与
+  reduced-motion，折叠图标不再叠加完整窗口的两侧流光。
+- Space 摘要显示各窗口图标与权威运行状态。终端只表示会话存活/结束，不把输出推断成
+  命令忙碌。点击图标展开祖先 Space 和目标窗口并定位，其他窗口折叠偏好不变。
+- “收起并整理”是显式共享布局写入，保持 Space 展开；其他客户端接收位置变化，但保留
+  自己的折叠偏好。撤销恢复当时成员的位置、Space 边框和折叠状态，不覆盖新内容、
+  不复活删除节点，也不把已经移到别处的节点拉回。
+- Disclosure 使用带 aria-expanded 的按钮。隐藏 runtime 不可 Tab 进入；减少动态效果
+  关闭收起动效。关闭仍走原窗口的 owner，文档未保存确认不得被紧凑外壳绕过。
+
+参考：[React Flow Node](https://reactflow.dev/api-reference/types/node)、
+[WAI-ARIA Disclosure](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)、
+[HTML inert](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inert)。
+
+## 6) 新窗口开发 Checklist
 
 - 是否使用统一 backdrop / surface token
 - 是否使用统一按钮语义（ghost/secondary/primary/danger）

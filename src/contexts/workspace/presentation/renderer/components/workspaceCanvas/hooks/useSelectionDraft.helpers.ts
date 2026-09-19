@@ -3,6 +3,13 @@ import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { SelectionDraftState } from '../types'
 import {
+  EMPTY_CANVAS_COLLAPSE,
+  getCollapsedSpaceHiddenIds,
+  getNodeDisplaySize,
+  type CanvasCollapseState,
+} from '../../../utils/canvasCollapse'
+import { projectCanvasInteractionLayout } from '../../../utils/canvasInteractionLayout'
+import {
   isPointInsideRect,
   rectIntersects,
   type Rect,
@@ -70,13 +77,14 @@ function toggleSelectionIds(selectedAtStart: string[], intersectingIds: string[]
 export function applySelectionDraft({
   draft,
   reactFlow,
-  spaces,
+  spaces: canonicalSpaces,
   selectedNodeIdsRef,
   selectedSpaceIdsRef,
   setNodes,
   setSelectedNodeIds,
   setSelectedSpaceIds,
   forceDeselectIntersectingNodes = false,
+  collapseState = EMPTY_CANVAS_COLLAPSE,
 }: {
   draft: SelectionDraftState
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
@@ -87,7 +95,17 @@ export function applySelectionDraft({
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>
   setSelectedSpaceIds: Dispatch<SetStateAction<string[]>>
   forceDeselectIntersectingNodes?: boolean
+  collapseState?: CanvasCollapseState
 }): void {
+  const hidden = getCollapsedSpaceHiddenIds(
+    canonicalSpaces,
+    collapseState.collapsedSpaceIds,
+  ).nodeIds
+  const spaces = projectCanvasInteractionLayout(
+    reactFlow.getNodes?.() ?? [],
+    canonicalSpaces,
+    collapseState,
+  ).spaces
   const draftRect = resolveSelectionDraftRect(reactFlow, draft)
   const draftStart = reactFlow.screenToFlowPosition({
     x: draft.startX,
@@ -162,16 +180,24 @@ export function applySelectionDraft({
       let hasChanged = false
 
       const nextNodes = previousNodes.map(node => {
+        if (hidden.has(node.id)) {
+          if (!node.selected) {
+            return node
+          }
+          hasChanged = true
+          return { ...node, selected: false }
+        }
+        const size = getNodeDisplaySize(node, collapseState.collapsedNodeIds)
         const nodeRect: Rect = {
           x: node.position.x,
           y: node.position.y,
-          width: node.data.width,
-          height: node.data.height,
+          width: size.width,
+          height: size.height,
         }
 
         const nodeCenter = {
-          x: node.position.x + node.data.width / 2,
-          y: node.position.y + node.data.height / 2,
+          x: node.position.x + size.width / 2,
+          y: node.position.y + size.height / 2,
         }
 
         const nodeScope =

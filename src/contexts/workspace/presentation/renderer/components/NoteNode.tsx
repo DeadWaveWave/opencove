@@ -12,6 +12,7 @@ import { normalizeMarkdownFileName } from './NoteNode.markdown'
 import { InlineNodeTitleEditor } from './shared/InlineNodeTitleEditor'
 import { NoteNodeActionsMenu } from './NoteNodeActionsMenu'
 import { NodeKindIcon } from './shared/NodeKindIcon'
+import { WindowCollapseButton } from './shared/WindowCollapseButton'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -198,6 +199,7 @@ export function NoteNode({
           onConvertToTask={onConvertToTask}
           onSetLabelColorOverride={onSetLabelColorOverride}
         />
+        <WindowCollapseButton onClose={onClose} />
         <button
           type="button"
           className="note-node__close nodrag"

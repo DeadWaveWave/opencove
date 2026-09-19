@@ -15,7 +15,14 @@ import {
   reassignNodesAcrossSpaces,
   resolveSpaceAtPoint as resolveSpaceAtPointFromHelpers,
 } from './useSpaceOwnership.drop.helpers'
-import { projectWorkspaceNodeDropLayout } from './useSpaceOwnership.projectDropLayout'
+import {
+  projectCanvasInteractionDrop,
+  readCanvasInteractionState,
+} from './useNodeDragSession.collapse'
+import {
+  projectCanvasInteractionLayout,
+  getPresentedNodeSize,
+} from '../../../utils/canvasInteractionLayout'
 import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
 
 function rectEquals(a: WorkspaceSpaceRect | null, b: WorkspaceSpaceRect | null): boolean {
@@ -62,6 +69,7 @@ interface ApplyOwnershipForDropInput {
 }
 
 export function useWorkspaceCanvasApplyOwnershipForDrop({
+  workspaceId,
   workspacePath,
   reactFlow,
   spacesRef,
@@ -72,6 +80,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   resolveSpaceAtPoint,
   t,
 }: {
+  workspaceId?: string
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -113,7 +122,12 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
       const draggedNodesForTarget = buildDraggedNodesForTarget({
         nodeIds,
         draggedNodePositionById,
-        getNode: nodeId => reactFlow.getNode(nodeId) ?? undefined,
+        getNode: nodeId => {
+          const node = reactFlow.getNode(nodeId)
+          return node
+            ? { ...node, data: { ...node.data, ...getPresentedNodeSize(node.data) } }
+            : undefined
+        },
       })
 
       const draggedDropRect = computeBoundingRect(draggedNodesForTarget)
@@ -125,7 +139,14 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
             }
           : dropFlowPoint
       const targetSpace = hasSpaceRectOverride
-        ? resolveSpaceAtPointFromHelpers(spacesWithRectOverride, dropTargetPoint)
+        ? resolveSpaceAtPointFromHelpers(
+            projectCanvasInteractionLayout(
+              reactFlow.getNodes(),
+              spacesWithRectOverride,
+              readCanvasInteractionState(workspaceId),
+            ).spaces,
+            dropTargetPoint,
+          )
         : resolveSpaceAtPoint(dropTargetPoint)
       const targetSpaceId = targetSpace?.id ?? null
       const anchorNodeId = nodeIds[0] ?? null
@@ -250,15 +271,18 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
             })
           : prevNodes
 
-        const projected = projectWorkspaceNodeDropLayout({
-          nodes: baselineNodes,
-          spaces: projectedSpaces,
-          draggedNodeIds: nodeIds,
-          draggedNodePositionById,
-          dragDx,
-          dragDy,
-          dropFlowPoint,
-        })
+        const projected = projectCanvasInteractionDrop(
+          {
+            nodes: baselineNodes,
+            spaces: projectedSpaces,
+            draggedNodeIds: nodeIds,
+            draggedNodePositionById,
+            dragDx,
+            dragDy,
+            dropFlowPoint,
+          },
+          workspaceId,
+        )
 
         projectedNextSpaces = projected.nextSpaces
         hasProjectedSpaceChange = projected.hasSpaceChange
@@ -305,6 +329,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
       spacesRef,
       t,
       workspacePath,
+      workspaceId,
     ],
   )
 }

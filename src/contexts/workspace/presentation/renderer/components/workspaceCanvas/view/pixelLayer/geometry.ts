@@ -43,7 +43,11 @@ export function projectPixelNodeFrame(
   nodeLookup: ReadonlyMap<string, PixelGeometryNode>,
   viewport: PixelViewport,
 ): PixelNodeFrame | null {
-  if (node.hidden || node.className?.split(/\s+/).includes('cove-node--filtered-out')) {
+  if (
+    node.hidden ||
+    node.data.collapsePresentation?.spaceHidden ||
+    node.className?.split(/\s+/).includes('cove-node--filtered-out')
+  ) {
     return null
   }
   const geometry = nodeLookup.get(node.id)

@@ -53,7 +53,7 @@ export function buildSpaceCaptionBorderClip(gaps: readonly SpaceCaptionGap[]): s
   if (gaps.length === 0) {
     return 'none'
   }
-  const depth = 'calc(1px * var(--cove-space-stroke-scale) + 1px)'
+  const depth = 'calc(3px * var(--cove-space-stroke-scale) + 1px)'
   const points = ['0 0']
   for (const gap of gaps) {
     const start = `${gap.start.toFixed(3)}px`

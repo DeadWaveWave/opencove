@@ -21,7 +21,10 @@ export function projectPixelNodes(
 ): PixelNode[] {
   const projected: PixelNode[] = []
   for (const node of nodes) {
-    if (node.data.kind !== 'agent' && node.data.kind !== 'terminal') {
+    if (
+      node.data.collapsePresentation?.collapsed ||
+      (node.data.kind !== 'agent' && node.data.kind !== 'terminal')
+    ) {
       continue
     }
     const frame = projectPixelNodeFrame(node, nodeLookup, viewport)

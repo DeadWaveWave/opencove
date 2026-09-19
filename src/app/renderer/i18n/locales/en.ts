@@ -9,8 +9,13 @@ import { enIssueReport } from './en.issueReport'
 import { enPerformanceMonitor } from './en.performanceMonitor'
 import { enRole } from './en.role'
 import { enWorkspaceCanvas } from './en.workspaceCanvas'
+import { enSidebarView } from './en.sidebarView'
+import { enCanvasCollapse } from './en.canvasCollapse'
+import { enSpaceCollapse } from './en.spaceCollapse'
 
 export const en = {
+  ...enCanvasCollapse,
+  ...enSpaceCollapse,
   common: {
     actions: 'Actions',
     back: 'Back',
@@ -62,6 +67,7 @@ export const en = {
     done: 'DONE',
   },
   sidebar: {
+    ...enSidebarView,
     rootCanvas: 'Project canvas',
     projectMore: 'Project options',
     spaceMore: 'Space options',

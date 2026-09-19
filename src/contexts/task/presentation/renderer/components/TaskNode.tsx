@@ -22,6 +22,7 @@ import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import type { LabelColor } from '@shared/types/labelColor'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
+import { WindowCollapseButton } from '@contexts/workspace/presentation/renderer/components/shared/WindowCollapseButton'
 import { Pencil } from 'lucide-react'
 
 interface TaskNodeInteractionOptions {
@@ -296,6 +297,7 @@ export function TaskNode({
             onOpenEditor={onOpenEditor}
           />
 
+          <WindowCollapseButton onClose={onClose} />
           <button
             type="button"
             className="task-node__icon-button task-node__icon-button--close nodrag"

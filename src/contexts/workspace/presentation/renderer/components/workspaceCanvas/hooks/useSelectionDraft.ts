@@ -4,6 +4,11 @@ import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState, EmptySelectionPromptState, SelectionDraftState } from '../types'
 import { isPointInsideRect } from './useSpaceOwnership.helpers'
 import { applySelectionDraft, setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
+import {
+  getPresentedNodeSize,
+  projectCanvasInteractionLayout,
+} from '../../../utils/canvasInteractionLayout'
+import { readCanvasInteractionState } from './useNodeDragSession.collapse'
 
 type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -11,6 +16,7 @@ type SelectionDraftUiState = Pick<
 >
 
 interface UseSelectionDraftParams {
+  workspaceId?: string
   isTrackpadCanvasMode: boolean
   isShiftPressedRef: MutableRefObject<boolean>
   selectionDraftRef: MutableRefObject<SelectionDraftState | null>
@@ -30,6 +36,7 @@ interface UseSelectionDraftParams {
 }
 
 export function useWorkspaceCanvasSelectionDraft({
+  workspaceId,
   isTrackpadCanvasMode,
   isShiftPressedRef,
   selectionDraftRef,
@@ -62,6 +69,7 @@ export function useWorkspaceCanvasSelectionDraft({
         draft,
         reactFlow,
         spaces: spacesRef.current,
+        collapseState: readCanvasInteractionState(workspaceId),
         selectedNodeIdsRef,
         selectedSpaceIdsRef,
         setNodes,
@@ -78,6 +86,7 @@ export function useWorkspaceCanvasSelectionDraft({
       setSelectedNodeIds,
       setSelectedSpaceIds,
       spacesRef,
+      workspaceId,
     ],
   )
 
@@ -342,14 +351,15 @@ export function useWorkspaceCanvasSelectionDraft({
         y: event.clientY,
       })
 
-      const selectedNodes = reactFlow.getNodes().filter(node => node.selected)
+      const selectedNodes = reactFlow
+        .getNodes()
+        .filter(node => node.selected && !node.data.collapsePresentation?.spaceHidden)
 
       const pointerInsideSelectedNode = selectedNodes.some(node =>
         isPointInsideRect(startFlow, {
           x: node.position.x,
           y: node.position.y,
-          width: node.data.width,
-          height: node.data.height,
+          ...getPresentedNodeSize(node.data),
         }),
       )
 
@@ -360,7 +370,12 @@ export function useWorkspaceCanvasSelectionDraft({
       event.preventDefault()
       event.stopPropagation()
 
-      const startSpace = spacesRef.current.find(space => {
+      const interaction = projectCanvasInteractionLayout(
+        reactFlow.getNodes(),
+        spacesRef.current,
+        readCanvasInteractionState(workspaceId),
+      )
+      const startSpace = interaction.spaces.find(space => {
         if (!space.rect) {
           return false
         }
@@ -412,6 +427,7 @@ export function useWorkspaceCanvasSelectionDraft({
       setContextMenu,
       setEmptySelectionPrompt,
       setSelectionDraftUi,
+      workspaceId,
     ],
   )
 

@@ -28,6 +28,7 @@
   );
   border-style: solid;
   border-color: transparent;
+  border-radius: 8px;
   background: color-mix(
     in srgb,
     var(--cove-space-identity-color) var(--cove-space-identity-fill),
@@ -59,30 +60,19 @@
   pointer-events: none;
 }
 
-/* Emphasize the four corners without adding a panel fill. Share the caption
-   cutouts and zoom-compensated stroke with the continuous boundary. */
+/* Solid corner brackets share the caption cutouts and zoom-compensated stroke. */
 .workspace-canvas .workspace-space-region::after {
-  --cove-space-corner-reach: min(45%, clamp(40px, calc(48px / var(--cove-canvas-zoom)), 180px));
+  --cove-space-corner-reach: min(25%, calc(18px * var(--cove-space-stroke-scale)));
   content: '';
   position: absolute;
   inset: -1px;
   box-sizing: border-box;
-  border: calc(1px * var(--cove-space-stroke-scale) + 1px) solid var(--cove-space-identity-color);
+  border: calc(3px * var(--cove-space-stroke-scale)) solid var(--cove-space-identity-color);
   border-radius: inherit;
   clip-path: var(--cove-space-border-clip, none);
   mask-image:
-    radial-gradient(farthest-side at top left, var(--cove-space-identity-color) 35%, transparent),
-    radial-gradient(farthest-side at top right, var(--cove-space-identity-color) 35%, transparent),
-    radial-gradient(
-      farthest-side at bottom left,
-      var(--cove-space-identity-color) 35%,
-      transparent
-    ),
-    radial-gradient(
-      farthest-side at bottom right,
-      var(--cove-space-identity-color) 35%,
-      transparent
-    );
+    linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor);
   mask-size: var(--cove-space-corner-reach) var(--cove-space-corner-reach);
   mask-position:
     top left,
@@ -112,6 +102,14 @@
   transform-origin: top right;
 }
 
+.workspace-canvas
+  .workspace-space-region__label-group--right
+  :is(.workspace-space-region__branch-badge, .workspace-space-region__pr-chip) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* At overview scale, identity gets the width budget. Auxiliary controls remain
    in the tab order and reveal above the title, clear of the node content layer. */
 .workspace-canvas[data-cove-space-overview='true'] .workspace-space-region {
@@ -121,22 +119,28 @@
   );
 }
 
-.workspace-canvas[data-cove-space-overview='true'] .workspace-space-region__label-group--left {
+.workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region:not(.workspace-space-region--collapsed)
+  .workspace-space-region__label-group--left {
   width: max-content;
   flex-wrap: wrap-reverse;
 }
 
 .workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region:not(.workspace-space-region--collapsed)
   .workspace-space-region__label-group--left:is(:hover, :focus-within) {
   /* The 24px action row plus the existing 4px gap leaves the title in place. */
   top: calc(-39px * var(--cove-space-caption-scale));
 }
 
-.workspace-canvas[data-cove-space-overview='true'] .workspace-space-region__label {
+.workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region:not(.workspace-space-region--collapsed)
+  .workspace-space-region__label {
   flex-basis: 100%;
 }
 
 .workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region:not(.workspace-space-region--collapsed)
   :is(.workspace-space-region__files-pill, .workspace-space-region__menu) {
   position: absolute;
   width: 24px;
@@ -152,6 +156,7 @@
 }
 
 .workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region:not(.workspace-space-region--collapsed)
   .workspace-space-region__label-group--left:is(:hover, :focus-within)
   :is(.workspace-space-region__files-pill, .workspace-space-region__menu) {
   position: static;

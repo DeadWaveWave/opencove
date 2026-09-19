@@ -5,6 +5,7 @@ import type { CanvasImageMimeType } from '@shared/contracts/dto'
 import type { NodeFrame, Point } from '../types'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { NodeKindIcon } from './shared/NodeKindIcon'
+import { WindowCollapseButton } from './shared/WindowCollapseButton'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 
@@ -166,6 +167,7 @@ export function ImageNode({
         <NodeKindIcon kind="image" />
       </span>
 
+      <WindowCollapseButton onClose={onClose} />
       <button
         type="button"
         className="image-node__close nodrag"

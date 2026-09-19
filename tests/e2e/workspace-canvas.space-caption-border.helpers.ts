@@ -1,8 +1,27 @@
 import { expect, type Page } from '@playwright/test'
 import { readSpaceIdentity } from './workspace-canvas.color-identity.helpers'
 
-export async function expectCaptionGaps(page: Page) {
+export async function expectSpaceFrameHeader(page: Page) {
   await expect(async () => {
+    const corners = await page.locator('.workspace-space-region').evaluateAll(elements =>
+      elements.map(region => {
+        const edge = getComputedStyle(region, '::before')
+        const corner = getComputedStyle(region, '::after')
+        return {
+          mask: corner.maskImage,
+          width: Number.parseFloat(corner.borderTopWidth),
+          edgeWidth: Number.parseFloat(edge.borderTopWidth),
+          clip: corner.clipPath,
+          edgeClip: edge.clipPath,
+        }
+      }),
+    )
+    expect(corners.length).toBeGreaterThan(0)
+    for (const corner of corners) {
+      expect(corner.mask).not.toContain('radial-gradient')
+      expect(corner.width).toBeGreaterThanOrEqual(corner.edgeWidth * 2)
+      expect(corner.clip).toBe(corner.edgeClip)
+    }
     for (const space of await readSpaceIdentity(page)) {
       const evidence = `${space.id} ${JSON.stringify({ rect: space.rect, clip: space.edge.clip, points: space.edge.clipPoints, captions: space.edge.captions, gaps: space.edge.gaps })}`
       expect(space.edge.clip, `clipped top edge: ${evidence}`).toContain('polygon(')
@@ -43,7 +62,7 @@ export async function expectCaptionGaps(page: Page) {
         expect(
           gap.depth,
           `gap must remain confined to top stroke: ${evidence}`,
-        ).toBeLessThanOrEqual(2.1)
+        ).toBeLessThanOrEqual(4.1)
       }
     }
   }).toPass({ timeout: 5000 })

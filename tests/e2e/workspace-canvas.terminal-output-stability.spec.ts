@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { buildNodeEvalCommand, clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { removePathWithRetry } from './workspace-canvas.testUtils'
 
 const NODE_ID = 'terminal-output-stability'
 const PROGRESS_FRAME_PREFIX = 'OC_PROGRESS_FRAME_'
@@ -171,7 +175,27 @@ async function runProgramAndSample(options: {
   program: string
   doneMarker: string
 }): Promise<OutputSample[]> {
-  const shellCommand = buildNodeEvalCommand(options.program)
+  // Keep the typed shell command short: a multi-kilobyte inline program can
+  // exceed the PTY's canonical input buffer before the shell enters raw mode.
+  const directory = await mkdtemp(path.join(tmpdir(), 'opencove-output-program-'))
+  const scriptPath = path.join(directory, 'output.cjs')
+  await writeFile(scriptPath, options.program)
+  try {
+    return await runCommandAndSample({
+      ...options,
+      shellCommand: buildNodeEvalCommand(`require(${JSON.stringify(scriptPath)})`),
+    })
+  } finally {
+    await removePathWithRetry(directory)
+  }
+}
+
+async function runCommandAndSample(options: {
+  window: Page
+  sessionId: string
+  shellCommand: string
+  doneMarker: string
+}): Promise<OutputSample[]> {
   await options.window.evaluate(
     async payload => {
       await window.opencoveApi.pty.write({
@@ -179,7 +203,7 @@ async function runProgramAndSample(options: {
         data: `${payload.shellCommand}\r`,
       })
     },
-    { runtimeSessionId: options.sessionId, shellCommand },
+    { runtimeSessionId: options.sessionId, shellCommand: options.shellCommand },
   )
 
   const samples: OutputSample[] = []

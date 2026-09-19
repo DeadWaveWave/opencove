@@ -37,6 +37,9 @@ import { SidebarRemoteDetails } from './SidebarRemoteDetails'
 import { useWorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
 import { useAppStore } from '../store/useAppStore'
 import { toggleSidebarCollapsedId } from '@contexts/settings/domain/sidebarTreeSettings'
+import { setSidebarItemHidden } from '@contexts/settings/domain/sidebarViewSettings'
+import { projectSidebarView } from '../utils/sidebarView'
+import { SidebarViewControls } from './SidebarViewControls'
 
 export type SidebarVariant = 'docked' | 'rail' | 'peek'
 type SidebarProps = {
@@ -117,13 +120,24 @@ export function Sidebar({
   const setAgentSettings = useAppStore(state => state.setAgentSettings)
   const [previewWorkspaceId, setPreviewWorkspaceId] = useState<string | null>(null)
   const [isRemoteDetailsOpen, setIsRemoteDetailsOpen] = useState(false)
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [restoredLabel, setRestoredLabel] = useState<string | null>(null)
+  const sidebarView = useAppStore(state => state.agentSettings.sidebarView)
   useEffect(() => setPreviewWorkspaceId(null), [activeWorkspaceId])
-  const isInteractionActive = activeDragItem !== null || isRemoteDetailsOpen
+  const isInteractionActive = activeDragItem !== null || isRemoteDetailsOpen || isFilterOpen
   const isPreviewLocked = isInteractionActive || isMenuOpen
   const displayedTree =
     trees.find(tree => tree.workspace.id === (previewWorkspaceId ?? activeWorkspaceId)) ??
     trees.find(tree => tree.workspace.id === activeWorkspaceId) ??
     trees[0]
+  const projectedView = displayedTree ? projectSidebarView(displayedTree, sidebarView) : null
+  useEffect(() => {
+    if (!restoredLabel) {
+      return
+    }
+    const timeout = window.setTimeout(() => setRestoredLabel(null), 4000)
+    return () => window.clearTimeout(timeout)
+  }, [restoredLabel])
   useEffect(() => {
     onInteractionActiveChange?.(isInteractionActive)
     return () => onInteractionActiveChange?.(false)
@@ -326,6 +340,19 @@ export function Sidebar({
               <>
                 <header className="workspace-sidebar__project-header">
                   <h2 title={displayedTree.workspace.name}>{displayedTree.workspace.name}</h2>
+                  <SidebarViewControls
+                    key={`filters-${displayedTree.workspace.id}`}
+                    filters={sidebarView.filters}
+                    hiddenWaitingCount={projectedView?.hiddenWaitingCount ?? 0}
+                    isMobile={isMobile}
+                    onOpenChange={setIsFilterOpen}
+                    onChange={filters =>
+                      setAgentSettings(previous => ({
+                        ...previous,
+                        sidebarView: { ...previous.sidebarView, filters },
+                      }))
+                    }
+                  />
                   <SidebarRemoteDetails
                     key={displayedTree.workspace.id}
                     remote={mountDetails[displayedTree.workspace.id]?.remote ?? null}
@@ -361,7 +388,7 @@ export function Sidebar({
                 ) : null}
                 <div className="workspace-sidebar__tree-scroll">
                   <SidebarWorkspaceNavigation
-                    tree={displayedTree}
+                    tree={projectedView?.tree ?? displayedTree}
                     isActive={displayedTree.workspace.id === activeWorkspaceId}
                     currentNodeId={currentNodeId}
                     collapsedSpaceGroupIds={collapsedSpaceGroupIds}
@@ -370,7 +397,30 @@ export function Sidebar({
                     onSelectSpace={onSelectSpace}
                     onOpenProjectContextMenu={onOpenProjectContextMenu}
                     onSelectAgentNode={onSelectAgentNode}
+                    onRestoreSidebarItem={(kind, itemId, name) => {
+                      setAgentSettings(previous => ({
+                        ...previous,
+                        sidebarView: setSidebarItemHidden(
+                          previous.sidebarView,
+                          kind,
+                          displayedTree.workspace.id,
+                          itemId,
+                          false,
+                        ),
+                      }))
+                      setRestoredLabel(name)
+                    }}
                   />
+                  {projectedView?.matchingAgentCount === 0 &&
+                  projectedView.tree.spaceGroups.length === 0 &&
+                  (sidebarView.filters.visibility !== 'visible' ||
+                    sidebarView.filters.status !== 'all' ||
+                    sidebarView.filters.provider !== 'all') ? (
+                    <p className="workspace-sidebar__empty">{t('sidebar.noMatches')}</p>
+                  ) : null}
+                </div>
+                <div className="workspace-sidebar__feedback" role="status" aria-live="polite">
+                  {restoredLabel ? t('sidebar.restored', { name: restoredLabel }) : null}
                 </div>
               </>
             ) : (

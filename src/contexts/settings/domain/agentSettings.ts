@@ -13,6 +13,7 @@ import {
 } from './agentSettings.providers'
 import { normalizeFocusNodeTargetZoom } from './focusNodeTargetZoom'
 import { normalizeSidebarCollapsedIds } from './sidebarTreeSettings'
+import { normalizeSidebarViewSettings } from './sidebarViewSettings'
 import { normalizePixelEffectSettings } from './pixelEffectSettings'
 import { isValidUiLanguage, isValidUiTheme } from './uiSettings'
 import {
@@ -399,6 +400,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     sidebarCollapsedSpaceGroupIds: normalizeSidebarCollapsedIds(
       value.sidebarCollapsedSpaceGroupIds,
     ),
+    sidebarView: normalizeSidebarViewSettings(value.sidebarView),
     workspaceSearchPanelWidth,
     defaultProvider,
     agentProviderOrder,

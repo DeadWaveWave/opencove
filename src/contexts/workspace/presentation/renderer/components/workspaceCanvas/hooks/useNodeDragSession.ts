@@ -15,10 +15,10 @@ import {
 } from './useApplyNodeChanges.helpers'
 import { projectWorkspaceSpaceDominantLayout } from './useApplyNodeChanges.spaceDominant'
 import {
-  projectWorkspaceNodeDropLayout,
-  projectWorkspaceNodeLiveDropLayout,
-  projectWorkspaceNodePrimaryDropLayout,
-} from './useSpaceOwnership.projectDropLayout'
+  projectCanvasInteractionDrop,
+  readCanvasInteractionState,
+} from './useNodeDragSession.collapse'
+import { projectCanvasInteractionLayout } from '../../../utils/canvasInteractionLayout'
 import { resolveSpaceAtPoint } from './useSpaceOwnership.drop.helpers'
 import {
   buildDraggedNodeKey,
@@ -158,21 +158,19 @@ export function useWorkspaceCanvasNodeDragSession({
         shiftNodeIds: null,
       })
 
-      const projectDropLayout =
-        strategy === 'primary'
-          ? projectWorkspaceNodePrimaryDropLayout
-          : strategy === 'live'
-            ? projectWorkspaceNodeLiveDropLayout
-            : projectWorkspaceNodeDropLayout
-      const projected = projectDropLayout({
-        nodes: baselineNodes,
-        spaces: spacesRef.current,
-        draggedNodeIds,
-        draggedNodePositionById: desiredDraggedPositionById,
-        dragDx,
-        dragDy,
-        dropFlowPoint,
-      })
+      const projected = projectCanvasInteractionDrop(
+        {
+          nodes: baselineNodes,
+          spaces: spacesRef.current,
+          draggedNodeIds,
+          draggedNodePositionById: desiredDraggedPositionById,
+          dragDx,
+          dragDy,
+          dropFlowPoint,
+        },
+        workspaceId,
+        strategy,
+      )
 
       const nextNodes = currentNodes.map(node => {
         const nextPosition = projected.nextNodePositionById.get(node.id)
@@ -224,7 +222,13 @@ export function useWorkspaceCanvasNodeDragSession({
         nextSpaceFramePreview,
       }
     },
-    [dragSelectedSpaceIdsRef, selectedSpaceIdsRef, setNodeSpaceFramePreviewState, spacesRef],
+    [
+      dragSelectedSpaceIdsRef,
+      selectedSpaceIdsRef,
+      setNodeSpaceFramePreviewState,
+      spacesRef,
+      workspaceId,
+    ],
   )
 
   const clearNodeDragProjection = useCallback(() => {
@@ -264,18 +268,16 @@ export function useWorkspaceCanvasNodeDragSession({
       dropFlowPoint = null,
       anchorNodeId = null,
       anchorIsSelected = false,
-    }: {
-      currentNodes: Node<TerminalNodeData>[]
-      draggedNodeIds: string[]
-      desiredDraggedPositionById: Map<string, { x: number; y: number }>
-      dropFlowPoint?: { x: number; y: number } | null
-      anchorNodeId?: string | null
-      anchorIsSelected?: boolean
-    }) => {
+    }: Parameters<WorkspaceCanvasNodeDragSession['projectNodeDrag']>[0]) => {
       const nextDraggedPositionById = desiredDraggedPositionById
+      const interaction = projectCanvasInteractionLayout(
+        currentNodes,
+        spacesRef.current,
+        readCanvasInteractionState(workspaceId),
+      )
       let pendingReleasePositionById: Map<string, { x: number; y: number }> | null = null
       if (draggedNodeIds.length > 0 && magneticSnappingEnabledRef.current) {
-        const snappedNodes = currentNodes.map(node => {
+        const snappedNodes = interaction.nodes.map(node => {
           const desired = desiredDraggedPositionById.get(node.id)
           return desired ? { ...node, position: desired } : node
         })
@@ -289,7 +291,7 @@ export function useWorkspaceCanvasNodeDragSession({
             candidateRects: resolveWorkspaceNodeSnapCandidateRects({
               movingNodeIds,
               nodes: snappedNodes,
-              spaces: spacesRef.current,
+              spaces: interaction.spaces,
             }),
             grid: WORKSPACE_ARRANGE_GRID_PX,
             threshold: 8,
@@ -343,7 +345,7 @@ export function useWorkspaceCanvasNodeDragSession({
       })
       const nowMs = readDragLayoutTimeMs()
       const draggedNodeIdSet = new Set(draggedNodeIds)
-      const desiredDraggedNodes = currentNodes.flatMap(node => {
+      const desiredDraggedNodes = interaction.nodes.flatMap(node => {
         if (!draggedNodeIdSet.has(node.id)) {
           return []
         }
@@ -365,7 +367,7 @@ export function useWorkspaceCanvasNodeDragSession({
               }
             : null
       const targetSpaceId = targetPoint
-        ? (resolveSpaceAtPoint(spacesRef.current, targetPoint)?.id ?? null)
+        ? (resolveSpaceAtPoint(interaction.spaces, targetPoint)?.id ?? null)
         : null
       const shouldResolveSecondary = shouldResolveLiveDragSecondaryProjection({
         lastProjection: lastLiveDragSecondaryProjectionRef.current,
@@ -390,7 +392,13 @@ export function useWorkspaceCanvasNodeDragSession({
         shouldResolveSecondary ? 'live' : 'primary',
       )
     },
-    [magneticSnappingEnabledRef, resolveDragLayoutProjection, setSnapGuides, spacesRef],
+    [
+      magneticSnappingEnabledRef,
+      resolveDragLayoutProjection,
+      setSnapGuides,
+      spacesRef,
+      workspaceId,
+    ],
   )
 
   const applyPendingReleaseProjection = useCallback(

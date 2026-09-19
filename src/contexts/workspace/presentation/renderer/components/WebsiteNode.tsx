@@ -16,6 +16,7 @@ import { resolveBrowserNavigationTarget } from '@contexts/settings/domain/browse
 import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { NodeKindIcon } from './shared/NodeKindIcon'
+import { WindowCollapseButton, useWindowPresentationHidden } from './shared/WindowCollapseButton'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { useWebsiteWindowStore } from '../store/useWebsiteWindowStore'
@@ -23,6 +24,7 @@ import { useWebsiteNodeNativeView } from './WebsiteNode.nativeView'
 import { useWebsiteNodeFrameConstraints } from './WebsiteNode.frame'
 import { WebsiteNodeBody } from './WebsiteNode.body'
 import { WebsiteNodeBrowserTools } from './WebsiteNode.browserTools'
+import { useWebsiteInitialSnapshot } from './WebsiteNode.snapshot'
 import type { WebsiteNodeProps } from './WebsiteNode.types'
 
 export function WebsiteNode({
@@ -51,6 +53,7 @@ export function WebsiteNode({
   onFullscreenChange,
 }: WebsiteNodeProps): JSX.Element {
   const { t } = useTranslation()
+  const presentationHidden = useWindowPresentationHidden()
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const runtime = useWebsiteWindowStore(state => state.runtimeByNodeId[nodeId] ?? null)
   const lifecycle = runtime?.lifecycle ?? 'cold'
@@ -70,6 +73,7 @@ export function WebsiteNode({
     lifecycle,
     isOccluded,
     viewportRef,
+    presentationHidden,
   })
   const { maxNodeSize, toggleFullscreen } = useWebsiteNodeFrameConstraints({
     viewportRef,
@@ -194,34 +198,7 @@ export function WebsiteNode({
 
   const displayTitle = runtime?.title?.trim().length ? runtime.title : title
   const snapshotDataUrl = runtime?.snapshotDataUrl ?? null
-  const hasRequestedInitialSnapshotRef = useRef(false)
-
-  useEffect(() => {
-    if (lifecycle !== 'active') {
-      hasRequestedInitialSnapshotRef.current = false
-      return
-    }
-
-    if (url.trim().length === 0) {
-      return
-    }
-
-    if (isLoading || snapshotDataUrl) {
-      return
-    }
-
-    if (hasRequestedInitialSnapshotRef.current) {
-      return
-    }
-
-    const api = window.opencoveApi?.websiteWindow
-    if (!api || typeof api.captureSnapshot !== 'function') {
-      return
-    }
-
-    hasRequestedInitialSnapshotRef.current = true
-    api.captureSnapshot({ nodeId, quality: 60 })
-  }, [isLoading, lifecycle, nodeId, snapshotDataUrl, url])
+  useWebsiteInitialSnapshot({ nodeId, url, lifecycle, isLoading, snapshotDataUrl })
 
   return (
     <div
@@ -420,6 +397,7 @@ export function WebsiteNode({
               />
             ) : null}
 
+            <WindowCollapseButton onClose={onClose} />
             <button
               type="button"
               className="website-node__close nodrag"

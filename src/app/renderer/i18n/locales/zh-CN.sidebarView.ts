@@ -1,0 +1,17 @@
+export const zhCNSidebarView = {
+  filters: '筛选侧边栏',
+  filterStatus: 'Agent 状态',
+  filterProvider: 'Agent',
+  filterVisibility: '可见性',
+  all: '全部',
+  visible: '未隐藏',
+  allVisibility: '包含隐藏',
+  hidden: '仅隐藏',
+  resetFilters: '重置筛选',
+  hide: '从侧边栏隐藏',
+  restore: '在侧边栏显示',
+  restored: '{{name}} 已恢复到侧边栏。',
+  hiddenAttention_one: '{{count}} 个隐藏的 Agent 待确认',
+  hiddenAttention_other: '{{count}} 个隐藏的 Agent 待确认',
+  noMatches: '没有符合筛选的项目。',
+}

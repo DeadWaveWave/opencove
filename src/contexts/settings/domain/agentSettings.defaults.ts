@@ -5,6 +5,7 @@ import { DEFAULT_AGENT_EXECUTABLE_PATH_OVERRIDE_BY_PROVIDER } from './agentSetti
 import { DEFAULT_UI_LANGUAGE } from './uiSettings'
 import { DEFAULT_WEBSITE_WINDOW_POLICY } from './websiteWindowSettings'
 import { DEFAULT_BROWSER_MODE, DEFAULT_BROWSER_SEARCH_ENGINE } from './browserSettings'
+import { DEFAULT_SIDEBAR_VIEW_SETTINGS } from './sidebarViewSettings'
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
@@ -16,6 +17,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   isPrimarySidebarCollapsed: false,
   sidebarCollapsedWorkspaceIds: {},
   sidebarCollapsedSpaceGroupIds: {},
+  sidebarView: DEFAULT_SIDEBAR_VIEW_SETTINGS,
   workspaceSearchPanelWidth: 420,
   defaultProvider: 'codex',
   agentProviderOrder: resolveDefaultFirstAgentProviderOrder(undefined, 'codex'),

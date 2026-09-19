@@ -2,6 +2,7 @@ import { useMemo, type ComponentProps } from 'react'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import { TerminalDisplayAlignmentProvider } from './TerminalDisplayAlignmentContext'
 import { WorkspaceCanvasView } from './WorkspaceCanvasView'
+import { useCollapsedCanvasProjection } from './collapse/useCollapsedCanvasProjection'
 
 export function TerminalDisplayAlignedWorkspaceCanvasView({
   terminalFontSize,
@@ -13,13 +14,14 @@ export function TerminalDisplayAlignedWorkspaceCanvasView({
   terminalFontFamily: string | null
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
 }) {
+  const projected = useCollapsedCanvasProjection(viewProps)
   const value = useMemo(
     () => ({ terminalFontSize, terminalFontFamily, terminalDisplayCalibration }),
     [terminalDisplayCalibration, terminalFontFamily, terminalFontSize],
   )
   return (
     <TerminalDisplayAlignmentProvider value={value}>
-      <WorkspaceCanvasView {...viewProps} />
+      <WorkspaceCanvasView {...viewProps} {...projected} />
     </TerminalDisplayAlignmentProvider>
   )
 }

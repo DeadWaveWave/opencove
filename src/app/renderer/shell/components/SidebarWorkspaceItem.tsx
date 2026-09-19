@@ -1,5 +1,12 @@
 import React from 'react'
-import { ChevronDown, ChevronRight, LayoutDashboard, MoreHorizontal, Scan } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  EyeOff,
+  LayoutDashboard,
+  MoreHorizontal,
+  Scan,
+} from 'lucide-react'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
@@ -18,6 +25,7 @@ type NavigationProps = {
   onSelectSpace: (workspaceId: string, spaceId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
+  onRestoreSidebarItem?: (kind: 'space' | 'agent', id: string, name: string) => void
 }
 
 function SpaceGroup({
@@ -31,6 +39,7 @@ function SpaceGroup({
   onToggleSpaceGroup,
   onSelectAgentNode,
   onOpenProjectContextMenu,
+  onRestoreSidebarItem,
 }: NavigationProps & {
   workspaceId: string
   group: SidebarSpaceGroupModel
@@ -70,6 +79,7 @@ function SpaceGroup({
         opacity: isDragging ? 0.4 : 1,
       }}
       className={`workspace-space-group workspace-space-group--${isRoot ? 'root' : 'space'}${isDragging ? ' workspace-space-group--dragging' : ''}`}
+      data-sidebar-hidden={group.sidebarHidden || undefined}
       data-cove-label-color={group.labelColor ?? undefined}
     >
       <div className={`workspace-space-item${isRoot ? ' workspace-space-item--root' : ''}`}>
@@ -102,10 +112,21 @@ function SpaceGroup({
           )}
           <span className="workspace-space-item__name">{label}</span>
         </button>
-        {!isRoot ? (
+        {!isRoot && group.sidebarHidden ? (
           <button
             type="button"
-            className="workspace-sidebar__more"
+            className="workspace-sidebar__more workspace-sidebar__restore"
+            data-testid={`workspace-space-restore-${workspaceId}-${group.id}`}
+            aria-label={`${t('sidebar.restore')}: ${label}`}
+            title={t('sidebar.restore')}
+            onClick={() => onRestoreSidebarItem?.('space', group.id, label)}
+          >
+            <EyeOff size={14} aria-hidden="true" />
+          </button>
+        ) : !isRoot ? (
+          <button
+            type="button"
+            className="workspace-sidebar__more workspace-sidebar__row-more"
             data-testid={`workspace-space-more-${workspaceId}-${group.id}`}
             aria-label={`${t('sidebar.spaceMore')}: ${label}`}
             title={t('sidebar.spaceMore')}
@@ -145,6 +166,7 @@ function SpaceGroup({
             currentNodeId={currentNodeId}
             onSelectAgentNode={onSelectAgentNode}
             onOpenProjectContextMenu={onOpenProjectContextMenu}
+            onRestoreSidebarItem={onRestoreSidebarItem}
           />
         </div>
       ) : null}

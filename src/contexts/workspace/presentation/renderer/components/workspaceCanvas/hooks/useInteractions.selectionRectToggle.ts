@@ -1,6 +1,7 @@
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 import { isPointInsideRect } from './useSpaceOwnership.helpers'
+import { getPresentedNodeSize } from '../../../utils/canvasInteractionLayout'
 
 interface SelectionRectNodeToggleEvent {
   button: number
@@ -45,11 +46,11 @@ export function handleSelectionRectNodeToggle({
   const targetNode = reactFlow.getNodes().find(
     node =>
       node.selected &&
+      !node.data.collapsePresentation?.spaceHidden &&
       isPointInsideRect(point, {
         x: node.position.x,
         y: node.position.y,
-        width: node.data.width,
-        height: node.data.height,
+        ...getPresentedNodeSize(node.data),
       }),
   )
 

@@ -2,6 +2,9 @@ import type { TranslationDictionary } from './schema'
 
 import { zhCNCommonRemoteEndpoints } from './zh-CN.commonRemoteEndpoints'
 import { zhCNMessages } from './zh-CN.messages'
+import { zhCNSidebarView } from './zh-CN.sidebarView'
+import { zhCNCanvasCollapse } from './zh-CN.canvasCollapse'
+import { zhCNSpaceCollapse } from './zh-CN.spaceCollapse'
 import { zhCNShell } from './zh-CN.shell'
 import { zhCNSpaceExplorer } from './zh-CN.spaceExplorer'
 import { zhCNSettingsPanel } from './zh-CN.settingsPanel'
@@ -13,6 +16,8 @@ import { zhCNRole } from './zh-CN.role'
 import { zhCNWorkspaceCanvas } from './zh-CN.workspaceCanvas'
 
 export const zhCN = {
+  ...zhCNCanvasCollapse,
+  ...zhCNSpaceCollapse,
   common: {
     actions: '操作',
     back: '返回',
@@ -63,6 +68,7 @@ export const zhCN = {
     done: '完成',
   },
   sidebar: {
+    ...zhCNSidebarView,
     rootCanvas: '项目画布',
     projectMore: '项目操作',
     spaceMore: 'Space 操作',

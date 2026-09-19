@@ -190,10 +190,7 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
       )
       expect(bodyColor[2]).toBeGreaterThan(bodyColor[0]! * 1.5)
       expect(Math.max(...bodyColor.slice(0, 3))).toBeLessThan(48)
-      const space = window
-        .getByTestId('workspace-space-label-pixel-build-space')
-        .locator('..')
-        .locator('..')
+      const space = window.getByTestId('workspace-space-region-pixel-build-space')
       await expect(space).toHaveCSS('border-top-style', 'solid')
       expect(
         await space.evaluate(element => {

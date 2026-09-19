@@ -1,4 +1,4 @@
-import { expectCaptionGaps } from './workspace-canvas.space-caption-border.helpers'
+import { expectSpaceFrameHeader } from './workspace-canvas.space-caption-border.helpers'
 import { expect, test, type Page } from '@playwright/test'
 import { launchApp } from './workspace-canvas.helpers'
 import { MATERIAL_NODE_KINDS } from './workspace-canvas.spatial-pixel.materials.fixture'
@@ -302,7 +302,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
       await clearCanvasSelection(page)
       const inspectZoom = async (zoom: number) => {
         await wheelToZoom(page, zoom)
-        await expectCaptionGaps(page)
+        await expectSpaceFrameHeader(page)
         const spaces = await readSpaceIdentity(page)
         await testInfo.attach(`color-identity-space-${zoom}-metrics`, {
           body: JSON.stringify(spaces, null, 2),
@@ -349,11 +349,11 @@ test.describe('Workspace Canvas - Color Identity', () => {
             await page.keyboard.press('Tab')
             await expect(files).toBeFocused()
             await expect(files).toHaveCSS('opacity', '1')
-            await expectCaptionGaps(page)
+            await expectSpaceFrameHeader(page)
             await page.keyboard.press('Tab')
             await expect(menu).toBeFocused()
             await expect(menu).toHaveCSS('opacity', '1')
-            await expectCaptionGaps(page)
+            await expectSpaceFrameHeader(page)
             await menu.evaluate(element => (element as HTMLElement).blur())
             await label.hover()
             await expect(files).toHaveCSS('pointer-events', 'auto')

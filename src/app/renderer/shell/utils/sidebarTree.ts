@@ -15,6 +15,7 @@ export interface SidebarSpaceGroupModel {
   labelColor: LabelColor | null
   space: WorkspaceSpaceState | null
   agents: SidebarAgentItemModel[]
+  sidebarHidden?: boolean
 }
 
 export interface SidebarProjectTreeModel {

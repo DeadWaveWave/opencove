@@ -88,6 +88,8 @@ test.describe('Workspace Canvas - Worktree Branches', () => {
         await window.locator('[data-testid="workspace-space-menu-space-worktree-root"]').click()
         await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
         const createAction = window.locator('[data-testid="workspace-space-action-create"]')
+        // Measure the same settled menu position that the real click anchors to.
+        await createAction.click({ trial: true })
         const actionRect = await createAction.boundingBox()
         await mkdir('artifacts/popup-ui-motion', { recursive: true })
         await window.evaluate(() => {

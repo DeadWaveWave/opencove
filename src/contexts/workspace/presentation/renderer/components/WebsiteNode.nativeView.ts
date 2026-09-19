@@ -39,6 +39,7 @@ export function useWebsiteNodeNativeView({
   lifecycle,
   isOccluded,
   viewportRef,
+  presentationHidden = false,
 }: {
   nodeId: string
   desiredUrl: string
@@ -49,6 +50,7 @@ export function useWebsiteNodeNativeView({
   lifecycle: WebsiteWindowLifecycle
   isOccluded: boolean
   viewportRef: React.RefObject<HTMLDivElement | null>
+  presentationHidden?: boolean
 }): { activate: (desiredUrl: string) => void; isCanvasZoomFrozen: boolean } {
   const desiredUrlRef = useRef(desiredUrl)
   useEffect(() => {
@@ -152,7 +154,7 @@ export function useWebsiteNodeNativeView({
   const activate = useCallback(
     (nextUrl: string) => {
       const api = window.opencoveApi?.websiteWindow
-      if (!enabled || !api || typeof api.activate !== 'function') {
+      if (presentationHidden || !enabled || !api || typeof api.activate !== 'function') {
         return
       }
 
@@ -174,12 +176,18 @@ export function useWebsiteNodeNativeView({
         })
         .catch(() => undefined)
     },
-    [enabled, nodeId, pinned, profileId, sessionMode, viewportRef],
+    [enabled, nodeId, pinned, presentationHidden, profileId, sessionMode, viewportRef],
   )
 
   const lastSentViewportStateRef = useRef<WebsiteViewportState | null>(null)
   useEffect(() => {
-    if (!enabled || lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) {
+    if (
+      presentationHidden ||
+      !enabled ||
+      lifecycle !== 'active' ||
+      isCanvasZoomFrozen ||
+      isOccluded
+    ) {
       lastSentViewportStateRef.current = null
       return
     }
@@ -240,10 +248,10 @@ export function useWebsiteNodeNativeView({
     return () => {
       window.cancelAnimationFrame(raf)
     }
-  }, [enabled, isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, viewportRef])
+  }, [enabled, isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, presentationHidden, viewportRef])
 
   useEffect(() => {
-    if (!enabled || lifecycle === 'active' || isOccluded) {
+    if (presentationHidden || !enabled || lifecycle === 'active' || isOccluded) {
       return
     }
 
@@ -295,10 +303,16 @@ export function useWebsiteNodeNativeView({
     return () => {
       stop()
     }
-  }, [activate, enabled, isOccluded, lifecycle, pinned, viewportRef])
+  }, [activate, enabled, isOccluded, lifecycle, pinned, presentationHidden, viewportRef])
 
   useLayoutEffect(() => {
-    if (!enabled || lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) {
+    if (
+      presentationHidden ||
+      !enabled ||
+      lifecycle !== 'active' ||
+      isCanvasZoomFrozen ||
+      isOccluded
+    ) {
       return
     }
 
@@ -322,10 +336,21 @@ export function useWebsiteNodeNativeView({
         canvasZoom: viewportState.canvasZoom,
       })
     }
-  }, [canvasZoom, enabled, isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, viewportRef])
+  }, [
+    canvasZoom,
+    enabled,
+    isCanvasZoomFrozen,
+    isOccluded,
+    lifecycle,
+    nodeId,
+    presentationHidden,
+    viewportRef,
+  ])
 
-  useEffect(() => {
-    if (lifecycle !== 'active' || isOccluded) {
+  useLayoutEffect(() => {
+    // Update durable presentation bounds even under a menu/modal, so lifting
+    // global occlusion cannot briefly restore an already-collapsed native view.
+    if (lifecycle !== 'active' || (isOccluded && !presentationHidden)) {
       return
     }
 
@@ -334,20 +359,23 @@ export function useWebsiteNodeNativeView({
       return
     }
 
-    if (!isCanvasZoomFrozen) {
+    if (!isCanvasZoomFrozen && !presentationHidden) {
       return
     }
 
     lastSentViewportStateRef.current = null
-    if (typeof api.captureSnapshot === 'function') {
+    if (!presentationHidden && typeof api.captureSnapshot === 'function') {
       api.captureSnapshot({ nodeId, quality: 58 })
     }
     api.setBounds({
       nodeId,
       bounds: HIDDEN_WEBSITE_BOUNDS,
-      viewportBounds: HIDDEN_WEBSITE_BOUNDS,
+      viewportBounds: presentationHidden
+        ? (resolveViewportState(viewportRef.current, canvasZoomRef.current)?.viewportBounds ??
+          HIDDEN_WEBSITE_BOUNDS)
+        : HIDDEN_WEBSITE_BOUNDS,
     })
-  }, [isCanvasZoomFrozen, isOccluded, lifecycle, nodeId])
+  }, [isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, presentationHidden, viewportRef])
 
   return { activate, isCanvasZoomFrozen }
 }

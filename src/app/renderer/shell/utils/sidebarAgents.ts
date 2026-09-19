@@ -20,6 +20,8 @@ export interface SidebarAgentItemModel {
   effectiveLabelColor: LabelColor | null
   owningSpace: WorkspaceSpaceState | null
   status: SidebarAgentStatus
+  sidebarHidden?: boolean
+  sidebarHiddenBySpace?: boolean
 }
 
 export function resolveSidebarAgentStatus(

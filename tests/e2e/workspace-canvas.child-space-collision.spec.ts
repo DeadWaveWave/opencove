@@ -110,16 +110,16 @@ test.describe('Workspace Canvas - Child Space Collision', () => {
         after.spaces['child-collision-parent'].y - before.spaces['child-collision-parent'].y
       expect(
         after.spaces['child-collision-child'].x - before.spaces['child-collision-child'].x,
-      ).toBe(parentDx)
+      ).toBeCloseTo(parentDx, 6)
       expect(
         after.spaces['child-collision-child'].y - before.spaces['child-collision-child'].y,
-      ).toBe(parentDy)
-      expect(after.nodes['child-collision-node'].x - before.nodes['child-collision-node'].x).toBe(
-        parentDx,
-      )
-      expect(after.nodes['child-collision-node'].y - before.nodes['child-collision-node'].y).toBe(
-        parentDy,
-      )
+      ).toBeCloseTo(parentDy, 6)
+      expect(
+        after.nodes['child-collision-node'].x - before.nodes['child-collision-node'].x,
+      ).toBeCloseTo(parentDx, 6)
+      expect(
+        after.nodes['child-collision-node'].y - before.nodes['child-collision-node'].y,
+      ).toBeCloseTo(parentDy, 6)
     } finally {
       await electronApp.close()
     }

@@ -57,7 +57,7 @@ describe('Space caption border cutouts', () => {
 
   it('clips only the top stroke and leaves the other edges in the polygon', () => {
     const clip = buildSpaceCaptionBorderClip([{ start: 20, end: 100 }])
-    expect(clip).toContain('20.000px calc(1px * var(--cove-space-stroke-scale) + 1px)')
+    expect(clip).toContain('20.000px calc(3px * var(--cove-space-stroke-scale) + 1px)')
     expect(clip).toContain('100.000px 0, 100% 0, 100% 100%, 0 100%')
     expect(buildSpaceCaptionBorderClip([])).toBe('none')
   })

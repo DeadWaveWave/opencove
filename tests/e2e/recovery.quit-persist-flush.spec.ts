@@ -76,6 +76,7 @@ test.describe('Recovery - Quit Persist Flush', () => {
         windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: false,
+        env: { OPENCOVE_TEST_DEFER_TERMINAL_CHECKPOINTS: '1' },
       })
 
       try {
@@ -103,6 +104,17 @@ test.describe('Recovery - Quit Persist Flush', () => {
         await expect.poll(readRuntimeSessionId).toBeTruthy()
         const sessionId = await readRuntimeSessionId()
         expect(sessionId).not.toBeNull()
+
+        // Binding creates an initial checkpoint independently of the periodic timer. Wait for
+        // that baseline before producing the tail that only shutdown is allowed to persist.
+        await expect
+          .poll(() =>
+            window.evaluate(
+              id => window.opencoveApi.persistence.readNodeScrollback({ nodeId: id }),
+              nodeId,
+            ),
+          )
+          .not.toBeNull()
 
         const command = buildNodeEvalCommand(
           `process.stdout.write(${JSON.stringify(tailToken)} + '\\n')`,
@@ -141,6 +153,9 @@ test.describe('Recovery - Quit Persist Flush', () => {
           )
           .toEqual({ tokenCount: 1, advancedPastBaseline: true })
 
+        // Exceed the ordinary 2 s checkpoint interval: this precondition must hold even when
+        // the test runner is slow, rather than winning a race against automatic persistence.
+        await window.waitForTimeout(2_100)
         const durableBeforeQuit = await window.evaluate(async id => {
           return (await window.opencoveApi.persistence.readNodeScrollback({ nodeId: id })) ?? ''
         }, nodeId)

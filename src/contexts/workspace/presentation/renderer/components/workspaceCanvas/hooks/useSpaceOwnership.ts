@@ -2,12 +2,11 @@ import { useCallback, useRef } from 'react'
 import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
-import { WORKSPACE_ARRANGE_GRID_PX } from '../../../utils/workspaceArrange.shared'
-import { resolveWorkspaceSnap } from '../../../utils/workspaceSnap'
+import { projectCanvasInteractionLayout } from '../../../utils/canvasInteractionLayout'
 import {
-  resolveWorkspaceNodeSnapCandidateRects,
-  unionWorkspaceNodeRects,
-} from '../../../utils/workspaceSnap.nodes'
+  readCanvasInteractionState,
+  resolveSnappedCanvasDropPositions,
+} from './useNodeDragSession.collapse'
 import type { ShowWorkspaceCanvasMessage, SpaceWorktreeMismatchDropWarningState } from '../types'
 import {
   collectDraggedNodePositions,
@@ -18,6 +17,7 @@ import { useWorkspaceCanvasApplyOwnershipForDrop } from './useSpaceOwnership.app
 import { useWorkspaceCanvasSpaceOwnershipWorktreeWarning } from './useSpaceOwnership.worktreeWarning'
 import { setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
 export function useWorkspaceCanvasSpaceOwnership({
+  workspaceId,
   workspacePath,
   reactFlow,
   spacesRef,
@@ -34,6 +34,7 @@ export function useWorkspaceCanvasSpaceOwnership({
   hideWorktreeMismatchDropWarning,
   nodeDragPointerAnchorRef,
 }: {
+  workspaceId?: string
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -87,11 +88,19 @@ export function useWorkspaceCanvasSpaceOwnership({
   const dragStartSpaceRectByIdRef = useRef<Map<string, WorkspaceSpaceRect> | null>(null)
   const resolveDropTargetSpaceAtPoint = useCallback(
     (point: { x: number; y: number }): WorkspaceSpaceState | null =>
-      resolveSpaceAtPointFromHelpers(spacesRef.current, point),
-    [spacesRef],
+      resolveSpaceAtPointFromHelpers(
+        projectCanvasInteractionLayout(
+          reactFlow.getNodes(),
+          spacesRef.current,
+          readCanvasInteractionState(workspaceId),
+        ).spaces,
+        point,
+      ),
+    [reactFlow, spacesRef, workspaceId],
   )
 
   const applyOwnershipForDrop = useWorkspaceCanvasApplyOwnershipForDrop({
+    workspaceId,
     workspacePath,
     reactFlow,
     spacesRef,
@@ -109,89 +118,16 @@ export function useWorkspaceCanvasSpaceOwnership({
       draggedNodePositionById: Map<string, { x: number; y: number }>,
       fallbackNodes: Node<TerminalNodeData>[],
     ): Map<string, { x: number; y: number }> => {
-      if (draggedNodeIds.length === 0) {
-        return draggedNodePositionById
-      }
-
-      const fallbackNodeById = new Map(fallbackNodes.map(node => [node.id, node]))
-      const movingNodeIds = new Set(draggedNodeIds)
-      const currentNodes = reactFlow.getNodes().map(node => {
-        const draggedPosition = draggedNodePositionById.get(node.id)
-        if (!draggedPosition) {
-          return node
-        }
-
-        return {
-          ...node,
-          position: draggedPosition,
-        }
+      return resolveSnappedCanvasDropPositions({
+        nodes: reactFlow.getNodes(),
+        fallbackNodes,
+        spaces: spacesRef.current,
+        workspaceId,
+        draggedNodeIds,
+        draggedNodePositionById,
       })
-
-      const movingNodes = draggedNodeIds
-        .map(nodeId => {
-          const node = currentNodes.find(candidate => candidate.id === nodeId)
-          if (node) {
-            return node
-          }
-
-          const fallbackNode = fallbackNodeById.get(nodeId)
-          if (!fallbackNode) {
-            return null
-          }
-
-          const draggedPosition = draggedNodePositionById.get(nodeId)
-          return draggedPosition
-            ? {
-                ...fallbackNode,
-                position: draggedPosition,
-              }
-            : fallbackNode
-        })
-        .filter((node): node is Node<TerminalNodeData> => Boolean(node))
-
-      const movingRect = unionWorkspaceNodeRects(movingNodes)
-      if (!movingRect) {
-        return draggedNodePositionById
-      }
-
-      const snapped = resolveWorkspaceSnap({
-        movingRect,
-        candidateRects: resolveWorkspaceNodeSnapCandidateRects({
-          movingNodeIds,
-          nodes: currentNodes,
-          spaces: spacesRef.current,
-        }),
-        grid: WORKSPACE_ARRANGE_GRID_PX,
-        threshold: 8,
-        enableGrid: true,
-        enableObject: true,
-      })
-
-      if (snapped.dx === 0 && snapped.dy === 0) {
-        return draggedNodePositionById
-      }
-
-      const snappedPositionById = new Map<string, { x: number; y: number }>()
-
-      for (const nodeId of draggedNodeIds) {
-        const basePosition =
-          draggedNodePositionById.get(nodeId) ??
-          fallbackNodeById.get(nodeId)?.position ??
-          reactFlow.getNode(nodeId)?.position
-
-        if (!basePosition) {
-          continue
-        }
-
-        snappedPositionById.set(nodeId, {
-          x: basePosition.x + snapped.dx,
-          y: basePosition.y + snapped.dy,
-        })
-      }
-
-      return snappedPositionById.size > 0 ? snappedPositionById : draggedNodePositionById
     },
-    [reactFlow, spacesRef],
+    [reactFlow, spacesRef, workspaceId],
   )
 
   const {

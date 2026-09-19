@@ -1,5 +1,5 @@
 import React from 'react'
-import { Circle, LoaderCircle, MoreHorizontal, Pause } from 'lucide-react'
+import { Circle, EyeOff, LoaderCircle, MoreHorizontal, Pause } from 'lucide-react'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
@@ -44,6 +44,7 @@ function SidebarAgentItem({
   isCurrent,
   onSelectAgentNode,
   onOpenProjectContextMenu,
+  onRestoreSidebarItem,
 }: {
   workspaceId: string
   groupId: string | null
@@ -51,6 +52,7 @@ function SidebarAgentItem({
   isCurrent: boolean
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
+  onRestoreSidebarItem?: (kind: 'space' | 'agent', id: string, name: string) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const { node, displayTitle, effectiveLabelColor, status } = item
@@ -79,6 +81,7 @@ function SidebarAgentItem({
       }}
       className={`workspace-agent-item workspace-agent-item--sidebar${isDragging ? ' workspace-agent-item--dragging' : ''}`}
       data-cove-label-color={effectiveLabelColor ?? undefined}
+      data-sidebar-hidden={item.sidebarHidden || undefined}
     >
       <button
         type="button"
@@ -102,19 +105,32 @@ function SidebarAgentItem({
       >
         <SidebarAgentItemContent item={item} />
       </button>
-      <button
-        type="button"
-        className="workspace-sidebar__more"
-        data-testid={`workspace-agent-more-${workspaceId}-${node.id}`}
-        aria-label={`${t('sidebar.agentMore')}: ${displayTitle}`}
-        title={t('sidebar.agentMore')}
-        onClick={event => {
-          const rect = event.currentTarget.getBoundingClientRect()
-          openMenu(rect.right, rect.bottom)
-        }}
-      >
-        <MoreHorizontal size={14} aria-hidden="true" />
-      </button>
+      {item.sidebarHidden && !item.sidebarHiddenBySpace ? (
+        <button
+          type="button"
+          className="workspace-sidebar__more workspace-sidebar__restore"
+          data-testid={`workspace-agent-restore-${workspaceId}-${node.id}`}
+          aria-label={`${t('sidebar.restore')}: ${displayTitle}`}
+          title={t('sidebar.restore')}
+          onClick={() => onRestoreSidebarItem?.('agent', node.id, displayTitle)}
+        >
+          <EyeOff size={14} aria-hidden="true" />
+        </button>
+      ) : !item.sidebarHiddenBySpace ? (
+        <button
+          type="button"
+          className="workspace-sidebar__more workspace-sidebar__row-more"
+          data-testid={`workspace-agent-more-${workspaceId}-${node.id}`}
+          aria-label={`${t('sidebar.agentMore')}: ${displayTitle}`}
+          title={t('sidebar.agentMore')}
+          onClick={event => {
+            const rect = event.currentTarget.getBoundingClientRect()
+            openMenu(rect.right, rect.bottom)
+          }}
+        >
+          <MoreHorizontal size={14} aria-hidden="true" />
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -126,6 +142,7 @@ export function SidebarAgentItems({
   currentNodeId = null,
   onSelectAgentNode,
   onOpenProjectContextMenu,
+  onRestoreSidebarItem,
 }: {
   workspaceId: string
   groupId?: string | null
@@ -133,6 +150,7 @@ export function SidebarAgentItems({
   currentNodeId?: string | null
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
+  onRestoreSidebarItem?: (kind: 'space' | 'agent', id: string, name: string) => void
   showOwningSpacePill?: boolean
 }): React.JSX.Element | null {
   if (agentItems.length === 0) {
@@ -149,6 +167,7 @@ export function SidebarAgentItems({
           isCurrent={item.node.id === currentNodeId}
           onSelectAgentNode={onSelectAgentNode}
           onOpenProjectContextMenu={onOpenProjectContextMenu}
+          onRestoreSidebarItem={onRestoreSidebarItem}
         />
       ))}
     </div>

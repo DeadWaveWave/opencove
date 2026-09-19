@@ -44,7 +44,10 @@ export function AppPrimarySidebar({
       aria-label={t('commandCenter.sidebar')}
       returnFocus={triggerRef}
       inertRootSelector=".workspace-main, .app-header"
-      focusOutsideSelectors={['.workspace-project-context-menu']}
+      focusOutsideSelectors={[
+        '.workspace-project-context-menu',
+        '.workspace-sidebar__filter-options',
+      ]}
       dismissOnPointerDownOutside={!isMenuOpen}
       dismissOnEscape={!isMenuOpen}
     >

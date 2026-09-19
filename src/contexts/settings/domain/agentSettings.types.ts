@@ -12,6 +12,7 @@ import type {
 import type { AgentExecutablePathOverrideByProvider } from './agentSettings.executables'
 import type { AgentProvider, TaskTitleAgentProvider } from './agentSettings.providers'
 import type { BrowserSearchEngineId } from './browserSettings'
+import type { SidebarViewSettings } from './sidebarViewSettings'
 import type {
   ViewportTransition,
   CanvasInputMode,
@@ -45,6 +46,7 @@ export interface AgentSettings extends PixelEffectSettings {
   isPrimarySidebarCollapsed: boolean
   sidebarCollapsedWorkspaceIds: Record<string, boolean>
   sidebarCollapsedSpaceGroupIds: Record<string, boolean>
+  sidebarView: SidebarViewSettings
   workspaceSearchPanelWidth: number
   defaultProvider: AgentProvider
   agentProviderOrder: AgentProvider[]

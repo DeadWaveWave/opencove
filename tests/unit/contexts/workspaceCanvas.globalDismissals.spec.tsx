@@ -8,6 +8,7 @@ vi.mock('@xyflow/react', () => {
   return {
     Background: () => null,
     Controls: () => null,
+    useReactFlow: () => ({ fitView: vi.fn(), fitBounds: vi.fn() }),
     useStoreApi: () => ({
       setState: vi.fn(),
       getState: vi.fn(() => ({})),

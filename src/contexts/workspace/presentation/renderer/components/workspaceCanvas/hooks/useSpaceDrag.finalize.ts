@@ -5,6 +5,7 @@ import type { SpaceDragState } from '../types'
 import { type LayoutDirection } from '../../../utils/spaceLayout'
 import { projectWorkspacePushAwayLayout } from '../../../utils/workspacePushAwayProjection'
 import { projectChildSpaceMoveWithinParent } from './useSpaceDrag.childProjection'
+import { projectSpaceDragWithCollapse, type SpaceDragLayoutInput } from './useSpaceDrag.collapse'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -20,21 +21,20 @@ export interface ProjectedSpaceDragLayout {
   nextNodePositionById: Map<string, { x: number; y: number }>
 }
 
-export function projectWorkspaceSpaceDragLayout({
+export function projectWorkspaceSpaceDragLayout(
+  input: SpaceDragLayoutInput,
+): ProjectedSpaceDragLayout | null {
+  return projectSpaceDragWithCollapse(input, projectSpaceDragLayout)
+}
+
+function projectSpaceDragLayout({
   dragState,
   dx,
   dy,
   nodes,
   spaces,
   resolveResizedRect,
-}: {
-  dragState: SpaceDragState
-  dx: number
-  dy: number
-  nodes: Node<TerminalNodeData>[]
-  spaces: WorkspaceSpaceState[]
-  resolveResizedRect: ResolveResizedRect
-}): ProjectedSpaceDragLayout | null {
+}: SpaceDragLayoutInput): ProjectedSpaceDragLayout | null {
   const baselineNodes = restoreBaselineNodes(nodes, dragState.allNodePositions)
   const handle = dragState.handle
   const targetSpace = spaces.find(space => space.id === dragState.spaceId) ?? null

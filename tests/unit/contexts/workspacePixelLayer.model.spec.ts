@@ -37,6 +37,10 @@ describe('workspace pixel projection', () => {
         [
           { ...node, position: { x: -1000, y: -1000 } },
           { ...node, hidden: true },
+          {
+            ...node,
+            data: { ...node.data, collapsePresentation: { collapsed: true, spaceHidden: false } },
+          },
           { ...node, className: 'cove-node--filtered-out' },
         ],
         new Map(),

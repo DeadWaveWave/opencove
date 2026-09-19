@@ -4,6 +4,10 @@ import type { FocusNodeTargetZoom } from '@contexts/settings/domain/agentSetting
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { resolveWorkspaceCanvasViewportAnimation } from '../helpers'
+import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
+import { EMPTY_CANVAS_COLLAPSE } from '../../../utils/canvasCollapse'
+import { resolveSpaceDisplayRect } from '../collapse/spacePresentation'
+import { fitCanvasPresentation } from '../collapse/fitCanvasPresentation'
 
 const DEFAULT_VIEWPORT_WIDTH = 1440
 const DEFAULT_VIEWPORT_HEIGHT = 900
@@ -77,7 +81,17 @@ export function useWorkspaceCanvasSpaceFocus({
       const width = viewportWidth > 0 ? viewportWidth : DEFAULT_VIEWPORT_WIDTH
       const height = viewportHeight > 0 ? viewportHeight : DEFAULT_VIEWPORT_HEIGHT
       const maxZoom = Math.max(viewportMinZoom, Math.min(viewportMaxZoom, focusNodeTargetZoom))
-      const nextViewport = getViewportForBounds(rect, width, height, viewportMinZoom, maxZoom, 0.16)
+      const collapse =
+        useCanvasCollapseStore.getState().workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE
+      const bounds = resolveSpaceDisplayRect(spaceId, rect, spacesRef.current, collapse)
+      const nextViewport = getViewportForBounds(
+        bounds,
+        width,
+        height,
+        viewportMinZoom,
+        maxZoom,
+        0.16,
+      )
 
       void reactFlow.setViewport(nextViewport, {
         ...resolveWorkspaceCanvasViewportAnimation(220),
@@ -93,19 +107,26 @@ export function useWorkspaceCanvasSpaceFocus({
       viewportMaxZoom,
       viewportMinZoom,
       viewportWidth,
+      workspaceId,
     ],
   )
 
   const focusAllInViewport = useCallback((): void => {
-    if (nodesRef.current.length === 0) {
+    if (nodesRef.current.length === 0 && spacesRef.current.length === 0) {
       return
     }
 
-    void reactFlow.fitView({
-      padding: 0.16,
-      ...resolveWorkspaceCanvasViewportAnimation(220),
-    })
-  }, [nodesRef, reactFlow])
+    fitCanvasPresentation(
+      reactFlow,
+      nodesRef.current,
+      spacesRef.current,
+      useCanvasCollapseStore.getState().workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE,
+      {
+        padding: 0.16,
+        ...resolveWorkspaceCanvasViewportAnimation(220),
+      },
+    )
+  }, [nodesRef, reactFlow, spacesRef, workspaceId])
 
   const activateSpace = useCallback(
     (spaceId: string): void => {

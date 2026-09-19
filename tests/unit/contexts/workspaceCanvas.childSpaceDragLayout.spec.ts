@@ -133,6 +133,109 @@ function rectFromProjectedNode(
 }
 
 describe('workspace child space drag layout', () => {
+  it('lets a collapsed child move through the free area inside its parent without resizing its runtime', () => {
+    const childRect = { x: 20, y: 20, width: 800, height: 400 }
+    const childNode = makeNode('child-node', { x: 100, y: 100, width: 700, height: 300 })
+    const spaces = [
+      makeSpace('parent', { x: 0, y: 0, width: 1000, height: 700 }),
+      makeSpace('child', childRect, { parentSpaceId: 'parent', nodeIds: ['child-node'] }),
+    ]
+    const dragState = makeMoveDragState({
+      spaceId: 'child',
+      initialRect: childRect,
+      nodes: [childNode],
+    })
+    dragState.isCollapsed = true
+    dragState.collapseState = { collapsedNodeIds: {}, collapsedSpaceIds: { child: true } }
+
+    const projected = projectWorkspaceSpaceDragLayout({
+      dragState,
+      dx: 600,
+      dy: 0,
+      nodes: [childNode],
+      spaces,
+      resolveResizedRect: resolveResizedSpaceRect,
+    })!
+
+    expect(rectOf(projected.nextSpaces, 'child')).toEqual({ ...childRect, x: 620 })
+    expect(projected.nextNodePositionById.get('child-node')).toEqual({ x: 700, y: 100 })
+    expect(childNode.data.width).toBe(700)
+  })
+
+  it('does not push a compact Space when a moving Space only crosses its hidden expanded area', () => {
+    const moverRect = { x: 1500, y: 0, width: 200, height: 200 }
+    const compactRect = { x: 500, y: 0, width: 800, height: 400 }
+    const hiddenNode = makeNode('hidden-node', { x: 900, y: 30, width: 400, height: 300 })
+    const spaces = [
+      makeSpace('mover', moverRect),
+      makeSpace('compact', compactRect, { nodeIds: ['hidden-node'] }),
+    ]
+    const dragState = makeMoveDragState({
+      spaceId: 'mover',
+      initialRect: moverRect,
+      nodes: [hiddenNode],
+    })
+    dragState.collapseState = { collapsedNodeIds: {}, collapsedSpaceIds: { compact: true } }
+
+    const projected = projectWorkspaceSpaceDragLayout({
+      dragState,
+      dx: -600,
+      dy: 0,
+      nodes: [hiddenNode],
+      spaces,
+      resolveResizedRect: resolveResizedSpaceRect,
+    })!
+
+    expect(rectOf(projected.nextSpaces, 'mover')).toEqual({ ...moverRect, x: 900 })
+    expect(rectOf(projected.nextSpaces, 'compact')).toEqual(compactRect)
+    expect(projected.nextNodePositionById.get('hidden-node')).toEqual(hiddenNode.position)
+  })
+
+  it('carries hidden children exactly once when a visible compact Space is pushed during repeated drag previews', () => {
+    const moverRect = { x: 0, y: 0, width: 200, height: 200 }
+    const compactRect = { x: 500, y: 0, width: 800, height: 400 }
+    const hiddenNode = makeNode('hidden-node', { x: 550, y: 30, width: 400, height: 300 })
+    const spaces = [
+      makeSpace('mover', moverRect),
+      makeSpace('compact', compactRect, { nodeIds: ['hidden-node'] }),
+    ]
+    const dragState = makeMoveDragState({
+      spaceId: 'mover',
+      initialRect: moverRect,
+      nodes: [hiddenNode],
+    })
+    dragState.collapseState = { collapsedNodeIds: {}, collapsedSpaceIds: { compact: true } }
+    const input = {
+      dragState,
+      dx: 600,
+      dy: 0,
+      nodes: [hiddenNode],
+      spaces,
+      resolveResizedRect: resolveResizedSpaceRect,
+    }
+    const first = projectWorkspaceSpaceDragLayout(input)!
+    const second = projectWorkspaceSpaceDragLayout({
+      ...input,
+      nodes: [{ ...hiddenNode, position: first.nextNodePositionById.get('hidden-node')! }],
+    })!
+    const moved = rectOf(second.nextSpaces, 'compact')
+    const hiddenPosition = second.nextNodePositionById.get('hidden-node')!
+
+    expect(moved).not.toEqual(compactRect)
+    expect(moved.width).toBe(compactRect.width)
+    expect(hiddenPosition.x - hiddenNode.position.x).toBe(moved.x - compactRect.x)
+    expect(hiddenPosition.y - hiddenNode.position.y).toBe(moved.y - compactRect.y)
+    expect(second.nextNodePositionById).toEqual(first.nextNodePositionById)
+
+    const reset = projectWorkspaceSpaceDragLayout({
+      ...input,
+      dx: 0,
+      nodes: [{ ...hiddenNode, position: hiddenPosition }],
+    })!
+    expect(rectOf(reset.nextSpaces, 'compact')).toEqual(compactRect)
+    expect(reset.nextNodePositionById.get('hidden-node')).toEqual(hiddenNode.position)
+  })
+
   it('moves child spaces and child-owned nodes with their parent space', () => {
     const parentRect = { x: 100, y: 100, width: 420, height: 320 }
     const childRect = { x: 180, y: 170, width: 180, height: 120 }

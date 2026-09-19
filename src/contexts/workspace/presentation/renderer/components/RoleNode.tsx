@@ -1,5 +1,6 @@
 import { Play, X } from 'lucide-react'
 import { NodeKindIcon } from './shared/NodeKindIcon'
+import { WindowCollapseButton } from './shared/WindowCollapseButton'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { JSX } from 'react'
 import { Handle, Position } from '@xyflow/react'
@@ -138,6 +139,7 @@ export function RoleNode({
           </div>
           <div className="role-node__meta">{AGENT_PROVIDER_LABEL[selectedProvider]}</div>
         </div>
+        <WindowCollapseButton onClose={onClose} />
         <button
           type="button"
           className="role-node__icon-button nodrag"

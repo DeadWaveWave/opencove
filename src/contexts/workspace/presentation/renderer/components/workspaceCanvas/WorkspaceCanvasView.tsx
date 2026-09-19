@@ -1,6 +1,5 @@
 import React from 'react'
 import {
-  Controls,
   PanOnScrollMode,
   ReactFlow,
   SelectionMode,
@@ -10,6 +9,7 @@ import {
   type Node,
 } from '@xyflow/react'
 import type { TerminalNodeData } from '../../types'
+import { WorkspaceCanvasControls } from './collapse/WorkspaceCanvasControls'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type { WorkspaceCanvasViewProps } from './WorkspaceCanvasView.types'
 import { useActiveExplorerSpace } from './hooks/useActiveExplorerSpace'
@@ -355,7 +355,7 @@ export function WorkspaceCanvasView({
           setIsMinimapVisible={setIsMinimapVisible}
           onMinimapVisibilityChange={onMinimapVisibilityChange}
         />
-        <Controls className="workspace-canvas__controls" showInteractive={false} />
+        <WorkspaceCanvasControls />
       </ReactFlow>
       {activeExplorerSpace && activeExplorerSpace.rect ? (
         <WorkspaceSpaceExplorerOverlay

@@ -121,6 +121,12 @@ export function createControlSurfaceTerminalRecoveryRuntime(options: {
           })
           const owner = new TerminalRecoveryOwner({
             persistence: repository,
+            // Quit-flush E2E keeps output pending until the explicit shutdown drain.
+            checkpointDelayMs:
+              process.env.NODE_ENV === 'test' &&
+              process.env['OPENCOVE_TEST_DEFER_TERMINAL_CHECKPOINTS'] === '1'
+                ? 3_600_000
+                : undefined,
             presentation: {
               snapshotSession: async (sessionId, captureMutationBoundary) => {
                 const captured = await options.ptyRuntime.captureRecoveryPresentationSnapshot(
