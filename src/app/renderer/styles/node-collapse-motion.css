@@ -14,15 +14,8 @@
   position: absolute;
   display: none;
   box-sizing: border-box;
-  border: 1px solid
-    color-mix(
-      in srgb,
-      var(--cove-node-identity-color, var(--cove-accent)) 36%,
-      var(--cove-border-subtle)
-    );
-  background: var(--cove-window-surface);
-  box-shadow: 0 3px 12px
-    color-mix(in srgb, var(--cove-node-identity-color, var(--cove-accent)) 9%, transparent);
+  background: var(--cove-collapsed-surface);
+  box-shadow: var(--cove-collapsed-shadow);
   pointer-events: none;
 }
 

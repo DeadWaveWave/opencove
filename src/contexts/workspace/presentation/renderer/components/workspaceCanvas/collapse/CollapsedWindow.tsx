@@ -114,13 +114,15 @@ export function CollapsedWindow({
           ) : (
             <NodeKindIcon kind={data.kind} />
           )}
-          {status ? (
-            <span className="cove-collapsed-window__pixels">
-              {Array.from({ length: 12 }, (_, index) => (
-                <i key={index} style={{ '--pixel-index': index } as CSSProperties} />
-              ))}
-            </span>
-          ) : null}
+          <span className="cove-collapsed-window__pixels">
+            {Array.from({ length: 4 }, (_, corner) => (
+              <span key={corner} className="cove-collapsed-window__pixel-corner">
+                {Array.from({ length: 7 }, (_pixel, index) => (
+                  <i key={index} style={{ '--pixel-index': corner * 7 + index } as CSSProperties} />
+                ))}
+              </span>
+            ))}
+          </span>
         </span>
         <span className="cove-collapsed-window__title" title={title}>
           {title}
