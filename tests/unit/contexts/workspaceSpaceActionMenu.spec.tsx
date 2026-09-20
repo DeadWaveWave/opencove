@@ -2,7 +2,34 @@ import React from 'react'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WorkspaceSpaceActionMenu } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSpaceActionMenu'
+import {
+  WorkspaceCollapseContext,
+  useWorkspaceCollapse,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/WorkspaceCollapseContext'
 import type { WorkspacePathOpener } from '../../../src/shared/types/api'
+
+function CollapseProvider({
+  children,
+  canRestore = false,
+  undoArrange,
+}: {
+  children: React.ReactNode
+  canRestore?: boolean
+  undoArrange?: (spaceId: string) => void
+}) {
+  const defaults = useWorkspaceCollapse()
+  const value = React.useMemo(
+    () => ({
+      ...defaults,
+      canUndoArrange: (spaceId: string) => spaceId === 'space-1' && canRestore,
+      undoArrange: undoArrange ?? defaults.undoArrange,
+    }),
+    [defaults, canRestore, undoArrange],
+  )
+  return (
+    <WorkspaceCollapseContext.Provider value={value}>{children}</WorkspaceCollapseContext.Provider>
+  )
+}
 
 function renderMenu(
   openers: WorkspacePathOpener[],
@@ -11,22 +38,26 @@ function renderMenu(
     canArchive?: boolean
     currentLabelColor?: 'blue'
     closeMenu?: () => void
+    canRestore?: boolean
+    undoArrange?: (spaceId: string) => void
   },
 ) {
   render(
-    <WorkspaceSpaceActionMenu
-      menu={{ spaceId: 'space-1', x: 120, y: 80 }}
-      availableOpeners={openers}
-      canCreateWorktree={options?.canCreateWorktree ?? false}
-      canArchive={options?.canArchive ?? false}
-      currentLabelColor={options?.currentLabelColor ?? null}
-      closeMenu={options?.closeMenu ?? (() => undefined)}
-      setSpaceLabelColor={() => undefined}
-      onCreateWorktree={() => undefined}
-      onArchive={() => undefined}
-      onCopyPath={() => undefined}
-      onOpenPath={() => undefined}
-    />,
+    <CollapseProvider canRestore={options?.canRestore} undoArrange={options?.undoArrange}>
+      <WorkspaceSpaceActionMenu
+        menu={{ spaceId: 'space-1', x: 120, y: 80 }}
+        availableOpeners={openers}
+        canCreateWorktree={options?.canCreateWorktree ?? false}
+        canArchive={options?.canArchive ?? false}
+        currentLabelColor={options?.currentLabelColor ?? null}
+        closeMenu={options?.closeMenu ?? (() => undefined)}
+        setSpaceLabelColor={() => undefined}
+        onCreateWorktree={() => undefined}
+        onArchive={() => undefined}
+        onCopyPath={() => undefined}
+        onOpenPath={() => undefined}
+      />
+    </CollapseProvider>,
   )
 }
 
@@ -39,6 +70,23 @@ describe('WorkspaceSpaceActionMenu', () => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
     vi.unstubAllGlobals()
+  })
+
+  it('restores the layout from the Space menu only while a snapshot is available', () => {
+    const undoArrange = vi.fn()
+    const closeMenu = vi.fn()
+    renderMenu([], { canRestore: true, undoArrange, closeMenu })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore previous layout' }))
+
+    expect(undoArrange).toHaveBeenCalledWith('space-1')
+    expect(closeMenu).toHaveBeenCalledOnce()
+  })
+
+  it('omits restore when the Space has no previous layout', () => {
+    renderMenu([])
+
+    expect(screen.queryByTestId('workspace-space-undo-arrange-space-1')).not.toBeInTheDocument()
   })
 
   it('sorts openers with Finder first, Terminal second, then alphabetically', () => {

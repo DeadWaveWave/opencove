@@ -5,6 +5,7 @@ import { resolveAgentPresentation } from './agentPresentation'
 export type CollapsedIds = Record<string, true>
 export interface CanvasCollapseState {
   collapsedNodeIds: CollapsedIds
+  /** Legacy storage only; migrated to actual compact windows when a workspace opens. */
   collapsedSpaceIds: CollapsedIds
 }
 
@@ -71,6 +72,22 @@ export function collectSpaceDescendantIds(
 export function collectSpaceNodeIds(spaceId: string, spaces: WorkspaceSpaceState[]): Set<string> {
   const ids = collectSpaceDescendantIds(spaceId, spaces)
   return new Set(spaces.filter(space => ids.has(space.id)).flatMap(space => space.nodeIds))
+}
+
+export function migrateLegacySpaceCollapse(
+  state: CanvasCollapseState,
+  spaces: WorkspaceSpaceState[],
+): CanvasCollapseState {
+  if (Object.keys(state.collapsedSpaceIds).length === 0) {
+    return state
+  }
+  const collapsedNodeIds = { ...state.collapsedNodeIds }
+  for (const spaceId of Object.keys(state.collapsedSpaceIds)) {
+    for (const nodeId of collectSpaceNodeIds(spaceId, spaces)) {
+      collapsedNodeIds[nodeId] = true
+    }
+  }
+  return { collapsedNodeIds, collapsedSpaceIds: {} }
 }
 
 export function getCollapsedSpaceHiddenIds(

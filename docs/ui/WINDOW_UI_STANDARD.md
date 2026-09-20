@@ -104,29 +104,43 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
   visibility:hidden、脱离可见布局；禁止 React Flow hidden、条件卸载或 display:none
   导致 PTY 测量归零。WebContentsView 只隐藏 host bounds，不能销毁 session 或改变 viewport。
 - React Flow 的 compact frame、像素流光和命中区域使用展示尺寸；持久化 node data 中的
-  width/height 始终是展开尺寸。Space 折叠保留内部节点位置与各自折叠偏好。
+  width/height 始终是展开尺寸。Space 本身没有折叠状态；旧版 Space 折叠记录在打开项目时
+  转为后代节点的 compact 偏好并清除，保留布局与运行时。
 - React Flow 的 width/height 与 initialWidth/initialHeight 同属展示投影；旧 measured
   与展示尺寸不符时必须丢弃，避免受控拖动重建节点时选中框闪回展开尺寸。
 - 「画布 → 窗口布局 → 窗口展开方式」默认原地展开并沿用 resize 推开布局；也可
-  选择按创建寻位流程移到空位展开。直接点击、Space 摘要和导航均经同一展开 owner，
+  选择按创建寻位流程移到空位展开。直接点击和导航均经同一展开 owner，
   用可见几何规划碰撞，再只提交位置与 Space 边框，不改变运行时尺寸或重启会话。
-  寻位优先保留所在 Space，拥挤时扩展其边界；被推动的折叠 Space 携带隐藏后代一起平移。
+  寻位优先保留所在 Space，拥挤时扩展其边界。
 - Space 标题、分支和操作位于边框线上，标题与操作通过统一测量生成边框断线。
   保留实色加粗四角，不增加内置标题栏的高度补偿，展示与拖动使用同一边框矩形。
 - 折叠图标上的小点阵表示 Agent 工作/等待状态；终端仅在收到真实 PTY 输出时短暂流动，
   空闲时保留静态连接提示，不将输出当作命令忙碌状态。动效跟随现有工作点阵开关与
   reduced-motion，折叠图标不再叠加完整窗口的两侧流光。
-- Space 摘要显示各窗口图标与权威运行状态。终端只表示会话存活/结束，不把输出推断成
-  命令忙碌。点击图标展开祖先 Space 和目标窗口并定位，其他窗口折叠偏好不变。
-- “收起并整理”是显式共享布局写入，保持 Space 展开；其他客户端接收位置变化，但保留
-  自己的折叠偏好。撤销恢复当时成员的位置、Space 边框和折叠状态，不覆盖新内容、
-  不复活删除节点，也不把已经移到别处的节点拉回。
+- Space 只提供 FoldVertical「收起并整理窗口」动作：成员变成真实 compact 节点，整理后
+  收紧 Space 右侧与底边，左上标题锚点保持稳定。Space 仍可正常拖动和调整大小。
+- 手动调整 Space 大小时，实时预览与最终提交均按节点的可见尺寸计算包围边界；
+  compact 节点不占用其展开尺寸，也不要求默认终端的最小空间。混合布局仍完整包住
+  展开的节点与子 Space。最小宽度和自动整理共用单图标的空间预算；窄框标题截断、
+  文件按钮改为纯图标，保留更多、分支和收起操作，不能用固定标题宽度撑大紧凑 Space。
+- “收起并整理”沿用显式共享布局写入；其他客户端接收位置变化，但保留自己的折叠偏好。
+  更多菜单中的「恢复收起前布局」是会话内撤销：只在成员、归属、折叠偏好及几何未被
+  后续独立修改时可用。整组平移可恢复相对布局；重复无变化的整理不覆盖首次快照。
+- 收起/展开采用 Web Animations 展示过渡：正文以原尺寸淡出并裁切，图标与标题移动到
+  compact 位置，不拉伸文字。单窗口收起约 280ms，展开约 360ms；整理从约 210ms 开始
+  衔接移位，Space 边框从 350ms 跟随，总计约 620ms，无反弹。
+- 动画只有临时 DOM 展示写权；不得把中间帧提交给 React Flow、PTY 或共享布局。中断从
+  当前帧接续，拖动、卸载、切换项目与 reduced-motion 清理动画；最终状态由布局 owner
+  持有。浏览器原生 host 按动画边界裁切，其 viewport 保持完整尺寸。
 - Disclosure 使用带 aria-expanded 的按钮。隐藏 runtime 不可 Tab 进入；减少动态效果
   关闭收起动效。关闭仍走原窗口的 owner，文档未保存确认不得被紧凑外壳绕过。
 
 参考：[React Flow Node](https://reactflow.dev/api-reference/types/node)、
 [WAI-ARIA Disclosure](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)、
 [HTML inert](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inert)。
+动效参考 [Element.animate](https://developer.mozilla.org/en-US/docs/Web/API/Element/animate)
+与 [Animation.cancel](https://developer.mozilla.org/en-US/docs/Web/API/Animation/cancel)：取消时
+处理 finished promise 的拒绝，不使用 commitStyles 将临时帧变成运行时尺寸。
 
 ## 6) 新窗口开发 Checklist
 

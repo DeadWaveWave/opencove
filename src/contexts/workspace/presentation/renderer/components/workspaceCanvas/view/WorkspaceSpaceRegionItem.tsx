@@ -8,10 +8,7 @@ import type { SpaceFrameHandleMode } from '../../../utils/spaceLayout'
 import { resolveSpaceAnnotationCap } from './spaceVisualScale'
 import { useSpaceCaptionBorder } from './useSpaceCaptionBorder'
 import { WorkspaceSpaceOperationOverlay } from './WorkspaceSpaceOperationOverlay'
-import { useWorkspaceCollapse } from '../collapse/WorkspaceCollapseContext'
 import { WorkspaceSpaceCollapseActions } from './WorkspaceSpaceCollapseActions'
-import { WorkspaceSpaceSummary } from './WorkspaceSpaceSummary'
-import { collectSpaceSummaryNodes } from './spaceSummary'
 
 export interface WorkspaceSpaceBranchBadge {
   kind: string
@@ -87,12 +84,6 @@ export function WorkspaceSpaceRegionItem({
   const { t } = useTranslation()
   const regionRef = React.useRef<HTMLDivElement>(null)
   useSpaceCaptionBorder(regionRef)
-  const collapse = useWorkspaceCollapse()
-  const isCollapsed = collapse.collapsedSpaceIds[space.id] === true
-  const summaryNodes = React.useMemo(
-    () => collectSpaceSummaryNodes(space.id, collapse.spaces, collapse.nodes),
-    [space.id, collapse.spaces, collapse.nodes],
-  )
   const branchName = resolvedWorktreeInfo?.branch ?? null
   const worktreePath = resolvedWorktreeInfo?.path ?? null
   const pullRequestUrl = resolvedPullRequestSummary?.ref.url ?? null
@@ -121,7 +112,6 @@ export function WorkspaceSpaceRegionItem({
     space.parentSpaceId ? 'workspace-space-region--child' : null,
     isSelected ? 'workspace-space-region--selected' : null,
     busyOperationLabel ? 'workspace-space-region--busy' : null,
-    isCollapsed ? 'workspace-space-region--collapsed' : null,
   ]
     .filter(Boolean)
     .join(' ')
@@ -132,7 +122,8 @@ export function WorkspaceSpaceRegionItem({
         ref={regionRef}
         className={className}
         data-testid={`workspace-space-region-${space.id}`}
-        data-space-collapsed={isCollapsed ? 'true' : 'false'}
+        data-cove-space-caption-density={resolvedRect.width < 360 ? 'compact' : undefined}
+        data-cove-space-caption-branch={resolvedBranchBadge ? 'true' : undefined}
         data-parent-space-id={space.parentSpaceId ?? undefined}
         data-cove-label-color={space.labelColor ?? undefined}
         style={{
@@ -173,19 +164,19 @@ export function WorkspaceSpaceRegionItem({
             data-testid={`workspace-space-drag-${space.id}-${side}`}
             onPointerDown={event => {
               handleSpaceDragHandlePointerDown(event, space.id, {
-                mode: isCollapsed ? 'region' : 'auto',
+                mode: 'auto',
               })
             }}
             onPointerMove={event => {
-              updateHandleCursor(event, resolvedRect, isCollapsed ? 'region' : 'auto')
+              updateHandleCursor(event, resolvedRect, 'auto')
             }}
             onMouseDown={event => {
               handleSpaceDragHandlePointerDown(event, space.id, {
-                mode: isCollapsed ? 'region' : 'auto',
+                mode: 'auto',
               })
             }}
             onMouseMove={event => {
-              updateHandleCursor(event, resolvedRect, isCollapsed ? 'region' : 'auto')
+              updateHandleCursor(event, resolvedRect, 'auto')
             }}
           />
         ))}
@@ -244,6 +235,7 @@ export function WorkspaceSpaceRegionItem({
                   className="workspace-space-region__label"
                   data-cove-space-caption="title"
                   data-testid={`workspace-space-label-${space.id}`}
+                  title={space.name}
                   onClick={event => {
                     event.stopPropagation()
                     startSpaceRename(space.id)
@@ -319,11 +311,7 @@ export function WorkspaceSpaceRegionItem({
                   event.stopPropagation()
                 }}
               >
-                {!isCollapsed &&
-                branchName &&
-                resolvedBranchBadge &&
-                worktreePath &&
-                allowBranchRename ? (
+                {branchName && resolvedBranchBadge && worktreePath && allowBranchRename ? (
                   <button
                     type="button"
                     className="workspace-space-region__branch-badge workspace-space-region__branch-badge--button"
@@ -354,7 +342,7 @@ export function WorkspaceSpaceRegionItem({
                       {resolvedBranchBadge.value}
                     </span>
                   </button>
-                ) : !isCollapsed && resolvedBranchBadge ? (
+                ) : resolvedBranchBadge ? (
                   <span
                     className="workspace-space-region__branch-badge"
                     data-cove-space-caption="branch"
@@ -372,8 +360,7 @@ export function WorkspaceSpaceRegionItem({
                   </span>
                 ) : null}
 
-                {!isCollapsed &&
-                branchName &&
+                {branchName &&
                 worktreePath &&
                 shouldShowPullRequestChip &&
                 resolvedPullRequestSummary ? (
@@ -403,13 +390,6 @@ export function WorkspaceSpaceRegionItem({
             </>
           )}
         </>
-        {isCollapsed ? (
-          <WorkspaceSpaceSummary
-            spaceId={space.id}
-            nodes={summaryNodes}
-            onRevealNode={collapse.revealNode}
-          />
-        ) : null}
       </div>
       {busyOperationLabel ? (
         <WorkspaceSpaceOperationOverlay

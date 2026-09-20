@@ -66,7 +66,7 @@ test('collapses all window kinds without remounting editors or resizing a live P
     await compactTerminal.getByTestId('node-expand').click({ modifiers: ['Shift'] })
     await expect(terminalNode).not.toHaveClass(/selected/)
     await compactTerminal.getByTestId('node-expand').click()
-    await expect(compactTerminal).toHaveCount(0)
+    await expect(compactTerminal).toBeHidden()
     expect(await identity(window)).toEqual(original)
     await window.locator(`[data-id="${MATERIAL_TERMINAL}"]`).getByTestId('node-collapse').click()
     const sessionId = original.sessionId!
@@ -105,20 +105,24 @@ test('collapses all window kinds without remounting editors or resizing a live P
       contentType: 'image/png',
     })
 
-    await window.getByTestId('workspace-space-collapse-pixel-build-space').click()
-    const summary = window.getByTestId('workspace-space-summary-pixel-build-space')
-    await expect(summary).toBeVisible()
-    await window.getByTestId('workspace-space-collapse-pixel-review-space').click()
+    await window.getByTestId('workspace-space-collapse-arrange-pixel-build-space').click()
+    await window.getByTestId('workspace-space-collapse-arrange-pixel-review-space').click()
     await window.locator('.react-flow__controls-fitview').click()
-    await expect(summary).toBeInViewport()
-    await expect(window.getByTestId('workspace-space-summary-pixel-review-space')).toBeInViewport()
-    await testInfo.attach('space-live-summary', {
+    for (const kind of MATERIAL_NODE_KINDS) {
+      await expect(window.getByTestId(`collapsed-node-pixel-material-${kind}`)).toBeInViewport()
+    }
+    await expect(window.locator('[data-testid^="workspace-space-summary-"]')).toHaveCount(0)
+    await expect(
+      window.getByTestId('workspace-space-worktree-branch-pixel-review-space'),
+    ).toBeVisible()
+    await testInfo.attach('space-compact-windows', {
       body: await window.screenshot(),
       contentType: 'image/png',
     })
-    await expect(window.getByTestId(`collapsed-node-${MATERIAL_TERMINAL}`)).toBeHidden()
+    await expect(compactTerminal).toBeVisible()
     expect(await identity(window)).toEqual(original)
-    await summary.getByTestId(`workspace-space-summary-node-${MATERIAL_TERMINAL}`).click()
+    await compactTerminal.getByTestId('node-expand').click()
+    await expect(compactTerminal).toBeHidden()
     await expect(
       window.locator(`[data-id="${MATERIAL_TERMINAL}"] .terminal-node__terminal`),
     ).toBeVisible()
@@ -130,32 +134,29 @@ test('collapses all window kinds without remounting editors or resizing a live P
     expect(await identity(window)).toEqual(original)
 
     await window.locator('.react-flow__controls-fitview').click()
-    await window.getByTestId('workspace-space-collapse-pixel-review-space').click()
-    const before = await window.locator('.react-flow__node').evaluateAll(elements =>
-      elements.map(element => ({
-        id: element.getAttribute('data-id'),
-        transform: (element as HTMLElement).style.transform,
-      })),
-    )
+    await expect.poll(() => terminalNode.evaluate(element => element.clientWidth)).toBe(420)
+    const readNodePositions = () =>
+      window.locator('.react-flow__node').evaluateAll(elements =>
+        elements.map(element => ({
+          id: element.getAttribute('data-id'),
+          transform: (element as HTMLElement).style.transform,
+        })),
+      )
+    const before = await readNodePositions()
     await window.getByTestId('workspace-space-collapse-arrange-pixel-build-space').click()
-    await expect(window.getByTestId(`collapsed-node-${MATERIAL_TERMINAL}`)).toBeVisible()
-    await expect(window.getByTestId('workspace-space-collapse-pixel-build-space')).toHaveAttribute(
-      'aria-expanded',
-      'true',
+    await expect(compactTerminal).toBeVisible()
+    await expect.poll(() => terminalNode.evaluate(element => element.clientWidth)).toBe(176)
+    await expect(window.getByTestId('workspace-space-collapse-pixel-build-space')).toHaveCount(0)
+    await expect(window.getByTestId('workspace-space-undo-arrange-pixel-build-space')).toHaveCount(
+      0,
     )
     await testInfo.attach('collapsed-windows-arranged', {
       body: await window.screenshot(),
       contentType: 'image/png',
     })
+    await window.getByTestId('workspace-space-menu-pixel-build-space').click()
     await window.getByTestId('workspace-space-undo-arrange-pixel-build-space').click()
-    expect(
-      await window.locator('.react-flow__node').evaluateAll(elements =>
-        elements.map(element => ({
-          id: element.getAttribute('data-id'),
-          transform: (element as HTMLElement).style.transform,
-        })),
-      ),
-    ).toEqual(before)
+    await expect.poll(readNodePositions).toEqual(before)
     await expect(
       window.locator(`[data-id="${MATERIAL_TERMINAL}"] .terminal-node__terminal`),
     ).toBeVisible()

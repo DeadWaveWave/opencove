@@ -39,7 +39,6 @@ const context = (): WorkspaceCollapseValue => ({
   collapsedNodeIds: {},
   collapsedSpaceIds: {},
   toggleNode: vi.fn(),
-  toggleSpace: vi.fn(),
   revealNode: vi.fn(),
   collapseAndArrange: vi.fn(),
   undoArrange: vi.fn(),
@@ -190,6 +189,46 @@ describe('window collapse presentation', () => {
     expect(icon).not.toHaveAttribute('data-animated')
     rerender(view({ ...data, status: 'restoring' }))
     expect(icon).not.toHaveAttribute('data-animated')
+  })
+
+  it('keeps inactive compact chrome mounted without exposing a drag handle or active controls', () => {
+    const onExpand = vi.fn()
+    const onClose = vi.fn()
+    const view = (active: boolean) => (
+      <CollapsedWindow
+        id="inactive"
+        data={nodeData()}
+        active={active}
+        message=""
+        onExpand={onExpand}
+        onClose={onClose}
+      />
+    )
+    const { container, rerender } = render(view(false))
+    const launch = screen.getByTestId('node-expand')
+    const icon = container.querySelector('.cove-collapsed-window__icon')
+    const close = screen.getByRole('button', { name: 'Close window' })
+    expect(container.querySelectorAll('[data-node-drag-handle=true]')).toHaveLength(0)
+    expect(launch).toHaveAttribute('tabindex', '-1')
+    expect(launch).toHaveAttribute('aria-disabled', 'true')
+    expect(close).toBeDisabled()
+    fireEvent.click(launch)
+    fireEvent.keyDown(launch, { key: 'Enter' })
+    fireEvent.click(close)
+    expect(onExpand).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+
+    rerender(view(true))
+    expect(container.querySelector('.cove-collapsed-window__icon')).toBe(icon)
+    expect(container.querySelectorAll('[data-node-drag-handle=true]')).toHaveLength(1)
+    expect(launch).toHaveAttribute('tabindex', '0')
+    expect(launch).not.toHaveAttribute('aria-disabled')
+    expect(close).toBeEnabled()
+    fireEvent.click(launch)
+    expect(onExpand).toHaveBeenCalledOnce()
+
+    rerender(view(false))
+    expect(container.querySelectorAll('[data-node-drag-handle=true]')).toHaveLength(0)
   })
 })
 

@@ -82,7 +82,7 @@ for (const behavior of ['default', 'find-space'] as const) {
         contentType: 'image/png',
       })
       await compact.getByTestId('node-expand').click()
-      await expect(compact).toHaveCount(0)
+      await expect(compact).toBeHidden()
       await expect
         .poll(() => readNodeFrame(window, EXPANSION_TERMINAL))
         .toMatchObject({ width: expanded.width, height: expanded.height })

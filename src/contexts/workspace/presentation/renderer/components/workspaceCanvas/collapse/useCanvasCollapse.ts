@@ -1,20 +1,35 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type RefObject,
+} from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { NodeExpandBehavior } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
-import { EMPTY_CANVAS_COLLAPSE, setCollapsed } from '../../../utils/canvasCollapse'
+import {
+  EMPTY_CANVAS_COLLAPSE,
+  migrateLegacySpaceCollapse,
+  setCollapsed,
+} from '../../../utils/canvasCollapse'
 import {
   planCollapsedArrangement,
   restoreCollapsedArrangement,
+  canRestoreCollapsedArrangement,
   type CollapseArrangeSnapshot,
 } from '../../../utils/canvasCollapseArrange'
 import { focusNodeInViewport } from '../helpers'
 import type { WorkspaceCollapseValue } from './WorkspaceCollapseContext'
 import { planNodeExpansion } from './planNodeExpansion'
+import { useCollapseLayoutMotion } from './useCollapseLayoutMotion'
 
 interface Params {
   workspaceId: string
+  canvasRef?: RefObject<HTMLElement | null>
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -32,6 +47,7 @@ interface Params {
 
 export function useCanvasCollapse({
   workspaceId,
+  canvasRef,
   nodes,
   spaces,
   nodesRef,
@@ -45,10 +61,23 @@ export function useCanvasCollapse({
 }: Params): WorkspaceCollapseValue & {
   expandNode: (id: string) => Node<TerminalNodeData> | undefined
 } {
-  const state = useCanvasCollapseStore(
+  const storedState = useCanvasCollapseStore(
     store => store.workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE,
   )
+  const state = useMemo(
+    () => migrateLegacySpaceCollapse(storedState, spaces),
+    [storedState, spaces],
+  )
   const update = useCanvasCollapseStore(store => store.update)
+  const { prepare: prepareMotion, getDelay: getMotionDelay } = useCollapseLayoutMotion(
+    workspaceId,
+    canvasRef,
+  )
+  useEffect(() => {
+    if (state !== storedState) {
+      update(workspaceId, current => migrateLegacySpaceCollapse(current, spaces))
+    }
+  }, [state, storedState, spaces, workspaceId, update])
   const [undoHistory, setUndoHistory] = useState<ReadonlyMap<string, CollapseArrangeSnapshot>>(
     () => new Map(),
   )
@@ -76,6 +105,9 @@ export function useCanvasCollapse({
       if (!plan) {
         return undefined
       }
+      if (current.collapsedNodeIds[id]) {
+        prepareMotion('expand', plan.nodes, plan.spaces)
+      }
       // Layout and disclosure commit together. Algorithm-only compact dimensions
       // must never enter the durable node store or the mounted runtime subtree.
       if (plan.nodes !== nodesRef.current) {
@@ -96,6 +128,7 @@ export function useCanvasCollapse({
       onSpacesChange,
       onRequestPersistFlush,
       update,
+      prepareMotion,
     ],
   )
   const toggleNode = useCallback(
@@ -117,22 +150,6 @@ export function useCanvasCollapse({
       }))
     },
     [nodesRef, update, workspaceId, expandNode, reactFlow, focusNodeTargetZoom],
-  )
-  const toggleSpace = useCallback(
-    (id: string) => {
-      if (!spacesRef.current.some(space => space.id === id)) {
-        return
-      }
-      update(workspaceId, current => ({
-        ...current,
-        collapsedSpaceIds: setCollapsed(
-          current.collapsedSpaceIds,
-          id,
-          !current.collapsedSpaceIds[id],
-        ),
-      }))
-    },
-    [spacesRef, update, workspaceId],
   )
   const revealNode = useCallback(
     (id: string) => {
@@ -167,12 +184,24 @@ export function useCanvasCollapse({
       if (!plan) {
         return
       }
+      prepareMotion('arrange', plan.nodes, plan.spaces)
       setUndoHistory(previous => new Map(previous).set(spaceId, plan.snapshot))
       update(workspaceId, () => plan.state)
       setNodes(() => plan.nodes, { syncLayout: false })
+      spacesRef.current = plan.spaces
       onSpacesChange(plan.spaces)
+      onRequestPersistFlush?.()
     },
-    [nodesRef, setNodes, spacesRef, update, workspaceId, onSpacesChange],
+    [
+      nodesRef,
+      setNodes,
+      spacesRef,
+      update,
+      workspaceId,
+      onSpacesChange,
+      prepareMotion,
+      onRequestPersistFlush,
+    ],
   )
   const undoArrange = useCallback(
     (spaceId: string) => {
@@ -188,16 +217,29 @@ export function useCanvasCollapse({
         spacesRef.current,
         current,
       )
+      prepareMotion('restore', restored.nodes, restored.spaces)
       update(workspaceId, () => restored.state)
       setNodes(() => restored.nodes, { syncLayout: false })
+      spacesRef.current = restored.spaces
       onSpacesChange(restored.spaces)
+      onRequestPersistFlush?.()
       setUndoHistory(previous => {
         const next = new Map(previous)
         next.delete(spaceId)
         return next
       })
     },
-    [nodesRef, setNodes, spacesRef, update, workspaceId, onSpacesChange, undoHistory],
+    [
+      nodesRef,
+      setNodes,
+      spacesRef,
+      update,
+      workspaceId,
+      onSpacesChange,
+      undoHistory,
+      prepareMotion,
+      onRequestPersistFlush,
+    ],
   )
   return useMemo(
     () => ({
@@ -206,12 +248,15 @@ export function useCanvasCollapse({
       nodes,
       spaces,
       toggleNode,
-      toggleSpace,
       revealNode,
       expandNode,
       collapseAndArrange,
       undoArrange,
-      canUndoArrange: (id: string) => undoHistory.has(id),
+      canUndoArrange: (id: string) => {
+        const snapshot = undoHistory.get(id)
+        return Boolean(snapshot && canRestoreCollapsedArrangement(snapshot, nodes, spaces, state))
+      },
+      getMotionDelay,
     }),
     [
       state,
@@ -219,12 +264,12 @@ export function useCanvasCollapse({
       nodes,
       spaces,
       toggleNode,
-      toggleSpace,
       revealNode,
       expandNode,
       collapseAndArrange,
       undoArrange,
       undoHistory,
+      getMotionDelay,
     ],
   )
 }

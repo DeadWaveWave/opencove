@@ -8,6 +8,9 @@ export {
 
 export const SPACE_CORNER_HITBOX_PX = 18
 export const SPACE_EDGE_HITBOX_PX = 8
+// A single compact window plus the same horizontal inset used by arrangement.
+// Frame captions switch to compact controls at this width.
+export const SPACE_FRAME_MIN_WIDTH = 224
 
 export type SpaceFrameHandle =
   | { kind: 'move' }

@@ -8,11 +8,11 @@ export interface WorkspaceCollapseValue extends CanvasCollapseState {
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
   toggleNode: (nodeId: string) => void
-  toggleSpace: (spaceId: string) => void
   revealNode: (nodeId: string) => void
   collapseAndArrange: (spaceId: string) => void
   undoArrange: (spaceId: string) => void
   canUndoArrange: (spaceId: string) => boolean
+  getMotionDelay?: (nodeId: string) => number
 }
 
 const noop = (): void => {}
@@ -22,7 +22,6 @@ export const WorkspaceCollapseContext = createContext<WorkspaceCollapseValue>({
   nodes: [],
   spaces: [],
   toggleNode: noop,
-  toggleSpace: noop,
   revealNode: noop,
   collapseAndArrange: noop,
   undoArrange: noop,

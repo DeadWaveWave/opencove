@@ -147,6 +147,7 @@ export interface SpaceDragState {
   allNodePositions: Map<string, Point>
   initialNodePositions: Map<string, Point>
   ownedBounds: { left: number; top: number; right: number; bottom: number } | null
+  minimumSize?: { width: number; height: number }
   handle:
     | { kind: 'move' }
     | {

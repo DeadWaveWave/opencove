@@ -19,6 +19,7 @@ export function CollapsedWindow({
   onExpand,
   onClose,
   onToggleSelection,
+  active = true,
 }: {
   id: string
   data: TerminalNodeData
@@ -26,6 +27,7 @@ export function CollapsedWindow({
   onExpand: () => void
   onClose: () => void
   onToggleSelection?: () => void
+  active?: boolean
 }) {
   const { t } = useTranslation()
   const collapse = useWorkspaceCollapse()
@@ -55,7 +57,7 @@ export function CollapsedWindow({
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   useCollapsedTerminalActivity(
     data.sessionId,
-    animateStatus && !presentation.isAgent && status?.state === 'connected',
+    active && animateStatus && !presentation.isAgent && status?.state === 'connected',
     iconRef,
   )
 
@@ -65,25 +67,27 @@ export function CollapsedWindow({
       data-testid={`collapsed-node-${id}`}
       data-node-kind={data.kind}
       data-status={status?.state}
-      data-animated={animateStatus || undefined}
+      data-animated={(active && animateStatus) || undefined}
     >
       <div
         role="button"
-        tabIndex={0}
+        tabIndex={active ? 0 : -1}
         className="cove-collapsed-window__launch"
-        data-node-drag-handle="true"
+        data-node-drag-handle={active ? 'true' : undefined}
         data-testid="node-expand"
+        aria-disabled={!active || undefined}
         aria-label={`${t('canvasCollapse.expandWindow')}: ${title}`}
         aria-expanded="false"
         aria-controls={`cove-node-runtime-${id}`}
         onPointerDown={event => {
-          pointerStart.current = { x: event.clientX, y: event.clientY }
+          pointerStart.current = active ? { x: event.clientX, y: event.clientY } : null
         }}
         onClick={event => {
           event.stopPropagation()
           const start = pointerStart.current
           pointerStart.current = null
           if (
+            !active ||
             event.metaKey ||
             event.ctrlKey ||
             (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 5)
@@ -97,7 +101,7 @@ export function CollapsedWindow({
           onExpand()
         }}
         onKeyDown={event => {
-          if (event.key === 'Enter' || event.key === ' ') {
+          if (active && (event.key === 'Enter' || event.key === ' ')) {
             event.preventDefault()
             event.stopPropagation()
             onExpand()
@@ -134,6 +138,7 @@ export function CollapsedWindow({
       </div>
       <button
         type="button"
+        disabled={!active}
         className="cove-node-collapse-button cove-collapsed-window__close nodrag"
         aria-label={t('canvasCollapse.closeWindow')}
         title={t('canvasCollapse.closeWindow')}

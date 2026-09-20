@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { TerminalNodeData } from '../../../types'
 import { resolveAgentPresentation } from '../../../utils/agentPresentation'
+import { getCollapsedNodeSize } from '../../../utils/canvasCollapse'
 import { WindowCollapseContext } from '../../shared/WindowCollapseButton'
 import { useWorkspaceCollapse } from './WorkspaceCollapseContext'
 import { useCollapsedAgentMessage } from './useCollapsedAgentMessage'
 import { CollapsedWindow } from './CollapsedWindow'
+import { useWindowCollapseMotion } from './useWindowCollapseMotion'
 
 /** Presentation geometry is independent of the mounted editor/PTY/browser frame. */
 export function WindowCollapsePresentation({
@@ -24,6 +26,14 @@ export function WindowCollapsePresentation({
   const hidden = collapsed || spaceHidden
   const closeHandler = useRef<(() => void) | null>(null)
   const element = useRef<HTMLDivElement>(null)
+  useWindowCollapseMotion(
+    element,
+    collapsed,
+    spaceHidden,
+    data,
+    getCollapsedNodeSize(data),
+    collapse.getMotionDelay?.(id) ?? 0,
+  )
   const [inView, setInView] = useState(true)
   const isAgent = resolveAgentPresentation(data).isAgent
   useEffect(() => {
@@ -69,6 +79,7 @@ export function WindowCollapsePresentation({
         data-cove-collapsed={collapsed || undefined}
         data-cove-space-hidden={spaceHidden || undefined}
       >
+        <div className="cove-node-presentation__surface" aria-hidden="true" />
         <div
           id={`cove-node-runtime-${id}`}
           className="cove-node-presentation__runtime"
@@ -78,15 +89,22 @@ export function WindowCollapsePresentation({
         >
           {children}
         </div>
-        {collapsed && !spaceHidden ? (
-          <CollapsedWindow
-            id={id}
-            data={data}
-            message={message}
-            onExpand={controls.toggle}
-            onToggleSelection={onToggleSelection}
-            onClose={() => closeHandler.current?.()}
-          />
+        {!spaceHidden ? (
+          <div
+            className="cove-node-presentation__compact"
+            inert={!collapsed}
+            aria-hidden={!collapsed || undefined}
+          >
+            <CollapsedWindow
+              id={id}
+              data={data}
+              active={collapsed}
+              message={message}
+              onExpand={controls.toggle}
+              onToggleSelection={onToggleSelection}
+              onClose={() => closeHandler.current?.()}
+            />
+          </div>
         ) : null}
       </div>
     </WindowCollapseContext.Provider>

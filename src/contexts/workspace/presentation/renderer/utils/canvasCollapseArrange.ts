@@ -12,24 +12,19 @@ import {
   setCollapsed,
   type CanvasCollapseState,
 } from './canvasCollapse'
+import {
+  canRestoreCollapsedArrangement,
+  createCollapseArrangeSnapshot,
+  type CollapseArrangeSnapshot,
+} from './canvasCollapseArrange.snapshot'
+import { SPACE_FRAME_MIN_WIDTH } from './spaceLayout'
+export {
+  canRestoreCollapsedArrangement,
+  type CollapseArrangeSnapshot,
+} from './canvasCollapseArrange.snapshot'
 
 const PADDING = 24
 const GAP = 16
-
-export interface CollapseArrangeSnapshot {
-  spaceId: string
-  positions: Record<string, Point>
-  ownerByNodeId: Record<string, string>
-  frames: Record<
-    string,
-    {
-      parentSpaceId: string | null
-      before: WorkspaceSpaceRect
-      arranged: WorkspaceSpaceRect
-    }
-  >
-  collapsedNodeIds: CanvasCollapseState['collapsedNodeIds']
-}
 
 interface Arrangement {
   nodes: Node<TerminalNodeData>[]
@@ -77,15 +72,26 @@ export function planCollapsedArrangement(
       })
     const members = nodes.filter(node => ownerByNodeId.get(node.id) === space.id)
     const cardWidth = Math.max(0, ...members.map(node => getCollapsedNodeSize(node.data).width))
-    const width = Math.max(
+    const availableWidth = Math.max(
       rect.width,
       cardWidth ? cardWidth + PADDING * 2 : 0,
       ...children.map(child => child.x + child.width + 12 - rect.x),
     )
-    const columns = Math.max(1, Math.floor((width - PADDING * 2 + GAP) / (cardWidth + GAP)))
+    const columns = Math.max(
+      1,
+      Math.min(
+        members.length,
+        Math.floor((availableWidth - PADDING * 2 + GAP) / (cardWidth + GAP)),
+      ),
+    )
+    const width = Math.max(
+      SPACE_FRAME_MIN_WIDTH,
+      members.length ? columns * cardWidth + (columns - 1) * GAP + PADDING * 2 : 0,
+      ...children.map(child => child.x + child.width + 12 - rect.x),
+    )
     let y = Math.max(rect.y + PADDING, ...children.map(child => child.y + child.height + GAP))
     let bottom = Math.max(
-      rect.y + rect.height,
+      rect.y + PADDING * 2,
       ...children.map(child => child.y + child.height + 12),
     )
     for (let offset = 0; offset < members.length; offset += columns) {
@@ -103,48 +109,43 @@ export function planCollapsedArrangement(
     rects.set(space.id, { ...rect, width, height: bottom - rect.y })
   }
 
-  const nextNodes = nodes.map(node =>
-    positions.has(node.id) ? { ...node, position: positions.get(node.id)! } : node,
-  )
+  const nextNodes = nodes.map(node => {
+    const position = positions.get(node.id)
+    return position && (node.position.x !== position.x || node.position.y !== position.y)
+      ? { ...node, position }
+      : node
+  })
   // If this was a child Space, expand its ancestors without relocating unrelated windows.
   fitFrames(spaces, nextNodes, rects, affected, collapsedNodeIds)
   const nextSpaces = withFrames(spaces, rects, affected)
+  const collapsedSpaceIds = Object.fromEntries(
+    Object.entries(collapse.collapsedSpaceIds).filter(([id]) => !descendants.has(id)),
+  )
+  const nextState = { collapsedNodeIds, collapsedSpaceIds }
+  if (
+    nextNodes.every((node, index) => node === nodes[index]) &&
+    nextSpaces.every((space, index) => space === spaces[index]) &&
+    [...ids].every(id => collapse.collapsedNodeIds[id]) &&
+    ![...descendants].some(id => collapse.collapsedSpaceIds[id])
+  ) {
+    return null
+  }
   return {
     nodes: nextNodes,
     spaces: nextSpaces,
-    state: {
-      collapsedNodeIds,
-      collapsedSpaceIds: setCollapsed(collapse.collapsedSpaceIds, spaceId, false),
-    },
-    snapshot: {
+    state: nextState,
+    snapshot: createCollapseArrangeSnapshot({
       spaceId,
-      positions: Object.fromEntries(
-        nodes.filter(node => ids.has(node.id)).map(node => [node.id, { ...node.position }]),
-      ),
-      ownerByNodeId: Object.fromEntries([...ownerByNodeId].filter(([id]) => ids.has(id))),
-      frames: Object.fromEntries(
-        spaces.flatMap(space => {
-          const arranged = rects.get(space.id)
-          return affected.has(space.id) && space.rect && arranged
-            ? [
-                [
-                  space.id,
-                  {
-                    parentSpaceId: space.parentSpaceId ?? null,
-                    before: { ...space.rect },
-                    arranged: { ...arranged },
-                  },
-                ],
-              ]
-            : []
-        }),
-      ),
-      collapsedNodeIds: Object.fromEntries(
-        nodes
-          .filter(node => ids.has(node.id) && collapse.collapsedNodeIds[node.id])
-          .map(node => [node.id, true]),
-      ),
-    },
+      nodes,
+      spaces,
+      nextNodes,
+      nextSpaces,
+      collapse,
+      nextState,
+      ids,
+      descendants,
+      affected,
+    }),
   }
 }
 
@@ -154,6 +155,9 @@ export function restoreCollapsedArrangement(
   spaces: WorkspaceSpaceState[],
   state: CanvasCollapseState,
 ): Arrangement {
+  if (!canRestoreCollapsedArrangement(snapshot, nodes, spaces, state)) {
+    return { nodes, spaces, state }
+  }
   const active = new Set([
     ...collectSpaceDescendantIds(snapshot.spaceId, spaces),
     ...collectAncestorSpaces(spaces, snapshot.spaceId).map(space => space.id),
@@ -178,9 +182,6 @@ export function restoreCollapsedArrangement(
       ...frame.before,
       x: frame.before.x + delta.x,
       y: frame.before.y + delta.y,
-      // A later manual resize belongs to the user, not this undo transaction.
-      width: space.rect.width === frame.arranged.width ? frame.before.width : space.rect.width,
-      height: space.rect.height === frame.arranged.height ? frame.before.height : space.rect.height,
     })
   }
   const ownerByNodeId = mapNodeIdToOwningSpaceId(spaces)
@@ -200,7 +201,7 @@ export function restoreCollapsedArrangement(
     return { ...node, position: { x: previous.x + delta.x, y: previous.y + delta.y } }
   })
   const restoredIds = new Set(deltas.keys())
-  // Later-added windows and independently moved child Spaces must remain inside their frame.
+  // Preserve containment when a child Space was coherently translated after arranging.
   fitFrames(spaces, nextNodes, rects, restoredIds, collapsedNodeIds)
   return {
     nodes: nextNodes,
@@ -224,9 +225,16 @@ function withFrames(
   rects: Map<string, WorkspaceSpaceRect>,
   ids: Set<string>,
 ) {
-  return spaces.map(space =>
-    ids.has(space.id) && rects.has(space.id) ? { ...space, rect: rects.get(space.id)! } : space,
-  )
+  return spaces.map(space => {
+    const rect = ids.has(space.id) ? rects.get(space.id) : undefined
+    return rect &&
+      (rect.x !== space.rect?.x ||
+        rect.y !== space.rect?.y ||
+        rect.width !== space.rect?.width ||
+        rect.height !== space.rect?.height)
+      ? { ...space, rect }
+      : space
+  })
 }
 
 function fitFrames(
@@ -282,19 +290,21 @@ function separateChildFrames(
   positions: Map<string, Point>,
 ): void {
   const placed: WorkspaceSpaceRect[] = []
+  const parent = rects.get(parentId)
   for (const child of spaces.filter(space => space.parentSpaceId === parentId)) {
     const current = rects.get(child.id)
     if (!current) {
       continue
     }
-    let y = current.y
+    const x = Math.max(current.x, (parent?.x ?? current.x - 12) + 12)
+    let y = Math.max(current.y, (parent?.y ?? current.y - 12) + 12)
     // Existing order wins; only a newly overlapping sibling is moved down.
     for (let changed = true; changed; ) {
       changed = false
       for (const frame of placed) {
         if (
-          current.x < frame.x + frame.width + GAP &&
-          current.x + current.width + GAP > frame.x &&
+          x < frame.x + frame.width + GAP &&
+          x + current.width + GAP > frame.x &&
           y < frame.y + frame.height + GAP &&
           y + current.height + GAP > frame.y
         ) {
@@ -303,13 +313,14 @@ function separateChildFrames(
         }
       }
     }
+    const dx = x - current.x
     const dy = y - current.y
-    if (dy !== 0) {
+    if (dx !== 0 || dy !== 0) {
       const childIds = collectSpaceDescendantIds(child.id, spaces)
       for (const id of childIds) {
         const frame = rects.get(id)
         if (frame) {
-          rects.set(id, { ...frame, y: frame.y + dy })
+          rects.set(id, { ...frame, x: frame.x + dx, y: frame.y + dy })
         }
       }
       const nodeIds = collectSpaceNodeIds(child.id, spaces)
@@ -318,7 +329,7 @@ function separateChildFrames(
           continue
         }
         const position = positions.get(node.id) ?? node.position
-        positions.set(node.id, { ...position, y: position.y + dy })
+        positions.set(node.id, { x: position.x + dx, y: position.y + dy })
       }
     }
     placed.push(rects.get(child.id)!)

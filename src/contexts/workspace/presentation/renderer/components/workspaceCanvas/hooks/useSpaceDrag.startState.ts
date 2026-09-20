@@ -38,7 +38,7 @@ export function createSpaceDragState({
   const ownedBounds =
     handle.kind !== 'resize'
       ? null
-      : resolveOwnedBounds({
+      : resolveSpaceOwnedBounds({
           nodeIds: targetSpace.nodeIds,
           nodes,
           spaces,
@@ -63,7 +63,7 @@ export function createSpaceDragState({
   }
 }
 
-function resolveOwnedBounds({
+export function resolveSpaceOwnedBounds({
   nodeIds,
   nodes,
   spaces,

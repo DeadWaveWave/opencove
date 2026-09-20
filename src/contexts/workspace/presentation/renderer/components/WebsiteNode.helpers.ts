@@ -13,7 +13,7 @@ export const HIDDEN_WEBSITE_BOUNDS: WebsiteWindowBounds = {
   height: 0,
 }
 
-function resolveViewportBounds(element: HTMLDivElement | null): WebsiteWindowBounds | null {
+function resolveViewportBounds(element: Element | null): WebsiteWindowBounds | null {
   if (!element) {
     return null
   }
@@ -169,6 +169,28 @@ function resolvePixelRevealBounds(
   return width > 0 ? { ...bounds, width } : HIDDEN_WEBSITE_BOUNDS
 }
 
+/** Native views cannot inherit DOM overflow clipping during the shell's fold/unfold. */
+function resolveCollapseMotionBounds(
+  element: HTMLDivElement | null,
+  bounds: WebsiteWindowBounds,
+): WebsiteWindowBounds {
+  const shell = element?.closest('.cove-node-presentation[data-cove-collapse-motion]')
+  if (!shell) {
+    return bounds
+  }
+  const surface = shell.querySelector('.cove-node-presentation__surface')
+  let visible = bounds
+  for (const clipElement of surface ? [shell, surface] : [shell]) {
+    const clip = resolveViewportBounds(clipElement)
+    const intersection = clip ? intersectBounds(visible, clip) : null
+    if (!intersection) {
+      return HIDDEN_WEBSITE_BOUNDS
+    }
+    visible = intersection
+  }
+  return visible
+}
+
 export function resolveViewportState(
   element: HTMLDivElement | null,
   canvasZoom: number,
@@ -191,7 +213,7 @@ export function resolveViewportState(
   }
 
   return {
-    bounds: resolvePixelRevealBounds(element, visibleBounds),
+    bounds: resolveCollapseMotionBounds(element, resolvePixelRevealBounds(element, visibleBounds)),
     viewportBounds,
     canvasZoom,
   }

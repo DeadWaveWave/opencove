@@ -1,18 +1,6 @@
-import type { Node } from '@xyflow/react'
 import type { TranslateFn } from '@app/renderer/i18n'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData } from '../../../types'
 import { resolveAgentPresentation } from '../../../utils/agentPresentation'
-import { collectSpaceNodeIds } from '../../../utils/canvasCollapse'
-
-/** A collapsed parent represents every window it hides, including child Spaces. */
-export function collectSpaceSummaryNodes(
-  spaceId: string,
-  spaces: WorkspaceSpaceState[],
-  nodes: Node<TerminalNodeData>[],
-): Node<TerminalNodeData>[] {
-  const nodeIds = collectSpaceNodeIds(spaceId, spaces)
-  return nodes.filter(node => nodeIds.has(node.id))
-}
 
 export function resolveSpaceSummaryStatus(
   data: TerminalNodeData,

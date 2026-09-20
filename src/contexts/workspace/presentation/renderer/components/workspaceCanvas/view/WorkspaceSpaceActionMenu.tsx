@@ -12,11 +12,13 @@ import {
   LayoutGrid,
   Package,
   Terminal,
+  Undo2,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import { LABEL_COLORS, type LabelColor } from '@shared/types/labelColor'
 import type { SpaceActionMenuState } from '../types'
+import { useWorkspaceCollapse } from '../collapse/WorkspaceCollapseContext'
 import {
   MENU_WIDTH,
   SUBMENU_CLOSE_DELAY_MS,
@@ -98,6 +100,7 @@ export function WorkspaceSpaceActionMenu({
   onOpenPath,
 }: WorkspaceSpaceActionMenuProps): React.JSX.Element | null {
   const { t } = useTranslation()
+  const collapse = useWorkspaceCollapse()
   const compact = useCompactViewport()
   const [openSubmenu, setOpenSubmenu] = React.useState<'open' | null>(null)
   const [pinnedSubmenu, setPinnedSubmenu] = React.useState<'open' | null>(null)
@@ -387,6 +390,20 @@ export function WorkspaceSpaceActionMenu({
             <span className="workspace-context-menu__label">
               {t('workspaceArrangeMenu.preserveWindowSizes')}
             </span>
+          </button>
+        ) : null}
+
+        {collapse.canUndoArrange(menu.spaceId) ? (
+          <button
+            type="button"
+            data-testid={`workspace-space-undo-arrange-${menu.spaceId}`}
+            onClick={() => {
+              collapse.undoArrange(menu.spaceId)
+              closeMenu()
+            }}
+          >
+            <Undo2 className="workspace-context-menu__icon" aria-hidden="true" />
+            <span className="workspace-context-menu__label">{t('spaceCollapse.undoArrange')}</span>
           </button>
         ) : null}
 

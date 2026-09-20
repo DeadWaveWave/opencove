@@ -1,0 +1,65 @@
+.cove-node-presentation__compact {
+  position: absolute;
+  inset: 0 auto auto 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.cove-node-presentation[data-cove-collapsed] > .cove-node-presentation__compact {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.cove-node-presentation__surface {
+  position: absolute;
+  display: none;
+  box-sizing: border-box;
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--cove-node-identity-color, var(--cove-accent)) 36%,
+      var(--cove-border-subtle)
+    );
+  background: var(--cove-window-surface);
+  box-shadow: 0 3px 12px
+    color-mix(in srgb, var(--cove-node-identity-color, var(--cove-accent)) 9%, transparent);
+  pointer-events: none;
+}
+
+.cove-node-presentation[data-cove-collapse-motion] {
+  overflow: clip;
+}
+
+.cove-node-presentation[data-cove-collapse-motion] > .cove-node-presentation__surface {
+  display: block;
+}
+
+.cove-node-presentation[data-cove-collapse-motion] > .cove-node-presentation__runtime {
+  position: absolute;
+  inset: 0 auto auto 0;
+  visibility: visible;
+}
+
+.cove-node-presentation[data-cove-collapse-motion] > .cove-node-presentation__compact {
+  visibility: visible;
+}
+
+.cove-node-presentation[data-cove-collapse-motion] .cove-collapsed-window__icon {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.cove-node-presentation[data-cove-collapse-motion] .cove-collapsed-window__launch {
+  background: transparent;
+}
+
+.cove-node-presentation[data-cove-collapse-motion]
+  :is(
+    .cove-collapsed-window__icon > svg,
+    .cove-collapsed-window__icon > .agent-provider-icon,
+    .cove-collapsed-window__title
+  ) {
+  transform-origin: 0 0;
+  overflow: visible;
+}

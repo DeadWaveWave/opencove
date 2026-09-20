@@ -4,7 +4,14 @@ import {
   projectCanvasInteractionLayout,
   restoreCanvasInteractionLayout,
 } from '../../../utils/canvasInteractionLayout'
+import { collectSpaceDescendantIds, collectSpaceNodeIds } from '../../../utils/canvasCollapse'
+import {
+  SPACE_FRAME_MIN_WIDTH,
+  SPACE_MIN_SIZE,
+  SPACE_NODE_PADDING,
+} from '../../../utils/spaceLayout'
 import type { SpaceDragState } from '../types'
+import { resolveSpaceOwnedBounds } from './useSpaceDrag.startState'
 
 export interface SpaceDragLayoutInput {
   dragState: SpaceDragState
@@ -31,13 +38,34 @@ export function projectSpaceDragWithCollapse<
     return position ? { ...node, position } : node
   })
   const displayed = projectCanvasInteractionLayout(baselineNodes, input.spaces, state)
-  const displayedRect = displayed.spaces.find(space => space.id === input.dragState.spaceId)?.rect
+  const displayedSpace = displayed.spaces.find(space => space.id === input.dragState.spaceId)
+  const ownedIds = collectSpaceNodeIds(input.dragState.spaceId, input.spaces)
+  const descendantIds = collectSpaceDescendantIds(input.dragState.spaceId, input.spaces)
+  const containsCompactContent =
+    baselineNodes.some(
+      node =>
+        ownedIds.has(node.id) &&
+        (state.collapsedNodeIds[node.id] || node.data.collapsePresentation?.collapsed),
+    ) || [...descendantIds].some(id => state.collapsedSpaceIds[id])
   const projected = project({
     ...input,
     ...displayed,
     dragState: {
       ...input.dragState,
-      initialRect: displayedRect ?? input.dragState.initialRect,
+      initialRect: displayedSpace?.rect ?? input.dragState.initialRect,
+      ...(input.dragState.handle.kind === 'resize' && displayedSpace
+        ? {
+            // Both preview and commit constrain the same geometry used by collision layout.
+            ownedBounds: resolveSpaceOwnedBounds({
+              nodeIds: displayedSpace.nodeIds,
+              ...displayed,
+              spaceId: displayedSpace.id,
+            }),
+            minimumSize: containsCompactContent
+              ? { width: SPACE_FRAME_MIN_WIDTH, height: SPACE_NODE_PADDING * 2 }
+              : SPACE_MIN_SIZE,
+          }
+        : {}),
     },
   })
   return projected

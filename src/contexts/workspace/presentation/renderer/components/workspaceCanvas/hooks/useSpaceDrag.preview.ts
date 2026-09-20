@@ -21,6 +21,7 @@ export function resolveResizedSpaceRect(
   }
 
   const edges = handle.edges
+  const minimumSize = dragState.minimumSize ?? SPACE_MIN_SIZE
   let nextX = initialRect.x
   let nextY = initialRect.y
   let nextWidth = initialRect.width
@@ -44,20 +45,20 @@ export function resolveResizedSpaceRect(
     nextHeight = initialRect.height - dy
   }
 
-  if (nextWidth < SPACE_MIN_SIZE.width) {
+  if (nextWidth < minimumSize.width) {
     if (edges.left && !edges.right) {
-      nextX = initialRect.x + (initialRect.width - SPACE_MIN_SIZE.width)
+      nextX = initialRect.x + (initialRect.width - minimumSize.width)
     }
 
-    nextWidth = SPACE_MIN_SIZE.width
+    nextWidth = minimumSize.width
   }
 
-  if (nextHeight < SPACE_MIN_SIZE.height) {
+  if (nextHeight < minimumSize.height) {
     if (edges.top && !edges.bottom) {
-      nextY = initialRect.y + (initialRect.height - SPACE_MIN_SIZE.height)
+      nextY = initialRect.y + (initialRect.height - minimumSize.height)
     }
 
-    nextHeight = SPACE_MIN_SIZE.height
+    nextHeight = minimumSize.height
   }
 
   const ownedBounds = dragState.ownedBounds
@@ -69,8 +70,8 @@ export function resolveResizedSpaceRect(
 
     nextX = nextLeft
     nextY = nextTop
-    nextWidth = Math.max(SPACE_MIN_SIZE.width, nextRight - nextLeft)
-    nextHeight = Math.max(SPACE_MIN_SIZE.height, nextBottom - nextTop)
+    nextWidth = Math.max(minimumSize.width, nextRight - nextLeft)
+    nextHeight = Math.max(minimumSize.height, nextBottom - nextTop)
   }
 
   return {

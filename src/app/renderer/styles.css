@@ -77,4 +77,5 @@
 @import './styles/themes/space-color-identity.css';
 @import './styles/node-color-identity.css';
 @import './styles/node-collapse.css';
+@import './styles/node-collapse-motion.css';
 @import './styles/workspace-space-collapse.css';

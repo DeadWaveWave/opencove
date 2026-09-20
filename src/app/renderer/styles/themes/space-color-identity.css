@@ -120,27 +120,27 @@
 }
 
 .workspace-canvas[data-cove-space-overview='true']
-  .workspace-space-region:not(.workspace-space-region--collapsed)
+  .workspace-space-region
   .workspace-space-region__label-group--left {
   width: max-content;
   flex-wrap: wrap-reverse;
 }
 
 .workspace-canvas[data-cove-space-overview='true']
-  .workspace-space-region:not(.workspace-space-region--collapsed)
+  .workspace-space-region
   .workspace-space-region__label-group--left:is(:hover, :focus-within) {
   /* The 24px action row plus the existing 4px gap leaves the title in place. */
   top: calc(-39px * var(--cove-space-caption-scale));
 }
 
 .workspace-canvas[data-cove-space-overview='true']
-  .workspace-space-region:not(.workspace-space-region--collapsed)
+  .workspace-space-region
   .workspace-space-region__label {
   flex-basis: 100%;
 }
 
 .workspace-canvas[data-cove-space-overview='true']
-  .workspace-space-region:not(.workspace-space-region--collapsed)
+  .workspace-space-region
   :is(.workspace-space-region__files-pill, .workspace-space-region__menu) {
   position: absolute;
   width: 24px;
@@ -156,7 +156,7 @@
 }
 
 .workspace-canvas[data-cove-space-overview='true']
-  .workspace-space-region:not(.workspace-space-region--collapsed)
+  .workspace-space-region
   .workspace-space-region__label-group--left:is(:hover, :focus-within)
   :is(.workspace-space-region__files-pill, .workspace-space-region__menu) {
   position: static;
@@ -266,4 +266,147 @@
   ):focus-visible {
   outline: 2px solid var(--cove-focus-ring);
   outline-offset: -2px;
+}
+
+/* Compact frames budget for real controls before truncating metadata. A 224px
+   frame keeps its title and three actions without imposing a wider canvas rect. */
+.workspace-canvas .workspace-space-region[data-cove-space-caption-density='compact'] {
+  --cove-space-caption-side-width: 80px;
+  --cove-space-caption-control-size: 24px;
+}
+
+.workspace-canvas
+  .workspace-space-region[data-cove-space-caption-density='compact']:not(
+    [data-cove-space-caption-branch]
+  ) {
+  --cove-space-caption-side-width: 28px;
+}
+
+.workspace-canvas
+  .workspace-space-region[data-cove-space-caption-density='compact']
+  .workspace-space-region__label-group--left {
+  width: calc(
+    (100% - 24px) / var(--cove-space-caption-scale) - var(--cove-space-caption-side-width) - 4px
+  );
+  max-width: calc(
+    (100% - 24px) / var(--cove-space-caption-scale) - var(--cove-space-caption-side-width) - 4px
+  );
+}
+
+.workspace-canvas
+  .workspace-space-region[data-cove-space-caption-density='compact']
+  .workspace-space-region__label-group--right {
+  width: var(--cove-space-caption-side-width);
+  max-width: var(--cove-space-caption-side-width);
+  overflow: visible;
+}
+
+.workspace-canvas
+  .workspace-space-region[data-cove-space-caption-density='compact']
+  .workspace-space-region__label {
+  padding-inline: 6px;
+  gap: 4px;
+}
+
+.workspace-canvas
+  .workspace-space-region[data-cove-space-caption-density='compact']
+  :is(
+    .workspace-space-region__files-pill,
+    .workspace-space-region__menu,
+    .workspace-space-region__control
+  ) {
+  flex: 0 0 var(--cove-space-caption-control-size);
+  width: var(--cove-space-caption-control-size);
+  min-width: var(--cove-space-caption-control-size);
+  height: var(--cove-space-caption-control-size);
+  min-height: var(--cove-space-caption-control-size);
+  padding: 0;
+  justify-content: center;
+}
+
+.workspace-canvas
+  .workspace-space-region[data-cove-space-caption-density='compact']
+  :is(.workspace-space-region__files-pill-label, .workspace-space-region__files-pill-count) {
+  display: none;
+}
+
+.workspace-canvas
+  .workspace-space-region[data-cove-space-caption-density='compact']
+  .workspace-space-region__pr-chip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  max-width: 100%;
+  background: var(--cove-window-surface);
+}
+
+/* Far zoom keeps the title and fold action on the edge. Metadata and the
+   existing hover/focus action row sit above it, on opposite sides. */
+.workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region[data-cove-space-caption-density='compact'] {
+  --cove-space-caption-side-width: 28px;
+}
+
+.workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region[data-cove-space-caption-density='compact']
+  .workspace-space-region__branch-badge {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  width: 68px;
+  max-width: 68px;
+  box-sizing: border-box;
+  background: var(--cove-window-surface);
+}
+
+.workspace-canvas[data-cove-space-overview='true']
+  .workspace-space-region[data-cove-space-caption-density='compact'][data-cove-space-caption-branch]
+  .workspace-space-region__pr-chip {
+  bottom: calc(100% + 32px);
+  max-width: 68px;
+}
+
+@media (pointer: coarse) {
+  .workspace-canvas
+    .workspace-space-region.workspace-space-region[data-cove-space-caption-density='compact'] {
+    --cove-space-caption-control-size: 44px;
+    --cove-space-caption-side-width: 44px;
+    --cove-space-caption-scale: 1;
+  }
+
+  .workspace-canvas
+    .workspace-space-region[data-cove-space-caption-density='compact']
+    .workspace-space-region__label-group {
+    top: -22px;
+  }
+
+  .workspace-canvas
+    .workspace-space-region[data-cove-space-caption-density='compact']
+    :is(.workspace-space-region__label, .workspace-space-region__branch-badge) {
+    min-height: 44px;
+  }
+
+  .workspace-canvas
+    .workspace-space-region[data-cove-space-caption-density='compact']
+    .workspace-space-region__branch-badge {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 4px);
+    width: 68px;
+    max-width: 68px;
+    box-sizing: border-box;
+    background: var(--cove-window-surface);
+  }
+
+  .workspace-canvas
+    .workspace-space-region[data-cove-space-caption-density='compact'][data-cove-space-caption-branch]
+    .workspace-space-region__pr-chip {
+    bottom: calc(100% + 52px);
+  }
+
+  .workspace-canvas[data-cove-space-overview='true']
+    .workspace-space-region[data-cove-space-caption-density='compact']
+    .workspace-space-region__label-group--left:is(:hover, :focus-within) {
+    top: -70px;
+  }
 }
