@@ -2,7 +2,9 @@ import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { useTranslation } from '@app/renderer/i18n'
 import { getStandardWindowSizeBucketLabel } from '@app/renderer/i18n/labels'
 import {
+  NODE_EXPAND_BEHAVIORS,
   STANDARD_WINDOW_SIZE_BUCKETS,
+  type NodeExpandBehavior,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
@@ -41,7 +43,12 @@ function WindowSizeRow({
   )
 }
 
-export function WindowSizeSection(props: WindowSizeProps) {
+export function WindowSizeSection(
+  props: WindowSizeProps & {
+    nodeExpandBehavior: NodeExpandBehavior
+    onChangeNodeExpandBehavior: (behavior: NodeExpandBehavior) => void
+  },
+) {
   const { t } = useTranslation()
   return (
     <SettingsGroup
@@ -50,6 +57,29 @@ export function WindowSizeSection(props: WindowSizeProps) {
     >
       <SettingsGroupBody>
         <WindowSizeRow {...props} />
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.canvas.nodeExpandBehaviorLabel')}</strong>
+            <span>{t('settingsPanel.canvas.nodeExpandBehaviorHelp')}</span>
+          </div>
+          <div className="settings-panel__control">
+            <CoveSelect
+              id="settings-node-expand-behavior"
+              testId="settings-node-expand-behavior"
+              ariaLabel={t('settingsPanel.canvas.nodeExpandBehaviorLabel')}
+              value={props.nodeExpandBehavior}
+              options={NODE_EXPAND_BEHAVIORS.map(behavior => ({
+                value: behavior,
+                label: t(`settingsPanel.canvas.nodeExpandBehavior.${behavior}`),
+              }))}
+              onChange={value => {
+                if (value === 'push-away' || value === 'find-space') {
+                  props.onChangeNodeExpandBehavior(value)
+                }
+              }}
+            />
+          </div>
+        </div>
       </SettingsGroupBody>
     </SettingsGroup>
   )

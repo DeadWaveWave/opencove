@@ -18,6 +18,7 @@ import type {
   CanvasInputMode,
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
+  NodeExpandBehavior,
   StandardWindowSizeBucket,
 } from './canvasSettings'
 import type { AgentEnvByProvider } from './agentEnv'
@@ -81,6 +82,7 @@ export interface AgentSettings extends PixelEffectSettings {
   canvasWheelBehavior: CanvasWheelBehavior
   canvasWheelZoomModifier: CanvasWheelZoomModifier
   standardWindowSizeBucket: StandardWindowSizeBucket
+  nodeExpandBehavior: NodeExpandBehavior
   preserveWindowSizesOnArrange: boolean
   websiteWindowPolicy: WebsiteWindowPolicy
   browserDefaultMode: BrowserMode

@@ -190,6 +190,18 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['shell', 'terminal', 'profile', '终端'],
   },
   {
+    id: 'canvas.node-expansion',
+    pageId: 'canvas-windows',
+    titleKey: 'settingsPanel.canvas.nodeExpandBehaviorLabel',
+    descriptionKey: 'settingsPanel.canvas.nodeExpandBehaviorHelp',
+    anchorId: 'settings-node-expand-behavior',
+    keywordKeys: [
+      'settingsPanel.canvas.nodeExpandBehavior.push-away',
+      'settingsPanel.canvas.nodeExpandBehavior.find-space',
+    ],
+    keywords: ['collapse', 'expand', 'overlap', 'layout', '折叠', '展开', '重叠', '空位'],
+  },
+  {
     id: 'canvas.viewport-transition',
     pageId: 'canvas-windows',
     titleKey: 'settingsPanel.canvas.viewportTransitionLabel',

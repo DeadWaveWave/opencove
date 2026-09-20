@@ -1,10 +1,8 @@
 import { useLayoutEffect, useRef } from 'react'
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
 import { requestViewportNodeInputFocus } from '../requestViewportNodeInputFocus'
-import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
-import { revealCollapsedNode } from '../../../utils/canvasCollapse'
 
 export function useWorkspaceCanvasViewportNavigation({
   workspaceId,
@@ -17,7 +15,7 @@ export function useWorkspaceCanvasViewportNavigation({
   focusSequence,
   nodes,
   nodesRef,
-  spaces,
+  expandNode,
   focusSpaceInViewport,
   focusNodeTargetZoom,
 }: {
@@ -31,7 +29,7 @@ export function useWorkspaceCanvasViewportNavigation({
   focusSequence?: number
   nodes: Node<TerminalNodeData>[]
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  spaces: WorkspaceSpaceState[]
+  expandNode: (id: string) => Node<TerminalNodeData> | undefined
   focusSpaceInViewport: (spaceId: string) => boolean
   focusNodeTargetZoom: number
 }): void {
@@ -85,11 +83,8 @@ export function useWorkspaceCanvasViewportNavigation({
       restoredViewportWorkspaceIdRef.current = workspaceId
 
       if (hasPendingNodeRequest && nodeRequestKey && focusNodeId) {
-        const target = nodesRef.current.find(node => node.id === focusNodeId)
+        const target = expandNode(focusNodeId)
         if (target) {
-          useCanvasCollapseStore
-            .getState()
-            .update(workspaceId, current => revealCollapsedNode(current, target.id, spaces))
           focusedNodeRequestKeyRef.current = nodeRequestKey
           focusNodeInViewport(reactFlow, target, {
             duration: 220,
@@ -132,7 +127,7 @@ export function useWorkspaceCanvasViewportNavigation({
     persistedViewport,
     reactFlow,
     restoredViewportWorkspaceIdRef,
-    spaces,
+    expandNode,
     workspaceId,
   ])
 }

@@ -99,6 +99,8 @@ export function createSettingsPanelUpdaters({
       updateSetting('canvasWheelZoomModifier', modifier),
     updateStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket): void =>
       updateSetting('standardWindowSizeBucket', bucket),
+    updateNodeExpandBehavior: (behavior: AgentSettings['nodeExpandBehavior']): void =>
+      updateSetting('nodeExpandBehavior', behavior),
     updateWebsiteWindowPolicy: (policy: AgentSettings['websiteWindowPolicy']): void =>
       updateSetting('websiteWindowPolicy', policy),
     updateBrowserDefaultMode: (mode: AgentSettings['browserDefaultMode']): void =>

@@ -1,6 +1,13 @@
 export const VIEWPORT_TRANSITIONS = ['fly', 'slide'] as const
 export type ViewportTransition = (typeof VIEWPORT_TRANSITIONS)[number]
 
+export const NODE_EXPAND_BEHAVIORS = ['push-away', 'find-space'] as const
+export type NodeExpandBehavior = (typeof NODE_EXPAND_BEHAVIORS)[number]
+
+export function isValidNodeExpandBehavior(value: unknown): value is NodeExpandBehavior {
+  return value === 'push-away' || value === 'find-space'
+}
+
 export function isValidViewportTransition(value: unknown): value is ViewportTransition {
   return value === 'fly' || value === 'slide'
 }

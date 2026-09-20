@@ -254,6 +254,21 @@ describe('SettingsPanel', () => {
     })
   })
 
+  it('changes collapsed-window expansion from canvas settings', () => {
+    const onChange = vi.fn()
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
+    fireEvent.click(screen.getByTestId('settings-section-nav-canvas'))
+    const trigger = screen.getByTestId('settings-node-expand-behavior-trigger')
+    expect(trigger).toHaveTextContent('Expand in place, push other windows aside')
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('option', { name: 'Expand in nearby free space' }))
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      nodeExpandBehavior: 'find-space',
+    })
+  })
+
   it('toggles visible-canvas centering from canvas settings', () => {
     const onChange = vi.fn()
     mockTerminalProfiles()

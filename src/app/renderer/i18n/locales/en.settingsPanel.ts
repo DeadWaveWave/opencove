@@ -194,6 +194,12 @@ export const enSettingsPanel = {
       large: 'Large',
     },
     viewportTransitionLabel: 'Viewport Transition',
+    nodeExpandBehaviorLabel: 'Window Expansion',
+    nodeExpandBehaviorHelp: 'Choose how space is made when you reopen a collapsed window.',
+    nodeExpandBehavior: {
+      'push-away': 'Expand in place, push other windows aside',
+      'find-space': 'Expand in nearby free space',
+    },
     viewportTransitionHelp:
       'Choose how the canvas moves between windows and spaces. Respects reduced motion in system settings.',
     viewportTransition: { fly: 'Zoom Flight', slide: 'Smooth Slide' },

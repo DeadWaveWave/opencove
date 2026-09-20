@@ -5,6 +5,7 @@ import {
   type CanvasWheelBehavior,
   type CanvasWheelZoomModifier,
   type FocusNodeTargetZoom,
+  type NodeExpandBehavior,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import { CanvasSection } from './CanvasSection'
@@ -15,6 +16,7 @@ export function CanvasWindowsSection({
   canvasWheelBehavior,
   canvasWheelZoomModifier,
   standardWindowSizeBucket,
+  nodeExpandBehavior,
   viewportTransition,
   focusNodeOnClick,
   focusNodeTargetZoom,
@@ -25,6 +27,7 @@ export function CanvasWindowsSection({
   onChangeCanvasWheelBehavior,
   onChangeCanvasWheelZoomModifier,
   onChangeStandardWindowSizeBucket,
+  onChangeNodeExpandBehavior,
   onChangeViewportTransition,
   onChangeFocusNodeOnClick,
   onChangeFocusNodeTargetZoom,
@@ -37,6 +40,7 @@ export function CanvasWindowsSection({
   canvasWheelBehavior: CanvasWheelBehavior
   canvasWheelZoomModifier: CanvasWheelZoomModifier
   standardWindowSizeBucket: StandardWindowSizeBucket
+  nodeExpandBehavior: NodeExpandBehavior
   viewportTransition: ViewportTransition
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
@@ -47,6 +51,7 @@ export function CanvasWindowsSection({
   onChangeCanvasWheelBehavior: (behavior: CanvasWheelBehavior) => void
   onChangeCanvasWheelZoomModifier: (modifier: CanvasWheelZoomModifier) => void
   onChangeStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket) => void
+  onChangeNodeExpandBehavior: (behavior: NodeExpandBehavior) => void
   onChangeViewportTransition: (effect: ViewportTransition) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
@@ -81,6 +86,8 @@ export function CanvasWindowsSection({
       <WindowSizeSection
         standardWindowSizeBucket={standardWindowSizeBucket}
         onChangeStandardWindowSizeBucket={onChangeStandardWindowSizeBucket}
+        nodeExpandBehavior={nodeExpandBehavior}
+        onChangeNodeExpandBehavior={onChangeNodeExpandBehavior}
       />
     </>
   )

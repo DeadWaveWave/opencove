@@ -101,6 +101,21 @@ describe('settingsSearchIndex', () => {
     expect(entries.some(entry => entry.id === 'experimental.remote-workers')).toBe(false)
   })
 
+  it.each([
+    { dictionary: en, query: 'nearby free space' },
+    { dictionary: zhCN, query: '在附近空位展开' },
+  ])('finds the window expansion setting using $query', ({ dictionary, query }) => {
+    const entries = createSettingsSearchEntries({
+      t: createTranslator(dictionary),
+      workspaces: [],
+    })
+    expect(searchSettingsEntries(entries, query)[0]).toMatchObject({
+      id: 'canvas.node-expansion',
+      pageId: 'canvas-windows',
+      anchorId: 'settings-node-expand-behavior',
+    })
+  })
+
   it('includes workspace settings and falls back to the folder name', () => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(en),

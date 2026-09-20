@@ -122,9 +122,22 @@ export function projectCollapsedNodes(
   return nodes.map(node => {
     const collapsed = state.collapsedNodeIds[node.id] === true
     const spaceHidden = hidden.has(node.id)
-    const size = getNodeDisplaySize(node, state.collapsedNodeIds)
+    const size = spaceHidden
+      ? { width: 0, height: 0 }
+      : getNodeDisplaySize(node, state.collapsedNodeIds)
     return {
       ...node,
+      // React Flow reads these before ResizeObserver runs after each controlled
+      // drag update. Its dimension fallbacks must describe the visible shell,
+      // never the expanded runtime retained in data.
+      width: size.width,
+      height: size.height,
+      initialWidth: size.width,
+      initialHeight: size.height,
+      measured:
+        node.measured?.width === size.width && node.measured?.height === size.height
+          ? node.measured
+          : undefined,
       className: [node.className, spaceHidden ? 'cove-node--space-collapsed' : '']
         .filter(Boolean)
         .join(' '),
@@ -134,8 +147,8 @@ export function projectCollapsedNodes(
       focusable: spaceHidden ? false : node.focusable,
       style: {
         ...node.style,
-        width: spaceHidden ? 0 : size.width,
-        height: spaceHidden ? 0 : size.height,
+        width: size.width,
+        height: size.height,
         ...(spaceHidden ? { visibility: 'hidden', pointerEvents: 'none' } : {}),
       },
       data: { ...node.data, collapsePresentation: { collapsed, spaceHidden } },

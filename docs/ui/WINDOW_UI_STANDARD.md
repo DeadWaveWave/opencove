@@ -105,6 +105,12 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
   导致 PTY 测量归零。WebContentsView 只隐藏 host bounds，不能销毁 session 或改变 viewport。
 - React Flow 的 compact frame、像素流光和命中区域使用展示尺寸；持久化 node data 中的
   width/height 始终是展开尺寸。Space 折叠保留内部节点位置与各自折叠偏好。
+- React Flow 的 width/height 与 initialWidth/initialHeight 同属展示投影；旧 measured
+  与展示尺寸不符时必须丢弃，避免受控拖动重建节点时选中框闪回展开尺寸。
+- 「画布 → 窗口布局 → 窗口展开方式」默认原地展开并沿用 resize 推开布局；也可
+  选择按创建寻位流程移到空位展开。直接点击、Space 摘要和导航均经同一展开 owner，
+  用可见几何规划碰撞，再只提交位置与 Space 边框，不改变运行时尺寸或重启会话。
+  寻位优先保留所在 Space，拥挤时扩展其边界；被推动的折叠 Space 携带隐藏后代一起平移。
 - Space 标题、分支和操作位于边框线上，标题与操作通过统一测量生成边框断线。
   保留实色加粗四角，不增加内置标题栏的高度补偿，展示与拖动使用同一边框矩形。
 - 折叠图标上的小点阵表示 Agent 工作/等待状态；终端仅在收到真实 PTY 输出时短暂流动，

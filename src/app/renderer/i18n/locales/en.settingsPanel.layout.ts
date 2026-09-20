@@ -68,7 +68,7 @@ export const enSettingsPanelLayout = {
       canvasInput: 'Canvas Input',
       nodeFocus: 'Node Focus',
       spaceArchiving: 'Space Archiving',
-      windowTerminal: 'Window Size',
+      windowTerminal: 'Window Layout',
     },
     agent: {
       providers: 'Agent Providers',

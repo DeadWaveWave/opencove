@@ -28,8 +28,10 @@ import {
   isValidCanvasWheelBehavior,
   isValidCanvasWheelZoomModifier,
   isValidStandardWindowSizeBucket,
+  isValidNodeExpandBehavior,
 } from './canvasSettings'
 import {
+  areNormalizedSettingsValuesEqual,
   isRecord,
   normalizeBoolean,
   normalizeIntegerInRange,
@@ -91,6 +93,7 @@ export {
   CANVAS_WHEEL_BEHAVIORS,
   CANVAS_WHEEL_ZOOM_MODIFIERS,
   STANDARD_WINDOW_SIZE_BUCKETS,
+  NODE_EXPAND_BEHAVIORS,
 } from './canvasSettings'
 export type {
   ViewportTransition,
@@ -98,6 +101,7 @@ export type {
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
   StandardWindowSizeBucket,
+  NodeExpandBehavior,
 } from './canvasSettings'
 export {
   DEFAULT_UI_LANGUAGE,
@@ -308,6 +312,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const preserveWindowSizesOnArrange =
     normalizeBoolean(value.preserveWindowSizesOnArrange) ??
     DEFAULT_AGENT_SETTINGS.preserveWindowSizesOnArrange
+  const nodeExpandBehavior = isValidNodeExpandBehavior(value.nodeExpandBehavior)
+    ? value.nodeExpandBehavior
+    : DEFAULT_AGENT_SETTINGS.nodeExpandBehavior
   const websiteWindowPolicy = normalizeWebsiteWindowPolicy(
     value.websiteWindowPolicy,
     DEFAULT_AGENT_SETTINGS.websiteWindowPolicy,
@@ -438,6 +445,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     canvasWheelBehavior,
     canvasWheelZoomModifier,
     standardWindowSizeBucket,
+    nodeExpandBehavior,
     preserveWindowSizesOnArrange,
     websiteWindowPolicy,
     browserDefaultMode,
@@ -460,36 +468,6 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     archiveSpaceDeleteWorktreeByDefault,
     archiveSpaceDeleteBranchByDefault,
   }
-}
-
-function areNormalizedSettingsValuesEqual(left: unknown, right: unknown): boolean {
-  if (Object.is(left, right)) {
-    return true
-  }
-
-  if (Array.isArray(left) || Array.isArray(right)) {
-    return (
-      Array.isArray(left) &&
-      Array.isArray(right) &&
-      left.length === right.length &&
-      left.every((item, index) => areNormalizedSettingsValuesEqual(item, right[index]))
-    )
-  }
-
-  if (!isRecord(left) || !isRecord(right)) {
-    return false
-  }
-
-  const leftKeys = Object.keys(left)
-  const rightKeys = Object.keys(right)
-  return (
-    leftKeys.length === rightKeys.length &&
-    leftKeys.every(
-      key =>
-        Object.prototype.hasOwnProperty.call(right, key) &&
-        areNormalizedSettingsValuesEqual(left[key], right[key]),
-    )
-  )
 }
 
 /** Accepts only the complete canonical settings shape emitted by the settings owner. */

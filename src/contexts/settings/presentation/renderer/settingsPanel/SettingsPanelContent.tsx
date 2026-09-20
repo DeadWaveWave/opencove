@@ -89,6 +89,7 @@ export function SettingsPanelContent({
     updateCanvasWheelBehavior,
     updateCanvasWheelZoomModifier,
     updateStandardWindowSizeBucket,
+    updateNodeExpandBehavior,
     updateWebsiteWindowPolicy,
     updateBrowserDefaultMode,
     updateBrowserSearchEngine,
@@ -256,6 +257,7 @@ export function SettingsPanelContent({
           canvasWheelBehavior={settings.canvasWheelBehavior}
           canvasWheelZoomModifier={settings.canvasWheelZoomModifier}
           standardWindowSizeBucket={settings.standardWindowSizeBucket}
+          nodeExpandBehavior={settings.nodeExpandBehavior}
           viewportTransition={settings.viewportTransition}
           onChangeViewportTransition={updateViewportTransition}
           focusNodeOnClick={settings.focusNodeOnClick}
@@ -267,6 +269,7 @@ export function SettingsPanelContent({
           onChangeCanvasWheelBehavior={updateCanvasWheelBehavior}
           onChangeCanvasWheelZoomModifier={updateCanvasWheelZoomModifier}
           onChangeStandardWindowSizeBucket={updateStandardWindowSizeBucket}
+          onChangeNodeExpandBehavior={updateNodeExpandBehavior}
           onChangeFocusNodeOnClick={updateFocusNodeOnClick}
           onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
           onChangeFocusNodeUseVisibleCanvasCenter={updateFocusNodeUseVisibleCanvasCenter}

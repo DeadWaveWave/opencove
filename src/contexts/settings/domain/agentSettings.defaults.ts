@@ -73,6 +73,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   canvasWheelBehavior: 'zoom',
   canvasWheelZoomModifier: 'primary',
   standardWindowSizeBucket: 'regular',
+  nodeExpandBehavior: 'push-away',
   preserveWindowSizesOnArrange: false,
   websiteWindowPolicy: DEFAULT_WEBSITE_WINDOW_POLICY,
   browserDefaultMode: DEFAULT_BROWSER_MODE,

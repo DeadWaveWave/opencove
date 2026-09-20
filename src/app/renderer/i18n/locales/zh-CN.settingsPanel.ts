@@ -202,6 +202,12 @@ export const zhCNSettingsPanel = {
       large: '大',
     },
     viewportTransitionLabel: '视口转移效果',
+    nodeExpandBehaviorLabel: '窗口展开方式',
+    nodeExpandBehaviorHelp: '选择重新展开折叠窗口时，如何安排画布上的空间。',
+    nodeExpandBehavior: {
+      'push-away': '原位展开，推开其他窗口',
+      'find-space': '在附近空位展开',
+    },
     viewportTransitionHelp: '选择窗口节点与 Space 之间的视口移动效果，遵循系统减少动态效果设置。',
     viewportTransition: { fly: '缩放飞行', slide: '平滑移动' },
     focusOnClickLabel: '点击自动定位',

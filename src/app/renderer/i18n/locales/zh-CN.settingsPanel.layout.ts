@@ -68,7 +68,7 @@ export const zhCNSettingsPanelLayout = {
       canvasInput: '画布输入',
       nodeFocus: '节点定位',
       spaceArchiving: 'Space 归档',
-      windowTerminal: '窗口尺寸',
+      windowTerminal: '窗口布局',
     },
     agent: {
       providers: 'Agent 提供方',

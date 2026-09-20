@@ -72,20 +72,7 @@ function ViewportNavigationHarness({
     focusSequence,
     nodes,
     nodesRef,
-    spaces:
-      focusSpaceId === null
-        ? []
-        : [
-            {
-              id: focusSpaceId,
-              name: 'Focused space',
-              directoryPath: '/tmp/focused-space',
-              targetMountId: null,
-              labelColor: null,
-              nodeIds: [NODE.id],
-              rect: { x: 2_200, y: 1_400, width: 900, height: 700 },
-            },
-          ],
+    expandNode: id => nodesRef.current.find(node => node.id === id),
     focusSpaceInViewport,
     focusNodeTargetZoom: 1,
   })
