@@ -22,12 +22,18 @@ const PRIMARY_SETTINGS_PAGE_CAPTURES = [
 ] as const
 
 async function openSettings(window: Page): Promise<Locator> {
+  const navigationTrigger = window.getByTestId('primary-sidebar-open')
+  if (await navigationTrigger.isVisible()) {
+    await navigationTrigger.click()
+    await expect(window.getByTestId('primary-sidebar-drawer')).toBeVisible()
+  }
   const settingsTrigger = window.locator('[data-testid="app-header-settings"]')
   await expect(settingsTrigger).toBeVisible()
   await settingsTrigger.click({ noWaitAfter: true })
 
-  const dialog = window.getByRole('dialog')
+  const dialog = window.getByTestId('settings-panel')
   await expect(dialog).toBeVisible()
+  await expect(window.getByTestId('primary-sidebar-drawer')).toHaveCount(0)
   return dialog
 }
 

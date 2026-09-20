@@ -124,8 +124,10 @@ export function CollapsedWindow({
             ))}
           </span>
         </span>
-        <span className="cove-collapsed-window__title" title={title}>
-          {title}
+        <span className="cove-collapsed-window__title-slot">
+          <span className="cove-collapsed-window__title" title={title}>
+            {title}
+          </span>
         </span>
         {status ? <span className="cove-collapsed-window__status">{status.label}</span> : null}
         {presentation.isAgent ? (

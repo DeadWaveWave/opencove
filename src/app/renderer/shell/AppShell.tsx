@@ -336,7 +336,6 @@ export default function App(): React.JSX.Element {
             onClosePerformanceMonitor={closePerformanceMonitor}
             onToggleIssueReport={toggleIssueReport}
             onCloseIssueReport={closeIssueReport}
-            onOpenSettings={handleOpenSettings}
             onCheckForUpdates={checkForUpdates}
             onDownloadUpdate={downloadUpdate}
             onInstallUpdate={installUpdate}
@@ -352,6 +351,7 @@ export default function App(): React.JSX.Element {
             persistNotice={persistNotice}
             onTogglePinned={toggleSidebarPinned}
             onAddProject={handleAddWorkspace}
+            onOpenSettings={handleOpenSettings}
             onSelectWorkspace={handleSelectWorkspace}
             onSelectProjectCanvas={workspaceId => {
               handleSelectProjectCanvas(workspaceId)

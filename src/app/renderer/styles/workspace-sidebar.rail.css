@@ -32,6 +32,15 @@
   color: var(--cove-text);
 }
 
+.workspace-sidebar__footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  padding-top: 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--cove-border-subtle);
+}
+
 .workspace-sidebar__list {
   display: flex;
   flex: 1;

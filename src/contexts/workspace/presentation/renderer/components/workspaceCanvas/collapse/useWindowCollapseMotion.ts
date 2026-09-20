@@ -9,8 +9,21 @@ import {
 } from './collapseMotion'
 
 const HEADER_ICON = '.cove-node-kind-icon, .cove-node-provider-icon'
-const HEADER_TITLE =
-  '.node-title-editor, .terminal-node__title, .document-node__title, .role-node__title, .task-node__title'
+const GLYPH = 'svg, img, .agent-provider-icon__monogram'
+const HEADER_TEXT = '.node-title-editor__display, .document-node__title-text, .role-node__title'
+
+function textAppearance(element: Element): Keyframe {
+  const style = getComputedStyle(element)
+  return {
+    fontFamily: style.fontFamily,
+    fontSize: style.fontSize,
+    fontWeight: style.fontWeight,
+    fontStyle: style.fontStyle,
+    lineHeight: style.lineHeight,
+    letterSpacing: style.letterSpacing,
+    color: style.color,
+  }
+}
 
 /** Morph only the shell. Text/editor/PTY content never scales or reflows. */
 export function useWindowCollapseMotion(
@@ -52,15 +65,18 @@ export function useWindowCollapseMotion(
     const runtime = shell.querySelector<HTMLElement>('.cove-node-presentation__runtime')
     const compact = shell.querySelector<HTMLElement>('.cove-collapsed-window')
     const icon = compact?.querySelector<HTMLElement>('.cove-collapsed-window__icon')
-    const glyph = icon?.querySelector<HTMLElement>('svg, .agent-provider-icon')
+    const glyph = icon?.querySelector<HTMLElement | SVGElement>(GLYPH)
     const title = compact?.querySelector<HTMLElement>('.cove-collapsed-window__title')
     const surface = shell.querySelector<HTMLElement>('.cove-node-presentation__surface')
     if (!runtime || !compact || !icon || !glyph || !title || !surface) {
       return
     }
+    const details = compact.querySelectorAll(
+      '.cove-collapsed-window__status, .cove-collapsed-window__message, .cove-collapsed-window__pixels, .cove-collapsed-window__close',
+    )
     const interrupted = new Map<Element, Record<string, string>>()
     if (active.current) {
-      for (const element of [surface, glyph, title, runtime]) {
+      for (const element of [surface, glyph, title, runtime, ...details]) {
         // ComputedStyle is live; copy the properties before cancel removes them.
         const style = getComputedStyle(element)
         interrupted.set(element, {
@@ -73,13 +89,29 @@ export function useWindowCollapseMotion(
           maxWidth: style.maxWidth,
           opacity: style.opacity,
           clipPath: style.clipPath,
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+          fontStyle: style.fontStyle,
+          lineHeight: style.lineHeight,
+          letterSpacing: style.letterSpacing,
+          color: style.color,
         })
       }
     }
     active.current?.dispose()
 
-    const headerIcon = runtime.querySelector<HTMLElement>(HEADER_ICON)
-    const headerTitle = runtime.querySelector<HTMLElement>(HEADER_TITLE)
+    const headerIcon = runtime.querySelector<HTMLElement | SVGElement>(HEADER_ICON)
+    const headerGlyph = headerIcon?.matches(GLYPH)
+      ? headerIcon
+      : headerIcon?.querySelector<HTMLElement | SVGElement>(GLYPH)
+    const headerText =
+      runtime.querySelector<HTMLElement>(HEADER_TEXT) ??
+      runtime.querySelector<HTMLElement>('.node-title-editor, .note-node__title')
+    // Website/image windows have no equivalent title; different text must fade
+    // instead of moving toward a fictional header anchor.
+    const headerTitle =
+      headerText?.textContent?.trim() === title.textContent?.trim() ? headerText : null
     const origin = shell.getBoundingClientRect()
     const relative = (element: Element) => {
       const rect = element.getBoundingClientRect()
@@ -93,10 +125,20 @@ export function useWindowCollapseMotion(
     const iconBox = relative(icon)
     const glyphBox = relative(glyph)
     const titleBox = relative(title)
-    const sourceGlyph = headerIcon ? relative(headerIcon) : { x: 12, y: 12, width: 16, height: 16 }
-    const sourceTitle = headerTitle
-      ? relative(headerTitle)
-      : { x: 38, y: 10, width: expandedSize.width - 100, height: 18 }
+    const compactBox = relative(compact)
+    const sourceGlyph = headerGlyph ? relative(headerGlyph) : glyphBox
+    const sourceTitle = headerTitle ? relative(headerTitle) : titleBox
+    const titleFrame = (element: Element, box: typeof titleBox): Keyframe => ({
+      left: `${box.x - compactBox.x}px`,
+      top: `${box.y - compactBox.y}px`,
+      width: `${box.width}px`,
+      height: `${box.height}px`,
+      ...textAppearance(element),
+    })
+    const expandedTitle = titleFrame(headerTitle ?? title, sourceTitle)
+    const compactTitle = titleFrame(title, titleBox)
+    const sourceColor = getComputedStyle(headerGlyph ?? glyph).color
+    const compactColor = getComputedStyle(glyph).color
     const duration = collapsed ? WINDOW_FOLD_MS : WINDOW_UNFOLD_MS
     const startDelay = collapsed ? delayRef.current : 0
     shell.dataset.coveCollapseMotion = collapsed ? 'collapse' : 'expand'
@@ -152,17 +194,16 @@ export function useWindowCollapseMotion(
     morph(
       glyph,
       {
-        transform: `translate(${sourceGlyph.x - glyphBox.x}px, ${sourceGlyph.y - glyphBox.y}px) scale(${sourceGlyph.height / glyphBox.height || 1})`,
+        transform: `translate(${sourceGlyph.x - glyphBox.x}px, ${sourceGlyph.y - glyphBox.y}px) scale(${sourceGlyph.width / glyphBox.width || 1}, ${sourceGlyph.height / glyphBox.height || 1})`,
+        color: sourceColor,
+        opacity: headerGlyph ? 1 : 0,
       },
-      { transform: 'translate(0px, 0px) scale(1)' },
+      { transform: 'translate(0px, 0px) scale(1)', color: compactColor, opacity: 1 },
     )
     morph(
       title,
-      {
-        transform: `translate(${sourceTitle.x - titleBox.x}px, ${sourceTitle.y - titleBox.y}px)`,
-        maxWidth: `${Math.max(40, sourceTitle.width)}px`,
-      },
-      { transform: 'translate(0px, 0px)', maxWidth: '152px' },
+      { ...expandedTitle, opacity: headerTitle ? 1 : 0 },
+      { ...compactTitle, opacity: 1 },
     )
     for (const element of [headerIcon, headerTitle]) {
       if (element) {
@@ -185,14 +226,13 @@ export function useWindowCollapseMotion(
       duration,
       startDelay,
     )
-    for (const detail of compact.querySelectorAll(
-      '.cove-collapsed-window__status, .cove-collapsed-window__message, .cove-collapsed-window__pixels, .cove-collapsed-window__close',
-    )) {
+    for (const detail of details) {
+      const opacity = interrupted.get(detail)?.opacity ?? (collapsed ? 0 : 1)
       group.animate(
         detail,
         collapsed
-          ? [{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1 }]
-          : [{ opacity: 1 }, { opacity: 0, offset: 0.35 }, { opacity: 0 }],
+          ? [{ opacity }, { opacity, offset: 0.5 }, { opacity: 1 }]
+          : [{ opacity }, { opacity: 0, offset: 0.35 }, { opacity: 0 }],
         duration,
         startDelay,
       )

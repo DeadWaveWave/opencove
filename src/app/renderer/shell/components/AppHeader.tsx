@@ -10,7 +10,6 @@ import {
   Minimize2,
   RotateCcw,
   Search,
-  Settings,
   SlidersHorizontal,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -52,7 +51,6 @@ export function AppHeader({
   onClosePerformanceMonitor,
   onToggleIssueReport,
   onCloseIssueReport,
-  onOpenSettings,
   onCheckForUpdates,
   onDownloadUpdate,
   onInstallUpdate,
@@ -82,7 +80,6 @@ export function AppHeader({
   onClosePerformanceMonitor: () => void
   onToggleIssueReport: () => void
   onCloseIssueReport: () => void
-  onOpenSettings: () => void
   onCheckForUpdates: () => void
   onDownloadUpdate: () => void
   onInstallUpdate: () => void
@@ -364,18 +361,6 @@ export function AppHeader({
             }}
           >
             <Bug aria-hidden="true" size={18} />
-          </button>
-          <button
-            type="button"
-            className="app-header__icon-button"
-            data-testid="app-header-settings"
-            aria-label={t('common.settings')}
-            title={t('common.settings')}
-            onClick={() => {
-              onOpenSettings()
-            }}
-          >
-            <Settings aria-hidden="true" size={18} />
           </button>
         </div>
       </header>

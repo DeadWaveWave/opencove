@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, Settings } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -13,6 +13,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from '@app/renderer/i18n'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
 import type { PersistNotice, ProjectContextMenuState } from '../types'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { SidebarToolbar } from './SidebarToolbar'
@@ -55,6 +56,7 @@ type SidebarProps = {
   persistNotice: PersistNotice | null
   onTogglePinned?: () => void
   onAddProject?: (anchor?: { x: number; y: number }) => void
+  onOpenSettings?: () => void
   onSelectWorkspace: (workspaceId: string) => void
   onSelectProjectCanvas?: (workspaceId: string) => void
   onSelectSpace: (workspaceId: string, spaceId: string) => void
@@ -93,6 +95,7 @@ export function Sidebar({
   persistNotice,
   onTogglePinned = () => undefined,
   onAddProject = () => undefined,
+  onOpenSettings,
   onSelectWorkspace,
   onSelectProjectCanvas = onSelectWorkspace,
   onSelectSpace,
@@ -333,6 +336,19 @@ export function Sidebar({
               ))}
             </SortableContext>
           </div>
+          {onOpenSettings ? (
+            <div className="workspace-sidebar__footer" data-testid="workspace-sidebar-footer">
+              <IconButton
+                className="workspace-sidebar__toolbar-button"
+                data-testid="app-header-settings"
+                label={t('common.settings')}
+                aria-haspopup="dialog"
+                onClick={() => onOpenSettings()}
+              >
+                <Settings aria-hidden="true" />
+              </IconButton>
+            </div>
+          ) : null}
         </div>
         {variant !== 'rail' || isMobile ? (
           <div className="workspace-sidebar__navigation" data-testid="workspace-sidebar-navigation">

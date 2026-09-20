@@ -154,6 +154,14 @@
   height: 25px;
 }
 
+.cove-collapsed-window__title-slot {
+  display: flex;
+  justify-content: center;
+  flex: 0 0 18px;
+  width: 100%;
+  min-width: 0;
+}
+
 .cove-collapsed-window__title {
   max-width: 100%;
   overflow: hidden;
@@ -322,6 +330,7 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  text-align: center;
   border-radius: var(--cove-radius-xs);
   background: color-mix(in srgb, var(--cove-window-surface) 88%, transparent);
   color: var(--cove-text-muted);

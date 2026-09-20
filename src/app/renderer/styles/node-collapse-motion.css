@@ -48,11 +48,18 @@
 }
 
 .cove-node-presentation[data-cove-collapse-motion]
-  :is(
-    .cove-collapsed-window__icon > svg,
-    .cove-collapsed-window__icon > .agent-provider-icon,
-    .cove-collapsed-window__title
-  ) {
+  .cove-collapsed-window__icon
+  :is(svg, img, .agent-provider-icon__monogram) {
   transform-origin: 0 0;
+  transform-box: border-box;
   overflow: visible;
+}
+
+.cove-node-presentation[data-cove-collapse-motion] .cove-collapsed-window__title {
+  position: absolute;
+  max-width: none;
+  margin: 0;
+  /* Its slot preserves layout while the text follows one absolute coordinate
+     space. Keep ellipsis active at every frame, including the handoff. */
+  overflow: hidden;
 }
