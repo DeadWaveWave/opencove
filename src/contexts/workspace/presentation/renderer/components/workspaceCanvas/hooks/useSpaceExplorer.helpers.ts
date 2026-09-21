@@ -1,5 +1,5 @@
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
-import type { CanvasImageMimeType } from '@shared/contracts/dto'
+import { CANVAS_IMAGE_MIME_TYPES, type CanvasImageMimeType } from '@shared/contracts/dto'
 import {
   resolveDocumentNodeSizeFromMediaMetadata,
   resolveImageNodeSizeFromNaturalDimensions,
@@ -29,25 +29,11 @@ export function resolveFileNameFromFileUri(uri: string): string | null {
 }
 
 export function resolveCanvasImageMimeType(uri: string): CanvasImageMimeType | null {
-  const fileName = resolveFileNameFromFileUri(uri)?.toLowerCase() ?? ''
-  const dot = fileName.lastIndexOf('.')
-  const ext = dot >= 0 ? fileName.slice(dot + 1) : ''
-  if (ext === 'png') {
-    return 'image/png'
-  }
-  if (ext === 'jpg' || ext === 'jpeg') {
-    return 'image/jpeg'
-  }
-  if (ext === 'webp') {
-    return 'image/webp'
-  }
-  if (ext === 'gif') {
-    return 'image/gif'
-  }
-  if (ext === 'avif') {
-    return 'image/avif'
-  }
-  return null
+  const descriptor = resolveDocumentNodeMediaDescriptor(uri)
+  return descriptor?.kind === 'image' &&
+    CANVAS_IMAGE_MIME_TYPES.some(mime => mime === descriptor.mimeType)
+    ? (descriptor.mimeType as CanvasImageMimeType)
+    : null
 }
 
 export async function readImageNaturalDimensions(
@@ -119,7 +105,7 @@ export async function resolveSpaceExplorerPreviewDisplay(options: {
     } else {
       size = resolveDefaultImageWindowSize(options.standardWindowSizeBucket)
     }
-  } else if (mediaDescriptor) {
+  } else if (mediaDescriptor && mediaDescriptor.kind !== 'image') {
     kind = mediaDescriptor.kind
 
     if (filesystem?.readFileBytes) {

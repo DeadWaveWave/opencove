@@ -2,10 +2,10 @@ import React from 'react'
 import { useStore } from '@xyflow/react'
 import { GripHorizontal } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { DocumentNodeUnsupportedKind } from '../../DocumentNode.shared'
 import { loadDocumentNodeContent } from '../../DocumentNode.helpers'
 import { createMediaObjectUrl } from '../../DocumentNode.media'
 import type { WorkspaceCanvasQuickPreviewState } from '../types'
-import { resolveCanvasImageMimeType } from '../hooks/useSpaceExplorer.helpers'
 import { toErrorMessage } from '../helpers'
 import { selectViewportTransform } from './WorkspaceSpaceExplorerOverlay.helpers'
 import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
@@ -17,7 +17,7 @@ type QuickPreviewContentState =
   | { kind: 'image'; url: string }
   | { kind: 'media'; mediaKind: 'audio' | 'video'; url: string }
   | { kind: 'mediaUnsupported' }
-  | { kind: 'unsupported'; unsupportedKind: 'binary' | 'tooLarge' }
+  | { kind: 'unsupported'; unsupportedKind: DocumentNodeUnsupportedKind }
 
 export function WorkspaceSpaceQuickPreview({
   preview,
@@ -70,19 +70,6 @@ export function WorkspaceSpaceQuickPreview({
 
     void (async () => {
       try {
-        const mimeType = resolveCanvasImageMimeType(preview.uri)
-        if (preview.kind === 'image' && mimeType && filesystemApi.readFileBytes) {
-          const { bytes } = await filesystemApi.readFileBytes({ uri: preview.uri })
-          if (cancelled) {
-            return
-          }
-
-          const blobBytes = new Uint8Array(bytes)
-          objectUrl = URL.createObjectURL(new Blob([blobBytes], { type: mimeType }))
-          setContentState({ kind: 'image', url: objectUrl })
-          return
-        }
-
         const result = await loadDocumentNodeContent(filesystemApi, preview.uri, {
           notAFile: t('documentNode.notAFile'),
           binaryReadUnavailable: t('documentNode.binaryReadUnavailable'),
@@ -93,6 +80,10 @@ export function WorkspaceSpaceQuickPreview({
 
         if (result.kind === 'media') {
           objectUrl = createMediaObjectUrl(result.bytes, result.mimeType)
+          if (result.mediaKind === 'image') {
+            setContentState({ kind: 'image', url: objectUrl })
+            return
+          }
           setContentState({
             kind: 'media',
             mediaKind: result.mediaKind,
@@ -158,14 +149,18 @@ export function WorkspaceSpaceQuickPreview({
     ) : contentState.kind === 'unsupported' ? (
       <div className="workspace-space-quick-preview__state workspace-space-quick-preview__state--warning">
         <div className="workspace-space-quick-preview__state-title">
-          {contentState.unsupportedKind === 'binary'
-            ? t('documentNode.binaryTitle')
-            : t('documentNode.tooLargeTitle')}
+          {contentState.unsupportedKind === 'imageTooLarge'
+            ? t('documentNode.imageTooLargeTitle')
+            : contentState.unsupportedKind === 'binary'
+              ? t('documentNode.binaryTitle')
+              : t('documentNode.tooLargeTitle')}
         </div>
         <div className="workspace-space-quick-preview__state-message">
-          {contentState.unsupportedKind === 'binary'
-            ? t('documentNode.binaryMessage')
-            : t('documentNode.tooLargeMessage')}
+          {contentState.unsupportedKind === 'imageTooLarge'
+            ? t('documentNode.imageTooLargeMessage')
+            : contentState.unsupportedKind === 'binary'
+              ? t('documentNode.binaryMessage')
+              : t('documentNode.tooLargeMessage')}
         </div>
       </div>
     ) : contentState.kind === 'image' ? (

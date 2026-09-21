@@ -4,6 +4,7 @@ import type {
   TerminalResolvedFileTarget,
 } from '@contexts/terminal/domain/links/terminalLinkTarget'
 import { toAppErrorDescriptor } from '@shared/errors/appError'
+import { canOpenSystemPath, getSystemFileOpenCapability, openSystemPath } from './systemFileOpening'
 
 /** Transport adapter: a remote identity never falls back to the local filesystem. */
 export const statTerminalLink: TerminalLinkStatPort = async ({ uri, mountId, endpointId }) => {
@@ -44,42 +45,21 @@ export function openTerminalUrl(uri: string): void {
 }
 
 export async function getTerminalSystemOpenCapability(): Promise<boolean> {
-  if (window.opencoveApi?.meta?.runtime !== 'electron') {
-    return false
-  }
-  try {
-    const config = await window.opencoveApi.workerClient?.getConfig()
-    return config?.mode === 'standalone' || config?.mode === 'local'
-  } catch {
-    return false
-  }
+  return getSystemFileOpenCapability()
 }
 
 export function canOpenTerminalTargetWithSystem(
   reference: TerminalLinkFileReference,
   hasLocalSystemAccess = false,
 ): boolean {
-  const isLocal =
-    reference.endpointId === 'local' ||
-    (reference.endpointId === undefined && reference.mountId === undefined)
-  return (
-    hasLocalSystemAccess &&
-    isLocal &&
-    window.opencoveApi?.meta?.runtime === 'electron' &&
-    typeof window.opencoveApi.workspace?.openPath === 'function'
-  )
+  return canOpenSystemPath(reference, hasLocalSystemAccess)
 }
 
 export async function openTerminalTargetWithSystem(
   target: TerminalResolvedFileTarget,
   hasLocalSystemAccess = false,
 ): Promise<boolean> {
-  if (!canOpenTerminalTargetWithSystem(target, hasLocalSystemAccess)) {
-    return false
-  }
-  // Main retains the approved-path guard; a terminal link grants no new filesystem authority.
-  await window.opencoveApi.workspace.openPath({ path: target.path, openerId: 'finder' })
-  return true
+  return openSystemPath(target.path, target, hasLocalSystemAccess)
 }
 
 export async function copyTerminalLink(text: string): Promise<void> {

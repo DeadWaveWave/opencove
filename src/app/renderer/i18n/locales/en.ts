@@ -322,12 +322,17 @@ export const en = {
     filesystemUnavailable: 'Filesystem is unavailable.',
     notAFile: 'This is not a file.',
     editorUnavailable: 'The code editor is unavailable.',
-    binaryReadUnavailable: 'This environment cannot load audio or video previews.',
+    binaryReadUnavailable: 'This environment cannot load image, audio, or video previews.',
     binaryTitle: 'Binary file',
     binaryMessage:
       'This file appears to be binary or uses an unsupported encoding, so it cannot be opened as text.',
+    imageTooLargeTitle: 'Image too large',
+    imageTooLargeMessage: 'This image exceeds the 50 MiB preview limit.',
     tooLargeTitle: 'File too large',
     tooLargeMessage: 'This file is too large to open in the canvas editor.',
+    imageUnsupportedTitle: 'Image preview unavailable',
+    imageUnsupportedMessage:
+      'This image could not be previewed. It may be damaged or use an unsupported format.',
     mediaUnsupportedTitle: 'Media playback unavailable',
     mediaUnsupportedMessage:
       'This audio or video file cannot be played here. OpenCove currently previews MP3, WAV/WAVE, OGG/OGA, MP4, and WebM when the runtime supports them.',
@@ -363,6 +368,9 @@ export const en = {
     hint: 'Click for actions · {{modifier}}-click to open',
     click: 'Click',
     openFile: 'Open file',
+    previewImage: 'Preview image',
+    playAudio: 'Play audio',
+    playVideo: 'Play video',
     openBrowser: 'Open in browser',
     openFinder: 'Open in Finder',
     openFolder: 'Open folder',

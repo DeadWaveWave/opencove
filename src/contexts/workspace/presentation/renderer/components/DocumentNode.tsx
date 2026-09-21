@@ -55,6 +55,7 @@ export function DocumentNode({
   const [externalConflictStat, setExternalConflictStat] = useState<FileSystemStat | null>(null)
   const closeIntentRef = useRef(false)
   const isMountedRef = useRef(true)
+  const loadSequenceRef = useRef(0)
   const mediaObjectUrlRef = useRef<string | null>(null)
 
   const isDirty = content !== savedContent
@@ -186,10 +187,12 @@ export function DocumentNode({
 
   const reloadFromDisk = useCallback(
     async (options?: { showLoading?: boolean }): Promise<boolean> => {
+      const sequence = ++loadSequenceRef.current
+      const isCurrent = (): boolean => isMountedRef.current && loadSequenceRef.current === sequence
       const showLoading = options?.showLoading ?? false
       const filesystemApi = resolveFilesystemApiForMount(mountId)
       if (!filesystemApi) {
-        if (isMountedRef.current) {
+        if (isCurrent()) {
           setIsLoading(false)
           setLoadError(t('documentNode.filesystemUnavailable'))
         }
@@ -202,15 +205,18 @@ export function DocumentNode({
 
       try {
         const result = await loadDocumentNodeContent(filesystemApi, uri, loadMessages)
+        if (!isCurrent()) {
+          return false
+        }
         applyLoadedResult(result)
         return true
       } catch (error) {
-        if (isMountedRef.current) {
+        if (isCurrent()) {
           setLoadError(toErrorMessage(error))
         }
         return false
       } finally {
-        if (showLoading && isMountedRef.current) {
+        if (showLoading && isCurrent()) {
           setIsLoading(false)
         }
       }
@@ -233,6 +239,7 @@ export function DocumentNode({
 
     return () => {
       isMountedRef.current = false
+      loadSequenceRef.current += 1
       revokeMediaObjectUrl()
     }
   }, [mountId, reloadFromDisk, revokeMediaObjectUrl, uri])
@@ -395,6 +402,7 @@ export function DocumentNode({
       onNavigationApplied={onNavigationApplied}
       title={title}
       uri={uri}
+      mountId={mountId}
       displayPath={displayPath}
       labelColor={labelColor}
       style={style}

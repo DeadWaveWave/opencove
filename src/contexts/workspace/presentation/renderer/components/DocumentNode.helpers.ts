@@ -3,8 +3,8 @@ import type { FileSystemStat, ReadFileTextResult } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { NodeFrame, Point } from '../types'
 import type { DocumentNodeMediaKind } from './DocumentNode.media'
-import { resolveDocumentNodeMediaDescriptor } from './DocumentNode.media'
-import type { DocumentNodeLoadMessages } from './DocumentNode.shared'
+import { resolveFileContentDescriptor } from '../../../domain/fileContentType'
+import type { DocumentNodeLoadMessages, DocumentNodeUnsupportedKind } from './DocumentNode.shared'
 
 export interface DocumentNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -41,7 +41,9 @@ export type DocumentNodeLoadResult =
       bytes: Uint8Array
       stat: FileSystemStat
     }
-  | { kind: 'unsupported'; unsupportedKind: 'binary' | 'tooLarge'; stat: FileSystemStat }
+  | { kind: 'unsupported'; unsupportedKind: DocumentNodeUnsupportedKind; stat: FileSystemStat }
+
+export const DOCUMENT_NODE_MAX_IMAGE_FILE_BYTES = 50 * 1024 * 1024
 
 export const DOCUMENT_NODE_MAX_TEXT_FILE_BYTES = 5 * 1024 * 1024
 
@@ -95,13 +97,25 @@ export async function loadDocumentNodeContent(
     throw new Error(messages.notAFile)
   }
 
-  const mediaDescriptor = resolveDocumentNodeMediaDescriptor(uri)
+  const mediaDescriptor = resolveFileContentDescriptor(uri)
+  if (mediaDescriptor?.kind === 'binary') {
+    return { kind: 'unsupported', unsupportedKind: 'binary', stat }
+  }
   if (mediaDescriptor) {
+    if (
+      mediaDescriptor.kind === 'image' &&
+      (stat.sizeBytes ?? 0) > DOCUMENT_NODE_MAX_IMAGE_FILE_BYTES
+    ) {
+      return { kind: 'unsupported', unsupportedKind: 'imageTooLarge', stat }
+    }
     if (!api.readFileBytes) {
       throw new Error(messages.binaryReadUnavailable)
     }
 
     const { bytes } = await api.readFileBytes({ uri })
+    if (mediaDescriptor.kind === 'image' && bytes.byteLength > DOCUMENT_NODE_MAX_IMAGE_FILE_BYTES) {
+      return { kind: 'unsupported', unsupportedKind: 'imageTooLarge', stat }
+    }
     return {
       kind: 'media',
       mediaKind: mediaDescriptor.kind,

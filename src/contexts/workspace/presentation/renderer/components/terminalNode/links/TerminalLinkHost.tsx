@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { TerminalLinkSurface } from './TerminalLinkSurface'
 import { toAppErrorDescriptor } from '@shared/errors/appError'
 import { useTranslation } from '@app/renderer/i18n'
+import { resolveDocumentNodeMediaDescriptor } from '../../DocumentNode.media'
 import {
   resolveTerminalLinkTarget,
   type TerminalLinkSourceContext,
@@ -372,6 +373,7 @@ export function TerminalLinkHost({
     }
   }
   const kind = target?.kind ?? intent.target.kind
+  const media = target?.kind === 'file' ? resolveDocumentNodeMediaDescriptor(target.uri) : null
   const system =
     target &&
     target.kind !== 'url' &&
@@ -387,13 +389,21 @@ export function TerminalLinkHost({
                 : 'terminalLink.openFolder'
               : 'terminalLink.openExplorer',
           )
-        : t('terminalLink.openFile')
+        : t(
+            media
+              ? {
+                  image: 'terminalLink.previewImage',
+                  audio: 'terminalLink.playAudio',
+                  video: 'terminalLink.playVideo',
+                }[media.kind]
+              : 'terminalLink.openFile',
+          )
   return (
     <TerminalLinkSurface
       intent={intent}
       container={containerRef.current}
       destination={label}
-      kind={kind}
+      kind={media?.kind ?? kind}
       primaryLabel={primaryLabel}
       message={message}
       disabled={!target || !!view.error}

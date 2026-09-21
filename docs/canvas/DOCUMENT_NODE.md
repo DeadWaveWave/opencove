@@ -37,21 +37,30 @@ Document Node 持久化的是：
 
 ## Media Preview
 
-Space Explorer 打开的音视频文件也使用 Document Node 风格窗口承载：
+终端或文档入口打开的图片、音视频由共享文件内容分类器分派到 Document Node 内的预览：
 
 - Durable truth 仍是原始文件 `uri`。
 - bytes 读取走 `filesystem.readFileBytes` 或 `filesystem.readFileBytesInMount`。
-- Renderer 使用原生 `audio` / `video` 控件播放。
-- 支持范围：`mp3`、`wav`、`wave`、`ogg`、`oga`、`mp4`、`webm`。
+- Renderer 使用 `img` 预览图片，使用原生 `audio` / `video` 控件播放。
+- 图片支持 `png`、`jpg/jpeg`、`webp`、`gif`、`avif`、`svg`、`bmp`、`ico`。
+- 图片保留原始 URI 和 mount，不调用画布附件导入；已有 PNG 文档节点恢复后也走图片预览。
+- 音视频支持范围：`mp3`、`wav`、`wave`、`ogg`、`oga`、`mp4`、`webm`。
 
-如果扩展名在支持范围内但 runtime 无法解码实际编码，UI 显示不可播放状态，而不是回退成文本编辑。
+如果扩展名在支持范围内但 runtime 无法解码实际编码，UI 显示对应的图片预览失败或不可播放状态，不回退成文本编辑。已知 PDF、Office 与压缩包直接进入不可编辑状态；未知扩展名继续按内容判断文本或二进制。
+
+- 文件 URI 和 mount 是内容身份；Object URL 只由当前 viewer 持有，替换或关闭时释放。
+- 旧 URI、旧 mount 或已关闭窗口的异步读取结果不能覆盖当前预览。
+- 图片预览限制为 50 MiB，读取前检查 stat、创建 Blob 前复核实际字节长度；超限不降级到文本。
+- 图片源文件改变后按 stat 刷新预览；音视频播放期间不主动替换媒体源。
+- 非文本结果消费终端的 transient navigation intent，但不创建 Monaco 或暴露保存操作。
+- 不支持预览或解码失败时，只有 Electron 确认 HomeWorker 与来源 mount 都在本机，才显示显式的系统默认应用打开操作。Web、远程来源不允许打开客户端同名路径，Main 继续校验 approved path。
 
 ## Space Explorer Integration
 
 Space Explorer 是 Document Node 的主要入口：
 
 - 点击文本文件创建或聚焦 Document Node。
-- 点击媒体文件显示预览或创建媒体窗口。
+- 点击媒体文件显示预览或创建媒体窗口。Explorer 现有支持格式的图片导入仍创建附件副本；URI 文档预览与附件导入是不同语义。
 - 节点读写必须保持在触发它的 mount scope 内。
 
 ## Terminal Navigation

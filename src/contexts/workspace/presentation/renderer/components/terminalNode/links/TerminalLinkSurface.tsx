@@ -1,9 +1,19 @@
 import React, { useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { Copy, ExternalLink, FileText, FolderOpen } from 'lucide-react'
+import { AudioLines, Copy, ExternalLink, FileText, FolderOpen, Image, Video } from 'lucide-react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalLinkIntent } from './linkHostEvent'
+import type { DocumentNodeMediaKind } from '../../DocumentNode.media'
+
+const ACTION_ICONS = {
+  url: ExternalLink,
+  directory: FolderOpen,
+  file: FileText,
+  image: Image,
+  audio: AudioLines,
+  video: Video,
+}
 
 export function TerminalLinkSurface({
   intent,
@@ -20,7 +30,7 @@ export function TerminalLinkSurface({
   intent: TerminalLinkIntent
   container: HTMLDivElement | null
   destination: string
-  kind: 'url' | 'file' | 'directory'
+  kind: 'url' | 'file' | 'directory' | DocumentNodeMediaKind
   primaryLabel: string
   message: string | null
   disabled: boolean
@@ -55,7 +65,7 @@ export function TerminalLinkSurface({
         )
       : null
   }
-  const Icon = kind === 'url' ? ExternalLink : kind === 'directory' ? FolderOpen : FileText
+  const Icon = ACTION_ICONS[kind]
   const shortcut = (alternate = false) => (
     <span className="terminal-link-card__shortcut" aria-hidden="true">
       {alternate ? <kbd>{isMac ? '⇧' : 'Shift'}</kbd> : null}

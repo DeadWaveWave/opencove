@@ -38,6 +38,10 @@ export function resolveFilesystemApiForMount(
 ): MountAwareFilesystemApi | null {
   const controlSurfaceInvoke = resolveControlSurfaceInvoke()
 
+  if (mountId && !controlSurfaceInvoke) {
+    return null
+  }
+
   if (mountId && controlSurfaceInvoke) {
     return {
       readFileBytes: async ({ uri }) =>

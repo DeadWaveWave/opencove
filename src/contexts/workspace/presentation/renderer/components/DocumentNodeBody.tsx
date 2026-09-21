@@ -1,6 +1,7 @@
 import type { DocumentNavigationProps } from './useDocumentNodeNavigation'
-import type { JSX } from 'react'
+import { useEffect, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { DocumentNodeSystemOpen } from './DocumentNodeSystemOpen'
 import { DocumentNodeMonacoEditor } from './DocumentNode.monaco'
 import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
 
@@ -8,6 +9,7 @@ export function DocumentNodeBody({
   navigation,
   onNavigationApplied,
   uri,
+  mountId,
   isLoading,
   loadError,
   mediaLoadError,
@@ -24,6 +26,7 @@ export function DocumentNodeBody({
   onMediaError,
 }: DocumentNavigationProps & {
   uri: string
+  mountId: string | null
   isLoading: boolean
   loadError: string | null
   mediaLoadError: boolean
@@ -40,6 +43,11 @@ export function DocumentNodeBody({
   onMediaError: () => void
 }): JSX.Element {
   const { t } = useTranslation()
+  useEffect(() => {
+    if (!isLoading && !loadError && (mediaSource || unsupportedKind) && navigation?.uri === uri) {
+      onNavigationApplied?.(navigation.requestId)
+    }
+  }, [isLoading, loadError, mediaSource, navigation, onNavigationApplied, unsupportedKind, uri])
 
   return (
     <div className="document-node__body">
@@ -66,24 +74,38 @@ export function DocumentNodeBody({
       ) : mediaLoadError ? (
         <div className="document-node__state document-node__state--warning">
           <div className="document-node__state-title">
-            {t('documentNode.mediaUnsupportedTitle')}
+            {t(
+              mediaSource?.kind === 'image'
+                ? 'documentNode.imageUnsupportedTitle'
+                : 'documentNode.mediaUnsupportedTitle',
+            )}
           </div>
           <div className="document-node__state-message">
-            {t('documentNode.mediaUnsupportedMessage')}
+            {t(
+              mediaSource?.kind === 'image'
+                ? 'documentNode.imageUnsupportedMessage'
+                : 'documentNode.mediaUnsupportedMessage',
+            )}
           </div>
+          <DocumentNodeSystemOpen uri={uri} mountId={mountId} />
         </div>
       ) : unsupportedKind ? (
         <div className="document-node__state document-node__state--warning">
           <div className="document-node__state-title">
-            {unsupportedKind === 'binary'
-              ? t('documentNode.binaryTitle')
-              : t('documentNode.tooLargeTitle')}
+            {unsupportedKind === 'imageTooLarge'
+              ? t('documentNode.imageTooLargeTitle')
+              : unsupportedKind === 'binary'
+                ? t('documentNode.binaryTitle')
+                : t('documentNode.tooLargeTitle')}
           </div>
           <div className="document-node__state-message">
-            {unsupportedKind === 'binary'
-              ? t('documentNode.binaryMessage')
-              : t('documentNode.tooLargeMessage')}
+            {unsupportedKind === 'imageTooLarge'
+              ? t('documentNode.imageTooLargeMessage')
+              : unsupportedKind === 'binary'
+                ? t('documentNode.binaryMessage')
+                : t('documentNode.tooLargeMessage')}
           </div>
+          <DocumentNodeSystemOpen uri={uri} mountId={mountId} />
         </div>
       ) : mediaSource ? (
         <div
@@ -92,7 +114,17 @@ export function DocumentNodeBody({
             event.stopPropagation()
           }}
         >
-          {mediaSource.kind === 'audio' ? (
+          {mediaSource.kind === 'image' ? (
+            <img
+              key={mediaSource.url}
+              className="document-node__media document-node__media--image nodrag"
+              data-testid="document-node-image"
+              src={mediaSource.url}
+              alt={uri}
+              draggable={false}
+              onError={onMediaError}
+            />
+          ) : mediaSource.kind === 'audio' ? (
             <audio
               className="document-node__media document-node__media--audio nodrag"
               data-testid="document-node-audio"
