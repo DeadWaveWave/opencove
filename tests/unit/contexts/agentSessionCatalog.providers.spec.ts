@@ -179,16 +179,13 @@ describe('listAgentSessions provider-specific catalogs', () => {
     })
   })
 
-  it.each(['pi', 'kimi'] as const)(
-    'does not misroute %s session discovery through another provider CLI',
-    async provider => {
-      await expect(
-        listAgentSessions({ provider, cwd: '/Users/tester/Development/cove', limit: 10 }),
-      ).resolves.toMatchObject({ provider, sessions: [] })
-      expect(resolveAgentExecutableInvocationMock).not.toHaveBeenCalled()
-      expect(execFileMock).not.toHaveBeenCalled()
-    },
-  )
+  it('does not misroute unsupported Kimi session listing through another provider CLI', async () => {
+    await expect(
+      listAgentSessions({ provider: 'kimi', cwd: '/Users/tester/Development/cove', limit: 10 }),
+    ).resolves.toMatchObject({ provider: 'kimi', sessions: [] })
+    expect(resolveAgentExecutableInvocationMock).not.toHaveBeenCalled()
+    expect(execFileMock).not.toHaveBeenCalled()
+  })
 
   it('falls back to OpenCode sqlite metadata when the CLI is unavailable', async () => {
     const cwd = '/Users/tester/Development/cove'

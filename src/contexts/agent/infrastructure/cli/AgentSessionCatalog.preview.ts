@@ -55,7 +55,7 @@ function extractTextFromContentArray(content: unknown): string | null {
   return normalizeSessionPreview(parts.join(' '))
 }
 
-function extractTextFromMessageContent(content: unknown): string | null {
+export function extractTextFromMessageContent(content: unknown): string | null {
   if (typeof content === 'string') {
     return normalizeSessionPreview(content)
   }
