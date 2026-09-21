@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import { resolve } from 'node:path'
 import type { AgentProviderId } from '@shared/contracts/dto'
 import { resolveOpenCodeDbPath } from '../opencode/OpenCodeDbLocator'
+import { extractPiLastAssistantMessage } from './PiSessionLastAssistantMessage'
 import {
   isSqliteBusyError,
   listSqliteTableColumns,
@@ -313,6 +314,9 @@ export async function readLastAssistantMessageFromSessionFile(
   }
 
   const content = await fs.readFile(filePath, 'utf8')
+  if (provider === 'pi') {
+    return extractPiLastAssistantMessage(content)
+  }
   const lines = content.split('\n')
   let lastMessage: string | null = null
 

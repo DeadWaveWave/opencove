@@ -213,16 +213,23 @@ export function createBrowserAgentApi(): AgentApi {
         payload?.startedAt,
         'agent.readLastMessage startedAt',
       )
+      normalizeStartedAtMs(startedAt)
+      const requestedSessionId =
+        payload?.sessionId === null || payload?.sessionId === undefined
+          ? null
+          : normalizeRequiredString(payload.sessionId, 'agent.readLastMessage sessionId')
 
-      const lookup = await resolveAgentSessionIdForLookup({ provider, cwd, startedAt })
-      if (!lookup) {
+      const sessionId =
+        requestedSessionId ??
+        (await resolveAgentSessionIdForLookup({ provider, cwd, startedAt }))?.sessionId
+      if (!sessionId) {
         return { message: null }
       }
 
       const final = await invokeBrowserControlSurface<{ message: string | null }>({
         kind: 'query',
         id: 'session.finalMessage',
-        payload: { sessionId: lookup.sessionId },
+        payload: { sessionId },
       })
 
       return { message: final.message ?? null }

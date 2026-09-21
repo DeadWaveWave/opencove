@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Agent: restore Pi session listing and switching, copy the last assistant reply from the saved branch, and target the correct managed session after recovery. (#414)
 - Sidebar: preserve collapsed projects and Space groups across app restarts, while keeping their disclosure choices independent. (#411)
 - Terminal: route local desktop image paste to native Pi, Kimi, Codex, Claude Code, and OMP keybindings while preserving text paste. (#409)
 - Desktop: close the focused input window or selected canvas window with Cmd/Ctrl+W without closing the app, and require two Cmd+Q presses within 1.5 seconds to quit on macOS. (#410)
