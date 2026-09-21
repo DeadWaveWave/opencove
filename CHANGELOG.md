@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Files: preview terminal-linked images in their original file windows, retain audio/video playback, and offer explicit system opening for unsupported formats instead of treating binary files as text. (#416)
 - Terminal: recognize complete wrapped URLs and file paths, preserve file line and column navigation, and use compact link actions with predictable selection and focus. (#416)
 - Terminal: open verified local directory links in the system file manager without requiring a matching Space, while preserving remote source and path permissions. (#416)
 - Agent: restore Pi session listing and switching, copy the last assistant reply from the saved branch, and target the correct managed session after recovery. (#414)
