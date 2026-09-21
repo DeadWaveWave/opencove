@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Terminal: keep launch assets in the private application profile and repair missing or damaged scripts before starting new terminals, without disrupting existing shell paths. (#415)
+
 - Sidebar: preserve collapsed projects and Space groups across app restarts, while keeping their disclosure choices independent. (#411)
 - Terminal: route local desktop image paste to native Pi, Kimi, Codex, Claude Code, and OMP keybindings while preserving text paste. (#409)
 - Desktop: close the focused input window or selected canvas window with Cmd/Ctrl+W without closing the app, and require two Cmd+Q presses within 1.5 seconds to quit on macOS. (#410)
