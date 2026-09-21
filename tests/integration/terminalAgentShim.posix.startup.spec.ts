@@ -48,6 +48,7 @@ async function createWrappedShell(options: {
     resolveHookInjection: () => null,
   })
   const assets = new TerminalAgentTelemetryAssetStore({
+    parentDirectory: options.root,
     runtimeExecutable: process.execPath,
     platform: process.platform,
   })

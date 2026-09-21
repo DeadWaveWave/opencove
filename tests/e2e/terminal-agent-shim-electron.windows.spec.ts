@@ -20,6 +20,7 @@ test('Windows interactive shim waits for the Electron GUI executable to publish 
     `@echo off\r\n"${process.execPath}" "%~dp0provider.cjs" %*\r\nexit /b %ERRORLEVEL%\r\n`,
   )
   const assets = new TerminalAgentTelemetryAssetStore({
+    parentDirectory: root,
     platform: 'win32',
     runtimeExecutable: createRequire(__filename)('electron') as string,
   })
@@ -58,6 +59,13 @@ test('Windows interactive shim waits for the Electron GUI executable to publish 
       .poll(() => output, { timeout: 15_000 })
       .toContain('PROVIDER_ARGS=["argument with spaces"]')
     await expect.poll(() => output, { timeout: 15_000 }).toContain('PROVIDER_EXIT=37')
+    await expect.poll(() => readdir(published.planDirectory)).toEqual([])
+    // Existing PowerShell keeps its PATH: repair must restore that exact root.
+    await rm(published.rootDirectory, { recursive: true })
+    expect(await assets.ensure()).toEqual(published)
+    pty.write("codex 'after repair'; Write-Output ('REPAIRED_EXIT=' + $LASTEXITCODE)\r")
+    await expect.poll(() => output, { timeout: 15_000 }).toContain('PROVIDER_ARGS=["after repair"]')
+    await expect.poll(() => output, { timeout: 15_000 }).toContain('REPAIRED_EXIT=37')
     await expect.poll(() => readdir(published.planDirectory)).toEqual([])
     expect(output).not.toContain('ItemNotFoundException')
     pty.write("Write-Output ('SHELL_'+'REUSED')\r")
