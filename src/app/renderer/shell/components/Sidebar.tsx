@@ -342,7 +342,6 @@ export function Sidebar({
                 className="workspace-sidebar__toolbar-button"
                 data-testid="app-header-settings"
                 label={t('common.settings')}
-                aria-haspopup="dialog"
                 onClick={() => onOpenSettings()}
               >
                 <Settings aria-hidden="true" />

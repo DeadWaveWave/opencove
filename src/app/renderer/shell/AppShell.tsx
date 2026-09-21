@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolvePerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
 import { usePerformanceIncidentRecorder } from '@app/renderer/performanceDiagnostics/performanceIncidentRecorder'
@@ -12,7 +12,8 @@ import { EndpointOverviewProvider } from './components/EndpointOverviewProvider'
 import { AppHeader } from './components/AppHeader'
 import { AppShellBootBoundary } from './components/AppShellBootBoundary'
 import { AppShellOverlays } from './components/AppShellOverlays'
-import { AppShellModals } from './components/AppShellModals'
+import { AppSettingsPage } from './components/AppSettingsPage'
+import { WhatsNewDialog } from './components/WhatsNewDialog'
 import { AppShellPopups } from './components/AppShellPopups'
 import { AppPrimarySidebar } from './components/AppPrimarySidebar'
 import { WorkspaceDirectoryPickerBridge } from './components/WorkspaceDirectoryPickerBridge'
@@ -41,7 +42,7 @@ import { usePrimarySidebar } from './hooks/usePrimarySidebar'
 import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
 import { useCommandCenterShortcutHint } from './hooks/useCommandCenterShortcutHint'
 import { useAppStore } from './store/useAppStore'
-import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
+import { useSettingsPageNavigation } from './hooks/useSettingsPageNavigation'
 import { useIssueReportUiDiagnostics } from './hooks/useIssueReportUiDiagnostics'
 
 export default function App(): React.JSX.Element {
@@ -82,8 +83,6 @@ export default function App(): React.JSX.Element {
     setProjectMountManager,
     setProjectDeleteConfirmation,
     setAgentSettings,
-    setIsSettingsOpen,
-    setSettingsOpenPageId,
   } = useAppStore()
 
   const { isPersistReady } = useHydrateAppState({
@@ -154,8 +153,6 @@ export default function App(): React.JSX.Element {
     [setAgentSettings],
   )
 
-  const [isFocusNodeTargetZoomPreviewing, setFocusNodeZoomPreviewing] = useState(false)
-  const [settingsInitialPageId, setSettingsInitialPageId] = useState<SettingsPageId | null>(null)
   const controlCenterButtonRef = useRef<HTMLButtonElement | null>(null)
   const {
     isCommandCenterOpen,
@@ -185,10 +182,7 @@ export default function App(): React.JSX.Element {
   } = useShellOverlayState()
 
   const hasBlockingShellOverlay =
-    isSettingsOpen ||
-    hasBlockingOverlay ||
-    projectMountManager !== null ||
-    projectDeleteConfirmation !== null
+    hasBlockingOverlay || projectMountManager !== null || projectDeleteConfirmation !== null
 
   const sidebar = usePrimarySidebar({
     isCollapsed: isPrimarySidebarCollapsed,
@@ -196,22 +190,27 @@ export default function App(): React.JSX.Element {
     hasBlockingOverlay: hasBlockingShellOverlay || isAddProjectWizardOpen,
     onTogglePinned: toggleSidebarPinned,
   })
-  useWebsiteWindowOcclusionSync(hasBlockingShellOverlay || sidebar.isDrawerOpen)
+  useWebsiteWindowOcclusionSync(isSettingsOpen || hasBlockingShellOverlay || sidebar.isDrawerOpen)
+  const {
+    isFocusNodeTargetZoomPreviewing,
+    setFocusNodeZoomPreviewing,
+    settingsInitialPageId,
+    handleOpenSettings,
+    handleCloseSettings,
+  } = useSettingsPageNavigation({
+    closeTransientOverlays,
+    closeSidebar: sidebar.close,
+    flushPersistNow,
+  })
 
   useAppKeybindings({
-    enabled:
-      isPersistReady && !isSettingsOpen && !isIssueReportOpen && projectDeleteConfirmation === null,
+    enabled: isPersistReady && !isIssueReportOpen && projectDeleteConfirmation === null,
     settings: {
       disableAppShortcutsWhenTerminalFocused: agentSettings.disableAppShortcutsWhenTerminalFocused,
       keybindings: agentSettings.keybindings,
     },
     onToggleCommandCenter: toggleCommandCenter,
-    onOpenSettings: () => {
-      closeTransientOverlays()
-      setSettingsInitialPageId(null)
-      setSettingsOpenPageId(null)
-      setIsSettingsOpen(true)
-    },
+    onOpenSettings: handleOpenSettings,
     onTogglePrimarySidebar: () => {
       closeTransientOverlays()
       sidebar.toggle()
@@ -221,6 +220,7 @@ export default function App(): React.JSX.Element {
       void handleAddWorkspace()
     },
     onOpenWorkspaceSearch: () => {
+      handleCloseSettings()
       openWorkspaceSearch()
     },
   })
@@ -239,12 +239,6 @@ export default function App(): React.JSX.Element {
     }
   }, [agentSettings.performanceMonitorHeaderButtonEnabled, closePerformanceMonitor])
 
-  useEffect(() => {
-    if (!isSettingsOpen) {
-      setFocusNodeZoomPreviewing(false)
-    }
-  }, [isSettingsOpen])
-
   const commandCenterShortcutHint = useCommandCenterShortcutHint(agentSettings.keybindings)
 
   const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
@@ -260,7 +254,11 @@ export default function App(): React.JSX.Element {
     onChangeSettings: setAgentSettings,
   })
 
-  const handleAddWorkspace = useAddProjectRequest(openAddProjectWizard, setFocusNodeZoomPreviewing)
+  const requestAddWorkspace = useAddProjectRequest(openAddProjectWizard, setFocusNodeZoomPreviewing)
+  const handleAddWorkspace = () => {
+    handleCloseSettings()
+    requestAddWorkspace()
+  }
 
   const {
     handleWorkspaceNodesChange,
@@ -292,17 +290,6 @@ export default function App(): React.JSX.Element {
     projectContextMenu,
     setProjectContextMenu,
   })
-
-  const handleOpenSettings = useCallback(
-    (initialPageId: SettingsPageId | null = null): void => {
-      setFocusNodeZoomPreviewing(false)
-      setSettingsInitialPageId(initialPageId)
-      closeTransientOverlays()
-      setSettingsOpenPageId(null)
-      setIsSettingsOpen(true)
-    },
-    [closeTransientOverlays, setIsSettingsOpen, setSettingsOpenPageId],
-  )
 
   return (
     <AppShellBootBoundary isBootReady={isPersistReady}>
@@ -378,7 +365,10 @@ export default function App(): React.JSX.Element {
             terminalDisplayCalibration={terminalDisplayCalibration}
             focusRequest={focusRequest}
             isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
-            shortcutsEnabled={isPersistReady && !hasBlockingShellOverlay && !sidebar.isDrawerOpen}
+            isSettingsPageOpen={isSettingsOpen}
+            shortcutsEnabled={
+              isPersistReady && !isSettingsOpen && !hasBlockingShellOverlay && !sidebar.isDrawerOpen
+            }
             onAddWorkspace={handleAddWorkspace}
             onShowMessage={handleShowMessage}
             onRequestPersistFlush={requestPersistFlush}
@@ -390,6 +380,25 @@ export default function App(): React.JSX.Element {
             onSpacesChange={handleWorkspaceSpacesChange}
             onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
             onOpenProjectContextMenu={setProjectContextMenu}
+          />
+
+          <AppSettingsPage
+            isSettingsOpen={isSettingsOpen}
+            settingsInitialPageId={settingsInitialPageId}
+            openSettingsPageId={settingsOpenPageId}
+            settings={agentSettings}
+            updateState={updateState}
+            modelCatalogByProvider={providerModelCatalog}
+            workspaces={workspaces}
+            onWorkspaceWorktreesRootChange={handleAnyWorkspaceWorktreesRootChange}
+            onWorkspaceEnvironmentVariablesChange={handleAnyWorkspaceEnvironmentVariablesChange}
+            isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
+            onFocusNodeTargetZoomPreviewChange={setFocusNodeZoomPreviewing}
+            onChangeSettings={setAgentSettings}
+            onCheckForUpdates={checkForUpdates}
+            onDownloadUpdate={downloadUpdate}
+            onInstallUpdate={installUpdate}
+            onCloseSettings={handleCloseSettings}
           />
 
           <WorkspaceSearchOverlay
@@ -428,7 +437,10 @@ export default function App(): React.JSX.Element {
           isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
           remoteWorkersEnabled
           onCloseCommandCenter={closeCommandCenter}
-          onOpenWorkspaceSearch={openWorkspaceSearch}
+          onOpenWorkspaceSearch={() => {
+            handleCloseSettings()
+            openWorkspaceSearch()
+          }}
           onOpenSettings={handleOpenSettings}
           onRequestOpenEndpoints={() => {
             handleOpenSettings('endpoints')
@@ -437,7 +449,10 @@ export default function App(): React.JSX.Element {
           onTogglePrimarySidebar={sidebar.toggle}
           onAddWorkspace={handleAddWorkspace}
           onSelectWorkspace={handleSelectWorkspace}
-          onSelectSpace={handleWorkspaceActiveSpaceChange}
+          onSelectSpace={spaceId => {
+            handleCloseSettings()
+            handleWorkspaceActiveSpaceChange(spaceId)
+          }}
           isSpaceArchivesOpen={isSpaceArchivesOpen}
           canvasInputModeSetting={agentSettings.canvasInputMode}
           canvasWheelBehaviorSetting={agentSettings.canvasWheelBehavior}
@@ -466,31 +481,7 @@ export default function App(): React.JSX.Element {
             }
           }}
         />
-        <AppShellModals
-          isSettingsOpen={isSettingsOpen}
-          settingsInitialPageId={settingsInitialPageId}
-          openSettingsPageId={settingsOpenPageId}
-          settings={agentSettings}
-          updateState={updateState}
-          modelCatalogByProvider={providerModelCatalog}
-          workspaces={workspaces}
-          onWorkspaceWorktreesRootChange={handleAnyWorkspaceWorktreesRootChange}
-          onWorkspaceEnvironmentVariablesChange={handleAnyWorkspaceEnvironmentVariablesChange}
-          isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
-          onFocusNodeTargetZoomPreviewChange={setFocusNodeZoomPreviewing}
-          onChangeSettings={setAgentSettings}
-          onCheckForUpdates={checkForUpdates}
-          onDownloadUpdate={downloadUpdate}
-          onInstallUpdate={installUpdate}
-          onCloseSettings={() => {
-            flushPersistNow()
-            setFocusNodeZoomPreviewing(false)
-            setSettingsInitialPageId(null)
-            setSettingsOpenPageId(null)
-            setIsSettingsOpen(false)
-          }}
-          whatsNew={whatsNew}
-        />
+        <WhatsNewDialog {...whatsNew} onClose={whatsNew.close} />
         <WorkspaceDirectoryPickerBridge />
       </EndpointOverviewProvider>
     </AppShellBootBoundary>

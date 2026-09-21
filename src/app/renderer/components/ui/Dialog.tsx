@@ -95,7 +95,7 @@ interface DialogFocusOwner {
 const activeFocusOwners: DialogFocusOwner[] = []
 let pendingFocusRestoreTimer: number | null = null
 
-function cancelPendingFocusRestore(): void {
+export function cancelPendingFocusRestore(): void {
   if (pendingFocusRestoreTimer === null) {
     return
   }

@@ -63,12 +63,14 @@ export function useAppShellWorkspaceActions({
 
   const handleSelectWorkspace = useCallback((workspaceId: string): void => {
     const store = useAppStore.getState()
+    store.setIsSettingsOpen(false)
     store.setActiveWorkspaceId(workspaceId)
     store.setFocusRequest(null)
   }, [])
 
   const handleSelectProjectCanvas = useCallback((workspaceId: string): void => {
     const store = useAppStore.getState()
+    store.setIsSettingsOpen(false)
     store.setActiveWorkspaceId(workspaceId)
     store.setWorkspaces(previous =>
       previous.map(workspace =>
@@ -83,6 +85,7 @@ export function useAppShellWorkspaceActions({
   const handleSelectAgentNode = useCallback(
     (workspaceId: string, nodeId: string, options?: { focusInput?: boolean }): void => {
       const store = useAppStore.getState()
+      store.setIsSettingsOpen(false)
       store.setActiveWorkspaceId(workspaceId)
       store.setFocusRequest(prev => ({
         kind: 'node',
@@ -97,6 +100,7 @@ export function useAppShellWorkspaceActions({
 
   const handleSelectSpace = useCallback((workspaceId: string, spaceId: string): void => {
     const store = useAppStore.getState()
+    store.setIsSettingsOpen(false)
     const targetWorkspace = store.workspaces.find(workspace => workspace.id === workspaceId) ?? null
     const targetSpace =
       targetWorkspace?.spaces.find(space => space.id === spaceId && !space.parentSpaceId) ?? null

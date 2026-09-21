@@ -135,7 +135,15 @@
 - 远程机器列表只保留一个添加入口，空列表不重复渲染操作卡片；打开 Web UI 的行只在运行时确认可访问时出现，刷新与错误反馈始终可达。终端字体预览使用独立的静态窗口与终端主题 token，字号只影响内容，不创建 PTY。
 - 单项页面不为了形式统一强加空洞层级；条件内容不得产生空 Group；重排时必须保留搜索/深链依赖的 `settings-section-*` anchor。
 - 窄窗口使用顶部范围与页面选择器、单列内容；应用页面选择器不混入项目。搜索在页头，所有导航入口（含外部 props）共用清理路径，避免旧 provider 搜索请求在重挂后重放。搜索先挂载详情、展开原生 details，再定位并聚焦目标。
-- Settings 容器必须具备 `dialog` 语义、可访问名称和 `aria-modal`。打开后把焦点移入面板，关闭后恢复到触发控件；所有交互必须有清晰的 `:focus-visible`。
+- Settings 是主内容区的命名页面，铺满画布所在区域，保留应用 Header 与 Sidebar 导航。
+  不使用 Dialog、遮罩、aria-modal 或焦点陷阱；顶部画布入口与设置关闭按钮可返回工作区。
+  点击 Sidebar 项目、Space、Agent 或命令中心中的画布目的地也应退出设置，再执行导航。
+- 设置开关仍由 shell 的单一状态持有，配置持久化与页面内导航分别沿用原 owner。
+  画布保持挂载和原尺寸；覆盖期间通过共享 inert lease 禁止输入并从辅助技术隐藏，
+  不得使用 display:none、重新创建 PTY 或更改 viewport。缩放预览期间只恢复画布可见性。
+- 桌面打开设置聚焦搜索，移动端聚焦关闭按钮以避免唤起软键盘；显式关闭返回导航入口，
+  Sidebar 导航保留目标焦点。弹层交接取消旧 Dialog 的延迟焦点恢复，嵌套菜单/弹窗先处理 Escape。
+  所有交互保留清晰的 :focus-visible，响应式布局根据设置内容区域宽度切换。
 - 搜索支持方向键选择结果、`Enter` 跳转和 `Escape` 退出；查询非空时首次 `Escape` 先清空查询，再次 `Escape` 关闭面板。关闭按钮必须有可访问名称。
 
 - 外观点阵预览必须消费现有画布绘制、mask、assembly、burst 与调度器。它使用独立 DOM 类和局部时钟，不创建真实 React Flow 节点、不启动 PTY、不发运行时创建/关闭事件；离屏、减少动态效果与关闭开关均需停止不必要的循环。
@@ -151,7 +159,10 @@
 - 分组原语：`src/contexts/settings/presentation/renderer/settingsPanel/SettingsGroup.tsx`
 - 主题选择：`src/contexts/settings/presentation/renderer/settingsPanel/AppearanceSection.tsx`
 
-参考原则：Apple HIG Settings（稳定 pane 与相关设置分组）、Windows App Settings（单列、受约束宽度与 section header）、GNOME HIG Boxed Lists（短静态偏好使用共享列表面，标题位于列表之外）。
+参考原则：[VS Code Settings editor](https://code.visualstudio.com/docs/configure/settings)
+（主区域设置页、搜索与作用域）、[React 状态保留](https://react.dev/learn/preserving-and-resetting-state)
+（保持工作画布树位置）、[HTML inert](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/inert)
+（不可见画布的交互隔离）。分组沿用 Apple HIG Settings、Windows App Settings 与 GNOME HIG Boxed Lists。
 
 ---
 

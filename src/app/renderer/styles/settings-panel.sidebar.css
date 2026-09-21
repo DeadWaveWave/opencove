@@ -145,16 +145,10 @@
   outline-offset: 2px;
 }
 
-@media (max-width: 760px) {
-  .settings-backdrop {
-    padding: 8px;
-  }
+@container settings-page (max-width: 760px) {
   .settings-panel {
-    width: calc(100vw - 16px);
-    height: calc(100vh - 16px);
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
-    border-radius: var(--cove-radius-xl);
   }
   .settings-panel__sidebar {
     display: grid;
@@ -192,16 +186,5 @@
   }
   .settings-panel__input-row {
     flex-wrap: wrap;
-  }
-}
-
-@media (max-width: 520px) {
-  .settings-backdrop {
-    padding: 0;
-  }
-  .settings-panel {
-    width: 100vw;
-    height: 100vh;
-    border-radius: 0;
   }
 }

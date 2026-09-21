@@ -44,7 +44,7 @@ test('keeps connections available for legacy profiles and groups browser securit
         configuration.uiTheme,
       )
       await page.getByTestId('app-header-settings').click()
-      const dialog = page.getByRole('dialog')
+      const dialog = page.getByTestId('settings-panel')
       await page.getByTestId('settings-section-nav-worker').click()
       await expect(dialog.getByTestId('settings-worker-home-mode-trigger')).toHaveCount(0)
       await expect(dialog.getByTestId('settings-experimental-remote-workers-enabled')).toHaveCount(

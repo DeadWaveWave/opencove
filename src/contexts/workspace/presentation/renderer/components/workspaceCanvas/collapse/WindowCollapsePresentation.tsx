@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { TerminalNodeData } from '../../../types'
 import { resolveAgentPresentation } from '../../../utils/agentPresentation'
 import { getCollapsedNodeSize } from '../../../utils/canvasCollapse'
@@ -7,6 +7,7 @@ import { useWorkspaceCollapse } from './WorkspaceCollapseContext'
 import { useCollapsedAgentMessage } from './useCollapsedAgentMessage'
 import { CollapsedWindow } from './CollapsedWindow'
 import { useWindowCollapseMotion } from './useWindowCollapseMotion'
+import { WindowNodeContextMenuContext } from '../view/WindowNodeContextMenuContext'
 
 /** Presentation geometry is independent of the mounted editor/PTY/browser frame. */
 export function WindowCollapsePresentation({
@@ -14,13 +15,16 @@ export function WindowCollapsePresentation({
   data,
   children,
   onToggleSelection,
+  onSelect,
 }: {
   id: string
   data: TerminalNodeData
   children: ReactNode
   onToggleSelection?: () => void
+  onSelect?: () => void
 }) {
   const collapse = useWorkspaceCollapse()
+  const openContextMenu = useContext(WindowNodeContextMenuContext)
   const collapsed = data.collapsePresentation?.collapsed === true
   const spaceHidden = data.collapsePresentation?.spaceHidden === true
   const hidden = collapsed || spaceHidden
@@ -103,6 +107,14 @@ export function WindowCollapsePresentation({
               onExpand={controls.toggle}
               onToggleSelection={onToggleSelection}
               onClose={() => closeHandler.current?.()}
+              onContextMenu={
+                openContextMenu
+                  ? point => {
+                      onSelect?.()
+                      openContextMenu({ ...point, closeWindow: () => closeHandler.current?.() })
+                    }
+                  : undefined
+              }
             />
           </div>
         ) : null}

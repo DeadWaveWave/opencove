@@ -19,6 +19,7 @@ export function CollapsedWindow({
   onExpand,
   onClose,
   onToggleSelection,
+  onContextMenu,
   active = true,
 }: {
   id: string
@@ -27,6 +28,7 @@ export function CollapsedWindow({
   onExpand: () => void
   onClose: () => void
   onToggleSelection?: () => void
+  onContextMenu?: (point: { x: number; y: number }) => void
   active?: boolean
 }) {
   const { t } = useTranslation()
@@ -68,6 +70,15 @@ export function CollapsedWindow({
       data-node-kind={data.kind}
       data-status={status?.state}
       data-animated={(active && animateStatus) || undefined}
+      onContextMenu={event => {
+        if (!active || !onContextMenu) {
+          return
+        }
+        event.preventDefault()
+        event.stopPropagation()
+        pointerStart.current = null
+        onContextMenu({ x: event.clientX, y: event.clientY })
+      }}
     >
       <div
         role="button"
@@ -80,7 +91,8 @@ export function CollapsedWindow({
         aria-expanded="false"
         aria-controls={`cove-node-runtime-${id}`}
         onPointerDown={event => {
-          pointerStart.current = active ? { x: event.clientX, y: event.clientY } : null
+          pointerStart.current =
+            active && event.button === 0 ? { x: event.clientX, y: event.clientY } : null
         }}
         onClick={event => {
           event.stopPropagation()
@@ -88,6 +100,7 @@ export function CollapsedWindow({
           pointerStart.current = null
           if (
             !active ||
+            event.button !== 0 ||
             event.metaKey ||
             event.ctrlKey ||
             (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 5)
@@ -101,6 +114,17 @@ export function CollapsedWindow({
           onExpand()
         }}
         onKeyDown={event => {
+          if (
+            active &&
+            onContextMenu &&
+            (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))
+          ) {
+            event.preventDefault()
+            event.stopPropagation()
+            const rect = event.currentTarget.getBoundingClientRect()
+            onContextMenu({ x: rect.left + rect.width / 2, y: rect.bottom })
+            return
+          }
           if (active && (event.key === 'Enter' || event.key === ' ')) {
             event.preventDefault()
             event.stopPropagation()

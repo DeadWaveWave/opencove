@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import {
   PIXEL_EFFECTS_DISABLED,
   PIXEL_EFFECTS_ENABLED,
+  readPixelEffects,
   setPixelEffects,
 } from './workspace-canvas.pixel-effects.helpers'
 import {
@@ -187,7 +188,8 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       await expectTheme(window, 'pixel')
       await expect(layer).toHaveCount(0)
       await setPixelEffects(window, PIXEL_EFFECTS_ENABLED)
-      await expect(layer).toBeVisible()
+      await expect(layer).toHaveCount(1)
+      await expect(layer).toHaveJSProperty('hidden', false)
       await expect(layer).toHaveAttribute('aria-hidden', 'true')
       await expect(layer).toHaveCSS('pointer-events', 'none')
       await expect(terminalNode(window).locator('.terminal-node__terminal')).toHaveCSS(
@@ -196,6 +198,7 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       )
       await attachScreenshot(window, testInfo, 'spatial-pixel-appearance')
       await window.locator('.settings-panel__close').click()
+      await expect(layer).toBeVisible()
       await attachScreenshot(window, testInfo, 'spatial-pixel-workspace')
       await expect.poll(() => readPersistedTheme(window)).toBe('pixel')
 
@@ -204,15 +207,25 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       await expect(layer).toBeVisible()
       await expect(terminalNode(window).locator('.terminal-node__terminal .xterm')).toBeVisible()
 
+      const switchThemeWithEffects = async (theme: 'light' | 'dark') => {
+        await openAppearance(window)
+        await selectCoveOption(window, 'settings-ui-theme', theme)
+        await expectTheme(window, theme)
+        await expect(layer).toHaveCount(1)
+        await expect(layer).toHaveJSProperty('hidden', false)
+        await expect.poll(() => readPixelEffects(window)).toEqual(PIXEL_EFFECTS_ENABLED)
+        await window.getByTestId('settings-panel-close').click()
+        await expect(layer).toBeVisible()
+        await expect(window.locator('.react-flow__background')).toHaveCount(0)
+      }
+      await switchThemeWithEffects('light')
+      await switchThemeWithEffects('dark')
       await openAppearance(window)
-      await selectCoveOption(window, 'settings-ui-theme', 'light')
-      await expectTheme(window, 'light')
-      await expect(layer).toBeVisible()
-      await selectCoveOption(window, 'settings-ui-theme', 'dark')
-      await expectTheme(window, 'dark')
-      await expect(layer).toBeVisible()
       await setPixelEffects(window, PIXEL_EFFECTS_DISABLED)
       await expect(layer).toHaveCount(0)
+      await window.getByTestId('settings-panel-close').click()
+      await expect(window.locator('.react-flow__background')).toBeVisible()
+      await expect.poll(() => readPixelEffects(window)).toEqual(PIXEL_EFFECTS_DISABLED)
     } finally {
       await electronApp.close()
     }

@@ -87,7 +87,7 @@ test.describe('Agent preference order', () => {
         window.locator('[id^="DndLiveRegion"]').filter({ hasText: 'Pi moved to position 3.' }),
       ).toHaveCount(1)
       await window.keyboard.press('Escape')
-      await expect(window.getByRole('dialog')).toBeVisible()
+      await expect(window.getByTestId('settings-panel')).toBeVisible()
       await expect(pi).not.toHaveAttribute('aria-pressed', 'true')
       await expect(rows(window).nth(1)).toHaveAttribute(
         'data-testid',
@@ -120,7 +120,7 @@ test.describe('Agent preference order', () => {
           agentProviderOrder: ['opencode', 'gemini', 'codex', 'pi', 'claude-code', 'kimi'],
         })
       await testInfo.attach('agent-order-pixel', {
-        body: await window.getByRole('dialog').screenshot(),
+        body: await window.getByTestId('settings-panel').screenshot(),
         contentType: 'image/png',
       })
       await window.reload({ waitUntil: 'domcontentloaded' })
@@ -175,7 +175,7 @@ test.describe('Agent preference order', () => {
             expect(metric.scrollWidth).toBeLessThanOrEqual(metric.width + 1)
             expect(metric.summaryFlexBasis).toBe('auto')
           }
-          const geometry = await window.getByRole('dialog').evaluate(element => {
+          const geometry = await window.getByTestId('settings-panel').evaluate(element => {
             const header = element.querySelector('.settings-panel__header')!.getBoundingClientRect()
             const content = element
               .querySelector('.settings-panel__content')!
@@ -196,7 +196,7 @@ test.describe('Agent preference order', () => {
           expect(geometry.headerBottom).toBeLessThanOrEqual(geometry.contentTop + 1)
           expect(geometry.searchBottom).toBeLessThanOrEqual(geometry.headerBottom + 1)
           await testInfo.attach(`agent-list-${theme}-${width}`, {
-            body: await window.getByRole('dialog').screenshot(),
+            body: await window.getByTestId('settings-panel').screenshot(),
             contentType: 'image/png',
           })
         }

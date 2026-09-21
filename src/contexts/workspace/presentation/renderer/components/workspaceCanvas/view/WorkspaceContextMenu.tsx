@@ -435,6 +435,7 @@ export function WorkspaceContextMenu({
             convertSelectedNoteToTask={convertSelectedNoteToTask}
             clearNodeSelection={clearNodeSelection}
             closeContextMenu={closeContextMenu}
+            closeWindow={contextMenu.closeWindow}
           />
         )}
       </ViewportMenuSurface>

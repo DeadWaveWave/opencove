@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react'
-import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { useTranslation } from '@app/renderer/i18n'
+import { SettingsPageFrame } from './settingsPanel/SettingsPageFrame'
 import { SettingsPanelHeader } from './settingsPanel/SettingsPanelHeader'
 import { SettingsPanelSidebar } from './settingsPanel/SettingsPanelSidebar'
 import { SettingsPanelSearch } from './settingsPanel/SettingsPanelSearch'
@@ -10,8 +10,6 @@ import { useSettingsPanelPageState } from './useSettingsPanelPageState'
 import { useSettingsPanelActions } from './useSettingsPanelActions'
 import { useSettingsSearchNavigation } from './useSettingsSearchNavigation'
 import { resolveSettingsPage } from './settingsPanel/settingsPageRegistry'
-
-const SETTINGS_FOCUS_OUTSIDE_SELECTORS = ['.cove-window'] as const
 
 export function SettingsPanel(props: SettingsPanelProps): React.JSX.Element {
   const {
@@ -64,30 +62,10 @@ export function SettingsPanel(props: SettingsPanelProps): React.JSX.Element {
       : ''
 
   return (
-    <Dialog
-      open
-      initialFocusRef={searchInputRef}
-      backdropClassName={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
-      className={`settings-panel${isFocusNodeTargetZoomPreviewing ? ' settings-panel--preview' : ''}`}
-      aria-labelledby="settings-panel-page-title"
-      aria-describedby={pageDescription ? 'settings-panel-page-description' : undefined}
-      data-testid="settings-panel"
-      inertRootSelector=".app-shell"
-      focusOutsideSelectors={SETTINGS_FOCUS_OUTSIDE_SELECTORS}
-      fallbackReturnFocusSelector='[data-testid="app-header-settings"]'
-      dismissOnEscape={false}
-      onDismiss={onClose}
-      onKeyDown={event => {
-        if (
-          event.key !== 'Escape' ||
-          event.defaultPrevented ||
-          (event.target instanceof Element && event.target.closest('.cove-window'))
-        ) {
-          return
-        }
-        event.preventDefault()
-        onClose()
-      }}
+    <SettingsPageFrame
+      searchInputRef={searchInputRef}
+      isPreviewing={isFocusNodeTargetZoomPreviewing}
+      onClose={onClose}
     >
       <SettingsPanelSidebar
         activePageId={activePageId}
@@ -98,7 +76,6 @@ export function SettingsPanel(props: SettingsPanelProps): React.JSX.Element {
         <SettingsPanelHeader
           title={pageTitle}
           description={pageDescription}
-          onClose={onClose}
           search={
             <SettingsPanelSearch
               searchInputRef={searchInputRef}
@@ -119,6 +96,6 @@ export function SettingsPanel(props: SettingsPanelProps): React.JSX.Element {
           />
         </div>
       </div>
-    </Dialog>
+    </SettingsPageFrame>
   )
 }

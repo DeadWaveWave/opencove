@@ -13,6 +13,7 @@ export function WorkspaceContextSelectionMenuContent({
   convertSelectedNoteToTask,
   clearNodeSelection,
   closeContextMenu,
+  closeWindow,
 }: {
   createSpaceFromSelectedNodes: () => void
   openLabelColorSubmenu: () => void
@@ -23,6 +24,7 @@ export function WorkspaceContextSelectionMenuContent({
   convertSelectedNoteToTask: () => void
   clearNodeSelection: () => void
   closeContextMenu: () => void
+  closeWindow?: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
@@ -80,6 +82,23 @@ export function WorkspaceContextSelectionMenuContent({
           {t('workspaceContextMenu.clearSelection')}
         </span>
       </button>
+      {closeWindow ? (
+        <>
+          <div className="workspace-context-menu__separator" />
+          <button
+            type="button"
+            data-testid="workspace-node-close"
+            className="workspace-context-menu__item--danger"
+            onClick={() => {
+              closeContextMenu()
+              closeWindow()
+            }}
+          >
+            <X className="workspace-context-menu__icon" aria-hidden="true" />
+            <span className="workspace-context-menu__label">{t('common.close')}</span>
+          </button>
+        </>
+      ) : null}
     </>
   )
 }

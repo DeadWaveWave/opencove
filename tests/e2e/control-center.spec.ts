@@ -306,10 +306,10 @@ test.describe('Control Center', () => {
       await expect(window.locator('.app-shell')).toHaveJSProperty('inert', false)
       await trigger.click()
       await settingsButton.click()
-      await expect(window.getByTestId('settings-panel-search')).toBeFocused()
+      await expect(window.getByTestId('settings-panel-close')).toBeFocused()
       await expect(controlCenter).toHaveCount(0)
       await window.waitForTimeout(100)
-      await expect(window.getByTestId('settings-panel-search')).toBeFocused()
+      await expect(window.getByTestId('settings-panel-close')).toBeFocused()
     } finally {
       await electronApp.close()
     }

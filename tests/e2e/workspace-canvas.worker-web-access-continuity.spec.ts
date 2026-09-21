@@ -86,7 +86,7 @@ async function openWebSettings(page: Page): Promise<void> {
 
 async function closeWebSettings(page: Page): Promise<void> {
   await page.locator('[data-testid="settings-panel-close"]').click()
-  await expect(page.locator('.settings-backdrop')).toHaveCount(0)
+  await expect(page.getByTestId('settings-panel')).toHaveCount(0)
 }
 
 async function applyWebEnabled(page: Page, enabled: boolean): Promise<void> {

@@ -1,10 +1,9 @@
 import React from 'react'
 import type { AgentProvider, AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import type { AppUpdateState, ReleaseNotesCurrentResult } from '@shared/contracts/dto'
+import type { AppUpdateState } from '@shared/contracts/dto'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
-import { WhatsNewDialog } from './WhatsNewDialog'
 
 interface ProviderModelCatalogEntry {
   models: string[]
@@ -14,18 +13,7 @@ interface ProviderModelCatalogEntry {
   error: string | null
 }
 
-export interface WhatsNewDialogState {
-  isOpen: boolean
-  fromVersion: string | null
-  toVersion: string | null
-  notes: ReleaseNotesCurrentResult | null
-  isLoading: boolean
-  error: string | null
-  compareUrl: string | null
-  close: () => void
-}
-
-export function AppShellModals({
+export function AppSettingsPage({
   isSettingsOpen,
   settingsInitialPageId,
   openSettingsPageId,
@@ -42,7 +30,6 @@ export function AppShellModals({
   onDownloadUpdate,
   onInstallUpdate,
   onCloseSettings,
-  whatsNew,
 }: {
   isSettingsOpen: boolean
   settingsInitialPageId: SettingsPageId | null
@@ -63,7 +50,6 @@ export function AppShellModals({
   onDownloadUpdate: () => void
   onInstallUpdate: () => void
   onCloseSettings: () => void
-  whatsNew: WhatsNewDialogState
 }): React.JSX.Element {
   return (
     <>
@@ -86,17 +72,6 @@ export function AppShellModals({
           onClose={onCloseSettings}
         />
       ) : null}
-
-      <WhatsNewDialog
-        isOpen={whatsNew.isOpen}
-        fromVersion={whatsNew.fromVersion}
-        toVersion={whatsNew.toVersion}
-        notes={whatsNew.notes}
-        isLoading={whatsNew.isLoading}
-        error={whatsNew.error}
-        compareUrl={whatsNew.compareUrl}
-        onClose={whatsNew.close}
-      />
     </>
   )
 }

@@ -2,21 +2,24 @@ import { expect, test } from '@playwright/test'
 import { launchApp, selectCoveOption } from './workspace-canvas.helpers'
 
 test.describe('Settings', () => {
-  test('uses modal dialog focus semantics', async ({ browserName: _browserName }, testInfo) => {
+  test('opens settings as a non-modal page with keyboard return to the canvas', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     const { electronApp, window } = await launchApp()
 
     try {
       const settingsButton = window.locator('[data-testid="app-header-settings"]')
       await settingsButton.click()
 
-      const dialog = window.getByRole('dialog')
+      const dialog = window.getByTestId('settings-panel')
       await expect(dialog).toBeVisible()
-      await expect(dialog).toHaveAttribute('aria-modal', 'true')
+      await expect(dialog).not.toHaveAttribute('aria-modal')
+      await expect(window.locator('.app-shell')).toHaveJSProperty('inert', false)
       await expect(window.locator('[data-testid="settings-panel-search"]')).toBeFocused()
 
-      const screenshotPath = testInfo.outputPath('settings-dialog-dark.png')
+      const screenshotPath = testInfo.outputPath('settings-page-dark.png')
       await window.screenshot({ path: screenshotPath })
-      await testInfo.attach('settings-dialog-dark', {
+      await testInfo.attach('settings-page-dark', {
         path: screenshotPath,
         contentType: 'image/png',
       })

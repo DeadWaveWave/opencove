@@ -290,6 +290,7 @@ export function useWorkspaceCanvasNodeTypes({
             id={props.id}
             data={props.data}
             onToggleSelection={() => selectNode(props.id, { toggle: true })}
+            onSelect={() => selectNode(props.id)}
           >
             <NodeComponent {...props} />
           </WindowCollapsePresentation>

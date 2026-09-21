@@ -81,7 +81,7 @@ export function useAppKeybindings({
     }
 
     const handler = (event: KeyboardEvent): void => {
-      if (event.isComposing || event.repeat) {
+      if (event.isComposing || event.repeat || event.defaultPrevented) {
         return
       }
 

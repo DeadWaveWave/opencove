@@ -14,7 +14,6 @@
 - Task Create / Edit / Assign
 - Task Delete Confirm
 - Agent Launcher
-- Settings Panel（作为大型窗口面板）
 - 由右键菜单、工具栏按钮触发的上下文操作浮层
 
 ### 1.1 先选择正确的容器
@@ -73,7 +72,8 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
 ### 4.2 各窗口复用策略
 - 模态窗口复用 `Dialog`，外观通过 `cove-window-*` 与 `WindowHeading` 统一；不用手写 backdrop
   重新实现焦点、Escape 或遮罩关闭。危险确认初始聚焦取消。
-- Settings 使用同一视觉 token（遮罩、玻璃面板、输入焦点），布局结构保持独立。
+- Settings 使用同一视觉 token（内容面、分隔线、输入焦点），作为主区域页面而非模态窗口；
+  页面导航、画布保留与焦点契约见 `docs/ui/README.md`。
 
 ### 4.3 菜单与文件窗口
 
@@ -145,6 +145,8 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
   持有。浏览器原生 host 按动画边界裁切，其 viewport 保持完整尺寸。
 - Disclosure 使用带 aria-expanded 的按钮。隐藏 runtime 不可 Tab 进入；减少动态效果
   关闭收起动效。关闭仍走原窗口的 owner，文档未保存确认不得被紧凑外壳绕过。
+- 折叠节点的右键与键盘上下文菜单复用展开节点的画布菜单，打开菜单不展开节点。
+  底部「关闭」调用该节点仍挂载的 runtime 关闭入口，保留未保存文档等既有保护。
 
 参考：[React Flow Node](https://reactflow.dev/api-reference/types/node)、
 [WAI-ARIA Disclosure](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)、

@@ -12,7 +12,7 @@ const TERMINAL_ID = 'settings-live-terminal'
 
 async function attachPanel(page: Page, testInfo: TestInfo, name: string) {
   const path = testInfo.outputPath(`${name}.png`)
-  await page.getByRole('dialog').screenshot({ path, animations: 'disabled' })
+  await page.getByTestId('settings-panel').screenshot({ path, animations: 'disabled' })
   await testInfo.attach(name, {
     path,
     contentType: 'image/png',

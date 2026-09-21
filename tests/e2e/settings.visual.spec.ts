@@ -220,7 +220,7 @@ async function resizeMainWindow(
 }
 
 test.describe('Settings visual shell', () => {
-  test('uses an accessible page-aware dialog and captures both themes', async ({
+  test('uses an accessible settings region and captures both themes', async ({
     browserName,
   }, testInfo) => {
     const { electronApp, window } = await launchApp()
@@ -228,15 +228,15 @@ test.describe('Settings visual shell', () => {
     try {
       void browserName
       const dialog = await openSettings(window)
-      await expect(dialog).toHaveAttribute('aria-modal', 'true')
+      await expect(dialog).not.toHaveAttribute('aria-modal')
       const heading = dialog.getByRole('heading', { level: 2 })
       const initialTitle = await readHeadingText(heading)
-      await expect(dialog).toHaveAccessibleName(initialTitle)
+      await expect(dialog).toHaveAccessibleName(/Settings|设置/)
 
       await dialog.locator('[data-testid="settings-section-nav-appearance"]').click()
       const appearanceTitle = await readHeadingText(heading)
       expect(appearanceTitle).not.toBe(initialTitle)
-      await expect(dialog).toHaveAccessibleName(appearanceTitle)
+      await expect(dialog).toHaveAccessibleName(/Settings|设置/)
 
       await expectNoHorizontalOverflow(dialog, 'settings dialog')
       await expectNoHorizontalOverflow(
@@ -378,10 +378,11 @@ test.describe('Settings visual shell', () => {
       const dialog = await openSettings(window)
       const search = dialog.locator('[data-testid="settings-panel-search"]')
 
-      await expect(window.locator('.app-shell')).toHaveAttribute('inert', '')
+      await expect(window.locator('.app-shell')).toHaveJSProperty('inert', false)
+      await expect(window.locator('.workspace-main')).toHaveJSProperty('inert', true)
       await expect(search).toBeFocused()
-      await search.press('Shift+Tab')
-      expect(await dialog.evaluate(panel => panel.contains(document.activeElement))).toBe(true)
+      await settingsTrigger.focus()
+      await expect(settingsTrigger).toBeFocused()
 
       await dialog.getByTestId('settings-section-nav-general').click()
       const themeTrigger = dialog.getByTestId('settings-language-trigger')
@@ -398,7 +399,7 @@ test.describe('Settings visual shell', () => {
       await window.keyboard.press('Escape')
 
       await expect(dialog).toBeHidden()
-      await expect(window.locator('.app-shell')).not.toHaveAttribute('inert', '')
+      await expect(window.locator('.workspace-main')).toHaveJSProperty('inert', false)
       await expect(settingsTrigger).toBeFocused()
     } finally {
       await electronApp.close()

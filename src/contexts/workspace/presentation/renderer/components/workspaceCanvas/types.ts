@@ -75,6 +75,8 @@ export interface SelectionContextMenuState {
   kind: 'selection'
   x: number
   y: number
+  /** Ephemeral runtime-owned close action for the compact window under the pointer. */
+  closeWindow?: () => void
 }
 
 export type ContextMenuState = PaneContextMenuState | SelectionContextMenuState

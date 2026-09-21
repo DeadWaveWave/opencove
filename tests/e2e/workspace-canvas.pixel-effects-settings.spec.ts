@@ -130,12 +130,24 @@ test.describe('Independent pixel effects settings', () => {
         'data-cove-pixel-assembly',
         'idle',
       )
-      await expect(window.getByTestId('workspace-pixel-layer')).toBeHidden()
+      await expect(window.getByTestId('workspace-pixel-layer')).toHaveCount(1)
+      await expect(window.getByTestId('workspace-pixel-layer')).toHaveJSProperty('hidden', true)
+      await expect(window.locator('.react-flow__background')).toHaveCount(1)
+      await expect
+        .poll(() => readPixelEffects(window))
+        .toEqual({
+          ...PIXEL_EFFECTS_DISABLED,
+          nodeCreationPixelEffectEnabled: true,
+        })
+      await window.getByTestId('settings-panel-close').click()
       await expect(window.locator('.react-flow__background')).toBeVisible()
+      await expect(window.getByTestId('workspace-pixel-layer')).toBeHidden()
+      await openPixelAppearance(window)
       await setPixelEffect(window, 'nodeClosePixelEffectEnabled', true)
       await setPixelEffect(window, 'canvasPixelBackgroundEnabled', true)
       await setPixelEffect(window, 'agentWorkingPixelEffectEnabled', true)
-      await expect(window.getByTestId('workspace-pixel-layer')).toBeVisible()
+      await expect(window.getByTestId('workspace-pixel-layer')).toHaveCount(1)
+      await expect(window.getByTestId('workspace-pixel-layer')).toHaveJSProperty('hidden', false)
       await expect(window.locator('.react-flow__background')).toHaveCount(0)
       await setPixelEffect(window, 'nodeCreationPixelEffectEnabled', false)
       const mixed = { ...PIXEL_EFFECTS_ENABLED, nodeCreationPixelEffectEnabled: false }
@@ -143,8 +155,12 @@ test.describe('Independent pixel effects settings', () => {
       await attachFrame(window, testInfo, 'pixel-effects-independent-switches')
       await selectCoveOption(window, 'settings-ui-theme', 'light')
       await window.locator('.settings-panel__close').click()
+      await expect(window.getByTestId('workspace-pixel-layer')).toBeVisible()
+      await expect(window.locator('.react-flow__background')).toHaveCount(0)
       await window.reload({ waitUntil: 'domcontentloaded' })
       await expect.poll(() => readPixelEffects(window)).toEqual(mixed)
+      await expect(window.getByTestId('workspace-pixel-layer')).toBeVisible()
+      await expect(window.locator('.react-flow__background')).toHaveCount(0)
       await expect(window.getByTestId('workspace-pixel-assembly')).toHaveAttribute(
         'data-cove-pixel-assembly',
         'idle',
@@ -159,6 +175,7 @@ test.describe('Independent pixel effects settings', () => {
       await expect(window.locator('.react-flow__background')).toBeVisible()
       await window.reload({ waitUntil: 'domcontentloaded' })
       await expect(window.getByTestId('workspace-pixel-layer')).toHaveCount(0)
+      await expect(window.locator('.react-flow__background')).toBeVisible()
     } finally {
       await electronApp.close()
     }

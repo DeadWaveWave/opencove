@@ -91,7 +91,7 @@
   padding: 8px 10px;
   line-height: 1.45;
 }
-@media (max-width: 760px) {
+@container settings-page (max-width: 760px) {
   .settings-panel__header {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -103,9 +103,6 @@
   }
   .settings-panel__header-copy {
     grid-area: 1 / 1;
-  }
-  .settings-panel__close {
-    grid-area: 1 / 2;
   }
   .settings-panel__search {
     grid-area: 2 / 1 / auto / -1;

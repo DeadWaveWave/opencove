@@ -1,29 +1,12 @@
-.settings-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--cove-backdrop);
-  backdrop-filter: blur(14px);
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  overflow: hidden;
-  transition:
-    background var(--cove-motion-normal) var(--cove-ease-standard),
-    backdrop-filter var(--cove-motion-normal) var(--cove-ease-standard);
-}
-
 .settings-panel {
-  width: min(1040px, calc(100vw - 40px));
-  height: min(780px, calc(100vh - 40px));
+  flex: 1;
+  width: 100%;
   min-width: 0;
   min-height: 0;
   background: var(--cove-settings-panel-background);
-  border: 1px solid var(--cove-border-subtle);
-  border-radius: var(--cove-radius-2xl);
   display: grid;
-  grid-template-columns: 204px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   overflow: hidden;
-  box-shadow: 0 24px 72px var(--cove-shadow-color-panel);
   transition:
     background 180ms ease,
     backdrop-filter 180ms ease,
@@ -33,7 +16,7 @@
 
 /* --- Content Layout --- */
 .settings-panel__content-wrapper {
-  background: var(--cove-window-surface);
+  background: var(--cove-app-background);
   display: flex;
   flex-direction: column;
   min-width: 0;

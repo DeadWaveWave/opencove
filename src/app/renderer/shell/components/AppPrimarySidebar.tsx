@@ -43,7 +43,7 @@ export function AppPrimarySidebar({
       id="primary-sidebar-navigation"
       aria-label={t('commandCenter.sidebar')}
       returnFocus={triggerRef}
-      inertRootSelector=".workspace-main, .app-header"
+      inertRootSelector=".workspace-main, .settings-page, .app-header"
       focusOutsideSelectors={[
         '.workspace-project-context-menu',
         '.workspace-sidebar__filter-options',

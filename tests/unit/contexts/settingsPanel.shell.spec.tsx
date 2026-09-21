@@ -1,6 +1,6 @@
 import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React from 'react'
-import { fireEvent, render as renderUi, screen, within } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as terminalProfilesHook from '../../../src/app/renderer/shell/hooks/useTerminalProfiles'
 import {
@@ -75,12 +75,17 @@ describe('SettingsPanel shell', () => {
     vi.restoreAllMocks()
   })
 
-  it('exposes modal dialog semantics and a meaningfully named close button', () => {
+  it('exposes a named settings region and a meaningfully named close button', async () => {
     renderSettingsPanel()
 
-    const dialog = screen.getByRole('dialog')
-    expect(dialog).toHaveAttribute('aria-modal', 'true')
-    expect(within(dialog).getByRole('button', { name: /close/i })).toBeVisible()
+    const panel = screen.getByTestId('settings-panel')
+    expect(panel).toBe(screen.getByRole('region', { name: 'Settings', exact: true }))
+    expect(panel).not.toHaveAttribute('aria-modal')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(within(panel).getByTestId('settings-panel-close')).toHaveAccessibleName(/close/i)
+    await waitFor(() => {
+      expect(within(panel).getByRole('searchbox', { name: 'Search settings' })).toHaveFocus()
+    })
   })
 
   it('updates the page heading when primary navigation changes pages', () => {

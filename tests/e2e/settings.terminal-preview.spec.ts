@@ -113,13 +113,13 @@ test('previews terminal typography in a stable themed window', async ({
         await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(width)
         await preview.scrollIntoViewIfNeeded()
         await expect(preview).toBeInViewport()
-        const size = await page.getByRole('dialog').evaluate(element => ({
+        const size = await page.getByTestId('settings-panel').evaluate(element => ({
           client: element.clientWidth,
           scroll: element.scrollWidth,
         }))
         expect(size.scroll).toBeLessThanOrEqual(size.client + 1)
         const path = testInfo.outputPath(`terminal-preview-${uiTheme}-${width}.png`)
-        await page.getByRole('dialog').screenshot({ path, animations: 'disabled' })
+        await page.getByTestId('settings-panel').screenshot({ path, animations: 'disabled' })
         await testInfo.attach(`terminal-preview-${uiTheme}-${width}`, {
           path,
           contentType: 'image/png',

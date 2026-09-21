@@ -1,8 +1,16 @@
-.settings-backdrop--preview {
+.settings-page--preview {
   background: transparent;
   backdrop-filter: none;
   pointer-events: none;
   transition: none;
+}
+
+.settings-page--preview .settings-page__tabs {
+  visibility: hidden;
+}
+
+.settings-panel--preview .settings-panel__content-wrapper {
+  background: transparent;
 }
 
 .settings-panel--preview {

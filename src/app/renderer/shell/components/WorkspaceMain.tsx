@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useLayoutEffect, useRef } from 'react'
+import { acquireInertRootLease } from '@app/renderer/components/ui/inertRootLease'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
@@ -17,6 +18,7 @@ function WorkspaceMainComponent({
   terminalDisplayCalibration,
   focusRequest,
   isFocusNodeTargetZoomPreviewing,
+  isSettingsPageOpen = false,
   shortcutsEnabled,
   onAddWorkspace,
   onShowMessage,
@@ -35,6 +37,7 @@ function WorkspaceMainComponent({
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   focusRequest: FocusRequest | null
   isFocusNodeTargetZoomPreviewing: boolean
+  isSettingsPageOpen?: boolean
   shortcutsEnabled: boolean
   onAddWorkspace: () => void
   onShowMessage: (message: string, tone?: WorkspaceCanvasMessageTone) => void
@@ -48,9 +51,21 @@ function WorkspaceMainComponent({
   onActiveSpaceChange: (spaceId: string | null) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
 }): React.JSX.Element {
+  const surfaceRef = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    if (isSettingsPageOpen && surfaceRef.current) {
+      return acquireInertRootLease(surfaceRef.current)
+    }
+    return undefined
+  }, [isSettingsPageOpen])
+  const surfaceProps = {
+    ref: surfaceRef,
+    className: `workspace-main${isSettingsPageOpen && !isFocusNodeTargetZoomPreviewing ? ' workspace-main--covered' : ''}`,
+    'aria-hidden': isSettingsPageOpen || undefined,
+  }
   if (!activeWorkspace) {
     return (
-      <main className="workspace-main">
+      <main {...surfaceProps}>
         <WorkspaceEmptyState onAddWorkspace={onAddWorkspace} />
       </main>
     )
@@ -65,7 +80,7 @@ function WorkspaceMainComponent({
   const focusSequence = activeFocusRequest?.sequence ?? 0
 
   return (
-    <main className="workspace-main">
+    <main {...surfaceProps}>
       <WorkspaceCanvas
         workspaceId={activeWorkspace.id}
         onShowMessage={onShowMessage}

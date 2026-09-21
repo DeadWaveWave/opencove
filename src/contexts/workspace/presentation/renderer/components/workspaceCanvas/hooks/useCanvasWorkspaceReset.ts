@@ -3,9 +3,10 @@ import { useWorkspaceCanvasNodesSelectionActive } from './useNodesSelectionActiv
 
 export function useWorkspaceCanvasWorkspaceReset(
   workspaceId: string,
+  selectedNodeCount: number,
 ): React.MutableRefObject<string | null> {
   const exclusiveNodeDragAnchorIdRef = useRef<string | null>(null)
-  useWorkspaceCanvasNodesSelectionActive()
+  useWorkspaceCanvasNodesSelectionActive(selectedNodeCount)
 
   useLayoutEffect(() => {
     exclusiveNodeDragAnchorIdRef.current = null
