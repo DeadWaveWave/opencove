@@ -216,6 +216,29 @@ function extractOpenCodeAssistantMessage(parsed: unknown): string | null {
   return lastMessage
 }
 
+function extractPiAssistantMessage(parsed: unknown): string | null {
+  if (
+    !isRecord(parsed) ||
+    parsed.type !== 'message' ||
+    !isRecord(parsed.message) ||
+    parsed.message.role !== 'assistant' ||
+    !Array.isArray(parsed.message.content)
+  ) {
+    return null
+  }
+
+  // Pi concatenates text blocks directly; thinking and tool payloads are not reply text.
+  return normalizeMessageText(
+    parsed.message.content
+      .flatMap((block: unknown) =>
+        isRecord(block) && block.type === 'text' && typeof block.text === 'string'
+          ? [block.text]
+          : [],
+      )
+      .join(''),
+  )
+}
+
 export function extractLastAssistantMessageFromSessionData(
   provider: AgentProviderId,
   parsed: unknown,
@@ -234,6 +257,10 @@ export function extractLastAssistantMessageFromSessionData(
 
   if (provider === 'opencode') {
     return extractOpenCodeAssistantMessage(parsed)
+  }
+
+  if (provider === 'pi') {
+    return extractPiAssistantMessage(parsed)
   }
 
   return null
