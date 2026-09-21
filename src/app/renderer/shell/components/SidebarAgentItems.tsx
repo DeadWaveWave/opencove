@@ -1,5 +1,5 @@
 import React from 'react'
-import { Circle, EyeOff, LoaderCircle, MoreHorizontal, Pause } from 'lucide-react'
+import { Circle, EyeOff, LoaderCircle, MoreHorizontal, Pin, Pause } from 'lucide-react'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
@@ -10,6 +10,11 @@ import type { SidebarAgentItemModel } from '../utils/sidebarAgents'
 import type { ProjectContextMenuState } from '../types'
 import { createAgentSortableId, sidebarSortableTransition } from './SidebarDnd'
 import { resolveAgentTreatedProvider } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
+import { useAppStore } from '../store/useAppStore'
+import {
+  setSidebarAgentPinned,
+  sidebarVisibilityKey,
+} from '@contexts/settings/domain/sidebarViewSettings'
 
 function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): React.JSX.Element {
   const { t } = useTranslation()
@@ -57,6 +62,10 @@ function SidebarAgentItem({
   const { t } = useTranslation()
   const { node, displayTitle, effectiveLabelColor, status } = item
   const provider = resolveAgentTreatedProvider(node)
+  const agentVisibilityKey = sidebarVisibilityKey(workspaceId, node.id)
+  const isPinned = useAppStore(
+    state => state.agentSettings.sidebarView.pinnedAgentIds?.[agentVisibilityKey] === true,
+  )
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: groupId ? createAgentSortableId(workspaceId, groupId, node.id) : node.id,
     disabled: groupId === null,
@@ -105,6 +114,25 @@ function SidebarAgentItem({
       >
         <SidebarAgentItemContent item={item} />
       </button>
+      {isPinned ? (
+        <button
+          type="button"
+          className="workspace-sidebar__more workspace-agent-item__pin"
+          data-testid={`workspace-agent-unpin-${workspaceId}-${node.id}`}
+          aria-label={t('projectContextMenu.unpinAgent')}
+          title={t('projectContextMenu.unpinAgent')}
+          onClick={event => {
+            event.preventDefault()
+            event.stopPropagation()
+            useAppStore.getState().setAgentSettings(previous => ({
+              ...previous,
+              sidebarView: setSidebarAgentPinned(previous.sidebarView, workspaceId, node.id, false),
+            }))
+          }}
+        >
+          <Pin size={14} fill="currentColor" strokeWidth={1.8} aria-hidden="true" />
+        </button>
+      ) : null}
       {item.sidebarHidden && !item.sidebarHiddenBySpace ? (
         <button
           type="button"

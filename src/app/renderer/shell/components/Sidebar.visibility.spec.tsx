@@ -171,4 +171,21 @@ describe('Sidebar view modes and temporary hiding', () => {
     expect(screen.getByTestId('workspace-agent-item-project-claude')).toBeTruthy()
     expect(screen.queryByTestId('workspace-agent-item-project-codex')).toBeNull()
   })
+
+  it('shows a pinned Agent unpin control on hoverable rows', () => {
+    render(<Harness />)
+
+    fireEvent.contextMenu(screen.getByTestId('workspace-agent-item-project-claude'))
+    fireEvent.click(screen.getByTestId('workspace-agent-context-pin-claude'))
+
+    const unpin = screen.getByTestId('workspace-agent-unpin-project-claude')
+    expect(unpin.getAttribute('aria-label')).toBe('Unpin Agent')
+
+    fireEvent.click(unpin)
+
+    expect(
+      useAppStore.getState().agentSettings.sidebarView.pinnedAgentIds?.['project:claude'],
+    ).not.toBe(true)
+    expect(screen.queryByTestId('workspace-agent-unpin-project-claude')).toBeNull()
+  })
 })

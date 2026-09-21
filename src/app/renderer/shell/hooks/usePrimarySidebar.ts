@@ -30,6 +30,7 @@ export function usePrimarySidebar({
   const autoReveal = usePrimarySidebarAutoReveal({
     isCollapsed: isCollapsed && !isMobile,
     isInteractionActive: isMenuOpen || isDragging,
+    isMenuOpen,
   })
   const close = useCallback(() => setDrawerOpen(false), [])
 

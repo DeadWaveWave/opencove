@@ -75,6 +75,45 @@ describe('usePrimarySidebarAutoReveal', () => {
     expect(result.current.isPeekOpen).toBe(true)
   })
 
+  it('keeps the peek open after a context menu action until the pointer moves', () => {
+    const { result, rerender } = renderHook(
+      ({ isInteractionActive, isMenuOpen }) =>
+        usePrimarySidebarAutoReveal({
+          isCollapsed: true,
+          isInteractionActive,
+          isMenuOpen,
+        }),
+      {
+        initialProps: { isInteractionActive: false, isMenuOpen: false },
+      },
+    )
+
+    act(() => {
+      result.current.handlePointerEnter()
+      vi.advanceTimersByTime(openDelayMs)
+      result.current.handlePointerLeave()
+      rerender({ isInteractionActive: true, isMenuOpen: true })
+    })
+    expect(result.current.isPeekOpen).toBe(true)
+
+    const menu = document.createElement('div')
+    menu.className = 'workspace-context-menu'
+    document.body.appendChild(menu)
+    act(() => {
+      menu.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+      rerender({ isInteractionActive: false, isMenuOpen: false })
+      vi.advanceTimersByTime(closeDelayMs + 50)
+    })
+    expect(result.current.isPeekOpen).toBe(true)
+
+    act(() => {
+      window.dispatchEvent(new Event('pointermove'))
+      vi.advanceTimersByTime(closeDelayMs)
+    })
+    expect(result.current.isPeekOpen).toBe(false)
+    menu.remove()
+  })
+
   it('resets the transient peek when the sidebar is pinned', () => {
     const { result, rerender } = renderHook(
       ({ isCollapsed }) =>

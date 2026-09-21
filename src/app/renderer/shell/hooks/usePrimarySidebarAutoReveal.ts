@@ -6,9 +6,16 @@ const SIDEBAR_AUTO_REVEAL_CLOSE_DELAY_MS = 420
 export function usePrimarySidebarAutoReveal({
   isCollapsed,
   isInteractionActive = false,
+  isMenuOpen = false,
 }: {
   isCollapsed: boolean
   isInteractionActive?: boolean
+  /**
+   * Whether the interaction lock comes from the sidebar context menu. A
+   * pointer action inside the menu should keep the peek open for the next
+   * interaction even after the menu dismisses.
+   */
+  isMenuOpen?: boolean
 }): {
   isPeekOpen: boolean
   handlePointerEnter: () => void
@@ -20,9 +27,34 @@ export function usePrimarySidebarAutoReveal({
   const isCollapsedRef = useRef(isCollapsed)
   const isInteractionActiveRef = useRef(isInteractionActive)
   const isPointerInsideRef = useRef(false)
+  const previousInteractionActiveRef = useRef(isInteractionActive)
+  const menuActionRef = useRef(false)
+  const postMenuActionHeldRef = useRef(false)
+  const [isPostMenuActionHeld, setIsPostMenuActionHeld] = useState(false)
 
   isCollapsedRef.current = isCollapsed
   isInteractionActiveRef.current = isInteractionActive
+
+  // Context menu actions are rendered in a portal. Remember pointer presses
+  // that happen inside that menu so closing the menu after an action does not
+  // immediately collapse the sidebar underneath the pointer.
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return
+    }
+
+    const handleMenuPress = (event: Event): void => {
+      const target = event.target
+      menuActionRef.current =
+        target instanceof Element && target.closest('.workspace-context-menu') !== null
+    }
+    window.addEventListener('pointerdown', handleMenuPress, true)
+    window.addEventListener('mousedown', handleMenuPress, true)
+    return () => {
+      window.removeEventListener('pointerdown', handleMenuPress, true)
+      window.removeEventListener('mousedown', handleMenuPress, true)
+    }
+  }, [isMenuOpen])
 
   const clearOpenTimer = useCallback((): void => {
     if (openTimerRef.current !== null) {
@@ -58,22 +90,73 @@ export function usePrimarySidebarAutoReveal({
   useEffect(() => clearTimers, [clearTimers])
 
   useEffect(() => {
+    const wasInteractionActive = previousInteractionActiveRef.current
+    previousInteractionActiveRef.current = isInteractionActive
+
     if (!isCollapsed) {
       clearTimers()
+      postMenuActionHeldRef.current = false
+      setIsPostMenuActionHeld(false)
       setIsPeekOpen(false)
       return
     }
 
     if (isInteractionActive) {
       clearTimers()
+      postMenuActionHeldRef.current = false
+      setIsPostMenuActionHeld(false)
       setIsPeekOpen(true)
+      return
+    }
+
+    // A menu command dismisses the portal immediately after its pointer press.
+    // Keep the revealed rail visible until the pointer moves again, so the
+    // command does not make the sidebar disappear under the user's cursor.
+    if (
+      wasInteractionActive &&
+      menuActionRef.current &&
+      isPeekOpen &&
+      !isPointerInsideRef.current
+    ) {
+      menuActionRef.current = false
+      clearTimers()
+      postMenuActionHeldRef.current = true
+      isPointerInsideRef.current = true
+      setIsPostMenuActionHeld(true)
+      return
+    }
+
+    if (isPostMenuActionHeld) {
       return
     }
 
     if (isPeekOpen && !isPointerInsideRef.current) {
       scheduleClose()
     }
-  }, [clearTimers, isCollapsed, isInteractionActive, isPeekOpen, scheduleClose])
+  }, [
+    clearTimers,
+    isCollapsed,
+    isInteractionActive,
+    isPeekOpen,
+    isPostMenuActionHeld,
+    menuActionRef,
+    scheduleClose,
+  ])
+
+  useEffect(() => {
+    if (!isPostMenuActionHeld) {
+      return
+    }
+
+    const handlePointerMove = (): void => {
+      postMenuActionHeldRef.current = false
+      isPointerInsideRef.current = false
+      setIsPostMenuActionHeld(false)
+      scheduleClose()
+    }
+    window.addEventListener('pointermove', handlePointerMove, true)
+    return () => window.removeEventListener('pointermove', handlePointerMove, true)
+  }, [isPostMenuActionHeld, scheduleClose])
 
   const handlePointerEnter = useCallback((): void => {
     isPointerInsideRef.current = true
@@ -96,6 +179,9 @@ export function usePrimarySidebarAutoReveal({
   }, [clearTimers, isCollapsed])
 
   const handlePointerLeave = useCallback((): void => {
+    if (postMenuActionHeldRef.current) {
+      return
+    }
     isPointerInsideRef.current = false
     if (!isCollapsed) {
       return

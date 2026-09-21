@@ -111,8 +111,11 @@ test.describe('Primary Sidebar Context Menu', () => {
         sidebar,
         target: window.locator(`[data-testid="workspace-space-item-${workspaceId}-${spaceId}"]`),
       })
-      await window.mouse.click(700, 400)
+      await window.getByTestId(`workspace-space-context-pin-${spaceId}`).click()
       await expect(spaceMenu).toHaveCount(0)
+      await window.waitForTimeout(520)
+      await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
+      await window.mouse.move(700, 400)
       await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
 
       const agentMenu = await openMenuFromPeek({
@@ -120,8 +123,7 @@ test.describe('Primary Sidebar Context Menu', () => {
         sidebar,
         target: window.locator(`[data-testid="workspace-agent-item-${workspaceId}-${agentId}"]`),
       })
-      await window.getByTestId(`workspace-item-${workspaceId}`).hover()
-      await window.keyboard.press('Escape')
+      await window.getByTestId(`workspace-agent-context-pin-${agentId}`).click()
       await expect(agentMenu).toHaveCount(0)
       await window.waitForTimeout(520)
       await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
