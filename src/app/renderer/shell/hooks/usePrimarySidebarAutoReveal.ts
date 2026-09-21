@@ -3,6 +3,27 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 const SIDEBAR_AUTO_REVEAL_OPEN_DELAY_MS = 140
 const SIDEBAR_AUTO_REVEAL_CLOSE_DELAY_MS = 420
 
+type PointerPosition = {
+  clientX: number
+  clientY: number
+}
+
+function isPointerPositionInsideSidebar(position: PointerPosition | null): boolean {
+  if (position === null) {
+    return false
+  }
+
+  const sidebar = document.querySelector<HTMLElement>('[data-testid="workspace-sidebar"]')
+  const rect = sidebar?.getBoundingClientRect()
+  return (
+    rect !== undefined &&
+    position.clientX >= rect.left &&
+    position.clientX <= rect.right &&
+    position.clientY >= rect.top &&
+    position.clientY <= rect.bottom
+  )
+}
+
 export function usePrimarySidebarAutoReveal({
   isCollapsed,
   isInteractionActive = false,
@@ -29,6 +50,8 @@ export function usePrimarySidebarAutoReveal({
   const isPointerInsideRef = useRef(false)
   const previousInteractionActiveRef = useRef(isInteractionActive)
   const menuActionRef = useRef(false)
+  const menuActionPositionRef = useRef<PointerPosition | null>(null)
+  const menuActionResetTimerRef = useRef<number | null>(null)
   const postMenuActionHeldRef = useRef(false)
   const [isPostMenuActionHeld, setIsPostMenuActionHeld] = useState(false)
 
@@ -45,14 +68,40 @@ export function usePrimarySidebarAutoReveal({
 
     const handleMenuPress = (event: Event): void => {
       const target = event.target
-      menuActionRef.current =
-        target instanceof Element && target.closest('.workspace-context-menu') !== null
+      if (!(target instanceof Element) || target.closest('.workspace-context-menu') === null) {
+        return
+      }
+
+      menuActionRef.current = true
+      menuActionPositionRef.current = null
+      if ('clientX' in event && 'clientY' in event) {
+        const clientX = event.clientX
+        const clientY = event.clientY
+        if (typeof clientX === 'number' && typeof clientY === 'number') {
+          menuActionPositionRef.current = { clientX, clientY }
+        }
+      }
+
+      if (menuActionResetTimerRef.current !== null) {
+        window.clearTimeout(menuActionResetTimerRef.current)
+      }
+      menuActionResetTimerRef.current = window.setTimeout(() => {
+        menuActionResetTimerRef.current = null
+        if (document.querySelector('.workspace-context-menu') !== null) {
+          menuActionRef.current = false
+          menuActionPositionRef.current = null
+        }
+      }, 0)
     }
     window.addEventListener('pointerdown', handleMenuPress, true)
     window.addEventListener('mousedown', handleMenuPress, true)
     return () => {
       window.removeEventListener('pointerdown', handleMenuPress, true)
       window.removeEventListener('mousedown', handleMenuPress, true)
+      if (menuActionResetTimerRef.current !== null) {
+        window.clearTimeout(menuActionResetTimerRef.current)
+        menuActionResetTimerRef.current = null
+      }
     }
   }, [isMenuOpen])
 
@@ -95,6 +144,8 @@ export function usePrimarySidebarAutoReveal({
 
     if (!isCollapsed) {
       clearTimers()
+      menuActionRef.current = false
+      menuActionPositionRef.current = null
       postMenuActionHeldRef.current = false
       setIsPostMenuActionHeld(false)
       setIsPeekOpen(false)
@@ -103,6 +154,10 @@ export function usePrimarySidebarAutoReveal({
 
     if (isInteractionActive) {
       clearTimers()
+      // A color/icon action can re-render the still-open menu. It should not
+      // be mistaken for the later action that actually dismisses the menu.
+      menuActionRef.current = false
+      menuActionPositionRef.current = null
       postMenuActionHeldRef.current = false
       setIsPostMenuActionHeld(false)
       setIsPeekOpen(true)
@@ -110,19 +165,29 @@ export function usePrimarySidebarAutoReveal({
     }
 
     // A menu command dismisses the portal immediately after its pointer press.
-    // Keep the revealed rail visible until the pointer moves again, so the
-    // command does not make the sidebar disappear under the user's cursor.
-    if (
-      wasInteractionActive &&
-      menuActionRef.current &&
-      isPeekOpen &&
-      !isPointerInsideRef.current
-    ) {
+    // Use the action coordinates to decide whether the pointer is still over
+    // the Sidebar. This avoids collapsing the peek just because the portal
+    // menu disappeared underneath a cursor that is still over the Sidebar.
+    if (wasInteractionActive && menuActionRef.current) {
       menuActionRef.current = false
+      const actionPosition = menuActionPositionRef.current
+      menuActionPositionRef.current = null
+
+      if (!isPeekOpen) {
+        return
+      }
+
       clearTimers()
-      postMenuActionHeldRef.current = true
-      isPointerInsideRef.current = true
-      setIsPostMenuActionHeld(true)
+      const isActionInsideSidebar =
+        actionPosition === null
+          ? isPointerInsideRef.current
+          : isPointerPositionInsideSidebar(actionPosition)
+      isPointerInsideRef.current = isActionInsideSidebar
+      postMenuActionHeldRef.current = isActionInsideSidebar
+      setIsPostMenuActionHeld(isActionInsideSidebar)
+      if (!isActionInsideSidebar) {
+        scheduleClose()
+      }
       return
     }
 
@@ -148,7 +213,20 @@ export function usePrimarySidebarAutoReveal({
       return
     }
 
-    const handlePointerMove = (): void => {
+    const handlePointerMove = (event: PointerEvent): void => {
+      const isInsideSidebar = isPointerPositionInsideSidebar({
+        clientX: event.clientX,
+        clientY: event.clientY,
+      })
+
+      if (isInsideSidebar) {
+        postMenuActionHeldRef.current = false
+        isPointerInsideRef.current = true
+        clearCloseTimer()
+        setIsPostMenuActionHeld(false)
+        return
+      }
+
       postMenuActionHeldRef.current = false
       isPointerInsideRef.current = false
       setIsPostMenuActionHeld(false)
@@ -156,7 +234,7 @@ export function usePrimarySidebarAutoReveal({
     }
     window.addEventListener('pointermove', handlePointerMove, true)
     return () => window.removeEventListener('pointermove', handlePointerMove, true)
-  }, [isPostMenuActionHeld, scheduleClose])
+  }, [clearCloseTimer, isPostMenuActionHeld, scheduleClose])
 
   const handlePointerEnter = useCallback((): void => {
     isPointerInsideRef.current = true
