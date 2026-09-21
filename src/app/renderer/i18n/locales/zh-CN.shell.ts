@@ -5,6 +5,8 @@ export const zhCNShell = {
     cancel: '取消',
     pinSpace: '置顶空间',
     unpinSpace: '取消置顶',
+    pinAgent: '置顶 Agent',
+    unpinAgent: '取消置顶 Agent',
     projectIcon: '项目图标',
     defaultProjectIcon: '默认文件夹',
     icons: {

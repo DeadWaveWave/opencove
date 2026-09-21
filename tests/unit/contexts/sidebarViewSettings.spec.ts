@@ -17,7 +17,7 @@ describe('Sidebar visibility preferences', () => {
     },
   )
 
-  it('round trips scoped visibility and dropdown values through AgentSettings persistence', () => {
+  it('round trips scoped visibility and compact mode through AgentSettings persistence', () => {
     const sidebarView = normalizeSidebarViewSettings({
       hiddenSpaceIds: { 'project-a:space': true, invalid: 1, '': true },
       hiddenAgentIds: { 'project-b:agent': true, invalid: 'true' },
@@ -26,6 +26,8 @@ describe('Sidebar visibility preferences', () => {
     expect(sidebarView).toEqual({
       hiddenSpaceIds: { 'project-a:space': true },
       hiddenAgentIds: { 'project-b:agent': true },
+      pinnedAgentIds: {},
+      mode: 'normal',
       filters: { status: 'waiting', provider: 'codex', visibility: 'hidden' },
     })
     expect(normalizeAgentSettings(JSON.parse(JSON.stringify({ sidebarView }))).sidebarView).toEqual(

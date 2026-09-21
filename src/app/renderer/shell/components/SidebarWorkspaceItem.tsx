@@ -5,6 +5,7 @@ import {
   EyeOff,
   LayoutDashboard,
   MoreHorizontal,
+  Pin,
   Scan,
 } from 'lucide-react'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -15,6 +16,7 @@ import { type SidebarProjectTreeModel, type SidebarSpaceGroupModel } from '../ut
 import { SidebarAgentItems } from './SidebarAgentItems'
 import { createSpaceSortableId, sidebarSortableTransition } from './SidebarDnd'
 import { ProjectIcon } from './ProjectIcon'
+import { useAppStore } from '../store/useAppStore'
 
 export function getTreeChildGroups(tree: SidebarProjectTreeModel): SidebarSpaceGroupModel[] {
   return [tree.projectRootGroup, ...tree.spaceGroups]
@@ -52,6 +54,7 @@ function SpaceGroup({
   const isRoot = group.kind === 'project-root'
   const label = isRoot ? t('sidebar.rootCanvas') : group.name
   const hasAgents = group.agents.length > 0
+  const isPinned = group.space?.pinned === true
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: isRoot ? `${workspaceId}:${group.id}` : createSpaceSortableId(workspaceId, group.id),
     disabled: isRoot,
@@ -124,19 +127,41 @@ function SpaceGroup({
             <EyeOff size={14} aria-hidden="true" />
           </button>
         ) : !isRoot ? (
-          <button
-            type="button"
-            className="workspace-sidebar__more workspace-sidebar__row-more"
-            data-testid={`workspace-space-more-${workspaceId}-${group.id}`}
-            aria-label={`${t('sidebar.spaceMore')}: ${label}`}
-            title={t('sidebar.spaceMore')}
-            onClick={event => {
-              const rect = event.currentTarget.getBoundingClientRect()
-              openMenu(rect.right, rect.bottom)
-            }}
-          >
-            <MoreHorizontal size={14} aria-hidden="true" />
-          </button>
+          <>
+            {isPinned ? (
+              <button
+                type="button"
+                className="workspace-sidebar__more workspace-space-item__pin"
+                data-testid={`workspace-space-unpin-${workspaceId}-${group.id}`}
+                aria-label={t('projectContextMenu.unpinSpace')}
+                title={t('projectContextMenu.unpinSpace')}
+                onClick={event => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  if (group.space) {
+                    useAppStore
+                      .getState()
+                      .setWorkspaceSpacePinned(workspaceId, group.space.id, false)
+                  }
+                }}
+              >
+                <Pin size={14} aria-hidden="true" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="workspace-sidebar__more workspace-sidebar__row-more"
+              data-testid={`workspace-space-more-${workspaceId}-${group.id}`}
+              aria-label={`${t('sidebar.spaceMore')}: ${label}`}
+              title={t('sidebar.spaceMore')}
+              onClick={event => {
+                const rect = event.currentTarget.getBoundingClientRect()
+                openMenu(rect.right, rect.bottom)
+              }}
+            >
+              <MoreHorizontal size={14} aria-hidden="true" />
+            </button>
+          </>
         ) : null}
         {hasAgents ? (
           <button
@@ -189,28 +214,33 @@ export function SidebarWorkspaceNavigation({
   onToggleSpaceGroup: (groupKey: string) => void
 }): React.JSX.Element {
   const { workspace } = tree
+  const rootAgents = tree.projectRootGroup.agents
 
   return (
     <div
       className="workspace-item__spaces"
       data-testid={`workspace-project-navigation-${workspace.id}`}
     >
+      {rootAgents.length > 0 ? (
+        <SidebarAgentItems
+          workspaceId={workspace.id}
+          agentItems={rootAgents}
+          currentNodeId={isActive ? currentNodeId : null}
+          onSelectAgentNode={navigationProps.onSelectAgentNode}
+          onOpenProjectContextMenu={navigationProps.onOpenProjectContextMenu}
+          onRestoreSidebarItem={navigationProps.onRestoreSidebarItem}
+        />
+      ) : null}
       <SortableContext
         items={tree.spaceGroups.map(group => createSpaceSortableId(workspace.id, group.id))}
         strategy={verticalListSortingStrategy}
       >
-        {getTreeChildGroups(tree).map(group => (
+        {tree.spaceGroups.map(group => (
           <SpaceGroup
             key={group.id}
             workspaceId={workspace.id}
             group={group}
-            isActive={
-              isActive &&
-              !currentNodeId &&
-              (group.kind === 'project-root'
-                ? !workspace.activeSpaceId
-                : group.id === workspace.activeSpaceId)
-            }
+            isActive={isActive && !currentNodeId && group.id === workspace.activeSpaceId}
             currentNodeId={isActive ? currentNodeId : null}
             isExpanded={collapsedSpaceGroupIds[`${workspace.id}:${group.id}`] !== true}
             onToggleSpaceGroup={onToggleSpaceGroup}

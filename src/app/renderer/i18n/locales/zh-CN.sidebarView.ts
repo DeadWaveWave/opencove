@@ -1,5 +1,12 @@
 export const zhCNSidebarView = {
   filters: '筛选侧边栏',
+  viewMode: {
+    label: '侧边栏显示',
+    focus: '专注',
+    normal: '正常',
+    all: '全部',
+    next: '切换至{{mode}}',
+  },
   filterStatus: 'Agent 状态',
   filterProvider: 'Agent',
   filterVisibility: '可见性',

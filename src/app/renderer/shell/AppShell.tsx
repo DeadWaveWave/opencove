@@ -223,6 +223,8 @@ export default function App(): React.JSX.Element {
       handleCloseSettings()
       openWorkspaceSearch()
     },
+    workspaceIds: workspaces.map(workspace => workspace.id),
+    onSelectWorkspace: workspaceId => handleSelectWorkspace(workspaceId),
   })
 
   useEffect(() => {

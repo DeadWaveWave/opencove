@@ -150,6 +150,11 @@
   height: 44px;
 }
 
+.workspace-sidebar--mobile .workspace-sidebar__view-mode {
+  width: auto;
+  min-width: 44px;
+}
+
 .workspace-sidebar--mobile .workspace-space-item,
 .workspace-sidebar--mobile .workspace-agent-item--sidebar,
 .workspace-sidebar--mobile .workspace-space-item__select,

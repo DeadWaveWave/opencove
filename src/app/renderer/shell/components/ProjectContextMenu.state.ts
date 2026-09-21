@@ -1,6 +1,10 @@
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import { normalizeProjectIconId, type ProjectIconId } from '@shared/types/projectIcon'
 import {
+  sidebarVisibilityKey,
+  setSidebarAgentPinned,
+} from '@contexts/settings/domain/sidebarViewSettings'
+import {
   buildAgentNodeTitle,
   stripAgentProviderPrefix,
 } from '@contexts/workspace/presentation/renderer/utils/agentTitle'
@@ -156,6 +160,35 @@ export function setTargetSpacePinned(target: ProjectContextMenuTarget, pinned: b
   }
 
   useAppStore.getState().setWorkspaceSpacePinned(target.workspaceId, target.spaceId, pinned)
+}
+
+export function resolveTargetAgentPinned(target: ProjectContextMenuTarget): boolean {
+  if (target.kind !== 'agent') {
+    return false
+  }
+
+  const settings = useAppStore.getState().agentSettings
+  return (
+    settings.sidebarView.pinnedAgentIds?.[
+      sidebarVisibilityKey(target.workspaceId, target.nodeId)
+    ] === true
+  )
+}
+
+export function setTargetAgentPinned(target: ProjectContextMenuTarget, pinned: boolean): void {
+  if (target.kind !== 'agent') {
+    return
+  }
+
+  useAppStore.getState().setAgentSettings(previous => ({
+    ...previous,
+    sidebarView: setSidebarAgentPinned(
+      previous.sidebarView,
+      target.workspaceId,
+      target.nodeId,
+      pinned,
+    ),
+  }))
 }
 
 export function resolveTargetProjectIconId(

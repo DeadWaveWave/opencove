@@ -1,5 +1,12 @@
 export const enSidebarView = {
   filters: 'Filter Sidebar',
+  viewMode: {
+    label: 'Sidebar view',
+    focus: 'Focus',
+    normal: 'Normal',
+    all: 'All',
+    next: 'Switch to {{mode}}',
+  },
   filterStatus: 'Agent status',
   filterProvider: 'Agent',
   filterVisibility: 'Visibility',

@@ -57,12 +57,12 @@ describe('Sidebar navigation semantics', () => {
     expect(screen.getByTestId('workspace-project-navigation-local')).toBeTruthy()
   })
 
-  it('freezes the preview while a menu is open and keeps empty project canvas reachable', () => {
+  it('freezes the preview while a menu is open and omits the redundant project canvas entry', () => {
     const { props } = renderSidebar({ isMenuOpen: true })
     fireEvent.pointerEnter(screen.getByTestId('workspace-item-remote'), { pointerType: 'mouse' })
     expect(screen.queryByTestId('workspace-project-navigation-remote')).toBeNull()
-    fireEvent.click(screen.getByTestId('workspace-space-root-local'))
-    expect(props.onSelectProjectCanvas).toHaveBeenCalledWith('local')
+    expect(screen.queryByTestId('workspace-space-root-local')).toBeNull()
+    expect(props.onSelectProjectCanvas).not.toHaveBeenCalled()
     expect(props.onSelectWorkspace).not.toHaveBeenCalled()
     expect(screen.getByTestId('workspace-sidebar-navigation').textContent).not.toContain('/tmp/')
   })

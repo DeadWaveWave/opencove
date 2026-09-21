@@ -5,6 +5,8 @@ export const enShell = {
     cancel: 'Cancel',
     pinSpace: 'Pin space',
     unpinSpace: 'Unpin space',
+    pinAgent: 'Pin Agent',
+    unpinAgent: 'Unpin Agent',
     projectIcon: 'Project icon',
     defaultProjectIcon: 'Default folder',
     icons: {

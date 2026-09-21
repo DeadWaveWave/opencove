@@ -91,11 +91,6 @@ function Harness() {
   )
 }
 
-function chooseFilter(name: string, option: string) {
-  fireEvent.click(screen.getByTestId(`sidebar-filter-${name}-trigger`))
-  fireEvent.click(screen.getByRole('option', { name: option }))
-}
-
 beforeEach(() => {
   useAppStore.setState({
     workspaces: [workspace],
@@ -104,35 +99,28 @@ beforeEach(() => {
   })
 })
 
-describe('Sidebar compact filters and temporary hiding', () => {
-  it('hides through the existing context menu, restores directly and persists the filter across remount', () => {
+describe('Sidebar view modes and temporary hiding', () => {
+  it('hides through the context menu, restores directly and cycles view modes', () => {
     const rendered = render(<Harness />)
     fireEvent.contextMenu(screen.getByTestId('workspace-agent-item-project-codex'))
     fireEvent.click(screen.getByTestId('workspace-sidebar-visibility-action'))
     expect(screen.queryByTestId('workspace-agent-item-project-codex')).toBeNull()
     expect(screen.getByTestId('workspace-agent-item-project-claude')).toBeTruthy()
-    expect(screen.getByTestId('workspace-sidebar-filter').title).toBe('1 hidden Agent needs input')
-    fireEvent.click(screen.getByTestId('workspace-sidebar-filter'))
-    const panel = screen.getByTestId('workspace-sidebar-filters')
-    expect(within(panel).getAllByRole('button', { expanded: false })).toHaveLength(3)
-    expect(within(panel).queryByRole('checkbox')).toBeNull()
-    chooseFilter('visibility', 'Hidden only')
+    const mode = screen.getByTestId('workspace-sidebar-view-mode')
+    expect(mode.getAttribute('data-mode')).toBe('normal')
+    fireEvent.click(mode)
+    expect(mode.getAttribute('data-mode')).toBe('all')
     expect(screen.getByTestId('workspace-space-item-project-space')).toBeTruthy()
-    expect(screen.queryByTestId('workspace-agent-item-project-claude')).toBeNull()
+    expect(screen.getByTestId('workspace-agent-item-project-claude')).toBeTruthy()
     fireEvent.click(screen.getByTestId('workspace-agent-restore-project-codex'))
-    expect(screen.queryByTestId('workspace-agent-item-project-codex')).toBeNull()
+    expect(screen.getByTestId('workspace-agent-item-project-codex')).toBeTruthy()
     expect(
       within(screen.getByTestId('workspace-sidebar-navigation')).getByRole('status').textContent,
     ).toContain('visible in Sidebar')
     expect(useAppStore.getState().agentSettings.sidebarView.hiddenAgentIds).toEqual({})
     rendered.unmount()
     render(<Harness />)
-    fireEvent.click(screen.getByTestId('workspace-sidebar-filter'))
-    expect(screen.getByTestId('sidebar-filter-visibility-trigger').textContent).toContain(
-      'Hidden only',
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
-    expect(screen.getByTestId('workspace-agent-item-project-codex')).toBeTruthy()
+    expect(screen.getByTestId('workspace-sidebar-view-mode').getAttribute('data-mode')).toBe('all')
   })
 
   it('restores the hidden parent only and keeps its explicitly hidden Agent preference', () => {
@@ -142,6 +130,8 @@ describe('Sidebar compact filters and temporary hiding', () => {
         sidebarView: {
           hiddenSpaceIds: { 'project:space': true },
           hiddenAgentIds: { 'project:codex': true },
+          mode: 'all',
+          pinnedAgentIds: {},
           filters: { status: 'all', provider: 'all', visibility: 'all' },
         },
       },
@@ -160,7 +150,7 @@ describe('Sidebar compact filters and temporary hiding', () => {
     })
   })
 
-  it('filters by actual provider/status, keeps disclosure unchanged and dismisses only the top dropdown on Escape', () => {
+  it('focus mode keeps only pinned Agents and their Space while preserving disclosure state', () => {
     useAppStore.setState({
       agentSettings: {
         ...DEFAULT_AGENT_SETTINGS,
@@ -168,20 +158,16 @@ describe('Sidebar compact filters and temporary hiding', () => {
       },
     })
     render(<Harness />)
-    fireEvent.click(screen.getByTestId('workspace-sidebar-filter'))
-    chooseFilter('status', 'Working')
-    chooseFilter('provider', 'Claude Code')
+    fireEvent.click(screen.getByTestId('workspace-space-toggle-project-space'))
+    fireEvent.contextMenu(screen.getByTestId('workspace-agent-item-project-claude'))
+    fireEvent.click(screen.getByTestId('workspace-agent-context-pin-claude'))
+    const mode = screen.getByTestId('workspace-sidebar-view-mode')
+    fireEvent.click(mode)
+    fireEvent.click(mode)
+    expect(mode.getAttribute('data-mode')).toBe('focus')
     expect(
       screen.getByTestId('workspace-space-toggle-project-space').getAttribute('aria-expanded'),
-    ).toBe('false')
-    fireEvent.click(screen.getByTestId('sidebar-filter-visibility-trigger'))
-    fireEvent.keyDown(screen.getByRole('option', { name: 'Not hidden' }), { key: 'Escape' })
-    expect(screen.queryByRole('listbox')).toBeNull()
-    expect(screen.getByTestId('workspace-sidebar-filters')).toBeTruthy()
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByTestId('workspace-sidebar-filters')).toBeNull()
-    expect(document.activeElement).toBe(screen.getByTestId('workspace-sidebar-filter'))
-    fireEvent.click(screen.getByTestId('workspace-space-toggle-project-space'))
+    ).toBe('true')
     expect(screen.getByTestId('workspace-agent-item-project-claude')).toBeTruthy()
     expect(screen.queryByTestId('workspace-agent-item-project-codex')).toBeNull()
   })

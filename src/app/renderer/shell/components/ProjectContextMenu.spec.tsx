@@ -6,6 +6,7 @@ import {
   DEFAULT_WORKSPACE_VIEWPORT,
   type WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
+import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
 import { useAppStore } from '../store/useAppStore'
 import type { ProjectContextMenuState } from '../types'
 import { useProjectContextMenuDismiss } from '../hooks/useProjectContextMenuDismiss'
@@ -108,7 +109,11 @@ function submitRename(nextName: string): void {
 
 describe('ProjectContextMenu', () => {
   beforeEach(() => {
-    useAppStore.setState({ workspaces: [], projectContextMenu: null })
+    useAppStore.setState({
+      workspaces: [],
+      projectContextMenu: null,
+      agentSettings: DEFAULT_AGENT_SETTINGS,
+    })
   })
 
   it('renames a project target', () => {
@@ -148,13 +153,36 @@ describe('ProjectContextMenu', () => {
 
   it('renames an agent target and pins its title', () => {
     renderMenu({ kind: 'agent', workspaceId: 'workspace-a', nodeId: 'agent-a' })
-    expect(document.activeElement).toBe(screen.getByTestId('workspace-project-context-menu-rename'))
+    const input = screen.getByLabelText('Rename')
+    expect(document.activeElement).toBe(input)
 
-    submitRename('Agent Renamed')
+    fireEvent.change(input, { target: { value: 'Agent Renamed' } })
+    fireEvent.blur(input)
 
     const agent = useAppStore.getState().workspaces[0]?.nodes[0]?.data
     expect(agent?.title).toBe('codex · Agent Renamed')
     expect(agent?.titlePinnedByUser).toBe(true)
+  })
+
+  it('places an agent label color strip beside its inline rename control', () => {
+    renderMenu({ kind: 'agent', workspaceId: 'workspace-a', nodeId: 'agent-a' })
+
+    const menu = screen.getByRole('textbox').closest('.workspace-project-context-menu')
+    const children = Array.from(menu?.children ?? [])
+
+    expect(children[0]?.className).toContain('workspace-project-context-menu__space-editor')
+    expect(children[1]?.className).toContain('workspace-project-context-menu__color-space')
+    expect(children[2]?.className).toContain('workspace-context-menu__separator')
+  })
+
+  it('pins an Agent for Sidebar Focus mode from its context menu', () => {
+    renderMenu({ kind: 'agent', workspaceId: 'workspace-a', nodeId: 'agent-a' })
+
+    fireEvent.click(screen.getByTestId('workspace-agent-context-pin-agent-a'))
+
+    expect(
+      useAppStore.getState().agentSettings.sidebarView.pinnedAgentIds?.['workspace-a:agent-a'],
+    ).toBe(true)
   })
 
   it('updates a space label color from the context menu', () => {

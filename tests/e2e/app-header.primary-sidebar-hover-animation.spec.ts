@@ -73,6 +73,19 @@ test.describe('Primary Sidebar Hover Preview', () => {
         const before = await readCanvasGeometry(window)
         const railBefore = await window.getByTestId('workspace-project-rail').boundingBox()
 
+        const railList = window.locator('.workspace-sidebar__list')
+        const railListBox = await railList.boundingBox()
+        if (!railListBox) {
+          throw new Error('Sidebar project list is not visible')
+        }
+        await window.mouse.move(
+          railListBox.x + railListBox.width / 2,
+          railListBox.y + Math.max(railListBox.height - 6, 2),
+        )
+        await window.waitForTimeout(220)
+        await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
+        await expect(window.getByTestId('workspace-sidebar-navigation')).toHaveCount(0)
+
         await previewProject.hover()
         await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
         await expect(sidebar).toHaveAttribute('data-cove-preview-workspace-id', previewId)

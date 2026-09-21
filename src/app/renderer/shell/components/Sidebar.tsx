@@ -38,7 +38,10 @@ import { SidebarRemoteDetails } from './SidebarRemoteDetails'
 import { useWorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
 import { useAppStore } from '../store/useAppStore'
 import { toggleSidebarCollapsedId } from '@contexts/settings/domain/sidebarTreeSettings'
-import { setSidebarItemHidden } from '@contexts/settings/domain/sidebarViewSettings'
+import {
+  setSidebarItemHidden,
+  type SidebarViewMode,
+} from '@contexts/settings/domain/sidebarViewSettings'
 import { projectSidebarView } from '../utils/sidebarView'
 import { SidebarViewControls } from './SidebarViewControls'
 
@@ -123,11 +126,10 @@ export function Sidebar({
   const setAgentSettings = useAppStore(state => state.setAgentSettings)
   const [previewWorkspaceId, setPreviewWorkspaceId] = useState<string | null>(null)
   const [isRemoteDetailsOpen, setIsRemoteDetailsOpen] = useState(false)
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [restoredLabel, setRestoredLabel] = useState<string | null>(null)
   const sidebarView = useAppStore(state => state.agentSettings.sidebarView)
   useEffect(() => setPreviewWorkspaceId(null), [activeWorkspaceId])
-  const isInteractionActive = activeDragItem !== null || isRemoteDetailsOpen || isFilterOpen
+  const isInteractionActive = activeDragItem !== null || isRemoteDetailsOpen
   const isPreviewLocked = isInteractionActive || isMenuOpen
   const displayedTree =
     trees.find(tree => tree.workspace.id === (previewWorkspaceId ?? activeWorkspaceId)) ??
@@ -272,7 +274,6 @@ export function Sidebar({
       className={className}
       data-testid="workspace-sidebar"
       data-cove-preview-workspace-id={displayedTree?.workspace.id}
-      onPointerEnter={onPointerEnter}
       onPointerLeave={event => {
         if (!isPreviewLocked) {
           setPreviewWorkspaceId(null)
@@ -327,6 +328,7 @@ export function Sidebar({
                       setPreviewWorkspaceId(workspaceId)
                     }
                   }}
+                  onProjectPointerEnter={onPointerEnter}
                   onSelectWorkspace={workspaceId => {
                     setPreviewWorkspaceId(null)
                     onSelectWorkspace(workspaceId)
@@ -356,15 +358,16 @@ export function Sidebar({
                 <header className="workspace-sidebar__project-header">
                   <h2 title={displayedTree.workspace.name}>{displayedTree.workspace.name}</h2>
                   <SidebarViewControls
-                    key={`filters-${displayedTree.workspace.id}`}
-                    filters={sidebarView.filters}
+                    key={`view-mode-${displayedTree.workspace.id}`}
+                    mode={sidebarView.mode}
                     hiddenWaitingCount={projectedView?.hiddenWaitingCount ?? 0}
-                    isMobile={isMobile}
-                    onOpenChange={setIsFilterOpen}
-                    onChange={filters =>
+                    onChange={mode =>
                       setAgentSettings(previous => ({
                         ...previous,
-                        sidebarView: { ...previous.sidebarView, filters },
+                        sidebarView: {
+                          ...previous.sidebarView,
+                          mode: mode as SidebarViewMode,
+                        },
                       }))
                     }
                   />
@@ -428,9 +431,7 @@ export function Sidebar({
                   />
                   {projectedView?.matchingAgentCount === 0 &&
                   projectedView.tree.spaceGroups.length === 0 &&
-                  (sidebarView.filters.visibility !== 'visible' ||
-                    sidebarView.filters.status !== 'all' ||
-                    sidebarView.filters.provider !== 'all') ? (
+                  (sidebarView.mode ?? 'normal') !== 'normal' ? (
                     <p className="workspace-sidebar__empty">{t('sidebar.noMatches')}</p>
                   ) : null}
                 </div>

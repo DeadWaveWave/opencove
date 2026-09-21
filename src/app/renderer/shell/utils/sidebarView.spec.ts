@@ -53,25 +53,22 @@ function tree(): SidebarProjectTreeModel {
 }
 
 describe('Sidebar view projection', () => {
-  it('preserves ordering and a parent Space for matching hidden Agents without writing the source', () => {
+  it('shows hidden Agents in All mode without writing the source tree', () => {
     const source = tree()
     const view: SidebarViewSettings = {
       ...DEFAULT_SIDEBAR_VIEW_SETTINGS,
       hiddenAgentIds: { 'project:codex': true },
-      filters: { status: 'waiting', provider: 'codex', visibility: 'hidden' },
+      mode: 'all',
     }
     const result = projectSidebarView(source, view)
-    expect(result.tree.spaceGroups.map(group => group.id)).toEqual(['space'])
+    expect(result.tree.spaceGroups.map(group => group.id)).toEqual(['space', 'empty'])
     expect(result.tree.spaceGroups[0].sidebarHidden).toBe(false)
-    expect(result.tree.spaceGroups[0].agents).toHaveLength(1)
-    expect(result.tree.spaceGroups[0].agents[0]).toMatchObject({
-      sidebarHidden: true,
-      sidebarHiddenBySpace: false,
-    })
+    expect(result.tree.spaceGroups[0].agents).toHaveLength(2)
+    expect(result.tree.spaceGroups[0].agents[0].sidebarHidden).toBe(true)
     expect(result.hiddenWaitingCount).toBe(1)
     expect(source.spaceGroups[0].agents).toHaveLength(2)
     expect(source.spaceGroups[0].agents[0].sidebarHidden).toBeUndefined()
-    expect(result.tree.projectRootGroup.agents).toHaveLength(0)
+    expect(result.tree.projectRootGroup.agents).toHaveLength(1)
   })
 
   it('keeps parent hide authoritative while preserving each Agent’s own preference', () => {
@@ -83,10 +80,7 @@ describe('Sidebar view projection', () => {
     const hidden = projectSidebarView(tree(), view)
     expect(hidden.tree.spaceGroups.map(group => group.id)).toEqual(['empty'])
     expect(hidden.hiddenWaitingCount).toBe(1)
-    const all = projectSidebarView(tree(), {
-      ...view,
-      filters: { ...view.filters, visibility: 'all' },
-    })
+    const all = projectSidebarView(tree(), { ...view, mode: 'all' })
     expect(
       all.tree.spaceGroups[0].agents.every(item => item.sidebarHidden && item.sidebarHiddenBySpace),
     ).toBe(true)
@@ -99,16 +93,41 @@ describe('Sidebar view projection', () => {
       ...DEFAULT_SIDEBAR_VIEW_SETTINGS,
       hiddenSpaceIds: { 'project:empty': true },
       hiddenAgentIds: { 'project:codex': true },
-      filters: { status: 'all', provider: 'all', visibility: 'hidden' },
+      mode: 'all',
     })
     expect(result.tree.spaceGroups.map(group => group.id)).toEqual(['space', 'empty'])
     expect(result.tree.spaceGroups[1].sidebarHidden).toBe(true)
-    expect(result.matchingAgentCount).toBe(1)
-    const working = projectSidebarView(tree(), {
+    expect(result.matchingAgentCount).toBe(3)
+    expect(result.hiddenWaitingCount).toBe(1)
+  })
+
+  it('focus mode keeps pinned Spaces and pinned Agents while excluding hidden items', () => {
+    const source = tree()
+    source.spaceGroups[0].space = { id: 'space', pinned: true } as never
+    const result = projectSidebarView(source, {
       ...DEFAULT_SIDEBAR_VIEW_SETTINGS,
-      hiddenAgentIds: { 'project:codex': true },
-      filters: { status: 'working', provider: 'claude-code', visibility: 'visible' },
+      mode: 'focus',
+      hiddenAgentIds: { 'project:claude': true },
+      pinnedAgentIds: { 'project:root': true },
     })
-    expect(working.hiddenWaitingCount).toBe(1)
+
+    expect(result.tree.spaceGroups.map(group => group.id)).toEqual(['space'])
+    expect(result.tree.spaceGroups[0].agents.map(agentItem => agentItem.node.id)).toEqual(['codex'])
+    expect(result.tree.projectRootGroup.agents.map(agentItem => agentItem.node.id)).toEqual([
+      'root',
+    ])
+  })
+
+  it('focus mode keeps an unpinned Space when one of its Agents is pinned', () => {
+    const result = projectSidebarView(tree(), {
+      ...DEFAULT_SIDEBAR_VIEW_SETTINGS,
+      mode: 'focus',
+      pinnedAgentIds: { 'project:claude': true },
+    })
+
+    expect(result.tree.spaceGroups.map(group => group.id)).toEqual(['space'])
+    expect(result.tree.spaceGroups[0].agents.map(agentItem => agentItem.node.id)).toEqual([
+      'claude',
+    ])
   })
 })

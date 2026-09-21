@@ -129,9 +129,10 @@ test.describe('Primary Sidebar Pin', () => {
       )
       await expect(window.getByTestId('workspace-sidebar-navigation')).toHaveCount(0)
       await window.getByTestId('workspace-sidebar-pin').click()
+      await expect(window.getByTestId('workspace-sidebar-navigation')).toBeVisible()
       await expect(
         window.getByTestId('workspace-space-root-workspace-toggle-existing'),
-      ).toBeVisible()
+      ).toHaveCount(0)
     } finally {
       await electronApp.close()
     }

@@ -11,6 +11,43 @@ import {
 
 const TERMINAL_FOCUS_SCOPE_SELECTOR = '[data-cove-focus-scope="terminal"]'
 const DOCUMENT_EDITOR_FOCUS_SCOPE_SELECTOR = '[data-cove-focus-scope="document-editor"]'
+const EDITABLE_TARGET_SELECTOR = 'input, textarea, select, [contenteditable="true"]'
+
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (target instanceof HTMLElement) {
+    if (target.isContentEditable || target.closest(EDITABLE_TARGET_SELECTOR)) {
+      return true
+    }
+
+    const { tagName } = target
+    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
+      return true
+    }
+  }
+
+  const activeElement =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null
+  return Boolean(
+    activeElement?.isContentEditable || activeElement?.closest(EDITABLE_TARGET_SELECTOR),
+  )
+}
+
+function resolveWorkspaceShortcutIndex(event: KeyboardEvent): number | null {
+  if (event.altKey || event.shiftKey || (event.metaKey && event.ctrlKey)) {
+    return null
+  }
+
+  if (!event.metaKey && !event.ctrlKey) {
+    return null
+  }
+
+  const match = /^(?:Digit|Numpad)([1-9])$/.exec(event.code)
+  if (match) {
+    return Number(match[1]) - 1
+  }
+
+  return /^[1-9]$/.test(event.key) ? Number(event.key) - 1 : null
+}
 
 function isTerminalFocusActive(target: EventTarget | null): boolean {
   if (target instanceof Element && target.closest(TERMINAL_FOCUS_SCOPE_SELECTOR)) {
@@ -50,6 +87,8 @@ export function useAppKeybindings({
   onTogglePrimarySidebar,
   onAddProject,
   onOpenWorkspaceSearch,
+  workspaceIds,
+  onSelectWorkspace,
 }: {
   enabled: boolean
   settings: Pick<AgentSettings, 'disableAppShortcutsWhenTerminalFocused' | 'keybindings'>
@@ -58,6 +97,8 @@ export function useAppKeybindings({
   onTogglePrimarySidebar: () => void
   onAddProject: () => void
   onOpenWorkspaceSearch: () => void
+  workspaceIds: readonly string[]
+  onSelectWorkspace: (workspaceId: string) => void
 }): void {
   const platform = useMemo(
     () =>
@@ -95,6 +136,18 @@ export function useAppKeybindings({
       }
 
       if (settings.disableAppShortcutsWhenTerminalFocused && isTerminalFocusActive(event.target)) {
+        return
+      }
+
+      const workspaceShortcutIndex = resolveWorkspaceShortcutIndex(event)
+      if (
+        workspaceShortcutIndex !== null &&
+        !isEditableKeyboardTarget(event.target) &&
+        workspaceShortcutIndex < workspaceIds.length
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+        onSelectWorkspace(workspaceIds[workspaceShortcutIndex])
         return
       }
 
@@ -145,6 +198,8 @@ export function useAppKeybindings({
     onToggleCommandCenter,
     onTogglePrimarySidebar,
     onOpenWorkspaceSearch,
+    onSelectWorkspace,
     settings.disableAppShortcutsWhenTerminalFocused,
+    workspaceIds,
   ])
 }

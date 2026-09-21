@@ -1,10 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import {
-  launchApp,
-  seedWorkspaceState,
-  selectCoveOption,
-  testWorkspacePath,
-} from './workspace-canvas.helpers'
+import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
 import { createRailAgent } from './sidebar-test-fixtures'
 
 const projectId = 'sidebar-visibility-project'
@@ -44,7 +39,7 @@ async function seed(page: Page, theme: 'pixel' | 'pixel-light') {
 }
 
 for (const theme of ['pixel', 'pixel-light'] as const) {
-  test(`Sidebar filters restore hidden items with compact dropdowns in ${theme}`, async ({
+  test(`Sidebar view mode cycles restore hidden items in ${theme}`, async ({
     browserName: _browserName,
   }, testInfo) => {
     const { electronApp, window } = await launchApp()
@@ -61,16 +56,15 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
       await window.getByTestId('workspace-sidebar-visibility-action').click()
       await expect(agent).toHaveCount(0)
       await expect(space).toBeVisible()
-      await window.getByTestId('workspace-sidebar-filter').click()
-      const filters = window.getByTestId('workspace-sidebar-filters')
-      await expect(filters.getByRole('checkbox')).toHaveCount(0)
-      await expect(filters.locator('.cove-select__trigger')).toHaveCount(3)
-      await selectCoveOption(window, 'sidebar-filter-visibility', 'hidden')
+      const mode = window.getByTestId('workspace-sidebar-view-mode')
+      await expect(mode).toHaveAttribute('data-mode', 'normal')
+      await mode.click()
+      await expect(mode).toHaveAttribute('data-mode', 'all')
       await expect(agent).toBeVisible()
       await expect(
         window.getByTestId(`workspace-agent-restore-${projectId}-${agentId}`),
       ).toBeVisible()
-      await testInfo.attach(`sidebar-hidden-filter-${theme}`, {
+      await testInfo.attach(`sidebar-hidden-items-${theme}`, {
         body: await window.screenshot(),
         contentType: 'image/png',
       })
@@ -78,29 +72,33 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
         .poll(async () =>
           window.evaluate(async () => {
             const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-            return raw ? JSON.parse(raw).settings?.sidebarView?.filters?.visibility : null
+            return raw ? JSON.parse(raw).settings?.sidebarView?.mode : null
           }),
         )
-        .toBe('hidden')
+        .toBe('all')
       await window.reload({ waitUntil: 'domcontentloaded' })
       await expect(
         window.getByTestId(`workspace-agent-restore-${projectId}-${agentId}`),
       ).toBeVisible()
       await window.getByTestId(`workspace-agent-restore-${projectId}-${agentId}`).click()
-      await expect(agent).toHaveCount(0)
       await expect(window.locator('.workspace-sidebar__feedback')).toContainText(
         'visible in Sidebar',
       )
-      await window.getByTestId('workspace-sidebar-filter').click()
-      await window.getByRole('button', { name: 'Reset filters', exact: true }).click()
-      await window.keyboard.press('Escape')
       await expect(agent).toBeVisible()
       await space.click({ button: 'right' })
       await window.getByTestId('workspace-sidebar-visibility-action').click()
+      await expect(space).toBeVisible()
+      await expect(
+        window.getByTestId(`workspace-space-restore-${projectId}-${spaceId}`),
+      ).toBeVisible()
+      await mode.click()
+      await expect(mode).toHaveAttribute('data-mode', 'focus')
       await expect(space).toHaveCount(0)
-      await window.getByTestId('workspace-sidebar-filter').click()
-      await selectCoveOption(window, 'sidebar-filter-visibility', 'all')
-      await window.keyboard.press('Escape')
+      await mode.click()
+      await expect(mode).toHaveAttribute('data-mode', 'normal')
+      await expect(space).toHaveCount(0)
+      await mode.click()
+      await expect(mode).toHaveAttribute('data-mode', 'all')
       await expect(agent).toBeVisible()
       await expect(
         window.getByTestId(`workspace-agent-restore-${projectId}-${agentId}`),
@@ -113,7 +111,7 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
   })
 }
 
-test('Sidebar dropdowns and hidden restoration remain usable in the mobile drawer', async ({
+test('Sidebar view mode and hidden restoration remain usable in the mobile drawer', async ({
   browserName: _browserName,
 }, testInfo) => {
   const { electronApp, window } = await launchApp()
@@ -127,18 +125,17 @@ test('Sidebar dropdowns and hidden restoration remain usable in the mobile drawe
     await expect(more).toHaveCSS('height', '44px')
     await more.click()
     await window.getByTestId('workspace-sidebar-visibility-action').click()
-    await window.getByTestId('workspace-sidebar-filter').click()
-    await window.getByTestId('sidebar-filter-visibility-trigger').click()
-    const option = window.getByRole('option', { name: 'Hidden only', exact: true })
-    await option.focus()
-    await expect(option).toBeFocused()
-    await option.click()
-    await expect(window.getByTestId('workspace-sidebar-filters')).toBeVisible()
-    await testInfo.attach('sidebar-mobile-filters', {
+    const mode = window.getByTestId('workspace-sidebar-view-mode')
+    await expect(mode).toHaveAttribute('data-mode', 'normal')
+    await mode.click()
+    await expect(mode).toHaveAttribute('data-mode', 'all')
+    await expect(
+      window.getByTestId(`workspace-agent-restore-${projectId}-${agentId}`),
+    ).toBeVisible()
+    await testInfo.attach('sidebar-mobile-view-mode', {
       body: await window.screenshot(),
       contentType: 'image/png',
     })
-    await window.keyboard.press('Escape')
     await expect(window.getByTestId('primary-sidebar-drawer')).toBeVisible()
     await window.getByTestId(`workspace-agent-restore-${projectId}-${agentId}`).click()
     await expect(window.locator('.workspace-sidebar__feedback')).toContainText('visible in Sidebar')

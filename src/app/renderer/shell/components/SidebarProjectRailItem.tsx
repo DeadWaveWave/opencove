@@ -16,6 +16,7 @@ export function SidebarProjectRailItem({
   remote,
   waitingAgentCount,
   onPreview,
+  onProjectPointerEnter,
   onSelectWorkspace,
   onOpenProjectContextMenu,
 }: {
@@ -25,6 +26,7 @@ export function SidebarProjectRailItem({
   remote: WorkspaceMountDetails['remote']
   waitingAgentCount: number
   onPreview: (workspaceId: string) => void
+  onProjectPointerEnter?: React.PointerEventHandler<HTMLElement>
   onSelectWorkspace: (workspaceId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
 }): React.JSX.Element {
@@ -61,6 +63,7 @@ export function SidebarProjectRailItem({
       }}
       onPointerEnter={event => {
         if (event.pointerType !== 'touch') {
+          onProjectPointerEnter?.(event)
           onPreview(workspace.id)
         }
       }}
