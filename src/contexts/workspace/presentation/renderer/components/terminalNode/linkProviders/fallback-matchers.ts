@@ -41,7 +41,7 @@ const fallbackMatchers: RegExp[] = [
   // C++ compile error formats (Clang/GCC):
   // Example: /path/to/file.cpp:339:12: error: ...
   // Example: C:\foo/bar baz:339: error ...
-  /^(?<link>(?<path>.+):(?<line>\d+)(?::(?<col>\d+))?) ?:/,
+  /^(?<link>(?<path>.+?):(?<line>\d+)(?::(?<col>\d+))?) ?:(?=\s|$)/,
 
   // Rust/Cargo error format:
   // Example: --> src/main.rs:10:5

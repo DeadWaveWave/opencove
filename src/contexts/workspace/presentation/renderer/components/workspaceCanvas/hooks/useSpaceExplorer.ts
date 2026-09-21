@@ -3,7 +3,6 @@ import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 import { findNearestFreePositionOnRight, type Rect } from '../../../utils/collision'
 import type { WorkspaceCanvasQuickPreviewState } from '../types'
-import { focusNodeInViewport } from '../helpers'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import {
   findBlockingOpenDocumentForMutation,
@@ -20,6 +19,7 @@ import type {
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewActions } from './useSpaceExplorer.quickPreviewActions'
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewDismiss } from './useSpaceExplorer.quickPreviewDismiss'
 import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
+import { useWorkspaceDocumentOpening } from './useWorkspaceDocumentOpening'
 
 export function useWorkspaceCanvasSpaceExplorer({
   canvasRef,
@@ -36,6 +36,15 @@ export function useWorkspaceCanvasSpaceExplorer({
   createImageNode,
   standardWindowSizeBucket,
 }: WorkspaceCanvasSpaceExplorerArgs): WorkspaceCanvasSpaceExplorerResult {
+  const openDocument = useWorkspaceDocumentOpening({
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+    onRequestPersistFlush,
+    reactFlow,
+    createDocumentNode,
+  })
   const [openExplorerSpaceId, setOpenExplorerSpaceId] = React.useState<string | null>(null)
   // prettier-ignore
   const [explorerClipboard, setExplorerClipboardState] = React.useState<SpaceExplorerClipboardItem | null>(null)
@@ -209,95 +218,20 @@ export function useWorkspaceCanvasSpaceExplorer({
       }
 
       if (preview.kind !== 'image') {
-        const existingNode =
-          nodesRef.current.find(node => {
-            if (node.data.kind !== 'document' || !node.data.document) {
-              return false
-            }
-
-            return node.data.document.uri === preview.uri && space.nodeIds.includes(node.id)
-          }) ?? null
-
-        if (existingNode) {
-          if (options?.isRequestCurrent && !options.isRequestCurrent()) {
-            return null
-          }
-
-          focusNodeInViewport(reactFlow, existingNode, { duration: 120, zoom: reactFlow.getZoom() })
-          return existingNode
-        }
-
-        if (options?.isRequestCurrent && !options.isRequestCurrent()) {
-          return null
-        }
-
-        const creationAnchor = options?.usePreviewRectAsAnchor
-          ? {
-              x: preview.rect.x,
-              y: preview.rect.y,
-            }
-          : preview.createAnchor
-
-        const creationPlacement = {
-          ...(preview.createPlacement ?? {}),
-          targetSpaceRect: rect,
-          focusViewportOnCreate: options?.focusViewportOnCreate,
-          sizeOverride: {
-            width: preview.rect.width,
-            height: preview.rect.height,
+        return openDocument({
+          uri: preview.uri,
+          mountId: preview.mountId ?? null,
+          spaceId: space.id,
+          anchor: options?.usePreviewRectAsAnchor
+            ? { x: preview.rect.x, y: preview.rect.y }
+            : preview.createAnchor,
+          placement: {
+            ...preview.createPlacement,
+            focusViewportOnCreate: options?.focusViewportOnCreate,
+            sizeOverride: { width: preview.rect.width, height: preview.rect.height },
           },
-        }
-
-        const created = createDocumentNode(creationAnchor, { uri: preview.uri }, creationPlacement)
-
-        if (!created) {
-          return null
-        }
-
-        const preferRightPlacement = creationPlacement.preferredDirection === 'right'
-        if (preferRightPlacement && preview.createPlacement?.avoidRects?.length) {
-          const avoidObstacles: Rect[] = preview.createPlacement.avoidRects.map(avoidRect => ({
-            left: avoidRect.x,
-            top: avoidRect.y,
-            right: avoidRect.x + avoidRect.width,
-            bottom: avoidRect.y + avoidRect.height,
-          }))
-          const desired = creationAnchor
-          const size = { width: created.data.width, height: created.data.height }
-          const nextPlacement = findNearestFreePositionOnRight(
-            desired,
-            size,
-            nodesRef.current,
-            created.id,
-            avoidObstacles,
-          )
-
-          if (
-            nextPlacement &&
-            (nextPlacement.x !== created.position.x || nextPlacement.y !== created.position.y)
-          ) {
-            setNodes(
-              prevNodes =>
-                prevNodes.map(node =>
-                  node.id === created.id ? { ...node, position: nextPlacement } : node,
-                ),
-              { syncLayout: false },
-            )
-          }
-        }
-
-        assignNodeToSpaceAndExpand({
-          createdNodeId: created.id,
-          createdNode: created,
-          targetSpaceId: space.id,
-          spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange,
+          isRequestCurrent: options?.isRequestCurrent,
         })
-
-        onRequestPersistFlush?.()
-        return created
       }
 
       const filesystem = resolveFilesystemApiForMount(
@@ -415,12 +349,11 @@ export function useWorkspaceCanvasSpaceExplorer({
       }
     },
     [
-      createDocumentNode,
+      openDocument,
       createImageNode,
       nodesRef,
       onRequestPersistFlush,
       onSpacesChange,
-      reactFlow,
       setNodes,
       spacesRef,
     ],

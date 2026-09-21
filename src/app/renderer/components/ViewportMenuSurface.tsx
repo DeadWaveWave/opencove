@@ -18,6 +18,8 @@ interface PointViewportMenuPlacement {
   point: MenuPoint
   alignX?: MenuPointAlignment
   alignY?: MenuPointAlignment
+  flipY?: boolean
+  gapY?: number
   padding?: number
   estimatedSize?: MenuSize
 }
@@ -214,6 +216,8 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
         padding: placement.padding,
         alignX: placement.alignX,
         alignY: placement.alignY,
+        flipY: placement.flipY,
+        gapY: placement.gapY,
       })
     }, [measuredSize, placement])
 

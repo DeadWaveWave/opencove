@@ -1,3 +1,4 @@
+import type { DocumentNavigationProps } from './useDocumentNodeNavigation'
 import type { CSSProperties, JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { LabelColor } from '@shared/types/labelColor'
@@ -8,7 +9,7 @@ import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { suppressExplorerOverlayInteractions } from './workspaceCanvas/explorerInteractionGuard'
 
-export interface DocumentNodeChromeProps {
+export interface DocumentNodeChromeProps extends DocumentNavigationProps {
   title: string
   uri: string
   displayPath: string
@@ -41,6 +42,8 @@ export interface DocumentNodeChromeProps {
 }
 
 export function DocumentNodeChrome({
+  navigation,
+  onNavigationApplied,
   title,
   uri,
   displayPath,
@@ -244,6 +247,8 @@ export function DocumentNodeChrome({
       ) : null}
 
       <DocumentNodeBody
+        navigation={navigation}
+        onNavigationApplied={onNavigationApplied}
         uri={uri}
         isLoading={isLoading}
         loadError={loadError}

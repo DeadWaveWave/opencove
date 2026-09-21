@@ -1,9 +1,12 @@
+import type { DocumentNavigationProps } from './useDocumentNodeNavigation'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { DocumentNodeMonacoEditor } from './DocumentNode.monaco'
 import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
 
 export function DocumentNodeBody({
+  navigation,
+  onNavigationApplied,
   uri,
   isLoading,
   loadError,
@@ -19,7 +22,7 @@ export function DocumentNodeBody({
   onContentChange,
   onSaveShortcut,
   onMediaError,
-}: {
+}: DocumentNavigationProps & {
   uri: string
   isLoading: boolean
   loadError: string | null
@@ -149,6 +152,8 @@ export function DocumentNodeBody({
             }}
           >
             <DocumentNodeMonacoEditor
+              navigation={navigation}
+              onNavigationApplied={onNavigationApplied}
               uri={uri}
               content={content}
               onContentChange={onContentChange}

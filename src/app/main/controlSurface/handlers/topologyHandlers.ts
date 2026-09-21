@@ -1,3 +1,4 @@
+import { hostname } from 'node:os'
 import type { ControlSurface } from '../controlSurface'
 import { createAppError, OpenCoveAppError } from '../../../../shared/errors/appError'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
@@ -214,6 +215,7 @@ export function registerTopologyHandlers(
           endpointId: 'local',
           platform: process.platform,
           homeDirectory: resolveHomeDirectory(),
+          hostname: hostname(),
         }
       }
 
@@ -256,6 +258,10 @@ export function registerTopologyHandlers(
           endpointId: payload.endpointId,
           platform: typeof value.platform === 'string' ? value.platform : 'unknown',
           homeDirectory: homeDirectory,
+          ...(typeof value.hostname === 'string' &&
+          /^[a-z0-9][a-z0-9._-]{0,252}$/i.test(value.hostname)
+            ? { hostname: value.hostname }
+            : {}),
         }
       } catch (error) {
         if (error instanceof OpenCoveAppError) {

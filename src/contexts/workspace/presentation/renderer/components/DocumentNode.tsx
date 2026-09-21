@@ -26,6 +26,8 @@ const DOCUMENT_NODE_AUTO_SAVE_DELAY_MS = 650
 const DOCUMENT_NODE_EXTERNAL_REFRESH_INTERVAL_MS = 300
 
 export function DocumentNode({
+  navigation,
+  onNavigationApplied,
   title,
   uri,
   mountId,
@@ -389,6 +391,8 @@ export function DocumentNode({
 
   return (
     <DocumentNodeChrome
+      navigation={navigation?.uri === uri && navigation.mountId === mountId ? navigation : null}
+      onNavigationApplied={onNavigationApplied}
       title={title}
       uri={uri}
       displayPath={displayPath}

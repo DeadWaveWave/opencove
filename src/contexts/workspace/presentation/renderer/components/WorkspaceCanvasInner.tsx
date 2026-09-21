@@ -3,6 +3,8 @@ import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
 import { TerminalDisplayAlignedWorkspaceCanvasView } from './workspaceCanvas/TerminalDisplayAlignedWorkspaceCanvasView'
 import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
 import type { WorkspaceCanvasInnerProps } from './workspaceCanvas/types'
+import { WorkspaceDocumentNavigationContext } from './workspaceCanvas/WorkspaceDocumentNavigationContext'
+import { useWorkspaceDocumentNavigation } from './workspaceCanvas/hooks/useWorkspaceDocumentNavigation'
 export function WorkspaceCanvasInner({
   workspaceId,
   onShowMessage,
@@ -352,120 +354,134 @@ export function WorkspaceCanvasInner({
     createImageNode: nodeStore.createImageNode,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
   })
+  const documentNavigation = useWorkspaceDocumentNavigation({
+    workspaceId,
+    spacesRef: canvasState.spacesRef,
+    nodesRef: nodeStore.nodesRef,
+    setNodes: nodeStore.setNodes,
+    onSpacesChange,
+    onRequestPersistFlush,
+    reactFlow,
+    createDocumentNode: nodeStore.createDocumentNode,
+    openSpaceExplorer: spaceExplorer.openSpaceExplorer,
+    openExplorerSpaceId: spaceExplorer.openExplorerSpaceId,
+  })
   return (
-    <TerminalDisplayAlignedWorkspaceCanvasView
-      terminalFontSize={agentSettings.terminalFontSize}
-      terminalFontFamily={agentSettings.terminalFontFamily}
-      terminalDisplayCalibration={terminalDisplayCalibration}
-      canvasRef={canvasState.canvasRef}
-      resolvedCanvasInputMode={inputMode.resolvedCanvasInputMode}
-      isCanvasWheelGestureCaptureActive={canvasState.isCanvasWheelGestureCaptureActive}
-      {...spaceUi}
-      {...spaceExplorer}
-      handleCanvasPointerDownCapture={handleCanvasPointerDownCapture}
-      handleCanvasPointerMoveCapture={handleCanvasPointerMoveCapture}
-      handleCanvasPointerUpCapture={handleCanvasPointerUpCapture}
-      handleCanvasDoubleClickCapture={handleCanvasDoubleClickCapture}
-      handleCanvasWheelCapture={inputMode.handleCanvasWheelCapture}
-      handleCanvasPaste={handleCanvasPaste}
-      handleCanvasDragOver={handleCanvasDragOver}
-      handleCanvasDrop={handleCanvasDrop}
-      nodes={canvasState.flowNodes}
-      edges={taskAgentEdges}
-      nodeTypes={nodeTypes}
-      onNodesChange={applyChanges}
-      onNodeClick={handleNodeClick}
-      onSelectionChange={handleSelectionChange}
-      onNodeDragStart={handleNodeDragStart}
-      onSelectionDragStart={handleSelectionDragStart}
-      onNodeDragStop={handleNodeDragStop}
-      onSelectionDragStop={handleSelectionDragStop}
-      onMoveEnd={handleViewportMoveEnd}
-      viewport={viewport}
-      isTrackpadCanvasMode={inputMode.isTrackpadCanvasMode}
-      useManualCanvasWheelGestures={inputMode.useManualCanvasWheelGestures}
-      isShiftPressed={canvasState.isShiftPressed}
-      selectionDraft={canvasState.selectionDraftUi}
-      snapGuides={canvasState.snapGuides}
-      spaceVisuals={spacesApi.spaceVisuals}
-      spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
-      selectedSpaceIds={canvasState.selectedSpaceIds}
-      handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
-      editingSpaceId={spacesApi.editingSpaceId}
-      spaceRenameInputRef={spacesApi.spaceRenameInputRef}
-      spaceRenameDraft={spacesApi.spaceRenameDraft}
-      setSpaceRenameDraft={spacesApi.setSpaceRenameDraft}
-      commitSpaceRename={spacesApi.commitSpaceRename}
-      cancelSpaceRename={spacesApi.cancelSpaceRename}
-      startSpaceRename={spacesApi.startSpaceRename}
-      setSpaceLabelColor={spacesApi.setSpaceLabelColor}
-      selectedNodeCount={canvasState.selectedNodeIds.length}
-      isMinimapVisible={canvasState.isMinimapVisible}
-      minimapNodeColor={minimapNodeColor}
-      setIsMinimapVisible={canvasState.setIsMinimapVisible}
-      onMinimapVisibilityChange={onMinimapVisibilityChange}
-      spaces={spaces}
-      activateSpace={spacesApi.activateSpace}
-      activateAllSpaces={spacesApi.activateAllSpaces}
-      onOpenSpaceContextMenu={onOpenSpaceContextMenu}
-      contextMenu={canvasState.contextMenu}
-      magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
-      onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
-      createTerminalNode={createTerminalNode}
-      createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
-      createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
-      arrangeAll={arrangeAll}
-      arrangeCanvas={arrangeCanvas}
-      arrangeInSpace={arrangeInSpace}
-      openTaskCreator={openTaskCreator}
-      openAgentLauncher={agentSupport.openAgentLauncher}
-      openAgentLauncherForProvider={agentSupport.openAgentLauncherForProvider}
-      runQuickCommand={runQuickCommand}
-      insertQuickPhrase={insertQuickPhrase}
-      openQuickMenuSettings={openQuickMenuSettings}
-      createSpaceFromSelectedNodes={spacesApi.createSpaceFromSelectedNodes}
-      createChildSpaceInParent={spacesApi.createChildSpaceInParent}
-      createEmptySpaceAtPoint={spacesApi.createEmptySpaceAtPoint}
-      spaceTargetMountPicker={spacesApi.spaceTargetMountPicker}
-      setSpaceTargetMountPicker={spacesApi.setSpaceTargetMountPicker}
-      confirmSpaceTargetMountPicker={spacesApi.confirmSpaceTargetMountPicker}
-      cancelSpaceTargetMountPicker={spacesApi.cancelSpaceTargetMountPicker}
-      clearNodeSelection={clearNodeSelection}
-      canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
-      isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
-      convertSelectedNoteToTask={convertSelectedNoteToTask}
-      setSelectedNodeLabelColorOverride={override =>
-        nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIds, override)
-      }
-      taskCreator={taskCreator}
-      taskTitleProviderLabel={taskTitleProviderLabel}
-      taskTitleModelLabel={taskTitleModelLabel}
-      taskTagOptions={taskTagOptions}
-      setTaskCreator={setTaskCreator}
-      closeTaskCreator={closeTaskCreator}
-      generateTaskTitle={generateTaskTitle}
-      createTask={createTask}
-      taskEditor={taskEditor}
-      setTaskEditor={setTaskEditor}
-      closeTaskEditor={closeTaskEditor}
-      generateTaskEditorTitle={generateTaskEditorTitle}
-      saveTaskEdits={saveTaskEdits}
-      nodeDeleteConfirmation={nodeDeleteConfirmation}
-      setNodeDeleteConfirmation={setNodeDeleteConfirmation}
-      confirmNodeDelete={confirmNodeDelete}
-      spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
-      cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}
-      continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}
-      agentSettings={agentSettings}
-      onChangePreserveWindowSizesOnArrange={onChangePreserveWindowSizesOnArrange}
-      workspacePath={workspacePath}
-      worktreesRoot={worktreesRoot}
-      onShowMessage={onShowMessage}
-      onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
-      updateSpaceDirectory={updateSpaceDirectory}
-      getSpaceBlockingNodes={getSpaceBlockingNodes}
-      closeNodesById={closeNodesById}
-      {...roleUiProps}
-    />
+    <WorkspaceDocumentNavigationContext.Provider value={documentNavigation}>
+      <TerminalDisplayAlignedWorkspaceCanvasView
+        terminalFontSize={agentSettings.terminalFontSize}
+        terminalFontFamily={agentSettings.terminalFontFamily}
+        terminalDisplayCalibration={terminalDisplayCalibration}
+        canvasRef={canvasState.canvasRef}
+        resolvedCanvasInputMode={inputMode.resolvedCanvasInputMode}
+        isCanvasWheelGestureCaptureActive={canvasState.isCanvasWheelGestureCaptureActive}
+        {...spaceUi}
+        {...spaceExplorer}
+        handleCanvasPointerDownCapture={handleCanvasPointerDownCapture}
+        handleCanvasPointerMoveCapture={handleCanvasPointerMoveCapture}
+        handleCanvasPointerUpCapture={handleCanvasPointerUpCapture}
+        handleCanvasDoubleClickCapture={handleCanvasDoubleClickCapture}
+        handleCanvasWheelCapture={inputMode.handleCanvasWheelCapture}
+        handleCanvasPaste={handleCanvasPaste}
+        handleCanvasDragOver={handleCanvasDragOver}
+        handleCanvasDrop={handleCanvasDrop}
+        nodes={canvasState.flowNodes}
+        edges={taskAgentEdges}
+        nodeTypes={nodeTypes}
+        onNodesChange={applyChanges}
+        onNodeClick={handleNodeClick}
+        onSelectionChange={handleSelectionChange}
+        onNodeDragStart={handleNodeDragStart}
+        onSelectionDragStart={handleSelectionDragStart}
+        onNodeDragStop={handleNodeDragStop}
+        onSelectionDragStop={handleSelectionDragStop}
+        onMoveEnd={handleViewportMoveEnd}
+        viewport={viewport}
+        isTrackpadCanvasMode={inputMode.isTrackpadCanvasMode}
+        useManualCanvasWheelGestures={inputMode.useManualCanvasWheelGestures}
+        isShiftPressed={canvasState.isShiftPressed}
+        selectionDraft={canvasState.selectionDraftUi}
+        snapGuides={canvasState.snapGuides}
+        spaceVisuals={spacesApi.spaceVisuals}
+        spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
+        selectedSpaceIds={canvasState.selectedSpaceIds}
+        handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
+        editingSpaceId={spacesApi.editingSpaceId}
+        spaceRenameInputRef={spacesApi.spaceRenameInputRef}
+        spaceRenameDraft={spacesApi.spaceRenameDraft}
+        setSpaceRenameDraft={spacesApi.setSpaceRenameDraft}
+        commitSpaceRename={spacesApi.commitSpaceRename}
+        cancelSpaceRename={spacesApi.cancelSpaceRename}
+        startSpaceRename={spacesApi.startSpaceRename}
+        setSpaceLabelColor={spacesApi.setSpaceLabelColor}
+        selectedNodeCount={canvasState.selectedNodeIds.length}
+        isMinimapVisible={canvasState.isMinimapVisible}
+        minimapNodeColor={minimapNodeColor}
+        setIsMinimapVisible={canvasState.setIsMinimapVisible}
+        onMinimapVisibilityChange={onMinimapVisibilityChange}
+        spaces={spaces}
+        activateSpace={spacesApi.activateSpace}
+        activateAllSpaces={spacesApi.activateAllSpaces}
+        onOpenSpaceContextMenu={onOpenSpaceContextMenu}
+        contextMenu={canvasState.contextMenu}
+        magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
+        onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
+        createTerminalNode={createTerminalNode}
+        createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+        createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
+        arrangeAll={arrangeAll}
+        arrangeCanvas={arrangeCanvas}
+        arrangeInSpace={arrangeInSpace}
+        openTaskCreator={openTaskCreator}
+        openAgentLauncher={agentSupport.openAgentLauncher}
+        openAgentLauncherForProvider={agentSupport.openAgentLauncherForProvider}
+        runQuickCommand={runQuickCommand}
+        insertQuickPhrase={insertQuickPhrase}
+        openQuickMenuSettings={openQuickMenuSettings}
+        createSpaceFromSelectedNodes={spacesApi.createSpaceFromSelectedNodes}
+        createChildSpaceInParent={spacesApi.createChildSpaceInParent}
+        createEmptySpaceAtPoint={spacesApi.createEmptySpaceAtPoint}
+        spaceTargetMountPicker={spacesApi.spaceTargetMountPicker}
+        setSpaceTargetMountPicker={spacesApi.setSpaceTargetMountPicker}
+        confirmSpaceTargetMountPicker={spacesApi.confirmSpaceTargetMountPicker}
+        cancelSpaceTargetMountPicker={spacesApi.cancelSpaceTargetMountPicker}
+        clearNodeSelection={clearNodeSelection}
+        canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
+        isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
+        convertSelectedNoteToTask={convertSelectedNoteToTask}
+        setSelectedNodeLabelColorOverride={override =>
+          nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIds, override)
+        }
+        taskCreator={taskCreator}
+        taskTitleProviderLabel={taskTitleProviderLabel}
+        taskTitleModelLabel={taskTitleModelLabel}
+        taskTagOptions={taskTagOptions}
+        setTaskCreator={setTaskCreator}
+        closeTaskCreator={closeTaskCreator}
+        generateTaskTitle={generateTaskTitle}
+        createTask={createTask}
+        taskEditor={taskEditor}
+        setTaskEditor={setTaskEditor}
+        closeTaskEditor={closeTaskEditor}
+        generateTaskEditorTitle={generateTaskEditorTitle}
+        saveTaskEdits={saveTaskEdits}
+        nodeDeleteConfirmation={nodeDeleteConfirmation}
+        setNodeDeleteConfirmation={setNodeDeleteConfirmation}
+        confirmNodeDelete={confirmNodeDelete}
+        spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
+        cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}
+        continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}
+        agentSettings={agentSettings}
+        onChangePreserveWindowSizesOnArrange={onChangePreserveWindowSizesOnArrange}
+        workspacePath={workspacePath}
+        worktreesRoot={worktreesRoot}
+        onShowMessage={onShowMessage}
+        onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
+        updateSpaceDirectory={updateSpaceDirectory}
+        getSpaceBlockingNodes={getSpaceBlockingNodes}
+        closeNodesById={closeNodesById}
+        {...roleUiProps}
+      />
+    </WorkspaceDocumentNavigationContext.Provider>
   )
 }

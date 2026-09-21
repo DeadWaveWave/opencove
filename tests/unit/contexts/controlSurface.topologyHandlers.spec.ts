@@ -260,6 +260,35 @@ describe('control surface topology handlers', () => {
     }
   })
 
+  it.each(['source-worker', undefined, '', 123, 'invalid/host'])(
+    'only forwards a valid optional runtime hostname (%s)',
+    async hostname => {
+      invokeControlSurfaceMock.mockResolvedValueOnce({
+        httpStatus: 200,
+        result: {
+          __opencoveControlEnvelope: true,
+          ok: true,
+          value: { platform: 'linux', homeDirectory: '/home/worker', hostname },
+        },
+      })
+      const { controlSurface } = createSubject()
+      const result = await controlSurface.invoke(ctx, {
+        kind: 'query',
+        id: 'endpoint.homeDirectory',
+        payload: { endpointId: 'remote' },
+      })
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.value).toEqual({
+          endpointId: 'remote',
+          platform: 'linux',
+          homeDirectory: '/home/worker',
+          ...(hostname === 'source-worker' ? { hostname } : {}),
+        })
+      }
+    },
+  )
+
   it('forwards endpoint overview queries to the endpoint health service', async () => {
     const listOverviews = vi.fn(async () => ({
       endpoints: [

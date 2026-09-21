@@ -78,6 +78,7 @@ export function TerminalNode({
   onCommandRun,
   onAgentOverlayExit,
   onInteractionStart,
+  ...linkOptions
 }: TerminalNodeProps): JSX.Element {
   const {
     isDragSurfaceSelectionMode,
@@ -142,7 +143,6 @@ export function TerminalNode({
     lineHeight: displayTerminalLineHeight,
     letterSpacing: displayTerminalLetterSpacing,
   }
-
   latestSessionIdRef.current = sessionId
 
   const {
@@ -454,6 +454,7 @@ export function TerminalNode({
           onRetry={() => commitTerminalGeometry('frame_commit')}
         />
       }
+      linkOptions={linkOptions}
       title={title}
       fixedTitlePrefix={fixedTitlePrefix}
       kind={isAgentPresentation ? 'agent' : kind}

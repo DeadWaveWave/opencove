@@ -13,10 +13,23 @@ import {
 } from './effectiveDevicePixelRatio'
 import { writeTerminalAsync } from './writeTerminal'
 import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement'
+import {
+  resetTerminalCwdObservation,
+  suspendTerminalCwdObservation,
+} from './links/terminalCwdObservation'
 
 const ALT_BUFFER_ENTER_MARKER = '\u001b[?1049h'
 const ALT_BUFFER_EXIT_MARKER = '\u001b[?1049l'
 const PRESENTATION_SNAPSHOT_ATTACH_TIMEOUT_MS = 1_500
+
+async function writeHydrationSnapshotAsync(terminal: Terminal, data: string): Promise<void> {
+  const suspendedCwdObservation = suspendTerminalCwdObservation(terminal)
+  try {
+    await writeTerminalAsync(terminal, data)
+  } finally {
+    suspendedCwdObservation.dispose()
+  }
+}
 
 async function awaitAttachForPresentationSnapshot(
   attachPromise: Promise<AttachTerminalResult | undefined>,
@@ -213,29 +226,29 @@ export async function hydrateTerminalFromSnapshot({
   onPresentationSnapshotGeometryApplied?.()
 
   if (shouldArchivePreviousTerminalEpoch && visiblePresentationSnapshot) {
-    await writeTerminalAsync(terminal, rendererPlaceholderSnapshot)
+    await writeHydrationSnapshotAsync(terminal, rendererPlaceholderSnapshot)
     const alternateScreenPreview = captureActiveScreenText(terminal)
     const epochTransition = createTerminalEpochTransition({
       terminal,
       previousSnapshot: rendererPlaceholderSnapshot,
       alternateScreenPreview,
     })
-    await writeTerminalAsync(terminal, epochTransition)
-    await writeTerminalAsync(terminal, visiblePresentationSnapshot.serializedScreen)
+    await writeHydrationSnapshotAsync(terminal, epochTransition)
+    await writeHydrationSnapshotAsync(terminal, visiblePresentationSnapshot.serializedScreen)
     onPresentationSnapshotAccepted?.(visiblePresentationSnapshot)
     rawSnapshot = `${rendererPlaceholderSnapshot}${epochTransition}${visiblePresentationSnapshot.serializedScreen}`
     hydrationBaselineSource = 'presentation_snapshot'
     onHydratedWriteCommitted(rawSnapshot)
     await awaitAttachForPresentationSnapshot(attachPromise)
   } else if (visiblePresentationSnapshot) {
-    await writeTerminalAsync(terminal, visiblePresentationSnapshot.serializedScreen)
+    await writeHydrationSnapshotAsync(terminal, visiblePresentationSnapshot.serializedScreen)
     onPresentationSnapshotAccepted?.(visiblePresentationSnapshot)
     rawSnapshot = visiblePresentationSnapshot.serializedScreen
     hydrationBaselineSource = 'presentation_snapshot'
     onHydratedWriteCommitted(rawSnapshot)
     await awaitAttachForPresentationSnapshot(attachPromise)
   } else if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
-    await writeTerminalAsync(terminal, placeholderPayload)
+    await writeHydrationSnapshotAsync(terminal, placeholderPayload)
     onHydratedWriteCommitted(rawSnapshot)
   }
 
@@ -274,13 +287,14 @@ export async function hydrateTerminalFromSnapshot({
         pendingScrollStateToRestore =
           capturedScrollState.viewportY === null ? null : capturedScrollState
       }
+      resetTerminalCwdObservation(terminal)
       terminal.reset()
-      await writeTerminalAsync(terminal, mergedSnapshot)
+      await writeHydrationSnapshotAsync(terminal, mergedSnapshot)
       return mergedSnapshot
     }
 
     const delta = liveDelta
-    await writeTerminalAsync(terminal, delta)
+    await writeHydrationSnapshotAsync(terminal, delta)
     return mergedSnapshot
   }
 

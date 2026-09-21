@@ -1,3 +1,4 @@
+import type { DocumentNavigationProps } from './useDocumentNodeNavigation'
 import type { FileSystemStat, ReadFileTextResult } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { NodeFrame, Point } from '../types'
@@ -12,7 +13,7 @@ export interface DocumentNodeInteractionOptions {
   shiftKey?: boolean
 }
 
-export interface DocumentNodeProps {
+export interface DocumentNodeProps extends DocumentNavigationProps {
   title: string
   uri: string
   mountId: string | null

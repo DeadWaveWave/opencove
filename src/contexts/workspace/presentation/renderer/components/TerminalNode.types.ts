@@ -1,3 +1,4 @@
+import type { TerminalLinkHostOptions } from './terminalNode/links/TerminalLinkHost'
 import type {
   AgentLaunchMode,
   AgentRuntimeStatus,
@@ -23,7 +24,7 @@ export interface TerminalNodeInteractionOptions {
   shiftKey?: boolean
 }
 
-export interface TerminalNodeProps {
+export interface TerminalNodeProps extends TerminalLinkHostOptions {
   nodeId: string
   sessionId: string
   title: string

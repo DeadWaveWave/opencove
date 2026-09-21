@@ -54,6 +54,17 @@ Space Explorer 是 Document Node 的主要入口：
 - 点击媒体文件显示预览或创建媒体窗口。
 - 节点读写必须保持在触发它的 mount scope 内。
 
+## Terminal Navigation
+
+终端文件链接与 Space Explorer 复用同一文档创建、复用和空间归属入口：
+
+- 链接的 filesystem scope 来自产生输出的终端 `workerBinding`，不能由终端当前的视觉位置改写。
+- 优先在绑定相同 mount 的所属 Space 打开；终端被移走后，仅在唯一匹配来源 mount 的 Space 中打开。没有匹配或存在歧义时返回不可用，不回退到本机同名路径。
+- 无 mount 的本机终端可以在 workspace root 打开文件；文件复用同时检查 URI、Space 和 mount。
+- 行列范围是每个 canvas 内的 transient navigation intent。Monaco ready 后应用、聚焦并消费；旧请求不能消费新请求，关闭文档或切换 workspace 后不得应用迟到请求。
+- 链接跳转不能替换已有文档草稿，不能持久化 selection/cursor，也不能改变终端的启动目录或恢复意图。
+- 目录链接可以把匹配 Space 的 Explorer 临时定位到该目录；关闭 Explorer 后清除临时位置。目前 workspace root 没有独立目录浏览窗口。
+
 ## UI Constraints
 
 - 使用 `--cove-*` token。
