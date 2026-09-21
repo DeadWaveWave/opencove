@@ -201,7 +201,8 @@ export function createPowerShellShimScript(
   const launcher = quotePowerShell(launcherPath)
   const plans = quotePowerShell(planDirectory)
   return [
-    `$planDirectory = ${plans}`,
+    // Windows PowerShell 5.1 assumes ANSI without a BOM; profile and runtime paths may be Unicode.
+    `\uFEFF$planDirectory = ${plans}`,
     '$planPath = [System.IO.Path]::Combine($planDirectory, ([System.Guid]::NewGuid().ToString("N") + ".json"))',
     '$originalElectronRunAsNode = $env:ELECTRON_RUN_AS_NODE',
     '$providerExitCode = 1',
@@ -227,14 +228,13 @@ export function createPowerShellShimScript(
   ].join('\r\n')
 }
 
-export function createCmdShimScript(powerShellShimPath: string): string {
-  return [
-    '@echo off',
-    `powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "${powerShellShimPath}" %*`,
-    'exit /b %ERRORLEVEL%',
-    '',
-  ].join('\r\n')
-}
+// Keep batch source ASCII: expand the colocated script's path at runtime, not via a code page.
+export const terminalAgentCmdShimScript = [
+  '@echo off',
+  'powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dpn0.ps1" %*',
+  'exit /b %ERRORLEVEL%',
+  '',
+].join('\r\n')
 
 export const terminalAgentPosixShellLauncherScript = [
   '#!/bin/sh',

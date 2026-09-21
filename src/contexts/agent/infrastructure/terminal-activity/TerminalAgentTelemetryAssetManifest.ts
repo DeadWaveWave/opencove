@@ -1,9 +1,9 @@
 import { join } from 'node:path'
 import {
-  createCmdShimScript,
   createPosixShimScript,
   createPowerShellShimScript,
   terminalAgentBashRcScript,
+  terminalAgentCmdShimScript,
   terminalAgentLauncherScript,
   terminalAgentPosixShellLauncherScript,
   terminalAgentZshEnvScript,
@@ -58,7 +58,7 @@ export function terminalAgentAssetManifest(
           createPowerShellShimScript(runtime, launcherPath, provider, planDirectory),
           0o700,
         ),
-        file(join(shimDirectory, `${provider}.cmd`), createCmdShimScript(powerShellPath), 0o700),
+        file(join(shimDirectory, `${provider}.cmd`), terminalAgentCmdShimScript, 0o700),
       ]
     }),
   ]

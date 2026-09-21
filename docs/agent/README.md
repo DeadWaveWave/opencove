@@ -52,6 +52,12 @@ Unexpected links, foreign ownership or replaced directories fail closed at the a
 instance directories use `0700`, files `0600`/`0700`. Windows inherits the private profile ACL. A locked
 Windows destination may prevent rename; it is not unlinked as a workaround.
 
+Windows PowerShell scripts are UTF-8 with a BOM, so Windows PowerShell 5.1 does not decode Unicode
+profile or runtime paths as ANSI. CMD shims stay ASCII and locate their colocated, same-named `.ps1`
+using `%~dpn0.ps1`; they do not embed profile paths or change the user's code page. The BOM is part of
+the manifest's exact bytes and is repaired if lost. POSIX shebang scripts and JavaScript remain
+BOM-free.
+
 Instrumentation is optional: failed preparation returns the original executable, arguments and environment
 and releases any uncommitted reservation. It does not replay a spawn or a user command. Bounded runtime
 diagnostics record repair counts or allowlisted failure categories, never credentials, command contents,

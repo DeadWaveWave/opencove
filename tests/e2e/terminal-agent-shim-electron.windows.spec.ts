@@ -8,7 +8,7 @@ import { TerminalAgentTelemetryAssetStore } from '../../src/contexts/agent/infra
 
 test('Windows interactive shim waits for the Electron GUI executable to publish and clean its plan', async () => {
   test.skip(process.platform !== 'win32', 'Windows PowerShell GUI process semantics')
-  const root = await mkdtemp(join(tmpdir(), 'opencove-shim-electron-'))
+  const root = await mkdtemp(join(tmpdir(), "opencove-shim-electron 用户's 路径 🌊 "))
   const realBin = join(root, 'provider 路径 with spaces')
   await mkdir(realBin)
   await writeFile(
