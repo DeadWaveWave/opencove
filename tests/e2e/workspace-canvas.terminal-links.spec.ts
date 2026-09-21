@@ -258,7 +258,6 @@ test.describe('Workspace Canvas - Terminal Links', () => {
         nodeId,
         `\x1b]8;;${uri}\x07${displayedUri}\x1b]8;;\x07\r\n\x1b]8;;${uri}\x07Open the report\x1b]8;;\x07`,
         {
-          marker: displayedUri,
           inputResponses: [
             '\x1b[3;1HUNRELATED_OUTPUT',
             `\x1b[1;1H\x1b]8;;${replacementUri}\x07${displayedUri}\x1b]8;;\x07`,

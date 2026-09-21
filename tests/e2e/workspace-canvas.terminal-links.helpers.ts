@@ -1,12 +1,17 @@
 import { expect, type Page } from '@playwright/test'
+import { stripVTControlCharacters } from 'node:util'
 import { buildNodeEvalCommand } from './workspace-canvas.helpers'
 
 export async function printTerminalLinkFixture(
   window: Page,
   nodeId: string,
   text: string,
-  options: { marker?: string; mouseTracking?: boolean; inputResponses?: string[] } = {},
+  options: { mouseTracking?: boolean; inputResponses?: string[] } = {},
 ): Promise<void> {
+  const visibleText = stripVTControlCharacters(text).replace(/\s+/g, '')
+  if (!visibleText) {
+    throw new Error('Terminal link fixtures must contain visible text')
+  }
   const terminal = window.locator(`[data-id="${nodeId}"] .terminal-node`)
   const input = terminal.locator('.xterm-helper-textarea')
   await expect(input).toBeAttached()
@@ -24,11 +29,15 @@ export async function printTerminalLinkFixture(
   await expect
     .poll(() =>
       window.evaluate(
-        ({ id, marker }) =>
+        // A shell prompt can share a path prefix. Wait for the complete output, including
+        // soft-wrapped rows and OSC 8 labels, ignoring row padding and line breaks.
+        ({ id, expected }) =>
           window.__opencoveTerminalSelectionTestApi
-            ?.getBufferText(id, marker)
-            ?.viewportLines[0]?.includes(marker) ?? false,
-        { id: nodeId, marker: options.marker ?? text.slice(0, 16) },
+            ?.getBufferText(id, '')
+            ?.viewportLines.join('')
+            .replace(/\s+/g, '')
+            .startsWith(expected) ?? false,
+        { id: nodeId, expected: visibleText },
       ),
     )
     .toBe(true)
