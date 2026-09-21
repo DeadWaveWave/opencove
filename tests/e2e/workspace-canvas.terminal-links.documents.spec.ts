@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { captureSystemOpenPaths } from './workspace-canvas.system-open.helpers'
 import {
   clearAndSeedWorkspace,
   launchApp,
@@ -88,18 +89,10 @@ test('opens an existing local file URI directory with the system file manager wi
   const uri = pathToFileURL(directory).href
   const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
   const nodeId = 'terminal-directory-link'
-  type SystemOpenState = typeof globalThis & { __opencoveSystemOpenPaths?: string[] }
-  const openedPaths = () =>
-    electronApp.evaluate(() => (globalThis as SystemOpenState).__opencoveSystemOpenPaths ?? [])
+  let systemOpen: Awaited<ReturnType<typeof captureSystemOpenPaths>> | undefined
   try {
-    await electronApp.evaluate(({ shell }) => {
-      const state = globalThis as SystemOpenState
-      state.__opencoveSystemOpenPaths = []
-      shell.openPath = async targetPath => {
-        state.__opencoveSystemOpenPaths?.push(targetPath)
-        return ''
-      }
-    })
+    systemOpen = await captureSystemOpenPaths(electronApp)
+    const openedPaths = systemOpen.read
     await clearAndSeedWorkspace(
       window,
       [
@@ -139,6 +132,7 @@ test('opens an existing local file URI directory with the system file manager wi
     await expect(actions).toBeHidden()
     await expect(window.locator('.document-node')).toHaveCount(0)
   } finally {
+    systemOpen?.dispose()
     await electronApp.close()
     await removePathWithRetry(directory)
   }

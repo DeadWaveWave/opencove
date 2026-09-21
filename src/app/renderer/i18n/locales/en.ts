@@ -323,9 +323,9 @@ export const en = {
     notAFile: 'This is not a file.',
     editorUnavailable: 'The code editor is unavailable.',
     binaryReadUnavailable: 'This environment cannot load image, audio, or video previews.',
-    binaryTitle: 'Binary file',
-    binaryMessage:
-      'This file appears to be binary or uses an unsupported encoding, so it cannot be opened as text.',
+    binaryTitle: 'Preview unavailable',
+    binaryMessage: 'You can view this file in another app.',
+    previewUnavailableForType: 'Preview is not yet available for {{fileType}} files.',
     imageTooLargeTitle: 'Image too large',
     imageTooLargeMessage: 'This image exceeds the 50 MiB preview limit.',
     tooLargeTitle: 'File too large',

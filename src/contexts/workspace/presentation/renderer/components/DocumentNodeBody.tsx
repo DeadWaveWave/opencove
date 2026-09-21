@@ -2,6 +2,7 @@ import type { DocumentNavigationProps } from './useDocumentNodeNavigation'
 import { useEffect, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { DocumentNodeSystemOpen } from './DocumentNodeSystemOpen'
+import { DocumentNodeFilePlaceholder } from './DocumentNodeFilePlaceholder'
 import { DocumentNodeMonacoEditor } from './DocumentNode.monaco'
 import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
 
@@ -89,21 +90,19 @@ export function DocumentNodeBody({
           </div>
           <DocumentNodeSystemOpen uri={uri} mountId={mountId} />
         </div>
+      ) : unsupportedKind === 'binary' ? (
+        <DocumentNodeFilePlaceholder uri={uri} mountId={mountId} />
       ) : unsupportedKind ? (
         <div className="document-node__state document-node__state--warning">
           <div className="document-node__state-title">
             {unsupportedKind === 'imageTooLarge'
               ? t('documentNode.imageTooLargeTitle')
-              : unsupportedKind === 'binary'
-                ? t('documentNode.binaryTitle')
-                : t('documentNode.tooLargeTitle')}
+              : t('documentNode.tooLargeTitle')}
           </div>
           <div className="document-node__state-message">
             {unsupportedKind === 'imageTooLarge'
               ? t('documentNode.imageTooLargeMessage')
-              : unsupportedKind === 'binary'
-                ? t('documentNode.binaryMessage')
-                : t('documentNode.tooLargeMessage')}
+              : t('documentNode.tooLargeMessage')}
           </div>
           <DocumentNodeSystemOpen uri={uri} mountId={mountId} />
         </div>

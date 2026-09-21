@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react'
+import { ExternalLink } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toAppErrorDescriptor } from '@shared/errors/appError'
 import {
@@ -77,10 +78,10 @@ function SystemOpenAction({ uri, mountId }: SystemFileReference): JSX.Element | 
     return null
   }
   return (
-    <div className="nodrag">
+    <div className="document-node__system-open nodrag">
       <button
         type="button"
-        className="document-node__state-action nodrag"
+        className="document-node__state-action document-node__system-open-action nodrag"
         data-testid="document-node-open-system"
         disabled={busy}
         onPointerDown={event => event.stopPropagation()}
@@ -89,6 +90,7 @@ function SystemOpenAction({ uri, mountId }: SystemFileReference): JSX.Element | 
           void open()
         }}
       >
+        <ExternalLink size={14} aria-hidden="true" />
         {t('terminalLink.openWithDefaultApp')}
       </button>
       {error ? (

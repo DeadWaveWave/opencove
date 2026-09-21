@@ -42,7 +42,7 @@ export async function expectTerminalImageDocument(
       }),
     )
     .toEqual(dimensions)
-  await expect(documentNode.getByText('Binary file', { exact: true })).toHaveCount(0)
+  await expect(documentNode.getByTestId('document-node-file-placeholder')).toHaveCount(0)
   await expect(documentNode.getByTestId('document-node-editor')).toHaveCount(0)
   await expect(documentNode.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
   await expect(page.locator('.image-node')).toHaveCount(0)
