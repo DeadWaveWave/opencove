@@ -64,6 +64,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
       }),
     })
     const assets = new TerminalAgentTelemetryAssetStore({
+      parentDirectory: root,
       runtimeExecutable: process.execPath,
       platform: process.platform,
     })
@@ -137,6 +138,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
         }),
       })
       const assets = new TerminalAgentTelemetryAssetStore({
+        parentDirectory: root,
         runtimeExecutable: process.execPath,
         platform: process.platform,
       })
@@ -204,6 +206,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
         }),
       })
       const assets = new TerminalAgentTelemetryAssetStore({
+        parentDirectory: root,
         runtimeExecutable: process.execPath,
         platform: process.platform,
       })
@@ -282,6 +285,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
     const terminal = await gateway.reserveTerminal()
     terminal.commit('pty-delayed')
     const assets = new TerminalAgentTelemetryAssetStore({
+      parentDirectory: root,
       runtimeExecutable: process.execPath,
       platform: process.platform,
     })
@@ -315,6 +319,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
     await writeFile(realClaude, '#!/bin/sh\nprintf "REAL_EXECUTABLE=%s\\n" "$0"\nexit 23\n')
     await chmod(realClaude, 0o700)
     const assets = new TerminalAgentTelemetryAssetStore({
+      parentDirectory: root,
       runtimeExecutable: process.execPath,
       platform: process.platform,
     })
@@ -365,6 +370,7 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
       )
       await chmod(realClaude, 0o700)
       const assets = new TerminalAgentTelemetryAssetStore({
+        parentDirectory: root,
         runtimeExecutable: process.execPath,
         platform: process.platform,
       })

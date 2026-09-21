@@ -105,6 +105,7 @@ export function createControlSurfaceHttpRuntime(
   const agentHookChannels =
     options.agentHookChannels ?? (options.claudeHookChannel ? [options.claudeHookChannel] : [])
   const terminalAgents = createTerminalAgentActivityRuntime({
+    userDataPath: options.userDataPath,
     agentHookChannels,
     agentProviderRegistry: options.agentProviderRegistry,
     appVersion,

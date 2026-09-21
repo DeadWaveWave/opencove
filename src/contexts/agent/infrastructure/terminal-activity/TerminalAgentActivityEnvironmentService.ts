@@ -1,3 +1,9 @@
+import {
+  emitTerminalAgentDiagnostic,
+  terminalAgentFailureReason,
+  type TerminalAgentDiagnostic,
+  type TerminalAgentDiagnosticSink,
+} from './TerminalAgentDiagnostics'
 import { posix, win32, type PlatformPath } from 'node:path'
 import type { TerminalRuntimeKind } from '../../../../shared/contracts/dto'
 import type { TerminalAgentActivityGateway } from './TerminalAgentActivityGateway'
@@ -30,8 +36,9 @@ export class TerminalAgentActivityEnvironmentService {
 
   public constructor(
     private readonly options: {
-      assets: TerminalAgentTelemetryAssetStore
-      gateway: TerminalAgentActivityGateway
+      assets: Pick<TerminalAgentTelemetryAssetStore, 'ensure'>
+      gateway: Pick<TerminalAgentActivityGateway, 'reserveTerminal'>
+      diagnostic?: TerminalAgentDiagnosticSink
       inheritedPath: string
       inheritedShell: string
       platform: NodeJS.Platform
@@ -47,13 +54,21 @@ export class TerminalAgentActivityEnvironmentService {
     if (this.isWslSpawn(command)) {
       return unchanged(command)
     }
+    let stage: Extract<TerminalAgentDiagnostic, { type: 'prepare-fallback' }>['stage'] = 'assets'
     let reservation: TerminalAgentGatewayReservation | null = null
     try {
       const assets = await this.options.assets.ensure()
+      stage = 'reservation'
       reservation = await this.options.gateway.reserveTerminal()
+      stage = 'environment'
       return this.createPrepared(command, assets, reservation)
-    } catch {
+    } catch (error) {
       await reservation?.dispose().catch(() => undefined)
+      emitTerminalAgentDiagnostic(this.options.diagnostic, {
+        type: 'prepare-fallback',
+        stage,
+        reason: terminalAgentFailureReason(error),
+      })
       return unchanged(command)
     }
   }
