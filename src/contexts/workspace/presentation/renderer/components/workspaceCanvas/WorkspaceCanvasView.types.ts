@@ -62,7 +62,6 @@ export interface WorkspaceCanvasViewProps {
   onNodeClick: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
   onNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
   onSelectionContextMenu: (event: React.MouseEvent, selectedNodes: Node<TerminalNodeData>[]) => void
-  onSelectionChange: (params: { nodes: Node<TerminalNodeData>[] }) => void
   onNodeDragStart: (
     event: React.MouseEvent,
     node: Node<TerminalNodeData>,

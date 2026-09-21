@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore, type Node, type Viewport } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
@@ -76,6 +76,7 @@ export function useWorkspaceCanvasState({
   setIsMinimapVisible: React.Dispatch<React.SetStateAction<boolean>>
   selectedNodeIds: string[]
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
+  syncSelectedNodeIds: (nodeIds: string[]) => void
   selectedSpaceIds: string[]
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
@@ -138,6 +139,21 @@ export function useWorkspaceCanvasState({
   const trackpadGestureLockRef = useRef<CanvasWheelGestureSessionState | null>(null)
   const viewportRef = useRef<Viewport>(viewport)
   const spaceNavigationAnchorIdRef = useRef<string | null>(null)
+
+  const syncSelectedNodeIds = useCallback((nodeIds: string[]) => {
+    if (selectionDraftRef.current !== null) {
+      return
+    }
+
+    setSelectedNodeIds(current =>
+      current.length === nodeIds.length && current.every((id, index) => id === nodeIds[index])
+        ? current
+        : nodeIds,
+    )
+    if (nodeIds.length > 0) {
+      setEmptySelectionPrompt(null)
+    }
+  }, [])
 
   const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds])
 
@@ -209,6 +225,7 @@ export function useWorkspaceCanvasState({
     setIsMinimapVisible,
     selectedNodeIds,
     setSelectedNodeIds,
+    syncSelectedNodeIds,
     selectedSpaceIds,
     setSelectedSpaceIds,
     setEmptySelectionPrompt,

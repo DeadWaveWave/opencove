@@ -64,6 +64,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
   nodesRef,
   onNodesChange,
   onNodesCommit,
+  onSelectedNodeIdsChange,
   clearAgentLaunchToken,
   normalizePosition,
   applyPendingScrollbacks,
@@ -295,6 +296,12 @@ export function useWorkspaceCanvasApplyNodeChanges({
       })
 
       nodesRef.current = nextNodes
+      if (filteredChanges.some(change => change.type === 'select' || change.type === 'remove')) {
+        // Publish selection in the same transaction as the node change. Mirroring
+        // React Flow's later SelectionListener effect can replay an older selection
+        // after controlled nodes have already changed, creating a feedback loop.
+        onSelectedNodeIdsChange?.(nextNodes.filter(node => node.selected).map(node => node.id))
+      }
       if (onNodesCommit && !isDraggingThisFrame) {
         onNodesCommit(nextNodes)
       } else {
@@ -322,6 +329,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
       normalizePosition,
       onNodesCommit,
       onNodesChange,
+      onSelectedNodeIdsChange,
     ],
   )
 

@@ -37,6 +37,10 @@
   visibility: visible;
 }
 
+.cove-node-presentation[data-cove-collapse-motion] [data-cove-collapse-anchor] {
+  opacity: 0;
+}
+
 .cove-node-presentation[data-cove-collapse-motion] .cove-collapsed-window__icon {
   background: transparent;
   border-color: transparent;

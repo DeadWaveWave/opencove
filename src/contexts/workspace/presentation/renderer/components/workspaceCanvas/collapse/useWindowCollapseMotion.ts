@@ -141,8 +141,19 @@ export function useWindowCollapseMotion(
     const compactColor = getComputedStyle(glyph).color
     const duration = collapsed ? WINDOW_FOLD_MS : WINDOW_UNFOLD_MS
     const startDelay = collapsed ? delayRef.current : 0
+    const headerAnchors = [headerIcon, headerTitle].filter(
+      (element): element is HTMLElement | SVGElement => element !== null,
+    )
+    // Only the compact identity moves. Keep its live header anchors in normal
+    // CSS so WebKit cannot retain hidden visibility from a cancelled animation.
+    for (const element of headerAnchors) {
+      element.setAttribute('data-cove-collapse-anchor', '')
+    }
     shell.dataset.coveCollapseMotion = collapsed ? 'collapse' : 'expand'
     const group = createCollapseAnimationGroup(() => {
+      for (const element of headerAnchors) {
+        element.removeAttribute('data-cove-collapse-anchor')
+      }
       if (active.current !== group) {
         return
       }
@@ -205,11 +216,6 @@ export function useWindowCollapseMotion(
       { ...expandedTitle, opacity: headerTitle ? 1 : 0 },
       { ...compactTitle, opacity: 1 },
     )
-    for (const element of [headerIcon, headerTitle]) {
-      if (element) {
-        group.animate(element, [{ opacity: 0 }, { opacity: 0 }], duration, startDelay)
-      }
-    }
     group.animate(
       runtime,
       collapsed

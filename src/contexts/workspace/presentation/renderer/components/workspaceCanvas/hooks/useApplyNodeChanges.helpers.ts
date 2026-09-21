@@ -8,6 +8,7 @@ export interface UseApplyNodeChangesParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
   onNodesCommit?: (nodes: Node<TerminalNodeData>[]) => void
+  onSelectedNodeIdsChange?: (nodeIds: string[]) => void
   clearAgentLaunchToken: (nodeId: string) => void
   normalizePosition: (
     nodeId: string,

@@ -173,7 +173,6 @@ function createBaseProps(
     onNodeClick: () => undefined,
     onNodeContextMenu: () => undefined,
     onSelectionContextMenu: () => undefined,
-    onSelectionChange: () => undefined,
     onNodeDragStart: () => undefined,
     onSelectionDragStart: () => undefined,
     onNodeDragStop: () => undefined,

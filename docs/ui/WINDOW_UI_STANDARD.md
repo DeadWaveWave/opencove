@@ -108,6 +108,9 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
   转为后代节点的 compact 偏好并清除，保留布局与运行时。
 - React Flow 的 width/height 与 initialWidth/initialHeight 同属展示投影；旧 measured
   与展示尺寸不符时必须丢弃，避免受控拖动重建节点时选中框闪回展开尺寸。
+- 操作选区由画布本地 UI 状态持有，React Flow 的 select/remove 变更在同一批次同步
+  选中 ID 与节点投影。禁止再从 onSelectionChange 的延后通知回写受控节点选区，
+  否则拖动切换选中窗口时，旧通知可能使选区来回振荡并触发 React 循环更新。
 - 「画布 → 窗口布局 → 窗口展开方式」默认原地展开并沿用 resize 推开布局；也可
   选择按创建寻位流程移到空位展开。直接点击和导航均经同一展开 owner，
   用可见几何规划碰撞，再只提交位置与 Space 边框，不改变运行时尺寸或重启会话。
@@ -134,6 +137,9 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
 - 图标测量真实 glyph，标题测量对应的可见文字；动画中的标题使用固定坐标空间，保持
   占位与省略规则，并插值字体、行高和颜色。最后一帧须与静态两端的文字/图标几何一致，
   不能因 Flex 居中、外层标题容器或取消临时样式产生跳变。没有对应标题的窗口只淡入/淡出。
+- 真实 header 图标与标题在过渡期间只用临时 CSS 标记隐藏，移动由 compact 代理承担；
+  不给真实文字添加恒定透明度的 Web Animation，避免与 runtime 的继承可见性切换冲突。
+  完成、反转和拖动中断都须同步移除标记，展开后标题的 visibility 与 opacity 必须恢复。
 - 动画只有临时 DOM 展示写权；不得把中间帧提交给 React Flow、PTY 或共享布局。中断从
   当前帧接续，拖动、卸载、切换项目与 reduced-motion 清理动画；最终状态由布局 owner
   持有。浏览器原生 host 按动画边界裁切，其 viewport 保持完整尺寸。

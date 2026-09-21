@@ -199,21 +199,6 @@ export function useWorkspaceCanvasInteractions({
     ],
   )
 
-  const handleSelectionChange = useCallback(
-    ({ nodes: selected }: { nodes: Node<TerminalNodeData>[] }) => {
-      if (selectionDraftRef.current !== null) {
-        return
-      }
-
-      const selectedIds = selected.map(node => node.id)
-      setSelectedNodeIds(selectedIds)
-      if (selectedIds.length > 0) {
-        setEmptySelectionPrompt(null)
-      }
-    },
-    [selectionDraftRef, setEmptySelectionPrompt, setSelectedNodeIds],
-  )
-
   const {
     handleCanvasPointerDownCapture,
     handleCanvasPointerMoveCapture,
@@ -477,7 +462,6 @@ export function useWorkspaceCanvasInteractions({
     handleSelectionContextMenu,
     handleNodeContextMenu,
     handlePaneContextMenu,
-    handleSelectionChange,
     handleCanvasPointerDownCapture: handleCanvasPointerDownCaptureWithDragGuard,
     handleCanvasPointerMoveCapture: handleCanvasPointerMoveCaptureWithDragGuard,
     handleCanvasPointerUpCapture: handleCanvasPointerUpCaptureWithDragGuard,

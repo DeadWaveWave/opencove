@@ -57,7 +57,6 @@ export function WorkspaceCanvasView({
   onNodeClick,
   onNodeContextMenu,
   onSelectionContextMenu,
-  onSelectionChange,
   onNodeDragStart,
   onSelectionDragStart,
   onNodeDragStop,
@@ -290,7 +289,6 @@ export function WorkspaceCanvasView({
         onNodeClick={onNodeClick}
         onNodeContextMenu={onNodeContextMenu}
         onSelectionContextMenu={onSelectionContextMenu}
-        onSelectionChange={onSelectionChange}
         onNodeDragStart={onNodeDragStart}
         onSelectionDragStart={onSelectionDragStart}
         onNodeDragStop={onNodeDragStop}

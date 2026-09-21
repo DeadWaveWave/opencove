@@ -212,7 +212,6 @@ export function WorkspaceCanvasInner({
     handleSelectionContextMenu,
     handleNodeContextMenu,
     handlePaneContextMenu,
-    handleSelectionChange,
     handleCanvasPointerDownCapture,
     handleCanvasPointerMoveCapture,
     handleCanvasPointerUpCapture,
@@ -325,6 +324,7 @@ export function WorkspaceCanvasInner({
     nodesRef: nodeStore.nodesRef,
     onNodesChange: publishLiveNodesChange,
     onNodesCommit: commitNodesChange,
+    onSelectedNodeIdsChange: canvasState.syncSelectedNodeIds,
     clearAgentLaunchToken: nodeStore.clearAgentLaunchToken,
     normalizePosition: nodeStore.normalizePosition,
     applyPendingScrollbacks: nodeStore.applyPendingScrollbacks,
@@ -396,7 +396,6 @@ export function WorkspaceCanvasInner({
         nodeTypes={nodeTypes}
         onNodesChange={applyChanges}
         onNodeClick={handleNodeClick}
-        onSelectionChange={handleSelectionChange}
         onNodeDragStart={handleNodeDragStart}
         onSelectionDragStart={handleSelectionDragStart}
         onNodeDragStop={handleNodeDragStop}
