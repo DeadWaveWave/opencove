@@ -22,6 +22,9 @@ function textAppearance(element: Element): Keyframe {
     lineHeight: style.lineHeight,
     letterSpacing: style.letterSpacing,
     color: style.color,
+    backgroundColor: style.backgroundColor,
+    borderRadius: style.borderRadius,
+    boxShadow: style.boxShadow,
   }
 }
 
@@ -96,6 +99,8 @@ export function useWindowCollapseMotion(
           lineHeight: style.lineHeight,
           letterSpacing: style.letterSpacing,
           color: style.color,
+          backgroundColor: style.backgroundColor,
+          boxShadow: style.boxShadow,
         })
       }
     }

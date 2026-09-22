@@ -204,5 +204,7 @@ describe('WorkspaceCanvas terminal title mode (OpenCode agent renderer)', () => 
       expect(screen.getByTestId('terminal-provider')).toHaveTextContent('opencode')
     })
     expect(screen.getByTestId('terminal-theme-mode')).toHaveTextContent('sync-with-ui')
+    expect(screen.getByTestId('terminal-title').textContent).toBe('qwen')
+    expect(initialNodes[0]?.data.title).toBe('opencode · qwen')
   })
 })

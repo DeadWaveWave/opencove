@@ -139,9 +139,9 @@
   box-shadow: 0 0 0 1px var(--cove-info-border);
 }
 
-.react-flow__node.selected
-  .cove-node-presentation[data-cove-collapsed]
-  .cove-collapsed-window__title {
+/* Keep compact paint stable while disclosure hands it to the header. The
+   compact subtree is hidden when expanded; motion owns the transition. */
+.react-flow__node.selected .cove-collapsed-window__title {
   border-radius: 3px;
   background: var(--cove-accent);
   color: var(--cove-accent-foreground);

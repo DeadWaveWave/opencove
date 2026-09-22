@@ -198,6 +198,12 @@ Agent latest messages remain visible. Presentation and collision bounds share th
 size helper. The compact presentation has no floating Close button: its context menu delegates
 Close to the mounted runtime's original guard. Single-click expansion and collapse geometry are
 unchanged, and visual feedback must not offset the icon/title animation anchors.
+The compact title's selected paint remains measurable after disclosure changes state; the motion
+owner interpolates its text, background and caption shadow into the header. Both the first animated
+frame and final handoff must match the visible title, including when the compact icon is selected.
+Agent header and compact captions use the same provider-free display label alongside the brand
+icon. Known generated provider prefixes are stripped only for display, including legacy renamed
+titles; the stored title and its owner remain unchanged.
 
 The website showcase contains scripted mouse actions, timed tool calls, illustrative test results and
 an input-blocking node reveal. These behaviors are not part of the application theme. In particular,

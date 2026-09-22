@@ -101,7 +101,7 @@ test.describe('Workspace Canvas - Agent Launcher', () => {
       await window.keyboard.type('Rename direct Agent windows')
       await window.keyboard.press('Enter')
 
-      await expect(title).toHaveText('codex · Rename direct Agent windows', { timeout: 15_000 })
+      await expect(title).toHaveText('Rename direct Agent windows', { timeout: 15_000 })
       const completionNotification = window
         .locator('[data-testid="app-notifications"] .app-notification')
         .first()

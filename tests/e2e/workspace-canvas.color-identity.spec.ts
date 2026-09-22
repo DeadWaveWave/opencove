@@ -113,7 +113,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
       )
       await expect(
         page.locator(`${nodeSelector('agent')} .terminal-node__title-prefix`),
-      ).toContainText(/codex/i)
+      ).toHaveCount(0)
       const imageDragSurface = await page.locator(nodeSelector('image')).evaluate(wrapper => {
         const canvas = wrapper.closest<HTMLElement>('.workspace-canvas')!
         const frame = wrapper.querySelector<HTMLElement>('.image-node')!

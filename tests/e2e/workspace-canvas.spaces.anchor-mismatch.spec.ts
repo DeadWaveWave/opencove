@@ -191,7 +191,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
 
       const agentNode = window
         .locator('.terminal-node')
-        .filter({ hasText: 'codex · gpt-5.2-codex' })
+        .filter({ hasText: 'gpt-5.2-codex' })
         .first()
       await expect(agentNode).toBeVisible()
       await expect(agentNode.locator('.terminal-node__badge--warning')).toHaveCount(0)

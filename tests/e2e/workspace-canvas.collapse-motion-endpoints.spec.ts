@@ -36,13 +36,41 @@ for (const { kind, title, fontScale } of cases) {
     try {
       await seedIdentityEndpointFixture(window, kind, fontScale)
       const node = window.locator(terminalSelector)
+      if (kind === 'agent') {
+        await expect(node.getByTestId('terminal-node-title-display')).toHaveText('Review')
+        await expect(node.locator('.cove-node-provider-icon')).toBeVisible()
+      }
       await node.getByTestId('terminal-node-title-display').click()
       await node.getByTestId('terminal-node-inline-title-input').fill(title)
       await node.getByTestId('terminal-node-inline-title-input').press('Enter')
+      await expect(node.getByTestId('terminal-node-title-display')).toHaveText(title)
 
-      for (const direction of ['collapse', 'expand'] as const) {
+      // Round-trip selection too: the final collapse starts from a selected
+      // expanded node and must not paint its compact caption prematurely.
+      for (const [step, direction] of (['collapse', 'expand', 'collapse'] as const).entries()) {
+        if (direction === 'expand') {
+          await node.getByTestId('node-expand').click({ modifiers: ['Shift'] })
+          await expect(node).toHaveClass(/selected/)
+        }
+        const before = await readIdentityFrame(
+          window,
+          EXPANSION_TERMINAL,
+          direction === 'collapse' ? 'header' : 'compact',
+        )
         await pauseCollapseAnimations(window, EXPANSION_TERMINAL)
-        await node.getByTestId(direction === 'collapse' ? 'node-collapse' : 'node-expand').click()
+        if (step === 2) {
+          // Selection mode owns pointer/keyboard routing. Invoke the shared
+          // disclosure action without clearing selection, as Space folding does.
+          await node.getByTestId('node-collapse').dispatchEvent('click')
+        } else {
+          await node.getByTestId(direction === 'collapse' ? 'node-collapse' : 'node-expand').click()
+        }
+        const firstAnimated = await readIdentityFrame(window, EXPANSION_TERMINAL, 'compact')
+        await testInfo.attach(`${direction}-identity-start`, {
+          body: JSON.stringify({ before, firstAnimated }, null, 2),
+          contentType: 'application/json',
+        })
+        expectIdentityEndpointContinuous(before, firstAnimated)
         await seekCollapseEndpoint(window)
         const lastAnimated = await readIdentityFrame(window, EXPANSION_TERMINAL, 'compact')
         await testInfo.attach(`${direction}-last-animated-frame`, {
@@ -61,6 +89,7 @@ for (const { kind, title, fontScale } of cases) {
         })
         expectIdentityEndpointContinuous(lastAnimated, settled)
         if (kind === 'agent' && direction === 'collapse') {
+          await expect(node.locator('.cove-collapsed-window__title')).toHaveText(title)
           const message = node.locator('.cove-collapsed-window__message')
           await expect(message).toContainText('等待新消息')
           const alignment = await message.evaluate(element => {

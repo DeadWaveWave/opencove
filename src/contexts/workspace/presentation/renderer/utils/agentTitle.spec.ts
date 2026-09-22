@@ -96,6 +96,44 @@ describe('agentTitle', () => {
     expect(stripAgentProviderPrefix('claude-code', 'claude')).toBe('claude')
   })
 
+  it.each([
+    ['codex', 'Codex · My API review'],
+    ['claude-code', 'Claude · My API review'],
+    ['claude-code', 'Claude Code · My API review'],
+    ['claude-code', 'claude-code · My API review'],
+    ['opencode', 'OpenCode · My API review'],
+    ['gemini', 'Gemini CLI · My API review'],
+    ['pi', 'Pi · My API review'],
+    ['kimi', 'Kimi Code · My API review'],
+  ] as const)('removes only the known %s decoration from %s', (provider, title) => {
+    expect(stripAgentProviderPrefix(provider, title)).toBe('My API review')
+    expect(
+      resolveAgentDisplayLabel({
+        provider,
+        linkedTaskTitle: 'A stale linked task',
+        fallbackTitle: title,
+        preferFallbackTitle: true,
+      }),
+    ).toBe('My API review')
+  })
+
+  it('keeps unknown prefixes, names without the delimiter and provider names inside user text', () => {
+    for (const title of ['Claude · Other provider', 'Codex review', 'Review Codex · API']) {
+      expect(stripAgentProviderPrefix('codex', title)).toBe(title)
+    }
+    expect(
+      resolveAgentDisplayLabel({
+        provider: 'codex',
+        linkedTaskTitle: 'Codex · migration checklist',
+        fallbackTitle: 'codex · model',
+      }),
+    ).toBe('Codex · migration checklist')
+    expect(stripAgentProviderPrefix('codex', 'codex · Codex · 示例会话')).toBe('示例会话')
+    expect(stripAgentProviderPrefix('codex', 'codex · Claude · Codex · API')).toBe(
+      'Claude · Codex · API',
+    )
+  })
+
   it('prefers linked task text but keeps custom label text when pinned', () => {
     expect(
       resolveAgentDisplayLabel({

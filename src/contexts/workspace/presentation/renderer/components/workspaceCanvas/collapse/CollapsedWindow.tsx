@@ -6,7 +6,7 @@ import type { TerminalNodeData } from '../../../types'
 import { resolveAgentPresentation } from '../../../utils/agentPresentation'
 import { getCollapsedNodeSize } from '../../../utils/canvasCollapse'
 import { resolveAgentTreatedProvider } from '../../../utils/terminalAgentOverlay'
-import { findLinkedTaskTitleForAgent, resolveAgentDisplayTitle } from '../../../utils/agentTitle'
+import { findLinkedTaskTitleForAgent, resolveAgentDisplayLabel } from '../../../utils/agentTitle'
 import { NodeKindIcon } from '../../shared/NodeKindIcon'
 import { resolveSpaceSummaryStatus } from '../view/spaceSummary'
 import { useWorkspaceCollapse } from './WorkspaceCollapseContext'
@@ -34,15 +34,15 @@ export function CollapsedWindow({
   const presentation = resolveAgentPresentation(data)
   const provider = resolveAgentTreatedProvider({ id, data, position: { x: 0, y: 0 } })
   const title =
-    data.kind === 'agent' && data.agent && !data.titlePinnedByUser
-      ? resolveAgentDisplayTitle({
-          provider: data.agent.provider,
-          linkedTaskTitle: findLinkedTaskTitleForAgent(
-            collapse?.nodes ?? [],
-            id,
-            data.agent.taskId,
-          ),
+    presentation.isAgent && provider
+      ? resolveAgentDisplayLabel({
+          provider,
+          linkedTaskTitle:
+            data.kind === 'agent' && data.agent
+              ? findLinkedTaskTitleForAgent(collapse?.nodes ?? [], id, data.agent.taskId ?? null)
+              : null,
           fallbackTitle: data.title,
+          preferFallbackTitle: data.titlePinnedByUser === true,
         })
       : data.title
   const status = resolveSpaceSummaryStatus(data, t)

@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings.providerMeta'
 import type { TerminalNodeData } from '../types'
 
 export function providerTitlePrefix(provider: AgentProvider): string {
@@ -35,14 +36,19 @@ export function stripAgentProviderPrefix(
   provider: AgentProvider,
   title: string | null | undefined,
 ): string {
-  const normalizedTitle = title?.trim() ?? ''
-  const prefix = `${providerTitlePrefix(provider)} · `
-
-  if (normalizedTitle.startsWith(prefix)) {
-    return normalizedTitle.slice(prefix.length).trim()
+  let label = title?.trim() ?? ''
+  const prefixes = [providerTitlePrefix(provider), provider, AGENT_PROVIDER_LABEL[provider]].map(
+    name => `${name.toLowerCase()} · `,
+  )
+  // Older rename paths could add a second copy. Only strip leading decorations
+  // for this provider; another provider or ordinary user text ends the scan.
+  for (;;) {
+    const prefix = prefixes.find(candidate => label.toLowerCase().startsWith(candidate))
+    if (!prefix) {
+      return label
+    }
+    label = label.slice(prefix.length).trim()
   }
-
-  return normalizedTitle
 }
 
 export function resolveAgentDisplayTitle({

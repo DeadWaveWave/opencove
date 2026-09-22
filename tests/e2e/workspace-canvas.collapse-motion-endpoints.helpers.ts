@@ -13,6 +13,7 @@ interface IdentityFrame {
   visibleText: { x: number; width: number }
   textContent: string
   colors: Record<'glyph' | 'text', { css: string; rgba: number[] }>
+  captionBackground: number[]
 }
 
 interface EndpointProbe {
@@ -182,8 +183,8 @@ export async function readIdentityFrame(
     canvas.width = 1
     canvas.height = 1
     const context = canvas.getContext('2d')!
-    const color = (element: Element) => {
-      const css = getComputedStyle(element).color
+    const color = (element: Element, property: 'color' | 'backgroundColor' = 'color') => {
+      const css = getComputedStyle(element)[property]
       context.clearRect(0, 0, 1, 1)
       context.fillStyle = css
       context.fillRect(0, 0, 1, 1)
@@ -218,12 +219,21 @@ export async function readIdentityFrame(
       },
       textContent: title.textContent?.trim() ?? '',
       colors: { glyph: color(glyph), text: color(text.parentElement!) },
+      captionBackground: color(title, 'backgroundColor').rgba,
     }
   }, presentation)
 }
 
 export function expectIdentityEndpointContinuous(before: IdentityFrame, after: IdentityFrame) {
   expect(before.textContent).toBe(after.textContent)
+  before.captionBackground.forEach((channel, index) => {
+    expect
+      .soft(
+        Math.abs(channel - after.captionBackground[index]!),
+        `Caption background channel ${index} must not flash at disclosure boundaries`,
+      )
+      .toBeLessThanOrEqual(1)
+  })
   for (const part of ['glyph', 'text'] as const) {
     for (const dimension of ['x', 'y', 'width', 'height'] as const) {
       expect

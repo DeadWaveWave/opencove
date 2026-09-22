@@ -40,9 +40,10 @@ export async function seedIdentityFixture(
   fixture: Awaited<ReturnType<typeof createMaterialFixture>>,
 ) {
   await seedMaterialFixture(page, fixture)
-  await expect(page.locator(`${nodeSelector('agent')} .terminal-node__title-prefix`)).toContainText(
-    /codex/i,
-  )
+  await expect(page.locator(`${nodeSelector('agent')} .terminal-node__title-prefix`)).toHaveCount(0)
+  await expect(
+    page.locator(`${nodeSelector('agent')} [data-agent-provider="codex"]`).first(),
+  ).toBeVisible()
 }
 
 export async function clearCanvasSelection(page: Page) {

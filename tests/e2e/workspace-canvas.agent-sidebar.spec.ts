@@ -303,7 +303,7 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
         .locator('.terminal-node')
         .filter({
           has: window.locator('.terminal-node__title', {
-            hasText: 'claude · Clarify API contract with PM',
+            hasText: 'Clarify API contract with PM',
           }),
         })
         .first()

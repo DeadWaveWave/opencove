@@ -238,9 +238,7 @@ describe('WorkspaceCanvas run default agent', () => {
       }),
     )
     await waitFor(() => {
-      expect(screen.getByTestId('agent-node-status')).toHaveTextContent(
-        'codex · gpt-5.2-codex:standby',
-      )
+      expect(screen.getByTestId('agent-node-status')).toHaveTextContent('gpt-5.2-codex:standby')
     })
     const expectedSize = resolveDefaultAgentWindowSize('large')
     expect(latestNodes).toHaveLength(1)

@@ -304,7 +304,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await agentTitleInput.fill('agent renamed')
       await agentTitleInput.press('Enter')
       await expect(agentTitleInput).toHaveCount(0)
-      await expect(agentHeader).toContainText('codex · agent renamed')
+      await expect(agentTitleDisplay).toHaveText('agent renamed')
 
       await clickInlineTitleDisplay(taskTitleDisplay)
       await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
