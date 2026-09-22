@@ -6,7 +6,7 @@ const workspaceId = 'workspace-sidebar-context-menu'
 const spaceId = 'space-sidebar-context-menu'
 const agentId = 'agent-sidebar-context-menu'
 
-async function movePointerIntoMenuOutsideSidebar(page: Page, menu: Locator): Promise<void> {
+async function movePointerOutsideSidebar(page: Page, menu: Locator): Promise<void> {
   const [menuRect, sidebarRect] = await Promise.all([
     menu.evaluate(element => element.getBoundingClientRect().toJSON()),
     page
@@ -33,11 +33,53 @@ async function openMenuFromPeek({
 
   const menu = page.locator('.workspace-project-context-menu')
   await expect(menu).toBeVisible()
-  await movePointerIntoMenuOutsideSidebar(page, menu)
+  await movePointerOutsideSidebar(page, menu)
   await page.waitForTimeout(520)
   await expect(menu).toBeVisible()
   await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
   return menu
+}
+
+async function clickMenuActionAtNavigationPosition({
+  page,
+  action,
+  insideNavigation,
+}: {
+  page: Page
+  action: Locator
+  insideNavigation: boolean
+}): Promise<void> {
+  const [actionRect, navigationRect] = await Promise.all([
+    action.evaluate(element => element.getBoundingClientRect().toJSON()),
+    page
+      .getByTestId('workspace-sidebar-navigation')
+      .evaluate(element => element.getBoundingClientRect().toJSON()),
+  ])
+  const left = insideNavigation
+    ? Math.max(actionRect.left, navigationRect.left)
+    : Math.max(actionRect.left, navigationRect.right)
+  const right = insideNavigation
+    ? Math.min(actionRect.right, navigationRect.right)
+    : actionRect.right
+  const x = (left + right) / 2
+  const y = actionRect.top + actionRect.height / 2
+  expect(right - left).toBeGreaterThan(8)
+  expect(y).toBeGreaterThan(navigationRect.top)
+  expect(y).toBeLessThan(navigationRect.bottom)
+
+  // A real press lasts across event-loop turns. Do not repair hover after the
+  // portal disappears: the pointer must remain at this exact navigation point.
+  await action.click({
+    position: { x: x - actionRect.left, y: y - actionRect.top },
+    delay: 80,
+  })
+}
+
+async function movePointerIntoNavigationBlankArea(page: Page): Promise<void> {
+  const treeRect = await page
+    .locator('.workspace-sidebar__tree-scroll')
+    .evaluate(element => element.getBoundingClientRect().toJSON())
+  await page.mouse.move(treeRect.left + treeRect.width / 2, treeRect.bottom - 24)
 }
 
 async function attachSidebarScreenshot(page: Page, testInfo: TestInfo): Promise<void> {
@@ -106,32 +148,48 @@ test.describe('Primary Sidebar Context Menu', () => {
       await window.mouse.move(700, 400)
       await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
 
-      const spaceMenu = await openMenuFromPeek({
-        page: window,
-        sidebar,
-        target: window.locator(`[data-testid="workspace-space-item-${workspaceId}-${spaceId}"]`),
-      })
-      await window.getByTestId(`workspace-space-context-pin-${spaceId}`).click()
-      await expect(spaceMenu).toHaveCount(0)
-      await sidebar.hover()
-      await window.waitForTimeout(520)
-      await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
-      await window.mouse.move(700, 400)
-      await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
+      const verifyNavigationHover = async (kind: 'space' | 'agent', id: string): Promise<void> => {
+        const target = window.getByTestId(`workspace-${kind}-item-${workspaceId}-${id}`)
+        const pinAction = window.getByTestId(`workspace-${kind}-context-pin-${id}`)
 
-      const agentMenu = await openMenuFromPeek({
-        page: window,
-        sidebar,
-        target: window.locator(`[data-testid="workspace-agent-item-${workspaceId}-${agentId}"]`),
-      })
-      await window.getByTestId(`workspace-agent-context-pin-${agentId}`).click()
-      await expect(agentMenu).toHaveCount(0)
-      await sidebar.hover()
-      await window.waitForTimeout(520)
-      await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
+        await test.step(`${kind}: menu action leaves the pointer over the navigation tree`, async () => {
+          const menu = await openMenuFromPeek({ page: window, sidebar, target })
+          await clickMenuActionAtNavigationPosition({
+            page: window,
+            action: pinAction,
+            insideNavigation: true,
+          })
+          await expect(menu).toHaveCount(0)
+          await window.waitForTimeout(520)
+          await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
+          await expect(window.getByTestId('workspace-sidebar-navigation')).toBeVisible()
 
-      await window.mouse.move(700, 400)
-      await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
+          await movePointerIntoNavigationBlankArea(window)
+          await window.waitForTimeout(520)
+          await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
+          await window.mouse.move(700, 400)
+          await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
+        })
+
+        await test.step(`${kind}: returning directly to the tree after an outside menu action keeps it open`, async () => {
+          const menu = await openMenuFromPeek({ page: window, sidebar, target })
+          await clickMenuActionAtNavigationPosition({
+            page: window,
+            action: pinAction,
+            insideNavigation: false,
+          })
+          await expect(menu).toHaveCount(0)
+          await movePointerIntoNavigationBlankArea(window)
+          await window.waitForTimeout(520)
+          await expect(sidebar).toHaveClass(/workspace-sidebar--peek/)
+          await expect(window.getByTestId('workspace-sidebar-navigation')).toBeVisible()
+
+          await window.mouse.move(700, 400)
+          await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
+        })
+      }
+      await verifyNavigationHover('space', spaceId)
+      await verifyNavigationHover('agent', agentId)
     } finally {
       await electronApp.close()
     }

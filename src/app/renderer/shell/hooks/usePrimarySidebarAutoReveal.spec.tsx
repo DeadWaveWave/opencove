@@ -75,138 +75,117 @@ describe('usePrimarySidebarAutoReveal', () => {
     expect(result.current.isPeekOpen).toBe(true)
   })
 
-  it('keeps the peek open when a context menu action returns the pointer to the sidebar', () => {
-    const { result, rerender } = renderHook(
-      ({ isInteractionActive, isMenuOpen }) =>
+  function setupMenuInteraction() {
+    const sidebar = document.createElement('aside')
+    sidebar.className = 'workspace-sidebar'
+    vi.spyOn(sidebar, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 40,
+      right: 310,
+      bottom: 720,
+      width: 310,
+      height: 680,
+      x: 0,
+      y: 40,
+      toJSON: () => ({}),
+    })
+    const menu = document.createElement('div')
+    menu.className = 'workspace-context-menu'
+    document.body.append(sidebar, menu)
+    const hook = renderHook(
+      ({ isInteractionActive }) =>
         usePrimarySidebarAutoReveal({
           isCollapsed: true,
           isInteractionActive,
-          isMenuOpen,
         }),
-      {
-        initialProps: { isInteractionActive: false, isMenuOpen: false },
-      },
+      { initialProps: { isInteractionActive: false } },
     )
-
     act(() => {
-      result.current.handlePointerEnter()
+      hook.result.current.handlePointerEnter()
       vi.advanceTimersByTime(openDelayMs)
-      result.current.handlePointerLeave()
-      rerender({ isInteractionActive: true, isMenuOpen: true })
     })
-    expect(result.current.isPeekOpen).toBe(true)
+    act(() => hook.rerender({ isInteractionActive: true }))
+    act(() => hook.result.current.handlePointerLeave())
 
-    const menu = document.createElement('div')
-    menu.className = 'workspace-context-menu'
-    document.body.appendChild(menu)
-    const sidebar = document.createElement('aside')
-    sidebar.dataset.testid = 'workspace-sidebar'
-    Object.defineProperty(sidebar, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        right: 240,
-        bottom: 720,
-        width: 240,
-        height: 720,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    document.body.appendChild(sidebar)
-    act(() => {
-      menu.dispatchEvent(
-        new MouseEvent('pointerdown', {
-          bubbles: true,
-          clientX: 120,
-          clientY: 300,
-        }),
-      )
-      menu.remove()
-      rerender({ isInteractionActive: false, isMenuOpen: false })
-      vi.advanceTimersByTime(closeDelayMs + 50)
-    })
-    expect(result.current.isPeekOpen).toBe(true)
+    return {
+      ...hook,
+      pressMenuAt(clientX: number) {
+        act(() => {
+          menu.dispatchEvent(
+            new MouseEvent('pointerdown', { bubbles: true, clientX, clientY: 300 }),
+          )
+          // A normal mouse press is longer than the old zero-delay action reset.
+          vi.advanceTimersByTime(80)
+        })
+      },
+      dismissMenu() {
+        act(() => {
+          menu.remove()
+          hook.rerender({ isInteractionActive: false })
+        })
+      },
+      cleanup() {
+        hook.unmount()
+        sidebar.remove()
+        menu.remove()
+      },
+    }
+  }
 
+  function movePointer(clientX: number) {
     act(() => {
-      window.dispatchEvent(new MouseEvent('pointermove', { clientX: 120, clientY: 300 }))
-      vi.advanceTimersByTime(closeDelayMs)
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX, clientY: 300 }))
     })
-    expect(result.current.isPeekOpen).toBe(true)
+  }
 
-    act(() => {
-      result.current.handlePointerLeave()
-      vi.advanceTimersByTime(closeDelayMs)
-    })
-    expect(result.current.isPeekOpen).toBe(false)
-    menu.remove()
-    sidebar.remove()
+  function waitForCloseDelay() {
+    act(() => vi.advanceTimersByTime(closeDelayMs + 50))
+  }
+
+  it('keeps navigation visible after a menu press while the pointer stays still over it', () => {
+    const interaction = setupMenuInteraction()
+    interaction.pressMenuAt(200)
+    interaction.dismissMenu()
+    waitForCloseDelay()
+    expect(interaction.result.current.isPeekOpen).toBe(true)
+    movePointer(220)
+    waitForCloseDelay()
+    expect(interaction.result.current.isPeekOpen).toBe(true)
+    movePointer(500)
+    waitForCloseDelay()
+    expect(interaction.result.current.isPeekOpen).toBe(false)
+    interaction.cleanup()
   })
 
-  it('starts closing after a context menu action outside the sidebar', () => {
-    const { result, rerender } = renderHook(
-      ({ isInteractionActive, isMenuOpen }) =>
-        usePrimarySidebarAutoReveal({
-          isCollapsed: true,
-          isInteractionActive,
-          isMenuOpen,
-        }),
-      {
-        initialProps: { isInteractionActive: false, isMenuOpen: false },
-      },
-    )
+  it('cancels closing when returning straight to navigation without passing the project icon', () => {
+    const interaction = setupMenuInteraction()
+    interaction.pressMenuAt(500)
+    interaction.dismissMenu()
+    act(() => vi.advanceTimersByTime(closeDelayMs / 2))
+    movePointer(200)
+    waitForCloseDelay()
+    expect(interaction.result.current.isPeekOpen).toBe(true)
+    movePointer(500)
+    waitForCloseDelay()
+    expect(interaction.result.current.isPeekOpen).toBe(false)
+    interaction.cleanup()
+  })
 
-    act(() => {
-      result.current.handlePointerEnter()
-      vi.advanceTimersByTime(openDelayMs)
-      result.current.handlePointerLeave()
-      rerender({ isInteractionActive: true, isMenuOpen: true })
-    })
-    expect(result.current.isPeekOpen).toBe(true)
+  it.each([200, 500])('uses current pointer location after keyboard dismissal at x=%i', clientX => {
+    const interaction = setupMenuInteraction()
+    interaction.pressMenuAt(200)
+    movePointer(clientX)
+    interaction.dismissMenu()
+    waitForCloseDelay()
+    expect(interaction.result.current.isPeekOpen).toBe(clientX < 310)
+    interaction.cleanup()
+  })
 
-    const menu = document.createElement('div')
-    menu.className = 'workspace-context-menu'
-    document.body.appendChild(menu)
-    const sidebar = document.createElement('aside')
-    sidebar.dataset.testid = 'workspace-sidebar'
-    Object.defineProperty(sidebar, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => ({
-        left: 0,
-        top: 0,
-        right: 240,
-        bottom: 720,
-        width: 240,
-        height: 720,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
-    })
-    document.body.appendChild(sidebar)
-
-    act(() => {
-      menu.dispatchEvent(
-        new MouseEvent('pointerdown', {
-          bubbles: true,
-          clientX: 420,
-          clientY: 300,
-        }),
-      )
-      menu.remove()
-      rerender({ isInteractionActive: false, isMenuOpen: false })
-      vi.advanceTimersByTime(closeDelayMs - 1)
-    })
-    expect(result.current.isPeekOpen).toBe(true)
-
-    act(() => {
-      vi.advanceTimersByTime(closeDelayMs)
-    })
+  it('does not reveal navigation just because a pointer moves over the closed rail', () => {
+    const { result } = renderHook(() => usePrimarySidebarAutoReveal({ isCollapsed: true }))
+    movePointer(20)
+    waitForCloseDelay()
     expect(result.current.isPeekOpen).toBe(false)
-    menu.remove()
-    sidebar.remove()
   })
 
   it('resets the transient peek when the sidebar is pinned', () => {
