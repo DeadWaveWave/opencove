@@ -69,7 +69,7 @@ describe('collapsed Space arrangement geometry', () => {
     const nodes = [node('a', 90, 100), node('b', 700, 400, 'agent')]
     const spaces = [space('root', { x: 40, y: 60, width: 1800, height: 1200 }, ['a', 'b'])]
     const plan = planCollapsedArrangement('root', nodes, spaces, EMPTY_CANVAS_COLLAPSE)!
-    expect(plan.spaces[0].rect).toEqual({ x: 40, y: 60, width: 320, height: 188 })
+    expect(plan.spaces[0].rect).toEqual({ x: 40, y: 60, width: 320, height: 160 })
     expect(plan.nodes.map(item => item.position)).toEqual([
       { x: 64, y: 84 },
       { x: 208, y: 84 },
@@ -103,7 +103,7 @@ describe('collapsed Space arrangement geometry', () => {
     const spaces = [space('root', { x: 0, y: 0, width: 180, height: 320 }, ['a', 'b'])]
     const plan = planCollapsedArrangement('root', nodes, spaces, EMPTY_CANVAS_COLLAPSE)!
     expect(plan.spaces[0].rect!.width).toBe(224)
-    expect(plan.nodes.map(item => item.position.y)).toEqual([24, 180])
+    expect(plan.nodes.map(item => item.position.y)).toEqual([24, 152])
     for (const [index, item] of plan.nodes.entries()) {
       expect(item.data).toBe(nodes[index].data)
       expectInside(

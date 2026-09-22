@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { WindowCollapsePresentation } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/WindowCollapsePresentation'
@@ -8,7 +8,6 @@ import {
   type WorkspaceCollapseValue,
 } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/WorkspaceCollapseContext'
 import { WindowCollapseButton } from '@contexts/workspace/presentation/renderer/components/shared/WindowCollapseButton'
-import { useCollapsedAgentMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/useCollapsedAgentMessage'
 import { CollapsedWindow } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/CollapsedWindow'
 import { WindowNodeContextMenuContext } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WindowNodeContextMenuContext'
 
@@ -172,14 +171,14 @@ describe('window collapse presentation', () => {
       },
     })
     const view = (value: TerminalNodeData) => (
-      <CollapsedWindow id="agent" data={value} message="Actual progress" onExpand={vi.fn()} />
+      <CollapsedWindow id="agent" data={value} onExpand={vi.fn()} />
     )
     const { rerender } = render(view(data))
     const icon = screen.getByTestId('collapsed-node-agent')
     expect(icon).toHaveAttribute('data-animated', 'true')
     expect(icon).toHaveAttribute('data-status', 'running')
     expect(icon.querySelector('.cove-collapsed-window__status')).toBeNull()
-    expect(screen.getByText('Actual progress')).toBeInTheDocument()
+    expect(icon.querySelector('.cove-collapsed-window__message')).toBeNull()
     expect(screen.getByTestId('node-expand')).toHaveAttribute('aria-description', 'Working')
     expect(icon.querySelector('[data-agent-provider]')).toHaveAttribute(
       'data-agent-provider',
@@ -199,13 +198,7 @@ describe('window collapse presentation', () => {
   it('keeps inactive compact chrome mounted without exposing a drag handle or active controls', () => {
     const onExpand = vi.fn()
     const view = (active: boolean) => (
-      <CollapsedWindow
-        id="inactive"
-        data={nodeData()}
-        active={active}
-        message=""
-        onExpand={onExpand}
-      />
+      <CollapsedWindow id="inactive" data={nodeData()} active={active} onExpand={onExpand} />
     )
     const { container, rerender } = render(view(false))
     const launch = screen.getByTestId('node-expand')
@@ -232,7 +225,7 @@ describe('window collapse presentation', () => {
   })
 })
 
-describe('collapsed Agent message projection', () => {
+describe('collapsed Agent presentation', () => {
   const agent = nodeData({
     kind: 'agent',
     status: 'running',
@@ -253,66 +246,29 @@ describe('collapsed Agent message projection', () => {
     },
   })
 
-  it('reads actual messages, never overlaps a pending request and stops after expanding', async () => {
+  it('shows only a compact icon and title without polling Agent messages', async () => {
     vi.useFakeTimers()
-    let resolveMessage!: (value: { message: string }) => void
-    const readLastMessage = vi.fn(
-      () =>
-        new Promise<{ message: string }>(resolve => {
-          resolveMessage = resolve
-        }),
-    )
+    const readLastMessage = vi.fn(async () => ({ message: 'Latest runtime progress' }))
     window.opencoveApi = { agent: { readLastMessage } } as never
-    const { result, rerender, unmount } = renderHook(
-      ({ enabled }) => useCollapsedAgentMessage(agent, enabled),
-      { initialProps: { enabled: true } },
+    const value = context()
+    render(
+      <WorkspaceCollapseContext.Provider value={value}>
+        <WindowCollapsePresentation
+          id="agent"
+          data={{ ...agent, collapsePresentation: { collapsed: true, spaceHidden: false } }}
+        >
+          <textarea aria-label="Agent runtime" defaultValue="Runtime stays mounted" />
+        </WindowCollapsePresentation>
+      </WorkspaceCollapseContext.Provider>,
     )
+    const icon = screen.getByTestId('collapsed-node-agent')
+    expect(icon).toHaveStyle({ width: '128px', height: '112px' })
+    expect(icon.querySelector('.cove-collapsed-window__message')).toBeNull()
+    expect(icon).toHaveAttribute('data-status', 'running')
+    expect(screen.getByTestId('node-expand')).toHaveAttribute('aria-description', 'Working')
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10_000)
     })
-    expect(readLastMessage).toHaveBeenCalledTimes(1)
-    await act(async () => {
-      resolveMessage({ message: 'Implemented the actual change.' })
-    })
-    expect(result.current).toBe('Implemented the actual change.')
-    rerender({ enabled: false })
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10_000)
-    })
-    expect(readLastMessage).toHaveBeenCalledTimes(1)
-    unmount()
-  })
-
-  it('rejects a stale session response after a session switch', async () => {
-    let first!: (value: { message: string }) => void
-    let second!: (value: { message: string }) => void
-    const readLastMessage = vi
-      .fn()
-      .mockImplementationOnce(
-        () =>
-          new Promise(resolve => {
-            first = resolve
-          }),
-      )
-      .mockImplementationOnce(
-        () =>
-          new Promise(resolve => {
-            second = resolve
-          }),
-      )
-    window.opencoveApi = { agent: { readLastMessage } } as never
-    const { result, rerender, unmount } = renderHook(
-      ({ data }) => useCollapsedAgentMessage(data, true),
-      { initialProps: { data: agent } },
-    )
-    rerender({ data: { ...agent, sessionId: 'pty-2' } })
-    await act(async () => {
-      second({ message: 'Current session' })
-    })
-    await act(async () => {
-      first({ message: 'Old session' })
-    })
-    expect(result.current).toBe('Current session')
-    unmount()
+    expect(readLastMessage).not.toHaveBeenCalled()
   })
 })

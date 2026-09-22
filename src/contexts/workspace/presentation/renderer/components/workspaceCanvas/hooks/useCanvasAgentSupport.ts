@@ -53,7 +53,7 @@ export function useWorkspaceCanvasAgentSupport({
 }): ReturnType<typeof useWorkspaceCanvasAgentNodeLifecycle> &
   Pick<
     ReturnType<typeof useWorkspaceCanvasAgentLauncher>,
-    'openAgentLauncher' | 'openAgentLauncherForProvider'
+    'openAgentLauncher' | 'openAgentLauncherForProvider' | 'launchAgentAtFlowPosition'
   > {
   const lifecycle = useWorkspaceCanvasAgentNodeLifecycle({
     workspaceId,
@@ -81,23 +81,24 @@ export function useWorkspaceCanvasAgentSupport({
   })
   const { buildAgentNodeTitle, launchAgentInNode, stopAgentNode } = lifecycle
 
-  const { openAgentLauncher, openAgentLauncherForProvider } = useWorkspaceCanvasAgentLauncher({
-    agentSettings,
-    workspaceId,
-    workspacePath,
-    environmentVariables,
-    nodesRef,
-    setNodes,
-    spacesRef,
-    onSpacesChange,
-    onRequestPersistFlush,
-    onShowMessage,
-    contextMenu,
-    setContextMenu,
-    createNodeForSession,
-    standardWindowSizeBucket,
-    buildAgentNodeTitle,
-  })
+  const { openAgentLauncher, openAgentLauncherForProvider, launchAgentAtFlowPosition } =
+    useWorkspaceCanvasAgentLauncher({
+      agentSettings,
+      workspaceId,
+      workspacePath,
+      environmentVariables,
+      nodesRef,
+      setNodes,
+      spacesRef,
+      onSpacesChange,
+      onRequestPersistFlush,
+      onShowMessage,
+      contextMenu,
+      setContextMenu,
+      createNodeForSession,
+      standardWindowSizeBucket,
+      buildAgentNodeTitle,
+    })
 
   return {
     buildAgentNodeTitle,
@@ -119,5 +120,6 @@ export function useWorkspaceCanvasAgentSupport({
     stopAgentNode,
     openAgentLauncher,
     openAgentLauncherForProvider,
+    launchAgentAtFlowPosition,
   }
 }

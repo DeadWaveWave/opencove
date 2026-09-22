@@ -14,6 +14,7 @@ import {
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { SpatialNavigationDirection } from './spatialNavigation'
 import { resolveCycledSpaceId, resolveIdleSpaceIds } from './useShortcuts.helpers'
+import { ownsCanvasAgentShortcut } from './useShortcuts.scope'
 
 const TERMINAL_FOCUS_SCOPE_SELECTOR = '[data-cove-focus-scope="terminal"]'
 
@@ -47,9 +48,11 @@ export function useWorkspaceCanvasShortcuts({
   activeSpaceId,
   spaces,
   nodesRef,
+  canvasRef,
   createSpaceFromSelectedNodes,
   createNoteAtViewportCenter,
   createTerminalAtViewportCenter,
+  createAgentAtViewportCenter,
   activateSpace,
   navigateNode,
   navigateSpace,
@@ -61,9 +64,11 @@ export function useWorkspaceCanvasShortcuts({
   activeSpaceId: string | null
   spaces: WorkspaceSpaceState[]
   nodesRef: React.MutableRefObject<Array<Node<TerminalNodeData>>>
+  canvasRef: React.RefObject<HTMLDivElement | null>
   createSpaceFromSelectedNodes: () => void
   createNoteAtViewportCenter: () => void
   createTerminalAtViewportCenter: () => Promise<void>
+  createAgentAtViewportCenter: () => Promise<void>
   activateSpace: (spaceId: string) => void
   navigateNode: (direction: SpatialNavigationDirection) => void
   navigateSpace: (direction: SpatialNavigationDirection) => void
@@ -100,6 +105,15 @@ export function useWorkspaceCanvasShortcuts({
         return
       }
 
+      if (
+        commandId === 'workspaceCanvas.createAgent' &&
+        (event.defaultPrevented ||
+          event.keyCode === 229 ||
+          !ownsCanvasAgentShortcut(canvasRef.current, event))
+      ) {
+        return
+      }
+
       const isSpatialNavigationCommand =
         commandId.startsWith('workspaceCanvas.navigateNode') ||
         commandId.startsWith('workspaceCanvas.navigateSpace')
@@ -128,6 +142,9 @@ export function useWorkspaceCanvasShortcuts({
           return
         case 'workspaceCanvas.createTerminal':
           void createTerminalAtViewportCenter()
+          return
+        case 'workspaceCanvas.createAgent':
+          void createAgentAtViewportCenter()
           return
         case 'workspaceCanvas.navigateNodeLeft':
           navigateNode('left')
@@ -195,6 +212,8 @@ export function useWorkspaceCanvasShortcuts({
     createNoteAtViewportCenter,
     createSpaceFromSelectedNodes,
     createTerminalAtViewportCenter,
+    createAgentAtViewportCenter,
+    canvasRef,
     disableWhenTerminalFocused,
     enabled,
     keybindings,

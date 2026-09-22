@@ -54,7 +54,7 @@ test('collapses all window kinds without remounting editors or resizing a live P
             })),
           { message: `${kind} display frame settles to its compact dimensions` },
         )
-        .toEqual({ width: 128, height: kind === 'agent' ? 140 : 112 })
+        .toEqual({ width: 128, height: 112 })
     }
     expect(await terminals.count()).toBe(count)
     expect(await identity(window)).toEqual(original)

@@ -15,7 +15,6 @@ import { useCollapsedTerminalActivity } from './useCollapsedTerminalActivity'
 export function CollapsedWindow({
   id,
   data,
-  message,
   onExpand,
   onToggleSelection,
   onContextMenu,
@@ -23,7 +22,6 @@ export function CollapsedWindow({
 }: {
   id: string
   data: TerminalNodeData
-  message: string
   onExpand: () => void
   onToggleSelection?: () => void
   onContextMenu?: (point: { x: number; y: number }) => void
@@ -64,7 +62,7 @@ export function CollapsedWindow({
   return (
     <div
       className="cove-collapsed-window"
-      style={getCollapsedNodeSize(data)}
+      style={getCollapsedNodeSize()}
       data-testid={`collapsed-node-${id}`}
       data-node-kind={data.kind}
       data-status={status?.state}
@@ -154,15 +152,6 @@ export function CollapsedWindow({
             {title}
           </span>
         </span>
-        {presentation.isAgent ? (
-          <span
-            className="cove-collapsed-window__message"
-            aria-label={t('canvasCollapse.latestMessage')}
-            title={message || undefined}
-          >
-            {message || t('canvasCollapse.waitingForMessage')}
-          </span>
-        ) : null}
       </div>
     </div>
   )

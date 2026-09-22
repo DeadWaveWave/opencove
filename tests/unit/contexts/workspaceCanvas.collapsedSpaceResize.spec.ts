@@ -198,7 +198,7 @@ describe('Space resize with compact window geometry', () => {
 
     expect(projected.nextSpaces[0].rect).toEqual({ x: 1000, y: 0, width: 1000, height: 700 })
     expect(projected.nextNodePositionById.get('compact')).toEqual(compact.position)
-    expect(getCollapsedNodeSize(compact.data).width).toBeLessThan(1000 - compact.position.x)
+    expect(getCollapsedNodeSize().width).toBeLessThan(1000 - compact.position.x)
     expect(compact.data).toMatchObject({ width: 1200, height: 1000 })
   })
 

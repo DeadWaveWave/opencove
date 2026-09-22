@@ -69,9 +69,10 @@ drag geometry. At overview zoom, Files uses its icon while controls retain acces
 keyboard access.
 
 Individual collapsed windows become desktop icons with a title and single-click expansion.
-Agent icons show one line of the latest actual message and a flowing pixel status matrix. Waiting
-uses a slow pulse; a plain terminal's matrix animates briefly only after real output. Static status
-text remains available when working effects or motion are disabled. These icons replace the full
+Agent icons show their provider identity and a flowing pixel status matrix, without a message
+preview. Waiting uses a slow pulse; a plain terminal's matrix animates briefly only after real output.
+Status text remains available on hover and to assistive technology, including when working effects
+or motion are disabled. These icons replace the full
 window side-stream effect while collapsed; runtime size and lifecycle stay unchanged.
 
 A collapsed Space is a compact frame with one clickable icon for each contained window, including
@@ -194,8 +195,9 @@ and runtime status. Keyboard focus draws a local icon ring. Selections containin
 windows retain their geometry for dragging without painting the enclosing group rectangle;
 mixed or expanded selections keep their existing frame. Pixel corners indicate runtime status,
 with its text available on hover and to assistive technology rather than as a separate row.
-Agent latest messages remain visible. Presentation and collision bounds share the same compact
-size helper. The compact presentation has no floating Close button: its context menu delegates
+All node kinds use the same 128×112 compact presentation and collision bounds. Collapsing an Agent
+does not read or poll its latest message; its message-copy action remains independent. Presentation
+and collision bounds share the same compact size helper. The compact presentation has no floating Close button: its context menu delegates
 Close to the mounted runtime's original guard. Single-click expansion and collapse geometry are
 unchanged, and visual feedback must not offset the icon/title animation anchors.
 The compact title's selected paint remains measurable after disclosure changes state; the motion

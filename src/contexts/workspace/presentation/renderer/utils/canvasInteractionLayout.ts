@@ -10,7 +10,7 @@ import {
 } from './canvasCollapse'
 
 export function getPresentedNodeSize(data: TerminalNodeData): { width: number; height: number } {
-  return data.collapsePresentation?.collapsed ? getCollapsedNodeSize(data) : data
+  return data.collapsePresentation?.collapsed ? getCollapsedNodeSize() : data
 }
 
 /** Algorithm-only copies. Never pass these nodes to persistence or a runtime component. */
@@ -28,9 +28,7 @@ export function projectCanvasInteractionLayout(
         const collapsed =
           state.collapsedNodeIds[node.id] === true ||
           node.data.collapsePresentation?.collapsed === true
-        return collapsed
-          ? { ...node, data: { ...node.data, ...getCollapsedNodeSize(node.data) } }
-          : node
+        return collapsed ? { ...node, data: { ...node.data, ...getCollapsedNodeSize() } } : node
       }),
     spaces: spaces
       .filter(space => !hidden.spaceIds.has(space.id))

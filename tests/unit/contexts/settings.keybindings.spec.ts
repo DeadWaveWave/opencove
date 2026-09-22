@@ -14,6 +14,13 @@ describe('settings keybindings', () => {
       metaKey: true,
       shiftKey: false,
     })
+    expect(bindings['workspaceCanvas.createAgent']).toEqual({
+      code: 'KeyA',
+      metaKey: true,
+      ctrlKey: false,
+      altKey: false,
+      shiftKey: false,
+    })
     expect(bindings['workspaceCanvas.cycleSpacesForward']).toMatchObject({
       code: 'BracketRight',
       metaKey: true,
@@ -60,6 +67,24 @@ describe('settings keybindings', () => {
         platform: 'darwin',
       }),
     ).toBeNull()
+  })
+
+  it('preserves an existing explicit assignment when adding the default Agent shortcut', () => {
+    const chord = resolveDefaultKeybindings('darwin')['workspaceCanvas.createAgent']
+    expect(
+      resolveCommandKeybinding({
+        commandId: 'workspaceCanvas.createAgent',
+        overrides: { 'commandCenter.toggle': chord },
+        platform: 'darwin',
+      }),
+    ).toBeNull()
+    expect(
+      resolveCommandKeybinding({
+        commandId: 'commandCenter.toggle',
+        overrides: { 'commandCenter.toggle': chord },
+        platform: 'darwin',
+      }),
+    ).toEqual(chord)
   })
 
   it('does not read legacy primary/secondary keybinding shape', () => {

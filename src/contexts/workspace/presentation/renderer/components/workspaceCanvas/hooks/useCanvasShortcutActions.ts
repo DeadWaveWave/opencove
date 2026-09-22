@@ -129,8 +129,8 @@ export function useWorkspaceCanvasShortcutActions({
   selectedNodeIdsRef,
   selectedSpaceIdsRef,
   onSpacesChange,
-  createNodeForSession,
-  createNoteNode,
+  nodeCreation: { createNodeForSession, createNoteNode },
+  launchAgentAtFlowPosition,
   createSpaceFromSelectedNodes,
   activateSpace,
   setActiveSpaceIdFromNodeNavigation,
@@ -170,8 +170,11 @@ export function useWorkspaceCanvasShortcutActions({
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   selectedSpaceIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  createNoteNode: (anchor: { x: number; y: number }) => Node<TerminalNodeData> | null
+  nodeCreation: {
+    createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
+    createNoteNode: (anchor: { x: number; y: number }) => Node<TerminalNodeData> | null
+  }
+  launchAgentAtFlowPosition: (anchor: { x: number; y: number }) => Promise<void>
   createSpaceFromSelectedNodes: () => void
   activateSpace: (spaceId: string) => void
   setActiveSpaceIdFromNodeNavigation: (spaceId: string | null) => void
@@ -280,6 +283,27 @@ export function useWorkspaceCanvasShortcutActions({
     workspacePath,
     workspaceId,
     onShowMessage,
+  ])
+
+  const createAgentAtViewportCenter = useCallback(async (): Promise<void> => {
+    const canvas = canvasRef.current
+    if (!canvas) {
+      return
+    }
+    const anchor = reactFlow.screenToFlowPosition(
+      resolveCanvasVisualCenter(canvas.getBoundingClientRect()),
+    )
+    setContextMenu(null)
+    setEmptySelectionPrompt(null)
+    cancelSpaceRename()
+    await launchAgentAtFlowPosition(anchor)
+  }, [
+    canvasRef,
+    reactFlow,
+    setContextMenu,
+    setEmptySelectionPrompt,
+    cancelSpaceRename,
+    launchAgentAtFlowPosition,
   ])
 
   const navigateNode = useCallback(
@@ -397,6 +421,8 @@ export function useWorkspaceCanvasShortcutActions({
     createSpaceFromSelectedNodes,
     createNoteAtViewportCenter,
     createTerminalAtViewportCenter,
+    createAgentAtViewportCenter,
+    canvasRef,
     activateSpace,
     navigateNode,
     navigateSpace,

@@ -74,9 +74,7 @@ export function useWindowCollapseMotion(
     if (!runtime || !compact || !icon || !glyph || !title || !surface) {
       return
     }
-    const details = compact.querySelectorAll(
-      '.cove-collapsed-window__message, .cove-collapsed-window__pixels',
-    )
+    const details = compact.querySelectorAll('.cove-collapsed-window__pixels')
     const interrupted = new Map<Element, Record<string, string>>()
     if (active.current) {
       for (const element of [surface, glyph, title, runtime, ...details]) {

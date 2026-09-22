@@ -115,6 +115,8 @@ describe('useWorkspaceCanvasShortcuts', () => {
         createSpaceFromSelectedNodes={() => undefined}
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
+        createAgentAtViewportCenter={async () => undefined}
+        canvasRef={{ current: null }}
         activateSpace={activateSpace}
         navigateNode={() => undefined}
         navigateSpace={() => undefined}
@@ -145,6 +147,8 @@ describe('useWorkspaceCanvasShortcuts', () => {
         createSpaceFromSelectedNodes={() => undefined}
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
+        createAgentAtViewportCenter={async () => undefined}
+        canvasRef={{ current: null }}
         activateSpace={activateSpace}
         navigateNode={() => undefined}
         navigateSpace={() => undefined}
@@ -179,6 +183,8 @@ describe('useWorkspaceCanvasShortcuts', () => {
         createSpaceFromSelectedNodes={() => undefined}
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
+        createAgentAtViewportCenter={async () => undefined}
+        canvasRef={{ current: null }}
         activateSpace={() => undefined}
         navigateNode={navigateNode}
         navigateSpace={() => undefined}

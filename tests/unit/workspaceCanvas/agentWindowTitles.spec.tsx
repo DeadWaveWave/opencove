@@ -130,7 +130,7 @@ function renderTitles(data: TerminalNodeData, linkedTaskTitle?: string) {
   const view = render(
     <WorkspaceCollapseContext.Provider value={collapse}>
       <WorkspaceCanvasTerminalNodeType {...props} />
-      <CollapsedWindow id="agent" data={data} message="Reviewing API changes" onExpand={vi.fn()} />
+      <CollapsedWindow id="agent" data={data} onExpand={vi.fn()} />
     </WorkspaceCollapseContext.Provider>,
   )
   return { ...view, rename: props.renameTerminalTitleRef.current }

@@ -1,10 +1,8 @@
-import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useContext, useMemo, useRef, type ReactNode } from 'react'
 import type { TerminalNodeData } from '../../../types'
-import { resolveAgentPresentation } from '../../../utils/agentPresentation'
 import { getCollapsedNodeSize } from '../../../utils/canvasCollapse'
 import { WindowCollapseContext } from '../../shared/WindowCollapseButton'
 import { useWorkspaceCollapse } from './WorkspaceCollapseContext'
-import { useCollapsedAgentMessage } from './useCollapsedAgentMessage'
 import { CollapsedWindow } from './CollapsedWindow'
 import { useWindowCollapseMotion } from './useWindowCollapseMotion'
 import { WindowNodeContextMenuContext } from '../view/WindowNodeContextMenuContext'
@@ -35,28 +33,9 @@ export function WindowCollapsePresentation({
     collapsed,
     spaceHidden,
     data,
-    getCollapsedNodeSize(data),
+    getCollapsedNodeSize(),
     collapse.getMotionDelay?.(id) ?? 0,
   )
-  const [inView, setInView] = useState(true)
-  const isAgent = resolveAgentPresentation(data).isAgent
-  useEffect(() => {
-    if (
-      !collapsed ||
-      spaceHidden ||
-      !isAgent ||
-      !element.current ||
-      typeof IntersectionObserver !== 'function'
-    ) {
-      return
-    }
-    const observer = new IntersectionObserver(entries => {
-      setInView(entries.some(entry => entry.isIntersecting))
-    })
-    observer.observe(element.current)
-    return () => observer.disconnect()
-  }, [collapsed, isAgent, spaceHidden])
-  const message = useCollapsedAgentMessage(data, collapsed && !spaceHidden && isAgent && inView)
   const controls = useMemo(
     () => ({
       nodeId: id,
@@ -103,7 +82,6 @@ export function WindowCollapsePresentation({
               id={id}
               data={data}
               active={collapsed}
-              message={message}
               onExpand={controls.toggle}
               onToggleSelection={onToggleSelection}
               onContextMenu={

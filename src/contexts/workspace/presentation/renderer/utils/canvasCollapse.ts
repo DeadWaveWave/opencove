@@ -1,6 +1,5 @@
 import type { Node } from '@xyflow/react'
 import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
-import { resolveAgentPresentation } from './agentPresentation'
 
 export type CollapsedIds = Record<string, true>
 export interface CanvasCollapseState {
@@ -40,12 +39,12 @@ export function setCollapsed(ids: CollapsedIds, id: string, collapsed: boolean):
   return next
 }
 
-export function getCollapsedNodeSize(data: TerminalNodeData): Size {
-  return { width: 128, height: resolveAgentPresentation(data).isAgent ? 140 : 112 }
+export function getCollapsedNodeSize(): Size {
+  return { width: 128, height: 112 }
 }
 
 export function getNodeDisplaySize(node: Node<TerminalNodeData>, ids: CollapsedIds): Size {
-  return ids[node.id] ? getCollapsedNodeSize(node.data) : node.data
+  return ids[node.id] ? getCollapsedNodeSize() : node.data
 }
 
 export function getCollapsedSpaceSize(nodeCount: number): Size {

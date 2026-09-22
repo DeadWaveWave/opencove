@@ -369,6 +369,10 @@ export const enSettingsPanel = {
         title: 'Create Terminal',
         help: 'Create a terminal from the visual center of the root canvas.',
       },
+      workspaceCanvasCreateAgent: {
+        title: 'Start Agent',
+        help: 'Start the default Agent at the canvas center. Inputs, terminals, and editors keep Select All.',
+      },
       workspaceCanvasCycleSpacesForward: {
         title: 'Next Space',
         help: 'Switch to the next space in top-left pill order. The All pill is excluded.',

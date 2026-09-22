@@ -71,7 +71,7 @@ export function planCollapsedArrangement(
         return frame ? [frame] : []
       })
     const members = nodes.filter(node => ownerByNodeId.get(node.id) === space.id)
-    const cardWidth = Math.max(0, ...members.map(node => getCollapsedNodeSize(node.data).width))
+    const cardWidth = members.length ? getCollapsedNodeSize().width : 0
     const availableWidth = Math.max(
       rect.width,
       cardWidth ? cardWidth + PADDING * 2 : 0,
@@ -102,7 +102,7 @@ export function planCollapsedArrangement(
           y,
         }),
       )
-      const rowHeight = Math.max(...row.map(node => getCollapsedNodeSize(node.data).height))
+      const rowHeight = getCollapsedNodeSize().height
       bottom = Math.max(bottom, y + rowHeight + PADDING)
       y += rowHeight + GAP
     }

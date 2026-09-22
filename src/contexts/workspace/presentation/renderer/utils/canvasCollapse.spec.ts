@@ -99,6 +99,25 @@ describe('canvas collapse presentation boundary', () => {
     })
     expect([...collectSpaceNodeIds('root', spaces)]).toEqual(['a', 'b'])
   })
+  it('keeps Agent and terminal icon geometry equal without changing their runtime dimensions', () => {
+    const terminal = node('terminal')
+    const overlay = {
+      ...node('overlay'),
+      data: {
+        ...node('overlay').data,
+        agentOverlay: { provider: 'codex' as const, status: 'running' as const, startedAtMs: 1 },
+      },
+    }
+    const nodes = [terminal, node('agent', 'agent'), overlay]
+    const projected = projectCollapsedNodes(nodes, [], {
+      collapsedNodeIds: { terminal: true, agent: true, overlay: true },
+      collapsedSpaceIds: {},
+    })
+    projected.forEach(item => {
+      expect(item).toMatchObject({ width: 128, height: 112, initialWidth: 128, initialHeight: 112 })
+      expect(item.data).toMatchObject({ width: 640, height: 480, sessionId: `session-${item.id}` })
+    })
+  })
   it('tidies presentation cards and restores layout without overwriting later content or resurrecting nodes', () => {
     const nodes = [node('a'), node('b', 'agent')]
     const plan = planCollapsedArrangement('root', nodes, spaces, {

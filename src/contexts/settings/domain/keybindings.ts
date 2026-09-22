@@ -10,6 +10,7 @@ export const WORKSPACE_CANVAS_COMMAND_IDS = [
   'workspaceCanvas.createSpace',
   'workspaceCanvas.createNote',
   'workspaceCanvas.createTerminal',
+  'workspaceCanvas.createAgent',
   'workspaceCanvas.cycleSpacesForward',
   'workspaceCanvas.cycleSpacesBackward',
   'workspaceCanvas.cycleIdleSpacesForward',
@@ -162,6 +163,7 @@ export function resolveDefaultKeybindings(
     'workspaceCanvas.createSpace': createCommandModifierChord(platform, 'KeyG'),
     'workspaceCanvas.createNote': createCommandModifierChord(platform, 'KeyN'),
     'workspaceCanvas.createTerminal': createCommandModifierChord(platform, 'KeyT'),
+    'workspaceCanvas.createAgent': createCommandModifierChord(platform, 'KeyA'),
     'workspaceCanvas.cycleSpacesForward': createCommandModifierChord(platform, 'BracketRight'),
     'workspaceCanvas.cycleSpacesBackward': createCommandModifierChord(platform, 'BracketLeft'),
     'workspaceCanvas.cycleIdleSpacesForward': createCommandModifierChord(platform, 'BracketRight', {
@@ -202,7 +204,18 @@ export function resolveCommandKeybinding({
     return overrides[commandId] ?? null
   }
 
-  return resolveDefaultKeybindings(platform)[commandId]
+  const defaultBinding = resolveDefaultKeybindings(platform)[commandId]
+  // This newly introduced default must not steal an existing user assignment.
+  // Explicit Agent overrides still use the normal settings conflict resolution.
+  if (
+    commandId === 'workspaceCanvas.createAgent' &&
+    COMMAND_IDS.some(
+      id => id !== commandId && isKeyChordEqual(overrides?.[id] ?? null, defaultBinding),
+    )
+  ) {
+    return null
+  }
+  return defaultBinding
 }
 
 export function resolveEffectiveKeybindings({

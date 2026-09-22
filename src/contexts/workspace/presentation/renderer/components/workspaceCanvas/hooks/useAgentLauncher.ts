@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -68,153 +68,156 @@ export function useWorkspaceCanvasAgentLauncher({
 }: UseAgentLauncherParams): {
   openAgentLauncher: () => void
   openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
+  launchAgentAtFlowPosition: (
+    cursorAnchor: Point,
+    provider?: AgentNodeData['provider'],
+  ) => Promise<void>
 } {
   const { t } = useTranslation()
+  const launching = useRef(false)
 
-  const openAgentLauncherForProvider = useCallback(
-    (requestedProvider: AgentNodeData['provider']) => {
-      if (!contextMenu || contextMenu.kind !== 'pane') {
+  const launchAgentAtFlowPosition = useCallback(
+    async (
+      cursorAnchor: Point,
+      requestedProvider = agentSettings.defaultProvider,
+    ): Promise<void> => {
+      // The keyboard and menu share one launch transaction. Repeated input while
+      // resolving a mount or starting its session must not create extra Agents.
+      if (launching.current) {
         return
       }
-
-      setContextMenu(null)
-
-      void (async () => {
+      launching.current = true
+      try {
+        const provider = resolveSelectableAgentProvider(requestedProvider)
+        const launchGeometry = resolveDefaultAgentLaunchGeometry({
+          bucket: standardWindowSizeBucket,
+          provider,
+          terminalFontSize: agentSettings.terminalFontSize,
+        })
+        const anchor = resolveNodePlacementAnchorFromViewportCenter(
+          cursorAnchor,
+          launchGeometry.frameSize,
+        )
+        const model = resolveAgentModel(agentSettings, provider)
+        const executablePathOverride = resolveAgentExecutableOverride(agentSettings, provider)
+        const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+        const mergedEnv = buildMergedAgentLaunchEnv(agentSettings, provider, environmentVariables)
+        let initialBinding: Awaited<ReturnType<typeof resolveWorkspaceAgentLaunchBinding>>
         try {
-          const provider = resolveSelectableAgentProvider(requestedProvider)
-          const cursorAnchor: Point = resolvePaneNodeCreationAnchor(contextMenu)
-          const launchGeometry = resolveDefaultAgentLaunchGeometry({
-            bucket: standardWindowSizeBucket,
-            provider,
-            terminalFontSize: agentSettings.terminalFontSize,
+          initialBinding = await resolveWorkspaceAgentLaunchBinding({
+            workspaceId,
+            workspacePath,
+            currentMountId: anchorSpace?.targetMountId ?? null,
+            executionDirectory: resolveSpaceWorkingDirectory(anchorSpace, workspacePath),
+            targetSpace: anchorSpace,
+            spacesRef,
+            onSpacesChange,
+            onRequestPersistFlush,
+            mountQueryFailurePolicy: anchorSpace ? 'ignore' : 'throw',
           })
-          const anchor = resolveNodePlacementAnchorFromViewportCenter(
-            cursorAnchor,
-            launchGeometry.frameSize,
+        } catch (error) {
+          onShowMessage?.(
+            t('messages.mountListFailed', { message: toErrorMessage(error) }),
+            'error',
           )
-          const model = resolveAgentModel(agentSettings, provider)
-          const executablePathOverride = resolveAgentExecutableOverride(agentSettings, provider)
-          const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
-          const mergedEnv = buildMergedAgentLaunchEnv(agentSettings, provider, environmentVariables)
-          let initialBinding: Awaited<ReturnType<typeof resolveWorkspaceAgentLaunchBinding>>
-          try {
-            initialBinding = await resolveWorkspaceAgentLaunchBinding({
+          return
+        }
+        const launched = await launchWorkspaceAgentSession({
+          mountId: initialBinding.mountId,
+          workspacePath,
+          executionDirectory: initialBinding.executionDirectory,
+          prompt: '',
+          provider,
+          mode: 'new',
+          model,
+          executablePathOverride,
+          mergedEnv,
+          agentSettings,
+          launchGeometry,
+          retryResolveMountBinding: async failedMountId => {
+            const nextBinding = await resolveWorkspaceAgentLaunchBinding({
               workspaceId,
               workspacePath,
-              currentMountId: anchorSpace?.targetMountId ?? null,
-              executionDirectory: resolveSpaceWorkingDirectory(anchorSpace, workspacePath),
+              currentMountId: null,
+              executionDirectory: initialBinding.executionDirectory,
               targetSpace: anchorSpace,
               spacesRef,
               onSpacesChange,
               onRequestPersistFlush,
               mountQueryFailurePolicy: anchorSpace ? 'ignore' : 'throw',
             })
-          } catch (error) {
-            onShowMessage?.(
-              t('messages.mountListFailed', { message: toErrorMessage(error) }),
-              'error',
-            )
-            return
-          }
-          const launched = await launchWorkspaceAgentSession({
-            mountId: initialBinding.mountId,
-            workspacePath,
-            executionDirectory: initialBinding.executionDirectory,
-            prompt: '',
+            return nextBinding.mountId && nextBinding.mountId !== failedMountId ? nextBinding : null
+          },
+        })
+
+        const modelLabel = launched.effectiveModel ?? model
+
+        const created = await createNodeForSession({
+          sessionId: launched.sessionId,
+          profileId: launched.profileId,
+          runtimeKind: launched.runtimeKind as CreateNodeInput['runtimeKind'],
+          terminalGeometry: launchGeometry.terminalGeometry,
+          workerBinding: launched.workerBinding,
+          title: buildAgentNodeTitle(provider, modelLabel),
+          anchor,
+          kind: 'agent',
+          placement: {
+            targetSpaceRect: anchorSpace?.rect ?? null,
+          },
+          agent: {
             provider,
-            mode: 'new',
+            prompt: '',
             model,
-            executablePathOverride,
-            mergedEnv,
-            agentSettings,
-            launchGeometry,
-            retryResolveMountBinding: async failedMountId => {
-              const nextBinding = await resolveWorkspaceAgentLaunchBinding({
-                workspaceId,
-                workspacePath,
-                currentMountId: null,
-                executionDirectory: initialBinding.executionDirectory,
-                targetSpace: anchorSpace,
-                spacesRef,
-                onSpacesChange,
-                onRequestPersistFlush,
-                mountQueryFailurePolicy: anchorSpace ? 'ignore' : 'throw',
-              })
-              return nextBinding.mountId && nextBinding.mountId !== failedMountId
-                ? nextBinding
-                : null
-            },
-          })
+            effectiveModel: launched.effectiveModel,
+            launchMode: 'new',
+            ...clearResumeSessionBinding(),
+            executionDirectory: launched.executionDirectory,
+            expectedDirectory: launched.executionDirectory,
+            directoryMode: 'workspace',
+            customDirectory: null,
+            shouldCreateDirectory: false,
+            taskId: null,
+          },
+        })
 
-          const modelLabel = launched.effectiveModel ?? model
-
-          const created = await createNodeForSession({
-            sessionId: launched.sessionId,
-            profileId: launched.profileId,
-            runtimeKind: launched.runtimeKind as CreateNodeInput['runtimeKind'],
-            terminalGeometry: launchGeometry.terminalGeometry,
-            workerBinding: launched.workerBinding,
-            title: buildAgentNodeTitle(provider, modelLabel),
-            anchor,
-            kind: 'agent',
-            placement: {
-              targetSpaceRect: anchorSpace?.rect ?? null,
-            },
-            agent: {
-              provider,
-              prompt: '',
-              model,
-              effectiveModel: launched.effectiveModel,
-              launchMode: 'new',
-              ...clearResumeSessionBinding(),
-              executionDirectory: launched.executionDirectory,
-              expectedDirectory: launched.executionDirectory,
-              directoryMode: 'workspace',
-              customDirectory: null,
-              shouldCreateDirectory: false,
-              taskId: null,
-            },
-          })
-
-          if (!created) {
-            return
-          }
-
-          if (!anchorSpace) {
-            return
-          }
-
-          assignNodeToSpaceAndExpand({
-            createdNodeId: created.id,
-            createdNode: created,
-            targetSpaceId: anchorSpace.id,
-            targetSpaceSnapshot: anchorSpace,
-            spacesRef,
-            nodesRef,
-            setNodes,
-            onSpacesChange,
-          })
-
-          onRequestPersistFlush?.()
-        } catch (error) {
-          onShowMessage?.(
-            t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
-            'error',
-          )
+        if (!created) {
+          return
         }
-      })()
+
+        if (!anchorSpace) {
+          return
+        }
+
+        assignNodeToSpaceAndExpand({
+          createdNodeId: created.id,
+          createdNode: created,
+          targetSpaceId: anchorSpace.id,
+          targetSpaceSnapshot: anchorSpace,
+          spacesRef,
+          nodesRef,
+          setNodes,
+          onSpacesChange,
+        })
+
+        onRequestPersistFlush?.()
+      } catch (error) {
+        onShowMessage?.(
+          t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
+          'error',
+        )
+      } finally {
+        launching.current = false
+      }
     },
     [
       agentSettings,
       buildAgentNodeTitle,
-      contextMenu,
       createNodeForSession,
       environmentVariables,
       nodesRef,
       onRequestPersistFlush,
       onShowMessage,
       onSpacesChange,
-      setContextMenu,
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
@@ -224,6 +227,18 @@ export function useWorkspaceCanvasAgentLauncher({
     ],
   )
 
+  const openAgentLauncherForProvider = useCallback(
+    (provider: AgentNodeData['provider']) => {
+      if (!contextMenu || contextMenu.kind !== 'pane') {
+        return
+      }
+      const anchor = resolvePaneNodeCreationAnchor(contextMenu)
+      setContextMenu(null)
+      void launchAgentAtFlowPosition(anchor, provider)
+    },
+    [contextMenu, launchAgentAtFlowPosition, setContextMenu],
+  )
+
   const openAgentLauncher = useCallback(() => {
     openAgentLauncherForProvider(resolveSelectableAgentProvider(agentSettings.defaultProvider))
   }, [agentSettings.defaultProvider, openAgentLauncherForProvider])
@@ -231,5 +246,6 @@ export function useWorkspaceCanvasAgentLauncher({
   return {
     openAgentLauncher,
     openAgentLauncherForProvider,
+    launchAgentAtFlowPosition,
   }
 }

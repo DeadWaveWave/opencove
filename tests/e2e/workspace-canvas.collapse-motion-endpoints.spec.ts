@@ -90,24 +90,9 @@ for (const { kind, title, fontScale } of cases) {
         expectIdentityEndpointContinuous(lastAnimated, settled)
         if (kind === 'agent' && direction === 'collapse') {
           await expect(node.locator('.cove-collapsed-window__title')).toHaveText(title)
-          const message = node.locator('.cove-collapsed-window__message')
-          await expect(message).toContainText('等待新消息')
-          const alignment = await message.evaluate(element => {
-            const range = document.createRange()
-            range.selectNodeContents(element)
-            const text = range.getBoundingClientRect()
-            const box = element.getBoundingClientRect()
-            const viewport = element.closest('.react-flow__viewport')!
-            const zoom = new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a
-            return {
-              inset: (box.width - text.width) / zoom,
-              offset: Math.abs(box.x + box.width / 2 - text.x - text.width / 2) / zoom,
-            }
-          })
-          expect(alignment.inset, 'The message fixture fits without truncation').toBeGreaterThan(8)
-          expect(alignment.offset, 'Agent message text is centered beneath the icon').toBeLessThan(
-            1,
-          )
+          await expect(node.locator('.cove-collapsed-window__message')).toHaveCount(0)
+          await expect(node.locator('.cove-collapsed-window')).toHaveCSS('height', '112px')
+          await expect(node.locator('.cove-collapsed-window__pixels')).toBeVisible()
         }
       }
     } finally {

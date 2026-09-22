@@ -364,6 +364,10 @@ export const zhCNSettingsPanel = {
         title: '创建终端',
         help: '从根画布视觉中心创建一个终端。',
       },
+      workspaceCanvasCreateAgent: {
+        title: '启动 Agent',
+        help: '在画布中心启动默认 Agent。输入框、终端和编辑器仍保留全选。',
+      },
       workspaceCanvasCycleSpacesForward: {
         title: '下一个 Space',
         help: '按左上角 Space pill 顺序切换到下一个 Space，不包含全局。',
