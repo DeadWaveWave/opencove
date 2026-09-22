@@ -228,7 +228,11 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       const binaryNode = window.locator('.document-node').filter({ hasText: 'data.bin' }).first()
       await expect(binaryNode).toBeVisible()
-      await expect(binaryNode.locator('.document-node__state-title')).toHaveText('Binary file')
+      await expect(binaryNode.getByTestId('document-node-file-placeholder')).toBeVisible()
+      await expect(binaryNode.getByTestId('document-node-file-name')).toHaveText('data.bin')
+      await expect(binaryNode.getByTestId('document-node-file-preview-message')).toHaveText(
+        'Preview unavailable',
+      )
 
       await window.keyboard.press('Escape')
       await expect(explorer).toBeHidden()

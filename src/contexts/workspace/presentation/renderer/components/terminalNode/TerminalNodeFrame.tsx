@@ -1,3 +1,4 @@
+import { TerminalLinkHost, type TerminalLinkHostOptions } from './links/TerminalLinkHost'
 import React, { useId, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Handle, Position } from '@xyflow/react'
@@ -18,6 +19,7 @@ import type { TerminalNodeInteractionOptions } from '../TerminalNode.types'
 import type { ResizeEdges } from '../../utils/nodeFrameResize'
 
 interface TerminalNodeFrameProps {
+  linkOptions?: TerminalLinkHostOptions
   geometryFeedback?: React.ReactNode
   title: string
   fixedTitlePrefix?: string | null
@@ -69,6 +71,7 @@ interface TerminalNodeFrameProps {
 }
 
 export function TerminalNodeFrame({
+  linkOptions,
   geometryFeedback,
   title,
   fixedTitlePrefix,
@@ -271,6 +274,11 @@ export function TerminalNodeFrame({
           aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
         />
 
+        <TerminalLinkHost
+          containerRef={containerRef}
+          sessionId={sessionId}
+          options={linkOptions ?? {}}
+        />
         <TerminalNodeFindBar
           isOpen={find.isOpen}
           query={find.query}

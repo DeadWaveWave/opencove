@@ -1,0 +1,103 @@
+.terminal-link-status {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  height: 25px;
+  max-width: 80%;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid var(--cove-border-subtle);
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0 4px 0 0;
+  color: var(--cove-text-muted);
+  background: var(--cove-surface-strong);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.workspace-context-menu.terminal-link-card {
+  z-index: 1200;
+  width: max-content;
+  min-width: min(208px, calc(100vw - 16px));
+  max-width: min(272px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 4px;
+  gap: 0;
+  border-radius: 8px;
+}
+.terminal-link-card__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+  padding: 2px 6px 5px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+  color: var(--cove-text-muted);
+}
+.terminal-link-card__target {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-family: var(--cove-font-mono);
+  font-size: 12px;
+  line-height: 17px;
+}
+.terminal-link-card button.terminal-link-card__copy {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  justify-content: center;
+  padding: 0;
+  border-radius: 4px;
+  color: var(--cove-text-muted);
+}
+.terminal-link-card button.terminal-link-card__action {
+  min-height: 32px;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 400;
+}
+.terminal-link-card__action > svg {
+  flex-shrink: 0;
+  color: var(--cove-text-muted);
+}
+.terminal-link-card__action > span:not(.terminal-link-card__shortcut) {
+  flex: 1;
+  min-width: 0;
+}
+.terminal-link-card__shortcut {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--cove-text-muted);
+}
+.terminal-link-card__shortcut kbd {
+  min-width: 18px;
+  padding: 0 3px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 10px;
+  line-height: 17px;
+  text-align: center;
+}
+.terminal-link-card__hint {
+  padding: 4px 6px;
+  color: var(--cove-text-muted);
+  font-size: 11px;
+  line-height: 16px;
+}

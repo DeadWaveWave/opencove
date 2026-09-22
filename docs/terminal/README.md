@@ -1,5 +1,6 @@
 # Terminal Docs
 
+终端链接的识别、来源上下文、交互与回归契约见 [LINKS.md](./LINKS.md)。
 本目录是 terminal runtime、presentation、multi-client attach 和渲染稳定性的公开入口。
 
 ## Read Order

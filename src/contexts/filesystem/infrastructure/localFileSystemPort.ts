@@ -3,6 +3,7 @@ import { join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { toFileUri } from '../domain/fileUri'
 import type { FileSystemEntryKind, FileSystemPort } from '../application/ports'
+import { createAppError } from '../../../shared/errors/appError'
 
 function assertFileUri(uri: string): URL {
   let parsed: URL
@@ -142,7 +143,20 @@ export function createLocalFileSystemPort(): FileSystemPort {
     },
     stat: async ({ uri }) => {
       const path = fileUriToPath(uri)
-      const stats = await stat(path)
+      const stats = await stat(path).catch((error: unknown) => {
+        const code =
+          error !== null && typeof error === 'object' && 'code' in error ? error.code : undefined
+        const reason =
+          code === 'ENOENT' || code === 'ENOTDIR'
+            ? 'not_found'
+            : code === 'EACCES' || code === 'EPERM'
+              ? 'forbidden'
+              : 'unavailable'
+        throw createAppError('filesystem.stat_failed', {
+          params: { reason },
+          debugMessage: error instanceof Error ? error.message : 'Filesystem stat failed',
+        })
+      })
       const kind: FileSystemEntryKind = stats.isDirectory()
         ? 'directory'
         : stats.isFile()

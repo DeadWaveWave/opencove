@@ -3,6 +3,7 @@ import { useStore, useStoreApi, type Node } from '@xyflow/react'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { LabelColor } from '@shared/types/labelColor'
 import { TerminalNode } from '../TerminalNode'
+import { WorkspaceDocumentNavigationContext } from './WorkspaceDocumentNavigationContext'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
 import type { NodeFrame, TerminalNodeData } from '../../types'
 import { isResumeSessionBindingVerified } from '../../utils/agentResumeBinding'
@@ -67,6 +68,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   >
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
+  const documentNavigation = React.useContext(WorkspaceDocumentNavigationContext)
   const storeApi = useStoreApi()
   const scrollback = useScrollbackStore(state =>
     data.kind === 'agent' ? null : (state.scrollbackByNodeId[id] ?? data.scrollback ?? null),
@@ -135,11 +137,20 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
             fallbackTitle: data.title,
           })
       : data.title
+  const executionDirectory =
+    data.kind === 'agent'
+      ? (data.agent?.executionDirectory ?? null)
+      : (data.executionDirectory ?? null)
 
   return (
     <TerminalNode
       nodeId={id}
       sessionId={data.sessionId}
+      workerBinding={data.workerBinding}
+      executionDirectory={executionDirectory}
+      onOpenFileLink={request =>
+        documentNavigation?.openFileLink(id, request) ?? Promise.resolve(false)
+      }
       title={resolvedTitle}
       fixedTitlePrefix={
         data.kind === 'agent' && data.agent
@@ -152,11 +163,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       isAgentPresentation={isAgentTreated}
       labelColor={labelColor}
       agentLaunchMode={data.kind === 'agent' ? (data.agent?.launchMode ?? null) : null}
-      agentExecutionDirectory={
-        data.kind === 'agent'
-          ? (data.agent?.executionDirectory ?? null)
-          : (data.executionDirectory ?? null)
-      }
+      agentExecutionDirectory={executionDirectory}
       agentResumeSessionId={
         data.kind === 'agent'
           ? (data.agent?.resumeSessionId ?? null)

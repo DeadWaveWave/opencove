@@ -282,6 +282,14 @@
   width: 100%;
 }
 
+.document-node__media--image {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 .document-node__media--audio {
   max-width: 100%;
 }
@@ -343,4 +351,72 @@
 .document-node__state-action:hover {
   border-color: var(--cove-canvas-control-border-hover);
   background: color-mix(in srgb, var(--cove-canvas-control-surface-hover) 88%, transparent);
+}
+
+.document-node__file-placeholder {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  gap: 20px;
+  padding: 24px;
+  overflow: auto;
+  text-align: center;
+  color: var(--cove-text-muted);
+}
+
+.document-node__file-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: var(--cove-radius-lg);
+  background: var(--cove-field);
+}
+
+.document-node__file-details {
+  width: 100%;
+  max-width: 340px;
+}
+
+.document-node__file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--cove-text);
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.document-node__file-message {
+  margin-top: 7px;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.6;
+}
+
+.document-node__file-hint {
+  margin-top: 3px;
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  line-height: 1.6;
+}
+
+.document-node__system-open-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 12px;
+  line-height: 1.4;
+}
+
+.document-node__system-open-action:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }

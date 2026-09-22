@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Files: replace unsupported-file warnings with a centered file icon, readable filename, format-aware explanation, and clear default-app action across themes. (#416)
+
+- Files: preview terminal-linked images in their original file windows, retain audio/video playback, and offer explicit system opening for unsupported formats instead of treating binary files as text. (#416)
+- Terminal: recognize complete wrapped URLs and file paths, preserve file line and column navigation, and use compact link actions with predictable selection and focus. (#416)
+- Terminal: open verified local directory links in the system file manager without requiring a matching Space, while preserving remote source and path permissions. (#416)
 - Agent: restore Pi session listing and switching, copy the last assistant reply from the saved branch, and target the correct managed session after recovery. (#414)
 - Sidebar: preserve collapsed projects and Space groups across app restarts, while keeping their disclosure choices independent. (#411)
 - Terminal: route local desktop image paste to native Pi, Kimi, Codex, Claude Code, and OMP keybindings while preserving text paste. (#409)

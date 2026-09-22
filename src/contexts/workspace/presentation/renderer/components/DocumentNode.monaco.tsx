@@ -1,3 +1,7 @@
+import {
+  useDocumentNodeNavigation,
+  type DocumentNavigationProps,
+} from './useDocumentNodeNavigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -230,11 +234,13 @@ export function resolveDocumentNodeLanguageId(uri: string): string {
 }
 
 export function DocumentNodeMonacoEditor({
+  navigation,
+  onNavigationApplied,
   uri,
   content,
   onContentChange,
   onSaveShortcut,
-}: {
+}: DocumentNavigationProps & {
   uri: string
   content: string
   onContentChange: (nextContent: string) => void
@@ -243,10 +249,17 @@ export function DocumentNodeMonacoEditor({
   const { t } = useTranslation()
   const languageId = useMemo(() => resolveDocumentNodeLanguageId(uri), [uri])
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [attachedUri, setAttachedUri] = useState<string | null>(null)
   const [wordWrapMode, setWordWrapMode] = useState<DocumentNodeWordWrapMode>('off')
   const hostRef = useRef<HTMLDivElement | null>(null)
   const editorRef = useRef<MonacoEditorInstance | null>(null)
   const modelRef = useRef<MonacoTextModel | null>(null)
+  useDocumentNodeNavigation({
+    ready: status === 'ready' && attachedUri === uri,
+    editorRef,
+    navigation,
+    onNavigationApplied,
+  })
   const suppressChangeRef = useRef(false)
   const onContentChangeRef = useRef(onContentChange)
   const onSaveShortcutRef = useRef(onSaveShortcut)
@@ -343,6 +356,7 @@ export function DocumentNodeMonacoEditor({
           },
         })
 
+        setAttachedUri(uri)
         setStatus('ready')
       } catch {
         if (!disposed) {

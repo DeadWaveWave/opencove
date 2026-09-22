@@ -1,3 +1,4 @@
+import type { DocumentNavigationProps } from './useDocumentNodeNavigation'
 import type { CSSProperties, JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { LabelColor } from '@shared/types/labelColor'
@@ -8,9 +9,10 @@ import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { suppressExplorerOverlayInteractions } from './workspaceCanvas/explorerInteractionGuard'
 
-export interface DocumentNodeChromeProps {
+export interface DocumentNodeChromeProps extends DocumentNavigationProps {
   title: string
   uri: string
+  mountId: string | null
   displayPath: string
   labelColor?: LabelColor | null
   style: CSSProperties
@@ -41,8 +43,11 @@ export interface DocumentNodeChromeProps {
 }
 
 export function DocumentNodeChrome({
+  navigation,
+  onNavigationApplied,
   title,
   uri,
+  mountId,
   displayPath,
   labelColor,
   style,
@@ -72,7 +77,8 @@ export function DocumentNodeChrome({
   onInteractionStart,
 }: DocumentNodeChromeProps): JSX.Element {
   const { t } = useTranslation()
-  const showsEditorActions = !mediaSource && !unsupportedKind && !mediaLoadError
+  const showsEditorActions =
+    !isLoading && !loadError && !mediaSource && !unsupportedKind && !mediaLoadError
   const interactiveContentClassName = 'document-node__interactive'
 
   return (
@@ -244,7 +250,10 @@ export function DocumentNodeChrome({
       ) : null}
 
       <DocumentNodeBody
+        navigation={navigation}
+        onNavigationApplied={onNavigationApplied}
         uri={uri}
+        mountId={mountId}
         isLoading={isLoading}
         loadError={loadError}
         mediaLoadError={mediaLoadError}

@@ -72,6 +72,13 @@ export function useTerminalBodyClickFallback(
         return
       }
 
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-cove-link-gesture="true"]')
+      ) {
+        return
+      }
+
       const shiftKey = event.shiftKey
 
       ignoreNextTerminalBodyClickRef.current = true

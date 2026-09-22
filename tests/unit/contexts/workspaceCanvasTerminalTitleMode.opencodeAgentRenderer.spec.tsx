@@ -73,16 +73,22 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/Termin
       title,
       terminalProvider,
       terminalThemeMode,
+      executionDirectory,
+      agentExecutionDirectory,
     }: {
       title: string
       terminalProvider?: string | null
       terminalThemeMode?: string
+      executionDirectory?: string | null
+      agentExecutionDirectory?: string | null
     }) => {
       return (
         <div>
           <span data-testid="terminal-title">{title}</span>
           <span data-testid="terminal-provider">{terminalProvider ?? 'none'}</span>
           <span data-testid="terminal-theme-mode">{terminalThemeMode ?? 'sync-with-ui'}</span>
+          <span data-testid="terminal-link-directory">{executionDirectory ?? 'none'}</span>
+          <span data-testid="agent-directory">{agentExecutionDirectory ?? 'none'}</span>
         </div>
       )
     },
@@ -150,6 +156,7 @@ describe('WorkspaceCanvas terminal title mode (OpenCode agent renderer)', () => 
           exitCode: null,
           lastError: null,
           scrollback: null,
+          executionDirectory: '/tmp/previous-launch',
           terminalProviderHint: null,
           agent: {
             provider: 'opencode',
@@ -159,7 +166,7 @@ describe('WorkspaceCanvas terminal title mode (OpenCode agent renderer)', () => 
             launchMode: 'new',
             resumeSessionId: 'session-opencode-agent',
             resumeSessionIdVerified: true,
-            executionDirectory: '/tmp',
+            executionDirectory: '/tmp/current-agent-launch',
             expectedDirectory: null,
             directoryMode: 'workspace',
             customDirectory: null,
@@ -203,5 +210,9 @@ describe('WorkspaceCanvas terminal title mode (OpenCode agent renderer)', () => 
       expect(screen.getByTestId('terminal-provider')).toHaveTextContent('opencode')
     })
     expect(screen.getByTestId('terminal-theme-mode')).toHaveTextContent('sync-with-ui')
+    expect(screen.getByTestId('terminal-link-directory')).toHaveTextContent(
+      '/tmp/current-agent-launch',
+    )
+    expect(screen.getByTestId('agent-directory')).toHaveTextContent('/tmp/current-agent-launch')
   })
 })
