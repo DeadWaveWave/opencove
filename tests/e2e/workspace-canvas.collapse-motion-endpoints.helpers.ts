@@ -32,7 +32,9 @@ export async function seedIdentityEndpointFixture(
     settings: {
       uiTheme: 'pixel',
       uiFontSize: 16 * fontScale,
-      language: 'en',
+      // Use short localized placeholder copy to measure actual text centering,
+      // rather than a Range extending beyond the compact caption's ellipsis.
+      language: kind === 'agent' ? 'zh-CN' : 'en',
       canvasInputMode: 'mouse',
       focusNodeOnClick: false,
       standbyBannerEnabled: false,

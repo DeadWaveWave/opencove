@@ -81,7 +81,7 @@ describe('canvas collapse presentation boundary', () => {
     })
     expect(result[0].style).toMatchObject({ width: 0, height: 0, visibility: 'hidden' })
     expect(result[1].data.collapsePresentation?.spaceHidden).toBe(true)
-    expect(result[2].style).toMatchObject({ width: 176, height: 112 })
+    expect(result[2].style).toMatchObject({ width: 128, height: 112 })
     expect(nodes[0].data.collapsePresentation).toBeUndefined()
   })
   it('reveals only the target and its ancestor path, retaining other collapsed windows', () => {

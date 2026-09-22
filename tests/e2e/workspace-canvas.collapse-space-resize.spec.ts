@@ -68,7 +68,7 @@ for (const nesting of ['root', 'nested'] as const) {
         .click()
       await expect
         .poll(() => readPresentationFrame(window))
-        .toMatchObject({ width: expect.closeTo(176, 0), height: expect.closeTo(112, 0) })
+        .toMatchObject({ width: expect.closeTo(128, 0), height: expect.closeTo(112, 0) })
 
       // No arrange action: each window retains its original position. The right
       // edge must stop at the note's compact extent, not its original width.
@@ -89,10 +89,12 @@ for (const nesting of ['root', 'nested'] as const) {
         ),
       ])
       for (const frame of [terminal, note]) {
-        expect(frame.x).toBeGreaterThanOrEqual(space.x)
-        expect(frame.y).toBeGreaterThanOrEqual(space.y)
-        expect(frame.x + frame.width).toBeLessThanOrEqual(space.x + space.width)
-        expect(frame.y + frame.height).toBeLessThanOrEqual(space.y + space.height)
+        // Dividing DOM rectangles by zoom can differ by floating-point roundoff.
+        const epsilon = 1e-6
+        expect(frame.x).toBeGreaterThanOrEqual(space.x - epsilon)
+        expect(frame.y).toBeGreaterThanOrEqual(space.y - epsilon)
+        expect(frame.x + frame.width).toBeLessThanOrEqual(space.x + space.width + epsilon)
+        expect(frame.y + frame.height).toBeLessThanOrEqual(space.y + space.height + epsilon)
       }
       await expect
         .poll(() => readPersistedFrame(window, EXPANSION_TERMINAL))
@@ -104,8 +106,8 @@ for (const nesting of ['root', 'nested'] as const) {
       // With one compact window left, the frame should reach its title/control
       // minimum, rather than reserving the default expanded terminal's size.
       const compactNote = window.getByTestId(`collapsed-node-${EXPANSION_PEER}`)
-      await compactNote.hover()
-      await compactNote.getByRole('button', { name: 'Close window' }).click()
+      await compactNote.getByTestId('node-expand').click({ button: 'right' })
+      await window.getByTestId('workspace-node-close').click()
       await expect(window.locator(`.react-flow__node[data-id="${EXPANSION_PEER}"]`)).toHaveCount(0)
       await shrinkSpace(window, 'right', 750)
       await expect

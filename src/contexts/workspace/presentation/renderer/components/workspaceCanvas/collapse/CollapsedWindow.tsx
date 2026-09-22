@@ -1,10 +1,10 @@
 import { useRef, type CSSProperties } from 'react'
-import { X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { TerminalNodeData } from '../../../types'
 import { resolveAgentPresentation } from '../../../utils/agentPresentation'
+import { getCollapsedNodeSize } from '../../../utils/canvasCollapse'
 import { resolveAgentTreatedProvider } from '../../../utils/terminalAgentOverlay'
 import { findLinkedTaskTitleForAgent, resolveAgentDisplayTitle } from '../../../utils/agentTitle'
 import { NodeKindIcon } from '../../shared/NodeKindIcon'
@@ -17,7 +17,6 @@ export function CollapsedWindow({
   data,
   message,
   onExpand,
-  onClose,
   onToggleSelection,
   onContextMenu,
   active = true,
@@ -26,7 +25,6 @@ export function CollapsedWindow({
   data: TerminalNodeData
   message: string
   onExpand: () => void
-  onClose: () => void
   onToggleSelection?: () => void
   onContextMenu?: (point: { x: number; y: number }) => void
   active?: boolean
@@ -65,7 +63,8 @@ export function CollapsedWindow({
 
   return (
     <div
-      className={`cove-collapsed-window${presentation.isAgent ? ' cove-collapsed-window--agent' : ''}`}
+      className="cove-collapsed-window"
+      style={getCollapsedNodeSize(data)}
       data-testid={`collapsed-node-${id}`}
       data-node-kind={data.kind}
       data-status={status?.state}
@@ -88,6 +87,8 @@ export function CollapsedWindow({
         data-testid="node-expand"
         aria-disabled={!active || undefined}
         aria-label={`${t('canvasCollapse.expandWindow')}: ${title}`}
+        aria-description={status?.label}
+        title={status?.label}
         aria-expanded="false"
         aria-controls={`cove-node-runtime-${id}`}
         onPointerDown={event => {
@@ -153,7 +154,6 @@ export function CollapsedWindow({
             {title}
           </span>
         </span>
-        {status ? <span className="cove-collapsed-window__status">{status.label}</span> : null}
         {presentation.isAgent ? (
           <span
             className="cove-collapsed-window__message"
@@ -164,20 +164,6 @@ export function CollapsedWindow({
           </span>
         ) : null}
       </div>
-      <button
-        type="button"
-        disabled={!active}
-        className="cove-node-collapse-button cove-collapsed-window__close nodrag"
-        aria-label={t('canvasCollapse.closeWindow')}
-        title={t('canvasCollapse.closeWindow')}
-        onPointerDown={event => event.stopPropagation()}
-        onClick={event => {
-          event.stopPropagation()
-          onClose()
-        }}
-      >
-        <X size={13} aria-hidden="true" />
-      </button>
     </div>
   )
 }

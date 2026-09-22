@@ -41,7 +41,7 @@ export function setCollapsed(ids: CollapsedIds, id: string, collapsed: boolean):
 }
 
 export function getCollapsedNodeSize(data: TerminalNodeData): Size {
-  return { width: 176, height: resolveAgentPresentation(data).isAgent ? 140 : 112 }
+  return { width: 128, height: resolveAgentPresentation(data).isAgent ? 140 : 112 }
 }
 
 export function getNodeDisplaySize(node: Node<TerminalNodeData>, ids: CollapsedIds): Size {

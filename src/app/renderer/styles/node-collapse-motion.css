@@ -47,8 +47,8 @@
   box-shadow: none;
 }
 
-.cove-node-presentation[data-cove-collapse-motion] .cove-collapsed-window__launch {
-  background: transparent;
+.cove-node-presentation[data-cove-collapse-motion] .cove-collapsed-window__icon::before {
+  visibility: hidden;
 }
 
 .cove-node-presentation[data-cove-collapse-motion]

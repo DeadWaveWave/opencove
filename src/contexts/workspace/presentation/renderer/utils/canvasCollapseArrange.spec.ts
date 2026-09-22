@@ -69,10 +69,10 @@ describe('collapsed Space arrangement geometry', () => {
     const nodes = [node('a', 90, 100), node('b', 700, 400, 'agent')]
     const spaces = [space('root', { x: 40, y: 60, width: 1800, height: 1200 }, ['a', 'b'])]
     const plan = planCollapsedArrangement('root', nodes, spaces, EMPTY_CANVAS_COLLAPSE)!
-    expect(plan.spaces[0].rect).toEqual({ x: 40, y: 60, width: 416, height: 188 })
+    expect(plan.spaces[0].rect).toEqual({ x: 40, y: 60, width: 320, height: 188 })
     expect(plan.nodes.map(item => item.position)).toEqual([
       { x: 64, y: 84 },
-      { x: 256, y: 84 },
+      { x: 208, y: 84 },
     ])
     expect(plan.nodes.map(item => item.data)).toEqual(nodes.map(item => item.data))
     expect(plan.state.collapsedNodeIds).toEqual({ a: true, b: true })

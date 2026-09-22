@@ -89,13 +89,7 @@
   --cove-collapsed-secondary: var(--cove-node-identity-secondary, var(--cove-accent));
   --cove-collapsed-tertiary: var(--cove-node-identity-tertiary, var(--cove-accent));
   position: relative;
-  width: 176px;
-  height: 112px;
   color: var(--cove-text);
-}
-
-.cove-collapsed-window--agent {
-  height: 140px;
 }
 
 .cove-collapsed-window__launch {
@@ -112,14 +106,60 @@
   touch-action: none;
 }
 
-.cove-collapsed-window__launch:hover,
-.cove-collapsed-window:focus-within .cove-collapsed-window__launch {
-  background: color-mix(in srgb, var(--cove-collapsed-ink) 4%, transparent);
+.cove-collapsed-window__launch:focus-visible {
+  outline: none;
 }
 
-.cove-collapsed-window__launch:focus-visible {
+/* The hit area stays generous; only the icon and its caption show feedback. */
+.cove-collapsed-window__icon::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--cove-collapsed-ink) 9%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+.cove-collapsed-window__launch:hover .cove-collapsed-window__icon::before {
+  opacity: 1;
+}
+
+.cove-collapsed-window__launch:focus-visible .cove-collapsed-window__icon {
   outline: 2px solid var(--cove-focus-ring);
-  outline-offset: 2px;
+  outline-offset: 5px;
+}
+
+.react-flow__node.selected
+  .cove-node-presentation[data-cove-collapsed]
+  .cove-collapsed-window__icon::before {
+  opacity: 1;
+  background: var(--cove-control-selected);
+  box-shadow: 0 0 0 1px var(--cove-info-border);
+}
+
+.react-flow__node.selected
+  .cove-node-presentation[data-cove-collapsed]
+  .cove-collapsed-window__title {
+  border-radius: 3px;
+  background: var(--cove-accent);
+  color: var(--cove-accent-foreground);
+  /* Paint a little caption padding without moving the title's motion anchor. */
+  box-shadow:
+    4px 0 var(--cove-accent),
+    -4px 0 var(--cove-accent);
+}
+
+/* Keep React Flow's selection geometry for dragging. Desktop icons provide
+   their own selection feedback; mixed/expanded selections retain the frame. */
+.workspace-canvas:has(
+    .react-flow__node.selected > .cove-node-presentation[data-cove-collapsed]
+  ):not(:has(.react-flow__node.selected > .cove-node-presentation:not([data-cove-collapsed])))
+  .react-flow__nodesselection-rect {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .cove-collapsed-window__icon {
@@ -170,23 +210,6 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 18px;
-}
-
-.cove-collapsed-window__status {
-  color: var(--cove-text-muted);
-  font-size: 10px;
-  line-height: 16px;
-}
-
-.cove-collapsed-window[data-status='running'] .cove-collapsed-window__status {
-  color: var(--cove-collapsed-ink);
-}
-
-.cove-collapsed-window[data-status='waiting'] .cove-collapsed-window__status {
-  color: var(--cove-warning);
-}
-.cove-collapsed-window[data-status='failed'] .cove-collapsed-window__status {
-  color: var(--cove-danger);
 }
 
 .cove-collapsed-window__pixels {
@@ -338,19 +361,6 @@
   line-height: 17px;
 }
 
-.cove-collapsed-window__close {
-  position: absolute;
-  top: 0;
-  right: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.cove-collapsed-window:is(:hover, :focus-within) .cove-collapsed-window__close {
-  opacity: 1;
-  pointer-events: auto;
-}
-
 @keyframes cove-icon-pixel-flow {
   0%,
   42%,
@@ -363,6 +373,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .cove-collapsed-window__icon::before {
+    transition: none;
+  }
+
   .react-flow__node[data-cove-collapse-revealed] > .cove-node-presentation::after,
   .cove-collapsed-window .cove-collapsed-window__pixel-corner > i {
     animation: none !important;
@@ -373,9 +387,5 @@
   .cove-node-collapse-button {
     min-width: 44px;
     min-height: 44px;
-  }
-  .cove-collapsed-window__close {
-    opacity: 1;
-    pointer-events: auto;
   }
 }

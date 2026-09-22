@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop -- Real drag moves advance with renderer frames. */
 import { expect, test, type Page } from '@playwright/test'
 import {
   buildAppState,
@@ -18,20 +19,43 @@ async function readFrame(page: Page) {
 }
 
 async function dragCompactIcon(page: Page, delta: { x: number; y: number }) {
+  const node = page.locator(`.react-flow__node[data-id="${NODE_ID}"]`)
+  await expect(node.locator('.cove-node-presentation')).not.toHaveAttribute(
+    'data-cove-collapse-motion',
+  )
   const icon = page.getByTestId(`collapsed-node-${NODE_ID}`).locator('.cove-collapsed-window__icon')
-  const iconBox = await icon.boundingBox()
-  expect(iconBox).toBeTruthy()
-  const zoom = await page.locator('.react-flow__viewport').evaluate(element => {
-    return new DOMMatrixReadOnly(getComputedStyle(element).transform).a
+  const { start, zoom } = await icon.evaluate(element => {
+    const rect = element.getBoundingClientRect()
+    const viewport = document.querySelector('.react-flow__viewport')!
+    return {
+      start: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
+      zoom: new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a,
+    }
   })
-  const start = { x: iconBox!.x + iconBox!.width / 2, y: iconBox!.y + iconBox!.height / 2 }
   await page.mouse.move(start.x, start.y)
   await page.mouse.down()
   try {
-    await page.mouse.move(start.x + delta.x * zoom, start.y + delta.y * zoom, { steps: 24 })
+    // A burst of synthetic moves can finish within one WebKit frame. Give the
+    // controlled selection/drag projection each position before releasing it.
+    for (let step = 1; step <= 12; step += 1) {
+      await page.mouse.move(
+        start.x + (delta.x * zoom * step) / 12,
+        start.y + (delta.y * zoom * step) / 12,
+      )
+      await page.evaluate(
+        () => new Promise<void>(resolve => requestAnimationFrame(() => resolve())),
+      )
+    }
   } finally {
     await page.mouse.up()
   }
+  await expect(node).not.toHaveClass(/\bdragging\b/)
+  await page.evaluate(
+    () =>
+      new Promise<void>(resolve =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  )
 }
 
 for (const nested of [false, true]) {
@@ -124,7 +148,7 @@ for (const nested of [false, true]) {
       await node.getByTestId('node-collapse').click()
       const compact = page.getByTestId(`collapsed-node-${NODE_ID}`)
       await expect(compact).toBeVisible()
-      await expect.poll(() => readFrame(page)).toMatchObject({ width: 176, height: 112 })
+      await expect.poll(() => readFrame(page)).toMatchObject({ width: 128, height: 112 })
       if (nested) {
         // Replacing an existing sibling selection exposed React's update-depth loop.
         const peer = page.locator('.react-flow__node[data-id="peer-note"]')
@@ -150,7 +174,7 @@ for (const nested of [false, true]) {
       await dragCompactIcon(page, { x: 120, y: 70 })
       expect(renderErrors()).toEqual([])
       await expect(compact).toBeVisible()
-      await expect.poll(() => readFrame(page)).toMatchObject({ width: 176, height: 112 })
+      await expect.poll(() => readFrame(page)).toMatchObject({ width: 128, height: 112 })
       const first = await readFrame(page)
       expect(Math.hypot(first.x - before.x, first.y - before.y)).toBeGreaterThan(40)
       await expect(node).toHaveClass(/selected/)

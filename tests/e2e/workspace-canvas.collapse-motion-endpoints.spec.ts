@@ -62,7 +62,7 @@ for (const { kind, title, fontScale } of cases) {
         expectIdentityEndpointContinuous(lastAnimated, settled)
         if (kind === 'agent' && direction === 'collapse') {
           const message = node.locator('.cove-collapsed-window__message')
-          await expect(message).toContainText('Waiting for')
+          await expect(message).toContainText('等待新消息')
           const alignment = await message.evaluate(element => {
             const range = document.createRange()
             range.selectNodeContents(element)

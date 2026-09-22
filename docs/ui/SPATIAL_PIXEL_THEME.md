@@ -187,6 +187,18 @@ effect settings, with pending activation canceled by subsequent user input or wo
 Hydration and theme changes never steal focus. Read-only windows may focus their frame without
 entering the normal Tab order. The decorative layer never owns focus or selection.
 
+Collapsed windows use a desktop-icon presentation. Their compact 128px-wide drag/click bounds stay
+transparent, including on hover and keyboard focus. Hover highlights only the icon pedestal;
+canvas selection highlights the pedestal and a title-sized caption, independently of label color
+and runtime status. Keyboard focus draws a local icon ring. Selections containing only collapsed
+windows retain their geometry for dragging without painting the enclosing group rectangle;
+mixed or expanded selections keep their existing frame. Pixel corners indicate runtime status,
+with its text available on hover and to assistive technology rather than as a separate row.
+Agent latest messages remain visible. Presentation and collision bounds share the same compact
+size helper. The compact presentation has no floating Close button: its context menu delegates
+Close to the mounted runtime's original guard. Single-click expansion and collapse geometry are
+unchanged, and visual feedback must not offset the icon/title animation anchors.
+
 The website showcase contains scripted mouse actions, timed tool calls, illustrative test results and
 an input-blocking node reveal. These behaviors are not part of the application theme. In particular,
 application effects never delay operability, interpret ANSI text as tool events, or auto-open documents.

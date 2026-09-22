@@ -54,7 +54,7 @@ test('collapses all window kinds without remounting editors or resizing a live P
             })),
           { message: `${kind} display frame settles to its compact dimensions` },
         )
-        .toEqual({ width: 176, height: kind === 'agent' ? 140 : 112 })
+        .toEqual({ width: 128, height: kind === 'agent' ? 140 : 112 })
     }
     expect(await terminals.count()).toBe(count)
     expect(await identity(window)).toEqual(original)
@@ -145,7 +145,7 @@ test('collapses all window kinds without remounting editors or resizing a live P
     const before = await readNodePositions()
     await window.getByTestId('workspace-space-collapse-arrange-pixel-build-space').click()
     await expect(compactTerminal).toBeVisible()
-    await expect.poll(() => terminalNode.evaluate(element => element.clientWidth)).toBe(176)
+    await expect.poll(() => terminalNode.evaluate(element => element.clientWidth)).toBe(128)
     await expect(window.getByTestId('workspace-space-collapse-pixel-build-space')).toHaveCount(0)
     await expect(window.getByTestId('workspace-space-undo-arrange-pixel-build-space')).toHaveCount(
       0,

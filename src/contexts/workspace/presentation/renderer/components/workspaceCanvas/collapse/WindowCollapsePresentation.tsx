@@ -106,7 +106,6 @@ export function WindowCollapsePresentation({
               message={message}
               onExpand={controls.toggle}
               onToggleSelection={onToggleSelection}
-              onClose={() => closeHandler.current?.()}
               onContextMenu={
                 openContextMenu
                   ? point => {

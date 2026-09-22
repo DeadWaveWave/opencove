@@ -31,7 +31,7 @@ test('morphs a live terminal into its icon and back without remounting or resizi
     const collapse = await samplePresentation(window, () =>
       node.getByTestId('node-collapse').click(),
     )
-    expectContinuousSizeChange(collapse, expanded, { width: 176, height: 112 })
+    expectContinuousSizeChange(collapse, expanded, { width: 128, height: 112 })
     expectRuntimeUnchanged(collapse, identity)
     const compact = window.getByTestId(`collapsed-node-${EXPANSION_TERMINAL}`)
     await expect(compact.getByTestId('node-expand')).toBeVisible()
@@ -41,7 +41,7 @@ test('morphs a live terminal into its icon and back without remounting or resizi
     const expansion = await samplePresentation(window, () =>
       compact.getByTestId('node-expand').click(),
     )
-    expectContinuousSizeChange(expansion, { width: 176, height: 112 }, expanded)
+    expectContinuousSizeChange(expansion, { width: 128, height: 112 }, expanded)
     expectRuntimeUnchanged(expansion, identity)
     await expect(compact).toBeHidden()
     await expect(node.locator('.terminal-node__terminal')).toBeVisible()
@@ -131,8 +131,8 @@ test('Space fold arranges real compact windows and leaves an ordinary movable re
 
     // A one-window Space still needs room for its frame title and controls.
     const note = window.getByTestId(`collapsed-node-${EXPANSION_PEER}`)
-    await note.hover()
-    await note.getByRole('button', { name: 'Close window' }).click()
+    await note.getByTestId('node-expand').click({ button: 'right' })
+    await window.getByTestId('workspace-node-close').click()
     await expect(window.locator(`.react-flow__node[data-id="${EXPANSION_PEER}"]`)).toHaveCount(0)
     await window.getByTestId(`workspace-space-collapse-arrange-${MOTION_SPACE}`).click()
     await expect
@@ -173,7 +173,7 @@ test('a rapid reversal and reduced motion leave the final geometry and live runt
     })
     expectRuntimeUnchanged(reversal, identity)
     expect(
-      reversal.some(sample => sample.shell.width < expanded.width - 8 && sample.shell.width > 180),
+      reversal.some(sample => sample.shell.width < expanded.width - 8 && sample.shell.width > 132),
     ).toBe(true)
     expect(reversal.at(-1)?.shell.width).toBeCloseTo(expanded.width, 0)
     await expect(compact).toBeHidden()
@@ -189,10 +189,10 @@ test('a rapid reversal and reduced motion leave the final geometry and live runt
     )
     expectRuntimeUnchanged(reduced, identity)
     expect(
-      reduced.filter(sample => sample.shell.width > 178 && sample.shell.width < expanded.width - 2),
+      reduced.filter(sample => sample.shell.width > 130 && sample.shell.width < expanded.width - 2),
       'Reduced motion commits the final presentation without traversing an animated size',
     ).toEqual([])
-    expect(reduced.at(-1)?.shell.width).toBeCloseTo(176, 0)
+    expect(reduced.at(-1)?.shell.width).toBeCloseTo(128, 0)
     await compact.getByTestId('node-expand').click()
     await expect
       .poll(() => readPresentationFrame(window))

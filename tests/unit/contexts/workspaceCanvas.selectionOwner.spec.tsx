@@ -93,7 +93,7 @@ describe('canvas selection owner', () => {
     })
     expect(projected.find(node => node.id === 'compact')).toMatchObject({
       selected: true,
-      width: 176,
+      width: 128,
       height: 112,
       position: { x: 160, y: 110 },
       data: { width: 300, height: 200 },

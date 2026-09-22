@@ -72,7 +72,7 @@ export function useWindowCollapseMotion(
       return
     }
     const details = compact.querySelectorAll(
-      '.cove-collapsed-window__status, .cove-collapsed-window__message, .cove-collapsed-window__pixels, .cove-collapsed-window__close',
+      '.cove-collapsed-window__message, .cove-collapsed-window__pixels',
     )
     const interrupted = new Map<Element, Record<string, string>>()
     if (active.current) {

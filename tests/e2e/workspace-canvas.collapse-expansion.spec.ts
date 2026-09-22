@@ -30,7 +30,7 @@ for (const behavior of ['default', 'find-space'] as const) {
       await expect(compact).toBeVisible()
       await expect
         .poll(() => readNodeFrame(window, EXPANSION_TERMINAL))
-        .toMatchObject({ width: 176, height: 112 })
+        .toMatchObject({ width: 128, height: 112 })
       await writeCollapsedTerminalMarker(window, identity.sessionId!, 'collapsed')
       const samples = await sampleCollapsedDrag(window)
       await testInfo.attach('collapsed-drag-frame-geometry', {
@@ -41,9 +41,9 @@ for (const behavior of ['default', 'find-space'] as const) {
       expect(samples.filter(sample => sample.selection).length).toBeGreaterThanOrEqual(20)
       const oversized = samples.filter(
         sample =>
-          sample.node.width > 180 ||
+          sample.node.width > 132 ||
           sample.node.height > 116 ||
-          (sample.selection && (sample.selection.width > 180 || sample.selection.height > 116)),
+          (sample.selection && (sample.selection.width > 132 || sample.selection.height > 116)),
       )
       expect(
         oversized,

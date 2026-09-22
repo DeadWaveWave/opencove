@@ -166,7 +166,7 @@ export async function sampleCollapsedDrag(page: Page): Promise<DragFrame[]> {
   const peer = await readLocatorClientRect(
     page.locator(`.react-flow__node[data-id="${EXPANSION_PEER}"]`),
   )
-  const pointerZoom = before.width / 176
+  const pointerZoom = before.width / 128
   const start = { x: before.x + before.width / 2, y: before.y + 30 * pointerZoom }
   const end = { x: peer.x - 24 * pointerZoom - before.width / 2, y: peer.y + 30 * pointerZoom }
   await page.evaluate(id => {

@@ -67,7 +67,7 @@ function windowScene() {
         collapsed,
         false,
         { width: 640, height: 480 },
-        { width: 176, height: 112 },
+        { width: 128, height: 112 },
         0,
       ),
     { initialProps: { collapsed: false } },

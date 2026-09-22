@@ -10,6 +10,7 @@ import {
 import { WindowCollapseButton } from '@contexts/workspace/presentation/renderer/components/shared/WindowCollapseButton'
 import { useCollapsedAgentMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/useCollapsedAgentMessage'
 import { CollapsedWindow } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/CollapsedWindow'
+import { WindowNodeContextMenuContext } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WindowNodeContextMenuContext'
 
 const nodeData = (overrides: Partial<TerminalNodeData> = {}): TerminalNodeData => ({
   sessionId: 'pty-1',
@@ -97,17 +98,23 @@ describe('window collapse presentation', () => {
       order.push('expand')
     })
     const guardedClose = vi.fn(() => order.push('prompt'))
+    const openMenu = vi.fn()
     render(
       <WorkspaceCollapseContext.Provider value={value}>
-        <WindowCollapsePresentation
-          id="document"
-          data={nodeData({ collapsePresentation: { collapsed: true, spaceHidden: false } })}
-        >
-          <WindowCollapseButton onClose={guardedClose} revealBeforeClose />
-        </WindowCollapsePresentation>
+        <WindowNodeContextMenuContext.Provider value={openMenu}>
+          <WindowCollapsePresentation
+            id="document"
+            data={nodeData({ collapsePresentation: { collapsed: true, spaceHidden: false } })}
+          >
+            <WindowCollapseButton onClose={guardedClose} revealBeforeClose />
+          </WindowCollapsePresentation>
+        </WindowNodeContextMenuContext.Provider>
       </WorkspaceCollapseContext.Provider>,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Close window' }))
+    expect(screen.queryByRole('button', { name: 'Close window' })).toBeNull()
+    fireEvent.contextMenu(screen.getByTestId('node-expand'))
+    expect(openMenu).toHaveBeenCalledOnce()
+    act(() => openMenu.mock.calls[0][0].closeWindow())
     expect(order).toEqual(['expand', 'prompt'])
     expect(guardedClose).toHaveBeenCalledTimes(1)
   })
@@ -165,17 +172,15 @@ describe('window collapse presentation', () => {
       },
     })
     const view = (value: TerminalNodeData) => (
-      <CollapsedWindow
-        id="agent"
-        data={value}
-        message="Actual progress"
-        onExpand={vi.fn()}
-        onClose={vi.fn()}
-      />
+      <CollapsedWindow id="agent" data={value} message="Actual progress" onExpand={vi.fn()} />
     )
     const { rerender } = render(view(data))
     const icon = screen.getByTestId('collapsed-node-agent')
     expect(icon).toHaveAttribute('data-animated', 'true')
+    expect(icon).toHaveAttribute('data-status', 'running')
+    expect(icon.querySelector('.cove-collapsed-window__status')).toBeNull()
+    expect(screen.getByText('Actual progress')).toBeInTheDocument()
+    expect(screen.getByTestId('node-expand')).toHaveAttribute('aria-description', 'Working')
     expect(icon.querySelector('[data-agent-provider]')).toHaveAttribute(
       'data-agent-provider',
       'codex',
@@ -193,7 +198,6 @@ describe('window collapse presentation', () => {
 
   it('keeps inactive compact chrome mounted without exposing a drag handle or active controls', () => {
     const onExpand = vi.fn()
-    const onClose = vi.fn()
     const view = (active: boolean) => (
       <CollapsedWindow
         id="inactive"
@@ -201,29 +205,25 @@ describe('window collapse presentation', () => {
         active={active}
         message=""
         onExpand={onExpand}
-        onClose={onClose}
       />
     )
     const { container, rerender } = render(view(false))
     const launch = screen.getByTestId('node-expand')
     const icon = container.querySelector('.cove-collapsed-window__icon')
-    const close = screen.getByRole('button', { name: 'Close window' })
+    expect(screen.queryByRole('button', { name: 'Close window' })).toBeNull()
     expect(container.querySelectorAll('[data-node-drag-handle=true]')).toHaveLength(0)
     expect(launch).toHaveAttribute('tabindex', '-1')
     expect(launch).toHaveAttribute('aria-disabled', 'true')
-    expect(close).toBeDisabled()
     fireEvent.click(launch)
     fireEvent.keyDown(launch, { key: 'Enter' })
-    fireEvent.click(close)
     expect(onExpand).not.toHaveBeenCalled()
-    expect(onClose).not.toHaveBeenCalled()
 
     rerender(view(true))
     expect(container.querySelector('.cove-collapsed-window__icon')).toBe(icon)
     expect(container.querySelectorAll('[data-node-drag-handle=true]')).toHaveLength(1)
     expect(launch).toHaveAttribute('tabindex', '0')
     expect(launch).not.toHaveAttribute('aria-disabled')
-    expect(close).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Close window' })).toBeNull()
     fireEvent.click(launch)
     expect(onExpand).toHaveBeenCalledOnce()
 
