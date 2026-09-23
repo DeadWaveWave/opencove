@@ -18,6 +18,7 @@ export const IPC_CHANNELS = {
   filesystemDeleteEntry: 'filesystem:delete-entry',
   filesystemReadDirectory: 'filesystem:read-directory',
   filesystemStat: 'filesystem:stat',
+  filesystemResolveDroppedPath: 'filesystem:resolve-dropped-path',
   workspaceSelectDirectory: 'workspace:select-directory',
   workspaceEnsureDirectory: 'workspace:ensure-directory',
   workspaceCopyPath: 'workspace:copy-path',

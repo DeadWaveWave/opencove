@@ -189,6 +189,7 @@ export function useWorkspaceCanvasAgentLauncher({
         }
 
         assignNodeToSpaceAndExpand({
+          workspaceId,
           createdNodeId: created.id,
           createdNode: created,
           targetSpaceId: anchorSpace.id,

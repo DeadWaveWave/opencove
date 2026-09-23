@@ -12,6 +12,7 @@ type SetNodes = (
 ) => void
 
 export function createNoteNodeAtAnchor({
+  workspaceId,
   anchor,
   spaceAnchor = anchor,
   createNoteNode,
@@ -20,6 +21,7 @@ export function createNoteNodeAtAnchor({
   setNodes,
   onSpacesChange,
 }: {
+  workspaceId?: string
   anchor: Point
   spaceAnchor?: Point
   createNoteNode: (
@@ -50,6 +52,7 @@ export function createNoteNodeAtAnchor({
   }
 
   assignNodeToSpaceAndExpand({
+    workspaceId,
     createdNodeId: created.id,
     createdNode: created,
     targetSpaceId: targetSpace.id,

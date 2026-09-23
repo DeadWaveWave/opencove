@@ -83,7 +83,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
             expect(appearance.icon).toMatchObject({
               kind: appearance.kind,
               fill: 'none',
-              stroke: '1.75',
+              stroke: appearance.kind === 'document' ? '1.4' : '1.75',
               width: 16,
               pointer: 'none',
               hidden: 'true',

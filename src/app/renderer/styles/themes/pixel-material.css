@@ -1,7 +1,15 @@
 /* Paint an opaque reading surface only below the existing header band, so the
    frosted titlebar can sample the canvas. These clearances do not change layout. */
 :root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
-  :is(.terminal-node, .task-node, .note-node, .document-node, .role-node, .website-node) {
+  :is(
+    .terminal-node,
+    .task-node,
+    .note-node,
+    .document-node,
+    .folder-node,
+    .role-node,
+    .website-node
+  ) {
   background-color: transparent;
   background-image: linear-gradient(
     to bottom,

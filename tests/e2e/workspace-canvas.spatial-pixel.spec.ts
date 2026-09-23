@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
-import { createHash } from 'node:crypto'
+import { readFieldSignature, readStableFieldBaseline } from './workspace-canvas.pixel-field.helpers'
 import {
   PIXEL_EFFECTS_DISABLED,
   PIXEL_EFFECTS_ENABLED,
@@ -163,11 +163,6 @@ async function expectStaticField(layer: Locator) {
     .toBe(true)
 }
 
-async function readFieldSignature(layer: Locator) {
-  const image = await layer.evaluate(canvas => (canvas as HTMLCanvasElement).toDataURL())
-  return createHash('sha256').update(image).digest('hex')
-}
-
 test.describe('Workspace Canvas - Spatial Pixel', () => {
   test('persists explicit pixel effects across named theme changes', async ({
     browserName,
@@ -307,7 +302,7 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       await expect.poll(async () => (await readCanvasViewport(window)).zoom).toBe(1)
       await expectStaticField(layer)
       const beforeViewport = await readCanvasViewport(window)
-      const beforeOutput = await readFieldSignature(layer)
+      const beforeOutput = await readStableFieldBaseline(layer)
       await printThroughTerminal(window, 'REDUCED')
       await expectStaticField(layer)
       expect(await readCanvasViewport(window)).toEqual(beforeViewport)

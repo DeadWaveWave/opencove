@@ -2,6 +2,8 @@ import React from 'react'
 import { ArrowRight, ChevronRight, Scan, Tag, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
+import { useFilesystemNodesActions } from '../FilesystemNodesContext'
+import { FilesystemPathMenuItems } from './FilesystemPathMenuItems'
 
 export function WorkspaceContextSelectionMenuContent({
   createSpaceFromSelectedNodes,
@@ -14,6 +16,7 @@ export function WorkspaceContextSelectionMenuContent({
   clearNodeSelection,
   closeContextMenu,
   closeWindow,
+  nodeId,
 }: {
   createSpaceFromSelectedNodes: () => void
   openLabelColorSubmenu: () => void
@@ -25,11 +28,29 @@ export function WorkspaceContextSelectionMenuContent({
   clearNodeSelection: () => void
   closeContextMenu: () => void
   closeWindow?: () => void
+  nodeId?: string
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const filesystem = useFilesystemNodesActions()
+  const hasPath = nodeId && filesystem?.getNodePathUri?.(nodeId)
+  const copyPath = (relative: boolean) => {
+    closeContextMenu()
+    if (nodeId) {
+      void filesystem?.copyNodePath?.(nodeId, relative)
+    }
+  }
 
   return (
     <>
+      {hasPath ? (
+        <>
+          <FilesystemPathMenuItems
+            onCopyRelativePath={() => copyPath(true)}
+            onCopyAbsolutePath={() => copyPath(false)}
+          />
+          <div className="workspace-context-menu__separator" />
+        </>
+      ) : null}
       <button
         type="button"
         data-testid="workspace-selection-create-space"

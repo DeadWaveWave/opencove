@@ -68,7 +68,7 @@ for (const nesting of ['root', 'nested'] as const) {
         .click()
       await expect
         .poll(() => readPresentationFrame(window))
-        .toMatchObject({ width: expect.closeTo(128, 0), height: expect.closeTo(112, 0) })
+        .toMatchObject({ width: expect.closeTo(112, 0), height: expect.closeTo(96, 0) })
 
       // No arrange action: each window retains its original position. The right
       // edge must stop at the note's compact extent, not its original width.

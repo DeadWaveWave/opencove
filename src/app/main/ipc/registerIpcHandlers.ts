@@ -202,7 +202,7 @@ export function registerIpcHandlers(deps?: {
     registerAppUpdateIpcHandlers(appUpdateService),
     registerReleaseNotesIpcHandlers(releaseNotesService),
     registerWorkspaceIpcHandlers(guardedApprovedWorkspaces),
-    registerFilesystemIpcHandlers(guardedApprovedWorkspaces),
+    registerFilesystemIpcHandlers(guardedApprovedWorkspaces, approvedWorkspaces),
     registerPersistenceIpcHandlers(getPersistenceStore),
     registerWorktreeIpcHandlers(guardedApprovedWorkspaces),
     registerIntegrationIpcHandlers(guardedApprovedWorkspaces),

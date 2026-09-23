@@ -1,4 +1,5 @@
-import type { WorkspaceSpaceRect, WorkspaceSpaceState } from '../types'
+import type { Size, WorkspaceSpaceRect, WorkspaceSpaceState } from '../types'
+import { pushExpandedSpacePeers } from './spaceAutoResize.peers'
 import {
   pushAwayLayout,
   SPACE_MIN_SIZE,
@@ -97,6 +98,7 @@ function computePaddedBounds(
 function expandRectToFit(
   existingRect: WorkspaceSpaceRect,
   requiredRect: WorkspaceSpaceRect,
+  minimumSize: Size,
 ): WorkspaceSpaceRect {
   const nextLeft = Math.min(existingRect.x, requiredRect.x)
   const nextTop = Math.min(existingRect.y, requiredRect.y)
@@ -112,8 +114,8 @@ function expandRectToFit(
   return {
     x: nextLeft,
     y: nextTop,
-    width: Math.max(SPACE_MIN_SIZE.width, nextRight - nextLeft),
-    height: Math.max(SPACE_MIN_SIZE.height, nextBottom - nextTop),
+    width: Math.max(minimumSize.width, nextRight - nextLeft),
+    height: Math.max(minimumSize.height, nextBottom - nextTop),
   }
 }
 
@@ -212,12 +214,14 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
   nodeRects,
   gap,
   padding = SPACE_NODE_PADDING,
+  minimumSize = SPACE_MIN_SIZE,
 }: {
   targetSpaceId: string
   spaces: WorkspaceSpaceState[]
   nodeRects: Array<{ id: string; rect: WorkspaceSpaceRect }>
   gap: number
   padding?: number
+  minimumSize?: Size
 }): { spaces: WorkspaceSpaceState[]; nodePositionById: Map<string, { x: number; y: number }> } {
   const targetSpace = spaces.find(space => space.id === targetSpaceId)
   if (!targetSpace?.rect) {
@@ -225,16 +229,9 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
   }
 
   const spaceById = buildSpaceById(spaces)
+  const owningSpaceIdByNodeId = buildOwningSpaceIdByNodeId(spaces)
   const directChildSpaceIdsByParentId = buildDirectChildSpaceIdsByParentId(spaces)
   const nodeRectById = new Map(nodeRects.map(item => [item.id, item.rect]))
-  const ownedRects = targetSpace.nodeIds
-    .map(nodeId => nodeRectById.get(nodeId))
-    .filter((rect): rect is WorkspaceSpaceRect => Boolean(rect))
-
-  if (ownedRects.length === 0) {
-    return { spaces, nodePositionById: new Map() }
-  }
-
   const spaceRectById = new Map(
     spaces.flatMap(space => (space.rect ? [[space.id, { ...space.rect }] as const] : [])),
   )
@@ -260,13 +257,24 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
       continue
     }
 
-    const expandedRect = expandRectToFit(existingRect, requiredRect)
+    const expandedRect = expandRectToFit(existingRect, requiredRect, minimumSize)
     if (rectEquals(existingRect, expandedRect)) {
       continue
     }
 
     spaceRectById.set(spaceId, expandedRect)
     changedSpaceIds.add(spaceId)
+    pushExpandedSpacePeers({
+      spaceId,
+      spaces,
+      spaceRectById,
+      nodeRectById,
+      owningSpaceIdByNodeId,
+      directChildSpaceIdsByParentId,
+      changedSpaceIds,
+      directions: resolveResizeDirections(existingRect, expandedRect),
+      gap,
+    })
   }
 
   if (changedSpaceIds.size === 0) {
@@ -281,6 +289,13 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
         }
       : space,
   )
+  const peerNodePositions = new Map<string, { x: number; y: number }>()
+  for (const { id, rect } of nodeRects) {
+    const next = nodeRectById.get(id)
+    if (next && (next.x !== rect.x || next.y !== rect.y)) {
+      peerNodePositions.set(id, { x: next.x, y: next.y })
+    }
+  }
 
   const targetRootSpaceId = resolveSpaceRootId(targetSpaceId, spaceById)
   const previousRootRect = targetRootSpaceId
@@ -290,14 +305,13 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
     ? (draftSpaces.find(space => space.id === targetRootSpaceId)?.rect ?? null)
     : null
   if (!previousRootRect || !nextRootRect || rectEquals(previousRootRect, nextRootRect)) {
-    return { spaces: draftSpaces, nodePositionById: new Map() }
+    return { spaces: draftSpaces, nodePositionById: peerNodePositions }
   }
 
   const directions = resolveResizeDirections(previousRootRect, nextRootRect)
-  const owningSpaceIdByNodeId = buildOwningSpaceIdByNodeId(draftSpaces)
   const items = buildSpaceTreeLayoutItems({
     spaces: draftSpaces,
-    nodeRects,
+    nodeRects: [...nodeRectById].map(([id, rect]) => ({ id, rect })),
     owningSpaceIdByNodeId,
   })
   const targetRootGroupId = `space:${targetRootSpaceId}`
@@ -315,7 +329,7 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
     })
 
   if (!hasExternalCollision) {
-    return { spaces: draftSpaces, nodePositionById: new Map() }
+    return { spaces: draftSpaces, nodePositionById: peerNodePositions }
   }
 
   const pushed = pushAwayLayout({

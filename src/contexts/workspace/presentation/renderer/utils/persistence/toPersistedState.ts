@@ -16,6 +16,7 @@ import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/ty
 import { normalizeProjectIconId } from '@shared/types/projectIcon'
 import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
 import { normalizeNodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
+import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
 
 export function toPersistedState(
   workspaces: WorkspaceState[],
@@ -114,9 +115,11 @@ export function toPersistedState(
                   ? node.data.image
                   : node.data.kind === 'document'
                     ? node.data.document
-                    : node.data.kind === 'website'
-                      ? node.data.website
-                      : node.data.task,
+                    : node.data.kind === 'folder'
+                      ? normalizeFolderNodeData(node.data.folder)
+                      : node.data.kind === 'website'
+                        ? node.data.website
+                        : node.data.task,
         }
       }),
     })),

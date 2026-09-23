@@ -14,3 +14,10 @@ export function isEditableDomTarget(target: EventTarget | null): boolean {
   const { tagName } = target
   return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT'
 }
+
+export function shouldFocusCanvasForPointerTarget(target: EventTarget | null): boolean {
+  if (target instanceof Element && target.closest('[data-cove-focus-scope="file-browser"]')) {
+    return false
+  }
+  return !isEditableDomTarget(target)
+}

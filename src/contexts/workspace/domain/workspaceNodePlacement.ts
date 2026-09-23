@@ -46,12 +46,6 @@ export function resolveWorkspaceNodesPlacement({
     : null
   const obstacleEquals = (a: Rect, b: Rect): boolean =>
     a.left === b.left && a.top === b.top && a.right === b.right && a.bottom === b.bottom
-  const targetHasContainingSpace = targetObstacle
-    ? spaceObstacles.some(
-        obstacle =>
-          !obstacleEquals(obstacle, targetObstacle) && containsRect(obstacle, targetObstacle),
-      )
-    : false
   const obstaclesExceptTarget = targetObstacle
     ? spaceObstacles.filter(
         obstacle =>
@@ -111,28 +105,45 @@ export function resolveWorkspaceNodesPlacement({
       return { placement: scopedPlacement, canPlace: true }
     }
 
-    if (!targetHasContainingSpace) {
-      const aroundSpacePlacement = findNearestFreePositionAroundBounds({
-        desired: anchor,
+    // Ownership is retained by the caller, which grows the target and its ancestors.
+    // A child's current frame is a preferred region, not a hard creation boundary.
+    const aroundSpacePlacement = findNearestFreePositionAroundBounds({
+      desired: anchor,
+      size,
+      bounds: targetBounds,
+      allNodes: nodes,
+      directions: resolvePreferredDirections({
+        anchor,
         size,
-        bounds: targetBounds,
-        allNodes: nodes,
-        directions: resolvePreferredDirections({
-          anchor,
-          size,
-          targetSpaceRect,
-          preferredDirection,
-        }),
-        gap: SPACE_NODE_PADDING,
-        obstacles: combinedSpaceObstacles,
-      })
+        targetSpaceRect,
+        preferredDirection,
+      }),
+      gap: SPACE_NODE_PADDING,
+      obstacles: combinedObstaclesExceptTarget,
+    })
 
-      if (aroundSpacePlacement) {
-        return { placement: aroundSpacePlacement, canPlace: true }
-      }
+    if (aroundSpacePlacement) {
+      return { placement: aroundSpacePlacement, canPlace: true }
     }
-
-    return { placement: anchor, canPlace: false }
+    const overflow = {
+      x:
+        Math.max(
+          targetBounds.right,
+          ...nodes.map(node => node.position.x + node.data.width),
+          ...combinedObstaclesExceptTarget.map(rect => rect.right),
+        ) + SPACE_NODE_PADDING,
+      y: anchor.y,
+    }
+    return {
+      placement: overflow,
+      canPlace: isPositionAvailable(
+        overflow,
+        size,
+        nodes,
+        undefined,
+        combinedObstaclesExceptTarget,
+      ),
+    }
   }
 
   const nearbyPlacement = findNearestFreePosition(

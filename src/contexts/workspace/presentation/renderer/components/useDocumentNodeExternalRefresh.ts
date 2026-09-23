@@ -36,7 +36,7 @@ export function useDocumentNodeExternalRefresh({
   setHasExternalConflict,
   setExternalConflictStat,
 }: {
-  mountId: string | null
+  mountId: string | null | undefined
   uri: string
   intervalMs: number
   isLoading: boolean

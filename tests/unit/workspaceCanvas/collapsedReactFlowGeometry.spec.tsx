@@ -28,8 +28,8 @@ describe('collapsed React Flow geometry', () => {
       expect(result.current.flow.getNodesBounds(['node'])).toEqual({
         x,
         y: 120,
-        width: 128,
-        height: 112,
+        width: 112,
+        height: 96,
       })
       expect(projected[0].data.width).toBe(640)
       expect(projected[0].data.height).toBe(480)
@@ -53,9 +53,9 @@ describe('collapsed React Flow geometry', () => {
       wrapper: ReactFlowProvider,
     })
     act(() => result.current.store.getState().setNodes([collapsed]))
-    expect(result.current.flow.getNodesBounds(['node'])).toMatchObject({ width: 128, height: 112 })
+    expect(result.current.flow.getNodesBounds(['node'])).toMatchObject({ width: 112, height: 96 })
 
-    const measuredCollapsed = { ...collapsed, measured: { width: 128, height: 112 } }
+    const measuredCollapsed = { ...collapsed, measured: { width: 112, height: 96 } }
     const [expanded] = projectCollapsedNodes([measuredCollapsed], [], EMPTY_CANVAS_COLLAPSE)
     act(() => result.current.store.getState().setNodes([expanded]))
     expect(result.current.flow.getNodesBounds(['node'])).toMatchObject({ width: 640, height: 480 })

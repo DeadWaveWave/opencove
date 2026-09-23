@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 import type { ApprovedWorkspaceStore } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { invokeHandledIpc } from './ipcTestUtils'
@@ -36,6 +37,43 @@ function createApprovedWorkspaceStoreMock({
 }
 
 describe('IPC filesystem handlers', () => {
+  it('approves a native dropped entry only in the local store, without forwarding authorization', async () => {
+    vi.resetModules()
+    const { handlers, ipcMain, shell } = createIpcHarness()
+    const mainFrame = {
+      url: pathToFileURL(resolve('src/contexts/filesystem/presentation/renderer/index.html')).href,
+    }
+    const sender = { mainFrame }
+    vi.doMock('electron', () => ({
+      app: { isPackaged: true },
+      ipcMain,
+      shell,
+      BrowserWindow: { fromWebContents: () => ({ webContents: sender }) },
+    }))
+    const guardedStore = createApprovedWorkspaceStoreMock()
+    const nativeStore = createApprovedWorkspaceStoreMock()
+    const { registerFilesystemIpcHandlers } =
+      await import('../../../src/contexts/filesystem/presentation/main-ipc/register')
+    const disposable = registerFilesystemIpcHandlers(guardedStore, nativeStore)
+    const baseDir = await mkdtemp(join(tmpdir(), 'opencove-native-drop-ipc-'))
+    const filePath = join(baseDir, 'selected.md')
+    await writeFile(filePath, 'Selected file')
+    try {
+      const result = await invokeHandledIpc(
+        handlers.get(IPC_CHANNELS.filesystemResolveDroppedPath),
+        { sender, senderFrame: mainFrame },
+        { path: filePath },
+      )
+      expect(result).toMatchObject({ uri: toFileUri(filePath), kind: 'file' })
+      expect(nativeStore.registerRoot).toHaveBeenCalledExactlyOnceWith(filePath)
+      expect(guardedStore.registerRoot).not.toHaveBeenCalled()
+    } finally {
+      disposable.dispose()
+      await rm(baseDir, { recursive: true, force: true })
+    }
+    expect(ipcMain.removeHandler).toHaveBeenCalledWith(IPC_CHANNELS.filesystemResolveDroppedPath)
+  })
+
   it('blocks unapproved URIs', async () => {
     vi.resetModules()
 

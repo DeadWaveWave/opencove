@@ -213,6 +213,7 @@ export function useWorkspaceCanvasShortcutActions({
     cancelSpaceRename()
 
     createNoteNodeAtFlowPosition({
+      workspaceId,
       anchor,
       standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
       createNoteNode,
@@ -222,6 +223,7 @@ export function useWorkspaceCanvasShortcutActions({
       onSpacesChange,
     })
   }, [
+    workspaceId,
     agentSettings.standardWindowSizeBucket,
     cancelSpaceRename,
     canvasRef,

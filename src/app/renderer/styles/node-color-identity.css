@@ -19,6 +19,7 @@
     .task-node,
     .note-node,
     .document-node,
+    .folder-node,
     .role-node,
     .website-node,
     .image-node
@@ -95,6 +96,7 @@
     .task-node,
     .note-node,
     .document-node,
+    .folder-node,
     .role-node,
     .website-node,
     .image-node
@@ -106,6 +108,7 @@
     .task-node,
     .note-node,
     .document-node,
+    .folder-node,
     .role-node,
     .website-node,
     .image-node

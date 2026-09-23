@@ -4,7 +4,10 @@ import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/age
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { NodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
-import type { PersistedSpaceRect } from '@shared/contracts/persistedAppState'
+import type {
+  PersistedFolderNodeData,
+  PersistedSpaceRect,
+} from '@shared/contracts/persistedAppState'
 import type {
   NormalizedPersistedAppStateContract,
   NormalizedPersistedNodeContract,
@@ -41,6 +44,7 @@ export type WorkspaceNodeKind =
   | 'role'
   | 'image'
   | 'document'
+  | 'folder'
   | 'website'
 
 export type TaskRuntimeStatus = 'todo' | 'doing' | 'ai_done' | 'done'
@@ -167,6 +171,8 @@ export interface DocumentNodeData {
   uri: string
 }
 
+export type FolderNodeData = PersistedFolderNodeData
+
 export interface WebsiteNodeData {
   url: string
   pinned: boolean
@@ -218,6 +224,7 @@ export interface TerminalNodeData {
   role?: RoleNodeData | null
   image: ImageNodeData | null
   document: DocumentNodeData | null
+  folder?: FolderNodeData | null
   website: WebsiteNodeData | null
 }
 
@@ -251,6 +258,7 @@ export type PersistedTerminalNode = Omit<
     | RoleNodeData
     | ImageNodeData
     | DocumentNodeData
+    | FolderNodeData
     | WebsiteNodeData
     | null
 }

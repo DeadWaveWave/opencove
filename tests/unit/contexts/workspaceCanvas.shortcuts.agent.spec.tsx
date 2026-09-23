@@ -1,7 +1,9 @@
 import React, { useRef } from 'react'
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ReactFlowProvider } from '@xyflow/react'
 import type { KeybindingOverrides } from '../../../src/contexts/settings/domain/keybindings'
+import { FolderNode } from '../../../src/contexts/workspace/presentation/renderer/components/FolderNode'
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 
 function Harness({
@@ -9,11 +11,13 @@ function Harness({
   platform = 'darwin',
   enabled = true,
   overrides = {},
+  children,
 }: {
   createAgent: () => Promise<void>
   platform?: string
   enabled?: boolean
   overrides?: KeybindingOverrides
+  children?: React.ReactNode
 }) {
   const canvasRef = useRef<HTMLDivElement>(null)
   useWorkspaceCanvasShortcuts({
@@ -38,6 +42,7 @@ function Harness({
       <button data-testid="sidebar">Project</button>
       <div ref={canvasRef} tabIndex={-1} data-testid="canvas">
         <button data-testid="node-header">Agent header</button>
+        {children}
       </div>
     </div>
   )
@@ -97,6 +102,41 @@ describe('canvas Agent shortcut ownership', () => {
     header.focus()
     expect(press(header).defaultPrevented).toBe(true)
     expect(createAgent).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not start an Agent when the real folder node focus container owns focus', () => {
+    const createAgent = vi.fn(async () => undefined)
+    const { getByTestId } = render(
+      <Harness createAgent={createAgent}>
+        <ReactFlowProvider>
+          <FolderNode
+            id="folder-focus"
+            title="docs"
+            folder={{
+              uri: 'file:///project/docs',
+              rootUri: 'file:///project',
+              viewMode: 'icons',
+              expandedDirectoryUris: [],
+            }}
+            mountId={undefined}
+            position={{ x: 0, y: 0 }}
+            width={480}
+            height={400}
+            onFolderChange={vi.fn()}
+            onOpenFile={vi.fn()}
+            onClose={vi.fn()}
+            onResize={vi.fn()}
+            findBlockingOpenDocument={() => null}
+          />
+        </ReactFlowProvider>
+      </Harness>,
+    )
+    const folder = getByTestId('folder-node-folder-focus')
+    folder.focus()
+    expect(document.activeElement).toBe(folder)
+    expect(press(folder).defaultPrevented).toBe(false)
+    expect(press(document.body).defaultPrevented).toBe(false)
+    expect(createAgent).not.toHaveBeenCalled()
   })
 
   it.each([

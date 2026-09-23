@@ -3,6 +3,7 @@ import { isEditableDomTarget } from '../domTargets'
 const OWNED_INPUT_SELECTOR = [
   '[contenteditable]:not([contenteditable="false"])',
   '[data-cove-focus-scope="document-editor"]',
+  '[data-cove-focus-scope="file-browser"]',
   '.monaco-editor',
   '.cm-editor',
   '.workspace-space-explorer',

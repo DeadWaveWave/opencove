@@ -50,6 +50,42 @@ afterEach(() => {
 })
 
 describe('window collapse presentation', () => {
+  it.each([
+    {
+      kind: 'document' as const,
+      title: 'package.json',
+      document: { uri: 'file:///project/config/package.json' },
+      glyph: 'file-json',
+    },
+    {
+      kind: 'folder' as const,
+      title: 'design',
+      folder: {
+        uri: 'file:///project/docs/design',
+        rootUri: 'file:///project',
+        viewMode: 'list' as const,
+        expandedDirectoryUris: [],
+      },
+      glyph: 'folder',
+    },
+  ])('keeps the compact $kind identity to its icon and name without a parent path', entry => {
+    const onExpand = vi.fn()
+    const { container } = render(
+      <CollapsedWindow id="file-entry" data={nodeData(entry)} onExpand={onExpand} />,
+    )
+    const icon = screen.getByTestId('collapsed-node-file-entry')
+    expect(icon).toHaveStyle({ width: '112px', height: '96px' })
+    expect(icon.textContent).toBe(entry.title)
+    expect(icon.querySelector('[data-cove-file-icon]')).toHaveAttribute(
+      'data-cove-file-icon',
+      entry.glyph,
+    )
+    expect(container.querySelector('.cove-collapsed-window__title')).toHaveTextContent(entry.title)
+    expect(container.querySelector('button[aria-label*="Close"]')).toBeNull()
+    fireEvent.click(screen.getByTestId('node-expand'))
+    expect(onExpand).toHaveBeenCalledOnce()
+  })
+
   it('retains runtime mount, editor state and full geometry across node and Space collapse', () => {
     const mounted = vi.fn()
     const disposed = vi.fn()
@@ -113,6 +149,7 @@ describe('window collapse presentation', () => {
     expect(screen.queryByRole('button', { name: 'Close window' })).toBeNull()
     fireEvent.contextMenu(screen.getByTestId('node-expand'))
     expect(openMenu).toHaveBeenCalledOnce()
+    expect(openMenu.mock.calls[0][0]).toMatchObject({ nodeId: 'document' })
     act(() => openMenu.mock.calls[0][0].closeWindow())
     expect(order).toEqual(['expand', 'prompt'])
     expect(guardedClose).toHaveBeenCalledTimes(1)
@@ -262,7 +299,7 @@ describe('collapsed Agent presentation', () => {
       </WorkspaceCollapseContext.Provider>,
     )
     const icon = screen.getByTestId('collapsed-node-agent')
-    expect(icon).toHaveStyle({ width: '128px', height: '112px' })
+    expect(icon).toHaveStyle({ width: '112px', height: '96px' })
     expect(icon.querySelector('.cove-collapsed-window__message')).toBeNull()
     expect(icon).toHaveAttribute('data-status', 'running')
     expect(screen.getByTestId('node-expand')).toHaveAttribute('aria-description', 'Working')

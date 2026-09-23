@@ -19,10 +19,12 @@ import {
 } from './WorkspaceSpaceExplorerOverlay.operations'
 import { useSpaceExplorerOverlayMoveHistory } from './WorkspaceSpaceExplorerOverlay.moveHistory'
 import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
+import { useDirectoryOperationScope } from './useDirectoryOperationScope'
 
 export function useSpaceExplorerOverlayMutations({
   t,
   rootUri,
+  navigationRootUri = rootUri,
   mountId,
   explorerClipboard,
   setExplorerClipboard,
@@ -41,6 +43,7 @@ export function useSpaceExplorerOverlayMutations({
 }: {
   t: TranslateFn
   rootUri: string
+  navigationRootUri?: string
   mountId: string | null
   explorerClipboard: SpaceExplorerClipboardItem | null
   setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
@@ -60,6 +63,9 @@ export function useSpaceExplorerOverlayMutations({
   draggedEntryUri: string | null
   setDropTargetDirectoryUri: React.Dispatch<React.SetStateAction<string | null>>
 }) {
+  const isCurrentScope = useDirectoryOperationScope(rootUri, mountId)
+  const clipboardRef = React.useRef(explorerClipboard)
+  clipboardRef.current = explorerClipboard
   const [createMode, setCreateMode] = React.useState<SpaceExplorerCreateMode>(null)
   const [createTargetDirectoryUri, setCreateTargetDirectoryUri] = React.useState<string | null>(
     null,
@@ -73,6 +79,19 @@ export function useSpaceExplorerOverlayMutations({
   const [isRenaming, setIsRenaming] = React.useState(false)
   const [deleteConfirmation, setDeleteConfirmation] =
     React.useState<SpaceExplorerDeleteConfirmationState | null>(null)
+
+  React.useLayoutEffect(() => {
+    setCreateMode(null)
+    setCreateTargetDirectoryUri(null)
+    setCreateDraftName('')
+    setCreateError(null)
+    setIsCreating(false)
+    setRenameEntryUri(null)
+    setRenameDraftName('')
+    setRenameError(null)
+    setIsRenaming(false)
+    setDeleteConfirmation(null)
+  }, [isCurrentScope])
 
   const resolveSelectedEntry = React.useCallback(
     (): FileSystemEntry | null =>
@@ -131,9 +150,14 @@ export function useSpaceExplorerOverlayMutations({
     try {
       if (createMode === 'directory') {
         await api.createDirectory({ uri: targetUri })
-        setExpandedDirectoryUris(previous => new Set(previous).add(baseUri))
       } else {
         await api.writeFileText({ uri: targetUri, content: '' })
+      }
+      if (!isCurrentScope()) {
+        return
+      }
+      if (createMode === 'directory') {
+        setExpandedDirectoryUris(previous => new Set(previous).add(baseUri))
       }
       selectEntry({
         uri: targetUri,
@@ -145,15 +169,23 @@ export function useSpaceExplorerOverlayMutations({
       setCreateDraftName('')
       refresh()
     } catch (error) {
-      setCreateError(toErrorMessage(error))
+      if (isCurrentScope()) {
+        setCreateError(toErrorMessage(error))
+      } else {
+        onShowMessage?.(toErrorMessage(error), 'error')
+      }
     } finally {
-      setIsCreating(false)
+      if (isCurrentScope()) {
+        setIsCreating(false)
+      }
     }
   }, [
     createDraftName,
     createMode,
     createTargetDirectoryUri,
+    isCurrentScope,
     mountId,
+    onShowMessage,
     refresh,
     resolveCreateBaseUri,
     selectEntry,
@@ -208,23 +240,35 @@ export function useSpaceExplorerOverlayMutations({
       await api.renameEntry({ sourceUri: entry.uri, targetUri })
       if (
         explorerClipboard?.mode === 'cut' &&
+        clipboardRef.current === explorerClipboard &&
         isSameFileUri(explorerClipboard.entry.uri, entry.uri)
       ) {
         setExplorerClipboard(null)
+      }
+      if (!isCurrentScope()) {
+        return
       }
       selectEntry({ ...entry, uri: targetUri, name: renameDraftName.trim() })
       setRenameEntryUri(null)
       setRenameDraftName('')
       refresh()
     } catch (error) {
-      setRenameError(toErrorMessage(error))
+      if (isCurrentScope()) {
+        setRenameError(toErrorMessage(error))
+      } else {
+        onShowMessage?.(toErrorMessage(error), 'error')
+      }
     } finally {
-      setIsRenaming(false)
+      if (isCurrentScope()) {
+        setIsRenaming(false)
+      }
     }
   }, [
     entriesByUri,
     explorerClipboard,
+    isCurrentScope,
     mountId,
+    onShowMessage,
     refresh,
     renameDraftName,
     renameEntryUri,
@@ -261,6 +305,7 @@ export function useSpaceExplorerOverlayMutations({
   const { canUndoMove, canRedoMove, executeMove, pasteIntoDirectory, undoMove, redoMove } =
     useSpaceExplorerOverlayMoveHistory({
       t,
+      rootUri,
       mountId,
       explorerClipboard,
       setExplorerClipboard,
@@ -288,14 +333,14 @@ export function useSpaceExplorerOverlayMutations({
   const copyRelativePath = React.useCallback(
     async (uri?: string) =>
       copyExplorerRelativePath({
-        uri,
-        rootUri,
+        uri: uri ?? selectedEntryUri ?? rootUri,
+        rootUri: navigationRootUri,
         selectedEntryUri,
         closeContextMenu,
         t,
         onShowMessage,
       }),
-    [closeContextMenu, onShowMessage, rootUri, selectedEntryUri, t],
+    [closeContextMenu, onShowMessage, navigationRootUri, rootUri, selectedEntryUri, t],
   )
 
   const copySelection = React.useCallback(() => {
@@ -346,9 +391,13 @@ export function useSpaceExplorerOverlayMutations({
       await api.deleteEntry({ uri: entry.uri })
       if (
         explorerClipboard?.mode === 'cut' &&
+        clipboardRef.current === explorerClipboard &&
         isSameFileUri(explorerClipboard.entry.uri, entry.uri)
       ) {
         setExplorerClipboard(null)
+      }
+      if (!isCurrentScope()) {
+        return
       }
       if (selectedEntryUri && isWithinDirectoryUri(entry.uri, selectedEntryUri)) {
         selectEntry(null)
@@ -360,6 +409,7 @@ export function useSpaceExplorerOverlayMutations({
   }, [
     deleteConfirmation,
     explorerClipboard,
+    isCurrentScope,
     mountId,
     onShowMessage,
     refresh,

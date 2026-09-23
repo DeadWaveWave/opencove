@@ -59,9 +59,8 @@ test.describe('Primary Sidebar Space Marker', () => {
         const leafGroup = leafSpace.locator('..').locator('..')
         const parentToggle = parentGroup.locator('.workspace-space-item__toggle')
         const agent = window.getByTestId(`workspace-agent-item-${workspaceId}-agent-space-marker`)
-        await expect(navigation.locator('.workspace-space-group').first()).toHaveClass(
-          /workspace-space-group--root/,
-        )
+        await expect(navigation.locator('.workspace-space-group--root')).toHaveCount(0)
+        await expect(navigation.locator('.workspace-space-group--space')).toHaveCount(2)
         await expect(parentGroup).toHaveAttribute('data-cove-label-color', 'green')
         await expect(leafGroup).toHaveAttribute('data-cove-label-color', 'orange')
         await expect(leafGroup.locator('.workspace-space-item__toggle')).toHaveCount(0)

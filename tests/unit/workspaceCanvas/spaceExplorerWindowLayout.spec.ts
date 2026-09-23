@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   resolveExplorerAutoPreferredWidth,
   resolveExplorerDefaultOffset,
+  resolveExplorerResizedFrame,
   resolveExplorerWindowPlacement,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSpaceExplorerOverlay.layout'
 
@@ -57,5 +58,59 @@ describe('space explorer window layout', () => {
     expect(placement.height).toBeLessThanOrEqual(300 - 52)
     expect(placement.left + placement.width).toBeLessThanOrEqual(10 + 360 - 16)
     expect(placement.top + placement.height).toBeLessThanOrEqual(20 + 300 - 16)
+  })
+
+  const resizePlacement = () =>
+    resolveExplorerWindowPlacement({
+      spaceRect: { x: 100, y: 200, width: 900, height: 900 },
+      preferredWidth: 320,
+      preferredHeight: 480,
+      preferredOffset: { x: 80, y: 60 },
+    })
+
+  it('resizes the bottom without changing the width or top-left corner', () => {
+    const placement = resizePlacement()
+    expect(resolveExplorerResizedFrame(placement, { bottom: true }, { x: 80, y: -120 })).toEqual({
+      position: { x: 80, y: 60 },
+      size: { width: 320, height: 360 },
+    })
+  })
+
+  it('keeps the right edge fixed when resizing the bottom-left corner', () => {
+    const placement = resizePlacement()
+    const next = resolveExplorerResizedFrame(
+      placement,
+      { bottom: true, left: true },
+      { x: 60, y: -80 },
+    )
+    expect(next).toEqual({ position: { x: 140, y: 60 }, size: { width: 260, height: 400 } })
+    expect(next.position.x + next.size.width).toBe(placement.offset.x + placement.width)
+  })
+
+  it('keeps the top-left fixed when resizing the bottom-right corner', () => {
+    const placement = resizePlacement()
+    expect(
+      resolveExplorerResizedFrame(placement, { bottom: true, right: true }, { x: 60, y: 80 }),
+    ).toEqual({
+      position: { x: 80, y: 60 },
+      size: { width: 380, height: 560 },
+    })
+  })
+
+  it('limits corner expansion to the owning Space and shrinking to usable content dimensions', () => {
+    const placement = resizePlacement()
+    expect(
+      resolveExplorerResizedFrame(placement, { top: true, left: true }, { x: -500, y: -500 }),
+    ).toEqual({
+      position: { x: 16, y: 16 },
+      size: { width: 384, height: 524 },
+    })
+    expect(
+      resolveExplorerResizedFrame(placement, { bottom: true, right: true }, { x: -500, y: -500 })
+        .size,
+    ).toEqual({
+      width: 224,
+      height: 260,
+    })
   })
 })

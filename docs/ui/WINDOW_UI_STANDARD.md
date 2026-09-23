@@ -97,7 +97,7 @@ Popover 内的 Select、日期选择等 Portal 子层必须登记为同一 trans
 - 折叠由 Renderer 的客户端本地 view store 持有，按 workspace 保存；不属于 PTY、Agent
   或共享 workspace 的运行状态。Sidebar 隐藏、Sidebar 分组展开和画布折叠各自独立。
 - 所有节点通过同一个 presentation wrapper 显示桌面图标与标题，单击或 Enter/Space 展开，
-  拖动和 Shift 选择不能误触展开。所有图标统一使用 128×112 的展示与碰撞尺寸，Agent
+  拖动和 Shift 选择不能误触展开。所有图标统一使用 112×96 的展示与碰撞尺寸，Agent
   不显示最新消息预览，也不为折叠状态读取或轮询消息；运行状态保留点阵及无障碍提示，
   复制最新消息等显式操作继续使用原有独立接口。
 - Runtime subtree 必须保持挂载并保留完整 width/height。收起只把它设为 inert 与

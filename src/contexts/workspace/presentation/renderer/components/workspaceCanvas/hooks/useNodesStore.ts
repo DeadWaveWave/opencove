@@ -31,6 +31,7 @@ import { persistNodeScrollback } from './useNodesStore.scrollbackPersistence'
 import { useTerminalAgentOverlayMutations } from './useNodesStore.terminalAgentOverlay'
 
 export function useWorkspaceCanvasNodesStore({
+  workspaceId,
   nodes,
   spacesRef,
   onNodesChange,
@@ -156,7 +157,11 @@ export function useWorkspaceCanvasNodesStore({
       clearAgentLaunchToken(nodeId)
 
       const target = nodesRef.current.find(node => node.id === nodeId)
-      if (target && target.data.sessionId.length > 0) {
+      if (
+        target &&
+        (target.data.kind === 'terminal' || target.data.kind === 'agent') &&
+        target.data.sessionId.length > 0
+      ) {
         cleanupNodeRuntimeArtifacts(nodeId, target.data.sessionId)
         void window.opencoveApi.pty
           .kill({ sessionId: target.data.sessionId })
@@ -406,8 +411,10 @@ export function useWorkspaceCanvasNodesStore({
     createRoleNode,
     createImageNode,
     createDocumentNode,
+    createFolderNode,
     createWebsiteNode,
   } = useWorkspaceCanvasNodeCreation({
+    workspaceId,
     nodesRef,
     spacesRef,
     onRequestPersistFlush,
@@ -452,6 +459,7 @@ export function useWorkspaceCanvasNodesStore({
     appendRoleRunRecord,
     createImageNode,
     createDocumentNode,
+    createFolderNode,
     createWebsiteNode,
   }
 }

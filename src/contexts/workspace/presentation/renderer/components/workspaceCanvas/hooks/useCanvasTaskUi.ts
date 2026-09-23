@@ -71,6 +71,7 @@ export function useWorkspaceCanvasTaskUi({
   })
 
   const taskWindows = useWorkspaceCanvasTaskWindows({
+    workspaceId,
     taskTagOptions,
     contextMenu,
     setContextMenu,

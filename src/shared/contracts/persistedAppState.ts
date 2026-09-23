@@ -21,6 +21,7 @@ export const PERSISTED_WORKSPACE_NODE_KINDS = [
   'role',
   'image',
   'document',
+  'folder',
   'website',
 ] as const
 
@@ -151,6 +152,13 @@ export interface PersistedDocumentNodeData {
   uri: string
 }
 
+export interface PersistedFolderNodeData {
+  uri: string
+  rootUri: string
+  viewMode: 'icons' | 'list'
+  expandedDirectoryUris: string[]
+}
+
 export interface PersistedWebsiteNodeData {
   url?: string
   pinned?: boolean
@@ -167,6 +175,7 @@ export type PersistedNodePayload =
   | PersistedRoleNodeData
   | PersistedImageNodeData
   | PersistedDocumentNodeData
+  | PersistedFolderNodeData
   | PersistedWebsiteNodeData
 
 export interface PersistedNodeContract {

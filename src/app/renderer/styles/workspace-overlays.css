@@ -4,6 +4,8 @@
 @import './workspace-overlays.spaces.css';
 @import './workspace-overlays.spaces.explorer.css';
 @import './workspace-overlays.spaces.explorer.tree.css';
+@import './workspace-directory-browser.css';
+@import './workspace-directory-toolbar.css';
 
 .workspace-context-menu {
   position: fixed;

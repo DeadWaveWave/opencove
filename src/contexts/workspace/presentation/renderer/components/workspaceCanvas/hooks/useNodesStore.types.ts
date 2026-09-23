@@ -1,3 +1,4 @@
+import type { NodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 import type { Node } from '@xyflow/react'
 import type {
   AgentProvider,
@@ -7,6 +8,7 @@ import type { ProjectRoleDefinition } from '@contexts/settings/domain/projectRol
 import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type {
   DocumentNodeData,
+  FolderNodeData,
   ImageNodeData,
   NodeFrame,
   Point,
@@ -32,6 +34,7 @@ export interface CreateNoteNodeOptions {
 }
 
 export interface UseWorkspaceCanvasNodesStoreParams {
+  workspaceId?: string
   nodes: Node<TerminalNodeData>[]
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
@@ -44,6 +47,7 @@ export interface UseWorkspaceCanvasNodesStoreParams {
 }
 
 export interface UseWorkspaceCanvasNodeCreationParams {
+  workspaceId?: string
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onRequestPersistFlush?: () => void
@@ -123,6 +127,15 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   createDocumentNode: (
     anchor: Point,
     document: DocumentNodeData,
+    placement?: NodeCreationPlacementOptions,
+    workerBinding?: NodeWorkerBinding,
+    presentation?: { workspaceId: string; collapsed: true },
+  ) => Node<TerminalNodeData> | null
+  createFolderNode: (
+    anchor: Point,
+    folder: FolderNodeData,
+    workerBinding: NodeWorkerBinding,
+    workspaceId: string,
     placement?: NodeCreationPlacementOptions,
   ) => Node<TerminalNodeData> | null
   createWebsiteNode: (

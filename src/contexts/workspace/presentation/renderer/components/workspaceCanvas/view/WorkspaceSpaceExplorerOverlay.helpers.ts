@@ -23,32 +23,7 @@ export function selectViewportTransform(state: unknown): ViewportTransform {
   return [0, 0, 1]
 }
 
-function normalizePathname(pathname: string): string {
-  const normalized = pathname.replace(/\/+$/, '')
-  return normalized.length > 0 ? normalized : '/'
-}
-
-export function isWithinRootUri(rootUri: string, uri: string): boolean {
-  try {
-    const root = new URL(rootUri)
-    const target = new URL(uri)
-
-    if (root.protocol !== 'file:' || target.protocol !== 'file:') {
-      return false
-    }
-
-    if ((root.host ?? '') !== (target.host ?? '')) {
-      return false
-    }
-
-    const rootPath = normalizePathname(root.pathname ?? '')
-    const targetPath = normalizePathname(target.pathname ?? '')
-
-    return targetPath === rootPath || targetPath.startsWith(`${rootPath}/`)
-  } catch {
-    return false
-  }
-}
+export { isFileUriWithinRoot as isWithinRootUri } from '@shared/utils/fileUriScope'
 
 export function sortEntries(entries: FileSystemEntry[]): FileSystemEntry[] {
   return [...entries].sort((left, right) => {
@@ -59,6 +34,6 @@ export function sortEntries(entries: FileSystemEntry[]): FileSystemEntry[] {
       return leftIsDir ? -1 : 1
     }
 
-    return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })
+    return left.name.localeCompare(right.name, undefined, { sensitivity: 'base', numeric: true })
   })
 }

@@ -224,6 +224,7 @@ export function SidebarWorkspaceNavigation({
       {rootAgents.length > 0 ? (
         <SidebarAgentItems
           workspaceId={workspace.id}
+          groupId={rootAgents.length > 1 ? tree.projectRootGroup.id : null}
           agentItems={rootAgents}
           currentNodeId={isActive ? currentNodeId : null}
           onSelectAgentNode={navigationProps.onSelectAgentNode}

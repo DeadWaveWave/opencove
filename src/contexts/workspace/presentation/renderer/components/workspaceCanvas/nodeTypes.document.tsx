@@ -17,7 +17,7 @@ export function WorkspaceCanvasDocumentNodeType({
   data: TerminalNodeData
   id: string
   nodePosition: { x: number; y: number }
-  mountId: string | null
+  mountId: string | null | undefined
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>

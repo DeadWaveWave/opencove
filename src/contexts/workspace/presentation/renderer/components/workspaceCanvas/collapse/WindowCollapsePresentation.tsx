@@ -59,6 +59,7 @@ export function WindowCollapsePresentation({
       <div
         ref={element}
         className="cove-node-presentation"
+        data-cove-node-kind={data.kind}
         data-cove-collapsed={collapsed || undefined}
         data-cove-space-hidden={spaceHidden || undefined}
       >
@@ -88,7 +89,11 @@ export function WindowCollapsePresentation({
                 openContextMenu
                   ? point => {
                       onSelect?.()
-                      openContextMenu({ ...point, closeWindow: () => closeHandler.current?.() })
+                      openContextMenu({
+                        ...point,
+                        nodeId: id,
+                        closeWindow: () => closeHandler.current?.(),
+                      })
                     }
                   : undefined
               }

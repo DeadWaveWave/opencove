@@ -62,6 +62,10 @@ export function normalizeNodeKind(value: unknown): WorkspaceNodeKind {
     return 'document'
   }
 
+  if (value === 'folder') {
+    return 'folder'
+  }
+
   if (value === 'website') {
     return 'website'
   }

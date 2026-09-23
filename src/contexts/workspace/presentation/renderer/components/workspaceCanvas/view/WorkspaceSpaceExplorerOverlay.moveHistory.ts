@@ -13,6 +13,7 @@ import {
   type SpaceExplorerMoveHistoryEntry,
 } from './WorkspaceSpaceExplorerOverlay.operations'
 import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
+import { useDirectoryOperationScope } from './useDirectoryOperationScope'
 
 const MAX_MOVE_HISTORY = 100
 
@@ -25,6 +26,7 @@ function pushMoveHistoryEntry(
 
 export function useSpaceExplorerOverlayMoveHistory({
   t,
+  rootUri,
   mountId,
   explorerClipboard,
   setExplorerClipboard,
@@ -36,6 +38,7 @@ export function useSpaceExplorerOverlayMoveHistory({
   setDropTargetDirectoryUri,
 }: {
   t: TranslateFn
+  rootUri: string
   mountId: string | null
   explorerClipboard: SpaceExplorerClipboardItem | null
   setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
@@ -46,8 +49,15 @@ export function useSpaceExplorerOverlayMoveHistory({
   ensureEntryMutable: (entry: FileSystemEntry) => boolean
   setDropTargetDirectoryUri: React.Dispatch<React.SetStateAction<string | null>>
 }) {
+  const isCurrentScope = useDirectoryOperationScope(rootUri, mountId)
+  const clipboardRef = React.useRef(explorerClipboard)
+  clipboardRef.current = explorerClipboard
   const [moveUndoStack, setMoveUndoStack] = React.useState<SpaceExplorerMoveHistoryEntry[]>([])
   const [moveRedoStack, setMoveRedoStack] = React.useState<SpaceExplorerMoveHistoryEntry[]>([])
+  React.useLayoutEffect(() => {
+    setMoveUndoStack([])
+    setMoveRedoStack([])
+  }, [isCurrentScope])
 
   const selectMovedEntry = React.useCallback(
     (uri: string, entryKind: FileSystemEntry['kind'], fallbackName: string) => {
@@ -80,19 +90,31 @@ export function useSpaceExplorerOverlayMoveHistory({
         })
         if (
           explorerClipboard?.mode === 'cut' &&
+          clipboardRef.current === explorerClipboard &&
           isSameFileUri(explorerClipboard.entry.uri, options.sourceUri)
         ) {
           setExplorerClipboard(null)
         }
-        selectMovedEntry(options.targetUri, options.entryKind, options.fallbackName)
-        refresh()
+        if (isCurrentScope()) {
+          selectMovedEntry(options.targetUri, options.entryKind, options.fallbackName)
+          refresh()
+        }
         return true
       } catch (error) {
         onShowMessage?.(toErrorMessage(error), 'error')
         return false
       }
     },
-    [explorerClipboard, mountId, onShowMessage, refresh, selectMovedEntry, setExplorerClipboard, t],
+    [
+      explorerClipboard,
+      isCurrentScope,
+      mountId,
+      onShowMessage,
+      refresh,
+      selectMovedEntry,
+      setExplorerClipboard,
+      t,
+    ],
   )
 
   const executeMove = React.useCallback(
@@ -123,6 +145,9 @@ export function useSpaceExplorerOverlayMoveHistory({
       if (!didMove) {
         return false
       }
+      if (!isCurrentScope()) {
+        return true
+      }
 
       setMoveUndoStack(previous =>
         pushMoveHistoryEntry(previous, {
@@ -134,7 +159,7 @@ export function useSpaceExplorerOverlayMoveHistory({
       setMoveRedoStack([])
       return true
     },
-    [applyMoveByUri, onShowMessage, setDropTargetDirectoryUri, t],
+    [applyMoveByUri, isCurrentScope, onShowMessage, setDropTargetDirectoryUri, t],
   )
 
   const pasteIntoDirectory = React.useCallback(
@@ -166,10 +191,16 @@ export function useSpaceExplorerOverlayMoveHistory({
           targetDirectoryUri,
           siblingEntries: await readSiblingEntries(targetDirectoryUri),
         })
+        if (!isCurrentScope()) {
+          return
+        }
         if (!targetUri || isSameFileUri(targetUri, explorerClipboard.entry.uri)) {
           return
         }
         await api.copyEntry({ sourceUri: explorerClipboard.entry.uri, targetUri })
+        if (!isCurrentScope()) {
+          return
+        }
         selectEntry({ ...explorerClipboard.entry, uri: targetUri })
         refresh()
       } catch (error) {
@@ -180,6 +211,7 @@ export function useSpaceExplorerOverlayMoveHistory({
       ensureEntryMutable,
       executeMove,
       explorerClipboard,
+      isCurrentScope,
       mountId,
       onShowMessage,
       readSiblingEntries,
@@ -201,13 +233,13 @@ export function useSpaceExplorerOverlayMoveHistory({
       entryKind: lastMove.entryKind,
       fallbackName: resolveEntryNameFromUri(lastMove.sourceUri),
     })
-    if (!didUndo) {
+    if (!didUndo || !isCurrentScope()) {
       return
     }
 
     setMoveUndoStack(previous => previous.slice(0, -1))
     setMoveRedoStack(previous => pushMoveHistoryEntry(previous, lastMove))
-  }, [applyMoveByUri, moveUndoStack])
+  }, [applyMoveByUri, isCurrentScope, moveUndoStack])
 
   const redoMove = React.useCallback(async (): Promise<void> => {
     const lastMove = moveRedoStack.at(-1)
@@ -221,13 +253,13 @@ export function useSpaceExplorerOverlayMoveHistory({
       entryKind: lastMove.entryKind,
       fallbackName: resolveEntryNameFromUri(lastMove.targetUri),
     })
-    if (!didRedo) {
+    if (!didRedo || !isCurrentScope()) {
       return
     }
 
     setMoveRedoStack(previous => previous.slice(0, -1))
     setMoveUndoStack(previous => pushMoveHistoryEntry(previous, lastMove))
-  }, [applyMoveByUri, moveRedoStack])
+  }, [applyMoveByUri, isCurrentScope, moveRedoStack])
 
   return {
     canUndoMove: moveUndoStack.length > 0,

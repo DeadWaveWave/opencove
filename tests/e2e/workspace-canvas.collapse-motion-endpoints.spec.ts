@@ -91,7 +91,7 @@ for (const { kind, title, fontScale } of cases) {
         if (kind === 'agent' && direction === 'collapse') {
           await expect(node.locator('.cove-collapsed-window__title')).toHaveText(title)
           await expect(node.locator('.cove-collapsed-window__message')).toHaveCount(0)
-          await expect(node.locator('.cove-collapsed-window')).toHaveCSS('height', '112px')
+          await expect(node.locator('.cove-collapsed-window')).toHaveCSS('height', '96px')
           await expect(node.locator('.cove-collapsed-window__pixels')).toBeVisible()
         }
       }

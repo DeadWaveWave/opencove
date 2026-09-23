@@ -65,7 +65,7 @@ export function assignAgentNodeToTaskSpace({
   assignedNode: Node<TerminalNodeData>
   context: Pick<
     TaskActionContext | ResumeTaskAgentSessionContext,
-    'spacesRef' | 'nodesRef' | 'setNodes' | 'onSpacesChange'
+    'workspaceId' | 'spacesRef' | 'nodesRef' | 'setNodes' | 'onSpacesChange'
   >
 }): void {
   const taskSpaceId = findTaskSpace(taskNodeId, context.spacesRef)?.id
@@ -74,6 +74,7 @@ export function assignAgentNodeToTaskSpace({
   }
 
   assignNodeToSpaceAndExpand({
+    workspaceId: context.workspaceId,
     createdNodeId: assignedNodeId,
     createdNode: assignedNode,
     targetSpaceId: taskSpaceId,

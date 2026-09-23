@@ -92,72 +92,79 @@ function SidebarHarness({ variant = 'docked' }: { variant?: SidebarVariant }) {
   )
 }
 
-function toggle(projectId: string, groupId: string) {
-  return screen.getByTestId(`workspace-space-toggle-${projectId}-${groupId}`)
+function toggle(projectId: string) {
+  return screen.getByTestId(`workspace-space-toggle-${projectId}-shared-space`)
 }
 
-function expectGroup(projectId: string, group: 'root' | 'space', expanded: boolean) {
-  const groupId = group === 'root' ? 'project-root' : 'shared-space'
-  expect(toggle(projectId, groupId).getAttribute('aria-expanded')).toBe(String(expanded))
-  const agent = screen.queryByTestId(
-    `workspace-agent-item-${projectId}-${projectId}-${group}-agent`,
-  )
+function expectSpace(projectId: string, expanded: boolean) {
+  expect(toggle(projectId).getAttribute('aria-expanded')).toBe(String(expanded))
+  const agent = screen.queryByTestId(`workspace-agent-item-${projectId}-${projectId}-space-agent`)
   if (expanded) {
     expect(agent).not.toBeNull()
   } else {
     expect(agent).toBeNull()
   }
+  expect(
+    screen.getByTestId(`workspace-agent-item-${projectId}-${projectId}-root-agent`),
+  ).toBeTruthy()
+  expect(screen.queryByTestId(`workspace-space-toggle-${projectId}-project-root`)).toBeNull()
 }
 
-it('persists root and Space disclosure independently across projects and remounts', () => {
-  useAppStore.setState({
-    agentSettings: {
-      ...DEFAULT_AGENT_SETTINGS,
-      sidebarCollapsedWorkspaceIds: { 'project-a': true },
-    },
-  })
+it('persists Space disclosure independently across projects, remounts and rail transitions', () => {
   const first = render(<SidebarHarness />)
-  expectGroup('project-a', 'root', true)
-  expectGroup('project-a', 'space', true)
-  fireEvent.click(toggle('project-a', 'project-root'))
-  fireEvent.click(toggle('project-a', 'shared-space'))
+  expectSpace('project-a', true)
+  fireEvent.click(toggle('project-a'))
   expect(useAppStore.getState().agentSettings.sidebarCollapsedSpaceGroupIds).toEqual({
-    'project-a:project-root': true,
     'project-a:shared-space': true,
   })
 
   fireEvent.click(screen.getByTestId('workspace-item-project-b'))
-  expectGroup('project-b', 'root', true)
-  expectGroup('project-b', 'space', true)
-  fireEvent.click(toggle('project-b', 'project-root'))
+  expectSpace('project-b', true)
+  fireEvent.click(toggle('project-b'))
   fireEvent.click(screen.getByTestId('workspace-item-project-a'))
-  expectGroup('project-a', 'root', false)
-  expectGroup('project-a', 'space', false)
+  expectSpace('project-a', false)
   first.unmount()
 
   const second = render(<SidebarHarness />)
-  expectGroup('project-a', 'root', false)
-  expectGroup('project-a', 'space', false)
+  expectSpace('project-a', false)
   second.rerender(<SidebarHarness variant="rail" />)
   expect(screen.queryByTestId('workspace-sidebar-navigation')).toBeNull()
   second.rerender(<SidebarHarness />)
-  expectGroup('project-a', 'root', false)
-  expectGroup('project-a', 'space', false)
+  expectSpace('project-a', false)
 
-  fireEvent.click(toggle('project-a', 'project-root'))
-  fireEvent.click(toggle('project-a', 'shared-space'))
-  expectGroup('project-a', 'root', true)
-  expectGroup('project-a', 'space', true)
+  fireEvent.click(toggle('project-a'))
+  expectSpace('project-a', true)
   expect(useAppStore.getState().agentSettings.sidebarCollapsedSpaceGroupIds).toEqual({
-    'project-b:project-root': true,
+    'project-b:shared-space': true,
   })
   fireEvent.click(screen.getByTestId('workspace-item-project-b'))
-  expectGroup('project-b', 'root', false)
-  expectGroup('project-b', 'space', true)
-  fireEvent.click(toggle('project-b', 'project-root'))
-  expectGroup('project-b', 'root', true)
+  expectSpace('project-b', false)
+  fireEvent.click(toggle('project-b'))
+  expectSpace('project-b', true)
+  expect(useAppStore.getState().agentSettings.sidebarCollapsedSpaceGroupIds).toEqual({})
+})
+
+it('keeps root agents directly visible when old project-canvas disclosure settings are restored', () => {
+  useAppStore.setState({
+    agentSettings: {
+      ...DEFAULT_AGENT_SETTINGS,
+      sidebarCollapsedWorkspaceIds: { 'project-a': true },
+      sidebarCollapsedSpaceGroupIds: { 'project-a:project-root': true },
+    },
+  })
+  const first = render(<SidebarHarness />)
+  expectSpace('project-a', true)
+  fireEvent.click(toggle('project-a'))
+  expectSpace('project-a', false)
+  first.unmount()
+
+  render(<SidebarHarness />)
+  expectSpace('project-a', false)
   expect(useAppStore.getState().agentSettings).toMatchObject({
     sidebarCollapsedWorkspaceIds: { 'project-a': true },
-    sidebarCollapsedSpaceGroupIds: {},
+    sidebarCollapsedSpaceGroupIds: {
+      'project-a:project-root': true,
+      'project-a:shared-space': true,
+    },
   })
 })

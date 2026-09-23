@@ -4,6 +4,8 @@ import {
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import { resolveDefaultAgentWindowSize } from '../constants'
+import { resolveResizedNodeFrame, type ResizeEdges } from '../../../utils/nodeFrameResize'
+import type { NodeFrame, Point } from '../../../types'
 
 export interface SpaceExplorerSpaceRect {
   x: number
@@ -79,6 +81,34 @@ export function resolveExplorerDefaultOffset(): SpaceExplorerWindowOffset {
   }
 }
 
+/** Resize in Space coordinates while retaining the opposite edge as the anchor. */
+export function resolveExplorerResizedFrame(
+  placement: SpaceExplorerWindowPlacement,
+  edges: ResizeEdges,
+  delta: Point,
+): NodeFrame {
+  return resolveResizedNodeFrame({
+    initialFrame: {
+      position: placement.offset,
+      size: { width: placement.width, height: placement.height },
+    },
+    edges,
+    delta,
+    minSize: { width: placement.minWidth, height: placement.minHeight },
+    maxSize: {
+      width: edges.left
+        ? Math.min(EXPLORER_MAX_WIDTH, placement.width + placement.offset.x - EXPLORER_NODE_PADDING)
+        : placement.maxWidth,
+      height: edges.top
+        ? Math.min(
+            EXPLORER_MAX_HEIGHT,
+            placement.height + placement.offset.y - EXPLORER_NODE_PADDING,
+          )
+        : placement.maxHeight,
+    },
+  })
+}
+
 export function resolveExplorerWindowPlacement({
   spaceRect,
   preferredWidth,
@@ -106,10 +136,7 @@ export function resolveExplorerWindowPlacement({
     y: Math.max(EXPLORER_NODE_PADDING, preferredOffset.y),
   }
   const widthAvailable = Math.max(0, spaceRect.width - offsetForSize.x - EXPLORER_NODE_PADDING)
-  const heightAvailable = Math.max(
-    0,
-    spaceRect.height - Math.max(offsetForSize.y, EXPLORER_NODE_TOP_OFFSET) - EXPLORER_NODE_PADDING,
-  )
+  const heightAvailable = Math.max(0, spaceRect.height - offsetForSize.y - EXPLORER_NODE_PADDING)
   const viewportWidthAvailable = viewportBounds
     ? Math.max(0, visibleRight - (spaceRect.x + offsetForSize.x))
     : Infinity

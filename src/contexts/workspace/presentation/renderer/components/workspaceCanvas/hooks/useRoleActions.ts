@@ -132,6 +132,7 @@ export function useWorkspaceCanvasRoleActions({
       }
 
       assignNodeToSpaceAndExpand({
+        workspaceId,
         createdNodeId: created.id,
         createdNode: created,
         targetSpaceId: targetSpace.id,
@@ -144,6 +145,7 @@ export function useWorkspaceCanvasRoleActions({
       return created
     },
     [
+      workspaceId,
       agentSettings.defaultProvider,
       createRoleNode,
       nodesRef,

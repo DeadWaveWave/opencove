@@ -3,12 +3,12 @@ import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '
 import type { LayoutDirection } from '../../../utils/spaceLayout'
 import { projectWorkspacePushAwayLayout } from '../../../utils/workspacePushAwayProjection'
 
-export interface ProjectedChildSpaceMoveLayout {
+export interface ProjectedChildSpaceLayout {
   nextSpaces: WorkspaceSpaceState[]
   nextNodePositionById: Map<string, { x: number; y: number }>
 }
 
-export function projectChildSpaceMoveWithinParent({
+export function projectChildSpaceWithinParent({
   targetSpaceId,
   parentSpaceId,
   draftSpaces,
@@ -19,6 +19,7 @@ export function projectChildSpaceMoveWithinParent({
   draggedNodeIds,
   directions,
   childSpaceDragPadding,
+  allowParentExpansion = false,
 }: {
   targetSpaceId: string
   parentSpaceId: string
@@ -30,7 +31,8 @@ export function projectChildSpaceMoveWithinParent({
   draggedNodeIds: Set<string>
   directions: LayoutDirection[]
   childSpaceDragPadding: number
-}): ProjectedChildSpaceMoveLayout {
+  allowParentExpansion?: boolean
+}): ProjectedChildSpaceLayout {
   const directChildSpaceIds = new Set(
     previousSpaces
       .filter(space => (space.parentSpaceId ?? null) === parentSpaceId)
@@ -49,7 +51,11 @@ export function projectChildSpaceMoveWithinParent({
   }
 
   const scopedSpaces = draftSpaces.filter(space => directChildSpaceIds.has(space.id))
-  const scopedNodes = draftNodes.filter(node => scopedNodeIds.has(node.id))
+  // A root-canvas window can overlap a parent frame without belonging to it.
+  // It remains an obstacle even though the containing parent is not a peer.
+  const scopedNodes = draftNodes.filter(
+    node => scopedNodeIds.has(node.id) || !owningSpaceIdByNodeId.has(node.id),
+  )
   const parentRect = previousSpaces.find(space => space.id === parentSpaceId)?.rect ?? null
   const projected = projectWorkspacePushAwayLayout({
     spaces: scopedSpaces,
@@ -58,7 +64,10 @@ export function projectChildSpaceMoveWithinParent({
     sourceGroupIds: [targetSpaceId],
     directions,
     gap: 0,
-    bounds: parentRect ? { rect: parentRect, padding: childSpaceDragPadding } : undefined,
+    bounds:
+      parentRect && !allowParentExpansion
+        ? { rect: parentRect, padding: childSpaceDragPadding }
+        : undefined,
   })
   const projectedSpaceById = new Map(projected.nextSpaces.map(space => [space.id, space] as const))
   const nextNodePositionById = new Map<string, { x: number; y: number }>()

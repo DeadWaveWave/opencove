@@ -14,6 +14,7 @@ import { HIDDEN_WEBSITE_BOUNDS } from '../../WebsiteNode.helpers'
 import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 
 export function useWorkspaceCanvasWebsiteNodeCreation({
+  workspaceId,
   nodesRef,
   spacesRef,
   onRequestPersistFlush,
@@ -23,6 +24,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
   standardWindowSizeBucket,
   browserDefaultMode,
 }: {
+  workspaceId?: string
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   onRequestPersistFlush?: () => void
@@ -46,16 +48,11 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
       })
       const defaultSize = resolveDefaultWebsiteWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
+        workspaceId,
+        getSpaces: () => spacesRef.current,
         anchor,
         size: defaultSize,
         getNodes: () => nodesRef.current,
-        getSpaceRects: () =>
-          spacesRef.current
-            .map(space => space.rect)
-            .filter(
-              (rect): rect is { x: number; y: number; width: number; height: number } =>
-                rect !== null,
-            ),
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
         avoidRects: placementOptions?.avoidRects,
@@ -118,6 +115,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      workspaceId,
       browserDefaultMode,
       t,
     ],

@@ -27,7 +27,7 @@ Its 16 ANSI foreground colors are tuned for the light terminal surface. These op
 through the same revisioned appearance snapshot as the background and cursor, including OSC palette
 queries. Returning to Pixel or explicitly using a dark terminal removes the light ANSI overrides.
 
-All eight node kinds share blue-ink reading surfaces and restrained translucent chrome. Headers are
+All nine node kinds share blue-ink reading surfaces and restrained translucent chrome. Headers are
 flat, with low-contrast separators and consistent controls; they have no beveled highlight bands.
 Terminal content stays opaque and readable. Images retain their image-first layout with matching
 frame treatment. Spaces are lightweight region boundaries, with very faint fill that recedes as the
@@ -195,7 +195,7 @@ and runtime status. Keyboard focus draws a local icon ring. Selections containin
 windows retain their geometry for dragging without painting the enclosing group rectangle;
 mixed or expanded selections keep their existing frame. Pixel corners indicate runtime status,
 with its text available on hover and to assistive technology rather than as a separate row.
-All node kinds use the same 128×112 compact presentation and collision bounds. Collapsing an Agent
+All node kinds use the same 112×96 compact presentation and collision bounds. Collapsing an Agent
 does not read or poll its latest message; its message-copy action remains independent. Presentation
 and collision bounds share the same compact size helper. The compact presentation has no floating Close button: its context menu delegates
 Close to the mounted runtime's original guard. Single-click expansion and collapse geometry are
@@ -206,6 +206,28 @@ frame and final handoff must match the visible title, including when the compact
 Agent header and compact captions use the same provider-free display label alongside the brand
 icon. Known generated provider prefixes are stripped only for display, including legacy renamed
 titles; the stored title and its owner remain unchanged.
+
+Files and folders share one decorative Lucide identity resolver across Explorer entries, window
+headers and compact nodes. Directory entries always use Folder; file basenames select FileJson,
+FileCode2 or the conservative FileText fallback. The resolver does not read content or claim a MIME
+type. Header and compact glyphs keep the same stroke and existing animation anchors. File/folder
+compact nodes use a lightly tinted pedestal with two diagonal pixel corners, retain the shared
+112×96 interaction bounds, and display only the name beneath the icon. They never add a parent-path
+row, a floating Close control or a surrounding hover box. Their temporary motion surface and settled
+pedestal share the same theme tokens; Agent and terminal status corners remain unchanged.
+
+Expanded directory windows show their current location in a bottom footer with slash-separated,
+clickable breadcrumbs bounded by the originating project or Space root, without a separate parent
+button. The current breadcrumb scrolls into view when the path or available width changes. The
+Explorer title shows the Space name at its root and the current directory name below it, without a
+second Space identity beside the title. Folder windows always use their current directory name.
+The header places view switches immediately before Close. A compact single-row toolbar expands search
+on demand; insufficient space temporarily fades out the other tools until search loses focus.
+Navigation preserves the chrome and content containers rather than remounting the window. Icons and List are
+two presentations of that same directory: Icons uses a fixed, directory-first natural-name grid;
+List uses expandable hierarchy rows. View mode and expanded-directory preferences never rearrange
+or move files on disk. Navigation updates the window's title and compact identity to its current
+directory; collapsing retains that location and browsing state.
 
 The website showcase contains scripted mouse actions, timed tool calls, illustrative test results and
 an input-blocking node reveal. These behaviors are not part of the application theme. In particular,

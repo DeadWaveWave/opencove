@@ -1,5 +1,5 @@
 import React from 'react'
-import { FileText, Folder } from 'lucide-react'
+import { FileSystemEntryIcon } from '../../shared/FileSystemEntryIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import type { SpaceExplorerCreateMode } from './WorkspaceSpaceExplorerOverlay.model'
 
@@ -56,11 +56,11 @@ export function WorkspaceSpaceExplorerOverlayCreateRow({
       }}
     >
       <span className="workspace-space-explorer__entry-disclosure-placeholder" aria-hidden="true" />
-      {mode === 'directory' ? (
-        <Folder className="workspace-space-explorer__entry-icon" aria-hidden="true" />
-      ) : (
-        <FileText className="workspace-space-explorer__entry-icon" aria-hidden="true" />
-      )}
+      <FileSystemEntryIcon
+        path={draftName}
+        kind={mode}
+        className="workspace-space-explorer__entry-icon"
+      />
       <input
         ref={inputRef}
         className="workspace-space-explorer__create-input"

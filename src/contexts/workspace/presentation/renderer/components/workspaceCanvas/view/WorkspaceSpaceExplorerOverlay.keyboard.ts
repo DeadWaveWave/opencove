@@ -17,6 +17,7 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
   moveSelection,
   collapseSelectionOrFocusParent,
   expandSelectionOrOpen,
+  openSelection = expandSelectionOrOpen,
   requestDeleteSelection,
   copySelection,
   cutSelection,
@@ -37,6 +38,7 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
   moveSelection: (direction: 'next' | 'previous' | 'first' | 'last') => void
   collapseSelectionOrFocusParent: () => void
   expandSelectionOrOpen: () => void
+  openSelection?: () => void
   requestDeleteSelection: (anchor?: { x: number; y: number }) => void
   copySelection: () => void
   cutSelection: () => void
@@ -80,10 +82,31 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
 
       if (event.key === 'Escape') {
         clearPendingCopyPathChord()
+        if (
+          event.target instanceof Element &&
+          event.target.closest('[data-directory-search="true"]')
+        ) {
+          return
+        }
         event.preventDefault()
         if (!dismissTransientUi()) {
           onClose()
         }
+        return
+      }
+
+      const key = event.key.toLowerCase()
+      if (
+        !event.isComposing &&
+        !event.repeat &&
+        !event.altKey &&
+        !event.shiftKey &&
+        (event.metaKey || event.ctrlKey) &&
+        key === 'f'
+      ) {
+        clearPendingCopyPathChord()
+        event.preventDefault()
+        focusFilterInput()
         return
       }
 
@@ -105,16 +128,14 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
 
       if (event.shiftKey && event.key === 'F10') {
         clearPendingCopyPathChord()
+        if (
+          event.target instanceof Element &&
+          event.target.closest('[data-directory-breadcrumb="true"]')
+        ) {
+          return
+        }
         event.preventDefault()
         openKeyboardContextMenu()
-        return
-      }
-
-      const key = event.key.toLowerCase()
-      if ((event.metaKey || event.ctrlKey) && key === 'f' && !event.shiftKey) {
-        clearPendingCopyPathChord()
-        event.preventDefault()
-        focusFilterInput()
         return
       }
 
@@ -160,6 +181,13 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
         return
       }
 
+      if (
+        event.target instanceof Element &&
+        event.target.closest('button, a, [role="button"], [role="link"], summary')
+      ) {
+        return
+      }
+
       switch (event.key) {
         case 'ArrowUp':
           event.preventDefault()
@@ -182,9 +210,12 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
           collapseSelectionOrFocusParent()
           return
         case 'ArrowRight':
-        case 'Enter':
           event.preventDefault()
           expandSelectionOrOpen()
+          return
+        case 'Enter':
+          event.preventDefault()
+          openSelection()
           return
         case 'Delete':
         case 'Backspace':
@@ -215,6 +246,7 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
     cutSelection,
     dismissTransientUi,
     expandSelectionOrOpen,
+    openSelection,
     focusFilterInput,
     onClose,
     openKeyboardContextMenu,

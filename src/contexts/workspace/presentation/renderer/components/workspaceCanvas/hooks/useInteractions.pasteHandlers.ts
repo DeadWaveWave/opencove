@@ -16,6 +16,7 @@ import { createWebsiteNodeAtFlowPosition } from './useInteractions.paneNodeCreat
 import type { SetNodes } from './useInteractions.types'
 
 export function useWorkspaceCanvasPasteHandlers({
+  workspaceId,
   canvasRef,
   reactFlow,
   spacesRef,
@@ -30,6 +31,7 @@ export function useWorkspaceCanvasPasteHandlers({
   websiteWindowsEnabled,
   websiteWindowPasteEnabled,
 }: {
+  workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -57,6 +59,7 @@ export function useWorkspaceCanvasPasteHandlers({
   handleCanvasDrop: React.DragEventHandler<HTMLDivElement>
 } {
   const imageImport = useWorkspaceCanvasImageImport({
+    workspaceId,
     canvasRef,
     reactFlow,
     spacesRef,
@@ -98,6 +101,7 @@ export function useWorkspaceCanvasPasteHandlers({
       })
 
       createWebsiteNodeAtFlowPosition({
+        workspaceId,
         anchor: flowCenter,
         url: resolved.url,
         standardWindowSizeBucket,
@@ -110,6 +114,7 @@ export function useWorkspaceCanvasPasteHandlers({
       })
     },
     [
+      workspaceId,
       createWebsiteNode,
       imageImport,
       nodesRef,

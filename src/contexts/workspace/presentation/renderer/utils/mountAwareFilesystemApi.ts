@@ -34,9 +34,15 @@ function resolveControlSurfaceInvoke(): ((request: unknown) => Promise<unknown>)
 }
 
 export function resolveFilesystemApiForMount(
-  mountId: string | null,
+  mountId: string | null | undefined,
 ): MountAwareFilesystemApi | null {
+  if (mountId === undefined) {
+    return null
+  }
   const controlSurfaceInvoke = resolveControlSurfaceInvoke()
+  if (mountId && !controlSurfaceInvoke) {
+    return null
+  }
 
   if (mountId && controlSurfaceInvoke) {
     return {

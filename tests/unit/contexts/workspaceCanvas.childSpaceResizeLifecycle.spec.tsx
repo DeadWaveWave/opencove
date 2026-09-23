@@ -122,13 +122,13 @@ describe('nested compact Space resize lifecycle', () => {
       x: 100,
       y: 80,
       width: 224,
-      height: 136,
+      height: 120,
     })
     expect(drag('parent', { x: 1200, y: 900 }, { x: 40, y: 40 })).toEqual({
       x: 0,
       y: 0,
       width: 324,
-      height: 216,
+      height: 200,
     })
     expect(result.current.nodes[0].data).toMatchObject({ width: 640, height: 480 })
     expect(result.current.nodes[0].position).toEqual({ x: 124, y: 104 })

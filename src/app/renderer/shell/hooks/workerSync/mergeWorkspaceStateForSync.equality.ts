@@ -6,6 +6,7 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import type { SpaceBoundary } from '@shared/types/spaceBoundary'
 import { areStringArraysEqual, isSpaceBoundaryEqual } from '@shared/sync/spaceBoundaryEquality'
+import { areNodeWorkerBindingsEqual } from '@shared/types/nodeWorkerBinding'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -119,6 +120,7 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
     persisted.height !== existing.height ||
     persisted.profileId !== existing.profileId ||
     persisted.runtimeKind !== existing.runtimeKind ||
+    !areNodeWorkerBindingsEqual(persisted.workerBinding ?? null, existing.workerBinding ?? null) ||
     (persisted.labelColorOverride ?? null) !== (existing.labelColorOverride ?? null) ||
     (persisted.sidebarSortOrder ?? null) !== (existing.sidebarSortOrder ?? null) ||
     persisted.status !== existing.status ||
@@ -209,6 +211,24 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
       !shallowEqualRecord(
         persistedDocument as unknown as UnknownRecord,
         existingDocument as unknown as UnknownRecord,
+      )
+    ) {
+      return false
+    }
+  }
+
+  const persistedFolder = persisted.folder ?? null
+  const existingFolder = existing.folder ?? null
+  if (persistedFolder !== existingFolder) {
+    if (
+      !persistedFolder ||
+      !existingFolder ||
+      persistedFolder.uri !== existingFolder.uri ||
+      persistedFolder.rootUri !== existingFolder.rootUri ||
+      persistedFolder.viewMode !== existingFolder.viewMode ||
+      !areStringArraysEqual(
+        persistedFolder.expandedDirectoryUris,
+        existingFolder.expandedDirectoryUris,
       )
     ) {
       return false

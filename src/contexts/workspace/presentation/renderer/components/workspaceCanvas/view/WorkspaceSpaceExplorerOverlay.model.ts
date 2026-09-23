@@ -3,15 +3,14 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { FileSystemEntry } from '@shared/contracts/dto'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import type { SpaceExplorerOpenDocumentBlock } from '../hooks/useSpaceExplorer.guards'
-import { toErrorMessage } from '../helpers'
-import { isWithinRootUri, sortEntries } from './WorkspaceSpaceExplorerOverlay.helpers'
+import { isWithinRootUri } from './WorkspaceSpaceExplorerOverlay.helpers'
 import { useSpaceExplorerOverlayActions } from './WorkspaceSpaceExplorerOverlay.actions'
 import { useSpaceExplorerOverlayMutations } from './WorkspaceSpaceExplorerOverlay.mutations'
 import {
   resolveParentDirectoryUri,
   type SpaceExplorerClipboardItem,
 } from './WorkspaceSpaceExplorerOverlay.operations'
-import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
+import { useDirectoryListings, useDirectoryExpansion } from './WorkspaceDirectoryBrowser.listings'
 
 export type SpaceExplorerCreateMode = 'file' | 'directory' | null
 
@@ -26,12 +25,6 @@ export type SpaceExplorerRow =
       message: string
     }
 
-type DirectoryListing = {
-  entries: FileSystemEntry[]
-  isLoading: boolean
-  error: string | null
-}
-
 function isEditableTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
@@ -45,6 +38,11 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export function useSpaceExplorerOverlayModel({
   rootUri,
+  navigationRootUri = rootUri,
+  expandedUris,
+  onExpandedUrisChange,
+  onNavigate,
+  viewMode = 'list',
   mountId,
   spaceId,
   explorerClipboard,
@@ -56,6 +54,11 @@ export function useSpaceExplorerOverlayModel({
   onShowMessage,
 }: {
   rootUri: string
+  navigationRootUri?: string
+  expandedUris?: string[]
+  onExpandedUrisChange?: (uris: string[]) => void
+  onNavigate?: (uri: string) => void
+  viewMode?: 'icons' | 'list'
   mountId: string | null
   spaceId: string
   explorerClipboard: SpaceExplorerClipboardItem | null
@@ -67,93 +70,27 @@ export function useSpaceExplorerOverlayModel({
   onShowMessage?: ShowWorkspaceCanvasMessage
 }) {
   const { t } = useTranslation()
-  const [refreshNonce, setRefreshNonce] = React.useState(0)
-  const [expandedDirectoryUris, setExpandedDirectoryUris] = React.useState<Set<string>>(
-    () => new Set(),
-  )
+  const [expandedDirectoryUris, setExpandedDirectoryUris] = useDirectoryExpansion({
+    rootUri,
+    expandedUris,
+    onExpandedUrisChange,
+  })
   const [selectedEntryUri, setSelectedEntryUri] = React.useState<string | null>(null)
   const [selectedEntryKind, setSelectedEntryKind] = React.useState<FileSystemEntry['kind'] | null>(
     null,
   )
   const [filterQuery, setFilterQuery] = React.useState('')
-  const [directoryListings, setDirectoryListings] = React.useState<
-    Record<string, DirectoryListing>
-  >(() => ({}))
+  const { directoryListings, refresh } = useDirectoryListings({
+    rootUri,
+    mountId,
+    expandedDirectoryUris,
+  })
 
-  const loadDirectory = React.useCallback(
-    async (uri: string): Promise<void> => {
-      const api = resolveFilesystemApiForMount(mountId)
-      if (!api) {
-        setDirectoryListings(previous => ({
-          ...previous,
-          [uri]: {
-            entries: [],
-            isLoading: false,
-            error: t('documentNode.filesystemUnavailable'),
-          },
-        }))
-        return
-      }
-
-      setDirectoryListings(previous => ({
-        ...previous,
-        [uri]: {
-          entries: previous[uri]?.entries ?? [],
-          isLoading: true,
-          error: null,
-        },
-      }))
-
-      try {
-        const result = await api.readDirectory({ uri })
-        setDirectoryListings(previous => ({
-          ...previous,
-          [uri]: {
-            entries: sortEntries(result.entries),
-            isLoading: false,
-            error: null,
-          },
-        }))
-      } catch (error) {
-        setDirectoryListings(previous => ({
-          ...previous,
-          [uri]: {
-            entries: [],
-            isLoading: false,
-            error: toErrorMessage(error),
-          },
-        }))
-      }
-    },
-    [mountId, t],
-  )
-
-  React.useEffect(() => {
-    setExpandedDirectoryUris(new Set())
-    setDirectoryListings({})
-    setRefreshNonce(previous => previous + 1)
+  React.useLayoutEffect(() => {
     setSelectedEntryUri(null)
     setSelectedEntryKind(null)
     setFilterQuery('')
   }, [mountId, rootUri, spaceId])
-
-  React.useEffect(() => {
-    void loadDirectory(rootUri)
-  }, [loadDirectory, refreshNonce, rootUri])
-
-  React.useEffect(() => {
-    expandedDirectoryUris.forEach(uri => {
-      if (!isWithinRootUri(rootUri, uri) || directoryListings[uri]) {
-        return
-      }
-      void loadDirectory(uri)
-    })
-  }, [directoryListings, expandedDirectoryUris, loadDirectory, refreshNonce, rootUri])
-
-  const refresh = React.useCallback(() => {
-    setDirectoryListings({})
-    setRefreshNonce(previous => previous + 1)
-  }, [])
 
   const rootListing = directoryListings[rootUri] ?? null
   const isLoadingRoot = rootListing === null ? true : rootListing.isLoading
@@ -164,6 +101,9 @@ export function useSpaceExplorerOverlayModel({
     }
 
     for (const uri of expandedDirectoryUris) {
+      if (!isWithinRootUri(rootUri, uri)) {
+        continue
+      }
       const listing = directoryListings[uri]
       if (!listing || listing.isLoading) {
         return true
@@ -171,7 +111,7 @@ export function useSpaceExplorerOverlayModel({
     }
 
     return false
-  }, [directoryListings, expandedDirectoryUris, isLoadingRoot])
+  }, [directoryListings, expandedDirectoryUris, isLoadingRoot, rootUri])
 
   const rows = React.useMemo<SpaceExplorerRow[]>(() => {
     if (!rootListing || rootListing.isLoading || rootListing.error) {
@@ -272,10 +212,10 @@ export function useSpaceExplorerOverlayModel({
 
   const entryRows = React.useMemo(
     () =>
-      filteredRows.filter(
-        (row): row is Extract<SpaceExplorerRow, { kind: 'entry' }> => row.kind === 'entry',
-      ),
-    [filteredRows],
+      filteredRows
+        .filter(row => viewMode === 'list' || row.depth === 0)
+        .filter((row): row is Extract<SpaceExplorerRow, { kind: 'entry' }> => row.kind === 'entry'),
+    [filteredRows, viewMode],
   )
 
   const entriesByUri = React.useMemo(() => {
@@ -315,6 +255,7 @@ export function useSpaceExplorerOverlayModel({
     findBlockingOpenDocument,
     onPreviewFile,
     onOpenFile,
+    onNavigate,
     onDismissQuickPreview,
     onShowMessage,
     entriesByUri,
@@ -328,6 +269,7 @@ export function useSpaceExplorerOverlayModel({
   const mutations = useSpaceExplorerOverlayMutations({
     t,
     rootUri,
+    navigationRootUri,
     mountId,
     explorerClipboard,
     setExplorerClipboard,
@@ -395,7 +337,7 @@ export function useSpaceExplorerOverlayModel({
   return {
     isLoadingRoot,
     rootError,
-    rows: filteredRows,
+    rows: viewMode === 'icons' ? filteredRows.filter(row => row.depth === 0) : filteredRows,
     selectedEntryUri,
     selectEntry,
     refresh,
@@ -430,6 +372,8 @@ export function useSpaceExplorerOverlayModel({
     closeContextMenu: actions.closeContextMenu,
     previewEntrySelection: actions.previewEntrySelection,
     openEntry: actions.openEntry,
+    toggleDirectoryExpanded: actions.toggleDirectoryExpanded,
+    openSelection: actions.openSelection,
     moveSelection: actions.moveSelection,
     collapseSelectionOrFocusParent: actions.collapseSelectionOrFocusParent,
     expandSelectionOrOpen: actions.expandSelectionOrOpen,

@@ -12,6 +12,7 @@ import type {
   PersistedWebsiteNodeData,
   PersistedWorkspaceNodeKind,
 } from '@shared/contracts/persistedAppState'
+import { isFolderNodeData } from '@shared/utils/folderNodeData'
 import {
   isAgentProvider,
   isAgentRuntimeStatus,
@@ -204,6 +205,8 @@ function isNodePayloadForKind(kind: PersistedWorkspaceNodeKind, value: unknown):
       return value === undefined || value === null || isImageNodeData(value)
     case 'document':
       return value === undefined || value === null || isDocumentNodeData(value)
+    case 'folder':
+      return isFolderNodeData(value)
     case 'website':
       return value === undefined || value === null || isWebsiteNodeData(value)
     default:

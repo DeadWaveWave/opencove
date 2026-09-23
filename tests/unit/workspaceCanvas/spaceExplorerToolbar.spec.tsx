@@ -36,31 +36,44 @@ function renderToolbar(query = '') {
 }
 
 describe('space explorer chrome', () => {
-  it('keeps file actions outside the draggable title bar', () => {
+  it('keeps view switching and closing out of the header drag gesture', () => {
     const onWindowDragStart = vi.fn()
     const onClose = vi.fn()
+    const onViewModeChange = vi.fn()
     const { container } = render(
       <WorkspaceSpaceExplorerOverlayHeader
-        spaceName="Source workspace"
+        title="Source workspace"
+        viewMode="icons"
+        onViewModeChange={onViewModeChange}
         onWindowDragStart={onWindowDragStart}
         onClose={onClose}
       />,
     )
+    const icons = screen.getByRole('button', { name: 'spaceExplorer.iconsView' })
+    const list = screen.getByRole('button', { name: 'spaceExplorer.listView' })
     const close = screen.getByRole('button', { name: 'common.close' })
+    expect(icons).toHaveAttribute('aria-pressed', 'true')
+    expect(list).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.pointerDown(list)
+    fireEvent.click(list)
+    expect(onViewModeChange).toHaveBeenCalledExactlyOnceWith('list')
     fireEvent.pointerDown(close)
     fireEvent.click(close)
     expect(onClose).toHaveBeenCalledOnce()
     expect(onWindowDragStart).not.toHaveBeenCalled()
-    expect(screen.getAllByRole('button')).toEqual([close])
-    expect(
-      container.querySelector('.workspace-space-explorer__subtitle svg.lucide-scan'),
-    ).not.toBeNull()
+    expect(screen.getAllByRole('button')).toEqual([icons, list, close])
+    expect(container.querySelector('.workspace-space-explorer__title')).toHaveTextContent(
+      'Source workspace',
+    )
+    expect(container.querySelector('.workspace-space-explorer__subtitle')).toBeNull()
+    expect(screen.queryByText('spaceActions.files')).toBeNull()
     fireEvent.pointerDown(screen.getByText('Source workspace'))
     expect(onWindowDragStart).toHaveBeenCalledOnce()
   })
 
   it('keeps search interaction inside the explorer and returns focus after clearing', () => {
     const { props, onCanvasPointerDown } = renderToolbar('readme')
+    fireEvent.click(screen.getByRole('button', { name: 'spaceExplorer.filterPlaceholder' }))
     const input = screen.getByRole('textbox')
     fireEvent.pointerDown(input)
     fireEvent.change(input, { target: { value: 'docs' } })

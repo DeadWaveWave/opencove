@@ -28,7 +28,7 @@ import { WorkspaceCanvasTopOverlays } from './view/WorkspaceCanvasTopOverlays'
 import { WorkspaceSpaceExplorerOverlay } from './view/WorkspaceSpaceExplorerOverlay'
 import { WorkspaceSpaceQuickPreview } from './view/WorkspaceSpaceQuickPreview'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
-import { isEditableDomTarget } from './domTargets'
+import { shouldFocusCanvasForPointerTarget } from './domTargets'
 import { selectDragSurfaceSelectionMode } from '../terminalNode/reactFlowState'
 
 const WHEEL_BLOCK_SELECTOR =
@@ -208,7 +208,7 @@ export function WorkspaceCanvasView({
     nodes,
   })
 
-  const activeExplorerSpace = useActiveExplorerSpace(openExplorerSpaceId, spaces)
+  const activeExplorerSpace = useActiveExplorerSpace(openExplorerSpaceId, spaces, spaceFramePreview)
 
   React.useEffect(() => {
     if (!useManualCanvasWheelGestures) {
@@ -251,7 +251,7 @@ export function WorkspaceCanvasView({
       onDrop={handleCanvasDrop}
       onDoubleClickCapture={handleCanvasDoubleClickCapture}
       onPointerDownCapture={event => {
-        if (event.button === 0 && !isEditableDomTarget(event.target)) {
+        if (event.button === 0 && shouldFocusCanvasForPointerTarget(event.target)) {
           canvasRef.current?.focus?.({ preventScroll: true })
         }
 
@@ -357,6 +357,7 @@ export function WorkspaceCanvasView({
       </ReactFlow>
       {activeExplorerSpace && activeExplorerSpace.rect ? (
         <WorkspaceSpaceExplorerOverlay
+          key={activeExplorerSpace.id}
           spaceId={activeExplorerSpace.id}
           spaceName={activeExplorerSpace.name}
           targetMountId={activeExplorerSpace.targetMountId ?? null}

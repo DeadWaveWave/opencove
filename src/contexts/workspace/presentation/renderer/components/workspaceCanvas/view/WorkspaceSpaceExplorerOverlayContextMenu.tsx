@@ -4,6 +4,7 @@ import {
   Copy,
   FilePlus,
   FileText,
+  FolderOpen,
   FolderPlus,
   Pencil,
   RefreshCw,
@@ -87,11 +88,11 @@ function renderEntryActions({
 }): React.JSX.Element[] {
   const actions: React.JSX.Element[] = []
 
-  if (entry.kind === 'file') {
+  if (entry.kind === 'file' || entry.kind === 'directory') {
     actions.push(
       <MenuButton
         key="open"
-        icon={<FileText size={16} />}
+        icon={entry.kind === 'directory' ? <FolderOpen size={16} /> : <FileText size={16} />}
         label={t('spaceActions.open')}
         onClick={onOpen}
       />,

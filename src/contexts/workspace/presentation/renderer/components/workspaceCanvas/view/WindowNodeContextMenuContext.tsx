@@ -8,6 +8,7 @@ import {
 import type { ContextMenuState } from '../types'
 
 interface WindowNodeMenuRequest {
+  nodeId?: string
   x: number
   y: number
   closeWindow: () => void

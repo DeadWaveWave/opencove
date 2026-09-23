@@ -49,7 +49,12 @@ test.describe('Workspace Canvas - Space Explorer destructive operations', () => 
       await contextMenu.getByRole('button', { name: 'Cut' }).click()
       await expect(cutSourceEntry).toHaveClass(/workspace-space-explorer__entry--cut/)
 
-      await targetFolderEntry.dispatchEvent('click')
+      await targetFolderEntry.getByTestId('directory-entry-disclosure').click()
+      await targetFolderEntry.click({ button: 'right', force: true })
+      await expect(contextMenu).toBeVisible()
+      await explorer.focus()
+      await dispatchExplorerShortcut(window, { code: 'Escape', key: 'Escape' })
+      await expect(contextMenu).toHaveCount(0)
       await expect(targetFolderEntry).toHaveClass(/workspace-space-explorer__entry--selected/)
       await explorer.focus()
       await window.waitForTimeout(64)

@@ -221,6 +221,7 @@ export async function createTerminalNodeAtFlowPosition({
 
   if (targetSpace) {
     assignNodeToSpaceAndExpand({
+      workspaceId,
       createdNodeId: created.id,
       createdNode: created,
       targetSpaceId: targetSpace.id,
@@ -255,6 +256,7 @@ function mergeMissingWorkspaceSpaces(
 }
 
 export function createNoteNodeAtFlowPosition({
+  workspaceId,
   anchor,
   standardWindowSizeBucket,
   createNoteNode,
@@ -263,6 +265,7 @@ export function createNoteNodeAtFlowPosition({
   setNodes,
   onSpacesChange,
 }: {
+  workspaceId?: string
   anchor: Point
   standardWindowSizeBucket: StandardWindowSizeBucket
   createNoteNode: (
@@ -288,6 +291,7 @@ export function createNoteNodeAtFlowPosition({
   )
 
   createNoteNodeAtAnchor({
+    workspaceId,
     anchor: nodeAnchor,
     spaceAnchor: cursorAnchor,
     createNoteNode,
@@ -299,6 +303,7 @@ export function createNoteNodeAtFlowPosition({
 }
 
 export function createWebsiteNodeAtFlowPosition({
+  workspaceId,
   anchor,
   standardWindowSizeBucket,
   browserDefaultMode,
@@ -309,6 +314,7 @@ export function createWebsiteNodeAtFlowPosition({
   setNodes,
   onSpacesChange,
 }: {
+  workspaceId?: string
   anchor: Point
   standardWindowSizeBucket: StandardWindowSizeBucket
   browserDefaultMode: BrowserMode
@@ -353,6 +359,7 @@ export function createWebsiteNodeAtFlowPosition({
   }
 
   assignNodeToSpaceAndExpand({
+    workspaceId,
     createdNodeId: created.id,
     createdNode: created,
     targetSpaceId: targetSpace.id,
@@ -363,130 +370,55 @@ export function createWebsiteNodeAtFlowPosition({
   })
 }
 
+type PaneCreationOptions<T> = Omit<T, 'anchor'> & {
+  contextMenu: ContextMenuState | null
+  setContextMenu: (next: ContextMenuState | null) => void
+}
+
 export async function createTerminalNodeFromPaneContextMenu({
   contextMenu,
-  defaultTerminalProfileId,
-  workspacePath,
-  environmentVariables,
-  spacesRef,
-  nodesRef,
-  standardWindowSizeBucket,
-  terminalFontSize,
-  setNodes,
-  onSpacesChange,
-  createNodeForSession,
   setContextMenu,
-}: {
-  contextMenu: ContextMenuState | null
-  defaultTerminalProfileId: string | null
-  workspacePath: string
-  environmentVariables?: Record<string, string>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  standardWindowSizeBucket: StandardWindowSizeBucket
-  terminalFontSize?: number
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  setContextMenu: (next: ContextMenuState | null) => void
-}): Promise<void> {
+  workspaceId = '',
+  ...options
+}: PaneCreationOptions<
+  Omit<Parameters<typeof createTerminalNodeAtFlowPosition>[0], 'workspaceId'> & {
+    workspaceId?: string
+  }
+>): Promise<void> {
   if (!contextMenu || contextMenu.kind !== 'pane') {
     return
   }
-
   setContextMenu(null)
   await createTerminalNodeAtFlowPosition({
+    ...options,
+    workspaceId,
     anchor: resolvePaneNodeCreationAnchor(contextMenu),
-    workspaceId: '',
-    defaultTerminalProfileId,
-    standardWindowSizeBucket,
-    terminalFontSize,
-    workspacePath,
-    environmentVariables,
-    spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
-    createNodeForSession,
   })
 }
 
 export function createWebsiteNodeFromPaneContextMenu({
   contextMenu,
-  url,
-  createWebsiteNode,
-  standardWindowSizeBucket,
-  browserDefaultMode,
-  spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
   setContextMenu,
-}: {
-  contextMenu: ContextMenuState | null
-  url: string
-  createWebsiteNode: (
-    anchor: Point,
-    website: WebsiteNodeData,
-    placement?: NodePlacementOptions,
-  ) => Node<TerminalNodeData> | null
-  standardWindowSizeBucket: StandardWindowSizeBucket
-  browserDefaultMode: BrowserMode
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  setContextMenu: (next: ContextMenuState | null) => void
-}): void {
+  ...options
+}: PaneCreationOptions<Parameters<typeof createWebsiteNodeAtFlowPosition>[0]>): void {
   if (!contextMenu || contextMenu.kind !== 'pane') {
     return
   }
-
   setContextMenu(null)
   createWebsiteNodeAtFlowPosition({
+    ...options,
     anchor: resolvePaneNodeCreationAnchor(contextMenu),
-    url,
-    standardWindowSizeBucket,
-    browserDefaultMode,
-    createWebsiteNode,
-    spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
   })
 }
 
 export function createNoteNodeFromPaneContextMenu({
   contextMenu,
-  createNoteNode,
-  standardWindowSizeBucket,
-  spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
   setContextMenu,
-}: {
-  contextMenu: ContextMenuState | null
-  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
-  standardWindowSizeBucket: StandardWindowSizeBucket
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  setContextMenu: (next: ContextMenuState | null) => void
-}): void {
+  ...options
+}: PaneCreationOptions<Parameters<typeof createNoteNodeAtFlowPosition>[0]>): void {
   if (!contextMenu || contextMenu.kind !== 'pane') {
     return
   }
-
   setContextMenu(null)
-  createNoteNodeAtFlowPosition({
-    anchor: resolvePaneNodeCreationAnchor(contextMenu),
-    standardWindowSizeBucket,
-    createNoteNode,
-    spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
-  })
+  createNoteNodeAtFlowPosition({ ...options, anchor: resolvePaneNodeCreationAnchor(contextMenu) })
 }

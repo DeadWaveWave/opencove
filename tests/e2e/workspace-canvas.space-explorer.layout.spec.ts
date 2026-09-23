@@ -137,8 +137,13 @@ test.describe('Workspace Canvas - Space Explorer', () => {
       await expect(explorer).toBeVisible()
       await expect(explorer).toHaveCSS('border-radius', '8px')
       const header = explorer.locator('.workspace-space-explorer__header')
-      await expect(header.getByRole('button')).toHaveCount(1)
-      await expect(header.locator('.lucide-scan')).toHaveCount(1)
+      await expect(header.getByRole('button')).toHaveCount(3)
+      await Promise.all(
+        ['Icons', 'List', 'Close'].map(name =>
+          expect(header.getByRole('button', { name, exact: true })).toBeVisible(),
+        ),
+      )
+      await expect(header.locator('.lucide-scan')).toHaveCount(0)
       const chrome = await header.evaluate(element => ({
         band: getComputedStyle(element, '::before').backgroundImage,
         material: getComputedStyle(element).backdropFilter,
@@ -281,7 +286,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
         throw new Error('Explorer bounding box unavailable')
       }
 
-      const resizeHandle = window.locator('.workspace-space-explorer__resize-handle')
+      const resizeHandle = explorer.getByTestId('workspace-space-explorer-resizer-right')
       await expect(resizeHandle).toBeVisible()
       const handleBox = await resizeHandle.boundingBox()
       if (!handleBox) {

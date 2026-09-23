@@ -1,6 +1,7 @@
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import { toErrorMessage } from '../helpers'
+import { resolveFileUriRelativePath } from '@shared/utils/fileUriScope'
 import {
   resolveEntryAbsolutePath,
   resolveEntryRelativePath,
@@ -13,6 +14,7 @@ interface CopyExplorerPathOptions {
   closeContextMenu: () => void
   t: TranslateFn
   onShowMessage?: ShowWorkspaceCanvasMessage
+  allowOutsideRoot?: boolean
 }
 
 export async function copyExplorerAbsolutePath({
@@ -31,12 +33,7 @@ export async function copyExplorerAbsolutePath({
   }
 
   try {
-    const copyPathApi = window.opencoveApi?.workspace?.copyPath
-    if (typeof copyPathApi === 'function') {
-      await copyPathApi({ path })
-    } else {
-      await window.opencoveApi.clipboard.writeText(path)
-    }
+    await window.opencoveApi.clipboard.writeText(path)
     onShowMessage?.(t('spaceExplorer.pathCopied'))
   } catch (error) {
     onShowMessage?.(toErrorMessage(error), 'error')
@@ -50,9 +47,13 @@ export async function copyExplorerRelativePath({
   closeContextMenu,
   t,
   onShowMessage,
+  allowOutsideRoot = false,
 }: CopyExplorerPathOptions): Promise<void> {
   closeContextMenu()
-  const relativePath = resolveEntryRelativePath(rootUri, uri ?? selectedEntryUri ?? rootUri)
+  const resolveRelativePath = allowOutsideRoot
+    ? resolveFileUriRelativePath
+    : resolveEntryRelativePath
+  const relativePath = resolveRelativePath(rootUri, uri ?? selectedEntryUri ?? rootUri)
   if (!relativePath) {
     onShowMessage?.(t('spaceExplorer.copyRelativePathFailed'), 'error')
     return

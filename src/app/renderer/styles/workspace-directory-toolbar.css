@@ -1,0 +1,152 @@
+.workspace-space-explorer__toolbar.cove-directory-toolbar {
+  --directory-toolbar-tools-width: 102px;
+  box-sizing: border-box;
+  flex: 0 0 30px;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  min-height: 30px;
+  height: 30px;
+  gap: 6px;
+  padding: 2px 6px 3px;
+  overflow: hidden;
+}
+
+.cove-directory-toolbar[data-view-mode='icons'] {
+  --directory-toolbar-tools-width: 76px;
+}
+
+.cove-directory-toolbar .workspace-space-explorer__filter {
+  position: relative;
+  display: flex;
+  flex: 0 1 24px;
+  align-items: center;
+  box-sizing: border-box;
+  width: 24px;
+  min-height: 24px;
+  height: 24px;
+  gap: 0;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  overflow: hidden;
+  transition:
+    flex-basis 180ms ease,
+    flex-grow 180ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.cove-directory-toolbar[data-search-expanded='true'] .workspace-space-explorer__filter {
+  flex: 1 1 204px;
+  width: auto;
+  border-color: var(--cove-border-subtle);
+  background: var(--cove-field);
+}
+
+.cove-directory-toolbar[data-search-expanded='false']
+  .workspace-space-explorer__filter:focus-within {
+  box-shadow: none;
+}
+
+.cove-directory-toolbar__search-toggle {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--cove-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.cove-directory-toolbar__search-toggle:hover {
+  color: var(--cove-text);
+  background: var(--cove-surface-hover);
+}
+
+.cove-directory-toolbar__search-toggle:focus-visible {
+  outline: 1px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+}
+
+.cove-directory-toolbar__search-toggle[data-filter-active='true']::after {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--cove-accent);
+  content: '';
+}
+
+.cove-directory-toolbar .workspace-space-explorer__filter-input {
+  position: absolute;
+  width: 0;
+  min-height: 0;
+  height: 22px;
+  padding: 0;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.cove-directory-toolbar[data-search-expanded='true'] .workspace-space-explorer__filter-input {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 0 3px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cove-directory-toolbar .workspace-space-explorer__filter-clear {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+}
+
+.cove-directory-toolbar .workspace-space-explorer__tools {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  max-width: var(--directory-toolbar-tools-width);
+  gap: 2px;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-width 180ms ease,
+    opacity 120ms ease;
+}
+
+.cove-directory-toolbar[data-tools-hidden='true'] .workspace-space-explorer__tools {
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cove-directory-toolbar .workspace-space-explorer__header-action {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+}
+
+.cove-directory-toolbar .workspace-space-explorer__header-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-directory-toolbar .workspace-space-explorer__filter,
+  .cove-directory-toolbar .workspace-space-explorer__filter-input,
+  .cove-directory-toolbar .workspace-space-explorer__tools {
+    transition: none;
+  }
+}

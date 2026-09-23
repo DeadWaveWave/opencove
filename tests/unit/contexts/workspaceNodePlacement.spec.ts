@@ -39,7 +39,7 @@ describe('workspace node placement', () => {
     expect(result.placement.y).toBeLessThanOrEqual(child.y + child.height)
   })
 
-  it('does not use canvas fallback when the target space has no available scoped slot', () => {
+  it('allows a packed child Space to grow beyond its current frame while preserving ownership', () => {
     const parent = { x: 220, y: 180, width: 700, height: 430 }
     const child = { x: 500, y: 280, width: 260, height: 190 }
 
@@ -57,10 +57,13 @@ describe('workspace node placement', () => {
       targetSpaceRect: child,
     })
 
-    expect(result).toEqual({
-      placement: { x: 524, y: 304 },
-      canPlace: false,
-    })
+    expect(result.canPlace).toBe(true)
+    expect(
+      result.placement.x >= child.x + child.width ||
+        result.placement.x + 252 <= child.x ||
+        result.placement.y >= child.y + child.height ||
+        result.placement.y + 172 <= child.y,
+    ).toBe(true)
   })
 
   it('allows root spaces to place outside their current bounds so auto-resize can expand them', () => {

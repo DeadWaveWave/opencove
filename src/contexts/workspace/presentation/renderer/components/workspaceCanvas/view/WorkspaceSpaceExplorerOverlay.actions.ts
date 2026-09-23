@@ -15,6 +15,7 @@ export function useSpaceExplorerOverlayActions({
   findBlockingOpenDocument,
   onPreviewFile,
   onOpenFile,
+  onNavigate,
   onDismissQuickPreview,
   onShowMessage,
   entriesByUri,
@@ -29,6 +30,7 @@ export function useSpaceExplorerOverlayActions({
   findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
   onPreviewFile: (uri: string) => void
   onOpenFile: (uri: string) => void
+  onNavigate?: (uri: string) => void
   onDismissQuickPreview: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   entriesByUri: Map<string, FileSystemEntry>
@@ -41,6 +43,12 @@ export function useSpaceExplorerOverlayActions({
   const [contextMenu, setContextMenu] = React.useState<SpaceExplorerContextMenuState | null>(null)
   const [draggedEntryUri, setDraggedEntryUri] = React.useState<string | null>(null)
   const [dropTargetDirectoryUri, setDropTargetDirectoryUri] = React.useState<string | null>(null)
+
+  React.useLayoutEffect(() => {
+    setContextMenu(null)
+    setDraggedEntryUri(null)
+    setDropTargetDirectoryUri(null)
+  }, [rootUri])
 
   const resolveSelectedEntry = React.useCallback(
     (): FileSystemEntry | null =>
@@ -113,14 +121,32 @@ export function useSpaceExplorerOverlayActions({
       onDismissQuickPreview()
 
       if (entry.kind === 'directory') {
-        toggleDirectoryExpanded(entry)
+        if (onNavigate) {
+          onNavigate(entry.uri)
+        } else {
+          toggleDirectoryExpanded(entry)
+        }
         return
       }
 
       onOpenFile(entry.uri)
     },
-    [closeContextMenu, onDismissQuickPreview, onOpenFile, selectEntry, toggleDirectoryExpanded],
+    [
+      closeContextMenu,
+      onDismissQuickPreview,
+      onOpenFile,
+      onNavigate,
+      selectEntry,
+      toggleDirectoryExpanded,
+    ],
   )
+
+  const openSelection = React.useCallback(() => {
+    const entry = resolveSelectedEntry()
+    if (entry) {
+      openEntry(entry)
+    }
+  }, [openEntry, resolveSelectedEntry])
 
   const moveSelection = React.useCallback(
     (direction: 'next' | 'previous' | 'first' | 'last') => {
@@ -187,13 +213,29 @@ export function useSpaceExplorerOverlayActions({
       return
     }
 
-    if (entry.kind === 'directory' && !expandedDirectoryUris.has(entry.uri)) {
-      setExpandedDirectoryUris(previous => new Set(previous).add(entry.uri))
+    if (entry.kind === 'directory') {
+      if (!expandedDirectoryUris.has(entry.uri)) {
+        setExpandedDirectoryUris(previous => new Set(previous).add(entry.uri))
+      } else {
+        const index = entryRows.findIndex(row => row.entry.uri === entry.uri)
+        const row = entryRows[index]
+        const child = entryRows[index + 1]
+        if (row && child && child.depth > row.depth) {
+          selectEntry(child.entry)
+        }
+      }
       return
     }
 
     openEntry(entry)
-  }, [expandedDirectoryUris, openEntry, resolveSelectedEntry, setExpandedDirectoryUris])
+  }, [
+    entryRows,
+    expandedDirectoryUris,
+    openEntry,
+    resolveSelectedEntry,
+    selectEntry,
+    setExpandedDirectoryUris,
+  ])
 
   const openRootContextMenu = React.useCallback(
     (point: { x: number; y: number }) => {
@@ -238,6 +280,8 @@ export function useSpaceExplorerOverlayActions({
     closeContextMenu,
     previewEntrySelection,
     openEntry,
+    openSelection,
+    toggleDirectoryExpanded,
     moveSelection,
     collapseSelectionOrFocusParent,
     expandSelectionOrOpen,

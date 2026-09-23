@@ -4,6 +4,7 @@ import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.typ
 
 type WebsiteContextMenuParams = Pick<
   UseWorkspaceCanvasInteractionsParams,
+  | 'workspaceId'
   | 'browserDefaultMode'
   | 'contextMenu'
   | 'createWebsiteNode'
@@ -17,6 +18,7 @@ type WebsiteContextMenuParams = Pick<
 >
 
 export function useWebsiteNodeContextMenuCreation({
+  workspaceId,
   browserDefaultMode,
   contextMenu,
   createWebsiteNode,
@@ -34,6 +36,7 @@ export function useWebsiteNodeContextMenuCreation({
     }
 
     createWebsiteNodeFromPaneContextMenu({
+      workspaceId,
       browserDefaultMode,
       contextMenu,
       createWebsiteNode,
@@ -46,6 +49,7 @@ export function useWebsiteNodeContextMenuCreation({
       url: '',
     })
   }, [
+    workspaceId,
     browserDefaultMode,
     contextMenu,
     createWebsiteNode,

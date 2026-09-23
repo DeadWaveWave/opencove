@@ -11,6 +11,7 @@ import { createWebsiteNodeAtFlowPosition } from './useInteractions.paneNodeCreat
 import type { SetNodes } from './useInteractions.types'
 
 export function useWebsiteWindowOpenUrlNodeCreation({
+  workspaceId,
   canvasRef,
   reactFlow,
   spacesRef,
@@ -22,6 +23,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   browserDefaultMode,
   enabled,
 }: {
+  workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -71,6 +73,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
             })
 
       createWebsiteNodeAtFlowPosition({
+        workspaceId,
         anchor: baseAnchor,
         url: detail.url,
         standardWindowSizeBucket,
@@ -88,6 +91,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
       window.removeEventListener(WEBSITE_WINDOW_OPEN_URL_EVENT_NAME, handleOpenUrl as EventListener)
     }
   }, [
+    workspaceId,
     canvasRef,
     createWebsiteNode,
     enabled,

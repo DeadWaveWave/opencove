@@ -28,6 +28,7 @@ import {
 } from './workspace-canvas.pixel-effects.helpers'
 import { expectSpaceFrameHeader } from './workspace-canvas.space-caption-border.helpers'
 import { wheelToZoom } from './workspace-canvas.zoom.helpers'
+import { readStableFieldBaseline } from './workspace-canvas.pixel-field.helpers'
 
 async function nodeGeometry(page: Page) {
   return await page.locator('.react-flow__node').evaluateAll(nodes =>
@@ -338,10 +339,9 @@ test.describe('Workspace Canvas - Pixel Light', () => {
         'data-cove-pixel-motion',
         'static',
       )
-      // The motion attribute changes before the throttled renderer paints its
-      // last invalidation. Drain that frame, then check the idle field before
-      // creating a node deliberately pans this world-anchored background.
-      await pixelFrame(page)
+      // Settle the last invalidation and Chromium's readback rasterization before
+      // the strict idle comparison. Creating a node later deliberately pans this field.
+      await readStableFieldBaseline(page.getByTestId('workspace-pixel-layer'))
       const field = await pixelFrame(page)
       expect(field.before.painted).toBeGreaterThan(20)
       expect(field.after).toEqual(field.before)

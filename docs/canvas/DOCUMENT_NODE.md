@@ -9,7 +9,7 @@ Document Node 持久化的是：
 - 文件 `uri`
 - 节点标题和窗口 frame
 - 必要的显示偏好
-- 当前 mount context（由所属 Space 的 `targetMountId` 提供）
+- 创建时的 `workerBinding`（来源 endpoint/mount）。旧节点无此字段时才兼容使用所属 Space 的 `targetMountId`。
 
 不应持久化为文件内容真相的状态：
 
@@ -50,9 +50,10 @@ Space Explorer 打开的音视频文件也使用 Document Node 风格窗口承�
 
 Space Explorer 是 Document Node 的主要入口：
 
-- 点击文本文件创建或聚焦 Document Node。
+- 单击文件预览，双击创建或聚焦 Document Node；从文件浏览器拖到画布背景也可创建文件节点。
 - 点击媒体文件显示预览或创建媒体窗口。
-- 节点读写必须保持在触发它的 mount scope 内。
+- 节点读写必须保持在触发它的 mount scope 内；移入/移出其他 Space 仅改变布局归属，不改变源文件位置。
+- Folder Node 使用相同的浏览与文件操作能力，导航和图标/列表视图见 [Filesystem](./FILESYSTEM.md)。
 
 ## UI Constraints
 

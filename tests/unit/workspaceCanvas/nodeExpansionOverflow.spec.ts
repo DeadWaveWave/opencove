@@ -77,7 +77,35 @@ describe('find-space expansion beyond the creation search radius', () => {
     const nextParent = plan.spaces[0].rect!
     expect(nextOwner.x + nextOwner.width).toBeGreaterThanOrEqual(plan.nodes[0].position.x + 640)
     expect(nextParent.x + nextParent.width).toBeGreaterThanOrEqual(nextOwner.x + nextOwner.width)
-    expect(plan.spaces.slice(2)).toEqual(walls)
+    // Growing the owner across its siblings must move those regions out of its
+    // expanded frame, while retaining their identity, dimensions and ownership.
+    const nextWalls = plan.spaces.slice(2)
+    expect(nextWalls.map(space => ({ ...space, rect: null }))).toEqual(
+      walls.map(space => ({ ...space, rect: null })),
+    )
+    nextWalls.forEach((wall, index) => {
+      expect(wall.rect!.width).toBe(walls[index].rect!.width)
+      expect(wall.rect!.height).toBe(walls[index].rect!.height)
+    })
+    const siblingRects = plan.spaces.slice(1).map(space => space.rect!)
+    siblingRects.forEach((rect, index) => {
+      expect(rect.x).toBeGreaterThanOrEqual(nextParent.x + SPACE_NODE_PADDING)
+      expect(rect.y).toBeGreaterThanOrEqual(nextParent.y + SPACE_NODE_PADDING)
+      expect(rect.x + rect.width).toBeLessThanOrEqual(
+        nextParent.x + nextParent.width - SPACE_NODE_PADDING,
+      )
+      expect(rect.y + rect.height).toBeLessThanOrEqual(
+        nextParent.y + nextParent.height - SPACE_NODE_PADDING,
+      )
+      for (const peer of siblingRects.slice(index + 1)) {
+        expect(
+          rect.x + rect.width <= peer.x ||
+            peer.x + peer.width <= rect.x ||
+            rect.y + rect.height <= peer.y ||
+            peer.y + peer.height <= rect.y,
+        ).toBe(true)
+      }
+    })
     expect(plan.state.collapsedNodeIds).toEqual({ peer: true })
   })
 })

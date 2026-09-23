@@ -308,18 +308,10 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
         })
         .first()
 
-      const workspaceToggle = window.locator(
-        '.workspace-space-group--root .workspace-space-item__toggle',
-      )
-      await expect(workspaceToggle).toHaveAttribute('aria-expanded', 'true')
-
-      await workspaceToggle.click()
-      await expect(doingItem).toHaveCount(0)
-      await expect(workspaceToggle).toHaveAttribute('aria-expanded', 'false')
-
-      await workspaceToggle.click()
-      await expect(doingItem).toHaveCount(1)
-      await expect(workspaceToggle).toHaveAttribute('aria-expanded', 'true')
+      await expect(window.locator('.workspace-space-group--root')).toHaveCount(0)
+      await expect(doingItem).toBeVisible()
+      await expect(requestItem).toBeVisible()
+      await expect(doneItem).toBeVisible()
 
       await requestItem.click()
       await expect(requestNode).toBeVisible()

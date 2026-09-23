@@ -436,6 +436,7 @@ export function WorkspaceContextMenu({
             clearNodeSelection={clearNodeSelection}
             closeContextMenu={closeContextMenu}
             closeWindow={contextMenu.closeWindow}
+            nodeId={contextMenu.nodeId}
           />
         )}
       </ViewportMenuSurface>

@@ -24,7 +24,7 @@ async function expectPersistedDisclosure(window: Page, collapsed: boolean): Prom
       projects: { 'project-a': true },
       spaces: collapsed
         ? { 'project-a:project-root': true, 'project-a:project-a-space': true }
-        : {},
+        : { 'project-a:project-root': true },
     })
 }
 
@@ -36,7 +36,7 @@ async function quitApp(electronApp: ElectronApplication): Promise<void> {
   await expect.poll(() => appProcess.exitCode !== null || appProcess.signalCode !== null).toBe(true)
 }
 
-test('restores root and Space disclosure independently of project navigation after two cold restarts', async ({
+test('restores Space disclosure and keeps root agents visible after two cold restarts', async ({
   browserName: _,
 }, testInfo) => {
   const userDataDir = await createTestUserDataDir()
@@ -50,6 +50,7 @@ test('restores root and Space disclosure independently of project navigation aft
       settings: {
         standardWindowSizeBucket: 'regular',
         sidebarCollapsedWorkspaceIds: { 'project-a': true },
+        sidebarCollapsedSpaceGroupIds: { 'project-a:project-root': true },
       },
       workspaces: ['project-a', 'project-b'].map(id => ({
         id,
@@ -76,19 +77,16 @@ test('restores root and Space disclosure independently of project navigation aft
         ],
       })),
     })
-    const toggle = (id: string, group: 'root' | 'space') =>
-      window.getByTestId(
-        `workspace-space-toggle-${id}-${group === 'root' ? 'project-root' : `${id}-space`}`,
-      )
+    const toggle = (id: string) => window.getByTestId(`workspace-space-toggle-${id}-${id}-space`)
     const expectGroups = async (id: string, expanded: boolean): Promise<void> => {
-      await Promise.all(
-        (['root', 'space'] as const).flatMap(group => [
-          expect(toggle(id, group)).toHaveAttribute('aria-expanded', String(expanded)),
-          expect(window.getByTestId(`workspace-agent-item-${id}-${id}-${group}-agent`)).toHaveCount(
-            expanded ? 1 : 0,
-          ),
-        ]),
-      )
+      await Promise.all([
+        expect(toggle(id)).toHaveAttribute('aria-expanded', String(expanded)),
+        expect(window.getByTestId(`workspace-agent-item-${id}-${id}-space-agent`)).toHaveCount(
+          expanded ? 1 : 0,
+        ),
+        expect(window.getByTestId(`workspace-agent-item-${id}-${id}-root-agent`)).toHaveCount(1),
+        expect(window.getByTestId(`workspace-space-toggle-${id}-project-root`)).toHaveCount(0),
+      ])
     }
     const selectProject = async (id: string): Promise<void> => {
       await window.getByTestId(`workspace-item-${id}`).click()
@@ -98,8 +96,7 @@ test('restores root and Space disclosure independently of project navigation aft
       )
     }
     await expectGroups('project-a', true)
-    await toggle('project-a', 'root').click()
-    await toggle('project-a', 'space').click()
+    await toggle('project-a').click()
     await expectGroups('project-a', false)
     await selectProject('project-b')
     await expectGroups('project-b', true)
@@ -117,12 +114,11 @@ test('restores root and Space disclosure independently of project navigation aft
     await expectGroups('project-b', true)
     await selectProject('project-a')
     await expectGroups('project-a', false)
-    await testInfo.attach('restored-root-and-space-disclosure', {
+    await testInfo.attach('restored-space-disclosure-with-visible-root-agents', {
       body: await window.screenshot(),
       contentType: 'image/png',
     })
-    await toggle('project-a', 'root').click()
-    await toggle('project-a', 'space').click()
+    await toggle('project-a').click()
     await expectGroups('project-a', true)
 
     await expectPersistedDisclosure(window, false)

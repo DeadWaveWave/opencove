@@ -113,6 +113,7 @@ import type {
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
+import { resolveDroppedFile } from './filesystemDrop'
 import { onApplicationShortcut } from './applicationShortcutApi'
 import { createIssueReportPreloadApi } from './issueReportApi'
 import { resolveOpenCoveMeta } from './opencoveMeta'
@@ -166,6 +167,7 @@ const opencoveApi = {
   },
   filesystem: {
     getPathForFile: (file: File): string => webUtils.getPathForFile(file),
+    resolveDroppedFile,
     createDirectory: (payload: CreateDirectoryInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.filesystemCreateDirectory, payload),
     copyEntry: (payload: CopyEntryInput): Promise<void> =>

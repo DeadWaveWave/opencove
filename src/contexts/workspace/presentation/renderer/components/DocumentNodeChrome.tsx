@@ -118,7 +118,7 @@ export function DocumentNodeChrome({
             aria-hidden="true"
           />
         ) : null}
-        <NodeKindIcon kind="document" />
+        <NodeKindIcon kind="document" filePath={uri} />
         <span
           className="document-node__title"
           data-testid="document-node-title"

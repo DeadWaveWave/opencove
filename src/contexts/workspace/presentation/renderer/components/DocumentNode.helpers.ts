@@ -15,7 +15,7 @@ export interface DocumentNodeInteractionOptions {
 export interface DocumentNodeProps {
   title: string
   uri: string
-  mountId: string | null
+  mountId: string | null | undefined
   labelColor?: LabelColor | null
   position: Point
   width: number

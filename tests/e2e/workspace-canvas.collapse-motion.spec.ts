@@ -31,7 +31,7 @@ test('morphs a live terminal into its icon and back without remounting or resizi
     const collapse = await samplePresentation(window, () =>
       node.getByTestId('node-collapse').click(),
     )
-    expectContinuousSizeChange(collapse, expanded, { width: 128, height: 112 })
+    expectContinuousSizeChange(collapse, expanded, { width: 112, height: 96 })
     expectRuntimeUnchanged(collapse, identity)
     const compact = window.getByTestId(`collapsed-node-${EXPANSION_TERMINAL}`)
     await expect(compact.getByTestId('node-expand')).toBeVisible()
@@ -41,7 +41,7 @@ test('morphs a live terminal into its icon and back without remounting or resizi
     const expansion = await samplePresentation(window, () =>
       compact.getByTestId('node-expand').click(),
     )
-    expectContinuousSizeChange(expansion, { width: 128, height: 112 }, expanded)
+    expectContinuousSizeChange(expansion, { width: 112, height: 96 }, expanded)
     expectRuntimeUnchanged(expansion, identity)
     await expect(compact).toBeHidden()
     await expect(node.locator('.terminal-node__terminal')).toBeVisible()
@@ -192,7 +192,7 @@ test('a rapid reversal and reduced motion leave the final geometry and live runt
       reduced.filter(sample => sample.shell.width > 130 && sample.shell.width < expanded.width - 2),
       'Reduced motion commits the final presentation without traversing an animated size',
     ).toEqual([])
-    expect(reduced.at(-1)?.shell.width).toBeCloseTo(128, 0)
+    expect(reduced.at(-1)?.shell.width).toBeCloseTo(112, 0)
     await compact.getByTestId('node-expand').click()
     await expect
       .poll(() => readPresentationFrame(window))

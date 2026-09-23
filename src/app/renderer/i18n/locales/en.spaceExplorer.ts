@@ -1,5 +1,15 @@
 export const enSpaceExplorer = {
   empty: 'This folder is empty.',
+  parentFolder: 'Parent folder',
+  path: 'Path',
+  viewMode: 'View',
+  iconsView: 'Icons',
+  listView: 'List',
+  expandFolder: 'Expand {{name}}',
+  collapseFolder: 'Collapse {{name}}',
+  openFailed: 'Could not open this item on the canvas: {{message}}',
+  nativeDropUnavailable:
+    'Use the desktop app to add files from your computer, or drag files from the Explorer.',
   parentDirectory: 'Parent directory',
   refresh: 'Refresh',
   collapseAll: 'Collapse All',
@@ -14,6 +24,7 @@ export const enSpaceExplorer = {
   copy: 'Copy',
   paste: 'Paste',
   copyPath: 'Copy Path',
+  copyAbsolutePath: 'Copy Absolute Path',
   copyRelativePath: 'Copy Relative Path',
   pathCopied: 'Path copied.',
   resizeWidth: 'Resize Explorer width',

@@ -1,7 +1,7 @@
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import React from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type {
-  DocumentNodeData,
   ImageNodeData,
   Point,
   TerminalNodeData,
@@ -15,6 +15,7 @@ import type { ExplorerPlacementPx } from './useSpaceExplorer.placement'
 import type { SpaceExplorerOpenDocumentBlock } from './useSpaceExplorer.guards'
 
 export type WorkspaceCanvasSpaceExplorerArgs = {
+  workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   spaces: WorkspaceSpaceState[]
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -37,11 +38,7 @@ export type WorkspaceCanvasSpaceExplorerArgs = {
     fallbackNodes: Node<TerminalNodeData>[]
     spaceRectOverrideById?: ReadonlyMap<string, WorkspaceSpaceRect> | null
   }) => void
-  createDocumentNode: (
-    anchor: Point,
-    document: DocumentNodeData,
-    placement?: NodeCreationPlacementOptions,
-  ) => Node<TerminalNodeData> | null
+  createDocumentNode: UseWorkspaceCanvasNodesStoreResult['createDocumentNode']
   createImageNode: (
     anchor: Point,
     image: ImageNodeData,

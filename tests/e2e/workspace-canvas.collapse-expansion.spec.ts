@@ -30,7 +30,7 @@ for (const behavior of ['default', 'find-space'] as const) {
       await expect(compact).toBeVisible()
       await expect
         .poll(() => readNodeFrame(window, EXPANSION_TERMINAL))
-        .toMatchObject({ width: 128, height: 112 })
+        .toMatchObject({ width: 112, height: 96 })
       await writeCollapsedTerminalMarker(window, identity.sessionId!, 'collapsed')
       const samples = await sampleCollapsedDrag(window)
       await testInfo.attach('collapsed-drag-frame-geometry', {

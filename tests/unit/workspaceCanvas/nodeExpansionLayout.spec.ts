@@ -152,7 +152,7 @@ describe('collapsed node expansion layout', () => {
       expect(plan.nodes[0].data).toBe(nodes[0].data)
       const compactPeer = {
         ...plan.nodes[1],
-        data: { ...plan.nodes[1].data, width: 128, height: 112 },
+        data: { ...plan.nodes[1].data, width: 112, height: 96 },
       }
       expect(overlaps(plan.nodes[0], compactPeer)).toBe(false)
       expect(plan.spaces.map(item => item.nodeIds)).toEqual(spaces.map(item => item.nodeIds))

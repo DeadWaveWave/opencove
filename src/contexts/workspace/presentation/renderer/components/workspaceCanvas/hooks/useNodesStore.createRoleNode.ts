@@ -7,12 +7,7 @@ import type {
   AgentProvider,
   StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
-import type {
-  Point,
-  TerminalNodeData,
-  WorkspaceSpaceRect,
-  WorkspaceSpaceState,
-} from '../../../types'
+import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import { resolveDefaultRoleWindowSize } from '../constants'
 import type { NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
@@ -21,11 +16,8 @@ import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 
 type SetNodes = (updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => void
 
-function resolveSpaceRects(spaces: WorkspaceSpaceState[]): WorkspaceSpaceRect[] {
-  return spaces.map(space => space.rect).filter((rect): rect is WorkspaceSpaceRect => rect !== null)
-}
-
 export function useWorkspaceCanvasRoleNodeCreation({
+  workspaceId,
   nodesRef,
   spacesRef,
   onRequestPersistFlush,
@@ -34,6 +26,7 @@ export function useWorkspaceCanvasRoleNodeCreation({
   setNodes,
   standardWindowSizeBucket,
 }: {
+  workspaceId?: string
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   onRequestPersistFlush?: () => void
@@ -58,10 +51,11 @@ export function useWorkspaceCanvasRoleNodeCreation({
     ): Node<TerminalNodeData> | null => {
       const defaultRoleSize = resolveDefaultRoleWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
+        workspaceId,
+        getSpaces: () => spacesRef.current,
         anchor,
         size: defaultRoleSize,
         getNodes: () => nodesRef.current,
-        getSpaceRects: () => resolveSpaceRects(spacesRef.current),
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
         avoidRects: placementOptions?.avoidRects,
@@ -124,6 +118,7 @@ export function useWorkspaceCanvasRoleNodeCreation({
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      workspaceId,
       t,
     ],
   )

@@ -4,6 +4,12 @@ import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceC
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { sanitizeSpaces } from '../helpers'
+import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
+import { EMPTY_CANVAS_COLLAPSE } from '../../../utils/canvasCollapse'
+import {
+  projectCanvasInteractionLayout,
+  restoreCanvasInteractionLayout,
+} from '../../../utils/canvasInteractionLayout'
 
 interface SetNodes {
   (
@@ -20,6 +26,7 @@ export function findContainingSpaceByAnchor(
 }
 
 export function assignNodeToSpaceAndExpand({
+  workspaceId,
   createdNodeId,
   createdNode,
   targetSpaceId,
@@ -31,6 +38,7 @@ export function assignNodeToSpaceAndExpand({
   setNodes,
   onSpacesChange,
 }: {
+  workspaceId?: string
   createdNodeId: string
   createdNode: Node<TerminalNodeData>
   targetSpaceId: string
@@ -64,10 +72,14 @@ export function assignNodeToSpaceAndExpand({
   const layoutNodes = hasUsableLayoutRect(createdNode)
     ? [...nodesRef.current.filter(node => node.id !== createdNode.id), createdNode]
     : nodesRef.current
-  const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({
+  const collapse =
+    (workspaceId && useCanvasCollapseStore.getState().workspaces[workspaceId]) ||
+    EMPTY_CANVAS_COLLAPSE
+  const presented = projectCanvasInteractionLayout(layoutNodes, nextSpaces, collapse)
+  const expanded = expandSpaceToFitOwnedNodesAndPushAway({
     targetSpaceId,
-    spaces: nextSpaces,
-    nodeRects: layoutNodes.map(node => ({
+    spaces: presented.spaces,
+    nodeRects: presented.nodes.map(node => ({
       id: node.id,
       rect: {
         x: node.position.x,
@@ -78,6 +90,13 @@ export function assignNodeToSpaceAndExpand({
     })),
     gap: 0,
   })
+  const { nextSpaces: pushedSpaces, nextNodePositionById: nodePositionById } =
+    restoreCanvasInteractionLayout(
+      { nextSpaces: expanded.spaces, nextNodePositionById: expanded.nodePositionById },
+      layoutNodes,
+      nextSpaces,
+      collapse,
+    )
 
   if (nodePositionById.size > 0) {
     setNodes(

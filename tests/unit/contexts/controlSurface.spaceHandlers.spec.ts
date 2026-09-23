@@ -53,6 +53,51 @@ function createStore(
 }
 
 describe('control surface space handlers', () => {
+  it('reports a persisted folder window as a folder in space summaries', async () => {
+    const store = createStore({
+      formatVersion: 1,
+      activeWorkspaceId: 'workspace-1',
+      settings: {},
+      workspaces: [
+        {
+          id: 'workspace-1',
+          name: 'Workspace',
+          path: '/repo',
+          nodes: [
+            {
+              id: 'folder-1',
+              title: 'docs',
+              kind: 'folder',
+              position: { x: 0, y: 0 },
+              width: 480,
+              height: 400,
+              task: {
+                uri: 'file:///repo/docs',
+                rootUri: 'file:///repo',
+                viewMode: 'icons',
+                expandedDirectoryUris: [],
+              },
+            },
+          ],
+          spaces: [{ id: 'space-1', name: 'Space', nodeIds: ['folder-1'] }],
+        },
+      ],
+    })
+    const controlSurface = createControlSurface()
+    registerSpaceHandlers(controlSurface, async () => store)
+
+    const result = await controlSurface.invoke(ctx, {
+      kind: 'query',
+      id: 'space.get',
+      payload: { spaceId: 'space-1' },
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: { space: { nodes: [{ id: 'folder-1', kind: 'folder', title: 'docs' }] } },
+    })
+  })
+
   it('creates a child space, moves selected nodes, and updates execution expectations', async () => {
     const appState = {
       formatVersion: 1,

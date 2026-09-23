@@ -31,6 +31,7 @@ function normalizeCanvasNodeKind(kind: unknown): CanvasNodeKind {
     case 'note':
     case 'image':
     case 'document':
+    case 'folder':
     case 'website':
       return kind
     default:

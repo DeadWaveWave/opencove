@@ -298,6 +298,75 @@
   --pixel-opacity: 0.16;
 }
 
+/* Files and folders have two quiet diagonal corners, without a surrounding box.
+   The animated surface inherits exactly the same material as the settled icon. */
+.cove-node-presentation:is([data-cove-node-kind='document'], [data-cove-node-kind='folder']),
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder']) {
+  --cove-collapsed-surface: linear-gradient(
+    135deg,
+    color-mix(
+      in srgb,
+      var(--cove-node-identity-color, var(--cove-accent)) 14%,
+      var(--cove-window-surface)
+    ),
+    var(--cove-window-surface)
+  );
+  --cove-collapsed-shadow: 0 5px 14px -7px var(--cove-shadow-color-elevated);
+}
+
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
+  .cove-collapsed-window__icon {
+  flex-basis: 51px;
+  width: 56px;
+}
+
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
+  .cove-collapsed-window__icon
+  > svg {
+  width: 31px;
+  height: 31px;
+  color: var(--cove-collapsed-ink);
+}
+
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
+  .cove-collapsed-window__pixel-corner:is(:nth-child(2), :nth-child(3)),
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
+  .cove-collapsed-window__pixel-corner
+  > i:is(:nth-child(4), :nth-child(7)) {
+  display: none;
+}
+
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
+  .cove-collapsed-window__pixel-corner
+  > i {
+  width: 3px;
+  height: 3px;
+}
+
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
+  .cove-collapsed-window__pixel-corner
+  > i:nth-child(2) {
+  left: 6px;
+}
+
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
+  .cove-collapsed-window__pixel-corner
+  > i:nth-child(3) {
+  left: 12px;
+}
+
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
+  .cove-collapsed-window__pixel-corner
+  > i:nth-child(5) {
+  top: 6px;
+}
+
+.cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
+  .cove-collapsed-window__pixel-corner
+  > i:nth-child(6) {
+  top: 12px;
+}
+
 .cove-collapsed-window__launch:is(:hover, :focus-visible) .cove-collapsed-window__pixel-corner > i {
   opacity: max(var(--pixel-opacity), 0.48);
 }

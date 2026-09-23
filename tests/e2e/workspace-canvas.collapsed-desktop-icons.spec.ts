@@ -70,7 +70,7 @@ test('compact desktop icons keep hover, selection and keyboard feedback local in
               .offsetWidth,
           })),
         )
-        .toEqual({ hitWidth: 128, iconWindowWidth: 128, launchWidth: 128 })
+        .toEqual({ hitWidth: 112, iconWindowWidth: 112, launchWidth: 112 })
     }
 
     const node = window.locator(`.react-flow__node[data-id="${EXPANSION_TERMINAL}"]`)

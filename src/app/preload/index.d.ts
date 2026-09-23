@@ -188,6 +188,7 @@ export interface OpenCoveApi {
   }
   filesystem: {
     getPathForFile: (file: File) => string
+    resolveDroppedFile?: (file: File) => Promise<FileSystemStat | null>
     createDirectory: (payload: CreateDirectoryInput) => Promise<void>
     copyEntry: (payload: CopyEntryInput) => Promise<void>
     moveEntry: (payload: MoveEntryInput) => Promise<void>

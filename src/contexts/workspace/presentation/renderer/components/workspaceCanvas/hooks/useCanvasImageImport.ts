@@ -102,6 +102,7 @@ function resolveCanvasClientCenter(canvas: HTMLDivElement | null): Point {
 }
 
 export function useWorkspaceCanvasImageImport({
+  workspaceId,
   canvasRef,
   reactFlow,
   spacesRef,
@@ -112,6 +113,7 @@ export function useWorkspaceCanvasImageImport({
   createImageNode,
   standardWindowSizeBucket,
 }: {
+  workspaceId?: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -226,6 +228,7 @@ export function useWorkspaceCanvasImageImport({
 
         if (targetSpace) {
           assignNodeToSpaceAndExpand({
+            workspaceId,
             createdNodeId: node.id,
             createdNode: node,
             targetSpaceId: targetSpace.id,
@@ -238,6 +241,7 @@ export function useWorkspaceCanvasImageImport({
       }
     },
     [
+      workspaceId,
       createImageNode,
       nodesRef,
       onShowMessage,

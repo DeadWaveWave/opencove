@@ -23,6 +23,7 @@ import type { ApprovedWorkspaceStore } from '../../../workspace/infrastructure/a
 import { createAppError } from '../../../../shared/errors/appError'
 import { createLocalFileSystemPort } from '../../infrastructure/localFileSystemPort'
 import { deleteEntryWithTrashFallback } from '../../application/deleteEntryWithTrashFallback'
+import { resolveDroppedPath } from './droppedPath'
 import {
   copyEntryUseCase,
   createDirectoryUseCase,
@@ -49,8 +50,15 @@ import {
 
 export function registerFilesystemIpcHandlers(
   approvedWorkspaces: ApprovedWorkspaceStore,
+  nativeDroppedPathsStore: ApprovedWorkspaceStore = approvedWorkspaces,
 ): IpcRegistrationDisposable {
   const port = createLocalFileSystemPort()
+
+  registerHandledIpc(
+    IPC_CHANNELS.filesystemResolveDroppedPath,
+    (event, payload: unknown) => resolveDroppedPath(event, payload, nativeDroppedPathsStore),
+    { defaultErrorCode: 'filesystem.stat_failed' },
+  )
 
   const assertApprovedUri = async (uri: string, debugMessage: string): Promise<void> => {
     const path = fileURLToPath(uri)
@@ -214,6 +222,7 @@ export function registerFilesystemIpcHandlers(
       ipcMain.removeHandler(IPC_CHANNELS.filesystemReadFileText)
       ipcMain.removeHandler(IPC_CHANNELS.filesystemWriteFileText)
       ipcMain.removeHandler(IPC_CHANNELS.filesystemStat)
+      ipcMain.removeHandler(IPC_CHANNELS.filesystemResolveDroppedPath)
       ipcMain.removeHandler(IPC_CHANNELS.filesystemReadDirectory)
     },
   }

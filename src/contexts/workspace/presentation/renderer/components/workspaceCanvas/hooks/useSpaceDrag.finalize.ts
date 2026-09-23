@@ -4,8 +4,9 @@ import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '
 import type { SpaceDragState } from '../types'
 import { type LayoutDirection } from '../../../utils/spaceLayout'
 import { projectWorkspacePushAwayLayout } from '../../../utils/workspacePushAwayProjection'
-import { projectChildSpaceMoveWithinParent } from './useSpaceDrag.childProjection'
+import { projectChildSpaceWithinParent } from './useSpaceDrag.childProjection'
 import { projectSpaceDragWithCollapse, type SpaceDragLayoutInput } from './useSpaceDrag.collapse'
+import { containChildSpaceResizeLayout } from './useSpaceDrag.containment'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -98,7 +99,7 @@ function projectSpaceDragLayout({
     })
 
     if (targetSpace?.parentSpaceId) {
-      const projected = projectChildSpaceMoveWithinParent({
+      const projected = projectChildSpaceWithinParent({
         targetSpaceId: dragState.spaceId,
         parentSpaceId: targetSpace.parentSpaceId,
         draftSpaces,
@@ -140,7 +141,10 @@ function projectSpaceDragLayout({
     spaces,
   })
   if (rectEquals(nextRect, dragState.initialRect)) {
-    return null
+    return {
+      nextSpaces: spaces,
+      nextNodePositionById: new Map(baselineNodes.map(node => [node.id, node.position])),
+    }
   }
 
   const draftSpaces = spaces.map(space =>
@@ -153,10 +157,29 @@ function projectSpaceDragLayout({
   )
 
   if (targetSpace?.parentSpaceId) {
-    return {
-      nextSpaces: draftSpaces,
-      nextNodePositionById: new Map(),
-    }
+    const projected = projectChildSpaceWithinParent({
+      targetSpaceId: dragState.spaceId,
+      parentSpaceId: targetSpace.parentSpaceId,
+      draftSpaces,
+      previousSpaces: spaces,
+      draftNodes: baselineNodes,
+      movedSpaceIds,
+      owningSpaceIdByNodeId,
+      draggedNodeIds: new Set(),
+      directions: resolveResizeDirections(dragState.initialRect, nextRect),
+      childSpaceDragPadding: CHILD_SPACE_DRAG_PADDING,
+      allowParentExpansion: true,
+    })
+    return containChildSpaceResizeLayout(
+      propagateMovedParentDeltas({
+        projected,
+        previousSpaces: spaces,
+        baselineNodes,
+        excludeParentIds: new Set([dragState.spaceId]),
+      }),
+      targetSpace.parentSpaceId,
+      baselineNodes,
+    )
   }
 
   const pinnedResizeGroupIds = [

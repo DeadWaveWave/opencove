@@ -40,7 +40,7 @@ export function setCollapsed(ids: CollapsedIds, id: string, collapsed: boolean):
 }
 
 export function getCollapsedNodeSize(): Size {
-  return { width: 128, height: 112 }
+  return { width: 112, height: 96 }
 }
 
 export function getNodeDisplaySize(node: Node<TerminalNodeData>, ids: CollapsedIds): Size {

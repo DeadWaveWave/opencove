@@ -213,6 +213,7 @@ export async function runRoleNodeAction(
 
     if (owningSpace) {
       assignNodeToSpaceAndExpand({
+        workspaceId: context.workspaceId,
         createdNodeId: createdAgentNode.id,
         createdNode: createdAgentNode,
         targetSpaceId: owningSpace.id,

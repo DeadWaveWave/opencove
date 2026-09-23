@@ -1,6 +1,9 @@
 import type { Node } from '@xyflow/react'
+import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
+import { resolveFileUriName } from '@shared/utils/fileUriScope'
 import type {
   DocumentNodeData,
+  FolderNodeData,
   AgentNodeData,
   ImageNodeData,
   NoteNodeData,
@@ -18,6 +21,7 @@ function isTaskNodeData(
     | RoleNodeData
     | ImageNodeData
     | DocumentNodeData
+    | FolderNodeData
     | WebsiteNodeData
     | null,
 ): value is TaskNodeData {
@@ -31,6 +35,7 @@ function isNoteNodeData(
     | RoleNodeData
     | ImageNodeData
     | DocumentNodeData
+    | FolderNodeData
     | WebsiteNodeData
     | null,
 ): value is NoteNodeData {
@@ -44,6 +49,7 @@ function isImageNodeData(
     | RoleNodeData
     | ImageNodeData
     | DocumentNodeData
+    | FolderNodeData
     | WebsiteNodeData
     | null,
 ): value is ImageNodeData {
@@ -57,6 +63,7 @@ function isDocumentNodeData(
     | RoleNodeData
     | ImageNodeData
     | DocumentNodeData
+    | FolderNodeData
     | WebsiteNodeData
     | null,
 ): value is DocumentNodeData {
@@ -70,6 +77,7 @@ function isWebsiteNodeData(
     | RoleNodeData
     | ImageNodeData
     | DocumentNodeData
+    | FolderNodeData
     | WebsiteNodeData
     | null,
 ): value is WebsiteNodeData {
@@ -83,6 +91,7 @@ function isRoleNodeData(
     | RoleNodeData
     | ImageNodeData
     | DocumentNodeData
+    | FolderNodeData
     | WebsiteNodeData
     | null,
 ): value is RoleNodeData {
@@ -132,6 +141,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
       node.kind === 'image' ? (isImageNodeData(node.task) ? node.task : null) : null
     const document: DocumentNodeData | null =
       node.kind === 'document' ? (isDocumentNodeData(node.task) ? node.task : null) : null
+    const folder = node.kind === 'folder' ? normalizeFolderNodeData(node.task) : null
     const website: WebsiteNodeData | null =
       node.kind === 'website' ? (isWebsiteNodeData(node.task) ? node.task : null) : null
 
@@ -148,9 +158,11 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
                 ? 'roleNode'
                 : node.kind === 'document'
                   ? 'documentNode'
-                  : node.kind === 'website'
-                    ? 'websiteNode'
-                    : 'terminalNode',
+                  : node.kind === 'folder'
+                    ? 'folderNode'
+                    : node.kind === 'website'
+                      ? 'websiteNode'
+                      : 'terminalNode',
       position: node.position,
       initialWidth: node.width,
       initialHeight: node.height,
@@ -173,7 +185,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
             : null,
         labelColorOverride: node.labelColorOverride ?? null,
         sidebarSortOrder: node.sidebarSortOrder,
-        title: node.title,
+        title: folder ? resolveFileUriName(folder.uri, node.title) : node.title,
         titlePinnedByUser: node.titlePinnedByUser === true,
         width: node.width,
         height: node.height,
@@ -193,10 +205,11 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         role,
         image,
         document,
+        folder,
         website,
       },
       draggable: true,
-      selectable: node.kind !== 'note' && node.kind !== 'document',
+      selectable: !['note', 'document', 'folder'].includes(node.kind),
     }
 
     return runtimeNode

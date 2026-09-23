@@ -132,7 +132,7 @@ describe('Space resize with compact window geometry', () => {
       x: edges.left ? 500 : 0,
       y: edges.top ? 400 : 0,
       width: edges.left ? 400 : edges.right ? 224 : 900,
-      height: edges.top ? 300 : edges.bottom ? 136 : 700,
+      height: edges.top ? 300 : edges.bottom ? 24 + getCollapsedNodeSize().height : 700,
     })
     expect(projected.nextNodePositionById.get(terminal.id)).toEqual(terminal.position)
     expect(terminal.data).toEqual(originalData)
@@ -186,7 +186,12 @@ describe('Space resize with compact window geometry', () => {
     })
 
     expect(projected.nextSpaces[0]).toEqual(spaces[0])
-    expect(projected.nextSpaces[1].rect).toEqual({ x: 100, y: 80, width: 224, height: 136 })
+    expect(projected.nextSpaces[1].rect).toEqual({
+      x: 100,
+      y: 80,
+      width: 224,
+      height: 24 + getCollapsedNodeSize().height,
+    })
     expect(nodes[0].data).toMatchObject({ width: 640, height: 480 })
   })
 

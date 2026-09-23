@@ -5,6 +5,8 @@ import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSet
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { NodeFrame, WorkspaceSpaceState } from '../../types'
 import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
+import { WorkspaceCanvasFolderNodeType } from './nodeTypes.folder'
+import { resolveFilesystemNodeMountId } from './filesystemNodeBinding'
 import { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
 import { WorkspaceCanvasNoteNodeType } from './nodeTypes.note'
 import { WorkspaceCanvasRoleNodeType } from './nodeTypes.role'
@@ -174,12 +176,13 @@ export function useWorkspaceCanvasNodeTypes({
       )
     }
 
-    const DocumentNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
+    const FilesystemNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
       const nodePosition = useNodePosition(id)
-      const targetMountId =
-        spacesRef.current.find(candidate => candidate.nodeIds.includes(id))?.targetMountId ?? null
+      const targetMountId = resolveFilesystemNodeMountId(id, data, spacesRef.current)
+      const Component =
+        data.kind === 'folder' ? WorkspaceCanvasFolderNodeType : WorkspaceCanvasDocumentNodeType
       return (
-        <WorkspaceCanvasDocumentNodeType
+        <Component
           data={data}
           id={id}
           nodePosition={nodePosition}
@@ -262,7 +265,8 @@ export function useWorkspaceCanvasNodeTypes({
           />
         )
       },
-      documentNode: DocumentNodeType,
+      documentNode: FilesystemNodeType,
+      folderNode: FilesystemNodeType,
       websiteNode: WebsiteNodeType,
       imageNode: ImageNodeType,
       roleNode: ({ data, id }: WorkspaceCanvasNodeTypeProps) => (

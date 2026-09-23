@@ -82,6 +82,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         }
 
         createWebsiteNodeAtFlowPosition({
+          workspaceId,
           anchor,
           standardWindowSizeBucket,
           browserDefaultMode,
@@ -174,6 +175,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         setContextMenu(null)
 
         createNoteNodeAtFlowPosition({
+          workspaceId,
           anchor: resolvePaneNodeCreationAnchor(contextMenu),
           standardWindowSizeBucket,
           createNoteNode: (anchor, placementOptions) =>
@@ -207,6 +209,7 @@ export function useWorkspaceCanvasQuickMenuActions(
       }
     },
     [
+      workspaceId,
       contextMenu,
       createNoteNode,
       nodesRef,

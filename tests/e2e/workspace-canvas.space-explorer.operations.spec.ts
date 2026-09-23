@@ -187,7 +187,6 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       await dispatchExplorerShortcut(window, {
         code: 'KeyF',
         key: 'f',
-        altKey: true,
         ctrlKey: true,
       })
       await expect(filterInput).toBeFocused()
@@ -204,7 +203,12 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
         ctrlKey: true,
       })
       await window.waitForTimeout(64)
-      await folderEntry.dispatchEvent('click')
+      await folderEntry.getByTestId('directory-entry-disclosure').click()
+      await folderEntry.click({ button: 'right', force: true })
+      await expect(contextMenu).toBeVisible()
+      await explorer.focus()
+      await dispatchExplorerShortcut(window, { code: 'Escape', key: 'Escape' })
+      await expect(contextMenu).toHaveCount(0)
       await expect(folderEntry).toHaveClass(/workspace-space-explorer__entry--selected/)
       await explorer.focus()
       await window.waitForTimeout(64)
@@ -271,7 +275,7 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       ).toHaveCount(0)
       await expect(window.locator('[data-testid="app-message"]')).toHaveCount(0)
 
-      await dragSourceEntry.click()
+      await dragSourceEntry.getByTestId('directory-entry-disclosure').click()
       const descendantFolderEntry = explorerEntry(window, spaceId, toFileUri(descendantFolderPath))
       await expect(descendantFolderEntry).toBeVisible()
 
@@ -282,7 +286,7 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
         'cannot be placed inside one of its descendants',
       )
 
-      await targetFolderEntry.click()
+      await targetFolderEntry.getByTestId('directory-entry-disclosure').click()
       const targetFolderChildEntry = explorerEntry(
         window,
         spaceId,
@@ -292,7 +296,7 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
 
       await explorer.getByRole('button', { name: 'Collapse All' }).click()
       await expect(targetFolderChildEntry).toHaveCount(0)
-      await targetFolderEntry.click()
+      await targetFolderEntry.getByTestId('directory-entry-disclosure').click()
       await expect(targetFolderChildEntry).toBeVisible()
 
       const dragSourceBox = await dragSourceEntry.boundingBox()

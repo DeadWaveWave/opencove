@@ -23,6 +23,7 @@ type SetNodes = (
 ) => void
 
 interface UseTaskCreatorParams {
+  workspaceId?: string
   contextMenu: ContextMenuState | null
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   taskTagOptions: string[]
@@ -47,6 +48,7 @@ interface UseTaskCreatorParams {
 }
 
 export function useWorkspaceCanvasTaskCreator({
+  workspaceId,
   contextMenu,
   setContextMenu,
   taskTagOptions,
@@ -109,6 +111,7 @@ export function useWorkspaceCanvasTaskCreator({
 
       if (targetSpace) {
         assignNodeToSpaceAndExpand({
+          workspaceId,
           createdNodeId: created.id,
           createdNode: created,
           targetSpaceId: targetSpace.id,
@@ -122,6 +125,7 @@ export function useWorkspaceCanvasTaskCreator({
       onRequestPersistFlush?.()
     },
     [
+      workspaceId,
       createTaskNode,
       nodesRef,
       onRequestPersistFlush,
@@ -286,6 +290,7 @@ export function useWorkspaceCanvasTaskCreator({
       }
       if (targetSpace) {
         assignNodeToSpaceAndExpand({
+          workspaceId,
           createdNodeId: created.id,
           createdNode: created,
           targetSpaceId: targetSpace.id,
@@ -439,6 +444,7 @@ export function useWorkspaceCanvasTaskCreator({
       )
     }
   }, [
+    workspaceId,
     createTaskNode,
     fallbackTaskTitle,
     nodesRef,

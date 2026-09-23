@@ -55,6 +55,9 @@ Move / resize / arrange:
 Node operations:
 
 - 在某个 Space 内创建或拖入节点时，节点归属到命中的最内层 Space。
+- 创建所有窗口节点时，以折叠图标的可见尺寸计算碰撞，不为其隐藏的展开尺寸预留空间。优先寻找目标 Space 内的位置；空间不足时允许向外放置，再扩展该 Space 和祖先边框，不能因为子 Space 当前矩形已满而拒绝创建。
+- 创建后的自动扩容同样使用可见尺寸，持久化只更新窗口位置和 Space 边框，保留折叠窗口原本的展开尺寸。
+- 子 Space 自动扩容时先推开同父级直接节点和兄弟 Space，再将更新后的内容收容到父级，逐层向上处理。兄弟 Space 的子树整体平移且只应用一次位移；不能仅按顶层 Space 分组而忽略内部区域碰撞。
 - 一个 node 最多属于一个 Space。
 - Agent、Terminal、Task run 和 file operations 从 owning Space 解析执行 scope，而不是从 active top-level Space 推断。
 
