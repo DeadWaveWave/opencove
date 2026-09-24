@@ -87,6 +87,8 @@ function isPersistedWorkspace(value: unknown): value is PersistedWorkspaceContra
         isFiniteNumber(value.viewport.zoom) &&
         value.viewport.zoom > 0)) &&
     (value.isMinimapVisible === undefined || typeof value.isMinimapVisible === 'boolean') &&
+    (value.collapsedNodeIds === undefined || isStringArray(value.collapsedNodeIds)) &&
+    (value.collapsedSpaceIds === undefined || isStringArray(value.collapsedSpaceIds)) &&
     activeSpaceId !== undefined &&
     (value.pullRequestBaseBranchOptions === undefined ||
       isStringArray(value.pullRequestBaseBranchOptions)) &&

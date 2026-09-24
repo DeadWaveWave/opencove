@@ -61,6 +61,16 @@ function normalizeStringArray(value: unknown): string[] {
   return [...new Set(normalized)].slice(0, 50)
 }
 
+function normalizeCollapseIds(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return [
+    ...new Set(value.map(item => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)),
+  ]
+}
+
 export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersistedAppState | null {
   const metaRows = db.select().from(appMeta).all()
   if (metaRows.length === 0) {
@@ -84,6 +94,12 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
   const nodeRows = db.select().from(nodes).all()
   const spaceRows = db.select().from(spaces).all()
   const spaceNodeRows = db.select().from(spaceNodes).all()
+  const collapseByWorkspace = (() => {
+    const parsed = safeJsonParse(meta.get('canvas_collapse_state') ?? '')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {}
+  })()
 
   const nodesByWorkspaceId = new Map<string, typeof nodeRows>()
   for (const node of nodeRows) {
@@ -206,6 +222,14 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
           ? workspace.activeSpaceId
           : null
 
+      const persistedCollapse = collapseByWorkspace[workspace.id]
+      const collapseState =
+        persistedCollapse &&
+        typeof persistedCollapse === 'object' &&
+        !Array.isArray(persistedCollapse)
+          ? (persistedCollapse as Record<string, unknown>)
+          : null
+
       return {
         id: workspace.id,
         name: workspace.name,
@@ -227,6 +251,12 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         spaces: workspaceSpaces,
         activeSpaceId,
         nodes: workspaceNodes,
+        ...(collapseState
+          ? {
+              collapsedNodeIds: normalizeCollapseIds(collapseState.collapsedNodeIds),
+              collapsedSpaceIds: normalizeCollapseIds(collapseState.collapsedSpaceIds),
+            }
+          : {}),
       }
     }),
     settings: settingsValue,

@@ -9,6 +9,24 @@ import {
   stripLocalViewStateFromPersistedState,
 } from './viewState'
 import { markPersistedStateAsSynced } from './write'
+import { useCanvasCollapseStore } from '../../store/useCanvasCollapseStore'
+import { canvasCollapseFromPersistedLists, EMPTY_CANVAS_COLLAPSE } from '../canvasCollapse'
+
+function hydrateCanvasCollapseState(state: PersistedAppState): void {
+  for (const workspace of state.workspaces) {
+    if (workspace.collapsedNodeIds === undefined && workspace.collapsedSpaceIds === undefined) {
+      continue
+    }
+
+    useCanvasCollapseStore
+      .getState()
+      .hydrate(
+        workspace.id,
+        canvasCollapseFromPersistedLists(workspace.collapsedNodeIds, workspace.collapsedSpaceIds) ??
+          EMPTY_CANVAS_COLLAPSE,
+      )
+  }
+}
 
 function parsePersistedStateValue(value: unknown): {
   state: PersistedAppState | null
@@ -94,6 +112,7 @@ export async function readPersistedStateWithMeta(): Promise<{
   if (primary?.state) {
     const parsed = parsePersistedStateValue(primary.state)
     if (parsed.state) {
+      hydrateCanvasCollapseState(parsed.state)
       const state = applyLocalViewStateToPersistedState(parsed.state)
       markPersistedStateAsSynced(state)
       return {
@@ -119,6 +138,10 @@ export async function readPersistedStateWithMeta(): Promise<{
   }
 
   const migratedState = stripScrollbackFromState(legacyParsed)
+  // Legacy localStorage app-state may already contain the workspace-level
+  // disclosure fields. Seed the presentation store before the first write so
+  // migrating storage does not reset compact windows to expanded.
+  hydrateCanvasCollapseState(migratedState)
   persistLocalViewStateFromAppState(migratedState)
   const migratedAppStateResult = await port.writeAppState(
     stripLocalViewStateFromPersistedState(migratedState),

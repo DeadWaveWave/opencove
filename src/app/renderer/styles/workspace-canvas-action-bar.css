@@ -1,0 +1,243 @@
+.workspace-canvas__action-bar {
+  position: absolute;
+  z-index: 24;
+  top: 50%;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 56px;
+  padding: 9px 6px 7px;
+  transform: translateY(-50%);
+  border: 1px solid color-mix(in srgb, var(--cove-canvas-control-border) 86%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--cove-popover) 82%, transparent);
+  box-shadow:
+    0 14px 36px color-mix(in srgb, var(--cove-shadow-color-panel) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--cove-text) 8%, transparent);
+  backdrop-filter: blur(18px) saturate(125%);
+  pointer-events: auto;
+  user-select: none;
+}
+
+.workspace-canvas__action-bar::before,
+.workspace-canvas__action-bar::after {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  content: '';
+  pointer-events: none;
+}
+
+.workspace-canvas__action-bar::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--cove-accent);
+  border-left: 2px solid var(--cove-accent);
+  border-top-left-radius: 5px;
+}
+
+.workspace-canvas__action-bar::after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 2px solid var(--cove-info);
+  border-bottom: 2px solid var(--cove-info);
+  border-bottom-right-radius: 5px;
+}
+
+.workspace-canvas__action-bar-tools {
+  display: grid;
+  gap: 5px;
+}
+
+.workspace-canvas__action-bar-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--cove-text) 9%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--cove-surface-strong) 48%, transparent);
+  color: var(--cove-text-muted);
+  cursor: grab;
+  transition:
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    background var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+.workspace-canvas__action-bar-button:hover,
+.workspace-canvas__action-bar-button:focus-visible {
+  border-color: color-mix(in srgb, var(--cove-accent) 68%, var(--cove-info));
+  background: color-mix(in srgb, var(--cove-accent) 15%, var(--cove-surface-strong));
+  color: var(--cove-text);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--cove-accent) 18%, transparent);
+  transform: translateX(-2px);
+  outline: none;
+}
+
+.workspace-canvas__action-bar-button:active {
+  cursor: grabbing;
+  transform: translateX(-2px) scale(0.96);
+}
+
+.workspace-canvas__action-bar-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+}
+
+.workspace-canvas__action-bar-icon > svg,
+.workspace-canvas__action-bar-icon .agent-provider-icon,
+.workspace-canvas__action-bar-icon .agent-provider-icon > :is(svg, img) {
+  width: 21px;
+  height: 21px;
+}
+
+.workspace-canvas__action-bar-icon .agent-provider-icon {
+  border: 0;
+  background: transparent;
+}
+
+.workspace-canvas__action-bar-label {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  padding: 5px 7px;
+  border: 1px solid var(--cove-menu-border);
+  border-radius: 6px;
+  background: var(--cove-menu-surface);
+  color: var(--cove-text);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(4px, -50%);
+  transition:
+    opacity var(--cove-motion-fast) var(--cove-ease-standard),
+    transform var(--cove-motion-fast) var(--cove-ease-standard);
+  white-space: nowrap;
+}
+
+.workspace-canvas__action-bar-button:hover .workspace-canvas__action-bar-label,
+.workspace-canvas__action-bar-button:focus-visible .workspace-canvas__action-bar-label {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.workspace-canvas__action-bar-footer {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  padding-top: 3px;
+  border-top: 1px solid color-mix(in srgb, var(--cove-text) 10%, transparent);
+}
+
+.workspace-canvas__action-bar-footer span {
+  width: 3px;
+  height: 3px;
+  background: var(--cove-accent);
+  opacity: 0.75;
+}
+
+.workspace-canvas__action-bar-footer span:nth-child(2) {
+  background: var(--cove-info);
+}
+
+.workspace-canvas__action-bar-footer span:nth-child(3) {
+  background: var(--cove-success);
+}
+
+.workspace-canvas__action-bar-drop-preview {
+  position: absolute;
+  z-index: 23;
+  width: 56px;
+  height: 48px;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.workspace-canvas__action-bar-drop-preview::before {
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--cove-accent) 76%, var(--cove-info));
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--cove-accent) 8%, transparent),
+    0 0 24px color-mix(in srgb, var(--cove-info) 26%, transparent);
+  content: '';
+  animation: workspace-canvas-action-bar-pulse 1.15s var(--cove-ease-standard) infinite;
+}
+
+.workspace-canvas__action-bar-drop-preview-pixel {
+  position: absolute;
+  inset: 7px;
+  border: 1px dashed color-mix(in srgb, var(--cove-info) 70%, transparent);
+}
+
+.workspace-canvas__action-bar-drop-preview-label {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  padding: 5px 7px;
+  border: 1px solid var(--cove-menu-border);
+  border-radius: 6px;
+  background: var(--cove-menu-surface);
+  color: var(--cove-text);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+@keyframes workspace-canvas-action-bar-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace-canvas__action-bar {
+    top: auto;
+    right: 50%;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+    flex-direction: row;
+    width: auto;
+    padding: 6px 8px;
+    transform: translateX(50%);
+  }
+
+  .workspace-canvas__action-bar-tools {
+    display: flex;
+  }
+
+  .workspace-canvas__action-bar-footer {
+    display: none;
+  }
+
+  .workspace-canvas__action-bar-label {
+    top: auto;
+    right: 50%;
+    bottom: calc(100% + 8px);
+    transform: translate(50%, 4px);
+  }
+
+  .workspace-canvas__action-bar-button:hover .workspace-canvas__action-bar-label,
+  .workspace-canvas__action-bar-button:focus-visible .workspace-canvas__action-bar-label {
+    transform: translate(50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-canvas__action-bar-drop-preview::before {
+    animation: none;
+  }
+}

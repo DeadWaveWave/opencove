@@ -63,6 +63,7 @@ export function useWorkspaceCanvasTaskCreator({
 }: UseTaskCreatorParams): {
   taskCreator: TaskCreatorState | null
   setTaskCreator: React.Dispatch<React.SetStateAction<TaskCreatorState | null>>
+  createTaskAtPoint: (anchor: Point) => void
   openTaskCreator: () => void
   closeTaskCreator: () => void
   generateTaskTitle: () => Promise<void>
@@ -463,6 +464,7 @@ export function useWorkspaceCanvasTaskCreator({
   return {
     taskCreator,
     setTaskCreator,
+    createTaskAtPoint: createTaskAtAnchor,
     openTaskCreator,
     closeTaskCreator,
     generateTaskTitle,

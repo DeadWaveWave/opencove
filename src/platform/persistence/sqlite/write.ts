@@ -96,6 +96,26 @@ export function writeNormalizedAppState(
     upsertMeta.run('format_version' satisfies DbAppMetaKey, String(state.formatVersion))
     upsertMeta.run('active_workspace_id' satisfies DbAppMetaKey, state.activeWorkspaceId ?? '')
     upsertMeta.run('app_state_revision' satisfies DbAppMetaKey, String(nextRevision))
+    upsertMeta.run(
+      'canvas_collapse_state' satisfies DbAppMetaKey,
+      safeJsonStringify(
+        Object.fromEntries(
+          state.workspaces
+            .filter(
+              workspace =>
+                workspace.collapsedNodeIds !== undefined ||
+                workspace.collapsedSpaceIds !== undefined,
+            )
+            .map(workspace => [
+              workspace.id,
+              {
+                collapsedNodeIds: workspace.collapsedNodeIds ?? [],
+                collapsedSpaceIds: workspace.collapsedSpaceIds ?? [],
+              },
+            ]),
+        ),
+      ),
+    )
 
     upsertSettings.run(safeJsonStringify(state.settings ?? {}))
 

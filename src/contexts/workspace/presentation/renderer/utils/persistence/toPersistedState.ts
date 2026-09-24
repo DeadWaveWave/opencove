@@ -17,6 +17,8 @@ import { normalizeProjectIconId } from '@shared/types/projectIcon'
 import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
 import { normalizeNodeWorkerBinding } from '@shared/types/nodeWorkerBinding'
 import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
+import { useCanvasCollapseStore } from '../../store/useCanvasCollapseStore'
+import { serializeCanvasCollapse } from '../canvasCollapse'
 
 export function toPersistedState(
   workspaces: WorkspaceState[],
@@ -26,103 +28,117 @@ export function toPersistedState(
   return {
     formatVersion: PERSISTED_APP_STATE_FORMAT_VERSION,
     activeWorkspaceId,
-    workspaces: workspaces.map(workspace => ({
-      id: workspace.id,
-      name: workspace.name,
-      iconId: normalizeProjectIconId(workspace.iconId),
-      path: workspace.path,
-      worktreesRoot: normalizeOptionalString(workspace.worktreesRoot) ?? '',
-      pullRequestBaseBranchOptions: normalizePullRequestBaseBranchOptions(
-        workspace.pullRequestBaseBranchOptions,
-      ),
-      environmentVariables: normalizeEnvironmentVariables(workspace.environmentVariables),
-      viewport: normalizeWorkspaceViewport(workspace.viewport),
-      isMinimapVisible:
-        typeof workspace.isMinimapVisible === 'boolean'
-          ? workspace.isMinimapVisible
-          : DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
-      spaces: workspace.spaces.map((space, index) => ({
-        id: space.id,
-        name: space.name,
-        directoryPath:
-          normalizeOptionalString(space.directoryPath) ??
-          normalizeOptionalString(workspace.path) ??
-          workspace.path,
-        targetMountId: normalizeOptionalString(space.targetMountId),
-        parentSpaceId: normalizeOptionalString(space.parentSpaceId),
-        boundary: normalizeSpaceBoundary(space.boundary),
-        sortOrder:
-          typeof space.sortOrder === 'number' && Number.isFinite(space.sortOrder)
-            ? Math.max(0, Math.floor(space.sortOrder))
-            : index,
-        pinned: space.pinned === true,
-        labelColor: normalizeLabelColor(space.labelColor),
-        nodeIds: normalizeWorkspaceSpaceNodeIds(space.nodeIds),
-        rect: normalizeWorkspaceSpaceRect(space.rect),
-      })),
-      activeSpaceId:
-        workspace.activeSpaceId &&
-        workspace.spaces.some(space => space.id === workspace.activeSpaceId && !space.parentSpaceId)
-          ? workspace.activeSpaceId
-          : null,
-      spaceArchiveRecords: Array.isArray(workspace.spaceArchiveRecords)
-        ? workspace.spaceArchiveRecords.slice(0, 50)
-        : [],
-      nodes: workspace.nodes.map(node => {
-        const sessionId =
-          normalizeOptionalString(node.data.sessionId) ??
-          (node.data.runtimeSessionBinding?.phase === 'preparing'
-            ? normalizeOptionalString(node.data.runtimeSessionBinding.sessionId)
-            : null)
+    workspaces: workspaces.map(workspace => {
+      const persistedWorkspace = {
+        id: workspace.id,
+        name: workspace.name,
+        iconId: normalizeProjectIconId(workspace.iconId),
+        path: workspace.path,
+        worktreesRoot: normalizeOptionalString(workspace.worktreesRoot) ?? '',
+        pullRequestBaseBranchOptions: normalizePullRequestBaseBranchOptions(
+          workspace.pullRequestBaseBranchOptions,
+        ),
+        environmentVariables: normalizeEnvironmentVariables(workspace.environmentVariables),
+        viewport: normalizeWorkspaceViewport(workspace.viewport),
+        isMinimapVisible:
+          typeof workspace.isMinimapVisible === 'boolean'
+            ? workspace.isMinimapVisible
+            : DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
+        spaces: workspace.spaces.map((space, index) => ({
+          id: space.id,
+          name: space.name,
+          directoryPath:
+            normalizeOptionalString(space.directoryPath) ??
+            normalizeOptionalString(workspace.path) ??
+            workspace.path,
+          targetMountId: normalizeOptionalString(space.targetMountId),
+          parentSpaceId: normalizeOptionalString(space.parentSpaceId),
+          boundary: normalizeSpaceBoundary(space.boundary),
+          sortOrder:
+            typeof space.sortOrder === 'number' && Number.isFinite(space.sortOrder)
+              ? Math.max(0, Math.floor(space.sortOrder))
+              : index,
+          pinned: space.pinned === true,
+          labelColor: normalizeLabelColor(space.labelColor),
+          nodeIds: normalizeWorkspaceSpaceNodeIds(space.nodeIds),
+          rect: normalizeWorkspaceSpaceRect(space.rect),
+        })),
+        activeSpaceId:
+          workspace.activeSpaceId &&
+          workspace.spaces.some(
+            space => space.id === workspace.activeSpaceId && !space.parentSpaceId,
+          )
+            ? workspace.activeSpaceId
+            : null,
+        spaceArchiveRecords: Array.isArray(workspace.spaceArchiveRecords)
+          ? workspace.spaceArchiveRecords.slice(0, 50)
+          : [],
+        nodes: workspace.nodes.map(node => {
+          const sessionId =
+            normalizeOptionalString(node.data.sessionId) ??
+            (node.data.runtimeSessionBinding?.phase === 'preparing'
+              ? normalizeOptionalString(node.data.runtimeSessionBinding.sessionId)
+              : null)
 
-        return {
-          id: node.id,
-          ...(sessionId ? { sessionId } : {}),
-          title: node.data.title,
-          titlePinnedByUser: node.data.titlePinnedByUser === true,
-          position: node.position,
-          width: node.data.width,
-          height: node.data.height,
-          kind: node.data.kind,
-          profileId: normalizeOptionalString(node.data.profileId),
-          runtimeKind: node.data.runtimeKind,
-          terminalGeometry: normalizeTerminalGeometry(node.data.terminalGeometry),
-          workerBinding: normalizeNodeWorkerBinding(node.data.workerBinding),
-          labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
-          sidebarSortOrder:
-            node.data.kind === 'agent'
-              ? normalizeOptionalSortOrder(node.data.sidebarSortOrder)
-              : undefined,
-          status: node.data.status,
-          startedAt: node.data.startedAt,
-          endedAt: node.data.endedAt,
-          exitCode: node.data.exitCode,
-          lastError: node.data.lastError,
-          scrollback: null,
-          executionDirectory: normalizeOptionalString(node.data.executionDirectory),
-          expectedDirectory: normalizeOptionalString(node.data.expectedDirectory),
-          terminalProviderHint: node.data.terminalProviderHint ?? null,
-          agent:
-            node.data.kind === 'terminal'
-              ? (node.data.terminalAgentBinding ?? null)
-              : node.data.agent,
-          task:
-            node.data.kind === 'note'
-              ? node.data.note
-              : node.data.kind === 'role'
-                ? (node.data.role ?? null)
-                : node.data.kind === 'image'
-                  ? node.data.image
-                  : node.data.kind === 'document'
-                    ? node.data.document
-                    : node.data.kind === 'folder'
-                      ? normalizeFolderNodeData(node.data.folder)
-                      : node.data.kind === 'website'
-                        ? node.data.website
-                        : node.data.task,
-        }
-      }),
-    })),
+          return {
+            id: node.id,
+            ...(sessionId ? { sessionId } : {}),
+            title: node.data.title,
+            titlePinnedByUser: node.data.titlePinnedByUser === true,
+            position: node.position,
+            width: node.data.width,
+            height: node.data.height,
+            kind: node.data.kind,
+            profileId: normalizeOptionalString(node.data.profileId),
+            runtimeKind: node.data.runtimeKind,
+            terminalGeometry: normalizeTerminalGeometry(node.data.terminalGeometry),
+            workerBinding: normalizeNodeWorkerBinding(node.data.workerBinding),
+            labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
+            sidebarSortOrder:
+              node.data.kind === 'agent'
+                ? normalizeOptionalSortOrder(node.data.sidebarSortOrder)
+                : undefined,
+            status: node.data.status,
+            startedAt: node.data.startedAt,
+            endedAt: node.data.endedAt,
+            exitCode: node.data.exitCode,
+            lastError: node.data.lastError,
+            scrollback: null,
+            executionDirectory: normalizeOptionalString(node.data.executionDirectory),
+            expectedDirectory: normalizeOptionalString(node.data.expectedDirectory),
+            terminalProviderHint: node.data.terminalProviderHint ?? null,
+            agent:
+              node.data.kind === 'terminal'
+                ? (node.data.terminalAgentBinding ?? null)
+                : node.data.agent,
+            task:
+              node.data.kind === 'note'
+                ? node.data.note
+                : node.data.kind === 'role'
+                  ? (node.data.role ?? null)
+                  : node.data.kind === 'image'
+                    ? node.data.image
+                    : node.data.kind === 'document'
+                      ? node.data.document
+                      : node.data.kind === 'folder'
+                        ? normalizeFolderNodeData(node.data.folder)
+                        : node.data.kind === 'website'
+                          ? node.data.website
+                          : node.data.task,
+          }
+        }),
+      }
+
+      const collapse = useCanvasCollapseStore.getState().workspaces[workspace.id]
+      if (!collapse) {
+        return persistedWorkspace
+      }
+
+      return {
+        ...persistedWorkspace,
+        ...serializeCanvasCollapse(collapse),
+      }
+    }),
     settings,
   }
 }

@@ -350,6 +350,16 @@ export interface PersistedWorkspaceContract {
   spaces?: PersistedSpaceContract[]
   activeSpaceId?: string | null
   spaceArchiveRecords?: PersistedSpaceArchiveRecord[]
+  /**
+   * Local canvas disclosure preferences. These IDs are workspace scoped so a
+   * collapsed window stays collapsed when the app is restarted. They are
+   * intentionally kept on the workspace envelope rather than node data: the
+   * compact shell is a presentation preference, not part of the node's
+   * canonical frame.
+   */
+  collapsedNodeIds?: string[]
+  /** Legacy Space disclosure IDs; migrated to collapsedNodeIds on load. */
+  collapsedSpaceIds?: string[]
 }
 
 /** Cross-process durable app-state shape specialized by the settings domain at each boundary. */

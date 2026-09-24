@@ -47,10 +47,6 @@ export function usePersistedAppState({
   const persistFlushRequestedRef = useRef(false)
   const initialHydrationWriteSkippedRef = useRef(false)
 
-  const requestPersistFlush = useCallback(() => {
-    persistFlushRequestedRef.current = true
-  }, [])
-
   const handlePersistWriteResult = useCallback(
     (result: PersistWriteResult) => {
       setPersistNotice(previous => {
@@ -91,6 +87,21 @@ export function usePersistedAppState({
     },
     [setPersistNotice, t],
   )
+
+  const requestPersistFlush = useCallback(() => {
+    persistFlushRequestedRef.current = true
+
+    // Most callers also update the app-state object, which naturally reruns
+    // the persistence effect below. Canvas disclosure state lives in a
+    // presentation store, though, so collapsing a node may not change that
+    // object at all. Schedule a write here as well so the preference is
+    // durable even when it is the only change before the app closes.
+    if (isHydrated) {
+      schedulePersistedStateWrite(producePersistedState, {
+        onResult: handlePersistWriteResult,
+      })
+    }
+  }, [handlePersistWriteResult, isHydrated, producePersistedState])
 
   useEffect(() => {
     if (window.opencoveApi?.meta?.isTest) {

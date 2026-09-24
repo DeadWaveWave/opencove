@@ -4,9 +4,13 @@ import type { TerminalNodeData, WorkspaceSpaceState } from '../types'
 import {
   EMPTY_CANVAS_COLLAPSE,
   normalizeCanvasCollapse,
+  canvasCollapseFromPersistedLists,
+  normalizeCollapsedIdList,
   projectCollapsedNodes,
   revealCollapsedNode,
   collectSpaceNodeIds,
+  serializeCanvasCollapse,
+  type CanvasCollapseState,
 } from './canvasCollapse'
 import { planCollapsedArrangement, restoreCollapsedArrangement } from './canvasCollapseArrange'
 
@@ -65,6 +69,22 @@ describe('canvas collapse presentation boundary', () => {
         collapsedSpaceIds: [],
       }),
     ).toEqual({ collapsedNodeIds: { a: true }, collapsedSpaceIds: {} })
+  })
+  it('round-trips compact IDs through the durable workspace envelope', () => {
+    const state: CanvasCollapseState = {
+      collapsedNodeIds: { agent: true, terminal: true },
+      collapsedSpaceIds: { legacySpace: true },
+    }
+    const persisted = serializeCanvasCollapse(state)
+    expect(persisted).toEqual({
+      collapsedNodeIds: ['agent', 'terminal'],
+      collapsedSpaceIds: ['legacySpace'],
+    })
+    expect(
+      canvasCollapseFromPersistedLists(persisted.collapsedNodeIds, persisted.collapsedSpaceIds),
+    ).toEqual(state)
+    expect(normalizeCollapsedIdList([' agent ', 'agent', '', 4, null])).toEqual(['agent'])
+    expect(canvasCollapseFromPersistedLists([], [])).toBeNull()
   })
   it('keeps every runtime mounted and leaves canonical dimensions and session identity intact', () => {
     const nodes = [node('a'), node('b', 'agent'), node('c', 'document')]

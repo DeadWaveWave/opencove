@@ -33,6 +33,7 @@ import type {
   WorkspaceCanvasProps,
 } from './types'
 import type { SpaceExplorerClipboardItem } from './view/WorkspaceSpaceExplorerOverlay.operations'
+import type { WorkspaceCanvasActionKind } from './view/WorkspaceCanvasActionBar'
 
 export type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -53,6 +54,13 @@ export interface WorkspaceCanvasViewProps {
   handleCanvasPaste?: React.ClipboardEventHandler<HTMLDivElement>
   handleCanvasDragOver?: React.DragEventHandler<HTMLDivElement>
   handleCanvasDrop?: React.DragEventHandler<HTMLDivElement>
+  createNodeAtViewportCenter: (kind: WorkspaceCanvasActionKind) => void | Promise<void>
+  createNodeAtPoint: (
+    kind: WorkspaceCanvasActionKind,
+    point: { x: number; y: number },
+  ) => void | Promise<void>
+  clearActionBarTransientUi: () => void
+  resolveDropTargetLabel: (point: { x: number; y: number }) => string | null
   nodes: Node<TerminalNodeData>[]
   edges: Edge[]
   nodeTypes: NodeTypes

@@ -26,6 +26,7 @@ import { ensurePersistedRoleData } from './ensureRoleNodeData'
 import { ensurePersistedSpaceArchiveRecord } from './ensureSpaceArchiveRecord'
 import { normalizeWebsiteNodeFrame } from '../websiteNodeData'
 import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
+import { normalizeCollapsedIdList } from '../canvasCollapse'
 import { resolveFileUriName } from '@shared/utils/fileUriScope'
 import { ensurePersistedDocumentData } from './ensureDocumentNodeData'
 import { isTerminalAgentBinding } from '../terminalAgentOverlay'
@@ -428,6 +429,8 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
   const spaces = record.spaces
   const activeSpaceId = record.activeSpaceId
   const spaceArchiveRecords = record.spaceArchiveRecords
+  const hasCollapseState =
+    Array.isArray(record.collapsedNodeIds) || Array.isArray(record.collapsedSpaceIds)
 
   if (typeof id !== 'string' || typeof name !== 'string' || typeof path !== 'string') {
     return null
@@ -480,5 +483,11 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
     spaces: sanitizedSpaces,
     activeSpaceId: resolvedActiveSpaceId,
     spaceArchiveRecords: normalizedSpaceArchiveRecords,
+    ...(hasCollapseState
+      ? {
+          collapsedNodeIds: normalizeCollapsedIdList(record.collapsedNodeIds),
+          collapsedSpaceIds: normalizeCollapsedIdList(record.collapsedSpaceIds),
+        }
+      : {}),
   }
 }

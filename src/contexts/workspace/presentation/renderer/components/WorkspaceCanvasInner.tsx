@@ -6,6 +6,7 @@ import type { WorkspaceCanvasInnerProps } from './workspaceCanvas/types'
 import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
 import { WorkspaceCanvasProviders } from './workspaceCanvas/WorkspaceCanvasProviders'
 import { useCanvasSpaceExplorer } from './workspaceCanvas/hooks/useCanvasSpaceExplorer'
+import { useWorkspaceCanvasActionBar } from './workspaceCanvas/hooks/useCanvasActionBarActions'
 export function WorkspaceCanvasInner({
   workspaceId,
   onShowMessage,
@@ -218,6 +219,9 @@ export function WorkspaceCanvasInner({
     handleCanvasDoubleClickCapture,
     handlePaneClick,
     createTerminalNode,
+    createTerminalNodeAtFlowPoint,
+    createNoteNodeAtFlowPoint,
+    createWebsiteNodeAtFlowPoint,
     createNoteNodeFromContextMenu,
     createWebsiteNodeFromContextMenu,
     runQuickCommand,
@@ -262,6 +266,20 @@ export function WorkspaceCanvasInner({
     createImageNode: nodeStore.createImageNode,
     createWebsiteNode: nodeStore.createWebsiteNode,
   })
+  const actionBarActions = useWorkspaceCanvasActionBar({
+    canvasRef: canvasState.canvasRef,
+    reactFlow,
+    createAgentAtPoint: agentSupport.launchAgentAtFlowPosition,
+    createTerminalAtPoint: createTerminalNodeAtFlowPoint,
+    createNoteAtPoint: createNoteNodeAtFlowPoint,
+    createTaskAtPoint: taskUi.createTaskAtPoint,
+    createWebsiteAtPoint: createWebsiteNodeAtFlowPoint,
+    createSpaceAtPoint: spacesApi.createEmptySpaceAtPoint,
+    setContextMenu: canvasState.setContextMenu,
+    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
+    cancelSpaceRename: spacesApi.cancelSpaceRename,
+    spacesRef: canvasState.spacesRef,
+  })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
     closeNode: taskUi.requestNodeClose,
     enabled: shortcutsEnabled,
@@ -294,44 +312,20 @@ export function WorkspaceCanvasInner({
     onShowMessage,
     terminalDisplayMetrics,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasRuntimeBindings({
-    setNodes: nodeStore.setNodes,
-    onRequestPersistFlush,
+  const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasRuntimeIntegrations({
     actionRefs,
-    clearNodeSelection,
-    closeNode: taskUi.requestNodeClose,
-    resizeNode: nodeStore.resizeNode,
-    noteMutations: nodeStore,
-    updateWebsiteUrl: nodeStore.updateWebsiteUrl,
-    setWebsitePinned: nodeStore.setWebsitePinned,
-    setWebsiteSession: nodeStore.setWebsiteSession,
-    setWebsiteMode: nodeStore.setWebsiteMode,
-    setWebsiteFullscreen: nodeStore.setWebsiteFullscreen,
-    updateNodeScrollback: nodeStore.updateNodeScrollback,
-    updateTerminalTitle: nodeStore.updateTerminalTitle,
-    clearTerminalAgentOverlay: nodeStore.clearTerminalAgentOverlay,
-    renameTerminalTitle: nodeStore.renameTerminalTitle,
-    reloadAgentSession: agentSupport.reloadAgentNode,
-    listAgentSessions: agentSupport.listAgentSessionsForNode,
-    switchAgentSession: agentSupport.switchAgentNodeSession,
-    focusNodeOnClick: agentSettings.focusNodeOnClick,
-    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
-    nodesRef: nodeStore.nodesRef,
+    nodeStore,
+    taskUi,
+    agentSupport,
+    agentSettings,
     reactFlow,
+    clearNodeSelection,
+    onRequestPersistFlush,
     onShowMessage,
-  })
-  const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasApplyNodeChanges({
-    nodesRef: nodeStore.nodesRef,
-    onNodesChange: nodePublishers.publishLiveNodesChange,
-    onNodesCommit: nodePublishers.commitNodesChange,
-    onSelectedNodeIdsChange: canvasState.syncSelectedNodeIds,
-    clearAgentLaunchToken: nodeStore.clearAgentLaunchToken,
-    normalizePosition: nodeStore.normalizePosition,
-    applyPendingScrollbacks: nodeStore.applyPendingScrollbacks,
-    isNodeDraggingRef: nodeStore.isNodeDraggingRef,
-    dragSelectedSpaceIdsRef: canvasState.dragSelectedSpaceIdsRef,
-    exclusiveNodeDragAnchorIdRef,
+    canvasState,
+    nodePublishers,
     nodeDragSession,
+    exclusiveNodeDragAnchorIdRef,
   })
   const {
     taskTitleProviderLabel,
@@ -399,6 +393,7 @@ export function WorkspaceCanvasInner({
         handleCanvasPaste={handleCanvasPaste}
         handleCanvasDragOver={handleCanvasDragOver}
         handleCanvasDrop={handleCanvasDrop}
+        {...actionBarActions}
         nodes={canvasState.flowNodes}
         edges={taskAgentEdges}
         nodeTypes={nodeTypes}

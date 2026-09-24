@@ -150,6 +150,8 @@ export type NormalizedPersistedWorkspace = {
   spaces: NormalizedPersistedSpace[]
   activeSpaceId: string | null
   nodes: NormalizedPersistedNode[]
+  collapsedNodeIds?: string[]
+  collapsedSpaceIds?: string[]
 }
 
 export type NormalizedPersistedAppState = {
@@ -216,6 +218,16 @@ function normalizeStringArray(value: unknown): string[] {
     .filter(Boolean)
 
   return [...new Set(normalized)].slice(0, 50)
+}
+
+function normalizeCollapseIds(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return [
+    ...new Set(value.map(item => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)),
+  ]
 }
 
 function normalizeEnvironmentVariables(value: unknown): Record<string, string> {
@@ -404,6 +416,12 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
             : null
           : null,
       nodes: normalizedNodes,
+      ...(Array.isArray(workspace.collapsedNodeIds) || Array.isArray(workspace.collapsedSpaceIds)
+        ? {
+            collapsedNodeIds: normalizeCollapseIds(workspace.collapsedNodeIds),
+            collapsedSpaceIds: normalizeCollapseIds(workspace.collapsedSpaceIds),
+          }
+        : {}),
     })
   }
 

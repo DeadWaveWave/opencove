@@ -25,15 +25,36 @@ function readWorkspaces(): Record<string, CanvasCollapseState> {
 
 interface CanvasCollapseStore {
   workspaces: Record<string, CanvasCollapseState>
+  /** Apply a canonical persisted snapshot when it is available on startup. */
+  hydrate: (workspaceId: string, state: CanvasCollapseState) => void
   update: (
     workspaceId: string,
     updater: (state: CanvasCollapseState) => CanvasCollapseState,
   ) => void
 }
 
-/** Client-local view preference; deliberately excluded from shared runtime/workspace DTOs. */
+function persistWorkspaces(workspaces: Record<string, CanvasCollapseState>): void {
+  try {
+    getStorage()?.setItem(STORAGE_KEY, JSON.stringify(workspaces))
+  } catch {
+    // A denied/full local store must not prevent an in-session view change.
+  }
+}
+
+/** Workspace-scoped disclosure preference with a local cache for responsive updates. */
 export const useCanvasCollapseStore = create<CanvasCollapseStore>(set => ({
   workspaces: readWorkspaces(),
+  hydrate: (workspaceId, next) =>
+    set(state => {
+      const previous = state.workspaces[workspaceId]
+      if (previous && JSON.stringify(previous) === JSON.stringify(next)) {
+        return state
+      }
+
+      const workspaces = { ...state.workspaces, [workspaceId]: next }
+      persistWorkspaces(workspaces)
+      return { workspaces }
+    }),
   update: (workspaceId, updater) =>
     set(state => {
       const previous = state.workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE
@@ -42,11 +63,7 @@ export const useCanvasCollapseStore = create<CanvasCollapseStore>(set => ({
         return state
       }
       const workspaces = { ...state.workspaces, [workspaceId]: next }
-      try {
-        getStorage()?.setItem(STORAGE_KEY, JSON.stringify(workspaces))
-      } catch {
-        // A denied/full local store must not prevent an in-session view change.
-      }
+      persistWorkspaces(workspaces)
       return { workspaces }
     }),
 }))

@@ -19,6 +19,7 @@
 @import './styles/primary-sidebar-layout.css';
 @import './styles/workspace-agent-item.css';
 @import './styles/workspace-canvas.css';
+@import './styles/workspace-canvas-action-bar.css';
 @import './styles/workspace-pixel-layer.css';
 @import './styles/workspace-overlays.css';
 @import './styles/workspace-overlays.spaces.explorer.preview.css';

@@ -56,6 +56,7 @@ export function useWorkspaceCanvasTaskWindows({
   const {
     taskCreator,
     setTaskCreator,
+    createTaskAtPoint,
     openTaskCreator,
     closeTaskCreator,
     generateTaskTitle,
@@ -97,6 +98,7 @@ export function useWorkspaceCanvasTaskWindows({
   return {
     taskCreator,
     setTaskCreator,
+    createTaskAtPoint,
     openTaskCreator,
     closeTaskCreator,
     generateTaskTitle,

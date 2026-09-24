@@ -22,6 +22,49 @@ export function normalizeCollapsedIds(value: unknown): CollapsedIds {
   )
 }
 
+/** Convert the in-memory disclosure map to the durable workspace envelope. */
+export function serializeCanvasCollapse(state: CanvasCollapseState): {
+  collapsedNodeIds: string[]
+  collapsedSpaceIds: string[]
+} {
+  return {
+    collapsedNodeIds: Object.keys(state.collapsedNodeIds),
+    collapsedSpaceIds: Object.keys(state.collapsedSpaceIds),
+  }
+}
+
+/** Normalize a persisted list while rejecting empty/duplicate IDs. */
+export function normalizeCollapsedIdList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return [
+    ...new Set(
+      value
+        .filter((id): id is string => typeof id === 'string')
+        .map(id => id.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
+export function canvasCollapseFromPersistedLists(
+  collapsedNodeIds: unknown,
+  collapsedSpaceIds: unknown,
+): CanvasCollapseState | null {
+  const nodeIds = normalizeCollapsedIdList(collapsedNodeIds)
+  const spaceIds = normalizeCollapsedIdList(collapsedSpaceIds)
+  if (nodeIds.length === 0 && spaceIds.length === 0) {
+    return null
+  }
+
+  return {
+    collapsedNodeIds: Object.fromEntries(nodeIds.map(id => [id, true as const])),
+    collapsedSpaceIds: Object.fromEntries(spaceIds.map(id => [id, true as const])),
+  }
+}
+
 export function normalizeCanvasCollapse(value: unknown): CanvasCollapseState {
   const record = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
   return {

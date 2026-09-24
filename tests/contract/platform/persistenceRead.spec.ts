@@ -10,7 +10,10 @@ import {
   workspaces,
 } from '../../../src/platform/persistence/sqlite/schema'
 
-type MetaRow = { key: 'format_version' | 'active_workspace_id'; value: string }
+type MetaRow = {
+  key: 'format_version' | 'active_workspace_id' | 'canvas_collapse_state'
+  value: string
+}
 type SettingsRow = { id: number; value: string }
 type WorkspaceRow = {
   id: string
@@ -236,6 +239,46 @@ describe('sqlite persistence read', () => {
     expect(appState?.workspaces[0]?.nodes[0]?.workerBinding).toEqual({
       endpointId: 'remote-1',
       mountId: 'mount-1',
+    })
+  })
+
+  it('restores compact disclosure IDs from the durable canvas metadata', () => {
+    const db = createReadDb({
+      metaRows: [
+        { key: 'format_version', value: '1' },
+        { key: 'active_workspace_id', value: 'workspace-1' },
+        {
+          key: 'canvas_collapse_state',
+          value: JSON.stringify({
+            'workspace-1': {
+              collapsedNodeIds: ['node-1'],
+              collapsedSpaceIds: [],
+            },
+          }),
+        },
+      ],
+      settingsRow: { id: 1, value: '{}' },
+      workspaceRows: [
+        {
+          id: 'workspace-1',
+          name: 'Workspace 1',
+          path: '/tmp/workspace-1',
+          worktreesRoot: '/tmp/worktrees',
+          pullRequestBaseBranchOptionsJson: '[]',
+          spaceArchiveRecordsJson: '[]',
+          viewportX: 0,
+          viewportY: 0,
+          viewportZoom: 1,
+          isMinimapVisible: true,
+          activeSpaceId: null,
+          sortOrder: 0,
+        },
+      ],
+    })
+
+    expect(readAppStateFromDb(db)?.workspaces[0]).toMatchObject({
+      collapsedNodeIds: ['node-1'],
+      collapsedSpaceIds: [],
     })
   })
 })

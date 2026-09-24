@@ -8,7 +8,11 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 
-export type DbAppMetaKey = 'format_version' | 'active_workspace_id' | 'app_state_revision'
+export type DbAppMetaKey =
+  | 'format_version'
+  | 'active_workspace_id'
+  | 'app_state_revision'
+  | 'canvas_collapse_state'
 
 export const appMeta = sqliteTable('app_meta', {
   key: text('key').$type<DbAppMetaKey>().primaryKey(),

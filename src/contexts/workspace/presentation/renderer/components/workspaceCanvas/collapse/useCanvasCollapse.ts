@@ -27,6 +27,12 @@ import type { WorkspaceCollapseValue } from './WorkspaceCollapseContext'
 import { planNodeExpansion } from './planNodeExpansion'
 import { useCollapseLayoutMotion } from './useCollapseLayoutMotion'
 
+function collapseMapsEqual(left: Record<string, true>, right: Record<string, true>): boolean {
+  const leftIds = Object.keys(left)
+  const rightIds = Object.keys(right)
+  return leftIds.length === rightIds.length && leftIds.every(id => right[id] === true)
+}
+
 interface Params {
   workspaceId: string
   canvasRef?: RefObject<HTMLElement | null>
@@ -114,9 +120,14 @@ export function useCanvasCollapse({
         setNodes(() => plan.nodes, { syncLayout: false })
         spacesRef.current = plan.spaces
         onSpacesChange(plan.spaces)
-        onRequestPersistFlush?.()
       }
       update(workspaceId, () => plan.state)
+      if (
+        !collapseMapsEqual(current.collapsedNodeIds, plan.state.collapsedNodeIds) ||
+        !collapseMapsEqual(current.collapsedSpaceIds, plan.state.collapsedSpaceIds)
+      ) {
+        onRequestPersistFlush?.()
+      }
       return plan.nodes.find(node => node.id === id)
     },
     [
@@ -148,8 +159,21 @@ export function useCanvasCollapse({
         ...current,
         collapsedNodeIds: setCollapsed(current.collapsedNodeIds, id, !current.collapsedNodeIds[id]),
       }))
+      // Collapse is a durable workspace preference as well as a local view
+      // update. Schedule the canonical app-state write so the disclosure
+      // survives an app restart even when the user collapses a node and quits
+      // before another workspace mutation occurs.
+      onRequestPersistFlush?.()
     },
-    [nodesRef, update, workspaceId, expandNode, reactFlow, focusNodeTargetZoom],
+    [
+      nodesRef,
+      update,
+      workspaceId,
+      expandNode,
+      reactFlow,
+      focusNodeTargetZoom,
+      onRequestPersistFlush,
+    ],
   )
   const revealNode = useCallback(
     (id: string) => {

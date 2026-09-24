@@ -46,7 +46,10 @@ export function useWorkspaceCanvasTerminalCreation({
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
-}): () => Promise<void> {
+}): {
+  createTerminalNode: () => Promise<void>
+  createTerminalNodeAtFlowPoint: (anchor: Point) => Promise<void>
+} {
   const createTerminalAtFlowPoint = useCallback(
     async (anchor: Point) => {
       setContextMenu(null)
@@ -96,11 +99,16 @@ export function useWorkspaceCanvasTerminalCreation({
     }
   }, [createTerminalAtFlowPoint])
 
-  return useCallback(async () => {
+  const createTerminalNode = useCallback(async () => {
     if (!contextMenu || contextMenu.kind !== 'pane') {
       return
     }
 
     await createTerminalAtFlowPoint(resolvePaneNodeCreationAnchor(contextMenu))
   }, [contextMenu, createTerminalAtFlowPoint])
+
+  return {
+    createTerminalNode,
+    createTerminalNodeAtFlowPoint: createTerminalAtFlowPoint,
+  }
 }

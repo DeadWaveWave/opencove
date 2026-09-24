@@ -14,10 +14,8 @@ import {
   shouldFocusNodeFromClickTarget,
 } from './useInteractions.eventTargets'
 import { resolveMouseClientPoint } from './useInteractions.clientPoint'
-import {
-  createNoteNodeAtFlowPosition,
-  createNoteNodeFromPaneContextMenu,
-} from './useInteractions.paneNodeCreation'
+import { createNoteNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
+import { useWorkspaceCanvasFlowNodeCreation } from './useInteractions.flowNodeCreation'
 import { resolvePointerCreationAnchor } from './useInteractions.creationAnchor'
 import { useIgnoredPaneClick } from './useIgnoredPaneClick'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
@@ -366,7 +364,7 @@ export function useWorkspaceCanvasInteractions({
     },
     [cancelSpaceRename, clearNodeSelection, ignoreNextPaneClickRef, setEmptySelectionPrompt],
   )
-  const createTerminalNode = useWorkspaceCanvasTerminalCreation({
+  const { createTerminalNode, createTerminalNodeAtFlowPoint } = useWorkspaceCanvasTerminalCreation({
     contextMenu,
     setContextMenu,
     workspaceId,
@@ -383,29 +381,23 @@ export function useWorkspaceCanvasInteractions({
     onSpacesChange,
     onShowMessage,
   })
-  const createNoteNodeFromContextMenu = useCallback(() => {
-    createNoteNodeFromPaneContextMenu({
+  const { createNoteNodeAtFlowPoint, createWebsiteNodeAtFlowPoint, createNoteNodeFromContextMenu } =
+    useWorkspaceCanvasFlowNodeCreation({
       workspaceId,
       contextMenu,
-      createNoteNode,
+      setContextMenu,
+      setEmptySelectionPrompt,
+      cancelSpaceRename,
       standardWindowSizeBucket,
+      createNoteNode,
+      createWebsiteNode,
+      browserDefaultMode,
+      websiteWindowsEnabled,
       spacesRef,
       nodesRef,
       setNodes,
       onSpacesChange,
-      setContextMenu,
     })
-  }, [
-    workspaceId,
-    contextMenu,
-    createNoteNode,
-    nodesRef,
-    onSpacesChange,
-    setContextMenu,
-    setNodes,
-    spacesRef,
-    standardWindowSizeBucket,
-  ])
   const createWebsiteNodeFromContextMenu = useWebsiteNodeContextMenuCreation({
     workspaceId,
     browserDefaultMode,
@@ -482,6 +474,9 @@ export function useWorkspaceCanvasInteractions({
     handleCanvasPointerUpCapture: handleCanvasPointerUpCaptureWithDragGuard,
     handlePaneClick,
     createTerminalNode,
+    createTerminalNodeAtFlowPoint,
+    createNoteNodeAtFlowPoint,
+    createWebsiteNodeAtFlowPoint,
     createNoteNodeFromContextMenu,
     createWebsiteNodeFromContextMenu,
     runQuickCommand,
