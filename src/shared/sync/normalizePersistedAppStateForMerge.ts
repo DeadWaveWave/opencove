@@ -136,6 +136,15 @@ function normalizeArchiveNodeForMerge(
       }
     case 'note':
       return { ...node, ...base }
+    case 'plugin':
+      return {
+        ...node,
+        ...base,
+        pluginId: node.pluginId,
+        schemaVersion: node.schemaVersion ?? 1,
+        repoPath: node.repoPath ?? '',
+        mountId: node.mountId ?? null,
+      }
   }
 }
 

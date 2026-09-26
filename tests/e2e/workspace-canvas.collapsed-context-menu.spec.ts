@@ -45,8 +45,18 @@ test('compact windows retain the expanded selection menu and close through their
       await expect(compact).toBeVisible()
       await expect(node).toHaveClass(/selected/)
       const actions = await menu.locator(':scope > button').allTextContents()
-      expect(actions.filter(action => action !== 'Close' && action !== 'Convert to Task')).toEqual(
-        expandedActions,
+      expect(
+        actions.filter(
+          action =>
+            action !== 'Close' &&
+            action !== 'Convert to Task' &&
+            action !== 'Copy Relative Path' &&
+            action !== 'Copy Absolute Path',
+        ),
+      ).toEqual(
+        expandedActions.filter(
+          action => action !== 'Copy Relative Path' && action !== 'Copy Absolute Path',
+        ),
       )
       await expect(menu.locator(':scope > button').last()).toHaveText('Close')
       await window.keyboard.press('Escape')

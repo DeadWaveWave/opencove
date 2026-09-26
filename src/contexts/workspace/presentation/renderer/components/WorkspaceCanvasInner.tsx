@@ -54,6 +54,7 @@ export function WorkspaceCanvasInner({
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
   const nodeStore = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     workspaceId,
+    workspacePath,
     nodes: canvasState.flowNodes,
     spacesRef: canvasState.spacesRef,
     onNodesChange: nodePublishers.commitNodesChange,
@@ -275,10 +276,18 @@ export function WorkspaceCanvasInner({
     createTaskAtPoint: taskUi.createTaskAtPoint,
     createWebsiteAtPoint: createWebsiteNodeAtFlowPoint,
     createSpaceAtPoint: spacesApi.createEmptySpaceAtPoint,
+    createPluginAtPoint: anchor => {
+      nodeStore.createPluginNode(anchor)
+    },
     setContextMenu: canvasState.setContextMenu,
     setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     spacesRef: canvasState.spacesRef,
+  })
+  const createPluginNodeFromContextMenu = workspaceCanvasHooks.useWorkspaceCanvasPluginEntry({
+    contextMenu: canvasState.contextMenu,
+    setContextMenu: canvasState.setContextMenu,
+    createPluginNode: nodeStore.createPluginNode,
   })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
     closeNode: taskUi.requestNodeClose,
@@ -350,18 +359,8 @@ export function WorkspaceCanvasInner({
     handleNodeContextMenu,
     handleSelectionContextMenu,
   })
-  const spaceExplorer = useCanvasSpaceExplorer({
-    workspaceId,
-    canvasState,
-    nodeStore,
-    spaces,
-    onSpacesChange,
-    onRequestPersistFlush,
-    reactFlow,
-    nodeDragSession,
-    finalizeDraggedNodeDrop,
-    agentSettings,
-  })
+  // prettier-ignore
+  const spaceExplorer = useCanvasSpaceExplorer({ workspaceId, canvasState, nodeStore, spaces, onSpacesChange, onRequestPersistFlush, reactFlow, nodeDragSession, finalizeDraggedNodeDrop, agentSettings })
   return (
     <WorkspaceCanvasProviders
       collapse={collapse}
@@ -437,6 +436,7 @@ export function WorkspaceCanvasInner({
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
+        createPluginNodeFromContextMenu={createPluginNodeFromContextMenu}
         arrangeAll={arrangeAll}
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}

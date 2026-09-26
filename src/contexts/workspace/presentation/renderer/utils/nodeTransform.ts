@@ -3,7 +3,6 @@ import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
 import { resolveFileUriName } from '@shared/utils/fileUriScope'
 import type {
   DocumentNodeData,
-  FolderNodeData,
   AgentNodeData,
   ImageNodeData,
   NoteNodeData,
@@ -12,89 +11,34 @@ import type {
   TaskNodeData,
   TerminalNodeData,
   WebsiteNodeData,
+  PluginNodeData,
 } from '../types'
 
-function isTaskNodeData(
-  value:
-    | TaskNodeData
-    | NoteNodeData
-    | RoleNodeData
-    | ImageNodeData
-    | DocumentNodeData
-    | FolderNodeData
-    | WebsiteNodeData
-    | null,
-): value is TaskNodeData {
+function isTaskNodeData(value: unknown): value is TaskNodeData {
   return value !== null && typeof value === 'object' && 'requirement' in value
 }
 
-function isNoteNodeData(
-  value:
-    | TaskNodeData
-    | NoteNodeData
-    | RoleNodeData
-    | ImageNodeData
-    | DocumentNodeData
-    | FolderNodeData
-    | WebsiteNodeData
-    | null,
-): value is NoteNodeData {
+function isNoteNodeData(value: unknown): value is NoteNodeData {
   return value !== null && typeof value === 'object' && 'text' in value
 }
 
-function isImageNodeData(
-  value:
-    | TaskNodeData
-    | NoteNodeData
-    | RoleNodeData
-    | ImageNodeData
-    | DocumentNodeData
-    | FolderNodeData
-    | WebsiteNodeData
-    | null,
-): value is ImageNodeData {
+function isImageNodeData(value: unknown): value is ImageNodeData {
   return value !== null && typeof value === 'object' && 'assetId' in value && 'mimeType' in value
 }
 
-function isDocumentNodeData(
-  value:
-    | TaskNodeData
-    | NoteNodeData
-    | RoleNodeData
-    | ImageNodeData
-    | DocumentNodeData
-    | FolderNodeData
-    | WebsiteNodeData
-    | null,
-): value is DocumentNodeData {
+function isDocumentNodeData(value: unknown): value is DocumentNodeData {
   return value !== null && typeof value === 'object' && 'uri' in value
 }
 
-function isWebsiteNodeData(
-  value:
-    | TaskNodeData
-    | NoteNodeData
-    | RoleNodeData
-    | ImageNodeData
-    | DocumentNodeData
-    | FolderNodeData
-    | WebsiteNodeData
-    | null,
-): value is WebsiteNodeData {
+function isWebsiteNodeData(value: unknown): value is WebsiteNodeData {
   return value !== null && typeof value === 'object' && 'url' in value && 'sessionMode' in value
 }
 
-function isRoleNodeData(
-  value:
-    | TaskNodeData
-    | NoteNodeData
-    | RoleNodeData
-    | ImageNodeData
-    | DocumentNodeData
-    | FolderNodeData
-    | WebsiteNodeData
-    | null,
-): value is RoleNodeData {
+function isPluginNodeData(value: unknown): value is PluginNodeData {
+  return value !== null && typeof value === 'object' && 'pluginId' in value
+}
+
+function isRoleNodeData(value: unknown): value is RoleNodeData {
   return (
     value !== null && typeof value === 'object' && 'roleId' in value && 'promptTemplate' in value
   )
@@ -144,6 +88,12 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
     const folder = node.kind === 'folder' ? normalizeFolderNodeData(node.task) : null
     const website: WebsiteNodeData | null =
       node.kind === 'website' ? (isWebsiteNodeData(node.task) ? node.task : null) : null
+    const plugin: PluginNodeData | null =
+      node.kind === 'plugin' && isPluginNodeData(node.task)
+        ? node.task
+        : node.kind === 'plugin'
+          ? { pluginId: 'git-board', schemaVersion: 1, repoPath: '', mountId: null, graphLimit: 30 }
+          : null
 
     const runtimeNode: Node<TerminalNodeData> = {
       id: node.id,
@@ -162,7 +112,9 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
                     ? 'folderNode'
                     : node.kind === 'website'
                       ? 'websiteNode'
-                      : 'terminalNode',
+                      : node.kind === 'plugin'
+                        ? 'pluginNode'
+                        : 'terminalNode',
       position: node.position,
       initialWidth: node.width,
       initialHeight: node.height,
@@ -206,6 +158,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         image,
         document,
         folder,
+        plugin,
         website,
       },
       draggable: true,

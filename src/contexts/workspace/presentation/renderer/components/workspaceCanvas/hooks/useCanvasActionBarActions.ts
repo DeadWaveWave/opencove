@@ -13,6 +13,7 @@ export function useWorkspaceCanvasActionBarActions({
   createTaskAtPoint,
   createWebsiteAtPoint,
   createSpaceAtPoint,
+  createPluginAtPoint,
   clearTransientUi,
   spacesRef,
 }: {
@@ -24,6 +25,7 @@ export function useWorkspaceCanvasActionBarActions({
   createTaskAtPoint: (anchor: Point) => void | Promise<void>
   createWebsiteAtPoint: (anchor: Point) => void | Promise<void>
   createSpaceAtPoint: (anchor: Point) => void | Promise<void>
+  createPluginAtPoint: (anchor: Point) => void | Promise<void>
   clearTransientUi: () => void
   spacesRef: React.MutableRefObject<import('../../../types').WorkspaceSpaceState[]>
 }): {
@@ -50,13 +52,17 @@ export function useWorkspaceCanvasActionBarActions({
       if (kind === 'website') {
         return createWebsiteAtPoint(anchor)
       }
-      return createSpaceAtPoint(anchor)
+      if (kind === 'space') {
+        return createSpaceAtPoint(anchor)
+      }
+      return createPluginAtPoint(anchor)
     },
     [
       clearTransientUi,
       createAgentAtPoint,
       createNoteAtPoint,
       createSpaceAtPoint,
+      createPluginAtPoint,
       createTaskAtPoint,
       createTerminalAtPoint,
       createWebsiteAtPoint,
@@ -98,6 +104,7 @@ export function useWorkspaceCanvasActionBar({
   createTaskAtPoint,
   createWebsiteAtPoint,
   createSpaceAtPoint,
+  createPluginAtPoint,
   setContextMenu,
   setEmptySelectionPrompt,
   cancelSpaceRename,
@@ -123,6 +130,7 @@ export function useWorkspaceCanvasActionBar({
       createTaskAtPoint,
       createWebsiteAtPoint,
       createSpaceAtPoint,
+      createPluginAtPoint,
       clearTransientUi,
       spacesRef,
     }),

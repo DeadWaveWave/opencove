@@ -23,6 +23,7 @@ export const PERSISTED_WORKSPACE_NODE_KINDS = [
   'document',
   'folder',
   'website',
+  'plugin',
 ] as const
 
 export type PersistedWorkspaceNodeKind = (typeof PERSISTED_WORKSPACE_NODE_KINDS)[number]
@@ -169,6 +170,14 @@ export interface PersistedWebsiteNodeData {
   previousFrame?: PersistedNodeFrame | null
 }
 
+export interface PersistedPluginNodeData {
+  pluginId: string
+  schemaVersion: number
+  repoPath?: string
+  mountId?: string | null
+  graphLimit?: number
+}
+
 export type PersistedNodePayload =
   | PersistedTaskNodeData
   | PersistedNoteNodeData
@@ -177,6 +186,7 @@ export type PersistedNodePayload =
   | PersistedDocumentNodeData
   | PersistedFolderNodeData
   | PersistedWebsiteNodeData
+  | PersistedPluginNodeData
 
 export interface PersistedNodeContract {
   id: string
@@ -330,11 +340,20 @@ export interface PersistedSpaceArchiveNoteSnapshot extends PersistedSpaceArchive
   text: string
 }
 
+export interface PersistedSpaceArchivePluginSnapshot extends PersistedSpaceArchiveNodeSnapshotBase {
+  kind: 'plugin'
+  pluginId: string
+  schemaVersion?: number
+  repoPath?: string
+  mountId?: string | null
+}
+
 export type PersistedSpaceArchiveNodeSnapshot =
   | PersistedSpaceArchiveTerminalSnapshot
   | PersistedSpaceArchiveAgentSnapshot
   | PersistedSpaceArchiveTaskSnapshot
   | PersistedSpaceArchiveNoteSnapshot
+  | PersistedSpaceArchivePluginSnapshot
 
 export interface PersistedWorkspaceContract {
   id: string

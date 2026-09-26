@@ -32,6 +32,7 @@ import { useTerminalAgentOverlayMutations } from './useNodesStore.terminalAgentO
 
 export function useWorkspaceCanvasNodesStore({
   workspaceId,
+  workspacePath,
   nodes,
   spacesRef,
   onNodesChange,
@@ -413,8 +414,10 @@ export function useWorkspaceCanvasNodesStore({
     createDocumentNode,
     createFolderNode,
     createWebsiteNode,
+    createPluginNode,
   } = useWorkspaceCanvasNodeCreation({
     workspaceId,
+    workspacePath,
     nodesRef,
     spacesRef,
     onRequestPersistFlush,
@@ -461,5 +464,6 @@ export function useWorkspaceCanvasNodesStore({
     createDocumentNode,
     createFolderNode,
     createWebsiteNode,
+    createPluginNode,
   }
 }

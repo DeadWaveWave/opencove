@@ -12,6 +12,7 @@ export type WorkspaceNodeKind =
   | 'document'
   | 'folder'
   | 'website'
+  | 'plugin'
 
 export interface Size {
   width: number
@@ -36,6 +37,7 @@ const KIND_UNITS: Record<WorkspaceNodeKind, { col: number; row: number }> = {
   document: { col: 4, row: 6 },
   folder: { col: 4, row: 5 },
   website: { col: 8, row: 8 },
+  plugin: { col: 6, row: 6 },
 }
 
 const MIN_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
@@ -48,6 +50,7 @@ const MIN_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
   document: { width: 400, height: 260 },
   folder: { width: 360, height: 260 },
   website: { width: 400, height: 260 },
+  plugin: { width: 520, height: 460 },
 }
 
 const MAX_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
@@ -60,6 +63,7 @@ const MAX_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
   document: { width: 960, height: 900 },
   folder: { width: 960, height: 900 },
   website: { width: 1280, height: 1040 },
+  plugin: { width: 1040, height: 820 },
 }
 
 function clampSize(size: Size, min: Size, max: Size): Size {

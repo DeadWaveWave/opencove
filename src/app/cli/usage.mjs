@@ -4,6 +4,8 @@ export function printUsage() {
   process.stdout.write(`OpenCove CLI (dev)\n\n`)
   process.stdout.write(`Usage:\n`)
   process.stdout.write(`  opencove ping [--pretty] [--endpoint <url>] [--token <token>]\n`)
+  process.stdout.write(`  opencove plugin guide [--pretty]\n`)
+  process.stdout.write(`  opencove plugin list [--pretty]\n`)
   process.stdout.write(`  opencove endpoint list [--pretty]\n`)
   process.stdout.write(
     `  opencove endpoint register --hostname <host> --port <port> --remote-token <token> [--display-name <name>] [--pretty]\n`,

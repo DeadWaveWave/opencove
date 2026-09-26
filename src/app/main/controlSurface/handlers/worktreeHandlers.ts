@@ -20,6 +20,7 @@ import {
 import {
   createGitWorktree,
   getGitStatusSummary,
+  getGitGraph,
   listGitBranches,
   listGitWorktrees,
   removeGitWorktree,
@@ -157,6 +158,7 @@ function createDefaultGitWorktreePort(): GitWorktreePort {
     listBranches: async input => await listGitBranches(input),
     listWorktrees: async input => await listGitWorktrees(input),
     getStatusSummary: async input => await getGitStatusSummary(input),
+    getGraph: async input => await getGitGraph(input),
     getDefaultBranch: async input => await getGitDefaultBranch(input),
     createWorktree: async input => await createGitWorktree(input),
     removeWorktree: async input => await removeGitWorktree(input),

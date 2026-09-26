@@ -29,6 +29,7 @@ import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
 import { normalizeCollapsedIdList } from '../canvasCollapse'
 import { resolveFileUriName } from '@shared/utils/fileUriScope'
 import { ensurePersistedDocumentData } from './ensureDocumentNodeData'
+import { ensurePersistedPluginData } from './ensurePluginNodeData'
 import { isTerminalAgentBinding } from '../terminalAgentOverlay'
 import { isResumeSessionBindingVerified } from '../agentResumeBinding'
 import {
@@ -345,6 +346,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     return null
   }
   const website = ensurePersistedWebsiteData(record.task)
+  const plugin = ensurePersistedPluginData(record.task)
   const runtimeKindInput = record.runtimeKind
   const runtimeKind: TerminalRuntimeKind | undefined =
     runtimeKindInput === 'windows' || runtimeKindInput === 'wsl' || runtimeKindInput === 'posix'
@@ -402,7 +404,9 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
                   ? folder
                   : kind === 'website'
                     ? (website ?? createDefaultWebsiteData())
-                    : null,
+                    : kind === 'plugin'
+                      ? plugin
+                      : null,
     position: {
       x: positionRecord.x,
       y: positionRecord.y,

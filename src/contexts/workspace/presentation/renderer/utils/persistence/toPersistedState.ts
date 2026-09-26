@@ -124,7 +124,9 @@ export function toPersistedState(
                         ? normalizeFolderNodeData(node.data.folder)
                         : node.data.kind === 'website'
                           ? node.data.website
-                          : node.data.task,
+                          : node.data.kind === 'plugin'
+                            ? (node.data.plugin ?? null)
+                            : node.data.task,
           }
         }),
       }

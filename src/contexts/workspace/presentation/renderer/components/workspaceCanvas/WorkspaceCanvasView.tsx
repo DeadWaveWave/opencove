@@ -110,6 +110,7 @@ export function WorkspaceCanvasView({
   createTerminalNode,
   createNoteNodeFromContextMenu,
   createWebsiteNodeFromContextMenu,
+  createPluginNodeFromContextMenu,
   arrangeAll,
   arrangeCanvas,
   arrangeInSpace,
@@ -389,6 +390,7 @@ export function WorkspaceCanvasView({
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
+        createPluginNodeFromContextMenu={createPluginNodeFromContextMenu}
         openTaskCreator={openTaskCreator}
         openRoleCreator={openRoleCreator}
         openAgentLauncher={openAgentLauncher}

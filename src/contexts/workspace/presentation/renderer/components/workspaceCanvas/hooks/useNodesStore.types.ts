@@ -35,6 +35,7 @@ export interface CreateNoteNodeOptions {
 
 export interface UseWorkspaceCanvasNodesStoreParams {
   workspaceId?: string
+  workspacePath: string
   nodes: Node<TerminalNodeData>[]
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
@@ -48,6 +49,7 @@ export interface UseWorkspaceCanvasNodesStoreParams {
 
 export interface UseWorkspaceCanvasNodeCreationParams {
   workspaceId?: string
+  workspacePath?: string
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onRequestPersistFlush?: () => void
@@ -143,4 +145,5 @@ export interface UseWorkspaceCanvasNodesStoreResult {
     website: WebsiteNodeData,
     placement?: NodePlacementOptions,
   ) => Node<TerminalNodeData> | null
+  createPluginNode: (anchor: Point) => Node<TerminalNodeData> | null
 }

@@ -30,6 +30,7 @@ import { useWorkspaceCanvasFilesystemNodeCreation } from './useNodesStore.create
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { useWorkspaceCanvasWebsiteNodeCreation } from './useNodesStore.createWebsiteNode'
 import { useWorkspaceCanvasRoleNodeCreation } from './useNodesStore.createRoleNode'
+import { useWorkspaceCanvasPluginNodeCreation } from './useNodesStore.createPluginNode'
 import {
   resolveCreationInteractionLayout,
   resolveNodesPlacement,
@@ -40,6 +41,7 @@ function resolveSpaceRects(spaces: WorkspaceSpaceState[]): WorkspaceSpaceRect[] 
 }
 export function useWorkspaceCanvasNodeCreation({
   workspaceId,
+  workspacePath,
   nodesRef,
   spacesRef,
   onRequestPersistFlush,
@@ -451,6 +453,16 @@ export function useWorkspaceCanvasNodeCreation({
     browserDefaultMode,
   })
 
+  const createPluginNode = useWorkspaceCanvasPluginNodeCreation({
+    workspaceId,
+    workspacePath: workspacePath ?? '',
+    nodesRef,
+    spacesRef,
+    setNodes,
+    onRequestPersistFlush,
+    onNodeCreated,
+  })
+
   return {
     createNodeForSession,
     createNoteNode,
@@ -460,5 +472,6 @@ export function useWorkspaceCanvasNodeCreation({
     createDocumentNode,
     createFolderNode,
     createWebsiteNode,
+    createPluginNode,
   }
 }

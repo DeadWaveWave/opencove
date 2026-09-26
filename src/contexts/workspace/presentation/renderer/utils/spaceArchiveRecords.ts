@@ -128,6 +128,18 @@ export function buildSpaceArchiveRecord({
             labelColorOverride,
             text: node.data.note?.text ?? '',
           }
+        case 'plugin':
+          return {
+            kind: 'plugin' as const,
+            id: node.id,
+            title: node.data.title,
+            frame,
+            labelColorOverride,
+            pluginId: node.data.plugin?.pluginId ?? 'git-board',
+            schemaVersion: node.data.plugin?.schemaVersion ?? 1,
+            repoPath: node.data.plugin?.repoPath ?? '',
+            mountId: node.data.plugin?.mountId ?? null,
+          }
         default:
           return null
       }

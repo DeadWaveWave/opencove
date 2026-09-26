@@ -7,6 +7,7 @@ import {
   ChevronRight,
   FileText,
   Globe,
+  GitBranch,
   LayoutGrid,
   ListTodo,
   LoaderCircle,
@@ -38,6 +39,7 @@ export function WorkspaceContextPaneMenuContent({
   createTerminalNode,
   createNoteNodeFromContextMenu,
   createWebsiteNodeFromContextMenu,
+  createPluginNodeFromContextMenu,
   websiteWindowsEnabled,
   openTaskCreator,
   roleButtonRef,
@@ -70,6 +72,7 @@ export function WorkspaceContextPaneMenuContent({
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
   createWebsiteNodeFromContextMenu: () => void
+  createPluginNodeFromContextMenu: () => void
   websiteWindowsEnabled: boolean
   openTaskCreator: () => void
   roleButtonRef: React.RefObject<HTMLButtonElement | null>
@@ -139,6 +142,16 @@ export function WorkspaceContextPaneMenuContent({
           </span>
         </button>
       ) : null}
+      <button
+        type="button"
+        data-testid="workspace-context-new-git-board"
+        onClick={createPluginNodeFromContextMenu}
+      >
+        <GitBranch className="workspace-context-menu__icon" aria-hidden="true" />
+        <span className="workspace-context-menu__label">
+          {t('workspaceContextMenu.newGitBoard')}
+        </span>
+      </button>
       <button
         type="button"
         data-testid="workspace-context-new-task"

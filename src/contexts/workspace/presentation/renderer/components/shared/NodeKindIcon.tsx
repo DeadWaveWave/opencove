@@ -1,5 +1,14 @@
 import type { JSX } from 'react'
-import { Bot, ContactRound, Globe, Image, ListTodo, StickyNote, Terminal } from 'lucide-react'
+import {
+  Bot,
+  ContactRound,
+  GitBranch,
+  Globe,
+  Image,
+  ListTodo,
+  StickyNote,
+  Terminal,
+} from 'lucide-react'
 import type { WorkspaceNodeKind } from '../../types'
 import { FileSystemEntryIcon } from './FileSystemEntryIcon'
 
@@ -11,6 +20,7 @@ const NODE_KIND_ICONS = {
   role: ContactRound,
   website: Globe,
   image: Image,
+  plugin: GitBranch,
 } as const
 
 export function NodeKindIcon({

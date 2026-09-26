@@ -36,6 +36,7 @@
 @import './styles/role-node.css';
 @import './styles/note-node.css';
 @import './styles/node-title-editor.css';
+@import './styles/git-board-node.css';
 @import './styles/document-node.css';
 @import './styles/website-node.css';
 @import './styles/website-node.browser.css';

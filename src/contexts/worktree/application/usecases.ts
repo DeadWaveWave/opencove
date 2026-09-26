@@ -5,6 +5,8 @@ import type {
   GetGitDefaultBranchResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
+  GetGitGraphInput,
+  GetGitGraphResult,
   ListGitBranchesInput,
   ListGitBranchesResult,
   ListGitWorktreesInput,
@@ -36,6 +38,13 @@ export async function getGitStatusSummaryUseCase(
   input: GetGitStatusSummaryInput,
 ): Promise<GetGitStatusSummaryResult> {
   return await port.getStatusSummary(input)
+}
+
+export async function getGitGraphUseCase(
+  port: GitWorktreePort,
+  input: GetGitGraphInput,
+): Promise<GetGitGraphResult> {
+  return await port.getGraph(input)
 }
 
 export async function getGitDefaultBranchUseCase(

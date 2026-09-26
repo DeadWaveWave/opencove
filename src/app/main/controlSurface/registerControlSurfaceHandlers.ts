@@ -26,6 +26,7 @@ import { registerSyncHandlers } from './handlers/syncHandlers'
 import { registerTopologyHandlers } from './handlers/topologyHandlers'
 import { registerAuthHandlers } from './handlers/authHandlers'
 import { registerNodeControlHandlers } from './handlers/nodeControlHandlers'
+import { registerPluginHandlers } from './handlers/pluginHandlers'
 import type { EndpointHealthService } from './topology/endpointHealthService'
 import type { NormalizedPersistedAppState } from '../../../platform/persistence/sqlite/normalize'
 import type {
@@ -145,6 +146,7 @@ export function registerControlSurfaceHandlers(
     publishSyncEvent: deps.publishSyncEvent,
     closeWebsiteNode: deps.closeWebsiteNode,
   })
+  registerPluginHandlers(controlSurface)
   registerSyncHandlers(controlSurface, deps.getPersistenceStore, {
     onStatePersisted: deps.onStatePersisted,
   })

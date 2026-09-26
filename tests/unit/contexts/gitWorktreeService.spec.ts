@@ -288,7 +288,13 @@ describe('GitWorktreeService', () => {
       await writeFile(join(repoDir, 'drafts', 'nested', 'todo.md'), 'todo\n', 'utf8')
 
       const summary = await getGitStatusSummary({ repoPath: canonicalRepoDir })
-      expect(summary).toEqual({ changedFileCount: 3 })
+      expect(summary).toEqual({
+        changedFileCount: 3,
+        stagedFileCount: 0,
+        unstagedFileCount: 1,
+        untrackedFileCount: 2,
+        conflicts: 0,
+      })
     },
     GIT_WORKTREE_TEST_TIMEOUT_MS,
   )
@@ -308,6 +314,10 @@ describe('GitWorktreeService', () => {
 
       await expect(getGitStatusSummary({ repoPath: canonicalRepoDir })).resolves.toEqual({
         changedFileCount: 0,
+        stagedFileCount: 0,
+        unstagedFileCount: 0,
+        untrackedFileCount: 0,
+        conflicts: 0,
       })
       await expect(stat(indexPath)).resolves.toMatchObject({ mtimeMs: oldIndexTime.getTime() })
     },
@@ -327,6 +337,10 @@ describe('GitWorktreeService', () => {
 
       await expect(getGitStatusSummary({ repoPath: canonicalRepoDir })).resolves.toEqual({
         changedFileCount: 0,
+        stagedFileCount: 0,
+        unstagedFileCount: 0,
+        untrackedFileCount: 0,
+        conflicts: 0,
       })
       await expect(stat(indexLockPath)).resolves.toMatchObject({ size: 0 })
     },

@@ -25,6 +25,7 @@ export interface WorkspaceContextMenuProps {
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
   createWebsiteNodeFromContextMenu: () => void
+  createPluginNodeFromContextMenu: () => void
   websiteWindowsEnabled: boolean
   openTaskCreator: () => void
   openRoleCreator: () => void

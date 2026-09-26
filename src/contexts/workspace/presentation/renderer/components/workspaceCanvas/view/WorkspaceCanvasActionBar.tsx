@@ -1,10 +1,17 @@
 import React from 'react'
-import { Globe, ListTodo, Scan, StickyNote, TerminalSquare } from 'lucide-react'
+import { GitBranch, Globe, ListTodo, Scan, StickyNote, TerminalSquare } from 'lucide-react'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentNodeData } from '../../../types'
 
-export type WorkspaceCanvasActionKind = 'agent' | 'terminal' | 'note' | 'task' | 'website' | 'space'
+export type WorkspaceCanvasActionKind =
+  | 'agent'
+  | 'terminal'
+  | 'note'
+  | 'task'
+  | 'website'
+  | 'space'
+  | 'git-board'
 
 interface WorkspaceCanvasActionBarProps {
   canvasRef: React.RefObject<HTMLDivElement | null>
@@ -144,6 +151,12 @@ export function WorkspaceCanvasActionBar({
       label: t('workspaceCanvas.actionBar.space'),
       hint: t('workspaceCanvas.actionBar.spaceHint'),
       icon: <Scan aria-hidden="true" />,
+    },
+    {
+      kind: 'git-board',
+      label: t('workspaceCanvas.actionBar.gitBoard'),
+      hint: t('workspaceCanvas.actionBar.gitBoardHint'),
+      icon: <GitBranch aria-hidden="true" />,
     },
   ]
 

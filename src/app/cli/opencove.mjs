@@ -10,6 +10,7 @@ import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
 import { tryHandleMultiEndpointCommands } from './commands/multiEndpoint.mjs'
 import { tryHandleNodeControlCommands } from './commands/nodeControl.mjs'
+import { createPluginGuideResult } from './pluginGuide.mjs'
 import {
   getWorkerLifecycleStatus,
   printWorkerLifecycleResult,
@@ -47,6 +48,12 @@ async function main() {
 
   if (command === 'runtime') {
     await handleRuntimeCommand(args.slice(1))
+    return
+  }
+
+  if (command === 'plugin' && args[1] === 'guide') {
+    const result = createPluginGuideResult()
+    process.stdout.write(`${pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)}\n`)
     return
   }
 
@@ -156,6 +163,15 @@ async function main() {
       { pretty, timeoutMs },
     )
 
+    return
+  }
+
+  if (command === 'plugin' && args[1] === 'list') {
+    await invokeAndPrint(
+      connection,
+      { kind: 'query', id: 'plugin.list', payload: null },
+      { pretty, timeoutMs },
+    )
     return
   }
 

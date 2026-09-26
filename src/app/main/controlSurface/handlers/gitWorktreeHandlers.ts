@@ -5,6 +5,7 @@ import {
   createGitWorktreeUseCase,
   getGitDefaultBranchUseCase,
   getGitStatusSummaryUseCase,
+  getGitGraphUseCase,
   listGitBranchesUseCase,
   listGitWorktreesUseCase,
   removeGitWorktreeUseCase,
@@ -14,6 +15,7 @@ import {
 import {
   createGitWorktree,
   getGitStatusSummary,
+  getGitGraph,
   listGitBranches,
   listGitWorktrees,
   removeGitWorktree,
@@ -38,6 +40,7 @@ function createDefaultGitWorktreePort(): GitWorktreePort {
     listBranches: async input => await listGitBranches(input),
     listWorktrees: async input => await listGitWorktrees(input),
     getStatusSummary: async input => await getGitStatusSummary(input),
+    getGraph: async input => await getGitGraph(input),
     getDefaultBranch: async input => await getGitDefaultBranch(input),
     createWorktree: async input => await createGitWorktree(input),
     removeWorktree: async input => await removeGitWorktree(input),
@@ -99,6 +102,37 @@ export function registerGitWorktreeHandlers(
       }
 
       return await getGitStatusSummaryUseCase(gitWorktreePort, payload)
+    },
+    defaultErrorCode: 'worktree.status_summary_failed',
+  })
+
+  controlSurface.register('gitWorktree.graph', {
+    kind: 'query',
+    validate: (payload: unknown): { repoPath: string; limit?: number } => {
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        throw createAppError('common.invalid_input', {
+          debugMessage: 'Invalid payload for gitWorktree.graph.',
+        })
+      }
+      const value = payload as Record<string, unknown>
+      if (typeof value.repoPath !== 'string' || value.repoPath.trim().length === 0) {
+        throw createAppError('common.invalid_input', {
+          debugMessage: 'gitWorktree.graph requires repoPath.',
+        })
+      }
+      return {
+        repoPath: value.repoPath.trim(),
+        limit: typeof value.limit === 'number' ? value.limit : undefined,
+      }
+    },
+    handle: async (_ctx, payload) => {
+      const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.repoPath)
+      if (!isApproved) {
+        throw createAppError('common.approved_path_required', {
+          debugMessage: 'gitWorktree.graph repoPath is outside approved roots',
+        })
+      }
+      return await getGitGraphUseCase(gitWorktreePort, payload)
     },
     defaultErrorCode: 'worktree.status_summary_failed',
   })

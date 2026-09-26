@@ -36,6 +36,7 @@
     "files": [
       "out{,/**/*}",
       "src/app/cli{,/**/*}",
+      "docs/plugins{,/**/*}",
       "package.json"
     ],
     "generateUpdatesFilesForAllChannels": true,

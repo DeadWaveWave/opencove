@@ -1,11 +1,12 @@
 import { isAbsolute } from 'node:path'
 import { ensureGitRepo, normalizeOptionalText, runGit } from './GitWorktreeService.shared'
+import type { GetGitStatusSummaryResult } from '../../../../shared/contracts/dto'
 
 export async function getGitStatusSummary({
   repoPath,
 }: {
   repoPath: string
-}): Promise<{ changedFileCount: number }> {
+}): Promise<GetGitStatusSummaryResult> {
   const normalizedRepoPath = repoPath.trim()
   if (normalizedRepoPath.length === 0) {
     throw new Error('getGitStatusSummary requires repoPath')
@@ -29,6 +30,10 @@ export async function getGitStatusSummary({
   }
 
   const changedFiles = new Set<string>()
+  let stagedFileCount = 0
+  let unstagedFileCount = 0
+  let untrackedFileCount = 0
+  let conflicts = 0
 
   result.stdout.split(/\r?\n/).forEach(line => {
     const trimmed = line.trim()
@@ -36,6 +41,20 @@ export async function getGitStatusSummary({
       return
     }
 
+    const statusCode = line.slice(0, 2)
+    if (statusCode === '??') {
+      untrackedFileCount += 1
+    } else {
+      if (statusCode[0] && statusCode[0] !== ' ') {
+        stagedFileCount += 1
+      }
+      if (statusCode[1] && statusCode[1] !== ' ') {
+        unstagedFileCount += 1
+      }
+      if (statusCode.includes('U') || statusCode === 'AA' || statusCode === 'DD') {
+        conflicts += 1
+      }
+    }
     const pathPortion = line.slice(3).trim()
     if (pathPortion.length === 0) {
       return
@@ -52,5 +71,9 @@ export async function getGitStatusSummary({
 
   return {
     changedFileCount: changedFiles.size,
+    stagedFileCount,
+    unstagedFileCount,
+    untrackedFileCount,
+    conflicts,
   }
 }

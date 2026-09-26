@@ -17,6 +17,7 @@ import { ensureGitRepoHasCommits } from './GitWorktreeRepoGuards'
 import { buildCandidateWorktreeDirectoryName } from './GitWorktreeDirectoryName'
 
 export { getGitStatusSummary } from './GitWorktreeStatusSummary'
+export { getGitGraph } from './GitWorktreeGraph'
 
 export interface GitWorktreeEntry {
   path: string

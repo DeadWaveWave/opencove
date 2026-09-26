@@ -59,6 +59,7 @@ export interface WorkspaceCanvasViewProps {
     kind: WorkspaceCanvasActionKind,
     point: { x: number; y: number },
   ) => void | Promise<void>
+  createPluginNodeFromContextMenu: () => void
   clearActionBarTransientUi: () => void
   resolveDropTargetLabel: (point: { x: number; y: number }) => string | null
   nodes: Node<TerminalNodeData>[]

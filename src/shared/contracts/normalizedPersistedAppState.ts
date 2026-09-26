@@ -7,6 +7,7 @@ import type {
   PersistedNodePayload,
   PersistedSpaceArchiveAgentSnapshot,
   PersistedSpaceArchiveNoteSnapshot,
+  PersistedSpaceArchivePluginSnapshot,
   PersistedSpaceArchiveRecord,
   PersistedSpaceArchiveSpaceSnapshot,
   PersistedSpaceArchiveTaskSnapshot,
@@ -152,6 +153,14 @@ export type NormalizedPersistedSpaceArchiveNodeSnapshot =
   | NormalizedPersistedSpaceArchiveAgentSnapshot
   | NormalizedPersistedSpaceArchiveTaskSnapshot
   | NormalizedPersistedSpaceArchiveNoteSnapshot
+  | (Omit<PersistedSpaceArchivePluginSnapshot, keyof NormalizedArchiveNodeBase | 'kind'> &
+      NormalizedArchiveNodeBase & {
+        kind: 'plugin'
+        pluginId: string
+        schemaVersion: number
+        repoPath: string
+        mountId: string | null
+      })
 
 export type NormalizedPersistedSpaceArchiveRecord = Omit<
   PersistedSpaceArchiveRecord,

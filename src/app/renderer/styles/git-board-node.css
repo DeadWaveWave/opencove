@@ -1,0 +1,167 @@
+.git-board-node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--cove-accent) 48%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--cove-surface) 94%, var(--cove-pixel-cyan) 6%),
+    var(--cove-surface)
+  );
+  box-shadow:
+    0 18px 52px color-mix(in srgb, var(--cove-shadow-color-elevated) 52%, transparent),
+    inset 0 1px color-mix(in srgb, var(--cove-text) 7%, transparent);
+}
+
+.git-board-node__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+  color: var(--cove-text);
+  cursor: grab;
+}
+
+.git-board-node__icon {
+  color: var(--cove-success);
+  flex: 0 0 auto;
+}
+.git-board-node__path {
+  overflow: hidden;
+  flex: 1;
+  color: var(--cove-text-muted);
+  font:
+    11px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.git-board-node__refresh,
+.git-board-node__close {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--cove-text-muted);
+  cursor: pointer;
+}
+.git-board-node__close {
+  font-size: 18px;
+  line-height: 1;
+}
+.git-board-node__refresh--spinning {
+  animation: git-board-spin 0.8s linear infinite;
+}
+.git-board-node__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 14px 16px;
+  overflow: auto;
+}
+.git-board-node__summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--cove-text-muted);
+  font-size: 12px;
+}
+.git-board-node__clean {
+  color: var(--cove-success);
+}
+.git-board-node__dirty {
+  color: var(--cove-warning);
+}
+.git-board-node__conflicts {
+  color: var(--cove-danger-text);
+}
+.git-board-node__graph {
+  display: flex;
+  flex-direction: column;
+}
+.git-board-node__commit {
+  display: grid;
+  grid-template-columns: 20px 58px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 34px;
+  gap: 8px;
+  color: var(--cove-text);
+  font-size: 12px;
+}
+.git-board-node__rail {
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+}
+.git-board-node__rail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--cove-success) 55%, transparent);
+}
+.git-board-node__commit:first-child .git-board-node__rail::before {
+  top: 50%;
+}
+.git-board-node__commit:last-child .git-board-node__rail::before {
+  bottom: 50%;
+}
+.git-board-node__dot {
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--cove-success);
+  border-radius: 50%;
+  background: var(--cove-surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cove-success) 12%, transparent);
+}
+.git-board-node__commit-meta {
+  color: var(--cove-info);
+  font:
+    11px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.git-board-node__subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.git-board-node__ref {
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--cove-success) 38%, transparent);
+  border-radius: 5px;
+  color: var(--cove-success);
+  font:
+    10px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.git-board-node__empty,
+.git-board-node__error {
+  padding: 18px 0;
+  color: var(--cove-text-muted);
+  font-size: 12px;
+}
+.git-board-node__error {
+  color: var(--cove-danger-text);
+}
+@keyframes git-board-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

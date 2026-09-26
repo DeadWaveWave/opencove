@@ -13,6 +13,7 @@ import { WorkspaceCanvasRoleNodeType } from './nodeTypes.role'
 import { WorkspaceCanvasTaskNodeType } from './nodeTypes.task'
 import { WorkspaceCanvasTerminalNodeType } from './nodeTypes.terminal'
 import { WorkspaceCanvasWebsiteNodeType } from './nodeTypes.website'
+import { WorkspaceCanvasPluginNodeType } from './nodeTypes.plugin'
 import { useNodePosition } from './nodePosition'
 import type {
   QuickUpdateTaskRequirement,
@@ -268,6 +269,16 @@ export function useWorkspaceCanvasNodeTypes({
       documentNode: FilesystemNodeType,
       folderNode: FilesystemNodeType,
       websiteNode: WebsiteNodeType,
+      pluginNode: ({ data, id }: WorkspaceCanvasNodeTypeProps) => (
+        <WorkspaceCanvasPluginNodeType
+          data={data}
+          id={id}
+          closeNodeRef={closeNodeRef}
+          resizeNodeRef={resizeNodeRef}
+          selectNode={selectNode}
+          normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
+        />
+      ),
       imageNode: ImageNodeType,
       roleNode: ({ data, id }: WorkspaceCanvasNodeTypeProps) => (
         <WorkspaceCanvasRoleNodeType

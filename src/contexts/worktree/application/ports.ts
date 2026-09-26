@@ -3,6 +3,8 @@ import type {
   GetGitDefaultBranchInput,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
+  GetGitGraphInput,
+  GetGitGraphResult,
   GitWorktreeInfo,
   ListGitBranchesInput,
   ListGitBranchesResult,
@@ -19,6 +21,7 @@ export interface GitWorktreePort {
   listBranches: (input: ListGitBranchesInput) => Promise<ListGitBranchesResult>
   listWorktrees: (input: ListGitWorktreesInput) => Promise<ListGitWorktreesResult>
   getStatusSummary: (input: GetGitStatusSummaryInput) => Promise<GetGitStatusSummaryResult>
+  getGraph: (input: GetGitGraphInput) => Promise<GetGitGraphResult>
   getDefaultBranch: (input: GetGitDefaultBranchInput) => Promise<string | null>
   createWorktree: (input: CreateGitWorktreeInput) => Promise<GitWorktreeInfo>
   removeWorktree: (input: RemoveGitWorktreeInput) => Promise<RemoveGitWorktreeResult>

@@ -30,6 +30,37 @@ export interface GetGitStatusSummaryInput {
 
 export interface GetGitStatusSummaryResult {
   changedFileCount: number
+  stagedFileCount?: number
+  unstagedFileCount?: number
+  untrackedFileCount?: number
+  conflicts?: number
+}
+
+export interface GetGitGraphInput {
+  repoPath: string
+  limit?: number
+}
+
+export interface GitGraphCommit {
+  commit: string
+  shortCommit: string
+  parents: string[]
+  branch: string | null
+  refs: string[]
+  subject: string
+  author: string | null
+  authoredAt: string | null
+}
+
+export interface GetGitGraphResult {
+  repoPath: string
+  branch: string | null
+  head: string | null
+  detached: boolean
+  clean: boolean
+  ahead: number
+  behind: number
+  commits: GitGraphCommit[]
 }
 
 export interface GetGitDefaultBranchInput {

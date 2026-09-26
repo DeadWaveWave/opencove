@@ -26,6 +26,7 @@ export function WorkspaceContextMenu({
   createTerminalNode,
   createNoteNodeFromContextMenu,
   createWebsiteNodeFromContextMenu,
+  createPluginNodeFromContextMenu,
   websiteWindowsEnabled,
   openTaskCreator,
   openRoleCreator,
@@ -389,6 +390,7 @@ export function WorkspaceContextMenu({
             createTerminalNode={createTerminalNode}
             createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
             createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
+            createPluginNodeFromContextMenu={createPluginNodeFromContextMenu}
             websiteWindowsEnabled={websiteWindowsEnabled}
             openTaskCreator={openTaskCreator}
             roleButtonRef={roleButtonRef}

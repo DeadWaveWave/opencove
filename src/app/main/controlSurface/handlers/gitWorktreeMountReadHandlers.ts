@@ -11,6 +11,7 @@ import {
 import type {
   GetGitDefaultBranchResult,
   GetGitStatusSummaryResult,
+  GetGitGraphResult,
   ListGitBranchesResult,
   ListGitWorktreesResult,
 } from '../../../../shared/contracts/dto'
@@ -218,5 +219,50 @@ export function registerGitWorktreeMountReadHandlers(
       })
     },
     defaultErrorCode: 'worktree.get_default_branch_failed',
+  })
+
+  controlSurface.register('gitWorktree.graphInMount', {
+    kind: 'query',
+    validate: (payload: unknown): { mountId: string; uri: string; limit?: number } => {
+      if (!isRecord(payload)) {
+        throw createAppError('common.invalid_input', {
+          debugMessage: 'Invalid payload for gitWorktree.graphInMount.',
+        })
+      }
+      return {
+        mountId: normalizeMountId(payload.mountId, 'gitWorktree.graphInMount'),
+        uri: normalizeFileSystemUri(payload.uri, 'gitWorktree.graphInMount'),
+        limit: typeof payload.limit === 'number' ? payload.limit : undefined,
+      }
+    },
+    handle: async (_ctx, payload): Promise<GetGitGraphResult> => {
+      const target = await resolveMountTargetOrThrow({
+        topology: deps.topology,
+        mountId: payload.mountId,
+      })
+      assertFileUriWithinMountRoot({
+        target,
+        uri: payload.uri,
+        debugMessage: 'gitWorktree.graphInMount uri is outside mount root',
+      })
+      const repoPath = resolvePathFromUriOrThrow(payload.uri, 'gitWorktree.graphInMount uri')
+      if (target.endpointId === 'local') {
+        const isApproved = await deps.approvedWorkspaces.isPathApproved(repoPath)
+        if (!isApproved) {
+          throw createAppError('common.approved_path_required', {
+            debugMessage: 'gitWorktree.graphInMount repoPath is outside approved roots',
+          })
+        }
+        return await deps.gitWorktreePort.getGraph({ repoPath, limit: payload.limit })
+      }
+      return await invokeRemoteValue<GetGitGraphResult>({
+        topology: deps.topology,
+        endpointId: target.endpointId,
+        kind: 'query',
+        id: 'gitWorktree.graph',
+        payload: { repoPath, limit: payload.limit },
+      })
+    },
+    defaultErrorCode: 'worktree.status_summary_failed',
   })
 }

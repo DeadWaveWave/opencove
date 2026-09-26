@@ -1,0 +1,74 @@
+import { describe, expect, it } from 'vitest'
+import type { Node } from '@xyflow/react'
+import type { TerminalNodeData, WorkspaceState } from '../../types'
+import { ensurePersistedWorkspace } from './ensure'
+import { toPersistedState } from './toPersistedState'
+import { toRuntimeNodes } from '../nodeTransform'
+
+function pluginNode(): Node<TerminalNodeData> {
+  return {
+    id: 'git-board-node',
+    position: { x: 120, y: 80 },
+    type: 'pluginNode',
+    data: {
+      sessionId: '',
+      title: 'Git Board',
+      kind: 'plugin',
+      width: 420,
+      height: 520,
+      status: null,
+      startedAt: null,
+      endedAt: null,
+      exitCode: null,
+      lastError: null,
+      scrollback: null,
+      agent: null,
+      task: null,
+      note: null,
+      image: null,
+      document: null,
+      folder: null,
+      website: null,
+      plugin: {
+        pluginId: 'git-board',
+        schemaVersion: 1,
+        repoPath: '/Users/example/Project with spaces',
+        mountId: 'mount-remote-1',
+        graphLimit: 50,
+      },
+    },
+  }
+}
+
+function workspace(): WorkspaceState {
+  return {
+    id: 'workspace-plugin-persistence',
+    name: 'Plugin workspace',
+    path: '/Users/example/Project with spaces',
+    worktreesRoot: '',
+    nodes: [pluginNode()],
+    viewport: { x: 0, y: 0, zoom: 1 },
+    isMinimapVisible: true,
+    spaces: [],
+    activeSpaceId: null,
+    spaceArchiveRecords: [],
+  }
+}
+
+describe('Git Board node persistence', () => {
+  it('round trips plugin target and view preferences through persisted state', () => {
+    const persisted = toPersistedState([workspace()], 'workspace-plugin-persistence')
+    const normalized = ensurePersistedWorkspace(persisted.workspaces[0])
+    expect(normalized).not.toBeNull()
+
+    const runtime = toRuntimeNodes(normalized!)
+    expect(runtime[0]?.data.plugin).toEqual({
+      pluginId: 'git-board',
+      schemaVersion: 1,
+      repoPath: '/Users/example/Project with spaces',
+      mountId: 'mount-remote-1',
+      graphLimit: 50,
+    })
+    expect(runtime[0]?.type).toBe('pluginNode')
+  })
+})

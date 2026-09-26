@@ -246,6 +246,27 @@ function ensurePersistedSpaceArchiveNodeSnapshot(value: unknown): SpaceArchiveNo
     }
   }
 
+  if (kind === 'plugin') {
+    const pluginId = normalizeOptionalString(record.pluginId)
+    if (!pluginId) {
+      return null
+    }
+    return {
+      kind: 'plugin',
+      id,
+      title,
+      frame,
+      labelColorOverride,
+      pluginId,
+      schemaVersion:
+        typeof record.schemaVersion === 'number' && Number.isFinite(record.schemaVersion)
+          ? Math.max(1, Math.floor(record.schemaVersion))
+          : 1,
+      repoPath: normalizeOptionalString(record.repoPath) ?? '',
+      mountId: normalizeOptionalString(record.mountId),
+    }
+  }
+
   return null
 }
 

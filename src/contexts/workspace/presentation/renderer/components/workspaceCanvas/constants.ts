@@ -62,6 +62,12 @@ export function resolveDefaultWebsiteWindowSize(
   return resolveCanonicalNodeSize({ kind: 'website', bucket })
 }
 
+export function resolveDefaultPluginWindowSize(
+  bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
+): Size {
+  return resolveCanonicalNodeSize({ kind: 'plugin', bucket })
+}
+
 export const TASK_PRIORITY_OPTIONS: Array<{ value: TaskPriority; label: string }> = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },

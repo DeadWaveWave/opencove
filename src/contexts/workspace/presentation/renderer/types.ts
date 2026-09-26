@@ -33,6 +33,7 @@ import type {
   WebsiteWindowSessionMode,
   BrowserMode,
 } from '@shared/contracts/dto'
+import type { GitBoardNodeData } from '@contexts/plugins/domain/pluginTypes'
 
 export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 
@@ -46,6 +47,7 @@ export type WorkspaceNodeKind =
   | 'document'
   | 'folder'
   | 'website'
+  | 'plugin'
 
 export type TaskRuntimeStatus = 'todo' | 'doing' | 'ai_done' | 'done'
 
@@ -173,6 +175,8 @@ export interface DocumentNodeData {
 
 export type FolderNodeData = PersistedFolderNodeData
 
+export type PluginNodeData = GitBoardNodeData
+
 export interface WebsiteNodeData {
   url: string
   pinned: boolean
@@ -225,6 +229,7 @@ export interface TerminalNodeData {
   image: ImageNodeData | null
   document: DocumentNodeData | null
   folder?: FolderNodeData | null
+  plugin?: PluginNodeData | null
   website: WebsiteNodeData | null
 }
 
@@ -259,6 +264,7 @@ export type PersistedTerminalNode = Omit<
     | ImageNodeData
     | DocumentNodeData
     | FolderNodeData
+    | PluginNodeData
     | WebsiteNodeData
     | null
 }
