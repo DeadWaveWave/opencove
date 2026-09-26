@@ -1,5 +1,5 @@
 import React from 'react'
-import { Globe, LayoutGrid, ListTodo, StickyNote, TerminalSquare } from 'lucide-react'
+import { Globe, ListTodo, Scan, StickyNote, TerminalSquare } from 'lucide-react'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentNodeData } from '../../../types'
@@ -143,7 +143,7 @@ export function WorkspaceCanvasActionBar({
       kind: 'space',
       label: t('workspaceCanvas.actionBar.space'),
       hint: t('workspaceCanvas.actionBar.spaceHint'),
-      icon: <LayoutGrid aria-hidden="true" />,
+      icon: <Scan aria-hidden="true" />,
     },
   ]
 
