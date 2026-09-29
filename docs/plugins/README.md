@@ -3,12 +3,40 @@
 This directory is the versioned guide for OpenCove extensions. The first built in
 extension is [Git Board](./GIT_BOARD_MVP.md).
 
-The first plugin API is deliberately small: a plugin declares a manifest, adds
-commands through the Control Surface, and renders a node inside the existing
-canvas shell. Renderer code does not access Node.js or the file system directly.
-
 Use `opencove plugin guide` to print the absolute path to this README and the
 plugin documentation directory installed with the current OpenCove build.
+
+In a source checkout or unpacked build, these are the original documentation
+paths. A packaged ASAR build exports a verified copy under
+`~/.opencove/cache/plugin-guides/<content-digest>` so ordinary shell and Agent file
+tools can read it. The command runs offline and reports missing documentation or
+an unusable cache instead of returning an inaccessible archive path. Treat the
+export as reference material; edit plugin source in its own directory.
+
+## Start here: what this build can actually do
+
+**This build manages bundled plugins. It cannot install or load an independent
+plugin directory or Git repository yet.** The manifest, window shell and registry
+described below are internal host contracts, not an externally loadable SDK.
+Adding another bundled implementation requires changing and rebuilding OpenCove.
+
+| Entry | Available behavior |
+| --- | --- |
+| `opencove plugin guide` | Offline documentation paths; no running app or Worker required |
+| `opencove plugin list` | Registered manifests from the connected app or Worker |
+| Settings → Plugins | Bundled plugin details, enablement, entry preferences and previews |
+| Independent install, reload, update or uninstall | Not implemented |
+| Third-party command registration, UI bundles or Node entry points | Not implemented |
+
+For an Agent building a new plugin, read [Authoring and verification](./AUTHORING.md)
+first. It explains which work can be validated today, where implementation is
+blocked, and the evidence required before calling a plugin installed. The
+[Git Board MVP](./GIT_BOARD_MVP.md) describes the future runtime; its planned
+directories and APIs are not installation instructions for this build.
+
+If `opencove plugin guide` cannot start, repair the CLI from Settings → Connections
+→ CLI → Install CLI, then run the same command again. Do not guess a checkout,
+invent an installation command or start a Worker to repair this offline entry.
 
 ## Current built-in plugin support
 
@@ -67,6 +95,9 @@ resizing, collapsing, refreshing or closing the example cannot modify a workspac
 enable a plugin or invoke its runtime. A disabled plugin can still be previewed.
 Reset restores the original sample. The catalog is bundled today; these fields
 are not yet a public API for dynamically installed plugins.
+
+The current preview catalog only implements Git Board. A third-party README or
+manifest cannot register another preview until the runtime supports that contract.
 
 ## Plugin icons
 

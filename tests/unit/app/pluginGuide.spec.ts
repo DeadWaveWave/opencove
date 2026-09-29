@@ -10,8 +10,8 @@ import {
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 
 describe('plugin guide paths', () => {
-  it('resolves the source checkout guide and all built-in documents', () => {
-    const result = createPluginGuideResult()
+  it('resolves the source checkout guide and all built-in documents', async () => {
+    const result = await createPluginGuideResult()
 
     expect(result.directory).toBe(join(repositoryRoot, 'docs', 'plugins'))
     expect(existsSync(result.readme)).toBe(true)

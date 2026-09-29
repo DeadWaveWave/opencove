@@ -1,12 +1,15 @@
-import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const { mkdir, mkdtemp, readFile, rm, unlink, writeFile } =
+  await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
 
 const { execFileMock } = vi.hoisted(() => ({
   execFileMock: vi.fn<typeof import('node:child_process').execFile>(),
 }))
 
+let mockRootDir = ''
 let mockHomeDir = ''
 let mockAppPath = ''
 let mockIsPackaged = false
@@ -14,6 +17,50 @@ let previousResourcesPathDescriptor: PropertyDescriptor | undefined
 let originalPlatform: NodeJS.Platform
 let originalLocalAppData: string | undefined
 let originalPath: string | undefined
+
+// The installer intentionally probes system bins, even with a mocked home. Keep
+// every filesystem operation inside the fixture, including existing wrappers.
+function resolveFixturePath(filePath: string): string {
+  if (!mockRootDir) {
+    throw new Error('CLI installer fixture is not initialized')
+  }
+
+  const normalized = resolve(filePath)
+  const relativePath = relative(mockRootDir, normalized)
+  if (!isAbsolute(relativePath) && relativePath !== '..' && !relativePath.startsWith(`..${sep}`)) {
+    return normalized
+  }
+
+  if (normalized === resolve(process.execPath)) {
+    return join(mockRootDir, 'electron')
+  }
+
+  for (const [index, binDir] of ['/opt/homebrew/bin', '/usr/local/bin'].entries()) {
+    const relativeBinPath = relative(resolve(binDir), normalized)
+    if (relativeBinPath === '' || relativeBinPath === 'opencove') {
+      return join(mockRootDir, 'system-bins', String(index), relativeBinPath)
+    }
+  }
+
+  throw new Error(`CLI installer attempted filesystem access outside its fixture: ${filePath}`)
+}
+
+vi.mock('node:fs/promises', async importOriginal => {
+  const fs = await importOriginal<typeof import('node:fs/promises')>()
+  // Deliberately do not spread fs: new installer IO must be isolated explicitly.
+  const sandboxedFs = {
+    access: (path: string, mode?: number) => fs.access(resolveFixturePath(path), mode),
+    mkdir: (path: string, options?: Parameters<typeof fs.mkdir>[1]) =>
+      fs.mkdir(resolveFixturePath(path), options),
+    readFile: (path: string, options?: Parameters<typeof fs.readFile>[1]) =>
+      fs.readFile(resolveFixturePath(path), options),
+    rm: (path: string, options?: Parameters<typeof fs.rm>[1]) =>
+      fs.rm(resolveFixturePath(path), options),
+    writeFile: (path: string, data: string, options?: Parameters<typeof fs.writeFile>[2]) =>
+      fs.writeFile(resolveFixturePath(path), data, options),
+  }
+  return { ...sandboxedFs, default: sandboxedFs }
+})
 
 vi.mock('node:child_process', () => ({
   execFile: execFileMock,
@@ -58,16 +105,17 @@ describe('cliPathInstaller', () => {
     originalPlatform = process.platform
     originalLocalAppData = process.env.LOCALAPPDATA
     originalPath = process.env.PATH
-    const tempRoot = await mkdtemp(join(tmpdir(), 'opencove-cli-installer-'))
-    mockHomeDir = resolve(tempRoot, 'home')
-    mockAppPath = resolve(tempRoot, 'app')
+    mockRootDir = await mkdtemp(join(tmpdir(), 'opencove-cli-installer-'))
+    mockHomeDir = resolve(mockRootDir, 'home')
+    mockAppPath = resolve(mockRootDir, 'app')
     mockIsPackaged = true
-    const resourcesDir = resolve(tempRoot, 'resources')
+    const resourcesDir = resolve(mockRootDir, 'resources')
     previousResourcesPathDescriptor = Object.getOwnPropertyDescriptor(process, 'resourcesPath')
     Object.defineProperty(process, 'resourcesPath', {
       configurable: true,
       value: resourcesDir,
     })
+    await writeFile(resolveFixturePath(process.execPath), '', { mode: 0o755 })
     await createPackagedCli(resourcesDir)
   })
 
@@ -92,7 +140,8 @@ describe('cliPathInstaller', () => {
       delete process.resourcesPath
     }
 
-    const rootDir = mockHomeDir ? resolve(mockHomeDir, '..') : null
+    const rootDir = mockRootDir
+    mockRootDir = ''
     mockHomeDir = ''
     mockAppPath = ''
     mockIsPackaged = false
@@ -101,26 +150,79 @@ describe('cliPathInstaller', () => {
     }
   })
 
-  it('installs from packaged resources and reports a healthy launcher', async () => {
-    setPlatform('linux')
-    const { installCliToPath, resolveCliPathStatus } =
-      await import('../../../src/app/main/cli/cliPathInstaller')
+  it.each(['darwin', 'linux'] as const)(
+    'installs from packaged resources in the user bin when system bins are unavailable on %s',
+    async platform => {
+      setPlatform(platform)
+      const { installCliToPath, resolveCliPathStatus } =
+        await import('../../../src/app/main/cli/cliPathInstaller')
 
-    const status = await installCliToPath()
+      const status = await installCliToPath()
 
-    expect(status.installed).toBe(true)
-    expect(status.healthy).toBe(true)
-    expect(status.path).toMatch(/opencove$/)
+      expect(status.installed).toBe(true)
+      expect(status.healthy).toBe(true)
+      expect(status.path).toBe(resolve(mockHomeDir, '.local', 'bin', 'opencove'))
 
-    const wrapper = await readFile(status.path ?? '', 'utf8')
-    expect(wrapper).toContain('# OPENCOVE_WRAPPER_KIND=runtime')
-    expect(wrapper).toContain('# OPENCOVE_INSTALL_OWNER=desktop')
-    expect(wrapper).toContain(
-      resolve(process.resourcesPath, 'app.asar', 'src', 'app', 'cli', 'opencove.mjs'),
-    )
+      const wrapper = await readFile(status.path ?? '', 'utf8')
+      expect(wrapper).toContain('# OPENCOVE_WRAPPER_KIND=runtime')
+      expect(wrapper).toContain('# OPENCOVE_INSTALL_OWNER=desktop')
+      expect(wrapper).toContain(
+        resolve(process.resourcesPath, 'app.asar', 'src', 'app', 'cli', 'opencove.mjs'),
+      )
 
-    await expect(resolveCliPathStatus()).resolves.toEqual(status)
-  })
+      await expect(resolveCliPathStatus()).resolves.toEqual(status)
+    },
+  )
+
+  it.each([
+    ['darwin', '/opt/homebrew/bin'],
+    ['linux', '/usr/local/bin'],
+  ] as const)(
+    'installs, updates, and uninstalls a system launcher on %s inside the fixture',
+    async (platform, binDir) => {
+      setPlatform(platform)
+      const launcherPath = join(binDir, 'opencove')
+      const fixtureLauncherPath = resolveFixturePath(launcherPath)
+      await mkdir(resolveFixturePath(binDir), { recursive: true })
+      const { installCliToPath, resolveCliPathStatus, uninstallCliFromPath } =
+        await import('../../../src/app/main/cli/cliPathInstaller')
+
+      await expect(installCliToPath()).resolves.toEqual({
+        installed: true,
+        path: launcherPath,
+        healthy: true,
+      })
+      await expect(readFile(fixtureLauncherPath, 'utf8')).resolves.toContain(
+        'OPENCOVE_INSTALL_OWNER=desktop',
+      )
+
+      await writeFile(
+        fixtureLauncherPath,
+        '# __OPENCOVE_CLI_WRAPPER__\n# OPENCOVE_INSTALL_OWNER=desktop\n',
+      )
+      await expect(resolveCliPathStatus()).resolves.toEqual({
+        installed: true,
+        path: launcherPath,
+        healthy: false,
+      })
+      await expect(installCliToPath()).resolves.toEqual({
+        installed: true,
+        path: launcherPath,
+        healthy: true,
+      })
+      await expect(resolveCliPathStatus()).resolves.toEqual({
+        installed: true,
+        path: launcherPath,
+        healthy: true,
+      })
+      await expect(uninstallCliFromPath()).resolves.toEqual({
+        installed: false,
+        path: null,
+        healthy: false,
+      })
+      await expect(readFile(fixtureLauncherPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+    },
+  )
 
   it('marks an owned launcher as unhealthy when the target script is missing', async () => {
     setPlatform('linux')

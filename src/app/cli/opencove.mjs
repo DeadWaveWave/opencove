@@ -52,8 +52,16 @@ async function main() {
   }
 
   if (command === 'plugin' && args[1] === 'guide') {
-    const result = createPluginGuideResult()
+    const result = await createPluginGuideResult()
     process.stdout.write(`${pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)}\n`)
+    return
+  }
+
+  if (command === 'plugin' && args[1] !== 'list') {
+    process.stderr.write(
+      `[opencove] unsupported plugin command: ${args[1] || '<missing>'}. Run "opencove plugin guide" for supported plugin development and installation instructions.\n`,
+    )
+    process.exitCode = 2
     return
   }
 
