@@ -96,7 +96,7 @@ describe('SettingsPanel shell', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Appearance' })).toBeVisible()
   })
 
-  it('keeps the seven primary pages and Advanced in application navigation', () => {
+  it('includes plugin management alongside the primary pages and Advanced', () => {
     renderSettingsPanel()
     const sidebar = screen.getByRole('complementary', { name: 'Settings sections' })
     for (const page of [
@@ -104,6 +104,7 @@ describe('SettingsPanel shell', () => {
       'appearance',
       'canvas',
       'agent',
+      'plugins',
       'terminal',
       'shortcuts',
       'worker',
@@ -111,7 +112,7 @@ describe('SettingsPanel shell', () => {
     ]) {
       expect(within(sidebar).getByTestId(`settings-section-nav-${page}`)).toBeVisible()
     }
-    expect(sidebar.querySelectorAll('[data-testid^="settings-section-nav-"]')).toHaveLength(8)
+    expect(sidebar.querySelectorAll('[data-testid^="settings-section-nav-"]')).toHaveLength(9)
     for (const alias of [
       'notifications',
       'integrations',
@@ -195,7 +196,8 @@ describe('SettingsPanel shell', () => {
     expect(screen.getByTestId('settings-section-nav-agent')).toBeVisible()
     fireEvent.click(screen.getByTestId('settings-panel-page-selector-trigger'))
     const pages = within(screen.getByTestId('settings-panel-page-selector-menu'))
-    expect(pages.getAllByRole('option')).toHaveLength(8)
+    expect(pages.getAllByRole('option')).toHaveLength(9)
+    expect(pages.getByRole('option', { name: 'Plugins', exact: true })).toBeVisible()
     expect(pages.queryByRole('option', { name: 'Cove App' })).not.toBeInTheDocument()
   })
 })

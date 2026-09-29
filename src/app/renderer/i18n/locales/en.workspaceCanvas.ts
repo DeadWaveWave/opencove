@@ -89,6 +89,11 @@ export const enWorkspaceCanvas = {
     title: 'Space Actions',
   },
   plugins: {
+    disabled: 'Plugin disabled',
+    missing: 'Plugin unavailable',
+    schemaUnavailable: 'This plugin data requires a newer version',
+    retained: 'This window and its data are preserved. Manage the plugin in Settings.',
+    openSettings: 'Manage plugins',
     gitBoard: {
       title: 'Git Board',
       refresh: 'Refresh Git Board',

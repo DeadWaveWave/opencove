@@ -1,26 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { JSX } from 'react'
-import { GitBranch, RefreshCw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { NodeFrame, PluginNodeData, Point } from '../types'
+import type { PluginNodeData } from '../types'
 import type { GitBoardSnapshot } from '@contexts/plugins/domain/pluginTypes'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
-import { NodeResizeHandles } from './shared/NodeResizeHandles'
-import { useNodeFrameResize } from '../utils/nodeFrameResize'
-import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
+import type { CanvasNodeWindowProps } from './shared/CanvasNodeWindow'
+import { GitBoardNodeView } from './GitBoardNodeView'
 
-interface GitBoardNodeProps {
-  id: string
+interface GitBoardNodeProps extends Omit<CanvasNodeWindowProps, 'children'> {
   data: PluginNodeData
-  position: Point
-  width: number
-  height: number
-  onClose: () => void
-  onResize: (frame: NodeFrame) => void
-  onInteractionStart?: () => void
 }
 
-function readSnapshot(data: PluginNodeData): Promise<GitBoardSnapshot> {
+function readSnapshot(
+  data: Pick<PluginNodeData, 'repoPath' | 'mountId' | 'graphLimit'>,
+): Promise<GitBoardSnapshot> {
   const invoke = window.opencoveApi?.controlSurface?.invoke
   if (typeof invoke !== 'function') {
     return Promise.reject(new Error('Control surface unavailable'))
@@ -75,142 +68,53 @@ function readSnapshot(data: PluginNodeData): Promise<GitBoardSnapshot> {
   }))
 }
 
-export function GitBoardNode({
-  data,
-  position,
-  width,
-  height,
-  onClose,
-  onResize,
-  onInteractionStart,
-}: GitBoardNodeProps): JSX.Element {
+export function GitBoardNode({ data, ...windowProps }: GitBoardNodeProps): JSX.Element {
   const { t } = useTranslation()
   const [snapshot, setSnapshot] = useState<GitBoardSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
-    position,
-    width,
-    height,
-    minSize: resolveCanonicalNodeMinSize('plugin'),
-    onResize,
-  })
-  const renderedFrame = draftFrame ?? { position, size: { width, height } }
-  const style = useMemo(
-    () => ({ width: renderedFrame.size.width, height: renderedFrame.size.height }),
-    [renderedFrame.size.height, renderedFrame.size.width],
-  )
+  const requestGeneration = useRef(0)
+  const { repoPath, mountId, graphLimit } = data
 
   const refresh = useCallback(async () => {
+    const generation = ++requestGeneration.current
     setRefreshing(true)
     try {
-      const next = await readSnapshot(data)
+      const next = await readSnapshot({ repoPath, mountId, graphLimit })
+      if (generation !== requestGeneration.current) {
+        return
+      }
       setSnapshot(next)
       setError(null)
     } catch (nextError) {
+      if (generation !== requestGeneration.current) {
+        return
+      }
       setError(nextError instanceof Error ? nextError.message : t('plugins.gitBoard.unavailable'))
     } finally {
-      setRefreshing(false)
+      if (generation === requestGeneration.current) {
+        setRefreshing(false)
+      }
     }
-  }, [data, t])
+  }, [repoPath, mountId, graphLimit, t])
 
   useEffect(() => {
+    setSnapshot(null)
+    setError(null)
     void refresh()
+    return () => {
+      requestGeneration.current += 1
+    }
   }, [refresh])
 
-  const status = snapshot?.status
   return (
-    <section
-      className="git-board-node"
-      style={style}
-      onPointerDown={event => {
-        if (event.button === 0) {
-          onInteractionStart?.()
-        }
-      }}
-    >
-      <header className="git-board-node__header" data-node-drag-handle="true">
-        <GitBranch className="git-board-node__icon" aria-hidden="true" />
-        <strong>{t('plugins.gitBoard.title')}</strong>
-        <span className="git-board-node__path">{status?.branch ?? data.repoPath}</span>
-        <button
-          type="button"
-          className="git-board-node__refresh nodrag"
-          onClick={event => {
-            event.stopPropagation()
-            void refresh()
-          }}
-          aria-label={t('plugins.gitBoard.refresh')}
-          title={t('plugins.gitBoard.refresh')}
-        >
-          <RefreshCw
-            size={14}
-            className={refreshing ? 'git-board-node__refresh--spinning' : ''}
-            aria-hidden="true"
-          />
-        </button>
-        <button
-          type="button"
-          className="git-board-node__close nodrag"
-          onClick={event => {
-            event.stopPropagation()
-            onClose()
-          }}
-          aria-label={t('plugins.gitBoard.close')}
-        >
-          ×
-        </button>
-      </header>
-      <div className="git-board-node__body nodrag nowheel">
-        {error ? (
-          <div className="git-board-node__error">
-            {t('plugins.gitBoard.unavailable')}: {error}
-          </div>
-        ) : null}
-        {status ? (
-          <div className="git-board-node__summary">
-            <span className={status.clean ? 'git-board-node__clean' : 'git-board-node__dirty'}>
-              {status.clean
-                ? t('plugins.gitBoard.clean')
-                : t('plugins.gitBoard.changes', { count: status.changedFileCount })}
-            </span>
-            <span>
-              {status.ahead ? `↑${status.ahead}` : ''}
-              {status.behind ? ` ↓${status.behind}` : ''}
-            </span>
-            {status.conflicts ? (
-              <span className="git-board-node__conflicts">
-                {t('plugins.gitBoard.conflicts', { count: status.conflicts })}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="git-board-node__graph" aria-label={t('plugins.gitBoard.graph')}>
-          {snapshot?.commits.length ? (
-            snapshot.commits.map((commit, index) => (
-              <div className="git-board-node__commit" key={commit.commit}>
-                <span className="git-board-node__rail" aria-hidden="true">
-                  <span className="git-board-node__dot" />
-                </span>
-                <span className="git-board-node__commit-meta">{commit.shortCommit}</span>
-                <span className="git-board-node__subject">{commit.subject}</span>
-                {index === 0 && status?.branch ? (
-                  <span className="git-board-node__ref">{status.branch}</span>
-                ) : null}
-              </div>
-            ))
-          ) : (
-            <div className="git-board-node__empty">
-              {error ? '' : t('plugins.gitBoard.noCommits')}
-            </div>
-          )}
-        </div>
-      </div>
-      <NodeResizeHandles
-        classNamePrefix="git-board-node"
-        testIdPrefix="git-board-resizer"
-        handleResizePointerDown={handleResizePointerDown}
-      />
-    </section>
+    <GitBoardNodeView
+      {...windowProps}
+      repoPath={repoPath}
+      snapshot={snapshot}
+      error={error}
+      refreshing={refreshing}
+      onRefresh={() => void refresh()}
+    />
   )
 }

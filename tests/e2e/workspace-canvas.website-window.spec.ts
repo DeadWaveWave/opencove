@@ -1,12 +1,7 @@
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { expect, test, type ElectronApplication } from '@playwright/test'
-import {
-  clearAndSeedWorkspace,
-  launchApp,
-  readCanvasViewport,
-  readLocatorClientRect,
-} from './workspace-canvas.helpers'
+import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
 import {
   closeWebsiteTestServer,
   enableWebsiteWindowPolicy,
@@ -229,19 +224,24 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      const paneBox = await readLocatorClientRect(pane)
-
-      // Wheel gestures over a node are ignored by the canvas handler; keep the cursor on an empty
-      // canvas point so we always trigger panning.
-      const panX = paneBox.x + paneBox.width - 48
-      const panY = paneBox.y + paneBox.height * 0.5
       // Refresh activation to avoid the focus-based snapshot heuristic flipping us to warm/cold
       // mid-test on slower CI runs.
       await websiteNode.click({ position: { x: 320, y: 180 }, noWaitAfter: true })
-      await window.mouse.move(panX, panY)
-      await pane
-        .click({ position: { x: paneBox.width - 48, y: paneBox.height * 0.5 } })
-        .catch(() => undefined)
+      // Canvas edges also host the action bar, minimap and controls. Verify the actual
+      // pointer target instead of assuming a fixed edge coordinate is empty.
+      const panPosition = await pane.evaluate(element => {
+        const box = element.getBoundingClientRect()
+        for (const y of [32, box.height - 32, box.height * 0.5]) {
+          for (const x of [box.width * 0.5, box.width * 0.8, box.width * 0.2]) {
+            if (document.elementFromPoint(box.x + x, box.y + y) === element) {
+              return { x, y }
+            }
+          }
+        }
+        throw new Error('No unobstructed canvas point is available for the clipping gesture')
+      })
+      await pane.click({ position: panPosition })
+      const viewportBeforePan = await readCanvasViewport(window)
 
       const isClipped = async (): Promise<boolean> => {
         const state = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
@@ -281,6 +281,11 @@ test.describe('Workspace Canvas - Website Window', () => {
       }
 
       await panUntilClipped(3)
+
+      await expect
+        .poll(async () => (await readCanvasViewport(window)).x)
+        .toBeLessThan(viewportBeforePan.x)
+      expect((await readCanvasViewport(window)).zoom).toBe(viewportBeforePan.zoom)
 
       await expect.poll(async () => await isClipped(), { timeout: 30_000 }).toBe(true)
 

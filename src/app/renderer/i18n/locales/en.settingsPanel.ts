@@ -1,4 +1,5 @@
 import { enSettingsPanelAgent } from './en.settingsPanel.agent'
+import { enSettingsPanelPlugins } from './en.settingsPanel.plugins'
 import { enSettingsPanelAppearanceNext } from './en.settingsPanel.appearanceNext'
 import { enSettingsPanelAgentDetail } from './en.settingsPanel.agentDetail'
 import { enTerminalDisplayCalibration } from './en.terminalDisplayCalibration'
@@ -10,6 +11,7 @@ import { enSettingsPanelWorkspace } from './en.settingsPanel.workspace'
 import { enWorkspaceCanvasNavigationShortcutCommands } from './en.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const enSettingsPanel = {
+  plugins: enSettingsPanelPlugins,
   agentDetail: enSettingsPanelAgentDetail,
   appearanceNext: enSettingsPanelAppearanceNext,
   title: 'Settings',

@@ -37,6 +37,8 @@
 @import './styles/note-node.css';
 @import './styles/node-title-editor.css';
 @import './styles/git-board-node.css';
+@import './styles/plugin-node-unavailable.css';
+@import './styles/canvas-node-window.css';
 @import './styles/document-node.css';
 @import './styles/website-node.css';
 @import './styles/website-node.browser.css';
@@ -55,6 +57,9 @@
 @import './styles/settings-panel.buttons.css';
 @import './styles/settings-panel.diagnostics.css';
 @import './styles/settings-panel.groups.css';
+@import './styles/settings-panel.plugins.css';
+@import './styles/plugin-readme.css';
+@import './styles/plugin-node-preview.css';
 @import './styles/cove-window.css';
 @import './styles/anchored-operation-popover.css';
 @import './styles/workspace-operation-popovers.css';

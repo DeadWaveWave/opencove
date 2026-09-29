@@ -15,6 +15,7 @@ import { normalizeFocusNodeTargetZoom } from './focusNodeTargetZoom'
 import { normalizeSidebarCollapsedIds } from './sidebarTreeSettings'
 import { normalizeSidebarViewSettings } from './sidebarViewSettings'
 import { normalizePixelEffectSettings } from './pixelEffectSettings'
+import { normalizeDisabledPluginIds, normalizePluginContributions } from './pluginSettings'
 import { isValidUiLanguage, isValidUiTheme } from './uiSettings'
 import {
   isValidUpdateChannel,
@@ -401,6 +402,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   return {
     language,
     uiTheme,
+    disabledPluginIds: normalizeDisabledPluginIds(value.disabledPluginIds),
+    pluginContributions: normalizePluginContributions(value.pluginContributions),
     ...pixelEffects,
     isPrimarySidebarCollapsed,
     sidebarCollapsedWorkspaceIds: normalizeSidebarCollapsedIds(value.sidebarCollapsedWorkspaceIds),

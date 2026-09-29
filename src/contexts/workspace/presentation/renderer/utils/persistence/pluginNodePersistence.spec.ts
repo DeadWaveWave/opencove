@@ -71,4 +71,22 @@ describe('Git Board node persistence', () => {
     })
     expect(runtime[0]?.type).toBe('pluginNode')
   })
+
+  it('preserves unavailable identities and newer data versions instead of running Git Board', () => {
+    const original = workspace()
+    original.nodes[0]!.data.plugin = {
+      ...original.nodes[0]!.data.plugin!,
+      pluginId: 'another-plugin',
+      schemaVersion: 3,
+      graphLimit: 150,
+      filters: { refs: ['main', 'feature/new'], showTags: true },
+    }
+    const persisted = toPersistedState([original], original.id)
+    const normalized = ensurePersistedWorkspace(persisted.workspaces[0])!
+    const runtime = toRuntimeNodes(normalized)
+
+    expect(runtime[0]?.data.plugin).toEqual(original.nodes[0]!.data.plugin)
+    expect(runtime[0]?.data.width).toBe(original.nodes[0]!.data.width)
+    expect(runtime[0]?.position).toEqual(original.nodes[0]!.position)
+  })
 })

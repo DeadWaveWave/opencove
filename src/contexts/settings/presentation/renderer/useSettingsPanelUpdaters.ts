@@ -13,6 +13,11 @@ import type {
 } from '@contexts/settings/domain/agentSettings'
 import type { SettingsPanelProps } from './SettingsPanel.shared'
 import {
+  setPluginEnabled,
+  setPluginContributionEnabled,
+  type PluginContribution,
+} from '@contexts/settings/domain/pluginSettings'
+import {
   mergeSelectableAgentProviderOrder,
   normalizeSelectableAgentProviderOrder,
   resolveDefaultFirstAgentProviderOrder,
@@ -61,6 +66,17 @@ export function createSettingsPanelUpdaters({
     },
     updateLanguage: (language: UiLanguage): void => updateSetting('language', language),
     updateUiTheme: (uiTheme: UiTheme): void => updateSetting('uiTheme', uiTheme),
+    updatePluginEnabled: (pluginId: string, enabled: boolean): void =>
+      updateSetting('disabledPluginIds', setPluginEnabled(settings, pluginId, enabled)),
+    updatePluginContributionEnabled: (
+      pluginId: string,
+      contribution: PluginContribution,
+      enabled: boolean,
+    ): void =>
+      updateSetting(
+        'pluginContributions',
+        setPluginContributionEnabled(settings, pluginId, contribution, enabled),
+      ),
     updatePixelEffect: (key: keyof PixelEffectSettings, enabled: boolean): void =>
       updateSetting(key, enabled),
     updateAgentFullAccess: (enabled: boolean): void => updateSetting('agentFullAccess', enabled),

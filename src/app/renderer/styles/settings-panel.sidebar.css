@@ -174,7 +174,7 @@
     padding: 18px 20px 10px;
   }
   .settings-panel__header h2 {
-    font-size: calc(18px * var(--cove-ui-font-scale));
+    font-size: calc(22px * var(--cove-ui-font-scale));
   }
   .settings-panel__content {
     padding: 0 20px 24px;

@@ -1,16 +1,8 @@
 import type { JSX } from 'react'
-import {
-  Bot,
-  ContactRound,
-  GitBranch,
-  Globe,
-  Image,
-  ListTodo,
-  StickyNote,
-  Terminal,
-} from 'lucide-react'
+import { Bot, ContactRound, Globe, Image, ListTodo, StickyNote, Terminal } from 'lucide-react'
 import type { WorkspaceNodeKind } from '../../types'
 import { FileSystemEntryIcon } from './FileSystemEntryIcon'
+import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 
 const NODE_KIND_ICONS = {
   terminal: Terminal,
@@ -20,19 +12,23 @@ const NODE_KIND_ICONS = {
   role: ContactRound,
   website: Globe,
   image: Image,
-  plugin: GitBranch,
 } as const
 
 export function NodeKindIcon({
   kind,
   className,
   filePath,
+  pluginId,
 }: {
   kind: WorkspaceNodeKind
   className?: string
   filePath?: string
+  pluginId?: string
 }): JSX.Element {
   const iconClassName = ['cove-node-kind-icon', className].filter(Boolean).join(' ')
+  if (kind === 'plugin') {
+    return <PluginIcon pluginId={pluginId ?? ''} className={iconClassName} />
+  }
   if (kind === 'document' || kind === 'folder') {
     return (
       <FileSystemEntryIcon

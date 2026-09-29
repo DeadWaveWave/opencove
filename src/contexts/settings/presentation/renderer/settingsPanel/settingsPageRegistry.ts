@@ -6,6 +6,7 @@ export type CanonicalSettingsPageId =
   | 'appearance'
   | 'canvas-windows'
   | 'agent'
+  | 'plugins'
   | 'terminal'
   | 'tasks-shortcuts'
   | 'worker'
@@ -16,6 +17,7 @@ export type SettingsPageIconId =
   | 'palette'
   | 'layout-dashboard'
   | 'sparkles'
+  | 'puzzle'
   | 'terminal'
   | 'keyboard'
   | 'server'
@@ -66,6 +68,13 @@ export const CANONICAL_SETTINGS_PAGE_DEFINITIONS: Readonly<
     iconId: 'sparkles',
     testId: 'settings-section-nav-agent',
   },
+  plugins: {
+    canonicalPageId: 'plugins',
+    navLabelKey: 'settingsPanel.nav.plugins',
+    descriptionKey: 'settingsPanel.pageDescriptions.plugins',
+    iconId: 'puzzle',
+    testId: 'settings-section-nav-plugins',
+  },
   terminal: {
     canonicalPageId: 'terminal',
     navLabelKey: 'settingsPanel.nav.terminal',
@@ -107,6 +116,7 @@ export const SETTINGS_PAGE_REGISTRY: Readonly<
   worker: { canonicalPageId: 'worker' },
   endpoints: { canonicalPageId: 'worker', scrollTargetId: 'settings-section-endpoints' },
   agent: { canonicalPageId: 'agent' },
+  plugins: { canonicalPageId: 'plugins' },
   'tasks-shortcuts': { canonicalPageId: 'tasks-shortcuts' },
   'quick-menu': {
     canonicalPageId: 'tasks-shortcuts',
@@ -139,6 +149,7 @@ export const SETTINGS_PRIMARY_PAGE_IDS: readonly CanonicalSettingsPageId[] = [
   'terminal',
   'tasks-shortcuts',
   'worker',
+  'plugins',
 ]
 
 export interface ResolvedSettingsPage {

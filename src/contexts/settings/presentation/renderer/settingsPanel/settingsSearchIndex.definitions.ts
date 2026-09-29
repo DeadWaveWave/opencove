@@ -3,6 +3,22 @@ import { AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS } from './settingsSearchIndex.a
 
 export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinition> = [
   {
+    id: 'plugins.installed',
+    pageId: 'plugins',
+    titleKey: 'settingsPanel.nav.plugins',
+    descriptionKey: 'settingsPanel.plugins.installedHelp',
+    anchorId: 'settings-section-plugins',
+    keywords: ['git board', 'extensions', 'enable', 'disable', '插件', '扩展', '启用', '停用'],
+  },
+  {
+    id: 'plugins.guide',
+    pageId: 'plugins',
+    titleKey: 'settingsPanel.plugins.guideTitle',
+    descriptionKey: 'settingsPanel.plugins.guideHelp',
+    anchorId: 'settings-section-plugin-guide',
+    keywords: ['opencove plugin guide', 'readme', 'development', '开发', '指南'],
+  },
+  {
     id: 'general.language',
     pageId: 'general',
     titleKey: 'settingsPanel.general.languageLabel',

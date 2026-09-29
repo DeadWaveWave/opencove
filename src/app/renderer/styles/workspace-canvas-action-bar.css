@@ -91,7 +91,7 @@
   height: 22px;
 }
 
-.workspace-canvas__action-bar-icon > svg,
+.workspace-canvas__action-bar-icon > :is(svg, img),
 .workspace-canvas__action-bar-icon .agent-provider-icon,
 .workspace-canvas__action-bar-icon .agent-provider-icon > :is(svg, img) {
   width: 21px;

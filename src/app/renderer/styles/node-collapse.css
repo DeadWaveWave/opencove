@@ -175,7 +175,7 @@
   box-shadow: var(--cove-collapsed-shadow);
 }
 
-.cove-collapsed-window__icon > svg {
+.cove-collapsed-window__icon > :is(svg, img) {
   width: 25px;
   height: 25px;
 }

@@ -135,7 +135,11 @@ export function CollapsedWindow({
           {presentation.isAgent && provider ? (
             <AgentProviderIcon provider={provider} />
           ) : (
-            <NodeKindIcon kind={data.kind} filePath={data.document?.uri ?? data.folder?.uri} />
+            <NodeKindIcon
+              kind={data.kind}
+              filePath={data.document?.uri ?? data.folder?.uri}
+              pluginId={data.plugin?.pluginId}
+            />
           )}
           <span className="cove-collapsed-window__pixels">
             {Array.from({ length: 4 }, (_, corner) => (

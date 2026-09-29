@@ -6,6 +6,7 @@ const HANDLE_CONFIGS: Array<{
   suffix: string
   edges: ResizeEdges
 }> = [
+  { key: 'top', suffix: 'top', edges: { top: true } },
   { key: 'left', suffix: 'left', edges: { left: true } },
   { key: 'right', suffix: 'right', edges: { right: true } },
   { key: 'bottom', suffix: 'bottom', edges: { bottom: true } },
@@ -18,15 +19,17 @@ const HANDLE_CONFIGS: Array<{
 export function NodeResizeHandles({
   classNamePrefix,
   testIdPrefix,
+  includeTop = false,
   handleResizePointerDown,
 }: {
   classNamePrefix: string
   testIdPrefix: string
+  includeTop?: boolean
   handleResizePointerDown: (edges: ResizeEdges) => (event: React.PointerEvent<HTMLElement>) => void
 }): React.JSX.Element {
   return (
     <>
-      {HANDLE_CONFIGS.map(handle => (
+      {HANDLE_CONFIGS.filter(handle => includeTop || handle.key !== 'top').map(handle => (
         <div
           key={handle.key}
           className={`${classNamePrefix}__resizer ${classNamePrefix}__resizer--${handle.suffix} nodrag`}

@@ -50,7 +50,7 @@ const MIN_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
   document: { width: 400, height: 260 },
   folder: { width: 360, height: 260 },
   website: { width: 400, height: 260 },
-  plugin: { width: 520, height: 460 },
+  plugin: { width: 400, height: 260 },
 }
 
 const MAX_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {

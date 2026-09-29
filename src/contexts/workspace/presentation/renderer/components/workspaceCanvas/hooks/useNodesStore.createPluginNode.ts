@@ -6,6 +6,8 @@ import type { PluginNodeData, Point, TerminalNodeData, WorkspaceSpaceState } fro
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
+import { isPluginEnabled } from '@contexts/settings/domain/pluginSettings'
 
 function findContainingSpace(
   spaces: WorkspaceSpaceState[],
@@ -51,6 +53,10 @@ export function useWorkspaceCanvasPluginNodeCreation({
 
   return useCallback(
     (anchor: Point): Node<TerminalNodeData> | null => {
+      // A gesture may have started before the plugin was disabled in another view.
+      if (!isPluginEnabled(useAppStore.getState().agentSettings, 'git-board')) {
+        return null
+      }
       const targetSpace = findContainingSpace(spacesRef.current, anchor)
       const size = resolveDefaultPluginWindowSize()
       const placement = resolveNodesPlacement({

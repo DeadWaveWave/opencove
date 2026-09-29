@@ -3,6 +3,7 @@
 :root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
   :is(
     .terminal-node,
+    .cove-canvas-node-window,
     .task-node,
     .note-node,
     .document-node,
@@ -26,6 +27,7 @@
 :root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
   :is(
     .terminal-node__header,
+    .cove-canvas-node-window__header,
     .task-node__header,
     .role-node__header,
     .note-node__header,

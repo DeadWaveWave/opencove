@@ -1,4 +1,5 @@
 import { zhCNSettingsPanelAgent } from './zh-CN.settingsPanel.agent'
+import { zhCNSettingsPanelPlugins } from './zh-CN.settingsPanel.plugins'
 import { zhCNSettingsPanelAppearanceNext } from './zh-CN.settingsPanel.appearanceNext'
 import { zhCNSettingsPanelAgentDetail } from './zh-CN.settingsPanel.agentDetail'
 import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibration'
@@ -9,6 +10,7 @@ import { zhCNSettingsPanelWorkspace } from './zh-CN.settingsPanel.workspace'
 import { zhCNWorkspaceCanvasNavigationShortcutCommands } from './zh-CN.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const zhCNSettingsPanel = {
+  plugins: zhCNSettingsPanelPlugins,
   agentDetail: zhCNSettingsPanelAgentDetail,
   appearanceNext: zhCNSettingsPanelAppearanceNext,
   title: '设置',

@@ -10,6 +10,8 @@ import { DEFAULT_SIDEBAR_VIEW_SETTINGS } from './sidebarViewSettings'
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
   uiTheme: 'pixel',
+  disabledPluginIds: [],
+  pluginContributions: {},
   canvasPixelBackgroundEnabled: true,
   nodeCreationPixelEffectEnabled: true,
   nodeClosePixelEffectEnabled: true,

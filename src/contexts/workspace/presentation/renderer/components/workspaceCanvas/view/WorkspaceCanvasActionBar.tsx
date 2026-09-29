@@ -1,8 +1,10 @@
 import React from 'react'
-import { GitBranch, Globe, ListTodo, Scan, StickyNote, TerminalSquare } from 'lucide-react'
+import { Globe, ListTodo, Scan, StickyNote, TerminalSquare } from 'lucide-react'
+import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentNodeData } from '../../../types'
+import { usePluginContributionEnabled } from '@contexts/plugins/presentation/renderer/usePluginEnabled'
 
 export type WorkspaceCanvasActionKind =
   | 'agent'
@@ -46,6 +48,7 @@ export function WorkspaceCanvasActionBar({
   resolveDropTargetLabel,
 }: WorkspaceCanvasActionBarProps): React.JSX.Element {
   const { t } = useTranslation()
+  const gitBoardEnabled = usePluginContributionEnabled('git-board', 'actionBar')
   const dragRef = React.useRef<DragState | null>(null)
   const [dragState, setDragState] = React.useState<DragState | null>(null)
 
@@ -156,7 +159,7 @@ export function WorkspaceCanvasActionBar({
       kind: 'git-board',
       label: t('workspaceCanvas.actionBar.gitBoard'),
       hint: t('workspaceCanvas.actionBar.gitBoardHint'),
-      icon: <GitBranch aria-hidden="true" />,
+      icon: <PluginIcon pluginId="git-board" />,
     },
   ]
 
@@ -168,7 +171,8 @@ export function WorkspaceCanvasActionBar({
     dragState.clientX <= previewRect.right &&
     dragState.clientY >= previewRect.top &&
     dragState.clientY <= previewRect.bottom
-  const activeAction = actions.find(action => action.kind === dragState?.kind) ?? null
+  const visibleActions = actions.filter(action => action.kind !== 'git-board' || gitBoardEnabled)
+  const activeAction = visibleActions.find(action => action.kind === dragState?.kind) ?? null
   const dropTargetLabel =
     dragState && previewInsideCanvas
       ? (resolveDropTargetLabel?.({ x: dragState.clientX, y: dragState.clientY }) ??
@@ -185,7 +189,7 @@ export function WorkspaceCanvasActionBar({
         onPointerDown={event => event.stopPropagation()}
       >
         <div className="workspace-canvas__action-bar-tools" role="toolbar">
-          {actions.map(action => (
+          {visibleActions.map(action => (
             <button
               key={action.kind}
               type="button"

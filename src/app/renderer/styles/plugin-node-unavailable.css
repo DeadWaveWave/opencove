@@ -1,0 +1,24 @@
+.plugin-node-unavailable {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--cove-text-muted);
+  text-align: center;
+}
+
+.plugin-node-unavailable strong {
+  color: var(--cove-text);
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 500;
+}
+
+.plugin-node-unavailable p {
+  max-width: 32ch;
+  margin: 0;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.6;
+}

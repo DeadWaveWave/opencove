@@ -30,6 +30,7 @@ import type { QuickPhrase } from './quickPhrases'
 import type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
 import type { TerminalDisplayReference } from './terminalDisplayCalibration'
 import type { UiLanguage, UiTheme } from './uiSettings'
+import type { PluginContributionPreferences } from './pluginSettings'
 
 export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 export type TerminalProfileId = string | null
@@ -44,6 +45,8 @@ export interface PixelEffectSettings {
 export interface AgentSettings extends PixelEffectSettings {
   language: UiLanguage
   uiTheme: UiTheme
+  disabledPluginIds: string[]
+  pluginContributions: PluginContributionPreferences
   isPrimarySidebarCollapsed: boolean
   sidebarCollapsedWorkspaceIds: Record<string, boolean>
   sidebarCollapsedSpaceGroupIds: Record<string, boolean>

@@ -7,7 +7,6 @@ import {
   ChevronRight,
   FileText,
   Globe,
-  GitBranch,
   LayoutGrid,
   ListTodo,
   LoaderCircle,
@@ -17,6 +16,7 @@ import {
   SlidersHorizontal,
   Terminal,
 } from 'lucide-react'
+import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   AGENT_PROVIDER_LABEL,
@@ -26,6 +26,7 @@ import {
 import { LABEL_COLORS, type NodeLabelColorOverride } from '@shared/types/labelColor'
 import { WorkspaceContextQuickMenuItems } from './WorkspaceContextMenuQuickMenuParts'
 import { WorkspaceContextRoleMenuItems } from './WorkspaceContextRoleMenuParts'
+import { usePluginContributionEnabled } from '@contexts/plugins/presentation/renderer/usePluginEnabled'
 
 function renderMark(checked: boolean): React.JSX.Element {
   return checked ? (
@@ -103,6 +104,7 @@ export function WorkspaceContextPaneMenuContent({
   onToggleMagneticSnapping: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const gitBoardEnabled = usePluginContributionEnabled('git-board', 'contextMenu')
 
   return (
     <>
@@ -142,16 +144,18 @@ export function WorkspaceContextPaneMenuContent({
           </span>
         </button>
       ) : null}
-      <button
-        type="button"
-        data-testid="workspace-context-new-git-board"
-        onClick={createPluginNodeFromContextMenu}
-      >
-        <GitBranch className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('workspaceContextMenu.newGitBoard')}
-        </span>
-      </button>
+      {gitBoardEnabled ? (
+        <button
+          type="button"
+          data-testid="workspace-context-new-git-board"
+          onClick={createPluginNodeFromContextMenu}
+        >
+          <PluginIcon pluginId="git-board" className="workspace-context-menu__icon" />
+          <span className="workspace-context-menu__label">
+            {t('workspaceContextMenu.newGitBoard')}
+          </span>
+        </button>
+      ) : null}
       <button
         type="button"
         data-testid="workspace-context-new-task"

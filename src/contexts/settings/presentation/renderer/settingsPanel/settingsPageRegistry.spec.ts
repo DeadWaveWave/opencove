@@ -16,6 +16,7 @@ const EXPECTED_CANONICAL_PAGE_IDS = {
   worker: 'worker',
   endpoints: 'worker',
   agent: 'agent',
+  plugins: 'plugins',
   'tasks-shortcuts': 'tasks-shortcuts',
   'quick-menu': 'tasks-shortcuts',
   notifications: 'general',
@@ -70,7 +71,7 @@ describe('settingsPageRegistry', () => {
     })
   })
 
-  it('exposes seven distinct purposes with terminal settings in one page', () => {
+  it('exposes eight distinct purposes with terminal and plugin settings in their own pages', () => {
     expect(SETTINGS_PRIMARY_PAGE_IDS).toEqual([
       'general',
       'appearance',
@@ -79,8 +80,9 @@ describe('settingsPageRegistry', () => {
       'terminal',
       'tasks-shortcuts',
       'worker',
+      'plugins',
     ])
-    expect(new Set(SETTINGS_PRIMARY_PAGE_IDS).size).toBe(7)
+    expect(new Set(SETTINGS_PRIMARY_PAGE_IDS).size).toBe(8)
     expect(SETTINGS_PRIMARY_PAGE_IDS).not.toEqual(expect.arrayContaining([...SECONDARY_ALIASES]))
   })
 

@@ -32,6 +32,13 @@ describe('buildOpenCoveContentSecurityPolicy', () => {
     expect(frameDirective).toBe("frame-src 'self' http: https:")
   })
 
+  it('allows HTTPS documentation images without granting remote script or fetch access', () => {
+    const policy = buildOpenCoveContentSecurityPolicy(false)
+    expect(getCspDirective(policy, 'img-src')).toBe("img-src 'self' data: blob: https:")
+    expect(getCspDirective(policy, 'script-src')).toBe("script-src 'self'")
+    expect(getCspDirective(policy, 'connect-src')).toBe("connect-src 'self'")
+  })
+
   it("keeps 'unsafe-inline' styles in development builds for Vite", () => {
     const developmentPolicy = buildOpenCoveContentSecurityPolicy(true)
     const styleDirective = getCspDirective(developmentPolicy, 'style-src')

@@ -38,6 +38,17 @@ function createWorkspace(overrides: Partial<WorkspaceState> = {}): WorkspaceStat
 
 describe('settingsSearchIndex', () => {
   it.each([
+    { dictionary: en, query: 'Git Board' },
+    { dictionary: zhCN, query: '插件' },
+  ])('finds the plugin manager using $query', ({ dictionary, query }) => {
+    const entries = createSettingsSearchEntries({ t: createTranslator(dictionary), workspaces: [] })
+    expect(searchSettingsEntries(entries, query)[0]).toMatchObject({
+      pageId: 'plugins',
+      anchorId: 'settings-section-plugins',
+    })
+  })
+
+  it.each([
     ['Node Creation Pixels', en, 'settings-node-creation-pixel-effect'],
     ['Node Closing Pixels', en, 'settings-node-close-pixel-effect'],
     ['Canvas Pixel Background', en, 'settings-canvas-pixel-background'],

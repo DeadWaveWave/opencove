@@ -14,16 +14,16 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 3px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .settings-panel__group-title {
   margin: 0;
-  color: var(--cove-text-muted);
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  font-weight: 500;
-  line-height: 1.35;
+  color: var(--cove-settings-section-foreground);
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  line-height: 1.4;
   letter-spacing: -0.008em;
 }
 
@@ -32,7 +32,7 @@
   margin: 0;
   color: var(--cove-text-muted);
   font-size: calc(12px * var(--cove-ui-font-scale));
-  line-height: 1.45;
+  line-height: 1.6;
 }
 
 .settings-panel__group-body {
@@ -87,9 +87,9 @@
 
 .settings-panel__module-title {
   margin: 0;
-  color: var(--cove-text-muted);
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  font-weight: 500;
+  color: var(--cove-settings-heading-foreground);
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 600;
   line-height: 1.4;
   letter-spacing: -0.002em;
 }

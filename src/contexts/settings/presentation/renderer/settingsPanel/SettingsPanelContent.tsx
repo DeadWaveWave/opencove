@@ -15,6 +15,7 @@ import { CanvasWindowsSection } from './CanvasWindowsSection'
 import { GeneralSection } from './GeneralSection'
 import { AppearanceSection } from './AppearanceSection'
 import { IntegrationsSection } from './IntegrationsSection'
+import { PluginsSection } from './PluginsSection'
 import { NotificationsSection } from './NotificationsSection'
 import { QuickMenuSection } from './QuickMenuSection'
 import { ShortcutsSection } from './ShortcutsSection'
@@ -69,6 +70,8 @@ export function SettingsPanelContent({
     updateLanguage,
     updateUiTheme,
     updatePixelEffect,
+    updatePluginEnabled,
+    updatePluginContributionEnabled,
     updateAgentFullAccess,
     updateDefaultTerminalProfileId,
     updateTaskTitleProvider,
@@ -170,6 +173,14 @@ export function SettingsPanelContent({
       ) : null}
 
       {canonicalPageId === 'worker' ? <WorkerConnectionsSection /> : null}
+
+      {canonicalPageId === 'plugins' ? (
+        <PluginsSection
+          settings={settings}
+          onChangePluginEnabled={updatePluginEnabled}
+          onChangePluginContributionEnabled={updatePluginContributionEnabled}
+        />
+      ) : null}
 
       {canonicalPageId === 'agent' ? (
         <>

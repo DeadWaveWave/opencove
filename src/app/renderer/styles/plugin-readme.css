@@ -1,0 +1,123 @@
+.plugin-readme {
+  min-width: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.plugin-readme :is(h1, h2, h3, h4, h5, h6) {
+  margin: 30px 0 12px;
+  color: var(--cove-settings-heading-foreground);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+}
+
+.plugin-readme > :first-child {
+  margin-top: 0;
+}
+.plugin-readme h1 {
+  font-size: 1.65em;
+}
+.plugin-readme h2 {
+  font-size: 1.35em;
+}
+.plugin-readme :is(h3, h4, h5, h6) {
+  font-size: 1.1em;
+}
+.plugin-readme p {
+  margin: 12px 0;
+}
+.plugin-readme :is(ul, ol) {
+  padding-left: 22px;
+}
+.plugin-readme li {
+  margin: 5px 0;
+}
+.plugin-readme strong {
+  color: var(--cove-text);
+  font-weight: 550;
+}
+
+.plugin-readme a {
+  color: var(--cove-accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--cove-accent) 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.plugin-readme a:hover {
+  text-decoration-color: currentColor;
+}
+.plugin-readme a:focus-visible {
+  outline: 2px solid var(--cove-accent);
+  outline-offset: 3px;
+}
+.plugin-readme img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 20px 0;
+  border-radius: 8px;
+}
+.plugin-readme__image-fallback {
+  color: var(--cove-text-muted);
+  font-style: italic;
+}
+
+.plugin-readme code {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--cove-surface-hover);
+  color: var(--cove-text);
+  font-size: 0.9em;
+}
+
+.plugin-readme pre {
+  max-width: 100%;
+  overflow: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 7px;
+  background: var(--cove-surface);
+}
+
+.plugin-readme pre code {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.plugin-readme blockquote {
+  margin: 16px 0;
+  padding-left: 16px;
+  border-left: 2px solid var(--cove-accent);
+}
+.plugin-readme hr {
+  margin: 24px 0;
+  border: 0;
+  border-top: 1px solid var(--cove-border-subtle);
+}
+.plugin-readme__table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.plugin-readme table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+.plugin-readme :is(th, td) {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+.plugin-readme th {
+  color: var(--cove-text);
+  font-weight: 500;
+}
+
+.plugin-readme :is(th, td):first-child {
+  min-width: 6em;
+}

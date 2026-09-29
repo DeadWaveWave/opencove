@@ -44,11 +44,11 @@
 .settings-panel__header h2 {
   margin: 0;
   overflow-wrap: anywhere;
-  font-size: calc(20px * var(--cove-ui-font-scale));
-  font-weight: 500;
-  line-height: 1.2;
+  font-size: calc(24px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  line-height: 1.25;
   letter-spacing: -0.025em;
-  color: var(--cove-text);
+  color: var(--cove-settings-heading-foreground);
 }
 
 .settings-panel__header-description {
@@ -56,7 +56,7 @@
   overflow-wrap: anywhere;
   color: var(--cove-text-muted);
   font-size: calc(12px * var(--cove-ui-font-scale));
-  line-height: 1.45;
+  line-height: 1.6;
 }
 
 .settings-panel__close {
@@ -104,11 +104,11 @@
 /* --- Typography --- */
 .settings-panel__section-title {
   margin: 0 0 8px;
-  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-size: calc(14px * var(--cove-ui-font-scale));
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.005em;
-  color: var(--cove-text);
+  color: var(--cove-settings-section-foreground);
 }
 
 .settings-panel__section-help {
@@ -202,7 +202,7 @@
 
 .settings-panel__value {
   font-size: calc(12px * var(--cove-ui-font-scale));
-  color: var(--cove-text-muted);
+  color: var(--cove-text);
   overflow-wrap: anywhere;
 }
 
@@ -315,8 +315,8 @@
 
 .settings-panel__subsection-header strong {
   font-size: calc(13px * var(--cove-ui-font-scale));
-  font-weight: 500;
-  color: var(--cove-text);
+  font-weight: 600;
+  color: var(--cove-settings-section-foreground);
 }
 
 .settings-panel__subsection-header span {

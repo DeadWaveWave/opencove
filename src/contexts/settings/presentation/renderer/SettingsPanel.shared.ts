@@ -39,6 +39,7 @@ type CorePageId =
   | 'worker'
   | 'endpoints'
   | 'agent'
+  | 'plugins'
   | 'tasks-shortcuts'
   | 'quick-menu'
   | 'notifications'

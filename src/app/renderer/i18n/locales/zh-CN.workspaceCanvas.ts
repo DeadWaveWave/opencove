@@ -89,6 +89,11 @@ export const zhCNWorkspaceCanvas = {
     title: '空间操作',
   },
   plugins: {
+    disabled: '插件已停用',
+    missing: '插件暂不可用',
+    schemaUnavailable: '此插件数据需要更新版本',
+    retained: '窗口及其数据已保留，可前往设置管理插件。',
+    openSettings: '管理插件',
     gitBoard: {
       title: 'Git Board',
       refresh: '刷新 Git Board',

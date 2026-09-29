@@ -217,6 +217,12 @@
     transparent
   );
   --cove-settings-row-divider: color-mix(in srgb, var(--cove-border-subtle) 82%, transparent);
+  --cove-settings-heading-foreground: color-mix(
+    in srgb,
+    var(--cove-text) 65%,
+    var(--cove-accent-text)
+  );
+  --cove-settings-section-foreground: var(--cove-accent-text);
   --cove-settings-group-surface: color-mix(in srgb, var(--cove-field) 48%, transparent);
   --cove-settings-group-outline: color-mix(in srgb, var(--cove-border-subtle) 52%, transparent);
   --cove-settings-active-surface: color-mix(in srgb, var(--cove-accent) 13%, transparent);

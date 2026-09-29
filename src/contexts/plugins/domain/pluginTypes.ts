@@ -1,18 +1,24 @@
 export type PluginNodeKind = 'git-board'
 
+export type PluginIconDeclaration =
+  | { type: 'builtin'; name: 'git-branch' | 'puzzle' }
+  | { type: 'asset'; path: string; light?: string; dark?: string }
+
 export interface PluginManifest {
   id: string
   version: string
   displayName: string
   description: string
+  icon?: PluginIconDeclaration
   nodeKinds: readonly PluginNodeKind[]
   actionBar: boolean
   contextMenu: boolean
 }
 
 export interface GitBoardNodeData {
-  pluginId: 'git-board'
-  schemaVersion: 1
+  [key: string]: unknown
+  pluginId: string
+  schemaVersion: number
   repoPath: string
   mountId: string | null
   graphLimit: number

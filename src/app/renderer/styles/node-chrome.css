@@ -1,5 +1,6 @@
 :is(
   .terminal-node,
+  .cove-canvas-node-window,
   .task-node,
   .role-node,
   .note-node,
@@ -17,6 +18,7 @@
 
 :is(
   .terminal-node,
+  .cove-canvas-node-window,
   .task-node,
   .role-node,
   .note-node,
@@ -30,6 +32,7 @@
 .workspace-canvas
   :is(
     .terminal-node__title,
+    .cove-canvas-node-window__title,
     .task-node__title,
     .note-node__title,
     .document-node__title,
@@ -50,6 +53,7 @@
 
 :is(
   .terminal-node__header,
+  .cove-canvas-node-window__header,
   .task-node__header,
   .role-node__header,
   .note-node__header,
@@ -63,6 +67,7 @@
 
 :is(
   .terminal-node__action--icon,
+  .cove-canvas-node-window__action,
   .terminal-node__close,
   .task-node__icon-button,
   .role-node__icon-button,
@@ -79,6 +84,7 @@
 
 :is(
     .terminal-node__action--icon,
+    .cove-canvas-node-window__action,
     .terminal-node__close,
     .task-node__icon-button,
     .role-node__icon-button,
@@ -96,6 +102,7 @@
 @media (prefers-reduced-motion: reduce) {
   :is(
     .terminal-node,
+    .cove-canvas-node-window,
     .task-node,
     .role-node,
     .note-node,
