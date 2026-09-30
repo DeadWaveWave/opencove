@@ -1,3 +1,4 @@
+import { PluginContextCommands } from '@contexts/plugins/presentation/renderer/PluginContextCommands'
 import React from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
@@ -423,6 +424,7 @@ export function WorkspaceSpaceActionMenu({
             </span>
           </button>
         ) : null}
+        <PluginContextCommands surface="space" spaceId={menu.spaceId} onClose={closeMenu} />
       </ViewportMenuSurface>
 
       {shouldShowOpenSubmenu ? (

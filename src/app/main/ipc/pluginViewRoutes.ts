@@ -40,6 +40,8 @@ export class PluginViewRoutes {
         'plugin.invoke',
         'plugin.storage.get',
         'plugin.storage.set',
+        'plugin.view.preferences.get',
+        'plugin.view.preferences.set',
         'plugin.view.close',
         'plugin.view.setTitle',
       ].includes(request.id)

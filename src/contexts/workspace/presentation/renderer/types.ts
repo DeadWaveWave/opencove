@@ -33,7 +33,7 @@ import type {
   WebsiteWindowSessionMode,
   BrowserMode,
 } from '@shared/contracts/dto'
-import type { GitBoardNodeData } from '@contexts/plugins/domain/pluginTypes'
+import type { PluginNodePayload } from '@contexts/plugins/domain/pluginTypes'
 
 export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 
@@ -175,7 +175,7 @@ export interface DocumentNodeData {
 
 export type FolderNodeData = PersistedFolderNodeData
 
-export type PluginNodeData = GitBoardNodeData
+export type PluginNodeData = PluginNodePayload
 
 export interface WebsiteNodeData {
   url: string

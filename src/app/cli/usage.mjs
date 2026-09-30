@@ -7,6 +7,12 @@ export function printUsage() {
   process.stdout.write(`  opencove plugin guide [--pretty]\n`)
   process.stdout.write(`  opencove plugin list [--pretty]\n`)
   process.stdout.write(`  opencove plugin install <directory> [--pretty]\n`)
+  process.stdout.write(
+    `  opencove plugin install-git <repository> [--ref <ref>] [--directory <path>] [--build none|npm|pnpm] [--script <name>] [--output <path>]\n`,
+  )
+  process.stdout.write(`  opencove plugin source <id> | check <id> | update <id> [--ref <ref>]\n`)
+  process.stdout.write(`  opencove plugin apply <candidate-id> | rollback <id> <revision>\n`)
+  process.stdout.write(`  opencove plugin discover [--query <text>]\n`)
   process.stdout.write(`  opencove plugin details <id> [--pretty]\n`)
   process.stdout.write(
     `  opencove plugin run <id> <command> [--params <json>] [--node <id>] [--view <id>] [--project <id>] [--pretty]\n`,

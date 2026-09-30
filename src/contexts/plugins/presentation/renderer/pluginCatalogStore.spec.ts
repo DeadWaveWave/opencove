@@ -1,8 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
-import { BUILTIN_PLUGIN_MANIFESTS } from '../../application/builtinPlugins'
+import type { PluginManifest } from '../../domain/pluginTypes'
 import { createPluginCatalogStore } from './pluginCatalogStore'
 
-const initial = BUILTIN_PLUGIN_MANIFESTS
+const initial: readonly PluginManifest[] = [
+  {
+    id: 'sample-plugin',
+    version: '1.0.0',
+    displayName: 'Sample',
+    description: 'Sample',
+    nodeKinds: ['sample-plugin'],
+    actionBar: true,
+    contextMenu: true,
+    source: 'local',
+  },
+]
 const extra = { ...initial[0], id: 'music', displayName: 'Music' }
 
 describe('renderer plugin catalog ownership', () => {

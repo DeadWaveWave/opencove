@@ -5,17 +5,13 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const BUILTIN_PLUGIN_GUIDES = [
-  {
-    id: 'git-board',
-    manifestVersion: '0.1.0',
-    document: 'GIT_BOARD_MVP.md',
-  },
-]
 const REQUIRED_GUIDE_DOCUMENTS = [
   'README.md',
   'AUTHORING.md',
   'API.md',
+  'COMMANDS.md',
+  'RUNTIME.md',
+  'VISUAL_DESIGN.md',
   ...[
     'opencove.plugin.json',
     'README.md',
@@ -25,7 +21,6 @@ const REQUIRED_GUIDE_DOCUMENTS = [
     'style.css',
     'icon.svg',
   ].map(filename => `examples/hello-clock/${filename}`),
-  ...BUILTIN_PLUGIN_GUIDES.map(plugin => plugin.document),
 ]
 
 /**
@@ -166,10 +161,6 @@ export async function createPluginGuideResult(
     return {
       directory,
       readme: join(directory, 'README.md'),
-      plugins: BUILTIN_PLUGIN_GUIDES.map(plugin => ({
-        ...plugin,
-        document: join(directory, plugin.document),
-      })),
     }
   } catch (error) {
     throw new Error(`Plugin guide unavailable at ${pluginDirectory}: ${error.message}`, {

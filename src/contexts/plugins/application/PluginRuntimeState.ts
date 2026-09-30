@@ -53,3 +53,10 @@ export function assertPluginRuntimeGeneration(
     throw new Error('Plugin changed before command dispatch; the command was not run.')
   }
 }
+
+export function appendPluginRuntimeLog(runtime: PluginRuntimeState, message: string): void {
+  runtime.logs.push(message.slice(0, 4000))
+  if (runtime.logs.length > 100) {
+    runtime.logs.shift()
+  }
+}

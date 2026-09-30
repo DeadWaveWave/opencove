@@ -18,13 +18,6 @@ export function ensurePersistedPluginData(value: unknown): PluginNodeData | null
     record.schemaVersion > 0
       ? record.schemaVersion
       : 1
-  const supported = pluginId === 'git-board' && schemaVersion === 1
-  const graphLimit =
-    typeof record.graphLimit === 'number' && Number.isFinite(record.graphLimit)
-      ? supported
-        ? Math.max(10, Math.min(100, Math.floor(record.graphLimit)))
-        : record.graphLimit
-      : 30
 
   return {
     ...record,
@@ -33,6 +26,5 @@ export function ensurePersistedPluginData(value: unknown): PluginNodeData | null
     schemaVersion,
     repoPath: typeof record.repoPath === 'string' ? record.repoPath : '',
     mountId: typeof record.mountId === 'string' ? record.mountId : null,
-    graphLimit,
   }
 }

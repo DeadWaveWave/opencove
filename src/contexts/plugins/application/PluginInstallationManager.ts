@@ -1,3 +1,13 @@
+import { readPluginPreferences } from './pluginPreferences'
+import { PluginStorageOwner } from './PluginStorageOwner'
+import { restorePluginInstallations } from './pluginInstallationRestore'
+import {
+  publishPluginSnapshot,
+  replacePluginRecord,
+  startPluginBackend,
+  assertPluginPublication,
+} from './pluginPublication'
+import type { PluginPublicationExpectation } from '../domain/pluginDistributionTypes'
 import { PluginViewLeases } from './PluginViewLeases'
 import { PluginWindowCommands } from './PluginWindowCommands'
 import { installedPluginManifest } from './pluginManifest'
@@ -5,6 +15,7 @@ import { listPluginViews, readPluginSkill, runPluginCommand } from './pluginCont
 import {
   assertPluginRuntimeGeneration,
   recordPluginViewTitle,
+  appendPluginRuntimeLog,
   type PluginRuntimeState as Runtime,
   type PluginRuntimeView as View,
 } from './PluginRuntimeState'
@@ -28,6 +39,8 @@ import type {
 } from './PluginRuntimePorts'
 
 export class PluginInstallationManager {
+  private readonly storage: PluginStorageOwner
+  private readonly runtimeEpoch: string
   private readonly runtimes = new Map<string, Runtime>()
   private readonly views: PluginViewLeases<View>
   private readonly windowCommands: PluginWindowCommands
@@ -46,6 +59,17 @@ export class PluginInstallationManager {
       scheduleViewExpiry: (expire: () => void) => () => void
     },
   ) {
+    this.storage = new PluginStorageOwner({
+      files: options.files,
+      view: id => this.getView(id),
+      transact: task => this.transact(task),
+      runtime: async id => {
+        await this.start()
+        this.assertOpen()
+        return this.get(id)
+      },
+    })
+    this.runtimeEpoch = options.createId()
     this.windowCommands = new PluginWindowCommands(options.createId)
     this.views = new PluginViewLeases({
       scheduleExpiry: options.scheduleViewExpiry,
@@ -61,39 +85,14 @@ export class PluginInstallationManager {
   }
 
   private async restore(): Promise<void> {
-    let records: PluginInstallationRecord[]
-    try {
-      records = await this.options.files.readRegistry()
-    } catch (error) {
-      this.initializationError = asError(error)
-      return
-    }
-    // Sequential activation bounds process fan-out and observes shutdown between plugins.
-    /* eslint-disable no-await-in-loop */
-    for (const record of records) {
-      if (this.closed) {
-        return
-      }
-      const runtime: Runtime = { record, snapshot: null, backend: null, error: null, logs: [] }
-      this.runtimes.set(record.package.id, runtime)
-      try {
-        if (this.options.reservedIds.includes(record.package.id)) {
-          throw new Error('Plugin id belongs to a built-in plugin.')
-        }
-        runtime.snapshot = await this.options.files.restore(record)
-        if (record.enabled && !this.closed) {
-          runtime.backend = await this.startBackend(runtime)
-        }
-        if (this.closed) {
-          await runtime.backend?.dispose()
-        }
-      } catch (error) {
-        runtime.error = asError(error).message
-      }
-    }
+    this.initializationError = await restorePluginInstallations({
+      files: this.options.files,
+      reservedIds: this.options.reservedIds,
+      closed: () => this.closed,
+      commit: runtime => this.runtimes.set(runtime.record.package.id, runtime),
+      startBackend: runtime => this.startBackend(runtime),
+    })
   }
-
-  /* eslint-enable no-await-in-loop */
 
   private assertOpen(): void {
     if (this.closed) {
@@ -153,33 +152,10 @@ export class PluginInstallationManager {
     return await readPluginSkill(this.options.files, this.get(pluginId), skillId)
   }
 
-  private addLog(runtime: Runtime, message: string): void {
-    runtime.logs.push(message.slice(0, 4000))
-    if (runtime.logs.length > 100) {
-      runtime.logs.shift()
-    }
-  }
-
-  private async startBackend(runtime: Runtime): Promise<PluginBackend | null> {
-    if (!runtime.snapshot?.package.main) {
-      return null
-    }
-    const backend = await this.options.backend.start(runtime.snapshot, {
-      dataDirectory: this.options.files.dataDirectory(runtime.record.package.id),
-      log: message => this.addLog(runtime, message),
-      unavailable: message => {
-        runtime.error = message
-        this.addLog(runtime, message)
-      },
-    })
-    if (
-      runtime.record.package.contributes?.commands?.some(command => command.target === 'plugin') &&
-      !backend.runCommand
-    ) {
-      await backend.dispose()
-      throw new Error('Plugin backend must provide runCommand for declared plugin commands.')
-    }
-    return backend
+  private startBackend(runtime: Runtime): Promise<PluginBackend | null> {
+    return startPluginBackend(runtime, this.options.backend, this.options.files, message =>
+      appendPluginRuntimeLog(runtime, message),
+    )
   }
 
   async install(directory: string): Promise<PluginManifest> {
@@ -198,59 +174,72 @@ export class PluginInstallationManager {
   async reload(pluginId: string): Promise<PluginManifest> {
     return await this.transact(async () => {
       const previous = this.get(pluginId)
+      if (previous.record.distribution) {
+        throw new Error(
+          'Managed Git source must be rebuilt through plugin reload on the control surface.',
+        )
+      }
       const snapshot = await this.options.files.snapshot(previous.record.sourceDirectory)
       if (snapshot.package.id !== pluginId) {
         throw new Error('Reload cannot change the plugin id.')
       }
-      return await this.activate(snapshot, previous.record.enabled)
+      return await this.activate(
+        { ...snapshot, distribution: previous.record.distribution },
+        previous.record.enabled,
+      )
     })
   }
 
-  private recordsReplacing(
-    id: string,
-    next: PluginInstallationRecord | null,
-  ): PluginInstallationRecord[] {
-    const records = [...this.runtimes.values()]
-      .filter(item => item.record.package.id !== id)
-      .map(item => item.record)
-    if (next) {
-      records.push(next)
+  async installationState(pluginId: string) {
+    await this.start()
+    this.assertOpen()
+    const runtime = this.get(pluginId)
+    return {
+      record: structuredClone(runtime.record),
+      manifest: this.manifest(runtime),
+      runtimeEpoch: this.runtimeEpoch,
     }
-    return records
   }
 
-  private async activate(snapshot: PluginSnapshot, enabled: boolean): Promise<PluginManifest> {
-    const id = snapshot.package.id
-    const previous = this.runtimes.get(id)
-    const record = {
-      package: snapshot.package,
-      revision: snapshot.revision,
-      sourceDirectory: snapshot.sourceDirectory,
-      enabled,
-    }
-    const candidate: Runtime = { record, snapshot, backend: null, error: null, logs: [] }
-    try {
-      if (enabled) {
-        candidate.backend = await this.startBackend(candidate)
-      }
-      this.assertOpen()
-      if (candidate.error) {
-        throw new Error(candidate.error)
-      }
-      await this.options.files.writeRegistry(this.recordsReplacing(id, record))
-      // The persisted record is authoritative even if shutdown began during the write.
-      this.runtimes.set(id, candidate)
-    } catch (error) {
-      await candidate.backend?.dispose()
-      throw error
-    }
-    if (previous) {
-      await this.retire(previous)
-    }
-    if (this.closed) {
-      await this.retire(candidate)
-    }
-    return this.manifest(candidate)
+  async publishPrepared(
+    snapshot: PluginSnapshot,
+    expected: PluginPublicationExpectation | null,
+    beforePublish?: () => Promise<void>,
+  ): Promise<PluginManifest> {
+    return this.transact(async () => {
+      const previous = this.runtimes.get(snapshot.package.id)
+      assertPluginPublication(
+        previous,
+        snapshot,
+        expected,
+        this.runtimeEpoch,
+        this.options.reservedIds,
+      )
+      return this.activate(snapshot, previous?.record.enabled ?? true, beforePublish)
+    })
+  }
+
+  private recordsReplacing(id: string, next: PluginInstallationRecord | null) {
+    return replacePluginRecord(this.runtimes.values(), id, next)
+  }
+
+  private async activate(
+    snapshot: PluginSnapshot,
+    enabled: boolean,
+    beforePublish?: () => Promise<void>,
+  ): Promise<PluginManifest> {
+    const runtime = await publishPluginSnapshot(snapshot, enabled, {
+      previous: this.runtimes.get(snapshot.package.id),
+      beforePublish,
+      files: this.options.files,
+      records: this.runtimes.values(),
+      startBackend: item => this.startBackend(item),
+      assertOpen: () => this.assertOpen(),
+      commit: item => this.runtimes.set(item.record.package.id, item),
+      retire: item => this.retire(item),
+      closed: () => this.closed,
+    })
+    return this.manifest(runtime)
   }
 
   async setEnabled(pluginId: string, enabled: boolean): Promise<PluginManifest> {
@@ -315,8 +304,8 @@ export class PluginInstallationManager {
         try {
           view.backend = await this.options.backend.start(runtime.snapshot, {
             dataDirectory: `${this.options.files.dataDirectory(input.pluginId)}/previews/${id}`,
-            log: message => this.addLog(runtime, `[preview] ${message}`),
-            unavailable: message => this.addLog(runtime, `[preview] ${message}`),
+            log: message => appendPluginRuntimeLog(runtime, `[preview] ${message}`),
+            unavailable: message => appendPluginRuntimeLog(runtime, `[preview] ${message}`),
           })
         } catch (error) {
           await this.options.files.removePreviewData(input.pluginId, id).catch(() => undefined)
@@ -358,12 +347,14 @@ export class PluginInstallationManager {
     this.windowCommands.retire(viewId)
     await view.backend
       ?.dispose()
-      .catch(error => this.addLog(view.runtime, `Preview cleanup: ${asError(error).message}`))
+      .catch(error =>
+        appendPluginRuntimeLog(view.runtime, `Preview cleanup: ${asError(error).message}`),
+      )
     if (view.context.preview) {
       await this.options.files
         .removePreviewData(view.context.pluginId, viewId)
         .catch(error =>
-          this.addLog(view.runtime, `Preview data cleanup: ${asError(error).message}`),
+          appendPluginRuntimeLog(view.runtime, `Preview data cleanup: ${asError(error).message}`),
         )
     }
   }
@@ -402,6 +393,14 @@ export class PluginInstallationManager {
     this.assertOpen()
     const runtime = this.get(pluginId)
     assertPluginRuntimeGeneration(runtime, expected)
+    const preferences = runtime.record.package.contributes?.preferences?.length
+      ? await readPluginPreferences(this.options.files, runtime)
+      : undefined
+    this.assertOpen()
+    if (this.get(pluginId) !== runtime) {
+      throw new Error('Plugin changed before command dispatch.')
+    }
+    assertPluginRuntimeGeneration(runtime, expected)
     return await runPluginCommand(
       runtime,
       this.views.values().filter(view => view.runtime === runtime),
@@ -409,6 +408,7 @@ export class PluginInstallationManager {
       commandId,
       params,
       target,
+      preferences,
     )
   }
 
@@ -423,23 +423,23 @@ export class PluginInstallationManager {
     return this.windowCommands.connect(view.id, send)
   }
 
-  async storageGet(viewId: string, key: string): Promise<unknown> {
-    const view = this.getView(viewId)
-    if (view.context.preview) {
-      return view.storage.get(key) ?? null
-    }
-    return await this.options.files.readStorage(view.context.pluginId, key)
+  preferencesGet(pluginId: string) {
+    return this.storage.preferencesGet(pluginId)
   }
-
-  async storageSet(viewId: string, key: string, value: unknown): Promise<void> {
-    await this.transact(async () => {
-      const view = this.getView(viewId)
-      if (view.context.preview) {
-        view.storage.set(key, value)
-        return
-      }
-      await this.options.files.writeStorage(view.context.pluginId, key, value)
-    })
+  preferencesSet(pluginId: string, key: string, value: unknown) {
+    return this.storage.preferencesSet(pluginId, key, value)
+  }
+  viewPreferencesGet(viewId: string) {
+    return this.storage.viewPreferencesGet(viewId)
+  }
+  viewPreferencesSet(viewId: string, key: string, value: unknown) {
+    return this.storage.viewPreferencesSet(viewId, key, value)
+  }
+  storageGet(viewId: string, key: string) {
+    return this.storage.get(viewId, key)
+  }
+  storageSet(viewId: string, key: string, value: unknown) {
+    return this.storage.set(viewId, key, value)
   }
 
   async resource(token: string, path: string): Promise<PluginResource | null> {
@@ -476,7 +476,7 @@ export class PluginInstallationManager {
     )
     await runtime.backend
       ?.dispose()
-      .catch(error => this.addLog(runtime, `Runtime cleanup: ${asError(error).message}`))
+      .catch(error => appendPluginRuntimeLog(runtime, `Runtime cleanup: ${asError(error).message}`))
   }
 
   beginShutdown(): void {

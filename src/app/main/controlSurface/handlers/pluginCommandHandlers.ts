@@ -1,3 +1,4 @@
+import { normalizePluginHostContext } from '@contexts/plugins/domain/pluginCommandContext'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceHandler } from '../types'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
@@ -32,7 +33,17 @@ function windowInput(value: unknown, operation: 'open' | 'list' | 'run'): Plugin
     'pluginId',
     'projectId',
     ...(operation === 'open' ? ['nodeId', 'spaceId', 'anchor'] : []),
-    ...(operation === 'run' ? ['nodeId', 'viewId', 'commandId', 'params'] : []),
+    ...(operation === 'run'
+      ? [
+          'nodeId',
+          'viewId',
+          'commandId',
+          'params',
+          'context',
+          'expectedRevision',
+          'expectedRuntimeGeneration',
+        ]
+      : []),
   ])
   if (raw.nodeId !== undefined && (raw.spaceId !== undefined || raw.anchor !== undefined)) {
     throw new Error('Placement arguments cannot be combined with an existing --node.')
@@ -218,13 +229,38 @@ export function registerPluginCommandHandlers(
         commandId: pluginString(raw.commandId, 'commandId', 80),
         params: pluginJsonValue(raw.params, 1024 * 1024, 'command parameters'),
         viewId: optionalString(raw, 'viewId'),
+        context: normalizePluginHostContext(raw.context),
+        expectedRevision: optionalString(raw, 'expectedRevision'),
+        expectedRuntimeGeneration: raw.expectedRuntimeGeneration,
       }
     },
     async (_ctx, input) => {
       const manifest = await plugin(input.pluginId)
+      if (
+        (input.expectedRevision !== undefined && input.expectedRevision !== manifest.revision) ||
+        (input.expectedRuntimeGeneration !== undefined &&
+          input.expectedRuntimeGeneration !== manifest.runtimeGeneration)
+      ) {
+        throw new Error('Plugin changed before command dispatch; open the menu again.')
+      }
+      if (input.context?.projectId) {
+        const state = await readState()
+        const project = state.workspaces.find(item => item.id === input.context!.projectId)
+        if (
+          !project ||
+          (input.context.spaceId &&
+            !project.spaces.some(item => item.id === input.context!.spaceId)) ||
+          input.context.nodeIds?.some(id => !project.nodes.some(node => node.id === id))
+        ) {
+          throw new Error('Plugin command context is no longer available.')
+        }
+      }
       const command = manifest.commands?.find(item => item.id === input.commandId)
       if (!command) {
         throw new Error('Plugin command is not declared.')
+      }
+      if (input.context && !(command.menus ?? ['commandCenter']).includes(input.context.surface)) {
+        throw new Error('Plugin command is not declared for this menu.')
       }
       if (command.target === 'plugin') {
         if (input.projectId || input.nodeId || input.viewId) {
@@ -237,6 +273,7 @@ export function registerPluginCommandHandlers(
           {
             nodeId: input.nodeId,
             viewId: input.viewId,
+            context: input.context,
           },
           manifest,
         )
@@ -249,6 +286,33 @@ export function registerPluginCommandHandlers(
         if (!view) {
           throw new Error('The selected plugin view is no longer ready. List windows again.')
         }
+      }
+      if (input.context) {
+        const currentTarget = resolvePluginWindow(await readState(), manifest, input, 'command')
+        if (
+          currentTarget &&
+          (input.context.projectId !== currentTarget.projectId ||
+            (input.context.surface === 'space' &&
+              input.context.spaceId !== currentTarget.spaceId) ||
+            (input.context.surface === 'node' &&
+              !input.context.nodeIds?.includes(currentTarget.nodeId)))
+        ) {
+          throw new Error('Plugin window target does not belong to the selected context.')
+        }
+        if (!currentTarget || !input.nodeId || !input.viewId) {
+          throw new Error('Menu commands require an explicit ready node and view.')
+        }
+        return await deps.plugins.runCommand(
+          input.pluginId,
+          input.commandId,
+          input.params,
+          {
+            nodeId: currentTarget.nodeId,
+            viewId: input.viewId,
+            context: input.context,
+          },
+          manifest,
+        )
       }
       const target = selected ?? (await open(input))
       const ready = async () =>

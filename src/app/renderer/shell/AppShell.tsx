@@ -1,3 +1,4 @@
+import { subscribePluginCommandFeedback } from '@contexts/plugins/presentation/renderer/pluginCommandFeedback'
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolvePerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
@@ -116,6 +117,7 @@ export default function App(): React.JSX.Element {
 
   const { floatingMessage: generalFloatingMessage, showMessage: handleShowMessage } =
     useFloatingMessage()
+  useEffect(() => subscribePluginCommandFeedback(handleShowMessage), [handleShowMessage])
   const floatingMessage = useQuitShortcutHint() ?? generalFloatingMessage
   const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
     useAgentStandbyNotifications()

@@ -1,3 +1,4 @@
+import type { PluginGitSource } from '../domain/pluginDistributionTypes'
 import type {
   LocalPluginPackage,
   PluginCommandContext,
@@ -9,7 +10,11 @@ export interface PluginInstallationRecord {
   sourceDirectory: string
   revision: string
   enabled: boolean
+  distribution?: PluginGitSource
+  history?: PluginCodeVersion[]
 }
+
+export type PluginCodeVersion = Omit<PluginInstallationRecord, 'enabled' | 'history'>
 
 export interface PluginSnapshot extends PluginInstallationRecord {
   directory: string

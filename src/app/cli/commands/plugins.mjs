@@ -1,3 +1,4 @@
+import { parsePluginDistributionCommand } from './pluginDistribution.mjs'
 import { resolve } from 'node:path'
 
 const COMMANDS = new Set([
@@ -18,6 +19,13 @@ const COMMANDS = new Set([
 export function resolvePluginCommandTimeout(request, requestedTimeout) {
   if (requestedTimeout !== null && requestedTimeout !== undefined) {
     return requestedTimeout
+  }
+  if (
+    request?.id.startsWith('plugin.git.') ||
+    request?.id === 'plugin.rollback' ||
+    request?.id === 'plugin.reload'
+  ) {
+    return 600_000
   }
   return ['plugin.install', 'plugin.reload', 'plugin.command.run'].includes(request?.id)
     ? 60_000
@@ -113,6 +121,10 @@ function parseContributionCommand(command, values) {
 /** Parse before connecting so spelling and argument errors also work offline. */
 export function parsePluginCommand(args, cwd = process.cwd()) {
   const [, command, ...values] = args
+  const distribution = parsePluginDistributionCommand(command, values)
+  if (distribution) {
+    return distribution
+  }
   if (!COMMANDS.has(command)) {
     throw new Error(
       `unsupported plugin command: ${command || '<missing>'}. Run "opencove plugin guide" for supported plugin development and installation instructions.`,

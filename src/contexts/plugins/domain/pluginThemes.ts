@@ -1,0 +1,31 @@
+import type { UiTheme } from '../../settings/domain/uiSettings'
+import type { PluginManifest, PluginThemeDeclaration } from './pluginTypes'
+
+export function pluginThemeId(pluginId: string, themeId: string): UiTheme {
+  return `plugin:${pluginId}:${themeId}`
+}
+export function availablePluginThemes(plugins: readonly PluginManifest[]) {
+  return plugins
+    .filter(plugin => plugin.enabled !== false && plugin.status === 'ready')
+    .flatMap(plugin =>
+      (plugin.themes ?? []).map(theme => ({
+        plugin,
+        theme,
+        id: pluginThemeId(plugin.id, theme.id),
+      })),
+    )
+}
+/** Durable selection never changes as a side effect of availability or fallback. */
+export function resolveHostTheme(
+  selected: UiTheme,
+  plugins: readonly PluginManifest[],
+  fallback: UiTheme = 'pixel',
+): { id: UiTheme; theme?: PluginThemeDeclaration & { baseScheme: 'light' | 'dark' } } {
+  if (!selected.startsWith('plugin:')) {
+    return { id: selected }
+  }
+  const contribution = availablePluginThemes(plugins).find(item => item.id === selected)
+  return contribution
+    ? { id: selected, theme: { ...contribution.theme, baseScheme: contribution.theme.appearance } }
+    : { id: fallback.startsWith('plugin:') ? 'pixel' : fallback }
+}

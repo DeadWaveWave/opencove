@@ -66,7 +66,7 @@ function create(
     files,
     backend,
     createId: randomUUID,
-    reservedIds: ['git-board'],
+    reservedIds: ['sample-plugin'],
     scheduleViewExpiry,
   })
   managers.push(manager)
@@ -270,7 +270,7 @@ describe('independent plugin installation ownership', () => {
     /* eslint-disable no-await-in-loop */
     for (const patch of [
       { apiVersion: 2 },
-      { id: 'git-board' },
+      { id: 'sample-plugin' },
       { view: { entry: '../outside.html' } },
       { platforms: [process.platform === 'win32' ? 'linux' : 'win32'] },
     ]) {

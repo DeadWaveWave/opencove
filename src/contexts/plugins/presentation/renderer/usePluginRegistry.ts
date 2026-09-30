@@ -1,10 +1,9 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { BUILTIN_PLUGIN_MANIFESTS } from '../../application/builtinPlugins'
 import type { PluginManifest } from '../../domain/pluginTypes'
 import { refreshPluginDetails } from './usePluginDetails'
 import { createPluginCatalogStore } from './pluginCatalogStore'
 
-const store = createPluginCatalogStore(BUILTIN_PLUGIN_MANIFESTS, async () => {
+const store = createPluginCatalogStore([], async () => {
   const result = await window.opencoveApi.controlSurface.invoke<{ plugins: PluginManifest[] }>({
     kind: 'query',
     id: 'plugin.list',
@@ -67,16 +66,26 @@ export function refreshPluginRegistry(): Promise<void> {
   return store.refresh()
 }
 
-export async function changeInstalledPlugin(
-  id: 'plugin.setEnabled' | 'plugin.reload' | 'plugin.uninstall',
-  payload: { pluginId: string; enabled?: boolean },
-): Promise<void> {
+export async function changeInstalledPlugin<T = void>(
+  id:
+    | 'plugin.setEnabled'
+    | 'plugin.reload'
+    | 'plugin.uninstall'
+    | 'plugin.install'
+    | 'plugin.git.install'
+    | 'plugin.git.update'
+    | 'plugin.git.apply'
+    | 'plugin.rollback',
+  payload: Record<string, unknown>,
+): Promise<T> {
   try {
-    await window.opencoveApi.controlSurface.invoke({ kind: 'command', id, payload })
+    return await window.opencoveApi.controlSurface.invoke<T>({ kind: 'command', id, payload })
   } finally {
     // Failed reloads leave the prior revision working but may add useful diagnostics.
     store.invalidate()
     await store.refresh()
-    refreshPluginDetails(payload.pluginId)
+    if (typeof payload.pluginId === 'string') {
+      refreshPluginDetails(payload.pluginId)
+    }
   }
 }

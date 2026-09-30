@@ -45,7 +45,9 @@ export function bindPluginViewBridge({
   }
   const invoke = (method: string, payload: Record<string, unknown>) =>
     window.opencoveApi.controlSurface.invoke({
-      kind: method === 'plugin.storage.get' ? 'query' : 'command',
+      kind: ['plugin.storage.get', 'plugin.view.preferences.get'].includes(method)
+        ? 'query'
+        : 'command',
       id: method,
       payload: { ...payload, viewId: view.viewId },
     })
@@ -103,6 +105,10 @@ export function bindPluginViewBridge({
       switch (message.operation) {
         case 'invoke':
           return invoke('plugin.invoke', { method: input.method, params: input.params })
+        case 'preferences.get':
+          return invoke('plugin.view.preferences.get', {})
+        case 'preferences.set':
+          return invoke('plugin.view.preferences.set', { key: input.key, value: input.value })
         case 'storage.get':
           return invoke('plugin.storage.get', { key: input.key })
         case 'storage.set':

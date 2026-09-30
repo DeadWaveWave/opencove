@@ -13,28 +13,32 @@ describe('plugin enablement settings', () => {
   it('enables plugins when restoring profiles created before plugin settings existed', () => {
     const settings = normalizeAgentSettings({})
     expect(settings.disabledPluginIds).toEqual([])
-    expect(isPluginEnabled(settings, 'git-board')).toBe(true)
+    expect(isPluginEnabled(settings, 'sample-plugin')).toBe(true)
     expect(settings.pluginContributions).toEqual({})
-    expect(isPluginContributionEnabled(settings, 'git-board', 'actionBar')).toBe(true)
-    expect(isPluginContributionEnabled(settings, 'git-board', 'contextMenu')).toBe(true)
+    expect(isPluginContributionEnabled(settings, 'sample-plugin', 'actionBar')).toBe(true)
+    expect(isPluginContributionEnabled(settings, 'sample-plugin', 'contextMenu')).toBe(true)
   })
 
   it('normalizes saved IDs without losing preferences for unavailable plugins', () => {
-    const disabledPluginIds = [' git-board ', 'custom-plugin', null, 'git-board', '']
+    const disabledPluginIds = [' sample-plugin ', 'custom-plugin', null, 'sample-plugin', '']
     expect(normalizeAgentSettings({ disabledPluginIds }).disabledPluginIds).toEqual([
-      'git-board',
+      'sample-plugin',
       'custom-plugin',
     ])
-    expect(normalizeDisabledPluginIds('git-board')).toEqual([])
+    expect(normalizeDisabledPluginIds('sample-plugin')).toEqual([])
   })
 
   it('changes one plugin preference without mutating another plugin or its input', () => {
     const settings = { disabledPluginIds: ['custom-plugin'] }
-    const disabledPluginIds = setPluginEnabled(settings, 'git-board', false)
-    expect(disabledPluginIds).toEqual(['custom-plugin', 'git-board'])
-    expect(isPluginEnabled({ disabledPluginIds }, 'git-board')).toBe(false)
-    expect(setPluginEnabled({ disabledPluginIds }, 'git-board', false)).toEqual(disabledPluginIds)
-    expect(setPluginEnabled({ disabledPluginIds }, 'git-board', true)).toEqual(['custom-plugin'])
+    const disabledPluginIds = setPluginEnabled(settings, 'sample-plugin', false)
+    expect(disabledPluginIds).toEqual(['custom-plugin', 'sample-plugin'])
+    expect(isPluginEnabled({ disabledPluginIds }, 'sample-plugin')).toBe(false)
+    expect(setPluginEnabled({ disabledPluginIds }, 'sample-plugin', false)).toEqual(
+      disabledPluginIds,
+    )
+    expect(setPluginEnabled({ disabledPluginIds }, 'sample-plugin', true)).toEqual([
+      'custom-plugin',
+    ])
     expect(settings.disabledPluginIds).toEqual(['custom-plugin'])
   })
 
@@ -45,48 +49,48 @@ describe('plugin enablement settings', () => {
     }
     const pluginContributions = setPluginContributionEnabled(
       settings,
-      'git-board',
+      'sample-plugin',
       'actionBar',
       false,
     )
     const next = { ...settings, pluginContributions }
-    expect(isPluginEnabled(next, 'git-board')).toBe(true)
-    expect(isPluginContributionEnabled(next, 'git-board', 'actionBar')).toBe(false)
-    expect(isPluginContributionEnabled(next, 'git-board', 'contextMenu')).toBe(true)
+    expect(isPluginEnabled(next, 'sample-plugin')).toBe(true)
+    expect(isPluginContributionEnabled(next, 'sample-plugin', 'actionBar')).toBe(false)
+    expect(isPluginContributionEnabled(next, 'sample-plugin', 'contextMenu')).toBe(true)
     expect(next.pluginContributions['another-plugin']).toEqual({ contextMenu: false })
     expect(settings.pluginContributions).toEqual({ 'another-plugin': { contextMenu: false } })
   })
 
   it('retains entry preferences across plugin disable, enable and saved-profile normalization', () => {
     const initial = {
-      disabledPluginIds: ['git-board'],
-      pluginContributions: { 'git-board': { actionBar: false, contextMenu: true } },
+      disabledPluginIds: ['sample-plugin'],
+      pluginContributions: { 'sample-plugin': { actionBar: false, contextMenu: true } },
     }
     const restored = normalizeAgentSettings(JSON.parse(JSON.stringify(initial)))
     const enabled = {
       ...restored,
-      disabledPluginIds: setPluginEnabled(restored, 'git-board', true),
+      disabledPluginIds: setPluginEnabled(restored, 'sample-plugin', true),
     }
-    expect(isPluginEnabled(enabled, 'git-board')).toBe(true)
-    expect(isPluginContributionEnabled(enabled, 'git-board', 'actionBar')).toBe(false)
-    expect(isPluginContributionEnabled(enabled, 'git-board', 'contextMenu')).toBe(true)
+    expect(isPluginEnabled(enabled, 'sample-plugin')).toBe(true)
+    expect(isPluginContributionEnabled(enabled, 'sample-plugin', 'actionBar')).toBe(false)
+    expect(isPluginContributionEnabled(enabled, 'sample-plugin', 'contextMenu')).toBe(true)
   })
 
   it('normalizes entry preferences and keeps known flags for temporarily unavailable plugins', () => {
     expect(normalizePluginContributions(null)).toEqual({})
     expect(normalizePluginContributions([])).toEqual({})
     const result = normalizePluginContributions({
-      ' git-board ': { actionBar: false, contextMenu: 'false', unexpected: true },
+      ' sample-plugin ': { actionBar: false, contextMenu: 'false', unexpected: true },
       'missing-plugin': { actionBar: true, contextMenu: false },
       invalid: [],
       '': { actionBar: false },
     })
     expect(result).toEqual({
-      'git-board': { actionBar: false },
+      'sample-plugin': { actionBar: false },
       'missing-plugin': { actionBar: true, contextMenu: false },
     })
     expect(
-      isPluginContributionEnabled({ pluginContributions: result }, 'git-board', 'contextMenu'),
+      isPluginContributionEnabled({ pluginContributions: result }, 'sample-plugin', 'contextMenu'),
     ).toBe(true)
   })
 })

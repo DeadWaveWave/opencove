@@ -29,7 +29,7 @@ function runPlugin(args: string[]) {
 describe('offline plugin commands', () => {
   it('allows install and reload activation time without changing other command defaults or explicit timeouts', () => {
     expect(resolvePluginCommandTimeout({ id: 'plugin.install' }, null)).toBe(60_000)
-    expect(resolvePluginCommandTimeout({ id: 'plugin.reload' }, null)).toBe(60_000)
+    expect(resolvePluginCommandTimeout({ id: 'plugin.reload' }, null)).toBe(600_000)
     for (const id of ['plugin.list', 'plugin.details', 'plugin.setEnabled', 'plugin.uninstall']) {
       expect(resolvePluginCommandTimeout({ id }, null)).toBeNull()
     }
@@ -45,7 +45,7 @@ describe('offline plugin commands', () => {
     expect(await readdir(root)).toEqual([])
   })
 
-  it.each(['remove', 'update', 'dev', 'invoke', 'unknown', ''])(
+  it.each(['remove', 'dev', 'invoke', 'unknown', ''])(
     'rejects unsupported plugin command "%s" before connection discovery',
     async subcommand => {
       const result = await runPlugin([...(subcommand ? [subcommand] : []), '--endpoint', 'invalid'])
@@ -77,6 +77,57 @@ describe('offline plugin commands', () => {
     expect(await readdir(root)).toEqual([])
   })
 
+  it.each(['failed', 'conflict'])(
+    'returns nonzero for distribution %s while retaining candidate JSON',
+    async status => {
+      const server = createServer(async (request, response) => {
+        const chunks: Buffer[] = []
+        for await (const chunk of request) {
+          chunks.push(chunk)
+        }
+        const body = JSON.parse(Buffer.concat(chunks).toString())
+        response.setHeader('content-type', 'application/json')
+        response.end(
+          JSON.stringify({
+            ok: true,
+            value:
+              body.id === 'system.capabilities'
+                ? { protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION }
+                : {
+                    status,
+                    candidateId: 'candidate',
+                    candidateDirectory: '/preserved/source',
+                    error: 'Needs attention',
+                  },
+          }),
+        )
+      })
+      await new Promise<void>(done => server.listen(0, '127.0.0.1', done))
+      try {
+        const address = server.address()
+        if (!address || typeof address === 'string') {
+          throw new Error('Missing fixture address')
+        }
+        const result = await runPlugin([
+          'update',
+          'fixture',
+          '--endpoint',
+          `http://127.0.0.1:${address.port}`,
+          '--token',
+          'fixture',
+        ])
+        expect(result.exitCode).toBe(1)
+        expect(JSON.parse(result.stdout)).toMatchObject({
+          ok: true,
+          value: { status, candidateId: 'candidate', candidateDirectory: '/preserved/source' },
+        })
+      } finally {
+        server.closeAllConnections()
+        await new Promise<void>(done => server.close(() => done()))
+      }
+    },
+  )
+
   it('keeps plugin list routed through the control surface', async () => {
     const requests: string[] = []
     const server = createServer(async (request, response) => {
@@ -93,7 +144,7 @@ describe('offline plugin commands', () => {
           value:
             body.id === 'system.capabilities'
               ? { protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION }
-              : [{ id: 'git-board' }],
+              : [{ id: 'sample-plugin' }],
         }),
       )
     })
@@ -111,7 +162,7 @@ describe('offline plugin commands', () => {
         'fixture',
       ])
       expect(result.exitCode, result.stderr).toBe(0)
-      expect(JSON.parse(result.stdout)).toEqual({ ok: true, value: [{ id: 'git-board' }] })
+      expect(JSON.parse(result.stdout)).toEqual({ ok: true, value: [{ id: 'sample-plugin' }] })
       expect(requests).toEqual(['system.capabilities', 'plugin.list'])
     } finally {
       server.closeAllConnections()

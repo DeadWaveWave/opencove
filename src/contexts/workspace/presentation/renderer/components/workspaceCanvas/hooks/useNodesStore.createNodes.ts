@@ -41,7 +41,6 @@ function resolveSpaceRects(spaces: WorkspaceSpaceState[]): WorkspaceSpaceRect[] 
 }
 export function useWorkspaceCanvasNodeCreation({
   workspaceId,
-  workspacePath,
   nodesRef,
   spacesRef,
   onRequestPersistFlush,
@@ -456,11 +455,7 @@ export function useWorkspaceCanvasNodeCreation({
   const createPluginNode = useWorkspaceCanvasPluginNodeCreation({
     onShowMessage,
     workspaceId,
-    workspacePath: workspacePath ?? '',
-    nodesRef,
     spacesRef,
-    setNodes,
-    onRequestPersistFlush,
     onNodeCreated,
   })
 

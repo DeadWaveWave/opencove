@@ -8,6 +8,8 @@ import {
   selectCoveOption,
 } from './workspace-canvas.helpers'
 
+import { copyPluginFixture, installPlugin } from './plugins.local.helpers'
+
 type Contributions = { actionBar?: boolean; contextMenu?: boolean }
 type PluginRecord = { id: string; kind: string; task: unknown }
 
@@ -22,8 +24,14 @@ async function readPluginPreferences(page: Page) {
       workspaces?: Array<{ id: string; nodes: PluginRecord[] }>
     }
     return {
-      disabled: state.settings?.disabledPluginIds ?? [],
-      contributions: state.settings?.pluginContributions?.['git-board'] ?? {},
+      disabled: (
+        await window.opencoveApi.controlSurface.invoke<{
+          plugins: Array<{ id: string; enabled?: boolean }>
+        }>({ kind: 'query', id: 'plugin.list', payload: null })
+      ).plugins
+        .filter(plugin => plugin.enabled === false)
+        .map(plugin => plugin.id),
+      contributions: state.settings?.pluginContributions?.['hello-clock'] ?? {},
       nodes: (state.workspaces?.find(workspace => workspace.id === id)?.nodes ?? [])
         .filter(node => node.kind === 'plugin')
         .map(node => ({ id: node.id, task: node.task })),
@@ -34,8 +42,8 @@ async function readPluginPreferences(page: Page) {
 async function openDetails(page: Page) {
   await page.getByTestId('app-header-settings').click()
   await page.getByTestId('settings-section-nav-plugins').click()
-  await page.getByTestId('settings-plugin-details-git-board').click()
-  await expect(page.getByTestId('settings-plugin-detail-git-board')).toBeVisible()
+  await page.getByTestId('settings-plugin-details-hello-clock').click()
+  await expect(page.getByTestId('settings-plugin-detail-hello-clock')).toBeVisible()
 }
 
 async function openCanvasMenu(page: Page) {
@@ -71,6 +79,7 @@ async function capture(page: Page, info: TestInfo, name: string) {
 test('keeps creation shortcut preferences independent across plugin disablement and a full restart', async ({
   browserName: _browserName,
 }, testInfo) => {
+  const source = await copyPluginFixture()
   const userDataDir = await createTestUserDataDir()
   let { electronApp, window: page } = await launchApp({ userDataDir, cleanupUserDataDir: false })
   try {
@@ -84,20 +93,22 @@ test('keeps creation shortcut preferences independent across plugin disablement 
         nodeClosePixelEffectEnabled: false,
       },
     })
-    const actionBar = () => page.getByTestId('workspace-canvas-action-bar-new-git-board')
-    const contextMenu = () => page.getByTestId('workspace-context-new-git-board')
-    const actionToggle = () => page.getByTestId('settings-plugin-contribution-actionBar-git-board')
+    await installPlugin(page, source)
+    const actionBar = () => page.getByTestId('workspace-canvas-action-bar-new-plugin:hello-clock')
+    const contextMenu = () => page.getByTestId('workspace-context-new-plugin-hello-clock')
+    const actionToggle = () =>
+      page.getByTestId('settings-plugin-contribution-actionBar-hello-clock')
     const contextToggle = () =>
-      page.getByTestId('settings-plugin-contribution-contextMenu-git-board')
+      page.getByTestId('settings-plugin-contribution-contextMenu-hello-clock')
     const actionTile = () =>
-      page.getByTestId('settings-plugin-contribution-tile-actionBar-git-board')
+      page.getByTestId('settings-plugin-contribution-tile-actionBar-hello-clock')
     const contextTile = () =>
-      page.getByTestId('settings-plugin-contribution-tile-contextMenu-git-board')
-    const actualNodes = () => page.locator('.workspace-main .react-flow__node:has(.git-board-node)')
+      page.getByTestId('settings-plugin-contribution-tile-contextMenu-hello-clock')
+    const actualNodes = () => page.locator('.workspace-main .react-flow__node-pluginNode')
 
     await actionBar().click()
     await expect(actualNodes()).toHaveCount(1)
-    await expect(actualNodes().first().locator('.git-board-node__commit').first()).toBeVisible()
+    await expect(actualNodes().first().frameLocator('iframe').locator('#invoke')).toBeEnabled()
     await expect.poll(async () => (await readPluginPreferences(page)).nodes.length).toBe(1)
     const original = (await readPluginPreferences(page)).nodes[0]
 
@@ -146,14 +157,15 @@ test('keeps creation shortcut preferences independent across plugin disablement 
     expect(savedNodes).toContainEqual(original)
 
     await openDetails(page)
-    await page.getByTestId('settings-plugin-enabled-git-board').uncheck()
+    await page.getByTestId('settings-plugin-enabled-hello-clock').click()
+    await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).not.toBeChecked()
     await expect(actionToggle()).toBeChecked()
     await expect(actionToggle()).toBeEnabled()
     await expect(contextToggle()).not.toBeChecked()
     await expect(contextToggle()).toBeEnabled()
     await expect
       .poll(async () => (await readPluginPreferences(page)).disabled)
-      .toEqual(['git-board'])
+      .toEqual(['hello-clock'])
     await page.locator('.settings-panel__close').click()
     await expect(page.getByTestId('plugin-node-disabled')).toHaveCount(3)
     await expect(actionBar()).toHaveCount(0)
@@ -167,25 +179,26 @@ test('keeps creation shortcut preferences independent across plugin disablement 
     await expect(page.getByTestId('plugin-node-disabled')).toHaveCount(3)
     await expect(actionBar()).toHaveCount(0)
     expect(await readPluginPreferences(page)).toEqual({
-      disabled: ['git-board'],
+      disabled: ['hello-clock'],
       contributions: { actionBar: true, contextMenu: false },
       nodes: savedNodes,
     })
     await openDetails(page)
-    await expect(page.getByTestId('settings-plugin-enabled-git-board')).not.toBeChecked()
+    await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).not.toBeChecked()
     await expect(actionToggle()).toBeChecked()
     await expect(contextToggle()).not.toBeChecked()
     await page.getByTestId('settings-section-nav-appearance').click()
     await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
     await page.getByTestId('settings-section-nav-plugins').click()
-    await page.getByTestId('settings-plugin-details-git-board').click()
+    await page.getByTestId('settings-plugin-details-hello-clock').click()
     await capture(page, testInfo, 'plugin-creation-shortcuts-pixel-light')
-    await page.getByTestId('settings-plugin-enabled-git-board').check()
+    await page.getByTestId('settings-plugin-enabled-hello-clock').click()
+    await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).toBeChecked()
     await expect.poll(async () => (await readPluginPreferences(page)).disabled).toEqual([])
     await page.locator('.settings-panel__close').click()
     await expect(page.getByTestId('plugin-node-disabled')).toHaveCount(0)
     await expect(actualNodes()).toHaveCount(3)
-    await expect(actualNodes().first().locator('.git-board-node__commit').first()).toBeVisible()
+    await expect(actualNodes().first().frameLocator('iframe').locator('#invoke')).toBeEnabled()
     await expect(actionBar()).toBeVisible()
     await openCanvasMenu(page)
     await expect(contextMenu()).toHaveCount(0)
@@ -197,5 +210,6 @@ test('keeps creation shortcut preferences independent across plugin disablement 
   } finally {
     await electronApp.close()
     await removePathWithRetry(userDataDir)
+    await removePathWithRetry(source)
   }
 })

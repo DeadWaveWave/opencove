@@ -17,6 +17,7 @@ export const QUICK_E2E_GROUPS = {
       e2e('plugins.titles'),
       e2e('plugins.contributions'),
       e2e('plugins.details'),
+      e2e('plugins.host-extensions'),
     ],
     matches: path => /plugin/.test(path),
   },

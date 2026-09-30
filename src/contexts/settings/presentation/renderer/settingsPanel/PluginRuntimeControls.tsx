@@ -4,6 +4,7 @@ import { RefreshCw, Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 import type { PluginDetails } from '@contexts/plugins/domain/pluginRuntimeTypes'
+import { PluginSourceControls } from './PluginSourceControls'
 import { changeInstalledPlugin } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 
 export function PluginRuntimeControls({
@@ -23,7 +24,17 @@ export function PluginRuntimeControls({
     setBusy(true)
     setError(null)
     try {
-      await changeInstalledPlugin(command, { pluginId: plugin.id })
+      const result = await changeInstalledPlugin<{
+        status?: string
+        error?: string
+        candidateDirectory?: string
+      }>(command, { pluginId: plugin.id })
+      if (result?.status === 'failed' || result?.status === 'conflict') {
+        throw new Error(
+          [result.error, result.candidateDirectory].filter(Boolean).join('\n') ||
+            t('settingsPanel.plugins.source.failed'),
+        )
+      }
       if (command === 'plugin.uninstall') {
         onRemoved()
       }
@@ -88,6 +99,7 @@ export function PluginRuntimeControls({
           {detail.sourceDirectory}
         </p>
       ) : null}
+      <PluginSourceControls key={plugin.id} plugin={plugin} />
       {detail?.logs.length ? (
         <details className="settings-plugin-runtime__logs">
           <summary>{t('settingsPanel.plugins.logs')}</summary>

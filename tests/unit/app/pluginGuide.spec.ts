@@ -10,19 +10,12 @@ import {
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 
 describe('plugin guide paths', () => {
-  it('resolves the source checkout guide and all built-in documents', async () => {
+  it('resolves the source checkout guide without bundling validation plugins', async () => {
     const result = await createPluginGuideResult()
 
     expect(result.directory).toBe(join(repositoryRoot, 'docs', 'plugins'))
     expect(existsSync(result.readme)).toBe(true)
-    expect(result.plugins).toEqual([
-      {
-        id: 'git-board',
-        manifestVersion: '0.1.0',
-        document: join(repositoryRoot, 'docs', 'plugins', 'GIT_BOARD_MVP.md'),
-      },
-    ])
-    expect(existsSync(result.plugins[0].document)).toBe(true)
+    expect(result).not.toHaveProperty('plugins')
   })
 
   it('resolves docs beside the packaged app.asar CLI', () => {

@@ -24,30 +24,6 @@
   line-height: 1.6;
 }
 
-.plugin-node-preview__reset {
-  display: grid;
-  flex: 0 0 30px;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid var(--cove-border-subtle);
-  border-radius: var(--cove-radius-sm);
-  background: var(--cove-surface);
-  color: var(--cove-text-muted);
-  cursor: pointer;
-}
-
-.plugin-node-preview__reset:hover {
-  color: var(--cove-text);
-  background: var(--cove-control-hover);
-}
-
-.plugin-node-preview__reset:focus-visible {
-  outline: 2px solid var(--cove-focus-ring);
-  outline-offset: 2px;
-}
-
 .plugin-node-preview__canvas.workspace-canvas {
   position: relative;
   flex: none;
@@ -83,43 +59,8 @@
   isolation: isolate;
 }
 
-.plugin-node-preview__sample {
-  position: absolute;
-  z-index: 2;
-  bottom: 12px;
-  left: 15px;
-  color: var(--cove-text-faint);
-  font-size: calc(10px * var(--cove-ui-font-scale));
-  pointer-events: none;
-}
-
-.plugin-node-preview__closed {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  color: var(--cove-text-muted);
-  font-size: calc(12px * var(--cove-ui-font-scale));
-}
-
-.plugin-node-preview__announcement {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-/* Preserve readable sample content and reachable window controls on narrow settings pages. */
-.plugin-node-preview[data-preview-compact] .cove-canvas-node-window__subtitle,
-.plugin-node-preview[data-preview-compact] .git-board-node__ref {
-  display: none;
-}
-
-.plugin-node-preview[data-preview-compact] .git-board-node__commit {
-  grid-template-columns: 20px 52px minmax(0, 1fr);
+/* Fit a narrower real plugin body instead of shrinking a desktop window to unreadable text. */
+.plugin-node-preview__canvas[data-preview-compact] {
+  height: 340px;
+  aspect-ratio: auto;
 }

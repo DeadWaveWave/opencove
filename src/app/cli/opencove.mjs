@@ -179,10 +179,13 @@ async function main() {
   }
 
   if (command === 'plugin') {
-    await invokeAndPrint(connection, pluginRequest, {
+    const result = await invokeAndPrint(connection, pluginRequest, {
       pretty,
       timeoutMs: resolvePluginCommandTimeout(pluginRequest, timeoutMs),
     })
+    if (['failed', 'conflict'].includes(result?.value?.status)) {
+      process.exitCode = 1
+    }
     return
   }
 

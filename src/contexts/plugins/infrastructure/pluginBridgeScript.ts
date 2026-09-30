@@ -69,7 +69,7 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
           throw new Error('OpenCove plugin view closed.');
         }
         if (!handler || !context) throw new Error('Plugin window is not ready for commands.');
-        return handler(message.commandId, message.params);
+        return handler(message.commandId, message.params, message.context ?? null);
       }).then(value => {
         reply({ type: 'result', protocol: 2, requestId: message.requestId, ok: true, value: value ?? null });
       }).catch(error => {
@@ -175,6 +175,10 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
   window.opencovePlugin = Object.freeze({
     ready,
     invoke: (method, params = null) => request('invoke', { method, params }),
+    preferences: Object.freeze({
+      get: () => request('preferences.get'),
+      set: (key, value) => request('preferences.set', { key, value }),
+    }),
     storage: Object.freeze({
       get: key => request('storage.get', { key }),
       set: (key, value) => request('storage.set', { key, value }),

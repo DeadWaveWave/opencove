@@ -92,7 +92,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
       node.kind === 'plugin' && isPluginNodeData(node.task)
         ? node.task
         : node.kind === 'plugin'
-          ? { pluginId: 'git-board', schemaVersion: 1, repoPath: '', mountId: null, graphLimit: 30 }
+          ? { pluginId: 'missing-plugin', schemaVersion: 1, repoPath: '', mountId: null }
           : null
 
     const runtimeNode: Node<TerminalNodeData> = {

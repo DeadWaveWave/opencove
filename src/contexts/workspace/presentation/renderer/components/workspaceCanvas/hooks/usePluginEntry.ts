@@ -8,10 +8,10 @@ export function useWorkspaceCanvasPluginEntry({
 }: {
   contextMenu: ContextMenuState | null
   setContextMenu: (next: ContextMenuState | null) => void
-  createPluginNode: (point: { x: number; y: number }, pluginId?: string) => void
-}): (pluginId?: string) => void {
+  createPluginNode: (point: { x: number; y: number }, pluginId: string) => void
+}): (pluginId: string) => void {
   return useCallback(
-    (pluginId?: string) => {
+    (pluginId: string) => {
       if (!contextMenu || contextMenu.kind !== 'pane') {
         return
       }

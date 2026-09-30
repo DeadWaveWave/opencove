@@ -6,11 +6,22 @@ import {
   launchApp,
   readCanvasViewport,
   readLocatorClientRect,
+  removePathWithRetry,
   seededWorkspaceId,
   selectCoveOption,
   testWorkspacePath,
   viewStateStorageKey,
 } from './workspace-canvas.helpers'
+
+import { copyPluginFixture, installPlugin } from './plugins.local.helpers'
+
+let source: string
+test.beforeEach(async () => {
+  source = await copyPluginFixture()
+})
+test.afterEach(async () => {
+  await removePathWithRetry(source)
+})
 
 interface SavedPluginNode {
   id: string
@@ -18,7 +29,7 @@ interface SavedPluginNode {
   position: { x: number; y: number }
   width: number
   height: number
-  task: { pluginId: string; repoPath: string; mountId: string | null; graphLimit: number }
+  task: { pluginId: string; repoPath: string; mountId: string | null; [key: string]: unknown }
 }
 
 async function readPluginState(page: Page) {
@@ -35,13 +46,19 @@ async function readPluginState(page: Page) {
     const workspace = state.workspaces?.find(candidate => candidate.id === projectId)
     return {
       node: workspace?.nodes.find(candidate => candidate.kind === 'plugin') ?? null,
-      disabled: state.settings?.disabledPluginIds ?? [],
+      disabled: (
+        await window.opencoveApi.controlSurface.invoke<{
+          plugins: Array<{ id: string; enabled?: boolean }>
+        }>({ kind: 'query', id: 'plugin.list', payload: null })
+      ).plugins
+        .filter(plugin => plugin.enabled === false)
+        .map(plugin => plugin.id),
       collapsed: workspace?.collapsedNodeIds ?? [],
     }
   }, seededWorkspaceId)
 }
 
-async function createGitBoard(page: Page, withNote = false) {
+async function createStandardPlugin(page: Page, withNote = false) {
   await page.setViewportSize({ width: 1800, height: 1200 })
   await clearAndSeedWorkspace(
     page,
@@ -69,17 +86,17 @@ async function createGitBoard(page: Page, withNote = false) {
       },
     },
   )
-  await page.getByTestId('workspace-canvas-action-bar-new-git-board').click()
-  const node = page.locator('.react-flow__node:has(.git-board-node)')
+  await installPlugin(page, source)
+  await page.getByTestId('workspace-canvas-action-bar-new-plugin:hello-clock').click()
+  const node = page.locator('.workspace-main .react-flow__node-pluginNode')
   await expect(node).toHaveCount(1)
-  await expect(node.locator('.git-board-node__commit').first()).toBeVisible()
-  await expect(node.locator('.git-board-node__error')).toHaveCount(0)
+  await expect(node.frameLocator('iframe').locator('#invoke')).toBeEnabled()
   await expect
     .poll(async () => (await readPluginState(page)).node?.task.repoPath)
     .toBe(testWorkspacePath)
   const id = await node.getAttribute('data-id')
   if (!id) {
-    throw new Error('Created Git Board node has no canvas ID')
+    throw new Error('Created Hello Clock node has no canvas ID')
   }
   return { node, id }
 }
@@ -123,16 +140,61 @@ async function assertFrameMatches(page: Page, node: Locator, saved: SavedPluginN
 async function openPluginSettings(page: Page) {
   await page.getByTestId('app-header-settings').click()
   await page.getByTestId('settings-section-nav-plugins').click()
-  await expect(page.getByTestId('settings-plugin-git-board')).toBeVisible()
+  await expect(page.getByTestId('settings-plugin-hello-clock')).toBeVisible()
 }
 
-test.describe('Built-in plugins', () => {
+test.describe('Installed plugin window standard', () => {
+  test('starts without bundled examples and preserves unavailable plugin windows', async () => {
+    const { electronApp, window: page } = await launchApp()
+    try {
+      await clearAndSeedWorkspace(
+        page,
+        [
+          {
+            id: 'removed-plugin-window',
+            kind: 'plugin',
+            title: 'Previous plugin',
+            task: {
+              pluginId: 'removed-validation-plugin',
+              schemaVersion: 1,
+              repoPath: testWorkspacePath,
+              mountId: null,
+              customState: { untouched: true },
+            },
+            position: { x: 100, y: 120 },
+            width: 440,
+            height: 300,
+          },
+        ],
+        { settings: { language: 'en', nodeCreationPixelEffectEnabled: false } },
+      )
+      const list = await page.evaluate(() =>
+        window.opencoveApi.controlSurface.invoke<{ plugins: unknown[] }>({
+          kind: 'query',
+          id: 'plugin.list',
+          payload: null,
+        }),
+      )
+      expect(list.plugins).toEqual([])
+      const unavailable = page.getByTestId('plugin-node-missing')
+      await expect(unavailable).toBeVisible()
+      const before = (await readPluginState(page)).node!
+      await page.reload({ waitUntil: 'domcontentloaded' })
+      await expect(unavailable).toBeVisible()
+      expect((await readPluginState(page)).node).toEqual(before)
+      await page.getByTestId('plugin-removed-validation-plugin-close').click()
+      await expect.poll(async () => (await readPluginState(page)).node).toBeNull()
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('shares window chrome and persists real edge resizing at non-default zoom', async ({
     browserName: _browserName,
   }, testInfo) => {
     const { electronApp, window: page } = await launchApp()
     try {
-      const { node } = await createGitBoard(page, true)
+      const { node } = await createStandardPlugin(page, true)
       const noteHeader = page.locator('.note-node__header')
       const pluginHeader = node.locator('.cove-canvas-node-window__header')
       await expect(pluginHeader).toBeVisible()
@@ -166,7 +228,7 @@ test.describe('Built-in plugins', () => {
         },
       )
       await page.reload({ waitUntil: 'domcontentloaded' })
-      await expect(node.locator('.git-board-node__commit').first()).toBeVisible()
+      await expect(node.frameLocator('iframe').locator('#invoke')).toBeEnabled()
       await expect.poll(async () => (await readCanvasViewport(page)).zoom).toBe(0.7)
       const zoom = (await readCanvasViewport(page)).zoom
       expect(Math.abs(zoom - 1)).toBeGreaterThan(0.1)
@@ -180,7 +242,7 @@ test.describe('Built-in plugins', () => {
         'bottom-left',
         'bottom-right',
       ]) {
-        const handle = node.getByTestId(`git-board-resizer-${edge}`)
+        const handle = node.getByTestId(`plugin-hello-clock-resizer-${edge}`)
         await expect(handle).toBeVisible()
         expect(
           await handle.evaluate(element => {
@@ -198,7 +260,7 @@ test.describe('Built-in plugins', () => {
       ]) {
         const before = (await readPluginState(page)).node!
         const rect = await readLocatorClientRect(
-          node.getByTestId(`git-board-resizer-${gesture.edge}`),
+          node.getByTestId(`plugin-hello-clock-resizer-${gesture.edge}`),
         )
         const start = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
         await dragMouse(page, {
@@ -225,9 +287,9 @@ test.describe('Built-in plugins', () => {
         await assertFrameMatches(page, node, (await readPluginState(page)).node!)
       }
       const resized = (await readPluginState(page)).node!
-      await capture(page, testInfo, 'git-board-standard-window-pixel')
+      await capture(page, testInfo, 'hello-clock-standard-window-pixel')
       await page.reload({ waitUntil: 'domcontentloaded' })
-      await expect(node.locator('.git-board-node__commit').first()).toBeVisible()
+      await expect(node.frameLocator('iframe').locator('#invoke')).toBeEnabled()
       expect((await readPluginState(page)).node).toEqual(resized)
       await assertFrameMatches(page, node, resized)
       await openPluginSettings(page)
@@ -237,7 +299,7 @@ test.describe('Built-in plugins', () => {
       expect(await readHeaderMetrics(pluginHeader, '.cove-canvas-node-window__title')).toEqual(
         await readHeaderMetrics(noteHeader, '.note-node__title'),
       )
-      await capture(page, testInfo, 'git-board-standard-window-pixel-light')
+      await capture(page, testInfo, 'hello-clock-standard-window-pixel-light')
     } finally {
       await electronApp.close()
     }
@@ -246,7 +308,7 @@ test.describe('Built-in plugins', () => {
   test('keeps the standard collapse, restore and close lifecycle', async () => {
     const { electronApp, window: page } = await launchApp()
     try {
-      const { node, id } = await createGitBoard(page)
+      const { node, id } = await createStandardPlugin(page)
       const original = (await readPluginState(page)).node!
       await node.getByTestId('node-collapse').click()
       const compact = page.getByTestId(`collapsed-node-${id}`)
@@ -256,7 +318,7 @@ test.describe('Built-in plugins', () => {
       await expect(compact).toBeVisible()
       await compact.getByTestId('node-expand').click()
       await expect(compact).toBeHidden()
-      await expect(node.locator('.git-board-node__commit').first()).toBeVisible()
+      await expect(node.frameLocator('iframe').locator('#invoke')).toBeEnabled()
       await expect(node.locator('.cove-node-presentation')).not.toHaveAttribute(
         'data-cove-collapse-motion',
       )
@@ -264,7 +326,7 @@ test.describe('Built-in plugins', () => {
       expect(restored.task).toEqual(original.task)
       expect(restored.width).toBe(original.width)
       expect(restored.height).toBe(original.height)
-      await node.getByTestId('git-board-close').click()
+      await node.getByTestId('plugin-hello-clock-close').click()
       await expect(node).toHaveCount(0)
       await expect.poll(async () => (await readPluginState(page)).node).toBeNull()
     } finally {
@@ -272,49 +334,55 @@ test.describe('Built-in plugins', () => {
     }
   })
 
-  test('manages built-in plugins from Settings without destroying existing windows', async ({
+  test('manages installed plugins from Settings without destroying existing windows', async ({
     browserName: _browserName,
   }, testInfo) => {
     const { electronApp, window: page } = await launchApp()
     try {
-      const { id } = await createGitBoard(page)
+      const { id } = await createStandardPlugin(page)
       const node = page.locator(`.react-flow__node[data-id="${id}"]`)
       const original = (await readPluginState(page)).node!
       await openPluginSettings(page)
-      const item = page.getByTestId('settings-plugin-git-board')
-      await expect(item).toContainText('Git Board')
+      const item = page.getByTestId('settings-plugin-hello-clock')
+      await expect(item).toContainText('Hello Clock')
       await expect(item).toContainText('0.1.0')
-      await expect(page.getByTestId('settings-plugin-enabled-git-board')).toBeChecked()
+      await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).toBeChecked()
       await capture(page, testInfo, 'plugins-settings-pixel')
-      await page.getByTestId('settings-plugin-enabled-git-board').uncheck()
-      await expect.poll(async () => (await readPluginState(page)).disabled).toEqual(['git-board'])
+      await page.getByTestId('settings-plugin-enabled-hello-clock').click()
+      await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).not.toBeChecked()
+      await expect.poll(async () => (await readPluginState(page)).disabled).toEqual(['hello-clock'])
       await page.locator('.settings-panel__close').click()
       await expect(node.getByTestId('plugin-node-disabled')).toBeVisible()
-      await expect(node.locator('.git-board-node__graph')).toHaveCount(0)
-      await expect(page.getByTestId('workspace-canvas-action-bar-new-git-board')).toHaveCount(0)
+      await expect(node.locator('iframe')).toHaveCount(0)
+      await expect(
+        page.getByTestId('workspace-canvas-action-bar-new-plugin:hello-clock'),
+      ).toHaveCount(0)
       await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 16, y: 50 } })
       await expect(page.getByTestId('workspace-context-new-note')).toBeVisible()
-      await expect(page.getByTestId('workspace-context-new-git-board')).toHaveCount(0)
+      await expect(page.getByTestId('workspace-context-new-plugin-hello-clock')).toHaveCount(0)
       await page.keyboard.press('Escape')
       await page.reload({ waitUntil: 'domcontentloaded' })
       await expect(node.getByTestId('plugin-node-disabled')).toBeVisible()
       expect((await readPluginState(page)).node).toEqual(original)
       await node.getByTestId('plugin-node-open-settings').click()
       await expect(item).toBeVisible()
-      await expect(page.getByTestId('settings-plugin-enabled-git-board')).not.toBeChecked()
+      await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).not.toBeChecked()
       await page.getByTestId('settings-section-nav-appearance').click()
       await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
       await page.getByTestId('settings-section-nav-plugins').click()
       await capture(page, testInfo, 'plugins-settings-pixel-light')
-      await page.getByTestId('settings-plugin-enabled-git-board').check()
+      await page.getByTestId('settings-plugin-enabled-hello-clock').click()
+      await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).toBeChecked()
       await expect.poll(async () => (await readPluginState(page)).disabled).toEqual([])
       await page.locator('.settings-panel__close').click()
       await expect(node.getByTestId('plugin-node-disabled')).toHaveCount(0)
-      await expect(node.locator('.git-board-node__commit').first()).toBeVisible()
-      await expect(page.getByTestId('workspace-canvas-action-bar-new-git-board')).toBeVisible()
+      await expect(node.frameLocator('iframe').locator('#invoke')).toBeEnabled()
+      await expect(
+        page.getByTestId('workspace-canvas-action-bar-new-plugin:hello-clock'),
+      ).toBeVisible()
       expect((await readPluginState(page)).node).toEqual(original)
       await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 16, y: 50 } })
-      await expect(page.getByTestId('workspace-context-new-git-board')).toBeVisible()
+      await expect(page.getByTestId('workspace-context-new-plugin-hello-clock')).toBeVisible()
     } finally {
       await electronApp.close()
     }
@@ -328,18 +396,19 @@ test.describe('Built-in plugins', () => {
       await clearAndSeedWorkspace(page, [], {
         settings: { language: 'zh-CN', uiTheme: 'pixel-light' },
       })
+      await installPlugin(page, source)
       await page.getByTestId('app-header-settings').click()
       await expect(page.getByTestId('settings-section-nav-plugins')).toHaveText('插件')
       const search = page.getByTestId('settings-panel-search')
       await search.fill('插件')
       await page.getByTestId('settings-panel-search-result-plugins.installed').click()
       await expect(search).toHaveValue('')
-      const toggle = page.getByTestId('settings-plugin-enabled-git-board')
-      await expect(toggle).toHaveAccessibleName('启用 Git Board')
+      const toggle = page.getByTestId('settings-plugin-enabled-hello-clock')
+      await expect(toggle).toHaveAccessibleName('启用 Hello Clock')
       await page.setViewportSize({ width: 320, height: 720 })
       await selectCoveOption(page, 'settings-panel-page-selector', 'general')
       await selectCoveOption(page, 'settings-panel-page-selector', 'plugins')
-      await expect(page.getByTestId('settings-plugin-git-board')).toBeVisible()
+      await expect(page.getByTestId('settings-plugin-hello-clock')).toBeVisible()
       for (const selector of [
         '.settings-page',
         '.settings-panel__content',
@@ -352,8 +421,9 @@ test.describe('Built-in plugins', () => {
         }))
         expect(overflow.scroll, selector).toBeLessThanOrEqual(overflow.client + 1)
       }
-      await toggle.uncheck()
-      await expect.poll(async () => (await readPluginState(page)).disabled).toEqual(['git-board'])
+      await toggle.click()
+      await expect(toggle).not.toBeChecked()
+      await expect.poll(async () => (await readPluginState(page)).disabled).toEqual(['hello-clock'])
       await capture(page, testInfo, 'plugins-settings-zh-narrow-pixel-light')
     } finally {
       await electronApp.close()

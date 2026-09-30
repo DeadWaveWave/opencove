@@ -1,4 +1,4 @@
-import { createContext, useContext, useId, useMemo, useState, type JSX } from 'react'
+import { createContext, useContext, useEffect, useId, useMemo, useState, type JSX } from 'react'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -92,7 +92,6 @@ function createNode(plugin: PluginManifest, id: string): PreviewNode {
         schemaVersion: 1,
         repoPath: '',
         mountId: null,
-        graphLimit: 30,
       },
     },
   }
@@ -113,7 +112,21 @@ function PreviewCanvas({
     width: (plugin.view?.width ?? 600) + 56,
     height: (plugin.view?.height ?? 400) + 56,
   }
-  const { containerRef, viewport } = usePreviewViewport(plane, plane)
+  const compactWidth = Math.min(
+    plugin.view?.width ?? 600,
+    Math.max(plugin.view?.minWidth ?? 320, 320),
+  )
+  const compactPlane = { width: compactWidth + 24, height: (plugin.view?.height ?? 400) + 24 }
+  const { containerRef, viewport, compact } = usePreviewViewport(plane, compactPlane)
+  useEffect(() => {
+    setNodes(current =>
+      current.map(node => ({
+        ...node,
+        position: { x: compact ? 12 : 28, y: compact ? 12 : 28 },
+        data: { ...node.data, width: compact ? compactWidth : (plugin.view?.width ?? 600) },
+      })),
+    )
+  }, [compact, compactWidth, plugin.view?.width])
   const preview = useMemo(
     () => ({
       plugin,
@@ -161,6 +174,7 @@ function PreviewCanvas({
       ref={containerRef}
       className="plugin-node-preview__canvas workspace-canvas"
       data-testid="plugin-runtime-preview-canvas"
+      data-preview-compact={compact || undefined}
     >
       <PreviewContext.Provider value={preview}>
         <WorkspaceCollapseContext.Provider value={collapse}>

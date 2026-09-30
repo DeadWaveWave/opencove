@@ -1,3 +1,4 @@
+import type { PluginPreferenceValue } from '../domain/pluginTypes'
 import type {
   PluginCommandTarget,
   PluginLiveView,
@@ -28,6 +29,7 @@ export async function runPluginCommand(
   commandId: string,
   params: unknown,
   target: PluginCommandTarget,
+  preferences?: Record<string, PluginPreferenceValue>,
 ): Promise<unknown> {
   if (!runtime.record.enabled || runtime.error) {
     throw new Error(runtime.error ?? 'Plugin is disabled.')
@@ -45,6 +47,8 @@ export async function runPluginCommand(
     }
     return await runtime.backend.runCommand(commandId, params, {
       pluginId: runtime.record.package.id,
+      ...(target.context ? { host: target.context } : {}),
+      ...(preferences ? { preferences } : {}),
     })
   }
   if (!target.nodeId) {
@@ -62,7 +66,7 @@ export async function runPluginCommand(
   if (candidates.length > 1) {
     throw new Error('Plugin window is open on multiple clients; specify a viewId.')
   }
-  return await windows.run(candidates[0].viewId, commandId, params)
+  return await windows.run(candidates[0].viewId, commandId, params, target.context)
 }
 
 export async function readPluginSkill(

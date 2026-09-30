@@ -38,7 +38,7 @@ function createWorkspace(overrides: Partial<WorkspaceState> = {}): WorkspaceStat
 
 describe('settingsSearchIndex', () => {
   it.each([
-    { dictionary: en, query: 'Git Board' },
+    { dictionary: en, query: 'extensions' },
     { dictionary: zhCN, query: '插件' },
   ])('finds the plugin manager using $query', ({ dictionary, query }) => {
     const entries = createSettingsSearchEntries({ t: createTranslator(dictionary), workspaces: [] })

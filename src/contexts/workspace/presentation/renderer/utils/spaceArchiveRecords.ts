@@ -135,7 +135,7 @@ export function buildSpaceArchiveRecord({
             title: node.data.title,
             frame,
             labelColorOverride,
-            pluginId: node.data.plugin?.pluginId ?? 'git-board',
+            pluginId: node.data.plugin?.pluginId ?? 'missing-plugin',
             schemaVersion: node.data.plugin?.schemaVersion ?? 1,
             repoPath: node.data.plugin?.repoPath ?? '',
             mountId: node.data.plugin?.mountId ?? null,

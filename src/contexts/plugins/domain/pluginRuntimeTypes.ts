@@ -4,6 +4,9 @@ import type {
   PluginManifest,
   PluginSkillDeclaration,
   PluginViewDefinition,
+  PluginPreferenceDeclaration,
+  PluginThemeDeclaration,
+  PluginPreferenceValue,
 } from './pluginTypes'
 
 /** Public source-directory contract. Version 1 is still a development API. */
@@ -24,6 +27,8 @@ export interface LocalPluginPackage {
     contextMenu?: boolean
     commands?: PluginCommandDeclaration[]
     skills?: PluginSkillDeclaration[]
+    preferences?: PluginPreferenceDeclaration[]
+    themes?: PluginThemeDeclaration[]
   }
   platforms?: Array<'darwin' | 'linux' | 'win32'>
 }
@@ -44,11 +49,21 @@ export interface PluginViewContext {
   preview: boolean
 }
 
+export interface PluginHostContext {
+  surface: 'commandCenter' | 'canvas' | 'node' | 'space'
+  projectId?: string
+  spaceId?: string
+  nodeIds?: string[]
+}
+
 export interface PluginCommandContext {
   pluginId: string
+  host?: PluginHostContext
+  preferences?: Record<string, PluginPreferenceValue>
 }
 
 export interface PluginCommandTarget {
+  context?: PluginHostContext
   nodeId?: string
   viewId?: string
 }

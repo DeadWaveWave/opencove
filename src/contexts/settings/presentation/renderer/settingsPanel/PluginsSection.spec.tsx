@@ -1,219 +1,151 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyUiLanguage } from '@app/renderer/i18n'
 import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
-import { createSettingsPanelUpdaters } from '../useSettingsPanelUpdaters'
+import {
+  examplePlugin,
+  exampleDetails,
+} from '@contexts/plugins/presentation/renderer/pluginPresentationTestFixture'
+import * as registry from '@contexts/plugins/presentation/renderer/usePluginRegistry'
+import * as details from '@contexts/plugins/presentation/renderer/usePluginDetails'
 import { PluginsSection } from './PluginsSection'
-import { getPluginDetail } from '@contexts/plugins/presentation/renderer/pluginDetails'
 import { PluginContributionControls } from './PluginContributionControls'
-import { getBuiltinPluginManifest } from '@contexts/plugins/application/builtinPlugins'
 
 vi.mock('@contexts/plugins/presentation/renderer/PluginNodePreview', () => ({
-  PluginNodePreview: ({ pluginId }: { pluginId: string }) => (
-    <div data-testid="plugin-node-preview">{pluginId}</div>
-  ),
+  PluginNodePreview: () => <div data-testid="plugin-node-preview" />,
 }))
-
+beforeEach(async () => {
+  await applyUiLanguage('en')
+  vi.spyOn(registry, 'usePluginRegistry').mockReturnValue({ plugins: [examplePlugin], error: null })
+  vi.spyOn(registry, 'usePluginManifest').mockReturnValue(examplePlugin)
+  vi.spyOn(registry, 'changeInstalledPlugin').mockResolvedValue(undefined)
+  vi.spyOn(details, 'usePluginDetails').mockReturnValue({ detail: exampleDetails, error: null })
+  vi.stubGlobal('opencoveApi', { controlSurface: { invoke: vi.fn().mockResolvedValue(null) } })
+})
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   void applyUiLanguage('en')
 })
+function renderSettings() {
+  const enabled = vi.fn()
+  const contribution = vi.fn()
+  const result = render(
+    <div className="settings-panel__content">
+      <PluginsSection
+        settings={DEFAULT_AGENT_SETTINGS}
+        onChangePluginEnabled={enabled}
+        onChangePluginContributionEnabled={contribution}
+      />
+    </div>,
+  )
+  return { ...result, enabled, contribution }
+}
 
 describe('PluginsSection', () => {
   it.each([
-    ['en', 'Enable Git Board', 'Built-in'],
-    ['zh-CN', '启用 Git Board', '内置'],
+    ['en', 'Enable Example Tool', 'Local plugin'],
+    ['zh-CN', '启用 Example Tool', '本地插件'],
   ] as const)(
-    'shows installed registry metadata and updates settings in %s',
+    'shows installed metadata and changes runtime enablement in %s',
     async (language, label, source) => {
       await applyUiLanguage(language)
-      const onChange = vi.fn()
-      const settings = { ...DEFAULT_AGENT_SETTINGS, disabledPluginIds: ['another-plugin'] }
-      const { updatePluginEnabled } = createSettingsPanelUpdaters({ settings, onChange })
-      render(
-        <PluginsSection
-          settings={settings}
-          onChangePluginEnabled={updatePluginEnabled}
-          onChangePluginContributionEnabled={vi.fn()}
-        />,
-      )
-      expect(screen.getByRole('heading', { name: 'Git Board', level: 4 })).toBeVisible()
-      expect(screen.getByText('0.1.0')).toBeVisible()
+      const { enabled } = renderSettings()
+      expect(screen.getByRole('heading', { name: 'Example Tool', level: 4 })).toBeVisible()
       expect(screen.getByText(source)).toBeVisible()
-      const toggle = screen.getByRole('checkbox', { name: label })
-      expect(toggle).toBeChecked()
-      fireEvent.click(toggle)
-      expect(screen.queryByTestId('settings-plugin-detail-git-board')).toBeNull()
-      expect(onChange).toHaveBeenCalledWith({
-        ...settings,
-        disabledPluginIds: ['another-plugin', 'git-board'],
-      })
+      fireEvent.click(screen.getByRole('checkbox', { name: label }))
+      await waitFor(() =>
+        expect(registry.changeInstalledPlugin).toHaveBeenCalledWith('plugin.setEnabled', {
+          pluginId: examplePlugin.id,
+          enabled: false,
+        }),
+      )
+      expect(enabled).not.toHaveBeenCalled()
     },
   )
 
-  it('shows a disabled plugin without removing its registry entry', async () => {
-    await applyUiLanguage('en')
-    const onChangePluginEnabled = vi.fn()
-    render(
-      <PluginsSection
-        settings={{ disabledPluginIds: ['git-board'], pluginContributions: {} }}
-        onChangePluginEnabled={onChangePluginEnabled}
-        onChangePluginContributionEnabled={vi.fn()}
-      />,
-    )
-    expect(screen.getByText('Disabled')).toBeVisible()
-    const toggle = screen.getByRole('checkbox', { name: 'Enable Git Board' })
-    expect(toggle).not.toBeChecked()
-    fireEvent.click(toggle)
-    expect(onChangePluginEnabled).toHaveBeenCalledWith('git-board', true)
+  it('opens installed Markdown and preview, then restores list focus and scroll', () => {
+    const { container } = renderSettings()
+    const scroller = container.firstElementChild as HTMLElement
+    scroller.scrollTop = 128
+    fireEvent.click(screen.getByTestId('settings-plugin-details-example-tool'))
+    expect(screen.getByRole('heading', { name: 'Example Tool', level: 3 })).toHaveFocus()
+    expect(scroller.scrollTop).toBe(0)
+    expect(screen.getByTestId('plugin-node-preview')).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Example' })).toHaveAttribute('src', '/example.svg')
+    fireEvent.click(screen.getByTestId('settings-plugin-back'))
+    expect(screen.getByTestId('settings-plugin-details-example-tool')).toHaveFocus()
+    expect(scroller.scrollTop).toBe(128)
   })
 
   it.each([
-    ['en', 'View Git Board details', 'All plugins', 'Your repository, beside your work'],
-    ['zh-CN', '查看 Git Board 详情', '全部插件', '把仓库放在工作旁边'],
+    ['en', 'Plugin library', 'Your first plugin, with Hello Clock'],
+    ['zh-CN', '插件文档库', '用 Hello Clock 制作第一个插件'],
   ] as const)(
-    'opens documentation and preview in %s, then restores list focus and scroll',
-    async (language, openLabel, backLabel, documentTitle) => {
+    'reads localized documentation without starting or changing a plugin in %s',
+    async (language, title, articleTitle) => {
       await applyUiLanguage(language)
-      const onChangePluginEnabled = vi.fn()
-      const { container } = render(
-        <div className="settings-panel__content">
-          <PluginsSection
-            settings={{ disabledPluginIds: ['git-board'], pluginContributions: {} }}
-            onChangePluginEnabled={onChangePluginEnabled}
-            onChangePluginContributionEnabled={vi.fn()}
-          />
-        </div>,
-      )
-      const scroller = container.firstElementChild as HTMLElement
-      scroller.scrollTop = 128
-      fireEvent.click(screen.getByRole('button', { name: openLabel }))
-      expect(screen.getByTestId('settings-plugin-detail-git-board')).toBeVisible()
-      expect(screen.getByRole('heading', { name: 'Git Board', level: 3 })).toHaveFocus()
-      expect(scroller.scrollTop).toBe(0)
-      expect(screen.getByTestId('plugin-node-preview')).toBeVisible()
-      expect(screen.getByRole('heading', { name: documentTitle })).toBeVisible()
-      expect(screen.getByTestId('plugin-readme').querySelector('img')?.getAttribute('src')).toBe(
-        getPluginDetail('git-board', language)?.assets['./overview.svg'],
-      )
-      expect(screen.getByTestId('settings-plugin-enabled-git-board')).not.toBeChecked()
-      expect(onChangePluginEnabled).not.toHaveBeenCalled()
-      fireEvent.click(screen.getByTestId('settings-plugin-enabled-git-board'))
-      expect(onChangePluginEnabled).toHaveBeenCalledWith('git-board', true)
-      fireEvent.click(screen.getByRole('button', { name: backLabel }))
-      expect(screen.getByRole('button', { name: openLabel })).toHaveFocus()
-      expect(scroller.scrollTop).toBe(128)
-      expect(screen.queryByTestId('plugin-node-preview')).toBeNull()
+      const { enabled, contribution } = renderSettings()
+      fireEvent.click(screen.getByTestId('settings-plugins-documentation'))
+      expect(screen.getByRole('heading', { name: title })).toHaveFocus()
+      fireEvent.click(screen.getByTestId('plugin-library-build'))
+      expect(screen.getByRole('heading', { name: articleTitle })).toBeVisible()
+      expect(screen.getByTestId('plugin-readme')).toHaveTextContent('opencove plugin guide')
+      fireEvent.click(screen.getByTestId('plugin-library-back'))
+      expect(screen.getByTestId('plugin-library-build')).toHaveFocus()
+      fireEvent.click(screen.getByTestId('plugin-library-back'))
+      expect(screen.getByTestId('settings-plugins-documentation')).toHaveFocus()
+      expect(registry.changeInstalledPlugin).not.toHaveBeenCalled()
+      expect(enabled).not.toHaveBeenCalled()
+      expect(contribution).not.toHaveBeenCalled()
     },
   )
 
-  it('copies the actual CLI guide command and reports clipboard failures', async () => {
-    await applyUiLanguage('en')
+  it('shows a useful empty shelf with documentation and installation actions', () => {
+    vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [], error: null })
+    renderSettings()
+    expect(screen.getByTestId('settings-plugins-empty')).toBeVisible()
+    expect(screen.queryByTestId('settings-plugin-details-git-board')).toBeNull()
+    fireEvent.click(screen.getByTestId('settings-plugins-install'))
+    expect(screen.getByTestId('settings-plugin-install-panel')).toBeVisible()
+  })
+
+  it('copies the actual offline guide command and reports clipboard failures', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('opencoveApi', { clipboard: { writeText } })
-    render(
-      <PluginsSection
-        settings={{ disabledPluginIds: [], pluginContributions: {} }}
-        onChangePluginEnabled={vi.fn()}
-        onChangePluginContributionEnabled={vi.fn()}
-      />,
-    )
+    renderSettings()
     fireEvent.click(screen.getByRole('button', { name: 'Copy guide command' }))
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Command copied'))
     expect(writeText).toHaveBeenCalledWith('opencove plugin guide')
-    writeText.mockRejectedValueOnce(new Error('clipboard unavailable'))
+    writeText.mockRejectedValueOnce(new Error('unavailable'))
     fireEvent.click(screen.getByRole('button', { name: 'Copy guide command' }))
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Could not copy'))
   })
 
-  it.each([
-    ['en', 'Show in action bar', 'Show in right-click menu'],
-    ['zh-CN', '在操作栏中显示', '在右键菜单中显示'],
-  ] as const)(
-    'configures independent creation entries while the plugin is disabled in %s',
-    async (language, actionBarLabel, contextMenuLabel) => {
-      await applyUiLanguage(language)
-      const settings = {
-        ...DEFAULT_AGENT_SETTINGS,
-        disabledPluginIds: ['git-board'],
-        pluginContributions: { 'other-plugin': { actionBar: false } },
-      }
-      const onChange = vi.fn()
-      const { updatePluginEnabled, updatePluginContributionEnabled } = createSettingsPanelUpdaters({
-        settings,
-        onChange,
-      })
-      render(
-        <PluginsSection
-          settings={settings}
-          onChangePluginEnabled={updatePluginEnabled}
-          onChangePluginContributionEnabled={updatePluginContributionEnabled}
-        />,
-      )
-      fireEvent.click(screen.getByTestId('settings-plugin-details-git-board'))
-      const actionBar = screen.getByRole('switch', { name: actionBarLabel })
-      const contextMenu = screen.getByRole('switch', { name: contextMenuLabel })
-      expect(actionBar).toBeChecked()
-      expect(contextMenu).toBeChecked()
-      expect(actionBar).toBeEnabled()
-      expect(contextMenu).toBeEnabled()
-      fireEvent.click(actionBar)
-      expect(onChange).toHaveBeenLastCalledWith({
-        ...settings,
-        pluginContributions: { ...settings.pluginContributions, 'git-board': { actionBar: false } },
-      })
-      expect(screen.getByTestId('settings-plugin-enabled-git-board')).not.toBeChecked()
-      expect(contextMenu).toBeChecked()
-      expect(screen.getByTestId('plugin-node-preview')).toBeVisible()
-    },
-  )
-
-  it('shows only contributions declared by the plugin manifest and restores saved preferences', async () => {
-    await applyUiLanguage('en')
-    const plugin = getBuiltinPluginManifest('git-board')!
+  it('uses the whole contribution tile as an accessible switch and only shows declared entries', () => {
     const onChange = vi.fn()
-    const settings = { pluginContributions: { 'git-board': { actionBar: false } } }
     const { rerender } = render(
       <PluginContributionControls
-        plugin={{ ...plugin, contextMenu: false }}
-        settings={settings}
-        onChange={onChange}
-      />,
-    )
-    expect(screen.getByRole('switch', { name: 'Show in action bar' })).not.toBeChecked()
-    expect(screen.queryByRole('switch', { name: 'Show in right-click menu' })).toBeNull()
-    rerender(
-      <PluginContributionControls
-        plugin={{ ...plugin, actionBar: false, contextMenu: false }}
-        settings={settings}
-        onChange={onChange}
-      />,
-    )
-    expect(screen.queryByRole('group', { name: 'Show in' })).toBeNull()
-    expect(onChange).not.toHaveBeenCalled()
-  })
-
-  it('lets the whole location tile and its description toggle the same accessible switch', async () => {
-    await applyUiLanguage('en')
-    const plugin = getBuiltinPluginManifest('git-board')!
-    const onChange = vi.fn()
-    render(
-      <PluginContributionControls
-        plugin={plugin}
+        plugin={examplePlugin}
         settings={{ pluginContributions: {} }}
         onChange={onChange}
       />,
     )
-    const tile = screen.getByTestId('settings-plugin-contribution-tile-actionBar-git-board')
-    const input = screen.getByTestId('settings-plugin-contribution-actionBar-git-board')
+    const tile = screen.getByTestId('settings-plugin-contribution-tile-actionBar-example-tool')
     expect(tile.tagName).toBe('LABEL')
-    expect(input).toHaveRole('switch')
-    expect(input).toHaveAccessibleDescription('On the right side of the canvas')
+    expect(screen.getByRole('switch', { name: 'Show in action bar' })).toHaveAccessibleDescription(
+      'On the right side of the canvas',
+    )
     fireEvent.click(tile)
     expect(onChange).toHaveBeenLastCalledWith('actionBar', false)
-    fireEvent.click(screen.getByText('In the menu on an empty canvas area'))
-    expect(onChange).toHaveBeenLastCalledWith('contextMenu', false)
-    expect(onChange).toHaveBeenCalledTimes(2)
+    rerender(
+      <PluginContributionControls
+        plugin={{ ...examplePlugin, actionBar: false, contextMenu: false }}
+        settings={{ pluginContributions: {} }}
+        onChange={onChange}
+      />,
+    )
+    expect(screen.queryByRole('group', { name: 'Show in' })).toBeNull()
   })
 })

@@ -92,6 +92,8 @@ describe('plugin declaration contracts', () => {
       contextMenu: true,
       commands: [],
       skills: [],
+      preferences: [],
+      themes: [],
     })
     expect(normalizeLocalPluginPackage(pkg)).toEqual(pkg)
   })

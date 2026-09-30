@@ -1,33 +1,39 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PluginReadme, resolvePluginMarkdownUrl } from './PluginReadme'
-import { getPluginDetail } from './pluginDetails'
 
 afterEach(cleanup)
 
 describe('plugin documentation', () => {
   it('renders authored Markdown, tables, code, bundled images and external links', () => {
-    const detail = getPluginDetail('git-board', 'en')!
+    const detail = {
+      readme:
+        '# Your tool\n\n| Feature | Purpose |\n| --- | --- |\n| Window | Working area |\n\n`opencove plugin guide`\n\n![Example](./example.svg)\n\n[API](https://example.com/api)',
+      assets: { './example.svg': '/example.svg' },
+    }
     render(<PluginReadme markdown={detail.readme} assets={detail.assets} />)
-    expect(screen.getByRole('heading', { name: 'Your repository, beside your work' })).toBeVisible()
-    expect(screen.getByRole('table')).toHaveTextContent('Working tree')
+    expect(screen.getByRole('heading', { name: 'Your tool' })).toBeVisible()
+    expect(screen.getByRole('table')).toHaveTextContent('Working area')
     expect(screen.getByText('opencove plugin guide').tagName).toBe('CODE')
     const image = screen.getByRole('img')
-    expect(image).toHaveAttribute('src', detail.assets['./overview.svg'])
+    expect(image).toHaveAttribute('src', detail.assets['./example.svg'])
     expect(image).toHaveAttribute('referrerpolicy', 'no-referrer')
-    expect(screen.getByRole('link', { name: 'Git history' })).toHaveAttribute('target', '_blank')
-    expect(screen.getByRole('link', { name: 'Git history' })).toHaveAttribute(
-      'rel',
-      'noopener noreferrer',
-    )
+    expect(screen.getByRole('link', { name: 'API' })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: 'API' })).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('resolves localized package docs without pretending unknown plugins have documentation', () => {
-    const detail = getPluginDetail('git-board', 'zh-CN')!
-    render(<PluginReadme markdown={detail.readme} assets={detail.assets} />)
-    expect(screen.getByRole('heading', { name: '把仓库放在工作旁边' })).toBeVisible()
-    expect(screen.getByRole('img')).toHaveAttribute('alt', '纵向提交历史与画布窗口的示意图')
-    expect(getPluginDetail('missing', 'en')).toBeNull()
+  it('opens only registered internal documents through the host reader', () => {
+    const onOpenDocument = vi.fn()
+    render(
+      <PluginReadme
+        markdown={'[Guide](./guide.md)\n\n[Private](../secret.md)'}
+        resolveDocumentLink={href => (href === './guide.md' ? 'guide' : null)}
+        onOpenDocument={onOpenDocument}
+      />,
+    )
+    fireEvent.click(screen.getByRole('link', { name: 'Guide' }))
+    expect(onOpenDocument).toHaveBeenCalledWith('guide')
+    expect(screen.queryByRole('link', { name: 'Private' })).toBeNull()
   })
 
   it('supports HTTPS images but does not execute document HTML or navigate unsafe links', () => {

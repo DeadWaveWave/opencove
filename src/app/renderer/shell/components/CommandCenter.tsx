@@ -22,6 +22,8 @@ import {
   type CommandCenterItem,
   type CommandCenterSection,
 } from './commandCenterModel'
+import { usePluginCommands } from '@contexts/plugins/presentation/renderer/usePluginCommands'
+import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 
 export function CommandCenter({
@@ -66,6 +68,15 @@ export function CommandCenter({
 
   const activeSpace =
     activeWorkspace?.spaces.find(space => space.id === activeWorkspace.activeSpaceId) ?? null
+
+  const pluginCommands = usePluginCommands(
+    {
+      surface: 'commandCenter',
+      ...(activeWorkspace ? { projectId: activeWorkspace.id } : {}),
+      ...(activeSpace ? { spaceId: activeSpace.id } : {}),
+    },
+    isOpen,
+  )
 
   const baseSections = useMemo<CommandCenterSection[]>(() => {
     const commandItems: CommandCenterItem[] = [
@@ -155,6 +166,21 @@ export function CommandCenter({
         })) ?? []
 
     const sections: CommandCenterSection[] = []
+    if (pluginCommands.items.length) {
+      sections.push({
+        id: 'plugins',
+        label: t('pluginHostExtensions.commands'),
+        items: pluginCommands.items.map(item => ({
+          id: item.id,
+          title: item.title,
+          keywords: item.command.description,
+          icon: <PluginIcon pluginId={item.plugin.id} />,
+          onSelect: () => {
+            void pluginCommands.run(item)
+          },
+        })),
+      })
+    }
 
     sections.push({
       id: 'commands',
@@ -178,6 +204,7 @@ export function CommandCenter({
 
     return sections
   }, [
+    pluginCommands,
     t,
     activeWorkspace,
     isPrimarySidebarCollapsed,

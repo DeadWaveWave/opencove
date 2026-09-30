@@ -1,6 +1,8 @@
+import { normalizePluginPreferences, normalizePluginThemes } from './pluginHostExtensionValidation'
 import type { LocalPluginPackage } from './pluginRuntimeTypes'
 import type {
   PluginCommandDeclaration,
+  PluginCommandMenu,
   PluginIconDeclaration,
   PluginSkillDeclaration,
 } from './pluginTypes'
@@ -103,7 +105,18 @@ function command(value: Record<string, unknown>): PluginCommandDeclaration {
   if (value.target !== 'plugin' && value.target !== 'window') {
     throw new Error('Plugin command target must be plugin or window.')
   }
+  const menus = value.menus
+  if (
+    menus !== undefined &&
+    (!Array.isArray(menus) ||
+      menus.length > 4 ||
+      menus.some(item => !['commandCenter', 'canvas', 'node', 'space'].includes(String(item))) ||
+      new Set(menus).size !== menus.length)
+  ) {
+    throw new Error('Invalid plugin command menus.')
+  }
   return {
+    ...(menus === undefined ? {} : { menus: menus as PluginCommandMenu[] }),
     id: declarationId(value.id, 'command'),
     title: pluginString(value.title, 'command title', 120),
     description: pluginString(value.description, 'command description', 2000),
@@ -150,6 +163,8 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
   }
   const commands = declarations(contributes.commands, 'commands', command)
   const skills = declarations(contributes.skills, 'skills', skill)
+  const preferences = normalizePluginPreferences(contributes.preferences)
+  const themes = normalizePluginThemes(contributes.themes)
   if (
     !view &&
     (raw.preview !== undefined ||
@@ -164,8 +179,14 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
   if (commands.some(item => item.target === 'plugin') && raw.main === undefined) {
     throw new Error('Plugin commands targeting the plugin require a main backend.')
   }
-  if (!view && commands.length === 0 && skills.length === 0) {
-    throw new Error('Plugin must provide a view, command or skill.')
+  if (
+    !view &&
+    commands.length === 0 &&
+    skills.length === 0 &&
+    preferences.length === 0 &&
+    themes.length === 0
+  ) {
+    throw new Error('Plugin must provide a view, command, skill, preference or theme.')
   }
   if (view?.instances !== undefined && !['single', 'multiple'].includes(String(view.instances))) {
     throw new Error('Plugin view.instances must be single or multiple.')
@@ -214,6 +235,8 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
       contextMenu: Boolean(view) && contributes.contextMenu !== false,
       commands,
       skills,
+      preferences,
+      themes,
     },
     ...(raw.platforms === undefined
       ? {}

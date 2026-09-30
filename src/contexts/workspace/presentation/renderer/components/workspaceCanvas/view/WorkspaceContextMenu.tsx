@@ -1,3 +1,4 @@
+import { PluginContextCommands } from '@contexts/plugins/presentation/renderer/PluginContextCommands'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
@@ -441,6 +442,15 @@ export function WorkspaceContextMenu({
             nodeId={contextMenu.nodeId}
           />
         )}
+        <PluginContextCommands
+          surface={contextMenu.kind === 'pane' ? 'canvas' : 'node'}
+          nodeIds={
+            contextMenu.kind === 'selection' && contextMenu.nodeId
+              ? [contextMenu.nodeId]
+              : undefined
+          }
+          onClose={closeContextMenu}
+        />
       </ViewportMenuSurface>
 
       <WorkspaceContextSubmenus

@@ -1,0 +1,160 @@
+.settings-plugin-install {
+  min-width: 0;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--cove-settings-row-divider);
+}
+
+.settings-plugin-install__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-plugin-install__heading h3 {
+  margin: 0;
+  color: var(--cove-text);
+  font-size: calc(15px * var(--cove-ui-font-scale));
+  font-weight: 500;
+}
+
+.settings-plugin-install__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 18px;
+}
+
+.settings-plugin-install__modes button {
+  padding: 7px 11px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 6px;
+  background: var(--cove-surface);
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  cursor: pointer;
+}
+
+.settings-plugin-install__modes button[aria-pressed='true'] {
+  border-color: var(--cove-accent);
+  color: var(--cove-text);
+  background: var(--cove-surface-hover);
+}
+
+.settings-plugin-install label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  color: var(--cove-text);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.settings-plugin-install input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+}
+
+.settings-plugin-install__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.settings-plugin-install details {
+  margin-top: 12px;
+}
+
+.settings-plugin-install summary,
+.settings-plugin-install p {
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.settings-plugin-install summary {
+  cursor: pointer;
+}
+
+.settings-plugin-discovery article {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--cove-settings-row-divider);
+}
+
+.settings-plugin-discovery article > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-plugin-discovery a {
+  color: var(--cove-accent);
+  overflow-wrap: anywhere;
+}
+
+.settings-plugin-discovery p {
+  margin: 4px 0 0;
+}
+
+.settings-plugin-install :is(button, input, summary, a):focus-visible {
+  outline: 2px solid var(--cove-settings-focus-ring);
+  outline-offset: 2px;
+}
+
+@container settings-content (max-width: 440px) {
+  .settings-plugin-install__options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-plugin-discovery article {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .settings-plugin-install :is(button, input) {
+    min-height: 44px;
+  }
+}
+
+.settings-plugin-source {
+  padding-top: 14px;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.settings-plugin-source__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.settings-plugin-source__identity > :first-child {
+  color: var(--cove-text-faint);
+}
+
+.settings-plugin-source__history summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.settings-plugin-source__version {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.settings-plugin-source .cove-select {
+  min-width: 0;
+  max-width: 100%;
+}

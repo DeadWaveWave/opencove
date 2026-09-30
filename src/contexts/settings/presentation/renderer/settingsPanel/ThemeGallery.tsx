@@ -1,3 +1,5 @@
+import { usePluginRegistry } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
+import { availablePluginThemes } from '@contexts/plugins/domain/pluginThemes'
 import { Check, Monitor } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { getUiThemeLabel } from '@app/renderer/i18n/labels'
@@ -17,6 +19,8 @@ export function ThemeGallery({
   onChange: (theme: UiTheme) => void
 }) {
   const { t } = useTranslation()
+  const { plugins } = usePluginRegistry()
+  const pluginThemes = availablePluginThemes(plugins)
   return (
     <div
       className="settings-theme-gallery"
@@ -58,6 +62,25 @@ export function ThemeGallery({
           </div>
         ))}
       </div>
+      {value.startsWith('plugin:') && !pluginThemes.some(item => item.id === value) ? (
+        <p role="status">{t('pluginHostExtensions.unavailableTheme')}</p>
+      ) : null}
+      {pluginThemes.map(({ plugin, theme, id }) => (
+        <button
+          type="button"
+          key={id}
+          className="settings-theme-gallery__system-button"
+          data-testid={`settings-ui-theme-${id}`}
+          aria-pressed={value === id}
+          onClick={() => onChange(id)}
+        >
+          <span>
+            {theme.title} · {plugin.displayName}
+          </span>
+          <span>{t(`settingsPanel.appearanceNext.${theme.appearance}`)}</span>
+          {value === id ? <Check size={13} aria-hidden="true" /> : null}
+        </button>
+      ))}
       <div className="settings-theme-gallery__system">
         <span>{t('settingsPanel.appearanceNext.systemHelp')}</span>
         <button

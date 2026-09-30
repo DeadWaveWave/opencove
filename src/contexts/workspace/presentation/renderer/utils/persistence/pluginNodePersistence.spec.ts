@@ -55,7 +55,7 @@ function workspace(): WorkspaceState {
   }
 }
 
-describe('Git Board node persistence', () => {
+describe('Plugin node persistence', () => {
   it('round trips plugin target and view preferences through persisted state', () => {
     const persisted = toPersistedState([workspace()], 'workspace-plugin-persistence')
     const normalized = ensurePersistedWorkspace(persisted.workspaces[0])
@@ -72,7 +72,7 @@ describe('Git Board node persistence', () => {
     expect(runtime[0]?.type).toBe('pluginNode')
   })
 
-  it('preserves unavailable identities and newer data versions instead of running Git Board', () => {
+  it('preserves unavailable identities and newer data versions without substituting a bundled implementation', () => {
     const original = workspace()
     original.nodes[0]!.data.plugin = {
       ...original.nodes[0]!.data.plugin!,
@@ -88,5 +88,17 @@ describe('Git Board node persistence', () => {
     expect(runtime[0]?.data.plugin).toEqual(original.nodes[0]!.data.plugin)
     expect(runtime[0]?.data.width).toBe(original.nodes[0]!.data.width)
     expect(runtime[0]?.position).toEqual(original.nodes[0]!.position)
+  })
+  it('does not invent example preferences for a generic node', () => {
+    const original = workspace()
+    original.nodes[0]!.data.plugin = {
+      pluginId: 'sample-plugin',
+      schemaVersion: 1,
+      repoPath: '',
+      mountId: null,
+    }
+    const persisted = toPersistedState([original], original.id)
+    const normalized = ensurePersistedWorkspace(persisted.workspaces[0])!
+    expect(toRuntimeNodes(normalized)[0]?.data.plugin).toEqual(original.nodes[0]!.data.plugin)
   })
 })

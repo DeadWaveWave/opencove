@@ -1,3 +1,4 @@
+import type { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
 import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import type { ControlSurface } from './controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
@@ -42,6 +43,7 @@ import type { TerminalAgentActivityEnvironmentService } from '../../../contexts/
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
   deps: {
+    pluginDistribution?: PluginDistributionService
     plugins: PluginInstallationManager
     approvedWorkspaces: ApprovedWorkspaceStore
     userDataPath: string
@@ -149,7 +151,7 @@ export function registerControlSurfaceHandlers(
     publishSyncEvent: deps.publishSyncEvent,
     closeWebsiteNode: deps.closeWebsiteNode,
   })
-  registerPluginHandlers(controlSurface, deps.plugins)
+  registerPluginHandlers(controlSurface, deps.plugins, deps.pluginDistribution)
   registerPluginCommandHandlers(controlSurface, {
     plugins: deps.plugins,
     getPersistenceStore: deps.getPersistenceStore,

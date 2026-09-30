@@ -8,12 +8,14 @@ export function SettingsGroup({
   id,
   title,
   description,
+  actions,
   className,
   children,
 }: {
   id: string
   title: string
   description?: ReactNode
+  actions?: ReactNode
   className?: string
   children: ReactNode
 }): React.JSX.Element {
@@ -28,10 +30,16 @@ export function SettingsGroup({
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
     >
-      <header className="settings-panel__group-header">
+      <header
+        className={joinClassName(
+          'settings-panel__group-header',
+          actions ? 'settings-panel__group-header--actions' : undefined,
+        )}
+      >
         <h3 className="settings-panel__group-title" id={titleId}>
           {title}
         </h3>
+        {actions}
         {description ? (
           <p className="settings-panel__group-description" id={descriptionId}>
             {description}

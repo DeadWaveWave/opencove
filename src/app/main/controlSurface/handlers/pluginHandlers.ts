@@ -1,7 +1,8 @@
+import { registerPluginPreferenceHandlers } from './pluginPreferenceHandlers'
+import type { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceHandler } from '../types'
 import { createAppError } from '../../../../shared/errors/appError'
-import { createBuiltinPluginRegistry } from '@contexts/plugins/application/pluginRegistry'
 import type { PluginInstallationManager } from '@contexts/plugins/application/PluginInstallationManager'
 import { pluginRecord, pluginString } from '@contexts/plugins/domain/localPluginValidation'
 import type { PluginOpenViewInput } from '@contexts/plugins/domain/pluginRuntimeTypes'
@@ -31,6 +32,7 @@ function jsonValue(value: unknown, maxBytes: number): unknown {
 export function registerPluginHandlers(
   controlSurface: ControlSurface,
   manager: PluginInstallationManager,
+  distribution?: PluginDistributionService,
 ): void {
   const fail = (error: unknown): never => {
     const reason = (error instanceof Error ? error.message : String(error)).slice(0, 2000)
@@ -55,15 +57,12 @@ export function registerPluginHandlers(
       },
     })
   }
-  const registry = createBuiltinPluginRegistry()
+  registerPluginPreferenceHandlers(controlSurface, manager)
   register('plugin.list', {
     kind: 'query',
     validate: () => null,
     handle: async () => ({
-      plugins: [
-        ...registry.list().map(plugin => ({ ...plugin, source: 'builtin' as const })),
-        ...(await manager.list()),
-      ],
+      plugins: await manager.list(),
     }),
     defaultErrorCode: 'common.invalid_input',
   })
@@ -84,7 +83,8 @@ export function registerPluginHandlers(
   register('plugin.reload', {
     kind: 'command',
     validate: pluginId,
-    handle: async (_ctx, input) => manager.reload(input.pluginId),
+    handle: async (_ctx, input) =>
+      distribution ? distribution.rebuild(input.pluginId) : manager.reload(input.pluginId),
     defaultErrorCode: 'common.invalid_input',
   })
   register('plugin.uninstall', {

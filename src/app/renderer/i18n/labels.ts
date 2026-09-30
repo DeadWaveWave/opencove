@@ -70,7 +70,10 @@ export function getStandardWindowSizeBucketLabel(
 }
 
 export function getUiThemeLabel(t: TranslateFn, theme: UiTheme): string {
-  const i18nKey = UI_THEME_DESCRIPTORS[theme].i18nKey
+  if (theme.startsWith('plugin:')) {
+    return theme.slice(7)
+  }
+  const i18nKey = UI_THEME_DESCRIPTORS[theme as keyof typeof UI_THEME_DESCRIPTORS].i18nKey
   return t(`settingsPanel.general.uiTheme.${i18nKey}`)
 }
 

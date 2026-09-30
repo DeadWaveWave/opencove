@@ -112,7 +112,15 @@ export function registerControlSurfaceIpcHandlers(
             token: connection.token,
           },
           request,
-          request.id.startsWith('plugin.') ? { timeoutMs: 60_000 } : undefined,
+          request.id.startsWith('plugin.')
+            ? {
+                timeoutMs:
+                  request.id.startsWith('plugin.git.') ||
+                  ['plugin.reload', 'plugin.rollback'].includes(request.id)
+                    ? 600_000
+                    : 60_000,
+              }
+            : undefined,
         )
 
         logAgentLaunchInfo(

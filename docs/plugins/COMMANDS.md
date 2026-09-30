@@ -50,7 +50,8 @@ are at most 1,024 characters. Validate domain parameters in your handler.
 
 `target: "plugin"` requires a `main` backend and runs without a window.
 `target: "window"` requires `view` and runs in an actual browser document.
-A plugin may provide both. A package needs at least one view, command or skill.
+A plugin may provide both. Packages can also contribute preferences and themes
+without a window; see [Host extensions](./HOST_EXTENSIONS.md).
 Omit `view` entirely for command-only or skill-only packages; a missing view cannot
 have `preview`, window commands, or enabled window creation contributions.
 
@@ -70,7 +71,9 @@ export function activate(context) {
 }
 ```
 
-`commandContext` contains only `pluginId`. Use activation's `dataDirectory` for
+CLI backend commands receive `pluginId` in `commandContext`; host-menu invocations
+can also supply a validated explicit selection, documented in
+[Host extensions](./HOST_EXTENSIONS.md). Use activation's `dataDirectory` for
 private data. Neither the caller's working directory nor an active project is
 inferred. `opencove plugin run <id> status` works without a connected Desktop or
 Web UI, provided the Worker is running and the plugin is enabled and healthy.

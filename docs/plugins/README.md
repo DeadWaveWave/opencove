@@ -4,11 +4,16 @@ This is the guide shipped with the OpenCove build that returned it. Start with
 `opencove plugin guide`; it prints this README's absolute path and the documentation
 directory. The command works offline and does not start an app or Worker.
 
-**This build can install an independent local plugin directory.** A plugin can
-supply an HTML view, commands, skills, an optional Node backend, README, icon and
-interactive preview. Its window uses OpenCove's normal header, drag, resize,
-collapse and close behavior. Command-only and skill-only packages need no window.
+**Plugins are independently installed packages.** A plugin can
+supply an HTML view, commands, skills, themes, configurable preferences, an
+optional Node backend, README, icon and interactive preview. Its window uses OpenCove's normal header, drag, resize,
+collapse and close behavior. Commands, skills and themes can be supplied without a window.
 You do not edit or rebuild OpenCove to install or reload a plugin.
+
+For an introduction and walkthroughs, open **Settings → Plugins → Documentation**.
+The same version-matched articles are in [the user handbook](./handbook/START.en.md).
+They explain what plugins do, installation, and how to ask an Agent to build one.
+There is no dedicated creator role or automatic plugin-authoring workflow.
 
 Before designing a view, read [OpenCove plugin design system](./VISUAL_DESIGN.md): host
 boundaries, layout, typography, theme colors, controls and a copyable CSS baseline.
@@ -17,7 +22,12 @@ It gives defaults without making every plugin use the same content layout.
 Start implementation with [Authoring and verification](./AUTHORING.md), then copy the runnable
 [Hello Clock example](./examples/hello-clock/README.md) into your own directory.
 [API reference](./API.md) contains the complete development API supported here.
-Do not infer additional APIs from the [Git Board roadmap](./GIT_BOARD_MVP.md).
+[Host extensions](./HOST_EXTENSIONS.md) explains menu commands, preferences and theme
+contributions. [Git sources and distribution](./DISTRIBUTION.md) covers repository
+installation, personal edits, updates, retained candidates, rollback and discovery.
+[Scope and roadmap](./ROADMAP.md) distinguishes supported features from future work.
+The guide describes supported host APIs; validation plugins are developed outside
+the OpenCove source tree and are not bundled into the application.
 
 ## Commands
 
@@ -33,7 +43,7 @@ without modifying an existing Desktop session.
 | Command | Effect |
 | --- | --- |
 | `opencove plugin guide` | Returns readable, version-matched documentation paths |
-| `opencove plugin list` | Lists built-in and installed plugins |
+| `opencove plugin list` | Lists installed plugins |
 | `opencove plugin install <directory>` | Validates and installs a local directory |
 | `opencove plugin details <id>` | Returns an installed local plugin's manifest, README, source directory, assets and recent backend logs |
 | `opencove plugin run <id> <command> [--params <json>]` | Runs a declared command; window commands support `--node`, `--view` and `--project` selection |
@@ -45,15 +55,11 @@ without modifying an existing Desktop session.
 | `opencove plugin enable <id>` | Makes the installed local plugin available again |
 | `opencove plugin uninstall <id>` | Removes the local installation; does not delete source or private data |
 
-`list` includes built-in plugins, but `details`, `reload`, `enable`, `disable` and
-`uninstall`, as well as contributed commands, windows and skills, operate on local
-installations only. View built-in Git Board
-documentation and change its enablement in Settings → Plugins. Listing a built-in
-ID does not make it a local installation.
 
-Install, reload and run default to a 60-second request timeout to allow validation,
-backend activation or window readiness. An explicit `--timeout <ms>` overrides this; other commands
-retain their normal default.
+Local install and run default to a 60-second request timeout for validation,
+backend activation or window readiness. Git mutations and reload default to ten
+minutes for repository and build work. An explicit `--timeout <ms>` overrides
+these defaults. See [Git distribution](./DISTRIBUTION.md) for its CLI commands.
 
 `list` and `details` expose declared command and skill metadata. Read
 [Commands and skills](./COMMANDS.md) before invoking a contribution. A backend
@@ -67,10 +73,12 @@ are resolved against the CLI's current directory; use an absolute path and run t
 CLI on the same machine as the target runtime. This version does not upload local
 files to a remote Worker.
 
-The source remains yours: use Git there normally. Installation and reload copy a
-validated immutable snapshot, excluding `.git` and `node_modules`. Build and bundle
-any dependencies before installation; the host does not run package scripts or
-install dependencies. A failed candidate leaves the active version intact.
+A local-directory installation copies a validated immutable snapshot, excluding
+`.git` and `node_modules`. Build and bundle dependencies before installing a local
+directory. Managed Git installations can use an explicitly selected frozen build
+strategy; see [distribution](./DISTRIBUTION.md). Neither path changes active assets
+merely because source files changed. A failed candidate leaves the active version
+intact; this does not undo plugin data writes or external side effects.
 
 ## UI and lifecycle
 
@@ -105,12 +113,12 @@ is not a separate installation.
 - Desktop and Worker Web UI receive the same plugin assets. The browser displays
   the UI and plays media; the Node backend runs on the connected host. Do not assume
   that the viewing device and runtime machine are the same computer.
-- GitHub discovery, repository cloning, upstream merge/update, arbitrary host UI
-  patches and automatic skill installation remain future work. Declared plugin
-  commands, actual window commands, packaged skills, plugin nodes and their
-  creation entries are supported through the fixed public plugin interface.
-- Built-in Git Board follows application updates. Local install/reload/uninstall
-  does not replace built-in implementations.
+- Host extensions are declarative: nodes, addressed commands and menu entries,
+  preferences, color-token themes, and packaged skills. Arbitrary host UI patches,
+  automatic Skill installation and a dedicated creator role are not supported.
+- Community discovery returns GitHub repositories for inspection. Discovery is not
+  a compatibility guarantee or an installation; choose a repository and install it
+  deliberately. See [distribution](./DISTRIBUTION.md) for the exact current scope.
 
 ## Finding the guide
 

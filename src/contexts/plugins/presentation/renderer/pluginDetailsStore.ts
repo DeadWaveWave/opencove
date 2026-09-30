@@ -33,7 +33,7 @@ export function createPluginDetailsStore(
   const latest = new Map<string, string>()
   let clock = 0
   const signature = (plugin: PluginManifest) =>
-    JSON.stringify([plugin.status, plugin.enabled, plugin.error])
+    JSON.stringify([plugin.runtimeGeneration, plugin.status, plugin.enabled, plugin.error])
 
   function prune(): void {
     const inactive = [...entries.values()].filter(entry => entry.listeners.size === 0)
@@ -81,7 +81,9 @@ export function createPluginDetailsStore(
         // A lifecycle transition may have replaced the source while this request was in flight.
         if (
           detail.plugin.id !== plugin.id ||
-          (plugin.revision && detail.plugin.revision !== plugin.revision)
+          (plugin.revision && detail.plugin.revision !== plugin.revision) ||
+          detail.plugin.runtimeGeneration !== plugin.runtimeGeneration ||
+          entry.plugin.runtimeGeneration !== plugin.runtimeGeneration
         ) {
           return
         }
@@ -89,6 +91,9 @@ export function createPluginDetailsStore(
         publish(entry, { detail, error: null })
       })
       .catch((error: unknown) => {
+        if (entry.plugin.runtimeGeneration !== plugin.runtimeGeneration) {
+          return
+        }
         publish(entry, { detail: entry.snapshot.detail, error: pluginErrorMessage(error) })
       })
       .finally(() => {

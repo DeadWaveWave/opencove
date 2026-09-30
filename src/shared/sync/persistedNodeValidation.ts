@@ -191,8 +191,7 @@ function isPluginNodeData(value: unknown): value is PersistedPluginNodeData {
     value.pluginId.trim().length > 0 &&
     isFiniteNumber(value.schemaVersion) &&
     (value.repoPath === undefined || typeof value.repoPath === 'string') &&
-    (value.mountId === undefined || isNullableString(value.mountId)) &&
-    (value.graphLimit === undefined || isFiniteNumber(value.graphLimit))
+    (value.mountId === undefined || isNullableString(value.mountId))
   )
 }
 

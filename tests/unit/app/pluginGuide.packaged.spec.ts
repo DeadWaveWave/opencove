@@ -51,7 +51,9 @@ async function createFixture(name: string, readme = 'Plugin development guide') 
   await writeFile(join(docs, 'README.md'), readme)
   await writeFile(join(docs, 'AUTHORING.md'), 'Plugin authoring guide')
   await writeFile(join(docs, 'API.md'), 'Plugin API guide')
-  await writeFile(join(docs, 'GIT_BOARD_MVP.md'), 'Git Board guide')
+  await writeFile(join(docs, 'COMMANDS.md'), 'Plugin commands guide')
+  await writeFile(join(docs, 'RUNTIME.md'), 'Plugin runtime guide')
+  await writeFile(join(docs, 'VISUAL_DESIGN.md'), 'Plugin design guide')
   await cp(resolve('docs/plugins/examples/hello-clock'), join(docs, 'examples', 'hello-clock'), {
     recursive: true,
   })
@@ -87,7 +89,10 @@ describe('packaged plugin guide export', () => {
     expect(guide.directory).toMatch(/[a-f0-9]{64}$/)
     expect(guide.directory).not.toContain('.asar')
     expect(await readFile(guide.readme, 'utf8')).toBe('Plugin development guide')
-    expect(await readFile(guide.plugins[0].document, 'utf8')).toBe('Git Board guide')
+    expect(guide).not.toHaveProperty('plugins')
+    expect(await readFile(join(guide.directory, 'COMMANDS.md'), 'utf8')).toBe(
+      'Plugin commands guide',
+    )
     expect(await readFile(join(guide.directory, 'AUTHORING.md'), 'utf8')).toBe(
       'Plugin authoring guide',
     )
@@ -126,7 +131,7 @@ describe('packaged plugin guide export', () => {
     await expect(readdir(join(root, 'cache'))).rejects.toMatchObject({ code: 'ENOENT' })
   })
 
-  it.each(['AUTHORING.md', 'GIT_BOARD_MVP.md', 'API.md', 'examples/hello-clock/view.js'])(
+  it.each(['AUTHORING.md', 'COMMANDS.md', 'API.md', 'examples/hello-clock/view.js'])(
     'does not publish documentation missing %s or return a nonexistent source path',
     async missingDocument => {
       const { app, docs } = await createFixture('incomplete')

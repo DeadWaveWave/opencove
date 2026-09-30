@@ -1,5 +1,4 @@
 import { useEffect, type MutableRefObject } from 'react'
-import { GitBoardNode } from '../GitBoardNode'
 import type { WorkspaceCanvasNodeTypeProps } from './nodeTypes.types'
 import type { NodeFrame } from '../../types'
 import { useNodePosition } from './nodePosition'
@@ -52,7 +51,7 @@ export function WorkspaceCanvasPluginNodeType({
       }
     },
   }
-  const unavailableReason = !manifest
+  const unavailableReason = !manifest?.view
     ? 'missing'
     : data.plugin.schemaVersion !== 1
       ? 'schemaUnavailable'
@@ -63,13 +62,12 @@ export function WorkspaceCanvasPluginNodeType({
     return (
       <PluginUnavailableNode
         {...windowProps}
-        className="git-board-node"
-        testIdPrefix="git-board"
+        testIdPrefix={`plugin-${data.plugin.pluginId}`}
         reason={unavailableReason}
       />
     )
   }
-  if (manifest?.source === 'local') {
+  if (manifest) {
     return (
       <CanvasNodeWindow
         {...windowProps}
@@ -93,5 +91,5 @@ export function WorkspaceCanvasPluginNodeType({
       </CanvasNodeWindow>
     )
   }
-  return <GitBoardNode {...windowProps} data={data.plugin} />
+  return null
 }

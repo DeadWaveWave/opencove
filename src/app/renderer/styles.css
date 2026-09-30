@@ -36,7 +36,6 @@
 @import './styles/role-node.css';
 @import './styles/note-node.css';
 @import './styles/node-title-editor.css';
-@import './styles/git-board-node.css';
 @import './styles/plugin-node-unavailable.css';
 @import './styles/canvas-node-window.css';
 @import './styles/document-node.css';
@@ -58,6 +57,8 @@
 @import './styles/settings-panel.diagnostics.css';
 @import './styles/settings-panel.groups.css';
 @import './styles/settings-panel.plugins.css';
+@import './styles/settings-panel.plugin-library.css';
+@import './styles/settings-panel.plugin-install.css';
 @import './styles/settings-panel.plugin-tools.css';
 @import './styles/plugin-readme.css';
 @import './styles/plugin-node-preview.css';

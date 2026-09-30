@@ -185,3 +185,14 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 }
+
+.settings-panel__group-header--actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.settings-panel__group-header--actions > .settings-panel__group-description {
+  grid-column: 1 / -1;
+}

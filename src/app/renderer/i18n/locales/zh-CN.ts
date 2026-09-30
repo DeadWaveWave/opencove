@@ -16,6 +16,14 @@ import { zhCNRole } from './zh-CN.role'
 import { zhCNWorkspaceCanvas } from './zh-CN.workspaceCanvas'
 
 export const zhCN = {
+  pluginHostExtensions: {
+    invalidPreference: '请为此偏好设置输入有效值。',
+    staleCommand: '插件已变更，请重新打开菜单。',
+    preferences: '偏好设置',
+    commands: '插件命令',
+    completed: '已完成：{{title}}',
+    unavailableTheme: '此主题暂不可用。启用后将恢复，目前显示默认主题。',
+  },
   ...zhCNCanvasCollapse,
   ...zhCNSpaceCollapse,
   common: {

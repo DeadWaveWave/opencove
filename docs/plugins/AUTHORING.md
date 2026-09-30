@@ -117,9 +117,9 @@ object with `invoke(method, params, viewContext)` for view calls and/or
 Window commands use the browser SDK's `api.onCommand` and do not require a backend.
 See [Commands and skills](./COMMANDS.md) for targeting, single-window reuse, and skill declarations.
 Use Node built-ins directly; bundle other runtime dependencies into distributable
-files. A source `node_modules` folder is excluded from snapshots. The host does not
-run install/build scripts, TypeScript transpilation or a separate development
-server. Browser assets use relative paths within the plugin directory.
+files. A source `node_modules` folder is excluded from snapshots. Local-directory installation does not run install/build scripts, TypeScript
+transpilation or a separate development server. Managed Git installation can run an
+explicit frozen build strategy; see [Git sources](./DISTRIBUTION.md). Browser assets use relative paths within the plugin directory.
 
 The standard window already has a title, icon, resize handles and close/collapse
 actions. Design only its body. Use the SDK to update its title and follow its theme.
@@ -194,10 +194,12 @@ A build or activation error must not be reported as a successful reload. If the
 manifest changed its ID, install that directory under its new identity instead of
 asking the old installation to change identity during reload.
 
-A local Git repository is a convenient source owner. Commit your edits there and
-merge upstream changes yourself before reload. OpenCove never resets, stashes,
-commits or rewrites your source. An immutable installed snapshot is not the working
-copy; do not patch it directly.
+For a local-directory install, manage the source repository normally and reload
+after your own merge/build. For a managed Git install, inspect the current editable
+source location before editing; update prepares a separate candidate and preserves
+the former checkout. Follow [distribution](./DISTRIBUTION.md) for personal edits,
+conflict resolution and rollback. An immutable installed snapshot is not the
+working copy; do not patch it directly.
 
 ## Acceptance evidence
 

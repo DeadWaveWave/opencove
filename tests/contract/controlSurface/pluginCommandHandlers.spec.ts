@@ -368,3 +368,89 @@ describe('plugin command facade ownership', () => {
     expect(listPluginWindows(f.state(), 'sample').map(node => node.nodeId)).toContain(committed)
   })
 })
+
+describe('declared host menu dispatch', () => {
+  it('never creates a window for a menu and rejects stale declared identities', async () => {
+    const f = fixture()
+    expect(
+      await f.call('plugin.command.run', {
+        commandId: 'select',
+        context: { surface: 'commandCenter', projectId: 'first' },
+      }),
+    ).toMatchObject({ ok: false })
+    expect(f.store.writeAppState).not.toHaveBeenCalled()
+    expect(f.publish).not.toHaveBeenCalled()
+    expect(
+      await f.call('plugin.command.run', {
+        commandId: 'select',
+        expectedRevision: 'old',
+        context: { surface: 'commandCenter' },
+      }),
+    ).toMatchObject({ ok: false })
+    expect(f.plugins.runCommand).not.toHaveBeenCalled()
+  })
+  it('uses the shared dispatcher for a concrete menu view and rejects mismatched context', async () => {
+    const f = fixture()
+    f.manifest.commands![0].menus = ['node', 'space', 'canvas']
+    await f.call('plugin.window.open', { projectId: 'first', spaceId: 'first-space' })
+    const nodeId = listPluginWindows(f.state(), 'sample')[0].nodeId
+    f.plugins.listViews.mockResolvedValue([{ nodeId, viewId: 'view', ready: true }])
+    const context = { surface: 'space', projectId: 'first', spaceId: 'first-space' }
+    expect(
+      await f.call('plugin.command.run', { commandId: 'select', nodeId, viewId: 'view', context }),
+    ).toMatchObject({ ok: true })
+    expect(f.plugins.runCommand).toHaveBeenCalledWith(
+      'sample',
+      'select',
+      null,
+      { nodeId, viewId: 'view', context },
+      expect.objectContaining({ revision: 'one' }),
+    )
+    f.plugins.runCommand.mockClear()
+    expect(
+      await f.call('plugin.command.run', {
+        commandId: 'select',
+        nodeId,
+        viewId: 'view',
+        context: { ...context, projectId: 'second', spaceId: 'second-space' },
+      }),
+    ).toMatchObject({ ok: false })
+    expect(f.plugins.runCommand).not.toHaveBeenCalled()
+  })
+  it('passes verified host context to a plugin backend without a window target', async () => {
+    const f = fixture()
+    f.manifest.commands = [
+      {
+        id: 'inspect',
+        title: 'Inspect',
+        description: 'Inspect context',
+        target: 'plugin',
+        menus: ['canvas', 'space'],
+      },
+    ]
+    const context = { surface: 'space', projectId: 'first', spaceId: 'first-space' }
+    expect(await f.call('plugin.command.run', { commandId: 'inspect', context })).toMatchObject({
+      ok: true,
+    })
+    expect(f.plugins.runCommand).toHaveBeenCalledWith(
+      'sample',
+      'inspect',
+      null,
+      { nodeId: undefined, viewId: undefined, context },
+      expect.anything(),
+    )
+    expect(f.store.writeAppState).not.toHaveBeenCalled()
+    expect(
+      await f.call('plugin.command.run', {
+        commandId: 'inspect',
+        context: { ...context, spaceId: 'missing' },
+      }),
+    ).toMatchObject({ ok: false })
+    expect(
+      await f.call('plugin.command.run', {
+        commandId: 'inspect',
+        context: { surface: 'canvas', projectId: 'first', nodeIds: ['irrelevant'] },
+      }),
+    ).toMatchObject({ ok: false })
+  })
+})

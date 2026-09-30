@@ -1,3 +1,4 @@
+import { readPluginGitSource } from '../domain/pluginDistributionValidation'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, posix, resolve, sep } from 'node:path'
@@ -97,11 +98,41 @@ export class LocalPluginFiles implements PluginFilesPort {
       ) {
         throw new Error('Invalid installed plugin record.')
       }
+      const history =
+        record.history === undefined
+          ? undefined
+          : (() => {
+              if (!Array.isArray(record.history) || record.history.length > 20) {
+                throw new Error('Invalid plugin code history.')
+              }
+              return record.history.map(previousValue => {
+                const item = pluginRecord(previousValue)
+                const previous = normalizeLocalPluginPackage(item.package)
+                if (
+                  previous.id !== pkg.id ||
+                  typeof item.sourceDirectory !== 'string' ||
+                  typeof item.revision !== 'string' ||
+                  !/^[a-f0-9]{64}$/.test(item.revision)
+                ) {
+                  throw new Error('Invalid plugin code history entry.')
+                }
+                return {
+                  package: previous,
+                  sourceDirectory: item.sourceDirectory,
+                  revision: item.revision,
+                  ...(item.distribution
+                    ? { distribution: readPluginGitSource(item.distribution) }
+                    : {}),
+                }
+              })
+            })()
       return {
         package: pkg,
         sourceDirectory: record.sourceDirectory,
         revision: record.revision,
         enabled: record.enabled,
+        ...(record.distribution ? { distribution: readPluginGitSource(record.distribution) } : {}),
+        ...(history ? { history } : {}),
       }
     })
   }

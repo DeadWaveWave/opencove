@@ -3,7 +3,6 @@ import { GitBranch, Puzzle } from 'lucide-react'
 import { usePluginManifest } from './usePluginRegistry'
 import { usePluginDetails } from './usePluginDetails'
 import type { PluginIconDeclaration } from '../../domain/pluginTypes'
-import { getPluginAssets } from './pluginAssets'
 
 interface PluginIconProps {
   pluginId: string
@@ -80,7 +79,7 @@ export function PluginIcon({
   const plugin = usePluginManifest(pluginId)
   const { detail } = usePluginDetails(plugin)
   const declaration = plugin?.icon
-  const assets = detail?.assets ?? getPluginAssets(pluginId)
+  const assets = detail?.assets ?? {}
   const props = { pluginId, className, size, strokeWidth }
   if (declaration?.type === 'asset') {
     return <AssetIcon {...props} declaration={declaration} assets={assets} />

@@ -1,13 +1,7 @@
 import type { JSX } from 'react'
 import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
-import { useTranslation, type TranslateFn } from '@app/renderer/i18n'
+import { useTranslation } from '@app/renderer/i18n'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
-
-export function pluginDescription(plugin: PluginManifest, t: TranslateFn): string {
-  return plugin.id === 'git-board'
-    ? t('settingsPanel.plugins.gitBoardDescription')
-    : plugin.description
-}
 
 export function PluginSettingsGlyph({ pluginId }: { pluginId: string }): JSX.Element {
   return (

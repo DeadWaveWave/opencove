@@ -132,7 +132,11 @@ process.on('message', async (raw: unknown) => {
       if (!commandIds.has(request.method) || typeof instance.runCommand !== 'function') {
         throw new Error('Plugin command is not declared or its handler is unavailable.')
       }
-      value = await instance.runCommand(request.method, request.params, { pluginId: pluginId! })
+      value = await instance.runCommand(
+        request.method,
+        request.params,
+        request.context as unknown as PluginCommandContext,
+      )
     } else {
       if (typeof instance.invoke !== 'function') {
         throw new Error('Plugin does not provide an invoke handler.')

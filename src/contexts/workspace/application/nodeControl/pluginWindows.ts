@@ -156,7 +156,6 @@ export function planPluginWindowOpen(
       repoPath: space?.directoryPath ?? workspace.path,
       mountId: space?.targetMountId ?? null,
       workspaceId: workspace.id,
-      graphLimit: 30,
     },
   }
   const nextWorkspace = appendWindow(workspace, node, space?.id)

@@ -32,7 +32,7 @@ The root of the install directory contains `opencove.plugin.json`:
 ```
 
 Required: `apiVersion`, `id`, `version`, `displayName`, and `description`, plus at
-least one view, command or skill. `view` is optional; when present, `view.entry`
+least one view, command, skill, preference or theme contribution. `view` is optional; when present, `view.entry`
 is required. Paths are relative to the package root and must reference packaged
 files, not absolute paths, traversal paths or external URLs. Keep the package
 self-contained; do not rely on symlinks or `node_modules` being copied.
@@ -55,8 +55,9 @@ Optional fields:
 | `author` | Displayed author text |
 | `icon` | Built-in glyph or packaged image declaration |
 | `contributes.actionBar`, `contributes.contextMenu` | Creation entries, both default true with a view and false without one |
-| `contributes.commands` | Declared plugin or window commands; see [Commands and skills](./COMMANDS.md) |
+| `contributes.commands` | Declared plugin or window commands, optionally exposed in host menus; see [Commands and skills](./COMMANDS.md) |
 | `contributes.skills` | Discoverable packaged `SKILL.md` files; see [Commands and skills](./COMMANDS.md#skills) |
+| `contributes.preferences`, `contributes.themes` | Standard preference fields and host color themes; see [Host extensions](./HOST_EXTENSIONS.md) |
 | `platforms` | Supported backend OS values: `darwin`, `linux`, `win32`; omit for all |
 
 An icon may be `{ "type": "builtin", "name": "puzzle" }` (or `git-branch`), or
@@ -67,7 +68,7 @@ creation actions and expanded/collapsed windows.
 
 IDs are installation-wide lowercase slugs, not display names. Do not change an ID
 on reload. Installing an already installed ID fails with a reload instruction;
-built-in IDs cannot be replaced. The host derives one node kind from each local
+the existing installation is never silently replaced. The host derives one node kind from each local
 plugin ID when it has a view. Packages without a view have no node kind, preview,
 or window creation entries. Commands are addressed through `opencove plugin run`,
 not registered as arbitrary host operations. A `window` command requires a view;
@@ -112,7 +113,9 @@ path on the viewing device. There is no Node access in the view.
 | `await api.storage.set(key, value)` | Persists a JSON value under this plugin ID |
 | `await api.setTitle(title)` | Reports this view's current content title and updates its header unless a user-pinned name takes precedence; nonempty, at most 200 characters |
 | `api.onThemeChange((theme, colors) => { ... })` | Registers a callback; returns an unsubscribe function |
-| `api.onCommand((commandId, params) => { ... })` | Registers this document's window-command handler; returns an unsubscribe function |
+| `api.onCommand((commandId, params, hostContext) => { ... })` | Registers this document's window-command handler; returns an unsubscribe function |
+| `await api.preferences.get()` | Returns current validated declared preferences and defaults |
+| `await api.preferences.set(key, value)` | Validates and persists one declared preference |
 
 For real views, `setTitle` resolves after the Worker records the title on this view's
 lease. It does not change the saved node name or plugin data. Save and restore any
@@ -120,6 +123,11 @@ content state your plugin needs, then report its title when the view opens. Clos
 or replacing the view removes its title observation. Preview titles stay local.
 `plugin windows` exposes each view's effective `title` and reported `contentTitle`;
 see [title selection](./COMMANDS.md#window-identity-and-selection) for shared nodes.
+
+Declared preferences use the dedicated preference methods, shared with Settings →
+Plugins; see [Host extensions](./HOST_EXTENSIONS.md#preferences). The storage key
+`opencove.host.preferences` is reserved and cannot be accessed through generic
+storage. Preview preferences are isolated and start with schema defaults.
 
 Storage is shared across real views of the plugin on this runtime. Use your own
 key/schema version and include `nodeId` if a value is per node. Values must be JSON
@@ -189,8 +197,10 @@ and installed snapshot are not data directories. `viewContext` contains
 Validate invocation methods and parameters. Return JSON-compatible values.
 
 For declared commands with `target: "plugin"`, the activation result supplies
-`runCommand(commandId, params, commandContext)`. Its context is `{ pluginId }`;
-there is no inferred node, project directory or browser. `invoke` remains the
+`runCommand(commandId, params, commandContext)`. Its context contains `pluginId`;
+host-menu invocations can additionally supply explicit host selection context
+as described in [Host extensions](./HOST_EXTENSIONS.md). There is no inferred node,
+project directory or browser. `invoke` remains the
 view-to-backend handler. A command-only backend may provide `runCommand` without
 `invoke`; a view-only package needs no backend. Declared plugin commands without
 their backend handler fail activation. See [Commands and skills](./COMMANDS.md).

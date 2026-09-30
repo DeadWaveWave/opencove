@@ -1,0 +1,159 @@
+.settings-plugin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 0 20px;
+  border-bottom: 1px solid var(--cove-settings-row-divider);
+}
+
+.settings-plugin-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 24px 0;
+  color: var(--cove-text-muted);
+}
+
+.settings-plugin-empty > svg,
+.settings-plugin-library__intro > svg {
+  color: var(--cove-accent);
+}
+
+.settings-plugin-empty h4 {
+  margin: 14px 0 4px;
+  color: var(--cove-text);
+  font-size: calc(15px * var(--cove-ui-font-scale));
+  font-weight: 500;
+}
+
+.settings-plugin-empty p {
+  max-width: 52ch;
+  margin: 0;
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  line-height: 1.7;
+}
+
+.settings-plugin-library {
+  min-width: 0;
+  padding-top: 12px;
+}
+
+.settings-plugin-library__intro {
+  max-width: 66ch;
+  margin-bottom: 32px;
+}
+
+.settings-plugin-library h3 {
+  margin: 14px 0 10px;
+  color: var(--cove-settings-heading-foreground);
+  font-size: calc(25px * var(--cove-ui-font-scale));
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+}
+
+.settings-plugin-library h3:focus {
+  outline: none;
+}
+
+.settings-plugin-library__intro p {
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  line-height: 1.8;
+}
+
+.settings-plugin-library__group {
+  margin: 28px 0;
+}
+
+.settings-plugin-library__group h4 {
+  margin: 0 0 10px;
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.settings-plugin-library__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+}
+
+.settings-plugin-library__card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 17px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--cove-settings-row-divider);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--cove-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-plugin-library__card:hover {
+  background: var(--cove-surface-hover);
+}
+
+.settings-plugin-library__card:focus-visible {
+  outline: 2px solid var(--cove-settings-focus-ring);
+  outline-offset: 2px;
+}
+
+.settings-plugin-library__card > span {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.settings-plugin-library__card strong {
+  color: var(--cove-text);
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-weight: 500;
+}
+
+.settings-plugin-library__card span span {
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.7;
+}
+
+.settings-plugin-library__card svg {
+  flex: 0 0 auto;
+  color: var(--cove-accent);
+}
+
+.settings-plugin-library__article-header {
+  margin-bottom: 14px;
+}
+
+.settings-plugin-library__article-header > span {
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+}
+
+.settings-plugin-library > .plugin-readme {
+  max-width: 74ch;
+  font-size: calc(14px * var(--cove-ui-font-scale));
+}
+
+@container settings-content (max-width: 600px) {
+  .settings-plugin-library__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-plugin-toolbar > button {
+    min-height: 44px;
+  }
+}
+
+.settings-plugin-library .plugin-readme h1:focus {
+  outline: none;
+}

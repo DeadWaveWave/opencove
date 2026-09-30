@@ -1,3 +1,4 @@
+import type { PluginHostContext } from '../domain/pluginRuntimeTypes'
 import { pluginJsonValue } from '../domain/pluginJsonValue'
 
 export const PLUGIN_WINDOW_REQUEST_BYTES = 1024 * 1024
@@ -88,7 +89,12 @@ export class PluginWindowCommands {
     return this.readyConnections(viewId).length === 1
   }
 
-  async run(viewId: string, commandId: string, params: unknown): Promise<unknown> {
+  async run(
+    viewId: string,
+    commandId: string,
+    params: unknown,
+    context?: PluginHostContext,
+  ): Promise<unknown> {
     const ready = this.readyConnections(viewId)
     if (ready.length === 0) {
       throw new Error('Plugin window is not ready for commands.')
@@ -108,7 +114,14 @@ export class PluginWindowCommands {
       throw new Error('Invalid plugin window command id.')
     }
     const message = pluginJsonValue(
-      { type: 'command', protocol: 2, requestId, commandId, params: params ?? null },
+      {
+        type: 'command',
+        protocol: 2,
+        requestId,
+        commandId,
+        params: params ?? null,
+        ...(context ? { context } : {}),
+      },
       PLUGIN_WINDOW_REQUEST_BYTES,
       'window request',
     )

@@ -122,7 +122,12 @@ export function resolveTerminalAppearanceValue({
     themeId,
     uiScheme,
     terminalScheme,
-    xtermTheme: resolveTerminalAnsiScheme(xtermTheme, terminalScheme),
+    // A dark contributed palette is already authored for dark terminal semantics.
+    // Keep stripping light-theme ANSI overrides when the user forces a dark terminal.
+    xtermTheme:
+      themeId.startsWith('plugin:') && uiScheme === 'dark'
+        ? { ...xtermTheme }
+        : resolveTerminalAnsiScheme(xtermTheme, terminalScheme),
     cssTokens: { ...cssTokens },
   }
 }

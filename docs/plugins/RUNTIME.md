@@ -1,7 +1,8 @@
 # Independent plugin runtime
 
-The local-directory runtime extends the existing bundled registry. It does not
-require an author to edit OpenCove, register a React component in the host, or run
+The installation registry is the sole source of available plugins. A fresh
+installation has no bundled validation plugins. Authors do not edit OpenCove,
+register a React component in the host, or run
 a separate development web server. The package and browser API are in [API.md](API.md).
 
 ## Owners and boundaries
@@ -21,9 +22,10 @@ a separate development web server. The package and browser API are in [API.md](A
 | Iframe, media object | Client presentation/view | Runtime only; authored plugin restores its own saved data |
 | Entry visibility | Existing application settings owner | Existing contribution preferences |
 
-Local plugins' enabled state belongs to the installation owner. The old
-`disabledPluginIds` setting continues to govern bundled plugins, but cannot
-override an independently installed plugin's enabled intent.
+Plugin enabled state belongs to the installation owner. Legacy
+`disabledPluginIds` settings cannot override installed enablement. Removing a
+plugin implementation leaves its existing canvas nodes intact as unavailable
+windows; installing a matching compatible package can make them usable again.
 
 Desktop IPC and Web invoke use fixed validated `plugin.*` operations. The
 Control Surface is a facade, not a second installation owner. A listener can stop
@@ -99,11 +101,12 @@ with a 30-second deadline. A connection loss rejects its pending commands while
 the ordinary view lease may remain eligible for reconnection. Reconnection can
 restore readiness but does not replay actions or accept old replies.
 
-`target: "plugin"` calls the shared backend's `runCommand` with only `pluginId`
-as context. `target: "window"` calls the selected iframe's handler, including for
+`target: "plugin"` calls the shared backend's `runCommand` with `pluginId`.
+Declared host-menu invocations additionally carry validated selection context;
+CLI calls do not infer that selection. `target: "window"` calls the selected iframe's handler, including for
 packages without a backend. View-to-backend `invoke` keeps its original scoped
 context and is a separate entry. A package without `view` can provide backend
-commands and skills but cannot open a canvas window or preview.
+commands, skills, preferences or themes but cannot open a canvas window or preview.
 
 `view.instances: "single"` means one durable node across the connected Worker's
 projects. Closing removes that node; reopening can create a fresh one while
@@ -116,15 +119,19 @@ and client-selection behavior.
 ## Initial scope and routing
 
 Install and reload read a source directory on the connected runtime machine;
-they do not upload a client directory to another Worker. Git source repositories
-remain user-owned. The runtime neither resets nor modifies those repositories.
+they do not upload a client directory to another Worker. Local-directory source repositories remain user-owned. Managed Git operations
+prepare isolated source candidates and publish through the same installation
+owner; see [distribution](./DISTRIBUTION.md). They do not reset or stash personal
+changes in the previous editable checkout.
 
 This iteration uses the same connected Home Worker for the Desktop plugin catalog,
 RPC and resource URL resolver; Web uses its connected Worker. It does not yet
 relocate an independent plugin backend according to a Space's remote mount.
 For a mount-bound node, the view therefore receives no presumed local project
 directory. `workspaceId` is context, not authority to access remote files.
-Automatic mount routing and GitHub discovery/update remain later capabilities.
+Automatic mount routing remains a later capability. Git source installation,
+updates and repository discovery use the connected Worker; a discovered repository
+is not an installed plugin.
 Skill reads use the installed snapshot and return its Worker-local path, exact
 text and an installation prompt. They do not execute skill instructions or write
 to agent-owned directories. Disabled installations can still expose their skills.

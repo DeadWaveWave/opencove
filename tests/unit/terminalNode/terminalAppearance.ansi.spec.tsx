@@ -125,3 +125,22 @@ describe('terminal ANSI appearance ownership', () => {
     view.unmount()
   })
 })
+
+it.each(['sync-with-ui', 'dark'] as const)(
+  'preserves contributed dark ANSI colors through the full appearance resolver in %s mode',
+  terminalThemeMode => {
+    document.documentElement.dataset.coveTheme = 'dark'
+    document.documentElement.dataset.coveThemeId = 'plugin:palette:dusk'
+    document.documentElement.style.setProperty('--cove-terminal-ansi-red', '#f09099')
+    document.documentElement.style.setProperty('--cove-terminal-ansi-bright-white', '#edf2fa')
+    const value = resolveCurrentTerminalAppearanceValue({ terminalThemeMode })
+    expect(value.terminalScheme).toBe('dark')
+    expect(value.xtermTheme.red).toBe('#f09099')
+    expect(value.xtermTheme.brightWhite).toBe('#edf2fa')
+    document.documentElement.dataset.coveTheme = 'light'
+    document.documentElement.dataset.coveThemeId = 'plugin:palette:dawn'
+    const forcedDark = resolveCurrentTerminalAppearanceValue({ terminalThemeMode: 'dark' })
+    expect(forcedDark.xtermTheme).not.toHaveProperty('red')
+    expect(forcedDark.xtermTheme).not.toHaveProperty('brightWhite')
+  },
+)

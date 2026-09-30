@@ -1,8 +1,10 @@
+import { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
+import { GitPluginSources } from '@contexts/plugins/infrastructure/GitPluginSources'
+import { registerPluginDistributionHandlers } from './handlers/pluginDistributionHandlers'
 import { resolve } from 'node:path'
 import { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import { LocalPluginFiles } from '../../../contexts/plugins/infrastructure/LocalPluginFiles'
 import { NodePluginBackend } from '../../../contexts/plugins/infrastructure/NodePluginBackend'
-import { BUILTIN_PLUGIN_MANIFESTS } from '../../../contexts/plugins/application/builtinPlugins'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { ManagedSshEndpointOperationOwner } from '../../../contexts/topology/application/ManagedSshEndpointOperationOwner'
 import { createManagedSshOperationDiagnosticSink } from './topology/managedSshOperationDiagnostics'
@@ -42,17 +44,23 @@ const PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES = 400_000
 export function createControlSurfaceHttpRuntime(
   options: RegisterControlSurfaceHttpServerOptions,
 ): ControlSurfaceHttpRuntime {
+  const pluginFiles = new LocalPluginFiles(options.userDataPath)
   const plugins = new PluginInstallationManager({
-    files: new LocalPluginFiles(options.userDataPath),
+    files: pluginFiles,
     backend: new NodePluginBackend(resolve(__dirname, 'pluginHost.js')),
     createId: randomUUID,
-    reservedIds: BUILTIN_PLUGIN_MANIFESTS.map(plugin => plugin.id),
+    reservedIds: [],
     scheduleViewExpiry: expire => {
       const timer = setTimeout(expire, 180_000)
       timer.unref()
       return () => clearTimeout(timer)
     },
   })
+  const pluginDistribution = new PluginDistributionService(
+    plugins,
+    pluginFiles,
+    new GitPluginSources(options.userDataPath),
+  )
   const pluginViews = new PluginViewLifecycle(plugins)
   const token = options.token ?? randomBytes(32).toString('base64url')
   const appVersion = normalizeControlSurfaceAppVersion(options.appVersion)
@@ -205,8 +213,10 @@ export function createControlSurfaceHttpRuntime(
       requestShutdown: options.requestManagedShutdown,
     })
   }
+  registerPluginDistributionHandlers(controlSurface, pluginDistribution)
   registerControlSurfaceHandlers(controlSurface, {
     plugins,
+    pluginDistribution,
     deploymentId: options.deploymentId,
     instanceId,
     isReady: () => runtimeReady,

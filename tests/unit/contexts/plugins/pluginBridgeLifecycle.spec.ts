@@ -126,7 +126,7 @@ describe('injected plugin SDK lifecycle', () => {
       }),
     })
     await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(3))
-    expect(handler).toHaveBeenCalledExactlyOnceWith('update', { value: 4 })
+    expect(handler).toHaveBeenCalledExactlyOnceWith('update', { value: 4 }, null)
     expect(JSON.parse(socket.send.mock.calls[2][0])).toEqual({
       type: 'result',
       protocol: 2,

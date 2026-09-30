@@ -227,3 +227,25 @@ describe('plugin view bridge authority and lifetime', () => {
     expect(restore).toHaveBeenCalledOnce()
   })
 })
+
+it.each([
+  ['preferences.get', 'query', 'plugin.view.preferences.get', {}],
+  ['preferences.set', 'command', 'plugin.view.preferences.set', { key: 'compact', value: true }],
+] as const)(
+  'pins %s to the owning view and strips forged identities',
+  async (operation, kind, id, payload) => {
+    const { invoke, send, post } = setup()
+    send({
+      type: 'request',
+      id: 'preferences',
+      operation,
+      payload: { ...payload, viewId: 'forged', pluginId: 'other' },
+    })
+    await vi.waitFor(() => expect(post).toHaveBeenCalled())
+    expect(invoke).toHaveBeenCalledExactlyOnceWith({
+      kind,
+      id,
+      payload: { ...payload, viewId: 'host-owned-view' },
+    })
+  },
+)

@@ -12,7 +12,9 @@ export const UI_THEMES = [
   'pixel',
   'pixel-light',
 ] as const
-export type UiTheme = (typeof UI_THEMES)[number]
+export type BuiltinUiTheme = (typeof UI_THEMES)[number]
+export type PluginUiTheme = `plugin:${string}:${string}`
+export type UiTheme = BuiltinUiTheme | PluginUiTheme
 
 export type UiThemeBaseScheme = ResolvedUiTheme | 'system'
 
@@ -23,7 +25,7 @@ export interface UiThemeDescriptor {
   i18nKey: string
 }
 
-export const UI_THEME_DESCRIPTORS: Record<UiTheme, UiThemeDescriptor> = {
+export const UI_THEME_DESCRIPTORS: Record<BuiltinUiTheme, UiThemeDescriptor> = {
   system: { id: 'system', baseScheme: 'system', terminalScheme: 'system', i18nKey: 'system' },
   light: { id: 'light', baseScheme: 'light', terminalScheme: 'light', i18nKey: 'light' },
   dark: { id: 'dark', baseScheme: 'dark', terminalScheme: 'dark', i18nKey: 'dark' },
@@ -50,11 +52,16 @@ export function isValidUiLanguage(value: unknown): value is UiLanguage {
 }
 
 export function isValidUiTheme(value: unknown): value is UiTheme {
-  return typeof value === 'string' && (UI_THEMES as readonly string[]).includes(value)
+  return (
+    typeof value === 'string' &&
+    ((UI_THEMES as readonly string[]).includes(value) ||
+      /^plugin:[a-z][a-z0-9-]{0,79}:[a-z][a-z0-9.-]{0,79}$/.test(value))
+  )
 }
 
 export function resolveUiThemeBaseScheme(theme: UiTheme, prefersDark: boolean): ResolvedUiTheme {
-  const baseScheme = UI_THEME_DESCRIPTORS[theme].baseScheme
+  const baseScheme = (UI_THEME_DESCRIPTORS[theme as BuiltinUiTheme] ?? UI_THEME_DESCRIPTORS.pixel)
+    .baseScheme
   if (baseScheme === 'system') {
     return prefersDark ? 'dark' : 'light'
   }
@@ -65,6 +72,7 @@ export function resolveUiThemeTerminalScheme(
   theme: UiTheme,
   resolvedBaseScheme: ResolvedUiTheme,
 ): ResolvedUiTheme {
-  const terminalScheme = UI_THEME_DESCRIPTORS[theme].terminalScheme
+  const terminalScheme =
+    UI_THEME_DESCRIPTORS[theme as BuiltinUiTheme]?.terminalScheme ?? resolvedBaseScheme
   return terminalScheme === 'system' ? resolvedBaseScheme : terminalScheme
 }

@@ -175,7 +175,6 @@ export interface PersistedPluginNodeData {
   schemaVersion: number
   repoPath?: string
   mountId?: string | null
-  graphLimit?: number
 }
 
 export type PersistedNodePayload =

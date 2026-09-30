@@ -12,6 +12,7 @@ export function useLocalPluginContributions(contribution: PluginContribution) {
     plugin =>
       plugin.source === 'local' &&
       plugin.enabled !== false &&
+      plugin.status === 'ready' &&
       plugin[contribution] &&
       isPluginContributionEnabled(settings, plugin.id, contribution),
   )

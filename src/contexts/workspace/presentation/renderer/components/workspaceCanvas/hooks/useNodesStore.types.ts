@@ -145,5 +145,5 @@ export interface UseWorkspaceCanvasNodesStoreResult {
     website: WebsiteNodeData,
     placement?: NodePlacementOptions,
   ) => Node<TerminalNodeData> | null
-  createPluginNode: (anchor: Point, pluginId?: string) => Node<TerminalNodeData> | null
+  createPluginNode: (anchor: Point, pluginId: string) => Node<TerminalNodeData> | null
 }

@@ -96,6 +96,69 @@ describe('plugin detail cache lifecycle', () => {
     stop()
   })
 
+  it('refreshes source metadata after a same-revision runtime replacement', async () => {
+    const current = { ...plugin, runtimeGeneration: 1 }
+    const next = { ...current, runtimeGeneration: 2 }
+    const fetch = vi.fn().mockResolvedValue(detail(current))
+    const store = createPluginDetailsStore(fetch)
+    const entry = store.get(current)
+    await entry.load(current)
+    fetch.mockResolvedValue({ ...detail(next), sourceDirectory: '/candidates/music' })
+    expect(store.get(next)).toBe(entry)
+    await entry.load(next)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(entry.getSnapshot().detail?.sourceDirectory).toBe('/candidates/music')
+  })
+
+  it.each(['resolve', 'reject'] as const)(
+    'ignores an older generation request that completes with %s after replacement',
+    async completion => {
+      const current = { ...plugin, runtimeGeneration: 1 }
+      const next = { ...current, runtimeGeneration: 2 }
+      let finish: (value: PluginDetails) => void = () => undefined
+      let fail: (reason: Error) => void = () => undefined
+      const fetch = vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<PluginDetails>((resolve, reject) => {
+              finish = resolve
+              fail = reject
+            }),
+        )
+        .mockResolvedValue({ ...detail(next), sourceDirectory: '/candidates/music' })
+      const store = createPluginDetailsStore(fetch)
+      const entry = store.get(current)
+      const snapshots: Array<ReturnType<typeof entry.getSnapshot>> = []
+      const stop = entry.subscribe(() => snapshots.push(entry.getSnapshot()))
+      const pending = entry.load(current)
+      await Promise.resolve()
+      store.get(next)
+      void entry.load(next)
+      if (completion === 'resolve') {
+        finish(detail(current))
+      } else {
+        fail(new Error('Old runtime unavailable'))
+      }
+      await pending
+      await vi.waitFor(() =>
+        expect(entry.getSnapshot().detail?.sourceDirectory).toBe('/candidates/music'),
+      )
+      expect(snapshots).toHaveLength(1)
+      expect(snapshots[0].error).toBeNull()
+      expect(snapshots[0].detail?.plugin.runtimeGeneration).toBe(2)
+      stop()
+    },
+  )
+
+  it('rejects a response from a different runtime generation with unchanged code', async () => {
+    const current = { ...plugin, runtimeGeneration: 1 }
+    const store = createPluginDetailsStore(async () => detail({ ...current, runtimeGeneration: 2 }))
+    const entry = store.get(current)
+    await entry.load(current)
+    expect(entry.getSnapshot().detail).toBeNull()
+  })
+
   it('never labels a newer backend response with an older cached revision', async () => {
     const store = createPluginDetailsStore(async () => detail({ ...plugin, revision: 'newer' }))
     const entry = store.get(plugin)

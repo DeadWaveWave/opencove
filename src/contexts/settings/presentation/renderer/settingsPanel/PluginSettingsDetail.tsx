@@ -1,19 +1,22 @@
 import type { JSX } from 'react'
-import { ArrowLeft, LayoutDashboard, MousePointer2, PanelRight } from 'lucide-react'
+import {
+  ArrowLeft,
+  LayoutDashboard,
+  MousePointer2,
+  Palette,
+  PanelRight,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { PluginContribution } from '@contexts/settings/domain/pluginSettings'
-import { getPluginDetail } from '@contexts/plugins/presentation/renderer/pluginDetails'
 import { PluginReadme } from '@contexts/plugins/presentation/renderer/PluginReadme'
 import { usePluginDetails } from '@contexts/plugins/presentation/renderer/usePluginDetails'
 import { PluginRuntimeControls } from './PluginRuntimeControls'
+import { PluginPreferences } from '@contexts/plugins/presentation/renderer/PluginPreferences'
 import { PluginNodePreview } from '@contexts/plugins/presentation/renderer/PluginNodePreview'
-import {
-  PluginSettingsGlyph,
-  PluginSettingsToggle,
-  pluginDescription,
-} from './PluginSettingsShared'
+import { PluginSettingsGlyph, PluginSettingsToggle } from './PluginSettingsShared'
 import { PluginContributionControls } from './PluginContributionControls'
 import { PluginAgentTools } from './PluginAgentTools'
 
@@ -34,12 +37,9 @@ export function PluginSettingsDetail({
   onChangeContribution: (contribution: PluginContribution, enabled: boolean) => void
   onBack: () => void
 }): JSX.Element {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const installed = usePluginDetails(plugin)
-  const detail =
-    plugin.source === 'local'
-      ? installed.detail && { ...installed.detail, author: plugin.author }
-      : getPluginDetail(plugin.id, i18n.language)
+  const detail = installed.detail
   return (
     <div className="settings-plugin-detail" data-testid={`settings-plugin-detail-${plugin.id}`}>
       <button
@@ -61,7 +61,7 @@ export function PluginSettingsDetail({
             {plugin.displayName}
           </h3>
           <div className="settings-plugin__byline">
-            {detail?.author ? <span>{detail.author}</span> : null}
+            {plugin.author ? <span>{plugin.author}</span> : null}
             <span>
               {t(`settingsPanel.plugins.${plugin.source === 'local' ? 'local' : 'builtIn'}`)}
             </span>
@@ -80,7 +80,7 @@ export function PluginSettingsDetail({
           />
         </div>
       </header>
-      <p className="settings-plugin-detail__description">{pluginDescription(plugin, t)}</p>
+      <p className="settings-plugin-detail__description">{plugin.description}</p>
       <div
         className="settings-plugin__capabilities"
         aria-label={t('settingsPanel.plugins.capabilitiesLabel')}
@@ -103,6 +103,18 @@ export function PluginSettingsDetail({
             {t('settingsPanel.plugins.capabilities.contextMenu')}
           </span>
         ) : null}
+        {plugin.preferences?.length ? (
+          <span>
+            <SlidersHorizontal size={13} aria-hidden="true" />
+            {t('settingsPanel.plugins.capabilities.preferences')}
+          </span>
+        ) : null}
+        {plugin.themes?.length ? (
+          <span>
+            <Palette size={13} aria-hidden="true" />
+            {t('settingsPanel.plugins.capabilities.themes')}
+          </span>
+        ) : null}
       </div>
       {plugin.source === 'local' ? (
         <PluginRuntimeControls plugin={plugin} detail={installed.detail} onRemoved={onBack} />
@@ -117,6 +129,7 @@ export function PluginSettingsDetail({
         settings={settings}
         onChange={onChangeContribution}
       />
+      <PluginPreferences key={`preferences:${plugin.id}`} plugin={plugin} />
       <PluginAgentTools key={plugin.id} plugin={plugin} />
       {plugin.nodeKinds.length > 0 ? <PluginNodePreview pluginId={plugin.id} /> : null}
       {detail ? (

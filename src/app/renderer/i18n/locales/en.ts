@@ -14,6 +14,15 @@ import { enCanvasCollapse } from './en.canvasCollapse'
 import { enSpaceCollapse } from './en.spaceCollapse'
 
 export const en = {
+  pluginHostExtensions: {
+    invalidPreference: 'Enter a valid value for this preference.',
+    staleCommand: 'This plugin changed. Open the menu again.',
+    preferences: 'Preferences',
+    commands: 'Plugin commands',
+    completed: '{{title}} completed.',
+    unavailableTheme:
+      'This theme is unavailable. The default theme is shown until it is enabled again.',
+  },
   ...enCanvasCollapse,
   ...enSpaceCollapse,
   common: {

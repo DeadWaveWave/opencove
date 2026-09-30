@@ -1,4 +1,4 @@
-import { useRef, type JSX } from 'react'
+import { useEffect, useRef, type JSX } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -28,25 +28,61 @@ function headingAnchor(text: string): string {
     .replace(/\s+/g, '-')
 }
 
-/** Render documentation as content. Bundled image paths are resolved by the host catalog. */
+/** Render documentation as content. Image paths and internal document links are explicitly registered by the caller. */
 export function PluginReadme({
   markdown,
   assets = {},
+  resolveDocumentLink,
+  onOpenDocument,
+  anchor,
+  focusTitle = false,
 }: {
   markdown: string
   assets?: Readonly<Record<string, string>>
+  resolveDocumentLink?: (href: string) => string | null
+  onOpenDocument?: (id: string) => void
+  anchor?: string
+  focusTitle?: boolean
 }): JSX.Element {
   const root = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (anchor) {
+      const heading = Array.from(root.current?.querySelectorAll('h1,h2,h3,h4,h5,h6') ?? []).find(
+        element => headingAnchor(element.textContent ?? '') === anchor,
+      )
+      heading?.scrollIntoView({ block: 'start' })
+    }
+  }, [markdown, anchor])
   return (
     <article className="plugin-readme" data-testid="plugin-readme" ref={root}>
       <Markdown
         remarkPlugins={[remarkGfm]}
         skipHtml
-        urlTransform={(url, key) => resolvePluginMarkdownUrl(url, key, assets)}
+        urlTransform={(url, key) =>
+          key === 'href' && resolveDocumentLink?.(url)
+            ? url
+            : resolvePluginMarkdownUrl(url, key, assets)
+        }
         components={{
+          h1: ({ children }) => <h1 tabIndex={focusTitle ? -1 : undefined}>{children}</h1>,
           a: ({ href, children, title }) => {
             if (!href) {
               return <span>{children}</span>
+            }
+            const documentId = resolveDocumentLink?.(href)
+            if (documentId && onOpenDocument) {
+              return (
+                <a
+                  href={href}
+                  title={title}
+                  onClick={event => {
+                    event.preventDefault()
+                    onOpenDocument(documentId)
+                  }}
+                >
+                  {children}
+                </a>
+              )
             }
             if (href.startsWith('#')) {
               return (
@@ -55,15 +91,15 @@ export function PluginReadme({
                   title={title}
                   onClick={event => {
                     event.preventDefault()
-                    let anchor = href.slice(1)
+                    let localAnchor = href.slice(1)
                     try {
-                      anchor = decodeURIComponent(anchor)
+                      localAnchor = decodeURIComponent(localAnchor)
                     } catch {
                       /* Keep literal anchors. */
                     }
                     const heading = Array.from(
                       root.current?.querySelectorAll('h1,h2,h3,h4,h5,h6') ?? [],
-                    ).find(element => headingAnchor(element.textContent ?? '') === anchor)
+                    ).find(element => headingAnchor(element.textContent ?? '') === localAnchor)
                     heading?.scrollIntoView({ block: 'nearest' })
                   }}
                 >
