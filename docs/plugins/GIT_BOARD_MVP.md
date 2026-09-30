@@ -1,4 +1,4 @@
-# Git Board 插件 MVP
+# Git Board 与插件分发路线图
 
 > 实现状态：当前版本已提供内置 Git Board、共用画布窗口、插件管理和本地目录安装，
 > 支持独立 Node 进程、HTML 视图、预览、持久化、显式 reload 和失败候选保留原版本。
@@ -6,11 +6,11 @@
 > 路由、额外命令/skill 贡献尚未实现。不要使用本文的规划目录或 facade 示例编写插件；
 > 当前安装步骤和完整开发 API 见 [README](./README.md) 与 [API](./API.md)。
 
-本文档定义首个可运行的 Git Board 插件示例，以及插件源码优先（source-first）的最小运行闭环。它是实现边界，不是任意 Node 代码的安全沙盒说明。插件进程拥有用户明确授予的 Node 权限；宿主仍负责生命周期、路由、持久化和恢复。
+本文档描述后续源码分发与更新的目标形态，供设计和迭代规划使用，不是当前可调用 API。以下执行位置、目录、贡献点和验证链均为规划；当前已实现的运行边界以 [RUNTIME](./RUNTIME.md) 为准。插件进程是可信的完整 Node 执行环境，宿主负责其生命周期。
 
-## 首期目标
+## 规划目标
 
-Git Board 是一个可从 GitHub 发现并安装的插件，能够：
+目标是让 Git Board 成为一个可从 GitHub 发现并安装的插件，能够：
 
 - 在一个指定的本地 Mac 或远程 Linux Worker 上安装；
 - 在 Space 中创建一个插件节点，并在 Desktop 和 Web UI 中显示同一节点；
@@ -18,17 +18,17 @@ Git Board 是一个可从 GitHub 发现并安装的插件，能够：
 - 从源码仓库创建用户可修改的分支，构建候选版本，手动应用并在失败时回退；
 - 被禁用后保留节点位置和数据，显示占位视图，重新启用后恢复。
 
-首期只支持一个 GitHub 仓库、固定 commit/tag、pnpm lockfile、Node/TypeScript 后台入口和浏览器 UI bundle。暂不支持自动 fork/PR、submodule/LFS、任意构建系统、自动冲突解决、热替换运行中的实例或虚拟文件系统 provider。
+规划中的首个源码分发版本仅考虑一个 GitHub 仓库、固定 commit/tag、pnpm lockfile、Node/TypeScript 后台入口和浏览器 UI bundle。自动 fork/PR、submodule/LFS、任意构建系统、自动冲突解决、热替换运行中的实例或虚拟文件系统 provider 不在这个候选范围内。
 
-## 运行与执行位置
+## 规划：运行与执行位置
 
 安装目标是 Worker，不是当前浏览器。Space 的 `targetMountId` 决定插件的执行 Worker 和工作目录；`parentSpaceId` 只表示画布层级。Mac Desktop 连接 Linux Worker 时，后台插件必须使用 Linux/arch/Node ABI 匹配的产物，不能因为 UI 在 Mac 上就切到本机运行。
 
 插件节点由宿主拥有窗口外壳、拖动、resize、折叠、选择、位置持久化和缺失插件占位。插件只拥有节点内容和自己的 JSON state。停用或版本不兼容时，宿主不得把节点转换成终端或删除 state。
 
-Control Surface 在 Worker 启动时只注册固定的 `plugins.*` facade，例如 `plugins.list`、`plugins.install`、`plugins.invoke`、`plugins.getContributions`。插件命令和贡献在 PluginRegistry/PluginHost 内动态管理；不要在 HTTP listener 已启动后向核心 Control Surface 热插入任意 handler。
+延续当前固定的 `plugin.*` Control Surface 入口，未来命令与贡献仍在插件 owner 内动态管理，不在 HTTP listener 已启动后向核心 Control Surface 热插入任意 handler。新增贡献接口需另行定义；本文不提供可以直接调用的未来方法名。
 
-## 源码优先生命周期
+## 规划：源码优先生命周期
 
 每个插件目标宿主维护四类目录：
 
@@ -48,15 +48,15 @@ plugins/state/<plugin-id>/<scope>/ # 插件数据、配置和迁移记录
 
 应用更新只自动更新官方 base。用户定制版本使用独立 package ID，记录 `derivedFrom` 和 `baseCommit`；“合并官方更新”始终在 candidate worktree 中完成。官方副本不可被用户直接覆盖，个人派生也不能冒充官方身份。
 
-## API 与贡献边界
+## 规划：API 与贡献边界
 
-首期公开的 API 只有固定 facade 和明确贡献点：command、context-menu/action、plugin node view、namespaced storage、Space/mount 查询、受控 filesystem/terminal 调用、CLI/skill 资料。节点和命令 ID 使用插件命名空间。正式 API、PluginHost 通信协议和插件数据 schema 分开版本化；开发分支可以有 breaking change，但仍必须声明 API 版本并拒绝不匹配的插件。
+当前公开的贡献点是插件节点及其 action bar/context-menu 创建入口，另有插件私有 storage。后续再评估 command、Space/mount 查询、filesystem/terminal 调用和 CLI/skill 资料。插件 ID 保持简单 slug；新增命令由宿主按插件身份隔离，不要求作者拼接 publisher 前缀。正式 API、后台通信协议和插件数据 schema 需要分别约定版本策略；开发分支可以调整接口，正式发布后的兼容承诺应在首次稳定发布前明确。
 
-`opencove plugin guide` 是离线、版本匹配的 CLI 资料入口，说明 manifest、贡献注册、生命周期清理、Space/mount 路由和验证命令。它应在 CLI 连接 Worker 前处理，使 Agent 在无 Web UI 时也能读取同一份指南；远端 Worker 执行时使用远端对应版本。
+`opencove plugin guide` 已是离线、版本匹配的 CLI 资料入口，当前只说明已实现的 manifest、节点贡献、生命周期和验证方式。Space/mount 自动路由等未来能力实现后再进入公开 API 资料；不能把本路线图当作现有接口补充。
 
 可选 skill 只是版本化资料贡献，不隐式修改全局 Agent 配置。Git Board 的示例角色可以要求 Agent 优先运行 `opencove plugin guide`，但角色提示词不能绕过插件 facade 或自行假设客户端 OS。
 
-## 状态 owner 与不变量
+## 规划：状态 owner 与不变量
 
 | 状态 | 唯一 owner | 持久化来源 |
 | --- | --- | --- |
@@ -75,7 +75,7 @@ plugins/state/<plugin-id>/<scope>/ # 插件数据、配置和迁移记录
 4. **路由不漂移**：插件的 filesystem、terminal 和 Agent 操作始终按 Space 的 `targetMountId` 路由；远端失败不能静默回退到本机。
 5. **缺失可恢复**：插件禁用、崩溃或不兼容只影响其节点和贡献；应用、Workspace、PTY 及其他插件仍可启动，节点 state 保留并提供重新启用或恢复官方实现。
 
-## 最小验证链
+## 规划：最小验证链
 
 验证应覆盖：GitHub pinned commit 安装 → source customization commit → candidate 上游 merge/冲突保留 → frozen lockfile build → target Worker activation → Desktop/Web 显示同一节点 → disable 占位 → re-enable 恢复 → activation failure 回退。每一步记录 operation ID、source commit、artifact digest、target mount、API/schema 版本，避免只凭 UI 状态判断成功。
 

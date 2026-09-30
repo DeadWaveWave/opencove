@@ -9,7 +9,11 @@ an HTML view, optional Node backend, README, icon and interactive preview. Its
 window uses OpenCove's normal header, drag, resize, collapse and close behavior.
 You do not edit or rebuild OpenCove to install or reload a plugin.
 
-Start with [Authoring and verification](./AUTHORING.md), then copy the runnable
+Before designing a view, read [Plugin visual design](./VISUAL_DESIGN.md): host
+boundaries, layout, typography, theme colors, controls and a copyable CSS baseline.
+It gives defaults without making every plugin use the same content layout.
+
+Start implementation with [Authoring and verification](./AUTHORING.md), then copy the runnable
 [Hello Clock example](./examples/hello-clock/README.md) into your own directory.
 [API reference](./API.md) contains the complete development API supported here.
 Do not infer additional APIs from the [Git Board roadmap](./GIT_BOARD_MVP.md).
@@ -30,11 +34,16 @@ without modifying an existing Desktop session.
 | `opencove plugin guide` | Returns readable, version-matched documentation paths |
 | `opencove plugin list` | Lists built-in and installed plugins |
 | `opencove plugin install <directory>` | Validates and installs a local directory |
-| `opencove plugin details <id>` | Returns manifest, README, source directory, assets and recent backend logs |
+| `opencove plugin details <id>` | Returns an installed local plugin's manifest, README, source directory, assets and recent backend logs |
 | `opencove plugin reload <id>` | Validates and activates a new snapshot of the installed source directory |
 | `opencove plugin disable <id>` | Stops a local plugin's content and backend, preserving its nodes and data |
 | `opencove plugin enable <id>` | Makes the installed local plugin available again |
 | `opencove plugin uninstall <id>` | Removes the local installation; does not delete source or private data |
+
+`list` includes built-in plugins, but `details`, `reload`, `enable`, `disable` and
+`uninstall` currently operate on local installations only. View built-in Git Board
+documentation and change its enablement in Settings → Plugins. Listing a built-in
+ID does not make it a local installation.
 
 Install and reload default to a 60-second request timeout to allow validation and
 backend activation. An explicit `--timeout <ms>` overrides this; other commands

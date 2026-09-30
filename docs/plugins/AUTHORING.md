@@ -4,6 +4,11 @@ Read the README returned by `opencove plugin guide` and this guide before buildi
 The runnable example and [API reference](./API.md) are in the same documentation
 directory, including in packaged builds. No OpenCove source checkout is required.
 
+Before writing UI, read [Plugin visual design](./VISUAL_DESIGN.md). Start from its
+compact layout and theme-aware control baseline, then adapt the content to the
+plugin's task. A reference product supplies ideas, not an extra app shell inside
+OpenCove's window.
+
 ## Starting a matching development runtime
 
 First run `opencove plugin list --pretty`. If it succeeds, use that runtime and
@@ -176,7 +181,8 @@ Report each layer separately with its actual result:
 - **Real work:** a real node performs the requested operation with real services
   or explicit local fixtures. Demonstrate progress, error and empty states.
 - **Presentation:** header/resize/collapse work; both themes and narrow sizes are
-  readable; collapse does not unexpectedly interrupt ongoing work.
+  readable; follow the visual guide's hierarchy, controls and accessibility checks;
+  collapse does not unexpectedly interrupt ongoing work.
 - **Lifecycle:** close, disable/re-enable, reload and complete app restart preserve
   promised user data and stop resources that should end.
 - **Preview:** interactive preview works without touching actual stored data or
