@@ -63,9 +63,10 @@ Before submitting a Pull Request, you must ensure your code meets our quality ba
 
 | Command | Description |
 | :--- | :--- |
-| `pnpm pre-commit` | **The ultimate gatekeeper.** Runs type checks, linting, formatting, and tests. |
+| `pnpm verify:quick` / `pnpm pre-commit` | Local commit gate: code checks, related tests, native contracts, and core plus affected E2E groups. Stage the change first. |
+| `pnpm verify:full` | Optional full local regression after staging. Full PR CI is required before merge. |
 | `pnpm test -- --run` | Runs the unit test suite natively. |
-| `pnpm test:e2e` | Runs Playwright end-to-end tests (requires `pnpm build` first). |
+| `pnpm test:e2e` | Builds the app and runs Playwright E2E; pass test paths for focused iteration. |
 
 ---
 
@@ -73,7 +74,7 @@ Before submitting a Pull Request, you must ensure your code meets our quality ba
 
 To get your PR merged quickly, your contribution must reflect the values detailed in `DEVELOPMENT.md`:
 
-1. **Zero Failing CI**: Your PR **MUST pass all CI checks** (`pnpm pre-commit` must be completely green). We do not merge code with failing tests, type errors, or lint warnings.
+1. **Zero Failing CI**: Your PR **MUST pass all CI checks** on its final revision. The local quick gate does not replace full CI. We do not merge code with failing tests, type errors, or lint warnings.
 2. **Lock Behavior with Tests**: Every meaningful code change (especially bug fixes and new features) **MUST** include corresponding tests to lock down the behavior. Do not just fix the bug; write the test that proves the bug can never return.
 3. **Respect State Ownership**: If your PR touches persistence, IPC boundary, or recovery state, explicitly document who the "owner" of that state is. Multiple writers to the same source of truth will be rejected.
 4. **Clean Architecture**: Never mix IO/IPC concerns with UI rendering. Keep the `Main`, `Preload`, and `Renderer` boundaries mathematically clean.

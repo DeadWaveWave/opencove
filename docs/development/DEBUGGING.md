@@ -127,11 +127,13 @@ pnpm exec playwright show-trace test-results/<failed-case>/trace.zip
 - 截图中的点击/拖拽命中点是否正确
 - UI 与持久化状态是否一致
 
-### 3) 再决定是否回到全量回归
+### 3) 修复后先回到相关回归与本地快速门禁
 
 ```bash
-pnpm test:e2e
+pnpm verify:quick
 ```
+
+先确认原失败用例与相邻不变量通过，再完成快速门禁；不要每修复一个测试就重新跑整个应用。完整 PR CI 在合并前执行。只有需要本地跨模块完整证据时，才额外运行 `pnpm verify:full`。快速通过与完整通过分开汇报，不能把睡眠中断或重试通过当作干净的完整结果。
 
 ## 真实 Agent / 外部 CLI 复现
 

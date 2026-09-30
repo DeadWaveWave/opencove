@@ -57,7 +57,7 @@ For runtime-risk or Large work, explicitly check:
 ## 5. Verification & Handoff
 
 - Validate at the lowest meaningful layer first; use UI automation when UI regression risk warrants it.
-- Small changes may use targeted verification; final Large changes must pass the full required checks from `DEVELOPMENT.md`.
+- During iteration, run targeted verification. Before a local commit, pass `pnpm verify:quick` (also `pnpm pre-commit`): code checks, related tests, native contracts, and core plus affected E2E groups. Full regression belongs to PR CI before merge; use `pnpm verify:full` when a full local run is needed. Follow `DEVELOPMENT.md` for scope and reporting.
 - Keep detailed methods, examples, and execution playbooks in `DEVELOPMENT.md` and topic docs, not here.
 
 ## 6. Development Workflow
@@ -66,6 +66,7 @@ For runtime-risk or Large work, explicitly check:
 2.  **Code (TDD)**: `Red -> Green -> Refactor`.
 3.  **Verify**:
     -   **Small**: Targeted unit/integration tests OK.
-    -   **Final/Large**: **MUST** run full suite (`pnpm pre-commit`).
+    -   **Local commit, including Large**: Run `pnpm verify:quick`; add focused tests for changed invariants that its representative groups do not cover.
+    -   **Merge**: Full CI must pass on the final revision. A quick local pass is not a full-suite pass.
 4.  **Commit**: Gates passing is not delivery. `git commit` immediately after the gates pass, then prove it with `git log --oneline <base>..HEAD` (your commit is listed) and `git status --short` (empty). Never report work as complete while it exists only in the staging area or the working tree.
 5.  **Submit**: Review self -> Update PR description -> Handover.

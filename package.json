@@ -118,8 +118,11 @@
     "release:minor": "node scripts/prepare-release.mjs minor",
     "release:major": "node scripts/prepare-release.mjs major",
     "release:version": "node scripts/prepare-release.mjs",
-    "pre-commit": "pnpm line-check:staged && pnpm secret-check:staged && pnpm naming-check:staged && pnpm ui:style-check && pnpm lint:fix && pnpm format-check:staged && pnpm check && pnpm test:staged && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit",
-    "prepare": "husky"
+    "pre-commit": "pnpm verify:quick",
+    "prepare": "husky",
+    "verify:checks": "pnpm line-check:staged && pnpm secret-check:staged && pnpm naming-check:staged && pnpm ui:style-check && pnpm lint:fix && pnpm format-check:staged && pnpm check",
+    "verify:quick": "pnpm verify:checks && pnpm test:staged && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit",
+    "verify:full": "pnpm verify:checks && pnpm test -- --run && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit --full"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
