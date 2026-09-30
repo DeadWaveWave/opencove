@@ -11,10 +11,17 @@ OpenCove's window.
 
 ## Starting a matching development runtime
 
-First run `opencove plugin list --pretty`. If it succeeds, use that runtime and
-its existing UI. If it reports `no valid connection info found`, the offline guide
+Choose the intended development runtime/profile first, then run `opencove plugin
+list --pretty` against it. If it succeeds, use that runtime and its existing UI.
+If it reports `no valid connection info found`, the offline guide
 is available but no target runtime was discovered. Start the Worker bundled with
 this same `opencove` CLI; an older installed Desktop may not have this plugin API.
+
+The separate profile example below is for creating a chosen development
+environment. A Skill operating a user's existing installation must retain that
+instance's profile/endpoint and help restore it when stopped. It must not silently
+substitute this development profile or any other reachable runtime. See the
+[required Skill instructions](./COMMANDS.md#required-operational-instructions-for-skill-authors).
 
 For a separate development profile on macOS or Linux, open a terminal and run:
 
@@ -120,6 +127,23 @@ The body must adapt to narrow sizes and keyboard use. A custom icon may be a loc
 SVG, PNG or WebP, with optional dark/light variants. README supports Markdown and
 images; preview uses an optional HTML entry and isolated sample data.
 
+## Authoring an operational Skill
+
+An included Skill must cover more than the happy-path command syntax. Follow the
+[required operational instructions](./COMMANDS.md#required-operational-instructions-for-skill-authors):
+recover the same intended instance through public CLI help when it is stopped,
+discover explicit project IDs with `opencove project list`, resolve node/view
+ambiguity, and read back the actual result after executing. Include the plugin's
+real verification commands and expected fields. Do not ask an agent to infer an
+active project, start a replacement instance, choose an arbitrary ready view, or
+retry an uncertain mutation automatically.
+
+Test the finished Skill with an agent that has only the installed Skill and public
+OpenCove documentation. Start with the intended runtime stopped and include more
+than one project and client where supported. Its recovery must preserve the same
+runtime, installed plugin, saved nodes and user data. An unavailable instance or
+ambiguous target is a recovery/selection step, not permission to create another.
+
 ## State and execution ownership
 
 - Node placement, expanded size and collapse are owned and saved by OpenCove.
@@ -192,6 +216,9 @@ Report each layer separately with its actual result:
   starting backend work; its sample limitations are visible.
 - **Iteration:** editing source and reloading updates the node. An invalid candidate
   leaves the previous functioning revision usable.
+- **Skill, when provided:** a fresh consumer can restore its intended stopped
+  instance using public help, select explicit project/node/view identities, run the
+  real workflow and verify its result without substituting another instance.
 
 Keep experiment screenshots and logs in the plugin's own work directory, not in
 OpenCove source. If a contract is missing, report it; do not invent host APIs or

@@ -17,7 +17,8 @@ a separate development web server. The package and browser API are in [API.md](A
 | Preview data/backend | One view lease | Temporary memory/data directory; removed on close |
 | Window geometry, pinned title and node identity | Existing workspace owners | Existing workspace persistence |
 | Singleton window identity | Workspace plugin-window policy on the connected Worker | Existing plugin nodes across all projects; no second singleton registry |
-| Current content title, iframe, media object | Client presentation/view | Runtime only; authored plugin restores its own saved data |
+| Reported content title | Client view; manager records one observation per real view lease | Runtime only; expires with the lease, never rewrites saved/user-pinned names |
+| Iframe, media object | Client presentation/view | Runtime only; authored plugin restores its own saved data |
 | Entry visibility | Existing application settings owner | Existing contribution preferences |
 
 Local plugins' enabled state belongs to the installation owner. The old

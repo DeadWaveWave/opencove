@@ -14,6 +14,7 @@ export const QUICK_E2E_GROUPS = {
     tests: [
       e2e('plugins.local'),
       e2e('plugins.commands'),
+      e2e('plugins.titles'),
       e2e('plugins.contributions'),
       e2e('plugins.details'),
     ],

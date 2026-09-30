@@ -13,6 +13,7 @@ export interface GenericPluginViewProps {
   directoryPath?: string
   preview?: boolean
   onTitleChange?: (title: string) => void
+  onViewReset?: () => void
 }
 
 export function GenericPluginView({
@@ -22,11 +23,14 @@ export function GenericPluginView({
   directoryPath,
   preview = false,
   onTitleChange,
+  onViewReset,
 }: GenericPluginViewProps) {
   const { t } = useTranslation()
   const frameRef = useRef<HTMLIFrameElement>(null)
   const titleCallback = useRef(onTitleChange)
   titleCallback.current = onTitleChange
+  const resetCallback = useRef(onViewReset)
+  resetCallback.current = onViewReset
   const [source, setSource] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -43,6 +47,7 @@ export function GenericPluginView({
     }
     setSource(null)
     setError(null)
+    resetCallback.current?.()
     void (async () => {
       const view = await api.invoke<PluginOpenViewResult>({
         kind: 'command',
@@ -78,6 +83,7 @@ export function GenericPluginView({
     return () => {
       disposed = true
       unbind()
+      resetCallback.current?.()
       if (viewId) {
         close(viewId)
       }
@@ -85,6 +91,7 @@ export function GenericPluginView({
   }, [
     plugin.id,
     plugin.revision,
+    plugin.runtimeGeneration,
     plugin.enabled,
     plugin.status,
     nodeId,

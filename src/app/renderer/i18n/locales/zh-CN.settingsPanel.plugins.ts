@@ -9,7 +9,7 @@ export const zhCNSettingsPanelPlugins = {
     copied: '已复制',
     withoutWindow: '无需打开窗口即可执行。',
     selectedWindow: '需指定节点；同一节点在多端打开时，还需指定执行端。',
-    singleWindow: '复用此 Worker 中跨项目唯一的窗口，需要时自动打开。',
+    singleWindow: '复用此 Worker 中跨项目唯一的窗口；需要新建时必须指定项目。',
   },
   installedTitle: '已安装',
   installedHelp: '内置插件随 OpenCove 更新。停用插件会保留画布上的节点和数据。',

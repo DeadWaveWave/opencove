@@ -77,7 +77,7 @@ function fixture() {
     commands: [{ id: 'select', title: 'Select', description: 'Select item', target: 'window' }],
   }
   const store = {
-    readAppState: vi.fn(async () => structuredClone(state)),
+    readAppState: vi.fn(async (): Promise<NodeControlAppState | null> => structuredClone(state)),
     readAppStateRevision: vi.fn(async () => revision),
     writeAppState: vi.fn(
       async (next: unknown, options?: WriteAppStateOptions): Promise<PersistWriteResult> => {
@@ -132,6 +132,61 @@ function fixture() {
 afterEach(() => vi.useRealTimers())
 
 describe('plugin command facade ownership', () => {
+  it.each([1, 2])(
+    'requires an explicit project to create with %i available projects',
+    async count => {
+      const f = fixture()
+      const state = f.state()
+      state.workspaces = state.workspaces.slice(0, count)
+      f.replace(state)
+      const results = await Promise.all([
+        f.call('plugin.window.open'),
+        f.call('plugin.command.run', { commandId: 'select' }),
+      ])
+      for (const result of results) {
+        expect(result).toMatchObject({
+          ok: false,
+          error: { debugMessage: expect.stringContaining('--project') },
+        })
+      }
+      expect(f.store.writeAppState).not.toHaveBeenCalled()
+      expect(f.plugins.runCommand).not.toHaveBeenCalled()
+    },
+  )
+  it.each([
+    ['plugin.window.list', { nodeId: 'ignored-node' }],
+    ['plugin.window.list', { spaceId: 'ignored-space' }],
+    ['plugin.window.open', { nodeId: 'existing', spaceId: 'ignored-space' }],
+    ['plugin.window.open', { nodeId: 'existing', anchor: { x: 1, y: 2 } }],
+    ['plugin.window.open', { projectId: 'first', viewId: 'ignored-view' }],
+    ['plugin.command.run', { commandId: 'select', spaceId: 'ignored-space' }],
+    ['plugin.command.run', { commandId: 'select', anchor: { x: 1, y: 2 } }],
+  ])(
+    'rejects unused selectors for %s before reading or changing canvas state',
+    async (id, input) => {
+      const f = fixture()
+      expect(await f.call(id, input)).toMatchObject({ ok: false })
+      expect(f.store.readAppState).not.toHaveBeenCalled()
+      expect(f.store.writeAppState).not.toHaveBeenCalled()
+      expect(f.plugins.runCommand).not.toHaveBeenCalled()
+    },
+  )
+  it('reports the original singleton destination when a creation gesture supplies placement hints', async () => {
+    const f = fixture()
+    await f.call('plugin.window.open', { projectId: 'first' })
+    f.store.writeAppState.mockClear()
+    expect(
+      await f.call('plugin.window.open', { projectId: 'second', spaceId: 'second-space' }),
+    ).toMatchObject({ ok: true, value: { created: false, projectId: 'first' } })
+    expect(f.store.writeAppState).not.toHaveBeenCalled()
+  })
+  it('lists no windows on a fresh Worker without creating workspace state', async () => {
+    const f = fixture()
+    f.store.readAppState.mockResolvedValueOnce(null)
+    expect(await f.call('plugin.window.list')).toMatchObject({ ok: true, value: { windows: [] } })
+    expect(f.store.writeAppState).not.toHaveBeenCalled()
+    expect(f.publish).not.toHaveBeenCalled()
+  })
   it('serializes simultaneous singleton opens across projects and publishes only one creation', async () => {
     const f = fixture()
     const results = await Promise.all([
@@ -155,10 +210,10 @@ describe('plugin command facade ownership', () => {
       reason: 'io',
       error: createAppErrorDescriptor('persistence.io_failed', { debugMessage: 'disk full' }),
     })
-    expect(await f.call('plugin.window.open')).toMatchObject({ ok: false })
+    expect(await f.call('plugin.window.open', { projectId: 'first' })).toMatchObject({ ok: false })
     expect(f.publish).not.toHaveBeenCalled()
     expect(listPluginWindows(f.state(), 'sample')).toEqual([])
-    expect(await f.call('plugin.window.open')).toMatchObject({ ok: true })
+    expect(await f.call('plugin.window.open', { projectId: 'first' })).toMatchObject({ ok: true })
     expect(f.store.writeAppState).toHaveBeenCalledTimes(2)
   })
 
@@ -171,7 +226,7 @@ describe('plugin command facade ownership', () => {
       f.replace(external)
       return await write(next, options)
     })
-    expect(await f.call('plugin.window.open')).toMatchObject({ ok: true })
+    expect(await f.call('plugin.window.open', { projectId: 'first' })).toMatchObject({ ok: true })
     expect(f.state().workspaces[1].name).toBe('Changed by another writer')
     expect(f.store.writeAppState).toHaveBeenCalledTimes(2)
     expect(listPluginWindows(f.state(), 'sample')).toHaveLength(1)
@@ -180,7 +235,7 @@ describe('plugin command facade ownership', () => {
 
   it('does not retry a dispatched command after its view disconnects', async () => {
     const f = fixture()
-    await f.call('plugin.window.open')
+    await f.call('plugin.window.open', { projectId: 'first' })
     const nodeId = listPluginWindows(f.state(), 'sample')[0].nodeId
     f.plugins.listViews.mockResolvedValue([{ nodeId, viewId: 'view', ready: true }])
     f.plugins.runCommand.mockRejectedValueOnce(
@@ -211,7 +266,7 @@ describe('plugin command facade ownership', () => {
 
   it('rechecks durable node existence after asynchronous readiness before dispatch', async () => {
     const f = fixture()
-    await f.call('plugin.window.open')
+    await f.call('plugin.window.open', { projectId: 'first' })
     const nodeId = listPluginWindows(f.state(), 'sample')[0].nodeId
     f.plugins.listViews.mockImplementationOnce(async () => {
       const closed = structuredClone(f.state())
@@ -233,13 +288,13 @@ describe('plugin command facade ownership', () => {
       f.manifest.status = 'disabled'
       return structuredClone(f.state())
     })
-    expect(await f.call('plugin.window.open')).toMatchObject({ ok: false })
+    expect(await f.call('plugin.window.open', { projectId: 'first' })).toMatchObject({ ok: false })
     expect(f.store.writeAppState).not.toHaveBeenCalled()
   })
 
   it('does not dispatch a command against a replacement installation after asynchronous readiness', async () => {
     const f = fixture()
-    await f.call('plugin.window.open')
+    await f.call('plugin.window.open', { projectId: 'first' })
     const nodeId = listPluginWindows(f.state(), 'sample')[0].nodeId
     f.plugins.listViews.mockImplementationOnce(async () => {
       f.manifest.revision = 'two'
@@ -253,7 +308,7 @@ describe('plugin command facade ownership', () => {
 
   it('fences installation replacement while the final durable-node check is reading state', async () => {
     const f = fixture()
-    await f.call('plugin.window.open')
+    await f.call('plugin.window.open', { projectId: 'first' })
     const nodeId = listPluginWindows(f.state(), 'sample')[0].nodeId
     f.plugins.listViews.mockResolvedValue([{ nodeId, viewId: 'view', ready: true }])
     f.store.readAppState
@@ -306,7 +361,7 @@ describe('plugin command facade ownership', () => {
       runtime: { spawnTerminal: spawn, launchAgent: vi.fn(), killSession: vi.fn() },
     })
     await vi.waitFor(() => expect(spawn).toHaveBeenCalledTimes(1))
-    expect(await f.call('plugin.window.open')).toMatchObject({ ok: true })
+    expect(await f.call('plugin.window.open', { projectId: 'first' })).toMatchObject({ ok: true })
     const committed = listPluginWindows(f.state(), 'sample')[0].nodeId
     release()
     await terminal.catch(() => undefined)

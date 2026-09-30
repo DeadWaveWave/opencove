@@ -88,6 +88,7 @@ export function WorkspaceCanvasPluginNodeType({
           }
           directoryPath={data.plugin.mountId ? undefined : data.plugin.repoPath}
           onTitleChange={title => setPluginWindowTitle(id, title)}
+          onViewReset={() => setPluginWindowTitle(id, null)}
         />
       </CanvasNodeWindow>
     )

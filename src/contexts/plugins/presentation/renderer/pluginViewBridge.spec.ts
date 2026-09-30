@@ -120,6 +120,94 @@ describe('plugin view bridge authority and lifetime', () => {
     window.dispatchEvent(new Event('opencove-theme-changed'))
     expect(post).not.toHaveBeenCalled()
   })
+  it('acknowledges a real title only after its opening Worker accepts the lease-scoped report', async () => {
+    const { send, post, title, invoke } = setup()
+    let finish!: () => void
+    invoke.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          finish = resolve
+        }),
+    )
+    send({
+      type: 'request',
+      id: 'title',
+      operation: 'title',
+      payload: { title: '  Planning  ', viewId: 'forged' },
+    })
+    await Promise.resolve()
+    expect(invoke).toHaveBeenCalledExactlyOnceWith({
+      kind: 'command',
+      id: 'plugin.view.setTitle',
+      payload: { viewId: 'host-owned-view', title: 'Planning' },
+    })
+    expect(title).not.toHaveBeenCalled()
+    expect(post).not.toHaveBeenCalled()
+    finish()
+    await vi.waitFor(() => expect(post).toHaveBeenCalledOnce())
+    expect(title).toHaveBeenCalledExactlyOnceWith('Planning')
+    expect(post.mock.calls[0][0]).toMatchObject({ type: 'result', id: 'title', value: null })
+  })
+
+  it('rejects failed title reports and ignores a late title acknowledgement after view disposal', async () => {
+    const { send, post, title, invoke, dispose } = setup()
+    invoke.mockRejectedValueOnce(new Error('View expired'))
+    send({ type: 'request', id: 'failed', operation: 'title', payload: { title: 'Expired' } })
+    await vi.waitFor(() => expect(post).toHaveBeenCalledOnce())
+    expect(post.mock.calls[0][0]).toMatchObject({
+      type: 'result',
+      id: 'failed',
+      error: expect.stringContaining('View expired'),
+    })
+    expect(title).not.toHaveBeenCalled()
+    let finish!: () => void
+    invoke.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          finish = resolve
+        }),
+    )
+    send({ type: 'request', id: 'late', operation: 'title', payload: { title: 'Late' } })
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(2))
+    dispose()
+    finish()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(title).not.toHaveBeenCalled()
+    expect(post).toHaveBeenCalledOnce()
+  })
+
+  it('serializes overlapping titles and cancels queued updates when the view closes', async () => {
+    const { send, title, invoke, dispose } = setup()
+    let finish!: () => void
+    invoke.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          finish = resolve
+        }),
+    )
+    send({ type: 'request', id: 'one', operation: 'title', payload: { title: 'One' } })
+    send({ type: 'request', id: 'two', operation: 'title', payload: { title: 'Two' } })
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledOnce())
+    expect(title).not.toHaveBeenCalled()
+    finish()
+    await vi.waitFor(() => expect(title).toHaveBeenCalledTimes(2))
+    expect(title.mock.calls).toEqual([['One'], ['Two']])
+    invoke.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          finish = resolve
+        }),
+    )
+    send({ type: 'request', id: 'three', operation: 'title', payload: { title: 'Three' } })
+    send({ type: 'request', id: 'four', operation: 'title', payload: { title: 'Four' } })
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(3))
+    dispose()
+    finish()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(invoke).toHaveBeenCalledTimes(3)
+    expect(title).toHaveBeenCalledTimes(2)
+  })
   it('accepts a restore only once from the owned frame and retires its old bridge', () => {
     const { send, restore, invoke, post, dispose } = setup()
     send({ type: 'restore' }, 'https://another.example')

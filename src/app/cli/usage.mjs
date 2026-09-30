@@ -16,6 +16,9 @@ export function printUsage() {
   )
   process.stdout.write(`  opencove plugin windows <id> [--project <id>] [--pretty]\n`)
   process.stdout.write(`  opencove plugin skill <id> <skill> [--pretty]\n`)
+  process.stdout.write(
+    `  New plugin windows always require --project; use project list to find IDs.\n`,
+  )
   process.stdout.write(`  opencove plugin reload <id> [--pretty]\n`)
   process.stdout.write(`  opencove plugin enable <id> [--pretty]\n`)
   process.stdout.write(`  opencove plugin disable <id> [--pretty]\n`)

@@ -36,9 +36,13 @@ export class PluginViewRoutes {
     request: ControlSurfaceInvokeRequest,
   ): ControlSurfaceRemoteEndpoint | null {
     if (
-      !['plugin.invoke', 'plugin.storage.get', 'plugin.storage.set', 'plugin.view.close'].includes(
-        request.id,
-      )
+      ![
+        'plugin.invoke',
+        'plugin.storage.get',
+        'plugin.storage.set',
+        'plugin.view.close',
+        'plugin.view.setTitle',
+      ].includes(request.id)
     ) {
       return null
     }

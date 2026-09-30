@@ -63,6 +63,11 @@ function parseContributionCommand(command, values) {
     options.set(flag, value)
   }
   const payload = { pluginId: positional[0] }
+  if (command === 'open' && options.has('--node') && options.has('--space')) {
+    throw new Error(
+      'Use --space to place a new window, or --node to open an existing window, not both.',
+    )
+  }
   if (command === 'skill') {
     return {
       kind: 'query',

@@ -17,6 +17,7 @@ export function listPluginViews(
       nodeId: view.context.nodeId,
       viewId: view.id,
       ready: commands.isReady(view.id),
+      ...(view.contentTitle === undefined ? {} : { contentTitle: view.contentTitle }),
     }))
 }
 

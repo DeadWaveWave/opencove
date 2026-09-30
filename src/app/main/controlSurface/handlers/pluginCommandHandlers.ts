@@ -12,14 +12,31 @@ import {
   type PluginWindowInput,
 } from '@contexts/workspace/application/nodeControl/pluginWindows'
 import { requireNodeControlState } from '@contexts/workspace/application/nodeControl/nodeControlState'
+import { projectPluginWindowTitles } from '@contexts/workspace/application/nodeControl/pluginWindowTitles'
 import type { SyncEventPayload } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 
 function optionalString(record: Record<string, unknown>, key: string): string | undefined {
   return record[key] === undefined ? undefined : pluginString(record[key], key, 200)
 }
-function windowInput(value: unknown): PluginWindowInput {
+function fields(value: unknown, allowed: string[]): Record<string, unknown> {
   const raw = pluginRecord(value)
+  const unexpected = Object.keys(raw).find(key => !allowed.includes(key))
+  if (unexpected) {
+    throw new Error(`Unsupported plugin argument: ${unexpected}.`)
+  }
+  return raw
+}
+function windowInput(value: unknown, operation: 'open' | 'list' | 'run'): PluginWindowInput {
+  const raw = fields(value, [
+    'pluginId',
+    'projectId',
+    ...(operation === 'open' ? ['nodeId', 'spaceId', 'anchor'] : []),
+    ...(operation === 'run' ? ['nodeId', 'viewId', 'commandId', 'params'] : []),
+  ])
+  if (raw.nodeId !== undefined && (raw.spaceId !== undefined || raw.anchor !== undefined)) {
+    throw new Error('Placement arguments cannot be combined with an existing --node.')
+  }
   let anchor: PluginWindowInput['anchor']
   if (raw.anchor !== undefined) {
     const point = pluginRecord(raw.anchor)
@@ -82,7 +99,14 @@ export function registerPluginCommandHandlers(
   }
   const readState = async () => {
     const store = await deps.getPersistenceStore()
-    return requireNodeControlState(normalizePersistedAppState(await store.readAppState()))
+    return windowState(await store.readAppState())
+  }
+  const windowState = (raw: unknown) => {
+    const state = normalizePersistedAppState(raw)
+    if (!state) {
+      throw new Error('No project is available. Create a project, then select it with --project.')
+    }
+    return requireNodeControlState(state)
   }
   const plugin = async (id: string) => {
     const entry = (await deps.plugins.list()).find(item => item.id === id)
@@ -113,9 +137,7 @@ export function registerPluginCommandHandlers(
       /* eslint-disable no-await-in-loop -- Each CAS attempt needs the previous write result. */
       for (let attempt = 0; attempt < 3; attempt++) {
         const revision = await store.readAppStateRevision()
-        const state = requireNodeControlState(
-          normalizePersistedAppState(await store.readAppState()),
-        )
+        const state = windowState(await store.readAppState())
         const current = await plugin(input.pluginId)
         if (
           current.revision !== manifest.revision ||
@@ -148,24 +170,37 @@ export function registerPluginCommandHandlers(
     mutations = task.catch(() => undefined)
     return task
   }
-  register('plugin.window.open', 'command', windowInput, async (_ctx, input) => {
-    const result = await open(input)
-    return { ...result, deliveredClientCount: focus(result, result.revision) }
-  })
-  register('plugin.window.list', 'query', windowInput, async (_ctx, input) => {
-    const windows = listPluginWindows(await readState(), input.pluginId)
-    const views = await deps.plugins.listViews(input.pluginId)
-    return {
-      windows: windows
-        .filter(item => !input.projectId || item.projectId === input.projectId)
-        .map(window => ({ ...window, views: views.filter(view => view.nodeId === window.nodeId) })),
-    }
-  })
+  register(
+    'plugin.window.open',
+    'command',
+    value => windowInput(value, 'open'),
+    async (_ctx, input) => {
+      const result = await open(input)
+      return { ...result, deliveredClientCount: focus(result, result.revision) }
+    },
+  )
+  register(
+    'plugin.window.list',
+    'query',
+    value => windowInput(value, 'list'),
+    async (_ctx, input) => {
+      const store = await deps.getPersistenceStore()
+      const state = normalizePersistedAppState(await store.readAppState())
+      const windows = state ? listPluginWindows(requireNodeControlState(state), input.pluginId) : []
+      const views = await deps.plugins.listViews(input.pluginId)
+      return {
+        windows: projectPluginWindowTitles(
+          windows.filter(item => !input.projectId || item.projectId === input.projectId),
+          views,
+        ),
+      }
+    },
+  )
   register(
     'plugin.skill.get',
     'query',
     value => {
-      const record = pluginRecord(value)
+      const record = fields(value, ['pluginId', 'skillId'])
       return {
         pluginId: pluginString(record.pluginId, 'id', 80),
         skillId: pluginString(record.skillId, 'skillId', 80),
@@ -179,7 +214,7 @@ export function registerPluginCommandHandlers(
     value => {
       const raw = pluginRecord(value)
       return {
-        ...windowInput(value),
+        ...windowInput(value, 'run'),
         commandId: pluginString(raw.commandId, 'commandId', 80),
         params: pluginJsonValue(raw.params, 1024 * 1024, 'command parameters'),
         viewId: optionalString(raw, 'viewId'),
@@ -192,8 +227,8 @@ export function registerPluginCommandHandlers(
         throw new Error('Plugin command is not declared.')
       }
       if (command.target === 'plugin') {
-        if (input.projectId || input.spaceId || input.anchor) {
-          throw new Error('Plugin-wide commands do not target a project or window.')
+        if (input.projectId || input.nodeId || input.viewId) {
+          throw new Error('Plugin-wide commands do not accept --project, --node or --view.')
         }
         return await deps.plugins.runCommand(
           input.pluginId,

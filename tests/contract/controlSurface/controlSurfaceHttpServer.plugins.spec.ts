@@ -98,6 +98,16 @@ describe('independent plugin control surface and asset leases', () => {
       })
       const opened = (await call('plugin.view.open', { pluginId: 'clock', nodeId: 'clock-node' }))
         .data.value
+      expect(
+        (await call('plugin.view.setTitle', { viewId: opened.viewId, title: 'Reading' })).data,
+      ).toMatchObject({ ok: true })
+      await Promise.all(
+        ['', ' ', 'x'.repeat(201), 42].map(async title => {
+          expect(
+            (await call('plugin.view.setTitle', { viewId: opened.viewId, title })).data,
+          ).toMatchObject({ ok: false, error: { code: 'plugin.operation_failed' } })
+        }),
+      )
       expect(opened.resourcePath).not.toContain('private-host-secret')
       await Promise.all(
         [origin, webOrigin].map(async base => {
@@ -132,6 +142,9 @@ describe('independent plugin control surface and asset leases', () => {
           .value,
       ).toBe('one')
       await call('plugin.view.close', { viewId: opened.viewId })
+      expect(
+        (await call('plugin.view.setTitle', { viewId: opened.viewId, title: 'Late' })).data,
+      ).toMatchObject({ ok: false })
       expect((await fetch(`${origin}${opened.resourcePath}`)).status).toBe(404)
       const second = (await call('plugin.view.open', { pluginId: 'clock', nodeId: 'clock-node' }))
         .data.value

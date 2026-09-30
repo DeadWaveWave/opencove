@@ -40,6 +40,87 @@ afterEach(() => {
 })
 
 describe('generic plugin view leases', () => {
+  it('clears the content title when its lease changes or closes, including generation-only replacement', async () => {
+    let opened = 0
+    let contentTitle: string | null = null
+    const invoke = vi.fn(async ({ id }: { id: string }) =>
+      id === 'plugin.view.open' ? view(++opened) : null,
+    )
+    vi.stubGlobal('opencoveApi', {
+      controlSurface: {
+        invoke,
+        resolvePluginResourceUrl: async (path: string) => `about:blank#${path}`,
+      },
+    })
+    const callbacks = {
+      onTitleChange: (title: string) => {
+        contentTitle = title
+      },
+      onViewReset: () => {
+        contentTitle = null
+      },
+    }
+    const { rerender, unmount } = render(
+      <GenericPluginView
+        plugin={{ ...plugin, runtimeGeneration: 1 }}
+        nodeId="node"
+        {...callbacks}
+      />,
+    )
+    await waitFor(() =>
+      expect(screen.getByTitle('Lifecycle')).toHaveAttribute(
+        'src',
+        expect.stringContaining('/lease-1/'),
+      ),
+    )
+    act(() => vi.mocked(bindPluginViewBridge).mock.calls.at(-1)![0].onTitleChange('First title'))
+    expect(contentTitle).toBe('First title')
+    rerender(
+      <GenericPluginView
+        plugin={{ ...plugin, revision: 'new-artifact', runtimeGeneration: 2 }}
+        nodeId="node"
+        {...callbacks}
+      />,
+    )
+    await waitFor(() =>
+      expect(screen.getByTitle('Lifecycle')).toHaveAttribute(
+        'src',
+        expect.stringContaining('/lease-2/'),
+      ),
+    )
+    expect(contentTitle).toBeNull()
+    act(() => vi.mocked(bindPluginViewBridge).mock.calls.at(-1)![0].onTitleChange('Second title'))
+    rerender(
+      <GenericPluginView
+        plugin={{ ...plugin, revision: 'new-artifact', runtimeGeneration: 3 }}
+        nodeId="node"
+        {...callbacks}
+      />,
+    )
+    await waitFor(() =>
+      expect(screen.getByTitle('Lifecycle')).toHaveAttribute(
+        'src',
+        expect.stringContaining('/lease-3/'),
+      ),
+    )
+    expect(contentTitle).toBeNull()
+    act(() => {
+      const binding = vi.mocked(bindPluginViewBridge).mock.calls.at(-1)![0]
+      binding.onTitleChange('Before restore')
+      binding.onRestore()
+    })
+    await waitFor(() =>
+      expect(screen.getByTitle('Lifecycle')).toHaveAttribute(
+        'src',
+        expect.stringContaining('/lease-4/'),
+      ),
+    )
+    expect(contentTitle).toBeNull()
+    act(() => vi.mocked(bindPluginViewBridge).mock.calls.at(-1)![0].onTitleChange('Before close'))
+    unmount()
+    expect(contentTitle).toBeNull()
+  })
+
   it('reopens a preview on enablement and error recovery even when source revision stays unchanged', async () => {
     let opened = 0
     const invoke = vi.fn(async ({ id }: { id: string }) =>

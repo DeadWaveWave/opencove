@@ -141,6 +141,18 @@ export function registerPluginHandlers(
     },
     defaultErrorCode: 'common.invalid_input',
   })
+  register('plugin.view.setTitle', {
+    kind: 'command',
+    validate: payload => ({
+      ...viewInput(payload),
+      title: pluginString(pluginRecord(payload).title, 'window title', 200),
+    }),
+    handle: async (_ctx, input) => {
+      manager.setViewTitle(input.viewId, input.title)
+      return { ok: true }
+    },
+    defaultErrorCode: 'common.invalid_input',
+  })
   register('plugin.invoke', {
     kind: 'command',
     validate: payload => {

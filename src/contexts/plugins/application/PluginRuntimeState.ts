@@ -1,5 +1,6 @@
 import type { PluginViewContext } from '../domain/pluginRuntimeTypes'
 import type { PluginManifest } from '../domain/pluginTypes'
+import { pluginString } from '../domain/localPluginValidation'
 import type { PluginBackend, PluginInstallationRecord, PluginSnapshot } from './PluginRuntimePorts'
 
 export interface PluginRuntimeState {
@@ -17,6 +18,14 @@ export interface PluginRuntimeView {
   context: PluginViewContext
   backend: PluginBackend | null
   storage: Map<string, unknown>
+  contentTitle?: string
+}
+
+export function recordPluginViewTitle(view: PluginRuntimeView, title: string): void {
+  if (view.context.preview) {
+    throw new Error('Preview titles are local to the preview.')
+  }
+  view.contentTitle = pluginString(title, 'window title', 200)
 }
 
 const generations = new WeakMap<PluginRuntimeState, number>()

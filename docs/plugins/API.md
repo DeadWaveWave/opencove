@@ -110,9 +110,16 @@ path on the viewing device. There is no Node access in the view.
 | `await api.invoke(method, params)` | JSON result from your Node backend handler; default params is null |
 | `await api.storage.get(key)` | JSON value, or null when absent |
 | `await api.storage.set(key, value)` | Persists a JSON value under this plugin ID |
-| `await api.setTitle(title)` | Updates this node's host title; nonempty, at most 200 characters |
+| `await api.setTitle(title)` | Reports this view's current content title and updates its header unless a user-pinned name takes precedence; nonempty, at most 200 characters |
 | `api.onThemeChange((theme, colors) => { ... })` | Registers a callback; returns an unsubscribe function |
 | `api.onCommand((commandId, params) => { ... })` | Registers this document's window-command handler; returns an unsubscribe function |
+
+For real views, `setTitle` resolves after the Worker records the title on this view's
+lease. It does not change the saved node name or plugin data. Save and restore any
+content state your plugin needs, then report its title when the view opens. Closing
+or replacing the view removes its title observation. Preview titles stay local.
+`plugin windows` exposes each view's effective `title` and reported `contentTitle`;
+see [title selection](./COMMANDS.md#window-identity-and-selection) for shared nodes.
 
 Storage is shared across real views of the plugin on this runtime. Use your own
 key/schema version and include `nodeId` if a value is per node. Values must be JSON

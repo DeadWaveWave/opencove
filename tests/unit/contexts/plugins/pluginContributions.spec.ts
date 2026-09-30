@@ -174,6 +174,35 @@ describe('immutable contributed skills', () => {
 })
 
 describe('plugin and window command routing', () => {
+  it('keeps reported titles on real view leases and discards them on close or reload', async () => {
+    await writeManifest({ view: { entry: 'index.html' }, preview: 'index.html' })
+    const { manager } = create()
+    await manager.install(source)
+    const first = await manager.openView({ pluginId: base.id, nodeId: 'node' })
+    const second = await manager.openView({ pluginId: base.id, nodeId: 'node' })
+    const preview = await manager.openView({ pluginId: base.id, nodeId: 'preview', preview: true })
+    manager.setViewTitle(first.viewId, '  Reading  ')
+    manager.setViewTitle(second.viewId, 'Writing')
+    expect(await manager.listViews(base.id)).toEqual([
+      { nodeId: 'node', viewId: first.viewId, ready: false, contentTitle: 'Reading' },
+      { nodeId: 'node', viewId: second.viewId, ready: false, contentTitle: 'Writing' },
+    ])
+    expect(() => manager.setViewTitle(preview.viewId, 'Preview')).toThrow('local to the preview')
+    expect(() => manager.setViewTitle(first.viewId, ' ')).toThrow('Invalid plugin')
+    expect(() => manager.setViewTitle(first.viewId, 'x'.repeat(201))).toThrow('Invalid plugin')
+    await manager.closeView(first.viewId)
+    expect(() => manager.setViewTitle(first.viewId, 'Late')).toThrow('expired or closed')
+    expect(await manager.listViews(base.id)).toEqual([
+      { nodeId: 'node', viewId: second.viewId, ready: false, contentTitle: 'Writing' },
+    ])
+    await manager.reload(base.id)
+    expect(() => manager.setViewTitle(second.viewId, 'Late')).toThrow('expired or closed')
+    const replacement = await manager.openView({ pluginId: base.id, nodeId: 'node' })
+    expect(await manager.listViews(base.id)).toEqual([
+      { nodeId: 'node', viewId: replacement.viewId, ready: false },
+    ])
+  })
+
   it('runs a real command-only Node backend without a window and validates the command catalog', async () => {
     await writeManifest({ main: 'main.mjs', contributes: { commands: [globalCommand] } })
     await writeFile(

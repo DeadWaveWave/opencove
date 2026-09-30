@@ -4,6 +4,7 @@ import { installedPluginManifest } from './pluginManifest'
 import { listPluginViews, readPluginSkill, runPluginCommand } from './pluginContributions'
 import {
   assertPluginRuntimeGeneration,
+  recordPluginViewTitle,
   type PluginRuntimeState as Runtime,
   type PluginRuntimeView as View,
 } from './PluginRuntimeState'
@@ -384,6 +385,10 @@ export class PluginInstallationManager {
       this.views.values().filter(view => view.runtime === runtime),
       this.windowCommands,
     )
+  }
+
+  setViewTitle(viewId: string, title: string): void {
+    recordPluginViewTitle(this.getView(viewId), title)
   }
 
   async runCommand(

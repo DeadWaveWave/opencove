@@ -29,6 +29,7 @@ import type {
 } from './useNodesStore.types'
 import { persistNodeScrollback } from './useNodesStore.scrollbackPersistence'
 import { useTerminalAgentOverlayMutations } from './useNodesStore.terminalAgentOverlay'
+import { getPluginManifest } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 
 export function useWorkspaceCanvasNodesStore({
   workspaceId,
@@ -219,8 +220,13 @@ export function useWorkspaceCanvasNodesStore({
         return
       }
 
-      const minSize =
-        node.data.kind === 'agent'
+      const pluginView =
+        node.data.kind === 'plugin' && node.data.plugin
+          ? getPluginManifest(node.data.plugin.pluginId)?.view
+          : undefined
+      const minSize = pluginView
+        ? { width: pluginView.minWidth, height: pluginView.minHeight }
+        : node.data.kind === 'agent'
           ? resolveAgentNodeMinSize(node.data.agent?.provider)
           : resolveCanonicalNodeMinSize(node.data.kind)
       const resolveDimension = (value: number, fallback: number): number =>

@@ -60,6 +60,7 @@ function PreviewWindow({ id, data }: NodeProps<PreviewNode>): JSX.Element | null
           nodeId={id}
           preview
           onTitleChange={preview.title}
+          onViewReset={() => preview.title(preview.plugin.displayName)}
         />
       </CanvasNodeWindow>
     </WindowCollapsePresentation>

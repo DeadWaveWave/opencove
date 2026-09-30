@@ -58,7 +58,13 @@ export function PluginAgentTools({ plugin }: { plugin: PluginManifest }): JSX.El
           <h4>{t('settingsPanel.plugins.tools.commands')}</h4>
           {plugin.commands.map(command => {
             const needsNode = command.target === 'window' && plugin.view?.instances !== 'single'
-            const invocation = `opencove plugin run ${plugin.id} ${command.id}${needsNode ? ' --node <node-id>' : ''}`
+            const selector =
+              command.target === 'plugin'
+                ? ''
+                : needsNode
+                  ? ' --node <node-id>'
+                  : ' --project <project-id>'
+            const invocation = `opencove plugin run ${plugin.id} ${command.id}${selector}`
             return (
               <div className="settings-plugin-tools__row" key={command.id}>
                 <div className="settings-plugin-tools__description">

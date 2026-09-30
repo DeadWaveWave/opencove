@@ -19,6 +19,8 @@ describe('Desktop plugin view connection affinity', () => {
     }
     expect(routes.forRequest(7, call)?.port).toBe(1234)
     expect(routes.forRequest(8, call)).toBeNull()
+    expect(routes.forRequest(7, { ...call, id: 'plugin.view.setTitle' })?.port).toBe(1234)
+    expect(routes.forRequest(8, { ...call, id: 'plugin.view.setTitle' })).toBeNull()
     expect(() => routes.resourceUrl(8, opened.resourcePath)).toThrow('unknown view')
     routes.release(8, opened.viewId)
     expect(routes.forRequest(7, call)).not.toBeNull()

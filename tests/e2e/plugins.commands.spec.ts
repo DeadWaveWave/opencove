@@ -12,6 +12,7 @@ import {
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 import { capturePlugins } from './plugins.local.helpers'
+import { startWorker, stopWorker } from './worker-client.helpers'
 import {
   canvasPluginNode,
   createCommandPlugin,
@@ -33,6 +34,25 @@ const settings = {
 }
 
 test.describe('Independent plugin CLI and window ownership', () => {
+  test('lists windows and runs backend commands before a fresh Worker has any project or UI', async () => {
+    const source = await createCommandPlugin('single')
+    const userDataDir = await createTestUserDataDir()
+    const { child } = await startWorker({ userDataDir })
+    try {
+      await pluginCli(userDataDir, ['install', source.directory])
+      expect(await pluginCli(userDataDir, ['windows', source.id])).toEqual({ windows: [] })
+      expect(await pluginCliFailure(userDataDir, ['open', source.id])).toContain('--project')
+      expect(await pluginCli(userDataDir, ['run', source.id, 'inspect'])).toMatchObject({
+        pluginId: source.id,
+        hasWindow: false,
+      })
+      expect(await pluginCli(userDataDir, ['windows', source.id])).toEqual({ windows: [] })
+    } finally {
+      await stopWorker(child)
+      await removePathWithRetry(source.directory)
+      await removePathWithRetry(userDataDir)
+    }
+  })
   test('runs backend commands without creating a node, exposes skills, and restores a singleton across restart', async ({
     browserName: _browserName,
   }, info) => {
@@ -51,6 +71,17 @@ test.describe('Independent plugin CLI and window ownership', () => {
         hasWindow: false,
         params: { value: 7 },
       })
+      expect(await savedCommandNodes(page, source.id)).toEqual([])
+      expect(await pluginCliFailure(userDataDir, ['open', source.id])).toContain('--project')
+      expect(
+        await pluginCliFailure(userDataDir, [
+          'run',
+          source.id,
+          'set-label',
+          '--params',
+          '{"label":"No implicit project"}',
+        ]),
+      ).toContain('--project')
       expect(await savedCommandNodes(page, source.id)).toEqual([])
       const skill = await pluginCli<{ path: string; content: string; installPrompt: string }>(
         userDataDir,
@@ -85,7 +116,15 @@ test.describe('Independent plugin CLI and window ownership', () => {
 
       const result = await pluginCli<{ nodeId: string; label: string; executions: number }>(
         userDataDir,
-        ['run', source.id, 'set-label', '--params', '{"label":"Created by a real command"}'],
+        [
+          'run',
+          source.id,
+          'set-label',
+          '--project',
+          seededWorkspaceId,
+          '--params',
+          '{"label":"Created by a real command"}',
+        ],
       )
       let node = canvasPluginNode(page, result.nodeId)
       await expectCommandReady(node)
@@ -122,7 +161,12 @@ test.describe('Independent plugin CLI and window ownership', () => {
       await node.getByTestId(`plugin-${source.id}-close`).click()
       await expect(node).toHaveCount(0)
       await expect.poll(async () => (await savedCommandNodes(page, source.id)).length).toBe(0)
-      const replacement = await pluginCli<PluginWindowResult>(userDataDir, ['open', source.id])
+      const replacement = await pluginCli<PluginWindowResult>(userDataDir, [
+        'open',
+        source.id,
+        '--project',
+        seededWorkspaceId,
+      ])
       expect(replacement.created).toBe(true)
       expect(replacement.nodeId).not.toBe(result.nodeId)
       await expectCommandReady(canvasPluginNode(page, replacement.nodeId))
@@ -153,6 +197,8 @@ test.describe('Independent plugin CLI and window ownership', () => {
         settings,
       })
       await pluginCli(userDataDir, ['install', source.directory])
+      expect(await pluginCliFailure(userDataDir, ['open', source.id])).toContain('--project')
+      expect(await savedCommandNodes(page, source.id)).toEqual([])
       const opened = await Promise.all(
         [seededWorkspaceId, secondProjectId].map(projectId =>
           pluginCli<PluginWindowResult>(userDataDir, ['open', source.id, '--project', projectId]),
@@ -209,7 +255,12 @@ test.describe('Independent plugin CLI and window ownership', () => {
       await desktop.setViewportSize({ width: 1450, height: 950 })
       await clearAndSeedWorkspace(desktop, [], { settings })
       await pluginCli(userDataDir, ['install', source.directory])
-      const first = await pluginCli<PluginWindowResult>(userDataDir, ['open', source.id])
+      const first = await pluginCli<PluginWindowResult>(userDataDir, [
+        'open',
+        source.id,
+        '--project',
+        seededWorkspaceId,
+      ])
       const desktopNode = canvasPluginNode(desktop, first.nodeId)
       await expectCommandReady(desktopNode)
       expect(
@@ -287,7 +338,12 @@ test.describe('Independent plugin CLI and window ownership', () => {
           return current.windows[0].views.filter(view => view.ready).length
         })
         .toBe(1)
-      const second = await pluginCli<PluginWindowResult>(userDataDir, ['open', source.id])
+      const second = await pluginCli<PluginWindowResult>(userDataDir, [
+        'open',
+        source.id,
+        '--project',
+        seededWorkspaceId,
+      ])
       expect(second.nodeId).not.toBe(first.nodeId)
       await expectCommandReady(canvasPluginNode(desktop, second.nodeId))
       await pluginCli(userDataDir, [

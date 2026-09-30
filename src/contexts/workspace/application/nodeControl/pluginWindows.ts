@@ -18,6 +18,7 @@ export interface PluginWindowSummary {
   projectId: string
   spaceId: string | null
   title: string
+  titlePinnedByUser: boolean
 }
 
 function belongsToPlugin(node: NodeControlNode, pluginId: string): boolean {
@@ -43,6 +44,7 @@ export function listPluginWindows(
         projectId: workspace.id,
         spaceId: workspace.spaces.find(space => space.nodeIds.includes(node.id))?.id ?? null,
         title: node.title,
+        titlePinnedByUser: node.titlePinnedByUser === true,
       })),
   )
 }
@@ -95,9 +97,11 @@ export function planPluginWindowOpen(
   if (existing) {
     return { state, window: existing, created: false }
   }
-  const workspace = state.workspaces.find(
-    item => item.id === (input.projectId ?? state.activeWorkspaceId),
-  )
+  // Active navigation belongs to each UI client, not to the shared Worker state.
+  if (!input.projectId) {
+    throw new Error('Specify --project to create a new plugin window.')
+  }
+  const workspace = state.workspaces.find(item => item.id === input.projectId)
   if (!workspace) {
     throw new Error('Choose a project for the new plugin window with --project.')
   }
@@ -166,6 +170,7 @@ export function planPluginWindowOpen(
       projectId: workspace.id,
       spaceId: space?.id ?? null,
       title: node.title,
+      titlePinnedByUser: node.titlePinnedByUser === true,
     },
     created: true,
   }

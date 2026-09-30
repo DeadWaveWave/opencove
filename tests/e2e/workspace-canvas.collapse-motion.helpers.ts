@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
 import {
   EXPANSION_PEER,
@@ -21,8 +21,24 @@ interface PresentationSample {
   size: { cols: number; rows: number } | null
 }
 
+interface MotionSampleResult {
+  samples: PresentationSample[]
+  error: string | null
+  diagnostics: {
+    actionCompletedAt: number | null
+    sampledUntil: number
+    currentFrame: PresentationSample | null
+    activeShellAnimations: string[]
+  }
+}
+
 type MotionWindow = Window & {
-  __opencoveCollapseMotion?: Promise<PresentationSample[]>
+  __opencoveCollapseMotion?: {
+    result: Promise<MotionSampleResult>
+    completeAction: () => void
+    stop: () => void
+    snapshot: () => MotionSampleResult
+  }
 }
 
 export async function seedCollapseMotionFixture(page: Page, withSpace: boolean | 'nested' = false) {
@@ -120,6 +136,19 @@ export async function samplePresentation(
     ({ selector: targetSelector, duration: sampleDuration, terminalId }) => {
       const samples: PresentationSample[] = []
       const startedAt = performance.now()
+      let actionCompletedAt: number | null = null
+      let error: string | null = null
+      let finished = false
+      let frameId = 0
+      let deadlineId = 0
+      let quietFrames = 0
+      const shellAnimations = () =>
+        document
+          .querySelector(targetSelector)
+          ?.getAnimations()
+          .filter(
+            animation => animation.pending || ['running', 'paused'].includes(animation.playState),
+          ) ?? []
       const read = (time: number) => {
         const shell = document.querySelector<HTMLElement>(targetSelector)
         const runtime = document.querySelector<HTMLElement>(
@@ -132,7 +161,7 @@ export async function samplePresentation(
         }
         const zoom = new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a
         const rect = shell.getBoundingClientRect()
-        samples.push({
+        const sample: PresentationSample = {
           t: time - startedAt,
           shell: {
             x: rect.x / zoom,
@@ -143,32 +172,120 @@ export async function samplePresentation(
           runtime: runtime ? { width: runtime.clientWidth, height: runtime.clientHeight } : null,
           instanceId: api?.getRenderMetrics(terminalId)?.instanceId ?? null,
           size: api?.getSize(terminalId) ?? null,
-        })
-      }
-      read(startedAt)
-      ;(window as MotionWindow).__opencoveCollapseMotion = new Promise(resolve => {
-        const tick = (time: number) => {
-          read(time)
-          if (time - startedAt < sampleDuration) {
-            requestAnimationFrame(tick)
-          } else {
-            resolve(samples)
-          }
         }
-        requestAnimationFrame(tick)
+        return sample
+      }
+      const currentFrame = () => {
+        try {
+          return read(performance.now())
+        } catch {
+          return null
+        }
+      }
+      const snapshot = (): MotionSampleResult => ({
+        samples,
+        error,
+        diagnostics: {
+          actionCompletedAt,
+          sampledUntil: samples.at(-1)?.t ?? 0,
+          currentFrame: currentFrame(),
+          activeShellAnimations: shellAnimations().map(animation => animation.playState),
+        },
       })
+      let resolveResult!: (result: MotionSampleResult) => void
+      const result = new Promise<MotionSampleResult>(resolve => {
+        resolveResult = resolve
+      })
+      const finish = (reason: string | null = null) => {
+        if (finished) {
+          return
+        }
+        finished = true
+        error = reason
+        cancelAnimationFrame(frameId)
+        clearTimeout(deadlineId)
+        resolveResult(snapshot())
+      }
+      const tick = (time: number) => {
+        if (finished) {
+          return
+        }
+        try {
+          samples.push(read(time))
+          // Only this shell's motion matters; descendant activity may animate forever.
+          quietFrames =
+            actionCompletedAt !== null && shellAnimations().length === 0 ? quietFrames + 1 : 0
+          if (time - startedAt >= sampleDuration && quietFrames >= 2) {
+            finish()
+          } else {
+            frameId = requestAnimationFrame(tick)
+          }
+        } catch (cause) {
+          finish(String(cause))
+        }
+      }
+      samples.push(read(startedAt))
+      ;(window as MotionWindow).__opencoveCollapseMotion = {
+        result,
+        completeAction: () => {
+          actionCompletedAt = performance.now() - startedAt
+        },
+        stop: () => finish('Collapse motion sampling cancelled'),
+        snapshot,
+      }
+      // Bound both delayed input and an animation that never settles.
+      deadlineId = window.setTimeout(
+        () => finish(`Collapse motion did not settle within ${sampleDuration + 5_000}ms`),
+        sampleDuration + 5_000,
+      )
+      frameId = requestAnimationFrame(tick)
     },
     { selector, duration, terminalId: EXPANSION_TERMINAL },
   )
-  await action()
-  return page.evaluate(async () => {
-    const result = await (window as MotionWindow).__opencoveCollapseMotion
-    delete (window as MotionWindow).__opencoveCollapseMotion
-    if (!result) {
-      throw new Error('Collapse motion samples are missing')
-    }
-    return result
-  })
+  try {
+    const sampling = page
+      .evaluate(async () => {
+        const state = (window as MotionWindow).__opencoveCollapseMotion
+        if (!state) {
+          throw new Error('Collapse motion samples are missing')
+        }
+        return state.result
+      })
+      .then(result => {
+        if (result.error) {
+          throw new Error(`${result.error}\n${JSON.stringify(result.diagnostics)}`)
+        }
+        return result
+      })
+    const [result] = await Promise.all([
+      sampling,
+      Promise.resolve()
+        .then(action)
+        .then(() =>
+          page.evaluate(() => {
+            ;(window as MotionWindow).__opencoveCollapseMotion?.completeAction()
+          }),
+        ),
+    ])
+    return result.samples
+  } finally {
+    const diagnostics = await page
+      .evaluate(() => {
+        const state = (window as MotionWindow).__opencoveCollapseMotion
+        if (!state) {
+          return null
+        }
+        const snapshot = state.snapshot()
+        state.stop()
+        delete (window as MotionWindow).__opencoveCollapseMotion
+        return snapshot
+      })
+      .catch(cause => ({ error: String(cause) }))
+    await test.info().attach('collapse-motion-sampling', {
+      body: JSON.stringify(diagnostics, null, 2),
+      contentType: 'application/json',
+    })
+  }
 }
 
 export function expectContinuousSizeChange(

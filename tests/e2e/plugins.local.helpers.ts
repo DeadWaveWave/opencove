@@ -64,10 +64,12 @@ export async function openLocalDetails(page: Page): Promise<Locator> {
 export async function clickPluginControl(control: Locator): Promise<void> {
   // A cross-process iframe can finish SDK startup before Chromium has published its
   // hit-test surface. A pointer move delivered to the parent is not replayed when the
-  // child becomes ready: move again while waiting, but perform the click only once.
+  // child becomes ready. Leave and re-enter the child while waiting so each attempt
+  // delivers a fresh pointer movement; perform the click only once.
   await expect
     .poll(
       async () => {
+        await control.page().mouse.move(0, 0)
         await control.hover({ timeout: 2_000 })
         return control.evaluate(element => element.matches(':hover'))
       },

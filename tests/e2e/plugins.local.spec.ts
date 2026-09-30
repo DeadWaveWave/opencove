@@ -92,12 +92,26 @@ test.describe('Independently installed plugins', () => {
       const restoredNodeId = await node.getAttribute('data-id')
       expect(restoredNodeId).not.toBe(nodeId)
       await expect.poll(async () => (await savedPluginNodes(page)).length).toBe(1)
+      const compactHandle = await readLocatorClientRect(
+        node.getByTestId('plugin-hello-clock-resizer-bottom-right'),
+      )
+      await dragMouse(page, {
+        start: {
+          x: compactHandle.x + compactHandle.width / 2,
+          y: compactHandle.y + compactHandle.height / 2,
+        },
+        end: { x: compactHandle.x - 700, y: compactHandle.y - 700 },
+      })
+      await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('width', '320px')
+      await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('height', '240px')
       await electronApp.close()
       ;({ electronApp, window: page } = await launchApp({ userDataDir, cleanupUserDataDir: false }))
       await page.setViewportSize({ width: 1400, height: 1000 })
       node = page.locator(`.workspace-main .react-flow__node[data-id="${restoredNodeId}"]`)
       frame = node.frameLocator('iframe')
       await expect(frame.locator('#count')).toHaveText('2', { timeout: 15_000 })
+      await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('width', '320px')
+      await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('height', '240px')
       expect(await invokeClock(node)).not.toBe(startup)
       await expect(node.locator('.cove-canvas-node-window__title')).toHaveText(
         'My persistent clock',

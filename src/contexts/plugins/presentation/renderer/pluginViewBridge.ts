@@ -37,6 +37,7 @@ export function bindPluginViewBridge({
   const origin = new URL(url).origin
   let disposed = false
   let restoring = false
+  let titleUpdates: Promise<unknown> = Promise.resolve()
   const post = (message: Record<string, unknown>) => {
     if (!disposed && !restoring) {
       getFrame()?.contentWindow?.postMessage({ channel: CHANNEL, ...message }, origin)
@@ -48,6 +49,22 @@ export function bindPluginViewBridge({
       id: method,
       payload: { ...payload, viewId: view.viewId },
     })
+  const setTitle = (title: string): Promise<null> => {
+    const next = titleUpdates.then(async () => {
+      if (disposed || restoring) {
+        throw new Error('Plugin view closed before title update.')
+      }
+      if (!view.context.preview) {
+        await invoke('plugin.view.setTitle', { title })
+      }
+      if (!disposed && !restoring) {
+        onTitleChange(title)
+      }
+      return null
+    })
+    titleUpdates = next.catch(() => undefined)
+    return next
+  }
   const onMessage = (event: MessageEvent) => {
     if (
       disposed ||
@@ -94,8 +111,7 @@ export function bindPluginViewBridge({
           if (typeof input.title !== 'string' || !input.title.trim() || input.title.length > 200) {
             throw new Error('Invalid plugin window title')
           }
-          onTitleChange(input.title.trim())
-          return null
+          return setTitle(input.title.trim())
         default:
           throw new Error('Unsupported plugin view operation')
       }

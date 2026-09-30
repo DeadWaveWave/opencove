@@ -10,7 +10,8 @@ export const enSettingsPanelPlugins = {
     copied: 'Copied',
     withoutWindow: 'Runs without opening a window.',
     selectedWindow: 'Specify a node. If it is open on multiple devices, specify a view too.',
-    singleWindow: 'Reuses one window across projects on this Worker, opening it if needed.',
+    singleWindow:
+      'Reuses one window across projects on this Worker. Creating it requires a project.',
   },
   installedTitle: 'Installed',
   installedHelp:

@@ -57,6 +57,7 @@ export interface PluginLiveView {
   nodeId: string
   viewId: string
   ready: boolean
+  contentTitle?: string
 }
 
 export interface PluginSkillDetails {

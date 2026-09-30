@@ -50,19 +50,48 @@ function initial(): NodeControlAppState {
 }
 const now = '2026-09-30T00:00:00Z'
 describe('durable plugin window identity', () => {
+  it('requires a project for creation when multiple projects exist, regardless of local navigation', () => {
+    for (const activeWorkspaceId of ['first', 'second']) {
+      expect(() =>
+        planPluginWindowOpen(
+          { ...initial(), activeWorkspaceId },
+          single,
+          { pluginId: 'sample' },
+          now,
+        ),
+      ).toThrow('Specify --project')
+    }
+  })
+  it('requires an explicit project even when only one project exists', () => {
+    const state = initial()
+    state.workspaces = [state.workspaces[1]]
+    expect(() => planPluginWindowOpen(state, single, { pluginId: 'sample' }, now)).toThrow(
+      'Specify --project',
+    )
+  })
+  it('requires a project to exist before creating a window', () => {
+    expect(() =>
+      planPluginWindowOpen(
+        { ...initial(), workspaces: [] },
+        single,
+        { pluginId: 'sample', projectId: 'first' },
+        now,
+      ),
+    ).toThrow('Choose a project')
+  })
   it('places beside compact icons using displayed dimensions without changing saved window size', () => {
     const multiple = { ...single, view: { ...single.view!, instances: 'multiple' as const } }
     const first = planPluginWindowOpen(
       initial(),
       multiple,
-      { pluginId: 'sample', anchor: { x: 0, y: 0 } },
+      { pluginId: 'sample', projectId: 'first', anchor: { x: 0, y: 0 } },
       now,
     )
     first.state.workspaces[0].collapsedNodeIds = [first.window.nodeId]
     const next = planPluginWindowOpen(
       first.state,
       multiple,
-      { pluginId: 'sample', anchor: { x: 180, y: 0 } },
+      { pluginId: 'sample', projectId: 'first', anchor: { x: 180, y: 0 } },
       now,
     )
     expect(next.state.workspaces[0].nodes[1].position).toEqual({ x: 180, y: 0 })
@@ -90,6 +119,9 @@ describe('durable plugin window identity', () => {
     })
     expect(next.state).toBeDefined()
     expect(listPluginWindows(next.state, 'sample')).toHaveLength(1)
+    expect(planPluginWindowOpen(next.state, single, { pluginId: 'sample' }, now).window).toEqual(
+      next.window,
+    )
     const closed = {
       ...next.state,
       workspaces: next.state.workspaces.map(workspace => ({ ...workspace, nodes: [] })),
@@ -106,7 +138,12 @@ describe('durable plugin window identity', () => {
   })
   it('requires explicit node identity for multiple-window commands even when there is only one saved node', () => {
     const multiple = { ...single, view: { ...single.view!, instances: 'multiple' as const } }
-    const first = planPluginWindowOpen(initial(), multiple, { pluginId: 'sample' }, now)
+    const first = planPluginWindowOpen(
+      initial(),
+      multiple,
+      { pluginId: 'sample', projectId: 'first' },
+      now,
+    )
     expect(() =>
       resolvePluginWindow(first.state, multiple, { pluginId: 'sample' }, 'command'),
     ).toThrow('Specify --node')
@@ -118,7 +155,12 @@ describe('durable plugin window identity', () => {
         'command',
       ),
     ).toEqual(first.window)
-    const second = planPluginWindowOpen(first.state, multiple, { pluginId: 'sample' }, now)
+    const second = planPluginWindowOpen(
+      first.state,
+      multiple,
+      { pluginId: 'sample', projectId: 'first' },
+      now,
+    )
     expect(listPluginWindows(second.state, 'sample')).toHaveLength(2)
     expect(() =>
       resolvePluginWindow(
@@ -131,8 +173,18 @@ describe('durable plugin window identity', () => {
   })
   it('retains legacy duplicate nodes when a manifest changes to single instead of deleting user data', () => {
     const multiple = { ...single, view: { ...single.view!, instances: 'multiple' as const } }
-    const first = planPluginWindowOpen(initial(), multiple, { pluginId: 'sample' }, now)
-    const second = planPluginWindowOpen(first.state, multiple, { pluginId: 'sample' }, now)
+    const first = planPluginWindowOpen(
+      initial(),
+      multiple,
+      { pluginId: 'sample', projectId: 'first' },
+      now,
+    )
+    const second = planPluginWindowOpen(
+      first.state,
+      multiple,
+      { pluginId: 'sample', projectId: 'first' },
+      now,
+    )
     expect(() => planPluginWindowOpen(second.state, single, { pluginId: 'sample' }, now)).toThrow(
       'More than one saved window',
     )
@@ -159,7 +211,12 @@ describe('durable plugin window identity', () => {
       planPluginWindowOpen(initial(), single, { pluginId: 'sample', projectId: 'missing' }, now),
     ).toThrow('Choose a project')
     expect(() =>
-      planPluginWindowOpen(initial(), single, { pluginId: 'sample', spaceId: 'missing' }, now),
+      planPluginWindowOpen(
+        initial(),
+        single,
+        { pluginId: 'sample', projectId: 'first', spaceId: 'missing' },
+        now,
+      ),
     ).toThrow('Space')
   })
   it('grows the target Space and its ancestors without moving existing nodes', () => {
@@ -177,7 +234,7 @@ describe('durable plugin window identity', () => {
     const result = planPluginWindowOpen(
       state,
       single,
-      { pluginId: 'sample', spaceId: 'child' },
+      { pluginId: 'sample', projectId: 'first', spaceId: 'child' },
       now,
     )
     const [parent, child] = result.state.workspaces[0].spaces

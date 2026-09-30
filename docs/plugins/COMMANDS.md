@@ -4,6 +4,10 @@ Use `opencove plugin list` and `opencove plugin details <id>` to discover each
 installation's `commands` and `skills`. Their declarations come from the active
 immutable package, so editing the source has no effect until a successful reload.
 There are no dynamically registered top-level CLI commands.
+These window, command and Skill operations reject unsupported CLI options or
+Control Surface input fields instead of silently ignoring them. Plugin-wide
+commands reject project, node and view selectors; window selection and placement
+belong only to window operations.
 
 ## Declare contributions
 
@@ -130,13 +134,38 @@ opencove plugin run <id> select --node <node-id> --view <view-id> --params '{"it
 ```
 
 `open` accepts `--project` and `--space` for placement, or `--node` to select an
-existing window. Without an explicit project, creation uses the active project.
+existing window. Creating any new window requires `--project`, including when
+only one project exists. Each UI client has its own active project, which the CLI
+does not infer.
 It returns the durable node identity and requests focus. A singleton's existing
 node is reused across projects. `windows` lists those durable nodes and their
 current view IDs/readiness; `--project` filters the listing.
 
+Use this plugin-specific listing and the plugin's declared read/status commands.
+The generic `node list/get/update/delete` API currently manages built-in node
+kinds only; a `node.not_found` response there does not mean a plugin window was
+deleted. Do not recreate a window based on that response.
+
+`--node` selects an existing node and cannot be combined with `--space` or a
+Control Surface placement `anchor`. Project, space and anchor are creation
+destinations, not requests to migrate an existing singleton. An existing singleton
+is reused across projects without being moved. Check the returned
+`projectId` and `created: false` for the actual existing location. Without an
+explicit node selector, a requested creation project is not a relocation request.
+
+Each listed window includes its `savedTitle` and effective `title`. Each view also
+includes an effective `title` and, after `api.setTitle`, its reported `contentTitle`.
+A user-pinned name takes precedence in every effective title. Otherwise, the
+window summary uses the views' title only when all listed views agree; different
+client titles remain visible per view and the summary falls back to `savedTitle`.
+Without views, the saved title is used. Content titles are observations attached
+to view leases, not persisted names or evidence of command readiness. They expire
+with the lease; a disconnected lease can remain during the reconnection grace
+period. Preview titles never appear in this listing.
+
 For a singleton window command, the host opens the missing node or focuses its
-existing node as needed, then waits up to 10 seconds for a connected UI and command
+existing node as needed. Opening a missing node also requires `--project`.
+It then waits up to 10 seconds for a connected UI and command
 handler. A headless Worker cannot execute browser commands. Multiple-instance
 commands do not guess a node from focus or from the number of visible windows:
 open a node explicitly and pass its ID.
@@ -192,3 +221,59 @@ backend, execute its instructions, or modify agent configuration. `installPrompt
 is guidance for deliberate installation. Choose the target agent's skills directory
 and copy the skill directory with its resources only when that action is wanted.
 There is no implicit global or project skill installation.
+
+### Required operational instructions for Skill authors
+
+A contributed Skill must guide an agent through the complete workflow, including
+when its intended OpenCove instance is stopped. Include these instructions in
+`SKILL.md`, with the plugin's actual commands and readback checks:
+
+1. **Keep the intended runtime identity.** Identify the user's existing Worker
+   profile or explicit remote endpoint before operating. Keep that selection on
+   every command: `OPENCOVE_USER_DATA_DIR` restricts regular CLI discovery to a
+   known local profile; local lifecycle commands also take `--user-data`. Do not
+   silently select another running instance, create a fresh profile, or reinstall
+   the plugin elsewhere when the intended instance is unavailable.
+2. **Recover that same instance through public tools.** Consult `opencove --help`
+   and this build's offline `opencove plugin guide`. For a known local profile,
+   inspect `opencove worker status --user-data <profile> --pretty`; if stopped,
+   help start or reopen that same runtime using the documented CLI/launcher and
+   its existing configuration. Verify its status and installed plugin again.
+   For an unavailable remote Worker, help restore its connection instead of
+   launching a local replacement. If the intended profile, endpoint or startup
+   settings are unknown, resolve that uncertainty before starting anything.
+3. **Discover an explicit project before creation.** Run `opencove project list
+   --pretty` on the selected runtime. Match a returned project ID to the user's
+   request, resolving ambiguous names with the user. Every new plugin window
+   requires `--project`, even with one project. A client's visible/active project
+   and the CLI's working directory do not select it. If no project exists, guide
+   the user to create one in the intended UI, then list projects again.
+4. **Resolve node and view identity.** Read `plugin details <id>` and `plugin
+   windows <id>` before choosing a window command. Reuse a known node with
+   `plugin open <id> --node <node-id>`. An existing singleton is shared across
+   projects; inspect the returned project rather than creating a replacement or
+   moving it. Multiple-instance commands always require `--node`. When several
+   views are ready, resolve the intended client and pass its current `--view`;
+   do not choose the first view, broadcast, or infer the target from a title.
+5. **Handle readiness without changing targets.** Backend commands need no UI;
+   window commands need the intended Desktop/Web UI and its registered handler.
+   If a view is closed, stale or unready, list it again and help reopen/focus the
+   same intended node. Do not secretly open another node or switch Workers merely
+   to obtain a successful response. Report when a deliberately created node
+   remains saved but its command could not run.
+6. **Execute and read back.** Await the result, then use the plugin's declared
+   read/status command or another documented observation on that same target to
+   verify the requested state. `plugin windows` can verify identity and reported
+   titles; it cannot prove that unrelated content was saved or media is playing.
+   Provide the exact readback command and expected fields in the Skill. If the
+   plugin cannot verify a promised result, add that capability or state the limit.
+7. **Recover uncertain results without replay.** A timeout or disconnect may
+   occur after an effect. Inspect state first; never automatically repeat the
+   mutation, change a stale view ID to another client's ID, or report success
+   solely because a request was sent. Explain any remaining uncertainty.
+
+Verify the Skill as a consumer with the intended Worker initially stopped, with
+more than one project, with ambiguous node/view choices, and with a failed or
+uncertain command. The authoring startup example creates a development profile;
+it is not a fallback that an operational Skill may use to replace the user's
+existing instance.

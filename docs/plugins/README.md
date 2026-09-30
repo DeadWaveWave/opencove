@@ -37,8 +37,8 @@ without modifying an existing Desktop session.
 | `opencove plugin install <directory>` | Validates and installs a local directory |
 | `opencove plugin details <id>` | Returns an installed local plugin's manifest, README, source directory, assets and recent backend logs |
 | `opencove plugin run <id> <command> [--params <json>]` | Runs a declared command; window commands support `--node`, `--view` and `--project` selection |
-| `opencove plugin open <id> [--project <id>] [--space <id>] [--node <id>]` | Opens or reuses a plugin window and requests focus |
-| `opencove plugin windows <id> [--project <id>]` | Lists durable windows and their current execution views |
+| `opencove plugin open <id> [--project <id>] [--space <id>] [--node <id>]` | Opens or reuses a plugin window and requests focus; creating any window requires `--project` |
+| `opencove plugin windows <id> [--project <id>]` | Lists saved windows, saved/effective titles, and each view's title and command readiness |
 | `opencove plugin skill <id> <skill>` | Reads a declared skill and returns its Worker-local path and installation instructions |
 | `opencove plugin reload <id>` | Validates and activates a new snapshot of the installed source directory |
 | `opencove plugin disable <id>` | Stops a local plugin's content and backend, preserving its nodes and data |
