@@ -19,6 +19,7 @@ export async function updateNodeForNodeControl(options: {
   store: NodeControlAppStateStore
   input: UpdateNodeInput
 }): Promise<UpdateNodeResult> {
+  const expectedRevision = await options.store.readAppStateRevision()
   const state = requireNodeControlState(await options.store.readAppState())
   const matched = findNodeForNodeControl(state.workspaces, options.input.nodeId)
   if (!matched) {
@@ -42,6 +43,7 @@ export async function updateNodeForNodeControl(options: {
   const revision = await persistNodeControlState(
     options.store,
     replaceNodeControlWorkspace(state, nextWorkspace),
+    expectedRevision,
   )
 
   return {

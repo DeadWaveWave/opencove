@@ -7,8 +7,11 @@ function setup(constructionFails = false) {
   const listeners = new Map<string, (event: Record<string, unknown>) => void>()
   const sockets: Socket[] = []
   class Socket {
+    static OPEN = 1
+    readyState = 0
     readonly handlers = new Map<string, (event: Record<string, unknown>) => void>()
     close = vi.fn()
+    send = vi.fn()
     constructor(readonly url: URL) {
       if (constructionFails) {
         throw new Error('Blocked by policy')
@@ -23,16 +26,22 @@ function setup(constructionFails = false) {
   const parent = { postMessage: post }
   const pause = vi.fn()
   const beacon = vi.fn(() => true)
-  const schedule = vi.fn(() => 1)
+  const schedule = vi.fn((_callback: () => void, _delay: number) => 1)
   const window = {
     addEventListener: (type: string, handler: (event: Record<string, unknown>) => void) => {
       listeners.set(type, handler)
     },
-  } as unknown as { opencovePlugin: { invoke: (method: string) => Promise<unknown> } }
+  } as unknown as {
+    opencovePlugin: {
+      invoke: (method: string) => Promise<unknown>
+      onCommand: (handler: (command: string, params: unknown) => unknown) => () => void
+    }
+  }
   runInNewContext(PLUGIN_BRIDGE_SCRIPT, {
     window,
     parent,
     URL,
+    TextEncoder,
     WebSocket: Socket,
     navigator: { sendBeacon: beacon },
     document: {
@@ -84,5 +93,207 @@ describe('injected plugin SDK lifecycle', () => {
     expect(pause).toHaveBeenCalledOnce()
     await expect(window.opencovePlugin.invoke('play')).rejects.toThrow('view closed')
     expect(schedule).toHaveBeenCalledOnce()
+  })
+
+  it('announces handler readiness and returns the actual async command result', async () => {
+    const { window, sockets } = setup()
+    const socket = sockets[0]
+    socket.readyState = 1
+    socket.handlers.get('open')?.({})
+    expect(JSON.parse(socket.send.mock.calls[0][0])).toEqual({
+      type: 'ready',
+      protocol: 2,
+      ready: false,
+    })
+    const handler = vi.fn(async (command: string, params: unknown) => ({
+      command,
+      params,
+      applied: true,
+    }))
+    const unsubscribe = window.opencovePlugin.onCommand(handler)
+    expect(JSON.parse(socket.send.mock.calls[1][0])).toEqual({
+      type: 'ready',
+      protocol: 2,
+      ready: true,
+    })
+    socket.handlers.get('message')?.({
+      data: JSON.stringify({
+        type: 'command',
+        protocol: 2,
+        requestId: '1',
+        commandId: 'update',
+        params: { value: 4 },
+      }),
+    })
+    await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(3))
+    expect(handler).toHaveBeenCalledExactlyOnceWith('update', { value: 4 })
+    expect(JSON.parse(socket.send.mock.calls[2][0])).toEqual({
+      type: 'result',
+      protocol: 2,
+      requestId: '1',
+      ok: true,
+      value: { command: 'update', params: { value: 4 }, applied: true },
+    })
+    unsubscribe()
+    expect(JSON.parse(socket.send.mock.calls[3][0])).toEqual({
+      type: 'ready',
+      protocol: 2,
+      ready: false,
+    })
+  })
+
+  it('retains the current handler when an older registration unsubscribes and reports non-JSON results', async () => {
+    const { window, sockets } = setup()
+    const socket = sockets[0]
+    socket.readyState = 1
+    const obsolete = window.opencovePlugin.onCommand(() => 'obsolete')
+    const current = vi.fn(() => ({ invalid: undefined }))
+    window.opencovePlugin.onCommand(current)
+    obsolete()
+    socket.handlers.get('message')?.({
+      data: JSON.stringify({
+        type: 'command',
+        protocol: 2,
+        requestId: '1',
+        commandId: 'update',
+        params: null,
+      }),
+    })
+    await vi.waitFor(() =>
+      expect(socket.send.mock.calls.some(([raw]) => JSON.parse(raw).type === 'result')).toBe(true),
+    )
+    expect(current).toHaveBeenCalledOnce()
+    expect(JSON.parse(socket.send.mock.calls.at(-1)![0])).toMatchObject({
+      requestId: '1',
+      ok: false,
+      error: expect.stringContaining('JSON values'),
+    })
+  })
+
+  it('does not reply after retirement or execute a queued command after page departure', async () => {
+    const { window, sockets, listeners } = setup()
+    const socket = sockets[0]
+    socket.readyState = 1
+    const handler = vi.fn(() => 'done')
+    window.opencovePlugin.onCommand(handler)
+    socket.handlers.get('message')?.({
+      data: JSON.stringify({
+        type: 'command',
+        protocol: 2,
+        requestId: '1',
+        commandId: 'update',
+        params: null,
+      }),
+    })
+    listeners.get('pagehide')?.({})
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(handler).not.toHaveBeenCalled()
+    expect(socket.send.mock.calls.every(([raw]) => JSON.parse(raw).type === 'ready')).toBe(true)
+    expect(() => window.opencovePlugin.onCommand(handler)).toThrow('view closed')
+  })
+
+  it('closes invalid command traffic and does not reconnect a policy-rejected channel', () => {
+    const { sockets, schedule, pause } = setup()
+    const socket = sockets[0]
+    socket.readyState = 1
+    socket.handlers.get('message')?.({ data: JSON.stringify({ type: 'command', protocol: 1 }) })
+    expect(socket.close).toHaveBeenCalledWith(1008, 'Invalid plugin command')
+    socket.handlers.get('close')?.({ code: 1008 })
+    expect(pause).toHaveBeenCalledOnce()
+    expect(schedule).not.toHaveBeenCalled()
+  })
+
+  it('reannounces readiness after reconnect without moving an old result to the new socket', async () => {
+    const { window, sockets, schedule } = setup()
+    const original = sockets[0]
+    original.readyState = 1
+    let finish!: (value: unknown) => void
+    const handler = vi.fn(
+      () =>
+        new Promise(resolve => {
+          finish = resolve
+        }),
+    )
+    window.opencovePlugin.onCommand(handler)
+    original.handlers.get('message')?.({
+      data: JSON.stringify({
+        type: 'command',
+        protocol: 2,
+        requestId: '1',
+        commandId: 'update',
+        params: null,
+      }),
+    })
+    await vi.waitFor(() => expect(handler).toHaveBeenCalledOnce())
+    original.readyState = 3
+    original.handlers.get('close')?.({ code: 1006 })
+    const reconnect = schedule.mock.calls[0][0] as () => void
+    reconnect()
+    const replacement = sockets[1]
+    replacement.readyState = 1
+    replacement.handlers.get('open')?.({})
+    expect(JSON.parse(replacement.send.mock.calls[0][0])).toEqual({
+      type: 'ready',
+      protocol: 2,
+      ready: true,
+    })
+    finish('completed after disconnect')
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(original.send.mock.calls.every(([raw]) => JSON.parse(raw).type === 'ready')).toBe(true)
+    expect(replacement.send).toHaveBeenCalledOnce()
+    expect(handler).toHaveBeenCalledOnce()
+  })
+
+  it.each(['failure', 'oversized'])('returns a bounded error for %s handler output', async kind => {
+    const { window, sockets } = setup()
+    const socket = sockets[0]
+    socket.readyState = 1
+    window.opencovePlugin.onCommand(() => {
+      if (kind === 'failure') {
+        throw new Error('Action failed')
+      }
+      return 'x'.repeat(2 * 1024 * 1024)
+    })
+    socket.handlers.get('message')?.({
+      data: JSON.stringify({
+        type: 'command',
+        protocol: 2,
+        requestId: '1',
+        commandId: 'update',
+        params: null,
+      }),
+    })
+    await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(2))
+    const reply = JSON.parse(socket.send.mock.calls[1][0])
+    expect(reply).toMatchObject({ type: 'result', protocol: 2, requestId: '1', ok: false })
+    expect(reply.error).toContain(kind === 'failure' ? 'Action failed' : 'size limit')
+  })
+
+  it('returns null for a successful action handler without a return value', async () => {
+    const { window, sockets } = setup()
+    const socket = sockets[0]
+    socket.readyState = 1
+    window.opencovePlugin.onCommand(() => undefined)
+    socket.handlers.get('message')?.({
+      data: JSON.stringify({
+        type: 'command',
+        protocol: 2,
+        requestId: '1',
+        commandId: 'update',
+        params: null,
+      }),
+    })
+    await vi.waitFor(() => expect(socket.send).toHaveBeenCalledTimes(2))
+    expect(JSON.parse(socket.send.mock.calls[1][0])).toEqual({
+      type: 'result',
+      protocol: 2,
+      requestId: '1',
+      ok: true,
+      value: null,
+    })
   })
 })

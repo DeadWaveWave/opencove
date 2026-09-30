@@ -31,8 +31,9 @@ The root of the install directory contains `opencove.plugin.json`:
 }
 ```
 
-Required: `apiVersion`, `id`, `version`, `displayName`, `description`, and
-`view.entry`. Paths are relative to the package root and must reference packaged
+Required: `apiVersion`, `id`, `version`, `displayName`, and `description`, plus at
+least one view, command or skill. `view` is optional; when present, `view.entry`
+is required. Paths are relative to the package root and must reference packaged
 files, not absolute paths, traversal paths or external URLs. Keep the package
 self-contained; do not rely on symlinks or `node_modules` being copied.
 
@@ -48,11 +49,14 @@ Optional fields:
 | `main` | Node ESM entry exporting `activate`; omit for a UI-only plugin |
 | `view.width`, `view.height` | Initial expanded size; defaults 640 × 440 |
 | `view.minWidth`, `view.minHeight` | Minimum expanded size; defaults 320 × 220 |
+| `view.instances` | `multiple` (default), or `single` for one durable window across projects on this Worker |
 | `preview` | HTML entry for Settings preview; may reuse `view.entry` |
 | `readme` | Markdown documentation file |
 | `author` | Displayed author text |
 | `icon` | Built-in glyph or packaged image declaration |
-| `contributes.actionBar`, `contributes.contextMenu` | Creation entries, both default true |
+| `contributes.actionBar`, `contributes.contextMenu` | Creation entries, both default true with a view and false without one |
+| `contributes.commands` | Declared plugin or window commands; see [Commands and skills](./COMMANDS.md) |
+| `contributes.skills` | Discoverable packaged `SKILL.md` files; see [Commands and skills](./COMMANDS.md#skills) |
 | `platforms` | Supported backend OS values: `darwin`, `linux`, `win32`; omit for all |
 
 An icon may be `{ "type": "builtin", "name": "puzzle" }` (or `git-branch`), or
@@ -64,8 +68,17 @@ creation actions and expanded/collapsed windows.
 IDs are installation-wide lowercase slugs, not display names. Do not change an ID
 on reload. Installing an already installed ID fails with a reload instruction;
 built-in IDs cannot be replaced. The host derives one node kind from each local
-plugin ID. This version does not dynamically register arbitrary commands or other
-host UI locations.
+plugin ID when it has a view. Packages without a view have no node kind, preview,
+or window creation entries. Commands are addressed through `opencove plugin run`,
+not registered as arbitrary host operations. A `window` command requires a view;
+a `plugin` command requires `main`.
+
+`view.instances` describes durable canvas nodes, not browser documents. `single`
+reuses one node across every project on the connected Worker. `multiple` allows
+independent nodes, and every window command requires an explicit node selection.
+The same node may be open on multiple clients; selecting its execution view is a
+separate step. Old manifests retain the `multiple` default. See
+[Window identity and selection](./COMMANDS.md#window-identity-and-selection).
 
 ## Browser SDK
 
@@ -99,6 +112,7 @@ path on the viewing device. There is no Node access in the view.
 | `await api.storage.set(key, value)` | Persists a JSON value under this plugin ID |
 | `await api.setTitle(title)` | Updates this node's host title; nonempty, at most 200 characters |
 | `api.onThemeChange((theme, colors) => { ... })` | Registers a callback; returns an unsubscribe function |
+| `api.onCommand((commandId, params) => { ... })` | Registers this document's window-command handler; returns an unsubscribe function |
 
 Storage is shared across real views of the plugin on this runtime. Use your own
 key/schema version and include `nodeId` if a value is per node. Values must be JSON
@@ -111,6 +125,8 @@ reporting that a change has been saved. A closing view loses its SDK lease: do n
 depend on an asynchronous `pagehide` or unload handler to save favorites, queues or
 other confirmed edits. Debounce transient progress if appropriate, with a clear
 recovery tolerance; a failed write must not be presented as a saved change.
+Successful `storage.set` resolves after the storage owner's file write succeeds.
+It does not turn several writes or a read/modify/write sequence into a transaction.
 
 Keys are 1–100 characters, start with a letter or digit and contain only letters,
 digits, `_`, `-` or `.`. Each value must fit within 1 MiB of JSON. A backend response
@@ -137,7 +153,10 @@ time. The SDK is injected automatically: do not include another SDK script.
 A failed invocation or expired view rejects its promise. Catch it and show a useful
 error. Do not render arbitrary service text with `innerHTML`. Backend calls have a
 30-second execution timeout and SDK requests time out after 45 seconds. Design
-long work as short polling calls or keep it in the view.
+long work as short polling calls or keep it in the view. Window-command dispatch
+has its own 30-second deadline and runs your actual document handler. Registration,
+return values, readiness and client selection are documented in
+[Commands and skills](./COMMANDS.md).
 
 ## Node backend
 
@@ -162,6 +181,13 @@ and installed snapshot are not data directories. `viewContext` contains
 `pluginId`, `nodeId`, `workspaceId`, `directoryPath` and `preview`, as above.
 Validate invocation methods and parameters. Return JSON-compatible values.
 
+For declared commands with `target: "plugin"`, the activation result supplies
+`runCommand(commandId, params, commandContext)`. Its context is `{ pluginId }`;
+there is no inferred node, project directory or browser. `invoke` remains the
+view-to-backend handler. A command-only backend may provide `runCommand` without
+`invoke`; a view-only package needs no backend. Declared plugin commands without
+their backend handler fail activation. See [Commands and skills](./COMMANDS.md).
+
 The backend is a trusted Node child process with full OS access, not a sandbox.
 Node standard-library imports work; bundle other dependencies before installation.
 Do not assume `process.cwd()` is a project root: use the supplied view context.
@@ -171,6 +197,13 @@ remain alive with no open windows. `dispose` is called during disable, reload,
 uninstall and host shutdown; it is not a per-window close callback. Handle your
 own asynchronous work deliberately. Opening a window should not repeat global
 initialization. Do not perform destructive or irreversible work during activation.
+
+Candidate activation can overlap the previous backend and uses the same private
+data directory. A failed reload keeps the previous code and installed record;
+it does **not** undo candidate writes, migrations or external side effects.
+Keep activation limited to safe setup, preserve data compatibility, and scope
+`dispose` to resources owned by that particular process. The host's publication
+transaction is not a transaction over plugin data.
 
 Backend stdout/stderr and `context.log` provide diagnostic information through
 `plugin details`. Keep logs concise and omit tokens and private user content.
@@ -204,6 +237,13 @@ preview and production avoids a misleading fake preview.
 | Failed reload | Existing valid installation remains active |
 | App restart | Installation and durable data restored; transient JS state restarts |
 | Uninstall | Installation removed; source, node placeholders and private data retained |
+
+Closing a singleton removes its canvas node; a later open creates a fresh node.
+Plugin-private data remains separate from that node's lifetime. Window command
+selection excludes previews. Close, disable, reload, uninstall, or disconnect
+rejects affected pending window calls. Backend calls are rejected when their
+process stops. The host never retries a command: a timeout or lost reply can occur
+after a side effect, so inspect state before deliberately issuing it again.
 
 Media playback is transient browser state. Collapse can preserve it; reload or
 restart does not preserve a live audio object. Persist track IDs, position and user

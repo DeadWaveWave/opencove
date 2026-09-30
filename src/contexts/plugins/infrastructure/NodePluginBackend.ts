@@ -1,6 +1,8 @@
 import { fork } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
+import { pluginJsonValue } from '../domain/pluginJsonValue'
+import type { PluginCommandContext, PluginViewContext } from '../domain/pluginRuntimeTypes'
 import type {
   PluginBackend,
   PluginBackendPort,
@@ -142,6 +144,10 @@ export class NodePluginBackend implements PluginBackendPort {
         entry: resolve(snapshot.directory, snapshot.package.main),
         pluginId: snapshot.package.id,
         dataDirectory: options.dataDirectory,
+        commandIds:
+          snapshot.package.contributes?.commands
+            ?.filter(command => command.target === 'plugin')
+            .map(command => command.id) ?? [],
       },
       error => {
         if (error) {
@@ -155,31 +161,39 @@ export class NodePluginBackend implements PluginBackendPort {
       await dispose()
       throw error
     }
-    return {
-      invoke: async (method, params, context) => {
-        if (closed || unavailable || !ready) {
-          throw unavailable ?? new Error('Plugin process is unavailable.')
-        }
-        if (pending.size >= 128) {
-          throw new Error('Too many pending plugin requests.')
-        }
-        const requestId = randomUUID()
-        return await new Promise<unknown>((accept, reject) => {
-          const timer = setTimeout(() => {
-            pending.delete(requestId)
-            reject(new Error('Plugin request timed out.'))
-          }, 30_000)
-          pending.set(requestId, { resolve: accept, reject, timer })
-          child.send({ type: 'invoke', requestId, method, params, context }, error => {
-            if (!error) {
-              return
-            }
-            pending.delete(requestId)
-            clearTimeout(timer)
-            reject(error)
-          })
+    const request = async (
+      type: 'invoke' | 'command',
+      method: string,
+      params: unknown,
+      context: PluginViewContext | PluginCommandContext,
+    ): Promise<unknown> => {
+      if (closed || unavailable || !ready) {
+        throw unavailable ?? new Error('Plugin process is unavailable.')
+      }
+      if (pending.size >= 128) {
+        throw new Error('Too many pending plugin requests.')
+      }
+      const value = pluginJsonValue(params, 1024 * 1024, 'request')
+      const requestId = randomUUID()
+      return await new Promise<unknown>((accept, reject) => {
+        const timer = setTimeout(() => {
+          pending.delete(requestId)
+          reject(new Error('Plugin request timed out.'))
+        }, 30_000)
+        pending.set(requestId, { resolve: accept, reject, timer })
+        child.send({ type, requestId, method, params: value, context }, error => {
+          if (!error) {
+            return
+          }
+          pending.delete(requestId)
+          clearTimeout(timer)
+          reject(error)
         })
-      },
+      })
+    }
+    return {
+      invoke: (method, params, context) => request('invoke', method, params, context),
+      runCommand: (commandId, params, context) => request('command', commandId, params, context),
       dispose,
     }
   }

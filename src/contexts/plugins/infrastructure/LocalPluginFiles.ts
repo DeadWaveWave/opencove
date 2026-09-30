@@ -168,7 +168,13 @@ export class LocalPluginFiles implements PluginFilesPort {
         JSON.parse(await readFile(join(temporary, 'opencove.plugin.json'), 'utf8')),
       )
       this.checkPlatform(pkg.platforms)
-      const required = [pkg.view.entry, pkg.main, pkg.preview, pkg.readme]
+      const required = [
+        pkg.view?.entry,
+        pkg.main,
+        pkg.preview,
+        pkg.readme,
+        ...(pkg.contributes?.skills?.map(skill => skill.path) ?? []),
+      ]
       if (pkg.icon?.type === 'asset') {
         required.push(pkg.icon.path, pkg.icon.light, pkg.icon.dark)
       }
@@ -285,6 +291,20 @@ export class LocalPluginFiles implements PluginFilesPort {
     }
     /* eslint-enable no-await-in-loop */
     return { readme, assets }
+  }
+
+  async readSkill(
+    snapshot: PluginSnapshot,
+    path: string,
+  ): Promise<{ content: string; path: string }> {
+    const resource = await this.readResource(snapshot, path)
+    if (resource.body.byteLength > 128 * 1024) {
+      throw new Error('Plugin skill exceeds 128 KiB.')
+    }
+    return {
+      content: Buffer.from(resource.body).toString('utf8'),
+      path: await realpath(join(snapshot.directory, pluginRelativePath(path))),
+    }
   }
 
   dataDirectory(pluginId: string): string {

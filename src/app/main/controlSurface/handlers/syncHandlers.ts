@@ -252,7 +252,7 @@ function normalizeCreateNotePayload(payload: unknown): CreateNoteInput {
 async function persistNextAppState(
   store: PersistenceStore,
   nextState: unknown,
-  options?: { allowEmptyWorkspaceOverwrite?: boolean },
+  options?: { allowEmptyWorkspaceOverwrite?: boolean; expectedRevision?: number },
 ): Promise<void> {
   const result = await store.writeAppState(nextState, options)
   if (!result.ok) {
@@ -373,6 +373,7 @@ export function registerSyncHandlers(
 
       await persistNextAppState(store, payload.state, {
         allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
+        expectedRevision: payload.baseRevision ?? currentRevision,
       })
       const normalizedState = normalizePersistedAppState(payload.state)
       if (normalizedState && options.onStatePersisted) {
@@ -389,6 +390,7 @@ export function registerSyncHandlers(
     validate: normalizeCreateNotePayload,
     handle: async (ctx, payload): Promise<CreateNoteResult> => {
       const store = await getPersistenceStore()
+      const expectedRevision = await store.readAppStateRevision()
       const raw = await store.readAppState()
       const normalized = normalizePersistedAppState(raw)
 
@@ -475,7 +477,7 @@ export function registerSyncHandlers(
         }),
       }
 
-      await persistNextAppState(store, nextState)
+      await persistNextAppState(store, nextState, { expectedRevision })
       const revision = await store.readAppStateRevision()
 
       return {

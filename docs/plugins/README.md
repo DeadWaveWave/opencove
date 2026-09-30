@@ -4,12 +4,13 @@ This is the guide shipped with the OpenCove build that returned it. Start with
 `opencove plugin guide`; it prints this README's absolute path and the documentation
 directory. The command works offline and does not start an app or Worker.
 
-**This build can install an independent local plugin directory.** A plugin supplies
-an HTML view, optional Node backend, README, icon and interactive preview. Its
-window uses OpenCove's normal header, drag, resize, collapse and close behavior.
+**This build can install an independent local plugin directory.** A plugin can
+supply an HTML view, commands, skills, an optional Node backend, README, icon and
+interactive preview. Its window uses OpenCove's normal header, drag, resize,
+collapse and close behavior. Command-only and skill-only packages need no window.
 You do not edit or rebuild OpenCove to install or reload a plugin.
 
-Before designing a view, read [Plugin visual design](./VISUAL_DESIGN.md): host
+Before designing a view, read [OpenCove plugin design system](./VISUAL_DESIGN.md): host
 boundaries, layout, typography, theme colors, controls and a copyable CSS baseline.
 It gives defaults without making every plugin use the same content layout.
 
@@ -35,19 +36,31 @@ without modifying an existing Desktop session.
 | `opencove plugin list` | Lists built-in and installed plugins |
 | `opencove plugin install <directory>` | Validates and installs a local directory |
 | `opencove plugin details <id>` | Returns an installed local plugin's manifest, README, source directory, assets and recent backend logs |
+| `opencove plugin run <id> <command> [--params <json>]` | Runs a declared command; window commands support `--node`, `--view` and `--project` selection |
+| `opencove plugin open <id> [--project <id>] [--space <id>] [--node <id>]` | Opens or reuses a plugin window and requests focus |
+| `opencove plugin windows <id> [--project <id>]` | Lists durable windows and their current execution views |
+| `opencove plugin skill <id> <skill>` | Reads a declared skill and returns its Worker-local path and installation instructions |
 | `opencove plugin reload <id>` | Validates and activates a new snapshot of the installed source directory |
 | `opencove plugin disable <id>` | Stops a local plugin's content and backend, preserving its nodes and data |
 | `opencove plugin enable <id>` | Makes the installed local plugin available again |
 | `opencove plugin uninstall <id>` | Removes the local installation; does not delete source or private data |
 
 `list` includes built-in plugins, but `details`, `reload`, `enable`, `disable` and
-`uninstall` currently operate on local installations only. View built-in Git Board
+`uninstall`, as well as contributed commands, windows and skills, operate on local
+installations only. View built-in Git Board
 documentation and change its enablement in Settings → Plugins. Listing a built-in
 ID does not make it a local installation.
 
-Install and reload default to a 60-second request timeout to allow validation and
-backend activation. An explicit `--timeout <ms>` overrides this; other commands
+Install, reload and run default to a 60-second request timeout to allow validation,
+backend activation or window readiness. An explicit `--timeout <ms>` overrides this; other commands
 retain their normal default.
+
+`list` and `details` expose declared command and skill metadata. Read
+[Commands and skills](./COMMANDS.md) before invoking a contribution. A backend
+command needs no window. A window command executes in the selected browser
+document; multiple-instance plugins require `--node`, and multiple ready views
+of that node require `--view`. Skills are returned for inspection and deliberate
+installation; these commands do not modify an agent's skill directories.
 
 Installation reads a directory on the connected runtime's machine. Relative paths
 are resolved against the CLI's current directory; use an absolute path and run the
@@ -65,6 +78,9 @@ Settings → Plugins lists installed plugins. Each entry opens Markdown document
 and an optional interactive preview. The plugin's declared action-bar and canvas
 context-menu entries are independently visible by default; hide either without
 stopping the plugin or existing nodes. Enablement controls execution separately.
+Packages without a view have no window creation entries. A plugin declaring
+`view.instances: "single"` reuses one window across this Worker's projects;
+the default `multiple` permits separate windows.
 
 The host owns each node's header, icon, title, resize, placement, collapse and close.
 The plugin owns the content. Collapsing keeps its view mounted; closing releases
@@ -90,8 +106,9 @@ is not a separate installation.
   the UI and plays media; the Node backend runs on the connected host. Do not assume
   that the viewing device and runtime machine are the same computer.
 - GitHub discovery, repository cloning, upstream merge/update, arbitrary host UI
-  patches, contributed CLI commands and automatic skill installation remain future
-  work. The current extension points are plugin nodes and their creation entries.
+  patches and automatic skill installation remain future work. Declared plugin
+  commands, actual window commands, packaged skills, plugin nodes and their
+  creation entries are supported through the fixed public plugin interface.
 - Built-in Git Board follows application updates. Local install/reload/uninstall
   does not replace built-in implementations.
 

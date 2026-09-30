@@ -11,9 +11,12 @@ a separate development web server. The package and browser API are in [API.md](A
 | Installation, source directory, active revision, enabled intent | `PluginInstallationManager`, one per Worker runtime | `plugins/installed.json` |
 | Published package files | `LocalPluginFiles` | Immutable artifact directory |
 | Backend execution, pending calls, logs | Child backend port and manager | Runtime only; restored from installed revision |
+| Command and skill declarations | Installed package, projected by the manager | Immutable manifest for the installed revision |
+| Window-command readiness and pending replies | `PluginWindowCommands`, bound to one view connection | Runtime only; never persisted or retried |
 | Plugin SDK data | Manager with serialized filesystem writes | Plugin-private storage files |
 | Preview data/backend | One view lease | Temporary memory/data directory; removed on close |
 | Window geometry, pinned title and node identity | Existing workspace owners | Existing workspace persistence |
+| Singleton window identity | Workspace plugin-window policy on the connected Worker | Existing plugin nodes across all projects; no second singleton registry |
 | Current content title, iframe, media object | Client presentation/view | Runtime only; authored plugin restores its own saved data |
 | Entry visibility | Existing application settings owner | Existing contribution preferences |
 
@@ -25,6 +28,8 @@ Desktop IPC and Web invoke use fixed validated `plugin.*` operations. The
 Control Surface is a facade, not a second installation owner. A listener can stop
 without disposing the Worker plugin manager. Plugin activation must not block
 core Worker/PTY readiness.
+Command names remain data inside the plugin owner. The fixed command facade does
+not hot-register new top-level Control Surface handlers after installation.
 
 ```mermaid
 flowchart LR
@@ -33,6 +38,8 @@ flowchart LR
     Source[Independent source directory] --> Snapshot[Candidate snapshot]
     Snapshot --> Manager
     Manager --> Child[Trusted Node process]
+    Manager --> Commands[One addressed window command]
+    Commands --> Frame
     Manager --> Registry[Installed revision and data]
     Manager --> Assets[Scoped asset lease]
     Assets --> Frame[Desktop or Web plugin view]
@@ -57,6 +64,18 @@ resources use their own response CSP; the application's CSP is not weakened.
    bearer token; the host binds every frame request to that view and checks its
    source/origin. Closing, disabling or replacing a generation revokes leases.
    Late replies cannot update a replacement view.
+4. A window command names a durable node and reaches exactly one ready document.
+   Previews are excluded. Multiple ready clients require an explicit view ID;
+   neither focus nor a singleton node implies a unique physical browser. Missing
+   acknowledgments never trigger command replay.
+
+Atomic publication protects the installed record and active code generation.
+Candidate activation may overlap the previous backend and receives the same
+private data directory. Failed activation or publication cannot undo data writes,
+schema migrations, network requests or other side effects already performed by
+that candidate. Authors must make activation safe to overlap and keep data
+compatible with the still-active version. Disposal owns only resources created
+by that instance; it must not erase shared data used by its replacement.
 
 The iframe stays mounted at its expanded geometry during collapse. The browser
 owns audio on the viewing device. Closing destroys the view; a shared backend can
@@ -64,12 +83,34 @@ remain alive until disable/reload/uninstall/shutdown. Do not infer continued aud
 from a successful backend request: exercise the actual browser media element.
 
 The injected SDK maintains a capability-scoped WebSocket on the asset listener.
-It carries only view presence, with native ping/pong, and consumes no long-lived
-HTTP request slots. Collapsed, idle and background views remain alive without
+It carries native ping/pong presence plus the versioned window-command protocol,
+and consumes no long-lived HTTP request slots. Collapsed, idle and background views remain alive without
 JavaScript heartbeats. Page departure explicitly releases the lease; an unopened
 or disconnected view has a three-minute reconnection grace before its resources
 and preview process are reclaimed. Closing or retiring a generation revokes the
 connection immediately. Authors do not implement this lifecycle themselves.
+
+Protocol 2 advertises readiness only after parent initialization and registration
+of `api.onCommand`. The Worker validates each reply on its originating connection;
+request IDs cannot satisfy another view's pending call. Requests are bounded to
+1 MiB and replies to 2 MiB; each connection has at most 128 pending calls, each
+with a 30-second deadline. A connection loss rejects its pending commands while
+the ordinary view lease may remain eligible for reconnection. Reconnection can
+restore readiness but does not replay actions or accept old replies.
+
+`target: "plugin"` calls the shared backend's `runCommand` with only `pluginId`
+as context. `target: "window"` calls the selected iframe's handler, including for
+packages without a backend. View-to-backend `invoke` keeps its original scoped
+context and is a separate entry. A package without `view` can provide backend
+commands and skills but cannot open a canvas window or preview.
+
+`view.instances: "single"` means one durable node across the connected Worker's
+projects. Closing removes that node; reopening can create a fresh one while
+private data remains. The default `multiple` preserves old manifest behavior and
+requires explicit node selection for commands. Workspace persistence owns window
+creation; the plugin manager neither fabricates nodes nor opens hidden leases to
+execute commands. See [Commands and skills](./COMMANDS.md) for readiness, placement
+and client-selection behavior.
 
 ## Initial scope and routing
 
@@ -82,18 +123,28 @@ RPC and resource URL resolver; Web uses its connected Worker. It does not yet
 relocate an independent plugin backend according to a Space's remote mount.
 For a mount-bound node, the view therefore receives no presumed local project
 directory. `workspaceId` is context, not authority to access remote files.
-Automatic mount routing, GitHub discovery/update and plugin CLI/skill contributions
-remain later capabilities.
+Automatic mount routing and GitHub discovery/update remain later capabilities.
+Skill reads use the installed snapshot and return its Worker-local path, exact
+text and an installation prompt. They do not execute skill instructions or write
+to agent-owned directories. Disabled installations can still expose their skills.
 
 ## Verification
 
-Keep regressions at three levels: manager/child tests for atomic activation,
-restore and cleanup; HTTP contracts for auth, lease revocation and resource paths;
+Keep regressions at three levels: manager/child tests for atomic publication,
+restore, declaration validation, JSON bounds and cleanup; HTTP/WebSocket contracts
+for auth, lease revocation, readiness, addressed replies and resource paths;
 real Desktop/Web tests installing the published example from an independent
 directory. The authoring acceptance test is a fresh Agent that receives product
 requirements and `opencove plugin guide`, without host-source instructions.
+Command acceptance must also exercise no-window backend execution, real browser
+handlers, multi-client ambiguity, reload/disconnect fencing and lack of retries.
+Singleton tests use durable nodes across projects and concurrent opens; a lease
+count cannot prove singleton correctness.
 
 The design applies the process and message-boundary principles documented in
 [VS Code's extension host](https://code.visualstudio.com/api/advanced-topics/extension-host)
 and [webview API](https://code.visualstudio.com/api/extension-guides/webview), while
 keeping OpenCove's Worker ownership and persistent canvas windows.
+Command metadata and execution remain separate as in
+[VS Code commands](https://code.visualstudio.com/api/extension-guides/command);
+packaged instructions follow the [Agent Skills format](https://agentskills.io/specification).

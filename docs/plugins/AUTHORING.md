@@ -4,7 +4,7 @@ Read the README returned by `opencove plugin guide` and this guide before buildi
 The runnable example and [API reference](./API.md) are in the same documentation
 directory, including in packaged builds. No OpenCove source checkout is required.
 
-Before writing UI, read [Plugin visual design](./VISUAL_DESIGN.md). Start from its
+Before writing UI, read [OpenCove plugin design system](./VISUAL_DESIGN.md). Start from its
 compact layout and theme-aware control baseline, then adapt the content to the
 plugin's task. A reference product supplies ideas, not an extra app shell inside
 OpenCove's window.
@@ -105,7 +105,10 @@ files. The host injects `window.opencovePlugin` before your scripts. Await its
 bridge, reach into the host DOM, or depend on internal OpenCove imports.
 
 The optional backend is an ESM file exporting `activate(context)`. It returns an
-object with an `invoke(method, params, viewContext)` handler and optional `dispose`.
+object with `invoke(method, params, viewContext)` for view calls and/or
+`runCommand(commandId, params, context)` for plugin-wide commands, plus optional `dispose`.
+Window commands use the browser SDK's `api.onCommand` and do not require a backend.
+See [Commands and skills](./COMMANDS.md) for targeting, single-window reuse, and skill declarations.
 Use Node built-ins directly; bundle other runtime dependencies into distributable
 files. A source `node_modules` folder is excluded from snapshots. The host does not
 run install/build scripts, TypeScript transpilation or a separate development

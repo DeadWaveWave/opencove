@@ -1,4 +1,10 @@
-import type { PluginIconDeclaration, PluginManifest, PluginViewDefinition } from './pluginTypes'
+import type {
+  PluginCommandDeclaration,
+  PluginIconDeclaration,
+  PluginManifest,
+  PluginSkillDeclaration,
+  PluginViewDefinition,
+} from './pluginTypes'
 
 /** Public source-directory contract. Version 1 is still a development API. */
 export interface LocalPluginPackage {
@@ -10,10 +16,15 @@ export interface LocalPluginPackage {
   author?: string
   icon?: PluginIconDeclaration
   main?: string
-  view: Partial<Omit<PluginViewDefinition, 'entry'>> & { entry: string }
+  view?: Partial<Omit<PluginViewDefinition, 'entry'>> & { entry: string }
   preview?: string
   readme?: string
-  contributes?: { actionBar?: boolean; contextMenu?: boolean }
+  contributes?: {
+    actionBar?: boolean
+    contextMenu?: boolean
+    commands?: PluginCommandDeclaration[]
+    skills?: PluginSkillDeclaration[]
+  }
   platforms?: Array<'darwin' | 'linux' | 'win32'>
 }
 
@@ -31,6 +42,30 @@ export interface PluginViewContext {
   workspaceId: string | null
   directoryPath: string | null
   preview: boolean
+}
+
+export interface PluginCommandContext {
+  pluginId: string
+}
+
+export interface PluginCommandTarget {
+  nodeId?: string
+  viewId?: string
+}
+
+export interface PluginLiveView {
+  nodeId: string
+  viewId: string
+  ready: boolean
+}
+
+export interface PluginSkillDetails {
+  pluginId: string
+  skill: PluginSkillDeclaration
+  content: string
+  /** Absolute path on the connected Worker; not necessarily on the CLI machine. */
+  path: string
+  installPrompt: string
 }
 
 export interface PluginOpenViewResult {

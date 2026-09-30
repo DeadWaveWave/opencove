@@ -3,10 +3,12 @@ import type { DbAppMetaKey } from './schema'
 import type { NormalizedPersistedAppState } from './normalize'
 import { normalizeScrollback } from './normalize'
 import { safeJsonStringify } from './utils'
+import { PersistenceRevisionConflict } from './revisionConflict'
 
 export function writeNormalizedAppState(
   db: Database.Database,
   state: NormalizedPersistedAppState,
+  expectedRevision?: number,
 ): number {
   const readMetaValue = db.prepare(
     `
@@ -85,6 +87,9 @@ export function writeNormalizedAppState(
         : 0
     const nextRevision =
       Number.isFinite(currentRevision) && currentRevision >= 0 ? currentRevision + 1 : 1
+    if (expectedRevision !== undefined && expectedRevision !== nextRevision - 1) {
+      throw new PersistenceRevisionConflict(expectedRevision, nextRevision - 1)
+    }
 
     db.exec(`
       DELETE FROM workspace_space_nodes;

@@ -1,5 +1,9 @@
 import type { LocalPluginPackage } from './pluginRuntimeTypes'
-import type { PluginIconDeclaration } from './pluginTypes'
+import type {
+  PluginCommandDeclaration,
+  PluginIconDeclaration,
+  PluginSkillDeclaration,
+} from './pluginTypes'
 
 export function pluginRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -65,6 +69,63 @@ function icon(value: unknown): PluginIconDeclaration | undefined {
   }
 }
 
+function declarations<T>(
+  value: unknown,
+  field: string,
+  normalize: (item: Record<string, unknown>) => T & { id: string },
+): T[] {
+  if (value === undefined) {
+    return []
+  }
+  if (!Array.isArray(value) || value.length > 100) {
+    throw new Error(`Plugin ${field} must be an array of at most 100 declarations.`)
+  }
+  const ids = new Set<string>()
+  return value.map(item => {
+    const declaration = normalize(pluginRecord(item))
+    if (ids.has(declaration.id)) {
+      throw new Error(`Duplicate plugin ${field} id: ${declaration.id}`)
+    }
+    ids.add(declaration.id)
+    return declaration
+  })
+}
+
+function declarationId(value: unknown, field: string): string {
+  const id = pluginString(value, `${field} id`, 80)
+  if (!/^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/.test(id)) {
+    throw new Error(`Plugin ${field} id must use lowercase letters, digits, dots and hyphens.`)
+  }
+  return id
+}
+
+function command(value: Record<string, unknown>): PluginCommandDeclaration {
+  if (value.target !== 'plugin' && value.target !== 'window') {
+    throw new Error('Plugin command target must be plugin or window.')
+  }
+  return {
+    id: declarationId(value.id, 'command'),
+    title: pluginString(value.title, 'command title', 120),
+    description: pluginString(value.description, 'command description', 2000),
+    target: value.target,
+    ...(value.usage === undefined
+      ? {}
+      : { usage: pluginString(value.usage, 'command usage', 2000) }),
+  }
+}
+
+function skill(value: Record<string, unknown>): PluginSkillDeclaration {
+  const path = pluginRelativePath(value.path, 'skill path')
+  if (path.split('/').at(-1) !== 'SKILL.md') {
+    throw new Error('Plugin skill path must name a SKILL.md file.')
+  }
+  return {
+    id: declarationId(value.id, 'skill'),
+    description: pluginString(value.description, 'skill description', 1024),
+    path,
+  }
+}
+
 export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage {
   const raw = pluginRecord(value)
   if (raw.apiVersion !== 1) {
@@ -78,14 +139,36 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
   if (!/^\d+\.\d+\.\d+(?:[-+][a-zA-Z0-9.-]+)?$/.test(version)) {
     throw new Error('Invalid plugin version.')
   }
-  const view = pluginRecord(raw.view)
-  const minWidth = dimension(view.minWidth, 320)
-  const minHeight = dimension(view.minHeight, 220)
+  const view = raw.view === undefined ? undefined : pluginRecord(raw.view)
+  const minWidth = dimension(view?.minWidth, 320)
+  const minHeight = dimension(view?.minHeight, 220)
   const contributes = raw.contributes === undefined ? {} : pluginRecord(raw.contributes)
   for (const key of ['actionBar', 'contextMenu']) {
     if (contributes[key] !== undefined && typeof contributes[key] !== 'boolean') {
       throw new Error(`Plugin contributes.${key} must be a boolean.`)
     }
+  }
+  const commands = declarations(contributes.commands, 'commands', command)
+  const skills = declarations(contributes.skills, 'skills', skill)
+  if (
+    !view &&
+    (raw.preview !== undefined ||
+      contributes.actionBar === true ||
+      contributes.contextMenu === true)
+  ) {
+    throw new Error('Plugin preview and window contributions require a view.')
+  }
+  if (!view && commands.some(item => item.target === 'window')) {
+    throw new Error('Plugin window commands require a view.')
+  }
+  if (commands.some(item => item.target === 'plugin') && raw.main === undefined) {
+    throw new Error('Plugin commands targeting the plugin require a main backend.')
+  }
+  if (!view && commands.length === 0 && skills.length === 0) {
+    throw new Error('Plugin must provide a view, command or skill.')
+  }
+  if (view?.instances !== undefined && !['single', 'multiple'].includes(String(view.instances))) {
+    throw new Error('Plugin view.instances must be single or multiple.')
   }
   if (
     raw.platforms !== undefined &&
@@ -95,8 +178,8 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
   ) {
     throw new Error('Plugin platforms must contain darwin, linux or win32.')
   }
-  const entry = pluginRelativePath(view.entry, 'view.entry')
-  if (!/\.html?$/i.test(entry)) {
+  const entry = view ? pluginRelativePath(view.entry, 'view.entry') : undefined
+  if (entry && !/\.html?$/i.test(entry)) {
     throw new Error('Plugin view.entry must be HTML.')
   }
   const main = raw.main === undefined ? undefined : pluginRelativePath(raw.main, 'main')
@@ -112,18 +195,25 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
     ...(raw.author === undefined ? {} : { author: pluginString(raw.author, 'author', 200) }),
     icon: icon(raw.icon),
     main,
-    view: {
-      entry,
-      minWidth,
-      minHeight,
-      width: Math.max(minWidth, dimension(view.width, 640)),
-      height: Math.max(minHeight, dimension(view.height, 440)),
-    },
+    ...(view && entry
+      ? {
+          view: {
+            entry,
+            instances: (view.instances ?? 'multiple') as 'single' | 'multiple',
+            minWidth,
+            minHeight,
+            width: Math.max(minWidth, dimension(view.width, 640)),
+            height: Math.max(minHeight, dimension(view.height, 440)),
+          },
+        }
+      : {}),
     ...(raw.preview === undefined ? {} : { preview: pluginRelativePath(raw.preview, 'preview') }),
     ...(raw.readme === undefined ? {} : { readme: pluginRelativePath(raw.readme, 'readme') }),
     contributes: {
-      actionBar: contributes.actionBar !== false,
-      contextMenu: contributes.contextMenu !== false,
+      actionBar: Boolean(view) && contributes.actionBar !== false,
+      contextMenu: Boolean(view) && contributes.contextMenu !== false,
+      commands,
+      skills,
     },
     ...(raw.platforms === undefined
       ? {}

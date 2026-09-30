@@ -2,10 +2,14 @@ import type { IncomingMessage } from 'node:http'
 import type { Duplex } from 'node:stream'
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
+import { PLUGIN_WINDOW_REPLY_BYTES } from '../../../contexts/plugins/application/PluginWindowCommands'
 
-/** A native connection proves view presence without relying on background JavaScript timers. */
+/** Native presence and window commands share one revocable view capability. */
 export class PluginViewLifecycle {
-  private readonly server = new WebSocketServer({ noServer: true, maxPayload: 64 })
+  private readonly server = new WebSocketServer({
+    noServer: true,
+    maxPayload: PLUGIN_WINDOW_REPLY_BYTES + 4096,
+  })
   private readonly clients = new Map<WebSocket, boolean>()
   private readonly heartbeat: ReturnType<typeof setInterval>
   private closed = false
@@ -14,7 +18,8 @@ export class PluginViewLifecycle {
     private readonly plugins: Pick<
       PluginInstallationManager,
       'hasResourceToken' | 'attachViewConnection'
-    >,
+    > &
+      Partial<Pick<PluginInstallationManager, 'connectViewCommands'>>,
     heartbeatMs = 30_000,
   ) {
     this.heartbeat = setInterval(() => {
@@ -48,15 +53,49 @@ export class PluginViewLifecycle {
         client.close(4001, 'View closed')
         return
       }
+      const commands = this.plugins.connectViewCommands?.(token, message => {
+        if (client.readyState !== client.OPEN) {
+          throw new Error('Plugin window disconnected.')
+        }
+        client.send(JSON.stringify(message), error => {
+          if (error) {
+            client.terminate()
+          }
+        })
+      })
       this.clients.set(client, true)
       client.on('pong', () => this.clients.set(client, true))
       client.on('close', () => {
         this.clients.delete(client)
+        commands?.dispose()
         detach()
       })
       client.on('error', () => client.terminate())
-      // This channel owns only presence; all plugin calls still use the host message bridge.
-      client.on('message', () => client.terminate())
+      client.on('message', (data, binary) => {
+        try {
+          if (binary) {
+            throw new Error('Plugin window commands require JSON text.')
+          }
+          const message: unknown = JSON.parse(data.toString())
+          if (commands) {
+            commands.receive(message)
+          } else {
+            // Preview documents retain presence but can never receive real window commands.
+            const ready = message as Record<string, unknown> | null
+            if (
+              !ready ||
+              ready.type !== 'ready' ||
+              ready.protocol !== 2 ||
+              typeof ready.ready !== 'boolean'
+            ) {
+              throw new Error('This plugin view does not accept commands.')
+            }
+          }
+        } catch {
+          commands?.dispose()
+          client.close(1008, 'Invalid plugin command message')
+        }
+      })
     })
     return true
   }

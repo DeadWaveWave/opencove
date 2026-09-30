@@ -1,4 +1,8 @@
-import type { LocalPluginPackage, PluginViewContext } from '../domain/pluginRuntimeTypes'
+import type {
+  LocalPluginPackage,
+  PluginCommandContext,
+  PluginViewContext,
+} from '../domain/pluginRuntimeTypes'
 
 export interface PluginInstallationRecord {
   package: LocalPluginPackage
@@ -23,6 +27,7 @@ export interface PluginFilesPort {
   restore(record: PluginInstallationRecord): Promise<PluginSnapshot>
   readResource(snapshot: PluginSnapshot, path: string): Promise<PluginResource>
   readDetails(snapshot: PluginSnapshot): Promise<{ readme: string; assets: Record<string, string> }>
+  readSkill(snapshot: PluginSnapshot, path: string): Promise<{ content: string; path: string }>
   dataDirectory(pluginId: string): string
   removePreviewData(pluginId: string, viewId: string): Promise<void>
   readStorage(pluginId: string, key: string): Promise<unknown>
@@ -31,6 +36,7 @@ export interface PluginFilesPort {
 
 export interface PluginBackend {
   invoke(method: string, params: unknown, context: PluginViewContext): Promise<unknown>
+  runCommand?(commandId: string, params: unknown, context: PluginCommandContext): Promise<unknown>
   dispose(): Promise<void>
 }
 

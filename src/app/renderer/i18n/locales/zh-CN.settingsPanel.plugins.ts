@@ -1,4 +1,16 @@
 export const zhCNSettingsPanelPlugins = {
+  tools: {
+    commands: '命令',
+    skills: 'Skill',
+    skillsHelp: '将安装提示词交给 Agent，选择它的 Skill 目录后安装。',
+    copySkill: '复制安装提示词',
+    copyCommand: '复制 {{name}} 命令',
+    copy: '复制',
+    copied: '已复制',
+    withoutWindow: '无需打开窗口即可执行。',
+    selectedWindow: '需指定节点；同一节点在多端打开时，还需指定执行端。',
+    singleWindow: '复用此 Worker 中跨项目唯一的窗口，需要时自动打开。',
+  },
   installedTitle: '已安装',
   installedHelp: '内置插件随 OpenCove 更新。停用插件会保留画布上的节点和数据。',
   builtIn: '内置',

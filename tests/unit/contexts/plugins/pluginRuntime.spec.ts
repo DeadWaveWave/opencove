@@ -2,9 +2,9 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { transformWithEsbuild } from 'vite'
+import { writePluginHostTestFixture } from './pluginHostTestFixture'
 import { PluginInstallationManager } from '../../../../src/contexts/plugins/application/PluginInstallationManager'
 import { LocalPluginFiles } from '../../../../src/contexts/plugins/infrastructure/LocalPluginFiles'
 import { NodePluginBackend } from '../../../../src/contexts/plugins/infrastructure/NodePluginBackend'
@@ -287,13 +287,7 @@ describe('independent plugin installation ownership', () => {
 
 describe('real full-Node plugin child', () => {
   it('runs Node backend calls and reports crashes without deleting installation or data', async () => {
-    const transformed = await transformWithEsbuild(
-      await readFile(resolve('src/contexts/plugins/infrastructure/pluginHostEntry.ts'), 'utf8'),
-      'pluginHostEntry.ts',
-      { loader: 'ts', format: 'esm', target: 'node22' },
-    )
-    const host = join(root, 'host.mjs')
-    await writeFile(host, transformed.code)
+    const host = await writePluginHostTestFixture(root)
     await writeFile(
       join(source, 'main.mjs'),
       `import { writeFile, readFile } from 'node:fs/promises';

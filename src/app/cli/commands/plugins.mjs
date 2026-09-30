@@ -9,13 +9,100 @@ const COMMANDS = new Set([
   'enable',
   'disable',
   'details',
+  'run',
+  'skill',
+  'open',
+  'windows',
 ])
 
 export function resolvePluginCommandTimeout(request, requestedTimeout) {
   if (requestedTimeout !== null && requestedTimeout !== undefined) {
     return requestedTimeout
   }
-  return request?.id === 'plugin.install' || request?.id === 'plugin.reload' ? 60_000 : null
+  return ['plugin.install', 'plugin.reload', 'plugin.command.run'].includes(request?.id)
+    ? 60_000
+    : null
+}
+
+function parseContributionCommand(command, values) {
+  const count = command === 'run' || command === 'skill' ? 2 : 1
+  const positional = values.slice(0, count)
+  const flags =
+    command === 'run'
+      ? ['--params', '--node', '--view', '--project']
+      : command === 'open'
+        ? ['--node', '--project', '--space']
+        : command === 'windows'
+          ? ['--project']
+          : []
+  const options = new Map()
+  const invalid = () => {
+    throw new Error(
+      `usage: opencove plugin ${command} <id>${count === 2 ? (command === 'skill' ? ' <skill>' : ' <command>') : ''}${flags.length ? ` [${flags.join(' | ')} <value>]` : ''}. Run "opencove plugin guide" for instructions.`,
+    )
+  }
+  if (
+    positional.length !== count ||
+    positional.some(
+      (value, index) => !(index === 0 ? /^[a-z][a-z0-9-]*$/ : /^[a-z][a-z0-9.-]*$/).test(value),
+    )
+  ) {
+    invalid()
+  }
+  for (let index = count; index < values.length; index += 2) {
+    const flag = values[index]
+    const value = values[index + 1]
+    if (
+      !flags.includes(flag) ||
+      options.has(flag) ||
+      !value?.trim() ||
+      (value.startsWith('-') && flag !== '--params')
+    ) {
+      invalid()
+    }
+    options.set(flag, value)
+  }
+  const payload = { pluginId: positional[0] }
+  if (command === 'skill') {
+    return {
+      kind: 'query',
+      id: 'plugin.skill.get',
+      payload: { ...payload, skillId: positional[1] },
+    }
+  }
+  for (const [flag, key] of [
+    ['--node', 'nodeId'],
+    ['--view', 'viewId'],
+    ['--project', 'projectId'],
+    ['--space', 'spaceId'],
+  ]) {
+    if (options.has(flag)) {
+      payload[key] = options.get(flag)
+    }
+  }
+  if (command !== 'run') {
+    return {
+      kind: command === 'windows' ? 'query' : 'command',
+      id: command === 'windows' ? 'plugin.window.list' : 'plugin.window.open',
+      payload,
+    }
+  }
+  let params = null
+  if (options.has('--params')) {
+    try {
+      params = JSON.parse(options.get('--params'))
+    } catch {
+      throw new Error('Plugin --params must be valid JSON.')
+    }
+    if (Buffer.byteLength(JSON.stringify(params)) > 1024 * 1024) {
+      throw new Error('Plugin --params exceeds 1 MiB.')
+    }
+  }
+  return {
+    kind: 'command',
+    id: 'plugin.command.run',
+    payload: { ...payload, commandId: positional[1], params },
+  }
 }
 
 /** Parse before connecting so spelling and argument errors also work offline. */
@@ -25,6 +112,9 @@ export function parsePluginCommand(args, cwd = process.cwd()) {
     throw new Error(
       `unsupported plugin command: ${command || '<missing>'}. Run "opencove plugin guide" for supported plugin development and installation instructions.`,
     )
+  }
+  if (['run', 'skill', 'open', 'windows'].includes(command)) {
+    return parseContributionCommand(command, values)
   }
 
   const takesValue = command !== 'guide' && command !== 'list'

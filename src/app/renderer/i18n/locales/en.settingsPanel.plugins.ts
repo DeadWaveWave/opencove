@@ -1,4 +1,17 @@
 export const enSettingsPanelPlugins = {
+  tools: {
+    commands: 'Commands',
+    skills: 'Skills',
+    skillsHelp:
+      'Give the installation prompt to your Agent to choose its skill directory and install.',
+    copySkill: 'Copy installation prompt',
+    copyCommand: 'Copy {{name}} command',
+    copy: 'Copy',
+    copied: 'Copied',
+    withoutWindow: 'Runs without opening a window.',
+    selectedWindow: 'Specify a node. If it is open on multiple devices, specify a view too.',
+    singleWindow: 'Reuses one window across projects on this Worker, opening it if needed.',
+  },
   installedTitle: 'Installed',
   installedHelp:
     'Built-in plugins update with OpenCove. Disabling a plugin keeps its canvas nodes and data.',

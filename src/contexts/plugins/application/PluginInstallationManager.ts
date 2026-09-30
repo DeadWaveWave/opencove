@@ -1,10 +1,21 @@
 import { PluginViewLeases } from './PluginViewLeases'
+import { PluginWindowCommands } from './PluginWindowCommands'
+import { installedPluginManifest } from './pluginManifest'
+import { listPluginViews, readPluginSkill, runPluginCommand } from './pluginContributions'
+import {
+  assertPluginRuntimeGeneration,
+  type PluginRuntimeState as Runtime,
+  type PluginRuntimeView as View,
+} from './PluginRuntimeState'
 import type { PluginManifest } from '../domain/pluginTypes'
 import type {
   PluginDetails,
   PluginOpenViewInput,
   PluginOpenViewResult,
   PluginViewContext,
+  PluginCommandTarget,
+  PluginLiveView,
+  PluginSkillDetails,
 } from '../domain/pluginRuntimeTypes'
 import type {
   PluginBackend,
@@ -15,25 +26,10 @@ import type {
   PluginSnapshot,
 } from './PluginRuntimePorts'
 
-interface Runtime {
-  record: PluginInstallationRecord
-  snapshot: PluginSnapshot | null
-  backend: PluginBackend | null
-  error: string | null
-  logs: string[]
-}
-interface View {
-  id: string
-  token: string
-  runtime: Runtime
-  context: PluginViewContext
-  backend: PluginBackend | null
-  storage: Map<string, unknown>
-}
-
 export class PluginInstallationManager {
   private readonly runtimes = new Map<string, Runtime>()
   private readonly views: PluginViewLeases<View>
+  private readonly windowCommands: PluginWindowCommands
   private startup: Promise<void> | null = null
   private initializationError: Error | null = null
   private operations: Promise<unknown> = Promise.resolve()
@@ -49,6 +45,7 @@ export class PluginInstallationManager {
       scheduleViewExpiry: (expire: () => void) => () => void
     },
   ) {
+    this.windowCommands = new PluginWindowCommands(options.createId)
     this.views = new PluginViewLeases({
       scheduleExpiry: options.scheduleViewExpiry,
       onExpired: viewId => {
@@ -117,32 +114,7 @@ export class PluginInstallationManager {
   }
 
   private manifest(runtime: Runtime): PluginManifest {
-    const { record } = runtime
-    const pkg = record.package
-    return {
-      id: pkg.id,
-      version: pkg.version,
-      displayName: pkg.displayName,
-      description: pkg.description,
-      icon: pkg.icon,
-      author: pkg.author,
-      source: 'local',
-      nodeKinds: [pkg.id],
-      actionBar: pkg.contributes?.actionBar !== false,
-      contextMenu: pkg.contributes?.contextMenu !== false,
-      revision: record.revision,
-      enabled: record.enabled,
-      status: runtime.error ? 'error' : record.enabled ? 'ready' : 'disabled',
-      error: runtime.error,
-      view: {
-        entry: pkg.view.entry,
-        width: pkg.view.width ?? 640,
-        height: pkg.view.height ?? 440,
-        minWidth: pkg.view.minWidth ?? 320,
-        minHeight: pkg.view.minHeight ?? 220,
-      },
-      hasPreview: Boolean(pkg.preview),
-    }
+    return installedPluginManifest(runtime)
   }
 
   async list(): Promise<PluginManifest[]> {
@@ -174,6 +146,12 @@ export class PluginInstallationManager {
     }
   }
 
+  async skill(pluginId: string, skillId: string): Promise<PluginSkillDetails> {
+    await this.start()
+    this.assertOpen()
+    return await readPluginSkill(this.options.files, this.get(pluginId), skillId)
+  }
+
   private addLog(runtime: Runtime, message: string): void {
     runtime.logs.push(message.slice(0, 4000))
     if (runtime.logs.length > 100) {
@@ -185,7 +163,7 @@ export class PluginInstallationManager {
     if (!runtime.snapshot?.package.main) {
       return null
     }
-    return await this.options.backend.start(runtime.snapshot, {
+    const backend = await this.options.backend.start(runtime.snapshot, {
       dataDirectory: this.options.files.dataDirectory(runtime.record.package.id),
       log: message => this.addLog(runtime, message),
       unavailable: message => {
@@ -193,6 +171,14 @@ export class PluginInstallationManager {
         this.addLog(runtime, message)
       },
     })
+    if (
+      runtime.record.package.contributes?.commands?.some(command => command.target === 'plugin') &&
+      !backend.runCommand
+    ) {
+      await backend.dispose()
+      throw new Error('Plugin backend must provide runCommand for declared plugin commands.')
+    }
+    return backend
   }
 
   async install(directory: string): Promise<PluginManifest> {
@@ -301,6 +287,10 @@ export class PluginInstallationManager {
       if (!runtime.snapshot) {
         throw new Error('Plugin artifact is unavailable.')
       }
+      const definition = runtime.record.package.view
+      if (!definition) {
+        throw new Error('Plugin does not provide a window.')
+      }
       if (!input.preview && (!runtime.record.enabled || runtime.error)) {
         throw new Error(runtime.error ?? 'Plugin is disabled.')
       }
@@ -340,9 +330,7 @@ export class PluginInstallationManager {
         throw new Error('Plugin runtime is shutting down.')
       }
       this.views.add(id, token, view)
-      const entry = context.preview
-        ? runtime.record.package.preview!
-        : runtime.record.package.view.entry
+      const entry = context.preview ? runtime.record.package.preview! : definition.entry
       return {
         viewId: id,
         resourcePath: `/plugin-assets/${token}/${entry.split('/').map(encodeURIComponent).join('/')}`,
@@ -366,6 +354,7 @@ export class PluginInstallationManager {
     if (!view) {
       return
     }
+    this.windowCommands.retire(viewId)
     await view.backend
       ?.dispose()
       .catch(error => this.addLog(view.runtime, `Preview cleanup: ${asError(error).message}`))
@@ -385,6 +374,48 @@ export class PluginInstallationManager {
       throw new Error('Plugin does not provide a backend.')
     }
     return await backend.invoke(method, params, view.context)
+  }
+
+  async listViews(pluginId: string): Promise<PluginLiveView[]> {
+    await this.start()
+    this.assertOpen()
+    const runtime = this.get(pluginId)
+    return listPluginViews(
+      this.views.values().filter(view => view.runtime === runtime),
+      this.windowCommands,
+    )
+  }
+
+  async runCommand(
+    pluginId: string,
+    commandId: string,
+    params: unknown,
+    target: PluginCommandTarget = {},
+    expected?: Pick<PluginManifest, 'revision' | 'runtimeGeneration'>,
+  ): Promise<unknown> {
+    await this.start()
+    this.assertOpen()
+    const runtime = this.get(pluginId)
+    assertPluginRuntimeGeneration(runtime, expected)
+    return await runPluginCommand(
+      runtime,
+      this.views.values().filter(view => view.runtime === runtime),
+      this.windowCommands,
+      commandId,
+      params,
+      target,
+    )
+  }
+
+  connectViewCommands(
+    token: string,
+    send: (message: unknown) => void,
+  ): ReturnType<PluginWindowCommands['connect']> | null {
+    const view = this.closed ? undefined : this.views.getByToken(token)
+    if (!view || view.context.preview) {
+      return null
+    }
+    return this.windowCommands.connect(view.id, send)
   }
 
   async storageGet(viewId: string, key: string): Promise<unknown> {

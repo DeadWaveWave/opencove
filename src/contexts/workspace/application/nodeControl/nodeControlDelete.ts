@@ -17,6 +17,7 @@ export async function deleteNodeForNodeControl(options: {
   input: DeleteNodeInput
   now: Date
 }): Promise<DeleteNodeResult> {
+  const expectedRevision = await options.store.readAppStateRevision()
   const state = requireNodeControlState(await options.store.readAppState())
   const matched = findNodeForNodeControl(state.workspaces, options.input.nodeId)
   if (!matched) {
@@ -27,6 +28,7 @@ export async function deleteNodeForNodeControl(options: {
   const revision = await persistNodeControlState(
     options.store,
     replaceNodeControlWorkspace(state, nextWorkspace),
+    expectedRevision,
   )
   const cleanup = { attempted: false, ok: true }
 

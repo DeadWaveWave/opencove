@@ -264,6 +264,7 @@ export async function createNodeForNodeControl(options: {
   input: CreateNodeInput
   now: Date
 }): Promise<CreateNodeResult> {
+  const expectedRevision = await options.store.readAppStateRevision()
   const state = requireNodeControlState(await options.store.readAppState())
   const resolved = await resolveSpaceLocatorForNodeControl(
     state,
@@ -312,7 +313,7 @@ export async function createNodeForNodeControl(options: {
   try {
     const nextWorkspace = workspaceWithNode(resolved.workspace, node, resolved.space.id)
     const nextState = replaceNodeControlWorkspace(state, nextWorkspace)
-    const revision = await persistNodeControlState(options.store, nextState)
+    const revision = await persistNodeControlState(options.store, nextState, expectedRevision)
     return {
       revision,
       projectId: resolved.workspace.id,

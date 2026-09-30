@@ -24,6 +24,7 @@ function createStubStore(state: unknown) {
       readWorkspaceStateRaw: async () => null,
       writeWorkspaceStateRaw: async () => ({ ok: true, level: 'full', bytes: 0 }),
       readAppState: async () => state,
+      readAppStateRevision: async () => 0,
       writeAppState: async (next: unknown) => {
         writtenState = next
         return { ok: true, level: 'full', bytes: 1 }

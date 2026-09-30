@@ -5,8 +5,11 @@ import { WebSocket } from 'ws'
 import { describe, expect, it, vi } from 'vitest'
 import { PluginViewLifecycle } from '../../../src/app/main/controlSurface/pluginViewLifecycle'
 import { PluginViewLeases } from '../../../src/contexts/plugins/application/PluginViewLeases'
+import { PluginWindowCommands } from '../../../src/contexts/plugins/application/PluginWindowCommands'
 
 async function setup(heartbeatMs = 30_000) {
+  let requestId = 0
+  const commands = new PluginWindowCommands(() => String(++requestId))
   const scheduled = new Set<() => void>()
   const leases = new PluginViewLeases<string>({
     scheduleExpiry: callback => {
@@ -23,6 +26,8 @@ async function setup(heartbeatMs = 30_000) {
     {
       hasResourceToken: token => leases.hasToken(token),
       attachViewConnection: (token, retired) => leases.attach(token, retired),
+      connectViewCommands: (token, send) =>
+        leases.getByToken(token) === 'window' ? commands.connect(token, send) : null,
     },
     heartbeatMs,
   )
@@ -49,6 +54,7 @@ async function setup(heartbeatMs = 30_000) {
   }
   return {
     leases,
+    commands,
     scheduled,
     origin,
     connect,
@@ -109,6 +115,72 @@ describe('native plugin view presence transport', () => {
       expect(runtime.leases.size).toBe(0)
       await expect(runtime.connect('unknown')).rejects.toThrow('404')
     } finally {
+      await runtime.dispose()
+    }
+  })
+
+  it('routes a window command over its live capability and rejects in-flight work on disconnect', async () => {
+    const runtime = await setup()
+    let client: WebSocket | undefined
+    try {
+      runtime.leases.add('view', 'view', 'window')
+      client = await runtime.connect('view')
+      expect(runtime.commands.isReady('view')).toBe(false)
+      client.send(JSON.stringify({ type: 'ready', protocol: 2, ready: true }))
+      await vi.waitFor(() => expect(runtime.commands.isReady('view')).toBe(true))
+      const incoming = once(client, 'message')
+      const work = runtime.commands.run('view', 'update', { value: 2 })
+      const message = JSON.parse((await incoming)[0].toString())
+      expect(message).toMatchObject({
+        type: 'command',
+        protocol: 2,
+        commandId: 'update',
+        params: { value: 2 },
+      })
+      client.send(
+        JSON.stringify({
+          type: 'result',
+          protocol: 2,
+          requestId: message.requestId,
+          ok: true,
+          value: { applied: true },
+        }),
+      )
+      await expect(work).resolves.toEqual({ applied: true })
+      const abandoned = runtime.commands.run('view', 'update', null)
+      const rejected = expect(abandoned).rejects.toThrow('not retried')
+      client.terminate()
+      await rejected
+      expect(runtime.commands.isReady('view')).toBe(false)
+    } finally {
+      client?.terminate()
+      await runtime.dispose()
+    }
+  })
+
+  it('ignores preview readiness, rejects malformed JSON traffic and retires its command connection', async () => {
+    const runtime = await setup()
+    const clients: WebSocket[] = []
+    try {
+      runtime.leases.add('preview', 'preview', 'preview')
+      runtime.leases.add('view', 'view', 'window')
+      const preview = await runtime.connect('preview')
+      const view = await runtime.connect('view')
+      clients.push(preview, view)
+      preview.send(JSON.stringify({ type: 'ready', protocol: 2, ready: true }))
+      view.send(JSON.stringify({ type: 'ready', protocol: 2, ready: true }))
+      await vi.waitFor(() => expect(runtime.commands.isReady('view')).toBe(true))
+      expect(runtime.commands.isReady('preview')).toBe(false)
+      expect(preview.readyState).toBe(WebSocket.OPEN)
+      const pending = runtime.commands.run('view', 'update', null)
+      const rejected = expect(pending).rejects.toThrow('not retried')
+      const closed = once(view, 'close')
+      view.send('not JSON')
+      expect((await closed)[0]).toBe(1008)
+      await rejected
+      expect(runtime.commands.isReady('view')).toBe(false)
+    } finally {
+      clients.forEach(client => client.terminate())
       await runtime.dispose()
     }
   })

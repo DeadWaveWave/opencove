@@ -1,4 +1,4 @@
-# Plugin visual design
+# OpenCove plugin design system
 
 Read this before designing a plugin view. It is the default visual baseline for
 OpenCove plugins, shipped beside the API guide. It is self-contained: an author
@@ -15,12 +15,11 @@ and accessibility requirements below intact.
 | --- | --- |
 | Host contract | OpenCove owns the outer frame, header, identity, focus, drag, resize, collapse, close and creation effects. Do not draw a second window shell. |
 | Recommended baseline | Follow the typography, density, control states and theme colors below. Deviations should serve a concrete interaction. |
-| Plugin expression | Artwork, charts, editors, media and domain-specific layouts can have their own identity. A music player and a Git graph need not look identical. |
+| Content design | Content and layouts can have their own identity while controls, spacing and interaction states remain consistent. |
 
-An external reference such as Apple Music can inform content hierarchy and
-playback interactions. Translate it to a resizable canvas window; a full product
-sidebar, promotional hero and repeated app logo usually consume the space needed
-for the user's task. Brand artwork is content, not a replacement for host colors.
+The plugin body is part of a resizable canvas window. Keep its structure compact,
+make the main action clear and reserve most of the space for useful content.
+Identity artwork is content, not a replacement for host colors.
 
 ## Layout and hierarchy
 
@@ -30,9 +29,9 @@ Start with the smallest arrangement that supports the main task:
 ┌ Host header: icon · title · collapse · close ┐  ← supplied by OpenCove
 │ Search / view choice              actions  │  ← optional compact toolbar
 │                                            │
-│ Main content: list, graph, editor or media   │  ← gets the available space
+│ Main content                               │  ← gets the available space
 │                                            │
-│ Context / playback / one primary action     │  ← optional footer
+│ Context / one primary action               │  ← optional footer
 └────────────────────────────────────────────┘
 ```
 
@@ -42,8 +41,8 @@ Start with the smallest arrangement that supports the main task:
   than wrapping every toolbar, list and footer in a separate rounded card.
 - Omit a toolbar/footer when it has no real function. Empty space need not be
   filled with headings, instructions, status labels or decoration.
-- The host already shows the plugin identity. Inside the body, headings should
-  describe content such as "Queue" or "Changed files", not repeat the plugin name.
+- The host already shows the plugin identity. Inside the body, headings describe
+  the current content rather than repeating the plugin name.
 - Secondary navigation starts as a small tab/view control. Use a persistent inner
   sidebar only when there is enough width and several distinct destinations.
 - Prefer a neutral content surface and thin dividers. At most one additional
@@ -63,14 +62,15 @@ All sizes are CSS pixels inside the view; canvas zoom belongs to the host.
 | Section title | 14px / 600; use 16–18px for a genuinely prominent content title |
 | Content padding | 12–16px; 8–12px in narrow views |
 | Spacing scale | 4, 8, 12, 16, 24px |
-| Toolbar / list rows | Usually 32–36px; artwork or a second text line can justify more |
+| Content rows | Usually 32–36px; artwork or a second text line can justify more |
+| Toolbar | 32px controls with 4–6px vertical padding; avoid stacking redundant toolbars |
 | Button / input | 30–32px height, 6px radius, 8–10px horizontal padding |
 | Icons | 16px in ordinary controls; consistent stroke weight and optical alignment |
 | Touch targets | At least 44 × 44px for coarse pointers; the glyph can stay small |
 | General-purpose initial node | Around 560–640px wide and 360–460px high; choose for the actual content |
 
 Use a system font stack. Use a monospace face only for code, paths or data that
-benefits from column alignment. Numeric counters and playback times can use
+benefits from column alignment. Numeric values can use
 `font-variant-numeric: tabular-nums` without making the entire UI monospace.
 The current SDK supplies theme colors, not a font or density API; these dimensions
 are authoring defaults, not additional SDK fields.
@@ -105,56 +105,39 @@ text or accessible state; color alone is insufficient.
 
 ### Copyable control baseline
 
-Place this in the plugin's own external stylesheet and reference it relatively.
-It is an optional starting point, not an automatically injected component library.
-Layout and event handlers remain the plugin's responsibility.
+Copy [ui/control-baseline.css](./ui/control-baseline.css) into the plugin package
+and load it as an external stylesheet with a relative URL. It uses only the six
+public theme tokens above and works without a framework or extra dependency.
+It is an optional, editable starting point, not an automatically injected library
+or another SDK API. Layout, accessible markup and event handlers remain the
+plugin's responsibility. Do not load it from the guide cache at runtime.
 
-```css
-:root {
-  font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
-  color: var(--cove-text);
-  background: var(--cove-window-surface);
-  color-scheme: light;
-}
-:root[data-theme='dark'] { color-scheme: dark; }
-* { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; }
-button, input, select, textarea { font: inherit; color: inherit; }
-button, input, select {
-  min-height: 32px;
-  border: 1px solid var(--cove-border);
-  border-radius: 6px;
-  background: var(--cove-surface);
-  padding: 5px 10px;
-}
-button { cursor: pointer; }
-button:hover:not(:disabled), button[aria-pressed='true'] {
-  background: color-mix(in srgb, var(--cove-accent) 10%, var(--cove-surface));
-}
-button.primary {
-  background: color-mix(in srgb, var(--cove-accent) 18%, var(--cove-surface));
-  border-color: color-mix(in srgb, var(--cove-accent) 55%, var(--cove-border));
-}
-button.ghost { border-color: transparent; background: transparent; }
-:where(button, input, select, textarea, a):focus-visible {
-  outline: 2px solid var(--cove-accent);
-  outline-offset: 2px;
-}
-button:disabled { opacity: .55; cursor: default; }
-.secondary { color: var(--cove-text-muted); }
-@media (pointer: coarse) {
-  button, input, select { min-height: 44px; }
-  button { min-width: 44px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-}
-```
+Use the classes that fit the view; unused regions are optional:
+
+| Class | Purpose |
+| --- | --- |
+| `cove-plugin-view` | Full-height root, system typography and theme surface |
+| `cove-plugin-toolbar` | Compact top row with a subtle bottom divider |
+| `cove-plugin-content` | Flexible, scrollable main content region |
+| `cove-plugin-footer` | Optional bottom action or context row |
+| `cove-plugin-button` | Standard button; retain this base class when adding a modifier |
+| `cove-plugin-button--primary`, `cove-plugin-button--ghost`, `cove-plugin-button--icon` | Primary action, quiet action or square icon action |
+| `cove-plugin-input` | Text input, select or textarea with a visible focus state |
+| `cove-plugin-field` | Label and control arranged vertically |
+| `cove-plugin-heading` / `cove-plugin-secondary` | Content title / supporting text |
+| `cove-plugin-grow` / `cove-plugin-truncate` | Flexible width / deliberate single-line truncation |
+
+Place the root on the view's body. Keep semantic elements: a real `button`, a
+label associated with its input, and `aria-pressed` only for a toggle. The baseline
+does not make an ordinary button into a tab or menu. Add the correct keyboard and
+focus behavior when implementing those controls. Destructive actions need clear
+wording and confirmation proportional to the consequence; the public color API
+does not currently supply a destructive-action token.
 
 Keep icon-only actions square with an accessible name and a hover/focus label.
 Use one consistent icon family for controls; package its assets and respect its
 license. Prefer a deliberate SVG/PNG/WebP identity over emoji for the plugin icon.
-Brand identities and album art can differ from control glyphs.
+Content imagery can differ from control glyphs.
 
 ## Interaction and responsive behavior
 
@@ -177,38 +160,11 @@ Brand identities and album art can differ from control glyphs.
 - A settings preview uses the same content components and styles as a real node.
   Label sample content, and retain the runtime/storage isolation in [API.md](./API.md).
 
-## Example: music player in a canvas
-
-A useful starting layout is **search/view controls → track list → playback bar**.
-At around 600 × 440px, show a modest current-track cover (48–64px), track/artist
-identity, play/pause, previous/next and a readable progress control. Give most of
-the remaining height to tracks. Open the queue on demand; a wider window can show
-it alongside the list. At narrow sizes, place it in the same content region with
-a clear return action.
-
-Keep album art and music identity expressive. Let window chrome, navigation and
-control density belong to OpenCove. Avoid spending the initial view on a separate
-brand sidebar, large record illustration, slogan and welcome heading. Show full
-track, preview and unavailable states honestly, near the affected item. Do not
-claim a play button works without exercising real audio.
-
-This is a design direction, not a claim that an existing music plugin already
-implements this arrangement. A plugin author should verify it at the chosen
-manifest minimum size and adjust its responsive layout accordingly.
-
 ## Visual acceptance for an Agent
 
 Before calling the plugin complete, inspect the actual installed view, not only a
 standalone page. Capture it in a host light and dark theme, at its initial and
 minimum sizes. Check keyboard focus, long labels, empty/error/loading states and
 reduced motion. Confirm the host frame is not duplicated and the first screen
-makes the main task obvious. Report deviations and untested states honestly.
-
-The runnable [Hello Clock](./examples/hello-clock/README.md) demonstrates the SDK,
-storage and lifecycle; its clock-specific typography is not a universal layout
-template. Use the baseline above for the new plugin's controls and structure.
-
-This guidance applies the host integration, theming and accessibility principles
-in the [VS Code webview UX guidelines](https://code.visualstudio.com/api/ux-guidelines/webviews)
-to OpenCove's resizable canvas. It deliberately allows broader plugin content,
-including music, rather than adopting an editor-only restriction.
+makes the main task obvious. Exercise real controls rather than judging a static
+mockup alone. Report deviations and untested states honestly.

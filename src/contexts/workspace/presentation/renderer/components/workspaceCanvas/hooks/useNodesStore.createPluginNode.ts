@@ -9,6 +9,8 @@ import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { isPluginEnabled } from '@contexts/settings/domain/pluginSettings'
 import { getPluginManifest } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
+import type { ShowWorkspaceCanvasMessage } from '../types'
+import { pluginErrorMessage } from '@contexts/plugins/presentation/renderer/pluginErrorMessage'
 
 function findContainingSpace(
   spaces: WorkspaceSpaceState[],
@@ -41,6 +43,7 @@ export function useWorkspaceCanvasPluginNodeCreation({
   setNodes,
   onRequestPersistFlush,
   onNodeCreated,
+  onShowMessage,
 }: {
   workspaceId?: string
   workspacePath: string
@@ -49,6 +52,7 @@ export function useWorkspaceCanvasPluginNodeCreation({
   setNodes: (updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => void
   onRequestPersistFlush?: () => void
   onNodeCreated?: (nodeId: string) => void
+  onShowMessage?: ShowWorkspaceCanvasMessage
 }): (anchor: Point, pluginId?: string) => Node<TerminalNodeData> | null {
   const { t } = useTranslation()
 
@@ -65,6 +69,37 @@ export function useWorkspaceCanvasPluginNodeCreation({
         return null
       }
       const targetSpace = findContainingSpace(spacesRef.current, anchor)
+      if (manifest.source === 'local') {
+        if (!manifest.view || !manifest.nodeKinds.length) {
+          return null
+        }
+        // The Worker owns singleton identity across projects and concurrent clients.
+        void window.opencoveApi.controlSurface
+          .invoke<{
+            nodeId: string
+            projectId: string
+            created: boolean
+          }>({
+            kind: 'command',
+            id: 'plugin.window.open',
+            payload: { pluginId, projectId: workspaceId, spaceId: targetSpace?.id, anchor },
+          })
+          .then(result => {
+            if (result.created) {
+              onNodeCreated?.(result.nodeId)
+            }
+            const store = useAppStore.getState()
+            store.setActiveWorkspaceId(result.projectId)
+            store.setFocusRequest(previous => ({
+              kind: 'node',
+              workspaceId: result.projectId,
+              nodeId: result.nodeId,
+              sequence: (previous?.sequence ?? 0) + 1,
+            }))
+          })
+          .catch(error => onShowMessage?.(pluginErrorMessage(error), 'error'))
+        return null
+      }
       const size = manifest.view
         ? { width: manifest.view.width, height: manifest.view.height }
         : resolveDefaultPluginWindowSize()
@@ -120,6 +155,7 @@ export function useWorkspaceCanvasPluginNodeCreation({
     [
       nodesRef,
       onNodeCreated,
+      onShowMessage,
       onRequestPersistFlush,
       setNodes,
       spacesRef,

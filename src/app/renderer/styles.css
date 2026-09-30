@@ -58,6 +58,7 @@
 @import './styles/settings-panel.diagnostics.css';
 @import './styles/settings-panel.groups.css';
 @import './styles/settings-panel.plugins.css';
+@import './styles/settings-panel.plugin-tools.css';
 @import './styles/plugin-readme.css';
 @import './styles/plugin-node-preview.css';
 @import './styles/cove-window.css';

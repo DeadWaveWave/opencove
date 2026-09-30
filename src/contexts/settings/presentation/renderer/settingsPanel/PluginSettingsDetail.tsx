@@ -15,6 +15,7 @@ import {
   pluginDescription,
 } from './PluginSettingsShared'
 import { PluginContributionControls } from './PluginContributionControls'
+import { PluginAgentTools } from './PluginAgentTools'
 
 export function PluginSettingsDetail({
   plugin,
@@ -116,6 +117,7 @@ export function PluginSettingsDetail({
         settings={settings}
         onChange={onChangeContribution}
       />
+      <PluginAgentTools key={plugin.id} plugin={plugin} />
       {plugin.nodeKinds.length > 0 ? <PluginNodePreview pluginId={plugin.id} /> : null}
       {detail ? (
         <section

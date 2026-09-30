@@ -454,6 +454,7 @@ export function useWorkspaceCanvasNodeCreation({
   })
 
   const createPluginNode = useWorkspaceCanvasPluginNodeCreation({
+    onShowMessage,
     workspaceId,
     workspacePath: workspacePath ?? '',
     nodesRef,

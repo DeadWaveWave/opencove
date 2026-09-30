@@ -1,5 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
+import { getCollapsedNodeSize } from '../../../domain/collapsedNodeGeometry'
+export { getCollapsedNodeSize }
 
 export type CollapsedIds = Record<string, true>
 export interface CanvasCollapseState {
@@ -80,10 +82,6 @@ export function setCollapsed(ids: CollapsedIds, id: string, collapsed: boolean):
   const next = { ...ids }
   delete next[id]
   return next
-}
-
-export function getCollapsedNodeSize(): Size {
-  return { width: 112, height: 96 }
 }
 
 export function getNodeDisplaySize(node: Node<TerminalNodeData>, ids: CollapsedIds): Size {

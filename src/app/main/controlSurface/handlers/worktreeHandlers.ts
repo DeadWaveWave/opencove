@@ -146,8 +146,12 @@ function resolveCandidateBranchName(spaceName: string, nameOverride: string | nu
   return slug.length > 0 ? slug : `space-${randomUUID().slice(0, 8)}`
 }
 
-async function persistNextAppState(store: PersistenceStore, nextState: unknown): Promise<void> {
-  const result = await store.writeAppState(nextState)
+async function persistNextAppState(
+  store: PersistenceStore,
+  nextState: unknown,
+  expectedRevision: number,
+): Promise<void> {
+  const result = await store.writeAppState(nextState, { expectedRevision })
   if (!result.ok) {
     throw createAppError(result.error)
   }
@@ -227,6 +231,7 @@ export function registerWorktreeHandlers(
     validate: normalizeCreateWorktreePayload,
     handle: async (_ctx, payload): Promise<CreateWorktreeResult> => {
       const store = await deps.getPersistenceStore()
+      const expectedRevision = await store.readAppStateRevision()
       const normalized = normalizePersistedAppState(await store.readAppState())
       const workspaces = normalized?.workspaces ?? []
 
@@ -316,7 +321,7 @@ export function registerWorktreeHandlers(
         })
       }
 
-      await persistNextAppState(store, nextState)
+      await persistNextAppState(store, nextState, expectedRevision)
 
       return {
         projectId: workspace.id,
@@ -335,6 +340,7 @@ export function registerWorktreeHandlers(
     validate: normalizeArchiveWorktreePayload,
     handle: async (_ctx, payload): Promise<ArchiveWorktreeResult> => {
       const store = await deps.getPersistenceStore()
+      const expectedRevision = await store.readAppStateRevision()
       const normalized = normalizePersistedAppState(await store.readAppState())
       const workspaces = normalized?.workspaces ?? []
 
@@ -417,7 +423,7 @@ export function registerWorktreeHandlers(
         })
       }
 
-      await persistNextAppState(store, nextState)
+      await persistNextAppState(store, nextState, expectedRevision)
 
       return {
         projectId: workspace.id,

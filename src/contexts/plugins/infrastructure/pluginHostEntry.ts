@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
-import type { PluginViewContext } from '../domain/pluginRuntimeTypes'
+import { pluginJsonValue } from '../domain/pluginJsonValue.js'
+import type { PluginCommandContext, PluginViewContext } from '../domain/pluginRuntimeTypes'
 
 interface PluginModule {
   activate(context: {
@@ -10,12 +11,19 @@ interface PluginModule {
   }): Promise<PluginInstance> | PluginInstance
 }
 interface PluginInstance {
-  invoke(method: string, params: unknown, context: PluginViewContext): Promise<unknown> | unknown
+  invoke?(method: string, params: unknown, context: PluginViewContext): Promise<unknown> | unknown
+  runCommand?(
+    commandId: string,
+    params: unknown,
+    context: PluginCommandContext,
+  ): Promise<unknown> | unknown
   dispose?(): Promise<void> | void
 }
 let instance: PluginInstance | null = null
 let stopped = false
 let initializing = false
+let commandIds = new Set<string>()
+let pluginId: string | null = null
 function send(value: unknown): void {
   if (process.connected) {
     process.send?.(value as object)
@@ -62,11 +70,15 @@ process.on('message', async (raw: unknown) => {
         request.protocol !== 1 ||
         typeof request.entry !== 'string' ||
         typeof request.pluginId !== 'string' ||
-        typeof request.dataDirectory !== 'string'
+        typeof request.dataDirectory !== 'string' ||
+        !Array.isArray(request.commandIds) ||
+        request.commandIds.some(id => typeof id !== 'string')
       ) {
         throw new Error('Invalid plugin initialization.')
       }
       await mkdir(request.dataDirectory, { recursive: true })
+      commandIds = new Set(request.commandIds as string[])
+      pluginId = request.pluginId
       const module = (await import(
         /* @vite-ignore */ pathToFileURL(request.entry).href
       )) as PluginModule
@@ -78,10 +90,14 @@ process.on('message', async (raw: unknown) => {
         dataDirectory: request.dataDirectory,
         log: message => send({ type: 'log', message: String(message).slice(0, 4000) }),
       })
-      if (!instance || typeof instance.invoke !== 'function') {
-        throw new Error(
-          'Plugin activate must return an object with invoke(method, params, viewContext).',
-        )
+      if (
+        !instance ||
+        (typeof instance.invoke !== 'function' && typeof instance.runCommand !== 'function')
+      ) {
+        throw new Error('Plugin activate must return an object with invoke or runCommand.')
+      }
+      if (commandIds.size && typeof instance.runCommand !== 'function') {
+        throw new Error('Plugin activate must return runCommand for declared plugin commands.')
       }
       if (stopped) {
         await instance.dispose?.()
@@ -95,27 +111,44 @@ process.on('message', async (raw: unknown) => {
     }
     return
   }
-  if (request.type !== 'invoke' || typeof request.requestId !== 'string') {
+  if (
+    !['invoke', 'command'].includes(String(request.type)) ||
+    typeof request.requestId !== 'string'
+  ) {
     return
   }
   try {
-    if (!instance || typeof request.method !== 'string' || !record(request.context)) {
+    const context = record(request.context)
+    if (
+      !instance ||
+      typeof request.method !== 'string' ||
+      !context ||
+      context.pluginId !== pluginId
+    ) {
       throw new Error('Plugin backend is not ready or request is invalid.')
     }
-    const value = await instance.invoke(
-      request.method,
-      request.params,
-      request.context as unknown as PluginViewContext,
-    )
-    const serialized = JSON.stringify(value ?? null)
-    if (serialized.length > 2 * 1024 * 1024) {
-      throw new Error('Plugin response exceeds 2 MiB.')
+    let value: unknown
+    if (request.type === 'command') {
+      if (!commandIds.has(request.method) || typeof instance.runCommand !== 'function') {
+        throw new Error('Plugin command is not declared or its handler is unavailable.')
+      }
+      value = await instance.runCommand(request.method, request.params, { pluginId: pluginId! })
+    } else {
+      if (typeof instance.invoke !== 'function') {
+        throw new Error('Plugin does not provide an invoke handler.')
+      }
+      value = await instance.invoke(
+        request.method,
+        request.params,
+        request.context as unknown as PluginViewContext,
+      )
     }
+    const result = pluginJsonValue(value, 2 * 1024 * 1024, 'response (2 MiB limit)')
     send({
       type: 'response',
       requestId: request.requestId,
       ok: true,
-      value: JSON.parse(serialized),
+      value: result,
     })
   } catch (error) {
     send({

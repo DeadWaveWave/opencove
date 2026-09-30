@@ -1,0 +1,192 @@
+/* Optional author-owned baseline. Copy into the plugin and load relatively. */
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html {
+  height: 100%;
+}
+
+.cove-plugin-view {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  background: var(--cove-window-surface);
+  color: var(--cove-text);
+  font:
+    13px/1.5 ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.cove-plugin-view,
+.cove-plugin-view *,
+.cove-plugin-view *::before,
+.cove-plugin-view *::after {
+  box-sizing: border-box;
+}
+
+.cove-plugin-toolbar,
+.cove-plugin-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 12px;
+}
+
+.cove-plugin-toolbar {
+  border-bottom: 1px solid var(--cove-border);
+}
+
+.cove-plugin-footer {
+  border-top: 1px solid var(--cove-border);
+}
+
+.cove-plugin-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+}
+
+.cove-plugin-button,
+.cove-plugin-input {
+  min-width: 0;
+  min-height: 32px;
+  border: 1px solid var(--cove-border);
+  border-radius: 6px;
+  background: var(--cove-surface);
+  color: inherit;
+  font: inherit;
+  padding: 5px 10px;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.cove-plugin-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.cove-plugin-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--cove-accent) 10%, var(--cove-surface));
+}
+
+.cove-plugin-button--primary {
+  background: color-mix(in srgb, var(--cove-accent) 18%, var(--cove-surface));
+  border-color: color-mix(in srgb, var(--cove-accent) 55%, var(--cove-border));
+}
+
+.cove-plugin-button--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.cove-plugin-button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--cove-accent) 18%, var(--cove-surface));
+  border-color: color-mix(in srgb, var(--cove-accent) 55%, var(--cove-border));
+}
+
+.cove-plugin-button--icon {
+  width: 32px;
+  padding: 0;
+}
+
+.cove-plugin-button > svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+}
+
+.cove-plugin-input::placeholder {
+  color: var(--cove-text-muted);
+  opacity: 1;
+}
+
+.cove-plugin-view :where(button, input, select, textarea, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--cove-accent);
+  outline-offset: 2px;
+}
+
+.cove-plugin-button:disabled,
+.cove-plugin-input:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.cove-plugin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cove-plugin-heading {
+  margin: 0;
+  color: var(--cove-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.cove-plugin-secondary {
+  color: var(--cove-text-muted);
+  font-size: 12px;
+}
+
+.cove-plugin-grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cove-plugin-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 360px) {
+  .cove-plugin-toolbar,
+  .cove-plugin-content,
+  .cove-plugin-footer {
+    padding-inline: 8px;
+  }
+}
+
+@media (pointer: coarse) {
+  .cove-plugin-button,
+  .cove-plugin-input {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-plugin-view,
+  .cove-plugin-view *,
+  .cove-plugin-view *::before,
+  .cove-plugin-view *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

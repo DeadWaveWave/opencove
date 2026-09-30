@@ -1,0 +1,59 @@
+.settings-plugin-tools {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 24px;
+  min-width: 0;
+}
+
+.settings-plugin-tools h4 {
+  margin: 0 0 10px;
+  color: var(--cove-settings-section-foreground);
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 600;
+}
+
+.settings-plugin-tools__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--cove-settings-row-divider);
+}
+
+.settings-plugin-tools__description {
+  min-width: 0;
+  flex: 1;
+  color: var(--cove-text);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.settings-plugin-tools__help,
+.settings-plugin-tools__description p {
+  margin: 3px 0;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.6;
+}
+
+.settings-plugin-tools code,
+.settings-plugin-tools pre {
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.settings-plugin-tools__row > button {
+  flex-shrink: 0;
+}
+
+@container settings-content (max-width: 440px) {
+  .settings-plugin-tools__row {
+    flex-direction: column;
+  }
+
+  .settings-plugin-tools__row > button {
+    min-height: 44px;
+  }
+}

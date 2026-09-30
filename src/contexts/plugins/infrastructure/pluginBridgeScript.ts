@@ -14,7 +14,72 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
   let disconnectedAt;
   let retired = false;
   let restoreRequested = false;
+  let commandHandler;
   const ready = new Promise(resolve => { resolveReady = resolve; });
+  function announceCommandReadiness() {
+    if (!retired && presence?.readyState === WebSocket.OPEN) {
+      try {
+        presence.send(JSON.stringify({ type: 'ready', protocol: 2, ready: Boolean(commandHandler && context) }));
+      } catch { presence.close(); }
+    }
+  }
+  function encodeCommand(value, limit) {
+    const encoded = JSON.stringify(value ?? null, (_key, entry) => {
+      if (entry === undefined || typeof entry === 'function' || typeof entry === 'symbol' ||
+          typeof entry === 'bigint' || (typeof entry === 'number' && !Number.isFinite(entry))) {
+        throw new Error('Plugin window commands require JSON values.');
+      }
+      return entry;
+    });
+    if (typeof encoded !== 'string' || new TextEncoder().encode(encoded).length > limit) {
+      throw new Error('Plugin window command exceeds its size limit.');
+    }
+    return encoded;
+  }
+  function bindCommands(connection) {
+    const active = new Set();
+    function reply(message) {
+      if (retired || presence !== connection || connection.readyState !== WebSocket.OPEN) return;
+      const encoded = encodeCommand(message, 2 * 1024 * 1024);
+      connection.send(encoded);
+    }
+    connection.addEventListener('message', event => {
+      if (retired || presence !== connection) return;
+      let message;
+      try {
+        if (typeof event.data !== 'string' || new TextEncoder().encode(event.data).length > 1024 * 1024) {
+          throw new Error('Invalid plugin command payload.');
+        }
+        message = JSON.parse(event.data);
+        if (!message || message.type !== 'command' || message.protocol !== 2 ||
+            typeof message.requestId !== 'string' || !message.requestId || message.requestId.length > 128 ||
+            typeof message.commandId !== 'string' || !message.commandId || message.commandId.length > 80 ||
+            !Object.hasOwn(message, 'params') || active.has(message.requestId) || active.size >= 128) {
+          throw new Error('Invalid plugin command.');
+        }
+        encodeCommand(message.params, 1024 * 1024);
+      } catch {
+        connection.close(1008, 'Invalid plugin command');
+        return;
+      }
+      const handler = commandHandler;
+      active.add(message.requestId);
+      Promise.resolve().then(() => {
+        if (retired || presence !== connection || connection.readyState !== WebSocket.OPEN) {
+          throw new Error('OpenCove plugin view closed.');
+        }
+        if (!handler || !context) throw new Error('Plugin window is not ready for commands.');
+        return handler(message.commandId, message.params);
+      }).then(value => {
+        reply({ type: 'result', protocol: 2, requestId: message.requestId, ok: true, value: value ?? null });
+      }).catch(error => {
+        try {
+          reply({ type: 'result', protocol: 2, requestId: message.requestId, ok: false,
+            error: String(error?.message || error).slice(0, 4000) });
+        } catch { /* Connection failure is observed by the host; never replay an action. */ }
+      }).finally(() => active.delete(message.requestId));
+    });
+  }
   function retire() {
     retired = true;
     clearTimeout(reconnectTimer);
@@ -35,11 +100,15 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
       retire();
       return;
     }
-    presence.addEventListener('open', () => { disconnectedAt = undefined; });
+    bindCommands(presence);
+    presence.addEventListener('open', () => {
+      disconnectedAt = undefined;
+      announceCommandReadiness();
+    });
     presence.addEventListener('close', event => {
       if (retired) return;
       disconnectedAt ??= Date.now();
-      if (event.code === 4001 || Date.now() - disconnectedAt >= 180000) {
+      if ([4001, 1008, 1009].includes(event.code) || Date.now() - disconnectedAt >= 180000) {
         retire();
         return;
       }
@@ -78,6 +147,7 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
       parentOrigin = event.origin;
       applyTheme(message.context);
       resolveReady(context);
+      announceCommandReadiness();
     } else if (message.type === 'theme' && context) {
       applyTheme({ ...context, ...message.context });
     } else if (message.type === 'result' && pending.has(message.id)) {
@@ -113,6 +183,17 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
     onThemeChange: listener => {
       themeListeners.add(listener);
       return () => themeListeners.delete(listener);
+    },
+    onCommand: handler => {
+      if (typeof handler !== 'function') throw new Error('Plugin command handler must be a function.');
+      if (retired) throw new Error('OpenCove plugin view closed.');
+      commandHandler = handler;
+      announceCommandReadiness();
+      return () => {
+        if (commandHandler !== handler) return;
+        commandHandler = undefined;
+        announceCommandReadiness();
+      };
     },
   });
   parent.postMessage({ channel, type: 'ready' }, '*');

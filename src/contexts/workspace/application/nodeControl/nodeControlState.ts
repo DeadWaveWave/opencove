@@ -35,6 +35,7 @@ export type NodeControlSpace = {
   name: string
   directoryPath: string
   targetMountId: string | null
+  parentSpaceId?: string | null
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: { x: number; y: number; width: number; height: number } | null
@@ -53,6 +54,7 @@ export type NodeControlWorkspace = {
   spaces: NodeControlSpace[]
   activeSpaceId: string | null
   nodes: NodeControlNode[]
+  collapsedNodeIds?: string[]
 }
 
 export type NodeControlAppState = {
@@ -65,7 +67,10 @@ export type NodeControlAppState = {
 export interface NodeControlAppStateStore {
   readAppState: () => Promise<NodeControlAppState | null>
   readAppStateRevision: () => Promise<number>
-  writeAppState: (state: NodeControlAppState) => Promise<PersistWriteResult>
+  writeAppState: (
+    state: NodeControlAppState,
+    options?: { expectedRevision?: number },
+  ) => Promise<PersistWriteResult>
 }
 
 export function requireNodeControlState(state: NodeControlAppState | null): NodeControlAppState {
@@ -81,8 +86,9 @@ export function requireNodeControlState(state: NodeControlAppState | null): Node
 export async function persistNodeControlState(
   store: NodeControlAppStateStore,
   state: NodeControlAppState,
+  expectedRevision: number,
 ): Promise<number> {
-  const result = await store.writeAppState(state)
+  const result = await store.writeAppState(state, { expectedRevision })
   if (!result.ok) {
     throw createAppError(result.error)
   }

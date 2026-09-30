@@ -11,7 +11,12 @@ export const QUICK_E2E_GROUPS = {
   },
   plugins: {
     reason: 'Independent install/reload/restart, Web views, contribution preferences and details.',
-    tests: [e2e('plugins.local'), e2e('plugins.contributions'), e2e('plugins.details')],
+    tests: [
+      e2e('plugins.local'),
+      e2e('plugins.commands'),
+      e2e('plugins.contributions'),
+      e2e('plugins.details'),
+    ],
     matches: path => /plugin/.test(path),
   },
   windows: {

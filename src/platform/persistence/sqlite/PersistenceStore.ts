@@ -13,6 +13,7 @@ import { agentNodePlaceholderScrollback, nodeScrollback } from './schema'
 import { safeJsonParse, safeJsonStringify, toErrorMessage, utf8ByteLength } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
 import { createAppError, createAppErrorDescriptor } from '../../../shared/errors/appError'
+import { PersistenceRevisionConflict } from './revisionConflict'
 
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
@@ -39,6 +40,7 @@ export interface PersistenceStore {
 
 export type WriteAppStateOptions = {
   allowEmptyWorkspaceOverwrite?: boolean
+  expectedRevision?: number
 }
 
 function invalidStateResult(debugMessage: string): PersistWriteResult {
@@ -251,10 +253,13 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      const revision = writeNormalizedAppState(sqlite, normalized)
+      const revision = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
       const bytes = utf8ByteLength(safeJsonStringify(normalized))
       return { ok: true, level: 'full', bytes, revision }
     } catch (error) {
+      if (error instanceof PersistenceRevisionConflict) {
+        return invalidStateResult(error.message)
+      }
       return {
         ok: false,
         reason: 'io',
