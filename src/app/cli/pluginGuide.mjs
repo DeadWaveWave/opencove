@@ -15,6 +15,16 @@ const BUILTIN_PLUGIN_GUIDES = [
 const REQUIRED_GUIDE_DOCUMENTS = [
   'README.md',
   'AUTHORING.md',
+  'API.md',
+  ...[
+    'opencove.plugin.json',
+    'README.md',
+    'main.mjs',
+    'index.html',
+    'view.js',
+    'style.css',
+    'icon.svg',
+  ].map(filename => `examples/hello-clock/${filename}`),
   ...BUILTIN_PLUGIN_GUIDES.map(plugin => plugin.document),
 ]
 

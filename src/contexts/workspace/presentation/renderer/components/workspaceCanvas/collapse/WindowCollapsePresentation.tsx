@@ -6,6 +6,7 @@ import { useWorkspaceCollapse } from './WorkspaceCollapseContext'
 import { CollapsedWindow } from './CollapsedWindow'
 import { useWindowCollapseMotion } from './useWindowCollapseMotion'
 import { WindowNodeContextMenuContext } from '../view/WindowNodeContextMenuContext'
+import { usePluginWindowTitle } from '@contexts/plugins/presentation/renderer/pluginWindowPresentation'
 
 /** Presentation geometry is independent of the mounted editor/PTY/browser frame. */
 export function WindowCollapsePresentation({
@@ -22,6 +23,11 @@ export function WindowCollapsePresentation({
   onSelect?: () => void
 }) {
   const collapse = useWorkspaceCollapse()
+  const pluginTitle = usePluginWindowTitle(data.kind === 'plugin' ? id : '')
+  const presentationData = useMemo(
+    () => (pluginTitle && !data.titlePinnedByUser ? { ...data, title: pluginTitle } : data),
+    [data, pluginTitle],
+  )
   const openContextMenu = useContext(WindowNodeContextMenuContext)
   const collapsed = data.collapsePresentation?.collapsed === true
   const spaceHidden = data.collapsePresentation?.spaceHidden === true
@@ -32,7 +38,7 @@ export function WindowCollapsePresentation({
     element,
     collapsed,
     spaceHidden,
-    data,
+    presentationData,
     getCollapsedNodeSize(),
     collapse.getMotionDelay?.(id) ?? 0,
   )
@@ -81,7 +87,7 @@ export function WindowCollapsePresentation({
           >
             <CollapsedWindow
               id={id}
-              data={data}
+              data={presentationData}
               active={collapsed}
               onExpand={controls.toggle}
               onToggleSelection={onToggleSelection}

@@ -1,0 +1,116 @@
+import type { PluginOpenViewResult } from '../../domain/pluginRuntimeTypes'
+import { pluginErrorMessage } from './pluginErrorMessage'
+
+const CHANNEL = 'opencove-plugin-v1'
+
+function themeContext() {
+  const root = document.documentElement
+  const style = getComputedStyle(root)
+  return {
+    theme: root.dataset.coveTheme === 'light' ? 'light' : 'dark',
+    colors: Object.fromEntries(
+      [
+        '--cove-text',
+        '--cove-text-muted',
+        '--cove-surface',
+        '--cove-accent',
+        '--cove-border',
+        '--cove-window-surface',
+      ].map(name => [name, style.getPropertyValue(name).trim()]),
+    ),
+  }
+}
+
+export function bindPluginViewBridge({
+  view,
+  url,
+  getFrame,
+  onTitleChange,
+  onRestore,
+}: {
+  view: PluginOpenViewResult
+  url: string
+  getFrame: () => HTMLIFrameElement | null
+  onTitleChange: (title: string) => void
+  onRestore: () => void
+}): () => void {
+  const origin = new URL(url).origin
+  let disposed = false
+  let restoring = false
+  const post = (message: Record<string, unknown>) => {
+    if (!disposed && !restoring) {
+      getFrame()?.contentWindow?.postMessage({ channel: CHANNEL, ...message }, origin)
+    }
+  }
+  const invoke = (method: string, payload: Record<string, unknown>) =>
+    window.opencoveApi.controlSurface.invoke({
+      kind: method === 'plugin.storage.get' ? 'query' : 'command',
+      id: method,
+      payload: { ...payload, viewId: view.viewId },
+    })
+  const onMessage = (event: MessageEvent) => {
+    if (
+      disposed ||
+      restoring ||
+      event.source !== getFrame()?.contentWindow ||
+      event.origin !== origin
+    ) {
+      return
+    }
+    const data: unknown = event.data
+    if (!data || typeof data !== 'object') {
+      return
+    }
+    const message = data as Record<string, unknown>
+    if (message.channel !== CHANNEL) {
+      return
+    }
+    if (message.type === 'restore') {
+      restoring = true
+      onRestore()
+      return
+    }
+    if (message.type === 'ready') {
+      post({ type: 'init', context: { ...view.context, apiVersion: 1, ...themeContext() } })
+      return
+    }
+    if (message.type !== 'request' || typeof message.id !== 'string' || message.id.length > 128) {
+      return
+    }
+    const payload = message.payload
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return
+    }
+    const input = payload as Record<string, unknown>
+    void (async () => {
+      switch (message.operation) {
+        case 'invoke':
+          return invoke('plugin.invoke', { method: input.method, params: input.params })
+        case 'storage.get':
+          return invoke('plugin.storage.get', { key: input.key })
+        case 'storage.set':
+          return invoke('plugin.storage.set', { key: input.key, value: input.value })
+        case 'title':
+          if (typeof input.title !== 'string' || !input.title.trim() || input.title.length > 200) {
+            throw new Error('Invalid plugin window title')
+          }
+          onTitleChange(input.title.trim())
+          return null
+        default:
+          throw new Error('Unsupported plugin view operation')
+      }
+    })()
+      .then(value => post({ type: 'result', id: message.id, value }))
+      .catch(error => {
+        post({ type: 'result', id: message.id, error: pluginErrorMessage(error) })
+      })
+  }
+  const onTheme = () => post({ type: 'theme', context: themeContext() })
+  window.addEventListener('message', onMessage)
+  window.addEventListener('opencove-theme-changed', onTheme)
+  return () => {
+    disposed = true
+    window.removeEventListener('message', onMessage)
+    window.removeEventListener('opencove-theme-changed', onTheme)
+  }
+}

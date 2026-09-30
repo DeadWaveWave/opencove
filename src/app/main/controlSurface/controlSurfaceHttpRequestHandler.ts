@@ -1,3 +1,5 @@
+import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
+import { tryHandlePluginAssetRoute } from './pluginAssetRoutes'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createAppErrorDescriptor } from '../../../shared/errors/appError'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
@@ -24,6 +26,7 @@ import type {
 const MAX_SYNC_EVENT_BUFFER = 256
 
 export interface ControlSurfaceHttpRequestHandlerDeps {
+  plugins: PluginInstallationManager
   ctx: ControlSurfaceContext
   token: string
   webSessions: WebSessionManager
@@ -86,6 +89,9 @@ export function createControlSurfaceHttpRequestHandler(
 
     const url = new URL(req.url, 'http://localhost')
     const servesWeb = listenerServesWeb(listener.role)
+    if (await tryHandlePluginAssetRoute({ req, res, url, plugins: deps.plugins })) {
+      return
+    }
 
     if (
       servesWeb &&

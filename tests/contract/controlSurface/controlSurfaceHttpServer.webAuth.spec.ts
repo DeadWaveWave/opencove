@@ -177,7 +177,7 @@ describe('Control Surface HTTP server (web session auth)', () => {
 
       expect(claimRes.status).toBe(302)
       const cookiePair = parseCookiePair(claimRes.headers.get('set-cookie'))
-      expect(cookiePair).toContain('opencove_session=')
+      expect(cookiePair).toMatch(/opencove_session_[a-f0-9]{16}=/)
       expect(claimRes.headers.get('location')).toBe('/')
 
       const cookiePing = await fetch(`${baseUrl}/invoke`, {
@@ -284,7 +284,7 @@ describe('Control Surface HTTP server (web session auth)', () => {
       expect(okPassword.status).toBe(302)
 
       const cookiePair = parseCookiePair(okPassword.headers.get('set-cookie'))
-      expect(cookiePair).toContain('opencove_session=')
+      expect(cookiePair).toMatch(/opencove_session_[a-f0-9]{16}=/)
       expect(okPassword.headers.get('location')).toBe('/')
 
       const cookiePing = await fetch(`${baseUrl}/invoke`, {

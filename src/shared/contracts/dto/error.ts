@@ -1,5 +1,6 @@
 export const APP_ERROR_CODES = [
   'common.invalid_input',
+  'plugin.operation_failed',
   'common.approved_path_required',
   'common.unavailable',
   'common.unexpected',

@@ -20,6 +20,38 @@ function createRequest(headers: Record<string, string | undefined>): IncomingMes
 }
 
 describe('resolveRequestAuth', () => {
+  it('keeps independent Worker profile logins usable in the same browser cookie jar', () => {
+    const primary = new WebSessionManager('/profiles/primary')
+    const development = new WebSessionManager('/profiles/development')
+    const jar = new Map<string, string>()
+    for (const sessions of [primary, development]) {
+      const pair = createCookieHeader(sessions)
+      jar.set(sessions.cookieName(), pair)
+    }
+    expect(jar.size).toBe(2)
+    expect(new WebSessionManager('/profiles/primary').cookieName()).toBe(primary.cookieName())
+    const authenticate = (webSessions: WebSessionManager) =>
+      resolveRequestAuth({
+        req: createRequest({
+          cookie: [...jar.values()].join('; '),
+          host: '127.0.0.1:8080',
+          origin: 'http://127.0.0.1:8080',
+        }),
+        url: new URL('http://127.0.0.1:8080/invoke'),
+        token: 'test-token',
+        webSessions,
+        allowQueryToken: false,
+        now: new Date('2026-04-01T00:00:02.000Z'),
+      })
+    expect(authenticate(primary)).toEqual({ kind: 'cookie', webSessionGeneration: 0 })
+    expect(authenticate(development)).toEqual({ kind: 'cookie', webSessionGeneration: 0 })
+    development.invalidateAll()
+    expect(authenticate(development)).toBeNull()
+    expect(authenticate(primary)).toEqual({ kind: 'cookie', webSessionGeneration: 0 })
+    jar.delete(development.cookieName())
+    expect(authenticate(primary)).toEqual({ kind: 'cookie', webSessionGeneration: 0 })
+  })
+
   it('accepts bearer tokens', () => {
     const webSessions = new WebSessionManager()
     const auth = resolveRequestAuth({

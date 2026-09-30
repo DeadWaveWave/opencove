@@ -34,7 +34,8 @@ export function isWebUiNavigationPath(pathname: string): boolean {
     pathname === '/invoke' ||
     pathname === '/events' ||
     pathname.startsWith('/auth/') ||
-    pathname.startsWith('/debug/')
+    pathname.startsWith('/debug/') ||
+    pathname.startsWith('/plugin-assets/')
   ) {
     return false
   }

@@ -11,6 +11,7 @@ import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
 import { tryHandleMultiEndpointCommands } from './commands/multiEndpoint.mjs'
 import { tryHandleNodeControlCommands } from './commands/nodeControl.mjs'
 import { createPluginGuideResult } from './pluginGuide.mjs'
+import { parsePluginCommand, resolvePluginCommandTimeout } from './commands/plugins.mjs'
 import {
   getWorkerLifecycleStatus,
   printWorkerLifecycleResult,
@@ -51,17 +52,20 @@ async function main() {
     return
   }
 
-  if (command === 'plugin' && args[1] === 'guide') {
-    const result = await createPluginGuideResult()
-    process.stdout.write(`${pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)}\n`)
-    return
+  let pluginRequest
+  if (command === 'plugin') {
+    try {
+      pluginRequest = parsePluginCommand(args)
+    } catch (error) {
+      process.stderr.write(`[opencove] ${toErrorMessage(error)}\n`)
+      process.exitCode = 2
+      return
+    }
   }
 
-  if (command === 'plugin' && args[1] !== 'list') {
-    process.stderr.write(
-      `[opencove] unsupported plugin command: ${args[1] || '<missing>'}. Run "opencove plugin guide" for supported plugin development and installation instructions.\n`,
-    )
-    process.exitCode = 2
+  if (command === 'plugin' && !pluginRequest) {
+    const result = await createPluginGuideResult()
+    process.stdout.write(`${pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)}\n`)
     return
   }
 
@@ -174,12 +178,11 @@ async function main() {
     return
   }
 
-  if (command === 'plugin' && args[1] === 'list') {
-    await invokeAndPrint(
-      connection,
-      { kind: 'query', id: 'plugin.list', payload: null },
-      { pretty, timeoutMs },
-    )
+  if (command === 'plugin') {
+    await invokeAndPrint(connection, pluginRequest, {
+      pretty,
+      timeoutMs: resolvePluginCommandTimeout(pluginRequest, timeoutMs),
+    })
     return
   }
 

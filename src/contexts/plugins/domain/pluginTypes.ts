@@ -1,4 +1,4 @@
-export type PluginNodeKind = 'git-board'
+export type PluginNodeKind = string
 
 export type PluginIconDeclaration =
   | { type: 'builtin'; name: 'git-branch' | 'puzzle' }
@@ -13,6 +13,22 @@ export interface PluginManifest {
   nodeKinds: readonly PluginNodeKind[]
   actionBar: boolean
   contextMenu: boolean
+  source?: 'builtin' | 'local'
+  author?: string
+  revision?: string
+  enabled?: boolean
+  status?: 'ready' | 'disabled' | 'error'
+  error?: string | null
+  view?: PluginViewDefinition
+  hasPreview?: boolean
+}
+
+export interface PluginViewDefinition {
+  entry: string
+  width: number
+  height: number
+  minWidth: number
+  minHeight: number
 }
 
 export interface GitBoardNodeData {

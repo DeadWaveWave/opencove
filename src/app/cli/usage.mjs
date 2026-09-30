@@ -6,6 +6,12 @@ export function printUsage() {
   process.stdout.write(`  opencove ping [--pretty] [--endpoint <url>] [--token <token>]\n`)
   process.stdout.write(`  opencove plugin guide [--pretty]\n`)
   process.stdout.write(`  opencove plugin list [--pretty]\n`)
+  process.stdout.write(`  opencove plugin install <directory> [--pretty]\n`)
+  process.stdout.write(`  opencove plugin details <id> [--pretty]\n`)
+  process.stdout.write(`  opencove plugin reload <id> [--pretty]\n`)
+  process.stdout.write(`  opencove plugin enable <id> [--pretty]\n`)
+  process.stdout.write(`  opencove plugin disable <id> [--pretty]\n`)
+  process.stdout.write(`  opencove plugin uninstall <id> [--pretty]\n`)
   process.stdout.write(`  opencove endpoint list [--pretty]\n`)
   process.stdout.write(
     `  opencove endpoint register --hostname <host> --port <port> --remote-token <token> [--display-name <name>] [--pretty]\n`,

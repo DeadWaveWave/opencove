@@ -2,6 +2,47 @@ import { describe, expect, it, vi } from 'vitest'
 import { resolve } from 'node:path'
 
 describe('cli runtime discovery', () => {
+  it('uses source beside the CLI when launched by development Electron as Node', async () => {
+    const { resolveCliRuntime } = await import('../../../src/app/cli/runtime.mjs')
+    const repoRoot = resolve('/development/opencove')
+    expect(
+      resolveCliRuntime({
+        cliDirectory: resolve(repoRoot, 'src/app/cli'),
+        processObject: {
+          resourcesPath: resolve(
+            repoRoot,
+            'node_modules/electron/dist/Electron.app/Contents/Resources',
+          ),
+        },
+        existsSyncImpl: () => false,
+      }),
+    ).toEqual({
+      kind: 'source',
+      repoRoot,
+      workerScriptPath: resolve(repoRoot, 'out/main/worker.js'),
+    })
+  })
+
+  it.each(['app.asar', 'app'])(
+    'recognizes a CLI actually inside packaged %s',
+    async appDirectory => {
+      const { resolveCliRuntime } = await import('../../../src/app/cli/runtime.mjs')
+      const resourcesPath = resolve('/Applications/OpenCove.app/Contents/Resources')
+      const appRoot = resolve(resourcesPath, appDirectory)
+      expect(
+        resolveCliRuntime({
+          cliDirectory: resolve(appRoot, 'src/app/cli'),
+          resourcesPath,
+        }),
+      ).toEqual({
+        kind: 'packaged',
+        resourcesPath,
+        appRoot,
+        workerScriptPath: resolve(appRoot, 'out/main/worker.js'),
+      })
+    },
+  )
+
   it('recognizes an extracted standalone app from its colocated runtime manifest', async () => {
     const { resolveCliRuntime } = await import('../../../src/app/cli/runtime.mjs')
 

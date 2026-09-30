@@ -19,6 +19,22 @@ describe('appError', () => {
     )
   })
 
+  it('retains actionable plugin failures through an Error-message-only bridge', () => {
+    const descriptor = createAppErrorDescriptor('plugin.operation_failed', {
+      params: { reason: 'main.mjs must export activate(context).' },
+    })
+    expect(createAppError(descriptor).message).toBe(
+      'Plugin operation failed. main.mjs must export activate(context).',
+    )
+    expect(
+      formatAppErrorMessage(
+        createAppErrorDescriptor('plugin.operation_failed', {
+          params: { reason: 'x'.repeat(3000) },
+        }),
+      ),
+    ).toHaveLength('Plugin operation failed. '.length + 2000)
+  })
+
   it('preserves debug detail separately from the user-facing message', () => {
     const error = createAppError('worktree.create_failed', {
       debugMessage: 'git worktree add failed: branch already exists',

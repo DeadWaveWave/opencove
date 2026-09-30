@@ -21,10 +21,12 @@ export function PluginSettingsToggle({
   plugin,
   enabled,
   onChange,
+  disabled = false,
 }: {
   plugin: PluginManifest
   enabled: boolean
   onChange: (enabled: boolean) => void
+  disabled?: boolean
 }): JSX.Element {
   const { t } = useTranslation()
   return (
@@ -33,6 +35,7 @@ export function PluginSettingsToggle({
         type="checkbox"
         data-testid={`settings-plugin-enabled-${plugin.id}`}
         checked={enabled}
+        disabled={disabled}
         aria-label={t('settingsPanel.plugins.enable', { name: plugin.displayName })}
         onChange={event => onChange(event.target.checked)}
       />

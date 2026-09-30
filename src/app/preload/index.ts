@@ -148,6 +148,8 @@ const opencoveApi = {
   performanceDiagnostics: createPerformanceDiagnosticsPreloadApi(),
   issueReport: createIssueReportPreloadApi(),
   controlSurface: {
+    resolvePluginResourceUrl: (resourcePath: string): Promise<string> =>
+      invokeIpc(IPC_CHANNELS.controlSurfacePluginResourceUrl, resourcePath),
     invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
       invokeIpc(IPC_CHANNELS.controlSurfaceInvoke, request),
   },

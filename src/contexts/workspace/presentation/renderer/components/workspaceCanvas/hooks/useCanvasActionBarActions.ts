@@ -25,7 +25,7 @@ export function useWorkspaceCanvasActionBarActions({
   createTaskAtPoint: (anchor: Point) => void | Promise<void>
   createWebsiteAtPoint: (anchor: Point) => void | Promise<void>
   createSpaceAtPoint: (anchor: Point) => void | Promise<void>
-  createPluginAtPoint: (anchor: Point) => void | Promise<void>
+  createPluginAtPoint: (anchor: Point, pluginId?: string) => void | Promise<void>
   clearTransientUi: () => void
   spacesRef: React.MutableRefObject<import('../../../types').WorkspaceSpaceState[]>
 }): {
@@ -55,7 +55,7 @@ export function useWorkspaceCanvasActionBarActions({
       if (kind === 'space') {
         return createSpaceAtPoint(anchor)
       }
-      return createPluginAtPoint(anchor)
+      return createPluginAtPoint(anchor, kind.startsWith('plugin:') ? kind.slice(7) : 'git-board')
     },
     [
       clearTransientUi,

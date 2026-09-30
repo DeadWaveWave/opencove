@@ -1,3 +1,8 @@
+import { resolve } from 'node:path'
+import { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
+import { LocalPluginFiles } from '../../../contexts/plugins/infrastructure/LocalPluginFiles'
+import { NodePluginBackend } from '../../../contexts/plugins/infrastructure/NodePluginBackend'
+import { BUILTIN_PLUGIN_MANIFESTS } from '../../../contexts/plugins/application/builtinPlugins'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { ManagedSshEndpointOperationOwner } from '../../../contexts/topology/application/ManagedSshEndpointOperationOwner'
 import { createManagedSshOperationDiagnosticSink } from './topology/managedSshOperationDiagnostics'
@@ -30,15 +35,28 @@ import { createControlSurfaceHttpListener } from './controlSurfaceHttpListener'
 import { ControlSurfaceAcceptedRequestOwner } from './controlSurfaceAcceptedRequestOwner'
 import { ManagedRuntimeMaintenance } from '../../../contexts/topology/application/ManagedRuntimeMaintenance'
 import { registerManagedRuntimeHandlers } from './handlers/managedRuntimeHandlers'
+import { PluginViewLifecycle } from './pluginViewLifecycle'
 
 const PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES = 400_000
 
 export function createControlSurfaceHttpRuntime(
   options: RegisterControlSurfaceHttpServerOptions,
 ): ControlSurfaceHttpRuntime {
+  const plugins = new PluginInstallationManager({
+    files: new LocalPluginFiles(options.userDataPath),
+    backend: new NodePluginBackend(resolve(__dirname, 'pluginHost.js')),
+    createId: randomUUID,
+    reservedIds: BUILTIN_PLUGIN_MANIFESTS.map(plugin => plugin.id),
+    scheduleViewExpiry: expire => {
+      const timer = setTimeout(expire, 180_000)
+      timer.unref()
+      return () => clearTimeout(timer)
+    },
+  })
+  const pluginViews = new PluginViewLifecycle(plugins)
   const token = options.token ?? randomBytes(32).toString('base64url')
   const appVersion = normalizeControlSurfaceAppVersion(options.appVersion)
-  const webSessions = new WebSessionManager()
+  const webSessions = new WebSessionManager(resolve(options.userDataPath))
   const ctx = createControlSurfaceHttpServerContext({
     enableWebShell: options.enableWebShell === true,
     ptyProtocolVersion: PTY_STREAM_PROTOCOL_VERSION,
@@ -137,6 +155,7 @@ export function createControlSurfaceHttpRuntime(
   const getPersistenceStore = persistence.getPersistenceStore
   const terminalRuntimeAvailability = new TerminalRuntimeAvailability()
   let runtimeReady = false
+  void plugins.start()
   const ready = (async () => {
     if (options.strictPersistence) {
       await (await getPersistenceStore()).readAppState()
@@ -187,6 +206,7 @@ export function createControlSurfaceHttpRuntime(
     })
   }
   registerControlSurfaceHandlers(controlSurface, {
+    plugins,
     deploymentId: options.deploymentId,
     instanceId,
     isReady: () => runtimeReady,
@@ -219,6 +239,8 @@ export function createControlSurfaceHttpRuntime(
       return
     }
     closed = true
+    plugins.beginShutdown()
+    pluginViews.dispose()
     // Accepted long operations outlive HTTP handlers, but not runtime shutdown authority.
     void managedSshOperations.dispose().catch(() => undefined)
     void managedSshRuntime.dispose().catch(() => undefined)
@@ -238,6 +260,7 @@ export function createControlSurfaceHttpRuntime(
   }
 
   const handleRequest = createControlSurfaceHttpRequestHandler({
+    plugins,
     ctx,
     token,
     webSessions,
@@ -270,6 +293,9 @@ export function createControlSurfaceHttpRuntime(
         isRuntimeClosed: () => closed,
         handleRequest,
         handleUpgrade: (req, socket, head, listenerConfig) => {
+          if (pluginViews.tryHandleUpgrade(req, socket, head)) {
+            return
+          }
           ptyStreamService.handleUpgrade(req, socket, head, {
             listenerRole: listenerConfig.role,
             webAccessGeneration: listenerConfig.webAccessGeneration ?? null,
@@ -306,6 +332,7 @@ export function createControlSurfaceHttpRuntime(
           }),
         )
         await acceptedRequests.sealAndDrain()
+        await plugins.dispose()
 
         try {
           await terminalAgents.dispose()

@@ -34,6 +34,8 @@ import {
   PREVIEW_CANVAS_SIZE,
   PREVIEW_NODE_ID,
 } from './pluginNodePreviewModel'
+import { usePluginManifest } from './usePluginRegistry'
+import { PluginRuntimePreview } from './PluginRuntimePreview'
 import { usePreviewViewport } from './usePreviewViewport'
 
 type PreviewNode = Node<TerminalNodeData>
@@ -210,6 +212,10 @@ function GitBoardPreview(): JSX.Element {
 /** This island owns all state and never mounts a runtime plugin or its IO hooks. */
 export function PluginNodePreview({ pluginId }: { pluginId: string }): JSX.Element {
   const { t } = useTranslation()
+  const plugin = usePluginManifest(pluginId)
+  if (plugin?.source === 'local' && plugin.hasPreview) {
+    return <PluginRuntimePreview key={plugin.id} plugin={plugin} />
+  }
   if (pluginId !== 'git-board') {
     return <p>{t('settingsPanel.plugins.preview.unavailable')}</p>
   }

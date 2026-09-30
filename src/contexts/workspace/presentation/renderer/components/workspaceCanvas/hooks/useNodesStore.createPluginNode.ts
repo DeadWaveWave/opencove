@@ -8,6 +8,7 @@ import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { isPluginEnabled } from '@contexts/settings/domain/pluginSettings'
+import { getPluginManifest } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 
 function findContainingSpace(
   spaces: WorkspaceSpaceState[],
@@ -48,17 +49,25 @@ export function useWorkspaceCanvasPluginNodeCreation({
   setNodes: (updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => void
   onRequestPersistFlush?: () => void
   onNodeCreated?: (nodeId: string) => void
-}): (anchor: Point) => Node<TerminalNodeData> | null {
+}): (anchor: Point, pluginId?: string) => Node<TerminalNodeData> | null {
   const { t } = useTranslation()
 
   return useCallback(
-    (anchor: Point): Node<TerminalNodeData> | null => {
+    (anchor: Point, pluginId = 'git-board'): Node<TerminalNodeData> | null => {
       // A gesture may have started before the plugin was disabled in another view.
-      if (!isPluginEnabled(useAppStore.getState().agentSettings, 'git-board')) {
+      const manifest = getPluginManifest(pluginId)
+      if (
+        !manifest ||
+        (manifest.source === 'local'
+          ? manifest.enabled === false
+          : !isPluginEnabled(useAppStore.getState().agentSettings, pluginId))
+      ) {
         return null
       }
       const targetSpace = findContainingSpace(spacesRef.current, anchor)
-      const size = resolveDefaultPluginWindowSize()
+      const size = manifest.view
+        ? { width: manifest.view.width, height: manifest.view.height }
+        : resolveDefaultPluginWindowSize()
       const placement = resolveNodesPlacement({
         workspaceId,
         getSpaces: () => spacesRef.current,
@@ -72,11 +81,12 @@ export function useWorkspaceCanvasPluginNodeCreation({
       }
 
       const plugin: PluginNodeData = {
-        pluginId: 'git-board',
+        pluginId,
         schemaVersion: 1,
         repoPath: targetSpace?.directoryPath ?? workspacePath,
         mountId: targetSpace?.targetMountId ?? null,
         graphLimit: 30,
+        workspaceId: workspaceId ?? null,
       }
       const node: Node<TerminalNodeData> = {
         id: crypto.randomUUID(),
@@ -84,7 +94,7 @@ export function useWorkspaceCanvasPluginNodeCreation({
         position: placement.placement,
         data: {
           sessionId: '',
-          title: t('plugins.gitBoard.title'),
+          title: pluginId === 'git-board' ? t('plugins.gitBoard.title') : manifest.displayName,
           titlePinnedByUser: false,
           width: size.width,
           height: size.height,

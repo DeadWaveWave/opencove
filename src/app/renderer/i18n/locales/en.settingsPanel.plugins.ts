@@ -3,6 +3,18 @@ export const enSettingsPanelPlugins = {
   installedHelp:
     'Built-in plugins update with OpenCove. Disabling a plugin keeps its canvas nodes and data.',
   builtIn: 'Built-in',
+  local: 'Local plugin',
+  refresh: 'Refresh plugins',
+  reload: 'Reload',
+  uninstall: 'Uninstall',
+  uninstallHelp: 'Source files, saved data, and canvas nodes stay available for reinstalling.',
+  logs: 'Runtime logs',
+  runtime: {
+    loading: 'Loading plugin…',
+    failed: 'Plugin could not start',
+    retry: 'Retry',
+    manage: 'Manage local plugin',
+  },
   version: 'Version {{version}}',
   enable: 'Enable {{name}}',
   enabled: 'Enabled',
@@ -11,6 +23,10 @@ export const enSettingsPanelPlugins = {
   details: 'View {{name}} details',
   documentation: 'Plugin documentation',
   preview: {
+    start: 'Start preview',
+    stop: 'Close preview',
+    localHint: 'Uses separate preview data. Closing stops the preview.',
+
     title: 'Live preview',
     hint: 'Drag, resize, or collapse the window to try it.',
     reset: 'Reset preview',

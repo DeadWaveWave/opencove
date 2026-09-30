@@ -116,6 +116,10 @@ export default defineConfig(({ command }) => {
           input: {
             index: resolve(__dirname, 'src/app/main/index.ts'),
             worker: resolve(__dirname, 'src/app/worker/index.ts'),
+            pluginHost: resolve(
+              __dirname,
+              'src/contexts/plugins/infrastructure/pluginHostEntry.ts',
+            ),
             managedRuntime: resolve(__dirname, 'src/app/managedRuntime/index.ts'),
             ptyHost: resolve(__dirname, 'src/platform/process/ptyHost/entry.ts'),
             windowsConsoleObserver: resolve(

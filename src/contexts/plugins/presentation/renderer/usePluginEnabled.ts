@@ -4,24 +4,23 @@ import {
   isPluginContributionEnabled,
   type PluginContribution,
 } from '@contexts/settings/domain/pluginSettings'
-import { getBuiltinPluginManifest } from '../../application/builtinPlugins'
+import { usePluginManifest } from './usePluginRegistry'
 
 /** Enabled contributions are a projection of the existing application settings owner. */
 export function usePluginEnabled(pluginId: string): boolean {
-  return useAppStore(
-    state =>
-      getBuiltinPluginManifest(pluginId) !== null && isPluginEnabled(state.agentSettings, pluginId),
-  )
+  const plugin = usePluginManifest(pluginId)
+  const enabled = useAppStore(state => isPluginEnabled(state.agentSettings, pluginId))
+  return plugin !== null && (plugin.source === 'local' ? plugin.enabled !== false : enabled)
 }
 
 export function usePluginContributionEnabled(
   pluginId: string,
   contribution: PluginContribution,
 ): boolean {
-  return useAppStore(
-    state =>
-      getBuiltinPluginManifest(pluginId)?.[contribution] === true &&
-      isPluginEnabled(state.agentSettings, pluginId) &&
-      isPluginContributionEnabled(state.agentSettings, pluginId, contribution),
+  const plugin = usePluginManifest(pluginId)
+  const enabled = usePluginEnabled(pluginId)
+  const contributionEnabled = useAppStore(state =>
+    isPluginContributionEnabled(state.agentSettings, pluginId, contribution),
   )
+  return plugin?.[contribution] === true && enabled && contributionEnabled
 }

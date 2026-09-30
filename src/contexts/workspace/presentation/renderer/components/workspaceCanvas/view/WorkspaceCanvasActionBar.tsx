@@ -5,6 +5,7 @@ import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentNodeData } from '../../../types'
 import { usePluginContributionEnabled } from '@contexts/plugins/presentation/renderer/usePluginEnabled'
+import { useLocalPluginContributions } from '@contexts/plugins/presentation/renderer/useLocalPluginContributions'
 
 export type WorkspaceCanvasActionKind =
   | 'agent'
@@ -14,6 +15,7 @@ export type WorkspaceCanvasActionKind =
   | 'website'
   | 'space'
   | 'git-board'
+  | `plugin:${string}`
 
 interface WorkspaceCanvasActionBarProps {
   canvasRef: React.RefObject<HTMLDivElement | null>
@@ -49,6 +51,7 @@ export function WorkspaceCanvasActionBar({
 }: WorkspaceCanvasActionBarProps): React.JSX.Element {
   const { t } = useTranslation()
   const gitBoardEnabled = usePluginContributionEnabled('git-board', 'actionBar')
+  const localPlugins = useLocalPluginContributions('actionBar')
   const dragRef = React.useRef<DragState | null>(null)
   const [dragState, setDragState] = React.useState<DragState | null>(null)
 
@@ -162,6 +165,14 @@ export function WorkspaceCanvasActionBar({
       icon: <PluginIcon pluginId="git-board" />,
     },
   ]
+  for (const plugin of localPlugins) {
+    actions.push({
+      kind: `plugin:${plugin.id}`,
+      label: plugin.displayName,
+      hint: plugin.description,
+      icon: <PluginIcon pluginId={plugin.id} />,
+    })
+  }
 
   const previewRect = canvasRef.current?.getBoundingClientRect() ?? null
   const previewInsideCanvas =

@@ -173,6 +173,7 @@ export interface OpenCoveApi {
     showReportFile: (payload: ShowIssueReportFileInput) => Promise<void>
   }
   controlSurface: {
+    resolvePluginResourceUrl: (resourcePath: string) => Promise<string>
     invoke: <TValue = unknown>(request: ControlSurfaceInvokeRequest) => Promise<TValue>
   }
   windowChrome: {

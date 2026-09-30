@@ -1,6 +1,7 @@
 // @vitest-environment node
 import {
   copyFile,
+  cp,
   mkdir,
   mkdtemp,
   readFile,
@@ -49,7 +50,11 @@ async function createFixture(name: string, readme = 'Plugin development guide') 
   )
   await writeFile(join(docs, 'README.md'), readme)
   await writeFile(join(docs, 'AUTHORING.md'), 'Plugin authoring guide')
+  await writeFile(join(docs, 'API.md'), 'Plugin API guide')
   await writeFile(join(docs, 'GIT_BOARD_MVP.md'), 'Git Board guide')
+  await cp(resolve('docs/plugins/examples/hello-clock'), join(docs, 'examples', 'hello-clock'), {
+    recursive: true,
+  })
   await writeFile(join(docs, 'examples', 'plugin.json'), '{"id":"example"}')
   return { app, docs }
 }
@@ -89,6 +94,10 @@ describe('packaged plugin guide export', () => {
     expect(await readFile(join(guide.directory, 'examples', 'plugin.json'), 'utf8')).toBe(
       '{"id":"example"}',
     )
+    expect(await readFile(join(guide.directory, 'API.md'), 'utf8')).toBe('Plugin API guide')
+    expect(
+      await readFile(join(guide.directory, 'examples', 'hello-clock', 'view.js'), 'utf8'),
+    ).toContain('window.opencovePlugin')
     const second = await runGuide(archive)
     expect(second.exitCode, second.stderr).toBe(0)
     expect(JSON.parse(second.stdout)).toEqual(guide)
@@ -117,7 +126,7 @@ describe('packaged plugin guide export', () => {
     await expect(readdir(join(root, 'cache'))).rejects.toMatchObject({ code: 'ENOENT' })
   })
 
-  it.each(['AUTHORING.md', 'GIT_BOARD_MVP.md'])(
+  it.each(['AUTHORING.md', 'GIT_BOARD_MVP.md', 'API.md', 'examples/hello-clock/view.js'])(
     'does not publish documentation missing %s or return a nonexistent source path',
     async missingDocument => {
       const { app, docs } = await createFixture('incomplete')

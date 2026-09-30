@@ -422,3 +422,43 @@
     transition: none;
   }
 }
+
+.settings-plugin-list__actions,
+.settings-plugin-runtime__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settings-plugin-list__actions {
+  justify-content: flex-end;
+}
+
+.settings-plugin-runtime {
+  margin-bottom: 24px;
+  padding: 14px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 8px;
+  background: var(--cove-surface);
+}
+
+.settings-plugin-runtime__source,
+.settings-plugin-runtime__confirmation p,
+.settings-plugin-runtime__logs {
+  color: var(--cove-text-muted);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.settings-plugin-runtime__source {
+  margin: 0;
+  user-select: text;
+}
+
+.settings-plugin-runtime__logs pre {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+}

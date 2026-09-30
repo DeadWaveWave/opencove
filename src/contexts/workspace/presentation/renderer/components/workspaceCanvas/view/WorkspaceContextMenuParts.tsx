@@ -27,6 +27,7 @@ import { LABEL_COLORS, type NodeLabelColorOverride } from '@shared/types/labelCo
 import { WorkspaceContextQuickMenuItems } from './WorkspaceContextMenuQuickMenuParts'
 import { WorkspaceContextRoleMenuItems } from './WorkspaceContextRoleMenuParts'
 import { usePluginContributionEnabled } from '@contexts/plugins/presentation/renderer/usePluginEnabled'
+import { useLocalPluginContributions } from '@contexts/plugins/presentation/renderer/useLocalPluginContributions'
 
 function renderMark(checked: boolean): React.JSX.Element {
   return checked ? (
@@ -73,7 +74,7 @@ export function WorkspaceContextPaneMenuContent({
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
   createWebsiteNodeFromContextMenu: () => void
-  createPluginNodeFromContextMenu: () => void
+  createPluginNodeFromContextMenu: (pluginId?: string) => void
   websiteWindowsEnabled: boolean
   openTaskCreator: () => void
   roleButtonRef: React.RefObject<HTMLButtonElement | null>
@@ -105,6 +106,7 @@ export function WorkspaceContextPaneMenuContent({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const gitBoardEnabled = usePluginContributionEnabled('git-board', 'contextMenu')
+  const localPlugins = useLocalPluginContributions('contextMenu')
 
   return (
     <>
@@ -148,7 +150,7 @@ export function WorkspaceContextPaneMenuContent({
         <button
           type="button"
           data-testid="workspace-context-new-git-board"
-          onClick={createPluginNodeFromContextMenu}
+          onClick={() => createPluginNodeFromContextMenu()}
         >
           <PluginIcon pluginId="git-board" className="workspace-context-menu__icon" />
           <span className="workspace-context-menu__label">
@@ -156,6 +158,17 @@ export function WorkspaceContextPaneMenuContent({
           </span>
         </button>
       ) : null}
+      {localPlugins.map(plugin => (
+        <button
+          key={plugin.id}
+          type="button"
+          data-testid={`workspace-context-new-plugin-${plugin.id}`}
+          onClick={() => createPluginNodeFromContextMenu(plugin.id)}
+        >
+          <PluginIcon pluginId={plugin.id} className="workspace-context-menu__icon" />
+          <span className="workspace-context-menu__label">{plugin.displayName}</span>
+        </button>
+      ))}
       <button
         type="button"
         data-testid="workspace-context-new-task"

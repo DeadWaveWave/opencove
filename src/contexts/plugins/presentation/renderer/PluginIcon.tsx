@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore, type JSX } from 'react'
 import { GitBranch, Puzzle } from 'lucide-react'
-import { getBuiltinPluginManifest } from '../../application/builtinPlugins'
+import { usePluginManifest } from './usePluginRegistry'
+import { usePluginDetails } from './usePluginDetails'
 import type { PluginIconDeclaration } from '../../domain/pluginTypes'
 import { getPluginAssets } from './pluginAssets'
 
@@ -38,11 +39,14 @@ function FallbackIcon({ pluginId, className, size, strokeWidth }: PluginIconProp
 
 function AssetIcon({
   declaration,
+  assets,
   ...props
-}: PluginIconProps & { declaration: Extract<PluginIconDeclaration, { type: 'asset' }> }) {
+}: PluginIconProps & {
+  declaration: Extract<PluginIconDeclaration, { type: 'asset' }>
+  assets: Readonly<Record<string, string>>
+}) {
   const theme = useSyncExternalStore(subscribeTheme, readTheme, () => 'dark' as const)
   const [failedSource, setFailedSource] = useState<string | null>(null)
-  const assets = getPluginAssets(props.pluginId)
   const variant = declaration[theme] ?? declaration.path
   const path = Object.hasOwn(assets, variant) ? variant : declaration.path
   const source = Object.hasOwn(assets, path) ? assets[path] : null
@@ -73,10 +77,13 @@ export function PluginIcon({
   size = 16,
   strokeWidth = 1.75,
 }: PluginIconProps): JSX.Element {
-  const declaration = getBuiltinPluginManifest(pluginId)?.icon
+  const plugin = usePluginManifest(pluginId)
+  const { detail } = usePluginDetails(plugin)
+  const declaration = plugin?.icon
+  const assets = detail?.assets ?? getPluginAssets(pluginId)
   const props = { pluginId, className, size, strokeWidth }
   if (declaration?.type === 'asset') {
-    return <AssetIcon {...props} declaration={declaration} />
+    return <AssetIcon {...props} declaration={declaration} assets={assets} />
   }
   if (declaration?.type === 'builtin') {
     const Icon = Object.hasOwn(BUILTIN_ICONS, declaration.name)

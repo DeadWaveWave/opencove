@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 
 const WEB_SESSION_COOKIE_NAME = 'opencove_session'
 const WEB_SESSION_TICKET_TTL_MS = 60_000
@@ -53,9 +53,18 @@ export class WebSessionManager {
   private readonly tickets = new Map<string, TicketRecord>()
   private readonly sessions = new Map<string, SessionRecord>()
   private generation = 0
+  private readonly sessionCookieName: string
+
+  public constructor(profileScope?: string) {
+    // Cookies are shared across ports. Independent Worker profiles must coexist
+    // in one browser without replacing each other's login session.
+    this.sessionCookieName = profileScope
+      ? `${WEB_SESSION_COOKIE_NAME}_${createHash('sha256').update(profileScope).digest('hex').slice(0, 16)}`
+      : WEB_SESSION_COOKIE_NAME
+  }
 
   public cookieName(): string {
-    return WEB_SESSION_COOKIE_NAME
+    return this.sessionCookieName
   }
 
   public issueTicket(now: Date, redirectPath: string | null): IssuedWebSessionTicket {

@@ -106,7 +106,7 @@ describe('Desktop-managed Control Surface Web access', () => {
       })
       expect(loginResponse.status).toBe(302)
       const cookie = loginResponse.headers.get('set-cookie')?.split(';')[0] ?? ''
-      expect(cookie).toContain('opencove_session=')
+      expect(cookie).toMatch(/opencove_session_[a-f0-9]{16}=/)
       const forbiddenConfig = await fetch(`http://127.0.0.1:${webPort}/invoke`, {
         method: 'POST',
         headers: {

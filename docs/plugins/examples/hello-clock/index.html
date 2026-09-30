@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hello Clock</title>
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="view.js"></script>
+  </head>
+  <body>
+    <main>
+      <p id="mode" class="eyebrow">HELLO CLOCK</p>
+      <output id="backend-result" aria-live="polite">—</output>
+      <p id="description">Read the time from this plugin's Node backend.</p>
+      <p>View alive: <span id="ticks">0</span>s</p>
+      <button id="invoke" type="button" disabled>Read clock</button>
+      <div class="counter">
+        <span>Saved count: <strong id="count">0</strong></span>
+        <button id="increment" type="button" disabled>Add one</button>
+      </div>
+      <form id="label-form">
+        <label for="label">Your clock label</label>
+        <div class="label-fields">
+          <input id="label" maxlength="80" autocomplete="off" placeholder="My clock" />
+          <button id="save" type="submit" disabled>Save</button>
+        </div>
+      </form>
+      <p id="status" role="status">Connecting to OpenCove…</p>
+    </main>
+  </body>
+</html>

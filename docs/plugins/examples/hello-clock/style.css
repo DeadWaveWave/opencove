@@ -1,0 +1,85 @@
+:root {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: var(--cove-text, #19242c);
+  background: var(--cove-window-surface, #f5f8fa);
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  padding: 24px;
+  display: grid;
+  gap: 12px;
+}
+p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--cove-text-muted, #647584);
+}
+.eyebrow {
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  color: var(--cove-accent, #287da5);
+}
+output {
+  font-size: clamp(24px, 8vw, 38px);
+  font-variant-numeric: tabular-nums;
+}
+button,
+input {
+  min-height: 32px;
+  border: 1px solid var(--cove-border, #c8d2da);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--cove-surface, #ffffff);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+}
+button {
+  cursor: pointer;
+}
+button:hover {
+  border-color: var(--cove-accent, #287da5);
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--cove-accent, #287da5);
+  outline-offset: 2px;
+}
+form {
+  display: grid;
+  gap: 6px;
+}
+label {
+  font-size: 12px;
+}
+.label-fields,
+.counter {
+  display: flex;
+  gap: 8px;
+}
+.counter {
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+input {
+  min-width: 0;
+  flex: 1;
+}
+#status {
+  min-height: 2em;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,35 @@
+.cove-plugin-view {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--cove-window-surface);
+}
+
+.cove-plugin-view iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.cove-plugin-view__status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  padding: 20px;
+  color: var(--cove-text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.cove-plugin-view__status button {
+  border: 1px solid var(--cove-border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: var(--cove-text);
+  background: var(--cove-surface);
+}

@@ -1,3 +1,4 @@
+import { createAppError } from '@shared/errors/appError'
 import type {
   ControlSurfaceInvokeRequest,
   ControlSurfaceInvokeResult,
@@ -50,6 +51,9 @@ export async function invokeBrowserControlSurface<TValue>(
   }
 
   if (result.ok === false) {
+    if (request.id.startsWith('plugin.')) {
+      throw createAppError(result.error)
+    }
     throw result.error
   }
 

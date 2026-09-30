@@ -276,8 +276,8 @@ export function WorkspaceCanvasInner({
     createTaskAtPoint: taskUi.createTaskAtPoint,
     createWebsiteAtPoint: createWebsiteNodeAtFlowPoint,
     createSpaceAtPoint: spacesApi.createEmptySpaceAtPoint,
-    createPluginAtPoint: anchor => {
-      nodeStore.createPluginNode(anchor)
+    createPluginAtPoint: (anchor, pluginId) => {
+      nodeStore.createPluginNode(anchor, pluginId)
     },
     setContextMenu: canvasState.setContextMenu,
     setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,

@@ -153,7 +153,7 @@ describe('Control Surface HTTP listener lifecycle', () => {
       { redirect: 'manual' },
     )
     const cookie = claimResponse.headers.get('set-cookie')?.split(';')[0] ?? ''
-    expect(cookie).toContain('opencove_session=')
+    expect(cookie).toMatch(/opencove_session_[a-f0-9]{16}=/)
 
     const privateClient = await openClient(privateAddress.port)
     const webClient = await openCookieClient(webAddress.port, cookie)

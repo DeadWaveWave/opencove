@@ -8,14 +8,17 @@ export function useWorkspaceCanvasPluginEntry({
 }: {
   contextMenu: ContextMenuState | null
   setContextMenu: (next: ContextMenuState | null) => void
-  createPluginNode: (point: { x: number; y: number }) => void
-}): () => void {
-  return useCallback(() => {
-    if (!contextMenu || contextMenu.kind !== 'pane') {
-      return
-    }
+  createPluginNode: (point: { x: number; y: number }, pluginId?: string) => void
+}): (pluginId?: string) => void {
+  return useCallback(
+    (pluginId?: string) => {
+      if (!contextMenu || contextMenu.kind !== 'pane') {
+        return
+      }
 
-    setContextMenu(null)
-    createPluginNode({ x: contextMenu.flowX, y: contextMenu.flowY })
-  }, [contextMenu, createPluginNode, setContextMenu])
+      setContextMenu(null)
+      createPluginNode({ x: contextMenu.flowX, y: contextMenu.flowY }, pluginId)
+    },
+    [contextMenu, createPluginNode, setContextMenu],
+  )
 }

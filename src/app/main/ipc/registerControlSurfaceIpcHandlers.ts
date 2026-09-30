@@ -1,3 +1,4 @@
+import { PluginViewRoutes } from './pluginViewRoutes'
 import { app, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import type { ControlSurfaceInvokeRequest } from '../../../shared/contracts/controlSurface'
@@ -53,10 +54,12 @@ export function registerControlSurfaceIpcHandlers(
   options: RegisterControlSurfaceIpcHandlersOptions = {},
 ): IpcRegistrationDisposable {
   const endpointResolver = options.endpointResolver ?? null
+  const viewRoutes = new PluginViewRoutes()
+  const observedClients = new Set<number>()
 
   registerHandledIpc(
     IPC_CHANNELS.controlSurfaceInvoke,
-    async (_event, payload: unknown): Promise<unknown> => {
+    async (event, payload: unknown): Promise<unknown> => {
       const request = normalizeInvokeRequestPayload(payload)
 
       logAgentLaunchInfo(
@@ -68,7 +71,11 @@ export function registerControlSurfaceIpcHandlers(
         },
       )
 
+      const pluginConnection = request.id.startsWith('plugin.')
+        ? viewRoutes.forRequest(event.sender.id, request)
+        : null
       const connection =
+        pluginConnection ??
         (endpointResolver ? await endpointResolver() : null) ??
         (await resolveControlSurfaceConnectionInfoFromUserData({
           userDataPath: app.getPath('userData'),
@@ -105,6 +112,7 @@ export function registerControlSurfaceIpcHandlers(
             token: connection.token,
           },
           request,
+          request.id.startsWith('plugin.') ? { timeoutMs: 60_000 } : undefined,
         )
 
         logAgentLaunchInfo(
@@ -139,6 +147,35 @@ export function registerControlSurfaceIpcHandlers(
           throw createAppError(result.error)
         }
 
+        if (request.id === 'plugin.view.open') {
+          if (event.sender.isDestroyed()) {
+            const viewId = (result.value as Record<string, unknown>)?.viewId
+            await invokeControlSurface(
+              connection,
+              { kind: 'command', id: 'plugin.view.close', payload: { viewId } },
+              { timeoutMs: 3000 },
+            ).catch(() => undefined)
+            throw createAppError('common.unavailable')
+          }
+          viewRoutes.remember(event.sender.id, result.value, connection)
+          if (!observedClients.has(event.sender.id)) {
+            const clientId = event.sender.id
+            observedClients.add(clientId)
+            event.sender.once('destroyed', () => {
+              observedClients.delete(clientId)
+              for (const route of viewRoutes.removeClient(clientId)) {
+                void invokeControlSurface(
+                  route.endpoint,
+                  { kind: 'command', id: 'plugin.view.close', payload: { viewId: route.viewId } },
+                  { timeoutMs: 3000 },
+                ).catch(() => undefined)
+              }
+            })
+          }
+        }
+        if (request.id === 'plugin.view.close') {
+          viewRoutes.release(event.sender.id, (request.payload as Record<string, unknown>)?.viewId)
+        }
         return result.value
       } catch (error) {
         logAgentLaunchError(
@@ -163,9 +200,18 @@ export function registerControlSurfaceIpcHandlers(
     { defaultErrorCode: 'common.unexpected' },
   )
 
+  registerHandledIpc(
+    IPC_CHANNELS.controlSurfacePluginResourceUrl,
+    async (event, resourcePath: unknown): Promise<string> =>
+      viewRoutes.resourceUrl(event.sender.id, resourcePath),
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
   return {
     dispose: () => {
+      viewRoutes.clear()
       ipcMain.removeHandler(IPC_CHANNELS.controlSurfaceInvoke)
+      ipcMain.removeHandler(IPC_CHANNELS.controlSurfacePluginResourceUrl)
     },
   }
 }

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as builtins from '../../application/builtinPlugins'
 import type { PluginIconDeclaration, PluginManifest } from '../../domain/pluginTypes'
 import * as assets from './pluginAssets'
+import * as registry from './usePluginRegistry'
 import { PluginIcon } from './PluginIcon'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 
@@ -11,7 +12,7 @@ const initialTheme = document.documentElement.dataset.coveTheme
 
 function declareIcon(icon: PluginIconDeclaration | undefined): void {
   const manifest: PluginManifest = { ...gitBoard, icon }
-  vi.spyOn(builtins, 'getBuiltinPluginManifest').mockReturnValue(manifest)
+  vi.spyOn(registry, 'usePluginManifest').mockReturnValue(manifest)
 }
 
 function setTheme(theme: 'dark' | 'light'): void {
@@ -114,7 +115,7 @@ describe('PluginIcon declarations', () => {
     declareIcon(undefined)
     const { container, rerender } = render(<PluginIcon pluginId="git-board" />)
     expect(container.querySelector('svg')).toHaveClass('lucide-puzzle')
-    vi.mocked(builtins.getBuiltinPluginManifest).mockReturnValue(null)
+    vi.mocked(registry.usePluginManifest).mockReturnValue(null)
     rerender(<PluginIcon pluginId="missing-plugin" />)
     expect(container.querySelector('svg')).toHaveClass('lucide-puzzle')
   })

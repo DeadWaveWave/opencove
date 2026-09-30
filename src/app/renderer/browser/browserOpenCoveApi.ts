@@ -138,6 +138,12 @@ export function installBrowserOpenCoveApi(): void {
       showReportFile: async () => undefined,
     },
     controlSurface: {
+      resolvePluginResourceUrl: async (resourcePath: string): Promise<string> => {
+        if (!/^\/plugin-assets\/[a-zA-Z0-9-]+\//.test(resourcePath)) {
+          throw new Error('Invalid plugin resource path.')
+        }
+        return new URL(resourcePath, window.location.origin).href
+      },
       invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
         await invokeBrowserControlSurface<TValue>(request),
     },

@@ -1,7 +1,13 @@
+import { pluginErrorMessage } from '@contexts/plugins/presentation/renderer/pluginErrorMessage'
 import { useLayoutEffect, useRef, useState, type JSX } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, RefreshCw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
-import { createBuiltinPluginRegistry } from '@contexts/plugins/application/pluginRegistry'
+import {
+  usePluginRegistry,
+  changeInstalledPlugin,
+  refreshPluginRegistry,
+} from '@contexts/plugins/presentation/renderer/usePluginRegistry'
+import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import { isPluginEnabled, type PluginContribution } from '@contexts/settings/domain/pluginSettings'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
@@ -13,7 +19,12 @@ import {
   pluginDescription,
 } from './PluginSettingsShared'
 
-const registry = createBuiltinPluginRegistry()
+function pluginEnabled(
+  plugin: PluginManifest,
+  settings: Pick<AgentSettings, 'disabledPluginIds'>,
+): boolean {
+  return plugin.source === 'local' ? plugin.enabled !== false : isPluginEnabled(settings, plugin.id)
+}
 
 export function PluginsSection({
   settings,
@@ -29,10 +40,32 @@ export function PluginsSection({
   ) => void
 }): JSX.Element {
   const { t } = useTranslation()
+  const registry = usePluginRegistry()
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(() => new Set())
+  const [error, setError] = useState<string | null>(null)
   const [activePluginId, setActivePluginId] = useState<string | null>(null)
   const viewRef = useRef<HTMLDivElement>(null)
   const returnPointRef = useRef<{ id: string; scrollTop: number } | null>(null)
-  const activePlugin = activePluginId ? registry.get(activePluginId) : null
+  const activePlugin = registry.plugins.find(plugin => plugin.id === activePluginId) ?? null
+  async function updateEnabled(plugin: PluginManifest, enabled: boolean): Promise<void> {
+    if (plugin.source !== 'local') {
+      onChangePluginEnabled(plugin.id, enabled)
+      return
+    }
+    setPendingIds(current => new Set(current).add(plugin.id))
+    setError(null)
+    try {
+      await changeInstalledPlugin('plugin.setEnabled', { pluginId: plugin.id, enabled })
+    } catch (cause) {
+      setError(pluginErrorMessage(cause))
+    } finally {
+      setPendingIds(current => {
+        const next = new Set(current)
+        next.delete(plugin.id)
+        return next
+      })
+    }
+  }
 
   useLayoutEffect(() => {
     const view = viewRef.current
@@ -59,12 +92,20 @@ export function PluginsSection({
 
   return (
     <div ref={viewRef} className="settings-plugins" id="settings-section-plugins">
+      {error || registry.error ? (
+        <p className="cove-window__error" role="alert">
+          {error ?? registry.error}
+        </p>
+      ) : null}
       {activePlugin ? (
         <PluginSettingsDetail
           plugin={activePlugin}
-          enabled={isPluginEnabled(settings, activePlugin.id)}
+          enabled={pluginEnabled(activePlugin, settings)}
+          busy={pendingIds.has(activePlugin.id)}
           settings={settings}
-          onChangeEnabled={enabled => onChangePluginEnabled(activePlugin.id, enabled)}
+          onChangeEnabled={enabled => {
+            void updateEnabled(activePlugin, enabled)
+          }}
           onChangeContribution={(contribution, enabled) =>
             onChangePluginContributionEnabled(activePlugin.id, contribution, enabled)
           }
@@ -76,9 +117,22 @@ export function PluginsSection({
           title={t('settingsPanel.plugins.installedTitle')}
           description={t('settingsPanel.plugins.installedHelp')}
         >
+          <div className="settings-plugin-list__actions">
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--ghost"
+              onClick={() => {
+                void refreshPluginRegistry()
+              }}
+              data-testid="settings-plugins-refresh"
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+              {t('settingsPanel.plugins.refresh')}
+            </button>
+          </div>
           <SettingsGroupBody className="settings-plugin-list">
-            {registry.list().map(plugin => {
-              const enabled = isPluginEnabled(settings, plugin.id)
+            {registry.plugins.map(plugin => {
+              const enabled = pluginEnabled(plugin, settings)
               return (
                 <article
                   className="settings-plugin"
@@ -119,7 +173,12 @@ export function PluginsSection({
                         {pluginDescription(plugin, t)}
                       </span>
                       <span className="settings-plugin__byline">
-                        {t('settingsPanel.plugins.builtIn')}
+                        {t(
+                          `settingsPanel.plugins.${plugin.source === 'local' ? 'local' : 'builtIn'}`,
+                        )}
+                        {plugin.status === 'error' ? (
+                          <span>{t('settingsPanel.plugins.runtime.failed')}</span>
+                        ) : null}
                         {!enabled ? <span>{t('settingsPanel.plugins.disabled')}</span> : null}
                       </span>
                     </span>
@@ -132,7 +191,10 @@ export function PluginsSection({
                   <PluginSettingsToggle
                     plugin={plugin}
                     enabled={enabled}
-                    onChange={next => onChangePluginEnabled(plugin.id, next)}
+                    disabled={pendingIds.has(plugin.id)}
+                    onChange={next => {
+                      void updateEnabled(plugin, next)
+                    }}
                   />
                 </article>
               )

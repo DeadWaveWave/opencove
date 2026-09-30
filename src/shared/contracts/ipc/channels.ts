@@ -134,6 +134,7 @@ export const IPC_CHANNELS = {
   workerClientSetWebUiSecurity: 'worker-client:set-web-ui-security',
   workerClientRelaunch: 'worker-client:relaunch',
   controlSurfaceInvoke: 'control-surface:invoke',
+  controlSurfacePluginResourceUrl: 'control-surface:plugin-resource-url',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

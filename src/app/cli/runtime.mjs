@@ -19,14 +19,6 @@ function resolvePackagedResourcesPath(processObject) {
   return resourcesPath.length > 0 ? resourcesPath : null
 }
 
-function resolvePackagedAppRoot(resourcesPath) {
-  const matched = PACKAGED_APP_ROOT_CANDIDATES.map(candidate =>
-    resolve(resourcesPath, candidate),
-  ).find(candidate => existsSync(candidate))
-
-  return matched ?? resolve(resourcesPath, PACKAGED_APP_ROOT_CANDIDATES[0])
-}
-
 function readManifestValue(content, key) {
   const prefix = `${key}=`
   const matched = content.split(/\r?\n/u).find(line => line.startsWith(prefix))
@@ -42,7 +34,16 @@ export function resolveCliRuntime(options = {}) {
       ? resolvePackagedResourcesPath(options.processObject ?? process)
       : options.resourcesPath
 
-  if (!resourcesPath) {
+  // ELECTRON_RUN_AS_NODE still exposes Electron's own Resources directory. Only
+  // treat it as our packaged application when this CLI actually lives there.
+  const cliAppRoot = resolveSourceRepoRoot(cliDirectory)
+  const packagedAppRoot = resourcesPath
+    ? PACKAGED_APP_ROOT_CANDIDATES.map(candidate => resolve(resourcesPath, candidate)).find(
+        candidate => candidate === cliAppRoot,
+      )
+    : null
+
+  if (!packagedAppRoot) {
     const repoRoot = resolveSourceRepoRoot(cliDirectory)
     const manifestPath = resolve(repoRoot, '..', 'opencove-runtime.env')
     if (existsSyncImpl(manifestPath)) {
@@ -64,7 +65,7 @@ export function resolveCliRuntime(options = {}) {
     }
   }
 
-  const appRoot = resolvePackagedAppRoot(resourcesPath)
+  const appRoot = packagedAppRoot
   return {
     kind: 'packaged',
     resourcesPath,

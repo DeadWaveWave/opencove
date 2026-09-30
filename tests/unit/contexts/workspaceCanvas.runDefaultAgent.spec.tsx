@@ -220,7 +220,8 @@ describe('WorkspaceCanvas run default agent', () => {
       expect(launchInMount).toHaveBeenCalledTimes(1)
     })
 
-    expect(controlSurfaceInvoke).toHaveBeenNthCalledWith(1, {
+    // Plugin discovery may run independently when the canvas mounts.
+    expect(controlSurfaceInvoke).toHaveBeenCalledWith({
       kind: 'query',
       id: 'mount.list',
       payload: { projectId: 'workspace-1' },

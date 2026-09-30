@@ -1,3 +1,4 @@
+import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import type { ControlSurface } from './controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
@@ -40,6 +41,7 @@ import type { TerminalAgentActivityEnvironmentService } from '../../../contexts/
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
   deps: {
+    plugins: PluginInstallationManager
     approvedWorkspaces: ApprovedWorkspaceStore
     userDataPath: string
     topology: WorkerTopologyStore
@@ -146,7 +148,7 @@ export function registerControlSurfaceHandlers(
     publishSyncEvent: deps.publishSyncEvent,
     closeWebsiteNode: deps.closeWebsiteNode,
   })
-  registerPluginHandlers(controlSurface)
+  registerPluginHandlers(controlSurface, deps.plugins)
   registerSyncHandlers(controlSurface, deps.getPersistenceStore, {
     onStatePersisted: deps.onStatePersisted,
   })

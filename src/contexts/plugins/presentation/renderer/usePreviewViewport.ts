@@ -6,6 +6,8 @@ export function usePreviewViewport(
   size: { width: number; height: number },
   compactSize: { width: number; height: number },
 ) {
+  const { width: fullWidth, height: fullHeight } = size
+  const { width: compactWidth, height: compactHeight } = compactSize
   const containerRef = useRef<HTMLDivElement>(null)
   const [layout, setLayout] = useState<{ viewport: Viewport; compact: boolean }>({
     viewport: { x: 0, y: 0, zoom: 1 },
@@ -22,12 +24,13 @@ export function usePreviewViewport(
         return
       }
       const compact = width < 440
-      const plane = compact ? compactSize : size
-      const zoom = Math.min(1, width / plane.width, height / plane.height)
+      const planeWidth = compact ? compactWidth : fullWidth
+      const planeHeight = compact ? compactHeight : fullHeight
+      const zoom = Math.min(1, width / planeWidth, height / planeHeight)
       setLayout(previous => {
         const next = {
-          x: (width - plane.width * zoom) / 2,
-          y: (height - plane.height * zoom) / 2,
+          x: (width - planeWidth * zoom) / 2,
+          y: (height - planeHeight * zoom) / 2,
           zoom,
         }
         return previous.compact === compact &&
@@ -42,6 +45,6 @@ export function usePreviewViewport(
     const observer = new ResizeObserver(fit)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [size.height, size.width, compactSize.height, compactSize.width])
+  }, [fullHeight, fullWidth, compactHeight, compactWidth])
   return { containerRef, ...layout }
 }
