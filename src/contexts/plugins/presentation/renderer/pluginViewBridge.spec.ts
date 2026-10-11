@@ -1,3 +1,4 @@
+import { createAppError } from '../../../../shared/errors/appError'
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { bindPluginViewBridge } from './pluginViewBridge'
@@ -249,3 +250,31 @@ it.each([
     })
   },
 )
+
+it('passes sanitized filesystem diagnostics to the iframe instead of debug messages', async () => {
+  const { invoke, send, post } = setup()
+  invoke.mockRejectedValueOnce(
+    createAppError('filesystem.write_file_text_failed', {
+      params: { reason: 'already_exists', token: 'must-not-escape' },
+      debugMessage: 'EEXIST /private/path?token=must-not-escape',
+      details: { authorization: 'must-not-escape' },
+    }),
+  )
+  send({
+    type: 'request',
+    id: 'file',
+    operation: 'host.request',
+    payload: { operation: 'filesystem.writeText', payload: {} },
+  })
+  await vi.waitFor(() => expect(post).toHaveBeenCalledOnce())
+  expect(post.mock.calls[0][0]).toEqual({
+    channel: 'opencove-plugin-v1',
+    type: 'result',
+    id: 'file',
+    error: 'Unable to save the file. The destination already exists.',
+    errorDescriptor: {
+      code: 'filesystem.write_file_text_failed',
+      params: { reason: 'already_exists' },
+    },
+  })
+})

@@ -20,6 +20,11 @@ control-surface bridge. Node.js permissions remain unchanged.
   stop their sessions. Call `nodes.close` explicitly when that is the intended action.
 - Pending calls are generation fenced before dispatch and persistence. Work already
   dispatched can have effects; retiring a caller is not a transaction rollback.
+- Concurrent canvas saves are merged by retrying only the node insertion plan
+  (at most three attempts); a terminal or Agent process is not launched again.
+  Target changes still fail. If a write result cannot be confirmed, the error
+  includes the new node ID: inspect it before retrying. A possibly persisted
+  window's session is retained rather than terminated.
 
 ## Canvas nodes
 

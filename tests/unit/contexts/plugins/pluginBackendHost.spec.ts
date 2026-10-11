@@ -1,3 +1,4 @@
+import { createAppError } from '../../../../src/shared/errors/appError'
 // @vitest-environment node
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -36,6 +37,10 @@ async function backendFixture(
         if (id === 'disconnect') { hangingDispose = true; setInterval(() => {}, 1000); process.disconnect(); }
         if (id === 'inspect') return host.target.resolve(params);
         if (id === 'list') return host.target.list();
+        if (id === 'read-error') {
+          try { await host.filesystem.readText(params); }
+          catch (error) { return { code: error.code, params: error.params, message: error.message, hasDebug: 'debugMessage' in error, hasDetails: 'details' in error }; }
+        }
         if (id === 'read') return host.filesystem.readText(params);
         if (id === 'write') return host.filesystem.writeText(params);
         if (id === 'events') return host.events.subscribe(params);
@@ -63,6 +68,7 @@ async function backendFixture(
           'list',
           'inspect',
           'read',
+          'read-error',
           'write',
           'events',
           'launch',
@@ -270,4 +276,23 @@ describe('host RPC lifecycle and bounds', () => {
     )
     await expect(client.api.operations.start({})).rejects.toThrow('connection closed')
   })
+})
+
+it('preserves sanitized filesystem code/reason through real backend child IPC', async () => {
+  const { backend } = await backendFixture(async () => {
+    throw createAppError('filesystem.stat_failed', {
+      params: { reason: 'not_found', token: 'must-not-escape' },
+      debugMessage: 'ENOENT /private/path?token=must-not-escape',
+      details: { authorization: 'must-not-escape' },
+    })
+  })
+  expect(await run(backend, 'read-error', { target: { projectId: 'p' }, path: 'missing' })).toEqual(
+    {
+      code: 'filesystem.stat_failed',
+      params: { reason: 'not_found' },
+      message: 'Unable to read file details. The file or folder does not exist.',
+      hasDebug: false,
+      hasDetails: false,
+    },
+  )
 })

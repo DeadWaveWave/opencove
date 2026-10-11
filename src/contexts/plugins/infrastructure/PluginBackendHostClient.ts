@@ -67,9 +67,16 @@ export class PluginBackendHostClient {
     clearTimeout(request.timer)
     try {
       if (message.ok !== true) {
-        throw new Error(
+        const error = new Error(
           typeof message.error === 'string' ? message.error : 'Plugin host request failed.',
         )
+        const descriptor = message.errorDescriptor as
+          | { code?: unknown; params?: unknown }
+          | undefined
+        if (descriptor && typeof descriptor.code === 'string') {
+          Object.assign(error, { code: descriptor.code, params: descriptor.params })
+        }
+        throw error
       }
       request.resolve(pluginJsonValue(message.value, 2 * 1024 * 1024, 'host response'))
     } catch (error) {

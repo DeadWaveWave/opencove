@@ -129,8 +129,10 @@ RPC and resource URL resolver; Web uses its connected Worker. It does not yet
 relocate an independent plugin backend according to a Space's remote mount.
 For a mount-bound node, the view therefore receives no presumed local project
 directory. `workspaceId` is context, not a local filesystem path. The
-[host facade](./TARGETS.md) resolves explicit project/Space selections and routes
-supported reads and bounded process operations through the mount owner.
+[host facade](./HOST_API.md) resolves explicit project/Space selections and routes
+supported file reads and mutations, node and session controls, and bounded
+process operations through their owners. File and process execution follows the
+resolved mount; canvas node identity remains on the connected Worker.
 Direct Node calls remain on the plugin backend's machine. Git source installation,
 updates and repository discovery use the connected Worker; a discovered repository
 is not an installed plugin.

@@ -1,3 +1,5 @@
+import { publicFileSystemError } from '../../../shared/errors/filesystemError'
+import { formatAppErrorMessage } from '../../../shared/errors/appError'
 import { pluginJsonValue } from '../domain/pluginJsonValue'
 
 /** Parent-side host calls share one lifetime with exactly one backend generation. */
@@ -45,13 +47,17 @@ export class PluginBackendHostRequests {
     )
     void this.dispatch(message)
       .then(value => this.reply({ requestId, ok: true, value }))
-      .catch(error =>
+      .catch(error => {
+        const errorDescriptor = publicFileSystemError(error)
         this.reply({
           requestId,
           ok: false,
-          error: (error instanceof Error ? error.message : String(error)).slice(0, 4000),
-        }),
-      )
+          error: errorDescriptor
+            ? formatAppErrorMessage(errorDescriptor)
+            : (error instanceof Error ? error.message : String(error)).slice(0, 4000),
+          ...(errorDescriptor ? { errorDescriptor } : {}),
+        })
+      })
       .finally(() => {
         this.active.delete(requestId)
         clearTimeout(this.timers.get(requestId))

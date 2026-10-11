@@ -51,6 +51,30 @@ An older remote Worker fails before mutation instead of ignoring the flags and
 silently overwriting or recursively deleting. Existing host callers which omit
 these optional underlying provider flags retain their previous behavior.
 
+## Handle file errors
+
+Recognized provider failures expose a `filesystem.*_failed` code and a
+`params.reason` value on the thrown SDK error in both the backend and real view:
+`not_found`, `already_exists`, `permission_denied`, `not_empty`, `not_directory`
+or `is_directory`. Use the reason instead of parsing an English message or raw
+OS error. The operation code can reflect a prerequisite: reading a missing file
+can fail at `stat` before the read itself. Older remote Workers and unrecognized
+failures may omit `reason`; preserve that failure instead of treating it as a
+missing file. Provider debug details and arbitrary parameters are not forwarded
+to the plugin.
+
+```js
+try {
+  await host.filesystem.stat({ target, path: 'notes' })
+} catch (error) {
+  if (error.code?.startsWith('filesystem.') && error.params?.reason === 'not_found') {
+    // The caller can explicitly choose to create this directory.
+  } else {
+    throw error
+  }
+}
+```
+
 ## Observe shallow changes
 
 ```js

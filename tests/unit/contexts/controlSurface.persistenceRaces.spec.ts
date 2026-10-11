@@ -125,7 +125,7 @@ function expectPreserved(f: ReturnType<typeof fixture>) {
 }
 
 describe('control surface full-state mutation races', () => {
-  it('cleans up a single spawned session after a concurrent writer wins', async () => {
+  it('rebases a single spawned session onto a concurrent writer without overwriting its node', async () => {
     const f = fixture()
     const spawnTerminal = vi.fn(async () => {
       f.advance()
@@ -139,29 +139,33 @@ describe('control surface full-state mutation races', () => {
       }
     })
     const killSession = vi.fn(async () => undefined)
-    await expect(
-      createNodeForNodeControl({
-        store: f.store,
-        locatorDeps: {
-          listEndpoints: async () => [],
-          listMounts: async () => [],
-          listWorktreesForMount: async () => [],
-          listWorktreesForWorkspace: async () => [],
+    const created = await createNodeForNodeControl({
+      store: f.store,
+      locatorDeps: {
+        listEndpoints: async () => [],
+        listMounts: async () => [],
+        listWorktreesForMount: async () => [],
+        listWorktreesForWorkspace: async () => [],
+      },
+      runtime: {
+        spawnTerminal,
+        killSession,
+        launchAgent: async () => {
+          throw new Error('unexpected agent launch')
         },
-        runtime: {
-          spawnTerminal,
-          killSession,
-          launchAgent: async () => {
-            throw new Error('unexpected agent launch')
-          },
-        },
-        now: ctx.now(),
-        input: { kind: 'terminal', space: { kind: 'spaceId', spaceId: 'space' }, data: {} },
-      }),
-    ).rejects.toMatchObject({ code: 'persistence.invalid_state' })
+      },
+      now: ctx.now(),
+      input: { kind: 'terminal', space: { kind: 'spaceId', spaceId: 'space' }, data: {} },
+    })
     expect(spawnTerminal).toHaveBeenCalledTimes(1)
-    expect(killSession).toHaveBeenCalledExactlyOnceWith('orphan')
-    expectPreserved(f)
+    expect(killSession).not.toHaveBeenCalled()
+    expect(f.state().workspaces[0].nodes.map(item => item.id)).toEqual([
+      'original',
+      'concurrent-plugin',
+      created.node.id,
+    ])
+    expect(f.store.writeAppState).toHaveBeenCalledTimes(1)
+    expect(f.store.writeAppState.mock.calls[0]?.[1]).toEqual({ expectedRevision: 2 })
   })
 
   it.each(['update', 'delete'])(

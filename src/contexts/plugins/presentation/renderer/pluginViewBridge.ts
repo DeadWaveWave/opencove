@@ -1,3 +1,5 @@
+import { publicFileSystemError } from '../../../../shared/errors/filesystemError'
+import { formatAppErrorMessage } from '../../../../shared/errors/appError'
 import type { PluginOpenViewResult } from '../../domain/pluginRuntimeTypes'
 import { pluginErrorMessage } from './pluginErrorMessage'
 
@@ -129,7 +131,15 @@ export function bindPluginViewBridge({
     })()
       .then(value => post({ type: 'result', id: message.id, value }))
       .catch(error => {
-        post({ type: 'result', id: message.id, error: pluginErrorMessage(error) })
+        const errorDescriptor = publicFileSystemError(error)
+        post({
+          type: 'result',
+          id: message.id,
+          error: errorDescriptor
+            ? formatAppErrorMessage(errorDescriptor)
+            : pluginErrorMessage(error),
+          ...(errorDescriptor ? { errorDescriptor } : {}),
+        })
       })
   }
   const onTheme = () => post({ type: 'theme', context: themeContext() })

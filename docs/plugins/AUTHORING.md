@@ -57,9 +57,11 @@ shows the selected runtime's address and health; the startup log gives the Web U
 URL. The regular CLI reads connection credentials for the selected profile, so
 there is no need to copy a token into plugin code or browser URLs.
 
-Create or open a project in this Web UI, then create the installed plugin through
-the action bar or canvas context menu. No plugin-node creation CLI is required.
-Use Settings → Plugins for the detail page, preview and enablement controls.
+For a plugin with a node window, create or open a project in this Web UI, then
+create its window through a declared action-bar or canvas-menu entry, or use
+`plugin open` with an explicit project. Backend commands and other contributions
+can work without a window when the plugin declares them that way. Use Settings →
+Plugins for the detail page, optional preview and enablement controls.
 
 Without `--user-data` or `OPENCOVE_USER_DATA_DIR`, Worker startup selects the
 platform app-data `opencove-dev` directory if it exists, otherwise `opencove`.
@@ -106,8 +108,9 @@ failure by replacing it with a website node or editing OpenCove's source.
 ## Building your own plugin
 
 Choose a unique lowercase slug and change the example's manifest ID, name,
-description and version. Provide an HTML view with external JavaScript and CSS
-files. The host injects `window.opencovePlugin` before your scripts. Await its
+description and version. If the plugin contributes a node window, provide an HTML
+view with external JavaScript and CSS files. The host injects
+`window.opencovePlugin` before your scripts. Await its
 `ready` promise before reading context or calling the backend. Do not ship your own
 bridge, reach into the host DOM, or depend on internal OpenCove imports.
 

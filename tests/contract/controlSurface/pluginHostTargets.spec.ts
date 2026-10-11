@@ -157,6 +157,34 @@ describe('plugin target routing over two authenticated Workers', () => {
       expect(await host('filesystem.readDirectory', { target })).toMatchObject({
         entries: [{ name: 'where.txt' }],
       })
+      // The real local and remote filesystem envelopes keep machine-readable reasons.
+      for (const selected of [{ projectId: 'project' }, target]) {
+        const failures = [
+          ['filesystem.readText', { path: 'missing.txt' }, 'filesystem.stat_failed', 'not_found'],
+          [
+            'filesystem.writeText',
+            { path: 'where.txt', content: 'destroy', overwrite: false },
+            'filesystem.write_file_text_failed',
+            'already_exists',
+          ],
+          [
+            'filesystem.mkdir',
+            { path: 'where.txt' },
+            'filesystem.create_directory_failed',
+            'already_exists',
+          ],
+        ] as const
+        for (const [operation, input, code, reason] of failures) {
+          // eslint-disable-next-line no-await-in-loop -- Sequential error responses identify the selected route.
+          const response = await invoke(`http://127.0.0.1:${homeAddress.port}`, 'home-token', {
+            kind: 'command',
+            id: 'plugin.host.request',
+            payload: { viewId: view.viewId, operation, payload: { target: selected, ...input } },
+          })
+          expect(response.data).toMatchObject({ ok: false, error: { code, params: { reason } } })
+          expect((response.data as { error: unknown }).error).toEqual({ code, params: { reason } })
+        }
+      }
       const watch = await host<{ watchId: string }>('filesystem.watch', { target })
       await host('filesystem.mkdir', { target, path: 'generated' })
       await host('filesystem.writeText', {
@@ -174,11 +202,11 @@ describe('plugin target routing over two authenticated Workers', () => {
           content: 'destroy',
           overwrite: false,
         }),
-      ).rejects.toThrow()
+      ).rejects.toThrow('already_exists')
       expect(await readFile(join(remoteRoot, 'generated/result.txt'), 'utf8')).toBe('remote write')
       await expect(
         host('filesystem.delete', { target, path: 'generated', recursive: false }),
-      ).rejects.toThrow()
+      ).rejects.toThrow('not_empty')
       await host('filesystem.rename', {
         target,
         path: 'generated/result.txt',

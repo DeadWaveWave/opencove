@@ -1,3 +1,4 @@
+import { createAppErrorDescriptor } from '../../../src/shared/errors/appError'
 // @vitest-environment node
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -74,6 +75,20 @@ describe('plugin canvas routing over two authenticated Workers', () => {
     )
     await writeFile(join(source, 'index.html'), '<html><head></head><body>Target</body></html>')
     const store = createInMemoryPersistenceStore()
+    const writeState = store.writeAppState
+    store.writeAppState = async (next, options) => {
+      const revision = await store.readAppStateRevision()
+      if (options?.expectedRevision !== undefined && revision !== options.expectedRevision) {
+        return {
+          ok: false,
+          reason: 'unknown',
+          error: createAppErrorDescriptor('persistence.invalid_state', {
+            debugMessage: `App state revision conflict (expected=${options.expectedRevision}, current=${revision}).`,
+          }),
+        }
+      }
+      return writeState(next, options)
+    }
     const state = createMinimalState(localRoot, 'project', 'space')
     state.workspaces[0].spaces[0].directoryPath = remoteRoot
     await store.writeAppState(state)
@@ -168,10 +183,32 @@ describe('plugin canvas routing over two authenticated Workers', () => {
       expect(await host('nodes.get', { nodeId: note.node.id })).toMatchObject({
         node: { title: 'Edited', data: { text: 'Changed' } },
       })
+      const spawnLocal = vi.mocked(localPty.runtime.spawnSession)
+      const originalSpawn = spawnLocal.getMockImplementation()!
+      spawnLocal.mockImplementationOnce(async input => {
+        const snapshot = structuredClone(await store.readAppState()) as typeof state
+        snapshot.workspaces[0].viewport = { x: 444, y: 222, zoom: 0.75 }
+        snapshot.settings = { language: 'zh-CN', uiTheme: 'pixel-light' }
+        const edited = snapshot.workspaces[0].nodes.find(item => item.id === note.node.id)!
+        edited.task = { text: 'Edited in Web UI while terminal starts' }
+        await call('sync.writeState', {
+          state: snapshot,
+          baseRevision: await store.readAppStateRevision(),
+        })
+        return originalSpawn(input)
+      })
       const local = await host<CreateNodeResult>('terminals.create', {
         target: { projectId: 'project' },
         title: 'Local terminal',
       })
+      const afterCreate = (await store.readAppState()) as typeof state
+      expect(afterCreate.workspaces[0].viewport).toEqual({ x: 444, y: 222, zoom: 0.75 })
+      expect(afterCreate.settings).toMatchObject({ language: 'zh-CN', uiTheme: 'pixel-light' })
+      expect(
+        afterCreate.workspaces[0].nodes.find(item => item.id === note.node.id)?.task,
+      ).toMatchObject({ text: 'Edited in Web UI while terminal starts' })
+      expect(spawnLocal).toHaveBeenCalledTimes(1)
+      expect(localPty.runtime.kill).not.toHaveBeenCalled()
       const remoteNode = await host<CreateNodeResult>('terminals.create', {
         target,
         title: 'Remote terminal',

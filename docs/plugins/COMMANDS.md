@@ -144,10 +144,12 @@ It returns the durable node identity and requests focus. A singleton's existing
 node is reused across projects. `windows` lists those durable nodes and their
 current view IDs/readiness; `--project` filters the listing.
 
-Use this plugin-specific listing and the plugin's declared read/status commands.
-The generic `node list/get/update/delete` API currently manages built-in node
-kinds only; a `node.not_found` response there does not mean a plugin window was
-deleted. Do not recreate a window based on that response.
+Use this plugin-specific listing for view IDs, readiness and client selection,
+and the plugin's declared read/status commands for its own state. Generic node
+queries, focus and close also support plugin windows; generic creation and
+updates remain limited to their documented node kinds. See
+[nodes and sessions](./CANVAS_API.md) for each operation's contract. Read back the
+exact node and project after an uncertain result before attempting another mutation.
 
 `--node` selects an existing node and cannot be combined with `--space` or a
 Control Surface placement `anchor`. Project, space and anchor are creation

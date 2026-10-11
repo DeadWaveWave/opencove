@@ -156,7 +156,14 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
       const task = pending.get(message.id);
       pending.delete(message.id);
       clearTimeout(task.timer);
-      if (message.error) task.reject(new Error(message.error));
+      if (message.error) {
+        const error = new Error(message.error);
+        if (message.errorDescriptor) {
+          error.code = message.errorDescriptor.code;
+          error.params = message.errorDescriptor.params;
+        }
+        task.reject(error);
+      }
       else task.resolve(message.value);
     }
   });

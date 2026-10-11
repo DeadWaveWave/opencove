@@ -1,3 +1,4 @@
+import { fileSystemErrorReasonMessage } from './filesystemError'
 import type { AppErrorCode, AppErrorDescriptor, AppErrorParams } from '../contracts/dto'
 import type { IpcInvokeResult } from '../contracts/ipc'
 
@@ -193,6 +194,10 @@ export function toAppErrorDescriptor(
 export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppError): string {
   const descriptor = error instanceof OpenCoveAppError ? error.toDescriptor() : error
   const message = APP_ERROR_MESSAGES[descriptor.code] ?? APP_ERROR_MESSAGES['common.unexpected']
+  if (descriptor.code.startsWith('filesystem.')) {
+    const reason = fileSystemErrorReasonMessage(descriptor.params?.reason)
+    return reason ? `${message} ${reason}` : message
+  }
   if (
     descriptor.code === 'plugin.operation_failed' &&
     typeof descriptor.params?.reason === 'string'

@@ -1,3 +1,4 @@
+import { publicFileSystemError } from '../../../../shared/errors/filesystemError'
 import { createPluginCanvasHost } from './pluginCanvasHost'
 import { createPluginFilesystemHandlers } from './pluginFilesystemHandlers'
 import { randomUUID } from 'node:crypto'
@@ -187,6 +188,10 @@ export function registerPluginHostHandlers(
     },
   })
   const fail = (error: unknown): never => {
+    const filesystemError = publicFileSystemError(error)
+    if (filesystemError) {
+      throw createAppError(filesystemError)
+    }
     const reason = (error instanceof Error ? error.message : String(error)).slice(0, 2000)
     throw createAppError('plugin.operation_failed', { params: { reason }, debugMessage: reason })
   }

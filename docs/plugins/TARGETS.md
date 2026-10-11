@@ -145,8 +145,10 @@ private host modules, or copy connection tokens into a plugin.
 
 These APIs route supported operations. They do not move arbitrary plugin code to
 a remote Worker, install packages on another machine, provide a client-device
-Node runtime, or expose arbitrary internal commands. Terminal-window creation
-and Agent orchestration remain separate public-contract work.
+Node runtime, or expose arbitrary internal commands. Terminal-window creation,
+Agent launching and session controls are available through the routed
+[nodes and sessions API](./CANVAS_API.md), with explicit targets and lifecycle
+rules described there.
 
 The separation follows [VS Code's remote extension guidance](https://code.visualstudio.com/api/advanced-topics/remote-extensions):
 host APIs can route to a workspace while direct Node APIs remain bound to their

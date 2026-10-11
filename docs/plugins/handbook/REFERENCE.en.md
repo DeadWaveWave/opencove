@@ -38,8 +38,10 @@ opencove plugin guide
 
 The result includes local paths an Agent can read. Ask it to use the supplied API
 and visual guide, create the plugin in an independent directory, install it on the
-intended runtime, and verify a real window plus its preview. A standalone web page
-is not an installed OpenCove plugin.
+intended runtime, and verify its declared capabilities. If it contributes a node
+window, verify that real window and its preview; a plugin with only backend
+commands or other contributions does not need a window. A standalone web page is
+not an installed OpenCove plugin.
 
 If the launcher needs repair, use **Settings → Connections → CLI → Install CLI**.
 For setup details, start with [Authoring and verification](../AUTHORING.md).

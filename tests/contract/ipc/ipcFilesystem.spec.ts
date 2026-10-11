@@ -190,7 +190,7 @@ describe('IPC filesystem handlers', () => {
       }),
     ).rejects.toMatchObject({
       code: 'filesystem.copy_entry_failed',
-      debugMessage: expect.stringMatching(/already exists/i),
+      params: { reason: 'already_exists' },
     })
 
     await expect(

@@ -34,6 +34,7 @@ function setup(constructionFails = false) {
   } as unknown as {
     opencovePlugin: {
       invoke: (method: string) => Promise<unknown>
+      host: { filesystem: { readText: (input: unknown) => Promise<unknown> } }
       onCommand: (handler: (command: string, params: unknown) => unknown) => () => void
     }
   }
@@ -57,7 +58,7 @@ function setup(constructionFails = false) {
     origin: 'http://127.0.0.1:8000',
     data: { channel: 'opencove-plugin-v1', type: 'init', context: { theme: 'dark' } },
   })
-  return { window, sockets, listeners, beacon, pause, schedule, post }
+  return { window, sockets, listeners, beacon, pause, schedule, post, parent }
 }
 
 describe('injected plugin SDK lifecycle', () => {
@@ -295,5 +296,33 @@ describe('injected plugin SDK lifecycle', () => {
       ok: true,
       value: null,
     })
+  })
+})
+
+it('rejects a host SDK call with the structured filesystem reason supplied by its parent', async () => {
+  const { window, listeners, parent, post } = setup()
+  const pending = window.opencovePlugin.host.filesystem.readText({
+    target: { projectId: 'p' },
+    path: 'missing',
+  })
+  await vi.waitFor(() =>
+    expect(post.mock.calls.some(([message]) => message.type === 'request')).toBe(true),
+  )
+  const request = post.mock.calls.find(([message]) => message.type === 'request')![0]
+  listeners.get('message')?.({
+    source: parent,
+    origin: 'http://127.0.0.1:8000',
+    data: {
+      channel: 'opencove-plugin-v1',
+      type: 'result',
+      id: request.id,
+      error: 'Unable to read file details. The file or folder does not exist.',
+      errorDescriptor: { code: 'filesystem.stat_failed', params: { reason: 'not_found' } },
+    },
+  })
+  await expect(pending).rejects.toMatchObject({
+    code: 'filesystem.stat_failed',
+    params: { reason: 'not_found' },
+    message: expect.stringContaining('does not exist'),
   })
 })

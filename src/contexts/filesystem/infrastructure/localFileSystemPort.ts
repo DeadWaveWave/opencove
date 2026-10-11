@@ -63,7 +63,7 @@ async function assertMoveTargetAllowed(sourcePath: string, targetPath: string): 
   }
 
   if (await pathExists(targetPath)) {
-    throw new Error('The destination already exists.')
+    throw Object.assign(new Error('The destination already exists.'), { code: 'EEXIST' })
   }
 
   const sourceStats = await stat(sourcePath)
@@ -116,7 +116,7 @@ export function createLocalFileSystemPort(): FileSystemPort {
       const targetPath = fileUriToPath(targetUri)
       await assertMoveTargetAllowed(sourcePath, targetPath)
       if (resolve(sourcePath) === resolve(targetPath)) {
-        throw new Error('The destination already exists.')
+        throw Object.assign(new Error('The destination already exists.'), { code: 'EEXIST' })
       }
 
       await cp(sourcePath, targetPath, {

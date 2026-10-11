@@ -66,3 +66,12 @@ describe('appError', () => {
     expect(isIpcInvokeResult({ ok: true, level: 'full', bytes: 12 })).toBe(false)
   })
 })
+
+it('formats only allowlisted filesystem reasons and ignores arbitrary reason text', () => {
+  expect(
+    createAppError('filesystem.stat_failed', { params: { reason: 'not_found' } }).message,
+  ).toBe('Unable to read file details. The file or folder does not exist.')
+  expect(
+    createAppError('filesystem.stat_failed', { params: { reason: 'token=secret' } }).message,
+  ).toBe('Unable to read file details.')
+})
