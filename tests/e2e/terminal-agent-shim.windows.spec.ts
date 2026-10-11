@@ -154,6 +154,7 @@ async function createHarness(options: { provider: TerminalAgentShimProvider; ctr
         : null,
   })
   const assets = new TerminalAgentTelemetryAssetStore({
+    parentDirectory: root,
     runtimeExecutable: process.execPath,
     platform: 'win32',
   })
@@ -460,6 +461,7 @@ test.describe('terminal Agent shim (Windows)', () => {
       '@echo off\r\nif "%~2"=="--prepare-windows" (echo {invalid>"%~4" & exit /b 0)\r\nif "%~2"=="--complete-windows" (del /f /q "%~3" 2>nul & exit /b 0)\r\nexit /b 1\r\n',
     )
     const assets = new TerminalAgentTelemetryAssetStore({
+      parentDirectory: root,
       platform: 'win32',
       runtimeExecutable: fakeRuntime,
     })

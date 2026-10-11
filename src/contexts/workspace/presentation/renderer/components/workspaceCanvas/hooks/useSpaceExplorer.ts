@@ -2,9 +2,7 @@ import React from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 import { repositionCreatedExplorerNode } from './useSpaceExplorer.materializePlacement'
-import { resolveFilesystemEntryBinding } from '../filesystemNodeBinding'
 import type { WorkspaceCanvasQuickPreviewState } from '../types'
-import { focusNodeInViewport } from '../helpers'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import {
   findBlockingOpenDocumentForMutation,
@@ -21,6 +19,7 @@ import type {
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewActions } from './useSpaceExplorer.quickPreviewActions'
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewDismiss } from './useSpaceExplorer.quickPreviewDismiss'
 import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
+import { useWorkspaceDocumentOpening } from './useWorkspaceDocumentOpening'
 
 export function useWorkspaceCanvasSpaceExplorer({
   workspaceId,
@@ -35,9 +34,21 @@ export function useWorkspaceCanvasSpaceExplorer({
   nodeDragSession,
   finalizeDraggedNodeDrop,
   createDocumentNode,
+  expandNode,
   createImageNode,
   standardWindowSizeBucket,
 }: WorkspaceCanvasSpaceExplorerArgs): WorkspaceCanvasSpaceExplorerResult {
+  const openDocument = useWorkspaceDocumentOpening({
+    workspaceId,
+    expandNode,
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+    onRequestPersistFlush,
+    reactFlow,
+    createDocumentNode,
+  })
   const [openExplorerSpaceId, setOpenExplorerSpaceId] = React.useState<string | null>(null)
   // prettier-ignore
   const [explorerClipboard, setExplorerClipboardState] = React.useState<SpaceExplorerClipboardItem | null>(null)
@@ -211,93 +222,23 @@ export function useWorkspaceCanvasSpaceExplorer({
       }
 
       if (preview.kind !== 'image') {
-        const existingNode =
-          nodesRef.current.find(node => {
-            if (node.data.kind !== 'document' || !node.data.document) {
-              return false
-            }
-
-            return node.data.document.uri === preview.uri && space.nodeIds.includes(node.id)
-          }) ?? null
-
-        if (existingNode) {
-          if (options?.isRequestCurrent && !options.isRequestCurrent()) {
-            return null
-          }
-
-          focusNodeInViewport(reactFlow, existingNode, { duration: 120, zoom: reactFlow.getZoom() })
-          return existingNode
-        }
-
-        if (options?.isRequestCurrent && !options.isRequestCurrent()) {
-          return null
-        }
-
-        const creationAnchor = options?.usePreviewRectAsAnchor
-          ? {
-              x: preview.rect.x,
-              y: preview.rect.y,
-            }
-          : preview.createAnchor
-
-        const creationPlacement = {
-          ...(preview.createPlacement ?? {}),
-          targetSpaceRect: rect,
-          focusViewportOnCreate: options?.focusViewportOnCreate,
-          sizeOverride: {
-            width: preview.rect.width,
-            height: preview.rect.height,
+        return openDocument({
+          uri: preview.uri,
+          mountId: preview.mountId ?? null,
+          spaceId: space.id,
+          anchor: options?.usePreviewRectAsAnchor
+            ? { x: preview.rect.x, y: preview.rect.y }
+            : preview.createAnchor,
+          placement: {
+            ...preview.createPlacement,
+            focusViewportOnCreate: options?.focusViewportOnCreate,
+            sizeOverride: { width: preview.rect.width, height: preview.rect.height },
           },
-        }
-
-        const binding = await resolveFilesystemEntryBinding(
-          preview.mountId ?? null,
-          preview.uri,
-        ).catch(() => null)
-        if (
-          !binding ||
-          (options?.isRequestCurrent && !options.isRequestCurrent()) ||
-          !spacesRef.current.some(item => item.id === space.id)
-        ) {
-          return null
-        }
-        const created = createDocumentNode(
-          creationAnchor,
-          { uri: preview.uri },
-          creationPlacement,
-          binding,
-        )
-
-        if (!created) {
-          return null
-        }
-
-        repositionCreatedExplorerNode({
-          created,
-          creationAnchor,
-          creationPlacement,
-          nodesRef,
-          setNodes,
+          isRequestCurrent: options?.isRequestCurrent,
         })
-
-        assignNodeToSpaceAndExpand({
-          workspaceId,
-          createdNodeId: created.id,
-          createdNode: created,
-          targetSpaceId: space.id,
-          spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange,
-        })
-
-        onRequestPersistFlush?.()
-        return created
       }
 
-      const filesystem = resolveFilesystemApiForMount(
-        preview.mountId ?? space.targetMountId ?? null,
-      )
+      const filesystem = resolveFilesystemApiForMount(preview.mountId)
       const workspace = window.opencoveApi?.workspace
       const mimeType = resolveCanvasImageMimeType(preview.uri)
       if (!filesystem?.readFileBytes || !workspace?.writeCanvasImage || !mimeType) {
@@ -388,12 +329,11 @@ export function useWorkspaceCanvasSpaceExplorer({
     },
     [
       workspaceId,
-      createDocumentNode,
+      openDocument,
       createImageNode,
       nodesRef,
       onRequestPersistFlush,
       onSpacesChange,
-      reactFlow,
       setNodes,
       spacesRef,
     ],

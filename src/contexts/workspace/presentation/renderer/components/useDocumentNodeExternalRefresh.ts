@@ -51,7 +51,12 @@ export function useDocumentNodeExternalRefresh({
   setExternalConflictStat: (next: FileSystemStat | null) => void
 }): void {
   useEffect(() => {
-    if (isLoading || loadError || unsupportedKind || mediaSource || mediaLoadError) {
+    if (
+      isLoading ||
+      loadError ||
+      unsupportedKind ||
+      (mediaSource && mediaSource.kind !== 'image')
+    ) {
       return
     }
 
@@ -75,8 +80,7 @@ export function useDocumentNodeExternalRefresh({
           latest.isSaving ||
           latest.loadError ||
           latest.unsupportedKind ||
-          latest.mediaSource ||
-          latest.mediaLoadError
+          (latest.mediaSource && latest.mediaSource.kind !== 'image')
         ) {
           return
         }

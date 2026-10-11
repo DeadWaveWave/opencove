@@ -113,6 +113,18 @@ invocation completion. The hook channel accepts metadata-only events without emi
 Other providers use their existing dedicated Agent PTY
 lifecycle and the same presentation projection, not fabricated terminal-adoption events.
 
+Pi transcript actions use the absolute native session-file path as resume identity, matching the
+authenticated hook binding and avoiding UUID lookup ambiguity. The session catalog is a read-only
+projection. Managed-node copy requests carry the active Worker session ID; a retained pre-recovery
+start time must not redirect the request to another runtime. The catalog reads
+valid, matching-project session headers; it does not own or rewrite Pi history. Copy
+reads the saved branch through entry `id`/`parentId` links, observes the latest compaction's retained
+boundary, and returns only text blocks from its latest eligible assistant message. Tool results,
+thinking blocks, branch summaries, and abandoned branches cannot become copied replies. Pi owns the
+live leaf in memory: a `/tree` navigation that has not appended an entry is not observable from the
+file, so file-based actions reflect the branch Pi would restore from disk. These rules follow Pi v3
+session format; unsupported versions are not interpreted as linear transcripts.
+
 An active terminal overlay exposes the same copy-last-message, reload, list-session, and
 switch-session actions as a durable Agent node. These actions read provider and resume identity from
 the terminal binding, start time from the runtime overlay, and working directory from the terminal.

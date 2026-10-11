@@ -1,137 +1,99 @@
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
+import { TerminalAgentAssetFiles } from './TerminalAgentAssetFiles'
 import {
-  createCmdShimScript,
-  createPosixShimScript,
-  createPowerShellShimScript,
-  terminalAgentBashRcScript,
-  terminalAgentLauncherScript,
-  terminalAgentPosixShellLauncherScript,
-  terminalAgentZshEnvScript,
-  terminalAgentZshLoginScript,
-  terminalAgentZshProfileScript,
-  terminalAgentZshRcScript,
-} from './TerminalAgentTelemetryScripts'
+  terminalAgentAssetManifest,
+  terminalAgentAssetPaths,
+} from './TerminalAgentTelemetryAssetManifest'
+import {
+  emitTerminalAgentDiagnostic,
+  type TerminalAgentDiagnosticSink,
+} from './TerminalAgentDiagnostics'
 
 export interface TerminalAgentTelemetryAssets {
-  bashRcPath: string
-  launcherPath: string
-  planDirectory: string
-  rootDirectory: string
-  shellLauncherPath: string
-  shimDirectory: string
-  zshDotDirectory: string
+  readonly bashRcPath: string
+  readonly launcherPath: string
+  readonly planDirectory: string
+  readonly rootDirectory: string
+  readonly shellLauncherPath: string
+  readonly shimDirectory: string
+  readonly zshDotDirectory: string
 }
 
 export class TerminalAgentTelemetryAssetStore {
-  private assets: TerminalAgentTelemetryAssets | null = null
+  private readonly files: TerminalAgentAssetFiles
+  private readonly assets: TerminalAgentTelemetryAssets
   private ensurePromise: Promise<TerminalAgentTelemetryAssets> | null = null
+  private disposePromise: Promise<void> | null = null
+  private disposed = false
+  private published = false
 
   public constructor(
     private readonly options: {
+      parentDirectory: string
+      trustedDirectory?: string
       platform: NodeJS.Platform
       runtimeExecutable: string
+      diagnostic?: TerminalAgentDiagnosticSink
     },
-  ) {}
+  ) {
+    this.assets = Object.freeze(
+      terminalAgentAssetPaths(join(options.parentDirectory, `instance-${randomUUID()}`)),
+    )
+    this.files = new TerminalAgentAssetFiles(
+      options.parentDirectory,
+      this.assets.rootDirectory,
+      options.trustedDirectory,
+    )
+  }
 
   public async ensure(): Promise<TerminalAgentTelemetryAssets> {
-    if (this.assets) {
-      return this.assets
+    if (this.disposed) {
+      throw new Error('Terminal Agent assets disposed')
     }
     if (!this.ensurePromise) {
-      const nextEnsure = this.createAssets().catch(error => {
-        if (this.ensurePromise === nextEnsure) {
-          this.ensurePromise = null
-        }
-        throw error
+      this.ensurePromise = this.validateAndRepair().finally(() => {
+        this.ensurePromise = null
       })
-      this.ensurePromise = nextEnsure
     }
     return await this.ensurePromise
   }
 
-  public async dispose(): Promise<void> {
-    const assets = this.assets
-    this.assets = null
-    this.ensurePromise = null
-    if (assets) {
-      await rm(assets.rootDirectory, { recursive: true, force: true })
-    }
+  public dispose(): Promise<void> {
+    this.disposed = true
+    this.disposePromise ??= (async () => {
+      await this.ensurePromise?.catch(() => undefined)
+      await this.files.dispose()
+    })()
+    return this.disposePromise
   }
 
-  private async createAssets(): Promise<TerminalAgentTelemetryAssets> {
-    const rootDirectory = await mkdtemp(join(tmpdir(), 'opencove-terminal-agent-'))
-    try {
-      return await this.populateAssets(rootDirectory)
-    } catch (error) {
-      await rm(rootDirectory, { recursive: true, force: true }).catch(() => undefined)
-      throw error
-    }
-  }
-
-  private async populateAssets(rootDirectory: string): Promise<TerminalAgentTelemetryAssets> {
-    await chmod(rootDirectory, 0o700)
-    const shimDirectory = join(rootDirectory, 'bin')
-    const planDirectory = join(rootDirectory, 'plans')
-    const zshDotDirectory = join(rootDirectory, 'zsh')
-    await mkdir(shimDirectory, { mode: 0o700 })
-    await mkdir(planDirectory, { mode: 0o700 })
-    await mkdir(zshDotDirectory, { mode: 0o700 })
-    const launcherPath = join(rootDirectory, 'launcher.mjs')
-    const shellLauncherPath = join(rootDirectory, 'shell-launcher.sh')
-    const bashRcPath = join(rootDirectory, 'bashrc')
-    await writePrivateFile(launcherPath, terminalAgentLauncherScript, 0o700)
-    await writePrivateFile(shellLauncherPath, terminalAgentPosixShellLauncherScript, 0o700)
-    await writePrivateFile(bashRcPath, terminalAgentBashRcScript, 0o600)
-    await writePrivateFile(join(zshDotDirectory, '.zshenv'), terminalAgentZshEnvScript, 0o600)
-    await writePrivateFile(join(zshDotDirectory, '.zprofile'), terminalAgentZshProfileScript, 0o600)
-    await writePrivateFile(join(zshDotDirectory, '.zshrc'), terminalAgentZshRcScript, 0o600)
-    await writePrivateFile(join(zshDotDirectory, '.zlogin'), terminalAgentZshLoginScript, 0o600)
-
-    await Promise.all(
-      (['claude', 'codex', 'pi'] as const).flatMap(provider => {
-        const powerShellPath = join(shimDirectory, `${provider}.ps1`)
-        return [
-          writePrivateFile(
-            join(shimDirectory, provider),
-            createPosixShimScript(this.options.runtimeExecutable, launcherPath, provider),
-            0o700,
-          ),
-          writePrivateFile(
-            powerShellPath,
-            createPowerShellShimScript(
-              this.options.runtimeExecutable,
-              launcherPath,
-              provider,
-              planDirectory,
-            ),
-            0o700,
-          ),
-          writePrivateFile(
-            join(shimDirectory, `${provider}.cmd`),
-            createCmdShimScript(powerShellPath),
-            0o700,
-          ),
-        ]
-      }),
-    )
-
-    const assets = {
-      bashRcPath,
-      launcherPath,
-      planDirectory,
+  private async validateAndRepair(): Promise<TerminalAgentTelemetryAssets> {
+    const { rootDirectory, shimDirectory, planDirectory, zshDotDirectory } = this.assets
+    await this.files.ensureDirectories([
       rootDirectory,
-      shellLauncherPath,
       shimDirectory,
+      planDirectory,
       zshDotDirectory,
+    ])
+    let repaired = 0
+    // Serial effects: no sibling write may outlive a rejected ensure and race cleanup/retry.
+    for (const file of terminalAgentAssetManifest(this.assets, this.options.runtimeExecutable)) {
+      // eslint-disable-next-line no-await-in-loop -- rejected work must leave no pending sibling writes
+      if (await this.files.ensureFile(file)) {
+        repaired++
+      }
     }
-    this.assets = assets
-    return assets
+    if (this.disposed) {
+      throw new Error('Terminal Agent assets disposed')
+    }
+    if (this.published && repaired > 0) {
+      emitTerminalAgentDiagnostic(this.options.diagnostic, {
+        type: 'assets-repaired',
+        count: repaired,
+      })
+    }
+    this.published = true
+    return this.assets
   }
-}
-
-async function writePrivateFile(path: string, content: string, mode: number): Promise<void> {
-  await writeFile(path, content, { encoding: 'utf8', mode, flag: 'wx' })
-  await chmod(path, mode)
 }

@@ -72,11 +72,18 @@ export function useTerminalBodyClickFallback(
         return
       }
 
+      const isLinkGesture =
+        event.target instanceof Element && event.target.closest('[data-cove-link-gesture="true"]')
       const shiftKey = event.shiftKey
 
+      // Links own navigation, but their click must still stay out of ReactFlow's
+      // selection handler, whose selection rectangle takes focus from xterm.
       ignoreNextTerminalBodyClickRef.current = true
       window.setTimeout(() => {
         ignoreNextTerminalBodyClickRef.current = false
+        if (isLinkGesture) {
+          return
+        }
         onInteractionStart?.({
           normalizeViewport: true,
           selectNode: shiftKey,

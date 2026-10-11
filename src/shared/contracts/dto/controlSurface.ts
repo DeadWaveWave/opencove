@@ -19,6 +19,8 @@ export interface ControlSurfaceHomeDirectoryResult {
   pid: number
   platform: string
   homeDirectory: string
+  /** Runtime host identity for OSC 7 provenance; absent on older Workers. */
+  hostname?: string
 }
 
 export interface ControlSurfaceCapabilitiesResult {

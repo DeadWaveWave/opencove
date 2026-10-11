@@ -11,6 +11,7 @@ import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPa
 import { listDirectories, listFiles, parseTimestampMs } from './AgentSessionLocatorProviders.utils'
 import { listOpenCodeSessions } from './AgentSessionCatalog.openCode'
 import { listCodexSessions } from './AgentSessionCatalog.codex'
+import { listPiSessions } from './AgentSessionCatalog.pi'
 import { readSessionFileWithCache } from './AgentSessionCatalog.cache'
 import type { AgentSessionTitleCacheStore } from './AgentSessionTitleCacheStore'
 import {
@@ -289,7 +290,9 @@ export async function listAgentSessions(
           ? await listGeminiSessions(resolvedCwd, limit, titleCache)
           : input.provider === 'opencode'
             ? await listOpenCodeSessions(resolvedCwd, limit)
-            : []
+            : input.provider === 'pi'
+              ? await listPiSessions(resolvedCwd, limit, titleCache)
+              : []
 
   return {
     provider: input.provider,

@@ -15,6 +15,7 @@ import {
 } from './userInteractionWindow'
 import { shouldReusePreservedXtermSession } from './useTerminalRuntimeSession.support'
 import { fitTerminalNodeToMeasuredSize } from './syncTerminalNodeSize'
+import { suspendTerminalCwdObservation } from './links/terminalCwdObservation'
 
 export function useTerminalPlaceholderSession({
   nodeId,
@@ -189,7 +190,12 @@ export function useTerminalPlaceholderSession({
           containerRef,
           isPointerResizingRef,
         })
-        await writeTerminalAsync(session.terminal, scrollback ?? '')
+        const suspendedCwdObservation = suspendTerminalCwdObservation(session.terminal)
+        try {
+          await writeTerminalAsync(session.terminal, scrollback ?? '')
+        } finally {
+          suspendedCwdObservation.dispose()
+        }
       } catch {
         // placeholder is best-effort; treat write failures as hydrated to unblock UI
       }

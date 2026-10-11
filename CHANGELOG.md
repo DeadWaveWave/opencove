@@ -12,6 +12,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Files: replace unsupported-file warnings with a centered file icon, readable filename, format-aware explanation, and clear default-app action across themes. (#416)
+
+- Files: preview terminal-linked images in their original file windows, retain audio/video playback, and offer explicit system opening for unsupported formats instead of treating binary files as text. (#416)
+- Terminal: recognize complete wrapped URLs and file paths, preserve file line and column navigation, and use compact link actions with predictable selection and focus. (#416)
+- Terminal: open verified local directory links in the system file manager without requiring a matching Space, while preserving remote source and path permissions. (#416)
+- Agent: restore Pi session listing and switching, copy the last assistant reply from the saved branch, and target the correct managed session after recovery. (#414)
 - Sidebar: preserve collapsed projects and Space groups across app restarts, while keeping their disclosure choices independent. (#411)
 - Terminal: route local desktop image paste to native Pi, Kimi, Codex, Claude Code, and OMP keybindings while preserving text paste. (#409)
 - Desktop: close the focused input window or selected canvas window with Cmd/Ctrl+W without closing the app, and require two Cmd+Q presses within 1.5 seconds to quit on macOS. (#410)
@@ -19,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace: keep Space archive and other operation overlays local to their target Space, preventing unrelated Space backgrounds from tinting window nodes. (#401)
 - Canvas: center windows created by double-click or the context menu within 120 pixels of the viewport center, avoiding small unnecessary pans while preserving Space ownership and pointer placement farther away. (#399)
 - Agent: launch remote Project agents in the default remote mount instead of the local project metadata directory, while preserving explicit Space and worktree directories. (#398)
+- Terminal: keep launch assets in the private application profile and repair missing or damaged scripts before starting new terminals, without disrupting existing shell paths. (#415)
+- Terminal: preserve Unicode profile and runtime paths in Windows Agent command shims without changing the user's code page. (#415)
 
 ---
 
@@ -296,6 +304,24 @@ OpenCove 0.3.0 makes long-running AI development work easier to resume, observe,
 
 ---
 
+## [0.3.3] - 2026-09-12
+
+OpenCove 0.3.3 improves the canvas workflow, keyboard control, terminal integrations, and release tooling.
+
+### ✨ Highlights
+- Unified native image paste mappings across Pi, Kimi, Codex, Claude Code, and OpenCode terminals.
+- Safer Cmd/Ctrl+W window closing and deliberate double-press Cmd+Q application quitting.
+
+### 🚀 Added
+- Terminal: support quick command execution after session attachment. (#408)
+
+### 💅 Changed
+- Sidebar: persist Project and Space disclosure state independently across restarts. (#411)
+
+### 🐞 Fixed
+- Terminal: route desktop image paste through provider-specific native key mappings while preserving text paste. (#409)
+- Desktop: close the focused input node or selected canvas node with Cmd/Ctrl+W without closing the app. (#410)
+- Desktop: require two non-repeat Cmd+Q presses within 1.5 seconds before quitting on macOS. (#410)
 ## [0.2.0] - 2026-03-12
 
 Welcome to OpenCove 0.2.0! This release focuses on unifying the workspace experience, hardening runtime stability for AI Agents, and introducing formal multi-platform release pipelines.

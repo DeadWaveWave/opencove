@@ -1,7 +1,8 @@
-import type { MutableRefObject, ReactElement } from 'react'
+import { useContext, type MutableRefObject, type ReactElement } from 'react'
 import { DocumentNode } from '../DocumentNode'
 import type { NodeFrame, TerminalNodeData } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
+import { WorkspaceDocumentNavigationContext } from './WorkspaceDocumentNavigationContext'
 
 export function WorkspaceCanvasDocumentNodeType({
   data,
@@ -24,6 +25,7 @@ export function WorkspaceCanvasDocumentNodeType({
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
 }): ReactElement | null {
+  const navigation = useContext(WorkspaceDocumentNavigationContext)
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null
@@ -37,6 +39,8 @@ export function WorkspaceCanvasDocumentNodeType({
       title={data.title}
       uri={data.document.uri}
       mountId={mountId}
+      navigation={navigation?.navigationByNode.get(id)}
+      onNavigationApplied={requestId => navigation?.acknowledgeNavigation(id, requestId)}
       labelColor={labelColor}
       position={nodePosition}
       width={data.width}

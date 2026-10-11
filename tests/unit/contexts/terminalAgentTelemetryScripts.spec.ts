@@ -1,18 +1,25 @@
-import { readFile, stat } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { mkdtemp, rm, readFile, stat } from 'node:fs/promises'
 import { relative } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { TerminalAgentTelemetryAssetStore } from '../../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore'
 import { terminalAgentLauncherScript } from '../../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryScripts'
 
+const roots: string[] = []
 const stores: TerminalAgentTelemetryAssetStore[] = []
 
 afterEach(async () => {
   await Promise.all(stores.splice(0).map(async store => await store.dispose()))
+  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
 })
 
 describe('terminal Agent private telemetry assets', () => {
   it('places Windows invocation plans under the private asset root with finally-owned cleanup', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opencove-assets-script-test-'))
+    roots.push(root)
     const store = new TerminalAgentTelemetryAssetStore({
+      parentDirectory: root,
       runtimeExecutable: 'C:\\Program Files\\OpenCove\\OpenCove.exe',
       platform: 'win32',
     })

@@ -39,21 +39,33 @@ function resolveAlignedCoordinate(options: {
   viewportExtent: number
   padding: number
   alignment: MenuPointAlignment
+  flip?: boolean
+  gap?: number
 }): number {
   const { origin, size, viewportExtent, padding, alignment } = options
-  const startCoordinate = origin
-  const endCoordinate = origin - size
+  const gap = options.gap ?? 0
+  const startCoordinate = origin + gap
+  const endCoordinate = origin - gap - size
+  const startFits = startCoordinate + size <= viewportExtent - padding
+  const endFits = endCoordinate >= padding
 
   if (alignment === 'start') {
-    return clampMenuCoordinate(startCoordinate, size, viewportExtent, padding)
+    return clampMenuCoordinate(
+      options.flip && !startFits && endFits ? endCoordinate : startCoordinate,
+      size,
+      viewportExtent,
+      padding,
+    )
   }
 
   if (alignment === 'end') {
-    return clampMenuCoordinate(endCoordinate, size, viewportExtent, padding)
+    return clampMenuCoordinate(
+      options.flip && !endFits && startFits ? startCoordinate : endCoordinate,
+      size,
+      viewportExtent,
+      padding,
+    )
   }
-
-  const startFits = startCoordinate + size <= viewportExtent - padding
-  const endFits = endCoordinate >= padding
 
   if (startFits || !endFits) {
     return clampMenuCoordinate(startCoordinate, size, viewportExtent, padding)
@@ -69,6 +81,8 @@ export function placeViewportMenuAtPoint(options: {
   padding?: number
   alignX?: MenuPointAlignment
   alignY?: MenuPointAlignment
+  flipY?: boolean
+  gapY?: number
 }): { left: number; top: number } {
   const padding = options.padding ?? VIEWPORT_MENU_PADDING
 
@@ -86,6 +100,8 @@ export function placeViewportMenuAtPoint(options: {
       viewportExtent: options.viewport.height,
       padding,
       alignment: options.alignY ?? 'start',
+      flip: options.flipY,
+      gap: options.gapY,
     }),
   }
 }

@@ -19,6 +19,25 @@ let handlers = new Map()
 let idle = true
 let id = randomUUID()
 let file = join(process.env.OPENCOVE_TEST_PI_SESSION_DIR, `${id}.jsonl`)
+let restoredReply = null
+if (args.includes('--session')) {
+  file = args[args.indexOf('--session') + 1]
+  const entries = (await readFile(file, 'utf8'))
+    .trim()
+    .split('\n')
+    .map(line => JSON.parse(line))
+  if (entries[0]?.type !== 'session' || entries[0]?.version !== 3) {
+    throw new Error('Pi fixture requires a version 3 session header')
+  }
+  id = entries[0].id
+  const lastAssistant = entries.findLast(
+    entry => entry.type === 'message' && entry.message?.role === 'assistant',
+  )
+  restoredReply = lastAssistant?.message.content
+    .filter(block => block.type === 'text')
+    .map(block => block.text)
+    .join('\n')
+}
 let reload = 0
 const ctx = {
   isIdle: () => idle,
@@ -36,6 +55,9 @@ async function load(reason) {
   module.default({ on: (name, handler) => handlers.set(name, handler) })
   await emit('session_start', { reason })
   process.stdout.write(`[pi-fixture] ready ${reason}\n`)
+  if (restoredReply) {
+    process.stdout.write(`[pi-fixture] restored ${id}\n${restoredReply}\n`)
+  }
 }
 await load('startup')
 const input = createInterface({ input: process.stdin })
@@ -85,6 +107,7 @@ for await (const line of input) {
     if (reason === 'new') {
       id = randomUUID()
       file = join(process.env.OPENCOVE_TEST_PI_SESSION_DIR, `${id}.jsonl`)
+      restoredReply = null
     }
     await load(reason)
   }

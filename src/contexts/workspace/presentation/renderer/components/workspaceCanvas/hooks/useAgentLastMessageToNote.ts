@@ -66,6 +66,7 @@ export function useWorkspaceCanvasAgentLastMessageCopy({
 
       try {
         const message = await readLastAgentMessageWithRetry({
+          sessionId: node?.data.kind === 'agent' ? node.data.sessionId || null : null,
           provider: context.provider,
           cwd: context.cwd,
           startedAt: context.startedAt,

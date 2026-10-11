@@ -1,27 +1,131 @@
 import type { ILink, ILinkProvider, Terminal } from '@xterm/xterm'
 import {
-  decodeUrlEncodedPath,
   detectLinks,
+  detectLinkSuffixes,
   getCurrentOS,
-  type IParsedLink,
-  removeLinkSuffix,
+  getLinkSuffix,
+  type ILinkSuffix,
+  type OperatingSystem,
 } from './link-parsing'
-import { detectFallbackLinks, type IFallbackLink } from './fallback-matchers'
+import { detectFallbackLinks } from './fallback-matchers'
+import { detectTerminalUrls } from './url-link-provider'
+import {
+  isTerminalLinkSnapshotCurrent,
+  readTerminalLinkSnapshot,
+  terminalLinkRange,
+  type TerminalDetectedLink,
+  type TerminalLinkProviderOptions,
+  type TerminalLinkTarget,
+} from './terminal-link-snapshot'
 
-/**
- * A link provider that detects file paths in terminal output using VSCode's
- * terminal link parsing logic. Supports a wide variety of path formats including:
- *
- * - Basic paths: /path/to/file.ts, ./src/file.ts, ~/config.json
- * - With line numbers: file.ts:42, file.ts:42:10
- * - With line ranges: file.ts:42-50, file.ts:42:10-50
- * - Parenthesis format: file.ts(42), file.ts(42, 10)
- * - Square bracket format: file.ts[42], file.ts[42, 10]
- * - Verbose formats: "file.ts", line 42, col 10
- * - Git diff paths: --- a/path/file.ts, +++ b/path/file.ts
- *
- * Also handles multi-line wrapped paths spanning up to 3 terminal lines.
- */
+type FileTarget = Extract<TerminalLinkTarget, { kind: 'file' }>
+
+interface FileMatch {
+  startIndex: number
+  endIndex: number
+  target: FileTarget
+}
+
+export interface FilePathLinkProviderOptions extends TerminalLinkProviderOptions {
+  getSourceOS?: () => OperatingSystem
+}
+
+const BARE_PROJECT_FILES = /^(?:Makefile|Dockerfile|README|LICENSE|CHANGELOG|Gemfile|Procfile)$/
+
+function looksLikeFilePath(path: string): boolean {
+  if (/^(?!file:)[a-z][\w+.-]*:\/\//i.test(path) || /^v?\d+(?:\.\d+)+$/.test(path)) {
+    return false
+  }
+  if (/^@[^/]+\/[^/]+@\d/.test(path) || !path.trim()) {
+    return false
+  }
+  return /[/\\]/.test(path) || /\.[\p{L}\p{N}_+-]+$/u.test(path) || BARE_PROJECT_FILES.test(path)
+}
+
+function fileTarget(path: string, suffix?: ILinkSuffix | null): FileTarget {
+  return {
+    kind: 'file',
+    path,
+    line: suffix?.row,
+    column: suffix?.col,
+    lineEnd: suffix?.rowEnd,
+    columnEnd: suffix?.colEnd,
+  }
+}
+
+function rangesOverlap(
+  left: FileMatch,
+  right: Pick<FileMatch, 'startIndex' | 'endIndex'>,
+): boolean {
+  return left.startIndex < right.endIndex && right.startIndex < left.endIndex
+}
+
+export function detectTerminalFilePaths(text: string, os: OperatingSystem): FileMatch[] {
+  if (!/[/\\\d]/.test(text)) {
+    return []
+  }
+  const matches: FileMatch[] = []
+  const urls = [
+    ...detectTerminalUrls(text),
+    ...Array.from(text.matchAll(/\b(?!file:)[a-z][\w+.-]*:\/\/[^\s<>"']+/gi), match => ({
+      startIndex: match.index,
+      endIndex: match.index + match[0].length,
+    })),
+  ]
+  const add = (candidate: FileMatch): void => {
+    if (
+      !looksLikeFilePath(candidate.target.path) ||
+      [
+        candidate.target.line,
+        candidate.target.column,
+        candidate.target.lineEnd,
+        candidate.target.columnEnd,
+      ].some(value => value !== undefined && (!Number.isSafeInteger(value) || value < 1)) ||
+      urls.some(url => rangesOverlap(candidate, url)) ||
+      matches.some(existing => rangesOverlap(candidate, existing))
+    ) {
+      return
+    }
+    matches.push(candidate)
+  }
+
+  // Tool formats own their complete ranges before generic matches can claim fragments.
+  for (const fallback of detectFallbackLinks(text)) {
+    add({
+      startIndex: fallback.index,
+      endIndex: fallback.index + fallback.link.length,
+      target: { kind: 'file', path: fallback.path, line: fallback.line, column: fallback.col },
+    })
+  }
+
+  for (const match of text.matchAll(/(["'])([^"'\r\n]+)\1/g)) {
+    const value = match[2]!
+    const insideSuffix = getLinkSuffix(value)
+    const closingQuote = match.index + match[0].length - 1
+    const outsideSuffix = detectLinkSuffixes(text.slice(closingQuote))[0]
+    const suffix =
+      insideSuffix ?? (outsideSuffix && outsideSuffix.suffix.index <= 1 ? outsideSuffix : undefined)
+    add({
+      startIndex: match.index,
+      endIndex:
+        !insideSuffix && suffix
+          ? closingQuote + suffix.suffix.index + suffix.suffix.text.length
+          : match.index + match[0].length,
+      target: fileTarget(insideSuffix ? value.slice(0, insideSuffix.suffix.index) : value, suffix),
+    })
+  }
+
+  for (const parsed of detectLinks(text, os)) {
+    const path = parsed.suffix ? parsed.path.text : parsed.path.text.replace(/[.,;:!?)]+$/, '')
+    const startIndex = parsed.prefix?.index ?? parsed.path.index
+    const endIndex = parsed.suffix
+      ? parsed.suffix.suffix.index + parsed.suffix.suffix.text.length
+      : parsed.path.index + path.length
+    add({ startIndex, endIndex, target: fileTarget(path, parsed.suffix) })
+  }
+  return matches.sort((left, right) => left.startIndex - right.startIndex)
+}
+
 export class FilePathLinkProvider implements ILinkProvider {
   constructor(
     private readonly terminal: Terminal,
@@ -33,327 +137,50 @@ export class FilePathLinkProvider implements ILinkProvider {
       lineEnd?: number,
       columnEnd?: number,
     ) => void,
+    private readonly options: FilePathLinkProviderOptions = {},
   ) {}
 
-  provideLinks(bufferLineNumber: number, callback: (links: ILink[] | undefined) => void): void {
-    const lineIndex = bufferLineNumber - 1
-    const line = this.terminal.buffer.active.getLine(lineIndex)
-    if (!line) {
-      callback(undefined)
-      return
+  getLinks(bufferLineNumber: number): TerminalDetectedLink[] {
+    const snapshot = readTerminalLinkSnapshot(this.terminal, bufferLineNumber)
+    if (!snapshot) {
+      return []
     }
-
-    const lineText = line.translateToString(true)
-    const lineLength = lineText.length
-    const isCurrentLineWrapped = line.isWrapped
-
-    // Get previous line if current is wrapped (for handling wrapped paths)
-    const prevLine = isCurrentLineWrapped
-      ? this.terminal.buffer.active.getLine(lineIndex - 1)
-      : null
-    const prevLineText = prevLine ? prevLine.translateToString(true) : ''
-    const prevLineLength = prevLineText.length
-
-    // Get next line if it's wrapped (for handling wrapped paths)
-    const nextLine = this.terminal.buffer.active.getLine(lineIndex + 1)
-    const nextLineIsWrapped = nextLine?.isWrapped ?? false
-    const nextLineText = nextLineIsWrapped && nextLine ? nextLine.translateToString(true) : ''
-
-    // Combine lines for multi-line path detection
-    const combinedText = prevLineText + lineText + nextLineText
-    const currentLineOffset = prevLineLength
-
-    // Use VSCode's link detection
-    const os = getCurrentOS()
-    const detectedLinks = detectLinks(combinedText, os)
-
-    const links: ILink[] = []
-
-    for (let parsedLink of detectedLinks) {
-      // Strip trailing punctuation from paths without suffixes
-      // (paths with suffixes like :42 already have proper boundaries)
-      if (!parsedLink.suffix) {
-        parsedLink = this.stripTrailingPunctuation(parsedLink, combinedText)
+    const os = this.options.getSourceOS?.() ?? getCurrentOS()
+    return detectTerminalFilePaths(snapshot.text, os).flatMap(match => {
+      const range = terminalLinkRange(snapshot, match.startIndex, match.endIndex)
+      if (!range || bufferLineNumber < range.start.y || bufferLineNumber > range.end.y) {
+        return []
       }
-
-      // Calculate the full link range including prefix and suffix
-      const linkStart = parsedLink.prefix?.index ?? parsedLink.path.index
-      const linkEnd = parsedLink.suffix
-        ? parsedLink.suffix.suffix.index + parsedLink.suffix.suffix.text.length
-        : parsedLink.path.index + parsedLink.path.text.length
-
-      // Check if this link overlaps with the current line
-      const currentLineStart = currentLineOffset
-      const currentLineEnd = currentLineOffset + lineLength
-
-      if (linkEnd <= currentLineStart || linkStart >= currentLineEnd) {
-        continue
-      }
-
-      // Get the path text (without suffix for opening)
-      const pathText = parsedLink.path.text
-
-      // Skip URLs
-      if (this.isUrl(pathText, linkStart, combinedText)) {
-        continue
-      }
-
-      // Skip version strings like v1.2.3
-      if (this.isVersionString(pathText)) {
-        continue
-      }
-
-      // Skip npm package references like @scope/package@1.2.3
-      if (this.isNpmPackageReference(pathText, linkStart, combinedText)) {
-        continue
-      }
-
-      // Skip pure numeric patterns
-      if (/^\d+(:\d+)*$/.test(pathText)) {
-        continue
-      }
-
-      // Calculate the range for highlighting
-      const range = this.calculateLinkRange(
-        linkStart,
-        linkEnd,
-        prevLineLength,
-        lineLength,
-        bufferLineNumber,
-        isCurrentLineWrapped,
-        nextLineIsWrapped,
-      )
-
-      // Build the full link text for display
-      const fullLinkText = combinedText.substring(linkStart, linkEnd)
-
-      links.push({
-        range,
-        text: fullLinkText,
-        activate: (event: MouseEvent) => {
-          this.handleActivation(event, parsedLink)
-        },
-      })
-    }
-
-    // If no links found via primary detection, try fallback matchers
-    // These catch special formats like Python errors, Rust errors, etc.
-    if (links.length === 0) {
-      const fallbackLinks = detectFallbackLinks(combinedText)
-      for (const fallback of fallbackLinks) {
-        const linkStart = fallback.index
-        const linkEnd = fallback.index + fallback.link.length
-
-        // Check if this link overlaps with the current line
-        const fbCurrentLineStart = currentLineOffset
-        const fbCurrentLineEnd = currentLineOffset + lineLength
-        if (linkEnd <= fbCurrentLineStart || linkStart >= fbCurrentLineEnd) {
-          continue
-        }
-
-        // Calculate the range for highlighting
-        const range = this.calculateLinkRange(
-          linkStart,
-          linkEnd,
-          prevLineLength,
-          lineLength,
-          bufferLineNumber,
-          isCurrentLineWrapped,
-          nextLineIsWrapped,
-        )
-
-        links.push({
+      return [
+        {
+          text: snapshot.text.slice(match.startIndex, match.endIndex),
           range,
-          text: fallback.link,
-          activate: (event: MouseEvent) => {
-            this.handleFallbackActivation(event, fallback)
-          },
-        })
-      }
-    }
+          target: match.target,
+          snapshot,
+        },
+      ]
+    })
+  }
 
+  provideLinks(bufferLineNumber: number, callback: (links: ILink[] | undefined) => void): void {
+    const links = this.getLinks(bufferLineNumber).map(
+      (link): ILink => ({
+        text: link.text,
+        range: link.range,
+        activate: event => {
+          if (!isTerminalLinkSnapshotCurrent(this.terminal, link.snapshot)) {
+            return
+          }
+          if (this.options.onActivate) {
+            this.options.onActivate(event, link)
+          } else if ((event.metaKey || event.ctrlKey) && link.target.kind === 'file') {
+            event.preventDefault()
+            const { path, line, column, lineEnd, columnEnd } = link.target
+            this.onOpen(event, path, line, column, lineEnd, columnEnd)
+          }
+        },
+      }),
+    )
     callback(links.length > 0 ? links : undefined)
-  }
-
-  /**
-   * Strip trailing punctuation from a link that has no suffix.
-   * This handles cases like "See ./path/file." where the period is sentence punctuation,
-   * not part of the path.
-   */
-  private stripTrailingPunctuation(parsedLink: IParsedLink, combinedText: string): IParsedLink {
-    const pathText = parsedLink.path.text
-    const linkEnd = parsedLink.path.index + pathText.length
-
-    // Check if the path ends with common sentence punctuation
-    // Only strip if followed by whitespace or end of line (to avoid stripping valid extensions)
-    const trailingPunctMatch = pathText.match(/([.,;:!?)]+)$/)
-    if (trailingPunctMatch) {
-      const punct = trailingPunctMatch[1]
-      const afterPunct = combinedText[linkEnd]
-
-      // Only strip if followed by whitespace, end of string, or another punctuation
-      if (
-        afterPunct === undefined ||
-        /\s/.test(afterPunct) ||
-        afterPunct === '"' ||
-        afterPunct === "'"
-      ) {
-        // Don't strip if it looks like a file extension (e.g., "file.ts")
-        // A period followed by 1-4 alphanumeric characters at the end is likely an extension
-        if (punct === '.' && /\.[a-zA-Z0-9]{1,4}$/.test(pathText)) {
-          return parsedLink
-        }
-
-        return {
-          ...parsedLink,
-          path: {
-            index: parsedLink.path.index,
-            text: pathText.slice(0, -punct.length),
-          },
-        }
-      }
-    }
-
-    return parsedLink
-  }
-
-  private isUrl(pathText: string, linkStart: number, combinedText: string): boolean {
-    if (
-      pathText.startsWith('http://') ||
-      pathText.startsWith('https://') ||
-      pathText.startsWith('ftp://')
-    ) {
-      return true
-    }
-
-    // Check if this is part of a URL (e.g., the path portion after ://)
-    if (
-      linkStart > 0 &&
-      combinedText[linkStart - 1] === ':' &&
-      (pathText.startsWith('//') || pathText.startsWith('http'))
-    ) {
-      return true
-    }
-
-    return false
-  }
-
-  private isVersionString(pathText: string): boolean {
-    // Match version strings like 1.2.3, v1.2.3, 1.2.3.4
-    return /^v?\d+\.\d+(\.\d+)*$/.test(pathText)
-  }
-
-  private isNpmPackageReference(
-    pathText: string,
-    linkStart: number,
-    combinedText: string,
-  ): boolean {
-    // Check context for npm package patterns like @scope/package@1.2.3
-    const contextStart = Math.max(0, linkStart - 30)
-    const contextEnd = linkStart + pathText.length
-    const context = combinedText.substring(contextStart, contextEnd)
-    return /@\d+\.\d+/.test(context)
-  }
-
-  private handleActivation(event: MouseEvent, parsedLink: IParsedLink): void {
-    if (!event.metaKey && !event.ctrlKey) {
-      return
-    }
-
-    event.preventDefault()
-
-    const pathText = parsedLink.path.text
-
-    // Clean up the path - remove any remaining suffix patterns that might have been
-    // included (defensive, since detectLinks should handle this)
-    let cleanPath = removeLinkSuffix(pathText)
-
-    if (!cleanPath) {
-      return
-    }
-
-    // Decode URL-encoded characters (e.g., %3A -> :, %20 -> space)
-    cleanPath = decodeUrlEncodedPath(cleanPath)
-
-    // Extract line/column info from suffix, or try to parse from URL-encoded path
-    let line = parsedLink.suffix?.row
-    let column = parsedLink.suffix?.col
-    const lineEnd = parsedLink.suffix?.rowEnd
-    const columnEnd = parsedLink.suffix?.colEnd
-
-    // If no suffix was detected, check if the decoded path contains line:col info
-    if (line === undefined) {
-      const lineColMatch = cleanPath.match(/:(\d+)(?::(\d+))?$/)
-      if (lineColMatch) {
-        cleanPath = cleanPath.replace(/:(\d+)(?::(\d+))?$/, '')
-        line = Number.parseInt(lineColMatch[1], 10)
-        if (lineColMatch[2]) {
-          column = Number.parseInt(lineColMatch[2], 10)
-        }
-      }
-    }
-
-    this.onOpen(event, cleanPath, line, column, lineEnd, columnEnd)
-  }
-
-  private handleFallbackActivation(event: MouseEvent, fallback: IFallbackLink): void {
-    if (!event.metaKey && !event.ctrlKey) {
-      return
-    }
-
-    event.preventDefault()
-
-    const cleanPath = decodeUrlEncodedPath(fallback.path)
-
-    if (!cleanPath) {
-      return
-    }
-
-    this.onOpen(event, cleanPath, fallback.line, fallback.col)
-  }
-
-  private calculateLinkRange(
-    matchIndex: number,
-    matchEnd: number,
-    prevLineLength: number,
-    lineLength: number,
-    bufferLineNumber: number,
-    isCurrentLineWrapped: boolean,
-    nextLineIsWrapped: boolean,
-  ): ILink['range'] {
-    const currentLineStart = prevLineLength
-    const currentLineEnd = prevLineLength + lineLength
-
-    const startsInPrevLine = isCurrentLineWrapped && matchIndex < currentLineStart
-    const endsInNextLine = nextLineIsWrapped && matchEnd > currentLineEnd
-
-    let startY: number
-    let startX: number
-    let endY: number
-    let endX: number
-
-    if (startsInPrevLine) {
-      startY = bufferLineNumber - 1
-      startX = matchIndex + 1
-    } else {
-      startY = bufferLineNumber
-      startX = matchIndex - currentLineStart + 1
-    }
-
-    if (endsInNextLine) {
-      endY = bufferLineNumber + 1
-      endX = matchEnd - currentLineEnd + 1
-    } else if (matchEnd <= currentLineStart) {
-      endY = bufferLineNumber - 1
-      endX = matchEnd + 1
-    } else {
-      endY = bufferLineNumber
-      endX = matchEnd - currentLineStart + 1
-    }
-
-    return {
-      start: { x: startX, y: startY },
-      end: { x: endX, y: endY },
-    }
   }
 }

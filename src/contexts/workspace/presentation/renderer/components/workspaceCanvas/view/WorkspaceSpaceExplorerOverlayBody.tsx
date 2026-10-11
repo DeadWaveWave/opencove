@@ -11,6 +11,7 @@ type WorkspaceSpaceExplorerOverlayBodyProps = {
   spaceName: string
   spaceId: string
   rootUri: string | null
+  requestedDirectory?: { uri: string } | null
   mountId: string | null
   rootResolveError: string | null
   explorerClipboard: SpaceExplorerClipboardItem | null
@@ -30,8 +31,18 @@ type WorkspaceSpaceExplorerOverlayBodyProps = {
 function WorkspaceSpaceExplorerOverlayBodyReady(
   props: WorkspaceSpaceExplorerOverlayBodyProps & { rootUri: string },
 ): React.JSX.Element {
-  const { rootUri, onDismissQuickPreview } = props
-  const [currentUri, setCurrentUri] = React.useState(rootUri)
+  const { rootUri, requestedDirectory, onDismissQuickPreview } = props
+  const [currentUri, setCurrentUri] = React.useState(() =>
+    requestedDirectory && isFileUriWithinRoot(rootUri, requestedDirectory.uri)
+      ? requestedDirectory.uri
+      : rootUri,
+  )
+  React.useEffect(() => {
+    if (requestedDirectory && isFileUriWithinRoot(rootUri, requestedDirectory.uri)) {
+      onDismissQuickPreview()
+      setCurrentUri(requestedDirectory.uri)
+    }
+  }, [onDismissQuickPreview, requestedDirectory, rootUri])
   const [viewMode, setViewMode] = React.useState<'icons' | 'list'>('icons')
   const [expandedDirectoryUris, setExpandedDirectoryUris] = React.useState<string[]>([])
   const breadcrumbs = resolveFileUriBreadcrumbs(rootUri, currentUri)
@@ -73,6 +84,7 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
     spaceName,
     spaceId,
     rootUri,
+    requestedDirectory,
     mountId,
     rootResolveError,
     explorerClipboard,
@@ -110,6 +122,7 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
         spaceName={spaceName}
         spaceId={spaceId}
         rootUri={rootUri}
+        requestedDirectory={requestedDirectory}
         mountId={mountId}
         rootResolveError={rootResolveError}
         explorerClipboard={explorerClipboard}

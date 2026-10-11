@@ -19,6 +19,7 @@ import { WorkspaceSpaceExplorerOverlayBody } from './WorkspaceSpaceExplorerOverl
 import { NodeResizeHandles } from '../../shared/NodeResizeHandles'
 import { useExplorerWindowResize } from './useExplorerWindowResize'
 import type { Size } from '../../../types'
+import { WorkspaceDocumentNavigationContext } from '../WorkspaceDocumentNavigationContext'
 
 export function WorkspaceSpaceExplorerOverlay({
   spaceId,
@@ -62,6 +63,11 @@ export function WorkspaceSpaceExplorerOverlay({
   onDismissQuickPreview: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
+  const directoryTarget = React.useContext(WorkspaceDocumentNavigationContext)?.directoryTarget
+  const requestedDirectory =
+    directoryTarget?.spaceId === spaceId && directoryTarget.mountId === targetMountId
+      ? directoryTarget
+      : null
   const [translateX, translateY, zoom] = useStore(selectViewportTransform)
   const viewportWidth = useStore(state => state.width)
   const viewportHeight = useStore(state => state.height)
@@ -369,9 +375,11 @@ export function WorkspaceSpaceExplorerOverlay({
       }}
     >
       <WorkspaceSpaceExplorerOverlayBody
+        key={`${spaceId}:${mountIdForFilesystem ?? 'local'}:${rootUri ?? ''}`}
         spaceName={spaceName}
         spaceId={spaceId}
         rootUri={rootUri}
+        requestedDirectory={requestedDirectory}
         mountId={mountIdForFilesystem}
         rootResolveError={rootResolveError}
         explorerClipboard={explorerClipboard}

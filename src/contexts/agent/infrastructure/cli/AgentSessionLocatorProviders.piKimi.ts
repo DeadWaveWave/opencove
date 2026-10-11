@@ -4,132 +4,13 @@ import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDire
 import { selectNearestAgentSessionId } from './AgentSessionCandidateSelector'
 
 const SESSION_CANDIDATE_WINDOW_MS = 20_000
-const FIRST_LINE_LIMIT_BYTES = 64 * 1024
 
-interface PiSessionMeta {
-  cwd: string
-  sessionId: string
-  timestampMs: number
-}
+export { findPiResumeSessionId, findPiSessionFilePath } from './PiSessionFiles'
 
 interface KimiSessionIndexEntry {
   sessionDir: string
   sessionId: string
   workDir: string
-}
-
-async function listDirectories(directory: string): Promise<string[]> {
-  try {
-    const entries = await fs.readdir(directory, { withFileTypes: true })
-    return entries.filter(entry => entry.isDirectory()).map(entry => join(directory, entry.name))
-  } catch {
-    return []
-  }
-}
-
-async function listFiles(directory: string): Promise<string[]> {
-  try {
-    const entries = await fs.readdir(directory, { withFileTypes: true })
-    return entries
-      .filter(entry => entry.isFile() && entry.name.endsWith('.jsonl'))
-      .map(entry => join(directory, entry.name))
-  } catch {
-    return []
-  }
-}
-
-async function readFirstLine(filePath: string): Promise<string | null> {
-  let handle: Awaited<ReturnType<typeof fs.open>> | null = null
-  try {
-    handle = await fs.open(filePath, 'r')
-    const buffer = Buffer.allocUnsafe(FIRST_LINE_LIMIT_BYTES)
-    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0)
-    const contents = buffer.subarray(0, bytesRead).toString('utf8')
-    const newlineIndex = contents.indexOf('\n')
-    const line = (newlineIndex >= 0 ? contents.slice(0, newlineIndex) : contents).trim()
-    return line.length > 0 ? line : null
-  } catch {
-    return null
-  } finally {
-    await handle?.close().catch(() => undefined)
-  }
-}
-
-function parsePiSessionMeta(line: string): PiSessionMeta | null {
-  try {
-    const parsed = JSON.parse(line) as Record<string, unknown>
-    const sessionId = typeof parsed.id === 'string' ? parsed.id.trim() : ''
-    const cwd = typeof parsed.cwd === 'string' ? resolve(parsed.cwd) : null
-    const timestampMs = typeof parsed.timestamp === 'string' ? Date.parse(parsed.timestamp) : NaN
-    if (
-      parsed.type !== 'session' ||
-      parsed.version !== 3 ||
-      sessionId.length === 0 ||
-      !cwd ||
-      !Number.isFinite(timestampMs)
-    ) {
-      return null
-    }
-    return { cwd, sessionId, timestampMs }
-  } catch {
-    return null
-  }
-}
-
-function resolvePiSessionRoots(): string[] {
-  const configured = process.env.PI_CODING_AGENT_SESSION_DIR?.trim()
-  return configured
-    ? [resolve(configured)]
-    : resolveHomeDirectoryCandidates().map(home => join(home, '.pi', 'agent', 'sessions'))
-}
-
-async function listPiSessionFiles(): Promise<string[]> {
-  const roots = resolvePiSessionRoots()
-  const directFiles = await Promise.all(roots.map(listFiles))
-  const projectDirectories = (await Promise.all(roots.map(listDirectories))).flat()
-  const nestedFiles = await Promise.all(projectDirectories.map(listFiles))
-  return [...directFiles, ...nestedFiles].flat()
-}
-
-export async function findPiResumeSessionId(
-  cwd: string,
-  startedAtMs: number,
-): Promise<string | null> {
-  const resolvedCwd = resolve(cwd)
-  const candidates: Array<{ sessionId: string; timestampMs: number }> = []
-  for (const filePath of await listPiSessionFiles()) {
-    // eslint-disable-next-line no-await-in-loop
-    const line = await readFirstLine(filePath)
-    const meta = line ? parsePiSessionMeta(line) : null
-    if (meta?.cwd === resolvedCwd) {
-      candidates.push({ sessionId: meta.sessionId, timestampMs: meta.timestampMs })
-    }
-  }
-  return selectNearestAgentSessionId({
-    candidates,
-    startedAtMs,
-    maxDistanceMs: SESSION_CANDIDATE_WINDOW_MS,
-  })
-}
-
-export async function findPiSessionFilePath(
-  cwd: string,
-  sessionId: string,
-): Promise<string | null> {
-  if (isAbsolute(sessionId)) {
-    const line = await readFirstLine(sessionId)
-    return line && parsePiSessionMeta(line) ? sessionId : null
-  }
-  const resolvedCwd = resolve(cwd)
-  for (const filePath of await listPiSessionFiles()) {
-    // eslint-disable-next-line no-await-in-loop
-    const line = await readFirstLine(filePath)
-    const meta = line ? parsePiSessionMeta(line) : null
-    if (meta?.cwd === resolvedCwd && meta.sessionId === sessionId) {
-      return filePath
-    }
-  }
-  return null
 }
 
 function resolveKimiHome(): string {

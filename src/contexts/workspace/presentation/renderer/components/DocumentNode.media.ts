@@ -1,63 +1,17 @@
-export type DocumentNodeMediaKind = 'audio' | 'video'
+import {
+  resolveFileContentDescriptor,
+  type FileMediaDescriptor,
+  type FileMediaKind,
+} from '../../../domain/fileContentType'
 
-export interface DocumentNodeMediaDescriptor {
-  kind: DocumentNodeMediaKind
-  mimeType: string
-}
-
-const MEDIA_DESCRIPTOR_BY_EXTENSION: Record<string, DocumentNodeMediaDescriptor> = {
-  mp3: {
-    kind: 'audio',
-    mimeType: 'audio/mpeg',
-  },
-  ogg: {
-    kind: 'audio',
-    mimeType: 'audio/ogg',
-  },
-  oga: {
-    kind: 'audio',
-    mimeType: 'audio/ogg',
-  },
-  wav: {
-    kind: 'audio',
-    mimeType: 'audio/wav',
-  },
-  wave: {
-    kind: 'audio',
-    mimeType: 'audio/wav',
-  },
-  mp4: {
-    kind: 'video',
-    mimeType: 'video/mp4',
-  },
-  webm: {
-    kind: 'video',
-    mimeType: 'video/webm',
-  },
-}
+export type DocumentNodeMediaKind = FileMediaKind
+export type DocumentNodeMediaDescriptor = FileMediaDescriptor
 
 export function resolveDocumentNodeMediaDescriptor(
   uri: string,
 ): DocumentNodeMediaDescriptor | null {
-  let parsed: URL
-  try {
-    parsed = new URL(uri)
-  } catch {
-    return null
-  }
-
-  if (parsed.protocol !== 'file:') {
-    return null
-  }
-
-  const pathname = parsed.pathname ?? ''
-  const lastSlash = pathname.lastIndexOf('/')
-  const rawName = lastSlash >= 0 ? pathname.slice(lastSlash + 1) : pathname
-  const fileName = decodeURIComponent(rawName).trim().toLowerCase()
-  const dot = fileName.lastIndexOf('.')
-  const ext = dot >= 0 ? fileName.slice(dot + 1) : ''
-
-  return MEDIA_DESCRIPTOR_BY_EXTENSION[ext] ?? null
+  const descriptor = resolveFileContentDescriptor(uri)
+  return descriptor?.kind === 'binary' ? null : descriptor
 }
 
 export function createMediaObjectUrl(bytes: Uint8Array, mimeType: string): string {
@@ -67,7 +21,7 @@ export function createMediaObjectUrl(bytes: Uint8Array, mimeType: string): strin
 }
 
 export function canPlayDocumentNodeMedia(
-  mediaKind: DocumentNodeMediaKind,
+  mediaKind: Exclude<DocumentNodeMediaKind, 'image'>,
   mimeType: string,
 ): boolean {
   if (typeof document === 'undefined') {

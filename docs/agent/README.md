@@ -35,6 +35,44 @@ conversation truth. Invocation exit fences later hook activity but neither exits
 the separately owned provider conversation binding. The loopback gateway owns only authentication, hook
 artifacts, and cleanup; no invocation registry state is persisted.
 
+## Generated terminal launch assets
+
+`TerminalAgentTelemetryAssetStore` owns one private
+`<userData>/runtime/terminal-agent/instance-<random>/` directory per runtime. Composition injects
+the profile path; the reusable Store does not import Electron or depend on OS temporary-file retention.
+These generated scripts are runtime assets, not durable workspace state, and are never adopted by
+a replacement Worker. Each terminal preparation validates the finite script manifest (type, bounded
+content and POSIX mode), repairing missing or damaged files at their original paths. Existing shells
+therefore retain usable PATH shims after repair. Healthy scripts are not rewritten.
+
+The Store coalesces concurrent validation/repair. Disposal seals admission, drains in-flight work,
+rejects late publication, and removes only its own verified instance. Generated file replacements use
+exclusive same-directory staging and rename, never truncate a script an existing process may be reading.
+Unexpected links, foreign ownership or replaced directories fail closed at the asset boundary; POSIX
+instance directories use `0700`, files `0600`/`0700`. Windows inherits the private profile ACL. A locked
+Windows destination may prevent rename; it is not unlinked as a workaround.
+
+Windows PowerShell scripts are UTF-8 with a BOM, so Windows PowerShell 5.1 does not decode Unicode
+profile or runtime paths as ANSI. CMD shims stay ASCII and locate their colocated, same-named `.ps1`
+using `%~dpn0.ps1`; they do not embed profile paths or change the user's code page. The BOM is part of
+the manifest's exact bytes and is repaired if lost. POSIX shebang scripts and JavaScript remain
+BOM-free.
+
+Instrumentation is optional: failed preparation returns the original executable, arguments and environment
+and releases any uncommitted reservation. It does not replay a spawn or a user command. Bounded runtime
+diagnostics record repair counts or allowlisted failure categories, never credentials, command contents,
+environment values or arbitrary exception messages. WSL continues to bypass host instrumentation.
+
+Repair touches only generated manifest files, not history, active invocation plans or sibling instances.
+It cannot recover history/plans already deleted externally. Validation cannot eliminate the gap before
+an executable is opened under continued external mutation. Normal disposal removes the instance, but
+crash leftovers are not age/PID-swept: automatic orphan cleanup requires a separate ownership protocol.
+Such private leftovers can include history or Windows invocation plans containing credentials; do not
+upload them as diagnostic assets. Native PTY descriptor lifetime is independent of this script lifecycle.
+
+Regression coverage: `terminalAgentAssets.lifecycle.spec.ts`, `terminalAgentAssets.shell.spec.ts`, the
+macOS `workspace-canvas.terminal-agent-assets.mac.spec.ts`, and the Windows interactive Electron shim test.
+
 ## Pi Native Observation Contract
 
 Both ordinary-terminal `pi` commands and managed Pi Agent nodes inject a private, launch-scoped

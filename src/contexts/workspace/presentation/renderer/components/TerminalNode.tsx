@@ -78,6 +78,7 @@ export function TerminalNode({
   onCommandRun,
   onAgentOverlayExit,
   onInteractionStart,
+  ...linkOptions
 }: TerminalNodeProps): JSX.Element {
   const {
     isDragSurfaceSelectionMode,
@@ -142,7 +143,6 @@ export function TerminalNode({
     lineHeight: displayTerminalLineHeight,
     letterSpacing: displayTerminalLetterSpacing,
   }
-
   latestSessionIdRef.current = sessionId
 
   const {
@@ -155,11 +155,7 @@ export function TerminalNode({
     toggleCaseSensitive: toggleFindCaseSensitive,
     toggleUseRegex: toggleFindUseRegex,
     bindSearchAddon: bindSearchAddonToFind,
-  } = useTerminalFind({
-    sessionId,
-    terminalRef,
-    terminalThemeMode,
-  })
+  } = useTerminalFind({ sessionId, terminalRef, terminalThemeMode })
 
   if (rendererRecoveryStateRef.current.sessionId !== sessionId) {
     rendererRecoveryStateRef.current = { sessionId, preferredMode: 'auto', resetVersion: 0 }
@@ -454,6 +450,7 @@ export function TerminalNode({
           onRetry={() => commitTerminalGeometry('frame_commit')}
         />
       }
+      linkOptions={linkOptions}
       title={title}
       fixedTitlePrefix={fixedTitlePrefix}
       kind={isAgentPresentation ? 'agent' : kind}

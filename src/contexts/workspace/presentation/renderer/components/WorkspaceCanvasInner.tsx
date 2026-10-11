@@ -360,10 +360,12 @@ export function WorkspaceCanvasInner({
     handleSelectionContextMenu,
   })
   // prettier-ignore
-  const spaceExplorer = useCanvasSpaceExplorer({ workspaceId, canvasState, nodeStore, spaces, onSpacesChange, onRequestPersistFlush, reactFlow, nodeDragSession, finalizeDraggedNodeDrop, agentSettings })
+  const spaceExplorer = useCanvasSpaceExplorer({ workspaceId, canvasState, nodeStore, spaces, onSpacesChange, onRequestPersistFlush, reactFlow, nodeDragSession, finalizeDraggedNodeDrop, agentSettings, expandNode: collapse.expandNode })
   return (
     <WorkspaceCanvasProviders
       collapse={collapse}
+      openSpaceExplorer={spaceExplorer.openSpaceExplorer}
+      openExplorerSpaceId={spaceExplorer.openExplorerSpaceId}
       workspaceId={workspaceId}
       workspacePath={workspacePath}
       nodeStore={nodeStore}

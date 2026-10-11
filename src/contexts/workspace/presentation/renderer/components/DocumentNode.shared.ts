@@ -5,7 +5,7 @@ export interface DocumentNodeLoadMessages {
   binaryReadUnavailable: string
 }
 
-export type DocumentNodeUnsupportedKind = 'binary' | 'tooLarge'
+export type DocumentNodeUnsupportedKind = 'binary' | 'tooLarge' | 'imageTooLarge'
 
 export interface LoadedDocumentMediaSource {
   kind: DocumentNodeMediaKind

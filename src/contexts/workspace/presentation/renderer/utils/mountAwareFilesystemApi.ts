@@ -44,6 +44,10 @@ export function resolveFilesystemApiForMount(
     return null
   }
 
+  if (mountId && !controlSurfaceInvoke) {
+    return null
+  }
+
   if (mountId && controlSurfaceInvoke) {
     return {
       readFileBytes: async ({ uri }) =>

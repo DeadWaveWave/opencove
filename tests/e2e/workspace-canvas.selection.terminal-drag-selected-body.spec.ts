@@ -3,6 +3,7 @@ import {
   clickHeaderDragSurface,
   clearAndSeedWorkspace,
   launchApp,
+  readCanvasViewport,
   storageKey,
 } from './workspace-canvas.helpers'
 
@@ -130,6 +131,7 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
       if (!beforeDrag) {
         throw new Error('node position unavailable before multi-select body drag')
       }
+      const viewportBeforeDrag = await readCanvasViewport(window)
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
@@ -149,13 +151,17 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
       await window.mouse.move(endX, endY, { steps: 36 })
       await window.mouse.up()
 
-      const afterDrag = await readNodePosition('mouse-selected-body-drag-node-a')
-      if (!afterDrag) {
-        throw new Error('node position unavailable after multi-select body drag')
-      }
+      await expect
+        .poll(async () => {
+          const afterDrag = await readNodePosition('mouse-selected-body-drag-node-a')
+          if (!afterDrag) {
+            return Number.NaN
+          }
 
-      expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 120)
-      expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 120)
+          return Math.min(afterDrag.x - beforeDrag.x, afterDrag.y - beforeDrag.y)
+        })
+        .toBeGreaterThan(120)
+      expect(await readCanvasViewport(window)).toEqual(viewportBeforeDrag)
     } finally {
       await electronApp.close()
     }

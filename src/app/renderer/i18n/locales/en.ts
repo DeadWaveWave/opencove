@@ -1,3 +1,4 @@
+import { enTerminalLink } from './en.terminalLink'
 import { enMessages } from './en.messages'
 import { enCommonRemoteEndpoints } from './en.commonRemoteEndpoints'
 import { enShell } from './en.shell'
@@ -349,12 +350,17 @@ export const en = {
     filesystemUnavailable: 'Filesystem is unavailable.',
     notAFile: 'This is not a file.',
     editorUnavailable: 'The code editor is unavailable.',
-    binaryReadUnavailable: 'This environment cannot load audio or video previews.',
-    binaryTitle: 'Binary file',
-    binaryMessage:
-      'This file appears to be binary or uses an unsupported encoding, so it cannot be opened as text.',
+    binaryReadUnavailable: 'This environment cannot load image, audio, or video previews.',
+    binaryTitle: 'Preview unavailable',
+    binaryMessage: 'You can view this file in another app.',
+    previewUnavailableForType: 'Preview is not yet available for {{fileType}} files.',
+    imageTooLargeTitle: 'Image too large',
+    imageTooLargeMessage: 'This image exceeds the 50 MiB preview limit.',
     tooLargeTitle: 'File too large',
     tooLargeMessage: 'This file is too large to open in the canvas editor.',
+    imageUnsupportedTitle: 'Image preview unavailable',
+    imageUnsupportedMessage:
+      'This image could not be previewed. It may be damaged or use an unsupported format.',
     mediaUnsupportedTitle: 'Media playback unavailable',
     mediaUnsupportedMessage:
       'This audio or video file cannot be played here. OpenCove currently previews MP3, WAV/WAVE, OGG/OGA, MP4, and WebM when the runtime supports them.',
@@ -385,6 +391,7 @@ export const en = {
     geometrySyncFailed: 'Terminal size could not be confirmed. Retry to fit this window.',
     retryGeometrySync: 'Retry sizing',
   },
+  terminalLink: enTerminalLink,
   terminalFind: {
     placeholder: 'Find…',
     previous: 'Previous match',

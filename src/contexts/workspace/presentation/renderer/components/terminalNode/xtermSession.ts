@@ -8,8 +8,7 @@ import '@xterm/xterm/css/xterm.css'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TerminalDiagnosticsLogInput, TerminalWindowsPty } from '@shared/contracts/dto'
 import { DEFAULT_TERMINAL_FONT_FAMILY } from './constants'
-import { FilePathLinkProvider } from './linkProviders/file-path-link-provider'
-import { UrlLinkProvider } from './linkProviders/url-link-provider'
+import { installTerminalLinks } from './links/installTerminalLinks'
 import { registerTerminalSelectionTestHandle } from './testHarness'
 import { patchXtermMouseServiceWithRetry } from './patchXtermMouseService'
 import { registerTerminalHitTargetCursorScope } from './hitTargetCursorScope'
@@ -176,6 +175,7 @@ export function createMountedXtermSession({
   let disposeWebglCanvasTransformCleanupObserver: () => void = () => undefined
   let disposeTerminalDisplayMeasurementHandle: () => void = () => undefined
   let disposeTerminalPointerFocus: () => void = () => undefined
+  let disposeTerminalLinks: () => void = () => undefined
   let effectiveDprController = installTerminalEffectiveDevicePixelRatioController({
     terminal,
     initialViewportZoom,
@@ -233,10 +233,9 @@ export function createMountedXtermSession({
     } catch {
       // Degrade gracefully in environments without ligatures support (e.g., test mocks)
     }
-    terminal.registerLinkProvider(new UrlLinkProvider(terminal, (_, uri) => window.open(uri)))
-    terminal.registerLinkProvider(
-      new FilePathLinkProvider(terminal, (_, path) => window.open(path)),
-    )
+    if (typeof terminal.registerLinkProvider === 'function' && terminal.element) {
+      disposeTerminalLinks = installTerminalLinks(terminal)
+    }
     cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
     disposeTerminalHitTargetCursorScope = registerTerminalHitTargetCursorScope({
       container,
@@ -296,6 +295,7 @@ export function createMountedXtermSession({
     },
     setViewportInteractionActive: effectiveDprController.setViewportInteractionActive,
     dispose: () => {
+      disposeTerminalLinks()
       cancelMouseServicePatch()
       disposeTerminalHitTargetCursorScope()
       disposeWebglCanvasTransformCleanupObserver()

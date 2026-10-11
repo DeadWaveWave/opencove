@@ -1,3 +1,6 @@
+import { join } from 'node:path'
+import { appendBoundedRuntimeDiagnosticsLine } from '../../../platform/persistence/runtimeDiagnosticsFile'
+import type { TerminalAgentDiagnosticSink } from '../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentDiagnostics'
 import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
@@ -12,6 +15,7 @@ import { TerminalAgentActivityEnvironmentService } from '../../../contexts/agent
 import { TerminalAgentInvocationRegistry } from '../../../contexts/agent/application/TerminalAgentInvocationRegistry'
 
 export function createTerminalAgentActivityRuntime(options: {
+  userDataPath: string
   agentHookChannels: readonly AgentHookChannel[]
   agentProviderRegistry?: AgentProviderRegistry
   appVersion?: string | null
@@ -33,13 +37,28 @@ export function createTerminalAgentActivityRuntime(options: {
     registry: invocationRegistry,
     resolveHookInjection: provider => agentProviderRegistry.require(provider).hookInjection ?? null,
   })
+  const diagnostic: TerminalAgentDiagnosticSink = event => {
+    appendBoundedRuntimeDiagnosticsLine(
+      join(options.userDataPath, 'logs', 'runtime-diagnostics.log'),
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        source: 'terminal-agent',
+        event: event.type,
+        details: event,
+      }),
+    )
+  }
   const assets = new TerminalAgentTelemetryAssetStore({
     platform: process.platform,
     runtimeExecutable: process.execPath,
+    parentDirectory: join(options.userDataPath, 'runtime', 'terminal-agent'),
+    trustedDirectory: options.userDataPath,
+    diagnostic,
   })
   const activity = new TerminalAgentActivityEnvironmentService({
     assets,
     gateway,
+    diagnostic,
     inheritedPath: process.env.PATH ?? '',
     inheritedShell: process.env.SHELL ?? (process.platform === 'win32' ? 'cmd.exe' : '/bin/sh'),
     platform: process.platform,

@@ -26,6 +26,7 @@ export type AgentSessionSummarySource =
   | 'gemini-file'
   | 'opencode-cli'
   | 'opencode-db'
+  | 'pi-file'
   | 'control-surface'
 import type { AppErrorDescriptor } from './error'
 import type { TerminalRuntimeKind } from './terminal'
@@ -146,6 +147,8 @@ export interface ResolveAgentResumeSessionResult {
 }
 
 export interface ReadAgentLastMessageInput {
+  /** Managed runtime identity; persisted timestamps are not reliable lookup keys after recovery. */
+  sessionId?: string | null
   provider: AgentProviderId
   cwd: string
   startedAt: string

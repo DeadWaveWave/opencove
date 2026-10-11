@@ -15,7 +15,7 @@ import type { ExplorerPlacementPx } from './useSpaceExplorer.placement'
 import type { SpaceExplorerOpenDocumentBlock } from './useSpaceExplorer.guards'
 
 export type WorkspaceCanvasSpaceExplorerArgs = {
-  workspaceId?: string
+  workspaceId: string
   canvasRef: React.RefObject<HTMLDivElement | null>
   spaces: WorkspaceSpaceState[]
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -39,6 +39,7 @@ export type WorkspaceCanvasSpaceExplorerArgs = {
     spaceRectOverrideById?: ReadonlyMap<string, WorkspaceSpaceRect> | null
   }) => void
   createDocumentNode: UseWorkspaceCanvasNodesStoreResult['createDocumentNode']
+  expandNode?: (nodeId: string) => Node<TerminalNodeData> | undefined
   createImageNode: (
     anchor: Point,
     image: ImageNodeData,

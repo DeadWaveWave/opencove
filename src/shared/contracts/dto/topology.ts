@@ -221,6 +221,8 @@ export interface GetEndpointHomeDirectoryResult {
   endpointId: string
   platform: string
   homeDirectory: string
+  /** Runtime hostname, never the transport address or an inferred SSH alias. */
+  hostname?: string
 }
 
 export interface ReadEndpointDirectoryInput {

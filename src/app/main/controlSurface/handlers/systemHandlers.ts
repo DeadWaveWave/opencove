@@ -1,3 +1,4 @@
+import { hostname } from 'node:os'
 import type { ControlSurface } from '../controlSurface'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../../shared/contracts/controlSurface'
 import type {
@@ -39,6 +40,7 @@ export function registerSystemHandlers(
         pid: process.pid,
         platform: process.platform,
         homeDirectory: resolveHomeDirectory(),
+        hostname: hostname(),
       }) satisfies ControlSurfaceHomeDirectoryResult,
     defaultErrorCode: 'common.unexpected',
   })

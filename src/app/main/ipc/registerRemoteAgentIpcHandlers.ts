@@ -421,18 +421,25 @@ export function registerRemoteAgentIpcHandlers(options: {
         payload?.startedAt,
         'agent.readLastMessage startedAt',
       )
+      normalizeStartedAtMs(startedAt)
+      const requestedSessionId =
+        payload?.sessionId === null || payload?.sessionId === undefined
+          ? null
+          : normalizeRequiredString(payload.sessionId, 'agent.readLastMessage sessionId')
 
       await waitForStartupApproval()
       const endpoint = await resolveWorkerEndpoint(options.endpointResolver)
-      const lookup = await resolveAgentSessionIdForLookup({ endpoint, provider, cwd, startedAt })
-      if (!lookup) {
+      const sessionId =
+        requestedSessionId ??
+        (await resolveAgentSessionIdForLookup({ endpoint, provider, cwd, startedAt }))?.sessionId
+      if (!sessionId) {
         return { message: null }
       }
 
       const final = await invokeOk<{ message: string | null }>(endpoint, {
         kind: 'query',
         id: 'session.finalMessage',
-        payload: { sessionId: lookup.sessionId },
+        payload: { sessionId },
       })
 
       return { message: final.message ?? null }

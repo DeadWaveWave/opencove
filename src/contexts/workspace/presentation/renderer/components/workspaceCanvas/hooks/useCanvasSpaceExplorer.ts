@@ -7,6 +7,7 @@ import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 type Params = Pick<
   WorkspaceCanvasSpaceExplorerArgs,
   | 'workspaceId'
+  | 'expandNode'
   | 'spaces'
   | 'onSpacesChange'
   | 'onRequestPersistFlush'

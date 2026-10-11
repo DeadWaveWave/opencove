@@ -1,3 +1,4 @@
+import { zhCNTerminalLink } from './zh-CN.terminalLink'
 import type { TranslationDictionary } from './schema'
 
 import { zhCNCommonRemoteEndpoints } from './zh-CN.commonRemoteEndpoints'
@@ -347,11 +348,16 @@ export const zhCN = {
     filesystemUnavailable: '文件系统不可用。',
     notAFile: '这不是一个文件。',
     editorUnavailable: '代码编辑器不可用。',
-    binaryReadUnavailable: '当前环境无法加载音频或视频预览。',
-    binaryTitle: '二进制文件',
-    binaryMessage: '该文件似乎是二进制或使用了不受支持的编码，无法以文本方式打开。',
+    binaryReadUnavailable: '当前环境无法加载图片、音频或视频预览。',
+    binaryTitle: '暂不支持预览此文件',
+    binaryMessage: '可使用其他应用查看此文件。',
+    previewUnavailableForType: '暂不支持预览 {{fileType}} 文件',
+    imageTooLargeTitle: '图片过大',
+    imageTooLargeMessage: '此图片超过 50 MiB 的预览大小限制。',
     tooLargeTitle: '文件过大',
     tooLargeMessage: '该文件过大，无法在画布编辑器中打开。',
+    imageUnsupportedTitle: '图片预览失败',
+    imageUnsupportedMessage: '无法预览此图片，文件可能已损坏或使用了不支持的格式。',
     mediaUnsupportedTitle: '无法播放媒体',
     mediaUnsupportedMessage:
       '这个音频或视频文件当前无法在这里播放。OpenCove 目前会在运行环境支持时预览 MP3、WAV/WAVE、OGG/OGA、MP4 和 WebM。',
@@ -379,6 +385,7 @@ export const zhCN = {
     geometrySyncFailed: '终端尺寸未能确认，请重试以适配当前窗口。',
     retryGeometrySync: '重新适配',
   },
+  terminalLink: zhCNTerminalLink,
   terminalFind: {
     placeholder: '查找…',
     previous: '上一个匹配',
