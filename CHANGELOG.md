@@ -8,10 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🚀 Added
 
+- Appearance: add Pixel and Pixel Light themes, shared window chrome, provider icons, color accents and configurable canvas, window and Agent activity pixel effects. (#422)
+- Canvas: collapse windows into persistent desktop icons, restore them with smooth motion and configurable placement, arrange compact windows within Spaces, and create nodes by clicking or dragging from the canvas toolbar. (#422)
+- Files: add directory nodes with icon and tree views, breadcrumb navigation and path copying, plus file and folder drops onto the canvas. (#422)
+- Sidebar: add a compact project rail, project hover navigation, pin and hidden visibility modes, direct unpin actions and project-switching shortcuts. (#422)
+- Settings: use a main-area settings page with themed live previews, compact Agent ordering, simplified connection controls and plugin documentation. (#422)
+- Plugins: install independent local or Git packages with standard canvas windows, commands, packaged Skills, preferences, Sidebar trees, color-token themes and explicit project-scoped host operations. (#422)
+- Plugins: manage details and interactive previews, entry-point visibility, enablement, reload and removal; inspect Git updates, preserve local edits, resolve update candidates, roll back code and discover repositories on GitHub. (#422)
 - Canvas: choose between Zoom Flight and Smooth Slide for viewport navigation across windows and Spaces, with a saved preference and support for system reduced motion. (#400)
 
 ### 🐛 Fixed
 
+- Canvas: use compact geometry for Space resizing and collision handling, preserve collapsed windows across restarts, and keep window content mounted through collapse and expansion. (#422)
+- Files: preserve original mount bindings through navigation and layout changes, and restore existing collapsed documents when following terminal file links. (#422)
+- Plugins: reject stale or ambiguous targets, preserve concurrent workspace changes during asynchronous node creation, and report filesystem failures through structured errors. (#422)
+- Terminal: keep link actions focused on the terminal without accidentally selecting the canvas node. (#422)
 - Files: replace unsupported-file warnings with a centered file icon, readable filename, format-aware explanation, and clear default-app action across themes. (#416)
 
 - Files: preview terminal-linked images in their original file windows, retain audio/video playback, and offer explicit system opening for unsupported formats instead of treating binary files as text. (#416)
