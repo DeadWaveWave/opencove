@@ -87,20 +87,27 @@ export async function seedIdentityEndpointFixture(
 
 /** Freeze real browser animations before their first frame; no production timing overrides. */
 export async function pauseCollapseAnimations(page: Page, nodeId: string) {
-  await page.evaluate(id => {
+  await pausePresentationAnimations(
+    page,
+    `.react-flow__node[data-id="${nodeId}"] .cove-node-presentation`,
+  )
+}
+
+export async function pausePresentationAnimations(page: Page, selector: string) {
+  await page.evaluate(targetSelector => {
     const originalAnimate = Element.prototype.animate
     const probe: EndpointProbe = { animations: [], originalAnimate }
     ;(window as EndpointWindow).__opencoveCollapseEndpoint = probe
     Element.prototype.animate = function (keyframes, options) {
       const animation = originalAnimate.call(this, keyframes, options)
-      if (this.closest(`.react-flow__node[data-id="${id}"] .cove-node-presentation`)) {
+      if (this.closest(targetSelector)) {
         animation.pause()
         animation.currentTime = 0
         probe.animations.push(animation)
       }
       return animation
     }
-  }, nodeId)
+  }, selector)
 }
 
 export async function seekCollapseEndpoint(page: Page) {
@@ -108,22 +115,49 @@ export async function seekCollapseEndpoint(page: Page) {
 }
 
 /** Seek the actual WAAPI effects, including host easing, without changing their keyframes. */
-export async function seekCollapseProgress(page: Page, progress: number) {
-  return page.evaluate(fraction => {
-    const probe = (window as EndpointWindow).__opencoveCollapseEndpoint
+export async function seekCollapseProgress(
+  page: Page,
+  progress: number,
+  phase: 'timeline' | 'active' = 'timeline',
+) {
+  return page.evaluate(
+    ({ fraction, phase: targetPhase }) => {
+      const probe = (window as EndpointWindow).__opencoveCollapseEndpoint
+      if (!probe?.animations.length) {
+        throw new Error('The real disclosure action did not start any animations')
+      }
+      Element.prototype.animate = probe.originalAnimate
+      for (const animation of probe.animations) {
+        const timing = animation.effect?.getComputedTiming()
+        const end = Number(timing?.endTime)
+        const start = targetPhase === 'active' ? Number(timing?.delay) : 0
+        if (!Number.isFinite(end) || end <= start) {
+          throw new Error('Disclosure animation must have a finite positive end time')
+        }
+        animation.currentTime = fraction === 1 ? end - 0.01 : start + (end - start) * fraction
+      }
+      return probe.animations.length
+    },
+    { fraction: progress, phase },
+  )
+}
+
+/** Let the real clock deliver finish events and production cleanup after controlled sampling. */
+export async function resumePresentationAnimations(page: Page) {
+  await page.evaluate(async () => {
+    const host = window as EndpointWindow
+    const probe = host.__opencoveCollapseEndpoint
     if (!probe?.animations.length) {
-      throw new Error('The real disclosure action did not start any animations')
+      throw new Error('Missing presentation animations')
     }
     Element.prototype.animate = probe.originalAnimate
+    const completed = Promise.all(probe.animations.map(animation => animation.finished))
     for (const animation of probe.animations) {
-      const end = Number(animation.effect?.getComputedTiming().endTime)
-      if (!Number.isFinite(end) || end <= 0) {
-        throw new Error('Disclosure animation must have a finite positive end time')
-      }
-      animation.currentTime = fraction === 1 ? end - 0.01 : end * fraction
+      animation.play()
     }
-    return probe.animations.length
-  }, progress)
+    await completed
+    delete host.__opencoveCollapseEndpoint
+  })
 }
 
 export async function finishCollapseAnimations(page: Page, nodeId: string) {

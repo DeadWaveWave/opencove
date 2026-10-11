@@ -1,6 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
 import {
+  pausePresentationAnimations,
+  resumePresentationAnimations,
+  seekCollapseProgress,
+} from './workspace-canvas.collapse-motion-endpoints.helpers'
+import {
   EXPANSION_PEER,
   EXPANSION_PROJECT,
   EXPANSION_TERMINAL,
@@ -124,6 +129,42 @@ export async function readPresentationFrame(page: Page, selector = presentationS
       height: rect.height / zoom,
     }
   })
+}
+
+/** Sample real WAAPI frames deterministically, then let their own clock finish and clean up. */
+export async function sampleAnimatedPresentation(
+  page: Page,
+  action: () => Promise<unknown>,
+  {
+    selector = presentationSelector,
+    phase = 'timeline',
+  }: {
+    selector?: string
+    phase?: 'timeline' | 'active'
+  } = {},
+): Promise<PresentationSample[]> {
+  await pausePresentationAnimations(page, selector)
+  return samplePresentation(
+    page,
+    async () => {
+      await action()
+      // Slow native RAF can skip most of a short transition. Preserve the production
+      // keyframes/easing, but paint each selected phase before moving to the next one.
+      /* eslint-disable no-await-in-loop -- Each animation phase must be painted before advancing. */
+      for (const progress of [0, 0.08, 0.16, 0.26, 0.4, 0.65, 0.9]) {
+        await seekCollapseProgress(page, progress, phase)
+        await page.evaluate(
+          () =>
+            new Promise<void>(resolve =>
+              requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+            ),
+        )
+      }
+      /* eslint-enable no-await-in-loop */
+      await resumePresentationAnimations(page)
+    },
+    selector,
+  )
 }
 
 export async function samplePresentation(

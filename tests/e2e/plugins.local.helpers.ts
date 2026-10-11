@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page, type TestInfo } from '@playwright/test'
+import { expect, type Frame, type Locator, type Page, type TestInfo } from '@playwright/test'
 import { cp, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -61,22 +61,73 @@ export async function openLocalDetails(page: Page): Promise<Locator> {
   return detail
 }
 
+type PointerPoint = { x: number; y: number }
+
+async function toPagePoint(frame: Frame, point: PointerPoint): Promise<PointerPoint> {
+  const parent = frame.parentFrame()
+  if (!parent) {
+    return point
+  }
+  const iframe = await frame.frameElement()
+  try {
+    const transformed = await iframe.evaluate((element, local) => {
+      const frameElement = element as HTMLIFrameElement
+      const bounds = frameElement.getBoundingClientRect()
+      return {
+        x:
+          bounds.x +
+          (frameElement.clientLeft + local.x) * (bounds.width / frameElement.offsetWidth),
+        y:
+          bounds.y +
+          (frameElement.clientTop + local.y) * (bounds.height / frameElement.offsetHeight),
+      }
+    }, point)
+    return await toPagePoint(parent, transformed)
+  } finally {
+    await iframe.dispose()
+  }
+}
+
+async function pluginControlPoint(control: Locator): Promise<PointerPoint> {
+  await control.scrollIntoViewIfNeeded()
+  const element = await control.elementHandle()
+  if (!element) {
+    throw new Error('Plugin control is no longer attached')
+  }
+  try {
+    const frame = await element.ownerFrame()
+    if (!frame) {
+      throw new Error('Plugin control frame is no longer attached')
+    }
+    const point = await element.evaluate(target => {
+      const bounds = target.getBoundingClientRect()
+      return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
+    })
+    return await toPagePoint(frame, point)
+  } finally {
+    await element.dispose()
+  }
+}
+
 export async function clickPluginControl(control: Locator): Promise<void> {
-  // A cross-process iframe can finish SDK startup before Chromium has published its
-  // hit-test surface. A pointer move delivered to the parent is not replayed when the
-  // child becomes ready. Leave and re-enter the child while waiting so each attempt
-  // delivers a fresh pointer movement; perform the click only once.
+  await expect(control).toBeEnabled()
+  let point: PointerPoint | undefined
+  // Playwright 1.58 adds an OOPIF's origin to child coordinates without its CSS
+  // scale. Near the preview edge this can target the host's resize handle. Map
+  // the actual child center through each frame's rendered bounds instead.
+  // Still require a real child hover before one real click; do not bypass overlays.
   await expect
     .poll(
       async () => {
+        point = await pluginControlPoint(control)
         await control.page().mouse.move(0, 0)
-        await control.hover({ timeout: 2_000 })
+        await control.page().mouse.move(point.x, point.y)
         return control.evaluate(element => element.matches(':hover'))
       },
       { message: 'Plugin control receives a real pointer before clicking', timeout: 10_000 },
     )
     .toBe(true)
-  await control.click()
+  await control.page().mouse.click(point!.x, point!.y)
 }
 
 export async function invokeClock(node: Locator): Promise<string> {

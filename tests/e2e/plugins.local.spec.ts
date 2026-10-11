@@ -182,7 +182,8 @@ test.describe('Independently installed plugins', () => {
   }, info) => {
     test.setTimeout(90_000)
     const source = await copyPluginFixture()
-    const { electronApp, window: page } = await launchApp()
+    // A 1x surface keeps iframe-edge pointer coverage consistent with Linux CI.
+    const { electronApp, window: page } = await launchApp({ deviceScaleFactor: 1 })
     try {
       // Resize the native surface, not just CDP's emulated viewport: otherwise
       // lower iframe controls are painted outside Electron's hit-testable area.
