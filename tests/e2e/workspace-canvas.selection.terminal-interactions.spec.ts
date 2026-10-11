@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { readNodeFrame } from './workspace-canvas.collapse-expansion.helpers'
 import {
   clickHeaderDragSurface,
   clearAndSeedWorkspace,
@@ -243,13 +244,17 @@ test.describe('Workspace Canvas - Selection', () => {
 
       await window.mouse.up()
 
-      const afterDrag = await readNodePosition()
-      if (!afterDrag) {
-        throw new Error('node position unavailable after selected overlay drag')
-      }
-
+      const afterDrag = await readNodeFrame(window, 'mouse-selected-drag-node')
       expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 120)
       expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 120)
+
+      // The visible move is immediate; persistence is debounced and asynchronous.
+      await expect
+        .poll(async () => (await readNodePosition())?.x)
+        .toBeGreaterThan(beforeDrag.x + 120)
+      await expect
+        .poll(async () => (await readNodePosition())?.y)
+        .toBeGreaterThan(beforeDrag.y + 120)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
     } finally {
       await electronApp.close()
@@ -367,13 +372,15 @@ test.describe('Workspace Canvas - Selection', () => {
         targetPosition: { x: 760, y: 80 },
       })
 
-      const afterDrag = await readNodePosition()
-      if (!afterDrag) {
-        throw new Error('node position unavailable after marquee drag')
-      }
-
+      const afterDrag = await readNodeFrame(window, 'mouse-marquee-drag-node')
       expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 120)
       expect(afterDrag.y).toBeLessThan(beforeDrag.y - 40)
+
+      // The visible move is immediate; persistence is debounced and asynchronous.
+      await expect
+        .poll(async () => (await readNodePosition())?.x)
+        .toBeGreaterThan(beforeDrag.x + 120)
+      await expect.poll(async () => (await readNodePosition())?.y).toBeLessThan(beforeDrag.y - 40)
     } finally {
       await electronApp.close()
     }

@@ -88,8 +88,23 @@ async function toPagePoint(frame: Frame, point: PointerPoint): Promise<PointerPo
   }
 }
 
+async function scrollFrameIntoView(frame: Frame): Promise<void> {
+  const parent = frame.parentFrame()
+  if (!parent) {
+    return
+  }
+  // An offscreen OOPIF can suspend its RAF. Bring each containing frame into view
+  // from the outside in before asking its child control to wait for stable layout.
+  await scrollFrameIntoView(parent)
+  const iframe = await frame.frameElement()
+  try {
+    await iframe.scrollIntoViewIfNeeded({ timeout: 2_000 })
+  } finally {
+    await iframe.dispose()
+  }
+}
+
 async function pluginControlPoint(control: Locator): Promise<PointerPoint> {
-  await control.scrollIntoViewIfNeeded()
   const element = await control.elementHandle()
   if (!element) {
     throw new Error('Plugin control is no longer attached')
@@ -99,6 +114,8 @@ async function pluginControlPoint(control: Locator): Promise<PointerPoint> {
     if (!frame) {
       throw new Error('Plugin control frame is no longer attached')
     }
+    await scrollFrameIntoView(frame)
+    await control.scrollIntoViewIfNeeded({ timeout: 2_000 })
     const point = await element.evaluate(target => {
       const bounds = target.getBoundingClientRect()
       return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }

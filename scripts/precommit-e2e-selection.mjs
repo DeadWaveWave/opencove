@@ -22,6 +22,11 @@ export const QUICK_E2E_GROUPS = {
     ],
     matches: path => /plugin/.test(path),
   },
+  pluginInteraction: {
+    reason: 'Shared plugin pointer changes also cover previews below the viewport and host APIs.',
+    tests: [e2e('plugins.canvas'), e2e('plugins.filesystem'), e2e('plugins.targets')],
+    matches: path => path === 'tests/e2e/plugins.local.helpers.ts',
+  },
   windows: {
     reason: 'Shared window movement, resize and collapse preserve live content.',
     tests: [e2e('workspace-canvas.drag-resize'), e2e('workspace-canvas.collapse-motion')],
