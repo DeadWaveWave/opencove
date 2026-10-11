@@ -122,7 +122,7 @@ test.describe('Settings Terminal Profiles (Windows)', () => {
       await window.reload({ waitUntil: 'domcontentloaded' })
 
       await settingsButton.click({ noWaitAfter: true })
-      await canvasNav.click()
+      await terminalNav.click()
       await expect(terminalProfileSelect).toHaveValue(selectedProfile.id)
       await expect(terminalProfileTrigger).toContainText(selectedProfile.label)
     } finally {

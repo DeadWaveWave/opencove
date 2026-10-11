@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { normalizeThemeStylesheet } from '../../helpers/themeStylesheet'
 import {
   resolveUiThemeBaseScheme,
   type UiTheme,
@@ -42,9 +43,9 @@ beforeAll(() => {
     dirname(fileURLToPath(import.meta.url)),
     '../../../src/app/renderer/styles',
   )
-  stylesheet.textContent = cssFiles
-    .map(file => readFileSync(resolve(cssRoot, file), 'utf8'))
-    .join('\n')
+  stylesheet.textContent = normalizeThemeStylesheet(
+    cssFiles.map(file => readFileSync(resolve(cssRoot, file), 'utf8')).join('\n'),
+  )
   document.head.append(stylesheet)
 })
 
@@ -52,6 +53,7 @@ afterEach(() => {
   document.body.replaceChildren()
   delete document.documentElement.dataset.coveTheme
   delete document.documentElement.dataset.coveThemeId
+  delete document.documentElement.dataset.coveThemeBase
 })
 afterAll(() => stylesheet.remove())
 
@@ -109,6 +111,17 @@ describe('theme-adaptive pixel effects', () => {
     expect(light).toEqual(selectTheme('light'))
     expect(dark).toEqual(selectTheme('dark'))
   })
+
+  it.each(['pixel', 'pixel-light', 'ember', 'ember-light'] as const)(
+    'inherits the %s palette from the resolved base even when the selected identity differs',
+    theme => {
+      const palette = selectTheme(theme)
+      document.documentElement.dataset.coveThemeBase = theme
+      expect(selectTheme(`plugin:custom-theme:${theme}`)).toEqual(palette)
+      // A stale selected identity cannot override the authoritative inherited base.
+      expect(selectTheme(theme === 'pixel' ? 'ember' : 'pixel')).toEqual(palette)
+    },
+  )
 
   it.each(themes)('keeps opaque foreground fragments distinguishable on the %s surface', theme => {
     const palette = selectTheme(theme)

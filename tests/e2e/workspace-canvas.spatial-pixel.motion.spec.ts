@@ -1,6 +1,6 @@
 import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
-import { createHash } from 'node:crypto'
+import { readFieldSignature, readStableFieldBaseline } from './workspace-canvas.pixel-field.helpers'
 import path from 'node:path'
 import {
   buildNodeEvalCommand,
@@ -36,11 +36,6 @@ async function readAssemblyStates(window: Page) {
   return await window.evaluate(
     () => (globalThis.window as AssemblyObservation).__pixelAssemblyStates ?? [],
   )
-}
-
-async function fieldSignature(layer: Locator) {
-  const image = await layer.evaluate(canvas => (canvas as HTMLCanvasElement).toDataURL())
-  return createHash('sha256').update(image).digest('hex')
 }
 
 async function expectPaintedField(layer: Locator) {
@@ -117,12 +112,12 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       await expectPaintedField(layer)
       await expect(layer).toHaveAttribute('data-cove-pixel-activity', 'idle')
       const viewport = await readCanvasViewport(window)
-      const first = await fieldSignature(layer)
+      const first = await readFieldSignature(layer)
       // Sample elapsed visual time without triggering output, input or viewport changes.
       await window.waitForTimeout(350)
-      const second = await fieldSignature(layer)
+      const second = await readFieldSignature(layer)
       await window.waitForTimeout(350)
-      const third = await fieldSignature(layer)
+      const third = await readFieldSignature(layer)
       expect(new Set([first, second, third]).size).toBe(3)
       expect(await readCanvasViewport(window)).toEqual(viewport)
       await expect(layer).toHaveAttribute('data-cove-pixel-activity', 'idle')
@@ -217,9 +212,9 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       const assembly = window.getByTestId('workspace-pixel-assembly')
       await expectPaintedField(layer)
       await expect(layer).toHaveAttribute('data-cove-pixel-motion', 'static')
-      const before = await fieldSignature(layer)
+      const before = await readStableFieldBaseline(layer)
       await window.waitForTimeout(500)
-      expect(await fieldSignature(layer)).toBe(before)
+      expect(await readFieldSignature(layer)).toBe(before)
       await createNode(window, 'note', 240, 180)
       const note = window.getByTestId('note-node-textarea')
       await note.fill('Reduced motion is ready immediately.')

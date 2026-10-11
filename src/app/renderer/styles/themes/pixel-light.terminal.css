@@ -2,7 +2,7 @@
    Dark terminal semantics discard these optional overrides in the appearance owner. */
 :root:is(
   [data-cove-theme-base='pixel-light'],
-  :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+  :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
 ) {
   --cove-terminal-ansi-black: #243c50;
   --cove-terminal-ansi-red: #934d5a;

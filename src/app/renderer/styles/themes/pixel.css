@@ -1,6 +1,9 @@
 /* Pixel keeps content surfaces opaque enough for sustained reading. Gradients
    use a separate image token so color-mix consumers retain a valid color. */
-:root:is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']) {
+:root:is(
+  [data-cove-theme-base='pixel'],
+  :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+) {
   color-scheme: dark;
   --cove-pixel-blue: #5b9cf0;
   --cove-pixel-cyan: #55bddc;
@@ -117,7 +120,10 @@
 /* The provider's dark terminal scope overrides root tokens. Inherit Pixel's
    palette here so the existing appearance probe and applied snapshot share
    the same values, without duplicating colors or changing terminal geometry. */
-:root:is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel'])
+:root:is(
+    [data-cove-theme-base='pixel'],
+    :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+  )
   .terminal-node[data-cove-terminal-node-theme='dark'] {
   --cove-node-border: inherit;
   --cove-node-header-border: inherit;

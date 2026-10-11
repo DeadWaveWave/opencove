@@ -71,6 +71,46 @@ describe('plugin documentation', () => {
     expect(window.location.href).toBe(href)
   })
 
+  it('preserves document elements across parent updates while using current link handlers', () => {
+    const markdown =
+      '# Guide\n\n![Diagram](./diagram.svg)\n\n[Next](./next.md)\n\n| Key | Value |\n| --- | --- |\n| A | B |'
+    const firstOpen = vi.fn()
+    const nextOpen = vi.fn()
+    const { rerender } = render(
+      <PluginReadme
+        markdown={markdown}
+        assets={{ './diagram.svg': '/diagram.svg' }}
+        resolveDocumentLink={() => 'first'}
+        onOpenDocument={firstOpen}
+      />,
+    )
+    const heading = screen.getByRole('heading')
+    const image = screen.getByRole('img')
+    const link = screen.getByRole('link')
+    const table = screen.getByRole('table')
+    link.focus()
+
+    rerender(
+      <PluginReadme
+        markdown={markdown}
+        assets={{ './diagram.svg': '/diagram.svg' }}
+        resolveDocumentLink={() => 'next'}
+        onOpenDocument={nextOpen}
+        focusTitle
+      />,
+    )
+
+    expect(screen.getByRole('heading')).toBe(heading)
+    expect(heading).toHaveAttribute('tabindex', '-1')
+    expect(screen.getByRole('img')).toBe(image)
+    expect(screen.getByRole('link')).toBe(link)
+    expect(link).toHaveFocus()
+    expect(screen.getByRole('table')).toBe(table)
+    fireEvent.click(link)
+    expect(nextOpen).toHaveBeenCalledWith('next')
+    expect(firstOpen).not.toHaveBeenCalled()
+  })
+
   it.each([
     'javascript:alert(1)',
     'file:///private/secret',

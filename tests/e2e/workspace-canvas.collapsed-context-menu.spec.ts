@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop -- User actions across window kinds intentionally run in sequence. */
 import { expect, test } from '@playwright/test'
+import { rejectDocumentWrites } from './workspace-canvas.document-save.helpers'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
@@ -99,29 +100,7 @@ test('Close from a compact dirty document reveals its close prompt and Cancel pr
     const savedContent = await readFile(documentPath, 'utf8')
     // Exercise the real editor, autosave and close guard with a deterministic write failure.
     // Reads and unrelated commands retain the original IPC handler on every platform.
-    await electronApp.evaluate(({ ipcMain }, uri) => {
-      const handlers = (
-        ipcMain as unknown as {
-          _invokeHandlers: Map<string, (event: unknown, request: unknown) => unknown>
-        }
-      )._invokeHandlers
-      const channel = 'control-surface:invoke'
-      const original = handlers.get(channel)
-      if (!original) {
-        throw new Error('Missing control-surface IPC handler')
-      }
-      ipcMain.removeHandler(channel)
-      ipcMain.handle(channel, (event, request: { id?: string; payload?: { uri?: string } }) => {
-        if (request.id === 'filesystem.writeFileTextInMount' && request.payload?.uri === uri) {
-          return {
-            __opencoveIpcEnvelope: true,
-            ok: false,
-            error: { code: 'filesystem.write_file_text_failed' },
-          }
-        }
-        return original(event, request)
-      })
-    }, toFileUri(documentPath))
+    await rejectDocumentWrites(electronApp, toFileUri(documentPath))
 
     const node = window.locator('[data-id="pixel-material-document"]')
     const editor = node.locator('.monaco-editor')

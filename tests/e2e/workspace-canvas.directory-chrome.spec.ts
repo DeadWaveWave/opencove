@@ -67,12 +67,22 @@ async function resizeBrowser(page: Page, browser: Locator, kind: BrowserKind, wi
       requestAnimationFrame(sample)
     })
   })
-  const handle = await readLocatorClientRect(
+  const handle =
     kind === 'explorer'
       ? browser.getByTestId('workspace-space-explorer-resizer-right')
-      : browser.getByTestId('folder-resizer-right'),
-  )
-  const start = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 }
+      : browser.getByTestId('folder-resizer-right')
+  // Fit View can place the midpoint behind the floating creation toolbar. Use
+  // an exposed part of the real handle, as a user would, instead of dragging
+  // a toolbar button and accidentally creating another node.
+  const start = await handle.evaluate(element => {
+    const rect = element.getBoundingClientRect()
+    return [0.5, 0.25, 0.75, 0.1, 0.9]
+      .map(fraction => ({ x: rect.x + rect.width / 2, y: rect.y + rect.height * fraction }))
+      .find(point => element.contains(document.elementFromPoint(point.x, point.y)))
+  })
+  if (!start) {
+    throw new Error('No exposed directory resize handle is available')
+  }
   await dragMouse(page, {
     start,
     end: { x: start.x + width * scale - beforeWidth, y: start.y },

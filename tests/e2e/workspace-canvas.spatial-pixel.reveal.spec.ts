@@ -91,17 +91,16 @@ async function attachPng(testInfo: TestInfo, name: string, encoded: string) {
 }
 
 test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
-  test('keeps the unrevealed region transparent from first paint and gives note/terminal equal visible duration', async ({
+  test('starts immediately and gives note/terminal equal real-time visible duration', async ({
     browserName,
   }, testInfo) => {
     void browserName
     const { electronApp, window: page } = await launchApp({ deviceScaleFactor: 1 })
     const records: RevealRecord[] = []
     try {
-      await installRevealCapture(electronApp)
       const inspectKind = async (kind: 'note' | 'terminal') => {
         await seed(page, kind)
-        await installRevealProbe(page, true)
+        await installRevealProbe(page)
         await createNode(page, kind)
         await expect
           .poll(
@@ -121,8 +120,71 @@ test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
       await inspectKind('terminal')
       await attachProbe(testInfo, 'note-versus-terminal-visible-duration', records.map(timing))
 
-      const verifyComposite = async (record: RevealRecord) => {
-        const kind = record.kind
+      expect(records[1]!.firstRaf!.width).toBeGreaterThan(records[0]!.firstRaf!.width * 1.8)
+      const durations = records.map(record => timing(record).frameVisibleToFull ?? 0)
+      for (const record of records) {
+        const summary = timing(record)
+        expect(
+          record.firstFrameVisible?.front,
+          `${record.kind} must begin at the start of its frame reveal`,
+        ).toBeLessThan(0.2)
+        expect(
+          summary.domToFrameVisible ?? Infinity,
+          `${record.kind} must not pause after its DOM frame exists`,
+        ).toBeLessThanOrEqual(100)
+        expect(
+          summary.firstRafToFrameVisible ?? Infinity,
+          `${record.kind} must not wait for content hydration before pixels advance`,
+        ).toBeLessThanOrEqual(100)
+      }
+      for (const duration of durations) {
+        expect(
+          duration,
+          'Frame-visible-to-complete duration must retain the 380ms reveal budget',
+        ).toBeGreaterThanOrEqual(300)
+        expect(duration).toBeLessThanOrEqual(470)
+      }
+      expect(Math.abs(durations[0]! - durations[1]!)).toBeLessThanOrEqual(70)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  for (const kind of ['note', 'terminal'] as const) {
+    test(`keeps ${kind} first paint and partial reveal transparent in the real compositor`, async ({
+      browserName,
+    }, testInfo) => {
+      void browserName
+      const { electronApp, window: page } = await launchApp({ deviceScaleFactor: 1 })
+      try {
+        // Screenshots can stall native macOS composition for hundreds of ms. Keep
+        // visual phases fixed while capturing; the separate test measures real time.
+        await page.clock.install()
+        await installRevealCapture(electronApp)
+        await seed(page, kind)
+        await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000))
+        await installRevealProbe(page, true)
+        await createNode(page, kind)
+        // Terminal creation crosses the PTY IPC boundary. Wait for its DOM commit
+        // before advancing the frozen reveal clock, without waiting for content.
+        await expect(page.locator(`.react-flow__node:has(.${kind}-node)`)).toBeAttached()
+        await page.clock.runFor(16)
+        await expect
+          .poll(async () =>
+            (await readRevealCaptures(electronApp)).some(
+              capture => capture.phase === 'first-raf' && Boolean(capture.png),
+            ),
+          )
+          .toBe(true)
+        await page.clock.runFor(160)
+        await expect
+          .poll(async () =>
+            (await readRevealCaptures(electronApp)).some(
+              capture => capture.phase === 'partial' && Boolean(capture.png),
+            ),
+          )
+          .toBe(true)
+        const record = (await readRevealRecords(page))[0]!
         await expect
           .poll(
             async () =>
@@ -165,38 +227,16 @@ test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
           partial?.pinkPixels ?? 0,
           'The real screenshot must show the underlay through the unrevealed right side',
         ).toBeGreaterThanOrEqual(18)
+        await page.clock.runFor(500)
+        await expect(page.locator(`.react-flow__node[data-id="${record.id}"]`)).toHaveCSS(
+          'mask-image',
+          'none',
+        )
+      } finally {
+        await electronApp.close()
       }
-      await verifyComposite(records[0]!)
-      await verifyComposite(records[1]!)
-      expect(records[1]!.firstRaf!.width).toBeGreaterThan(records[0]!.firstRaf!.width * 1.8)
-      const durations = records.map(record => timing(record).frameVisibleToFull ?? 0)
-      for (const record of records) {
-        const summary = timing(record)
-        expect(
-          record.firstFrameVisible?.front,
-          `${record.kind} must begin at the start of its frame reveal`,
-        ).toBeLessThan(0.2)
-        expect(
-          summary.domToFrameVisible ?? Infinity,
-          `${record.kind} must not pause after its DOM frame exists`,
-        ).toBeLessThanOrEqual(100)
-        expect(
-          summary.firstRafToFrameVisible ?? Infinity,
-          `${record.kind} must not wait for content hydration before pixels advance`,
-        ).toBeLessThanOrEqual(100)
-      }
-      for (const duration of durations) {
-        expect(
-          duration,
-          'Frame-visible-to-complete duration must retain the 380ms reveal budget',
-        ).toBeGreaterThanOrEqual(300)
-        expect(duration).toBeLessThanOrEqual(470)
-      }
-      expect(Math.abs(durations[0]! - durations[1]!)).toBeLessThanOrEqual(70)
-    } finally {
-      await electronApp.close()
-    }
-  })
+    })
+  }
 
   test('the masked right side receives a real pointer and reveals immediately before note/terminal input', async ({
     browserName,

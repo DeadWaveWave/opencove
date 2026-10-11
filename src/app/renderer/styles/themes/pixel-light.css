@@ -2,7 +2,7 @@
    surface and ink-colored accents, rather than reusing luminous dark colors. */
 :root:is(
   [data-cove-theme-base='pixel-light'],
-  :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+  :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
 ) {
   color-scheme: light;
   --cove-pixel-blue: #3c79bb;

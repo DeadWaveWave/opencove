@@ -10,7 +10,10 @@ import type {
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import { useScrollbackStore } from '@contexts/workspace/presentation/renderer/store/useScrollbackStore'
-import { readPersistedStateWithMeta } from '@contexts/workspace/presentation/renderer/utils/persistence'
+import {
+  acceptPersistedStateSnapshot,
+  readPersistedStateWithMeta,
+} from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { getPersistencePort } from '@contexts/workspace/presentation/renderer/utils/persistence/port'
 import { resolveCanvasCanonicalBucketFromViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceNodeSizing'
 import { useAppStore } from '../store/useAppStore'
@@ -348,11 +351,8 @@ export function useHydrateAppState({
     setIsPersistReady(false)
 
     const hydrateAppState = async (): Promise<void> => {
-      const {
-        state: persisted,
-        recovery,
-        hasStandardWindowSizeBucket,
-      } = await readPersistedStateWithMeta()
+      const snapshot = await readPersistedStateWithMeta()
+      const { state: persisted, recovery, hasStandardWindowSizeBucket } = snapshot
       if (isCancelledRef.current) {
         return
       }
@@ -371,6 +371,13 @@ export function useHydrateAppState({
 
       if (persisted) {
         await applyUiLanguage(resolvedSettings.language)
+      }
+
+      if (isCancelledRef.current) {
+        return
+      }
+      if (persisted) {
+        acceptPersistedStateSnapshot(snapshot)
       }
 
       if (recovery) {

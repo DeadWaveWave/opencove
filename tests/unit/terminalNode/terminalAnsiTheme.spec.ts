@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { normalizeThemeStylesheet } from '../../helpers/themeStylesheet'
 import {
   readTerminalAnsiTheme,
   resolveTerminalAnsiScheme,
@@ -9,16 +10,21 @@ import {
 } from '@/contexts/workspace/presentation/renderer/components/terminalNode/terminalAnsiTheme'
 
 const stylesheet = document.createElement('style')
-stylesheet.textContent = readFileSync(
-  resolve(
-    dirname(fileURLToPath(import.meta.url)),
-    '../../../src/app/renderer/styles/themes/pixel-light.terminal.css',
+stylesheet.textContent = normalizeThemeStylesheet(
+  readFileSync(
+    resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../src/app/renderer/styles/themes/pixel-light.terminal.css',
+    ),
+    'utf8',
   ),
-  'utf8',
 )
 beforeAll(() => document.head.append(stylesheet))
 afterAll(() => stylesheet.remove())
-afterEach(() => delete document.documentElement.dataset.coveThemeId)
+afterEach(() => {
+  delete document.documentElement.dataset.coveThemeId
+  delete document.documentElement.dataset.coveThemeBase
+})
 
 function luminance(hex: string): number {
   const linear = [1, 3, 5].map(offset => {
@@ -50,5 +56,16 @@ describe('Pixel Light ANSI palette', () => {
       document.documentElement.dataset.coveThemeId = theme
       expect(readTerminalAnsiTheme(getComputedStyle(document.documentElement))).toEqual({})
     }
+  })
+
+  it('inherits the palette from a plugin base and does not leak it from a stale theme identity', () => {
+    document.documentElement.dataset.coveThemeId = 'pixel-light'
+    const palette = readTerminalAnsiTheme(getComputedStyle(document.documentElement))
+    document.documentElement.dataset.coveThemeBase = 'pixel-light'
+    document.documentElement.dataset.coveThemeId = 'plugin:custom-theme:light'
+    expect(readTerminalAnsiTheme(getComputedStyle(document.documentElement))).toEqual(palette)
+    document.documentElement.dataset.coveThemeId = 'pixel-light'
+    document.documentElement.dataset.coveThemeBase = 'pixel'
+    expect(readTerminalAnsiTheme(getComputedStyle(document.documentElement))).toEqual({})
   })
 })

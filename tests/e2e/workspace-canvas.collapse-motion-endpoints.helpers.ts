@@ -104,7 +104,12 @@ export async function pauseCollapseAnimations(page: Page, nodeId: string) {
 }
 
 export async function seekCollapseEndpoint(page: Page) {
-  return page.evaluate(() => {
+  return seekCollapseProgress(page, 1)
+}
+
+/** Seek the actual WAAPI effects, including host easing, without changing their keyframes. */
+export async function seekCollapseProgress(page: Page, progress: number) {
+  return page.evaluate(fraction => {
     const probe = (window as EndpointWindow).__opencoveCollapseEndpoint
     if (!probe?.animations.length) {
       throw new Error('The real disclosure action did not start any animations')
@@ -115,10 +120,10 @@ export async function seekCollapseEndpoint(page: Page) {
       if (!Number.isFinite(end) || end <= 0) {
         throw new Error('Disclosure animation must have a finite positive end time')
       }
-      animation.currentTime = end - 0.01
+      animation.currentTime = fraction === 1 ? end - 0.01 : end * fraction
     }
     return probe.animations.length
-  })
+  }, progress)
 }
 
 export async function finishCollapseAnimations(page: Page, nodeId: string) {

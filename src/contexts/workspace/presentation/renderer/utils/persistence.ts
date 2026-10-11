@@ -9,6 +9,7 @@ export {
   schedulePersistedStateWrite,
 } from './persistence/schedule'
 export { readPersistedState, readPersistedStateWithMeta } from './persistence/read'
+export { acceptPersistedStateSnapshot } from './persistence/accept'
 export { toPersistedState } from './persistence/toPersistedState'
 export {
   allowNextEmptyWorkspacePersistedStateWrite,

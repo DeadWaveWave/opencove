@@ -98,7 +98,8 @@ test('Web automatically calibrates a compatible shared terminal reference withou
   }, nodeId)
 
   await page.locator('[data-testid="app-header-settings"]').click()
-  await page.locator('[data-testid="settings-section-nav-appearance"]').click()
+  await page.getByTestId('settings-section-nav-terminal').click()
+  await page.getByTestId('settings-terminal-calibration-disclosure').locator('summary').click()
   const compensation = page.locator('[data-testid="settings-terminal-display-compensation"]')
   await expect(compensation).toHaveJSProperty('checked', false)
   await compensation.click()

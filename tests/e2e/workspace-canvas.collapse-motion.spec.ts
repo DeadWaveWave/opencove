@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { dragMouse, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
 import {
+  finishCollapseAnimations,
+  pauseCollapseAnimations,
+  seekCollapseProgress,
+} from './workspace-canvas.collapse-motion-endpoints.helpers'
+import {
   EXPANSION_PEER,
   EXPANSION_TERMINAL,
   readNodeFrame,
@@ -28,9 +33,27 @@ test('morphs a live terminal into its icon and back without remounting or resizi
     const node = window.locator(terminalSelector)
     const expanded = await readPresentationFrame(window)
     const identity = await readTerminalIdentity(window)
-    const collapse = await samplePresentation(window, () =>
-      node.getByTestId('node-collapse').click(),
-    )
+    const sampleMorph = async (action: () => Promise<unknown>) => {
+      await pauseCollapseAnimations(window, EXPANSION_TERMINAL)
+      return samplePresentation(window, async () => {
+        await action()
+        // Native RAF can miss most of a 280ms transition under CI load. Inspect
+        // fixed progress on the real effects while the existing RAF probe samples.
+        /* eslint-disable no-await-in-loop -- Each visual phase must be painted before advancing. */
+        for (const progress of [0, 0.08, 0.16, 0.26, 0.4, 0.65, 0.9]) {
+          await seekCollapseProgress(window, progress)
+          await window.evaluate(
+            () =>
+              new Promise<void>(resolve =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+              ),
+          )
+        }
+        /* eslint-enable no-await-in-loop */
+        await finishCollapseAnimations(window, EXPANSION_TERMINAL)
+      })
+    }
+    const collapse = await sampleMorph(() => node.getByTestId('node-collapse').click())
     expectContinuousSizeChange(collapse, expanded, { width: 112, height: 96 })
     expectRuntimeUnchanged(collapse, identity)
     const compact = window.getByTestId(`collapsed-node-${EXPANSION_TERMINAL}`)
@@ -38,9 +61,7 @@ test('morphs a live terminal into its icon and back without remounting or resizi
     expect(await readTerminalIdentity(window)).toEqual(identity)
     await writeCollapsedTerminalMarker(window, identity.sessionId!)
 
-    const expansion = await samplePresentation(window, () =>
-      compact.getByTestId('node-expand').click(),
-    )
+    const expansion = await sampleMorph(() => compact.getByTestId('node-expand').click())
     expectContinuousSizeChange(expansion, { width: 112, height: 96 }, expanded)
     expectRuntimeUnchanged(expansion, identity)
     await expect(compact).toBeHidden()

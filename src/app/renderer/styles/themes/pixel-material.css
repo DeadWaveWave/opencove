@@ -1,10 +1,15 @@
 /* Paint an opaque reading surface only below the existing header band, so the
-   frosted titlebar can sample the canvas. These clearances do not change layout. */
+   frosted titlebar can sample the canvas. These clearances do not change layout.
+   Keep the fallback absence guard inside :where so theme inheritance does not
+   outrank component decoration such as the node identity header gradient. */
 :root:is(
-    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel'],
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+    ),
     :is(
       [data-cove-theme-base='pixel-light'],
-      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
     )
   )
   :is(
@@ -27,10 +32,13 @@
 
 /* Role's existing two-line header has a 46px minimum. */
 :root:is(
-    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel'],
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+    ),
     :is(
       [data-cove-theme-base='pixel-light'],
-      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
     )
   )
   .role-node {
@@ -38,10 +46,13 @@
 }
 
 :root:is(
-    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel'],
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+    ),
     :is(
       [data-cove-theme-base='pixel-light'],
-      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
     )
   )
   :is(
@@ -55,10 +66,13 @@
     .settings-terminal-preview__header
   ),
 :root:is(
-    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel'],
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+    ),
     :is(
       [data-cove-theme-base='pixel-light'],
-      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
     )
   )
   .settings-pixel-preview__node--terminal
@@ -70,10 +84,13 @@
 
 /* Image has no header row. Its actual image, resize and drag surfaces stay intact. */
 :root:is(
-    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel'],
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+    ),
     :is(
       [data-cove-theme-base='pixel-light'],
-      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
     )
   )
   .image-node {
@@ -82,10 +99,13 @@
 }
 
 :root:is(
-    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel'],
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+    ),
     :is(
       [data-cove-theme-base='pixel-light'],
-      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
     )
   )
   .image-node__close {
@@ -96,10 +116,13 @@
 }
 
 :root:is(
-    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel'],
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+    ),
     :is(
       [data-cove-theme-base='pixel-light'],
-      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
     )
   )
   .image-node__close:hover {
@@ -107,10 +130,13 @@
 }
 
 :root:is(
-    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel'],
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+    ),
     :is(
       [data-cove-theme-base='pixel-light'],
-      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
     )
   )
   .terminal-node__body {
@@ -118,10 +144,13 @@
 }
 
 :root:is(
-    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel'],
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
+    ),
     :is(
       [data-cove-theme-base='pixel-light'],
-      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
     )
   )
   :is(.app-header, .workspace-sidebar) {

@@ -8,7 +8,10 @@
  * fallback for standalone previews that do not apply a resolved base.
  */
 
-:root:is([data-cove-theme-base='ember'], :not([data-cove-theme-base])[data-cove-theme-id='ember']) {
+:root:is(
+  [data-cove-theme-base='ember'],
+  :where(:not([data-cove-theme-base]))[data-cove-theme-id='ember']
+) {
   --cove-pixel-blue: #c88958;
   --cove-pixel-cyan: #d4ac68;
   --cove-pixel-mint: #ddd099;
@@ -127,7 +130,10 @@
  * default opencode-style cool palette. Re-override it here so Ember terminals
  * stay warm. xterm reads --cove-terminal-* from this same scope.
  */
-:root:is([data-cove-theme-base='ember'], :not([data-cove-theme-base])[data-cove-theme-id='ember'])
+:root:is(
+    [data-cove-theme-base='ember'],
+    :where(:not([data-cove-theme-base]))[data-cove-theme-id='ember']
+  )
   .terminal-node[data-cove-terminal-node-theme='dark'] {
   --cove-node-border: rgba(201, 124, 58, 0.4);
   --cove-node-header-border: rgba(201, 124, 58, 0.3);

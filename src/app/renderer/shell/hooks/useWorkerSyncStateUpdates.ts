@@ -6,7 +6,8 @@ import type {
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import {
-  readPersistedState,
+  readPersistedStateWithMeta,
+  acceptPersistedStateSnapshot,
   toPersistedState,
   flushScheduledPersistedStateWriteAsync,
 } from '@contexts/workspace/presentation/renderer/utils/persistence'
@@ -314,7 +315,8 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           return
         }
         const sharedSignatureAtRead = buildCurrentSharedStateSignature()
-        const persisted = await readPersistedState()
+        const snapshot = await readPersistedStateWithMeta()
+        const persisted = snapshot.state
         if (!active || !persisted) {
           return
         }
@@ -328,6 +330,9 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           return
         }
 
+        // Disclosure preferences and the write cache belong to the same accepted
+        // snapshot. A rejected read must not mutate them before these guards.
+        acceptPersistedStateSnapshot(snapshot)
         const current = useAppStore.getState()
         if (
           !shouldApplyWorkerSyncRefresh({

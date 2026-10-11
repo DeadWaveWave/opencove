@@ -45,10 +45,15 @@ test('independent theme plugins reproduce both Pixel bases and recover persisted
       ['pixel-light', 'light-copy'],
     ]) {
       await chooseTheme(page, base!)
+      const header = page.locator(
+        `.react-flow__node[data-id="${themeNoteId}"] [data-cove-part="window-header"]`,
+      )
+      await expect(header).toHaveCSS('background-image', /linear-gradient/)
       const inherited = await readThemePaint(page)
       await chooseTheme(page, themeIdentity(copy!))
       await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', base!)
       await expect.poll(() => readThemePaint(page)).toEqual(inherited)
+      await expect(header).toHaveCSS('background-image', /linear-gradient/)
       await capturePlugins(page, info, `independent-${copy}`)
     }
     const selectedId = themeIdentity('light-copy')

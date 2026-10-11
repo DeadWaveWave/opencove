@@ -1,5 +1,9 @@
 /* eslint-disable no-await-in-loop -- Disclosure endpoints are sampled sequentially. */
 import { expect, test } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
+import { rejectDocumentWrites } from './workspace-canvas.document-save.helpers'
 import { launchApp, seedWorkspaceState } from './workspace-canvas.helpers'
 import { EXPANSION_TERMINAL } from './workspace-canvas.collapse-expansion.helpers'
 import { terminalSelector } from './workspace-canvas.collapse-motion.helpers'
@@ -133,11 +137,17 @@ test('dirty Document disclosure hands its title back beside the unsaved indicato
     await expect(node.locator('.monaco-editor')).toBeVisible()
     await window.locator('.react-flow__controls-fitview').click()
     await window.emulateMedia({ reducedMotion: 'no-preference' })
+    const documentPath = path.join(fixture.repo, 'README.md')
+    const savedContent = await readFile(documentPath, 'utf8')
+    // Endpoint measurements may take longer than the real 650ms autosave delay.
+    // Preserve this test's dirty-state premise without racing or disabling autosave.
+    await rejectDocumentWrites(electronApp, toFileUri(documentPath))
     // Monaco can use EditContext instead of a textarea; focus its actual text surface.
     await node.locator('.monaco-editor .view-line').first().click()
     await window.keyboard.insertText('Unsaved draft for disclosure regression.\n')
     await expect(node.locator('.document-node__dirty-dot')).toBeVisible()
     await expect(node.locator('.monaco-editor')).toContainText('Unsaved draft')
+    await expect(node.locator('.document-node__save-error')).toBeVisible()
 
     for (const direction of ['collapse', 'expand'] as const) {
       await pauseCollapseAnimations(window, id)
@@ -158,6 +168,7 @@ test('dirty Document disclosure hands its title back beside the unsaved indicato
     }
     await expect(node.locator('.document-node__dirty-dot')).toBeVisible()
     await expect(node.locator('.monaco-editor')).toContainText('Unsaved draft')
+    expect(await readFile(documentPath, 'utf8')).toBe(savedContent)
     await testInfo.attach('dirty-document-expanded-endpoint', {
       body: await window.screenshot(),
       contentType: 'image/png',
