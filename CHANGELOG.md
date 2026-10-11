@@ -21,6 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### 🐛 Fixed
 
 - Canvas: use compact geometry for Space resizing and collision handling, preserve collapsed windows across restarts, and keep window content mounted through collapse and expansion. (#422)
+- Canvas: preserve local collapse changes when an older Worker snapshot arrives, and retry persistence after an unsuccessful legacy-state migration. (#422)
+- Themes: restore window color accents and material gradients, and keep terminal viewport styles within the shared theme layer. (#422)
+- Plugins: keep documentation images, links and keyboard focus stable when the detail page updates. (#422)
 - Files: preserve original mount bindings through navigation and layout changes, and restore existing collapsed documents when following terminal file links. (#422)
 - Plugins: reject stale or ambiguous targets, preserve concurrent workspace changes during asynchronous node creation, and report filesystem failures through structured errors. (#422)
 - Terminal: keep link actions focused on the terminal without accidentally selecting the canvas node. (#422)
