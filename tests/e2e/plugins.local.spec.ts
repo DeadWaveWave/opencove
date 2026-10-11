@@ -184,7 +184,13 @@ test.describe('Independently installed plugins', () => {
     const source = await copyPluginFixture()
     const { electronApp, window: page } = await launchApp()
     try {
-      await page.setViewportSize({ width: 1450, height: 1100 })
+      // Resize the native surface, not just CDP's emulated viewport: otherwise
+      // lower iframe controls are painted outside Electron's hit-testable area.
+      const nativeWindow = await electronApp.browserWindow(page)
+      await nativeWindow.evaluate(window => window.setContentSize(1450, 1100, false))
+      await expect
+        .poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight })))
+        .toEqual({ width: 1450, height: 1100 })
       await clearAndSeedWorkspace(page, [], { settings: { ...settings, canvasInputMode: 'auto' } })
       await installPlugin(page, source)
       const real = await createPluginNode(page)

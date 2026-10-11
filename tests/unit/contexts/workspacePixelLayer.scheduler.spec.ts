@@ -41,6 +41,26 @@ describe('pixel frame scheduler', () => {
     expect(h.frames.size).toBe(0)
   })
 
+  it('starts a newly created window on the next pending frame, then restores the ambient cap', () => {
+    const h = harness(vi.fn(() => true))
+    h.scheduler.invalidate()
+    h.tick(0)
+    expect(h.frames.size).toBe(1)
+    h.tick(16)
+    expect(h.draw.mock.calls.map(call => call[0])).toEqual([0])
+
+    h.scheduler.invalidate({ immediate: true })
+    h.scheduler.invalidate()
+    expect(h.frames.size).toBe(1)
+    h.tick(17)
+    expect(h.draw.mock.calls.map(call => call[0])).toEqual([0, 17])
+    h.tick(32)
+    h.tick(48)
+    expect(h.draw.mock.calls.map(call => call[0])).toEqual([0, 17])
+    h.tick(57)
+    expect(h.draw.mock.calls.map(call => call[0])).toEqual([0, 17, 57])
+  })
+
   it('cancels pending work while hidden and cannot schedule after dispose', () => {
     const h = harness(vi.fn(() => true))
     h.scheduler.invalidate()

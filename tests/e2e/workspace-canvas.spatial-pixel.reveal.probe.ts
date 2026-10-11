@@ -7,6 +7,7 @@ export interface RevealSample {
   masked: boolean
   ready: boolean
   shown: boolean
+  assembling: boolean
   width: number
   height: number
 }
@@ -195,6 +196,12 @@ export async function installRevealProbe(page: Page, capture = false): Promise<v
         masked: style.maskImage !== 'none',
         maskImage: style.maskImage,
         ready,
+        assembling:
+          document
+            .querySelector('[data-testid="workspace-pixel-assembly"]')
+            ?.getAttribute('data-cove-pixel-node-ids')
+            ?.split(' ')
+            .includes(node.dataset.id ?? '') ?? false,
         shown:
           style.visibility !== 'hidden' &&
           Number(style.opacity) > 0 &&

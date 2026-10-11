@@ -108,7 +108,10 @@ test.describe('Workspace Canvas - Worktree Create (Light Theme)', () => {
         const createAction = window.locator('[data-testid="workspace-space-action-create"]')
         // Measure the same settled menu position that the real click anchors to.
         await createAction.click({ trial: true })
-        const actionRect = await createAction.boundingBox()
+        const actionRect = await createAction.evaluate(element => {
+          const { x, y } = element.getBoundingClientRect()
+          return { x, y }
+        })
         await createAction.click()
 
         const worktreeWindow = window.locator('[data-testid="space-worktree-window"]')
@@ -116,13 +119,15 @@ test.describe('Workspace Canvas - Worktree Create (Light Theme)', () => {
         const popover = window.locator('[data-testid="space-worktree-popover"]')
         await expect(popover).toHaveAttribute('aria-modal', 'false')
         await expect(window.locator('.workspace-space-worktree-backdrop')).toHaveCount(0)
-        await window.waitForTimeout(180)
-
-        const popoverRect = await popover.boundingBox()
-        expect(actionRect).not.toBeNull()
-        expect(popoverRect).not.toBeNull()
-        expect(Math.abs((popoverRect?.x ?? 0) - (actionRect?.x ?? 0))).toBeLessThanOrEqual(2)
-        expect(Math.abs((popoverRect?.y ?? 0) - (actionRect?.y ?? 0))).toBeLessThanOrEqual(2)
+        // Offscreen compositor frames can lag wall time. Compare the settled DOM geometry,
+        // after the real entrance animation, instead of sampling its -3px initial transform.
+        const popoverRect = await popover.evaluate(async element => {
+          await Promise.all(element.getAnimations().map(animation => animation.finished))
+          const { x, y } = element.getBoundingClientRect()
+          return { x, y }
+        })
+        expect(Math.abs(popoverRect.x - actionRect.x)).toBeLessThanOrEqual(2)
+        expect(Math.abs(popoverRect.y - actionRect.y)).toBeLessThanOrEqual(2)
 
         const heading = worktreeWindow.locator('.workspace-space-worktree__header h3').first()
         await expect(heading).toBeVisible()

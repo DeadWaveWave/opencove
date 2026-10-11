@@ -46,7 +46,7 @@ function timing(record: RevealRecord) {
     id: record.id,
     kind: record.kind,
     width: record.firstRaf?.width,
-    clockBasis: 'Visible node frame; asynchronous content readiness is diagnostic only',
+    clockBasis: 'Controlled renderer clock; asynchronous content readiness is diagnostic only',
     contentObservation:
       'Observed until ready or 500ms after frame completion; null is not a frame failure',
     prepareToDOM: record.preparedAt === null ? null : record.dom.time - record.preparedAt,
@@ -91,17 +91,23 @@ async function attachPng(testInfo: TestInfo, name: string, encoded: string) {
 }
 
 test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
-  test('starts immediately and gives note/terminal equal real-time visible duration', async ({
+  test('starts on the first animation frames and gives note/terminal equal renderer-clock duration', async ({
     browserName,
   }, testInfo) => {
     void browserName
     const { electronApp, window: page } = await launchApp({ deviceScaleFactor: 1 })
     const records: RevealRecord[] = []
     try {
+      // This is an animation-time contract. A busy CI compositor can defer native
+      // RAF by hundreds of ms; the natural-clock motion suite covers real completion.
+      await page.clock.install()
       const inspectKind = async (kind: 'note' | 'terminal') => {
         await seed(page, kind)
+        await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000))
         await installRevealProbe(page)
         await createNode(page, kind)
+        await expect(page.locator(`.react-flow__node:has(.${kind}-node)`)).toBeAttached()
+        await page.clock.runFor(480)
         await expect
           .poll(
             async () => {
@@ -111,6 +117,7 @@ test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
             { timeout: 6_000, intervals: [30, 50, 100] },
           )
           .toBe(true)
+        await page.clock.resume()
         await settleRevealContentDiagnostic(page)
         const record = (await readRevealRecords(page))[0]!
         records.push(record)
@@ -118,12 +125,27 @@ test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
       }
       await inspectKind('note')
       await inspectKind('terminal')
-      await attachProbe(testInfo, 'note-versus-terminal-visible-duration', records.map(timing))
+      await attachProbe(testInfo, 'note-versus-terminal-animation-duration', records.map(timing))
 
       expect(records[1]!.firstRaf!.width).toBeGreaterThan(records[0]!.firstRaf!.width * 1.8)
       const durations = records.map(record => timing(record).frameVisibleToFull ?? 0)
       for (const record of records) {
         const summary = timing(record)
+        expect(record.dom.masked, 'The node must be masked at its DOM insertion').toBe(true)
+        expect(
+          record.preparedAt,
+          'Creation must prepare its mask before the DOM commit',
+        ).not.toBeNull()
+        expect(record.preparedAt!).toBeLessThanOrEqual(record.dom.time)
+        const firstScheduledFrame = record.samples.find(sample => sample.assembling)
+        expect(
+          firstScheduledFrame,
+          'The real effect scheduler must start the created node',
+        ).toBeTruthy()
+        expect(firstScheduledFrame!.front).toBeLessThan(0.01)
+        // Decorative rendering is capped at 25Hz, separately from the probe's RAF.
+        // The first scheduled effect frame starts at zero, then the next advances.
+        expect(record.firstFrameVisible!.time - firstScheduledFrame!.time).toBeLessThanOrEqual(64)
         expect(
           record.firstFrameVisible?.front,
           `${record.kind} must begin at the start of its frame reveal`,
@@ -158,7 +180,7 @@ test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
       const { electronApp, window: page } = await launchApp({ deviceScaleFactor: 1 })
       try {
         // Screenshots can stall native macOS composition for hundreds of ms. Keep
-        // visual phases fixed while capturing; the separate test measures real time.
+        // visual phases fixed while capturing; the separate test checks animation time.
         await page.clock.install()
         await installRevealCapture(electronApp)
         await seed(page, kind)
@@ -244,10 +266,26 @@ test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
     void browserName
     const { electronApp, window: page } = await launchApp({ deviceScaleFactor: 1 })
     try {
+      await page.clock.install()
       const inspectInput = async (kind: 'note' | 'terminal') => {
         await seed(page, kind)
+        await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000))
         await installRevealProbe(page)
         await createNode(page, kind)
+        await expect(page.locator(`.react-flow__node:has(.${kind}-node)`)).toBeAttached()
+        // Hold the real mask in its early phase while the actual mouse event crosses
+        // the process boundary. No synthetic DOM event or runtime readiness override.
+        // Advance at most 96ms: the original onset contract is <=100ms. Stop at
+        // the first positive frame so IPC latency cannot consume the input phase.
+        /* eslint-disable no-await-in-loop -- Each sample observes one controlled frame. */
+        for (let frame = 0; frame < 6; frame++) {
+          await page.clock.runFor(16)
+          if ((await readRevealRecords(page))[0]?.firstFrameVisible) {
+            break
+          }
+        }
+        /* eslint-enable no-await-in-loop */
+        expect((await readRevealRecords(page))[0]?.firstFrameVisible).toBeTruthy()
         const point = await maskedInputPoint(page)
         await page.mouse.click(point.x, point.y)
         const pointer = await readRevealPointer(page)
@@ -268,6 +306,7 @@ test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
         expect(pointer?.front).toBeLessThan(0.65)
         const node = page.locator(`.react-flow__node[data-id="${point.id}"]`)
         await expect(node).toHaveCSS('mask-image', 'none')
+        await page.clock.resume()
         if (kind === 'note') {
           const textarea = node.getByTestId('note-node-textarea')
           await expect(textarea).toBeFocused()

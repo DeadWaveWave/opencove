@@ -140,7 +140,7 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
         })
         await window.waitForTimeout(300)
       }
-      // First-frame and masked-region input timing are observed atomically in reveal.spec.ts.
+      // Exact first-frame and masked-input phases use a controlled clock in reveal.spec.ts.
       // This broader flow must not require a 380ms animation to survive screenshot round-trips.
       await note.click({ position: { x: 36, y: 30 } })
       await window.keyboard.insertText('Ready to write while pixels settle.')
@@ -153,13 +153,14 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       await expect(terminal.locator('.xterm')).toBeVisible()
       const instance = await terminal.locator('.xterm').elementHandle()
       await expect(assembly).toHaveAttribute('data-cove-pixel-assembly', 'idle', { timeout: 2_000 })
+      // Keep a natural-clock completion check independent of the controlled timing
+      // contract. No click or fake timer may complete this terminal's actual mask.
+      await expect(window.locator('.react-flow__node:has(.terminal-node)').first()).toHaveCSS(
+        'mask-image',
+        'none',
+        { timeout: 2_500 },
+      )
       if (videoDirectory) {
-        // The outer node mask marks completion of the visible frame reveal.
-        await expect(window.locator('.react-flow__node:has(.terminal-node)').first()).toHaveCSS(
-          'mask-image',
-          'none',
-          { timeout: 2_500 },
-        )
         await window.waitForTimeout(300)
       }
       await terminal.locator('.xterm').click()

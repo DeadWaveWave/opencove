@@ -15,8 +15,14 @@ export function createPixelFrameScheduler({
   let disposed = false
   let lastPaint = Number.NEGATIVE_INFINITY
 
-  const invalidate = (): void => {
-    if (disposed || !visible || frame !== null) {
+  const invalidate = ({ immediate = false }: { immediate?: boolean } = {}): void => {
+    if (disposed || !visible) {
+      return
+    }
+    if (immediate) {
+      lastPaint = Number.NEGATIVE_INFINITY
+    }
+    if (frame !== null) {
       return
     }
     frame = requestFrame(now => {

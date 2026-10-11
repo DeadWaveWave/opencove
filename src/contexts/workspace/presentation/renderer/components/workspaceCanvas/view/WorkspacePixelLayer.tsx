@@ -353,6 +353,9 @@ function WorkspacePixelLayerComponent({
     })
     const unsubscribeCreation = subscribeWorkspaceNodeCreated(() => {
       refresh()
+      // A new window starts on the next frame, independent of the ambient 25Hz
+      // background cadence. Subsequent reveal frames retain the normal throttle.
+      scheduler.invalidate({ immediate: true })
     })
     const unsubscribeClosure = subscribeWorkspaceNodesClosed(nodeIds => {
       if (!isVisible() || reducedMotion || !currentEffects().closing) {

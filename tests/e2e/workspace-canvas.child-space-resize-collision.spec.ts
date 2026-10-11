@@ -3,7 +3,6 @@ import {
   clearAndSeedWorkspace,
   dragMouse,
   launchApp,
-  readLocatorClientRect,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 import {
@@ -83,15 +82,28 @@ test('resizing a child Space pushes parent windows, root windows, and sibling Sp
         activeSpaceId: null,
       },
     )
+    const viewport = window.locator('.react-flow__viewport')
+    const initialTransform = await viewport.evaluate(element => getComputedStyle(element).transform)
     await fitWorkspaceView(window)
+    await expect
+      .poll(() => viewport.evaluate(element => getComputedStyle(element).transform))
+      .not.toBe(initialTransform)
     const before = await readChildSpaceSnapshot(window)
-    const handle = await readLocatorClientRect(
-      window.getByTestId('workspace-space-drag-child-right'),
-    )
-    const zoom = await window
-      .locator('.react-flow__viewport')
-      .evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).a)
-    const start = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 }
+    const handle = window.getByTestId('workspace-space-drag-child-right')
+    await handle.hover()
+    // Fit View updates asynchronously. Read the handle and zoom from one rendered frame,
+    // and verify the pointer will reach that handle before exercising collision behavior.
+    const { start, zoom, hitsHandle } = await handle.evaluate(element => {
+      const rect = element.getBoundingClientRect()
+      const point = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+      const viewportElement = document.querySelector('.react-flow__viewport')!
+      return {
+        start: point,
+        zoom: new DOMMatrixReadOnly(getComputedStyle(viewportElement).transform).a,
+        hitsHandle: element.contains(document.elementFromPoint(point.x, point.y)),
+      }
+    })
+    expect(hitsHandle).toBe(true)
     await dragMouse(window, { start, end: { x: start.x + 300 * zoom, y: start.y }, steps: 18 })
 
     await expect

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveDesiredTerminalAppearanceValue } from '@/contexts/workspace/presentation/renderer/components/terminalNode/terminalAppearance'
 import { UI_THEME_DESCRIPTORS } from '@/contexts/settings/domain/uiSettings'
+import { normalizeThemeStylesheet } from '../../helpers/themeStylesheet'
 
 const terminalCss = readFileSync('src/app/renderer/styles/terminal-node.theme-opencode.css', 'utf8')
 const emberCss = readFileSync('src/app/renderer/styles/themes/ember.css', 'utf8')
@@ -40,7 +41,7 @@ describe('authored terminal token precedence', () => {
       document.documentElement.dataset.coveTheme = 'dark'
       document.documentElement.dataset.coveThemeBase = base
       document.documentElement.dataset.coveThemeId = `plugin:terminal-palette:${base}`
-      css.textContent = terminalCss + emberCss
+      css.textContent = normalizeThemeStylesheet(terminalCss + emberCss)
       document.head.appendChild(css)
       const declarations = {
         '--cove-terminal-background': '#302838',
