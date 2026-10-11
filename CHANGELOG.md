@@ -13,7 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Files: add directory nodes with icon and tree views, breadcrumb navigation and path copying, plus file and folder drops onto the canvas. (#422)
 - Sidebar: add a compact project rail, project hover navigation, pin and hidden visibility modes, direct unpin actions and project-switching shortcuts. (#422)
 - Settings: use a main-area settings page with themed live previews, compact Agent ordering, simplified connection controls and plugin documentation. (#422)
-- Plugins: install independent local or Git packages with standard canvas windows, commands, packaged Skills, preferences, Sidebar trees, color-token themes and explicit project-scoped host operations. (#422)
+- Plugins: install independent local or Git packages with standard canvas windows, commands, packaged Skills, preferences, Sidebar trees, themes and explicit project-scoped host operations. (#422)
+- Themes: inherit built-in foundations and customize component skins, bundled images and fonts, typography, window metrics and lifecycle-managed effects; keep Desktop, Web UI and live plugin content synchronized while preserving user preferences. (#422)
 - Plugins: manage details and interactive previews, entry-point visibility, enablement, reload and removal; inspect Git updates, preserve local edits, resolve update candidates, roll back code and discover repositories on GitHub. (#422)
 - Canvas: choose between Zoom Flight and Smooth Slide for viewport navigation across windows and Spaces, with a saved preference and support for system reduced motion. (#400)
 
