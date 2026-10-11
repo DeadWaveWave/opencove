@@ -11,6 +11,7 @@ function HookHost({ uiTheme }: { uiTheme: UiTheme }): null {
 afterEach(() => {
   delete document.documentElement.dataset.coveTheme
   delete document.documentElement.dataset.coveThemeId
+  delete document.documentElement.dataset.coveThemeBase
   document.documentElement.style.colorScheme = ''
   vi.restoreAllMocks()
 })

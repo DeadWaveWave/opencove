@@ -26,6 +26,7 @@ const { createPackage } = builderRequire('@electron/asar') as {
 const HOST_GUIDE_DOCUMENTS = [
   'HOST_API.md',
   'HOST_EXTENSIONS.md',
+  'THEMES.md',
   'FILESYSTEM.md',
   'CANVAS_API.md',
   'EVENTS.md',

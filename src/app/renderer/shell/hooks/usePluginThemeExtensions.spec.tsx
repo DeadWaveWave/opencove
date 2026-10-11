@@ -18,6 +18,7 @@ afterEach(() => {
   document.documentElement.removeAttribute('style')
   document.documentElement.removeAttribute('data-cove-theme')
   document.documentElement.removeAttribute('data-cove-theme-id')
+  document.documentElement.removeAttribute('data-cove-theme-base')
 })
 it('applies color-only light tokens through terminal readers and removes overrides on fallback', () => {
   const plugin: PluginManifest = {

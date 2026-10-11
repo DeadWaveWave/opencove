@@ -344,7 +344,7 @@
 .workspace-canvas .react-flow__node.selected .image-node,
 .workspace-canvas .react-flow__node.selected .website-node {
   border-color: var(--cove-node-selection-border);
-  box-shadow: var(--cove-node-selection-shadow);
+  box-shadow: var(--cove-node-shadow-focus, var(--cove-node-selection-shadow));
 }
 
 .workspace-canvas .terminal-node:focus-within,
@@ -353,7 +353,7 @@
 .workspace-canvas .image-node:focus-within,
 .workspace-canvas .website-node:focus-within {
   border-color: var(--cove-node-selection-border);
-  box-shadow: var(--cove-node-selection-shadow);
+  box-shadow: var(--cove-node-shadow-focus, var(--cove-node-selection-shadow));
 }
 
 .workspace-canvas .terminal-node[data-cove-focus-transition='true'],
@@ -362,7 +362,7 @@
 .workspace-canvas .image-node[data-cove-focus-transition='true'],
 .workspace-canvas .website-node[data-cove-focus-transition='true'] {
   border-color: var(--cove-node-selection-border);
-  box-shadow: var(--cove-node-selection-shadow);
+  box-shadow: var(--cove-node-shadow-focus, var(--cove-node-selection-shadow));
 }
 
 .workspace-space-region__branch-badge {

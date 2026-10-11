@@ -87,32 +87,37 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
           hidden={!effects.canvasPixelBackgroundEnabled && !effects.agentWorkingPixelEffectEnabled}
           aria-hidden="true"
         />
-        <fieldset className="settings-pixel-preview__space" aria-hidden="true">
+        <fieldset
+          className="settings-pixel-preview__space"
+          data-cove-part="space"
+          aria-hidden="true"
+        >
           <legend>
             <strong>{t('settingsPanel.appearanceNext.previewSpace')}</strong>
             <GitBranch size={13} />
             ui/chrome
           </legend>
           <div className="settings-pixel-preview__nodes">
-            <div className="settings-pixel-preview__node">
-              <div className="settings-pixel-preview__header">
+            <div className="settings-pixel-preview__node" data-cove-part="window">
+              <div className="settings-pixel-preview__header" data-cove-part="window-header">
                 <FileText size={14} />
                 {t('settingsPanel.appearanceNext.previewDocument')}
               </div>
-              <div className="settings-pixel-preview__body">
+              <div className="settings-pixel-preview__body" data-cove-part="window-body">
                 {t('settingsPanel.appearanceNext.previewDocumentBody')}
               </div>
             </div>
             <div
               ref={nodeRef}
               className="settings-pixel-preview__node settings-pixel-preview__node--terminal"
+              data-cove-part="window"
               data-id="settings-preview-terminal"
             >
-              <div className="settings-pixel-preview__header">
+              <div className="settings-pixel-preview__header" data-cove-part="window-header">
                 <Terminal size={14} />
                 {t('settingsPanel.appearanceNext.previewTerminal')}
               </div>
-              <div className="settings-pixel-preview__body">
+              <div className="settings-pixel-preview__body" data-cove-part="window-body">
                 <code>
                   ~/projects/cove
                   <br />

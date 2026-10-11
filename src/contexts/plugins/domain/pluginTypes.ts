@@ -1,3 +1,9 @@
+import type { PluginThemeDeclaration } from './pluginThemeTypes'
+export {
+  PLUGIN_THEME_TOKENS,
+  type PluginThemeDeclaration,
+  type PluginThemeToken,
+} from './pluginThemeTypes'
 import type { PluginSidebarDeclaration } from './pluginSidebar'
 
 export type PluginNodeKind = string
@@ -76,58 +82,4 @@ export interface PluginPreferenceDeclaration {
   enum?: PluginPreferenceValue[]
   minimum?: number
   maximum?: number
-}
-
-/** Color-only host tokens. Stylesheets, selectors, URLs and expressions are not extensions. */
-export const PLUGIN_THEME_TOKENS = [
-  '--cove-app-background',
-  '--cove-app-background-elevated',
-  '--cove-surface',
-  '--cove-surface-strong',
-  '--cove-window-surface',
-  '--cove-surface-hover',
-  '--cove-field',
-  '--cove-border',
-  '--cove-border-subtle',
-  '--cove-text',
-  '--cove-text-muted',
-  '--cove-text-faint',
-  '--cove-accent',
-  '--cove-accent-text',
-  '--cove-accent-foreground',
-  '--cove-focus-ring',
-  '--cove-node-surface',
-  '--cove-node-header-surface',
-  '--cove-node-border',
-  '--cove-terminal-background',
-  '--cove-terminal-foreground',
-  '--cove-terminal-cursor',
-  '--cove-terminal-selection',
-  '--cove-canvas-dot',
-  '--cove-terminal-ansi-black',
-  '--cove-terminal-ansi-red',
-  '--cove-terminal-ansi-green',
-  '--cove-terminal-ansi-yellow',
-  '--cove-terminal-ansi-blue',
-  '--cove-terminal-ansi-magenta',
-  '--cove-terminal-ansi-cyan',
-  '--cove-terminal-ansi-white',
-  '--cove-terminal-ansi-bright-black',
-  '--cove-terminal-ansi-bright-red',
-  '--cove-terminal-ansi-bright-green',
-  '--cove-terminal-ansi-bright-yellow',
-  '--cove-terminal-ansi-bright-blue',
-  '--cove-terminal-ansi-bright-magenta',
-  '--cove-terminal-ansi-bright-cyan',
-  '--cove-terminal-ansi-bright-white',
-  '--cove-pixel-blue',
-  '--cove-pixel-cyan',
-  '--cove-pixel-mint',
-] as const
-export type PluginThemeToken = (typeof PLUGIN_THEME_TOKENS)[number]
-export interface PluginThemeDeclaration {
-  id: string
-  title: string
-  appearance: 'light' | 'dark'
-  tokens: Partial<Record<PluginThemeToken, string>>
 }

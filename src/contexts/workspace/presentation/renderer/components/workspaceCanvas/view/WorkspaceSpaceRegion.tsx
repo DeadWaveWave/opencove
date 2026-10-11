@@ -61,6 +61,7 @@ export function WorkspaceSpaceRegion({
   const worktreePath = resolvedWorktreeInfo?.path ?? null
   return (
     <div
+      data-cove-part="space"
       className={
         isSelected
           ? 'workspace-space-region workspace-space-region--selected'
@@ -183,6 +184,7 @@ export function WorkspaceSpaceRegion({
           <button
             type="button"
             className="workspace-space-region__label"
+            data-cove-part="space-title"
             data-testid={`workspace-space-label-${space.id}`}
             onPointerDown={event => {
               event.stopPropagation()

@@ -7,7 +7,10 @@ export function normalizePixelEffectSettings(
   uiTheme: UiTheme,
 ): PixelEffectSettings {
   // Adopt pre-toggle defaults only for missing legacy fields; explicit choices survive theme changes.
-  const legacyEnabled = uiTheme === 'pixel' || uiTheme === 'pixel-light'
+  // Plugin themes postdate effect switches; missing fields use current defaults,
+  // without consulting an installed plugin or changing explicit user choices.
+  const legacyEnabled =
+    uiTheme === 'pixel' || uiTheme === 'pixel-light' || uiTheme.startsWith('plugin:')
   return {
     canvasPixelBackgroundEnabled:
       normalizeBoolean(value.canvasPixelBackgroundEnabled) ?? legacyEnabled,

@@ -70,6 +70,7 @@ export function SidebarProjectRailItem({
     >
       <button
         type="button"
+        data-cove-part="sidebar-project"
         className={`workspace-item workspace-project-rail__project${isActive ? ' workspace-item--active' : ''}`}
         data-testid={`workspace-item-${workspace.id}`}
         aria-label={details}

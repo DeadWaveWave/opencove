@@ -53,7 +53,7 @@ export function WebsiteNodeBody({
   const showsNativePlaceholder = browserMode === 'native' && !nativeApiAvailable
 
   return (
-    <div className="website-node__body">
+    <div className="website-node__body" data-cove-part="window-body">
       <div ref={viewportRef} className="website-node__viewport" aria-label={displayTitle}>
         {showsNativePlaceholder ? (
           <WebsiteNodeNativePlaceholder onOpenAsIframe={onOpenAsIframe} />

@@ -120,5 +120,5 @@
   )[data-cove-focus-transition='true'],
 .workspace-canvas .react-flow__node .terminal-node.terminal-node--selected-surface {
   border-color: var(--cove-node-selection-border);
-  box-shadow: var(--cove-node-selection-shadow);
+  box-shadow: var(--cove-node-shadow-focus, var(--cove-node-selection-shadow));
 }

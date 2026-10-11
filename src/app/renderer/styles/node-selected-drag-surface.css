@@ -33,7 +33,7 @@
 .workspace-canvas .react-flow__node.dragging .image-node,
 .workspace-canvas .react-flow__node.dragging .website-node {
   border-color: var(--cove-node-selection-border);
-  box-shadow: var(--cove-node-selection-shadow);
+  box-shadow: var(--cove-node-shadow-focus, var(--cove-node-selection-shadow));
 }
 
 .workspace-canvas .react-flow__node.selected.dragging .terminal-node::after,

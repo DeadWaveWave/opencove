@@ -21,13 +21,16 @@ export function WorkspaceSpaceExplorerOverlayHeader({
   return (
     <header
       className="workspace-space-explorer__header"
+      data-cove-part="window-header"
       data-node-drag-handle="true"
       onPointerDown={onWindowDragStart}
     >
       <div className="workspace-space-explorer__identity" title={title}>
         <FolderTree className="workspace-space-explorer__identity-icon" aria-hidden="true" />
         <div className="workspace-space-explorer__identity-copy">
-          <span className="workspace-space-explorer__title">{title}</span>
+          <span className="workspace-space-explorer__title" data-cove-part="window-title">
+            {title}
+          </span>
         </div>
       </div>
       <div className="workspace-space-explorer__header-actions">

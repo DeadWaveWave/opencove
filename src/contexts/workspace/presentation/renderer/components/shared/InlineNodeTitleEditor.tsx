@@ -115,7 +115,7 @@ export function InlineNodeTitleEditor({
     .join(' ')
 
   return (
-    <span className={rootClassName} data-testid={rootTestId}>
+    <span data-cove-part="window-title" className={rootClassName} data-testid={rootTestId}>
       {isEditing ? (
         <span className={`node-title-editor__editable ${classNamePrefix}__title-editable`}>
           {prefix ? (

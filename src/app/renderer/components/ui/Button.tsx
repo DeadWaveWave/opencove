@@ -27,6 +27,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   return (
     <button
       {...buttonProps}
+      data-cove-part="button"
       ref={forwardedRef}
       type={type}
       disabled={disabled || loading}

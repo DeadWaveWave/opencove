@@ -311,6 +311,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
     const measurementProps = {
       'data-viewport-menu-measured': waitForMeasurement ? String(isMeasurementReady) : undefined,
       'data-cove-menu-surface': isMenu ? '' : undefined,
+      'data-cove-part': isMenu ? 'menu' : 'popover',
     }
 
     if (isSheet) {

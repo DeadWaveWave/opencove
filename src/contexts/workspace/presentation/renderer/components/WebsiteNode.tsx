@@ -203,6 +203,8 @@ export function WebsiteNode({
   return (
     <div
       className="website-node nowheel"
+      data-cove-part="window"
+      data-cove-kind="website"
       style={style}
       onKeyDownCapture={event => {
         const isFindShortcut =
@@ -232,7 +234,11 @@ export function WebsiteNode({
       }}
     >
       <div className="website-node__surface">
-        <div className="website-node__header" data-node-drag-handle="true">
+        <div
+          className="website-node__header"
+          data-cove-part="window-header"
+          data-node-drag-handle="true"
+        >
           {labelColor ? (
             <span
               className="cove-label-dot cove-label-dot--solid"

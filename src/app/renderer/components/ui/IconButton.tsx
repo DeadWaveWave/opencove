@@ -29,6 +29,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
   return (
     <button
       {...buttonProps}
+      data-cove-part="icon-button"
       ref={forwardedRef}
       type={type}
       aria-label={label}

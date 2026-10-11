@@ -1,3 +1,4 @@
+import { useThemeApplicationStatus } from '@contexts/plugins/presentation/renderer/themeApplication'
 import { usePluginRegistry } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import { availablePluginThemes } from '@contexts/plugins/domain/pluginThemes'
 import { Check, Monitor } from 'lucide-react'
@@ -19,6 +20,7 @@ export function ThemeGallery({
   onChange: (theme: UiTheme) => void
 }) {
   const { t } = useTranslation()
+  const applied = useThemeApplicationStatus()
   const { plugins } = usePluginRegistry()
   const pluginThemes = availablePluginThemes(plugins)
   return (
@@ -64,6 +66,14 @@ export function ThemeGallery({
       </div>
       {value.startsWith('plugin:') && !pluginThemes.some(item => item.id === value) ? (
         <p role="status">{t('pluginHostExtensions.unavailableTheme')}</p>
+      ) : null}
+      {applied.requestedId === value && applied.error ? (
+        <div className="settings-theme-gallery__recovery" role="status">
+          <p>{t('pluginHostExtensions.themeLoadFailed')}</p>
+          <button type="button" onClick={() => onChange('pixel')}>
+            {t('pluginHostExtensions.restoreTheme')}
+          </button>
+        </div>
       ) : null}
       {pluginThemes.map(({ plugin, theme, id }) => (
         <button

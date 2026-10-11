@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { canAnimateCollapse, createCollapseAnimationGroup } from './collapseMotion'
+import { readThemeTransition } from '@contexts/plugins/presentation/renderer/themeMotion'
 
 type MotionKind = 'arrange' | 'expand' | 'restore'
 
@@ -38,7 +39,7 @@ export function useCollapseLayoutMotion(
   const prepare = useCallback(
     (kind: MotionKind, nodes: Node<TerminalNodeData>[], spaces: WorkspaceSpaceState[]) => {
       const canvas = canvasRef?.current
-      if (!canvas || !canAnimateCollapse()) {
+      if (!canvas || !canAnimateCollapse(kind === 'arrange' ? 'fold' : 'unfold')) {
         return
       }
       // Read all current positions before cancelling an interrupted transition.
@@ -82,22 +83,26 @@ export function useCollapseLayoutMotion(
         ]
       })
       cancel()
+      const transition = readThemeTransition(kind === 'arrange' ? 'fold' : 'unfold')
+      const ratio = transition.durationMs / (kind === 'arrange' ? 280 : 360)
       const group = createCollapseAnimationGroup(() => {
         if (active.current === group) {
           active.current = null
         }
-      })
+      }, transition.easing)
       active.current = group
-      staggerUntil.current = performance.now() + 620
+      staggerUntil.current = performance.now() + 620 * ratio
       if (kind === 'arrange') {
-        nodes.forEach((node, index) => stagger.current.set(node.id, Math.min(index, 3) * 18))
+        nodes.forEach((node, index) =>
+          stagger.current.set(node.id, Math.min(index, 3) * 18 * ratio),
+        )
       }
       for (const { node, element, transform } of nodeFrames) {
         group.animate(
           element,
           [{ transform }, { transform: `translate(${node.position.x}px, ${node.position.y}px)` }],
-          kind === 'arrange' ? 330 : 360,
-          kind === 'arrange' ? 210 + (stagger.current.get(node.id) ?? 0) : 0,
+          (kind === 'arrange' ? 330 : 360) * ratio,
+          kind === 'arrange' ? 210 * ratio + (stagger.current.get(node.id) ?? 0) : 0,
         )
       }
       for (const { element, rect, transform, width, height } of spaceFrames) {
@@ -111,8 +116,8 @@ export function useCollapseLayoutMotion(
               height: `${rect.height}px`,
             },
           ],
-          kind === 'arrange' ? 270 : 360,
-          kind === 'arrange' ? 350 : 0,
+          (kind === 'arrange' ? 270 : 360) * ratio,
+          kind === 'arrange' ? 350 * ratio : 0,
         )
       }
       group.finish()

@@ -16,6 +16,10 @@ import { enSpaceCollapse } from './en.spaceCollapse'
 
 export const en = {
   pluginHostExtensions: {
+    themeLoadFailed:
+      'This theme could not be loaded. Pixel is shown while your selection is preserved.',
+    restoreTheme: 'Use Pixel',
+
     emptySidebar: 'No items.',
     invalidPreference: 'Enter a valid value for this preference.',
     staleCommand: 'This plugin changed. Open the menu again.',

@@ -199,6 +199,7 @@ export function WorkspaceDirectoryBrowser({
     <>
       <div
         className="workspace-space-explorer__body cove-directory-browser nodrag"
+        data-cove-part="window-body"
         data-cove-focus-scope="file-browser"
       >
         <WorkspaceSpaceExplorerOverlayToolbar

@@ -30,6 +30,35 @@ const disabled = {
 }
 
 describe('independent persisted Pixel effect settings', () => {
+  it('restores missing plugin theme effect fields with current defaults while preserving explicit opt-outs', async () => {
+    await writeRawPersistedState(
+      JSON.stringify({
+        formatVersion: 1,
+        activeWorkspaceId: null,
+        workspaces: [],
+        settings: {
+          uiTheme: 'plugin:studio:night',
+          nodeClosePixelEffectEnabled: false,
+          canvasPixelBackgroundEnabled: false,
+        },
+      }),
+    )
+    const restored = await readPersistedState()
+    expect(restored?.settings).toMatchObject({
+      uiTheme: 'plugin:studio:night',
+      canvasPixelBackgroundEnabled: false,
+      nodeClosePixelEffectEnabled: false,
+      nodeCreationPixelEffectEnabled: true,
+      agentWorkingPixelEffectEnabled: true,
+    })
+    expect(effects(normalizeAgentSettings({ uiTheme: 'plugin:missing:night' }))).toEqual(
+      effects(DEFAULT_AGENT_SETTINGS),
+    )
+    expect(effects(normalizeAgentSettings({ ...restored!.settings, uiTheme: 'light' }))).toEqual(
+      effects(restored!.settings),
+    )
+  })
+
   it.each([
     { uiTheme: 'dark' },
     { uiTheme: 'light' },

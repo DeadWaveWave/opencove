@@ -43,6 +43,8 @@ export function NodeKindIcon({
   return (
     <Icon
       className={iconClassName}
+      data-cove-part="icon"
+      data-cove-kind={kind}
       data-cove-node-kind-icon={kind}
       size={16}
       strokeWidth={1.75}

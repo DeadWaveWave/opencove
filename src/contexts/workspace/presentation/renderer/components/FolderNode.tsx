@@ -114,6 +114,8 @@ export function FolderNode({
     <div
       ref={containerRef}
       className="folder-node nowheel"
+      data-cove-part="window"
+      data-cove-kind="folder"
       data-cove-focus-scope="file-browser"
       data-testid={`folder-node-${id}`}
       tabIndex={0}
@@ -150,7 +152,11 @@ export function FolderNode({
       }}
       onWheel={event => event.stopPropagation()}
     >
-      <header className="document-node__header" data-node-drag-handle="true">
+      <header
+        className="document-node__header"
+        data-cove-part="window-header"
+        data-node-drag-handle="true"
+      >
         {labelColor ? (
           <span
             className="cove-label-dot cove-label-dot--solid"
@@ -159,7 +165,11 @@ export function FolderNode({
           />
         ) : null}
         <NodeKindIcon kind="folder" />
-        <span className="document-node__title" title={decodeUriPathname(folder.uri)}>
+        <span
+          className="document-node__title"
+          data-cove-part="window-title"
+          title={decodeUriPathname(folder.uri)}
+        >
           <span className="document-node__title-text">{title}</span>
         </span>
         <div className="document-node__actions nodrag">

@@ -60,7 +60,7 @@ Optional fields:
 | `contributes.commands` | Declared plugin or window commands, optionally exposed in host menus; see [Commands and skills](./COMMANDS.md) |
 | `contributes.skills` | Discoverable packaged `SKILL.md` files; see [Commands and skills](./COMMANDS.md#skills) |
 | `contributes.sidebar` | Host-rendered project trees; see [Sidebar](./SIDEBAR.md) |
-| `contributes.preferences`, `contributes.themes` | Standard preference fields and host color themes; see [Host extensions](./HOST_EXTENSIONS.md) |
+| `contributes.preferences`, `contributes.themes` | Standard preference fields and advanced visual themes; see [Host extensions](./HOST_EXTENSIONS.md) |
 | `platforms` | Supported backend OS values: `darwin`, `linux`, `win32`; omit for all |
 | `engines.opencove` | Optional npm SemVer range for the installation's Worker version; incompatible artifacts are rejected before activation |
 
@@ -108,6 +108,12 @@ const context = await api.ready
   preview: boolean
   theme: 'light' | 'dark'
   colors: Record<string, string>
+  themeVersion: 1
+  themeId: string
+  baseThemeId: string
+  tokens: Record<string, string>
+  fonts: Array<{ family: string; source: string; descriptors?: Record<string, string> }>
+  reducedMotion: boolean
 }
 ```
 
@@ -121,7 +127,7 @@ path on the viewing device. There is no Node access in the view.
 | `await api.storage.get(key)` | JSON value, or null when absent |
 | `await api.storage.set(key, value)` | Persists a JSON value under this plugin ID |
 | `await api.setTitle(title)` | Reports this view's current content title and updates its header unless a user-pinned name takes precedence; nonempty, at most 200 characters |
-| `api.onThemeChange((theme, colors) => { ... })` | Registers a callback; returns an unsubscribe function |
+| `api.onThemeChange((theme, colors, context) => { ... })` | Registers a callback; returns an unsubscribe function |
 | `api.onCommand((commandId, params, hostContext) => { ... })` | Registers this document's window-command handler; returns an unsubscribe function |
 | `await api.preferences.get()` | Returns current validated declared preferences and defaults |
 | `await api.preferences.set(key, value)` | Validates and persists one declared preference |
@@ -156,17 +162,17 @@ Keys are 1–100 characters, start with a letter or digit and contain only lette
 digits, `_`, `-` or `.`. Each value must fit within 1 MiB of JSON. A backend response
 must fit within 2 MiB. Keep media binaries and large collections out of SDK storage.
 
-The host applies `data-theme="light|dark"` and `data-cove-theme` to the document
-root and supplies these CSS custom properties:
+The host applies `data-theme="light|dark"`, `data-cove-theme`, `data-cove-theme-id`
+and `data-cove-theme-base` to the iframe root. It supplies all public color/material
+and metric tokens described in [Themes](./THEMES.md), including font family,
+UI scale, radius, control height, focus and accent foreground. Bundled font faces
+are loaded in the view and removed when the theme changes or the view retires.
+The optional [control baseline](./ui/control-baseline.css) consumes these tokens.
 
-```css
---cove-text
---cove-text-muted
---cove-surface
---cove-accent
---cove-border
---cove-window-surface
-```
+Theme callbacks retain their original first two arguments; the third supplies the
+expanded context. User UI font-scale and reduced-motion changes also publish a
+new context without recreating the view. Host CSS selectors never reach inside
+a plugin document; authors remain responsible for using the supplied tokens.
 
 Use these for body colors. The host renders the header and frame. Use external JS
 and CSS files referenced with relative URLs; inline scripts, inline handlers and

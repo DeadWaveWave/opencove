@@ -105,18 +105,22 @@ function appearanceValuesEqual(
 export function resolveTerminalAppearanceValue({
   themeId,
   uiScheme,
+  uiTerminalScheme,
   terminalThemeMode,
   xtermTheme,
   cssTokens = {},
 }: {
   themeId: UiTheme
   uiScheme: ResolvedUiTheme
+  uiTerminalScheme?: ResolvedUiTheme
   terminalThemeMode: TerminalThemeMode
   xtermTheme: TerminalAppearanceTheme
   cssTokens?: TerminalAppearanceCssTokens
 }): TerminalAppearanceValue {
   const terminalScheme =
-    terminalThemeMode === 'dark' ? 'dark' : resolveUiThemeTerminalScheme(themeId, uiScheme)
+    terminalThemeMode === 'dark'
+      ? 'dark'
+      : (uiTerminalScheme ?? resolveUiThemeTerminalScheme(themeId, uiScheme))
 
   return {
     themeId,
@@ -125,7 +129,7 @@ export function resolveTerminalAppearanceValue({
     // A dark contributed palette is already authored for dark terminal semantics.
     // Keep stripping light-theme ANSI overrides when the user forces a dark terminal.
     xtermTheme:
-      themeId.startsWith('plugin:') && uiScheme === 'dark'
+      terminalThemeMode === 'sync-with-ui' && themeId.startsWith('plugin:') && uiScheme === 'dark'
         ? { ...xtermTheme }
         : resolveTerminalAnsiScheme(xtermTheme, terminalScheme),
     cssTokens: { ...cssTokens },
@@ -157,6 +161,7 @@ export function resolveCurrentTerminalAppearanceValue({
   return resolveTerminalAppearanceValue({
     themeId: resolveActiveUiThemeId(),
     uiScheme: resolveActiveUiTheme(),
+    uiTerminalScheme: resolveTerminalUiTheme('sync-with-ui'),
     terminalThemeMode,
     xtermTheme: {
       ...readTerminalAnsiTheme(computedStyle, xtermTheme),
@@ -223,6 +228,16 @@ export function resolveDesiredTerminalAppearanceValue({
   probe.setAttribute('aria-hidden', 'true')
   probe.setAttribute('data-cove-terminal-theme-probe', '')
   probe.setAttribute('data-cove-terminal-node-theme', resolveTerminalUiTheme(terminalThemeMode))
+  if (terminalThemeMode === 'sync-with-ui') {
+    // The theme owner writes only explicit token overrides inline. Carry those
+    // into the probe so built-in terminal scopes cannot shadow an authored value.
+    for (const variable of TERMINAL_APPEARANCE_CSS_VARIABLES) {
+      const value = document.documentElement.style.getPropertyValue(variable)
+      if (value) {
+        probe.style.setProperty(variable, value)
+      }
+    }
+  }
 
   const host = document.body ?? document.documentElement
   host.appendChild(probe)

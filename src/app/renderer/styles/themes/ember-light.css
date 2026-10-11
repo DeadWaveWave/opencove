@@ -5,10 +5,14 @@
  * dark palette) — their text tokens are overridden in the block below to
  * ensure readable contrast on the near-black header surface.
  *
- * Scoped to [data-cove-theme-id='ember-light'].
+ * Inherited through data-cove-theme-base; old theme-id selectors remain a
+ * fallback for standalone previews that do not apply a resolved base.
  */
 
-:root[data-cove-theme-id='ember-light'] {
+:root:is(
+  [data-cove-theme-base='ember-light'],
+  :not([data-cove-theme-base])[data-cove-theme-id='ember-light']
+) {
   --cove-pixel-blue: #9b5f34;
   --cove-pixel-cyan: #977027;
   --cove-pixel-mint: #817331;
@@ -131,7 +135,11 @@
  * --cove-text is set slightly brighter than the ember dark value (#e8d9c4)
  * to improve header contrast.
  */
-:root[data-cove-theme-id='ember-light'] .terminal-node {
+:root:is(
+    [data-cove-theme-base='ember-light'],
+    :not([data-cove-theme-base])[data-cove-theme-id='ember-light']
+  )
+  .terminal-node {
   --cove-node-border: rgba(201, 124, 58, 0.4);
   --cove-node-header-border: rgba(201, 124, 58, 0.3);
   --cove-node-shadow-color: rgba(0, 0, 0, 0.5);

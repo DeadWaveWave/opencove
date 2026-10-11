@@ -63,6 +63,8 @@ export function CanvasNodeWindow({
 
   return (
     <section
+      data-cove-part="window"
+      data-cove-kind={nodeKind}
       className={['cove-canvas-node-window', className].filter(Boolean).join(' ')}
       data-testid={`${testIdPrefix}-node-${id}`}
       aria-label={title}
@@ -83,7 +85,11 @@ export function CanvasNodeWindow({
         }
       }}
     >
-      <header className="cove-canvas-node-window__header" data-node-drag-handle="true">
+      <header
+        className="cove-canvas-node-window__header"
+        data-cove-part="window-header"
+        data-node-drag-handle="true"
+      >
         {icon ? (
           <span className="cove-node-kind-icon" aria-hidden="true">
             {icon}
@@ -91,7 +97,11 @@ export function CanvasNodeWindow({
         ) : (
           <NodeKindIcon kind={nodeKind} pluginId={pluginId} />
         )}
-        <span className="cove-canvas-node-window__title" title={title}>
+        <span
+          className="cove-canvas-node-window__title"
+          data-cove-part="window-title"
+          title={title}
+        >
           {title}
         </span>
         {subtitle ? <span className="cove-canvas-node-window__subtitle">{subtitle}</span> : null}
@@ -118,6 +128,7 @@ export function CanvasNodeWindow({
       </header>
       <div
         className="cove-canvas-node-window__body nodrag nowheel"
+        data-cove-part="window-body"
         onWheel={event => event.stopPropagation()}
       >
         {children}

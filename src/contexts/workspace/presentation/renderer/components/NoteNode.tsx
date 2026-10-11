@@ -127,6 +127,8 @@ export function NoteNode({
   return (
     <div
       className="note-node nowheel"
+      data-cove-part="window"
+      data-cove-kind="note"
       style={style}
       onClickCapture={event => {
         if (event.button !== 0) {
@@ -167,7 +169,11 @@ export function NoteNode({
         }
       }}
     >
-      <div className="note-node__header" data-node-drag-handle="true">
+      <div
+        className="note-node__header"
+        data-cove-part="window-header"
+        data-node-drag-handle="true"
+      >
         {labelColor ? (
           <span
             className="cove-label-dot cove-label-dot--solid"
@@ -215,6 +221,7 @@ export function NoteNode({
       </div>
 
       <textarea
+        data-cove-part="window-body"
         className="note-node__textarea nodrag nowheel"
         data-testid="note-node-textarea"
         value={text}

@@ -48,7 +48,7 @@
 .workspace-canvas :is(.role-node, .document-node, .folder-node):focus-within,
 .workspace-canvas :is(.role-node, .document-node, .folder-node)[data-cove-focus-transition='true'] {
   border-color: var(--cove-node-selection-border);
-  box-shadow: var(--cove-node-selection-shadow);
+  box-shadow: var(--cove-node-shadow-focus, var(--cove-node-selection-shadow));
 }
 
 :is(
@@ -61,8 +61,9 @@
   .website-node__header,
   .image-node__header
 ) {
-  height: 34px;
-  padding-inline: 9px;
+  height: var(--cove-node-header-height);
+  flex-shrink: 0;
+  padding-inline: var(--cove-node-header-padding-inline);
 }
 
 :is(

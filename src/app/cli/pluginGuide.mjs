@@ -14,6 +14,7 @@ const REQUIRED_GUIDE_DOCUMENTS = [
   'VISUAL_DESIGN.md',
   'HOST_API.md',
   'HOST_EXTENSIONS.md',
+  'THEMES.md',
   'FILESYSTEM.md',
   'CANVAS_API.md',
   'EVENTS.md',

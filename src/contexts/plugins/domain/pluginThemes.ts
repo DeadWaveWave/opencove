@@ -20,12 +20,20 @@ export function resolveHostTheme(
   selected: UiTheme,
   plugins: readonly PluginManifest[],
   fallback: UiTheme = 'pixel',
-): { id: UiTheme; theme?: PluginThemeDeclaration & { baseScheme: 'light' | 'dark' } } {
+): {
+  id: UiTheme
+  plugin?: PluginManifest
+  theme?: PluginThemeDeclaration & { baseScheme: 'light' | 'dark' }
+} {
   if (!selected.startsWith('plugin:')) {
     return { id: selected }
   }
   const contribution = availablePluginThemes(plugins).find(item => item.id === selected)
   return contribution
-    ? { id: selected, theme: { ...contribution.theme, baseScheme: contribution.theme.appearance } }
+    ? {
+        id: selected,
+        plugin: contribution.plugin,
+        theme: { ...contribution.theme, baseScheme: contribution.theme.appearance },
+      }
     : { id: fallback.startsWith('plugin:') ? 'pixel' : fallback }
 }

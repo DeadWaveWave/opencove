@@ -81,6 +81,8 @@ export function drawPixelLayer({
   reducedMotion,
   background = true,
   working = false,
+  backgroundNow = now,
+  workingNow = now,
 }: {
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
@@ -92,6 +94,8 @@ export function drawPixelLayer({
   reducedMotion: boolean
   background?: boolean
   working?: boolean
+  backgroundNow?: number
+  workingNow?: number
 }): boolean {
   const buffer = resolvePixelBuffer(viewport.width, viewport.height, window.devicePixelRatio)
   if (canvas.width !== buffer.width) {
@@ -112,7 +116,7 @@ export function drawPixelLayer({
   gradient.addColorStop(1, theme.mint)
   context.fillStyle = gradient
   if (background) {
-    drawPixelBackground(context, viewport, theme.gap, theme.opacity, now, reducedMotion)
+    drawPixelBackground(context, viewport, theme.gap, theme.opacity, backgroundNow, reducedMotion)
   }
 
   activity.prune(nodes, now)
@@ -123,7 +127,7 @@ export function drawPixelLayer({
     drawNodePixels(context, node, intensity, theme, gradient)
   }
   if (working && !reducedMotion) {
-    drawWorkingPixels(context, nodes, viewport, theme, now)
+    drawWorkingPixels(context, nodes, viewport, theme, workingNow)
   }
   context.globalAlpha = 1
   return active

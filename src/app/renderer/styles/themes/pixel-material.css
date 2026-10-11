@@ -1,6 +1,12 @@
 /* Paint an opaque reading surface only below the existing header band, so the
    frosted titlebar can sample the canvas. These clearances do not change layout. */
-:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
+:root:is(
+    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel-light'],
+      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+    )
+  )
   :is(
     .terminal-node,
     .cove-canvas-node-window,
@@ -20,11 +26,24 @@
 }
 
 /* Role's existing two-line header has a 46px minimum. */
-:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light']) .role-node {
-  --cove-pixel-header-clearance: 46px;
+:root:is(
+    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel-light'],
+      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+    )
+  )
+  .role-node {
+  --cove-pixel-header-clearance: max(46px, var(--cove-node-header-height));
 }
 
-:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
+:root:is(
+    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel-light'],
+      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+    )
+  )
   :is(
     .terminal-node__header,
     .cove-canvas-node-window__header,
@@ -35,7 +54,13 @@
     .website-node__header,
     .settings-terminal-preview__header
   ),
-:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
+:root:is(
+    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel-light'],
+      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+    )
+  )
   .settings-pixel-preview__node--terminal
   .settings-pixel-preview__header {
   background-image: none;
@@ -44,28 +69,61 @@
 }
 
 /* Image has no header row. Its actual image, resize and drag surfaces stay intact. */
-:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light']) .image-node {
+:root:is(
+    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel-light'],
+      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+    )
+  )
+  .image-node {
   border-color: var(--cove-node-border);
   background: var(--cove-node-surface);
 }
 
-:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light']) .image-node__close {
+:root:is(
+    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel-light'],
+      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+    )
+  )
+  .image-node__close {
   background: var(--cove-pixel-space-meta-surface);
   backdrop-filter: var(--cove-pixel-header-filter);
   border-color: var(--cove-node-header-border);
   color: var(--cove-text);
 }
 
-:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
+:root:is(
+    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel-light'],
+      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+    )
+  )
   .image-node__close:hover {
   background: var(--cove-control-hover);
 }
 
-:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light']) .terminal-node__body {
+:root:is(
+    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel-light'],
+      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+    )
+  )
+  .terminal-node__body {
   background: var(--cove-terminal-background);
 }
 
-:root:is([data-cove-theme-id='pixel'], [data-cove-theme-id='pixel-light'])
+:root:is(
+    :is([data-cove-theme-base='pixel'], :not([data-cove-theme-base])[data-cove-theme-id='pixel']),
+    :is(
+      [data-cove-theme-base='pixel-light'],
+      :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+    )
+  )
   :is(.app-header, .workspace-sidebar) {
   background: var(--cove-app-background-elevated);
   backdrop-filter: none;

@@ -1,6 +1,9 @@
 /* The light counterpart keeps Pixel's spatial materials with a cool paper
    surface and ink-colored accents, rather than reusing luminous dark colors. */
-:root[data-cove-theme-id='pixel-light'] {
+:root:is(
+  [data-cove-theme-base='pixel-light'],
+  :not([data-cove-theme-base])[data-cove-theme-id='pixel-light']
+) {
   color-scheme: light;
   --cove-pixel-blue: #3c79bb;
   --cove-pixel-cyan: #26859b;
@@ -65,7 +68,7 @@
   --cove-canvas-dot: rgba(48, 116, 154, 0.2);
 
   --cove-pixel-header-filter: blur(6px);
-  --cove-pixel-header-clearance: 34px;
+  --cove-pixel-header-clearance: var(--cove-node-header-height);
   --cove-pixel-space-meta-surface: rgba(237, 246, 251, 0.92);
 
   --cove-canvas-minimap-surface: rgba(242, 249, 253, 0.88);

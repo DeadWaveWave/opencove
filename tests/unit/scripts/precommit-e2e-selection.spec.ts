@@ -59,7 +59,8 @@ describe('local quick E2E selection', () => {
     expect(result.tests).toEqual(expect.arrayContaining(QUICK_E2E_GROUPS.plugins.tests))
     expect(new Set(result.tests).size).toBe(result.tests.length)
     // Includes the host command, preference and theme contribution regression.
-    expect(result.tests.length).toBeLessThanOrEqual(14)
+    expect(result.tests.length).toBeLessThanOrEqual(15)
+    expect(result.tests).toContain('tests/e2e/plugins.themes.spec.ts')
   })
 
   it('includes CSS and expands unknown source, deleted files and configuration without dropping the core', () => {

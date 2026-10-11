@@ -1,3 +1,4 @@
+import type { PluginThemeResources } from '../domain/pluginThemeResources'
 import type { PluginGitSource } from '../domain/pluginDistributionTypes'
 import type {
   LocalPluginPackage,
@@ -31,7 +32,9 @@ export interface PluginFilesPort {
   snapshot(directory: string): Promise<PluginSnapshot>
   restore(record: PluginInstallationRecord): Promise<PluginSnapshot>
   readResource(snapshot: PluginSnapshot, path: string): Promise<PluginResource>
-  readDetails(snapshot: PluginSnapshot): Promise<{ readme: string; assets: Record<string, string> }>
+  readDetails(
+    snapshot: PluginSnapshot,
+  ): Promise<{ readme: string; assets: Record<string, string> } & PluginThemeResources>
   readSkill(snapshot: PluginSnapshot, path: string): Promise<{ content: string; path: string }>
   dataDirectory(pluginId: string): string
   removePreviewData(pluginId: string, viewId: string): Promise<void>

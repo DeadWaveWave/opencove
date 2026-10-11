@@ -1,0 +1,46 @@
+/* Public skin parts. The layout owner retains outer window and compact bounds;
+   these metrics affect the real flex header and its measured content area. */
+[data-cove-part='window-header'] {
+  height: var(--cove-node-header-height);
+  min-height: var(--cove-node-header-height);
+  flex-basis: var(--cove-node-header-height);
+  flex-shrink: 0;
+  padding-inline: var(--cove-node-header-padding-inline);
+}
+
+[data-cove-kind='role'] > [data-cove-part='window-header'] {
+  height: max(46px, var(--cove-node-header-height));
+  min-height: max(46px, var(--cove-node-header-height));
+  flex-basis: max(46px, var(--cove-node-header-height));
+}
+
+[data-cove-part='window-title'],
+[data-cove-part='window-title'] input {
+  font-size: calc(var(--cove-node-title-font-size) * var(--cove-ui-font-scale));
+}
+
+[data-cove-part='window-header'] [data-cove-part='icon'] {
+  width: var(--cove-node-icon-size);
+  height: var(--cove-node-icon-size);
+}
+
+[data-cove-part='sidebar-agent'] {
+  min-height: calc(var(--cove-sidebar-row-height) + 14px);
+}
+
+:is(button, input, textarea, select) {
+  font-family: inherit;
+}
+
+/* Even a compact desktop theme keeps native touch targets generous. */
+@media (pointer: coarse) {
+  [data-cove-part='sidebar-space'],
+  [data-cove-part='sidebar-agent'],
+  [data-cove-part='menu'] button {
+    min-height: 44px;
+  }
+}
+
+[data-cove-part='window']:hover {
+  box-shadow: var(--cove-node-shadow-hover, var(--cove-node-shadow));
+}

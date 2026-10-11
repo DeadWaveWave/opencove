@@ -25,7 +25,8 @@ Start implementation with [Authoring and verification](./AUTHORING.md), then cop
 [Host API map](./HOST_API.md) indexes all project, file, node, session, event and
 preference methods and explains their routing and lifetime.
 [Host extensions](./HOST_EXTENSIONS.md) explains menu commands, preferences and theme
-contributions. [Project targets and host operations](./TARGETS.md) explains explicit
+contributions. [Themes](./THEMES.md) covers visual inheritance, CSS and bundled
+resources, typography, component skins and motion. [Project targets and host operations](./TARGETS.md) explains explicit
 local/remote file access and cancellable work from views or backend commands.
 [Compatibility](./COMPATIBILITY.md) covers host versions, platforms and release policy.
 [Git sources and distribution](./DISTRIBUTION.md) covers repository
@@ -119,7 +120,7 @@ is not a separate installation.
   the UI and plays media; the Node backend runs on the connected host. Do not assume
   that the viewing device and runtime machine are the same computer.
 - Host extensions are declarative: nodes, addressed commands and menu entries,
-  preferences, color-token themes, and packaged skills. Arbitrary host UI patches,
+  preferences, advanced visual themes, and packaged skills. Structural host UI replacement,
   automatic Skill installation and a dedicated creator role are not supported.
 - Community discovery returns GitHub repositories for inspection. Discovery is not
   a compatibility guarantee or an installation; choose a repository and install it

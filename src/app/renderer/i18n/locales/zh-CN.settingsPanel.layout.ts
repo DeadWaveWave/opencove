@@ -42,7 +42,7 @@ export const zhCNSettingsPanelLayout = {
   pageDescriptions: {
     terminal: '集中设置字体、Shell 与显示校准。',
     general: '设置语言、更新和常用偏好。',
-    appearance: '调整主题、界面文字与点阵效果。',
+    appearance: '调整主题、界面文字与视觉效果。',
     notifications: '管理系统通知与待命信息。',
     canvasWindows: '调整画布操作与窗口行为。',
     agent: '选择并配置 Agent。',
@@ -59,7 +59,7 @@ export const zhCNSettingsPanelLayout = {
     },
     appearance: {
       interface: '界面',
-      pixelEffects: '像素效果',
+      pixelEffects: '视觉效果',
       terminal: '终端',
     },
     notifications: {
@@ -102,15 +102,15 @@ export const zhCNSettingsPanelLayout = {
   appearance: {
     title: '外观',
     pixelEffects: {
-      workingLabel: 'Agent 工作流光',
-      workingHelp: 'Agent 工作时，窗口两侧呈现像素流光；等待输入或空闲时停止。',
-      help: '三项效果独立设置，适用于所有主题，并遵循系统减少动态效果偏好。',
-      creationLabel: '创建像素效果',
-      creationHelp: '新建节点时播放简短的像素聚拢动画。',
-      closeLabel: '关闭像素效果',
-      closeHelp: '节点关闭后播放像素散开动画。',
-      backgroundLabel: '画布点阵背景',
-      backgroundHelp: '使用动态像素点阵背景；关闭后显示标准画布网格。',
+      workingLabel: 'Agent 工作效果',
+      workingHelp: 'Agent 工作时呈现当前主题的动态效果；等待输入或空闲时停止。',
+      help: '效果跟随当前主题，各项独立设置，并遵循系统减少动态效果偏好。',
+      creationLabel: '创建效果',
+      creationHelp: '新建节点时播放当前主题的出现动画。',
+      closeLabel: '关闭效果',
+      closeHelp: '节点关闭后播放当前主题的关闭动画。',
+      backgroundLabel: '画布背景效果',
+      backgroundHelp: '使用当前主题的动态背景；关闭后显示标准画布网格。',
     },
     help: '集中调整界面观感、应用文字和终端显示。',
     interfaceFontSizeHelp: '影响应用外壳、面板、菜单和表单文字。',

@@ -138,6 +138,8 @@ export function ImageNode({
   return (
     <div
       className="image-node"
+      data-cove-part="window"
+      data-cove-kind="image"
       style={style}
       data-node-drag-handle="true"
       onClickCapture={event => {

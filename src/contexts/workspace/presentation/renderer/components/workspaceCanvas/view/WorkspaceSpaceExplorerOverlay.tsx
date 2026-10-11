@@ -356,6 +356,8 @@ export function WorkspaceSpaceExplorerOverlay({
     <section
       ref={containerRef}
       className="workspace-space-explorer workspace-space-explorer--node"
+      data-cove-part="window"
+      data-cove-kind="explorer"
       data-testid="workspace-space-explorer"
       tabIndex={0}
       style={{

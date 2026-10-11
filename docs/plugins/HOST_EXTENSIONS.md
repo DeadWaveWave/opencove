@@ -1,6 +1,6 @@
 # Host extensions
 
-Plugins declare commands, preferences and color themes in `opencove.plugin.json`.
+Plugins declare commands, preferences and themes in `opencove.plugin.json`.
 These features do not require a canvas window. A theme or preferences package may
 omit both `main` and `view`; plugin commands require a `main` command backend.
 All contributions follow installed revision and enablement. No stylesheet,
@@ -151,27 +151,10 @@ application default (currently Pixel) without overwriting the selection. Re-enab
 or reinstall restores the selected contribution if its identity still exists.
 Users can always choose another built-in or contributed theme explicitly.
 
-Only six- or eight-digit hex colors are accepted, on this bounded token surface:
-
-- Core: `--cove-app-background`, `--cove-app-background-elevated`, `--cove-surface`,
-  `--cove-surface-strong`, `--cove-window-surface`, `--cove-surface-hover`,
-  `--cove-field`, `--cove-border`, `--cove-border-subtle`, `--cove-text`,
-  `--cove-text-muted`, `--cove-text-faint`, `--cove-accent`, `--cove-accent-text`,
-  `--cove-accent-foreground`, `--cove-focus-ring`.
-- Nodes: `--cove-node-surface`, `--cove-node-header-surface`, `--cove-node-border`.
-- Terminal: `--cove-terminal-background`, `--cove-terminal-foreground`,
-  `--cove-terminal-cursor`, `--cove-terminal-selection` and
-  `--cove-terminal-ansi-{black,red,green,yellow,blue,magenta,cyan,white}` plus each
-  corresponding `--cove-terminal-ansi-bright-*` token.
-- Canvas effects: `--cove-canvas-dot`, `--cove-pixel-blue`, `--cove-pixel-cyan`,
-  `--cove-pixel-mint`.
-
-Unspecified colors inherit the standard light/dark base. The theme application
-hook removes previous inline overrides before applying another theme or fallback,
-updates color-scheme/chrome and emits the existing theme-change event used by
-terminal snapshots and iframe theme bridges. Terminal appearance follows the
-selected theme's light/dark mode unless the user explicitly forces dark terminals.
-Themes cannot change layout, fonts, CSS selectors, effects policy or code.
+Themes additionally support built-in visual inheritance, bundled CSS/fonts/assets,
+materials, typography and geometry-aware metrics, public component parts and
+host-owned motion profiles. See [Themes](./THEMES.md) for the complete contract,
+authoring examples, cleanup/recovery behavior and acceptance checklist.
 
 ## Owners and invariants
 
@@ -193,8 +176,7 @@ The design follows declarative contribution ownership and shared command routing
 from [VS Code contribution points](https://code.visualstudio.com/api/references/contribution-points),
 and explicit theme identity/base appearance from its
 [color theme guide](https://code.visualstudio.com/api/extension-guides/color-theme).
-OpenCove deliberately keeps a smaller scalar schema and color-only allowlist,
-and uses explicit Worker/project/node/view identities instead of inferring the
+OpenCove uses explicit Worker/project/node/view identities instead of inferring the
 active editor or introducing arbitrary condition expressions.
 
 Regression coverage includes declaration rejection, disabled/stale dispatch,

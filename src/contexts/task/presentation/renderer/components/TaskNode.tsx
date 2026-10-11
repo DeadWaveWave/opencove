@@ -208,6 +208,8 @@ export function TaskNode({
 
   return (
     <div
+      data-cove-part="window"
+      data-cove-kind="task"
       className={`task-node nowheel${isEnriching ? ' task-node--enriching' : ''}`}
       style={style}
       onClickCapture={event => {
@@ -257,7 +259,11 @@ export function TaskNode({
         />
       ) : null}
 
-      <div className="task-node__header" data-node-drag-handle="true">
+      <div
+        className="task-node__header"
+        data-cove-part="window-header"
+        data-node-drag-handle="true"
+      >
         <div className="task-node__header-main">
           <div className="task-node__title-row">
             {labelColor ? (
@@ -345,7 +351,7 @@ export function TaskNode({
         </button>
       </div>
 
-      <div className="task-node__content">
+      <div className="task-node__content" data-cove-part="window-body">
         <label>{t('taskNode.requirement')}</label>
         <div className="task-node__inline-editor">
           <textarea

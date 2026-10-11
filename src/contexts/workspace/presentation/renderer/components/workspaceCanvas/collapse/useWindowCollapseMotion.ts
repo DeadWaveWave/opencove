@@ -1,12 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react'
 import type { Size } from '../../../types'
-import {
-  canAnimateCollapse,
-  canvasScale,
-  createCollapseAnimationGroup,
-  WINDOW_FOLD_MS,
-  WINDOW_UNFOLD_MS,
-} from './collapseMotion'
+import { readThemeTransition } from '@contexts/plugins/presentation/renderer/themeMotion'
+import { canAnimateCollapse, canvasScale, createCollapseAnimationGroup } from './collapseMotion'
 
 const HEADER_ICON = '.cove-node-kind-icon, .cove-node-provider-icon'
 const GLYPH = 'svg, img, .agent-provider-icon__monogram'
@@ -56,7 +51,7 @@ export function useWindowCollapseMotion(
       before.collapsed === collapsed ||
       hidden ||
       before.hidden ||
-      !canAnimateCollapse()
+      !canAnimateCollapse(collapsed ? 'fold' : 'unfold')
     ) {
       active.current?.dispose()
       return
@@ -143,7 +138,11 @@ export function useWindowCollapseMotion(
     const compactTitle = titleFrame(title, titleBox)
     const sourceColor = getComputedStyle(headerGlyph ?? glyph).color
     const compactColor = getComputedStyle(glyph).color
-    const duration = collapsed ? WINDOW_FOLD_MS : WINDOW_UNFOLD_MS
+    const expandedRadius =
+      getComputedStyle(runtime.firstElementChild ?? runtime).borderRadius || '8px'
+    const compactRadius = getComputedStyle(icon).borderRadius || '13px'
+    const transition = readThemeTransition(collapsed ? 'fold' : 'unfold')
+    const duration = transition.durationMs
     const startDelay = collapsed ? delayRef.current : 0
     const headerAnchors = [headerIcon, headerTitle].filter(
       (element): element is HTMLElement | SVGElement => element !== null,
@@ -163,7 +162,7 @@ export function useWindowCollapseMotion(
       }
       delete shell.dataset.coveCollapseMotion
       active.current = null
-    })
+    }, transition.easing)
     active.current = group
     const morph = (element: Element, expanded: Keyframe, folded: Keyframe) => {
       const start = collapsed ? expanded : folded
@@ -189,21 +188,21 @@ export function useWindowCollapseMotion(
         top: '0px',
         width: `${expandedSize.width}px`,
         height: `${expandedSize.height}px`,
-        borderRadius: '8px',
+        borderRadius: expandedRadius,
       },
       {
         left: `${iconBox.x}px`,
         top: `${iconBox.y}px`,
         width: `${iconBox.width}px`,
         height: `${iconBox.height}px`,
-        borderRadius: '13px',
+        borderRadius: compactRadius,
       },
     )
     morph(
       runtime,
-      { clipPath: 'inset(0px 0px 0px 0px round 8px)' },
+      { clipPath: `inset(0px 0px 0px 0px round ${expandedRadius})` },
       {
-        clipPath: `inset(${iconBox.y}px ${Math.max(0, expandedSize.width - iconBox.x - iconBox.width)}px ${Math.max(0, expandedSize.height - iconBox.y - iconBox.height)}px ${iconBox.x}px round 13px)`,
+        clipPath: `inset(${iconBox.y}px ${Math.max(0, expandedSize.width - iconBox.x - iconBox.width)}px ${Math.max(0, expandedSize.height - iconBox.y - iconBox.height)}px ${iconBox.x}px round ${compactRadius})`,
       },
     )
     morph(

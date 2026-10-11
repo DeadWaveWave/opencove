@@ -273,6 +273,7 @@ export function Sidebar({
   return (
     <aside
       className={className}
+      data-cove-part="sidebar"
       data-testid="workspace-sidebar"
       data-cove-preview-workspace-id={displayedTree?.workspace.id}
       onPointerLeave={event => {

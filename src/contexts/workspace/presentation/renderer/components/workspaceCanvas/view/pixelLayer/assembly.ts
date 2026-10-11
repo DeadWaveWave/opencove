@@ -16,18 +16,21 @@ export interface PixelAssemblyClock {
   startedAt: number | null
 }
 
-export function pixelAssemblyDeadline(clock: PixelAssemblyClock): number {
+export function pixelAssemblyDeadline(
+  clock: PixelAssemblyClock,
+  durationMs = PIXEL_ASSEMBLY_MS,
+): number {
   return clock.startedAt === null
     ? clock.preparedAt + PIXEL_ASSEMBLY_READY_TIMEOUT_MS
-    : clock.startedAt + PIXEL_ASSEMBLY_MS
+    : clock.startedAt + durationMs
 }
 
 /** Only explicit local creation events enter this instance-owned, non-persistent timeline. */
-export function createPixelAssembly() {
+export function createPixelAssembly(durationMs = PIXEL_ASSEMBLY_MS) {
   const entries = new Map<string, PixelAssemblyClock & { sessionId: string | null }>()
   const expire = (now: number): void => {
     for (const [id, entry] of entries) {
-      if (now >= pixelAssemblyDeadline(entry)) {
+      if (now >= pixelAssemblyDeadline(entry, durationMs)) {
         entries.delete(id)
       }
     }
@@ -80,7 +83,10 @@ export function createPixelAssembly() {
           entries.delete(id)
           continue
         }
-        frames.push({ ...node, age: Math.max(0, now - entry.startedAt) })
+        frames.push({
+          ...node,
+          age: (Math.max(0, now - entry.startedAt) * PIXEL_ASSEMBLY_MS) / durationMs,
+        })
       }
       return frames
     },

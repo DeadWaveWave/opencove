@@ -28,6 +28,10 @@ export const enSettingsPanelPlugins = {
         title: 'Plugin guide',
         description: 'The complete introduction and CLI command index.',
       },
+      THEMES: {
+        title: 'Theme development',
+        description: 'Foundations, materials, component skins and motion.',
+      },
       HOST_EXTENSIONS: {
         title: 'Host contributions',
         description: 'Plugin preferences, themes, menus and stable host boundaries.',

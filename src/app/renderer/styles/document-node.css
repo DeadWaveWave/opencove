@@ -214,32 +214,6 @@
   background: color-mix(in srgb, var(--cove-node-surface) 96%, black 4%);
 }
 
-.document-node__monaco .monaco-editor,
-.document-node__monaco .monaco-editor .overflow-guard,
-.document-node__monaco .monaco-editor-background,
-.document-node__monaco .monaco-editor .margin {
-  background: color-mix(in srgb, var(--cove-node-surface) 96%, black 4%);
-}
-
-.document-node__monaco .monaco-editor .inputarea {
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  color: transparent !important;
-  outline: none !important;
-  caret-color: transparent !important;
-  opacity: 0 !important;
-}
-
-.document-node__monaco .monaco-editor,
-.document-node__monaco .monaco-editor .overflow-guard {
-  border-radius: 0 0 14px 14px;
-}
-
-.document-node__monaco .monaco-editor .current-line {
-  border-color: color-mix(in srgb, var(--cove-border-subtle) 88%, transparent);
-}
-
 .document-node__editor-loading {
   position: absolute;
   inset: 0;

@@ -20,6 +20,7 @@ import exampleIcon from '../../../../../docs/plugins/examples/hello-clock/icon.s
 const optionalReferences = import.meta.glob<string>(
   [
     '../../../../../docs/plugins/HOST_EXTENSIONS.md',
+    '../../../../../docs/plugins/THEMES.md',
     '../../../../../docs/plugins/HOST_API.md',
     '../../../../../docs/plugins/FILESYSTEM.md',
     '../../../../../docs/plugins/CANVAS_API.md',
@@ -88,6 +89,7 @@ export function pluginHandbook(language: string): PluginHandbookArticle[] {
       [
         'HOST_API',
         'HOST_EXTENSIONS',
+        'THEMES',
         'FILESYSTEM',
         'CANVAS_API',
         'EVENTS',

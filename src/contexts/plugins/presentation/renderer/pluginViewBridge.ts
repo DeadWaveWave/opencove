@@ -1,27 +1,10 @@
+import { pluginThemeContext } from './pluginThemeContext'
 import { publicFileSystemError } from '../../../../shared/errors/filesystemError'
 import { formatAppErrorMessage } from '../../../../shared/errors/appError'
 import type { PluginOpenViewResult } from '../../domain/pluginRuntimeTypes'
 import { pluginErrorMessage } from './pluginErrorMessage'
 
 const CHANNEL = 'opencove-plugin-v1'
-
-function themeContext() {
-  const root = document.documentElement
-  const style = getComputedStyle(root)
-  return {
-    theme: root.dataset.coveTheme === 'light' ? 'light' : 'dark',
-    colors: Object.fromEntries(
-      [
-        '--cove-text',
-        '--cove-text-muted',
-        '--cove-surface',
-        '--cove-accent',
-        '--cove-border',
-        '--cove-window-surface',
-      ].map(name => [name, style.getPropertyValue(name).trim()]),
-    ),
-  }
-}
 
 export function bindPluginViewBridge({
   view,
@@ -92,7 +75,7 @@ export function bindPluginViewBridge({
       return
     }
     if (message.type === 'ready') {
-      post({ type: 'init', context: { ...view.context, apiVersion: 1, ...themeContext() } })
+      post({ type: 'init', context: { ...view.context, apiVersion: 1, ...pluginThemeContext() } })
       return
     }
     if (message.type !== 'request' || typeof message.id !== 'string' || message.id.length > 128) {
@@ -142,12 +125,17 @@ export function bindPluginViewBridge({
         })
       })
   }
-  const onTheme = () => post({ type: 'theme', context: themeContext() })
+  const onTheme = () => post({ type: 'theme', context: pluginThemeContext() })
   window.addEventListener('message', onMessage)
   window.addEventListener('opencove-theme-changed', onTheme)
+  window.addEventListener('opencove-ui-font-scale-changed', onTheme)
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+  reducedMotion?.addEventListener?.('change', onTheme)
   return () => {
     disposed = true
     window.removeEventListener('message', onMessage)
     window.removeEventListener('opencove-theme-changed', onTheme)
+    window.removeEventListener('opencove-ui-font-scale-changed', onTheme)
+    reducedMotion?.removeEventListener?.('change', onTheme)
   }
 }

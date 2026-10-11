@@ -91,7 +91,7 @@
   pointer-events: auto;
   transform-origin: top left;
   border: 1px solid color-mix(in srgb, var(--cove-accent) 30%, var(--cove-node-border));
-  border-radius: 8px;
+  border-radius: var(--cove-explorer-radius, 8px);
   background: transparent;
   box-shadow: var(--cove-node-shadow);
   overflow: hidden;
@@ -103,7 +103,7 @@
 
 .workspace-space-explorer:focus-within {
   border-color: var(--cove-node-selection-border);
-  box-shadow: var(--cove-node-selection-shadow);
+  box-shadow: var(--cove-node-shadow-focus, var(--cove-node-selection-shadow));
 }
 
 .workspace-space-explorer__header {

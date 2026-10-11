@@ -15,7 +15,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 46px;
+  min-height: max(46px, var(--cove-node-header-height));
   padding: 10px 10px 8px 12px;
   border-bottom: 1px solid var(--cove-node-header-border);
   background: var(--cove-node-header-surface);

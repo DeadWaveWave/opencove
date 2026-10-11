@@ -132,6 +132,8 @@ export function TerminalNodeFrame({
 
   return (
     <div
+      data-cove-part="window"
+      data-cove-kind={kind}
       className={`terminal-node nowheel ${hasSelectedDragSurface ? 'terminal-node--selected-surface' : ''}`.trim()}
       data-agent-state-source={agentStateSource ?? undefined}
       data-agent-hook-install-state={agentHookInstallState ?? undefined}
@@ -269,10 +271,12 @@ export function TerminalNodeFrame({
       ) : null}
 
       {geometryFeedback}
-      <div className="terminal-node__body">
+      <div className="terminal-node__body" data-cove-part="window-body">
         <div
           id={terminalElementId}
           ref={containerRef}
+          data-cove-part="window"
+          data-cove-kind={kind}
           className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
           data-cove-focus-scope="terminal"
           aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}

@@ -5,6 +5,10 @@ import { PIXEL_BURST_MS } from '@contexts/workspace/presentation/renderer/compon
 import * as bursts from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/burstRenderer'
 import * as assemblies from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/assemblyRenderer'
 import * as backgrounds from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/renderer'
+import {
+  applyThemeMotion,
+  readThemeMotion,
+} from '@contexts/plugins/presentation/renderer/themeMotion'
 
 const effects = {
   canvasPixelBackgroundEnabled: false,
@@ -97,6 +101,7 @@ beforeEach(() => {
 afterEach(() => {
   dispose?.()
   dispose = undefined
+  applyThemeMotion()()
   document.body.replaceChildren()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -104,6 +109,45 @@ afterEach(() => {
 })
 
 describe('isolated settings pixel preview', () => {
+  it('previews the applied custom theme without changing global motion and cancels on a theme switch', () => {
+    applyThemeMotion({
+      background: { preset: 'custom' },
+      working: { preset: 'custom' },
+      closing: { preset: 'custom', durationMs: 640 },
+      creation: { preset: 'custom', durationMs: 720, easing: 'linear' },
+    })
+    const applied = readThemeMotion()
+    const nodes = fixture()
+    const cancel = vi.fn()
+    nodes.node.animate = vi.fn(
+      () => ({ cancel, finished: new Promise(() => {}) }) as unknown as Animation,
+    )
+    const onState = vi.fn()
+    const controller = createPixelEffectPreview(
+      nodes,
+      { ...effects, canvasPixelBackgroundEnabled: true, agentWorkingPixelEffectEnabled: true },
+      onState,
+    )
+    dispose = controller.dispose
+    tick(0)
+    expect(nodes.scope.querySelector('[data-cove-part="effect-background"]')).not.toBeNull()
+    expect(nodes.scope.querySelector('[data-cove-part="effect-working"]')).not.toBeNull()
+    controller.replay()
+    tick(40)
+    expect(nodes.scope.querySelector('[data-cove-part="effect-closing"]')).not.toBeNull()
+    tick(760)
+    expect(nodes.node.animate).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ duration: 720, easing: 'linear' }),
+    )
+    expect(nodes.node.style.visibility).toBe('')
+    expect(readThemeMotion()).toBe(applied)
+    applyThemeMotion({ background: { preset: 'none' }, working: { preset: 'none' } })
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(nodes.scope.querySelector('[data-cove-part="effect-creation"]')).toBeNull()
+    expect(onState).toHaveBeenLastCalledWith({ playing: false, reducedMotion: false })
+  })
+
   it('uses the shared close/reveal painters and returns to idle without creating runtime nodes', () => {
     const nodes = fixture()
     const onState = vi.fn()

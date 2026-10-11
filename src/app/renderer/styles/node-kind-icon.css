@@ -1,16 +1,16 @@
 .cove-node-kind-icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: var(--cove-node-icon-size);
+  height: var(--cove-node-icon-size);
   flex: 0 0 auto;
   color: var(--cove-text-muted);
   pointer-events: none;
 }
 
 .terminal-node__header .agent-provider-icon.cove-node-provider-icon {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
+  width: var(--cove-node-icon-size);
+  height: var(--cove-node-icon-size);
+  flex: 0 0 var(--cove-node-icon-size);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -20,8 +20,8 @@
 
 .terminal-node__header .cove-node-provider-icon .agent-provider-icon__svg,
 .terminal-node__header .cove-node-provider-icon .agent-provider-icon__image {
-  width: 16px;
-  height: 16px;
+  width: var(--cove-node-icon-size);
+  height: var(--cove-node-icon-size);
 }
 
 .agent-provider-icon__monogram {

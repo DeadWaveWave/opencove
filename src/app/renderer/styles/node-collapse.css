@@ -176,13 +176,13 @@
 }
 
 .cove-collapsed-window__icon > :is(svg, img) {
-  width: 25px;
-  height: 25px;
+  width: var(--cove-compact-icon-size);
+  height: var(--cove-compact-icon-size);
 }
 
 .cove-collapsed-window__icon > .agent-provider-icon {
-  width: 25px;
-  height: 25px;
+  width: var(--cove-compact-icon-size);
+  height: var(--cove-compact-icon-size);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -190,8 +190,8 @@
 }
 
 .cove-collapsed-window__icon .agent-provider-icon > :is(svg, img) {
-  width: 25px;
-  height: 25px;
+  width: var(--cove-compact-icon-size);
+  height: var(--cove-compact-icon-size);
 }
 
 .cove-collapsed-window__title-slot {
@@ -402,16 +402,16 @@
 .cove-collapsed-window[data-animated][data-status='running']
   .cove-collapsed-window__pixel-corner
   > i {
-  animation: cove-icon-pixel-flow 2.4s ease-in-out infinite;
-  animation-delay: calc(var(--pixel-index) * -85ms);
+  animation: cove-icon-pixel-flow var(--cove-compact-working-duration, 2.4s) ease-in-out infinite;
+  animation-delay: calc(var(--pixel-index) * var(--cove-compact-working-delay, -85ms));
 }
 
 .cove-collapsed-window[data-animated]
   [data-output-active]
   .cove-collapsed-window__pixel-corner
   > i {
-  animation: cove-icon-pixel-flow 1.05s ease-in-out infinite;
-  animation-delay: calc(var(--pixel-index) * -32ms);
+  animation: cove-icon-pixel-flow var(--cove-compact-output-duration, 1.05s) ease-in-out infinite;
+  animation-delay: calc(var(--pixel-index) * var(--cove-compact-output-delay, -32ms));
 }
 
 @keyframes cove-icon-pixel-flow {

@@ -45,3 +45,5 @@ not an installed OpenCove plugin.
 
 If the launcher needs repair, use **Settings → Connections → CLI → Install CLI**.
 For setup details, start with [Authoring and verification](../AUTHORING.md).
+
+- [Theme development](../THEMES.md) — foundations, CSS/assets/fonts, component parts and motion.

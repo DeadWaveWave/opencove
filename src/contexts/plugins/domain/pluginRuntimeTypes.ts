@@ -1,3 +1,4 @@
+import type { PluginThemeResources } from './pluginThemeResources'
 import type { PluginSidebarDeclaration } from './pluginSidebar'
 import type {
   PluginCommandDeclaration,
@@ -36,7 +37,7 @@ export interface LocalPluginPackage {
   engines?: { opencove: string }
 }
 
-export interface PluginDetails {
+export interface PluginDetails extends PluginThemeResources {
   plugin: PluginManifest
   readme: string
   assets: Record<string, string>

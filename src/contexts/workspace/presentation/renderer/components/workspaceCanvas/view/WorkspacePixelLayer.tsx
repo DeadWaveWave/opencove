@@ -19,7 +19,16 @@ import { drawPixelBursts } from './pixelLayer/burstRenderer'
 import { createPixelClosureSnapshots } from './pixelLayer/closureSnapshots'
 import { createPixelNodeMasks } from './pixelLayer/nodeMasks'
 import { readReadyPixelNodeIds } from './pixelLayer/readiness'
-import { ALL_PIXEL_EFFECTS, type PixelLayerOptions } from './pixelLayer/options'
+import {
+  readThemeEffect,
+  subscribeThemeMotion,
+} from '@contexts/plugins/presentation/renderer/themeMotion'
+import { createThemeEffects } from './pixelLayer/themeEffects'
+import {
+  ALL_PIXEL_EFFECTS,
+  resolveThemeEffectOptions,
+  type PixelLayerOptions,
+} from './pixelLayer/options'
 
 function WorkspacePixelLayerComponent({
   nodes,
@@ -69,9 +78,13 @@ function WorkspacePixelLayerComponent({
     let projected = projectPixelNodes(nodesRef.current, state.nodeLookup, viewport)
     let frames = projectPixelNodeFrames(nodesRef.current, state.nodeLookup, viewport)
     const activity = createPixelActivity()
-    const assembly = createPixelAssembly()
-    const masks = createPixelNodeMasks(canvas.parentElement)
-    const burst = createPixelBurst()
+    const creationDuration = () => readThemeEffect('creation').durationMs ?? 380
+    const closingDuration = () => readThemeEffect('closing').durationMs ?? 420
+    let assembly = createPixelAssembly(creationDuration())
+    let masks = createPixelNodeMasks(scope, 'react-flow__node', creationDuration())
+    let burst = createPixelBurst(closingDuration())
+    const customEffects = createThemeEffects(scope)
+    const currentEffects = () => resolveThemeEffectOptions(optionsRef.current)
     const closureSnapshots = createPixelClosureSnapshots()
     const isVisible = () =>
       !disposed &&
@@ -81,7 +94,7 @@ function WorkspacePixelLayerComponent({
       viewport.height > 0
 
     const captureClosureGeometry = () => {
-      if (!optionsRef.current.closing) {
+      if (!currentEffects().closing) {
         return
       }
       closureSnapshots.capture(
@@ -93,37 +106,51 @@ function WorkspacePixelLayerComponent({
     }
 
     const drawAssembly = () => {
-      if (!reducedMotion && optionsRef.current.creation) {
+      if (!reducedMotion && currentEffects().creation) {
         const pending = new Set(assembly.pendingIds(performance.now()))
         const candidates = frames.filter(frame => pending.has(frame.id))
         for (const id of readReadyPixelNodeIds(scope, candidates)) {
           // RAF's timestamp can precede a busy DOM/layout commit. Start only after
           // the real frame is present, using the same live clock as deadline cleanup.
           const readyAt = performance.now()
-          if (assembly.markReady(id, readyAt) && !masks.markReady(id, readyAt)) {
-            assembly.reveal(id)
+          if (assembly.markReady(id, readyAt)) {
+            if (readThemeEffect('creation').preset === 'custom') {
+              customEffects.startCreation(id)
+              masks.reveal(id)
+            } else if (!masks.markReady(id, readyAt)) {
+              assembly.reveal(id)
+            }
           }
         }
       }
       const now = performance.now()
-      const creationEnabled = !reducedMotion && optionsRef.current.creation
+      const creationEnabled = !reducedMotion && currentEffects().creation
       const visibleFrames = creationEnabled ? assembly.sample(frames, now) : []
-      masks.update(visibleFrames, creationEnabled ? assembly.pendingIds(now) : [])
+      const pendingIds = new Set(creationEnabled ? assembly.pendingIds(now) : [])
+      masks.update(visibleFrames, pendingIds)
       drawPixelAssemblies({
         canvas: assemblyCanvas,
         context: assemblyContext,
         viewport,
-        frames: visibleFrames,
+        frames: readThemeEffect('creation').preset === 'pixel' ? visibleFrames : [],
         theme: assemblyTheme,
       })
       const burstFrames =
-        !reducedMotion && optionsRef.current.closing ? burst.sample(viewport, now) : []
+        !reducedMotion && currentEffects().closing ? burst.sample(viewport, now) : []
       drawPixelBursts({
         context: assemblyContext,
         viewport,
-        frames: burstFrames,
+        frames: readThemeEffect('closing').preset === 'pixel' ? burstFrames : [],
         theme: assemblyTheme,
       })
+      customEffects.sync(
+        viewport,
+        projected.filter(node => !pendingIds.has(node.id)),
+        visibleFrames,
+        burstFrames,
+        currentEffects(),
+        reducedMotion || !isVisible(),
+      )
       assemblyCanvas.dataset.covePixelAssembly = visibleFrames.length ? 'assembling' : 'idle'
       assemblyCanvas.dataset.covePixelNodeIds = visibleFrames.map(frame => frame.id).join(',')
       assemblyCanvas.dataset.covePixelBurst = burstFrames.length ? 'bursting' : 'idle'
@@ -133,7 +160,7 @@ function WorkspacePixelLayerComponent({
       requestFrame: callback => window.requestAnimationFrame(callback),
       cancelFrame: id => window.cancelAnimationFrame(id),
       draw: now => {
-        const effects = optionsRef.current
+        const effects = currentEffects()
         const pending = new Set(assembly.pendingIds(now))
         const workingNodes =
           effects.working && !reducedMotion
@@ -148,8 +175,11 @@ function WorkspacePixelLayerComponent({
           theme,
           now,
           reducedMotion,
-          background: effects.background,
-          working: effects.working,
+          background: effects.background && readThemeEffect('background').preset === 'pixel',
+          working: effects.working && readThemeEffect('working').preset === 'pixel',
+          backgroundNow:
+            (now * 8000) / Math.max(1, readThemeEffect('background').durationMs ?? 8000),
+          workingNow: (now * 1400) / Math.max(1, readThemeEffect('working').durationMs ?? 1400),
         })
         canvas.hidden = !effects.background && workingNodes.length === 0
         canvas.dataset.covePixelWorkingNodeIds = workingNodes.map(node => node.id).join(',')
@@ -170,6 +200,7 @@ function WorkspacePixelLayerComponent({
       canvas.dataset.covePixelVisibility = visible ? 'visible' : 'hidden'
       if (!visible && previousVisibility !== false) {
         activity.clear()
+        customEffects.clear()
         assembly.clear()
         masks.clear()
         burst.clear()
@@ -183,7 +214,7 @@ function WorkspacePixelLayerComponent({
         captureClosureGeometry()
       }
       previousVisibility = visible
-      const effects = optionsRef.current
+      const effects = currentEffects()
       scheduler.setVisible(
         visible && (effects.background || effects.creation || effects.closing || effects.working),
       )
@@ -202,7 +233,7 @@ function WorkspacePixelLayerComponent({
     }
     refreshRef.current = refresh
     const syncOptions = () => {
-      const effects = optionsRef.current
+      const effects = currentEffects()
       if (!effects.creation) {
         assembly.clear()
         masks.clear()
@@ -233,6 +264,7 @@ function WorkspacePixelLayerComponent({
       masks.clear()
       burst.clear()
       closureSnapshots.clear()
+      customEffects.clear()
       canvas.dataset.covePixelActivity = 'idle'
       if (isVisible()) {
         if (!reducedMotion) {
@@ -243,9 +275,16 @@ function WorkspacePixelLayerComponent({
       scheduler.invalidate()
     }
     const onThemeChange = () => {
+      assembly.clear()
+      masks.dispose()
+      burst.clear()
+      customEffects.clear()
+      assembly = createPixelAssembly(creationDuration())
+      masks = createPixelNodeMasks(scope, 'react-flow__node', creationDuration())
+      burst = createPixelBurst(closingDuration())
       theme = readPixelTheme(canvas)
       assemblyTheme = readPixelAssemblyTheme(assemblyCanvas)
-      scheduler.invalidate()
+      syncOptions()
     }
     const revealAll = () => {
       const now = performance.now()
@@ -254,6 +293,7 @@ function WorkspacePixelLayerComponent({
       }
       assembly.clear()
       masks.clear()
+      customEffects.clear()
       // Reveal before native/React input handlers; layout and terminal geometry never change.
       if (isVisible()) {
         drawAssembly()
@@ -280,12 +320,13 @@ function WorkspacePixelLayerComponent({
         revealAll()
       }
     }
+    const unsubscribeMotion = subscribeThemeMotion(onThemeChange)
     const unsubscribeStore = store.subscribe(refresh)
     const unsubscribeOutput = getPtyEventHub().onData(event => {
       if (
         !isVisible() ||
         reducedMotion ||
-        !optionsRef.current.background ||
+        !currentEffects().background ||
         event.data.length === 0
       ) {
         return
@@ -295,7 +336,7 @@ function WorkspacePixelLayerComponent({
       }
     })
     const unsubscribePrepared = subscribeWorkspaceNodeCreationPrepared((nodeIds, createdAt) => {
-      if (!isVisible() || reducedMotion || !optionsRef.current.creation) {
+      if (!isVisible() || reducedMotion || !currentEffects().creation) {
         return
       }
       for (const nodeId of masks.prepare(nodeIds, createdAt)) {
@@ -306,6 +347,7 @@ function WorkspacePixelLayerComponent({
       for (const nodeId of nodeIds) {
         assembly.reveal(nodeId)
         masks.reveal(nodeId)
+        customEffects.reveal(nodeId)
       }
       scheduler.invalidate()
     })
@@ -313,13 +355,14 @@ function WorkspacePixelLayerComponent({
       refresh()
     })
     const unsubscribeClosure = subscribeWorkspaceNodesClosed(nodeIds => {
-      if (!isVisible() || reducedMotion || !optionsRef.current.closing) {
+      if (!isVisible() || reducedMotion || !currentEffects().closing) {
         return
       }
       const now = performance.now()
       for (const nodeId of nodeIds) {
         assembly.reveal(nodeId)
         masks.reveal(nodeId)
+        customEffects.reveal(nodeId)
         const frame = closureSnapshots.take(nodeId, viewport, now)
         if (frame) {
           burst.announce(frame, viewport, now)
@@ -355,8 +398,10 @@ function WorkspacePixelLayerComponent({
       activity.clear()
       assembly.clear()
       masks.dispose()
+      customEffects.dispose()
       burst.clear()
       closureSnapshots.clear()
+      unsubscribeMotion()
       unsubscribeCreation()
       unsubscribePrepared()
       unsubscribeCancelled()

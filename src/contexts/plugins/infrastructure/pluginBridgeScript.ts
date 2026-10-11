@@ -6,9 +6,15 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
   const channel = 'opencove-plugin-v1';
   const pending = new Map();
   const themeListeners = new Set();
+  const themeProperties = new Set();
+  const themeFonts = new Set();
+  let themeGeneration = 0;
+  let themeFontSignature;
   let context;
   let parentOrigin;
   let resolveReady;
+  let resolveRetired;
+  const retirement = new Promise(resolve => { resolveRetired = resolve; });
   let sequence = 0;
   const resourceRoot = new URL('./', document.currentScript.src);
   let presence;
@@ -84,6 +90,7 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
   }
   function retire() {
     retired = true;
+    resolveRetired();
     clearTimeout(reconnectTimer);
     for (const media of document.querySelectorAll('audio, video')) media.pause();
     for (const task of pending.values()) {
@@ -91,6 +98,9 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
       task.reject(new Error('OpenCove plugin view closed.'));
     }
     pending.clear();
+    themeGeneration++;
+    for (const font of themeFonts) document.fonts.delete(font);
+    themeFonts.clear();
   }
   function connectPresence() {
     if (retired) return;
@@ -133,16 +143,47 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
   });
   connectPresence();
   function applyTheme(value) {
+    if (retired) return;
     context = value;
-    document.documentElement.dataset.theme = value.theme;
-    document.documentElement.dataset.coveTheme = value.theme;
-    for (const [name, color] of Object.entries(value.colors || {})) {
-      document.documentElement.style.setProperty(name, color);
+    const root = document.documentElement;
+    root.dataset.theme = value.theme;
+    root.dataset.coveTheme = value.theme;
+    root.dataset.coveThemeId = value.themeId || value.theme;
+    root.dataset.coveThemeBase = value.baseThemeId || value.theme;
+    const tokens = value.tokens || value.colors || {};
+    for (const name of themeProperties) {
+      if (!Object.hasOwn(tokens, name)) root.style.removeProperty(name);
     }
-    for (const listener of themeListeners) listener(value.theme, value.colors);
+    themeProperties.clear();
+    for (const [name, token] of Object.entries(tokens)) {
+      root.style.setProperty(name, token);
+      themeProperties.add(name);
+    }
+    const fontSignature = JSON.stringify(value.fonts || []);
+    if (fontSignature !== themeFontSignature) {
+      themeFontSignature = fontSignature;
+      const generation = ++themeGeneration;
+      for (const font of themeFonts) document.fonts.delete(font);
+      themeFonts.clear();
+      if (typeof FontFace === 'function') {
+        for (const entry of value.fonts || []) {
+          try {
+            const font = new FontFace(entry.family, entry.source, entry.descriptors || {});
+            themeFonts.add(font);
+            document.fonts.add(font);
+            font.load().then(() => {
+              if (retired || generation !== themeGeneration) document.fonts.delete(font);
+            }, () => { document.fonts.delete(font); themeFonts.delete(font); });
+          } catch { /* Failed custom font falls back to the author's font stack. */ }
+        }
+      }
+    }
+    for (const listener of themeListeners) {
+      try { listener(value.theme, value.colors, value); } catch { /* One view callback cannot interrupt delivery. */ }
+    }
   }
   window.addEventListener('message', event => {
-    if (event.source !== parent || !event.data || event.data.channel !== channel) return;
+    if (retired || event.source !== parent || !event.data || event.data.channel !== channel) return;
     if (parentOrigin && event.origin !== parentOrigin) return;
     const message = event.data;
     if (message.type === 'init' && !context) {
@@ -168,7 +209,8 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
     }
   });
   async function request(operation, payload = {}) {
-    await ready;
+    if (retired) throw new Error('OpenCove plugin view closed.');
+    await Promise.race([ready, retirement]);
     if (retired) throw new Error('OpenCove plugin view closed.');
     const id = String(++sequence);
     return new Promise((resolve, reject) => {

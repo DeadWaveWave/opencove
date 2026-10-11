@@ -44,7 +44,7 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-  min-height: 30px;
+  min-height: var(--cove-menu-row-height);
   flex-shrink: 0;
   border: none;
   background: transparent;

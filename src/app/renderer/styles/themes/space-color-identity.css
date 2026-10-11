@@ -29,13 +29,16 @@
   border-style: solid;
   border-color: transparent;
   border-radius: 8px;
-  background: color-mix(
-    in srgb,
-    var(--cove-space-identity-color) var(--cove-space-identity-fill),
-    transparent
+  background: var(
+    --cove-space-surface,
+    color-mix(
+      in srgb,
+      var(--cove-space-identity-color) var(--cove-space-identity-fill),
+      transparent
+    )
   );
   backdrop-filter: none;
-  box-shadow: none;
+  box-shadow: var(--cove-space-shadow, none);
 }
 
 .workspace-canvas .workspace-space-region[data-cove-label-color] {
@@ -50,10 +53,13 @@
   inset: -1px;
   box-sizing: border-box;
   border: calc(1px * var(--cove-space-stroke-scale)) solid
-    color-mix(
-      in srgb,
-      var(--cove-space-identity-color) var(--cove-space-identity-edge-strength),
-      transparent
+    var(
+      --cove-space-border,
+      color-mix(
+        in srgb,
+        var(--cove-space-identity-color) var(--cove-space-identity-edge-strength),
+        transparent
+      )
     );
   border-radius: inherit;
   clip-path: var(--cove-space-border-clip, none);
@@ -178,10 +184,13 @@
     var(--cove-space-identity-color) var(--cove-space-identity-title-border),
     var(--cove-border-subtle)
   );
-  background: color-mix(
-    in srgb,
-    var(--cove-space-identity-color) var(--cove-space-identity-title-tint),
-    var(--cove-window-surface)
+  background: var(
+    --cove-space-caption-surface,
+    color-mix(
+      in srgb,
+      var(--cove-space-identity-color) var(--cove-space-identity-title-tint),
+      var(--cove-window-surface)
+    )
   );
   box-shadow: inset 2px 0 0 var(--cove-space-identity-color);
   backdrop-filter: none;

@@ -88,6 +88,8 @@ export function FileSystemEntryIcon({
   return (
     <Icon
       className={['cove-filesystem-entry-icon', className].filter(Boolean).join(' ')}
+      data-cove-part="icon"
+      data-cove-kind={nodeKind ?? (kind === 'directory' ? 'folder' : 'document')}
       data-cove-file-icon={iconKind}
       data-cove-node-kind-icon={nodeKind}
       size={16}

@@ -11,6 +11,7 @@ import { NodeKindIcon } from '../../shared/NodeKindIcon'
 import { resolveSpaceSummaryStatus } from '../view/spaceSummary'
 import { useWorkspaceCollapse } from './WorkspaceCollapseContext'
 import { useCollapsedTerminalActivity } from './useCollapsedTerminalActivity'
+import { useCompactThemeMotion } from './useCompactThemeMotion'
 
 export function CollapsedWindow({
   id,
@@ -52,21 +53,30 @@ export function CollapsedWindow({
     Boolean(data.runtimeSessionBinding)
   const animateStatus = animated && !unavailable
   const iconRef = useRef<HTMLSpanElement>(null)
+  const motion = useCompactThemeMotion(
+    iconRef,
+    id,
+    active &&
+      animateStatus &&
+      (status?.state === 'running' || (!presentation.isAgent && status?.state === 'connected')),
+    status?.state === 'running',
+  )
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   useCollapsedTerminalActivity(
     data.sessionId,
-    active && animateStatus && !presentation.isAgent && status?.state === 'connected',
+    motion.allowed && !presentation.isAgent && status?.state === 'connected',
     iconRef,
   )
 
   return (
     <div
       className="cove-collapsed-window"
-      style={getCollapsedNodeSize()}
+      data-cove-part="compact-window"
+      style={{ ...getCollapsedNodeSize(), ...motion.style }}
       data-testid={`collapsed-node-${id}`}
       data-node-kind={data.kind}
       data-status={status?.state}
-      data-animated={(active && animateStatus) || undefined}
+      data-animated={motion.pixel || undefined}
       onContextMenu={event => {
         if (!active || !onContextMenu) {
           return
@@ -131,7 +141,12 @@ export function CollapsedWindow({
           }
         }}
       >
-        <span ref={iconRef} className="cove-collapsed-window__icon" aria-hidden="true">
+        <span
+          ref={iconRef}
+          className="cove-collapsed-window__icon"
+          data-cove-part="compact-base"
+          aria-hidden="true"
+        >
           {presentation.isAgent && provider ? (
             <AgentProviderIcon provider={provider} />
           ) : (
@@ -141,7 +156,7 @@ export function CollapsedWindow({
               pluginId={data.plugin?.pluginId}
             />
           )}
-          <span className="cove-collapsed-window__pixels">
+          <span className="cove-collapsed-window__pixels" data-cove-part="compact-pixels">
             {Array.from({ length: 4 }, (_, corner) => (
               <span key={corner} className="cove-collapsed-window__pixel-corner">
                 {Array.from({ length: 7 }, (_pixel, index) => (
@@ -152,7 +167,11 @@ export function CollapsedWindow({
           </span>
         </span>
         <span className="cove-collapsed-window__title-slot">
-          <span className="cove-collapsed-window__title" title={title}>
+          <span
+            className="cove-collapsed-window__title"
+            data-cove-part="compact-title"
+            title={title}
+          >
             {title}
           </span>
         </span>

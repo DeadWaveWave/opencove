@@ -4,12 +4,11 @@
  * deliberate ember accent, and a muted brick-red for danger. No radial
  * gradients; flat surfaces only.
  *
- * Scoped to [data-cove-theme-id='ember']. Any future theme (built-in or
- * user-supplied) uses the same selector pattern against this same token
- * surface — no other coupling.
+ * Inherited through data-cove-theme-base; old theme-id selectors remain a
+ * fallback for standalone previews that do not apply a resolved base.
  */
 
-:root[data-cove-theme-id='ember'] {
+:root:is([data-cove-theme-base='ember'], :not([data-cove-theme-base])[data-cove-theme-id='ember']) {
   --cove-pixel-blue: #c88958;
   --cove-pixel-cyan: #d4ac68;
   --cove-pixel-mint: #ddd099;
@@ -128,7 +127,8 @@
  * default opencode-style cool palette. Re-override it here so Ember terminals
  * stay warm. xterm reads --cove-terminal-* from this same scope.
  */
-:root[data-cove-theme-id='ember'] .terminal-node[data-cove-terminal-node-theme='dark'] {
+:root:is([data-cove-theme-base='ember'], :not([data-cove-theme-base])[data-cove-theme-id='ember'])
+  .terminal-node[data-cove-terminal-node-theme='dark'] {
   --cove-node-border: rgba(201, 124, 58, 0.4);
   --cove-node-header-border: rgba(201, 124, 58, 0.3);
   --cove-node-shadow-color: rgba(0, 0, 0, 0.5);

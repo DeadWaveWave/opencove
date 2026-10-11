@@ -73,6 +73,7 @@ describe('terminal frame provider identity', () => {
   it('keeps its provider glyph light and lets the header own pointer handling', () => {
     const style = document.createElement('style')
     style.textContent = [
+      'src/app/renderer/styles/base.css',
       'src/app/renderer/styles/workspace-agent-item.css',
       'src/app/renderer/styles/node-kind-icon.css',
     ]

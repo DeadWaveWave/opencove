@@ -86,6 +86,8 @@ export function DocumentNodeChrome({
   return (
     <div
       className="document-node nowheel"
+      data-cove-part="window"
+      data-cove-kind="document"
       style={style}
       onClickCapture={event => {
         if (event.button !== 0 || !(event.target instanceof Element)) {
@@ -116,7 +118,11 @@ export function DocumentNodeChrome({
         }
       }}
     >
-      <div className="document-node__header" data-node-drag-handle="true">
+      <div
+        className="document-node__header"
+        data-cove-part="window-header"
+        data-node-drag-handle="true"
+      >
         {labelColor ? (
           <span
             className="cove-label-dot cove-label-dot--solid"
@@ -127,6 +133,7 @@ export function DocumentNodeChrome({
         <NodeKindIcon kind="document" filePath={uri} />
         <span
           className="document-node__title"
+          data-cove-part="window-title"
           data-testid="document-node-title"
           title={displayPath}
         >

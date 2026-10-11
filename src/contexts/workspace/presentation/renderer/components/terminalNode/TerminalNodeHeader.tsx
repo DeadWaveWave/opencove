@@ -106,6 +106,7 @@ export function TerminalNodeHeader({
   return (
     <div
       className="terminal-node__header"
+      data-cove-part="window-header"
       data-node-drag-handle="true"
       onPointerDownCapture={onHeaderPointerDownCapture}
     >
@@ -133,7 +134,9 @@ export function TerminalNodeHeader({
           onCommit={commitTitleEdit}
         />
       ) : (
-        <span className="terminal-node__title">{title}</span>
+        <span className="terminal-node__title" data-cove-part="window-title">
+          {title}
+        </span>
       )}
       <div
         className="terminal-node__header-drag-surface"

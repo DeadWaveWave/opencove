@@ -2,6 +2,7 @@ import {
   buildPixelAssemblyFrontier,
   pixelAssemblyDeadline,
   PIXEL_ASSEMBLY_READY_TIMEOUT_MS,
+  PIXEL_ASSEMBLY_MS,
   type PixelAssemblyFrame,
   type PixelAssemblyClock,
 } from './assembly'
@@ -24,7 +25,11 @@ function frameMask(frame: PixelAssemblyFrame): string {
 }
 
 /** A view-owned stylesheet is registered before node commit. No node geometry or state is written. */
-export function createPixelNodeMasks(scope: HTMLElement, nodeClassName = 'react-flow__node') {
+export function createPixelNodeMasks(
+  scope: HTMLElement,
+  nodeClassName = 'react-flow__node',
+  durationMs = PIXEL_ASSEMBLY_MS,
+) {
   const document = scope.ownerDocument
   const scopeId = crypto.randomUUID()
   const entries = new Map<string, PixelAssemblyClock & { declaration: string }>()
@@ -93,7 +98,7 @@ export function createPixelNodeMasks(scope: HTMLElement, nodeClassName = 'react-
   const expire = (): void => {
     const now = performance.now()
     for (const [id, entry] of entries) {
-      if (now >= pixelAssemblyDeadline(entry)) {
+      if (now >= pixelAssemblyDeadline(entry, durationMs)) {
         entries.delete(id)
       }
     }
@@ -103,7 +108,9 @@ export function createPixelNodeMasks(scope: HTMLElement, nodeClassName = 'react-
     if (!entries.size || !sheet || disposed) {
       return
     }
-    const nextDeadline = Math.min(...[...entries.values()].map(pixelAssemblyDeadline))
+    const nextDeadline = Math.min(
+      ...[...entries.values()].map(entry => pixelAssemblyDeadline(entry, durationMs)),
+    )
     deadlineTimer = window.setTimeout(
       () => {
         deadlineTimer = null
@@ -156,7 +163,7 @@ export function createPixelNodeMasks(scope: HTMLElement, nodeClassName = 'react-
         entry.startedAt !== null ||
         !Number.isFinite(startedAt) ||
         startedAt < entry.preparedAt ||
-        startedAt >= pixelAssemblyDeadline(entry)
+        startedAt >= pixelAssemblyDeadline(entry, durationMs)
       ) {
         return false
       }

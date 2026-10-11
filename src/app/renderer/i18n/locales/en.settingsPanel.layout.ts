@@ -59,7 +59,7 @@ export const enSettingsPanelLayout = {
     },
     appearance: {
       interface: 'Interface',
-      pixelEffects: 'Pixel Effects',
+      pixelEffects: 'Visual Effects',
       terminal: 'Terminal',
     },
     notifications: {
@@ -102,15 +102,16 @@ export const enSettingsPanelLayout = {
   appearance: {
     title: 'Appearance',
     pixelEffects: {
-      help: 'Choose each effect independently for all themes. Respects reduced motion.',
-      workingLabel: 'Agent Working Pixels',
-      workingHelp: 'Flow pixels along both sides of working Agents. Stops when waiting or idle.',
-      creationLabel: 'Node Creation Pixels',
-      creationHelp: 'Reveal new nodes with a brief pixel animation.',
-      closeLabel: 'Node Closing Pixels',
-      closeHelp: 'Scatter pixels after a node closes.',
-      backgroundLabel: 'Canvas Pixel Background',
-      backgroundHelp: 'Show a moving pixel field. Turn off to use the standard canvas grid.',
+      help: 'Effects follow the current theme. Each switch is independent and respects reduced motion.',
+      workingLabel: 'Agent Working Effect',
+      workingHelp: 'Show the current theme’s working animation. Stops when waiting or idle.',
+      creationLabel: 'Node Creation Effect',
+      creationHelp: 'Reveal new nodes with the current theme’s animation.',
+      closeLabel: 'Node Closing Effect',
+      closeHelp: 'Play the current theme’s closing animation.',
+      backgroundLabel: 'Canvas Background Effect',
+      backgroundHelp:
+        'Use the current theme’s animated background; turn off for the standard grid.',
     },
     help: 'Adjust the interface, editor-adjacent text, and terminal rendering in one place.',
     interfaceFontSizeHelp: 'Controls app chrome, panels, menus, and form text.',

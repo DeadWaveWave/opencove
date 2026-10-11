@@ -72,12 +72,14 @@ All sizes are CSS pixels inside the view; canvas zoom belongs to the host.
 Use a system font stack. Use a monospace face only for code, paths or data that
 benefits from column alignment. Numeric values can use
 `font-variant-numeric: tabular-nums` without making the entire UI monospace.
-The current SDK supplies theme colors, not a font or density API; these dimensions
-are authoring defaults, not additional SDK fields.
+The SDK supplies colors, typography and metric tokens; the baseline below follows
+them. These dimensions are fallback authoring defaults. See [Themes](./THEMES.md)
+for the public metric contract and font-resource behavior.
 
 ## Theme and material
 
-Only these color tokens are currently supplied by the public SDK:
+Start with these semantic colors; the full public token surface is in
+[Themes](./THEMES.md):
 
 | Token | Use |
 | --- | --- |
@@ -89,7 +91,7 @@ Only these color tokens are currently supplied by the public SDK:
 | `--cove-accent` | Focus, active state and restrained primary emphasis |
 
 Read [API.md](./API.md) for `data-theme` and `onThemeChange`. Do not import the
-host's private stylesheet or assume other `--cove-*` variables exist in an iframe.
+host's private stylesheet or assume undocumented variables exist in an iframe.
 Use the injected tokens for chrome; artwork and meaningful data colors may retain
 their identity. Check their contrast in both host themes.
 

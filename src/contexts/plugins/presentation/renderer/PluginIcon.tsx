@@ -28,6 +28,8 @@ function FallbackIcon({ pluginId, className, size, strokeWidth }: PluginIconProp
       className={className}
       size={size}
       strokeWidth={strokeWidth}
+      data-cove-part="icon"
+      data-cove-kind="plugin"
       data-cove-plugin-icon={pluginId}
       data-plugin-icon-kind="fallback"
       aria-hidden="true"
@@ -62,6 +64,8 @@ function AssetIcon({
       alt=""
       aria-hidden="true"
       draggable={false}
+      data-cove-part="icon"
+      data-cove-kind="plugin"
       data-cove-plugin-icon={props.pluginId}
       data-plugin-icon-kind="asset"
       onError={() => setFailedSource(source)}
@@ -94,6 +98,8 @@ export function PluginIcon({
           className={className}
           size={size}
           strokeWidth={strokeWidth}
+          data-cove-part="icon"
+          data-cove-kind="plugin"
           data-cove-plugin-icon={pluginId}
           data-plugin-icon-kind="builtin"
           aria-hidden="true"

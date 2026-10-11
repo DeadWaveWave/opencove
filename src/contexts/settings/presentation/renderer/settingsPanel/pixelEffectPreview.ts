@@ -1,10 +1,13 @@
+import {
+  readThemeEffect,
+  subscribeThemeMotion,
+} from '@contexts/plugins/presentation/renderer/themeMotion'
+import { createThemeEffects } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/themeEffects'
+import { resolveThemeEffectOptions } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/options'
 import type { PixelEffectSettings } from '@contexts/settings/domain/agentSettings'
 import { createPixelAssembly } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/assembly'
 import { drawPixelAssemblies } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/assemblyRenderer'
-import {
-  createPixelBurst,
-  PIXEL_BURST_MS,
-} from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/burst'
+import { createPixelBurst } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/burst'
 import { drawPixelBursts } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/burstRenderer'
 import { createPixelActivity } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/model'
 import { createPixelNodeMasks } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/nodeMasks'
@@ -46,9 +49,19 @@ export function createPixelEffectPreview(
     return { replay: () => undefined, dispose: () => undefined }
   }
 
-  const assembly = createPixelAssembly()
-  const burst = createPixelBurst()
-  const masks = createPixelNodeMasks(scope, 'settings-pixel-preview__node')
+  const creationDuration = () => readThemeEffect('creation').durationMs ?? 380
+  const closingDuration = () => readThemeEffect('closing').durationMs ?? 420
+  let assembly = createPixelAssembly(creationDuration())
+  let burst = createPixelBurst(closingDuration())
+  let masks = createPixelNodeMasks(scope, 'settings-pixel-preview__node', creationDuration())
+  const customEffects = createThemeEffects(scope)
+  const currentEffects = () =>
+    resolveThemeEffectOptions({
+      background: effects.canvasPixelBackgroundEnabled,
+      creation: effects.nodeCreationPixelEffectEnabled,
+      closing: effects.nodeClosePixelEffectEnabled,
+      working: effects.agentWorkingPixelEffectEnabled,
+    })
   const activity = createPixelActivity()
   const originalVisibility = node.style.visibility
   let theme = readPixelTheme(background)
@@ -71,6 +84,7 @@ export function createPixelEffectPreview(
     assembly.clear()
     burst.clear()
     masks.clear()
+    customEffects.clear()
     showNode()
     onState({ playing: false, reducedMotion })
   }
@@ -92,19 +106,25 @@ export function createPixelEffectPreview(
     requestFrame: callback => window.requestAnimationFrame(callback),
     cancelFrame: frame => window.cancelAnimationFrame(frame),
     draw: now => {
+      const options = currentEffects()
       if (reopenAt !== null && now >= reopenAt && !opened) {
-        if (effects.nodeCreationPixelEffectEnabled && !reducedMotion) {
+        if (options.creation && !reducedMotion) {
           assembly.prepare(nodeFrame.id, now)
           masks.prepare([nodeFrame.id], now)
           assembly.markReady(nodeFrame.id, now)
-          masks.markReady(nodeFrame.id, now)
+          if (readThemeEffect('creation').preset === 'custom') {
+            customEffects.startCreation(nodeFrame.id, node)
+            masks.reveal(nodeFrame.id)
+          } else {
+            masks.markReady(nodeFrame.id, now)
+          }
         }
         showNode()
         opened = true
       }
       const frames = assembly.sample([nodeFrame], now)
       masks.update(frames, assembly.pendingIds(now))
-      if (effects.canvasPixelBackgroundEnabled || effects.agentWorkingPixelEffectEnabled) {
+      if (options.background || options.working) {
         drawPixelLayer({
           canvas: background,
           context: backgroundContext,
@@ -114,8 +134,11 @@ export function createPixelEffectPreview(
           theme,
           now,
           reducedMotion,
-          background: effects.canvasPixelBackgroundEnabled,
-          working: effects.agentWorkingPixelEffectEnabled,
+          background: options.background && readThemeEffect('background').preset === 'pixel',
+          working: options.working && readThemeEffect('working').preset === 'pixel',
+          backgroundNow:
+            (now * 8000) / Math.max(1, readThemeEffect('background').durationMs ?? 8000),
+          workingNow: (now * 1400) / Math.max(1, readThemeEffect('working').durationMs ?? 1400),
         })
       } else {
         backgroundContext.clearRect(0, 0, background.width, background.height)
@@ -124,33 +147,50 @@ export function createPixelEffectPreview(
         canvas: foreground,
         context: foregroundContext,
         viewport,
-        frames,
+        frames: readThemeEffect('creation').preset === 'pixel' ? frames : [],
         theme,
       })
+      const closingFrames = burst.sample(viewport, now)
       drawPixelBursts({
         context: foregroundContext,
         viewport,
-        frames: burst.sample(viewport, now),
+        frames: readThemeEffect('closing').preset === 'pixel' ? closingFrames : [],
         theme,
       })
+      customEffects.sync(
+        viewport,
+        reopenAt === null ? [{ ...nodeFrame, tone: 'working', acceptsOutput: false }] : [],
+        frames,
+        closingFrames,
+        options,
+        reducedMotion,
+      )
       if (reopenAt !== null && opened && !assembly.hasPending(now)) {
         reopenAt = null
         onState({ playing: false, reducedMotion })
       }
-      return (
-        reopenAt !== null ||
-        (!reducedMotion &&
-          (effects.canvasPixelBackgroundEnabled || effects.agentWorkingPixelEffectEnabled))
-      )
+      return reopenAt !== null || (!reducedMotion && (options.background || options.working))
     },
   })
   const updateGeometry = () => {
     measure()
     scheduler.invalidate()
   }
-  const updateVisibility = () =>
-    scheduler.setVisible(inView && document.visibilityState !== 'hidden')
+  const updateVisibility = () => {
+    const visible = inView && document.visibilityState !== 'hidden'
+    if (!visible) {
+      stop()
+      backgroundContext.clearRect(0, 0, background.width, background.height)
+      foregroundContext.clearRect(0, 0, foreground.width, foreground.height)
+    }
+    scheduler.setVisible(visible)
+  }
   const updateTheme = () => {
+    stop()
+    masks.dispose()
+    assembly = createPixelAssembly(creationDuration())
+    burst = createPixelBurst(closingDuration())
+    masks = createPixelNodeMasks(scope, 'settings-pixel-preview__node', creationDuration())
     theme = readPixelTheme(background)
     scheduler.invalidate()
   }
@@ -170,6 +210,7 @@ export function createPixelEffectPreview(
         })
       : null
   intersectionObserver?.observe(scope)
+  const unsubscribeMotion = subscribeThemeMotion(updateTheme)
   media?.addEventListener('change', updateMotion)
   document.addEventListener('visibilitychange', updateVisibility)
   window.addEventListener('opencove-theme-changed', updateTheme)
@@ -188,12 +229,12 @@ export function createPixelEffectPreview(
       }
       measure()
       const now = performance.now()
-      if (effects.nodeClosePixelEffectEnabled) {
+      if (currentEffects().closing) {
         burst.announce(nodeFrame, viewport, now)
       }
       node.style.visibility = 'hidden'
       opened = false
-      reopenAt = now + (effects.nodeClosePixelEffectEnabled ? PIXEL_BURST_MS : 0) + 120
+      reopenAt = now + (currentEffects().closing ? closingDuration() : 0) + 120
       onState({ playing: true, reducedMotion })
       scheduler.invalidate()
     },
@@ -205,7 +246,9 @@ export function createPixelEffectPreview(
       media?.removeEventListener('change', updateMotion)
       document.removeEventListener('visibilitychange', updateVisibility)
       window.removeEventListener('opencove-theme-changed', updateTheme)
+      unsubscribeMotion()
       masks.dispose()
+      customEffects.dispose()
       assembly.clear()
       burst.clear()
       activity.clear()

@@ -9,6 +9,7 @@ export const zhCNSettingsPanelPlugins = {
       EVENTS: { title: '变化订阅', description: '有限的状态变化采样与订阅释放。' },
       SIDEBAR: { title: 'Sidebar 扩展', description: '声明项目树和条目对应的后端操作。' },
       overview: { title: '插件指南', description: '完整介绍与 CLI 命令索引。英文参考。' },
+      THEMES: { title: '主题开发', description: '主题继承、材质、组件外观与动效。' },
       HOST_EXTENSIONS: {
         title: '主机扩展能力',
         description: '插件偏好设置、主题、菜单与稳定的主机边界。英文参考。',

@@ -30,7 +30,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 32px;
+  min-height: calc(var(--cove-sidebar-row-height) + 2px);
   border: 1px solid transparent;
   border-radius: var(--cove-radius-xs);
   background: transparent;
@@ -50,7 +50,7 @@
   flex: 1;
   align-items: center;
   min-width: 0;
-  min-height: 30px;
+  min-height: var(--cove-sidebar-row-height);
   gap: 9px;
   padding: 0 10px;
   border: 0;

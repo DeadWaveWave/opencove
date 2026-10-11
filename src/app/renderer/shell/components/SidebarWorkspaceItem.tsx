@@ -85,7 +85,10 @@ function SpaceGroup({
       data-sidebar-hidden={group.sidebarHidden || undefined}
       data-cove-label-color={group.labelColor ?? undefined}
     >
-      <div className={`workspace-space-item${isRoot ? ' workspace-space-item--root' : ''}`}>
+      <div
+        data-cove-part="sidebar-space"
+        className={`workspace-space-item${isRoot ? ' workspace-space-item--root' : ''}`}
+      >
         <button
           type="button"
           className="workspace-space-item__select"

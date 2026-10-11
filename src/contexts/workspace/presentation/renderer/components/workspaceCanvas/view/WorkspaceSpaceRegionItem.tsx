@@ -120,6 +120,7 @@ export function WorkspaceSpaceRegionItem({
     <>
       <div
         ref={regionRef}
+        data-cove-part="space"
         className={className}
         data-testid={`workspace-space-region-${space.id}`}
         data-cove-space-caption-density={resolvedRect.width < 360 ? 'compact' : undefined}
@@ -233,6 +234,7 @@ export function WorkspaceSpaceRegionItem({
                 <button
                   type="button"
                   className="workspace-space-region__label"
+                  data-cove-part="space-title"
                   data-cove-space-caption="title"
                   data-testid={`workspace-space-label-${space.id}`}
                   title={space.name}

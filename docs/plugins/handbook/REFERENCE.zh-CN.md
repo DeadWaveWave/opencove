@@ -38,3 +38,5 @@ opencove plugin guide
 
 如果 CLI 启动器需要修复，前往**设置 → 连接 → CLI → 安装 CLI**。
 具体环境准备步骤见[开发与验证](../AUTHORING.md)。
+
+- [主题开发](../THEMES.md) — 主题继承、CSS / 字体资源、组件外观与动效。

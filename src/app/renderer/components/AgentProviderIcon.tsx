@@ -19,6 +19,8 @@ export function AgentProviderIcon({
   return (
     <span
       className={className ? `agent-provider-icon ${className}` : 'agent-provider-icon'}
+      data-cove-part="icon"
+      data-cove-kind="agent"
       data-agent-provider={provider}
       data-cove-label-color={labelColor ?? undefined}
       aria-label={accessibleLabel}

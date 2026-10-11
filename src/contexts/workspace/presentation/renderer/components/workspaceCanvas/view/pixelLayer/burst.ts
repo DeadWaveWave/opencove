@@ -25,11 +25,11 @@ function validViewport(viewport: PixelViewport): boolean {
 }
 
 /** Closing owns node removal. This timeline retains only copied geometry for its brief afterimage. */
-export function createPixelBurst() {
+export function createPixelBurst(durationMs = PIXEL_BURST_MS) {
   const entries = new Map<string, BurstEntry>()
   const expire = (now: number) => {
     for (const [id, entry] of entries) {
-      if (now - entry.closedAt >= PIXEL_BURST_MS) {
+      if (now - entry.closedAt >= durationMs) {
         entries.delete(id)
       }
     }
@@ -98,7 +98,7 @@ export function createPixelBurst() {
           rect,
           sourceSize: { ...entry.sourceSize },
           zoomRatio,
-          age: Math.max(0, now - entry.closedAt),
+          age: (Math.max(0, now - entry.closedAt) * PIXEL_BURST_MS) / durationMs,
         })
       }
       return frames

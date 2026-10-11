@@ -49,7 +49,11 @@ export function resolveTerminalUiTheme(mode: TerminalThemeMode): ResolvedUiTheme
   }
 
   const uiScheme = resolveActiveUiTheme()
-  return resolveUiThemeTerminalScheme(resolveActiveUiThemeId(), uiScheme)
+  const base = document.documentElement.dataset.coveThemeBase
+  return resolveUiThemeTerminalScheme(
+    isValidUiTheme(base) ? base : resolveActiveUiThemeId(),
+    uiScheme,
+  )
 }
 
 export function resolveTerminalTheme(

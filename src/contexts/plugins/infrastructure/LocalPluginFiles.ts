@@ -1,3 +1,5 @@
+import { compilePluginThemeResources } from './compilePluginThemeResources'
+import type { PluginThemeResources } from '../domain/pluginThemeResources'
 import { readPluginGitSource } from '../domain/pluginDistributionValidation'
 import { assertPluginCompatibility } from '../domain/pluginCompatibility'
 import { createHash, randomUUID } from 'node:crypto'
@@ -220,6 +222,7 @@ export class LocalPluginFiles implements PluginFilesPort {
             }
           }),
       )
+      await compilePluginThemeResources(temporary, pkg.id, pkg.contributes?.themes)
       const revision = digest.digest('hex')
       const artifact = join(this.root, 'artifacts', revision)
       await mkdir(dirname(artifact), { recursive: true })
@@ -250,6 +253,7 @@ export class LocalPluginFiles implements PluginFilesPort {
     if (JSON.stringify(artifact) !== JSON.stringify(record.package)) {
       throw new Error('Plugin artifact manifest does not match its installed record.')
     }
+    await compilePluginThemeResources(directory, artifact.id, artifact.contributes?.themes)
     return { ...record, directory }
   }
 
@@ -269,7 +273,7 @@ export class LocalPluginFiles implements PluginFilesPort {
 
   async readDetails(
     snapshot: PluginSnapshot,
-  ): Promise<{ readme: string; assets: Record<string, string> }> {
+  ): Promise<{ readme: string; assets: Record<string, string> } & PluginThemeResources> {
     const path = snapshot.package.readme ?? 'README.md'
     let readme = ''
     try {
@@ -320,7 +324,12 @@ export class LocalPluginFiles implements PluginFilesPort {
       }
     }
     /* eslint-enable no-await-in-loop */
-    return { readme, assets }
+    const themes = await compilePluginThemeResources(
+      snapshot.directory,
+      snapshot.package.id,
+      snapshot.package.contributes?.themes,
+    )
+    return { readme, assets, ...themes }
   }
 
   async readSkill(

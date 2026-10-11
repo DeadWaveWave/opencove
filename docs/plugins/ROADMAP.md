@@ -35,14 +35,16 @@ by `opencove plugin guide` for the host version being targeted.
 | Project operations | Explicit project/Space targets, routed file CRUD and sampled watches, bounded cancellable execution from real views or backend commands |
 | Host control | Node CRUD/focus, terminal and Agent lifecycle, sampled events, own-plugin preferences and declarative Sidebar trees |
 | Maintenance | Git build/ref controls, failed/conflict candidate recovery and read-only repository details before installation |
+| Themes | Pixel/light inheritance, bundled CSS/assets/fonts, public skin parts, metrics, motion profiles, iframe context and fallback |
 | Compatibility | Optional host SemVer range, Worker platform checks, incompatible-candidate rejection and per-plugin restart isolation |
 
 ## Host integration and distribution
 
 [Host extensions](./HOST_EXTENSIONS.md) defines the command-menu locations,
-validated preference schema, SDK access and theme-token contributions. These are
-fixed public contracts. They do not authorize arbitrary edits to host DOM, CSS,
-internal components or application state.
+validated preference schema, SDK access and theme contributions. [Themes](./THEMES.md)
+defines the supported CSS/parts/metrics/motion contract. Internal component
+replacement, structural navigation changes and direct application-state mutation
+remain outside those public interfaces.
 
 [Distribution](./DISTRIBUTION.md) defines Git installation, source inspection,
 updates, conflict candidates, explicit build choices and retained code revisions.

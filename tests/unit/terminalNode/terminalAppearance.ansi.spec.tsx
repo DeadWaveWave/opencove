@@ -21,10 +21,7 @@ const paletteCss = readFileSync(
     '../../../src/app/renderer/styles/themes/pixel-light.terminal.css',
   ),
   'utf8',
-).replace(
-  ":root[data-cove-theme-id='pixel-light']",
-  ":root[data-cove-theme-id='pixel-light'] .terminal-node",
-)
+).replace(/:root[\s\S]*?\{/, ":root[data-cove-theme-id='pixel-light'] .terminal-node {")
 
 const lightTheme = {
   background: '#f8fbfd',
@@ -126,21 +123,21 @@ describe('terminal ANSI appearance ownership', () => {
   })
 })
 
-it.each(['sync-with-ui', 'dark'] as const)(
-  'preserves contributed dark ANSI colors through the full appearance resolver in %s mode',
-  terminalThemeMode => {
-    document.documentElement.dataset.coveTheme = 'dark'
-    document.documentElement.dataset.coveThemeId = 'plugin:palette:dusk'
-    document.documentElement.style.setProperty('--cove-terminal-ansi-red', '#f09099')
-    document.documentElement.style.setProperty('--cove-terminal-ansi-bright-white', '#edf2fa')
-    const value = resolveCurrentTerminalAppearanceValue({ terminalThemeMode })
-    expect(value.terminalScheme).toBe('dark')
-    expect(value.xtermTheme.red).toBe('#f09099')
-    expect(value.xtermTheme.brightWhite).toBe('#edf2fa')
-    document.documentElement.dataset.coveTheme = 'light'
-    document.documentElement.dataset.coveThemeId = 'plugin:palette:dawn'
-    const forcedDark = resolveCurrentTerminalAppearanceValue({ terminalThemeMode: 'dark' })
-    expect(forcedDark.xtermTheme).not.toHaveProperty('red')
-    expect(forcedDark.xtermTheme).not.toHaveProperty('brightWhite')
-  },
-)
+it('preserves contributed dark ANSI only when the terminal follows the interface', () => {
+  document.documentElement.dataset.coveTheme = 'dark'
+  document.documentElement.dataset.coveThemeId = 'plugin:palette:dusk'
+  document.documentElement.style.setProperty('--cove-terminal-ansi-red', '#f09099')
+  document.documentElement.style.setProperty('--cove-terminal-ansi-bright-white', '#edf2fa')
+  const value = resolveCurrentTerminalAppearanceValue({ terminalThemeMode: 'sync-with-ui' })
+  expect(value.terminalScheme).toBe('dark')
+  expect(value.xtermTheme.red).toBe('#f09099')
+  expect(value.xtermTheme.brightWhite).toBe('#edf2fa')
+  const independent = resolveCurrentTerminalAppearanceValue({ terminalThemeMode: 'dark' })
+  expect(independent.xtermTheme).not.toHaveProperty('red')
+  expect(independent.xtermTheme).not.toHaveProperty('brightWhite')
+  document.documentElement.dataset.coveTheme = 'light'
+  document.documentElement.dataset.coveThemeId = 'plugin:palette:dawn'
+  const forcedDark = resolveCurrentTerminalAppearanceValue({ terminalThemeMode: 'dark' })
+  expect(forcedDark.xtermTheme).not.toHaveProperty('red')
+  expect(forcedDark.xtermTheme).not.toHaveProperty('brightWhite')
+})

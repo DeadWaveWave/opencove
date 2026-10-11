@@ -64,10 +64,10 @@ describe('independent Pixel effect controls in Appearance', () => {
         wrapper: EndpointOverviewProvider,
       })
       for (const label of [
-        'Node Creation Pixels',
-        'Node Closing Pixels',
-        'Canvas Pixel Background',
-        'Agent Working Pixels',
+        'Node Creation Effect',
+        'Node Closing Effect',
+        'Canvas Background Effect',
+        'Agent Working Effect',
       ]) {
         const control = screen.getByRole('checkbox', { name: label })
         expect(control).toBeEnabled()
@@ -81,13 +81,13 @@ describe('independent Pixel effect controls in Appearance', () => {
     render(<Harness initial={normalizeAgentSettings({ uiTheme: 'pixel' })} onChange={onChange} />, {
       wrapper: EndpointOverviewProvider,
     })
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Canvas Pixel Background' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Node Closing Pixels' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Agent Working Pixels' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Canvas Background Effect' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Node Closing Effect' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Agent Working Effect' }))
     fireEvent.click(screen.getByTestId('settings-ui-theme-light'))
-    expect(screen.getByRole('checkbox', { name: 'Node Creation Pixels' })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Node Closing Pixels' })).not.toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Canvas Pixel Background' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Node Creation Effect' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Node Closing Effect' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Canvas Background Effect' })).not.toBeChecked()
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         uiTheme: 'light',
@@ -98,9 +98,9 @@ describe('independent Pixel effect controls in Appearance', () => {
       }),
     )
     fireEvent.click(screen.getByTestId('settings-ui-theme-pixel-light'))
-    expect(screen.getByRole('checkbox', { name: 'Node Creation Pixels' })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Node Closing Pixels' })).not.toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Canvas Pixel Background' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Node Creation Effect' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Node Closing Effect' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Canvas Background Effect' })).not.toBeChecked()
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ uiTheme: 'pixel-light' }))
   })
 
@@ -109,10 +109,10 @@ describe('independent Pixel effect controls in Appearance', () => {
     render(<Harness initial={normalizeAgentSettings({ uiTheme: 'dark' })} />, {
       wrapper: EndpointOverviewProvider,
     })
-    expect(screen.getByRole('checkbox', { name: '创建像素效果' })).toBeVisible()
-    expect(screen.getByRole('checkbox', { name: '关闭像素效果' })).toBeVisible()
-    expect(screen.getByRole('checkbox', { name: '画布点阵背景' })).toBeVisible()
-    expect(screen.getByRole('checkbox', { name: 'Agent 工作流光' })).toBeVisible()
+    expect(screen.getByRole('checkbox', { name: '创建效果' })).toBeVisible()
+    expect(screen.getByRole('checkbox', { name: '关闭效果' })).toBeVisible()
+    expect(screen.getByRole('checkbox', { name: '画布背景效果' })).toBeVisible()
+    expect(screen.getByRole('checkbox', { name: 'Agent 工作效果' })).toBeVisible()
     expect(screen.getByText(/关闭后显示标准画布网格/)).toBeVisible()
   })
 })

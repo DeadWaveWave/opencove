@@ -179,9 +179,10 @@ jobs:
           pnpm test:e2e:web-canvas --
           tests/e2e-web-canvas/workerWebCanvas.terminal-auto-calibration.spec.ts
           tests/e2e-web-canvas/workerWebCanvas.terminal-live-reattach-geometry.spec.ts
+          tests/e2e-web-canvas/workerWebCanvas.themes.spec.ts
           --project=chromium --retries=0
 
-      - name: WebKit calibration test
+      - name: WebKit calibration and theme tests
         timeout-minutes: 30
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
@@ -189,6 +190,7 @@ jobs:
         run: >-
           pnpm test:e2e:web-canvas --
           tests/e2e-web-canvas/workerWebCanvas.terminal-auto-calibration.spec.ts
+          tests/e2e-web-canvas/workerWebCanvas.themes.spec.ts
           --project=webkit --retries=0
 
       - name: Upload Web Canvas artifacts

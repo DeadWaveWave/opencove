@@ -35,6 +35,7 @@ export const Toggle = React.forwardRef<HTMLInputElement, ToggleProps>(function T
 ) {
   return (
     <span
+      data-cove-part="toggle"
       className={classNames('cove-toggle', className)}
       data-disabled={disabled ? '' : undefined}
       data-testid={testId}

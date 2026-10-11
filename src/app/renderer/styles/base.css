@@ -5,7 +5,31 @@
 }
 
 :root {
-  --cove-ui-font-scale: 1;
+  --cove-user-font-scale: 1;
+  --cove-theme-font-scale: 1;
+  --cove-ui-font-scale: calc(var(--cove-user-font-scale) * var(--cove-theme-font-scale));
+  --cove-font-ui: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --cove-node-title-font-size: 12px;
+  --cove-node-header-height: 34px;
+  --cove-node-header-padding-inline: 9px;
+  --cove-node-icon-size: 16px;
+  --cove-compact-icon-size: 25px;
+  --cove-compact-working-duration: 2.4s;
+  --cove-compact-working-delay: -85ms;
+  --cove-compact-output-duration: 1.05s;
+  --cove-compact-output-delay: -32ms;
+  --cove-explorer-radius: 8px;
+  /* Optional skin overrides use the guaranteed-invalid initial value so each
+     component keeps its own state/color-aware fallback until a theme supplies one. */
+  --cove-node-shadow-hover: initial;
+  --cove-node-shadow-focus: initial;
+  --cove-space-surface: initial;
+  --cove-space-border: initial;
+  --cove-space-shadow: initial;
+  --cove-space-caption-surface: initial;
+  --cove-control-gap: 6px;
+  --cove-menu-row-height: 30px;
+  --cove-sidebar-row-height: 30px;
   --cove-app-header-height: 36px;
   --cove-accent: #5e9cff;
   --cove-label-gray: #8e8e93;
@@ -398,13 +422,7 @@ body,
 }
 
 body {
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--cove-font-ui);
   font-size: calc(16px * var(--cove-ui-font-scale));
   background: var(--cove-app-background);
   color: var(--cove-text);
