@@ -1,4 +1,5 @@
 import { normalizePluginPreferences, normalizePluginThemes } from './pluginHostExtensionValidation'
+import { normalizePluginEngines } from './pluginCompatibility'
 import type { LocalPluginPackage } from './pluginRuntimeTypes'
 import type {
   PluginCommandDeclaration,
@@ -204,6 +205,7 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
     throw new Error('Plugin view.entry must be HTML.')
   }
   const main = raw.main === undefined ? undefined : pluginRelativePath(raw.main, 'main')
+  const engines = normalizePluginEngines(raw.engines)
   if (main && !/\.(mjs|js|cjs)$/i.test(main)) {
     throw new Error('Plugin main must be a JavaScript module.')
   }
@@ -211,6 +213,7 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
     apiVersion: 1,
     id,
     version,
+    ...(engines ? { engines } : {}),
     displayName: pluginString(raw.displayName, 'displayName', 120),
     description: pluginString(raw.description, 'description', 2000),
     ...(raw.author === undefined ? {} : { author: pluginString(raw.author, 'author', 200) }),

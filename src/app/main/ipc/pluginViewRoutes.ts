@@ -38,6 +38,7 @@ export class PluginViewRoutes {
     if (
       ![
         'plugin.invoke',
+        'plugin.host.request',
         'plugin.storage.get',
         'plugin.storage.set',
         'plugin.view.preferences.get',

@@ -52,6 +52,8 @@ export interface PluginBackendPort {
       dataDirectory: string
       log: (message: string) => void
       unavailable: (message: string) => void
+      hostRequest?: (operation: string, payload: unknown) => Promise<unknown>
+      hostClosed?: () => void | Promise<void>
     },
   ): Promise<PluginBackend>
 }

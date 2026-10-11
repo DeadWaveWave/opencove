@@ -32,6 +32,8 @@ by `opencove plugin guide` for the host version being targeted.
 | Skills | Packaged instructions, readable content and a copyable installation prompt |
 | Management | Installed list, Markdown details/images, opt-in interactive preview and independent creation-entry preferences |
 | Authoring | Offline version-matched guide, runnable source example, design baseline and verification workflow |
+| Project operations | Explicit project/Space targets, routed directory/text reads, bounded cancellable execution from real views or backend commands |
+| Compatibility | Optional host SemVer range, Worker platform checks, incompatible-candidate rejection and per-plugin restart isolation |
 
 ## Host integration and distribution
 
@@ -54,21 +56,24 @@ provide a hosted marketplace. Installation still requires choosing a repository.
 
 ## Remaining work
 
-1. **Remote execution routing.** Desktop and Web share the connected Worker's
-   catalog and backends. Selecting a Space bound to another machine does not yet
-   relocate an independent plugin backend. A future target-aware API must keep
-   installation location, file ownership and execution machine explicit.
-2. **Additional host capabilities.** Public filesystem, terminal and Agent facades,
-   richer lifecycle events, Sidebar contributions and long-running cancellable
-   operations need separate contracts. Add capabilities for demonstrated needs;
-   full Node access does not imply a stable API for host internals.
+1. **Broader remote plugin execution.** [Project targets](./TARGETS.md) route
+   supported file reads and process operations to the resolved mount. Desktop and
+   Web still share the connected Worker's catalog and plugin backends. Arbitrary
+   plugin code is not moved or installed on another machine automatically.
+2. **Additional host capabilities.** File writes/watchers, terminal-window and
+   Agent facades, richer lifecycle events, Sidebar contributions and durable jobs
+   need separate contracts. Current cancellable jobs are bounded and transient.
+   Add capabilities for demonstrated needs; full Node access does not imply a
+   stable API for host internals.
 3. **Distribution maturity.** Publisher/repository metadata, compatibility
    filtering, authenticated/private discovery, artifact cleanup and richer source
    collaboration can build on the current Git lifecycle. Preserve explicit source
    provenance, user modifications and failed-candidate diagnostics.
-4. **Release compatibility.** Before the first stable plugin contract, define
-   supported host/API ranges, platform coverage, data migration expectations and
-   deprecation policy. Current API-version checks reject unsupported versions.
+4. **Stable release acceptance.** [Compatibility policy](./COMPATIBILITY.md)
+   now defines host ranges, runtime platform checks, migration expectations and
+   deprecation rules. API 1 remains a development contract. First-stable review
+   still requires the declared cross-platform matrix and upgrade evidence;
+   version checks alone are not a compatibility certification.
 5. **Optional Skill management.** Provider-aware installation/update is separate
    from reading or copying packaged instructions. The current host does not edit
    Agent configuration automatically.

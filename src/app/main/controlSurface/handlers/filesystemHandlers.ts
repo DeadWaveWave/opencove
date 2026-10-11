@@ -1,3 +1,4 @@
+import { normalizeFileReadLimit } from '../../../../contexts/filesystem/domain/fileReadLimits'
 import { fileURLToPath } from 'node:url'
 import type { ControlSurface } from '../controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
@@ -77,6 +78,7 @@ function normalizeReadFileTextPayload(payload: unknown): ReadFileTextInput {
 
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem.readFileText'),
+    maxBytes: normalizeFileReadLimit(payload.maxBytes, 1024 * 1024),
   }
 }
 
@@ -161,6 +163,7 @@ function normalizeReadDirectoryPayload(payload: unknown): ReadDirectoryInput {
 
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem.readDirectory'),
+    maxEntries: normalizeFileReadLimit(payload.maxEntries, 1000),
   }
 }
 

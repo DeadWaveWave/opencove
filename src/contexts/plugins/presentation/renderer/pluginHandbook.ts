@@ -22,6 +22,8 @@ const optionalReferences = import.meta.glob<string>(
     '../../../../../docs/plugins/HOST_EXTENSIONS.md',
     '../../../../../docs/plugins/DISTRIBUTION.md',
     '../../../../../docs/plugins/ROADMAP.md',
+    '../../../../../docs/plugins/TARGETS.md',
+    '../../../../../docs/plugins/COMPATIBILITY.md',
   ],
   { query: '?raw', import: 'default', eager: true },
 )
@@ -77,7 +79,9 @@ export function pluginHandbook(language: string): PluginHandbookArticle[] {
       path: 'README.md',
       markdown: overview,
     },
-    ...(['HOST_EXTENSIONS', 'DISTRIBUTION', 'ROADMAP'] as const).flatMap(name => {
+    ...(
+      ['HOST_EXTENSIONS', 'TARGETS', 'COMPATIBILITY', 'DISTRIBUTION', 'ROADMAP'] as const
+    ).flatMap(name => {
       const markdown = optionalReferences[`../../../../../docs/plugins/${name}.md`]
       return markdown
         ? [

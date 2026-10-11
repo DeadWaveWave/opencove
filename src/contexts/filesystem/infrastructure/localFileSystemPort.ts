@@ -1,3 +1,4 @@
+import { readBoundedText, readBoundedDirectory } from './boundedFileReads'
 import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -128,8 +129,11 @@ export function createLocalFileSystemPort(): FileSystemPort {
       const bytes = await readFile(path)
       return { bytes: new Uint8Array(bytes) }
     },
-    readFileText: async ({ uri }) => {
+    readFileText: async ({ uri, maxBytes }) => {
       const path = fileUriToPath(uri)
+      if (maxBytes !== undefined) {
+        return readBoundedText(path, maxBytes)
+      }
       const content = await readFile(path, 'utf8')
       return { content }
     },
@@ -156,8 +160,11 @@ export function createLocalFileSystemPort(): FileSystemPort {
         mtimeMs: Number.isFinite(stats.mtimeMs) ? stats.mtimeMs : null,
       }
     },
-    readDirectory: async ({ uri }) => {
+    readDirectory: async ({ uri, maxEntries }) => {
       const path = fileUriToPath(uri)
+      if (maxEntries !== undefined) {
+        return readBoundedDirectory(path, maxEntries)
+      }
       const dirents = await readdir(path, { withFileTypes: true })
 
       return {

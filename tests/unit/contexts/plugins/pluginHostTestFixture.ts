@@ -7,6 +7,7 @@ export async function writePluginHostTestFixture(root: string): Promise<string> 
   await Promise.all(
     [
       ['infrastructure/pluginHostEntry.ts', 'infrastructure/pluginHostEntry.mjs'],
+      ['infrastructure/PluginBackendHostClient.ts', 'infrastructure/PluginBackendHostClient.js'],
       ['domain/pluginJsonValue.ts', 'domain/pluginJsonValue.js'],
     ].map(async ([source, output]) => {
       const transformed = await transformWithEsbuild(

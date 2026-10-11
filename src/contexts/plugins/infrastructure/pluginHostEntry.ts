@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 import { pluginJsonValue } from '../domain/pluginJsonValue.js'
+import { PluginBackendHostClient } from './PluginBackendHostClient.js'
 import type { PluginCommandContext, PluginViewContext } from '../domain/pluginRuntimeTypes'
 
 interface PluginModule {
@@ -8,6 +9,7 @@ interface PluginModule {
     pluginId: string
     dataDirectory: string
     log(message: string): void
+    host: PluginBackendHostClient['api']
   }): Promise<PluginInstance> | PluginInstance
 }
 interface PluginInstance {
@@ -24,6 +26,13 @@ let stopped = false
 let initializing = false
 let commandIds = new Set<string>()
 let pluginId: string | null = null
+const hostClient = new PluginBackendHostClient((message, failed) => {
+  if (!process.connected || !process.send) {
+    failed(new Error('OpenCove plugin host connection closed.'))
+    return
+  }
+  process.send(message, failed)
+})
 function send(value: unknown): void {
   if (process.connected) {
     process.send?.(value as object)
@@ -39,6 +48,7 @@ async function stop(): Promise<void> {
     return
   }
   stopped = true
+  hostClient.close()
   try {
     await instance?.dispose?.()
   } finally {
@@ -57,6 +67,10 @@ process.once('SIGINT', () => {
 process.on('message', async (raw: unknown) => {
   const request = record(raw)
   if (!request || stopped) {
+    return
+  }
+  if (request.type === 'host-response') {
+    hostClient.receive(request)
     return
   }
   if (request.type === 'shutdown') {
@@ -89,6 +103,7 @@ process.on('message', async (raw: unknown) => {
         pluginId: request.pluginId,
         dataDirectory: request.dataDirectory,
         log: message => send({ type: 'log', message: String(message).slice(0, 4000) }),
+        host: hostClient.api,
       })
       if (
         !instance ||
@@ -105,6 +120,7 @@ process.on('message', async (raw: unknown) => {
       }
       send({ type: 'ready', protocol: 1 })
     } catch (error) {
+      hostClient.close()
       send({ type: 'startup-error', error: error instanceof Error ? error.message : String(error) })
       process.exitCode = 1
       setTimeout(() => process.exit(1), 10)

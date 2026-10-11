@@ -16,6 +16,14 @@ export const enSettingsPanelPlugins = {
         title: 'Git distribution',
         description: 'Discover, install, update and restore plugin code.',
       },
+      TARGETS: {
+        title: 'Projects and execution',
+        description: 'Local and remote files, explicit targets and cancellable work.',
+      },
+      COMPATIBILITY: {
+        title: 'Compatibility and releases',
+        description: 'Worker versions, supported platforms and plugin data migrations.',
+      },
       ROADMAP: {
         title: 'Plugin roadmap',
         description: 'Current capabilities and the next development priorities.',

@@ -131,6 +131,21 @@ test.describe('Independently installed plugins', () => {
       await expect(frame.locator('#count')).toHaveText('2')
       const replacementStartup = await invokeClock(node)
       const replacementUrl = await node.locator('iframe').getAttribute('src')
+      const manifestPath = join(source, 'opencove.plugin.json')
+      const originalManifest = await readFile(manifestPath, 'utf8')
+      await writeFile(
+        manifestPath,
+        JSON.stringify({ ...JSON.parse(originalManifest), engines: { opencove: '>=999.0.0' } }),
+      )
+      const compatibilityError = await pluginCommand(page, 'plugin.reload', { pluginId }).then(
+        () => '',
+        cause => String(cause),
+      )
+      expect(compatibilityError).toContain('requires OpenCove >=999.0.0')
+      expect(await invokeClock(node)).toBe(replacementStartup)
+      expect(await node.locator('iframe').getAttribute('src')).toBe(replacementUrl)
+      await expect(frame.locator('#count')).toHaveText('2')
+      await writeFile(manifestPath, originalManifest)
       await writeFile(join(source, 'main.mjs'), 'throw new Error("Deliberate invalid candidate")\n')
       const error = await pluginCommand(page, 'plugin.reload', { pluginId }).then(
         () => '',

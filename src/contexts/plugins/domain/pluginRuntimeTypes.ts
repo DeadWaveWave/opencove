@@ -31,6 +31,7 @@ export interface LocalPluginPackage {
     themes?: PluginThemeDeclaration[]
   }
   platforms?: Array<'darwin' | 'linux' | 'win32'>
+  engines?: { opencove: string }
 }
 
 export interface PluginDetails {

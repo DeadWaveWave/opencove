@@ -62,11 +62,11 @@ The view SDK supports `api.onCommand((commandId, params, hostContext) => result)
 The third argument is the same host context or `null` for a CLI invocation without
 one. Existing two-argument handlers continue to work.
 
-Context IDs identify host objects; they are not filesystem paths or permission
-grants. Resolve project and Space IDs through existing host/CLI queries when
-needed. A menu context does not imply a process working directory, select a mount
-or route a backend to another machine. The installed backend runs on its owning
-Worker. It must make any filesystem or remote action explicit.
+Context IDs identify host objects; they are not filesystem paths. Pass explicit
+project/Space IDs to the [host target facade](./TARGETS.md) to resolve the working
+directory and route supported file/process operations. A menu context does not
+move plugin code to another machine. The installed backend stays on its owning
+Worker; direct Node filesystem and process APIs remain bound to that machine.
 
 ## Preferences
 

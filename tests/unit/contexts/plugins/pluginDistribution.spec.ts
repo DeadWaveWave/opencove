@@ -41,8 +41,8 @@ async function commit(directory: string, message = 'change') {
   ])
   return git(directory, ['rev-parse', 'HEAD'])
 }
-function runtime() {
-  const files = new LocalPluginFiles(profile)
+function runtime(hostVersion: string | null = null) {
+  const files = new LocalPluginFiles(profile, process.platform, hostVersion)
   const sources = new GitPluginSources(profile)
   const manager = new PluginInstallationManager({
     files,
@@ -86,6 +86,47 @@ afterEach(async () => {
 })
 
 describe('Git source, candidate and active artifact ownership', { timeout: 30_000 }, () => {
+  it('keeps incompatible updates and apply candidates inactive, and rechecks retained code on rollback', async () => {
+    const { service, manager, files } = runtime('0.3.2')
+    await writeFile(
+      join(repository, 'opencove.plugin.json'),
+      JSON.stringify({ ...pkg, engines: { opencove: '>=0.3.2 <0.4.0' } }),
+    )
+    await commit(repository)
+    const first = await service.install({ repository, ref: 'main' })
+    const view = await manager.openView({ pluginId: pkg.id, nodeId: 'keep-alive' })
+    const registry = await files.readRegistry()
+    await writeFile(
+      join(repository, 'opencove.plugin.json'),
+      JSON.stringify({ ...pkg, version: '2.0.0', engines: { opencove: '>=0.4.0' } }),
+    )
+    await commit(repository)
+    const candidate = await service.update(pkg.id)
+    expect(candidate).toMatchObject({
+      status: 'failed',
+      error: expect.stringContaining('requires OpenCove >=0.4.0'),
+    })
+    expect(await service.apply(candidate.candidateId)).toMatchObject({ status: 'failed' })
+    expect(await files.readRegistry()).toEqual(registry)
+    expect(await manager.invoke(view.viewId, 'read', null)).toBe('version-one')
+
+    await writeFile(
+      join(candidate.candidateDirectory, 'opencove.plugin.json'),
+      JSON.stringify({ ...pkg, version: '2.0.0', engines: { opencove: '>=0.3.2 <0.5.0' } }),
+    )
+    await commit(candidate.candidateDirectory)
+    expect(await service.apply(candidate.candidateId)).toMatchObject({ status: 'updated' })
+    await manager.dispose()
+    const upgraded = runtime('0.4.0')
+    expect(await upgraded.manager.list()).toMatchObject([{ version: '2.0.0', status: 'ready' }])
+    const beforeRollback = await upgraded.files.readRegistry()
+    await expect(upgraded.service.rollback(pkg.id, first.plugin!.revision!)).rejects.toThrow(
+      'requires OpenCove >=0.3.2 <0.4.0',
+    )
+    expect(await upgraded.files.readRegistry()).toEqual(beforeRollback)
+    expect(await upgraded.manager.list()).toMatchObject([{ version: '2.0.0', status: 'ready' }])
+  })
+
   it('pins installation, preserves dirty and committed personal edits, checks without mutation, and restores/rolls back code only', async () => {
     const { service, manager, files } = runtime()
     const initial = await service.install({ repository, ref: 'main' })

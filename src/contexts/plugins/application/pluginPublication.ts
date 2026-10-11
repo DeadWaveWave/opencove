@@ -95,11 +95,13 @@ export async function startPluginBackend(
   backendPort: PluginBackendPort,
   files: PluginFilesPort,
   log: (message: string) => void,
+  host: Pick<Parameters<PluginBackendPort['start']>[1], 'hostRequest' | 'hostClosed'> = {},
 ): Promise<PluginBackend | null> {
   if (!runtime.snapshot?.package.main) {
     return null
   }
   const backend = await backendPort.start(runtime.snapshot, {
+    ...host,
     dataDirectory: files.dataDirectory(runtime.record.package.id),
     log,
     unavailable: message => {

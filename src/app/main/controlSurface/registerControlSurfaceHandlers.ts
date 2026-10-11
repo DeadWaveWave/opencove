@@ -1,3 +1,5 @@
+import { registerPluginHostHandlers } from './handlers/pluginHostHandlers'
+import type { ControlSurfaceContext } from './types'
 import type { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
 import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import type { ControlSurface } from './controlSurface'
@@ -43,6 +45,7 @@ import type { TerminalAgentActivityEnvironmentService } from '../../../contexts/
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
   deps: {
+    context: ControlSurfaceContext
     pluginDistribution?: PluginDistributionService
     plugins: PluginInstallationManager
     approvedWorkspaces: ApprovedWorkspaceStore
@@ -151,6 +154,7 @@ export function registerControlSurfaceHandlers(
     publishSyncEvent: deps.publishSyncEvent,
     closeWebsiteNode: deps.closeWebsiteNode,
   })
+  registerPluginHostHandlers(controlSurface, deps)
   registerPluginHandlers(controlSurface, deps.plugins, deps.pluginDistribution)
   registerPluginCommandHandlers(controlSurface, {
     plugins: deps.plugins,

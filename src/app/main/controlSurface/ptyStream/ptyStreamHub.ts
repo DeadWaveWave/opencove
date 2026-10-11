@@ -48,6 +48,7 @@ import {
 } from './ptyStreamHub.agentReexec'
 import { PtyStreamRecoveryOperationTracker } from './ptyStreamRecoveryOperationTracker'
 import { projectPtyStreamAgentMetadata } from './ptyStreamAgentMetadataProjection'
+import { forgetPtyStreamSession, PtyStreamRetiredSessions } from './ptyStreamHub.retirement'
 
 export class PtyStreamHub {
   private readonly ptyRuntime: ControlSurfacePtyRuntime
@@ -58,6 +59,7 @@ export class PtyStreamHub {
   private readonly sessions = new Map<string, SessionState>()
   private readonly clients = new Map<string, ClientState>()
   private readonly recoveryOperations = new PtyStreamRecoveryOperationTracker()
+  private readonly retiredSessions = new PtyStreamRetiredSessions()
 
   public constructor(options: {
     ptyRuntime: ControlSurfacePtyRuntime
@@ -72,6 +74,9 @@ export class PtyStreamHub {
   }
 
   private ensureSession(sessionId: string): SessionState {
+    if (this.retiredSessions.has(sessionId)) {
+      throw new Error('Ephemeral PTY session was retired.')
+    }
     const existing = this.sessions.get(sessionId)
     if (existing) {
       return existing
@@ -133,12 +138,18 @@ export class PtyStreamHub {
   }
 
   public registerSessionMetadata(metadata: SessionMetadata): void {
+    if (this.retiredSessions.has(metadata.sessionId)) {
+      return
+    }
     const session = this.ensureSession(metadata.sessionId)
     session.metadata = metadata
     session.presentationSession.resize(metadata.cols, metadata.rows)
   }
 
   public registerSessionAgentState(options: TerminalSessionStateEvent): void {
+    if (this.retiredSessions.has(options.sessionId)) {
+      return
+    }
     registerPtyStreamAgentState({
       session: this.ensureSession(options.sessionId),
       event: options,
@@ -152,6 +163,9 @@ export class PtyStreamHub {
   }
 
   public registerSessionAgentMetadata(metadata: TerminalSessionMetadataEvent): void {
+    if (this.retiredSessions.has(metadata.sessionId)) {
+      return
+    }
     const session = this.ensureSession(metadata.sessionId)
     if (session.status === 'exited') {
       return
@@ -173,23 +187,13 @@ export class PtyStreamHub {
   }
 
   public forgetSession(sessionId: string): void {
-    const session = this.sessions.get(sessionId)
-    if (!session) {
-      return
-    }
+    forgetPtyStreamSession(sessionId, this.sessions, this.clients)
+  }
 
-    if (session.flushTimer) {
-      clearTimeout(session.flushTimer)
-      session.flushTimer = null
-    }
-
-    for (const clientId of session.subscribers) {
-      const client = this.clients.get(clientId)
-      client?.rolesBySessionId.delete(sessionId)
-    }
-
-    session.presentationSession.dispose()
-    this.sessions.delete(sessionId)
+  /** Final cleanup for ephemeral jobs; delayed runtime events must not revive them. */
+  public retireSession(sessionId: string): void {
+    this.retiredSessions.retire(sessionId)
+    this.forgetSession(sessionId)
   }
 
   private flushSession(session: SessionState): void {
@@ -217,10 +221,16 @@ export class PtyStreamHub {
   }
 
   public handlePtyData(sessionId: string, data: string): void {
+    if (this.retiredSessions.has(sessionId)) {
+      return
+    }
     this.queueSessionData(sessionId, data)
   }
 
   public handlePtyExit(sessionId: string, exitCode: number): void {
+    if (this.retiredSessions.has(sessionId)) {
+      return
+    }
     const session = this.ensureSession(sessionId)
     if (session.status === 'exited') {
       return

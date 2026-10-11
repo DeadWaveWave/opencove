@@ -1,3 +1,4 @@
+import { normalizeFileReadLimit } from '../../../../contexts/filesystem/domain/fileReadLimits'
 import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
 import {
   readDirectoryUseCase,
@@ -101,6 +102,7 @@ export function registerFilesystemMountReadHandlers(
       return {
         mountId: normalizeMountId(payload.mountId, 'filesystem.readFileTextInMount'),
         uri: normalizeFileSystemUri(payload.uri, 'filesystem.readFileTextInMount'),
+        maxBytes: normalizeFileReadLimit(payload.maxBytes, 1024 * 1024),
       }
     },
     handle: async (_ctx, payload): Promise<ReadFileTextResult> => {
@@ -131,7 +133,7 @@ export function registerFilesystemMountReadHandlers(
         endpointId: target.endpointId,
         kind: 'query',
         id: 'filesystem.readFileText',
-        payload: { uri: payload.uri } satisfies ReadFileTextInput,
+        payload: { uri: payload.uri, maxBytes: payload.maxBytes } satisfies ReadFileTextInput,
       })
     },
     defaultErrorCode: 'common.unexpected',
@@ -197,6 +199,7 @@ export function registerFilesystemMountReadHandlers(
       return {
         mountId: normalizeMountId(payload.mountId, 'filesystem.readDirectoryInMount'),
         uri: normalizeFileSystemUri(payload.uri, 'filesystem.readDirectoryInMount'),
+        maxEntries: normalizeFileReadLimit(payload.maxEntries, 1000),
       }
     },
     handle: async (_ctx, payload): Promise<ReadDirectoryResult> => {
@@ -227,7 +230,7 @@ export function registerFilesystemMountReadHandlers(
         endpointId: target.endpointId,
         kind: 'query',
         id: 'filesystem.readDirectory',
-        payload: { uri: payload.uri } satisfies ReadDirectoryInput,
+        payload: { uri: payload.uri, maxEntries: payload.maxEntries } satisfies ReadDirectoryInput,
       })
     },
     defaultErrorCode: 'common.unexpected',

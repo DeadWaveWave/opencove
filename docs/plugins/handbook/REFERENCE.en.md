@@ -20,6 +20,8 @@ Use those contracts when building a plugin for this version.
   targeting and instructions an Agent can use.
 - [Runtime ownership](../RUNTIME.md) — installation, snapshot, view and backend
   boundaries for developers working on the host.
+- [Project targets](../TARGETS.md) — explicit local/remote files and cancellable operations.
+- [Compatibility](../COMPATIBILITY.md) — host versions, platforms, release contracts and data migrations.
 
 ## Give the documentation to your Agent
 

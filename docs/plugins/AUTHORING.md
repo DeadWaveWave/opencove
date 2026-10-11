@@ -162,6 +162,13 @@ ambiguous target is a recovery/selection step, not permission to create another.
   unhandled promise rejections or fake successful content.
 - Browser audio belongs to the viewing device. A backend on a remote Worker can
   find a media URL, but should not launch an audio player on that Worker.
+- Project files and commands should use [explicit host targets](./TARGETS.md).
+  A Space can point to another machine; Node APIs still run on the backend's
+  machine. Choose the project explicitly, surface errors, and provide cancellation.
+
+Before sharing, read [compatibility and release policy](./COMPATIBILITY.md).
+Declare supported host versions and platforms when needed; test updates against
+existing data. A code rollback does not roll back plugin data.
 
 For media features, verify the source's playback rights and actual behavior.
 Catalog search, short previews, live radio and full tracks are different features.

@@ -23,6 +23,7 @@ describe('independent plugin control surface and asset leases', () => {
         version: '1.0.0',
         displayName: 'Clock',
         description: 'Clock fixture',
+        engines: { opencove: '>=0.3.2 <0.4.0' },
         view: { entry: 'ui/index.html' },
       }),
     )
@@ -33,6 +34,7 @@ describe('independent plugin control surface and asset leases', () => {
     await writeFile(join(source, 'ui/app.js'), 'window.clock = true')
     const runtime = createControlSurfaceHttpRuntime({
       userDataPath: join(root, 'profile'),
+      appVersion: '0.3.2',
       token: 'private-host-secret',
       approvedWorkspaces: createApprovedWorkspaceStoreForPath(join(root, 'approved.json')),
       createPersistenceStore: async () => createInMemoryPersistenceStore(),

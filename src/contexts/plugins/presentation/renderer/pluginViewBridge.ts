@@ -103,6 +103,11 @@ export function bindPluginViewBridge({
     const input = payload as Record<string, unknown>
     void (async () => {
       switch (message.operation) {
+        case 'host.request':
+          return invoke('plugin.host.request', {
+            operation: input.operation,
+            payload: input.payload,
+          })
         case 'invoke':
           return invoke('plugin.invoke', { method: input.method, params: input.params })
         case 'preferences.get':

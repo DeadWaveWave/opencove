@@ -44,7 +44,8 @@ const PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES = 400_000
 export function createControlSurfaceHttpRuntime(
   options: RegisterControlSurfaceHttpServerOptions,
 ): ControlSurfaceHttpRuntime {
-  const pluginFiles = new LocalPluginFiles(options.userDataPath)
+  const appVersion = normalizeControlSurfaceAppVersion(options.appVersion)
+  const pluginFiles = new LocalPluginFiles(options.userDataPath, process.platform, appVersion)
   const plugins = new PluginInstallationManager({
     files: pluginFiles,
     backend: new NodePluginBackend(resolve(__dirname, 'pluginHost.js')),
@@ -63,7 +64,6 @@ export function createControlSurfaceHttpRuntime(
   )
   const pluginViews = new PluginViewLifecycle(plugins)
   const token = options.token ?? randomBytes(32).toString('base64url')
-  const appVersion = normalizeControlSurfaceAppVersion(options.appVersion)
   const webSessions = new WebSessionManager(resolve(options.userDataPath))
   const ctx = createControlSurfaceHttpServerContext({
     enableWebShell: options.enableWebShell === true,
@@ -215,6 +215,7 @@ export function createControlSurfaceHttpRuntime(
   }
   registerPluginDistributionHandlers(controlSurface, pluginDistribution)
   registerControlSurfaceHandlers(controlSurface, {
+    context: ctx,
     plugins,
     pluginDistribution,
     deploymentId: options.deploymentId,

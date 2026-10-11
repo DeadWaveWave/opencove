@@ -128,13 +128,23 @@ This iteration uses the same connected Home Worker for the Desktop plugin catalo
 RPC and resource URL resolver; Web uses its connected Worker. It does not yet
 relocate an independent plugin backend according to a Space's remote mount.
 For a mount-bound node, the view therefore receives no presumed local project
-directory. `workspaceId` is context, not authority to access remote files.
-Automatic mount routing remains a later capability. Git source installation,
+directory. `workspaceId` is context, not a local filesystem path. The
+[host facade](./TARGETS.md) resolves explicit project/Space selections and routes
+supported reads and bounded process operations through the mount owner.
+Direct Node calls remain on the plugin backend's machine. Git source installation,
 updates and repository discovery use the connected Worker; a discovered repository
 is not an installed plugin.
 Skill reads use the installed snapshot and return its Worker-local path, exact
 text and an installation prompt. They do not execute skill instructions or write
 to agent-owned directories. Disabled installations can still expose their skills.
+
+Host operations are owned by an immutable backend generation or an exact real-view
+lease. Preview and unpublished activation contexts cannot issue them. Retiring an
+owner cancels its transient processes; delayed results cannot revive it or acquire
+another owner's operation. The child-to-host RPC has bounded pending requests,
+payload sizes and deadlines. A disconnected or hung backend control channel retires
+that generation rather than silently retrying possibly executed actions. Operation
+handles are not persisted or replayed after Worker restart.
 
 ## Verification
 

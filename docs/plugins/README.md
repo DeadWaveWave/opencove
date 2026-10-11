@@ -23,7 +23,10 @@ Start implementation with [Authoring and verification](./AUTHORING.md), then cop
 [Hello Clock example](./examples/hello-clock/README.md) into your own directory.
 [API reference](./API.md) contains the complete development API supported here.
 [Host extensions](./HOST_EXTENSIONS.md) explains menu commands, preferences and theme
-contributions. [Git sources and distribution](./DISTRIBUTION.md) covers repository
+contributions. [Project targets and host operations](./TARGETS.md) explains explicit
+local/remote file access and cancellable work from views or backend commands.
+[Compatibility](./COMPATIBILITY.md) covers host versions, platforms and release policy.
+[Git sources and distribution](./DISTRIBUTION.md) covers repository
 installation, personal edits, updates, retained candidates, rollback and discovery.
 [Scope and roadmap](./ROADMAP.md) distinguishes supported features from future work.
 The guide describes supported host APIs; validation plugins are developed outside

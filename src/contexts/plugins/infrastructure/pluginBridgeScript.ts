@@ -174,6 +174,21 @@ export const PLUGIN_BRIDGE_SCRIPT = String.raw`
   }
   window.opencovePlugin = Object.freeze({
     ready,
+    host: Object.freeze({
+      target: Object.freeze({
+        list: () => request('host.request', { operation: 'target.list', payload: {} }),
+        resolve: input => request('host.request', { operation: 'target.resolve', payload: input }),
+      }),
+      filesystem: Object.freeze({
+        readDirectory: input => request('host.request', { operation: 'filesystem.readDirectory', payload: input }),
+        readText: input => request('host.request', { operation: 'filesystem.readText', payload: input }),
+      }),
+      operations: Object.freeze({
+        start: input => request('host.request', { operation: 'operations.start', payload: input }),
+        get: input => request('host.request', { operation: 'operations.get', payload: input }),
+        cancel: input => request('host.request', { operation: 'operations.cancel', payload: input }),
+      }),
+    }),
     invoke: (method, params = null) => request('invoke', { method, params }),
     preferences: Object.freeze({
       get: () => request('preferences.get'),

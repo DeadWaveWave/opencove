@@ -2,6 +2,7 @@ import { fork } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import { pluginJsonValue } from '../domain/pluginJsonValue'
+import { PluginBackendHostRequests } from './PluginBackendHostRequests'
 import type { PluginCommandContext, PluginViewContext } from '../domain/pluginRuntimeTypes'
 import type {
   PluginBackend,
@@ -35,6 +36,20 @@ export class NodePluginBackend implements PluginBackendPort {
       execArgv: [],
     })
     const pending = new Map<string, Pending>()
+    const hostRequests = new PluginBackendHostRequests({
+      request: options.hostRequest,
+      closed: options.hostClosed,
+      log: options.log,
+      unavailable: error => {
+        fail(error)
+        void dispose()
+      },
+      send: message => {
+        if (child.connected) {
+          child.send(message, () => undefined)
+        }
+      },
+    })
     let closed = false
     let ready = false
     let unavailable: Error | null = null
@@ -54,6 +69,7 @@ export class NodePluginBackend implements PluginBackendPort {
         return
       }
       unavailable = error
+      void hostRequests.close()
       clearTimeout(startupTimer)
       readyReject(error)
       for (const request of pending.values()) {
@@ -70,6 +86,13 @@ export class NodePluginBackend implements PluginBackendPort {
     child.stdout?.on('data', (chunk: Buffer) => output('', chunk))
     child.stderr?.on('data', (chunk: Buffer) => output('stderr: ', chunk))
     child.once('error', error => fail(error))
+    child.once('disconnect', () => {
+      if (closed) {
+        return
+      }
+      fail(new Error('Plugin process disconnected (exited or lost its control channel).'))
+      void dispose()
+    })
     child.once('exit', (code, signal) =>
       fail(new Error(`Plugin process exited (${signal ?? code ?? 'unknown'}).`)),
     )
@@ -78,6 +101,7 @@ export class NodePluginBackend implements PluginBackendPort {
         return
       }
       const message = raw as Record<string, unknown>
+      hostRequests.receive(message)
       if (message.type === 'log' && typeof message.message === 'string') {
         options.log(message.message.slice(0, 4000))
       }
@@ -112,7 +136,7 @@ export class NodePluginBackend implements PluginBackendPort {
       }
       closed = true
       fail(new Error('Plugin process was stopped.'))
-      disposePromise = new Promise<void>(accept => {
+      const childClosed = new Promise<void>(accept => {
         if (child.exitCode !== null || child.signalCode !== null) {
           accept()
           return
@@ -135,6 +159,7 @@ export class NodePluginBackend implements PluginBackendPort {
           child.kill('SIGTERM')
         }
       })
+      disposePromise = Promise.all([childClosed, hostRequests.close()]).then(() => undefined)
       return disposePromise
     }
     child.send(

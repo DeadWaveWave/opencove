@@ -1,6 +1,8 @@
 # Local plugin API 1
 
-This is a development contract. Declare `apiVersion: 1`; incompatible values fail
+This is a development contract. See [Compatibility](./COMPATIBILITY.md) for host
+version ranges, platforms, release policy and data migration expectations.
+Declare `apiVersion: 1`; incompatible values fail
 installation. There is no package to download for the view SDK. OpenCove injects
 it into your HTML before your external scripts execute.
 
@@ -59,6 +61,7 @@ Optional fields:
 | `contributes.skills` | Discoverable packaged `SKILL.md` files; see [Commands and skills](./COMMANDS.md#skills) |
 | `contributes.preferences`, `contributes.themes` | Standard preference fields and host color themes; see [Host extensions](./HOST_EXTENSIONS.md) |
 | `platforms` | Supported backend OS values: `darwin`, `linux`, `win32`; omit for all |
+| `engines.opencove` | Optional npm SemVer range for the installation's Worker version; incompatible artifacts are rejected before activation |
 
 An icon may be `{ "type": "builtin", "name": "puzzle" }` (or `git-branch`), or
 `{ "type": "asset", "path": "icon.svg", "light": "icon-light.svg", "dark":
@@ -82,6 +85,10 @@ separate step. Old manifests retain the `multiple` default. See
 [Window identity and selection](./COMMANDS.md#window-identity-and-selection).
 
 ## Browser SDK
+
+The `host` facade routes explicit project/Space file access and cancellable
+operations. It is shared with backend `activate({ host })`; see
+[Project targets](./TARGETS.md) for method shapes, limits and lifecycle rules.
 
 ```js
 const api = window.opencovePlugin
@@ -190,7 +197,8 @@ export async function activate(context) {
 }
 ```
 
-Activation context contains `pluginId`, `dataDirectory` and `log(message)`.
+Activation context contains `pluginId`, `dataDirectory`, `log(message)` and the
+[`host` facade](./TARGETS.md). Use host operations from handlers after activation.
 `dataDirectory` is writable, plugin-private storage on the runtime machine; source
 and installed snapshot are not data directories. `viewContext` contains
 `pluginId`, `nodeId`, `workspaceId`, `directoryPath` and `preview`, as above.
@@ -207,7 +215,8 @@ their backend handler fail activation. See [Commands and skills](./COMMANDS.md).
 
 The backend is a trusted Node child process with full OS access, not a sandbox.
 Node standard-library imports work; bundle other dependencies before installation.
-Do not assume `process.cwd()` is a project root: use the supplied view context.
+Do not assume `process.cwd()` is a project root. Resolve explicit project/Space
+targets through the host facade; a view's directory may belong to another machine.
 
 A real backend instance is shared by all real views of an enabled plugin. It can
 remain alive with no open windows. `dispose` is called during disable, reload,

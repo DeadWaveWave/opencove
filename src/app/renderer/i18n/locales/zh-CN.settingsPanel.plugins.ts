@@ -13,6 +13,14 @@ export const zhCNSettingsPanelPlugins = {
         description: '发现、安装、更新与恢复插件代码。英文参考。',
       },
       ROADMAP: { title: '插件路线图', description: '当前能力与接下来的开发重点。' },
+      TARGETS: {
+        title: '项目与执行位置',
+        description: '本地与远程文件、明确的操作目标，以及可取消的执行过程。英文参考。',
+      },
+      COMPATIBILITY: {
+        title: '兼容与版本',
+        description: 'Worker 版本、支持平台与插件数据迁移。英文参考。',
+      },
 
       start: { title: '插件能做什么', description: '从画布工具到 Agent 命令，了解插件的用途。' },
       install: { title: '安装与使用', description: '安装插件、选择入口，并安全保留自己的数据。' },

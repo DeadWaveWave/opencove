@@ -1,3 +1,6 @@
+import { PluginHostAccess } from './PluginHostAccess'
+import { createPluginRuntimeView } from './createPluginRuntimeView'
+import type { PluginHostPort } from '../domain/pluginHostTypes'
 import { readPluginPreferences } from './pluginPreferences'
 import { PluginStorageOwner } from './PluginStorageOwner'
 import { restorePluginInstallations } from './pluginInstallationRestore'
@@ -24,7 +27,6 @@ import type {
   PluginDetails,
   PluginOpenViewInput,
   PluginOpenViewResult,
-  PluginViewContext,
   PluginCommandTarget,
   PluginLiveView,
   PluginSkillDetails,
@@ -39,6 +41,9 @@ import type {
 } from './PluginRuntimePorts'
 
 export class PluginInstallationManager {
+  private readonly host = new PluginHostAccess(
+    runtime => !this.closed && this.runtimes.get(runtime.record.package.id) === runtime,
+  )
   private readonly storage: PluginStorageOwner
   private readonly runtimeEpoch: string
   private readonly runtimes = new Map<string, Runtime>()
@@ -153,8 +158,12 @@ export class PluginInstallationManager {
   }
 
   private startBackend(runtime: Runtime): Promise<PluginBackend | null> {
-    return startPluginBackend(runtime, this.options.backend, this.options.files, message =>
-      appendPluginRuntimeLog(runtime, message),
+    return startPluginBackend(
+      runtime,
+      this.options.backend,
+      this.options.files,
+      message => appendPluginRuntimeLog(runtime, message),
+      this.host.backend(runtime),
     )
   }
 
@@ -292,33 +301,14 @@ export class PluginInstallationManager {
       }
       const id = this.options.createId()
       const token = this.options.createId()
-      const context: PluginViewContext = {
-        pluginId: input.pluginId,
-        nodeId: input.nodeId,
-        workspaceId: input.workspaceId ?? null,
-        directoryPath: input.directoryPath ?? null,
-        preview: input.preview === true,
-      }
-      const view: View = { id, token, runtime, context, backend: null, storage: new Map() }
-      if (context.preview && runtime.snapshot.package.main) {
-        try {
-          view.backend = await this.options.backend.start(runtime.snapshot, {
-            dataDirectory: `${this.options.files.dataDirectory(input.pluginId)}/previews/${id}`,
-            log: message => appendPluginRuntimeLog(runtime, `[preview] ${message}`),
-            unavailable: message => appendPluginRuntimeLog(runtime, `[preview] ${message}`),
-          })
-        } catch (error) {
-          await this.options.files.removePreviewData(input.pluginId, id).catch(() => undefined)
-          throw error
-        }
-      }
-      if (this.closed) {
-        await view.backend?.dispose().catch(() => undefined)
-        if (context.preview) {
-          await this.options.files.removePreviewData(input.pluginId, id).catch(() => undefined)
-        }
-        throw new Error('Plugin runtime is shutting down.')
-      }
+      const view = await createPluginRuntimeView(input, runtime, {
+        id,
+        token,
+        backend: this.options.backend,
+        files: this.options.files,
+        closed: () => this.closed,
+      })
+      const context = view.context
       this.views.add(id, token, view)
       const entry = context.preview ? runtime.record.package.preview! : definition.entry
       return {
@@ -345,6 +335,7 @@ export class PluginInstallationManager {
       return
     }
     this.windowCommands.retire(viewId)
+    await this.host.closeView(viewId)
     await view.backend
       ?.dispose()
       .catch(error =>
@@ -357,6 +348,15 @@ export class PluginInstallationManager {
           appendPluginRuntimeLog(view.runtime, `Preview data cleanup: ${asError(error).message}`),
         )
     }
+  }
+
+  configureHost(port: PluginHostPort): void {
+    this.host.bind(port)
+  }
+
+  hostRequest(viewId: string, operation: string, payload: unknown): Promise<unknown> {
+    const view = this.getView(viewId)
+    return this.host.view(view, () => this.views.get(viewId) === view, operation, payload)
   }
 
   async invoke(viewId: string, method: string, params: unknown): Promise<unknown> {

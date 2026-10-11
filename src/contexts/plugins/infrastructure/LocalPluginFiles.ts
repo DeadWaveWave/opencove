@@ -1,4 +1,5 @@
 import { readPluginGitSource } from '../domain/pluginDistributionValidation'
+import { assertPluginCompatibility } from '../domain/pluginCompatibility'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, posix, resolve, sep } from 'node:path'
@@ -63,6 +64,7 @@ export class LocalPluginFiles implements PluginFilesPort {
   constructor(
     userDataPath: string,
     private readonly platform = process.platform,
+    private readonly hostVersion: string | null = null,
   ) {
     this.root = resolve(userDataPath, 'plugins')
   }
@@ -198,7 +200,7 @@ export class LocalPluginFiles implements PluginFilesPort {
       const pkg = normalizeLocalPluginPackage(
         JSON.parse(await readFile(join(temporary, 'opencove.plugin.json'), 'utf8')),
       )
-      this.checkPlatform(pkg.platforms)
+      assertPluginCompatibility(pkg, { version: this.hostVersion, platform: this.platform })
       const required = [
         pkg.view?.entry,
         pkg.main,
@@ -237,7 +239,10 @@ export class LocalPluginFiles implements PluginFilesPort {
   }
 
   async restore(record: PluginInstallationRecord): Promise<PluginSnapshot> {
-    this.checkPlatform(record.package.platforms)
+    assertPluginCompatibility(record.package, {
+      version: this.hostVersion,
+      platform: this.platform,
+    })
     const directory = join(this.root, 'artifacts', record.revision)
     const artifact = normalizeLocalPluginPackage(
       JSON.parse(await readFile(join(directory, 'opencove.plugin.json'), 'utf8')),
@@ -246,12 +251,6 @@ export class LocalPluginFiles implements PluginFilesPort {
       throw new Error('Plugin artifact manifest does not match its installed record.')
     }
     return { ...record, directory }
-  }
-
-  private checkPlatform(platforms: string[] | undefined): void {
-    if (platforms && !platforms.includes(this.platform)) {
-      throw new Error(`Plugin does not support this Worker platform: ${this.platform}.`)
-    }
   }
 
   async readResource(snapshot: PluginSnapshot, relative: string): Promise<PluginResource> {
