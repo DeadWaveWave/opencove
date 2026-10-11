@@ -3,7 +3,7 @@
 A theme plugin can change OpenCove's visual foundation, materials, typography,
 component skins and motion. It does not need a backend or a canvas window.
 Install, update, reload, disable and uninstall it through the same plugin manager
-or CLI as any other package. Enabled themes appear in Settings → Appearance.
+or CLI as any other package. Enabled themes appear in the top-right Control Center and Settings → Appearance.
 
 ## Ownership and scope
 
@@ -47,6 +47,15 @@ A minimal package can reproduce the complete Pixel and Pixel Light foundations:
   }
 }
 ```
+
+A theme-only package declares `contributes.themes` and omits `view`, `preview`,
+canvas creation entries (`contributes.actionBar` / `contributes.contextMenu`),
+and commands that open a plugin window. Its detail page shows documentation and
+plugin management controls, without node previews or creation-location switches.
+No diagnostic window is required to install, select or verify a theme; use the
+host's existing windows and Appearance previews. A package that intentionally
+provides a separate tool window may also declare a `view`; its window entries and
+preview remain independent of its theme contributions.
 
 `extends` accepts `dark`, `light`, `pixel`, `pixel-light`, `ember`, or `ember-light`.
 `appearance` must agree with that foundation. Without `extends`, the standard

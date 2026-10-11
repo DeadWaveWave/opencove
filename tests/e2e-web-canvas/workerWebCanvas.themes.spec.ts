@@ -33,6 +33,16 @@ async function selectTheme(page: Page, id: string) {
   await page.getByTestId('settings-panel-close').click()
 }
 
+async function selectControlCenterTheme(page: Page, id: string, title: string) {
+  await page.getByTestId('app-header-control-center').click()
+  const choice = page.getByTestId(`control-center-theme-${id}`)
+  await choice.check()
+  await expect(choice).toBeChecked()
+  await expect(page.getByTestId('control-center-current-theme')).toHaveText(title)
+  await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', id)
+  await page.getByTestId('control-center-close').click()
+}
+
 async function expectFits(surface: Locator) {
   const bounds = await surface.evaluate(element => {
     const rect = element.getBoundingClientRect()
@@ -118,7 +128,7 @@ test('remote theme assets, typography and iframe context survive switches, recov
     const context = observer.locator('#context')
     await expect(context).toContainText('"themeId":"pixel"')
     await observer.locator('#draft').fill('Keep my remote view alive')
-    await selectTheme(page, selectedTheme)
+    await selectControlCenterTheme(page, selectedTheme, 'Studio')
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', 'pixel')
 
     const note = page.locator('.react-flow__node[data-id="theme-note"]')
@@ -179,10 +189,14 @@ test('remote theme assets, typography and iframe context survive switches, recov
     await expect(context).toContainText('"fonts":[]')
     await expect(observer.locator('#draft')).toHaveValue('Keep my remote view alive')
 
-    await selectTheme(page, selectedTheme)
+    await selectControlCenterTheme(page, selectedTheme, 'Studio')
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', selectedTheme)
     await expect(header).toHaveCSS('height', '44px')
+    await page.getByTestId('app-header-control-center').click()
+    const selectedChoice = page.getByTestId(`control-center-theme-${selectedTheme}`)
+    await expect(selectedChoice).toBeChecked()
+    await expect(page.getByTestId('control-center-current-theme')).toHaveText('Studio')
     await invokeValue(page.request, 'command', 'plugin.setEnabled', {
       pluginId: themePluginId,
       enabled: false,
@@ -190,14 +204,33 @@ test('remote theme assets, typography and iframe context survive switches, recov
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel')
     await expect(page.locator('style[data-cove-theme-stylesheet]')).toHaveCount(0)
     await expect(header).toHaveCSS('height', '34px')
+    await expect(
+      page.locator(`[data-testid^="control-center-theme-plugin:${themePluginId}:"]`),
+    ).toHaveCount(0)
     await invokeValue(page.request, 'command', 'plugin.setEnabled', {
       pluginId: themePluginId,
       enabled: true,
     })
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', selectedTheme)
     await expect(context).toContainText(`"themeId":"${selectedTheme}"`)
+    await expect(selectedChoice).toBeChecked()
+    await expect(page.getByTestId('control-center-current-theme')).toHaveText('Studio')
+    await page.getByTestId('control-center-close').click()
 
+    await page.setViewportSize({ width: 390, height: 560 })
+    await page.getByTestId('app-header-control-center').tap()
+    await expectFits(page.getByTestId('control-center'))
+    await page.getByTestId(`control-center-theme-${themeIdentity('light-copy')}`).check()
+    await expect(page.getByTestId('control-center-current-theme')).toHaveText('Pixel light copy')
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', 'pixel-light')
+    await info.attach('web-theme-narrow-control-center', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    })
+    await page.getByTestId('control-center-open-settings').tap()
+    await expect(page.getByTestId('settings-panel')).toBeVisible()
     await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByTestId('settings-panel-close').click()
     await openAppearance(page)
     await expectFits(page.getByTestId('settings-panel'))
     await page.getByTestId(`settings-ui-theme-${themeIdentity('light-copy')}`).click()

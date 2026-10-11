@@ -3,7 +3,10 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { applyUiLanguage } from '@app/renderer/i18n'
-import { UI_THEMES } from '@contexts/settings/domain/agentSettings'
+import { UI_THEMES, type UiTheme } from '@contexts/settings/domain/agentSettings'
+import { examplePlugin } from '@contexts/plugins/presentation/renderer/pluginPresentationTestFixture'
+import * as registry from '@contexts/plugins/presentation/renderer/usePluginRegistry'
+import * as themeApplication from '@contexts/plugins/presentation/renderer/themeApplication'
 import { ControlCenter } from './ControlCenter'
 
 const actions = {
@@ -12,7 +15,13 @@ const actions = {
   onToggleStandbyBanner: vi.fn(),
 }
 
-function Harness({ hasActiveWorkspace = true }: { hasActiveWorkspace?: boolean }) {
+function Harness({
+  hasActiveWorkspace = true,
+  uiTheme = 'pixel',
+}: {
+  hasActiveWorkspace?: boolean
+  uiTheme?: UiTheme
+}) {
   const anchorRef = useRef<HTMLButtonElement | null>(null)
   const settingsRef = useRef<HTMLInputElement | null>(null)
   const [open, setOpen] = useState(false)
@@ -29,7 +38,7 @@ function Harness({ hasActiveWorkspace = true }: { hasActiveWorkspace?: boolean }
         {...actions}
         isOpen={open}
         anchorRef={anchorRef}
-        uiTheme="pixel"
+        uiTheme={uiTheme}
         isMinimapVisible
         isStandbyBannerEnabled
         hasActiveWorkspace={hasActiveWorkspace}
@@ -68,11 +77,19 @@ describe('Control Center surfaces', () => {
     await applyUiLanguage('en')
     vi.useFakeTimers()
     vi.clearAllMocks()
+    vi.spyOn(registry, 'usePluginRegistry').mockReturnValue({ plugins: [], error: null })
+    vi.spyOn(themeApplication, 'useThemeApplicationStatus').mockReturnValue({
+      requestedId: 'pixel',
+      appliedId: 'pixel',
+      loading: false,
+      error: null,
+    })
     setViewportWidth(1200)
   })
 
   afterEach(() => {
     cleanup()
+    vi.restoreAllMocks()
     vi.clearAllTimers()
     vi.useRealTimers()
     setViewportWidth(originalWidth)
@@ -101,6 +118,93 @@ describe('Control Center surfaces', () => {
     const outside = screen.getByRole('button', { name: 'Outside action' })
     outside.focus()
     expect(document.activeElement).toBe(outside)
+  })
+
+  it.each(['en', 'zh-CN'] as const)(
+    'lists available plugin themes with readable names in %s',
+    async language => {
+      await applyUiLanguage(language)
+      const themedPlugin = {
+        ...examplePlugin,
+        themes: [
+          {
+            id: 'night',
+            title: 'Prism Night',
+            appearance: 'dark' as const,
+            tokens: { '--cove-accent': '#aabbcc' },
+          },
+        ],
+      }
+      vi.mocked(registry.usePluginRegistry).mockReturnValue({
+        plugins: [
+          themedPlugin,
+          { ...themedPlugin, id: 'disabled', enabled: false },
+          { ...themedPlugin, id: 'broken', status: 'error' },
+        ],
+        error: null,
+      })
+      const { rerender } = render(<Harness uiTheme="plugin:example-tool:night" />)
+      openControls()
+      expect(screen.getAllByRole('radio')).toHaveLength(UI_THEMES.length + 1)
+      const choice = screen.getByRole('radio', {
+        name: 'Prism Night Example Tool',
+      }) as HTMLInputElement
+      expect(choice.checked).toBe(true)
+      expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Prism Night')
+      rerender(<Harness uiTheme="pixel" />)
+      fireEvent.click(choice)
+      expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('plugin:example-tool:night')
+    },
+  )
+
+  it('tracks plugin availability without rewriting the durable theme choice', () => {
+    const plugin = {
+      ...examplePlugin,
+      themes: [{ id: 'night', title: 'Prism Night', appearance: 'dark' as const, tokens: {} }],
+    }
+    vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [plugin], error: null })
+    const { rerender } = render(<Harness uiTheme="plugin:example-tool:night" />)
+    openControls()
+    vi.mocked(registry.usePluginRegistry).mockReturnValue({
+      plugins: [{ ...plugin, enabled: false }],
+      error: null,
+    })
+    rerender(<Harness uiTheme="plugin:example-tool:night" />)
+    expect(screen.queryByTestId('control-center-theme-plugin:example-tool:night')).toBeNull()
+    expect(screen.getByRole('status').textContent).toContain('unavailable')
+    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Pixel')
+    expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
+    vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [plugin], error: null })
+    rerender(<Harness uiTheme="plugin:example-tool:night" />)
+    expect(
+      (screen.getByTestId('control-center-theme-plugin:example-tool:night') as HTMLInputElement)
+        .checked,
+    ).toBe(true)
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
+  })
+
+  it('explains a failed theme application without replacing the saved choice', () => {
+    const plugin = {
+      ...examplePlugin,
+      themes: [{ id: 'night', title: 'Prism Night', appearance: 'dark' as const, tokens: {} }],
+    }
+    vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [plugin], error: null })
+    vi.mocked(themeApplication.useThemeApplicationStatus).mockReturnValue({
+      requestedId: 'plugin:example-tool:night',
+      appliedId: 'pixel',
+      loading: false,
+      error: 'Missing stylesheet',
+    })
+    render(<Harness uiTheme="plugin:example-tool:night" />)
+    openControls()
+    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Pixel')
+    expect(screen.getByRole('status').textContent).toContain('could not be loaded')
+    expect(
+      (screen.getByTestId('control-center-theme-plugin:example-tool:night') as HTMLInputElement)
+        .checked,
+    ).toBe(true)
+    expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
   })
 
   it('constrains mobile focus and restores the trigger after closing the sheet', () => {

@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyUiLanguage } from '@app/renderer/i18n'
 import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
+import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 import {
   examplePlugin,
   exampleDetails,
@@ -77,6 +78,61 @@ describe('PluginsSection', () => {
     fireEvent.click(screen.getByTestId('settings-plugin-back'))
     expect(screen.getByTestId('settings-plugin-details-example-tool')).toHaveFocus()
     expect(scroller.scrollTop).toBe(128)
+  })
+
+  it.each([true, false])(
+    'keeps a theme-only detail free of node entries and preview while enabled=%s',
+    async enabled => {
+      const plugin: PluginManifest = {
+        ...examplePlugin,
+        nodeKinds: [],
+        actionBar: false,
+        contextMenu: false,
+        hasPreview: false,
+        themes: [{ id: 'night', title: 'Night', appearance: 'dark', tokens: {} }],
+        enabled,
+        status: enabled ? 'ready' : 'disabled',
+      }
+      vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [plugin], error: null })
+      vi.mocked(registry.usePluginManifest).mockReturnValue(plugin)
+      vi.mocked(details.usePluginDetails).mockReturnValue({
+        detail: { ...exampleDetails, plugin },
+        error: null,
+      })
+      renderSettings()
+      fireEvent.click(screen.getByTestId('settings-plugin-details-example-tool'))
+
+      expect(screen.getByText('Themes')).toBeVisible()
+      expect(screen.getByTestId('plugin-readme')).toHaveTextContent('Your tool')
+      expect(screen.queryByText('Canvas node')).toBeNull()
+      expect(screen.queryByText('Action bar')).toBeNull()
+      expect(screen.queryByText('Right-click menu')).toBeNull()
+      expect(screen.queryByRole('group', { name: 'Show in' })).toBeNull()
+      expect(screen.queryByTestId('plugin-node-preview')).toBeNull()
+      expect(screen.getByTestId('settings-plugin-reload')).toBeVisible()
+
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Example Tool' }))
+      await waitFor(() =>
+        expect(registry.changeInstalledPlugin).toHaveBeenCalledWith('plugin.setEnabled', {
+          pluginId: plugin.id,
+          enabled: !enabled,
+        }),
+      )
+    },
+  )
+
+  it('retains declared node entries when a plugin also contributes themes', () => {
+    const plugin: PluginManifest = {
+      ...examplePlugin,
+      themes: [{ id: 'night', title: 'Night', appearance: 'dark', tokens: {} }],
+    }
+    vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [plugin], error: null })
+    renderSettings()
+    fireEvent.click(screen.getByTestId('settings-plugin-details-example-tool'))
+    expect(screen.getByText('Themes')).toBeVisible()
+    expect(screen.getByRole('switch', { name: 'Show in action bar' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Show in right-click menu' })).toBeChecked()
+    expect(screen.getByTestId('plugin-node-preview')).toBeVisible()
   })
 
   it.each([

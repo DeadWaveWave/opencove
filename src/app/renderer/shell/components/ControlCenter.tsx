@@ -17,7 +17,10 @@ import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
 import { useTranslation } from '@app/renderer/i18n'
 import { getUiThemeLabel } from '@app/renderer/i18n/labels'
 import { UI_THEMES, type UiTheme } from '@contexts/settings/domain/agentSettings'
-import { UI_THEME_DESCRIPTORS } from '@contexts/settings/domain/uiSettings'
+import { UI_THEME_DESCRIPTORS, type UiThemeBaseScheme } from '@contexts/settings/domain/uiSettings'
+import { availablePluginThemes } from '@contexts/plugins/domain/pluginThemes'
+import { usePluginRegistry } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
+import { useThemeApplicationStatus } from '@contexts/plugins/presentation/renderer/themeApplication'
 
 export function ControlCenter({
   isOpen,
@@ -45,6 +48,41 @@ export function ControlCenter({
   onOpenSettings: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
+  const { plugins } = usePluginRegistry()
+  const applied = useThemeApplicationStatus()
+  const pluginThemes = availablePluginThemes(plugins)
+  const themeChoices: Array<{
+    id: UiTheme
+    title: string
+    appearance: UiThemeBaseScheme
+    preview: string
+    pluginName?: string
+    style?: React.CSSProperties
+  }> = [
+    ...UI_THEMES.map(id => ({
+      id,
+      title: getUiThemeLabel(t, id),
+      appearance: UI_THEME_DESCRIPTORS[id].baseScheme,
+      preview: id,
+    })),
+    ...pluginThemes.map(({ id, plugin, theme }) => ({
+      id,
+      title: theme.title,
+      appearance: theme.appearance,
+      preview: theme.extends ?? theme.appearance,
+      pluginName: plugin.displayName,
+      style:
+        theme.tokens['--cove-app-background'] || theme.tokens['--cove-accent']
+          ? ({
+              '--cove-control-theme-surface': theme.tokens['--cove-app-background'],
+              '--cove-control-theme-accent': theme.tokens['--cove-accent'],
+            } as React.CSSProperties)
+          : undefined,
+    })),
+  ]
+  const selectedChoice = themeChoices.find(choice => choice.id === uiTheme)
+  const isUnavailable = uiTheme.startsWith('plugin:') && !selectedChoice
+  const hasLoadError = applied.requestedId === uiTheme && Boolean(applied.error)
   const isCompact = useCompactViewport()
   const titleId = useId()
   const initialFocusRef = useRef<HTMLInputElement | null>(null)
@@ -129,7 +167,9 @@ export function ControlCenter({
             className="control-center__current-theme"
             data-testid="control-center-current-theme"
           >
-            {getUiThemeLabel(t, uiTheme)}
+            {hasLoadError
+              ? getUiThemeLabel(t, 'pixel')
+              : (selectedChoice?.title ?? getUiThemeLabel(t, 'pixel'))}
           </span>
         </div>
         <div
@@ -137,31 +177,52 @@ export function ControlCenter({
           role="radiogroup"
           aria-labelledby={`${titleId}-theme`}
         >
-          {UI_THEMES.map(theme => (
-            <label key={theme} className="control-center__theme" data-theme-choice={theme}>
+          {themeChoices.map(theme => (
+            <label
+              key={theme.id}
+              className="control-center__theme"
+              data-theme-choice={theme.id}
+              data-plugin-theme={theme.pluginName ? '' : undefined}
+            >
               <input
                 type="radio"
                 name={`${titleId}-theme`}
-                value={theme}
-                checked={uiTheme === theme}
-                data-testid={`control-center-theme-${theme}`}
+                value={theme.id}
+                checked={uiTheme === theme.id}
+                data-testid={`control-center-theme-${theme.id}`}
                 onChange={() => {
-                  onChangeUiTheme(theme)
+                  onChangeUiTheme(theme.id)
                 }}
               />
               <span className="control-center__theme-option">
                 <span
                   className="control-center__theme-preview"
-                  data-theme-preview={theme}
-                  data-theme-scheme={UI_THEME_DESCRIPTORS[theme].baseScheme}
+                  data-theme-preview={theme.preview}
+                  data-theme-scheme={theme.appearance}
+                  style={theme.style}
+                  data-theme-colors={theme.style ? '' : undefined}
                   aria-hidden="true"
                 />
-                <span className="control-center__theme-label">{getUiThemeLabel(t, theme)}</span>
+                <span className="control-center__theme-label">
+                  {theme.title}
+                  {theme.pluginName ? (
+                    <span className="control-center__theme-source">{theme.pluginName}</span>
+                  ) : null}
+                </span>
                 <Check size={14} className="control-center__theme-check" aria-hidden="true" />
               </span>
             </label>
           ))}
         </div>
+        {isUnavailable || hasLoadError ? (
+          <p className="control-center__theme-status" role="status">
+            {t(
+              hasLoadError
+                ? 'pluginHostExtensions.themeLoadFailed'
+                : 'pluginHostExtensions.unavailableTheme',
+            )}
+          </p>
+        ) : null}
       </section>
 
       <footer className="control-center__footer">
