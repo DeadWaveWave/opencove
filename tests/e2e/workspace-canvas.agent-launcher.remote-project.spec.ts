@@ -1,12 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, mkdtemp, realpath } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from '@playwright/test'
 import type { RegisterWorkerEndpointResult } from '../../src/shared/contracts/dto'
-import { launchApp, removePathWithRetry } from './workspace-canvas.helpers'
+import { createTestUserDataDir, launchApp, removePathWithRetry } from './workspace-canvas.helpers'
 import { createRemoteOnlyProjectViaWizard } from './m6.endpoints-mounts.addProjectWizard.steps'
 import { verifyRemoteOnlyProjectDefaultMount } from './m6.endpoints-mounts.remoteOnly.steps'
+import { verifyRemoteSpaceDefaultTarget } from './workspace-canvas.space-target-default.steps'
 import {
   reserveLoopbackPort,
   startRemoteWorker,
@@ -21,6 +22,7 @@ test('remote project context menu launches terminal and agents in its default re
   const remoteBaseDir = await mkdtemp(path.join(tmpdir(), 'opencove-e2e-m6-remote-'))
   const remoteOnlyDir = path.join(remoteBaseDir, 'remote-only')
   await mkdir(remoteOnlyDir, { recursive: true })
+  await writeFile(path.join(remoteOnlyDir, 'space-target.txt'), 'remote Space target verified')
   const remoteOnlyDirCanonical = await realpath(remoteOnlyDir).catch(() => remoteOnlyDir)
   const remoteOnlyDirHashes = new Set([
     createHash('sha1').update(remoteOnlyDir).digest('hex').slice(0, 12),
@@ -40,7 +42,9 @@ test('remote project context menu launches terminal and agents in its default re
     agentSessionScenario: 'codex-standby-only',
   })
   try {
+    const userDataDir = await createTestUserDataDir()
     const { electronApp, window } = await launchApp({
+      userDataDir,
       env: { OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'codex-standby-only' },
     })
     try {
@@ -83,6 +87,12 @@ test('remote project context menu launches terminal and agents in its default re
         remoteEndpointId,
         remoteOnlyDir,
         remoteOnlyDirHashes,
+      })
+      await verifyRemoteSpaceDefaultTarget({
+        window,
+        userDataDir,
+        endpointId: remoteEndpointId,
+        rootPath: remoteOnlyDir,
       })
       await test.info().attach('remote-project-agent-launch', {
         body: await window.screenshot(),

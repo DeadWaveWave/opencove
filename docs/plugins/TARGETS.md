@@ -92,7 +92,10 @@ alive and stop at a terminal status. Results include `operationId`, `target`,
 `running`, `cancelling`, `completed`, `cancelled` or `failed`. Cancellation remains
 `cancelling` until termination is observed; it must not be presented as completed
 merely because a stop request was sent. Inspect the exit code before reporting
-success. Output is combined terminal output and may contain ANSI control sequences,
+success: `completed` means the process ended, including nonzero exit codes.
+`cancelled` can carry exit code zero and must still be reported as cancelled.
+Start with a 500 ms polling interval and stop polling at a terminal status.
+Output is combined terminal output and may contain ANSI control sequences,
 not separate stdout/stderr streams.
 
 Timeout defaults to 30 seconds; `timeoutMs` accepts integers from 100 to 120,000.

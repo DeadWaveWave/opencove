@@ -42,7 +42,7 @@ Space 有两类不同事实：
 
 Create:
 
-- Blank canvas create 产生 top-level Space。
+- Blank canvas create 产生 top-level Space。提交前先解析项目默认 mount，把其 `mountId` 和工作目录一起保存；远程项目的本机元数据目录不是 Space 执行目录。缺少有效位置时创建失败，不降级到本机；异步解析期间切换项目或卸载画布后不再写回。
 - Inside Space create 产生 child Space，并把 `parentSpaceId` 指向被命中的最内层 Space。
 - 新建 child Space 初始使用父 Space 的视觉上下文；执行上下文必须通过 shared Space scope resolver 得到，调用方不能自己用 parent 链猜目录。
 

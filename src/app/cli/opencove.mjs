@@ -44,7 +44,7 @@ async function main() {
 
   if (wantsHelp || command.length === 0) {
     printUsage()
-    process.exit(command.length === 0 ? 2 : 0)
+    process.exit(wantsHelp ? 0 : 2)
   }
 
   if (command === 'runtime') {

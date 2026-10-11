@@ -5,6 +5,25 @@ import { join, resolve } from 'node:path'
 import { expect, it } from 'vitest'
 import { runCommand } from '../../../src/platform/process/runCommand'
 
+it.each([
+  { args: ['--help'], exitCode: 0 },
+  { args: ['-h'], exitCode: 0 },
+  { args: [], exitCode: 2 },
+])(
+  'global help $args exits with $exitCode without connecting to a Worker',
+  async ({ args, exitCode }) => {
+    const result = await runCommand(
+      process.execPath,
+      [resolve('src/app/cli/opencove.mjs'), ...args, '--endpoint', 'http://127.0.0.1:1'],
+      process.cwd(),
+      { timeoutMs: 3000 },
+    )
+    expect(result.exitCode, result.stderr).toBe(exitCode)
+    expect(result.stdout).toContain('OpenCove CLI')
+    expect(result.stderr).toBe('')
+  },
+)
+
 it('worker start --help exits without a Worker or profile, even with runtime launch flags', async () => {
   const root = await mkdtemp(join(tmpdir(), 'opencove-help-regression-'))
   try {

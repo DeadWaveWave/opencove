@@ -77,7 +77,7 @@ export function useWorkspaceCanvasSpaces({
     parentSpaceId: string,
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
   ) => string | null
-  createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => Promise<void>
   spaceTargetMountPicker: SpaceTargetMountPickerState | null
   setSpaceTargetMountPicker: React.Dispatch<
     React.SetStateAction<SpaceTargetMountPickerState | null>
@@ -341,8 +341,8 @@ export function useWorkspaceCanvasSpaces({
   })
 
   const createEmptySpaceAtPoint = useCallback(
-    (point: { x: number; y: number }) => {
-      const createdSpaceId = createEmptySpaceAtPointInternal(point)
+    async (point: { x: number; y: number }) => {
+      const createdSpaceId = await createEmptySpaceAtPointInternal(point)
       if (!createdSpaceId) {
         return
       }
