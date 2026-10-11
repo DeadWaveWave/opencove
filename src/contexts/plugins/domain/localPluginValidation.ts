@@ -1,3 +1,4 @@
+import { normalizePluginSidebar } from './pluginSidebar'
 import { normalizePluginPreferences, normalizePluginThemes } from './pluginHostExtensionValidation'
 import { normalizePluginEngines } from './pluginCompatibility'
 import type { LocalPluginPackage } from './pluginRuntimeTypes'
@@ -110,11 +111,16 @@ function command(value: Record<string, unknown>): PluginCommandDeclaration {
   if (
     menus !== undefined &&
     (!Array.isArray(menus) ||
-      menus.length > 4 ||
-      menus.some(item => !['commandCenter', 'canvas', 'node', 'space'].includes(String(item))) ||
+      menus.length > 5 ||
+      menus.some(
+        item => !['commandCenter', 'canvas', 'node', 'space', 'sidebar'].includes(String(item)),
+      ) ||
       new Set(menus).size !== menus.length)
   ) {
     throw new Error('Invalid plugin command menus.')
+  }
+  if (value.target === 'window' && Array.isArray(menus) && menus.includes('sidebar')) {
+    throw new Error('Sidebar actions require a backend command.')
   }
   return {
     ...(menus === undefined ? {} : { menus: menus as PluginCommandMenu[] }),
@@ -166,6 +172,7 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
   const skills = declarations(contributes.skills, 'skills', skill)
   const preferences = normalizePluginPreferences(contributes.preferences)
   const themes = normalizePluginThemes(contributes.themes)
+  const sidebar = normalizePluginSidebar(contributes.sidebar, commands)
   if (
     !view &&
     (raw.preview !== undefined ||
@@ -240,6 +247,7 @@ export function normalizeLocalPluginPackage(value: unknown): LocalPluginPackage 
       skills,
       preferences,
       themes,
+      sidebar,
     },
     ...(raw.platforms === undefined
       ? {}

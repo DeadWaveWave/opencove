@@ -141,13 +141,16 @@ async function resolveRemoteOrThrow(
 }
 
 export async function invokeRemoteValue<TResult>(options: {
+  assertActive?: () => void
   topology: WorkerTopologyStore
   endpointId: string
   id: string
   kind: 'query' | 'command'
   payload: unknown
 }): Promise<TResult> {
+  options.assertActive?.()
   const endpoint = await resolveRemoteOrThrow(options.topology, options.endpointId)
+  options.assertActive?.()
 
   try {
     const { result } = await invokeControlSurface(endpoint, {

@@ -3,6 +3,11 @@ export const zhCNSettingsPanelPlugins = {
   emptyHelp: '安装插件，为画布添加工具、命令或 Skill。从文档库开始了解和使用。',
   library: {
     articles: {
+      HOST_API: { title: '宿主接口总览', description: '统一能力清单、明确目标与资源生命周期。' },
+      FILESYSTEM: { title: '文件与目录变化', description: '本地与远程文件操作、目录变化采样。' },
+      CANVAS_API: { title: '节点与会话', description: '创建、定位和控制节点、终端与 Agent。' },
+      EVENTS: { title: '变化订阅', description: '有限的状态变化采样与订阅释放。' },
+      SIDEBAR: { title: 'Sidebar 扩展', description: '声明项目树和条目对应的后端操作。' },
       overview: { title: '插件指南', description: '完整介绍与 CLI 命令索引。英文参考。' },
       HOST_EXTENSIONS: {
         title: '主机扩展能力',
@@ -23,7 +28,16 @@ export const zhCNSettingsPanelPlugins = {
       },
 
       start: { title: '插件能做什么', description: '从画布工具到 Agent 命令，了解插件的用途。' },
-      install: { title: '安装与使用', description: '安装插件、选择入口，并安全保留自己的数据。' },
+      install: {
+        build: '构建方式',
+        prebuilt: '已构建的文件',
+        script: 'package 脚本',
+        output: '构建输出目录',
+        buildHelp:
+          'npm 需要 package-lock.json，pnpm 需要 pnpm-lock.yaml。安装依赖时禁用生命周期脚本，再使用 Worker 的普通权限执行所选脚本。',
+        title: '安装与使用',
+        description: '安装插件、选择入口，并安全保留自己的数据。',
+      },
       build: { title: '制作第一个插件', description: '跟随 Hello Clock，从可运行示例开始。' },
       reference: {
         title: '开发资料导航',
@@ -49,6 +63,13 @@ export const zhCNSettingsPanelPlugins = {
     reference: '技术参考',
   },
   install: {
+    build: '构建方式',
+    prebuilt: '已构建的文件',
+    script: 'package 脚本',
+    output: '构建输出目录',
+    buildHelp:
+      'npm 需要 package-lock.json，pnpm 需要 pnpm-lock.yaml。安装依赖时禁用生命周期脚本，再使用 Worker 的普通权限执行所选脚本。',
+
     title: '安装插件',
     close: '关闭安装',
     source: '插件来源',
@@ -62,7 +83,7 @@ export const zhCNSettingsPanelPlugins = {
     options: '可选仓库设置',
     ref: '分支、标签或提交',
     packageDirectory: '仓库中的插件目录',
-    gitHelp: '从可信仓库安装可直接运行的文件。需要构建的插件可通过 CLI 构建选项安装。',
+    gitHelp: '从信任的仓库安装。README 要求构建或选择子目录时，请展开仓库设置。',
     localHelp: '使用所连接运行环境机器上的绝对目录路径，源文件仍由你管理。',
     working: '处理中…',
     search: '搜索 GitHub',
@@ -71,7 +92,38 @@ export const zhCNSettingsPanelPlugins = {
     noResults: '没有找到匹配的仓库，请更换搜索内容。',
     choose: '选择仓库',
   },
+  repository: {
+    back: '搜索结果',
+    loading: '正在读取仓库…',
+    details: '查看详情',
+    choose: '使用已查看的版本',
+    hostVersion: 'OpenCove 版本',
+    platforms: 'Worker 系统',
+    allPlatforms: '所有系统（未独立验证）',
+    notDeclared: '未声明',
+    readOnly:
+      '这里只展示仓库内容，不安装或执行代码。下一步将使用上方提交版本安装，也可以调整构建选项。',
+    noReadme: '此版本没有 README。',
+  },
   source: {
+    installCandidateHelp: '没有安装新版本。工作副本已保留，可修复报告的问题后再明确应用。',
+    candidateFailed: '构建或启动失败',
+    updateRef: '更新分支、标签或提交',
+    candidates: '需要处理的更新',
+    candidateHelp: '当前版本会继续运行。请查看独立工作副本，解决并提交冲突，再明确应用。',
+    conflict: '合并冲突',
+    prepared: '等待检查',
+    stale: '候选版本已过期',
+    staleHelp:
+      '安装状态或原始源码已变化。请准备新的更新并保留已检查的解决方案；此候选版本不能覆盖当前版本。',
+    inspectCandidate: '查看工作副本',
+    workerDirectory: '此目录位于当前连接的 Worker 上，与正在使用的源码目录分开。',
+    copyPath: '复制目录',
+    applyCandidate: '应用已解决的版本',
+    copyResolution: '复制处理提示词',
+    resolvePrompt:
+      '请检查当前 Worker 上的 OpenCove 插件候选目录 {{directory}}。先运行 opencove plugin guide 阅读指南。解决合并冲突或报告的构建问题，检查并提交解决结果。不要重置或覆盖原始源码。确认完成后使用 opencove plugin apply {{candidate}} 应用。如果候选已过期，请准备新的更新，并保留已检查的修改。',
+
     repository: '仓库',
     dirty: '源目录有本地修改。更新会在独立工作副本中合并。',
     check: '检查更新',
@@ -135,6 +187,8 @@ export const zhCNSettingsPanelPlugins = {
   },
   capabilitiesLabel: '可用入口',
   contributions: {
+    sidebar: '在侧边栏显示',
+    sidebarDescription: '在项目侧边栏中显示此插件的分组。',
     title: '显示位置',
     help: '选择显示插件入口的位置，不影响已有窗口。',
     actionBar: '在操作栏中显示',
@@ -143,6 +197,7 @@ export const zhCNSettingsPanelPlugins = {
     contextMenuDescription: '在画布空白处的菜单中显示',
   },
   capabilities: {
+    sidebar: '侧边栏',
     preferences: '偏好设置',
     themes: '主题',
     canvas: '画布节点',

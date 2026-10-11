@@ -1,3 +1,4 @@
+import { registerPluginSidebarHandlers } from './pluginSidebarHandlers'
 import { normalizePluginHostContext } from '@contexts/plugins/domain/pluginCommandContext'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceHandler } from '../types'
@@ -78,6 +79,7 @@ export function registerPluginCommandHandlers(
     publishSyncEvent?: (payload: SyncEventPayload) => number
   },
 ): void {
+  registerPluginSidebarHandlers(control, deps)
   let mutations: Promise<unknown> = Promise.resolve()
   const register = <T, R>(
     id: string,

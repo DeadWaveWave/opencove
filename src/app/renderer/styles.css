@@ -62,6 +62,7 @@
 @import './styles/settings-panel.plugin-tools.css';
 @import './styles/plugin-readme.css';
 @import './styles/plugin-node-preview.css';
+@import './styles/plugin-sidebar.css';
 @import './styles/cove-window.css';
 @import './styles/anchored-operation-popover.css';
 @import './styles/workspace-operation-popovers.css';

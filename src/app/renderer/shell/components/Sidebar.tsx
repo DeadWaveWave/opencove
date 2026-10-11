@@ -1,3 +1,4 @@
+import { PluginSidebar } from '@contexts/plugins/presentation/renderer/PluginSidebar'
 import React, { useCallback, useEffect, useState } from 'react'
 import { MoreHorizontal, Settings } from 'lucide-react'
 import {
@@ -429,6 +430,7 @@ export function Sidebar({
                       setRestoredLabel(name)
                     }}
                   />
+                  <PluginSidebar projectId={displayedTree.workspace.id} />
                   {projectedView?.matchingAgentCount === 0 &&
                   projectedView.tree.spaceGroups.length === 0 &&
                   (sidebarView.mode ?? 'normal') !== 'normal' ? (

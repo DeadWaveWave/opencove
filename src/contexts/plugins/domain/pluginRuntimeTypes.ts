@@ -1,3 +1,4 @@
+import type { PluginSidebarDeclaration } from './pluginSidebar'
 import type {
   PluginCommandDeclaration,
   PluginIconDeclaration,
@@ -29,6 +30,7 @@ export interface LocalPluginPackage {
     skills?: PluginSkillDeclaration[]
     preferences?: PluginPreferenceDeclaration[]
     themes?: PluginThemeDeclaration[]
+    sidebar?: PluginSidebarDeclaration[]
   }
   platforms?: Array<'darwin' | 'linux' | 'win32'>
   engines?: { opencove: string }
@@ -51,7 +53,7 @@ export interface PluginViewContext {
 }
 
 export interface PluginHostContext {
-  surface: 'commandCenter' | 'canvas' | 'node' | 'space'
+  surface: 'commandCenter' | 'canvas' | 'node' | 'space' | 'sidebar'
   projectId?: string
   spaceId?: string
   nodeIds?: string[]

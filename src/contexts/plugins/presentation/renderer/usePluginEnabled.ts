@@ -22,5 +22,7 @@ export function usePluginContributionEnabled(
   const contributionEnabled = useAppStore(state =>
     isPluginContributionEnabled(state.agentSettings, pluginId, contribution),
   )
-  return plugin?.[contribution] === true && enabled && contributionEnabled
+  const declared =
+    contribution === 'sidebar' ? Boolean(plugin?.sidebar?.length) : plugin?.[contribution] === true
+  return declared && enabled && contributionEnabled
 }

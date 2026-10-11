@@ -70,7 +70,7 @@ export class PluginBackendHostRequests {
     if (!this.options.request) {
       throw new Error('Plugin host capabilities are unavailable.')
     }
-    const payload = pluginJsonValue(message.payload, 1024 * 1024, 'host request')
+    const payload = pluginJsonValue(message.payload, 2 * 1024 * 1024, 'host request')
     const value = await this.options.request(message.operation, payload)
     return pluginJsonValue(value, 2 * 1024 * 1024, 'host response')
   }

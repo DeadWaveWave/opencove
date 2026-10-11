@@ -77,6 +77,12 @@ export function registerPluginDistributionHandlers(
     value => service.rollback(value.pluginId, value.revision),
   )
   register(
+    'plugin.repository.details',
+    'query',
+    value => pluginString(distributionFields(value, ['repository']).repository, 'repository', 2000),
+    value => service.repositoryDetails(value),
+  )
+  register(
     'plugin.discover',
     'query',
     value => {

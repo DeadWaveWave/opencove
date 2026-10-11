@@ -243,6 +243,9 @@ describe('Git source, candidate and active artifact ownership', { timeout: 30_00
     expect(failed.error).toContain('changed')
     await manager.dispose()
     const restarted = runtime()
+    expect((await restarted.service.inspect(pkg.id)).candidates).toContainEqual(
+      expect.objectContaining({ id: failed.candidateId, stale: 'installation' }),
+    )
     expect(await restarted.service.apply(failed.candidateId)).toMatchObject({
       status: 'failed',
       error: expect.stringContaining('stale'),
@@ -386,6 +389,9 @@ describe('Git source, candidate and active artifact ownership', { timeout: 30_00
       status: 'failed',
       error: expect.stringContaining('source changed'),
     })
+    expect((await service.inspect(pkg.id)).candidates).toContainEqual(
+      expect.objectContaining({ id: failed.candidateId, stale: 'source' }),
+    )
     expect((await service.inspect(pkg.id)).sourceDirectory).toBe(original)
     expect(await readFile(join(original, 'concurrent.txt'), 'utf8')).toBe('keep')
   })

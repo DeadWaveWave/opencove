@@ -386,3 +386,39 @@ describe('control surface filesystem handlers', () => {
     }
   })
 })
+
+it('does not mutate a local file if the caller retires while root approval is pending', async () => {
+  const { filePath } = await createFixture()
+  let approve!: (value: boolean) => void
+  const isPathApproved = vi.fn(
+    () =>
+      new Promise<boolean>(resolve => {
+        approve = resolve
+      }),
+  )
+  const control = createControlSurface()
+  registerFilesystemHandlers(control, {
+    approvedWorkspaces: { registerRoot: async () => undefined, isPathApproved },
+  })
+  let active = true
+  const pending = control.invoke(
+    {
+      ...ctx,
+      assertActive: () => {
+        if (!active) {
+          throw new Error('Caller retired')
+        }
+      },
+    },
+    {
+      kind: 'command',
+      id: 'filesystem.writeFileText',
+      payload: { uri: toFileUri(filePath), content: 'should not replace', overwrite: true },
+    },
+  )
+  expect(isPathApproved).toHaveBeenCalledOnce()
+  active = false
+  approve(true)
+  expect((await pending).ok).toBe(false)
+  expect(await readFile(filePath, 'utf8')).toBe('hello')
+})

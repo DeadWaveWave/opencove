@@ -1,3 +1,4 @@
+import { createPluginHostApi } from '../domain/pluginHostApi.js'
 import { pluginJsonValue } from '../domain/pluginJsonValue.js'
 
 interface PendingHostRequest {
@@ -17,21 +18,7 @@ export class PluginBackendHostClient {
     private readonly timeoutMs = 30_000,
   ) {}
 
-  readonly api = Object.freeze({
-    target: Object.freeze({
-      list: () => this.request('target.list', {}),
-      resolve: (input: unknown) => this.request('target.resolve', input),
-    }),
-    filesystem: Object.freeze({
-      readDirectory: (input: unknown) => this.request('filesystem.readDirectory', input),
-      readText: (input: unknown) => this.request('filesystem.readText', input),
-    }),
-    operations: Object.freeze({
-      start: (input: unknown) => this.request('operations.start', input),
-      get: (input: unknown) => this.request('operations.get', input),
-      cancel: (input: unknown) => this.request('operations.cancel', input),
-    }),
-  })
+  readonly api = createPluginHostApi((operation, payload) => this.request(operation, payload))
 
   private async request(operation: string, payload: unknown): Promise<unknown> {
     if (this.closed) {
@@ -40,7 +27,7 @@ export class PluginBackendHostClient {
     if (this.pending.size >= 128) {
       throw new Error('Too many pending plugin host requests.')
     }
-    const value = pluginJsonValue(payload, 1024 * 1024, 'host request')
+    const value = pluginJsonValue(payload, 2 * 1024 * 1024, 'host request')
     const requestId = String(++this.sequence)
     return await new Promise((resolve, reject) => {
       const fail = (error: Error | null) => {

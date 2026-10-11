@@ -1,3 +1,8 @@
+import {
+  inspectGithubPluginRepository,
+  githubJson,
+  githubRepository,
+} from './GithubPluginRepository'
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -231,26 +236,23 @@ export class GitPluginSources implements PluginDistributionPort {
     )
     return candidates.filter(item => item.pluginId === pluginId)
   }
+  repositoryDetails(repository: string) {
+    return inspectGithubPluginRepository(repository)
+  }
   async discover(query: string) {
     const search = pluginString(query || 'opencove', 'search', 200)
-    const response = await fetch(
-      `https://api.github.com/search/repositories?q=${encodeURIComponent(`topic:opencove-plugin ${search === 'opencove' ? '' : search}`)}&per_page=20`,
-      {
-        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenCove' },
-        signal: AbortSignal.timeout(10_000),
-      },
+    const body = await githubJson(
+      `search/repositories?q=${encodeURIComponent(`topic:opencove-plugin ${search === 'opencove' ? '' : search}`)}&per_page=20`,
     )
-    if (!response.ok) {
-      throw new Error(
-        `GitHub discovery failed (${response.status}); search does not install plugins.`,
-      )
+    if (!body) {
+      throw new Error('GitHub plugin search was not found.')
     }
-    const body = pluginRecord(await response.json())
     const repositories = (Array.isArray(body.items) ? body.items : []).slice(0, 20).map(value => {
       const item = pluginRecord(value)
+      const location = githubRepository(String(item.html_url ?? ''))
       return {
         name: String(item.full_name ?? ''),
-        url: String(item.html_url ?? ''),
+        url: location.repository,
         description: String(item.description ?? ''),
         stars: Number(item.stargazers_count ?? 0),
         updatedAt: String(item.updated_at ?? ''),

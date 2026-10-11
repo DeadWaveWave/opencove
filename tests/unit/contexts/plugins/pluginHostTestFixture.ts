@@ -9,6 +9,7 @@ export async function writePluginHostTestFixture(root: string): Promise<string> 
       ['infrastructure/pluginHostEntry.ts', 'infrastructure/pluginHostEntry.mjs'],
       ['infrastructure/PluginBackendHostClient.ts', 'infrastructure/PluginBackendHostClient.js'],
       ['domain/pluginJsonValue.ts', 'domain/pluginJsonValue.js'],
+      ['domain/pluginHostApi.ts', 'domain/pluginHostApi.js'],
     ].map(async ([source, output]) => {
       const transformed = await transformWithEsbuild(
         await readFile(resolve('src/contexts/plugins', source), 'utf8'),

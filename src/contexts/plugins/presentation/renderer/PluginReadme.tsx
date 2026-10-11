@@ -33,12 +33,14 @@ export function PluginReadme({
   markdown,
   assets = {},
   resolveDocumentLink,
+  resolveUrl,
   onOpenDocument,
   anchor,
   focusTitle = false,
 }: {
   markdown: string
   assets?: Readonly<Record<string, string>>
+  resolveUrl?: (url: string, kind: string) => string
   resolveDocumentLink?: (href: string) => string | null
   onOpenDocument?: (id: string) => void
   anchor?: string
@@ -61,7 +63,7 @@ export function PluginReadme({
         urlTransform={(url, key) =>
           key === 'href' && resolveDocumentLink?.(url)
             ? url
-            : resolvePluginMarkdownUrl(url, key, assets)
+            : resolvePluginMarkdownUrl(resolveUrl?.(url, key) ?? url, key, assets)
         }
         components={{
           h1: ({ children }) => <h1 tabIndex={focusTitle ? -1 : undefined}>{children}</h1>,

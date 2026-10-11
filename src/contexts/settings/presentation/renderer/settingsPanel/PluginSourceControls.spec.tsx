@@ -89,4 +89,69 @@ describe('plugin source actions', () => {
       }),
     )
   })
+  it('shows retained candidate recovery and disables stale apply without deleting the working copy', async () => {
+    invoke.mockResolvedValue({
+      distribution: { repository: 'https://github.com/example/tool', ref: 'main' },
+      dirty: false,
+      history: [],
+      candidates: [
+        {
+          id: 'pending',
+          directory: '/worker/candidates/pending',
+          status: 'conflict',
+          error: 'Conflict in README',
+        },
+        { id: 'old', directory: '/worker/candidates/old', status: 'failed', stale: 'installation' },
+      ],
+    })
+    const clipboard = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('opencoveApi', {
+      controlSurface: { invoke },
+      clipboard: { writeText: clipboard },
+    })
+    render(<PluginSourceControls plugin={examplePlugin} />)
+    const apply = await screen.findByTestId('settings-plugin-candidate-apply-pending')
+    expect(apply).toBeEnabled()
+    expect(screen.getByTestId('settings-plugin-candidate-apply-old')).toBeDisabled()
+    fireEvent.click(screen.getAllByText('Inspect working copy')[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Copy directory', hidden: true })[0])
+    await waitFor(() => expect(clipboard).toHaveBeenCalledWith('/worker/candidates/pending'))
+    fireEvent.click(apply)
+    await waitFor(() =>
+      expect(registry.changeInstalledPlugin).toHaveBeenCalledWith('plugin.git.apply', {
+        candidateId: 'pending',
+      }),
+    )
+  })
+  it('clears an earlier check when ref changes and submits only the explicitly checked ref', async () => {
+    render(<PluginSourceControls plugin={examplePlugin} />)
+    const field = await screen.findByTestId('settings-plugin-update-ref')
+    fireEvent.change(field, { target: { value: 'stable' } })
+    invoke.mockResolvedValueOnce({
+      updateAvailable: false,
+      currentCommit: 'same',
+      availableCommit: 'same',
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }))
+    await screen.findByRole('button', { name: 'Apply update' })
+    expect(invoke).toHaveBeenCalledWith({
+      kind: 'command',
+      id: 'plugin.git.check',
+      payload: { pluginId: examplePlugin.id, ref: 'stable' },
+    })
+    fireEvent.change(field, { target: { value: 'other' } })
+    expect(screen.queryByRole('button', { name: 'Apply update' })).toBeNull()
+  })
+  it('keeps Chinese candidate recovery labels readable', async () => {
+    await applyUiLanguage('zh-CN')
+    invoke.mockResolvedValue({
+      distribution: null,
+      dirty: false,
+      history: [],
+      candidates: [{ id: 'old', directory: '/worker/old', status: 'failed', stale: 'source' }],
+    })
+    render(<PluginSourceControls plugin={examplePlugin} />)
+    expect(await screen.findByText('候选版本已过期')).toBeVisible()
+    expect(screen.getByRole('button', { name: '应用已解决的版本' })).toBeDisabled()
+  })
 })

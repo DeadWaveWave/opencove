@@ -92,7 +92,7 @@ export function registerSessionLaunchAgentInMountHandler(
             debugMessage: `Remote endpoint unavailable: ${target.endpointId}`,
           })
         }
-
+        ctx.assertActive?.()
         const remoteResult = await (async () => {
           const { result } = await invokeControlSurface(endpoint, {
             kind: 'command',
@@ -108,6 +108,7 @@ export function registerSessionLaunchAgentInMountHandler(
             throw createAppError(result.error)
           }
 
+          ctx.assertActive?.()
           const agentLaunchResult = await invokeControlSurface(endpoint, {
             kind: 'command',
             id: 'session.launchAgent',
@@ -356,7 +357,6 @@ export function registerSessionLaunchAgentInMountHandler(
         provider === 'gemini' && mode === 'new'
           ? await captureGeminiSessionDiscoveryCursor(cwd).catch(() => null)
           : undefined
-
       const spawnCols = payload.cols ?? 80
       const spawnRows = payload.rows ?? 24
       logAgentLaunchInfo(
@@ -373,6 +373,11 @@ export function registerSessionLaunchAgentInMountHandler(
           argCount: resolvedSpawn.args.length,
         },
       )
+      try {
+        ctx.assertActive?.()
+      } catch (error) {
+        return rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts)
+      }
       const { sessionId } = await deps.ptyRuntime
         .spawnSession({
           cwd: resolvedSpawn.cwd,

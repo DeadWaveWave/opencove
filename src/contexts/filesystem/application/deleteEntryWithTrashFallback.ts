@@ -38,6 +38,10 @@ export async function deleteEntryWithTrashFallback({
   trashItem: (targetPath: string) => Promise<void>
   trashTimeoutMs?: number
 }): Promise<void> {
+  if (input.recursive !== undefined) {
+    await deleteEntryUseCase(port, input)
+    return
+  }
   const targetPath = fileURLToPath(input.uri)
 
   try {

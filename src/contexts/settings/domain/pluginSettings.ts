@@ -4,7 +4,7 @@ interface PluginEnablementSettings {
   disabledPluginIds?: readonly string[]
 }
 
-export type PluginContribution = 'actionBar' | 'contextMenu'
+export type PluginContribution = 'actionBar' | 'contextMenu' | 'sidebar'
 export type PluginContributionPreferences = Record<
   string,
   Partial<Record<PluginContribution, boolean>>
@@ -31,7 +31,7 @@ export function normalizePluginContributions(value: unknown): PluginContribution
       }
       const record = preferences as Record<string, unknown>
       const normalized = Object.fromEntries(
-        (['actionBar', 'contextMenu'] as const)
+        (['actionBar', 'contextMenu', 'sidebar'] as const)
           .filter(key => typeof record[key] === 'boolean')
           .map(key => [key, record[key]]),
       )

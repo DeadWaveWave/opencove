@@ -8,7 +8,7 @@ export function normalizePluginHostContext(value: unknown): PluginHostContext | 
   const raw = pluginRecord(value)
   if (
     Object.keys(raw).some(key => !['surface', 'projectId', 'spaceId', 'nodeIds'].includes(key)) ||
-    !['commandCenter', 'canvas', 'node', 'space'].includes(String(raw.surface))
+    !['commandCenter', 'canvas', 'node', 'space', 'sidebar'].includes(String(raw.surface))
   ) {
     throw new Error('Invalid plugin command context.')
   }

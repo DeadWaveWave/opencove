@@ -21,10 +21,13 @@ export class PluginStorageOwner {
   async preferencesGet(pluginId: string) {
     return await readPluginPreferences(this.options.files, await this.options.runtime(pluginId))
   }
-  async preferencesSet(pluginId: string, key: string, value: unknown) {
-    return await this.options.transact(async () =>
-      writePluginPreference(this.options.files, await this.options.runtime(pluginId), key, value),
-    )
+  async preferencesSet(pluginId: string, key: string, value: unknown, assertActive?: () => void) {
+    return await this.options.transact(async () => {
+      assertActive?.()
+      const runtime = await this.options.runtime(pluginId)
+      assertActive?.()
+      return writePluginPreference(this.options.files, runtime, key, value, assertActive)
+    })
   }
   async viewPreferencesGet(viewId: string) {
     const view = this.options.view(viewId)
@@ -46,7 +49,11 @@ export class PluginStorageOwner {
             },
           }
         : this.options.files
-      return await writePluginPreference(files, view.runtime, key, value)
+      return await writePluginPreference(files, view.runtime, key, value, () => {
+        if (this.options.view(viewId) !== view) {
+          throw new Error('Plugin view is no longer active.')
+        }
+      })
     })
   }
   async get(viewId: string, key: string): Promise<unknown> {

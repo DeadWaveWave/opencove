@@ -1,3 +1,7 @@
+import {
+  FILE_MUTATION_CAPABILITIES,
+  optionalFileMutationBoolean,
+} from '../../../../contexts/filesystem/domain/fileMutationOptions'
 import { normalizeFileReadLimit } from '../../../../contexts/filesystem/domain/fileReadLimits'
 import { fileURLToPath } from 'node:url'
 import type { ControlSurface } from '../controlSurface'
@@ -111,6 +115,7 @@ function normalizeWriteFileTextPayload(payload: unknown): WriteFileTextInput {
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem.writeFileText'),
     content,
+    overwrite: optionalFileMutationBoolean(payload.overwrite),
   }
 }
 
@@ -188,6 +193,7 @@ function normalizeDeleteEntryPayload(payload: unknown): DeleteEntryInput {
 
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem.deleteEntry'),
+    recursive: optionalFileMutationBoolean(payload.recursive),
   }
 }
 
@@ -198,6 +204,12 @@ export function registerFilesystemHandlers(
     deleteEntry?: (uri: string) => Promise<void>
   },
 ): void {
+  controlSurface.register('filesystem.mutationCapabilities', {
+    kind: 'query',
+    validate: () => undefined,
+    handle: async () => FILE_MUTATION_CAPABILITIES,
+    defaultErrorCode: 'common.unexpected',
+  })
   const port = createLocalFileSystemPort()
   const deleteEntry = async (uri: string): Promise<void> => {
     if (deps.deleteEntry) {
@@ -243,11 +255,12 @@ export function registerFilesystemHandlers(
   controlSurface.register('filesystem.createDirectory', {
     kind: 'command',
     validate: normalizeCreateDirectoryPayload,
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       await assertApprovedUri(
         payload.uri,
         'filesystem.createDirectory uri is outside approved roots',
       )
+      ctx.assertActive?.()
       await createDirectoryUseCase(port, payload)
     },
     defaultErrorCode: 'common.unexpected',
@@ -256,8 +269,9 @@ export function registerFilesystemHandlers(
   controlSurface.register('filesystem.writeFileText', {
     kind: 'command',
     validate: normalizeWriteFileTextPayload,
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       await assertApprovedUri(payload.uri, 'filesystem.writeFileText uri is outside approved roots')
+      ctx.assertActive?.()
       await writeFileTextUseCase(port, payload)
     },
     defaultErrorCode: 'common.unexpected',
@@ -266,7 +280,7 @@ export function registerFilesystemHandlers(
   controlSurface.register('filesystem.copyEntry', {
     kind: 'command',
     validate: normalizeCopyEntryPayload,
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       await assertApprovedUri(
         payload.sourceUri,
         'filesystem.copyEntry source is outside approved roots',
@@ -275,6 +289,7 @@ export function registerFilesystemHandlers(
         payload.targetUri,
         'filesystem.copyEntry target is outside approved roots',
       )
+      ctx.assertActive?.()
       await copyEntryUseCase(port, payload)
     },
     defaultErrorCode: 'common.unexpected',
@@ -283,7 +298,7 @@ export function registerFilesystemHandlers(
   controlSurface.register('filesystem.moveEntry', {
     kind: 'command',
     validate: normalizeMoveEntryPayload,
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       await assertApprovedUri(
         payload.sourceUri,
         'filesystem.moveEntry source is outside approved roots',
@@ -292,6 +307,7 @@ export function registerFilesystemHandlers(
         payload.targetUri,
         'filesystem.moveEntry target is outside approved roots',
       )
+      ctx.assertActive?.()
       await moveEntryUseCase(port, payload)
     },
     defaultErrorCode: 'common.unexpected',
@@ -300,7 +316,7 @@ export function registerFilesystemHandlers(
   controlSurface.register('filesystem.renameEntry', {
     kind: 'command',
     validate: normalizeRenameEntryPayload,
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       await assertApprovedUri(
         payload.sourceUri,
         'filesystem.renameEntry source is outside approved roots',
@@ -309,6 +325,7 @@ export function registerFilesystemHandlers(
         payload.targetUri,
         'filesystem.renameEntry target is outside approved roots',
       )
+      ctx.assertActive?.()
       await renameEntryUseCase(port, payload)
     },
     defaultErrorCode: 'common.unexpected',
@@ -317,9 +334,14 @@ export function registerFilesystemHandlers(
   controlSurface.register('filesystem.deleteEntry', {
     kind: 'command',
     validate: normalizeDeleteEntryPayload,
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       await assertApprovedUri(payload.uri, 'filesystem.deleteEntry uri is outside approved roots')
-      await deleteEntry(payload.uri)
+      ctx.assertActive?.()
+      if (payload.recursive !== undefined) {
+        await deleteEntryUseCase(port, payload)
+      } else {
+        await deleteEntry(payload.uri)
+      }
     },
     defaultErrorCode: 'common.unexpected',
   })

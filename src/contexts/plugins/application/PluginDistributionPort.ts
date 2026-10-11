@@ -4,6 +4,9 @@ import type {
   PluginGitSource,
 } from '../domain/pluginDistributionTypes'
 export interface PluginDistributionPort {
+  repositoryDetails(
+    repository: string,
+  ): Promise<import('../domain/pluginRepositoryTypes').PluginRepositoryDetails>
   fingerprint(directory: string): Promise<string>
   clone(input: PluginGitInstallInput): Promise<PluginGitCandidate>
   rebuild(source: PluginGitSource): Promise<PluginGitCandidate>

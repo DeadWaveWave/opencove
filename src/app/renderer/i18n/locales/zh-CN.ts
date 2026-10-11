@@ -17,6 +17,7 @@ import { zhCNWorkspaceCanvas } from './zh-CN.workspaceCanvas'
 
 export const zhCN = {
   pluginHostExtensions: {
+    emptySidebar: '暂无条目。',
     invalidPreference: '请为此偏好设置输入有效值。',
     staleCommand: '插件已变更，请重新打开菜单。',
     preferences: '偏好设置',

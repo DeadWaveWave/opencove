@@ -37,6 +37,7 @@ export async function writePluginPreference(
   runtime: PluginRuntimeState,
   key: string,
   value: unknown,
+  assertActive?: () => void,
 ): Promise<PluginPreferences> {
   const schema = runtime.record.package.contributes?.preferences ?? []
   const field = schema.find(item => item.id === key)
@@ -49,6 +50,7 @@ export async function writePluginPreference(
       ? (saved as Record<string, unknown>)
       : {}
   const next = { ...previous, [key]: value }
+  assertActive?.()
   await files.writeStorage(runtime.record.package.id, PLUGIN_PREFERENCES_KEY, next)
   return resolvePluginPreferences(schema, next)
 }

@@ -17,6 +17,7 @@ import {
   type NodeControlSpace,
   type NodeControlWorkspace,
 } from './nodeControlState'
+import { resolveNodeCreationTarget, type ResolvedNodeCreationTarget } from './nodeCreationTarget'
 import { normalizeAgentSettings } from '../../../settings/domain/agentSettings'
 import {
   resolveCanonicalNodeSize,
@@ -27,12 +28,11 @@ import { resolveWorkspaceNodesPlacement } from '../../domain/workspaceNodePlacem
 import {
   listSpacesForNodeControl,
   resolveSpaceLocatorForNodeControl,
-  type ResolvedSpaceForNodeControl,
   type SpaceLocatorResolverDeps,
 } from './spaceLocator'
 import {
   findNodeForNodeControl,
-  isManagedNodeKind,
+  isReadableNodeKind,
   toCanvasNodeDetail,
   toCanvasNodeSummary,
 } from './nodeDtos'
@@ -47,22 +47,25 @@ import {
 } from './nodeDataFactory'
 
 export interface NodeControlRuntimeDeps {
+  assertActive?: () => void
+  validateTarget?: (target: ResolvedNodeCreationTarget) => Promise<void>
   launchAgent: (
-    resolved: ResolvedSpaceForNodeControl,
+    resolved: ResolvedNodeCreationTarget,
     data: Extract<NodeControlCreateData, { kind: 'agent' }>,
   ) => Promise<AgentNodeRuntimeData>
   spawnTerminal: (
-    resolved: ResolvedSpaceForNodeControl,
+    resolved: ResolvedNodeCreationTarget,
     data: Extract<NodeControlCreateData, { kind: 'terminal' }>,
   ) => Promise<TerminalNodeRuntimeData>
   killSession: (sessionId: string) => Promise<void> | void
+  closePluginNode?: (nodeId: string) => Promise<void> | void
   closeWebsiteNode?: (nodeId: string) => Promise<void> | void
 }
 
 function workspaceWithNode(
   workspace: NodeControlWorkspace,
   node: NodeControlNode,
-  spaceId: string,
+  spaceId: string | null,
 ): NodeControlWorkspace {
   const nodeRect = {
     x: node.position.x,
@@ -137,7 +140,7 @@ function resolveSpaceRect(
 
 function resolvePlacement(options: {
   workspace: NodeControlWorkspace
-  space: NodeControlSpace
+  space: NodeControlSpace | null
   kind: ManagedCanvasNodeKind
   bucket: WorkspaceCanonicalSizeBucket
   frame?: CreateNodeInput['frame']
@@ -156,7 +159,7 @@ function resolvePlacement(options: {
     return { placement: { x: explicitX, y: explicitY }, size: defaultSize }
   }
 
-  const targetSpaceRect = resolveSpaceRect(options.workspace, options.space)
+  const targetSpaceRect = options.space ? resolveSpaceRect(options.workspace, options.space) : null
   const anchor = targetSpaceRect
     ? { x: targetSpaceRect.x + SPACE_NODE_PADDING, y: targetSpaceRect.y + SPACE_NODE_PADDING }
     : { x: 0, y: 0 }
@@ -206,7 +209,7 @@ export async function listNodesForNodeControl(options: {
       spaceId: resolved.space.id,
       nodes: resolved.space.nodeIds
         .map(nodeId => nodeById.get(nodeId))
-        .filter((node): node is NodeControlNode => !!node && isManagedNodeKind(node.kind))
+        .filter((node): node is NodeControlNode => !!node && isReadableNodeKind(node.kind))
         .filter(node => !kind || node.kind === kind)
         .map(node =>
           toCanvasNodeSummary({
@@ -235,7 +238,7 @@ export async function listNodesForNodeControl(options: {
     spaceId: null,
     nodes: workspaces.flatMap(workspace =>
       workspace.nodes
-        .filter(node => isManagedNodeKind(node.kind))
+        .filter(node => isReadableNodeKind(node.kind))
         .filter(node => !kind || node.kind === kind)
         .map(node =>
           toCanvasNodeSummary({ node, workspace, spaceId: spaceByNodeId.get(node.id) ?? null }),
@@ -266,11 +269,7 @@ export async function createNodeForNodeControl(options: {
 }): Promise<CreateNodeResult> {
   const expectedRevision = await options.store.readAppStateRevision()
   const state = requireNodeControlState(await options.store.readAppState())
-  const resolved = await resolveSpaceLocatorForNodeControl(
-    state,
-    options.locatorDeps,
-    options.input.space,
-  )
+  const resolved = await resolveNodeCreationTarget(state, options.locatorDeps, options.input)
   const createData = normalizeCreateNodeData(options.input.kind, options.input.data)
   const settings = normalizeAgentSettings(state.settings)
   const placement = resolvePlacement({
@@ -287,6 +286,8 @@ export async function createNodeForNodeControl(options: {
     frame: options.input.frame,
   })
 
+  await options.runtime.validateTarget?.(resolved)
+  options.runtime.assertActive?.()
   let agentRuntime: AgentNodeRuntimeData | null = null
   let terminalRuntime: TerminalNodeRuntimeData | null = null
   if (createData.kind === 'agent') {
@@ -311,14 +312,19 @@ export async function createNodeForNodeControl(options: {
   })
 
   try {
-    const nextWorkspace = workspaceWithNode(resolved.workspace, node, resolved.space.id)
+    options.runtime.assertActive?.()
+    const nextWorkspace = workspaceWithNode(resolved.workspace, node, resolved.space?.id ?? null)
     const nextState = replaceNodeControlWorkspace(state, nextWorkspace)
     const revision = await persistNodeControlState(options.store, nextState, expectedRevision)
     return {
       revision,
       projectId: resolved.workspace.id,
-      spaceId: resolved.space.id,
-      node: toCanvasNodeDetail({ node, workspace: nextWorkspace, spaceId: resolved.space.id }),
+      spaceId: resolved.space?.id ?? null,
+      node: toCanvasNodeDetail({
+        node,
+        workspace: nextWorkspace,
+        spaceId: resolved.space?.id ?? null,
+      }),
     }
   } catch (error) {
     if (node.sessionId) {

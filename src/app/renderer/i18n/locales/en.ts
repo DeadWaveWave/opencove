@@ -15,6 +15,7 @@ import { enSpaceCollapse } from './en.spaceCollapse'
 
 export const en = {
   pluginHostExtensions: {
+    emptySidebar: 'No items.',
     invalidPreference: 'Enter a valid value for this preference.',
     staleCommand: 'This plugin changed. Open the menu again.',
     preferences: 'Preferences',

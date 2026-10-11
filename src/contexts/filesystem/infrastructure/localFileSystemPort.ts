@@ -1,5 +1,17 @@
 import { readBoundedText, readBoundedDirectory } from './boundedFileReads'
-import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import {
+  cp,
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  rmdir,
+  stat,
+  unlink,
+  writeFile,
+} from 'node:fs/promises'
 import { join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { toFileUri } from '../domain/fileUri'
@@ -117,9 +129,18 @@ export function createLocalFileSystemPort(): FileSystemPort {
       const path = fileUriToPath(uri)
       await mkdir(path, { recursive: false })
     },
-    deleteEntry: async ({ uri }) => {
+    deleteEntry: async ({ uri, recursive = true }) => {
       const path = fileUriToPath(uri)
-      await rm(path, { recursive: true, force: false })
+      if (!recursive) {
+        const info = await lstat(path)
+        if (info.isDirectory()) {
+          await rmdir(path)
+        } else {
+          await unlink(path)
+        }
+        return
+      }
+      await rm(path, { recursive, force: false })
     },
     moveEntry: async ({ sourceUri, targetUri }) => {
       await movePath(fileUriToPath(sourceUri), fileUriToPath(targetUri))
@@ -140,9 +161,9 @@ export function createLocalFileSystemPort(): FileSystemPort {
     renameEntry: async ({ sourceUri, targetUri }) => {
       await movePath(fileUriToPath(sourceUri), fileUriToPath(targetUri))
     },
-    writeFileText: async ({ uri, content }) => {
+    writeFileText: async ({ uri, content, overwrite = true }) => {
       const path = fileUriToPath(uri)
-      await writeFile(path, content, 'utf8')
+      await writeFile(path, content, { encoding: 'utf8', flag: overwrite ? 'w' : 'wx' })
     },
     stat: async ({ uri }) => {
       const path = fileUriToPath(uri)

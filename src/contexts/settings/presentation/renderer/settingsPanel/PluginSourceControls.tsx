@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
+import { PluginCandidateList, type PluginCandidateInfo } from './PluginCandidateList'
 import { Download, History } from 'lucide-react'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { useTranslation } from '@app/renderer/i18n'
@@ -8,6 +9,8 @@ import { pluginErrorMessage } from '@contexts/plugins/presentation/renderer/plug
 
 interface SourceInfo {
   distribution: { repository: string; ref: string } | null
+  candidates?: PluginCandidateInfo[]
+  sourceDirectory?: string
   dirty: boolean
   history: Array<{ revision: string; version: string }>
 }
@@ -27,6 +30,8 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
   const [source, setSource] = useState<SourceInfo | null>(null)
   const [update, setUpdate] = useState<UpdateInfo | null>(null)
   const [revision, setRevision] = useState('')
+  const [updateRef, setUpdateRef] = useState('')
+  const busyRef = useRef(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -37,6 +42,7 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
     setUpdate(null)
     setRevision('')
     setBusy(false)
+    busyRef.current = false
     setError(null)
     setMessage(null)
     void window.opencoveApi.controlSurface
@@ -44,6 +50,7 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
       .then(value => {
         if (generation.current === request) {
           setSource(value)
+          setUpdateRef(value.distribution?.ref ?? '')
         }
       })
       .catch((cause: unknown) => {
@@ -56,11 +63,15 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
       generation.current += 1
     }
   }, [plugin.id, plugin.revision, plugin.runtimeGeneration])
-  async function run(action: 'check' | 'update' | 'rollback'): Promise<void> {
-    if (busy) {
+  async function run(
+    action: 'check' | 'update' | 'rollback' | 'apply',
+    candidateId?: string,
+  ): Promise<void> {
+    if (busyRef.current) {
       return
     }
     const request = generation.current
+    busyRef.current = true
     setBusy(true)
     setError(null)
     setMessage(null)
@@ -69,18 +80,40 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
         const result = await window.opencoveApi.controlSurface.invoke<UpdateInfo>({
           kind: 'command',
           id: 'plugin.git.check',
+          payload: {
+            pluginId: plugin.id,
+            ...(updateRef.trim() && updateRef.trim() !== source?.distribution?.ref
+              ? { ref: updateRef.trim() }
+              : {}),
+          },
+        })
+        if (request === generation.current) {
+          const updateAvailable =
+            result.updateAvailable ||
+            Boolean(updateRef.trim() && updateRef.trim() !== source?.distribution?.ref)
+          setUpdate({ ...result, updateAvailable })
+          setMessage(t(`settingsPanel.plugins.source.${updateAvailable ? 'available' : 'current'}`))
+        }
+      } else if (action === 'update' || action === 'apply') {
+        const result = await changeInstalledPlugin<UpdateResult>(
+          action === 'apply' ? 'plugin.git.apply' : 'plugin.git.update',
+          action === 'apply'
+            ? { candidateId }
+            : {
+                pluginId: plugin.id,
+                ...(updateRef.trim() && updateRef.trim() !== source?.distribution?.ref
+                  ? { ref: updateRef.trim() }
+                  : {}),
+              },
+        )
+        const fresh = await window.opencoveApi.controlSurface.invoke<SourceInfo>({
+          kind: 'query',
+          id: 'plugin.source',
           payload: { pluginId: plugin.id },
         })
         if (request === generation.current) {
-          setUpdate(result)
-          setMessage(
-            t(`settingsPanel.plugins.source.${result.updateAvailable ? 'available' : 'current'}`),
-          )
+          setSource(fresh)
         }
-      } else if (action === 'update') {
-        const result = await changeInstalledPlugin<UpdateResult>('plugin.git.update', {
-          pluginId: plugin.id,
-        })
         if (result.status !== 'updated') {
           throw new Error(
             [result.error, result.candidateDirectory].filter(Boolean).join('\n') ||
@@ -96,6 +129,7 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
       }
     } finally {
       if (request === generation.current) {
+        busyRef.current = false
         setBusy(false)
       }
     }
@@ -107,7 +141,7 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
       </p>
     ) : null
   }
-  if (!source.distribution && (source.history?.length ?? 0) < 1) {
+  if (!source.distribution && (source.history?.length ?? 0) < 1 && !source.candidates?.length) {
     return null
   }
   const previous = source.history?.filter(item => item.revision !== plugin.revision) ?? []
@@ -119,6 +153,20 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
             <span>{t('settingsPanel.plugins.source.repository')}</span>
             <span>{source.distribution.repository}</span>
           </div>
+          <label className="settings-plugin-source__ref">
+            {t('settingsPanel.plugins.source.updateRef')}
+            <input
+              className="cove-field"
+              value={updateRef}
+              disabled={busy}
+              onChange={event => {
+                setUpdateRef(event.target.value)
+                setUpdate(null)
+                setMessage(null)
+              }}
+              data-testid="settings-plugin-update-ref"
+            />
+          </label>
           {source.dirty ? <p>{t('settingsPanel.plugins.source.dirty')}</p> : null}
           <div className="settings-plugin-runtime__actions">
             <button
@@ -145,6 +193,11 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
           </div>
         </>
       ) : null}
+      <PluginCandidateList
+        candidates={source.candidates ?? []}
+        busy={busy}
+        onApply={id => void run('apply', id)}
+      />
       {previous.length ? (
         <details className="settings-plugin-source__history">
           <summary>

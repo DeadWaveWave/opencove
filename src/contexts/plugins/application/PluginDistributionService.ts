@@ -143,7 +143,10 @@ export class PluginDistributionService {
     return this.source.check(record.distribution, ref)
   }
   async inspect(pluginId: string) {
-    const { record } = await this.manager.installationState(pluginId)
+    const { record, expected } = await this.expected(pluginId)
+    const fingerprint = record.distribution
+      ? await this.source.fingerprint(record.sourceDirectory)
+      : null
     const observation = record.distribution
       ? await this.source.inspect(record.distribution)
       : { dirty: false, headCommit: null }
@@ -165,6 +168,12 @@ export class PluginDistributionService {
           directory: item.directory,
           status: item.status,
           error: item.error,
+          stale:
+            item.expected && JSON.stringify(item.expected) !== JSON.stringify(expected)
+              ? ('installation' as const)
+              : item.baseSource && item.baseSource.fingerprint !== fingerprint
+                ? ('source' as const)
+                : null,
         })),
     }
   }
@@ -178,6 +187,9 @@ export class PluginDistributionService {
       const snapshot = await this.files.restore({ ...version, enabled: record.enabled })
       return this.manager.publishPrepared(snapshot, expected)
     })
+  }
+  repositoryDetails(repository: string) {
+    return this.source.repositoryDetails(repository)
   }
   discover(query: string) {
     return this.source.discover(query)

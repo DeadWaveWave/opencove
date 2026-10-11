@@ -25,6 +25,7 @@ export interface PluginOperationSnapshot {
 
 /** Authority is supplied by the host; it is never read from plugin payloads. */
 export interface PluginHostAuthority {
+  pluginId: string
   ownerId: string
   assertActive(): void
 }

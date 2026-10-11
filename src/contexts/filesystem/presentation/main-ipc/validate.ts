@@ -1,3 +1,4 @@
+import { optionalFileMutationBoolean } from '../../domain/fileMutationOptions'
 import type {
   CopyEntryInput,
   CreateDirectoryInput,
@@ -89,6 +90,7 @@ export function normalizeWriteFileTextPayload(payload: unknown): WriteFileTextIn
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem:write-file-text'),
     content,
+    overwrite: optionalFileMutationBoolean(payload.overwrite),
   }
 }
 
@@ -165,5 +167,6 @@ export function normalizeDeleteEntryPayload(payload: unknown): DeleteEntryInput 
 
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem:delete-entry'),
+    recursive: optionalFileMutationBoolean(payload.recursive),
   }
 }

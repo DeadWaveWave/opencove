@@ -18,6 +18,11 @@
 - [项目与执行位置](../TARGETS.md)：选择项目和 Space，读取本地或远程文件，运行、查看和取消操作。
 - [兼容与版本](../COMPATIBILITY.md)：宿主版本、运行平台、正式发布契约和数据迁移约定。
 
+- [宿主接口总览](../HOST_API.md)：完整能力清单、目标选择和资源生命周期。
+- [文件操作](../FILESYSTEM.md)、[节点与会话](../CANVAS_API.md)、[变化订阅](../EVENTS.md)
+  和 [Sidebar 扩展](../SIDEBAR.md)：具体方法和声明格式。
+- [Git 分发与维护](../DISTRIBUTION.md)：仓库详情、构建、冲突处理与恢复。
+
 ## 将资料交给 Agent
 
 将下面的命令复制到终端或 Agent 任务中：

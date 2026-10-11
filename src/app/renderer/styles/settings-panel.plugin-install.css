@@ -158,3 +158,124 @@
   min-width: 0;
   max-width: 100%;
 }
+
+.settings-plugin-build,
+.settings-plugin-source__ref {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.settings-plugin-install__wide {
+  grid-column: 1 / -1;
+}
+
+.settings-plugin-candidates,
+.settings-plugin-repository__readme {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--cove-settings-row-divider);
+}
+
+.settings-plugin-candidates h4,
+.settings-plugin-repository h4 {
+  margin: 0 0 8px;
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  color: var(--cove-settings-heading-foreground);
+}
+
+.settings-plugin-candidate {
+  padding: 14px;
+  margin-top: 12px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 8px;
+  background: var(--cove-surface);
+}
+
+.settings-plugin-candidate__heading,
+.settings-plugin-repository__metadata,
+.settings-plugin-repository__metadata :is(a, span) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-plugin-candidate__heading {
+  flex-wrap: wrap;
+  color: var(--cove-text);
+}
+
+.settings-plugin-candidate__heading code {
+  color: var(--cove-text-faint);
+  margin-left: auto;
+}
+
+.settings-plugin-candidate__path {
+  display: block;
+  user-select: text;
+  overflow-wrap: anywhere;
+  margin-bottom: 8px;
+  color: var(--cove-text);
+}
+
+.settings-plugin-candidate summary {
+  cursor: pointer;
+  color: var(--cove-accent-text);
+}
+
+.settings-plugin-source :is(button, input, summary):focus-visible {
+  outline: 2px solid var(--cove-settings-focus-ring);
+  outline-offset: 2px;
+}
+
+.settings-plugin-repository__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.settings-plugin-repository__heading > svg {
+  flex-shrink: 0;
+  color: var(--cove-accent-text);
+}
+
+.settings-plugin-repository__heading p {
+  margin: 0;
+}
+
+.settings-plugin-repository__metadata {
+  flex-wrap: wrap;
+  margin: 16px 0;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.settings-plugin-repository__metadata a {
+  color: var(--cove-accent-text);
+  overflow-wrap: anywhere;
+}
+
+.settings-plugin-repository__requirements {
+  display: grid;
+  gap: 8px;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.settings-plugin-repository__requirements > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.settings-plugin-repository__requirements dt {
+  color: var(--cove-text-muted);
+}
+
+.settings-plugin-repository__requirements dd {
+  margin: 0;
+  color: var(--cove-text);
+}

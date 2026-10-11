@@ -45,6 +45,7 @@ export function createControlSurface(
       let leave: (() => void) | undefined
       try {
         leave = options.enter?.(request.id)
+        ctx.assertActive?.()
         const payload = handler.validate(request.payload)
         const value = await handler.handle(ctx, payload)
 

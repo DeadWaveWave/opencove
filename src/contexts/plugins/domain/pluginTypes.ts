@@ -1,10 +1,12 @@
+import type { PluginSidebarDeclaration } from './pluginSidebar'
+
 export type PluginNodeKind = string
 
 export type PluginIconDeclaration =
   | { type: 'builtin'; name: 'git-branch' | 'puzzle' }
   | { type: 'asset'; path: string; light?: string; dark?: string }
 
-export type PluginCommandMenu = 'commandCenter' | 'canvas' | 'node' | 'space'
+export type PluginCommandMenu = 'commandCenter' | 'canvas' | 'node' | 'space' | 'sidebar'
 
 export interface PluginCommandDeclaration {
   id: string
@@ -42,6 +44,7 @@ export interface PluginManifest {
   commands?: PluginCommandDeclaration[]
   skills?: PluginSkillDeclaration[]
   preferences?: PluginPreferenceDeclaration[]
+  sidebar?: PluginSidebarDeclaration[]
   themes?: PluginThemeDeclaration[]
 }
 

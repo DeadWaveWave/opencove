@@ -35,6 +35,7 @@ export interface ReadFileBytesInMountInput extends MountAwareInput {
 }
 
 export interface WriteFileTextInput {
+  overwrite?: boolean
   uri: string
   content: string
 }
@@ -55,6 +56,7 @@ export interface RenameEntryInput {
 }
 
 export interface DeleteEntryInput {
+  recursive?: boolean
   uri: string
 }
 
@@ -90,6 +92,7 @@ export interface ReadFileBytesInMountInput extends MountAwareInput {
 }
 
 export interface WriteFileTextInMountInput extends MountAwareInput {
+  overwrite?: boolean
   uri: string
   content: string
 }
@@ -108,6 +111,7 @@ export interface CreateDirectoryInMountInput extends MountAwareInput {
 }
 
 export interface DeleteEntryInMountInput extends MountAwareInput {
+  recursive?: boolean
   uri: string
 }
 

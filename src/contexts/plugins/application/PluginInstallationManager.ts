@@ -1,3 +1,4 @@
+import { cleanupPluginView } from './pluginViewCleanup'
 import { PluginHostAccess } from './PluginHostAccess'
 import { createPluginRuntimeView } from './createPluginRuntimeView'
 import type { PluginHostPort } from '../domain/pluginHostTypes'
@@ -336,18 +337,7 @@ export class PluginInstallationManager {
     }
     this.windowCommands.retire(viewId)
     await this.host.closeView(viewId)
-    await view.backend
-      ?.dispose()
-      .catch(error =>
-        appendPluginRuntimeLog(view.runtime, `Preview cleanup: ${asError(error).message}`),
-      )
-    if (view.context.preview) {
-      await this.options.files
-        .removePreviewData(view.context.pluginId, viewId)
-        .catch(error =>
-          appendPluginRuntimeLog(view.runtime, `Preview data cleanup: ${asError(error).message}`),
-        )
-    }
+    await cleanupPluginView(view, this.options.files)
   }
 
   configureHost(port: PluginHostPort): void {
@@ -426,8 +416,8 @@ export class PluginInstallationManager {
   preferencesGet(pluginId: string) {
     return this.storage.preferencesGet(pluginId)
   }
-  preferencesSet(pluginId: string, key: string, value: unknown) {
-    return this.storage.preferencesSet(pluginId, key, value)
+  preferencesSet(pluginId: string, key: string, value: unknown, assertActive?: () => void) {
+    return this.storage.preferencesSet(pluginId, key, value, assertActive)
   }
   viewPreferencesGet(viewId: string) {
     return this.storage.viewPreferencesGet(viewId)
@@ -466,6 +456,15 @@ export class PluginInstallationManager {
     if (view) {
       await this.closeView(view.id)
     }
+  }
+
+  async closeNodeViews(nodeId: string): Promise<void> {
+    await Promise.all(
+      this.views
+        .values()
+        .filter(view => view.context.nodeId === nodeId && !view.context.preview)
+        .map(view => this.closeView(view.id)),
+    )
   }
 
   private async retire(runtime: Runtime): Promise<void> {

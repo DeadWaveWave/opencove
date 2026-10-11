@@ -5,7 +5,7 @@ This is the guide shipped with the OpenCove build that returned it. Start with
 directory. The command works offline and does not start an app or Worker.
 
 **Plugins are independently installed packages.** A plugin can
-supply an HTML view, commands, skills, themes, configurable preferences, an
+supply an HTML view, commands, skills, themes, Sidebar trees, configurable preferences, an
 optional Node backend, README, icon and interactive preview. Its window uses OpenCove's normal header, drag, resize,
 collapse and close behavior. Commands, skills and themes can be supplied without a window.
 You do not edit or rebuild OpenCove to install or reload a plugin.
@@ -21,7 +21,9 @@ It gives defaults without making every plugin use the same content layout.
 
 Start implementation with [Authoring and verification](./AUTHORING.md), then copy the runnable
 [Hello Clock example](./examples/hello-clock/README.md) into your own directory.
-[API reference](./API.md) contains the complete development API supported here.
+[API reference](./API.md) describes the package and view SDK.
+[Host API map](./HOST_API.md) indexes all project, file, node, session, event and
+preference methods and explains their routing and lifetime.
 [Host extensions](./HOST_EXTENSIONS.md) explains menu commands, preferences and theme
 contributions. [Project targets and host operations](./TARGETS.md) explains explicit
 local/remote file access and cancellable work from views or backend commands.
@@ -86,8 +88,8 @@ intact; this does not undo plugin data writes or external side effects.
 ## UI and lifecycle
 
 Settings → Plugins lists installed plugins. Each entry opens Markdown documentation
-and an optional interactive preview. The plugin's declared action-bar and canvas
-context-menu entries are independently visible by default; hide either without
+and an optional interactive preview. The plugin's declared action-bar, canvas
+context-menu and Sidebar entries are independently visible by default; hide them without
 stopping the plugin or existing nodes. Enablement controls execution separately.
 Packages without a view have no window creation entries. A plugin declaring
 `view.instances: "single"` reuses one window across this Worker's projects;

@@ -2,6 +2,11 @@ import type { AppErrorCode } from '../../../shared/contracts/dto'
 import type { ControlSurfaceOperationKind } from '../../../shared/contracts/controlSurface'
 
 export interface ControlSurfaceContext {
+  /** In-process caller lifecycle fence; never accepted from a transport payload. */
+  readonly assertActive?: () => void
+  readonly validateNodeTarget?: (
+    target: import('../../../contexts/workspace/application/nodeControl/nodeCreationTarget').ResolvedNodeCreationTarget,
+  ) => Promise<void>
   readonly now: () => Date
   readonly terminalRecoverySpawnScope?: unknown
   readonly capabilities: {

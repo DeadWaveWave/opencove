@@ -42,6 +42,22 @@ Mount-aware 文件操作：
 
 DTO 定义位于 `src/shared/contracts/dto/filesystem.ts`，统一结果 envelope 位于 `src/shared/contracts/controlSurface/result.ts`。
 
+## Explicit Mutation Options
+
+`writeFileText` / `writeFileTextInMount` accept optional `overwrite`; `false`
+uses exclusive creation, while `true` replaces or creates the file. Omitting the
+flag preserves the existing overwrite behavior. `deleteEntry` / `deleteEntryInMount`
+accept optional `recursive`; an explicit value requests permanent deletion and
+`false` rejects a nonempty directory. Omitting it preserves the existing UI trash
+and fallback behavior. Desktop IPC and Control Surface normalize the same options.
+
+Before forwarding explicit options, the mount router queries
+`filesystem.mutationCapabilities` on the target Worker. An older Worker which does
+not advertise these semantics is rejected before the write/delete; never silently
+forward flags to a provider which could ignore them. Plugin APIs additionally
+require explicit booleans and disallow mutating their target working directory
+itself; see [plugin filesystem access](../plugins/FILESYSTEM.md).
+
 ## Mount Routing
 
 `*InMount` 操作先通过 `mountId` 解析 mount target：

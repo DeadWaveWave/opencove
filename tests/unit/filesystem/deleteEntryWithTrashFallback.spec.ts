@@ -47,3 +47,12 @@ describe('deleteEntryWithTrashFallback', () => {
     }
   })
 })
+
+it('explicit nonrecursive semantics never go through recursive trash behavior', async () => {
+  const port = createFileSystemPortMock()
+  const trashItem = vi.fn(async () => undefined)
+  const input = { uri: toFileUri(join(tmpdir(), 'explicit-delete')), recursive: false }
+  await deleteEntryWithTrashFallback({ port, input, trashItem })
+  expect(trashItem).not.toHaveBeenCalled()
+  expect(port.deleteEntry).toHaveBeenCalledWith(input)
+})

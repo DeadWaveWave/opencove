@@ -153,6 +153,7 @@ export function registerControlSurfaceHandlers(
     getPersistenceStore: deps.getPersistenceStore,
     publishSyncEvent: deps.publishSyncEvent,
     closeWebsiteNode: deps.closeWebsiteNode,
+    closePluginNode: nodeId => deps.plugins.closeNodeViews(nodeId),
   })
   registerPluginHostHandlers(controlSurface, deps)
   registerPluginHandlers(controlSurface, deps.plugins, deps.pluginDistribution)

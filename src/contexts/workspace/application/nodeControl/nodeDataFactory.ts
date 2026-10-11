@@ -123,7 +123,9 @@ function normalizeAgentProvider(value: unknown): AgentProviderId | null {
     normalized === 'claude-code' ||
     normalized === 'codex' ||
     normalized === 'opencode' ||
-    normalized === 'gemini'
+    normalized === 'gemini' ||
+    normalized === 'pi' ||
+    normalized === 'kimi'
   ) {
     return normalized
   }

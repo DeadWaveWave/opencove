@@ -5,6 +5,14 @@ import type { WebsiteWindowSessionMode } from './websiteWindow'
 
 export type ManagedCanvasNodeKind = 'note' | 'task' | 'website' | 'agent' | 'terminal'
 
+export type ReadableCanvasNodeKind =
+  | ManagedCanvasNodeKind
+  | 'plugin'
+  | 'document'
+  | 'folder'
+  | 'image'
+  | 'role'
+
 export type UpdatableCanvasNodeKind = 'note' | 'task' | 'website'
 
 export type NodeTaskPriority = 'low' | 'medium' | 'high' | 'urgent'
@@ -39,7 +47,7 @@ export interface CanvasNodeFrameDto {
 
 export interface CanvasNodeSummaryDto {
   id: string
-  kind: ManagedCanvasNodeKind
+  kind: ReadableCanvasNodeKind
   title: string
   projectId: string
   spaceId: string | null
@@ -49,6 +57,7 @@ export interface CanvasNodeSummaryDto {
 }
 
 export type CanvasNodeDetailDataDto =
+  | { kind: 'plugin' | 'document' | 'folder' | 'image' | 'role'; content: unknown }
   | {
       kind: 'note'
       text: string
@@ -93,7 +102,7 @@ export interface CanvasNodeDetailDto extends CanvasNodeSummaryDto {
 export interface ListNodesInput {
   space?: SpaceLocator | null
   projectId?: string | null
-  kind?: ManagedCanvasNodeKind | null
+  kind?: ReadableCanvasNodeKind | null
 }
 
 export interface ListNodesResult {
@@ -112,7 +121,8 @@ export interface GetNodeResult {
 
 export interface CreateNodeInput {
   kind: ManagedCanvasNodeKind
-  space: SpaceLocator
+  space?: SpaceLocator | null
+  projectId?: string | null
   title?: string | null
   frame?: Partial<CanvasNodeFrameDto> | null
   data?: unknown
@@ -121,7 +131,7 @@ export interface CreateNodeInput {
 export interface CreateNodeResult {
   revision: number
   projectId: string
-  spaceId: string
+  spaceId: string | null
   node: CanvasNodeDetailDto
 }
 

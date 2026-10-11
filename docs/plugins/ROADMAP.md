@@ -32,7 +32,9 @@ by `opencove plugin guide` for the host version being targeted.
 | Skills | Packaged instructions, readable content and a copyable installation prompt |
 | Management | Installed list, Markdown details/images, opt-in interactive preview and independent creation-entry preferences |
 | Authoring | Offline version-matched guide, runnable source example, design baseline and verification workflow |
-| Project operations | Explicit project/Space targets, routed directory/text reads, bounded cancellable execution from real views or backend commands |
+| Project operations | Explicit project/Space targets, routed file CRUD and sampled watches, bounded cancellable execution from real views or backend commands |
+| Host control | Node CRUD/focus, terminal and Agent lifecycle, sampled events, own-plugin preferences and declarative Sidebar trees |
+| Maintenance | Git build/ref controls, failed/conflict candidate recovery and read-only repository details before installation |
 | Compatibility | Optional host SemVer range, Worker platform checks, incompatible-candidate rejection and per-plugin restart isolation |
 
 ## Host integration and distribution
@@ -57,16 +59,17 @@ provide a hosted marketplace. Installation still requires choosing a repository.
 ## Remaining work
 
 1. **Broader remote plugin execution.** [Project targets](./TARGETS.md) route
-   supported file reads and process operations to the resolved mount. Desktop and
+   supported file, session and process operations to the resolved mount. Desktop and
    Web still share the connected Worker's catalog and plugin backends. Arbitrary
    plugin code is not moved or installed on another machine automatically.
-2. **Additional host capabilities.** File writes/watchers, terminal-window and
-   Agent facades, richer lifecycle events, Sidebar contributions and durable jobs
-   need separate contracts. Current cancellable jobs are bounded and transient.
-   Add capabilities for demonstrated needs; full Node access does not imply a
-   stable API for host internals.
-3. **Distribution maturity.** Publisher/repository metadata, compatibility
-   filtering, authenticated/private discovery, artifact cleanup and richer source
+2. **Durable and exhaustive automation.** The [host API map](./HOST_API.md) now
+   covers file mutations, sampled watches/events, node/session facades and Sidebar
+   contributions. Durable jobs, lossless event replay and specialised creation
+   for every existing node kind remain separate work. Current jobs are transient;
+   snapshots can coalesce changes. Full Node access does not imply a stable API
+   for host internals.
+3. **Distribution maturity.** Authenticated/private discovery, broader compatibility
+   filtering, artifact cleanup and richer source
    collaboration can build on the current Git lifecycle. Preserve explicit source
    provenance, user modifications and failed-candidate diagnostics.
 4. **Stable release acceptance.** [Compatibility policy](./COMPATIBILITY.md)

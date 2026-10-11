@@ -23,6 +23,18 @@ const builderRequire = createRequire(require.resolve('electron-builder/package.j
 const { createPackage } = builderRequire('@electron/asar') as {
   createPackage: (source: string, destination: string) => Promise<void>
 }
+const HOST_GUIDE_DOCUMENTS = [
+  'HOST_API.md',
+  'HOST_EXTENSIONS.md',
+  'FILESYSTEM.md',
+  'CANVAS_API.md',
+  'EVENTS.md',
+  'SIDEBAR.md',
+  'TARGETS.md',
+  'COMPATIBILITY.md',
+  'DISTRIBUTION.md',
+  'ROADMAP.md',
+]
 let root: string
 
 beforeEach(async () => {
@@ -54,6 +66,11 @@ async function createFixture(name: string, readme = 'Plugin development guide') 
   await writeFile(join(docs, 'COMMANDS.md'), 'Plugin commands guide')
   await writeFile(join(docs, 'RUNTIME.md'), 'Plugin runtime guide')
   await writeFile(join(docs, 'VISUAL_DESIGN.md'), 'Plugin design guide')
+  await Promise.all(
+    HOST_GUIDE_DOCUMENTS.map(filename =>
+      writeFile(join(docs, filename), `Plugin reference: ${filename}`),
+    ),
+  )
   await cp(resolve('docs/plugins/examples/hello-clock'), join(docs, 'examples', 'hello-clock'), {
     recursive: true,
   })
@@ -100,6 +117,13 @@ describe('packaged plugin guide export', () => {
       '{"id":"example"}',
     )
     expect(await readFile(join(guide.directory, 'API.md'), 'utf8')).toBe('Plugin API guide')
+    await Promise.all(
+      HOST_GUIDE_DOCUMENTS.map(async name => {
+        expect(await readFile(join(guide.directory, name), 'utf8')).toBe(
+          `Plugin reference: ${name}`,
+        )
+      }),
+    )
     expect(
       await readFile(join(guide.directory, 'examples', 'hello-clock', 'view.js'), 'utf8'),
     ).toContain('window.opencovePlugin')
@@ -131,11 +155,18 @@ describe('packaged plugin guide export', () => {
     await expect(readdir(join(root, 'cache'))).rejects.toMatchObject({ code: 'ENOENT' })
   })
 
-  it.each(['AUTHORING.md', 'COMMANDS.md', 'API.md', 'examples/hello-clock/view.js'])(
+  it.each([
+    'AUTHORING.md',
+    'COMMANDS.md',
+    'API.md',
+    'examples/hello-clock/view.js',
+    ...HOST_GUIDE_DOCUMENTS,
+  ])(
     'does not publish documentation missing %s or return a nonexistent source path',
     async missingDocument => {
       const { app, docs } = await createFixture('incomplete')
       await rm(join(docs, missingDocument))
+      await expect(createPluginGuideResult(docs)).rejects.toThrow(missingDocument)
       const result = await runGuide(await packFixture(app))
       expect(result.exitCode).toBe(1)
       expect(result.stderr).toContain('Required plugin guide document is missing or empty')

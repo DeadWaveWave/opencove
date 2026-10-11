@@ -158,3 +158,42 @@ about merging with dirty worktrees, and explicit fetch/merge behavior:
 [Git worktrees](https://git-scm.com/docs/git-worktree),
 [Git merge](https://git-scm.com/docs/git-merge),
 [Git fetch](https://git-scm.com/docs/git-fetch).
+
+## Settings maintenance and repository details
+
+Settings → Plugins → Install exposes the same explicit Git inputs as the CLI: a
+repository, ref, package directory, and optional `npm` / `pnpm` build script and
+output directory. No build strategy is inferred from a repository. An installed
+plugin's source controls can check a different ref before explicitly applying it.
+Changing the ref clears the previous check result.
+
+Failed/conflicting update candidates appear in the plugin's details, with the
+Worker-local working directory, copyable resolution instructions, and an explicit
+**Apply resolved candidate** action. Failed initial installations retain their
+candidate in the install panel for the same recovery flow. Closing that panel does
+not remove the candidate; its returned ID/path can still be used with the CLI.
+Source and registry owners remain authoritative: UI never resolves conflicts, resets
+files, or edits the active registry itself. A candidate whose installation generation
+or original source fingerprint changed is shown as stale and cannot be applied from
+Settings. Backend revalidation remains mandatory even when a displayed candidate
+looks current. Preparing a fresh update is the recovery path; retained files are not
+automatically discarded.
+
+Discovery results open a read-only repository detail before installation. The Worker
+reads the public GitHub repository metadata, resolves its default branch to one
+commit, and reads its README and root `opencove.plugin.json` at that exact commit.
+The view displays declared version/platform requirements, not a certification of
+compatibility. A missing/invalid root manifest does not prove the repository is not
+a plugin: it may need an explicit package directory or build. The next install form
+starts with the reviewed commit pinned; users can deliberately choose another ref.
+
+This inspection never clones, builds, activates a backend or executes an interactive
+preview. README HTML is ignored. Relative document links and images resolve inside
+the reviewed repository and commit; unsafe schemes and escaping paths are rejected.
+HTTPS documentation images are rendered without a referrer. GitHub requests do not
+carry credentials, reject redirects, have a ten-second timeout per request, and bound
+streamed JSON to 1 MiB (README envelope 512 KiB, manifest envelope 128 KiB). Decoded
+README and manifest limits are 256 KiB and 64 KiB. Network/rate-limit errors stay
+visible with a retry action; they never trigger an installation.
+
+Content inspection follows the public [GitHub repository contents API](https://docs.github.com/en/rest/repos/contents).

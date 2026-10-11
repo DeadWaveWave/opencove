@@ -48,3 +48,102 @@ describe('control surface filesystem mount write handlers', () => {
     await expect(readFile(filePath, 'utf8')).resolves.toBe('keep until injected delete runs')
   })
 })
+
+it('rejects unknown strict mutation capability before dispatching to an older Worker', async () => {
+  const support =
+    await import('../../../src/app/main/controlSurface/handlers/filesystemMountSupport')
+  const invokeRemote = vi
+    .spyOn(support, 'invokeRemoteValue')
+    .mockRejectedValue(new Error('Unknown query: filesystem.mutationCapabilities'))
+  const control = createControlSurface()
+  registerFilesystemMountWriteHandlers(control, {
+    port: createLocalFileSystemPort(),
+    topology: {
+      resolveMountTarget: async () => ({
+        mountId: 'remote',
+        endpointId: 'remote-endpoint',
+        rootUri: 'file:///remote',
+      }),
+    } as unknown as WorkerTopologyStore,
+    assertApprovedUri: async () => undefined,
+  })
+  try {
+    await Promise.all(
+      [
+        [
+          'filesystem.writeFileTextInMount',
+          { mountId: 'remote', uri: 'file:///remote/a', content: 'replace', overwrite: false },
+        ],
+        [
+          'filesystem.deleteEntryInMount',
+          { mountId: 'remote', uri: 'file:///remote/a', recursive: false },
+        ],
+      ].map(async ([id, payload]) => {
+        const result = await control.invoke(ctx, { kind: 'command', id: id as string, payload })
+        expect(result.ok).toBe(false)
+      }),
+    )
+    expect(invokeRemote).toHaveBeenCalledTimes(2)
+    expect(
+      invokeRemote.mock.calls.every(
+        ([request]) => request.id === 'filesystem.mutationCapabilities',
+      ),
+    ).toBe(true)
+  } finally {
+    invokeRemote.mockRestore()
+  }
+})
+
+it('fences a retired plugin after the remote capability query and before mutation dispatch', async () => {
+  const support =
+    await import('../../../src/app/main/controlSurface/handlers/filesystemMountSupport')
+  let finish!: (value: { exclusiveWrite: boolean; nonRecursiveDelete: boolean }) => void
+  const invokeRemote = vi.spyOn(support, 'invokeRemoteValue').mockImplementation(
+    () =>
+      new Promise(resolve => {
+        finish = resolve
+      }),
+  )
+  const control = createControlSurface()
+  registerFilesystemMountWriteHandlers(control, {
+    port: createLocalFileSystemPort(),
+    topology: {
+      resolveMountTarget: async () => ({
+        mountId: 'remote',
+        endpointId: 'endpoint',
+        rootUri: 'file:///remote',
+      }),
+    } as unknown as WorkerTopologyStore,
+    assertApprovedUri: async () => undefined,
+  })
+  let active = true
+  const context = {
+    ...ctx,
+    assertActive: () => {
+      if (!active) {
+        throw new Error('Caller retired')
+      }
+    },
+  }
+  try {
+    const pending = control.invoke(context, {
+      kind: 'command',
+      id: 'filesystem.writeFileTextInMount',
+      payload: {
+        mountId: 'remote',
+        uri: 'file:///remote/a',
+        content: 'should not write',
+        overwrite: false,
+      },
+    })
+    await vi.waitFor(() => expect(invokeRemote).toHaveBeenCalledTimes(1))
+    active = false
+    finish({ exclusiveWrite: true, nonRecursiveDelete: true })
+    const result = await pending
+    expect(result.ok).toBe(false)
+    expect(invokeRemote).toHaveBeenCalledTimes(1)
+    expect(invokeRemote.mock.calls[0][0].id).toBe('filesystem.mutationCapabilities')
+  } finally {
+    invokeRemote.mockRestore()
+  }
+})

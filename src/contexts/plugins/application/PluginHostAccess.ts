@@ -1,3 +1,4 @@
+import { pluginJsonValue } from '../domain/pluginJsonValue'
 import type { PluginHostPort } from '../domain/pluginHostTypes'
 import type { PluginRuntimeState, PluginRuntimeView } from './PluginRuntimeState'
 import { pluginRuntimeGeneration } from './PluginRuntimeState'
@@ -72,9 +73,13 @@ export class PluginHostAccess {
     }
     this.pending.set(ownerId, count + 1)
     try {
-      const value = await this.port.request({ ownerId, assertActive }, operation, payload)
+      const value = await this.port.request(
+        { ownerId, pluginId: runtime.record.package.id, assertActive },
+        operation,
+        payload,
+      )
       assertActive()
-      return value
+      return pluginJsonValue(value, 2 * 1024 * 1024, 'host response')
     } finally {
       const remaining = (this.pending.get(ownerId) ?? 1) - 1
       if (remaining) {

@@ -23,6 +23,11 @@ Use those contracts when building a plugin for this version.
 - [Project targets](../TARGETS.md) — explicit local/remote files and cancellable operations.
 - [Compatibility](../COMPATIBILITY.md) — host versions, platforms, release contracts and data migrations.
 
+- [Host API map](../HOST_API.md) — the complete capability inventory, targets and lifetimes.
+- [Files](../FILESYSTEM.md), [nodes and sessions](../CANVAS_API.md), [events](../EVENTS.md)
+  and [Sidebar](../SIDEBAR.md) — detailed method and declaration contracts.
+- [Git distribution](../DISTRIBUTION.md) — repository details, builds, conflicts and recovery.
+
 ## Give the documentation to your Agent
 
 Copy this command into your terminal or Agent task:

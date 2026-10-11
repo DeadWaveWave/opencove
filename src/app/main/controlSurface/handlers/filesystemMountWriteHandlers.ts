@@ -1,3 +1,5 @@
+import { optionalFileMutationBoolean } from '../../../../contexts/filesystem/domain/fileMutationOptions'
+import { assertRemoteMutationCapabilities } from './filesystemMutationCapabilities'
 import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
 import {
   copyEntryUseCase,
@@ -69,15 +71,17 @@ export function registerFilesystemMountWriteHandlers(
         mountId: normalizeMountId(payload.mountId, 'filesystem.writeFileTextInMount'),
         uri: normalizeFileSystemUri(payload.uri, 'filesystem.writeFileTextInMount'),
         content,
+        overwrite: optionalFileMutationBoolean(payload.overwrite),
       }
     },
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
         mountId: payload.mountId,
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await deps.assertApprovedUri(
           payload.uri,
           'filesystem.writeFileTextInMount uri is outside approved roots',
@@ -91,16 +95,26 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await writeFileTextUseCase(deps.port, payload satisfies WriteFileTextInput)
         return
       }
 
+      if (payload.overwrite !== undefined) {
+        await assertRemoteMutationCapabilities(deps.topology, target.endpointId)
+      }
+      ctx.assertActive?.()
       await invokeRemoteValue<void>({
+        assertActive: ctx.assertActive,
         topology: deps.topology,
         endpointId: target.endpointId,
         kind: 'command',
         id: 'filesystem.writeFileText',
-        payload: { uri: payload.uri, content: payload.content } satisfies WriteFileTextInput,
+        payload: {
+          uri: payload.uri,
+          content: payload.content,
+          overwrite: payload.overwrite,
+        } satisfies WriteFileTextInput,
       })
     },
     defaultErrorCode: 'common.unexpected',
@@ -120,13 +134,14 @@ export function registerFilesystemMountWriteHandlers(
         uri: normalizeFileSystemUri(payload.uri, 'filesystem.createDirectoryInMount'),
       }
     },
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
         mountId: payload.mountId,
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await deps.assertApprovedUri(
           payload.uri,
           'filesystem.createDirectoryInMount uri is outside approved roots',
@@ -140,11 +155,14 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await createDirectoryUseCase(deps.port, payload satisfies CreateDirectoryInput)
         return
       }
 
+      ctx.assertActive?.()
       await invokeRemoteValue<void>({
+        assertActive: ctx.assertActive,
         topology: deps.topology,
         endpointId: target.endpointId,
         kind: 'command',
@@ -167,15 +185,17 @@ export function registerFilesystemMountWriteHandlers(
       return {
         mountId: normalizeMountId(payload.mountId, 'filesystem.deleteEntryInMount'),
         uri: normalizeFileSystemUri(payload.uri, 'filesystem.deleteEntryInMount'),
+        recursive: optionalFileMutationBoolean(payload.recursive),
       }
     },
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
         mountId: payload.mountId,
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await deps.assertApprovedUri(
           payload.uri,
           'filesystem.deleteEntryInMount uri is outside approved roots',
@@ -189,16 +209,26 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deleteEntry(payload.uri)
+        ctx.assertActive?.()
+        if (payload.recursive !== undefined) {
+          await deleteEntryUseCase(deps.port, payload)
+        } else {
+          await deleteEntry(payload.uri)
+        }
         return
       }
 
+      if (payload.recursive !== undefined) {
+        await assertRemoteMutationCapabilities(deps.topology, target.endpointId)
+      }
+      ctx.assertActive?.()
       await invokeRemoteValue<void>({
+        assertActive: ctx.assertActive,
         topology: deps.topology,
         endpointId: target.endpointId,
         kind: 'command',
         id: 'filesystem.deleteEntry',
-        payload: { uri: payload.uri } satisfies DeleteEntryInput,
+        payload: { uri: payload.uri, recursive: payload.recursive } satisfies DeleteEntryInput,
       })
     },
     defaultErrorCode: 'common.unexpected',
@@ -208,13 +238,14 @@ export function registerFilesystemMountWriteHandlers(
     kind: 'command',
     validate: payload =>
       normalizeSourceTargetPayload<CopyEntryInMountInput>(payload, 'filesystem.copyEntryInMount'),
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
         mountId: payload.mountId,
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await deps.assertApprovedUri(
           payload.sourceUri,
           'filesystem.copyEntryInMount source is outside approved roots',
@@ -237,11 +268,14 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await copyEntryUseCase(deps.port, payload satisfies CopyEntryInput)
         return
       }
 
+      ctx.assertActive?.()
       await invokeRemoteValue<void>({
+        assertActive: ctx.assertActive,
         topology: deps.topology,
         endpointId: target.endpointId,
         kind: 'command',
@@ -259,13 +293,14 @@ export function registerFilesystemMountWriteHandlers(
     kind: 'command',
     validate: payload =>
       normalizeSourceTargetPayload<MoveEntryInMountInput>(payload, 'filesystem.moveEntryInMount'),
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
         mountId: payload.mountId,
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await deps.assertApprovedUri(
           payload.sourceUri,
           'filesystem.moveEntryInMount source is outside approved roots',
@@ -288,11 +323,14 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await moveEntryUseCase(deps.port, payload satisfies MoveEntryInput)
         return
       }
 
+      ctx.assertActive?.()
       await invokeRemoteValue<void>({
+        assertActive: ctx.assertActive,
         topology: deps.topology,
         endpointId: target.endpointId,
         kind: 'command',
@@ -313,13 +351,14 @@ export function registerFilesystemMountWriteHandlers(
         payload,
         'filesystem.renameEntryInMount',
       ),
-    handle: async (_ctx, payload): Promise<void> => {
+    handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
         mountId: payload.mountId,
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await deps.assertApprovedUri(
           payload.sourceUri,
           'filesystem.renameEntryInMount source is outside approved roots',
@@ -342,11 +381,14 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
+        ctx.assertActive?.()
         await renameEntryUseCase(deps.port, payload satisfies RenameEntryInput)
         return
       }
 
+      ctx.assertActive?.()
       await invokeRemoteValue<void>({
+        assertActive: ctx.assertActive,
         topology: deps.topology,
         endpointId: target.endpointId,
         kind: 'command',

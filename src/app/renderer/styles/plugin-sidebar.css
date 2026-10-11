@@ -1,0 +1,114 @@
+.plugin-sidebar__section {
+  margin: 14px 8px 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--cove-border-subtle);
+  color: var(--cove-text);
+  font-size: 12px;
+}
+.plugin-sidebar__section header,
+.plugin-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.plugin-sidebar__section button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.plugin-sidebar__section button:hover {
+  background: var(--cove-surface-hover);
+}
+.plugin-sidebar__section button:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+}
+.plugin-sidebar__section button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.plugin-sidebar__section .plugin-sidebar__heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  text-align: left;
+  font-weight: 600;
+}
+.plugin-sidebar__heading span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plugin-sidebar__heading svg {
+  flex-shrink: 0;
+}
+.plugin-sidebar__refresh,
+.plugin-sidebar__disclosure {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.plugin-sidebar__items {
+  list-style: none;
+  margin: 3px 0;
+  padding: 0;
+}
+.plugin-sidebar__items .plugin-sidebar__items {
+  padding-left: 14px;
+}
+.plugin-sidebar__leaf {
+  width: 4px;
+  height: 4px;
+  margin: 0 10px;
+  border-radius: 1px;
+  background: var(--cove-accent);
+  flex-shrink: 0;
+}
+.plugin-sidebar__label {
+  min-width: 0;
+  padding: 6px 2px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.plugin-sidebar__description {
+  color: var(--cove-text-muted);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40%;
+}
+.plugin-sidebar__section p {
+  color: var(--cove-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 0 5px;
+  overflow-wrap: anywhere;
+}
+.plugin-sidebar__section .plugin-sidebar__error {
+  color: var(--cove-text);
+  border-left: 2px solid var(--cove-accent);
+  padding-left: 8px;
+}
+@media (pointer: coarse) {
+  .plugin-sidebar__section button {
+    min-height: 44px;
+  }
+  .plugin-sidebar__disclosure,
+  .plugin-sidebar__refresh {
+    min-width: 36px;
+  }
+}

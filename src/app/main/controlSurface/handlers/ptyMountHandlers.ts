@@ -237,6 +237,7 @@ export function registerPtyMountHandlers(
               ...(payload.env ? { env: payload.env } : {}),
             })
 
+        ctx.assertActive?.()
         const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
           activity: deps.terminalAgentActivity,
           args: resolvedSpawn.args,
@@ -286,6 +287,7 @@ export function registerPtyMountHandlers(
         ...(payload.env ? { env: payload.env } : {}),
       }
 
+      ctx.assertActive?.()
       const remoteResult = await invokeRemoteValue<SpawnTerminalResult>({
         endpoint,
         kind: 'command',

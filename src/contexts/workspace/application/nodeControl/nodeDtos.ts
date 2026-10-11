@@ -3,6 +3,7 @@ import type {
   CanvasNodeDetailDto,
   CanvasNodeSummaryDto,
   ManagedCanvasNodeKind,
+  ReadableCanvasNodeKind,
   NodeTaskPriority,
   NodeTaskStatus,
 } from '../../../../shared/contracts/dto'
@@ -23,6 +24,13 @@ export function isManagedNodeKind(value: unknown): value is ManagedCanvasNodeKin
     value === 'website' ||
     value === 'agent' ||
     value === 'terminal'
+  )
+}
+
+export function isReadableNodeKind(value: unknown): value is ReadableCanvasNodeKind {
+  return (
+    isManagedNodeKind(value) ||
+    ['plugin', 'document', 'folder', 'image', 'role'].includes(String(value))
   )
 }
 
@@ -75,7 +83,7 @@ function toNodeSummaryBase(options: {
   const spaceId = options.spaceId ?? resolveNodeSpaceId(options.workspace, options.node.id)
   return {
     id: options.node.id,
-    kind: isManagedNodeKind(options.node.kind) ? options.node.kind : 'terminal',
+    kind: isReadableNodeKind(options.node.kind) ? options.node.kind : 'terminal',
     title: options.node.title,
     projectId: options.workspace.id,
     spaceId,
@@ -91,6 +99,15 @@ function toNodeSummaryBase(options: {
 }
 
 function toNodeData(node: NodeControlNode): CanvasNodeDetailDataDto {
+  if (
+    node.kind === 'plugin' ||
+    node.kind === 'document' ||
+    node.kind === 'folder' ||
+    node.kind === 'image' ||
+    node.kind === 'role'
+  ) {
+    return { kind: node.kind, content: node.task }
+  }
   if (node.kind === 'note') {
     const note = isRecord(node.task) ? node.task : {}
     return {
@@ -184,7 +201,7 @@ export function findNodeForNodeControl(
 } | null {
   for (const workspace of workspaces) {
     const node = workspace.nodes.find(candidate => candidate.id === nodeId) ?? null
-    if (!node || !isManagedNodeKind(node.kind)) {
+    if (!node || !isReadableNodeKind(node.kind)) {
       continue
     }
 

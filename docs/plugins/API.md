@@ -59,6 +59,7 @@ Optional fields:
 | `contributes.actionBar`, `contributes.contextMenu` | Creation entries, both default true with a view and false without one |
 | `contributes.commands` | Declared plugin or window commands, optionally exposed in host menus; see [Commands and skills](./COMMANDS.md) |
 | `contributes.skills` | Discoverable packaged `SKILL.md` files; see [Commands and skills](./COMMANDS.md#skills) |
+| `contributes.sidebar` | Host-rendered project trees; see [Sidebar](./SIDEBAR.md) |
 | `contributes.preferences`, `contributes.themes` | Standard preference fields and host color themes; see [Host extensions](./HOST_EXTENSIONS.md) |
 | `platforms` | Supported backend OS values: `darwin`, `linux`, `win32`; omit for all |
 | `engines.opencove` | Optional npm SemVer range for the installation's Worker version; incompatible artifacts are rejected before activation |
@@ -115,6 +116,7 @@ path on the viewing device. There is no Node access in the view.
 
 | Method | Result |
 | --- | --- |
+| `api.host` | Shared filesystem, nodes, sessions, events and preferences; see [Host API map](./HOST_API.md) |
 | `await api.invoke(method, params)` | JSON result from your Node backend handler; default params is null |
 | `await api.storage.get(key)` | JSON value, or null when absent |
 | `await api.storage.set(key, value)` | Persists a JSON value under this plugin ID |

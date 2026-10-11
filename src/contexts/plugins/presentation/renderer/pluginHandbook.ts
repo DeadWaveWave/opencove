@@ -20,6 +20,11 @@ import exampleIcon from '../../../../../docs/plugins/examples/hello-clock/icon.s
 const optionalReferences = import.meta.glob<string>(
   [
     '../../../../../docs/plugins/HOST_EXTENSIONS.md',
+    '../../../../../docs/plugins/HOST_API.md',
+    '../../../../../docs/plugins/FILESYSTEM.md',
+    '../../../../../docs/plugins/CANVAS_API.md',
+    '../../../../../docs/plugins/EVENTS.md',
+    '../../../../../docs/plugins/SIDEBAR.md',
     '../../../../../docs/plugins/DISTRIBUTION.md',
     '../../../../../docs/plugins/ROADMAP.md',
     '../../../../../docs/plugins/TARGETS.md',
@@ -80,7 +85,18 @@ export function pluginHandbook(language: string): PluginHandbookArticle[] {
       markdown: overview,
     },
     ...(
-      ['HOST_EXTENSIONS', 'TARGETS', 'COMPATIBILITY', 'DISTRIBUTION', 'ROADMAP'] as const
+      [
+        'HOST_API',
+        'HOST_EXTENSIONS',
+        'FILESYSTEM',
+        'CANVAS_API',
+        'EVENTS',
+        'SIDEBAR',
+        'TARGETS',
+        'COMPATIBILITY',
+        'DISTRIBUTION',
+        'ROADMAP',
+      ] as const
     ).flatMap(name => {
       const markdown = optionalReferences[`../../../../../docs/plugins/${name}.md`]
       return markdown

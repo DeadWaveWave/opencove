@@ -37,6 +37,9 @@ async function backendFixture(
         if (id === 'inspect') return host.target.resolve(params);
         if (id === 'list') return host.target.list();
         if (id === 'read') return host.filesystem.readText(params);
+        if (id === 'write') return host.filesystem.writeText(params);
+        if (id === 'events') return host.events.subscribe(params);
+        if (id === 'launch') return host.agents.launch(params);
         if (id === 'start') return host.operations.start(params);
         throw new Error('Unknown command');
       }, dispose() { if (hangingDispose) return new Promise(() => {}); }};
@@ -56,7 +59,17 @@ async function backendFixture(
       description: 'Tests real child host requests',
       main: 'main.mjs',
       contributes: {
-        commands: ['list', 'inspect', 'read', 'start', 'crash', 'disconnect'].map(id => ({
+        commands: [
+          'list',
+          'inspect',
+          'read',
+          'write',
+          'events',
+          'launch',
+          'start',
+          'crash',
+          'disconnect',
+        ].map(id => ({
           id,
           title: id,
           description: id,
@@ -113,6 +126,29 @@ describe('backend host capabilities', () => {
     await expect(run(unavailable.backend, 'inspect', { projectId: 'a' })).rejects.toThrow(
       'host capabilities are unavailable',
     )
+  })
+
+  it('exposes the same expanded host groups to a real backend and carries large UTF-8 writes intact', async () => {
+    const request = vi.fn(async (operation, payload) => ({ operation, payload }))
+    const { backend } = await backendFixture(request)
+    const input = {
+      target: { projectId: 'p' },
+      path: 'notes.txt',
+      content: '界'.repeat(30_000),
+      overwrite: false,
+    }
+    expect(await run(backend, 'write', input)).toEqual({
+      operation: 'filesystem.writeText',
+      payload: input,
+    })
+    expect(await run(backend, 'events', { projectId: 'p', types: ['node'] })).toEqual({
+      operation: 'events.subscribe',
+      payload: { projectId: 'p', types: ['node'] },
+    })
+    expect(await run(backend, 'launch', { target: { projectId: 'p' }, prompt: 'Check' })).toEqual({
+      operation: 'agents.launch',
+      payload: { target: { projectId: 'p' }, prompt: 'Check' },
+    })
   })
 
   it('retires host-owned work exactly once on crash and subsequent disposal', async () => {
@@ -201,7 +237,7 @@ describe('host RPC lifecycle and bounds', () => {
       type: 'host-request',
       requestId: '1',
       operation: 'x',
-      payload: 'x'.repeat(1024 * 1024),
+      payload: 'x'.repeat(2 * 1024 * 1024),
     })
     await vi.waitFor(() =>
       expect(send).toHaveBeenCalledWith(expect.objectContaining({ requestId: '1', ok: false })),

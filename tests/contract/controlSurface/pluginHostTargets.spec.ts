@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it, vi } from 'vitest'
@@ -157,6 +157,58 @@ describe('plugin target routing over two authenticated Workers', () => {
       expect(await host('filesystem.readDirectory', { target })).toMatchObject({
         entries: [{ name: 'where.txt' }],
       })
+      const watch = await host<{ watchId: string }>('filesystem.watch', { target })
+      await host('filesystem.mkdir', { target, path: 'generated' })
+      await host('filesystem.writeText', {
+        target,
+        path: 'generated/result.txt',
+        content: 'remote write',
+        overwrite: false,
+      })
+      expect(await readFile(join(remoteRoot, 'generated/result.txt'), 'utf8')).toBe('remote write')
+      await expect(readFile(join(localRoot, 'generated/result.txt'), 'utf8')).rejects.toThrow()
+      await expect(
+        host('filesystem.writeText', {
+          target,
+          path: 'generated/result.txt',
+          content: 'destroy',
+          overwrite: false,
+        }),
+      ).rejects.toThrow()
+      expect(await readFile(join(remoteRoot, 'generated/result.txt'), 'utf8')).toBe('remote write')
+      await expect(
+        host('filesystem.delete', { target, path: 'generated', recursive: false }),
+      ).rejects.toThrow()
+      await host('filesystem.rename', {
+        target,
+        path: 'generated/result.txt',
+        newPath: 'generated/renamed.txt',
+      })
+      expect(
+        await host('filesystem.stat', { target, path: 'generated/renamed.txt' }),
+      ).toMatchObject({ stat: { kind: 'file' } })
+      await new Promise(resolve => setTimeout(resolve, 1010))
+      expect(await host('filesystem.readWatch', { watchId: watch.watchId })).toMatchObject({
+        events: expect.arrayContaining([{ type: 'created', path: 'generated' }]),
+        truncated: false,
+      })
+      await host('filesystem.delete', { target, path: 'generated', recursive: true })
+      await new Promise(resolve => setTimeout(resolve, 1010))
+      expect(await host('filesystem.readWatch', { watchId: watch.watchId })).toMatchObject({
+        events: expect.arrayContaining([{ type: 'deleted', path: 'generated' }]),
+      })
+      await host('filesystem.unwatch', { watchId: watch.watchId })
+      await expect(host('filesystem.readWatch', { watchId: watch.watchId })).rejects.toThrow(
+        'unavailable',
+      )
+      await Promise.all(
+        ['filesystem.writeText', 'filesystem.delete', 'filesystem.rename'].map(operation =>
+          expect(host(operation, { target, path: '.' })).rejects.toThrow('working directory'),
+        ),
+      )
+      await expect(
+        host('filesystem.writeText', { target, path: 'where.txt', content: 'destroy' }),
+      ).rejects.toThrow('overwrite')
       await expect(host('target.resolve', {})).rejects.toThrow('projectId')
       await expect(
         host('filesystem.readText', { target, path: '../local-files/where.txt' }),

@@ -5,11 +5,32 @@ import type {
   PluginRuntimeState,
   PluginRuntimeView,
 } from '../../../../src/contexts/plugins/application/PluginRuntimeState'
-const runtime = { record: { enabled: true }, error: null } as PluginRuntimeState
+const runtime = {
+  record: { enabled: true, package: { id: 'test' } },
+  error: null,
+} as PluginRuntimeState
 function view(preview = false): PluginRuntimeView {
   return { id: 'view', context: { preview }, runtime } as PluginRuntimeView
 }
 describe('host generation authority', () => {
+  it.each(['view', 'backend'] as const)(
+    'bounds %s responses by encoded JSON size',
+    async source => {
+      const access = new PluginHostAccess(() => true)
+      let value: unknown = { ok: true }
+      access.bind({ request: async () => value, retire: async () => undefined })
+      const call = () =>
+        source === 'view'
+          ? access.view(view(), () => true, 'filesystem.readText', {})
+          : access.backend(runtime).hostRequest('filesystem.readText', {})
+      await expect(call()).resolves.toEqual({ ok: true })
+      value = { content: String.fromCharCode(1).repeat(400_000) }
+      await expect(call()).rejects.toThrow('host response')
+      value = { recovered: true }
+      await expect(call()).resolves.toEqual({ recovered: true })
+    },
+  )
+
   it('rejects previews before touching any target and rejects unpublished runtime', async () => {
     let published = false
     const access = new PluginHostAccess(() => published)

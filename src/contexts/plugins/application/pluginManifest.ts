@@ -37,5 +37,6 @@ export function installedPluginManifest(runtime: PluginRuntimeState): PluginMani
     skills: pkg.contributes?.skills?.map(skill => ({ ...skill })) ?? [],
     preferences: pkg.contributes?.preferences ?? [],
     themes: pkg.contributes?.themes ?? [],
+    sidebar: pkg.contributes?.sidebar ?? [],
   }
 }

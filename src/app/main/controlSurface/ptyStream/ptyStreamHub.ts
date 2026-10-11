@@ -48,6 +48,8 @@ import {
 } from './ptyStreamHub.agentReexec'
 import { PtyStreamRecoveryOperationTracker } from './ptyStreamRecoveryOperationTracker'
 import { projectPtyStreamAgentMetadata } from './ptyStreamAgentMetadataProjection'
+import { unregisterPtyClient } from './ptyStreamHub.clients'
+import { writeAutomationInput, currentAgentState } from './ptyStreamAutomation'
 import { forgetPtyStreamSession, PtyStreamRetiredSessions } from './ptyStreamHub.retirement'
 
 export class PtyStreamHub {
@@ -117,24 +119,13 @@ export class PtyStreamHub {
     ws: WebSocket
   }): void {
     this.clients.set(options.clientId, {
-      clientId: options.clientId,
-      kind: options.kind,
-      ws: options.ws,
+      ...options,
       rolesBySessionId: new Map(),
     })
   }
 
   public unregisterClient(clientId: string): void {
-    const client = this.clients.get(clientId)
-    if (!client) {
-      return
-    }
-
-    for (const sessionId of client.rolesBySessionId.keys()) {
-      this.detach(clientId, sessionId)
-    }
-
-    this.clients.delete(clientId)
+    unregisterPtyClient(this.clients, clientId, (id, sessionId) => this.detach(id, sessionId))
   }
 
   public registerSessionMetadata(metadata: SessionMetadata): void {
@@ -472,6 +463,15 @@ export class PtyStreamHub {
         input,
       }),
     )
+  }
+
+  public writeAutomation(
+    input: Omit<Parameters<typeof writeAutomationInput>[0], 'sessions' | 'runtime'>,
+  ) {
+    return writeAutomationInput({ ...input, sessions: this.sessions, runtime: this.ptyRuntime })
+  }
+  public observeAgentState(sessionId: string) {
+    return currentAgentState(this.sessions.get(sessionId))
   }
 
   public async resize(options: PtyStreamHubResizeOptions): Promise<TerminalGeometryCommitResult> {

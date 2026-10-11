@@ -1,5 +1,3 @@
-import process from 'node:process'
-import { basename } from 'node:path'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceContext } from '../types'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
@@ -12,23 +10,17 @@ import type {
   ListGitWorktreesResult,
   ListNodesInput,
   ManagedCanvasNodeKind,
-  SpawnTerminalInMountInput,
-  SpawnTerminalInput,
-  SpawnTerminalResult,
   SyncEventPayload,
   UpdateNodeInput,
   UpdatableCanvasNodeKind,
 } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
-import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import type { ControlSurfaceHandler } from '../types'
-import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
 import {
   createNodeForNodeControl,
   getNodeForNodeControl,
   listNodesForNodeControl,
-  type NodeControlRuntimeDeps,
 } from '../../../../contexts/workspace/application/nodeControl/nodeControlUseCases'
 import { updateNodeForNodeControl } from '../../../../contexts/workspace/application/nodeControl/nodeControlUpdate'
 import { deleteNodeForNodeControl } from '../../../../contexts/workspace/application/nodeControl/nodeControlDelete'
@@ -36,12 +28,9 @@ import { resolveCanvasFocusTargetForNodeControl } from '../../../../contexts/wor
 import type { SpaceLocatorResolverDeps } from '../../../../contexts/workspace/application/nodeControl/spaceLocator'
 import type { NodeControlAppStateStore } from '../../../../contexts/workspace/application/nodeControl/nodeControlState'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
-import {
-  managedAgentProvider,
-  managedTerminalRuntimeKind,
-} from './nodeControlHandlerRuntimeMetadata'
 import { normalizeSpaceLocator } from './nodeControlHandlerInput'
-import { nodeWorkerBindingForMount } from '../../../../shared/types/nodeWorkerBinding'
+import { createRuntimeDeps } from './nodeControlRuntime'
+import { isReadableNodeKind } from '../../../../contexts/workspace/application/nodeControl/nodeDtos'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -119,7 +108,12 @@ function normalizeListPayload(payload: unknown): ListNodesInput {
         ? null
         : normalizeSpaceLocator(payload.space),
     projectId: optionalString(payload.projectId),
-    kind: payload.kind === null || payload.kind === undefined ? null : managedKind(payload.kind),
+    kind:
+      payload.kind === null || payload.kind === undefined
+        ? null
+        : isReadableNodeKind(payload.kind)
+          ? payload.kind
+          : managedKind(payload.kind),
   }
 }
 
@@ -138,7 +132,11 @@ function normalizeCreatePayload(payload: unknown): CreateNodeInput {
   }
   return {
     kind: managedKind(payload.kind),
-    space: normalizeSpaceLocator(payload.space),
+    space:
+      payload.space === null || payload.space === undefined
+        ? null
+        : normalizeSpaceLocator(payload.space),
+    projectId: optionalString(payload.projectId),
     title: optionalString(payload.title),
     frame: normalizeFrame(payload.frame),
     data: payload.data ?? null,
@@ -220,121 +218,6 @@ function createLocatorDeps(
   }
 }
 
-function resolveTerminalCommand(data: { shell: string | null; command: string | null }): {
-  shell: string | null
-  command: string | null
-  args: string[] | null
-} {
-  if (!data.command) {
-    return { shell: data.shell, command: null, args: null }
-  }
-  const shell = data.shell ?? resolveDefaultShell()
-  if (process.platform === 'win32') {
-    const name = basename(shell).toLowerCase()
-    if (name.includes('cmd')) {
-      return { shell: null, command: shell, args: ['/d', '/s', '/c', data.command] }
-    }
-    if (name.includes('powershell') || name.includes('pwsh')) {
-      return { shell: null, command: shell, args: ['-NoLogo', '-Command', data.command] }
-    }
-
-    return { shell: null, command: shell, args: ['-lc', data.command] }
-  }
-  return { shell: null, command: shell, args: ['-lc', data.command] }
-}
-
-function createRuntimeDeps(
-  controlSurface: ControlSurface,
-  ctx: ControlSurfaceContext,
-  closeWebsiteNode: ((nodeId: string) => Promise<void> | void) | undefined,
-): NodeControlRuntimeDeps {
-  return {
-    launchAgent: async (resolved, data) => {
-      const payload = resolved.mount
-        ? {
-            mountId: resolved.mount.mountId,
-            cwdUri: toFileUri(resolved.workingDirectory),
-            prompt: data.prompt,
-            provider: data.provider,
-            model: data.model,
-          }
-        : {
-            spaceId: resolved.space.id,
-            prompt: data.prompt,
-            provider: data.provider,
-            model: data.model,
-          }
-      const launched = await invokeInternal<Record<string, unknown>>(controlSurface, ctx, {
-        kind: 'command',
-        id: resolved.mount ? 'session.launchAgentInMount' : 'session.launchAgent',
-        payload,
-      })
-      const executionContext = isRecord(launched.executionContext) ? launched.executionContext : {}
-      return {
-        sessionId: requiredString(launched.sessionId, 'sessionId'),
-        provider: managedAgentProvider(launched.provider),
-        prompt: data.prompt,
-        model: data.model,
-        effectiveModel: optionalString(launched.effectiveModel),
-        executionDirectory:
-          optionalString(executionContext.workingDirectory) ?? resolved.workingDirectory,
-        expectedDirectory: resolved.workingDirectory,
-        startedAt: optionalString(launched.startedAt) ?? ctx.now().toISOString(),
-        profileId: launched.profileId === null ? null : optionalString(launched.profileId),
-        runtimeKind: managedTerminalRuntimeKind(launched.runtimeKind),
-        workerBinding: nodeWorkerBindingForMount(resolved.mount),
-      }
-    },
-    spawnTerminal: async (resolved, data) => {
-      const terminalCommand = resolveTerminalCommand(data)
-      const base = {
-        profileId: data.profileId ?? undefined,
-        shell: terminalCommand.shell ?? undefined,
-        command: terminalCommand.command ?? undefined,
-        args: terminalCommand.args ?? undefined,
-        cols: 80,
-        rows: 24,
-      }
-      const result = resolved.mount
-        ? await invokeInternal<SpawnTerminalResult>(controlSurface, ctx, {
-            kind: 'command',
-            id: 'pty.spawnInMount',
-            payload: {
-              mountId: resolved.mount.mountId,
-              cwdUri: toFileUri(resolved.workingDirectory),
-              ...base,
-            } satisfies SpawnTerminalInMountInput,
-          })
-        : await invokeInternal<SpawnTerminalResult>(controlSurface, ctx, {
-            kind: 'command',
-            id: 'pty.spawn',
-            payload: {
-              cwd: resolved.workingDirectory,
-              workspaceId: resolved.workspace.id,
-              ...base,
-            } satisfies SpawnTerminalInput,
-          })
-      return {
-        sessionId: result.sessionId,
-        executionDirectory: resolved.workingDirectory,
-        expectedDirectory: resolved.workingDirectory,
-        startedAt: ctx.now().toISOString(),
-        profileId: result.profileId ?? data.profileId,
-        runtimeKind: result.runtimeKind ?? null,
-        workerBinding: nodeWorkerBindingForMount(resolved.mount),
-      }
-    },
-    killSession: async sessionId => {
-      await invokeInternal<void>(controlSurface, ctx, {
-        kind: 'command',
-        id: 'session.kill',
-        payload: { sessionId },
-      })
-    },
-    closeWebsiteNode,
-  }
-}
-
 function toNodeControlStateStore(store: PersistenceStore): NodeControlAppStateStore {
   return {
     readAppState: async () => normalizePersistedAppState(await store.readAppState()),
@@ -358,6 +241,7 @@ export function registerNodeControlHandlers(
     topology: WorkerTopologyStore
     getPersistenceStore: () => Promise<PersistenceStore>
     publishSyncEvent?: (payload: SyncEventPayload) => number
+    closePluginNode?: (nodeId: string) => Promise<void> | void
     closeWebsiteNode?: (nodeId: string) => Promise<void> | void
   },
 ): void {
@@ -365,7 +249,7 @@ export function registerNodeControlHandlers(
   const withDeps = async (ctx: ControlSurfaceContext) => ({
     store: toNodeControlStateStore(await deps.getPersistenceStore()),
     locatorDeps: createLocatorDeps(controlSurface, deps.topology, ctx),
-    runtime: createRuntimeDeps(controlSurface, ctx, deps.closeWebsiteNode),
+    runtime: createRuntimeDeps(controlSurface, ctx, deps.closeWebsiteNode, deps.closePluginNode),
   })
 
   controlSurface.register(
@@ -401,13 +285,14 @@ export function registerNodeControlHandlers(
   )
   controlSurface.register(
     'node.update',
-    command(normalizeUpdatePayload, async (_ctx, input) =>
+    command(normalizeUpdatePayload, async (ctx, input) =>
       queued(
         mutationQueue,
         async () =>
           await updateNodeForNodeControl({
             store: toNodeControlStateStore(await deps.getPersistenceStore()),
             input,
+            assertActive: ctx.assertActive,
           }),
       ),
     ),
@@ -416,12 +301,18 @@ export function registerNodeControlHandlers(
     'node.delete',
     command(normalizeDeletePayload, async (ctx, input) =>
       queued(mutationQueue, async () => {
-        const runtime = createRuntimeDeps(controlSurface, ctx, deps.closeWebsiteNode)
+        const runtime = createRuntimeDeps(
+          controlSurface,
+          ctx,
+          deps.closeWebsiteNode,
+          deps.closePluginNode,
+        )
         return await deleteNodeForNodeControl({
           store: toNodeControlStateStore(await deps.getPersistenceStore()),
           runtime,
           input,
           now: ctx.now(),
+          assertActive: ctx.assertActive,
         })
       }),
     ),
@@ -444,6 +335,7 @@ export function registerNodeControlHandlers(
         target: resolved.target,
         createdAt: ctx.now().toISOString(),
       }
+      ctx.assertActive?.()
       const deliveredClientCount = deps.publishSyncEvent?.(payload) ?? 0
       return {
         projectId: resolved.projectId,

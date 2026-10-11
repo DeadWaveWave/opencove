@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { MousePointer2, PanelRight } from 'lucide-react'
+import { MousePointer2, PanelRight, PanelLeft } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
@@ -12,6 +12,7 @@ import {
 const CONTRIBUTIONS = [
   { key: 'actionBar', Icon: PanelRight },
   { key: 'contextMenu', Icon: MousePointer2 },
+  { key: 'sidebar', Icon: PanelLeft },
 ] as const
 
 export function PluginContributionControls({
@@ -24,7 +25,9 @@ export function PluginContributionControls({
   onChange: (contribution: PluginContribution, enabled: boolean) => void
 }): JSX.Element | null {
   const { t } = useTranslation()
-  const contributions = CONTRIBUTIONS.filter(({ key }) => plugin[key])
+  const contributions = CONTRIBUTIONS.filter(({ key }) =>
+    key === 'sidebar' ? Boolean(plugin.sidebar?.length) : plugin[key],
+  )
   if (contributions.length === 0) {
     return null
   }

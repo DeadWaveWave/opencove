@@ -4,6 +4,26 @@ export const enSettingsPanelPlugins = {
     'Install a plugin to add a canvas tool, commands or Skills. The documentation library helps you get started.',
   library: {
     articles: {
+      HOST_API: {
+        title: 'Host API map',
+        description: 'All capabilities, explicit targets and resource lifetimes.',
+      },
+      FILESYSTEM: {
+        title: 'Files and watches',
+        description: 'Local and remote file operations and sampled directory changes.',
+      },
+      CANVAS_API: {
+        title: 'Nodes and sessions',
+        description: 'Create, address and control canvas nodes, terminals and Agents.',
+      },
+      EVENTS: {
+        title: 'Lifecycle subscriptions',
+        description: 'Bounded snapshot changes and explicit subscription cleanup.',
+      },
+      SIDEBAR: {
+        title: 'Sidebar trees',
+        description: 'Declarative project sections and backend item actions.',
+      },
       overview: {
         title: 'Plugin guide',
         description: 'The complete introduction and CLI command index.',
@@ -34,6 +54,13 @@ export const enSettingsPanelPlugins = {
         description: 'Canvas tools, Agent commands and a place for your workflow.',
       },
       install: {
+        build: 'Build strategy',
+        prebuilt: 'Ready-to-run files',
+        script: 'Package script',
+        output: 'Build output directory',
+        buildHelp:
+          'npm requires package-lock.json; pnpm requires pnpm-lock.yaml. Dependencies install with lifecycle scripts disabled, then the chosen script runs with normal Worker permissions.',
+
         title: 'Install and use',
         description: 'Install a package, choose its shortcuts and keep your data.',
       },
@@ -80,6 +107,13 @@ export const enSettingsPanelPlugins = {
     reference: 'Technical reference',
   },
   install: {
+    build: 'Build strategy',
+    prebuilt: 'Ready-to-run files',
+    script: 'Package script',
+    output: 'Build output directory',
+    buildHelp:
+      'npm requires package-lock.json; pnpm requires pnpm-lock.yaml. Dependencies install with lifecycle scripts disabled, then the chosen script runs with normal Worker permissions.',
+
     title: 'Install plugin',
     close: 'Close installation',
     source: 'Plugin source',
@@ -95,7 +129,7 @@ export const enSettingsPanelPlugins = {
     ref: 'Branch, tag or commit',
     packageDirectory: 'Plugin directory within repository',
     gitHelp:
-      'Install ready-to-run files from a repository you trust. Packages requiring a build can be installed with the CLI build options.',
+      'Install from a repository you trust. Use optional settings when its README requires a package directory or build.',
     localHelp:
       'Use an absolute directory on the connected runtime machine. Source files remain yours.',
     working: 'Working…',
@@ -105,7 +139,41 @@ export const enSettingsPanelPlugins = {
     noResults: 'No matching repositories. Try another search.',
     choose: 'Choose repository',
   },
+  repository: {
+    back: 'Search results',
+    loading: 'Reading repository…',
+    details: 'View details',
+    choose: 'Use this reviewed commit',
+    hostVersion: 'OpenCove version',
+    platforms: 'Worker systems',
+    allPlatforms: 'All systems (not independently verified)',
+    notDeclared: 'Not declared',
+    readOnly:
+      'Repository content only. Nothing is installed or executed here. Installation uses the commit shown above; you can change its build options next.',
+    noReadme: 'No README was found at this revision.',
+  },
   source: {
+    installCandidateHelp:
+      'No version was installed. The working copy is retained so you can correct the reported problem and explicitly apply it.',
+    candidateFailed: 'Build or activation failed',
+    updateRef: 'Update branch, tag or commit',
+    candidates: 'Updates needing attention',
+    candidateHelp:
+      'Your current version keeps running. Review the separate working copy, resolve and commit conflicts, then apply it explicitly.',
+    conflict: 'Merge conflict',
+    prepared: 'Ready for review',
+    stale: 'Candidate is out of date',
+    staleHelp:
+      'The installation or original source changed. Prepare a fresh update and carry over any reviewed resolution; this candidate cannot replace the current version.',
+    inspectCandidate: 'Inspect working copy',
+    workerDirectory:
+      'This directory is on the connected Worker. It is separate from your active source.',
+    copyPath: 'Copy directory',
+    applyCandidate: 'Apply resolved candidate',
+    copyResolution: 'Copy resolution instructions',
+    resolvePrompt:
+      'Inspect the OpenCove plugin candidate at {{directory}} on the connected Worker. Read opencove plugin guide first. Resolve merge conflicts or the reported build problem, review the changes, and commit the resolution. Do not reset or overwrite the original source. Apply only when ready with: opencove plugin apply {{candidate}}. If the candidate is stale, prepare a fresh update and preserve the reviewed changes.',
+
     repository: 'Repository',
     dirty: 'Your source has local changes. An update merges in a separate working copy.',
     check: 'Check for updates',
@@ -174,6 +242,8 @@ export const enSettingsPanelPlugins = {
   },
   capabilitiesLabel: 'Available in',
   contributions: {
+    sidebar: 'Show in Sidebar',
+    sidebarDescription: 'Show this plugin’s sections in the project Sidebar.',
     title: 'Show in',
     help: 'Choose where to show this plugin. Existing windows stay unchanged.',
     actionBar: 'Show in action bar',
@@ -182,6 +252,7 @@ export const enSettingsPanelPlugins = {
     contextMenuDescription: 'In the menu on an empty canvas area',
   },
   capabilities: {
+    sidebar: 'Sidebar',
     preferences: 'Preferences',
     themes: 'Themes',
     canvas: 'Canvas node',

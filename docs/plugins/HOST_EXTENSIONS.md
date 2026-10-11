@@ -24,7 +24,8 @@ selector, JavaScript patch or host-internal module is an extension point.
 
 `menus` defaults to `["commandCenter"]`; `[]` keeps a command available through
 the CLI without putting it in host menus. Menu IDs are exact, unique strings.
-Both `plugin` and `window` commands can use all four surfaces:
+Both `plugin` and `window` commands can use the first four surfaces below.
+Sidebar item actions are backend-only:
 
 | Surface | Context | Window candidates |
 | --- | --- | --- |
@@ -32,6 +33,7 @@ Both `plugin` and `window` commands can use all four surfaces:
 | `canvas` | Project under the canvas menu | Ready views in that project |
 | `node` | Project and exact clicked node IDs | Ready views of those nodes belonging to this plugin |
 | `space` | Project and exact selected Space | Ready views directly in that Space; child Spaces are separate |
+| `sidebar` | Explicit displayed project and declared item action | Backend only; see [Sidebar](./SIDEBAR.md) |
 
 A window command gets a separate item for each concrete ready view. When a node
 has multiple clients, the view suffix distinguishes otherwise identical items.
@@ -114,7 +116,9 @@ write. Settings previews have isolated in-memory preferences initialized from
 schema defaults. The generic storage API rejects the reserved
 `opencove.host.preferences` key. Backends receive a current preference snapshot
 on each command; they should not edit the host preference storage file directly.
-There is no live preference change event in version 1; views re-read as needed.
+The shared `host.preferences` facade is also available to backend commands.
+[Lifecycle subscriptions](./EVENTS.md) can sample preference changes; callers then
+re-read values. This is not a synchronous push notification.
 
 ## Themes
 

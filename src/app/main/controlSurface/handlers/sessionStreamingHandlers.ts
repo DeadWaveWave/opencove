@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { registerSessionInputHandlers } from './sessionInputHandlers'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import { createAppError } from '../../../../shared/errors/appError'
@@ -62,6 +63,7 @@ export function registerSessionStreamingHandlers(
     terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
+  registerSessionInputHandlers(controlSurface, deps)
   controlSurface.register('session.list', {
     kind: 'query',
     validate: payload => payload ?? null,

@@ -5,6 +5,7 @@ import {
   MousePointer2,
   Palette,
   PanelRight,
+  PanelLeft,
   SlidersHorizontal,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -101,6 +102,12 @@ export function PluginSettingsDetail({
           <span>
             <MousePointer2 size={13} aria-hidden="true" />
             {t('settingsPanel.plugins.capabilities.contextMenu')}
+          </span>
+        ) : null}
+        {plugin.sidebar?.length ? (
+          <span>
+            <PanelLeft size={13} aria-hidden="true" />
+            {t('settingsPanel.plugins.capabilities.sidebar')}
           </span>
         ) : null}
         {plugin.preferences?.length ? (
