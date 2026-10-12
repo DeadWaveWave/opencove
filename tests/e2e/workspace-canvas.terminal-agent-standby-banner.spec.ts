@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import {
@@ -10,6 +10,7 @@ import {
 import {
   createAgentCommandPath,
   expectOverlayStubReady,
+  readPersistedTerminalAgentNode,
 } from './workspace-canvas.terminal-agent-overlay.helpers'
 
 test.describe('Terminal Agent completion banner', () => {
@@ -22,6 +23,7 @@ test.describe('Terminal Agent completion banner', () => {
         env: {
           PATH: `${commandDirectory}${path.delimiter}${process.env.PATH ?? ''}`,
           OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+          OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
         },
       })
       try {
@@ -52,6 +54,31 @@ test.describe('Terminal Agent completion banner', () => {
         await window.keyboard.type(provider === 'codex' ? 'codex' : 'claude')
         await window.keyboard.press('Enter')
         await expectOverlayStubReady(terminal, provider)
+        if (provider === 'claude-code') {
+          const testHome = await electronApp.evaluate(() => process.env.HOME)
+          expect(testHome).toBeTruthy()
+          const projectDirectory = path.join(
+            testHome!,
+            '.claude',
+            'projects',
+            path.resolve(executionDirectory).replace(/[^A-Za-z0-9]/g, '-'),
+          )
+          const sessionFiles = (await readdir(projectDirectory)).filter(file =>
+            file.endsWith('.jsonl'),
+          )
+          expect(sessionFiles).toHaveLength(1)
+          const expectedSessionId = path.basename(sessionFiles[0], '.jsonl')
+          // SessionStart supplies identity only; the thinking JSONL must drive Working.
+          await expect
+            .poll(
+              async () => (await readPersistedTerminalAgentNode(window, 'banner-terminal'))?.agent,
+            )
+            .toMatchObject({
+              provider,
+              resumeSessionId: expectedSessionId,
+              resumeSessionIdVerified: true,
+            })
+        }
         await expect(terminal.locator('.terminal-node__status')).toHaveText('Working')
         await expect(cards).toHaveCount(0)
         await window.keyboard.type('<test-overlay-advance>')
