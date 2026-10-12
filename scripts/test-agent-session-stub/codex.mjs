@@ -260,13 +260,13 @@ export async function runJsonlOverlayLifecycleScenario(
 export async function runJsonlTwoStageCtrlCScenario(
   provider,
   cwd,
-  { onSessionStart = async () => {} } = {},
+  { mode = 'new', resumeSessionId = null, onSessionStart = async () => {} } = {},
 ) {
   const { sessionFilePath } = await resolveScenarioSessionFile({
     provider,
     cwd,
-    mode: 'new',
-    resumeSessionId: null,
+    mode: provider === 'claude-code' ? mode : 'new',
+    resumeSessionId: provider === 'claude-code' ? resumeSessionId : null,
   })
   await onSessionStart(sessionFilePath)
 

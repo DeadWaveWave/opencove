@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 
 const INTERACTIVE_SCENARIO_LIFETIME_MS = 180_000
 
@@ -118,9 +118,9 @@ export async function appendCodexRecord(sessionFilePath, record, { newline = tru
   await fs.appendFile(sessionFilePath, `${prefix}${serialized}${newline ? '\n' : ''}`, 'utf8')
 }
 
-export async function createClaudeSessionFile(cwd) {
+export async function createClaudeSessionFile(cwd, assignedSessionId = null) {
   const startedAtMs = Date.now()
-  const sessionId = `opencove-test-session-${startedAtMs}`
+  const sessionId = assignedSessionId?.trim() || `opencove-test-session-${startedAtMs}`
   const sessionFilePath = join(
     os.homedir(),
     '.claude',
@@ -183,12 +183,22 @@ export async function appendClaudeRecord(sessionFilePath, record, { newline = tr
   await fs.appendFile(sessionFilePath, `${prefix}${serialized}${newline ? '\n' : ''}`, 'utf8')
 }
 
-export async function runJsonlStdinSubmitDelayedTurnScenario(provider, cwd) {
+export async function runJsonlStdinSubmitDelayedTurnScenario(
+  provider,
+  cwd,
+  mode = 'new',
+  resumeSessionId = null,
+) {
   await sleep(1200)
   const finalText = 'Done.'
 
   if (provider === 'claude-code') {
-    const sessionFilePath = await createClaudeSessionFile(cwd)
+    const { sessionFilePath } = await resolveScenarioSessionFile({
+      provider,
+      cwd,
+      mode,
+      resumeSessionId,
+    })
     await appendClaudeRecord(sessionFilePath, {
       type: 'assistant',
       message: {
@@ -238,34 +248,35 @@ export async function runJsonlStdinSubmitDelayedTurnScenario(provider, cwd) {
 }
 
 export async function resolveScenarioSessionFile({ provider, cwd, mode, resumeSessionId }) {
+  if (provider === 'claude-code') {
+    if (mode === 'resume') {
+      const existing = await findClaudeSessionFile(cwd, resumeSessionId)
+      if (!existing) {
+        throw new Error('Claude fixture cannot resume a missing or unspecified session transcript.')
+      }
+      return { sessionFilePath: existing, createdNewSession: false }
+    }
+    return {
+      sessionFilePath: await createClaudeSessionFile(cwd, resumeSessionId),
+      createdNewSession: true,
+    }
+  }
+
   if (
     mode === 'resume' &&
     typeof resumeSessionId === 'string' &&
     resumeSessionId.trim().length > 0
   ) {
-    if (provider === 'claude-code') {
-      const existingClaudeSession = await findClaudeSessionFile(cwd, resumeSessionId)
-      if (existingClaudeSession) {
-        return {
-          sessionFilePath: existingClaudeSession,
-          createdNewSession: false,
-        }
-      }
-    } else {
-      const existingCodexSession = await findCodexSessionFileById(resumeSessionId)
-      if (existingCodexSession) {
-        return {
-          sessionFilePath: existingCodexSession,
-          createdNewSession: false,
-        }
+    const existingCodexSession = await findCodexSessionFileById(resumeSessionId)
+    if (existingCodexSession) {
+      return {
+        sessionFilePath: existingCodexSession,
+        createdNewSession: false,
       }
     }
   }
 
-  const sessionFilePath =
-    provider === 'claude-code'
-      ? await createClaudeSessionFile(cwd)
-      : await createCodexSessionFile(cwd)
+  const sessionFilePath = await createCodexSessionFile(cwd)
 
   return {
     sessionFilePath,
@@ -308,6 +319,10 @@ export async function runJsonlStdinSubmitDrivenTurnScenario(
         },
       })
     }
+    // Printed only after the requested transcript exists and was successfully opened.
+    process.stdout.write(
+      `[opencove-test-claude-session] ${mode}\n${basename(sessionFilePath, '.jsonl')}\n`,
+    )
 
     process.stdin.on('data', chunk => {
       const text = Buffer.from(chunk).toString('utf8')
@@ -372,7 +387,12 @@ export async function runJsonlStdinSubmitDrivenTurnScenario(
   await sleep(INTERACTIVE_SCENARIO_LIFETIME_MS)
 }
 
-export async function runJsonlStdinSubmitTurnLifecycleScenario(provider, cwd) {
+export async function runJsonlStdinSubmitTurnLifecycleScenario(
+  provider,
+  cwd,
+  mode = 'new',
+  resumeSessionId = null,
+) {
   process.stdout.write(`\u001b[?1049h[opencove-test-overlay] ${provider} ready\n`)
 
   let sessionFilePath = null
@@ -385,7 +405,8 @@ export async function runJsonlStdinSubmitTurnLifecycleScenario(provider, cwd) {
     turnQueue = turnQueue.then(async () => {
       sessionFilePath ??=
         provider === 'claude-code'
-          ? await createClaudeSessionFile(cwd)
+          ? (await resolveScenarioSessionFile({ provider, cwd, mode, resumeSessionId }))
+              .sessionFilePath
           : await createCodexSessionFile(cwd)
 
       if (provider === 'claude-code') {

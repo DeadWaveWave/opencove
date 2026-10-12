@@ -3,31 +3,29 @@ const SIGNALS = {
     version: 1,
     state: 'working',
     hookEventName: 'UserPromptSubmit',
-    claudeSessionId: 'claude-hook-e2e',
   },
   '<test-hook-tool>': {
     version: 1,
     state: 'working',
     hookEventName: 'PreToolUse',
-    claudeSessionId: 'claude-hook-e2e',
     tool: { name: 'Bash', useId: 'tool-ordinary', input: { command: 'true' } },
   },
   '<test-hook-waiting>': {
     version: 1,
     state: 'waiting',
     hookEventName: 'PermissionRequest',
-    claudeSessionId: 'claude-hook-e2e',
     tool: { name: 'Bash', useId: 'tool-waiting', input: { command: 'pnpm test' } },
   },
   '<test-hook-done>': {
     version: 1,
     state: 'done',
     hookEventName: 'Stop',
-    claudeSessionId: 'claude-hook-e2e',
   },
 }
 
-import { appendClaudeRecord, createClaudeSessionFile } from '../test-agent-session-jsonl.mjs'
+import { randomUUID } from 'node:crypto'
+import { basename } from 'node:path'
+import { appendClaudeRecord, resolveScenarioSessionFile } from '../test-agent-session-jsonl.mjs'
 
 async function postHook(envelope) {
   const endpoint = process.env.OPENCOVE_CLAUDE_HOOK_ENDPOINT
@@ -48,8 +46,17 @@ async function postHook(envelope) {
   }
 }
 
-async function runClaudeHookScenario(cwd, { sessionFileWarmStandby }) {
-  const sessionFilePath = sessionFileWarmStandby ? await createClaudeSessionFile(cwd) : null
+async function runClaudeHookScenario(
+  cwd,
+  { sessionFileWarmStandby, mode = 'new', resumeSessionId = null },
+) {
+  const sessionFilePath = sessionFileWarmStandby
+    ? (await resolveScenarioSessionFile({ provider: 'claude-code', cwd, mode, resumeSessionId }))
+        .sessionFilePath
+    : null
+  const claudeSessionId =
+    resumeSessionId?.trim() ||
+    (sessionFilePath ? basename(sessionFilePath, '.jsonl') : randomUUID())
   if (sessionFilePath) {
     await appendClaudeRecord(sessionFilePath, {
       type: 'user',
@@ -91,7 +98,7 @@ async function runClaudeHookScenario(cwd, { sessionFileWarmStandby }) {
         if (matched) {
           input = ''
           operation = operation.then(async () => {
-            await postHook(matched[1])
+            await postHook({ ...matched[1], claudeSessionId })
             process.stdout.write(`[opencove-test-hook] ${matched[1].state}\n`)
           })
         } else if (input.length > 64) {
@@ -104,16 +111,24 @@ async function runClaudeHookScenario(cwd, { sessionFileWarmStandby }) {
   })
 }
 
-export async function runClaudeHookLifecycleScenario(cwd) {
-  await runClaudeHookScenario(cwd, { sessionFileWarmStandby: false })
+export async function runClaudeHookLifecycleScenario(cwd, identity = {}) {
+  await runClaudeHookScenario(cwd, { ...identity, sessionFileWarmStandby: false })
 }
 
-export async function runClaudeHookArbitrationScenario(cwd) {
-  await runClaudeHookScenario(cwd, { sessionFileWarmStandby: true })
+export async function runClaudeHookArbitrationScenario(cwd, identity = {}) {
+  await runClaudeHookScenario(cwd, { ...identity, sessionFileWarmStandby: true })
 }
 
-export async function runClaudeHookFallbackScenario(cwd) {
-  const sessionFilePath = await createClaudeSessionFile(cwd)
+export async function runClaudeHookFallbackScenario(
+  cwd,
+  { mode = 'new', resumeSessionId = null } = {},
+) {
+  const { sessionFilePath } = await resolveScenarioSessionFile({
+    provider: 'claude-code',
+    cwd,
+    mode,
+    resumeSessionId,
+  })
   await appendClaudeRecord(sessionFilePath, {
     type: 'assistant',
     message: {

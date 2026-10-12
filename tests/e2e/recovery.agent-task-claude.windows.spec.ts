@@ -141,6 +141,8 @@ test.describe('Recovery - task Claude agent (Windows)', () => {
       })
 
       let initialBinding: Awaited<ReturnType<typeof readTaskLinkedAgentBinding>>
+      let transcriptPath = ''
+      let initialTranscript = ''
 
       try {
         await clearAndSeedWorkspace(
@@ -216,6 +218,20 @@ test.describe('Recovery - task Claude agent (Windows)', () => {
           .toBe(true)
 
         initialBinding = await readTaskLinkedAgentBinding(window)
+        const terminalNode = window.locator('.terminal-node').first()
+        await expect(terminalNode).toContainText('[opencove-test-claude-session] new')
+        if (!initialBinding.resumeSessionId) {
+          throw new Error('Missing newly assigned Claude session ID.')
+        }
+        await expect(terminalNode).toContainText(initialBinding.resumeSessionId)
+        transcriptPath = path.join(
+          userDataDir,
+          'home/.claude/projects',
+          path.resolve(taskDirectory).replace(/[^A-Za-z0-9]/gu, '-'),
+          `${initialBinding.resumeSessionId}.jsonl`,
+        )
+        initialTranscript = await fs.readFile(transcriptPath, 'utf8')
+        expect(initialTranscript).toContain('Ready.')
       } finally {
         await electronApp.close()
       }
@@ -234,6 +250,12 @@ test.describe('Recovery - task Claude agent (Windows)', () => {
         await expect(terminalNode).toContainText('[opencove-test-agent] claude-code resume', {
           timeout: 20_000,
         })
+        await expect(terminalNode).toContainText('[opencove-test-claude-session] resume')
+        await expect(terminalNode).toContainText(initialBinding.resumeSessionId!)
+        expect(await fs.readFile(transcriptPath, 'utf8')).toBe(initialTranscript)
+        expect(await fs.readdir(path.dirname(transcriptPath))).toEqual([
+          `${initialBinding.resumeSessionId}.jsonl`,
+        ])
 
         await expect
           .poll(async () => {

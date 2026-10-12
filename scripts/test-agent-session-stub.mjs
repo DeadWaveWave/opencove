@@ -110,17 +110,17 @@ async function main() {
   }
 
   if (provider === 'claude-code' && scenario === 'claude-hook-lifecycle') {
-    await runClaudeHookLifecycleScenario(cwd)
+    await runClaudeHookLifecycleScenario(cwd, { mode: effectiveMode, resumeSessionId })
     return
   }
 
   if (provider === 'claude-code' && scenario === 'claude-hook-arbitration') {
-    await runClaudeHookArbitrationScenario(cwd)
+    await runClaudeHookArbitrationScenario(cwd, { mode: effectiveMode, resumeSessionId })
     return
   }
 
   if (provider === 'claude-code' && scenario === 'claude-hook-fallback') {
-    await runClaudeHookFallbackScenario(cwd)
+    await runClaudeHookFallbackScenario(cwd, { mode: effectiveMode, resumeSessionId })
     return
   }
 
@@ -169,6 +169,8 @@ async function main() {
     (scenario === 'jsonl-two-stage-ctrl-c' || scenario === 'jsonl-two-stage-ctrl-c-unbound')
   ) {
     await runJsonlTwoStageCtrlCScenario(provider, cwd, {
+      mode: effectiveMode,
+      resumeSessionId,
       onSessionStart: async sessionFilePath =>
         scenario === 'jsonl-two-stage-ctrl-c-unbound'
           ? await reportInjectedTerminalTurnStarted(provider, cwd, sessionFilePath)
@@ -181,7 +183,7 @@ async function main() {
     (provider === 'codex' || provider === 'claude-code') &&
     scenario === 'jsonl-stdin-submit-delayed-turn'
   ) {
-    await runJsonlStdinSubmitDelayedTurnScenario(provider, cwd)
+    await runJsonlStdinSubmitDelayedTurnScenario(provider, cwd, effectiveMode, resumeSessionId)
     return
   }
 
@@ -189,7 +191,7 @@ async function main() {
     (provider === 'codex' || provider === 'claude-code') &&
     scenario === 'jsonl-stdin-submit-turn-lifecycle'
   ) {
-    await runJsonlStdinSubmitTurnLifecycleScenario(provider, cwd)
+    await runJsonlStdinSubmitTurnLifecycleScenario(provider, cwd, effectiveMode, resumeSessionId)
     return
   }
 
@@ -273,7 +275,12 @@ function resolveProviderInvocation(provider, args) {
   if (provider === 'claude-code') {
     const resumeIndex = args.indexOf('--resume')
     const resumeSessionId = resumeIndex >= 0 ? args[resumeIndex + 1]?.trim() : ''
-    return resumeSessionId ? { mode: 'resume', resumeSessionId } : null
+    if (resumeSessionId) {
+      return { mode: 'resume', resumeSessionId }
+    }
+    const sessionIndex = args.indexOf('--session-id')
+    const sessionId = sessionIndex >= 0 ? args[sessionIndex + 1]?.trim() : ''
+    return sessionId ? { mode: 'new', resumeSessionId: sessionId } : null
   }
   return null
 }
