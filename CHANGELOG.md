@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 🐛 Fixed
+
+- Agent: give each managed Claude launch its own conversation ID and preserve it across recovery, preventing same-directory nodes from binding to the newest unrelated transcript. (#425)
+
 ## [0.4.0] - 2026-10-12
 
 OpenCove 0.4.0 introduces the Pixel workspace, desktop-style collapsed windows, and independently installable plugins and themes. It also improves file navigation, terminal links and Agent recovery.
