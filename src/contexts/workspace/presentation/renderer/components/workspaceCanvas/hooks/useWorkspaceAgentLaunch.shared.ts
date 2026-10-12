@@ -26,6 +26,7 @@ export interface WorkspaceAgentLaunchBinding {
 
 export interface WorkspaceAgentSessionLaunchResult {
   sessionId: string
+  resumeSessionId: string | null
   profileId: string | null
   runtimeKind: TerminalRuntimeKind | undefined
   effectiveModel: string | null
@@ -302,6 +303,7 @@ export async function launchWorkspaceAgentSession({
       const launched = await invokeLaunchInMount(launchMountId, launchExecutionDirectory)
       return {
         sessionId: launched.sessionId,
+        resumeSessionId: launched.resumeSessionId ?? null,
         profileId: launched.profileId ?? null,
         runtimeKind: launched.runtimeKind ?? undefined,
         effectiveModel: launched.effectiveModel,
@@ -331,6 +333,7 @@ export async function launchWorkspaceAgentSession({
       const launched = await invokeLaunchInMount(launchMountId, launchExecutionDirectory)
       return {
         sessionId: launched.sessionId,
+        resumeSessionId: launched.resumeSessionId ?? null,
         profileId: launched.profileId ?? null,
         runtimeKind: launched.runtimeKind ?? undefined,
         effectiveModel: launched.effectiveModel,
@@ -368,6 +371,7 @@ export async function launchWorkspaceAgentSession({
 
     return {
       sessionId: launched.sessionId,
+      resumeSessionId: launched.resumeSessionId ?? null,
       profileId: launched.profileId ?? null,
       runtimeKind: launched.runtimeKind ?? undefined,
       effectiveModel: launched.effectiveModel,
@@ -396,6 +400,7 @@ export async function launchWorkspaceAgentSession({
 
   return {
     sessionId: launched.sessionId,
+    resumeSessionId: launched.resumeSessionId ?? null,
     profileId: launched.profileId ?? null,
     runtimeKind: launched.runtimeKind,
     effectiveModel: launched.effectiveModel,

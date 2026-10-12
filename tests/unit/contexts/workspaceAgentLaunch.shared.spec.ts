@@ -186,6 +186,7 @@ describe('workspaceAgentLaunch.shared', () => {
 
     expect(launched).toEqual({
       sessionId: 'session-2',
+      resumeSessionId: null,
       profileId: 'profile-1',
       runtimeKind: 'posix',
       effectiveModel: 'gpt-5.2-codex',
@@ -201,4 +202,41 @@ describe('workspaceAgentLaunch.shared', () => {
       },
     })
   })
+
+  it.each(['mount', 'retry', 'plain', 'legacy'] as const)(
+    'returns the assigned Claude session ID from the %s launch route',
+    async route => {
+      const response = {
+        sessionId: 'runtime-a',
+        resumeSessionId: 'claude-a',
+        profileId: null,
+        effectiveModel: null,
+        executionContext: {
+          workingDirectory: '/repo',
+          endpoint: { endpointId: 'local' },
+          mountId: route === 'mount' || route === 'retry' ? 'mount-a' : null,
+        },
+      }
+      const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
+      if (route === 'retry') {
+        invoke.mockRejectedValueOnce(new Error('stale mount'))
+      }
+      invoke.mockResolvedValue(response)
+      vi.mocked(window.opencoveApi.agent.launch).mockResolvedValue(response as never)
+      const launched = await launchWorkspaceAgentSession({
+        mountId: route === 'mount' || route === 'retry' ? 'mount-old' : null,
+        workspacePath: route === 'plain' ? '/elsewhere' : '/repo',
+        executionDirectory: '/repo',
+        provider: 'claude-code',
+        mode: 'new',
+        prompt: '',
+        model: null,
+        mergedEnv: {},
+        agentSettings: { agentFullAccess: false, defaultTerminalProfileId: null },
+        launchGeometry: { terminalGeometry: { cols: 80, rows: 24 } },
+        retryResolveMountBinding: async () => ({ mountId: 'mount-a', executionDirectory: '/repo' }),
+      })
+      expect(launched.resumeSessionId).toBe('claude-a')
+    },
+  )
 })

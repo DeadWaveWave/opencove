@@ -54,15 +54,7 @@ export function isResumeSessionBindingVerified(binding: ResumeSessionBindingLike
     return false
   }
 
-  if (binding.resumeSessionIdVerified === true) {
-    return true
-  }
-
-  if (binding.resumeSessionIdVerified === false) {
-    return false
-  }
-
-  return binding.provider === 'claude-code'
+  return binding.resumeSessionIdVerified === true
 }
 
 export function clearResumeSessionBinding(): {
@@ -73,6 +65,20 @@ export function clearResumeSessionBinding(): {
     resumeSessionId: null,
     resumeSessionIdVerified: false,
   }
+}
+
+export function resolveLaunchedAgentResumeBinding(
+  provider: AgentProvider,
+  mode: 'new' | 'resume',
+  resumeSessionId: string | null | undefined,
+): VerifiedResumeSessionBindingUpdate | ReturnType<typeof clearResumeSessionBinding> {
+  if (!hasResumeSessionId(resumeSessionId) || (mode === 'new' && provider !== 'claude-code')) {
+    return clearResumeSessionBinding()
+  }
+
+  // Claude new launches own the ID passed via --session-id. Other providers must
+  // confirm new conversation identity through their authoritative observation path.
+  return { resumeSessionId: resumeSessionId.trim(), resumeSessionIdVerified: true }
 }
 
 export function resolveAgentMetadataResumeBindingUpdate(

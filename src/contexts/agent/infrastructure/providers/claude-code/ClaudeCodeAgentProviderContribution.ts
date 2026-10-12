@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { AgentHookChannel } from '../../../../../shared/runtime/agentHook/agentHookChannel'
 import type {
   AgentProviderContribution,
@@ -42,7 +43,7 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
         mode: command.mode,
         prompt: command.prompt,
         model: command.model,
-        resumeSessionId: command.resumeSessionId,
+        resumeSessionId: command.mode === 'new' ? randomUUID() : command.resumeSessionId,
         agentFullAccess: command.agentFullAccess,
         injectedArgs: telemetry.args,
       })

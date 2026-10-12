@@ -107,6 +107,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
   resolveSessionIdentity?: (
     envelope: TEnvelope,
   ) => { hookEventName: string; providerSessionId: string } | null
+  publishManagedSessionIdentity?: boolean
   createObservationOwner?: () => AgentHookObservationOwner<TEnvelope>
   prepare?: () => Promise<AgentHookInstallResult>
   port?: number
@@ -175,12 +176,15 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       listeners.forEach(listener => listener(event))
     }
     const identity = options.resolveSessionIdentity?.(envelope) ?? null
-    if (terminalActivity && identity?.hookEventName === 'SessionStart') {
+    if (
+      (terminalActivity || options.publishManagedSessionIdentity) &&
+      identity?.hookEventName === 'SessionStart'
+    ) {
       if (credential.providerSessionId !== null) {
         return
       }
       if (
-        terminalActivity.observe &&
+        terminalActivity?.observe &&
         !terminalActivity.observe({
           identityAuthority: 'provider_session_start',
           resumeSessionId: identity.providerSessionId,
@@ -189,20 +193,22 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         return
       }
       credential.providerSessionId = identity.providerSessionId
-      if (terminalActivity.observe) {
+      if (terminalActivity?.observe) {
         return
       }
       const metadata: TerminalSessionMetadataEvent = {
         sessionId,
         resumeSessionId: identity.providerSessionId,
-        terminalAgentActivity: {
+      }
+      if (terminalActivity) {
+        metadata.terminalAgentActivity = {
           provider: terminalActivity.provider,
           invocationId: terminalActivity.invocationId,
           generation: terminalActivity.generation,
           phase: 'active',
           observedAtMs: Date.now(),
           identityAuthority: 'provider_session_start',
-        },
+        }
       }
       metadataListeners.forEach(listener => listener(metadata))
     }

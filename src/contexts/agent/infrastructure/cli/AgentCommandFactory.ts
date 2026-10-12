@@ -72,6 +72,10 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
   const agentFullAccess = input.agentFullAccess ?? true
 
   if (input.provider === 'claude-code') {
+    if (!resumeSessionId) {
+      throw new Error(`claude ${input.mode} requires explicit session id`)
+    }
+
     const args: string[] = []
 
     if (agentFullAccess) {
@@ -85,11 +89,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
     args.push(...(input.injectedArgs ?? []))
 
     if (input.mode === 'resume') {
-      if (resumeSessionId) {
-        args.push('--resume', resumeSessionId)
-      } else {
-        args.push('--continue')
-      }
+      args.push('--resume', resumeSessionId)
 
       return {
         command: 'claude',
@@ -100,6 +100,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
       }
     }
 
+    args.push('--session-id', resumeSessionId)
     const prompt = normalizePrompt(input.prompt)
     if (prompt.length > 0) {
       maybeTerminateOptionParsing(args, prompt)
@@ -111,7 +112,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
       args,
       launchMode: 'new',
       effectiveModel,
-      resumeSessionId: null,
+      resumeSessionId,
     }
   }
 

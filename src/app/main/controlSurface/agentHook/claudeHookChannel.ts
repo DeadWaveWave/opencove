@@ -24,6 +24,7 @@ export function createClaudeHookChannel(options: {
       hookEventName: envelope.hookEventName,
       providerSessionId: envelope.claudeSessionId,
     }),
+    publishManagedSessionIdentity: true,
     buildReservationEnv: (endpoint, token) => ({
       OPENCOVE_CLAUDE_HOOK_ENDPOINT: endpoint,
       OPENCOVE_CLAUDE_HOOK_TOKEN: token,

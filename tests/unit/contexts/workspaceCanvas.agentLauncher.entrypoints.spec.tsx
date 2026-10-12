@@ -89,6 +89,7 @@ describe('shared Agent launcher entrypoints', () => {
     })
     vi.mocked(launchWorkspaceAgentSession).mockResolvedValue({
       sessionId: 'session-a',
+      resumeSessionId: null,
       profileId: 'profile-a',
       runtimeKind: 'posix',
       effectiveModel: null,
@@ -183,4 +184,30 @@ describe('shared Agent launcher entrypoints', () => {
     expect(launchWorkspaceAgentSession).toHaveBeenCalledTimes(1)
     expect(params.createNodeForSession).toHaveBeenCalledTimes(1)
   })
+
+  it.each(['claude-code', 'codex'] as const)(
+    'persists only an authoritative new session binding for %s',
+    async provider => {
+      const params = fixture()
+      vi.mocked(launchWorkspaceAgentSession).mockResolvedValueOnce({
+        sessionId: 'runtime-a',
+        resumeSessionId: 'assigned-session-a',
+        profileId: null,
+        runtimeKind: 'posix',
+        effectiveModel: null,
+        executionDirectory: '/repo/worktree',
+        workerBinding: { endpointId: 'local', mountId: 'mount-a' },
+      })
+      const { result } = renderHook(() => useWorkspaceCanvasAgentLauncher(params))
+      await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }, provider))
+      expect(params.createNodeForSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agent: expect.objectContaining({
+            resumeSessionId: provider === 'claude-code' ? 'assigned-session-a' : null,
+            resumeSessionIdVerified: provider === 'claude-code',
+          }),
+        }),
+      )
+    },
+  )
 })

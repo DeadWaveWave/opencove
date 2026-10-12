@@ -8,6 +8,7 @@ import { toAgentNodeTitle, toErrorMessage } from '@app/renderer/shell/utils/form
 import {
   clearResumeSessionBinding,
   isResumeSessionBindingVerified,
+  resolveLaunchedAgentResumeBinding,
 } from '@contexts/agent/domain/agentResumeBinding'
 import { resolveInitialAgentRuntimeStatus } from '@contexts/agent/domain/agentRuntimeStatus'
 import {
@@ -264,7 +265,11 @@ export async function hydrateAgentNode({
             ...sanitizedAgent,
             effectiveModel: relaunchedAgent.effectiveModel,
             launchMode: relaunchedAgent.launchMode,
-            ...clearResumeSessionBinding(),
+            ...resolveLaunchedAgentResumeBinding(
+              sanitizedAgent.provider,
+              'new',
+              relaunchedAgent.resumeSessionId,
+            ),
           },
         },
       }

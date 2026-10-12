@@ -71,7 +71,7 @@ describe('locateAgentResumeSessionId', () => {
     process.env.HOMEPATH = originalHomePath
   })
 
-  it('uses latest claude jsonl filename as resume session id', async () => {
+  it('does not treat the latest claude jsonl filename as session ownership', async () => {
     const cwd = '/Users/tester/Development/cove'
     const startedAtMs = 1_707_000_000_000
     const projectDir = toClaudeProjectDir(cwd)
@@ -97,10 +97,10 @@ describe('locateAgentResumeSessionId', () => {
       timeoutMs: 10,
     })
 
-    expect(sessionId).toBe('agent-a5170af')
+    expect(sessionId).toBeNull()
   })
 
-  it('supports uuid-style claude jsonl filenames', async () => {
+  it('does not infer ownership from a single uuid-style claude filename', async () => {
     const cwd = '/Users/tester/Development/cove'
     const startedAtMs = 1_707_000_000_000
     const projectDir = toClaudeProjectDir(cwd)
@@ -125,10 +125,10 @@ describe('locateAgentResumeSessionId', () => {
       timeoutMs: 10,
     })
 
-    expect(detected).toBe(sessionId)
+    expect(detected).toBeNull()
   })
 
-  it('falls back to the closest claude ancestor project directory for subdirectory launches', async () => {
+  it('does not bind a claude ancestor session to a subdirectory launch', async () => {
     const workspaceRoot = '/Users/tester/Development/cove'
     const cwd = join(workspaceRoot, 'docs')
     const startedAtMs = 1_707_000_000_000
@@ -163,7 +163,7 @@ describe('locateAgentResumeSessionId', () => {
       timeoutMs: 10,
     })
 
-    expect(detected).toBe('ancestor-session')
+    expect(detected).toBeNull()
   })
 
   it('locates a gemini session by matching the project root and chat metadata', async () => {

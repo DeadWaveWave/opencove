@@ -431,7 +431,7 @@ export function registerSessionLaunchAgentInMountHandler(
         provider,
         cwd,
         launchMode: mode,
-        resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
+        resumeSessionId: managedLaunch.plan.resumeSessionId,
         startedAtMs,
         ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
         opencodeBaseUrl: opencodeServer
@@ -461,7 +461,7 @@ export function registerSessionLaunchAgentInMountHandler(
         model,
         effectiveModel: launchCommand.effectiveModel,
         executionContext,
-        resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
+        resumeSessionId: managedLaunch.plan.resumeSessionId,
         startedAtMs,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,

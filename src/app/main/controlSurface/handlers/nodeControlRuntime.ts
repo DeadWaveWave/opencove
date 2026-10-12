@@ -101,6 +101,7 @@ export function createRuntimeDeps(
         prompt: data.prompt,
         model: data.model,
         effectiveModel: optionalString(launched.effectiveModel),
+        resumeSessionId: optionalString(launched.resumeSessionId),
         executionDirectory:
           optionalString(executionContext.workingDirectory) ?? resolved.workingDirectory,
         expectedDirectory: resolved.workingDirectory,

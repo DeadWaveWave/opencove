@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildAgentLaunchCommand } from '../../../src/contexts/agent/infrastructure/cli/AgentCommandFactory'
 
+const claudeSessionId = '11111111-1111-4111-8111-111111111111'
+
 describe('buildAgentLaunchCommand', () => {
   it('builds codex command with model override', () => {
     const command = buildAgentLaunchCommand({
@@ -96,13 +98,18 @@ describe('buildAgentLaunchCommand', () => {
       mode: 'new',
       prompt: 'review failing tests',
       model: null,
-      resumeSessionId: null,
+      resumeSessionId: claudeSessionId,
     })
 
     expect(command.command).toBe('claude')
-    expect(command.args).toEqual(['--dangerously-skip-permissions', 'review failing tests'])
+    expect(command.args).toEqual([
+      '--dangerously-skip-permissions',
+      '--session-id',
+      claudeSessionId,
+      'review failing tests',
+    ])
     expect(command.effectiveModel).toBeNull()
-    expect(command.resumeSessionId).toBeNull()
+    expect(command.resumeSessionId).toBe(claudeSessionId)
   })
 
   it('builds claude command in safe mode when full access is disabled', () => {
@@ -111,14 +118,14 @@ describe('buildAgentLaunchCommand', () => {
       mode: 'new',
       prompt: 'review failing tests',
       model: null,
-      resumeSessionId: null,
+      resumeSessionId: claudeSessionId,
       agentFullAccess: false,
     })
 
     expect(command.command).toBe('claude')
-    expect(command.args).toEqual(['review failing tests'])
+    expect(command.args).toEqual(['--session-id', claudeSessionId, 'review failing tests'])
     expect(command.effectiveModel).toBeNull()
-    expect(command.resumeSessionId).toBeNull()
+    expect(command.resumeSessionId).toBe(claudeSessionId)
   })
 
   it('builds codex resume command with session id', () => {
@@ -153,18 +160,31 @@ describe('buildAgentLaunchCommand', () => {
     ).toThrow('codex resume requires explicit session id')
   })
 
-  it('builds claude resume command without explicit session id', () => {
+  it.each(['new', 'resume'] as const)('rejects claude %s without an explicit session id', mode => {
+    expect(() =>
+      buildAgentLaunchCommand({
+        provider: 'claude-code',
+        mode,
+        prompt: '',
+        model: null,
+        resumeSessionId: '  ',
+      }),
+    ).toThrow(`claude ${mode} requires explicit session id`)
+  })
+
+  it('resumes only the explicit claude session', () => {
     const command = buildAgentLaunchCommand({
       provider: 'claude-code',
       mode: 'resume',
-      prompt: '',
       model: null,
-      resumeSessionId: null,
+      resumeSessionId: claudeSessionId,
     })
 
-    expect(command.command).toBe('claude')
-    expect(command.args).toEqual(['--dangerously-skip-permissions', '--continue'])
+    expect(command.args).toEqual(['--dangerously-skip-permissions', '--resume', claudeSessionId])
+    expect(command.resumeSessionId).toBe(claudeSessionId)
     expect(command.launchMode).toBe('resume')
+    expect(command.args).not.toContain('--continue')
+    expect(command.args).not.toContain('--session-id')
   })
 
   it('supports starting codex without a prompt', () => {
@@ -187,11 +207,15 @@ describe('buildAgentLaunchCommand', () => {
       mode: 'new',
       prompt: '   ',
       model: null,
-      resumeSessionId: null,
+      resumeSessionId: claudeSessionId,
     })
 
     expect(command.command).toBe('claude')
-    expect(command.args).toEqual(['--dangerously-skip-permissions'])
+    expect(command.args).toEqual([
+      '--dangerously-skip-permissions',
+      '--session-id',
+      claudeSessionId,
+    ])
     expect(command.args).not.toContain('--dangerously-bypass-hook-trust')
     expect(command.launchMode).toBe('new')
   })

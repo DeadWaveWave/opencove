@@ -2,6 +2,7 @@ import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import {
   clearResumeSessionBinding,
   isResumeSessionBindingVerified,
+  resolveLaunchedAgentResumeBinding,
 } from '../../../../contexts/agent/domain/agentResumeBinding'
 import { resolveInitialAgentRuntimeStatus } from '../../../../contexts/agent/domain/agentRuntimeStatus'
 import {
@@ -302,7 +303,11 @@ export async function prepareAgentNode(options: {
           expectedDirectory: agentExpectedDirectory,
           effectiveModel: launched.effectiveModel,
           launchMode: 'new',
-          ...clearResumeSessionBinding(),
+          ...resolveLaunchedAgentResumeBinding(
+            sanitizedAgent.provider,
+            'new',
+            launched.resumeSessionId,
+          ),
         },
       })
     } catch (error) {

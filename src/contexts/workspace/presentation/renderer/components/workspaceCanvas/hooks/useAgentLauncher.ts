@@ -10,7 +10,7 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
+import { resolveLaunchedAgentResumeBinding } from '../../../utils/agentResumeBinding'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 import {
@@ -170,7 +170,7 @@ export function useWorkspaceCanvasAgentLauncher({
             model,
             effectiveModel: launched.effectiveModel,
             launchMode: 'new',
-            ...clearResumeSessionBinding(),
+            ...resolveLaunchedAgentResumeBinding(provider, 'new', launched.resumeSessionId),
             executionDirectory: launched.executionDirectory,
             expectedDirectory: launched.executionDirectory,
             directoryMode: 'workspace',

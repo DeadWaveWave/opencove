@@ -10,7 +10,7 @@ import {
   type ProjectRoleDefinition,
 } from '@contexts/settings/domain/agentSettings'
 import type { RoleNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
+import { resolveLaunchedAgentResumeBinding } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
@@ -197,7 +197,7 @@ export async function runRoleNodeAction(
         model,
         effectiveModel: launched.effectiveModel,
         launchMode: 'new',
-        ...clearResumeSessionBinding(),
+        ...resolveLaunchedAgentResumeBinding(provider, 'new', launched.resumeSessionId),
         executionDirectory: launched.executionDirectory,
         expectedDirectory: launched.executionDirectory,
         directoryMode: 'workspace',

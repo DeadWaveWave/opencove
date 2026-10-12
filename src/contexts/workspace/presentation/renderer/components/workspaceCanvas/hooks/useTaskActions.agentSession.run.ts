@@ -2,7 +2,10 @@ import {
   resolveAgentModel,
   resolveSelectableAgentProvider,
 } from '@contexts/settings/domain/agentSettings'
-import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
+import {
+  clearResumeSessionBinding,
+  resolveLaunchedAgentResumeBinding,
+} from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import {
   assignAgentNodeToTaskSpace,
@@ -229,7 +232,7 @@ export async function runTaskAgentAction(
         model,
         effectiveModel: launched.effectiveModel,
         launchMode: 'new',
-        ...clearResumeSessionBinding(),
+        ...resolveLaunchedAgentResumeBinding(provider, 'new', launched.resumeSessionId),
         executionDirectory: launched.executionDirectory,
         expectedDirectory: launched.executionDirectory,
         directoryMode: 'workspace',

@@ -17,13 +17,6 @@ export async function prepareAgentLaunch(options: {
   registry: AgentProviderRegistry
   resumeSessionId: string | null
 }) {
-  const testStub = resolveWorkerAgentTestStub({
-    provider: options.provider,
-    cwd: options.cwd,
-    mode: options.mode,
-    model: options.model,
-    resumeSessionId: options.resumeSessionId,
-  })
   const managedLaunch = await createManagedAgentLaunchPlan(
     options.registry.require(options.provider),
     {
@@ -38,6 +31,13 @@ export async function prepareAgentLaunch(options: {
       workspaceDirectory: options.cwd,
     },
   )
+  const testStub = resolveWorkerAgentTestStub({
+    provider: options.provider,
+    cwd: options.cwd,
+    mode: options.mode,
+    model: options.model,
+    resumeSessionId: managedLaunch.plan.resumeSessionId,
+  })
   const launchCommand: AgentLaunchCommand = testStub
     ? {
         command: testStub.command,

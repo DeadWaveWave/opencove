@@ -1,3 +1,4 @@
+import { resolveLaunchedAgentResumeBinding } from '../../../agent/domain/agentResumeBinding'
 import { randomUUID } from 'node:crypto'
 import type {
   AgentProviderId,
@@ -37,6 +38,7 @@ export type NodeControlCreateData =
   | { kind: 'terminal'; shell: string | null; command: string | null; profileId: string | null }
 
 export interface AgentNodeRuntimeData {
+  resumeSessionId?: string | null
   sessionId: string
   provider: AgentProviderId
   prompt: string
@@ -328,8 +330,11 @@ export function makeNode(options: {
           model: options.agentRuntime.model,
           effectiveModel: options.agentRuntime.effectiveModel,
           launchMode: 'new',
-          resumeSessionId: null,
-          resumeSessionIdVerified: false,
+          ...resolveLaunchedAgentResumeBinding(
+            options.agentRuntime.provider,
+            'new',
+            options.agentRuntime.resumeSessionId,
+          ),
           executionDirectory: options.agentRuntime.executionDirectory,
           expectedDirectory:
             options.agentRuntime.expectedDirectory ?? options.agentRuntime.executionDirectory,

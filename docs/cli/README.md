@@ -10,6 +10,9 @@ CLI 的定位是：给 Agent/自动化脚本提供一个稳定入口，去驱动
 - CLI 禁止直读写 DB、状态文件或 renderer store；必须通过统一的 Control Surface 访问能力（见 `docs/architecture/CONTROL_SURFACE.md`）。
 - CLI 输出必须支持机器消费：优先 JSON；错误必须是结构化语义（而不是字符串拼接）。
 
+Managed Claude 的会话身份、明确 ID 恢复和旧数据兼容规则见
+[Claude session identity](CLAUDE_SESSION_IDENTITY.md)。
+
 ## 1.1 安装拓扑
 
 `runtime inspect` 只读取构建描述，`runtime verify` 在独立进程内验证执行环境；它们不会启动

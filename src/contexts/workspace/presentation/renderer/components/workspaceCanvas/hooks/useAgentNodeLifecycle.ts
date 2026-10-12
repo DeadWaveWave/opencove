@@ -12,6 +12,7 @@ import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeSta
 import {
   clearResumeSessionBinding,
   isResumeSessionBindingVerified,
+  resolveLaunchedAgentResumeBinding,
 } from '../../../utils/agentResumeBinding'
 import { invalidateCachedTerminalScreenState } from '../../terminalNode/screenStateCache'
 import { toErrorMessage } from '../helpers'
@@ -282,12 +283,11 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                 expectedDirectory: mountId
                   ? launched.executionDirectory
                   : requestedExpectedDirectory,
-                ...(mode === 'resume'
-                  ? {
-                      resumeSessionId: requestedResumeSessionId,
-                      resumeSessionIdVerified: true,
-                    }
-                  : clearResumeSessionBinding()),
+                ...resolveLaunchedAgentResumeBinding(
+                  launchData.provider,
+                  mode,
+                  mode === 'resume' ? requestedResumeSessionId : launched.resumeSessionId,
+                ),
               }
 
               return {
