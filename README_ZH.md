@@ -21,7 +21,7 @@
 
 ## 📣 重要公告
 
-**OpenCove 0.3.2 新增原生 Pi 活动追踪，改善 Windows 上 Agent 的启动与恢复，并让托管 SSH 运行时随桌面版本更新。**
+**OpenCove 0.4.0 带来 Pixel 工作区、桌面图标式折叠窗口，以及可独立安装的插件与主题。在设置中探索扩展，或通过 `opencove plugin guide` 开始创造自己的插件。**
 
 ## 📖 什么是 OpenCove？
 

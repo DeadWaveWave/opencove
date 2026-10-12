@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-12
+
+OpenCove 0.4.0 introduces the Pixel workspace, desktop-style collapsed windows, and independently installable plugins and themes. It also improves file navigation, terminal links and Agent recovery.
+
+### ✨ Highlights
+
+- **Pixel workspace**: Cohesive dark and light themes, shared window styling, and configurable pixel effects for the canvas and Agent activity.
+- **Desktop-style canvas**: Collapse live windows into persistent icons, organize them within Spaces, and create windows by clicking or dragging from the toolbar.
+- **Plugins and themes**: Install local or Git packages, preview and manage them in Settings, and create extensions with the bundled documentation and CLI guide.
+- **Files and navigation**: Browse folders in icon or tree views, drag files onto the canvas, and keep important Spaces and Agents in view with the redesigned Sidebar.
+
 ### 🚀 Added
 
 - Appearance: add Pixel and Pixel Light themes, shared window chrome, provider icons, color accents and configurable canvas, window and Agent activity pixel effects. (#422)
@@ -16,7 +27,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Plugins: install independent local or Git packages with standard canvas windows, commands, packaged Skills, preferences, Sidebar trees, themes and explicit project-scoped host operations. (#422)
 - Themes: inherit built-in foundations and customize component skins, bundled images and fonts, typography, window metrics and lifecycle-managed effects; keep Desktop, Web UI and live plugin content synchronized while preserving user preferences. (#422)
 - Plugins: manage details and interactive previews, entry-point visibility, enablement, reload and removal; inspect Git updates, preserve local edits, resolve update candidates, roll back code and discover repositories on GitHub. (#422)
-- Canvas: choose between Zoom Flight and Smooth Slide for viewport navigation across windows and Spaces, with a saved preference and support for system reduced motion. (#400)
 
 ### 🐛 Fixed
 
@@ -29,20 +39,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Plugins: reject stale or ambiguous targets, preserve concurrent workspace changes during asynchronous node creation, and report filesystem failures through structured errors. (#422)
 - Terminal: keep link actions focused on the terminal without accidentally selecting the canvas node. (#422)
 - Files: replace unsupported-file warnings with a centered file icon, readable filename, format-aware explanation, and clear default-app action across themes. (#416)
-
 - Files: preview terminal-linked images in their original file windows, retain audio/video playback, and offer explicit system opening for unsupported formats instead of treating binary files as text. (#416)
 - Terminal: recognize complete wrapped URLs and file paths, preserve file line and column navigation, and use compact link actions with predictable selection and focus. (#416)
 - Terminal: open verified local directory links in the system file manager without requiring a matching Space, while preserving remote source and path permissions. (#416)
 - Agent: restore Pi session listing and switching, copy the last assistant reply from the saved branch, and target the correct managed session after recovery. (#414)
-- Sidebar: preserve collapsed projects and Space groups across app restarts, while keeping their disclosure choices independent. (#411)
-- Terminal: route local desktop image paste to native Pi, Kimi, Codex, Claude Code, and OMP keybindings while preserving text paste. (#409)
-- Desktop: close the focused input window or selected canvas window with Cmd/Ctrl+W without closing the app, and require two Cmd+Q presses within 1.5 seconds to quit on macOS. (#410)
-- Terminal: execute quick commands after session attachment, preserving one-time execution and cancelling pending input when its window is removed. (#408)
+- Terminal: keep launch assets in the private application profile and repair missing or damaged scripts before starting new terminals, without disrupting existing shell paths. (#415)
+- Terminal: preserve Unicode profile and runtime paths in Windows Agent command shims without changing the user's code page. (#415)
+
+---
+
+## [0.3.3] - 2026-09-12
+
+OpenCove 0.3.3 improves the canvas workflow, keyboard control, terminal integrations, and release tooling.
+
+### ✨ Highlights
+- Unified native image paste mappings across Pi, Kimi, Codex, Claude Code, and OpenCode terminals.
+- Safer Cmd/Ctrl+W window closing and deliberate double-press Cmd+Q application quitting.
+
+### 🚀 Added
+- Canvas: choose between Zoom Flight and Smooth Slide for viewport navigation across windows and Spaces, with a saved preference and support for system reduced motion. (#400)
+- Terminal: support quick command execution after session attachment. (#408)
+
+### 💅 Changed
+- Sidebar: persist Project and Space disclosure state independently across restarts. (#411)
+
+### 🐞 Fixed
+- Terminal: route desktop image paste through provider-specific native key mappings while preserving text paste. (#409)
+- Desktop: close the focused input node or selected canvas node with Cmd/Ctrl+W without closing the app. (#410)
+- Desktop: require two non-repeat Cmd+Q presses within 1.5 seconds before quitting on macOS. (#410)
 - Workspace: keep Space archive and other operation overlays local to their target Space, preventing unrelated Space backgrounds from tinting window nodes. (#401)
 - Canvas: center windows created by double-click or the context menu within 120 pixels of the viewport center, avoiding small unnecessary pans while preserving Space ownership and pointer placement farther away. (#399)
 - Agent: launch remote Project agents in the default remote mount instead of the local project metadata directory, while preserving explicit Space and worktree directories. (#398)
-- Terminal: keep launch assets in the private application profile and repair missing or damaged scripts before starting new terminals, without disrupting existing shell paths. (#415)
-- Terminal: preserve Unicode profile and runtime paths in Windows Agent command shims without changing the user's code page. (#415)
 
 ---
 
@@ -320,24 +347,6 @@ OpenCove 0.3.0 makes long-running AI development work easier to resume, observe,
 
 ---
 
-## [0.3.3] - 2026-09-12
-
-OpenCove 0.3.3 improves the canvas workflow, keyboard control, terminal integrations, and release tooling.
-
-### ✨ Highlights
-- Unified native image paste mappings across Pi, Kimi, Codex, Claude Code, and OpenCode terminals.
-- Safer Cmd/Ctrl+W window closing and deliberate double-press Cmd+Q application quitting.
-
-### 🚀 Added
-- Terminal: support quick command execution after session attachment. (#408)
-
-### 💅 Changed
-- Sidebar: persist Project and Space disclosure state independently across restarts. (#411)
-
-### 🐞 Fixed
-- Terminal: route desktop image paste through provider-specific native key mappings while preserving text paste. (#409)
-- Desktop: close the focused input node or selected canvas node with Cmd/Ctrl+W without closing the app. (#410)
-- Desktop: require two non-repeat Cmd+Q presses within 1.5 seconds before quitting on macOS. (#410)
 ## [0.2.0] - 2026-03-12
 
 Welcome to OpenCove 0.2.0! This release focuses on unifying the workspace experience, hardening runtime stability for AI Agents, and introducing formal multi-platform release pipelines.

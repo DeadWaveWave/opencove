@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "version": "0.4.0",
+  "channel": "stable",
+  "publishedAt": "2026-10-12T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/compare/v0.3.3...v0.4.0",
+  "locales": {
+    "en": {
+      "summary": "OpenCove 0.4.0 introduces Pixel themes, a more flexible canvas, and independently installed plugins and themes, with improvements to terminal links and Agent recovery.",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "Choose Pixel or Pixel Light, customize window colors, and control pixel effects for the canvas, windows and Agent activity.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Collapse windows into compact desktop icons, restore them with smooth motion, and keep their collapsed state across restarts.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Create windows by clicking the canvas toolbar or dragging a creation button directly to the desired position.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Browse folders in icon or tree views, navigate with breadcrumbs, and drag files or folders onto the canvas as windows.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "Navigate projects from a compact rail, reveal projects on hover, pin or hide Spaces and Agents, and switch projects with keyboard shortcuts.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "Manage appearance, Agent ordering and connections in a redesigned main-area Settings page with live theme previews.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Install independent plugins from local folders or Git repositories to add canvas windows, commands, packaged Skills and Sidebar tools.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Preview plugins, manage visibility, reloads and Git updates with code rollback, and read plugin documentation and guides from Settings or the CLI.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Extend built-in themes with custom component skins, images, fonts and visual effects across Desktop and Web, while preserving appearance and motion preferences.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Follow wrapped terminal links correctly, preview linked images in file windows with audio/video playback preserved, and open unsupported files in the system app.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/416",
+          "prNumber": 416,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Restore Pi session listing and switching, copy the latest assistant reply, and return to the correct session after recovery.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/414",
+          "prNumber": 414,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Restore terminal startup when launch files are missing or damaged, and handle Unicode profile and runtime paths in Windows Agent launches.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/415",
+          "prNumber": 415,
+          "sha": null
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "OpenCove 0.4.0 带来 Pixel 双主题、更灵活的画布，以及可独立安装的插件与主题，并改善终端链接和 Agent 会话恢复。",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "选择 Pixel 或 Pixel Light 主题，自定义窗口配色，并控制画布、窗口和 Agent 活动的像素效果。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "将窗口折叠为紧凑的桌面图标，以平滑动画恢复，并在重启后保留折叠状态。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "点击画布工具栏创建窗口，或将创建按钮直接拖到希望放置的位置。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "以图标或树形视图浏览文件夹，使用面包屑导航，并将文件或文件夹拖到画布上成为独立窗口。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "通过紧凑的项目栏导航，悬停展开项目，置顶或隐藏 Space 与 Agent，并使用快捷键切换项目。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "在重新设计的主区域设置页面中管理外观、Agent 排序和连接，并实时预览主题效果。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "从本地文件夹或 Git 仓库独立安装插件，为工作区添加画布窗口、命令、随包提供的 Skills 和侧边栏工具。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "预览插件，管理入口可见性、重新加载和 Git 更新，支持代码回滚，并从设置或 CLI 阅读插件文档与指南。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "在内置主题基础上扩展组件皮肤、图片、字体和视觉效果，同步用于 Desktop 与 Web，并保留个人外观和动效偏好。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/422",
+          "prNumber": 422,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "正确打开换行的终端链接，在文件窗口预览图片并保留音视频播放，不支持的格式可交给系统应用打开。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/416",
+          "prNumber": 416,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "恢复 Pi 会话列表与切换、复制最近助手回复，并在恢复后定位到正确会话。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/414",
+          "prNumber": 414,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "修复启动文件缺失或损坏时的终端启动，并让 Windows Agent 正确处理包含 Unicode 字符的用户配置与运行时路径。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/415",
+          "prNumber": 415,
+          "sha": null
+        }
+      ]
+    }
+  }
+}

@@ -21,7 +21,7 @@ See parallel work at a glance, keep context visible, and resume exactly where yo
 
 ## 📣 Important Announcement
 
-**OpenCove 0.3.2 adds native Pi activity tracking, improves Windows Agent startup and recovery, and keeps managed SSH runtimes aligned with Desktop updates.**
+**OpenCove 0.4.0 brings the Pixel workspace, desktop-style collapsed windows, and independently installable plugins and themes. Explore extensions in Settings, or start creating your own with `opencove plugin guide`.**
 
 ## 📖 What is OpenCove?
 
