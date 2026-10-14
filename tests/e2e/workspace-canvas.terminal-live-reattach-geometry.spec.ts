@@ -128,15 +128,26 @@ test('a live Desktop terminal reattach commits its measured frame without replac
       .toBe(before.sessionId)
     await expect(window.locator('.terminal-node')).toContainText(historyMarker)
 
+    // Right after reload the restored size still equals the old proposal; wait in one read for
+    // the larger frame to be measured and committed, not for that transient match.
     await expect
       .poll(
         async () =>
-          await window.evaluate(id => {
-            const api = window.__opencoveTerminalSelectionTestApi
-            const size = api?.getSize(id) ?? null
-            const proposed = api?.getProposedGeometry(id) ?? null
-            return size && proposed && size.cols === proposed.cols && size.rows === proposed.rows
-          }, nodeId),
+          await window.evaluate(
+            ({ id, previous }) => {
+              const api = window.__opencoveTerminalSelectionTestApi
+              const size = api?.getSize(id) ?? null
+              const proposed = api?.getProposedGeometry(id) ?? null
+              return Boolean(
+                size &&
+                proposed &&
+                (proposed.cols !== previous?.cols || proposed.rows !== previous?.rows) &&
+                size.cols === proposed.cols &&
+                size.rows === proposed.rows,
+              )
+            },
+            { id: nodeId, previous: before.proposed },
+          ),
       )
       .toBe(true)
     const after = await window.evaluate(
