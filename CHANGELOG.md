@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 💅 Changed
+
+- Appearance: replace the Standard theme with Cove, whose colors are generated with checked contrast, and use Cove Dark for new installs. Ember is retired and existing Ember choices move to Cove; Pixel is unchanged. (#439)
+
 ### 🐛 Fixed
 
 - Agent: give each managed Claude launch its own conversation ID and preserve it across recovery, preventing same-directory nodes from binding to the newest unrelated transcript. (#425)
