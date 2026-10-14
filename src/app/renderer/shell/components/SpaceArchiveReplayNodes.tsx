@@ -10,7 +10,8 @@ import type {
   SpaceArchiveSpaceSnapshot,
 } from '@contexts/workspace/presentation/renderer/types'
 import { providerLabel } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
-import { getStatusClassName } from '@contexts/workspace/presentation/renderer/components/terminalNode/status'
+import { getStatusPillTone } from '@contexts/workspace/presentation/renderer/components/terminalNode/status'
+import { StatusPill } from '@app/renderer/components/ui/StatusPill'
 import { ArchivedTaskNode, type ArchivedTaskNodeType } from './SpaceArchiveReplayTaskNode'
 import { getSpaceArchiveRecordSpaces } from '@contexts/workspace/presentation/renderer/utils/spaceArchiveRecords'
 
@@ -119,9 +120,9 @@ function ArchivedTerminalLikeNode({ data }: NodeProps<TerminalLikeNode>): React.
 
         {isAgentNode ? (
           <div className="terminal-node__header-badges">
-            <span className={`terminal-node__status ${getStatusClassName(agentStatus)}`}>
+            <StatusPill tone={getStatusPillTone(agentStatus)} className="terminal-node__status">
               {statusLabel}
-            </span>
+            </StatusPill>
           </div>
         ) : null}
       </div>

@@ -52,8 +52,9 @@ test.describe('Workspace Canvas - Agent observing status', () => {
       const plainTerminal = nodes.filter({ hasNot: window.locator('.terminal-node__status') })
 
       await expect(agentNode.locator('.terminal-node__status')).toHaveText('Observing')
-      await expect(agentNode.locator('.terminal-node__status')).toHaveClass(
-        /terminal-node__status--observing/u,
+      await expect(agentNode.locator('.terminal-node__status')).toHaveAttribute(
+        'data-tone',
+        'neutral',
       )
       await expect(plainTerminal.locator('.terminal-node__status')).toHaveCount(0)
     } finally {

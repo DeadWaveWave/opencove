@@ -1,5 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Plus, Settings, Trash2 } from 'lucide-react'
+import {
+  Bot,
+  FileText,
+  Folder,
+  Image,
+  ListChecks,
+  Plus,
+  Settings,
+  SquareTerminal,
+  Trash2,
+} from 'lucide-react'
 import { Button, type ButtonSize, type ButtonVariant } from '../components/ui/Button'
 import { Dialog } from '../components/ui/Dialog'
 import {
@@ -7,8 +17,10 @@ import {
   type IconButtonSize,
   type IconButtonVariant,
 } from '../components/ui/IconButton'
+import { KindTile, type KindTileFamily } from '../components/ui/KindTile'
 import { Popover } from '../components/ui/Popover'
 import { SettingRow } from '../components/ui/SettingRow'
+import { StatusPill } from '../components/ui/StatusPill'
 import { Toggle } from '../components/ui/Toggle'
 import { Tooltip } from '../components/ui/Tooltip'
 import { useApplyUiTheme } from '../shell/hooks/useApplyUiTheme'
@@ -25,6 +37,14 @@ const BUTTON_VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'dang
 const BUTTON_SIZES: ButtonSize[] = ['sm', 'md']
 const ICON_VARIANTS: IconButtonVariant[] = ['ghost', 'secondary', 'danger']
 const ICON_SIZES: IconButtonSize[] = ['xs', 'sm', 'md']
+const KINDS: Array<[KindTileFamily, React.ComponentType<{ 'aria-hidden'?: boolean }>]> = [
+  ['ai', Bot],
+  ['shell', SquareTerminal],
+  ['plan', ListChecks],
+  ['knowledge', FileText],
+  ['media', Image],
+  ['neutral', Folder],
+]
 
 function Section({
   id,
@@ -142,6 +162,24 @@ export default function UiGallery(): React.JSX.Element {
             <Settings aria-hidden="true" />
           </IconButton>
         </div>
+      </Section>
+
+      <Section id="status-pill" title="StatusPill and KindTile">
+        <div className="ui-gallery__row">
+          <StatusPill tone="working">Working</StatusPill>
+          <StatusPill tone="waiting">Needs you</StatusPill>
+          <StatusPill tone="neutral">Standby</StatusPill>
+          <StatusPill tone="failed">Failed</StatusPill>
+        </div>
+        {(['md', 'sm'] as const).map(size => (
+          <div className="ui-gallery__row" key={size}>
+            {KINDS.map(([kind, Icon]) => (
+              <KindTile key={kind} kind={kind} size={size}>
+                <Icon aria-hidden />
+              </KindTile>
+            ))}
+          </div>
+        ))}
       </Section>
 
       <Section id="layers" title="Dialog and Popover">

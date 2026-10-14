@@ -1,0 +1,148 @@
+/*
+ * Status pills and kind tiles. Defaults derive from semantic tokens so hand-written themes work;
+ * generated families replace them with computed colors (src/shared/design/themeStatusTokens.ts).
+ * Pills are opaque tints, so whatever glows behind the glass cannot lower their contrast.
+ */
+:root {
+  --cove-status-working-surface: color-mix(in srgb, var(--cove-accent) 18%, var(--cove-panel));
+  --cove-status-working-text: var(--cove-accent-text);
+  --cove-status-waiting-surface: color-mix(
+    in srgb,
+    var(--cove-label-yellow) 18%,
+    var(--cove-panel)
+  );
+  /* Bright yellow on dark; base.css darkens it for light appearances. */
+  --cove-status-waiting-text: color-mix(in srgb, var(--cove-label-yellow) 82%, white);
+  --cove-status-neutral-surface: color-mix(in srgb, var(--cove-text) 10%, var(--cove-panel));
+  --cove-status-neutral-text: var(--cove-text-muted);
+  --cove-status-failed-surface: color-mix(in srgb, var(--cove-label-red) 18%, var(--cove-panel));
+  --cove-status-failed-text: var(--cove-danger-text);
+}
+
+.cove-status-pill {
+  --cove-status-pill-surface: var(--cove-status-neutral-surface);
+  --cove-status-pill-text: var(--cove-status-neutral-text);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--cove-spacing-1);
+  height: 20px;
+  padding: 0 var(--cove-spacing-2);
+  border-radius: var(--cove-radius-round);
+  background: var(--cove-status-pill-surface);
+  color: var(--cove-status-pill-text);
+  font-size: var(--cove-font-size-caption);
+  font-weight: var(--cove-font-weight-semibold);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cove-status-pill[data-tone='working'] {
+  --cove-status-pill-surface: var(--cove-status-working-surface);
+  --cove-status-pill-text: var(--cove-status-working-text);
+}
+
+.cove-status-pill[data-tone='waiting'] {
+  --cove-status-pill-surface: var(--cove-status-waiting-surface);
+  --cove-status-pill-text: var(--cove-status-waiting-text);
+}
+
+.cove-status-pill[data-tone='failed'] {
+  --cove-status-pill-surface: var(--cove-status-failed-surface);
+  --cove-status-pill-text: var(--cove-status-failed-text);
+}
+
+/* Working: three pixel dots blink in sequence; static under reduced motion. */
+.cove-status-pill__dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.cove-status-pill__dots > i {
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  animation: cove-status-pill-dot 1.2s steps(1, end) infinite;
+}
+
+.cove-status-pill__dots > i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.cove-status-pill__dots > i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes cove-status-pill-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-status-pill__dots > i {
+    animation: none;
+  }
+}
+
+/* Kind tile: the window kind's icon on its family tint. Generated families define every kind
+   token together; hand-written themes define none and stay neutral. */
+.cove-kind-tile {
+  --cove-kind-tile-surface: var(--cove-kind-neutral-tile, var(--cove-field));
+  --cove-kind-tile-line: var(--cove-kind-neutral-line, var(--cove-border-subtle));
+  --cove-kind-tile-glyph: var(--cove-kind-neutral-glyph, var(--cove-text-muted));
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--cove-radius-xs);
+  background: var(--cove-kind-tile-surface);
+  box-shadow: inset 0 0 0 1px var(--cove-kind-tile-line);
+  color: var(--cove-kind-tile-glyph);
+}
+
+.cove-kind-tile[data-size='sm'] {
+  width: 18px;
+  height: 18px;
+}
+
+.cove-kind-tile > svg {
+  width: 12px;
+  height: 12px;
+}
+
+.cove-kind-tile[data-kind='ai'] {
+  --cove-kind-tile-surface: var(--cove-kind-ai-tile, var(--cove-field));
+  --cove-kind-tile-line: var(--cove-kind-ai-line, var(--cove-border-subtle));
+  --cove-kind-tile-glyph: var(--cove-kind-ai-glyph, var(--cove-text-muted));
+}
+
+.cove-kind-tile[data-kind='shell'] {
+  --cove-kind-tile-surface: var(--cove-kind-shell-tile, var(--cove-field));
+  --cove-kind-tile-line: var(--cove-kind-shell-line, var(--cove-border-subtle));
+  --cove-kind-tile-glyph: var(--cove-kind-shell-glyph, var(--cove-text-muted));
+}
+
+.cove-kind-tile[data-kind='plan'] {
+  --cove-kind-tile-surface: var(--cove-kind-plan-tile, var(--cove-field));
+  --cove-kind-tile-line: var(--cove-kind-plan-line, var(--cove-border-subtle));
+  --cove-kind-tile-glyph: var(--cove-kind-plan-glyph, var(--cove-text-muted));
+}
+
+.cove-kind-tile[data-kind='knowledge'] {
+  --cove-kind-tile-surface: var(--cove-kind-knowledge-tile, var(--cove-field));
+  --cove-kind-tile-line: var(--cove-kind-knowledge-line, var(--cove-border-subtle));
+  --cove-kind-tile-glyph: var(--cove-kind-knowledge-glyph, var(--cove-text-muted));
+}
+
+.cove-kind-tile[data-kind='media'] {
+  --cove-kind-tile-surface: var(--cove-kind-media-tile, var(--cove-field));
+  --cove-kind-tile-line: var(--cove-kind-media-line, var(--cove-border-subtle));
+  --cove-kind-tile-glyph: var(--cove-kind-media-glyph, var(--cove-text-muted));
+}

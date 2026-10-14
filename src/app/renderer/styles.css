@@ -6,6 +6,7 @@
 @import './styles/base.css' layer(opencove);
 @import './styles/ui-controls.css' layer(opencove);
 @import './styles/ui-overlays.css' layer(opencove);
+@import './styles/ui-badges.css' layer(opencove);
 @import './styles/app-startup-state.css' layer(opencove);
 @import './styles/cove-fields.css' layer(opencove);
 @import './styles/app-header.css' layer(opencove);

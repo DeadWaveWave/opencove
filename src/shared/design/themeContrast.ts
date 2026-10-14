@@ -5,6 +5,7 @@
  */
 import { contrastRatio, deltaE, mixOver, shift, simulateCvd, type Rgb } from './oklch'
 import { ACCENT_HOVER_STEP, dangerDialog, type Ink } from './themeHostTokens'
+import { statusPillColors } from './themeStatusTokens'
 import { PIXEL_CYAN_STEP } from './themeTokens'
 import {
   ANSI_BACKGROUND_SLOTS,
@@ -107,6 +108,13 @@ export function contrastChecks(theme: GeneratedTheme): ContrastCheck[] {
       id: `pixel ${id} / elevated`,
       ratio: contrastRatio(color, theme.roles.surface),
       min: 3,
+    })
+  }
+  for (const [tone, pill] of Object.entries(statusPillColors(theme))) {
+    checks.push({
+      id: `status pill ${tone}`,
+      ratio: contrastRatio(pill.text, pill.surface),
+      min: 4.5,
     })
   }
   const danger = dangerDialog(theme)

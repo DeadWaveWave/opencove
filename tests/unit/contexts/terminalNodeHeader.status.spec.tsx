@@ -7,7 +7,8 @@ describe('TerminalNodeHeader agent status', () => {
   it('renders an honest observing state while an agent has no runtime observation', () => {
     render(<TerminalNodeHeader title="Pi" kind="agent" status={null} onClose={() => undefined} />)
 
-    expect(screen.getByText('Observing')).toHaveClass('terminal-node__status--observing')
+    // Observing is not a claim of work, so it reads neutral rather than working.
+    expect(screen.getByText('Observing')).toHaveAttribute('data-tone', 'neutral')
     expect(screen.queryByText('Working')).not.toBeInTheDocument()
   })
 

@@ -5,6 +5,7 @@
  */
 import { mixOver, type Rgb } from './oklch'
 import { hostTokens } from './themeHostTokens'
+import { statusPillTokens } from './themeStatusTokens'
 import {
   ANSI_KEYS,
   GLASS,
@@ -121,6 +122,7 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     ...kindTokens(theme),
     '--cove-status-waiting': hex(theme.amber[8]!),
     '--cove-status-failed': hex(theme.red[8]!),
+    ...statusPillTokens(theme),
     '--cove-label-gray': hex(theme.neutral[8]!),
     ...labels,
     '--cove-glass-frame': percent(glass.frame),

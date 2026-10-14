@@ -317,6 +317,7 @@
   --cove-danger-text: color-mix(in srgb, var(--cove-label-red) 70%, black);
   --cove-success: color-mix(in srgb, var(--cove-label-green) 64%, black);
   --cove-warning: color-mix(in srgb, var(--cove-label-orange) 68%, black);
+  --cove-status-waiting-text: color-mix(in srgb, var(--cove-label-yellow) 45%, black);
   --cove-label-gray: #8e8e93;
   --cove-label-red: #ff3b30;
   --cove-label-orange: #ff9500;

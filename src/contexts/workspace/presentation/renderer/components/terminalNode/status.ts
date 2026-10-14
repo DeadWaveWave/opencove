@@ -1,22 +1,20 @@
+import type { StatusPillTone } from '@app/renderer/components/ui/StatusPill'
 import type { AgentRuntimeStatus } from '../../types'
 
-export function getStatusClassName(status: AgentRuntimeStatus | null): string {
+/** Status hues are reserved for what needs attention; every other state reads as neutral. */
+export function getStatusPillTone(status: AgentRuntimeStatus | null): StatusPillTone {
   switch (status) {
-    case null:
-      return 'terminal-node__status--observing'
-    case 'standby':
-      return 'terminal-node__status--standby'
-    case 'waiting':
-      return 'terminal-node__status--waiting'
-    case 'exited':
-      return 'terminal-node__status--exited'
-    case 'failed':
-      return 'terminal-node__status--failed'
-    case 'stopped':
-      return 'terminal-node__status--stopped'
-    case 'restoring':
-      return 'terminal-node__status--restoring'
     case 'running':
-      return 'terminal-node__status--running'
+      return 'working'
+    case 'waiting':
+      return 'waiting'
+    case 'failed':
+      return 'failed'
+    case null:
+    case 'standby':
+    case 'exited':
+    case 'stopped':
+    case 'restoring':
+      return 'neutral'
   }
 }

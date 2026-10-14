@@ -7,7 +7,8 @@ import { Copy, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { TerminalNodeAgentSessionActions } from './TerminalNodeAgentSessionActions'
-import { getStatusClassName } from './status'
+import { StatusPill } from '@app/renderer/components/ui/StatusPill'
+import { getStatusPillTone } from './status'
 import { InlineNodeTitleEditor } from '../shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '../shared/NodeKindIcon'
 import { WindowCollapseButton } from '../shared/WindowCollapseButton'
@@ -168,9 +169,9 @@ export function TerminalNodeHeader({
                   {t('agentRuntime.hookDegraded')}
                 </span>
               ) : null}
-              <span className={`terminal-node__status ${getStatusClassName(status)}`}>
+              <StatusPill tone={getStatusPillTone(status)} className="terminal-node__status">
                 {statusLabel}
-              </span>
+              </StatusPill>
             </>
           ) : null}
         </div>
