@@ -13,6 +13,9 @@ export function resolveSpaceVisualScale(viewportZoom: number) {
     // Chromium quantizes CSS border widths before the viewport transform.
     // Round up in world pixels so that quantization cannot erase the screen minimum.
     stroke: Math.max(1, Math.min(7, Math.ceil(0.7 / zoom))),
+    // Window identity stripes stay about one screen pixel thick. Half-pixel steps mean the value,
+    // which every window inherits, changes a few times across the zoom range instead of every step.
+    identityStripe: Math.max(2, Math.min(6, Math.round(2 / zoom) / 2)),
   }
 }
 

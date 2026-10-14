@@ -11,8 +11,8 @@ vi.mock('@xyflow/react', () => {
     useReactFlow: () => ({ fitView: vi.fn(), fitBounds: vi.fn() }),
     useStoreApi: () => ({
       setState: vi.fn(),
-      getState: vi.fn(() => ({})),
-      subscribe: vi.fn(),
+      getState: vi.fn(() => ({ transform: [0, 0, 1] })),
+      subscribe: vi.fn(() => () => undefined),
     }),
     useStore: (selector: (state: unknown) => unknown) => selector({ transform: [0, 0, 1] }),
     ReactFlow: ({ children }: { children?: React.ReactNode }) => (

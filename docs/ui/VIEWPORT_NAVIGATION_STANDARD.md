@@ -56,6 +56,10 @@
   - 侧栏 Agent 导航：`220ms`
   - 终端点击归一：`120ms`
   ）
+- 缩放派生值：画布投影从 store 订阅缩放并命令式写入，不触发 React 渲染。随每一步缩放变化的值
+  （`--cove-canvas-zoom`、Space 标注与描边比例）只写在 Space 图层 `.react-flow__viewport-portal` 上；
+  窗口树的祖先只在取值跨档时写入（按半像素分档的标记条高度、`data-cove-space-overview`）。
+  自定义属性会被继承，写在画布根上会让每一步缩放都重算全部窗口的样式。
 
 ## 4. 设置项
 
@@ -161,3 +165,4 @@
 - `src/contexts/workspace/presentation/renderer/components/TerminalNode.tsx`
 - `src/contexts/settings/domain/agentSettings.ts`
 - `src/contexts/settings/presentation/renderer/SettingsPanel.tsx`
+- `src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/useSpaceVisualScale.ts`

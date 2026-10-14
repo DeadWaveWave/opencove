@@ -1,17 +1,57 @@
 import React from 'react'
 import { renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   resolveSpaceAnnotationCap,
   resolveSpaceVisualScale,
+  SPACE_VISUAL_SCALE_EVENT,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/spaceVisualScale'
 import { useSpaceVisualScale } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/useSpaceVisualScale'
 
-const viewport = vi.hoisted(() => ({ zoom: 1 }))
-vi.mock('@xyflow/react', () => ({
-  useStore: (selector: (state: { transform: number[] }) => number) =>
-    selector({ transform: [0, 0, viewport.zoom] }),
-}))
+const flow = vi.hoisted(() => {
+  type FlowState = { transform: [number, number, number] }
+  type Listener = (next: FlowState, previous: FlowState) => void
+  let state: FlowState = { transform: [0, 0, 1] }
+  const listeners = new Set<Listener>()
+  return {
+    getState: () => state,
+    subscribe: (listener: Listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    move(x: number, zoom: number) {
+      const previous = state
+      state = { transform: [x, 0, zoom] }
+      listeners.forEach(listener => listener(state, previous))
+    },
+    reset() {
+      state = { transform: [0, 0, 1] }
+      listeners.clear()
+    },
+  }
+})
+vi.mock('@xyflow/react', () => ({ useStoreApi: () => flow }))
+
+/** The canvas root contains React Flow's viewport portal, where Space regions render. */
+function createCanvas() {
+  const scope = document.createElement('div')
+  scope.className = 'workspace-canvas'
+  const viewport = document.createElement('div')
+  viewport.className = 'react-flow__viewport'
+  const spaceLayer = document.createElement('div')
+  spaceLayer.className = 'react-flow__viewport-portal'
+  viewport.appendChild(spaceLayer)
+  scope.appendChild(viewport)
+  document.body.appendChild(scope)
+  const scopeRef = React.createRef<HTMLDivElement>()
+  scopeRef.current = scope
+  return { scope, spaceLayer, scopeRef }
+}
+
+afterEach(() => {
+  flow.reset()
+  document.body.replaceChildren()
+})
 
 describe('Space visual scale', () => {
   it.each([1, 0.5, 0.2, 0.1])('keeps annotations and hairlines legible at zoom %s', zoom => {
@@ -75,27 +115,119 @@ describe('Space visual scale', () => {
     },
   )
 
-  it('publishes one set of canvas variables across zoom changes and restores them on unmount', () => {
-    const scope = document.createElement('div')
-    scope.style.setProperty('--cove-canvas-zoom', '0.75')
-    const scopeRef = React.createRef<HTMLDivElement>()
-    scopeRef.current = scope
-    viewport.zoom = 1
-    const { rerender, unmount } = renderHook(() => useSpaceVisualScale(scopeRef))
-    expect(scope.style.getPropertyValue('--cove-canvas-zoom')).toBe('1')
-    expect(scope.getAttribute('data-cove-space-overview')).toBe('false')
-    viewport.zoom = 0.2
-    rerender()
-    expect(scope.style.getPropertyValue('--cove-canvas-zoom')).toBe('0.2')
-    expect(scope.style.getPropertyValue('--cove-space-annotation-scale')).toBe('4')
-    expect(Number(scope.style.getPropertyValue('--cove-space-detail'))).toBeLessThan(0.05)
+  it('keeps the identity stripe at least one screen pixel, quantized to half pixels', () => {
+    expect(resolveSpaceVisualScale(1).identityStripe).toBe(2)
+    expect(resolveSpaceVisualScale(0.6).identityStripe).toBe(2)
+    expect(resolveSpaceVisualScale(0.3).identityStripe).toBe(3.5)
+    expect(resolveSpaceVisualScale(0.2).identityStripe).toBe(5)
+    expect(resolveSpaceVisualScale(0.05).identityStripe).toBe(6)
+    for (const zoom of [0.5, 0.45, 0.3, 0.25, 0.2, 0.17]) {
+      expect(resolveSpaceVisualScale(zoom).identityStripe * zoom).toBeGreaterThanOrEqual(0.875)
+    }
+  })
+
+  it('writes zoom and Space scale on the Space layer, never on the window tree', () => {
+    const { scope, spaceLayer, scopeRef } = createCanvas()
+    flow.move(0, 0.2)
+    renderHook(() => useSpaceVisualScale(scopeRef))
+
+    expect(spaceLayer.style.getPropertyValue('--cove-canvas-zoom')).toBe('0.2')
+    expect(spaceLayer.style.getPropertyValue('--cove-space-annotation-scale')).toBe('4')
+    expect(Number(spaceLayer.style.getPropertyValue('--cove-space-detail'))).toBeLessThan(0.05)
+    expect(spaceLayer.style.getPropertyValue('--cove-space-stroke-scale')).toBe('4')
+    for (const property of [
+      '--cove-canvas-zoom',
+      '--cove-space-annotation-scale',
+      '--cove-space-detail',
+      '--cove-space-stroke-scale',
+    ]) {
+      expect(scope.style.getPropertyValue(property)).toBe('')
+    }
+    expect(scope.style.getPropertyValue('--cove-node-identity-stripe-height')).toBe('5px')
     expect(scope.getAttribute('data-cove-space-overview')).toBe('true')
-    scope.style.setProperty('--cove-space-stroke-scale', 'external-owner')
+  })
+
+  it('follows zoom from the store without re-rendering', () => {
+    const { spaceLayer, scopeRef } = createCanvas()
+    let renders = 0
+    renderHook(() => {
+      renders += 1
+      useSpaceVisualScale(scopeRef)
+    })
+
+    flow.move(0, 0.5)
+    flow.move(0, 0.3)
+
+    expect(renders).toBe(1)
+    expect(spaceLayer.style.getPropertyValue('--cove-canvas-zoom')).toBe('0.3')
+  })
+
+  it('touches the canvas root only when the stripe or overview actually changes', () => {
+    const { scope, scopeRef } = createCanvas()
+    renderHook(() => useSpaceVisualScale(scopeRef))
+    const setProperty = vi.spyOn(scope.style, 'setProperty')
+    const setAttribute = vi.spyOn(scope, 'setAttribute')
+    // happy-dom mirrors inline style writes through setAttribute('style'); count the overview only.
+    const overviewWrites = () =>
+      setAttribute.mock.calls.filter(([name]) => name === 'data-cove-space-overview').length
+    const events = vi.fn()
+    scope.addEventListener(SPACE_VISUAL_SCALE_EVENT, events)
+
+    for (const zoom of [0.9, 0.8, 0.6, 0.5, 0.45]) {
+      flow.move(0, zoom)
+    }
+    expect(setProperty).not.toHaveBeenCalled()
+    expect(overviewWrites()).toBe(0)
+    expect(events).toHaveBeenCalledTimes(5)
+
+    flow.move(0, 0.3)
+    expect(setProperty).toHaveBeenCalledTimes(1)
+    expect(overviewWrites()).toBe(1)
+    expect(scope.style.getPropertyValue('--cove-node-identity-stripe-height')).toBe('3.5px')
+  })
+
+  it('ignores pans that keep the zoom', () => {
+    const { scope, spaceLayer, scopeRef } = createCanvas()
+    renderHook(() => useSpaceVisualScale(scopeRef))
+    const layerWrites = vi.spyOn(spaceLayer.style, 'setProperty')
+    const events = vi.fn()
+    scope.addEventListener(SPACE_VISUAL_SCALE_EVENT, events)
+
+    flow.move(240, 1)
+
+    expect(layerWrites).not.toHaveBeenCalled()
+    expect(events).not.toHaveBeenCalled()
+  })
+
+  it('applies the current zoom once the canvas ref attaches after its child effects', async () => {
+    const { spaceLayer, scopeRef, scope } = createCanvas()
+    const lateRef = React.createRef<HTMLDivElement>()
+    flow.move(0, 0.2)
+    renderHook(() => useSpaceVisualScale(lateRef))
+    expect(spaceLayer.style.getPropertyValue('--cove-canvas-zoom')).toBe('')
+
+    // React attaches a parent's ref after its children's layout effects run.
+    lateRef.current = scopeRef.current
+    await Promise.resolve()
+
+    expect(spaceLayer.style.getPropertyValue('--cove-canvas-zoom')).toBe('0.2')
+    expect(scope.getAttribute('data-cove-space-overview')).toBe('true')
+  })
+
+  it('restores previous values on unmount and leaves values owned by others', () => {
+    const { scope, spaceLayer, scopeRef } = createCanvas()
+    spaceLayer.style.setProperty('--cove-canvas-zoom', '0.75')
+    const { unmount } = renderHook(() => useSpaceVisualScale(scopeRef))
+    flow.move(0, 0.2)
+    spaceLayer.style.setProperty('--cove-space-stroke-scale', 'external-owner')
+
     unmount()
-    expect(scope.style.getPropertyValue('--cove-canvas-zoom')).toBe('0.75')
-    expect(scope.style.getPropertyValue('--cove-space-annotation-scale')).toBe('')
-    expect(scope.style.getPropertyValue('--cove-space-stroke-scale')).toBe('external-owner')
+    flow.move(0, 0.5)
+
+    expect(spaceLayer.style.getPropertyValue('--cove-canvas-zoom')).toBe('0.75')
+    expect(spaceLayer.style.getPropertyValue('--cove-space-annotation-scale')).toBe('')
+    expect(spaceLayer.style.getPropertyValue('--cove-space-stroke-scale')).toBe('external-owner')
+    expect(scope.style.getPropertyValue('--cove-node-identity-stripe-height')).toBe('')
     expect(scope.hasAttribute('data-cove-space-overview')).toBe(false)
-    viewport.zoom = 1
   })
 })

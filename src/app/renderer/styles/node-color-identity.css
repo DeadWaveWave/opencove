@@ -1,3 +1,8 @@
+/* Canvas projection steps the stripe height inline on this root as zoom changes. */
+.workspace-canvas {
+  --cove-node-identity-stripe-height: 2px;
+}
+
 /* Theme decoration is independent of label metadata. Explicit labels replace
    the three theme stops without changing content, status, or selection. */
 .workspace-canvas .react-flow__node {
@@ -75,7 +80,8 @@
   content: '';
   position: absolute;
   inset: 0 0 auto;
-  height: clamp(2px, calc(1px / var(--cove-canvas-zoom, 1)), 6px);
+  /* Stepped, so most zoom steps leave every window's style untouched. */
+  height: var(--cove-node-identity-stripe-height);
   background: linear-gradient(
     90deg,
     var(--cove-node-identity-color),
