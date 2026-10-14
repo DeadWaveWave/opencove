@@ -18,11 +18,9 @@ export interface ThemeInput {
 
 export type FamilyInput = Omit<ThemeInput, 'appearance' | 'contrast'>
 
-/** Built-in families in picker order. */
+/** Built-in families in picker order. Cove is the only generated family; Pixel stays hand-written. */
 export const THEME_FAMILY_LIST = [
   { id: 'cove', baseHue: 248, baseChroma: 0.018, accentHue: 220, accentChroma: 0.13 },
-  { id: 'ember', baseHue: 50, baseChroma: 0.022, accentHue: 42, accentChroma: 0.14 },
-  { id: 'graphite', baseHue: 265, baseChroma: 0.005, accentHue: 255, accentChroma: 0.06 },
 ] as const
 
 export type ThemeFamilyId = (typeof THEME_FAMILY_LIST)[number]['id']

@@ -89,10 +89,8 @@
 @import './styles/themes/pixel-light.terminal.css' layer(opencove);
 @import './styles/themes/pixel-material.css' layer(opencove);
 @import './styles/themes/space-color-identity.css' layer(opencove);
-/* Generated theme families (pnpm design:tokens); inert until a family sets data-cove-family. */
+/* Generated Cove tokens (pnpm design:tokens); inert until a theme sets data-cove-family. */
 @import './styles/themes/generated/cove.css' layer(opencove);
-@import './styles/themes/generated/ember.css' layer(opencove);
-@import './styles/themes/generated/graphite.css' layer(opencove);
 @import './styles/node-color-identity.css' layer(opencove);
 @import './styles/node-collapse.css' layer(opencove);
 @import './styles/node-collapse-motion.css' layer(opencove);

@@ -44,12 +44,12 @@ describe('theme generator', () => {
   })
 
   it('produces a complete 16-colour terminal palette', () => {
-    const theme = generateFamilyTheme('ember', 'light')
+    const theme = generateFamilyTheme('cove', 'light')
     expect(Object.keys(theme.ansi).sort()).toEqual([...ANSI_KEYS].sort())
   })
 
   it('is deterministic for the same input', () => {
-    const input = { ...THEME_FAMILIES.graphite, appearance: 'dark' as const, contrast: 0.5 }
+    const input = { ...THEME_FAMILIES.cove, appearance: 'dark' as const, contrast: 0.5 }
     const data = () => {
       const { onSolid: _onSolid, ...rest } = generateTheme(input)
       return rest

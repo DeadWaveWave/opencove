@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+import { readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import * as prettier from 'prettier'
 import { describe, expect, it } from 'vitest'
@@ -67,6 +68,11 @@ describe('generated theme tokens', () => {
       expect(failures).toEqual([])
     },
   )
+
+  it('keeps exactly one generated stylesheet per family', () => {
+    const files = readdirSync(GENERATED_DIR).filter(name => name.endsWith('.css'))
+    expect(files.sort()).toEqual(FAMILIES.map(family => `${family}.css`).sort())
+  })
 
   it.each(FAMILIES)('matches the committed %s stylesheet (pnpm design:tokens)', async family => {
     const file = resolve(GENERATED_DIR, `${family}.css`)
