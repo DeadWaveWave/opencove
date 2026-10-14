@@ -112,6 +112,7 @@
     "naming-check:staged": "node scripts/check-naming-staged.mjs",
     "line-check:staged": "node scripts/check-max-lines.mjs",
     "ui:style-check": "node scripts/check-ui-styles.mjs",
+    "design:tokens": "vitest --run tests/unit/shared/design/themeTokens.spec.ts --update",
     "test:staged": "node scripts/run-vitest-related-staged.mjs",
     "test:e2e:pre-commit": "node scripts/run-precommit-e2e.mjs",
     "release:patch": "node scripts/prepare-release.mjs patch",

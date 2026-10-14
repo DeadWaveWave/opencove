@@ -65,6 +65,17 @@
 - Token/主题差异 **集中在 `base.css`**，组件 CSS 不写分支主题选择器，除非确有必要。
 - 避免在 React 里用 inline `style` 写颜色；布局/定位可以，但能 class 化就 class 化。
 
+### 2.4 生成的主题族
+
+- 生成器在 `src/shared/design/`：明暗、底色色相与彩度、强调色、对比度四个输入生成 12 阶色阶、
+  窗口类别色族、标记与状态色、终端 ANSI 调色板和玻璃参数。正文与次要文字不低于 4.5:1、
+  图形不低于 3:1（含玻璃叠在像素背景上的最坏情况），由 `tests/unit/shared/design/` 断言。
+- `styles/themes/generated/<family>.css` 由 `pnpm design:tokens` 生成，禁止手改；单测比对生成结果，
+  文件过期时 CI 失败。改生成器后重新运行该命令并提交生成文件。
+- 生成的 token 作用在 `:root[data-cove-family='<id>'][data-cove-theme='dark|light']` 上，并完整映射
+  插件契约的全部 v1 公共 token（`PLUGIN_THEME_TOKENS`），已安装的插件主题继续可用。主题族接入
+  主题选择之前，没有元素设置 `data-cove-family`，这些文件不影响现有外观。
+
 ---
 
 ## 3) 组件与层级（统一规则）
