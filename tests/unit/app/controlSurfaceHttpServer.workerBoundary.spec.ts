@@ -64,32 +64,29 @@ function isInAllowedWorkerSource(filePath: string): boolean {
   })
 }
 
+// Import and export declarations only occur as top-level statements, so the scan stops there
+// instead of walking every expression; the full walk exceeded 5 s under CI coverage.
 function readImportSpecifiers(source: string): string[] {
-  const sourceFile = ts.createSourceFile('module.ts', source, ts.ScriptTarget.Latest, true)
+  const sourceFile = ts.createSourceFile('module.ts', source, ts.ScriptTarget.Latest, false)
   const specifiers: string[] = []
-
-  const visit = (node: ts.Node): void => {
+  for (const statement of sourceFile.statements) {
     if (
-      ts.isImportDeclaration(node) &&
-      ts.isStringLiteral(node.moduleSpecifier) &&
-      !node.importClause?.isTypeOnly
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      !statement.importClause?.isTypeOnly
     ) {
-      specifiers.push(node.moduleSpecifier.text)
+      specifiers.push(statement.moduleSpecifier.text)
     }
 
     if (
-      ts.isExportDeclaration(node) &&
-      node.moduleSpecifier &&
-      ts.isStringLiteral(node.moduleSpecifier) &&
-      !node.isTypeOnly
+      ts.isExportDeclaration(statement) &&
+      statement.moduleSpecifier &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      !statement.isTypeOnly
     ) {
-      specifiers.push(node.moduleSpecifier.text)
+      specifiers.push(statement.moduleSpecifier.text)
     }
-
-    ts.forEachChild(node, visit)
   }
-
-  visit(sourceFile)
   return specifiers
 }
 
@@ -194,6 +191,8 @@ describe('worker control surface import boundary', () => {
     expect(offenders).toEqual([])
   })
 
+  // Parses the whole Worker import graph; under the main-branch V8 coverage run with every worker
+  // busy this took just over the 5 s default, so it gets a budget sized for that run.
   it('keeps the Worker runtime import graph free of Electron version readers', async () => {
     const graph = await collectRuntimeImportGraph(resolve(process.cwd(), workerEntry))
     expect(
@@ -219,5 +218,5 @@ describe('worker control surface import boundary', () => {
     })
 
     expect(offenders).toEqual([])
-  })
+  }, 30_000)
 })
