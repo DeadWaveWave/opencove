@@ -9,6 +9,12 @@ import {
   formatScaleRatchetIssues,
   serializeScaleRatchet,
 } from './lib/ui-style-ratchet.mjs'
+import {
+  compareMarkupRatchet,
+  countMarkupLiterals,
+  formatMarkupRatchetIssues,
+  serializeMarkupRatchet,
+} from './lib/ui-markup-ratchet.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_REPO_ROOT = resolve(SCRIPT_DIR, '..')
@@ -16,6 +22,8 @@ const UI_STYLE_ROOT = 'src/app/renderer'
 const BASE_TOKEN_FILE = 'src/app/renderer/styles/base.css'
 const THEME_DIRECTORY = 'src/app/renderer/styles/themes/'
 const SCALE_RATCHET_FILE = 'scripts/ui-style-ratchet.json'
+const MARKUP_ROOT = 'src'
+const MARKUP_RATCHET_FILE = 'scripts/ui-markup-ratchet.json'
 
 const TOKEN_DECLARATION_PATTERN = /(--cove-[a-z0-9_-]+)\s*:/gi
 const TOKEN_USAGE_PATTERN = /var\(\s*(--cove-[a-z0-9_-]+)/gi
@@ -206,6 +214,34 @@ function collectCssFiles(directory, repoRoot, files) {
   }
 }
 
+function collectMarkupFiles(directory, repoRoot, files) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const absolutePath = resolve(directory, entry.name)
+    if (entry.isDirectory()) {
+      collectMarkupFiles(absolutePath, repoRoot, files)
+      continue
+    }
+    if (
+      !entry.isFile() ||
+      !entry.name.endsWith('.tsx') ||
+      /\.(?:spec|test)\.tsx$/.test(entry.name)
+    ) {
+      continue
+    }
+
+    files.push({
+      path: normalizePath(relative(repoRoot, absolutePath)),
+      content: readFileSync(absolutePath, 'utf8'),
+    })
+  }
+}
+
+export function readUiMarkupFiles(repoRoot = DEFAULT_REPO_ROOT) {
+  const files = []
+  collectMarkupFiles(resolve(repoRoot, MARKUP_ROOT), repoRoot, files)
+  return files
+}
+
 export function readUiStyleFiles(repoRoot = DEFAULT_REPO_ROOT) {
   const files = []
   collectCssFiles(resolve(repoRoot, UI_STYLE_ROOT), repoRoot, files)
@@ -229,7 +265,7 @@ export function formatUiStyleViolations(violations) {
   return `${lines.join('\n')}\n`
 }
 
-function readScaleRatchet(path) {
+function readRatchet(path) {
   try {
     return JSON.parse(readFileSync(path, 'utf8'))
   } catch (error) {
@@ -247,17 +283,27 @@ export function runUiStyleCheck({
 } = {}) {
   const files = readUiStyleFiles(repoRoot)
   const violations = checkUiStyleFiles(files)
-  const counts = countScaleLiterals(files)
-  const ratchetPath = resolve(repoRoot, SCALE_RATCHET_FILE)
+  const scaleCounts = countScaleLiterals(files)
+  const markupCounts = countMarkupLiterals(readUiMarkupFiles(repoRoot))
+  const scalePath = resolve(repoRoot, SCALE_RATCHET_FILE)
+  const markupPath = resolve(repoRoot, MARKUP_RATCHET_FILE)
   if (updateRatchet) {
-    writeFileSync(ratchetPath, serializeScaleRatchet(counts))
+    writeFileSync(scalePath, serializeScaleRatchet(scaleCounts))
+    writeFileSync(markupPath, serializeMarkupRatchet(markupCounts))
   }
-  const issues = updateRatchet ? [] : compareScaleRatchet(counts, readScaleRatchet(ratchetPath))
-  if (violations.length === 0 && issues.length === 0) {
+  const scaleIssues = updateRatchet ? [] : compareScaleRatchet(scaleCounts, readRatchet(scalePath))
+  const markupIssues = updateRatchet
+    ? []
+    : compareMarkupRatchet(markupCounts, readRatchet(markupPath))
+  if (violations.length === 0 && scaleIssues.length === 0 && markupIssues.length === 0) {
     return 0
   }
 
-  stderr.write(formatUiStyleViolations(violations) + formatScaleRatchetIssues(issues))
+  stderr.write(
+    formatUiStyleViolations(violations) +
+      formatScaleRatchetIssues(scaleIssues) +
+      formatMarkupRatchetIssues(markupIssues),
+  )
   return 1
 }
 

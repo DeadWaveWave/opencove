@@ -169,6 +169,8 @@
   --cove-z-dialog: 160;
   --cove-z-dialog-nested: 170;
   --cove-z-dialog-popover: 175;
+  /* Hints sit above every layer they can describe, below notifications. */
+  --cove-z-tooltip: 178;
   --cove-z-toast: 180;
 
   --cove-overlay-danger-backdrop: rgba(19, 5, 8, 0.72);

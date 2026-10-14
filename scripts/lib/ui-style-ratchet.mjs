@@ -1,5 +1,6 @@
 // Ratchet for hard-coded scale values in renderer CSS. New code uses the --cove-* scale tokens;
 // existing values are counted per file and the counts may only go down.
+import { compareRatchet, formatRatchetIssues, serializeRatchet } from './ratchet.mjs'
 
 export const SCALE_RULES = ['font-size', 'radius', 'spacing', 'z-index']
 
@@ -70,49 +71,24 @@ export function countScaleLiterals(files) {
 }
 
 export function compareScaleRatchet(counts, baseline) {
-  const issues = []
-  for (const rule of SCALE_RULES) {
-    const current = counts[rule] ?? {}
-    const allowed = baseline?.[rule] ?? {}
-    const files = [...new Set([...Object.keys(current), ...Object.keys(allowed)])].sort()
-    for (const file of files) {
-      const now = current[file] ?? 0
-      const before = allowed[file] ?? 0
-      if (now === before) {
-        continue
-      }
-      const message =
-        now > before
-          ? `${now} hard-coded ${rule} values, ${now - before} more than the baseline. Use \`${TOKEN_HINTS[rule]}\` tokens.`
-          : `${now} hard-coded ${rule} values, below the baseline of ${before}. Run \`pnpm ui:style-ratchet\` to lock in the improvement.`
-      issues.push({ file, rule, baseline: before, current: now, message })
-    }
-  }
-  return issues
+  return compareRatchet({
+    counts,
+    baseline,
+    rules: SCALE_RULES,
+    describe: (rule, now, before) =>
+      now > before
+        ? `${now} hard-coded ${rule} values, ${now - before} more than the baseline. Use \`${TOKEN_HINTS[rule]}\` tokens.`
+        : `${now} hard-coded ${rule} values, below the baseline of ${before}. Run \`pnpm ui:style-ratchet\` to lock in the improvement.`,
+  })
 }
 
 export function formatScaleRatchetIssues(issues) {
-  if (issues.length === 0) {
-    return ''
-  }
-  const lines = [`[ui-style-check] Scale ratchet changed for ${issues.length} file(s):`]
-  for (const issue of issues) {
-    lines.push(`- ${issue.file} [${issue.rule}]`, `  ${issue.message}`)
-  }
-  lines.push('', 'See docs/ui/README.md for the scale tokens and the ratchet.')
-  return `${lines.join('\n')}\n`
+  return formatRatchetIssues(issues, {
+    title: 'Scale ratchet',
+    footer: 'See docs/ui/README.md for the scale tokens and the ratchet.',
+  })
 }
 
 export function serializeScaleRatchet(counts) {
-  const sorted = Object.fromEntries(
-    [...SCALE_RULES].sort().map(rule => [
-      rule,
-      Object.fromEntries(
-        Object.entries(counts[rule] ?? {})
-          .filter(([, count]) => count > 0)
-          .sort(([left], [right]) => left.localeCompare(right)),
-      ),
-    ]),
-  )
-  return `${JSON.stringify(sorted, null, 2)}\n`
+  return serializeRatchet(counts, SCALE_RULES)
 }

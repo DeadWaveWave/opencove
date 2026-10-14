@@ -10,6 +10,7 @@ import {
 import { Popover } from '../components/ui/Popover'
 import { SettingRow } from '../components/ui/SettingRow'
 import { Toggle } from '../components/ui/Toggle'
+import { Tooltip } from '../components/ui/Tooltip'
 import { useApplyUiTheme } from '../shell/hooks/useApplyUiTheme'
 import { DEFAULT_UI_THEME, type UiTheme } from '@contexts/settings/domain/uiSettings'
 import './ui-gallery.css'
@@ -129,6 +130,17 @@ export default function UiGallery(): React.JSX.Element {
               <Toggle label="Managed preference" checked disabled onCheckedChange={() => {}} />
             }
           />
+        </div>
+      </Section>
+
+      <Section id="tooltip" title="Tooltip">
+        <div className="ui-gallery__row">
+          <Tooltip content="Arrange windows by kind, then by last activity">
+            <Button data-testid="ui-gallery-tooltip-trigger">Arrange</Button>
+          </Tooltip>
+          <IconButton label="Open settings" title="Open settings (⌘,)">
+            <Settings aria-hidden="true" />
+          </IconButton>
         </div>
       </Section>
 

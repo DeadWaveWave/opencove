@@ -76,3 +76,37 @@
     animation: none;
   }
 }
+
+/* Tooltip: the themed replacement for native title. Never interactive, so it cannot trap the pointer. */
+.cove-tooltip {
+  position: fixed;
+  z-index: var(--cove-z-tooltip);
+  max-width: min(320px, calc(100vw - var(--cove-spacing-4)));
+  padding: var(--cove-spacing-1) var(--cove-spacing-2);
+  border: 1px solid var(--cove-popover-border);
+  border-radius: var(--cove-radius-2xs);
+  background: var(--cove-popover);
+  color: var(--cove-text);
+  box-shadow: var(--cove-shadow-md);
+  font-size: var(--cove-font-size-secondary);
+  line-height: var(--cove-line-height-secondary);
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  animation: cove-tooltip-enter var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+@keyframes cove-tooltip-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-tooltip {
+    animation: none;
+  }
+}

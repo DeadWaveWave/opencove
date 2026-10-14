@@ -1,5 +1,6 @@
 import React from 'react'
 import { classNames } from './classNames'
+import { Tooltip } from './Tooltip'
 
 export type IconButtonVariant = 'ghost' | 'secondary' | 'danger'
 export type IconButtonSize = 'xs' | 'sm' | 'md'
@@ -26,22 +27,25 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(f
   },
   forwardedRef,
 ) {
+  const hint = title ?? label
   return (
-    <button
-      {...buttonProps}
-      data-cove-part="icon-button"
-      ref={forwardedRef}
-      type={type}
-      aria-label={label}
-      title={title ?? label}
-      className={classNames(
-        'cove-icon-button',
-        `cove-icon-button--${variant}`,
-        `cove-icon-button--${size}`,
-        className,
-      )}
-    >
-      {children}
-    </button>
+    // The hint repeats the label unless a distinct title adds to it.
+    <Tooltip content={hint} describe={hint !== label}>
+      <button
+        {...buttonProps}
+        data-cove-part="icon-button"
+        ref={forwardedRef}
+        type={type}
+        aria-label={label}
+        className={classNames(
+          'cove-icon-button',
+          `cove-icon-button--${variant}`,
+          `cove-icon-button--${size}`,
+          className,
+        )}
+      >
+        {children}
+      </button>
+    </Tooltip>
   )
 })

@@ -6,7 +6,13 @@ import { auditUiAccessibility } from './ui-accessibility.probe'
 const THEMES = ['dark', 'light', 'pixel', 'pixel-light'] as const
 type GalleryWindow = Window & { __opencoveUiGalleryTestApi?: { setTheme: (theme: string) => void } }
 
-async function probe(page: Page, testInfo: TestInfo, name: string, scope: string) {
+async function probe(
+  page: Page,
+  testInfo: TestInfo,
+  name: string,
+  scope: string,
+  { interactive = true }: { interactive?: boolean } = {},
+) {
   // Entrance transitions fade layers in; measure the settled colors. Spinners loop forever.
   await page.evaluate(() =>
     Promise.all(
@@ -22,7 +28,9 @@ async function probe(page: Page, testInfo: TestInfo, name: string, scope: string
     contentType: 'application/json',
   })
   expect(report.textCount, `${name}: text found`).toBeGreaterThan(0)
-  expect(report.targetCount, `${name}: targets found`).toBeGreaterThan(0)
+  if (interactive) {
+    expect(report.targetCount, `${name}: targets found`).toBeGreaterThan(0)
+  }
   expect(report.failingText, `${name}: text contrast`).toEqual([])
   expect(report.smallTargets, `${name}: target size`).toEqual([])
 }
@@ -49,6 +57,14 @@ test('shared components keep text contrast and target size in every built-in the
         contentType: 'image/png',
       })
       await probe(page, testInfo, `gallery-${theme}`, '[data-testid="ui-gallery"]')
+
+      await page.getByTestId('ui-gallery-tooltip-trigger').focus()
+      await expect(page.getByRole('tooltip')).toHaveText(
+        'Arrange windows by kind, then by last activity',
+      )
+      await probe(page, testInfo, `tooltip-${theme}`, '[role="tooltip"]', { interactive: false })
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('tooltip')).toHaveCount(0)
 
       await page.getByTestId('ui-gallery-open-dialog').click()
       await expect(page.getByTestId('ui-gallery-dialog')).toBeVisible()

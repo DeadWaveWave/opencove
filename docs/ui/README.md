@@ -68,6 +68,9 @@
 - `pnpm ui:style-check` 按文件统计写死的字号、圆角、间距（≥ 4px）和页面级 z-index（≥ 10），
   计数只能下降，基线是 `scripts/ui-style-ratchet.json`。新增写死的值会失败；减少后运行
   `pnpm ui:style-ratchet` 锁定新基线。基线由该命令生成，不手改。
+- 同一命令也统计被共享组件取代的原生标记（`scripts/ui-markup-ratchet.json`，同样只减不增）：
+  原生元素上的 `title` 属性改用 `Tooltip`（`iframe` 的 `title` 是可访问名称，不计入）。
+  每条规则随它的替代组件一起加入。
 
 ### 2.3 CSS 写法约定
 
@@ -124,6 +127,10 @@
   CSS px（WCAG 2.5.8）。探针在 `tests/e2e/ui-accessibility.probe.ts`，测量前等待有限动画结束。
 - 新增或修改共享组件时，先把它的各个状态加进图库；探针不通过不能合并。
 - 对话框正文放在 `.cove-window` 表面上；共享 `Dialog` 只负责层级、焦点与关闭，不自带表面。
+- 悬停提示用 `Tooltip`（`components/ui/Tooltip.tsx`），不用原生 `title`：悬停 500ms 后出现，
+  刚关闭一个提示后 300ms 内移到相邻控件立即出现；键盘聚焦时也显示；Esc、按下、滚轮或窗口失焦时关闭；
+  同一时刻只有一个；减少动态效果时没有淡入。提示与触发元素的可访问名称相同时不设
+  `aria-describedby`（例如 `IconButton` 的 `label`）。层级是 `--cove-z-tooltip`，在对话框浮层之上、通知之下。
 
 ---
 
