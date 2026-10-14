@@ -5,9 +5,13 @@ import {
   normalizeAgentSettings,
 } from '../../../src/contexts/settings/domain/agentSettings'
 import {
+  UI_THEMES,
+  UI_THEME_DESCRIPTORS,
   isValidUiTheme,
+  normalizeUiTheme,
   resolveUiThemeBaseScheme,
   resolveUiThemeTerminalScheme,
+  type UiTheme,
 } from '../../../src/contexts/settings/domain/uiSettings'
 import { applyUiLanguage, translate } from '../../../src/app/renderer/i18n'
 import { getUiThemeLabel } from '../../../src/app/renderer/i18n/labels'
@@ -26,7 +30,17 @@ afterEach(async () => {
 })
 
 describe('named UI themes', () => {
-  it.each(['system', 'light', 'dark', 'ember', 'ember-light', 'pixel', 'pixel-light'])(
+  it('offers the Cove family (dark, light, system) and the Pixel family', () => {
+    expect(UI_THEMES.map(id => [id, UI_THEME_DESCRIPTORS[id].family])).toEqual([
+      ['dark', 'cove'],
+      ['light', 'cove'],
+      ['system', 'cove'],
+      ['pixel', 'pixel'],
+      ['pixel-light', 'pixel'],
+    ])
+  })
+
+  it.each(['system', 'light', 'dark', 'pixel', 'pixel-light'])(
     'preserves the persisted %s theme through settings normalization',
     async uiTheme => {
       const settings = normalizeAgentSettings({ uiTheme })
@@ -39,21 +53,51 @@ describe('named UI themes', () => {
     },
   )
 
+  it.each([
+    ['ember', 'dark'],
+    ['ember-light', 'light'],
+  ] as const)('migrates the retired %s theme to Cove %s', async (retired, cove) => {
+    expect(isValidUiTheme(retired)).toBe(false)
+    expect(normalizeUiTheme(retired)).toBe(cove)
+    const settings = normalizeAgentSettings({ uiTheme: retired })
+    expect(settings.uiTheme).toBe(cove)
+    expect(isNormalizedAgentSettings(settings)).toBe(true)
+
+    const stored = { ...DEFAULT_AGENT_SETTINGS, uiTheme: retired as unknown as UiTheme }
+    await writeRawPersistedState(JSON.stringify(toPersistedState([], null, stored)))
+    expect((await readPersistedState())?.settings.uiTheme).toBe(cove)
+  })
+
   it.each([{}, { uiTheme: null }, { uiTheme: 'future-theme' }])(
-    'defaults to Pixel for missing or unrecognized theme settings: %j',
+    'defaults to Cove dark for missing or unrecognized theme settings: %j',
     value => {
-      expect(normalizeAgentSettings(value).uiTheme).toBe('pixel')
-      expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('pixel')
+      expect(normalizeAgentSettings(value).uiTheme).toBe('dark')
+      expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('dark')
     },
   )
+
+  it('keeps an existing Pixel choice instead of moving it to the new default', () => {
+    expect(normalizeAgentSettings({ uiTheme: 'pixel' }).uiTheme).toBe('pixel')
+    expect(normalizeAgentSettings({ uiTheme: 'pixel-light' }).uiTheme).toBe('pixel-light')
+  })
 
   it('keeps Pixel shell and terminal dark independently of the system preference', () => {
     expect(resolveUiThemeBaseScheme('pixel', false)).toBe('dark')
     expect(resolveUiThemeBaseScheme('pixel', true)).toBe('dark')
     expect(resolveUiThemeTerminalScheme('pixel', 'light')).toBe('dark')
     expect(resolveUiThemeTerminalScheme('pixel', 'dark')).toBe('dark')
-    expect(resolveUiThemeTerminalScheme('ember-light', 'light')).toBe('dark')
     expect(resolveUiThemeTerminalScheme('system', 'light')).toBe('light')
+  })
+
+  it('names the Cove themes in both supported interface languages', async () => {
+    await applyUiLanguage('en')
+    expect(
+      ['dark', 'light', 'system'].map(id => getUiThemeLabel(translate, id as UiTheme)),
+    ).toEqual(['Cove', 'Cove Light', 'Cove (System)'])
+    await applyUiLanguage('zh-CN')
+    expect(
+      ['dark', 'light', 'system'].map(id => getUiThemeLabel(translate, id as UiTheme)),
+    ).toEqual(['Cove', '浅色 Cove', 'Cove（跟随系统）'])
   })
 
   it('resolves the Pixel label through both supported interface languages', async () => {

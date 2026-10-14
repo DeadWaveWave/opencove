@@ -59,7 +59,7 @@ test('previews terminal typography in a stable themed window', async ({
 }, testInfo) => {
   const { electronApp, window: page } = await launchApp()
   try {
-    for (const uiTheme of ['pixel', 'pixel-light', 'dark', 'light', 'ember-light']) {
+    for (const uiTheme of ['pixel', 'pixel-light', 'dark', 'light']) {
       await electronApp.evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0].setContentSize(1200, 900, false)
       })

@@ -38,9 +38,11 @@
 - 持久化设置：`settings.uiTheme: UiTheme`，取值见 `src/contexts/settings/domain/uiSettings.ts`（内置主题及 `plugin:<plugin-id>:<theme-id>` 扩展标识）。
 - Renderer 主题入口（**两个互补的 hook**，共同构成命名主题扩展点）：
   - `<html data-cove-theme="light|dark">` —— 解析后的基础配色，所有 `--cove-*` token 默认基于此切换；`system` 会跟随 `prefers-color-scheme` 计算出 light/dark。
-  - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。命名主题通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。当前内置主题包含 `ember`、`ember-light`、`pixel` 与 `pixel-light`；插件可以通过声明式 `contributes.themes` 接入颜色、材质、尺寸、字体、动效与受作用域约束的组件样式；详见 [插件主题契约](../plugins/THEMES.md)。
-- 添加一个新内置主题的步骤：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `baseScheme`、`terminalScheme` 与 `i18nKey`；③ 提供 `styles/themes/<id>.css`，以 `:root[data-cove-theme-id='<id>']` 选择器覆盖需要的 `--cove-*` token。
-- `baseScheme` 与 `terminalScheme` 是两个独立语义：前者决定应用 shell 的 light/dark token，后者决定 xterm 与内嵌 TUI 的配色协议。`ember-light` 的 shell 是 light，但 terminal/OpenCode 语义固定为 dark。
+  - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。命名主题通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。内置主题分为两个主题族：Cove（`dark`、`light`、`system`，由生成器产出，默认 `dark`）与 Pixel（`pixel`、`pixel-light`，手写）；插件可以通过声明式 `contributes.themes` 接入颜色、材质、尺寸、字体、动效与受作用域约束的组件样式；详见 [插件主题契约](../plugins/THEMES.md)。
+  - `<html data-cove-family="cove|pixel">` —— 生效的基础主题所属的主题族。插件主题取 `extends` 所属的主题族，未声明时为同明暗的 Cove。生成的主题族 token（2.4）只在 `data-cove-family` 匹配时生效。
+- 添加一个新内置主题的步骤：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `family`、`baseScheme`、`terminalScheme` 与 `i18nKey`；③ 生成的主题族由 `src/shared/design` 产出（2.4）；手写主题提供 `styles/themes/<id>.css`，以 `:root[data-cove-theme-base='<id>']` 选择器覆盖需要的 `--cove-*` token。
+- 退役的内置主题在读取设置时迁移（`RETIRED_UI_THEMES`）：`ember` → `dark`，`ember-light` → `light`；插件 `extends` 的同名旧值按同样规则解析。没有有效主题的设置使用当前默认值：Cove 深色，像素效果全部开启。已保存的 Pixel 选择保持不变。
+- `baseScheme` 与 `terminalScheme` 是两个独立语义：前者决定应用 shell 的 light/dark token，后者决定 xterm 与内嵌 TUI 的配色协议。内置主题的 `terminalScheme` 目前都与 `baseScheme` 一致；终端设置可以在浅色 shell 下把终端固定为深色。
 - 每个 xterm 实例必须通过一个 revisioned `TerminalAppearanceSnapshot` 应用主题。快速连续切换采用 final-wins：每帧至多应用/刷新一次最新 snapshot；xterm theme、OpenCode OSC/CSI 与 Find decoration 必须消费同一份 **applied** snapshot，不能各自读取时序不同的 desired theme。
 - 同一 xterm 在 placeholder handoff/DOM remount 后必须从 live `containerRef` 定位主题 scope，不能
   继续写 detached DOM；一次瞬态 render mutation 失败只能 bounded retry，且成功 refresh 前不得
@@ -80,8 +82,8 @@
 - `styles/themes/generated/<family>.css` 由 `pnpm design:tokens` 生成，禁止手改；单测比对生成结果，
   文件过期时 CI 失败。改生成器后重新运行该命令并提交生成文件。
 - 生成的 token 作用在 `:root[data-cove-family='<id>'][data-cove-theme='dark|light']` 上，并完整映射
-  插件契约的全部 v1 公共 token（`PLUGIN_THEME_TOKENS`），已安装的插件主题继续可用。主题族接入
-  主题选择之前，没有元素设置 `data-cove-family`，这些文件不影响现有外观。
+  插件契约的全部 v1 公共 token（`PLUGIN_THEME_TOKENS`），已安装的插件主题继续可用。主题 owner
+  按生效基础主题所属的主题族设置 `data-cove-family`（见 2.1）；Pixel 是手写主题族，没有生成样式表。
 - `base.css` 的 `:root` 与浅色块里写着字面颜色的 token，主题族必须全部替换（`themeHostTokens.ts`），
   否则标准主题的旧色会透出来；单测逐个检查。给 `base.css` 新增字面颜色 token 时，同步在生成器里映射。
   只有主题预览色块（`--cove-theme-preview-*`）与遮罩色（`--cove-mask-opaque`）不随主题族变化。
@@ -250,7 +252,7 @@
 
 - Light / Dark 下主要页面可读（至少：Sidebar / Canvas / Settings / Node chrome）
 - MiniMap idle/hover 层级正确（默认不抢眼，hover 可读）
-- 命名主题分别验收 app shell 与 `terminalScheme`；`ember-light` 必须是浅色 shell + 深色终端。
+- 命名主题分别验收 app shell 与 `terminalScheme`；浅色 shell 下把终端固定为深色时，终端必须使用深色语义与该主题族的深色调色板。
 - Terminal Find 打开前后 terminal body 尺寸、rows/cols 与 PTY geometry 保持不变。
 - Terminal node 扩张与收缩后，Renderer accepted rows/cols、Worker presentation snapshot 与
   POSIX PTY `stty size` 必须三方一致，且收缩后的 rows 严格下降。

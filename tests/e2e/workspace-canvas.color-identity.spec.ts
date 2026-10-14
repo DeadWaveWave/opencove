@@ -104,8 +104,6 @@ test.describe('Workspace Canvas - Color Identity', () => {
       await inspectTheme('pixel')
       await inspectTheme('dark')
       await inspectTheme('light')
-      await inspectTheme('ember')
-      await inspectTheme('ember-light')
       await expect(page.locator(`${nodeSelector('image')} .image-node__header`)).toHaveCount(0)
       await expect(page.locator(`${nodeSelector('image')} .image-node`)).toHaveAttribute(
         'data-node-drag-handle',
@@ -234,9 +232,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
       await inspectDefaultTheme('pixel')
       await inspectDefaultTheme('dark')
       await inspectDefaultTheme('light')
-      await inspectDefaultTheme('ember')
-      await inspectDefaultTheme('ember-light')
-      expect(palettes.size).toBeGreaterThanOrEqual(3)
+      expect(palettes.size).toBe(3)
       await selectIdentityTheme(page, 'pixel')
       const defaultTerminal = (await readNodeIdentity(page)).find(node => node.kind === 'terminal')!
       await changeNodeIdentity(page, 'terminal', 'purple')

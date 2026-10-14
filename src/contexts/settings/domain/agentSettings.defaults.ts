@@ -2,14 +2,14 @@ import { resolveDefaultFirstAgentProviderOrder } from './agentSettings.providers
 import type { AgentSettings } from './agentSettings'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from './agentEnv'
 import { DEFAULT_AGENT_EXECUTABLE_PATH_OVERRIDE_BY_PROVIDER } from './agentSettings.executables'
-import { DEFAULT_UI_LANGUAGE } from './uiSettings'
+import { DEFAULT_UI_LANGUAGE, DEFAULT_UI_THEME } from './uiSettings'
 import { DEFAULT_WEBSITE_WINDOW_POLICY } from './websiteWindowSettings'
 import { DEFAULT_BROWSER_MODE, DEFAULT_BROWSER_SEARCH_ENGINE } from './browserSettings'
 import { DEFAULT_SIDEBAR_VIEW_SETTINGS } from './sidebarViewSettings'
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
-  uiTheme: 'pixel',
+  uiTheme: DEFAULT_UI_THEME,
   disabledPluginIds: [],
   pluginContributions: {},
   canvasPixelBackgroundEnabled: true,

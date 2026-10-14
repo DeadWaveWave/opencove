@@ -1,8 +1,6 @@
 import React from 'react'
 import { render, waitFor } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Terminal } from '@xterm/xterm'
-import { getTerminalAppearanceOwner } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalAppearance'
 import {
   installTerminalThemePtyApiMock as installPtyApiMock,
   installTerminalThemeResizeObserverMock as installResizeObserverMock,
@@ -182,85 +180,6 @@ describe('TerminalNode theme behavior', () => {
     })
   })
 
-  it('uses ember-light terminal semantics instead of its light UI base scheme', async () => {
-    installResizeObserverMock()
-    installPtyApiMock()
-
-    const { TerminalNode } =
-      await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
-    const { __getLastTerminal } = await import('@xterm/xterm')
-    const previousTerminal = __getLastTerminal()
-    const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
-    const themeListenerBaseline = addEventListenerSpy.mock.calls.filter(
-      ([type]) => type === 'opencove-theme-changed',
-    ).length
-    const { container } = render(
-      <TerminalNode
-        nodeId="node-ember-light"
-        sessionId="session-ember-light"
-        title="Ember Light"
-        kind="terminal"
-        status={null}
-        lastError={null}
-        position={{ x: 0, y: 0 }}
-        width={520}
-        height={360}
-        terminalFontSize={13}
-        scrollback={null}
-        onClose={() => undefined}
-        onResize={() => undefined}
-      />,
-    )
-
-    await waitFor(() => {
-      expect(__getLastTerminal()).not.toBe(previousTerminal)
-      expect(
-        addEventListenerSpy.mock.calls.filter(([type]) => type === 'opencove-theme-changed'),
-      ).toHaveLength(themeListenerBaseline + 1)
-    })
-
-    document.documentElement.dataset.coveTheme = 'light'
-    document.documentElement.dataset.coveThemeId = 'ember-light'
-    document.documentElement.style.setProperty('--cove-terminal-background', '#15110e')
-    document.documentElement.style.setProperty('--cove-terminal-foreground', '#d4c4ae')
-    document.documentElement.style.setProperty('--cove-terminal-cursor', '#d4c4ae')
-    document.documentElement.style.setProperty(
-      '--cove-terminal-selection',
-      'rgba(203, 131, 85, 0.32)',
-    )
-    const terminalNode = container.querySelector('.terminal-node') as HTMLElement
-    terminalNode.style.setProperty('--cove-terminal-background', '#15110e')
-    terminalNode.style.setProperty('--cove-terminal-foreground', '#d4c4ae')
-    terminalNode.style.setProperty('--cove-terminal-cursor', '#d4c4ae')
-    terminalNode.style.setProperty('--cove-terminal-selection', 'rgba(203, 131, 85, 0.32)')
-    window.dispatchEvent(
-      new CustomEvent('opencove-theme-changed', {
-        detail: { theme: 'light', themeId: 'ember-light' },
-      }),
-    )
-
-    await waitFor(() => {
-      expect(
-        getTerminalAppearanceOwner(__getLastTerminal() as unknown as Terminal)?.getDesiredSnapshot()
-          .xtermTheme.background,
-      ).toBe('#15110e')
-      expect(__getLastTerminal()?.options.theme).toEqual(
-        expect.objectContaining({
-          background: '#15110e',
-          foreground: '#d4c4ae',
-        }),
-      )
-      expect(container.querySelector('.terminal-node')).toHaveAttribute(
-        'data-cove-terminal-node-theme',
-        'dark',
-      )
-      expect(container.querySelector('.terminal-node__terminal')).toHaveAttribute(
-        'data-cove-terminal-theme',
-        'dark',
-      )
-    })
-  })
-
   it('coalesces same-frame named-theme changes to one final xterm refresh', async () => {
     installResizeObserverMock()
     installPtyApiMock()
@@ -301,12 +220,12 @@ describe('TerminalNode theme behavior', () => {
     const refreshBaseline = terminal.refreshCalls
     const terminalNode = container.querySelector('.terminal-node') as HTMLElement
 
-    document.documentElement.dataset.coveThemeId = 'ember'
+    document.documentElement.dataset.coveThemeId = 'pixel'
     document.documentElement.style.setProperty('--cove-terminal-background', '#19120e')
     terminalNode.style.setProperty('--cove-terminal-background', '#19120e')
     window.dispatchEvent(
       new CustomEvent('opencove-theme-changed', {
-        detail: { theme: 'dark', themeId: 'ember' },
+        detail: { theme: 'dark', themeId: 'pixel' },
       }),
     )
     document.documentElement.dataset.coveThemeId = 'dark'

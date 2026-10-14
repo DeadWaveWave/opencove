@@ -202,7 +202,7 @@ test.describe('Independent pixel effects settings', () => {
         ],
         { settings: { uiTheme: 'dark', ...PIXEL_EFFECTS_ENABLED } },
       )
-      const inspect = async (theme: string, base: 'dark' | 'light', warm = false) => {
+      const inspect = async (theme: string, base: 'dark' | 'light') => {
         await openPixelAppearance(window)
         await selectCoveOption(window, 'settings-ui-theme', theme)
         await window.locator('.settings-panel__close').click()
@@ -211,10 +211,7 @@ test.describe('Independent pixel effects settings', () => {
         await expect
           .poll(async () => {
             const color = await readFieldColor(window)
-            return (
-              color.count > 20 &&
-              (warm ? color.red > color.green && color.green > color.blue : color.blue > color.red)
-            )
+            return color.count > 20 && color.blue > color.red
           })
           .toBe(true)
         await expect.poll(() => readPixelEffects(window)).toEqual(PIXEL_EFFECTS_ENABLED)
@@ -227,8 +224,6 @@ test.describe('Independent pixel effects settings', () => {
       }
       await inspect('dark', 'dark')
       await inspect('light', 'light')
-      await inspect('ember', 'dark', true)
-      await inspect('ember-light', 'light', true)
       await inspect('pixel', 'dark')
       await inspect('pixel-light', 'light')
       await window.emulateMedia({ colorScheme: 'light' })
@@ -256,7 +251,7 @@ test.describe('Independent pixel effects settings', () => {
     try {
       await clearAndSeedWorkspace(window, [], {
         settings: {
-          uiTheme: 'ember-light',
+          uiTheme: 'light',
           language: 'en',
           ...PIXEL_EFFECTS_ENABLED,
           canvasPixelBackgroundEnabled: false,

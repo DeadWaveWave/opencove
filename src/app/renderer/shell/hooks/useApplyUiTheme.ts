@@ -10,6 +10,7 @@ import {
   UI_THEME_DESCRIPTORS,
   type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
+import { DEFAULT_UI_THEME } from '@contexts/settings/domain/uiSettings'
 import type { ResolvedUiTheme } from '@shared/contracts/dto'
 
 const SYSTEM_THEME_FALLBACK: ResolvedUiTheme = 'dark'
@@ -39,10 +40,12 @@ export function useApplyUiTheme(uiTheme: UiTheme): void {
       theme || !requiresStyles
         ? selected.id
         : loading
-          ? (selected.theme?.extends ?? selected.theme?.appearance ?? 'pixel')
-          : 'pixel'
+          ? (selected.theme?.extends ?? selected.theme?.appearance ?? DEFAULT_UI_THEME)
+          : DEFAULT_UI_THEME
     const descriptor = theme ?? UI_THEME_DESCRIPTORS[themeId as keyof typeof UI_THEME_DESCRIPTORS]
     const baseId = theme?.extends ?? theme?.appearance ?? themeId
+    // Plugin themes inherit the family of their foundation; generated tokens key off it.
+    const family = UI_THEME_DESCRIPTORS[baseId as keyof typeof UI_THEME_DESCRIPTORS].family
     const tokens = { ...(theme?.tokens ?? {}), ...pluginThemeMetricTokens(theme ?? {}) }
     const previous = new Map<string, string>()
     const style = theme && stylesheet !== undefined ? document.createElement('style') : null
@@ -71,6 +74,7 @@ export function useApplyUiTheme(uiTheme: UiTheme): void {
       root.dataset.coveTheme = baseScheme
       root.dataset.coveThemeId = themeId
       root.dataset.coveThemeBase = baseId === 'system' ? baseScheme : baseId
+      root.dataset.coveFamily = family
       root.style.colorScheme = baseScheme
       publishThemeApplication(
         {

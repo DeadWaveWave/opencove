@@ -99,7 +99,8 @@ it('falls back on resource failure and reapplies the chosen theme when resources
   state.plugins = [plugin]
   state.error = 'Worker unavailable'
   const { rerender } = render(<Hook theme="plugin:studio:night" />)
-  expect(document.documentElement.dataset.coveThemeId).toBe('pixel')
+  // Failure falls back to the default theme, not to the plugin's foundation.
+  expect(document.documentElement.dataset.coveThemeId).toBe('dark')
   state.error = null
   state.detail = {
     plugin,
@@ -113,6 +114,6 @@ it('falls back on resource failure and reapplies the chosen theme when resources
   expect(document.documentElement.dataset.coveThemeId).toBe('plugin:studio:night')
   state.plugins = [{ ...plugin, enabled: false }]
   rerender(<Hook theme="plugin:studio:night" />)
-  expect(document.documentElement.dataset.coveThemeId).toBe('pixel')
+  expect(document.documentElement.dataset.coveThemeId).toBe('dark')
   expect(document.querySelector('[data-cove-theme-stylesheet]')).toBeNull()
 })

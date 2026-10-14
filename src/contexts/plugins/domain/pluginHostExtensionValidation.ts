@@ -1,3 +1,4 @@
+import { RETIRED_UI_THEMES } from '../../settings/domain/uiSettings'
 import { PLUGIN_THEME_TOKENS, PLUGIN_THEME_BASES, type PluginThemeBase } from './pluginThemeTypes'
 import { normalizePluginThemeMetrics, normalizePluginThemeTypography } from './pluginThemeMetrics'
 import { normalizePluginThemeMotion } from './pluginThemeMotion'
@@ -110,7 +111,11 @@ export function normalizePluginThemes(value: unknown): PluginThemeDeclaration[] 
     if (raw.appearance !== 'light' && raw.appearance !== 'dark') {
       throw new Error('Plugin theme appearance must be light or dark.')
     }
-    const base = raw.extends
+    // Manifests written for retired built-in themes keep working on the Cove foundation.
+    const base =
+      typeof raw.extends === 'string' && Object.hasOwn(RETIRED_UI_THEMES, raw.extends)
+        ? RETIRED_UI_THEMES[raw.extends]
+        : raw.extends
     if (base !== undefined && !(PLUGIN_THEME_BASES as readonly unknown[]).includes(base)) {
       throw new Error('Plugin theme extends must name a built-in visual foundation.')
     }

@@ -103,9 +103,9 @@ visual state immediately. With all three off the effect layer is unmounted; with
 enabled it schedules frames only while those effects are active. Pixel Space zoom detail is material
 state and remains independent of these optional effects.
 
-Shared `--cove-pixel-*` tokens follow the applied theme: dark uses cool blue/cyan/mint, light uses
-darker cool colors for contrast, and Ember variants use copper/amber/gold. Pixel retains its original
-ice-blue/cyan/mint palette. System follows the resolved light/dark palette. No pixel color encodes
+Shared `--cove-pixel-*` tokens follow the applied theme: Cove maps them to its generated knowledge
+blue, accent cyan and shell green, with the cyan one step darker in light mode to keep 3:1 on
+surfaces. Pixel retains its original ice-blue/cyan/mint palette. System follows the resolved light/dark palette. No pixel color encodes
 selection, Agent status or success.
 
 ## Canvas effects

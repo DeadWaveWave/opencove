@@ -46,8 +46,8 @@ describe('UI style check script', () => {
         content: ":root[data-cove-theme='light'] { --cove-text: #123456; }",
       },
       {
-        path: 'src/app/renderer/styles/themes/ember.css',
-        content: ":root[data-cove-theme-id='ember'] { --cove-text: rgba(1, 2, 3, 0.9); }",
+        path: 'src/app/renderer/styles/themes/pixel.css',
+        content: ":root[data-cove-theme-id='pixel'] { --cove-text: rgba(1, 2, 3, 0.9); }",
       },
       {
         path: 'src/app/renderer/styles/button.css',

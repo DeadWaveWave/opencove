@@ -1,6 +1,6 @@
 .settings-theme-gallery__families {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -17,7 +17,7 @@
 }
 
 .settings-theme-gallery__sample {
-  --cove-gallery-accent: var(--cove-accent);
+  --cove-gallery-accent: var(--cove-theme-preview-accent);
   position: relative;
   height: 72px;
   overflow: hidden;
@@ -29,16 +29,8 @@
   );
 }
 
-.settings-theme-gallery__family[data-theme-family='ember'] .settings-theme-gallery__sample {
-  --cove-gallery-accent: var(--cove-theme-preview-ember);
-  background: linear-gradient(
-    115deg,
-    var(--cove-theme-preview-ember-light) 49%,
-    var(--cove-theme-preview-dark) 51%
-  );
-}
-
 .settings-theme-gallery__family[data-theme-family='pixel'] .settings-theme-gallery__sample {
+  --cove-gallery-accent: var(--cove-theme-preview-pixel-accent);
   background: var(--cove-theme-preview-pixel-light);
 }
 

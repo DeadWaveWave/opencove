@@ -65,7 +65,7 @@ describe('createOpenCodeTuiThemeBridge', () => {
     const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
     let appliedAppearance = {
       revision: 1,
-      themeId: 'ember-light',
+      themeId: 'light',
       uiScheme: 'light',
       terminalScheme: 'dark',
       xtermTheme: {
@@ -90,7 +90,7 @@ describe('createOpenCodeTuiThemeBridge', () => {
     appliedAppearance = {
       ...appliedAppearance,
       revision: 2,
-      themeId: 'ember',
+      themeId: 'pixel-light',
       xtermTheme: { ...appliedAppearance.xtermTheme, background: '#19120e' },
     }
     bridge.reportThemeMode()

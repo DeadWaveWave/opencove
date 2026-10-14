@@ -28,7 +28,21 @@ describe('advanced theme contract', () => {
     ).toMatchObject({ stylesheet: 'skin.css', metrics: { headerHeight: 42 } })
   })
   it.each([
+    ['ember', 'dark', 'dark'],
+    ['ember-light', 'light', 'light'],
+  ])('keeps a retired %s foundation working as Cove %s', (retired, appearance, cove) => {
+    expect(normalizePluginThemes([{ ...theme, appearance, extends: retired }])[0]?.extends).toBe(
+      cove,
+    )
+    expect(() =>
+      normalizePluginThemes([
+        { ...theme, appearance: cove === 'dark' ? 'light' : 'dark', extends: retired },
+      ]),
+    ).toThrow('appearance must match')
+  })
+  it.each([
     { ...theme, extends: 'plugin:missing:night' },
+    { ...theme, extends: 'graphite' },
     { ...theme, appearance: 'light' },
     { ...theme, stylesheet: '../skin.css' },
     { ...theme, stylesheet: '/skin.css' },

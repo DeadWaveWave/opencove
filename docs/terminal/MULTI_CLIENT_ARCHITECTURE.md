@@ -375,8 +375,8 @@ Each recovery should log a reason such as `overflow`, `gap`, `contextLoss`, `bla
 ## Terminal Appearance
 
 UI base scheme and terminal scheme are intentionally separate. `UiThemeDescriptor.terminalScheme`
-selects terminal semantics; for example, `ember-light` uses a light application shell and a dark
-terminal/OpenCode palette.
+selects terminal semantics, and the terminal setting can force dark terminals under a light
+application shell; such terminals send dark terminal/OpenCode semantics.
 
 Each xterm instance has one immutable, revisioned `TerminalAppearanceSnapshot`. A final-wins
 coordinator coalesces rapid changes, applies the latest snapshot at most once per frame, refreshes the

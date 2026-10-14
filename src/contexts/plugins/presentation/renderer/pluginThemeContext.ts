@@ -1,3 +1,4 @@
+import { DEFAULT_UI_THEME } from '@contexts/settings/domain/uiSettings'
 import { PLUGIN_THEME_TOKENS } from '../../domain/pluginThemeTypes'
 import { readAppliedThemeFonts } from './themeApplication'
 
@@ -24,8 +25,8 @@ export function pluginThemeContext() {
   const colors = Object.fromEntries(PLUGIN_THEME_TOKENS.map(name => [name, read(name)]))
   return {
     theme: root.dataset.coveTheme === 'light' ? 'light' : 'dark',
-    themeId: root.dataset.coveThemeId ?? 'pixel',
-    baseThemeId: root.dataset.coveThemeBase ?? root.dataset.coveThemeId ?? 'pixel',
+    themeId: root.dataset.coveThemeId ?? DEFAULT_UI_THEME,
+    baseThemeId: root.dataset.coveThemeBase ?? root.dataset.coveThemeId ?? DEFAULT_UI_THEME,
     themeVersion: 1,
     colors,
     tokens: { ...colors, ...Object.fromEntries(METRIC_TOKENS.map(name => [name, read(name)])) },

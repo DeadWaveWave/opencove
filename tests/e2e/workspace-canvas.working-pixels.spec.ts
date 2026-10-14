@@ -35,7 +35,7 @@ async function readRims(page: Page) {
   })
 }
 
-test('uses Pixel by default and shows theme-adaptive, switchable Working rims from real Agent hooks', async ({
+test('uses Cove by default and shows theme-adaptive, switchable Working rims from real Agent hooks', async ({
   browserName,
 }, testInfo) => {
   void browserName
@@ -47,7 +47,8 @@ test('uses Pixel by default and shows theme-adaptive, switchable Working rims fr
     },
   })
   try {
-    await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel')
+    await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'dark')
+    await expect(window.locator('html')).toHaveAttribute('data-cove-family', 'cove')
     await clearAndSeedWorkspace(
       window,
       [
@@ -113,7 +114,7 @@ test('uses Pixel by default and shows theme-adaptive, switchable Working rims fr
     }
     await inspectTheme('pixel')
     await inspectTheme('pixel-light')
-    await inspectTheme('ember')
+    await inspectTheme('dark')
     await send('waiting')
     await expect(status).toHaveText('Waiting')
     await expect(layer).toHaveAttribute('data-cove-pixel-working-node-ids', '')

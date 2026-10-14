@@ -4,20 +4,15 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { normalizeThemeStylesheet } from '../../helpers/themeStylesheet'
 import {
+  UI_THEMES,
+  UI_THEME_DESCRIPTORS,
   resolveUiThemeBaseScheme,
+  type BuiltinUiTheme,
   type UiTheme,
 } from '../../../src/contexts/settings/domain/uiSettings'
 
 const stylesheet = document.createElement('style')
-const themes: UiTheme[] = [
-  'dark',
-  'light',
-  'system',
-  'ember',
-  'ember-light',
-  'pixel',
-  'pixel-light',
-]
+const themes: UiTheme[] = [...UI_THEMES]
 
 beforeAll(() => {
   const cssFiles = [
@@ -33,8 +28,7 @@ beforeAll(() => {
     'image-node.css',
     'node-chrome.css',
     'workspace-overlays.spaces.css',
-    'themes/ember.css',
-    'themes/ember-light.css',
+    'themes/generated/cove.css',
     'themes/pixel.css',
     'themes/pixel-light.css',
     'themes/pixel-material.css',
@@ -54,12 +48,17 @@ afterEach(() => {
   delete document.documentElement.dataset.coveTheme
   delete document.documentElement.dataset.coveThemeId
   delete document.documentElement.dataset.coveThemeBase
+  delete document.documentElement.dataset.coveFamily
 })
 afterAll(() => stylesheet.remove())
 
 function selectTheme(theme: UiTheme, prefersDark = true) {
-  document.documentElement.dataset.coveTheme = resolveUiThemeBaseScheme(theme, prefersDark)
-  document.documentElement.dataset.coveThemeId = theme
+  const root = document.documentElement
+  // Like the theme owner: the family follows the applied foundation, not the selected identity.
+  const base = (root.dataset.coveThemeBase ?? theme) as BuiltinUiTheme
+  root.dataset.coveTheme = resolveUiThemeBaseScheme(base, prefersDark)
+  root.dataset.coveThemeId = theme
+  root.dataset.coveFamily = UI_THEME_DESCRIPTORS[base].family
   const style = getComputedStyle(document.documentElement)
   return {
     blue: style.getPropertyValue('--cove-pixel-blue').trim(),
@@ -112,14 +111,14 @@ describe('theme-adaptive pixel effects', () => {
     expect(dark).toEqual(selectTheme('dark'))
   })
 
-  it.each(['pixel', 'pixel-light', 'ember', 'ember-light'] as const)(
+  it.each(['dark', 'light', 'pixel', 'pixel-light'] as const)(
     'inherits the %s palette from the resolved base even when the selected identity differs',
     theme => {
       const palette = selectTheme(theme)
       document.documentElement.dataset.coveThemeBase = theme
       expect(selectTheme(`plugin:custom-theme:${theme}`)).toEqual(palette)
       // A stale selected identity cannot override the authoritative inherited base.
-      expect(selectTheme(theme === 'pixel' ? 'ember' : 'pixel')).toEqual(palette)
+      expect(selectTheme(theme === 'pixel' ? 'dark' : 'pixel')).toEqual(palette)
     },
   )
 
@@ -134,23 +133,6 @@ describe('theme-adaptive pixel effects', () => {
     }
   })
 
-  it.each(['ember', 'ember-light'] as const)(
-    'uses warm copper, amber and gold for %s without recoloring status tokens',
-    theme => {
-      const palette = selectTheme(theme)
-      for (const color of [palette.blue, palette.cyan, palette.mint]) {
-        const [red, green, blue] = [1, 3, 5].map(offset =>
-          Number.parseInt(color.slice(offset, offset + 2), 16),
-        )
-        expect(red).toBeGreaterThan(green!)
-        expect(green).toBeGreaterThan(blue!)
-      }
-      expect(
-        getComputedStyle(document.documentElement).getPropertyValue('--cove-label-red').trim(),
-      ).toBe(theme === 'ember' ? '#b85e5a' : '#b04040')
-    },
-  )
-
   it('preserves the Pixel preview identity while other themes adapt their effect colors', () => {
     selectTheme('pixel')
     const preview = document.createElement('span')
@@ -159,7 +141,7 @@ describe('theme-adaptive pixel effects', () => {
     document.body.append(preview)
     const pixelPreview = getComputedStyle(preview).backgroundImage
     expect(pixelPreview).toContain('linear-gradient')
-    selectTheme('ember')
+    selectTheme('dark')
     expect(getComputedStyle(preview).backgroundImage).toBe(pixelPreview)
   })
 

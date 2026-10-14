@@ -52,7 +52,7 @@ describe('Pixel Light ANSI palette', () => {
     expect(resolveTerminalAnsiScheme(palette, 'light')).toEqual(palette)
     expect(resolveTerminalAnsiScheme(palette, 'dark')).toEqual({})
     expect(Object.keys(palette)).toHaveLength(16)
-    for (const theme of ['pixel', 'light', 'dark', 'ember', 'ember-light']) {
+    for (const theme of ['pixel', 'light', 'dark']) {
       document.documentElement.dataset.coveThemeId = theme
       expect(readTerminalAnsiTheme(getComputedStyle(document.documentElement))).toEqual({})
     }

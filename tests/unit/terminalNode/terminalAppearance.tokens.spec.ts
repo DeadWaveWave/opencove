@@ -2,10 +2,16 @@ import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveDesiredTerminalAppearanceValue } from '@/contexts/workspace/presentation/renderer/components/terminalNode/terminalAppearance'
 import { UI_THEME_DESCRIPTORS } from '@/contexts/settings/domain/uiSettings'
+import { PLUGIN_THEME_BASES } from '@/contexts/plugins/domain/pluginThemeTypes'
+import { generateFamilyTheme } from '@/shared/design/themeGenerator'
+import { themeTokens } from '@/shared/design/themeTokens'
 import { normalizeThemeStylesheet } from '../../helpers/themeStylesheet'
 
 const terminalCss = readFileSync('src/app/renderer/styles/terminal-node.theme-opencode.css', 'utf8')
-const emberCss = readFileSync('src/app/renderer/styles/themes/ember.css', 'utf8')
+const coveCss = readFileSync('src/app/renderer/styles/themes/generated/cove.css', 'utf8')
+const coveDarkTerminal = themeTokens(generateFamilyTheme('cove', 'dark'))[
+  '--cove-terminal-background'
+]
 const css = document.createElement('style')
 
 afterEach(async () => {
@@ -14,11 +20,12 @@ afterEach(async () => {
   delete document.documentElement.dataset.coveTheme
   delete document.documentElement.dataset.coveThemeId
   delete document.documentElement.dataset.coveThemeBase
+  delete document.documentElement.dataset.coveFamily
   await Promise.resolve()
 })
 
 describe('authored terminal token precedence', () => {
-  it.each(['dark', 'light', 'ember', 'ember-light', 'pixel', 'pixel-light'] as const)(
+  it.each(PLUGIN_THEME_BASES)(
     'inherits the %s terminal scheme independently of the contributed theme identity',
     base => {
       const descriptor = UI_THEME_DESCRIPTORS[base]
@@ -33,15 +40,18 @@ describe('authored terminal token precedence', () => {
   )
 
   it.each([
-    { base: 'dark', defaultBackground: '#0a0f1d' },
-    { base: 'ember', defaultBackground: '#15110e' },
+    { name: 'the built-in fallback', family: undefined, defaultBackground: '#0a0f1d' },
+    { name: 'generated Cove', family: 'cove', defaultBackground: coveDarkTerminal },
   ])(
-    'respects $base theme overrides only while following the interface',
-    async ({ base, defaultBackground }) => {
+    'respects overrides on $name only while following the interface',
+    async ({ family, defaultBackground }) => {
       document.documentElement.dataset.coveTheme = 'dark'
-      document.documentElement.dataset.coveThemeBase = base
-      document.documentElement.dataset.coveThemeId = `plugin:terminal-palette:${base}`
-      css.textContent = normalizeThemeStylesheet(terminalCss + emberCss)
+      document.documentElement.dataset.coveThemeBase = 'dark'
+      document.documentElement.dataset.coveThemeId = 'plugin:terminal-palette:dark'
+      if (family) {
+        document.documentElement.dataset.coveFamily = family
+      }
+      css.textContent = normalizeThemeStylesheet(terminalCss + coveCss)
       document.head.appendChild(css)
       const declarations = {
         '--cove-terminal-background': '#302838',

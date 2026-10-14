@@ -4,11 +4,17 @@ import { availablePluginThemes } from '@contexts/plugins/domain/pluginThemes'
 import { Check, Monitor } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { getUiThemeLabel } from '@app/renderer/i18n/labels'
-import type { UiTheme } from '@contexts/settings/domain/agentSettings'
+import {
+  DEFAULT_UI_THEME,
+  UI_THEME_DESCRIPTORS,
+  type BuiltinUiTheme,
+  type UiTheme,
+  type UiThemeFamily,
+} from '@contexts/settings/domain/uiSettings'
 
-const families: Array<{ id: string; title: string; light: UiTheme; dark: UiTheme }> = [
-  { id: 'standard', title: 'standard', light: 'light', dark: 'dark' },
-  { id: 'ember', title: 'Ember', light: 'ember-light', dark: 'ember' },
+// Family names are product names and stay untranslated; System follows the Cove family.
+const families: Array<{ id: UiThemeFamily; title: string; light: UiTheme; dark: UiTheme }> = [
+  { id: 'cove', title: 'Cove', light: 'light', dark: 'dark' },
   { id: 'pixel', title: 'Pixel', light: 'pixel-light', dark: 'pixel' },
 ]
 
@@ -23,6 +29,7 @@ export function ThemeGallery({
   const applied = useThemeApplicationStatus()
   const { plugins } = usePluginRegistry()
   const pluginThemes = availablePluginThemes(plugins)
+  const currentFamily = UI_THEME_DESCRIPTORS[value as BuiltinUiTheme]?.family
   return (
     <div
       className="settings-theme-gallery"
@@ -36,16 +43,14 @@ export function ThemeGallery({
           <div
             className="settings-theme-gallery__family"
             data-theme-family={family.id}
-            data-current={value === family.light || value === family.dark}
+            data-current={currentFamily === family.id}
             key={family.id}
           >
             <div className="settings-theme-gallery__sample" aria-hidden="true">
               <span className="settings-theme-gallery__sample-window" />
               <span className="settings-theme-gallery__sample-window" />
             </div>
-            <span className="settings-theme-gallery__name">
-              {family.id === 'standard' ? t('settingsPanel.appearanceNext.standard') : family.title}
-            </span>
+            <span className="settings-theme-gallery__name">{family.title}</span>
             <div className="settings-theme-gallery__pair">
               {(['light', 'dark'] as const).map(mode => (
                 <button
@@ -70,7 +75,7 @@ export function ThemeGallery({
       {applied.requestedId === value && applied.error ? (
         <div className="settings-theme-gallery__recovery" role="status">
           <p>{t('pluginHostExtensions.themeLoadFailed')}</p>
-          <button type="button" onClick={() => onChange('pixel')}>
+          <button type="button" onClick={() => onChange(DEFAULT_UI_THEME)}>
             {t('pluginHostExtensions.restoreTheme')}
           </button>
         </div>

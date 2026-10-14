@@ -180,6 +180,7 @@ test.describe('Control Center', () => {
             nodes: [],
           },
         ],
+        // A saved choice of the retired Ember theme loads as Cove dark.
         settings: {
           uiTheme: 'ember',
           isPrimarySidebarCollapsed: false,
@@ -195,11 +196,12 @@ test.describe('Control Center', () => {
       await expect(controlCenter).not.toHaveAttribute('aria-modal', 'true')
 
       const themeInputs = controlCenter.getByRole('radio')
-      await expect(themeInputs).toHaveCount(7)
-      await expect(window.locator('[data-testid="control-center-theme-ember"]')).toBeChecked()
+      await expect(themeInputs).toHaveCount(5)
+      await expect(window.locator('[data-testid="control-center-theme-dark"]')).toBeChecked()
       await expect(window.locator('[data-testid="control-center-current-theme"]')).toContainText(
-        'Ember',
+        'Cove',
       )
+      await expect(window.locator('html')).toHaveAttribute('data-cove-family', 'cove')
       await expect(window.locator('[data-testid="control-center-toggle-sidebar"]')).toHaveCount(0)
 
       const minimapInput = window
@@ -208,9 +210,9 @@ test.describe('Control Center', () => {
       await expect(minimapInput).toHaveAttribute('role', 'switch')
       await waitForVisualState(controlCenter)
 
-      const screenshotPath = testInfo.outputPath('control-center-ember.png')
+      const screenshotPath = testInfo.outputPath('control-center-cove-from-ember.png')
       await window.screenshot({ path: screenshotPath })
-      await testInfo.attach('control-center-ember', {
+      await testInfo.attach('control-center-cove-from-ember', {
         path: screenshotPath,
         contentType: 'image/png',
       })
@@ -250,7 +252,7 @@ test.describe('Control Center', () => {
       await window.locator('[data-testid="app-header-control-center"]').click()
       const controlCenter = window.locator('[data-testid="control-center"]')
       await expect(controlCenter).toBeVisible()
-      await expect(controlCenter.getByRole('radio')).toHaveCount(7)
+      await expect(controlCenter.getByRole('radio')).toHaveCount(5)
       await expect(controlCenter).toHaveAttribute('aria-modal', 'true')
       await expect(window.locator('.app-shell')).toHaveJSProperty('inert', true)
       await waitForVisualState(controlCenter)

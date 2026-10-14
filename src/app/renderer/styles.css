@@ -82,14 +82,12 @@
 
 /* Base styles are inherited through data-cove-theme-base. The selected
    data-cove-theme-id remains the user's builtin or plugin theme identity. */
-@import './styles/themes/ember.css' layer(opencove);
-@import './styles/themes/ember-light.css' layer(opencove);
 @import './styles/themes/pixel.css' layer(opencove);
 @import './styles/themes/pixel-light.css' layer(opencove);
 @import './styles/themes/pixel-light.terminal.css' layer(opencove);
 @import './styles/themes/pixel-material.css' layer(opencove);
 @import './styles/themes/space-color-identity.css' layer(opencove);
-/* Generated Cove tokens (pnpm design:tokens); inert until a theme sets data-cove-family. */
+/* Generated Cove tokens (pnpm design:tokens); the theme owner sets data-cove-family='cove' for Cove. */
 @import './styles/themes/generated/cove.css' layer(opencove);
 @import './styles/node-color-identity.css' layer(opencove);
 @import './styles/node-collapse.css' layer(opencove);

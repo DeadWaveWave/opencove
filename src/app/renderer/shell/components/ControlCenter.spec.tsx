@@ -172,7 +172,8 @@ describe('Control Center surfaces', () => {
     rerender(<Harness uiTheme="plugin:example-tool:night" />)
     expect(screen.queryByTestId('control-center-theme-plugin:example-tool:night')).toBeNull()
     expect(screen.getByRole('status').textContent).toContain('unavailable')
-    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Pixel')
+    // The unavailable theme falls back to the default theme, Cove.
+    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Cove')
     expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
     vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [plugin], error: null })
     rerender(<Harness uiTheme="plugin:example-tool:night" />)
@@ -192,13 +193,13 @@ describe('Control Center surfaces', () => {
     vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [plugin], error: null })
     vi.mocked(themeApplication.useThemeApplicationStatus).mockReturnValue({
       requestedId: 'plugin:example-tool:night',
-      appliedId: 'pixel',
+      appliedId: 'dark',
       loading: false,
       error: 'Missing stylesheet',
     })
     render(<Harness uiTheme="plugin:example-tool:night" />)
     openControls()
-    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Pixel')
+    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Cove')
     expect(screen.getByRole('status').textContent).toContain('could not be loaded')
     expect(
       (screen.getByTestId('control-center-theme-plugin:example-tool:night') as HTMLInputElement)

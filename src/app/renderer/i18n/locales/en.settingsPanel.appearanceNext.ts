@@ -1,9 +1,8 @@
 export const enSettingsPanelAppearanceNext = {
   themes: 'Theme',
-  standard: 'Standard',
   light: 'Light',
   dark: 'Dark',
-  systemHelp: 'Or follow your system’s light and dark appearance.',
+  systemHelp: 'Or let Cove follow your system’s light and dark appearance.',
   system: 'Follow System',
   interfaceText: 'Interface Text',
   preview: 'Canvas preview',

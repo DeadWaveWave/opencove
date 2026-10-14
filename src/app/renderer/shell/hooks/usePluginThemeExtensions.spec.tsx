@@ -19,6 +19,7 @@ afterEach(() => {
   document.documentElement.removeAttribute('data-cove-theme')
   document.documentElement.removeAttribute('data-cove-theme-id')
   document.documentElement.removeAttribute('data-cove-theme-base')
+  document.documentElement.removeAttribute('data-cove-family')
 })
 it('applies color-only light tokens through terminal readers and removes overrides on fallback', () => {
   const plugin: PluginManifest = {
@@ -47,11 +48,15 @@ it('applies color-only light tokens through terminal readers and removes overrid
   state.plugins = [plugin]
   const { rerender } = render(<Hook />)
   expect(document.documentElement.dataset.coveTheme).toBe('light')
+  // Without `extends`, a plugin theme builds on the Cove foundation of its appearance.
+  expect(document.documentElement.dataset.coveThemeBase).toBe('light')
+  expect(document.documentElement.dataset.coveFamily).toBe('cove')
   expect(readTerminalAnsiTheme(getComputedStyle(document.documentElement)).red).toBe('#a12233')
   expect(document.documentElement.style.getPropertyValue('--cove-pixel-mint')).toBe('#235544')
   state.plugins = [{ ...plugin, enabled: false }]
   rerender(<Hook />)
-  expect(document.documentElement.dataset.coveThemeId).toBe('pixel')
+  expect(document.documentElement.dataset.coveThemeId).toBe('dark')
+  expect(document.documentElement.dataset.coveFamily).toBe('cove')
   expect(readTerminalAnsiTheme(getComputedStyle(document.documentElement)).red).toBeUndefined()
   expect(document.documentElement.style.getPropertyValue('--cove-pixel-mint')).toBe('')
   state.plugins = [plugin]

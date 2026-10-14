@@ -98,10 +98,11 @@
   --cove-info: var(--cove-accent-text);
   --cove-info-surface: var(--cove-control-selected);
   --cove-info-border: color-mix(in srgb, var(--cove-accent) 34%, transparent);
-  --cove-theme-preview-light: #f7f8fa;
-  --cove-theme-preview-dark: #15171b;
-  --cove-theme-preview-ember: #c97c3a;
-  --cove-theme-preview-ember-light: #f3e6d6;
+  /* Theme picker swatches stay constant across themes: Cove (generated values) and Pixel. */
+  --cove-theme-preview-light: #f2f9ff;
+  --cove-theme-preview-dark: #0c1217;
+  --cove-theme-preview-accent: #00b0d5;
+  --cove-theme-preview-pixel-accent: #5b9cf0;
   --cove-theme-preview-pixel: linear-gradient(135deg, #5b9cf0, #55bddc 50%, #70ddbc);
   --cove-theme-preview-pixel-light: linear-gradient(
     135deg,

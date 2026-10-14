@@ -129,7 +129,7 @@ describe('registerOpenCodeOscColorQueryResponder', () => {
     const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
     const appliedAppearance = {
       revision: 3,
-      themeId: 'ember-light',
+      themeId: 'light',
       uiScheme: 'light',
       terminalScheme: 'dark',
       xtermTheme: {

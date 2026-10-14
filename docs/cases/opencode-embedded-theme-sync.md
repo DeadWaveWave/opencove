@@ -46,15 +46,15 @@ OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm test:e2e tests/e2e/workspace-canvas.opencod
   - embedded session 可能复用/污染了用户全局 OpenCode state，触发 `theme_mode_lock`
 
 另一个容易被忽略的边界是：应用 shell 的 light/dark 不一定等于 terminal/TUI 的
-light/dark。命名主题可以显式选择不同的 `terminalScheme`；例如 `ember-light` 的应用
-shell 是 light，但终端与 OpenCode 必须保持 dark。若各桥接点分别读取 base UI scheme，
+light/dark。命名主题可以显式选择不同的 `terminalScheme`，用户也可以在浅色 shell 下把
+终端固定为深色；这时终端与 OpenCode 必须保持 dark。若各桥接点分别读取 base UI scheme，
 就会再次出现 palette、CSI mode 与 xterm frame 不一致。
 
 ## Fix
 
 - **以 applied terminal appearance 为 single source of truth**。`UiThemeDescriptor` 先解析
   `baseScheme` 与独立的 `terminalScheme`；终端节点跟随 resolved terminal scheme（而不是
-  直接跟随 OS 或应用 shell）。`ember-light` 因而发送 dark TUI 语义。
+  直接跟随 OS 或应用 shell）。浅色 shell 下被固定为深色的终端因而发送 dark TUI 语义。
   - `src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.tsx`
   - `src/contexts/workspace/presentation/renderer/components/terminalNode/terminalAppearance.ts`
   - `src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalThemeApplier.ts`

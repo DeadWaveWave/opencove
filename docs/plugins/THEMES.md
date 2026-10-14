@@ -57,9 +57,12 @@ host's existing windows and Appearance previews. A package that intentionally
 provides a separate tool window may also declare a `view`; its window entries and
 preview remain independent of its theme contributions.
 
-`extends` accepts `dark`, `light`, `pixel`, `pixel-light`, `ember`, or `ember-light`.
-`appearance` must agree with that foundation. Without `extends`, the standard
-light/dark foundation is used. Cross-plugin inheritance is not supported.
+`extends` accepts `dark` and `light` (the Cove foundation) or `pixel` and
+`pixel-light` (the Pixel foundation). Manifests that still name the retired
+`ember` or `ember-light` foundations keep working and resolve to `dark` and
+`light`. `appearance` must agree with that foundation. Without `extends`, the
+Cove foundation of the theme's appearance is used. Cross-plugin inheritance is
+not supported.
 The persisted identity remains `plugin:<plugin-id>:<theme-id>`; the applied
 foundation is exposed separately as `data-cove-theme-base`.
 

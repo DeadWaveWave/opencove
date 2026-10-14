@@ -16,7 +16,7 @@ import { normalizeSidebarCollapsedIds } from './sidebarTreeSettings'
 import { normalizeSidebarViewSettings } from './sidebarViewSettings'
 import { normalizePixelEffectSettings } from './pixelEffectSettings'
 import { normalizeDisabledPluginIds, normalizePluginContributions } from './pluginSettings'
-import { isValidUiLanguage, isValidUiTheme } from './uiSettings'
+import { isValidUiLanguage, normalizeUiTheme } from './uiSettings'
 import {
   isValidUpdateChannel,
   isValidUpdatePolicy,
@@ -165,8 +165,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const language = isValidUiLanguage(value.language)
     ? value.language
     : DEFAULT_AGENT_SETTINGS.language
-  const uiTheme = isValidUiTheme(value.uiTheme) ? value.uiTheme : DEFAULT_AGENT_SETTINGS.uiTheme
-  const pixelEffects = normalizePixelEffectSettings(value, uiTheme)
+  const savedUiTheme = normalizeUiTheme(value.uiTheme)
+  const uiTheme = savedUiTheme ?? DEFAULT_AGENT_SETTINGS.uiTheme
+  const pixelEffects = normalizePixelEffectSettings(value, savedUiTheme)
   const isPrimarySidebarCollapsed =
     normalizeBoolean(value.isPrimarySidebarCollapsed) ??
     DEFAULT_AGENT_SETTINGS.isPrimarySidebarCollapsed

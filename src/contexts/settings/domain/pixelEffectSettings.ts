@@ -4,13 +4,16 @@ import type { UiTheme } from './uiSettings'
 
 export function normalizePixelEffectSettings(
   value: Record<string, unknown>,
-  uiTheme: UiTheme,
+  savedUiTheme: UiTheme | null,
 ): PixelEffectSettings {
   // Adopt pre-toggle defaults only for missing legacy fields; explicit choices survive theme changes.
-  // Plugin themes postdate effect switches; missing fields use current defaults,
-  // without consulting an installed plugin or changing explicit user choices.
+  // Before the switches existed only Pixel had effects. Unconfigured users (no saved theme) and
+  // plugin themes, which postdate the switches, get the current defaults: every effect on.
   const legacyEnabled =
-    uiTheme === 'pixel' || uiTheme === 'pixel-light' || uiTheme.startsWith('plugin:')
+    savedUiTheme === null ||
+    savedUiTheme === 'pixel' ||
+    savedUiTheme === 'pixel-light' ||
+    savedUiTheme.startsWith('plugin:')
   return {
     canvasPixelBackgroundEnabled:
       normalizeBoolean(value.canvasPixelBackgroundEnabled) ?? legacyEnabled,

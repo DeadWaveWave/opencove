@@ -18,7 +18,7 @@ import {
 for (const [theme, language] of [
   ['dark', 'en'],
   ['light', 'zh-CN'],
-  ['ember', 'zh-CN'],
+  ['pixel', 'zh-CN'],
 ] as const) {
   test(`offers explicit system opening for PDF without creating a text editor in ${theme}`, async ({
     browserName,

@@ -18,8 +18,8 @@ import { zhCNWorkspaceCanvas } from './zh-CN.workspaceCanvas'
 
 export const zhCN = {
   pluginHostExtensions: {
-    themeLoadFailed: '此主题未能加载，暂时显示 Pixel，原主题选择仍会保留。',
-    restoreTheme: '改用 Pixel',
+    themeLoadFailed: '此主题未能加载，暂时显示 Cove，原主题选择仍会保留。',
+    restoreTheme: '改用 Cove',
 
     emptySidebar: '暂无条目。',
     invalidPreference: '请为此偏好设置输入有效值。',

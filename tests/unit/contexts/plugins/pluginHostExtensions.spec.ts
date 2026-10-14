@@ -74,9 +74,9 @@ describe('host extension declarations', () => {
       themes: normalizeLocalPluginPackage({ ...base, contributes: { themes } }).contributes!.themes,
     }
     expect(resolveHostTheme(selected, [plugin]).theme?.baseScheme).toBe('dark')
-    expect(resolveHostTheme(selected, [{ ...plugin, enabled: false }])).toEqual({ id: 'pixel' })
+    expect(resolveHostTheme(selected, [{ ...plugin, enabled: false }])).toEqual({ id: 'dark' })
     expect(availablePluginThemes([{ ...plugin, status: 'error' }])).toEqual([])
-    expect(resolveHostTheme(selected, [])).toEqual({ id: 'pixel' })
+    expect(resolveHostTheme(selected, [])).toEqual({ id: 'dark' })
   })
 })
 

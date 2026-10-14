@@ -1,4 +1,4 @@
-import type { UiTheme } from '../../settings/domain/uiSettings'
+import { DEFAULT_UI_THEME, type UiTheme } from '../../settings/domain/uiSettings'
 import type { PluginManifest, PluginThemeDeclaration } from './pluginTypes'
 
 export function pluginThemeId(pluginId: string, themeId: string): UiTheme {
@@ -19,7 +19,7 @@ export function availablePluginThemes(plugins: readonly PluginManifest[]) {
 export function resolveHostTheme(
   selected: UiTheme,
   plugins: readonly PluginManifest[],
-  fallback: UiTheme = 'pixel',
+  fallback: UiTheme = DEFAULT_UI_THEME,
 ): {
   id: UiTheme
   plugin?: PluginManifest
@@ -35,5 +35,5 @@ export function resolveHostTheme(
         plugin: contribution.plugin,
         theme: { ...contribution.theme, baseScheme: contribution.theme.appearance },
       }
-    : { id: fallback.startsWith('plugin:') ? 'pixel' : fallback }
+    : { id: fallback.startsWith('plugin:') ? DEFAULT_UI_THEME : fallback }
 }

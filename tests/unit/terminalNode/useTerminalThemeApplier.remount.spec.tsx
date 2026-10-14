@@ -46,7 +46,7 @@ function ThemeHarness({
           --cove-terminal-node-header-surface: rgb(246, 249, 255);
           --cove-text: #111827;
         }
-        :root[data-cove-theme-id='ember-light'] {
+        :root[data-cove-theme-id='pixel'] {
           --cove-terminal-background: #15110e;
           --cove-terminal-foreground: #d4c4ae;
           --cove-terminal-cursor: #c97c3a;
@@ -67,7 +67,7 @@ function ThemeHarness({
           --cove-terminal-cursor: #111827;
           --cove-terminal-selection: rgba(94, 156, 255, 0.24);
         }
-        :root[data-cove-theme-id='ember-light']
+        :root[data-cove-theme-id='pixel']
           .terminal-node[data-cove-terminal-node-theme='dark'] {
           --cove-terminal-background: #15110e;
           --cove-terminal-foreground: #d4c4ae;
@@ -84,7 +84,7 @@ function ThemeHarness({
           --cove-terminal-node-header-surface: rgb(246, 249, 255);
           --cove-text: #111827;
         }
-        :root[data-cove-theme-id='ember-light']
+        :root[data-cove-theme-id='pixel']
           .terminal-node[data-cove-terminal-theme-probe][data-cove-terminal-node-theme='dark'] {
           --cove-terminal-node-surface: rgb(20, 16, 14);
           --cove-terminal-node-header-surface: rgb(32, 26, 22);
@@ -129,7 +129,7 @@ describe('useTerminalThemeApplier remount behavior', () => {
     }
     const darkColors = { background: '#0a0f1d', foreground: '#d6e4ff' }
     const lightColors = { background: '#fbfcff', foreground: '#111827' }
-    const emberColors = { background: '#15110e', foreground: '#d4c4ae' }
+    const pixelColors = { background: '#15110e', foreground: '#d4c4ae' }
     const terminal = {
       rows: 24,
       options: {
@@ -186,8 +186,7 @@ describe('useTerminalThemeApplier remount behavior', () => {
     document.documentElement.dataset.coveTheme = 'dark'
     document.documentElement.dataset.coveThemeId = 'dark'
     view.rerender(<ThemeHarness containerKey="replacement" trigger={3} terminal={terminal} />)
-    document.documentElement.dataset.coveTheme = 'light'
-    document.documentElement.dataset.coveThemeId = 'ember-light'
+    document.documentElement.dataset.coveThemeId = 'pixel'
     view.rerender(<ThemeHarness containerKey="replacement" trigger={4} terminal={terminal} />)
 
     expect(frames).toHaveLength(1)
@@ -208,7 +207,7 @@ describe('useTerminalThemeApplier remount behavior', () => {
       'data-cove-terminal-node-theme',
       'dark',
     )
-    expect(terminal.options.theme).toEqual(expect.objectContaining(emberColors))
+    expect(terminal.options.theme).toEqual(expect.objectContaining(pixelColors))
     expect(getComputedStyle(replacement!).backgroundColor).toBe('#15110e')
     expect(replacementNode.style.getPropertyValue('--cove-terminal-background')).toBe('#15110e')
     expect(replacementNode.style.getPropertyValue('--cove-terminal-node-surface')).toBe(

@@ -25,13 +25,22 @@ afterEach(async () => {
 })
 
 describe('appearance families and terminal scope', () => {
-  it('exposes the seven existing themes as three explicit pairs and independent System', () => {
+  it('offers Cove and Pixel as light/dark pairs, with System following Cove', () => {
     const onChange = vi.fn()
     const view = render(<ThemeGallery value="pixel-light" onChange={onChange} />)
+    const families = () =>
+      [...view.container.querySelectorAll<HTMLElement>('[data-theme-family]')].map(family => [
+        family.dataset.themeFamily,
+        family.dataset.current,
+      ])
     expect(screen.getAllByRole('button')).toHaveLength(UI_THEMES.length)
     for (const theme of UI_THEMES) {
       expect(screen.getByTestId(`settings-ui-theme-${theme}`)).toBeVisible()
     }
+    expect(families()).toEqual([
+      ['cove', 'false'],
+      ['pixel', 'true'],
+    ])
     expect(screen.getByRole('button', { name: 'Pixel Light' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -47,8 +56,17 @@ describe('appearance families and terminal scope', () => {
       'aria-pressed',
       'false',
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Ember' }))
-    expect(onChange).toHaveBeenLastCalledWith('ember')
+    expect(families()).toEqual([
+      ['cove', 'true'],
+      ['pixel', 'false'],
+    ])
+    expect(
+      screen.getByText('Or let Cove follow your system’s light and dark appearance.'),
+    ).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Cove' }))
+    expect(onChange).toHaveBeenLastCalledWith('dark')
+    fireEvent.click(screen.getByRole('button', { name: 'Cove Light' }))
+    expect(onChange).toHaveBeenLastCalledWith('light')
   })
 
   it('shows a local typography sample and preserves font and shell change callbacks', () => {
@@ -95,7 +113,9 @@ describe('appearance families and terminal scope', () => {
     await applyUiLanguage('zh-CN')
     render(<ThemeGallery value="pixel" onChange={vi.fn()} />)
     expect(screen.getByRole('button', { name: '跟随系统' })).toBeVisible()
-    expect(screen.getAllByRole('button')).toHaveLength(7)
-    expect(screen.getByText('标准')).toBeVisible()
+    expect(screen.getAllByRole('button')).toHaveLength(UI_THEMES.length)
+    expect(screen.getByText('或让 Cove 跟随系统的浅深色外观。')).toBeVisible()
+    expect(screen.getByRole('button', { name: '浅色 Cove' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '浅色点阵' })).toBeVisible()
   })
 })

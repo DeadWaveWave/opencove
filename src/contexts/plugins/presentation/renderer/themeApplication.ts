@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { DEFAULT_UI_THEME } from '@contexts/settings/domain/uiSettings'
 import type { PluginThemeFont } from '../../domain/pluginThemeResources'
 
 export interface ThemeApplicationStatus {
@@ -9,8 +10,8 @@ export interface ThemeApplicationStatus {
 }
 const listeners = new Set<() => void>()
 let status: ThemeApplicationStatus = {
-  requestedId: 'pixel',
-  appliedId: 'pixel',
+  requestedId: DEFAULT_UI_THEME,
+  appliedId: DEFAULT_UI_THEME,
   loading: false,
   error: null,
 }

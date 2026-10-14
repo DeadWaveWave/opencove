@@ -15,9 +15,10 @@ const DARK_THEME = {
   selectionBackground: 'rgba(203, 131, 85, 0.32)',
 }
 
+// Cove Light with terminals forced dark: a light shell over dark terminal semantics.
 function createValue(overrides: Partial<TerminalAppearanceValue> = {}): TerminalAppearanceValue {
   return {
-    themeId: 'ember-light',
+    themeId: 'light',
     uiScheme: 'light',
     terminalScheme: 'dark',
     xtermTheme: DARK_THEME,
@@ -55,17 +56,16 @@ describe('terminal appearance', () => {
     ).toBe('dark')
   })
 
-  it('declares ember-light as a light UI theme with an explicitly dark terminal', () => {
-    expect(UI_THEME_DESCRIPTORS['ember-light']).toMatchObject({
-      baseScheme: 'light',
-      terminalScheme: 'dark',
-    })
+  it('keeps built-in terminals on their shell scheme unless the terminal is forced dark', () => {
+    for (const descriptor of Object.values(UI_THEME_DESCRIPTORS)) {
+      expect(descriptor.terminalScheme).toBe(descriptor.baseScheme)
+    }
 
     expect(
       resolveTerminalAppearanceValue({
-        themeId: 'ember-light',
+        themeId: 'light',
         uiScheme: 'light',
-        terminalThemeMode: 'sync-with-ui',
+        terminalThemeMode: 'dark',
         xtermTheme: DARK_THEME,
       }),
     ).toEqual(createValue())
@@ -118,10 +118,10 @@ describe('terminal appearance', () => {
     const owner = createTerminalAppearanceOwner(createValue(), { initiallyApplied: true })
     const initial = owner.getAppliedSnapshot()
 
-    expect(initial).toMatchObject({ revision: 1, themeId: 'ember-light' })
+    expect(initial).toMatchObject({ revision: 1, themeId: 'light' })
     expect(owner.update(createValue())).toBe(initial)
 
-    const next = owner.update(createValue({ themeId: 'ember' }))
+    const next = owner.update(createValue({ themeId: 'dark' }))
     expect(next.revision).toBe(2)
     expect(owner.getAppliedSnapshot()).toBe(initial)
     expect(owner.markApplied(next)).toBe(true)
@@ -161,7 +161,7 @@ describe('terminal appearance', () => {
       inspect,
     })
 
-    const revision2 = owner.update(createValue({ themeId: 'ember' }))
+    const revision2 = owner.update(createValue({ themeId: 'dark' }))
     const revision3 = owner.update(
       createValue({
         themeId: 'dark',
@@ -203,7 +203,7 @@ describe('terminal appearance', () => {
       requestFrame,
       cancelFrame: vi.fn(),
     })
-    const next = owner.update(createValue({ themeId: 'ember' }))
+    const next = owner.update(createValue({ themeId: 'dark' }))
 
     coordinator.setVisible(false)
     coordinator.request(next)
@@ -233,7 +233,7 @@ describe('terminal appearance', () => {
       },
       cancelFrame: vi.fn(),
     })
-    const next = owner.update(createValue({ themeId: 'ember' }))
+    const next = owner.update(createValue({ themeId: 'dark' }))
 
     coordinator.request(next)
     frames.shift()?.(performance.now())

@@ -17,7 +17,11 @@ import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
 import { useTranslation } from '@app/renderer/i18n'
 import { getUiThemeLabel } from '@app/renderer/i18n/labels'
 import { UI_THEMES, type UiTheme } from '@contexts/settings/domain/agentSettings'
-import { UI_THEME_DESCRIPTORS, type UiThemeBaseScheme } from '@contexts/settings/domain/uiSettings'
+import {
+  DEFAULT_UI_THEME,
+  UI_THEME_DESCRIPTORS,
+  type UiThemeBaseScheme,
+} from '@contexts/settings/domain/uiSettings'
 import { availablePluginThemes } from '@contexts/plugins/domain/pluginThemes'
 import { usePluginRegistry } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import { useThemeApplicationStatus } from '@contexts/plugins/presentation/renderer/themeApplication'
@@ -168,8 +172,8 @@ export function ControlCenter({
             data-testid="control-center-current-theme"
           >
             {hasLoadError
-              ? getUiThemeLabel(t, 'pixel')
-              : (selectedChoice?.title ?? getUiThemeLabel(t, 'pixel'))}
+              ? getUiThemeLabel(t, DEFAULT_UI_THEME)
+              : (selectedChoice?.title ?? getUiThemeLabel(t, DEFAULT_UI_THEME))}
           </span>
         </div>
         <div

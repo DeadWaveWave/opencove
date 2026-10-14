@@ -51,8 +51,10 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
         )
         .toBe('light')
       await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'light')
+      // Cove Light's generated reading plate (#f9fcfe).
+      await expect(terminalBody).toHaveCSS('background-color', 'rgb(249, 252, 254)')
 
-      await selectCoveOption(window, 'settings-ui-theme', 'ember-light')
+      await selectCoveOption(window, 'settings-ui-theme', 'pixel-light')
       await expect
         .poll(() =>
           window.evaluate(() => ({
@@ -60,9 +62,9 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
             themeId: document.documentElement.dataset.coveThemeId ?? null,
           })),
         )
-        .toEqual({ baseScheme: 'light', themeId: 'ember-light' })
-      await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'dark')
-      await expect(terminalBody).toHaveCSS('background-color', 'rgb(21, 17, 14)')
+        .toEqual({ baseScheme: 'light', themeId: 'pixel-light' })
+      await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'light')
+      await expect(terminalBody).toHaveCSS('background-color', 'rgb(248, 251, 253)')
 
       await window.locator('.settings-panel__close').click()
 
@@ -84,9 +86,9 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
         .poll(() => terminalBody.evaluate(element => element.clientHeight))
         .toBe(terminalHeightBeforeFind)
 
-      const screenshotPath = testInfo.outputPath('terminal-theme-ember-light-find.png')
+      const screenshotPath = testInfo.outputPath('terminal-theme-pixel-light-find.png')
       await window.screenshot({ path: screenshotPath })
-      await testInfo.attach('terminal-theme-ember-light-find', {
+      await testInfo.attach('terminal-theme-pixel-light-find', {
         path: screenshotPath,
         contentType: 'image/png',
       })
@@ -150,7 +152,9 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
       await expect(terminalBody).toBeVisible()
       await expect(terminalNode).toHaveAttribute('data-cove-terminal-node-theme', 'dark')
       await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'dark')
-      await expect(terminalHeader).toHaveCSS('background-color', 'rgba(18, 28, 50, 0.96)')
+      // Cove headers are transparent over the window glass; the title text follows the theme.
+      await expect(terminalHeader).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      await expect(terminalHeader).toHaveCSS('color', 'rgb(239, 243, 247)')
 
       const settingsButton = window.locator('[data-testid="app-header-settings"]')
       await settingsButton.click({ noWaitAfter: true })
@@ -167,7 +171,8 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
 
       await expect(terminalNode).toHaveAttribute('data-cove-terminal-node-theme', 'light')
       await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'light')
-      await expect(terminalHeader).toHaveCSS('background-color', 'rgba(246, 249, 255, 0.96)')
+      await expect(terminalHeader).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+      await expect(terminalHeader).toHaveCSS('color', 'rgb(27, 29, 32)')
 
       await window.locator('.settings-panel__close').click()
 

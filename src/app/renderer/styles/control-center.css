@@ -228,22 +228,6 @@
   background: var(--cove-theme-preview-dark);
 }
 
-.control-center__theme-preview[data-theme-preview='ember'] {
-  background: linear-gradient(
-    135deg,
-    var(--cove-theme-preview-dark) 48%,
-    var(--cove-theme-preview-ember) 52%
-  );
-}
-
-.control-center__theme-preview[data-theme-preview='ember-light'] {
-  background: linear-gradient(
-    135deg,
-    var(--cove-theme-preview-ember-light) 48%,
-    var(--cove-theme-preview-ember) 52%
-  );
-}
-
 .control-center__theme-preview[data-theme-preview='pixel'] {
   border-radius: var(--cove-radius-xs);
   background: var(--cove-theme-preview-pixel);

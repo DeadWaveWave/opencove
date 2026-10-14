@@ -70,9 +70,9 @@ describe('independent persisted Pixel effect settings', () => {
   })
 
   it.each([undefined, null, {}, { uiTheme: 'invalid' }])(
-    'starts unconfigured users in Pixel with all effects: %j',
+    'starts unconfigured users in Cove with all effects: %j',
     raw => {
-      expect(normalizeAgentSettings(raw).uiTheme).toBe('pixel')
+      expect(normalizeAgentSettings(raw).uiTheme).toBe('dark')
       expect(Object.values(effects(normalizeAgentSettings(raw)))).toEqual([true, true, true, true])
       expect(effects(normalizeAgentSettings(raw))).toEqual(effects(DEFAULT_AGENT_SETTINGS))
     },

@@ -141,11 +141,11 @@ test('uses host commands, preferences and themes without creating windows, and r
     )
     await expect(page.getByTestId(`plugin-preference-${pluginId}-compact`)).toBeChecked()
     await pluginCommand(page, 'plugin.setEnabled', { pluginId, enabled: false })
-    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel')
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'dark')
     await pluginCommand(page, 'plugin.setEnabled', { pluginId, enabled: true })
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', themeId)
     await pluginCommand(page, 'plugin.uninstall', { pluginId })
-    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel')
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'dark')
     expect(await savedCommandNodes(page, pluginId)).toEqual([])
   } finally {
     await electronApp.close()

@@ -58,14 +58,8 @@ export const PLUGIN_THEME_TOKENS = [
   '--cove-space-caption-surface',
 ] as const
 export type PluginThemeToken = (typeof PLUGIN_THEME_TOKENS)[number]
-export const PLUGIN_THEME_BASES = [
-  'light',
-  'dark',
-  'pixel',
-  'pixel-light',
-  'ember',
-  'ember-light',
-] as const
+/** Built-in foundations: `dark` and `light` are Cove, `pixel` and `pixel-light` are Pixel. */
+export const PLUGIN_THEME_BASES = ['light', 'dark', 'pixel', 'pixel-light'] as const
 export type PluginThemeBase = (typeof PLUGIN_THEME_BASES)[number]
 
 export interface PluginThemeDeclaration {

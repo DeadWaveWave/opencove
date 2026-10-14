@@ -1,9 +1,8 @@
 export const zhCNSettingsPanelAppearanceNext = {
   themes: '主题',
-  standard: '标准',
   light: '浅色',
   dark: '深色',
-  systemHelp: '或使用系统的浅深色外观。',
+  systemHelp: '或让 Cove 跟随系统的浅深色外观。',
   system: '跟随系统',
   interfaceText: '界面文字',
   preview: '画布预览',
