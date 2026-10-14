@@ -201,7 +201,8 @@ test('remote theme assets, typography and iframe context survive switches, recov
       pluginId: themePluginId,
       enabled: false,
     })
-    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel')
+    // An unavailable plugin theme falls back to the default theme, Cove dark.
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'dark')
     await expect(page.locator('style[data-cove-theme-stylesheet]')).toHaveCount(0)
     await expect(header).toHaveCSS('height', '34px')
     await expect(
