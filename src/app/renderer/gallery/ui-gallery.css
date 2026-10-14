@@ -1,0 +1,62 @@
+/* Test-only component gallery. Layout only; every color comes from the active theme. */
+.ui-gallery {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: var(--cove-spacing-5);
+  padding: var(--cove-spacing-6);
+  background: var(--cove-app-background);
+  color: var(--cove-text);
+}
+
+.ui-gallery__section {
+  display: grid;
+  gap: var(--cove-spacing-3);
+  padding: var(--cove-spacing-4);
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: var(--cove-radius-lg);
+  background: var(--cove-window-surface);
+}
+
+.ui-gallery__heading {
+  margin: 0;
+  font-size: var(--cove-font-size-emphasis);
+  font-weight: var(--cove-font-weight-semibold);
+  line-height: var(--cove-line-height-emphasis);
+}
+
+.ui-gallery__text {
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-body);
+  line-height: var(--cove-line-height-body);
+}
+
+.ui-gallery__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+}
+
+.ui-gallery__row--end {
+  justify-content: flex-end;
+}
+
+.ui-gallery__rows {
+  display: grid;
+  gap: var(--cove-spacing-1);
+}
+
+/* The dialog uses the app's standard .cove-window surface; only its width is narrower here. */
+.ui-gallery__dialog {
+  width: min(420px, calc(100vw - var(--cove-spacing-8)));
+}
+
+.ui-gallery__popover {
+  display: grid;
+  gap: var(--cove-spacing-3);
+  padding: var(--cove-spacing-4);
+}

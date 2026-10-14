@@ -114,6 +114,17 @@
 - `focus-visible`：必须可见且不刺眼（建议 1px ring + 轻外发光）
 - `disabled`：降低对比/透明度，但仍可读、可理解
 
+### 3.4 共享组件图库与可访问性探针
+
+- 共享组件（`src/app/renderer/components/ui/`）的每种状态都放进测试专用的组件图库
+  `src/app/renderer/gallery/UiGallery.tsx`。图库只在 `NODE_ENV=test` 且
+  `OPENCOVE_TEST_UI_GALLERY=1` 时代替应用外壳渲染，并按需加载，不进入正常启动路径。
+- `tests/e2e/ui-gallery.probes.spec.ts` 在 Cove 与 Pixel 的明暗四个内置主题下扫描图库、
+  对话框和浮层：文字对比度不低于 4.5:1（大字 3:1，禁用控件除外），点击区不小于 24×24
+  CSS px（WCAG 2.5.8）。探针在 `tests/e2e/ui-accessibility.probe.ts`，测量前等待有限动画结束。
+- 新增或修改共享组件时，先把它的各个状态加进图库；探针不通过不能合并。
+- 对话框正文放在 `.cove-window` 表面上；共享 `Dialog` 只负责层级、焦点与关闭，不自带表面。
+
 ---
 
 ## 4) Canvas 特化约束

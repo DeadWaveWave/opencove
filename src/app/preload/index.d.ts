@@ -154,6 +154,8 @@ export interface OpenCoveApi {
     enableTerminalInputDiagnostics?: boolean
     enableTerminalTestApi?: boolean
     disableTerminalTranscriptMirror?: boolean
+    /** Test-only: render the shared component gallery instead of the app shell. */
+    enableUiGallery?: boolean
     runtime: 'electron' | 'browser'
     platform: string
     mainPid: number | null

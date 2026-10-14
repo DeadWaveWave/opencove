@@ -11,6 +11,8 @@ export function resolveOpenCoveMeta() {
     enableTerminalTestApi: process.env.OPENCOVE_TERMINAL_TEST_API === '1',
     disableTerminalTranscriptMirror:
       process.env.OPENCOVE_DISABLE_TERMINAL_TRANSCRIPT_MIRROR === '1',
+    enableUiGallery:
+      process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_UI_GALLERY === '1',
     runtime: 'electron' as const,
     platform: process.platform,
     mainPid: resolveMainProcessPid(),
