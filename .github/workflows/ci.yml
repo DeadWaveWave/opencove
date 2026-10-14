@@ -246,7 +246,8 @@ jobs:
         run: pnpm build
 
       - name: E2E tests (shard)
-        timeout-minutes: 30
+        # macOS runners take 25-30 minutes per shard; 30 cut off a passing shard mid-run.
+        timeout-minutes: 45
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_WINDOW_MODE: inactive
