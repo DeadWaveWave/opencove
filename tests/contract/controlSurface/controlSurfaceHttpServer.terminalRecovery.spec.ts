@@ -184,7 +184,13 @@ describeWithElectronNativeModules('Control Surface terminal recovery durability'
       await resizeStarted
       const queuedWriteToken = 'QUEUED_WRITE_AFTER_PENDING_RESIZE\r\n'
       sendJson(controller, { type: 'write', sessionId, data: queuedWriteToken })
-      await new Promise(resolvePromise => setImmediate(resolvePromise))
+      // Shutdown freezes ingress, so the write must reach the server first. One connection parses
+      // frames in order: the pong proves the write frame was handled. A single setImmediate does not
+      // wait for loopback I/O and let shutdown drop the write in about a third of local runs.
+      await new Promise<void>(resolvePromise => {
+        controller.once('pong', () => resolvePromise())
+        controller.ping()
+      })
 
       let disposeResolved = false
       const dispose = server.dispose().then(() => {
