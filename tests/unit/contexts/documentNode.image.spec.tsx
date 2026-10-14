@@ -80,7 +80,9 @@ describe('URI-backed image window', () => {
     expect(screen.queryByRole('button', { name: 'common.save' })).toBeNull()
     expect(mocks.readFileText).not.toHaveBeenCalled()
     expect(mocks.writeFileText).not.toHaveBeenCalled()
-    expect(onNavigationApplied).toHaveBeenCalledWith(3)
+    // The acknowledgement runs in a passive effect after the preview commits; findByTestId only
+    // proves the commit, so a slow runner can reach this line before the effect.
+    await waitFor(() => expect(onNavigationApplied).toHaveBeenCalledWith(3))
     view.unmount()
     expect(mocks.revokeUrl).toHaveBeenCalledExactlyOnceWith('blob:preview')
   })
