@@ -33,7 +33,16 @@ function createDomRenderer(terminal: Terminal): ActiveTerminalRenderer {
   }
 }
 
+// Chromium keeps a small number of WebGL contexts alive and evicts the oldest one when a new
+// context exceeds that limit. A probe context left for GC therefore costs a live terminal its
+// renderer, so the renderer process probes once and releases the probe immediately.
+let webglSupported = false
+
 function canUseWebglRenderer(): boolean {
+  if (webglSupported) {
+    return true
+  }
+
   if (typeof document === 'undefined') {
     return false
   }
@@ -43,7 +52,15 @@ function canUseWebglRenderer(): boolean {
     return false
   }
 
-  return canvas.getContext('webgl2') !== null || canvas.getContext('webgl') !== null
+  const probe = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
+  if (!probe) {
+    // A failed probe allocates nothing, so later terminals may probe again once the GPU recovers.
+    return false
+  }
+
+  probe.getExtension('WEBGL_lose_context')?.loseContext()
+  webglSupported = true
+  return true
 }
 
 function resolveWebglRendererBudget(value: number | undefined): number {
@@ -71,6 +88,7 @@ function requiresWebglRenderer(
 
 export function resetPreferredTerminalRendererStateForTests(): void {
   activeWebglRendererCount = 0
+  webglSupported = false
 }
 
 export function activatePreferredTerminalRenderer(
