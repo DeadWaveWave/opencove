@@ -1,14 +1,21 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import {
+  compareScaleRatchet,
+  countScaleLiterals,
+  formatScaleRatchetIssues,
+  serializeScaleRatchet,
+} from './lib/ui-style-ratchet.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_REPO_ROOT = resolve(SCRIPT_DIR, '..')
 const UI_STYLE_ROOT = 'src/app/renderer'
 const BASE_TOKEN_FILE = 'src/app/renderer/styles/base.css'
 const THEME_DIRECTORY = 'src/app/renderer/styles/themes/'
+const SCALE_RATCHET_FILE = 'scripts/ui-style-ratchet.json'
 
 const TOKEN_DECLARATION_PATTERN = /(--cove-[a-z0-9_-]+)\s*:/gi
 const TOKEN_USAGE_PATTERN = /var\(\s*(--cove-[a-z0-9_-]+)/gi
@@ -222,17 +229,39 @@ export function formatUiStyleViolations(violations) {
   return `${lines.join('\n')}\n`
 }
 
-export function runUiStyleCheck({ repoRoot = DEFAULT_REPO_ROOT, stderr = process.stderr } = {}) {
-  const violations = checkUiStyleFiles(readUiStyleFiles(repoRoot))
-  if (violations.length === 0) {
+function readScaleRatchet(path) {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return {}
+    }
+    throw error
+  }
+}
+
+export function runUiStyleCheck({
+  repoRoot = DEFAULT_REPO_ROOT,
+  stderr = process.stderr,
+  updateRatchet = false,
+} = {}) {
+  const files = readUiStyleFiles(repoRoot)
+  const violations = checkUiStyleFiles(files)
+  const counts = countScaleLiterals(files)
+  const ratchetPath = resolve(repoRoot, SCALE_RATCHET_FILE)
+  if (updateRatchet) {
+    writeFileSync(ratchetPath, serializeScaleRatchet(counts))
+  }
+  const issues = updateRatchet ? [] : compareScaleRatchet(counts, readScaleRatchet(ratchetPath))
+  if (violations.length === 0 && issues.length === 0) {
     return 0
   }
 
-  stderr.write(formatUiStyleViolations(violations))
+  stderr.write(formatUiStyleViolations(violations) + formatScaleRatchetIssues(issues))
   return 1
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null
 if (invokedPath === import.meta.url) {
-  process.exitCode = runUiStyleCheck()
+  process.exitCode = runUiStyleCheck({ updateRatchet: process.argv.includes('--update-ratchet') })
 }

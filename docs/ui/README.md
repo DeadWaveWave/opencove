@@ -60,6 +60,13 @@
 
 > 例外：极少数与业务语义绑定、且跨主题一致的品牌色/状态色允许硬编码，但必须在规范评审中说明原因；优先新增 token。
 
+- 尺度同样走 token：字号与行高 `--cove-font-size-*` / `--cove-line-height-*`（display 24/32、
+  title 18/26、emphasis 15/22、body 13/20、secondary 12/16、caption 11/16，随用户字号缩放），
+  字重 400/500/600，间距 `--cove-spacing-*`（4px 网格），圆角 `--cove-radius-*`，页面级层级 `--cove-z-*`。
+- `pnpm ui:style-check` 按文件统计写死的字号、圆角、间距（≥ 4px）和页面级 z-index（≥ 10），
+  计数只能下降，基线是 `scripts/ui-style-ratchet.json`。新增写死的值会失败；减少后运行
+  `pnpm ui:style-ratchet` 锁定新基线。基线由该命令生成，不手改。
+
 ### 2.3 CSS 写法约定
 
 - Token/主题差异 **集中在 `base.css`**，组件 CSS 不写分支主题选择器，除非确有必要。

@@ -117,6 +117,33 @@
   --cove-pixel-grid-gap: 17px;
   --cove-pixel-grid-opacity: 0.64;
 
+  /* Type scale (size / line height); sizes follow the user's font scale. */
+  --cove-font-size-display: calc(24px * var(--cove-ui-font-scale));
+  --cove-line-height-display: calc(32px * var(--cove-ui-font-scale));
+  --cove-font-size-title: calc(18px * var(--cove-ui-font-scale));
+  --cove-line-height-title: calc(26px * var(--cove-ui-font-scale));
+  --cove-font-size-emphasis: calc(15px * var(--cove-ui-font-scale));
+  --cove-line-height-emphasis: calc(22px * var(--cove-ui-font-scale));
+  --cove-font-size-body: calc(13px * var(--cove-ui-font-scale));
+  --cove-line-height-body: calc(20px * var(--cove-ui-font-scale));
+  --cove-font-size-secondary: calc(12px * var(--cove-ui-font-scale));
+  --cove-line-height-secondary: calc(16px * var(--cove-ui-font-scale));
+  --cove-font-size-caption: calc(11px * var(--cove-ui-font-scale));
+  --cove-line-height-caption: calc(16px * var(--cove-ui-font-scale));
+  --cove-font-weight-regular: 400;
+  --cove-font-weight-medium: 500;
+  --cove-font-weight-semibold: 600;
+  /* Spacing on a 4px grid. */
+  --cove-spacing-1: 4px;
+  --cove-spacing-2: 8px;
+  --cove-spacing-3: 12px;
+  --cove-spacing-4: 16px;
+  --cove-spacing-5: 20px;
+  --cove-spacing-6: 24px;
+  --cove-spacing-8: 32px;
+  --cove-spacing-10: 40px;
+
+  --cove-radius-2xs: 4px;
   --cove-radius-xs: 6px;
   --cove-radius-sm: 8px;
   --cove-radius-md: 10px;
