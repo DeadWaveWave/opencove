@@ -94,8 +94,8 @@
     transparent
   );
   --cove-window-surface: #0c1217;
-  --cove-surface-hover: color-mix(in srgb, var(--cove-neutral-12) 7%, transparent);
-  --cove-field: color-mix(in srgb, var(--cove-neutral-12) 5%, transparent);
+  --cove-surface-hover: rgb(239 243 247 / 0.07);
+  --cove-field: rgb(239 243 247 / 0.05);
   --cove-border: var(--cove-neutral-7);
   --cove-border-subtle: var(--cove-neutral-6);
   --cove-text: #eff3f7;
@@ -111,11 +111,11 @@
     transparent
   );
   --cove-node-header-surface: transparent;
-  --cove-node-border: color-mix(in srgb, var(--cove-neutral-12) 14%, transparent);
+  --cove-node-border: rgb(239 243 247 / 0.14);
   --cove-terminal-background: #090e12;
   --cove-terminal-foreground: #eff3f7;
   --cove-terminal-cursor: #00b0d5;
-  --cove-terminal-selection: color-mix(in srgb, var(--cove-accent-9) 32%, transparent);
+  --cove-terminal-selection: rgb(0 176 213 / 0.32);
   --cove-canvas-dot: var(--cove-neutral-6);
   --cove-terminal-ansi-black: #192027;
   --cove-terminal-ansi-red: #ff877f;
@@ -140,12 +140,78 @@
   --cove-node-shadow: 0 10px 28px rgb(0 0 0 / 0.4);
   --cove-node-shadow-hover: 0 14px 36px rgb(0 0 0 / 0.46);
   --cove-node-shadow-focus: 0 0 0 1px var(--cove-focus-ring), 0 10px 28px rgb(0 0 0 / 0.4);
-  --cove-node-header-border: color-mix(in srgb, var(--cove-neutral-12) 8%, transparent);
+  --cove-node-header-border: rgb(239 243 247 / 0.08);
   --cove-pixel-header-filter: none;
-  --cove-space-surface: color-mix(in srgb, var(--cove-neutral-12) 2%, transparent);
+  --cove-space-surface: rgb(239 243 247 / 0.02);
   --cove-space-border: var(--cove-neutral-6);
   --cove-space-shadow: none;
   --cove-space-caption-surface: var(--cove-surface);
+  --cove-backdrop: rgb(8 13 17 / 0.6);
+  --cove-shadow-color-elevated: rgb(0 0 0 / 0.42);
+  --cove-shadow-color-panel: rgb(0 0 0 / 0.58);
+  --cove-node-shadow-color: rgb(0 0 0 / 0.45);
+  --cove-node-selection-border: rgb(49 190 227 / 0.88);
+  --cove-node-selection-shadow: 0 0 0 1px rgb(49 190 227 / 0.42), 0 18px 40px rgb(0 0 0 / 0.52);
+  --cove-terminal-node-surface: var(--cove-node-surface);
+  --cove-terminal-node-header-surface: var(--cove-node-header-surface);
+  --cove-toggle-track-on: var(--cove-accent);
+  --cove-toggle-track-off: var(--cove-neutral-8);
+  --cove-toggle-thumb: var(--cove-neutral-12);
+  --cove-settings-primary-background: var(--cove-accent);
+  --cove-settings-primary-background-hover: var(--cove-accent-10);
+  --cove-settings-on-accent: var(--cove-accent-foreground);
+  --cove-canvas-control-surface: rgb(12 18 23 / 0.72);
+  --cove-canvas-control-surface-hover: rgb(25 32 39 / 0.9);
+  --cove-canvas-control-border: var(--cove-neutral-7);
+  --cove-canvas-control-border-hover: rgb(0 176 213 / 0.8);
+  --cove-canvas-control-text: var(--cove-text-muted);
+  --cove-canvas-control-text-hover: var(--cove-text);
+  --cove-canvas-minimap-surface: rgb(12 18 23 / 0.75);
+  --cove-canvas-minimap-border: var(--cove-neutral-6);
+  --cove-canvas-minimap-mask: rgb(49 190 227 / 0.84);
+  --cove-canvas-minimap-mask-surface: rgb(0 176 213 / 0.14);
+  --cove-canvas-minimap-node-agent: rgb(117 81 186 / 0.78);
+  --cove-canvas-minimap-node-task: rgb(171 94 0 / 0.78);
+  --cove-canvas-minimap-node-image: rgb(190 85 144 / 0.78);
+  --cove-canvas-minimap-node-default: rgb(46 145 234 / 0.7);
+  --cove-canvas-minimap-node-stroke: rgb(0 0 0 / 0.18);
+  --cove-space-region-border: rgb(49 190 227 / 0.78);
+  --cove-space-region-surface: rgb(0 176 213 / 0.12);
+  --cove-space-region-shadow: inset 0 0 0 1px rgb(49 190 227 / 0.1);
+  --cove-space-region-border-active: rgb(108 220 253 / 0.95);
+  --cove-space-region-surface-active: rgb(0 176 213 / 0.18);
+  --cove-space-region-shadow-active:
+    inset 0 0 0 1px rgb(108 220 253 / 0.28), 0 0 0 1px rgb(0 176 213 / 0.38);
+  --cove-space-region-border-selected: rgb(108 220 253 / 0.98);
+  --cove-space-region-surface-selected: rgb(0 176 213 / 0.22);
+  --cove-space-region-shadow-selected:
+    inset 0 0 0 1px rgb(108 220 253 / 0.34), 0 0 0 1px rgb(0 176 213 / 0.44),
+    0 0 22px rgb(0 176 213 / 0.38);
+  --cove-overlay-danger-backdrop: rgb(19 9 8 / 0.72);
+  --cove-overlay-danger-border: rgb(160 37 40 / 0.42);
+  --cove-overlay-danger-divider: rgb(160 37 40 / 0.24);
+  --cove-overlay-danger-surface:
+    radial-gradient(circle at top right, rgb(121 22 25 / 0.22), transparent 42%),
+    linear-gradient(180deg, rgb(29 11 10 / 0.96), rgb(19 9 8 / 0.96));
+  --cove-overlay-danger-shadow: 0 24px 56px rgb(0 0 0 / 0.58), 0 0 0 1px rgb(121 22 25 / 0.18);
+  --cove-overlay-danger-status-border: rgb(240 86 83 / 0.36);
+  --cove-overlay-danger-status-surface: rgb(60 11 11 / 0.66);
+  --cove-overlay-danger-status-text: rgb(255 238 236 / 0.94);
+  --cove-overlay-danger-title: rgb(255 238 236 / 0.98);
+  --cove-overlay-danger-lead: rgb(255 238 236 / 0.98);
+  --cove-overlay-danger-option-strong: rgb(255 238 236 / 0.98);
+  --cove-overlay-danger-supporting: rgb(255 238 236 / 0.84);
+  --cove-overlay-danger-option-text: rgb(255 238 236 / 0.8);
+  --cove-overlay-danger-summary: rgb(255 181 174 / 0.76);
+  --cove-overlay-danger-path: rgb(255 238 236 / 0.95);
+  --cove-overlay-warning-backdrop: rgb(8 13 17 / 0.64);
+  --cove-overlay-warning-border: rgb(240 86 83 / 0.34);
+  --cove-overlay-warning-surface:
+    radial-gradient(circle at top right, rgb(240 86 83 / 0.18), transparent 52%),
+    linear-gradient(180deg, rgb(12 18 23 / 0.96), rgb(8 13 17 / 0.96));
+  --cove-overlay-warning-shadow: 0 24px 56px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(240 86 83 / 0.12);
+  --cove-overlay-warning-pill-border: rgb(240 86 83 / 0.38);
+  --cove-overlay-warning-pill-surface: rgb(240 86 83 / 0.12);
 }
 
 :root[data-cove-family='cove'][data-cove-theme='light'] {
@@ -242,8 +308,8 @@
     transparent
   );
   --cove-window-surface: #fbfdff;
-  --cove-surface-hover: color-mix(in srgb, var(--cove-neutral-12) 5%, transparent);
-  --cove-field: color-mix(in srgb, var(--cove-neutral-12) 4%, transparent);
+  --cove-surface-hover: rgb(27 29 32 / 0.05);
+  --cove-field: rgb(27 29 32 / 0.04);
   --cove-border: var(--cove-neutral-7);
   --cove-border-subtle: var(--cove-neutral-6);
   --cove-text: #1b1d20;
@@ -259,11 +325,11 @@
     transparent
   );
   --cove-node-header-surface: transparent;
-  --cove-node-border: color-mix(in srgb, var(--cove-neutral-12) 16%, transparent);
+  --cove-node-border: rgb(27 29 32 / 0.16);
   --cove-terminal-background: #f9fcfe;
   --cove-terminal-foreground: #1b1d20;
   --cove-terminal-cursor: #005d72;
-  --cove-terminal-selection: color-mix(in srgb, var(--cove-accent-9) 24%, transparent);
+  --cove-terminal-selection: rgb(0 162 197 / 0.24);
   --cove-canvas-dot: var(--cove-neutral-7);
   --cove-terminal-ansi-black: #1b1d20;
   --cove-terminal-ansi-red: #a62a2c;
@@ -282,16 +348,108 @@
   --cove-terminal-ansi-bright-cyan: #005960;
   --cove-terminal-ansi-bright-white: #e8f1fa;
   --cove-pixel-blue: var(--cove-kind-knowledge-solid);
-  --cove-pixel-cyan: var(--cove-accent-9);
+  --cove-pixel-cyan: var(--cove-accent-10);
   --cove-pixel-mint: var(--cove-kind-shell-solid);
   --cove-node-background-image: none;
   --cove-node-shadow: 0 10px 28px rgb(27 29 32 / 0.14);
   --cove-node-shadow-hover: 0 14px 36px rgb(27 29 32 / 0.18);
   --cove-node-shadow-focus: 0 0 0 1px var(--cove-focus-ring), 0 10px 28px rgb(27 29 32 / 0.14);
-  --cove-node-header-border: color-mix(in srgb, var(--cove-neutral-12) 8%, transparent);
+  --cove-node-header-border: rgb(27 29 32 / 0.08);
   --cove-pixel-header-filter: none;
-  --cove-space-surface: color-mix(in srgb, var(--cove-neutral-12) 2%, transparent);
+  --cove-space-surface: rgb(27 29 32 / 0.02);
   --cove-space-border: var(--cove-neutral-6);
   --cove-space-shadow: none;
   --cove-space-caption-surface: var(--cove-surface);
+  --cove-backdrop: rgb(27 29 32 / 0.24);
+  --cove-shadow-color-elevated: rgb(27 29 32 / 0.14);
+  --cove-shadow-color-panel: rgb(27 29 32 / 0.18);
+  --cove-node-shadow-color: rgb(27 29 32 / 0.14);
+  --cove-node-selection-border: rgb(0 162 197 / 0.72);
+  --cove-node-selection-shadow: 0 0 0 1px rgb(0 162 197 / 0.18), 0 18px 40px rgb(27 29 32 / 0.18);
+  --cove-terminal-node-surface: var(--cove-node-surface);
+  --cove-terminal-node-header-surface: var(--cove-node-header-surface);
+  --cove-toggle-track-on: var(--cove-accent);
+  --cove-toggle-track-off: var(--cove-neutral-8);
+  --cove-toggle-thumb: var(--cove-neutral-1);
+  --cove-settings-primary-background: var(--cove-accent);
+  --cove-settings-primary-background-hover: var(--cove-accent-8);
+  --cove-settings-on-accent: var(--cove-accent-foreground);
+  --cove-canvas-control-surface: rgb(251 253 255 / 0.74);
+  --cove-canvas-control-surface-hover: rgb(251 253 255 / 0.94);
+  --cove-canvas-control-border: var(--cove-neutral-7);
+  --cove-canvas-control-border-hover: rgb(0 162 197 / 0.65);
+  --cove-canvas-control-text: var(--cove-text-muted);
+  --cove-canvas-control-text-hover: var(--cove-text);
+  --cove-canvas-minimap-surface: rgb(251 253 255 / 0.72);
+  --cove-canvas-minimap-border: var(--cove-neutral-6);
+  --cove-canvas-minimap-mask: rgb(0 162 197 / 0.8);
+  --cove-canvas-minimap-mask-surface: rgb(0 162 197 / 0.1);
+  --cove-canvas-minimap-node-agent: rgb(96 58 162 / 0.72);
+  --cove-canvas-minimap-node-task: rgb(187 104 0 / 0.66);
+  --cove-canvas-minimap-node-image: rgb(162 47 115 / 0.66);
+  --cove-canvas-minimap-node-default: rgb(0 125 214 / 0.55);
+  --cove-canvas-minimap-node-stroke: rgb(27 29 32 / 0.14);
+  --cove-space-region-border: rgb(0 162 197 / 0.36);
+  --cove-space-region-surface: rgb(0 162 197 / 0.05);
+  --cove-space-region-shadow: inset 0 0 0 1px rgb(0 162 197 / 0.08);
+  --cove-space-region-border-active: rgb(0 162 197 / 0.54);
+  --cove-space-region-surface-active: rgb(0 162 197 / 0.07);
+  --cove-space-region-shadow-active:
+    inset 0 0 0 1px rgb(0 162 197 / 0.18), 0 0 0 1px rgb(0 162 197 / 0.18);
+  --cove-space-region-border-selected: rgb(0 162 197 / 0.72);
+  --cove-space-region-surface-selected: rgb(0 162 197 / 0.09);
+  --cove-space-region-shadow-selected:
+    inset 0 0 0 1px rgb(0 162 197 / 0.22), 0 0 0 1px rgb(0 162 197 / 0.24),
+    0 0 18px rgb(0 162 197 / 0.16);
+  --cove-overlay-danger-backdrop: rgb(58 7 8 / 0.24);
+  --cove-overlay-danger-border: rgb(204 51 54 / 0.22);
+  --cove-overlay-danger-divider: rgb(204 51 54 / 0.18);
+  --cove-overlay-danger-surface:
+    radial-gradient(circle at top right, rgb(204 51 54 / 0.16), transparent 56%),
+    linear-gradient(180deg, rgb(251 253 255 / 0.96), rgb(255 245 244 / 0.96));
+  --cove-overlay-danger-shadow: 0 24px 56px rgb(27 29 32 / 0.18), 0 0 0 1px rgb(204 51 54 / 0.08);
+  --cove-overlay-danger-status-border: rgb(204 51 54 / 0.32);
+  --cove-overlay-danger-status-surface: rgb(204 51 54 / 0.12);
+  --cove-overlay-danger-status-text: rgb(153 23 31);
+  --cove-overlay-danger-title: rgb(27 29 32 / 0.92);
+  --cove-overlay-danger-lead: rgb(27 29 32 / 0.92);
+  --cove-overlay-danger-option-strong: rgb(27 29 32 / 0.92);
+  --cove-overlay-danger-supporting: rgb(79 84 89);
+  --cove-overlay-danger-option-text: rgb(79 84 89 / 0.94);
+  --cove-overlay-danger-summary: rgb(153 23 31 / 0.86);
+  --cove-overlay-danger-path: rgb(153 23 31 / 0.92);
+  --cove-overlay-warning-backdrop: rgb(27 29 32 / 0.34);
+  --cove-overlay-warning-border: rgb(204 51 54 / 0.2);
+  --cove-overlay-warning-surface:
+    radial-gradient(circle at top right, rgb(204 51 54 / 0.16), transparent 58%),
+    linear-gradient(180deg, rgb(251 253 255 / 0.96), rgb(242 249 255 / 0.96));
+  --cove-overlay-warning-shadow: 0 24px 56px rgb(27 29 32 / 0.18), 0 0 0 1px rgb(204 51 54 / 0.06);
+  --cove-overlay-warning-pill-border: rgb(204 51 54 / 0.28);
+  --cove-overlay-warning-pill-surface: rgb(204 51 54 / 0.1);
+}
+
+:root[data-cove-family='cove'] .terminal-node[data-cove-terminal-node-theme='dark'] {
+  --cove-node-border: rgb(239 243 247 / 0.14);
+  --cove-node-header-border: rgb(239 243 247 / 0.08);
+  --cove-node-shadow-color: rgb(0 0 0 / 0.45);
+  --cove-node-selection-border: rgb(49 190 227 / 0.88);
+  --cove-node-selection-shadow: 0 0 0 1px rgb(49 190 227 / 0.42), 0 18px 40px rgb(0 0 0 / 0.52);
+  --cove-terminal-node-surface: var(--cove-node-surface);
+  --cove-terminal-node-header-surface: transparent;
+  --cove-terminal-background: #090e12;
+  --cove-terminal-foreground: #eff3f7;
+  --cove-terminal-selection: rgb(0 176 213 / 0.32);
+  --cove-terminal-cursor: #00b0d5;
+  --cove-text: #eff3f7;
+  --cove-text-muted: #c6ccd2;
+  --cove-text-faint: #a5adb6;
+  --cove-border: #3a434b;
+  --cove-border-subtle: #2a323a;
+  --cove-field: rgb(239 243 247 / 0.05);
+  --cove-surface-hover: rgb(239 243 247 / 0.07);
+}
+
+:root[data-cove-family='cove'][data-cove-theme='light']
+  .terminal-node[data-cove-terminal-node-theme='dark'] {
+  --cove-terminal-node-surface: rgb(12 18 23 / 0.94);
 }

@@ -82,6 +82,12 @@
 - 生成的 token 作用在 `:root[data-cove-family='<id>'][data-cove-theme='dark|light']` 上，并完整映射
   插件契约的全部 v1 公共 token（`PLUGIN_THEME_TOKENS`），已安装的插件主题继续可用。主题族接入
   主题选择之前，没有元素设置 `data-cove-family`，这些文件不影响现有外观。
+- `base.css` 的 `:root` 与浅色块里写着字面颜色的 token，主题族必须全部替换（`themeHostTokens.ts`），
+  否则标准主题的旧色会透出来；单测逐个检查。给 `base.css` 新增字面颜色 token 时，同步在生成器里映射。
+  只有主题预览色块（`--cove-theme-preview-*`）与遮罩色（`--cove-mask-opaque`）不随主题族变化。
+- 深色终端窗口会重新声明一组 token（`terminal-node.theme-opencode.css`）。主题族为它生成一份已解析的
+  深色调色板（`terminalScopeTokens`），浅色外壳里被强制为深色的终端也使用它；单测检查这组 token 全部被覆盖。
+- 生成器只把依赖运行时 token 的混色（如玻璃透明度）写成 `color-mix()`，常量混色直接输出计算结果。
 
 ---
 

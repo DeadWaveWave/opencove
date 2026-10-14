@@ -4,6 +4,8 @@
  * text on glass is checked against all of them, not against a single nominal background.
  */
 import { contrastRatio, deltaE, mixOver, shift, simulateCvd, type Rgb } from './oklch'
+import { ACCENT_HOVER_STEP, dangerDialog, type Ink } from './themeHostTokens'
+import { PIXEL_CYAN_STEP } from './themeTokens'
 import {
   ANSI_BACKGROUND_SLOTS,
   ANSI_KEYS,
@@ -69,7 +71,7 @@ export function glassBackgrounds(theme: GeneratedTheme) {
   }
 }
 
-/** All contrast rules for one generated theme (I5 + I6 + terminal palette). */
+/** All contrast rules for one generated theme (I5 + I6 + terminal palette + host dialogs). */
 export function contrastChecks(theme: GeneratedTheme): ContrastCheck[] {
   const ap = theme.input.appearance
   const n = theme.neutral
@@ -89,6 +91,39 @@ export function contrastChecks(theme: GeneratedTheme): ContrastCheck[] {
     { id: 'secondary / chrome glass (worst)', ratio: worst(n[10]!, g.chrome), min: 4.5 },
     { id: 'secondary / settings sheet (worst)', ratio: worst(n[10]!, g.sheet), min: 4.5 },
   ]
+  checks.push({
+    id: 'on-accent / accent hover',
+    ratio: contrastRatio(theme.roles.onAccent, theme.accent[ACCENT_HOVER_STEP[ap]]!),
+    min: 4.5,
+  })
+  // Effect fragments (creation, closing, working rims) are graphics on window and shell surfaces.
+  const fragments = {
+    blue: kindRoles(theme, 'knowledge').solid,
+    cyan: theme.accent[PIXEL_CYAN_STEP[ap]]!,
+    mint: kindRoles(theme, 'shell').solid,
+  }
+  for (const [id, color] of Object.entries(fragments)) {
+    checks.push({
+      id: `pixel ${id} / elevated`,
+      ratio: contrastRatio(color, theme.roles.surface),
+      min: 3,
+    })
+  }
+  const danger = dangerDialog(theme)
+  const sheets = [danger.sheetTop, danger.sheetBottom, mixOver(...danger.glow, danger.sheetTop)]
+  const inkOn = ([color, alpha]: Ink, backs: readonly Rgb[]) =>
+    Math.min(...backs.map(b => contrastRatio(mixOver(color, alpha, b), b)))
+  for (const [id, value] of Object.entries(danger.text)) {
+    checks.push({ id: `danger dialog ${id} (worst)`, ratio: inkOn(value, sheets), min: 4.5 })
+  }
+  checks.push({
+    id: 'danger dialog status text (worst)',
+    ratio: inkOn(
+      danger.statusText,
+      sheets.map(b => mixOver(...danger.status, b)),
+    ),
+    min: 4.5,
+  })
   for (const id of Object.keys(KIND_FAMILIES) as KindFamilyId[]) {
     const r = kindRoles(theme, id)
     checks.push({ id: `kind ${id} glyph / tile`, ratio: contrastRatio(r.glyph, r.tile), min: 3 })
