@@ -21,33 +21,16 @@
   box-shadow: var(--cove-node-shadow-focus, var(--cove-node-selection-shadow));
 }
 .terminal-node__header {
-  height: 34px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
   background: var(--cove-terminal-node-header-surface);
   border-bottom: 1px solid var(--cove-node-header-border);
-  cursor: grab;
-}
-.terminal-node__header:active {
-  cursor: grabbing;
 }
 .terminal-node__title {
   flex: 1;
   min-width: 0;
-  font-size: calc(12px * var(--cove-ui-font-scale));
   color: var(--cove-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.terminal-node__header-drag-surface {
-  flex: 0 0 48px;
-  width: 48px;
-  min-height: 100%;
-  pointer-events: none;
 }
 
 .terminal-node__body {

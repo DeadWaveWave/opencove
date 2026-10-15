@@ -9,10 +9,11 @@
   --cove-theme-font-scale: 1;
   --cove-ui-font-scale: calc(var(--cove-user-font-scale) * var(--cove-theme-font-scale));
   --cove-font-ui: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --cove-node-title-font-size: 12px;
+  --cove-node-title-font-size: 13px;
   --cove-node-header-height: 34px;
   --cove-node-header-padding-inline: 9px;
   --cove-node-icon-size: 16px;
+  --cove-window-header-glyph-size: 12px;
   --cove-compact-icon-size: 25px;
   --cove-compact-working-duration: 2.4s;
   --cove-compact-working-delay: -85ms;

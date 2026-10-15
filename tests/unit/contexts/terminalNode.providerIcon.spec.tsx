@@ -70,12 +70,13 @@ describe('terminal frame provider identity', () => {
     expect(container.querySelector('[data-cove-node-kind-icon="agent"]')).toBeInTheDocument()
   })
 
-  it('keeps its provider glyph light and lets the header own pointer handling', () => {
+  it('keeps its provider glyph on the header tile and lets the header own pointer handling', () => {
     const style = document.createElement('style')
     style.textContent = [
       'src/app/renderer/styles/base.css',
       'src/app/renderer/styles/workspace-agent-item.css',
       'src/app/renderer/styles/node-kind-icon.css',
+      'src/app/renderer/styles/window-header.css',
     ]
       .map(path => readFileSync(path, 'utf8'))
       .join('\n')
@@ -94,8 +95,9 @@ describe('terminal frame provider identity', () => {
       )
       const icon = container.querySelector<HTMLElement>('[data-agent-provider="codex"]')!
       const computed = getComputedStyle(icon)
-      expect(computed.width).toBe('16px')
-      expect(computed.height).toBe('16px')
+      expect(icon.parentElement).toHaveAttribute('data-cove-part', 'kind-tile')
+      expect(computed.width).toBe('12px')
+      expect(computed.height).toBe('12px')
       expect(computed.borderWidth).toBe('0px')
       expect(computed.pointerEvents).toBe('none')
       expect(icon).not.toHaveAttribute('tabindex')

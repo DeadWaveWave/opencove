@@ -10,25 +10,13 @@
 }
 
 .document-node__header {
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 10px;
   background: var(--cove-node-header-surface);
   border-bottom: 1px solid var(--cove-node-header-border);
-  cursor: grab;
-}
-
-.document-node__header:active {
-  cursor: grabbing;
 }
 
 .document-node__title {
   flex: 1;
   min-width: 0;
-  font-size: calc(12px * var(--cove-ui-font-scale));
   color: var(--cove-text);
   display: inline-flex;
   align-items: center;
@@ -51,12 +39,6 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.document-node__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .document-node__action {

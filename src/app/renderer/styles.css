@@ -51,6 +51,7 @@
 @import './styles/website-node.browser.css' layer(opencove);
 @import './styles/image-node.css' layer(opencove);
 @import './styles/node-chrome.css' layer(opencove);
+@import './styles/window-header.css' layer(opencove);
 @import './styles/node-kind-icon.css' layer(opencove);
 @import './styles/node-selected-drag-surface.css' layer(opencove);
 @import './styles/settings-panel.css' layer(opencove);

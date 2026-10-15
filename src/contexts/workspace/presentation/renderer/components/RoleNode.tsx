@@ -1,7 +1,6 @@
 import { Play } from 'lucide-react'
 import { NodeKindIcon } from './shared/NodeKindIcon'
-import { WindowCollapseButton } from './shared/WindowCollapseButton'
-import { WindowCloseButton } from './shared/WindowCloseButton'
+import { WindowHeader } from './shared/WindowHeader'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { JSX } from 'react'
 import { Handle, Position } from '@xyflow/react'
@@ -134,29 +133,21 @@ export function RoleNode({
     >
       <Handle type="target" position={Position.Left} className="workspace-node-handle" />
       <Handle type="source" position={Position.Right} className="workspace-node-handle" />
-      <div
+      <WindowHeader
         className="role-node__header"
-        data-cove-part="window-header"
-        data-node-drag-handle="true"
-      >
-        <NodeKindIcon kind="role" className="role-node__icon" />
-        <div className="role-node__title-stack">
-          <div
+        icon={<NodeKindIcon kind="role" />}
+        title={
+          <span
             className="role-node__title"
             data-cove-part="window-title"
             data-testid="role-node-title"
           >
             {title.trim().length > 0 ? title : role.roleName}
-          </div>
-          <div className="role-node__meta">{AGENT_PROVIDER_LABEL[selectedProvider]}</div>
-        </div>
-        <WindowCollapseButton onClose={onClose} />
-        <WindowCloseButton
-          label={t('roleNode.deleteRoleNode')}
-          className="role-node__close"
-          onClose={onClose}
-        />
-      </div>
+          </span>
+        }
+        status={<span className="role-node__meta">{AGENT_PROVIDER_LABEL[selectedProvider]}</span>}
+        close={{ label: t('roleNode.deleteRoleNode'), className: 'role-node__close', onClose }}
+      />
 
       {role.roleDescription.trim().length > 0 ? (
         <p className="role-node__description">{role.roleDescription}</p>

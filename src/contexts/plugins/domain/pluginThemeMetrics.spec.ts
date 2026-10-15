@@ -30,6 +30,15 @@ describe('plugin theme visual metrics', () => {
     })
   })
 
+  it('sizes the window header glyph from iconSize, which the kind tile wraps', () => {
+    expect(
+      pluginThemeMetricTokens({ metrics: normalizePluginThemeMetrics({ iconSize: 20 }) }),
+    ).toEqual({
+      '--cove-node-icon-size': '20px',
+      '--cove-window-header-glyph-size': '20px',
+    })
+  })
+
   const invalidMetrics: unknown[] = [
     { headerHeight: 0 },
     { headerHeight: 65 },

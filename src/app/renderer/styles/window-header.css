@@ -1,0 +1,53 @@
+/*
+ * Shared window header (workspace/.../components/shared/WindowHeader.tsx). Height and inline
+ * padding come from the window-header part (theme-components.css); the header surface and
+ * border stay with each kind until the glass frame lands.
+ */
+.cove-window-header {
+  display: flex;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+  min-width: 0;
+  cursor: grab;
+}
+
+.cove-window-header:active {
+  cursor: grabbing;
+}
+
+/* A 12px glyph on a 20px tile; plugin themes size the glyph through metrics.iconSize. */
+.cove-window-header > .cove-window-header__tile {
+  width: calc(var(--cove-window-header-glyph-size) + 8px);
+  height: calc(var(--cove-window-header-glyph-size) + 8px);
+}
+
+.cove-window-header
+  > .cove-window-header__tile
+  > :is(svg, img, .cove-node-kind-icon, .cove-node-provider-icon, [data-cove-part='icon']) {
+  flex: none;
+  width: var(--cove-window-header-glyph-size);
+  height: var(--cove-window-header-glyph-size);
+  color: inherit;
+}
+
+.cove-window-header__status {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.cove-window-header__drag {
+  flex: 0 0 48px;
+  align-self: stretch;
+}
+
+.cove-window-header > .cove-window-header__trailing {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--cove-control-gap);
+}
+
+.cove-window-header > [data-cove-part='window-title'] {
+  font-size: calc(var(--cove-node-title-font-size) * var(--cove-ui-font-scale));
+}

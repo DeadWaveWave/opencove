@@ -200,6 +200,9 @@ export async function readNodeIdentity(page: Page) {
                 fill: icon.getAttribute('fill'),
                 stroke: icon.getAttribute('stroke-width'),
                 width: Number.parseFloat(getComputedStyle(icon).width),
+                tile: icon.parentElement?.matches('[data-cove-part="kind-tile"]')
+                  ? Number.parseFloat(getComputedStyle(icon.parentElement).width)
+                  : null,
                 pointer: getComputedStyle(icon).pointerEvents,
                 hidden: icon.getAttribute('aria-hidden'),
                 focusable: icon.getAttribute('focusable'),

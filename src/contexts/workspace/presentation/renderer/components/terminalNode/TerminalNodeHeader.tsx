@@ -11,8 +11,7 @@ import { StatusPill } from '@app/renderer/components/ui/StatusPill'
 import { getStatusPillTone } from './status'
 import { InlineNodeTitleEditor } from '../shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '../shared/NodeKindIcon'
-import { WindowCollapseButton } from '../shared/WindowCollapseButton'
-import { WindowCloseButton } from '../shared/WindowCloseButton'
+import { WindowHeader } from '../shared/WindowHeader'
 
 interface TerminalNodeHeaderProps {
   title: string
@@ -26,7 +25,7 @@ interface TerminalNodeHeaderProps {
   agentResumeSessionId?: string | null
   agentResumeSessionIdVerified?: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
-  onHeaderPointerDownCapture?: (event: PointerEvent<HTMLDivElement>) => void
+  onHeaderPointerDownCapture?: (event: PointerEvent<HTMLElement>) => void
   onTitleCommit?: (title: string) => void
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>
@@ -106,132 +105,125 @@ export function TerminalNodeHeader({
   })()
 
   return (
-    <div
+    <WindowHeader
       className="terminal-node__header"
-      data-cove-part="window-header"
-      data-node-drag-handle="true"
+      labelColor={labelColor}
       onPointerDownCapture={onHeaderPointerDownCapture}
-    >
-      {labelColor ? (
-        <span
-          className="cove-label-dot cove-label-dot--solid"
-          data-cove-label-color={labelColor}
-          aria-hidden="true"
-        />
-      ) : null}
-      {isAgentNode && agentProvider ? (
-        <AgentProviderIcon provider={agentProvider} className="cove-node-provider-icon" />
-      ) : (
-        <NodeKindIcon kind={kind} />
-      )}
-      {isTitleEditable ? (
-        <InlineNodeTitleEditor
-          value={editableTitle}
-          placeholder={t('terminalNode.untitledTitle')}
-          ariaLabel={t('terminalNode.titleInputLabel')}
-          classNamePrefix="terminal-node"
-          displayTestId="terminal-node-title-display"
-          inputTestId="terminal-node-inline-title-input"
-          prefix={fixedTitlePrefix}
-          onCommit={commitTitleEdit}
-        />
-      ) : (
-        <span className="terminal-node__title" data-cove-part="window-title">
-          {title}
-        </span>
-      )}
-      <div
-        className="terminal-node__header-drag-surface"
-        data-testid="terminal-node-header-drag-surface"
-        aria-hidden="true"
-      />
-
-      {directoryMismatch || isAgentNode ? (
-        <div className="terminal-node__header-badges nodrag">
-          {directoryMismatch ? (
-            <span
-              className="terminal-node__badge terminal-node__badge--warning"
-              title={t('terminalNodeHeader.directoryMismatchTitle', {
-                executionDirectory: directoryMismatch.executionDirectory,
-                expectedDirectory: directoryMismatch.expectedDirectory,
-              })}
-            >
-              {t('terminalNodeHeader.directoryMismatch')}
-            </span>
-          ) : null}
+      icon={
+        isAgentNode && agentProvider ? (
+          <AgentProviderIcon provider={agentProvider} className="cove-node-provider-icon" />
+        ) : (
+          <NodeKindIcon kind={kind} />
+        )
+      }
+      title={
+        isTitleEditable ? (
+          <InlineNodeTitleEditor
+            value={editableTitle}
+            placeholder={t('terminalNode.untitledTitle')}
+            ariaLabel={t('terminalNode.titleInputLabel')}
+            classNamePrefix="terminal-node"
+            displayTestId="terminal-node-title-display"
+            inputTestId="terminal-node-inline-title-input"
+            prefix={fixedTitlePrefix}
+            onCommit={commitTitleEdit}
+          />
+        ) : (
+          <span className="terminal-node__title" data-cove-part="window-title">
+            {title}
+          </span>
+        )
+      }
+      status={
+        directoryMismatch || isAgentNode ? (
+          <div className="terminal-node__header-badges nodrag">
+            {directoryMismatch ? (
+              <span
+                className="terminal-node__badge terminal-node__badge--warning"
+                title={t('terminalNodeHeader.directoryMismatchTitle', {
+                  executionDirectory: directoryMismatch.executionDirectory,
+                  expectedDirectory: directoryMismatch.expectedDirectory,
+                })}
+              >
+                {t('terminalNodeHeader.directoryMismatch')}
+              </span>
+            ) : null}
+            {isAgentNode ? (
+              <>
+                {agentStateDegraded ? (
+                  <span
+                    className="terminal-node__badge terminal-node__badge--warning"
+                    data-testid="agent-hook-degraded"
+                    title={t('agentRuntime.hookDegradedDetail')}
+                  >
+                    {t('agentRuntime.hookDegraded')}
+                  </span>
+                ) : null}
+                <StatusPill tone={getStatusPillTone(status)} className="terminal-node__status">
+                  {statusLabel}
+                </StatusPill>
+              </>
+            ) : null}
+          </div>
+        ) : null
+      }
+      dragSurfaceTestId="terminal-node-header-drag-surface"
+      actions={
+        <>
           {isAgentNode ? (
-            <>
-              {agentStateDegraded ? (
-                <span
-                  className="terminal-node__badge terminal-node__badge--warning"
-                  data-testid="agent-hook-degraded"
-                  title={t('agentRuntime.hookDegradedDetail')}
-                >
-                  {t('agentRuntime.hookDegraded')}
-                </span>
-              ) : null}
-              <StatusPill tone={getStatusPillTone(status)} className="terminal-node__status">
-                {statusLabel}
-              </StatusPill>
-            </>
+            <TerminalNodeAgentSessionActions
+              status={status}
+              currentDirectory={agentExecutionDirectory ?? null}
+              currentResumeSessionId={agentResumeSessionId ?? null}
+              currentResumeSessionIdVerified={agentResumeSessionIdVerified}
+              onReloadSession={onReloadSession}
+              onListSessions={onListSessions}
+              onSwitchSession={onSwitchSession}
+            />
           ) : null}
-        </div>
-      ) : null}
 
-      {isAgentNode ? (
-        <TerminalNodeAgentSessionActions
-          status={status}
-          currentDirectory={agentExecutionDirectory ?? null}
-          currentResumeSessionId={agentResumeSessionId ?? null}
-          currentResumeSessionIdVerified={agentResumeSessionIdVerified}
-          onReloadSession={onReloadSession}
-          onListSessions={onListSessions}
-          onSwitchSession={onSwitchSession}
-        />
-      ) : null}
+          {shouldRenderCopyLastMessageButton ? (
+            <button
+              type="button"
+              className="terminal-node__action terminal-node__action--icon nodrag"
+              data-testid="terminal-node-copy-last-message"
+              aria-label={t('terminalNodeHeader.copyLastMessage')}
+              title={
+                isCopyingLastMessage
+                  ? t('terminalNodeHeader.copyingLastMessage')
+                  : t('terminalNodeHeader.copyLastMessage')
+              }
+              disabled={isCopyLastMessageDisabled}
+              onClick={async event => {
+                event.stopPropagation()
+                if (isCopyLastMessageDisabled || !onCopyLastMessage) {
+                  return
+                }
 
-      {shouldRenderCopyLastMessageButton ? (
-        <button
-          type="button"
-          className="terminal-node__action terminal-node__action--icon nodrag"
-          data-testid="terminal-node-copy-last-message"
-          aria-label={t('terminalNodeHeader.copyLastMessage')}
-          title={
-            isCopyingLastMessage
-              ? t('terminalNodeHeader.copyingLastMessage')
-              : t('terminalNodeHeader.copyLastMessage')
-          }
-          disabled={isCopyLastMessageDisabled}
-          onClick={async event => {
-            event.stopPropagation()
-            if (isCopyLastMessageDisabled || !onCopyLastMessage) {
-              return
-            }
+                setIsCopyingLastMessage(true)
 
-            setIsCopyingLastMessage(true)
-
-            try {
-              await onCopyLastMessage()
-            } finally {
-              setIsCopyingLastMessage(false)
-            }
-          }}
-        >
-          {isCopyingLastMessage ? (
-            <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
-          ) : (
-            <Copy className="terminal-node__action-icon" />
-          )}
-        </button>
-      ) : null}
-
-      <WindowCollapseButton onClose={onClose} />
-      <WindowCloseButton
-        label={t('canvasCollapse.closeWindow')}
-        className="terminal-node__close"
-        onClose={onClose}
-      />
-    </div>
+                try {
+                  await onCopyLastMessage()
+                } finally {
+                  setIsCopyingLastMessage(false)
+                }
+              }}
+            >
+              {isCopyingLastMessage ? (
+                <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
+              ) : (
+                <Copy className="terminal-node__action-icon" />
+              )}
+            </button>
+          ) : null}
+        </>
+      }
+      close={{
+        label: t('canvasCollapse.closeWindow'),
+        className: 'terminal-node__close',
+        onClose,
+      }}
+    />
   )
 }
 

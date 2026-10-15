@@ -5,8 +5,7 @@ import { useNodeFrameResize } from '../../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../../utils/workspaceNodeSizing'
 import { NodeKindIcon } from './NodeKindIcon'
 import { NodeResizeHandles } from './NodeResizeHandles'
-import { WindowCollapseButton } from './WindowCollapseButton'
-import { WindowCloseButton } from './WindowCloseButton'
+import { WindowHeader } from './WindowHeader'
 
 export interface CanvasNodeWindowProps {
   id: string
@@ -85,40 +84,34 @@ export function CanvasNodeWindow({
         }
       }}
     >
-      <header
+      <WindowHeader
         className="cove-canvas-node-window__header"
-        data-cove-part="window-header"
-        data-node-drag-handle="true"
-      >
-        {icon ? (
-          <span className="cove-node-kind-icon" aria-hidden="true">
-            {icon}
+        icon={
+          icon ? (
+            <span className="cove-node-kind-icon" aria-hidden="true">
+              {icon}
+            </span>
+          ) : (
+            <NodeKindIcon kind={nodeKind} pluginId={pluginId} />
+          )
+        }
+        title={
+          <span className="cove-canvas-node-window__title" data-cove-part="window-title">
+            {title}
           </span>
-        ) : (
-          <NodeKindIcon kind={nodeKind} pluginId={pluginId} />
-        )}
-        <span
-          className="cove-canvas-node-window__title"
-          data-cove-part="window-title"
-          title={title}
-        >
-          {title}
-        </span>
-        {subtitle ? <span className="cove-canvas-node-window__subtitle">{subtitle}</span> : null}
-        <div
-          className="cove-canvas-node-window__actions nodrag"
-          onPointerDown={event => event.stopPropagation()}
-        >
-          {headerActions}
-          <WindowCollapseButton onClose={onClose} />
-          <WindowCloseButton
-            label={resolvedCloseLabel}
-            className="cove-canvas-node-window__close"
-            data-testid={`${testIdPrefix}-close`}
-            onClose={onClose}
-          />
-        </div>
-      </header>
+        }
+        status={
+          subtitle ? <span className="cove-canvas-node-window__subtitle">{subtitle}</span> : null
+        }
+        trailingClassName="cove-canvas-node-window__actions"
+        actions={headerActions}
+        close={{
+          label: resolvedCloseLabel,
+          className: 'cove-canvas-node-window__close',
+          testId: `${testIdPrefix}-close`,
+          onClose,
+        }}
+      />
       <div
         className="cove-canvas-node-window__body nodrag nowheel"
         data-cove-part="window-body"

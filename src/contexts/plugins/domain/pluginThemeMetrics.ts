@@ -92,6 +92,10 @@ export function pluginThemeMetricTokens(theme: {
     const [token] = METRICS[key as keyof PluginThemeMetrics]
     tokens[token] = `${value}px`
   }
+  if (theme.metrics?.iconSize !== undefined) {
+    // The header glyph sits on a kind tile; elsewhere the kind icon keeps --cove-node-icon-size.
+    tokens['--cove-window-header-glyph-size'] = `${theme.metrics.iconSize}px`
+  }
   if (theme.metrics?.radius !== undefined) {
     tokens['--cove-explorer-radius'] = `${theme.metrics.radius}px`
   }

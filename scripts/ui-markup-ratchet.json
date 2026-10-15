@@ -161,7 +161,6 @@
     "src/contexts/workspace/presentation/renderer/components/FolderNode.tsx": 1,
     "src/contexts/workspace/presentation/renderer/components/ImageNode.tsx": 1,
     "src/contexts/workspace/presentation/renderer/components/NoteNodeActionsMenu.tsx": 2,
-    "src/contexts/workspace/presentation/renderer/components/shared/CanvasNodeWindow.tsx": 1,
     "src/contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor.tsx": 2,
     "src/contexts/workspace/presentation/renderer/components/terminalNode/links/TerminalLinkSurface.tsx": 3,
     "src/contexts/workspace/presentation/renderer/components/terminalNode/TerminalNodeAgentSessionActions.tsx": 5,

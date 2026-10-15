@@ -30,21 +30,6 @@
   );
 }
 
-/* Role's existing two-line header has a 46px minimum. */
-:root:is(
-    :is(
-      [data-cove-theme-base='pixel'],
-      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel']
-    ),
-    :is(
-      [data-cove-theme-base='pixel-light'],
-      :where(:not([data-cove-theme-base]))[data-cove-theme-id='pixel-light']
-    )
-  )
-  .role-node {
-  --cove-pixel-header-clearance: max(46px, var(--cove-node-header-height));
-}
-
 :root:is(
     :is(
       [data-cove-theme-base='pixel'],

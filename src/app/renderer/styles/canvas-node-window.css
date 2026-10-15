@@ -10,21 +10,12 @@
 }
 
 .cove-canvas-node-window__header {
-  display: flex;
   flex: 0 0 var(--cove-node-header-height);
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
   background: var(--cove-node-header-surface);
   border-bottom: 1px solid var(--cove-node-header-border);
-  cursor: grab;
 }
 
-.cove-canvas-node-window__header:active {
-  cursor: grabbing;
-}
-
-.cove-canvas-node-window__header > .cove-node-kind-icon > :is(svg, img) {
+.cove-canvas-node-window__header .cove-node-kind-icon > :is(svg, img) {
   display: block;
   width: 100%;
   height: 100%;
@@ -35,7 +26,6 @@
   min-width: 0;
   overflow: hidden;
   color: var(--cove-text);
-  font-size: calc(12px * var(--cove-ui-font-scale));
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -50,13 +40,6 @@
   font-size: calc(11px * var(--cove-ui-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.cove-canvas-node-window__actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: var(--cove-control-gap);
 }
 
 .cove-canvas-node-window__body {

@@ -10,44 +10,13 @@
 }
 
 .task-node__header {
-  height: 34px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
   background: var(--cove-node-header-surface);
   border-bottom: 1px solid var(--cove-node-header-border);
-  cursor: grab;
 }
 
-.task-node__header:active {
-  cursor: grabbing;
-}
-
-.task-node__header-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0;
-}
-
-.task-node__title-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.task-node__header-drag-surface {
-  flex: 0 0 48px;
-  width: 48px;
-  min-height: 100%;
-}
-
-.task-node--enriching .task-node__header-main {
-  padding-left: 18px;
+/* Room for the spinner over the header's leading edge. */
+.task-node--enriching > .task-node__header {
+  padding-left: calc(var(--cove-node-header-padding-inline) + 18px);
 }
 
 .task-node__enriching-spinner {

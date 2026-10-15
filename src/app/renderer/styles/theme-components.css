@@ -8,12 +8,6 @@
   padding-inline: var(--cove-node-header-padding-inline);
 }
 
-[data-cove-kind='role'] > [data-cove-part='window-header'] {
-  height: max(46px, var(--cove-node-header-height));
-  min-height: max(46px, var(--cove-node-header-height));
-  flex-basis: max(46px, var(--cove-node-header-height));
-}
-
 [data-cove-part='window-title'],
 [data-cove-part='window-title'] input {
   font-size: calc(var(--cove-node-title-font-size) * var(--cove-ui-font-scale));

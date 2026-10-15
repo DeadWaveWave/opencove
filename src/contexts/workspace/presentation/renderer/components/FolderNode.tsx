@@ -9,8 +9,7 @@ import type { DocumentNodeInteractionOptions } from './DocumentNode.helpers'
 import { decodeUriPathname } from './DocumentNode.helpers'
 import { NodeKindIcon } from './shared/NodeKindIcon'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
-import { WindowCollapseButton } from './shared/WindowCollapseButton'
-import { WindowCloseButton } from './shared/WindowCloseButton'
+import { WindowHeader } from './shared/WindowHeader'
 import { WorkspaceDirectoryBrowser } from './workspaceCanvas/view/WorkspaceDirectoryBrowser'
 import { WorkspaceDirectoryViewMode } from './workspaceCanvas/view/WorkspaceDirectoryViewMode'
 import type { SpaceExplorerClipboardItem } from './workspaceCanvas/view/WorkspaceSpaceExplorerOverlay.operations'
@@ -152,40 +151,29 @@ export function FolderNode({
       }}
       onWheel={event => event.stopPropagation()}
     >
-      <header
+      <WindowHeader
         className="document-node__header"
-        data-cove-part="window-header"
-        data-node-drag-handle="true"
-      >
-        {labelColor ? (
+        labelColor={labelColor}
+        icon={<NodeKindIcon kind="folder" />}
+        title={
           <span
-            className="cove-label-dot cove-label-dot--solid"
-            data-cove-label-color={labelColor}
-            aria-hidden="true"
-          />
-        ) : null}
-        <NodeKindIcon kind="folder" />
-        <span
-          className="document-node__title"
-          data-cove-part="window-title"
-          title={decodeUriPathname(folder.uri)}
-        >
-          <span className="document-node__title-text">{title}</span>
-        </span>
-        <div className="document-node__actions nodrag">
+            className="document-node__title"
+            data-cove-part="window-title"
+            title={decodeUriPathname(folder.uri)}
+          >
+            <span className="document-node__title-text">{title}</span>
+          </span>
+        }
+        trailingClassName="document-node__actions"
+        actions={
           <WorkspaceDirectoryViewMode
             viewMode={folder.viewMode}
             onViewModeChange={changeView}
             disabled={mountId === undefined}
           />
-          <WindowCollapseButton onClose={onClose} />
-          <WindowCloseButton
-            label={t('common.close')}
-            className="document-node__close"
-            onClose={onClose}
-          />
-        </div>
-      </header>
+        }
+        close={{ label: t('common.close'), className: 'document-node__close', onClose }}
+      />
       {mountId === undefined ? (
         <div
           className="workspace-space-explorer__state workspace-space-explorer__state--error"

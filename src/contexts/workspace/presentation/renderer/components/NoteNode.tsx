@@ -12,8 +12,7 @@ import { normalizeMarkdownFileName } from './NoteNode.markdown'
 import { InlineNodeTitleEditor } from './shared/InlineNodeTitleEditor'
 import { NoteNodeActionsMenu } from './NoteNodeActionsMenu'
 import { NodeKindIcon } from './shared/NodeKindIcon'
-import { WindowCollapseButton } from './shared/WindowCollapseButton'
-import { WindowCloseButton } from './shared/WindowCloseButton'
+import { WindowHeader } from './shared/WindowHeader'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -170,49 +169,35 @@ export function NoteNode({
         }
       }}
     >
-      <div
+      <WindowHeader
         className="note-node__header"
-        data-cove-part="window-header"
-        data-node-drag-handle="true"
-      >
-        {labelColor ? (
-          <span
-            className="cove-label-dot cove-label-dot--solid"
-            data-cove-label-color={labelColor}
-            aria-hidden="true"
+        labelColor={labelColor}
+        icon={<NodeKindIcon kind="note" />}
+        title={
+          <InlineNodeTitleEditor
+            value={resolvedTitle}
+            placeholder={t('noteNode.untitledTitle')}
+            ariaLabel={t('noteNode.titleInputLabel')}
+            classNamePrefix="note-node"
+            rootTestId="note-node-title"
+            displayTestId="note-node-title-display"
+            inputTestId="note-node-title-input"
+            onCommit={onTitleChange}
           />
-        ) : null}
-        <NodeKindIcon kind="note" />
-        <InlineNodeTitleEditor
-          value={resolvedTitle}
-          placeholder={t('noteNode.untitledTitle')}
-          ariaLabel={t('noteNode.titleInputLabel')}
-          classNamePrefix="note-node"
-          rootTestId="note-node-title"
-          displayTestId="note-node-title-display"
-          inputTestId="note-node-title-input"
-          onCommit={onTitleChange}
-        />
-        <div
-          className="note-node__header-drag-surface"
-          data-testid="note-node-header-drag-surface"
-          aria-hidden="true"
-        />
-        <NoteNodeActionsMenu
-          isSavingMarkdown={isSavingMarkdown}
-          canConvertToTask={canConvertToTask}
-          labelColorOverride={labelColorOverride}
-          onSaveMarkdown={saveMarkdown}
-          onConvertToTask={onConvertToTask}
-          onSetLabelColorOverride={onSetLabelColorOverride}
-        />
-        <WindowCollapseButton onClose={onClose} />
-        <WindowCloseButton
-          label={t('noteNode.deleteNote')}
-          className="note-node__close"
-          onClose={onClose}
-        />
-      </div>
+        }
+        dragSurfaceTestId="note-node-header-drag-surface"
+        actions={
+          <NoteNodeActionsMenu
+            isSavingMarkdown={isSavingMarkdown}
+            canConvertToTask={canConvertToTask}
+            labelColorOverride={labelColorOverride}
+            onSaveMarkdown={saveMarkdown}
+            onConvertToTask={onConvertToTask}
+            onSetLabelColorOverride={onSetLabelColorOverride}
+          />
+        }
+        close={{ label: t('noteNode.deleteNote'), className: 'note-node__close', onClose }}
+      />
 
       <textarea
         data-cove-part="window-body"

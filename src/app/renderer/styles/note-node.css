@@ -10,18 +10,8 @@
 }
 
 .note-node__header {
-  height: 34px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
   background: var(--cove-node-header-surface);
   border-bottom: 1px solid var(--cove-node-header-border);
-  cursor: grab;
-}
-
-.note-node__header:active {
-  cursor: grabbing;
 }
 
 .note-node__title {
@@ -31,12 +21,6 @@
   align-items: center;
   font-size: calc(12px * var(--cove-ui-font-scale));
   line-height: 1.2;
-}
-
-.note-node__header-drag-surface {
-  flex: 0 0 48px;
-  width: 48px;
-  min-height: 100%;
 }
 
 .note-node__title-display--placeholder {

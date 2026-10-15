@@ -12,45 +12,23 @@
 }
 
 .role-node__header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: max(46px, var(--cove-node-header-height));
-  padding: 10px 10px 8px 12px;
   border-bottom: 1px solid var(--cove-node-header-border);
   background: var(--cove-node-header-surface);
-  cursor: grab;
-}
-
-.role-node__icon {
-  width: 18px;
-  height: 18px;
-  color: var(--cove-text-muted);
-  flex: 0 0 auto;
-}
-
-.role-node__title-stack {
-  min-width: 0;
-  flex: 1;
 }
 
 .role-node__title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: calc(13px * var(--cove-ui-font-scale));
-  font-weight: 650;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .role-node__meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 2px;
   color: var(--cove-text-muted);
-  font-size: calc(10px * var(--cove-ui-font-scale));
-  line-height: 1.2;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  white-space: nowrap;
 }
 
 .role-node__description {

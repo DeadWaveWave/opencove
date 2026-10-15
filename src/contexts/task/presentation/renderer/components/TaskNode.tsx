@@ -22,8 +22,7 @@ import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import type { LabelColor } from '@shared/types/labelColor'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
-import { WindowCollapseButton } from '@contexts/workspace/presentation/renderer/components/shared/WindowCollapseButton'
-import { WindowCloseButton } from '@contexts/workspace/presentation/renderer/components/shared/WindowCloseButton'
+import { WindowHeader } from '@contexts/workspace/presentation/renderer/components/shared/WindowHeader'
 import { Pencil } from 'lucide-react'
 
 interface TaskNodeInteractionOptions {
@@ -260,40 +259,24 @@ export function TaskNode({
         />
       ) : null}
 
-      <div
+      <WindowHeader
         className="task-node__header"
-        data-cove-part="window-header"
-        data-node-drag-handle="true"
-      >
-        <div className="task-node__header-main">
-          <div className="task-node__title-row">
-            {labelColor ? (
-              <span
-                className="cove-label-dot cove-label-dot--solid"
-                data-cove-label-color={labelColor}
-                aria-hidden="true"
-              />
-            ) : null}
-
-            <NodeKindIcon kind="task" />
-            <InlineNodeTitleEditor
-              value={title}
-              placeholder={t('taskNode.untitledTitle')}
-              ariaLabel={t('taskNode.titleInputLabel')}
-              classNamePrefix="task-node"
-              displayTestId="task-node-title-display"
-              inputTestId="task-node-inline-title-input"
-              onCommit={onQuickTitleSave}
-            />
-            <div
-              className="task-node__header-drag-surface"
-              data-testid="task-node-header-drag-surface"
-              aria-hidden="true"
-            />
-          </div>
-        </div>
-
-        <div className="task-node__header-actions nodrag">
+        labelColor={labelColor}
+        icon={<NodeKindIcon kind="task" />}
+        title={
+          <InlineNodeTitleEditor
+            value={title}
+            placeholder={t('taskNode.untitledTitle')}
+            ariaLabel={t('taskNode.titleInputLabel')}
+            classNamePrefix="task-node"
+            displayTestId="task-node-title-display"
+            inputTestId="task-node-inline-title-input"
+            onCommit={onQuickTitleSave}
+          />
+        }
+        dragSurfaceTestId="task-node-header-drag-surface"
+        trailingClassName="task-node__header-actions"
+        actions={
           <TaskNodeActionsMenu
             workspaceId={workspaceId}
             currentRequirement={requirementDraft}
@@ -303,16 +286,14 @@ export function TaskNode({
             }}
             onOpenEditor={onOpenEditor}
           />
-
-          <WindowCollapseButton onClose={onClose} />
-          <WindowCloseButton
-            label={t('taskNode.deleteTask')}
-            className="task-node__icon-button--close"
-            data-testid="task-node-close"
-            onClose={onClose}
-          />
-        </div>
-      </div>
+        }
+        close={{
+          label: t('taskNode.deleteTask'),
+          className: 'task-node__icon-button--close',
+          testId: 'task-node-close',
+          onClose,
+        }}
+      />
 
       <div className="task-node__meta" data-testid="task-node-meta">
         <span className={`task-node__priority task-node__priority--${priority}`}>

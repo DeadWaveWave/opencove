@@ -15,11 +15,6 @@
   min-width: 0;
 }
 
-.folder-node .document-node__actions {
-  flex: 0 0 auto;
-  gap: 2px;
-}
-
 .workspace-space-explorer__header {
   flex: 0 0 34px;
   min-height: 34px;

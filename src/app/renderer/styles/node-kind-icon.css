@@ -7,21 +7,18 @@
   pointer-events: none;
 }
 
+/* The provider glyph sits on the header's kind tile, which sizes it. */
 .terminal-node__header .agent-provider-icon.cove-node-provider-icon {
-  width: var(--cove-node-icon-size);
-  height: var(--cove-node-icon-size);
-  flex: 0 0 var(--cove-node-icon-size);
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--cove-text-muted);
   pointer-events: none;
 }
 
 .terminal-node__header .cove-node-provider-icon .agent-provider-icon__svg,
 .terminal-node__header .cove-node-provider-icon .agent-provider-icon__image {
-  width: var(--cove-node-icon-size);
-  height: var(--cove-node-icon-size);
+  width: 100%;
+  height: 100%;
 }
 
 .agent-provider-icon__monogram {

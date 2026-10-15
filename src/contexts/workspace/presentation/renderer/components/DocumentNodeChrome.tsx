@@ -7,8 +7,7 @@ import type { DocumentNodeInteractionOptions } from './DocumentNode.helpers'
 import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { NodeKindIcon } from './shared/NodeKindIcon'
-import { WindowCollapseButton } from './shared/WindowCollapseButton'
-import { WindowCloseButton } from './shared/WindowCloseButton'
+import { WindowHeader } from './shared/WindowHeader'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { suppressExplorerOverlayInteractions } from './workspaceCanvas/explorerInteractionGuard'
 
@@ -119,81 +118,75 @@ export function DocumentNodeChrome({
         }
       }}
     >
-      <div
+      <WindowHeader
         className="document-node__header"
-        data-cove-part="window-header"
-        data-node-drag-handle="true"
-      >
-        {labelColor ? (
+        labelColor={labelColor}
+        icon={<NodeKindIcon kind="document" filePath={uri} />}
+        title={
           <span
-            className="cove-label-dot cove-label-dot--solid"
-            data-cove-label-color={labelColor}
-            aria-hidden="true"
-          />
-        ) : null}
-        <NodeKindIcon kind="document" filePath={uri} />
-        <span
-          className="document-node__title"
-          data-cove-part="window-title"
-          data-testid="document-node-title"
-          title={displayPath}
-        >
-          {isDirty ? <span className="document-node__dirty-dot" aria-hidden="true" /> : null}
-          <span className="document-node__title-text">{title}</span>
-        </span>
+            className="document-node__title"
+            data-cove-part="window-title"
+            data-testid="document-node-title"
+            title={displayPath}
+          >
+            {isDirty ? <span className="document-node__dirty-dot" aria-hidden="true" /> : null}
+            <span className="document-node__title-text">{title}</span>
+          </span>
+        }
+        trailingClassName="document-node__actions"
+        actions={
+          <>
+            {showsEditorActions ? (
+              <button
+                type="button"
+                className="document-node__action"
+                onPointerDown={event => {
+                  event.stopPropagation()
+                }}
+                onClick={event => {
+                  event.stopPropagation()
+                  onSave()
+                }}
+                disabled={!isDirty || isLoading || isSaving || !!unsupportedKind}
+                aria-label={hasExternalConflict ? t('documentNode.overwrite') : t('common.save')}
+                title={hasExternalConflict ? t('documentNode.overwrite') : t('common.save')}
+              >
+                {isSaving
+                  ? t('common.saving')
+                  : hasExternalConflict
+                    ? t('documentNode.overwrite')
+                    : t('common.save')}
+              </button>
+            ) : null}
 
-        <div className="document-node__actions nodrag">
-          {showsEditorActions ? (
-            <button
-              type="button"
-              className="document-node__action"
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-                onSave()
-              }}
-              disabled={!isDirty || isLoading || isSaving || !!unsupportedKind}
-              aria-label={hasExternalConflict ? t('documentNode.overwrite') : t('common.save')}
-              title={hasExternalConflict ? t('documentNode.overwrite') : t('common.save')}
-            >
-              {isSaving
-                ? t('common.saving')
-                : hasExternalConflict
-                  ? t('documentNode.overwrite')
-                  : t('common.save')}
-            </button>
-          ) : null}
-
-          {showsEditorActions && isDirty ? (
-            <button
-              type="button"
-              className="document-node__action document-node__action--secondary"
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-                onDiscard()
-              }}
-              disabled={isLoading || isSaving || !!unsupportedKind}
-              aria-label={t('documentNode.discard')}
-              title={t('documentNode.discard')}
-            >
-              {t('documentNode.discard')}
-            </button>
-          ) : null}
-
-          <WindowCollapseButton onClose={onRequestClose} revealBeforeClose={isDirty} />
-          <WindowCloseButton
-            label={t('documentNode.close')}
-            className="document-node__close"
-            onPointerDown={() => suppressExplorerOverlayInteractions()}
-            onClose={onRequestClose}
-          />
-        </div>
-      </div>
+            {showsEditorActions && isDirty ? (
+              <button
+                type="button"
+                className="document-node__action document-node__action--secondary"
+                onPointerDown={event => {
+                  event.stopPropagation()
+                }}
+                onClick={event => {
+                  event.stopPropagation()
+                  onDiscard()
+                }}
+                disabled={isLoading || isSaving || !!unsupportedKind}
+                aria-label={t('documentNode.discard')}
+                title={t('documentNode.discard')}
+              >
+                {t('documentNode.discard')}
+              </button>
+            ) : null}
+          </>
+        }
+        close={{
+          label: t('documentNode.close'),
+          className: 'document-node__close',
+          revealBeforeClose: isDirty,
+          onPointerDown: () => suppressExplorerOverlayInteractions(),
+          onClose: onRequestClose,
+        }}
+      />
 
       {closePromptOpen ? (
         <div className="document-node__close-prompt nodrag" role="dialog">

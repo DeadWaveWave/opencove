@@ -22,6 +22,9 @@ import {
   terminalIdentity,
 } from './workspace-canvas.color-identity.helpers'
 
+// Kinds whose header is the shared WindowHeader.
+const HEADER_TILE_KINDS = new Set<string>(['task', 'note', 'document', 'role', 'terminal'])
+
 async function geometry(page: Page) {
   return await page.locator('.react-flow__node').evaluateAll(nodes =>
     nodes.map(node => ({
@@ -72,7 +75,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
             expect(appearance.icon).toBeNull()
             expect(appearance.providerIcon).toMatchObject({
               provider: 'codex',
-              width: 16,
+              width: 12,
               background: 'rgba(0, 0, 0, 0)',
               borderWidth: '0px',
               label: 'Codex',
@@ -80,11 +83,14 @@ test.describe('Workspace Canvas - Color Identity', () => {
               svg: true,
             })
           } else {
+            // Shared headers put the glyph on a 20px kind tile; the rest still draw it bare.
+            const tiled = HEADER_TILE_KINDS.has(appearance.kind)
             expect(appearance.icon).toMatchObject({
               kind: appearance.kind,
               fill: 'none',
               stroke: appearance.kind === 'document' ? '1.4' : '1.75',
-              width: 16,
+              width: tiled ? 12 : 16,
+              tile: tiled ? 20 : null,
               pointer: 'none',
               hidden: 'true',
               focusable: 'false',

@@ -79,7 +79,10 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
         y: paneBox.y + clamp(viewport.y + dropFlowPoint.y * viewport.zoom, 40, paneBox.height - 40),
       }
       const drag = await beginDragMouse(window, {
-        start: { x: dragSurfaceBox.x + 80, y: dragSurfaceBox.y + 16 },
+        start: {
+          x: dragSurfaceBox.x + dragSurfaceBox.width / 2,
+          y: dragSurfaceBox.y + dragSurfaceBox.height / 2,
+        },
         initialTarget: target,
       })
       releaseHeldDrag = drag.release
