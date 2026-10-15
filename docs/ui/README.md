@@ -108,6 +108,10 @@
 - 材质只走 `Surface`（`components/ui/Surface.tsx`）或 `surfaceProps()`：实色（对话框与长时间阅读）、
   玻璃（画布上的窗口，预合成、不模糊）、亚克力（菜单、浮层等短暂出现的表面：着色、真模糊、颗粒）。
   使用方只管边框、圆角和阴影，背景与 `backdrop-filter` 归材质。不要再手写 `backdrop-filter`。
+- 窗口内容放在阅读底板上（`window-plate.css`）：`window` 里的 `window-body` 左右和底部内缩 6px、紧贴标题栏，
+  圆角 6px，带内描边和顶部微光。生成的主题族把底板（`--cove-reading-plate`）叠在玻璃外框上，对比度矩阵
+  检查的正是这个叠加结果；手写主题回退到自己的窗口底色和细边框。内容自身不要再铺一层不透明底色，
+  终端除外（透明终端在第 2.3 步）。
 - 亚克力的底色由生成器给出（`--cove-acrylic-surface`），对比度矩阵检查它压在纯黑、纯白和像素墙上的
   最坏情况；手写主题沿用自己的 `--cove-menu-surface`。系统开启「减少透明度」时，玻璃和亚克力改为
   `--cove-window-surface` 实色并去掉模糊（`tests/unit/app/uiSurfaceStylesheet.spec.ts`、
