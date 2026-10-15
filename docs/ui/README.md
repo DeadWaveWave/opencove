@@ -150,6 +150,9 @@
 - 几个互斥选项并排时用 `SegmentedControl`（单选组：原生 radio 共用一个唯一的 `name`，方向键切换、
   只占一个 Tab 停留点）。组名用 `label`，或用 `labelledBy` 指向可见的标题。选中段是中性的浅底，
   不用强调色；只有图标的段设 `iconOnly`，名称同时作为提示文字。切换内容面板时再用 Tabs。
+- 带标签的文本输入用 `TextField` / `TextAreaField`：标签通过 `htmlFor` 命名输入框，补充说明放在
+  `description`，校验错误放在 `error`（同时设置 `aria-invalid`、`aria-errormessage` 并加入描述）。
+  标签行右侧的操作（例如提示词模板按钮）放在 `labelAccessory`。输入框本身仍是 `.cove-field`。
 - 菜单项只在声明了 `role="menu"` 的菜单表面（`ViewportMenuSurface`，窄屏的底部面板同样适用）里
   取得 `menuitem` / `menuitemcheckbox` 角色，其他地方仍是普通按钮。所以一个菜单的所有行都换成
   菜单项之后，才给它加 `role="menu"` 与名称。键盘方向键跳过禁用项。
