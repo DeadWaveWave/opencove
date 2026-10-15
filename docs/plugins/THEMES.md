@@ -166,7 +166,9 @@ parts are the supported skin contract:
 | `compact-window`, `compact-base`, `compact-pixels`, `compact-title` | Compact desktop icon presentation |
 | `sidebar`, `sidebar-project`, `sidebar-space`, `sidebar-agent` | Navigation surfaces |
 | `menu`, `popover` | Floating interaction surfaces |
+| `menu-item` | Menu rows; `data-state` is `checked` or `unchecked` on checkbox rows and `data-tone` is `danger` on destructive rows |
 | `button`, `icon-button`, `toggle` | Shared controls |
+| `status-pill` | Agent status; `data-tone` is `working`, `waiting`, `neutral` or `failed` |
 | `icon` | Node glyph; `data-cove-kind` distinguishes kinds |
 | `effect-background`, `effect-creation`, `effect-closing`, `effect-working` | Host-owned custom motion slots |
 

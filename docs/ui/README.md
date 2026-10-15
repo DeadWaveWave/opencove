@@ -69,7 +69,8 @@
   计数只能下降，基线是 `scripts/ui-style-ratchet.json`。新增写死的值会失败；减少后运行
   `pnpm ui:style-ratchet` 锁定新基线。基线由该命令生成，不手改。
 - 同一命令也统计被共享组件取代的原生标记（`scripts/ui-markup-ratchet.json`，同样只减不增）：
-  原生元素上的 `title` 属性改用 `Tooltip`（`iframe` 的 `title` 是可访问名称，不计入）。
+  原生元素上的 `title` 属性改用 `Tooltip`（`iframe` 的 `title` 是可访问名称，不计入）；
+  共享组件目录之外的原生 `<button>` 改用 `Button`、`IconButton` 或 `MenuItem`。
   每条规则随它的替代组件一起加入。
 
 ### 2.3 CSS 写法约定
@@ -137,6 +138,13 @@
   生成的主题族由生成器给出胶囊颜色（对比度矩阵检查 4.5:1），手写主题从自身的强调色、标记色与危险色推导。
 - 窗口类别的图标放在 `KindTile` 上（AI、终端、计划、知识、媒体、中性）。类别色由生成器成套给出；
   没有类别色的主题显示中性图块。类别色只画图块，不画外框。
+- 菜单行用 `components/ui/Menu.tsx`：`MenuItem`、`MenuCheckboxItem`、`MenuSeparator`，图标、文字、
+  快捷键三列，末尾是子菜单箭头或勾。行高跟随主题的 `menuRowHeight`，触屏与窄屏不低于 44px。
+  快捷键用 `describeKeyChord` 从生效的按键设置生成，显示格式与全应用一致（⌘T、Ctrl T），
+  对读屏通过 `aria-keyshortcuts` 提供，不计入名称；未分配快捷键的命令不显示。
+- 菜单项只在声明了 `role="menu"` 的菜单表面（`ViewportMenuSurface`，窄屏的底部面板同样适用）里
+  取得 `menuitem` / `menuitemcheckbox` 角色，其他地方仍是普通按钮。所以一个菜单的所有行都换成
+  菜单项之后，才给它加 `role="menu"` 与名称。键盘方向键跳过禁用项。
 
 ---
 
