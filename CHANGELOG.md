@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Settings and dialogs: switches, checkboxes and task tags use shared controls that follow the theme and have larger click targets; task tags become chips. (#445)
 - Dialogs and windows: choices such as the issue type, connection method, plugin source, worktree branch mode and explorer view use one segmented control, which screen readers announce as a radio group. (#446)
 - Dialogs: text fields share one labelled field with help text and inline errors; remote machine port errors now appear under the field. (#448)
+- Appearance: menus, popovers and the control center share one acrylic material with checked contrast, and turn solid when the system reduces transparency. (#449)
 
 ### 🐛 Fixed
 
