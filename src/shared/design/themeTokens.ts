@@ -159,6 +159,14 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-accent-foreground': hex(roles.onAccent),
     '--cove-focus-ring': hex(roles.focusRing),
     '--cove-node-surface': glassOf('var(--cove-glass-frame)'),
+    // Window content sits on an inset plate: neutral step 1 at the plate alpha over the frame
+    // (the composite the contrast matrix checks), with a faint top glare and an inner edge.
+    '--cove-reading-plate':
+      'color-mix(in srgb, var(--cove-neutral-1) var(--cove-glass-plate), transparent)',
+    '--cove-reading-plate-glare': dark ? 'rgb(255 255 255 / 0.03)' : 'rgb(255 255 255 / 0)',
+    '--cove-reading-plate-edge': dark
+      ? 'inset 0 0 0 1px rgb(255 255 255 / 0.045), inset 0 1px 3px rgb(0 0 0 / 0.45)'
+      : `inset 0 0 0 1px ${rgba(theme.neutral[6]!, 0.5)}, inset 0 1px 2px ${rgba(ink, 0.06)}`,
     '--cove-node-header-surface': 'transparent',
     '--cove-node-border': inkOverlay(dark ? 14 : 16),
     '--cove-terminal-background': hex(roles.terminalBackground),

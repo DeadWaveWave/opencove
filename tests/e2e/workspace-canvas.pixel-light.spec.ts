@@ -64,6 +64,10 @@ async function readLightPaint(page: Page) {
     const monaco = getComputedStyle(
       document.querySelector('.document-node .monaco-editor-background')!,
     )
+    // The editor is transparent and reads on the document's reading plate.
+    const plate = getComputedStyle(
+      document.querySelector('.document-node [data-cove-part="window-body"]')!,
+    )
     const background = terminal.backgroundColor
     const foreground = root.getPropertyValue('--cove-terminal-foreground').trim()
     const back = luminance(background)
@@ -76,7 +80,8 @@ async function readLightPaint(page: Page) {
         luminance: back,
         contrast: (Math.max(back, front) + 0.05) / (Math.min(back, front) + 0.05),
       },
-      monaco: luminance(monaco.backgroundColor),
+      monaco: luminance(plate.backgroundColor),
+      monacoBackground: monaco.backgroundColor,
       ansi: ansiEntries.map(([name, token]) => {
         const color = terminal.getPropertyValue(token).trim()
         const light = luminance(color)
@@ -209,6 +214,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       expect(paint.terminal.luminance).toBeGreaterThan(0.7)
       expect(paint.terminal.contrast).toBeGreaterThanOrEqual(4.5)
       expect(paint.monaco).toBeGreaterThan(0.7)
+      expect(paint.monacoBackground).toBe('rgba(0, 0, 0, 0)')
       expect(paint.ansi).toHaveLength(16)
       for (const color of paint.ansi) {
         expect(color.color, `${color.name} ANSI override`).toBeTruthy()

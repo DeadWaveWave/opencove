@@ -66,6 +66,19 @@ describe('generated theme tokens', () => {
   )
 
   it.each(CASES)(
+    'lays the reading plate the contrast matrix checks over the frame for $family/$appearance',
+    ({ family, appearance }) => {
+      const tokens = themeTokens(generateFamilyTheme(family, appearance))
+      // The matrix composes neutral step 1 at the plate alpha over the frame.
+      expect(tokens['--cove-reading-plate']).toBe(
+        'color-mix(in srgb, var(--cove-neutral-1) var(--cove-glass-plate), transparent)',
+      )
+      expect(tokens['--cove-reading-plate-edge']).toMatch(/^inset 0 0 0 1px .+, inset 0 1px \dpx /)
+      expect(tokens['--cove-reading-plate-glare']).toMatch(/^rgb\(255 255 255 \/ 0(\.\d+)?\)$/)
+    },
+  )
+
+  it.each(CASES)(
     'references only tokens it defines for $family/$appearance',
     ({ family, appearance }) => {
       const tokens = themeTokens(generateFamilyTheme(family, appearance))

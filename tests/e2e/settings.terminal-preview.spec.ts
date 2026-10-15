@@ -43,7 +43,9 @@ test('updates terminal preview material through the theme buttons without replac
       const contentElement = element.querySelector('.settings-pixel-preview__body')!
       return element.getBoundingClientRect().bottom - contentElement.getBoundingClientRect().bottom
     })
-    expect(bodyBottomGap).toBeLessThanOrEqual(1)
+    // The body sits on the reading plate: one 6px inset above the frame's 1px border.
+    expect(bodyBottomGap).toBeGreaterThanOrEqual(6)
+    expect(bodyBottomGap).toBeLessThanOrEqual(7)
     await preview.scrollIntoViewIfNeeded()
     const path = testInfo.outputPath('theme-preview-live-pixel-light.png')
     await preview.screenshot({ path, animations: 'disabled' })

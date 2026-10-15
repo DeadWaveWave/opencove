@@ -172,7 +172,6 @@
   flex: 1;
   min-height: 0;
   height: 100%;
-  background: color-mix(in srgb, var(--cove-node-surface) 96%, black 4%);
 }
 
 .document-node__editor-loading {

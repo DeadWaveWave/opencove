@@ -1,0 +1,21 @@
+/*
+ * Reading plate: window content sits on a plate inset 6px from the frame, flush under the
+ * header. Generated themes compose it over the glass frame (the contrast matrix checks that
+ * composite); hand-written themes fall back to their node surface and border.
+ */
+:root {
+  --cove-reading-plate: var(--cove-node-surface);
+  --cove-reading-plate-glare: transparent;
+  --cove-reading-plate-edge: inset 0 0 0 1px var(--cove-border-subtle);
+  --cove-reading-plate-inset: 6px;
+}
+
+[data-cove-part='window'] [data-cove-part='window-body'] {
+  margin: 0 var(--cove-reading-plate-inset) var(--cove-reading-plate-inset);
+  border-radius: var(--cove-radius-xs);
+  background:
+    linear-gradient(180deg, var(--cove-reading-plate-glare), transparent 40%),
+    var(--cove-reading-plate);
+  box-shadow: var(--cove-reading-plate-edge);
+  overflow: hidden;
+}

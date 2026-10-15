@@ -124,6 +124,14 @@
     var(--cove-neutral-2) var(--cove-glass-frame),
     transparent
   );
+  --cove-reading-plate: color-mix(
+    in srgb,
+    var(--cove-neutral-1) var(--cove-glass-plate),
+    transparent
+  );
+  --cove-reading-plate-glare: rgb(255 255 255 / 0.03);
+  --cove-reading-plate-edge:
+    inset 0 0 0 1px rgb(255 255 255 / 0.045), inset 0 1px 3px rgb(0 0 0 / 0.45);
   --cove-node-header-surface: transparent;
   --cove-node-border: rgb(239 243 247 / 0.14);
   --cove-terminal-background: #090e12;
@@ -352,6 +360,14 @@
     var(--cove-neutral-1) var(--cove-glass-frame),
     transparent
   );
+  --cove-reading-plate: color-mix(
+    in srgb,
+    var(--cove-neutral-1) var(--cove-glass-plate),
+    transparent
+  );
+  --cove-reading-plate-glare: rgb(255 255 255 / 0);
+  --cove-reading-plate-edge:
+    inset 0 0 0 1px rgb(187 197 207 / 0.5), inset 0 1px 2px rgb(27 29 32 / 0.06);
   --cove-node-header-surface: transparent;
   --cove-node-border: rgb(27 29 32 / 0.16);
   --cove-terminal-background: #f9fcfe;

@@ -89,7 +89,6 @@
     "src/app/renderer/styles/control-center.css": 5,
     "src/app/renderer/styles/cove-window.css": 4,
     "src/app/renderer/styles/document-node.css": 2,
-    "src/app/renderer/styles/document-node.monaco.css": 1,
     "src/app/renderer/styles/image-node.css": 1,
     "src/app/renderer/styles/issue-report.css": 2,
     "src/app/renderer/styles/menu-surfaces.css": 1,
