@@ -1,4 +1,5 @@
 import React from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
 
@@ -47,16 +48,12 @@ export function NotificationsSection(props: {
               <span>{t('settingsPanel.notifications.systemNotifications.enabledHelp')}</span>
             </div>
             <div className="settings-panel__control">
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  data-testid="settings-system-notifications-enabled"
-                  checked={systemNotificationsEnabled}
-                  aria-label={t('settingsPanel.notifications.systemNotifications.enabledLabel')}
-                  onChange={event => onChangeSystemNotificationsEnabled(event.target.checked)}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                data-testid="settings-system-notifications-enabled"
+                checked={systemNotificationsEnabled}
+                label={t('settingsPanel.notifications.systemNotifications.enabledLabel')}
+                onCheckedChange={checked => onChangeSystemNotificationsEnabled(checked)}
+              />
             </div>
           </div>
         </SettingsGroupBody>
@@ -73,16 +70,12 @@ export function NotificationsSection(props: {
               <span>{t('settingsPanel.notifications.agentStandbyBanner.enabledHelp')}</span>
             </div>
             <div className="settings-panel__control">
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  data-testid="settings-agent-standby-banner-enabled"
-                  checked={standbyBannerEnabled}
-                  aria-label={t('settingsPanel.notifications.agentStandbyBanner.enabledLabel')}
-                  onChange={event => onChangeStandbyBannerEnabled(event.target.checked)}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                data-testid="settings-agent-standby-banner-enabled"
+                checked={standbyBannerEnabled}
+                label={t('settingsPanel.notifications.agentStandbyBanner.enabledLabel')}
+                onCheckedChange={checked => onChangeStandbyBannerEnabled(checked)}
+              />
             </div>
           </div>
 
@@ -96,16 +89,12 @@ export function NotificationsSection(props: {
                 <strong>{t('settingsPanel.notifications.agentStandbyBanner.showTask')}</strong>
               </div>
               <div className="settings-panel__control">
-                <label className="cove-toggle">
-                  <input
-                    type="checkbox"
-                    checked={standbyBannerShowTask}
-                    disabled={!standbyBannerEnabled}
-                    aria-label={t('settingsPanel.notifications.agentStandbyBanner.showTask')}
-                    onChange={event => onChangeStandbyBannerShowTask(event.target.checked)}
-                  />
-                  <span className="cove-toggle__slider"></span>
-                </label>
+                <Toggle
+                  checked={standbyBannerShowTask}
+                  disabled={!standbyBannerEnabled}
+                  label={t('settingsPanel.notifications.agentStandbyBanner.showTask')}
+                  onCheckedChange={checked => onChangeStandbyBannerShowTask(checked)}
+                />
               </div>
             </div>
 
@@ -114,16 +103,12 @@ export function NotificationsSection(props: {
                 <strong>{t('settingsPanel.notifications.agentStandbyBanner.showSpace')}</strong>
               </div>
               <div className="settings-panel__control">
-                <label className="cove-toggle">
-                  <input
-                    type="checkbox"
-                    checked={standbyBannerShowSpace}
-                    disabled={!standbyBannerEnabled}
-                    aria-label={t('settingsPanel.notifications.agentStandbyBanner.showSpace')}
-                    onChange={event => onChangeStandbyBannerShowSpace(event.target.checked)}
-                  />
-                  <span className="cove-toggle__slider"></span>
-                </label>
+                <Toggle
+                  checked={standbyBannerShowSpace}
+                  disabled={!standbyBannerEnabled}
+                  label={t('settingsPanel.notifications.agentStandbyBanner.showSpace')}
+                  onCheckedChange={checked => onChangeStandbyBannerShowSpace(checked)}
+                />
               </div>
             </div>
 
@@ -132,16 +117,12 @@ export function NotificationsSection(props: {
                 <strong>{t('settingsPanel.notifications.agentStandbyBanner.showBranch')}</strong>
               </div>
               <div className="settings-panel__control">
-                <label className="cove-toggle">
-                  <input
-                    type="checkbox"
-                    checked={standbyBannerShowBranch}
-                    disabled={!standbyBannerEnabled}
-                    aria-label={t('settingsPanel.notifications.agentStandbyBanner.showBranch')}
-                    onChange={event => onChangeStandbyBannerShowBranch(event.target.checked)}
-                  />
-                  <span className="cove-toggle__slider"></span>
-                </label>
+                <Toggle
+                  checked={standbyBannerShowBranch}
+                  disabled={!standbyBannerEnabled}
+                  label={t('settingsPanel.notifications.agentStandbyBanner.showBranch')}
+                  onCheckedChange={checked => onChangeStandbyBannerShowBranch(checked)}
+                />
               </div>
             </div>
 
@@ -152,16 +133,12 @@ export function NotificationsSection(props: {
                 </strong>
               </div>
               <div className="settings-panel__control">
-                <label className="cove-toggle">
-                  <input
-                    type="checkbox"
-                    checked={standbyBannerShowPullRequest}
-                    disabled={!standbyBannerEnabled || !githubPullRequestsEnabled}
-                    aria-label={t('settingsPanel.notifications.agentStandbyBanner.showPullRequest')}
-                    onChange={event => onChangeStandbyBannerShowPullRequest(event.target.checked)}
-                  />
-                  <span className="cove-toggle__slider"></span>
-                </label>
+                <Toggle
+                  checked={standbyBannerShowPullRequest}
+                  disabled={!standbyBannerEnabled || !githubPullRequestsEnabled}
+                  label={t('settingsPanel.notifications.agentStandbyBanner.showPullRequest')}
+                  onCheckedChange={checked => onChangeStandbyBannerShowPullRequest(checked)}
+                />
               </div>
             </div>
           </SettingsModule>

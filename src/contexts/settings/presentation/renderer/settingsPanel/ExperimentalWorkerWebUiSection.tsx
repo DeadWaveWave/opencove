@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { RefreshCw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
@@ -350,17 +351,13 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
             >
               <RefreshCw size={14} aria-hidden="true" />
             </IconButton>
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                data-testid="settings-experimental-worker-web-ui-enabled"
-                checked={workerConfig?.webUi.enabled ?? false}
-                disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
-                aria-label={t('settingsPanel.experimental.workerWebUi.enabledLabel')}
-                onChange={event => void toggleWorkerWebUiEnabled(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <Toggle
+              data-testid="settings-experimental-worker-web-ui-enabled"
+              checked={workerConfig?.webUi.enabled ?? false}
+              disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
+              label={t('settingsPanel.experimental.workerWebUi.enabledLabel')}
+              onCheckedChange={checked => void toggleWorkerWebUiEnabled(checked)}
+            />
           </div>
         </div>
 
@@ -428,17 +425,13 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
               <span>{t('settingsPanel.experimental.workerWebUi.lanHelp')}</span>
             </div>
             <div className="settings-panel__control">
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  data-testid="settings-experimental-worker-web-ui-lan"
-                  checked={workerConfig?.webUi.exposeOnLan ?? false}
-                  disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
-                  aria-label={t('settingsPanel.experimental.workerWebUi.lanLabel')}
-                  onChange={event => void toggleWorkerWebUiLan(event.target.checked)}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                data-testid="settings-experimental-worker-web-ui-lan"
+                checked={workerConfig?.webUi.exposeOnLan ?? false}
+                disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
+                label={t('settingsPanel.experimental.workerWebUi.lanLabel')}
+                onCheckedChange={checked => void toggleWorkerWebUiLan(checked)}
+              />
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   VIEWPORT_TRANSITIONS,
@@ -204,16 +205,12 @@ export function CanvasSection(props: {
               <span>{t('settingsPanel.canvas.focusOnClickHelp')}</span>
             </div>
             <div className="settings-panel__control">
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  data-testid="settings-focus-node-on-click"
-                  checked={focusNodeOnClick}
-                  aria-label={t('settingsPanel.canvas.focusOnClickLabel')}
-                  onChange={event => onChangeFocusNodeOnClick(event.target.checked)}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                data-testid="settings-focus-node-on-click"
+                checked={focusNodeOnClick}
+                label={t('settingsPanel.canvas.focusOnClickLabel')}
+                onCheckedChange={checked => onChangeFocusNodeOnClick(checked)}
+              />
             </div>
           </div>
 
@@ -223,16 +220,12 @@ export function CanvasSection(props: {
               <span>{t('settingsPanel.canvas.focusVisibleCenterHelp')}</span>
             </div>
             <div className="settings-panel__control">
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  data-testid="settings-focus-node-visible-center"
-                  checked={focusNodeUseVisibleCanvasCenter}
-                  aria-label={t('settingsPanel.canvas.focusVisibleCenterLabel')}
-                  onChange={event => onChangeFocusNodeUseVisibleCanvasCenter(event.target.checked)}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                data-testid="settings-focus-node-visible-center"
+                checked={focusNodeUseVisibleCanvasCenter}
+                label={t('settingsPanel.canvas.focusVisibleCenterLabel')}
+                onCheckedChange={checked => onChangeFocusNodeUseVisibleCanvasCenter(checked)}
+              />
             </div>
           </div>
 
@@ -282,17 +275,11 @@ export function CanvasSection(props: {
               <strong>{t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}</strong>
             </div>
             <div className="settings-panel__control">
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  checked={archiveSpaceDeleteWorktreeByDefault}
-                  aria-label={t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}
-                  onChange={event =>
-                    onChangeArchiveSpaceDeleteWorktreeByDefault(event.target.checked)
-                  }
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                checked={archiveSpaceDeleteWorktreeByDefault}
+                label={t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}
+                onCheckedChange={checked => onChangeArchiveSpaceDeleteWorktreeByDefault(checked)}
+              />
             </div>
           </div>
 
@@ -304,17 +291,11 @@ export function CanvasSection(props: {
               <strong>{t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}</strong>
             </div>
             <div className="settings-panel__control">
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  checked={archiveSpaceDeleteBranchByDefault}
-                  aria-label={t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}
-                  onChange={event =>
-                    onChangeArchiveSpaceDeleteBranchByDefault(event.target.checked)
-                  }
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                checked={archiveSpaceDeleteBranchByDefault}
+                label={t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}
+                onCheckedChange={checked => onChangeArchiveSpaceDeleteBranchByDefault(checked)}
+              />
             </div>
           </div>
         </SettingsGroupBody>

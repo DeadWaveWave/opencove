@@ -128,6 +128,9 @@
     "src/contexts/worktree/presentation/renderer/windows/SpaceWorktreePanels.tsx": 7,
     "src/contexts/worktree/presentation/renderer/windows/SpaceWorktreeWindowDialog.tsx": 1
   },
+  "native-checkbox": {
+    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/TaskCreatorWindow.tsx": 2
+  },
   "native-title": {
     "src/app/renderer/components/AgentProviderIcon.tsx": 1,
     "src/app/renderer/components/ViewportMenuSurface.tsx": 2,

@@ -72,73 +72,6 @@
   opacity: 0.55;
 }
 
-/* --- Toggle Switch --- */
-.settings-panel label.cove-toggle {
-  position: relative;
-  display: inline-flex;
-  width: 36px;
-  height: 20px;
-  flex: 0 0 auto;
-  cursor: pointer;
-}
-
-.settings-panel label.cove-toggle input {
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  cursor: pointer;
-}
-
-.settings-panel label.cove-toggle .cove-toggle__slider {
-  position: absolute;
-  inset: 0;
-  border: 1px solid var(--cove-border);
-  border-radius: var(--cove-radius-round);
-  background: var(--cove-field);
-  transition:
-    border-color var(--cove-motion-normal) var(--cove-ease-standard),
-    background var(--cove-motion-normal) var(--cove-ease-standard),
-    box-shadow var(--cove-motion-normal) var(--cove-ease-standard);
-  pointer-events: none;
-}
-
-.settings-panel label.cove-toggle .cove-toggle__slider::before {
-  position: absolute;
-  content: '';
-  width: 14px;
-  height: 14px;
-  top: 2px;
-  left: 2px;
-  border-radius: var(--cove-radius-round);
-  background: var(--cove-text-muted);
-  transition:
-    transform var(--cove-motion-normal) var(--cove-ease-standard),
-    background var(--cove-motion-normal) var(--cove-ease-standard);
-}
-
-.settings-panel label.cove-toggle input:checked + .cove-toggle__slider {
-  border-color: var(--cove-accent);
-  background: var(--cove-accent);
-}
-
-.settings-panel label.cove-toggle input:checked + .cove-toggle__slider::before {
-  transform: translateX(16px);
-  background: var(--cove-settings-on-accent);
-}
-
-.settings-panel label.cove-toggle input:focus-visible + .cove-toggle__slider {
-  box-shadow: 0 0 0 3px var(--cove-settings-focus-ring);
-}
-
-.settings-panel label.cove-toggle input:disabled + .cove-toggle__slider {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /* Shared field controls retain their native focus and disabled behavior. */
 .settings-panel input[type='range'] {
   appearance: none;
@@ -196,13 +129,6 @@
 .settings-panel input[type='range']:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-.settings-panel input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--cove-accent);
 }
 
 .settings-panel .cove-field {

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
 import { useSystemFonts } from '@app/renderer/shell/hooks/useSystemFonts'
 
@@ -123,22 +124,10 @@ export function TerminalFontFamilyRow({
                   onChange={e => setQuery(e.target.value)}
                 />
               </div>
-              <div
-                style={{ padding: '2px 8px 6px', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <input
-                  type="checkbox"
-                  id="font-show-all"
-                  checked={showAll}
-                  onChange={e => setShowAll(e.target.checked)}
-                  style={{ cursor: 'pointer' }}
-                />
-                <label
-                  htmlFor="font-show-all"
-                  style={{ fontSize: 12, color: 'var(--cove-text-muted)', cursor: 'pointer' }}
-                >
+              <div style={{ padding: '2px 8px 6px' }}>
+                <Checkbox checked={showAll} onCheckedChange={setShowAll}>
                   {t('settingsPanel.general.terminalFontFamilyShowAll')}
-                </label>
+                </Checkbox>
               </div>
               <ul
                 ref={listRef}

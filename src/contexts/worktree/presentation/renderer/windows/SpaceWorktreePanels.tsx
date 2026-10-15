@@ -1,4 +1,5 @@
 import React from 'react'
+import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { BranchMode, SpaceWorktreeViewMode } from './spaceWorktree.shared'
@@ -247,57 +248,48 @@ export function SpaceWorktreePanels({
 
             <div className="workspace-space-worktree__option-list">
               {requiresForceArchiveConfirmation ? (
-                <label className="cove-window__checkbox workspace-space-worktree__option-row">
-                  <input
-                    type="checkbox"
-                    data-testid="space-worktree-archive-force-confirm"
-                    checked={forceArchiveConfirmed}
-                    disabled={isBusy}
-                    onChange={event => {
-                      onForceArchiveConfirmedChange(event.target.checked)
-                    }}
-                  />
-                  <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
-                    <strong>{t('worktree.forceArchiveConfirm')}</strong>
-                    <span>{t('worktree.forceArchiveConfirmHelp')}</span>
-                  </span>
-                </label>
+                <Checkbox
+                  className="workspace-space-worktree__option-row"
+                  data-testid="space-worktree-archive-force-confirm"
+                  checked={forceArchiveConfirmed}
+                  disabled={isBusy}
+                  description={t('worktree.forceArchiveConfirmHelp')}
+                  onCheckedChange={checked => {
+                    onForceArchiveConfirmedChange(checked)
+                  }}
+                >
+                  {t('worktree.forceArchiveConfirm')}
+                </Checkbox>
               ) : null}
 
               {archiveHasOwnWorktree ? (
-                <label className="cove-window__checkbox workspace-space-worktree__option-row">
-                  <input
-                    type="checkbox"
-                    data-testid="space-worktree-archive-delete-worktree"
-                    checked={deleteWorktreeOnArchive}
-                    disabled={isBusy}
-                    onChange={event => {
-                      onDeleteWorktreeOnArchiveChange(event.target.checked)
-                    }}
-                  />
-                  <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
-                    <strong>{t('worktree.deleteWorktree')}</strong>
-                    <span>{t('worktree.deleteWorktreeHelp')}</span>
-                  </span>
-                </label>
+                <Checkbox
+                  className="workspace-space-worktree__option-row"
+                  data-testid="space-worktree-archive-delete-worktree"
+                  checked={deleteWorktreeOnArchive}
+                  disabled={isBusy}
+                  description={t('worktree.deleteWorktreeHelp')}
+                  onCheckedChange={checked => {
+                    onDeleteWorktreeOnArchiveChange(checked)
+                  }}
+                >
+                  {t('worktree.deleteWorktree')}
+                </Checkbox>
               ) : null}
 
               {archiveHasOwnWorktree ? (
-                <label className="cove-window__checkbox workspace-space-worktree__option-row">
-                  <input
-                    type="checkbox"
-                    data-testid="space-worktree-archive-delete-branch"
-                    checked={deleteBranchOnArchive}
-                    disabled={isBusy || !deleteWorktreeOnArchive}
-                    onChange={event => {
-                      onDeleteBranchOnArchiveChange(event.target.checked)
-                    }}
-                  />
-                  <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
-                    <strong>{t('worktree.deleteBranch')}</strong>
-                    <span>{t('worktree.deleteBranchHelp')}</span>
-                  </span>
-                </label>
+                <Checkbox
+                  className="workspace-space-worktree__option-row"
+                  data-testid="space-worktree-archive-delete-branch"
+                  checked={deleteBranchOnArchive}
+                  disabled={isBusy || !deleteWorktreeOnArchive}
+                  description={t('worktree.deleteBranchHelp')}
+                  onCheckedChange={checked => {
+                    onDeleteBranchOnArchiveChange(checked)
+                  }}
+                >
+                  {t('worktree.deleteBranch')}
+                </Checkbox>
               ) : null}
 
               {archiveDescendantWorktrees.length > 0 ? (
@@ -318,42 +310,30 @@ export function SpaceWorktreePanels({
                         <strong>{cleanup.spaceName}</strong>
                         <span>{cleanup.branchName ?? cleanup.worktreePath}</span>
                       </div>
-                      <label className="cove-window__checkbox workspace-space-worktree__option-row">
-                        <input
-                          type="checkbox"
-                          data-testid={`space-worktree-archive-descendant-delete-worktree-${cleanup.spaceId}`}
-                          checked={cleanup.deleteWorktree}
-                          disabled={isBusy}
-                          onChange={event => {
-                            onDescendantDeleteWorktreeOnArchiveChange(
-                              cleanup.spaceId,
-                              event.target.checked,
-                            )
-                          }}
-                        />
-                        <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
-                          <strong>{t('worktree.deleteContainedWorktree')}</strong>
-                          <span>{t('worktree.deleteContainedWorktreeHelp')}</span>
-                        </span>
-                      </label>
-                      <label className="cove-window__checkbox workspace-space-worktree__option-row">
-                        <input
-                          type="checkbox"
-                          data-testid={`space-worktree-archive-descendant-delete-branch-${cleanup.spaceId}`}
-                          checked={cleanup.deleteBranch}
-                          disabled={isBusy || !cleanup.deleteWorktree}
-                          onChange={event => {
-                            onDescendantDeleteBranchOnArchiveChange(
-                              cleanup.spaceId,
-                              event.target.checked,
-                            )
-                          }}
-                        />
-                        <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
-                          <strong>{t('worktree.deleteContainedBranch')}</strong>
-                          <span>{t('worktree.deleteContainedBranchHelp')}</span>
-                        </span>
-                      </label>
+                      <Checkbox
+                        className="workspace-space-worktree__option-row"
+                        data-testid={`space-worktree-archive-descendant-delete-worktree-${cleanup.spaceId}`}
+                        checked={cleanup.deleteWorktree}
+                        disabled={isBusy}
+                        description={t('worktree.deleteContainedWorktreeHelp')}
+                        onCheckedChange={checked => {
+                          onDescendantDeleteWorktreeOnArchiveChange(cleanup.spaceId, checked)
+                        }}
+                      >
+                        {t('worktree.deleteContainedWorktree')}
+                      </Checkbox>
+                      <Checkbox
+                        className="workspace-space-worktree__option-row"
+                        data-testid={`space-worktree-archive-descendant-delete-branch-${cleanup.spaceId}`}
+                        checked={cleanup.deleteBranch}
+                        disabled={isBusy || !cleanup.deleteWorktree}
+                        description={t('worktree.deleteContainedBranchHelp')}
+                        onCheckedChange={checked => {
+                          onDescendantDeleteBranchOnArchiveChange(cleanup.spaceId, checked)
+                        }}
+                      >
+                        {t('worktree.deleteContainedBranch')}
+                      </Checkbox>
                     </div>
                   ))}
                 </div>

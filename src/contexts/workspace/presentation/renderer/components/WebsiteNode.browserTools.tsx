@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { Bookmark, Clock, Download, Home, Star } from 'lucide-react'
+import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
   BrowserBookmark,
@@ -399,16 +400,13 @@ export function WebsiteNodeBrowserTools({
           <div className="website-node__permission-detail">
             {pendingPermission.origin} · {pendingPermission.permission}
           </div>
-          <label className="website-node__permission-remember">
-            <input
-              type="checkbox"
-              checked={rememberPermission}
-              onChange={event => {
-                setRememberPermission(event.target.checked)
-              }}
-            />
+          <Checkbox
+            className="website-node__permission-remember"
+            checked={rememberPermission}
+            onCheckedChange={setRememberPermission}
+          >
             {t('websiteNode.rememberPermission')}
-          </label>
+          </Checkbox>
           <div className="website-node__permission-actions">
             <button
               type="button"

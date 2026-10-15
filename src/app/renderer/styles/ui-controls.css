@@ -263,6 +263,158 @@
   cursor: default;
 }
 
+/* Checkbox: a native input over a 24px target, drawn as a token-colored box beside its label. */
+.cove-checkbox {
+  /* The label's line height; the box centres on the first line. Callers override it. */
+  --cove-checkbox-line: var(--cove-line-height-body);
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--cove-spacing-2);
+  min-width: 0;
+  color: var(--cove-text);
+  font-size: var(--cove-font-size-body);
+  line-height: var(--cove-checkbox-line);
+  cursor: pointer;
+}
+
+.cove-checkbox__control {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--cove-control-height-xs);
+  height: var(--cove-control-height-xs);
+  margin-block: calc((var(--cove-checkbox-line) - var(--cove-control-height-xs)) / 2);
+}
+
+.cove-checkbox__input {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.cove-checkbox__box {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--cove-text-faint);
+  border-radius: var(--cove-radius-2xs);
+  background: var(--cove-field);
+  color: transparent;
+  transition:
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+.cove-checkbox__check {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+}
+
+.cove-checkbox__input:not(:disabled):hover + .cove-checkbox__box {
+  border-color: var(--cove-text-muted);
+}
+
+.cove-checkbox__input:checked + .cove-checkbox__box {
+  border-color: var(--cove-accent);
+  background: var(--cove-accent);
+  color: var(--cove-accent-foreground);
+}
+
+.cove-checkbox__input:focus-visible + .cove-checkbox__box {
+  border-color: var(--cove-focus-ring);
+  box-shadow: var(--cove-focus-shadow);
+}
+
+.cove-checkbox[data-disabled] {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.cove-checkbox__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cove-checkbox__description {
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-secondary);
+  line-height: var(--cove-line-height-secondary);
+}
+
+/* Chip: tags and filters; a selected chip carries a check as well as the accent. */
+.cove-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--cove-spacing-1);
+  min-height: var(--cove-control-height-xs);
+  padding: 0 var(--cove-spacing-2);
+  border: 1px solid var(--cove-border);
+  border-radius: var(--cove-radius-2xs);
+  background: var(--cove-field);
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-secondary);
+  font-weight: var(--cove-font-weight-medium);
+  line-height: var(--cove-line-height-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    border-color var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+.cove-chip:not(:disabled):hover {
+  border-color: var(--cove-border-strong);
+  color: var(--cove-text);
+}
+
+.cove-chip[aria-pressed='true'] {
+  border-color: var(--cove-accent);
+  background: var(--cove-control-selected);
+  color: var(--cove-accent-text);
+}
+
+.cove-chip:focus-visible {
+  outline: 1px solid var(--cove-focus-ring);
+  outline-offset: 2px;
+}
+
+.cove-chip:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.cove-chip__icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.cove-chip__icon > svg {
+  width: 12px;
+  height: 12px;
+}
+
+@media (pointer: coarse) {
+  .cove-checkbox {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .cove-chip {
+    min-height: 32px;
+  }
+}
+
 .cove-setting-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

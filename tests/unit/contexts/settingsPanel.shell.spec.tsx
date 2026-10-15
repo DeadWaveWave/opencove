@@ -172,8 +172,8 @@ describe('SettingsPanel shell', () => {
     fireEvent.click(screen.getByTestId('settings-section-nav-general'))
     expect(document.getElementById('settings-section-notifications')).not.toBeNull()
 
-    for (const checkbox of screen.getAllByRole('checkbox')) {
-      expect(checkbox).toHaveAccessibleName()
+    for (const toggle of screen.getAllByRole('switch')) {
+      expect(toggle).toHaveAccessibleName()
     }
   })
 

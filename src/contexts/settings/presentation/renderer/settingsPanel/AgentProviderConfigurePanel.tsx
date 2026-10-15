@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -127,16 +128,12 @@ export function AgentProviderConfigurePanel(props: {
             </span>
           </div>
           <div className="settings-panel__control">
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                data-testid={`settings-custom-model-enabled-${provider}`}
-                checked={customEnabled}
-                aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${t('settingsPanel.models.useCustomModel')}`}
-                onChange={event => onToggleCustomModelEnabled(provider, event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <Toggle
+              data-testid={`settings-custom-model-enabled-${provider}`}
+              checked={customEnabled}
+              label={`${AGENT_PROVIDER_LABEL[provider]} ${t('settingsPanel.models.useCustomModel')}`}
+              onCheckedChange={checked => onToggleCustomModelEnabled(provider, checked)}
+            />
           </div>
         </div>
 
@@ -233,24 +230,18 @@ export function AgentProviderConfigurePanel(props: {
             {rows.map((row, index) => (
               <div className="settings-list-item settings-agent-env-row" key={row.id}>
                 <div className="settings-list-item__left settings-agent-env-row__fields">
-                  <label className="cove-toggle">
-                    <input
-                      type="checkbox"
-                      data-testid={`settings-agent-env-enabled-${provider}-${row.id}`}
-                      checked={row.enabled}
-                      aria-label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.enabled')}`}
-                      onChange={event => {
-                        updateProviderRows(
-                          rows.map(existing =>
-                            existing.id === row.id
-                              ? { ...existing, enabled: event.target.checked }
-                              : existing,
-                          ),
-                        )
-                      }}
-                    />
-                    <span className="cove-toggle__slider"></span>
-                  </label>
+                  <Toggle
+                    data-testid={`settings-agent-env-enabled-${provider}-${row.id}`}
+                    checked={row.enabled}
+                    label={`${AGENT_PROVIDER_LABEL[provider]} ${row.key.trim() || index + 1} ${t('settingsPanel.agentEnv.enabled')}`}
+                    onCheckedChange={checked => {
+                      updateProviderRows(
+                        rows.map(existing =>
+                          existing.id === row.id ? { ...existing, enabled: checked } : existing,
+                        ),
+                      )
+                    }}
+                  />
 
                   <input
                     type="text"

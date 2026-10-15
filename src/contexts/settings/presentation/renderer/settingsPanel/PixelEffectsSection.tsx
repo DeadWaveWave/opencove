@@ -1,4 +1,5 @@
 import React from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PixelEffectSettings } from '@contexts/settings/domain/agentSettings'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
@@ -57,18 +58,14 @@ export function PixelEffectsSection({
               </span>
             </div>
             <div className="settings-panel__control">
-              <label className="cove-toggle">
-                <input
-                  id={control.id}
-                  data-testid={control.id}
-                  type="checkbox"
-                  checked={effects[control.key]}
-                  aria-label={t(`settingsPanel.appearance.pixelEffects.${control.label}`)}
-                  aria-describedby={`${control.id}-help`}
-                  onChange={event => onChange(control.key, event.target.checked)}
-                />
-                <span className="cove-toggle__slider" aria-hidden="true" />
-              </label>
+              <Toggle
+                id={control.id}
+                data-testid={control.id}
+                checked={effects[control.key]}
+                label={t(`settingsPanel.appearance.pixelEffects.${control.label}`)}
+                describedBy={`${control.id}-help`}
+                onCheckedChange={enabled => onChange(control.key, enabled)}
+              />
             </div>
           </div>
         ))}

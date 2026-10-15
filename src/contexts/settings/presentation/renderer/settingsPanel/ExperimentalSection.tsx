@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WebsiteWindowPolicy } from '@shared/contracts/dto'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
@@ -80,20 +81,16 @@ export function ExperimentalSection({
             <span>{t('settingsPanel.experimental.websiteWindowEnabledHelp')}</span>
           </div>
           <div className="settings-panel__control">
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                data-testid="settings-experimental-website-window-enabled"
-                checked={websiteWindowPolicy.enabled}
-                aria-label={t('settingsPanel.experimental.websiteWindowEnabledLabel')}
-                onChange={event =>
-                  updateWebsiteWindowPolicy({
-                    enabled: event.target.checked,
-                  })
-                }
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <Toggle
+              data-testid="settings-experimental-website-window-enabled"
+              checked={websiteWindowPolicy.enabled}
+              label={t('settingsPanel.experimental.websiteWindowEnabledLabel')}
+              onCheckedChange={checked =>
+                updateWebsiteWindowPolicy({
+                  enabled: checked,
+                })
+              }
+            />
           </div>
         </div>
 
@@ -153,17 +150,13 @@ export function ExperimentalSection({
             <span>{t('settingsPanel.experimental.websiteWindowPasteHelp')}</span>
           </div>
           <div className="settings-panel__control">
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                data-testid="settings-experimental-website-window-paste"
-                checked={websiteWindowPasteEnabled}
-                disabled={!websiteWindowPolicy.enabled}
-                aria-label={t('settingsPanel.experimental.websiteWindowPasteLabel')}
-                onChange={event => onChangeWebsiteWindowPasteEnabled(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <Toggle
+              data-testid="settings-experimental-website-window-paste"
+              checked={websiteWindowPasteEnabled}
+              disabled={!websiteWindowPolicy.enabled}
+              label={t('settingsPanel.experimental.websiteWindowPasteLabel')}
+              onCheckedChange={checked => onChangeWebsiteWindowPasteEnabled(checked)}
+            />
           </div>
         </div>
 

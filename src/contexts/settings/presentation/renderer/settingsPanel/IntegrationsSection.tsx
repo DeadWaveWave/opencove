@@ -1,4 +1,5 @@
 import React from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
@@ -21,16 +22,12 @@ export function IntegrationsSection(props: {
             <span>{t('settingsPanel.integrations.githubPullRequestsHelp')}</span>
           </div>
           <div className="settings-panel__control">
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                data-testid="settings-github-pull-requests-enabled"
-                checked={githubPullRequestsEnabled}
-                aria-label={t('settingsPanel.integrations.githubPullRequestsLabel')}
-                onChange={event => onChangeGitHubPullRequestsEnabled(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <Toggle
+              data-testid="settings-github-pull-requests-enabled"
+              checked={githubPullRequestsEnabled}
+              label={t('settingsPanel.integrations.githubPullRequestsLabel')}
+              onCheckedChange={checked => onChangeGitHubPullRequestsEnabled(checked)}
+            />
           </div>
         </div>
       </SettingsGroupBody>

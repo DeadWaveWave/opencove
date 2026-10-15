@@ -136,9 +136,11 @@
 }
 
 .workspace-space-worktree-popover .cove-window__field-row label,
-.workspace-space-worktree-popover .workspace-space-worktree__option-copy strong,
-.workspace-space-worktree-popover .workspace-space-worktree__option-copy span {
-  font-size: calc(11px * var(--cove-ui-font-scale));
+.workspace-space-worktree-popover
+  .workspace-space-worktree__option-row
+  :is(.cove-checkbox__label, .cove-checkbox__description) {
+  font-size: var(--cove-font-size-caption);
+  line-height: var(--cove-line-height-caption);
 }
 
 .workspace-space-worktree-popover .workspace-space-worktree__inline-actions {
@@ -158,6 +160,7 @@
 }
 
 .workspace-space-worktree-popover .workspace-space-worktree__option-row {
+  --cove-checkbox-line: var(--cove-line-height-caption);
   gap: 8px;
   padding: 7px 8px;
   border-radius: 6px;
@@ -354,10 +357,11 @@
 }
 
 .workspace-operation-guard__checkbox {
+  --cove-checkbox-line: var(--cove-line-height-caption);
   padding: 7px 8px;
   border-radius: 8px;
   background: color-mix(in srgb, var(--cove-field) 62%, transparent);
-  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-size: var(--cove-font-size-caption);
 }
 
 .workspace-operation-guard--danger .workspace-operation-guard__icon {

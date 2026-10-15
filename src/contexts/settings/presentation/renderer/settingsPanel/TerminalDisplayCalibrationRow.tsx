@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalDisplayReference } from '@contexts/settings/domain/terminalDisplayCalibration'
 import {
@@ -230,16 +231,12 @@ export function TerminalDisplayCalibrationRow({
           <span>{t('settingsPanel.general.terminalDisplayCalibration.autoReferenceHelp')}</span>
         </div>
         <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-terminal-display-auto-reference"
-              checked={terminalDisplayAutoReferenceEnabled}
-              aria-label={t('settingsPanel.general.terminalDisplayCalibration.autoReferenceLabel')}
-              onChange={event => onChangeTerminalDisplayAutoReferenceEnabled(event.target.checked)}
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
+          <Toggle
+            data-testid="settings-terminal-display-auto-reference"
+            checked={terminalDisplayAutoReferenceEnabled}
+            label={t('settingsPanel.general.terminalDisplayCalibration.autoReferenceLabel')}
+            onCheckedChange={checked => onChangeTerminalDisplayAutoReferenceEnabled(checked)}
+          />
         </div>
       </div>
 
@@ -249,18 +246,14 @@ export function TerminalDisplayCalibrationRow({
           <span>{t('settingsPanel.general.terminalDisplayCalibration.compensationHelp')}</span>
         </div>
         <div className="settings-panel__control">
-          <label className="cove-toggle">
-            <input
-              type="checkbox"
-              data-testid="settings-terminal-display-compensation"
-              checked={terminalDisplayCalibrationCompensationEnabled}
-              aria-label={t('settingsPanel.general.terminalDisplayCalibration.compensationLabel')}
-              onChange={event =>
-                onChangeTerminalDisplayCalibrationCompensationEnabled(event.target.checked)
-              }
-            />
-            <span className="cove-toggle__slider"></span>
-          </label>
+          <Toggle
+            data-testid="settings-terminal-display-compensation"
+            checked={terminalDisplayCalibrationCompensationEnabled}
+            label={t('settingsPanel.general.terminalDisplayCalibration.compensationLabel')}
+            onCheckedChange={checked =>
+              onChangeTerminalDisplayCalibrationCompensationEnabled(checked)
+            }
+          />
         </div>
       </div>
 

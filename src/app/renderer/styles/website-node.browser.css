@@ -212,14 +212,9 @@
 
 .website-node__permission-detail,
 .website-node__permission-remember {
+  --cove-checkbox-line: var(--cove-line-height-caption);
   color: var(--cove-text-muted);
-  font-size: calc(11px * var(--cove-ui-font-scale));
-}
-
-.website-node__permission-remember {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  font-size: var(--cove-font-size-caption);
 }
 
 .website-node__permission-actions {

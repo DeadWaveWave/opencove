@@ -1,4 +1,5 @@
 import React, { useRef } from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import {
   closestCenter,
   DndContext,
@@ -172,16 +173,12 @@ export function AgentSection({
               <span>{t('settingsPanel.agent.fullAccessHelp')}</span>
             </div>
             <div className="settings-panel__control">
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  data-testid="settings-agent-full-access"
-                  checked={agentFullAccess}
-                  aria-label={t('settingsPanel.agent.fullAccessLabel')}
-                  onChange={event => onChangeAgentFullAccess(event.target.checked)}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                data-testid="settings-agent-full-access"
+                checked={agentFullAccess}
+                label={t('settingsPanel.agent.fullAccessLabel')}
+                onCheckedChange={checked => onChangeAgentFullAccess(checked)}
+              />
             </div>
           </div>
         </SettingsGroupBody>

@@ -55,7 +55,7 @@ describe('PluginsSection', () => {
       const { enabled } = renderSettings()
       expect(screen.getByRole('heading', { name: 'Example Tool', level: 4 })).toBeVisible()
       expect(screen.getByText(source)).toBeVisible()
-      fireEvent.click(screen.getByRole('checkbox', { name: label }))
+      fireEvent.click(screen.getByRole('switch', { name: label }))
       await waitFor(() =>
         expect(registry.changeInstalledPlugin).toHaveBeenCalledWith('plugin.setEnabled', {
           pluginId: examplePlugin.id,
@@ -111,7 +111,7 @@ describe('PluginsSection', () => {
       expect(screen.queryByTestId('plugin-node-preview')).toBeNull()
       expect(screen.getByTestId('settings-plugin-reload')).toBeVisible()
 
-      fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Example Tool' }))
+      fireEvent.click(screen.getByRole('switch', { name: 'Enable Example Tool' }))
       await waitFor(() =>
         expect(registry.changeInstalledPlugin).toHaveBeenCalledWith('plugin.setEnabled', {
           pluginId: plugin.id,

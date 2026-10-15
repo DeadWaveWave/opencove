@@ -26,6 +26,7 @@ describe('UI markup ratchet', () => {
 
     expect(counts).toEqual({
       'native-button': { 'src/app/renderer/shell/Header.tsx': 1 },
+      'native-checkbox': {},
       'native-title': { 'src/app/renderer/shell/Header.tsx': 3 },
     })
   })
@@ -50,6 +51,7 @@ describe('UI markup ratchet', () => {
 
     expect(counts).toEqual({
       'native-button': { 'src/app/renderer/shell/Panel.tsx': 1 },
+      'native-checkbox': {},
       'native-title': {},
     })
   })
@@ -84,6 +86,35 @@ describe('UI markup ratchet', () => {
     })
   })
 
+  it('counts native checkboxes outside the shared components', () => {
+    const counts = countMarkupLiterals([
+      file(
+        'src/contexts/settings/presentation/renderer/settingsPanel/Section.tsx',
+        `export function Section({ enabled }: { enabled: boolean }) {
+          return (
+            <>
+              <input type="checkbox" checked={enabled} />
+              <input type="text" />
+              <input type="radio" />
+              <Toggle checked={enabled} label="Enabled" />
+              <Checkbox checked={enabled}>Remember</Checkbox>
+            </>
+          )
+        }`,
+      ),
+      file(
+        'src/app/renderer/components/ui/CheckboxRow.tsx',
+        `export function CheckboxRow() {
+          return <input type="checkbox" />
+        }`,
+      ),
+    ])
+
+    expect(counts['native-checkbox']).toEqual({
+      'src/contexts/settings/presentation/renderer/settingsPanel/Section.tsx': 1,
+    })
+  })
+
   it('fails increases, asks for a refreshed baseline after decreases and serializes sorted', () => {
     const baseline = { 'native-title': { 'b.tsx': 2, 'a.tsx': 1 } }
     expect(
@@ -96,7 +127,7 @@ describe('UI markup ratchet', () => {
     expect(decrease?.message).toContain('pnpm ui:style-ratchet')
     expect(compareMarkupRatchet(baseline, baseline)).toEqual([])
     expect(serializeMarkupRatchet({ 'native-title': { 'b.tsx': 2, 'a.tsx': 1, 'c.tsx': 0 } })).toBe(
-      `${JSON.stringify({ 'native-button': {}, 'native-title': { 'a.tsx': 1, 'b.tsx': 2 } }, null, 2)}\n`,
+      `${JSON.stringify({ 'native-button': {}, 'native-checkbox': {}, 'native-title': { 'a.tsx': 1, 'b.tsx': 2 } }, null, 2)}\n`,
     )
   })
 })

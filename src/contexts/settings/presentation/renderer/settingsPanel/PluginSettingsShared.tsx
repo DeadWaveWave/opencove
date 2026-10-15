@@ -1,4 +1,5 @@
 import type { JSX } from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
@@ -24,16 +25,13 @@ export function PluginSettingsToggle({
 }): JSX.Element {
   const { t } = useTranslation()
   return (
-    <label className="cove-toggle settings-plugin__toggle">
-      <input
-        type="checkbox"
-        data-testid={`settings-plugin-enabled-${plugin.id}`}
-        checked={enabled}
-        disabled={disabled}
-        aria-label={t('settingsPanel.plugins.enable', { name: plugin.displayName })}
-        onChange={event => onChange(event.target.checked)}
-      />
-      <span className="cove-toggle__slider" />
-    </label>
+    <Toggle
+      className="settings-plugin__toggle"
+      data-testid={`settings-plugin-enabled-${plugin.id}`}
+      checked={enabled}
+      disabled={disabled}
+      label={t('settingsPanel.plugins.enable', { name: plugin.displayName })}
+      onCheckedChange={onChange}
+    />
   )
 }

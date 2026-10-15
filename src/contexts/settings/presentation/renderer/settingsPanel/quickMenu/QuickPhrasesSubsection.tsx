@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { ChevronDown, ChevronUp, Power } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickPhrase } from '@contexts/settings/domain/agentSettings'
@@ -124,24 +125,18 @@ export function QuickPhrasesSubsection({
                 title={t('settingsPanel.quickMenu.phrases.enabled')}
               >
                 <Power className="settings-quick-menu__toggle-icon" aria-hidden="true" />
-                <label className="cove-toggle">
-                  <input
-                    type="checkbox"
-                    data-testid={`settings-quick-phrase-enabled-${phrase.id}`}
-                    checked={phrase.enabled}
-                    aria-label={`${phrase.title} ${t('settingsPanel.quickMenu.phrases.enabled')}`}
-                    onChange={event => {
-                      onChangeQuickPhrases(
-                        quickPhrases.map(existing =>
-                          existing.id === phrase.id
-                            ? { ...existing, enabled: event.target.checked }
-                            : existing,
-                        ),
-                      )
-                    }}
-                  />
-                  <span className="cove-toggle__slider"></span>
-                </label>
+                <Toggle
+                  data-testid={`settings-quick-phrase-enabled-${phrase.id}`}
+                  checked={phrase.enabled}
+                  label={`${phrase.title} ${t('settingsPanel.quickMenu.phrases.enabled')}`}
+                  onCheckedChange={checked => {
+                    onChangeQuickPhrases(
+                      quickPhrases.map(existing =>
+                        existing.id === phrase.id ? { ...existing, enabled: checked } : existing,
+                      ),
+                    )
+                  }}
+                />
               </div>
 
               <button
@@ -269,25 +264,17 @@ export function QuickPhrasesSubsection({
 
           <div className="cove-window__field-row">
             <label>{t('settingsPanel.quickMenu.phrases.enabled')}</label>
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                checked={phraseEditor.draft.enabled}
-                aria-label={t('settingsPanel.quickMenu.phrases.enabled')}
-                onChange={event => {
-                  setPhraseEditor(previous =>
-                    previous
-                      ? {
-                          ...previous,
-                          draft: { ...previous.draft, enabled: event.target.checked },
-                          hasError: false,
-                        }
-                      : null,
-                  )
-                }}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <Toggle
+              checked={phraseEditor.draft.enabled}
+              label={t('settingsPanel.quickMenu.phrases.enabled')}
+              onCheckedChange={enabled => {
+                setPhraseEditor(previous =>
+                  previous
+                    ? { ...previous, draft: { ...previous.draft, enabled }, hasError: false }
+                    : null,
+                )
+              }}
+            />
           </div>
 
           {phraseEditor.hasError ? (

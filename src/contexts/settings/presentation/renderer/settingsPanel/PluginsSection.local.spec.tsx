@@ -69,14 +69,14 @@ describe('installed plugin management', () => {
   it('uses runtime enablement, local metadata, registered assets and Markdown without editing builtin preferences', async () => {
     const { onEnabled, onContribution } = renderSettings()
     expect(screen.getByText('Local plugin')).toBeVisible()
-    expect(screen.getByRole('checkbox', { name: 'Enable Music' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Enable Music' })).toBeChecked()
     fireEvent.click(screen.getByTestId('settings-plugin-details-music-test'))
     await screen.findByRole('heading', { name: 'Your music' })
     expect(screen.getByText('Example author')).toBeVisible()
     expect(screen.getByText('/my-plugins/music')).toBeVisible()
     expect(screen.getByRole('img', { name: 'Cover' })).toHaveAttribute('src', assets['./cover.svg'])
     expect(screen.getByTestId('isolated-preview')).toBeVisible()
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Music' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Enable Music' }))
     await waitFor(() =>
       expect(registry.changeInstalledPlugin).toHaveBeenCalledWith('plugin.setEnabled', {
         pluginId: plugin.id,
@@ -93,9 +93,9 @@ describe('installed plugin management', () => {
       new Error('Backend unavailable'),
     )
     const { onEnabled } = renderSettings()
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Music' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Enable Music' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Backend unavailable')
-    expect(screen.getByRole('checkbox', { name: 'Enable Music' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Enable Music' })).toBeChecked()
     expect(onEnabled).not.toHaveBeenCalled()
   })
 

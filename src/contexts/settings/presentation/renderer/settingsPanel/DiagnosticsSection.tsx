@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { Copy, RefreshCw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -90,16 +91,12 @@ export function DiagnosticsSection({
             <span>{t('settingsPanel.diagnostics.headerMonitor.help')}</span>
           </div>
           <div className="settings-panel__control">
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                data-testid="settings-performance-monitor-header-button-enabled"
-                checked={headerButtonEnabled}
-                aria-label={t('settingsPanel.diagnostics.headerMonitor.label')}
-                onChange={event => onChangeHeaderButtonEnabled(event.target.checked)}
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <Toggle
+              data-testid="settings-performance-monitor-header-button-enabled"
+              checked={headerButtonEnabled}
+              label={t('settingsPanel.diagnostics.headerMonitor.label')}
+              onCheckedChange={checked => onChangeHeaderButtonEnabled(checked)}
+            />
           </div>
         </div>
       </SettingsGroupBody>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { Check, Copy, ExternalLink, FolderOpen, LoaderCircle } from 'lucide-react'
+import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
 import type { IssueReportKind, PrepareIssueReportResult } from '@shared/contracts/dto'
 import { captureIssueReportUiGeometry } from '@contexts/issueReport/presentation/renderer/uiGeometryDiagnostics'
@@ -242,18 +243,16 @@ export function IssueReportDialog({
 
           {isDetailsOpen ? (
             <div className="issue-report-window__details-body">
-              <label className="cove-window__checkbox">
-                <input
-                  type="checkbox"
-                  checked={includeLocalPaths}
-                  onChange={event => {
-                    setIncludeLocalPaths(event.target.checked)
-                    clearPreparedReport()
-                  }}
-                />
-                <span>{t('issueReport.includeLocalPaths')}</span>
-              </label>
-              <span className="cove-window__hint">{t('issueReport.localPathsHint')}</span>
+              <Checkbox
+                checked={includeLocalPaths}
+                description={t('issueReport.localPathsHint')}
+                onCheckedChange={checked => {
+                  setIncludeLocalPaths(checked)
+                  clearPreparedReport()
+                }}
+              >
+                {t('issueReport.includeLocalPaths')}
+              </Checkbox>
             </div>
           ) : null}
         </div>

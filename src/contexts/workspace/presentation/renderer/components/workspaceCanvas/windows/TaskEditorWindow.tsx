@@ -10,6 +10,8 @@ import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { FileText } from 'lucide-react'
 import { TaskPromptTemplatesMenu } from '@contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
+import { Checkbox } from '@app/renderer/components/ui/Checkbox'
+import { Chip } from '@app/renderer/components/ui/Chip'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { WindowHeading } from '@app/renderer/components/WindowHeading'
 
@@ -36,6 +38,7 @@ export function TaskEditorWindow({
 }: TaskEditorWindowProps): React.JSX.Element | null {
   const { t } = useTranslation()
   const titleRef = React.useRef<HTMLInputElement | null>(null)
+  const tagsLabelId = React.useId()
   const workspaceId = useAppStore(state => state.activeWorkspaceId)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
   const [promptTemplatesMenuAnchor, setPromptTemplatesMenuAnchor] = React.useState<{
@@ -215,44 +218,40 @@ export function TaskEditorWindow({
         </div>
 
         <div className="workspace-task-creator__field-row">
-          <label>{t('taskWindow.tagsPreset')}</label>
+          <label id={tagsLabelId}>{t('taskWindow.tagsPreset')}</label>
           <div
             className="workspace-task-creator__tag-options"
             data-testid="workspace-task-editor-tag-options"
+            role="group"
+            aria-labelledby={tagsLabelId}
           >
             {taskTagOptions.length > 0 ? (
-              taskTagOptions.map(tag => {
-                const checked = taskEditor.selectedTags.includes(tag)
+              taskTagOptions.map(tag => (
+                <Chip
+                  key={tag}
+                  data-testid={`workspace-task-editor-tag-option-${tag}`}
+                  selected={taskEditor.selectedTags.includes(tag)}
+                  disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+                  onSelectedChange={selected => {
+                    setTaskEditor(prev => {
+                      if (!prev) {
+                        return prev
+                      }
 
-                return (
-                  <label className="workspace-task-creator__tag-option" key={tag}>
-                    <input
-                      type="checkbox"
-                      data-testid={`workspace-task-editor-tag-option-${tag}`}
-                      checked={checked}
-                      disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-                      onChange={event => {
-                        const isChecked = event.target.checked
-                        setTaskEditor(prev => {
-                          if (!prev) {
-                            return prev
-                          }
+                      const nextSelected = selected
+                        ? [...prev.selectedTags, tag]
+                        : prev.selectedTags.filter(item => item !== tag)
 
-                          const nextSelected = isChecked
-                            ? [...prev.selectedTags, tag]
-                            : prev.selectedTags.filter(item => item !== tag)
-
-                          return {
-                            ...prev,
-                            selectedTags: normalizeTaskTagSelection(nextSelected, taskTagOptions),
-                          }
-                        })
-                      }}
-                    />
-                    <span>{tag}</span>
-                  </label>
-                )
-              })
+                      return {
+                        ...prev,
+                        selectedTags: normalizeTaskTagSelection(nextSelected, taskTagOptions),
+                      }
+                    })
+                  }}
+                >
+                  {tag}
+                </Chip>
+              ))
             ) : (
               <span className="workspace-task-creator__hint">
                 {t('taskWindow.noTaskTagsConfigured')}
@@ -263,25 +262,16 @@ export function TaskEditorWindow({
       </div>
 
       {isTaskAiNamingEnabled ? (
-        <label className="cove-window__checkbox workspace-task-creator__checkbox">
-          <input
-            type="checkbox"
-            data-testid="workspace-task-editor-auto-generate-title"
-            checked={taskEditor.autoGenerateTitle}
-            disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-            onChange={event => {
-              setTaskEditor(prev =>
-                prev
-                  ? {
-                      ...prev,
-                      autoGenerateTitle: event.target.checked,
-                    }
-                  : prev,
-              )
-            }}
-          />
-          <span>{t('taskWindow.autoGenerateWhenEmpty')}</span>
-        </label>
+        <Checkbox
+          data-testid="workspace-task-editor-auto-generate-title"
+          checked={taskEditor.autoGenerateTitle}
+          disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+          onCheckedChange={autoGenerateTitle => {
+            setTaskEditor(prev => (prev ? { ...prev, autoGenerateTitle } : prev))
+          }}
+        >
+          {t('taskWindow.autoGenerateWhenEmpty')}
+        </Checkbox>
       ) : null}
 
       {taskEditor.error ? (

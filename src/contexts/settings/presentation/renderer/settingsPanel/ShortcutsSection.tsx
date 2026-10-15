@@ -1,4 +1,5 @@
 import React from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   APP_COMMAND_IDS,
@@ -238,18 +239,12 @@ export function ShortcutsSection({
             </span>
           </div>
           <div className="settings-panel__control">
-            <label className="cove-toggle">
-              <input
-                type="checkbox"
-                data-testid="settings-disable-shortcuts-when-terminal-focused"
-                checked={disableAppShortcutsWhenTerminalFocused}
-                aria-label={t('settingsPanel.shortcuts.disableWhenTerminalFocusedLabel')}
-                onChange={event =>
-                  onChangeDisableAppShortcutsWhenTerminalFocused(event.target.checked)
-                }
-              />
-              <span className="cove-toggle__slider"></span>
-            </label>
+            <Toggle
+              data-testid="settings-disable-shortcuts-when-terminal-focused"
+              checked={disableAppShortcutsWhenTerminalFocused}
+              label={t('settingsPanel.shortcuts.disableWhenTerminalFocusedLabel')}
+              onCheckedChange={checked => onChangeDisableAppShortcutsWhenTerminalFocused(checked)}
+            />
           </div>
         </div>
 

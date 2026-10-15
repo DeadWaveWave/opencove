@@ -14,6 +14,8 @@ import {
   Trash2,
 } from 'lucide-react'
 import { Button, type ButtonSize, type ButtonVariant } from '../components/ui/Button'
+import { Checkbox } from '../components/ui/Checkbox'
+import { Chip } from '../components/ui/Chip'
 import { Dialog } from '../components/ui/Dialog'
 import {
   IconButton,
@@ -81,6 +83,8 @@ export default function UiGallery(): React.JSX.Element {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [menuPoint, setMenuPoint] = useState<{ x: number; y: number } | null>(null)
   const [snapping, setSnapping] = useState(true)
+  const [options, setOptions] = useState({ worktree: true, branch: false })
+  const [tags, setTags] = useState<string[]>(['bug'])
   const dialogTrigger = useRef<HTMLButtonElement | null>(null)
   const popoverTrigger = useRef<HTMLButtonElement | null>(null)
   const menuTrigger = useRef<HTMLButtonElement | null>(null)
@@ -158,6 +162,46 @@ export default function UiGallery(): React.JSX.Element {
               <Toggle label="Managed preference" checked disabled onCheckedChange={() => {}} />
             }
           />
+        </div>
+      </Section>
+
+      <Section id="checkbox" title="Checkbox and Chip">
+        <div className="ui-gallery__rows">
+          <Checkbox
+            checked={options.worktree}
+            description="Removes the folder; the branch stays unless you delete it too."
+            onCheckedChange={worktree => setOptions(current => ({ ...current, worktree }))}
+          >
+            Delete the worktree
+          </Checkbox>
+          <Checkbox
+            checked={options.branch}
+            onCheckedChange={branch => setOptions(current => ({ ...current, branch }))}
+          >
+            Delete the branch
+          </Checkbox>
+          <Checkbox checked disabled onCheckedChange={() => {}}>
+            Managed by your organization
+          </Checkbox>
+        </div>
+        <div className="ui-gallery__row" role="group" aria-label="Tags">
+          {['bug', 'feature', 'docs'].map(tag => (
+            <Chip
+              key={tag}
+              selected={tags.includes(tag)}
+              onSelectedChange={selected =>
+                setTags(current =>
+                  selected ? [...current, tag] : current.filter(item => item !== tag),
+                )
+              }
+            >
+              {tag}
+            </Chip>
+          ))}
+          <Chip disabled selected={false}>
+            archived
+          </Chip>
+          <Chip icon={<Folder aria-hidden="true" />}>src</Chip>
         </div>
       </Section>
 

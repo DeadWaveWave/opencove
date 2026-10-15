@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { AnchoredOperationPopover } from '@app/renderer/components/AnchoredOperationPopover'
+import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { SpaceWorktreeMismatchDropWarningState } from '../types'
@@ -61,19 +62,14 @@ export function SpaceWorktreeMismatchDropWarningWindow({
           })}
         </p>
 
-        <label className="cove-window__checkbox workspace-operation-guard__checkbox">
-          <input
-            type="checkbox"
-            data-testid="space-worktree-mismatch-drop-warning-dont-show-again"
-            checked={dontShowAgain}
-            onChange={event => {
-              setDontShowAgain(event.target.checked)
-            }}
-          />
-          <span>
-            <strong>{t('spaceDropGuard.dontShowAgain')}</strong>
-          </span>
-        </label>
+        <Checkbox
+          className="workspace-operation-guard__checkbox"
+          data-testid="space-worktree-mismatch-drop-warning-dont-show-again"
+          checked={dontShowAgain}
+          onCheckedChange={setDontShowAgain}
+        >
+          <strong>{t('spaceDropGuard.dontShowAgain')}</strong>
+        </Checkbox>
 
         <div className="workspace-operation-guard__actions">
           <button

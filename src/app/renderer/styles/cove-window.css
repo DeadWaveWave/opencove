@@ -163,6 +163,12 @@
   outline-offset: 2px;
 }
 
+.workspace-task-creator__tag-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cove-spacing-1);
+}
+
 .cove-window__field-row label,
 .workspace-task-creator__field-row label {
   font-size: calc(12px * var(--cove-ui-font-scale));

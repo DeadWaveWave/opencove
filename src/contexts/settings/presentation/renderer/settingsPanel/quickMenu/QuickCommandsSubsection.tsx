@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { ChevronDown, ChevronUp, Globe, Pin, Power, Terminal } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickCommand } from '@contexts/settings/domain/agentSettings'
@@ -192,24 +193,18 @@ export function QuickCommandsSubsection({
                 title={t('settingsPanel.quickMenu.commands.enabled')}
               >
                 <Power className="settings-quick-menu__toggle-icon" aria-hidden="true" />
-                <label className="cove-toggle">
-                  <input
-                    type="checkbox"
-                    data-testid={`settings-quick-command-enabled-${command.id}`}
-                    checked={command.enabled}
-                    aria-label={`${command.title} ${t('settingsPanel.quickMenu.commands.enabled')}`}
-                    onChange={event => {
-                      onChangeQuickCommands(
-                        quickCommands.map(existing =>
-                          existing.id === command.id
-                            ? { ...existing, enabled: event.target.checked }
-                            : existing,
-                        ),
-                      )
-                    }}
-                  />
-                  <span className="cove-toggle__slider"></span>
-                </label>
+                <Toggle
+                  data-testid={`settings-quick-command-enabled-${command.id}`}
+                  checked={command.enabled}
+                  label={`${command.title} ${t('settingsPanel.quickMenu.commands.enabled')}`}
+                  onCheckedChange={checked => {
+                    onChangeQuickCommands(
+                      quickCommands.map(existing =>
+                        existing.id === command.id ? { ...existing, enabled: checked } : existing,
+                      ),
+                    )
+                  }}
+                />
               </div>
 
               <div
@@ -218,24 +213,18 @@ export function QuickCommandsSubsection({
                 title={t('settingsPanel.quickMenu.commands.pinned')}
               >
                 <Pin className="settings-quick-menu__toggle-icon" aria-hidden="true" />
-                <label className="cove-toggle">
-                  <input
-                    type="checkbox"
-                    data-testid={`settings-quick-command-pinned-${command.id}`}
-                    checked={command.pinned}
-                    aria-label={`${command.title} ${t('settingsPanel.quickMenu.commands.pinned')}`}
-                    onChange={event => {
-                      onChangeQuickCommands(
-                        quickCommands.map(existing =>
-                          existing.id === command.id
-                            ? { ...existing, pinned: event.target.checked }
-                            : existing,
-                        ),
-                      )
-                    }}
-                  />
-                  <span className="cove-toggle__slider"></span>
-                </label>
+                <Toggle
+                  data-testid={`settings-quick-command-pinned-${command.id}`}
+                  checked={command.pinned}
+                  label={`${command.title} ${t('settingsPanel.quickMenu.commands.pinned')}`}
+                  onCheckedChange={checked => {
+                    onChangeQuickCommands(
+                      quickCommands.map(existing =>
+                        existing.id === command.id ? { ...existing, pinned: checked } : existing,
+                      ),
+                    )
+                  }}
+                />
               </div>
 
               <button
@@ -413,25 +402,18 @@ export function QuickCommandsSubsection({
               <label htmlFor={enabledToggleId}>
                 {t('settingsPanel.quickMenu.commands.enabled')}
               </label>
-              <label className="cove-toggle">
-                <input
-                  id={enabledToggleId}
-                  type="checkbox"
-                  checked={commandEditor.draft.enabled}
-                  onChange={event => {
-                    setCommandEditor(previous =>
-                      previous
-                        ? {
-                            ...previous,
-                            draft: { ...previous.draft, enabled: event.target.checked },
-                            hasError: false,
-                          }
-                        : null,
-                    )
-                  }}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                id={enabledToggleId}
+                checked={commandEditor.draft.enabled}
+                label={t('settingsPanel.quickMenu.commands.enabled')}
+                onCheckedChange={enabled => {
+                  setCommandEditor(previous =>
+                    previous
+                      ? { ...previous, draft: { ...previous.draft, enabled }, hasError: false }
+                      : null,
+                  )
+                }}
+              />
             </div>
             <span className="cove-window__hint">
               {t('settingsPanel.quickMenu.commands.enabledHelp')}
@@ -441,25 +423,18 @@ export function QuickCommandsSubsection({
           <div className="cove-window__field-row">
             <div className="cove-window__label-row">
               <label htmlFor={pinnedToggleId}>{t('settingsPanel.quickMenu.commands.pinned')}</label>
-              <label className="cove-toggle">
-                <input
-                  id={pinnedToggleId}
-                  type="checkbox"
-                  checked={commandEditor.draft.pinned}
-                  onChange={event => {
-                    setCommandEditor(previous =>
-                      previous
-                        ? {
-                            ...previous,
-                            draft: { ...previous.draft, pinned: event.target.checked },
-                            hasError: false,
-                          }
-                        : null,
-                    )
-                  }}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <Toggle
+                id={pinnedToggleId}
+                checked={commandEditor.draft.pinned}
+                label={t('settingsPanel.quickMenu.commands.pinned')}
+                onCheckedChange={pinned => {
+                  setCommandEditor(previous =>
+                    previous
+                      ? { ...previous, draft: { ...previous.draft, pinned }, hasError: false }
+                      : null,
+                  )
+                }}
+              />
             </div>
             <span className="cove-window__hint">
               {t('settingsPanel.quickMenu.commands.pinnedHelp')}
