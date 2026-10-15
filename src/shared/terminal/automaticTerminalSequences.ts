@@ -232,3 +232,42 @@ export function stripAutomaticTerminalQueriesFromOutput(data: string): {
     replies,
   }
 }
+
+// Colour queries a program sends to learn the terminal's palette (OSC 4, 10–19 with `?`).
+const OSC_COLOR_QUERY_PATTERN = /^(?:4;\d+|1\d|[5-9]);\?$/u
+
+/**
+ * Removes queries from output that is being replayed into a new xterm instance. The program
+ * already received its answers from the terminal that first showed this output; answering again
+ * would type the reply into whatever runs now.
+ */
+export function stripTerminalQuerySequences(data: string): string {
+  if (!data.includes('\u001b')) {
+    return data
+  }
+
+  const queryPatterns = AUTOMATIC_TERMINAL_QUERY_SEQUENCES.map(sequence => sequence.pattern)
+  let result = ''
+  let cursor = 0
+  while (cursor < data.length) {
+    const escapeIndex = data.indexOf('\u001b', cursor)
+    if (escapeIndex === -1) {
+      result += data.slice(cursor)
+      break
+    }
+    result += data.slice(cursor, escapeIndex)
+    const csi = readCsiSequence(data, escapeIndex)
+    if (csi && queryPatterns.some(pattern => pattern.test(csi.payload))) {
+      cursor = csi.endIndex + 1
+      continue
+    }
+    const osc = readOscSequence(data, escapeIndex)
+    if (osc && OSC_COLOR_QUERY_PATTERN.test(osc.payload)) {
+      cursor = osc.endIndex + 1
+      continue
+    }
+    result += '\u001b'
+    cursor = escapeIndex + 1
+  }
+  return result
+}

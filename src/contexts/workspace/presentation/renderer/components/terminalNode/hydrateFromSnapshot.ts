@@ -11,6 +11,7 @@ import {
   resizeTerminalPreservingScrollState,
   type TerminalScrollStateSnapshot,
 } from './effectiveDevicePixelRatio'
+import { stripTerminalQuerySequences } from '@shared/terminal/automaticTerminalSequences'
 import { writeTerminalAsync } from './writeTerminal'
 import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement'
 import {
@@ -25,7 +26,8 @@ const PRESENTATION_SNAPSHOT_ATTACH_TIMEOUT_MS = 1_500
 async function writeHydrationSnapshotAsync(terminal: Terminal, data: string): Promise<void> {
   const suspendedCwdObservation = suspendTerminalCwdObservation(terminal)
   try {
-    await writeTerminalAsync(terminal, data)
+    // Replayed history: its queries were answered when it first ran.
+    await writeTerminalAsync(terminal, stripTerminalQuerySequences(data))
   } finally {
     suspendedCwdObservation.dispose()
   }
