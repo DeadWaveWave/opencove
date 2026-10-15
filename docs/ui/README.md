@@ -70,7 +70,8 @@
   `pnpm ui:style-ratchet` 锁定新基线。基线由该命令生成，不手改。
 - 同一命令也统计被共享组件取代的原生标记（`scripts/ui-markup-ratchet.json`，同样只减不增）：
   原生元素上的 `title` 属性改用 `Tooltip`（`iframe` 的 `title` 是可访问名称，不计入）；
-  共享组件目录之外的原生 `<button>` 改用 `Button`、`IconButton` 或 `MenuItem`。
+  共享组件目录之外的原生 `<button>` 改用 `Button`、`IconButton` 或 `MenuItem`；
+  原生 checkbox 改用 `Toggle`、`Checkbox` 或 `Chip`。
   每条规则随它的替代组件一起加入。
 
 ### 2.3 CSS 写法约定
@@ -142,6 +143,10 @@
   快捷键三列，末尾是子菜单箭头或勾。行高跟随主题的 `menuRowHeight`，触屏与窄屏不低于 44px。
   快捷键用 `describeKeyChord` 从生效的按键设置生成，显示格式与全应用一致（⌘T、Ctrl T），
   对读屏通过 `aria-keyshortcuts` 提供，不计入名称；未分配快捷键的命令不显示。
+- 立即生效的开关用 `Toggle`（`role="switch"`，例如设置项）；要和其他选项一起确认的选择用
+  `Checkbox`（例如归档前勾选「删除 worktree」）；标签和筛选用 `Chip`。`Checkbox` 的名称只取标签，
+  补充说明放在 `description`，通过 `aria-describedby` 提供；方框对齐标签第一行，行高不同时设置
+  `--cove-checkbox-line`。可选的 `Chip` 是切换按钮（`aria-pressed`），选中时同时显示勾，不只靠颜色。
 - 菜单项只在声明了 `role="menu"` 的菜单表面（`ViewportMenuSurface`，窄屏的底部面板同样适用）里
   取得 `menuitem` / `menuitemcheckbox` 角色，其他地方仍是普通按钮。所以一个菜单的所有行都换成
   菜单项之后，才给它加 `role="menu"` 与名称。键盘方向键跳过禁用项。
