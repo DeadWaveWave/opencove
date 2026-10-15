@@ -106,16 +106,20 @@ test('acrylic surfaces blur and turn solid when the system reduces transparency'
         return { filter: style.backdropFilter, alpha }
       })
 
+    // Emulate both values: CI's macOS virtual machines run with Reduce Transparency switched on.
+    const session = await page.context().newCDPSession(page)
+    const emulateTransparency = (value: 'no-preference' | 'reduce') =>
+      session.send('Emulation.setEmulatedMedia', {
+        features: [{ name: 'prefers-reduced-transparency', value }],
+      })
+
+    await emulateTransparency('no-preference')
     await page.getByTestId('ui-gallery-open-popover').click()
     await expect(page.getByTestId('ui-gallery-popover')).toHaveAttribute('data-material', 'acrylic')
-    const acrylic = await material()
-    expect(acrylic.filter).toContain('blur')
-    expect(acrylic.alpha).toBeLessThan(1)
+    await expect.poll(async () => (await material()).filter).toContain('blur')
+    expect((await material()).alpha).toBeLessThan(1)
 
-    const session = await page.context().newCDPSession(page)
-    await session.send('Emulation.setEmulatedMedia', {
-      features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }],
-    })
+    await emulateTransparency('reduce')
     await expect.poll(material).toEqual({ filter: 'none', alpha: 1 })
   } finally {
     await electronApp.close()
