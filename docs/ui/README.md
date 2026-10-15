@@ -160,6 +160,10 @@
 - 带标签的文本输入用 `TextField` / `TextAreaField`：标签通过 `htmlFor` 命名输入框，补充说明放在
   `description`，校验错误放在 `error`（同时设置 `aria-invalid`、`aria-errormessage` 并加入描述）。
   标签行右侧的操作（例如提示词模板按钮）放在 `labelAccessory`。输入框本身仍是 `.cove-field`。
+- 窗口标题栏右端固定是 [本类操作][折叠][关闭]。折叠和关闭用 `WindowCollapseButton` 与
+  `WindowCloseButton`（`workspace/.../components/shared/`），都是 24px 的 `IconButton`，名称即提示文字。
+  关闭按钮按实际效果命名（关闭、删除便签、删除任务），关闭前的确认仍由各窗口自己的 `onClose` 负责；
+  两个按钮都在按下时阻止冒泡，不会开始拖动窗口。
 - 菜单项只在声明了 `role="menu"` 的菜单表面（`ViewportMenuSurface`，窄屏的底部面板同样适用）里
   取得 `menuitem` / `menuitemcheckbox` 角色，其他地方仍是普通按钮。所以一个菜单的所有行都换成
   菜单项之后，才给它加 `role="menu"` 与名称。键盘方向键跳过禁用项。
