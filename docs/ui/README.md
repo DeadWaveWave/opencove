@@ -105,6 +105,13 @@
 - Surface 必须有“可解释层级”：背景（app） < 面板/窗口（surface） < 强化面板（surface-strong）
 - Border 默认使用 `--cove-border-subtle`，hover/active 才提高对比。
 - Shadow 必须服务于层级，不得用极黑/极硬的阴影压住内容。
+- 材质只走 `Surface`（`components/ui/Surface.tsx`）或 `surfaceProps()`：实色（对话框与长时间阅读）、
+  玻璃（画布上的窗口，预合成、不模糊）、亚克力（菜单、浮层等短暂出现的表面：着色、真模糊、颗粒）。
+  使用方只管边框、圆角和阴影，背景与 `backdrop-filter` 归材质。不要再手写 `backdrop-filter`。
+- 亚克力的底色由生成器给出（`--cove-acrylic-surface`），对比度矩阵检查它压在纯黑、纯白和像素墙上的
+  最坏情况；手写主题沿用自己的 `--cove-menu-surface`。系统开启「减少透明度」时，玻璃和亚克力改为
+  `--cove-window-surface` 实色并去掉模糊（`tests/unit/app/uiSurfaceStylesheet.spec.ts`、
+  `ui-gallery.probes.spec.ts` 用 CDP 模拟验证）。
 
 ### 3.2 文本系统
 

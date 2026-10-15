@@ -165,7 +165,8 @@ parts are the supported skin contract:
 | `space`, `space-title` | Space frame and caption; frame pseudo-elements draw the border/corners |
 | `compact-window`, `compact-base`, `compact-pixels`, `compact-title` | Compact desktop icon presentation |
 | `sidebar`, `sidebar-project`, `sidebar-space`, `sidebar-agent` | Navigation surfaces |
-| `menu`, `popover` | Floating interaction surfaces |
+| `menu`, `popover` | Floating interaction surfaces; menus carry `data-material="acrylic"` |
+| `surface` | A shared material panel; `data-material` is `solid`, `glass` or `acrylic` |
 | `menu-item` | Menu rows; `data-state` is `checked` or `unchecked` on checkbox rows and `data-tone` is `danger` on destructive rows |
 | `button`, `icon-button`, `toggle`, `checkbox`, `chip`, `segmented-control`, `text-field` | Shared controls; a selectable chip and each segment have `data-state` `on` or `off` |
 | `status-pill` | Agent status; `data-tone` is `working`, `waiting`, `neutral` or `failed` |
