@@ -58,6 +58,7 @@ type TerminalRenderIntrospection = {
       baseY?: unknown
       getLine?: (line: number) =>
         | {
+            isWrapped?: boolean
             translateToString?: (trimRight?: boolean) => string
           }
         | undefined
@@ -196,20 +197,33 @@ export function readTerminalBufferTextForTest(
     return null
   }
 
-  const readLine = (line: number): string | null => {
+  const readLine = (line: number, trimRight = true): string | null => {
     const bufferLine = buffer.getLine?.(line)
     const translateToString = bufferLine?.translateToString
-    return typeof translateToString === 'function' ? translateToString.call(bufferLine, true) : null
+    return typeof translateToString === 'function'
+      ? translateToString.call(bufferLine, trimRight)
+      : null
   }
   const viewportLines = Array.from({ length: viewportLineCount }, (_, index) =>
     readLine(viewportY + index),
   )
+  // Search logical lines, so a marker that a soft wrap splits across rows is still found;
+  // it is reported by the row where it starts.
   let markerAbsoluteLine: number | null = null
-  for (let line = 0; line < bufferLength; line += 1) {
-    if (readLine(line)?.includes(marker)) {
-      markerAbsoluteLine = line
-      break
+  for (let start = 0; start < bufferLength && markerAbsoluteLine === null; ) {
+    const rows = [readLine(start, false) ?? '']
+    while (start + rows.length < bufferLength && buffer.getLine?.(start + rows.length)?.isWrapped) {
+      rows.push(readLine(start + rows.length, false) ?? '')
     }
+    const offset = rows.join('').indexOf(marker)
+    if (offset >= 0) {
+      let row = 0
+      for (let consumed = rows[0]!.length; consumed <= offset; consumed += rows[row]!.length) {
+        row += 1
+      }
+      markerAbsoluteLine = start + row
+    }
+    start += rows.length
   }
 
   return {
