@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Windows: terminal, agent, task, note, document, folder, role and plugin windows share one header layout: the kind icon on a small tile, 13px titles, status after the title and evenly spaced controls; the role header is no longer taller than the others. (#451)
 - Website windows: the header shows the page title like other windows, and back, forward, reload and the address bar join the browser toolbar below it, where the address stays readable in narrow windows. (#452)
 - Windows: content sits on an inset reading plate below the header, with a fine edge; the document editor reads directly on it. (#453)
+- Pixel theme: window headers no longer use a live background blur; windows use one tinted frame around the reading plate, which saves GPU work with many windows open. (#454)
 
 ### 🐛 Fixed
 
