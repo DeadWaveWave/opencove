@@ -16,8 +16,9 @@ import { resolveBrowserNavigationTarget } from '@contexts/settings/domain/browse
 import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { NodeKindIcon } from './shared/NodeKindIcon'
-import { WindowCollapseButton, useWindowPresentationHidden } from './shared/WindowCollapseButton'
-import { WindowCloseButton } from './shared/WindowCloseButton'
+import { useWindowPresentationHidden } from './shared/WindowCollapseButton'
+import { WindowHeader } from './shared/WindowHeader'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { useWebsiteWindowStore } from '../store/useWebsiteWindowStore'
@@ -235,183 +236,50 @@ export function WebsiteNode({
       }}
     >
       <div className="website-node__surface">
-        <div
+        <WindowHeader
           className="website-node__header"
-          data-cove-part="window-header"
-          data-node-drag-handle="true"
-        >
-          {labelColor ? (
-            <span
-              className="cove-label-dot cove-label-dot--solid"
-              data-cove-label-color={labelColor}
-              aria-hidden="true"
-            />
-          ) : null}
-
-          <div className="website-node__nav">
-            <button
-              type="button"
-              className="website-node__icon-button nodrag"
-              onClick={event => {
-                event.stopPropagation()
-                void window.opencoveApi?.websiteWindow?.goBack?.({ nodeId }).catch(() => undefined)
-              }}
-              disabled={!canGoBack}
-              aria-label={t('websiteNode.back')}
-              title={t('websiteNode.back')}
-            >
-              <ArrowLeft aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              className="website-node__icon-button nodrag"
-              onClick={event => {
-                event.stopPropagation()
-                void window.opencoveApi?.websiteWindow
-                  ?.goForward?.({ nodeId })
-                  .catch(() => undefined)
-              }}
-              disabled={!canGoForward}
-              aria-label={t('websiteNode.forward')}
-              title={t('websiteNode.forward')}
-            >
-              <ArrowRight aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              className="website-node__icon-button nodrag"
-              onClick={event => {
-                event.stopPropagation()
-                const api = window.opencoveApi?.websiteWindow
-                if (isLoading) {
-                  void api?.stop?.({ nodeId }).catch(() => undefined)
-                  return
-                }
-
-                void api?.reload?.({ nodeId }).catch(() => undefined)
-              }}
-              aria-label={isLoading ? t('websiteNode.stop') : t('websiteNode.reload')}
-              title={isLoading ? t('websiteNode.stop') : t('websiteNode.reload')}
-            >
-              {isLoading ? <Square aria-hidden="true" /> : <RotateCw aria-hidden="true" />}
-            </button>
-          </div>
-
-          <form
-            className="website-node__address nodrag"
-            onSubmit={event => {
-              event.preventDefault()
-              event.stopPropagation()
-              commitUrl()
-            }}
-          >
-            <NodeKindIcon kind="website" className="website-node__address-icon" />
-            <input
-              className="website-node__address-input"
-              value={draftUrl}
-              onChange={event => {
-                setDraftUrl(event.target.value)
-              }}
-              placeholder={t('websiteNode.urlPlaceholder')}
-              aria-label={t('websiteNode.urlPlaceholder')}
-              onFocus={() => {
-                onInteractionStart?.({ normalizeViewport: false, selectNode: false })
-              }}
-            />
-            {isLoading ? (
-              <LoaderCircle className="website-node__spinner" aria-hidden="true" />
-            ) : null}
-          </form>
-
-          <div className="website-node__actions">
-            {lifecycle === 'cold' ? (
+          labelColor={labelColor}
+          icon={<NodeKindIcon kind="website" />}
+          title={
+            <span className="website-node__title" data-cove-part="window-title">
+              {displayTitle}
+            </span>
+          }
+          status={
+            lifecycle === 'cold' ? (
               <span className="website-node__status" aria-label="cold">
                 zzz
               </span>
-            ) : null}
-
-            <button
-              type="button"
-              className="website-node__icon-button nodrag"
-              onClick={event => {
-                event.stopPropagation()
-                togglePinned()
-              }}
-              aria-label={pinned ? t('websiteNode.unpin') : t('websiteNode.pin')}
-              title={pinned ? t('websiteNode.unpin') : t('websiteNode.pin')}
-            >
-              {pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
-            </button>
-
-            <button
-              type="button"
-              className="website-node__icon-button nodrag"
-              onClick={event => {
-                event.stopPropagation()
-                toggleFullscreen()
-              }}
-              aria-label={
-                isFullscreen ? t('websiteNode.exitFullscreen') : t('websiteNode.enterFullscreen')
-              }
-              title={
-                isFullscreen ? t('websiteNode.exitFullscreen') : t('websiteNode.enterFullscreen')
-              }
-            >
-              {isFullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
-            </button>
-
-            <select
-              className="website-node__session nodrag"
-              value={sessionMode}
-              aria-label={t('websiteNode.sessionMode')}
-              title={t('websiteNode.sessionMode')}
-              onChange={event => {
-                const nextMode = event.target.value as WebsiteWindowSessionMode
-                handleSessionChange(nextMode, nextMode === 'profile' ? profileId : null)
-              }}
-            >
-              <option value="shared">{t('websiteNode.sessionShared')}</option>
-              <option value="incognito">{t('websiteNode.sessionIncognito')}</option>
-              <option value="profile">{t('websiteNode.sessionProfile')}</option>
-            </select>
-
-            {sessionMode === 'profile' ? (
-              <input
-                className="website-node__profile nodrag"
-                value={draftProfileId}
-                placeholder={t('websiteNode.profilePlaceholder')}
-                aria-label={t('websiteNode.profilePlaceholder')}
-                onChange={event => {
-                  setDraftProfileId(event.target.value)
-                }}
-                onKeyDown={event => {
-                  if (event.key !== 'Enter') {
-                    return
-                  }
-
-                  event.preventDefault()
+            ) : null
+          }
+          actions={
+            <>
+              <IconButton
+                size="xs"
+                label={pinned ? t('websiteNode.unpin') : t('websiteNode.pin')}
+                onClick={event => {
                   event.stopPropagation()
-                  commitProfileId()
+                  togglePinned()
                 }}
-                onBlur={() => {
-                  commitProfileId()
+              >
+                {pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+              </IconButton>
+              <IconButton
+                size="xs"
+                label={
+                  isFullscreen ? t('websiteNode.exitFullscreen') : t('websiteNode.enterFullscreen')
+                }
+                onClick={event => {
+                  event.stopPropagation()
+                  toggleFullscreen()
                 }}
-                onFocus={() => {
-                  onInteractionStart?.({ normalizeViewport: false, selectNode: false })
-                }}
-              />
-            ) : null}
-
-            <WindowCollapseButton onClose={onClose} />
-            <WindowCloseButton
-              label={t('websiteNode.close')}
-              className="website-node__close"
-              onClose={onClose}
-            />
-          </div>
-        </div>
+              >
+                {isFullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
+              </IconButton>
+            </>
+          }
+          close={{ label: t('websiteNode.close'), className: 'website-node__close', onClose }}
+        />
 
         <WebsiteNodeBrowserTools
           nodeId={nodeId}
@@ -436,6 +304,130 @@ export function WebsiteNode({
           onInteractionStart={() => {
             onInteractionStart?.({ normalizeViewport: false, selectNode: false })
           }}
+          leading={
+            <>
+              <button
+                type="button"
+                className="website-node__tool-button"
+                onClick={event => {
+                  event.stopPropagation()
+                  void window.opencoveApi?.websiteWindow
+                    ?.goBack?.({ nodeId })
+                    .catch(() => undefined)
+                }}
+                disabled={!canGoBack}
+                aria-label={t('websiteNode.back')}
+                title={t('websiteNode.back')}
+              >
+                <ArrowLeft aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                className="website-node__tool-button"
+                onClick={event => {
+                  event.stopPropagation()
+                  void window.opencoveApi?.websiteWindow
+                    ?.goForward?.({ nodeId })
+                    .catch(() => undefined)
+                }}
+                disabled={!canGoForward}
+                aria-label={t('websiteNode.forward')}
+                title={t('websiteNode.forward')}
+              >
+                <ArrowRight aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                className="website-node__tool-button"
+                onClick={event => {
+                  event.stopPropagation()
+                  const api = window.opencoveApi?.websiteWindow
+                  if (isLoading) {
+                    void api?.stop?.({ nodeId }).catch(() => undefined)
+                    return
+                  }
+
+                  void api?.reload?.({ nodeId }).catch(() => undefined)
+                }}
+                aria-label={isLoading ? t('websiteNode.stop') : t('websiteNode.reload')}
+                title={isLoading ? t('websiteNode.stop') : t('websiteNode.reload')}
+              >
+                {isLoading ? <Square aria-hidden="true" /> : <RotateCw aria-hidden="true" />}
+              </button>
+              <form
+                className="website-node__address nodrag"
+                onSubmit={event => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  commitUrl()
+                }}
+              >
+                <NodeKindIcon kind="website" className="website-node__address-icon" />
+                <input
+                  className="website-node__address-input"
+                  value={draftUrl}
+                  onChange={event => {
+                    setDraftUrl(event.target.value)
+                  }}
+                  placeholder={t('websiteNode.urlPlaceholder')}
+                  aria-label={t('websiteNode.urlPlaceholder')}
+                  onFocus={() => {
+                    onInteractionStart?.({ normalizeViewport: false, selectNode: false })
+                  }}
+                />
+                {isLoading ? (
+                  <LoaderCircle className="website-node__spinner" aria-hidden="true" />
+                ) : null}
+              </form>
+            </>
+          }
+          trailing={
+            <>
+              <select
+                className="website-node__session nodrag"
+                value={sessionMode}
+                aria-label={t('websiteNode.sessionMode')}
+                title={t('websiteNode.sessionMode')}
+                onChange={event => {
+                  const nextMode = event.target.value as WebsiteWindowSessionMode
+                  handleSessionChange(nextMode, nextMode === 'profile' ? profileId : null)
+                }}
+              >
+                <option value="shared">{t('websiteNode.sessionShared')}</option>
+                <option value="incognito">{t('websiteNode.sessionIncognito')}</option>
+                <option value="profile">{t('websiteNode.sessionProfile')}</option>
+              </select>
+
+              {sessionMode === 'profile' ? (
+                <input
+                  className="website-node__profile nodrag"
+                  value={draftProfileId}
+                  placeholder={t('websiteNode.profilePlaceholder')}
+                  aria-label={t('websiteNode.profilePlaceholder')}
+                  onChange={event => {
+                    setDraftProfileId(event.target.value)
+                  }}
+                  onKeyDown={event => {
+                    if (event.key !== 'Enter') {
+                      return
+                    }
+
+                    event.preventDefault()
+                    event.stopPropagation()
+                    commitProfileId()
+                  }}
+                  onBlur={() => {
+                    commitProfileId()
+                  }}
+                  onFocus={() => {
+                    onInteractionStart?.({ normalizeViewport: false, selectNode: false })
+                  }}
+                />
+              ) : null}
+            </>
+          }
         />
 
         <WebsiteNodeBody

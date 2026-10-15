@@ -81,6 +81,16 @@ test.describe('Workspace Canvas - Website Window', () => {
       await expect(viewport).toHaveCSS('border-top-left-radius', '0px')
       await expect(viewport).toHaveCSS('border-top-right-radius', '0px')
 
+      // The header is the shared window header; navigation and the address live in the toolbar.
+      const header = websiteNode.locator('[data-cove-part="window-header"]')
+      const toolbar = websiteNode.locator('.website-node__browser-tools')
+      await expect(header.locator('[data-cove-part="window-title"]')).not.toBeEmpty()
+      await expect(header.locator('[data-cove-part="kind-tile"]')).toHaveCount(1)
+      await expect(header.getByRole('textbox')).toHaveCount(0)
+      await expect(toolbar.getByRole('button', { name: 'Back', exact: true })).toBeVisible()
+      await expect(toolbar.getByRole('textbox', { name: 'Enter URL' })).toBeVisible()
+      await expect(toolbar.getByRole('combobox')).toBeVisible()
+
       await enableWebsiteWindowPolicy(window)
       await websiteNode.click({ position: { x: 320, y: 180 }, noWaitAfter: true })
 

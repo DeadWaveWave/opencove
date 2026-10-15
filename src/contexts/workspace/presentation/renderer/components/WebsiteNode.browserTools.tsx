@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { Bookmark, Clock, Download, Home, Star } from 'lucide-react'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
@@ -38,6 +38,10 @@ export interface WebsiteNodeBrowserToolsProps {
   permissionRequests: WebsiteWindowPermissionRequestEvent[]
   onNavigate: (url: string) => void
   onInteractionStart?: () => void
+  /** Navigation and the address field, at the start of the toolbar row. */
+  leading?: ReactNode
+  /** Session controls, at the end of the toolbar row. */
+  trailing?: ReactNode
 }
 
 function resolveScope(
@@ -75,6 +79,8 @@ export function WebsiteNodeBrowserTools({
   permissionRequests,
   onNavigate,
   onInteractionStart,
+  leading,
+  trailing,
 }: WebsiteNodeBrowserToolsProps): JSX.Element {
   const { t } = useTranslation()
   const browserApi = window.opencoveApi?.browserProfile ?? null
@@ -253,6 +259,7 @@ export function WebsiteNodeBrowserTools({
   return (
     <>
       <div className="website-node__browser-tools nodrag">
+        {leading}
         <button
           type="button"
           className="website-node__tool-button"
@@ -357,6 +364,7 @@ export function WebsiteNodeBrowserTools({
             </button>
           </form>
         ) : null}
+        {trailing}
       </div>
 
       {activePanel ? (

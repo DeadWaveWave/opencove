@@ -70,7 +70,6 @@
   .terminal-node__action--icon,
   .task-node__icon-button,
   .note-node__action,
-  .website-node__icon-button,
   .image-node__close
 ):focus-visible {
   outline: 2px solid var(--cove-focus-ring);
@@ -82,7 +81,6 @@
     .terminal-node__action--icon,
     .task-node__icon-button,
     .note-node__action,
-    .website-node__icon-button,
     .image-node__close
   ):hover:not(:disabled) {
   border-radius: var(--cove-radius-xs);
