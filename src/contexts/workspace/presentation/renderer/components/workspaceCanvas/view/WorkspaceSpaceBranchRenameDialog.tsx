@@ -1,4 +1,5 @@
 import React from 'react'
+import { TextField } from '@app/renderer/components/ui/TextField'
 import { AnchoredOperationPopover } from '@app/renderer/components/AnchoredOperationPopover'
 import { useTranslation } from '@app/renderer/i18n'
 
@@ -48,35 +49,31 @@ export function WorkspaceSpaceBranchRenameDialog({
           <p className="workspace-space-branch-rename__meta">{branchRename.spaceName}</p>
         </header>
 
-        <div className="cove-window__field-row">
-          <label htmlFor="workspace-space-branch-rename-input">
-            {t('branchRenameDialog.fieldLabel')}
-          </label>
-          <input
-            id="workspace-space-branch-rename-input"
-            ref={branchRenameInputRef}
-            data-testid="workspace-space-branch-rename-input"
-            value={branchRename.nextName}
-            disabled={branchRename.isSubmitting}
-            onChange={event => {
-              setBranchRename(previous =>
-                previous
-                  ? {
-                      ...previous,
-                      nextName: event.target.value,
-                      error: null,
-                    }
-                  : previous,
-              )
-            }}
-            onKeyDown={event => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                void submitBranchRename()
-              }
-            }}
-          />
-        </div>
+        <TextField
+          label={t('branchRenameDialog.fieldLabel')}
+          id="workspace-space-branch-rename-input"
+          ref={branchRenameInputRef}
+          data-testid="workspace-space-branch-rename-input"
+          value={branchRename.nextName}
+          disabled={branchRename.isSubmitting}
+          onChange={event => {
+            setBranchRename(previous =>
+              previous
+                ? {
+                    ...previous,
+                    nextName: event.target.value,
+                    error: null,
+                  }
+                : previous,
+            )
+          }}
+          onKeyDown={event => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              void submitBranchRename()
+            }
+          }}
+        />
 
         <p className="workspace-space-branch-rename__prompt">{t('branchRenameDialog.prompt')}</p>
 

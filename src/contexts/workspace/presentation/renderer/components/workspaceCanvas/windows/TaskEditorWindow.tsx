@@ -13,6 +13,8 @@ import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { Chip } from '@app/renderer/components/ui/Chip'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
+import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { WindowHeading } from '@app/renderer/components/WindowHeading'
 
 interface TaskEditorWindowProps {
@@ -84,46 +86,41 @@ export function TaskEditorWindow({
         </p>
       ) : null}
 
-      <div className="workspace-task-creator__field-row">
-        <label htmlFor="workspace-task-editor-title">
-          {isTaskAiNamingEnabled ? t('taskWindow.taskNameOptional') : t('taskWindow.taskName')}
-        </label>
-        <input
-          ref={titleRef}
-          id="workspace-task-editor-title"
-          data-testid="workspace-task-editor-title"
-          value={taskEditor.title}
-          disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-          placeholder={
-            isTaskAiNamingEnabled
-              ? t('taskWindow.leaveEmptyAutoGenerate')
-              : t('taskWindow.enterTaskName')
-          }
-          onChange={event => {
-            const nextValue = event.target.value
-            setTaskEditor(prev =>
-              prev
-                ? {
-                    ...prev,
-                    title: nextValue,
-                    titleGeneratedInEditor: false,
-                    error: null,
-                  }
-                : prev,
-            )
-          }}
-        />
-      </div>
+      <TextField
+        ref={titleRef}
+        id="workspace-task-editor-title"
+        data-testid="workspace-task-editor-title"
+        label={isTaskAiNamingEnabled ? t('taskWindow.taskNameOptional') : t('taskWindow.taskName')}
+        value={taskEditor.title}
+        disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+        placeholder={
+          isTaskAiNamingEnabled
+            ? t('taskWindow.leaveEmptyAutoGenerate')
+            : t('taskWindow.enterTaskName')
+        }
+        onChange={event => {
+          const nextValue = event.target.value
+          setTaskEditor(prev =>
+            prev
+              ? {
+                  ...prev,
+                  title: nextValue,
+                  titleGeneratedInEditor: false,
+                  error: null,
+                }
+              : prev,
+          )
+        }}
+      />
 
-      <div className="workspace-task-creator__field-row">
-        <div className="cove-window__label-row">
-          <label htmlFor="workspace-task-editor-requirement">
-            {t('taskWindow.taskRequirementPrompt')}
-          </label>
-          <button
+      <TextAreaField
+        id="workspace-task-editor-requirement"
+        data-testid="workspace-task-editor-requirement"
+        label={t('taskWindow.taskRequirementPrompt')}
+        labelAccessory={
+          <IconButton
             ref={promptTemplatesTriggerRef}
-            type="button"
-            className="cove-window__icon-button"
+            label={t('taskPromptTemplates.openMenu')}
             data-testid="workspace-task-editor-open-prompt-templates"
             disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
             onClick={event => {
@@ -140,32 +137,26 @@ export function TaskEditorWindow({
                 y: rect.bottom,
               })
             }}
-            aria-label={t('taskPromptTemplates.openMenu')}
-            title={t('taskPromptTemplates.openMenu')}
           >
-            <FileText size={14} strokeWidth={2.2} />
-          </button>
-        </div>
-        <textarea
-          id="workspace-task-editor-requirement"
-          data-testid="workspace-task-editor-requirement"
-          value={taskEditor.requirement}
-          disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-          placeholder={t('taskWindow.requirementPlaceholder')}
-          onChange={event => {
-            const nextValue = event.target.value
-            setTaskEditor(prev =>
-              prev
-                ? {
-                    ...prev,
-                    requirement: nextValue,
-                    error: null,
-                  }
-                : prev,
-            )
-          }}
-        />
-      </div>
+            <FileText aria-hidden="true" />
+          </IconButton>
+        }
+        value={taskEditor.requirement}
+        disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+        placeholder={t('taskWindow.requirementPlaceholder')}
+        onChange={event => {
+          const nextValue = event.target.value
+          setTaskEditor(prev =>
+            prev
+              ? {
+                  ...prev,
+                  requirement: nextValue,
+                  error: null,
+                }
+              : prev,
+          )
+        }}
+      />
 
       <TaskPromptTemplatesMenu
         isOpen={isPromptTemplatesMenuOpen}

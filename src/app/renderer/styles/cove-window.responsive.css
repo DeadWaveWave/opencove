@@ -37,9 +37,13 @@
     min-width: 44px;
   }
 
+  /* At least 16px text, so mobile browsers do not zoom on focus. */
   :is(.cove-window, .anchored-operation-popover)
-    :is(.cove-window__field-row, .workspace-task-creator__field-row)
-    :is(input:not([type='checkbox'], [type='radio']), textarea) {
+    :is(
+      :is(.cove-window__field-row, .workspace-task-creator__field-row)
+        :is(input:not([type='checkbox'], [type='radio']), textarea),
+      .cove-text-field__control
+    ) {
     min-height: 44px;
     font-size: max(16px, calc(13px * var(--cove-ui-font-scale)));
   }

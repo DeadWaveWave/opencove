@@ -1,4 +1,5 @@
 import React from 'react'
+import { TextField } from '@app/renderer/components/ui/TextField'
 import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { Check, Network, Plus, Server, Terminal, X } from 'lucide-react'
 import { Button } from '@app/renderer/components/ui/Button'
@@ -160,21 +161,15 @@ export function EndpointsRegisterDialog({
               {mode === 'edit' ? t('settingsPanel.endpoints.edit.help') : description}
             </p>
 
-            <div className="cove-window__field-row">
-              <label htmlFor="settings-endpoints-register-displayName">
-                {t('settingsPanel.endpoints.register.displayNameLabel')}
-              </label>
-              <input
-                id="settings-endpoints-register-displayName"
-                className="cove-field"
-                type="text"
-                value={displayName}
-                onChange={event => onChangeDisplayName(event.target.value)}
-                data-testid="settings-endpoints-register-displayName"
-                disabled={isBusy}
-                placeholder={t('settingsPanel.endpoints.register.displayNamePlaceholder')}
-              />
-            </div>
+            <TextField
+              label={t('settingsPanel.endpoints.register.displayNameLabel')}
+              id="settings-endpoints-register-displayName"
+              value={displayName}
+              onChange={event => onChangeDisplayName(event.target.value)}
+              data-testid="settings-endpoints-register-displayName"
+              disabled={isBusy}
+              placeholder={t('settingsPanel.endpoints.register.displayNamePlaceholder')}
+            />
 
             {registerMode === 'managed' ? (
               <>
@@ -188,37 +183,25 @@ export function EndpointsRegisterDialog({
                 ) : null}
 
                 <div className="cove-window__field-grid">
-                  <div className="cove-window__field-row">
-                    <label htmlFor="settings-endpoints-register-hostname">
-                      {t('settingsPanel.endpoints.register.managedHostLabel')}
-                    </label>
-                    <input
-                      id="settings-endpoints-register-hostname"
-                      className="cove-field"
-                      type="text"
-                      value={managedHost}
-                      onChange={event => onChangeManagedHost(event.target.value)}
-                      data-testid="settings-endpoints-register-hostname"
-                      disabled={isBusy}
-                      placeholder={t('settingsPanel.endpoints.register.managedHostPlaceholder')}
-                    />
-                  </div>
+                  <TextField
+                    label={t('settingsPanel.endpoints.register.managedHostLabel')}
+                    id="settings-endpoints-register-hostname"
+                    value={managedHost}
+                    onChange={event => onChangeManagedHost(event.target.value)}
+                    data-testid="settings-endpoints-register-hostname"
+                    disabled={isBusy}
+                    placeholder={t('settingsPanel.endpoints.register.managedHostPlaceholder')}
+                  />
 
-                  <div className="cove-window__field-row">
-                    <label htmlFor="settings-endpoints-register-username">
-                      {t('settingsPanel.endpoints.register.managedUsernameLabel')}
-                    </label>
-                    <input
-                      id="settings-endpoints-register-username"
-                      className="cove-field"
-                      type="text"
-                      value={managedUsername}
-                      onChange={event => onChangeManagedUsername(event.target.value)}
-                      data-testid="settings-endpoints-register-username"
-                      disabled={isBusy}
-                      placeholder={t('settingsPanel.endpoints.register.managedUsernamePlaceholder')}
-                    />
-                  </div>
+                  <TextField
+                    label={t('settingsPanel.endpoints.register.managedUsernameLabel')}
+                    id="settings-endpoints-register-username"
+                    value={managedUsername}
+                    onChange={event => onChangeManagedUsername(event.target.value)}
+                    data-testid="settings-endpoints-register-username"
+                    disabled={isBusy}
+                    placeholder={t('settingsPanel.endpoints.register.managedUsernamePlaceholder')}
+                  />
                 </div>
 
                 <details
@@ -235,116 +218,81 @@ export function EndpointsRegisterDialog({
                     <small>{t('settingsPanel.endpoints.register.advancedHelp')}</small>
                   </summary>
                   <div className="cove-window__field-grid cove-window__advanced-fields">
-                    <div className="cove-window__field-row">
-                      <label htmlFor="settings-endpoints-register-ssh-port">
-                        {t('settingsPanel.endpoints.register.managedPortLabel')}
-                      </label>
-                      <input
-                        id="settings-endpoints-register-ssh-port"
-                        className="cove-field"
-                        type="text"
-                        inputMode="numeric"
-                        value={managedPort}
-                        onChange={event => onChangeManagedPort(event.target.value)}
-                        data-testid="settings-endpoints-register-ssh-port"
-                        disabled={isBusy}
-                        placeholder={t('settingsPanel.endpoints.register.managedPortPlaceholder')}
-                      />
-                      {managedPortInvalid ? (
-                        <span
-                          className="cove-window__error"
-                          data-testid="settings-endpoints-register-ssh-port-error"
-                        >
-                          {t('settingsPanel.endpoints.register.portInvalid')}
-                        </span>
-                      ) : null}
-                    </div>
+                    <TextField
+                      id="settings-endpoints-register-ssh-port"
+                      label={t('settingsPanel.endpoints.register.managedPortLabel')}
+                      inputMode="numeric"
+                      value={managedPort}
+                      onChange={event => onChangeManagedPort(event.target.value)}
+                      data-testid="settings-endpoints-register-ssh-port"
+                      disabled={isBusy}
+                      placeholder={t('settingsPanel.endpoints.register.managedPortPlaceholder')}
+                      error={
+                        managedPortInvalid ? (
+                          <span data-testid="settings-endpoints-register-ssh-port-error">
+                            {t('settingsPanel.endpoints.register.portInvalid')}
+                          </span>
+                        ) : undefined
+                      }
+                    />
 
-                    <div className="cove-window__field-row">
-                      <label htmlFor="settings-endpoints-register-remote-port">
-                        {t('settingsPanel.endpoints.register.managedRemotePortLabel')}
-                      </label>
-                      <input
-                        id="settings-endpoints-register-remote-port"
-                        className="cove-field"
-                        type="text"
-                        inputMode="numeric"
-                        value={managedRemotePort}
-                        onChange={event => onChangeManagedRemotePort(event.target.value)}
-                        data-testid="settings-endpoints-register-remote-port"
-                        disabled={isBusy}
-                        placeholder={t(
-                          'settingsPanel.endpoints.register.managedRemotePortPlaceholder',
-                        )}
-                      />
-                      <span className="cove-window__field-help">
-                        {t('settingsPanel.endpoints.register.managedRemotePortHelp')}
-                      </span>
-                      {managedRemotePortInvalid ? (
-                        <span
-                          className="cove-window__error"
-                          data-testid="settings-endpoints-register-remote-port-error"
-                        >
-                          {t('settingsPanel.endpoints.register.portInvalid')}
-                        </span>
-                      ) : null}
-                    </div>
+                    <TextField
+                      id="settings-endpoints-register-remote-port"
+                      label={t('settingsPanel.endpoints.register.managedRemotePortLabel')}
+                      inputMode="numeric"
+                      value={managedRemotePort}
+                      onChange={event => onChangeManagedRemotePort(event.target.value)}
+                      data-testid="settings-endpoints-register-remote-port"
+                      disabled={isBusy}
+                      placeholder={t(
+                        'settingsPanel.endpoints.register.managedRemotePortPlaceholder',
+                      )}
+                      description={t('settingsPanel.endpoints.register.managedRemotePortHelp')}
+                      error={
+                        managedRemotePortInvalid ? (
+                          <span data-testid="settings-endpoints-register-remote-port-error">
+                            {t('settingsPanel.endpoints.register.portInvalid')}
+                          </span>
+                        ) : undefined
+                      }
+                    />
                   </div>
                 </details>
               </>
             ) : (
               <>
                 <div className="cove-window__field-grid">
-                  <div className="cove-window__field-row">
-                    <label htmlFor="settings-endpoints-register-manual-hostname">
-                      {t('settingsPanel.endpoints.register.hostnameLabel')}
-                    </label>
-                    <input
-                      id="settings-endpoints-register-manual-hostname"
-                      className="cove-field"
-                      type="text"
-                      value={manualHostname}
-                      onChange={event => onChangeManualHostname(event.target.value)}
-                      data-testid="settings-endpoints-register-manual-hostname"
-                      disabled={isBusy}
-                      placeholder={t('settingsPanel.endpoints.register.managedHostPlaceholder')}
-                    />
-                  </div>
+                  <TextField
+                    label={t('settingsPanel.endpoints.register.hostnameLabel')}
+                    id="settings-endpoints-register-manual-hostname"
+                    value={manualHostname}
+                    onChange={event => onChangeManualHostname(event.target.value)}
+                    data-testid="settings-endpoints-register-manual-hostname"
+                    disabled={isBusy}
+                    placeholder={t('settingsPanel.endpoints.register.managedHostPlaceholder')}
+                  />
 
-                  <div className="cove-window__field-row">
-                    <label htmlFor="settings-endpoints-register-port">
-                      {t('settingsPanel.endpoints.register.portLabel')}
-                    </label>
-                    <input
-                      id="settings-endpoints-register-port"
-                      className="cove-field"
-                      type="text"
-                      inputMode="numeric"
-                      value={manualPort}
-                      onChange={event => onChangeManualPort(event.target.value)}
-                      data-testid="settings-endpoints-register-port"
-                      disabled={isBusy}
-                    />
-                  </div>
-                </div>
-
-                <div className="cove-window__field-row">
-                  <label htmlFor="settings-endpoints-register-token">
-                    {t('settingsPanel.endpoints.register.tokenLabel')}
-                  </label>
-                  <input
-                    id="settings-endpoints-register-token"
-                    className="cove-field"
-                    type="password"
-                    value={manualToken}
-                    onChange={event => onChangeManualToken(event.target.value)}
-                    data-testid="settings-endpoints-register-token"
+                  <TextField
+                    label={t('settingsPanel.endpoints.register.portLabel')}
+                    id="settings-endpoints-register-port"
+                    inputMode="numeric"
+                    value={manualPort}
+                    onChange={event => onChangeManualPort(event.target.value)}
+                    data-testid="settings-endpoints-register-port"
                     disabled={isBusy}
                   />
-                  <span className="cove-window__field-help">
-                    {t('settingsPanel.endpoints.register.tokenHelp')}
-                  </span>
                 </div>
+
+                <TextField
+                  id="settings-endpoints-register-token"
+                  label={t('settingsPanel.endpoints.register.tokenLabel')}
+                  type="password"
+                  value={manualToken}
+                  onChange={event => onChangeManualToken(event.target.value)}
+                  data-testid="settings-endpoints-register-token"
+                  disabled={isBusy}
+                  description={t('settingsPanel.endpoints.register.tokenHelp')}
+                />
               </>
             )}
           </div>

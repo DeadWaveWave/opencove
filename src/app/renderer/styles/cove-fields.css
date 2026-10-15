@@ -166,3 +166,57 @@
   outline: 2px solid var(--cove-focus-ring);
   outline-offset: -1px;
 }
+
+/* TextField and TextAreaField (components/ui/TextField.tsx): label, control, help and error. */
+.cove-text-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cove-control-gap);
+  min-width: 0;
+}
+
+.cove-text-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cove-spacing-2);
+  min-width: 0;
+}
+
+.cove-text-field__label {
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-secondary);
+  font-weight: var(--cove-font-weight-medium);
+  line-height: var(--cove-line-height-secondary);
+}
+
+.cove-text-field__control--multiline {
+  min-height: 128px;
+  line-height: var(--cove-line-height-body);
+  resize: vertical;
+}
+
+.cove-text-field__description,
+.cove-text-field__error {
+  margin: 0;
+  font-size: var(--cove-font-size-caption);
+  line-height: var(--cove-line-height-caption);
+}
+
+.cove-text-field__description {
+  color: var(--cove-text-muted);
+}
+
+.cove-text-field__error {
+  color: var(--cove-danger-text);
+}
+
+.cove-text-field[data-invalid] .cove-text-field__control {
+  border-color: var(--cove-danger-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-text-field__control {
+    transition: none;
+  }
+}

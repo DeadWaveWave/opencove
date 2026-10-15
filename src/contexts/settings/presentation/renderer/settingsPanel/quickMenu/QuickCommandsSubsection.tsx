@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
+import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { ChevronDown, ChevronUp, Globe, Pin, Power, Terminal } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -306,28 +307,24 @@ export function QuickCommandsSubsection({
           </h3>
           <p className="cove-window__meta">{t('settingsPanel.quickMenu.commands.editorHelp')}</p>
 
-          <div className="cove-window__field-row">
-            <label htmlFor="settings-quick-command-title">
-              {t('settingsPanel.quickMenu.commands.titleLabel')}
-            </label>
-            <input
-              id="settings-quick-command-title"
-              value={commandEditor.draft.title}
-              placeholder={t('settingsPanel.quickMenu.commands.titlePlaceholder')}
-              onChange={event => {
-                const value = event.target.value
-                setCommandEditor(previous =>
-                  previous
-                    ? {
-                        ...previous,
-                        draft: { ...previous.draft, title: value },
-                        hasError: false,
-                      }
-                    : null,
-                )
-              }}
-            />
-          </div>
+          <TextField
+            label={t('settingsPanel.quickMenu.commands.titleLabel')}
+            id="settings-quick-command-title"
+            value={commandEditor.draft.title}
+            placeholder={t('settingsPanel.quickMenu.commands.titlePlaceholder')}
+            onChange={event => {
+              const value = event.target.value
+              setCommandEditor(previous =>
+                previous
+                  ? {
+                      ...previous,
+                      draft: { ...previous.draft, title: value },
+                      hasError: false,
+                    }
+                  : null,
+              )
+            }}
+          />
 
           <div className="cove-window__field-row">
             <label htmlFor="settings-quick-command-kind">
@@ -354,47 +351,39 @@ export function QuickCommandsSubsection({
           </div>
 
           {commandEditor.draft.kind === 'terminal' ? (
-            <div className="cove-window__field-row">
-              <label htmlFor="settings-quick-command-command">
-                {t('settingsPanel.quickMenu.commands.commandLabel')}
-              </label>
-              <textarea
-                id="settings-quick-command-command"
-                value={commandEditor.draft.command}
-                placeholder={t('settingsPanel.quickMenu.commands.commandPlaceholder')}
-                onChange={event => {
-                  const value = event.target.value
-                  setCommandEditor(previous =>
-                    previous
-                      ? {
-                          ...previous,
-                          draft: { ...previous.draft, command: value },
-                          hasError: false,
-                        }
-                      : null,
-                  )
-                }}
-              />
-            </div>
+            <TextAreaField
+              label={t('settingsPanel.quickMenu.commands.commandLabel')}
+              id="settings-quick-command-command"
+              value={commandEditor.draft.command}
+              placeholder={t('settingsPanel.quickMenu.commands.commandPlaceholder')}
+              onChange={event => {
+                const value = event.target.value
+                setCommandEditor(previous =>
+                  previous
+                    ? {
+                        ...previous,
+                        draft: { ...previous.draft, command: value },
+                        hasError: false,
+                      }
+                    : null,
+                )
+              }}
+            />
           ) : (
-            <div className="cove-window__field-row">
-              <label htmlFor="settings-quick-command-url">
-                {t('settingsPanel.quickMenu.commands.urlLabel')}
-              </label>
-              <input
-                id="settings-quick-command-url"
-                value={commandEditor.draft.url}
-                placeholder={t('settingsPanel.quickMenu.commands.urlPlaceholder')}
-                onChange={event => {
-                  const value = event.target.value
-                  setCommandEditor(previous =>
-                    previous
-                      ? { ...previous, draft: { ...previous.draft, url: value }, hasError: false }
-                      : null,
-                  )
-                }}
-              />
-            </div>
+            <TextField
+              label={t('settingsPanel.quickMenu.commands.urlLabel')}
+              id="settings-quick-command-url"
+              value={commandEditor.draft.url}
+              placeholder={t('settingsPanel.quickMenu.commands.urlPlaceholder')}
+              onChange={event => {
+                const value = event.target.value
+                setCommandEditor(previous =>
+                  previous
+                    ? { ...previous, draft: { ...previous.draft, url: value }, hasError: false }
+                    : null,
+                )
+              }}
+            />
           )}
 
           <div className="cove-window__field-row">

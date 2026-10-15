@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { Check, Copy, ExternalLink, FolderOpen, LoaderCircle } from 'lucide-react'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
@@ -195,33 +196,29 @@ export function IssueReportDialog({
           />
         </div>
 
-        <div className="cove-window__field-row">
-          <label htmlFor="issue-report-summary">{t('issueReport.summaryLabel')}</label>
-          <input
-            id="issue-report-summary"
-            data-testid="issue-report-summary"
-            value={summary}
-            placeholder={t('issueReport.summaryPlaceholder')}
-            onChange={event => {
-              setSummary(event.target.value)
-              clearPreparedReport()
-            }}
-          />
-        </div>
+        <TextField
+          label={t('issueReport.summaryLabel')}
+          id="issue-report-summary"
+          data-testid="issue-report-summary"
+          value={summary}
+          placeholder={t('issueReport.summaryPlaceholder')}
+          onChange={event => {
+            setSummary(event.target.value)
+            clearPreparedReport()
+          }}
+        />
 
-        <div className="cove-window__field-row">
-          <label htmlFor="issue-report-description">{t('issueReport.descriptionLabel')}</label>
-          <textarea
-            id="issue-report-description"
-            data-testid="issue-report-description"
-            value={description}
-            placeholder={t('issueReport.descriptionPlaceholder')}
-            onChange={event => {
-              setDescription(event.target.value)
-              clearPreparedReport()
-            }}
-          />
-        </div>
+        <TextAreaField
+          label={t('issueReport.descriptionLabel')}
+          id="issue-report-description"
+          data-testid="issue-report-description"
+          value={description}
+          placeholder={t('issueReport.descriptionPlaceholder')}
+          onChange={event => {
+            setDescription(event.target.value)
+            clearPreparedReport()
+          }}
+        />
 
         <div className="issue-report-window__details">
           <button

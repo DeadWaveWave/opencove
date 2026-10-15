@@ -48,18 +48,6 @@
   line-height: 1.6;
 }
 
-.settings-endpoint-dialog .cove-window__field-row input {
-  min-width: 0;
-  min-height: 36px;
-  background: var(--cove-field);
-  box-shadow: none;
-}
-
-.settings-endpoint-dialog .cove-window__field-row input:focus {
-  border-color: var(--cove-accent);
-  box-shadow: var(--cove-focus-shadow);
-}
-
 .settings-endpoint-dialog .cove-window__ssh-config-picker {
   padding: 0;
   border: 0;

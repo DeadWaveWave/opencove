@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react'
+import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { ChevronDown, ChevronUp, Power } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -216,51 +217,43 @@ export function QuickPhrasesSubsection({
           </h3>
           <p className="cove-window__meta">{t('settingsPanel.quickMenu.phrases.editorHelp')}</p>
 
-          <div className="cove-window__field-row">
-            <label htmlFor="settings-quick-phrase-title">
-              {t('settingsPanel.quickMenu.phrases.titleLabel')}
-            </label>
-            <input
-              id="settings-quick-phrase-title"
-              value={phraseEditor.draft.title}
-              placeholder={t('settingsPanel.quickMenu.phrases.titlePlaceholder')}
-              onChange={event => {
-                const value = event.target.value
-                setPhraseEditor(previous =>
-                  previous
-                    ? {
-                        ...previous,
-                        draft: { ...previous.draft, title: value },
-                        hasError: false,
-                      }
-                    : null,
-                )
-              }}
-            />
-          </div>
+          <TextField
+            label={t('settingsPanel.quickMenu.phrases.titleLabel')}
+            id="settings-quick-phrase-title"
+            value={phraseEditor.draft.title}
+            placeholder={t('settingsPanel.quickMenu.phrases.titlePlaceholder')}
+            onChange={event => {
+              const value = event.target.value
+              setPhraseEditor(previous =>
+                previous
+                  ? {
+                      ...previous,
+                      draft: { ...previous.draft, title: value },
+                      hasError: false,
+                    }
+                  : null,
+              )
+            }}
+          />
 
-          <div className="cove-window__field-row">
-            <label htmlFor="settings-quick-phrase-content">
-              {t('settingsPanel.quickMenu.phrases.contentLabel')}
-            </label>
-            <textarea
-              id="settings-quick-phrase-content"
-              value={phraseEditor.draft.content}
-              placeholder={t('settingsPanel.quickMenu.phrases.contentPlaceholder')}
-              onChange={event => {
-                const value = event.target.value
-                setPhraseEditor(previous =>
-                  previous
-                    ? {
-                        ...previous,
-                        draft: { ...previous.draft, content: value },
-                        hasError: false,
-                      }
-                    : null,
-                )
-              }}
-            />
-          </div>
+          <TextAreaField
+            label={t('settingsPanel.quickMenu.phrases.contentLabel')}
+            id="settings-quick-phrase-content"
+            value={phraseEditor.draft.content}
+            placeholder={t('settingsPanel.quickMenu.phrases.contentPlaceholder')}
+            onChange={event => {
+              const value = event.target.value
+              setPhraseEditor(previous =>
+                previous
+                  ? {
+                      ...previous,
+                      draft: { ...previous.draft, content: value },
+                      hasError: false,
+                    }
+                  : null,
+              )
+            }}
+          />
 
           <div className="cove-window__field-row">
             <label>{t('settingsPanel.quickMenu.phrases.enabled')}</label>

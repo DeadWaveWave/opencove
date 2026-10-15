@@ -28,6 +28,7 @@ import { Popover } from '../components/ui/Popover'
 import { SegmentedControl } from '../components/ui/SegmentedControl'
 import { SettingRow } from '../components/ui/SettingRow'
 import { StatusPill } from '../components/ui/StatusPill'
+import { TextAreaField, TextField } from '../components/ui/TextField'
 import { Toggle } from '../components/ui/Toggle'
 import { Tooltip } from '../components/ui/Tooltip'
 import { ViewportMenuSurface } from '../components/ViewportMenuSurface'
@@ -89,6 +90,7 @@ export default function UiGallery(): React.JSX.Element {
   const [reportKind, setReportKind] = useState<'bug' | 'feature' | 'other'>('bug')
   const [viewMode, setViewMode] = useState<'icons' | 'list'>('icons')
   const [connection, setConnection] = useState<'ssh' | 'manual'>('ssh')
+  const [fields, setFields] = useState({ name: 'Checkout flow', port: 'abc', notes: '' })
   const dialogTrigger = useRef<HTMLButtonElement | null>(null)
   const popoverTrigger = useRef<HTMLButtonElement | null>(null)
   const menuTrigger = useRef<HTMLButtonElement | null>(null)
@@ -252,6 +254,32 @@ export default function UiGallery(): React.JSX.Element {
             ]}
             onValueChange={() => {}}
           />
+        </div>
+      </Section>
+
+      <Section id="text-field" title="TextField">
+        <div className="ui-gallery__rows">
+          <TextField
+            label="Task name"
+            value={fields.name}
+            placeholder="Enter a task name"
+            onChange={event => setFields(current => ({ ...current, name: event.target.value }))}
+          />
+          <TextField
+            label="SSH port"
+            inputMode="numeric"
+            value={fields.port}
+            description="The port the SSH server listens on."
+            error={/^\d+$/.test(fields.port) ? undefined : 'Enter a number between 1 and 65535.'}
+            onChange={event => setFields(current => ({ ...current, port: event.target.value }))}
+          />
+          <TextAreaField
+            label="Details"
+            value={fields.notes}
+            placeholder="What did you try, and what happened?"
+            onChange={event => setFields(current => ({ ...current, notes: event.target.value }))}
+          />
+          <TextField label="Workspace path" value="~/Development/opencove" disabled readOnly />
         </div>
       </Section>
 

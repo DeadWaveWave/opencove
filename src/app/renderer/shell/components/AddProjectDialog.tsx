@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
+import { TextField } from '@app/renderer/components/ui/TextField'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceDirectory } from '@shared/contracts/dto'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
@@ -122,34 +123,30 @@ export function AddProjectDialog({
       <p>{t('addProjectDialog.description')}</p>
 
       <div className="cove-window__fields">
-        <div className="cove-window__field-row">
-          <label htmlFor="workspace-project-add-path">{t('addProjectDialog.pathLabel')}</label>
-          <input
-            ref={pathRef}
-            id="workspace-project-add-path"
-            data-testid="workspace-project-add-path"
-            value={projectPath}
-            disabled={isSubmitting}
-            placeholder={t('addProjectDialog.pathPlaceholder')}
-            onChange={event => {
-              setProjectPath(event.target.value)
-            }}
-          />
-        </div>
+        <TextField
+          label={t('addProjectDialog.pathLabel')}
+          ref={pathRef}
+          id="workspace-project-add-path"
+          data-testid="workspace-project-add-path"
+          value={projectPath}
+          disabled={isSubmitting}
+          placeholder={t('addProjectDialog.pathPlaceholder')}
+          onChange={event => {
+            setProjectPath(event.target.value)
+          }}
+        />
 
-        <div className="cove-window__field-row">
-          <label htmlFor="workspace-project-add-name">{t('addProjectDialog.nameLabel')}</label>
-          <input
-            id="workspace-project-add-name"
-            data-testid="workspace-project-add-name"
-            value={projectName}
-            disabled={isSubmitting}
-            placeholder={t('addProjectDialog.namePlaceholder')}
-            onChange={event => {
-              setProjectName(event.target.value)
-            }}
-          />
-        </div>
+        <TextField
+          label={t('addProjectDialog.nameLabel')}
+          id="workspace-project-add-name"
+          data-testid="workspace-project-add-name"
+          value={projectName}
+          disabled={isSubmitting}
+          placeholder={t('addProjectDialog.namePlaceholder')}
+          onChange={event => {
+            setProjectName(event.target.value)
+          }}
+        />
 
         {error ? (
           <p className="workspace-task-creator__error" data-testid="workspace-project-add-error">
