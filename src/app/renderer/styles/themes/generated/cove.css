@@ -82,6 +82,7 @@
   --cove-glass-plate: 55%;
   --cove-glass-chrome: 60%;
   --cove-glass-sheet: 72%;
+  --cove-glass-acrylic: 76%;
   --cove-glass-far-tint: 20%;
   --cove-pixel-cell: #11181e;
   --cove-pixel-gap: #05090c;
@@ -99,6 +100,11 @@
   --cove-surface-strong: color-mix(
     in srgb,
     var(--cove-neutral-2) var(--cove-glass-sheet),
+    transparent
+  );
+  --cove-acrylic-surface: color-mix(
+    in srgb,
+    var(--cove-neutral-2) var(--cove-glass-acrylic),
     transparent
   );
   --cove-window-surface: #0c1217;
@@ -304,6 +310,7 @@
   --cove-glass-plate: 70%;
   --cove-glass-chrome: 66%;
   --cove-glass-sheet: 80%;
+  --cove-glass-acrylic: 86%;
   --cove-glass-far-tint: 22%;
   --cove-pixel-cell: #dbe4ed;
   --cove-pixel-gap: #f6fbff;
@@ -321,6 +328,11 @@
   --cove-surface-strong: color-mix(
     in srgb,
     var(--cove-neutral-1) var(--cove-glass-sheet),
+    transparent
+  );
+  --cove-acrylic-surface: color-mix(
+    in srgb,
+    var(--cove-neutral-1) var(--cove-glass-acrylic),
     transparent
   );
   --cove-window-surface: #fbfdff;

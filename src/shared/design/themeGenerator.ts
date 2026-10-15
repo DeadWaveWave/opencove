@@ -67,10 +67,14 @@ const L_LIGHT = [0.993, 0.978, 0.955, 0.932, 0.906, 0.876, 0.83, 0.765, 0.66, 0.
 const CHROMA = [0.1, 0.16, 0.3, 0.4, 0.5, 0.6, 0.7, 0.84, 1, 0.96, 0.86, 0.42]
 const NEUTRAL_CHROMA = [0.7, 0.75, 0.85, 0.9, 1, 1, 1, 1, 0.9, 0.85, 0.6, 0.35]
 
-/** Glass alphas per appearance. The CSS and the worst-case contrast check read the same numbers. */
+/**
+ * Glass alphas per appearance. The CSS and the worst-case contrast check read the same numbers.
+ * Acrylic covers arbitrary window content rather than the wall, so it is checked against pure
+ * black and white too.
+ */
 export const GLASS = {
-  dark: { frame: 0.52, plate: 0.55, farTint: 0.2, chrome: 0.6, sheet: 0.72 },
-  light: { frame: 0.64, plate: 0.7, farTint: 0.22, chrome: 0.66, sheet: 0.8 },
+  dark: { frame: 0.52, plate: 0.55, farTint: 0.2, chrome: 0.6, sheet: 0.72, acrylic: 0.76 },
+  light: { frame: 0.64, plate: 0.7, farTint: 0.22, chrome: 0.66, sheet: 0.8, acrylic: 0.86 },
 } as const
 
 /** Pixel wall mixing weights. `cap` bounds how far a cell behind glass may move toward any colour (I6). */

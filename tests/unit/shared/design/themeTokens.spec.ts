@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { PLUGIN_THEME_TOKENS } from '@contexts/plugins/domain/pluginThemeTypes'
 import { contrastRatio, type Rgb } from '@shared/design/oklch'
 import {
+  GLASS,
   THEME_FAMILY_LIST,
   generateFamilyTheme,
   type Appearance,
@@ -52,6 +53,15 @@ describe('generated theme tokens', () => {
     ({ family, appearance }) => {
       const tokens = themeTokens(generateFamilyTheme(family, appearance))
       expect(PLUGIN_THEME_TOKENS.filter(token => !(token in tokens))).toEqual([])
+    },
+  )
+
+  it.each(CASES)(
+    'tints acrylic with the alpha the contrast matrix checks for $family/$appearance',
+    ({ family, appearance }) => {
+      const tokens = themeTokens(generateFamilyTheme(family, appearance))
+      expect(tokens['--cove-glass-acrylic']).toBe(`${Math.round(GLASS[appearance].acrylic * 100)}%`)
+      expect(tokens['--cove-acrylic-surface']).toContain('var(--cove-glass-acrylic)')
     },
   )
 

@@ -273,9 +273,11 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
 
     // A menu's items take menu roles only inside a container that declares role="menu".
     const content = role === 'menu' ? <MenuRoleScope>{children}</MenuRoleScope> : children
+    // Menus are acrylic Surfaces (ui-surface.css); other floating cards keep their own material.
+    const surfaceClassName = isMenu ? `cove-surface ${className}` : className
     const surfaceProps: React.HTMLAttributes<HTMLDivElement> = {
       ...rest,
-      className,
+      className: surfaceClassName,
       tabIndex: rest.tabIndex ?? (isMenu ? -1 : undefined),
       style: {
         ...style,
@@ -316,6 +318,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
       'data-viewport-menu-measured': waitForMeasurement ? String(isMeasurementReady) : undefined,
       'data-cove-menu-surface': isMenu ? '' : undefined,
       'data-cove-part': isMenu ? 'menu' : 'popover',
+      'data-material': isMenu ? 'acrylic' : undefined,
     }
 
     if (isSheet) {
@@ -327,7 +330,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
           open
           role="dialog"
           aria-labelledby={titleId}
-          className={`${className} cove-menu-sheet`}
+          className={`${surfaceClassName} cove-menu-sheet`}
           backdropClassName={`cove-menu-sheet-backdrop${isSubmenu ? ' cove-menu-sheet-backdrop--nested' : ''}`}
           initialFocusRef={dialogInitialFocusRef}
           inertRootSelector={isSubmenu ? undefined : '.workspace-main, .app-header'}

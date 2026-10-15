@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { contrastRatio, deltaE, mixOver, oklch, rgbToOklab } from '@shared/design/oklch'
-import { contrastChecks, kindSeparation } from '@shared/design/themeContrast'
+import { acrylicBackgrounds, contrastChecks, kindSeparation } from '@shared/design/themeContrast'
 import {
   ANSI_KEYS,
   THEME_FAMILIES,
@@ -31,6 +31,15 @@ describe('theme generator', () => {
       }
     }
     expect(failures).toEqual([])
+  })
+
+  it('checks text on acrylic against pure black, pure white and the pixel wall', () => {
+    for (const appearance of APPEARANCES) {
+      const ids = contrastChecks(generateFamilyTheme('cove', appearance, 0)).map(check => check.id)
+      expect(ids).toContain('text / acrylic (worst)')
+      expect(ids).toContain('secondary / acrylic (worst)')
+    }
+    expect(acrylicBackgrounds(generateFamilyTheme('cove', 'dark', 0)).length).toBeGreaterThan(2)
   })
 
   it('keeps the five kind families apart for normal vision and red-green colour blindness', () => {

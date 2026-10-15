@@ -72,6 +72,17 @@ export function glassBackgrounds(theme: GeneratedTheme) {
   }
 }
 
+/**
+ * What text on an acrylic overlay can sit on: the tint over pure black, pure white (a blurred
+ * window or image behind a menu) and every wall colour.
+ */
+export function acrylicBackgrounds(theme: GeneratedTheme): Rgb[] {
+  const ap = theme.input.appearance
+  const tint = ap === 'dark' ? theme.neutral[1]! : theme.neutral[0]!
+  const behind: Rgb[] = [[0, 0, 0], [255, 255, 255], ...wallBackdrops(theme)]
+  return behind.map(b => mixOver(tint, GLASS[ap].acrylic, b))
+}
+
 /** All contrast rules for one generated theme (I5 + I6 + terminal palette + host dialogs). */
 export function contrastChecks(theme: GeneratedTheme): ContrastCheck[] {
   const ap = theme.input.appearance
@@ -91,6 +102,12 @@ export function contrastChecks(theme: GeneratedTheme): ContrastCheck[] {
     { id: 'terminal text / reading plate (worst)', ratio: worst(n[10]!, g.plates), min: 4.5 },
     { id: 'secondary / chrome glass (worst)', ratio: worst(n[10]!, g.chrome), min: 4.5 },
     { id: 'secondary / settings sheet (worst)', ratio: worst(n[10]!, g.sheet), min: 4.5 },
+    { id: 'text / acrylic (worst)', ratio: worst(n[11]!, acrylicBackgrounds(theme)), min: 4.5 },
+    {
+      id: 'secondary / acrylic (worst)',
+      ratio: worst(n[10]!, acrylicBackgrounds(theme)),
+      min: 4.5,
+    },
   ]
   checks.push({
     id: 'on-accent / accent hover',

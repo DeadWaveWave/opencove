@@ -94,6 +94,13 @@ describe('Popover', () => {
     vi.unstubAllGlobals()
   })
 
+  it('is an acrylic surface', () => {
+    render(<ControlledPopover open onDismiss={vi.fn()} />)
+    const popover = screen.getByTestId('popover')
+    expect(popover).toHaveClass('cove-surface', 'cove-popover')
+    expect(popover).toHaveAttribute('data-material', 'acrylic')
+  })
+
   it('dismisses only the top layer for outside pointer and Escape events', () => {
     const firstDismiss = vi.fn()
     const secondDismiss = vi.fn()

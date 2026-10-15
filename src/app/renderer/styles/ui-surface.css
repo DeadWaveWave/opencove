@@ -1,0 +1,42 @@
+/*
+ * Surface materials (components/ui/Surface.tsx). Consumers keep their own border, radius and
+ * shadow; the material owns background and backdrop. Generated families set
+ * --cove-acrylic-surface to the tint the contrast matrix checks over black, white and the wall;
+ * hand-written themes keep their menu surface.
+ */
+:root {
+  --cove-acrylic-surface: var(--cove-menu-surface);
+  --cove-acrylic-filter: blur(16px) saturate(1.6);
+  /* Fine monochrome noise, so large blurred areas do not band. */
+  --cove-acrylic-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+.cove-surface[data-material='solid'] {
+  background: var(--cove-window-surface);
+}
+
+.cove-surface[data-material='glass'] {
+  background: var(--cove-surface);
+}
+
+.cove-surface[data-material='acrylic'] {
+  background:
+    var(--cove-acrylic-grain) 0 0 / 160px 160px,
+    var(--cove-acrylic-surface);
+  -webkit-backdrop-filter: var(--cove-acrylic-filter);
+  backdrop-filter: var(--cove-acrylic-filter);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .cove-surface[data-material='glass'] {
+    background: var(--cove-window-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .cove-surface[data-material='acrylic'] {
+    background: var(--cove-window-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

@@ -3,12 +3,10 @@
   z-index: var(--cove-z-popover);
   border: 1px solid var(--cove-popover-border);
   border-radius: 8px;
-  background: var(--cove-popover);
+  /* Material: Surface acrylic (ui-surface.css). */
   color: var(--cove-text);
   box-shadow: var(--cove-shadow-lg);
   animation: cove-popover-enter var(--cove-motion-normal) var(--cove-ease-standard);
-  backdrop-filter: blur(20px) saturate(1.12);
-  -webkit-backdrop-filter: blur(20px) saturate(1.12);
 }
 
 .cove-dialog-backdrop {

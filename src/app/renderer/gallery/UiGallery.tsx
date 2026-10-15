@@ -28,6 +28,7 @@ import { Popover } from '../components/ui/Popover'
 import { SegmentedControl } from '../components/ui/SegmentedControl'
 import { SettingRow } from '../components/ui/SettingRow'
 import { StatusPill } from '../components/ui/StatusPill'
+import { Surface, type SurfaceMaterial } from '../components/ui/Surface'
 import { TextAreaField, TextField } from '../components/ui/TextField'
 import { Toggle } from '../components/ui/Toggle'
 import { Tooltip } from '../components/ui/Tooltip'
@@ -280,6 +281,23 @@ export default function UiGallery(): React.JSX.Element {
             onChange={event => setFields(current => ({ ...current, notes: event.target.value }))}
           />
           <TextField label="Workspace path" value="~/Development/opencove" disabled readOnly />
+        </div>
+      </Section>
+
+      <Section id="surface" title="Surface">
+        <div className="ui-gallery__row">
+          {(
+            [
+              ['solid', 'Dialogs and long reading'],
+              ['glass', 'Windows over the canvas'],
+              ['acrylic', 'Menus and popovers'],
+            ] as Array<[SurfaceMaterial, string]>
+          ).map(([material, use]) => (
+            <Surface key={material} material={material} className="ui-gallery__surface">
+              <strong className="ui-gallery__heading">{material}</strong>
+              <p className="ui-gallery__text">{use}</p>
+            </Surface>
+          ))}
         </div>
       </Section>
 

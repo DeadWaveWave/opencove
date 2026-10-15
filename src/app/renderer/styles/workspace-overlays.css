@@ -13,8 +13,7 @@
   padding: 6px;
   border: 1px solid var(--cove-menu-border);
   border-radius: 8px;
-  background: var(--cove-menu-surface);
-  backdrop-filter: blur(18px) saturate(120%);
+  /* Material: Surface acrylic, applied by ViewportMenuSurface. */
   box-shadow: var(--cove-shadow-lg);
   min-width: 170px;
   max-width: calc(100vw - 20px);

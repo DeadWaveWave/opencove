@@ -60,3 +60,12 @@
   gap: var(--cove-spacing-3);
   padding: var(--cove-spacing-4);
 }
+
+.ui-gallery__surface {
+  display: grid;
+  gap: var(--cove-spacing-1);
+  width: 180px;
+  padding: var(--cove-spacing-3);
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: var(--cove-radius-lg);
+}

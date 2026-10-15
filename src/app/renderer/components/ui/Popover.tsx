@@ -6,7 +6,9 @@ import {
   type AnchoredSurfacePlacement,
   type AnchoredSurfaceSide,
 } from './anchoredSurfacePlacement'
+import { classNames } from './classNames'
 import { DismissableLayer, type DismissableLayerDismissReason } from './DismissableLayer'
+import { surfaceProps } from './Surface'
 
 export type PopoverDismissReason = DismissableLayerDismissReason
 
@@ -187,7 +189,7 @@ export const Popover = React.forwardRef<HTMLDivElement, PopoverProps>(function P
     <DismissableLayer
       {...rest}
       ref={setRefs}
-      className={`cove-popover${className ? ` ${className}` : ''}`}
+      {...surfaceProps('acrylic', classNames('cove-popover', className))}
       data-side={placement?.side ?? side}
       data-align={align}
       branchRefs={[anchorRef, ...branchRefs]}

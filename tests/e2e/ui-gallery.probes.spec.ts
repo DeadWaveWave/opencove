@@ -92,3 +92,32 @@ test('shared components keep text contrast and target size in every built-in the
     await electronApp.close()
   }
 })
+
+test('acrylic surfaces blur and turn solid when the system reduces transparency', async () => {
+  const { electronApp, window: page } = await launchApp({
+    env: { OPENCOVE_TEST_UI_GALLERY: '1' },
+  })
+  try {
+    await expect(page.getByTestId('ui-gallery')).toBeVisible()
+    const material = () =>
+      page.getByTestId('ui-gallery-popover').evaluate(element => {
+        const style = getComputedStyle(element)
+        const alpha = style.backgroundColor.match(/[\d.]+/g)?.map(Number)[3] ?? 1
+        return { filter: style.backdropFilter, alpha }
+      })
+
+    await page.getByTestId('ui-gallery-open-popover').click()
+    await expect(page.getByTestId('ui-gallery-popover')).toHaveAttribute('data-material', 'acrylic')
+    const acrylic = await material()
+    expect(acrylic.filter).toContain('blur')
+    expect(acrylic.alpha).toBeLessThan(1)
+
+    const session = await page.context().newCDPSession(page)
+    await session.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }],
+    })
+    await expect.poll(material).toEqual({ filter: 'none', alpha: 1 })
+  } finally {
+    await electronApp.close()
+  }
+})

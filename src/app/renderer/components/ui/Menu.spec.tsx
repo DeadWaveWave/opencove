@@ -161,6 +161,8 @@ describe('ViewportMenuSurface with menu items', () => {
   it('owns its items as a menu and moves focus between them with the arrow keys', () => {
     openSurface(1024)
     const menu = screen.getByRole('menu', { name: 'Canvas' })
+    expect(menu).toHaveClass('cove-surface')
+    expect(menu).toHaveAttribute('data-material', 'acrylic')
     const terminal = screen.getByRole('menuitem', { name: 'New terminal' })
     const snapping = screen.getByRole('menuitemcheckbox', { name: 'Magnetic snapping' })
     expect(menu.contains(terminal) && menu.contains(snapping)).toBe(true)
