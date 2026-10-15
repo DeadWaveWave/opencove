@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Appearance: replace the Standard theme with Cove, whose colors are generated with checked contrast, and use Cove Dark for new installs. Ember is retired and existing Ember choices move to Cove; Pixel is unchanged. (#439)
 - Appearance: icon buttons show themed tooltips that follow the theme, appear sooner and also open on keyboard focus. (#442)
 - Agent windows: status pills use larger text and reserve color for what needs attention: working uses the accent, waiting is yellow, failed is red and every other state is neutral. (#443)
+- Canvas: the right-click menu shows the keyboard shortcuts for New Terminal, New Note, Run Agent and Create Space with Selected, and screen readers announce it as a menu. (#444)
 
 ### 🐛 Fixed
 
