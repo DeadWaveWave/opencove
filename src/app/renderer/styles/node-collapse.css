@@ -50,34 +50,9 @@
   pointer-events: none;
 }
 
-.cove-node-collapse-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 26px;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--cove-radius-xs);
-  background: transparent;
-  color: var(--cove-text-muted);
-  cursor: pointer;
-}
-
-.cove-node-collapse-button:hover {
-  color: var(--cove-text);
-  background: var(--cove-control-hover);
-}
-
-.cove-node-collapse-button:focus-visible {
-  outline: 2px solid var(--cove-focus-ring);
-  outline-offset: 1px;
-}
-
 .image-node > .cove-node-collapse-button {
   position: absolute;
-  top: 8px;
+  top: 10px;
   right: 40px;
   z-index: 2;
   background: var(--cove-node-header-surface);
@@ -437,7 +412,7 @@
 }
 
 @media (pointer: coarse) {
-  .cove-node-collapse-button {
+  .cove-window-control {
     min-width: 44px;
     min-height: 44px;
   }

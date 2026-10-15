@@ -90,27 +90,6 @@
   color: var(--cove-text-muted);
 }
 
-.document-node__close {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  background: transparent;
-  color: var(--cove-text-muted);
-  cursor: pointer;
-  padding: 0;
-  transition: color 0.16s ease;
-  font-size: calc(18px * var(--cove-ui-font-scale));
-  line-height: 1;
-}
-
-.document-node__close:hover {
-  color: var(--cove-text);
-}
-
-.document-node__close:focus-visible,
 .document-node__action:focus-visible,
 .document-node__close-prompt-action:focus-visible,
 .document-node__state-action:focus-visible {

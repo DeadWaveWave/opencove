@@ -142,11 +142,6 @@
   outline-offset: 2px;
 }
 
-.task-node__icon-button--close {
-  font-size: calc(18px * var(--cove-ui-font-scale));
-  line-height: 1;
-}
-
 .task-node__meta {
   display: flex;
   flex-wrap: wrap;

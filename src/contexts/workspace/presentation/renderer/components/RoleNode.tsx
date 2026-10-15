@@ -1,6 +1,7 @@
-import { Play, X } from 'lucide-react'
+import { Play } from 'lucide-react'
 import { NodeKindIcon } from './shared/NodeKindIcon'
 import { WindowCollapseButton } from './shared/WindowCollapseButton'
+import { WindowCloseButton } from './shared/WindowCloseButton'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { JSX } from 'react'
 import { Handle, Position } from '@xyflow/react'
@@ -150,18 +151,11 @@ export function RoleNode({
           <div className="role-node__meta">{AGENT_PROVIDER_LABEL[selectedProvider]}</div>
         </div>
         <WindowCollapseButton onClose={onClose} />
-        <button
-          type="button"
-          className="role-node__icon-button nodrag"
-          onClick={event => {
-            event.stopPropagation()
-            onClose()
-          }}
-          aria-label={t('roleNode.deleteRoleNode')}
-          title={t('roleNode.deleteRoleNode')}
-        >
-          <X aria-hidden="true" />
-        </button>
+        <WindowCloseButton
+          label={t('roleNode.deleteRoleNode')}
+          className="role-node__close"
+          onClose={onClose}
+        />
       </div>
 
       {role.roleDescription.trim().length > 0 ? (

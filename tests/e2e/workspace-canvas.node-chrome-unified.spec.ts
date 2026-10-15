@@ -34,6 +34,22 @@ async function readInlineTitleMetrics(display: Locator): Promise<{
   })
 }
 
+async function readRestingBorderAlpha(button: Locator): Promise<number> {
+  return await button.evaluate(element => {
+    const style = getComputedStyle(element)
+    if (style.borderTopWidth === '0px') {
+      return 0
+    }
+    const probe = document.createElement('canvas').getContext('2d')
+    if (!probe) {
+      throw new Error('2d canvas unavailable')
+    }
+    probe.fillStyle = style.borderTopColor
+    probe.fillRect(0, 0, 1, 1)
+    return probe.getImageData(0, 0, 1, 1).data[3]
+  })
+}
+
 test.describe('Workspace Canvas - Unified Node Chrome', () => {
   test('uses the same compact header height and button chrome across terminal, task, and note nodes', async () => {
     const { electronApp, window } = await launchApp()
@@ -86,12 +102,23 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       const taskMore = taskNode.locator('.task-node__icon-button--more')
       const taskClose = taskNode.locator('.task-node__icon-button--close')
       const noteClose = noteNode.locator('.note-node__close')
+      const collapseButtons = window.locator('[data-testid="node-collapse"]')
+      await expect(collapseButtons).toHaveCount(3)
 
+      // Resting header buttons draw no box; the window controls are 24px squares everywhere.
+      const windowControls = [terminalClose, taskClose, noteClose, ...(await collapseButtons.all())]
       await Promise.all(
-        [terminalClose, taskMore, taskClose, noteClose].flatMap(button => [
-          expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)'),
-          expect(button).toHaveCSS('border-top-width', '0px'),
-        ]),
+        [taskMore, ...windowControls].map(async button => {
+          await expect(button).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+          expect(await readRestingBorderAlpha(button)).toBe(0)
+        }),
+      )
+      await Promise.all(
+        windowControls.map(async control => {
+          await expect(control).toHaveCSS('height', '24px')
+          const rect = await readLocatorClientRect(control)
+          expect(Math.round(rect.width / rect.height)).toBe(1)
+        }),
       )
     } finally {
       await electronApp.close()

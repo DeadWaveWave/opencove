@@ -43,23 +43,6 @@
   color: var(--cove-text-faint);
 }
 
-.note-node__close {
-  flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  background: transparent;
-  color: var(--cove-text-muted);
-  cursor: pointer;
-  padding: 0;
-  transition: color 0.16s ease;
-  font-size: calc(18px * var(--cove-ui-font-scale));
-  line-height: 1;
-}
-
 .note-node__action {
   flex: 0 0 auto;
   width: 24px;
@@ -94,15 +77,6 @@
 }
 
 .note-node__action:focus-visible {
-  outline: 2px solid var(--cove-focus-ring);
-  outline-offset: 2px;
-}
-
-.note-node__close:hover {
-  color: var(--cove-text);
-}
-
-.note-node__close:focus-visible {
   outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
 }

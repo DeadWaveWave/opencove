@@ -17,6 +17,7 @@ import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { NodeKindIcon } from './shared/NodeKindIcon'
 import { WindowCollapseButton, useWindowPresentationHidden } from './shared/WindowCollapseButton'
+import { WindowCloseButton } from './shared/WindowCloseButton'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { useWebsiteWindowStore } from '../store/useWebsiteWindowStore'
@@ -404,18 +405,11 @@ export function WebsiteNode({
             ) : null}
 
             <WindowCollapseButton onClose={onClose} />
-            <button
-              type="button"
-              className="website-node__close nodrag"
-              onClick={event => {
-                event.stopPropagation()
-                onClose()
-              }}
-              aria-label={t('websiteNode.close')}
-              title={t('websiteNode.close')}
-            >
-              ×
-            </button>
+            <WindowCloseButton
+              label={t('websiteNode.close')}
+              className="website-node__close"
+              onClose={onClose}
+            />
           </div>
         </div>
 

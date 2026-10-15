@@ -1,5 +1,4 @@
 import React from 'react'
-import { X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { LabelColor } from '@shared/types/labelColor'
 import { isFileUriWithinRoot } from '@shared/utils/fileUriScope'
@@ -11,6 +10,7 @@ import { decodeUriPathname } from './DocumentNode.helpers'
 import { NodeKindIcon } from './shared/NodeKindIcon'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { WindowCollapseButton } from './shared/WindowCollapseButton'
+import { WindowCloseButton } from './shared/WindowCloseButton'
 import { WorkspaceDirectoryBrowser } from './workspaceCanvas/view/WorkspaceDirectoryBrowser'
 import { WorkspaceDirectoryViewMode } from './workspaceCanvas/view/WorkspaceDirectoryViewMode'
 import type { SpaceExplorerClipboardItem } from './workspaceCanvas/view/WorkspaceSpaceExplorerOverlay.operations'
@@ -173,25 +173,17 @@ export function FolderNode({
           <span className="document-node__title-text">{title}</span>
         </span>
         <div className="document-node__actions nodrag">
-          <WindowCollapseButton onClose={onClose} />
           <WorkspaceDirectoryViewMode
             viewMode={folder.viewMode}
             onViewModeChange={changeView}
             disabled={mountId === undefined}
           />
-          <button
-            type="button"
+          <WindowCollapseButton onClose={onClose} />
+          <WindowCloseButton
+            label={t('common.close')}
             className="document-node__close"
-            aria-label={t('common.close')}
-            title={t('common.close')}
-            onPointerDown={event => event.stopPropagation()}
-            onClick={event => {
-              event.stopPropagation()
-              onClose()
-            }}
-          >
-            <X size={15} aria-hidden="true" />
-          </button>
+            onClose={onClose}
+          />
         </div>
       </header>
       {mountId === undefined ? (

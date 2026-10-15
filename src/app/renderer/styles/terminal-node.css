@@ -50,19 +50,6 @@
   pointer-events: none;
 }
 
-.terminal-node__close {
-  border: 0;
-  background: transparent;
-  color: var(--cove-text-muted);
-  font-size: calc(18px * var(--cove-ui-font-scale));
-  line-height: 1;
-  cursor: pointer;
-}
-
-.terminal-node__close:hover {
-  color: var(--cove-text);
-}
-
 .terminal-node__body {
   flex: 1;
   min-width: 0;
@@ -400,10 +387,6 @@
 .terminal-node__action--icon:disabled {
   border-color: transparent;
   background: transparent;
-}
-
-.terminal-node__close {
-  margin-left: 4px;
 }
 
 .terminal-node__error {

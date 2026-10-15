@@ -53,29 +53,6 @@
   line-height: 1.2;
 }
 
-.role-node__icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--cove-text-muted);
-  cursor: pointer;
-}
-
-.role-node__icon-button:hover {
-  background: var(--cove-surface-hover);
-  color: var(--cove-text);
-}
-
-.role-node__icon-button svg {
-  width: 16px;
-  height: 16px;
-}
-
 .role-node__description {
   margin: 0;
   padding: 10px 12px 0;

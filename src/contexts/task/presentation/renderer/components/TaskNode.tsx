@@ -23,6 +23,7 @@ import type { LabelColor } from '@shared/types/labelColor'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { WindowCollapseButton } from '@contexts/workspace/presentation/renderer/components/shared/WindowCollapseButton'
+import { WindowCloseButton } from '@contexts/workspace/presentation/renderer/components/shared/WindowCloseButton'
 import { Pencil } from 'lucide-react'
 
 interface TaskNodeInteractionOptions {
@@ -304,19 +305,12 @@ export function TaskNode({
           />
 
           <WindowCollapseButton onClose={onClose} />
-          <button
-            type="button"
-            className="task-node__icon-button task-node__icon-button--close nodrag"
+          <WindowCloseButton
+            label={t('taskNode.deleteTask')}
+            className="task-node__icon-button--close"
             data-testid="task-node-close"
-            onClick={event => {
-              event.stopPropagation()
-              onClose()
-            }}
-            aria-label={t('taskNode.deleteTask')}
-            title={t('taskNode.deleteTask')}
-          >
-            ×
-          </button>
+            onClose={onClose}
+          />
         </div>
       </div>
 

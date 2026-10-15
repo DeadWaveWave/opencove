@@ -12,6 +12,7 @@ import { getStatusPillTone } from './status'
 import { InlineNodeTitleEditor } from '../shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '../shared/NodeKindIcon'
 import { WindowCollapseButton } from '../shared/WindowCollapseButton'
+import { WindowCloseButton } from '../shared/WindowCloseButton'
 
 interface TerminalNodeHeaderProps {
   title: string
@@ -225,16 +226,11 @@ export function TerminalNodeHeader({
       ) : null}
 
       <WindowCollapseButton onClose={onClose} />
-      <button
-        type="button"
-        className="terminal-node__close nodrag"
-        onClick={event => {
-          event.stopPropagation()
-          onClose()
-        }}
-      >
-        ×
-      </button>
+      <WindowCloseButton
+        label={t('canvasCollapse.closeWindow')}
+        className="terminal-node__close"
+        onClose={onClose}
+      />
     </div>
   )
 }

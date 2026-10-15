@@ -59,25 +59,6 @@
   gap: var(--cove-control-gap);
 }
 
-.cove-canvas-node-window__action {
-  display: inline-flex;
-  flex: 0 0 24px;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--cove-text-muted);
-  cursor: pointer;
-}
-
-.cove-canvas-node-window__action:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 .cove-canvas-node-window__body {
   display: flex;
   flex: 1 1 auto;

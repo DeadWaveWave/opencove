@@ -1,5 +1,6 @@
 import { createContext, useContext, useLayoutEffect } from 'react'
 import { Minus } from 'lucide-react'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useTranslation } from '@app/renderer/i18n'
 
 export interface WindowCollapseControls {
@@ -45,12 +46,11 @@ export function WindowCollapseButton({
     return null
   }
   return (
-    <button
-      type="button"
-      className={`cove-node-collapse-button nodrag ${className}`.trim()}
+    <IconButton
+      label={t('canvasCollapse.collapseWindow')}
+      size="xs"
+      className={`cove-window-control cove-node-collapse-button nodrag ${className}`.trim()}
       data-testid="node-collapse"
-      aria-label={t('canvasCollapse.collapseWindow')}
-      title={t('canvasCollapse.collapseWindow')}
       aria-expanded={!controls.collapsed}
       aria-controls={`cove-node-runtime-${controls.nodeId}`}
       onPointerDown={event => event.stopPropagation()}
@@ -59,7 +59,7 @@ export function WindowCollapseButton({
         controls.toggle()
       }}
     >
-      <Minus size={15} strokeWidth={1.7} aria-hidden="true" />
-    </button>
+      <Minus aria-hidden="true" />
+    </IconButton>
   )
 }

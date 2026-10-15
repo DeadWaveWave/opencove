@@ -8,6 +8,7 @@ import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './D
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { NodeKindIcon } from './shared/NodeKindIcon'
 import { WindowCollapseButton } from './shared/WindowCollapseButton'
+import { WindowCloseButton } from './shared/WindowCloseButton'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { suppressExplorerOverlayInteractions } from './workspaceCanvas/explorerInteractionGuard'
 
@@ -185,22 +186,12 @@ export function DocumentNodeChrome({
           ) : null}
 
           <WindowCollapseButton onClose={onRequestClose} revealBeforeClose={isDirty} />
-          <button
-            type="button"
-            className="document-node__close nodrag"
-            onPointerDown={event => {
-              event.stopPropagation()
-              suppressExplorerOverlayInteractions()
-            }}
-            onClick={event => {
-              event.stopPropagation()
-              onRequestClose()
-            }}
-            aria-label={t('documentNode.close')}
-            title={t('documentNode.close')}
-          >
-            ×
-          </button>
+          <WindowCloseButton
+            label={t('documentNode.close')}
+            className="document-node__close"
+            onPointerDown={() => suppressExplorerOverlayInteractions()}
+            onClose={onRequestClose}
+          />
         </div>
       </div>
 

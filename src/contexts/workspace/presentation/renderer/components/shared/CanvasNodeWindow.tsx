@@ -1,5 +1,4 @@
 import type { JSX, ReactNode } from 'react'
-import { X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { NodeFrame, Point, Size, WorkspaceNodeKind } from '../../types'
 import { useNodeFrameResize } from '../../utils/nodeFrameResize'
@@ -7,6 +6,7 @@ import { resolveCanonicalNodeMinSize } from '../../utils/workspaceNodeSizing'
 import { NodeKindIcon } from './NodeKindIcon'
 import { NodeResizeHandles } from './NodeResizeHandles'
 import { WindowCollapseButton } from './WindowCollapseButton'
+import { WindowCloseButton } from './WindowCloseButton'
 
 export interface CanvasNodeWindowProps {
   id: string
@@ -111,19 +111,12 @@ export function CanvasNodeWindow({
         >
           {headerActions}
           <WindowCollapseButton onClose={onClose} />
-          <button
-            type="button"
-            className="cove-canvas-node-window__action"
+          <WindowCloseButton
+            label={resolvedCloseLabel}
+            className="cove-canvas-node-window__close"
             data-testid={`${testIdPrefix}-close`}
-            aria-label={resolvedCloseLabel}
-            title={resolvedCloseLabel}
-            onClick={event => {
-              event.stopPropagation()
-              onClose()
-            }}
-          >
-            <X size={15} strokeWidth={1.7} aria-hidden="true" />
-          </button>
+            onClose={onClose}
+          />
         </div>
       </header>
       <div

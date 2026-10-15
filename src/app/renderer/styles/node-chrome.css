@@ -68,13 +68,8 @@
 
 :is(
   .terminal-node__action--icon,
-  .cove-canvas-node-window__action,
-  .terminal-node__close,
   .task-node__icon-button,
-  .role-node__icon-button,
   .note-node__action,
-  .note-node__close,
-  .document-node__close,
   .website-node__icon-button,
   .image-node__close
 ):focus-visible {
@@ -85,13 +80,8 @@
 
 :is(
     .terminal-node__action--icon,
-    .cove-canvas-node-window__action,
-    .terminal-node__close,
     .task-node__icon-button,
-    .role-node__icon-button,
     .note-node__action,
-    .note-node__close,
-    .document-node__close,
     .website-node__icon-button,
     .image-node__close
   ):hover:not(:disabled) {

@@ -13,6 +13,7 @@ import { InlineNodeTitleEditor } from './shared/InlineNodeTitleEditor'
 import { NoteNodeActionsMenu } from './NoteNodeActionsMenu'
 import { NodeKindIcon } from './shared/NodeKindIcon'
 import { WindowCollapseButton } from './shared/WindowCollapseButton'
+import { WindowCloseButton } from './shared/WindowCloseButton'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -206,18 +207,11 @@ export function NoteNode({
           onSetLabelColorOverride={onSetLabelColorOverride}
         />
         <WindowCollapseButton onClose={onClose} />
-        <button
-          type="button"
-          className="note-node__close nodrag"
-          onClick={event => {
-            event.stopPropagation()
-            onClose()
-          }}
-          aria-label={t('noteNode.deleteNote')}
-          title={t('noteNode.deleteNote')}
-        >
-          ×
-        </button>
+        <WindowCloseButton
+          label={t('noteNode.deleteNote')}
+          className="note-node__close"
+          onClose={onClose}
+        />
       </div>
 
       <textarea
