@@ -147,7 +147,7 @@ Values are CSS pixels before canvas zoom; no units in JSON.
 | `metrics.controlHeight` | 28–48 |
 | `metrics.radius` | 0–24; node shell corner radius |
 
-The Role header retains a minimum of 46px for its additional content. Touch navigation and
+Every window header, Role included, uses `metrics.headerHeight`. Touch navigation and
 menu rows retain a minimum 44px target. Compact nodes keep the shared **112×96**
 collision bounds; visual icon sizes can change inside them. Do not override the
 outer React Flow transform, width or height. Fold animation reads actual DOM
