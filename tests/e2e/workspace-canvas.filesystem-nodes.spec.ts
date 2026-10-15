@@ -59,7 +59,7 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
       await expect(folder).toBeVisible()
       await expect(folder.locator('.document-node__title-text')).toHaveText('docs')
       await window.locator('.react-flow__controls-fitview').click()
-      await folder.getByRole('button', { name: 'Icons', exact: true }).click()
+      await folder.getByRole('radio', { name: 'Icons', exact: true }).click()
       const grid = folder.getByRole('listbox')
       await expect(grid).toBeVisible()
       await expect(grid.locator('.workspace-space-explorer__entry-label')).toHaveText([
@@ -97,7 +97,7 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
       )
       await directoryEntry(window, id, fixture.docs).click()
 
-      await folder.getByRole('button', { name: 'List', exact: true }).click()
+      await folder.getByRole('radio', { name: 'List', exact: true }).click()
       await expect(folder.getByRole('tree')).toBeVisible()
       const designEntry = directoryEntry(window, id, fixture.design)
       await designEntry.click()

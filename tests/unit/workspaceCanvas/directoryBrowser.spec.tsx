@@ -153,19 +153,16 @@ describe('directory browser', () => {
     fireEvent.click(within(entry(docsUri)).getByTestId('directory-entry-disclosure'))
     expect(screen.getByText('design')).toBeVisible()
     expect(entry(docsUri)).toHaveAttribute('aria-expanded', 'true')
-    fireEvent.click(screen.getByRole('button', { name: 'spaceExplorer.iconsView' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'spaceExplorer.iconsView' }))
     expect(screen.queryByText('design')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'spaceExplorer.listView' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'spaceExplorer.listView' }))
     expect(screen.getByText('design')).toBeVisible()
     fireEvent.click(entry(designUri))
     await screen.findByText('theme.json')
     expect(screen.getByTestId('current-uri').textContent).toBe(rootUri)
     fireEvent.doubleClick(entry(designUri))
     await waitFor(() => expect(screen.getByTestId('current-uri').textContent).toBe(designUri))
-    expect(screen.getByRole('button', { name: 'spaceExplorer.listView' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    expect(screen.getByRole('radio', { name: 'spaceExplorer.listView' })).toBeChecked()
   })
 
   it('explicitly enters a list folder through its context menu', async () => {

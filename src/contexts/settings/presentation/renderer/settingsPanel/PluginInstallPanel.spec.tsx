@@ -41,7 +41,7 @@ describe('explicit plugin installation', () => {
     vi.stubGlobal('opencoveApi', { controlSurface: { invoke } })
     const installed = vi.fn()
     render(<PluginInstallPanel onCancel={vi.fn()} onInstalled={installed} />)
-    fireEvent.click(screen.getByRole('button', { name: /^Discover$/ }))
+    fireEvent.click(screen.getByRole('radio', { name: /^Discover$/ }))
     fireEvent.change(screen.getByTestId('settings-plugin-discover-query'), {
       target: { value: 'clock' },
     })

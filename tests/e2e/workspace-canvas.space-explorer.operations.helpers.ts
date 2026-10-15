@@ -60,7 +60,7 @@ export async function openExplorer(
 
   const explorer = window.locator('[data-testid="workspace-space-explorer"]')
   await expect(explorer).toBeVisible()
-  await explorer.getByRole('button', { name: 'List', exact: true }).click()
+  await explorer.getByRole('radio', { name: 'List', exact: true }).click()
   return explorer
 }
 

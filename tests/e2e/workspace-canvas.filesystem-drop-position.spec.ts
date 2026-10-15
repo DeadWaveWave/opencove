@@ -90,7 +90,7 @@ async function seedDropWorkspace(page: Page, root: string, zoom: number) {
   await page.getByTestId(`workspace-space-files-${FILESYSTEM_SPACE}`).click()
   const explorer = page.getByTestId('workspace-space-explorer')
   await expect(explorer).toBeVisible()
-  await explorer.getByRole('button', { name: 'List', exact: true }).click()
+  await explorer.getByRole('radio', { name: 'List', exact: true }).click()
   await expect(explorer.getByRole('tree')).toBeVisible()
 }
 

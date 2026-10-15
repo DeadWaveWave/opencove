@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { Check, Copy, ExternalLink, FolderOpen, LoaderCircle } from 'lucide-react'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
+import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { useTranslation } from '@app/renderer/i18n'
 import type { IssueReportKind, PrepareIssueReportResult } from '@shared/contracts/dto'
 import { captureIssueReportUiGeometry } from '@contexts/issueReport/presentation/renderer/uiGeometryDiagnostics'
@@ -41,6 +42,7 @@ export function IssueReportDialog({
 }): React.JSX.Element | null {
   const { t } = useTranslation()
   const [kind, setKind] = useState<IssueReportKind>('run_agent_failed')
+  const typeLabelId = React.useId()
   const [summary, setSummary] = useState('')
   const [description, setDescription] = useState('')
   const [includeLocalPaths, setIncludeLocalPaths] = useState(false)
@@ -171,33 +173,26 @@ export function IssueReportDialog({
 
       <div className="cove-window__fields issue-report-window__fields">
         <div className="cove-window__field-row">
-          <label>{t('issueReport.typeLabel')}</label>
-          <div className="issue-report-window__segments">
-            {typeOptions.map(option => (
-              <button
-                key={option.kind}
-                type="button"
-                className={`issue-report-window__segment${
-                  kind === option.kind ? ' issue-report-window__segment--selected' : ''
-                }`}
-                aria-pressed={kind === option.kind}
-                onClick={() => {
-                  const currentDefaultSummaries = [
-                    t('issueReport.defaultSummary.runAgentFailed'),
-                    t('issueReport.defaultSummary.appError'),
-                    t('issueReport.defaultSummary.other'),
-                  ]
-                  setKind(option.kind)
-                  if (summary.trim().length === 0 || currentDefaultSummaries.includes(summary)) {
-                    setSummary(t(`issueReport.defaultSummary.${defaultSummaryKey(option.kind)}`))
-                  }
-                  clearPreparedReport()
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+          <label id={typeLabelId}>{t('issueReport.typeLabel')}</label>
+          <SegmentedControl
+            className="issue-report-window__type"
+            size="md"
+            labelledBy={typeLabelId}
+            value={kind}
+            options={typeOptions.map(option => ({ value: option.kind, label: option.label }))}
+            onValueChange={nextKind => {
+              const currentDefaultSummaries = [
+                t('issueReport.defaultSummary.runAgentFailed'),
+                t('issueReport.defaultSummary.appError'),
+                t('issueReport.defaultSummary.other'),
+              ]
+              setKind(nextKind)
+              if (summary.trim().length === 0 || currentDefaultSummaries.includes(summary)) {
+                setSummary(t(`issueReport.defaultSummary.${defaultSummaryKey(nextKind)}`))
+              }
+              clearPreparedReport()
+            }}
+          />
         </div>
 
         <div className="cove-window__field-row">

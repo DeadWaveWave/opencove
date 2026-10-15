@@ -1,5 +1,6 @@
 import React from 'react'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
+import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { BranchMode, SpaceWorktreeViewMode } from './spaceWorktree.shared'
@@ -90,46 +91,25 @@ export function SpaceWorktreePanels({
           </div>
 
           <section className="workspace-space-worktree__surface workspace-space-worktree__surface--minimal">
-            <div
+            <SegmentedControl
               className="workspace-space-worktree__segment-control"
-              role="tablist"
-              aria-label={t('worktree.branchMode')}
-            >
-              <button
-                type="button"
-                className={
-                  branchMode === 'new'
-                    ? 'workspace-space-worktree__segment workspace-space-worktree__segment--active'
-                    : 'workspace-space-worktree__segment'
-                }
-                data-testid="space-worktree-mode-new"
-                role="tab"
-                aria-selected={branchMode === 'new'}
-                disabled={isBusy}
-                onClick={() => {
-                  onBranchModeChange('new')
-                }}
-              >
-                {t('worktree.newBranch')}
-              </button>
-              <button
-                type="button"
-                className={
-                  branchMode === 'existing'
-                    ? 'workspace-space-worktree__segment workspace-space-worktree__segment--active'
-                    : 'workspace-space-worktree__segment'
-                }
-                data-testid="space-worktree-mode-existing"
-                role="tab"
-                aria-selected={branchMode === 'existing'}
-                disabled={isBusy}
-                onClick={() => {
-                  onBranchModeChange('existing')
-                }}
-              >
-                {t('worktree.existingBranch')}
-              </button>
-            </div>
+              label={t('worktree.branchMode')}
+              value={branchMode}
+              disabled={isBusy}
+              options={[
+                {
+                  value: 'new',
+                  label: t('worktree.newBranch'),
+                  testId: 'space-worktree-mode-new',
+                },
+                {
+                  value: 'existing',
+                  label: t('worktree.existingBranch'),
+                  testId: 'space-worktree-mode-existing',
+                },
+              ]}
+              onValueChange={onBranchModeChange}
+            />
 
             <div className="workspace-space-worktree__content-block">
               {branchMode === 'new' ? (

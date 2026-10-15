@@ -19,6 +19,7 @@ export const enSettingsPanelEndpoints = {
     help: 'Add a remote machine that OpenCove can connect to and browse.',
     recommendedTitle: 'Recommended path',
     recommendedHint: 'Over SSH keeps tunnel and bootstrap details out of the way.',
+    modeLabel: 'Connection method',
     managedLabel: 'Over SSH',
     manualLabel: 'Manual (advanced)',
     managedHelp: 'SSH connection with an automatically managed tunnel and remote service.',

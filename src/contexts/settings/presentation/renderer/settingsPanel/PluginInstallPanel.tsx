@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, type FormEvent, type JSX } from 'react'
+import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { PluginBuildOptions } from './PluginBuildOptions'
 import { PluginRepositoryDetail } from './PluginRepositoryDetail'
 import { PluginCandidateList, type PluginCandidateInfo } from './PluginCandidateList'
@@ -147,29 +148,24 @@ export function PluginInstallPanel({
           <X size={16} aria-hidden="true" />
         </button>
       </div>
-      <div
+      <SegmentedControl
         className="settings-plugin-install__modes"
-        role="group"
-        aria-label={t('settingsPanel.plugins.install.source')}
-      >
-        {(['git', 'local', 'discover'] as const).map(value => (
-          <button
-            type="button"
-            key={value}
-            aria-pressed={mode === value}
-            disabled={busy}
-            onClick={() => {
-              setMode(value)
-              setSource('')
-              setError(null)
-              setRepositoryDetail(null)
-              setCandidate(null)
-            }}
-          >
-            {t(`settingsPanel.plugins.install.${value}`)}
-          </button>
-        ))}
-      </div>
+        size="md"
+        label={t('settingsPanel.plugins.install.source')}
+        value={mode}
+        disabled={busy}
+        options={(['git', 'local', 'discover'] as const).map(value => ({
+          value,
+          label: t(`settingsPanel.plugins.install.${value}`),
+        }))}
+        onValueChange={value => {
+          setMode(value)
+          setSource('')
+          setError(null)
+          setRepositoryDetail(null)
+          setCandidate(null)
+        }}
+      />
       {repositoryDetail ? (
         <PluginRepositoryDetail
           repository={repositoryDetail}

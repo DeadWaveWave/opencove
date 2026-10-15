@@ -183,7 +183,9 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
 
       if (
         event.target instanceof Element &&
-        event.target.closest('button, a, [role="button"], [role="link"], summary')
+        event.target.closest(
+          'button, a, input[type="radio"], [role="button"], [role="link"], [role="radio"], summary',
+        )
       ) {
         return
       }

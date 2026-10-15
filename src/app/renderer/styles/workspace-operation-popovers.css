@@ -89,31 +89,14 @@
 
 .workspace-space-worktree-popover .workspace-space-worktree__segment-control {
   width: 100%;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid color-mix(in srgb, var(--cove-border) 62%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--cove-surface-strong) 48%, transparent);
 }
 
-.workspace-space-worktree-popover .workspace-space-worktree__segment {
-  flex: 1;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 7px;
-  color: var(--cove-text-muted);
-  font-size: calc(11px * var(--cove-ui-font-scale));
-}
-
-.workspace-space-worktree-popover .workspace-space-worktree__segment:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--cove-surface-hover) 70%, transparent);
-  color: var(--cove-text);
-}
-
-.workspace-space-worktree-popover .workspace-space-worktree__segment--active {
-  background: var(--cove-surface-strong);
-  box-shadow: 0 1px 3px var(--cove-shadow-color-elevated);
-  color: var(--cove-text);
+.workspace-space-worktree-popover
+  .workspace-space-worktree__segment-control
+  .cove-segmented__option {
+  flex: 1 1 0;
+  font-size: var(--cove-font-size-caption);
+  line-height: var(--cove-line-height-caption);
 }
 
 .workspace-space-worktree-popover .workspace-space-worktree__content-block {

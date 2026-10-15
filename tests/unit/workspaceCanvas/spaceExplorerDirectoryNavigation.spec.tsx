@@ -66,7 +66,7 @@ describe('terminal directory navigation in the space explorer', () => {
     expect(screen.getByTestId('browser')).toHaveAttribute('data-root', 'file:///repo')
     expect(screen.getByTestId('browser')).toHaveAttribute('data-current', requestedDirectory.uri)
     expect(container.querySelector('.workspace-space-explorer__title')).toHaveTextContent('design')
-    fireEvent.click(screen.getByRole('button', { name: 'spaceExplorer.listView' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'spaceExplorer.listView' }))
     fireEvent.click(screen.getByRole('button', { name: 'docs' }))
     expect(screen.getByTestId('browser')).toHaveAttribute('data-current', 'file:///repo/docs')
     fireEvent.click(screen.getByRole('button', { name: 'repo' }))
@@ -82,10 +82,7 @@ describe('terminal directory navigation in the space explorer', () => {
       />,
     )
     expect(screen.getByTestId('browser')).toHaveAttribute('data-current', requestedDirectory.uri)
-    expect(screen.getByRole('button', { name: 'spaceExplorer.listView' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    expect(screen.getByRole('radio', { name: 'spaceExplorer.listView' })).toBeChecked()
     expect(props.onDismissQuickPreview).toHaveBeenCalled()
   })
 

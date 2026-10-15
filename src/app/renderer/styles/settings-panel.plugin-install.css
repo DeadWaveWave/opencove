@@ -19,26 +19,7 @@
 }
 
 .settings-plugin-install__modes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   margin: 14px 0 18px;
-}
-
-.settings-plugin-install__modes button {
-  padding: 7px 11px;
-  border: 1px solid var(--cove-border-subtle);
-  border-radius: 6px;
-  background: var(--cove-surface);
-  color: var(--cove-text-muted);
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  cursor: pointer;
-}
-
-.settings-plugin-install__modes button[aria-pressed='true'] {
-  border-color: var(--cove-accent);
-  color: var(--cove-text);
-  background: var(--cove-surface-hover);
 }
 
 .settings-plugin-install label {

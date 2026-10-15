@@ -106,51 +106,7 @@
 .cove-directory-view-mode {
   display: flex;
   align-items: center;
-  gap: 2px;
   flex: 0 0 auto;
-}
-
-.cove-directory-view-mode__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--cove-radius-xs);
-  background: transparent;
-  color: var(--cove-text-muted);
-  cursor: pointer;
-  transition:
-    background-color var(--cove-motion-fast),
-    color var(--cove-motion-fast);
-}
-
-.cove-directory-view-mode__button svg {
-  width: 14px;
-  height: 14px;
-  stroke-width: 1.7;
-}
-
-.cove-directory-view-mode__button:hover:not(:disabled) {
-  background: var(--cove-control-hover);
-  color: var(--cove-text);
-}
-
-.cove-directory-view-mode__button[aria-pressed='true'] {
-  background: var(--cove-control-selected);
-  color: var(--cove-accent-text);
-}
-
-.cove-directory-view-mode__button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.cove-directory-view-mode__button:focus-visible {
-  outline: 1px solid var(--cove-focus-ring);
-  outline-offset: 1px;
 }
 
 .cove-directory-browser__entry-symbol {

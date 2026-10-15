@@ -19,7 +19,7 @@ test('installs a ready local directory through the plugin manager', async ({
     await page.getByTestId('app-header-settings').click()
     await page.getByTestId('settings-section-nav-plugins').click()
     await page.getByTestId('settings-plugins-install').click()
-    await page.getByRole('button', { name: 'Local directory', exact: true }).click()
+    await page.getByRole('radio', { name: 'Local directory', exact: true }).click()
     await page.getByTestId('settings-plugin-install-source').fill(directory)
     await page.getByTestId('settings-plugin-install-submit').click()
     await expect(page.getByTestId('settings-plugin-install-panel')).toHaveCount(0)

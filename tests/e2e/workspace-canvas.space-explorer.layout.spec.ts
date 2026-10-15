@@ -137,12 +137,14 @@ test.describe('Workspace Canvas - Space Explorer', () => {
       await expect(explorer).toBeVisible()
       await expect(explorer).toHaveCSS('border-radius', '8px')
       const header = explorer.locator('.workspace-space-explorer__header')
-      await expect(header.getByRole('button')).toHaveCount(3)
-      await Promise.all(
-        ['Icons', 'List', 'Close'].map(name =>
-          expect(header.getByRole('button', { name, exact: true })).toBeVisible(),
+      await expect(header.getByRole('button')).toHaveCount(1)
+      await expect(header.getByRole('radio')).toHaveCount(2)
+      await Promise.all([
+        ...['Icons', 'List'].map(name =>
+          expect(header.getByRole('radio', { name, exact: true })).toBeVisible(),
         ),
-      )
+        expect(header.getByRole('button', { name: 'Close', exact: true })).toBeVisible(),
+      ])
       await expect(header.locator('.lucide-scan')).toHaveCount(0)
       const chrome = await header.evaluate(element => ({
         band: getComputedStyle(element, '::before').backgroundImage,

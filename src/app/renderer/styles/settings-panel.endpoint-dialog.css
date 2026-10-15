@@ -32,51 +32,7 @@
 }
 
 .settings-endpoint-dialog__modes {
-  display: flex;
   align-self: flex-start;
-  gap: 4px;
-  max-width: 100%;
-  padding: 3px;
-  border: 1px solid var(--cove-border-subtle);
-  border-radius: var(--cove-radius-sm);
-}
-
-.settings-endpoint-dialog__modes button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-width: 0;
-  min-height: 32px;
-  padding: 6px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--cove-radius-xs);
-  background: transparent;
-  color: var(--cove-text-muted);
-  font: inherit;
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  cursor: pointer;
-}
-
-.settings-endpoint-dialog__modes button[aria-pressed='true'] {
-  background: var(--cove-control-selected);
-  color: var(--cove-accent-text);
-  border-color: color-mix(in srgb, var(--cove-accent) 28%, transparent);
-}
-
-.settings-endpoint-dialog__modes button:hover:not(:disabled):not([aria-pressed='true']) {
-  background: var(--cove-surface-hover);
-  color: var(--cove-text);
-}
-
-.settings-endpoint-dialog__modes button:focus-visible {
-  outline: 2px solid var(--cove-focus-ring);
-  outline-offset: 2px;
-}
-
-.settings-endpoint-dialog__modes button:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
 }
 
 .settings-endpoint-dialog__form {

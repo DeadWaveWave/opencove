@@ -1,4 +1,5 @@
 import React from 'react'
+import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import type { TranslateFn } from '@app/renderer/i18n'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
@@ -48,35 +49,32 @@ export function AddProjectWizardDefaultLocationSection({
   const effectiveDefaultLocationKind: DefaultLocationKind = showRemote
     ? defaultLocationKind
     : 'local'
+  const locationLabelId = React.useId()
 
   return (
     <div className="cove-window__field-row">
       <div className="cove-window__label-row">
-        <label>{t('addProjectWizard.defaultLocationLabel')}</label>
+        <label id={locationLabelId}>{t('addProjectWizard.defaultLocationLabel')}</label>
         {showRemote ? (
-          <div
-            className="cove-window__segmented"
-            data-testid="workspace-project-create-default-location"
-          >
-            <button
-              type="button"
-              className={`cove-window__segment${defaultLocationKind === 'local' ? ' cove-window__segment--selected' : ''}`}
-              disabled={isBusy}
-              onClick={() => onChangeDefaultLocationKind('local')}
-              data-testid="workspace-project-create-default-location-local"
-            >
-              {t('addProjectWizard.defaultLocationLocal')}
-            </button>
-            <button
-              type="button"
-              className={`cove-window__segment${defaultLocationKind === 'remote' ? ' cove-window__segment--selected' : ''}`}
-              disabled={isBusy}
-              onClick={() => onChangeDefaultLocationKind('remote')}
-              data-testid="workspace-project-create-default-location-remote"
-            >
-              {t('addProjectWizard.defaultLocationRemote')}
-            </button>
-          </div>
+          <SegmentedControl
+            testId="workspace-project-create-default-location"
+            labelledBy={locationLabelId}
+            value={defaultLocationKind}
+            disabled={isBusy}
+            options={[
+              {
+                value: 'local',
+                label: t('addProjectWizard.defaultLocationLocal'),
+                testId: 'workspace-project-create-default-location-local',
+              },
+              {
+                value: 'remote',
+                label: t('addProjectWizard.defaultLocationRemote'),
+                testId: 'workspace-project-create-default-location-remote',
+              },
+            ]}
+            onValueChange={onChangeDefaultLocationKind}
+          />
         ) : null}
       </div>
 

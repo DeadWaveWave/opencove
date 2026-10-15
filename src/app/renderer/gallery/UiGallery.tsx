@@ -25,6 +25,7 @@ import {
 import { KindTile, type KindTileFamily } from '../components/ui/KindTile'
 import { MenuCheckboxItem, MenuItem, MenuSeparator } from '../components/ui/Menu'
 import { Popover } from '../components/ui/Popover'
+import { SegmentedControl } from '../components/ui/SegmentedControl'
 import { SettingRow } from '../components/ui/SettingRow'
 import { StatusPill } from '../components/ui/StatusPill'
 import { Toggle } from '../components/ui/Toggle'
@@ -85,6 +86,9 @@ export default function UiGallery(): React.JSX.Element {
   const [snapping, setSnapping] = useState(true)
   const [options, setOptions] = useState({ worktree: true, branch: false })
   const [tags, setTags] = useState<string[]>(['bug'])
+  const [reportKind, setReportKind] = useState<'bug' | 'feature' | 'other'>('bug')
+  const [viewMode, setViewMode] = useState<'icons' | 'list'>('icons')
+  const [connection, setConnection] = useState<'ssh' | 'manual'>('ssh')
   const dialogTrigger = useRef<HTMLButtonElement | null>(null)
   const popoverTrigger = useRef<HTMLButtonElement | null>(null)
   const menuTrigger = useRef<HTMLButtonElement | null>(null)
@@ -202,6 +206,52 @@ export default function UiGallery(): React.JSX.Element {
             archived
           </Chip>
           <Chip icon={<Folder aria-hidden="true" />}>src</Chip>
+        </div>
+      </Section>
+
+      <Section id="segmented" title="SegmentedControl">
+        <div className="ui-gallery__row">
+          <SegmentedControl
+            label="Report type"
+            value={reportKind}
+            options={[
+              { value: 'bug', label: 'Bug report' },
+              { value: 'feature', label: 'Feature request' },
+              { value: 'other', label: 'Other' },
+            ]}
+            onValueChange={setReportKind}
+          />
+          <SegmentedControl
+            label="View"
+            value={viewMode}
+            options={[
+              { value: 'icons', label: 'Icons', icon: <LayoutGrid />, iconOnly: true },
+              { value: 'list', label: 'List', icon: <ListChecks />, iconOnly: true },
+            ]}
+            onValueChange={setViewMode}
+          />
+        </div>
+        <div className="ui-gallery__row">
+          <SegmentedControl
+            size="md"
+            label="Connection method"
+            value={connection}
+            options={[
+              { value: 'ssh', label: 'Over SSH', icon: <SquareTerminal /> },
+              { value: 'manual', label: 'Manual', icon: <Settings /> },
+            ]}
+            onValueChange={setConnection}
+          />
+          <SegmentedControl
+            label="Location"
+            value="local"
+            disabled
+            options={[
+              { value: 'local', label: 'Local' },
+              { value: 'remote', label: 'Remote' },
+            ]}
+            onValueChange={() => {}}
+          />
         </div>
       </Section>
 

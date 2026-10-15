@@ -293,42 +293,7 @@
 }
 
 .workspace-space-worktree__segment-control {
-  display: inline-flex;
-  gap: 12px;
-  padding: 0;
-  border-radius: 0;
-  border: none;
-  background: transparent;
   align-self: flex-start;
-}
-
-.workspace-space-worktree__segment {
-  border: none;
-  background: transparent;
-  border-radius: 0;
-  padding: 0 0 8px;
-  cursor: pointer;
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  font-weight: 600;
-  color: var(--cove-text-muted);
-  border-bottom: 2px solid transparent;
-  transition:
-    border-color var(--cove-motion-normal) var(--cove-ease-standard),
-    color var(--cove-motion-normal) var(--cove-ease-standard);
-}
-
-.workspace-space-worktree__segment:hover:not(:disabled) {
-  color: var(--cove-text);
-}
-
-.workspace-space-worktree__segment--active {
-  border-bottom-color: var(--cove-accent);
-  color: var(--cove-text);
-}
-
-.workspace-space-worktree__segment:disabled {
-  opacity: 0.58;
-  cursor: not-allowed;
 }
 
 .workspace-space-worktree__create-grid {
@@ -436,10 +401,6 @@
 
   .workspace-space-worktree__create-grid {
     grid-template-columns: 1fr;
-  }
-
-  .workspace-space-worktree__segment-control {
-    gap: 10px;
   }
 
   .workspace-space-worktree__inline-actions {

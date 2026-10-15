@@ -21,7 +21,7 @@ async function openDirectoryBrowser(
     await expect(explorer.locator('.workspace-space-explorer__title')).toHaveText(
       'Source workspace',
     )
-    await explorer.getByRole('button', { name: 'Icons', exact: true }).click()
+    await explorer.getByRole('radio', { name: 'Icons', exact: true }).click()
     await directoryEntry(page, FILESYSTEM_SPACE, fixture.docs).click()
     return { browser: explorer, ownerId: FILESYSTEM_SPACE }
   }
@@ -120,8 +120,8 @@ async function expectHeaderAndFooter(browser: Locator) {
   const header = browser.locator('header').first()
   await expect(header.locator('.workspace-space-explorer__subtitle, .lucide-scan')).toHaveCount(0)
   await expect(browser.getByRole('button', { name: 'Parent folder', exact: true })).toHaveCount(0)
-  const icons = header.getByRole('button', { name: 'Icons', exact: true })
-  const list = header.getByRole('button', { name: 'List', exact: true })
+  const icons = header.getByRole('radio', { name: 'Icons', exact: true })
+  const list = header.getByRole('radio', { name: 'List', exact: true })
   const close = header.getByRole('button', { name: 'Close', exact: true })
   await expect(icons).toBeVisible()
   await expect(list).toBeVisible()
@@ -230,7 +230,7 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
         expect(footer).not.toBeNull()
         expect(background).not.toBeNull()
 
-        await browser.locator('header').getByRole('button', { name: 'Icons', exact: true }).click()
+        await browser.locator('header').getByRole('radio', { name: 'Icons', exact: true }).click()
         await directoryEntry(window, ownerId, fixture.design).click()
         await expect(directoryEntry(window, ownerId, fixture.guide)).toBeVisible()
         await expect(title).toHaveText('design')
@@ -257,10 +257,11 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
         )
         await directoryEntry(window, ownerId, fixture.docs).click()
         await expect(title).toHaveText('docs')
+        // Space checks a focused radio, as in native segmented controls.
         await browser
           .locator('header')
-          .getByRole('button', { name: 'List', exact: true })
-          .press('Enter')
+          .getByRole('radio', { name: 'List', exact: true })
+          .press('Space')
         await expect(browser.getByRole('tree')).toBeVisible()
         expect(await header!.evaluate(element => element.isConnected)).toBe(true)
         expect(await footer!.evaluate(element => element.isConnected)).toBe(true)

@@ -49,11 +49,11 @@ describe('space explorer chrome', () => {
         onClose={onClose}
       />,
     )
-    const icons = screen.getByRole('button', { name: 'spaceExplorer.iconsView' })
-    const list = screen.getByRole('button', { name: 'spaceExplorer.listView' })
+    const icons = screen.getByRole('radio', { name: 'spaceExplorer.iconsView' })
+    const list = screen.getByRole('radio', { name: 'spaceExplorer.listView' })
     const close = screen.getByRole('button', { name: 'common.close' })
-    expect(icons).toHaveAttribute('aria-pressed', 'true')
-    expect(list).toHaveAttribute('aria-pressed', 'false')
+    expect(icons).toBeChecked()
+    expect(list).not.toBeChecked()
     fireEvent.pointerDown(list)
     fireEvent.click(list)
     expect(onViewModeChange).toHaveBeenCalledExactlyOnceWith('list')
@@ -61,7 +61,8 @@ describe('space explorer chrome', () => {
     fireEvent.click(close)
     expect(onClose).toHaveBeenCalledOnce()
     expect(onWindowDragStart).not.toHaveBeenCalled()
-    expect(screen.getAllByRole('button')).toEqual([icons, list, close])
+    expect(screen.getAllByRole('radio')).toEqual([icons, list])
+    expect(screen.getAllByRole('button')).toEqual([close])
     expect(container.querySelector('.workspace-space-explorer__title')).toHaveTextContent(
       'Source workspace',
     )

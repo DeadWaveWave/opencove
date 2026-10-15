@@ -1,4 +1,5 @@
 import React from 'react'
+import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { Check, Network, Plus, Server, Terminal, X } from 'lucide-react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
@@ -129,31 +130,29 @@ export function EndpointsRegisterDialog({
           ) : null}
 
           {mode === 'create' ? (
-            <div
+            <SegmentedControl
               className="settings-endpoint-dialog__modes"
-              data-testid="settings-endpoints-register-mode"
-            >
-              <button
-                type="button"
-                aria-pressed={registerMode === 'managed'}
-                data-testid="settings-endpoints-register-mode-managed"
-                disabled={isBusy}
-                onClick={() => onChangeRegisterMode('managed')}
-              >
-                <Terminal size={15} aria-hidden="true" />
-                {t('settingsPanel.endpoints.register.managedLabel')}
-              </button>
-              <button
-                type="button"
-                aria-pressed={registerMode === 'manual'}
-                data-testid="settings-endpoints-register-mode-manual"
-                disabled={isBusy}
-                onClick={() => onChangeRegisterMode('manual')}
-              >
-                <Network size={15} aria-hidden="true" />
-                {t('settingsPanel.endpoints.register.manualLabel')}
-              </button>
-            </div>
+              testId="settings-endpoints-register-mode"
+              size="md"
+              label={t('settingsPanel.endpoints.register.modeLabel')}
+              value={registerMode}
+              disabled={isBusy}
+              options={[
+                {
+                  value: 'managed',
+                  label: t('settingsPanel.endpoints.register.managedLabel'),
+                  icon: <Terminal />,
+                  testId: 'settings-endpoints-register-mode-managed',
+                },
+                {
+                  value: 'manual',
+                  label: t('settingsPanel.endpoints.register.manualLabel'),
+                  icon: <Network />,
+                  testId: 'settings-endpoints-register-mode-manual',
+                },
+              ]}
+              onValueChange={onChangeRegisterMode}
+            />
           ) : null}
 
           <div className="settings-endpoint-dialog__form">

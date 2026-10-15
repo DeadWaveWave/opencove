@@ -1,0 +1,108 @@
+/*
+ * Segmented control (components/ui/SegmentedControl.tsx): one choice out of a few. The selected
+ * segment is a neutral raised tint, not the accent, so it reads as state rather than an action.
+ * Option rules are scoped under the root so container rules such as `.form label` cannot win.
+ */
+.cove-segmented {
+  display: inline-flex;
+  flex: none;
+  align-items: stretch;
+  gap: 2px;
+  max-width: 100%;
+  padding: 2px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: var(--cove-radius-sm);
+  background: var(--cove-field);
+}
+
+.cove-segmented .cove-segmented__option {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cove-spacing-1);
+  min-width: var(--cove-control-height-xs);
+  min-height: var(--cove-control-height-xs);
+  padding: 0 var(--cove-spacing-2);
+  border-radius: var(--cove-radius-xs);
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-secondary);
+  font-weight: var(--cove-font-weight-medium);
+  line-height: var(--cove-line-height-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--cove-motion-fast) var(--cove-ease-standard),
+    color var(--cove-motion-fast) var(--cove-ease-standard);
+}
+
+.cove-segmented[data-size='md'] .cove-segmented__option {
+  min-height: var(--cove-control-height-sm);
+  padding: 0 var(--cove-spacing-3);
+  font-size: var(--cove-font-size-body);
+  line-height: var(--cove-line-height-body);
+}
+
+.cove-segmented .cove-segmented__option[data-icon-only] {
+  flex: none;
+  padding: 0;
+}
+
+.cove-segmented .cove-segmented__input {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.cove-segmented
+  .cove-segmented__option[data-state='off']:hover:not(:has(.cove-segmented__input:disabled)) {
+  background: var(--cove-control-hover);
+  color: var(--cove-text);
+}
+
+.cove-segmented .cove-segmented__option[data-state='on'] {
+  background: color-mix(in srgb, var(--cove-text) 12%, transparent);
+  color: var(--cove-text);
+}
+
+.cove-segmented .cove-segmented__option:has(.cove-segmented__input:focus-visible) {
+  outline: 1px solid var(--cove-focus-ring);
+  outline-offset: -1px;
+}
+
+.cove-segmented .cove-segmented__option:has(.cove-segmented__input:disabled) {
+  cursor: not-allowed;
+}
+
+.cove-segmented[data-disabled] {
+  opacity: 0.48;
+}
+
+.cove-segmented__icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.cove-segmented__icon > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cove-segmented__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (pointer: coarse) {
+  .cove-segmented .cove-segmented__option {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

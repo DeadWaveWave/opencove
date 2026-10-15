@@ -47,12 +47,12 @@ test.describe('Settings SSH config host picker', () => {
           for (const mode of ['managed', 'manual'] as const) {
             const modeButton = form.getByTestId(`settings-endpoints-register-mode-${mode}`)
             await modeButton.click()
-            await expect(modeButton).toHaveAttribute('aria-pressed', 'true')
+            await expect(modeButton).toBeChecked()
             await expect(
               form.getByTestId(
                 `settings-endpoints-register-mode-${mode === 'managed' ? 'manual' : 'managed'}`,
               ),
-            ).toHaveAttribute('aria-pressed', 'false')
+            ).not.toBeChecked()
             const host = form.getByTestId(
               `settings-endpoints-register-${mode === 'managed' ? 'hostname' : 'manual-hostname'}`,
             )

@@ -14,40 +14,12 @@
   gap: 12px;
 }
 
-.issue-report-window__segments {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  padding: 4px;
-  border: 1px solid var(--cove-border-subtle);
-  border-radius: 10px;
-  background: var(--cove-field);
+.issue-report-window__type {
+  width: 100%;
 }
 
-.issue-report-window__segment {
-  min-width: 0;
-  height: 30px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--cove-text-muted);
-  cursor: pointer;
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  font-weight: 600;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
-}
-
-.issue-report-window__segment:hover {
-  background: var(--cove-surface-hover);
-  color: var(--cove-text);
-}
-
-.issue-report-window__segment--selected {
-  background: var(--cove-control-selected);
-  color: var(--cove-text);
+.issue-report-window__type .cove-segmented__option {
+  flex: 1 1 0;
 }
 
 .issue-report-window__details {
@@ -152,10 +124,6 @@
 }
 
 @media (max-width: 640px) {
-  .issue-report-window__segments {
-    grid-template-columns: 1fr;
-  }
-
   .issue-report-window__actions {
     flex-wrap: wrap;
   }

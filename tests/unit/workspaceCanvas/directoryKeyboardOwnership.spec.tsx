@@ -75,7 +75,7 @@ function press(target: HTMLElement, key: string, modifiers: KeyboardEventInit = 
 describe('directory keyboard ownership', () => {
   it('leaves header and footer Enter activation to their native buttons', () => {
     const { actions, onNavigate, onViewModeChange } = setup()
-    const view = screen.getByRole('button', { name: 'spaceExplorer.listView' })
+    const view = screen.getByRole('radio', { name: 'spaceExplorer.listView' })
     const root = within(screen.getByRole('navigation')).getByRole('button', { name: 'project' })
     const close = screen.getByRole('button', { name: 'common.close' })
     for (const button of [view, root, close]) {
@@ -93,7 +93,7 @@ describe('directory keyboard ownership', () => {
   it('does not route ordinary control keys to a stale file selection', () => {
     const { actions } = setup()
     const targets = [
-      screen.getByRole('button', { name: 'spaceExplorer.listView' }),
+      screen.getByRole('radio', { name: 'spaceExplorer.listView' }),
       screen.getByRole('link', { name: 'Folder link' }),
       screen.getByRole('button', { name: 'Custom action' }),
     ]
@@ -110,7 +110,7 @@ describe('directory keyboard ownership', () => {
 
   it('keeps global chords on controls and normal navigation on the file tree', () => {
     const { actions } = setup()
-    const control = screen.getByRole('button', { name: 'spaceExplorer.listView' })
+    const control = screen.getByRole('radio', { name: 'spaceExplorer.listView' })
     expect(press(control, 'f', { metaKey: true }).defaultPrevented).toBe(true)
     expect(press(control, 'c', { metaKey: true }).defaultPrevented).toBe(true)
     expect(press(control, 'Escape').defaultPrevented).toBe(true)

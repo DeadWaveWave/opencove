@@ -79,7 +79,7 @@ test('reads community documentation before selecting a commit without activating
     await page.getByTestId('app-header-settings').click()
     await page.getByTestId('settings-section-nav-plugins').click()
     await page.getByTestId('settings-plugins-install').click()
-    await page.getByRole('button', { name: 'Discover', exact: true }).click()
+    await page.getByRole('radio', { name: 'Discover', exact: true }).click()
     await page.getByTestId('settings-plugin-install-submit').click()
     await page.getByRole('button', { name: 'View details', exact: true }).click()
     const details = page.getByTestId('settings-plugin-repository-detail')

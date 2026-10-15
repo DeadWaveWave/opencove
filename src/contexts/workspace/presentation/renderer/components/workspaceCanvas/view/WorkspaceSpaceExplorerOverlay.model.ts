@@ -25,12 +25,25 @@ export type SpaceExplorerRow =
       message: string
     }
 
+// Choice inputs (segments, checkboxes) are controls, not text fields: explorer shortcuts still apply.
+const NON_TEXT_INPUT_TYPES = new Set([
+  'button',
+  'checkbox',
+  'color',
+  'file',
+  'image',
+  'radio',
+  'range',
+  'reset',
+  'submit',
+])
+
 function isEditableTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
     (target.isContentEditable ||
       target.closest('[contenteditable="true"]') !== null ||
-      target.tagName === 'INPUT' ||
+      (target instanceof HTMLInputElement && !NON_TEXT_INPUT_TYPES.has(target.type)) ||
       target.tagName === 'TEXTAREA' ||
       target.tagName === 'SELECT')
   )

@@ -19,6 +19,7 @@ export const zhCNSettingsPanelEndpoints = {
     help: '添加一台可供 OpenCove 连接和浏览的远程机器。',
     recommendedTitle: '推荐路径',
     recommendedHint: 'SSH 接入会自动处理隧道和启动细节。',
+    modeLabel: '连接方式',
     managedLabel: 'SSH 接入',
     manualLabel: '手动（高级）',
     managedHelp: '通过 SSH 连接，自动管理隧道与远程服务。',
