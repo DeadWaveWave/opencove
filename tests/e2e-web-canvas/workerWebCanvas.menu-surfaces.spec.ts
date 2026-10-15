@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { buildAppState, createWorkspaceDir, openAuthedCanvas, writeAppState } from './helpers'
 
 test.use({ hasTouch: true })
@@ -20,6 +20,20 @@ async function expectFits(surface: Locator) {
   expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth)
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight)
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1)
+}
+
+// New Task places a task window where the menu opened; its editor is the canvas's task dialog.
+async function createTaskAndOpenEditor(page: Page) {
+  const taskNodes = page.locator('.react-flow__node:has(.task-node)')
+  const readIds = () =>
+    taskNodes.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-id') ?? ''))
+  const before = await readIds()
+  await page.getByTestId('workspace-context-new-task').click()
+  await expect(taskNodes).toHaveCount(before.length + 1)
+  const created = (await readIds()).find(id => !before.includes(id))
+  const node = page.locator(`.react-flow__node[data-id="${created}"]`)
+  await node.getByTestId('task-node-more').click()
+  await page.getByTestId('task-node-open-editor').click()
 }
 
 for (const theme of ['pixel', 'pixel-light']) {
@@ -52,11 +66,11 @@ for (const theme of ['pixel', 'pixel-light']) {
       body: await page.screenshot(),
       contentType: 'image/png',
     })
-    await page.getByTestId('workspace-context-new-task').click()
-    const task = page.getByTestId('workspace-task-creator')
+    const task = page.getByTestId('workspace-task-editor')
+    await createTaskAndOpenEditor(page)
     await expect(task).toHaveAttribute('role', 'dialog')
     await expectFits(task)
-    await page.getByTestId('workspace-task-requirement').fill('Unify workspace surfaces')
+    await page.getByTestId('workspace-task-editor-requirement').fill('Unify workspace surfaces')
     await testInfo.attach(`task-${theme}-desktop`, {
       body: await page.screenshot(),
       contentType: 'image/png',
@@ -105,11 +119,13 @@ for (const theme of ['pixel', 'pixel-light']) {
     await expectFits(submenu)
     await submenu.getByRole('button', { name: 'Back', exact: true }).click()
     await expect(submenu).toHaveCount(0)
-    await page.getByTestId('workspace-context-new-task').click()
+    await createTaskAndOpenEditor(page)
     await expect(task).toBeVisible()
     await page.setViewportSize({ width: 320, height: 700 })
     await expectFits(task)
-    await page.getByTestId('workspace-task-requirement').fill('Keep the mobile canvas usable')
+    await page
+      .getByTestId('workspace-task-editor-requirement')
+      .fill('Keep the mobile canvas usable')
     await testInfo.attach(`task-${theme}-mobile`, {
       body: await page.screenshot(),
       contentType: 'image/png',
