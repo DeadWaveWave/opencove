@@ -6,6 +6,7 @@ export const zhCNWorkspaceCanvas = {
     newTask: '新建任务',
     newRole: '新建角色',
     runAgent: '运行 Agent',
+    chooseAgent: '选择 Agent',
     runRole: '运行角色',
     noProjectRoles: '当前项目还没有角色',
     createSpace: '创建 Space',

@@ -4,7 +4,10 @@ import {
   FileText,
   Folder,
   Image,
+  LayoutGrid,
   ListChecks,
+  Magnet,
+  Play,
   Plus,
   Settings,
   SquareTerminal,
@@ -18,11 +21,13 @@ import {
   type IconButtonVariant,
 } from '../components/ui/IconButton'
 import { KindTile, type KindTileFamily } from '../components/ui/KindTile'
+import { MenuCheckboxItem, MenuItem, MenuSeparator } from '../components/ui/Menu'
 import { Popover } from '../components/ui/Popover'
 import { SettingRow } from '../components/ui/SettingRow'
 import { StatusPill } from '../components/ui/StatusPill'
 import { Toggle } from '../components/ui/Toggle'
 import { Tooltip } from '../components/ui/Tooltip'
+import { ViewportMenuSurface } from '../components/ViewportMenuSurface'
 import { useApplyUiTheme } from '../shell/hooks/useApplyUiTheme'
 import { DEFAULT_UI_THEME, type UiTheme } from '@contexts/settings/domain/uiSettings'
 import './ui-gallery.css'
@@ -74,8 +79,11 @@ export default function UiGallery(): React.JSX.Element {
   const [toggles, setToggles] = useState({ first: false, second: true })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [menuPoint, setMenuPoint] = useState<{ x: number; y: number } | null>(null)
+  const [snapping, setSnapping] = useState(true)
   const dialogTrigger = useRef<HTMLButtonElement | null>(null)
   const popoverTrigger = useRef<HTMLButtonElement | null>(null)
+  const menuTrigger = useRef<HTMLButtonElement | null>(null)
   useApplyUiTheme(theme)
 
   useEffect(() => {
@@ -182,7 +190,7 @@ export default function UiGallery(): React.JSX.Element {
         ))}
       </Section>
 
-      <Section id="layers" title="Dialog and Popover">
+      <Section id="layers" title="Dialog, Popover and Menu">
         <div className="ui-gallery__row">
           <Button
             ref={dialogTrigger}
@@ -197,6 +205,16 @@ export default function UiGallery(): React.JSX.Element {
             onClick={() => setPopoverOpen(open => !open)}
           >
             Open popover
+          </Button>
+          <Button
+            ref={menuTrigger}
+            data-testid="ui-gallery-open-menu"
+            onClick={() => {
+              const rect = menuTrigger.current?.getBoundingClientRect()
+              setMenuPoint(rect ? { x: rect.left, y: rect.bottom + 4 } : null)
+            }}
+          >
+            Open menu
           </Button>
         </div>
       </Section>
@@ -234,6 +252,46 @@ export default function UiGallery(): React.JSX.Element {
           Done
         </Button>
       </Popover>
+
+      <ViewportMenuSurface
+        open={menuPoint !== null}
+        role="menu"
+        aria-label="Canvas"
+        className="workspace-context-menu"
+        mobileTitle="Canvas"
+        data-testid="ui-gallery-menu"
+        placement={{ type: 'point', point: menuPoint ?? { x: 0, y: 0 } }}
+        dismissOnEscape
+        dismissOnPointerDownOutside
+        onDismiss={() => setMenuPoint(null)}
+      >
+        <MenuItem icon={<SquareTerminal />} shortcut={{ label: '⌘T', ariaKeyShortcuts: 'Meta+T' }}>
+          New Terminal
+        </MenuItem>
+        <MenuItem icon={<FileText />} shortcut={{ label: '⌘N', ariaKeyShortcuts: 'Meta+N' }}>
+          New Note
+        </MenuItem>
+        <MenuItem icon={<Bot />} submenu={{ open: false }}>
+          Run Role
+        </MenuItem>
+        <div className="cove-menu-split">
+          <MenuItem icon={<Play />} shortcut={{ label: '⌘A', ariaKeyShortcuts: 'Meta+A' }}>
+            Run Agent
+          </MenuItem>
+          <MenuItem aria-label="Choose Agent" submenu={{ open: false }} />
+        </div>
+        <MenuSeparator />
+        <MenuItem icon={<LayoutGrid />} disabled>
+          Arrange
+        </MenuItem>
+        <MenuCheckboxItem icon={<Magnet />} checked={snapping} onCheckedChange={setSnapping}>
+          Magnetic snapping
+        </MenuCheckboxItem>
+        <MenuSeparator />
+        <MenuItem icon={<Trash2 />} tone="danger">
+          Close
+        </MenuItem>
+      </ViewportMenuSurface>
     </main>
   )
 }

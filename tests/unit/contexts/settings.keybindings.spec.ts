@@ -1,9 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
+  describeKeyChord,
   normalizeKeybindingOverrides,
   resolveCommandKeybinding,
   resolveDefaultKeybindings,
+  type KeyChord,
 } from '../../../src/contexts/settings/domain/keybindings'
+
+const keyChord = (code: string, modifiers: Partial<KeyChord> = {}): KeyChord => ({
+  code,
+  altKey: false,
+  ctrlKey: false,
+  metaKey: false,
+  shiftKey: false,
+  ...modifiers,
+})
 
 describe('settings keybindings', () => {
   it('uses a single default shortcut for command center and workspace canvas commands', () => {
@@ -101,5 +112,30 @@ describe('settings keybindings', () => {
         },
       }),
     ).toEqual({})
+  })
+
+  it('describes a chord as menus show it and as aria-keyshortcuts names it', () => {
+    expect(describeKeyChord('darwin', keyChord('KeyT', { metaKey: true }))).toEqual({
+      label: '⌘T',
+      ariaKeyShortcuts: 'Meta+T',
+    })
+    expect(
+      describeKeyChord('win32', keyChord('BracketRight', { ctrlKey: true, shiftKey: true })),
+    ).toEqual({ label: 'Ctrl Shift ]', ariaKeyShortcuts: 'Control+Shift+]' })
+    expect(
+      describeKeyChord('linux', keyChord('ArrowLeft', { ctrlKey: true, altKey: true })),
+    ).toEqual({ label: 'Ctrl Alt ←', ariaKeyShortcuts: 'Control+Alt+ArrowLeft' })
+    expect(describeKeyChord('darwin', keyChord('Space', { ctrlKey: true }))?.ariaKeyShortcuts).toBe(
+      'Control+Space',
+    )
+    expect(describeKeyChord('darwin', keyChord('Escape'))?.ariaKeyShortcuts).toBe('Escape')
+    expect(
+      describeKeyChord('darwin', keyChord('Digit1', { metaKey: true }))?.ariaKeyShortcuts,
+    ).toBe('Meta+1')
+    expect(describeKeyChord('darwin', keyChord('Backslash', { metaKey: true }))).toEqual({
+      label: '⌘\\',
+      ariaKeyShortcuts: 'Meta+\\',
+    })
+    expect(describeKeyChord('darwin', null)).toBeNull()
   })
 })

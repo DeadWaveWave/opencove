@@ -5,6 +5,7 @@ import type {
   QuickCommand,
   QuickPhrase,
 } from '@contexts/settings/domain/agentSettings'
+import type { KeybindingOverrides } from '@contexts/settings/domain/keybindings'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState } from '../types'
@@ -42,6 +43,7 @@ export interface WorkspaceContextMenuProps {
   runQuickCommand: (command: QuickCommand) => Promise<void>
   insertQuickPhrase: (phrase: QuickPhrase) => void
   openQuickMenuSettings: () => void
+  keybindings: KeybindingOverrides
   spaces: WorkspaceSpaceState[]
   magneticSnappingEnabled: boolean
   onToggleMagneticSnapping: () => void

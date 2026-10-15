@@ -4,6 +4,7 @@ import { ArrowLeft, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Dialog } from './ui/Dialog'
 import { DismissableLayer } from './ui/DismissableLayer'
+import { MenuRoleScope } from './ui/Menu'
 import { useCompactViewport } from './useCompactViewport'
 import { useMenuFocus } from './useMenuFocus'
 import { handleMenuNavigation } from './menuKeyboardNavigation'
@@ -88,6 +89,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
       onBack,
       isSubmenu = false,
       initialFocusRef,
+      role,
       className,
       style,
       onMouseDown,
@@ -269,6 +271,8 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
 
     const isMeasurementReady = placement.type !== 'point' || measuredSize !== null
 
+    // A menu's items take menu roles only inside a container that declares role="menu".
+    const content = role === 'menu' ? <MenuRoleScope>{children}</MenuRoleScope> : children
     const surfaceProps: React.HTMLAttributes<HTMLDivElement> = {
       ...rest,
       className,
@@ -352,7 +356,13 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
               <X size={18} aria-hidden="true" />
             </button>
           </div>
-          <div className="cove-menu-sheet__content">{children}</div>
+          <div
+            className="cove-menu-sheet__content"
+            role={role}
+            aria-labelledby={role === 'menu' ? titleId : undefined}
+          >
+            {content}
+          </div>
         </Dialog>
       )
     }
@@ -362,6 +372,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
         <DismissableLayer
           {...surfaceProps}
           {...measurementProps}
+          role={role}
           ref={setRefs}
           branchRefs={dismissIgnoreRefs}
           dismissOnEscape={Boolean(onBack || (onDismiss && dismissOnEscape))}
@@ -372,11 +383,11 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
             }
           }}
         >
-          {children}
+          {content}
         </DismissableLayer>
       ) : (
-        <div {...surfaceProps} {...measurementProps} ref={setRefs}>
-          {children}
+        <div {...surfaceProps} {...measurementProps} role={role} ref={setRefs}>
+          {content}
         </div>
       ),
       document.body,

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Copy } from 'lucide-react'
+import { MenuItem } from '@app/renderer/components/ui/Menu'
 import { useTranslation } from '@app/renderer/i18n'
 
 export function FilesystemPathMenuItems({
@@ -12,14 +13,12 @@ export function FilesystemPathMenuItems({
   const { t } = useTranslation()
   return (
     <>
-      <button type="button" onClick={onCopyRelativePath}>
-        <Copy className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">{t('spaceExplorer.copyRelativePath')}</span>
-      </button>
-      <button type="button" onClick={onCopyAbsolutePath}>
-        <Copy className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">{t('spaceExplorer.copyAbsolutePath')}</span>
-      </button>
+      <MenuItem icon={<Copy />} onClick={onCopyRelativePath}>
+        {t('spaceExplorer.copyRelativePath')}
+      </MenuItem>
+      <MenuItem icon={<Copy />} onClick={onCopyAbsolutePath}>
+        {t('spaceExplorer.copyAbsolutePath')}
+      </MenuItem>
     </>
   )
 }

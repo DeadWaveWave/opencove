@@ -1,3 +1,4 @@
+import { MenuItem, MenuSeparator } from '@app/renderer/components/ui/Menu'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { PluginHostContext } from '../../domain/pluginRuntimeTypes'
 import { usePluginCommands } from './usePluginCommands'
@@ -24,20 +25,19 @@ export function PluginContextCommands({
   }
   return (
     <>
-      <div className="workspace-context-menu__separator" />
+      <MenuSeparator />
       {items.map(item => (
-        <button
-          type="button"
+        <MenuItem
           key={item.id}
+          icon={<PluginIcon pluginId={item.plugin.id} />}
           data-testid={`plugin-menu-command-${item.id}`}
           onClick={() => {
             onClose()
             void run(item)
           }}
         >
-          <PluginIcon pluginId={item.plugin.id} className="workspace-context-menu__icon" />
-          <span className="workspace-context-menu__label">{item.title}</span>
-        </button>
+          {item.title}
+        </MenuItem>
       ))}
     </>
   )

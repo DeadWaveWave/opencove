@@ -20,6 +20,7 @@ import {
 import type { OpenSubmenu, WorkspaceContextMenuProps } from './WorkspaceContextMenu.types'
 import { useWorkspaceContextArrangeMenuState } from './useWorkspaceContextArrangeMenuState'
 import { useWorkspaceContextInstalledProviders } from './useWorkspaceContextInstalledProviders'
+import { useCanvasMenuShortcuts } from './useCanvasMenuShortcuts'
 
 export function WorkspaceContextMenu({
   contextMenu,
@@ -44,6 +45,7 @@ export function WorkspaceContextMenu({
   runQuickCommand,
   insertQuickPhrase,
   openQuickMenuSettings,
+  keybindings,
   spaces,
   magneticSnappingEnabled,
   onToggleMagneticSnapping,
@@ -66,6 +68,7 @@ export function WorkspaceContextMenu({
   const { t } = useTranslation()
   const compact = useCompactViewport()
   const [openSubmenu, setOpenSubmenu] = useState<OpenSubmenu>(null)
+  const shortcuts = useCanvasMenuShortcuts(keybindings)
   const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const { sortedInstalledProviders, isLoadingInstalledProviders, ensureInstalledProvidersLoaded } =
     useWorkspaceContextInstalledProviders({
@@ -220,26 +223,6 @@ export function WorkspaceContextMenu({
     setOpenSubmenu('agent-providers')
   }, [cancelScheduledSubmenuClose])
 
-  const keepQuickCommandsSubmenuOpen = useCallback(() => {
-    cancelScheduledSubmenuClose()
-    setOpenSubmenu('quick-commands')
-  }, [cancelScheduledSubmenuClose])
-
-  const keepQuickPhrasesSubmenuOpen = useCallback(() => {
-    cancelScheduledSubmenuClose()
-    setOpenSubmenu('quick-phrases')
-  }, [cancelScheduledSubmenuClose])
-
-  const keepProjectRolesSubmenuOpen = useCallback(() => {
-    cancelScheduledSubmenuClose()
-    setOpenSubmenu('project-roles')
-  }, [cancelScheduledSubmenuClose])
-
-  const keepLabelColorSubmenuOpen = useCallback(() => {
-    cancelScheduledSubmenuClose()
-    setOpenSubmenu('label-color')
-  }, [cancelScheduledSubmenuClose])
-
   useLayoutEffect(() => {
     if (!contextMenu) {
       setMeasuredMenuSize(null)
@@ -371,6 +354,8 @@ export function WorkspaceContextMenu({
     <>
       <ViewportMenuSurface
         open
+        role="menu"
+        aria-label={t('sidebar.rootCanvas')}
         mobileTitle={t('sidebar.rootCanvas')}
         onDismiss={closeContextMenu}
         dismissOnEscape
@@ -388,6 +373,7 @@ export function WorkspaceContextMenu({
       >
         {contextMenu.kind === 'pane' ? (
           <WorkspaceContextPaneMenuContent
+            shortcuts={shortcuts}
             createTerminalNode={createTerminalNode}
             createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
             createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
@@ -429,6 +415,7 @@ export function WorkspaceContextMenu({
           />
         ) : (
           <WorkspaceContextSelectionMenuContent
+            createSpaceShortcut={shortcuts.createSpace}
             createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
             openLabelColorSubmenu={openLabelColorSubmenu}
             isLabelColorSubmenuOpen={openSubmenu === 'label-color'}
@@ -476,10 +463,10 @@ export function WorkspaceContextMenu({
         projectRoles={projectRoles}
         openRoleCreator={openRoleCreator}
         keepAgentProviderSubmenuOpen={keepAgentProviderSubmenuOpen}
-        keepQuickCommandsSubmenuOpen={keepQuickCommandsSubmenuOpen}
-        keepQuickPhrasesSubmenuOpen={keepQuickPhrasesSubmenuOpen}
-        keepProjectRolesSubmenuOpen={keepProjectRolesSubmenuOpen}
-        keepLabelColorSubmenuOpen={keepLabelColorSubmenuOpen}
+        keepQuickCommandsSubmenuOpen={openQuickCommandsSubmenu}
+        keepQuickPhrasesSubmenuOpen={openQuickPhrasesSubmenu}
+        keepProjectRolesSubmenuOpen={openProjectRolesSubmenu}
+        keepLabelColorSubmenuOpen={openLabelColorSubmenu}
         scheduleSubmenuClose={scheduleSubmenuClose}
         openAgentLauncherForProvider={openAgentLauncherForProvider}
         runQuickCommand={runQuickCommand}

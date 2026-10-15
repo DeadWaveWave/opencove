@@ -6,6 +6,7 @@ export const enWorkspaceCanvas = {
     newTask: 'New Task',
     newRole: 'New Role',
     runAgent: 'Run Agent',
+    chooseAgent: 'Choose Agent',
     runRole: 'Run Role',
     noProjectRoles: 'No roles in this project',
     createSpace: 'Create Space',

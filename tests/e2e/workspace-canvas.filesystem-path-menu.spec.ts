@@ -11,7 +11,7 @@ import {
 
 async function copyPath(page: Page, target: Locator, mode: 'Relative' | 'Absolute') {
   await target.click({ button: 'right' })
-  await page.getByRole('button', { name: `Copy ${mode} Path`, exact: true }).click()
+  await page.getByRole('menuitem', { name: `Copy ${mode} Path`, exact: true }).click()
 }
 
 test('filesystem path menus copy breadcrumb and compact or expanded node paths', async () => {

@@ -131,6 +131,7 @@ export function WorkspaceCanvasMenus({
         runQuickCommand={runQuickCommand}
         insertQuickPhrase={insertQuickPhrase}
         openQuickMenuSettings={openQuickMenuSettings}
+        keybindings={agentSettings.keybindings}
         spaces={spaces}
         magneticSnappingEnabled={magneticSnappingEnabled}
         onToggleMagneticSnapping={onToggleMagneticSnapping}

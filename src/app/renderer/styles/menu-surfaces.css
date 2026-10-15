@@ -36,7 +36,7 @@
   height: 16px;
 }
 
-.workspace-context-menu button[aria-pressed='true'] {
+.workspace-context-menu button:not(:where(.cove-menu-item))[aria-pressed='true'] {
   outline: 1px solid var(--cove-accent);
   outline-offset: -1px;
 }
@@ -114,7 +114,7 @@
 }
 
 @media (max-width: 720px), (pointer: coarse) {
-  .workspace-context-menu button {
+  .workspace-context-menu button:not(:where(.cove-menu-item)) {
     min-height: 44px;
     font-size: calc(14px * var(--cove-ui-font-scale));
   }

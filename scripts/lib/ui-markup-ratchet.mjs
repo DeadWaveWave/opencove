@@ -3,14 +3,19 @@
 import ts from 'typescript'
 import { compareRatchet, formatRatchetIssues, serializeRatchet } from './ratchet.mjs'
 
-export const MARKUP_RULES = ['native-title']
+export const MARKUP_RULES = ['native-button', 'native-title']
 
 const REPLACEMENT_HINTS = {
+  'native-button':
+    'Use `Button`, `IconButton` or `MenuItem` from components/ui instead of a native `<button>`.',
   'native-title': 'Use `Tooltip` from components/ui instead of a native `title` attribute.',
 }
 
 // An iframe title names the frame for assistive technology; it is not a hover hint.
 const TITLE_EXEMPT_TAGS = new Set(['iframe'])
+
+// The shared components are where native buttons live.
+const SHARED_COMPONENTS_DIRECTORY = 'src/app/renderer/components/ui/'
 
 function isIntrinsicTag(tagName) {
   return /^[a-z]/.test(tagName)
@@ -18,7 +23,11 @@ function isIntrinsicTag(tagName) {
 
 export function countMarkupLiterals(files) {
   const counts = Object.fromEntries(MARKUP_RULES.map(rule => [rule, {}]))
+  const increment = (rule, path) => {
+    counts[rule][path] = (counts[rule][path] ?? 0) + 1
+  }
   for (const file of files) {
+    const countsButtons = !file.path.startsWith(SHARED_COMPONENTS_DIRECTORY)
     const source = ts.createSourceFile(
       file.path,
       file.content,
@@ -29,10 +38,13 @@ export function countMarkupLiterals(files) {
     const visit = node => {
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
         const tagName = node.tagName.getText(source)
+        if (tagName === 'button' && countsButtons) {
+          increment('native-button', file.path)
+        }
         if (isIntrinsicTag(tagName) && !TITLE_EXEMPT_TAGS.has(tagName)) {
           for (const attribute of node.attributes.properties) {
             if (ts.isJsxAttribute(attribute) && attribute.name.getText(source) === 'title') {
-              counts['native-title'][file.path] = (counts['native-title'][file.path] ?? 0) + 1
+              increment('native-title', file.path)
             }
           }
         }

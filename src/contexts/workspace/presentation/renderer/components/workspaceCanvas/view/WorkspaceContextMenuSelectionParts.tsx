@@ -1,11 +1,13 @@
 import React from 'react'
-import { ArrowRight, ChevronRight, Scan, Tag, X } from 'lucide-react'
+import { ArrowRight, Scan, Tag, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
+import { MenuItem, MenuSeparator, type MenuItemShortcut } from '@app/renderer/components/ui/Menu'
 import { useFilesystemNodesActions } from '../FilesystemNodesContext'
 import { FilesystemPathMenuItems } from './FilesystemPathMenuItems'
 
 export function WorkspaceContextSelectionMenuContent({
+  createSpaceShortcut,
   createSpaceFromSelectedNodes,
   openLabelColorSubmenu,
   labelColorButtonRef,
@@ -18,6 +20,7 @@ export function WorkspaceContextSelectionMenuContent({
   closeWindow,
   nodeId,
 }: {
+  createSpaceShortcut?: MenuItemShortcut | null
   createSpaceFromSelectedNodes: () => void
   openLabelColorSubmenu: () => void
   labelColorButtonRef: React.RefObject<HTMLButtonElement | null>
@@ -48,76 +51,61 @@ export function WorkspaceContextSelectionMenuContent({
             onCopyRelativePath={() => copyPath(true)}
             onCopyAbsolutePath={() => copyPath(false)}
           />
-          <div className="workspace-context-menu__separator" />
+          <MenuSeparator />
         </>
       ) : null}
-      <button
-        type="button"
+      <MenuItem
+        icon={<Scan />}
+        shortcut={createSpaceShortcut}
         data-testid="workspace-selection-create-space"
         onClick={createSpaceFromSelectedNodes}
       >
-        <Scan className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('workspaceContextMenu.createSpaceWithSelected')}
-        </span>
-      </button>
+        {t('workspaceContextMenu.createSpaceWithSelected')}
+      </MenuItem>
       {canConvertSelectedNoteToTask ? (
-        <button
-          type="button"
+        <MenuItem
+          icon={<ArrowRight />}
           data-testid="workspace-selection-convert-note-to-task"
           disabled={isConvertSelectedNoteToTaskDisabled}
           onClick={convertSelectedNoteToTask}
         >
-          <ArrowRight className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">
-            {t('workspaceContextMenu.convertToTask')}
-          </span>
-        </button>
+          {t('workspaceContextMenu.convertToTask')}
+        </MenuItem>
       ) : null}
-      <button
+      <MenuItem
         ref={labelColorButtonRef}
-        type="button"
+        icon={<Tag />}
         data-testid="workspace-selection-label-color"
-        aria-haspopup="menu"
-        aria-expanded={isLabelColorSubmenuOpen}
+        submenu={{ open: isLabelColorSubmenuOpen }}
         onMouseEnter={menuHoverHandler(openLabelColorSubmenu)}
         onClick={openLabelColorSubmenu}
       >
-        <Tag className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">{t('labelColors.title')}</span>
-        <ChevronRight
-          className="workspace-context-menu__icon workspace-context-menu__chevron"
-          aria-hidden="true"
-        />
-      </button>
-      <button
-        type="button"
+        {t('labelColors.title')}
+      </MenuItem>
+      <MenuItem
+        icon={<X />}
         data-testid="workspace-selection-clear"
         onClick={() => {
           clearNodeSelection()
           closeContextMenu()
         }}
       >
-        <X className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('workspaceContextMenu.clearSelection')}
-        </span>
-      </button>
+        {t('workspaceContextMenu.clearSelection')}
+      </MenuItem>
       {closeWindow ? (
         <>
-          <div className="workspace-context-menu__separator" />
-          <button
-            type="button"
+          <MenuSeparator />
+          <MenuItem
+            icon={<X />}
+            tone="danger"
             data-testid="workspace-node-close"
-            className="workspace-context-menu__item--danger"
             onClick={() => {
               closeContextMenu()
               closeWindow()
             }}
           >
-            <X className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">{t('common.close')}</span>
-          </button>
+            {t('common.close')}
+          </MenuItem>
         </>
       ) : null}
     </>

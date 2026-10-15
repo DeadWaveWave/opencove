@@ -73,6 +73,8 @@ export function WorkspaceDirectoryBreadcrumb({
         }}
         className="workspace-context-menu workspace-space-explorer__context-menu"
         data-testid="directory-breadcrumb-context-menu"
+        role="menu"
+        aria-label={name}
         mobileTitle={name}
         onDismiss={close}
         dismissOnPointerDownOutside

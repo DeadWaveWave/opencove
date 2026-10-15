@@ -1,7 +1,8 @@
 import React from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
-import { Bot, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { MenuItem } from '@app/renderer/components/ui/Menu'
+import { Bot, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { ProjectRoleDefinition } from '@contexts/settings/domain/agentSettings'
 
@@ -17,24 +18,16 @@ export function WorkspaceContextRoleMenuItems({
   const { t } = useTranslation()
 
   return (
-    <button
+    <MenuItem
       ref={roleButtonRef}
-      type="button"
+      icon={<Bot />}
       data-testid="workspace-context-run-role"
-      aria-haspopup="menu"
-      aria-expanded={isProjectRolesSubmenuOpen}
+      submenu={{ open: isProjectRolesSubmenuOpen }}
       onMouseEnter={menuHoverHandler(openProjectRolesSubmenu)}
       onClick={openProjectRolesSubmenu}
     >
-      <Bot className="workspace-context-menu__icon" aria-hidden="true" />
-      <span className="workspace-context-menu__label">{t('workspaceContextMenu.runRole')}</span>
-      <ChevronRight
-        className={`workspace-context-menu__icon workspace-context-menu__chevron ${
-          isProjectRolesSubmenuOpen ? 'workspace-context-menu__chevron--open' : ''
-        }`}
-        aria-hidden="true"
-      />
-    </button>
+      {t('workspaceContextMenu.runRole')}
+    </MenuItem>
   )
 }
 

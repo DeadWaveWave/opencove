@@ -2,14 +2,12 @@ import React from 'react'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
+import { MenuCheckboxItem, MenuItem } from '@app/renderer/components/ui/Menu'
 import {
-  Check,
-  ChevronRight,
   FileText,
   Globe,
   LayoutGrid,
   ListTodo,
-  LoaderCircle,
   Magnet,
   Play,
   Scan,
@@ -27,16 +25,10 @@ import { LABEL_COLORS, type NodeLabelColorOverride } from '@shared/types/labelCo
 import { WorkspaceContextQuickMenuItems } from './WorkspaceContextMenuQuickMenuParts'
 import { WorkspaceContextRoleMenuItems } from './WorkspaceContextRoleMenuParts'
 import { useLocalPluginContributions } from '@contexts/plugins/presentation/renderer/useLocalPluginContributions'
-
-function renderMark(checked: boolean): React.JSX.Element {
-  return checked ? (
-    <Check className="workspace-context-menu__mark" aria-hidden="true" />
-  ) : (
-    <span className="workspace-context-menu__mark" aria-hidden="true" />
-  )
-}
+import type { CanvasMenuShortcuts } from './useCanvasMenuShortcuts'
 
 export function WorkspaceContextPaneMenuContent({
+  shortcuts,
   createTerminalNode,
   createNoteNodeFromContextMenu,
   createWebsiteNodeFromContextMenu,
@@ -70,6 +62,7 @@ export function WorkspaceContextPaneMenuContent({
   magneticSnappingEnabled,
   onToggleMagneticSnapping,
 }: {
+  shortcuts: CanvasMenuShortcuts
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
   createWebsiteNodeFromContextMenu: () => void
@@ -108,63 +101,50 @@ export function WorkspaceContextPaneMenuContent({
 
   return (
     <>
-      <button
-        type="button"
+      <MenuItem
+        icon={<Terminal />}
+        shortcut={shortcuts.createTerminal}
         data-testid="workspace-context-new-terminal"
         onClick={() => {
           void createTerminalNode()
         }}
       >
-        <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('workspaceContextMenu.newTerminal')}
-        </span>
-      </button>
-      <button
-        type="button"
+        {t('workspaceContextMenu.newTerminal')}
+      </MenuItem>
+      <MenuItem
+        icon={<FileText />}
+        shortcut={shortcuts.createNote}
         data-testid="workspace-context-new-note"
-        onClick={() => {
-          createNoteNodeFromContextMenu()
-        }}
+        onClick={createNoteNodeFromContextMenu}
       >
-        <FileText className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">{t('workspaceContextMenu.newNote')}</span>
-      </button>
+        {t('workspaceContextMenu.newNote')}
+      </MenuItem>
       {websiteWindowsEnabled ? (
-        <button
-          type="button"
+        <MenuItem
+          icon={<Globe />}
           data-testid="workspace-context-new-website"
-          onClick={() => {
-            createWebsiteNodeFromContextMenu()
-          }}
+          onClick={createWebsiteNodeFromContextMenu}
         >
-          <Globe className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">
-            {t('workspaceContextMenu.newWebsite')}
-          </span>
-        </button>
+          {t('workspaceContextMenu.newWebsite')}
+        </MenuItem>
       ) : null}
       {localPlugins.map(plugin => (
-        <button
+        <MenuItem
           key={plugin.id}
-          type="button"
+          icon={<PluginIcon pluginId={plugin.id} />}
           data-testid={`workspace-context-new-plugin-${plugin.id}`}
           onClick={() => createPluginNodeFromContextMenu(plugin.id)}
         >
-          <PluginIcon pluginId={plugin.id} className="workspace-context-menu__icon" />
-          <span className="workspace-context-menu__label">{plugin.displayName}</span>
-        </button>
+          {plugin.displayName}
+        </MenuItem>
       ))}
-      <button
-        type="button"
+      <MenuItem
+        icon={<ListTodo />}
         data-testid="workspace-context-new-task"
-        onClick={() => {
-          openTaskCreator()
-        }}
+        onClick={openTaskCreator}
       >
-        <ListTodo className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">{t('workspaceContextMenu.newTask')}</span>
-      </button>
+        {t('workspaceContextMenu.newTask')}
+      </MenuItem>
 
       <WorkspaceContextRoleMenuItems
         roleButtonRef={roleButtonRef}
@@ -172,55 +152,32 @@ export function WorkspaceContextPaneMenuContent({
         isProjectRolesSubmenuOpen={isProjectRolesSubmenuOpen}
       />
 
-      <div className="workspace-context-menu__split">
-        <button
-          type="button"
+      <div className="cove-menu-split">
+        <MenuItem
+          icon={<Play />}
+          shortcut={shortcuts.createAgent}
           data-testid="workspace-context-run-default-agent"
-          className="workspace-context-menu__split-main"
           onClick={openAgentLauncher}
         >
-          <Play className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">
-            {t('workspaceContextMenu.runAgent')}
-          </span>
-        </button>
-        <button
+          {t('workspaceContextMenu.runAgent')}
+        </MenuItem>
+        <MenuItem
           ref={agentProviderToggleRef}
-          type="button"
           data-testid="workspace-context-run-agent-provider-toggle"
-          className="workspace-context-menu__split-toggle"
-          aria-label={t('workspaceContextMenu.runAgent')}
-          aria-haspopup="menu"
-          aria-expanded={isAgentProviderSubmenuOpen}
+          aria-label={t('workspaceContextMenu.chooseAgent')}
+          submenu={{ open: isAgentProviderSubmenuOpen, loading: isLoadingInstalledProviders }}
           onMouseEnter={menuHoverHandler(openAgentProviderSubmenu)}
           onClick={openAgentProviderSubmenu}
-        >
-          {isLoadingInstalledProviders ? (
-            <LoaderCircle
-              className="workspace-context-menu__icon workspace-context-menu__spinner"
-              aria-hidden="true"
-            />
-          ) : (
-            <ChevronRight
-              className={`workspace-context-menu__icon workspace-context-menu__chevron ${
-                isAgentProviderSubmenuOpen ? 'workspace-context-menu__chevron--open' : ''
-              }`}
-              aria-hidden="true"
-            />
-          )}
-        </button>
+        />
       </div>
       {canCreateSpace ? (
-        <button
-          type="button"
+        <MenuItem
+          icon={<Scan />}
           data-testid="workspace-context-create-space"
           onClick={createSpaceFromContextMenu}
         >
-          <Scan className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">
-            {t('workspaceContextMenu.createSpace')}
-          </span>
-        </button>
+          {t('workspaceContextMenu.createSpace')}
+        </MenuItem>
       ) : null}
       <WorkspaceContextQuickMenuItems
         pinnedQuickCommands={pinnedQuickCommands}
@@ -234,48 +191,34 @@ export function WorkspaceContextPaneMenuContent({
         openQuickMenuSettings={openQuickMenuSettings}
       />
 
-      <button
-        type="button"
+      <MenuItem
+        icon={<LayoutGrid />}
         data-testid="workspace-context-arrange"
         disabled={!canArrangeCurrentScope}
         onClick={commitArrangeAndClose}
       >
-        <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">{t('workspaceContextMenu.arrange')}</span>
-      </button>
+        {t('workspaceContextMenu.arrange')}
+      </MenuItem>
 
-      <button
+      <MenuItem
         ref={arrangeByButtonRef}
-        type="button"
+        icon={<SlidersHorizontal />}
         data-testid="workspace-context-arrange-by"
-        aria-haspopup="menu"
-        aria-expanded={isArrangeSubmenuOpen}
+        submenu={{ open: isArrangeSubmenuOpen }}
         onMouseEnter={menuHoverHandler(openArrangeSubmenu)}
         onClick={openArrangeSubmenu}
       >
-        <SlidersHorizontal className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">{t('workspaceContextMenu.arrangeBy')}</span>
-        <ChevronRight
-          className={`workspace-context-menu__icon workspace-context-menu__chevron ${
-            isArrangeSubmenuOpen ? 'workspace-context-menu__chevron--open' : ''
-          }`}
-          aria-hidden="true"
-        />
-      </button>
+        {t('workspaceContextMenu.arrangeBy')}
+      </MenuItem>
 
-      <button
-        type="button"
-        className="workspace-context-menu__checkmark-only"
+      <MenuCheckboxItem
+        icon={<Magnet />}
         data-testid="workspace-context-magnetic-snapping"
-        aria-pressed={magneticSnappingEnabled}
-        onClick={onToggleMagneticSnapping}
+        checked={magneticSnappingEnabled}
+        onCheckedChange={onToggleMagneticSnapping}
       >
-        <Magnet className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('workspaceArrangeMenu.magneticSnapping')}
-        </span>
-        {renderMark(magneticSnappingEnabled)}
-      </button>
+        {t('workspaceArrangeMenu.magneticSnapping')}
+      </MenuCheckboxItem>
     </>
   )
 }
@@ -303,6 +246,8 @@ export function WorkspaceContextAgentProviderSubmenu({
   return (
     <ViewportMenuSurface
       open={true}
+      role="menu"
+      aria-label={t('workspaceContextMenu.chooseAgent')}
       mobileTitle={t('workspaceContextMenu.runAgent')}
       isSubmenu
       onBack={onBack}
@@ -322,17 +267,16 @@ export function WorkspaceContextAgentProviderSubmenu({
       onMouseLeave={scheduleSubmenuClose}
     >
       {sortedInstalledProviders.map(provider => (
-        <button
+        <MenuItem
           key={provider}
-          type="button"
+          icon={<AgentProviderIcon provider={provider} />}
           data-testid={`workspace-context-run-agent-${provider}`}
           onClick={() => {
             openAgentLauncherForProvider(provider)
           }}
         >
-          <AgentProviderIcon provider={provider} className="workspace-context-menu__icon" />
-          <span className="workspace-context-menu__label">{AGENT_PROVIDER_LABEL[provider]}</span>
-        </button>
+          {AGENT_PROVIDER_LABEL[provider]}
+        </MenuItem>
       ))}
     </ViewportMenuSurface>
   )

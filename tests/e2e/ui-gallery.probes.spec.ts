@@ -77,6 +77,16 @@ test('shared components keep text contrast and target size in every built-in the
       await probe(page, testInfo, `popover-${theme}`, '[data-testid="ui-gallery-popover"]')
       await page.keyboard.press('Escape')
       await expect(page.getByTestId('ui-gallery-popover')).toHaveCount(0)
+
+      await page.getByTestId('ui-gallery-open-menu').click()
+      await expect(page.getByRole('menu', { name: 'Canvas' })).toBeVisible()
+      await probe(page, testInfo, `menu-${theme}`, '[data-testid="ui-gallery-menu"]')
+      await testInfo.attach(`ui-gallery-menu-${theme}`, {
+        body: await page.getByTestId('ui-gallery-menu').screenshot(),
+        contentType: 'image/png',
+      })
+      await page.keyboard.press('Escape')
+      await expect(page.getByTestId('ui-gallery-menu')).toHaveCount(0)
     }
   } finally {
     await electronApp.close()

@@ -1,0 +1,181 @@
+/*
+ * Menu rows (components/ui/Menu.tsx): icon, label and shortcut columns, then a chevron or a check.
+ * Rows follow the theme's menu row height; touch and compact viewports keep 44px rows.
+ */
+.cove-menu-item {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+  width: 100%;
+  min-width: 0;
+  min-height: var(--cove-menu-row-height);
+  padding: var(--cove-spacing-1) var(--cove-spacing-2);
+  border: none;
+  border-radius: var(--cove-radius-2xs);
+  background: transparent;
+  color: var(--cove-text);
+  font-size: var(--cove-font-size-body);
+  line-height: var(--cove-line-height-body);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.cove-menu-item:not(:disabled):hover,
+.cove-menu-item[aria-expanded='true'] {
+  background: var(--cove-menu-highlight);
+}
+
+.cove-menu-item:not(:disabled):active {
+  background: var(--cove-control-active);
+}
+
+.cove-menu-item:focus-visible {
+  outline: 1px solid var(--cove-focus-ring);
+  outline-offset: -1px;
+  background: var(--cove-menu-highlight);
+}
+
+.cove-menu-item:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.cove-menu-item__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--cove-text-muted);
+  transition: color 0.15s ease;
+}
+
+.cove-menu-item__icon > svg,
+.cove-menu-item__icon > img {
+  width: 16px;
+  height: 16px;
+}
+
+.cove-menu-item:not(:disabled):is(:hover, :focus-visible) .cove-menu-item__icon {
+  color: var(--cove-text);
+}
+
+.cove-menu-item__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Shortcuts are plain secondary text, as in native menus; keycaps belong to the command center. */
+.cove-menu-item__shortcut {
+  flex: none;
+  margin-left: var(--cove-spacing-3);
+  color: var(--cove-text-muted);
+  font-family: inherit;
+  font-size: var(--cove-font-size-secondary);
+  line-height: var(--cove-line-height-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cove-menu-item__trailing {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: var(--cove-text-muted);
+}
+
+.cove-menu-item__shortcut + .cove-menu-item__trailing {
+  margin-left: 0;
+}
+
+.cove-menu-item__trailing > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cove-menu-item[aria-expanded='true'] .cove-menu-item__chevron {
+  color: var(--cove-accent-text);
+}
+
+.cove-menu-item[data-state='unchecked'] .cove-menu-item__check {
+  visibility: hidden;
+}
+
+.cove-menu-item__spinner {
+  animation: cove-menu-item-spin 0.8s linear infinite;
+}
+
+.cove-menu-item[data-tone='danger'],
+.cove-menu-item[data-tone='danger'] .cove-menu-item__icon {
+  color: var(--cove-danger-text);
+}
+
+.cove-menu-item[data-tone='danger']:not(:disabled):hover {
+  background: var(--cove-danger-surface);
+}
+
+.cove-menu-separator {
+  flex: none;
+  height: 1px;
+  margin: var(--cove-spacing-1) var(--cove-spacing-2);
+  background: var(--cove-border-subtle);
+}
+
+/* A row whose main action sits beside an icon-only submenu toggle. */
+.cove-menu-split {
+  display: flex;
+  width: 100%;
+}
+
+.cove-menu-split > .cove-menu-item:first-child {
+  flex: 1 1 auto;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.cove-menu-split > .cove-menu-item:last-child {
+  flex: none;
+  width: auto;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+@media (max-width: 720px), (pointer: coarse) {
+  .cove-menu-item {
+    min-height: 44px;
+    font-size: var(--cove-font-size-emphasis);
+    line-height: var(--cove-line-height-emphasis);
+  }
+
+  .cove-menu-split > .cove-menu-item:last-child {
+    min-width: 44px;
+    justify-content: center;
+  }
+}
+
+@keyframes cove-menu-item-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-menu-item,
+  .cove-menu-item__icon {
+    transition: none;
+  }
+
+  .cove-menu-item__spinner {
+    animation-duration: 2.4s;
+  }
+}

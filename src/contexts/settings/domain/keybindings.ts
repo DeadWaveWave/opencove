@@ -261,7 +261,22 @@ export function createChordToCommandMap({
   return map
 }
 
-function formatCodeLabel(code: string): string {
+// KeyboardEvent.code to the character the key types, shared by labels and aria-keyshortcuts.
+const PUNCTUATION_KEYS: Record<string, string> = {
+  Comma: ',',
+  Period: '.',
+  Slash: '/',
+  Backslash: '\\',
+  Semicolon: ';',
+  Quote: "'",
+  BracketLeft: '[',
+  BracketRight: ']',
+  Minus: '-',
+  Equal: '=',
+  Backquote: '`',
+}
+
+function formatPrintableCode(code: string): string | null {
   if (/^Key[A-Z]$/.test(code)) {
     return code.slice('Key'.length)
   }
@@ -270,27 +285,16 @@ function formatCodeLabel(code: string): string {
     return code.slice('Digit'.length)
   }
 
+  return PUNCTUATION_KEYS[code] ?? null
+}
+
+function formatCodeLabel(code: string): string {
+  const printable = formatPrintableCode(code)
+  if (printable !== null) {
+    return printable
+  }
+
   switch (code) {
-    case 'Comma':
-      return ','
-    case 'Period':
-      return '.'
-    case 'Slash':
-      return '/'
-    case 'Semicolon':
-      return ';'
-    case 'Quote':
-      return "'"
-    case 'BracketLeft':
-      return '['
-    case 'BracketRight':
-      return ']'
-    case 'Minus':
-      return '-'
-    case 'Equal':
-      return '='
-    case 'Backquote':
-      return '`'
     case 'Space':
       return 'Space'
     case 'Escape':
@@ -363,6 +367,39 @@ export function formatKeyChord(platform: string | undefined, chord: KeyChord | n
   }
 
   return `${[...parts.modifiers, parts.key].join(' ')}`
+}
+
+/** The chord as an aria-keyshortcuts value: modifiers, then the KeyboardEvent.key name. */
+function formatAriaKeyShortcuts(chord: KeyChord): string {
+  // Named keys (Enter, Escape, ArrowLeft, F1) share their code and key names; Space is spelled out.
+  const key = formatPrintableCode(chord.code) ?? chord.code
+  return [
+    chord.ctrlKey ? 'Control' : '',
+    chord.altKey ? 'Alt' : '',
+    chord.shiftKey ? 'Shift' : '',
+    chord.metaKey ? 'Meta' : '',
+    key,
+  ]
+    .filter(Boolean)
+    .join('+')
+}
+
+export type KeyChordDescription = {
+  /** What a menu row shows, in the same format as the rest of the app (⌘T, Ctrl T). */
+  label: string
+  /** The same chord for assistive technology (Meta+T, Control+T). */
+  ariaKeyShortcuts: string
+}
+
+export function describeKeyChord(
+  platform: string | undefined,
+  chord: KeyChord | null,
+): KeyChordDescription | null {
+  if (!chord) {
+    return null
+  }
+
+  return { label: formatKeyChord(platform, chord), ariaKeyShortcuts: formatAriaKeyShortcuts(chord) }
 }
 
 function normalizeKeyChord(value: unknown): KeyChord | null {

@@ -37,7 +37,7 @@
   z-index: var(--cove-z-dialog-nested);
 }
 
-.workspace-context-menu button {
+.workspace-context-menu button:not(:where(.cove-menu-item)) {
   width: 100%;
   text-align: left;
   display: flex;
@@ -59,12 +59,12 @@
     color 0.15s ease;
 }
 
-.workspace-context-menu button:disabled {
+.workspace-context-menu button:not(:where(.cove-menu-item)):disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.workspace-context-menu button:disabled:hover {
+.workspace-context-menu button:not(:where(.cove-menu-item)):disabled:hover {
   background: transparent;
 }
 
@@ -73,15 +73,15 @@
   transform: none;
 }
 
-.workspace-context-menu button:hover {
+.workspace-context-menu button:not(:where(.cove-menu-item)):hover {
   background: var(--cove-menu-highlight);
 }
 
-.workspace-context-menu button:active {
+.workspace-context-menu button:not(:where(.cove-menu-item)):active {
   background: var(--cove-control-active);
 }
 
-.workspace-context-menu button:focus-visible {
+.workspace-context-menu button:not(:where(.cove-menu-item)):focus-visible {
   outline: 1px solid var(--cove-focus-ring);
   outline-offset: -1px;
   background: var(--cove-menu-highlight);

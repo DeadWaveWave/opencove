@@ -1,9 +1,14 @@
 import type React from 'react'
 
+const MENU_ACTION_SELECTOR =
+  'button, [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]'
+
 export function getMenuActions(menu: HTMLElement): HTMLElement[] {
-  return Array.from(
-    menu.querySelectorAll<HTMLElement>('button:not(:disabled), [role="menuitem"]'),
-  ).filter(element => {
+  return Array.from(menu.querySelectorAll<HTMLElement>(MENU_ACTION_SELECTOR)).filter(element => {
+    // Disabled items are skipped, as in native and Radix menus.
+    if (element.matches(':disabled') || element.getAttribute('aria-disabled') === 'true') {
+      return false
+    }
     if (element.closest('[hidden], [inert], [aria-hidden="true"]')) {
       return false
     }

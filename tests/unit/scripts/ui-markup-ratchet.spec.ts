@@ -24,7 +24,10 @@ describe('UI markup ratchet', () => {
       ),
     ])
 
-    expect(counts).toEqual({ 'native-title': { 'src/app/renderer/shell/Header.tsx': 3 } })
+    expect(counts).toEqual({
+      'native-button': { 'src/app/renderer/shell/Header.tsx': 1 },
+      'native-title': { 'src/app/renderer/shell/Header.tsx': 3 },
+    })
   })
 
   it('ignores component props, iframe names, SVG title elements and spread props', () => {
@@ -45,7 +48,40 @@ describe('UI markup ratchet', () => {
       ),
     ])
 
-    expect(counts).toEqual({ 'native-title': {} })
+    expect(counts).toEqual({
+      'native-button': { 'src/app/renderer/shell/Panel.tsx': 1 },
+      'native-title': {},
+    })
+  })
+
+  it('counts native buttons outside the shared components that wrap them', () => {
+    const counts = countMarkupLiterals([
+      file(
+        'src/contexts/workspace/presentation/renderer/components/Toolbar.tsx',
+        `export function Toolbar() {
+          return (
+            <div role="toolbar">
+              <button type="button">Zoom in</button>
+              <button type="button" disabled>
+                <span>Zoom out</span>
+              </button>
+              <Button variant="ghost">Fit</Button>
+              <MenuItem>Arrange</MenuItem>
+            </div>
+          )
+        }`,
+      ),
+      file(
+        'src/app/renderer/components/ui/MenuItemRow.tsx',
+        `export function MenuItemRow() {
+          return <button type="button" role="menuitem" />
+        }`,
+      ),
+    ])
+
+    expect(counts['native-button']).toEqual({
+      'src/contexts/workspace/presentation/renderer/components/Toolbar.tsx': 2,
+    })
   })
 
   it('fails increases, asks for a refreshed baseline after decreases and serializes sorted', () => {
@@ -60,7 +96,7 @@ describe('UI markup ratchet', () => {
     expect(decrease?.message).toContain('pnpm ui:style-ratchet')
     expect(compareMarkupRatchet(baseline, baseline)).toEqual([])
     expect(serializeMarkupRatchet({ 'native-title': { 'b.tsx': 2, 'a.tsx': 1, 'c.tsx': 0 } })).toBe(
-      `${JSON.stringify({ 'native-title': { 'a.tsx': 1, 'b.tsx': 2 } }, null, 2)}\n`,
+      `${JSON.stringify({ 'native-button': {}, 'native-title': { 'a.tsx': 1, 'b.tsx': 2 } }, null, 2)}\n`,
     )
   })
 })

@@ -19,8 +19,8 @@
   width: 218px;
 }
 
-.workspace-project-context-menu button,
-.workspace-space-action-menu button {
+.workspace-project-context-menu button:not(:where(.cove-menu-item)),
+.workspace-space-action-menu button:not(:where(.cove-menu-item)) {
   gap: 10px;
 }
 

@@ -1,7 +1,8 @@
 import React from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
-import { ChevronRight, FileText, Globe, Settings, Terminal } from 'lucide-react'
+import { MenuItem, MenuSeparator } from '@app/renderer/components/ui/Menu'
+import { FileText, Globe, Settings, Terminal } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickCommand, QuickPhrase } from '@contexts/settings/domain/agentSettings'
 
@@ -30,82 +31,54 @@ export function WorkspaceContextQuickMenuItems({
 
   return (
     <>
-      <div className="workspace-context-menu__separator" />
+      <MenuSeparator />
 
       {pinnedQuickCommands.map(command => (
-        <button
+        <MenuItem
           key={command.id}
-          type="button"
+          icon={command.kind === 'terminal' ? <Terminal /> : <Globe />}
           data-testid={`workspace-context-quick-command-pinned-${command.id}`}
           onClick={() => {
             void runQuickCommand(command)
           }}
         >
-          {command.kind === 'terminal' ? (
-            <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
-          ) : (
-            <Globe className="workspace-context-menu__icon" aria-hidden="true" />
-          )}
-          <span className="workspace-context-menu__label">{command.title}</span>
-        </button>
+          {command.title}
+        </MenuItem>
       ))}
 
-      <button
+      <MenuItem
         ref={quickCommandsButtonRef}
-        type="button"
+        icon={<Terminal />}
         data-testid="workspace-context-quick-commands"
-        aria-haspopup="menu"
-        aria-expanded={isQuickCommandsSubmenuOpen}
+        submenu={{ open: isQuickCommandsSubmenuOpen }}
         onMouseEnter={menuHoverHandler(openQuickCommandsSubmenu)}
         onClick={openQuickCommandsSubmenu}
       >
-        <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('settingsPanel.quickMenu.commands.title')}
-        </span>
-        <ChevronRight
-          className={`workspace-context-menu__icon workspace-context-menu__chevron ${
-            isQuickCommandsSubmenuOpen ? 'workspace-context-menu__chevron--open' : ''
-          }`}
-          aria-hidden="true"
-        />
-      </button>
+        {t('settingsPanel.quickMenu.commands.title')}
+      </MenuItem>
 
-      <button
+      <MenuItem
         ref={quickPhrasesButtonRef}
-        type="button"
+        icon={<FileText />}
         data-testid="workspace-context-quick-phrases"
-        aria-haspopup="menu"
-        aria-expanded={isQuickPhrasesSubmenuOpen}
+        submenu={{ open: isQuickPhrasesSubmenuOpen }}
         onMouseEnter={menuHoverHandler(openQuickPhrasesSubmenu)}
         onClick={openQuickPhrasesSubmenu}
       >
-        <FileText className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('settingsPanel.quickMenu.phrases.title')}
-        </span>
-        <ChevronRight
-          className={`workspace-context-menu__icon workspace-context-menu__chevron ${
-            isQuickPhrasesSubmenuOpen ? 'workspace-context-menu__chevron--open' : ''
-          }`}
-          aria-hidden="true"
-        />
-      </button>
+        {t('settingsPanel.quickMenu.phrases.title')}
+      </MenuItem>
 
-      <button
-        type="button"
+      <MenuItem
+        icon={<Settings />}
         data-testid="workspace-context-customize-quick-menu"
         onClick={() => {
           openQuickMenuSettings()
         }}
       >
-        <Settings className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('settingsPanel.quickMenu.customize')}
-        </span>
-      </button>
+        {t('settingsPanel.quickMenu.customize')}
+      </MenuItem>
 
-      <div className="workspace-context-menu__separator" />
+      <MenuSeparator />
     </>
   )
 }
