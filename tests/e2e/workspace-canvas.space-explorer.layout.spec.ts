@@ -154,7 +154,8 @@ test.describe('Workspace Canvas - Space Explorer', () => {
         ).display,
       }))
       expect(chrome.band).toContain('linear-gradient')
-      expect(chrome.material).toBe('blur(6px)')
+      // Pixel sets no header blur; the header is a pre-composited tint.
+      expect(chrome.material).toBe('none')
       expect(chrome.titleRow).toBe('flex')
       const contentOverflow = await explorer.evaluate(element =>
         Array.from(

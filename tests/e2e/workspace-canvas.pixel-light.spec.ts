@@ -82,6 +82,10 @@ async function readLightPaint(page: Page) {
       },
       monaco: luminance(plate.backgroundColor),
       monacoBackground: monaco.backgroundColor,
+      // Window frames are a pre-composited tint; no header samples the canvas through a blur.
+      blurredHeaders: [
+        ...document.querySelectorAll('.react-flow__node [data-cove-part="window-header"]'),
+      ].filter(element => getComputedStyle(element).backdropFilter !== 'none').length,
       ansi: ansiEntries.map(([name, token]) => {
         const color = terminal.getPropertyValue(token).trim()
         const light = luminance(color)
@@ -215,6 +219,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       expect(paint.terminal.contrast).toBeGreaterThanOrEqual(4.5)
       expect(paint.monaco).toBeGreaterThan(0.7)
       expect(paint.monacoBackground).toBe('rgba(0, 0, 0, 0)')
+      expect(paint.blurredHeaders).toBe(0)
       expect(paint.ansi).toHaveLength(16)
       for (const color of paint.ansi) {
         expect(color.color, `${color.name} ANSI override`).toBeTruthy()

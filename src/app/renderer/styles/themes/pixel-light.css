@@ -67,8 +67,7 @@
   --cove-canvas-control-text-hover: var(--cove-text);
   --cove-canvas-dot: rgba(48, 116, 154, 0.2);
 
-  --cove-pixel-header-filter: blur(6px);
-  --cove-pixel-header-clearance: var(--cove-node-header-height);
+  --cove-pixel-header-filter: none;
   --cove-pixel-space-meta-surface: rgba(237, 246, 251, 0.92);
 
   --cove-canvas-minimap-surface: rgba(242, 249, 253, 0.88);

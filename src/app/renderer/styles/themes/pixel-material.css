@@ -1,5 +1,6 @@
-/* Paint an opaque reading surface only below the existing header band, so the
-   frosted titlebar can sample the canvas. These clearances do not change layout.
+/* The frame (header and the plate's margins) is one pre-composited tint; content reads
+   on the opaque reading plate (window-plate.css). Pixel sets no header filter; a theme
+   that wants frosted headers sets --cove-pixel-header-filter and pays for the blur.
    Keep the fallback absence guard inside :where so theme inheritance does not
    outrank component decoration such as the node identity header gradient. */
 :root:is(
@@ -22,12 +23,8 @@
     .role-node,
     .website-node
   ) {
-  background-color: transparent;
-  background-image: linear-gradient(
-    to bottom,
-    transparent var(--cove-pixel-header-clearance),
-    var(--cove-node-surface) var(--cove-pixel-header-clearance)
-  );
+  background-color: var(--cove-node-header-surface);
+  background-image: none;
 }
 
 :root:is(
@@ -62,7 +59,7 @@
   )
   .settings-pixel-preview__node--terminal
   .settings-pixel-preview__header {
-  background-image: none;
+  background: transparent;
   backdrop-filter: var(--cove-pixel-header-filter);
   box-shadow: none;
 }

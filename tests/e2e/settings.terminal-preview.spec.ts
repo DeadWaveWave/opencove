@@ -102,9 +102,8 @@ test('previews terminal typography in a stable themed window', async ({
         overflow: getComputedStyle(element).overflow,
       }))
       expect(chrome.band).toContain('linear-gradient')
-      if (uiTheme.startsWith('pixel')) {
-        expect(chrome.material).toBe('blur(6px)')
-      }
+      // Window headers are a pre-composited tint; Pixel sets no header blur.
+      expect(chrome.material).toBe('none')
       expect(chrome.radius).not.toBe('0px')
       expect(parseFloat(chrome.headerRadius)).toBeGreaterThan(0)
       expect(chrome.overflow).toBe('hidden')

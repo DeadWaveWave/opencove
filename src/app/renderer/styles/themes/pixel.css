@@ -79,8 +79,7 @@
   --cove-pixel-space-tint: 85 130 171;
   --cove-pixel-space-detail: 1;
   --cove-pixel-space-fill-factor: 0.012;
-  --cove-pixel-header-filter: blur(6px);
-  --cove-pixel-header-clearance: var(--cove-node-header-height);
+  --cove-pixel-header-filter: none;
   --cove-pixel-space-title-surface: rgba(18, 29, 40, 0.82);
   --cove-pixel-space-meta-surface: rgba(18, 29, 40, 0.74);
   --cove-pixel-space-title-text: #dae7f1;
