@@ -172,6 +172,28 @@ describe('ViewportMenuSurface with menu items', () => {
     expect(document.activeElement).toBe(terminal)
   })
 
+  it('gives the sheet content only the menu role, so other surfaces keep a single dialog', () => {
+    vi.useFakeTimers()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
+    render(
+      <ViewportMenuSurface
+        open
+        role="dialog"
+        aria-label="Link"
+        className="workspace-context-menu"
+        mobileTitle="Link"
+        placement={{ type: 'point', point: { x: 40, y: 50 } }}
+        onDismiss={() => {}}
+      >
+        <MenuItem>Open link</MenuItem>
+      </ViewportMenuSurface>,
+    )
+    act(() => vi.runOnlyPendingTimers())
+
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Open link' })).toBeTruthy()
+  })
+
   it('keeps the menu role on the sheet content when a compact viewport shows a dialog', () => {
     openSurface(390)
     const dialog = screen.getByRole('dialog', { name: 'Canvas' })

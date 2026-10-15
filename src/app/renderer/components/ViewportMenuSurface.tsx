@@ -358,7 +358,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
           </div>
           <div
             className="cove-menu-sheet__content"
-            role={role}
+            role={role === 'menu' ? 'menu' : undefined}
             aria-labelledby={role === 'menu' ? titleId : undefined}
           >
             {content}
