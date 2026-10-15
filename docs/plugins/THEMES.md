@@ -121,6 +121,8 @@ Public material tokens:
 
 - `--cove-node-background-image`, `--cove-node-shadow`, `--cove-node-shadow-hover`,
   `--cove-node-shadow-focus`, `--cove-node-header-border`, `--cove-pixel-header-filter`
+  (built-in themes set it to `none`: window frames are a pre-composited tint and content
+  sits on the reading plate; a theme that sets a blur pays for it on every visible window)
 - `--cove-space-surface`, `--cove-space-border`, `--cove-space-shadow`,
   `--cove-space-caption-surface`
 
