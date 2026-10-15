@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Appearance: menus, popovers and the control center share one acrylic material with checked contrast, and turn solid when the system reduces transparency. (#449)
 - Windows: every window header ends with the same collapse and close buttons, in the same order and size, with tooltips; the terminal and agent close button now has a name for screen readers. (#450)
 - Windows: terminal, agent, task, note, document, folder, role and plugin windows share one header layout: the kind icon on a small tile, 13px titles, status after the title and evenly spaced controls; the role header is no longer taller than the others. (#451)
+- Website windows: the header shows the page title like other windows, and back, forward, reload and the address bar join the browser toolbar below it, where the address stays readable in narrow windows. (#452)
 
 ### 🐛 Fixed
 
