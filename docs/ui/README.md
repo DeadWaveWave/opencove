@@ -202,6 +202,12 @@
   到达前不得把旧连接 epoch 带入 resize。
 - 主题刷新应保留 terminal DOM、selection、viewport 与 Find state；禁止用 remount 或虚假
   resize/SIGWINCH 修复调色板残影。
+- 终端背景（设置「终端背景」：自动 / 透明 / 不透明）决定 xterm 是否以 `allowTransparency` 打开，
+  背景为底板等效色的零透明度（OSC 11 报告的就是文字所在的颜色）。这个值只取决于设置和平台
+  （自动 = 仅 macOS 透明），改变时重建 xterm 实例、保留 PTY 与屏幕。文字背后显示什么由 CSS 决定：
+  生成的主题用 `--cove-terminal-plate-backdrop: transparent` 露出阅读底板，手写主题和系统
+  「减少透明度」保留终端底色，二者都不重建 xterm。回放历史输出前去掉其中的终端查询，避免新实例
+  把旧问题的回答写进 shell。
 - Terminal appearance 只有一个 final-wins apply owner；新 revision 仅在实际 apply/refresh 完成后
   成为 applied state。任何真实 presentation change 都必须标记 durable dirty；退出前需 drain
   完整 session FIFO 后再做最终 recovery flush。
