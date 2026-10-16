@@ -1,4 +1,5 @@
 import { resolveDefaultFirstAgentProviderOrder } from './agentSettings.providers'
+import { DEFAULT_TERMINAL_BACKGROUND_MODE } from './terminalBackgroundSettings'
 import type { AgentSettings } from './agentSettings'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from './agentEnv'
 import { DEFAULT_AGENT_EXECUTABLE_PATH_OVERRIDE_BY_PROVIDER } from './agentSettings.executables'
@@ -85,6 +86,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   terminalFontFamily: null,
+  terminalBackground: DEFAULT_TERMINAL_BACKGROUND_MODE,
   terminalDisplayAutoReferenceEnabled: true,
   terminalDisplayCalibrationCompensationEnabled: true,
   terminalDisplayReference: null,

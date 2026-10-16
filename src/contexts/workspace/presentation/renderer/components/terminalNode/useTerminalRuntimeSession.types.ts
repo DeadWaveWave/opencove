@@ -69,6 +69,7 @@ export interface TerminalRuntimeSessionOptions {
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
   terminalFontSize: number
   terminalFontFamily: string | null
+  terminalTransparentBackground: boolean
   displayTerminalMetricsRef: {
     current: {
       fontSize: number

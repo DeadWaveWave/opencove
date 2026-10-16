@@ -380,6 +380,7 @@ export function WorkspaceCanvasInner({
         workspaceId={workspaceId}
         terminalFontSize={agentSettings.terminalFontSize}
         terminalFontFamily={agentSettings.terminalFontFamily}
+        terminalBackground={agentSettings.terminalBackground}
         terminalDisplayCalibration={terminalDisplayCalibration}
         canvasRef={canvasState.canvasRef}
         resolvedCanvasInputMode={inputMode.resolvedCanvasInputMode}

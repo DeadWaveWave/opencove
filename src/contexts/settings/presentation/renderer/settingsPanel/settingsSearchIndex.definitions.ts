@@ -92,6 +92,14 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['font', 'size', 'terminal', '终端', '字体'],
   },
   {
+    id: 'terminal.background',
+    pageId: 'terminal',
+    titleKey: 'settingsPanel.appearanceNext.terminalBackground',
+    descriptionKey: 'settingsPanel.appearanceNext.terminalBackgroundHelp',
+    anchorId: 'settings-terminal-background-label',
+    keywords: ['transparent', 'opaque', 'background', 'terminal', 'glass', '透明', '背景', '终端'],
+  },
+  {
     id: 'general.terminal-font-family',
     pageId: 'terminal',
     titleKey: 'settingsPanel.general.terminalFontFamily',

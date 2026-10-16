@@ -26,6 +26,7 @@ export function createOrReuseRuntimeXtermSession({
     | 'syncTerminalSize'
     | 'terminalFontSize'
     | 'terminalFontFamily'
+    | 'terminalTransparentBackground'
     | 'displayTerminalMetricsRef'
     | 'viewportZoomRef'
     | 'preferredRendererMode'
@@ -54,6 +55,7 @@ export function createOrReuseRuntimeXtermSession({
     syncTerminalSize,
     terminalFontSize,
     terminalFontFamily,
+    terminalTransparentBackground,
     displayTerminalMetricsRef,
     viewportZoomRef,
     preferredRendererMode,
@@ -63,7 +65,13 @@ export function createOrReuseRuntimeXtermSession({
     isLiveSessionReattach,
   } = options
 
-  const reusedSession = canReusePreservedSession ? preservedSession : null
+  // allowTransparency is fixed when xterm opens; a session built for the other mode is replaced.
+  const reusedSession =
+    canReusePreservedSession &&
+    (preservedSession?.terminal.options.allowTransparency === true) ===
+      terminalTransparentBackground
+      ? preservedSession
+      : null
   if (reusedSession) {
     reusedSession.terminal.options.disableStdin = false
     reusedSession.terminal.options.cursorBlink = true
@@ -145,6 +153,7 @@ export function createOrReuseRuntimeXtermSession({
     disableStdin: false,
     fontSize: displayTerminalMetrics.fontSize,
     fontFamily: terminalFontFamily,
+    transparentBackground: terminalTransparentBackground,
     lineHeight: displayTerminalMetrics.lineHeight,
     letterSpacing: displayTerminalMetrics.letterSpacing,
     bindSearchAddonToFind,

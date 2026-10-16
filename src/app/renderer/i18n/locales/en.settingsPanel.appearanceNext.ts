@@ -17,6 +17,12 @@ export const enSettingsPanelAppearanceNext = {
   terminalTypographyHelp: 'Font changes apply to new terminal and agent sessions.',
   terminalPreview: 'Terminal font preview',
   terminalShell: 'Shell',
+  terminalBackground: 'Terminal Background',
+  terminalBackgroundHelp:
+    'Transparent puts terminal text on the window’s reading plate. Auto is transparent on macOS and opaque on Windows and Linux. Terminals are always opaque when the system reduces transparency or the theme’s windows are solid.',
+  terminalBackgroundAuto: 'Auto',
+  terminalBackgroundTransparent: 'Transparent',
+  terminalBackgroundOpaque: 'Opaque',
   calibration: 'Display Calibration',
   calibrationHelp: 'Match terminal text measurements to this display.',
 }

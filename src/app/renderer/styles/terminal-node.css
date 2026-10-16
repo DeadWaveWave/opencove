@@ -52,6 +52,24 @@
   cursor: text;
 }
 
+/* Transparent terminals draw their text on the reading plate where the theme composes one
+   (the generated Cove family, whose plate the contrast matrix checks); elsewhere, and when the
+   system reduces transparency, the terminal colour stays behind the text. Neither case
+   recreates xterm. */
+:root[data-cove-family='cove'] {
+  --cove-terminal-plate-backdrop: transparent;
+}
+
+.terminal-node__body[data-cove-terminal-background='transparent'] > .terminal-node__terminal {
+  background: var(--cove-terminal-plate-backdrop, var(--cove-terminal-background));
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .terminal-node__body[data-cove-terminal-background='transparent'] > .terminal-node__terminal {
+    background: var(--cove-terminal-background);
+  }
+}
+
 .terminal-node__terminal:has(.xterm.enable-mouse-events) {
   cursor: default;
 }

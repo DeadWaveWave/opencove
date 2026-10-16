@@ -1,3 +1,4 @@
+import { isValidTerminalBackgroundMode } from './terminalBackgroundSettings'
 import type {
   AgentCustomModelByProvider,
   AgentCustomModelEnabledByProvider,
@@ -351,6 +352,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     typeof value.terminalFontFamily === 'string' && value.terminalFontFamily.trim().length > 0
       ? value.terminalFontFamily.trim()
       : DEFAULT_AGENT_SETTINGS.terminalFontFamily
+  const terminalBackground = isValidTerminalBackgroundMode(value.terminalBackground)
+    ? value.terminalBackground
+    : DEFAULT_AGENT_SETTINGS.terminalBackground
   const terminalDisplayAutoReferenceEnabled =
     normalizeBoolean(value.terminalDisplayAutoReferenceEnabled) ??
     normalizeBoolean(value.terminalDisplayAutoCalibrationEnabled) ??
@@ -459,6 +463,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     terminalFontFamily,
+    terminalBackground,
     terminalDisplayAutoReferenceEnabled,
     terminalDisplayCalibrationCompensationEnabled,
     terminalDisplayReference,

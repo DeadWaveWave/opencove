@@ -6,6 +6,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { Terminal } from '@xterm/xterm'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TerminalDiagnosticsLogInput, TerminalWindowsPty } from '@shared/contracts/dto'
+import { withTerminalBackgroundTransparency } from './terminalBackgroundTransparency'
 import { DEFAULT_TERMINAL_FONT_FAMILY } from './constants'
 import { installTerminalLinks } from './links/installTerminalLinks'
 import { registerTerminalSelectionTestHandle } from './testHarness'
@@ -68,6 +69,7 @@ export function createMountedXtermSession({
   disableStdin,
   fontSize,
   fontFamily,
+  transparentBackground = false,
   lineHeight = 1,
   letterSpacing = 0,
   bindSearchAddonToFind,
@@ -96,6 +98,8 @@ export function createMountedXtermSession({
   disableStdin: boolean
   fontSize: number
   fontFamily: string | null
+  /** Draw text on the window's reading plate; fixed for the instance's lifetime. */
+  transparentBackground?: boolean
   lineHeight?: number
   letterSpacing?: number
   bindSearchAddonToFind: (addon: SearchAddon) => () => void
@@ -122,7 +126,11 @@ export function createMountedXtermSession({
     fontSize,
     lineHeight,
     letterSpacing,
-    theme: { ...initialAppearance.xtermTheme },
+    allowTransparency: transparentBackground,
+    theme: withTerminalBackgroundTransparency(
+      { ...initialAppearance.xtermTheme },
+      transparentBackground,
+    ),
     allowProposedApi: true,
     convertEol: true,
     scrollback: 5000,

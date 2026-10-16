@@ -46,6 +46,7 @@ export function useTerminalPlaceholderSession({
   setRendererKindAndApply,
   terminalFontSize,
   terminalFontFamily,
+  terminalTransparentBackground,
   displayTerminalMetricsRef,
   viewportZoomRef,
   preferredRendererMode,
@@ -81,6 +82,7 @@ export function useTerminalPlaceholderSession({
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
   terminalFontSize: number
   terminalFontFamily: string | null
+  terminalTransparentBackground: boolean
   displayTerminalMetricsRef: {
     current: {
       fontSize: number
@@ -138,6 +140,7 @@ export function useTerminalPlaceholderSession({
       disableStdin: false,
       fontSize: displayTerminalMetrics.fontSize,
       fontFamily: terminalFontFamily,
+      transparentBackground: terminalTransparentBackground,
       lineHeight: displayTerminalMetrics.lineHeight,
       letterSpacing: displayTerminalMetrics.letterSpacing,
       bindSearchAddonToFind,
@@ -291,6 +294,7 @@ export function useTerminalPlaceholderSession({
     shouldRestoreTerminalFocusRef,
     terminalFontSize,
     terminalFontFamily,
+    terminalTransparentBackground,
     displayTerminalMetricsRef,
     viewportZoomRef,
     preferredRendererMode,

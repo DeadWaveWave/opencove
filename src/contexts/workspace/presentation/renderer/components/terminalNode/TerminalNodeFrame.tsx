@@ -41,6 +41,7 @@ interface TerminalNodeFrameProps {
   recoveryIssue?: AgentRecoveryIssue | null
   sessionId: string
   isTerminalHydrated: boolean
+  transparentBackground?: boolean
   transcriptRef: React.Ref<HTMLDivElement>
   sizeStyle: React.CSSProperties
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -94,6 +95,7 @@ export function TerminalNodeFrame({
   recoveryIssue = null,
   sessionId,
   isTerminalHydrated,
+  transparentBackground = false,
   transcriptRef,
   sizeStyle,
   containerRef,
@@ -271,7 +273,11 @@ export function TerminalNodeFrame({
       ) : null}
 
       {geometryFeedback}
-      <div className="terminal-node__body" data-cove-part="window-body">
+      <div
+        className="terminal-node__body"
+        data-cove-part="window-body"
+        data-cove-terminal-background={transparentBackground ? 'transparent' : 'opaque'}
+      >
         <div
           id={terminalElementId}
           ref={containerRef}

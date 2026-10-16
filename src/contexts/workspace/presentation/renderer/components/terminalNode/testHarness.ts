@@ -33,7 +33,10 @@ type TerminalOptionsIntrospection = {
     fontFamily?: unknown
     lineHeight?: unknown
     letterSpacing?: unknown
+    allowTransparency?: unknown
+    theme?: { background?: unknown }
   }
+  __opencoveXtermSessionInstanceId?: unknown
 }
 
 type TerminalSelectionTestApi = {
@@ -48,6 +51,9 @@ type TerminalSelectionTestApi = {
     letterSpacing: number | null
   } | null
   getBufferText: (nodeId: string, marker: string) => TerminalBufferTextTestProjection | null
+  getBackground: (
+    nodeId: string,
+  ) => { allowTransparency: boolean; background: string; instanceId: number | null } | null
   getProposedGeometry: (nodeId: string) => { cols: number; rows: number } | null
   getRenderMetrics: (nodeId: string) => TerminalRenderMetricsTestProjection | null
   simulateRendererDevicePixelRatioChange: (
@@ -211,6 +217,21 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
       },
       simulateRendererDevicePixelRatioChange: (nodeId, nextDpr) =>
         simulateRendererDevicePixelRatioChangeForTest(terminalHandles.get(nodeId), nextDpr),
+      getBackground: nodeId => {
+        const terminal = terminalHandles.get(nodeId) as unknown as TerminalOptionsIntrospection
+        const options = terminal?.options
+        if (!options) {
+          return null
+        }
+        return {
+          allowTransparency: options.allowTransparency === true,
+          background: typeof options.theme?.background === 'string' ? options.theme.background : '',
+          instanceId:
+            typeof terminal.__opencoveXtermSessionInstanceId === 'number'
+              ? terminal.__opencoveXtermSessionInstanceId
+              : null,
+        }
+      },
       getSize: nodeId => {
         const terminal = terminalHandles.get(nodeId)
         if (!terminal) {

@@ -28,6 +28,7 @@ import type { ProjectRolesByWorkspaceId } from './projectRoles'
 import type { QuickCommand } from './quickCommands'
 import type { QuickPhrase } from './quickPhrases'
 import type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
+import type { TerminalBackgroundMode } from './terminalBackgroundSettings'
 import type { TerminalDisplayReference } from './terminalDisplayCalibration'
 import type { UiLanguage, UiTheme } from './uiSettings'
 import type { PluginContributionPreferences } from './pluginSettings'
@@ -96,6 +97,7 @@ export interface AgentSettings extends PixelEffectSettings {
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   terminalFontFamily: string | null
+  terminalBackground: TerminalBackgroundMode
   terminalDisplayAutoReferenceEnabled: boolean
   terminalDisplayCalibrationCompensationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null

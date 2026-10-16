@@ -229,6 +229,7 @@ export function useWorkspaceCanvasNodeTypes({
           dragging={dragging}
           terminalFontSize={displayAlignment.terminalFontSize}
           terminalFontFamily={displayAlignment.terminalFontFamily}
+          terminalTransparentBackground={displayAlignment.terminalTransparentBackground}
           terminalDisplayCalibration={displayAlignment.terminalDisplayCalibration}
           selectNode={selectNode}
           closeNodeRef={closeNodeRef}

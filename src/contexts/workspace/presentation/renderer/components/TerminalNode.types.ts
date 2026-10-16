@@ -57,6 +57,8 @@ export interface TerminalNodeProps extends TerminalLinkHostOptions {
   terminalFontSize: number
   terminalFontFamily: string | null
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
+  /** Terminal text sits on the window's reading plate; changing it recreates xterm. */
+  terminalTransparentBackground?: boolean
   scrollback: string | null
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>

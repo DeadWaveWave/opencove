@@ -20,6 +20,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   terminalFontSize,
   terminalFontFamily,
   terminalDisplayCalibration,
+  terminalTransparentBackground,
   selectNode,
   closeNodeRef,
   resizeNodeRef,
@@ -40,6 +41,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
   terminalFontSize: number
   terminalFontFamily: string | null
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
+  terminalTransparentBackground: boolean
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
@@ -201,6 +203,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
       terminalFontSize={terminalFontSize}
       terminalFontFamily={terminalFontFamily}
       terminalDisplayCalibration={terminalDisplayCalibration}
+      terminalTransparentBackground={terminalTransparentBackground}
       scrollback={scrollback}
       onClose={() => {
         void closeNodeRef.current(id)

@@ -4,6 +4,8 @@ import {
   MIN_TERMINAL_FONT_SIZE,
   type TerminalDisplayReference,
 } from '@contexts/settings/domain/agentSettings'
+import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
+import type { TerminalBackgroundMode } from '@contexts/settings/domain/terminalBackgroundSettings'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 import { TerminalFontFamilyRow } from './TerminalFontFamilyRow'
 import { TerminalDisplayCalibrationRow } from './TerminalDisplayCalibrationRow'
@@ -12,11 +14,13 @@ import { TerminalTypographyPreview } from './TerminalTypographyPreview'
 export interface TerminalAppearanceSectionProps {
   terminalFontSize: number
   terminalFontFamily: string | null
+  terminalBackground: TerminalBackgroundMode
   terminalDisplayAutoReferenceEnabled: boolean
   terminalDisplayCalibrationCompensationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null
   onChangeTerminalFontSize: (size: number) => void
   onChangeTerminalFontFamily: (family: string | null) => void
+  onChangeTerminalBackground: (mode: TerminalBackgroundMode) => void
   onChangeTerminalDisplayAutoReferenceEnabled: (enabled: boolean) => void
   onChangeTerminalDisplayCalibrationCompensationEnabled: (enabled: boolean) => void
   onChangeTerminalDisplayReference: (reference: TerminalDisplayReference | null) => void
@@ -58,6 +62,39 @@ export function TerminalAppearanceSection(props: TerminalAppearanceSectionProps)
                 onChange={event => props.onChangeTerminalFontSize(Number(event.target.value))}
               />
               <span>{t('common.pixelUnit')}</span>
+            </div>
+          </div>
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong id="settings-terminal-background-label">
+                {t('settingsPanel.appearanceNext.terminalBackground')}
+              </strong>
+              <span>{t('settingsPanel.appearanceNext.terminalBackgroundHelp')}</span>
+            </div>
+            <div className="settings-panel__control">
+              <SegmentedControl
+                testId="settings-terminal-background"
+                labelledBy="settings-terminal-background-label"
+                value={props.terminalBackground}
+                options={[
+                  {
+                    value: 'auto',
+                    label: t('settingsPanel.appearanceNext.terminalBackgroundAuto'),
+                    testId: 'settings-terminal-background-auto',
+                  },
+                  {
+                    value: 'transparent',
+                    label: t('settingsPanel.appearanceNext.terminalBackgroundTransparent'),
+                    testId: 'settings-terminal-background-transparent',
+                  },
+                  {
+                    value: 'opaque',
+                    label: t('settingsPanel.appearanceNext.terminalBackgroundOpaque'),
+                    testId: 'settings-terminal-background-opaque',
+                  },
+                ]}
+                onValueChange={props.onChangeTerminalBackground}
+              />
             </div>
           </div>
         </SettingsGroupBody>

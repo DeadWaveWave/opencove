@@ -99,6 +99,7 @@ export function SettingsPanelContent({
     updateExperimentalWebsiteWindowPasteEnabled,
     updateTerminalFontSize,
     updateTerminalFontFamily,
+    updateTerminalBackground,
     updateTerminalAutoReference,
     updateTerminalCompensation,
     updateTerminalDisplayReference,
@@ -155,6 +156,7 @@ export function SettingsPanelContent({
         <TerminalSettingsSection
           terminalFontSize={settings.terminalFontSize}
           terminalFontFamily={settings.terminalFontFamily}
+          terminalBackground={settings.terminalBackground}
           terminalDisplayAutoReferenceEnabled={settings.terminalDisplayAutoReferenceEnabled}
           terminalDisplayCalibrationCompensationEnabled={
             settings.terminalDisplayCalibrationCompensationEnabled
@@ -162,6 +164,7 @@ export function SettingsPanelContent({
           terminalDisplayReference={settings.terminalDisplayReference}
           onChangeTerminalFontSize={updateTerminalFontSize}
           onChangeTerminalFontFamily={updateTerminalFontFamily}
+          onChangeTerminalBackground={updateTerminalBackground}
           onChangeTerminalDisplayAutoReferenceEnabled={updateTerminalAutoReference}
           onChangeTerminalDisplayCalibrationCompensationEnabled={updateTerminalCompensation}
           onChangeTerminalDisplayReference={updateTerminalDisplayReference}

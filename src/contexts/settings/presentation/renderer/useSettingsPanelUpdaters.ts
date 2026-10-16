@@ -129,6 +129,8 @@ export function createSettingsPanelUpdaters({
       updateSetting('terminalFontSize', Math.round(fontSize)),
     updateTerminalFontFamily: (family: string | null): void =>
       updateSetting('terminalFontFamily', family),
+    updateTerminalBackground: (mode: AgentSettings['terminalBackground']): void =>
+      updateSetting('terminalBackground', mode),
     updateTerminalAutoReference: (enabled: boolean): void =>
       updateSetting('terminalDisplayAutoReferenceEnabled', enabled),
     updateTerminalCompensation: (enabled: boolean): void =>

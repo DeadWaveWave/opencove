@@ -29,6 +29,8 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
         {
           settings: {
             uiTheme: 'dark',
+            // The opaque terminal colour follows the theme; transparent terminals show the plate.
+            terminalBackground: 'opaque',
           },
         },
       )

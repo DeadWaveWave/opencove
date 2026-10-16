@@ -5,6 +5,8 @@ export interface TerminalDisplayAlignmentValue {
   terminalFontSize: number
   terminalFontFamily: string | null
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
+  /** Terminal text sits on the window's reading plate instead of its own background. */
+  terminalTransparentBackground: boolean
 }
 
 const TerminalDisplayAlignmentContext = createContext<TerminalDisplayAlignmentValue | null>(null)

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
+import { useDisplayTerminalMetrics } from './terminalNode/useDisplayTerminalMetrics'
 import { createTerminalCommandInputState } from './terminalNode/commandInput'
 import { refreshTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
 import {
@@ -66,6 +67,7 @@ export function TerminalNode({
   terminalFontSize,
   terminalFontFamily,
   terminalDisplayCalibration,
+  terminalTransparentBackground = false,
   scrollback,
   onClose,
   onCopyLastMessage,
@@ -130,19 +132,12 @@ export function TerminalNode({
   const statusRef = useRef(status)
   const isTerminalHydratedRef = useRef(false)
   const [isTerminalHydrated, setIsTerminalHydrated] = useState(false)
-  const displayTerminalFontSize = terminalDisplayCalibration?.fontSize ?? terminalFontSize
-  const displayTerminalLineHeight = terminalDisplayCalibration?.lineHeight ?? 1
-  const displayTerminalLetterSpacing = terminalDisplayCalibration?.letterSpacing ?? 0
-  const displayTerminalMetricsRef = useRef({
-    fontSize: displayTerminalFontSize,
-    lineHeight: displayTerminalLineHeight,
-    letterSpacing: displayTerminalLetterSpacing,
-  })
-  displayTerminalMetricsRef.current = {
-    fontSize: displayTerminalFontSize,
-    lineHeight: displayTerminalLineHeight,
-    letterSpacing: displayTerminalLetterSpacing,
-  }
+  const {
+    displayTerminalFontSize,
+    displayTerminalLineHeight,
+    displayTerminalLetterSpacing,
+    displayTerminalMetricsRef,
+  } = useDisplayTerminalMetrics(terminalFontSize, terminalDisplayCalibration)
   latestSessionIdRef.current = sessionId
 
   const {
@@ -357,6 +352,7 @@ export function TerminalNode({
     setRendererKindAndApply,
     terminalFontSize,
     terminalFontFamily,
+    terminalTransparentBackground,
     viewportZoomRef,
     preferredRendererMode,
     terminalClientResetVersion,
@@ -409,6 +405,7 @@ export function TerminalNode({
     setRendererKindAndApply,
     terminalFontSize,
     terminalFontFamily,
+    terminalTransparentBackground,
     displayTerminalMetricsRef,
     viewportZoomRef,
     preferredRendererMode,
@@ -444,6 +441,7 @@ export function TerminalNode({
   } = useTerminalBodyClickFallback(onInteractionStart)
   return (
     <TerminalNodeFrame
+      transparentBackground={terminalTransparentBackground}
       geometryFeedback={
         <TerminalGeometryFeedback
           terminal={terminalRef.current}

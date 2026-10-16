@@ -3,6 +3,7 @@ import type { Terminal } from '@xterm/xterm'
 import type { MutableRefObject } from 'react'
 import type { TerminalThemeMode } from './theme'
 import { runTerminalRenderMutationSafely } from './renderServiceSafety'
+import { withTerminalBackgroundTransparency } from './terminalBackgroundTransparency'
 import {
   createTerminalAppearanceRefreshCoordinator,
   getOrCreateTerminalAppearanceOwner,
@@ -73,7 +74,10 @@ export function useTerminalThemeApplier({
         coordinator: createTerminalAppearanceRefreshCoordinator({
           owner: appearanceOwner,
           apply: snapshot => {
-            terminal.options.theme = { ...snapshot.xtermTheme }
+            terminal.options.theme = withTerminalBackgroundTransparency(
+              { ...snapshot.xtermTheme },
+              terminal.options.allowTransparency === true,
+            )
           },
           refresh: snapshot => {
             const didRefresh = runTerminalRenderMutationSafely(() => {

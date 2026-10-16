@@ -17,6 +17,12 @@ export const zhCNSettingsPanelAppearanceNext = {
   terminalTypographyHelp: '字体设置应用于新建的终端与 Agent 会话。',
   terminalPreview: '终端字体预览',
   terminalShell: 'Shell',
+  terminalBackground: '终端背景',
+  terminalBackgroundHelp:
+    '透明时，终端文字直接显示在窗口的阅读底板上。自动：macOS 透明，Windows 和 Linux 不透明。系统开启「减少透明度」或主题的窗口是实色时，终端总是不透明。',
+  terminalBackgroundAuto: '自动',
+  terminalBackgroundTransparent: '透明',
+  terminalBackgroundOpaque: '不透明',
   calibration: '显示校准',
   calibrationHelp: '让终端文字测量与当前显示器匹配。',
 }
