@@ -16,7 +16,8 @@ async function readMarkedValue(page: Page, marker: string, source: string): Prom
   const terminal = page.locator('.terminal-node').first()
   await expect(terminal).toContainText(`${marker}=`, { timeout: 15_000 })
   const text = (await terminal.textContent()) ?? ''
-  const match = text.match(new RegExp(`${marker}=([\\w:/]+)`))
+  // xterm's text runs rows together, so values end with `;`.
+  const match = text.match(new RegExp(`${marker}=([\\w:/]+);`))
   if (!match) {
     throw new Error(`Missing terminal marker ${marker}`)
   }
@@ -27,7 +28,7 @@ async function readShellPid(page: Page, marker: string): Promise<string> {
   return await readMarkedValue(
     page,
     marker,
-    `process.stdout.write(${JSON.stringify(marker)} + '=' + String(process.ppid) + '\\n')`,
+    `process.stdout.write(${JSON.stringify(marker)} + '=' + String(process.ppid) + ';\\n')`,
   )
 }
 
@@ -82,8 +83,8 @@ test('terminal text sits on the reading plate and switching keeps the shell', as
       'OSC11',
       [
         'process.stdin.setRawMode(true)',
-        "process.stdin.once('data', d => { const m = d.toString().match(/rgb:[0-9a-f/]+/i); process.stdout.write('OSC11=' + (m ? m[0] : 'none') + '\\n'); process.exit(0) })",
-        "setTimeout(() => { process.stdout.write('OSC11=none\\n'); process.exit(0) }, 3000)",
+        "process.stdin.once('data', d => { const m = d.toString().match(/rgb:[0-9a-f/]+/i); process.stdout.write('OSC11=' + (m ? m[0] : 'none') + ';\\n'); process.exit(0) })",
+        "setTimeout(() => { process.stdout.write('OSC11=none;\\n'); process.exit(0) }, 3000)",
         "process.stdout.write('\\x1b]11;?\\x07')",
       ].join(';'),
     )
