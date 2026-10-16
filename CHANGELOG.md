@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Website windows: the header shows the page title like other windows, and back, forward, reload and the address bar join the browser toolbar below it, where the address stays readable in narrow windows. (#452)
 - Windows: content sits on an inset reading plate below the header, with a fine edge; the document editor reads directly on it. (#453)
 - Pixel theme: window headers no longer use a live background blur; windows use one tinted frame around the reading plate, which saves GPU work with many windows open. (#454)
+- Terminals: terminal text can sit directly on the window's reading plate. Settings → Terminal → Terminal Background chooses Auto (transparent on macOS, opaque on Windows and Linux), Transparent or Opaque; changing it keeps the running shell and its output. (#456)
 
 ### 🐛 Fixed
 
