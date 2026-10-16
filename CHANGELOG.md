@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Agent: give each managed Claude launch its own conversation ID and preserve it across recovery, preventing same-directory nodes from binding to the newest unrelated transcript. (#425)
 - Terminal: probe WebGL support once and release the probe, so workspaces with many terminals no longer evict active terminal renderers. (#428)
 - Canvas: keep zooming smooth in large workspaces by no longer restyling every window on each zoom step. (#429)
+- Terminal: when a terminal is restored or redrawn, questions programs asked the terminal earlier (such as its background colour) are no longer answered again into the shell, which could show errors like "command not found: 11". (#455)
 
 ## [0.4.0] - 2026-10-12
 
