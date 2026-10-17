@@ -24,7 +24,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   workspaceSearchPanelWidth: 420,
   defaultProvider: 'codex',
   agentProviderOrder: resolveDefaultFirstAgentProviderOrder(undefined, 'codex'),
-  agentFullAccess: true,
+  // New installs ask before agents run commands or change files; see LEGACY_AGENT_FULL_ACCESS.
+  agentFullAccess: false,
   defaultTerminalProfileId: null,
   agentExecutablePathOverrideByProvider: DEFAULT_AGENT_EXECUTABLE_PATH_OVERRIDE_BY_PROVIDER,
   customModelEnabledByProvider: {

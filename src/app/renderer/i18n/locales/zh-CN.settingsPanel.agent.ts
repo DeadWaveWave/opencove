@@ -20,5 +20,7 @@ export const zhCNSettingsPanelAgent = {
   moveUp: '上移',
   moveDown: '下移',
   fullAccessLabel: '完全访问模式',
-  fullAccessHelp: '为 Agent 关闭沙箱和人工审批。',
+  fullAccessHelp: '让 Agent 不受沙箱限制，不经同意直接行动。',
+  fullAccessOffHelp: '已关闭：Agent 在沙箱里工作，运行命令或修改文件前会先征求你的同意。',
+  fullAccessOnHelp: '已开启：Agent 直接运行命令、修改文件，不再征求同意。只在你信任的项目里开启。',
 } as const

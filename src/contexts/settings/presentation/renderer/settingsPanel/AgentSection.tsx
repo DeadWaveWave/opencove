@@ -170,7 +170,14 @@ export function AgentSection({
           <div className="settings-panel__row" id="settings-agent-full-access">
             <div className="settings-panel__row-label">
               <strong>{t('settingsPanel.agent.fullAccessLabel')}</strong>
-              <span>{t('settingsPanel.agent.fullAccessHelp')}</span>
+              <span
+                data-testid="settings-agent-full-access-help"
+                data-tone={agentFullAccess ? 'warning' : undefined}
+              >
+                {agentFullAccess
+                  ? t('settingsPanel.agent.fullAccessOnHelp')
+                  : t('settingsPanel.agent.fullAccessOffHelp')}
+              </span>
             </div>
             <div className="settings-panel__control">
               <Toggle
