@@ -21,7 +21,9 @@
 @import './styles/workspace-sidebar.surface.css' layer(opencove);
 @import './styles/workspace-sidebar.view.css' layer(opencove);
 @import './styles/workspace-sidebar.dnd.css' layer(opencove);
+@import './styles/project-tile.css' layer(opencove);
 @import './styles/workspace-sidebar.rail.css' layer(opencove);
+@import './styles/workspace-attention-inbox.css' layer(opencove);
 @import './styles/workspace-sidebar.fade.css' layer(opencove);
 @import './styles/primary-sidebar-layout.css' layer(opencove);
 @import './styles/workspace-agent-item.css' layer(opencove);

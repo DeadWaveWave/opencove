@@ -64,10 +64,40 @@ describe('summarizeAgentActivity', () => {
       ]),
     ])
     expect(summary.waiting).toEqual([
-      { workspaceId: 'alpha', nodeId: 'a-2', title: 'a-2' },
-      { workspaceId: 'beta', nodeId: 'b-1', title: 'b-1' },
+      {
+        workspaceId: 'alpha',
+        projectName: 'alpha',
+        projectIconId: null,
+        nodeId: 'a-2',
+        title: 'a-2',
+        spaceName: null,
+      },
+      {
+        workspaceId: 'beta',
+        projectName: 'beta',
+        projectIconId: null,
+        nodeId: 'b-1',
+        title: 'b-1',
+        spaceName: null,
+      },
     ])
     expect(summary.workingCount).toBe(2)
+  })
+
+  it('names the Space a waiting agent sits in', () => {
+    const project = workspace('alpha', [agent('a-1', 'waiting')])
+    project.spaces = [
+      {
+        id: 'space-review',
+        name: 'review-431',
+        directoryPath: '/tmp/alpha',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: ['a-1'],
+        rect: null,
+      },
+    ]
+    expect(summarizeAgentActivity([project]).waiting[0]?.spaceName).toBe('review-431')
   })
 
   it('is empty when no agent is waiting or working', () => {

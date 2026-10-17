@@ -45,6 +45,8 @@ import {
 } from '@contexts/settings/domain/sidebarViewSettings'
 import { projectSidebarView } from '../utils/sidebarView'
 import { SidebarViewControls } from './SidebarViewControls'
+import { SidebarAttentionInbox } from './SidebarAttentionInbox'
+import { summarizeAgentActivity } from '../utils/agentActivitySummary'
 import opencoveMark from '../../assets/brand/opencove-mark.png'
 
 export type SidebarVariant = 'docked' | 'rail' | 'peek'
@@ -114,6 +116,7 @@ export function Sidebar({
 }: SidebarProps): React.JSX.Element {
   const { t } = useTranslation()
   const trees = workspaces.map(buildSidebarProjectTree)
+  const waitingAgents = summarizeAgentActivity(workspaces).waiting
   const mountDetails = useWorkspaceMountDetails({ workspaces })
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -411,6 +414,10 @@ export function Sidebar({
                   </div>
                 ) : null}
                 <div className="workspace-sidebar__tree-scroll">
+                  <SidebarAttentionInbox
+                    items={waitingAgents}
+                    onSelectAgentNode={onSelectAgentNode}
+                  />
                   <SidebarWorkspaceNavigation
                     tree={projectedView?.tree ?? displayedTree}
                     isActive={displayedTree.workspace.id === activeWorkspaceId}

@@ -70,10 +70,8 @@
   display: none;
 }
 
-/* Project: a tile in the project's colour with its name below; the bar on the rail edge marks
-   the current project. Colours are the label palette minus the status-reserved hues. */
+/* Project: its tile with the name below; the bar on the rail edge marks the current project. */
 .workspace-project-rail__item {
-  --cove-project-accent: var(--cove-label-blue, var(--cove-accent));
   position: relative;
   display: flex;
   flex: 0 0 auto;
@@ -126,30 +124,9 @@
 }
 
 .workspace-project-rail__tile {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--cove-radius-lg);
-  background: color-mix(in srgb, var(--cove-project-accent) 16%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-project-accent) 36%, transparent);
-  color: var(--cove-project-accent);
   transition:
     border-radius var(--cove-motion-fast) var(--cove-ease-standard),
     background-color var(--cove-motion-fast) var(--cove-ease-standard);
-}
-
-.workspace-project-rail__tile[data-cove-accent='purple'] {
-  --cove-project-accent: var(--cove-label-purple, var(--cove-accent));
-}
-
-.workspace-project-rail__tile[data-cove-accent='green'] {
-  --cove-project-accent: var(--cove-label-green, var(--cove-accent));
-}
-
-.workspace-project-rail__tile[data-cove-accent='orange'] {
-  --cove-project-accent: var(--cove-label-orange, var(--cove-accent));
 }
 
 .workspace-project-rail__project:hover .workspace-project-rail__tile,

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { useViewportSpaceStore } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/viewportSpace'
 import { summarizeAgentActivity, type AgentActivitySummary } from '../utils/agentActivitySummary'
+import { useAgentWaitingSinceTracker } from './useAgentWaitingSince'
 
 /** What the top bar shows: the viewport's Space and agent activity across every project. */
 export function useAppHeaderActivity(
@@ -14,5 +15,6 @@ export function useAppHeaderActivity(
   const activeSpaceName =
     activeWorkspace?.spaces.find(space => space.id === viewportSpaceId)?.name ?? null
   const agentActivity = useMemo(() => summarizeAgentActivity(workspaces), [workspaces])
+  useAgentWaitingSinceTracker(workspaces)
   return { activeSpaceName, agentActivity }
 }
