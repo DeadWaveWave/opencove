@@ -3,7 +3,7 @@
 A theme plugin can change OpenCove's visual foundation, materials, typography,
 component skins and motion. It does not need a backend or a canvas window.
 Install, update, reload, disable and uninstall it through the same plugin manager
-or CLI as any other package. Enabled themes appear in the top-right Control Center and Settings → Appearance.
+or CLI as any other package. Enabled themes appear in Settings → Appearance; while one is active, the Control Center shows its name.
 
 ## Ownership and scope
 
