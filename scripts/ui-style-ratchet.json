@@ -74,7 +74,7 @@
     "src/app/renderer/styles/workspace-pr-chip.css": 2,
     "src/app/renderer/styles/workspace-search-panel.css": 10,
     "src/app/renderer/styles/workspace-sidebar.css": 6,
-    "src/app/renderer/styles/workspace-sidebar.rail.css": 2,
+    "src/app/renderer/styles/workspace-sidebar.rail.css": 1,
     "src/app/renderer/styles/workspace-sidebar.surface.css": 1,
     "src/app/renderer/styles/workspace-sidebar.view.css": 4,
     "src/app/renderer/styles/workspace-space-operation-state.css": 1
@@ -138,7 +138,7 @@
     "src/app/renderer/styles/workspace-overlays.worktree.css": 1,
     "src/app/renderer/styles/workspace-pr-chip.css": 1,
     "src/app/renderer/styles/workspace-search-panel.css": 5,
-    "src/app/renderer/styles/workspace-sidebar.rail.css": 2,
+    "src/app/renderer/styles/workspace-sidebar.rail.css": 1,
     "src/app/renderer/styles/workspace-space-operation-state.css": 2
   },
   "spacing": {
@@ -213,7 +213,7 @@
     "src/app/renderer/styles/workspace-pr-chip.css": 2,
     "src/app/renderer/styles/workspace-search-panel.css": 20,
     "src/app/renderer/styles/workspace-sidebar.css": 12,
-    "src/app/renderer/styles/workspace-sidebar.rail.css": 7,
+    "src/app/renderer/styles/workspace-sidebar.rail.css": 2,
     "src/app/renderer/styles/workspace-sidebar.surface.css": 7,
     "src/app/renderer/styles/workspace-sidebar.view.css": 9,
     "src/app/renderer/styles/workspace-space-collapse.css": 1,

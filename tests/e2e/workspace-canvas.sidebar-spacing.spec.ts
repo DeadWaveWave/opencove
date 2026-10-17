@@ -63,7 +63,7 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       const dockedNavigation = await rect(navigation)
       const spaceRect = await rect(space)
       const agentRect = await rect(agent)
-      expect(Math.abs(dockedRail.width - 52)).toBeLessThanOrEqual(1)
+      expect(Math.abs(dockedRail.width - 72)).toBeLessThanOrEqual(1)
       expect(
         Math.abs(dockedProject.x + dockedProject.width / 2 - dockedRail.x - dockedRail.width / 2),
       ).toBeLessThanOrEqual(1)
@@ -81,7 +81,7 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       await expect(navigation).toHaveCount(0)
       await expect(window.locator('.workspace-space-item')).toHaveCount(0)
       await expect(window.locator('.workspace-agent-item')).toHaveCount(0)
-      await expect.poll(async () => (await rect(sidebar)).width).toBeCloseTo(52, 0)
+      await expect.poll(async () => (await rect(sidebar)).width).toBeCloseTo(72, 0)
       const collapsedProject = await rect(project)
       expect(Math.abs(collapsedProject.x - dockedProject.x)).toBeLessThanOrEqual(1)
       expect(Math.abs(collapsedProject.y - dockedProject.y)).toBeLessThanOrEqual(1)

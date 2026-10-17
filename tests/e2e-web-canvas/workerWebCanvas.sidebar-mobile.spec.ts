@@ -162,7 +162,7 @@ for (const theme of ['pixel', 'pixel-light']) {
     await expect(page.locator('.workspace-sidebar--docked')).toBeVisible()
     await expect
       .poll(async () => (await page.getByTestId('workspace-sidebar').boundingBox())?.width)
-      .toBe(312)
+      .toBe(332)
     await expect(page.getByTestId('primary-sidebar-open')).toHaveCount(0)
     await testInfo.attach(`sidebar-${theme}-desktop`, {
       body: await page.screenshot(),

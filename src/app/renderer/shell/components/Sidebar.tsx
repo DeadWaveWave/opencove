@@ -45,6 +45,7 @@ import {
 } from '@contexts/settings/domain/sidebarViewSettings'
 import { projectSidebarView } from '../utils/sidebarView'
 import { SidebarViewControls } from './SidebarViewControls'
+import opencoveMark from '../../assets/brand/opencove-mark.png'
 
 export type SidebarVariant = 'docked' | 'rail' | 'peek'
 type SidebarProps = {
@@ -296,12 +297,11 @@ export function Sidebar({
         onDragEnd={handleDragEnd}
       >
         <div className="workspace-project-rail" data-testid="workspace-project-rail">
-          <SidebarToolbar
-            isPinned={isPinned}
-            isMobile={isMobile}
-            onClose={onClose}
-            onTogglePinned={onTogglePinned}
-            onAddProject={onAddProject}
+          <img
+            className="workspace-project-rail__logo"
+            src={opencoveMark}
+            alt=""
+            aria-hidden="true"
           />
           <div
             ref={setSidebarListRef}
@@ -320,11 +320,8 @@ export function Sidebar({
                   isActive={tree.workspace.id === activeWorkspaceId}
                   isPreviewed={tree.workspace.id === displayedTree?.workspace.id}
                   remote={mountDetails[tree.workspace.id]?.remote ?? null}
-                  waitingAgentCount={getTreeChildGroups(tree).reduce(
-                    (count, group) =>
-                      count + group.agents.filter(agent => agent.status === 'waiting').length,
-                    0,
-                  )}
+                  waitingAgentCount={tree.waitingAgentCount}
+                  workingAgentCount={tree.workingAgentCount}
                   onPreview={workspaceId => {
                     if (!isPreviewLocked && !isMobile) {
                       setPreviewWorkspaceId(workspaceId)
@@ -340,8 +337,15 @@ export function Sidebar({
               ))}
             </SortableContext>
           </div>
-          {onOpenSettings ? (
-            <div className="workspace-sidebar__footer" data-testid="workspace-sidebar-footer">
+          <div className="workspace-sidebar__footer" data-testid="workspace-sidebar-footer">
+            <SidebarToolbar
+              isPinned={isPinned}
+              isMobile={isMobile}
+              onClose={onClose}
+              onTogglePinned={onTogglePinned}
+              onAddProject={onAddProject}
+            />
+            {onOpenSettings ? (
               <IconButton
                 className="workspace-sidebar__toolbar-button"
                 data-testid="app-header-settings"
@@ -350,8 +354,8 @@ export function Sidebar({
               >
                 <Settings aria-hidden="true" />
               </IconButton>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
         {variant !== 'rail' || isMobile ? (
           <div className="workspace-sidebar__navigation" data-testid="workspace-sidebar-navigation">

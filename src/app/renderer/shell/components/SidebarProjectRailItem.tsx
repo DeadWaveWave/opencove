@@ -8,6 +8,7 @@ import type { ProjectContextMenuState } from '../types'
 import { ProjectIcon } from './ProjectIcon'
 import { sidebarSortableTransition } from './SidebarDnd'
 import type { WorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
+import { resolveProjectAccent } from '../utils/projectAccent'
 
 export function SidebarProjectRailItem({
   workspace,
@@ -15,6 +16,7 @@ export function SidebarProjectRailItem({
   isPreviewed,
   remote,
   waitingAgentCount,
+  workingAgentCount,
   onPreview,
   onProjectPointerEnter,
   onSelectWorkspace,
@@ -25,6 +27,7 @@ export function SidebarProjectRailItem({
   isPreviewed: boolean
   remote: WorkspaceMountDetails['remote']
   waitingAgentCount: number
+  workingAgentCount: number
   onPreview: (workspaceId: string) => void
   onProjectPointerEnter?: React.PointerEventHandler<HTMLElement>
   onSelectWorkspace: (workspaceId: string) => void
@@ -35,6 +38,7 @@ export function SidebarProjectRailItem({
     workspace.name,
     remote ? `${t('sidebar.remoteProject')}: ${remote.displayName}\n${remote.rootPath}` : '',
     waitingAgentCount ? t('sidebar.agentsNeedInput', { count: waitingAgentCount }) : '',
+    workingAgentCount ? t('sidebar.agentsWorking', { count: workingAgentCount }) : '',
   ]
     .filter(Boolean)
     .join('\n')
@@ -84,30 +88,48 @@ export function SidebarProjectRailItem({
           openMenu(event.clientX, event.clientY)
         }}
       >
-        <ProjectIcon
-          iconId={workspace.iconId}
-          isExpanded={isActive}
-          className="workspace-item__folder-icon"
-        />
-        <span className="workspace-item__name">{workspace.name}</span>
-        {remote ? (
-          <span
-            className="workspace-project-rail__remote"
-            data-testid={`workspace-project-remote-${workspace.id}`}
-            aria-hidden="true"
-          >
-            <Server size={11} />
-          </span>
-        ) : null}
-        {waitingAgentCount > 0 ? (
-          <span
-            className="workspace-project-rail__attention"
-            data-testid={`workspace-project-attention-${workspace.id}`}
-            aria-hidden="true"
-          >
-            {waitingAgentCount > 99 ? '99+' : waitingAgentCount}
-          </span>
-        ) : null}
+        <span
+          className="workspace-project-rail__tile"
+          data-cove-accent={resolveProjectAccent(workspace.id)}
+        >
+          <ProjectIcon
+            iconId={workspace.iconId}
+            isExpanded={isActive}
+            className="workspace-item__folder-icon"
+          />
+          {workingAgentCount > 0 ? (
+            <span
+              className="workspace-project-rail__working"
+              data-testid={`workspace-project-working-${workspace.id}`}
+              aria-hidden="true"
+            >
+              <i />
+              <i />
+              <i />
+            </span>
+          ) : null}
+          {waitingAgentCount > 0 ? (
+            <span
+              className="workspace-project-rail__attention"
+              data-testid={`workspace-project-attention-${workspace.id}`}
+              aria-hidden="true"
+            >
+              {waitingAgentCount > 99 ? '99+' : waitingAgentCount}
+            </span>
+          ) : null}
+          {remote ? (
+            <span
+              className="workspace-project-rail__remote"
+              data-testid={`workspace-project-remote-${workspace.id}`}
+              aria-hidden="true"
+            >
+              <Server size={10} />
+            </span>
+          ) : null}
+        </span>
+        <span className="workspace-item__name workspace-project-rail__name" aria-hidden="true">
+          {workspace.name}
+        </span>
       </button>
     </div>
   )

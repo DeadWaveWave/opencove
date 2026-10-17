@@ -4,6 +4,7 @@ import type { TranslationDictionary } from './schema'
 import { zhCNCommonRemoteEndpoints } from './zh-CN.commonRemoteEndpoints'
 import { zhCNMessages } from './zh-CN.messages'
 import { zhCNSidebarView } from './zh-CN.sidebarView'
+import { zhCNSidebarRail } from './zh-CN.sidebarRail'
 import { zhCNCanvasCollapse } from './zh-CN.canvasCollapse'
 import { zhCNControlCenter } from './zh-CN.controlCenter'
 import { zhCNSpaceCollapse } from './zh-CN.spaceCollapse'
@@ -84,6 +85,7 @@ export const zhCN = {
   },
   sidebar: {
     ...zhCNSidebarView,
+    ...zhCNSidebarRail,
     rootCanvas: '项目画布',
     projectMore: '项目操作',
     spaceMore: 'Space 操作',

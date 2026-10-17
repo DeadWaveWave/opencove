@@ -49,6 +49,7 @@ function tree(): SidebarProjectTreeModel {
     ],
     agentCount: 3,
     workingAgentCount: 1,
+    waitingAgentCount: 1,
   }
 }
 

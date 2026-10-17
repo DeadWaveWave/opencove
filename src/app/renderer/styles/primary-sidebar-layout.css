@@ -1,5 +1,5 @@
 .app-shell {
-  --cove-primary-sidebar-expanded-width: 312px;
+  --cove-primary-sidebar-expanded-width: 332px;
 }
 
 .app-shell--mobile-navigation {
@@ -22,7 +22,7 @@
 }
 
 .primary-sidebar-drawer {
-  --cove-primary-sidebar-rail-width: 52px;
+  --cove-primary-sidebar-rail-width: 72px;
   --cove-primary-sidebar-expanded-width: 100%;
   width: min(360px, calc(100vw - 48px));
   height: 100%;

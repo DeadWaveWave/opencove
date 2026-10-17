@@ -24,6 +24,7 @@ export interface SidebarProjectTreeModel {
   projectRootGroup: SidebarSpaceGroupModel
   agentCount: number
   workingAgentCount: number
+  waitingAgentCount: number
 }
 
 function resolveRootSpaceId(
@@ -93,5 +94,6 @@ export function buildSidebarProjectTree(workspace: WorkspaceState): SidebarProje
     projectRootGroup,
     agentCount: agentItems.length,
     workingAgentCount: agentItems.filter(agent => agent.status === 'working').length,
+    waitingAgentCount: agentItems.filter(agent => agent.status === 'waiting').length,
   }
 }

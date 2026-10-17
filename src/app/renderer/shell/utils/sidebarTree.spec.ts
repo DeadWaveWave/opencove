@@ -134,6 +134,18 @@ describe('buildSidebarProjectTree', () => {
     expect(tree.projectRootGroup?.agents.map(agent => agent.node.id)).toEqual(['agent-root'])
   })
 
+  it('counts agents waiting for input separately from working ones', () => {
+    const workspace = createWorkspace()
+    workspace.nodes = workspace.nodes.map(node =>
+      node.id === 'agent-api' ? { ...node, data: { ...node.data, status: 'waiting' } } : node,
+    )
+
+    const tree = buildSidebarProjectTree(workspace)
+
+    expect(tree.workingAgentCount).toBe(2)
+    expect(tree.waitingAgentCount).toBe(1)
+  })
+
   it('uses explicit sidebar agent order before startedAt fallback', () => {
     const workspace = createWorkspace()
     workspace.nodes = [

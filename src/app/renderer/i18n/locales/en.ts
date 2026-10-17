@@ -11,6 +11,7 @@ import { enPerformanceMonitor } from './en.performanceMonitor'
 import { enRole } from './en.role'
 import { enWorkspaceCanvas } from './en.workspaceCanvas'
 import { enSidebarView } from './en.sidebarView'
+import { enSidebarRail } from './en.sidebarRail'
 import { enCanvasCollapse } from './en.canvasCollapse'
 import { enControlCenter } from './en.controlCenter'
 import { enSpaceCollapse } from './en.spaceCollapse'
@@ -85,6 +86,7 @@ export const en = {
   },
   sidebar: {
     ...enSidebarView,
+    ...enSidebarRail,
     rootCanvas: 'Project canvas',
     projectMore: 'Project options',
     spaceMore: 'Space options',
