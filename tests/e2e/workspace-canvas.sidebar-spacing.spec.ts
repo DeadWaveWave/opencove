@@ -75,6 +75,20 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       )
       expect(agentRect.height).toBeGreaterThanOrEqual(28)
 
+      // Pointing at the current project keeps its full edge bar.
+      await window.emulateMedia({ reducedMotion: 'reduce' })
+      await project.hover()
+      await expect
+        .poll(() =>
+          project.evaluate(
+            element =>
+              getComputedStyle(element.closest('.workspace-project-rail__item')!, '::before')
+                .height,
+          ),
+        )
+        .toBe('22px')
+      await window.emulateMedia({ reducedMotion: 'no-preference' })
+
       await window.getByTestId('workspace-sidebar-pin').click()
       await window.mouse.move(700, 80)
       await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)

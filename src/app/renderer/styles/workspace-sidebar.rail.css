@@ -100,7 +100,9 @@
   height: 10px;
 }
 
-.workspace-project-rail__item--active::before {
+/* Repeats :hover so pointing at the current project keeps its full bar. */
+.workspace-project-rail__item--active::before,
+.workspace-project-rail__item--active:hover::before {
   height: 22px;
 }
 
