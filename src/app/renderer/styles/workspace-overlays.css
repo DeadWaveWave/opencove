@@ -203,13 +203,13 @@
   transform: none;
 }
 
+/* Keeps the shared menu layer, above the canvas launcher and other canvas chrome. */
 .workspace-canvas-context-menu {
-  z-index: 12;
   min-width: 188px;
 }
 
 .workspace-canvas-context-menu--submenu {
-  z-index: 13;
+  z-index: 71;
 }
 
 .workspace-context-menu__spinner {

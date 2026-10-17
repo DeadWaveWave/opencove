@@ -233,7 +233,7 @@
     "src/app/renderer/styles/workspace-canvas-action-bar.css": 2,
     "src/app/renderer/styles/workspace-canvas.css": 1,
     "src/app/renderer/styles/workspace-context-menu.css": 1,
-    "src/app/renderer/styles/workspace-overlays.css": 4,
+    "src/app/renderer/styles/workspace-overlays.css": 3,
     "src/app/renderer/styles/workspace-overlays.spaces.css": 4,
     "src/app/renderer/styles/workspace-overlays.spaces.explorer.preview.css": 1,
     "src/app/renderer/styles/workspace-search-panel.css": 1,

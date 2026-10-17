@@ -56,6 +56,15 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
       expect(roomyMenuBox.x).toBeGreaterThanOrEqual(roomyClientX - 1)
       expect(roomyMenuBox.y).toBeGreaterThanOrEqual(roomyClientY - 1)
 
+      // A menu the user just opened stacks above the canvas launcher wherever they overlap.
+      const actionBar = window.getByTestId('workspace-canvas-action-bar')
+      const [menuLayer, actionBarLayer] = await Promise.all(
+        [menu, actionBar].map(locator =>
+          locator.evaluate(element => Number(getComputedStyle(element).zIndex)),
+        ),
+      )
+      expect(menuLayer).toBeGreaterThan(actionBarLayer)
+
       await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
 
