@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Windows: content sits on an inset reading plate below the header, with a fine edge; the document editor reads directly on it. (#453)
 - Pixel theme: window headers no longer use a live background blur; windows use one tinted frame around the reading plate, which saves GPU work with many windows open. (#454)
 - Terminals: terminal text can sit directly on the window's reading plate. Settings → Terminal → Terminal Background chooses Auto (transparent on macOS, opaque on Windows and Linux), Transparent or Opaque; changing it keeps the running shell and its output. (#456)
+- Control Center: quick switches for theme (Cove or Pixel), light, dark or follow system, pixel background, motion signals and the minimap; plugin themes are chosen in Settings, and "Top-right banner" is now "Notification banner" in Settings. (#457)
 
 ### 🐛 Fixed
 
