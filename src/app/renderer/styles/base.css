@@ -104,7 +104,6 @@
   --cove-theme-preview-dark: #0c1217;
   --cove-theme-preview-accent: #00b0d5;
   --cove-theme-preview-pixel-accent: #5b9cf0;
-  --cove-theme-preview-pixel: linear-gradient(135deg, #5b9cf0, #55bddc 50%, #70ddbc);
   --cove-theme-preview-pixel-light: linear-gradient(
     135deg,
     #e7f0f6 48%,

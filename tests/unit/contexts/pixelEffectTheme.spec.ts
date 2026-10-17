@@ -17,7 +17,7 @@ const themes: UiTheme[] = [...UI_THEMES]
 beforeAll(() => {
   const cssFiles = [
     'base.css',
-    'control-center.css',
+    'settings-panel.appearance-next.css',
     'terminal-node.css',
     'terminal-node.theme-opencode.css',
     'task-node.css',
@@ -135,10 +135,14 @@ describe('theme-adaptive pixel effects', () => {
 
   it('preserves the Pixel preview identity while other themes adapt their effect colors', () => {
     selectTheme('pixel')
+    // The Settings theme gallery shows Pixel's own colours whichever theme is active.
+    const family = document.createElement('div')
+    family.className = 'settings-theme-gallery__family'
+    family.dataset.themeFamily = 'pixel'
     const preview = document.createElement('span')
-    preview.className = 'control-center__theme-preview'
-    preview.dataset.themePreview = 'pixel'
-    document.body.append(preview)
+    preview.className = 'settings-theme-gallery__sample'
+    family.append(preview)
+    document.body.append(family)
     const pixelPreview = getComputedStyle(preview).backgroundImage
     expect(pixelPreview).toContain('linear-gradient')
     selectTheme('dark')

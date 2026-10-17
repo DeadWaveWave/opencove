@@ -12,6 +12,7 @@ import { enRole } from './en.role'
 import { enWorkspaceCanvas } from './en.workspaceCanvas'
 import { enSidebarView } from './en.sidebarView'
 import { enCanvasCollapse } from './en.canvasCollapse'
+import { enControlCenter } from './en.controlCenter'
 import { enSpaceCollapse } from './en.spaceCollapse'
 
 export const en = {
@@ -30,6 +31,7 @@ export const en = {
       'This theme is unavailable. The default theme is shown until it is enabled again.',
   },
   ...enCanvasCollapse,
+  ...enControlCenter,
   ...enSpaceCollapse,
   common: {
     actions: 'Actions',
@@ -130,19 +132,6 @@ export const en = {
     updateDownloadingTitle: 'Downloading version {{version}} ({{percent}})',
     restartToUpdateShort: 'Restart',
     restartToUpdateTitle: 'Version {{version}} is ready to install',
-  },
-  controlCenter: {
-    open: 'Control Center',
-    title: 'Control Center',
-    quickSettings: 'Quick settings',
-    sidebar: 'Sidebar',
-    minimap: 'Minimap',
-    theme: 'Theme',
-    agentStandbyBanner: 'Top-right banner',
-    shown: 'Shown',
-    hidden: 'Hidden',
-    on: 'On',
-    off: 'Off',
   },
   whatsNew: {
     title: "What's New",

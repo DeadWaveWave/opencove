@@ -5,6 +5,7 @@ import { zhCNCommonRemoteEndpoints } from './zh-CN.commonRemoteEndpoints'
 import { zhCNMessages } from './zh-CN.messages'
 import { zhCNSidebarView } from './zh-CN.sidebarView'
 import { zhCNCanvasCollapse } from './zh-CN.canvasCollapse'
+import { zhCNControlCenter } from './zh-CN.controlCenter'
 import { zhCNSpaceCollapse } from './zh-CN.spaceCollapse'
 import { zhCNShell } from './zh-CN.shell'
 import { zhCNSpaceExplorer } from './zh-CN.spaceExplorer'
@@ -30,6 +31,7 @@ export const zhCN = {
     unavailableTheme: '此主题暂不可用。启用后将恢复，目前显示默认主题。',
   },
   ...zhCNCanvasCollapse,
+  ...zhCNControlCenter,
   ...zhCNSpaceCollapse,
   common: {
     actions: '操作',
@@ -129,19 +131,6 @@ export const zhCN = {
     updateDownloadingTitle: '正在下载 {{version}}（{{percent}}）',
     restartToUpdateShort: '重启更新',
     restartToUpdateTitle: '版本 {{version}} 已准备好安装',
-  },
-  controlCenter: {
-    open: '控制中心',
-    title: '控制中心',
-    quickSettings: '快捷设置',
-    sidebar: '侧边栏',
-    minimap: '缩略图',
-    theme: '主题',
-    agentStandbyBanner: '右上角横幅',
-    shown: '已显示',
-    hidden: '已隐藏',
-    on: '已开启',
-    off: '已关闭',
   },
   whatsNew: {
     title: '更新内容',

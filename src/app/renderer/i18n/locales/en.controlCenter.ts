@@ -1,0 +1,20 @@
+export const enControlCenter = {
+  controlCenter: {
+    open: 'Control Center',
+    title: 'Control Center',
+    quickSettings: 'Quick settings',
+    sidebar: 'Sidebar',
+    minimap: 'Minimap',
+    theme: 'Theme',
+    familyCove: 'Cove',
+    familyPixel: 'Pixel',
+    mode: 'Light or dark',
+    pixelBackground: 'Pixel background',
+    motionSignals: 'Motion signals',
+    moreSettings: 'Theme and display settings',
+    shown: 'Shown',
+    hidden: 'Hidden',
+    on: 'On',
+    off: 'Off',
+  },
+} as const

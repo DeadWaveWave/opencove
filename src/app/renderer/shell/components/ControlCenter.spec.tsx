@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { applyUiLanguage } from '@app/renderer/i18n'
-import { UI_THEMES, type UiTheme } from '@contexts/settings/domain/agentSettings'
+import type { UiTheme } from '@contexts/settings/domain/agentSettings'
 import { examplePlugin } from '@contexts/plugins/presentation/renderer/pluginPresentationTestFixture'
 import * as registry from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import * as themeApplication from '@contexts/plugins/presentation/renderer/themeApplication'
@@ -12,7 +12,8 @@ import { ControlCenter } from './ControlCenter'
 const actions = {
   onChangeUiTheme: vi.fn(),
   onToggleMinimap: vi.fn(),
-  onToggleStandbyBanner: vi.fn(),
+  onChangePixelBackground: vi.fn(),
+  onChangeMotionSignals: vi.fn(),
 }
 
 function Harness({
@@ -40,7 +41,8 @@ function Harness({
         anchorRef={anchorRef}
         uiTheme={uiTheme}
         isMinimapVisible
-        isStandbyBannerEnabled
+        isPixelBackgroundEnabled
+        areMotionSignalsEnabled={false}
         hasActiveWorkspace={hasActiveWorkspace}
         onClose={() => setOpen(false)}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -95,33 +97,47 @@ describe('Control Center surfaces', () => {
     setViewportWidth(originalWidth)
   })
 
-  it('keeps desktop nonmodal, exposes all theme choices, and focuses an enabled switch', () => {
-    render(<Harness hasActiveWorkspace={false} />)
+  it('keeps desktop nonmodal and offers theme family, mode and display switches', () => {
+    render(<Harness hasActiveWorkspace={false} uiTheme="dark" />)
     openControls()
     const surface = screen.getByRole('dialog', { name: 'Control Center' })
     const minimap = screen.getByRole('switch', { name: 'Minimap' }) as HTMLInputElement
-    const banner = screen
-      .getByTestId('control-center-toggle-agent-standby-banner')
-      .querySelector('input')
+    const pixelBackground = screen.getByRole('switch', { name: 'Pixel background' })
     expect(surface.getAttribute('aria-modal')).toBeNull()
     expect(minimap.disabled).toBe(true)
-    expect(document.activeElement).toBe(banner)
+    expect(document.activeElement).toBe(pixelBackground)
     expect(screen.getByRole('radiogroup', { name: 'Theme' })).not.toBeNull()
-    expect(screen.getAllByRole('radio')).toHaveLength(UI_THEMES.length)
-    expect(surface.querySelector('.control-center__row-status')).toBeNull()
+    expect((screen.getByRole('radio', { name: 'Cove' }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement).checked).toBe(true)
+    // The notification banner lives in Settings now.
+    expect(screen.queryByTestId('control-center-toggle-agent-standby-banner')).toBeNull()
 
-    fireEvent.click(screen.getByTestId('control-center-theme-pixel-light'))
-    expect(actions.onChangeUiTheme).toHaveBeenCalledWith('pixel-light')
-    fireEvent.click(banner!)
-    expect(actions.onToggleStandbyBanner).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('radio', { name: 'Pixel' }))
+    expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('pixel')
+    fireEvent.click(screen.getByRole('radio', { name: 'Follow System' }))
+    expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('system')
+    fireEvent.click(pixelBackground)
+    expect(actions.onChangePixelBackground).toHaveBeenCalledWith(false)
+    fireEvent.click(screen.getByRole('switch', { name: 'Motion signals' }))
+    expect(actions.onChangeMotionSignals).toHaveBeenCalledWith(true)
     expect(actions.onToggleMinimap).not.toHaveBeenCalled()
     const outside = screen.getByRole('button', { name: 'Outside action' })
     outside.focus()
     expect(document.activeElement).toBe(outside)
   })
 
+  it('offers only the modes the current family has', () => {
+    render(<Harness uiTheme="pixel-light" />)
+    openControls()
+    expect((screen.getByRole('radio', { name: 'Pixel' }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('radio', { name: 'Light' }) as HTMLInputElement).checked).toBe(true)
+    expect(screen.queryByRole('radio', { name: 'Follow System' })).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Cove' }))
+    expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('light')
+  })
+
   it.each(['en', 'zh-CN'] as const)(
-    'lists available plugin themes with readable names in %s',
+    'names an active plugin theme and leaves its mode to Settings in %s',
     async language => {
       await applyUiLanguage(language)
       const themedPlugin = {
@@ -136,24 +152,25 @@ describe('Control Center surfaces', () => {
         ],
       }
       vi.mocked(registry.usePluginRegistry).mockReturnValue({
-        plugins: [
-          themedPlugin,
-          { ...themedPlugin, id: 'disabled', enabled: false },
-          { ...themedPlugin, id: 'broken', status: 'error' },
-        ],
+        plugins: [themedPlugin],
         error: null,
       })
-      const { rerender } = render(<Harness uiTheme="plugin:example-tool:night" />)
+      render(<Harness uiTheme="plugin:example-tool:night" />)
       openControls()
-      expect(screen.getAllByRole('radio')).toHaveLength(UI_THEMES.length + 1)
-      const choice = screen.getByRole('radio', {
-        name: 'Prism Night Example Tool',
-      }) as HTMLInputElement
-      expect(choice.checked).toBe(true)
       expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Prism Night')
-      rerender(<Harness uiTheme="pixel" />)
-      fireEvent.click(choice)
-      expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('plugin:example-tool:night')
+      const families = screen.getAllByRole('radio').slice(0, 2) as HTMLInputElement[]
+      expect(families.every(radio => !radio.checked)).toBe(true)
+      expect(
+        (
+          screen
+            .getByTestId('control-center-theme-mode')
+            .querySelectorAll('input') as NodeListOf<HTMLInputElement>
+        )[0]?.disabled,
+      ).toBe(true)
+      document.documentElement.dataset.coveTheme = 'dark'
+      fireEvent.click(families[0]!)
+      expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('dark')
+      delete document.documentElement.dataset.coveTheme
     },
   )
 
@@ -170,17 +187,12 @@ describe('Control Center surfaces', () => {
       error: null,
     })
     rerender(<Harness uiTheme="plugin:example-tool:night" />)
-    expect(screen.queryByTestId('control-center-theme-plugin:example-tool:night')).toBeNull()
     expect(screen.getByRole('status').textContent).toContain('unavailable')
-    // The unavailable theme falls back to the default theme, Cove.
-    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Cove')
+    expect(screen.queryByTestId('control-center-current-theme')).toBeNull()
     expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
     vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [plugin], error: null })
     rerender(<Harness uiTheme="plugin:example-tool:night" />)
-    expect(
-      (screen.getByTestId('control-center-theme-plugin:example-tool:night') as HTMLInputElement)
-        .checked,
-    ).toBe(true)
+    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Prism Night')
     expect(screen.queryByRole('status')).toBeNull()
     expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
   })
@@ -199,12 +211,7 @@ describe('Control Center surfaces', () => {
     })
     render(<Harness uiTheme="plugin:example-tool:night" />)
     openControls()
-    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Cove')
     expect(screen.getByRole('status').textContent).toContain('could not be loaded')
-    expect(
-      (screen.getByTestId('control-center-theme-plugin:example-tool:night') as HTMLInputElement)
-        .checked,
-    ).toBe(true)
     expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
   })
 
@@ -213,12 +220,12 @@ describe('Control Center surfaces', () => {
     render(<Harness />)
     const trigger = openControls()
     const surface = screen.getByRole('dialog', { name: 'Control Center' })
-    const minimap = screen.getByRole('switch', { name: 'Minimap' })
+    const pixelBackground = screen.getByRole('switch', { name: 'Pixel background' })
     expect(surface.getAttribute('aria-modal')).toBe('true')
     expect(screen.getByTestId('app-shell').inert).toBe(true)
-    expect(document.activeElement).toBe(minimap)
+    expect(document.activeElement).toBe(pixelBackground)
     screen.getByRole('button', { name: 'Outside action' }).focus()
-    expect(document.activeElement).toBe(minimap)
+    expect(document.activeElement).toBe(pixelBackground)
     const close = screen.getByTestId('control-center-close')
     const settings = screen.getByTestId('control-center-open-settings')
     settings.focus()
@@ -255,9 +262,9 @@ describe('Control Center surfaces', () => {
     act(() => vi.runOnlyPendingTimers())
     expect(screen.getByTestId('app-shell').inert).toBe(false)
     expect(screen.getByTestId('control-center').getAttribute('aria-modal')).toBeNull()
-    expect(document.activeElement).toBe(screen.getByRole('switch', { name: 'Minimap' }))
+    expect(document.activeElement).toBe(screen.getByRole('switch', { name: 'Pixel background' }))
     expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
     expect(actions.onToggleMinimap).not.toHaveBeenCalled()
-    expect(actions.onToggleStandbyBanner).not.toHaveBeenCalled()
+    expect(actions.onChangePixelBackground).not.toHaveBeenCalled()
   })
 })

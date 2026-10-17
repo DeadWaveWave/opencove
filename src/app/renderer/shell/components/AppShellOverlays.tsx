@@ -62,7 +62,12 @@ export function AppShellOverlays({
         anchorRef={controlCenterAnchorRef}
         uiTheme={agentSettings.uiTheme}
         isMinimapVisible={activeWorkspace?.isMinimapVisible ?? false}
-        isStandbyBannerEnabled={agentSettings.standbyBannerEnabled}
+        isPixelBackgroundEnabled={agentSettings.canvasPixelBackgroundEnabled}
+        areMotionSignalsEnabled={
+          agentSettings.nodeCreationPixelEffectEnabled &&
+          agentSettings.nodeClosePixelEffectEnabled &&
+          agentSettings.agentWorkingPixelEffectEnabled
+        }
         hasActiveWorkspace={activeWorkspace !== null}
         onClose={() => {
           onCloseControlCenter()
@@ -80,10 +85,15 @@ export function AppShellOverlays({
 
           onMinimapVisibilityChange(!activeWorkspace.isMinimapVisible)
         }}
-        onToggleStandbyBanner={() => {
+        onChangePixelBackground={enabled => {
+          setAgentSettings(prev => ({ ...prev, canvasPixelBackgroundEnabled: enabled }))
+        }}
+        onChangeMotionSignals={enabled => {
           setAgentSettings(prev => ({
             ...prev,
-            standbyBannerEnabled: !prev.standbyBannerEnabled,
+            nodeCreationPixelEffectEnabled: enabled,
+            nodeClosePixelEffectEnabled: enabled,
+            agentWorkingPixelEffectEnabled: enabled,
           }))
         }}
         onOpenSettings={() => {

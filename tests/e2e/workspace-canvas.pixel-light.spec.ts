@@ -304,9 +304,9 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       await setPixelEffect(page, 'canvasPixelBackgroundEnabled', false)
       await page.locator('.settings-panel__close').click()
       await page.getByTestId('app-header-control-center').click()
-      await page.getByTestId('control-center-theme-pixel-light').click()
-      await expect(page.getByTestId('control-center-theme-pixel-light')).toBeChecked()
-      await expect(page.getByTestId('control-center-current-theme')).toContainText('Pixel Light')
+      await page.getByTestId('control-center-theme-mode-light').check()
+      await expect(page.getByTestId('control-center-theme-family-pixel')).toBeChecked()
+      await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
       await attachIdentityFrame(page, testInfo, 'pixel-light-control-center')
       await page.keyboard.press('Escape')
       const mixed = {

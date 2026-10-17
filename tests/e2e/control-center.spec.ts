@@ -54,10 +54,17 @@ test.describe('Control Center', () => {
         const title = element.querySelector<HTMLElement>('.control-center__title')
         const rowLabel = element.querySelector<HTMLElement>('.control-center__row-label')
         const rowIcon = element.querySelector<HTMLElement>('.control-center__row-icon')
-        const themeList = element.querySelector<HTMLElement>('.control-center__themes')
+        const segments = element.querySelectorAll<HTMLElement>('.control-center__segments')
         const toggleTrack = element.querySelector<HTMLElement>('.cove-toggle__track')
         const toggleThumb = element.querySelector<HTMLElement>('.cove-toggle__thumb')
-        if (!title || !rowLabel || !rowIcon || !themeList || !toggleTrack || !toggleThumb) {
+        if (
+          !title ||
+          !rowLabel ||
+          !rowIcon ||
+          segments.length !== 2 ||
+          !toggleTrack ||
+          !toggleThumb
+        ) {
           throw new Error('Control Center visual primitives are missing')
         }
 
@@ -69,7 +76,7 @@ test.describe('Control Center', () => {
           rowLabelFontSize: Number.parseFloat(getComputedStyle(rowLabel).fontSize),
           rowIconBackground: getComputedStyle(rowIcon).backgroundColor,
           rowStatusCount: element.querySelectorAll('.control-center__row-status').length,
-          themeColumns: getComputedStyle(themeList).gridTemplateColumns.split(' ').length,
+          segmentWidths: Array.from(segments, segment => segment.getBoundingClientRect().width),
           radius: getComputedStyle(element).borderTopLeftRadius,
           overflow: element.scrollWidth > element.clientWidth,
           toggleTrack: getComputedStyle(toggleTrack).backgroundColor,
@@ -77,12 +84,13 @@ test.describe('Control Center', () => {
         }
       })
       expect(darkVisuals.width).toBeCloseTo(360, 0)
-      expect(darkVisuals.height).toBeGreaterThanOrEqual(340)
+      expect(darkVisuals.height).toBeGreaterThanOrEqual(260)
       expect(darkVisuals.height).toBeLessThanOrEqual(480)
       expect(darkVisuals.titleFontSize).toBeCloseTo(darkVisuals.rowLabelFontSize, 1)
       expect(darkVisuals.rowIconBackground).toBe('rgba(0, 0, 0, 0)')
       expect(darkVisuals.rowStatusCount).toBe(0)
-      expect(darkVisuals.themeColumns).toBe(2)
+      // Family and mode controls span the panel's width.
+      expect(darkVisuals.segmentWidths.every(width => width > darkVisuals.width - 40)).toBe(true)
       expect(darkVisuals.radius).toBe('8px')
       expect(darkVisuals.overflow).toBe(false)
       expect(darkVisuals.toggleTrack).not.toBe(darkVisuals.toggleThumb)
@@ -94,12 +102,12 @@ test.describe('Control Center', () => {
         contentType: 'image/png',
       })
 
-      await window.locator('[data-testid="control-center-theme-pixel-light"]').click()
+      await window.locator('[data-testid="control-center-theme-mode-light"]').check()
       await expect(window.locator('html')).toHaveAttribute('data-cove-theme', 'light')
-      await expect(window.locator('[data-testid="control-center-theme-pixel-light"]')).toBeChecked()
-      await expect(window.locator('[data-testid="control-center-current-theme"]')).toContainText(
-        'Pixel Light',
-      )
+      await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
+      await expect(
+        window.locator('[data-testid="control-center-theme-family-pixel"]'),
+      ).toBeChecked()
       await waitForVisualState(controlCenter)
       const lightToggleTrack = await controlCenter
         .locator('.cove-toggle__track')
@@ -197,10 +205,8 @@ test.describe('Control Center', () => {
 
       const themeInputs = controlCenter.getByRole('radio')
       await expect(themeInputs).toHaveCount(5)
-      await expect(window.locator('[data-testid="control-center-theme-dark"]')).toBeChecked()
-      await expect(window.locator('[data-testid="control-center-current-theme"]')).toContainText(
-        'Cove',
-      )
+      await expect(window.locator('[data-testid="control-center-theme-family-cove"]')).toBeChecked()
+      await expect(window.locator('[data-testid="control-center-theme-mode-dark"]')).toBeChecked()
       await expect(window.locator('html')).toHaveAttribute('data-cove-family', 'cove')
       await expect(window.locator('[data-testid="control-center-toggle-sidebar"]')).toHaveCount(0)
 
@@ -252,7 +258,8 @@ test.describe('Control Center', () => {
       await window.locator('[data-testid="app-header-control-center"]').click()
       const controlCenter = window.locator('[data-testid="control-center"]')
       await expect(controlCenter).toBeVisible()
-      await expect(controlCenter.getByRole('radio')).toHaveCount(5)
+      // Two families plus Pixel's two modes (it has no follow-system mode).
+      await expect(controlCenter.getByRole('radio')).toHaveCount(4)
       await expect(controlCenter).toHaveAttribute('aria-modal', 'true')
       await expect(window.locator('.app-shell')).toHaveJSProperty('inert', true)
       await waitForVisualState(controlCenter)

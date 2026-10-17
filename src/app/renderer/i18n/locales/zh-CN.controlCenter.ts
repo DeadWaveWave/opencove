@@ -1,0 +1,20 @@
+export const zhCNControlCenter = {
+  controlCenter: {
+    open: '控制中心',
+    title: '控制中心',
+    quickSettings: '快捷设置',
+    sidebar: '侧边栏',
+    minimap: '缩略图',
+    theme: '主题',
+    familyCove: 'Cove',
+    familyPixel: 'Pixel',
+    mode: '明暗',
+    pixelBackground: '像素背景',
+    motionSignals: '动态信号',
+    moreSettings: '主题与显示设置',
+    shown: '已显示',
+    hidden: '已隐藏',
+    on: '已开启',
+    off: '已关闭',
+  },
+} as const
