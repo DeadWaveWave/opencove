@@ -46,12 +46,12 @@ function renderSidebar(overrides: Partial<React.ComponentProps<typeof Sidebar>> 
 describe('Sidebar navigation semantics', () => {
   it('previews a project without navigation and resets preview for an external switch', () => {
     const { props, rerender } = renderSidebar()
-    fireEvent.pointerEnter(screen.getByTestId('workspace-item-remote'), { pointerType: 'mouse' })
+    fireEvent.pointerMove(screen.getByTestId('workspace-item-remote'), { pointerType: 'mouse' })
     expect(screen.getByTestId('workspace-project-navigation-remote')).toBeTruthy()
     expect(screen.getByTestId('workspace-item-local').getAttribute('aria-current')).toBe('page')
     expect(props.onSelectWorkspace).not.toHaveBeenCalled()
     rerender(<Sidebar {...props} activeWorkspaceId="remote" />)
-    fireEvent.pointerEnter(screen.getByTestId('workspace-item-local'), { pointerType: 'mouse' })
+    fireEvent.pointerMove(screen.getByTestId('workspace-item-local'), { pointerType: 'mouse' })
     expect(screen.getByTestId('workspace-project-navigation-local')).toBeTruthy()
     rerender(<Sidebar {...props} activeWorkspaceId="local" />)
     expect(screen.getByTestId('workspace-project-navigation-local')).toBeTruthy()
@@ -59,7 +59,7 @@ describe('Sidebar navigation semantics', () => {
 
   it('freezes the preview while a menu is open and omits the redundant project canvas entry', () => {
     const { props } = renderSidebar({ isMenuOpen: true })
-    fireEvent.pointerEnter(screen.getByTestId('workspace-item-remote'), { pointerType: 'mouse' })
+    fireEvent.pointerMove(screen.getByTestId('workspace-item-remote'), { pointerType: 'mouse' })
     expect(screen.queryByTestId('workspace-project-navigation-remote')).toBeNull()
     expect(screen.queryByTestId('workspace-space-root-local')).toBeNull()
     expect(props.onSelectProjectCanvas).not.toHaveBeenCalled()
@@ -71,7 +71,7 @@ describe('Sidebar navigation semantics', () => {
     const { props } = renderSidebar()
     expect(screen.queryByTestId('workspace-project-remote-local')).toBeNull()
     expect(screen.getByTestId('workspace-project-remote-remote')).toBeTruthy()
-    fireEvent.pointerEnter(screen.getByTestId('workspace-item-remote'), { pointerType: 'mouse' })
+    fireEvent.pointerMove(screen.getByTestId('workspace-item-remote'), { pointerType: 'mouse' })
     fireEvent.click(screen.getByTestId('workspace-sidebar-remote'))
     expect(within(screen.getByRole('note')).getByText('/srv/code')).toBeTruthy()
     expect(props.onSelectWorkspace).not.toHaveBeenCalled()

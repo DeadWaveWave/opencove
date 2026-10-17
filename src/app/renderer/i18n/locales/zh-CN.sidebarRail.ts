@@ -11,4 +11,12 @@ export const zhCNSidebarRail = {
     hours_other: '{{count}} 小时前',
     rowLabel: '{{title}}，{{place}}，等待：{{waited}}',
   },
+  space: {
+    working_one: '{{count}} 个工作中',
+    working_other: '{{count}} 个工作中',
+    waiting_one: '{{count}} 个等你',
+    waiting_other: '{{count}} 个等你',
+    windows_one: '{{count}} 个窗口',
+    windows_other: '{{count}} 个窗口',
+  },
 }

@@ -67,6 +67,12 @@ export function SidebarProjectRailItem({
       onPointerEnter={event => {
         if (event.pointerType !== 'touch') {
           onProjectPointerEnter?.(event)
+        }
+      }}
+      // Preview follows movement: an enter with a still pointer, as when a drag overlay
+      // leaves from under it, must not switch what the panel shows.
+      onPointerMove={event => {
+        if (event.pointerType !== 'touch' && !isPreviewed) {
           onPreview(workspace.id)
         }
       }}

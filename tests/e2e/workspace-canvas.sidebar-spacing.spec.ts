@@ -69,7 +69,10 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
       ).toBeLessThanOrEqual(1)
       expect(dockedNavigation.x).toBeGreaterThanOrEqual(dockedRail.x + dockedRail.width - 1)
       expect(spaceRect.y + spaceRect.height).toBeLessThanOrEqual(agentRect.y + 1)
-      expect(agentRect.x).toBeGreaterThan(spaceRect.x)
+      // Agents sit inside their Space card, below its mini map and name.
+      const cardRect = await rect(window.locator('.workspace-space-group--space').first())
+      expect(agentRect.x).toBeGreaterThanOrEqual(cardRect.x)
+      expect(agentRect.x + agentRect.width).toBeLessThanOrEqual(cardRect.x + cardRect.width)
       expect(agentRect.x + agentRect.width).toBeLessThanOrEqual(
         dockedNavigation.x + dockedNavigation.width,
       )
