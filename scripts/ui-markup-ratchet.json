@@ -6,7 +6,7 @@
     "src/app/renderer/shell/components/AddProjectDialog.tsx": 2,
     "src/app/renderer/shell/components/addProjectWizard/AddProjectWizardDefaultLocationSection.tsx": 3,
     "src/app/renderer/shell/components/AddProjectWizardWindow.tsx": 2,
-    "src/app/renderer/shell/components/AppHeader.tsx": 6,
+    "src/app/renderer/shell/components/AppHeader.tsx": 2,
     "src/app/renderer/shell/components/AppNotifications.tsx": 1,
     "src/app/renderer/shell/components/CommandCenter.tsx": 2,
     "src/app/renderer/shell/components/DeleteProjectDialog.tsx": 2,
@@ -128,7 +128,7 @@
   "native-title": {
     "src/app/renderer/components/AgentProviderIcon.tsx": 1,
     "src/app/renderer/components/ViewportMenuSurface.tsx": 2,
-    "src/app/renderer/shell/components/AppHeader.tsx": 7,
+    "src/app/renderer/shell/components/AppHeader.tsx": 3,
     "src/app/renderer/shell/components/AppNotifications.tsx": 5,
     "src/app/renderer/shell/components/CommandCenter.tsx": 2,
     "src/app/renderer/shell/components/PerformanceMonitorPanel.tsx": 3,

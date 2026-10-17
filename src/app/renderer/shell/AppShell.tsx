@@ -29,6 +29,7 @@ import { usePersistedAppState } from './hooks/usePersistedAppState'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useAppKeybindings } from './hooks/useAppKeybindings'
+import { useAppHeaderActivity } from './hooks/useAppHeaderActivity'
 import { useAgentStandbyNotifications } from './hooks/useAgentStandbyNotifications'
 import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useQuitShortcutHint } from './hooks/useQuitShortcutHint'
@@ -244,6 +245,7 @@ export default function App(): React.JSX.Element {
   }, [agentSettings.performanceMonitorHeaderButtonEnabled, closePerformanceMonitor])
 
   const commandCenterShortcutHint = useCommandCenterShortcutHint(agentSettings.keybindings)
+  const headerActivity = useAppHeaderActivity(workspaces, activeWorkspace)
 
   const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
     policy: agentSettings.updatePolicy,
@@ -308,6 +310,8 @@ export default function App(): React.JSX.Element {
             onToggleSidebar={sidebar.toggle}
             activeWorkspaceName={activeWorkspace?.name ?? null}
             activeWorkspacePath={activeWorkspace?.path ?? null}
+            {...headerActivity}
+            onFocusAgentNode={handleSelectAgentNode}
             isControlCenterOpen={isControlCenterOpen}
             isCommandCenterOpen={isCommandCenterOpen}
             isPerformanceMonitorEnabled={agentSettings.performanceMonitorHeaderButtonEnabled}

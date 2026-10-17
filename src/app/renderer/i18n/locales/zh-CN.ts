@@ -131,6 +131,12 @@ export const zhCN = {
     updateDownloadingTitle: '正在下载 {{version}}（{{percent}}）',
     restartToUpdateShort: '重启更新',
     restartToUpdateTitle: '版本 {{version}} 已准备好安装',
+    agentsWaiting_one: '{{count}} 个待确认',
+    agentsWaiting_other: '{{count}} 个待确认',
+    agentsWorking_one: '{{count}} 个工作中',
+    agentsWorking_other: '{{count}} 个工作中',
+    goToWaitingAgent_one: '有 Agent 在等你，前往「{{title}}」',
+    goToWaitingAgent_other: '有 {{count}} 个 Agent 在等你，前往「{{title}}」',
   },
   whatsNew: {
     title: '更新内容',

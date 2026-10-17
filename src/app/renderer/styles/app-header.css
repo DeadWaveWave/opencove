@@ -123,28 +123,29 @@
   transform: rotate(180deg);
 }
 
-.app-header__icon-button {
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  background: transparent;
-  color: var(--cove-text-muted);
-  border-radius: var(--cove-radius-sm);
-  cursor: pointer;
-  padding: 0;
+/* Header buttons are shared IconButtons; the title bar must not drag through them. */
+.app-header__icon-button,
+.app-header__agent-activity {
   -webkit-app-region: no-drag;
-  transition:
-    background-color var(--cove-motion-fast) var(--cove-ease-standard),
-    color var(--cove-motion-fast) var(--cove-ease-standard),
-    transform var(--cove-motion-fast) var(--cove-ease-standard);
 }
 
-.app-header__icon-button--active {
+.app-header .app-header__icon-button--active {
   background: var(--cove-control-selected);
   color: var(--cove-text);
+}
+
+.app-header__agent-activity {
+  flex: none;
+  padding-inline: var(--cove-spacing-1);
+}
+
+.app-header__command-center-separator {
+  margin-inline: var(--cove-spacing-1);
+  color: var(--cove-text-faint);
+}
+
+.app-header__command-center-space {
+  color: var(--cove-text-muted);
 }
 
 .app-header__performance-button {
@@ -221,21 +222,6 @@
 
 .app-header__update-icon--spinning {
   animation: app-header-update-spin 1.2s linear infinite;
-}
-
-.app-header__icon-button:hover {
-  background: var(--cove-surface-hover);
-  color: var(--cove-text);
-}
-
-.app-header__icon-button:active {
-  background: var(--cove-field);
-  transform: translateY(1px);
-}
-
-.app-header__icon-button:focus-visible {
-  outline: 2px solid var(--cove-focus-ring);
-  outline-offset: 2px;
 }
 
 @keyframes app-header-update-spin {

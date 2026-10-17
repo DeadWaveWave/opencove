@@ -100,13 +100,24 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       await expect(status).toHaveText('Working')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
 
+      const headerActivity = window.getByTestId('app-header-agent-activity')
+      await expect(headerActivity).toHaveText('1 working')
+
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })
       await expect(status).toHaveText('Waiting')
       await expect(sidebarStatus).toHaveText('Needs input')
+      // The top bar summarizes it too, and one click reaches the waiting agent.
+      await expect(headerActivity).toHaveText('1 waiting')
+      await window
+        .locator('.workspace-canvas .react-flow__pane')
+        .click({ position: { x: 20, y: 20 } })
+      await headerActivity.click()
+      await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
 
       await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
       await expect(status).toHaveText('Standby')
       await expect(sidebarStatus).toHaveText('Standby')
+      await expect(headerActivity).toHaveCount(0)
       await expect(agentNode).toHaveAttribute('data-agent-hook-install-state', 'installed')
     } finally {
       await electronApp.close()

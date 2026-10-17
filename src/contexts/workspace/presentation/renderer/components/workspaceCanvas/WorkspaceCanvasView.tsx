@@ -9,6 +9,7 @@ import {
   type Node,
 } from '@xyflow/react'
 import type { TerminalNodeData } from '../../types'
+import { ViewportSpaceReporter } from './viewportSpace'
 import { WorkspaceCanvasControls } from './collapse/WorkspaceCanvasControls'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type { WorkspaceCanvasViewProps } from './WorkspaceCanvasView.types'
@@ -326,6 +327,7 @@ export function WorkspaceCanvasView({
           onMinimapVisibilityChange={onMinimapVisibilityChange}
         />
         <WorkspaceCanvasControls />
+        <ViewportSpaceReporter workspaceId={workspaceId} spaces={spaces} />
       </ReactFlow>
       {activeExplorerSpace && activeExplorerSpace.rect ? (
         <WorkspaceSpaceExplorerOverlay

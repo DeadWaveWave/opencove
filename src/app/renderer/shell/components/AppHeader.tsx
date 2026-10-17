@@ -24,6 +24,8 @@ import type { AppUpdateState } from '@shared/contracts/dto'
 import { IssueReportDialog } from './IssueReportDialog'
 import { PerformanceMonitorPanel } from './PerformanceMonitorPanel'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
+import type { AgentActivitySummary } from '../utils/agentActivitySummary'
+import { AppHeaderAgentActivity } from './AppHeaderAgentActivity'
 
 export function AppHeader({
   showSidebarTrigger = false,
@@ -32,6 +34,9 @@ export function AppHeader({
   sidebarTriggerRef,
   activeWorkspaceName,
   activeWorkspacePath,
+  activeSpaceName = null,
+  agentActivity = null,
+  onFocusAgentNode,
   isControlCenterOpen,
   isCommandCenterOpen,
   isPerformanceMonitorEnabled,
@@ -61,6 +66,10 @@ export function AppHeader({
   sidebarTriggerRef?: React.Ref<HTMLButtonElement>
   activeWorkspaceName: string | null
   activeWorkspacePath: string | null
+  /** The Space the canvas viewport is centred on. */
+  activeSpaceName?: string | null
+  agentActivity?: AgentActivitySummary | null
+  onFocusAgentNode?: (workspaceId: string, nodeId: string) => void
   isControlCenterOpen: boolean
   isCommandCenterOpen: boolean
   isPerformanceMonitorEnabled: boolean
@@ -258,6 +267,19 @@ export function AppHeader({
             <Search aria-hidden="true" size={16} className="app-header__command-center-icon" />
             <span className="app-header__command-center-title">
               {activeWorkspaceName ?? t('appHeader.commandCenterFallbackTitle')}
+              {activeWorkspaceName && activeSpaceName ? (
+                <>
+                  <span className="app-header__command-center-separator" aria-hidden="true">
+                    /
+                  </span>
+                  <span
+                    className="app-header__command-center-space"
+                    data-testid="app-header-active-space"
+                  >
+                    {activeSpaceName}
+                  </span>
+                </>
+              ) : null}
             </span>
             <span className="app-header__command-center-keycap" aria-hidden="true">
               {commandCenterShortcutHint}
@@ -271,6 +293,9 @@ export function AppHeader({
         </div>
 
         <div className="app-header__section app-header__section--right">
+          {agentActivity && onFocusAgentNode ? (
+            <AppHeaderAgentActivity summary={agentActivity} onFocusAgent={onFocusAgentNode} />
+          ) : null}
           {updateAction ? (
             <button
               type="button"
@@ -294,49 +319,38 @@ export function AppHeader({
             </button>
           ) : null}
           {isBrowserRuntime ? (
-            <button
-              type="button"
+            <IconButton
               className={`app-header__icon-button${isFullscreen ? ' app-header__icon-button--active' : ''}`}
               data-testid="app-header-fullscreen"
-              aria-label={
-                isFullscreen ? t('appHeader.exitFullscreen') : t('appHeader.enterFullscreen')
-              }
+              label={isFullscreen ? t('appHeader.exitFullscreen') : t('appHeader.enterFullscreen')}
               aria-pressed={isFullscreen}
-              title={isFullscreen ? t('appHeader.exitFullscreen') : t('appHeader.enterFullscreen')}
               onClick={() => {
                 void toggleFullscreen()
               }}
               disabled={!canToggleFullscreen}
             >
-              {isFullscreen ? (
-                <Minimize2 aria-hidden="true" size={18} />
-              ) : (
-                <Maximize2 aria-hidden="true" size={18} />
-              )}
-            </button>
+              {isFullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
+            </IconButton>
           ) : null}
-          <button
+          <IconButton
             ref={controlCenterButtonRef}
-            type="button"
             className={`app-header__icon-button${isControlCenterOpen ? ' app-header__icon-button--active' : ''}`}
             data-testid="app-header-control-center"
-            aria-label={t('controlCenter.open')}
+            label={t('controlCenter.open')}
             aria-pressed={isControlCenterOpen}
-            title={t('controlCenter.open')}
             onClick={() => {
               onToggleControlCenter()
             }}
           >
-            <SlidersHorizontal aria-hidden="true" size={18} />
-          </button>
+            <SlidersHorizontal aria-hidden="true" />
+          </IconButton>
           {isPerformanceMonitorEnabled ? (
-            <button
-              type="button"
+            <IconButton
               className={`app-header__icon-button app-header__performance-button app-header__performance-button--${performanceStatus}${
                 isPerformanceMonitorOpen ? ' app-header__icon-button--active' : ''
               }`}
               data-testid="app-header-performance-monitor"
-              aria-label={t('performanceMonitor.open')}
+              label={t('performanceMonitor.open')}
               aria-pressed={isPerformanceMonitorOpen}
               title={t('performanceMonitor.statusButtonTitle', {
                 status: performanceStatusLabel,
@@ -345,23 +359,21 @@ export function AppHeader({
                 onTogglePerformanceMonitor()
               }}
             >
-              <Activity aria-hidden="true" size={18} />
+              <Activity aria-hidden="true" />
               <span className="app-header__performance-dot" aria-hidden="true" />
-            </button>
+            </IconButton>
           ) : null}
-          <button
-            type="button"
+          <IconButton
             className={`app-header__icon-button${isIssueReportOpen ? ' app-header__icon-button--active' : ''}`}
             data-testid="app-header-report-issue"
-            aria-label={t('issueReport.open')}
+            label={t('issueReport.open')}
             aria-pressed={isIssueReportOpen}
-            title={t('issueReport.open')}
             onClick={() => {
               onToggleIssueReport()
             }}
           >
-            <Bug aria-hidden="true" size={18} />
-          </button>
+            <Bug aria-hidden="true" />
+          </IconButton>
         </div>
       </header>
       <IssueReportDialog
