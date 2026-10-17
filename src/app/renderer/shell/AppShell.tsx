@@ -461,6 +461,7 @@ export default function App(): React.JSX.Element {
             handleCloseSettings()
             handleWorkspaceActiveSpaceChange(spaceId)
           }}
+          onSelectNode={handleSelectAgentNode}
           isSpaceArchivesOpen={isSpaceArchivesOpen}
           canvasInputModeSetting={agentSettings.canvasInputMode}
           canvasWheelBehaviorSetting={agentSettings.canvasWheelBehavior}

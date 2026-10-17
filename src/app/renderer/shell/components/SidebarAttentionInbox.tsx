@@ -2,7 +2,7 @@ import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Button } from '@app/renderer/components/ui/Button'
 import type { WaitingAgentReference } from '../utils/agentActivitySummary'
-import { resolveWaitDuration, type WaitDuration } from '../utils/waitDuration'
+import { describeWaitDuration, resolveWaitDuration } from '../utils/waitDuration'
 import { useAgentWaitingSinceStore, useMinuteClock } from '../hooks/useAgentWaitingSince'
 import { ProjectTile } from './ProjectTile'
 
@@ -21,11 +21,6 @@ export function SidebarAttentionInbox({
     return null
   }
 
-  const describeWait = (duration: WaitDuration): string =>
-    duration.unit === 'unknown' || duration.unit === 'now'
-      ? t(`sidebar.inbox.${duration.unit}`)
-      : t(`sidebar.inbox.${duration.unit}`, { count: duration.count })
-
   return (
     <section
       className="workspace-attention-inbox"
@@ -38,7 +33,8 @@ export function SidebarAttentionInbox({
       </h3>
       {items.map(item => {
         const place = `${item.projectName} · ${item.spaceName ?? t('sidebar.rootCanvas')}`
-        const waited = describeWait(
+        const waited = describeWaitDuration(
+          t,
           resolveWaitDuration(observations.get(item.nodeId)?.waitingSinceMs ?? null, nowMs),
         )
         return (

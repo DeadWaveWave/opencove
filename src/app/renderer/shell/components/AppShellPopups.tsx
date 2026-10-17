@@ -32,6 +32,7 @@ export function AppShellPopups({
   onAddWorkspace,
   onSelectWorkspace,
   onSelectSpace,
+  onSelectNode,
   isSpaceArchivesOpen,
   canvasInputModeSetting,
   canvasWheelBehaviorSetting,
@@ -66,6 +67,7 @@ export function AppShellPopups({
   onAddWorkspace: (anchor?: { x: number; y: number }) => void
   onSelectWorkspace: (workspaceId: string) => void
   onSelectSpace: (spaceId: string | null) => void
+  onSelectNode: (workspaceId: string, nodeId: string) => void
   isSpaceArchivesOpen: boolean
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
   canvasWheelBehaviorSetting: CanvasWheelBehavior
@@ -115,6 +117,7 @@ export function AppShellPopups({
         onSelectSpace={spaceId => {
           onSelectSpace(spaceId)
         }}
+        onSelectNode={onSelectNode}
       />
 
       <SpaceArchiveRecordsWindow

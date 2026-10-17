@@ -1,5 +1,6 @@
 import type React from 'react'
 import type { LabelColor } from '@shared/types/labelColor'
+import type { KeyChordDescription } from '@contexts/settings/domain/keybindings'
 
 export type CommandCenterItem = {
   id: string
@@ -10,6 +11,12 @@ export type CommandCenterItem = {
   remoteLabel?: string
   isCurrent?: boolean
   showCurrentMarker?: boolean
+  /** A second line, such as where a window lives. */
+  subtitle?: string
+  /** Trailing text, such as how long an agent has waited. */
+  trailing?: string
+  shortcut?: KeyChordDescription | null
+  tone?: 'waiting'
   onSelect: () => void
 }
 
@@ -17,6 +24,8 @@ export type CommandCenterSection = {
   id: string
   label: string
   items: CommandCenterItem[]
+  /** Stays first while searching, as "Needs you" does. */
+  pinned?: boolean
 }
 
 export function normalizeQuery(value: string): string {
@@ -47,29 +56,41 @@ function fuzzyScore(candidate: string, query: string): number | null {
   return score
 }
 
-function filterAndRank(items: CommandCenterItem[], query: string): CommandCenterItem[] {
-  const normalizedQuery = normalizeQuery(query)
-  if (!normalizedQuery) {
-    return items
-  }
+type RankedItem = { item: CommandCenterItem; score: number }
+
+function filterAndRank(items: CommandCenterItem[], query: string): RankedItem[] {
   return items
     .map(item => {
       const score = fuzzyScore(
-        [item.title, item.keywords].filter(Boolean).join(' '),
-        normalizedQuery,
+        [item.title, item.subtitle, item.keywords].filter(Boolean).join(' '),
+        query,
       )
       return score === null ? null : { item, score }
     })
-    .filter((entry): entry is { item: CommandCenterItem; score: number } => entry !== null)
+    .filter((entry): entry is RankedItem => entry !== null)
     .sort((left, right) => right.score - left.score)
-    .map(entry => entry.item)
 }
 
+/**
+ * Without a query sections keep their authored order. While searching, pinned sections stay
+ * first and the rest follow their best match, so typing a Space's name leads with Spaces.
+ */
 export function rankCommandSections(
   sections: CommandCenterSection[],
   query: string,
 ): CommandCenterSection[] {
-  return sections
-    .map(section => ({ ...section, items: filterAndRank(section.items, query) }))
-    .filter(section => section.items.length > 0)
+  const normalizedQuery = normalizeQuery(query)
+  if (!normalizedQuery) {
+    return sections.filter(section => section.items.length > 0)
+  }
+  const ranked = sections
+    .map(section => ({ section, ranked: filterAndRank(section.items, normalizedQuery) }))
+    .filter(entry => entry.ranked.length > 0)
+  const bestScore = (entry: (typeof ranked)[number]): number => entry.ranked[0]?.score ?? 0
+  return [
+    ...ranked.filter(entry => entry.section.pinned),
+    ...ranked
+      .filter(entry => !entry.section.pinned)
+      .sort((left, right) => bestScore(right) - bestScore(left)),
+  ].map(entry => ({ ...entry.section, items: entry.ranked.map(item => item.item) }))
 }

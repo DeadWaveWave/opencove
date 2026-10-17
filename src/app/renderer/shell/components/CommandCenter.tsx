@@ -1,29 +1,11 @@
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import {
-  Check,
-  FolderPlus,
-  Package,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Search,
-  Settings,
-  Scan,
-  Server,
-  X,
-} from 'lucide-react'
+import { Check, Search, Scan, Server, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
-import { useWorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
 import { ProjectIcon } from './ProjectIcon'
-import {
-  normalizeQuery,
-  rankCommandSections,
-  type CommandCenterItem,
-  type CommandCenterSection,
-} from './commandCenterModel'
-import { usePluginCommands } from '@contexts/plugins/presentation/renderer/usePluginCommands'
-import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
+import { normalizeQuery, rankCommandSections, type CommandCenterItem } from './commandCenterModel'
+import { useCommandCenterSections, type CommandCenterActions } from './useCommandCenterSections'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 
 export function CommandCenter({
@@ -39,6 +21,7 @@ export function CommandCenter({
   onAddWorkspace,
   onSelectWorkspace,
   onSelectSpace,
+  onSelectNode,
 }: {
   isOpen: boolean
   activeWorkspace: WorkspaceState | null
@@ -52,6 +35,7 @@ export function CommandCenter({
   onAddWorkspace: () => void
   onSelectWorkspace: (workspaceId: string) => void
   onSelectSpace: (spaceId: string | null) => void
+  onSelectNode: (workspaceId: string, nodeId: string) => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
   const compact = useCompactViewport()
@@ -64,161 +48,38 @@ export function CommandCenter({
   const returnFocusRef = useRef<HTMLElement | null>(null)
   const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const interactionModeRef = useRef<'keyboard' | 'pointer'>('keyboard')
-  const mountDetails = useWorkspaceMountDetails({ workspaces })
 
   const activeSpace =
     activeWorkspace?.spaces.find(space => space.id === activeWorkspace.activeSpaceId) ?? null
-
-  const pluginCommands = usePluginCommands(
-    {
-      surface: 'commandCenter',
-      ...(activeWorkspace ? { projectId: activeWorkspace.id } : {}),
-      ...(activeSpace ? { spaceId: activeSpace.id } : {}),
-    },
-    isOpen,
+  const actions = useMemo<CommandCenterActions>(
+    () => ({
+      onOpenSettings,
+      onOpenWorkspaceSearch,
+      onOpenSpaceArchives,
+      onTogglePrimarySidebar,
+      onAddWorkspace,
+      onSelectWorkspace,
+      onSelectSpace,
+      onSelectNode,
+    }),
+    [
+      onAddWorkspace,
+      onOpenSettings,
+      onOpenSpaceArchives,
+      onOpenWorkspaceSearch,
+      onSelectNode,
+      onSelectSpace,
+      onSelectWorkspace,
+      onTogglePrimarySidebar,
+    ],
   )
-
-  const baseSections = useMemo<CommandCenterSection[]>(() => {
-    const commandItems: CommandCenterItem[] = [
-      ...(activeWorkspace
-        ? [
-            {
-              id: 'command:workspace-search',
-              title: t('commandCenter.commands.searchWorkspace'),
-              icon: <Search aria-hidden="true" size={16} />,
-              onSelect: onOpenWorkspaceSearch,
-            },
-          ]
-        : []),
-      {
-        id: 'command:settings',
-        title: t('commandCenter.commands.openSettings'),
-        keywords: t('commandCenter.commands.openSettingsHint'),
-        icon: <Settings aria-hidden="true" size={16} />,
-        onSelect: () => {
-          onOpenSettings()
-        },
-      },
-      ...(activeWorkspace
-        ? [
-            {
-              id: 'command:space-archives',
-              title: t('commandCenter.commands.spaceArchives'),
-              keywords: t('commandCenter.commands.spaceArchivesHint'),
-              icon: <Package aria-hidden="true" size={16} />,
-              onSelect: () => {
-                onOpenSpaceArchives()
-              },
-            },
-          ]
-        : []),
-      {
-        id: 'command:toggle-primary-sidebar',
-        title: isPrimarySidebarCollapsed
-          ? t('commandCenter.commands.showPrimarySidebar')
-          : t('commandCenter.commands.hidePrimarySidebar'),
-        keywords: t('commandCenter.commands.togglePrimarySidebarHint'),
-        icon: isPrimarySidebarCollapsed ? (
-          <PanelLeftOpen aria-hidden="true" size={16} />
-        ) : (
-          <PanelLeftClose aria-hidden="true" size={16} />
-        ),
-        onSelect: () => {
-          onTogglePrimarySidebar()
-        },
-      },
-      {
-        id: 'command:add-project',
-        title: t('commandCenter.commands.addProject'),
-        keywords: t('commandCenter.commands.addProjectHint'),
-        icon: <FolderPlus aria-hidden="true" size={16} />,
-        onSelect: () => {
-          onAddWorkspace()
-        },
-      },
-    ]
-
-    const projectItems: CommandCenterItem[] = workspaces.map(workspace => ({
-      id: `workspace:${workspace.id}`,
-      title: workspace.name,
-      keywords: [workspace.path, mountDetails[workspace.id]?.summary].filter(Boolean).join(' '),
-      icon: (
-        <ProjectIcon iconId={workspace.iconId} isExpanded={workspace.id === activeWorkspace?.id} />
-      ),
-      remoteLabel: mountDetails[workspace.id]?.remote?.displayName,
-      isCurrent: workspace.id === activeWorkspace?.id,
-      showCurrentMarker: workspace.id === activeWorkspace?.id,
-      onSelect: () => {
-        onSelectWorkspace(workspace.id)
-      },
-    }))
-
-    const spaceItems: CommandCenterItem[] =
-      activeWorkspace?.spaces
-        .filter(space => !space.parentSpaceId)
-        .map(space => ({
-          id: `space:${space.id}`,
-          title: space.name,
-          icon: <Scan aria-hidden="true" size={16} />,
-          labelColor: space.labelColor,
-          isCurrent: space.id === activeSpace?.id,
-          onSelect: () => onSelectSpace(space.id),
-        })) ?? []
-
-    const sections: CommandCenterSection[] = []
-    if (pluginCommands.items.length) {
-      sections.push({
-        id: 'plugins',
-        label: t('pluginHostExtensions.commands'),
-        items: pluginCommands.items.map(item => ({
-          id: item.id,
-          title: item.title,
-          keywords: item.command.description,
-          icon: <PluginIcon pluginId={item.plugin.id} />,
-          onSelect: () => {
-            void pluginCommands.run(item)
-          },
-        })),
-      })
-    }
-
-    sections.push({
-      id: 'commands',
-      label: t('commandCenter.sections.commands'),
-      items: commandItems,
-    })
-
-    if (spaceItems.length > 0) {
-      sections.push({
-        id: 'spaces',
-        label: t('commandCenter.sections.spaces'),
-        items: spaceItems,
-      })
-    }
-
-    sections.push({
-      id: 'projects',
-      label: t('commandCenter.sections.projects'),
-      items: projectItems,
-    })
-
-    return sections
-  }, [
-    pluginCommands,
-    t,
+  const baseSections = useCommandCenterSections({
+    isOpen,
     activeWorkspace,
-    isPrimarySidebarCollapsed,
-    mountDetails,
-    activeSpace?.id,
-    onOpenWorkspaceSearch,
-    onAddWorkspace,
-    onOpenSettings,
-    onOpenSpaceArchives,
-    onSelectSpace,
-    onSelectWorkspace,
-    onTogglePrimarySidebar,
     workspaces,
-  ])
+    isPrimarySidebarCollapsed,
+    actions,
+  })
 
   const sections = useMemo(() => rankCommandSections(baseSections, query), [baseSections, query])
   const flattenedItems = useMemo(() => sections.flatMap(section => section.items), [sections])
@@ -423,6 +284,8 @@ export function CommandCenter({
                     id={`${resultsId}-${item.id}`}
                     tabIndex={-1}
                     data-cove-label-color={item.labelColor ?? undefined}
+                    data-tone={item.tone}
+                    aria-keyshortcuts={item.shortcut?.ariaKeyShortcuts}
                     aria-current={item.isCurrent ? 'location' : undefined}
                     type="button"
                     className={`command-center__item ${isSelected ? 'command-center__item--selected' : ''}`}
@@ -448,7 +311,20 @@ export function CommandCenter({
                     <span className="command-center__item-icon" aria-hidden="true">
                       {item.icon}
                     </span>
-                    <span className="command-center__item-title">{item.title}</span>
+                    <span className="command-center__item-text">
+                      <span className="command-center__item-title">{item.title}</span>
+                      {item.subtitle ? (
+                        <span className="command-center__item-subtitle">{item.subtitle}</span>
+                      ) : null}
+                    </span>
+                    {item.trailing ? (
+                      <span className="command-center__item-trailing">{item.trailing}</span>
+                    ) : null}
+                    {item.shortcut ? (
+                      <kbd className="command-center__item-shortcut" aria-hidden="true">
+                        {item.shortcut.label}
+                      </kbd>
+                    ) : null}
                     {item.remoteLabel ? (
                       <span
                         className="command-center__remote"

@@ -7,6 +7,7 @@ import { zhCNSidebarView } from './zh-CN.sidebarView'
 import { zhCNSidebarRail } from './zh-CN.sidebarRail'
 import { zhCNCanvasCollapse } from './zh-CN.canvasCollapse'
 import { zhCNControlCenter } from './zh-CN.controlCenter'
+import { zhCNCommandCenter } from './zh-CN.commandCenter'
 import { zhCNSpaceCollapse } from './zh-CN.spaceCollapse'
 import { zhCNShell } from './zh-CN.shell'
 import { zhCNSpaceExplorer } from './zh-CN.spaceExplorer'
@@ -33,6 +34,7 @@ export const zhCN = {
   },
   ...zhCNCanvasCollapse,
   ...zhCNControlCenter,
+  ...zhCNCommandCenter,
   ...zhCNSpaceCollapse,
   common: {
     actions: '操作',
@@ -154,30 +156,6 @@ export const zhCN = {
       changed: '改进',
       docs: '文档',
       other: '其他',
-    },
-  },
-  commandCenter: {
-    title: '命令中心',
-    placeholder: '搜索项目、空间、命令…',
-    empty: '没有结果。',
-    metaEsc: 'Esc',
-    activeSpace: '空间：{{name}}',
-    sections: {
-      commands: '命令',
-      spaces: '空间',
-      projects: '项目',
-    },
-    commands: {
-      searchWorkspace: '搜索当前项目',
-      openSettings: '设置',
-      openSettingsHint: '打开设置',
-      spaceArchives: 'Space 归档记录',
-      spaceArchivesHint: '查看已归档 Space 的快照',
-      showPrimarySidebar: '显示侧边栏',
-      hidePrimarySidebar: '隐藏侧边栏',
-      togglePrimarySidebarHint: '切换主侧边栏',
-      addProject: '添加项目',
-      addProjectHint: '创建项目并配置 mounts',
     },
   },
   spaceArchivesWindow: {
