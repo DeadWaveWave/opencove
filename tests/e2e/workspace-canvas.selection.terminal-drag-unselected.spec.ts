@@ -119,10 +119,12 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
         throw new Error('pane bounding box unavailable for drag')
       }
 
+      // Move B right and down, away from A, so canvas push-apart never has a reason to move A
+      // whatever the pane width.
       await dragHeaderDragSurfaceTo(window, headerB, pane, {
         targetPosition: {
-          x: Math.max(620, Math.min(paneBox.width - 140, 1080)),
-          y: Math.min(paneBox.height - 80, 320),
+          x: Math.min(paneBox.width - 40, 1080),
+          y: Math.min(paneBox.height - 80, 360),
         },
         steps: 12,
       })
