@@ -41,19 +41,14 @@
   font-weight: 600;
 }
 
+/* Counts are told apart by colour and spacing, so a wrapped line never starts with a separator. */
 .workspace-space-item__meta {
   display: flex;
   flex-wrap: wrap;
-  column-gap: var(--cove-spacing-1);
+  column-gap: var(--cove-spacing-2);
   color: var(--cove-text-muted);
   font-size: var(--cove-font-size-caption);
   line-height: 1.35;
-}
-
-.workspace-space-item__meta > span + span::before {
-  content: '·';
-  margin-right: var(--cove-spacing-1);
-  color: var(--cove-text-faint);
 }
 
 .workspace-space-item__meta-working {
