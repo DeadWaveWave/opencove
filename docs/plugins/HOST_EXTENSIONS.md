@@ -143,11 +143,14 @@ re-read values. This is not a synchronous push notification.
 ```
 
 Each theme declares `light` or `dark`; author separate entries for both modes.
+Instead of colour tokens, a theme can declare the generator's inputs as a
+`palette` and let the host generate every colour; see
+[Generated palettes](./THEMES.md#generated-palettes-theme-api-v2).
 The existing Appearance picker lists enabled, ready contributions dynamically.
 The selected identity is `plugin:<plugin-id>:<theme-id>` in existing
 `AgentSettings.uiTheme`. This identity survives restart, temporary unavailability,
 disable and uninstall. When unavailable, the renderer uses the configured
-application default (currently Pixel) without overwriting the selection. Re-enable
+application default (currently Cove Dark) without overwriting the selection. Re-enable
 or reinstall restores the selected contribution if its identity still exists.
 Users can always choose another built-in or contributed theme explicitly.
 

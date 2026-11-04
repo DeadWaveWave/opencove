@@ -2,6 +2,7 @@ import { RETIRED_UI_THEMES } from '../../settings/domain/uiSettings'
 import { PLUGIN_THEME_TOKENS, PLUGIN_THEME_BASES, type PluginThemeBase } from './pluginThemeTypes'
 import { normalizePluginThemeMetrics, normalizePluginThemeTypography } from './pluginThemeMetrics'
 import { normalizePluginThemeMotion } from './pluginThemeMotion'
+import { normalizePluginThemePalette } from './pluginThemePalette'
 import type {
   PluginPreferenceDeclaration,
   PluginPreferenceValue,
@@ -125,6 +126,10 @@ export function normalizePluginThemes(value: unknown): PluginThemeDeclaration[] 
     ) {
       throw new Error('Plugin theme appearance must match its visual foundation.')
     }
+    const palette = normalizePluginThemePalette(raw.palette)
+    if (palette && base !== undefined && base !== 'dark' && base !== 'light') {
+      throw new Error('Plugin theme palette needs the generated Cove foundation (dark or light).')
+    }
     const entries = Object.entries(raw.tokens === undefined ? {} : object(raw.tokens))
     if (
       entries.some(
@@ -156,7 +161,7 @@ export function normalizePluginThemes(value: unknown): PluginThemeDeclaration[] 
     const typography = normalizePluginThemeTypography(raw.typography)
     const metrics = normalizePluginThemeMetrics(raw.metrics)
     const motion = normalizePluginThemeMotion(raw.motion)
-    if (!base && !entries.length && !stylesheet && !typography && !metrics && !motion) {
+    if (!base && !palette && !entries.length && !stylesheet && !typography && !metrics && !motion) {
       throw new Error('Plugin theme requires a foundation or visual contribution.')
     }
     return {
@@ -164,6 +169,7 @@ export function normalizePluginThemes(value: unknown): PluginThemeDeclaration[] 
       title: text(raw.title),
       appearance: raw.appearance,
       ...(base ? { extends: base as PluginThemeBase } : {}),
+      ...(palette ? { palette } : {}),
       tokens: Object.fromEntries(entries) as Partial<Record<PluginThemeToken, string>>,
       ...(stylesheet ? { stylesheet } : {}),
       ...(typography ? { typography } : {}),

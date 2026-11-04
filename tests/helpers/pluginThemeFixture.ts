@@ -85,3 +85,45 @@ export async function createThemePlugin(options: { includeFont?: boolean } = {})
   )
   return directory
 }
+
+export const paletteThemePluginId = 'theme-palette-fixture'
+export const paletteThemeIdentity = `plugin:${paletteThemePluginId}:dusk`
+/** Theme API v2 inputs; the E2E derives the expected tokens from the same generator. */
+export const paletteThemeInput = {
+  appearance: 'dark',
+  baseHue: 40,
+  baseChroma: 0.02,
+  accentHue: 330,
+  accentChroma: 0.14,
+  contrast: 0.5,
+} as const
+
+export async function createPaletteThemePlugin() {
+  const directory = await mkdtemp(join(tmpdir(), 'opencove-theme-palette-'))
+  const { baseHue, baseChroma, accentHue, accentChroma, contrast } = paletteThemeInput
+  await writeFile(
+    join(directory, 'opencove.plugin.json'),
+    JSON.stringify({
+      apiVersion: 1,
+      id: paletteThemePluginId,
+      version: '1.0.0',
+      displayName: 'Palette theme fixture',
+      description: 'A theme declared as generator inputs.',
+      contributes: {
+        themes: [
+          {
+            id: 'dusk',
+            title: 'Dusk',
+            appearance: 'dark',
+            palette: {
+              base: { hue: baseHue, chroma: baseChroma },
+              accent: { hue: accentHue, chroma: accentChroma },
+              contrast,
+            },
+          },
+        ],
+      },
+    }),
+  )
+  return directory
+}
