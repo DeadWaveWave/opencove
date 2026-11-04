@@ -27,3 +27,27 @@
   overflow: hidden;
   z-index: 5;
 }
+
+/* The pixel wall sits under the particle layer and every window. Its own fill matches the
+   theme's cell colour, so a frame before the first paint is never a flash of another colour. */
+.workspace-pixel-wall {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--cove-pixel-cell, var(--cove-app-background));
+}
+
+.workspace-pixel-wall__surface {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-pixel-wall__surface[hidden],
+.workspace-pixel-wall[data-cove-wall-renderer='2d'] > .workspace-pixel-wall__surface--gl {
+  display: none;
+}

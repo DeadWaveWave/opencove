@@ -1,8 +1,13 @@
-import React from 'react'
+import React, { useSyncExternalStore } from 'react'
 import { Background, BackgroundVariant, type Node } from '@xyflow/react'
+import {
+  readThemeMotion,
+  subscribeThemeMotion,
+} from '@contexts/plugins/presentation/renderer/themeMotion'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '../../../types'
 import { WorkspacePixelLayer } from './WorkspacePixelLayer'
+import { WorkspacePixelWall } from './WorkspacePixelWall'
 import { useSpaceVisualScale } from './useSpaceVisualScale'
 
 interface WorkspaceCanvasBackgroundProps {
@@ -31,9 +36,16 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
     working: settings.agentWorkingPixelEffectEnabled,
   }
   const enabled = effects.background || effects.creation || effects.closing || effects.working
+  const motion = useSyncExternalStore(subscribeThemeMotion, readThemeMotion, readThemeMotion)
+  const backgroundEffect = motion.background ?? { preset: 'pixel' }
+  // A theme that brings its own background (or none) keeps it; otherwise the wall is the
+  // background and the particle layer above it only draws effects.
+  const wall =
+    effects.background && backgroundEffect.preset === 'pixel' && backgroundEffect.durationMs !== 0
 
   return (
     <>
+      {wall && <WorkspacePixelWall />}
       {!effects.background && (
         <Background
           variant={BackgroundVariant.Dots}
@@ -42,7 +54,7 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
           color="var(--cove-canvas-dot)"
         />
       )}
-      {enabled && <WorkspacePixelLayer nodes={nodes} options={effects} />}
+      {enabled && <WorkspacePixelLayer nodes={nodes} options={effects} wall={wall} />}
     </>
   )
 })

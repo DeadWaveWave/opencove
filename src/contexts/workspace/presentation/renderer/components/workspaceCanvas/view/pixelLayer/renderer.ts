@@ -80,6 +80,7 @@ export function drawPixelLayer({
   now,
   reducedMotion,
   background = true,
+  field = true,
   working = false,
   backgroundNow = now,
   workingNow = now,
@@ -93,6 +94,8 @@ export function drawPixelLayer({
   now: number
   reducedMotion: boolean
   background?: boolean
+  /** The ambient pixel field; off when the pixel wall paints the background instead. */
+  field?: boolean
   working?: boolean
   backgroundNow?: number
   workingNow?: number
@@ -115,7 +118,7 @@ export function drawPixelLayer({
   gradient.addColorStop(0.5, theme.cyan)
   gradient.addColorStop(1, theme.mint)
   context.fillStyle = gradient
-  if (background) {
+  if (background && field) {
     drawPixelBackground(context, viewport, theme.gap, theme.opacity, backgroundNow, reducedMotion)
   }
 

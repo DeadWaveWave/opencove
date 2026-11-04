@@ -18,42 +18,12 @@ import {
   setPixelEffects,
   stopPixelEffectProbe,
 } from './workspace-canvas.pixel-effects.helpers'
+import { expectPaintedWall, readWallProbe } from './workspace-canvas.pixel-wall.helpers'
 
 async function attachFrame(page: Page, testInfo: TestInfo, name: string) {
   const output = testInfo.outputPath(`${name}.png`)
   await page.screenshot({ path: output, animations: 'allow' })
   await testInfo.attach(name, { path: output, contentType: 'image/png' })
-}
-
-async function readFieldColor(page: Page) {
-  return await page.getByTestId('workspace-pixel-layer').evaluate(element => {
-    const canvas = element as HTMLCanvasElement
-    const pixels =
-      canvas.width && canvas.height
-        ? canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data
-        : null
-    let red = 0,
-      green = 0,
-      blue = 0,
-      count = 0
-    if (pixels) {
-      for (let index = 0; index < pixels.length; index += 8) {
-        if (pixels[index + 3]! <= 8) {
-          continue
-        }
-        red += pixels[index]!
-        green += pixels[index + 1]!
-        blue += pixels[index + 2]!
-        count++
-      }
-    }
-    return {
-      red: red / Math.max(1, count),
-      green: green / Math.max(1, count),
-      blue: blue / Math.max(1, count),
-      count,
-    }
-  })
 }
 
 async function createNode(page: Page, kind: 'note' | 'terminal', x = 240) {
@@ -208,10 +178,16 @@ test.describe('Independent pixel effects settings', () => {
         await window.locator('.settings-panel__close').click()
         await expect(window.locator('html')).toHaveAttribute('data-cove-theme', base)
         await expect(window.getByTestId('workspace-pixel-layer')).toBeVisible()
+        await expectPaintedWall(window)
+        // The wall takes the theme's own cells: dark or light, with the themes' cool tint.
         await expect
           .poll(async () => {
-            const color = await readFieldColor(window)
-            return color.count > 20 && color.blue > color.red
+            const mean = (await readWallProbe(window))?.mean
+            if (!mean) {
+              return false
+            }
+            const lightness = (0.2126 * mean[0] + 0.7152 * mean[1] + 0.0722 * mean[2]) / 255
+            return (base === 'dark' ? lightness < 0.35 : lightness > 0.65) && mean[2] > mean[0]
           })
           .toBe(true)
         await expect.poll(() => readPixelEffects(window)).toEqual(PIXEL_EFFECTS_ENABLED)

@@ -1,6 +1,10 @@
 import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
-import { readFieldSignature, readStableFieldBaseline } from './workspace-canvas.pixel-field.helpers'
+import { expect, test, type Page, type TestInfo } from '@playwright/test'
+import {
+  expectPaintedWall,
+  expectStillWall,
+  readWallProbe,
+} from './workspace-canvas.pixel-wall.helpers'
 import path from 'node:path'
 import {
   buildNodeEvalCommand,
@@ -36,24 +40,6 @@ async function readAssemblyStates(window: Page) {
   return await window.evaluate(
     () => (globalThis.window as AssemblyObservation).__pixelAssemblyStates ?? [],
   )
-}
-
-async function expectPaintedField(layer: Locator) {
-  await expect(layer).toBeVisible()
-  await expect
-    .poll(() =>
-      layer.evaluate(canvas => {
-        const surface = canvas as HTMLCanvasElement
-        if (surface.width === 0 || surface.height === 0) {
-          return false
-        }
-        return surface
-          .getContext('2d')
-          ?.getImageData(0, 0, surface.width, surface.height)
-          .data.some((value, index) => index % 4 === 3 && value > 0)
-      }),
-    )
-    .toBe(true)
 }
 
 async function createNode(window: Page, kind: 'note' | 'terminal', x: number, y: number) {
@@ -109,15 +95,16 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       })
       const layer = window.getByTestId('workspace-pixel-layer')
       const assembly = window.getByTestId('workspace-pixel-assembly')
-      await expectPaintedField(layer)
+      // The pixel wall paints the background; this layer keeps the effects above it.
+      await expectPaintedWall(window)
       await expect(layer).toHaveAttribute('data-cove-pixel-activity', 'idle')
       const viewport = await readCanvasViewport(window)
-      const first = await readFieldSignature(layer)
+      const first = (await readWallProbe(window))?.signature
       // Sample elapsed visual time without triggering output, input or viewport changes.
       await window.waitForTimeout(350)
-      const second = await readFieldSignature(layer)
+      const second = (await readWallProbe(window))?.signature
       await window.waitForTimeout(350)
-      const third = await readFieldSignature(layer)
+      const third = (await readWallProbe(window))?.signature
       expect(new Set([first, second, third]).size).toBe(3)
       expect(await readCanvasViewport(window)).toEqual(viewport)
       await expect(layer).toHaveAttribute('data-cove-pixel-activity', 'idle')
@@ -211,11 +198,8 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       })
       const layer = window.getByTestId('workspace-pixel-layer')
       const assembly = window.getByTestId('workspace-pixel-assembly')
-      await expectPaintedField(layer)
       await expect(layer).toHaveAttribute('data-cove-pixel-motion', 'static')
-      const before = await readStableFieldBaseline(layer)
-      await window.waitForTimeout(500)
-      expect(await readFieldSignature(layer)).toBe(before)
+      await expectStillWall(window)
       await createNode(window, 'note', 240, 180)
       const note = window.getByTestId('note-node-textarea')
       await note.fill('Reduced motion is ready immediately.')

@@ -28,7 +28,7 @@ import {
 } from './workspace-canvas.pixel-effects.helpers'
 import { expectSpaceFrameHeader } from './workspace-canvas.space-caption-border.helpers'
 import { wheelToZoom } from './workspace-canvas.zoom.helpers'
-import { readStableFieldBaseline } from './workspace-canvas.pixel-field.helpers'
+import { expectStillWall } from './workspace-canvas.pixel-wall.helpers'
 
 async function nodeGeometry(page: Page) {
   return await page.locator('.react-flow__node').evaluateAll(nodes =>
@@ -332,6 +332,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       await expect(page.locator('html')).toHaveAttribute('data-cove-theme', 'light')
       await expect.poll(() => readPixelEffects(page)).toEqual(mixed)
       await expect(page.getByTestId('workspace-pixel-layer')).toBeHidden()
+      await expect(page.getByTestId('workspace-pixel-wall')).toHaveCount(0)
       await expect(page.locator('.react-flow__background')).toBeVisible()
       await openPixelAppearance(page)
       await Promise.all(
@@ -350,12 +351,8 @@ test.describe('Workspace Canvas - Pixel Light', () => {
         'data-cove-pixel-motion',
         'static',
       )
-      // Settle the last invalidation and Chromium's readback rasterization before
-      // the strict idle comparison. Creating a node later deliberately pans this field.
-      await readStableFieldBaseline(page.getByTestId('workspace-pixel-layer'))
-      const field = await pixelFrame(page)
-      expect(field.before.painted).toBeGreaterThan(20)
-      expect(field.after).toEqual(field.before)
+      // The wall paints the background and holds still; creating a node later pans it.
+      await expectStillWall(page)
       await installPixelEffectProbe(page)
       await page
         .locator('.workspace-canvas .react-flow__pane')

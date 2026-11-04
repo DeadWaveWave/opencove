@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
-import { readFieldSignature, readStableFieldBaseline } from './workspace-canvas.pixel-field.helpers'
+import { expectStillWall, readWallProbe } from './workspace-canvas.pixel-wall.helpers'
 import {
   PIXEL_EFFECTS_DISABLED,
   PIXEL_EFFECTS_ENABLED,
@@ -142,25 +142,10 @@ async function printThroughTerminal(window: Page, phase: string) {
   return expectedOutput
 }
 
-async function expectStaticField(layer: Locator) {
+/** The effects layer above the wall holds still and shows no output. */
+async function expectStaticLayer(layer: Locator) {
   await expect(layer).toHaveAttribute('data-cove-pixel-motion', 'static')
   await expect(layer).toHaveAttribute('data-cove-pixel-activity', 'idle')
-  await expect
-    .poll(async () => {
-      return await layer.evaluate(canvas => {
-        if (!(canvas instanceof HTMLCanvasElement)) {
-          return false
-        }
-        const context = canvas.getContext('2d')
-        if (!context || canvas.width === 0 || canvas.height === 0) {
-          return false
-        }
-        return context
-          .getImageData(0, 0, canvas.width, canvas.height)
-          .data.some((value, index) => index % 4 === 3 && value > 0)
-      })
-    })
-    .toBe(true)
 }
 
 test.describe('Workspace Canvas - Spatial Pixel', () => {
@@ -301,13 +286,15 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       // A real terminal click normalizes the viewport; settle that user action before sampling.
       await printThroughTerminal(window, 'REDUCED_READY')
       await expect.poll(async () => (await readCanvasViewport(window)).zoom).toBe(1)
-      await expectStaticField(layer)
+      await expectStaticLayer(layer)
+      await expectStillWall(window)
       const beforeViewport = await readCanvasViewport(window)
-      const beforeOutput = await readStableFieldBaseline(layer)
+      const beforeOutput = (await readWallProbe(window))?.signature
       await printThroughTerminal(window, 'REDUCED')
-      await expectStaticField(layer)
+      await expectStaticLayer(layer)
       expect(await readCanvasViewport(window)).toEqual(beforeViewport)
-      expect(await readFieldSignature(layer)).toBe(beforeOutput)
+      // Terminal output never moves a still wall.
+      expect((await readWallProbe(window))?.signature).toBe(beforeOutput)
       await attachScreenshot(window, testInfo, 'spatial-pixel-reduced-motion')
 
       await openAppearance(window)
