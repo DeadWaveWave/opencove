@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtemp, mkdir, link, copyFile, writeFile, readFile, rm, access } from 'node:fs/promises'
+import { mkdtemp, mkdir, copyFile, writeFile, readFile, rm, access } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -21,7 +21,13 @@ describe('immutable runtime publication', () => {
         process.platform === 'win32' ? 'runtime/node/node.exe' : 'runtime/node/bin/node',
       )
       await mkdir(join(node, '..'), { recursive: true })
-      await link(process.execPath, node).catch(() => copyFile(process.execPath, node))
+      if (process.platform === 'win32') {
+        await copyFile(process.execPath, node)
+      } else {
+        // Homebrew Node needs libraries relative to its installed executable.
+        const executable = `'${process.execPath.replaceAll("'", "'\\''")}'`
+        await writeFile(node, `#!/bin/sh\nexec ${executable} "$@"\n`, { mode: 0o755 })
+      }
       await mkdir(join(directory, 'app/out/main'), { recursive: true })
       await writeFile(
         join(directory, 'app/out/main/managedRuntime.js'),
