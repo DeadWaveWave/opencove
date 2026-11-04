@@ -13,6 +13,7 @@ import { enWorkspaceCanvas } from './en.workspaceCanvas'
 import { enSidebarView } from './en.sidebarView'
 import { enSidebarRail } from './en.sidebarRail'
 import { enCanvasCollapse } from './en.canvasCollapse'
+import { enEdgeBeacons } from './en.edgeBeacons'
 import { enControlCenter } from './en.controlCenter'
 import { enCommandCenter } from './en.commandCenter'
 import { enSpaceCollapse } from './en.spaceCollapse'
@@ -33,6 +34,7 @@ export const en = {
       'This theme is unavailable. The default theme is shown until it is enabled again.',
   },
   ...enCanvasCollapse,
+  ...enEdgeBeacons,
   ...enControlCenter,
   ...enCommandCenter,
   ...enSpaceCollapse,

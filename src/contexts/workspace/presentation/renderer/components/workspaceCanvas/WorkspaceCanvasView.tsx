@@ -21,6 +21,7 @@ import { useViewportDprSnapping } from './hooks/useViewportDprSnapping'
 import { useSpaceWorktreeBusyLabels } from './hooks/useSpaceWorktreeBusyLabels'
 import { WorkspaceCanvasMenus } from './view/WorkspaceCanvasMenus'
 import { WorkspaceCanvasBackground } from './view/WorkspaceCanvasBackground'
+import { WorkspaceEdgeBeacons } from './view/WorkspaceEdgeBeacons'
 import { WorkspaceCanvasWindows } from './view/WorkspaceCanvasWindows'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
 import { WorkspaceSelectionDraftOverlay } from './view/WorkspaceSelectionDraftOverlay'
@@ -327,6 +328,7 @@ export function WorkspaceCanvasView({
           onMinimapVisibilityChange={onMinimapVisibilityChange}
         />
         <WorkspaceCanvasControls />
+        <WorkspaceEdgeBeacons nodes={filteredNodes} />
         <ViewportSpaceReporter workspaceId={workspaceId} spaces={spaces} />
       </ReactFlow>
       {activeExplorerSpace && activeExplorerSpace.rect ? (

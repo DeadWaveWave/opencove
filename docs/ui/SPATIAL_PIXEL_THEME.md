@@ -163,6 +163,17 @@ follows the ring, not the window count. Behind glass the cap still applies. Redu
 none; 「关闭」 has none. The effects layer no longer draws output sparkles along window edges; it
 keeps the status corner marks. E2E reads `getRippleCount()` from the wall probe.
 
+## Waiting for you
+
+A window whose agent waits for you (`resolveAgentPresentation` status `waiting`) sends a yellow
+pulse ring across the wall every 1.8s, on top of its steady yellow light; reduced motion keeps
+only the light. When the window is entirely out of view, an edge beacon (`WorkspaceEdgeBeacons`)
+sits where the line from the view's centre to the window crosses a frame inset from the canvas
+edges: a titled pill with an arrow, five at most (nearest first) and the rest as one "+N" pill.
+A click flies to the window at the current zoom, or 0.6 if further out. Beacons are derived from
+agent state and the viewport only; with no waiting windows the component does not follow the
+view. The pill pulses gently and holds still with reduced motion.
+
 ## Canvas effects
 
 The effects canvas is a viewport-sized, read-only visual layer above the wall. It draws creation,

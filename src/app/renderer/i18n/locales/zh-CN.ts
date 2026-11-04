@@ -6,6 +6,7 @@ import { zhCNMessages } from './zh-CN.messages'
 import { zhCNSidebarView } from './zh-CN.sidebarView'
 import { zhCNSidebarRail } from './zh-CN.sidebarRail'
 import { zhCNCanvasCollapse } from './zh-CN.canvasCollapse'
+import { zhCNEdgeBeacons } from './zh-CN.edgeBeacons'
 import { zhCNControlCenter } from './zh-CN.controlCenter'
 import { zhCNCommandCenter } from './zh-CN.commandCenter'
 import { zhCNSpaceCollapse } from './zh-CN.spaceCollapse'
@@ -33,6 +34,7 @@ export const zhCN = {
     unavailableTheme: '此主题暂不可用。启用后将恢复，目前显示默认主题。',
   },
   ...zhCNCanvasCollapse,
+  ...zhCNEdgeBeacons,
   ...zhCNControlCenter,
   ...zhCNCommandCenter,
   ...zhCNSpaceCollapse,

@@ -1,0 +1,65 @@
+/* Viewport edge beacons: titled pills pointing at windows that wait for you out of view. */
+.workspace-edge-beacons {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.workspace-edge-beacon {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+  max-width: 240px;
+  transform: translate(-50%, -50%);
+  border: 1px solid
+    color-mix(in srgb, var(--cove-status-waiting, var(--cove-warning)) 70%, transparent);
+  border-radius: var(--cove-radius-round);
+  background: var(--cove-acrylic-surface, var(--cove-surface-strong));
+  color: var(--cove-text);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--cove-status-waiting, var(--cove-warning)) 16%, transparent);
+  pointer-events: auto;
+  animation: workspace-edge-beacon-pulse 1.8s ease-in-out infinite;
+}
+
+.workspace-edge-beacon__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--cove-status-waiting, var(--cove-warning));
+}
+
+.workspace-edge-beacon__title {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-edge-beacon__status,
+.workspace-edge-beacon__arrow {
+  flex: none;
+  color: var(--cove-status-waiting-text, var(--cove-warning));
+}
+
+.workspace-edge-beacon--more {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+@keyframes workspace-edge-beacon-pulse {
+  50% {
+    box-shadow: 0 0 0 6px
+      color-mix(in srgb, var(--cove-status-waiting, var(--cove-warning)) 6%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-edge-beacon {
+    animation: none;
+  }
+}

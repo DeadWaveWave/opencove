@@ -88,6 +88,15 @@ export function createWallWindowTracker() {
         family: window.family,
       }
     },
+    /** Centres of the windows waiting for you, for their pulse rings. */
+    waiting(): Array<{ id: string; center: { x: number; y: number } }> {
+      return windows
+        .filter(window => window.state === 'waiting')
+        .map(({ id, rect }) => ({
+          id,
+          center: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
+        }))
+    },
     /** Each window's frame and light for a clock in ms, or fixed levels for null. */
     resolve(
       now: number | null,
