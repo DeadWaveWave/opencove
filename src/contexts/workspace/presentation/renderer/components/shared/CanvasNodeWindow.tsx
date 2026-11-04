@@ -86,6 +86,7 @@ export function CanvasNodeWindow({
     >
       <WindowHeader
         className="cove-canvas-node-window__header"
+        kind="neutral"
         icon={
           icon ? (
             <span className="cove-node-kind-icon" aria-hidden="true">

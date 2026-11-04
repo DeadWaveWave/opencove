@@ -2,6 +2,7 @@ import type React from 'react'
 import { KindTile } from '@app/renderer/components/ui/KindTile'
 import { classNames } from '@app/renderer/components/ui/classNames'
 import type { LabelColor } from '@shared/types/labelColor'
+import type { WindowKindFamily } from '../../utils/windowKindFamily'
 import { WindowCloseButton } from './WindowCloseButton'
 import { WindowCollapseButton } from './WindowCollapseButton'
 
@@ -23,6 +24,7 @@ export interface WindowHeaderClose {
  */
 export function WindowHeader({
   className,
+  kind,
   labelColor,
   icon,
   title,
@@ -34,6 +36,8 @@ export function WindowHeader({
   onPointerDownCapture,
 }: {
   className: string
+  /** What the window is; colours its tile and tints the header. Never draws the frame. */
+  kind: WindowKindFamily
   labelColor?: LabelColor | null
   /** The kind glyph; the tile around it is the header's. */
   icon: React.ReactNode
@@ -49,6 +53,7 @@ export function WindowHeader({
     <header
       className={classNames('cove-window-header', className)}
       data-cove-part="window-header"
+      data-cove-kind={kind}
       data-node-drag-handle="true"
       onPointerDownCapture={onPointerDownCapture}
     >
@@ -59,8 +64,7 @@ export function WindowHeader({
           aria-hidden="true"
         />
       ) : null}
-      {/* Kind colors arrive with the kind and label channels (Tide phase 3). */}
-      <KindTile kind="neutral" className="cove-window-header__tile">
+      <KindTile kind={kind} className="cove-window-header__tile">
         {icon}
       </KindTile>
       {title}

@@ -88,6 +88,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   terminalFontSize: 13,
   terminalFontFamily: null,
   terminalBackground: DEFAULT_TERMINAL_BACKGROUND_MODE,
+  windowKindColorsEnabled: true,
   terminalDisplayAutoReferenceEnabled: true,
   terminalDisplayCalibrationCompensationEnabled: true,
   terminalDisplayReference: null,

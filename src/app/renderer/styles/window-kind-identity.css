@@ -1,0 +1,63 @@
+/*
+ * Kind and label are separate channels (Tide phase 3).
+ * - Kind (what the window is): the header's KindTile and a 9% header tint.
+ * - Label (how you sort it): the window frame and a short flag at the top.
+ * Kind never draws the frame and labels never colour the tile. Generated families (Cove) use
+ * both channels; hand-written themes such as Pixel keep their own identity decoration.
+ */
+.cove-window-header {
+  --cove-window-kind-tint: transparent;
+}
+
+.cove-window-header[data-cove-kind='ai'] {
+  --cove-window-kind-tint: var(--cove-kind-ai-solid, transparent);
+}
+
+.cove-window-header[data-cove-kind='shell'] {
+  --cove-window-kind-tint: var(--cove-kind-shell-solid, transparent);
+}
+
+.cove-window-header[data-cove-kind='plan'] {
+  --cove-window-kind-tint: var(--cove-kind-plan-solid, transparent);
+}
+
+.cove-window-header[data-cove-kind='knowledge'] {
+  --cove-window-kind-tint: var(--cove-kind-knowledge-solid, transparent);
+}
+
+.cove-window-header[data-cove-kind='media'] {
+  --cove-window-kind-tint: var(--cove-kind-media-solid, transparent);
+}
+
+:root[data-cove-family='cove'] .cove-window-header {
+  /* An inset overlay tints whatever surface each kind's header already paints. */
+  box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--cove-window-kind-tint) 9%, transparent);
+}
+
+/* Unlabeled windows have a neutral frame and no flag; labels draw a firm frame and a flag. */
+:root[data-cove-family='cove'] .workspace-canvas .react-flow__node {
+  --cove-node-label-border-tint: 0%;
+  --cove-node-label-header-tint: 0%;
+  --cove-node-identity-flag-width: 0px;
+}
+
+:root[data-cove-family='cove'] .workspace-canvas .react-flow__node[data-cove-label-color] {
+  --cove-node-label-border-tint: 70%;
+  --cove-node-identity-flag-width: 28px;
+}
+
+/* Settings → Appearance → Window Kind Colours off: tiles and headers stay neutral. */
+:root[data-cove-kind-colors='off'] .cove-window-header {
+  --cove-window-kind-tint: transparent;
+}
+
+:root[data-cove-kind-colors='off'] .cove-kind-tile[data-kind] {
+  --cove-kind-tile-surface: var(--cove-kind-neutral-tile, var(--cove-field));
+  --cove-kind-tile-line: var(--cove-kind-neutral-line, var(--cove-border-subtle));
+  --cove-kind-tile-glyph: var(--cove-kind-neutral-glyph, var(--cove-text-muted));
+}
+
+/* The sidebar's Space maps follow the same switch. */
+:root[data-cove-kind-colors='off'] .workspace-space-minimap__window[data-family] {
+  --workspace-space-minimap-window: var(--cove-kind-neutral-solid, var(--cove-text-faint));
+}

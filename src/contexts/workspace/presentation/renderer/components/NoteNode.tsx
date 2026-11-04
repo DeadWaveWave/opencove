@@ -171,6 +171,7 @@ export function NoteNode({
     >
       <WindowHeader
         className="note-node__header"
+        kind="knowledge"
         labelColor={labelColor}
         icon={<NodeKindIcon kind="note" />}
         title={

@@ -25,6 +25,7 @@ describe('WindowHeader', () => {
       <WindowCollapseContext.Provider value={controls}>
         <WindowHeader
           className="note-node__header"
+          kind="shell"
           labelColor="red"
           icon={<svg data-testid="kind-icon" />}
           title={<span data-testid="title">Notes</span>}
@@ -63,7 +64,9 @@ describe('WindowHeader', () => {
     expect(parts).toEqual(['label', 'tile', 'title', 'drag', 'More', 'collapse', 'Delete note'])
 
     const tile = header.querySelector('[data-cove-part="kind-tile"]')
-    expect(tile).toHaveAttribute('data-kind', 'neutral')
+    // The tile wears the window's kind; the label stays on the dot and the frame.
+    expect(tile).toHaveAttribute('data-kind', 'shell')
+    expect(header).toHaveAttribute('data-cove-kind', 'shell')
     expect(tile).toContainElement(screen.getByTestId('kind-icon'))
     expect(screen.getByTestId('note-node-header-drag-surface')).toHaveAttribute(
       'aria-hidden',
@@ -78,6 +81,7 @@ describe('WindowHeader', () => {
     const { container } = render(
       <WindowHeader
         className="terminal-node__header"
+        kind="shell"
         icon={<svg />}
         title={<span>zsh</span>}
         status={<span data-testid="status">Working</span>}

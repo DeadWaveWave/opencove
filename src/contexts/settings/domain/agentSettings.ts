@@ -364,6 +364,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const terminalBackground = isValidTerminalBackgroundMode(value.terminalBackground)
     ? value.terminalBackground
     : DEFAULT_AGENT_SETTINGS.terminalBackground
+  const windowKindColorsEnabled =
+    normalizeBoolean(value.windowKindColorsEnabled) ??
+    DEFAULT_AGENT_SETTINGS.windowKindColorsEnabled
   const terminalDisplayAutoReferenceEnabled =
     normalizeBoolean(value.terminalDisplayAutoReferenceEnabled) ??
     normalizeBoolean(value.terminalDisplayAutoCalibrationEnabled) ??
@@ -473,6 +476,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     terminalFontSize,
     terminalFontFamily,
     terminalBackground,
+    windowKindColorsEnabled,
     terminalDisplayAutoReferenceEnabled,
     terminalDisplayCalibrationCompensationEnabled,
     terminalDisplayReference,

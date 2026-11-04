@@ -98,6 +98,8 @@ export interface AgentSettings extends PixelEffectSettings {
   terminalFontSize: number
   terminalFontFamily: string | null
   terminalBackground: TerminalBackgroundMode
+  /** Colours window tiles and header tints by what the window is (Tide kind channel). */
+  windowKindColorsEnabled: boolean
   terminalDisplayAutoReferenceEnabled: boolean
   terminalDisplayCalibrationCompensationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null

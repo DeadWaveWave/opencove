@@ -107,6 +107,7 @@ export function TerminalNodeHeader({
   return (
     <WindowHeader
       className="terminal-node__header"
+      kind={isAgentNode ? 'ai' : 'shell'}
       labelColor={labelColor}
       onPointerDownCapture={onHeaderPointerDownCapture}
       icon={

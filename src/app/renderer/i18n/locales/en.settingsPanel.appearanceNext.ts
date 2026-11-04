@@ -25,4 +25,8 @@ export const enSettingsPanelAppearanceNext = {
   terminalBackgroundOpaque: 'Opaque',
   calibration: 'Display Calibration',
   calibrationHelp: 'Match terminal text measurements to this display.',
+  windows: 'Windows',
+  windowKindColors: 'Window Kind Colours',
+  windowKindColorsHelp:
+    'Colour each window’s icon tile and header by what it is: agents, terminals, tasks, notes and documents, websites and images. Your colour labels stay on the window frame either way.',
 }

@@ -153,6 +153,7 @@ export function FolderNode({
     >
       <WindowHeader
         className="document-node__header"
+        kind="neutral"
         labelColor={labelColor}
         icon={<NodeKindIcon kind="folder" />}
         title={

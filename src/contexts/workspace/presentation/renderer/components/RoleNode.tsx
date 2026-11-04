@@ -135,6 +135,7 @@ export function RoleNode({
       <Handle type="source" position={Position.Right} className="workspace-node-handle" />
       <WindowHeader
         className="role-node__header"
+        kind="ai"
         icon={<NodeKindIcon kind="role" />}
         title={
           <span
