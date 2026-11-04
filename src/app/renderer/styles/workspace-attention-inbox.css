@@ -1,0 +1,103 @@
+/* Needs-you inbox: waiting agents from every project, on the waiting status surface. */
+.workspace-attention-inbox {
+  display: grid;
+  gap: 2px;
+  margin-bottom: var(--cove-spacing-3);
+  padding: var(--cove-spacing-1);
+  border-radius: var(--cove-radius-md);
+  background: var(--cove-status-waiting-surface, var(--cove-surface));
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--cove-status-waiting, var(--cove-warning)) 34%, transparent);
+}
+
+.workspace-attention-inbox__title {
+  display: flex;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+  margin: 0;
+  padding: var(--cove-spacing-1) var(--cove-spacing-1) 0;
+  color: var(--cove-status-waiting-text, var(--cove-warning));
+  font-size: var(--cove-font-size-caption);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.workspace-attention-inbox__count {
+  margin-left: auto;
+  font-family: var(--cove-font-mono);
+  font-weight: 500;
+}
+
+.workspace-attention-inbox .workspace-attention-inbox__item {
+  height: auto;
+  min-height: 40px;
+  padding: var(--cove-spacing-1) var(--cove-spacing-2);
+  justify-content: stretch;
+  border-color: transparent;
+  color: var(--cove-text);
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: left;
+  white-space: normal;
+}
+
+/* Tile beside two lines: the agent's title, then where it is and how long it has waited. */
+.workspace-attention-inbox__item > .cove-button__content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  width: 100%;
+  justify-content: stretch;
+  column-gap: var(--cove-spacing-2);
+  row-gap: 2px;
+}
+
+.workspace-attention-inbox__item .cove-project-tile {
+  grid-row: 1 / span 2;
+}
+
+.workspace-attention-inbox__meta {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: var(--cove-spacing-2);
+}
+
+.workspace-attention-inbox .workspace-attention-inbox__item:not(:disabled):hover {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--cove-status-waiting, var(--cove-warning)) 15%, transparent);
+}
+
+.workspace-attention-inbox__item-title,
+.workspace-attention-inbox__place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-attention-inbox__item-title {
+  font-size: var(--cove-font-size-secondary);
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.workspace-attention-inbox__place {
+  flex: 1;
+  min-width: 0;
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  line-height: 1.2;
+}
+
+.workspace-attention-inbox__waited {
+  color: var(--cove-status-waiting-text, var(--cove-warning));
+  font-size: var(--cove-font-size-caption);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@media (pointer: coarse) {
+  .workspace-attention-inbox .workspace-attention-inbox__item {
+    min-height: 44px;
+  }
+}

@@ -5,10 +5,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { ProjectContextMenuState } from '../types'
-import { ProjectIcon } from './ProjectIcon'
+import { ProjectTile } from './ProjectTile'
 import { sidebarSortableTransition } from './SidebarDnd'
 import type { WorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
-import { resolveProjectAccent } from '../utils/projectAccent'
 
 export function SidebarProjectRailItem({
   workspace,
@@ -88,15 +87,13 @@ export function SidebarProjectRailItem({
           openMenu(event.clientX, event.clientY)
         }}
       >
-        <span
+        <ProjectTile
+          workspaceId={workspace.id}
+          iconId={workspace.iconId}
+          isExpanded={isActive}
           className="workspace-project-rail__tile"
-          data-cove-accent={resolveProjectAccent(workspace.id)}
+          iconClassName="workspace-item__folder-icon"
         >
-          <ProjectIcon
-            iconId={workspace.iconId}
-            isExpanded={isActive}
-            className="workspace-item__folder-icon"
-          />
           {workingAgentCount > 0 ? (
             <span
               className="workspace-project-rail__working"
@@ -126,7 +123,7 @@ export function SidebarProjectRailItem({
               <Server size={10} />
             </span>
           ) : null}
-        </span>
+        </ProjectTile>
         <span className="workspace-item__name workspace-project-rail__name" aria-hidden="true">
           {workspace.name}
         </span>
