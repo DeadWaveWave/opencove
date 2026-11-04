@@ -27,7 +27,10 @@ for (const language of ['en', 'zh-CN'] as const) {
         await nav.click()
         await expect(nav).toHaveAttribute('aria-current', 'page')
         const labels = await window
-          .locator('.settings-panel__row .settings-panel__row-label > :first-child')
+          // Legacy rows and shared SettingRows, while the pages move to SettingRow.
+          .locator(
+            '.settings-panel__row .settings-panel__row-label > :first-child, .cove-setting-row__label',
+          )
           .allTextContents()
         for (const label of labels.map(text => text.trim()).filter(Boolean)) {
           rows.push({ page: page.canonicalPageId, label })
