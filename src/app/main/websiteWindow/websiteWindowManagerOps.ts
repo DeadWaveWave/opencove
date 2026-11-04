@@ -1,7 +1,10 @@
 import type { BrowserWindow } from 'electron'
 import type { WebsiteWindowEventPayload } from '../../../shared/contracts/dto'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
-import { captureWebsiteWindowRuntimeSnapshot } from './websiteWindowRuntimeViewOps'
+import {
+  captureWebsiteWindowRuntimeSnapshot,
+  flushPendingWebsiteWindowRuntimeSnapshot,
+} from './websiteWindowRuntimeViewOps'
 import { transitionWebsiteWindowToCold } from './websiteWindowLifecycle'
 import {
   attachWebsiteWindowRuntimeViewToWindow,
@@ -73,6 +76,7 @@ export function applyWebsiteWindowManagerOcclusionState({
           windowScaleFactor,
         })
       }
+      flushPendingWebsiteWindowRuntimeSnapshot({ runtime, emit })
     }
   }
 

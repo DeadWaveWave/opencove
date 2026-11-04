@@ -11,6 +11,17 @@ export function normalizeWebsiteWindowSnapshotQuality(value: unknown): number {
   return Math.min(95, Math.max(25, resolved))
 }
 
+function reportWebsiteSnapshotFailure(
+  nodeId: string,
+  stage: 'encode' | 'subscribe',
+  error: unknown,
+): void {
+  const detail = error instanceof Error ? error.message : String(error)
+  process.stderr.write(
+    `[opencove-website-window] ${stage} failed: ${JSON.stringify({ nodeId, detail })}\n`,
+  )
+}
+
 export function captureWebsiteWindowRuntimeSnapshot({
   runtime,
   quality,
@@ -41,14 +52,13 @@ function hasCapturableWebsiteWindowBounds(runtime: WebsiteWindowRuntime): boolea
   return Boolean(bounds && bounds.width > 0 && bounds.height > 0)
 }
 
-function isWebsiteWindowRuntimeReadyForSnapshot(runtime: WebsiteWindowRuntime): boolean {
+function isWebsiteWindowDocumentReadyForSnapshot(runtime: WebsiteWindowRuntime): boolean {
   return (
     runtime.lifecycle === 'active' &&
     runtime.isLoading === false &&
     runtime.snapshotDocumentReady &&
     typeof runtime.url === 'string' &&
-    runtime.url.trim().length > 0 &&
-    hasCapturableWebsiteWindowBounds(runtime)
+    runtime.url.trim().length > 0
   )
 }
 
@@ -64,7 +74,10 @@ export function flushPendingWebsiteWindowRuntimeSnapshot({
     return false
   }
 
-  if (!isWebsiteWindowRuntimeReadyForSnapshot(runtime)) {
+  if (
+    !isWebsiteWindowDocumentReadyForSnapshot(runtime) ||
+    !hasCapturableWebsiteWindowBounds(runtime)
+  ) {
     return false
   }
 
@@ -74,27 +87,71 @@ export function flushPendingWebsiteWindowRuntimeSnapshot({
   }
 
   runtime.snapshotCaptureInFlight = true
-  void contents
-    .capturePage(undefined, { stayHidden: true })
-    .then(image => {
-      const jpeg = image.toJPEG(pendingQuality)
-      const dataUrl = `data:image/jpeg;base64,${jpeg.toString('base64')}`
-      runtime.snapshotDataUrl = dataUrl
-      if (runtime.pendingSnapshotQuality === pendingQuality) {
-        runtime.pendingSnapshotQuality = null
+  let disposed = false
+  const dispose = () => {
+    if (disposed) {
+      return
+    }
+    disposed = true
+    contents.removeListener('destroyed', dispose)
+    try {
+      if (!contents.isDestroyed()) {
+        contents.endFrameSubscription()
       }
-      emit({ type: 'snapshot', nodeId: runtime.nodeId, dataUrl })
-    })
-    .catch(() => undefined)
-    .finally(() => {
+    } catch {
+      // The view may be destroyed while a presentation is queued.
+    }
+    if (runtime.disposeSnapshotCapture === dispose) {
+      runtime.disposeSnapshotCapture = null
       runtime.snapshotCaptureInFlight = false
+    }
+  }
+  runtime.disposeSnapshotCapture = dispose
+  contents.once('destroyed', dispose)
+
+  try {
+    // capturePage can reject before the first compositor surface is available on macOS.
+    // Electron starts a video capturer here; Chromium's Start requests a refresh of the
+    // existing surface, so an idle page needs no new paint (or explicit invalidate).
+    // See FrameSinkVideoCapturerImpl::Start in Chromium 146.0.7680.216.
+    // Consume one valid image, then release the subscription without retrying.
+    contents.beginFrameSubscription(false, image => {
+      if (disposed) {
+        return
+      }
       if (
-        runtime.pendingSnapshotQuality !== null &&
-        runtime.pendingSnapshotQuality !== pendingQuality
+        resolveWebsiteWindowRuntimeWebContents(runtime) !== contents ||
+        !isWebsiteWindowDocumentReadyForSnapshot(runtime) ||
+        runtime.pendingSnapshotQuality === null
       ) {
-        flushPendingWebsiteWindowRuntimeSnapshot({ runtime, emit })
+        dispose()
+        return
+      }
+      // A zoom freeze hides the native view immediately after requesting a snapshot.
+      // Its already-presented frame is still valid even if canvas bounds are now empty.
+      if (image.isEmpty()) {
+        return
+      }
+
+      try {
+        const jpeg = image.toJPEG(runtime.pendingSnapshotQuality)
+        if (jpeg.length === 0) {
+          return
+        }
+        const dataUrl = `data:image/jpeg;base64,${jpeg.toString('base64')}`
+        runtime.snapshotDataUrl = dataUrl
+        runtime.pendingSnapshotQuality = null
+        dispose()
+        emit({ type: 'snapshot', nodeId: runtime.nodeId, dataUrl })
+      } catch (error) {
+        dispose()
+        reportWebsiteSnapshotFailure(runtime.nodeId, 'encode', error)
       }
     })
+  } catch (error) {
+    dispose()
+    reportWebsiteSnapshotFailure(runtime.nodeId, 'subscribe', error)
+  }
 
   return true
 }
