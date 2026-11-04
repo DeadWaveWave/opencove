@@ -110,9 +110,11 @@ export function flushPendingWebsiteWindowRuntimeSnapshot({
   contents.once('destroyed', dispose)
 
   try {
-    // Loading and bounds do not guarantee a capturable display surface. In particular,
-    // capturePage can reject before the first compositor frame on macOS. Consume the
-    // presented image itself, then release this one-shot subscription without retrying.
+    // capturePage can reject before the first compositor surface is available on macOS.
+    // Electron starts a video capturer here; Chromium's Start requests a refresh of the
+    // existing surface, so an idle page needs no new paint (or explicit invalidate).
+    // See FrameSinkVideoCapturerImpl::Start in Chromium 146.0.7680.216.
+    // Consume one valid image, then release the subscription without retrying.
     contents.beginFrameSubscription(false, image => {
       if (disposed) {
         return
