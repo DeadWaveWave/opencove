@@ -1,7 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { useStoreApi, type Node } from '@xyflow/react'
 import type { Point, TerminalNodeData } from '../../../types'
-import { focusNodeInViewport } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { useWorkspaceCanvasTerminalCreation } from './useInteractions.terminalCreation'
@@ -11,8 +10,9 @@ import { useWorkspaceCanvasQuickMenuActions } from './useInteractions.quickMenuA
 import {
   isCanvasDoubleClickCreateTarget,
   isPanePointerDragStartTarget,
-  shouldFocusNodeFromClickTarget,
 } from './useInteractions.eventTargets'
+import { useWorkspaceCanvasNodeClick } from './useInteractions.nodeClick'
+import { CANVAS_LOD_ATTRIBUTE } from '../view/canvasLod'
 import { resolveMouseClientPoint } from './useInteractions.clientPoint'
 import { createNoteNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
 import { useWorkspaceCanvasFlowNodeCreation } from './useInteractions.flowNodeCreation'
@@ -21,7 +21,6 @@ import { useIgnoredPaneClick } from './useIgnoredPaneClick'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
 import { useWebsiteNodeContextMenuCreation } from './useInteractions.websiteContextMenu'
 import { useWebsiteWindowOpenUrlNodeCreation } from './useWebsiteWindowOpenUrlNodeCreation'
-import { getPresentedNodeSize } from '../../../utils/canvasInteractionLayout'
 
 export function useWorkspaceCanvasInteractions({
   canvasRef,
@@ -127,25 +126,19 @@ export function useWorkspaceCanvasInteractions({
     [openSelectionContextMenu],
   )
 
-  const handleNodeClick = useCallback(
-    (event: React.MouseEvent, node: Node<TerminalNodeData>) => {
-      if (!focusNodeOnClick) {
-        return
-      }
-      if (!shouldFocusNodeFromClickTarget(event.target)) {
-        return
-      }
-
-      const displayNode = { ...node, data: { ...node.data, ...getPresentedNodeSize(node.data) } }
-      focusNodeInViewport(reactFlow, displayNode, { duration: 120, zoom: focusNodeTargetZoom })
-    },
-    [focusNodeOnClick, focusNodeTargetZoom, reactFlow],
-  )
+  const handleNodeClick = useWorkspaceCanvasNodeClick({
+    canvasRef,
+    focusNodeOnClick,
+    focusNodeTargetZoom,
+    reactFlow,
+  })
 
   const handleNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node<TerminalNodeData>) => {
       if (!selectedNodeIdsRef.current.includes(node.id)) {
-        if (node.data.kind !== 'document' && node.data.kind !== 'folder') {
+        // A far view tile stands for its whole window, as a document or folder body does.
+        const farTile = canvasRef.current?.getAttribute(CANVAS_LOD_ATTRIBUTE) === 'far'
+        if (!farTile && node.data.kind !== 'document' && node.data.kind !== 'folder') {
           return
         }
         selectNode(node.id)
@@ -154,7 +147,7 @@ export function useWorkspaceCanvasInteractions({
       event.preventDefault()
       openSelectionContextMenu(event.clientX, event.clientY, node.id)
     },
-    [openSelectionContextMenu, selectNode, selectedNodeIdsRef],
+    [canvasRef, openSelectionContextMenu, selectNode, selectedNodeIdsRef],
   )
 
   const { ignoreNextPaneClickRef, queueIgnoreNextPaneClick } = useIgnoredPaneClick()

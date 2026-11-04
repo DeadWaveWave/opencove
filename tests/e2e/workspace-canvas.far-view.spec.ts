@@ -93,6 +93,59 @@ test('far view draws windows as tiles and leaves running terminals untouched', a
     await expect(window.getByTestId('workspace-far-view')).toHaveCount(0)
     await expect(runtime).toHaveCSS('content-visibility', 'visible')
 
+    // A modified click keeps selecting in far view; a plain click flies to the window.
+    await setZoom(window, 0.2)
+    await expect.poll(() => lodOf(window)).toBe('far')
+    const center = async (locator: typeof noteTile) => {
+      const box = (await locator.boundingBox())!
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    }
+    const notePoint = await center(noteTile)
+    await window.keyboard.down('Shift')
+    await window.mouse.click(notePoint.x, notePoint.y)
+    await window.keyboard.up('Shift')
+    expect(await lodOf(window)).toBe('far')
+    // Dragging a tile moves its window: 60 screen pixels are 300 canvas pixels at 20%, less any
+    // magnetic snapping to the neighbouring window.
+    const dragFrom = await center(noteTile)
+    const noteWindow = window.locator(`.react-flow__node[data-id="${NOTE}"]`)
+    const readNoteX = () =>
+      noteWindow.evaluate(element => new DOMMatrixReadOnly(getComputedStyle(element).transform).m41)
+    const noteX = await readNoteX()
+    await window.mouse.move(dragFrom.x, dragFrom.y)
+    await window.mouse.down()
+    await window.mouse.move(dragFrom.x + 30, dragFrom.y, { steps: 4 })
+    await window.mouse.move(dragFrom.x + 60, dragFrom.y, { steps: 4 })
+    await window.mouse.up()
+    await expect.poll(async () => (await readNoteX()) - noteX).toBeGreaterThan(200)
+    expect(await lodOf(window)).toBe('far')
+
+    // Right-clicking a tile opens its window's menu.
+    await window.mouse.click(1, 1)
+    const terminalPoint = await center(terminalTile)
+    await window.mouse.click(terminalPoint.x, terminalPoint.y, { button: 'right' })
+    await expect(window.getByTestId('workspace-selection-label-color')).toBeVisible()
+    await window.keyboard.press('Escape')
+    await expect(window.getByTestId('workspace-selection-label-color')).toHaveCount(0)
+    expect(await lodOf(window)).toBe('far')
+
+    await window.mouse.click(terminalPoint.x, terminalPoint.y)
+    await expect.poll(() => lodOf(window)).toBe('near')
+    const terminalWindow = window.locator(`.react-flow__node[data-id="${TERMINAL}"]`)
+    await expect
+      .poll(async () => {
+        const canvas = (await window.locator('.workspace-canvas .react-flow').boundingBox())!
+        const box = (await terminalWindow.boundingBox())!
+        // Landed close enough to read: at least 60% zoom, so the window is 276px or wider.
+        return (
+          box.width >= 460 * 0.6 - 1 &&
+          box.x >= canvas.x &&
+          box.x + box.width <= canvas.x + canvas.width
+        )
+      })
+      .toBe(true)
+    expect(await readTerminal(window)).toEqual(before)
+
     // eslint-disable-next-line no-await-in-loop -- each zoom step must land before the next.
     for (const zoom of [0.1, 2, 0.1, 2, 0.1, 2, 1]) {
       // eslint-disable-next-line no-await-in-loop

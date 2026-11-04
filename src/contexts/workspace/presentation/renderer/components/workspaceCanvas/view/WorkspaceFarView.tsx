@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { ViewportPortal, type Node } from '@xyflow/react'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { KindTile } from '@app/renderer/components/ui/KindTile'
@@ -49,6 +49,28 @@ const FarTileView = React.memo(function FarTileView({
   )
 })
 
+/** Tiles and windows cross-fade over this long; reduced motion switches at once. */
+export const FAR_VIEW_FADE_MS = 140
+
+/** Keeps the tiles for one fade after the canvas returns to near view, so they fade out. */
+function useFarViewExit(lod: 'near' | 'far'): boolean {
+  const [leaving, setLeaving] = useState(false)
+  const [previous, setPrevious] = useState(lod)
+  if (previous !== lod) {
+    setPrevious(lod)
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    setLeaving(lod === 'near' && !reducedMotion)
+  }
+  useEffect(() => {
+    if (!leaving) {
+      return undefined
+    }
+    const timer = window.setTimeout(() => setLeaving(false), FAR_VIEW_FADE_MS)
+    return () => window.clearTimeout(timer)
+  }, [leaving])
+  return leaving
+}
+
 /**
  * Far view (Tide phase 4): below 25% zoom every expanded window is drawn as one glass tile with
  * its kind, title and status, in a single layer above the windows. Windows stay mounted at their
@@ -63,13 +85,20 @@ export const WorkspaceFarView = React.memo(function WorkspaceFarView({
   nodes: Node<TerminalNodeData>[]
 }): React.JSX.Element | null {
   const lod = useCanvasLod(canvasRef)
-  const tiles = useMemo(() => (lod === 'far' ? buildFarTiles(nodes) : []), [lod, nodes])
-  if (lod !== 'far') {
+  const leaving = useFarViewExit(lod)
+  const shown = lod === 'far' || leaving
+  const tiles = useMemo(() => (shown ? buildFarTiles(nodes) : []), [shown, nodes])
+  if (!shown) {
     return null
   }
   return (
     <ViewportPortal>
-      <div className="workspace-far-view" data-testid="workspace-far-view" aria-hidden="true">
+      <div
+        className="workspace-far-view"
+        data-testid="workspace-far-view"
+        data-leaving={leaving || undefined}
+        aria-hidden="true"
+      >
         {tiles.map(tile => (
           <FarTileView key={tile.id} {...tile} />
         ))}

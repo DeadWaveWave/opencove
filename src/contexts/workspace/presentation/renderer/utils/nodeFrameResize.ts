@@ -3,7 +3,9 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useStore } from '@xyflow/react'
 import type { NodeFrame, Point, Size } from '../types'
 
-export const NODE_DRAG_HANDLE_SELECTOR = '[data-node-drag-handle=true]'
+/** Windows drag by their header; in far view (Tide phase 4) the whole tile drags its window. */
+export const NODE_DRAG_HANDLE_SELECTOR =
+  "[data-node-drag-handle=true], .workspace-canvas[data-cove-lod='far'] .cove-node-presentation__runtime"
 
 export type ResizeEdge = 'top' | 'right' | 'bottom' | 'left'
 export type ResizeEdges = Partial<Record<ResizeEdge, true>>

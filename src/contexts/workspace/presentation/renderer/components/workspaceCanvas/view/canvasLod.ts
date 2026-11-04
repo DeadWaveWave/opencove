@@ -9,6 +9,9 @@ export const CANVAS_FAR_EXIT_ZOOM = 0.28
 
 export type CanvasLod = 'near' | 'far'
 
+/** Clicking a tile flies at least this close, so the window is readable when it lands. */
+export const FAR_VIEW_FLY_MIN_ZOOM = 0.6
+
 /** The canvas root carries the current level; useSpaceVisualScale is its only writer. */
 export const CANVAS_LOD_ATTRIBUTE = 'data-cove-lod'
 

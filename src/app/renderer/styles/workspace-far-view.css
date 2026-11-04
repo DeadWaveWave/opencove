@@ -14,6 +14,45 @@
   content-visibility: hidden;
 }
 
+/* From the first far frame the window's content takes no pointer events, even while it is still
+   painted during the cross-fade, so clicks always reach the window itself (and fly to it). */
+.workspace-canvas[data-cove-lod='far']
+  .cove-node-presentation:not([data-cove-collapsed])
+  > .cove-node-presentation__runtime
+  > * {
+  pointer-events: none;
+}
+
+/* A 140ms cross-fade (FAR_VIEW_FADE_MS): windows stop painting only once the tiles have faded in
+   over them, and on the way back the tiles fade out over the windows. */
+@media (prefers-reduced-motion: no-preference) {
+  .workspace-canvas[data-cove-lod='far']
+    .cove-node-presentation:not([data-cove-collapsed])
+    > .cove-node-presentation__runtime {
+    transition: content-visibility 140ms allow-discrete;
+  }
+
+  .workspace-far-view {
+    animation: workspace-far-view-in 140ms ease-out;
+  }
+
+  .workspace-far-view[data-leaving] {
+    animation: workspace-far-view-out 140ms ease-in forwards;
+  }
+}
+
+@keyframes workspace-far-view-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes workspace-far-view-out {
+  to {
+    opacity: 0;
+  }
+}
+
 .workspace-far-view {
   position: absolute;
   top: 0;
