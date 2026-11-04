@@ -91,6 +91,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   terminalBackground: DEFAULT_TERMINAL_BACKGROUND_MODE,
   windowKindColorsEnabled: true,
   windowMaterial: 'glass',
+  canvasFarViewEnabled: true,
   terminalDisplayAutoReferenceEnabled: true,
   terminalDisplayCalibrationCompensationEnabled: true,
   terminalDisplayReference: null,

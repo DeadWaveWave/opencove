@@ -72,6 +72,7 @@ export function SettingsPanelContent({
     updateUiTheme,
     updateWindowKindColors,
     updateWindowMaterial,
+    updateCanvasFarView,
     updatePixelEffect,
     updateCanvasBackgroundStyle,
     updatePluginEnabled,
@@ -155,6 +156,8 @@ export function SettingsPanelContent({
           onChangeWindowKindColors={updateWindowKindColors}
           windowMaterial={settings.windowMaterial}
           onChangeWindowMaterial={updateWindowMaterial}
+          canvasFarViewEnabled={settings.canvasFarViewEnabled}
+          onChangeCanvasFarView={updateCanvasFarView}
           onChangeUiTheme={updateUiTheme}
           onChangePixelEffect={updatePixelEffect}
           onChangeCanvasBackgroundStyle={updateCanvasBackgroundStyle}

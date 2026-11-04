@@ -338,6 +338,21 @@
 参考原则：VS Code Sidebar 的稳定项目导航与分组动作，GNOME Sidebar 的清晰导航层级。
 此处沿用应用已有单目录执行模型，不引入多 repo 的隐式目录选择。
 
+### 远景（Tide 第 4 期）
+
+- 画布有两层细节：缩小到 25% 以下进入远景，放大到 28% 以上回到近景（`canvasLod.ts` 的带迟滞纯函数）。
+  `useSpaceVisualScale` 是唯一写入点，只在层级切换时给画布根节点写 `data-cove-lod="far|near"`；
+  组件用 `useCanvasLod` 读它，只在切换时重渲染，缩放过程中不重渲染。网页原生视图用同一组阈值冻结，
+  所以「远」只有一种语义。
+- 远景下，展开的窗口仍然挂载、保持原尺寸，`.cove-node-presentation__runtime` 用
+  `content-visibility: hidden` 跳过绘制（终端、编辑器和网页照常运行，rows/cols 与 PTY 尺寸不变）；
+  `WorkspaceFarView` 在视口门户里用一层玻璃方块画出全部窗口：类别图块、标题、状态点和标记色外圈，
+  背景是类别色按 `--cove-glass-far-tint` 叠在窗口玻璃上（对比度矩阵检查的正是这个组合），标题用
+  `--cove-kind-<族>-far`。方块不接收指针事件，拖拽、框选和右键照旧落在下面的窗口上。已折叠的窗口保持桌面图标。
+- 尺寸都除以门户层上的 `--cove-canvas-zoom`，在屏幕上保持不变；标题字号是
+  `min(15px / zoom, 12cqw, 22cqh)`，小方块里由容器单位收住。窗口类别色关闭时方块只保留中性玻璃。
+- 设置 → 外观 → 窗口 →「远景」可以关闭（`canvasFarViewEnabled`，默认开）；关闭后任何缩放下窗口都是自己。
+
 ### 搜索与快捷控制契约
 
 - 命令中心负责窗口、Space、项目和命令导航；项目搜索负责当前项目的 Space、任务与笔记。

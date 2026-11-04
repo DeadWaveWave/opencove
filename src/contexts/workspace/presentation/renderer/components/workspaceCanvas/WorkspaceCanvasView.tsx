@@ -22,6 +22,7 @@ import { useSpaceWorktreeBusyLabels } from './hooks/useSpaceWorktreeBusyLabels'
 import { WorkspaceCanvasMenus } from './view/WorkspaceCanvasMenus'
 import { WorkspaceCanvasBackground } from './view/WorkspaceCanvasBackground'
 import { WorkspaceEdgeBeacons } from './view/WorkspaceEdgeBeacons'
+import { WorkspaceFarView } from './view/WorkspaceFarView'
 import { WorkspaceCanvasWindows } from './view/WorkspaceCanvasWindows'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
 import { WorkspaceSelectionDraftOverlay } from './view/WorkspaceSelectionDraftOverlay'
@@ -321,6 +322,7 @@ export function WorkspaceCanvasView({
           startSpaceRename={startSpaceRename}
           onOpenSpaceMenu={openSpaceActionMenu}
         />
+        <WorkspaceFarView canvasRef={canvasRef} nodes={filteredNodes} />
         <WorkspaceMinimapDock
           isMinimapVisible={isMinimapVisible}
           minimapNodeColor={minimapNodeColor}

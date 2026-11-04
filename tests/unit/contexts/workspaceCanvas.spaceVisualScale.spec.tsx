@@ -214,6 +214,33 @@ describe('Space visual scale', () => {
     expect(scope.getAttribute('data-cove-space-overview')).toBe('true')
   })
 
+  it('writes the level of detail on the canvas root with hysteresis, only when it steps', () => {
+    const { scope, scopeRef } = createCanvas()
+    renderHook(() => useSpaceVisualScale(scopeRef))
+    expect(scope.getAttribute('data-cove-lod')).toBe('near')
+    const setAttribute = vi.spyOn(scope, 'setAttribute')
+    const lodWrites = () =>
+      setAttribute.mock.calls.filter(([name]) => name === 'data-cove-lod').map(([, value]) => value)
+
+    for (const zoom of [0.5, 0.26, 0.25, 0.2, 0.27, 0.28, 0.29, 1]) {
+      flow.move(0, zoom)
+    }
+    expect(lodWrites()).toEqual(['far', 'near'])
+    expect(scope.getAttribute('data-cove-lod')).toBe('near')
+  })
+
+  it('keeps the canvas near while far view is turned off', () => {
+    const { scope, scopeRef } = createCanvas()
+    flow.move(0, 0.1)
+    const { rerender } = renderHook(
+      ({ farViewEnabled }) => useSpaceVisualScale(scopeRef, { farViewEnabled }),
+      { initialProps: { farViewEnabled: false } },
+    )
+    expect(scope.getAttribute('data-cove-lod')).toBe('near')
+    rerender({ farViewEnabled: true })
+    expect(scope.getAttribute('data-cove-lod')).toBe('far')
+  })
+
   it('restores previous values on unmount and leaves values owned by others', () => {
     const { scope, spaceLayer, scopeRef } = createCanvas()
     spaceLayer.style.setProperty('--cove-canvas-zoom', '0.75')
@@ -229,5 +256,6 @@ describe('Space visual scale', () => {
     expect(spaceLayer.style.getPropertyValue('--cove-space-stroke-scale')).toBe('external-owner')
     expect(scope.style.getPropertyValue('--cove-node-identity-stripe-height')).toBe('')
     expect(scope.hasAttribute('data-cove-space-overview')).toBe(false)
+    expect(scope.hasAttribute('data-cove-lod')).toBe(false)
   })
 })

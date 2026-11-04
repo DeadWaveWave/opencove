@@ -8,25 +8,17 @@ import {
   viewportStateEqual,
   type WebsiteViewportState,
 } from './WebsiteNode.helpers'
+import { resolveCanvasLod } from './workspaceCanvas/view/canvasLod'
 
 const CANVAS_ZOOM_FREEZE_RELEASE_DELAY_MS = 260
-const CANVAS_ZOOM_MIN_LIVE_ENTER = 0.25
-const CANVAS_ZOOM_MIN_LIVE_EXIT = 0.28
 const VIEWPORT_FOCUS_SNAPSHOT_ENTER_RATIO = 0.8
 const VIEWPORT_FOCUS_SNAPSHOT_EXIT_RATIO = 0.7
 const VIEWPORT_FOCUS_POLL_INTERVAL_MS = 140
 const VIEWPORT_FOCUS_ACTIVATION_GRACE_PERIOD_MS = 900
 
+/** Native views freeze on the canvas's far-view thresholds, whether or not far view is drawn. */
 function resolveCanvasZoomTooSmallForLiveView(nextZoom: number, wasTooSmall: boolean): boolean {
-  if (!Number.isFinite(nextZoom) || nextZoom <= 0) {
-    return false
-  }
-
-  if (wasTooSmall) {
-    return nextZoom <= CANVAS_ZOOM_MIN_LIVE_EXIT
-  }
-
-  return nextZoom <= CANVAS_ZOOM_MIN_LIVE_ENTER
+  return resolveCanvasLod(nextZoom, wasTooSmall ? 'far' : 'near') === 'far'
 }
 
 export function useWebsiteNodeNativeView({

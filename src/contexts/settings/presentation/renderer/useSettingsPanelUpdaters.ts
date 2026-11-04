@@ -136,6 +136,7 @@ export function createSettingsPanelUpdaters({
       updateSetting('windowKindColorsEnabled', enabled),
     updateWindowMaterial: (material: AgentSettings['windowMaterial']): void =>
       updateSetting('windowMaterial', material),
+    updateCanvasFarView: (enabled: boolean): void => updateSetting('canvasFarViewEnabled', enabled),
     updateTerminalBackground: (mode: AgentSettings['terminalBackground']): void =>
       updateSetting('terminalBackground', mode),
     updateTerminalAutoReference: (enabled: boolean): void =>

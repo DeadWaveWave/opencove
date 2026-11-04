@@ -58,6 +58,8 @@ export interface WindowAppearanceSettings {
   windowKindColorsEnabled: boolean
   /** Glass, or solid windows, menus and panels with no blur; the system preference forces solid. */
   windowMaterial: WindowMaterial
+  /** Below 25% zoom windows become tiles with their kind, title and status (Tide far view). */
+  canvasFarViewEnabled: boolean
 }
 
 export interface AgentSettings extends PixelEffectSettings, WindowAppearanceSettings {

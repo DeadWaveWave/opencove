@@ -69,6 +69,15 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     ],
   },
   {
+    id: 'appearance.far-view',
+    pageId: 'appearance',
+    titleKey: 'settingsPanel.appearanceNext.farView',
+    descriptionKey: 'settingsPanel.appearanceNext.farViewHelp',
+    anchorId: 'settings-canvas-far-view',
+    keywords: ['far', 'zoom', 'overview', 'tile', 'level of detail', 'lod', '远景', '缩放', '方块'],
+  },
+
+  {
     id: 'general.theme',
     pageId: 'appearance',
     titleKey: 'settingsPanel.general.uiThemeLabel',

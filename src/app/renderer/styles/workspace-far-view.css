@@ -1,0 +1,156 @@
+/*
+ * Far view (Tide phase 4). useSpaceVisualScale sets data-cove-lod="far" on the canvas below 25%
+ * zoom and back to "near" above 28%. Expanded windows stay mounted at their size, but their
+ * content is skipped (content-visibility keeps runtimes and their geometry untouched and is the
+ * cheapest way to stop painting them); one layer of glass tiles in the viewport portal draws them
+ * instead. Collapsed windows keep their desktop icons. Tiles never take pointer events, so dragging,
+ * selecting and right-clicking reach the windows underneath. Sizes are divided by the zoom, which
+ * the portal layer carries, so they stay the same on screen; container units keep them inside
+ * small tiles.
+ */
+.workspace-canvas[data-cove-lod='far']
+  .cove-node-presentation:not([data-cove-collapsed])
+  > .cove-node-presentation__runtime {
+  content-visibility: hidden;
+}
+
+.workspace-far-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Above the windows (z-index 1), which keep handling pointer events through the tiles. */
+  z-index: 2;
+  pointer-events: none;
+}
+
+.workspace-far-tile {
+  --workspace-far-tile-solid: var(--cove-kind-neutral-solid, transparent);
+  --workspace-far-tile-title: var(--cove-text);
+  --workspace-far-tile-zoom: var(--cove-canvas-zoom, 1);
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  container-type: size;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: min(calc(var(--cove-spacing-2) / var(--workspace-far-tile-zoom)), 6cqh);
+  padding: min(calc(var(--cove-spacing-2) / var(--workspace-far-tile-zoom)), 8cqmin);
+  overflow: hidden;
+  border-radius: min(calc(var(--cove-radius-md) / var(--workspace-far-tile-zoom)), 12cqmin);
+  /* The kind tint over the window glass: the composition the contrast matrix checks. */
+  --workspace-far-tile-tint: color-mix(
+    in srgb,
+    var(--workspace-far-tile-solid) var(--cove-glass-far-tint, 20%),
+    transparent
+  );
+  background:
+    linear-gradient(var(--workspace-far-tile-tint), var(--workspace-far-tile-tint)),
+    var(--cove-node-surface);
+  box-shadow: inset 0 0 0 calc(1px / var(--workspace-far-tile-zoom)) var(--cove-node-border);
+  color: var(--workspace-far-tile-title);
+}
+
+.workspace-far-tile[data-cove-kind='ai'] {
+  --workspace-far-tile-solid: var(--cove-kind-ai-solid, transparent);
+  --workspace-far-tile-title: var(--cove-kind-ai-far, var(--cove-text));
+}
+
+.workspace-far-tile[data-cove-kind='shell'] {
+  --workspace-far-tile-solid: var(--cove-kind-shell-solid, transparent);
+  --workspace-far-tile-title: var(--cove-kind-shell-far, var(--cove-text));
+}
+
+.workspace-far-tile[data-cove-kind='plan'] {
+  --workspace-far-tile-solid: var(--cove-kind-plan-solid, transparent);
+  --workspace-far-tile-title: var(--cove-kind-plan-far, var(--cove-text));
+}
+
+.workspace-far-tile[data-cove-kind='knowledge'] {
+  --workspace-far-tile-solid: var(--cove-kind-knowledge-solid, transparent);
+  --workspace-far-tile-title: var(--cove-kind-knowledge-far, var(--cove-text));
+}
+
+.workspace-far-tile[data-cove-kind='media'] {
+  --workspace-far-tile-solid: var(--cove-kind-media-solid, transparent);
+  --workspace-far-tile-title: var(--cove-kind-media-far, var(--cove-text));
+}
+
+/* Settings → Appearance → Window Kind Colours off: tiles keep only the neutral glass. */
+:root[data-cove-kind-colors='off'] .workspace-far-tile[data-cove-kind] {
+  --workspace-far-tile-solid: var(--cove-kind-neutral-solid, transparent);
+  --workspace-far-tile-title: var(--cove-text);
+}
+
+/* Labels keep their channel: a ring in the label colour, never the tile. */
+.workspace-far-tile[data-cove-label-color] {
+  box-shadow: inset 0 0 0 calc(2px / var(--workspace-far-tile-zoom)) var(--cove-label-color);
+}
+
+.workspace-far-tile[data-selected] {
+  outline: calc(2px / var(--workspace-far-tile-zoom)) solid var(--cove-focus-ring);
+  outline-offset: calc(2px / var(--workspace-far-tile-zoom));
+}
+
+.workspace-far-tile__kind.cove-kind-tile {
+  flex: none;
+  width: min(calc(32px / var(--workspace-far-tile-zoom)), 32cqh, 36cqw);
+  height: min(calc(32px / var(--workspace-far-tile-zoom)), 32cqh, 36cqw);
+  border-radius: min(calc(var(--cove-radius-xs) / var(--workspace-far-tile-zoom)), 8cqmin);
+  box-shadow: inset 0 0 0 calc(1px / var(--workspace-far-tile-zoom)) var(--cove-kind-tile-line);
+}
+
+.workspace-far-tile__kind.cove-kind-tile > svg,
+.workspace-far-tile__kind.cove-kind-tile > img,
+.workspace-far-tile__kind.cove-kind-tile > .agent-provider-icon {
+  width: 60%;
+  height: 60%;
+}
+
+.workspace-far-tile__kind.cove-kind-tile > .agent-provider-icon {
+  border: 0;
+  background: transparent;
+}
+
+.workspace-far-tile__kind.cove-kind-tile > .agent-provider-icon > :is(svg, img) {
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-far-tile__title {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-family: var(--cove-font-ui);
+  font-size: min(
+    calc(var(--cove-font-size-emphasis) / var(--workspace-far-tile-zoom)),
+    12cqw,
+    18cqh
+  );
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.workspace-far-tile__signal {
+  position: absolute;
+  top: min(calc(var(--cove-spacing-2) / var(--workspace-far-tile-zoom)), 8cqmin);
+  right: min(calc(var(--cove-spacing-2) / var(--workspace-far-tile-zoom)), 8cqmin);
+  width: min(calc(8px / var(--workspace-far-tile-zoom)), 10cqmin);
+  height: min(calc(8px / var(--workspace-far-tile-zoom)), 10cqmin);
+  border-radius: 50%;
+  background: var(--cove-accent);
+}
+
+.workspace-far-tile__signal[data-signal='waiting'] {
+  background: var(--cove-status-waiting, var(--cove-accent));
+}
+
+.workspace-far-tile__signal[data-signal='failed'] {
+  background: var(--cove-status-failed, var(--cove-accent));
+}
