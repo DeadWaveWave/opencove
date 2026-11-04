@@ -11,6 +11,7 @@ import {
 } from './workspace-canvas.helpers'
 import { pluginCli, savedCommandNodes } from './plugins.commands.helpers'
 import { capturePlugins, pluginCommand } from './plugins.local.helpers'
+import { chooseSettingsUiTheme } from '../helpers/settingsUiTheme'
 
 test('renders a declared Sidebar tree, routes only the clicked backend action, and removes disabled sections', async ({
   browserName: _,
@@ -116,7 +117,7 @@ test('renders a declared Sidebar tree, routes only the clicked backend action, a
     await section.getByRole('button', { name: 'Workspace', exact: true }).click()
     await page.getByTestId('app-header-settings').click()
     await page.getByTestId('settings-section-nav-appearance').click()
-    await page.getByTestId('settings-ui-theme-pixel-light').click()
+    await chooseSettingsUiTheme(page, 'pixel-light')
     await page.locator('.settings-panel__close').click()
     await capturePlugins(page, info, 'plugin-sidebar-light')
     await page.setViewportSize({ width: 390, height: 780 })

@@ -2,22 +2,34 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  margin-bottom: 12px;
 }
 
 .settings-theme-gallery__family {
+  display: block;
   min-width: 0;
   padding: 10px;
   border: 1px solid var(--cove-border-subtle);
-  border-radius: var(--cove-radius-md);
-  background: transparent;
+  border-radius: var(--cove-radius-lg);
+  background: var(--cove-settings-group-surface);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
 }
 
-.settings-theme-gallery__family[data-current='true'] {
+.settings-theme-gallery__family:hover {
+  border-color: var(--cove-border);
+}
+
+.settings-theme-gallery__family[aria-pressed='true'] {
   border-color: var(--cove-accent);
+  box-shadow: inset 0 0 0 1px var(--cove-accent);
 }
 
 .settings-theme-gallery__sample {
   --cove-gallery-accent: var(--cove-theme-preview-accent);
+  display: block;
   position: relative;
   height: 72px;
   overflow: hidden;
@@ -71,13 +83,6 @@
   font-weight: 500;
 }
 
-.settings-theme-gallery__pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px;
-}
-
-.settings-theme-gallery__pair button,
 .settings-theme-gallery__system-button {
   display: inline-flex;
   align-items: center;
@@ -95,13 +100,11 @@
   cursor: pointer;
 }
 
-.settings-theme-gallery__pair button:hover,
 .settings-theme-gallery__system-button:hover {
   background: var(--cove-control-hover);
   color: var(--cove-text);
 }
 
-.settings-theme-gallery__pair button[aria-pressed='true'],
 .settings-theme-gallery__system-button[aria-pressed='true'] {
   background: var(--cove-control-selected);
   color: var(--cove-accent-text);
@@ -111,16 +114,6 @@
 .settings-terminal-calibration > summary:focus-visible {
   outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
-}
-
-.settings-theme-gallery__system {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 10px;
-  color: var(--cove-text-muted);
-  font-size: calc(11px * var(--cove-ui-font-scale));
 }
 
 .settings-theme-gallery__system-button {

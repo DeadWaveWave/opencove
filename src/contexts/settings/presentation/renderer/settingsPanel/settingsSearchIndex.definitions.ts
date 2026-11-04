@@ -56,6 +56,14 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['theme', 'dark', 'light', 'appearance', '外观', '主题'],
   },
   {
+    id: 'appearance.mode',
+    pageId: 'appearance',
+    titleKey: 'settingsPanel.appearanceNext.mode',
+    descriptionKey: 'settingsPanel.appearanceNext.modeHelp',
+    anchorId: 'settings-ui-theme',
+    keywords: ['dark', 'light', 'system', 'mode', '浅色', '深色', '跟随系统'],
+  },
+  {
     id: 'general.ui-font-size',
     pageId: 'appearance',
     titleKey: 'settingsPanel.general.interfaceFontSize',

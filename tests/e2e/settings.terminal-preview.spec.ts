@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop -- Themes and viewports share one Electron window and must settle sequentially. */
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { chooseSettingsUiTheme } from '../helpers/settingsUiTheme'
 
 test('updates terminal preview material through the theme buttons without replacing its DOM', async ({
   browserName: _browserName,
@@ -10,7 +11,7 @@ test('updates terminal preview material through the theme buttons without replac
     await clearAndSeedWorkspace(page, [], { settings: { uiTheme: 'dark' } })
     await page.getByTestId('app-header-settings').click()
     await page.getByTestId('settings-section-nav-appearance').click()
-    await page.getByTestId('settings-ui-theme-pixel').click()
+    await chooseSettingsUiTheme(page, 'pixel')
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel')
     const preview = page.getByTestId('settings-pixel-effects-preview')
     const original = await preview.elementHandle()
@@ -27,7 +28,7 @@ test('updates terminal preview material through the theme buttons without replac
       body: getComputedStyle(element).backgroundColor,
       accent: getComputedStyle(element).getPropertyValue('--cove-pixel-blue'),
     }))
-    await page.getByTestId('settings-ui-theme-pixel-light').click()
+    await chooseSettingsUiTheme(page, 'pixel-light')
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
     expect(await preview.evaluate((element, previous) => element === previous, original)).toBe(true)
     await expect

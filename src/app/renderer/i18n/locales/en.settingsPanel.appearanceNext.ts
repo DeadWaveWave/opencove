@@ -2,7 +2,9 @@ export const enSettingsPanelAppearanceNext = {
   themes: 'Theme',
   light: 'Light',
   dark: 'Dark',
-  systemHelp: 'Or let Cove follow your system’s light and dark appearance.',
+  mode: 'Appearance',
+  modeHelp:
+    'Follow System switches with your system’s light and dark appearance. Pixel has light and dark only.',
   system: 'Follow System',
   interfaceText: 'Interface Text',
   preview: 'Canvas preview',

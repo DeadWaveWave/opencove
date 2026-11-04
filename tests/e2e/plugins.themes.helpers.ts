@@ -9,6 +9,7 @@ export {
   themePluginId,
   themeIdentity,
 } from '../helpers/pluginThemeFixture'
+import { chooseSettingsUiTheme } from '../helpers/settingsUiTheme'
 export const themeNoteId = 'theme-expanded-note'
 export const themeCompactId = 'theme-compact-note'
 export const themeSpaceId = 'theme-space'
@@ -68,7 +69,7 @@ export async function seedThemeWorkspace(page: Page) {
 export async function chooseTheme(page: Page, themeId: string) {
   await page.getByTestId('app-header-settings').click()
   await page.getByTestId('settings-section-nav-appearance').click()
-  await page.getByTestId(`settings-ui-theme-${themeId}`).click()
+  await chooseSettingsUiTheme(page, themeId)
   await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', themeId)
   await page.locator('.settings-panel__close').click()
   await page.mouse.move(1, 1)

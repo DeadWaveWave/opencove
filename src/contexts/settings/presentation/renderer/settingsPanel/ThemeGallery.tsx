@@ -1,23 +1,37 @@
 import { useThemeApplicationStatus } from '@contexts/plugins/presentation/renderer/themeApplication'
 import { usePluginRegistry } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import { availablePluginThemes } from '@contexts/plugins/domain/pluginThemes'
-import { Check, Monitor } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
-import { getUiThemeLabel } from '@app/renderer/i18n/labels'
+import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import {
   DEFAULT_UI_THEME,
-  UI_THEME_DESCRIPTORS,
-  type BuiltinUiTheme,
   type UiTheme,
   type UiThemeFamily,
 } from '@contexts/settings/domain/uiSettings'
+import {
+  describeUiThemeChoice,
+  resolveUiThemeChoice,
+  uiThemeModesFor,
+  type UiThemeMode,
+} from '@contexts/settings/domain/uiThemeChoice'
+import { SettingsGroupBody } from './SettingsGroup'
 
-// Family names are product names and stay untranslated; System follows the Cove family.
-const families: Array<{ id: UiThemeFamily; title: string; light: UiTheme; dark: UiTheme }> = [
-  { id: 'cove', title: 'Cove', light: 'light', dark: 'dark' },
-  { id: 'pixel', title: 'Pixel', light: 'pixel-light', dark: 'pixel' },
+// Family names are product names and stay untranslated.
+const families: Array<{ id: UiThemeFamily; title: string }> = [
+  { id: 'cove', title: 'Cove' },
+  { id: 'pixel', title: 'Pixel' },
 ]
 
+const prefersDark = () =>
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-color-scheme: dark)').matches
+
+/**
+ * The theme is a family (the cards) plus an appearance (one segmented row), as in the Tide
+ * settings and the control center. Plugin themes are listed below and carry their own appearance.
+ */
 export function ThemeGallery({
   value,
   onChange,
@@ -29,7 +43,12 @@ export function ThemeGallery({
   const applied = useThemeApplicationStatus()
   const { plugins } = usePluginRegistry()
   const pluginThemes = availablePluginThemes(plugins)
-  const currentFamily = UI_THEME_DESCRIPTORS[value as BuiltinUiTheme]?.family
+  const choice = describeUiThemeChoice(value)
+  const family = choice.family ?? 'cove'
+  // A plugin theme has no mode here; picking a family keeps what the window shows now.
+  const mode: UiThemeMode =
+    choice.mode ?? (document.documentElement.dataset.coveTheme === 'light' ? 'light' : 'dark')
+  const modes = uiThemeModesFor(family)
   return (
     <div
       className="settings-theme-gallery"
@@ -39,36 +58,44 @@ export function ThemeGallery({
       aria-label={t('settingsPanel.general.uiThemeLabel')}
     >
       <div className="settings-theme-gallery__families">
-        {families.map(family => (
-          <div
+        {families.map(item => (
+          <button
+            type="button"
             className="settings-theme-gallery__family"
-            data-theme-family={family.id}
-            data-current={currentFamily === family.id}
-            key={family.id}
+            data-theme-family={item.id}
+            data-testid={`settings-ui-theme-family-${item.id}`}
+            aria-pressed={choice.family === item.id}
+            key={item.id}
+            onClick={() => onChange(resolveUiThemeChoice(item.id, mode, prefersDark()))}
           >
-            <div className="settings-theme-gallery__sample" aria-hidden="true">
+            <span className="settings-theme-gallery__sample" aria-hidden="true">
               <span className="settings-theme-gallery__sample-window" />
               <span className="settings-theme-gallery__sample-window" />
-            </div>
-            <span className="settings-theme-gallery__name">{family.title}</span>
-            <div className="settings-theme-gallery__pair">
-              {(['light', 'dark'] as const).map(mode => (
-                <button
-                  type="button"
-                  key={mode}
-                  data-testid={`settings-ui-theme-${family[mode]}`}
-                  aria-label={getUiThemeLabel(t, family[mode])}
-                  aria-pressed={value === family[mode]}
-                  onClick={() => onChange(family[mode])}
-                >
-                  {t(`settingsPanel.appearanceNext.${mode}`)}
-                  {value === family[mode] ? <Check size={12} aria-hidden="true" /> : null}
-                </button>
-              ))}
-            </div>
-          </div>
+            </span>
+            <span className="settings-theme-gallery__name">{item.title}</span>
+          </button>
         ))}
       </div>
+      <SettingsGroupBody>
+        <SettingRow
+          label={t('settingsPanel.appearanceNext.mode')}
+          description={t('settingsPanel.appearanceNext.modeHelp')}
+          control={
+            <SegmentedControl
+              testId="settings-ui-theme-mode"
+              value={mode}
+              disabled={choice.family === null}
+              onValueChange={next => onChange(resolveUiThemeChoice(family, next, prefersDark()))}
+              options={(['light', 'dark', 'system'] as const).map(option => ({
+                value: option,
+                label: t(`settingsPanel.appearanceNext.${option}`),
+                testId: `settings-ui-theme-mode-${option}`,
+                disabled: !modes.includes(option),
+              }))}
+            />
+          }
+        />
+      </SettingsGroupBody>
       {value.startsWith('plugin:') && !pluginThemes.some(item => item.id === value) ? (
         <p role="status">{t('pluginHostExtensions.unavailableTheme')}</p>
       ) : null}
@@ -96,20 +123,6 @@ export function ThemeGallery({
           {value === id ? <Check size={13} aria-hidden="true" /> : null}
         </button>
       ))}
-      <div className="settings-theme-gallery__system">
-        <span>{t('settingsPanel.appearanceNext.systemHelp')}</span>
-        <button
-          type="button"
-          className="settings-theme-gallery__system-button"
-          data-testid="settings-ui-theme-system"
-          aria-pressed={value === 'system'}
-          onClick={() => onChange('system')}
-        >
-          <Monitor size={14} aria-hidden="true" />
-          {t('settingsPanel.appearanceNext.system')}
-          {value === 'system' ? <Check size={13} aria-hidden="true" /> : null}
-        </button>
-      </div>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test'
 import { viewStateStorageKey } from './workspace-canvas.helpers'
+import { chooseSettingsUiTheme } from '../helpers/settingsUiTheme'
 
 export async function readCanvasViewport(
   window: Page,
@@ -120,10 +121,7 @@ export async function selectCoveOption(
   optionValue: string,
 ): Promise<void> {
   if (testId === 'settings-ui-theme') {
-    const choice = window.getByTestId(`settings-ui-theme-${optionValue}`)
-    await expect(choice).toBeVisible()
-    await choice.click()
-    await expect(choice).toHaveAttribute('aria-pressed', 'true')
+    await chooseSettingsUiTheme(window, optionValue)
     await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', optionValue)
     return
   }

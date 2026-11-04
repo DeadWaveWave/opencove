@@ -90,10 +90,11 @@ test.describe('Settings', () => {
       const uiThemeGallery = window.getByTestId('settings-ui-theme')
       await expect(uiThemeGallery).toBeVisible()
       await selectCoveOption(window, 'settings-ui-theme', 'light')
-      await expect(window.getByTestId('settings-ui-theme-light')).toHaveAttribute(
+      await expect(window.getByTestId('settings-ui-theme-family-cove')).toHaveAttribute(
         'aria-pressed',
         'true',
       )
+      await expect(window.getByTestId('settings-ui-theme-mode-light')).toBeChecked()
       await expect
         .poll(() =>
           window.evaluate(() => {
