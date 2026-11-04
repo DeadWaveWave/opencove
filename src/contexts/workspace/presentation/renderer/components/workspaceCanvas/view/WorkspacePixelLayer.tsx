@@ -195,6 +195,12 @@ function WorkspacePixelLayerComponent({
       },
     })
 
+    // Unfocused windows keep their ambient motion at a third of the rate (Tide phase 5.1).
+    const syncFocus = () => {
+      const focused = document.hasFocus()
+      canvas.dataset.covePixelFocus = focused ? 'focused' : 'unfocused'
+      scheduler.setFocused(focused)
+    }
     const syncVisibility = () => {
       const visible = isVisible()
       canvas.dataset.covePixelVisibility = visible ? 'visible' : 'hidden'
@@ -382,6 +388,8 @@ function WorkspacePixelLayerComponent({
         : null
     observer?.observe(scope)
     document.addEventListener('visibilitychange', syncVisibility)
+    window.addEventListener('focus', syncFocus)
+    window.addEventListener('blur', syncFocus)
     document.addEventListener('pointerdown', revealForPointer, true)
     document.addEventListener('keydown', revealForKey, true)
     document.addEventListener('focusin', revealForFocus, true)
@@ -389,6 +397,7 @@ function WorkspacePixelLayerComponent({
     window.addEventListener('opencove-theme-changed', onThemeChange)
     window.addEventListener('resize', refresh)
     onMotionChange()
+    syncFocus()
     syncOptions()
     syncVisibility()
     scheduler.invalidate()
@@ -413,6 +422,8 @@ function WorkspacePixelLayerComponent({
       unsubscribeStore()
       observer?.disconnect()
       document.removeEventListener('visibilitychange', syncVisibility)
+      window.removeEventListener('focus', syncFocus)
+      window.removeEventListener('blur', syncFocus)
       document.removeEventListener('pointerdown', revealForPointer, true)
       document.removeEventListener('keydown', revealForKey, true)
       document.removeEventListener('focusin', revealForFocus, true)
