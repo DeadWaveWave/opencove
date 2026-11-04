@@ -1,0 +1,178 @@
+/* Space card: a live mini map beside the Space name and what is happening in it, the agents
+   below. The label colour is a short stripe on the card's edge. */
+.workspace-space-group--space {
+  gap: var(--cove-spacing-1);
+  padding: var(--cove-spacing-2);
+  border-radius: var(--cove-radius-md);
+  background: color-mix(in srgb, var(--cove-text) 4%, transparent);
+  box-shadow: inset 0 0 0 1px var(--cove-border-subtle);
+}
+
+.workspace-space-group--space::before {
+  inset: 12px auto auto 0;
+  width: 3px;
+  height: 24px;
+  border-radius: 0 var(--cove-radius-xs) var(--cove-radius-xs) 0;
+  background: var(--workspace-space-mark);
+}
+
+.workspace-space-group > .workspace-space-item.workspace-space-item--card {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-auto-columns: auto;
+  grid-auto-flow: column;
+  align-items: center;
+  column-gap: var(--cove-spacing-2);
+  border: 0;
+  background: transparent;
+}
+
+.workspace-space-item--card > .workspace-space-item__select {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-height: 0;
+  padding: 2px 0;
+  border-radius: var(--cove-radius-xs);
+}
+
+.workspace-space-item--card .workspace-space-item__name {
+  font-size: var(--cove-font-size-body);
+  font-weight: 600;
+}
+
+/* Counts are told apart by colour and spacing, so a wrapped line never starts with a separator. */
+.workspace-space-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--cove-spacing-2);
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  line-height: 1.35;
+}
+
+.workspace-space-item__meta-working {
+  color: var(--cove-status-working-text, var(--cove-accent));
+}
+
+.workspace-space-item__meta-waiting {
+  color: var(--cove-status-waiting-text, var(--cove-warning));
+}
+
+/* Actions appear on hover or focus so the name keeps the card's width at rest. */
+.workspace-space-item--card > .workspace-sidebar__row-more,
+.workspace-space-item--card > .workspace-space-item__pin {
+  display: none;
+}
+
+.workspace-space-item--card:hover > .workspace-sidebar__row-more,
+.workspace-space-item--card:focus-within > .workspace-sidebar__row-more,
+.workspace-space-item--card:hover > .workspace-space-item__pin,
+.workspace-space-item--card:focus-within > .workspace-space-item__pin,
+.workspace-sidebar--mobile .workspace-space-item--card > .workspace-sidebar__row-more {
+  display: inline-flex;
+}
+
+.workspace-space-group--space > .workspace-space-group__branch {
+  padding-left: 0;
+}
+
+/* Mini map: windows drawn in the Space's own frame over a faint pixel grid. */
+.workspace-space-minimap {
+  position: relative;
+  width: 64px;
+  max-height: 61px;
+  overflow: hidden;
+  border-radius: var(--cove-radius-xs);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--cove-text) 7%, transparent) 0 1px,
+      transparent 1px 5px
+    ),
+    repeating-linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--cove-text) 7%, transparent) 0 1px,
+      transparent 1px 5px
+    ),
+    color-mix(in srgb, var(--cove-app-background) 72%, transparent);
+  box-shadow: inset 0 0 0 1px var(--cove-border-subtle);
+  cursor: pointer;
+}
+
+.workspace-space-minimap__window {
+  --workspace-space-minimap-window: var(--cove-kind-neutral-solid, var(--cove-text-faint));
+  position: absolute;
+  min-width: 3px;
+  min-height: 3px;
+  border-radius: calc(var(--cove-radius-xs) / 4);
+  background: var(--workspace-space-minimap-window);
+  opacity: 0.82;
+}
+
+.workspace-space-minimap__window[data-family='ai'] {
+  --workspace-space-minimap-window: var(--cove-kind-ai-solid, var(--cove-label-purple));
+}
+
+.workspace-space-minimap__window[data-family='shell'] {
+  --workspace-space-minimap-window: var(--cove-kind-shell-solid, var(--cove-label-green));
+}
+
+.workspace-space-minimap__window[data-family='plan'] {
+  --workspace-space-minimap-window: var(--cove-kind-plan-solid, var(--cove-label-orange));
+}
+
+.workspace-space-minimap__window[data-family='knowledge'] {
+  --workspace-space-minimap-window: var(--cove-kind-knowledge-solid, var(--cove-label-blue));
+}
+
+.workspace-space-minimap__window[data-family='media'] {
+  --workspace-space-minimap-window: var(--cove-kind-media-solid, var(--cove-text-faint));
+}
+
+.workspace-space-minimap__window:hover {
+  z-index: 1;
+  opacity: 1;
+  box-shadow: 0 0 0 1.5px var(--cove-text);
+}
+
+.workspace-space-minimap__window[data-status='working'] {
+  animation: workspace-space-minimap-working 1.1s steps(1, end) infinite;
+}
+
+.workspace-space-minimap__window[data-status='waiting'] {
+  background: var(--cove-status-waiting, var(--cove-warning));
+  box-shadow: 0 0 6px var(--cove-status-waiting, var(--cove-warning));
+  opacity: 1;
+}
+
+.workspace-space-minimap__window[data-status='failed'] {
+  background: var(--cove-status-failed, var(--cove-danger));
+  opacity: 1;
+}
+
+@keyframes workspace-space-minimap-working {
+  0%,
+  49% {
+    opacity: 1;
+    filter: brightness(1.35);
+  }
+  50%,
+  100% {
+    opacity: 0.72;
+    filter: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .workspace-space-item--card > .workspace-sidebar__row-more {
+    display: inline-flex;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-space-minimap__window[data-status='working'] {
+    animation: none;
+    opacity: 1;
+  }
+}

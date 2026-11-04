@@ -17,6 +17,9 @@ import { SidebarAgentItems } from './SidebarAgentItems'
 import { createSpaceSortableId, sidebarSortableTransition } from './SidebarDnd'
 import { ProjectIcon } from './ProjectIcon'
 import { useAppStore } from '../store/useAppStore'
+import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
+import { buildSpaceMinimap, type SpaceMinimapModel } from '../utils/spaceMinimap'
+import { SidebarSpaceMinimap } from './SidebarSpaceMinimap'
 
 export function getTreeChildGroups(tree: SidebarProjectTreeModel): SidebarSpaceGroupModel[] {
   return [tree.projectRootGroup, ...tree.spaceGroups]
@@ -30,7 +33,27 @@ type NavigationProps = {
   onRestoreSidebarItem?: (kind: 'space' | 'agent', id: string, name: string) => void
 }
 
+function SpaceMeta({ minimap }: { minimap: SpaceMinimapModel }): React.JSX.Element {
+  const { t } = useTranslation()
+  return (
+    <span className="workspace-space-item__meta">
+      {minimap.workingCount > 0 ? (
+        <span className="workspace-space-item__meta-working">
+          {t('sidebar.space.working', { count: minimap.workingCount })}
+        </span>
+      ) : null}
+      {minimap.waitingCount > 0 ? (
+        <span className="workspace-space-item__meta-waiting">
+          {t('sidebar.space.waiting', { count: minimap.waitingCount })}
+        </span>
+      ) : null}
+      <span>{t('sidebar.space.windows', { count: minimap.windows.length })}</span>
+    </span>
+  )
+}
+
 function SpaceGroup({
+  workspace,
   workspaceId,
   group,
   isActive,
@@ -43,6 +66,7 @@ function SpaceGroup({
   onOpenProjectContextMenu,
   onRestoreSidebarItem,
 }: NavigationProps & {
+  workspace: WorkspaceState
   workspaceId: string
   group: SidebarSpaceGroupModel
   isActive: boolean
@@ -55,6 +79,7 @@ function SpaceGroup({
   const label = isRoot ? t('sidebar.rootCanvas') : group.name
   const hasAgents = group.agents.length > 0
   const isPinned = group.space?.pinned === true
+  const minimap = group.space ? buildSpaceMinimap(workspace, group.space) : null
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: isRoot ? `${workspaceId}:${group.id}` : createSpaceSortableId(workspaceId, group.id),
     disabled: isRoot,
@@ -87,8 +112,16 @@ function SpaceGroup({
     >
       <div
         data-cove-part="sidebar-space"
-        className={`workspace-space-item${isRoot ? ' workspace-space-item--root' : ''}`}
+        className={`workspace-space-item${isRoot ? ' workspace-space-item--root' : ''}${minimap ? ' workspace-space-item--card' : ''}`}
       >
+        {minimap && group.space ? (
+          <SidebarSpaceMinimap
+            model={minimap}
+            testId={`workspace-space-minimap-${workspaceId}-${group.id}`}
+            onSelectWindow={nodeId => onSelectAgentNode(workspaceId, nodeId)}
+            onSelectSpace={() => onSelectSpace(workspaceId, group.id)}
+          />
+        ) : null}
         <button
           type="button"
           className="workspace-space-item__select"
@@ -111,12 +144,13 @@ function SpaceGroup({
               : onSelectProjectCanvas(workspaceId)
           }
         >
-          {isRoot ? (
+          {minimap ? null : isRoot ? (
             <LayoutDashboard size={14} aria-hidden="true" />
           ) : (
             <Scan size={16} aria-hidden="true" />
           )}
           <span className="workspace-space-item__name">{label}</span>
+          {minimap ? <SpaceMeta minimap={minimap} /> : null}
         </button>
         {!isRoot && group.sidebarHidden ? (
           <button
@@ -242,6 +276,7 @@ export function SidebarWorkspaceNavigation({
         {tree.spaceGroups.map(group => (
           <SpaceGroup
             key={group.id}
+            workspace={workspace}
             workspaceId={workspace.id}
             group={group}
             isActive={isActive && !currentNodeId && group.id === workspace.activeSpaceId}
