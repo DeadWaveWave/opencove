@@ -1,10 +1,15 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { HmrContext, Plugin } from 'vite'
 import config from '../../../electron.vite.config'
-import { fingerprintRuntimeSources } from '../../../scripts/lib/runtime-build-identity'
+import * as buildIdentity from '../../../scripts/lib/runtime-build-identity'
+import { runtimeBuildFixture } from '../../helpers/runtimeBuild'
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('runtime source identity', () => {
   it('invalidates the renderer identity when development source changes through HMR', async () => {
+    // This unit checks config wiring and HMR routing; real hashing has an isolated integration test.
+    vi.spyOn(buildIdentity, 'createRuntimeBuildIdentity').mockReturnValue(runtimeBuildFixture)
     const resolved =
       typeof config === 'function'
         ? await config({ command: 'serve', mode: 'development' })
@@ -36,12 +41,12 @@ describe('runtime source identity', () => {
 
   it('shares identity across checkout line endings and enumeration order', () => {
     expect(
-      fingerprintRuntimeSources([
+      buildIdentity.fingerprintRuntimeSources([
         ['a.ts', 'a\r\nb'],
         ['b.ts', 'b'],
       ]),
     ).toBe(
-      fingerprintRuntimeSources([
+      buildIdentity.fingerprintRuntimeSources([
         ['b.ts', 'b'],
         ['a.ts', 'a\nb'],
       ]),
@@ -49,24 +54,24 @@ describe('runtime source identity', () => {
   })
 
   it('identifies uncommitted source, dependency and path changes', () => {
-    const baseline = fingerprintRuntimeSources([
+    const baseline = buildIdentity.fingerprintRuntimeSources([
       ['src/a.ts', 'same'],
       ['pnpm-lock.yaml', 'v1'],
     ])
     expect(
-      fingerprintRuntimeSources([
+      buildIdentity.fingerprintRuntimeSources([
         ['src/a.ts', 'changed'],
         ['pnpm-lock.yaml', 'v1'],
       ]),
     ).not.toBe(baseline)
     expect(
-      fingerprintRuntimeSources([
+      buildIdentity.fingerprintRuntimeSources([
         ['src/a.ts', 'same'],
         ['pnpm-lock.yaml', 'v2'],
       ]),
     ).not.toBe(baseline)
     expect(
-      fingerprintRuntimeSources([
+      buildIdentity.fingerprintRuntimeSources([
         ['src/b.ts', 'same'],
         ['pnpm-lock.yaml', 'v1'],
       ]),

@@ -107,16 +107,16 @@ describe('compact themed status motion', () => {
     applyThemeMotion({ working: { preset: 'custom' } })
     renderHook(() => useCompactThemeMotion(icon, 'terminal', true, false))
     expect(icon.current.querySelector('[data-cove-part="effect-working"]')).toBeNull()
+    // Deliver both real observer notifications in one microtask turn. happy-dom 20.8.4
+    // weakly retains its listener, which can be collected across a timer/act boundary.
     await act(async () => {
       icon.current.dataset.outputActive = 'true'
-      await new Promise(resolve => setTimeout(resolve, 0))
-    })
-    expect(icon.current.querySelector('[data-cove-part="effect-working"]')).not.toBeNull()
-    await act(async () => {
+      await Promise.resolve()
+      expect(icon.current.querySelector('[data-cove-part="effect-working"]')).not.toBeNull()
       delete icon.current.dataset.outputActive
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await Promise.resolve()
+      expect(icon.current.querySelector('[data-cove-part="effect-working"]')).toBeNull()
+      expect(cancels[0]).toHaveBeenCalledOnce()
     })
-    expect(icon.current.querySelector('[data-cove-part="effect-working"]')).toBeNull()
-    expect(cancels[0]).toHaveBeenCalledOnce()
   })
 })

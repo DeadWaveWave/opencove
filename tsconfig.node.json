@@ -3,6 +3,7 @@
   "include": [
     "electron.vite.config.*",
     "scripts/lib/runtime-build-identity.ts",
+    "scripts/lib/runtime-build-plugin.ts",
     "src/app/main/**/*",
     "src/app/managedRuntime/**/*",
     "src/app/worker/**/*",
