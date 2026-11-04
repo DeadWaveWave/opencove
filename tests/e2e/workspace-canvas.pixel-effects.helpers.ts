@@ -69,20 +69,21 @@ type ProbeWindow = Window & {
   }
 }
 
-/** Read-only RAF observation catches the brief real rim without delaying product time. */
+/** Record real pixels at the renderer's post-draw attributes, before deadline cleanup or another RAF. */
 export async function installPixelEffectProbe(page: Page) {
   await page.evaluate(() => {
     const target = window as ProbeWindow
+    target.__pixelEffectProbe?.stop()
     const original = new Set(
       Array.from(document.querySelectorAll<HTMLElement>('.react-flow__node')).map(
         node => node.dataset.id,
       ),
     )
-    let frame = 0
+    const observer = new MutationObserver(() => observe())
     const probe = {
       created: {} as Record<string, EffectObservation>,
       bursts: [] as string[],
-      stop: () => cancelAnimationFrame(frame),
+      stop: () => observer.disconnect(),
     }
     target.__pixelEffectProbe = probe
     const observe = () => {
@@ -91,6 +92,7 @@ export async function installPixelEffectProbe(page: Page) {
       )
       const context = canvas?.getContext('2d')
       const canvasRect = canvas?.getBoundingClientRect()
+      const assembling = new Set((canvas?.dataset.covePixelNodeIds ?? '').split(','))
       for (const node of document.querySelectorAll<HTMLElement>('.react-flow__node')) {
         const id = node.dataset.id
         if (!id || original.has(id)) {
@@ -104,17 +106,8 @@ export async function installPixelEffectProbe(page: Page) {
         const record = (probe.created[id] ??= { kind, focused: false, masked: false, rim: false })
         record.focused ||= node.contains(document.activeElement)
         const style = getComputedStyle(node)
-        const front = Number.parseFloat(style.getPropertyValue('--cove-pixel-reveal-front'))
         record.masked ||= style.maskImage !== 'none'
-        if (
-          record.rim ||
-          !canvas ||
-          !context ||
-          !canvasRect?.width ||
-          front <= 0.1 ||
-          front >= 0.9 ||
-          !Number.isFinite(front)
-        ) {
+        if (record.rim || !canvas || !context || !canvasRect?.width || !assembling.has(id)) {
           continue
         }
         const rect = node.getBoundingClientRect()
@@ -140,9 +133,20 @@ export async function installPixelEffectProbe(page: Page) {
           }
         }
       }
-      frame = requestAnimationFrame(observe)
     }
-    frame = requestAnimationFrame(observe)
+    // These attributes are written after both creation and scatter are painted.
+    // Idle draw notifications also discover reduced-motion nodes outside the timeline.
+    observer.observe(document, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: [
+        'data-cove-pixel-assembly',
+        'data-cove-pixel-node-ids',
+        'data-cove-pixel-burst',
+        'data-cove-pixel-burst-node-ids',
+      ],
+    })
+    observe()
   })
 }
 
