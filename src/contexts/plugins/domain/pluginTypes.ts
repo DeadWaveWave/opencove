@@ -54,9 +54,14 @@ export interface PluginManifest {
   themes?: PluginThemeDeclaration[]
 }
 
+/** Host kind families a plugin window may wear on its header tile; absent means neutral. */
+export const PLUGIN_WINDOW_KINDS = ['ai', 'shell', 'plan', 'knowledge', 'media'] as const
+export type PluginWindowKind = (typeof PLUGIN_WINDOW_KINDS)[number]
+
 export interface PluginViewDefinition {
   entry: string
   instances?: 'single' | 'multiple'
+  kind?: PluginWindowKind
   width: number
   height: number
   minWidth: number

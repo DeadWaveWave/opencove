@@ -72,6 +72,7 @@ export function WorkspaceCanvasPluginNodeType({
       <CanvasNodeWindow
         {...windowProps}
         testIdPrefix={`plugin-${manifest.id}`}
+        kindFamily={manifest.view?.kind ?? 'neutral'}
         minSize={
           manifest.view
             ? { width: manifest.view.minWidth, height: manifest.view.minHeight }
