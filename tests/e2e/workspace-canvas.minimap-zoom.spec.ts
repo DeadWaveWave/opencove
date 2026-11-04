@@ -113,6 +113,11 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
         if (color.startsWith('rgb(')) {
           return 1
         }
+        // color-mix() results serialize as color(srgb r g b / a).
+        const colorMatch = color.match(/^color\([a-z-]+\s+[^/]+?(?:\/\s*([0-9.]+))?\)$/)
+        if (colorMatch) {
+          return colorMatch[1] === undefined ? 1 : Number.parseFloat(colorMatch[1])
+        }
         return Number.NaN
       }
 

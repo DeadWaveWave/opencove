@@ -69,6 +69,7 @@ export function SettingsPanelContent({
     updateAgentProviderOrder,
     updateLanguage,
     updateUiTheme,
+    updateWindowKindColors,
     updatePixelEffect,
     updatePluginEnabled,
     updatePluginContributionEnabled,
@@ -147,6 +148,8 @@ export function SettingsPanelContent({
           uiTheme={settings.uiTheme}
           pixelEffects={settings}
           uiFontSize={settings.uiFontSize}
+          windowKindColorsEnabled={settings.windowKindColorsEnabled}
+          onChangeWindowKindColors={updateWindowKindColors}
           onChangeUiTheme={updateUiTheme}
           onChangePixelEffect={updatePixelEffect}
           onChangeUiFontSize={updateUiFontSize}

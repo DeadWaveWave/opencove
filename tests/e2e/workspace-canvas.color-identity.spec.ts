@@ -32,6 +32,18 @@ async function geometry(page: Page) {
   )
 }
 
+/** The kind channel each window wears in generated families (image windows have no header). */
+const KIND_FAMILY: Record<string, string | null> = {
+  terminal: 'shell',
+  agent: 'ai',
+  task: 'plan',
+  document: 'knowledge',
+  note: 'knowledge',
+  role: 'ai',
+  website: 'media',
+  image: null,
+}
+
 test.describe('Workspace Canvas - Color Identity', () => {
   test.setTimeout(180_000)
 
@@ -65,7 +77,16 @@ test.describe('Workspace Canvas - Color Identity', () => {
             appearance.labelColor,
             appearance.labelColor,
           ])
-          expect(appearance.ribbonImage).toContain('linear-gradient')
+          if (appearance.family === 'cove') {
+            // Generated families: the label is a short solid flag; the kind colours the tile.
+            expect(appearance.ribbonImage).toBe('none')
+            expect(appearance.ribbonWidth).toBe(28)
+            expect(appearance.ribbonIsLabelColor).toBe(true)
+            expect(appearance.tileKind).toBe(KIND_FAMILY[appearance.kind])
+            expect(appearance.headerKind).toBe(KIND_FAMILY[appearance.kind])
+          } else {
+            expect(appearance.ribbonImage).toContain('linear-gradient')
+          }
           expect(appearance.ribbonHeight).toBe(2)
           expect(appearance.borderWidth).toBe('1px')
           if (appearance.kind === 'agent') {
@@ -206,7 +227,12 @@ test.describe('Workspace Canvas - Color Identity', () => {
             'background-image',
             /linear-gradient/,
           )
-          expect(cleared.find(node => node.kind === kind)?.ribbonImage).toContain('linear-gradient')
+          const clearedNode = cleared.find(node => node.kind === kind)
+          if (clearedNode?.family === 'cove') {
+            expect(clearedNode.ribbonWidth).toBe(0)
+          } else {
+            expect(clearedNode?.ribbonImage).toContain('linear-gradient')
+          }
         }),
       )
       const palettes = new Set<string>()
@@ -219,7 +245,12 @@ test.describe('Workspace Canvas - Color Identity', () => {
           expect(node.label).toBeNull()
           expect(Object.values(node.identity)).toEqual(node.themePalette)
           expect(node.headerImage).toContain('linear-gradient')
-          expect(node.ribbonImage).toContain('linear-gradient')
+          if (node.family === 'cove') {
+            // Unlabeled windows in generated families have no flag and a neutral frame.
+            expect(node.ribbonWidth).toBe(0)
+          } else {
+            expect(node.ribbonImage).toContain('linear-gradient')
+          }
           expect(
             node.contrast,
             `${theme}/${node.kind} default title contrast`,

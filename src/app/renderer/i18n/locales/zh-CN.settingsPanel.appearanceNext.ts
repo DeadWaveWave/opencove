@@ -25,4 +25,8 @@ export const zhCNSettingsPanelAppearanceNext = {
   terminalBackgroundOpaque: '不透明',
   calibration: '显示校准',
   calibrationHelp: '让终端文字测量与当前显示器匹配。',
+  windows: '窗口',
+  windowKindColors: '窗口类别色',
+  windowKindColorsHelp:
+    '按窗口的类别给图标方块和标题栏着色：Agent、终端、任务、笔记与文档、网页与图片。无论开关，你设置的颜色标记都显示在窗口外框上。',
 }

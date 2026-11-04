@@ -99,6 +99,7 @@
 /* Generated Cove tokens (pnpm design:tokens); the theme owner sets data-cove-family='cove' for Cove. */
 @import './styles/themes/generated/cove.css' layer(opencove);
 @import './styles/node-color-identity.css' layer(opencove);
+@import './styles/window-kind-identity.css' layer(opencove);
 @import './styles/node-collapse.css' layer(opencove);
 @import './styles/node-collapse-motion.css' layer(opencove);
 @import './styles/workspace-space-collapse.css' layer(opencove);

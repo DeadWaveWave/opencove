@@ -120,6 +120,7 @@ export function DocumentNodeChrome({
     >
       <WindowHeader
         className="document-node__header"
+        kind="knowledge"
         labelColor={labelColor}
         icon={<NodeKindIcon kind="document" filePath={uri} />}
         title={

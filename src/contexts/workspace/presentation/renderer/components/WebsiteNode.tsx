@@ -238,6 +238,7 @@ export function WebsiteNode({
       <div className="website-node__surface">
         <WindowHeader
           className="website-node__header"
+          kind="media"
           labelColor={labelColor}
           icon={<NodeKindIcon kind="website" />}
           title={

@@ -40,6 +40,14 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['display', 'locale', '中文', '语言'],
   },
   {
+    id: 'appearance.window-kind-colors',
+    pageId: 'appearance',
+    titleKey: 'settingsPanel.appearanceNext.windowKindColors',
+    descriptionKey: 'settingsPanel.appearanceNext.windowKindColorsHelp',
+    anchorId: 'settings-window-kind-colors',
+    keywords: ['kind', 'colour', 'color', 'tile', 'window', '类别', '颜色', '窗口'],
+  },
+  {
     id: 'general.theme',
     pageId: 'appearance',
     titleKey: 'settingsPanel.general.uiThemeLabel',

@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { NodeFrame, Point, Size, WorkspaceNodeKind } from '../../types'
+import type { WindowKindFamily } from '../../utils/windowKindFamily'
 import { useNodeFrameResize } from '../../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../../utils/workspaceNodeSizing'
 import { NodeKindIcon } from './NodeKindIcon'
@@ -12,6 +13,8 @@ export interface CanvasNodeWindowProps {
   title: string
   nodeKind?: WorkspaceNodeKind
   pluginId?: string
+  /** Kind family for the header tile; plugin windows declare it in their manifest. */
+  kindFamily?: WindowKindFamily
   icon?: ReactNode
   subtitle?: ReactNode
   headerActions?: ReactNode
@@ -34,6 +37,7 @@ export function CanvasNodeWindow({
   title,
   nodeKind = 'plugin',
   pluginId,
+  kindFamily = 'neutral',
   icon,
   subtitle,
   headerActions,
@@ -86,6 +90,7 @@ export function CanvasNodeWindow({
     >
       <WindowHeader
         className="cove-canvas-node-window__header"
+        kind={kindFamily}
         icon={
           icon ? (
             <span className="cove-node-kind-icon" aria-hidden="true">

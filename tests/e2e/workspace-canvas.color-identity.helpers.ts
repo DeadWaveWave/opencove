@@ -184,7 +184,17 @@ export async function readNodeIdentity(page: Page) {
           labelColor: headerStyle.getPropertyValue('--cove-label-color').trim(),
           headerImage: header ? headerStyle.backgroundImage : null,
           ribbonImage: ribbon.backgroundImage,
+          ribbonIsLabelColor:
+            rgba(ribbon.backgroundColor).join() ===
+            rgba(headerStyle.getPropertyValue('--cove-label-color').trim()).join(),
           ribbonHeight: Number.parseFloat(ribbon.height),
+          ribbonWidth: Number.parseFloat(ribbon.width),
+          family: document.documentElement.dataset.coveFamily ?? null,
+          headerKind: header?.dataset.coveKind ?? null,
+          tileKind:
+            header?.querySelector<HTMLElement>('[data-cove-part="kind-tile"]')?.dataset.kind ??
+            null,
+          neutralBorder: style.getPropertyValue('--cove-node-border').trim(),
           border: style.borderTopColor,
           borderWidth: style.borderTopWidth,
           body: {

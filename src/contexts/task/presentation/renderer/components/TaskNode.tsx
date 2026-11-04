@@ -261,6 +261,7 @@ export function TaskNode({
 
       <WindowHeader
         className="task-node__header"
+        kind="plan"
         labelColor={labelColor}
         icon={<NodeKindIcon kind="task" />}
         title={
