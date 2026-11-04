@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { Copy, RefreshCw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -85,26 +87,23 @@ export function DiagnosticsSection({
       description={t('settingsPanel.diagnostics.help')}
     >
       <SettingsGroupBody>
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.diagnostics.headerMonitor.label')}</strong>
-            <span>{t('settingsPanel.diagnostics.headerMonitor.help')}</span>
-          </div>
-          <div className="settings-panel__control">
+        <SettingRow
+          label={t('settingsPanel.diagnostics.headerMonitor.label')}
+          description={t('settingsPanel.diagnostics.headerMonitor.help')}
+          control={
             <Toggle
               data-testid="settings-performance-monitor-header-button-enabled"
               checked={headerButtonEnabled}
               label={t('settingsPanel.diagnostics.headerMonitor.label')}
               onCheckedChange={checked => onChangeHeaderButtonEnabled(checked)}
             />
-          </div>
-        </div>
+          }
+        />
       </SettingsGroupBody>
 
       <div className="settings-panel__diagnostics-actions">
-        <button
-          type="button"
-          className="secondary"
+        <Button
+          variant="secondary"
           data-testid="settings-diagnostics-refresh"
           disabled={isLoading || isRefreshing}
           onClick={() => void refreshSnapshot()}
@@ -113,17 +112,16 @@ export function DiagnosticsSection({
           {isLoading || isRefreshing
             ? t('settingsPanel.diagnostics.refreshing')
             : t('common.refresh')}
-        </button>
-        <button
-          type="button"
-          className="secondary"
+        </Button>
+        <Button
+          variant="secondary"
           data-testid="settings-diagnostics-copy"
           disabled={!snapshot}
           onClick={() => void copyDiagnostics()}
         >
           <Copy size={14} aria-hidden="true" />
           {t('settingsPanel.diagnostics.copy')}
-        </button>
+        </Button>
         {copyStatus ? <span className="settings-panel__value">{copyStatus}</span> : null}
       </div>
 

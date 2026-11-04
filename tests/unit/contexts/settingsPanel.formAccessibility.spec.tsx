@@ -230,11 +230,17 @@ describe('Settings form accessible names', () => {
       </>,
     )
 
-    expectNamedTestId('settings-task-title-provider-trigger', 'Title Provider')
+    expectNamedTestId(
+      'settings-task-title-provider-trigger',
+      'Title Provider Follow Default Agent (Codex)',
+    )
     expectNamedTestId('settings-task-title-model', 'Title Model')
     expectNamedTestId('settings-task-tag-add-input', 'Add tag')
-    expectNamedTestId('settings-website-window-default-mode-trigger', 'Default Open Mode')
-    expectNamedTestId('settings-browser-search-engine-trigger', 'Default Search Engine')
+    expectNamedTestId(
+      'settings-website-window-default-mode-trigger',
+      'Default Open Mode Full browser',
+    )
+    expectNamedTestId('settings-browser-search-engine-trigger', 'Default Search Engine Google')
     expectNamedTestId('settings-website-window-max-active', 'Max Active')
     expectNamedTestId('settings-website-window-discard-after', 'Discard After')
     expectNamedTestId(

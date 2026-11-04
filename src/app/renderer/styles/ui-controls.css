@@ -454,6 +454,11 @@
   justify-content: flex-end;
 }
 
+/* An extra line inside a row's description, such as a live status. */
+.cove-setting-row__description-line {
+  display: block;
+}
+
 /* Number field with an optional unit, for setting rows. */
 .cove-number-input {
   display: inline-flex;

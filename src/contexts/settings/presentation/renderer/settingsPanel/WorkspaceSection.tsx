@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { useTranslation } from '@app/renderer/i18n'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
@@ -97,24 +99,19 @@ export function WorkspaceSection({
       <SettingsGroup id={sectionId} title={t('settingsPanel.groups.workspace.worktrees')}>
         <SettingsGroupBody>
           {!hasWorkspace ? (
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.workspace.selectProjectFirst')}</strong>
-                <span>{t('settingsPanel.workspace.selectProjectFirstHelp')}</span>
-              </div>
-            </div>
+            <SettingRow
+              label={t('settingsPanel.workspace.selectProjectFirst')}
+              description={t('settingsPanel.workspace.selectProjectFirstHelp')}
+              value={null}
+            />
           ) : (
             <>
-              <div className="settings-panel__row">
-                <div className="settings-panel__row-label">
-                  <strong>{t('settingsPanel.workspace.workspacePathLabel')}</strong>
-                  <span>
-                    {t('settingsPanel.workspace.workspacePathHelp', {
-                      name: resolvedWorkspaceName,
-                    })}
-                  </span>
-                </div>
-                <div className="settings-panel__control">
+              <SettingRow
+                label={t('settingsPanel.workspace.workspacePathLabel')}
+                description={t('settingsPanel.workspace.workspacePathHelp', {
+                  name: resolvedWorkspaceName,
+                })}
+                value={
                   <span
                     className="settings-panel__path-chip"
                     data-testid="settings-workspace-path-display"
@@ -122,40 +119,37 @@ export function WorkspaceSection({
                   >
                     {getFolderName(workspacePath)}
                   </span>
-                </div>
-              </div>
+                }
+              />
 
-              <div className="settings-panel__row">
-                <div className="settings-panel__row-label">
-                  <strong>{t('settingsPanel.workspace.worktreeRootLabel')}</strong>
-                  <span>{t('settingsPanel.workspace.worktreeRootHelp')}</span>
-                </div>
-                <div className="settings-panel__control settings-panel__control--stack">
-                  <input
-                    data-testid="settings-worktree-root"
-                    className="cove-field"
-                    aria-label={t('settingsPanel.workspace.worktreeRootLabel')}
-                    value={worktreesRoot}
-                    placeholder={t('settingsPanel.workspace.worktreeRootPlaceholder')}
-                    onChange={event => onChangeWorktreesRoot(event.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="secondary"
-                    disabled={worktreesRoot.trim().length === 0}
-                    onClick={() => onChangeWorktreesRoot('')}
-                  >
-                    {t('common.resetToDefault')}
-                  </button>
-                </div>
-              </div>
+              <SettingRow
+                label={t('settingsPanel.workspace.worktreeRootLabel')}
+                description={t('settingsPanel.workspace.worktreeRootHelp')}
+                value={
+                  <>
+                    <input
+                      data-testid="settings-worktree-root"
+                      className="cove-field"
+                      aria-label={t('settingsPanel.workspace.worktreeRootLabel')}
+                      value={worktreesRoot}
+                      placeholder={t('settingsPanel.workspace.worktreeRootPlaceholder')}
+                      onChange={event => onChangeWorktreesRoot(event.target.value)}
+                    />
+                    <Button
+                      variant="secondary"
+                      disabled={worktreesRoot.trim().length === 0}
+                      onClick={() => onChangeWorktreesRoot('')}
+                    >
+                      {t('common.resetToDefault')}
+                    </Button>
+                  </>
+                }
+              />
 
-              <div className="settings-panel__row">
-                <div className="settings-panel__row-label">
-                  <strong>{t('settingsPanel.workspace.resolvedPathLabel')}</strong>
-                  <span>{t('settingsPanel.workspace.resolvedPathHelp')}</span>
-                </div>
-                <div className="settings-panel__control">
+              <SettingRow
+                label={t('settingsPanel.workspace.resolvedPathLabel')}
+                description={t('settingsPanel.workspace.resolvedPathHelp')}
+                value={
                   <span
                     className="settings-panel__path-chip"
                     data-testid="settings-resolved-worktree-path-display"
@@ -163,8 +157,8 @@ export function WorkspaceSection({
                   >
                     {getTrailingPathSegments(resolvedRoot, 2)}
                   </span>
-                </div>
-              </div>
+                }
+              />
             </>
           )}
         </SettingsGroupBody>
@@ -182,15 +176,14 @@ export function WorkspaceSection({
                 <span className="settings-panel__value">
                   <strong>{key}</strong> = {value}
                 </span>
-                <button
-                  type="button"
-                  className="secondary"
+                <Button
+                  variant="secondary"
                   style={{ padding: '2px 8px', fontSize: '11px' }}
                   data-testid={`settings-env-var-remove-${key}`}
                   onClick={() => removeEnvVar(key)}
                 >
                   {t('common.remove')}
-                </button>
+                </Button>
               </div>
             ))}
             {envEntries.length === 0 ? (
@@ -219,15 +212,14 @@ export function WorkspaceSection({
                 onChange={event => setEnvValueInput(event.target.value)}
                 onKeyDown={event => event.key === 'Enter' && addEnvVar()}
               />
-              <button
-                type="button"
-                className="primary"
+              <Button
+                variant="primary"
                 data-testid="settings-env-var-add-button"
                 disabled={envKeyInput.trim().length === 0}
                 onClick={() => addEnvVar()}
               >
                 {t('common.add')}
-              </button>
+              </Button>
             </div>
           </div>
         </SettingsGroup>
