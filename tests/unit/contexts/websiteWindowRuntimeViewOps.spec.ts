@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
+import { EventEmitter } from 'node:events'
+import type { NativeImage } from 'electron'
 import {
   applyWebsiteWindowViewportMetrics,
   flushPendingWebsiteWindowRuntimeSnapshot,
@@ -109,7 +111,7 @@ describe('websiteWindowRuntimeViewOps', () => {
 
   it('keeps snapshot requests pending until the runtime is ready to capture', async () => {
     const emit = vi.fn()
-    const capturePage = vi.fn()
+    const beginFrameSubscription = vi.fn()
     const toJPEG = vi.fn(() => Buffer.from('snapshot'))
 
     const runtime = {
@@ -124,10 +126,11 @@ describe('websiteWindowRuntimeViewOps', () => {
       snapshotCaptureInFlight: false,
       snapshotDataUrl: null,
       view: {
-        webContents: {
+        webContents: Object.assign(new EventEmitter(), {
           isDestroyed: vi.fn(() => false),
-          capturePage,
-        },
+          beginFrameSubscription,
+          endFrameSubscription: vi.fn(),
+        }),
       },
     } as Parameters<typeof requestWebsiteWindowRuntimeSnapshot>[0]['runtime']
 
@@ -137,13 +140,10 @@ describe('websiteWindowRuntimeViewOps', () => {
       emit,
     })
 
-    expect(capturePage).not.toHaveBeenCalled()
+    expect(beginFrameSubscription).not.toHaveBeenCalled()
     expect(runtime.pendingSnapshotQuality).toBe(60)
 
     runtime.snapshotDocumentReady = true
-    capturePage.mockResolvedValue({
-      toJPEG,
-    })
 
     expect(
       flushPendingWebsiteWindowRuntimeSnapshot({
@@ -152,10 +152,8 @@ describe('websiteWindowRuntimeViewOps', () => {
       }),
     ).toBe(true)
 
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(capturePage).toHaveBeenCalledWith(undefined, { stayHidden: true })
+    const onFrame = beginFrameSubscription.mock.calls[0][1] as (image: NativeImage) => void
+    onFrame({ isEmpty: () => false, toJPEG } as unknown as NativeImage)
     expect(runtime.pendingSnapshotQuality).toBeNull()
     expect(runtime.snapshotDataUrl).toBe('data:image/jpeg;base64,c25hcHNob3Q=')
     expect(emit).toHaveBeenCalledWith({

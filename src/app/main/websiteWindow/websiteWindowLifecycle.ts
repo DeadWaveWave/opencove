@@ -15,6 +15,7 @@ function cancelDiscardTimer(runtime: WebsiteWindowRuntime): void {
 }
 
 function disposeWebContents(runtime: WebsiteWindowRuntime, window: BrowserWindow): void {
+  runtime.disposeSnapshotCapture?.()
   const hostView = runtime.hostView
   const view = runtime.view
   if (!view) {
@@ -132,6 +133,7 @@ export function transitionWebsiteWindowToCold({
     return
   }
 
+  runtime.disposeSnapshotCapture?.()
   cancelDiscardTimer(runtime)
 
   const hostView = runtime.hostView
@@ -220,6 +222,7 @@ export function transitionWebsiteWindowToWarm({
     return
   }
 
+  runtime.disposeSnapshotCapture?.()
   captureWebsiteWindowRuntimeSnapshot({
     runtime,
     quality: 60,

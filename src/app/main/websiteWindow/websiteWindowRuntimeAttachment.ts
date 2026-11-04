@@ -5,6 +5,7 @@ export function detachWebsiteWindowRuntimeViewFromWindow(
   runtime: WebsiteWindowRuntime,
   window: BrowserWindow,
 ): void {
+  runtime.disposeSnapshotCapture?.()
   const hostView = runtime.hostView
   const view = runtime.view
   if (!hostView && !view) {

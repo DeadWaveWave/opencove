@@ -84,6 +84,7 @@ export function registerWebsiteWebContentsRuntimeListeners({
   }
 
   const handleStartLoading = () => {
+    runtime.disposeSnapshotCapture?.()
     runtime.isLoading = true
     runtime.snapshotDocumentReady = false
     publishState()
