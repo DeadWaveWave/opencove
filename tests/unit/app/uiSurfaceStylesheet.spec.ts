@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import postcss, { type Rule } from 'postcss'
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_CONTRAST, THEME_FAMILIES } from '../../../src/shared/design/themeGenerator'
+import { renderPaletteStylesheet } from '../../../src/shared/design/themeTokens'
 
 const STYLES = resolve(__dirname, '../../../src/app/renderer/styles')
 const TRANSLUCENT = ['glass', 'acrylic']
@@ -74,6 +76,27 @@ describe('reduced transparency', () => {
         .flatMap(rule => rule.selector.split(',').map(part => rootSpecificity(part.trim()))),
     )
     expect(rootSpecificity(solid!.selector)).toBeGreaterThan(strongest)
+  })
+
+  it('also outranks a plugin palette, which narrows the family to one theme id', () => {
+    const solid = rules.find(
+      rule => rule.selector.includes(REDUCED) && rule.selector.startsWith(':root'),
+    )!
+    const scope = `:root[data-cove-family='cove'][data-cove-theme-id="plugin:fixture:dusk"]`
+    const palette = postcss
+      .parse(
+        renderPaletteStylesheet(scope, {
+          ...THEME_FAMILIES.cove,
+          appearance: 'dark',
+          contrast: DEFAULT_CONTRAST,
+        }),
+      )
+      .nodes.filter((node): node is Rule => node.type === 'rule')
+      .filter(rule => !rule.selector.includes('.terminal-node'))
+    expect(palette.length).toBeGreaterThan(0)
+    for (const rule of palette) {
+      expect(rootSpecificity(solid.selector)).toBeGreaterThan(rootSpecificity(rule.selector))
+    }
   })
 
   it('removes every backdrop blur, including on pseudo-elements', () => {
