@@ -97,6 +97,27 @@
   text-align: left;
 }
 
+.settings-plugin-library__card.cove-button {
+  height: auto;
+  font-weight: 400;
+  white-space: normal;
+}
+
+.settings-plugin-library__card.cove-button > .cove-button__content {
+  width: 100%;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: inherit;
+}
+
+.settings-plugin-library__card > .cove-button__content > span {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--cove-spacing-1) * 1.5);
+  min-width: 0;
+  line-height: normal;
+}
+
 .settings-plugin-library__card:hover {
   background: var(--cove-surface-hover);
 }

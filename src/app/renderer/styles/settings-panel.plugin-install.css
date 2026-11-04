@@ -11,6 +11,10 @@
   gap: 12px;
 }
 
+.settings-plugin-install__close.cove-icon-button {
+  padding: 0;
+}
+
 .settings-plugin-install__heading h3 {
   margin: 0;
   color: var(--cove-text);

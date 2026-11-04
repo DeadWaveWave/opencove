@@ -1,3 +1,4 @@
+import { Button } from '@app/renderer/components/ui/Button'
 import type { JSX } from 'react'
 import {
   ArrowLeft,
@@ -43,7 +44,9 @@ export function PluginSettingsDetail({
   const detail = installed.detail
   return (
     <div className="settings-plugin-detail" data-testid={`settings-plugin-detail-${plugin.id}`}>
-      <button
+      <Button
+        variant="ghost"
+        size="md"
         type="button"
         className="settings-plugin-detail__back"
         data-testid="settings-plugin-back"
@@ -51,7 +54,7 @@ export function PluginSettingsDetail({
       >
         <ArrowLeft size={14} aria-hidden="true" />
         {t('settingsPanel.plugins.back')}
-      </button>
+      </Button>
       <header
         className="settings-plugin-detail__header"
         data-testid={`settings-plugin-${plugin.id}`}

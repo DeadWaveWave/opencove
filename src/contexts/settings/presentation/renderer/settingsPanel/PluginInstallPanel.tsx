@@ -1,3 +1,5 @@
+import { IconButton } from '@app/renderer/components/ui/IconButton'
+import { Button } from '@app/renderer/components/ui/Button'
 import { useRef, useEffect, useState, type FormEvent, type JSX } from 'react'
 import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { PluginBuildOptions } from './PluginBuildOptions'
@@ -138,15 +140,17 @@ export function PluginInstallPanel({
     >
       <div className="settings-plugin-install__heading">
         <h3>{t('settingsPanel.plugins.install.title')}</h3>
-        <button
+        <IconButton
+          variant="ghost"
+          size="md"
           type="button"
-          className="cove-window__action cove-window__action--ghost"
+          className="cove-window__action cove-window__action--ghost settings-plugin-install__close"
           onClick={onCancel}
           disabled={busy}
-          aria-label={t('settingsPanel.plugins.install.close')}
+          label={t('settingsPanel.plugins.install.close')}
         >
           <X size={16} aria-hidden="true" />
-        </button>
+        </IconButton>
       </div>
       <SegmentedControl
         className="settings-plugin-install__modes"
@@ -252,7 +256,9 @@ export function PluginInstallPanel({
                 {error}
               </p>
             ) : null}
-            <button
+            <Button
+              variant="secondary"
+              size="md"
               type="submit"
               className="cove-window__action cove-window__action--secondary"
               disabled={busy}
@@ -266,7 +272,7 @@ export function PluginInstallPanel({
               {t(
                 `settingsPanel.plugins.install.${busy ? 'working' : mode === 'discover' ? 'search' : 'confirm'}`,
               )}
-            </button>
+            </Button>
           </form>
           <PluginCandidateList
             initialInstall
@@ -287,7 +293,9 @@ export function PluginInstallPanel({
                       </a>
                       <p>{repo.description}</p>
                     </div>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="md"
                       type="button"
                       className="cove-window__action cove-window__action--ghost"
                       onClick={() => {
@@ -296,7 +304,7 @@ export function PluginInstallPanel({
                       }}
                     >
                       {t('settingsPanel.plugins.repository.details')}
-                    </button>
+                    </Button>
                   </article>
                 ))
               )}

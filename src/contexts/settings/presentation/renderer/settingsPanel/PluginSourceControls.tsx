@@ -1,3 +1,4 @@
+import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { PluginCandidateList, type PluginCandidateInfo } from './PluginCandidateList'
 import { Download, History } from 'lucide-react'
@@ -169,7 +170,9 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
           </label>
           {source.dirty ? <p>{t('settingsPanel.plugins.source.dirty')}</p> : null}
           <div className="settings-plugin-runtime__actions">
-            <button
+            <Button
+              variant="secondary"
+              size="md"
               type="button"
               className="cove-window__action cove-window__action--secondary"
               disabled={busy}
@@ -178,9 +181,11 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
             >
               <Download size={14} aria-hidden="true" />
               {t('settingsPanel.plugins.source.check')}
-            </button>
+            </Button>
             {update?.updateAvailable ? (
-              <button
+              <Button
+                variant="secondary"
+                size="md"
                 type="button"
                 className="cove-window__action cove-window__action--secondary"
                 disabled={busy}
@@ -188,7 +193,7 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
                 data-testid="settings-plugin-apply-update"
               >
                 {t('settingsPanel.plugins.source.update')}
-              </button>
+              </Button>
             ) : null}
           </div>
         </>
@@ -222,14 +227,16 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
               onChange={setRevision}
             />
           </div>
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             type="button"
             className="cove-window__action cove-window__action--secondary"
             disabled={busy || !revision}
             onClick={() => void run('rollback')}
           >
             {t('settingsPanel.plugins.source.rollback')}
-          </button>
+          </Button>
         </details>
       ) : null}
       {message ? <p role="status">{message}</p> : null}

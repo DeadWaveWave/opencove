@@ -1,3 +1,4 @@
+import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useState, type JSX } from 'react'
 import { ArrowLeft, ExternalLink, GitBranch, Puzzle } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -64,24 +65,28 @@ export function PluginRepositoryDetail({
   }, [repository, attempt])
   return (
     <section className="settings-plugin-repository" data-testid="settings-plugin-repository-detail">
-      <button
+      <Button
+        variant="ghost"
+        size="md"
         type="button"
         className="cove-window__action cove-window__action--ghost"
         onClick={onBack}
       >
         <ArrowLeft size={14} aria-hidden="true" />
         {t('settingsPanel.plugins.repository.back')}
-      </button>
+      </Button>
       {error ? (
         <div role="alert">
           <p className="cove-window__error">{error}</p>
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             type="button"
             className="cove-window__action cove-window__action--secondary"
             onClick={() => setAttempt(value => value + 1)}
           >
             {t('settingsPanel.plugins.runtime.retry')}
-          </button>
+          </Button>
         </div>
       ) : null}
       {!details && !error ? (
@@ -127,14 +132,16 @@ export function PluginRepositoryDetail({
           ) : null}
           {details.manifestError ? <p role="status">{details.manifestError}</p> : null}
           <p>{t('settingsPanel.plugins.repository.readOnly')}</p>
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             type="button"
             className="cove-window__action cove-window__action--secondary"
             onClick={() => onChoose(details)}
             data-testid="settings-plugin-repository-choose"
           >
             {t('settingsPanel.plugins.repository.choose')}
-          </button>
+          </Button>
           <div className="settings-plugin-repository__readme">
             {details.readme ? (
               <PluginReadme
