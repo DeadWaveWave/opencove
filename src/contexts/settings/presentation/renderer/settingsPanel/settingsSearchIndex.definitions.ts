@@ -1,5 +1,7 @@
 import type { CoreSettingsSearchEntryDefinition } from './settingsSearchTypes'
 import { AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS } from './settingsSearchIndex.agent'
+import { ROW_SEARCH_ENTRY_DEFINITIONS } from './settingsSearchIndex.rows'
+import { SHORTCUT_SEARCH_ENTRY_DEFINITIONS } from './settingsSearchIndex.shortcuts'
 
 export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinition> = [
   {
@@ -158,6 +160,8 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['remote worker', 'register', 'endpoint', '远程'],
   },
   ...AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS,
+  ...ROW_SEARCH_ENTRY_DEFINITIONS,
+  ...SHORTCUT_SEARCH_ENTRY_DEFINITIONS,
   {
     id: 'notifications.standby-banner',
     pageId: 'notifications',
