@@ -1,4 +1,5 @@
 import { createServer } from 'node:http'
+import { execFileSync } from 'node:child_process'
 import { once } from 'node:events'
 import { expect, test, type Page } from '@playwright/test'
 import {
@@ -25,13 +26,34 @@ async function setZoom(window: Page, zoom: number) {
 }
 
 async function continuousWheelGesture(window: Page, deltaY: number) {
-  // Keep input arrival independent of browser acknowledgments: snapshot capture can delay a
-  // wheel response beyond the gesture-end debounce even though a user keeps turning the wheel.
-  await Promise.all(
-    Array.from({ length: 15 }, async (_, step) => {
-      await new Promise(resolve => setTimeout(resolve, step * 20))
-      await window.mouse.wheel(0, deltaY)
-    }),
+  const point = await hoverCanvasPane(window)
+  return await window.locator('.workspace-canvas .react-flow__pane').evaluate(
+    async (pane, gesture) => {
+      const rect = pane.getBoundingClientRect()
+      const clientX = rect.left + gesture.point.x
+      const clientY = rect.top + gesture.point.y
+      if (document.elementFromPoint(clientX, clientY) !== pane) {
+        throw new Error('Continuous wheel gesture must hit the canvas pane')
+      }
+      // Input and the freeze debounce share the renderer clock. A descheduled test runner
+      // must neither split one gesture into two nor sample "during" after it has thawed.
+      for (let step = 0; step < 15; step += 1) {
+        pane.dispatchEvent(
+          new WheelEvent('wheel', {
+            deltaY: gesture.deltaY,
+            clientX,
+            clientY,
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
+        // Let React commit each frame, including a regression on any intermediate wheel.
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+      return window.__opencoveWorkspaceCanvasTestApi!.getWindowCommitCounts()
+    },
+    { deltaY, point },
   )
 }
 
@@ -327,13 +349,11 @@ test('zoom steps and a continuous wheel gesture do not commit window headers', a
     expect(await readOwnState()).toEqual(ownStateBefore)
     expect(await readTerminal(window)).toEqual(terminalBefore)
 
-    await hoverCanvasPane(window)
     await reset()
     const wheelBefore = await readCanvasViewport(window)
-    // Fixed mouse mode + zoom wheel behavior needs no modifier. Each input lands on a real pane
-    // hit; gaps stay below the gesture-end debounce, unlike fifteen separate setZoom calls.
-    await continuousWheelGesture(window, 12)
-    const duringWheel = await counts()
+    // Fixed mouse mode + zoom wheel behavior needs no modifier. The renderer owns the gesture
+    // cadence; unlike separate setZoom calls, these inputs share the gesture-end debounce.
+    const duringWheel = await continuousWheelGesture(window, 12)
     await settle()
     const wheel = await counts()
     // eslint-disable-next-line no-console -- Keep commit counts in the E2E evidence.
@@ -377,9 +397,12 @@ test('zoom steps and a continuous wheel gesture do not commit window headers', a
     await hoverCanvasPane(window)
     await settle()
     await reset()
-    await continuousWheelGesture(window, 8)
-    const activeDuring = await counts()
-    await settle()
+    const activeGesture = continuousWheelGesture(window, 8)
+    await new Promise(resolve => setTimeout(resolve, 140))
+    // Model a descheduled test runner without consuming CPU or blocking the renderer.
+    execFileSync(process.execPath, ['-e', 'setTimeout(() => {}, 500)'], { timeout: 5_000 })
+    const activeDuring = await activeGesture
+    await expect.poll(counts).toEqual({ media: 2 })
     const activeAfter = await counts()
     // eslint-disable-next-line no-console -- Keep commit counts in the E2E evidence.
     console.log('window commits: active website', { activeDuring, activeAfter })

@@ -36,6 +36,7 @@ export async function hoverCanvasPane(window: Page) {
   }
   // Hover also waits for the pane's geometry to be stable before sending input.
   await paneLocator.hover({ position: point })
+  return point
 }
 
 export async function wheelToZoom(window: Page, target: number) {
