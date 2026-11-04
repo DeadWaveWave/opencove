@@ -243,7 +243,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
         contentType: 'application/json',
       })
       await wheelToZoom(page, 0.2)
-      await expectSpaceFrameHeader(page)
+      await expectSpaceFrameHeader(page, 'far')
       const spaces = await readSpaceIdentity(page)
       expect(spaces.every(space => space.fill.alpha < 0.01 && space.labelScreenFont >= 8)).toBe(
         true,
