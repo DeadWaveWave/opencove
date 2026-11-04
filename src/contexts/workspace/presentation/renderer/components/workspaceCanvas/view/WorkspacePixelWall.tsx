@@ -1,34 +1,24 @@
 import React, { memo, useLayoutEffect, useRef } from 'react'
-import { useStoreApi, type ReactFlowState } from '@xyflow/react'
+import { useStoreApi, type Node } from '@xyflow/react'
+import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
+import type { TerminalNodeData } from '../../../types'
 import { createPixelFrameScheduler } from './pixelLayer/scheduler'
-import { fillWallCells, type WallWindowRect } from './pixelWall/wallCells'
+import { fillWallCells } from './pixelWall/wallCells'
 import { createPixelWallController } from './pixelWall/wallController'
 import type { WallFrame } from './pixelWall/wallFrame'
 import { createWallGl } from './pixelWall/wallGl'
 import { createWall2d } from './pixelWall/wall2d'
 import { recordWallFrame } from './pixelWall/wallProbe'
 import { resolveWallGrid } from './pixelWall/wallGrid'
-import { readWallPalette } from './pixelWall/wallPalette'
-
-function readWindowRects(state: ReactFlowState): WallWindowRect[] {
-  const rects: WallWindowRect[] = []
-  // A partial store (tests, first render) has no windows yet.
-  for (const node of state.nodeLookup?.values() ?? []) {
-    const width = node.measured.width ?? node.width ?? 0
-    const height = node.measured.height ?? node.height ?? 0
-    if (node.hidden || width <= 0 || height <= 0) {
-      continue
-    }
-    const { x, y } = node.internals.positionAbsolute
-    rects.push({ x, y, width, height })
-  }
-  return rects
-}
+import { readWallLightPalette, readWallPalette } from './pixelWall/wallPalette'
+import { createWallWindowTracker } from './pixelWall/wallWindows'
 
 /**
  * The pixel wall behind the canvas (Tide phase 5.2). Ambient motion follows the decorative
  * frame scheduler (30fps focused, 10fps in the background, none while hidden or with reduced
  * motion); a pan or zoom repaints on the next display frame, so the wall never trails windows.
+ * Each window lights the cells around it (5.3b); that light is meaningful, so it keeps
+ * breathing with twinkle off and only reduced motion holds it at a fixed level.
  */
 export const WorkspacePixelWall = memo(function WorkspacePixelWall({
   ambient = true,
@@ -36,7 +26,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
   /** 「背景闪烁」: twinkle and cloud drift. Off, the wall holds still and paints only on change. */
   ambient?: boolean
 }): React.JSX.Element {
-  const store = useStoreApi()
+  const store = useStoreApi<Node<TerminalNodeData>>()
   const ambientRef = useRef(ambient)
   const repaintRef = useRef<(() => void) | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
@@ -54,19 +44,25 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     let reducedMotion = media.matches
     const still = () => reducedMotion || !ambientRef.current
     let palette = readWallPalette(host)
+    let lights = readWallLightPalette(host)
     let width = host.clientWidth
     let height = host.clientHeight
     const initial = store.getState()
     let [x, y, zoom] = initial.transform
     let nodes = initial.nodes
-    let windows = readWindowRects(initial)
+    const tracker = createWallWindowTracker()
+    tracker.sync(initial.nodeLookup, performance.now())
     let cells: Uint8ClampedArray | undefined
     let screenCell = 0
+    let lightsAnimating = false
 
     const buildFrame = (now: number | null): WallFrame => {
       const grid = resolveWallGrid({ x, y, zoom, width, height })
-      cells = fillWallCells(grid, palette, now === null ? null : now / 1000, cells, windows)
-      recordWallFrame(cells, now !== null)
+      const ambientSeconds = now === null || still() ? null : now / 1000
+      const lit = tracker.resolve(now === null || reducedMotion ? null : now, lights)
+      lightsAnimating = lit.animating
+      cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows)
+      recordWallFrame(cells, ambientSeconds !== null || lit.animating, lit.windows)
       if (grid.screenCell !== screenCell) {
         screenCell = grid.screenCell
         host.dataset.coveWallCell = screenCell.toFixed(2)
@@ -95,7 +91,8 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     const activeScheduler = createPixelFrameScheduler({
       requestFrame: callback => window.requestAnimationFrame(callback),
       cancelFrame: id => window.cancelAnimationFrame(id),
-      draw: now => controller.render(still() ? null : now) && !still(),
+      draw: now =>
+        controller.render(now) && !reducedMotion && (ambientRef.current || lightsAnimating),
     })
     scheduler = activeScheduler
     const repaint = () => activeScheduler.invalidate({ immediate: true })
@@ -108,7 +105,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       const windowsChanged = state.nodes !== nodes
       if (windowsChanged) {
         nodes = state.nodes
-        windows = readWindowRects(state)
+        tracker.sync(state.nodeLookup, performance.now())
       }
       if (moved || windowsChanged) {
         x = nextX
@@ -128,8 +125,24 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     resizeObserver?.observe(host)
     const onThemeChange = () => {
       palette = readWallPalette(host)
+      lights = readWallLightPalette(host)
       repaint()
     }
+    // Window kind colours switch on the root without a theme change.
+    const kindColors =
+      typeof MutationObserver === 'function' ? new MutationObserver(onThemeChange) : null
+    kindColors?.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-cove-kind-colors'],
+    })
+    // Output only brightens a light; without a PTY bridge there is nothing to observe.
+    const unsubscribeOutput = window.opencoveApi?.pty
+      ? getPtyEventHub().onData(event => {
+          if (tracker.observeOutput(event.sessionId, performance.now()) && !reducedMotion) {
+            activeScheduler.invalidate()
+          }
+        })
+      : () => undefined
     const onMotionChange = () => {
       reducedMotion = media.matches
       repaint()
@@ -147,6 +160,8 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
 
     return () => {
       unsubscribeStore()
+      unsubscribeOutput()
+      kindColors?.disconnect()
       resizeObserver?.disconnect()
       window.removeEventListener('opencove-theme-changed', onThemeChange)
       media.removeEventListener('change', onMotionChange)

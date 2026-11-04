@@ -150,3 +150,54 @@ describe('pixel wall cells behind glass', () => {
     expect(outside).toBeGreaterThan(limit)
   })
 })
+
+describe('pixel wall work light', () => {
+  const black: WallPalette = {
+    ...dark,
+    cell: [0, 0, 0],
+    clouds: dark.clouds.map(() => [0, 0, 0] as const),
+    sparks: dark.sparks.map(() => [0, 0, 0] as const),
+  }
+  const view = resolveWallGrid({ x: 0, y: 0, zoom: 1, width: 1200, height: 900 })
+  const frame = { x: 480, y: 360, width: 240, height: 168 }
+  const red = (cells: Uint8ClampedArray, wx: number, wy: number) => {
+    const column = Math.floor(wx / view.worldCell) - view.firstColumn
+    const row = Math.floor(wy / view.worldCell) - view.firstRow
+    return cells[(row * view.columns + column) * 4]!
+  }
+
+  it('tints the cells around a window toward its colour, fading with distance', () => {
+    const lit = { ...frame, light: { color: [255, 0, 0] as const, intensity: 0.92 } }
+    const cells = fillWallCells(view, black, null, undefined, [lit])
+    const near = red(cells, frame.x - 70, frame.y + 80)
+    const far = red(cells, frame.x - 200, frame.y + 80)
+    expect(near).toBeGreaterThan(far)
+    expect(far).toBeGreaterThan(0)
+    // A brighter state reaches further.
+    const dim = fillWallCells(view, black, null, undefined, [
+      { ...frame, light: { color: [255, 0, 0], intensity: 0.46 } },
+    ])
+    expect(red(dim, frame.x - 70, frame.y + 80)).toBeLessThan(near)
+  })
+
+  it('casts light themes to the lower right, as daylight through coloured glass', () => {
+    const light: WallPalette = { ...black, appearance: 'light' }
+    const lit = { ...frame, light: { color: [255, 0, 0] as const, intensity: 0.8 } }
+    const cells = fillWallCells(view, light, null, undefined, [lit])
+    const lowerRight = red(cells, frame.x + frame.width + 60, frame.y + frame.height + 60)
+    const upperLeft = red(cells, frame.x - 60, frame.y - 60)
+    expect(lowerRight).toBeGreaterThan(upperLeft)
+    const darkCells = fillWallCells(view, black, null, undefined, [lit])
+    expect(red(darkCells, frame.x - 60, frame.y - 60)).toBeCloseTo(
+      red(darkCells, frame.x + frame.width + 60, frame.y + frame.height + 60),
+      -1,
+    )
+  })
+
+  it('still caps cells behind the glass when the light is at full strength', () => {
+    const lit = { ...frame, light: { color: [255, 255, 255] as const, intensity: 1 } }
+    const cells = fillWallCells(view, black, 3.3, undefined, [lit])
+    const limit = PIXEL_WALL.dark.cap * 255 + PIXEL_WALL.dark.tileJitter
+    expect(red(cells, frame.x + 100, frame.y + 80)).toBeLessThanOrEqual(limit)
+  })
+})

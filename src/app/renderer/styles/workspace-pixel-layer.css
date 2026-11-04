@@ -51,3 +51,25 @@
 .workspace-pixel-wall[data-cove-wall-renderer='2d'] > .workspace-pixel-wall__surface--gl {
   display: none;
 }
+
+/* Work light colours. Generated families light each window by its kind; hand-written themes
+   fall back to their label colours. Waiting is yellow and failure red, in every theme. */
+.workspace-pixel-wall {
+  --cove-wall-light-ai: var(--cove-kind-ai-solid, var(--cove-label-purple));
+  --cove-wall-light-shell: var(--cove-kind-shell-solid, var(--cove-label-green));
+  --cove-wall-light-plan: var(--cove-kind-plan-solid, var(--cove-label-orange));
+  --cove-wall-light-knowledge: var(--cove-kind-knowledge-solid, var(--cove-label-blue));
+  --cove-wall-light-media: var(--cove-kind-media-solid, var(--cove-label-red));
+  --cove-wall-light-neutral: var(--cove-kind-neutral-solid, var(--cove-label-gray));
+  --cove-wall-light-waiting: var(--cove-status-waiting, var(--cove-label-yellow));
+  --cove-wall-light-failed: var(--cove-status-failed, var(--cove-label-red));
+}
+
+/* With window kind colours off every window casts the neutral light; status colours stay. */
+:root[data-cove-kind-colors='off'] .workspace-pixel-wall {
+  --cove-wall-light-ai: var(--cove-wall-light-neutral);
+  --cove-wall-light-shell: var(--cove-wall-light-neutral);
+  --cove-wall-light-plan: var(--cove-wall-light-neutral);
+  --cove-wall-light-knowledge: var(--cove-wall-light-neutral);
+  --cove-wall-light-media: var(--cove-wall-light-neutral);
+}
