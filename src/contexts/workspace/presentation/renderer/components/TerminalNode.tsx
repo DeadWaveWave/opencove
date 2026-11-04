@@ -82,18 +82,11 @@ export function TerminalNode({
   onInteractionStart,
   ...linkOptions
 }: TerminalNodeProps): JSX.Element {
-  const {
-    isDragSurfaceSelectionMode,
-    isViewportInteractionActive,
-    isViewportInteractionSettledActive,
-    viewportZoom,
-  } = useTerminalViewportState()
   const isTestEnvironment =
     window.opencoveApi.meta.isTest || window.opencoveApi.meta.enableTerminalTestApi === true
   const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
   const transcriptMirrorDisabled = window.opencoveApi.meta?.disableTerminalTranscriptMirror === true
   const outputSchedulerRef = useRef<TerminalOutputScheduler | null>(null)
-  const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -112,7 +105,8 @@ export function TerminalNode({
   const initialTerminalGeometryRef = useRef(terminalGeometry)
   const initialTerminalGeometryKeyRef = useRef({ sessionId, resetVersion: 0 })
   const stableLiveReattach = useTerminalLiveReattachScope(sessionId, isLiveSessionReattach)
-  const viewportZoomRef = useRef(viewportZoom)
+  const { isDragSurfaceSelectionMode, viewportZoomRef, isViewportInteractionActiveRef } =
+    useTerminalViewportState({ terminalRef, outputSchedulerRef })
   const [, forceRendererRecoveryRender] = useState(0)
   const {
     activeRendererKindRef,
@@ -174,15 +168,7 @@ export function TerminalNode({
     agentResumeSessionIdVerifiedRef.current = agentResumeSessionIdVerified
     statusRef.current = status
     latestSessionIdRef.current = sessionId
-    viewportZoomRef.current = viewportZoom
-  }, [agentLaunchMode, agentResumeSessionIdVerified, sessionId, status, title, viewportZoom])
-
-  useEffect(() => {
-    isViewportInteractionActiveRef.current = isViewportInteractionSettledActive
-    outputSchedulerRef.current?.onViewportInteractionActiveChange(
-      isViewportInteractionSettledActive,
-    )
-  }, [isViewportInteractionSettledActive])
+  }, [agentLaunchMode, agentResumeSessionIdVerified, sessionId, status, title])
 
   const {
     scrollbackBufferRef,
@@ -427,8 +413,6 @@ export function TerminalNode({
     terminalFontFamily,
     width,
     height,
-    viewportZoom,
-    isViewportInteractionActive: isViewportInteractionSettledActive,
   })
   useTerminalFileDropPaste({ containerRef, terminalRef })
 

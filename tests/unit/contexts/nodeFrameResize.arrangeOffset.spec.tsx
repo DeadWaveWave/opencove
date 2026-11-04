@@ -6,6 +6,7 @@ import { useNodeFrameResize } from '../../../src/contexts/workspace/presentation
 
 vi.mock('@xyflow/react', () => {
   return {
+    useStoreApi: () => ({ getState: () => ({ transform: [0, 0, 1] }), subscribe: () => () => {} }),
     useStore: (selector: (state: unknown) => unknown) => selector({ transform: [0, 0, 1] }),
   }
 })

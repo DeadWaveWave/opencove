@@ -1,4 +1,4 @@
-import { useMemo, type MutableRefObject, type ReactElement } from 'react'
+import { memo, useMemo, type MutableRefObject, type FunctionComponent } from 'react'
 import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
@@ -134,7 +134,7 @@ export function useWorkspaceCanvasNodeTypes({
   setWebsiteFullscreenRef,
 }: WorkspaceCanvasNodeTypesParams): Record<
   string,
-  (props: WorkspaceCanvasNodeTypeProps) => ReactElement | null
+  FunctionComponent<WorkspaceCanvasNodeTypeProps>
 > {
   return useMemo(() => {
     const TaskNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
@@ -301,7 +301,7 @@ export function useWorkspaceCanvasNodeTypes({
     return Object.fromEntries(
       Object.entries(nodeTypes).map(([type, NodeComponent]) => [
         type,
-        (props: WorkspaceCanvasNodeTypeProps) => (
+        memo((props: WorkspaceCanvasNodeTypeProps) => (
           <WindowCollapsePresentation
             id={props.id}
             data={props.data}
@@ -310,7 +310,7 @@ export function useWorkspaceCanvasNodeTypes({
           >
             <NodeComponent {...props} />
           </WindowCollapsePresentation>
-        ),
+        )),
       ]),
     )
   }, [

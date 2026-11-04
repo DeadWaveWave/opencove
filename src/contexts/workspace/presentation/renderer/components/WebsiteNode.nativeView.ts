@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useStore } from '@xyflow/react'
+import { useStoreApi } from '@xyflow/react'
 import type { WebsiteWindowLifecycle, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import {
   HIDDEN_WEBSITE_BOUNDS,
@@ -15,6 +15,12 @@ const VIEWPORT_FOCUS_SNAPSHOT_ENTER_RATIO = 0.8
 const VIEWPORT_FOCUS_SNAPSHOT_EXIT_RATIO = 0.7
 const VIEWPORT_FOCUS_POLL_INTERVAL_MS = 140
 const VIEWPORT_FOCUS_ACTIVATION_GRACE_PERIOD_MS = 900
+
+/** Preserve the browser's existing zoom-factor precision independently of DOM bounds. */
+function normalizeCanvasZoom(zoom: number): number {
+  const normalized = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+  return Math.round(Math.min(2, Math.max(0.1, normalized)) * 1000) / 1000
+}
 
 /** Native views freeze on the canvas's far-view thresholds, whether or not far view is drawn. */
 function resolveCanvasZoomTooSmallForLiveView(nextZoom: number, wasTooSmall: boolean): boolean {
@@ -59,89 +65,60 @@ export function useWebsiteNodeNativeView({
     lifecycleRef.current = lifecycle
   }, [lifecycle])
 
-  const canvasZoom = useStore(storeState => {
-    const state = storeState as unknown as { transform?: [number, number, number] }
-    const zoom = state.transform?.[2] ?? 1
-    const normalized = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
-    const clamped = Math.min(2, Math.max(0.1, normalized))
-    return Math.round(clamped * 1000) / 1000
-  })
-
-  const canvasZoomRef = useRef(canvasZoom)
-  useLayoutEffect(() => {
-    canvasZoomRef.current = canvasZoom
-  }, [canvasZoom])
-
+  const store = useStoreApi()
+  const canvasZoomRef = useRef(normalizeCanvasZoom(store.getState().transform[2]))
   const [isCanvasZoomFrozen, setIsCanvasZoomFrozen] = useState(false)
-  const isCanvasZoomFrozenRef = useRef(isCanvasZoomFrozen)
-  useEffect(() => {
-    isCanvasZoomFrozenRef.current = isCanvasZoomFrozen
-  }, [isCanvasZoomFrozen])
-
+  const isCanvasZoomFrozenRef = useRef(false)
   const isViewportFocusSnapshotRef = useRef(false)
   const lastActivatedAtRef = useRef<number | null>(null)
-
   const isCanvasZoomTooSmallForLiveViewRef = useRef(false)
 
-  const lastCanvasZoomValueRef = useRef(canvasZoom)
-  const releaseCanvasZoomFreezeTimerRef = useRef<number | null>(null)
   useEffect(() => {
-    if (lifecycle !== 'active' || isOccluded) {
-      isCanvasZoomTooSmallForLiveViewRef.current = false
-      lastCanvasZoomValueRef.current = canvasZoom
-      if (releaseCanvasZoomFreezeTimerRef.current !== null) {
-        window.clearTimeout(releaseCanvasZoomFreezeTimerRef.current)
-        releaseCanvasZoomFreezeTimerRef.current = null
-      }
-      if (isCanvasZoomFrozenRef.current) {
-        setIsCanvasZoomFrozen(false)
-      }
-      return
-    }
-
-    const wasTooSmallForLive = isCanvasZoomTooSmallForLiveViewRef.current
-    const isTooSmallForLive = resolveCanvasZoomTooSmallForLiveView(canvasZoom, wasTooSmallForLive)
-    isCanvasZoomTooSmallForLiveViewRef.current = isTooSmallForLive
-    if (isTooSmallForLive) {
-      lastCanvasZoomValueRef.current = canvasZoom
-      if (releaseCanvasZoomFreezeTimerRef.current !== null) {
-        window.clearTimeout(releaseCanvasZoomFreezeTimerRef.current)
-        releaseCanvasZoomFreezeTimerRef.current = null
-      }
-      if (!isCanvasZoomFrozenRef.current) {
-        setIsCanvasZoomFrozen(true)
-      }
-      return
-    }
-
-    const previousZoom = lastCanvasZoomValueRef.current
-    lastCanvasZoomValueRef.current = canvasZoom
-    if (previousZoom === canvasZoom) {
-      return
-    }
-
-    if (releaseCanvasZoomFreezeTimerRef.current !== null) {
-      window.clearTimeout(releaseCanvasZoomFreezeTimerRef.current)
-    }
-
-    releaseCanvasZoomFreezeTimerRef.current = window.setTimeout(() => {
-      const resolvedZoom = canvasZoomRef.current
-      const shouldKeepFrozen = resolveCanvasZoomTooSmallForLiveView(
-        resolvedZoom,
-        isCanvasZoomTooSmallForLiveViewRef.current,
-      )
-      isCanvasZoomTooSmallForLiveViewRef.current = shouldKeepFrozen
-      if (shouldKeepFrozen) {
-        setIsCanvasZoomFrozen(true)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let zoom = canvasZoomRef.current
+    const freeze = (next: boolean) => {
+      if (isCanvasZoomFrozenRef.current === next) {
         return
       }
-      setIsCanvasZoomFrozen(false)
-    }, CANVAS_ZOOM_FREEZE_RELEASE_DELAY_MS)
-
-    if (!isCanvasZoomFrozenRef.current) {
-      setIsCanvasZoomFrozen(true)
+      isCanvasZoomFrozenRef.current = next
+      setIsCanvasZoomFrozen(next)
     }
-  }, [canvasZoom, isOccluded, lifecycle])
+    const sync = () => {
+      const nextZoom = normalizeCanvasZoom(store.getState().transform[2])
+      canvasZoomRef.current = nextZoom
+      if (lifecycle !== 'active' || isOccluded) {
+        isCanvasZoomTooSmallForLiveViewRef.current = false
+        zoom = nextZoom
+        clearTimeout(timer)
+        freeze(false)
+        return
+      }
+      const tooSmall = resolveCanvasZoomTooSmallForLiveView(
+        nextZoom,
+        isCanvasZoomTooSmallForLiveViewRef.current,
+      )
+      isCanvasZoomTooSmallForLiveViewRef.current = tooSmall
+      if (tooSmall) {
+        zoom = nextZoom
+        clearTimeout(timer)
+        freeze(true)
+        return
+      }
+      if (zoom === nextZoom) {
+        return
+      }
+      zoom = nextZoom
+      clearTimeout(timer)
+      freeze(true)
+      timer = setTimeout(() => freeze(false), CANVAS_ZOOM_FREEZE_RELEASE_DELAY_MS)
+    }
+    sync()
+    const unsubscribe = store.subscribe(sync)
+    return () => {
+      clearTimeout(timer)
+      unsubscribe()
+    }
+  }, [isOccluded, lifecycle, store])
 
   const activate = useCallback(
     (nextUrl: string) => {
@@ -191,6 +168,10 @@ export function useWebsiteNodeNativeView({
 
     let raf = 0
     const tick = () => {
+      if (isCanvasZoomFrozenRef.current) {
+        raf = window.requestAnimationFrame(tick)
+        return
+      }
       if (
         !isViewportFocusSnapshotRef.current &&
         lifecycleRef.current === 'active' &&
@@ -313,6 +294,7 @@ export function useWebsiteNodeNativeView({
       return
     }
 
+    const canvasZoom = canvasZoomRef.current
     const viewportState = resolveViewportState(viewportRef.current, canvasZoom) ?? {
       bounds: HIDDEN_WEBSITE_BOUNDS,
       viewportBounds: HIDDEN_WEBSITE_BOUNDS,
@@ -328,16 +310,7 @@ export function useWebsiteNodeNativeView({
         canvasZoom: viewportState.canvasZoom,
       })
     }
-  }, [
-    canvasZoom,
-    enabled,
-    isCanvasZoomFrozen,
-    isOccluded,
-    lifecycle,
-    nodeId,
-    presentationHidden,
-    viewportRef,
-  ])
+  }, [enabled, isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, presentationHidden, viewportRef])
 
   useLayoutEffect(() => {
     // Update durable presentation bounds even under a menu/modal, so lifting

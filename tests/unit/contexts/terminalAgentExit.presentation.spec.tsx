@@ -14,7 +14,10 @@ vi.mock('@xyflow/react', () => ({
   Handle: () => null,
   Position: { Left: 'left', Right: 'right' },
   useStore: (selector: (state: unknown) => unknown) => selector({ nodes: [] }),
-  useStoreApi: () => ({ getState: () => ({ nodes: [] }) }),
+  useStoreApi: () => ({
+    getState: () => ({ nodes: [], transform: [0, 0, 1] }),
+    subscribe: () => () => {},
+  }),
 }))
 
 // Exercise the actual node, frame and header. Only the xterm/PTY effect is excluded.

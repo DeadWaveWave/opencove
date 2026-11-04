@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import { readCanvasViewport } from './workspace-canvas.helpers'
 
-export async function wheelToZoom(window: Page, target: number) {
+export async function hoverCanvasPane(window: Page) {
   const paneLocator = window.locator('.workspace-canvas .react-flow__pane')
   const pointHandle = await window.waitForFunction(
     () => {
@@ -36,6 +36,10 @@ export async function wheelToZoom(window: Page, target: number) {
   }
   // Hover also waits for the pane's geometry to be stable before sending input.
   await paneLocator.hover({ position: point })
+}
+
+export async function wheelToZoom(window: Page, target: number) {
+  await hoverCanvasPane(window)
   const current = await readCanvasViewport(window)
   await window.mouse.wheel(0, -Math.log2(target / current.zoom) / 0.002)
   await expect.poll(async () => (await readCanvasViewport(window)).zoom).toBeCloseTo(target, 2)

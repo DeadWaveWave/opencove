@@ -77,6 +77,7 @@ vi.mock('@xyflow/react', async () => {
     Handle: ({ type }: { type: string }) =>
       ReactModule.createElement('div', { 'data-testid': `react-flow-handle-${type}` }),
     Position: { Left: 'left', Right: 'right' },
+    useStoreApi: () => ({ getState: () => ({ transform: [0, 0, 1] }), subscribe: () => () => {} }),
     useStore: (selector: (state: unknown) => unknown) =>
       selector({ coveDragSurfaceSelectionMode: false }),
   }

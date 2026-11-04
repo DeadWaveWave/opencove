@@ -5,6 +5,7 @@ import { CanvasNodeWindow } from '../../../src/contexts/workspace/presentation/r
 import { WindowCollapseContext } from '../../../src/contexts/workspace/presentation/renderer/components/shared/WindowCollapseButton'
 
 vi.mock('@xyflow/react', () => ({
+  useStoreApi: () => ({ getState: () => ({ transform: [0, 0, 0.5] }), subscribe: () => () => {} }),
   useStore: (selector: (state: unknown) => unknown) => selector({ transform: [0, 0, 0.5] }),
 }))
 

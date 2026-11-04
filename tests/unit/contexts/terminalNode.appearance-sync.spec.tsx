@@ -42,8 +42,6 @@ function AppearanceHarness({
     terminalFontFamily: fontFamily,
     width,
     height,
-    viewportZoom: 1,
-    isViewportInteractionActive: false,
   })
 
   return null
