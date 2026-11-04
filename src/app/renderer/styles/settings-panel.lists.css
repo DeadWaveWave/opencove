@@ -337,7 +337,7 @@
   text-transform: uppercase;
 }
 
-.settings-agent-configure-panel__row {
+.settings-panel .cove-setting-row.settings-agent-configure-panel__row {
   padding: 12px;
   border: 1px solid var(--cove-border-subtle);
   border-radius: 10px;

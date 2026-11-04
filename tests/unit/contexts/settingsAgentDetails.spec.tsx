@@ -64,6 +64,62 @@ afterEach(() => {
 })
 
 describe('Agent list and provider detail', () => {
+  it.each([false, true])('associates the full access label and help when enabled=%s', enabled => {
+    const props = createProps()
+    props.settings = { ...props.settings, agentFullAccess: enabled }
+    const { container } = render(<AgentSettingsPage {...props} />)
+    const toggle = screen.getByRole('switch', { name: 'Full Access Mode', exact: true })
+    const help = screen.getByTestId('settings-agent-full-access-help')
+
+    expect(toggle).toHaveAccessibleDescription(help.textContent!)
+    expect(container.querySelector('#settings-agent-full-access')).toContainElement(toggle)
+    expect(help).toHaveTextContent(enabled ? /without asking/ : /ask before running commands/)
+    if (enabled) {
+      expect(help).toHaveAttribute('data-tone', 'warning')
+    } else {
+      expect(help).not.toHaveAttribute('data-tone')
+    }
+    fireEvent.click(screen.getByText('Full Access Mode', { selector: 'label' }))
+    expect(props.onChangeAgentFullAccess).toHaveBeenCalledExactlyOnceWith(!enabled)
+  })
+
+  it.each([false, true])(
+    'labels and describes the custom model switch when enabled=%s',
+    enabled => {
+      const props = createProps()
+      props.settings = {
+        ...props.settings,
+        customModelEnabledByProvider: {
+          ...props.settings.customModelEnabledByProvider,
+          codex: enabled,
+        },
+        customModelByProvider: { ...props.settings.customModelByProvider, codex: 'test-model' },
+      }
+      render(<AgentSettingsPage {...props} requestedProvider="codex" requestKey={1} />)
+      const toggle = screen.getByRole('switch', { name: 'Use Custom Model', exact: true })
+      expect(toggle).toHaveAccessibleDescription(enabled ? 'test-model' : 'Default (Follow CLI)')
+      fireEvent.click(screen.getByText('Use Custom Model', { selector: 'label' }))
+      expect(props.onToggleCustomModelEnabled).toHaveBeenCalledExactlyOnceWith('codex', !enabled)
+    },
+  )
+
+  it.each([false, true])('names the default agent group when default=%s', isDefault => {
+    const props = createProps()
+    props.settings = { ...props.settings, defaultProvider: isDefault ? 'codex' : 'claude-code' }
+    render(<AgentSettingsPage {...props} requestedProvider="codex" requestKey={1} />)
+    const group = screen.getByRole('group', { name: 'Default Agent', exact: true })
+    if (isDefault) {
+      expect(group).toHaveTextContent('Default')
+      expect(screen.queryByTestId('settings-agent-make-default-codex')).not.toBeInTheDocument()
+    } else {
+      const button = screen.getByTestId('settings-agent-make-default-codex')
+      expect(button).toHaveAccessibleName('Set as default')
+      expect(group).toContainElement(button)
+      fireEvent.click(button)
+      expect(props.onChangeDefaultProvider).toHaveBeenCalledExactlyOnceWith('codex')
+    }
+  })
+
   it('exposes accessible drag handles and keeps the default first', () => {
     const props = createProps()
     render(<AgentSettingsPage {...props} />)
