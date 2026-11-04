@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { ChevronDown } from 'lucide-react'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
@@ -64,14 +65,9 @@ export function TerminalFontFamilyRow({
   }, [isOpen, close])
 
   return (
-    <div className="settings-panel__row">
-      <div className="settings-panel__row-label">
-        <strong>{t('settingsPanel.general.terminalFontFamily')}</strong>
-      </div>
-      <div
-        className="settings-panel__control"
-        style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}
-      >
+    <SettingRow
+      label={t('settingsPanel.general.terminalFontFamily')}
+      value={
         <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
           <button
             type="button"
@@ -171,7 +167,7 @@ export function TerminalFontFamilyRow({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      }
+    />
   )
 }

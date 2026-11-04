@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { useTranslation } from '@app/renderer/i18n'
 import type { CliPathStatusResult, HomeWorkerMode, WorkerStatusResult } from '@shared/contracts/dto'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
@@ -113,16 +115,14 @@ export function WorkerSection(): React.JSX.Element {
     <SettingsGroup id="settings-section-worker" title={t('settingsPanel.groups.worker.runtime')}>
       <SettingsGroupBody id="settings-section-worker-home">
         {error ? (
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('common.error')}</strong>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            label={t('common.error')}
+            value={
               <span className="settings-panel__value" style={{ color: 'var(--cove-danger-text)' }}>
                 {error}
               </span>
-            </div>
-          </div>
+            }
+          />
         ) : null}
 
         <SettingsModule
@@ -130,11 +130,9 @@ export function WorkerSection(): React.JSX.Element {
           title={t('settingsPanel.worker.cli.title')}
           description={t('settingsPanel.worker.cli.help')}
         >
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.worker.cli.statusLabel')}</strong>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            label={t('settingsPanel.worker.cli.statusLabel')}
+            value={
               <span className="settings-panel__value" data-testid="settings-worker-cli-status">
                 {cliStatus?.installed
                   ? cliStatus.healthy
@@ -146,34 +144,32 @@ export function WorkerSection(): React.JSX.Element {
                       })
                   : t('settingsPanel.worker.cli.status.notInstalled')}
               </span>
-            </div>
-          </div>
+            }
+          />
 
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.worker.cli.actionsLabel')}</strong>
-            </div>
-            <div className="settings-panel__control settings-panel__control--actions">
-              <button
-                type="button"
-                className="secondary"
-                data-testid="settings-worker-cli-install"
-                disabled={isBusy}
-                onClick={() => void installCli()}
-              >
-                {t('settingsPanel.worker.cli.install')}
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                data-testid="settings-worker-cli-uninstall"
-                disabled={isBusy || !cliStatus?.installed}
-                onClick={() => void uninstallCli()}
-              >
-                {t('settingsPanel.worker.cli.uninstall')}
-              </button>
-            </div>
-          </div>
+          <SettingRow
+            label={t('settingsPanel.worker.cli.actionsLabel')}
+            value={
+              <>
+                <Button
+                  variant="secondary"
+                  data-testid="settings-worker-cli-install"
+                  disabled={isBusy}
+                  onClick={() => void installCli()}
+                >
+                  {t('settingsPanel.worker.cli.install')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  data-testid="settings-worker-cli-uninstall"
+                  disabled={isBusy || !cliStatus?.installed}
+                  onClick={() => void uninstallCli()}
+                >
+                  {t('settingsPanel.worker.cli.uninstall')}
+                </Button>
+              </>
+            }
+          />
         </SettingsModule>
 
         <SettingsModule
@@ -181,83 +177,78 @@ export function WorkerSection(): React.JSX.Element {
           title={t('settingsPanel.worker.local.title')}
           actions={
             <div className="settings-panel__control settings-panel__control--actions">
-              <button
-                type="button"
-                className="secondary"
+              <Button
+                variant="secondary"
                 data-testid="settings-worker-local-start"
                 disabled={isBusy || savedMode === null || localStatus?.status === 'running'}
                 onClick={startLocalWorker}
               >
                 {t('settingsPanel.worker.local.start')}
-              </button>
-              <button
-                type="button"
-                className="secondary"
+              </Button>
+              <Button
+                variant="secondary"
                 data-testid="settings-worker-local-stop"
                 disabled={isBusy || localStatus?.status !== 'running'}
                 onClick={stopLocalWorker}
               >
                 {t('settingsPanel.worker.local.stop')}
-              </button>
+              </Button>
             </div>
           }
         >
           {localConnection ? (
             <>
-              <div className="settings-panel__row">
-                <div className="settings-panel__row-label">
-                  <strong>{t('settingsPanel.worker.local.baseUrlLabel')}</strong>
-                </div>
-                <div className="settings-panel__control" style={{ gap: 8 }}>
-                  <span
-                    className="settings-panel__value"
-                    style={{ fontFamily: 'var(--cove-font-mono)' }}
-                  >
-                    {toBaseUrl(localConnection)}
-                  </span>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => void copyLocalBaseUrl()}
-                    data-testid="settings-worker-local-copy-base-url"
-                  >
-                    {t('settingsPanel.worker.local.copyBaseUrl')}
-                  </button>
-                </div>
-              </div>
+              <SettingRow
+                label={t('settingsPanel.worker.local.baseUrlLabel')}
+                value={
+                  <>
+                    <span
+                      className="settings-panel__value"
+                      style={{ fontFamily: 'var(--cove-font-mono)' }}
+                    >
+                      {toBaseUrl(localConnection)}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      onClick={() => void copyLocalBaseUrl()}
+                      data-testid="settings-worker-local-copy-base-url"
+                    >
+                      {t('settingsPanel.worker.local.copyBaseUrl')}
+                    </Button>
+                  </>
+                }
+              />
 
-              <div className="settings-panel__row">
-                <div className="settings-panel__row-label">
-                  <strong>{t('settingsPanel.worker.local.tokenLabel')}</strong>
-                </div>
-                <div className="settings-panel__control" style={{ gap: 8 }}>
-                  <span
-                    className="settings-panel__value"
-                    style={{ fontFamily: 'var(--cove-font-mono)' }}
-                    data-testid="settings-worker-local-token"
-                  >
-                    {formatToken(localConnection.token, revealLocalToken)}
-                  </span>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => setRevealLocalToken(value => !value)}
-                    data-testid="settings-worker-local-token-toggle"
-                  >
-                    {revealLocalToken
-                      ? t('settingsPanel.worker.local.hideToken')
-                      : t('settingsPanel.worker.local.revealToken')}
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => void copyLocalToken()}
-                    data-testid="settings-worker-local-copy-token"
-                  >
-                    {t('settingsPanel.worker.local.copyToken')}
-                  </button>
-                </div>
-              </div>
+              <SettingRow
+                label={t('settingsPanel.worker.local.tokenLabel')}
+                value={
+                  <>
+                    <span
+                      className="settings-panel__value"
+                      style={{ fontFamily: 'var(--cove-font-mono)' }}
+                      data-testid="settings-worker-local-token"
+                    >
+                      {formatToken(localConnection.token, revealLocalToken)}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setRevealLocalToken(value => !value)}
+                      data-testid="settings-worker-local-token-toggle"
+                    >
+                      {revealLocalToken
+                        ? t('settingsPanel.worker.local.hideToken')
+                        : t('settingsPanel.worker.local.revealToken')}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => void copyLocalToken()}
+                      data-testid="settings-worker-local-copy-token"
+                    >
+                      {t('settingsPanel.worker.local.copyToken')}
+                    </Button>
+                  </>
+                }
+              />
             </>
           ) : null}
         </SettingsModule>

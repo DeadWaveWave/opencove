@@ -1,3 +1,4 @@
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { useTranslation } from '@app/renderer/i18n'
 import { getStandardWindowSizeBucketLabel } from '@app/renderer/i18n/labels'
@@ -21,12 +22,10 @@ function WindowSizeRow({
 }: WindowSizeProps) {
   const { t } = useTranslation()
   return (
-    <div className="settings-panel__row">
-      <div className="settings-panel__row-label">
-        <strong>{t('settingsPanel.canvas.standardWindowSizeLabel')}</strong>
-        <span>{t('settingsPanel.canvas.standardWindowSizeHelp')}</span>
-      </div>
-      <div className="settings-panel__control">
+    <SettingRow
+      label={t('settingsPanel.canvas.standardWindowSizeLabel')}
+      description={t('settingsPanel.canvas.standardWindowSizeHelp')}
+      control={
         <CoveSelect
           id="settings-standard-window-size"
           testId="settings-standard-window-size"
@@ -38,8 +37,8 @@ function WindowSizeRow({
           }))}
           onChange={next => onChangeStandardWindowSizeBucket(next as StandardWindowSizeBucket)}
         />
-      </div>
-    </div>
+      }
+    />
   )
 }
 
@@ -57,12 +56,10 @@ export function WindowSizeSection(
     >
       <SettingsGroupBody>
         <WindowSizeRow {...props} />
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.canvas.nodeExpandBehaviorLabel')}</strong>
-            <span>{t('settingsPanel.canvas.nodeExpandBehaviorHelp')}</span>
-          </div>
-          <div className="settings-panel__control">
+        <SettingRow
+          label={t('settingsPanel.canvas.nodeExpandBehaviorLabel')}
+          description={t('settingsPanel.canvas.nodeExpandBehaviorHelp')}
+          control={
             <CoveSelect
               id="settings-node-expand-behavior"
               testId="settings-node-expand-behavior"
@@ -78,8 +75,8 @@ export function WindowSizeSection(
                 }
               }}
             />
-          </div>
-        </div>
+          }
+        />
       </SettingsGroupBody>
     </SettingsGroup>
   )

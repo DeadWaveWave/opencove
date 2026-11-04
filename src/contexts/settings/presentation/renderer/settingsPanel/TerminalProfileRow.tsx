@@ -1,3 +1,4 @@
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalProfile } from '@shared/contracts/dto'
@@ -25,14 +26,10 @@ export function TerminalProfileRow({
     terminalProfiles.find(profile => profile.id === detectedDefaultTerminalProfileId)?.label ??
     t('settingsPanel.terminal.profileAuto')
   return (
-    <div className="settings-panel__row">
-      <div className="settings-panel__row-label">
-        <strong>{t('settingsPanel.terminal.profileLabel')}</strong>
-        <span>
-          {t('settingsPanel.terminal.profileHelp', { defaultProfile: defaultProfileLabel })}
-        </span>
-      </div>
-      <div className="settings-panel__control">
+    <SettingRow
+      label={t('settingsPanel.terminal.profileLabel')}
+      description={t('settingsPanel.terminal.profileHelp', { defaultProfile: defaultProfileLabel })}
+      control={
         <CoveSelect
           id="settings-terminal-profile"
           testId="settings-terminal-profile"
@@ -49,7 +46,7 @@ export function TerminalProfileRow({
           ]}
           onChange={next => onChangeDefaultTerminalProfileId(next.trim().length > 0 ? next : null)}
         />
-      </div>
-    </div>
+      }
+    />
   )
 }

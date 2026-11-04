@@ -1,4 +1,6 @@
 import React from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -45,12 +47,10 @@ export function TaskConfigurationSection(props: {
           title={t('settingsPanel.groups.tasksShortcuts.taskTitles')}
         >
           <SettingsGroupBody>
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.tasks.titleProviderLabel')}</strong>
-                <span>{t('settingsPanel.tasks.titleProviderHelp')}</span>
-              </div>
-              <div className="settings-panel__control">
+            <SettingRow
+              label={t('settingsPanel.tasks.titleProviderLabel')}
+              description={t('settingsPanel.tasks.titleProviderHelp')}
+              control={
                 <CoveSelect
                   id="settings-task-title-provider"
                   testId="settings-task-title-provider"
@@ -72,15 +72,13 @@ export function TaskConfigurationSection(props: {
                     onChangeTaskTitleProvider(nextValue as TaskTitleProvider)
                   }}
                 />
-              </div>
-            </div>
+              }
+            />
 
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.tasks.titleModelLabel')}</strong>
-                <span>{t('settingsPanel.tasks.titleModelHelp')}</span>
-              </div>
-              <div className="settings-panel__control">
+            <SettingRow
+              label={t('settingsPanel.tasks.titleModelLabel')}
+              description={t('settingsPanel.tasks.titleModelHelp')}
+              control={
                 <input
                   type="text"
                   id="settings-task-title-model"
@@ -93,20 +91,18 @@ export function TaskConfigurationSection(props: {
                     onChangeTaskTitleModel(event.target.value)
                   }}
                 />
-              </div>
-            </div>
+              }
+            />
 
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.tasks.effectiveProviderLabel')}</strong>
-                <span>{t('settingsPanel.tasks.effectiveProviderHelp')}</span>
-              </div>
-              <div className="settings-panel__control">
+            <SettingRow
+              label={t('settingsPanel.tasks.effectiveProviderLabel')}
+              description={t('settingsPanel.tasks.effectiveProviderHelp')}
+              value={
                 <span className="settings-panel__value">
                   {AGENT_PROVIDER_LABEL[effectiveTaskTitleProvider]}
                 </span>
-              </div>
-            </div>
+              }
+            />
           </SettingsGroupBody>
         </SettingsGroup>
       ) : null}
@@ -149,15 +145,14 @@ export function TaskConfigurationSection(props: {
             onChange={event => onChangeAddTaskTagInput(event.target.value)}
             onKeyDown={event => event.key === 'Enter' && onAddTag()}
           />
-          <button
-            type="button"
-            className="primary"
+          <Button
+            variant="primary"
             data-testid="settings-task-tag-add-button"
             disabled={addTaskTagInput.trim().length === 0}
             onClick={() => onAddTag()}
           >
             {t('common.add')}
-          </button>
+          </Button>
         </div>
       </SettingsGroup>
     </>

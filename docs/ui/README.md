@@ -169,6 +169,11 @@
 - 带标签的文本输入用 `TextField` / `TextAreaField`：标签通过 `htmlFor` 命名输入框，补充说明放在
   `description`，校验错误放在 `error`（同时设置 `aria-invalid`、`aria-errormessage` 并加入描述）。
   标签行右侧的操作（例如提示词模板按钮）放在 `labelAccessory`。输入框本身仍是 `.cove-field`。
+- 设置页的每一行用 `SettingRow`：一个表单控件放在 `control`，行标签就是它的 `<label>`，说明通过
+  `aria-describedby` 提供；只读的值或一组操作按钮放在 `value`，整行成为以标签命名的 `group`。
+  行里的控件只用 `Toggle`、`SegmentedControl`、`CoveSelect`、`NumberInput`（带单位的数字框，
+  单位也加入描述）。`CoveSelect` 在行里的名称是「行标签 + 当前值」（例如「显示语言 English」）。
+  设置页里 `SettingRow` 与旧的 `.settings-panel__row` 版式一致，迁移不改变像素。
 - 窗口标题栏用 `WindowHeader`（`workspace/.../components/shared/`），顺序固定：标记圆点、类别图块、
   标题（13px / 500）、状态、拖动空白、本类操作、折叠、关闭。各窗口只填这些位置，不自己排版。
   类别图块随主题的图标尺寸缩放（默认 20px 图块、12px 图标）。

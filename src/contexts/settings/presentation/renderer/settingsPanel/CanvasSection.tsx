@@ -1,4 +1,5 @@
 import React from 'react'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -22,6 +23,23 @@ import {
 } from '@app/renderer/i18n/labels'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
+
+/** A range input on the neutral-marker track; SettingRow names it through the input. */
+function RangeField({
+  wrapperStyle,
+  ...inputProps
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> & {
+  wrapperStyle?: React.CSSProperties
+}): React.JSX.Element {
+  return (
+    <div
+      className="settings-panel__range settings-panel__range--neutral-marker"
+      style={wrapperStyle}
+    >
+      <input {...inputProps} type="range" />
+    </div>
+  )
+}
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
@@ -98,12 +116,10 @@ export function CanvasSection(props: {
         title={t('settingsPanel.groups.canvasWindows.canvasInput')}
       >
         <SettingsGroupBody>
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.canvas.inputModeLabel')}</strong>
-              <span>{t('settingsPanel.canvas.inputModeHelp')}</span>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            label={t('settingsPanel.canvas.inputModeLabel')}
+            description={t('settingsPanel.canvas.inputModeHelp')}
+            control={
               <CoveSelect
                 id="settings-canvas-input-mode"
                 testId="settings-canvas-input-mode"
@@ -115,15 +131,13 @@ export function CanvasSection(props: {
                 }))}
                 onChange={nextValue => onChangeCanvasInputMode(nextValue as CanvasInputMode)}
               />
-            </div>
-          </div>
+            }
+          />
 
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.canvas.wheelBehaviorLabel')}</strong>
-              <span>{t('settingsPanel.canvas.wheelBehaviorHelp')}</span>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            label={t('settingsPanel.canvas.wheelBehaviorLabel')}
+            description={t('settingsPanel.canvas.wheelBehaviorHelp')}
+            control={
               <CoveSelect
                 id="settings-canvas-wheel-behavior"
                 testId="settings-canvas-wheel-behavior"
@@ -137,20 +151,16 @@ export function CanvasSection(props: {
                   onChangeCanvasWheelBehavior(nextValue as CanvasWheelBehavior)
                 }
               />
-            </div>
-          </div>
+            }
+          />
 
           {canvasWheelBehavior === 'pan' ? (
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.canvas.wheelZoomModifierLabel')}</strong>
-                <span>
-                  {t('settingsPanel.canvas.wheelZoomModifierHelp', {
-                    modifier: wheelZoomModifierHelpLabel,
-                  })}
-                </span>
-              </div>
-              <div className="settings-panel__control">
+            <SettingRow
+              label={t('settingsPanel.canvas.wheelZoomModifierLabel')}
+              description={t('settingsPanel.canvas.wheelZoomModifierHelp', {
+                modifier: wheelZoomModifierHelpLabel,
+              })}
+              control={
                 <CoveSelect
                   id="settings-canvas-wheel-zoom-modifier"
                   testId="settings-canvas-wheel-zoom-modifier"
@@ -166,8 +176,8 @@ export function CanvasSection(props: {
                     onChangeCanvasWheelZoomModifier(nextValue as CanvasWheelZoomModifier)
                   }
                 />
-              </div>
-            </div>
+              }
+            />
           ) : null}
         </SettingsGroupBody>
       </SettingsGroup>
@@ -177,12 +187,11 @@ export function CanvasSection(props: {
         title={t('settingsPanel.groups.canvasWindows.nodeFocus')}
       >
         <SettingsGroupBody>
-          <div className="settings-panel__row" id="settings-viewport-transition">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.canvas.viewportTransitionLabel')}</strong>
-              <span>{t('settingsPanel.canvas.viewportTransitionHelp')}</span>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            id="settings-viewport-transition"
+            label={t('settingsPanel.canvas.viewportTransitionLabel')}
+            description={t('settingsPanel.canvas.viewportTransitionHelp')}
+            control={
               <CoveSelect
                 testId="settings-viewport-transition"
                 value={viewportTransition}
@@ -197,67 +206,57 @@ export function CanvasSection(props: {
                   }
                 }}
               />
-            </div>
-          </div>
-          <div className="settings-panel__row" id="settings-focus-node-on-click">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.canvas.focusOnClickLabel')}</strong>
-              <span>{t('settingsPanel.canvas.focusOnClickHelp')}</span>
-            </div>
-            <div className="settings-panel__control">
+            }
+          />
+          <SettingRow
+            id="settings-focus-node-on-click"
+            label={t('settingsPanel.canvas.focusOnClickLabel')}
+            description={t('settingsPanel.canvas.focusOnClickHelp')}
+            control={
               <Toggle
                 data-testid="settings-focus-node-on-click"
                 checked={focusNodeOnClick}
                 label={t('settingsPanel.canvas.focusOnClickLabel')}
                 onCheckedChange={checked => onChangeFocusNodeOnClick(checked)}
               />
-            </div>
-          </div>
+            }
+          />
 
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.canvas.focusVisibleCenterLabel')}</strong>
-              <span>{t('settingsPanel.canvas.focusVisibleCenterHelp')}</span>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            label={t('settingsPanel.canvas.focusVisibleCenterLabel')}
+            description={t('settingsPanel.canvas.focusVisibleCenterHelp')}
+            control={
               <Toggle
                 data-testid="settings-focus-node-visible-center"
                 checked={focusNodeUseVisibleCanvasCenter}
                 label={t('settingsPanel.canvas.focusVisibleCenterLabel')}
                 onCheckedChange={checked => onChangeFocusNodeUseVisibleCanvasCenter(checked)}
               />
-            </div>
-          </div>
+            }
+          />
 
-          <div className="settings-panel__row settings-panel__row--focus-target-zoom">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.canvas.focusTargetZoomLabel')}</strong>
-              <span>{t('settingsPanel.canvas.focusTargetZoomHelp')}</span>
-            </div>
-            <div className="settings-panel__control">
-              <div
-                className="settings-panel__range settings-panel__range--neutral-marker"
-                style={focusTargetZoomRangeStyle}
-              >
-                <input
-                  id="settings-focus-node-target-zoom"
-                  data-testid="settings-focus-node-target-zoom"
-                  value={focusNodeTargetZoom}
-                  disabled={!focusNodeOnClick}
-                  type="range"
-                  aria-label={t('settingsPanel.canvas.focusTargetZoomLabel')}
-                  min={MIN_FOCUS_NODE_TARGET_ZOOM}
-                  max={MAX_FOCUS_NODE_TARGET_ZOOM}
-                  step={FOCUS_NODE_TARGET_ZOOM_STEP}
-                  onPointerDown={() => onFocusNodeTargetZoomPreviewChange(true)}
-                  onPointerUp={() => onFocusNodeTargetZoomPreviewChange(false)}
-                  onPointerCancel={() => onFocusNodeTargetZoomPreviewChange(false)}
-                  onBlur={() => onFocusNodeTargetZoomPreviewChange(false)}
-                  onChange={event => onChangeFocusNodeTargetZoom(Number(event.target.value))}
-                />
-              </div>
-            </div>
-          </div>
+          <SettingRow
+            className="settings-panel__row--focus-target-zoom"
+            label={t('settingsPanel.canvas.focusTargetZoomLabel')}
+            description={t('settingsPanel.canvas.focusTargetZoomHelp')}
+            control={
+              <RangeField
+                wrapperStyle={focusTargetZoomRangeStyle}
+                id="settings-focus-node-target-zoom"
+                data-testid="settings-focus-node-target-zoom"
+                value={focusNodeTargetZoom}
+                disabled={!focusNodeOnClick}
+                min={MIN_FOCUS_NODE_TARGET_ZOOM}
+                max={MAX_FOCUS_NODE_TARGET_ZOOM}
+                step={FOCUS_NODE_TARGET_ZOOM_STEP}
+                onPointerDown={() => onFocusNodeTargetZoomPreviewChange(true)}
+                onPointerUp={() => onFocusNodeTargetZoomPreviewChange(false)}
+                onPointerCancel={() => onFocusNodeTargetZoomPreviewChange(false)}
+                onBlur={() => onFocusNodeTargetZoomPreviewChange(false)}
+                onChange={event => onChangeFocusNodeTargetZoom(Number(event.target.value))}
+              />
+            }
+          />
         </SettingsGroupBody>
       </SettingsGroup>
 
@@ -267,37 +266,29 @@ export function CanvasSection(props: {
         description={t('settingsPanel.canvas.archiveSpaceDefaultsHelp')}
       >
         <SettingsGroupBody>
-          <div
-            className="settings-panel__row"
+          <SettingRow
             data-testid="settings-archive-space-delete-worktree-default"
-          >
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}</strong>
-            </div>
-            <div className="settings-panel__control">
+            label={t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}
+            control={
               <Toggle
                 checked={archiveSpaceDeleteWorktreeByDefault}
                 label={t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}
                 onCheckedChange={checked => onChangeArchiveSpaceDeleteWorktreeByDefault(checked)}
               />
-            </div>
-          </div>
+            }
+          />
 
-          <div
-            className="settings-panel__row"
+          <SettingRow
             data-testid="settings-archive-space-delete-branch-default"
-          >
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}</strong>
-            </div>
-            <div className="settings-panel__control">
+            label={t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}
+            control={
               <Toggle
                 checked={archiveSpaceDeleteBranchByDefault}
                 label={t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}
                 onCheckedChange={checked => onChangeArchiveSpaceDeleteBranchByDefault(checked)}
               />
-            </div>
-          </div>
+            }
+          />
         </SettingsGroupBody>
       </SettingsGroup>
     </>

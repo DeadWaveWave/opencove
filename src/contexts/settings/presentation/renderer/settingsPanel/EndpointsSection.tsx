@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Plus, RefreshCw, Server } from 'lucide-react'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useTranslation } from '@app/renderer/i18n'
@@ -280,16 +282,14 @@ export function EndpointsSection(): React.JSX.Element {
     >
       <SettingsGroupBody id="settings-section-endpoints-list">
         {error ? (
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('common.error')}</strong>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            label={t('common.error')}
+            value={
               <span className="settings-panel__value" style={{ color: 'var(--cove-danger-text)' }}>
                 {error}
               </span>
-            </div>
-          </div>
+            }
+          />
         ) : null}
 
         {persistenceOverview ? (
@@ -362,19 +362,17 @@ export function EndpointsSection(): React.JSX.Element {
 
                   <div className="settings-panel__endpoint-card-actions">
                     {overview.isManaged ? (
-                      <button
-                        type="button"
-                        className="secondary"
+                      <Button
+                        variant="secondary"
                         data-testid={`settings-endpoints-edit-${overview.endpoint.endpointId}`}
                         disabled={isBusy || removingEndpointId === overview.endpoint.endpointId}
                         onClick={() => openEditWindow(overview)}
                       >
                         {t('common.edit')}
-                      </button>
+                      </Button>
                     ) : null}
-                    <button
-                      type="button"
-                      className="secondary"
+                    <Button
+                      variant="secondary"
                       data-testid={`settings-endpoints-remove-${overview.endpoint.endpointId}`}
                       disabled={isBusy || removingEndpointId === overview.endpoint.endpointId}
                       onClick={() => {
@@ -383,7 +381,7 @@ export function EndpointsSection(): React.JSX.Element {
                       }}
                     >
                       {t('common.remove')}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )

@@ -120,11 +120,12 @@ describe('Settings form accessible names', () => {
       </>,
     )
 
-    expectNamedTestId('settings-language-trigger', 'Display Language')
-    expectNamedTestId('settings-update-policy-trigger', 'Update Behavior')
-    expectNamedTestId('settings-update-channel-trigger', 'Release Channel')
+    // Selects in a SettingRow say the row's label and then their current value.
+    expectNamedTestId('settings-language-trigger', 'Display Language English')
+    expectNamedTestId('settings-update-policy-trigger', 'Update Behavior Prompt Me')
+    expectNamedTestId('settings-update-channel-trigger', 'Release Channel Stable')
     expectNamedTestId('settings-standard-window-size-trigger', 'Standard Window Size')
-    expectNamedTestId('settings-terminal-profile-trigger', 'Shell Profile')
+    expectNamedTestId('settings-terminal-profile-trigger', 'Shell Profile Automatic (Zsh)')
   })
 
   it('names appearance inputs, theme selection, and terminal font controls', () => {
@@ -192,10 +193,10 @@ describe('Settings form accessible names', () => {
       />,
     )
 
-    expectNamedTestId('settings-canvas-input-mode-trigger', 'Input Mode')
-    expectNamedTestId('settings-canvas-wheel-behavior-trigger', 'Mouse Wheel')
-    expectNamedTestId('settings-canvas-wheel-zoom-modifier-trigger', 'Zoom Modifier')
-    expectNamedTestId('settings-viewport-transition-trigger', 'Viewport Transition')
+    expectNamedTestId('settings-canvas-input-mode-trigger', 'Input Mode Trackpad')
+    expectNamedTestId('settings-canvas-wheel-behavior-trigger', 'Mouse Wheel Pan (Scroll)')
+    expectNamedTestId('settings-canvas-wheel-zoom-modifier-trigger', 'Zoom Modifier Ctrl (Default)')
+    expectNamedTestId('settings-viewport-transition-trigger', 'Viewport Transition Zoom Flight')
     expectNamedTestId('settings-focus-node-target-zoom', 'Target Zoom')
   })
 
@@ -229,11 +230,17 @@ describe('Settings form accessible names', () => {
       </>,
     )
 
-    expectNamedTestId('settings-task-title-provider-trigger', 'Title Provider')
+    expectNamedTestId(
+      'settings-task-title-provider-trigger',
+      'Title Provider Follow Default Agent (Codex)',
+    )
     expectNamedTestId('settings-task-title-model', 'Title Model')
     expectNamedTestId('settings-task-tag-add-input', 'Add tag')
-    expectNamedTestId('settings-website-window-default-mode-trigger', 'Default Open Mode')
-    expectNamedTestId('settings-browser-search-engine-trigger', 'Default Search Engine')
+    expectNamedTestId(
+      'settings-website-window-default-mode-trigger',
+      'Default Open Mode Full browser',
+    )
+    expectNamedTestId('settings-browser-search-engine-trigger', 'Default Search Engine Google')
     expectNamedTestId('settings-website-window-max-active', 'Max Active')
     expectNamedTestId('settings-website-window-discard-after', 'Discard After')
     expectNamedTestId(

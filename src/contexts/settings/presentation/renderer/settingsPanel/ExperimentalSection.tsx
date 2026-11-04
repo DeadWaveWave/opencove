@@ -1,4 +1,7 @@
 import React, { useCallback, useState } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { NumberInput } from '@app/renderer/components/ui/NumberInput'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WebsiteWindowPolicy } from '@shared/contracts/dto'
@@ -75,12 +78,10 @@ export function ExperimentalSection({
       description={t('settingsPanel.experimental.websiteWindowsHelp')}
     >
       <SettingsGroupBody id="settings-section-website-windows">
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.experimental.websiteWindowEnabledLabel')}</strong>
-            <span>{t('settingsPanel.experimental.websiteWindowEnabledHelp')}</span>
-          </div>
-          <div className="settings-panel__control">
+        <SettingRow
+          label={t('settingsPanel.experimental.websiteWindowEnabledLabel')}
+          description={t('settingsPanel.experimental.websiteWindowEnabledHelp')}
+          control={
             <Toggle
               data-testid="settings-experimental-website-window-enabled"
               checked={websiteWindowPolicy.enabled}
@@ -91,15 +92,13 @@ export function ExperimentalSection({
                 })
               }
             />
-          </div>
-        </div>
+          }
+        />
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.experimental.websiteWindowDefaultModeLabel')}</strong>
-            <span>{t('settingsPanel.experimental.websiteWindowDefaultModeHelp')}</span>
-          </div>
-          <div className="settings-panel__control">
+        <SettingRow
+          label={t('settingsPanel.experimental.websiteWindowDefaultModeLabel')}
+          description={t('settingsPanel.experimental.websiteWindowDefaultModeHelp')}
+          control={
             <CoveSelect
               id="settings-website-window-default-mode"
               testId="settings-website-window-default-mode"
@@ -118,15 +117,13 @@ export function ExperimentalSection({
               ]}
               onChange={nextValue => onChangeBrowserDefaultMode(nextValue as BrowserMode)}
             />
-          </div>
-        </div>
+          }
+        />
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.experimental.browserSearchEngineLabel')}</strong>
-            <span>{t('settingsPanel.experimental.browserSearchEngineHelp')}</span>
-          </div>
-          <div className="settings-panel__control">
+        <SettingRow
+          label={t('settingsPanel.experimental.browserSearchEngineLabel')}
+          description={t('settingsPanel.experimental.browserSearchEngineHelp')}
+          control={
             <CoveSelect
               id="settings-browser-search-engine"
               testId="settings-browser-search-engine"
@@ -141,15 +138,13 @@ export function ExperimentalSection({
                 onChangeBrowserSearchEngine(nextValue as BrowserSearchEngineId)
               }
             />
-          </div>
-        </div>
+          }
+        />
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.experimental.websiteWindowPasteLabel')}</strong>
-            <span>{t('settingsPanel.experimental.websiteWindowPasteHelp')}</span>
-          </div>
-          <div className="settings-panel__control">
+        <SettingRow
+          label={t('settingsPanel.experimental.websiteWindowPasteLabel')}
+          description={t('settingsPanel.experimental.websiteWindowPasteHelp')}
+          control={
             <Toggle
               data-testid="settings-experimental-website-window-paste"
               checked={websiteWindowPasteEnabled}
@@ -157,22 +152,17 @@ export function ExperimentalSection({
               label={t('settingsPanel.experimental.websiteWindowPasteLabel')}
               onCheckedChange={checked => onChangeWebsiteWindowPasteEnabled(checked)}
             />
-          </div>
-        </div>
+          }
+        />
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.experimental.websiteWindowMaxActiveLabel')}</strong>
-            <span>{t('settingsPanel.experimental.websiteWindowMaxActiveHelp')}</span>
-          </div>
-          <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
-            <input
+        <SettingRow
+          label={t('settingsPanel.experimental.websiteWindowMaxActiveLabel')}
+          description={t('settingsPanel.experimental.websiteWindowMaxActiveHelp')}
+          control={
+            <NumberInput
               id="settings-website-window-max-active"
               data-testid="settings-website-window-max-active"
-              className="cove-field"
               style={{ width: '80px' }}
-              type="number"
-              aria-label={t('settingsPanel.experimental.websiteWindowMaxActiveLabel')}
               min={1}
               max={6}
               value={websiteWindowPolicy.maxActiveCount}
@@ -185,22 +175,18 @@ export function ExperimentalSection({
                 updateWebsiteWindowPolicy({ maxActiveCount: next })
               }}
             />
-          </div>
-        </div>
+          }
+        />
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.experimental.websiteWindowDiscardAfterLabel')}</strong>
-            <span>{t('settingsPanel.experimental.websiteWindowDiscardAfterHelp')}</span>
-          </div>
-          <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
-            <input
+        <SettingRow
+          label={t('settingsPanel.experimental.websiteWindowDiscardAfterLabel')}
+          description={t('settingsPanel.experimental.websiteWindowDiscardAfterHelp')}
+          control={
+            <NumberInput
               id="settings-website-window-discard-after"
               data-testid="settings-website-window-discard-after"
-              className="cove-field"
               style={{ width: '80px' }}
-              type="number"
-              aria-label={t('settingsPanel.experimental.websiteWindowDiscardAfterLabel')}
+              unit={t('common.minuteUnit')}
               min={1}
               max={240}
               value={websiteWindowPolicy.discardAfterMinutes}
@@ -213,11 +199,8 @@ export function ExperimentalSection({
                 updateWebsiteWindowPolicy({ discardAfterMinutes: next })
               }}
             />
-            <span style={{ fontSize: '12px', color: 'var(--cove-text-muted)' }}>
-              {t('common.minuteUnit')}
-            </span>
-          </div>
-        </div>
+          }
+        />
 
         <div className="settings-panel__subsection">
           <div className="settings-panel__subsection-header">
@@ -232,16 +215,15 @@ export function ExperimentalSection({
             {websiteWindowPolicy.keepAliveHosts.map(pattern => (
               <div className="settings-list-item" key={pattern}>
                 <span className="settings-panel__value">{pattern}</span>
-                <button
-                  type="button"
-                  className="secondary"
+                <Button
+                  variant="secondary"
                   style={{ padding: '2px 8px', fontSize: '11px' }}
                   data-testid={`settings-website-keep-alive-remove-${pattern}`}
                   disabled={!websiteWindowPolicy.enabled}
                   onClick={() => removeKeepAliveHost(pattern)}
                 >
                   {t('common.remove')}
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -258,15 +240,14 @@ export function ExperimentalSection({
               onChange={event => setKeepAliveHostDraft(event.target.value)}
               onKeyDown={event => event.key === 'Enter' && addKeepAliveHost()}
             />
-            <button
-              type="button"
-              className="primary"
+            <Button
+              variant="primary"
               data-testid="settings-website-keep-alive-add-button"
               disabled={!websiteWindowPolicy.enabled || keepAliveHostDraft.trim().length === 0}
               onClick={() => addKeepAliveHost()}
             >
               {t('common.add')}
-            </button>
+            </Button>
           </div>
         </div>
       </SettingsGroupBody>

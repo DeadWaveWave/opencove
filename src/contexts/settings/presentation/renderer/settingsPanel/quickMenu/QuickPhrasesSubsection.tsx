@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
 import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { ChevronDown, ChevronUp, Power } from 'lucide-react'
@@ -161,14 +162,13 @@ export function QuickPhrasesSubsection({
                 <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
               </button>
 
-              <button
-                type="button"
-                className="secondary"
+              <Button
+                variant="secondary"
                 data-testid={`settings-quick-phrase-edit-${phrase.id}`}
                 onClick={() => openEditPhraseEditor(phrase)}
               >
                 {t('settingsPanel.quickMenu.edit')}
-              </button>
+              </Button>
               <button
                 type="button"
                 className="secondary settings-list-item__remove"
@@ -185,14 +185,13 @@ export function QuickPhrasesSubsection({
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <button
-          type="button"
-          className="primary"
+        <Button
+          variant="primary"
           data-testid="settings-quick-phrase-add"
           onClick={openNewPhraseEditor}
         >
           {t('settingsPanel.quickMenu.phrases.add')}
-        </button>
+        </Button>
       </div>
 
       {phraseEditor ? (

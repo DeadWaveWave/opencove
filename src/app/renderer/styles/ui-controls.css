@@ -441,7 +441,7 @@
 }
 
 .cove-setting-row__description {
-  margin-top: 3px;
+  margin: 3px 0 0;
   color: var(--cove-text-muted);
   font-size: calc(12px * var(--cove-ui-font-scale));
   line-height: 1.4;
@@ -452,6 +452,37 @@
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
+}
+
+/* An extra line inside a row's description, such as a live status. */
+.cove-setting-row__description-line {
+  display: block;
+}
+
+/* Number field with an optional unit, for setting rows. */
+.cove-number-input {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+}
+
+.cove-number-input__field {
+  width: 80px;
+}
+
+.cove-number-input__unit {
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-secondary);
+}
+
+/* A value row's name is not a <label>: there is no single control to move focus to. */
+.cove-setting-row--value .cove-setting-row__label {
+  cursor: default;
+}
+
+.cove-setting-row--value .cove-setting-row__control {
+  flex-wrap: wrap;
+  gap: var(--cove-spacing-2);
 }
 
 @media (prefers-reduced-motion: reduce) {

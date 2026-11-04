@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
 import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { ChevronDown, ChevronUp, Globe, Pin, Power, Terminal } from 'lucide-react'
@@ -249,14 +250,13 @@ export function QuickCommandsSubsection({
                 <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
               </button>
 
-              <button
-                type="button"
-                className="secondary"
+              <Button
+                variant="secondary"
                 data-testid={`settings-quick-command-edit-${command.id}`}
                 onClick={() => openEditCommandEditor(command)}
               >
                 {t('settingsPanel.quickMenu.edit')}
-              </button>
+              </Button>
               <button
                 type="button"
                 className="secondary settings-list-item__remove"
@@ -275,14 +275,13 @@ export function QuickCommandsSubsection({
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <button
-          type="button"
-          className="primary"
+        <Button
+          variant="primary"
           data-testid="settings-quick-command-add"
           onClick={openNewCommandEditor}
         >
           {t('settingsPanel.quickMenu.commands.add')}
-        </button>
+        </Button>
       </div>
 
       {commandEditor ? (

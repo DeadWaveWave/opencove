@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SettingRow } from './SettingRow'
+import { SegmentedControl } from './SegmentedControl'
 import { Toggle } from './Toggle'
 
 describe('SettingRow', () => {
@@ -38,5 +39,60 @@ describe('SettingRow', () => {
     expect(
       screen.getByRole('switch', { name: 'Compact mode' }).getAttribute('aria-describedby'),
     ).toBeNull()
+  })
+
+  it('names a group of values or actions that is not one form control', () => {
+    render(
+      <SettingRow
+        label="Updates"
+        description="Check for a newer version."
+        value={
+          <>
+            <span>1.2.0</span>
+            <button type="button">Check now</button>
+          </>
+        }
+      />,
+    )
+
+    const group = screen.getByRole('group', { name: 'Updates' })
+    expect(group.textContent).toContain('1.2.0')
+    expect(document.getElementById(group.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Check for a newer version.',
+    )
+    // There is no single control to focus, so the name is not a <label>.
+    expect(screen.getByText('Updates').tagName).toBe('SPAN')
+    expect(screen.getByRole('button', { name: 'Check now' })).not.toBeNull()
+  })
+
+  it('passes row attributes such as an id to the row', () => {
+    render(<SettingRow id="settings-version" label="Version" value="1.2.0" />)
+    expect(document.getElementById('settings-version')?.classList).toContain('cove-setting-row')
+  })
+
+  it('names a segmented group without pointing a <label> at it', () => {
+    render(
+      <SettingRow
+        label="Terminal background"
+        description="What shows behind terminal text."
+        control={
+          <SegmentedControl
+            value="auto"
+            options={[
+              { value: 'auto', label: 'Auto' },
+              { value: 'opaque', label: 'Opaque' },
+            ]}
+            onValueChange={vi.fn()}
+          />
+        }
+      />,
+    )
+
+    const group = screen.getByRole('radiogroup', { name: 'Terminal background' })
+    expect(document.getElementById(group.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'What shows behind terminal text.',
+    )
+    expect(screen.getByText('Terminal background').tagName).toBe('SPAN')
+    expect(screen.getByRole('radio', { name: 'Auto' })).toBeChecked()
   })
 })

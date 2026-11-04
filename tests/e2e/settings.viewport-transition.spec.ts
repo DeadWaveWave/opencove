@@ -34,9 +34,9 @@ test('restores the viewport preference after restart and exposes localized, sear
     await window.getByRole('searchbox').fill('平滑')
     await window.getByRole('searchbox').press('Enter')
     await expect(window.getByTestId('settings-viewport-transition-trigger')).toHaveText('平滑移动')
-    await expect(window.getByTestId('settings-viewport-transition-trigger')).toHaveAttribute(
-      'aria-label',
-      '视口转移效果',
+    // The row's label names the select, followed by its current value.
+    await expect(window.getByTestId('settings-viewport-transition-trigger')).toHaveAccessibleName(
+      '视口转移效果 平滑移动',
     )
     await testInfo.attach('settings-transition-light-zh', {
       body: await window.screenshot({ path: testInfo.outputPath('settings-light-zh.png') }),

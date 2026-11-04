@@ -163,7 +163,7 @@ test.describe('Settings', () => {
       await expect(window.locator('.settings-panel__sidebar')).toBeHidden()
       await expect(window.locator('.settings-panel__header')).toBeHidden()
       await expect(
-        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__row-label'),
+        window.locator('.settings-panel__row--focus-target-zoom .cove-setting-row__copy'),
       ).toBeHidden()
 
       await window.mouse.up()
@@ -171,7 +171,7 @@ test.describe('Settings', () => {
       await expect(window.locator('.settings-panel__sidebar')).toBeVisible()
       await expect(window.locator('.settings-panel__header')).toBeVisible()
       await expect(
-        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__row-label'),
+        window.locator('.settings-panel__row--focus-target-zoom .cove-setting-row__copy'),
       ).toBeVisible()
 
       await focusTargetZoom.evaluate((element, value) => {
