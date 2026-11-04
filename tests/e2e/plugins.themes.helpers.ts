@@ -1,7 +1,14 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, testWorkspacePath } from './workspace-canvas.helpers'
 
-export { createThemePlugin, themePluginId, themeIdentity } from '../helpers/pluginThemeFixture'
+export {
+  createPaletteThemePlugin,
+  createThemePlugin,
+  paletteThemeIdentity,
+  paletteThemeInput,
+  themePluginId,
+  themeIdentity,
+} from '../helpers/pluginThemeFixture'
 export const themeNoteId = 'theme-expanded-note'
 export const themeCompactId = 'theme-compact-note'
 export const themeSpaceId = 'theme-space'

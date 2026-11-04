@@ -10,10 +10,15 @@ import {
 } from './workspace-canvas.helpers'
 import { pluginCli } from './plugins.commands.helpers'
 import { capturePlugins, pluginCommand } from './plugins.local.helpers'
+import { generateFamilyTheme, generateTheme } from '../../src/shared/design/themeGenerator'
+import { themeTokens } from '../../src/shared/design/themeTokens'
 import {
   chooseTheme,
+  createPaletteThemePlugin,
   createThemePlugin,
   layoutSize,
+  paletteThemeIdentity,
+  paletteThemeInput,
   readThemePaint,
   seedThemeWorkspace,
   themeCompactId,
@@ -70,6 +75,44 @@ test('independent theme plugins reproduce both Pixel bases and recover persisted
     await expect(page.locator('style[data-cove-theme-stylesheet]')).toHaveCount(0)
     await pluginCli(userDataDir, ['install', directory])
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', selectedId)
+  } finally {
+    await electronApp.close()
+    await removePathWithRetry(directory)
+    await removePathWithRetry(userDataDir)
+  }
+})
+
+test('a palette theme is generated from its four inputs on the Cove foundation', async () => {
+  const directory = await createPaletteThemePlugin()
+  const userDataDir = await createTestUserDataDir()
+  const { electronApp, window: page } = await launchApp({ userDataDir, cleanupUserDataDir: false })
+  const readToken = (name: string) =>
+    page.evaluate(
+      token => getComputedStyle(document.documentElement).getPropertyValue(token).trim(),
+      name,
+    )
+  try {
+    await seedThemeWorkspace(page)
+    await pluginCli(userDataDir, ['install', directory])
+    await chooseTheme(page, paletteThemeIdentity)
+    const root = page.locator('html')
+    await expect(root).toHaveAttribute('data-cove-theme-base', 'dark')
+    await expect(root).toHaveAttribute('data-cove-family', 'cove')
+    const expected = themeTokens(generateTheme(paletteThemeInput))
+    const cove = themeTokens(generateFamilyTheme('cove', 'dark'))
+    for (const token of [
+      '--cove-accent',
+      '--cove-neutral-1',
+      '--cove-text',
+      '--cove-window-surface',
+    ]) {
+      expect(await readToken(token), token).toBe(expected[token])
+    }
+    expect(expected['--cove-accent']).not.toBe(cove['--cove-accent'])
+
+    await chooseTheme(page, 'dark')
+    await expect(page.locator('style[data-cove-theme-palette]')).toHaveCount(0)
+    expect(await readToken('--cove-accent')).toBe(cove['--cove-accent'])
   } finally {
     await electronApp.close()
     await removePathWithRetry(directory)

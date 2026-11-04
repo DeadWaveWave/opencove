@@ -95,6 +95,11 @@
 - 深色终端窗口会重新声明一组 token（`terminal-node.theme-opencode.css`）。主题族为它生成一份已解析的
   深色调色板（`terminalScopeTokens`），浅色外壳里被强制为深色的终端也使用它；单测检查这组 token 全部被覆盖。
 - 生成器只把依赖运行时 token 的混色（如玻璃透明度）写成 `color-mix()`，常量混色直接输出计算结果。
+- 插件主题可以只声明生成器输入（主题 API v2 的 `palette`，见 [插件主题契约](../plugins/THEMES.md)）：
+  `useApplyUiTheme` 在运行时用同一条管线（`renderPaletteStylesheet`）生成样式，作用域是
+  `:root[data-cove-family='cove'][data-cove-theme-id="<id>"]`，放在 `opencove` 层里，所以比主题族更具体，
+  又仍然低于作者样式表和 manifest token。`tests/unit/shared/design/themePalette.spec.ts` 在 manifest
+  允许的输入范围内逐一断言对比度规则。
 
 ---
 

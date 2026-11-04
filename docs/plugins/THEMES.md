@@ -66,6 +66,43 @@ not supported.
 The persisted identity remains `plugin:<plugin-id>:<theme-id>`; the applied
 foundation is exposed separately as `data-cove-theme-base`.
 
+### Generated palettes (theme API v2)
+
+Instead of overriding colour tokens one by one, a theme can declare the four
+inputs OpenCove's own Cove themes are generated from, and the host generates
+every colour with the same pipeline:
+
+```json
+{
+  "id": "dusk",
+  "title": "Dusk",
+  "appearance": "dark",
+  "palette": {
+    "base": { "hue": 40, "chroma": 0.02 },
+    "accent": { "hue": 330, "chroma": 0.14 },
+    "contrast": 0.5
+  }
+}
+```
+
+- `appearance` is the first input; the theme's light or dark base.
+- `base` tints the neutral scale: OKLCH hue `0`–`360`, chroma `0`–`0.06`.
+  Optional; it defaults to Cove's cool grey.
+- `accent` is required: hue `0`–`360`, chroma `0`–`0.2`.
+- `contrast` spreads the steps apart, from `0` to `1`. Optional; it defaults to `0.35`.
+
+Within these ranges every generated theme meets the host's contrast rules: body
+and secondary text at least 4.5:1 and graphics at least 3:1, including over
+window glass and the pixel background. Lightness is fixed per step; out-of-gamut
+colours lose chroma and never shift hue. Window kind colours, labels and status
+colours keep their meaning.
+
+A palette builds on the Cove foundation. `extends` may be omitted, `dark` or
+`light`, but not a Pixel foundation, which is hand-written. The palette sits
+below the theme's stylesheet and `tokens`, so a theme can still adjust single
+tokens on top. Plugin windows receive the generated colours through the SDK
+theme context like any other theme.
+
 Each theme can additionally declare:
 
 ```json

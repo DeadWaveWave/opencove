@@ -3,6 +3,7 @@ import { usePluginRegistry } from '@contexts/plugins/presentation/renderer/usePl
 import { usePluginDetails } from '@contexts/plugins/presentation/renderer/usePluginDetails'
 import { publishThemeApplication } from '@contexts/plugins/presentation/renderer/themeApplication'
 import { applyThemeMotion } from '@contexts/plugins/presentation/renderer/themeMotion'
+import { pluginThemePaletteCss } from '@contexts/plugins/presentation/renderer/themePalette'
 import { resolveHostTheme } from '@contexts/plugins/domain/pluginThemes'
 import { pluginThemeMetricTokens } from '@contexts/plugins/domain/pluginThemeMetrics'
 import {
@@ -48,6 +49,13 @@ export function useApplyUiTheme(uiTheme: UiTheme): void {
     const family = UI_THEME_DESCRIPTORS[baseId as keyof typeof UI_THEME_DESCRIPTORS].family
     const tokens = { ...(theme?.tokens ?? {}), ...pluginThemeMetricTokens(theme ?? {}) }
     const previous = new Map<string, string>()
+    const paletteCss = theme ? pluginThemePaletteCss(themeId, theme) : null
+    const palette = paletteCss === null ? null : document.createElement('style')
+    if (palette) {
+      palette.dataset.coveThemePalette = themeId
+      palette.textContent = paletteCss
+      document.head.appendChild(palette)
+    }
     const style = theme && stylesheet !== undefined ? document.createElement('style') : null
     if (style) {
       style.dataset.coveThemeStylesheet = themeId
@@ -96,6 +104,7 @@ export function useApplyUiTheme(uiTheme: UiTheme): void {
       disposed = true
       disposeMotion()
       style?.remove()
+      palette?.remove()
       document.fonts?.removeEventListener?.('loadingdone', emit)
       document.fonts?.removeEventListener?.('loadingerror', emit)
       for (const [name, value] of previous) {

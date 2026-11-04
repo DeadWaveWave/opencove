@@ -12,12 +12,14 @@ import {
   KIND_FAMILIES,
   LABEL_HUES,
   generateFamilyTheme,
+  generateTheme,
   kindRoles,
   type AnsiKey,
   type Appearance,
   type GeneratedTheme,
   type KindFamilyId,
   type ThemeFamilyId,
+  type ThemeInput,
 } from './themeGenerator'
 
 export type ThemeTokens = Readonly<Record<string, string>>
@@ -242,26 +244,51 @@ const rule = (selector: string, tokens: ThemeTokens): string =>
     .map(([name, value]) => `  ${name}: ${value};`)
     .join('\n')}\n}\n`
 
+const DARK_TERMINAL = ".terminal-node[data-cove-terminal-node-theme='dark']"
+
+/**
+ * The blocks one generated theme needs under `root`: a block per appearance, the dark palette for
+ * dark terminal windows, and, under a light shell, an opaque dark frame that keeps their light
+ * title readable.
+ */
+function themeBlocks(
+  root: string,
+  appearances: readonly Appearance[],
+  generate: (appearance: Appearance) => GeneratedTheme,
+): string[] {
+  const blocks = appearances.map(appearance =>
+    rule(`${root}[data-cove-theme='${appearance}']`, themeTokens(generate(appearance))),
+  )
+  const dark = generate('dark')
+  blocks.push(rule(`${root} ${DARK_TERMINAL}`, terminalScopeTokens(dark)))
+  if (appearances.includes('light')) {
+    blocks.push(
+      rule(`${root}[data-cove-theme='light'] ${DARK_TERMINAL}`, {
+        '--cove-terminal-node-surface': rgba(dark.neutral[1]!, 0.94),
+      }),
+    )
+  }
+  return blocks
+}
+
 /**
  * One stylesheet per family. Scoped to `data-cove-family`, which the theme owner sets while one
  * of the family's themes (or a plugin theme built on it) is applied.
  */
 export function renderFamilyStylesheet(family: ThemeFamilyId): string {
-  const root = `:root[data-cove-family='${family}']`
-  const terminal = ".terminal-node[data-cove-terminal-node-theme='dark']"
-  const dark = generateFamilyTheme(family, 'dark')
-  const blocks = (['dark', 'light'] as const).map(appearance =>
-    rule(
-      `${root}[data-cove-theme='${appearance}']`,
-      themeTokens(generateFamilyTheme(family, appearance)),
-    ),
-  )
-  blocks.push(rule(`${root} ${terminal}`, terminalScopeTokens(dark)))
-  // A forced-dark terminal in a light shell: an opaque dark frame keeps its light title readable.
-  blocks.push(
-    rule(`${root}[data-cove-theme='light'] ${terminal}`, {
-      '--cove-terminal-node-surface': rgba(dark.neutral[1]!, 0.94),
-    }),
+  const blocks = themeBlocks(`:root[data-cove-family='${family}']`, ['dark', 'light'], appearance =>
+    generateFamilyTheme(family, appearance),
   )
   return `${GENERATED_HEADER}\n\n${blocks.join('\n')}`
+}
+
+/**
+ * A plugin theme's palette (theme API v2), generated at runtime by the same pipeline. `scope`
+ * narrows the Cove family selector to the theme's identity, so every block outranks the family
+ * block it replaces and applies only while that theme is selected.
+ */
+export function renderPaletteStylesheet(scope: string, input: ThemeInput): string {
+  return themeBlocks(scope, [input.appearance], appearance =>
+    generateTheme({ ...input, appearance }),
+  ).join('\n')
 }

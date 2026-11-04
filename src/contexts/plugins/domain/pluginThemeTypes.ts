@@ -1,5 +1,6 @@
 import type { PluginThemeTypography, PluginThemeMetrics } from './pluginThemeMetrics'
 import type { PluginThemeMotion } from './pluginThemeMotion'
+import type { PluginThemePalette } from './pluginThemePalette'
 
 /** Public color and material tokens. Bundled stylesheets provide component skins. */
 export const PLUGIN_THEME_TOKENS = [
@@ -68,6 +69,8 @@ export interface PluginThemeDeclaration {
   appearance: 'light' | 'dark'
   /** A shipped visual foundation; actual selected identity remains the plugin's identity. */
   extends?: PluginThemeBase
+  /** Theme API v2: generator inputs; the host generates the colours on the Cove foundation. */
+  palette?: PluginThemePalette
   tokens: Partial<Record<PluginThemeToken, string>>
   /** Package-relative CSS, compiled from the installed immutable revision. */
   stylesheet?: string
