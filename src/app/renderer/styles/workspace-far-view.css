@@ -193,3 +193,14 @@
 .workspace-far-tile__signal[data-signal='failed'] {
   background: var(--cove-status-failed, var(--cove-accent));
 }
+
+/* In far view the Space name labels the map: it sits above its Space and may use the whole
+   width. Space actions wait for near view, where they do not cover the name. */
+.workspace-canvas[data-cove-lod='far'] .workspace-space-region__label-group--left {
+  top: calc(-26px * var(--cove-space-caption-scale));
+  max-width: calc((100% - 16px) / var(--cove-space-caption-scale));
+}
+
+.workspace-canvas[data-cove-lod='far'] .workspace-space-region__label-group--right {
+  visibility: hidden;
+}
