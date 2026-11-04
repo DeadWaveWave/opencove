@@ -52,6 +52,7 @@ Optional fields:
 | `view.width`, `view.height` | Initial expanded size; defaults 640 × 440 |
 | `view.minWidth`, `view.minHeight` | Minimum expanded size; defaults 320 × 220 |
 | `view.instances` | `multiple` (default), or `single` for one durable window across projects on this Worker |
+| `view.kind` | Kind family for the window's header tile and tint: `ai`, `shell`, `plan`, `knowledge` or `media`. Omit it for a neutral tile. Kinds say what a window is; users' colour labels still draw the frame |
 | `preview` | HTML entry for Settings preview; may reuse `view.entry` |
 | `readme` | Markdown documentation file |
 | `author` | Displayed author text |
