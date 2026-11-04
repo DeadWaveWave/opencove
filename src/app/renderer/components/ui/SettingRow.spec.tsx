@@ -39,4 +39,33 @@ describe('SettingRow', () => {
       screen.getByRole('switch', { name: 'Compact mode' }).getAttribute('aria-describedby'),
     ).toBeNull()
   })
+
+  it('names a group of values or actions that is not one form control', () => {
+    render(
+      <SettingRow
+        label="Updates"
+        description="Check for a newer version."
+        value={
+          <>
+            <span>1.2.0</span>
+            <button type="button">Check now</button>
+          </>
+        }
+      />,
+    )
+
+    const group = screen.getByRole('group', { name: 'Updates' })
+    expect(group.textContent).toContain('1.2.0')
+    expect(document.getElementById(group.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Check for a newer version.',
+    )
+    // There is no single control to focus, so the name is not a <label>.
+    expect(screen.getByText('Updates').tagName).toBe('SPAN')
+    expect(screen.getByRole('button', { name: 'Check now' })).not.toBeNull()
+  })
+
+  it('passes row attributes such as an id to the row', () => {
+    render(<SettingRow id="settings-version" label="Version" value="1.2.0" />)
+    expect(document.getElementById('settings-version')?.classList).toContain('cove-setting-row')
+  })
 })

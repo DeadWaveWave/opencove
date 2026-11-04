@@ -1,4 +1,6 @@
 import React from 'react'
+import { NumberInput } from '@app/renderer/components/ui/NumberInput'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   MAX_UI_FONT_SIZE,
@@ -40,26 +42,21 @@ export function AppearanceSection({
         title={t('settingsPanel.appearanceNext.interfaceText')}
       >
         <SettingsGroupBody>
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.general.interfaceFontSize')}</strong>
-              <span>{t('settingsPanel.appearance.interfaceFontSizeHelp')}</span>
-            </div>
-            <div className="settings-panel__control settings-type-size-control">
-              <input
+          <SettingRow
+            label={t('settingsPanel.general.interfaceFontSize')}
+            description={t('settingsPanel.appearance.interfaceFontSizeHelp')}
+            control={
+              <NumberInput
                 id="settings-ui-font-size"
                 data-testid="settings-ui-font-size"
-                className="cove-field"
-                type="number"
-                aria-label={t('settingsPanel.general.interfaceFontSize')}
                 min={MIN_UI_FONT_SIZE}
                 max={MAX_UI_FONT_SIZE}
                 value={uiFontSize}
+                unit={t('common.pixelUnit')}
                 onChange={event => onChangeUiFontSize(Number(event.target.value))}
               />
-              <span>{t('common.pixelUnit')}</span>
-            </div>
-          </div>
+            }
+          />
         </SettingsGroupBody>
       </SettingsGroup>
     </>

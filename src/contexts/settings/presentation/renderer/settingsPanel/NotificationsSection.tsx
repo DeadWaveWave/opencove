@@ -1,4 +1,5 @@
 import React from 'react'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
@@ -42,20 +43,18 @@ export function NotificationsSection(props: {
         title={t('settingsPanel.groups.notifications.system')}
       >
         <SettingsGroupBody>
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.notifications.systemNotifications.enabledLabel')}</strong>
-              <span>{t('settingsPanel.notifications.systemNotifications.enabledHelp')}</span>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            label={t('settingsPanel.notifications.systemNotifications.enabledLabel')}
+            description={t('settingsPanel.notifications.systemNotifications.enabledHelp')}
+            control={
               <Toggle
                 data-testid="settings-system-notifications-enabled"
                 checked={systemNotificationsEnabled}
                 label={t('settingsPanel.notifications.systemNotifications.enabledLabel')}
                 onCheckedChange={checked => onChangeSystemNotificationsEnabled(checked)}
               />
-            </div>
-          </div>
+            }
+          />
         </SettingsGroupBody>
       </SettingsGroup>
 
@@ -64,83 +63,75 @@ export function NotificationsSection(props: {
         title={t('settingsPanel.groups.notifications.standby')}
       >
         <SettingsGroupBody>
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.notifications.agentStandbyBanner.enabledLabel')}</strong>
-              <span>{t('settingsPanel.notifications.agentStandbyBanner.enabledHelp')}</span>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            label={t('settingsPanel.notifications.agentStandbyBanner.enabledLabel')}
+            description={t('settingsPanel.notifications.agentStandbyBanner.enabledHelp')}
+            control={
               <Toggle
                 data-testid="settings-agent-standby-banner-enabled"
                 checked={standbyBannerEnabled}
                 label={t('settingsPanel.notifications.agentStandbyBanner.enabledLabel')}
                 onCheckedChange={checked => onChangeStandbyBannerEnabled(checked)}
               />
-            </div>
-          </div>
+            }
+          />
 
           <SettingsModule
             id="settings-standby-banner-context"
             title={t('settingsPanel.notifications.agentStandbyBanner.contextTitle')}
             description={t('settingsPanel.notifications.agentStandbyBanner.contextHelp')}
           >
-            <div className="settings-panel__row" data-testid="settings-standby-banner-show-task">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.notifications.agentStandbyBanner.showTask')}</strong>
-              </div>
-              <div className="settings-panel__control">
+            <SettingRow
+              data-testid="settings-standby-banner-show-task"
+              label={t('settingsPanel.notifications.agentStandbyBanner.showTask')}
+              control={
                 <Toggle
                   checked={standbyBannerShowTask}
                   disabled={!standbyBannerEnabled}
                   label={t('settingsPanel.notifications.agentStandbyBanner.showTask')}
                   onCheckedChange={checked => onChangeStandbyBannerShowTask(checked)}
                 />
-              </div>
-            </div>
+              }
+            />
 
-            <div className="settings-panel__row" data-testid="settings-standby-banner-show-space">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.notifications.agentStandbyBanner.showSpace')}</strong>
-              </div>
-              <div className="settings-panel__control">
+            <SettingRow
+              data-testid="settings-standby-banner-show-space"
+              label={t('settingsPanel.notifications.agentStandbyBanner.showSpace')}
+              control={
                 <Toggle
                   checked={standbyBannerShowSpace}
                   disabled={!standbyBannerEnabled}
                   label={t('settingsPanel.notifications.agentStandbyBanner.showSpace')}
                   onCheckedChange={checked => onChangeStandbyBannerShowSpace(checked)}
                 />
-              </div>
-            </div>
+              }
+            />
 
-            <div className="settings-panel__row" data-testid="settings-standby-banner-show-branch">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.notifications.agentStandbyBanner.showBranch')}</strong>
-              </div>
-              <div className="settings-panel__control">
+            <SettingRow
+              data-testid="settings-standby-banner-show-branch"
+              label={t('settingsPanel.notifications.agentStandbyBanner.showBranch')}
+              control={
                 <Toggle
                   checked={standbyBannerShowBranch}
                   disabled={!standbyBannerEnabled}
                   label={t('settingsPanel.notifications.agentStandbyBanner.showBranch')}
                   onCheckedChange={checked => onChangeStandbyBannerShowBranch(checked)}
                 />
-              </div>
-            </div>
+              }
+            />
 
-            <div className="settings-panel__row" data-testid="settings-standby-banner-show-pr">
-              <div className="settings-panel__row-label">
-                <strong>
-                  {t('settingsPanel.notifications.agentStandbyBanner.showPullRequest')}
-                </strong>
-              </div>
-              <div className="settings-panel__control">
+            <SettingRow
+              data-testid="settings-standby-banner-show-pr"
+              label={t('settingsPanel.notifications.agentStandbyBanner.showPullRequest')}
+              control={
                 <Toggle
                   checked={standbyBannerShowPullRequest}
                   disabled={!standbyBannerEnabled || !githubPullRequestsEnabled}
                   label={t('settingsPanel.notifications.agentStandbyBanner.showPullRequest')}
                   onCheckedChange={checked => onChangeStandbyBannerShowPullRequest(checked)}
                 />
-              </div>
-            </div>
+              }
+            />
           </SettingsModule>
         </SettingsGroupBody>
       </SettingsGroup>

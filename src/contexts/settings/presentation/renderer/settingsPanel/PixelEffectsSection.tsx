@@ -1,4 +1,5 @@
 import React from 'react'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PixelEffectSettings } from '@contexts/settings/domain/agentSettings'
@@ -50,24 +51,20 @@ export function PixelEffectsSection({
       <PixelEffectsPreview effects={effects} />
       <SettingsGroupBody>
         {controls.map(control => (
-          <div className="settings-panel__row" key={control.key}>
-            <div className="settings-panel__row-label">
-              <strong>{t(`settingsPanel.appearance.pixelEffects.${control.label}`)}</strong>
-              <span id={`${control.id}-help`}>
-                {t(`settingsPanel.appearance.pixelEffects.${control.help}`)}
-              </span>
-            </div>
-            <div className="settings-panel__control">
+          <SettingRow
+            key={control.key}
+            label={t(`settingsPanel.appearance.pixelEffects.${control.label}`)}
+            description={t(`settingsPanel.appearance.pixelEffects.${control.help}`)}
+            control={
               <Toggle
                 id={control.id}
                 data-testid={control.id}
                 checked={effects[control.key]}
                 label={t(`settingsPanel.appearance.pixelEffects.${control.label}`)}
-                describedBy={`${control.id}-help`}
                 onCheckedChange={enabled => onChange(control.key, enabled)}
               />
-            </div>
-          </div>
+            }
+          />
         ))}
       </SettingsGroupBody>
     </SettingsGroup>

@@ -120,9 +120,10 @@ describe('Settings form accessible names', () => {
       </>,
     )
 
-    expectNamedTestId('settings-language-trigger', 'Display Language')
-    expectNamedTestId('settings-update-policy-trigger', 'Update Behavior')
-    expectNamedTestId('settings-update-channel-trigger', 'Release Channel')
+    // Selects in a SettingRow say the row's label and then their current value.
+    expectNamedTestId('settings-language-trigger', 'Display Language English')
+    expectNamedTestId('settings-update-policy-trigger', 'Update Behavior Prompt Me')
+    expectNamedTestId('settings-update-channel-trigger', 'Release Channel Stable')
     expectNamedTestId('settings-standard-window-size-trigger', 'Standard Window Size')
     expectNamedTestId('settings-terminal-profile-trigger', 'Shell Profile')
   })
@@ -192,10 +193,10 @@ describe('Settings form accessible names', () => {
       />,
     )
 
-    expectNamedTestId('settings-canvas-input-mode-trigger', 'Input Mode')
-    expectNamedTestId('settings-canvas-wheel-behavior-trigger', 'Mouse Wheel')
-    expectNamedTestId('settings-canvas-wheel-zoom-modifier-trigger', 'Zoom Modifier')
-    expectNamedTestId('settings-viewport-transition-trigger', 'Viewport Transition')
+    expectNamedTestId('settings-canvas-input-mode-trigger', 'Input Mode Trackpad')
+    expectNamedTestId('settings-canvas-wheel-behavior-trigger', 'Mouse Wheel Pan (Scroll)')
+    expectNamedTestId('settings-canvas-wheel-zoom-modifier-trigger', 'Zoom Modifier Ctrl (Default)')
+    expectNamedTestId('settings-viewport-transition-trigger', 'Viewport Transition Zoom Flight')
     expectNamedTestId('settings-focus-node-target-zoom', 'Target Zoom')
   })
 

@@ -146,6 +146,7 @@
 /* The shared accessible SettingRow uses the same reading layout inside Settings. */
 .settings-panel .cove-setting-row {
   min-width: 0;
+  min-height: 0;
   grid-template-columns: minmax(0, 1fr) fit-content(52%);
   gap: 20px;
   padding: 13px 0;
@@ -164,11 +165,33 @@
 }
 
 .settings-panel .cove-setting-row__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   overflow-wrap: anywhere;
 }
 
+.settings-panel .cove-setting-row__label {
+  line-height: normal;
+}
+
+.settings-panel .cove-setting-row__description {
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Same control column as the legacy rows: sized to its content so a long value stays on one
+   line, and pushed to the end of the row. */
 .settings-panel .cove-setting-row__control {
+  justify-self: end;
+  gap: var(--cove-spacing-2);
+  width: max-content;
   max-width: 100%;
+}
+
+.settings-panel__group-body > .cove-setting-row + .settings-panel__module {
+  border-top: 1px solid var(--cove-settings-row-divider);
+  padding-top: var(--cove-spacing-4);
 }
 
 @container settings-content (max-width: 440px) {
@@ -179,10 +202,15 @@
 
   .settings-panel .cove-setting-row__control {
     justify-content: flex-start;
+    justify-self: start;
   }
 
   .settings-panel .cove-setting-row:has(.cove-toggle) {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .settings-panel .cove-setting-row:has(.cove-toggle) .cove-setting-row__control {
+    justify-self: end;
   }
 }
 

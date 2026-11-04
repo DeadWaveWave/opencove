@@ -45,14 +45,14 @@
 
 .settings-panel--preview
   #settings-section-canvas-node-focus
-  .settings-panel__row:not(.settings-panel__row--focus-target-zoom) {
+  .cove-setting-row:not(.settings-panel__row--focus-target-zoom) {
   visibility: hidden;
   pointer-events: none;
 }
 
 .settings-panel--preview
   #settings-section-canvas-node-focus
-  .settings-panel__row:not(.settings-panel__row--focus-target-zoom)
+  .cove-setting-row:not(.settings-panel__row--focus-target-zoom)
   * {
   transition: none;
 }
@@ -80,7 +80,7 @@
 .settings-panel--preview
   #settings-section-canvas-node-focus
   .settings-panel__row--focus-target-zoom
-  .settings-panel__row-label,
+  .cove-setting-row__copy,
 .settings-panel--preview
   #settings-section-canvas-node-focus
   .settings-panel__row--focus-target-zoom

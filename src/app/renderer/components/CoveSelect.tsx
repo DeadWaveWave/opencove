@@ -37,6 +37,8 @@ export function CoveSelect({
   menuTestId,
   ariaLabel,
   showTriggerBadge = true,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
   onChange,
 }: {
   id?: string
@@ -53,9 +55,15 @@ export function CoveSelect({
   menuTestId?: string
   ariaLabel?: string
   showTriggerBadge?: boolean
+  /** Set by SettingRow: the row's label names the select, followed by the current value. */
+  'aria-labelledby'?: string
+  'aria-describedby'?: string
   onChange: (nextValue: string) => void
 }): React.JSX.Element {
   const listboxId = useId()
+  const generatedTriggerId = useId()
+  const triggerId = id ?? generatedTriggerId
+  const valueTextId = `${triggerId}-value`
   const transientLayerOwner = useTransientLayerOwner()
   const isWithinDialog = useIsWithinDialog()
   const usesDialogPopoverLayer =
@@ -299,12 +307,14 @@ export function CoveSelect({
     >
       {testId ? <input type="hidden" data-testid={testId} value={value} readOnly /> : null}
       <button
-        id={id}
+        id={triggerId}
         ref={triggerRef}
         type="button"
         className={`cove-field cove-select__trigger${triggerClassName ? ` ${triggerClassName}` : ''}`}
         data-testid={triggerTestId ?? (testId ? `${testId}-trigger` : undefined)}
-        aria-label={ariaLabel}
+        aria-label={ariaLabelledBy ? undefined : ariaLabel}
+        aria-labelledby={ariaLabelledBy ? `${ariaLabelledBy} ${valueTextId}` : undefined}
+        aria-describedby={ariaDescribedBy}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? listboxId : undefined}
@@ -320,7 +330,9 @@ export function CoveSelect({
         onKeyDown={handleTriggerKeyDown}
       >
         <span className="cove-select__label">
-          <span className="cove-select__label-text">{selectedOption?.label ?? ''}</span>
+          <span id={valueTextId} className="cove-select__label-text">
+            {selectedOption?.label ?? ''}
+          </span>
           {showTriggerBadge && selectedOption?.badge ? (
             <span className="cove-select__pill">{selectedOption.badge}</span>
           ) : null}
