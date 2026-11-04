@@ -88,6 +88,7 @@
     "test:coverage": "vitest run --coverage",
     "test:terminal-recovery:native": "node scripts/run-terminal-recovery-native-tests.mjs",
     "test:e2e": "node scripts/test-e2e-with-window-fallback.mjs",
+    "test:perf": "playwright test -c tests/perf/playwright.config.ts",
     "test:e2e:web-canvas": "node scripts/test-e2e-web-canvas.mjs",
     "test:e2e:web-shell": "node scripts/test-e2e-web-shell.mjs",
     "test:terminal:presentation": "node scripts/test-terminal-presentation-contract.mjs",

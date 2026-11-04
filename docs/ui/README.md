@@ -357,6 +357,11 @@
 - 切换时 140ms 交叉淡化：进入远景时方块淡入，窗口在淡入结束后才停止绘制（`content-visibility` 的
   `allow-discrete` 过渡）；回到近景时方块再保留一次淡出。减少动态效果时直接切换。
 - 设置 → 外观 → 窗口 →「远景」可以关闭（`canvasFarViewEnabled`，默认开）；关闭后任何缩放下窗口都是自己。
+- 缩放不应提交任何窗口：每个窗口标题栏在测试构建里按类别计数自己的提交（`windowCommitProbe.ts`，
+  测试 API `getWindowCommitCounts`）。性能脚本 `pnpm test:perf`（先 `pnpm build`；不进快速门禁和 CI）
+  在 100 个窗口、20 个持续输出终端的场景里按显示帧率往返缩放 1 → 0.12 → 1 三次，远景开和关各一轮，
+  报告帧率、p95/p99 帧间隔、长帧和窗口提交数，写到 `test-results/perf/canvas-zoom.json`。绝对数字随机器
+  负载变化，只比较同一批次。
 
 ### 搜索与快捷控制契约
 
