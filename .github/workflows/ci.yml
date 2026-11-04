@@ -75,7 +75,8 @@ jobs:
       matrix:
         shard: [1, 2, 3]
 
-    runs-on: ubuntu-latest
+    # Playwright 1.58 cannot install browser dependencies on ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -138,7 +139,8 @@ jobs:
           rm -rf "/tmp/cove-e2e-user-data-"* || true
 
   web-canvas-continuity-ubuntu:
-    runs-on: ubuntu-latest
+    # Playwright 1.58 cannot install browser dependencies on ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
