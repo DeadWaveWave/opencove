@@ -65,7 +65,11 @@ test.describe('Primary Sidebar Space Marker', () => {
         await expect(leafGroup).toHaveAttribute('data-cove-label-color', 'orange')
         await expect(leafGroup.locator('.workspace-space-item__toggle')).toHaveCount(0)
         await expect(parentToggle).toHaveAttribute('aria-expanded', 'true')
-        await expect(parentSpace.locator('.lucide-scan')).toBeVisible()
+        // Each Space card leads with its live mini map instead of the corner icon.
+        await expect(
+          window.getByTestId(`workspace-space-minimap-${workspaceId}-${parentSpaceId}`),
+        ).toBeVisible()
+        await expect(parentSpace.locator('.lucide-scan')).toHaveCount(0)
         await expect(navigation.locator('.lucide-arrow-right')).toHaveCount(0)
         const selectRight = await parentSpace.evaluate(
           element => element.getBoundingClientRect().right,

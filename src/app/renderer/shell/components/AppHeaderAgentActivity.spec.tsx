@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyUiLanguage } from '@app/renderer/i18n'
 import { AppHeaderAgentActivity } from './AppHeaderAgentActivity'
 
+function waitingIn(workspaceId: string) {
+  return { workspaceId, projectName: workspaceId, projectIconId: null, spaceName: null }
+}
+
 describe('AppHeaderAgentActivity', () => {
   beforeEach(async () => {
     await applyUiLanguage('en')
@@ -14,8 +18,8 @@ describe('AppHeaderAgentActivity', () => {
       <AppHeaderAgentActivity
         summary={{
           waiting: [
-            { workspaceId: 'alpha', nodeId: 'a-2', title: 'Review API' },
-            { workspaceId: 'beta', nodeId: 'b-1', title: 'Fix login' },
+            { ...waitingIn('alpha'), nodeId: 'a-2', title: 'Review API' },
+            { ...waitingIn('beta'), nodeId: 'b-1', title: 'Fix login' },
           ],
           workingCount: 3,
         }}

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
@@ -90,5 +90,28 @@ describe('SidebarProjectRailItem', () => {
     expect(screen.getByTestId('workspace-item-workspace-rail').getAttribute('aria-label')).toBe(
       'infra-terraform-modules\n2 agents working',
     )
+  })
+
+  it('previews a project only when the pointer moves over it', () => {
+    const onPreview = vi.fn()
+    render(
+      <SidebarProjectRailItem
+        workspace={workspace}
+        isActive={false}
+        isPreviewed={false}
+        remote={null}
+        waitingAgentCount={0}
+        workingAgentCount={0}
+        onPreview={onPreview}
+        onSelectWorkspace={() => undefined}
+        onOpenProjectContextMenu={() => undefined}
+      />,
+    )
+    const item = screen.getByTestId('workspace-item-workspace-rail').parentElement!
+    // An overlay leaving from under a still pointer fires enter without movement.
+    fireEvent.pointerEnter(item)
+    expect(onPreview).not.toHaveBeenCalled()
+    fireEvent.pointerMove(item)
+    expect(onPreview).toHaveBeenCalledWith('workspace-rail')
   })
 })

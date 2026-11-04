@@ -400,7 +400,8 @@ describe('control surface session launch agent', () => {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,
       },
-      getPersistenceStore: async () => createStubStore({ settings: {} }),
+      // Saved full access, so the expected args include each provider's approval bypass.
+      getPersistenceStore: async () => createStubStore({ settings: { agentFullAccess: true } }),
       ptyRuntime: {
         spawnSession,
         write: () => undefined,

@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Canvas: the right-click menu shows the keyboard shortcuts for New Terminal, New Note, Run Agent and Create Space with Selected, and screen readers announce it as a menu. (#444)
 - Settings and dialogs: switches, checkboxes and task tags use shared controls that follow the theme and have larger click targets; task tags become chips. (#445)
 - Dialogs and windows: choices such as the issue type, connection method, plugin source, worktree branch mode and explorer view use one segmented control, which screen readers announce as a radio group. (#446)
+- Settings: search finds every row on every page, including update, notification banner, calibration, worker, Web UI, website window, diagnostics and each keyboard shortcut. (#470)
 - Dialogs: text fields share one labelled field with help text and inline errors; remote machine port errors now appear under the field. (#448)
 - Appearance: menus, popovers and the control center share one acrylic material with checked contrast, and turn solid when the system reduces transparency. (#449)
 - Windows: every window header ends with the same collapse and close buttons, in the same order and size, with tooltips; the terminal and agent close button now has a name for screen readers. (#450)
@@ -23,8 +24,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Pixel theme: window headers no longer use a live background blur; windows use one tinted frame around the reading plate, which saves GPU work with many windows open. (#454)
 - Terminals: terminal text can sit directly on the window's reading plate. Settings → Terminal → Terminal Background chooses Auto (transparent on macOS, opaque on Windows and Linux), Transparent or Opaque; changing it keeps the running shell and its output. (#456)
 - Control Center: quick switches for theme (Cove or Pixel), light, dark or follow system, pixel background, motion signals and the minimap; plugin themes are chosen in Settings, and "Top-right banner" is now "Notification banner" in Settings. (#457)
+- Settings: new installs start with agent Full Access off, so agents stay in their sandbox and ask before running commands or changing files; existing choices are kept, and the setting now says what each state means. (#461)
 - Top bar: the command entry names the project and the Space you are looking at, and a summary of agents across projects shows how many are working; when any are waiting, one click goes to the first. (#458)
 - Sidebar: every project on the rail is a tile in its own colour with its name below, the number of agents waiting on its corner and three moving pixels while its agents work; the OpenCove mark sits at the top and pin, add project and settings at the bottom. (#459)
+- Sidebar: a "Needs you" inbox at the top lists every agent waiting for you across projects, with where it is and how long ago it started waiting; one click switches to its project and focuses it. (#460)
+- Sidebar: each Space is a card with a live pixel map of its windows in their kind colours, where working agents step and waiting ones turn amber; click a square to fly to that window. The card shows how many agents are working or waiting and how many windows it holds. (#466)
 
 ### 🐛 Fixed
 

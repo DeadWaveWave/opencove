@@ -155,6 +155,12 @@ function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
   return value === 'default' || isTaskTitleAgentProvider(value)
 }
 
+/**
+ * Saved settings without the key predate it, when agents always ran with full access. A new
+ * install has nothing saved: no record, or the empty record persistence stores for it.
+ */
+const LEGACY_AGENT_FULL_ACCESS = true
+
 export function normalizeAgentSettings(value: unknown): AgentSettings {
   if (!isRecord(value)) {
     return DEFAULT_AGENT_SETTINGS
@@ -184,7 +190,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   )
 
   const agentFullAccess =
-    normalizeBoolean(value.agentFullAccess) ?? DEFAULT_AGENT_SETTINGS.agentFullAccess
+    normalizeBoolean(value.agentFullAccess) ??
+    (Object.keys(value).length > 0
+      ? LEGACY_AGENT_FULL_ACCESS
+      : DEFAULT_AGENT_SETTINGS.agentFullAccess)
   const defaultTerminalProfileId = normalizeTextValue(value.defaultTerminalProfileId)
   const agentExecutablePathOverrideByProvider = normalizeAgentExecutablePathOverrideByProvider(
     value.agentExecutablePathOverrideByProvider,

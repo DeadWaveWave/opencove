@@ -1,10 +1,15 @@
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
+import type { ProjectIconId } from '@shared/types/projectIcon'
 import { buildSidebarAgentItems } from './sidebarAgents'
 
 export interface WaitingAgentReference {
   workspaceId: string
+  projectName: string
+  projectIconId: ProjectIconId | null
   nodeId: string
   title: string
+  /** The Space the agent sits in; null on the project canvas. */
+  spaceName: string | null
 }
 
 export interface AgentActivitySummary {
@@ -22,7 +27,14 @@ export function summarizeAgentActivity(
   for (const workspace of workspaces) {
     for (const item of buildSidebarAgentItems(workspace)) {
       if (item.status === 'waiting') {
-        waiting.push({ workspaceId: workspace.id, nodeId: item.node.id, title: item.displayTitle })
+        waiting.push({
+          workspaceId: workspace.id,
+          projectName: workspace.name,
+          projectIconId: workspace.iconId ?? null,
+          nodeId: item.node.id,
+          title: item.displayTitle,
+          spaceName: item.owningSpace?.name ?? null,
+        })
       } else if (item.status === 'working') {
         workingCount += 1
       }

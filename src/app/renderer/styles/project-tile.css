@@ -1,0 +1,45 @@
+/* Project tile: the project's icon on a tint of its accent. Accents are the label palette minus
+   the hues reserved for status (yellow waiting, red failure) and neutral gray. */
+.cove-project-tile {
+  --cove-project-accent: var(--cove-label-blue, var(--cove-accent));
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--cove-radius-lg);
+  background: color-mix(in srgb, var(--cove-project-accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-project-accent) 36%, transparent);
+  color: var(--cove-project-accent);
+}
+
+.cove-project-tile[data-cove-accent='purple'] {
+  --cove-project-accent: var(--cove-label-purple, var(--cove-accent));
+}
+
+.cove-project-tile[data-cove-accent='green'] {
+  --cove-project-accent: var(--cove-label-green, var(--cove-accent));
+}
+
+.cove-project-tile[data-cove-accent='orange'] {
+  --cove-project-accent: var(--cove-label-orange, var(--cove-accent));
+}
+
+.cove-project-tile__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.cove-project-tile[data-size='sm'] {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--cove-radius-xs);
+  background: color-mix(in srgb, var(--cove-project-accent) 24%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-project-accent) 40%, transparent);
+}
+
+.cove-project-tile[data-size='sm'] > .cove-project-tile__icon {
+  width: 11px;
+  height: 11px;
+}
