@@ -61,7 +61,8 @@ test.describe('Control Center', () => {
           !title ||
           !rowLabel ||
           !rowIcon ||
-          segments.length !== 2 ||
+          // Appearance, theme family and window material.
+          segments.length !== 3 ||
           !toggleTrack ||
           !toggleThumb
         ) {
@@ -89,7 +90,7 @@ test.describe('Control Center', () => {
       expect(darkVisuals.titleFontSize).toBeCloseTo(darkVisuals.rowLabelFontSize, 1)
       expect(darkVisuals.rowIconBackground).toBe('rgba(0, 0, 0, 0)')
       expect(darkVisuals.rowStatusCount).toBe(0)
-      // Family and mode controls span the panel's width.
+      // Appearance, family and material controls span the panel's width.
       expect(darkVisuals.segmentWidths.every(width => width > darkVisuals.width - 40)).toBe(true)
       expect(darkVisuals.radius).toBe('8px')
       expect(darkVisuals.overflow).toBe(false)
@@ -203,8 +204,9 @@ test.describe('Control Center', () => {
       await expect(controlCenter).toHaveAttribute('role', 'dialog')
       await expect(controlCenter).not.toHaveAttribute('aria-modal', 'true')
 
+      // Three appearance modes, two families and two window materials.
       const themeInputs = controlCenter.getByRole('radio')
-      await expect(themeInputs).toHaveCount(5)
+      await expect(themeInputs).toHaveCount(7)
       await expect(window.locator('[data-testid="control-center-theme-family-cove"]')).toBeChecked()
       await expect(window.locator('[data-testid="control-center-theme-mode-dark"]')).toBeChecked()
       await expect(window.locator('html')).toHaveAttribute('data-cove-family', 'cove')
@@ -258,8 +260,8 @@ test.describe('Control Center', () => {
       await window.locator('[data-testid="app-header-control-center"]').click()
       const controlCenter = window.locator('[data-testid="control-center"]')
       await expect(controlCenter).toBeVisible()
-      // Two families plus Pixel's two modes (it has no follow-system mode).
-      await expect(controlCenter.getByRole('radio')).toHaveCount(4)
+      // Pixel's two modes (it has no follow-system mode), two families and two materials.
+      await expect(controlCenter.getByRole('radio')).toHaveCount(6)
       await expect(controlCenter).toHaveAttribute('aria-modal', 'true')
       await expect(window.locator('.app-shell')).toHaveJSProperty('inert', true)
       await waitForVisualState(controlCenter)

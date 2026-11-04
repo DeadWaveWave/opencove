@@ -14,6 +14,7 @@ const actions = {
   onToggleMinimap: vi.fn(),
   onChangePixelBackground: vi.fn(),
   onChangeMotionSignals: vi.fn(),
+  onChangeWindowMaterial: vi.fn(),
 }
 
 function Harness({
@@ -44,6 +45,8 @@ function Harness({
         isPixelBackgroundEnabled
         areMotionSignalsEnabled={false}
         hasActiveWorkspace={hasActiveWorkspace}
+        windowMaterial="glass"
+        settingsShortcut="⌘,"
         onClose={() => setOpen(false)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
@@ -158,7 +161,9 @@ describe('Control Center surfaces', () => {
       render(<Harness uiTheme="plugin:example-tool:night" />)
       openControls()
       expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Prism Night')
-      const families = screen.getAllByRole('radio').slice(0, 2) as HTMLInputElement[]
+      const families = [
+        ...screen.getByTestId('control-center-theme-family').querySelectorAll('input'),
+      ] as HTMLInputElement[]
       expect(families.every(radio => !radio.checked)).toBe(true)
       expect(
         (

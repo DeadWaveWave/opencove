@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, render } from '@testing-library/react'
 import { useApplyWindowAppearance } from './useApplyWindowAppearance'
 
-function HookHost(props: { windowKindColorsEnabled: boolean; reduceTransparency: boolean }): null {
+function HookHost(props: {
+  windowKindColorsEnabled: boolean
+  windowMaterial: 'glass' | 'solid'
+}): null {
   useApplyWindowAppearance(props)
   return null
 }
@@ -43,23 +46,23 @@ afterEach(() => {
 describe('useApplyWindowAppearance', () => {
   it('marks whether windows are coloured by kind', () => {
     mockSystemTransparency(false)
-    const { rerender } = render(<HookHost windowKindColorsEnabled reduceTransparency={false} />)
+    const { rerender } = render(<HookHost windowKindColorsEnabled windowMaterial="glass" />)
     expect(document.documentElement.dataset.coveKindColors).toBe('on')
-    rerender(<HookHost windowKindColorsEnabled={false} reduceTransparency={false} />)
+    rerender(<HookHost windowKindColorsEnabled={false} windowMaterial="glass" />)
     expect(document.documentElement.dataset.coveKindColors).toBe('off')
   })
 
-  it('keeps glass until the setting or the system reduces transparency', () => {
+  it('keeps glass until solid is chosen or the system reduces transparency', () => {
     mockSystemTransparency(false)
-    const { rerender } = render(<HookHost windowKindColorsEnabled reduceTransparency={false} />)
+    const { rerender } = render(<HookHost windowKindColorsEnabled windowMaterial="glass" />)
     expect(document.documentElement.dataset.coveTransparency).toBe('full')
-    rerender(<HookHost windowKindColorsEnabled reduceTransparency />)
+    rerender(<HookHost windowKindColorsEnabled windowMaterial="solid" />)
     expect(document.documentElement.dataset.coveTransparency).toBe('reduced')
   })
 
   it('follows the system preference live, without a restart', () => {
     const system = mockSystemTransparency(false)
-    const { unmount } = render(<HookHost windowKindColorsEnabled reduceTransparency={false} />)
+    const { unmount } = render(<HookHost windowKindColorsEnabled windowMaterial="glass" />)
     system.set(true)
     expect(document.documentElement.dataset.coveTransparency).toBe('reduced')
     system.set(false)
@@ -70,7 +73,7 @@ describe('useApplyWindowAppearance', () => {
 
   it('stays reduced while the system reduces transparency, whatever the setting says', () => {
     mockSystemTransparency(true)
-    render(<HookHost windowKindColorsEnabled reduceTransparency={false} />)
+    render(<HookHost windowKindColorsEnabled windowMaterial="glass" />)
     expect(document.documentElement.dataset.coveTransparency).toBe('reduced')
   })
 })

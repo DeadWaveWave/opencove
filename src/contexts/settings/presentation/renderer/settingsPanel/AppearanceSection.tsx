@@ -5,6 +5,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import {
   MAX_UI_FONT_SIZE,
   MIN_UI_FONT_SIZE,
+  type AgentSettings,
   type PixelEffectSettings,
   type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
@@ -19,11 +20,11 @@ export function AppearanceSection({
   onChangePixelEffect,
   uiFontSize,
   windowKindColorsEnabled,
-  reduceTransparency,
+  windowMaterial,
   onChangeUiTheme,
   onChangeUiFontSize,
   onChangeWindowKindColors,
-  onChangeReduceTransparency,
+  onChangeWindowMaterial,
 }: {
   uiTheme: UiTheme
   pixelEffects: PixelEffectSettings
@@ -33,8 +34,8 @@ export function AppearanceSection({
   onChangeUiFontSize: (size: number) => void
   windowKindColorsEnabled: boolean
   onChangeWindowKindColors: (enabled: boolean) => void
-  reduceTransparency: boolean
-  onChangeReduceTransparency: (enabled: boolean) => void
+  windowMaterial: AgentSettings['windowMaterial']
+  onChangeWindowMaterial: (material: AgentSettings['windowMaterial']) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   return (
@@ -47,9 +48,9 @@ export function AppearanceSection({
       </SettingsGroup>
       <WindowAppearanceSection
         windowKindColorsEnabled={windowKindColorsEnabled}
-        reduceTransparency={reduceTransparency}
+        windowMaterial={windowMaterial}
         onChangeWindowKindColors={onChangeWindowKindColors}
-        onChangeReduceTransparency={onChangeReduceTransparency}
+        onChangeWindowMaterial={onChangeWindowMaterial}
       />
       <PixelEffectsSection effects={pixelEffects} onChange={onChangePixelEffect} />
       <SettingsGroup

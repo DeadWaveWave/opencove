@@ -25,7 +25,7 @@ async function readMaterials(window: Page) {
   })
 }
 
-test('reduce transparency makes glass solid from Settings and from the system', async () => {
+test('the window material turns glass solid from Settings, the control center and the system', async () => {
   const { electronApp, window } = await launchApp()
   try {
     const session = await window.context().newCDPSession(window)
@@ -59,10 +59,10 @@ test('reduce transparency makes glass solid from Settings and from the system', 
 
     await window.getByTestId('app-header-settings').click()
     await window.getByTestId('settings-section-nav-appearance').click()
-    const toggle = window.getByTestId('settings-reduce-transparency')
-    await expect(toggle).not.toBeChecked()
-    await toggle.click()
-    await expect(toggle).toBeChecked()
+    const glassOption = window.getByTestId('settings-window-material-glass')
+    const solidOption = window.getByTestId('settings-window-material-solid')
+    await expect(glassOption).toBeChecked()
+    await solidOption.check()
     await window.getByTestId('settings-panel-close').click()
     await expect
       .poll(() => readMaterials(window))
@@ -71,24 +71,28 @@ test('reduce transparency makes glass solid from Settings and from the system', 
       .poll(async () =>
         window.evaluate(async () => {
           const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-          return raw ? (JSON.parse(raw).settings?.reduceTransparency ?? null) : null
+          return raw ? (JSON.parse(raw).settings?.windowMaterial ?? null) : null
         }),
       )
-      .toBe(true)
+      .toBe('solid')
 
-    // Turned off again, the app follows the system: live, with the switch locked on.
-    await window.getByTestId('app-header-settings').click()
-    await window.getByTestId('settings-section-nav-appearance').click()
-    await toggle.click()
-    await expect(toggle).not.toBeChecked()
+    // The control center writes the same setting.
+    await window.getByTestId('app-header-control-center').click()
+    await expect(window.getByTestId('control-center-window-material-solid')).toBeChecked()
+    await window.getByTestId('control-center-window-material-glass').check()
+    await window.keyboard.press('Escape')
     await expect.poll(async () => (await readMaterials(window)).attribute).toBe('full')
+
+    // While the system reduces transparency, windows are solid and glass is unavailable.
     await emulateSystem('reduce')
-    await expect(toggle).toBeChecked()
-    await expect(toggle).toBeDisabled()
-    await window.getByTestId('settings-panel-close').click()
     await expect
       .poll(() => readMaterials(window))
       .toEqual({ attribute: 'reduced', alpha: 1, blurred: 0 })
+    await window.getByTestId('app-header-settings').click()
+    await window.getByTestId('settings-section-nav-appearance').click()
+    await expect(solidOption).toBeChecked()
+    await expect(glassOption).toBeDisabled()
+    await window.getByTestId('settings-panel-close').click()
     await emulateSystem('no-preference')
     await expect.poll(async () => (await readMaterials(window)).attribute).toBe('full')
   } finally {

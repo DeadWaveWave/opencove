@@ -175,6 +175,15 @@
   color: var(--cove-text-faint);
 }
 
+.control-center__settings-shortcut {
+  margin-left: auto;
+  color: var(--cove-text-muted);
+  font-family: inherit;
+  font-size: var(--cove-font-size-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .cove-dialog-backdrop.control-center-backdrop {
   align-items: flex-end;
   padding: 8px 8px max(8px, env(safe-area-inset-bottom));

@@ -119,13 +119,13 @@
   终端除外（透明终端在第 2.3 步）。
 - 亚克力的底色由生成器给出（`--cove-acrylic-surface`），对比度矩阵检查它压在纯黑、纯白和像素墙上的
   最坏情况；手写主题沿用自己的 `--cove-menu-surface`。
-- 降低透明度：设置 → 外观 →「降低透明度」打开，或系统开启降低透明度时（实时跟随，不用重启），
+- 窗口材质：设置 → 外观 → 窗口 →「窗口材质」或控制中心选「实色」，或系统开启降低透明度时（实时跟随，不用重启），
   `useApplyWindowAppearance` 在根节点写 `data-cove-transparency="reduced"`；样式只读这个属性，不再各自
   读媒体查询。此时生成的玻璃参数（`--cove-glass-*`）都变成 100%，窗口外框、底板、标题栏和面板变成
   不透明的同色，Surface 的玻璃和亚克力改为 `--cove-window-surface`，所有元素去掉 `backdrop-filter`
-  （`themes/reduced-transparency.css`），透明终端露出终端底色。系统开启时设置里的开关显示为打开且不可改。
+  （`themes/reduced-transparency.css`），透明终端露出终端底色。系统开启时「实色」被选中，「玻璃」不可选。
   验证：`tests/unit/app/uiSurfaceStylesheet.spec.ts`；`ui-gallery.probes.spec.ts` 和
-  `workspace-canvas.reduce-transparency.spec.ts` 用 CDP 模拟系统设置。
+  `workspace-canvas.window-material.spec.ts` 用 CDP 模拟系统设置。
 
 ### 3.2 文本系统
 

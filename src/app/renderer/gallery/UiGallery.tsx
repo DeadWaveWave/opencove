@@ -81,7 +81,10 @@ function Section({
  * here in each built-in theme, so a component that regresses fails before any screen uses it.
  */
 // The gallery follows the system transparency preference, as the app does by default.
-const GALLERY_WINDOW_APPEARANCE = { windowKindColorsEnabled: true, reduceTransparency: false }
+const GALLERY_WINDOW_APPEARANCE = {
+  windowKindColorsEnabled: true,
+  windowMaterial: 'glass',
+} as const
 
 export default function UiGallery(): React.JSX.Element {
   const [theme, setTheme] = useState<UiTheme>(DEFAULT_UI_THEME)

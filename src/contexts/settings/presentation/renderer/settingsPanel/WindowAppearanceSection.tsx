@@ -1,24 +1,29 @@
 import React from 'react'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
+import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import { useSystemReducedTransparency } from '@app/renderer/shell/hooks/useReducedTransparency'
+import {
+  WINDOW_MATERIALS,
+  type WindowMaterial,
+} from '@contexts/settings/domain/agentSettings.types'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 /**
  * How windows look: the kind channel (labels keep the frame either way) and their material.
- * While the system reduces transparency, the app does too, so that switch shows on and locked.
+ * While the system reduces transparency, windows are solid and glass shows unavailable.
  */
 export function WindowAppearanceSection({
   windowKindColorsEnabled,
-  reduceTransparency,
+  windowMaterial,
   onChangeWindowKindColors,
-  onChangeReduceTransparency,
+  onChangeWindowMaterial,
 }: {
   windowKindColorsEnabled: boolean
-  reduceTransparency: boolean
+  windowMaterial: WindowMaterial
   onChangeWindowKindColors: (enabled: boolean) => void
-  onChangeReduceTransparency: (enabled: boolean) => void
+  onChangeWindowMaterial: (material: WindowMaterial) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const systemReducesTransparency = useSystemReducedTransparency()
@@ -42,20 +47,24 @@ export function WindowAppearanceSection({
           }
         />
         <SettingRow
-          label={t('settingsPanel.appearanceNext.reduceTransparency')}
+          label={t('settingsPanel.appearanceNext.windowMaterial')}
           description={t(
             systemReducesTransparency
-              ? 'settingsPanel.appearanceNext.reduceTransparencySystemHelp'
-              : 'settingsPanel.appearanceNext.reduceTransparencyHelp',
+              ? 'settingsPanel.appearanceNext.windowMaterialSystemHelp'
+              : 'settingsPanel.appearanceNext.windowMaterialHelp',
           )}
           control={
-            <Toggle
-              id="settings-reduce-transparency"
-              data-testid="settings-reduce-transparency"
-              checked={reduceTransparency || systemReducesTransparency}
-              disabled={systemReducesTransparency}
-              label={t('settingsPanel.appearanceNext.reduceTransparency')}
-              onCheckedChange={onChangeReduceTransparency}
+            <SegmentedControl
+              id="settings-window-material"
+              testId="settings-window-material"
+              value={systemReducesTransparency ? 'solid' : windowMaterial}
+              onValueChange={onChangeWindowMaterial}
+              options={WINDOW_MATERIALS.map(material => ({
+                value: material,
+                label: t(`settingsPanel.appearanceNext.windowMaterial_${material}`),
+                testId: `settings-window-material-${material}`,
+                disabled: systemReducesTransparency && material === 'glass',
+              }))}
             />
           }
         />

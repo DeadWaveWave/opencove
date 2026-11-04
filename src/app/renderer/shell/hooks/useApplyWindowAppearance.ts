@@ -5,15 +5,15 @@ import { useSystemReducedTransparency } from './useReducedTransparency'
 /**
  * Root attributes the window and material styles read:
  * - `data-cove-kind-colors`: "off" keeps window tiles and header tints neutral.
- * - `data-cove-transparency`: "reduced" when the setting or the system reduces transparency, so
- *   glass turns opaque and nothing is blurred. The system preference is followed live.
+ * - `data-cove-transparency`: "reduced" for solid windows, chosen or because the system reduces
+ *   transparency; glass turns opaque and nothing is blurred. The system is followed live.
  */
 export function useApplyWindowAppearance({
   windowKindColorsEnabled,
-  reduceTransparency,
-}: Pick<AgentSettings, 'windowKindColorsEnabled' | 'reduceTransparency'>): void {
+  windowMaterial,
+}: Pick<AgentSettings, 'windowKindColorsEnabled' | 'windowMaterial'>): void {
   const systemReducesTransparency = useSystemReducedTransparency()
-  const reduced = reduceTransparency || systemReducesTransparency
+  const reduced = windowMaterial === 'solid' || systemReducesTransparency
 
   useLayoutEffect(() => {
     document.documentElement.dataset.coveKindColors = windowKindColorsEnabled ? 'on' : 'off'
