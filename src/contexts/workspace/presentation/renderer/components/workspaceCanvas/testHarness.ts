@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../types'
 import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
+import { readWindowCommitCounts, resetWindowCommitCounts } from '../shared/windowCommitProbe'
 
 type WorkspaceCanvasAgentSessionState = {
   nodeId: string
@@ -20,6 +21,9 @@ type WorkspaceCanvasTestApi = {
   createTerminalAtFlowPoint: (point: { x: number; y: number }) => Promise<boolean>
   /** Zooms around the viewport centre without animation. */
   setZoom: (zoom: number) => Promise<boolean>
+  /** Window header commits by kind family since the last reset (Tide phase 4.3 probe). */
+  getWindowCommitCounts: () => Record<string, number>
+  resetWindowCommitCounts: () => void
 }
 
 declare global {
@@ -90,6 +94,8 @@ function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
         await createTerminalAtFlowPointHandler(point)
         return true
       },
+      getWindowCommitCounts: () => readWindowCommitCounts(),
+      resetWindowCommitCounts: () => resetWindowCommitCounts(),
       setZoom: async zoom => {
         if (!setZoomHandler || !Number.isFinite(zoom) || zoom <= 0) {
           return false
