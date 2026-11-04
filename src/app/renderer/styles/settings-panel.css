@@ -158,7 +158,8 @@
   line-height: 1.45;
 }
 
-.settings-panel__row-label span[data-tone='warning'] {
+.settings-panel__row-label span[data-tone='warning'],
+.settings-panel .cove-setting-row__description [data-tone='warning'] {
   color: var(--cove-warning);
 }
 

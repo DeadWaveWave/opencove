@@ -1,4 +1,6 @@
 import React, { useRef } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import {
   closestCenter,
@@ -93,16 +95,15 @@ export function AgentSection({
           }}
         >
           <div className="settings-agent-list-toolbar">
-            <button
-              type="button"
-              className="secondary settings-agent-refresh"
+            <Button
+              className="settings-agent-refresh"
               data-testid="settings-agent-refresh"
               disabled={isRefreshingAvailability || Boolean(installingProvider)}
               onClick={onRefreshAvailability}
             >
               <RefreshCw size={13} aria-hidden="true" />
               {t('settingsPanel.agentDetail.refresh')}
-            </button>
+            </Button>
           </div>
           <DndContext
             sensors={sensors}
@@ -167,9 +168,10 @@ export function AgentSection({
         title={t('settingsPanel.groups.agent.permissions')}
       >
         <SettingsGroupBody>
-          <div className="settings-panel__row" id="settings-agent-full-access">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.agent.fullAccessLabel')}</strong>
+          <SettingRow
+            id="settings-agent-full-access"
+            label={t('settingsPanel.agent.fullAccessLabel')}
+            description={
               <span
                 data-testid="settings-agent-full-access-help"
                 data-tone={agentFullAccess ? 'warning' : undefined}
@@ -178,16 +180,16 @@ export function AgentSection({
                   ? t('settingsPanel.agent.fullAccessOnHelp')
                   : t('settingsPanel.agent.fullAccessOffHelp')}
               </span>
-            </div>
-            <div className="settings-panel__control">
+            }
+            control={
               <Toggle
                 data-testid="settings-agent-full-access"
                 checked={agentFullAccess}
                 label={t('settingsPanel.agent.fullAccessLabel')}
                 onCheckedChange={checked => onChangeAgentFullAccess(checked)}
               />
-            </div>
-          </div>
+            }
+          />
         </SettingsGroupBody>
       </SettingsGroup>
     </>

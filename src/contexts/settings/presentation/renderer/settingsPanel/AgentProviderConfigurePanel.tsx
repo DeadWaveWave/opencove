@@ -1,4 +1,7 @@
 import React, { useCallback, useState } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -118,24 +121,23 @@ export function AgentProviderConfigurePanel(props: {
         </h4>
         <p className="settings-agent-detail__help">{t('settingsPanel.agentDetail.modelHelp')}</p>
 
-        <div className="settings-panel__row settings-panel__row--horizontal settings-agent-configure-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.models.useCustomModel')}</strong>
-            <span>
-              {customEnabled
-                ? customModel || t('common.defaultFollowCli')
-                : t('common.defaultFollowCli')}
-            </span>
-          </div>
-          <div className="settings-panel__control">
+        <SettingRow
+          className="settings-agent-configure-panel__row"
+          label={t('settingsPanel.models.useCustomModel')}
+          description={
+            customEnabled
+              ? customModel || t('common.defaultFollowCli')
+              : t('common.defaultFollowCli')
+          }
+          control={
             <Toggle
               data-testid={`settings-custom-model-enabled-${provider}`}
               checked={customEnabled}
               label={`${AGENT_PROVIDER_LABEL[provider]} ${t('settingsPanel.models.useCustomModel')}`}
               onCheckedChange={checked => onToggleCustomModelEnabled(provider, checked)}
             />
-          </div>
-        </div>
+          }
+        />
 
         {customEnabled ? (
           <div className="settings-agent-configure-panel__model-editor">
@@ -158,13 +160,12 @@ export function AgentProviderConfigurePanel(props: {
                     <span>{model}</span>
                   </label>
                   {customOptions.includes(model) ? (
-                    <button
-                      type="button"
-                      className="secondary settings-list-item__remove"
+                    <Button
+                      className="settings-list-item__remove"
                       onClick={() => onRemoveCustomModelOption(provider, model)}
                     >
                       {t('common.remove')}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               ))}
@@ -185,15 +186,15 @@ export function AgentProviderConfigurePanel(props: {
                   }
                 }}
               />
-              <button
-                type="button"
-                className="primary"
+              <Button
+                variant="primary"
+                size="sm"
                 data-testid={`settings-custom-model-add-button-${provider}`}
                 disabled={addModelInputValue.trim().length === 0}
                 onClick={() => onAddCustomModelOption(provider)}
               >
                 {t('common.add')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -278,46 +279,46 @@ export function AgentProviderConfigurePanel(props: {
                 </div>
 
                 <div className="settings-agent-order__actions">
-                  <button
-                    type="button"
-                    className="secondary settings-agent-order__action"
+                  <IconButton
+                    variant="secondary"
+                    className="settings-agent-order__action"
                     data-testid={`settings-agent-env-move-up-${provider}-${row.id}`}
                     disabled={index === 0}
-                    aria-label={t('settingsPanel.agent.moveUp')}
+                    label={t('settingsPanel.agent.moveUp')}
                     onClick={() => updateProviderRows(moveItem(rows, index, index - 1))}
                   >
                     <ChevronUp className="settings-agent-order__icon" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary settings-agent-order__action"
+                  </IconButton>
+                  <IconButton
+                    variant="secondary"
+                    className="settings-agent-order__action"
                     data-testid={`settings-agent-env-move-down-${provider}-${row.id}`}
                     disabled={index === rows.length - 1}
-                    aria-label={t('settingsPanel.agent.moveDown')}
+                    label={t('settingsPanel.agent.moveDown')}
                     onClick={() => updateProviderRows(moveItem(rows, index, index + 1))}
                   >
                     <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
-                  </button>
+                  </IconButton>
 
-                  <button
-                    type="button"
-                    className="secondary settings-agent-order__action"
+                  <IconButton
+                    variant="secondary"
+                    className="settings-agent-order__action"
                     data-testid={`settings-agent-env-remove-${provider}-${row.id}`}
-                    aria-label={t('common.remove')}
+                    label={t('common.remove')}
                     onClick={() => {
                       updateProviderRows(rows.filter(existing => existing.id !== row.id))
                     }}
                   >
                     <Trash2 className="settings-agent-order__icon" aria-hidden="true" />
-                  </button>
+                  </IconButton>
                 </div>
               </div>
             ))}
           </div>
 
-          <button
-            type="button"
-            className="primary settings-agent-configure-panel__add-env"
+          <Button
+            variant="primary"
+            className="settings-agent-configure-panel__add-env"
             data-testid={`settings-agent-env-add-${provider}`}
             onClick={() => {
               updateProviderRows([...rows, createEnvRow()])
@@ -325,7 +326,7 @@ export function AgentProviderConfigurePanel(props: {
           >
             <Plus className="settings-agent-order__icon" aria-hidden="true" />
             {t('settingsPanel.agentEnv.add')}
-          </button>
+          </Button>
         </div>
       </details>
     </div>

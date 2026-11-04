@@ -1,4 +1,6 @@
 import React from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
@@ -38,15 +40,16 @@ export function AgentProviderDetail({
     availability?.status === 'misconfigured' ? availability.diagnostics.join(' ') : ''
   return (
     <div className="settings-agent-detail" data-testid={`settings-agent-detail-${provider}`}>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
         className="settings-agent-detail__back"
         data-testid={`settings-agent-configure-done-${provider}`}
         onClick={onBack}
       >
         <ArrowLeft size={14} aria-hidden="true" />
         {t('settingsPanel.agentDetail.back')}
-      </button>
+      </Button>
       <header className="settings-agent-detail__header">
         <AgentProviderIcon provider={provider} className="settings-agent-detail__icon" />
         <div>
@@ -58,27 +61,21 @@ export function AgentProviderDetail({
           </p>
         </div>
       </header>
-      <div className="settings-panel__row settings-agent-detail__default">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.agent.defaultAgentLabel')}</strong>
-        </div>
-        <div className="settings-panel__control">
-          {isDefaultProvider ? (
+      <SettingRow
+        className="settings-agent-detail__default"
+        label={t('settingsPanel.agent.defaultAgentLabel')}
+        value={
+          isDefaultProvider ? (
             <span className="settings-agent-list-row__default">
               {t('settingsPanel.agent.defaultBadge')}
             </span>
           ) : (
-            <button
-              type="button"
-              className="secondary"
-              data-testid={`settings-agent-make-default-${provider}`}
-              onClick={onMakeDefault}
-            >
+            <Button data-testid={`settings-agent-make-default-${provider}`} onClick={onMakeDefault}>
               {t('settingsPanel.agentDetail.makeDefault')}
-            </button>
-          )}
-        </div>
-      </div>
+            </Button>
+          )
+        }
+      />
       <section
         className="settings-agent-detail__runtime"
         aria-labelledby={`settings-agent-runtime-title-${provider}`}
@@ -88,19 +85,17 @@ export function AgentProviderDetail({
             {t('settingsPanel.agentDetail.runtime')}
           </h4>
           <div className="settings-agent-detail__runtime-actions">
-            <button
-              type="button"
-              className="secondary settings-agent-refresh"
+            <Button
+              className="settings-agent-refresh"
               disabled={isBusy}
               onClick={onRefresh}
               data-testid={`settings-agent-refresh-${provider}`}
             >
               <RefreshCw size={13} aria-hidden="true" />
               {t('settingsPanel.agentDetail.refresh')}
-            </button>
-            <button
-              type="button"
-              className="secondary settings-agent-install__button"
+            </Button>
+            <Button
+              className="settings-agent-install__button"
               data-testid={`settings-agent-executable-install-${provider}`}
               data-status={isInstalling ? 'installing' : (availability?.status ?? 'loading')}
               aria-label={`${label} ${installLabel}`}
@@ -108,7 +103,7 @@ export function AgentProviderDetail({
               onClick={onInstall}
             >
               {installLabel}
-            </button>
+            </Button>
           </div>
         </div>
         {installError ? (

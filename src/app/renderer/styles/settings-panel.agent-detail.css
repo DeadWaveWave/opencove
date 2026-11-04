@@ -166,6 +166,8 @@
   align-self: flex-start;
   gap: 7px;
   padding: 5px 0;
+  height: auto;
+  line-height: normal;
   border: 0;
   background: transparent;
   color: var(--cove-text-muted);
@@ -256,8 +258,9 @@
   display: block;
 }
 
-.settings-agent-detail .settings-agent-detail__default {
+.settings-agent-detail .cove-setting-row.settings-agent-detail__default {
   padding: 0 0 20px;
+  border-top: 0;
   border-bottom: 1px solid var(--cove-border-subtle);
 }
 
@@ -288,7 +291,7 @@
   padding: 10px 0;
 }
 
-.settings-agent-detail .settings-agent-configure-panel__row {
+.settings-agent-detail .cove-setting-row.settings-agent-configure-panel__row {
   padding: 12px 0;
   border: 0;
   border-radius: 0;
@@ -304,6 +307,18 @@
 
 .settings-agent-detail .settings-agent-configure-panel__add-env {
   align-self: flex-start;
+}
+
+.settings-agent-configure-panel .settings-agent-order__action {
+  width: 38px;
+  height: var(--cove-control-height-md);
+}
+
+/* Keep the model input's available width and stretch the action to its field height. */
+.settings-agent-configure-panel__input-row .cove-button {
+  height: auto;
+  padding-inline: calc(var(--cove-spacing-3) - 1px);
+  font-weight: 500;
 }
 
 .settings-agent-page
