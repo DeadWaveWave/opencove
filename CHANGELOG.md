@@ -30,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Sidebar: every project on the rail is a tile in its own colour with its name below, the number of agents waiting on its corner and three moving pixels while its agents work; the OpenCove mark sits at the top and pin, add project and settings at the bottom. (#459)
 - Sidebar: a "Needs you" inbox at the top lists every agent waiting for you across projects, with where it is and how long ago it started waiting; one click switches to its project and focuses it. (#460)
 - Sidebar: each Space is a card with a live pixel map of its windows in their kind colours, where working agents step and waiting ones turn amber; click a square to fly to that window. The card shows how many agents are working or waiting and how many windows it holds. (#466)
+- Windows: the header's icon tile shows what a window is in its kind colour (agents purple, terminals green, tasks orange, notes and documents blue, websites and images pink), with a light tint on Cove headers, and the canvas minimap uses the same colours; colour labels now draw only the window frame and a short flag, and unlabeled Cove windows keep a neutral frame. Settings → Appearance → Window Kind Colours turns the kind colours off, and plugin windows can choose a kind with `view.kind`. (#478)
 
 ### 🐛 Fixed
 
