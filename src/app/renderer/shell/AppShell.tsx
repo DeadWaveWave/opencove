@@ -22,7 +22,7 @@ import { WorkspaceMain } from './components/WorkspaceMain'
 import { WorkspaceSearchOverlay } from './components/WorkspaceSearchOverlay'
 import { useHydrateAppState } from './hooks/useHydrateAppState'
 import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
-import { useApplyWindowKindColors } from './hooks/useApplyWindowKindColors'
+import { useApplyWindowAppearance } from './hooks/useApplyWindowAppearance'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
 import { useAppDocumentChrome } from './hooks/useAppDocumentChrome'
@@ -101,7 +101,7 @@ export default function App(): React.JSX.Element {
   })
 
   useApplyUiFontScale(agentSettings.uiFontSize)
-  useApplyWindowKindColors(agentSettings.windowKindColorsEnabled)
+  useApplyWindowAppearance(agentSettings)
   useApplyUiTheme(agentSettings.uiTheme)
   useApplyUiLanguage(agentSettings.language)
 

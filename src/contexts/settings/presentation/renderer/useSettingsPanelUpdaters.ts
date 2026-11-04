@@ -131,6 +131,8 @@ export function createSettingsPanelUpdaters({
       updateSetting('terminalFontFamily', family),
     updateWindowKindColors: (enabled: boolean): void =>
       updateSetting('windowKindColorsEnabled', enabled),
+    updateReduceTransparency: (enabled: boolean): void =>
+      updateSetting('reduceTransparency', enabled),
     updateTerminalBackground: (mode: AgentSettings['terminalBackground']): void =>
       updateSetting('terminalBackground', mode),
     updateTerminalAutoReference: (enabled: boolean): void =>

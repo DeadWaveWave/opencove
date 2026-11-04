@@ -27,16 +27,9 @@
   backdrop-filter: var(--cove-acrylic-filter);
 }
 
-@media (prefers-reduced-transparency: reduce) {
-  .cove-surface[data-material='glass'] {
-    background: var(--cove-window-surface);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-
-  .cove-surface[data-material='acrylic'] {
-    background: var(--cove-window-surface);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
+:root[data-cove-transparency='reduced'] .cove-surface[data-material='glass'],
+:root[data-cove-transparency='reduced'] .cove-surface[data-material='acrylic'] {
+  background: var(--cove-window-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }

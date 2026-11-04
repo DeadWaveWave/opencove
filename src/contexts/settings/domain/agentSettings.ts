@@ -16,6 +16,7 @@ import { normalizeFocusNodeTargetZoom } from './focusNodeTargetZoom'
 import { normalizeSidebarCollapsedIds } from './sidebarTreeSettings'
 import { normalizeSidebarViewSettings } from './sidebarViewSettings'
 import { normalizePixelEffectSettings } from './pixelEffectSettings'
+import { normalizeWindowAppearanceSettings } from './windowAppearanceSettings'
 import { normalizeDisabledPluginIds, normalizePluginContributions } from './pluginSettings'
 import { isValidUiLanguage, normalizeUiTheme } from './uiSettings'
 import {
@@ -364,9 +365,6 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const terminalBackground = isValidTerminalBackgroundMode(value.terminalBackground)
     ? value.terminalBackground
     : DEFAULT_AGENT_SETTINGS.terminalBackground
-  const windowKindColorsEnabled =
-    normalizeBoolean(value.windowKindColorsEnabled) ??
-    DEFAULT_AGENT_SETTINGS.windowKindColorsEnabled
   const terminalDisplayAutoReferenceEnabled =
     normalizeBoolean(value.terminalDisplayAutoReferenceEnabled) ??
     normalizeBoolean(value.terminalDisplayAutoCalibrationEnabled) ??
@@ -476,7 +474,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     terminalFontSize,
     terminalFontFamily,
     terminalBackground,
-    windowKindColorsEnabled,
+    ...normalizeWindowAppearanceSettings(value),
     terminalDisplayAutoReferenceEnabled,
     terminalDisplayCalibrationCompensationEnabled,
     terminalDisplayReference,

@@ -11,7 +11,7 @@ import {
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 import { PixelEffectsSection } from './PixelEffectsSection'
 import { ThemeGallery } from './ThemeGallery'
-import { WindowColorsSection } from './WindowColorsSection'
+import { WindowAppearanceSection } from './WindowAppearanceSection'
 
 export function AppearanceSection({
   uiTheme,
@@ -19,9 +19,11 @@ export function AppearanceSection({
   onChangePixelEffect,
   uiFontSize,
   windowKindColorsEnabled,
+  reduceTransparency,
   onChangeUiTheme,
   onChangeUiFontSize,
   onChangeWindowKindColors,
+  onChangeReduceTransparency,
 }: {
   uiTheme: UiTheme
   pixelEffects: PixelEffectSettings
@@ -31,6 +33,8 @@ export function AppearanceSection({
   onChangeUiFontSize: (size: number) => void
   windowKindColorsEnabled: boolean
   onChangeWindowKindColors: (enabled: boolean) => void
+  reduceTransparency: boolean
+  onChangeReduceTransparency: (enabled: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   return (
@@ -41,9 +45,11 @@ export function AppearanceSection({
       >
         <ThemeGallery value={uiTheme} onChange={onChangeUiTheme} />
       </SettingsGroup>
-      <WindowColorsSection
+      <WindowAppearanceSection
         windowKindColorsEnabled={windowKindColorsEnabled}
+        reduceTransparency={reduceTransparency}
         onChangeWindowKindColors={onChangeWindowKindColors}
+        onChangeReduceTransparency={onChangeReduceTransparency}
       />
       <PixelEffectsSection effects={pixelEffects} onChange={onChangePixelEffect} />
       <SettingsGroup

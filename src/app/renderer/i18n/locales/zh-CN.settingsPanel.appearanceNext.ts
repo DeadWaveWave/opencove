@@ -19,7 +19,7 @@ export const zhCNSettingsPanelAppearanceNext = {
   terminalShell: 'Shell',
   terminalBackground: '终端背景',
   terminalBackgroundHelp:
-    '透明时，终端文字直接显示在窗口的阅读底板上。自动：macOS 透明，Windows 和 Linux 不透明。系统开启「减少透明度」或主题的窗口是实色时，终端总是不透明。',
+    '透明时，终端文字直接显示在窗口的阅读底板上。自动：macOS 透明，Windows 和 Linux 不透明。降低透明度时，或主题的窗口是实色时，终端总是不透明。',
   terminalBackgroundAuto: '自动',
   terminalBackgroundTransparent: '透明',
   terminalBackgroundOpaque: '不透明',
@@ -29,4 +29,7 @@ export const zhCNSettingsPanelAppearanceNext = {
   windowKindColors: '窗口类别色',
   windowKindColorsHelp:
     '按窗口的类别给图标方块和标题栏着色：Agent、终端、任务、笔记与文档、网页与图片。无论开关，你设置的颜色标记都显示在窗口外框上。',
+  reduceTransparency: '降低透明度',
+  reduceTransparencyHelp: '窗口、菜单和面板改用实色，背后的内容不再模糊。',
+  reduceTransparencySystemHelp: '系统已开启降低透明度，OpenCove 也随之降低。',
 }

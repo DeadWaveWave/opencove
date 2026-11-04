@@ -43,7 +43,15 @@ export interface PixelEffectSettings {
   agentWorkingPixelEffectEnabled: boolean
 }
 
-export interface AgentSettings extends PixelEffectSettings {
+/** How windows look: their kind channel and their material. */
+export interface WindowAppearanceSettings {
+  /** Colours window tiles and header tints by what the window is (Tide kind channel). */
+  windowKindColorsEnabled: boolean
+  /** Solid windows, menus and panels with no blur; the system preference also turns this on. */
+  reduceTransparency: boolean
+}
+
+export interface AgentSettings extends PixelEffectSettings, WindowAppearanceSettings {
   language: UiLanguage
   uiTheme: UiTheme
   disabledPluginIds: string[]
@@ -98,8 +106,6 @@ export interface AgentSettings extends PixelEffectSettings {
   terminalFontSize: number
   terminalFontFamily: string | null
   terminalBackground: TerminalBackgroundMode
-  /** Colours window tiles and header tints by what the window is (Tide kind channel). */
-  windowKindColorsEnabled: boolean
   terminalDisplayAutoReferenceEnabled: boolean
   terminalDisplayCalibrationCompensationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null
