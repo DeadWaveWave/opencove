@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { Button } from '@app/renderer/components/ui/Button'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalDisplayReference } from '@contexts/settings/domain/terminalDisplayCalibration'
@@ -223,29 +225,23 @@ export function TerminalDisplayCalibrationRow({
       title={t('settingsPanel.general.terminalDisplayCalibration.title')}
       description={t('settingsPanel.general.terminalDisplayCalibration.help')}
     >
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>
-            {t('settingsPanel.general.terminalDisplayCalibration.autoReferenceLabel')}
-          </strong>
-          <span>{t('settingsPanel.general.terminalDisplayCalibration.autoReferenceHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
+      <SettingRow
+        label={t('settingsPanel.general.terminalDisplayCalibration.autoReferenceLabel')}
+        description={t('settingsPanel.general.terminalDisplayCalibration.autoReferenceHelp')}
+        control={
           <Toggle
             data-testid="settings-terminal-display-auto-reference"
             checked={terminalDisplayAutoReferenceEnabled}
             label={t('settingsPanel.general.terminalDisplayCalibration.autoReferenceLabel')}
             onCheckedChange={checked => onChangeTerminalDisplayAutoReferenceEnabled(checked)}
           />
-        </div>
-      </div>
+        }
+      />
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.general.terminalDisplayCalibration.compensationLabel')}</strong>
-          <span>{t('settingsPanel.general.terminalDisplayCalibration.compensationHelp')}</span>
-        </div>
-        <div className="settings-panel__control">
+      <SettingRow
+        label={t('settingsPanel.general.terminalDisplayCalibration.compensationLabel')}
+        description={t('settingsPanel.general.terminalDisplayCalibration.compensationHelp')}
+        control={
           <Toggle
             data-testid="settings-terminal-display-compensation"
             checked={terminalDisplayCalibrationCompensationEnabled}
@@ -254,92 +250,86 @@ export function TerminalDisplayCalibrationRow({
               onChangeTerminalDisplayCalibrationCompensationEnabled(checked)
             }
           />
-        </div>
-      </div>
+        }
+      />
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.general.terminalDisplayCalibration.referenceLabel')}</strong>
-          <span>
-            {activeReference
-              ? t('settingsPanel.general.terminalDisplayCalibration.referenceSummary', {
-                  cols: activeReference.measurement.cols,
-                  rows: activeReference.measurement.rows,
-                  cellWidth: roundDisplayMetric(activeReference.measurement.cssCellWidth, 2),
-                  cellHeight: roundDisplayMetric(activeReference.measurement.cssCellHeight, 2),
-                })
-              : terminalDisplayReference
-                ? t('settingsPanel.general.terminalDisplayCalibration.referenceStale')
-                : t(
-                    terminalDisplayAutoReferenceEnabled
-                      ? 'settingsPanel.general.terminalDisplayCalibration.referenceEmpty'
-                      : 'settingsPanel.general.terminalDisplayCalibration.referenceEmptyAutoOff',
-                  )}
-          </span>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-          <button
-            type="button"
-            className="secondary"
+      <SettingRow
+        label={t('settingsPanel.general.terminalDisplayCalibration.referenceLabel')}
+        description={
+          activeReference
+            ? t('settingsPanel.general.terminalDisplayCalibration.referenceSummary', {
+                cols: activeReference.measurement.cols,
+                rows: activeReference.measurement.rows,
+                cellWidth: roundDisplayMetric(activeReference.measurement.cssCellWidth, 2),
+                cellHeight: roundDisplayMetric(activeReference.measurement.cssCellHeight, 2),
+              })
+            : terminalDisplayReference
+              ? t('settingsPanel.general.terminalDisplayCalibration.referenceStale')
+              : t(
+                  terminalDisplayAutoReferenceEnabled
+                    ? 'settingsPanel.general.terminalDisplayCalibration.referenceEmpty'
+                    : 'settingsPanel.general.terminalDisplayCalibration.referenceEmptyAutoOff',
+                )
+        }
+        value={
+          <Button
+            variant="secondary"
             data-testid="settings-terminal-display-set-reference"
             disabled={isBusy}
             onClick={() => void setCurrentAsReference()}
           >
             {t('settingsPanel.general.terminalDisplayCalibration.setReference')}
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+      />
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.general.terminalDisplayCalibration.clientLabel')}</strong>
+      <SettingRow
+        label={t('settingsPanel.general.terminalDisplayCalibration.clientLabel')}
+        description={
           <span
             data-testid="settings-terminal-display-summary"
             data-calibration-state={calibrationSnapshot.status}
           >
             {summary}
           </span>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-          <button
-            type="button"
-            className="primary"
-            data-testid="settings-terminal-display-calibrate"
-            disabled={isBusy || !activeReference}
-            onClick={() => void calibrateThisDevice()}
-          >
-            {t('settingsPanel.general.terminalDisplayCalibration.calibrate')}
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            data-testid="settings-terminal-display-reset"
-            disabled={isBusy || !calibrationInspection.rawCalibrationPresent}
-            onClick={resetThisDevice}
-          >
-            {t('settingsPanel.general.terminalDisplayCalibration.reset')}
-          </button>
-        </div>
-      </div>
+        }
+        value={
+          <>
+            <Button
+              variant="primary"
+              data-testid="settings-terminal-display-calibrate"
+              disabled={isBusy || !activeReference}
+              onClick={() => void calibrateThisDevice()}
+            >
+              {t('settingsPanel.general.terminalDisplayCalibration.calibrate')}
+            </Button>
+            <Button
+              variant="secondary"
+              data-testid="settings-terminal-display-reset"
+              disabled={isBusy || !calibrationInspection.rawCalibrationPresent}
+              onClick={resetThisDevice}
+            >
+              {t('settingsPanel.general.terminalDisplayCalibration.reset')}
+            </Button>
+          </>
+        }
+      />
 
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.general.terminalDisplayCalibration.diagnosticsLabel')}</strong>
-          <span>
-            {status ?? t('settingsPanel.general.terminalDisplayCalibration.diagnosticsHelp')}
-          </span>
-        </div>
-        <div className="settings-panel__control">
-          <button
-            type="button"
-            className="secondary"
+      <SettingRow
+        label={t('settingsPanel.general.terminalDisplayCalibration.diagnosticsLabel')}
+        description={
+          status ?? t('settingsPanel.general.terminalDisplayCalibration.diagnosticsHelp')
+        }
+        value={
+          <Button
+            variant="secondary"
             data-testid="settings-terminal-display-copy-diagnostics"
             onClick={() => void copyDiagnostics()}
           >
             {t('settingsPanel.general.terminalDisplayCalibration.copyDiagnostics')}
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+      />
     </SettingsModule>
   )
 }

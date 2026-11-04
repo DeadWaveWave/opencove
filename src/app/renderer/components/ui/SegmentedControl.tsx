@@ -23,6 +23,10 @@ export interface SegmentedControlProps<Value extends string> {
   size?: 'sm' | 'md'
   className?: string
   testId?: string
+  /** Set by SettingRow, which names and describes the group from its label and description. */
+  id?: string
+  'aria-labelledby'?: string
+  'aria-describedby'?: string
 }
 
 /**
@@ -39,13 +43,19 @@ export function SegmentedControl<Value extends string>({
   size = 'sm',
   className,
   testId,
+  id,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
 }: SegmentedControlProps<Value>): React.JSX.Element {
   const name = React.useId()
+  const groupLabelledBy = [labelledBy, ariaLabelledBy].filter(Boolean).join(' ') || undefined
   return (
     <div
+      id={id}
       role="radiogroup"
-      aria-label={label}
-      aria-labelledby={labelledBy}
+      aria-label={groupLabelledBy ? undefined : label}
+      aria-labelledby={groupLabelledBy}
+      aria-describedby={ariaDescribedBy}
       data-cove-part="segmented-control"
       data-size={size}
       data-disabled={disabled ? '' : undefined}
@@ -91,3 +101,6 @@ export function SegmentedControl<Value extends string>({
     </div>
   )
 }
+
+/** A radio group is not labelable: SettingRow names it with aria-labelledby instead of a <label>. */
+SegmentedControl.settingRowLabel = 'group' as const

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SettingRow } from './SettingRow'
+import { SegmentedControl } from './SegmentedControl'
 import { Toggle } from './Toggle'
 
 describe('SettingRow', () => {
@@ -67,5 +68,31 @@ describe('SettingRow', () => {
   it('passes row attributes such as an id to the row', () => {
     render(<SettingRow id="settings-version" label="Version" value="1.2.0" />)
     expect(document.getElementById('settings-version')?.classList).toContain('cove-setting-row')
+  })
+
+  it('names a segmented group without pointing a <label> at it', () => {
+    render(
+      <SettingRow
+        label="Terminal background"
+        description="What shows behind terminal text."
+        control={
+          <SegmentedControl
+            value="auto"
+            options={[
+              { value: 'auto', label: 'Auto' },
+              { value: 'opaque', label: 'Opaque' },
+            ]}
+            onValueChange={vi.fn()}
+          />
+        }
+      />,
+    )
+
+    const group = screen.getByRole('radiogroup', { name: 'Terminal background' })
+    expect(document.getElementById(group.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'What shows behind terminal text.',
+    )
+    expect(screen.getByText('Terminal background').tagName).toBe('SPAN')
+    expect(screen.getByRole('radio', { name: 'Auto' })).toBeChecked()
   })
 })

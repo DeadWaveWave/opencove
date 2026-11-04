@@ -98,7 +98,7 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     pageId: 'terminal',
     titleKey: 'settingsPanel.appearanceNext.terminalBackground',
     descriptionKey: 'settingsPanel.appearanceNext.terminalBackgroundHelp',
-    anchorId: 'settings-terminal-background-label',
+    anchorId: 'settings-terminal-background',
     keywords: ['transparent', 'opaque', 'background', 'terminal', 'glass', '透明', '背景', '终端'],
   },
   {

@@ -53,7 +53,6 @@
     "src/contexts/settings/presentation/renderer/settingsPanel/ShortcutsSection.tsx": 7,
     "src/contexts/settings/presentation/renderer/settingsPanel/SshConfigHostPicker.tsx": 1,
     "src/contexts/settings/presentation/renderer/settingsPanel/TaskConfigurationSection.tsx": 2,
-    "src/contexts/settings/presentation/renderer/settingsPanel/TerminalDisplayCalibrationRow.tsx": 4,
     "src/contexts/settings/presentation/renderer/settingsPanel/TerminalFontFamilyRow.tsx": 3,
     "src/contexts/settings/presentation/renderer/settingsPanel/ThemeGallery.tsx": 4,
     "src/contexts/settings/presentation/renderer/settingsPanel/WorkerSection.tsx": 7,

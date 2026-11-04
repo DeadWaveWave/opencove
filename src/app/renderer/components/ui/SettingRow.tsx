@@ -73,6 +73,10 @@ export function SettingRow({
   }
 
   const typedControl = control as React.ReactElement<ControlAssociationProps>
+  // Controls that are not labelable (a radio group) mark themselves; they get aria-labelledby only.
+  const labelsGroup =
+    typeof typedControl.type !== 'string' &&
+    (typedControl.type as { settingRowLabel?: string }).settingRowLabel === 'group'
   const controlId = typedControl.props.id ?? `${generatedId}-control`
   const associatedControl = React.cloneElement(typedControl, {
     id: controlId,
@@ -83,9 +87,15 @@ export function SettingRow({
   return (
     <div {...rowProps} className={classNames('cove-setting-row', className)}>
       <div className="cove-setting-row__copy">
-        <label id={labelId} className="cove-setting-row__label" htmlFor={controlId}>
-          {label}
-        </label>
+        {labelsGroup ? (
+          <span id={labelId} className="cove-setting-row__label">
+            {label}
+          </span>
+        ) : (
+          <label id={labelId} className="cove-setting-row__label" htmlFor={controlId}>
+            {label}
+          </label>
+        )}
         {descriptionElement}
       </div>
       <div className="cove-setting-row__control">{associatedControl}</div>

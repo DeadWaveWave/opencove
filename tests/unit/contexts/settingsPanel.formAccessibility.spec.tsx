@@ -125,7 +125,7 @@ describe('Settings form accessible names', () => {
     expectNamedTestId('settings-update-policy-trigger', 'Update Behavior Prompt Me')
     expectNamedTestId('settings-update-channel-trigger', 'Release Channel Stable')
     expectNamedTestId('settings-standard-window-size-trigger', 'Standard Window Size')
-    expectNamedTestId('settings-terminal-profile-trigger', 'Shell Profile')
+    expectNamedTestId('settings-terminal-profile-trigger', 'Shell Profile Automatic (Zsh)')
   })
 
   it('names appearance inputs, theme selection, and terminal font controls', () => {

@@ -1,3 +1,5 @@
+import { NumberInput } from '@app/renderer/components/ui/NumberInput'
+import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   MAX_TERMINAL_FONT_SIZE,
@@ -44,37 +46,28 @@ export function TerminalAppearanceSection(props: TerminalAppearanceSectionProps)
             terminalFontFamily={props.terminalFontFamily}
             onChangeTerminalFontFamily={props.onChangeTerminalFontFamily}
           />
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong>{t('settingsPanel.general.terminalFontSize')}</strong>
-              <span>{t('settingsPanel.appearance.terminalFontSizeHelp')}</span>
-            </div>
-            <div className="settings-panel__control settings-type-size-control">
-              <input
+          <SettingRow
+            label={t('settingsPanel.general.terminalFontSize')}
+            description={t('settingsPanel.appearance.terminalFontSizeHelp')}
+            control={
+              <NumberInput
                 id="settings-terminal-font-size"
                 data-testid="settings-terminal-font-size"
-                className="cove-field"
-                type="number"
-                aria-label={t('settingsPanel.general.terminalFontSize')}
                 min={MIN_TERMINAL_FONT_SIZE}
                 max={MAX_TERMINAL_FONT_SIZE}
                 value={props.terminalFontSize}
                 onChange={event => props.onChangeTerminalFontSize(Number(event.target.value))}
+                unit={t('common.pixelUnit')}
               />
-              <span>{t('common.pixelUnit')}</span>
-            </div>
-          </div>
-          <div className="settings-panel__row">
-            <div className="settings-panel__row-label">
-              <strong id="settings-terminal-background-label">
-                {t('settingsPanel.appearanceNext.terminalBackground')}
-              </strong>
-              <span>{t('settingsPanel.appearanceNext.terminalBackgroundHelp')}</span>
-            </div>
-            <div className="settings-panel__control">
+            }
+          />
+          <SettingRow
+            label={t('settingsPanel.appearanceNext.terminalBackground')}
+            description={t('settingsPanel.appearanceNext.terminalBackgroundHelp')}
+            control={
               <SegmentedControl
+                id="settings-terminal-background"
                 testId="settings-terminal-background"
-                labelledBy="settings-terminal-background-label"
                 value={props.terminalBackground}
                 options={[
                   {
@@ -95,8 +88,8 @@ export function TerminalAppearanceSection(props: TerminalAppearanceSectionProps)
                 ]}
                 onValueChange={props.onChangeTerminalBackground}
               />
-            </div>
-          </div>
+            }
+          />
         </SettingsGroupBody>
       </SettingsGroup>
     </>
