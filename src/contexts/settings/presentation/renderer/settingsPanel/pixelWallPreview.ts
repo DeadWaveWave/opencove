@@ -3,6 +3,10 @@ import {
   fillWallCells,
   type WallWindowRect,
 } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallCells'
+import {
+  projectWallGlass,
+  readWallGlassRadius,
+} from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallGlass'
 import { resolveWallGrid } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallGrid'
 import { readWallPalette } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallPalette'
 
@@ -13,6 +17,7 @@ import { readWallPalette } from '@contexts/workspace/presentation/renderer/compo
 export function createPixelWallPreview(canvas: HTMLCanvasElement, scope: HTMLElement) {
   const surface = createWall2d(canvas)
   let palette = readWallPalette(scope)
+  let radius = readWallGlassRadius(scope)
   let cells: Uint8ClampedArray | undefined
   let width = 0
   let height = 0
@@ -35,6 +40,7 @@ export function createPixelWallPreview(canvas: HTMLCanvasElement, scope: HTMLEle
     },
     refreshTheme(): void {
       palette = readWallPalette(scope)
+      radius = readWallGlassRadius(scope)
     },
     /** A clock in ms animates twinkle and drift; null draws the still wall. */
     draw(now: number | null): void {
@@ -44,6 +50,7 @@ export function createPixelWallPreview(canvas: HTMLCanvasElement, scope: HTMLEle
         grid,
         cells,
         gapColor: palette.gap,
+        glass: projectWallGlass(windows, { x: 0, y: 0, zoom: 1, width, height }, radius),
         width,
         height,
         dpr: Math.min(2, window.devicePixelRatio || 1),

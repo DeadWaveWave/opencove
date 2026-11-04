@@ -134,6 +134,11 @@ world, under every window and the effects layer.
   full when a run finishes (seen live; a reload never flares), waiting yellow and failure red.
   It is derived per frame and never stored (I7). It keeps breathing with twinkle off; reduced
   motion holds it at a fixed level. The glass cap applies after it.
+- Frosted glass (5.3c): behind every window the cells are not drawn sharp. WebGL samples the same
+  cell texture with linear filtering (about half resolution, smoothly scaled) inside each
+  window's rounded frame, with a very faint grid on top, in one instanced pass; Canvas 2D draws
+  the same with a smoothed, clipped image. Twinkle only happens in blank space and never enters
+  the glass.
 - The CPU computes one colour per visible cell; WebGL2 draws cells and seams in one pass. When
   WebGL2 is unavailable or software-only (`failIfMajorPerformanceCaveat`) Canvas 2D draws the
   same cells. When the context is lost, the 2D canvas shows a still wall until the browser restores

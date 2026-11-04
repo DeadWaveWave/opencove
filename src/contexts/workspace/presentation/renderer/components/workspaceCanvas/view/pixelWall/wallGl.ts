@@ -1,46 +1,27 @@
 import type { WallGlCallbacks } from './wallController'
 import type { WallFrame, WallSurface } from './wallFrame'
-
-const VERTEX = `#version 300 es
-in vec2 position;
-void main() { gl_Position = vec4(position, 0.0, 1.0); }`
-
-// One full-screen pass: each fragment finds its cell, samples that cell's colour and blends
-// toward the seam colour near the cell's edges.
-const FRAGMENT = `#version 300 es
-precision highp float;
-uniform sampler2D uCells;
-uniform vec2 uGrid;
-uniform float uHeight;
-uniform float uDpr;
-uniform vec2 uOrigin;
-uniform float uCell;
-uniform float uGap;
-uniform vec3 uGapColor;
-out vec4 color;
-void main() {
-  vec2 css = vec2(gl_FragCoord.x, uHeight * uDpr - gl_FragCoord.y) / uDpr;
-  vec2 g = (css - uOrigin) / uCell;
-  vec2 id = floor(g);
-  vec2 f = g - id;
-  float edge = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)) * uCell;
-  float aa = 0.6 / uDpr;
-  vec3 cell = texture(uCells, (id + 0.5) / uGrid).rgb;
-  float seam = 1.0 - smoothstep(uGap * 0.5 - aa, uGap * 0.5 + aa, edge);
-  color = vec4(mix(cell, uGapColor, seam), 1.0);
-}`
+import { FROST_FRAGMENT, FROST_VERTEX, WALL_FRAGMENT, WALL_VERTEX } from './wallGlShaders'
 
 interface GlResources {
-  program: WebGLProgram
-  vao: WebGLVertexArrayObject
-  buffer: WebGLBuffer
+  wall: WebGLProgram
+  wallVao: WebGLVertexArrayObject
+  wallBuffer: WebGLBuffer
+  frost: WebGLProgram
+  frostVao: WebGLVertexArrayObject
+  rectBuffer: WebGLBuffer
+  rectCapacity: number
   texture: WebGLTexture
-  uniforms: Record<string, WebGLUniformLocation | null>
+  /** The frost reads the same cells with linear filtering; the wall reads them sharp. */
+  linear: WebGLSampler
+  wallUniforms: Record<string, WebGLUniformLocation | null>
+  frostUniforms: Record<string, WebGLUniformLocation | null>
   textureWidth: number
   textureHeight: number
 }
 
-function compile(gl: WebGL2RenderingContext): WebGLProgram {
+const SHARED_UNIFORMS = ['uCells', 'uGrid', 'uDpr', 'uOrigin', 'uCell', 'uGap', 'uGapColor']
+
+function compile(gl: WebGL2RenderingContext, vertexSource: string, fragmentSource: string) {
   const shader = (type: number, source: string) => {
     const result = gl.createShader(type)
     if (!result) {
@@ -57,8 +38,8 @@ function compile(gl: WebGL2RenderingContext): WebGLProgram {
   if (!program) {
     throw new Error('pixel wall: cannot create program')
   }
-  const vertex = shader(gl.VERTEX_SHADER, VERTEX)
-  const fragment = shader(gl.FRAGMENT_SHADER, FRAGMENT)
+  const vertex = shader(gl.VERTEX_SHADER, vertexSource)
+  const fragment = shader(gl.FRAGMENT_SHADER, fragmentSource)
   gl.attachShader(program, vertex)
   gl.attachShader(program, fragment)
   gl.linkProgram(program)
@@ -70,17 +51,31 @@ function compile(gl: WebGL2RenderingContext): WebGLProgram {
   return program
 }
 
+function uniformsOf(gl: WebGL2RenderingContext, program: WebGLProgram, names: string[]) {
+  return Object.fromEntries(names.map(name => [name, gl.getUniformLocation(program, name)]))
+}
+
 function createResources(gl: WebGL2RenderingContext): GlResources {
-  const program = compile(gl)
-  const vao = gl.createVertexArray()!
-  const buffer = gl.createBuffer()!
-  gl.bindVertexArray(vao)
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-  // One triangle that covers the whole viewport.
+  const wall = compile(gl, WALL_VERTEX, WALL_FRAGMENT)
+  const frost = compile(gl, FROST_VERTEX, FROST_FRAGMENT)
+  const wallVao = gl.createVertexArray()!
+  const wallBuffer = gl.createBuffer()!
+  gl.bindVertexArray(wallVao)
+  gl.bindBuffer(gl.ARRAY_BUFFER, wallBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
-  const location = gl.getAttribLocation(program, 'position')
-  gl.enableVertexAttribArray(location)
-  gl.vertexAttribPointer(location, 2, gl.FLOAT, false, 0, 0)
+  const position = gl.getAttribLocation(wall, 'position')
+  gl.enableVertexAttribArray(position)
+  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0)
+  const frostVao = gl.createVertexArray()!
+  const rectBuffer = gl.createBuffer()!
+  const rectCapacity = 64
+  gl.bindVertexArray(frostVao)
+  gl.bindBuffer(gl.ARRAY_BUFFER, rectBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, rectCapacity * 16, gl.DYNAMIC_DRAW)
+  const rect = gl.getAttribLocation(frost, 'rect')
+  gl.enableVertexAttribArray(rect)
+  gl.vertexAttribPointer(rect, 4, gl.FLOAT, false, 0, 0)
+  gl.vertexAttribDivisor(rect, 1)
   gl.bindVertexArray(null)
   const texture = gl.createTexture()!
   gl.bindTexture(gl.TEXTURE_2D, texture)
@@ -89,18 +84,32 @@ function createResources(gl: WebGL2RenderingContext): GlResources {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
-  const uniforms = Object.fromEntries(
-    ['uCells', 'uGrid', 'uHeight', 'uDpr', 'uOrigin', 'uCell', 'uGap', 'uGapColor'].map(name => [
-      name,
-      gl.getUniformLocation(program, name),
-    ]),
-  )
-  return { program, vao, buffer, texture, uniforms, textureWidth: 0, textureHeight: 0 }
+  const linear = gl.createSampler()!
+  gl.samplerParameteri(linear, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.samplerParameteri(linear, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.samplerParameteri(linear, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.samplerParameteri(linear, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  return {
+    wall,
+    wallVao,
+    wallBuffer,
+    frost,
+    frostVao,
+    rectBuffer,
+    rectCapacity,
+    texture,
+    linear,
+    wallUniforms: uniformsOf(gl, wall, [...SHARED_UNIFORMS, 'uHeight']),
+    frostUniforms: uniformsOf(gl, frost, [...SHARED_UNIFORMS, 'uSize', 'uRadius']),
+    textureWidth: 0,
+    textureHeight: 0,
+  }
 }
 
 /**
  * The wall on WebGL2: the CPU uploads one colour per cell as a small texture and the GPU draws
- * cells and seams in one pass. Returns null when WebGL2 is unavailable or would only run in
+ * cells and seams in one pass, then the frosted glass behind every window in one instanced pass
+ * whose cost follows window area. Returns null when WebGL2 is unavailable or would only run in
  * software, so the caller falls back to Canvas 2D. A lost context is reported and, once the
  * browser restores it, every resource is rebuilt.
  */
@@ -191,17 +200,41 @@ export function createWallGl(
         r.textureWidth = grid.columns
         r.textureHeight = grid.rows
       }
-      gl.useProgram(r.program)
-      gl.uniform1i(r.uniforms.uCells!, 0)
-      gl.uniform2f(r.uniforms.uGrid!, grid.columns, grid.rows)
-      gl.uniform1f(r.uniforms.uHeight!, frame.height)
-      gl.uniform1f(r.uniforms.uDpr!, frame.dpr)
-      gl.uniform2f(r.uniforms.uOrigin!, grid.originX, grid.originY)
-      gl.uniform1f(r.uniforms.uCell!, grid.screenCell)
-      gl.uniform1f(r.uniforms.uGap!, grid.gap)
-      gl.uniform3f(r.uniforms.uGapColor!, gapColor[0] / 255, gapColor[1] / 255, gapColor[2] / 255)
-      gl.bindVertexArray(r.vao)
+      const shared = (uniforms: Record<string, WebGLUniformLocation | null>) => {
+        gl.uniform1i(uniforms.uCells!, 0)
+        gl.uniform2f(uniforms.uGrid!, grid.columns, grid.rows)
+        gl.uniform1f(uniforms.uDpr!, frame.dpr)
+        gl.uniform2f(uniforms.uOrigin!, grid.originX, grid.originY)
+        gl.uniform1f(uniforms.uCell!, grid.screenCell)
+        gl.uniform1f(uniforms.uGap!, grid.gap)
+        gl.uniform3f(uniforms.uGapColor!, gapColor[0] / 255, gapColor[1] / 255, gapColor[2] / 255)
+      }
+      gl.disable(gl.BLEND)
+      gl.useProgram(r.wall)
+      shared(r.wallUniforms)
+      gl.uniform1f(r.wallUniforms.uHeight!, frame.height)
+      gl.bindVertexArray(r.wallVao)
       gl.drawArrays(gl.TRIANGLES, 0, 3)
+      const { glass } = frame
+      if (glass.count > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, r.rectBuffer)
+        if (glass.count > r.rectCapacity) {
+          r.rectCapacity = Math.max(glass.count, r.rectCapacity * 2)
+          gl.bufferData(gl.ARRAY_BUFFER, r.rectCapacity * 16, gl.DYNAMIC_DRAW)
+        }
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, glass.rects, 0, glass.count * 4)
+        gl.enable(gl.BLEND)
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+        gl.useProgram(r.frost)
+        shared(r.frostUniforms)
+        gl.uniform2f(r.frostUniforms.uSize!, frame.width, frame.height)
+        gl.uniform1f(r.frostUniforms.uRadius!, glass.radius)
+        gl.bindSampler(0, r.linear)
+        gl.bindVertexArray(r.frostVao)
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, glass.count)
+        gl.bindSampler(0, null)
+        gl.disable(gl.BLEND)
+      }
       gl.bindVertexArray(null)
     },
     dispose(): void {
@@ -210,9 +243,13 @@ export function createWallGl(
       canvas.removeEventListener('webglcontextrestored', onRestored)
       if (resources && !gl.isContextLost()) {
         gl.deleteTexture(resources.texture)
-        gl.deleteBuffer(resources.buffer)
-        gl.deleteVertexArray(resources.vao)
-        gl.deleteProgram(resources.program)
+        gl.deleteSampler(resources.linear)
+        gl.deleteBuffer(resources.wallBuffer)
+        gl.deleteBuffer(resources.rectBuffer)
+        gl.deleteVertexArray(resources.wallVao)
+        gl.deleteVertexArray(resources.frostVao)
+        gl.deleteProgram(resources.wall)
+        gl.deleteProgram(resources.frost)
       }
       resources = null
       // Give the context back now rather than at garbage collection: terminals share the budget.
