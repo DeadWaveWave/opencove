@@ -121,6 +121,8 @@ The wall is the canvas background (Tide phase 5.2): a grid of cells with seams, 
 world, under every window and the effects layer.
 
 - Cells stay 13–26 screen px: the 24 world px cell doubles or halves as the zoom crosses a step.
+  The step does not jump: each new cell flips from the old grid's colour at its centre to its own
+  at its own moment within 120ms (5.3d); reduced motion switches at once.
 - Colours come from `--cove-pixel-cell`, `--cove-pixel-gap`, `--cove-pixel-cloud-1…4` and
   `--cove-pixel-spark-1…4` (generated for Cove, hand-set for Pixel; plugin themes inherit them
   from their base). Soft clouds drift with the world and a sparse share of cells twinkles.
