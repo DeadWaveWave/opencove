@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 🚀 Added
+
+- Plugin themes: a theme can declare four inputs (light or dark, a base tint, an accent colour and contrast) instead of individual colours, and OpenCove generates the whole palette with the same checked contrast as its built-in Cove themes. (#477)
+
 ### 💅 Changed
 
 - Appearance: replace the Standard theme with Cove, whose colors are generated with checked contrast, and use Cove Dark for new installs. Ember is retired and existing Ember choices move to Cove; Pixel is unchanged. (#439)
