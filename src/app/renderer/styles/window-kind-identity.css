@@ -46,6 +46,29 @@
   --cove-node-identity-flag-width: 28px;
 }
 
+:root {
+  /* Canvas minimap squares. Hand-written themes keep their minimap tokens; generated families
+     use the kind solids at the minimap's usual translucency. */
+  --cove-minimap-kind-ai: var(--cove-canvas-minimap-node-agent);
+  --cove-minimap-kind-shell: var(--cove-canvas-minimap-node-default);
+  --cove-minimap-kind-plan: var(--cove-canvas-minimap-node-task);
+  --cove-minimap-kind-knowledge: var(--cove-canvas-minimap-node-default);
+  --cove-minimap-kind-media: var(--cove-canvas-minimap-node-image);
+  --cove-minimap-kind-neutral: var(--cove-canvas-minimap-node-default);
+}
+
+:root[data-cove-family='cove'] {
+  --cove-minimap-kind-ai: color-mix(in srgb, var(--cove-kind-ai-solid) 72%, transparent);
+  --cove-minimap-kind-shell: color-mix(in srgb, var(--cove-kind-shell-solid) 72%, transparent);
+  --cove-minimap-kind-plan: color-mix(in srgb, var(--cove-kind-plan-solid) 72%, transparent);
+  --cove-minimap-kind-knowledge: color-mix(
+    in srgb,
+    var(--cove-kind-knowledge-solid) 72%,
+    transparent
+  );
+  --cove-minimap-kind-media: color-mix(in srgb, var(--cove-kind-media-solid) 72%, transparent);
+}
+
 /* Settings → Appearance → Window Kind Colours off: tiles and headers stay neutral. */
 :root[data-cove-kind-colors='off'] .cove-window-header {
   --cove-window-kind-tint: transparent;
@@ -60,4 +83,12 @@
 /* The sidebar's Space maps follow the same switch. */
 :root[data-cove-kind-colors='off'] .workspace-space-minimap__window[data-family] {
   --workspace-space-minimap-window: var(--cove-kind-neutral-solid, var(--cove-text-faint));
+}
+
+:root[data-cove-family][data-cove-kind-colors='off'] {
+  --cove-minimap-kind-ai: var(--cove-canvas-minimap-node-default);
+  --cove-minimap-kind-shell: var(--cove-canvas-minimap-node-default);
+  --cove-minimap-kind-plan: var(--cove-canvas-minimap-node-default);
+  --cove-minimap-kind-knowledge: var(--cove-canvas-minimap-node-default);
+  --cove-minimap-kind-media: var(--cove-canvas-minimap-node-default);
 }
