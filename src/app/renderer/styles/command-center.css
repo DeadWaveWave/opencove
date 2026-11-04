@@ -227,6 +227,41 @@
   line-height: 1.4;
 }
 
+.command-center__item-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.command-center__item-subtitle {
+  overflow: hidden;
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Matches the shortcut column of menus, so a command reads the same everywhere. */
+.command-center__item-trailing,
+.command-center__item-shortcut {
+  flex: none;
+  font-family: inherit;
+  font-size: var(--cove-font-size-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.command-center__item-shortcut {
+  color: var(--cove-text-muted);
+}
+
+.command-center__item[data-tone='waiting'] .command-center__item-trailing {
+  color: var(--cove-status-waiting-text, var(--cove-warning));
+  font-weight: 500;
+}
+
 .command-center__remote {
   display: grid;
   place-items: center;

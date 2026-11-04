@@ -109,6 +109,16 @@ test('the needs-you inbox reaches a waiting agent in another project', async () 
       frames['workspace-project-attention-inbox-site'],
     )
 
+    // The command center pins the same agent above everything else.
+    await window.keyboard.press(`${process.platform === 'darwin' ? 'Meta' : 'Control'}+P`)
+    await expect(window.getByTestId('command-center-input')).toBeFocused()
+    await expect(window.getByRole('option').first()).toHaveAttribute(
+      'data-testid',
+      `command-center-item-needs-you:inbox-site:${agentId}`,
+    )
+    await window.keyboard.press('Escape')
+    await expect(window.getByTestId('command-center')).toHaveCount(0)
+
     await item.click()
     await expect(window.getByTestId('workspace-item-inbox-site')).toHaveAttribute(
       'aria-current',

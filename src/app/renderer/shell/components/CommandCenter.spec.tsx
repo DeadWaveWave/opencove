@@ -49,6 +49,7 @@ const actions = {
   onOpenSpaceArchives: vi.fn(),
   onTogglePrimarySidebar: vi.fn(),
   onAddWorkspace: vi.fn(),
+  onSelectNode: vi.fn(),
 }
 
 function Harness() {
@@ -115,8 +116,9 @@ describe('Command Center interaction', () => {
   it('keeps input focus while arrows select results and Tab stays within the dialog', () => {
     render(<Harness />)
     const input = openCommands()
-    const first = screen.getByTestId('command-center-item-command:workspace-search')
-    const second = screen.getByTestId('command-center-item-command:settings')
+    // Without a query the current project's Spaces lead, then every project.
+    const first = screen.getByTestId('command-center-item-space:ui')
+    const second = screen.getByTestId('command-center-item-workspace:local')
     expect(document.activeElement).toBe(input)
     expect(input.getAttribute('aria-activedescendant')).toBe(first.id)
     fireEvent.keyDown(input, { key: 'ArrowDown' })

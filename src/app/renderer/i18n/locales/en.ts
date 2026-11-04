@@ -14,6 +14,7 @@ import { enSidebarView } from './en.sidebarView'
 import { enSidebarRail } from './en.sidebarRail'
 import { enCanvasCollapse } from './en.canvasCollapse'
 import { enControlCenter } from './en.controlCenter'
+import { enCommandCenter } from './en.commandCenter'
 import { enSpaceCollapse } from './en.spaceCollapse'
 
 export const en = {
@@ -33,6 +34,7 @@ export const en = {
   },
   ...enCanvasCollapse,
   ...enControlCenter,
+  ...enCommandCenter,
   ...enSpaceCollapse,
   common: {
     actions: 'Actions',
@@ -155,30 +157,6 @@ export const en = {
       changed: 'Changed',
       docs: 'Docs',
       other: 'Other',
-    },
-  },
-  commandCenter: {
-    title: 'Command Center',
-    placeholder: 'Search projects, spaces, commands…',
-    empty: 'No results.',
-    metaEsc: 'Esc',
-    activeSpace: 'Space: {{name}}',
-    sections: {
-      commands: 'Commands',
-      spaces: 'Spaces',
-      projects: 'Projects',
-    },
-    commands: {
-      searchWorkspace: 'Search Current Project',
-      openSettings: 'Settings',
-      openSettingsHint: 'Open Settings',
-      spaceArchives: 'Space Archives',
-      spaceArchivesHint: 'Review archived Space snapshots',
-      showPrimarySidebar: 'Show Sidebar',
-      hidePrimarySidebar: 'Hide Sidebar',
-      togglePrimarySidebarHint: 'Toggle Primary Sidebar',
-      addProject: 'Add Project',
-      addProjectHint: 'Create a project and mounts',
     },
   },
   spaceArchivesWindow: {

@@ -313,4 +313,83 @@ test.describe('Command Center', () => {
       await electronApp.close()
     }
   })
+
+  test('finds a window by name and flies to it using only the keyboard', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await seedWorkspaceState(window, {
+        activeWorkspaceId: 'command-windows',
+        workspaces: [
+          {
+            id: 'command-windows',
+            name: 'Command windows',
+            path: testWorkspacePath,
+            nodes: [
+              {
+                id: 'command-window-scratch',
+                title: 'Scratch',
+                position: { x: 0, y: 0 },
+                width: 320,
+                height: 220,
+                kind: 'note',
+                status: null,
+                task: { text: 'Scratch' },
+              },
+              {
+                id: 'command-window-note',
+                title: 'Release checklist',
+                position: { x: 2600, y: 1600 },
+                width: 320,
+                height: 220,
+                kind: 'note',
+                status: null,
+                task: { text: 'Release checklist' },
+              },
+            ],
+            spaces: [
+              {
+                id: 'command-window-space',
+                name: 'release',
+                directoryPath: testWorkspacePath,
+                nodeIds: ['command-window-note'],
+                rect: { x: 2560, y: 1560, width: 420, height: 320 },
+              },
+            ],
+          },
+        ],
+      })
+
+      await expect(
+        window.locator('.react-flow__node[data-id="command-window-scratch"]'),
+      ).toBeVisible()
+      await window.keyboard.press(`${commandCenterModifier}+P`)
+      const input = window.getByTestId('command-center-input')
+      await expect(input).toBeFocused()
+      await input.fill('release check')
+      const note = window.getByTestId('command-center-item-window:command-window-note')
+      await expect(note).toContainText('release')
+      await expect(note).toHaveAttribute('aria-selected', 'true')
+      await window.keyboard.press('Enter')
+      await expect(window.getByTestId('command-center')).toBeHidden()
+
+      const canvas = window.locator('.workspace-canvas .react-flow')
+      const noteNode = window.locator('.react-flow__node[data-id="command-window-note"]')
+      await expect
+        .poll(async () => {
+          const canvasBox = await canvas.boundingBox()
+          const noteBox = await noteNode.boundingBox()
+          if (!canvasBox || !noteBox) {
+            return Number.POSITIVE_INFINITY
+          }
+          return Math.hypot(
+            noteBox.x + noteBox.width / 2 - (canvasBox.x + canvasBox.width / 2),
+            noteBox.y + noteBox.height / 2 - (canvasBox.y + canvasBox.height / 2),
+          )
+        })
+        .toBeLessThan(40)
+    } finally {
+      await electronApp.close()
+    }
+  })
 })

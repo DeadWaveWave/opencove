@@ -1,3 +1,5 @@
+import type { TranslateFn } from '@app/renderer/i18n'
+
 export type WaitDuration =
   | { unit: 'unknown' }
   | { unit: 'now' }
@@ -17,4 +19,11 @@ export function resolveWaitDuration(waitingSinceMs: number | null, nowMs: number
     return { unit: 'minutes', count: minutes }
   }
   return { unit: 'hours', count: Math.floor(minutes / 60) }
+}
+
+/** The inbox and command center wording for a wait: "Waiting", "Just now", "2 min ago". */
+export function describeWaitDuration(t: TranslateFn, duration: WaitDuration): string {
+  return duration.unit === 'unknown' || duration.unit === 'now'
+    ? t(`sidebar.inbox.${duration.unit}`)
+    : t(`sidebar.inbox.${duration.unit}`, { count: duration.count })
 }
