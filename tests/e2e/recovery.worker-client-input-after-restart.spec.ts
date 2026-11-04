@@ -35,6 +35,8 @@ test.describe('Recovery - Worker client input after restart', () => {
       })
 
       try {
+        // In this viewport, the first terminal covers the old fixed second right-click point.
+        await window.setViewportSize({ width: 1440, height: 800 })
         await clearAndSeedWorkspace(window, [], {
           settings: {
             defaultProvider: 'codex',
@@ -61,8 +63,45 @@ test.describe('Recovery - Worker client input after restart', () => {
         await expect(newTerminal).toBeVisible()
         await newTerminal.click()
         await expect(window.locator('.terminal-node')).toHaveCount(1)
+        await expect(window.locator('.terminal-node')).toBeVisible()
 
-        await pane.click({ button: 'right', position: { x: 320, y: 240 } })
+        const agentMenuPosition = await pane.evaluate(element => {
+          const box = element.getBoundingClientRect()
+          const nodeRects = [...document.querySelectorAll('.react-flow__node')].map(node =>
+            node.getBoundingClientRect(),
+          )
+          for (const y of [32, box.height - 32, box.height / 2]) {
+            for (const x of [box.width / 2, box.width * 0.8, box.width * 0.2]) {
+              const clientX = box.left + x
+              const clientY = box.top + y
+              const insideNode = nodeRects.some(
+                rect =>
+                  clientX >= rect.left &&
+                  clientX <= rect.right &&
+                  clientY >= rect.top &&
+                  clientY <= rect.bottom,
+              )
+              if (insideNode || document.elementFromPoint(clientX, clientY) !== element) {
+                continue
+              }
+
+              element.addEventListener(
+                'contextmenu',
+                event => {
+                  element.setAttribute(
+                    'data-e2e-contextmenu-on-pane',
+                    String(event.target === element),
+                  )
+                },
+                { capture: true, once: true },
+              )
+              return { x, y }
+            }
+          }
+          throw new Error('No unobstructed pane point is available for the agent context menu')
+        })
+        await pane.click({ button: 'right', position: agentMenuPosition })
+        expect(await pane.getAttribute('data-e2e-contextmenu-on-pane')).toBe('true')
         const runAgent = window.locator('[data-testid="workspace-context-run-default-agent"]')
         await expect(runAgent).toBeVisible()
         await runAgent.click()
