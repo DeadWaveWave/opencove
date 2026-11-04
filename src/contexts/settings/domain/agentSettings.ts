@@ -62,6 +62,7 @@ export {
   MIN_FOCUS_NODE_TARGET_ZOOM,
 } from './focusNodeTargetZoom'
 export type { FocusNodeTargetZoom } from './focusNodeTargetZoom'
+export { CANVAS_BACKGROUND_STYLES, type CanvasBackgroundStyle } from './canvasBackgroundSettings'
 export {
   AGENT_PROVIDERS,
   SELECTABLE_AGENT_PROVIDERS,
@@ -87,6 +88,7 @@ export type {
 export type {
   AgentSettings,
   PixelEffectSettings,
+  PixelEffectToggle,
   TaskTitleProvider,
   TerminalProfileId,
 } from './agentSettings.types'

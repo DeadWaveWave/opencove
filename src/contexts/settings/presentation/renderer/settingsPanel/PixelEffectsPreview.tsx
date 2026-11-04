@@ -9,6 +9,7 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
   const { t } = useTranslation()
   const scopeRef = useRef<HTMLDivElement>(null)
   const nodeRef = useRef<HTMLDivElement>(null)
+  const wallRef = useRef<HTMLCanvasElement>(null)
   const backgroundRef = useRef<HTMLCanvasElement>(null)
   const foregroundRef = useRef<HTMLCanvasElement>(null)
   const controllerRef = useRef<ReturnType<typeof createPixelEffectPreview> | null>(null)
@@ -20,15 +21,17 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
   useEffect(() => {
     const scope = scopeRef.current
     const node = nodeRef.current
+    const wall = wallRef.current
     const background = backgroundRef.current
     const foreground = foregroundRef.current
-    if (!scope || !node || !background || !foreground) {
+    if (!scope || !node || !wall || !background || !foreground) {
       return
     }
     controllerRef.current = createPixelEffectPreview(
-      { scope, node, background, foreground },
+      { scope, node, wall, background, foreground },
       {
-        canvasPixelBackgroundEnabled: effects.canvasPixelBackgroundEnabled,
+        canvasBackgroundStyle: effects.canvasBackgroundStyle,
+        canvasBackgroundTwinkleEnabled: effects.canvasBackgroundTwinkleEnabled,
         nodeCreationPixelEffectEnabled: effects.nodeCreationPixelEffectEnabled,
         nodeClosePixelEffectEnabled: effects.nodeClosePixelEffectEnabled,
         agentWorkingPixelEffectEnabled: effects.agentWorkingPixelEffectEnabled,
@@ -40,7 +43,8 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
       controllerRef.current = null
     }
   }, [
-    effects.canvasPixelBackgroundEnabled,
+    effects.canvasBackgroundStyle,
+    effects.canvasBackgroundTwinkleEnabled,
     effects.nodeCreationPixelEffectEnabled,
     effects.nodeClosePixelEffectEnabled,
     effects.agentWorkingPixelEffectEnabled,
@@ -75,16 +79,24 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
         ref={scopeRef}
         className="settings-pixel-preview"
         data-testid="settings-pixel-effects-preview"
-        data-background={effects.canvasPixelBackgroundEnabled}
+        data-background={effects.canvasBackgroundStyle}
         data-playing={state.playing}
         data-reduced-motion={state.reducedMotion}
         role="img"
         aria-label={t('settingsPanel.appearanceNext.preview')}
       >
         <canvas
+          ref={wallRef}
+          className="settings-pixel-preview__canvas settings-pixel-preview__canvas--wall"
+          hidden
+          aria-hidden="true"
+        />
+        <canvas
           ref={backgroundRef}
           className="settings-pixel-preview__canvas"
-          hidden={!effects.canvasPixelBackgroundEnabled && !effects.agentWorkingPixelEffectEnabled}
+          hidden={
+            effects.canvasBackgroundStyle === 'off' && !effects.agentWorkingPixelEffectEnabled
+          }
           aria-hidden="true"
         />
         <fieldset

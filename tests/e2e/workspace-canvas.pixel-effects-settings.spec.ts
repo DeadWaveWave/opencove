@@ -17,6 +17,7 @@ import {
   setPixelEffect,
   setPixelEffects,
   stopPixelEffectProbe,
+  setBackgroundStyle,
 } from './workspace-canvas.pixel-effects.helpers'
 import { expectPaintedWall, readWallProbe } from './workspace-canvas.pixel-wall.helpers'
 
@@ -91,10 +92,15 @@ test.describe('Independent pixel effects settings', () => {
       await expect(window.locator('.react-flow__background')).toBeVisible()
       await openPixelAppearance(window)
       await Promise.all(
-        Object.values(EFFECT_CONTROL_IDS).map(id =>
-          expect(window.getByTestId(id)).not.toBeChecked(),
-        ),
+        Object.entries(EFFECT_CONTROL_IDS)
+          .filter(([key]) => key !== 'canvasBackgroundTwinkleEnabled')
+          .map(([, id]) => expect(window.getByTestId(id)).not.toBeChecked()),
       )
+      await expect(window.getByTestId('settings-canvas-background-style-off')).toBeChecked()
+      // Twinkle keeps its choice but only applies to the pixel background.
+      await expect(
+        window.getByTestId(EFFECT_CONTROL_IDS.canvasBackgroundTwinkleEnabled),
+      ).toBeDisabled()
       await setPixelEffect(window, 'nodeCreationPixelEffectEnabled', true)
       await expect(window.getByTestId('workspace-pixel-assembly')).toHaveAttribute(
         'data-cove-pixel-assembly',
@@ -114,7 +120,7 @@ test.describe('Independent pixel effects settings', () => {
       await expect(window.getByTestId('workspace-pixel-layer')).toBeHidden()
       await openPixelAppearance(window)
       await setPixelEffect(window, 'nodeClosePixelEffectEnabled', true)
-      await setPixelEffect(window, 'canvasPixelBackgroundEnabled', true)
+      await setBackgroundStyle(window, 'pixel')
       await setPixelEffect(window, 'agentWorkingPixelEffectEnabled', true)
       await expect(window.getByTestId('workspace-pixel-layer')).toHaveCount(1)
       await expect(window.getByTestId('workspace-pixel-layer')).toHaveJSProperty('hidden', false)
@@ -230,14 +236,14 @@ test.describe('Independent pixel effects settings', () => {
           uiTheme: 'light',
           language: 'en',
           ...PIXEL_EFFECTS_ENABLED,
-          canvasPixelBackgroundEnabled: false,
+          canvasBackgroundStyle: 'off',
           terminalFontSize: 14,
           focusNodeOnClick: false,
           standardWindowSizeBucket: 'compact',
         },
       })
       await openPixelAppearance(window)
-      await window.getByTestId('settings-canvas-pixel-background').scrollIntoViewIfNeeded()
+      await window.getByTestId('settings-canvas-background-style').scrollIntoViewIfNeeded()
       await attachFrame(window, testInfo, 'pixel-effects-foreground-only-settings')
       if (videoDirectory) {
         await window.waitForTimeout(1200)

@@ -5,7 +5,6 @@ import {
   type PixelNode,
   type PixelViewport,
 } from './model'
-import { drawPixelBackground } from './background'
 import { drawWorkingPixels } from './workingRenderer'
 
 export interface PixelTheme {
@@ -14,22 +13,17 @@ export interface PixelTheme {
   mint: string
   warning: string
   danger: string
-  gap: number
-  opacity: number
 }
 
 export function readPixelTheme(canvas: HTMLCanvasElement): PixelTheme {
   const style = getComputedStyle(canvas)
   const color = (token: string) => style.getPropertyValue(token).trim() || style.color
-  const opacity = Number.parseFloat(style.getPropertyValue('--cove-pixel-grid-opacity'))
   return {
     blue: color('--cove-pixel-blue'),
     cyan: color('--cove-pixel-cyan'),
     mint: color('--cove-pixel-mint'),
     warning: color('--cove-warning'),
     danger: color('--cove-danger'),
-    gap: Number.parseFloat(style.getPropertyValue('--cove-pixel-grid-gap')) || 17,
-    opacity: Number.isFinite(opacity) ? Math.max(0, Math.min(0.8, opacity)) : 0,
   }
 }
 
@@ -80,9 +74,7 @@ export function drawPixelLayer({
   now,
   reducedMotion,
   background = true,
-  field = true,
   working = false,
-  backgroundNow = now,
   workingNow = now,
 }: {
   canvas: HTMLCanvasElement
@@ -93,11 +85,9 @@ export function drawPixelLayer({
   theme: PixelTheme
   now: number
   reducedMotion: boolean
+  /** Received-output edge pixels; the pixel wall paints the ambient background. */
   background?: boolean
-  /** The ambient pixel field; off when the pixel wall paints the background instead. */
-  field?: boolean
   working?: boolean
-  backgroundNow?: number
   workingNow?: number
 }): boolean {
   const buffer = resolvePixelBuffer(viewport.width, viewport.height, window.devicePixelRatio)
@@ -118,9 +108,6 @@ export function drawPixelLayer({
   gradient.addColorStop(0.5, theme.cyan)
   gradient.addColorStop(1, theme.mint)
   context.fillStyle = gradient
-  if (background && field) {
-    drawPixelBackground(context, viewport, theme.gap, theme.opacity, backgroundNow, reducedMotion)
-  }
 
   activity.prune(nodes, now)
   let active = false

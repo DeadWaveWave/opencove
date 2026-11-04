@@ -51,10 +51,12 @@ describe('settingsSearchIndex', () => {
   it.each([
     ['Node Creation Effect', en, 'settings-node-creation-pixel-effect'],
     ['Node Closing Effect', en, 'settings-node-close-pixel-effect'],
-    ['Canvas Background Effect', en, 'settings-canvas-pixel-background'],
+    ['Background Twinkle', en, 'settings-canvas-background-twinkle'],
+    ['Minimal', en, 'settings-canvas-background-style'],
     ['创建效果', zhCN, 'settings-node-creation-pixel-effect'],
     ['关闭效果', zhCN, 'settings-node-close-pixel-effect'],
-    ['画布背景效果', zhCN, 'settings-canvas-pixel-background'],
+    ['背景闪烁', zhCN, 'settings-canvas-background-twinkle'],
+    ['简约', zhCN, 'settings-canvas-background-style'],
   ] as const)('finds the independent effect control %s', (query, dictionary, anchorId) => {
     const entries = createSettingsSearchEntries({
       t: createTranslator(dictionary),

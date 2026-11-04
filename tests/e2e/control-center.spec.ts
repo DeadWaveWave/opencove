@@ -61,8 +61,8 @@ test.describe('Control Center', () => {
           !title ||
           !rowLabel ||
           !rowIcon ||
-          // Appearance, theme family and window material.
-          segments.length !== 3 ||
+          // Appearance, theme family, window material and background.
+          segments.length !== 4 ||
           !toggleTrack ||
           !toggleThumb
         ) {
@@ -86,11 +86,12 @@ test.describe('Control Center', () => {
       })
       expect(darkVisuals.width).toBeCloseTo(360, 0)
       expect(darkVisuals.height).toBeGreaterThanOrEqual(260)
-      expect(darkVisuals.height).toBeLessThanOrEqual(480)
+      // Four segmented rows and three switches; short windows scroll the panel instead.
+      expect(darkVisuals.height).toBeLessThanOrEqual(560)
       expect(darkVisuals.titleFontSize).toBeCloseTo(darkVisuals.rowLabelFontSize, 1)
       expect(darkVisuals.rowIconBackground).toBe('rgba(0, 0, 0, 0)')
       expect(darkVisuals.rowStatusCount).toBe(0)
-      // Appearance, family and material controls span the panel's width.
+      // Appearance, family, material and background controls span the panel's width.
       expect(darkVisuals.segmentWidths.every(width => width > darkVisuals.width - 40)).toBe(true)
       expect(darkVisuals.radius).toBe('8px')
       expect(darkVisuals.overflow).toBe(false)
@@ -204,9 +205,13 @@ test.describe('Control Center', () => {
       await expect(controlCenter).toHaveAttribute('role', 'dialog')
       await expect(controlCenter).not.toHaveAttribute('aria-modal', 'true')
 
-      // Three appearance modes, two families and two window materials.
+      // Three appearance modes, two families, two window materials and three background styles.
       const themeInputs = controlCenter.getByRole('radio')
-      await expect(themeInputs).toHaveCount(7)
+      await expect(themeInputs).toHaveCount(10)
+      // A legacy theme that never had effects keeps the plain grid.
+      await expect(
+        window.locator('[data-testid="control-center-background-style-off"]'),
+      ).toBeChecked()
       await expect(window.locator('[data-testid="control-center-theme-family-cove"]')).toBeChecked()
       await expect(window.locator('[data-testid="control-center-theme-mode-dark"]')).toBeChecked()
       await expect(window.locator('html')).toHaveAttribute('data-cove-family', 'cove')
@@ -260,8 +265,9 @@ test.describe('Control Center', () => {
       await window.locator('[data-testid="app-header-control-center"]').click()
       const controlCenter = window.locator('[data-testid="control-center"]')
       await expect(controlCenter).toBeVisible()
-      // Pixel's two modes (it has no follow-system mode), two families and two materials.
-      await expect(controlCenter.getByRole('radio')).toHaveCount(6)
+      // Pixel's two modes (it has no follow-system mode), two families, two materials and three
+      // backgrounds.
+      await expect(controlCenter.getByRole('radio')).toHaveCount(9)
       await expect(controlCenter).toHaveAttribute('aria-modal', 'true')
       await expect(window.locator('.app-shell')).toHaveJSProperty('inert', true)
       await waitForVisualState(controlCenter)

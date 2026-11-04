@@ -160,7 +160,10 @@ describe('Settings form accessible names', () => {
     expectNamedTestId('settings-ui-theme-mode-system', 'Follow System')
     expectNamedTestId('settings-node-creation-pixel-effect', 'Node Creation Effect')
     expectNamedTestId('settings-node-close-pixel-effect', 'Node Closing Effect')
-    expectNamedTestId('settings-canvas-pixel-background', 'Canvas Background Effect')
+    expectNamedTestId('settings-canvas-background-twinkle', 'Background Twinkle')
+    expect(screen.getByTestId('settings-canvas-background-style')).toHaveAccessibleName(
+      'Background',
+    )
     expectNamedTestId('settings-ui-font-size', 'Interface Font Size')
     expectNamedTestId('settings-terminal-font-size', 'Terminal Font Size')
     expectNamedTestId('settings-terminal-font-family', 'Terminal Font')

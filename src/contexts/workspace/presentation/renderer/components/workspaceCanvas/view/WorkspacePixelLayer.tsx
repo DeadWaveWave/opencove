@@ -33,12 +33,12 @@ import {
 function WorkspacePixelLayerComponent({
   nodes,
   options = ALL_PIXEL_EFFECTS,
-  wall = false,
+  ambient = true,
 }: {
   nodes: Node<TerminalNodeData>[]
   options?: PixelLayerOptions
-  /** The pixel wall paints the background, so this layer skips its own pixel field. */
-  wall?: boolean
+  /** Whether a theme's own animated background may run: only under the pixel background style. */
+  ambient?: boolean
 }): React.JSX.Element {
   const store = useStoreApi<Node<TerminalNodeData>>()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -46,7 +46,7 @@ function WorkspacePixelLayerComponent({
   const nodesRef = useRef(nodes)
   const refreshRef = useRef<(() => void) | null>(null)
   const optionsRef = useRef(options)
-  const wallRef = useRef(wall)
+  const ambientRef = useRef(ambient)
   const syncOptionsRef = useRef<(() => void) | null>(null)
   const { background, creation, closing, working } = options
 
@@ -56,9 +56,9 @@ function WorkspacePixelLayerComponent({
   }, [background, creation, closing, working])
 
   useLayoutEffect(() => {
-    wallRef.current = wall
+    ambientRef.current = ambient
     refreshRef.current?.()
-  }, [wall])
+  }, [ambient])
 
   useLayoutEffect(() => {
     nodesRef.current = nodes
@@ -157,7 +157,7 @@ function WorkspacePixelLayerComponent({
         projected.filter(node => !pendingIds.has(node.id)),
         visibleFrames,
         burstFrames,
-        currentEffects(),
+        { ...currentEffects(), background: currentEffects().background && ambientRef.current },
         reducedMotion || !isVisible(),
       )
       assemblyCanvas.dataset.covePixelAssembly = visibleFrames.length ? 'assembling' : 'idle'
@@ -185,10 +185,7 @@ function WorkspacePixelLayerComponent({
           now,
           reducedMotion,
           background: effects.background && readThemeEffect('background').preset === 'pixel',
-          field: !wallRef.current,
           working: effects.working && readThemeEffect('working').preset === 'pixel',
-          backgroundNow:
-            (now * 8000) / Math.max(1, readThemeEffect('background').durationMs ?? 8000),
           workingNow: (now * 1400) / Math.max(1, readThemeEffect('working').durationMs ?? 1400),
         })
         canvas.hidden = !effects.background && workingNodes.length === 0
@@ -197,8 +194,8 @@ function WorkspacePixelLayerComponent({
         drawAssembly()
         return (
           !reducedMotion &&
-          // Under the wall this layer only animates while it has output pixels to show.
-          ((effects.background && (!wallRef.current || active)) ||
+          // The background is the pixel wall's; this layer animates only while it has pixels.
+          (active ||
             workingNodes.length > 0 ||
             assembly.hasPending(performance.now()) ||
             burst.hasPending(performance.now()))

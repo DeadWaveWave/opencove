@@ -30,8 +30,15 @@ function readWindowRects(state: ReactFlowState): WallWindowRect[] {
  * frame scheduler (30fps focused, 10fps in the background, none while hidden or with reduced
  * motion); a pan or zoom repaints on the next display frame, so the wall never trails windows.
  */
-export const WorkspacePixelWall = memo(function WorkspacePixelWall(): React.JSX.Element {
+export const WorkspacePixelWall = memo(function WorkspacePixelWall({
+  ambient = true,
+}: {
+  /** 「背景闪烁」: twinkle and cloud drift. Off, the wall holds still and paints only on change. */
+  ambient?: boolean
+}): React.JSX.Element {
   const store = useStoreApi()
+  const ambientRef = useRef(ambient)
+  const repaintRef = useRef<(() => void) | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const glRef = useRef<HTMLCanvasElement>(null)
   const fallbackRef = useRef<HTMLCanvasElement>(null)
@@ -45,6 +52,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall(): React.JSX.
     }
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
     let reducedMotion = media.matches
+    const still = () => reducedMotion || !ambientRef.current
     let palette = readWallPalette(host)
     let width = host.clientWidth
     let height = host.clientHeight
@@ -87,10 +95,11 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall(): React.JSX.
     const activeScheduler = createPixelFrameScheduler({
       requestFrame: callback => window.requestAnimationFrame(callback),
       cancelFrame: id => window.cancelAnimationFrame(id),
-      draw: now => controller.render(reducedMotion ? null : now) && !reducedMotion,
+      draw: now => controller.render(still() ? null : now) && !still(),
     })
     scheduler = activeScheduler
     const repaint = () => activeScheduler.invalidate({ immediate: true })
+    repaintRef.current = repaint
 
     const unsubscribeStore = store.subscribe(state => {
       const [nextX, nextY, nextZoom] = state.transform
@@ -144,10 +153,16 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall(): React.JSX.
       document.removeEventListener('visibilitychange', syncVisibility)
       window.removeEventListener('focus', syncFocus)
       window.removeEventListener('blur', syncFocus)
+      repaintRef.current = null
       activeScheduler.dispose()
       controller.dispose()
     }
   }, [store])
+
+  useLayoutEffect(() => {
+    ambientRef.current = ambient
+    repaintRef.current?.()
+  }, [ambient])
 
   return (
     <div

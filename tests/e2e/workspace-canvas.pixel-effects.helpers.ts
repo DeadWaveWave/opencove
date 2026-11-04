@@ -1,23 +1,29 @@
 import { expect, type Page } from '@playwright/test'
-import type { PixelEffectSettings } from '../../src/contexts/settings/domain/agentSettings'
+import type {
+  CanvasBackgroundStyle,
+  PixelEffectSettings,
+  PixelEffectToggle,
+} from '../../src/contexts/settings/domain/agentSettings'
 
 export const PIXEL_EFFECTS_ENABLED: PixelEffectSettings = {
   agentWorkingPixelEffectEnabled: true,
   nodeCreationPixelEffectEnabled: true,
   nodeClosePixelEffectEnabled: true,
-  canvasPixelBackgroundEnabled: true,
+  canvasBackgroundStyle: 'pixel',
+  canvasBackgroundTwinkleEnabled: true,
 }
 export const PIXEL_EFFECTS_DISABLED: PixelEffectSettings = {
   agentWorkingPixelEffectEnabled: false,
   nodeCreationPixelEffectEnabled: false,
   nodeClosePixelEffectEnabled: false,
-  canvasPixelBackgroundEnabled: false,
+  canvasBackgroundStyle: 'off',
+  canvasBackgroundTwinkleEnabled: true,
 }
-export const EFFECT_CONTROL_IDS: Record<keyof PixelEffectSettings, string> = {
+export const EFFECT_CONTROL_IDS: Record<PixelEffectToggle, string> = {
   agentWorkingPixelEffectEnabled: 'settings-agent-working-pixel-effect',
   nodeCreationPixelEffectEnabled: 'settings-node-creation-pixel-effect',
   nodeClosePixelEffectEnabled: 'settings-node-close-pixel-effect',
-  canvasPixelBackgroundEnabled: 'settings-canvas-pixel-background',
+  canvasBackgroundTwinkleEnabled: 'settings-canvas-background-twinkle',
 }
 
 export async function openPixelAppearance(page: Page) {
@@ -25,11 +31,18 @@ export async function openPixelAppearance(page: Page) {
   await page.getByTestId('settings-section-nav-appearance').click()
 }
 
-export async function setPixelEffect(page: Page, key: keyof PixelEffectSettings, enabled: boolean) {
+export async function setPixelEffect(page: Page, key: PixelEffectToggle, enabled: boolean) {
   const control = page.getByTestId(EFFECT_CONTROL_IDS[key])
   await control.scrollIntoViewIfNeeded()
   await control.setChecked(enabled)
   await expect(control).toHaveJSProperty('checked', enabled)
+}
+
+export async function setBackgroundStyle(page: Page, style: CanvasBackgroundStyle) {
+  const option = page.getByTestId(`settings-canvas-background-style-${style}`)
+  await option.scrollIntoViewIfNeeded()
+  await option.check()
+  await expect(option).toBeChecked()
 }
 
 export async function setPixelEffects(page: Page, effects: PixelEffectSettings) {
@@ -44,7 +57,14 @@ export async function setPixelEffects(page: Page, effects: PixelEffectSettings) 
     effects.nodeCreationPixelEffectEnabled,
   )
   await setPixelEffect(page, 'nodeClosePixelEffectEnabled', effects.nodeClosePixelEffectEnabled)
-  await setPixelEffect(page, 'canvasPixelBackgroundEnabled', effects.canvasPixelBackgroundEnabled)
+  // Twinkle can only change under the pixel background.
+  await setBackgroundStyle(page, 'pixel')
+  await setPixelEffect(
+    page,
+    'canvasBackgroundTwinkleEnabled',
+    effects.canvasBackgroundTwinkleEnabled,
+  )
+  await setBackgroundStyle(page, effects.canvasBackgroundStyle)
 }
 
 export async function readPixelEffects(page: Page) {
@@ -55,7 +75,8 @@ export async function readPixelEffects(page: Page) {
       agentWorkingPixelEffectEnabled: state?.settings?.agentWorkingPixelEffectEnabled,
       nodeCreationPixelEffectEnabled: state?.settings?.nodeCreationPixelEffectEnabled,
       nodeClosePixelEffectEnabled: state?.settings?.nodeClosePixelEffectEnabled,
-      canvasPixelBackgroundEnabled: state?.settings?.canvasPixelBackgroundEnabled,
+      canvasBackgroundStyle: state?.settings?.canvasBackgroundStyle,
+      canvasBackgroundTwinkleEnabled: state?.settings?.canvasBackgroundTwinkleEnabled,
     }
   })
 }

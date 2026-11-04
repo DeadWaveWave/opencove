@@ -109,9 +109,17 @@ export const enSettingsPanelLayout = {
       creationHelp: 'Reveal new nodes with the current theme’s animation.',
       closeLabel: 'Node Closing Effect',
       closeHelp: 'Play the current theme’s closing animation.',
-      backgroundLabel: 'Canvas Background Effect',
-      backgroundHelp:
-        'Use the current theme’s animated background; turn off for the standard grid.',
+      backgroundLabel: 'Background',
+      backgroundStyle_pixel: 'Pixel',
+      backgroundStyle_minimal: 'Minimal',
+      backgroundStyle_off: 'Off',
+      backgroundHelp_pixel:
+        'A wall of glass pixels in the theme’s colours, calmer behind every window.',
+      backgroundHelp_minimal: 'A quiet dot grid that stays still until something happens.',
+      backgroundHelp_off: 'The plain dot grid, with no background effects.',
+      twinkleLabel: 'Background Twinkle',
+      twinkleHelp:
+        'Let a few pixels twinkle and the colour clouds drift. Off, the wall holds still. Pixel background only.',
     },
     help: 'Adjust the interface, editor-adjacent text, and terminal rendering in one place.',
     interfaceFontSizeHelp: 'Controls app chrome, panels, menus, and form text.',

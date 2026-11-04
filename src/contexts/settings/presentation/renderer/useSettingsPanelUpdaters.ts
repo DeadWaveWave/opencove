@@ -5,7 +5,8 @@ import type {
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
   FocusNodeTargetZoom,
-  PixelEffectSettings,
+  CanvasBackgroundStyle,
+  PixelEffectToggle,
   StandardWindowSizeBucket,
   TaskTitleProvider,
   UiLanguage,
@@ -77,8 +78,10 @@ export function createSettingsPanelUpdaters({
         'pluginContributions',
         setPluginContributionEnabled(settings, pluginId, contribution, enabled),
       ),
-    updatePixelEffect: (key: keyof PixelEffectSettings, enabled: boolean): void =>
+    updatePixelEffect: (key: PixelEffectToggle, enabled: boolean): void =>
       updateSetting(key, enabled),
+    updateCanvasBackgroundStyle: (style: CanvasBackgroundStyle): void =>
+      updateSetting('canvasBackgroundStyle', style),
     updateAgentFullAccess: (enabled: boolean): void => updateSetting('agentFullAccess', enabled),
     updateDefaultTerminalProfileId: (profileId: string | null): void =>
       updateSetting('defaultTerminalProfileId', profileId),

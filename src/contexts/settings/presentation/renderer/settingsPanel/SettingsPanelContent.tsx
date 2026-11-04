@@ -73,6 +73,7 @@ export function SettingsPanelContent({
     updateWindowKindColors,
     updateWindowMaterial,
     updatePixelEffect,
+    updateCanvasBackgroundStyle,
     updatePluginEnabled,
     updatePluginContributionEnabled,
     updateAgentFullAccess,
@@ -156,6 +157,7 @@ export function SettingsPanelContent({
           onChangeWindowMaterial={updateWindowMaterial}
           onChangeUiTheme={updateUiTheme}
           onChangePixelEffect={updatePixelEffect}
+          onChangeCanvasBackgroundStyle={updateCanvasBackgroundStyle}
           onChangeUiFontSize={updateUiFontSize}
         />
       ) : null}
