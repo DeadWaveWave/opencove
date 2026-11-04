@@ -40,7 +40,6 @@
     "src/contexts/settings/presentation/renderer/settingsPanel/quickMenu/QuickCommandsSubsection.tsx": 5,
     "src/contexts/settings/presentation/renderer/settingsPanel/quickMenu/QuickPhrasesSubsection.tsx": 5,
     "src/contexts/settings/presentation/renderer/settingsPanel/SettingsPageFrame.tsx": 1,
-    "src/contexts/settings/presentation/renderer/settingsPanel/SettingsPanelContent.tsx": 2,
     "src/contexts/settings/presentation/renderer/settingsPanel/SettingsPanelNav.tsx": 1,
     "src/contexts/settings/presentation/renderer/settingsPanel/SettingsPanelNavButton.tsx": 1,
     "src/contexts/settings/presentation/renderer/settingsPanel/SettingsPanelSearch.tsx": 1,

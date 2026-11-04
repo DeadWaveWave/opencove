@@ -1,4 +1,5 @@
 import React from 'react'
+import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentProviderRequest } from '../useSettingsSearchNavigation'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
@@ -190,24 +191,25 @@ export function SettingsPanelContent({
 
       {canonicalPageId === 'agent' ? (
         <>
-          <nav className="settings-panel__tabs" aria-label={t('settingsPanel.nav.agent')}>
-            <button
-              type="button"
-              data-testid="settings-agent-tab-providers"
-              aria-current={activePageId !== 'task-configuration' ? 'page' : undefined}
-              onClick={() => onSelectPage('agent')}
-            >
-              {t('settingsPanel.navigation.providersTab')}
-            </button>
-            <button
-              type="button"
-              data-testid="settings-agent-tab-tasks"
-              aria-current={activePageId === 'task-configuration' ? 'page' : undefined}
-              onClick={() => onSelectPage('task-configuration')}
-            >
-              {t('settingsPanel.navigation.tasksTab')}
-            </button>
-          </nav>
+          {/* Settings switch views with a segmented control, never a tab bar (Tide settings). */}
+          <SegmentedControl
+            className="settings-panel__view-switch"
+            label={t('settingsPanel.nav.agent')}
+            value={activePageId === 'task-configuration' ? 'task-configuration' : 'agent'}
+            onValueChange={onSelectPage}
+            options={[
+              {
+                value: 'agent',
+                label: t('settingsPanel.navigation.providersTab'),
+                testId: 'settings-agent-tab-providers',
+              },
+              {
+                value: 'task-configuration',
+                label: t('settingsPanel.navigation.tasksTab'),
+                testId: 'settings-agent-tab-tasks',
+              },
+            ]}
+          />
           {activePageId === 'task-configuration' ? (
             <TaskConfigurationSection
               showTaskTitleGeneration={AI_NAMING_FEATURES.taskTitleGeneration}

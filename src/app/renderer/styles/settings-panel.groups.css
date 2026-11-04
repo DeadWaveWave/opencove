@@ -36,9 +36,12 @@
 }
 
 .settings-panel__group-body {
+  /* Each group's rows sit on one card, divided by hairlines (Tide settings). */
   min-width: 0;
-  padding: 0;
-  background: transparent;
+  padding: 0 var(--cove-spacing-4);
+  border: 1px solid var(--cove-settings-group-outline);
+  border-radius: var(--cove-radius-lg);
+  background: var(--cove-settings-group-surface);
 }
 
 .settings-panel__group-body > .settings-panel__row,

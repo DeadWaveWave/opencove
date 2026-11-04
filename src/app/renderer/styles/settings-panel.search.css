@@ -8,8 +8,8 @@
 }
 .settings-panel__search {
   position: relative;
-  flex: 0 1 180px;
-  min-width: 120px;
+  flex: 0 1 240px;
+  min-width: 140px;
   padding-top: 1px;
 }
 .settings-panel__search-input-shell {
@@ -18,21 +18,20 @@
 .settings-panel input.settings-panel__search-input {
   width: 100%;
   min-height: 32px;
-  padding: 6px 8px 6px 28px;
-  border: 0;
-  border-bottom: 1px solid var(--cove-border-subtle);
-  border-radius: 0;
-  background: transparent;
+  padding: 6px 10px 6px 30px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: var(--cove-radius-sm);
+  background: var(--cove-field);
   font-size: calc(12px * var(--cove-ui-font-scale));
 }
 .settings-panel input.settings-panel__search-input:focus-visible {
   border-color: var(--cove-accent);
-  box-shadow: 0 1px 0 var(--cove-accent);
+  box-shadow: 0 0 0 1px var(--cove-accent);
 }
 .settings-panel__search-icon {
   position: absolute;
   top: 50%;
-  left: 6px;
+  left: 10px;
   transform: translateY(-50%);
   color: var(--cove-text-muted);
   pointer-events: none;

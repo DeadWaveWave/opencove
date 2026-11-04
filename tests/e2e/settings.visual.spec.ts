@@ -120,12 +120,13 @@ async function verifyWorkerHierarchyAndAttach(
       background: style.backgroundColor,
     }
   })
-  expect(groupSurface).toEqual({
-    borderRadius: '0px',
+  // Each group's rows sit on one card (Tide settings).
+  expect(groupSurface).toMatchObject({
+    borderRadius: '12px',
     boxShadow: 'none',
     overflow: 'visible',
-    background: 'rgba(0, 0, 0, 0)',
   })
+  expect(groupSurface.background).not.toBe('rgba(0, 0, 0, 0)')
 
   const moduleSurface = await cli.evaluate(element => {
     const style = getComputedStyle(element)

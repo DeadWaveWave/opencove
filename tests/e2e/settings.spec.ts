@@ -262,7 +262,7 @@ test.describe('Settings', () => {
       })
 
       await agentNav.click()
-      await window.getByTestId('settings-agent-tab-tasks').click()
+      await window.getByTestId('settings-agent-tab-tasks').check()
 
       const addTaskTagInput = window.locator('[data-testid="settings-task-tag-add-input"]')
       await addTaskTagInput.fill('ops')
