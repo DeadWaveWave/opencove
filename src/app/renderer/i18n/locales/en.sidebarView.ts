@@ -5,7 +5,6 @@ export const enSidebarView = {
     focus: 'Focus',
     normal: 'Normal',
     all: 'All',
-    next: 'Switch to {{mode}}',
   },
   filterStatus: 'Agent status',
   filterProvider: 'Agent',

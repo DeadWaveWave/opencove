@@ -5,7 +5,6 @@ export const zhCNSidebarView = {
     focus: '专注',
     normal: '正常',
     all: '全部',
-    next: '切换至{{mode}}',
   },
   filterStatus: 'Agent 状态',
   filterProvider: 'Agent',

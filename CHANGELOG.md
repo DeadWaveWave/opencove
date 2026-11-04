@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Settings and dialogs: switches, checkboxes and task tags use shared controls that follow the theme and have larger click targets; task tags become chips. (#445)
 - Dialogs and windows: choices such as the issue type, connection method, plugin source, worktree branch mode and explorer view use one segmented control, which screen readers announce as a radio group. (#446)
 - Settings: search finds every row on every page, including update, notification banner, calibration, worker, Web UI, website window, diagnostics and each keyboard shortcut. (#470)
+- Sidebar and Command Center: the OpenCove logo leaves the project rail; Focus, Normal and All become one segmented control under the project name; Agent rows read on one line with an AI tile; Command Center windows show their kind tile with the Space on the right, and agents show a status pill. (#484)
 - Dialogs: text fields share one labelled field with help text and inline errors; remote machine port errors now appear under the field. (#448)
 - Appearance: menus, popovers and the control center share one acrylic material with checked contrast, and turn solid when the system reduces transparency. (#449)
 - Settings: every row's label now names its control and its description is read with it; selects also say their current value. Rows, number fields and buttons use the shared components, and the pages keep their layout. (#471)

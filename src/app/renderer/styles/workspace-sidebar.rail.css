@@ -11,16 +11,6 @@
   background: color-mix(in srgb, var(--cove-app-background-elevated) 65%, var(--cove-panel));
 }
 
-.workspace-project-rail__logo {
-  flex: none;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--cove-radius-md);
-  box-shadow: 0 0 0 1px var(--cove-border-subtle);
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
 .workspace-sidebar__toolbar {
   display: flex;
   flex-direction: column;
