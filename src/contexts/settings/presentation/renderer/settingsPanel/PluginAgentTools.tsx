@@ -1,3 +1,4 @@
+import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { Copy } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -78,7 +79,9 @@ export function PluginAgentTools({ plugin }: { plugin: PluginManifest }): JSX.El
                   </p>
                   {command.usage ? <pre>{command.usage}</pre> : null}
                 </div>
-                <button
+                <Button
+                  variant="secondary"
+                  size="md"
                   type="button"
                   className="cove-window__action cove-window__action--secondary"
                   disabled={busy !== null}
@@ -87,7 +90,7 @@ export function PluginAgentTools({ plugin }: { plugin: PluginManifest }): JSX.El
                 >
                   <Copy size={14} aria-hidden="true" />
                   {t('settingsPanel.plugins.tools.copy')}
-                </button>
+                </Button>
               </div>
             )
           })}
@@ -105,7 +108,9 @@ export function PluginAgentTools({ plugin }: { plugin: PluginManifest }): JSX.El
                 <span>{skill.id}</span>
                 <p>{skill.description}</p>
               </div>
-              <button
+              <Button
+                variant="secondary"
+                size="md"
                 type="button"
                 className="cove-window__action cove-window__action--secondary"
                 disabled={busy !== null}
@@ -124,7 +129,7 @@ export function PluginAgentTools({ plugin }: { plugin: PluginManifest }): JSX.El
               >
                 <Copy size={14} aria-hidden="true" />
                 {t('settingsPanel.plugins.tools.copySkill')}
-              </button>
+              </Button>
             </div>
           ))}
         </section>

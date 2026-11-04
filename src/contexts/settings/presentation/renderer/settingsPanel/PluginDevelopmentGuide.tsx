@@ -1,3 +1,4 @@
+import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { Copy, Terminal } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -40,7 +41,9 @@ export function PluginDevelopmentGuide(): JSX.Element {
           <Terminal size={15} aria-hidden="true" />
           <code>{GUIDE_COMMAND}</code>
         </span>
-        <button
+        <Button
+          variant="secondary"
+          size="md"
           type="button"
           className="secondary"
           data-testid="settings-plugin-guide-copy"
@@ -49,7 +52,7 @@ export function PluginDevelopmentGuide(): JSX.Element {
         >
           <Copy size={14} aria-hidden="true" />
           {t('settingsPanel.plugins.copyGuide')}
-        </button>
+        </Button>
       </div>
       <p className="settings-plugin-guide__feedback" role="status">
         {copyState === 'copied' ? t('settingsPanel.plugins.copied') : null}

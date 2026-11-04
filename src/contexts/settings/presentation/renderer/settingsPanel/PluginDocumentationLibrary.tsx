@@ -1,3 +1,4 @@
+import { Button } from '@app/renderer/components/ui/Button'
 import { useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { ArrowLeft, BookOpen, ChevronRight } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -40,7 +41,9 @@ export function PluginDocumentationLibrary({ onBack }: { onBack: () => void }): 
   }, [article])
   return (
     <div className="settings-plugin-library" data-testid="plugin-documentation-library" ref={root}>
-      <button
+      <Button
+        variant="ghost"
+        size="md"
         type="button"
         className="settings-plugin-detail__back"
         onClick={article ? () => setRoute(null) : onBack}
@@ -48,7 +51,7 @@ export function PluginDocumentationLibrary({ onBack }: { onBack: () => void }): 
       >
         <ArrowLeft size={14} aria-hidden="true" />
         {t(`settingsPanel.plugins.${article ? 'library.back' : 'back'}`)}
-      </button>
+      </Button>
       {article ? (
         <>
           <header className="settings-plugin-library__article-header">
@@ -85,7 +88,9 @@ export function PluginDocumentationLibrary({ onBack }: { onBack: () => void }): 
                 {articles
                   .filter(item => item.category === category)
                   .map(item => (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="md"
                       type="button"
                       key={item.id}
                       className="settings-plugin-library__card"
@@ -105,7 +110,7 @@ export function PluginDocumentationLibrary({ onBack }: { onBack: () => void }): 
                         <span>{item.description}</span>
                       </span>
                       <ChevronRight size={16} aria-hidden="true" />
-                    </button>
+                    </Button>
                   ))}
               </div>
             </section>

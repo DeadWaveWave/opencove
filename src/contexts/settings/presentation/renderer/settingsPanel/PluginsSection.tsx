@@ -1,3 +1,4 @@
+import { Button } from '@app/renderer/components/ui/Button'
 import { pluginErrorMessage } from '@contexts/plugins/presentation/renderer/pluginErrorMessage'
 import { useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { BookOpen, ChevronRight, Plus, Puzzle, RefreshCw } from 'lucide-react'
@@ -102,7 +103,9 @@ export function PluginsSection({
           ) : null}
           {!activePlugin ? (
             <div className="settings-plugin-toolbar">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
                 type="button"
                 className="cove-window__action cove-window__action--secondary"
                 data-testid="settings-plugins-install"
@@ -111,8 +114,10 @@ export function PluginsSection({
               >
                 <Plus size={15} aria-hidden="true" />
                 {t('settingsPanel.plugins.install.title')}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="md"
                 type="button"
                 className="cove-window__action cove-window__action--ghost"
                 data-testid="settings-plugins-documentation"
@@ -128,7 +133,7 @@ export function PluginsSection({
               >
                 <BookOpen size={15} aria-hidden="true" />
                 {t('settingsPanel.plugins.library.button')}
-              </button>
+              </Button>
             </div>
           ) : null}
           {showInstall && !activePlugin ? (
@@ -157,7 +162,9 @@ export function PluginsSection({
               title={t('settingsPanel.plugins.installedTitle')}
               description={t('settingsPanel.plugins.installedHelp')}
               actions={
-                <button
+                <Button
+                  variant="ghost"
+                  size="md"
                   type="button"
                   className="cove-window__action cove-window__action--ghost"
                   onClick={() => {
@@ -167,7 +174,7 @@ export function PluginsSection({
                 >
                   <RefreshCw size={14} aria-hidden="true" />
                   {t('settingsPanel.plugins.refresh')}
-                </button>
+                </Button>
               }
             >
               <SettingsGroupBody className="settings-plugin-list">
@@ -188,7 +195,9 @@ export function PluginsSection({
                       key={plugin.id}
                       aria-labelledby={`settings-plugin-name-${plugin.id}`}
                     >
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="md"
                         type="button"
                         className="settings-plugin__open"
                         data-testid={`settings-plugin-details-${plugin.id}`}
@@ -234,7 +243,7 @@ export function PluginsSection({
                           size={15}
                           aria-hidden="true"
                         />
-                      </button>
+                      </Button>
                       <PluginSettingsToggle
                         plugin={plugin}
                         enabled={enabled}

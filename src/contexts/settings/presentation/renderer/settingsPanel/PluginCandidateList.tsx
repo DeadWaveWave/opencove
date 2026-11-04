@@ -1,3 +1,4 @@
+import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { Copy, GitMerge, RefreshCw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -74,17 +75,21 @@ export function PluginCandidateList({
             <summary>{t('settingsPanel.plugins.source.inspectCandidate')}</summary>
             <p>{t('settingsPanel.plugins.source.workerDirectory')}</p>
             <code className="settings-plugin-candidate__path">{candidate.directory}</code>
-            <button
+            <Button
+              variant="ghost"
+              size="md"
               type="button"
               className="cove-window__action cove-window__action--ghost"
               onClick={() => void copy(candidate.directory)}
             >
               <Copy size={13} aria-hidden="true" />
               {t('settingsPanel.plugins.source.copyPath')}
-            </button>
+            </Button>
           </details>
           <div className="settings-plugin-runtime__actions">
-            <button
+            <Button
+              variant="secondary"
+              size="md"
               type="button"
               className="cove-window__action cove-window__action--secondary"
               disabled={busy || Boolean(candidate.stale)}
@@ -93,8 +98,10 @@ export function PluginCandidateList({
             >
               <RefreshCw size={14} aria-hidden="true" />
               {t('settingsPanel.plugins.source.applyCandidate')}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="md"
               type="button"
               className="cove-window__action cove-window__action--ghost"
               onClick={() =>
@@ -108,7 +115,7 @@ export function PluginCandidateList({
             >
               <Copy size={13} aria-hidden="true" />
               {t('settingsPanel.plugins.source.copyResolution')}
-            </button>
+            </Button>
           </div>
         </article>
       ))}

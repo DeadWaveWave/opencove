@@ -40,6 +40,18 @@
   text-align: left;
 }
 
+/* Button's content span retains the content-sized plugin row layout. */
+.settings-plugin__open.cove-button {
+  height: auto;
+  font-weight: 400;
+  white-space: normal;
+}
+
+.settings-plugin__open.cove-button > .cove-button__content {
+  flex: 1;
+  gap: inherit;
+}
+
 .settings-plugin__open:focus-visible,
 .settings-plugin-detail__back:focus-visible {
   outline: 2px solid var(--cove-settings-focus-ring);

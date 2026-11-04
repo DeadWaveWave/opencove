@@ -1,3 +1,5 @@
+import { Tooltip } from '@app/renderer/components/ui/Tooltip'
+import { Button } from '@app/renderer/components/ui/Button'
 import { pluginErrorMessage } from '@contexts/plugins/presentation/renderer/pluginErrorMessage'
 import { useState, type JSX } from 'react'
 import { RefreshCw, Trash2 } from 'lucide-react'
@@ -50,7 +52,9 @@ export function PluginRuntimeControls({
       aria-label={t('settingsPanel.plugins.runtime.manage')}
     >
       <div className="settings-plugin-runtime__actions">
-        <button
+        <Button
+          variant="secondary"
+          size="md"
           type="button"
           className="cove-window__action cove-window__action--secondary"
           disabled={busy}
@@ -61,8 +65,10 @@ export function PluginRuntimeControls({
         >
           <RefreshCw size={14} aria-hidden="true" />
           {t('settingsPanel.plugins.reload')}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="md"
           type="button"
           className="cove-window__action cove-window__action--ghost"
           disabled={busy}
@@ -71,12 +77,14 @@ export function PluginRuntimeControls({
         >
           <Trash2 size={14} aria-hidden="true" />
           {t('settingsPanel.plugins.uninstall')}
-        </button>
+        </Button>
       </div>
       {confirmRemove ? (
         <div className="settings-plugin-runtime__confirmation">
           <p>{t('settingsPanel.plugins.uninstallHelp')}</p>
-          <button
+          <Button
+            variant="danger"
+            size="md"
             type="button"
             className="cove-window__action cove-window__action--danger"
             disabled={busy}
@@ -86,7 +94,7 @@ export function PluginRuntimeControls({
             data-testid="settings-plugin-confirm-uninstall"
           >
             {t('settingsPanel.plugins.uninstall')}
-          </button>
+          </Button>
         </div>
       ) : null}
       {plugin.error || error ? (
@@ -95,9 +103,9 @@ export function PluginRuntimeControls({
         </p>
       ) : null}
       {detail?.sourceDirectory ? (
-        <p className="settings-plugin-runtime__source" title={detail.sourceDirectory}>
-          {detail.sourceDirectory}
-        </p>
+        <Tooltip content={detail.sourceDirectory}>
+          <p className="settings-plugin-runtime__source">{detail.sourceDirectory}</p>
+        </Tooltip>
       ) : null}
       <PluginSourceControls key={plugin.id} plugin={plugin} />
       {detail?.logs.length ? (
