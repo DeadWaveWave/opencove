@@ -6,6 +6,8 @@ import {
   type PixelViewport,
 } from './model'
 import { drawWorkingPixels } from './workingRenderer'
+import { drawDotRipples } from './dotRipples'
+import type { Ripple } from '../pixelWall/ripples'
 
 export interface PixelTheme {
   blue: string
@@ -74,6 +76,7 @@ export function drawPixelLayer({
   now,
   reducedMotion,
   background = true,
+  ripples = [],
   working = false,
   workingNow = now,
 }: {
@@ -85,8 +88,10 @@ export function drawPixelLayer({
   theme: PixelTheme
   now: number
   reducedMotion: boolean
-  /** Received-output edge pixels; the pixel wall paints the ambient background. */
+  /** Status corner marks and output observation; the pixel wall paints the ambient background. */
   background?: boolean
+  /** Output ripples through the dot grid (「简约」); under the pixel wall the wall draws them. */
+  ripples?: readonly Ripple[]
   working?: boolean
   workingNow?: number
 }): boolean {
@@ -112,9 +117,13 @@ export function drawPixelLayer({
   activity.prune(nodes, now)
   let active = false
   for (const node of background ? nodes : []) {
-    const intensity = reducedMotion ? 0 : activity.intensity(node, now)
-    active ||= intensity > 0
-    drawNodePixels(context, node, intensity, theme, gradient)
+    // Output shows as ripples now; the frame keeps only its status corner marks.
+    active ||= !reducedMotion && activity.intensity(node, now) > 0
+    drawNodePixels(context, node, 0, theme, gradient)
+  }
+  if (background && !reducedMotion && ripples.length > 0) {
+    drawDotRipples(context, viewport, ripples)
+    active = true
   }
   if (working && !reducedMotion) {
     drawWorkingPixels(context, nodes, viewport, theme, workingNow)

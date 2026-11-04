@@ -52,9 +52,9 @@
   display: none;
 }
 
-/* Work light colours. Generated families light each window by its kind; hand-written themes
-   fall back to their label colours. Waiting is yellow and failure red, in every theme. */
-.workspace-pixel-wall {
+/* Work light and ripple colours. Generated families light each window by its kind;
+   hand-written themes fall back to their label colours. Waiting is yellow and failure red. */
+:root {
   --cove-wall-light-ai: var(--cove-kind-ai-solid, var(--cove-label-purple));
   --cove-wall-light-shell: var(--cove-kind-shell-solid, var(--cove-label-green));
   --cove-wall-light-plan: var(--cove-kind-plan-solid, var(--cove-label-orange));
@@ -66,7 +66,7 @@
 }
 
 /* With window kind colours off every window casts the neutral light; status colours stay. */
-:root[data-cove-kind-colors='off'] .workspace-pixel-wall {
+:root[data-cove-kind-colors='off'] {
   --cove-wall-light-ai: var(--cove-wall-light-neutral);
   --cove-wall-light-shell: var(--cove-wall-light-neutral);
   --cove-wall-light-plan: var(--cove-wall-light-neutral);

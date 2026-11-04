@@ -5,6 +5,7 @@ import type { TerminalNodeData } from '../../../types'
 import { createPixelFrameScheduler } from './pixelLayer/scheduler'
 import { fillWallCells } from './pixelWall/wallCells'
 import { createWallDissolve } from './pixelWall/wallDissolve'
+import { createRippleField } from './pixelWall/ripples'
 import { projectWallGlass, readWallGlassRadius } from './pixelWall/wallGlass'
 import { createPixelWallController } from './pixelWall/wallController'
 import type { WallFrame } from './pixelWall/wallFrame'
@@ -61,13 +62,15 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     let lightsAnimating = false
     let dissolving = false
     const dissolve = createWallDissolve()
+    const ripples = createRippleField()
 
     const buildFrame = (now: number | null): WallFrame => {
       const grid = resolveWallGrid({ x, y, zoom, width, height })
       const ambientSeconds = now === null || still() ? null : now / 1000
       const lit = tracker.resolve(now === null || reducedMotion ? null : now, lights)
-      lightsAnimating = lit.animating
-      cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows)
+      const waves = now === null || reducedMotion ? [] : ripples.sample(now)
+      lightsAnimating = lit.animating || waves.length > 0
+      cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows, waves)
       const glass = projectWallGlass(
         lit.windows,
         { x, y, zoom, width, height },
@@ -78,12 +81,12 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       // A change of cell size dissolves over 120ms instead of jumping.
       const shown = dissolve.apply(grid, cells, now === null || reducedMotion ? null : now)
       dissolving = shown.animating
-      recordWallFrame(
-        shown.cells,
-        ambientSeconds !== null || lit.animating,
-        lit.windows,
-        glass.count,
-      )
+      recordWallFrame(shown.cells, {
+        animated: ambientSeconds !== null || lightsAnimating,
+        lights: lit.windows,
+        glassCount: glass.count,
+        rippleCount: waves.length,
+      })
       if (grid.screenCell !== screenCell) {
         screenCell = grid.screenCell
         host.dataset.coveWallCell = screenCell.toFixed(2)
@@ -163,13 +166,21 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     // Output only brightens a light; without a PTY bridge there is nothing to observe.
     const unsubscribeOutput = window.opencoveApi?.pty
       ? getPtyEventHub().onData(event => {
-          if (tracker.observeOutput(event.sessionId, performance.now()) && !reducedMotion) {
-            activeScheduler.invalidate()
+          const at = performance.now()
+          const source = tracker.observeOutput(event.sessionId, at)
+          if (!source || reducedMotion) {
+            return
           }
+          // A ripple only says output arrived; it never implies a tool call or success.
+          ripples.emit(source.id, source.center, lights[source.family], at)
+          activeScheduler.invalidate()
         })
       : () => undefined
     const onMotionChange = () => {
       reducedMotion = media.matches
+      if (reducedMotion) {
+        ripples.clear()
+      }
       repaint()
     }
     const syncVisibility = () => activeScheduler.setVisible(document.visibilityState !== 'hidden')

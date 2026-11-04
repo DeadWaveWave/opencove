@@ -122,10 +122,10 @@ describe('workspace pixel layer lifecycle', () => {
     vi.unstubAllGlobals()
   })
 
-  it('stays idle without output, coalesces output bursts and never writes runtime state', () => {
+  it('stays idle without output, ripples through the dots on output and never writes runtime state', () => {
     const node = pixelNode()
     const before = structuredClone(node)
-    const view = render(<WorkspacePixelLayer nodes={[node]} />)
+    const view = render(<WorkspacePixelLayer nodes={[node]} ripples />)
     const canvas = view.getByTestId('workspace-pixel-layer')
     expect(canvas).toHaveAttribute('aria-hidden', 'true')
     tick(0)
@@ -139,6 +139,7 @@ describe('workspace pixel layer lifecycle', () => {
     expect(frames.size).toBe(1)
     tick(40)
     expect(canvas).toHaveAttribute('data-cove-pixel-activity', 'output')
+    // The output ripple lights the dots its wavefront passes.
     expect(context.fillRect).toHaveBeenCalled()
     tick(1100)
     expect(canvas).toHaveAttribute('data-cove-pixel-activity', 'idle')

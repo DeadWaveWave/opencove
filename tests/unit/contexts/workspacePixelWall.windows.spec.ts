@@ -77,8 +77,12 @@ describe('pixel wall windows', () => {
   it('brightens the window whose session produced output and ignores other sessions', () => {
     const tracker = createWallWindowTracker()
     tracker.sync(lookup(windowNode('a', {}), windowNode('b', {})), 0)
-    expect(tracker.observeOutput('b-session', 500)).toBe(true)
-    expect(tracker.observeOutput('missing', 500)).toBe(false)
+    expect(tracker.observeOutput('b-session', 500)).toEqual({
+      id: 'b',
+      center: { x: 150, y: 100 },
+      family: 'shell',
+    })
+    expect(tracker.observeOutput('missing', 500)).toBeNull()
     const [a, b] = tracker.resolve(500, lights).windows
     expect(b!.light!.intensity).toBeGreaterThan(a!.light!.intensity)
   })
@@ -89,6 +93,6 @@ describe('pixel wall windows', () => {
     expect(tracker.resolve(null, lights).animating).toBe(false)
     tracker.sync(lookup(), 100)
     expect(tracker.resolve(200, lights).windows).toEqual([])
-    expect(tracker.observeOutput('agent-session', 300)).toBe(false)
+    expect(tracker.observeOutput('agent-session', 300)).toBeNull()
   })
 })

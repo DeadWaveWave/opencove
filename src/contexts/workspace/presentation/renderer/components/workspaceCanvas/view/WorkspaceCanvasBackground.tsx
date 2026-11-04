@@ -58,7 +58,12 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
         />
       )}
       {enabled && (
-        <WorkspacePixelLayer nodes={nodes} options={effects} ambient={style === 'pixel'} />
+        <WorkspacePixelLayer
+          nodes={nodes}
+          options={effects}
+          ambient={style === 'pixel'}
+          ripples={effects.background && !wall}
+        />
       )}
     </>
   )

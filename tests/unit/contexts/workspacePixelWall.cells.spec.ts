@@ -243,3 +243,36 @@ describe('pixel wall twinkle behind glass', () => {
     expect(brightest(open)).toBeGreaterThan(150)
   })
 })
+
+describe('pixel wall output ripples', () => {
+  const black: WallPalette = {
+    ...dark,
+    cell: [0, 0, 0],
+    clouds: dark.clouds.map(() => [0, 0, 0] as const),
+    sparks: dark.sparks.map(() => [0, 0, 0] as const),
+  }
+  const view = resolveWallGrid({ x: 0, y: 0, zoom: 1, width: 1200, height: 900 })
+  const ripple = { x: 600, y: 450, radius: 240, band: 36, strength: 1, color: [0, 255, 0] as const }
+  const green = (cells: Uint8ClampedArray, wx: number, wy: number) => {
+    const column = Math.floor(wx / view.worldCell) - view.firstColumn
+    const row = Math.floor(wy / view.worldCell) - view.firstRow
+    return cells[(row * view.columns + column) * 4 + 1]!
+  }
+
+  it('brightens the cells on the wavefront in the window colour and leaves the centre', () => {
+    const cells = fillWallCells(view, black, null, undefined, [], [ripple])
+    expect(green(cells, 600 + 240, 450)).toBeGreaterThan(100)
+    expect(green(cells, 600, 450)).toBeLessThan(10)
+    expect(green(cells, 600 + 400, 450)).toBeLessThan(10)
+  })
+
+  it('stays within the glass cap where the wavefront crosses a window', () => {
+    const glass = { x: 780, y: 300, width: 200, height: 300 }
+    // Two ripples on the same spot would pull a free cell well past the cap.
+    const free = fillWallCells(view, black, null, undefined, [], [ripple, ripple])
+    const limit = PIXEL_WALL.dark.cap * 255 + PIXEL_WALL.dark.tileJitter
+    expect(green(free, 600 + 240, 450)).toBeGreaterThan(limit)
+    const cells = fillWallCells(view, black, null, undefined, [glass], [ripple, ripple])
+    expect(green(cells, 600 + 240, 450)).toBeLessThanOrEqual(limit)
+  })
+})

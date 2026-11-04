@@ -92,7 +92,7 @@ context menus, branch actions and title editing retain their original behavior a
 Appearance (and the Control Center) expose these persisted preferences:
 
 - `canvasBackgroundStyle`: `pixel` (the pixel wall, the default), `minimal` (「简约」: the neutral
-  dot grid, still until an event, keeping received-output edge activity) or `off` (「关闭」: the dot
+  dot grid, still until an event, with output ripples through its dots) or `off` (「关闭」: the dot
   grid with no background effects). It replaces the old `canvasPixelBackgroundEnabled` switch,
   read once at load: on becomes `pixel`, off becomes `off`. A theme whose background effect is not
   `pixel` keeps its own background (or none) under `pixel`; its custom background never runs
@@ -152,10 +152,21 @@ world, under every window and the effects layer.
 - E2E reads `window.__opencovePixelWallTestApi` (frame counts, a cell checksum, mean colour) and
   the host's `data-cove-wall-renderer` / `data-cove-wall-state` / `data-cove-wall-cell`.
 
+## Output ripples
+
+Received output (the PTY event hub) sends a ripple out from the window's centre (Tide phase 5.4a):
+a true circle whose wavefront brightens the wall cells it passes, or the dots of the 「简约」 grid,
+in the window's kind colour, for about a second. Each window starts at most one ripple per 700ms
+and the canvas carries at most 24. A ripple only means output arrived, never a tool call, success
+or completion. It is cut to the visible grid and visits only the cells in its band, so its cost
+follows the ring, not the window count. Behind glass the cap still applies. Reduced motion shows
+none; 「关闭」 has none. The effects layer no longer draws output sparkles along window edges; it
+keeps the status corner marks. E2E reads `getRippleCount()` from the wall probe.
+
 ## Canvas effects
 
-The effects canvas is a viewport-sized, read-only visual layer above the wall. It briefly
-highlights visible node edges when the existing PTY event hub delivers output. It paints no ambient
+The effects canvas is a viewport-sized, read-only visual layer above the wall. It draws creation,
+closing and working effects, status corner marks, and the 「简约」 dot ripples. It paints no ambient
 background (the older ridge and scan-line field is retired) and requests no frames while idle.
 It retains only bounded session/timestamp observations, not output text or persisted application state.
 
@@ -170,7 +181,7 @@ The layer must:
 - Stay outside the terminal body and never resize or remount xterm/Monaco.
 - Coalesce output bursts into the decorative scheduler (30fps focused, 10fps in the background) at
   DPR 2.
-- Received-output activity decays after 1050ms; an idle layer requests no frames.
+- Received output sends a ripple (below); an idle layer requests no frames.
 - Stop drawing when hidden/offscreen without pausing Agent execution or dropping runtime output.
 - Disable activity particles with reduced motion.
 - Discard stale activity on node/session changes and dispose all subscriptions and animation frames.
