@@ -4,7 +4,7 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createClaudeHookChannel } from '../../src/app/main/controlSurface/agentHook/claudeHookChannel'
 import { createCodexHookChannel } from '../../src/app/main/controlSurface/agentHook/codexHookChannel'
 import { AgentLaunchArtifactScope } from '../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
@@ -13,8 +13,21 @@ import { CodexAgentProviderContribution } from '../../src/contexts/agent/infrast
 import { TerminalProfileResolver } from '../../src/platform/terminal/TerminalProfileResolver'
 
 const cleanups: Array<() => Promise<unknown>> = []
+beforeEach(async () => {
+  const testHome = await mkdtemp(join(tmpdir(), 'opencove-relay-home-'))
+  cleanups.push(() => rm(testHome, { recursive: true, force: true }))
+  // Exercise generated hook commands regardless of the developer's Codex daemon.
+  vi.stubEnv('HOME', testHome)
+  vi.stubEnv('USERPROFILE', testHome)
+  vi.stubEnv('CODEX_HOME', undefined)
+})
+
 afterEach(async () => {
-  await Promise.all(cleanups.splice(0).map(cleanup => cleanup()))
+  try {
+    await Promise.all(cleanups.splice(0).map(cleanup => cleanup()))
+  } finally {
+    vi.unstubAllEnvs()
+  }
 })
 
 async function prepare(provider: 'codex' | 'claude', notify = false) {

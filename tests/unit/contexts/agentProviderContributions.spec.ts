@@ -2,7 +2,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs
 import { createServer, type Server } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
 import { ClaudeCodeAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/claude-code/ClaudeCodeAgentProviderContribution'
 import { CodexAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/codex/CodexAgentProviderContribution'
@@ -129,6 +129,21 @@ describe('ClaudeCodeAgentProviderContribution', () => {
 })
 
 describe('CodexAgentProviderContribution', () => {
+  let testHome: string
+
+  beforeEach(async () => {
+    testHome = await mkdtemp(join(tmpdir(), 'opencove-provider-home-'))
+    // Daemon detection must never consult the developer's running Codex instance.
+    vi.stubEnv('HOME', testHome)
+    vi.stubEnv('USERPROFILE', testHome)
+    vi.stubEnv('CODEX_HOME', undefined)
+  })
+
+  afterEach(async () => {
+    vi.unstubAllEnvs()
+    await rm(testHome, { recursive: true, force: true })
+  })
+
   it.skipIf(process.platform === 'win32')(
     'uses the effective terminal environment for an nvm-style Codex executable only during trust planning',
     async () => {
@@ -262,32 +277,40 @@ describe('CodexAgentProviderContribution', () => {
     await artifacts.dispose()
   })
 
-  it.skipIf(process.platform === 'win32')(
-    'injects no --config overrides when the implicit Codex daemon is live',
-    async () => {
+  it.skipIf(process.platform === 'win32').each(['HOME', 'CODEX_HOME'] as const)(
+    'injects no --config overrides when the implicit Codex daemon is live via %s',
+    async homeSource => {
       const hook = channel('codex')
       const artifacts = new AgentLaunchArtifactScope()
       const root = await mkdtemp('/tmp/opencove-codex-daemon-')
-      const socketPath = join(root, 'app-server-control', 'app-server-control.sock')
+      // Keep Unix socket paths short enough on macOS, independently of tmpdir().
+      const codexHome = homeSource === 'HOME' ? join(root, '.codex') : root
+      if (homeSource === 'HOME') {
+        vi.stubEnv('HOME', root)
+      }
+      const socketPath = join(codexHome, 'app-server-control', 'app-server-control.sock')
       await mkdir(dirname(socketPath), { recursive: true })
       const daemon = createServer(socket => {
         socket.destroy()
       })
       await listen(daemon, socketPath)
+      const resolveTrust = vi.fn(async () => null)
       const provider = new CodexAgentProviderContribution({
         channel: hook.channel,
         detector,
+        hookTrustResolver: resolveTrust,
         runtimeExecutable: '/runtime/node',
         runtimePlatform: 'linux',
       })
 
       try {
         const plan = await provider.launcher.createLaunchPlan(
-          launchCommand(artifacts, { CODEX_HOME: root }),
+          launchCommand(artifacts, homeSource === 'CODEX_HOME' ? { CODEX_HOME: root } : undefined),
         )
         artifacts.seal()
 
         expect(plan.args).not.toContain('--config')
+        expect(resolveTrust).not.toHaveBeenCalled()
         expect(plan.env).toMatchObject({
           OPENCOVE_CODEX_HOOK_TOKEN: 'codex-token',
         })
@@ -313,9 +336,11 @@ describe('CodexAgentProviderContribution', () => {
       const root = await mkdtemp('/tmp/opencove-codex-daemon-')
       const socketPath = join(root, 'app-server-control', 'app-server-control.sock')
       await mkdir(dirname(socketPath), { recursive: true })
+      const resolveTrust = vi.fn(async () => null)
       const provider = new CodexAgentProviderContribution({
         channel: hook.channel,
         detector,
+        hookTrustResolver: resolveTrust,
         runtimeExecutable: '/runtime/node',
         runtimePlatform: 'linux',
       })
@@ -330,6 +355,7 @@ describe('CodexAgentProviderContribution', () => {
           'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
         )
         expect(plan.hookInstallState).toBe('installed')
+        expect(resolveTrust).toHaveBeenCalledTimes(1)
         await artifacts.dispose()
       } finally {
         await rm(root, { recursive: true, force: true })
