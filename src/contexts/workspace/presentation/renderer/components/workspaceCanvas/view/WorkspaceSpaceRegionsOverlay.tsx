@@ -38,7 +38,7 @@ import {
   toPullRequestKey,
   useWorkspaceSpacePullRequests,
 } from './WorkspaceSpaceRegionsOverlay.pullRequests'
-import { useWorkspaceWorktreeInfoByPath } from './WorkspaceSpaceRegionsOverlay.worktreePolling'
+import { useWorktreeInfoByPath } from '../../../worktreeInfo/useWorktreeInfo'
 
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
@@ -119,11 +119,10 @@ export function WorkspaceSpaceRegionsOverlay({
     state => state.agentSettings.githubPullRequestsEnabled,
   )
 
-  const worktreeInfoByPath = useWorkspaceWorktreeInfoByPath({
-    workspacePath,
+  const worktreeInfoByPath = useWorktreeInfoByPath({
+    repoPath: workspacePath,
     mountIdsKey,
-    refreshNonce,
-    worktreeDirectoriesKey,
+    refreshKey: `${refreshNonce}\n${worktreeDirectoriesKey}`,
   })
 
   const worktrees = React.useMemo(() => [...worktreeInfoByPath.values()], [worktreeInfoByPath])
