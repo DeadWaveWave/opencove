@@ -70,6 +70,19 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     let height = host.clientHeight
     const initial = store.getState()
     let [x, y, zoom] = initial.transform
+    // The first paint already shows the wall's grid (Tide 5.5): a static CSS grid on the host,
+    // aligned with the cells of this view, which the first WebGL frame then continues.
+    const first = resolveWallGrid({
+      x,
+      y,
+      zoom,
+      width: host.clientWidth,
+      height: host.clientHeight,
+    })
+    host.style.setProperty('--cove-wall-cell', `${first.screenCell}px`)
+    host.style.setProperty('--cove-wall-gap', `${first.gap}px`)
+    host.style.setProperty('--cove-wall-origin-x', `${first.originX - first.gap / 2}px`)
+    host.style.setProperty('--cove-wall-origin-y', `${first.originY - first.gap / 2}px`)
     let nodes = initial.nodes
     const tracker = createWallWindowTracker()
     tracker.sync(initial.nodeLookup, performance.now())
