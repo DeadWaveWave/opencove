@@ -39,8 +39,9 @@ test('dragging commits only the moving window and persists its final geometry on
     const { [DRAG_NODE]: moving = 0, ...otherHeaders } = result.windowCommitsByNode!
     expect(moving).toBeGreaterThan(0)
     expect(otherHeaders).toEqual({})
-    const { [DRAG_NODE]: movingShell = 0 } = result.presentationCommits!
+    const { [DRAG_NODE]: movingShell = 0, ...otherShells } = result.presentationCommits!
     expect(movingShell).toBeGreaterThan(0)
+    expect(otherShells).toEqual({})
     expect(result.minimapMutations).toBe(0)
     const position = await window
       .locator(`.react-flow__node[data-id="${DRAG_NODE}"]`)
