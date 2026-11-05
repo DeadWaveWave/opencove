@@ -223,7 +223,62 @@ export function measureFirstMountedTerminalDisplay({
   return null
 }
 
-export async function measureTerminalDisplayReferenceBaseline({
+// The baseline only depends on font, renderer kind and display runtime, yet it is requested on
+// every terminal mount/unmount (TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED). Each fresh
+// measurement opens a hidden xterm with its own WebGL context, so reuse results per environment.
+const baselineMeasurementCache = new Map<string, Promise<TerminalDisplayMeasurement | null>>()
+let fontLoadGeneration = 0
+let fontLoadListenerInstalled = false
+
+function baselineMeasurementCacheKey(input: {
+  terminalFontSize: number
+  terminalFontFamily: string | null
+}): string | null {
+  if (!fontLoadListenerInstalled && typeof document !== 'undefined' && document.fonts) {
+    fontLoadListenerInstalled = true
+    const bump = (): void => {
+      fontLoadGeneration += 1
+      baselineMeasurementCache.clear()
+    }
+    document.fonts.addEventListener('loadingdone', bump)
+    document.fonts.addEventListener('loadingerror', bump)
+  }
+  const rendererKind = resolveMountedTerminalDisplayRendererKind()
+  if (!rendererKind) {
+    return null
+  }
+  return JSON.stringify([
+    input.terminalFontSize,
+    input.terminalFontFamily,
+    rendererKind,
+    readTerminalDisplayRuntime(),
+    typeof window === 'undefined' ? 1 : window.devicePixelRatio,
+    fontLoadGeneration,
+  ])
+}
+
+export async function measureTerminalDisplayReferenceBaseline(input: {
+  terminalFontSize: number
+  terminalFontFamily: string | null
+}): Promise<TerminalDisplayMeasurement | null> {
+  const key = baselineMeasurementCacheKey(input)
+  if (key === null) {
+    return await measureTerminalDisplayReferenceBaselineUncached(input)
+  }
+  const cached = baselineMeasurementCache.get(key)
+  if (cached) {
+    return await cached
+  }
+  const pending = measureTerminalDisplayReferenceBaselineUncached(input)
+  baselineMeasurementCache.set(key, pending)
+  const result = await pending
+  if (!result && baselineMeasurementCache.get(key) === pending) {
+    baselineMeasurementCache.delete(key)
+  }
+  return result
+}
+
+async function measureTerminalDisplayReferenceBaselineUncached({
   terminalFontSize,
   terminalFontFamily,
 }: {
