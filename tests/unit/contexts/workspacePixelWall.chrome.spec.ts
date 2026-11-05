@@ -36,8 +36,8 @@ describe('pixel wall placement in the window', () => {
       // The canvas pixel the point sits on, measured from the wall.
       return world.x * view.zoom + view.x - placement.canvas.x
     }
-    // Collapsing the sidebar to its rail moves the canvas; the point stays on its canvas pixel.
-    expect(onScreen(72)).toBe(onScreen(332))
+    // Hiding the sidebar moves the canvas; the point stays on its canvas pixel.
+    expect(onScreen(0)).toBe(onScreen(332))
   })
 })
 

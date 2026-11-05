@@ -12,8 +12,8 @@ async function readCollapsedSetting(page: Page): Promise<boolean | null> {
   })
 }
 
-test.describe('Primary Sidebar Pin', () => {
-  test('shows only project icons in the rail and persists the pin setting', async ({
+test.describe('Primary Sidebar Toggle', () => {
+  test('hides the entire sidebar and persists header and shortcut toggles', async ({
     browserName: _browserName,
   }, testInfo) => {
     const { electronApp, window } = await launchApp()
@@ -47,11 +47,13 @@ test.describe('Primary Sidebar Pin', () => {
         ],
       })
       const sidebar = window.getByTestId('workspace-sidebar')
-      const pin = window.getByTestId('workspace-sidebar-pin')
+      const toggle = window.getByTestId('app-header-sidebar-toggle')
       const rail = window.getByTestId('workspace-project-rail')
       const settings = sidebar.getByTestId('app-header-settings')
       const footer = sidebar.getByTestId('workspace-sidebar-footer')
-      await expect(pin).toHaveAttribute('aria-pressed', 'true')
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await expect(toggle).toHaveAccessibleName('Hide Sidebar')
+      await expect(toggle).not.toHaveAttribute('aria-haspopup')
       await expect(settings).toBeVisible()
       await expect(window.locator('.app-header').getByTestId('app-header-settings')).toHaveCount(0)
       expect(
@@ -78,38 +80,58 @@ test.describe('Primary Sidebar Pin', () => {
         window.getByTestId('workspace-project-navigation-workspace-toggle-b'),
       ).toHaveCount(0)
 
-      await pin.click()
-      await window.mouse.move(800, 450)
-      await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
-      await expect(pin).toHaveAttribute('aria-pressed', 'false')
-      await expect(window.getByTestId('workspace-sidebar-navigation')).toHaveCount(0)
-      await expect(rail.locator('.workspace-space-group, .workspace-agent-item')).toHaveCount(0)
-      await expect(settings).toBeVisible()
+      await toggle.click()
+      await expect(sidebar).toHaveClass(/workspace-sidebar--hidden/)
+      await expect(sidebar).toBeHidden()
+      await expect(sidebar).toHaveCount(1)
+      await expect(settings).toBeHidden()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(toggle).toHaveAccessibleName('Show Sidebar')
+      await expect
+        .poll(() =>
+          window.evaluate(() => {
+            const shell = document.querySelector('.app-shell')!.getBoundingClientRect()
+            const canvas = document.querySelector('.workspace-canvas')!.getBoundingClientRect()
+            return canvas.left - shell.left
+          }),
+        )
+        .toBe(0)
+      await expect.poll(() => readCollapsedSetting(window)).toBe(true)
+
+      await window.reload({ waitUntil: 'domcontentloaded' })
+      await expect(sidebar).toBeHidden()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
+      // Restored terminals own focus and intentionally suppress app shortcuts.
+      await toggle.press(`${modifier}+B`)
+      await expect(sidebar).toBeVisible()
+      await expect(sidebar).toHaveClass(/workspace-sidebar--docked/)
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await expect(toggle).toHaveAccessibleName('Hide Sidebar')
+      await expect.poll(() => readCollapsedSetting(window)).toBe(false)
+      await window.reload({ waitUntil: 'domcontentloaded' })
+      await expect(sidebar).toBeVisible()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await toggle.press(`${modifier}+B`)
+      await expect(sidebar).toBeHidden()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await toggle.click()
+      await expect(sidebar).toBeVisible()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
       await settings.focus()
       await settings.press('Enter')
       await expect(window.getByTestId('settings-panel-search')).toBeFocused()
       await window.getByTestId('settings-panel-close').click()
       await expect(settings).toBeFocused()
-      await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
-      await expect.poll(() => readCollapsedSetting(window), { timeout: 15_000 }).toBe(true)
-
-      await window.reload({ waitUntil: 'domcontentloaded' })
-      await expect(sidebar).toHaveClass(/workspace-sidebar--rail/)
-      await expect(pin).toHaveAttribute('aria-pressed', 'false')
-      await pin.click()
-      await expect(sidebar).toHaveClass(/workspace-sidebar--docked/)
-      await expect(pin).toHaveAttribute('aria-pressed', 'true')
-      await expect.poll(() => readCollapsedSetting(window), { timeout: 15_000 }).toBe(false)
-      await window.reload({ waitUntil: 'domcontentloaded' })
-      await expect(sidebar).toHaveClass(/workspace-sidebar--docked/)
     } finally {
       await electronApp.close()
     }
   })
 
-  test('opens an existing persisted collapsed project as a project-only rail', async () => {
+  test('restores an existing collapsed project and reopens it with reduced motion', async () => {
     const { electronApp, window } = await launchApp()
     try {
+      await window.emulateMedia({ reducedMotion: 'reduce' })
       await seedWorkspaceState(window, {
         activeWorkspaceId: 'workspace-toggle-existing',
         settings: { isPrimarySidebarCollapsed: true },
@@ -122,13 +144,14 @@ test.describe('Primary Sidebar Pin', () => {
           },
         ],
       })
-      await expect(window.getByTestId('workspace-sidebar')).toHaveClass(/workspace-sidebar--rail/)
+      await expect(window.getByTestId('workspace-sidebar')).toHaveClass(/workspace-sidebar--hidden/)
       await expect(window.getByTestId('workspace-item-workspace-toggle-existing')).toHaveAttribute(
         'aria-current',
         'page',
       )
-      await expect(window.getByTestId('workspace-sidebar-navigation')).toHaveCount(0)
-      await window.getByTestId('workspace-sidebar-pin').click()
+      await expect(window.getByTestId('workspace-sidebar')).toBeHidden()
+      await expect(window.getByTestId('workspace-sidebar-navigation')).toBeHidden()
+      await window.getByTestId('app-header-sidebar-toggle').click()
       await expect(window.getByTestId('workspace-sidebar-navigation')).toBeVisible()
       await expect(
         window.getByTestId('workspace-space-root-workspace-toggle-existing'),

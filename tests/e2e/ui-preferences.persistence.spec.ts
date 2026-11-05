@@ -74,7 +74,7 @@ test('restores sidebar and arrange preferences after a cold restart', async ({
       },
     )
 
-    await window.locator('[data-testid="workspace-sidebar-pin"]').click()
+    await window.locator('[data-testid="app-header-sidebar-toggle"]').click()
     await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
 
     await openArrangeMenu(window)

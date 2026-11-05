@@ -471,6 +471,7 @@ body {
   transition: grid-template-columns 0.22s ease;
 }
 
+/* Collapsed, the sidebar takes no width at all: no rail is left behind (Tide). */
 .app-shell--sidebar-collapsed {
-  --cove-primary-sidebar-width: var(--cove-primary-sidebar-rail-width);
+  --cove-primary-sidebar-width: 0px;
 }

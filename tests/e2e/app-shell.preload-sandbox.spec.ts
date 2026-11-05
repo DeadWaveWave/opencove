@@ -11,7 +11,7 @@ test.describe('App Shell - Sandboxed Preload', () => {
     })
 
     try {
-      await expect(window.locator('[data-testid="workspace-sidebar-pin"]')).toBeVisible()
+      await expect(window.locator('[data-testid="app-header-sidebar-toggle"]')).toBeVisible()
       await expect(window.locator('[data-testid="app-header-settings"]')).toBeVisible()
       await expect(window.locator('.workspace-main')).toBeVisible()
     } finally {

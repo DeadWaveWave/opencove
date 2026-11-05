@@ -8,13 +8,11 @@ describe('primary sidebar navigation mode', () => {
   const onTogglePinned = vi.fn()
   const options = {
     isCollapsed: true,
-    isMenuOpen: false,
     hasBlockingOverlay: false,
     onTogglePinned,
   }
 
   beforeEach(() => {
-    vi.useFakeTimers()
     mobile = false
     vi.stubGlobal(
       'matchMedia',
@@ -30,21 +28,20 @@ describe('primary sidebar navigation mode', () => {
   })
 
   afterEach(() => {
-    vi.useRealTimers()
     vi.unstubAllGlobals()
   })
 
-  it('keeps mobile drawer state separate from the desktop pin preference', () => {
+  it('keeps mobile drawer state separate from the desktop collapsed preference', () => {
     mobile = true
     const { result, rerender } = renderHook(props => usePrimarySidebar(props), {
       initialProps: options,
     })
     expect(result.current.isDrawerOpen).toBe(false)
     act(() => result.current.toggle())
-    expect(result.current.isDrawerOpen).toBe(true)
+    expect(result.current).toMatchObject({ isDrawerOpen: true, isOpen: true, variant: 'docked' })
     expect(onTogglePinned).not.toHaveBeenCalled()
     rerender({ ...options, isCollapsed: false })
-    expect(result.current.isDrawerOpen).toBe(true)
+    expect(result.current).toMatchObject({ isDrawerOpen: true, isOpen: true, variant: 'docked' })
     act(() => result.current.close())
     expect(result.current.isDrawerOpen).toBe(false)
   })
@@ -67,22 +64,20 @@ describe('primary sidebar navigation mode', () => {
     expect(result.current.isDrawerOpen).toBe(false)
   })
 
-  it('does not auto reveal from touch, and keeps desktop dragging visible', () => {
-    const { result } = renderHook(() => usePrimarySidebar(options))
-    act(() => {
-      result.current.onPointerEnter({ pointerType: 'touch' } as React.PointerEvent<HTMLElement>)
-      vi.advanceTimersByTime(200)
+  it('derives desktop visibility from the persisted collapsed preference', () => {
+    const { result, rerender } = renderHook(props => usePrimarySidebar(props), {
+      initialProps: options,
     })
-    expect(result.current.variant).toBe('rail')
-    act(() => result.current.setDragging(true))
-    act(() => {
-      result.current.onPointerLeave()
-      vi.advanceTimersByTime(500)
-    })
-    expect(result.current.variant).toBe('peek')
-    act(() => result.current.setDragging(false))
-    act(() => vi.advanceTimersByTime(500))
-    expect(result.current.variant).toBe('rail')
+    expect(result.current).toMatchObject({ isOpen: false, variant: 'hidden' })
+    act(() => result.current.toggle())
+    expect(onTogglePinned).toHaveBeenCalledOnce()
+    expect(result.current.isOpen).toBe(false)
+    rerender({ ...options, isCollapsed: false })
+    expect(result.current).toMatchObject({ isOpen: true, variant: 'docked' })
+    act(() => result.current.toggle())
+    expect(onTogglePinned).toHaveBeenCalledTimes(2)
+    rerender(options)
+    expect(result.current).toMatchObject({ isOpen: false, variant: 'hidden' })
   })
 
   it('dismisses the drawer when a blocking application surface opens', () => {

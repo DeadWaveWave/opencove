@@ -78,7 +78,7 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
         })),
       })
 
-      const toggleButton = window.locator('[data-testid="workspace-sidebar-pin"]')
+      const toggleButton = window.locator('[data-testid="app-header-sidebar-toggle"]')
       const dockedList = window.locator('.workspace-sidebar__list')
 
       await expect(dockedList).toBeVisible()
@@ -104,21 +104,21 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
 
       await toggleButton.click()
       await window.mouse.move(700, 80)
-      await expect(window.getByTestId('workspace-sidebar')).toHaveClass(/workspace-sidebar--rail/)
+      await expect(window.getByTestId('workspace-sidebar')).toHaveClass(/workspace-sidebar--hidden/)
 
-      const railList = window.locator('.workspace-sidebar__list')
-      await expect(railList).toBeVisible()
-      await expect(railList).toHaveAttribute('data-cove-scroll-fade', 'both')
+      const hiddenList = window.locator('.workspace-sidebar__list')
+      await expect(hiddenList).toBeHidden()
+      await expect(hiddenList).toHaveAttribute('data-cove-scroll-fade', 'both')
 
-      const railMetrics = await railList.evaluate(element => ({
+      const hiddenMetrics = await hiddenList.evaluate(element => ({
         maxScrollTop: element.scrollHeight - element.clientHeight,
         scrollTop: element.scrollTop,
       }))
       const dockedRatio = dockedMetrics.scrollTop / dockedMetrics.maxScrollTop
-      const railRatio = railMetrics.scrollTop / railMetrics.maxScrollTop
+      const hiddenRatio = hiddenMetrics.scrollTop / hiddenMetrics.maxScrollTop
 
-      expect(railMetrics.scrollTop).toBeGreaterThan(0)
-      expect(Math.abs(railRatio - dockedRatio)).toBeLessThan(0.08)
+      expect(hiddenMetrics.scrollTop).toBeGreaterThan(0)
+      expect(Math.abs(hiddenRatio - dockedRatio)).toBeLessThan(0.08)
       expect(
         await dockedListHandle.evaluate(
           element => document.querySelector('.workspace-sidebar__list') === element,

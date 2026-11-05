@@ -138,7 +138,7 @@ test.describe('Workspace Canvas - Header Chrome Stability', () => {
         },
       )
 
-      const sidebarToggle = window.locator('[data-testid="workspace-sidebar-pin"]')
+      const sidebarToggle = window.locator('[data-testid="app-header-sidebar-toggle"]')
       await expect(sidebarToggle).toBeVisible()
       await sidebarToggle.click()
       await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)

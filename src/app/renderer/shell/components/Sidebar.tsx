@@ -48,10 +48,10 @@ import { SidebarViewControls } from './SidebarViewControls'
 import { SidebarAttentionInbox } from './SidebarAttentionInbox'
 import { summarizeAgentActivity } from '../utils/agentActivitySummary'
 
-export type SidebarVariant = 'docked' | 'rail' | 'peek'
+/** Docked, or hidden entirely when collapsed (Tide: no rail is left behind). */
+export type SidebarVariant = 'docked' | 'hidden'
 type SidebarProps = {
   variant?: SidebarVariant
-  isPinned?: boolean
   isMobile?: boolean
   isMenuOpen?: boolean
   onClose?: () => void
@@ -60,7 +60,6 @@ type SidebarProps = {
   workspaces: WorkspaceState[]
   activeWorkspaceId: string | null
   persistNotice: PersistNotice | null
-  onTogglePinned?: () => void
   onAddProject?: (anchor?: { x: number; y: number }) => void
   onOpenSettings?: () => void
   onSelectWorkspace: (workspaceId: string) => void
@@ -90,7 +89,6 @@ type ActiveSidebarDragItem = {
 
 export function Sidebar({
   variant = 'docked',
-  isPinned = variant !== 'rail',
   isMobile = false,
   isMenuOpen = false,
   onClose,
@@ -99,7 +97,6 @@ export function Sidebar({
   workspaces,
   activeWorkspaceId,
   persistNotice,
-  onTogglePinned = () => undefined,
   onAddProject = () => undefined,
   onOpenSettings,
   onSelectWorkspace,
@@ -334,13 +331,7 @@ export function Sidebar({
             </SortableContext>
           </div>
           <div className="workspace-sidebar__footer" data-testid="workspace-sidebar-footer">
-            <SidebarToolbar
-              isPinned={isPinned}
-              isMobile={isMobile}
-              onClose={onClose}
-              onTogglePinned={onTogglePinned}
-              onAddProject={onAddProject}
-            />
+            <SidebarToolbar isMobile={isMobile} onClose={onClose} onAddProject={onAddProject} />
             {onOpenSettings ? (
               <IconButton
                 className="workspace-sidebar__toolbar-button"
@@ -353,7 +344,7 @@ export function Sidebar({
             ) : null}
           </div>
         </div>
-        {variant !== 'rail' || isMobile ? (
+        {
           <div className="workspace-sidebar__navigation" data-testid="workspace-sidebar-navigation">
             {displayedTree ? (
               <>
@@ -450,7 +441,7 @@ export function Sidebar({
               <p className="workspace-sidebar__empty">{t('sidebar.noProjectYet')}</p>
             )}
           </div>
-        ) : null}
+        }
         <DragOverlay dropAnimation={sidebarDropAnimation}>
           {activeTree ? <WorkspaceItemOverlay tree={activeTree} /> : null}
           {activeSpaceGroup ? <SpaceItemOverlay group={activeSpaceGroup} /> : null}

@@ -23,7 +23,7 @@ function expectStableProjectRail(result: SidebarAnimationResult): void {
 
 test.describe('Primary Sidebar Animation', () => {
   for (const uiTheme of ['pixel', 'pixel-light'] as const) {
-    test(`keeps the project rail stable while pinning navigation in ${uiTheme}`, async ({
+    test(`keeps the project rail stable while hiding and reopening navigation in ${uiTheme}`, async ({
       browserName: _browserName,
     }, testInfo) => {
       const { electronApp, window } = await launchApp()
@@ -65,16 +65,19 @@ test.describe('Primary Sidebar Animation', () => {
         await expect(sidebar).toHaveClass(/workspace-sidebar--docked/)
         const collapse = await sampleSidebarToggle(window, workspaceId)
         expectStableProjectRail(collapse)
-        expect(collapse.endClassName).toContain('workspace-sidebar--rail')
-        expect(collapse.samples.at(-1)?.panelCount).toBe(0)
+        expect(collapse.endClassName).toContain('workspace-sidebar--hidden')
+        expect(collapse.samples.at(-1)?.panelCount).toBe(1)
+        expect(collapse.samples.at(-1)?.sidebarVisibility).toBe('hidden')
+        expect(collapse.samples.at(-1)?.canvasLeft).toBe(collapse.samples.at(-1)?.shellLeft)
         expect(collapse.samples.at(-1)?.sidebarWidth).toBeLessThan(collapse.before.sidebarWidth)
 
         const expand = await sampleSidebarToggle(window, workspaceId)
         expectStableProjectRail(expand)
         expect(expand.endClassName).toContain('workspace-sidebar--docked')
         expect(expand.samples.at(-1)?.panelCount).toBe(1)
+        expect(expand.samples.at(-1)?.sidebarVisibility).toBe('visible')
         expect(expand.samples.at(-1)?.sidebarWidth).toBeGreaterThan(expand.before.sidebarWidth)
-        await testInfo.attach(`sidebar-pinned-${uiTheme}`, {
+        await testInfo.attach(`sidebar-expanded-${uiTheme}`, {
           body: await window.screenshot(),
           contentType: 'image/png',
         })

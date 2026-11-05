@@ -235,7 +235,6 @@
     "src/app/renderer/styles/workspace-overlays.css": 3,
     "src/app/renderer/styles/workspace-overlays.spaces.css": 4,
     "src/app/renderer/styles/workspace-overlays.spaces.explorer.preview.css": 1,
-    "src/app/renderer/styles/workspace-search-panel.css": 1,
-    "src/app/renderer/styles/workspace-sidebar.css": 1
+    "src/app/renderer/styles/workspace-search-panel.css": 1
   }
 }

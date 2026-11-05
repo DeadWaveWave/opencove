@@ -123,26 +123,27 @@ test.describe('Workspace Canvas - Pixel wall behind the shell', () => {
         contentType: 'image/png',
       })
 
-      // Collapse the sidebar to its rail: the canvas moves, and the glass stays on its window.
-      await window.getByTestId('workspace-sidebar-pin').click()
+      // Hide the sidebar entirely: the canvas moves, and the glass stays on its window.
+      await window.getByTestId('app-header-sidebar-toggle').click()
+      await expect(window.getByTestId('workspace-sidebar')).toBeHidden()
       await expect
         .poll(async () => {
           const state = await readShell(window)
-          const band = state.chrome[1]?.[2] ?? -1
-          return (
-            state.sidebar![2]! < pinned.sidebar![2]! && Math.abs(band - state.sidebar![2]!) <= 1
-          )
+          return { chrome: state.chrome, mainLeft: state.main![0] }
         })
-        .toBe(true)
+        .toEqual({ chrome: [pinned.header], mainLeft: 0 })
       await expect
         .poll(async () => {
           const state = await readShell(window)
           const glass = state.glass[0] ?? []
-          return glass.every((value, index) => Math.abs(value - state.note![index]!) <= 1)
+          return (
+            glass.length === 4 &&
+            glass.every((value, index) => Math.abs(value - state.note![index]!) <= 1)
+          )
         })
         .toBe(true)
-      const rail = await readShell(window)
-      expect(rail.note![0]).toBeLessThan(pinned.note![0]!)
+      const hidden = await readShell(window)
+      expect(hidden.note![0]).toBeLessThan(pinned.note![0]!)
     } finally {
       await electronApp.close()
     }

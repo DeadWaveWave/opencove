@@ -13,7 +13,7 @@ export function AppShellFrame({
   children,
 }: {
   isSidebarCollapsed: boolean
-  sidebar: { isPeekOpen: boolean; isMobile: boolean }
+  sidebar: { isMobile: boolean }
   children: React.ReactNode
 }): React.JSX.Element {
   const [wallLayer, setWallLayer] = useState<HTMLDivElement | null>(null)
@@ -21,7 +21,7 @@ export function AppShellFrame({
   const cover = useMemo(() => ({ covered, setCovered }), [covered])
   return (
     <div
-      className={`app-shell ${isSidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}${sidebar.isPeekOpen ? ' app-shell--sidebar-peek' : ''}${sidebar.isMobile ? ' app-shell--mobile-navigation' : ''}`}
+      className={`app-shell ${isSidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}${sidebar.isMobile ? ' app-shell--mobile-navigation' : ''}`}
     >
       <div ref={setWallLayer} className="app-shell__wall" aria-hidden="true" />
       <ShellWallLayerContext.Provider value={wallLayer}>
