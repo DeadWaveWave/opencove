@@ -155,8 +155,9 @@ describe('Settings form accessible names', () => {
     )
 
     expectNamedTestId('settings-ui-theme', 'Appearance')
-    expectNamedTestId('settings-ui-theme-system', 'Follow System')
-    expectNamedTestId('settings-ui-theme-pixel-light', 'Pixel Light')
+    expectNamedTestId('settings-ui-theme-family-pixel', 'Pixel')
+    expectNamedTestId('settings-ui-theme-mode', 'Appearance')
+    expectNamedTestId('settings-ui-theme-mode-system', 'Follow System')
     expectNamedTestId('settings-node-creation-pixel-effect', 'Node Creation Effect')
     expectNamedTestId('settings-node-close-pixel-effect', 'Node Closing Effect')
     expectNamedTestId('settings-canvas-pixel-background', 'Canvas Background Effect')

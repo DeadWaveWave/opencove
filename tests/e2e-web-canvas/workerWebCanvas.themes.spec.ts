@@ -8,6 +8,7 @@ import {
   writeAppState,
 } from './helpers'
 import { createThemePlugin, themeIdentity, themePluginId } from '../helpers/pluginThemeFixture'
+import { chooseSettingsUiTheme } from '../helpers/settingsUiTheme'
 
 test.use({ hasTouch: true })
 
@@ -28,7 +29,7 @@ async function openAppearance(page: Page) {
 
 async function selectTheme(page: Page, id: string) {
   await openAppearance(page)
-  await page.getByTestId(`settings-ui-theme-${id}`).click()
+  await chooseSettingsUiTheme(page, id)
   await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', id)
   await page.getByTestId('settings-panel-close').click()
 }

@@ -183,7 +183,9 @@ test.describe('Agent preference order', () => {
             const search = element
               .querySelector('[data-testid="settings-panel-search"]')!
               .getBoundingClientRect()
-            const tabs = element.querySelector('.settings-panel__tabs')!.getBoundingClientRect()
+            const tabs = element
+              .querySelector('.settings-panel__view-switch')!
+              .getBoundingClientRect()
             return {
               headerTop: header.top,
               headerBottom: header.bottom,

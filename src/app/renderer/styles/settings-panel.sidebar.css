@@ -74,20 +74,9 @@
 }
 
 .settings-panel__nav-button--active {
-  color: var(--cove-accent-text);
-  background: var(--cove-settings-active-surface);
+  color: var(--cove-text);
+  background: var(--cove-surface-hover);
   font-weight: 500;
-}
-
-.settings-panel__nav-button--active::before {
-  content: '';
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: 0;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--cove-accent);
 }
 
 .settings-panel__nav-button-icon {
@@ -98,7 +87,7 @@
 }
 
 .settings-panel__nav-button--active .settings-panel__nav-button-icon {
-  color: var(--cove-accent-text);
+  color: var(--cove-text);
 }
 
 .settings-panel__nav-button-label {
@@ -114,35 +103,9 @@
   width: 100%;
 }
 
-.settings-panel__tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  padding-top: 4px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--cove-settings-row-divider);
-}
-
-.settings-panel__tabs button {
-  background: transparent;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  padding: 8px 0 11px;
-  font: inherit;
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  color: var(--cove-text-muted);
-  cursor: pointer;
-}
-
-.settings-panel__tabs button[aria-current='page'] {
-  border-bottom-color: var(--cove-accent);
-  color: var(--cove-text);
-}
-
-.settings-panel__tabs button:focus-visible {
-  outline: 2px solid var(--cove-settings-focus-ring);
-  outline-offset: 2px;
+.settings-panel__view-switch {
+  align-self: flex-start;
+  margin-top: var(--cove-spacing-2);
 }
 
 @container settings-page (max-width: 760px) {

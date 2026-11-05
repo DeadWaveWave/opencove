@@ -11,6 +11,7 @@ import {
 } from './workspace-canvas.helpers'
 import { pluginCli, savedCommandNodes } from './plugins.commands.helpers'
 import { capturePlugins, pluginCommand } from './plugins.local.helpers'
+import { chooseSettingsUiTheme } from '../helpers/settingsUiTheme'
 
 test('uses host commands, preferences and themes without creating windows, and restores user choices', async ({
   browserName: _browserName,
@@ -116,7 +117,7 @@ test('uses host commands, preferences and themes without creating windows, and r
     await page.getByTestId(`settings-ui-theme-plugin:${pluginId}:dawn`).click()
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme', 'light')
     await capturePlugins(page, info, 'host-extension-light')
-    await page.getByTestId(`settings-ui-theme-${themeId}`).click()
+    await chooseSettingsUiTheme(page, themeId)
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', themeId)
     await capturePlugins(page, info, 'host-extension-dark')
     await page.locator('.settings-panel__close').click()

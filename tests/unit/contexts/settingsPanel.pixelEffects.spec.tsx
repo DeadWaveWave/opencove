@@ -84,7 +84,8 @@ describe('independent Pixel effect controls in Appearance', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Canvas Background Effect' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Node Closing Effect' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Agent Working Effect' }))
-    fireEvent.click(screen.getByTestId('settings-ui-theme-light'))
+    fireEvent.click(screen.getByTestId('settings-ui-theme-family-cove'))
+    fireEvent.click(screen.getByTestId('settings-ui-theme-mode-light'))
     expect(screen.getByRole('switch', { name: 'Node Creation Effect' })).toBeChecked()
     expect(screen.getByRole('switch', { name: 'Node Closing Effect' })).not.toBeChecked()
     expect(screen.getByRole('switch', { name: 'Canvas Background Effect' })).not.toBeChecked()
@@ -97,7 +98,7 @@ describe('independent Pixel effect controls in Appearance', () => {
         agentWorkingPixelEffectEnabled: false,
       }),
     )
-    fireEvent.click(screen.getByTestId('settings-ui-theme-pixel-light'))
+    fireEvent.click(screen.getByTestId('settings-ui-theme-family-pixel'))
     expect(screen.getByRole('switch', { name: 'Node Creation Effect' })).toBeChecked()
     expect(screen.getByRole('switch', { name: 'Node Closing Effect' })).not.toBeChecked()
     expect(screen.getByRole('switch', { name: 'Canvas Background Effect' })).not.toBeChecked()
