@@ -109,6 +109,16 @@ export function createWallWindowTracker() {
     frames(): Array<{ id: string; rect: TrackedWindow['rect'] }> {
       return windows.map(({ id, rect }) => ({ id, rect }))
     },
+    /** Working agents' centres and kinds, for their sonar waves. */
+    working(): Array<{ id: string; center: { x: number; y: number }; family: WindowKindFamily }> {
+      return windows
+        .filter(window => window.state === 'working')
+        .map(({ id, rect, family }) => ({
+          id,
+          center: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
+          family,
+        }))
+    },
     /** Centres of the windows waiting for you, for their pulse rings. */
     waiting(): Array<{ id: string; center: { x: number; y: number } }> {
       return windows

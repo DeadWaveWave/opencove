@@ -174,6 +174,14 @@ A click flies to the window at the current zoom, or 0.6 if further out. Beacons 
 agent state and the viewport only; with no waiting windows the component does not follow the
 view. The pill pulses gently and holds still with reduced motion.
 
+## Working patrol
+
+While an agent works (`resolveAgentPresentation`), two strings of pixels travel around the
+outside of its frame on opposite sides (Tide 5.4b), replacing the old side streams; only pixels in
+view are drawn. Every 2.4s it also sends a low sonar wave across the wall, or through the 「简约」
+dots. Both follow the Agent working effect switch; 「关闭」 has no sonar. Reduced motion keeps a
+still dotted outline round the frame and no waves.
+
 ## Finished and failed runs
 
 `WorkspaceWindowSignals` is the one owner of these signals (Tide 5.4d). It watches

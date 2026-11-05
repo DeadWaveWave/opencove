@@ -6,6 +6,12 @@ import { readWallLightPalette } from '../pixelWall/wallPalette'
 import type { PixelViewport } from './geometry'
 import type { PixelNode } from './model'
 
+/** The output ripple's gain, the reference strength for dots. */
+const OUTPUT_GAIN = 0.62
+/** Every 2.4s a working agent sends a low sonar wave (Tide 5.4b). */
+export const SONAR_INTERVAL_MS = 2400
+export const SONAR_WAVE = { reach: 360, durationMs: 1200, gain: 0.26 }
+
 /** The neutral dot grid's spacing in world px (React Flow's background dots). */
 const DOT_GAP = 24
 
@@ -39,8 +45,10 @@ export function drawDotRipples(
     context.fillStyle = `rgb(${r} ${g} ${b})`
     // Cell centres are half a gap past the dots; shift the ring so it is centred on dots.
     const centred = { ...ripple, x: ripple.x + gap / 2, y: ripple.y + gap / 2 }
+    // A sonar wave is fainter than an output ripple; an output ripple keeps full strength.
+    const gain = (ripple.gain ?? OUTPUT_GAIN) / OUTPUT_GAIN
     forEachRingCell(grid, centred, (column, row, weight) => {
-      const strength = weight * ripple.strength
+      const strength = weight * ripple.strength * gain
       const size = (1.5 + 2.5 * strength) * scale
       const x = (firstColumn + column) * gap * viewport.zoom + viewport.x
       const y = (firstRow + row) * gap * viewport.zoom + viewport.y
@@ -78,4 +86,37 @@ export function emitOutputRipple(
     readWallLightPalette(scope)[resolveWindowKindFamily(data)],
     now,
   )
+}
+
+/** A low sonar wave from each working agent every 2.4s, keyed so it never blocks output ripples. */
+export function emitSonarRipples(
+  field: ReturnType<typeof createRippleField>,
+  working: readonly PixelNode[],
+  nodes: readonly Node<TerminalNodeData>[],
+  viewport: PixelViewport,
+  scope: Element,
+  now: number,
+): void {
+  const due = working.filter(node => field.ready(`sonar:${node.id}`, now, SONAR_INTERVAL_MS))
+  if (due.length === 0 || viewport.zoom <= 0) {
+    return
+  }
+  const palette = readWallLightPalette(scope)
+  for (const node of due) {
+    const data = nodes.find(candidate => candidate.id === node.id)?.data
+    if (!data) {
+      continue
+    }
+    const { x, y, width, height } = node.rect
+    field.emit(
+      `sonar:${node.id}`,
+      {
+        x: (x + width / 2 - viewport.x) / viewport.zoom,
+        y: (y + height / 2 - viewport.y) / viewport.zoom,
+      },
+      palette[resolveWindowKindFamily(data)],
+      now,
+      { ...SONAR_WAVE, minIntervalMs: SONAR_INTERVAL_MS },
+    )
+  }
 }

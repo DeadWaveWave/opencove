@@ -8,7 +8,7 @@ import {
 
 type SignalWindow = Window & { __coveSignals?: string[] }
 
-test('a finished run flashes its window and sends a shockwave across the pixel wall', async () => {
+test('a working agent sends sonar, and a finished run flashes its window and sends a shockwave', async () => {
   const { electronApp, window } = await launchApp({
     windowMode: 'inactive',
     env: {
@@ -91,14 +91,20 @@ test('a finished run flashes its window and sends a shockwave across the pixel w
     }, agentId)
     await writeToPty(window, { sessionId, data: '<test-hook-initial-working>\r' })
     await expect(window.locator(`.react-flow__node[data-id="${agentId}"]`)).toContainText('Working')
+    // While it works, the agent sends a low sonar wave across the wall every 2.4s.
+    await expect
+      .poll(() => window.evaluate(() => window.__opencovePixelWallTestApi?.getRippleKeys() ?? []), {
+        timeout: 5_000,
+      })
+      .toContain(`sonar:${agentId}`)
     await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
 
     await expect
       .poll(() => window.evaluate(() => (window as SignalWindow).__coveSignals ?? []))
       .toContain('complete')
     await expect
-      .poll(() => window.evaluate(() => window.__opencovePixelWallTestApi?.getRippleCount() ?? 0))
-      .toBeGreaterThan(0)
+      .poll(() => window.evaluate(() => window.__opencovePixelWallTestApi?.getRippleKeys() ?? []))
+      .toContain(`complete:${agentId}`)
     // The flash ends on its own.
     await expect(window.locator(`.react-flow__node[data-id="${agentId}"]`)).not.toHaveAttribute(
       'data-cove-signal',

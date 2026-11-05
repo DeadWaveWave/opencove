@@ -49,7 +49,12 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
 
   return (
     <>
-      {wall && <WorkspacePixelWall ambient={settings.canvasBackgroundTwinkleEnabled} />}
+      {wall && (
+        <WorkspacePixelWall
+          ambient={settings.canvasBackgroundTwinkleEnabled}
+          signals={settings.agentWorkingPixelEffectEnabled}
+        />
+      )}
       <WorkspaceWindowSignals
         nodes={nodes}
         canvasRef={canvasRef}

@@ -125,8 +125,9 @@ export function drawPixelLayer({
     drawDotRipples(context, viewport, ripples)
     active = true
   }
-  if (working && !reducedMotion) {
-    drawWorkingPixels(context, nodes, viewport, theme, workingNow)
+  if (working) {
+    // Reduced motion keeps a still outline round working frames instead of the patrol.
+    drawWorkingPixels(context, nodes, viewport, theme, reducedMotion ? null : workingNow)
   }
   context.globalAlpha = 1
   return active

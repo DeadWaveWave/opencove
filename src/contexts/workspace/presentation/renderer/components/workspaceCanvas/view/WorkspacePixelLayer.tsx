@@ -25,7 +25,7 @@ import {
 } from '@contexts/plugins/presentation/renderer/themeMotion'
 import { createThemeEffects } from './pixelLayer/themeEffects'
 import { createRippleField } from './pixelWall/ripples'
-import { emitOutputRipple } from './pixelLayer/dotRipples'
+import { emitOutputRipple, emitSonarRipples } from './pixelLayer/dotRipples'
 import {
   ALL_PIXEL_EFFECTS,
   resolveThemeEffectOptions,
@@ -179,10 +179,13 @@ function WorkspacePixelLayerComponent({
       draw: now => {
         const effects = currentEffects()
         const pending = new Set(assembly.pendingIds(now))
-        const workingNodes =
-          effects.working && !reducedMotion
-            ? projected.filter(node => node.tone === 'working' && !pending.has(node.id))
-            : []
+        const workingWindows = effects.working
+          ? projected.filter(node => node.tone === 'working' && !pending.has(node.id))
+          : []
+        const workingNodes = reducedMotion ? [] : workingWindows
+        if (ripplesRef.current) {
+          emitSonarRipples(rippleField, workingNodes, nodesRef.current, viewport, canvas, now)
+        }
         const dotWaves = ripplesRef.current && !reducedMotion ? rippleField.sample(now) : []
         const active = drawPixelLayer({
           canvas,
@@ -198,7 +201,7 @@ function WorkspacePixelLayerComponent({
           working: effects.working && readThemeEffect('working').preset === 'pixel',
           workingNow: (now * 1400) / Math.max(1, readThemeEffect('working').durationMs ?? 1400),
         })
-        canvas.hidden = !effects.background && workingNodes.length === 0
+        canvas.hidden = !effects.background && workingWindows.length === 0
         canvas.dataset.covePixelWorkingNodeIds = workingNodes.map(node => node.id).join(',')
         canvas.dataset.covePixelActivity = active ? 'output' : 'idle'
         if (canvas.dataset.covePixelRipples !== String(dotWaves.length)) {
