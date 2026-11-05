@@ -7,6 +7,10 @@ import {
   createTestUserDataDir,
   launchApp,
 } from './workspace-canvas.helpers'
+import {
+  isLiveReattachFrameCommitted,
+  readLiveTerminalFrame,
+} from './workspace-canvas.terminal-live-reattach-geometry.helpers'
 
 const nodeId = 'terminal-live-reattach-geometry'
 
@@ -81,13 +85,11 @@ test('a live Desktop terminal reattach commits its measured frame without replac
       )
       .toBe(true)
 
-    const before = await window.evaluate(
-      id => ({
-        sessionId: window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null,
-        proposed: window.__opencoveTerminalSelectionTestApi?.getProposedGeometry(id) ?? null,
-      }),
-      nodeId,
+    await expect(window.locator('.terminal-node .terminal-node__terminal')).toHaveAttribute(
+      'aria-busy',
+      'false',
     )
+    const before = await readLiveTerminalFrame(window, nodeId)
     const parentPid = await readParentPid(window, 'PARENT_BEFORE_')
     const historyMarker = `HISTORY_BEFORE_${Date.now()}`
     await writeTerminalCommand(window, `process.stdout.write('${historyMarker}\\n')`)
@@ -128,38 +130,21 @@ test('a live Desktop terminal reattach commits its measured frame without replac
       .toBe(before.sessionId)
     await expect(window.locator('.terminal-node')).toContainText(historyMarker)
 
-    // Right after reload the restored size still equals the old proposal; wait in one read for
-    // the larger frame to be measured and committed, not for that transient match.
+    // Placeholder fit can match the larger proposal before hydration reapplies canonical geometry.
+    // A newer Worker revision proves the PTY ACK/commit; hydration must also finish. Keep the
+    // successful observation instead of sampling a different browser task after the poll.
+    let after = await readLiveTerminalFrame(window, nodeId)
     await expect
-      .poll(
-        async () =>
-          await window.evaluate(
-            ({ id, previous }) => {
-              const api = window.__opencoveTerminalSelectionTestApi
-              const size = api?.getSize(id) ?? null
-              const proposed = api?.getProposedGeometry(id) ?? null
-              return Boolean(
-                size &&
-                proposed &&
-                (proposed.cols !== previous?.cols || proposed.rows !== previous?.rows) &&
-                size.cols === proposed.cols &&
-                size.rows === proposed.rows,
-              )
-            },
-            { id: nodeId, previous: before.proposed },
-          ),
-      )
+      .poll(async () => {
+        after = await readLiveTerminalFrame(window, nodeId)
+        return isLiveReattachFrameCommitted(before, after)
+      })
       .toBe(true)
-    const after = await window.evaluate(
-      id => ({
-        sessionId: window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null,
-        size: window.__opencoveTerminalSelectionTestApi?.getSize(id) ?? null,
-        proposed: window.__opencoveTerminalSelectionTestApi?.getProposedGeometry(id) ?? null,
-      }),
-      nodeId,
-    )
+    expect(after.sessionId).toBe(before.sessionId)
     expect(after.proposed).not.toEqual(before.proposed)
     expect(after.size).toEqual(after.proposed)
+    expect(after.canonical).toMatchObject({ cols: after.size?.cols, rows: after.size?.rows })
+    expect(after.canonical?.revision).toBeGreaterThan(before.canonical?.revision ?? 0)
     expect(await readParentPid(window, 'PARENT_AFTER_')).toBe(parentPid)
 
     const snapshot = await window.evaluate(
