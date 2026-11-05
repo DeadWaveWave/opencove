@@ -99,13 +99,36 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       await expectPaintedWall(window)
       await expect(layer).toHaveAttribute('data-cove-pixel-activity', 'idle')
       const viewport = await readCanvasViewport(window)
-      const first = (await readWallProbe(window))?.signature
-      // Sample elapsed visual time without triggering output, input or viewport changes.
-      await window.waitForTimeout(350)
-      const second = (await readWallProbe(window))?.signature
-      await window.waitForTimeout(350)
-      const third = (await readWallProbe(window))?.signature
-      expect(new Set([first, second, third]).size).toBe(3)
+      const signatures = new Set([(await readWallProbe(window))!.signature])
+      // Observe changing pixels without requiring a frame in any particular 350ms slice.
+      // Unfocused windows paint at 10fps, and busy compositors can defer those frames.
+      try {
+        await expect
+          .poll(
+            async () => {
+              const probe = await readWallProbe(window)
+              if (probe) {
+                signatures.add(probe.signature)
+              }
+              return signatures.size
+            },
+            { timeout: 3_000, message: 'The idle wall should paint three distinct images' },
+          )
+          .toBeGreaterThanOrEqual(3)
+      } catch (error) {
+        await testInfo.attach('pixel-idle-motion-diagnostics', {
+          body: JSON.stringify({
+            signatures: [...signatures],
+            wall: await readWallProbe(window),
+            document: await window.evaluate(() => ({
+              visibilityState: document.visibilityState,
+              hasFocus: document.hasFocus(),
+            })),
+          }),
+          contentType: 'application/json',
+        })
+        throw error
+      }
       expect(await readCanvasViewport(window)).toEqual(viewport)
       await expect(layer).toHaveAttribute('data-cove-pixel-activity', 'idle')
       await attachFrame(window, testInfo, 'pixel-idle-field')

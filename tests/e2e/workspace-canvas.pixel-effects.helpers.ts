@@ -143,7 +143,15 @@ export async function installPixelEffectProbe(page: Page) {
             .data.some((value, index) => index % 4 === 3 && value > 8)
         }
       }
-      if (canvas?.dataset.covePixelBurst === 'bursting') {
+      if (
+        canvas?.dataset.covePixelBurst === 'bursting' &&
+        context &&
+        canvas.width > 0 &&
+        canvas.height > 0 &&
+        context
+          .getImageData(0, 0, canvas.width, canvas.height)
+          .data.some((value, index) => index % 4 === 3 && value > 0)
+      ) {
         for (const id of (canvas.dataset.covePixelBurstNodeIds ?? '').split(',')) {
           if (
             id &&

@@ -1,7 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
-import { expectPaintedWall, readWallProbe } from './workspace-canvas.pixel-wall.helpers'
+import {
+  expectAnimatedWall,
+  expectPaintedWall,
+  readWallProbe,
+} from './workspace-canvas.pixel-wall.helpers'
 
 async function seed(window: Page, settings: Record<string, unknown> = {}) {
   await window.emulateMedia({ reducedMotion: 'no-preference' })
@@ -79,7 +83,7 @@ test.describe('Workspace Canvas - Showcase mode', () => {
       await expect(window.locator('.workspace-canvas__controls')).toBeHidden()
       // The canvas is the whole window, and the wall drifts even with twinkle off.
       await expect.poll(async () => (await readLayout(window)).main).toEqual(before.shell)
-      expect(await animatedFramesAfter(window, 500)).toBeGreaterThan(3)
+      await expectAnimatedWall(window, testInfo)
       await expect(window.getByTestId('showcase-hint')).toHaveCount(0, { timeout: 5_000 })
       await testInfo.attach('showcase', {
         body: await window.screenshot(),
@@ -89,7 +93,7 @@ test.describe('Workspace Canvas - Showcase mode', () => {
       await window.keyboard.press('Escape')
       await expect(window.locator('html')).not.toHaveAttribute('data-cove-showcase', '')
       await expect.poll(() => readLayout(window)).toEqual(before)
-      await expect.poll(() => animatedFramesAfter(window, 400)).toBe(0)
+      expect(await animatedFramesAfter(window, 400)).toBe(0)
     } finally {
       await electronApp.close()
     }

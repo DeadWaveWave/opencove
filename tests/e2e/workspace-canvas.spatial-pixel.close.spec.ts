@@ -1,4 +1,9 @@
-import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
+import {
+  PIXEL_EFFECTS_ENABLED,
+  installPixelEffectProbe,
+  readPixelEffectProbe,
+  stopPixelEffectProbe,
+} from './workspace-canvas.pixel-effects.helpers'
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import path from 'node:path'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
@@ -95,6 +100,8 @@ async function readBurstSnapshot(layer: Locator, nodeId: string) {
       state: canvas.dataset.covePixelBurst,
       nodeIds: canvas.dataset.covePixelBurstNodeIds,
       painted: pixels?.some((value, index) => index % 4 === 3 && value > 0) ?? false,
+      visibilityState: document.visibilityState,
+      hasFocus: document.hasFocus(),
     }
   }, nodeId)
 }
@@ -113,10 +120,27 @@ async function closeAndObserveBurst(
 ) {
   const foreground = page.getByTestId('workspace-pixel-assembly')
   await node(page, id).locator(`.${kind}-node__close`).click()
-  // Read removal and painted burst in the same browser observation, before its 420 ms expiry.
-  await expect
-    .poll(() => readBurstSnapshot(foreground, id), { intervals: [16, 32, 50] })
-    .toEqual({ nodeRemoved: true, state: 'bursting', nodeIds: id, painted: true })
+  // The renderer records removal and painted scatter together. A Playwright round-trip
+  // can outlast the 420ms burst on a loaded runner, so poll the retained observation.
+  try {
+    await expect
+      .poll(async () => (await readPixelEffectProbe(page)).bursts, { timeout: 3_000 })
+      .toContain(id)
+  } catch (error) {
+    await testInfo.attach('pixel-close-burst-diagnostics', {
+      body: JSON.stringify(
+        {
+          id,
+          observed: await readPixelEffectProbe(page),
+          current: await readBurstSnapshot(foreground, id),
+        },
+        null,
+        2,
+      ),
+      contentType: 'application/json',
+    })
+    throw error
+  }
   await attachFrame(page, testInfo, `pixel-${kind}-removed-burst`)
 }
 
@@ -135,6 +159,7 @@ test.describe('Workspace Canvas - Spatial Pixel Close', () => {
     try {
       await page.emulateMedia({ reducedMotion: 'no-preference' })
       await seedCloseScene(page)
+      await installPixelEffectProbe(page)
       const foreground = page.getByTestId('workspace-pixel-assembly')
       await expect(foreground).toHaveCSS('pointer-events', 'none')
       await expect(foreground).toHaveAttribute('aria-hidden', 'true')
@@ -168,6 +193,7 @@ test.describe('Workspace Canvas - Spatial Pixel Close', () => {
         await page.waitForTimeout(2_000)
       }
     } finally {
+      await stopPixelEffectProbe(page).catch(() => undefined)
       await electronApp.close()
       if (videoDirectory && video) {
         const videoPath = path.join(videoDirectory, 'spatial-pixel-close.webm')

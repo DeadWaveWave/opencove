@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Page } from '@playwright/test'
 import {
   installPixelEffectProbe,
@@ -9,11 +9,19 @@ import {
 vi.mock('@playwright/test', () => ({ expect: vi.fn() }))
 
 const page = { evaluate: async (callback: () => unknown) => callback() } as unknown as Page
-const settleMutations = () => new Promise(resolve => setTimeout(resolve, 0))
+// Flush observer microtasks without a timer turn: happy-dom 20.8.4 holds its dispatch
+// callback weakly, so a real timeout lets GC drop it between the simulated draws.
+const settleMutations = () => Promise.resolve()
+
+beforeEach(() => {
+  // Observer delivery must work without advancing wall time between painted frames.
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+})
 
 afterEach(async () => {
   await stopPixelEffectProbe(page)
   document.body.replaceChildren()
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
@@ -67,7 +75,15 @@ function fixture() {
     canvas.dataset.covePixelAssembly = 'assembling'
     canvas.dataset.covePixelNodeIds = 'created-note'
   }
-  return { canvas, tick, addNode, draw, callbacks, clearPixels: () => (alpha = 0) }
+  return {
+    canvas,
+    tick,
+    addNode,
+    draw,
+    callbacks,
+    paintPixels: () => (alpha = 100),
+    clearPixels: () => (alpha = 0),
+  }
 }
 
 describe('pixel effect E2E recorder', () => {
@@ -102,7 +118,7 @@ describe('pixel effect E2E recorder', () => {
     expect((await readPixelEffectProbe(page)).created['created-note']?.rim).toBe(true)
   })
 
-  it('retains close scatter between RAFs only after the node has been removed', async () => {
+  it('retains painted close scatter after expiry, only after the node has been removed', async () => {
     const h = fixture()
     await installPixelEffectProbe(page)
     const node = h.addNode()
@@ -114,6 +130,12 @@ describe('pixel effect E2E recorder', () => {
     node.remove()
     h.canvas.dataset.covePixelBurstNodeIds = 'created-note'
     await settleMutations()
+    // A post-close attribute without pixels is not proof that scatter was drawn.
+    expect((await readPixelEffectProbe(page)).bursts).toEqual([])
+    h.paintPixels()
+    h.canvas.dataset.covePixelBurstNodeIds = 'created-note'
+    await settleMutations()
+    h.clearPixels()
     h.canvas.dataset.covePixelBurst = 'idle'
     h.canvas.dataset.covePixelBurstNodeIds = ''
     await settleMutations()
