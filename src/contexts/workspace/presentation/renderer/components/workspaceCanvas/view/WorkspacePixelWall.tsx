@@ -16,6 +16,8 @@ import { resolveWallGrid } from './pixelWall/wallGrid'
 import { readWallLightPalette, readWallPalette } from './pixelWall/wallPalette'
 import { createWallWindowTracker } from './pixelWall/wallWindows'
 
+const WAITING_PULSE_MS = 1800
+
 /**
  * The pixel wall behind the canvas (Tide phase 5.2). Ambient motion follows the decorative
  * frame scheduler (30fps focused, 10fps in the background, none while hidden or with reduced
@@ -63,13 +65,22 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     let dissolving = false
     const dissolve = createWallDissolve()
     const ripples = createRippleField()
+    const lastPulse = new Map<string, number>()
 
     const buildFrame = (now: number | null): WallFrame => {
       const grid = resolveWallGrid({ x, y, zoom, width, height })
       const ambientSeconds = now === null || still() ? null : now / 1000
       const lit = tracker.resolve(now === null || reducedMotion ? null : now, lights)
+      const pulsing = now === null || reducedMotion ? [] : tracker.waiting()
+      for (const { id, center } of pulsing) {
+        // A yellow ring leaves each waiting window every 1.8s; reduced motion keeps the steady light.
+        if (now !== null && now - (lastPulse.get(id) ?? -Infinity) >= WAITING_PULSE_MS) {
+          lastPulse.set(id, now)
+          ripples.emit(`waiting:${id}`, center, lights.waiting, now)
+        }
+      }
       const waves = now === null || reducedMotion ? [] : ripples.sample(now)
-      lightsAnimating = lit.animating || waves.length > 0
+      lightsAnimating = lit.animating || waves.length > 0 || pulsing.length > 0
       cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows, waves)
       const glass = projectWallGlass(
         lit.windows,

@@ -31,6 +31,7 @@
 @import './styles/workspace-canvas.css' layer(opencove);
 @import './styles/workspace-canvas-action-bar.css' layer(opencove);
 @import './styles/workspace-pixel-layer.css' layer(opencove);
+@import './styles/workspace-edge-beacons.css' layer(opencove);
 @import './styles/workspace-overlays.css' layer(opencove);
 @import './styles/workspace-overlays.spaces.explorer.preview.css' layer(opencove);
 @import './styles/workspace-context-menu.css' layer(opencove);

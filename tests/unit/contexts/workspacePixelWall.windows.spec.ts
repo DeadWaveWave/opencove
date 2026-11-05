@@ -96,3 +96,21 @@ describe('pixel wall windows', () => {
     expect(tracker.observeOutput('agent-session', 300)).toBeNull()
   })
 })
+
+describe('pixel wall waiting windows', () => {
+  it('lists the windows waiting for you with their centres', () => {
+    const tracker = createWallWindowTracker()
+    tracker.sync(
+      lookup(
+        windowNode(
+          'wait',
+          { kind: 'agent', status: 'waiting' },
+          { x: 100, y: 0, width: 200, height: 100 },
+        ),
+        windowNode('work', { kind: 'agent', status: 'running' }),
+      ),
+      0,
+    )
+    expect(tracker.waiting()).toEqual([{ id: 'wait', center: { x: 200, y: 50 } }])
+  })
+})
