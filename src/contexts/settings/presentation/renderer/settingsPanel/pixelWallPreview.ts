@@ -49,7 +49,10 @@ export function createPixelWallPreview(canvas: HTMLCanvasElement, scope: HTMLEle
     /** A clock in ms animates twinkle and drift; null draws the still wall. */
     draw(now: number | null): void {
       const grid = resolveWallGrid({ x: 0, y: 0, zoom: 1, width, height })
-      cells = fillWallCells(grid, palette, now === null ? null : now / 1000, cells, windows)
+      cells = fillWallCells(grid, palette, now === null ? null : now / 1000, {
+        out: cells,
+        windows,
+      })
       surface.draw({
         grid,
         cells,

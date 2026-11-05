@@ -91,8 +91,14 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     const initial = store.getState()
     // The flow transform is measured from the canvas (React Flow's root, which it records after
     // mounting); the wall may be larger: the window.
+    // The wall's corner on screen, kept with the placement so pointer events need no layout read.
+    let wallLeft = 0
+    let wallTop = 0
+    let spot: { x: number; y: number } | null = null
     const readPlacement = (): WallPlacement => {
       const wall = host.getBoundingClientRect()
+      wallLeft = wall.left
+      wallTop = wall.top
       const canvas = store.getState().domNode?.getBoundingClientRect() ?? wall
       return {
         width: host.clientWidth,
@@ -187,16 +193,15 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       // Under a sheet that covers the canvas (settings) the whole wall is behind glass and the
       // windows are hidden, so it frosts everything and draws no window glass.
       const frosted = coveredRef.current ? [{ x: 0, y: 0, width, height }] : chrome
-      cells = fillWallCells(
-        grid,
-        palette,
-        ambientSeconds,
-        cells,
-        lit.windows,
-        waves,
-        frosted,
-        showcaseRef.current ? SHOWCASE_CLOUD_SPEED : 1,
-      )
+      cells = fillWallCells(grid, palette, ambientSeconds, {
+        out: cells,
+        windows: lit.windows,
+        ripples: waves,
+        chrome: frosted,
+        cloudSpeed: showcaseRef.current ? SHOWCASE_CLOUD_SPEED : 1,
+        // The pointer's spotlight is ambient motion: it follows twinkle and reduced motion.
+        spot: ambientSeconds === null ? null : spot,
+      })
       const glass = projectWallGlass(
         coveredRef.current ? [] : lit.windows,
         view,
@@ -355,6 +360,17 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     document.addEventListener('visibilitychange', syncVisibility)
     window.addEventListener('focus', syncFocus)
     window.addEventListener('blur', syncFocus)
+    // The spotlight only reads the latest pointer; ambient frames already run while it shows.
+    const onPointerMove = (event: PointerEvent) => {
+      spot = { x: event.clientX - wallLeft, y: event.clientY - wallTop }
+    }
+    const onPointerOut = (event: PointerEvent) => {
+      if (!event.relatedTarget) {
+        spot = null
+      }
+    }
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    window.addEventListener('pointerout', onPointerOut)
     syncFocus()
     syncVisibility()
     repaint()
@@ -370,6 +386,8 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       document.removeEventListener('visibilitychange', syncVisibility)
       window.removeEventListener('focus', syncFocus)
       window.removeEventListener('blur', syncFocus)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerout', onPointerOut)
       repaintRef.current = null
       activeScheduler.dispose()
       controller.dispose()

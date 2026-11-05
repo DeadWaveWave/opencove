@@ -49,7 +49,9 @@ describe('pixel wall cells', () => {
   })
 
   it('mixes clouds into part of the wall and leaves the rest near the cell colour', () => {
-    const cells = fillWallCells(grid, dark, null)
+    // Sparks equal to the cell colour take shimmer out of the picture: only clouds remain.
+    const cloudsOnly = { ...dark, sparks: dark.sparks.map(() => dark.cell) }
+    const cells = fillWallCells(grid, cloudsOnly, null)
     const count = grid.columns * grid.rows
     let clouded = 0
     for (let index = 0; index < count; index++) {
@@ -69,7 +71,7 @@ describe('pixel wall cells', () => {
 
   it('reuses the output buffer when the grid size is unchanged', () => {
     const first = fillWallCells(grid, dark, 1)
-    const second = fillWallCells(grid, dark, 2, first)
+    const second = fillWallCells(grid, dark, 2, { out: first })
     expect(second).toBe(first)
   })
 
@@ -107,7 +109,7 @@ describe('pixel wall cells behind glass', () => {
     const cap = PIXEL_WALL.dark.cap
     const limit = cap * 255 + PIXEL_WALL.dark.tileJitter
     for (const time of [null, 0.4, 7.9, 31.3]) {
-      const cells = fillWallCells(view, white, time, undefined, [world])
+      const cells = fillWallCells(view, white, time, { windows: [world] })
       let brightest = 0
       for (let index = 0; index < cells.length; index += 4) {
         brightest = Math.max(brightest, cells[index]!)
@@ -118,7 +120,7 @@ describe('pixel wall cells behind glass', () => {
 
   it('leaves cells away from every window uncapped', () => {
     const far = { x: 5000, y: 5000, width: 100, height: 100 }
-    expect(fillWallCells(view, white, 7.9, undefined, [far])).toEqual(
+    expect(fillWallCells(view, white, 7.9, { windows: [far] })).toEqual(
       fillWallCells(view, white, 7.9),
     )
   })
@@ -129,7 +131,7 @@ describe('pixel wall cells behind glass', () => {
     let ring = 0
     let outside = 0
     for (const time of [0.4, 7.9, 31.3]) {
-      const cells = fillWallCells(view, white, time, undefined, [frame])
+      const cells = fillWallCells(view, white, time, { windows: [frame] })
       for (let row = 0; row < view.rows; row++) {
         for (let column = 0; column < view.columns; column++) {
           const cx = (view.firstColumn + column + 0.5) * view.worldCell
@@ -168,26 +170,26 @@ describe('pixel wall work light', () => {
 
   it('tints the cells around a window toward its colour, fading with distance', () => {
     const lit = { ...frame, light: { color: [255, 0, 0] as const, intensity: 0.92 } }
-    const cells = fillWallCells(view, black, null, undefined, [lit])
+    const cells = fillWallCells(view, black, null, { windows: [lit] })
     const near = red(cells, frame.x - 70, frame.y + 80)
     const far = red(cells, frame.x - 200, frame.y + 80)
     expect(near).toBeGreaterThan(far)
     expect(far).toBeGreaterThan(0)
     // A brighter state reaches further.
-    const dim = fillWallCells(view, black, null, undefined, [
-      { ...frame, light: { color: [255, 0, 0], intensity: 0.46 } },
-    ])
+    const dim = fillWallCells(view, black, null, {
+      windows: [{ ...frame, light: { color: [255, 0, 0], intensity: 0.46 } }],
+    })
     expect(red(dim, frame.x - 70, frame.y + 80)).toBeLessThan(near)
   })
 
   it('casts light themes to the lower right, as daylight through coloured glass', () => {
     const light: WallPalette = { ...black, appearance: 'light' }
     const lit = { ...frame, light: { color: [255, 0, 0] as const, intensity: 0.8 } }
-    const cells = fillWallCells(view, light, null, undefined, [lit])
+    const cells = fillWallCells(view, light, null, { windows: [lit] })
     const lowerRight = red(cells, frame.x + frame.width + 60, frame.y + frame.height + 60)
     const upperLeft = red(cells, frame.x - 60, frame.y - 60)
     expect(lowerRight).toBeGreaterThan(upperLeft)
-    const darkCells = fillWallCells(view, black, null, undefined, [lit])
+    const darkCells = fillWallCells(view, black, null, { windows: [lit] })
     expect(red(darkCells, frame.x - 60, frame.y - 60)).toBeCloseTo(
       red(darkCells, frame.x + frame.width + 60, frame.y + frame.height + 60),
       -1,
@@ -196,7 +198,7 @@ describe('pixel wall work light', () => {
 
   it('still caps cells behind the glass when the light is at full strength', () => {
     const lit = { ...frame, light: { color: [255, 255, 255] as const, intensity: 1 } }
-    const cells = fillWallCells(view, black, 3.3, undefined, [lit])
+    const cells = fillWallCells(view, black, 3.3, { windows: [lit] })
     const limit = PIXEL_WALL.dark.cap * 255 + PIXEL_WALL.dark.tileJitter
     expect(red(cells, frame.x + 100, frame.y + 80)).toBeLessThanOrEqual(limit)
   })
@@ -234,7 +236,7 @@ describe('pixel wall twinkle behind glass', () => {
     }
     // Many moments, so most spark cells peak at least once.
     const frames = Array.from({ length: 60 }, (_, step) =>
-      fillWallCells(view, sparkOnly, step * 0.37, undefined, [glass]),
+      fillWallCells(view, sparkOnly, step * 0.37, { windows: [glass] }),
     )
     const brightest = (pick: (cells: Uint8ClampedArray) => number[]) =>
       Math.max(...frames.flatMap(cells => pick(cells)))
@@ -260,7 +262,7 @@ describe('pixel wall output ripples', () => {
   }
 
   it('brightens the cells on the wavefront in the window colour and leaves the centre', () => {
-    const cells = fillWallCells(view, black, null, undefined, [], [ripple])
+    const cells = fillWallCells(view, black, null, { windows: [], ripples: [ripple] })
     expect(green(cells, 600 + 240, 450)).toBeGreaterThan(100)
     expect(green(cells, 600, 450)).toBeLessThan(10)
     expect(green(cells, 600 + 400, 450)).toBeLessThan(10)
@@ -269,10 +271,10 @@ describe('pixel wall output ripples', () => {
   it('stays within the glass cap where the wavefront crosses a window', () => {
     const glass = { x: 780, y: 300, width: 200, height: 300 }
     // Two ripples on the same spot would pull a free cell well past the cap.
-    const free = fillWallCells(view, black, null, undefined, [], [ripple, ripple])
+    const free = fillWallCells(view, black, null, { windows: [], ripples: [ripple, ripple] })
     const limit = PIXEL_WALL.dark.cap * 255 + PIXEL_WALL.dark.tileJitter
     expect(green(free, 600 + 240, 450)).toBeGreaterThan(limit)
-    const cells = fillWallCells(view, black, null, undefined, [glass], [ripple, ripple])
+    const cells = fillWallCells(view, black, null, { windows: [glass], ripples: [ripple, ripple] })
     expect(green(cells, 600 + 240, 450)).toBeLessThanOrEqual(limit)
   })
 })
@@ -305,7 +307,7 @@ describe('pixel wall shockwave crest', () => {
 
   it('peaks white in blank space and only takes the window colour behind glass', () => {
     const glass = { x: 780, y: 300, width: 200, height: 300 }
-    const cells = fillWallCells(view, black, null, undefined, [glass], [wave])
+    const cells = fillWallCells(view, black, null, { windows: [glass], ripples: [wave] })
     const open = at(cells, 600, 450 - 240)
     const behind = at(cells, 600 + 240, 450)
     // The open crest is near white: its red and green rise with the blue.
