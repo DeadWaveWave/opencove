@@ -1,11 +1,11 @@
 import React from 'react'
-import { Bot, Circle, EyeOff, LoaderCircle, MoreHorizontal, Pin, Pause } from 'lucide-react'
+import { Circle, EyeOff, LoaderCircle, MoreHorizontal, Pin, Pause } from 'lucide-react'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
-import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { KindTile } from '@app/renderer/components/ui/KindTile'
+import { PixelGlyph } from '@app/renderer/components/ui/PixelGlyph'
 import { toRelativeTime } from '../utils/format'
 import type { SidebarAgentItemModel } from '../utils/sidebarAgents'
 import type { ProjectContextMenuState } from '../types'
@@ -19,7 +19,6 @@ import {
 
 function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): React.JSX.Element {
   const { t } = useTranslation()
-  const provider = resolveAgentTreatedProvider(item.node)
   const statusText = t(`sidebar.status.${item.status}`)
   const StatusIcon =
     item.status === 'working' ? LoaderCircle : item.status === 'waiting' ? Pause : Circle
@@ -27,11 +26,7 @@ function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): Rea
   return (
     <>
       <KindTile kind="ai" size="sm" className="workspace-agent-item__kind">
-        {provider ? (
-          <AgentProviderIcon provider={provider} className="workspace-agent-item__provider" />
-        ) : (
-          <Bot aria-hidden="true" />
-        )}
+        <PixelGlyph name="ai" />
       </KindTile>
       <span className="workspace-agent-item__copy">
         <span className="workspace-agent-item__title">{item.displayTitle}</span>

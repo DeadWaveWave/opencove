@@ -146,3 +146,9 @@
   --cove-kind-tile-line: var(--cove-kind-media-line, var(--cove-border-subtle));
   --cove-kind-tile-glyph: var(--cove-kind-media-glyph, var(--cove-text-muted));
 }
+
+/* Pixel glyphs (Tide): 9×9 icons drawn with crisp edges in the current colour. */
+.cove-pixel-glyph {
+  display: block;
+  flex: none;
+}

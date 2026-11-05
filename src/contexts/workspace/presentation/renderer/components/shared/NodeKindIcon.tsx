@@ -1,27 +1,30 @@
 import type { JSX } from 'react'
-import { Bot, ContactRound, Globe, Image, ListTodo, StickyNote, Terminal } from 'lucide-react'
+import { PixelGlyph } from '@app/renderer/components/ui/PixelGlyph'
+import type { PixelGlyphName } from '@app/renderer/components/ui/pixelGlyphs'
 import type { WorkspaceNodeKind } from '../../types'
-import { FileSystemEntryIcon } from './FileSystemEntryIcon'
 import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 
-const NODE_KIND_ICONS = {
-  terminal: Terminal,
-  agent: Bot,
-  note: StickyNote,
-  task: ListTodo,
-  role: ContactRound,
-  website: Globe,
-  image: Image,
-} as const
+/** Each window kind's pixel glyph (Tide): colour always comes with a pixel icon. */
+const NODE_KIND_GLYPHS: Record<Exclude<WorkspaceNodeKind, 'plugin'>, PixelGlyphName> = {
+  terminal: 'terminal',
+  agent: 'ai',
+  note: 'note',
+  task: 'task',
+  role: 'role',
+  website: 'website',
+  image: 'image',
+  document: 'document',
+  folder: 'folder',
+}
 
 export function NodeKindIcon({
   kind,
   className,
-  filePath,
   pluginId,
 }: {
   kind: WorkspaceNodeKind
   className?: string
+  /** Kept for callers that pass a document or folder path; the glyph names the kind only. */
   filePath?: string
   pluginId?: string
 }): JSX.Element {
@@ -29,27 +32,13 @@ export function NodeKindIcon({
   if (kind === 'plugin') {
     return <PluginIcon pluginId={pluginId ?? ''} className={iconClassName} />
   }
-  if (kind === 'document' || kind === 'folder') {
-    return (
-      <FileSystemEntryIcon
-        path={filePath ?? ''}
-        kind={kind === 'folder' ? 'directory' : 'file'}
-        nodeKind={kind}
-        className={iconClassName}
-      />
-    )
-  }
-  const Icon = NODE_KIND_ICONS[kind]
   return (
-    <Icon
+    <PixelGlyph
+      name={NODE_KIND_GLYPHS[kind]}
       className={iconClassName}
       data-cove-part="icon"
       data-cove-kind={kind}
       data-cove-node-kind-icon={kind}
-      size={16}
-      strokeWidth={1.75}
-      aria-hidden="true"
-      focusable="false"
     />
   )
 }

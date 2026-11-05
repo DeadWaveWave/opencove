@@ -87,7 +87,7 @@ for (const theme of ['pixel', 'pixel-light']) {
     await expect(page.locator('.workspace-item--active')).toContainText('Design system')
     await page.locator('.workspace-item').filter({ hasText: 'OpenCove' }).click()
     await expect(page.locator('.workspace-item--active')).toContainText('OpenCove')
-    await expect(drawer.locator('[data-agent-provider="codex"]')).toBeVisible()
+    await expect(drawer.locator('.workspace-agent-item [data-cove-pixel-glyph="ai"]')).toBeVisible()
     const rowHeights = await drawer
       .locator('.workspace-space-item, .workspace-agent-item')
       .evaluateAll(rows => rows.map(row => row.getBoundingClientRect().height))

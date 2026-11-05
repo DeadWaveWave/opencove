@@ -42,7 +42,9 @@ for (const { kind, title, fontScale } of cases) {
       const node = window.locator(terminalSelector)
       if (kind === 'agent') {
         await expect(node.getByTestId('terminal-node-title-display')).toHaveText('Review')
-        await expect(node.locator('.cove-node-provider-icon')).toBeVisible()
+        await expect(
+          node.locator('.terminal-node__header [data-cove-pixel-glyph="ai"]'),
+        ).toBeVisible()
       }
       await node.getByTestId('terminal-node-title-display').click()
       await node.getByTestId('terminal-node-inline-title-input').fill(title)

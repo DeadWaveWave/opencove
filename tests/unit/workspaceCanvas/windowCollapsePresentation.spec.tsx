@@ -55,7 +55,6 @@ describe('window collapse presentation', () => {
       kind: 'document' as const,
       title: 'package.json',
       document: { uri: 'file:///project/config/package.json' },
-      glyph: 'file-json',
     },
     {
       kind: 'folder' as const,
@@ -66,7 +65,6 @@ describe('window collapse presentation', () => {
         viewMode: 'list' as const,
         expandedDirectoryUris: [],
       },
-      glyph: 'folder',
     },
   ])('keeps the compact $kind identity to its icon and name without a parent path', entry => {
     const onExpand = vi.fn()
@@ -76,9 +74,9 @@ describe('window collapse presentation', () => {
     const icon = screen.getByTestId('collapsed-node-file-entry')
     expect(icon).toHaveStyle({ width: '112px', height: '96px' })
     expect(icon.textContent).toBe(entry.title)
-    expect(icon.querySelector('[data-cove-file-icon]')).toHaveAttribute(
-      'data-cove-file-icon',
-      entry.glyph,
+    expect(icon.querySelector('[data-cove-node-kind-icon]')).toHaveAttribute(
+      'data-cove-pixel-glyph',
+      entry.kind,
     )
     expect(container.querySelector('.cove-collapsed-window__title')).toHaveTextContent(entry.title)
     expect(container.querySelector('button[aria-label*="Close"]')).toBeNull()
@@ -217,9 +215,9 @@ describe('window collapse presentation', () => {
     expect(icon.querySelector('.cove-collapsed-window__status')).toBeNull()
     expect(icon.querySelector('.cove-collapsed-window__message')).toBeNull()
     expect(screen.getByTestId('node-expand')).toHaveAttribute('aria-description', 'Working')
-    expect(icon.querySelector('[data-agent-provider]')).toHaveAttribute(
-      'data-agent-provider',
-      'codex',
+    expect(icon.querySelector('[data-cove-node-kind-icon="agent"]')).toHaveAttribute(
+      'data-cove-pixel-glyph',
+      'ai',
     )
     rerender(
       view({

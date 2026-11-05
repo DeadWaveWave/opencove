@@ -257,8 +257,8 @@ describe('Sidebar', () => {
     expect(agentButton.getAttribute('data-drag-listener')).toBeNull()
     expect(agentButton.textContent).toContain('workspace-a task')
     expect(
-      agentButton.querySelector('.agent-provider-icon')?.getAttribute('data-agent-provider'),
-    ).toBe('codex')
+      agentButton.querySelector('.cove-pixel-glyph')?.getAttribute('data-cove-pixel-glyph'),
+    ).toBe('ai')
 
     fireEvent.click(workspaceButton)
     expect(onSelectWorkspace).toHaveBeenCalledWith('workspace-a')
@@ -305,12 +305,13 @@ describe('Sidebar', () => {
     )
 
     const agentButton = screen.getByTestId('workspace-agent-item-workspace-a-workspace-a-agent')
-    const badge = agentButton.querySelector('.agent-provider-icon')
+    const badge = agentButton.querySelector('[data-cove-pixel-glyph="ai"]')!
     const group = container.querySelector('.workspace-space-group--space')
 
     expect(group?.getAttribute('data-cove-label-color')).toBe('blue')
     expect(group?.querySelector('.workspace-space-group__branch')).not.toBeNull()
-    expect(badge?.getAttribute('data-cove-label-color')).toBeNull()
+    expect(badge).not.toBeNull()
+    expect(badge.getAttribute('data-cove-label-color')).toBeNull()
     expect(agentButton.getAttribute('data-cove-label-color')).toBeNull()
   })
 

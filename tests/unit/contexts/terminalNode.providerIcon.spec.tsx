@@ -9,7 +9,7 @@ import {
   installTerminalThemeResizeObserverMock,
 } from './terminalNode.theme.testHarness'
 
-describe('terminal frame provider identity', () => {
+describe('terminal frame pixel kind identity', () => {
   beforeAll(async () => {
     await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
   })
@@ -27,16 +27,9 @@ describe('terminal frame provider identity', () => {
 
   afterEach(() => vi.restoreAllMocks())
 
-  it.each([
-    ['codex', '0 0 22 22'],
-    ['claude-code', '0 0 24 24'],
-    ['opencode', '0 0 24 30'],
-    ['gemini', '0 0 50 50'],
-    ['pi', '165.29 165.29 469.43 469.43'],
-    ['kimi', 'kimi.png'],
-  ] as const)(
-    'shows %s identity rather than a shared robot or another brand',
-    (provider, glyph) => {
+  it.each(['codex', 'claude-code', 'opencode', 'gemini', 'pi', 'kimi'] as const)(
+    'shows the AI pixel glyph for %s agent headers without a brand icon',
+    provider => {
       const { container } = render(
         <TerminalNodeHeader
           title="A renamed task"
@@ -46,19 +39,12 @@ describe('terminal frame provider identity', () => {
           onClose={vi.fn()}
         />,
       )
-      const icon = container.querySelector(`[data-agent-provider="${provider}"]`)!
-      expect(icon).toBeInTheDocument()
-      expect(container.querySelector('.lucide-bot')).toBeNull()
-      if (provider === 'kimi') {
-        expect(icon).toHaveAttribute('aria-label', 'Kimi Code')
-        expect(icon.querySelector('img')).toHaveAttribute('src', expect.stringContaining(glyph))
-        expect(icon.querySelector('img')).toHaveAttribute('alt', '')
-        expect(icon.querySelector('img')).toHaveAttribute('draggable', 'false')
-        expect(icon.querySelector('svg')).toBeNull()
-      } else {
-        expect(icon.querySelector('svg')).toHaveAttribute('viewBox', glyph)
-        expect(icon.querySelector('svg')).toHaveAttribute('focusable', 'false')
-      }
+      const icon = container.querySelector('[data-cove-node-kind-icon="agent"]')!
+      expect(icon).toHaveAttribute('data-cove-pixel-glyph', 'ai')
+      expect(icon).toHaveAttribute('viewBox', '0 0 9 9')
+      expect(icon).toHaveAttribute('aria-hidden', 'true')
+      expect(icon).toHaveAttribute('focusable', 'false')
+      expect(container.querySelector('.agent-provider-icon, [data-agent-provider]')).toBeNull()
     },
   )
 
@@ -67,10 +53,13 @@ describe('terminal frame provider identity', () => {
       <TerminalNodeHeader title="Codex" kind="agent" status={null} onClose={vi.fn()} />,
     )
     expect(container.querySelector('[data-agent-provider]')).toBeNull()
-    expect(container.querySelector('[data-cove-node-kind-icon="agent"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-cove-node-kind-icon="agent"]')).toHaveAttribute(
+      'data-cove-pixel-glyph',
+      'ai',
+    )
   })
 
-  it('keeps its provider glyph on the header tile and lets the header own pointer handling', () => {
+  it('keeps its pixel glyph on the header tile and lets the header own pointer handling', () => {
     const style = document.createElement('style')
     style.textContent = [
       'src/app/renderer/styles/base.css',
@@ -93,12 +82,11 @@ describe('terminal frame provider identity', () => {
           onHeaderPointerDownCapture={onPointerDown}
         />,
       )
-      const icon = container.querySelector<HTMLElement>('[data-agent-provider="codex"]')!
+      const icon = container.querySelector<SVGElement>('[data-cove-pixel-glyph="ai"]')!
       const computed = getComputedStyle(icon)
       expect(icon.parentElement).toHaveAttribute('data-cove-part', 'kind-tile')
       expect(computed.width).toBe('12px')
       expect(computed.height).toBe('12px')
-      expect(computed.borderWidth).toBe('0px')
       expect(computed.pointerEvents).toBe('none')
       expect(icon).not.toHaveAttribute('tabindex')
       expect(icon.closest('button, .nodrag')).toBeNull()
@@ -109,7 +97,7 @@ describe('terminal frame provider identity', () => {
     }
   })
 
-  it('routes the resolved provider through the real frame and restores terminal chrome without remounting xterm', async () => {
+  it('switches agent and terminal pixel chrome without remounting xterm', async () => {
     const { TerminalNode } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
     const { __getLastTerminal } = await import('@xterm/xterm')
@@ -135,10 +123,18 @@ describe('terminal frame provider identity', () => {
     await waitFor(() => expect(__getLastTerminal()).not.toBe(previousTerminal))
     const terminal = __getLastTerminal()
     const body = container.querySelector('.terminal-node__terminal')
-    expect(container.querySelector('[data-agent-provider="codex"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-cove-node-kind-icon="agent"]')).toHaveAttribute(
+      'data-cove-pixel-glyph',
+      'ai',
+    )
+    expect(container.querySelector('[data-agent-provider]')).toBeNull()
     rerender(<TerminalNode {...props} isAgentPresentation={false} />)
     expect(container.querySelector('[data-agent-provider]')).toBeNull()
-    expect(container.querySelector('[data-cove-node-kind-icon="terminal"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-cove-pixel-glyph="ai"]')).toBeNull()
+    expect(container.querySelector('[data-cove-node-kind-icon="terminal"]')).toHaveAttribute(
+      'data-cove-pixel-glyph',
+      'terminal',
+    )
     expect(container.querySelector('.terminal-node__terminal')).toBe(body)
     expect(__getLastTerminal()).toBe(terminal)
   })

@@ -89,31 +89,19 @@ test.describe('Workspace Canvas - Color Identity', () => {
           }
           expect(appearance.ribbonHeight).toBe(2)
           expect(appearance.borderWidth).toBe('1px')
-          if (appearance.kind === 'agent') {
-            expect(appearance.icon).toBeNull()
-            expect(appearance.providerIcon).toMatchObject({
-              provider: 'codex',
-              width: 12,
-              background: 'rgba(0, 0, 0, 0)',
-              borderWidth: '0px',
-              label: 'Codex',
-              svgHidden: 'true',
-              svg: true,
-            })
-          } else {
-            // Window headers put the glyph on a 20px kind tile; image has no header.
-            const tiled = appearance.kind !== 'image'
-            expect(appearance.icon).toMatchObject({
-              kind: appearance.kind,
-              fill: 'none',
-              stroke: appearance.kind === 'document' ? '1.4' : '1.75',
-              width: tiled ? 12 : 16,
-              tile: tiled ? 20 : null,
-              pointer: 'none',
-              hidden: 'true',
-              focusable: 'false',
-            })
-          }
+          // Window headers put the pixel glyph on a 20px kind tile; image has no header.
+          const tiled = appearance.kind !== 'image'
+          expect(appearance.icon).toMatchObject({
+            kind: appearance.kind,
+            glyph: appearance.kind === 'agent' ? 'ai' : appearance.kind,
+            fill: 'currentColor',
+            shapeRendering: 'crispEdges',
+            width: tiled ? 12 : 16,
+            tile: tiled ? 20 : null,
+            pointer: 'none',
+            hidden: 'true',
+            focusable: 'false',
+          })
           if (appearance.kind !== 'image') {
             expect(appearance.headerImage).toContain('linear-gradient')
             expect(

@@ -51,9 +51,9 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
       const agentItem = window.locator('.workspace-sidebar .workspace-agent-item').first()
       await expect(agentItem).toBeVisible()
       await expect(agentItem.locator('.workspace-agent-item__title')).toHaveText('gpt-5.2-codex')
-      await expect(agentItem.locator('.agent-provider-icon')).toHaveAttribute(
-        'data-agent-provider',
-        'codex',
+      await expect(agentItem.locator('.cove-pixel-glyph')).toHaveAttribute(
+        'data-cove-pixel-glyph',
+        'ai',
       )
 
       const zoomInButton = window.locator('.react-flow__controls-zoomin')
