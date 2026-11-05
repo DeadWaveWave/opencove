@@ -13,7 +13,10 @@ const args = process.argv.slice(2)
 if (args.includes('app-server') || args.includes('--config')) {
   throw new Error('Unexpected Codex hook preflight or injection')
 }
-appendFileSync(process.env.OPENCOVE_SESSION_FILE_FIXTURE_LOG, JSON.stringify(args) + '\n')
+appendFileSync(
+  process.env.OPENCOVE_SESSION_FILE_FIXTURE_LOG,
+  JSON.stringify({ event: 'invocation', args }) + '\n',
+)
 const resumeIndex = args.indexOf('resume')
 const id = resumeIndex >= 0 ? args[resumeIndex + 1] : randomUUID()
 const root = join(process.env.CODEX_HOME, 'sessions')
@@ -31,6 +34,7 @@ const file = existing ? join(root, existing) : join(directory, `rollout-${id}.js
 if (resumeIndex >= 0 && !existsSync(file)) {
   throw new Error('Exact resume file missing')
 }
+let restoredHistory = null
 if (!existing) {
   writeFileSync(
     file,
@@ -42,6 +46,7 @@ if (!existing) {
   )
 } else {
   const history = readFileSync(file, 'utf8')
+  restoredHistory = history
   process.stdout.write('RESTORED_HISTORY=' + history + '\r\n')
   for (const line of history.trim().split('\n')) {
     const message = JSON.parse(line).payload?.last_agent_message
@@ -80,4 +85,10 @@ process.stdin.on('data', chunk => {
     }
   }
 })
+// A screen redraw can overwrite the history banner. Retain what this ready invocation read,
+// independently of both the terminal screen and the file that later turns will append to.
+appendFileSync(
+  process.env.OPENCOVE_SESSION_FILE_FIXTURE_LOG,
+  JSON.stringify({ event: 'ready', args, sessionId: id, restoredHistory }) + '\n',
+)
 process.stdout.write('CODEX_FILE_READY=' + id + '\r\n')

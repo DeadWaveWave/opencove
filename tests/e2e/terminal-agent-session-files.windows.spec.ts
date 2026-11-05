@@ -12,6 +12,22 @@ import { readPersistedTerminalAgentNode } from './workspace-canvas.terminal-agen
 
 test.skip(process.platform !== 'win32', 'Windows Codex session-file lifecycle')
 
+async function readInvocations(log: string) {
+  // Only consume complete receipts if the provider is still appending its readiness record.
+  return (await readFile(log, 'utf8'))
+    .split('\n')
+    .slice(0, -1)
+    .map(
+      line =>
+        JSON.parse(line) as {
+          event: 'invocation' | 'ready'
+          args: string[]
+          sessionId?: string
+          restoredHistory?: string | null
+        },
+    )
+}
+
 test('typed Codex adopts the terminal, persists file identity, resumes exactly once, and exits to the shell', async () => {
   const root = await mkdtemp(join(tmpdir(), 'OpenCove file sessions '))
   const userDataDir = await createTestUserDataDir()
@@ -90,15 +106,31 @@ test('typed Codex adopts the terminal, persists file identity, resumes exactly o
     try {
       const node = second.window.locator(`[data-id="${nodeId}"] .terminal-node`)
       await expect(node).toContainText(`CODEX_FILE_READY=${resumeSessionId}`)
-      await expect(node).toContainText('RESTORED_HISTORY=')
-      await expect(node).toContainText('RESTORED_TURN=FILE_RESTART_SENTINEL')
-      const invocations = (await readFile(log, 'utf8'))
-        .trim()
-        .split(/\r?\n/)
-        .map(line => JSON.parse(line) as string[])
-      expect(invocations.filter(args => args.includes('resume'))).toHaveLength(1)
-      expect(invocations[1]).toContain(resumeSessionId)
+      // The ready banner may come from persisted scrollback, and ConPTY can overwrite the
+      // history banner. Require a receipt from the resumed process, then prove fresh input.
+      await expect
+        .poll(async () =>
+          (await readInvocations(log)).filter(
+            entry => entry.event === 'ready' && entry.args.includes('resume'),
+          ),
+        )
+        .toEqual([
+          {
+            event: 'ready',
+            args: expect.arrayContaining(['resume', resumeSessionId]),
+            sessionId: resumeSessionId,
+            restoredHistory: expect.stringContaining(
+              '"last_agent_message":"FILE_RESTART_SENTINEL"',
+            ),
+          },
+        ])
       await node.locator('.xterm-helper-textarea').focus()
+      await second.window.keyboard.type('FILE_RESUMED_SENTINEL')
+      await second.window.keyboard.press('Enter')
+      await expect(node).toContainText('SAVED_TURN=FILE_RESUMED_SENTINEL')
+      const invocations = (await readInvocations(log)).filter(entry => entry.event === 'invocation')
+      expect(invocations).toHaveLength(2)
+      expect(invocations.filter(entry => entry.args.includes('resume'))).toHaveLength(1)
       await second.window.keyboard.press('Control+C')
       await expect(node.getByTestId('terminal-node-session-list')).not.toBeVisible()
       await second.window.keyboard.type("Write-Output ('SHELL_' + 'STILL_WORKS')")
@@ -111,6 +143,10 @@ test('typed Codex adopts the terminal, persists file identity, resumes exactly o
       await second.electronApp.close()
     }
   } finally {
+    await test.info().attach('codex-session-file-invocations', {
+      body: await readFile(log),
+      contentType: 'application/x-ndjson',
+    })
     await removePathWithRetry(root)
     await removePathWithRetry(userDataDir)
   }
