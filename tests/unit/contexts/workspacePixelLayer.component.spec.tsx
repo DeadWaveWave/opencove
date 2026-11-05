@@ -122,26 +122,27 @@ describe('workspace pixel layer lifecycle', () => {
     vi.unstubAllGlobals()
   })
 
-  it('keeps the visible field flowing without inventing output activity or writing runtime state', () => {
+  it('stays idle without output, coalesces output bursts and never writes runtime state', () => {
     const node = pixelNode()
     const before = structuredClone(node)
     const view = render(<WorkspacePixelLayer nodes={[node]} />)
     const canvas = view.getByTestId('workspace-pixel-layer')
     expect(canvas).toHaveAttribute('aria-hidden', 'true')
     tick(0)
-    expect(context.fillRect).toHaveBeenCalled()
-    expect(frames.size).toBe(1)
+    // No ambient field: the pixel wall owns the background, so an idle layer asks for no frames.
+    expect(frames.size).toBe(0)
     act(() => output({ sessionId: 'other', data: 'Read Edit Bash' }))
-    expect(frames.size).toBe(1)
+    expect(frames.size).toBe(0)
     for (let i = 0; i < 100; i++) {
       output({ sessionId: 'session-1', data: '\u001b[2Janything' })
     }
     expect(frames.size).toBe(1)
     tick(40)
     expect(canvas).toHaveAttribute('data-cove-pixel-activity', 'output')
+    expect(context.fillRect).toHaveBeenCalled()
     tick(1100)
     expect(canvas).toHaveAttribute('data-cove-pixel-activity', 'idle')
-    expect(frames.size).toBe(1)
+    expect(frames.size).toBe(0)
     expect(node).toEqual(before)
     expect(mocks.store.setState).not.toHaveBeenCalled()
     view.unmount()
@@ -342,7 +343,8 @@ describe('workspace pixel layer lifecycle', () => {
     tick(540)
     expect(foreground).toHaveAttribute('data-cove-pixel-burst', 'idle')
     expect(foreground).toHaveAttribute('data-cove-pixel-burst-node-ids', '')
-    expect(frames.size).toBe(1)
+    // With the burst done the layer has nothing left to animate: the wall owns ambience.
+    expect(frames.size).toBe(0)
     expect(mocks.store.setState).not.toHaveBeenCalled()
     view.unmount()
     act(() => publishWorkspaceNodesClosed([survivor.id]))

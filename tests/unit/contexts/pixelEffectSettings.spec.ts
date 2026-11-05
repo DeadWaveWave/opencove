@@ -17,17 +17,52 @@ installMockStorage()
 beforeEach(() => window.localStorage.clear())
 
 const effects = (settings: AgentSettings) => ({
-  canvasPixelBackgroundEnabled: settings.canvasPixelBackgroundEnabled,
+  canvasBackgroundStyle: settings.canvasBackgroundStyle,
+  canvasBackgroundTwinkleEnabled: settings.canvasBackgroundTwinkleEnabled,
   nodeCreationPixelEffectEnabled: settings.nodeCreationPixelEffectEnabled,
   nodeClosePixelEffectEnabled: settings.nodeClosePixelEffectEnabled,
   agentWorkingPixelEffectEnabled: settings.agentWorkingPixelEffectEnabled,
 })
 const disabled = {
-  canvasPixelBackgroundEnabled: false,
+  canvasBackgroundStyle: 'off',
+  canvasBackgroundTwinkleEnabled: true,
   nodeCreationPixelEffectEnabled: false,
   nodeClosePixelEffectEnabled: false,
   agentWorkingPixelEffectEnabled: false,
 }
+const enabled = {
+  canvasBackgroundStyle: 'pixel',
+  canvasBackgroundTwinkleEnabled: true,
+  nodeCreationPixelEffectEnabled: true,
+  nodeClosePixelEffectEnabled: true,
+  agentWorkingPixelEffectEnabled: true,
+}
+
+describe('canvas background style', () => {
+  it.each([
+    [{ canvasPixelBackgroundEnabled: true }, 'pixel'],
+    [{ canvasPixelBackgroundEnabled: false }, 'off'],
+    [{ canvasBackgroundStyle: 'minimal' }, 'minimal'],
+    [{ canvasBackgroundStyle: 'off', canvasPixelBackgroundEnabled: true }, 'off'],
+    [{ canvasBackgroundStyle: 'neon', canvasPixelBackgroundEnabled: false }, 'off'],
+  ])('replaces the old pixel background switch: %j becomes %s', (raw, style) => {
+    expect(normalizeAgentSettings({ uiTheme: 'dark', ...raw }).canvasBackgroundStyle).toBe(style)
+  })
+
+  it('keeps the old switch out of normalized settings and twinkle on unless turned off', () => {
+    const migrated = normalizeAgentSettings({
+      uiTheme: 'pixel',
+      canvasPixelBackgroundEnabled: true,
+    })
+    expect('canvasPixelBackgroundEnabled' in migrated).toBe(false)
+    expect(migrated.canvasBackgroundTwinkleEnabled).toBe(true)
+    expect(isNormalizedAgentSettings(migrated)).toBe(true)
+    expect(
+      normalizeAgentSettings({ ...migrated, canvasBackgroundTwinkleEnabled: false })
+        .canvasBackgroundTwinkleEnabled,
+    ).toBe(false)
+  })
+})
 
 describe('independent persisted Pixel effect settings', () => {
   it('restores missing plugin theme effect fields with current defaults while preserving explicit opt-outs', async () => {
@@ -46,7 +81,7 @@ describe('independent persisted Pixel effect settings', () => {
     const restored = await readPersistedState()
     expect(restored?.settings).toMatchObject({
       uiTheme: 'plugin:studio:night',
-      canvasPixelBackgroundEnabled: false,
+      canvasBackgroundStyle: 'off',
       nodeClosePixelEffectEnabled: false,
       nodeCreationPixelEffectEnabled: true,
       agentWorkingPixelEffectEnabled: true,
@@ -73,7 +108,7 @@ describe('independent persisted Pixel effect settings', () => {
     'starts unconfigured users in Cove with all effects: %j',
     raw => {
       expect(normalizeAgentSettings(raw).uiTheme).toBe('dark')
-      expect(Object.values(effects(normalizeAgentSettings(raw)))).toEqual([true, true, true, true])
+      expect(effects(normalizeAgentSettings(raw))).toEqual(enabled)
       expect(effects(normalizeAgentSettings(raw))).toEqual(effects(DEFAULT_AGENT_SETTINGS))
     },
   )
@@ -82,12 +117,7 @@ describe('independent persisted Pixel effect settings', () => {
     'migrates legacy %s settings once and emits the complete canonical shape',
     uiTheme => {
       const migrated = normalizeAgentSettings({ uiTheme })
-      expect(effects(migrated)).toEqual({
-        canvasPixelBackgroundEnabled: true,
-        nodeCreationPixelEffectEnabled: true,
-        nodeClosePixelEffectEnabled: true,
-        agentWorkingPixelEffectEnabled: true,
-      })
+      expect(effects(migrated)).toEqual(enabled)
       expect(isNormalizedAgentSettings(migrated)).toBe(true)
       expect(effects(normalizeAgentSettings({ ...migrated, uiTheme: 'light' }))).toEqual(
         effects(migrated),
@@ -112,7 +142,8 @@ describe('independent persisted Pixel effect settings', () => {
           }),
         ),
       ).toEqual({
-        canvasPixelBackgroundEnabled: false,
+        canvasBackgroundStyle: 'off',
+        canvasBackgroundTwinkleEnabled: true,
         nodeCreationPixelEffectEnabled: true,
         nodeClosePixelEffectEnabled: true,
         agentWorkingPixelEffectEnabled: false,
@@ -126,7 +157,7 @@ describe('independent persisted Pixel effect settings', () => {
             nodeClosePixelEffectEnabled: false,
           }),
         ),
-      ).toEqual({ ...disabled, canvasPixelBackgroundEnabled: true })
+      ).toEqual({ ...disabled, canvasBackgroundStyle: 'pixel' })
     },
   )
 
@@ -139,7 +170,7 @@ describe('independent persisted Pixel effect settings', () => {
           settings = normalizeAgentSettings(next)
         },
       })
-    updaters().updatePixelEffect('canvasPixelBackgroundEnabled', false)
+    updaters().updateCanvasBackgroundStyle('off')
     updaters().updatePixelEffect('nodeClosePixelEffectEnabled', false)
     updaters().updatePixelEffect('agentWorkingPixelEffectEnabled', false)
     updaters().updateUiTheme('light')
@@ -171,7 +202,7 @@ describe('independent persisted Pixel effect settings', () => {
       )
       const migrated = await readPersistedState()
       expect(migrated?.settings).toMatchObject({
-        canvasPixelBackgroundEnabled: true,
+        canvasBackgroundStyle: 'pixel',
         nodeCreationPixelEffectEnabled: true,
         nodeClosePixelEffectEnabled: true,
       })

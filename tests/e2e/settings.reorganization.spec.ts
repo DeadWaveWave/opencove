@@ -6,7 +6,11 @@ import {
   seededWorkspaceId,
   selectCoveOption,
 } from './workspace-canvas.helpers'
-import { PIXEL_EFFECTS_ENABLED, setPixelEffect } from './workspace-canvas.pixel-effects.helpers'
+import {
+  PIXEL_EFFECTS_ENABLED,
+  setPixelEffect,
+  setBackgroundStyle,
+} from './workspace-canvas.pixel-effects.helpers'
 
 const TERMINAL_ID = 'settings-live-terminal'
 
@@ -163,24 +167,26 @@ test.describe('Settings organization', () => {
       await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
       await attachPanel(page, testInfo, 'settings-theme-gallery')
       const preview = page.getByTestId('settings-pixel-effects-preview')
-      await expect(preview).toHaveAttribute('data-background', 'true')
+      await expect(preview).toHaveAttribute('data-background', 'pixel')
+      await expect(preview.locator('.settings-pixel-preview__canvas--wall')).toBeVisible()
       await expect(preview.locator('.react-flow__node')).toHaveCount(0)
       await expect(page.getByTestId('settings-terminal-font-size')).toHaveCount(0)
-      await setPixelEffect(page, 'canvasPixelBackgroundEnabled', false)
-      await expect(preview).toHaveAttribute('data-background', 'false')
+      await setBackgroundStyle(page, 'off')
+      await expect(preview).toHaveAttribute('data-background', 'off')
+      await expect(preview.locator('.settings-pixel-preview__canvas--wall')).toBeHidden()
       const field = preview.locator(
-        '.settings-pixel-preview__canvas:not(.settings-pixel-preview__canvas--foreground)',
+        '.settings-pixel-preview__canvas:not(.settings-pixel-preview__canvas--foreground):not(.settings-pixel-preview__canvas--wall)',
       )
       await expect(field).toBeVisible()
       await setPixelEffect(page, 'agentWorkingPixelEffectEnabled', false)
       await expect(
         preview.locator(
-          '.settings-pixel-preview__canvas:not(.settings-pixel-preview__canvas--foreground)',
+          '.settings-pixel-preview__canvas:not(.settings-pixel-preview__canvas--foreground):not(.settings-pixel-preview__canvas--wall)',
         ),
       ).toBeHidden()
       await setPixelEffect(page, 'agentWorkingPixelEffectEnabled', true)
       await expect(field).toBeVisible()
-      await setPixelEffect(page, 'canvasPixelBackgroundEnabled', true)
+      await setBackgroundStyle(page, 'pixel')
       const replay = page.getByTestId('settings-pixel-effects-replay')
       await replay.click()
       await expect(preview).toHaveAttribute('data-playing', 'true')

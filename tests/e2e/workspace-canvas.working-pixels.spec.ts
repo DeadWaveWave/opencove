@@ -73,7 +73,7 @@ test('uses Cove by default and shows theme-adaptive, switchable Working rims fro
           defaultProvider: 'codex',
           language: 'en',
           standardWindowSizeBucket: 'compact',
-          canvasPixelBackgroundEnabled: false,
+          canvasBackgroundStyle: 'off',
           nodeCreationPixelEffectEnabled: false,
           nodeClosePixelEffectEnabled: false,
         },

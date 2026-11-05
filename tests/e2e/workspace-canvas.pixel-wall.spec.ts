@@ -1,7 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
 import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
-import { expectPaintedWall, readWallProbe } from './workspace-canvas.pixel-wall.helpers'
+import {
+  expectPaintedWall,
+  expectStillWall,
+  readWallProbe,
+} from './workspace-canvas.pixel-wall.helpers'
 import { wheelToZoom } from './workspace-canvas.zoom.helpers'
 
 type LoseContextWindow = Window & { __wallLoseContext?: WEBGL_lose_context | null }
@@ -127,6 +131,52 @@ test.describe('Workspace Canvas - Pixel Wall', () => {
         cells.add(cell.toFixed(1))
       }
       expect(cells.size).toBeGreaterThan(1)
+    } finally {
+      await electronApp.close()
+    }
+  })
+})
+
+test.describe('Workspace Canvas - Background style', () => {
+  test('switches between the pixel wall, the quiet dot grid and off, and holds still without twinkle', async ({
+    browserName,
+  }, testInfo) => {
+    void browserName
+    const { electronApp, window } = await launchApp()
+    try {
+      await seed(window)
+      await expectPaintedWall(window)
+      await window.getByTestId('app-header-control-center').click()
+      await window.getByTestId('control-center-toggle-background-twinkle').click()
+      await expectStillWall(window)
+
+      await window.getByTestId('control-center-background-style-minimal').check()
+      await expect(window.getByTestId('workspace-pixel-wall')).toHaveCount(0)
+      await expect(window.locator('.react-flow__background')).toBeVisible()
+      // The quiet grid keeps the effects layer for event signals.
+      await expect(window.getByTestId('workspace-pixel-layer')).toHaveCount(1)
+      await expect(window.getByTestId('control-center-toggle-background-twinkle')).toBeDisabled()
+      await testInfo.attach('background-minimal', {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+
+      await window.getByTestId('control-center-background-style-off').check()
+      await expect(window.getByTestId('workspace-pixel-wall')).toHaveCount(0)
+      await expect(window.locator('.react-flow__background')).toBeVisible()
+      await expect
+        .poll(() =>
+          window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            const settings = raw ? JSON.parse(raw).settings : null
+            return [settings?.canvasBackgroundStyle, settings?.canvasBackgroundTwinkleEnabled]
+          }),
+        )
+        .toEqual(['off', false])
+
+      await window.reload({ waitUntil: 'domcontentloaded' })
+      await expect(window.locator('.react-flow__background')).toBeVisible()
+      await expect(window.getByTestId('workspace-pixel-wall')).toHaveCount(0)
     } finally {
       await electronApp.close()
     }

@@ -89,16 +89,22 @@ context menus, branch actions and title editing retain their original behavior a
 
 ## Effect preferences
 
-Appearance exposes three independent, persisted boolean preferences:
+Appearance (and the Control Center) expose these persisted preferences:
 
-- `canvasPixelBackgroundEnabled`: the pixel wall and brief received-output edge activity. Off uses
-  the standard canvas dot grid. A theme whose background effect is not `pixel` keeps its own
-  background (or none) instead of the wall.
+- `canvasBackgroundStyle`: `pixel` (the pixel wall, the default), `minimal` (「简约」: the neutral
+  dot grid, still until an event, keeping received-output edge activity) or `off` (「关闭」: the dot
+  grid with no background effects). It replaces the old `canvasPixelBackgroundEnabled` switch,
+  read once at load: on becomes `pixel`, off becomes `off`. A theme whose background effect is not
+  `pixel` keeps its own background (or none) under `pixel`; its custom background never runs
+  under `minimal`.
+- `canvasBackgroundTwinkleEnabled` (「背景闪烁」, default on): twinkle and cloud drift on the wall.
+  Off, the wall holds still and paints only when the view or a window changes. Only applies to
+  `pixel`.
 - `nodeCreationPixelEffectEnabled`: transparent assembly, converging fragments and virtual pixel rim.
 - `nodeClosePixelEffectEnabled`: square fragments scattering from a successfully closed window.
 
-The settings owner normalizes missing preferences to on for Pixel-family settings and off for other
-legacy themes. Explicit choices survive theme changes and reload. Theme switching changes colors,
+The settings owner normalizes missing preferences to on (and `pixel`) for Pixel-family settings and
+off (and `off`) for other legacy themes. Explicit choices survive theme changes and reload. Theme switching changes colors,
 not preferences, and never replays creation or closing. Turning off an effect clears only its own
 visual state immediately. With all three off the effect layer is unmounted; with only creation/close
 enabled it schedules frames only while those effects are active. Pixel Space zoom detail is material
@@ -134,8 +140,8 @@ world, under every window and the effects layer.
 ## Canvas effects
 
 The effects canvas is a viewport-sized, read-only visual layer above the wall. It briefly
-highlights visible node edges when the existing PTY event hub delivers output. Its older moving
-pixel field no longer draws under the wall; phase 5.3 brings it back as the 「简约」 background style.
+highlights visible node edges when the existing PTY event hub delivers output. It paints no ambient
+background (the older ridge and scan-line field is retired) and requests no frames while idle.
 It retains only bounded session/timestamp observations, not output text or persisted application state.
 
 Agent identity and status use `resolveAgentPresentation`, including normal terminal nodes with an
@@ -149,10 +155,9 @@ The layer must:
 - Stay outside the terminal body and never resize or remount xterm/Monaco.
 - Coalesce output bursts into the decorative scheduler (30fps focused, 10fps in the background) at
   DPR 2.
-- Keep the visible gradient field moving at the same capped frame rate even when output is idle;
-  received-output activity still decays independently after 1050ms.
+- Received-output activity decays after 1050ms; an idle layer requests no frames.
 - Stop drawing when hidden/offscreen without pausing Agent execution or dropping runtime output.
-- Render a static field with reduced motion and disable activity particles.
+- Disable activity particles with reduced motion.
 - Discard stale activity on node/session changes and dispose all subscriptions and animation frames.
 - Skip filtered-out and offscreen nodes and allocate buffers for the viewport, not the infinite world.
 

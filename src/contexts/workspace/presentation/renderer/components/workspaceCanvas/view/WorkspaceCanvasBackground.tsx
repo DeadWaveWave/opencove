@@ -14,7 +14,8 @@ interface WorkspaceCanvasBackgroundProps {
   settings: Pick<
     AgentSettings,
     | 'uiTheme'
-    | 'canvasPixelBackgroundEnabled'
+    | 'canvasBackgroundStyle'
+    | 'canvasBackgroundTwinkleEnabled'
     | 'nodeCreationPixelEffectEnabled'
     | 'nodeClosePixelEffectEnabled'
     | 'agentWorkingPixelEffectEnabled'
@@ -29,8 +30,10 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
   nodes,
 }: WorkspaceCanvasBackgroundProps): React.JSX.Element {
   useSpaceVisualScale(canvasRef)
+  const style = settings.canvasBackgroundStyle
   const effects = {
-    background: settings.canvasPixelBackgroundEnabled,
+    // Received-output pixels are an event signal: kept by 「简约」, gone with 「关闭」.
+    background: style !== 'off',
     creation: settings.nodeCreationPixelEffectEnabled,
     closing: settings.nodeClosePixelEffectEnabled,
     working: settings.agentWorkingPixelEffectEnabled,
@@ -39,14 +42,14 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
   const motion = useSyncExternalStore(subscribeThemeMotion, readThemeMotion, readThemeMotion)
   const backgroundEffect = motion.background ?? { preset: 'pixel' }
   // A theme that brings its own background (or none) keeps it; otherwise the wall is the
-  // background and the particle layer above it only draws effects.
+  // pixel background. 「简约」 and 「关闭」 show the neutral dot grid.
   const wall =
-    effects.background && backgroundEffect.preset === 'pixel' && backgroundEffect.durationMs !== 0
+    style === 'pixel' && backgroundEffect.preset === 'pixel' && backgroundEffect.durationMs !== 0
 
   return (
     <>
-      {wall && <WorkspacePixelWall />}
-      {!effects.background && (
+      {wall && <WorkspacePixelWall ambient={settings.canvasBackgroundTwinkleEnabled} />}
+      {style !== 'pixel' && (
         <Background
           variant={BackgroundVariant.Dots}
           size={1}
@@ -54,7 +57,9 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
           color="var(--cove-canvas-dot)"
         />
       )}
-      {enabled && <WorkspacePixelLayer nodes={nodes} options={effects} wall={wall} />}
+      {enabled && (
+        <WorkspacePixelLayer nodes={nodes} options={effects} ambient={style === 'pixel'} />
+      )}
     </>
   )
 })

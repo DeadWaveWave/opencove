@@ -11,7 +11,8 @@ import {
 } from '@contexts/plugins/presentation/renderer/themeMotion'
 
 const effects = {
-  canvasPixelBackgroundEnabled: false,
+  canvasBackgroundStyle: 'off' as const,
+  canvasBackgroundTwinkleEnabled: true,
   nodeCreationPixelEffectEnabled: true,
   nodeClosePixelEffectEnabled: true,
   agentWorkingPixelEffectEnabled: false,
@@ -21,6 +22,12 @@ const context = {
   clearRect: vi.fn(),
   fillRect: vi.fn(),
   createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+  createImageData: vi.fn((width: number, height: number) => ({
+    data: new Uint8ClampedArray(width * height * 4),
+  })),
+  putImageData: vi.fn(),
+  drawImage: vi.fn(),
+  imageSmoothingEnabled: true,
 }
 let now = 0
 let reduced = false
@@ -34,6 +41,7 @@ const removeMotion = vi.fn()
 function fixture() {
   const scope = document.createElement('div')
   const node = document.createElement('div')
+  const wall = document.createElement('canvas')
   const background = document.createElement('canvas')
   const foreground = document.createElement('canvas')
   node.className = 'settings-pixel-preview__node'
@@ -41,9 +49,9 @@ function fixture() {
   scope.getBoundingClientRect = () => new DOMRect(0, 0, 420, 242)
   foreground.getBoundingClientRect = () => new DOMRect(0, 0, 420, 242)
   node.getBoundingClientRect = () => new DOMRect(220, 80, 150, 118)
-  scope.append(background, node, foreground)
+  scope.append(wall, background, node, foreground)
   document.body.append(scope)
-  return { scope, node, background, foreground }
+  return { scope, node, wall, background, foreground }
 }
 
 function tick(at: number) {
@@ -125,7 +133,7 @@ describe('isolated settings pixel preview', () => {
     const onState = vi.fn()
     const controller = createPixelEffectPreview(
       nodes,
-      { ...effects, canvasPixelBackgroundEnabled: true, agentWorkingPixelEffectEnabled: true },
+      { ...effects, canvasBackgroundStyle: 'pixel', agentWorkingPixelEffectEnabled: true },
       onState,
     )
     dispose = controller.dispose
@@ -172,12 +180,12 @@ describe('isolated settings pixel preview', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
-  it.each(['canvasPixelBackgroundEnabled', 'agentWorkingPixelEffectEnabled'] as const)(
-    'runs %s only while visible and stops immediately for reduced motion',
+  it.each([{ canvasBackgroundStyle: 'pixel' as const }, { agentWorkingPixelEffectEnabled: true }])(
+    'runs %j only while visible and stops immediately for reduced motion',
     flag => {
       const onState = vi.fn()
       const drawBackground = vi.spyOn(backgrounds, 'drawPixelLayer')
-      const controller = createPixelEffectPreview(fixture(), { ...effects, [flag]: true }, onState)
+      const controller = createPixelEffectPreview(fixture(), { ...effects, ...flag }, onState)
       dispose = controller.dispose
       tick(0)
       expect(frames.size).toBe(1)
@@ -195,6 +203,32 @@ describe('isolated settings pixel preview', () => {
       expect(frames.size).toBe(0)
     },
   )
+
+  it('shows a still pixel wall with twinkle off and no wall for the other styles', () => {
+    const nodes = fixture()
+    const still = createPixelEffectPreview(
+      nodes,
+      { ...effects, canvasBackgroundStyle: 'pixel', canvasBackgroundTwinkleEnabled: false },
+      vi.fn(),
+    )
+    dispose = still.dispose
+    tick(0)
+    expect(nodes.wall.hidden).toBe(false)
+    expect(context.drawImage).toHaveBeenCalled()
+    // A still wall paints once and asks for no more frames.
+    expect(frames.size).toBe(0)
+    still.dispose()
+    dispose = undefined
+    const minimal = fixture()
+    const quiet = createPixelEffectPreview(
+      minimal,
+      { ...effects, canvasBackgroundStyle: 'minimal' },
+      vi.fn(),
+    )
+    dispose = quiet.dispose
+    tick(0)
+    expect(minimal.wall.hidden).toBe(true)
+  })
 
   it('respects both disabled transition flags and removes every listener on disposal', () => {
     const nodes = fixture()

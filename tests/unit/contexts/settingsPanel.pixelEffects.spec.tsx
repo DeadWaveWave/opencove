@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import * as terminalProfilesHook from '../../../src/app/renderer/shell/hooks/useTerminalProfiles'
@@ -56,43 +56,51 @@ afterEach(async () => {
   await applyUiLanguage('en')
 })
 
+function backgroundStyle(name: string) {
+  return within(screen.getByRole('radiogroup', { name: 'Background' })).getByRole('radio', { name })
+}
+
 describe('independent Pixel effect controls in Appearance', () => {
   it.each(['dark', 'light', 'system', 'pixel', 'pixel-light'])(
-    'exposes all four controls for the %s theme',
+    'exposes the background style, twinkle and three effect switches for the %s theme',
     uiTheme => {
       render(<Harness initial={normalizeAgentSettings({ uiTheme })} />, {
         wrapper: EndpointOverviewProvider,
       })
-      for (const label of [
-        'Node Creation Effect',
-        'Node Closing Effect',
-        'Canvas Background Effect',
-        'Agent Working Effect',
-      ]) {
+      const legacyPixel = uiTheme === 'pixel' || uiTheme === 'pixel-light'
+      for (const label of ['Node Creation Effect', 'Node Closing Effect', 'Agent Working Effect']) {
         const control = screen.getByRole('switch', { name: label })
         expect(control).toBeEnabled()
-        expect(control).toHaveProperty('checked', uiTheme === 'pixel' || uiTheme === 'pixel-light')
+        expect(control).toHaveProperty('checked', legacyPixel)
       }
+      expect(backgroundStyle(legacyPixel ? 'Pixel' : 'Off')).toBeChecked()
+      // Twinkle belongs to the pixel wall.
+      const twinkle = screen.getByRole('switch', { name: 'Background Twinkle' })
+      expect(twinkle).toBeChecked()
+      expect(twinkle).toHaveProperty('disabled', !legacyPixel)
     },
   )
 
-  it('updates only the selected flags and retains choices when the theme changes', () => {
+  it('updates only the chosen setting and retains choices when the theme changes', () => {
     const onChange = vi.fn()
     render(<Harness initial={normalizeAgentSettings({ uiTheme: 'pixel' })} onChange={onChange} />, {
       wrapper: EndpointOverviewProvider,
     })
-    fireEvent.click(screen.getByRole('switch', { name: 'Canvas Background Effect' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Background Twinkle' }))
+    fireEvent.click(backgroundStyle('Minimal'))
     fireEvent.click(screen.getByRole('switch', { name: 'Node Closing Effect' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Agent Working Effect' }))
     fireEvent.click(screen.getByTestId('settings-ui-theme-family-cove'))
     fireEvent.click(screen.getByTestId('settings-ui-theme-mode-light'))
     expect(screen.getByRole('switch', { name: 'Node Creation Effect' })).toBeChecked()
     expect(screen.getByRole('switch', { name: 'Node Closing Effect' })).not.toBeChecked()
-    expect(screen.getByRole('switch', { name: 'Canvas Background Effect' })).not.toBeChecked()
+    expect(backgroundStyle('Minimal')).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Background Twinkle' })).toBeDisabled()
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         uiTheme: 'light',
-        canvasPixelBackgroundEnabled: false,
+        canvasBackgroundStyle: 'minimal',
+        canvasBackgroundTwinkleEnabled: false,
         nodeCreationPixelEffectEnabled: true,
         nodeClosePixelEffectEnabled: false,
         agentWorkingPixelEffectEnabled: false,
@@ -100,20 +108,26 @@ describe('independent Pixel effect controls in Appearance', () => {
     )
     fireEvent.click(screen.getByTestId('settings-ui-theme-family-pixel'))
     expect(screen.getByRole('switch', { name: 'Node Creation Effect' })).toBeChecked()
+    expect(backgroundStyle('Minimal')).toBeChecked()
     expect(screen.getByRole('switch', { name: 'Node Closing Effect' })).not.toBeChecked()
-    expect(screen.getByRole('switch', { name: 'Canvas Background Effect' })).not.toBeChecked()
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ uiTheme: 'pixel-light' }))
   })
 
-  it('provides localized labels and explains the standard-grid fallback', async () => {
+  it('provides localized labels and explains each background style', async () => {
     await applyUiLanguage('zh-CN')
     render(<Harness initial={normalizeAgentSettings({ uiTheme: 'dark' })} />, {
       wrapper: EndpointOverviewProvider,
     })
     expect(screen.getByRole('switch', { name: '创建效果' })).toBeVisible()
     expect(screen.getByRole('switch', { name: '关闭效果' })).toBeVisible()
-    expect(screen.getByRole('switch', { name: '画布背景效果' })).toBeVisible()
     expect(screen.getByRole('switch', { name: 'Agent 工作效果' })).toBeVisible()
-    expect(screen.getByText(/关闭后显示标准画布网格/)).toBeVisible()
+    expect(screen.getByRole('switch', { name: '背景闪烁' })).toBeVisible()
+    const group = screen.getByRole('radiogroup', { name: '背景' })
+    for (const name of ['像素', '简约', '关闭']) {
+      expect(within(group).getByRole('radio', { name })).toBeVisible()
+    }
+    expect(screen.getByText('普通点阵，没有背景效果。')).toBeVisible()
+    fireEvent.click(within(group).getByRole('radio', { name: '像素' }))
+    expect(screen.getByText(/一面玻璃像素墙/)).toBeVisible()
   })
 })

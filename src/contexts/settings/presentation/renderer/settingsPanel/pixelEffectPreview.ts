@@ -16,6 +16,7 @@ import {
   readPixelTheme,
 } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/renderer'
 import { createPixelFrameScheduler } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/scheduler'
+import { createPixelWallPreview } from './pixelWallPreview'
 import type {
   PixelNodeFrame,
   PixelViewport,
@@ -24,6 +25,7 @@ import type {
 export interface PixelEffectPreviewElements {
   scope: HTMLDivElement
   node: HTMLDivElement
+  wall: HTMLCanvasElement
   background: HTMLCanvasElement
   foreground: HTMLCanvasElement
 }
@@ -39,7 +41,7 @@ export function createPixelEffectPreview(
   effects: PixelEffectSettings,
   onState: (state: PixelEffectPreviewState) => void,
 ) {
-  const { scope, node, background, foreground } = elements
+  const { scope, node, wall, background, foreground } = elements
   const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
   let reducedMotion = media?.matches ?? false
   onState({ playing: false, reducedMotion })
@@ -57,12 +59,16 @@ export function createPixelEffectPreview(
   const customEffects = createThemeEffects(scope)
   const currentEffects = () =>
     resolveThemeEffectOptions({
-      background: effects.canvasPixelBackgroundEnabled,
+      background: effects.canvasBackgroundStyle !== 'off',
       creation: effects.nodeCreationPixelEffectEnabled,
       closing: effects.nodeClosePixelEffectEnabled,
       working: effects.agentWorkingPixelEffectEnabled,
     })
   const activity = createPixelActivity()
+  const wallPreview = createPixelWallPreview(wall, scope)
+  const showsWall = () =>
+    effects.canvasBackgroundStyle === 'pixel' && readThemeEffect('background').preset === 'pixel'
+  const wallAnimates = () => showsWall() && effects.canvasBackgroundTwinkleEnabled && !reducedMotion
   const originalVisibility = node.style.visibility
   let theme = readPixelTheme(background)
   let viewport: PixelViewport = { x: 0, y: 0, zoom: 1, width: 0, height: 0 }
@@ -89,6 +95,7 @@ export function createPixelEffectPreview(
     onState({ playing: false, reducedMotion })
   }
   const measure = () => {
+    wallPreview.measure()
     const bounds = foreground.getBoundingClientRect()
     const nodeBounds = node.getBoundingClientRect()
     viewport = { x: 0, y: 0, zoom: 1, width: bounds.width, height: bounds.height }
@@ -124,6 +131,11 @@ export function createPixelEffectPreview(
       }
       const frames = assembly.sample([nodeFrame], now)
       masks.update(frames, assembly.pendingIds(now))
+      if (showsWall()) {
+        wallPreview.draw(wallAnimates() ? now : null)
+      } else {
+        wallPreview.clear()
+      }
       if (options.background || options.working) {
         drawPixelLayer({
           canvas: background,
@@ -136,8 +148,6 @@ export function createPixelEffectPreview(
           reducedMotion,
           background: options.background && readThemeEffect('background').preset === 'pixel',
           working: options.working && readThemeEffect('working').preset === 'pixel',
-          backgroundNow:
-            (now * 8000) / Math.max(1, readThemeEffect('background').durationMs ?? 8000),
           workingNow: (now * 1400) / Math.max(1, readThemeEffect('working').durationMs ?? 1400),
         })
       } else {
@@ -169,7 +179,7 @@ export function createPixelEffectPreview(
         reopenAt = null
         onState({ playing: false, reducedMotion })
       }
-      return reopenAt !== null || (!reducedMotion && (options.background || options.working))
+      return reopenAt !== null || wallAnimates() || (!reducedMotion && options.working)
     },
   })
   const updateGeometry = () => {
@@ -192,6 +202,7 @@ export function createPixelEffectPreview(
     burst = createPixelBurst(closingDuration())
     masks = createPixelNodeMasks(scope, 'settings-pixel-preview__node', creationDuration())
     theme = readPixelTheme(background)
+    wallPreview.refreshTheme()
     scheduler.invalidate()
   }
   const updateMotion = () => {
@@ -249,6 +260,7 @@ export function createPixelEffectPreview(
       unsubscribeMotion()
       masks.dispose()
       customEffects.dispose()
+      wallPreview.dispose()
       assembly.clear()
       burst.clear()
       activity.clear()

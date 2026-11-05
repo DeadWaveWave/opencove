@@ -1,4 +1,5 @@
 import type { PixelEffectSettings } from './agentSettings.types'
+import { normalizeCanvasBackgroundStyle } from './canvasBackgroundSettings'
 import { normalizeBoolean } from './settingsNormalization'
 import type { UiTheme } from './uiSettings'
 
@@ -15,8 +16,13 @@ export function normalizePixelEffectSettings(
     savedUiTheme === 'pixel-light' ||
     savedUiTheme.startsWith('plugin:')
   return {
-    canvasPixelBackgroundEnabled:
-      normalizeBoolean(value.canvasPixelBackgroundEnabled) ?? legacyEnabled,
+    canvasBackgroundStyle: normalizeCanvasBackgroundStyle(
+      value.canvasBackgroundStyle,
+      normalizeBoolean(value.canvasPixelBackgroundEnabled),
+      legacyEnabled ? 'pixel' : 'off',
+    ),
+    // Ambient twinkle and cloud drift on the pixel wall; reduced motion still stops it.
+    canvasBackgroundTwinkleEnabled: normalizeBoolean(value.canvasBackgroundTwinkleEnabled) ?? true,
     nodeCreationPixelEffectEnabled:
       normalizeBoolean(value.nodeCreationPixelEffectEnabled) ?? legacyEnabled,
     nodeClosePixelEffectEnabled:

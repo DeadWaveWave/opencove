@@ -16,7 +16,11 @@ import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
 import { useTranslation } from '@app/renderer/i18n'
-import type { UiTheme } from '@contexts/settings/domain/agentSettings'
+import {
+  CANVAS_BACKGROUND_STYLES,
+  type CanvasBackgroundStyle,
+  type UiTheme,
+} from '@contexts/settings/domain/agentSettings'
 import {
   WINDOW_MATERIALS,
   type WindowMaterial,
@@ -40,7 +44,8 @@ export function ControlCenter({
   anchorRef,
   uiTheme,
   isMinimapVisible,
-  isPixelBackgroundEnabled,
+  backgroundStyle,
+  isBackgroundTwinkleEnabled,
   areMotionSignalsEnabled,
   hasActiveWorkspace,
   windowMaterial,
@@ -49,7 +54,8 @@ export function ControlCenter({
   onChangeUiTheme,
   onChangeWindowMaterial,
   onToggleMinimap,
-  onChangePixelBackground,
+  onChangeBackgroundStyle,
+  onChangeBackgroundTwinkle,
   onChangeMotionSignals,
   onOpenSettings,
 }: {
@@ -57,7 +63,8 @@ export function ControlCenter({
   anchorRef: React.RefObject<HTMLButtonElement | null>
   uiTheme: UiTheme
   isMinimapVisible: boolean
-  isPixelBackgroundEnabled: boolean
+  backgroundStyle: CanvasBackgroundStyle
+  isBackgroundTwinkleEnabled: boolean
   /** On when every pixel signal (creation, close, working) is on. */
   areMotionSignalsEnabled: boolean
   hasActiveWorkspace: boolean
@@ -68,7 +75,8 @@ export function ControlCenter({
   onChangeUiTheme: (theme: UiTheme) => void
   onChangeWindowMaterial: (material: WindowMaterial) => void
   onToggleMinimap: () => void
-  onChangePixelBackground: (enabled: boolean) => void
+  onChangeBackgroundStyle: (style: CanvasBackgroundStyle) => void
+  onChangeBackgroundTwinkle: (enabled: boolean) => void
   onChangeMotionSignals: (enabled: boolean) => void
   onOpenSettings: () => void
 }): React.JSX.Element | null {
@@ -216,18 +224,41 @@ export function ControlCenter({
         />
       </section>
 
+      <section className="control-center__section" aria-labelledby={`${titleId}-background`}>
+        <h3 id={`${titleId}-background`} className="control-center__section-label">
+          {t('controlCenter.background')}
+        </h3>
+        <SegmentedControl
+          className="control-center__segments"
+          labelledBy={`${titleId}-background`}
+          testId="control-center-background-style"
+          value={backgroundStyle}
+          options={CANVAS_BACKGROUND_STYLES.map(style => ({
+            value: style,
+            label: t(`controlCenter.backgroundStyle_${style}`),
+            testId: `control-center-background-style-${style}`,
+          }))}
+          onValueChange={onChangeBackgroundStyle}
+        />
+      </section>
+
       <div className="control-center__toggles">
-        <label className="control-center__row">
+        <label
+          className="control-center__row"
+          data-disabled={backgroundStyle !== 'pixel' ? '' : undefined}
+        >
           <span className="control-center__row-icon" aria-hidden="true">
             <Grid3x3 />
           </span>
-          <span className="control-center__row-label">{t('controlCenter.pixelBackground')}</span>
+          <span className="control-center__row-label">{t('controlCenter.backgroundTwinkle')}</span>
           <Toggle
-            ref={initialFocusRef}
-            checked={isPixelBackgroundEnabled}
-            label={t('controlCenter.pixelBackground')}
-            testId="control-center-toggle-pixel-background"
-            onCheckedChange={onChangePixelBackground}
+            // First focus lands on the first switch that can change.
+            ref={backgroundStyle === 'pixel' ? initialFocusRef : undefined}
+            checked={isBackgroundTwinkleEnabled}
+            disabled={backgroundStyle !== 'pixel'}
+            label={t('controlCenter.backgroundTwinkle')}
+            testId="control-center-toggle-background-twinkle"
+            onCheckedChange={onChangeBackgroundTwinkle}
           />
         </label>
         <label className="control-center__row">
@@ -236,6 +267,7 @@ export function ControlCenter({
           </span>
           <span className="control-center__row-label">{t('controlCenter.motionSignals')}</span>
           <Toggle
+            ref={backgroundStyle === 'pixel' ? undefined : initialFocusRef}
             checked={areMotionSignalsEnabled}
             label={t('controlCenter.motionSignals')}
             testId="control-center-toggle-motion-signals"

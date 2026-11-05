@@ -160,7 +160,7 @@
   background: var(--cove-app-background);
 }
 
-.settings-pixel-preview[data-background='false'] {
+.settings-pixel-preview:not([data-background='pixel']) {
   background-image: radial-gradient(var(--cove-canvas-dot) 1px, transparent 1px);
   background-size: 24px 24px;
   background-color: var(--cove-app-background-elevated);

@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { applyUiLanguage } from '@app/renderer/i18n'
-import type { UiTheme } from '@contexts/settings/domain/agentSettings'
+import type { CanvasBackgroundStyle, UiTheme } from '@contexts/settings/domain/agentSettings'
 import { examplePlugin } from '@contexts/plugins/presentation/renderer/pluginPresentationTestFixture'
 import * as registry from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import * as themeApplication from '@contexts/plugins/presentation/renderer/themeApplication'
@@ -12,7 +12,8 @@ import { ControlCenter } from './ControlCenter'
 const actions = {
   onChangeUiTheme: vi.fn(),
   onToggleMinimap: vi.fn(),
-  onChangePixelBackground: vi.fn(),
+  onChangeBackgroundStyle: vi.fn(),
+  onChangeBackgroundTwinkle: vi.fn(),
   onChangeMotionSignals: vi.fn(),
   onChangeWindowMaterial: vi.fn(),
 }
@@ -20,9 +21,11 @@ const actions = {
 function Harness({
   hasActiveWorkspace = true,
   uiTheme = 'pixel',
+  backgroundStyle = 'pixel',
 }: {
   hasActiveWorkspace?: boolean
   uiTheme?: UiTheme
+  backgroundStyle?: CanvasBackgroundStyle
 }) {
   const anchorRef = useRef<HTMLButtonElement | null>(null)
   const settingsRef = useRef<HTMLInputElement | null>(null)
@@ -42,7 +45,8 @@ function Harness({
         anchorRef={anchorRef}
         uiTheme={uiTheme}
         isMinimapVisible
-        isPixelBackgroundEnabled
+        backgroundStyle={backgroundStyle}
+        isBackgroundTwinkleEnabled
         areMotionSignalsEnabled={false}
         hasActiveWorkspace={hasActiveWorkspace}
         windowMaterial="glass"
@@ -60,6 +64,10 @@ function Harness({
       </Dialog>
     </>
   )
+}
+
+function themeRadio(name: string) {
+  return within(screen.getByRole('radiogroup', { name: 'Theme' })).getByRole('radio', { name })
 }
 
 function openControls() {
@@ -105,22 +113,28 @@ describe('Control Center surfaces', () => {
     openControls()
     const surface = screen.getByRole('dialog', { name: 'Control Center' })
     const minimap = screen.getByRole('switch', { name: 'Minimap' }) as HTMLInputElement
-    const pixelBackground = screen.getByRole('switch', { name: 'Pixel background' })
+    const pixelBackground = screen.getByRole('switch', { name: 'Background twinkle' })
     expect(surface.getAttribute('aria-modal')).toBeNull()
     expect(minimap.disabled).toBe(true)
     expect(document.activeElement).toBe(pixelBackground)
     expect(screen.getByRole('radiogroup', { name: 'Theme' })).not.toBeNull()
-    expect((screen.getByRole('radio', { name: 'Cove' }) as HTMLInputElement).checked).toBe(true)
+    expect((themeRadio('Cove') as HTMLInputElement).checked).toBe(true)
     expect((screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement).checked).toBe(true)
     // The notification banner lives in Settings now.
     expect(screen.queryByTestId('control-center-toggle-agent-standby-banner')).toBeNull()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Pixel' }))
+    fireEvent.click(themeRadio('Pixel'))
     expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('pixel')
     fireEvent.click(screen.getByRole('radio', { name: 'Follow System' }))
     expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('system')
     fireEvent.click(pixelBackground)
-    expect(actions.onChangePixelBackground).toHaveBeenCalledWith(false)
+    expect(actions.onChangeBackgroundTwinkle).toHaveBeenCalledWith(false)
+    fireEvent.click(
+      within(screen.getByRole('radiogroup', { name: 'Background' })).getByRole('radio', {
+        name: 'Minimal',
+      }),
+    )
+    expect(actions.onChangeBackgroundStyle).toHaveBeenCalledWith('minimal')
     fireEvent.click(screen.getByRole('switch', { name: 'Motion signals' }))
     expect(actions.onChangeMotionSignals).toHaveBeenCalledWith(true)
     expect(actions.onToggleMinimap).not.toHaveBeenCalled()
@@ -129,13 +143,25 @@ describe('Control Center surfaces', () => {
     expect(document.activeElement).toBe(outside)
   })
 
+  it('turns twinkle off with the pixel background and focuses the next switch instead', () => {
+    render(<Harness backgroundStyle="off" />)
+    openControls()
+    const twinkle = screen.getByRole('switch', { name: 'Background twinkle' }) as HTMLInputElement
+    expect(twinkle.disabled).toBe(true)
+    expect(document.activeElement).toBe(screen.getByRole('switch', { name: 'Motion signals' }))
+    const off = within(screen.getByRole('radiogroup', { name: 'Background' })).getByRole('radio', {
+      name: 'Off',
+    }) as HTMLInputElement
+    expect(off.checked).toBe(true)
+  })
+
   it('offers only the modes the current family has', () => {
     render(<Harness uiTheme="pixel-light" />)
     openControls()
-    expect((screen.getByRole('radio', { name: 'Pixel' }) as HTMLInputElement).checked).toBe(true)
+    expect((themeRadio('Pixel') as HTMLInputElement).checked).toBe(true)
     expect((screen.getByRole('radio', { name: 'Light' }) as HTMLInputElement).checked).toBe(true)
     expect(screen.queryByRole('radio', { name: 'Follow System' })).toBeNull()
-    fireEvent.click(screen.getByRole('radio', { name: 'Cove' }))
+    fireEvent.click(themeRadio('Cove'))
     expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('light')
   })
 
@@ -225,7 +251,7 @@ describe('Control Center surfaces', () => {
     render(<Harness />)
     const trigger = openControls()
     const surface = screen.getByRole('dialog', { name: 'Control Center' })
-    const pixelBackground = screen.getByRole('switch', { name: 'Pixel background' })
+    const pixelBackground = screen.getByRole('switch', { name: 'Background twinkle' })
     expect(surface.getAttribute('aria-modal')).toBe('true')
     expect(screen.getByTestId('app-shell').inert).toBe(true)
     expect(document.activeElement).toBe(pixelBackground)
@@ -267,9 +293,9 @@ describe('Control Center surfaces', () => {
     act(() => vi.runOnlyPendingTimers())
     expect(screen.getByTestId('app-shell').inert).toBe(false)
     expect(screen.getByTestId('control-center').getAttribute('aria-modal')).toBeNull()
-    expect(document.activeElement).toBe(screen.getByRole('switch', { name: 'Pixel background' }))
+    expect(document.activeElement).toBe(screen.getByRole('switch', { name: 'Background twinkle' }))
     expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
     expect(actions.onToggleMinimap).not.toHaveBeenCalled()
-    expect(actions.onChangePixelBackground).not.toHaveBeenCalled()
+    expect(actions.onChangeBackgroundTwinkle).not.toHaveBeenCalled()
   })
 })

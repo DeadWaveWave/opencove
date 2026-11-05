@@ -25,6 +25,7 @@ import {
   setPixelEffect,
   setPixelEffects,
   stopPixelEffectProbe,
+  setBackgroundStyle,
 } from './workspace-canvas.pixel-effects.helpers'
 import { expectSpaceFrameHeader } from './workspace-canvas.space-caption-border.helpers'
 import { wheelToZoom } from './workspace-canvas.zoom.helpers'
@@ -301,7 +302,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       )
       await openPixelAppearance(page)
       await setPixelEffect(page, 'nodeClosePixelEffectEnabled', false)
-      await setPixelEffect(page, 'canvasPixelBackgroundEnabled', false)
+      await setBackgroundStyle(page, 'off')
       await page.locator('.settings-panel__close').click()
       await page.getByTestId('app-header-control-center').click()
       await page.getByTestId('control-center-theme-mode-light').check()
@@ -312,7 +313,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       const mixed = {
         ...PIXEL_EFFECTS_ENABLED,
         nodeClosePixelEffectEnabled: false,
-        canvasPixelBackgroundEnabled: false,
+        canvasBackgroundStyle: 'off' as const,
       }
       await expect.poll(() => readPixelEffects(page)).toEqual(mixed)
       // The unchanged effect flags can already match the old snapshot. Wait for
