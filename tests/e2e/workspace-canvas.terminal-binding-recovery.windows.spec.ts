@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
+import { recoveredTerminalHasFreshOutput } from './terminal-binding-recovery.helpers'
 
 for (const uiTheme of ['dark', 'light'] as const) {
   test(`Windows recovered terminals publish their binding and accept fresh input (${uiTheme})`, async () => {
@@ -76,25 +77,11 @@ for (const uiTheme of ['dark', 'light'] as const) {
       await window.keyboard.press('Enter')
       await expect
         .poll(() =>
-          window.evaluate(
-            async ({ nodeId: targetNodeId, sessionId, marker: outputMarker }) => {
-              const api = window.__opencoveTerminalSelectionTestApi!
-              const snapshot = await window.opencoveApi.pty.presentationSnapshot({ sessionId })
-              const grid = api.getSize(targetNodeId)
-              const proposed = api.getProposedGeometry(targetNodeId)
-              return (
-                api
-                  .getBufferText(targetNodeId, '')
-                  .viewportLines.some(line => line === `${outputMarker}_INPUT_OK`) &&
-                snapshot.serializedScreen.includes(`${outputMarker}_INPUT_OK`) &&
-                grid?.cols === snapshot.cols &&
-                grid?.rows === snapshot.rows &&
-                grid?.cols === proposed?.cols &&
-                grid?.rows === proposed?.rows
-              )
-            },
-            { nodeId, sessionId: recoveredSessionId, marker },
-          ),
+          window.evaluate(recoveredTerminalHasFreshOutput, {
+            nodeId,
+            sessionId: recoveredSessionId,
+            marker,
+          }),
         )
         .toBe(true)
       await expect(terminal.getByTestId('terminal-geometry-feedback')).toHaveCount(0)
