@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
 import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import {
+  expectAnimatedWall,
   expectPaintedWall,
   expectStillWall,
   readWallProbe,
@@ -64,8 +65,8 @@ test.describe('Workspace Canvas - Pixel Wall', () => {
       const wall = window.getByTestId('workspace-pixel-wall')
       const renderer = await wall.getAttribute('data-cove-wall-renderer')
       testInfo.annotations.push({ type: 'pixel-wall-renderer', description: renderer ?? '' })
-      // Ambient motion runs on the decorative scheduler.
-      expect(await animatedFramesAfter(window, 500)).toBeGreaterThan(3)
+      // Ambient motion progresses even when an unfocused runner delivers frames slowly.
+      await expectAnimatedWall(window, testInfo)
       await testInfo.attach('pixel-wall', {
         body: await window.screenshot(),
         contentType: 'image/png',
@@ -101,7 +102,7 @@ test.describe('Workspace Canvas - Pixel Wall', () => {
       await expect(wall).toHaveAttribute('data-cove-wall-state', 'ready')
       await expect(wall).toHaveAttribute('data-cove-wall-renderer', 'webgl')
       await expect(window.locator('.workspace-pixel-wall__surface--2d')).toBeHidden()
-      expect(await animatedFramesAfter(window, 500)).toBeGreaterThan(3)
+      await expectAnimatedWall(window, testInfo)
     } finally {
       await electronApp.close()
     }
