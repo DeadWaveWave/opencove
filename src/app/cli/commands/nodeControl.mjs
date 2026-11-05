@@ -110,10 +110,12 @@ function buildCreateData(kind, args) {
     }
   }
   if (kind === 'agent') {
+    const agentFullAccess = readBooleanFlagValue(args, '--full-access')
     return {
       prompt: readFlagValue(args, '--prompt') ?? '',
       provider: readFlagValue(args, '--provider'),
       model: readFlagValue(args, '--model'),
+      ...(agentFullAccess === null ? {} : { agentFullAccess }),
     }
   }
   return {

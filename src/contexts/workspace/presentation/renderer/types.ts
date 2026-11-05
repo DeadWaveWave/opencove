@@ -88,6 +88,8 @@ export interface AgentNodeData {
   customDirectory: string | null
   shouldCreateDirectory: boolean
   taskId: string | null
+  /** Explicit permission mode from the launch that created the node; absent means follow the global setting. */
+  agentFullAccess?: boolean
 }
 
 export interface TerminalAgentSessionBinding {

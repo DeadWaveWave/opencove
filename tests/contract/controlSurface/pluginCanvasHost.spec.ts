@@ -254,6 +254,16 @@ describe('plugin canvas routing over two authenticated Workers', () => {
       expect(remotePty.runtime.spawnSession).toHaveBeenLastCalledWith(
         expect.objectContaining({ cwd: remoteRoot }),
       )
+      await expect(
+        host('agents.launch', { target, prompt: 'x', provider: 'codex', agentFullAccess: 'no' }),
+      ).rejects.toThrow('agentFullAccess must be a boolean')
+      const normal = await host<CreateNodeResult>('agents.launch', {
+        target,
+        prompt: 'Inspect in normal mode',
+        provider: 'codex',
+        agentFullAccess: false,
+      })
+      expect(normal.node).toMatchObject({ kind: 'agent', data: { provider: 'codex' } })
       expect(await host('agents.get', { nodeId: agent.node.id })).toMatchObject({
         node: { id: agent.node.id },
         session: { status: 'running' },

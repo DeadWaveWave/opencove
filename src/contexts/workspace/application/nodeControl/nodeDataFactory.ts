@@ -34,7 +34,13 @@ export type NodeControlCreateData =
       sessionMode: WebsiteWindowSessionMode
       profileId: string | null
     }
-  | { kind: 'agent'; prompt: string; provider: AgentProviderId | null; model: string | null }
+  | {
+      kind: 'agent'
+      prompt: string
+      provider: AgentProviderId | null
+      model: string | null
+      agentFullAccess?: boolean
+    }
   | { kind: 'terminal'; shell: string | null; command: string | null; profileId: string | null }
 
 export interface AgentNodeRuntimeData {
@@ -134,6 +140,18 @@ function normalizeAgentProvider(value: unknown): AgentProviderId | null {
   throw createAppError('common.invalid_input', { debugMessage: 'Invalid agent provider.' })
 }
 
+function normalizeAgentFullAccess(value: unknown): { agentFullAccess?: boolean } {
+  if (value === undefined) {
+    return {}
+  }
+  if (typeof value === 'boolean') {
+    return { agentFullAccess: value }
+  }
+  throw createAppError('common.invalid_input', {
+    debugMessage: 'node.create agent data.agentFullAccess must be a boolean.',
+  })
+}
+
 export function normalizeCreateNodeData(
   kind: ManagedCanvasNodeKind,
   data: unknown,
@@ -194,6 +212,7 @@ export function normalizeCreateNodeData(
       prompt: typeof record.prompt === 'string' ? record.prompt : '',
       provider: normalizeAgentProvider(record.provider),
       model: normalizeOptionalString(record.model),
+      ...normalizeAgentFullAccess(record.agentFullAccess),
     }
   }
 
@@ -342,6 +361,9 @@ export function makeNode(options: {
           customDirectory: null,
           shouldCreateDirectory: false,
           taskId: null,
+          ...(options.data.kind === 'agent' && options.data.agentFullAccess !== undefined
+            ? { agentFullAccess: options.data.agentFullAccess }
+            : {}),
         }
       : null
 

@@ -110,3 +110,84 @@ describe('legacy local agent hydration binding', () => {
     },
   )
 })
+
+describe('persisted agentFullAccess during hydration', () => {
+  const fullAccessSettings = { ...DEFAULT_AGENT_SETTINGS, agentFullAccess: true }
+  const offSettings = { ...DEFAULT_AGENT_SETTINGS, agentFullAccess: false }
+
+  function withAgent(
+    node: Node<TerminalNodeData>,
+    patch: Partial<NonNullable<TerminalNodeData['agent']>>,
+  ): Node<TerminalNodeData> {
+    return { ...node, data: { ...node.data, agent: { ...node.data.agent!, ...patch } } }
+  }
+
+  it('relaunches a blank agent with its persisted explicit false over a global true', async () => {
+    const hydrated = await hydrateAgentNode({
+      node: withAgent(blankAgent('claude-code'), { agentFullAccess: false }),
+      workspacePath: '/test/workspace',
+      agentSettings: fullAccessSettings,
+    })
+
+    expect(launch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ mode: 'new', agentFullAccess: false }),
+    )
+    expect(hydrated.data.agent).toMatchObject({ agentFullAccess: false })
+  })
+
+  it('resumes a verified agent with its persisted explicit true over a global false', async () => {
+    await hydrateAgentNode({
+      node: withAgent(blankAgent('claude-code'), {
+        agentFullAccess: true,
+        resumeSessionId: assignedSessionId,
+        resumeSessionIdVerified: true,
+      }),
+      workspacePath: '/test/workspace',
+      agentSettings: offSettings,
+    })
+
+    expect(launch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        mode: 'resume',
+        resumeSessionId: assignedSessionId,
+        agentFullAccess: true,
+      }),
+    )
+  })
+
+  it('resumes with the persisted explicit false when the global setting is on', async () => {
+    await hydrateAgentNode({
+      node: withAgent(blankAgent('claude-code'), {
+        agentFullAccess: false,
+        resumeSessionId: assignedSessionId,
+        resumeSessionIdVerified: true,
+      }),
+      workspacePath: '/test/workspace',
+      agentSettings: fullAccessSettings,
+    })
+
+    expect(launch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ mode: 'resume', agentFullAccess: false }),
+    )
+  })
+
+  it('keeps following the global setting for legacy agents without the field', async () => {
+    await hydrateAgentNode({
+      node: blankAgent('claude-code'),
+      workspacePath: '/test/workspace',
+      agentSettings: offSettings,
+    })
+
+    expect(launch).toHaveBeenLastCalledWith(expect.objectContaining({ agentFullAccess: false }))
+  })
+
+  it('never rewrites the persisted explicit value during runtime observation', async () => {
+    const hydrated = await hydrateAgentNode({
+      node: withAgent(blankAgent('claude-code'), { agentFullAccess: false }),
+      workspacePath: '/test/workspace',
+      agentSettings: fullAccessSettings,
+    })
+
+    expect(hydrated.data.agent?.agentFullAccess).toBe(false)
+  })
+})

@@ -94,4 +94,42 @@ describe('CLI node control commands', () => {
       },
     })
   })
+  it('forwards an explicit --full-access value on node create agent', async () => {
+    const requests = stubInvokeRequests()
+
+    await invokeNodeArgs(['node', 'create', 'agent', '--space', 'space-1', '--full-access', 'true'])
+    await invokeNodeArgs([
+      'node',
+      'create',
+      'agent',
+      '--space',
+      'space-1',
+      '--full-access',
+      'false',
+    ])
+
+    expect(requests.map(request => request.payload.data?.agentFullAccess)).toEqual([true, false])
+  })
+
+  it('omits agentFullAccess from node create agent when --full-access is absent', async () => {
+    const requests = stubInvokeRequests()
+
+    await invokeNodeArgs(['node', 'create', 'agent', '--space', 'space-1', '--prompt', 'hi'])
+
+    expect(requests).toHaveLength(1)
+    expect(requests[0].payload.data).not.toHaveProperty('agentFullAccess')
+  })
+
+  it('rejects a non-boolean --full-access value before sending the request', async () => {
+    const requests = stubInvokeRequests()
+    vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new Error(`exit ${code}`)
+    }) as never)
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+    await expect(
+      invokeNodeArgs(['node', 'create', 'agent', '--space', 'space-1', '--full-access', 'yes']),
+    ).rejects.toThrow('exit 2')
+    expect(requests).toHaveLength(0)
+  })
 })

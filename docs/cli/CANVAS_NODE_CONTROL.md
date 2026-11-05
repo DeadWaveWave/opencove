@@ -35,7 +35,7 @@ Command:
 opencove node create note [space locator] [--title <text>] [--text <text>] [--frame <json>] [--focus] [--pretty]
 opencove node create task [space locator] --requirement <text> [--title <text>] [--priority <low|medium|high|urgent>] [--tag <tag>] [--frame <json>] [--focus] [--pretty]
 opencove node create website [space locator] --url <url> [--title <text>] [--pinned] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
-opencove node create agent [space locator] [--prompt <text>] [--provider <id>] [--model <id>] [--frame <json>] [--focus] [--pretty]
+opencove node create agent [space locator] [--prompt <text>] [--provider <id>] [--model <id>] [--full-access <true|false>] [--frame <json>] [--focus] [--pretty]
 opencove node create terminal [space locator] [--shell <path>] [--command <text>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
 opencove node update note --node <id> [--title <text>] [--text <text>] [--frame <json>] [--pretty]
 opencove node update task --node <id> [--title <text>] [--requirement <text>] [--priority <low|medium|high|urgent>] [--status <todo|doing|ai_done|done>] [--tag <tag>] [--frame <json>] [--pretty]
@@ -120,6 +120,9 @@ Website:
 Agent:
 
 - Create 会先通过 session launch path 启动 runtime。
+- `--full-access true|false`（DTO: `data.agentFullAccess`）显式选择本次启动的权限模式。省略时使用全局 Agent 设置 `agentFullAccess`（默认 `true`）；显式值优先于全局设置。只接受 boolean，其他值返回 `common.invalid_input`。
+- 显式值会持久化到 agent node 的 `agentFullAccess`；之后的 relaunch / 恢复优先使用它，只有没有该字段的旧数据才回退到全局设置。运行时观察不会改写该值。
+- Claude Code：`true` 传 `--dangerously-skip-permissions`；`false` 传 `--permission-mode default`（显式默认权限模式，即使用户级默认是 auto mode 也会覆盖为需要审批的模式）。新建与恢复两条路径一致。Codex 对 `false` 使用 `--sandbox workspace-write --ask-for-approval on-request`。
 - 启动失败时不持久化 agent node。
 - 持久化失败时 best-effort kill 已启动 session。
 

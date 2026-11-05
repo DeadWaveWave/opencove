@@ -357,4 +357,80 @@ describe('session prepare/revive agent runtime metadata', () => {
     expect(prepared.agent?.executionDirectory).toBe('C:\\repo\\worktrees\\feature-a')
     expect(prepared.agent?.expectedDirectory).toBe('C:\\repo\\worktrees\\feature-a')
   })
+
+  it.each([
+    { persisted: false, global: true, expected: false },
+    { persisted: true, global: false, expected: true },
+    { persisted: undefined, global: false, expected: false },
+    { persisted: undefined, global: true, expected: true },
+  ])(
+    'revives claude with persisted=$persisted and global=$global as agentFullAccess=$expected',
+    async ({ persisted, global, expected }) => {
+      const launchPayloads: unknown[] = []
+      const controlSurface: ControlSurface = {
+        invoke: vi.fn(async (_ctx, request) => {
+          if (request.id === 'mount.list') {
+            return { ok: true, value: createMountListValue() }
+          }
+          launchPayloads.push(request.payload)
+          return {
+            ok: true,
+            value: {
+              sessionId: 'mounted-session-1',
+              provider: 'claude-code' as const,
+              startedAt: '2026-05-01T00:00:00.000Z',
+              executionContext: {
+                projectId: 'workspace-1',
+                spaceId: 'space-1',
+                mountId: 'mount-1',
+                targetId: 'target-1',
+                endpoint: { endpointId: 'local', kind: 'local' as const },
+                target: {
+                  scheme: 'file' as const,
+                  rootPath: 'C:\\repo',
+                  rootUri: 'file:///C:/repo',
+                },
+                scope: { rootPath: 'C:\\repo', rootUri: 'file:///C:/repo' },
+                workingDirectory: 'C:\\repo',
+              },
+              profileId: null,
+              runtimeKind: 'windows' as const,
+              resumeSessionId: 'resume-1',
+              effectiveModel: 'sonnet',
+              command: 'cmd.exe',
+              args: ['/d', '/c', 'claude.cmd', '--resume', 'resume-1'],
+            },
+          }
+        }),
+      } as ControlSurface
+      const space: NormalizedPersistedSpace = {
+        id: 'space-1',
+        name: 'Main',
+        directoryPath: 'C:\\repo',
+        targetMountId: 'mount-1',
+        labelColor: null,
+        nodeIds: ['agent-1'],
+        rect: null,
+      }
+
+      await prepareAgentNode({
+        controlSurface,
+        ctx,
+        store: { readNodeScrollback: vi.fn(async () => null) } as never,
+        workspace: createWorkspace(space),
+        node: createAgentNode({ status: 'exited', exitCode: 0 }),
+        space,
+        agent: {
+          ...createAgentRecord(),
+          provider: 'claude-code',
+          effectiveModel: 'sonnet',
+          ...(persisted === undefined ? {} : { agentFullAccess: persisted }),
+        },
+        settings: { ...DEFAULT_AGENT_SETTINGS, agentFullAccess: global },
+      })
+
+      expect(launchPayloads).toHaveLength(1)
+      expect(launchPayloads[0]).toMatchObject({ agentFullAccess: expected })
+    },
+  )
 })

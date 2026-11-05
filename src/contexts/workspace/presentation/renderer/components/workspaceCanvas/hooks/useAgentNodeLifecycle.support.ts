@@ -113,6 +113,9 @@ export async function launchAgentRuntime({
     mountId,
   })
 
+  // A node created with an explicit permission mode keeps it; legacy nodes follow the global setting.
+  const effectiveAgentFullAccess = node.data.agent.agentFullAccess ?? agentFullAccess
+
   if (mountId) {
     const cwd = executionDirectory.trim()
     const cwdUri = cwd.length > 0 ? toFileUri(cwd) : null
@@ -129,7 +132,7 @@ export async function launchAgentRuntime({
         resumeSessionId: mode === 'resume' ? resumeSessionId : null,
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
-        agentFullAccess,
+        agentFullAccess: effectiveAgentFullAccess,
         cols: launchGeometry.terminalGeometry.cols,
         rows: launchGeometry.terminalGeometry.rows,
       },
@@ -162,7 +165,7 @@ export async function launchAgentRuntime({
     resumeSessionId: mode === 'resume' ? resumeSessionId : null,
     ...(executablePathOverride ? { executablePathOverride } : {}),
     ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
-    agentFullAccess,
+    agentFullAccess: effectiveAgentFullAccess,
     cols: launchGeometry.terminalGeometry.cols,
     rows: launchGeometry.terminalGeometry.rows,
   })

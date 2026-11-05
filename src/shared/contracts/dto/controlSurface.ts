@@ -367,6 +367,7 @@ export interface PreparedRuntimeAgentResult {
   customDirectory: string | null
   shouldCreateDirectory: boolean
   taskId: string | null
+  agentFullAccess?: boolean
 }
 
 export type AgentRecoveryIssue = 'codex_writer_locked' | 'remote_worker_unavailable'

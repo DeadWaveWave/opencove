@@ -126,6 +126,7 @@ export async function prepareAgentNode(options: {
   }
   const isRemoteLaunchContext = isRemoteNodeWorkerBinding(agentLaunchContext.workerBinding)
 
+  const agentFullAccess = options.agent.agentFullAccess ?? settings.agentFullAccess
   const invokeAgentLaunch = async (mode: 'new' | 'resume'): Promise<LaunchAgentSessionResult> => {
     if (agentLaunchContext.mountId) {
       return await invokeCommand<LaunchAgentSessionResult>(controlSurface, ctx, {
@@ -139,7 +140,7 @@ export async function prepareAgentNode(options: {
           model: sanitizedAgent.model,
           resumeSessionId: mode === 'resume' ? sanitizedAgent.resumeSessionId : null,
           ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
-          agentFullAccess: settings.agentFullAccess,
+          agentFullAccess,
           cols: initialGeometry.cols,
           rows: initialGeometry.rows,
         },
@@ -156,7 +157,7 @@ export async function prepareAgentNode(options: {
         model: sanitizedAgent.model,
         resumeSessionId: mode === 'resume' ? sanitizedAgent.resumeSessionId : null,
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
-        agentFullAccess: settings.agentFullAccess,
+        agentFullAccess,
         cols: initialGeometry.cols,
         rows: initialGeometry.rows,
       },

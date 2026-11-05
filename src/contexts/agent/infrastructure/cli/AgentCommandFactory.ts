@@ -57,6 +57,16 @@ function maybeTerminateOptionParsing(args: string[], value: string): void {
   }
 }
 
+function appendClaudeAccessArgs(args: string[], agentFullAccess: boolean): void {
+  if (agentFullAccess) {
+    args.push('--dangerously-skip-permissions')
+    return
+  }
+
+  // Explicit, so "off" never falls back to the user's own default mode (e.g. auto mode).
+  args.push('--permission-mode', 'default')
+}
+
 function appendCodexAccessArgs(args: string[], agentFullAccess: boolean): void {
   if (agentFullAccess) {
     args.push('--dangerously-bypass-approvals-and-sandbox')
@@ -77,10 +87,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
     }
 
     const args: string[] = []
-
-    if (agentFullAccess) {
-      args.push('--dangerously-skip-permissions')
-    }
+    appendClaudeAccessArgs(args, agentFullAccess)
 
     if (effectiveModel) {
       args.push('--model', effectiveModel)

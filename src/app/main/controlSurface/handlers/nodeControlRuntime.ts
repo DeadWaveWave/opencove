@@ -74,6 +74,8 @@ export function createRuntimeDeps(
     assertActive: ctx.assertActive,
     validateTarget: ctx.validateNodeTarget,
     launchAgent: async (resolved, data) => {
+      const permissionMode =
+        data.agentFullAccess === undefined ? {} : { agentFullAccess: data.agentFullAccess }
       const payload = resolved.mount
         ? {
             mountId: resolved.mount.mountId,
@@ -81,12 +83,14 @@ export function createRuntimeDeps(
             prompt: data.prompt,
             provider: data.provider,
             model: data.model,
+            ...permissionMode,
           }
         : {
             spaceId: resolved.space?.id,
             prompt: data.prompt,
             provider: data.provider,
             model: data.model,
+            ...permissionMode,
           }
       ctx.assertActive?.()
       const launched = await invokeInternal<Record<string, unknown>>(controlSurface, ctx, {

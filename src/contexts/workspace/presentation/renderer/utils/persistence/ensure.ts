@@ -172,6 +172,9 @@ function ensurePersistedAgentData(value: unknown): AgentNodeData | null {
     shouldCreateDirectory:
       typeof record.shouldCreateDirectory === 'boolean' ? record.shouldCreateDirectory : false,
     taskId: normalizeOptionalString(record.taskId),
+    ...(typeof record.agentFullAccess === 'boolean'
+      ? { agentFullAccess: record.agentFullAccess }
+      : {}),
   }
 }
 
