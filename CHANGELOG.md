@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 💅 Changed
 
+- Canvas: in far view each window is a kind-coloured tile with a large icon, a bold title and a status pixel, as in the Tide prototype, and every Space name is the same size whatever the Space's width.
 - Appearance: replace the Standard theme with Cove, whose colors are generated with checked contrast, and use Cove Dark for new installs. Ember is retired and existing Ember choices move to Cove; Pixel is unchanged. (#439)
 - Appearance: icon buttons show themed tooltips that follow the theme, appear sooner and also open on keyboard focus. (#442)
 - Agent windows: status pills use larger text and reserve color for what needs attention: working uses the accent, waiting is yellow, failed is red and every other state is neutral. (#443)

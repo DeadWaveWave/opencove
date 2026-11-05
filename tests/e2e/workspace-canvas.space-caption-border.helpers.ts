@@ -46,8 +46,11 @@ export async function expectSpaceFrameHeader(page: Page, lod: 'near' | 'far' = '
       }
       expect(space.edge.preservesOtherEdges, `remaining frame edges: ${evidence}`).toBe(true)
       for (const caption of space.edge.captions) {
+        // A far caption may run past a narrow Space; only its part over the frame cuts the edge.
+        const left = Math.max(caption.left, space.rect.x)
+        const right = Math.min(caption.right, space.rect.x + space.rect.width)
         expect(
-          space.edge.gaps.some(gap => gap.left <= caption.left && gap.right >= caption.right),
+          space.edge.gaps.some(gap => gap.left <= left && gap.right >= right),
           `${caption.kind} border must be absent under its visible caption: ${evidence}`,
         ).toBe(true)
       }
