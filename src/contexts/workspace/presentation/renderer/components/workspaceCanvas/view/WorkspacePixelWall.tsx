@@ -4,6 +4,7 @@ import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { TerminalNodeData } from '../../../types'
 import { createPixelFrameScheduler } from './pixelLayer/scheduler'
 import { fillWallCells } from './pixelWall/wallCells'
+import { createWallDissolve } from './pixelWall/wallDissolve'
 import { projectWallGlass, readWallGlassRadius } from './pixelWall/wallGlass'
 import { createPixelWallController } from './pixelWall/wallController'
 import type { WallFrame } from './pixelWall/wallFrame'
@@ -58,6 +59,8 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     let cells: Uint8ClampedArray | undefined
     let screenCell = 0
     let lightsAnimating = false
+    let dissolving = false
+    const dissolve = createWallDissolve()
 
     const buildFrame = (now: number | null): WallFrame => {
       const grid = resolveWallGrid({ x, y, zoom, width, height })
@@ -72,14 +75,22 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         glassRects,
       )
       glassRects = glass.rects
-      recordWallFrame(cells, ambientSeconds !== null || lit.animating, lit.windows, glass.count)
+      // A change of cell size dissolves over 120ms instead of jumping.
+      const shown = dissolve.apply(grid, cells, now === null || reducedMotion ? null : now)
+      dissolving = shown.animating
+      recordWallFrame(
+        shown.cells,
+        ambientSeconds !== null || lit.animating,
+        lit.windows,
+        glass.count,
+      )
       if (grid.screenCell !== screenCell) {
         screenCell = grid.screenCell
         host.dataset.coveWallCell = screenCell.toFixed(2)
       }
       return {
         grid,
-        cells,
+        cells: shown.cells,
         gapColor: palette.gap,
         glass,
         width,
@@ -103,7 +114,9 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       requestFrame: callback => window.requestAnimationFrame(callback),
       cancelFrame: id => window.cancelAnimationFrame(id),
       draw: now =>
-        controller.render(now) && !reducedMotion && (ambientRef.current || lightsAnimating),
+        controller.render(now) &&
+        !reducedMotion &&
+        (ambientRef.current || lightsAnimating || dissolving),
     })
     scheduler = activeScheduler
     const repaint = () => activeScheduler.invalidate({ immediate: true })
