@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
+import { useWorkspaceCanvasSelectNode } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSelectNode'
 import { useWorkspaceCanvasState } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasState'
 import { useWorkspaceCanvasApplyNodeChanges } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges'
 import type { WorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
@@ -61,7 +62,15 @@ function renderSelectionOwner() {
         isNodeDraggingRef,
         nodeDragSession: session,
       })
-      return { canvas, apply }
+      const select = useWorkspaceCanvasSelectNode({
+        setNodes: canvas.setCanvasNodes,
+        setSelectedNodeIds: canvas.setSelectedNodeIds,
+        setSelectedSpaceIds: canvas.setSelectedSpaceIds,
+        selectedNodeIdsRef: canvas.selectedNodeIdsRef,
+        selectedSpaceIdsRef: canvas.selectedSpaceIdsRef,
+        spacesRef: canvas.spacesRef,
+      })
+      return { canvas, apply, select }
     },
     { wrapper: ReactFlowProvider },
   )
@@ -69,6 +78,27 @@ function renderSelectionOwner() {
 }
 
 describe('canvas selection owner', () => {
+  it('keeps the window projection stable when the active window is selected again', () => {
+    const { result } = renderSelectionOwner()
+    act(() => result.current.select('compact'))
+    const selection = result.current.canvas.selectedNodeIds
+    const windows = result.current.canvas.flowNodes
+
+    // Native activation can re-enter selection while a viewport gesture is frozen. The
+    // public selection writer owns equality for every caller, including updater functions.
+    for (let activation = 0; activation < 3; activation += 1) {
+      act(() => result.current.select('compact'))
+      expect(result.current.canvas.selectedNodeIds).toBe(selection)
+      expect(result.current.canvas.flowNodes).toBe(windows)
+    }
+    act(() => result.current.canvas.setSelectedNodeIds(ids => [...ids]))
+    expect(result.current.canvas.flowNodes).toBe(windows)
+
+    act(() => result.current.select('peer', { toggle: true }))
+    expect(result.current.canvas.selectedNodeIds).toEqual(['peer', 'compact'])
+    expect(result.current.canvas.flowNodes).not.toBe(windows)
+  })
+
   it('replaces selection in the node-change transaction before publishing a compact drag frame', () => {
     const { result, rerender, order } = renderSelectionOwner()
     act(() => result.current.apply([{ type: 'select', id: 'peer', selected: true }]))

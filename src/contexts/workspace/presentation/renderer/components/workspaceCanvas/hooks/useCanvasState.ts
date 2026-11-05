@@ -113,7 +113,7 @@ export function useWorkspaceCanvasState({
   const [canvasNodes, setCanvasNodes] = useState(nodes)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [isMinimapVisible, setIsMinimapVisible] = useState(persistedMinimapVisible)
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
+  const [selectedNodeIds, setSelectedNodeIdsState] = useState<string[]>([])
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([])
   const [, setEmptySelectionPrompt] = useState<EmptySelectionPromptState | null>(null)
   const [selectionDraftUi, setSelectionDraftUi] = useState<SelectionDraftUiState | null>(null)
@@ -140,20 +140,30 @@ export function useWorkspaceCanvasState({
   const viewportRef = useRef<Viewport>(viewport)
   const spaceNavigationAnchorIdRef = useRef<string | null>(null)
 
-  const syncSelectedNodeIds = useCallback((nodeIds: string[]) => {
-    if (selectionDraftRef.current !== null) {
-      return
-    }
-
-    setSelectedNodeIds(current =>
-      current.length === nodeIds.length && current.every((id, index) => id === nodeIds[index])
+  // Selection owns the window projection's identity. Native activation may select the
+  // active window again; equal IDs must not republish every node through collapse context.
+  const setSelectedNodeIds = useCallback((update: React.SetStateAction<string[]>) => {
+    setSelectedNodeIdsState(current => {
+      const next = typeof update === 'function' ? update(current) : update
+      return current.length === next.length && current.every((id, index) => id === next[index])
         ? current
-        : nodeIds,
-    )
-    if (nodeIds.length > 0) {
-      setEmptySelectionPrompt(null)
-    }
+        : next
+    })
   }, [])
+
+  const syncSelectedNodeIds = useCallback(
+    (nodeIds: string[]) => {
+      if (selectionDraftRef.current !== null) {
+        return
+      }
+
+      setSelectedNodeIds(nodeIds)
+      if (nodeIds.length > 0) {
+        setEmptySelectionPrompt(null)
+      }
+    },
+    [setSelectedNodeIds],
+  )
 
   const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds])
 
@@ -184,7 +194,7 @@ export function useWorkspaceCanvasState({
     }
 
     setSelectedNodeIds(resolvedSelection)
-  }, [canvasNodes, selectedNodeIds])
+  }, [canvasNodes, selectedNodeIds, setSelectedNodeIds])
 
   const flowNodes = useMemo(
     () =>

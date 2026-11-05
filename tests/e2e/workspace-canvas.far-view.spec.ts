@@ -25,7 +25,7 @@ async function setZoom(window: Page, zoom: number) {
   ).toBe(true)
 }
 
-async function continuousWheelGesture(window: Page, deltaY: number) {
+async function continuousWheelGesture(window: Page, deltaY: number, reactivate = false) {
   const point = await hoverCanvasPane(window)
   return await window.locator('.workspace-canvas .react-flow__pane').evaluate(
     async (pane, gesture) => {
@@ -38,6 +38,15 @@ async function continuousWheelGesture(window: Page, deltaY: number) {
       // Input and the freeze debounce share the renderer clock. A descheduled test runner
       // must neither split one gesture into two nor sample "during" after it has thawed.
       for (let step = 0; step < 15; step += 1) {
+        if (gesture.reactivate && step % 4 === 3) {
+          const website = document.querySelector('.website-node__viewport')
+          if (!website) {
+            throw new Error('Missing active website viewport')
+          }
+          // Re-enter the real activation path with the same selected website. Selection is
+          // unchanged; republishing it must not rebuild every window during the gesture.
+          website.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }))
+        }
         pane.dispatchEvent(
           new WheelEvent('wheel', {
             deltaY: gesture.deltaY,
@@ -53,7 +62,7 @@ async function continuousWheelGesture(window: Page, deltaY: number) {
       }
       return window.__opencoveWorkspaceCanvasTestApi!.getWindowCommitCounts()
     },
-    { deltaY, point },
+    { deltaY, point, reactivate },
   )
 }
 
@@ -216,7 +225,7 @@ test('far view draws windows as tiles and leaves running terminals untouched', a
   }
 })
 
-test('zoom steps and a continuous wheel gesture do not commit window headers', async () => {
+async function checkZoomWindowCommits(reducedTransparency: boolean) {
   const testInfo = test.info()
   const server = createServer((_request, response) => {
     response.writeHead(200, { 'Content-Type': 'text/html' })
@@ -236,6 +245,12 @@ test('zoom steps and a continuous wheel gesture do not commit window headers', a
   // Allow effects, viewport persistence and interaction-settle timers to finish before reading.
   const settle = () => window.waitForTimeout(600)
   try {
+    if (reducedTransparency) {
+      const session = await window.context().newCDPSession(window)
+      await session.send('Emulation.setEmulatedMedia', {
+        features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }],
+      })
+    }
     await clearAndSeedWorkspace(
       window,
       [
@@ -298,6 +313,9 @@ test('zoom steps and a continuous wheel gesture do not commit window headers', a
       },
     )
     await expect(window.locator('.website-node')).toBeVisible()
+    if (reducedTransparency) {
+      await expect(window.locator('html')).toHaveAttribute('data-cove-transparency', 'reduced')
+    }
     await expect.poll(async () => (await readTerminal(window)).instanceId).not.toBeNull()
     await expect(
       window.locator(`[data-id="${TERMINAL}"] .terminal-node__terminal`),
@@ -397,7 +415,7 @@ test('zoom steps and a continuous wheel gesture do not commit window headers', a
     await hoverCanvasPane(window)
     await settle()
     await reset()
-    const activeGesture = continuousWheelGesture(window, 8)
+    const activeGesture = continuousWheelGesture(window, 8, reducedTransparency)
     await new Promise(resolve => setTimeout(resolve, 140))
     // Model a descheduled test runner without consuming CPU or blocking the renderer.
     execFileSync(process.execPath, ['-e', 'setTimeout(() => {}, 500)'], { timeout: 5_000 })
@@ -449,4 +467,11 @@ test('zoom steps and a continuous wheel gesture do not commit window headers', a
     await electronApp.close()
     await closeWebsiteTestServer(server)
   }
-})
+}
+
+for (const reducedTransparency of [false, true]) {
+  const condition = reducedTransparency ? ' (reduced transparency, repeated activation)' : ''
+  test(`zoom steps and a continuous wheel gesture do not commit window headers${condition}`, async () => {
+    await checkZoomWindowCommits(reducedTransparency)
+  })
+}
