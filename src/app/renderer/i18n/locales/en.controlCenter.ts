@@ -16,6 +16,8 @@ export const enControlCenter = {
     backgroundStyle_off: 'Off',
     backgroundTwinkle: 'Background twinkle',
     motionSignals: 'Motion signals',
+    showcase: 'Showcase mode',
+    showcaseExitHint: 'Showcase mode · press Esc to leave',
     moreSettings: 'All settings',
     shown: 'Shown',
     hidden: 'Hidden',

@@ -16,6 +16,8 @@ export const zhCNControlCenter = {
     backgroundStyle_off: '关闭',
     backgroundTwinkle: '背景闪烁',
     motionSignals: '动态信号',
+    showcase: '展示模式',
+    showcaseExitHint: '展示模式 · 按 Esc 退出',
     moreSettings: '全部设置',
     shown: '已显示',
     hidden: '已隐藏',

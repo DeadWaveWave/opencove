@@ -23,6 +23,9 @@ export const enCommandCenter = {
       togglePrimarySidebarHint: 'Toggle Primary Sidebar',
       addProject: 'Add Project',
       addProjectHint: 'Create a project and mounts',
+      enterShowcase: 'Enter Showcase Mode',
+      exitShowcase: 'Exit Showcase Mode',
+      showcaseHint: 'Hide the interface for recordings and demos',
     },
   },
 }

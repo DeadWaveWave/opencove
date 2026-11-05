@@ -86,13 +86,24 @@ test.describe('Control Center', () => {
       })
       expect(darkVisuals.width).toBeCloseTo(360, 0)
       expect(darkVisuals.height).toBeGreaterThanOrEqual(260)
-      // Four segmented rows and three switches; short windows scroll the panel instead.
-      expect(darkVisuals.height).toBeLessThanOrEqual(560)
+      // Four segmented rows and four switches; short windows scroll the panel instead.
+      expect(darkVisuals.height).toBeLessThanOrEqual(600)
       expect(darkVisuals.titleFontSize).toBeCloseTo(darkVisuals.rowLabelFontSize, 1)
       expect(darkVisuals.rowIconBackground).toBe('rgba(0, 0, 0, 0)')
       expect(darkVisuals.rowStatusCount).toBe(0)
       // Appearance, family, material and background controls span the panel's width.
       expect(darkVisuals.segmentWidths.every(width => width > darkVisuals.width - 40)).toBe(true)
+      // Each section's label starts where its control does.
+      const labelOffsets = await controlCenter.evaluate(element =>
+        Array.from(element.querySelectorAll('.control-center__section'), section => {
+          const label = section.querySelector('.control-center__section-label')
+          const control = section.querySelector('.control-center__segments')
+          return label && control
+            ? Math.round(label.getBoundingClientRect().left - control.getBoundingClientRect().left)
+            : null
+        }).filter(offset => offset !== null),
+      )
+      expect(labelOffsets).toEqual([0, 0, 0, 0])
       expect(darkVisuals.radius).toBe('8px')
       expect(darkVisuals.overflow).toBe(false)
       expect(darkVisuals.toggleTrack).not.toBe(darkVisuals.toggleThumb)

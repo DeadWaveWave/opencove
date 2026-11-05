@@ -2,6 +2,7 @@ import React, { memo, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useStoreApi, type Node } from '@xyflow/react'
 import { useShellWallCovered, useShellWallLayer } from '@app/renderer/shell/shellWallLayer'
+import { useShowcaseMode } from '@app/renderer/shell/showcase/showcaseMode'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { TerminalNodeData } from '../../../types'
 import { createPixelFrameScheduler } from './pixelLayer/scheduler'
@@ -35,6 +36,8 @@ const SHOCKWAVE = { reach: 1400, durationMs: 1600, gain: 0.85, crest: true }
 const FAILURE_WAVE = { reach: 220, durationMs: 600, gain: 0.7 }
 /** How long a window's edge glows when the shockwave passes it. */
 const SWEEP_MS = 500
+/** Showcase mode's clouds drift this many times faster (Tide 6.1). */
+const SHOWCASE_CLOUD_SPEED = 4
 
 /**
  * The pixel wall behind the canvas (Tide phase 5.2). Ambient motion follows the decorative
@@ -59,6 +62,9 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
   const layer = useShellWallLayer()
   const covered = useShellWallCovered()
   const coveredRef = useRef(covered)
+  // Showcase mode: the wall keeps moving even with twinkle off, and its clouds drift faster.
+  const showcase = useShowcaseMode()
+  const showcaseRef = useRef(showcase)
   const ambientRef = useRef(ambient)
   const signalsRef = useRef(signals)
   signalsRef.current = signals
@@ -76,7 +82,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     }
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
     let reducedMotion = media.matches
-    const still = () => reducedMotion || !ambientRef.current
+    const still = () => reducedMotion || (!ambientRef.current && !showcaseRef.current)
     let palette = readWallPalette(host)
     let lights = readWallLightPalette(host)
     let glassRadius = readWallGlassRadius(host)
@@ -181,7 +187,16 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       // Under a sheet that covers the canvas (settings) the whole wall is behind glass and the
       // windows are hidden, so it frosts everything and draws no window glass.
       const frosted = coveredRef.current ? [{ x: 0, y: 0, width, height }] : chrome
-      cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows, waves, frosted)
+      cells = fillWallCells(
+        grid,
+        palette,
+        ambientSeconds,
+        cells,
+        lit.windows,
+        waves,
+        frosted,
+        showcaseRef.current ? SHOWCASE_CLOUD_SPEED : 1,
+      )
       const glass = projectWallGlass(
         coveredRef.current ? [] : lit.windows,
         view,
@@ -236,7 +251,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       draw: now =>
         controller.render(now) &&
         !reducedMotion &&
-        (ambientRef.current || lightsAnimating || dissolving),
+        (ambientRef.current || showcaseRef.current || lightsAnimating || dissolving),
     })
     scheduler = activeScheduler
     const repaint = () => activeScheduler.invalidate({ immediate: true })
@@ -370,6 +385,11 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     coveredRef.current = covered
     repaintRef.current?.()
   }, [covered])
+
+  useLayoutEffect(() => {
+    showcaseRef.current = showcase
+    repaintRef.current?.()
+  }, [showcase])
 
   // Inside the app the layer mounts with the shell; until then there is nowhere to paint.
   if (layer === null) {

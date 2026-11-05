@@ -174,6 +174,17 @@ world, under every window and the effects layer.
   glass and chrome rects) and the host's `data-cove-wall-renderer` / `data-cove-wall-state` /
   `data-cove-wall-cell`.
 
+## Showcase mode
+
+For screen recordings and demos (Tide 6.1): the command center's "Enter Showcase Mode" or the
+control center's switch hides the top bar, sidebar, canvas HUD, zoom controls and minimap, and the
+canvas fills the window. The canvas shows the pixel wall whatever the saved background, the wall
+keeps moving at the decorative frame rate even with twinkle off, and its clouds drift four times
+faster; reduced motion still holds it still. Esc (when nothing open uses it first) or the same
+command leaves. It is session state with one owner (`showcase/showcaseMode.ts`, which marks the
+document with `data-cove-showcase`): nothing is saved, the layout returns exactly, and a restart
+starts without it. A short hint says how to leave, then fades.
+
 ## Output ripples
 
 Received output (the PTY event hub) sends a ripple out from the window's centre (Tide phase 5.4a):

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { ShellWallCoverContext, ShellWallLayerContext } from '../shellWallLayer'
+import { ShowcaseHint } from '../showcase/ShowcaseHint'
 
 /**
  * The app shell's root. Its first child is the wall layer the canvas paints its pixel wall
@@ -26,6 +27,7 @@ export function AppShellFrame({
       <ShellWallLayerContext.Provider value={wallLayer}>
         <ShellWallCoverContext.Provider value={cover}>{children}</ShellWallCoverContext.Provider>
       </ShellWallLayerContext.Provider>
+      <ShowcaseHint />
     </div>
   )
 }

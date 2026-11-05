@@ -1,0 +1,46 @@
+/* Showcase mode (Tide 6.1): the canvas fills the window and the interface frame hides, for
+   screen recordings and demos. Session-only; `data-cove-showcase` is set by showcaseMode. */
+:root[data-cove-showcase] .app-shell {
+  --cove-app-header-height: 0px;
+  --cove-primary-sidebar-width: 0px;
+  transition: none;
+}
+
+:root[data-cove-showcase]
+  :is(
+    .app-header,
+    .workspace-sidebar,
+    .workspace-canvas-hud,
+    .workspace-canvas__controls,
+    .workspace-canvas__minimap-dock
+  ) {
+  display: none;
+}
+
+.showcase-hint {
+  position: fixed;
+  left: 50%;
+  bottom: var(--cove-spacing-6);
+  z-index: var(--cove-z-toast, 60);
+  translate: -50% 0;
+  padding: var(--cove-spacing-2) var(--cove-spacing-4);
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: var(--cove-radius-round);
+  background: var(--cove-acrylic-surface);
+  color: var(--cove-text);
+  font-size: var(--cove-font-size-secondary);
+  pointer-events: none;
+  animation: showcase-hint-out 400ms var(--cove-ease-standard) 2000ms both;
+}
+
+@keyframes showcase-hint-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .showcase-hint {
+    animation: none;
+  }
+}
