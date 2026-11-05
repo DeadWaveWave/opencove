@@ -10,7 +10,7 @@ export const RIPPLE_LIMIT = 24
 const RIPPLE_REACH = 640
 
 export interface Ripple {
-  /** Who sent it: a window id. */
+  /** Who sent it: a window id, or `complete:` / `fail:` / `waiting:` plus one. */
   key?: string
   /** Centre in world px. */
   x: number
@@ -21,6 +21,17 @@ export interface Ripple {
   /** 0–1, fading as the ripple travels. */
   strength: number
   color: Rgb
+  /** How strongly the wavefront pulls a cell toward its colour; output ripples use the default. */
+  gain?: number
+  /** A white crest in blank space, never behind glass (the completion shockwave). */
+  crest?: boolean
+}
+
+export interface WaveOptions {
+  reach?: number
+  durationMs?: number
+  gain?: number
+  crest?: boolean
 }
 
 /**
@@ -29,19 +40,38 @@ export interface Ripple {
  * success or completion. Runtime only.
  */
 export function createRippleField() {
-  const ripples: Array<{ key: string; x: number; y: number; color: Rgb; startedAt: number }> = []
+  const ripples: Array<{
+    key: string
+    x: number
+    y: number
+    color: Rgb
+    startedAt: number
+    reach: number
+    durationMs: number
+    gain?: number
+    crest?: boolean
+  }> = []
   const lastByWindow = new Map<string, number>()
   const prune = (now: number) => {
     for (let index = ripples.length - 1; index >= 0; index--) {
-      if (now - ripples[index]!.startedAt > RIPPLE_DURATION_MS) {
+      if (now - ripples[index]!.startedAt > ripples[index]!.durationMs) {
         ripples.splice(index, 1)
       }
     }
   }
 
   return {
-    /** Returns whether a ripple started; throttled per window and capped overall. */
-    emit(windowId: string, center: { x: number; y: number }, color: Rgb, now: number): boolean {
+    /**
+     * Returns whether a wave started; throttled per key and capped overall. Signal waves (a
+     * finished run, a failure) pass their own key and shape.
+     */
+    emit(
+      windowId: string,
+      center: { x: number; y: number },
+      color: Rgb,
+      now: number,
+      options: WaveOptions = {},
+    ): boolean {
       prune(now)
       const last = lastByWindow.get(windowId)
       if (last !== undefined && now - last < RIPPLE_WINDOW_INTERVAL_MS) {
@@ -51,7 +81,17 @@ export function createRippleField() {
         return false
       }
       lastByWindow.set(windowId, now)
-      ripples.push({ key: windowId, x: center.x, y: center.y, color, startedAt: now })
+      ripples.push({
+        key: windowId,
+        x: center.x,
+        y: center.y,
+        color,
+        startedAt: now,
+        reach: options.reach ?? RIPPLE_REACH,
+        durationMs: options.durationMs ?? RIPPLE_DURATION_MS,
+        ...(options.gain === undefined ? {} : { gain: options.gain }),
+        ...(options.crest ? { crest: true } : {}),
+      })
       return true
     },
     sample(now: number): Ripple[] {
@@ -59,16 +99,18 @@ export function createRippleField() {
       return ripples
         .filter(ripple => now >= ripple.startedAt)
         .map(ripple => {
-          const t = (now - ripple.startedAt) / RIPPLE_DURATION_MS
+          const t = (now - ripple.startedAt) / ripple.durationMs
           const eased = 1 - (1 - t) ** 3
           return {
             key: ripple.key,
             x: ripple.x,
             y: ripple.y,
-            radius: 24 + (RIPPLE_REACH - 24) * eased,
+            radius: 24 + (ripple.reach - 24) * eased,
             band: 30 + 18 * t,
             strength: (1 - t) ** 1.5,
             color: ripple.color,
+            ...(ripple.gain === undefined ? {} : { gain: ripple.gain }),
+            ...(ripple.crest ? { crest: true } : {}),
           }
         })
     },

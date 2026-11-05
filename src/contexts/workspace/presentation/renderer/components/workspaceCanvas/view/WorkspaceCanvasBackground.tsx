@@ -8,6 +8,7 @@ import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '../../../types'
 import { WorkspacePixelLayer } from './WorkspacePixelLayer'
 import { WorkspacePixelWall } from './WorkspacePixelWall'
+import { WorkspaceWindowSignals } from './windowSignals/WorkspaceWindowSignals'
 import { useSpaceVisualScale } from './useSpaceVisualScale'
 
 interface WorkspaceCanvasBackgroundProps {
@@ -49,6 +50,11 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
   return (
     <>
       {wall && <WorkspacePixelWall ambient={settings.canvasBackgroundTwinkleEnabled} />}
+      <WorkspaceWindowSignals
+        nodes={nodes}
+        canvasRef={canvasRef}
+        enabled={settings.agentWorkingPixelEffectEnabled}
+      />
       {style !== 'pixel' && (
         <Background
           variant={BackgroundVariant.Dots}

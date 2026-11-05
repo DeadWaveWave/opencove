@@ -72,3 +72,26 @@ describe('output ripples', () => {
     }
   })
 })
+
+describe('signal waves', () => {
+  it('lets a wave set its own reach, duration and strength, outside the output throttle', () => {
+    const field = createRippleField()
+    field.emit('a', { x: 0, y: 0 }, red, 0)
+    expect(
+      field.emit('complete:a', { x: 0, y: 0 }, red, 10, {
+        reach: 1400,
+        durationMs: 1600,
+        gain: 0.85,
+        crest: true,
+      }),
+    ).toBe(true)
+    // The output ripple is over by now; the wave carries on.
+    const waves = field.sample(1200)
+    expect(waves).toHaveLength(1)
+    const [wave] = waves
+    expect(wave).toMatchObject({ gain: 0.85, crest: true })
+    // Still alive after an output ripple's second, and travelling further.
+    expect(wave!.radius).toBeGreaterThan(640)
+    expect(field.sample(1700)).toHaveLength(0)
+  })
+})

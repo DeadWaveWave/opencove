@@ -6,6 +6,8 @@ import { createPixelFrameScheduler } from './pixelLayer/scheduler'
 import { fillWallCells } from './pixelWall/wallCells'
 import { createWallDissolve } from './pixelWall/wallDissolve'
 import { createRippleField } from './pixelWall/ripples'
+import { showWindowSignal } from './windowSignals/frameSignals'
+import { subscribeWindowSignal } from './windowSignals/windowSignalEvents'
 import { projectWallGlass, readWallGlassRadius } from './pixelWall/wallGlass'
 import { createPixelWallController } from './pixelWall/wallController'
 import type { WallFrame } from './pixelWall/wallFrame'
@@ -17,6 +19,12 @@ import { readWallLightPalette, readWallPalette } from './pixelWall/wallPalette'
 import { createWallWindowTracker } from './pixelWall/wallWindows'
 
 const WAITING_PULSE_MS = 1800
+/** A finished run's shockwave: stronger and further than an output ripple, with a white crest. */
+const SHOCKWAVE = { reach: 1400, durationMs: 1600, gain: 0.85, crest: true }
+/** A failure's small red ripple. */
+const FAILURE_WAVE = { reach: 220, durationMs: 600, gain: 0.7 }
+/** How long a window's edge glows when the shockwave passes it. */
+const SWEEP_MS = 500
 
 /**
  * The pixel wall behind the canvas (Tide phase 5.2). Ambient motion follows the decorative
@@ -66,6 +74,8 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     const dissolve = createWallDissolve()
     const ripples = createRippleField()
     const lastPulse = new Map<string, number>()
+    const swept = new Map<string, Set<string>>()
+    const signalScope = host.closest('.react-flow') ?? document
 
     const buildFrame = (now: number | null): WallFrame => {
       const grid = resolveWallGrid({ x, y, zoom, width, height })
@@ -80,6 +90,28 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         }
       }
       const waves = now === null || reducedMotion ? [] : ripples.sample(now)
+      // As the shockwave passes another window, that window's 1px edge glows in the sender's
+      // colour for a moment; the fill behind its text never changes.
+      for (const wave of waves) {
+        if (!wave.crest || !wave.key) {
+          continue
+        }
+        const done = swept.get(wave.key) ?? new Set([wave.key.slice('complete:'.length)])
+        swept.set(wave.key, done)
+        for (const { id, rect } of tracker.frames()) {
+          const dx = Math.max(rect.x - wave.x, 0, wave.x - (rect.x + rect.width))
+          const dy = Math.max(rect.y - wave.y, 0, wave.y - (rect.y + rect.height))
+          if (!done.has(id) && Math.hypot(dx, dy) <= wave.radius) {
+            done.add(id)
+            showWindowSignal(signalScope, id, 'swept', wave.color, SWEEP_MS)
+          }
+        }
+      }
+      for (const key of swept.keys()) {
+        if (!waves.some(wave => wave.key === key)) {
+          swept.delete(key)
+        }
+      }
       lightsAnimating = lit.animating || waves.length > 0 || pulsing.length > 0
       cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows, waves)
       const glass = projectWallGlass(
@@ -188,6 +220,19 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
           activeScheduler.invalidate()
         })
       : () => undefined
+    const unsubscribeSignals = subscribeWindowSignal(({ kind, nodeId }) => {
+      const source = tracker.find(nodeId)
+      if (!source || reducedMotion) {
+        return
+      }
+      const at = performance.now()
+      if (kind === 'complete') {
+        ripples.emit(`complete:${nodeId}`, source.center, lights[source.family], at, SHOCKWAVE)
+      } else {
+        ripples.emit(`fail:${nodeId}`, source.center, lights.failed, at, FAILURE_WAVE)
+      }
+      activeScheduler.invalidate({ immediate: true })
+    })
     const onMotionChange = () => {
       reducedMotion = media.matches
       if (reducedMotion) {
@@ -209,6 +254,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     return () => {
       unsubscribeStore()
       unsubscribeOutput()
+      unsubscribeSignals()
       kindColors?.disconnect()
       resizeObserver?.disconnect()
       window.removeEventListener('opencove-theme-changed', onThemeChange)

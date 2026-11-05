@@ -1,0 +1,94 @@
+/* Window frame signals (Tide 5.4d). They light only the frame, never the fill behind text. */
+.react-flow__node[data-cove-signal] {
+  /* The signal writes its colour inline; this is only the fallback. */
+  --cove-signal-color: var(--cove-accent);
+  border-radius: var(--cove-node-radius);
+}
+
+/* A finished run: the frame flashes in the window's colour and pixel sparks leave its corners. */
+.react-flow__node[data-cove-signal='complete'] {
+  animation: cove-signal-complete 1.2s ease-out;
+}
+
+.react-flow__node[data-cove-signal='complete']::after,
+.react-flow__node[data-cove-signal='fail']::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--cove-signal-color), var(--cove-signal-color)) top left / 4px 4px no-repeat,
+    linear-gradient(var(--cove-signal-color), var(--cove-signal-color)) top right / 4px 4px
+      no-repeat,
+    linear-gradient(var(--cove-signal-color), var(--cove-signal-color)) bottom left / 4px 4px
+      no-repeat,
+    linear-gradient(var(--cove-signal-color), var(--cove-signal-color)) bottom right / 4px 4px
+      no-repeat;
+  animation: cove-signal-sparks 640ms steps(5) forwards;
+}
+
+/* A failure: the frame jolts sideways in a short scanline glitch and red fragments fly off. */
+.react-flow__node[data-cove-signal='fail'] {
+  box-shadow: 0 0 0 1px var(--cove-signal-color);
+  animation: cove-signal-fail 280ms steps(4);
+}
+
+/* A passing shockwave brightens another window's 1px edge in the sender's colour. */
+.react-flow__node[data-cove-signal='swept'] {
+  box-shadow: 0 0 0 1px var(--cove-signal-color);
+  animation: cove-signal-swept 500ms ease-out forwards;
+}
+
+@keyframes cove-signal-complete {
+  0% {
+    box-shadow: 0 0 0 1px var(--cove-signal-color);
+  }
+  25% {
+    box-shadow:
+      0 0 0 2px var(--cove-signal-color),
+      0 0 28px 6px color-mix(in srgb, var(--cove-signal-color) 38%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 1px transparent;
+  }
+}
+
+@keyframes cove-signal-sparks {
+  to {
+    inset: -18px;
+    opacity: 0;
+  }
+}
+
+@keyframes cove-signal-fail {
+  25% {
+    translate: 3px 0;
+  }
+  50% {
+    translate: -2px 0;
+  }
+  75% {
+    translate: 1px 0;
+  }
+}
+
+@keyframes cove-signal-swept {
+  to {
+    box-shadow: 0 0 0 1px transparent;
+  }
+}
+
+/* Reduced motion: the frame's colour flashes once and a failure keeps a still red outline. */
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__node[data-cove-signal] {
+    animation: none;
+  }
+
+  .react-flow__node[data-cove-signal='complete'] {
+    box-shadow: 0 0 0 2px var(--cove-signal-color);
+  }
+
+  .react-flow__node[data-cove-signal]::after {
+    content: none;
+  }
+}

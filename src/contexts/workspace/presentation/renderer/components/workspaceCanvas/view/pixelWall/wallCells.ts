@@ -16,6 +16,8 @@ export interface WallWindowRect {
 /** Cells within this many cells of a window count as behind its glass, frame shadow included. */
 const GLASS_REACH_CELLS = 2
 
+const WHITE: Rgb = [255, 255, 255]
+
 /** How strongly a ripple's wavefront pulls a cell toward its colour. */
 const RIPPLE_GAIN = 0.62
 
@@ -209,10 +211,16 @@ export function fillWallCells(
   // Output ripples brighten the cells their wavefront passes, in the window's kind colour.
   for (const ripple of ripples) {
     forEachRingCell(grid, ripple, (column, row, weight) => {
-      const k = RIPPLE_GAIN * ripple.strength * weight
-      if (k >= 0.01) {
-        const cell = row * grid.columns + column
-        moved[cell] = mix(cells, cell * 4, ripple.color, k, moved[cell]!)
+      const k = (ripple.gain ?? RIPPLE_GAIN) * ripple.strength * weight
+      if (k < 0.01) {
+        return
+      }
+      const cell = row * grid.columns + column
+      moved[cell] = mix(cells, cell * 4, ripple.color, k, moved[cell]!)
+      // The shockwave's white crest stays in blank space: behind glass only the window colour
+      // may show, which keeps text over glass within its checked contrast (Tide).
+      if (ripple.crest && weight > 0.5 && !behind?.[cell]) {
+        moved[cell] = mix(cells, cell * 4, WHITE, Math.min(1, k * (weight - 0.5) * 2), moved[cell]!)
       }
     })
   }
