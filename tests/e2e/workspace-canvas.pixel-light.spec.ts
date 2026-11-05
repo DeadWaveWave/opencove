@@ -181,7 +181,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
     try {
       await (
         await electronApp.browserWindow(page)
-      ).evaluate(window => window.setContentSize(1800, 1200))
+      ).evaluate(window => window.setContentSize(1440, 900))
       await seedIdentityFixture(page, fixture)
       await printIdentityMarker(page)
       const geometry = await nodeGeometry(page)
@@ -254,6 +254,9 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       await wheelToZoom(page, 1)
       expect(await terminalIdentity(page)).toEqual(identity)
       expect(await nodeGeometry(page)).toEqual(geometry)
+      // The native window can stay this small on macOS CI. Wheel zoom is pointer-centred,
+      // so different unobstructed anchors do not undo the pan when the zoom returns to 1.
+      await page.locator('.react-flow__controls-fitview').click()
       await printIdentityMarker(page)
       await selectIdentityTheme(page, 'pixel')
       await expect(
