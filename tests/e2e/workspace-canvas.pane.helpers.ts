@@ -21,3 +21,20 @@ export async function findEmptyPanePoint(pane: Locator): Promise<{ x: number; y:
   }
   return point
 }
+
+/**
+ * Where a marquee can start near the canvas's top left corner: 40px in, moved down past the
+ * HUD's far / near switch when it covers that spot. Client coordinates.
+ */
+export async function findMarqueeCorner(pane: Locator): Promise<{ x: number; y: number }> {
+  return await pane.evaluate(element => {
+    const rect = element.getBoundingClientRect()
+    const x = rect.left + 40
+    for (let y = rect.top + 40; y < rect.bottom - 16; y += 4) {
+      if (!document.elementFromPoint(x, y)?.closest('.workspace-canvas-hud')) {
+        return { x, y }
+      }
+    }
+    return { x, y: rect.top + 40 }
+  })
+}
