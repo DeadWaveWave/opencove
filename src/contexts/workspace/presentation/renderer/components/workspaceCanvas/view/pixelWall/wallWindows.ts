@@ -144,7 +144,11 @@ export function createWallWindowTracker() {
         })
         animating ||= light.animating
         const color = light.tone === 'kind' ? palette[window.family] : palette[light.tone]
-        return { ...window.rect, light: { color, intensity: light.intensity } }
+        return {
+          ...window.rect,
+          light: { color, intensity: light.intensity },
+          active: window.state === 'working' || window.state === 'waiting',
+        }
       })
       return { windows: resolved, animating }
     },

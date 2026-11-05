@@ -125,7 +125,16 @@ world, under every window and the effects layer.
   at its own moment within 120ms (5.3d); reduced motion switches at once.
 - Colours come from `--cove-pixel-cell`, `--cove-pixel-gap`, `--cove-pixel-cloud-1…4` and
   `--cove-pixel-spark-1…4` (generated for Cove, hand-set for Pixel; plugin themes inherit them
-  from their base). Soft clouds drift with the world and a sparse share of cells twinkles.
+  from their base). Soft clouds drift with the world; their hue blends continuously between
+  neighbouring cloud colours (never a hard edge between two clouds) and drifts slowly. Bright
+  patches wander across the open wall (shimmer, `PIXEL_WALL.shimmerA`); about one cell in six
+  twinkles, more of them near working or waiting windows; the open wall near the pointer
+  brightens a little (`spotA`, white on dark walls, the accent in daylight). Shimmer, twinkle and
+  the spotlight never enter glass; the spotlight is ambient motion, so twinkle off or reduced
+  motion removes it.
+- Zoomed out, clouds, hue and shimmer grow with the cell size (from the 24px base cell) so they
+  stay about as broad on screen as in near view, and twinkle thins out in proportion: the far
+  wall stays calm. Within one cell size everything stays anchored to the world.
 - Behind a window's glass, including a two-cell ring around its frame, a cell moves at most the
   generator's `PIXEL_WALL.cap` toward any colour (I6), the bound the theme contrast checks assume.
 - Work light (5.3b): the cells around each window take its kind colour (`--cove-wall-light-*`:

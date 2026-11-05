@@ -12,6 +12,22 @@ export interface WallWindowRect {
   width: number
   height: number
   light?: { color: Rgb; intensity: number }
+  /** A working or waiting window: twinkle gathers around it. */
+  active?: boolean
+}
+
+/** Optional inputs of a wall frame. */
+export interface WallCellOptions {
+  /** A buffer to reuse while the grid size is unchanged. */
+  out?: Uint8ClampedArray
+  windows?: readonly WallWindowRect[]
+  ripples?: readonly Ripple[]
+  /** Screen bands where the shell's top bar and sidebar float on the wall. */
+  chrome?: readonly WallScreenRect[]
+  /** How much faster than usual the clouds drift (showcase mode). */
+  cloudSpeed?: number
+  /** The pointer on the wall, in CSS px: open wall near it brightens a little. */
+  spot?: { x: number; y: number } | null
 }
 
 /** Cells within this many cells of a window count as behind its glass, frame shadow included. */
@@ -24,8 +40,12 @@ const RIPPLE_GAIN = 0.62
 
 /** World px per second the clouds drift. */
 const CLOUD_DRIFT = 9
-/** Share of cells that can twinkle. */
+/** Share of cells that can twinkle; up to 0.2 more around working windows. */
 const SPARK_SHARE = 0.16
+/** Cloud colours in the palette. */
+const CLOUD_COUNT = 4
+/** World cell size from which the wall's features grow with the cell (far zoom). */
+const CALM_FROM_CELL = 24
 
 function hash2(i: number, j: number): number {
   let h = (Math.imul(i, 374761393) + Math.imul(j, 668265263)) | 0
@@ -168,11 +188,57 @@ function castWorkLight(
 }
 
 /**
+ * How close each cell is to a working or waiting window, 0 to 1, with the work light's falloff;
+ * twinkle gathers there (Tide: "活跃窗口附近更密"). Cost follows the active windows' area.
+ */
+function markActiveNearness(
+  grid: WallGrid,
+  windows: readonly WallWindowRect[],
+): Float32Array | null {
+  const active = windows.filter(frame => frame.active)
+  if (active.length === 0) {
+    return null
+  }
+  const near = new Float32Array(grid.columns * grid.rows)
+  const fall = Math.max(80, 1.5 * grid.worldCell) * 1.6
+  const reach = fall * 4
+  for (const frame of active) {
+    const first = Math.max(0, Math.floor((frame.x - reach) / grid.worldCell) - grid.firstColumn)
+    const last = Math.min(
+      grid.columns - 1,
+      Math.ceil((frame.x + frame.width + reach) / grid.worldCell) - grid.firstColumn,
+    )
+    const top = Math.max(0, Math.floor((frame.y - reach) / grid.worldCell) - grid.firstRow)
+    const bottom = Math.min(
+      grid.rows - 1,
+      Math.ceil((frame.y + frame.height + reach) / grid.worldCell) - grid.firstRow,
+    )
+    for (let row = top; row <= bottom; row++) {
+      const cy = (grid.firstRow + row + 0.5) * grid.worldCell
+      const dy = Math.max(frame.y - cy, 0, cy - (frame.y + frame.height))
+      for (let column = first; column <= last; column++) {
+        const cx = (grid.firstColumn + column + 0.5) * grid.worldCell
+        const dx = Math.max(frame.x - cx, 0, cx - (frame.x + frame.width))
+        const cell = row * grid.columns + column
+        near[cell] = Math.max(near[cell]!, Math.exp(-Math.sqrt(dx * dx + dy * dy) / fall))
+      }
+    }
+  }
+  return near
+}
+
+/** Spotlight reach in CSS px squared, and its softness (Tide prototype). */
+const SPOT_REACH_SQ = 160_000
+const SPOT_SOFTNESS = 52_000
+
+/**
  * One colour per visible cell: the theme's cell colour with a little per-tile jitter, soft
- * colour clouds anchored to the world, a sparse twinkle in blank space, each window's work
- * light and the output ripples. Without a
- * clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU context) the clouds and
- * twinkle are still; the lights keep whatever intensity the caller resolved.
+ * colour clouds anchored to the world whose hue blends from one cloud colour into the next,
+ * wandering bright patches (shimmer), a sparse twinkle in blank space that gathers around
+ * working windows, a soft spotlight under the pointer, each window's work light and the output
+ * ripples. Without a clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU
+ * context) clouds, shimmer and twinkle are still; the lights keep whatever intensity the caller
+ * resolved. Shimmer, twinkle and the spotlight never enter glass.
  *
  * Behind a window's glass, and behind the shell's chrome (`chrome`, screen bands where the top
  * bar and sidebar float on the wall), a cell moves at most `cap` toward any colour (Tide I6),
@@ -182,21 +248,33 @@ export function fillWallCells(
   grid: WallGrid,
   palette: WallPalette,
   timeSeconds: number | null,
-  out?: Uint8ClampedArray,
-  windows: readonly WallWindowRect[] = [],
-  ripples: readonly Ripple[] = [],
-  chrome: readonly WallScreenRect[] = [],
-  /** How much faster than usual the clouds drift (showcase mode). */
-  cloudSpeed = 1,
+  {
+    out,
+    windows = [],
+    ripples = [],
+    chrome = [],
+    cloudSpeed = 1,
+    spot = null,
+  }: WallCellOptions = {},
 ): Uint8ClampedArray {
   const count = grid.columns * grid.rows
   const cells = out && out.length === count * 4 ? out : new Uint8ClampedArray(count * 4)
   const moved = new Float32Array(count)
   const behind = markCellsBehindGlass(grid, windows, chrome)
+  const near = markActiveNearness(grid, windows)
   const weights = PIXEL_WALL[palette.appearance]
   const time = timeSeconds ?? 0
   const drift = time * CLOUD_DRIFT * cloudSpeed
+  // Zoomed out, a cell covers more canvas: clouds, hue and shimmer scale with it so they stay as
+  // broad on screen as in near view, and twinkle thins out, so the far wall stays calm. Within
+  // a cell size everything stays anchored to the world; a size change dissolves (5.3d).
+  const featureScale = Math.max(1, grid.worldCell / CALM_FROM_CELL)
+  const cloudSize = 640 * featureScale
+  const hueSize = 1150 * featureScale
+  const sheenSize = 300 * featureScale
+  const sparkShare = SPARK_SHARE / featureScale
   const [baseR, baseG, baseB] = palette.cell
+  const cloud: [number, number, number] = [0, 0, 0]
   let index = 0
   for (let row = 0; row < grid.rows; row++) {
     const worldRow = grid.firstRow + row
@@ -210,26 +288,63 @@ export function fillWallCells(
       cells[index + 2] = baseB + jitter
       cells[index + 3] = 255
       let shift = 0
+      const cell = index / 4
+      const nx = (wx + drift) / cloudSize
+      const ny = (wy - drift * 0.4) / cloudSize
       const amount = smoothstep(
         0.4,
         0.88,
-        0.62 * valueNoise((wx + drift) / 640, wy / 640) +
-          0.38 * valueNoise((wx + drift) / 278 + 7.3, wy / 278 - 3.1),
+        0.62 * valueNoise(nx, ny) + 0.38 * valueNoise(nx * 2.3 + 7.3, ny * 2.3 - 3.1),
       )
-      const hue = Math.min(3, Math.floor(valueNoise(wx / 1150 + 31.7, wy / 1150 + 11.2) * 4))
+      // The hue blends between neighbouring cloud colours, so clouds never meet at a hard edge.
+      const huePosition =
+        valueNoise(wx / hueSize + 31.7 + time * 0.006, wy / hueSize + 11.2) * (CLOUD_COUNT - 0.001)
+      const hue = Math.floor(huePosition)
       const k = amount * weights.cloudA
       if (k > 0.01) {
-        shift = mix(cells, index, palette.clouds[hue]!, k, shift)
+        const from = palette.clouds[hue]!
+        const to = palette.clouds[Math.min(CLOUD_COUNT - 1, hue + 1)]!
+        const blend = huePosition - hue
+        cloud[0] = from[0] + (to[0] - from[0]) * blend
+        cloud[1] = from[1] + (to[1] - from[1]) * blend
+        cloud[2] = from[2] + (to[2] - from[2]) * blend
+        shift = mix(cells, index, cloud, k, shift)
       }
-      const spark = hash2(worldColumn * 7, worldRow * 13)
-      // Twinkle only in blank space: it never enters the glass behind a window.
-      if (timeSeconds !== null && spark > 1 - SPARK_SHARE && !behind?.[index / 4]) {
-        const twinkle = Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * 0.85
-        if (twinkle > 0.02) {
-          shift = mix(cells, index, palette.sparks[hue]!, twinkle, shift)
+      // Shimmer, twinkle and the spotlight stay in blank space: never inside glass.
+      if (!behind?.[cell]) {
+        const sheen = smoothstep(
+          0.6,
+          1,
+          valueNoise(wx / sheenSize + time * 0.12, wy / sheenSize - time * 0.08),
+        )
+        if (sheen > 0.01) {
+          shift = mix(cells, index, palette.sparks[hue]!, sheen * weights.shimmerA, shift)
+        }
+        const spark = hash2(worldColumn * 7, worldRow * 13)
+        const share = sparkShare + 0.2 * (near?.[cell] ?? 0)
+        if (timeSeconds !== null && spark > 1 - share) {
+          const twinkle =
+            Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * 0.85
+          if (twinkle > 0.02) {
+            shift = mix(cells, index, palette.sparks[hue]!, twinkle, shift)
+          }
+        }
+        if (spot) {
+          const dx = grid.originX + (column + 0.5) * grid.screenCell - spot.x
+          const dy = grid.originY + (row + 0.5) * grid.screenCell - spot.y
+          const d2 = dx * dx + dy * dy
+          if (d2 < SPOT_REACH_SQ) {
+            shift = mix(
+              cells,
+              index,
+              palette.spot,
+              weights.spotA * Math.exp(-d2 / SPOT_SOFTNESS),
+              shift,
+            )
+          }
         }
       }
-      moved[index / 4] = shift
+      moved[cell] = shift
     }
   }
   castWorkLight(cells, moved, grid, windows, palette.appearance)

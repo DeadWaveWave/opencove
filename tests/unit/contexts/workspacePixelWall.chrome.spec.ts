@@ -146,7 +146,7 @@ describe('pixel wall cells behind the chrome', () => {
 
   it('moves a cell behind the top bar or the sidebar at most `cap` (I6)', () => {
     for (const time of [null, 0.4, 7.9, 31.3]) {
-      const cells = fillWallCells(grid, white, time, undefined, [], [], chrome)
+      const cells = fillWallCells(grid, white, time, { windows: [], ripples: [], chrome })
       expect(Math.max(...cellsIn(cells, underChrome))).toBeLessThanOrEqual(limit)
     }
   })
@@ -154,7 +154,7 @@ describe('pixel wall cells behind the chrome', () => {
   it('leaves the canvas cells exactly as they are without chrome', () => {
     const open = (left: number, top: number, right: number, bottom: number) =>
       !underChrome(left, top, right, bottom)
-    const withChrome = fillWallCells(grid, white, 7.9, undefined, [], [], chrome)
+    const withChrome = fillWallCells(grid, white, 7.9, { windows: [], ripples: [], chrome })
     const without = fillWallCells(grid, white, 7.9)
     expect(cellsIn(withChrome, open)).toEqual(cellsIn(without, open))
     // The test has teeth: the open canvas does go past the cap.
@@ -168,7 +168,7 @@ describe('pixel wall cells behind the chrome', () => {
       clouds: white.clouds.map(() => [17, 24, 30] as const),
     }
     const frames = Array.from({ length: 60 }, (_, step) =>
-      fillWallCells(grid, sparkOnly, step * 0.37, undefined, [], [], chrome),
+      fillWallCells(grid, sparkOnly, step * 0.37, { windows: [], ripples: [], chrome }),
     )
     const brightest = frames.flatMap(cells => cellsIn(cells, underChrome))
     expect(Math.max(...brightest)).toBeLessThan(17 + 12)
