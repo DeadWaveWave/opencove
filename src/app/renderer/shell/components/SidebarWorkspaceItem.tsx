@@ -11,6 +11,7 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
+import { Tooltip } from '@app/renderer/components/ui/Tooltip'
 import type { ProjectContextMenuState } from '../types'
 import { type SidebarProjectTreeModel, type SidebarSpaceGroupModel } from '../utils/sidebarTree'
 import { SidebarAgentItems } from './SidebarAgentItems'
@@ -20,6 +21,11 @@ import { useAppStore } from '../store/useAppStore'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { buildSpaceMinimap, type SpaceMinimapModel } from '../utils/spaceMinimap'
 import { SidebarSpaceMinimap } from './SidebarSpaceMinimap'
+import { useWorktreeInfoByPath } from '@contexts/workspace/presentation/renderer/worktreeInfo/useWorktreeInfo'
+import {
+  resolveSpaceBranch,
+  type SpaceBranch,
+} from '@contexts/workspace/presentation/renderer/worktreeInfo/spaceBranch'
 
 export function getTreeChildGroups(tree: SidebarProjectTreeModel): SidebarSpaceGroupModel[] {
   return [tree.projectRootGroup, ...tree.spaceGroups]
@@ -33,10 +39,26 @@ type NavigationProps = {
   onRestoreSidebarItem?: (kind: 'space' | 'agent', id: string, name: string) => void
 }
 
-function SpaceMeta({ minimap }: { minimap: SpaceMinimapModel }): React.JSX.Element {
+function SpaceMeta({
+  minimap,
+  branch,
+}: {
+  minimap: SpaceMinimapModel
+  branch: SpaceBranch | null
+}): React.JSX.Element {
   const { t } = useTranslation()
   return (
     <span className="workspace-space-item__meta">
+      {branch ? (
+        // The full name when the card cuts a long branch short; the text is already in the name.
+        <Tooltip content={branch.title} describe={false}>
+          <span className="workspace-space-item__meta-branch">
+            {branch.kind === 'detached'
+              ? `${t('worktree.detached')} ${branch.value}`
+              : branch.value}
+          </span>
+        </Tooltip>
+      ) : null}
       {minimap.workingCount > 0 ? (
         <span className="workspace-space-item__meta-working">
           {t('sidebar.space.working', { count: minimap.workingCount })}
@@ -59,6 +81,7 @@ function SpaceGroup({
   isActive,
   currentNodeId,
   isExpanded,
+  branch,
   onSelectProjectCanvas,
   onSelectSpace,
   onToggleSpaceGroup,
@@ -73,6 +96,8 @@ function SpaceGroup({
   currentNodeId: string | null
   isExpanded: boolean
   onToggleSpaceGroup: (groupKey: string) => void
+  /** The branch of the worktree the Space works in, if it has one of its own. */
+  branch: SpaceBranch | null
 }): React.JSX.Element {
   const { t } = useTranslation()
   const isRoot = group.kind === 'project-root'
@@ -150,7 +175,7 @@ function SpaceGroup({
             <Scan size={16} aria-hidden="true" />
           )}
           <span className="workspace-space-item__name">{label}</span>
-          {minimap ? <SpaceMeta minimap={minimap} /> : null}
+          {minimap ? <SpaceMeta minimap={minimap} branch={branch} /> : null}
         </button>
         {!isRoot && group.sidebarHidden ? (
           <button
@@ -252,6 +277,24 @@ export function SidebarWorkspaceNavigation({
 }): React.JSX.Element {
   const { workspace } = tree
   const rootAgents = tree.projectRootGroup.agents
+  // The same worktree listing the canvas's Space frames read (one listing per repository).
+  const mountIdsKey = React.useMemo(
+    () =>
+      [...new Set(workspace.spaces.map(space => space.targetMountId?.trim() ?? '').filter(Boolean))]
+        .sort()
+        .join('|'),
+    [workspace.spaces],
+  )
+  const directoriesKey = React.useMemo(
+    () => workspace.spaces.map(space => space.directoryPath).join('\n'),
+    [workspace.spaces],
+  )
+  const worktreeInfo = useWorktreeInfoByPath({
+    repoPath: workspace.path,
+    mountIdsKey,
+    refreshKey: directoriesKey,
+  })
+  const worktrees = React.useMemo(() => [...worktreeInfo.values()], [worktreeInfo])
 
   return (
     <div
@@ -277,6 +320,11 @@ export function SidebarWorkspaceNavigation({
           <SpaceGroup
             key={group.id}
             workspace={workspace}
+            branch={
+              group.space
+                ? resolveSpaceBranch(worktrees, workspace.path, group.space.directoryPath)
+                : null
+            }
             workspaceId={workspace.id}
             group={group}
             isActive={isActive && !currentNodeId && group.id === workspace.activeSpaceId}

@@ -5,7 +5,7 @@ import type { SpaceActionMenuState } from '../types'
 import { getSpaceWorktreeEligibility } from '@contexts/space/application/spaceWorktreeEligibility'
 import { resolveWorktreeRepoRootPath } from '@contexts/worktree/presentation/renderer/windows/spaceWorktree.shared'
 import { normalizeComparablePath } from '../view/WorkspaceSpaceRegionsOverlay.helpers'
-import { useWorkspaceWorktreeInfoByPath } from '../view/WorkspaceSpaceRegionsOverlay.worktreePolling'
+import { useWorktreeInfoByPath } from '../../../worktreeInfo/useWorktreeInfo'
 
 export function useWorkspaceCanvasSpaceMenuState({
   spaceActionMenu,
@@ -56,11 +56,10 @@ export function useWorkspaceCanvasSpaceMenuState({
     return [...unique].sort((left, right) => left.localeCompare(right)).join('|')
   }, [spaces])
 
-  const worktreeInfoByPath = useWorkspaceWorktreeInfoByPath({
-    workspacePath,
+  const worktreeInfoByPath = useWorktreeInfoByPath({
+    repoPath: workspacePath,
     mountIdsKey,
-    refreshNonce: 0,
-    worktreeDirectoriesKey,
+    refreshKey: worktreeDirectoriesKey,
   })
   const worktrees = React.useMemo(() => [...worktreeInfoByPath.values()], [worktreeInfoByPath])
 

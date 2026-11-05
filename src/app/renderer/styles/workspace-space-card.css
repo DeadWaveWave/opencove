@@ -51,6 +51,14 @@
   line-height: 1.35;
 }
 
+.workspace-space-item__meta-branch {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workspace-space-item__meta-working {
   color: var(--cove-status-working-text, var(--cove-accent));
 }
