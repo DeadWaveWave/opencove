@@ -4,7 +4,7 @@ import { useWorkspaceCollapse } from './WorkspaceCollapseContext'
 import {
   collectSpaceNodeIds,
   getCollapsedSpaceHiddenIds,
-  projectCollapsedNodes,
+  createCollapsedNodesProjector,
 } from '../../../utils/canvasCollapse'
 import { projectSpaceDisplayRect } from './spacePresentation'
 
@@ -14,11 +14,15 @@ export function useCollapsedCanvasProjection({
   spaces,
   spaceVisuals,
   spaceFramePreview,
-}: WorkspaceCanvasViewProps) {
+}: Pick<
+  WorkspaceCanvasViewProps,
+  'nodes' | 'edges' | 'spaces' | 'spaceVisuals' | 'spaceFramePreview'
+>) {
   const collapse = useWorkspaceCollapse()
+  const projectNodes = useMemo(createCollapsedNodesProjector, [])
   const projectedNodes = useMemo(
-    () => projectCollapsedNodes(nodes, spaces, collapse),
-    [nodes, spaces, collapse],
+    () => projectNodes(nodes, spaces, collapse),
+    [nodes, spaces, collapse, projectNodes],
   )
   return useMemo(() => {
     const hidden = getCollapsedSpaceHiddenIds(spaces, collapse.collapsedSpaceIds)

@@ -24,25 +24,37 @@ export function useWorkspaceCanvasLabelColorFilter({
 } {
   const [labelColorFilter, setLabelColorFilter] = React.useState<LabelColor | null>(null)
 
-  const nodesWithEffectiveLabelColor = React.useMemo<NodeWithEffectiveLabelColor[]>(() => {
-    return nodes.map(node => {
+  const projectLabel = React.useMemo(() => {
+    const nodeCache = new WeakMap<Node<TerminalNodeData>, NodeWithEffectiveLabelColor>()
+    const dataCache = new WeakMap<TerminalNodeData, NodeWithEffectiveLabelColor['data']>()
+    return (node: Node<TerminalNodeData>): NodeWithEffectiveLabelColor => {
+      const cached = nodeCache.get(node)
+      if (cached) {
+        return cached
+      }
       const override = node.data.labelColorOverride ?? null
-      const effectiveLabelColor: LabelColor | null =
-        override === 'none' ? null : override ? override : null
-
-      return {
+      const effectiveLabelColor = override && override !== 'none' ? override : null
+      let data = dataCache.get(node.data)
+      if (!data) {
+        data = { ...node.data, effectiveLabelColor }
+        dataCache.set(node.data, data)
+      }
+      const projected = {
         ...node,
         domAttributes: {
           ...node.domAttributes,
           'data-cove-label-color': effectiveLabelColor ?? undefined,
         },
-        data: {
-          ...node.data,
-          effectiveLabelColor,
-        },
+        data,
       }
-    })
-  }, [nodes])
+      nodeCache.set(node, projected)
+      return projected
+    }
+  }, [])
+  const nodesWithEffectiveLabelColor = React.useMemo(
+    () => nodes.map(projectLabel),
+    [nodes, projectLabel],
+  )
 
   const usedLabelColors = React.useMemo(() => {
     const seen = new Set<LabelColor>()
