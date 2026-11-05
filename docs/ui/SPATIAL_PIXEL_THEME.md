@@ -174,6 +174,24 @@ A click flies to the window at the current zoom, or 0.6 if further out. Beacons 
 agent state and the viewport only; with no waiting windows the component does not follow the
 view. The pill pulses gently and holds still with reduced motion.
 
+## Finished and failed runs
+
+`WorkspaceWindowSignals` is the one owner of these signals (Tide 5.4d). It watches
+`resolveAgentPresentation` and only counts transitions seen live (a reload never signals):
+
+- A run finishing (working → standby), at most once per window per 3s: the window's frame flashes
+  in its kind colour and pixel sparks leave its corners; the wall sends a strong shockwave whose
+  white crest stays in blank space (behind glass only the kind colour shows, within the cap). As
+  the shockwave passes another window, that window's 1px edge glows in the sender's colour for
+  half a second.
+- A change into failed: the frame jolts sideways in a 280ms glitch with red fragments, and the
+  wall sends a small red ripple.
+
+Frame signals write one attribute (`data-cove-signal`) and one colour variable on the window, only
+while they last, and never touch the fill behind its text. They follow the Agent working effect
+switch. Reduced motion: the frame's colour flashes once and a failure keeps a still red outline;
+no waves, sparks or glitch.
+
 ## Canvas effects
 
 The effects canvas is a viewport-sized, read-only visual layer above the wall. It draws creation,

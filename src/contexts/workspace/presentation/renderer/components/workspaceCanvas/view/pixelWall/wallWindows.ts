@@ -88,6 +88,27 @@ export function createWallWindowTracker() {
         family: window.family,
       }
     },
+    /** A window's centre, frame and kind, for the waves it sends. */
+    find(id: string): {
+      center: { x: number; y: number }
+      rect: TrackedWindow['rect']
+      family: WindowKindFamily
+    } | null {
+      const window = windows.find(candidate => candidate.id === id)
+      if (!window) {
+        return null
+      }
+      const { x, y, width, height } = window.rect
+      return {
+        center: { x: x + width / 2, y: y + height / 2 },
+        rect: window.rect,
+        family: window.family,
+      }
+    },
+    /** Every window's frame, for the shockwave's sweep. */
+    frames(): Array<{ id: string; rect: TrackedWindow['rect'] }> {
+      return windows.map(({ id, rect }) => ({ id, rect }))
+    },
     /** Centres of the windows waiting for you, for their pulse rings. */
     waiting(): Array<{ id: string; center: { x: number; y: number } }> {
       return windows

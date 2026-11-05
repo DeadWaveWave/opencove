@@ -276,3 +276,43 @@ describe('pixel wall output ripples', () => {
     expect(green(cells, 600 + 240, 450)).toBeLessThanOrEqual(limit)
   })
 })
+
+describe('pixel wall shockwave crest', () => {
+  const black: WallPalette = {
+    ...dark,
+    cell: [0, 0, 0],
+    clouds: dark.clouds.map(() => [0, 0, 0] as const),
+    sparks: dark.sparks.map(() => [0, 0, 0] as const),
+  }
+  const view = resolveWallGrid({ x: 0, y: 0, zoom: 1, width: 1200, height: 900 })
+  const wave = {
+    x: 600,
+    y: 450,
+    radius: 240,
+    band: 40,
+    strength: 1,
+    color: [0, 0, 255] as const,
+    gain: 0.85,
+    crest: true,
+  }
+  const at = (cells: Uint8ClampedArray, wx: number, wy: number) => {
+    const column = Math.floor(wx / view.worldCell) - view.firstColumn
+    const row = Math.floor(wy / view.worldCell) - view.firstRow
+    return [
+      ...cells.slice((row * view.columns + column) * 4, (row * view.columns + column) * 4 + 3),
+    ]
+  }
+
+  it('peaks white in blank space and only takes the window colour behind glass', () => {
+    const glass = { x: 780, y: 300, width: 200, height: 300 }
+    const cells = fillWallCells(view, black, null, undefined, [glass], [wave])
+    const open = at(cells, 600, 450 - 240)
+    const behind = at(cells, 600 + 240, 450)
+    // The open crest is near white: its red and green rise with the blue.
+    expect(open[0]).toBeGreaterThan(120)
+    expect(open[1]).toBeGreaterThan(120)
+    // Behind glass it stays the window's colour, within the cap.
+    expect(behind[0]).toBeLessThan(10)
+    expect(behind[2]).toBeLessThanOrEqual(PIXEL_WALL.dark.cap * 255 + PIXEL_WALL.dark.tileJitter)
+  })
+})
