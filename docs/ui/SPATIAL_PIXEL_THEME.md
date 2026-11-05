@@ -165,6 +165,11 @@ world, under every window and the effects layer.
   (「简约」, 「关闭」, a theme's own background, no project) the layer is empty and the shell keeps
   its usual surfaces. The layout never changes. Outside the app shell (no layer) a wall stays inside
   its canvas.
+- The settings page is one sheet of glass over the wall: `--cove-surface-strong` (the generator's
+  `--cove-glass-sheet`, 72% dark, 80% light, contrast-checked against the capped wall) with its tab
+  strip, panel, navigation and content transparent. While it covers the canvas it tells the shell
+  (`useCoverShellWall`), and the wall frosts and caps all of itself and draws no window glass; the
+  focus-zoom preview uncovers the canvas and keeps its own transparent look.
 - E2E reads `window.__opencovePixelWallTestApi` (frame counts, a cell checksum, mean colour, the
   glass and chrome rects) and the host's `data-cove-wall-renderer` / `data-cove-wall-state` /
   `data-cove-wall-cell`.

@@ -183,4 +183,50 @@ test.describe('Workspace Canvas - Pixel wall behind the shell', () => {
       await electronApp.close()
     }
   })
+
+  test('turns the settings page into a glass sheet over a fully frosted wall', async ({
+    browserName,
+  }, testInfo) => {
+    void browserName
+    const { electronApp, window } = await launchApp()
+    try {
+      await seed(window)
+      await expectPaintedWall(window)
+      const sheetAlpha = () =>
+        window.locator('.settings-page').evaluate(element => {
+          const context = document.createElement('canvas').getContext('2d')!
+          context.fillStyle = getComputedStyle(element).backgroundColor
+          context.fillRect(0, 0, 1, 1)
+          return context.getImageData(0, 0, 1, 1).data[3]
+        })
+
+      await window.getByTestId('app-header-settings').click()
+      await expect(window.locator('.settings-page')).toBeVisible()
+      expect(await sheetAlpha()).toBeLessThan(255)
+      // The canvas is covered: the wall frosts all of itself and draws no window glass.
+      await expect
+        .poll(async () => {
+          const state = await readShell(window)
+          return { chrome: state.chrome, glass: state.glass.length }
+        })
+        .toEqual({ chrome: [[0, 0, ...(await readShell(window)).shell.slice(2)]], glass: 0 })
+      await testInfo.attach('settings-sheet-on-wall', {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+
+      await window.locator('.settings-panel__close').click()
+      await expect(window.locator('.settings-page')).toHaveCount(0)
+      await expect.poll(async () => (await readShell(window)).chrome.length).toBe(2)
+      await expect.poll(async () => (await readShell(window)).glass.length).toBe(1)
+
+      await seed(window, { windowMaterial: 'solid' })
+      await expectPaintedWall(window)
+      await window.getByTestId('app-header-settings').click()
+      await expect(window.locator('.settings-page')).toBeVisible()
+      expect(await sheetAlpha()).toBe(255)
+    } finally {
+      await electronApp.close()
+    }
+  })
 })
