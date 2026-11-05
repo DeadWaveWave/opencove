@@ -28,6 +28,8 @@ export function AppearanceSection({
   onChangeUiFontSize,
   onChangeWindowKindColors,
   onChangeWindowMaterial,
+  canvasFarViewEnabled,
+  onChangeCanvasFarView,
 }: {
   uiTheme: UiTheme
   pixelEffects: PixelEffectSettings
@@ -40,6 +42,8 @@ export function AppearanceSection({
   onChangeWindowKindColors: (enabled: boolean) => void
   windowMaterial: AgentSettings['windowMaterial']
   onChangeWindowMaterial: (material: AgentSettings['windowMaterial']) => void
+  canvasFarViewEnabled: boolean
+  onChangeCanvasFarView: (enabled: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   return (
@@ -55,6 +59,8 @@ export function AppearanceSection({
         windowMaterial={windowMaterial}
         onChangeWindowKindColors={onChangeWindowKindColors}
         onChangeWindowMaterial={onChangeWindowMaterial}
+        canvasFarViewEnabled={canvasFarViewEnabled}
+        onChangeCanvasFarView={onChangeCanvasFarView}
       />
       <PixelEffectsSection
         effects={pixelEffects}

@@ -37,4 +37,7 @@ export const enSettingsPanelAppearanceNext = {
   windowMaterialSystemHelp: 'Your system reduces transparency, so windows are solid.',
   windowMaterial_glass: 'Glass',
   windowMaterial_solid: 'Solid',
+  farView: 'Far View',
+  farViewHelp:
+    'Below 25% zoom, each window becomes a tile with its kind, title and status, and comes back above 28%. Terminals, editors and pages keep running.',
 }

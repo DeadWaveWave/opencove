@@ -4,14 +4,16 @@ import type {
   WorkspaceSpaceState,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
-import { resolveAgentPresentation } from '@contexts/workspace/presentation/renderer/utils/agentPresentation'
 import {
   resolveWindowKindFamily,
   type WindowKindFamily,
 } from '@contexts/workspace/presentation/renderer/utils/windowKindFamily'
-import { resolveSidebarAgentStatus } from './sidebarAgents'
+import {
+  resolveWindowSignal,
+  type WindowSignal,
+} from '@contexts/workspace/presentation/renderer/utils/windowSignal'
 
-export type SpaceMinimapStatus = 'working' | 'waiting' | 'failed'
+export type SpaceMinimapStatus = WindowSignal
 
 export interface SpaceMinimapWindow {
   nodeId: string
@@ -75,18 +77,6 @@ function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value))
 }
 
-function resolveStatus(data: TerminalNodeData): SpaceMinimapStatus | null {
-  const presentation = resolveAgentPresentation(data)
-  if (!presentation.isAgent) {
-    return null
-  }
-  if (presentation.status === 'failed') {
-    return 'failed'
-  }
-  const status = resolveSidebarAgentStatus(presentation.status)
-  return status === 'standby' ? null : status
-}
-
 /** Every window in a root Space and its child Spaces, placed in the Space's own frame. */
 export function buildSpaceMinimap(
   workspace: WorkspaceState,
@@ -116,7 +106,7 @@ export function buildSpaceMinimap(
       nodeId: node.id,
       title: node.data.title,
       family: resolveWindowKindFamily(node.data),
-      status: resolveStatus(node.data),
+      status: resolveWindowSignal(node.data),
       left,
       top,
       width: clamp01((rect.x + rect.width - frame.x) / frame.width) - left,

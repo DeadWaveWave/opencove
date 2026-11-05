@@ -379,6 +379,7 @@ export async function readSpaceIdentity(page: Page) {
           : []
       })
       const label = region.querySelector<HTMLElement>('[data-testid^="workspace-space-label-"]')!
+      const titleBounds = label.getBoundingClientRect()
       const branch = region.querySelector<HTMLElement>(
         '[data-testid^="workspace-space-worktree-branch-"]',
       )
@@ -403,15 +404,22 @@ export async function readSpaceIdentity(page: Page) {
           gaps,
           captions,
           preservesOtherEdges:
-            clipPoints.some(
+            edge.clipPath === 'none' ||
+            (clipPoints.some(
               point =>
                 Math.abs(point.x - rect.width) <= 0.001 && Math.abs(point.y - rect.height) <= 0.001,
             ) &&
-            clipPoints.some(
-              point => Math.abs(point.x) <= 0.001 && Math.abs(point.y - rect.height) <= 0.001,
-            ),
+              clipPoints.some(
+                point => Math.abs(point.x) <= 0.001 && Math.abs(point.y - rect.height) <= 0.001,
+              )),
         },
         rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+        title: {
+          top: titleBounds.top,
+          bottom: titleBounds.bottom,
+          visibility: getComputedStyle(label).visibility,
+          opacity: getComputedStyle(label).opacity,
+        },
         labelScreenFont:
           (Number.parseFloat(getComputedStyle(label).fontSize) *
             label.getBoundingClientRect().height) /
@@ -420,7 +428,15 @@ export async function readSpaceIdentity(page: Page) {
           ...region.querySelectorAll<HTMLElement>('.workspace-space-region__label-group'),
         ].map(group => {
           const box = group.getBoundingClientRect()
-          return { left: box.left, right: box.right, width: box.width }
+          return {
+            left: box.left,
+            right: box.right,
+            width: box.width,
+            side: group.classList.contains('workspace-space-region__label-group--right')
+              ? 'right'
+              : 'left',
+            visibility: getComputedStyle(group).visibility,
+          }
         }),
         branch:
           branch && branchStyle

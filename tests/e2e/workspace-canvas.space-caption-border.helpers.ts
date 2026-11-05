@@ -1,7 +1,8 @@
 import { expect, type Page } from '@playwright/test'
 import { readSpaceIdentity } from './workspace-canvas.color-identity.helpers'
 
-export async function expectSpaceFrameHeader(page: Page) {
+export async function expectSpaceFrameHeader(page: Page, lod: 'near' | 'far' = 'near') {
+  await expect(page.locator('.workspace-canvas')).toHaveAttribute('data-cove-lod', lod)
   await expect(async () => {
     const corners = await page.locator('.workspace-space-region').evaluateAll(elements =>
       elements.map(region => {
@@ -23,8 +24,26 @@ export async function expectSpaceFrameHeader(page: Page) {
       expect(corner.clip).toBe(corner.edgeClip)
     }
     for (const space of await readSpaceIdentity(page)) {
-      const evidence = `${space.id} ${JSON.stringify({ rect: space.rect, clip: space.edge.clip, points: space.edge.clipPoints, captions: space.edge.captions, gaps: space.edge.gaps })}`
-      expect(space.edge.clip, `clipped top edge: ${evidence}`).toContain('polygon(')
+      const evidence = `${space.id} ${JSON.stringify({ lod, rect: space.rect, title: space.title, clip: space.edge.clip, points: space.edge.clipPoints, captions: space.edge.captions, gaps: space.edge.gaps })}`
+      if (lod === 'far') {
+        expect(space.title.visibility, `visible far title: ${evidence}`).toBe('visible')
+        expect(Number(space.title.opacity), `painted far title: ${evidence}`).toBeGreaterThan(0)
+        expect(
+          space.groups.find(group => group.side === 'right')?.visibility,
+          `hidden far metadata: ${evidence}`,
+        ).toBe('hidden')
+      }
+      if (lod === 'far' && space.edge.captions.length === 0) {
+        // Far titles sit above the frame. Hidden metadata must not leave phantom cutouts.
+        expect(space.title.bottom, `title above frame: ${evidence}`).toBeLessThan(space.rect.y)
+        expect(space.title.bottom).toBeGreaterThan(space.title.top)
+        expect(space.edge.clip, `unbroken far frame: ${evidence}`).toBe('none')
+        expect(space.edge.gaps).toHaveLength(0)
+      } else {
+        // Hover/focus can bring a far title back onto the edge; all crossings still need gaps.
+        expect(space.edge.captions.length, `visible crossings: ${evidence}`).toBeGreaterThan(0)
+        expect(space.edge.clip, `clipped top edge: ${evidence}`).toContain('polygon(')
+      }
       expect(space.edge.preservesOtherEdges, `remaining frame edges: ${evidence}`).toBe(true)
       for (const caption of space.edge.captions) {
         expect(

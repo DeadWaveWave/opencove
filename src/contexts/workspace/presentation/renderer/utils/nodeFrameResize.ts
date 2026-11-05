@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import { useStore } from '@xyflow/react'
+import { useStoreApi } from '@xyflow/react'
 import type { NodeFrame, Point, Size } from '../types'
 
-export const NODE_DRAG_HANDLE_SELECTOR = '[data-node-drag-handle=true]'
+/** Windows drag by their header; in far view (Tide phase 4) the whole tile drags its window. */
+export const NODE_DRAG_HANDLE_SELECTOR =
+  "[data-node-drag-handle=true], .workspace-canvas[data-cove-lod='far'] .cove-node-presentation__runtime"
 
 export type ResizeEdge = 'top' | 'right' | 'bottom' | 'left'
 export type ResizeEdges = Partial<Record<ResizeEdge, true>>
@@ -247,6 +249,7 @@ export function useNodeFrameResize({
   height,
   minSize,
   maxSize,
+  getMaxSize,
   aspectRatio,
   onResize,
   onResizeStart,
@@ -258,6 +261,7 @@ export function useNodeFrameResize({
   height: number
   minSize: Size
   maxSize?: Size | null
+  getMaxSize?: () => Size | null
   aspectRatio?: number | null
   onResize: (frame: NodeFrame) => void
   onResizeStart?: () => void
@@ -273,29 +277,18 @@ export function useNodeFrameResize({
   const activeResizeCleanupRef = useRef<(() => void) | null>(null)
   const [isResizing, setIsResizing] = useState(false)
   const [draftFrame, setDraftFrame] = useState<NodeFrame | null>(null)
-  const zoom = useStore(storeState => {
-    const transform = (storeState as { transform?: [number, number, number] }).transform
-    const currentZoom = transform?.[2]
-    if (typeof currentZoom !== 'number' || !Number.isFinite(currentZoom) || currentZoom <= 0) {
-      return 1
-    }
-
-    return currentZoom
-  })
-  const zoomRef = useRef(zoom)
+  const store = useStoreApi()
   const getCurrentPosition = useCallback((): Point => {
     return getPosition?.() ?? position ?? { x: 0, y: 0 }
   }, [getPosition, position])
-
-  useEffect(() => {
-    zoomRef.current = zoom
-  }, [zoom])
 
   const minSizeRef = useRef(minSize)
   useEffect(() => {
     minSizeRef.current = minSize
   }, [minSize])
 
+  const getMaxSizeRef = useRef(getMaxSize)
+  getMaxSizeRef.current = getMaxSize
   const maxSizeRef = useRef(maxSize ?? null)
   useEffect(() => {
     maxSizeRef.current = maxSize ?? null
@@ -414,10 +407,10 @@ export function useNodeFrameResize({
               x: pointerEvent.clientX - start.client.x,
               y: pointerEvent.clientY - start.client.y,
             },
-            zoomRef.current,
+            store.getState().transform[2],
           ),
           minSize: minSizeRef.current,
-          maxSize: maxSizeRef.current,
+          maxSize: getMaxSizeRef.current?.() ?? maxSizeRef.current,
           aspectRatio: start.aspectRatio,
         })
 
@@ -463,7 +456,7 @@ export function useNodeFrameResize({
       window.addEventListener('pointerup', finalizeResize, { once: true })
       window.addEventListener('pointercancel', finalizeResize, { once: true })
     },
-    [aspectRatio, getCurrentPosition, height, onResizeStart, width],
+    [aspectRatio, getCurrentPosition, height, onResizeStart, store, width],
   )
 
   return {

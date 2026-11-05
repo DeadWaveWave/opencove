@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useWebsiteNodeNativeView } from '@contexts/workspace/presentation/renderer/components/WebsiteNode.nativeView'
 
 vi.mock('@xyflow/react', () => ({
+  useStoreApi: () => ({ getState: () => ({ transform: [0, 0, 1] }), subscribe: () => () => {} }),
   useStore: (selector: (state: unknown) => unknown) => selector({ transform: [0, 0, 1] }),
 }))
 

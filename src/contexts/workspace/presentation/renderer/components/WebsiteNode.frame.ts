@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useStore } from '@xyflow/react'
+import { useCallback, useEffect } from 'react'
+import { useStoreApi } from '@xyflow/react'
 import type { NodeFrame, Point, Size } from '../types'
 import { resolveWebsiteWorkspaceBounds } from './WebsiteNode.helpers'
 import {
@@ -30,66 +30,57 @@ export function useWebsiteNodeFrameConstraints({
     previousFrame: NodeFrame | null,
     isFullscreen: boolean,
   ) => void
-}): { maxNodeSize: Size | null; toggleFullscreen: () => void } {
-  const transform = useStore(storeState => {
-    const value = (storeState as unknown as { transform?: [number, number, number] }).transform
-    return value ?? ([0, 0, 1] as [number, number, number])
-  })
-  const canvasZoom = Number.isFinite(transform[2]) && transform[2] > 0 ? transform[2] : 1
-  const [maxNodeSize, setMaxNodeSize] = useState<Size | null>(null)
+}): { getMaxNodeSize: () => Size | null; toggleFullscreen: () => void } {
+  const store = useStoreApi()
+  // Resize constraints are input to an interaction, not visible window state. Read the current
+  // viewport on demand; only an actual size clamp may publish a changed window frame.
+  const getMaxNodeSize = useCallback(() => {
+    const bounds = resolveWebsiteWorkspaceBounds(viewportRef.current)
+    return bounds
+      ? resolveWebsiteNodeMaxFlowSize({
+          availableViewportSize: { width: bounds.width, height: bounds.height },
+          canvasZoom: store.getState().transform[2],
+        })
+      : null
+  }, [store, viewportRef])
 
   useEffect(() => {
-    const updateMaxSize = () => {
-      const bounds = resolveWebsiteWorkspaceBounds(viewportRef.current)
-      if (!bounds) {
-        setMaxNodeSize(null)
+    const clamp = () => {
+      if (isFullscreen) {
         return
       }
-
-      setMaxNodeSize(
-        resolveWebsiteNodeMaxFlowSize({
-          availableViewportSize: { width: bounds.width, height: bounds.height },
-          canvasZoom,
-        }),
-      )
+      const currentFrame = { position, size: { width, height } }
+      const clamped = clampWebsiteNodeFrameToMaxSize(currentFrame, getMaxNodeSize())
+      if (clamped.size.width !== width || clamped.size.height !== height) {
+        onResize(clamped)
+      }
     }
-
-    updateMaxSize()
-    window.addEventListener('resize', updateMaxSize)
-    const observer =
-      typeof ResizeObserver === 'function'
-        ? new ResizeObserver(() => {
-            updateMaxSize()
-          })
-        : null
+    clamp()
+    const unsubscribe = store.subscribe((state, previous) => {
+      if (state.transform[2] !== previous.transform[2]) {
+        clamp()
+      }
+    })
+    window.addEventListener('resize', clamp)
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(clamp) : null
     const workspaceMain = document.querySelector('.workspace-main')
-    if (observer && workspaceMain instanceof Element) {
-      observer.observe(workspaceMain)
+    if (workspaceMain) {
+      observer?.observe(workspaceMain)
     }
     return () => {
-      window.removeEventListener('resize', updateMaxSize)
+      unsubscribe()
+      window.removeEventListener('resize', clamp)
       observer?.disconnect()
     }
-  }, [canvasZoom, viewportRef])
-
-  useEffect(() => {
-    if (isFullscreen || !maxNodeSize) {
-      return
-    }
-
-    const currentFrame = { position, size: { width, height } }
-    const clamped = clampWebsiteNodeFrameToMaxSize(currentFrame, maxNodeSize)
-    if (clamped.size.width === width && clamped.size.height === height) {
-      return
-    }
-
-    onResize(clamped)
-  }, [height, isFullscreen, maxNodeSize, onResize, position, width])
+  }, [getMaxNodeSize, height, isFullscreen, onResize, position, store, width])
 
   const toggleFullscreen = useCallback(() => {
     if (isFullscreen) {
       const fallbackFrame = { position, size: { width, height } }
-      const restored = clampWebsiteNodeFrameToMaxSize(previousFrame ?? fallbackFrame, maxNodeSize)
+      const restored = clampWebsiteNodeFrameToMaxSize(
+        previousFrame ?? fallbackFrame,
+        getMaxNodeSize(),
+      )
       onFullscreenChange(restored, null, false)
       return
     }
@@ -101,18 +92,21 @@ export function useWebsiteNodeFrameConstraints({
 
     const currentFrame = { position, size: { width, height } }
     onFullscreenChange(
-      resolveWebsiteFullscreenFrame({ viewportBounds: bounds, transform }),
+      resolveWebsiteFullscreenFrame({
+        viewportBounds: bounds,
+        transform: store.getState().transform,
+      }),
       currentFrame,
       true,
     )
   }, [
     height,
     isFullscreen,
-    maxNodeSize,
+    getMaxNodeSize,
     onFullscreenChange,
     position,
     previousFrame,
-    transform,
+    store,
     viewportRef,
     width,
   ])
@@ -137,5 +131,5 @@ export function useWebsiteNodeFrameConstraints({
     }
   }, [isFullscreen, toggleFullscreen])
 
-  return { maxNodeSize, toggleFullscreen }
+  return { getMaxNodeSize, toggleFullscreen }
 }

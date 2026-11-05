@@ -1,5 +1,5 @@
-import React, { useSyncExternalStore } from 'react'
-import { Background, BackgroundVariant, type Node } from '@xyflow/react'
+import React, { useEffect, useSyncExternalStore } from 'react'
+import { Background, BackgroundVariant, useReactFlow, type Node } from '@xyflow/react'
 import {
   readThemeMotion,
   subscribeThemeMotion,
@@ -11,6 +11,7 @@ import { WorkspacePixelLayer } from './WorkspacePixelLayer'
 import { WorkspacePixelWall } from './WorkspacePixelWall'
 import { WorkspaceWindowSignals } from './windowSignals/WorkspaceWindowSignals'
 import { useSpaceVisualScale } from './useSpaceVisualScale'
+import { bindWorkspaceCanvasSetZoomTestAction } from '../testHarness'
 
 interface WorkspaceCanvasBackgroundProps {
   settings: Pick<
@@ -21,6 +22,7 @@ interface WorkspaceCanvasBackgroundProps {
     | 'nodeCreationPixelEffectEnabled'
     | 'nodeClosePixelEffectEnabled'
     | 'agentWorkingPixelEffectEnabled'
+    | 'canvasFarViewEnabled'
   >
   canvasRef: React.RefObject<HTMLDivElement | null>
   nodes: Node<TerminalNodeData>[]
@@ -31,7 +33,14 @@ export const WorkspaceCanvasBackground = React.memo(function WorkspaceCanvasBack
   canvasRef,
   nodes,
 }: WorkspaceCanvasBackgroundProps): React.JSX.Element {
-  useSpaceVisualScale(canvasRef)
+  useSpaceVisualScale(canvasRef, { farViewEnabled: settings.canvasFarViewEnabled })
+  const { zoomTo } = useReactFlow()
+  useEffect(() => {
+    bindWorkspaceCanvasSetZoomTestAction(async zoom => {
+      await zoomTo(zoom, { duration: 0 })
+    })
+    return () => bindWorkspaceCanvasSetZoomTestAction(null)
+  }, [zoomTo])
   // Showcase mode always shows the pixel background, whatever the saved style (Tide 6.1).
   const showcase = useShowcaseMode()
   const style = showcase ? 'pixel' : settings.canvasBackgroundStyle

@@ -82,6 +82,8 @@ test.describe('Workspace Canvas - Website Window', () => {
         {
           settings: {
             websiteWindowPolicy: { enabled: true },
+            // Below 25% far view draws the window as a tile; this test watches the snapshot itself.
+            canvasFarViewEnabled: false,
           },
         },
       )

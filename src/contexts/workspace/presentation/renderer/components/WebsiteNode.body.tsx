@@ -6,11 +6,15 @@ import type {
   WebsiteWindowSessionMode,
 } from '@shared/contracts/dto'
 import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
+import { useWebsiteWindowStore } from '../store/useWebsiteWindowStore'
+import { useWebsiteInitialSnapshot } from './WebsiteNode.snapshot'
 import { WebsiteNodeHomePage } from './WebsiteNode.homePage'
 import { WebsiteNodeIframe } from './WebsiteNode.iframe'
 import { WebsiteNodeNativePlaceholder } from './WebsiteNode.nativePlaceholder'
 
 export function WebsiteNodeBody({
+  nodeId,
+  isLoading,
   viewportRef,
   displayTitle,
   url,
@@ -22,7 +26,6 @@ export function WebsiteNodeBody({
   lifecycle,
   isCanvasZoomFrozen,
   isOccluded,
-  snapshotDataUrl,
   sessionMode,
   profileId,
   browserSearchEngine,
@@ -30,6 +33,8 @@ export function WebsiteNodeBody({
   onNavigateFromHome,
   onInteractionStart,
 }: {
+  nodeId: string
+  isLoading: boolean
   viewportRef: RefObject<HTMLDivElement | null>
   displayTitle: string
   url: string
@@ -41,7 +46,6 @@ export function WebsiteNodeBody({
   lifecycle: WebsiteWindowLifecycle
   isCanvasZoomFrozen: boolean
   isOccluded: boolean
-  snapshotDataUrl: string | null
   sessionMode: WebsiteWindowSessionMode
   profileId: string | null
   browserSearchEngine: BrowserSearchEngineId
@@ -50,6 +54,10 @@ export function WebsiteNodeBody({
   onInteractionStart?: () => void
 }): JSX.Element {
   const { t } = useTranslation()
+  const snapshotDataUrl = useWebsiteWindowStore(
+    state => state.runtimeByNodeId[nodeId]?.snapshotDataUrl ?? null,
+  )
+  useWebsiteInitialSnapshot({ nodeId, url, lifecycle, isLoading, snapshotDataUrl })
   const showsNativePlaceholder = browserMode === 'native' && !nativeApiAvailable
 
   return (

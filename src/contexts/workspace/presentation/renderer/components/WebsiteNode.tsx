@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import {
   ArrowLeft,
   ArrowRight,
@@ -26,7 +27,6 @@ import { useWebsiteNodeNativeView } from './WebsiteNode.nativeView'
 import { useWebsiteNodeFrameConstraints } from './WebsiteNode.frame'
 import { WebsiteNodeBody } from './WebsiteNode.body'
 import { WebsiteNodeBrowserTools } from './WebsiteNode.browserTools'
-import { useWebsiteInitialSnapshot } from './WebsiteNode.snapshot'
 import type { WebsiteNodeProps } from './WebsiteNode.types'
 
 export function WebsiteNode({
@@ -57,7 +57,13 @@ export function WebsiteNode({
   const { t } = useTranslation()
   const presentationHidden = useWindowPresentationHidden()
   const viewportRef = useRef<HTMLDivElement | null>(null)
-  const runtime = useWebsiteWindowStore(state => state.runtimeByNodeId[nodeId] ?? null)
+  // The body owns bitmap updates; a fresh snapshot does not change window chrome.
+  const runtime = useWebsiteWindowStore(
+    useShallow(state => {
+      const nodeRuntime = state.runtimeByNodeId[nodeId]
+      return nodeRuntime ? { ...nodeRuntime, snapshotDataUrl: null } : null
+    }),
+  )
   const lifecycle = runtime?.lifecycle ?? 'cold'
   const isOccluded = runtime?.isOccluded === true
   const nativeApiAvailable = typeof window.opencoveApi?.websiteWindow?.activate === 'function'
@@ -77,7 +83,7 @@ export function WebsiteNode({
     viewportRef,
     presentationHidden,
   })
-  const { maxNodeSize, toggleFullscreen } = useWebsiteNodeFrameConstraints({
+  const { getMaxNodeSize, toggleFullscreen } = useWebsiteNodeFrameConstraints({
     viewportRef,
     position,
     width,
@@ -93,7 +99,7 @@ export function WebsiteNode({
     width,
     height,
     minSize: resolveCanonicalNodeMinSize('website'),
-    maxSize: isFullscreen ? null : maxNodeSize,
+    getMaxSize: isFullscreen ? undefined : getMaxNodeSize,
     onResize,
   })
 
@@ -199,8 +205,6 @@ export function WebsiteNode({
   }, [draftProfileId, handleSessionChange])
 
   const displayTitle = runtime?.title?.trim().length ? runtime.title : title
-  const snapshotDataUrl = runtime?.snapshotDataUrl ?? null
-  useWebsiteInitialSnapshot({ nodeId, url, lifecycle, isLoading, snapshotDataUrl })
 
   return (
     <div
@@ -432,6 +436,8 @@ export function WebsiteNode({
         />
 
         <WebsiteNodeBody
+          nodeId={nodeId}
+          isLoading={isLoading}
           viewportRef={viewportRef}
           displayTitle={displayTitle}
           url={url}
@@ -443,7 +449,6 @@ export function WebsiteNode({
           lifecycle={lifecycle}
           isCanvasZoomFrozen={isCanvasZoomFrozen}
           isOccluded={isOccluded}
-          snapshotDataUrl={snapshotDataUrl}
           sessionMode={sessionMode}
           profileId={profileId}
           browserSearchEngine={browserSearchEngine}

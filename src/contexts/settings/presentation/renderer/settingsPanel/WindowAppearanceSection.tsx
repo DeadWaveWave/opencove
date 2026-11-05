@@ -11,19 +11,24 @@ import {
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
 
 /**
- * How windows look: the kind channel (labels keep the frame either way) and their material.
+ * How windows look: the kind channel (labels keep the frame either way), their material and far
+ * view.
  * While the system reduces transparency, windows are solid and glass shows unavailable.
  */
 export function WindowAppearanceSection({
   windowKindColorsEnabled,
   windowMaterial,
+  canvasFarViewEnabled,
   onChangeWindowKindColors,
   onChangeWindowMaterial,
+  onChangeCanvasFarView,
 }: {
   windowKindColorsEnabled: boolean
   windowMaterial: WindowMaterial
+  canvasFarViewEnabled: boolean
   onChangeWindowKindColors: (enabled: boolean) => void
   onChangeWindowMaterial: (material: WindowMaterial) => void
+  onChangeCanvasFarView: (enabled: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const systemReducesTransparency = useSystemReducedTransparency()
@@ -65,6 +70,19 @@ export function WindowAppearanceSection({
                 testId: `settings-window-material-${material}`,
                 disabled: systemReducesTransparency && material === 'glass',
               }))}
+            />
+          }
+        />
+        <SettingRow
+          label={t('settingsPanel.appearanceNext.farView')}
+          description={t('settingsPanel.appearanceNext.farViewHelp')}
+          control={
+            <Toggle
+              id="settings-canvas-far-view"
+              data-testid="settings-canvas-far-view"
+              checked={canvasFarViewEnabled}
+              label={t('settingsPanel.appearanceNext.farView')}
+              onCheckedChange={onChangeCanvasFarView}
             />
           }
         />

@@ -1,6 +1,7 @@
 import { useLayoutEffect, type RefObject } from 'react'
 import { useStoreApi } from '@xyflow/react'
 import { resolveSpaceVisualScale, SPACE_VISUAL_SCALE_EVENT } from './spaceVisualScale'
+import { CANVAS_LOD_ATTRIBUTE, resolveCanvasLod, type CanvasLod } from './canvasLod'
 
 /** Space regions render through React Flow's viewport portal, outside the window tree. */
 const SPACE_LAYER_SELECTOR = '.react-flow__viewport-portal'
@@ -15,17 +16,22 @@ interface InlineWrite {
 /**
  * Canvas projection owns these transient values independently of themes and effects. Zoom is read
  * from the store without rendering. Values that follow every zoom step live on the Space layer; the
- * canvas root, which every window inherits from, changes only when the stripe or overview steps.
+ * canvas root, which every window inherits from, changes only when the stripe, overview or level of
+ * detail steps. It is the only writer of the level of detail (`data-cove-lod`).
  */
-export function useSpaceVisualScale(scopeRef: RefObject<HTMLDivElement | null>) {
+export function useSpaceVisualScale(
+  scopeRef: RefObject<HTMLDivElement | null>,
+  { farViewEnabled = true }: { farViewEnabled?: boolean } = {},
+) {
   const store = useStoreApi()
 
   useLayoutEffect(() => {
     let disposed = false
     let zoom = Number.NaN
     let layer: HTMLElement | null = null
+    let lod: CanvasLod = 'near'
     const properties = new Map<HTMLElement, Map<string, InlineWrite>>()
-    const attributes = new Map<HTMLElement, InlineWrite>()
+    const attributes = new Map<string, { element: HTMLElement; write: InlineWrite }>()
 
     const writeProperty = (element: HTMLElement, property: string, value: string) => {
       const current = element.style.getPropertyValue(property)
@@ -40,15 +46,16 @@ export function useSpaceVisualScale(scopeRef: RefObject<HTMLDivElement | null>) 
       element.style.setProperty(property, value)
     }
 
-    const writeOverview = (element: HTMLElement, value: string) => {
-      const current = element.getAttribute(OVERVIEW_ATTRIBUTE)
+    const writeAttribute = (element: HTMLElement, name: string, value: string) => {
+      const current = element.getAttribute(name)
       if (current === value) {
         return
       }
-      const write = attributes.get(element) ?? { previous: current, value }
+      const entry = attributes.get(name)
+      const write = entry?.element === element ? entry.write : { previous: current, value }
       write.value = value
-      attributes.set(element, write)
-      element.setAttribute(OVERVIEW_ATTRIBUTE, value)
+      attributes.set(name, { element, write })
+      element.setAttribute(name, value)
     }
 
     const apply = (nextZoom: number): boolean => {
@@ -68,7 +75,9 @@ export function useSpaceVisualScale(scopeRef: RefObject<HTMLDivElement | null>) 
         writeProperty(layer, '--cove-space-stroke-scale', String(scale.stroke))
       }
       writeProperty(scope, IDENTITY_STRIPE_PROPERTY, `${scale.identityStripe}px`)
-      writeOverview(scope, String(scale.overview))
+      writeAttribute(scope, OVERVIEW_ATTRIBUTE, String(scale.overview))
+      lod = resolveCanvasLod(nextZoom, lod, farViewEnabled)
+      writeAttribute(scope, CANVAS_LOD_ATTRIBUTE, lod)
       scope.dispatchEvent(new Event(SPACE_VISUAL_SCALE_EVENT))
       return true
     }
@@ -102,16 +111,16 @@ export function useSpaceVisualScale(scopeRef: RefObject<HTMLDivElement | null>) 
           }
         }
       }
-      for (const [element, write] of attributes) {
-        if (element.getAttribute(OVERVIEW_ATTRIBUTE) !== write.value) {
+      for (const [name, { element, write }] of attributes) {
+        if (element.getAttribute(name) !== write.value) {
           continue
         }
         if (write.previous === null) {
-          element.removeAttribute(OVERVIEW_ATTRIBUTE)
+          element.removeAttribute(name)
         } else {
-          element.setAttribute(OVERVIEW_ATTRIBUTE, write.previous)
+          element.setAttribute(name, write.previous)
         }
       }
     }
-  }, [scopeRef, store])
+  }, [farViewEnabled, scopeRef, store])
 }

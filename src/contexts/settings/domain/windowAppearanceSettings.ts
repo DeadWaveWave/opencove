@@ -16,5 +16,7 @@ export function normalizeWindowAppearanceSettings(
     windowMaterial: (WINDOW_MATERIALS as readonly unknown[]).includes(value.windowMaterial)
       ? (value.windowMaterial as WindowMaterial)
       : DEFAULT_AGENT_SETTINGS.windowMaterial,
+    canvasFarViewEnabled:
+      normalizeBoolean(value.canvasFarViewEnabled) ?? DEFAULT_AGENT_SETTINGS.canvasFarViewEnabled,
   }
 }

@@ -54,10 +54,17 @@ afterEach(() => {
 })
 
 describe('Space visual scale', () => {
-  it.each([1, 0.5, 0.2, 0.1])('keeps annotations and hairlines legible at zoom %s', zoom => {
+  // Captions hold 8.8px on screen down to 40% zoom and grow to about 15px by far view, where
+  // the Space name is what reads, until the compensation cap.
+  it.each([
+    [1, 11],
+    [0.5, 8.8],
+    [0.2, 15.4],
+    [0.1, 13.2],
+  ])('keeps annotations and hairlines legible at zoom %s', (zoom, screenPx) => {
     const scale = resolveSpaceVisualScale(zoom)
     expect(scale.zoom).toBe(zoom)
-    expect(11 * scale.annotation * zoom).toBeCloseTo(zoom === 1 ? 11 : 8.8)
+    expect(11 * scale.annotation * zoom).toBeCloseTo(screenPx)
     expect(scale.stroke * zoom).toBeGreaterThanOrEqual(0.7 - 1e-8)
     expect(scale.stroke * zoom).toBeLessThanOrEqual(1)
   })
@@ -74,7 +81,7 @@ describe('Space visual scale', () => {
 
   it('bounds far-zoom compensation and fades fill without changing world geometry', () => {
     const far = resolveSpaceVisualScale(0.02)
-    expect(far.annotation).toBe(8)
+    expect(far.annotation).toBe(12)
     expect(far.stroke).toBe(7)
     expect(far.detail).toBe(0)
     expect(resolveSpaceVisualScale(0.2).detail).toBeLessThan(0.05)
@@ -103,7 +110,7 @@ describe('Space visual scale', () => {
       const scale = Math.min(overview.annotation, resolveSpaceAnnotationCap(width, true))
       expect(11 * scale * overview.zoom).toBeGreaterThanOrEqual(8)
       expect((width - 32) / 2 / scale).toBeGreaterThanOrEqual(60 - 1e-8)
-      expect(scale).toBeLessThanOrEqual(4)
+      expect(scale).toBeLessThanOrEqual(7)
     }
     expect(resolveSpaceAnnotationCap(932, false)).toBe(resolveSpaceAnnotationCap(932))
   })
@@ -132,7 +139,7 @@ describe('Space visual scale', () => {
     renderHook(() => useSpaceVisualScale(scopeRef))
 
     expect(spaceLayer.style.getPropertyValue('--cove-canvas-zoom')).toBe('0.2')
-    expect(spaceLayer.style.getPropertyValue('--cove-space-annotation-scale')).toBe('4')
+    expect(spaceLayer.style.getPropertyValue('--cove-space-annotation-scale')).toBe('7')
     expect(Number(spaceLayer.style.getPropertyValue('--cove-space-detail'))).toBeLessThan(0.05)
     expect(spaceLayer.style.getPropertyValue('--cove-space-stroke-scale')).toBe('4')
     for (const property of [
@@ -214,6 +221,33 @@ describe('Space visual scale', () => {
     expect(scope.getAttribute('data-cove-space-overview')).toBe('true')
   })
 
+  it('writes the level of detail on the canvas root with hysteresis, only when it steps', () => {
+    const { scope, scopeRef } = createCanvas()
+    renderHook(() => useSpaceVisualScale(scopeRef))
+    expect(scope.getAttribute('data-cove-lod')).toBe('near')
+    const setAttribute = vi.spyOn(scope, 'setAttribute')
+    const lodWrites = () =>
+      setAttribute.mock.calls.filter(([name]) => name === 'data-cove-lod').map(([, value]) => value)
+
+    for (const zoom of [0.5, 0.26, 0.25, 0.2, 0.27, 0.28, 0.29, 1]) {
+      flow.move(0, zoom)
+    }
+    expect(lodWrites()).toEqual(['far', 'near'])
+    expect(scope.getAttribute('data-cove-lod')).toBe('near')
+  })
+
+  it('keeps the canvas near while far view is turned off', () => {
+    const { scope, scopeRef } = createCanvas()
+    flow.move(0, 0.1)
+    const { rerender } = renderHook(
+      ({ farViewEnabled }) => useSpaceVisualScale(scopeRef, { farViewEnabled }),
+      { initialProps: { farViewEnabled: false } },
+    )
+    expect(scope.getAttribute('data-cove-lod')).toBe('near')
+    rerender({ farViewEnabled: true })
+    expect(scope.getAttribute('data-cove-lod')).toBe('far')
+  })
+
   it('restores previous values on unmount and leaves values owned by others', () => {
     const { scope, spaceLayer, scopeRef } = createCanvas()
     spaceLayer.style.setProperty('--cove-canvas-zoom', '0.75')
@@ -229,5 +263,6 @@ describe('Space visual scale', () => {
     expect(spaceLayer.style.getPropertyValue('--cove-space-stroke-scale')).toBe('external-owner')
     expect(scope.style.getPropertyValue('--cove-node-identity-stripe-height')).toBe('')
     expect(scope.hasAttribute('data-cove-space-overview')).toBe(false)
+    expect(scope.hasAttribute('data-cove-lod')).toBe(false)
   })
 })

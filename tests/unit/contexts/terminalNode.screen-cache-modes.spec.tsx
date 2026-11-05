@@ -82,6 +82,7 @@ vi.mock('@xyflow/react', () => {
       Left: 'left',
       Right: 'right',
     },
+    useStoreApi: () => ({ getState: () => ({ transform: [0, 0, 1] }), subscribe: () => () => {} }),
     useStore: (selector: (state: unknown) => unknown) =>
       selector({ coveDragSurfaceSelectionMode: false }),
   }

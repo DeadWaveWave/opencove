@@ -332,7 +332,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
       await clearCanvasSelection(page)
       const inspectZoom = async (zoom: number) => {
         await wheelToZoom(page, zoom)
-        await expectSpaceFrameHeader(page)
+        await expectSpaceFrameHeader(page, zoom === 0.2 ? 'far' : 'near')
         const spaces = await readSpaceIdentity(page)
         await testInfo.attach(`color-identity-space-${zoom}-metrics`, {
           body: JSON.stringify(spaces, null, 2),
@@ -356,7 +356,8 @@ test.describe('Workspace Canvas - Color Identity', () => {
           expect(space.edge.width * zoom).toBeGreaterThanOrEqual(0.65)
           expect(space.edge.width * zoom).toBeLessThanOrEqual(1.1)
           for (const group of space.groups) {
-            expect(group.width).toBeLessThanOrEqual(space.rect.width / 2 + 1)
+            const widthBudget = zoom === 0.2 && group.side === 'left' ? 1 : 0.5
+            expect(group.width).toBeLessThanOrEqual(space.rect.width * widthBudget + 1)
             expect(group.left).toBeGreaterThanOrEqual(space.rect.x - 1)
             expect(group.right).toBeLessThanOrEqual(space.rect.x + space.rect.width + 1)
           }
@@ -379,11 +380,11 @@ test.describe('Workspace Canvas - Color Identity', () => {
             await page.keyboard.press('Tab')
             await expect(files).toBeFocused()
             await expect(files).toHaveCSS('opacity', '1')
-            await expectSpaceFrameHeader(page)
+            await expectSpaceFrameHeader(page, 'far')
             await page.keyboard.press('Tab')
             await expect(menu).toBeFocused()
             await expect(menu).toHaveCSS('opacity', '1')
-            await expectSpaceFrameHeader(page)
+            await expectSpaceFrameHeader(page, 'far')
             await menu.evaluate(element => (element as HTMLElement).blur())
             await label.hover()
             await expect(files).toHaveCSS('pointer-events', 'auto')

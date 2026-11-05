@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../types'
 import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
+import { readWindowCommitCounts, resetWindowCommitCounts } from '../shared/windowCommitProbe'
 
 type WorkspaceCanvasAgentSessionState = {
   nodeId: string
@@ -18,6 +19,11 @@ type WorkspaceCanvasTestApi = {
   resetSyncCount: () => void
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => boolean
   createTerminalAtFlowPoint: (point: { x: number; y: number }) => Promise<boolean>
+  /** Zooms around the viewport centre without animation. */
+  setZoom: (zoom: number) => Promise<boolean>
+  /** Window header commits by kind family since the last reset (Tide phase 4.3 probe). */
+  getWindowCommitCounts: () => Record<string, number>
+  resetWindowCommitCounts: () => void
 }
 
 declare global {
@@ -31,6 +37,7 @@ let syncCount = 0
 let arrangeInSpaceHandler: ((spaceId: string, style?: WorkspaceArrangeStyle) => void) | null = null
 let createTerminalAtFlowPointHandler: ((point: { x: number; y: number }) => Promise<void>) | null =
   null
+let setZoomHandler: ((zoom: number) => Promise<void>) | null = null
 
 function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
   if (typeof window === 'undefined') {
@@ -87,6 +94,16 @@ function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
         await createTerminalAtFlowPointHandler(point)
         return true
       },
+      getWindowCommitCounts: () => readWindowCommitCounts(),
+      resetWindowCommitCounts: () => resetWindowCommitCounts(),
+      setZoom: async zoom => {
+        if (!setZoomHandler || !Number.isFinite(zoom) || zoom <= 0) {
+          return false
+        }
+
+        await setZoomHandler(zoom)
+        return true
+      },
     }
   }
 
@@ -113,6 +130,17 @@ export function bindWorkspaceCanvasCreateTerminalAtFlowPointTestAction(
 
   getWorkspaceCanvasTestApi()
   createTerminalAtFlowPointHandler = handler
+}
+
+export function bindWorkspaceCanvasSetZoomTestAction(
+  handler: ((zoom: number) => Promise<void>) | null,
+): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  getWorkspaceCanvasTestApi()
+  setZoomHandler = handler
 }
 
 export function syncWorkspaceCanvasTestState(nodes: Node<TerminalNodeData>[]): void {

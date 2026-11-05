@@ -36,4 +36,7 @@ export const zhCNSettingsPanelAppearanceNext = {
   windowMaterialSystemHelp: '系统已开启减少透明度，窗口使用实色。',
   windowMaterial_glass: '玻璃',
   windowMaterial_solid: '实色',
+  farView: '远景',
+  farViewHelp:
+    '缩小到 25% 以下时，每个窗口变成带类别、标题和状态的方块，放大到 28% 以上恢复。终端、编辑器和网页照常运行。',
 }
