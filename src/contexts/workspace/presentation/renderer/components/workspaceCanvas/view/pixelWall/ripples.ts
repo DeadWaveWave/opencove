@@ -10,6 +10,8 @@ export const RIPPLE_LIMIT = 24
 const RIPPLE_REACH = 640
 
 export interface Ripple {
+  /** Who sent it: a window id. */
+  key?: string
   /** Centre in world px. */
   x: number
   y: number
@@ -27,7 +29,7 @@ export interface Ripple {
  * success or completion. Runtime only.
  */
 export function createRippleField() {
-  const ripples: Array<{ x: number; y: number; color: Rgb; startedAt: number }> = []
+  const ripples: Array<{ key: string; x: number; y: number; color: Rgb; startedAt: number }> = []
   const lastByWindow = new Map<string, number>()
   const prune = (now: number) => {
     for (let index = ripples.length - 1; index >= 0; index--) {
@@ -49,7 +51,7 @@ export function createRippleField() {
         return false
       }
       lastByWindow.set(windowId, now)
-      ripples.push({ x: center.x, y: center.y, color, startedAt: now })
+      ripples.push({ key: windowId, x: center.x, y: center.y, color, startedAt: now })
       return true
     },
     sample(now: number): Ripple[] {
@@ -60,6 +62,7 @@ export function createRippleField() {
           const t = (now - ripple.startedAt) / RIPPLE_DURATION_MS
           const eased = 1 - (1 - t) ** 3
           return {
+            key: ripple.key,
             x: ripple.x,
             y: ripple.y,
             radius: 24 + (RIPPLE_REACH - 24) * eased,

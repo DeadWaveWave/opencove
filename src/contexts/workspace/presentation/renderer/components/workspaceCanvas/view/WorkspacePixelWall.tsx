@@ -86,6 +86,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         lights: lit.windows,
         glassCount: glass.count,
         rippleCount: waves.length,
+        rippleKeys: waves.map(wave => wave.key ?? ''),
       })
       if (grid.screenCell !== screenCell) {
         screenCell = grid.screenCell

@@ -8,6 +8,10 @@ export interface PixelWallTestApi {
   getGlassCount: () => number
   /** Output ripples on the wall in the last frame. */
   getRippleCount: () => number
+  /** Who sent each wave in the last frame: a window id, or `sonar:`, `waiting:`, `complete:`… */
+  getRippleKeys: () => string[]
+  /** Every wave key drawn since the page loaded, so a test cannot miss a one-second wave. */
+  getSeenRippleKeys: () => string[]
   getFrameCount: () => number
   /** Frames painted with a clock; a still wall (reduced motion, lost context) adds none. */
   getAnimatedFrameCount: () => number
@@ -29,6 +33,8 @@ let lastCells: Uint8ClampedArray | null = null
 let lastLights: readonly WallWindowRect[] = []
 let lastGlassCount = 0
 let lastRippleCount = 0
+let lastRippleKeys: readonly string[] = []
+const seenRippleKeys = new Set<string>()
 
 /** Counts a frame; the checksum is only computed when a test asks for it. */
 export function recordWallFrame(
@@ -38,11 +44,13 @@ export function recordWallFrame(
     lights = [],
     glassCount = 0,
     rippleCount = 0,
+    rippleKeys = [],
   }: {
     animated: boolean
     lights?: readonly WallWindowRect[]
     glassCount?: number
     rippleCount?: number
+    rippleKeys?: readonly string[]
   },
 ): void {
   frames++
@@ -53,6 +61,10 @@ export function recordWallFrame(
   lastLights = lights
   lastGlassCount = glassCount
   lastRippleCount = rippleCount
+  lastRippleKeys = rippleKeys
+  for (const key of rippleKeys) {
+    seenRippleKeys.add(key)
+  }
   if (typeof window === 'undefined' || window.__opencovePixelWallTestApi) {
     return
   }
@@ -60,6 +72,8 @@ export function recordWallFrame(
     getLights: () => lastLights.map(light => ({ ...light })),
     getGlassCount: () => lastGlassCount,
     getRippleCount: () => lastRippleCount,
+    getRippleKeys: () => [...lastRippleKeys],
+    getSeenRippleKeys: () => [...seenRippleKeys],
     getFrameCount: () => frames,
     getAnimatedFrameCount: () => animatedFrames,
     getSignature: () => {

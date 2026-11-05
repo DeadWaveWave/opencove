@@ -45,6 +45,11 @@ async function printOutput(window: Page) {
 
 const rippleCount = (window: Page) =>
   window.evaluate(() => window.__opencovePixelWallTestApi?.getRippleCount() ?? 0)
+// A ripple lasts about a second; a slow runner can miss it between polls, so read what was seen.
+const seenRipples = (window: Page) =>
+  window.evaluate(() => window.__opencovePixelWallTestApi?.getSeenRippleKeys() ?? [])
+
+type DotWindow = Window & { __coveDotRipplePixels?: number }
 
 test.describe('Workspace Canvas - Output ripples', () => {
   test('sends a ripple across the pixel wall when a window receives output', async ({
@@ -57,7 +62,7 @@ test.describe('Workspace Canvas - Output ripples', () => {
       await seed(window, 'pixel')
       await expectPaintedWall(window)
       await printOutput(window)
-      await expect.poll(() => rippleCount(window)).toBeGreaterThan(0)
+      await expect.poll(() => seenRipples(window)).toContain(TERMINAL_ID)
       // A ripple lasts about a second and is then forgotten.
       await expect.poll(() => rippleCount(window), { timeout: 5_000 }).toBe(0)
     } finally {
@@ -75,6 +80,7 @@ test.describe('Workspace Canvas - Output ripples', () => {
       await printOutput(window)
       await window.waitForTimeout(300)
       expect(await rippleCount(window)).toBe(0)
+      expect(await seenRipples(window)).toEqual([])
     } finally {
       await electronApp.close()
     }
@@ -89,14 +95,14 @@ test.describe('Workspace Canvas - Output ripples', () => {
       await expect(window.getByTestId('workspace-pixel-wall')).toHaveCount(0)
       const layer = window.getByTestId('workspace-pixel-layer')
       await expect(layer).toHaveCount(1)
-      await printOutput(window)
-      await expect
-        .poll(() =>
-          layer.evaluate(element => {
-            const canvas = element as HTMLCanvasElement
-            if (canvas.width === 0 || canvas.height === 0) {
-              return 0
-            }
+      // Sample the canvas after every frame's draw while the layer reports a ripple, so a slow
+      // runner cannot miss the one-second wave between polls.
+      await layer.evaluate(element => {
+        const canvas = element as HTMLCanvasElement
+        const target = window as DotWindow
+        target.__coveDotRipplePixels = 0
+        const sample = () => {
+          if (Number(canvas.dataset.covePixelRipples ?? 0) > 0 && canvas.width > 0) {
             const data = canvas
               .getContext('2d')!
               .getImageData(0, 0, canvas.width, canvas.height).data
@@ -106,9 +112,15 @@ test.describe('Workspace Canvas - Output ripples', () => {
                 painted++
               }
             }
-            return painted
-          }),
-        )
+            target.__coveDotRipplePixels = Math.max(target.__coveDotRipplePixels ?? 0, painted)
+          }
+          requestAnimationFrame(() => setTimeout(sample, 0))
+        }
+        requestAnimationFrame(() => setTimeout(sample, 0))
+      })
+      await printOutput(window)
+      await expect
+        .poll(() => window.evaluate(() => (window as DotWindow).__coveDotRipplePixels ?? 0))
         .toBeGreaterThan(20)
     } finally {
       await electronApp.close()

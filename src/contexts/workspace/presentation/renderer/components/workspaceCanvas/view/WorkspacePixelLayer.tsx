@@ -183,6 +183,7 @@ function WorkspacePixelLayerComponent({
           effects.working && !reducedMotion
             ? projected.filter(node => node.tone === 'working' && !pending.has(node.id))
             : []
+        const dotWaves = ripplesRef.current && !reducedMotion ? rippleField.sample(now) : []
         const active = drawPixelLayer({
           canvas,
           context,
@@ -193,13 +194,16 @@ function WorkspacePixelLayerComponent({
           now,
           reducedMotion,
           background: effects.background && readThemeEffect('background').preset === 'pixel',
-          ripples: ripplesRef.current && !reducedMotion ? rippleField.sample(now) : [],
+          ripples: dotWaves,
           working: effects.working && readThemeEffect('working').preset === 'pixel',
           workingNow: (now * 1400) / Math.max(1, readThemeEffect('working').durationMs ?? 1400),
         })
         canvas.hidden = !effects.background && workingNodes.length === 0
         canvas.dataset.covePixelWorkingNodeIds = workingNodes.map(node => node.id).join(',')
         canvas.dataset.covePixelActivity = active ? 'output' : 'idle'
+        if (canvas.dataset.covePixelRipples !== String(dotWaves.length)) {
+          canvas.dataset.covePixelRipples = String(dotWaves.length)
+        }
         drawAssembly()
         return (
           !reducedMotion &&
