@@ -32,6 +32,8 @@ export interface WaveOptions {
   durationMs?: number
   gain?: number
   crest?: boolean
+  /** The least time between two waves with this key; output ripples use 700ms. */
+  minIntervalMs?: number
 }
 
 /**
@@ -74,7 +76,7 @@ export function createRippleField() {
     ): boolean {
       prune(now)
       const last = lastByWindow.get(windowId)
-      if (last !== undefined && now - last < RIPPLE_WINDOW_INTERVAL_MS) {
+      if (last !== undefined && now - last < (options.minIntervalMs ?? RIPPLE_WINDOW_INTERVAL_MS)) {
         return false
       }
       if (ripples.length >= RIPPLE_LIMIT) {
@@ -93,6 +95,11 @@ export function createRippleField() {
         ...(options.crest ? { crest: true } : {}),
       })
       return true
+    },
+    /** Whether a wave with this key may start now, before paying to build it. */
+    ready(windowId: string, now: number, minIntervalMs = RIPPLE_WINDOW_INTERVAL_MS): boolean {
+      const last = lastByWindow.get(windowId)
+      return (last === undefined || now - last >= minIntervalMs) && ripples.length < RIPPLE_LIMIT
     },
     sample(now: number): Ripple[] {
       prune(now)

@@ -95,3 +95,14 @@ describe('signal waves', () => {
     expect(field.sample(1700)).toHaveLength(0)
   })
 })
+
+describe('sonar waves', () => {
+  it('reports whether a key may send again, at its own interval', () => {
+    const field = createRippleField()
+    expect(field.ready('sonar:a', 0, 2400)).toBe(true)
+    field.emit('sonar:a', { x: 0, y: 0 }, red, 0, { minIntervalMs: 2400, gain: 0.26 })
+    expect(field.ready('sonar:a', 2399, 2400)).toBe(false)
+    expect(field.emit('sonar:a', { x: 0, y: 0 }, red, 2399, { minIntervalMs: 2400 })).toBe(false)
+    expect(field.ready('sonar:a', 2400, 2400)).toBe(true)
+  })
+})

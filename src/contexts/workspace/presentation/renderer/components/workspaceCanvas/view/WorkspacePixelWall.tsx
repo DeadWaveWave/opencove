@@ -6,6 +6,7 @@ import { createPixelFrameScheduler } from './pixelLayer/scheduler'
 import { fillWallCells } from './pixelWall/wallCells'
 import { createWallDissolve } from './pixelWall/wallDissolve'
 import { createRippleField } from './pixelWall/ripples'
+import { SONAR_INTERVAL_MS, SONAR_WAVE } from './pixelLayer/dotRipples'
 import { showWindowSignal } from './windowSignals/frameSignals'
 import { subscribeWindowSignal } from './windowSignals/windowSignalEvents'
 import { projectWallGlass, readWallGlassRadius } from './pixelWall/wallGlass'
@@ -35,12 +36,17 @@ const SWEEP_MS = 500
  */
 export const WorkspacePixelWall = memo(function WorkspacePixelWall({
   ambient = true,
+  signals = true,
 }: {
   /** 「背景闪烁」: twinkle and cloud drift. Off, the wall holds still and paints only on change. */
   ambient?: boolean
+  /** Waiting pulses and working sonar, which follow the Agent working effect switch. */
+  signals?: boolean
 }): React.JSX.Element {
   const store = useStoreApi<Node<TerminalNodeData>>()
   const ambientRef = useRef(ambient)
+  const signalsRef = useRef(signals)
+  signalsRef.current = signals
   const repaintRef = useRef<(() => void) | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const glRef = useRef<HTMLCanvasElement>(null)
@@ -81,13 +87,21 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       const grid = resolveWallGrid({ x, y, zoom, width, height })
       const ambientSeconds = now === null || still() ? null : now / 1000
       const lit = tracker.resolve(now === null || reducedMotion ? null : now, lights)
-      const pulsing = now === null || reducedMotion ? [] : tracker.waiting()
+      const pulsing = now === null || reducedMotion || !signalsRef.current ? [] : tracker.waiting()
       for (const { id, center } of pulsing) {
         // A yellow ring leaves each waiting window every 1.8s; reduced motion keeps the steady light.
         if (now !== null && now - (lastPulse.get(id) ?? -Infinity) >= WAITING_PULSE_MS) {
           lastPulse.set(id, now)
           ripples.emit(`waiting:${id}`, center, lights.waiting, now)
         }
+      }
+      // Each working agent sends a low sonar wave every 2.4s.
+      const sonar = now === null || reducedMotion || !signalsRef.current ? [] : tracker.working()
+      for (const { id, center, family } of sonar) {
+        ripples.emit(`sonar:${id}`, center, lights[family], now!, {
+          ...SONAR_WAVE,
+          minIntervalMs: SONAR_INTERVAL_MS,
+        })
       }
       const waves = now === null || reducedMotion ? [] : ripples.sample(now)
       // As the shockwave passes another window, that window's 1px edge glows in the sender's
@@ -112,7 +126,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
           swept.delete(key)
         }
       }
-      lightsAnimating = lit.animating || waves.length > 0 || pulsing.length > 0
+      lightsAnimating = lit.animating || waves.length > 0 || pulsing.length > 0 || sonar.length > 0
       cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows, waves)
       const glass = projectWallGlass(
         lit.windows,
