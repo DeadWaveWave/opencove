@@ -3,8 +3,8 @@ import type { WallFallbackSurface, WallFrame } from './wallFrame'
 /**
  * The wall on Canvas 2D. The cell colours go into a canvas one pixel per cell, which is scaled
  * up without smoothing, and the seams are drawn as one line per row and column: the cost
- * follows the grid's edges, not its area. Behind each window the same cells are scaled up with
- * smoothing and only faint seams, as frosted glass.
+ * follows the grid's edges, not its area. Behind each window, and behind the shell's chrome,
+ * the same cells are scaled up with smoothing and only faint seams, as frosted glass.
  */
 export function createWall2d(canvas: HTMLCanvasElement): WallFallbackSurface {
   const context = canvas.getContext('2d', { alpha: false })
@@ -58,24 +58,28 @@ export function createWall2d(canvas: HTMLCanvasElement): WallFallbackSurface {
         }
       }
       drawSeams(grid.gap)
-      const { glass } = frame
-      for (let index = 0; index < glass.count; index++) {
-        const [left, top, glassWidth, glassHeight] = glass.rects.subarray(index * 4, index * 4 + 4)
-        context.save()
-        context.beginPath()
-        context.roundRect(left!, top!, glassWidth!, glassHeight!, glass.radius)
-        context.clip()
-        context.imageSmoothingEnabled = true
-        context.drawImage(
-          source,
-          grid.originX,
-          grid.originY,
-          grid.columns * grid.screenCell,
-          grid.rows * grid.screenCell,
-        )
-        context.globalAlpha = 0.16
-        drawSeams(grid.gap * 1.2)
-        context.restore()
+      for (const glass of [frame.glass, frame.chrome]) {
+        for (let index = 0; index < glass.count; index++) {
+          const [left, top, glassWidth, glassHeight] = glass.rects.subarray(
+            index * 4,
+            index * 4 + 4,
+          )
+          context.save()
+          context.beginPath()
+          context.roundRect(left!, top!, glassWidth!, glassHeight!, glass.radius)
+          context.clip()
+          context.imageSmoothingEnabled = true
+          context.drawImage(
+            source,
+            grid.originX,
+            grid.originY,
+            grid.columns * grid.screenCell,
+            grid.rows * grid.screenCell,
+          )
+          context.globalAlpha = 0.16
+          drawSeams(grid.gap * 1.2)
+          context.restore()
+        }
       }
     },
     clear(): void {

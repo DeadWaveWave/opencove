@@ -1,0 +1,28 @@
+/* Tide: the pixel wall fills the window and the shell floats on it. The canvas paints its wall
+   into this layer; the layout around it does not change. */
+.app-shell__wall {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* With a wall behind them, the top bar and the sidebar are chrome glass. The wall draws the
+   frost under them and caps the cells there, so they need no backdrop-filter, and the glass
+   tint is the one the theme contrast checks hold for (`--cove-glass-chrome`; solid material
+   and reduced transparency make it opaque). The peeking sidebar floats over windows and keeps
+   its own surface. */
+.app-shell:has(> .app-shell__wall > .workspace-pixel-wall)
+  :is(.app-header, .workspace-sidebar:not(.workspace-sidebar--peek)) {
+  background: var(--cove-surface);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* The project rail shares the sidebar's glass; its border still sets it apart. */
+.app-shell:has(> .app-shell__wall > .workspace-pixel-wall)
+  .workspace-sidebar:not(.workspace-sidebar--peek)
+  .workspace-project-rail {
+  background: transparent;
+}

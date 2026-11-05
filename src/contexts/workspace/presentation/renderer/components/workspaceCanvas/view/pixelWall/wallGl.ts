@@ -215,8 +215,11 @@ export function createWallGl(
       gl.uniform1f(r.wallUniforms.uHeight!, frame.height)
       gl.bindVertexArray(r.wallVao)
       gl.drawArrays(gl.TRIANGLES, 0, 3)
-      const { glass } = frame
-      if (glass.count > 0) {
+      // Windows, then the shell's chrome: one instanced frost draw each, as their corners differ.
+      for (const glass of [frame.glass, frame.chrome]) {
+        if (glass.count === 0) {
+          continue
+        }
         gl.bindBuffer(gl.ARRAY_BUFFER, r.rectBuffer)
         if (glass.count > r.rectCapacity) {
           r.rectCapacity = Math.max(glass.count, r.rectCapacity * 2)
