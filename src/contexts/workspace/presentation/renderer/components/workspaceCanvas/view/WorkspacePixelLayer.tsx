@@ -24,6 +24,8 @@ import {
   subscribeThemeMotion,
 } from '@contexts/plugins/presentation/renderer/themeMotion'
 import { createThemeEffects } from './pixelLayer/themeEffects'
+import { createRippleField } from './pixelWall/ripples'
+import { emitOutputRipple } from './pixelLayer/dotRipples'
 import {
   ALL_PIXEL_EFFECTS,
   resolveThemeEffectOptions,
@@ -34,11 +36,14 @@ function WorkspacePixelLayerComponent({
   nodes,
   options = ALL_PIXEL_EFFECTS,
   ambient = true,
+  ripples = false,
 }: {
   nodes: Node<TerminalNodeData>[]
   options?: PixelLayerOptions
   /** Whether a theme's own animated background may run: only under the pixel background style. */
   ambient?: boolean
+  /** Draw output ripples through the dot grid: when no pixel wall draws them. */
+  ripples?: boolean
 }): React.JSX.Element {
   const store = useStoreApi<Node<TerminalNodeData>>()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -47,6 +52,7 @@ function WorkspacePixelLayerComponent({
   const refreshRef = useRef<(() => void) | null>(null)
   const optionsRef = useRef(options)
   const ambientRef = useRef(ambient)
+  const ripplesRef = useRef(ripples)
   const syncOptionsRef = useRef<(() => void) | null>(null)
   const { background, creation, closing, working } = options
 
@@ -57,8 +63,9 @@ function WorkspacePixelLayerComponent({
 
   useLayoutEffect(() => {
     ambientRef.current = ambient
+    ripplesRef.current = ripples
     refreshRef.current?.()
-  }, [ambient])
+  }, [ambient, ripples])
 
   useLayoutEffect(() => {
     nodesRef.current = nodes
@@ -87,6 +94,7 @@ function WorkspacePixelLayerComponent({
     let projected = projectPixelNodes(nodesRef.current, state.nodeLookup, viewport)
     let frames = projectPixelNodeFrames(nodesRef.current, state.nodeLookup, viewport)
     const activity = createPixelActivity()
+    const rippleField = createRippleField()
     const creationDuration = () => readThemeEffect('creation').durationMs ?? 380
     const closingDuration = () => readThemeEffect('closing').durationMs ?? 420
     let assembly = createPixelAssembly(creationDuration())
@@ -175,6 +183,7 @@ function WorkspacePixelLayerComponent({
           effects.working && !reducedMotion
             ? projected.filter(node => node.tone === 'working' && !pending.has(node.id))
             : []
+        const dotWaves = ripplesRef.current && !reducedMotion ? rippleField.sample(now) : []
         const active = drawPixelLayer({
           canvas,
           context,
@@ -185,12 +194,16 @@ function WorkspacePixelLayerComponent({
           now,
           reducedMotion,
           background: effects.background && readThemeEffect('background').preset === 'pixel',
+          ripples: dotWaves,
           working: effects.working && readThemeEffect('working').preset === 'pixel',
           workingNow: (now * 1400) / Math.max(1, readThemeEffect('working').durationMs ?? 1400),
         })
         canvas.hidden = !effects.background && workingNodes.length === 0
         canvas.dataset.covePixelWorkingNodeIds = workingNodes.map(node => node.id).join(',')
         canvas.dataset.covePixelActivity = active ? 'output' : 'idle'
+        if (canvas.dataset.covePixelRipples !== String(dotWaves.length)) {
+          canvas.dataset.covePixelRipples = String(dotWaves.length)
+        }
         drawAssembly()
         return (
           !reducedMotion &&
@@ -345,9 +358,22 @@ function WorkspacePixelLayerComponent({
       ) {
         return
       }
-      if (activity.observe(event.sessionId, projected, performance.now())) {
-        scheduler.invalidate()
+      const at = performance.now()
+      if (!activity.observe(event.sessionId, projected, at)) {
+        return
       }
+      if (ripplesRef.current) {
+        emitOutputRipple(
+          rippleField,
+          event.sessionId,
+          projected,
+          nodesRef.current,
+          viewport,
+          canvas,
+          at,
+        )
+      }
+      scheduler.invalidate()
     })
     const unsubscribePrepared = subscribeWorkspaceNodeCreationPrepared((nodeIds, createdAt) => {
       if (!isVisible() || reducedMotion || !currentEffects().creation) {

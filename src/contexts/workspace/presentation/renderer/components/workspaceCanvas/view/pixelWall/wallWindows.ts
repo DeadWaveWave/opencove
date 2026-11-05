@@ -67,18 +67,26 @@ export function createWallWindowTracker() {
       }
       windows = next
     },
-    /** Returns whether a window on the wall produced the output. */
-    observeOutput(sessionId: string, now: number): boolean {
+    /** Records output and returns the window that produced it, or null for another session. */
+    observeOutput(
+      sessionId: string,
+      now: number,
+    ): { id: string; center: { x: number; y: number }; family: WindowKindFamily } | null {
       if (!sessionId) {
-        return false
+        return null
       }
       const window = windows.find(candidate => candidate.sessionId === sessionId)
       const record = window ? events.get(window.id) : undefined
-      if (!record) {
-        return false
+      if (!window || !record) {
+        return null
       }
       record.outputAt = now
-      return true
+      const { x, y, width, height } = window.rect
+      return {
+        id: window.id,
+        center: { x: x + width / 2, y: y + height / 2 },
+        family: window.family,
+      }
     },
     /** Each window's frame and light for a clock in ms, or fixed levels for null. */
     resolve(

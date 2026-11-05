@@ -2,6 +2,7 @@ import type { Rgb } from '@shared/design/oklch'
 import { PIXEL_WALL } from '@shared/design/themeGenerator'
 import type { WallGrid } from './wallGrid'
 import type { WallPalette } from './wallPalette'
+import { forEachRingCell, type Ripple } from './ripples'
 
 /** A window's frame in world coordinates, and the light it casts on the wall. */
 export interface WallWindowRect {
@@ -14,6 +15,9 @@ export interface WallWindowRect {
 
 /** Cells within this many cells of a window count as behind its glass, frame shadow included. */
 const GLASS_REACH_CELLS = 2
+
+/** How strongly a ripple's wavefront pulls a cell toward its colour. */
+const RIPPLE_GAIN = 0.62
 
 /** World px per second the clouds drift. */
 const CLOUD_DRIFT = 9
@@ -142,8 +146,8 @@ function castWorkLight(
 
 /**
  * One colour per visible cell: the theme's cell colour with a little per-tile jitter, soft
- * colour clouds anchored to the world, a sparse twinkle in blank space and each window's work
- * light. Without a
+ * colour clouds anchored to the world, a sparse twinkle in blank space, each window's work
+ * light and the output ripples. Without a
  * clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU context) the clouds and
  * twinkle are still; the lights keep whatever intensity the caller resolved.
  *
@@ -156,6 +160,7 @@ export function fillWallCells(
   timeSeconds: number | null,
   out?: Uint8ClampedArray,
   windows: readonly WallWindowRect[] = [],
+  ripples: readonly Ripple[] = [],
 ): Uint8ClampedArray {
   const count = grid.columns * grid.rows
   const cells = out && out.length === count * 4 ? out : new Uint8ClampedArray(count * 4)
@@ -201,6 +206,16 @@ export function fillWallCells(
     }
   }
   castWorkLight(cells, moved, grid, windows, palette.appearance)
+  // Output ripples brighten the cells their wavefront passes, in the window's kind colour.
+  for (const ripple of ripples) {
+    forEachRingCell(grid, ripple, (column, row, weight) => {
+      const k = RIPPLE_GAIN * ripple.strength * weight
+      if (k >= 0.01) {
+        const cell = row * grid.columns + column
+        moved[cell] = mix(cells, cell * 4, ripple.color, k, moved[cell]!)
+      }
+    })
+  }
   if (behind) {
     for (let cell = 0; cell < count; cell++) {
       if (!behind[cell] || moved[cell]! <= weights.cap) {
