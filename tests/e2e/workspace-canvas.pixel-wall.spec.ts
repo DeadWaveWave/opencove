@@ -209,6 +209,10 @@ test.describe('Workspace Canvas - Work light', () => {
       await expect.poll(async () => (await noteLight())?.color).toEqual(knowledge)
       // A note is not an agent: it rests at the idle level.
       expect((await noteLight())?.intensity).toBeCloseTo(0.46)
+      // The note's frame is frosted glass on the wall.
+      expect(
+        await window.evaluate(() => window.__opencovePixelWallTestApi?.getGlassCount() ?? 0),
+      ).toBe(1)
 
       await window.getByTestId('app-header-settings').click({ noWaitAfter: true })
       await window.getByTestId('settings-section-nav-appearance').click()

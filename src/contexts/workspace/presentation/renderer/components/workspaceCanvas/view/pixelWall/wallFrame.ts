@@ -1,4 +1,5 @@
 import type { Rgb } from '@shared/design/oklch'
+import type { WallGlass } from './wallGlass'
 import type { WallGrid } from './wallGrid'
 
 /** Everything a renderer needs to paint one frame of the wall. */
@@ -7,6 +8,8 @@ export interface WallFrame {
   /** RGBA per visible cell, row by row. */
   cells: Uint8ClampedArray
   gapColor: Rgb
+  /** Windows in view, drawn as frosted glass over the cells. */
+  glass: WallGlass
   /** CSS size of the wall and the device pixel ratio it is drawn at. */
   width: number
   height: number

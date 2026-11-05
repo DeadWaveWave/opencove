@@ -142,7 +142,8 @@ function castWorkLight(
 
 /**
  * One colour per visible cell: the theme's cell colour with a little per-tile jitter, soft
- * colour clouds anchored to the world, a sparse twinkle and each window's work light. Without a
+ * colour clouds anchored to the world, a sparse twinkle in blank space and each window's work
+ * light. Without a
  * clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU context) the clouds and
  * twinkle are still; the lights keep whatever intensity the caller resolved.
  *
@@ -159,6 +160,7 @@ export function fillWallCells(
   const count = grid.columns * grid.rows
   const cells = out && out.length === count * 4 ? out : new Uint8ClampedArray(count * 4)
   const moved = new Float32Array(count)
+  const behind = markCellsBehindGlass(grid, windows)
   const weights = PIXEL_WALL[palette.appearance]
   const time = timeSeconds ?? 0
   const drift = time * CLOUD_DRIFT
@@ -188,7 +190,8 @@ export function fillWallCells(
         shift = mix(cells, index, palette.clouds[hue]!, k, shift)
       }
       const spark = hash2(worldColumn * 7, worldRow * 13)
-      if (timeSeconds !== null && spark > 1 - SPARK_SHARE) {
+      // Twinkle only in blank space: it never enters the glass behind a window.
+      if (timeSeconds !== null && spark > 1 - SPARK_SHARE && !behind?.[index / 4]) {
         const twinkle = Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * 0.85
         if (twinkle > 0.02) {
           shift = mix(cells, index, palette.sparks[hue]!, twinkle, shift)
@@ -198,7 +201,6 @@ export function fillWallCells(
     }
   }
   castWorkLight(cells, moved, grid, windows, palette.appearance)
-  const behind = markCellsBehindGlass(grid, windows)
   if (behind) {
     for (let cell = 0; cell < count; cell++) {
       if (!behind[cell] || moved[cell]! <= weights.cap) {

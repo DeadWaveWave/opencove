@@ -4,6 +4,8 @@ import type { WallWindowRect } from './wallCells'
 export interface PixelWallTestApi {
   /** Each window's frame and work light in the last frame. */
   getLights: () => WallWindowRect[]
+  /** Windows drawn as frosted glass in the last frame. */
+  getGlassCount: () => number
   getFrameCount: () => number
   /** Frames painted with a clock; a still wall (reduced motion, lost context) adds none. */
   getAnimatedFrameCount: () => number
@@ -23,12 +25,14 @@ let frames = 0
 let animatedFrames = 0
 let lastCells: Uint8ClampedArray | null = null
 let lastLights: readonly WallWindowRect[] = []
+let lastGlassCount = 0
 
 /** Counts a frame; the checksum is only computed when a test asks for it. */
 export function recordWallFrame(
   cells: Uint8ClampedArray,
   animated: boolean,
   lights: readonly WallWindowRect[] = [],
+  glassCount = 0,
 ): void {
   frames++
   if (animated) {
@@ -36,11 +40,13 @@ export function recordWallFrame(
   }
   lastCells = cells
   lastLights = lights
+  lastGlassCount = glassCount
   if (typeof window === 'undefined' || window.__opencovePixelWallTestApi) {
     return
   }
   window.__opencovePixelWallTestApi = {
     getLights: () => lastLights.map(light => ({ ...light })),
+    getGlassCount: () => lastGlassCount,
     getFrameCount: () => frames,
     getAnimatedFrameCount: () => animatedFrames,
     getSignature: () => {

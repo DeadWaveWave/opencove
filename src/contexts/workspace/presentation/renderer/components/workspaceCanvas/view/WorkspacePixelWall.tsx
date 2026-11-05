@@ -4,6 +4,7 @@ import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { TerminalNodeData } from '../../../types'
 import { createPixelFrameScheduler } from './pixelLayer/scheduler'
 import { fillWallCells } from './pixelWall/wallCells'
+import { projectWallGlass, readWallGlassRadius } from './pixelWall/wallGlass'
 import { createPixelWallController } from './pixelWall/wallController'
 import type { WallFrame } from './pixelWall/wallFrame'
 import { createWallGl } from './pixelWall/wallGl'
@@ -45,6 +46,8 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     const still = () => reducedMotion || !ambientRef.current
     let palette = readWallPalette(host)
     let lights = readWallLightPalette(host)
+    let glassRadius = readWallGlassRadius(host)
+    let glassRects: Float32Array | undefined
     let width = host.clientWidth
     let height = host.clientHeight
     const initial = store.getState()
@@ -62,7 +65,14 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       const lit = tracker.resolve(now === null || reducedMotion ? null : now, lights)
       lightsAnimating = lit.animating
       cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows)
-      recordWallFrame(cells, ambientSeconds !== null || lit.animating, lit.windows)
+      const glass = projectWallGlass(
+        lit.windows,
+        { x, y, zoom, width, height },
+        glassRadius,
+        glassRects,
+      )
+      glassRects = glass.rects
+      recordWallFrame(cells, ambientSeconds !== null || lit.animating, lit.windows, glass.count)
       if (grid.screenCell !== screenCell) {
         screenCell = grid.screenCell
         host.dataset.coveWallCell = screenCell.toFixed(2)
@@ -71,6 +81,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         grid,
         cells,
         gapColor: palette.gap,
+        glass,
         width,
         height,
         dpr: Math.min(2, window.devicePixelRatio || 1),
@@ -126,6 +137,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     const onThemeChange = () => {
       palette = readWallPalette(host)
       lights = readWallLightPalette(host)
+      glassRadius = readWallGlassRadius(host)
       repaint()
     }
     // Window kind colours switch on the root without a theme change.

@@ -201,3 +201,45 @@ describe('pixel wall work light', () => {
     expect(red(cells, frame.x + 100, frame.y + 80)).toBeLessThanOrEqual(limit)
   })
 })
+
+describe('pixel wall twinkle behind glass', () => {
+  // Clouds equal to the cell colour isolate the twinkle.
+  const sparkOnly: WallPalette = {
+    ...dark,
+    clouds: dark.clouds.map(() => dark.cell),
+    sparks: dark.sparks.map(() => [255, 255, 255] as const),
+  }
+  const view = resolveWallGrid({ x: 0, y: 0, zoom: 1, width: 960, height: 720 })
+  const glass = { x: 0, y: 0, width: 480, height: 720 }
+
+  it('twinkles only in blank space, never behind a window', () => {
+    const behind = (cells: Uint8ClampedArray) => {
+      const values: number[] = []
+      for (let row = 0; row < view.rows; row++) {
+        // Columns well inside the glass, clear of its two-cell ring.
+        for (let column = 0; column < Math.floor(480 / view.worldCell) - 3; column++) {
+          values.push(cells[(row * view.columns + column) * 4]!)
+        }
+      }
+      return values
+    }
+    const open = (cells: Uint8ClampedArray) => {
+      const values: number[] = []
+      for (let row = 0; row < view.rows; row++) {
+        for (let column = Math.ceil(480 / view.worldCell) + 3; column < view.columns; column++) {
+          values.push(cells[(row * view.columns + column) * 4]!)
+        }
+      }
+      return values
+    }
+    // Many moments, so most spark cells peak at least once.
+    const frames = Array.from({ length: 60 }, (_, step) =>
+      fillWallCells(view, sparkOnly, step * 0.37, undefined, [glass]),
+    )
+    const brightest = (pick: (cells: Uint8ClampedArray) => number[]) =>
+      Math.max(...frames.flatMap(cells => pick(cells)))
+    // Behind the glass cells stay at the dark cell colour; in the open, sparks flash white.
+    expect(brightest(behind)).toBeLessThan(dark.cell[0] + 12)
+    expect(brightest(open)).toBeGreaterThan(150)
+  })
+})
