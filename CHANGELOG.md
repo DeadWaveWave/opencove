@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Settings and dialogs: switches, checkboxes and task tags use shared controls that follow the theme and have larger click targets; task tags become chips. (#445)
 - Dialogs and windows: choices such as the issue type, connection method, plugin source, worktree branch mode and explorer view use one segmented control, which screen readers announce as a radio group. (#446)
 - Settings: search finds every row on every page, including update, notification banner, calibration, worker, Web UI, website window, diagnostics and each keyboard shortcut. (#470)
+- Sidebar: the project's name is followed by the branch its checkout is on, as in the Tide prototype.
 - Sidebar: a Space working in its own worktree shows its branch on its card, next to its working, waiting and window counts. The canvas and the sidebar now share one worktree listing per repository instead of each polling git.
 - Sidebar and Command Center: the OpenCove logo leaves the project rail; Focus, Normal and All become one segmented control under the project name; Agent rows read on one line with an AI tile; Command Center windows show their kind tile with the Space on the right, and agents show a status pill. (#484)
 - Dialogs: text fields share one labelled field with help text and inline errors; remote machine port errors now appear under the field. (#448)

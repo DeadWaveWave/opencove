@@ -5,7 +5,10 @@ import {
   worktreeInfoKey,
   type WorktreeInfoSource,
 } from '../../../src/contexts/workspace/presentation/renderer/worktreeInfo/worktreeInfoStore'
-import { resolveSpaceBranch } from '../../../src/contexts/workspace/presentation/renderer/worktreeInfo/spaceBranch'
+import {
+  resolveProjectBranch,
+  resolveSpaceBranch,
+} from '../../../src/contexts/workspace/presentation/renderer/worktreeInfo/spaceBranch'
 
 const repo: WorktreeInfoSource = { repoPath: '/repo', mountIds: [] }
 
@@ -147,5 +150,34 @@ describe('space branch', () => {
     expect(resolveSpaceBranch(list, '/repo', '/repo/packages/app')).toBeNull()
     expect(resolveSpaceBranch(list, '/repo', '/elsewhere')).toBeNull()
     expect(resolveSpaceBranch([], '/repo', '/repo/.worktrees/review')).toBeNull()
+  })
+})
+
+describe('project branch', () => {
+  const list = [
+    { path: '/repo', branch: 'feat/jwt', head: 'aaaaaaaaaa' },
+    { path: '/repo/.worktrees/review', branch: 'pr/431', head: 'bbbbbbbbbb' },
+  ] as GitWorktreeInfo[]
+
+  it("names the branch the project's own checkout is on", () => {
+    expect(resolveProjectBranch(list, '/repo')).toEqual({
+      kind: 'branch',
+      value: 'feat/jwt',
+      title: 'feat/jwt',
+    })
+  })
+
+  it('shows a detached checkout by its short commit', () => {
+    const detached = [{ path: '/repo', branch: null, head: 'cccccccccc' }] as GitWorktreeInfo[]
+    expect(resolveProjectBranch(detached, '/repo')).toEqual({
+      kind: 'detached',
+      value: 'ccccccc',
+      title: 'cccccccccc',
+    })
+  })
+
+  it('says nothing for a folder that is not a git checkout', () => {
+    expect(resolveProjectBranch([], '/repo')).toBeNull()
+    expect(resolveProjectBranch(list, '/elsewhere')).toBeNull()
   })
 })
