@@ -204,8 +204,11 @@ test.describe('Workspace Canvas - Note to Task', () => {
       const noteNode = window.locator('.note-node').first()
       await expect(noteNode).toBeVisible()
 
+      // React Flow resets native scroll, so reveal off-canvas controls through its viewport.
+      await window.locator('.react-flow__controls-fitview').click()
       const moreButton = noteNode.locator('[data-testid="note-node-more"]')
       await expect(moreButton).toBeVisible()
+      await expect(moreButton).toBeInViewport({ ratio: 1 })
       await moreButton.click()
 
       await expect(window.locator('[data-testid="note-node-menu"]')).toBeVisible()
