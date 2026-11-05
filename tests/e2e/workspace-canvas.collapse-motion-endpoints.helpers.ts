@@ -190,8 +190,8 @@ export async function readIdentityFrame(
     )!
     const glyph = root.querySelector(
       mode === 'compact'
-        ? '.cove-collapsed-window__icon > svg, .cove-collapsed-window__icon .agent-provider-icon > svg'
-        : '.cove-node-kind-icon, .cove-node-provider-icon > svg',
+        ? '.cove-collapsed-window__icon > svg[data-cove-pixel-glyph]'
+        : '.cove-node-kind-icon[data-cove-pixel-glyph]',
     )
     const title = root.querySelector(
       mode === 'compact'

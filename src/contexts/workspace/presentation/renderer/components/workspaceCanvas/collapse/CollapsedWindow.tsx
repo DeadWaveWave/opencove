@@ -1,6 +1,5 @@
 import { useRef, type CSSProperties } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { TerminalNodeData } from '../../../types'
 import { resolveAgentPresentation } from '../../../utils/agentPresentation'
@@ -147,15 +146,10 @@ export function CollapsedWindow({
           data-cove-part="compact-base"
           aria-hidden="true"
         >
-          {presentation.isAgent && provider ? (
-            <AgentProviderIcon provider={provider} />
-          ) : (
-            <NodeKindIcon
-              kind={data.kind}
-              filePath={data.document?.uri ?? data.folder?.uri}
-              pluginId={data.plugin?.pluginId}
-            />
-          )}
+          <NodeKindIcon
+            kind={presentation.isAgent ? 'agent' : data.kind}
+            pluginId={data.plugin?.pluginId}
+          />
           <span className="cove-collapsed-window__pixels" data-cove-part="compact-pixels">
             {Array.from({ length: 4 }, (_, corner) => (
               <span key={corner} className="cove-collapsed-window__pixel-corner">

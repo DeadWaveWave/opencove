@@ -1,16 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  Check,
-  Copy,
-  Folder,
-  FolderOpen,
-  FolderX,
-  HardDrive,
-  Pencil,
-  Pin,
-  PinOff,
-  X,
-} from 'lucide-react'
+import { Check, Copy, FolderOpen, FolderX, HardDrive, Pencil, Pin, PinOff, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import {
@@ -22,7 +11,7 @@ import { PROJECT_ICON_IDS, type ProjectIconId } from '@shared/types/projectIcon'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { ProjectContextMenuTarget } from '../types'
 import { useAppStore } from '../store/useAppStore'
-import { getProjectIconComponent } from './ProjectIcon'
+import { ProjectIcon } from './ProjectIcon'
 import { useProjectContextMenuFocus } from './useProjectContextMenuFocus'
 import { SidebarVisibilityMenuItem } from './SidebarVisibilityMenuItem'
 import {
@@ -139,13 +128,11 @@ export function ProjectContextMenu({
     if (!path) {
       return
     }
-
     const copyPath = window.opencoveApi?.workspace?.copyPath
     if (typeof copyPath === 'function') {
       void copyPath({ path })
       return
     }
-
     const clipboard = typeof navigator === 'undefined' ? null : navigator.clipboard
     if (clipboard && typeof clipboard.writeText === 'function') {
       void clipboard.writeText(path).catch(() => undefined)
@@ -157,12 +144,10 @@ export function ProjectContextMenu({
     if (!path) {
       return
     }
-
     const openPath = window.opencoveApi?.workspace?.openPath
     if (typeof openPath !== 'function') {
       return
     }
-
     void openPath({ path, openerId: 'finder' })
   }
   const toggleSpacePinned = (): void => {
@@ -186,7 +171,6 @@ export function ProjectContextMenu({
     dotClassName?: string
   }): React.JSX.Element => {
     const selected = currentLabelColor === labelColor
-
     return (
       <button
         type="button"
@@ -260,9 +244,7 @@ export function ProjectContextMenu({
     iconId: ProjectIconId | null
     label: string
   }): React.JSX.Element => {
-    const Icon = iconId ? (getProjectIconComponent(iconId) ?? Folder) : Folder
     const selected = currentProjectIconId === iconId
-
     return (
       <button
         type="button"
@@ -275,7 +257,7 @@ export function ProjectContextMenu({
           commitProjectIcon(iconId)
         }}
       >
-        <Icon className="workspace-project-context-menu__project-icon" aria-hidden="true" />
+        <ProjectIcon iconId={iconId} className="workspace-project-context-menu__project-icon" />
         {selected ? (
           <Check className="workspace-project-context-menu__icon-check" aria-hidden="true" />
         ) : null}
@@ -286,7 +268,6 @@ export function ProjectContextMenu({
     if (!isProjectTarget) {
       return null
     }
-
     return (
       <div
         className="workspace-project-context-menu__project-icon-section"

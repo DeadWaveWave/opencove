@@ -213,7 +213,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
           expect(Object.values(node.identity)).toEqual(node.themePalette)
         }
       }
-      expect(nodes.find(node => node.kind === 'agent')?.providerIcon?.provider).toBe('codex')
+      expect(nodes.find(node => node.kind === 'agent')?.icon?.glyph).toBe('ai')
       const paint = await readLightPaint(page)
       expect(paint.app).toBeGreaterThan(0.7)
       expect(paint.terminal.luminance).toBeGreaterThan(0.7)

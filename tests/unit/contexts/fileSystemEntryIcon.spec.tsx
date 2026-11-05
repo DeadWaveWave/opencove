@@ -29,7 +29,7 @@ describe('filesystem entry identity', () => {
     expect(resolveFileSystemEntryIconKind('/project/package.json', 'directory')).toBe('folder')
   })
 
-  it('reuses the exact same decorative glyph in entries and node motion anchors', () => {
+  it('keeps extension icons in entries and pixel kind glyphs in node motion anchors decorative', () => {
     const onPointerDown = vi.fn()
     const { container } = render(
       <div onPointerDown={onPointerDown}>
@@ -41,9 +41,9 @@ describe('filesystem entry identity', () => {
     const entry = container.querySelector('[data-cove-file-icon="file-code-2"]')!
     const document = container.querySelector('[data-cove-node-kind-icon="document"]')!
     const folder = container.querySelector('[data-cove-node-kind-icon="folder"]')!
-    expect(entry.innerHTML).toBe(document.innerHTML)
+    expect(document).toHaveAttribute('data-cove-pixel-glyph', 'document')
     expect(document).toHaveClass('cove-node-kind-icon')
-    expect(folder).toHaveClass('lucide-folder')
+    expect(folder).toHaveAttribute('data-cove-pixel-glyph', 'folder')
     for (const icon of [entry, document, folder]) {
       expect(icon).toHaveAttribute('aria-hidden', 'true')
       expect(icon).toHaveAttribute('focusable', 'false')

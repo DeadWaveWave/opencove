@@ -13,14 +13,24 @@ describe('node kind decoration', () => {
     const { container } = render(
       <div data-node-drag-handle="true" onPointerDown={onPointerDown}>
         {(
-          ['terminal', 'agent', 'note', 'document', 'task', 'role', 'website', 'image'] as const
+          [
+            'terminal',
+            'agent',
+            'note',
+            'document',
+            'folder',
+            'task',
+            'role',
+            'website',
+            'image',
+          ] as const
         ).map(kind => (
           <NodeKindIcon key={kind} kind={kind} />
         ))}
       </div>,
     )
     const icons = container.querySelectorAll('svg')
-    expect(icons).toHaveLength(8)
+    expect(icons).toHaveLength(9)
     for (const icon of icons) {
       expect(icon).toHaveAttribute('aria-hidden', 'true')
       expect(icon).toHaveAttribute('focusable', 'false')
@@ -28,11 +38,13 @@ describe('node kind decoration', () => {
       expect(icon.closest('button, .nodrag')).toBeNull()
       fireEvent.pointerDown(icon)
     }
-    expect(onPointerDown).toHaveBeenCalledTimes(8)
-    expect(container.querySelector('[data-cove-node-kind-icon="agent"]')).toHaveClass('lucide-bot')
-    expect(container.querySelector('[data-cove-node-kind-icon="role"]')).toHaveClass(
-      'lucide-contact-round',
-    )
+    expect(onPointerDown).toHaveBeenCalledTimes(9)
+    for (const icon of icons) {
+      const kind = icon.getAttribute('data-cove-node-kind-icon')
+      expect(icon).toHaveAttribute('data-cove-pixel-glyph', kind === 'agent' ? 'ai' : kind)
+      expect(icon).toHaveAttribute('data-cove-kind', kind)
+      expect(icon).toHaveClass('cove-node-kind-icon', 'cove-pixel-glyph')
+    }
   })
 
   it('does not turn the terminal kind icon into title editing or a close action', () => {

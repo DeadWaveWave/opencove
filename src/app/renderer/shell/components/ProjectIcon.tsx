@@ -1,51 +1,38 @@
 import React from 'react'
-import {
-  BookOpen,
-  Bot,
-  Briefcase,
-  Code2,
-  Database,
-  Folder,
-  FolderOpen,
-  Globe,
-  Package,
-  Terminal,
-  type LucideIcon,
-} from 'lucide-react'
+import { PixelGlyph } from '@app/renderer/components/ui/PixelGlyph'
+import type { PixelGlyphName } from '@app/renderer/components/ui/pixelGlyphs'
 import type { ProjectIconId } from '@shared/types/projectIcon'
 
-const PROJECT_ICON_COMPONENTS: Record<ProjectIconId, LucideIcon> = {
-  code: Code2,
-  terminal: Terminal,
-  database: Database,
-  globe: Globe,
-  package: Package,
-  bot: Bot,
-  briefcase: Briefcase,
-  'book-open': BookOpen,
+/** Each project icon choice as a pixel glyph (Tide: the rail's tiles are pixel icons). */
+const PROJECT_ICON_GLYPHS: Record<ProjectIconId, PixelGlyphName> = {
+  code: 'code',
+  terminal: 'terminal',
+  database: 'database',
+  globe: 'website',
+  package: 'package',
+  bot: 'bot',
+  briefcase: 'briefcase',
+  'book-open': 'book',
 }
 
-export function getProjectIconComponent(iconId: ProjectIconId | null): LucideIcon | null {
-  return iconId ? (PROJECT_ICON_COMPONENTS[iconId] ?? null) : null
+export function projectIconGlyph(iconId: ProjectIconId | null): PixelGlyphName {
+  return iconId ? (PROJECT_ICON_GLYPHS[iconId] ?? 'folder') : 'folder'
 }
 
 export function ProjectIcon({
   iconId,
-  isExpanded,
   className,
 }: {
   iconId?: ProjectIconId | null
-  isExpanded: boolean
+  /** Kept for callers; the pixel folder is the same open or closed. */
+  isExpanded?: boolean
   className?: string
 }): React.JSX.Element {
-  const CustomIcon = getProjectIconComponent(iconId ?? null)
-  const Icon = CustomIcon ?? (isExpanded ? FolderOpen : Folder)
-
   return (
-    <Icon
+    <PixelGlyph
+      name={projectIconGlyph(iconId ?? null)}
       className={className}
       data-cove-project-icon-id={iconId ?? 'default'}
-      aria-hidden="true"
     />
   )
 }

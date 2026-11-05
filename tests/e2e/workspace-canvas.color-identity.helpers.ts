@@ -42,7 +42,7 @@ export async function seedIdentityFixture(
   await seedMaterialFixture(page, fixture)
   await expect(page.locator(`${nodeSelector('agent')} .terminal-node__title-prefix`)).toHaveCount(0)
   await expect(
-    page.locator(`${nodeSelector('agent')} [data-agent-provider="codex"]`).first(),
+    page.locator(`${nodeSelector('agent')} [data-cove-pixel-glyph="ai"]`).first(),
   ).toBeVisible()
 }
 
@@ -169,7 +169,6 @@ export async function readNodeIdentity(page: Page) {
         )
         const text = rgba(titleColor)
         const icon = wrapper.querySelector<SVGElement>('[data-cove-node-kind-icon]')
-        const providerIcon = header?.querySelector<HTMLElement>('.cove-node-provider-icon')
         return {
           kind,
           label: wrapper.dataset.coveLabelColor ?? null,
@@ -207,8 +206,9 @@ export async function readNodeIdentity(page: Page) {
           icon: icon
             ? {
                 kind: icon.dataset.coveNodeKindIcon,
+                glyph: icon.dataset.covePixelGlyph,
                 fill: icon.getAttribute('fill'),
-                stroke: icon.getAttribute('stroke-width'),
+                shapeRendering: icon.getAttribute('shape-rendering'),
                 width: Number.parseFloat(getComputedStyle(icon).width),
                 tile: icon.parentElement?.matches('[data-cove-part="kind-tile"]')
                   ? Number.parseFloat(getComputedStyle(icon.parentElement).width)
@@ -216,17 +216,6 @@ export async function readNodeIdentity(page: Page) {
                 pointer: getComputedStyle(icon).pointerEvents,
                 hidden: icon.getAttribute('aria-hidden'),
                 focusable: icon.getAttribute('focusable'),
-              }
-            : null,
-          providerIcon: providerIcon
-            ? {
-                provider: providerIcon.dataset.agentProvider,
-                width: Number.parseFloat(getComputedStyle(providerIcon).width),
-                background: getComputedStyle(providerIcon).backgroundColor,
-                borderWidth: getComputedStyle(providerIcon).borderTopWidth,
-                label: providerIcon.getAttribute('aria-label'),
-                svgHidden: providerIcon.querySelector('svg')?.getAttribute('aria-hidden'),
-                svg: Boolean(providerIcon.querySelector('svg')),
               }
             : null,
         }

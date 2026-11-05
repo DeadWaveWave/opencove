@@ -27,9 +27,9 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
       const document = window.locator('.document-node').filter({ hasText: 'README.md' })
       await expect(document).toBeVisible()
       await expect(document.locator('.monaco-editor')).toContainText('Canvas files')
-      await expect(document.locator('[data-cove-file-icon]')).toHaveAttribute(
-        'data-cove-file-icon',
-        'file-text',
+      await expect(document.locator('[data-cove-node-kind-icon="document"]')).toHaveAttribute(
+        'data-cove-pixel-glyph',
+        'document',
       )
       await expect(explorer).toBeVisible()
       await document.locator('.document-node__close').click()
@@ -47,7 +47,7 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
       const compact = folderHost.locator('.cove-collapsed-window')
       await expect(compact).toBeVisible()
       await expect(compact).toHaveText('docs')
-      await expect(compact.locator('[data-cove-file-icon="folder"]')).toBeVisible()
+      await expect(compact.locator('[data-cove-pixel-glyph="folder"]')).toBeVisible()
       await expect(compact.locator('.cove-collapsed-window__pixel-corner:visible')).toHaveCount(2)
       await explorer
         .locator('.workspace-space-explorer__header')
