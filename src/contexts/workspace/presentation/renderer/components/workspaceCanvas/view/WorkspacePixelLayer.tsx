@@ -33,9 +33,12 @@ import {
 function WorkspacePixelLayerComponent({
   nodes,
   options = ALL_PIXEL_EFFECTS,
+  wall = false,
 }: {
   nodes: Node<TerminalNodeData>[]
   options?: PixelLayerOptions
+  /** The pixel wall paints the background, so this layer skips its own pixel field. */
+  wall?: boolean
 }): React.JSX.Element {
   const store = useStoreApi<Node<TerminalNodeData>>()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -43,6 +46,7 @@ function WorkspacePixelLayerComponent({
   const nodesRef = useRef(nodes)
   const refreshRef = useRef<(() => void) | null>(null)
   const optionsRef = useRef(options)
+  const wallRef = useRef(wall)
   const syncOptionsRef = useRef<(() => void) | null>(null)
   const { background, creation, closing, working } = options
 
@@ -50,6 +54,11 @@ function WorkspacePixelLayerComponent({
     optionsRef.current = { background, creation, closing, working }
     syncOptionsRef.current?.()
   }, [background, creation, closing, working])
+
+  useLayoutEffect(() => {
+    wallRef.current = wall
+    refreshRef.current?.()
+  }, [wall])
 
   useLayoutEffect(() => {
     nodesRef.current = nodes
@@ -176,6 +185,7 @@ function WorkspacePixelLayerComponent({
           now,
           reducedMotion,
           background: effects.background && readThemeEffect('background').preset === 'pixel',
+          field: !wallRef.current,
           working: effects.working && readThemeEffect('working').preset === 'pixel',
           backgroundNow:
             (now * 8000) / Math.max(1, readThemeEffect('background').durationMs ?? 8000),
@@ -187,7 +197,8 @@ function WorkspacePixelLayerComponent({
         drawAssembly()
         return (
           !reducedMotion &&
-          (effects.background ||
+          // Under the wall this layer only animates while it has output pixels to show.
+          ((effects.background && (!wallRef.current || active)) ||
             workingNodes.length > 0 ||
             assembly.hasPending(performance.now()) ||
             burst.hasPending(performance.now()))

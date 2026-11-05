@@ -91,8 +91,9 @@ context menus, branch actions and title editing retain their original behavior a
 
 Appearance exposes three independent, persisted boolean preferences:
 
-- `canvasPixelBackgroundEnabled`: animated field and brief received-output edge activity. Off uses
-  the standard canvas dot grid.
+- `canvasPixelBackgroundEnabled`: the pixel wall and brief received-output edge activity. Off uses
+  the standard canvas dot grid. A theme whose background effect is not `pixel` keeps its own
+  background (or none) instead of the wall.
 - `nodeCreationPixelEffectEnabled`: transparent assembly, converging fragments and virtual pixel rim.
 - `nodeClosePixelEffectEnabled`: square fragments scattering from a successfully closed window.
 
@@ -108,10 +109,33 @@ blue, accent cyan and shell green, with the cyan one step darker in light mode t
 surfaces. Pixel retains its original ice-blue/cyan/mint palette. System follows the resolved light/dark palette. No pixel color encodes
 selection, Agent status or success.
 
+## Pixel wall
+
+The wall is the canvas background (Tide phase 5.2): a grid of cells with seams, anchored to the
+world, under every window and the effects layer.
+
+- Cells stay 13–26 screen px: the 24 world px cell doubles or halves as the zoom crosses a step.
+- Colours come from `--cove-pixel-cell`, `--cove-pixel-gap`, `--cove-pixel-cloud-1…4` and
+  `--cove-pixel-spark-1…4` (generated for Cove, hand-set for Pixel; plugin themes inherit them
+  from their base). Soft clouds drift with the world and a sparse share of cells twinkles.
+- Behind a window's glass, including a two-cell ring around its frame, a cell moves at most the
+  generator's `PIXEL_WALL.cap` toward any colour (I6), the bound the theme contrast checks assume.
+- The CPU computes one colour per visible cell; WebGL2 draws cells and seams in one pass. When
+  WebGL2 is unavailable or software-only (`failIfMajorPerformanceCaveat`) Canvas 2D draws the
+  same cells. When the context is lost, the 2D canvas shows a still wall until the browser restores
+  the context, then WebGL takes over again. The wall uses one WebGL context and releases it on
+  unmount.
+- Ambient motion follows the decorative scheduler: 30fps focused, 10fps in the background, none
+  while hidden or with reduced motion (a still wall). A pan, zoom or window move repaints on the
+  next display frame so the wall never trails the windows.
+- E2E reads `window.__opencovePixelWallTestApi` (frame counts, a cell checksum, mean colour) and
+  the host's `data-cove-wall-renderer` / `data-cove-wall-state` / `data-cove-wall-cell`.
+
 ## Canvas effects
 
-The pixel canvas is a viewport-sized, read-only visual layer. It draws a continuously moving theme-colored gradient
-matrix and briefly highlights visible node edges when the existing PTY event hub delivers output.
+The effects canvas is a viewport-sized, read-only visual layer above the wall. It briefly
+highlights visible node edges when the existing PTY event hub delivers output. Its older moving
+pixel field no longer draws under the wall; phase 5.3 brings it back as the 「简约」 background style.
 It retains only bounded session/timestamp observations, not output text or persisted application state.
 
 Agent identity and status use `resolveAgentPresentation`, including normal terminal nodes with an
@@ -123,7 +147,8 @@ The layer must:
 - Be `aria-hidden` and `pointer-events: none`; never enter keyboard focus order.
 - Read existing viewport, node geometry and session references; never write them.
 - Stay outside the terminal body and never resize or remount xterm/Monaco.
-- Coalesce output bursts into a bounded visual scheduler, capped at 25 frames per second and DPR 2.
+- Coalesce output bursts into the decorative scheduler (30fps focused, 10fps in the background) at
+  DPR 2.
 - Keep the visible gradient field moving at the same capped frame rate even when output is idle;
   received-output activity still decays independently after 1050ms.
 - Stop drawing when hidden/offscreen without pausing Agent execution or dropping runtime output.
@@ -238,8 +263,8 @@ Space binding, asynchronous busy state and session recovery keep their existing 
 
 ## Validation
 
-The visible field must change between frames without requiring PTY output. Reduced-motion frames
-remain deterministic. E2E evidence includes transparent first paint, real node creation, comparable
+The wall must change between frames without requiring PTY output. Reduced-motion frames remain
+deterministic, and terminal output never moves a still wall. E2E evidence includes transparent first paint, real node creation, comparable
 visible reveal times at different node widths, input inside the unrevealed area and natural completion,
 plus reload without replaying old-node assembly. Native website host clipping must preserve page size.
 Close E2E evidence checks that the original node is absent while pixels are painted, surviving nodes

@@ -22,6 +22,18 @@
   --cove-label-blue: #3676b5;
   --cove-label-purple: #8661ae;
 
+  /* Pixel wall: the generator's wall weights on Pixel Light's paper, with Pixel's own hues. */
+  --cove-pixel-cell: #dee4e7;
+  --cove-pixel-gap: #f7fbfd;
+  --cove-pixel-cloud-1: #cec2f4;
+  --cove-pixel-cloud-2: #accdf8;
+  --cove-pixel-cloud-3: #95d7e7;
+  --cove-pixel-cloud-4: #9edac2;
+  --cove-pixel-spark-1: #996df0;
+  --cove-pixel-spark-2: #268bfc;
+  --cove-pixel-spark-3: #009db7;
+  --cove-pixel-spark-4: #00a57d;
+
   --cove-app-background: #eef4f8;
   --cove-app-background-elevated: #e7f0f6;
   --cove-surface: rgba(249, 252, 254, 0.96);
