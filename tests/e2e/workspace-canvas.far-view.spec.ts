@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import { execFileSync } from 'node:child_process'
 import { once } from 'node:events'
 import { expect, test, type Page } from '@playwright/test'
+import { TERMINAL_SCROLLBACK_FLUSH_EVENT } from '../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import {
   buildNodeEvalCommand,
   clearAndSeedWorkspace,
@@ -339,6 +340,21 @@ async function checkZoomWindowCommits(reducedTransparency: boolean) {
       data: `${buildNodeEvalCommand("process.stdout.write('ZOOM_FIXTURE_IDLE\\n');setInterval(()=>{},1000)")}\r`,
     })
     await expect.poll(async () => (await readOwnState())?.scrollback).toContain('ZOOM_FIXTURE_IDLE')
+    await expect
+      .poll(() =>
+        window.evaluate(
+          id =>
+            window.__opencoveTerminalSelectionTestApi?.getBufferText(id, 'ZOOM_FIXTURE_IDLE')
+              ?.markerAbsoluteLine ?? null,
+          TERMINAL,
+        ),
+      )
+      .not.toBeNull()
+    // Worker durability can contain the marker before the renderer's delayed scrollback cache
+    // publication. Drain that own-data update before resetting the header commit probe.
+    await window.evaluate(eventName => {
+      window.dispatchEvent(new Event(eventName))
+    }, TERMINAL_SCROLLBACK_FLUSH_EVENT)
     await settle()
     // Prove all five header families are mounted and the probe is live before resetting it.
     expect(await counts()).toEqual(
