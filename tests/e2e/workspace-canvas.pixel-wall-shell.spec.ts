@@ -3,8 +3,26 @@ import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expectPaintedWall } from './workspace-canvas.pixel-wall.helpers'
 
-async function seed(window: Page, settings: Record<string, unknown> = {}) {
-  await window.emulateMedia({ reducedMotion: 'no-preference' })
+/**
+ * Pins the system's motion and transparency preferences. macOS CI runners reduce transparency,
+ * which rightly makes the shell opaque; one call, as it replaces every emulated media feature.
+ */
+async function emulateSystem(window: Page, transparency: 'no-preference' | 'reduce') {
+  const session = await window.context().newCDPSession(window)
+  await session.send('Emulation.setEmulatedMedia', {
+    features: [
+      { name: 'prefers-reduced-motion', value: 'no-preference' },
+      { name: 'prefers-reduced-transparency', value: transparency },
+    ],
+  })
+}
+
+async function seed(
+  window: Page,
+  settings: Record<string, unknown> = {},
+  transparency: 'no-preference' | 'reduce' = 'no-preference',
+) {
+  await emulateSystem(window, transparency)
   await clearAndSeedWorkspace(
     window,
     [
@@ -155,6 +173,12 @@ test.describe('Workspace Canvas - Pixel wall behind the shell', () => {
       const solid = await readShell(window)
       expect(solid.headerAlpha).toBe(255)
       expect(solid.sidebarAlpha).toBe(255)
+
+      // The system's reduced transparency makes it opaque too, whatever the setting.
+      await seed(window, {}, 'reduce')
+      await expectPaintedWall(window)
+      await expect.poll(async () => (await readShell(window)).headerAlpha).toBe(255)
+      expect((await readShell(window)).sidebarAlpha).toBe(255)
     } finally {
       await electronApp.close()
     }
