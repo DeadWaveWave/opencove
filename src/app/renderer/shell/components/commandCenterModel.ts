@@ -1,6 +1,7 @@
 import type React from 'react'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { KeyChordDescription } from '@contexts/settings/domain/keybindings'
+import type { StatusPillTone } from '@app/renderer/components/ui/StatusPill'
 
 export type CommandCenterItem = {
   id: string
@@ -13,8 +14,10 @@ export type CommandCenterItem = {
   showCurrentMarker?: boolean
   /** A second line, such as where a window lives. */
   subtitle?: string
-  /** Trailing text, such as how long an agent has waited. */
+  /** Trailing text, such as the Space a window lives in. */
   trailing?: string
+  /** An agent's state, shown as a pill in place of the trailing text. */
+  status?: { tone: StatusPillTone; label: string }
   shortcut?: KeyChordDescription | null
   tone?: 'waiting'
   onSelect: () => void

@@ -39,7 +39,7 @@ async function seed(page: Page, theme: 'pixel' | 'pixel-light') {
 }
 
 for (const theme of ['pixel', 'pixel-light'] as const) {
-  test(`Sidebar view mode cycles restore hidden items in ${theme}`, async ({
+  test(`Sidebar view mode switches restore hidden items in ${theme}`, async ({
     browserName: _browserName,
   }, testInfo) => {
     const { electronApp, window } = await launchApp()
@@ -56,10 +56,10 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
       await window.getByTestId('workspace-sidebar-visibility-action').click()
       await expect(agent).toHaveCount(0)
       await expect(space).toBeVisible()
-      const mode = window.getByTestId('workspace-sidebar-view-mode')
-      await expect(mode).toHaveAttribute('data-mode', 'normal')
-      await mode.click()
-      await expect(mode).toHaveAttribute('data-mode', 'all')
+      const mode = (value: string) => window.getByTestId(`workspace-sidebar-view-mode-${value}`)
+      await expect(mode('normal')).toBeChecked()
+      await mode('all').check()
+      await expect(mode('all')).toBeChecked()
       await expect(agent).toBeVisible()
       await expect(
         window.getByTestId(`workspace-agent-restore-${projectId}-${agentId}`),
@@ -91,14 +91,11 @@ for (const theme of ['pixel', 'pixel-light'] as const) {
       await expect(
         window.getByTestId(`workspace-space-restore-${projectId}-${spaceId}`),
       ).toBeVisible()
-      await mode.click()
-      await expect(mode).toHaveAttribute('data-mode', 'focus')
+      await mode('focus').check()
       await expect(space).toHaveCount(0)
-      await mode.click()
-      await expect(mode).toHaveAttribute('data-mode', 'normal')
+      await mode('normal').check()
       await expect(space).toHaveCount(0)
-      await mode.click()
-      await expect(mode).toHaveAttribute('data-mode', 'all')
+      await mode('all').check()
       await expect(agent).toBeVisible()
       await expect(
         window.getByTestId(`workspace-agent-restore-${projectId}-${agentId}`),
@@ -125,10 +122,11 @@ test('Sidebar view mode and hidden restoration remain usable in the mobile drawe
     await expect(more).toHaveCSS('height', '44px')
     await more.click()
     await window.getByTestId('workspace-sidebar-visibility-action').click()
-    const mode = window.getByTestId('workspace-sidebar-view-mode')
-    await expect(mode).toHaveAttribute('data-mode', 'normal')
-    await mode.click()
-    await expect(mode).toHaveAttribute('data-mode', 'all')
+    const control = window.getByTestId('workspace-sidebar-view-mode')
+    await expect(window.getByTestId('workspace-sidebar-view-mode-normal')).toBeChecked()
+    await window.getByTestId('workspace-sidebar-view-mode-all').check()
+    await expect(window.getByTestId('workspace-sidebar-view-mode-all')).toBeChecked()
+    await expect(control.locator('.cove-segmented__option').first()).toHaveCSS('min-height', '44px')
     await expect(
       window.getByTestId(`workspace-agent-restore-${projectId}-${agentId}`),
     ).toBeVisible()

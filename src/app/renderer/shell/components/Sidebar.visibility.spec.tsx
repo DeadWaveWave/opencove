@@ -99,17 +99,25 @@ beforeEach(() => {
   })
 })
 
+function viewMode(): string | undefined {
+  return screen
+    .getByTestId('workspace-sidebar-view-mode')
+    .querySelector<HTMLInputElement>('input:checked')?.value
+}
+
 describe('Sidebar view modes and temporary hiding', () => {
-  it('hides through the context menu, restores directly and cycles view modes', () => {
+  it('hides through the context menu, restores directly and switches view modes', () => {
     const rendered = render(<Harness />)
     fireEvent.contextMenu(screen.getByTestId('workspace-agent-item-project-codex'))
     fireEvent.click(screen.getByTestId('workspace-sidebar-visibility-action'))
     expect(screen.queryByTestId('workspace-agent-item-project-codex')).toBeNull()
     expect(screen.getByTestId('workspace-agent-item-project-claude')).toBeTruthy()
-    const mode = screen.getByTestId('workspace-sidebar-view-mode')
-    expect(mode.getAttribute('data-mode')).toBe('normal')
-    fireEvent.click(mode)
-    expect(mode.getAttribute('data-mode')).toBe('all')
+    const control = screen.getByRole('radiogroup', { name: 'Sidebar view' })
+    expect(
+      (within(control).getByRole('radio', { name: 'Normal' }) as HTMLInputElement).checked,
+    ).toBe(true)
+    fireEvent.click(within(control).getByRole('radio', { name: 'All' }))
+    expect(viewMode()).toBe('all')
     expect(screen.getByTestId('workspace-space-item-project-space')).toBeTruthy()
     expect(screen.getByTestId('workspace-agent-item-project-claude')).toBeTruthy()
     fireEvent.click(screen.getByTestId('workspace-agent-restore-project-codex'))
@@ -120,7 +128,7 @@ describe('Sidebar view modes and temporary hiding', () => {
     expect(useAppStore.getState().agentSettings.sidebarView.hiddenAgentIds).toEqual({})
     rendered.unmount()
     render(<Harness />)
-    expect(screen.getByTestId('workspace-sidebar-view-mode').getAttribute('data-mode')).toBe('all')
+    expect(viewMode()).toBe('all')
   })
 
   it('restores the hidden parent only and keeps its explicitly hidden Agent preference', () => {
@@ -161,10 +169,8 @@ describe('Sidebar view modes and temporary hiding', () => {
     fireEvent.click(screen.getByTestId('workspace-space-toggle-project-space'))
     fireEvent.contextMenu(screen.getByTestId('workspace-agent-item-project-claude'))
     fireEvent.click(screen.getByTestId('workspace-agent-context-pin-claude'))
-    const mode = screen.getByTestId('workspace-sidebar-view-mode')
-    fireEvent.click(mode)
-    fireEvent.click(mode)
-    expect(mode.getAttribute('data-mode')).toBe('focus')
+    fireEvent.click(screen.getByTestId('workspace-sidebar-view-mode-focus'))
+    expect(viewMode()).toBe('focus')
     expect(
       screen.getByTestId('workspace-space-toggle-project-space').getAttribute('aria-expanded'),
     ).toBe('true')

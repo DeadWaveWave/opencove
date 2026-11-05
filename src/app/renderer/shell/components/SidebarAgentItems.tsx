@@ -1,10 +1,11 @@
 import React from 'react'
-import { Circle, EyeOff, LoaderCircle, MoreHorizontal, Pin, Pause } from 'lucide-react'
+import { Bot, Circle, EyeOff, LoaderCircle, MoreHorizontal, Pin, Pause } from 'lucide-react'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
+import { KindTile } from '@app/renderer/components/ui/KindTile'
 import { toRelativeTime } from '../utils/format'
 import type { SidebarAgentItemModel } from '../utils/sidebarAgents'
 import type { ProjectContextMenuState } from '../types'
@@ -25,9 +26,13 @@ function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): Rea
 
   return (
     <>
-      {provider ? (
-        <AgentProviderIcon provider={provider} className="workspace-agent-item__provider" />
-      ) : null}
+      <KindTile kind="ai" size="sm" className="workspace-agent-item__kind">
+        {provider ? (
+          <AgentProviderIcon provider={provider} className="workspace-agent-item__provider" />
+        ) : (
+          <Bot aria-hidden="true" />
+        )}
+      </KindTile>
       <span className="workspace-agent-item__copy">
         <span className="workspace-agent-item__title">{item.displayTitle}</span>
         <span

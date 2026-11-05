@@ -76,7 +76,7 @@
     "src/app/renderer/styles/workspace-sidebar.css": 6,
     "src/app/renderer/styles/workspace-sidebar.rail.css": 1,
     "src/app/renderer/styles/workspace-sidebar.surface.css": 1,
-    "src/app/renderer/styles/workspace-sidebar.view.css": 4,
+    "src/app/renderer/styles/workspace-sidebar.view.css": 3,
     "src/app/renderer/styles/workspace-space-operation-state.css": 1
   },
   "radius": {
@@ -215,7 +215,7 @@
     "src/app/renderer/styles/workspace-sidebar.css": 12,
     "src/app/renderer/styles/workspace-sidebar.rail.css": 2,
     "src/app/renderer/styles/workspace-sidebar.surface.css": 7,
-    "src/app/renderer/styles/workspace-sidebar.view.css": 9,
+    "src/app/renderer/styles/workspace-sidebar.view.css": 7,
     "src/app/renderer/styles/workspace-space-collapse.css": 1,
     "src/app/renderer/styles/workspace-space-operation-state.css": 2
   },

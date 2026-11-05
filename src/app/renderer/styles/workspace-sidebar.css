@@ -29,9 +29,8 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: 54px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--cove-border-subtle);
+  min-height: 48px;
+  padding: 10px 12px 6px;
 }
 
 .workspace-sidebar__project-header h2 {
@@ -150,9 +149,8 @@
   height: 44px;
 }
 
-.workspace-sidebar--mobile .workspace-sidebar__view-mode {
-  width: auto;
-  min-width: 44px;
+.workspace-sidebar--mobile .workspace-sidebar__view-mode-control .cove-segmented__option {
+  min-height: 44px;
 }
 
 .workspace-sidebar--mobile .workspace-space-item,

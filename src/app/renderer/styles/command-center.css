@@ -201,9 +201,9 @@
 .command-center__item-icon {
   display: grid;
   place-items: center;
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
   color: var(--cove-text-muted);
 }
 
@@ -257,9 +257,16 @@
   color: var(--cove-text-muted);
 }
 
-.command-center__item[data-tone='waiting'] .command-center__item-trailing {
-  color: var(--cove-status-waiting-text, var(--cove-warning));
-  font-weight: 500;
+/* The Space a window lives in, right-aligned on the title's line. */
+.command-center__item-trailing {
+  max-width: 40%;
+  overflow: hidden;
+  color: var(--cove-text-muted);
+  text-overflow: ellipsis;
+}
+
+.command-center__item-status {
+  flex: none;
 }
 
 .command-center__remote {

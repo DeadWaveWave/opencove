@@ -47,7 +47,6 @@ import { projectSidebarView } from '../utils/sidebarView'
 import { SidebarViewControls } from './SidebarViewControls'
 import { SidebarAttentionInbox } from './SidebarAttentionInbox'
 import { summarizeAgentActivity } from '../utils/agentActivitySummary'
-import opencoveMark from '../../assets/brand/opencove-mark.png'
 
 export type SidebarVariant = 'docked' | 'rail' | 'peek'
 type SidebarProps = {
@@ -300,12 +299,6 @@ export function Sidebar({
         onDragEnd={handleDragEnd}
       >
         <div className="workspace-project-rail" data-testid="workspace-project-rail">
-          <img
-            className="workspace-project-rail__logo"
-            src={opencoveMark}
-            alt=""
-            aria-hidden="true"
-          />
           <div
             ref={setSidebarListRef}
             className="workspace-sidebar__list"
@@ -366,20 +359,6 @@ export function Sidebar({
               <>
                 <header className="workspace-sidebar__project-header">
                   <h2 title={displayedTree.workspace.name}>{displayedTree.workspace.name}</h2>
-                  <SidebarViewControls
-                    key={`view-mode-${displayedTree.workspace.id}`}
-                    mode={sidebarView.mode}
-                    hiddenWaitingCount={projectedView?.hiddenWaitingCount ?? 0}
-                    onChange={mode =>
-                      setAgentSettings(previous => ({
-                        ...previous,
-                        sidebarView: {
-                          ...previous.sidebarView,
-                          mode: mode as SidebarViewMode,
-                        },
-                      }))
-                    }
-                  />
                   <SidebarRemoteDetails
                     key={displayedTree.workspace.id}
                     remote={mountDetails[displayedTree.workspace.id]?.remote ?? null}
@@ -405,6 +384,20 @@ export function Sidebar({
                     <MoreHorizontal size={15} aria-hidden="true" />
                   </button>
                 </header>
+                <SidebarViewControls
+                  key={`view-mode-${displayedTree.workspace.id}`}
+                  mode={sidebarView.mode}
+                  hiddenWaitingCount={projectedView?.hiddenWaitingCount ?? 0}
+                  onChange={mode =>
+                    setAgentSettings(previous => ({
+                      ...previous,
+                      sidebarView: {
+                        ...previous.sidebarView,
+                        mode: mode as SidebarViewMode,
+                      },
+                    }))
+                  }
+                />
                 {persistNotice ? (
                   <div
                     className={`workspace-sidebar__persist-alert workspace-sidebar__persist-alert--${persistNotice.tone}`}

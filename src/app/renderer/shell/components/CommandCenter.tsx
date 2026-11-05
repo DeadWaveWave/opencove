@@ -2,6 +2,7 @@ import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } f
 import { Check, Search, Scan, Server, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
+import { StatusPill } from '@app/renderer/components/ui/StatusPill'
 import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
 import { ProjectIcon } from './ProjectIcon'
 import { normalizeQuery, rankCommandSections, type CommandCenterItem } from './commandCenterModel'
@@ -317,7 +318,11 @@ export function CommandCenter({
                         <span className="command-center__item-subtitle">{item.subtitle}</span>
                       ) : null}
                     </span>
-                    {item.trailing ? (
+                    {item.status ? (
+                      <StatusPill tone={item.status.tone} className="command-center__item-status">
+                        {item.status.label}
+                      </StatusPill>
+                    ) : item.trailing ? (
                       <span className="command-center__item-trailing">{item.trailing}</span>
                     ) : null}
                     {item.shortcut ? (

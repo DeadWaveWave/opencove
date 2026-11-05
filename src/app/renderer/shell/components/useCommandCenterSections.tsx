@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import {
+  Bot,
   FolderPlus,
   Package,
   PanelLeftClose,
@@ -17,6 +18,8 @@ import {
 import { usePluginCommands } from '@contexts/plugins/presentation/renderer/usePluginCommands'
 import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
+import { resolveWindowKindFamily } from '@contexts/workspace/presentation/renderer/utils/windowKindFamily'
+import { KindTile } from '@app/renderer/components/ui/KindTile'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { useWorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
 import { useAgentWaitingSinceStore, useMinuteClock } from '../hooks/useAgentWaitingSince'
@@ -25,7 +28,6 @@ import { summarizeAgentActivity } from '../utils/agentActivitySummary'
 import { buildSidebarAgentItems } from '../utils/sidebarAgents'
 import { describeWaitDuration, resolveWaitDuration } from '../utils/waitDuration'
 import { ProjectIcon } from './ProjectIcon'
-import { ProjectTile } from './ProjectTile'
 import type { CommandCenterItem, CommandCenterSection } from './commandCenterModel'
 
 export interface CommandCenterActions {
@@ -85,19 +87,26 @@ export function useCommandCenterSections({
       id: `needs-you:${agent.workspaceId}:${agent.nodeId}`,
       title: agent.title,
       subtitle: `${agent.projectName} · ${agent.spaceName ?? t('sidebar.rootCanvas')}`,
-      trailing: describeWaitDuration(
-        t,
-        resolveWaitDuration(observations.get(agent.nodeId)?.waitingSinceMs ?? null, nowMs),
-      ),
+      status: {
+        tone: 'waiting',
+        label: describeWaitDuration(
+          t,
+          resolveWaitDuration(observations.get(agent.nodeId)?.waitingSinceMs ?? null, nowMs),
+        ),
+      },
       tone: 'waiting',
-      icon: <ProjectTile workspaceId={agent.workspaceId} iconId={agent.projectIconId} size="sm" />,
+      icon: (
+        <KindTile kind="ai">
+          <Bot aria-hidden="true" />
+        </KindTile>
+      ),
       onSelect: () => actions.onSelectNode(agent.workspaceId, agent.nodeId),
     }))
 
     const waitingNodeIds = new Set(waitingAgents.map(agent => agent.nodeId))
-    const agentTitles = new Map(
+    const agentItems = new Map(
       activeWorkspace
-        ? buildSidebarAgentItems(activeWorkspace).map(item => [item.node.id, item.displayTitle])
+        ? buildSidebarAgentItems(activeWorkspace).map(item => [item.node.id, item])
         : [],
     )
     const windows: CommandCenterItem[] = activeWorkspace
@@ -105,11 +114,21 @@ export function useCommandCenterSections({
           .filter(node => !waitingNodeIds.has(node.id))
           .map(node => {
             const space = activeWorkspace.spaces.find(item => item.nodeIds.includes(node.id))
+            const spaceName = space?.name ?? t('sidebar.rootCanvas')
+            const agent = agentItems.get(node.id)
             return {
               id: `window:${node.id}`,
-              title: agentTitles.get(node.id) || node.data.title || node.data.kind,
-              subtitle: space?.name ?? t('sidebar.rootCanvas'),
-              icon: <NodeKindIcon kind={node.data.kind} />,
+              title: agent?.displayTitle || node.data.title || node.data.kind,
+              keywords: spaceName,
+              // A working agent shows its state where other windows name their Space.
+              ...(agent?.status === 'working'
+                ? { status: { tone: 'working' as const, label: t('sidebar.status.working') } }
+                : { trailing: spaceName }),
+              icon: (
+                <KindTile kind={resolveWindowKindFamily(node.data)}>
+                  <NodeKindIcon kind={node.data.kind} />
+                </KindTile>
+              ),
               onSelect: () => actions.onSelectNode(activeWorkspace.id, node.id),
             }
           })

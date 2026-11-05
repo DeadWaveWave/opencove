@@ -167,23 +167,42 @@
   padding-block: 5px;
 }
 
-.workspace-agent-item--sidebar .workspace-agent-item__provider {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
+.workspace-agent-item--sidebar .workspace-agent-item__copy {
+  /* One row: kind tile, title, status at the end (Tide sidebar). */
+  flex-direction: row;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+}
+
+.workspace-agent-item--sidebar .workspace-agent-item__title {
+  font-size: var(--cove-font-size-body);
+}
+
+.workspace-agent-item--sidebar .workspace-agent-item__status {
+  font-size: var(--cove-font-size-secondary);
+}
+
+.workspace-agent-item--sidebar .workspace-agent-item__status--working {
+  color: var(--cove-accent-text);
+}
+
+.workspace-agent-item--sidebar .workspace-agent-item__kind > .workspace-agent-item__provider {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--cove-text-muted);
+  color: inherit;
   box-shadow: none;
 }
 
 .workspace-agent-item--sidebar .agent-provider-icon__svg,
 .workspace-agent-item--sidebar .agent-provider-icon__glyph,
 .workspace-agent-item--sidebar .agent-provider-icon__image {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .workspace-agent-item--sidebar .workspace-agent-item__status {
