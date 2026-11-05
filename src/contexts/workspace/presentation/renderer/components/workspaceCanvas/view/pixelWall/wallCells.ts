@@ -186,6 +186,8 @@ export function fillWallCells(
   windows: readonly WallWindowRect[] = [],
   ripples: readonly Ripple[] = [],
   chrome: readonly WallScreenRect[] = [],
+  /** How much faster than usual the clouds drift (showcase mode). */
+  cloudSpeed = 1,
 ): Uint8ClampedArray {
   const count = grid.columns * grid.rows
   const cells = out && out.length === count * 4 ? out : new Uint8ClampedArray(count * 4)
@@ -193,7 +195,7 @@ export function fillWallCells(
   const behind = markCellsBehindGlass(grid, windows, chrome)
   const weights = PIXEL_WALL[palette.appearance]
   const time = timeSeconds ?? 0
-  const drift = time * CLOUD_DRIFT
+  const drift = time * CLOUD_DRIFT * cloudSpeed
   const [baseR, baseG, baseB] = palette.cell
   let index = 0
   for (let row = 0; row < grid.rows; row++) {

@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Appearance: menus, popovers and the control center share one acrylic material with checked contrast, and turn solid when the system reduces transparency. (#449)
 - Settings: every row's label now names its control and its description is read with it; selects also say their current value. Rows, number fields and buttons use the shared components, and the pages keep their layout. (#471)
 - Settings: headings are neutral instead of blue, the selected page is a neutral row, each group's rows sit on one card, and the search field is boxed; the theme is a family card plus a Light / Dark / Follow System row, and the Agent page switches views with a segmented control instead of tabs. (#483)
+- Showcase mode: for recordings and demos, hide the top bar, sidebar and canvas controls from the command center or control center; the canvas fills the window and the pixel wall drifts faster. Press Esc to leave; it is never saved.
+- Control Center: section labels line up with their controls.
 - Settings: over the pixel wall the settings page is a sheet of frosted glass, with the wall's colours softly showing through; with solid windows or reduced transparency it stays opaque.
 - Canvas and shell: the pixel wall fills the whole window, and the top bar, sidebar and project rail float on it as frosted glass without blurring what is behind them. The wall stays lined up with the windows as the sidebar opens and closes; with solid windows or reduced transparency the shell is opaque, and the layout does not change.
 - Canvas: opening a project shows the pixel wall's grid from the first paint, so the wall fades in its colours without a flash. (#498)

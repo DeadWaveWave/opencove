@@ -23,6 +23,9 @@ export const zhCNCommandCenter = {
       togglePrimarySidebarHint: '切换主侧边栏',
       addProject: '添加项目',
       addProjectHint: '创建项目并配置 mounts',
+      enterShowcase: '进入展示模式',
+      exitShowcase: '退出展示模式',
+      showcaseHint: '隐藏界面，用于录屏和演示',
     },
   },
 }

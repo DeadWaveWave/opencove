@@ -121,7 +121,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 8px 4px;
+  padding: 0 8px;
+}
+
+/* Every section label starts where its control does. */
+.control-center__section > .control-center__section-label {
+  margin-inline: var(--cove-spacing-2);
 }
 
 .control-center__section-label {
@@ -131,7 +136,7 @@
 
 .control-center__segments {
   display: flex;
-  margin-inline: 8px;
+  margin-inline: var(--cove-spacing-2);
 }
 
 .control-center__segments > * {

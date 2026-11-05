@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import {
   Bot,
   FolderPlus,
+  MonitorPlay,
   Package,
   PanelLeftClose,
   PanelLeftOpen,
@@ -24,6 +25,7 @@ import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/t
 import { useWorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
 import { useAgentWaitingSinceStore, useMinuteClock } from '../hooks/useAgentWaitingSince'
 import { useAppStore } from '../store/useAppStore'
+import { setShowcaseMode, useShowcaseMode } from '../showcase/showcaseMode'
 import { summarizeAgentActivity } from '../utils/agentActivitySummary'
 import { buildSidebarAgentItems } from '../utils/sidebarAgents'
 import { describeWaitDuration, resolveWaitDuration } from '../utils/waitDuration'
@@ -59,6 +61,7 @@ export function useCommandCenterSections({
   actions: CommandCenterActions
 }): CommandCenterSection[] {
   const { t } = useTranslation()
+  const showcase = useShowcaseMode()
   const mountDetails = useWorkspaceMountDetails({ workspaces })
   const keybindings = useAppStore(state => state.agentSettings.keybindings)
   const observations = useAgentWaitingSinceStore(state => state.observations)
@@ -205,6 +208,15 @@ export function useCommandCenterSections({
         onSelect: actions.onTogglePrimarySidebar,
       },
       {
+        id: 'command:showcase-mode',
+        title: showcase
+          ? t('commandCenter.commands.exitShowcase')
+          : t('commandCenter.commands.enterShowcase'),
+        keywords: t('commandCenter.commands.showcaseHint'),
+        icon: <MonitorPlay aria-hidden="true" size={16} />,
+        onSelect: () => setShowcaseMode(!showcase),
+      },
+      {
         id: 'command:add-project',
         title: t('commandCenter.commands.addProject'),
         keywords: t('commandCenter.commands.addProjectHint'),
@@ -247,6 +259,7 @@ export function useCommandCenterSections({
     nowMs,
     observations,
     pluginCommands,
+    showcase,
     t,
     waitingAgents,
     workspaces,

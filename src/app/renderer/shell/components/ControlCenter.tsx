@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Grid3x3,
   Map as MapIcon,
+  MonitorPlay,
   Settings,
   SlidersHorizontal,
   Sparkles,
@@ -26,6 +27,7 @@ import {
   type WindowMaterial,
 } from '@contexts/settings/domain/agentSettings.types'
 import { useSystemReducedTransparency } from '../hooks/useReducedTransparency'
+import { setShowcaseMode, useShowcaseMode } from '../showcase/showcaseMode'
 import type { UiThemeFamily } from '@contexts/settings/domain/uiSettings'
 import {
   describeUiThemeChoice,
@@ -88,6 +90,7 @@ export function ControlCenter({
   const hasLoadError = applied.requestedId === uiTheme && Boolean(applied.error)
   const choice = describeUiThemeChoice(uiTheme)
   const systemReducesTransparency = useSystemReducedTransparency()
+  const showcase = useShowcaseMode()
   const isCompact = useCompactViewport()
   const titleId = useId()
   const initialFocusRef = useRef<HTMLInputElement | null>(null)
@@ -286,6 +289,24 @@ export function ControlCenter({
             testId="control-center-toggle-minimap"
             onCheckedChange={() => {
               onToggleMinimap()
+            }}
+          />
+        </label>
+        <label className="control-center__row">
+          <span className="control-center__row-icon" aria-hidden="true">
+            <MonitorPlay />
+          </span>
+          <span className="control-center__row-label">{t('controlCenter.showcase')}</span>
+          <Toggle
+            checked={showcase}
+            label={t('controlCenter.showcase')}
+            testId="control-center-toggle-showcase"
+            onCheckedChange={checked => {
+              setShowcaseMode(checked)
+              // The top bar hides with the panel's anchor; Esc or the command center leaves.
+              if (checked) {
+                onClose()
+              }
             }}
           />
         </label>
