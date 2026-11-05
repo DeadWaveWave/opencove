@@ -28,15 +28,33 @@
   z-index: 5;
 }
 
-/* The pixel wall sits under the particle layer and every window. Its own fill matches the
-   theme's cell colour, so a frame before the first paint is never a flash of another colour. */
+/* The pixel wall sits under the particle layer and every window. Before its first frame it is
+   a static grid of the theme's cells and seams, aligned with the view's cells (Tide 5.5), so the
+   first WebGL frame continues it instead of replacing a flat colour. */
 .workspace-pixel-wall {
+  --cove-wall-cell: 24px;
+  --cove-wall-gap: 2px;
+  --cove-wall-origin-x: -1px;
+  --cove-wall-origin-y: -1px;
   position: absolute;
   inset: 0;
   overflow: hidden;
   z-index: 0;
   pointer-events: none;
-  background: var(--cove-pixel-cell, var(--cove-app-background));
+  background-color: var(--cove-pixel-cell, var(--cove-app-background));
+  background-image:
+    linear-gradient(
+      to right,
+      var(--cove-pixel-gap, transparent) var(--cove-wall-gap),
+      transparent var(--cove-wall-gap)
+    ),
+    linear-gradient(
+      to bottom,
+      var(--cove-pixel-gap, transparent) var(--cove-wall-gap),
+      transparent var(--cove-wall-gap)
+    );
+  background-position: var(--cove-wall-origin-x) var(--cove-wall-origin-y);
+  background-size: var(--cove-wall-cell) var(--cove-wall-cell);
 }
 
 .workspace-pixel-wall__surface {

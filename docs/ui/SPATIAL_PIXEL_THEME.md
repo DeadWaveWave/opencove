@@ -149,6 +149,9 @@ world, under every window and the effects layer.
 - Ambient motion follows the decorative scheduler: 30fps focused, 10fps in the background, none
   while hidden or with reduced motion (a still wall). A pan, zoom or window move repaints on the
   next display frame so the wall never trails the windows.
+- First frame (5.5): the wall host itself paints a static CSS grid of the theme's cells and seams,
+  aligned with the cells of the view it mounts in, so the first paint already shows cells and the
+  first WebGL frame continues the same grid instead of replacing a flat colour.
 - E2E reads `window.__opencovePixelWallTestApi` (frame counts, a cell checksum, mean colour) and
   the host's `data-cove-wall-renderer` / `data-cove-wall-state` / `data-cove-wall-cell`.
 

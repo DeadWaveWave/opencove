@@ -223,3 +223,38 @@ test.describe('Workspace Canvas - Work light', () => {
     }
   })
 })
+
+test.describe('Workspace Canvas - Wall first frame', () => {
+  test('starts from a static grid of the same cells the first frame paints', async ({
+    browserName,
+  }, testInfo) => {
+    void browserName
+    const { electronApp, window } = await launchApp()
+    try {
+      await seed(window)
+      const wall = window.getByTestId('workspace-pixel-wall')
+      await expect(wall).toBeVisible()
+      // The host itself carries the grid, so even a paint before any WebGL frame shows cells.
+      const base = await wall.evaluate(element => {
+        const style = getComputedStyle(element)
+        return {
+          image: style.backgroundImage,
+          size: style.backgroundSize,
+          color: style.backgroundColor,
+          cell: style.getPropertyValue('--cove-pixel-cell').trim(),
+        }
+      })
+      expect(base.image.match(/linear-gradient/g)).toHaveLength(2)
+      expect(base.color).not.toBe('rgba(0, 0, 0, 0)')
+      await expectPaintedWall(window)
+      const cell = Number(await wall.getAttribute('data-cove-wall-cell'))
+      expect(Number.parseFloat(base.size)).toBeCloseTo(cell, 1)
+      await testInfo.attach('wall-first-frame', {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    } finally {
+      await electronApp.close()
+    }
+  })
+})
