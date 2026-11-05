@@ -23,7 +23,8 @@ export function readNodePositionFromStoreState(
 }
 
 export function useNodePosition(nodeId: string): { x: number; y: number } {
-  return useStore(storeState => {
-    return readNodePositionFromStoreState(storeState, nodeId)
-  })
+  return useStore(
+    storeState => readNodePositionFromStoreState(storeState, nodeId),
+    (left, right) => left.x === right.x && left.y === right.y,
+  )
 }

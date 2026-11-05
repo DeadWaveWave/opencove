@@ -50,9 +50,10 @@ export function WindowHeader({
   close: WindowHeaderClose
   onPointerDownCapture?: (event: React.PointerEvent<HTMLElement>) => void
 }): React.JSX.Element {
-  useWindowCommitProbe(kind)
+  const commitProbeRef = useWindowCommitProbe(kind)
   return (
     <header
+      ref={commitProbeRef}
       className={classNames('cove-window-header', className)}
       data-cove-part="window-header"
       data-cove-kind={kind}

@@ -175,40 +175,67 @@ export function projectCollapsedNodes(
   spaces: WorkspaceSpaceState[],
   state: CanvasCollapseState,
 ): Node<TerminalNodeData>[] {
-  const hidden = getCollapsedSpaceHiddenIds(spaces, state.collapsedSpaceIds).nodeIds
-  return nodes.map(node => {
-    const collapsed = state.collapsedNodeIds[node.id] === true
-    const spaceHidden = hidden.has(node.id)
-    const size = spaceHidden
-      ? { width: 0, height: 0 }
-      : getNodeDisplaySize(node, state.collapsedNodeIds)
-    return {
-      ...node,
-      // React Flow reads these before ResizeObserver runs after each controlled
-      // drag update. Its dimension fallbacks must describe the visible shell,
-      // never the expanded runtime retained in data.
-      width: size.width,
-      height: size.height,
-      initialWidth: size.width,
-      initialHeight: size.height,
-      measured:
-        node.measured?.width === size.width && node.measured?.height === size.height
-          ? node.measured
-          : undefined,
-      className: [node.className, spaceHidden ? 'cove-node--space-collapsed' : '']
-        .filter(Boolean)
-        .join(' '),
-      selectable: spaceHidden ? false : node.selectable,
-      selected: spaceHidden ? false : node.selected,
-      draggable: spaceHidden ? false : node.draggable,
-      focusable: spaceHidden ? false : node.focusable,
-      style: {
-        ...node.style,
+  return createCollapsedNodesProjector()(nodes, spaces, state)
+}
+
+/** Per-view, weakly held presentation cache. Geometry never changes a window's data identity. */
+export function createCollapsedNodesProjector() {
+  const nodeCache = new WeakMap<Node<TerminalNodeData>, Node<TerminalNodeData>>()
+  const dataCache = new WeakMap<TerminalNodeData, TerminalNodeData>()
+  return (
+    nodes: Node<TerminalNodeData>[],
+    spaces: WorkspaceSpaceState[],
+    state: CanvasCollapseState,
+  ): Node<TerminalNodeData>[] => {
+    const hidden = getCollapsedSpaceHiddenIds(spaces, state.collapsedSpaceIds).nodeIds
+    return nodes.map(node => {
+      const collapsed = state.collapsedNodeIds[node.id] === true
+      const spaceHidden = hidden.has(node.id)
+      const cached = nodeCache.get(node)
+      const matches = (data: TerminalNodeData | undefined) =>
+        data?.collapsePresentation?.collapsed === collapsed &&
+        data.collapsePresentation.spaceHidden === spaceHidden
+      if (cached && matches(cached.data)) {
+        return cached
+      }
+      let data = dataCache.get(node.data)
+      if (!matches(data)) {
+        data = { ...node.data, collapsePresentation: { collapsed, spaceHidden } }
+        dataCache.set(node.data, data)
+      }
+      const size = spaceHidden
+        ? { width: 0, height: 0 }
+        : getNodeDisplaySize(node, state.collapsedNodeIds)
+      const projected: Node<TerminalNodeData> = {
+        ...node,
+        // React Flow reads these before ResizeObserver runs after each controlled
+        // drag update. Its dimension fallbacks must describe the visible shell,
+        // never the expanded runtime retained in data.
         width: size.width,
         height: size.height,
-        ...(spaceHidden ? { visibility: 'hidden', pointerEvents: 'none' } : {}),
-      },
-      data: { ...node.data, collapsePresentation: { collapsed, spaceHidden } },
-    }
-  })
+        initialWidth: size.width,
+        initialHeight: size.height,
+        measured:
+          node.measured?.width === size.width && node.measured?.height === size.height
+            ? node.measured
+            : undefined,
+        className: [node.className, spaceHidden ? 'cove-node--space-collapsed' : '']
+          .filter(Boolean)
+          .join(' '),
+        selectable: spaceHidden ? false : node.selectable,
+        selected: spaceHidden ? false : node.selected,
+        draggable: spaceHidden ? false : node.draggable,
+        focusable: spaceHidden ? false : node.focusable,
+        style: {
+          ...node.style,
+          width: size.width,
+          height: size.height,
+          ...(spaceHidden ? { visibility: 'hidden', pointerEvents: 'none' } : {}),
+        },
+        data: data!,
+      }
+      nodeCache.set(node, projected)
+      return projected
+    })
+  }
 }

@@ -1,7 +1,12 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../types'
 import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
-import { readWindowCommitCounts, resetWindowCommitCounts } from '../shared/windowCommitProbe'
+import {
+  readWindowCommitCounts,
+  readWindowCommitCountsByNode,
+  readWindowPresentationCommitCounts,
+  resetWindowCommitCounts,
+} from '../shared/windowCommitProbe'
 
 type WorkspaceCanvasAgentSessionState = {
   nodeId: string
@@ -23,6 +28,8 @@ type WorkspaceCanvasTestApi = {
   setZoom: (zoom: number) => Promise<boolean>
   /** Window header commits by kind family since the last reset (Tide phase 4.3 probe). */
   getWindowCommitCounts: () => Record<string, number>
+  getWindowCommitCountsByNode: () => Record<string, number>
+  getWindowPresentationCommitCounts: () => Record<string, number>
   resetWindowCommitCounts: () => void
 }
 
@@ -95,6 +102,8 @@ function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
         return true
       },
       getWindowCommitCounts: () => readWindowCommitCounts(),
+      getWindowCommitCountsByNode: () => readWindowCommitCountsByNode(),
+      getWindowPresentationCommitCounts: () => readWindowPresentationCommitCounts(),
       resetWindowCommitCounts: () => resetWindowCommitCounts(),
       setZoom: async zoom => {
         if (!setZoomHandler || !Number.isFinite(zoom) || zoom <= 0) {

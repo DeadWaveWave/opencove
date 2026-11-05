@@ -7,6 +7,7 @@ import { CollapsedWindow } from './CollapsedWindow'
 import { useWindowCollapseMotion } from './useWindowCollapseMotion'
 import { WindowNodeContextMenuContext } from '../view/WindowNodeContextMenuContext'
 import { usePluginWindowTitle } from '@contexts/plugins/presentation/renderer/pluginWindowPresentation'
+import { useWindowPresentationCommitProbe } from '../../shared/windowCommitProbe'
 
 /** Presentation geometry is independent of the mounted editor/PTY/browser frame. */
 export function WindowCollapsePresentation({
@@ -22,6 +23,7 @@ export function WindowCollapsePresentation({
   onToggleSelection?: () => void
   onSelect?: () => void
 }) {
+  useWindowPresentationCommitProbe(id)
   const collapse = useWorkspaceCollapse()
   const pluginTitle = usePluginWindowTitle(data.kind === 'plugin' ? id : '')
   const presentationData = useMemo(
