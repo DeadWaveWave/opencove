@@ -3,6 +3,9 @@ import type { Page } from '@playwright/test'
 export interface SidebarAnimationSample {
   sidebarTransition: string
   sidebarWidth: number
+  sidebarVisibility: string
+  canvasLeft: number
+  shellLeft: number
   railWidth: number
   sameRail: boolean
   sameWorkspaceItem: boolean
@@ -42,7 +45,7 @@ export async function sampleSidebarToggle(
     const railBefore = document.querySelector('[data-testid="workspace-project-rail"]')
     const itemBefore = document.querySelector(`[data-testid="workspace-item-${id}"]`)
     const iconBefore = itemBefore?.querySelector('.workspace-item__folder-icon')
-    const toggle = document.querySelector('[data-testid="workspace-sidebar-pin"]')
+    const toggle = document.querySelector('[data-testid="app-header-sidebar-toggle"]')
     if (
       !(sidebar instanceof HTMLElement) ||
       !(railBefore instanceof HTMLElement) ||
@@ -61,6 +64,9 @@ export async function sampleSidebarToggle(
       return {
         sidebarTransition: sidebar.dataset.coveSidebarTransition ?? 'idle',
         sidebarWidth: sidebar.getBoundingClientRect().width,
+        sidebarVisibility: getComputedStyle(sidebar).visibility,
+        canvasLeft: document.querySelector('.workspace-canvas')!.getBoundingClientRect().left,
+        shellLeft: document.querySelector('.app-shell')!.getBoundingClientRect().left,
         railWidth: rail?.getBoundingClientRect().width ?? 0,
         sameRail: rail === railBefore,
         sameWorkspaceItem: item === itemBefore,

@@ -11,10 +11,10 @@
   z-index: 6;
 }
 
-.workspace-sidebar--peek {
-  width: var(--cove-primary-sidebar-expanded-width);
-  z-index: 21;
-  box-shadow: var(--cove-shadow-md);
+/* Hidden once its column has closed, so the content does not vanish while it slides. */
+.workspace-sidebar--hidden {
+  visibility: hidden;
+  transition: visibility 0s linear 0.22s;
 }
 
 .workspace-sidebar__navigation {

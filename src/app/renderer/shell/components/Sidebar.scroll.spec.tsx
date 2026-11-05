@@ -57,7 +57,7 @@ function createWorkspace(id: string): WorkspaceState {
 }
 
 describe('Sidebar scroll state', () => {
-  it('preserves the list scroll position when switching between docked and rail variants', () => {
+  it('preserves the list scroll position when switching between docked and hidden variants', () => {
     const scrollHeightDescriptor = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
       'scrollHeight',
@@ -111,7 +111,7 @@ describe('Sidebar scroll state', () => {
 
       rerender(
         <Sidebar
-          variant="rail"
+          variant="hidden"
           workspaces={workspaces}
           activeWorkspaceId="workspace-0"
           persistNotice={null}
@@ -123,10 +123,10 @@ describe('Sidebar scroll state', () => {
         />,
       )
 
-      const railList = container.querySelector('.workspace-sidebar__list') as HTMLDivElement
-      expect(railList).toBe(dockedList)
-      expect(railList.scrollTop).toBe(200)
-      expect(railList.getAttribute('data-cove-scroll-fade')).toBe('both')
+      const hiddenList = container.querySelector('.workspace-sidebar__list') as HTMLDivElement
+      expect(hiddenList).toBe(dockedList)
+      expect(hiddenList.scrollTop).toBe(200)
+      expect(hiddenList.getAttribute('data-cove-scroll-fade')).toBe('both')
     } finally {
       if (scrollHeightDescriptor) {
         Object.defineProperty(HTMLElement.prototype, 'scrollHeight', scrollHeightDescriptor)

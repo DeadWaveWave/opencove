@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
-import { usePrimarySidebarAutoReveal } from './usePrimarySidebarAutoReveal'
 
 const MOBILE_SIDEBAR_QUERY = '(max-width: 720px)'
 
@@ -13,24 +12,22 @@ function isMobileLayout(): boolean {
   return window.matchMedia(MOBILE_SIDEBAR_QUERY).matches
 }
 
+/**
+ * The primary sidebar's layout. On desktop it is docked or, collapsed, hidden entirely (no
+ * rail left behind); the top bar's sidebar button and ⌘B toggle it. Narrow windows open it as a
+ * drawer instead.
+ */
 export function usePrimarySidebar({
   isCollapsed,
-  isMenuOpen,
   hasBlockingOverlay,
   onTogglePinned,
 }: {
   isCollapsed: boolean
-  isMenuOpen: boolean
   hasBlockingOverlay: boolean
   onTogglePinned: () => void
 }) {
   const isMobile = useSyncExternalStore(subscribeToMobileLayout, isMobileLayout, () => false)
   const [isDrawerOpen, setDrawerOpen] = useState(false)
-  const [isDragging, setDragging] = useState(false)
-  const autoReveal = usePrimarySidebarAutoReveal({
-    isCollapsed: isCollapsed && !isMobile,
-    isInteractionActive: isMenuOpen || isDragging,
-  })
   const close = useCallback(() => setDrawerOpen(false), [])
 
   useEffect(() => {
@@ -54,22 +51,11 @@ export function usePrimarySidebar({
   return {
     isMobile,
     isDrawerOpen,
-    isPeekOpen: autoReveal.isPeekOpen,
-    variant:
-      isMobile || !isCollapsed
-        ? ('docked' as const)
-        : autoReveal.isPeekOpen
-          ? ('peek' as const)
-          : ('rail' as const),
+    /** Whether the sidebar shows: the drawer is open, or the docked sidebar is not collapsed. */
+    isOpen: isMobile ? isDrawerOpen : !isCollapsed,
+    variant: isMobile || !isCollapsed ? ('docked' as const) : ('hidden' as const),
     close,
     toggle,
-    setDragging,
-    onPointerEnter: (event: React.PointerEvent<HTMLElement>) => {
-      if (event.pointerType !== 'touch') {
-        autoReveal.handlePointerEnter()
-      }
-    },
-    onPointerLeave: autoReveal.handlePointerLeave,
   }
 }
 

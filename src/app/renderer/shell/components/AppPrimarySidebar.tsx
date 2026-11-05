@@ -22,9 +22,6 @@ export function AppPrimarySidebar({
       variant={controller.variant}
       isMobile={controller.isMobile}
       onClose={controller.close}
-      onInteractionActiveChange={controller.setDragging}
-      onPointerEnter={controller.onPointerEnter}
-      onPointerLeave={controller.onPointerLeave}
     />
   )
 

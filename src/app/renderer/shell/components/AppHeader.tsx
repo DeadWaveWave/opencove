@@ -28,7 +28,7 @@ import type { AgentActivitySummary } from '../utils/agentActivitySummary'
 import { AppHeaderAgentActivity } from './AppHeaderAgentActivity'
 
 export function AppHeader({
-  showSidebarTrigger = false,
+  sidebarIsDrawer = false,
   isSidebarOpen = false,
   onToggleSidebar,
   sidebarTriggerRef,
@@ -60,7 +60,8 @@ export function AppHeader({
   onDownloadUpdate,
   onInstallUpdate,
 }: {
-  showSidebarTrigger?: boolean
+  /** Narrow windows open the sidebar as a drawer; wider ones dock or hide it. */
+  sidebarIsDrawer?: boolean
   isSidebarOpen?: boolean
   onToggleSidebar?: () => void
   sidebarTriggerRef?: React.Ref<HTMLButtonElement>
@@ -229,20 +230,25 @@ export function AppHeader({
         role="banner"
       >
         <div className="app-header__section app-header__section--left">
-          {showSidebarTrigger ? (
-            <IconButton
-              ref={sidebarTriggerRef}
-              className="app-header__navigation-button"
-              label={t('commandCenter.sidebar')}
-              data-testid="primary-sidebar-open"
-              aria-expanded={isSidebarOpen}
-              aria-controls="primary-sidebar-navigation"
-              aria-haspopup="dialog"
-              onClick={onToggleSidebar}
-            >
-              <PanelLeft size={20} aria-hidden="true" />
-            </IconButton>
-          ) : null}
+          {/* Tide: the sidebar toggle sits at the top left, after the window controls. */}
+          <IconButton
+            ref={sidebarTriggerRef}
+            className="app-header__navigation-button"
+            label={
+              sidebarIsDrawer
+                ? t('commandCenter.sidebar')
+                : isSidebarOpen
+                  ? t('commandCenter.commands.hidePrimarySidebar')
+                  : t('commandCenter.commands.showPrimarySidebar')
+            }
+            data-testid={sidebarIsDrawer ? 'primary-sidebar-open' : 'app-header-sidebar-toggle'}
+            aria-expanded={isSidebarOpen}
+            aria-controls={sidebarIsDrawer ? 'primary-sidebar-navigation' : undefined}
+            aria-haspopup={sidebarIsDrawer ? 'dialog' : undefined}
+            onClick={onToggleSidebar}
+          >
+            <PanelLeft size={18} aria-hidden="true" />
+          </IconButton>
         </div>
 
         <div

@@ -110,7 +110,7 @@ function expectSpace(projectId: string, expanded: boolean) {
   expect(screen.queryByTestId(`workspace-space-toggle-${projectId}-project-root`)).toBeNull()
 }
 
-it('persists Space disclosure independently across projects, remounts and rail transitions', () => {
+it('persists Space disclosure independently across projects, remounts and hidden transitions', () => {
   const first = render(<SidebarHarness />)
   expectSpace('project-a', true)
   fireEvent.click(toggle('project-a'))
@@ -127,8 +127,8 @@ it('persists Space disclosure independently across projects, remounts and rail t
 
   const second = render(<SidebarHarness />)
   expectSpace('project-a', false)
-  second.rerender(<SidebarHarness variant="rail" />)
-  expect(screen.queryByTestId('workspace-sidebar-navigation')).toBeNull()
+  second.rerender(<SidebarHarness variant="hidden" />)
+  expectSpace('project-a', false)
   second.rerender(<SidebarHarness />)
   expectSpace('project-a', false)
 

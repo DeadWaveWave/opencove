@@ -117,7 +117,8 @@ test.describe('Shortcuts', () => {
 
       await window.keyboard.press(`${commandCenterModifier}+B`)
       await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
-      await expect(window.locator('.workspace-sidebar')).toHaveClass(/workspace-sidebar--rail/)
+      await expect(window.locator('.workspace-sidebar')).toHaveClass(/workspace-sidebar--hidden/)
+      await expect(window.locator('.workspace-sidebar')).toBeHidden()
 
       await window.keyboard.press(`${commandCenterModifier}+B`)
       await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(0)

@@ -192,7 +192,6 @@ export default function App(): React.JSX.Element {
 
   const sidebar = usePrimarySidebar({
     isCollapsed: isPrimarySidebarCollapsed,
-    isMenuOpen: projectContextMenu !== null,
     hasBlockingOverlay: hasBlockingShellOverlay || isAddProjectWizardOpen,
     onTogglePinned: toggleSidebarPinned,
   })
@@ -306,8 +305,8 @@ export default function App(): React.JSX.Element {
         <AppShellFrame isSidebarCollapsed={isPrimarySidebarCollapsed} sidebar={sidebar}>
           <AppHeader
             sidebarTriggerRef={sidebarTriggerRef}
-            showSidebarTrigger={sidebar.isMobile}
-            isSidebarOpen={sidebar.isDrawerOpen}
+            sidebarIsDrawer={sidebar.isMobile}
+            isSidebarOpen={sidebar.isOpen}
             onToggleSidebar={sidebar.toggle}
             activeWorkspaceName={activeWorkspace?.name ?? null}
             activeWorkspacePath={activeWorkspace?.path ?? null}
@@ -341,11 +340,9 @@ export default function App(): React.JSX.Element {
             controller={sidebar}
             isMenuOpen={projectContextMenu !== null}
             triggerRef={sidebarTriggerRef}
-            isPinned={!isPrimarySidebarCollapsed}
             workspaces={workspaces}
             activeWorkspaceId={activeWorkspaceId}
             persistNotice={persistNotice}
-            onTogglePinned={toggleSidebarPinned}
             onAddProject={handleAddWorkspace}
             onOpenSettings={handleOpenSettings}
             onSelectWorkspace={handleSelectWorkspace}
