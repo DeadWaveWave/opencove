@@ -1,0 +1,34 @@
+/* The canvas HUD: far / near at the top left, the zoom at the top right (Tide). */
+.workspace-canvas-hud {
+  position: absolute;
+  top: var(--cove-spacing-3);
+  right: var(--cove-spacing-3);
+  left: var(--cove-spacing-3);
+  z-index: 6;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.workspace-canvas-hud__lod,
+.workspace-canvas-hud__zoom {
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: var(--cove-radius-sm);
+  pointer-events: auto;
+}
+
+.workspace-canvas-hud__lod .cove-segmented {
+  border: 0;
+  background: transparent;
+}
+
+.workspace-canvas-hud__zoom {
+  padding: 0 var(--cove-spacing-2);
+  color: var(--cove-text-muted);
+  font-family: var(--cove-font-mono);
+  font-size: var(--cove-font-size-secondary);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--cove-control-height-sm);
+  pointer-events: none;
+}

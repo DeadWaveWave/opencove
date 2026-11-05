@@ -7,6 +7,7 @@ import { zhCNSidebarView } from './zh-CN.sidebarView'
 import { zhCNSidebarRail } from './zh-CN.sidebarRail'
 import { zhCNCanvasCollapse } from './zh-CN.canvasCollapse'
 import { zhCNEdgeBeacons } from './zh-CN.edgeBeacons'
+import { zhCNCanvasHud } from './zh-CN.canvasHud'
 import { zhCNControlCenter } from './zh-CN.controlCenter'
 import { zhCNCommandCenter } from './zh-CN.commandCenter'
 import { zhCNSpaceCollapse } from './zh-CN.spaceCollapse'
@@ -35,6 +36,7 @@ export const zhCN = {
   },
   ...zhCNCanvasCollapse,
   ...zhCNEdgeBeacons,
+  ...zhCNCanvasHud,
   ...zhCNControlCenter,
   ...zhCNCommandCenter,
   ...zhCNSpaceCollapse,
