@@ -1,4 +1,5 @@
 import type { WallWindowRect } from './wallCells'
+import type { WallGlass } from './wallGlass'
 
 /** What E2E can learn about the wall without reading back a WebGL canvas. */
 export interface PixelWallTestApi {
@@ -6,6 +7,10 @@ export interface PixelWallTestApi {
   getLights: () => WallWindowRect[]
   /** Windows drawn as frosted glass in the last frame. */
   getGlassCount: () => number
+  /** Where that glass went: x, y, width, height on the wall, in CSS px. */
+  getGlassRects: () => number[][]
+  /** The shell's chrome frosted on the wall (top bar, sidebar), as x, y, width, height. */
+  getChromeRects: () => number[][]
   /** Output ripples on the wall in the last frame. */
   getRippleCount: () => number
   /** Who sent each wave in the last frame: a window id, or `sonar:`, `waiting:`, `complete:`… */
@@ -32,9 +37,17 @@ let animatedFrames = 0
 let lastCells: Uint8ClampedArray | null = null
 let lastLights: readonly WallWindowRect[] = []
 let lastGlassCount = 0
+let lastGlass: WallGlass | null = null
+let lastChrome: WallGlass | null = null
 let lastRippleCount = 0
 let lastRippleKeys: readonly string[] = []
 const seenRippleKeys = new Set<string>()
+
+function unpackRects(glass: WallGlass | null): number[][] {
+  return Array.from({ length: glass?.count ?? 0 }, (_, index) =>
+    Array.from(glass!.rects.subarray(index * 4, index * 4 + 4)),
+  )
+}
 
 /** Counts a frame; the checksum is only computed when a test asks for it. */
 export function recordWallFrame(
@@ -43,12 +56,16 @@ export function recordWallFrame(
     animated,
     lights = [],
     glassCount = 0,
+    glass = null,
+    chrome = null,
     rippleCount = 0,
     rippleKeys = [],
   }: {
     animated: boolean
     lights?: readonly WallWindowRect[]
     glassCount?: number
+    glass?: WallGlass | null
+    chrome?: WallGlass | null
     rippleCount?: number
     rippleKeys?: readonly string[]
   },
@@ -60,6 +77,8 @@ export function recordWallFrame(
   lastCells = cells
   lastLights = lights
   lastGlassCount = glassCount
+  lastGlass = glass
+  lastChrome = chrome
   lastRippleCount = rippleCount
   lastRippleKeys = rippleKeys
   for (const key of rippleKeys) {
@@ -71,6 +90,8 @@ export function recordWallFrame(
   window.__opencovePixelWallTestApi = {
     getLights: () => lastLights.map(light => ({ ...light })),
     getGlassCount: () => lastGlassCount,
+    getGlassRects: () => unpackRects(lastGlass),
+    getChromeRects: () => unpackRects(lastChrome),
     getRippleCount: () => lastRippleCount,
     getRippleKeys: () => [...lastRippleKeys],
     getSeenRippleKeys: () => [...seenRippleKeys],

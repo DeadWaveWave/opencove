@@ -152,8 +152,22 @@ world, under every window and the effects layer.
 - First frame (5.5): the wall host itself paints a static CSS grid of the theme's cells and seams,
   aligned with the cells of the view it mounts in, so the first paint already shows cells and the
   first WebGL frame continues the same grid instead of replacing a flat colour.
-- E2E reads `window.__opencovePixelWallTestApi` (frame counts, a cell checksum, mean colour) and
-  the host's `data-cove-wall-renderer` / `data-cove-wall-state` / `data-cove-wall-cell`.
+- The wall fills the app window and the shell floats on it (Tide 应用外壳). The app shell owns an
+  empty layer (`.app-shell__wall`, `ShellWallLayerContext`); the canvas's wall portals its host
+  there and stays the only writer of what it paints. The flow transform is measured from the
+  canvas, so the wall adds the canvas's offset in the window (`placeWallViewport`); a world point
+  stays under its window while the sidebar opens, closes or turns into the rail. Everything outside
+  the canvas is chrome (`resolveWallChrome`: the top bar and the sidebar, in any layout): the wall
+  frosts it square-cornered, caps its cells like those behind windows and keeps twinkle and the
+  shockwave crest out of it. With a wall in the layer the top bar, sidebar and project rail are
+  `--cove-surface` (the generator's `--cove-glass-chrome` tint, contrast-checked against the
+  capped wall) with no backdrop-filter; the peeking sidebar keeps its own surface. Without a wall
+  (「简约」, 「关闭」, a theme's own background, no project) the layer is empty and the shell keeps
+  its usual surfaces. The layout never changes. Outside the app shell (no layer) a wall stays inside
+  its canvas.
+- E2E reads `window.__opencovePixelWallTestApi` (frame counts, a cell checksum, mean colour, the
+  glass and chrome rects) and the host's `data-cove-wall-renderer` / `data-cove-wall-state` /
+  `data-cove-wall-cell`.
 
 ## Output ripples
 

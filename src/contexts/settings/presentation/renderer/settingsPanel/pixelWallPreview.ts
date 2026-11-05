@@ -7,8 +7,12 @@ import {
   projectWallGlass,
   readWallGlassRadius,
 } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallGlass'
+import { packWallChrome } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallChrome'
 import { resolveWallGrid } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallGrid'
 import { readWallPalette } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallPalette'
+
+/** The preview has no shell around it. */
+const NO_CHROME = packWallChrome([])
 
 /**
  * The pixel wall in the Settings preview: the canvas's cells, clouds, twinkle and glass cap,
@@ -51,6 +55,7 @@ export function createPixelWallPreview(canvas: HTMLCanvasElement, scope: HTMLEle
         cells,
         gapColor: palette.gap,
         glass: projectWallGlass(windows, { x: 0, y: 0, zoom: 1, width, height }, radius),
+        chrome: NO_CHROME,
         width,
         height,
         dpr: Math.min(2, window.devicePixelRatio || 1),

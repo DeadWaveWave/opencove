@@ -1,5 +1,6 @@
 import type { Rgb } from '@shared/design/oklch'
 import { PIXEL_WALL } from '@shared/design/themeGenerator'
+import type { WallScreenRect } from './wallChrome'
 import type { WallGrid } from './wallGrid'
 import type { WallPalette } from './wallPalette'
 import { forEachRingCell, type Ripple } from './ripples'
@@ -51,15 +52,35 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t)
 }
 
-/** Marks the cells behind any window; the cost follows window area, not cells × windows. */
+/**
+ * Marks the cells behind any window or behind the shell's chrome (screen bands); the cost
+ * follows their area, not cells × windows.
+ */
 function markCellsBehindGlass(
   grid: WallGrid,
   windows: readonly WallWindowRect[],
+  chrome: readonly WallScreenRect[],
 ): Uint8Array | null {
-  if (windows.length === 0) {
+  if (windows.length === 0 && chrome.length === 0) {
     return null
   }
   const behind = new Uint8Array(grid.columns * grid.rows)
+  for (const band of chrome) {
+    // Any cell the band touches, even partly: its frost covers that part of the cell.
+    const first = Math.max(0, Math.floor((band.x - grid.originX) / grid.screenCell))
+    const last = Math.min(
+      grid.columns - 1,
+      Math.ceil((band.x + band.width - grid.originX) / grid.screenCell) - 1,
+    )
+    const top = Math.max(0, Math.floor((band.y - grid.originY) / grid.screenCell))
+    const bottom = Math.min(
+      grid.rows - 1,
+      Math.ceil((band.y + band.height - grid.originY) / grid.screenCell) - 1,
+    )
+    for (let row = top; row <= bottom; row++) {
+      behind.fill(1, row * grid.columns + first, row * grid.columns + last + 1)
+    }
+  }
   const reach = GLASS_REACH_CELLS * grid.worldCell
   for (const frame of windows) {
     const first = Math.max(0, Math.floor((frame.x - reach) / grid.worldCell) - grid.firstColumn)
@@ -153,8 +174,9 @@ function castWorkLight(
  * clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU context) the clouds and
  * twinkle are still; the lights keep whatever intensity the caller resolved.
  *
- * Behind a window's glass a cell moves at most `cap` toward any colour (Tide I6), the bound
- * the theme contrast checks assume for text over glass.
+ * Behind a window's glass, and behind the shell's chrome (`chrome`, screen bands where the top
+ * bar and sidebar float on the wall), a cell moves at most `cap` toward any colour (Tide I6),
+ * the bound the theme contrast checks assume for text over glass.
  */
 export function fillWallCells(
   grid: WallGrid,
@@ -163,11 +185,12 @@ export function fillWallCells(
   out?: Uint8ClampedArray,
   windows: readonly WallWindowRect[] = [],
   ripples: readonly Ripple[] = [],
+  chrome: readonly WallScreenRect[] = [],
 ): Uint8ClampedArray {
   const count = grid.columns * grid.rows
   const cells = out && out.length === count * 4 ? out : new Uint8ClampedArray(count * 4)
   const moved = new Float32Array(count)
-  const behind = markCellsBehindGlass(grid, windows)
+  const behind = markCellsBehindGlass(grid, windows, chrome)
   const weights = PIXEL_WALL[palette.appearance]
   const time = timeSeconds ?? 0
   const drift = time * CLOUD_DRIFT

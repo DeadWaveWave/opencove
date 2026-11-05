@@ -1,5 +1,7 @@
 import React, { memo, useLayoutEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useStoreApi, type Node } from '@xyflow/react'
+import { useShellWallLayer } from '@app/renderer/shell/shellWallLayer'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { TerminalNodeData } from '../../../types'
 import { createPixelFrameScheduler } from './pixelLayer/scheduler'
@@ -10,6 +12,13 @@ import { SONAR_INTERVAL_MS, SONAR_WAVE } from './pixelLayer/dotRipples'
 import { showWindowSignal } from './windowSignals/frameSignals'
 import { subscribeWindowSignal } from './windowSignals/windowSignalEvents'
 import { projectWallGlass, readWallGlassRadius } from './pixelWall/wallGlass'
+import {
+  packWallChrome,
+  placeWallViewport,
+  resolveWallChrome,
+  type WallPlacement,
+  type WallScreenRect,
+} from './pixelWall/wallChrome'
 import { createPixelWallController } from './pixelWall/wallController'
 import type { WallFrame } from './pixelWall/wallFrame'
 import { createWallGl } from './pixelWall/wallGl'
@@ -33,6 +42,9 @@ const SWEEP_MS = 500
  * motion); a pan or zoom repaints on the next display frame, so the wall never trails windows.
  * Each window lights the cells around it (5.3b); that light is meaningful, so it keeps
  * breathing with twinkle off and only reduced motion holds it at a fixed level.
+ *
+ * In the app the wall fills the window (Tide): it is painted into the shell's wall layer, and
+ * the top bar and sidebar float on it as frosted glass with the same cap as behind windows.
  */
 export const WorkspacePixelWall = memo(function WorkspacePixelWall({
   ambient = true,
@@ -42,8 +54,9 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
   ambient?: boolean
   /** Waiting pulses and working sonar, which follow the Agent working effect switch. */
   signals?: boolean
-}): React.JSX.Element {
+}): React.JSX.Element | null {
   const store = useStoreApi<Node<TerminalNodeData>>()
+  const layer = useShellWallLayer()
   const ambientRef = useRef(ambient)
   const signalsRef = useRef(signals)
   signalsRef.current = signals
@@ -66,23 +79,39 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     let lights = readWallLightPalette(host)
     let glassRadius = readWallGlassRadius(host)
     let glassRects: Float32Array | undefined
-    let width = host.clientWidth
-    let height = host.clientHeight
+    let chromeRects: Float32Array | undefined
     const initial = store.getState()
+    // The flow transform is measured from the canvas (React Flow's root, which it records after
+    // mounting); the wall may be larger: the window.
+    const readPlacement = (): WallPlacement => {
+      const wall = host.getBoundingClientRect()
+      const canvas = store.getState().domNode?.getBoundingClientRect() ?? wall
+      return {
+        width: host.clientWidth,
+        height: host.clientHeight,
+        canvas: {
+          x: canvas.left - wall.left,
+          y: canvas.top - wall.top,
+          width: canvas.width,
+          height: canvas.height,
+        },
+      }
+    }
     let [x, y, zoom] = initial.transform
-    // The first paint already shows the wall's grid (Tide 5.5): a static CSS grid on the host,
-    // aligned with the cells of this view, which the first WebGL frame then continues.
-    const first = resolveWallGrid({
-      x,
-      y,
-      zoom,
-      width: host.clientWidth,
-      height: host.clientHeight,
-    })
-    host.style.setProperty('--cove-wall-cell', `${first.screenCell}px`)
-    host.style.setProperty('--cove-wall-gap', `${first.gap}px`)
-    host.style.setProperty('--cove-wall-origin-x', `${first.originX - first.gap / 2}px`)
-    host.style.setProperty('--cove-wall-origin-y', `${first.originY - first.gap / 2}px`)
+    let placement = readPlacement()
+    let chrome: WallScreenRect[] = []
+    const measure = () => {
+      placement = readPlacement()
+      chrome = resolveWallChrome(placement)
+      // Before the first frame the host shows the wall's grid (Tide 5.5): a static CSS grid
+      // aligned with the cells of this view, which the first WebGL frame then continues.
+      const staticGrid = resolveWallGrid(placeWallViewport({ x, y, zoom }, placement))
+      host.style.setProperty('--cove-wall-cell', `${staticGrid.screenCell}px`)
+      host.style.setProperty('--cove-wall-gap', `${staticGrid.gap}px`)
+      host.style.setProperty('--cove-wall-origin-x', `${staticGrid.originX - staticGrid.gap / 2}px`)
+      host.style.setProperty('--cove-wall-origin-y', `${staticGrid.originY - staticGrid.gap / 2}px`)
+    }
+    measure()
     let nodes = initial.nodes
     const tracker = createWallWindowTracker()
     tracker.sync(initial.nodeLookup, performance.now())
@@ -94,10 +123,11 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     const ripples = createRippleField()
     const lastPulse = new Map<string, number>()
     const swept = new Map<string, Set<string>>()
-    const signalScope = host.closest('.react-flow') ?? document
 
     const buildFrame = (now: number | null): WallFrame => {
-      const grid = resolveWallGrid({ x, y, zoom, width, height })
+      const view = placeWallViewport({ x, y, zoom }, placement)
+      const { width, height } = view
+      const grid = resolveWallGrid(view)
       const ambientSeconds = now === null || still() ? null : now / 1000
       const lit = tracker.resolve(now === null || reducedMotion ? null : now, lights)
       const pulsing = now === null || reducedMotion || !signalsRef.current ? [] : tracker.waiting()
@@ -130,7 +160,13 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
           const dy = Math.max(rect.y - wave.y, 0, wave.y - (rect.y + rect.height))
           if (!done.has(id) && Math.hypot(dx, dy) <= wave.radius) {
             done.add(id)
-            showWindowSignal(signalScope, id, 'swept', wave.color, SWEEP_MS)
+            showWindowSignal(
+              store.getState().domNode ?? document,
+              id,
+              'swept',
+              wave.color,
+              SWEEP_MS,
+            )
           }
         }
       }
@@ -140,14 +176,11 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         }
       }
       lightsAnimating = lit.animating || waves.length > 0 || pulsing.length > 0 || sonar.length > 0
-      cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows, waves)
-      const glass = projectWallGlass(
-        lit.windows,
-        { x, y, zoom, width, height },
-        glassRadius,
-        glassRects,
-      )
+      cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows, waves, chrome)
+      const glass = projectWallGlass(lit.windows, view, glassRadius, glassRects)
       glassRects = glass.rects
+      const chromeGlass = packWallChrome(chrome, chromeRects)
+      chromeRects = chromeGlass.rects
       // A change of cell size dissolves over 120ms instead of jumping.
       const shown = dissolve.apply(grid, cells, now === null || reducedMotion ? null : now)
       dissolving = shown.animating
@@ -155,6 +188,8 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         animated: ambientSeconds !== null || lightsAnimating,
         lights: lit.windows,
         glassCount: glass.count,
+        glass,
+        chrome: chromeGlass,
         rippleCount: waves.length,
         rippleKeys: waves.map(wave => wave.key ?? ''),
       })
@@ -167,6 +202,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         cells: shown.cells,
         gapColor: palette.gap,
         glass,
+        chrome: chromeGlass,
         width,
         height,
         dpr: Math.min(2, window.devicePixelRatio || 1),
@@ -196,7 +232,36 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     const repaint = () => activeScheduler.invalidate({ immediate: true })
     repaintRef.current = repaint
 
+    const resizeObserver =
+      typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => {
+            // The window, or the canvas inside it as the sidebar opens and closes.
+            measure()
+            repaint()
+          })
+        : null
+    resizeObserver?.observe(host)
+    let flow: HTMLElement | null = null
+    // Follows React Flow's root: the canvas can move inside the window without the window moving.
+    const observeFlow = (next: HTMLElement | null) => {
+      if (next === flow) {
+        return false
+      }
+      if (flow && flow !== host) {
+        resizeObserver?.unobserve(flow)
+      }
+      flow = next
+      if (flow && flow !== host) {
+        resizeObserver?.observe(flow)
+      }
+      return true
+    }
+    observeFlow(initial.domNode)
     const unsubscribeStore = store.subscribe(state => {
+      if (observeFlow(state.domNode)) {
+        measure()
+        repaint()
+      }
       const [nextX, nextY, nextZoom] = state.transform
       const moved = nextX !== x || nextY !== y || nextZoom !== zoom
       // Windows moving or resizing move the glass the wall must keep calm behind.
@@ -212,15 +277,6 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         repaint()
       }
     })
-    const resizeObserver =
-      typeof ResizeObserver === 'function'
-        ? new ResizeObserver(() => {
-            width = host.clientWidth
-            height = host.clientHeight
-            repaint()
-          })
-        : null
-    resizeObserver?.observe(host)
     const onThemeChange = () => {
       palette = readWallPalette(host)
       lights = readWallLightPalette(host)
@@ -293,14 +349,18 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       activeScheduler.dispose()
       controller.dispose()
     }
-  }, [store])
+  }, [layer, store])
 
   useLayoutEffect(() => {
     ambientRef.current = ambient
     repaintRef.current?.()
   }, [ambient])
 
-  return (
+  // Inside the app the layer mounts with the shell; until then there is nowhere to paint.
+  if (layer === null) {
+    return null
+  }
+  const wall = (
     <div
       ref={hostRef}
       className="workspace-pixel-wall"
@@ -318,4 +378,5 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       />
     </div>
   )
+  return layer ? createPortal(wall, layer) : wall
 })

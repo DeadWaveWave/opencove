@@ -12,6 +12,7 @@ import { toPersistedState } from '@contexts/workspace/presentation/renderer/util
 import { EndpointOverviewProvider } from './components/EndpointOverviewProvider'
 import { AppHeader } from './components/AppHeader'
 import { AppShellBootBoundary } from './components/AppShellBootBoundary'
+import { AppShellFrame } from './components/AppShellFrame'
 import { AppShellOverlays } from './components/AppShellOverlays'
 import { AppSettingsPage } from './components/AppSettingsPage'
 import { WhatsNewDialog } from './components/WhatsNewDialog'
@@ -302,9 +303,7 @@ export default function App(): React.JSX.Element {
   return (
     <AppShellBootBoundary isBootReady={isPersistReady}>
       <EndpointOverviewProvider>
-        <div
-          className={`app-shell ${isPrimarySidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}${sidebar.isPeekOpen ? ' app-shell--sidebar-peek' : ''}${sidebar.isMobile ? ' app-shell--mobile-navigation' : ''}`}
-        >
+        <AppShellFrame isSidebarCollapsed={isPrimarySidebarCollapsed} sidebar={sidebar}>
           <AppHeader
             sidebarTriggerRef={sidebarTriggerRef}
             showSidebarTrigger={sidebar.isMobile}
@@ -424,7 +423,7 @@ export default function App(): React.JSX.Element {
               }))
             }}
           />
-        </div>
+        </AppShellFrame>
 
         <AppShellOverlays
           floatingMessage={floatingMessage}

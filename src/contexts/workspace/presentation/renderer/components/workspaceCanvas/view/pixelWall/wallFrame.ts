@@ -10,6 +10,8 @@ export interface WallFrame {
   gapColor: Rgb
   /** Windows in view, drawn as frosted glass over the cells. */
   glass: WallGlass
+  /** The shell's top bar and sidebar, floating on the wall as square-cornered frosted glass. */
+  chrome: WallGlass
   /** CSS size of the wall and the device pixel ratio it is drawn at. */
   width: number
   height: number
