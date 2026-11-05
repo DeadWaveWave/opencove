@@ -64,6 +64,7 @@
 
 .workspace-far-tile {
   --workspace-far-tile-solid: var(--cove-kind-neutral-solid, transparent);
+  --workspace-far-tile-glyph: var(--cove-kind-neutral-glyph, var(--cove-text-muted));
   --workspace-far-tile-title: var(--cove-text);
   --workspace-far-tile-zoom: var(--cove-canvas-zoom, 1);
   position: absolute;
@@ -76,56 +77,72 @@
   align-items: center;
   justify-content: center;
   gap: min(calc(var(--cove-spacing-2) / var(--workspace-far-tile-zoom)), 6cqh);
-  padding: min(calc(var(--cove-spacing-2) / var(--workspace-far-tile-zoom)), 8cqmin);
+  padding: 7%;
   overflow: hidden;
   border-radius: min(calc(var(--cove-radius-md) / var(--workspace-far-tile-zoom)), 12cqmin);
-  /* The kind tint over the window glass: the composition the contrast matrix checks. */
-  --workspace-far-tile-tint: color-mix(
-    in srgb,
-    var(--workspace-far-tile-solid) var(--cove-glass-far-tint, 20%),
-    transparent
-  );
+  /* As in the Tide prototype: the kind colour washes the window glass from the top left
+     (--cove-glass-far-tint, the composition the contrast matrix checks) and fades to 40%. */
   background:
-    linear-gradient(var(--workspace-far-tile-tint), var(--workspace-far-tile-tint)),
+    linear-gradient(
+      165deg,
+      color-mix(
+        in srgb,
+        var(--workspace-far-tile-solid) var(--cove-glass-far-tint, 20%),
+        transparent
+      ),
+      color-mix(
+        in srgb,
+        var(--workspace-far-tile-solid) calc(var(--cove-glass-far-tint, 20%) * 0.4),
+        transparent
+      )
+    ),
     var(--cove-node-surface);
   box-shadow: inset 0 0 0 calc(1px / var(--workspace-far-tile-zoom)) var(--cove-node-border);
   color: var(--workspace-far-tile-title);
+  text-align: center;
 }
 
 .workspace-far-tile[data-cove-kind='ai'] {
   --workspace-far-tile-solid: var(--cove-kind-ai-solid, transparent);
+  --workspace-far-tile-glyph: var(--cove-kind-ai-glyph, var(--cove-text-muted));
   --workspace-far-tile-title: var(--cove-kind-ai-far, var(--cove-text));
 }
 
 .workspace-far-tile[data-cove-kind='shell'] {
   --workspace-far-tile-solid: var(--cove-kind-shell-solid, transparent);
+  --workspace-far-tile-glyph: var(--cove-kind-shell-glyph, var(--cove-text-muted));
   --workspace-far-tile-title: var(--cove-kind-shell-far, var(--cove-text));
 }
 
 .workspace-far-tile[data-cove-kind='plan'] {
   --workspace-far-tile-solid: var(--cove-kind-plan-solid, transparent);
+  --workspace-far-tile-glyph: var(--cove-kind-plan-glyph, var(--cove-text-muted));
   --workspace-far-tile-title: var(--cove-kind-plan-far, var(--cove-text));
 }
 
 .workspace-far-tile[data-cove-kind='knowledge'] {
   --workspace-far-tile-solid: var(--cove-kind-knowledge-solid, transparent);
+  --workspace-far-tile-glyph: var(--cove-kind-knowledge-glyph, var(--cove-text-muted));
   --workspace-far-tile-title: var(--cove-kind-knowledge-far, var(--cove-text));
 }
 
 .workspace-far-tile[data-cove-kind='media'] {
   --workspace-far-tile-solid: var(--cove-kind-media-solid, transparent);
+  --workspace-far-tile-glyph: var(--cove-kind-media-glyph, var(--cove-text-muted));
   --workspace-far-tile-title: var(--cove-kind-media-far, var(--cove-text));
 }
 
 /* Settings → Appearance → Window Kind Colours off: tiles keep only the neutral glass. */
 :root[data-cove-kind-colors='off'] .workspace-far-tile[data-cove-kind] {
   --workspace-far-tile-solid: var(--cove-kind-neutral-solid, transparent);
+  --workspace-far-tile-glyph: var(--cove-text-muted);
   --workspace-far-tile-title: var(--cove-text);
 }
 
-/* Labels keep their channel: a ring in the label colour, never the tile. */
+/* Labels keep their channel: a ring in the label colour around the tile, never the tile. */
 .workspace-far-tile[data-cove-label-color] {
-  box-shadow: inset 0 0 0 calc(2px / var(--workspace-far-tile-zoom)) var(--cove-label-color);
+  outline: calc(3px / var(--workspace-far-tile-zoom)) solid var(--cove-label-color);
+  outline-offset: calc(3px / var(--workspace-far-tile-zoom));
 }
 
 .workspace-far-tile[data-selected] {
@@ -133,31 +150,21 @@
   outline-offset: calc(2px / var(--workspace-far-tile-zoom));
 }
 
-.workspace-far-tile__kind.cove-kind-tile {
+/* A large pixel glyph, about 26px on screen, smaller once the tile cannot hold it. */
+.workspace-far-tile__icon {
+  display: block;
   flex: none;
-  width: min(calc(32px / var(--workspace-far-tile-zoom)), 32cqh, 36cqw);
-  height: min(calc(32px / var(--workspace-far-tile-zoom)), 32cqh, 36cqw);
-  border-radius: min(calc(var(--cove-radius-xs) / var(--workspace-far-tile-zoom)), 8cqmin);
-  box-shadow: inset 0 0 0 calc(1px / var(--workspace-far-tile-zoom)) var(--cove-kind-tile-line);
+  width: min(calc(26px / var(--workspace-far-tile-zoom)), 26cqh);
+  height: min(calc(26px / var(--workspace-far-tile-zoom)), 26cqh);
+  color: var(--workspace-far-tile-glyph);
 }
 
-.workspace-far-tile__kind.cove-kind-tile > svg,
-.workspace-far-tile__kind.cove-kind-tile > img,
-.workspace-far-tile__kind.cove-kind-tile > .agent-provider-icon {
-  width: 60%;
-  height: 60%;
-}
-
-.workspace-far-tile__kind.cove-kind-tile > .agent-provider-icon {
-  border: 0;
-  background: transparent;
-}
-
-.workspace-far-tile__kind.cove-kind-tile > .agent-provider-icon > :is(svg, img) {
+.workspace-far-tile__icon > :is(svg, img) {
   width: 100%;
   height: 100%;
 }
 
+/* About 15px on screen; once the tile is too small to hold it, it shrinks with the tile. */
 .workspace-far-tile__title {
   display: -webkit-box;
   max-width: 100%;
@@ -168,22 +175,25 @@
   font-size: min(
     calc(var(--cove-font-size-emphasis) / var(--workspace-far-tile-zoom)),
     12cqw,
-    18cqh
+    22cqh
   );
-  font-weight: 600;
-  line-height: 1.2;
-  text-align: center;
+  font-weight: 800;
+  line-height: 1.14;
   overflow-wrap: anywhere;
 }
 
+/* The status is one pixel in the corner: working blinks, waiting and failure hold their colour. */
 .workspace-far-tile__signal {
   position: absolute;
-  top: min(calc(var(--cove-spacing-2) / var(--workspace-far-tile-zoom)), 8cqmin);
-  right: min(calc(var(--cove-spacing-2) / var(--workspace-far-tile-zoom)), 8cqmin);
-  width: min(calc(8px / var(--workspace-far-tile-zoom)), 10cqmin);
-  height: min(calc(8px / var(--workspace-far-tile-zoom)), 10cqmin);
-  border-radius: 50%;
-  background: var(--cove-accent);
+  top: 7%;
+  right: 6%;
+  width: min(calc(7px / var(--workspace-far-tile-zoom)), 7cqh);
+  height: min(calc(7px / var(--workspace-far-tile-zoom)), 7cqh);
+  background: var(--workspace-far-tile-title);
+}
+
+.workspace-far-tile__signal[data-signal='working'] {
+  animation: workspace-far-tile-blink 1s steps(1, end) infinite;
 }
 
 .workspace-far-tile__signal[data-signal='waiting'] {
@@ -194,11 +204,31 @@
   background: var(--cove-status-failed, var(--cove-accent));
 }
 
+@keyframes workspace-far-tile-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-far-tile__signal[data-signal='working'] {
+    animation: none;
+  }
+}
+
+/* Every Space name is the same size on screen in far view (Tide prototype: 17px at any zoom);
+   a narrow Space does not shrink its name, which may run past the Space before it truncates. */
+.workspace-canvas.workspace-canvas[data-cove-lod='far'] .workspace-space-region {
+  --cove-space-caption-scale: var(--cove-space-annotation-scale);
+}
+
 /* In far view the Space name labels the map: it sits above its Space and may use the whole
    width. Space actions wait for near view, where they do not cover the name. */
 .workspace-canvas[data-cove-lod='far'] .workspace-space-region__label-group--left {
   top: calc(-26px * var(--cove-space-caption-scale));
-  max-width: calc((100% - 16px) / var(--cove-space-caption-scale));
+  max-width: calc(
+    max(100% - 16px, 300px / var(--cove-canvas-zoom, 1)) / var(--cove-space-caption-scale)
+  );
 }
 
 .workspace-canvas[data-cove-lod='far'] .workspace-space-region__label-group--right {

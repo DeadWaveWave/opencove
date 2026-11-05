@@ -344,10 +344,17 @@ test.describe('Workspace Canvas - Color Identity', () => {
           expect(space.edge.width * zoom).toBeGreaterThanOrEqual(0.65)
           expect(space.edge.width * zoom).toBeLessThanOrEqual(1.1)
           for (const group of space.groups) {
-            const widthBudget = zoom === 0.2 && group.side === 'left' ? 1 : 0.5
-            expect(group.width).toBeLessThanOrEqual(space.rect.width * widthBudget + 1)
+            // Far names share one scale and may span 300 screen pixels even in a narrow Space.
+            const farCaption = zoom === 0.2 && group.side === 'left'
+            const widthBudget = farCaption
+              ? Math.max(space.rect.width, 300)
+              : space.rect.width * 0.5
+            const rightBound = farCaption
+              ? Math.max(space.rect.x + space.rect.width, group.left + 300)
+              : space.rect.x + space.rect.width
+            expect(group.width).toBeLessThanOrEqual(widthBudget + 1)
             expect(group.left).toBeGreaterThanOrEqual(space.rect.x - 1)
-            expect(group.right).toBeLessThanOrEqual(space.rect.x + space.rect.width + 1)
+            expect(group.right).toBeLessThanOrEqual(rightBound + 1)
           }
         }
         const review = spaces.find(space => space.id === 'pixel-review-space')!

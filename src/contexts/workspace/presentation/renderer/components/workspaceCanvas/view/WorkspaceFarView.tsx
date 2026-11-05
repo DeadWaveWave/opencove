@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { ViewportPortal, type Node } from '@xyflow/react'
-import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
-import { KindTile } from '@app/renderer/components/ui/KindTile'
 import type { TerminalNodeData } from '../../../types'
 import { NodeKindIcon } from '../../shared/NodeKindIcon'
 import { buildFarTiles, type FarTile } from './farTiles'
@@ -17,7 +15,6 @@ const FarTileView = React.memo(function FarTileView({
   selected,
   provider,
   pluginId,
-  filePath,
   x,
   y,
   width,
@@ -32,17 +29,9 @@ const FarTileView = React.memo(function FarTileView({
       data-selected={selected || undefined}
       style={{ transform: `translate(${x}px, ${y}px)`, width, height }}
     >
-      <KindTile kind={family} className="workspace-far-tile__kind">
-        {provider ? (
-          <AgentProviderIcon provider={provider} />
-        ) : (
-          <NodeKindIcon
-            kind={kind}
-            pluginId={pluginId ?? undefined}
-            filePath={filePath ?? undefined}
-          />
-        )}
-      </KindTile>
+      <span className="workspace-far-tile__icon">
+        <NodeKindIcon kind={provider ? 'agent' : kind} pluginId={pluginId ?? undefined} />
+      </span>
       <span className="workspace-far-tile__title">{title}</span>
       {signal ? <span className="workspace-far-tile__signal" data-signal={signal} /> : null}
     </div>
@@ -72,8 +61,9 @@ function useFarViewExit(lod: 'near' | 'far'): boolean {
 }
 
 /**
- * Far view (Tide phase 4): below 25% zoom every expanded window is drawn as one glass tile with
- * its kind, title and status, in a single layer above the windows. Windows stay mounted at their
+ * Far view (Tide phase 4): below 25% zoom every expanded window is drawn as one tile, as in the
+ * Tide prototype: a kind-coloured wash with a large pixel glyph, a bold title and a status pixel,
+ * in a single layer above the windows. Windows stay mounted at their
  * size with their content skipped by CSS, so terminals, editors and pages keep running and keep
  * every pointer interaction; the tiles never take pointer events.
  */
