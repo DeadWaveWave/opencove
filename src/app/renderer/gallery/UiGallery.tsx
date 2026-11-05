@@ -34,6 +34,7 @@ import { Toggle } from '../components/ui/Toggle'
 import { Tooltip } from '../components/ui/Tooltip'
 import { ViewportMenuSurface } from '../components/ViewportMenuSurface'
 import { useApplyUiTheme } from '../shell/hooks/useApplyUiTheme'
+import { useApplyWindowAppearance } from '../shell/hooks/useApplyWindowAppearance'
 import { DEFAULT_UI_THEME, type UiTheme } from '@contexts/settings/domain/uiSettings'
 import './ui-gallery.css'
 
@@ -79,6 +80,12 @@ function Section({
  * Test-only catalogue of every shared component state. E2E probes text contrast and target size
  * here in each built-in theme, so a component that regresses fails before any screen uses it.
  */
+// The gallery follows the system transparency preference, as the app does by default.
+const GALLERY_WINDOW_APPEARANCE = {
+  windowKindColorsEnabled: true,
+  windowMaterial: 'glass',
+} as const
+
 export default function UiGallery(): React.JSX.Element {
   const [theme, setTheme] = useState<UiTheme>(DEFAULT_UI_THEME)
   const [toggles, setToggles] = useState({ first: false, second: true })
@@ -96,6 +103,7 @@ export default function UiGallery(): React.JSX.Element {
   const popoverTrigger = useRef<HTMLButtonElement | null>(null)
   const menuTrigger = useRef<HTMLButtonElement | null>(null)
   useApplyUiTheme(theme)
+  useApplyWindowAppearance(GALLERY_WINDOW_APPEARANCE)
 
   useEffect(() => {
     window.__opencoveUiGalleryTestApi = { setTheme }

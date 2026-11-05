@@ -70,6 +70,7 @@ export function SettingsPanelContent({
     updateLanguage,
     updateUiTheme,
     updateWindowKindColors,
+    updateWindowMaterial,
     updatePixelEffect,
     updatePluginEnabled,
     updatePluginContributionEnabled,
@@ -150,6 +151,8 @@ export function SettingsPanelContent({
           uiFontSize={settings.uiFontSize}
           windowKindColorsEnabled={settings.windowKindColorsEnabled}
           onChangeWindowKindColors={updateWindowKindColors}
+          windowMaterial={settings.windowMaterial}
+          onChangeWindowMaterial={updateWindowMaterial}
           onChangeUiTheme={updateUiTheme}
           onChangePixelEffect={updatePixelEffect}
           onChangeUiFontSize={updateUiFontSize}

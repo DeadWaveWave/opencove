@@ -118,9 +118,14 @@
   检查的正是这个叠加结果；手写主题回退到自己的窗口底色和细边框。内容自身不要再铺一层不透明底色，
   终端除外（透明终端在第 2.3 步）。
 - 亚克力的底色由生成器给出（`--cove-acrylic-surface`），对比度矩阵检查它压在纯黑、纯白和像素墙上的
-  最坏情况；手写主题沿用自己的 `--cove-menu-surface`。系统开启「减少透明度」时，玻璃和亚克力改为
-  `--cove-window-surface` 实色并去掉模糊（`tests/unit/app/uiSurfaceStylesheet.spec.ts`、
-  `ui-gallery.probes.spec.ts` 用 CDP 模拟验证）。
+  最坏情况；手写主题沿用自己的 `--cove-menu-surface`。
+- 窗口材质：设置 → 外观 → 窗口 →「窗口材质」或控制中心选「实色」，或系统开启降低透明度时（实时跟随，不用重启），
+  `useApplyWindowAppearance` 在根节点写 `data-cove-transparency="reduced"`；样式只读这个属性，不再各自
+  读媒体查询。此时生成的玻璃参数（`--cove-glass-*`）都变成 100%，窗口外框、底板、标题栏和面板变成
+  不透明的同色，Surface 的玻璃和亚克力改为 `--cove-window-surface`，所有元素去掉 `backdrop-filter`
+  （`themes/reduced-transparency.css`），透明终端露出终端底色。系统开启时「实色」被选中，「玻璃」不可选。
+  验证：`tests/unit/app/uiSurfaceStylesheet.spec.ts`；`ui-gallery.probes.spec.ts` 和
+  `workspace-canvas.window-material.spec.ts` 用 CDP 模拟系统设置。
 
 ### 3.2 文本系统
 
@@ -220,8 +225,8 @@
 - 终端背景（设置「终端背景」：自动 / 透明 / 不透明）决定 xterm 是否以 `allowTransparency` 打开，
   背景为底板等效色的零透明度（OSC 11 报告的就是文字所在的颜色）。这个值只取决于设置和平台
   （自动 = 仅 macOS 透明），改变时重建 xterm 实例、保留 PTY 与屏幕。文字背后显示什么由 CSS 决定：
-  生成的主题用 `--cove-terminal-plate-backdrop: transparent` 露出阅读底板，手写主题和系统
-  「减少透明度」保留终端底色，二者都不重建 xterm。回放历史输出前去掉其中的终端查询，避免新实例
+  生成的主题用 `--cove-terminal-plate-backdrop: transparent` 露出阅读底板，手写主题和降低透明度
+  （`data-cove-transparency="reduced"`）保留终端底色，二者都不重建 xterm。回放历史输出前去掉其中的终端查询，避免新实例
   把旧问题的回答写进 shell。
 - Terminal appearance 只有一个 final-wins apply owner；新 revision 仅在实际 apply/refresh 完成后
   成为 applied state。任何真实 presentation change 都必须标记 durable dirty；退出前需 drain

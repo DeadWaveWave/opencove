@@ -19,7 +19,7 @@ export const enSettingsPanelAppearanceNext = {
   terminalShell: 'Shell',
   terminalBackground: 'Terminal Background',
   terminalBackgroundHelp:
-    'Transparent puts terminal text on the window’s reading plate. Auto is transparent on macOS and opaque on Windows and Linux. Terminals are always opaque when the system reduces transparency or the theme’s windows are solid.',
+    'Transparent puts terminal text on the window’s reading plate. Auto is transparent on macOS and opaque on Windows and Linux. Terminals are always opaque when windows are solid.',
   terminalBackgroundAuto: 'Auto',
   terminalBackgroundTransparent: 'Transparent',
   terminalBackgroundOpaque: 'Opaque',
@@ -29,4 +29,10 @@ export const enSettingsPanelAppearanceNext = {
   windowKindColors: 'Window Kind Colours',
   windowKindColorsHelp:
     'Colour each window’s icon tile and header by what it is: agents, terminals, tasks, notes and documents, websites and images. Your colour labels stay on the window frame either way.',
+  windowMaterial: 'Window Material',
+  windowMaterialHelp:
+    'Glass lets the canvas show through windows, menus and panels; Solid uses opaque colours with no blur. Windows are always solid while the system reduces transparency.',
+  windowMaterialSystemHelp: 'Your system reduces transparency, so windows are solid.',
+  windowMaterial_glass: 'Glass',
+  windowMaterial_solid: 'Solid',
 }

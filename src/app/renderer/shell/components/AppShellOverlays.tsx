@@ -5,6 +5,7 @@ import type { FloatingMessageState } from '../hooks/useFloatingMessage'
 import { AppMessage } from './AppMessage'
 import { AppNotifications, type AppNotification } from './AppNotifications'
 import { ControlCenter } from './ControlCenter'
+import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
 
 type SetStateAction<T> = T | ((prev: T) => T)
 
@@ -69,6 +70,18 @@ export function AppShellOverlays({
           agentSettings.agentWorkingPixelEffectEnabled
         }
         hasActiveWorkspace={activeWorkspace !== null}
+        windowMaterial={agentSettings.windowMaterial}
+        settingsShortcut={formatKeyChord(
+          window.opencoveApi?.meta?.platform,
+          resolveCommandKeybinding({
+            commandId: 'app.openSettings',
+            overrides: agentSettings.keybindings,
+            platform: window.opencoveApi?.meta?.platform,
+          }),
+        )}
+        onChangeWindowMaterial={material => {
+          setAgentSettings(prev => ({ ...prev, windowMaterial: material }))
+        }}
         onClose={() => {
           onCloseControlCenter()
         }}

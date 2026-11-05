@@ -43,7 +43,19 @@ export interface PixelEffectSettings {
   agentWorkingPixelEffectEnabled: boolean
 }
 
-export interface AgentSettings extends PixelEffectSettings {
+/** Window material (Tide 2.7). Reduced transparency in the system always means solid. */
+export const WINDOW_MATERIALS = ['glass', 'solid'] as const
+export type WindowMaterial = (typeof WINDOW_MATERIALS)[number]
+
+/** How windows look: their kind channel and their material. */
+export interface WindowAppearanceSettings {
+  /** Colours window tiles and header tints by what the window is (Tide kind channel). */
+  windowKindColorsEnabled: boolean
+  /** Glass, or solid windows, menus and panels with no blur; the system preference forces solid. */
+  windowMaterial: WindowMaterial
+}
+
+export interface AgentSettings extends PixelEffectSettings, WindowAppearanceSettings {
   language: UiLanguage
   uiTheme: UiTheme
   disabledPluginIds: string[]
@@ -98,8 +110,6 @@ export interface AgentSettings extends PixelEffectSettings {
   terminalFontSize: number
   terminalFontFamily: string | null
   terminalBackground: TerminalBackgroundMode
-  /** Colours window tiles and header tints by what the window is (Tide kind channel). */
-  windowKindColorsEnabled: boolean
   terminalDisplayAutoReferenceEnabled: boolean
   terminalDisplayCalibrationCompensationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null
