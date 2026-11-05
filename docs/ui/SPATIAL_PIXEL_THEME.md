@@ -126,6 +126,14 @@ world, under every window and the effects layer.
   from their base). Soft clouds drift with the world and a sparse share of cells twinkles.
 - Behind a window's glass, including a two-cell ring around its frame, a cell moves at most the
   generator's `PIXEL_WALL.cap` toward any colour (I6), the bound the theme contrast checks assume.
+- Work light (5.3b): the cells around each window take its kind colour (`--cove-wall-light-*`:
+  the kind solids in Cove, label colours in hand-written themes, neutral with window kind colours
+  off). Dark themes spread the light out from the window; light themes cast it to the lower right,
+  as daylight through coloured glass. Strength follows the window: idle 0.46 (not an agent),
+  standby 0.6, working breathing between 0.64 and 0.92, a flash on received output, a flare to
+  full when a run finishes (seen live; a reload never flares), waiting yellow and failure red.
+  It is derived per frame and never stored (I7). It keeps breathing with twinkle off; reduced
+  motion holds it at a fixed level. The glass cap applies after it.
 - The CPU computes one colour per visible cell; WebGL2 draws cells and seams in one pass. When
   WebGL2 is unavailable or software-only (`failIfMajorPerformanceCaveat`) Canvas 2D draws the
   same cells. When the context is lost, the 2D canvas shows a still wall until the browser restores

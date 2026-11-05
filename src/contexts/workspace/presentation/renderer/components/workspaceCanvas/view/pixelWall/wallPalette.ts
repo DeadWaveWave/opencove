@@ -1,4 +1,5 @@
 import type { Rgb } from '@shared/design/oklch'
+import type { WindowKindFamily } from '../../../../utils/windowKindFamily'
 
 export interface WallPalette {
   appearance: 'dark' | 'light'
@@ -68,4 +69,29 @@ export function readWallPalette(element: Element): WallPalette {
     clouds: FALLBACK.clouds.map((color, index) => read(`--cove-pixel-cloud-${index + 1}`, color)),
     sparks: FALLBACK.sparks.map((color, index) => read(`--cove-pixel-spark-${index + 1}`, color)),
   }
+}
+
+/** Work light colours: each window kind, plus waiting and failure. */
+export type WallLightPalette = Record<WindowKindFamily | 'waiting' | 'failed', Rgb>
+
+const LIGHT_FALLBACK: WallLightPalette = {
+  ai: [180, 148, 239],
+  shell: [140, 217, 178],
+  plan: [228, 175, 116],
+  knowledge: [128, 184, 239],
+  media: [239, 143, 149],
+  neutral: [140, 152, 168],
+  waiting: [242, 197, 14],
+  failed: [240, 86, 83],
+}
+
+/** Read from `--cove-wall-light-*`, which the stylesheet maps to kind and status colours. */
+export function readWallLightPalette(element: Element): WallLightPalette {
+  const style = getComputedStyle(element)
+  return Object.fromEntries(
+    (Object.keys(LIGHT_FALLBACK) as Array<keyof WallLightPalette>).map(key => [
+      key,
+      parseWallColor(style.getPropertyValue(`--cove-wall-light-${key}`)) ?? LIGHT_FALLBACK[key],
+    ]),
+  ) as WallLightPalette
 }

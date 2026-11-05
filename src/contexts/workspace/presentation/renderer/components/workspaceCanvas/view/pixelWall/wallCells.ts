@@ -1,13 +1,15 @@
+import type { Rgb } from '@shared/design/oklch'
 import { PIXEL_WALL } from '@shared/design/themeGenerator'
 import type { WallGrid } from './wallGrid'
 import type { WallPalette } from './wallPalette'
 
-/** A window's frame in world coordinates. */
+/** A window's frame in world coordinates, and the light it casts on the wall. */
 export interface WallWindowRect {
   x: number
   y: number
   width: number
   height: number
+  light?: { color: Rgb; intensity: number }
 }
 
 /** Cells within this many cells of a window count as behind its glass, frame shadow included. */
@@ -79,10 +81,70 @@ function markCellsBehindGlass(
   return behind
 }
 
+/** Mixes `cells[index]` toward `color` by `k`; returns the combined distance moved. */
+function mix(cells: Uint8ClampedArray, index: number, color: Rgb, k: number, moved: number) {
+  cells[index] += (color[0] - cells[index]!) * k
+  cells[index + 1] += (color[1] - cells[index + 1]!) * k
+  cells[index + 2] += (color[2] - cells[index + 2]!) * k
+  return 1 - (1 - moved) * (1 - k)
+}
+
+/**
+ * Work light: the cells around a window take its colour. In dark themes the window is the light
+ * source and the light spreads out from it; in light themes daylight passes through the coloured
+ * glass and lands to the lower right (Tide D12). Cost follows window area, not cells × windows.
+ */
+function castWorkLight(
+  cells: Uint8ClampedArray,
+  moved: Float32Array,
+  grid: WallGrid,
+  windows: readonly WallWindowRect[],
+  appearance: WallPalette['appearance'],
+) {
+  const strength = PIXEL_WALL[appearance].workA
+  const fall = Math.max(80, 1.5 * grid.worldCell)
+  const reach = fall * 2.6
+  const shift = appearance === 'light' ? fall * 0.6 : 0
+  for (const frame of windows) {
+    const light = frame.light
+    if (!light || light.intensity <= 0) {
+      continue
+    }
+    const x = frame.x + shift
+    const y = frame.y + shift
+    const first = Math.max(0, Math.floor((x - reach) / grid.worldCell) - grid.firstColumn)
+    const last = Math.min(
+      grid.columns - 1,
+      Math.ceil((x + frame.width + reach) / grid.worldCell) - grid.firstColumn,
+    )
+    const top = Math.max(0, Math.floor((y - reach) / grid.worldCell) - grid.firstRow)
+    const bottom = Math.min(
+      grid.rows - 1,
+      Math.ceil((y + frame.height + reach) / grid.worldCell) - grid.firstRow,
+    )
+    for (let row = top; row <= bottom; row++) {
+      const cy = (grid.firstRow + row + 0.5) * grid.worldCell
+      const dy = Math.max(y - cy, 0, cy - (y + frame.height))
+      for (let column = first; column <= last; column++) {
+        const cx = (grid.firstColumn + column + 0.5) * grid.worldCell
+        const dx = Math.max(x - cx, 0, cx - (x + frame.width))
+        const d = Math.sqrt(dx * dx + dy * dy) / fall
+        const k = light.intensity * strength * Math.exp(-d * d)
+        if (k < 0.01) {
+          continue
+        }
+        const cell = row * grid.columns + column
+        moved[cell] = mix(cells, cell * 4, light.color, k, moved[cell]!)
+      }
+    }
+  }
+}
+
 /**
  * One colour per visible cell: the theme's cell colour with a little per-tile jitter, soft
- * colour clouds anchored to the world, and a sparse twinkle. Without a clock (`timeSeconds`
- * null: reduced motion, or a lost GPU context) the wall is still: no drift and no twinkle.
+ * colour clouds anchored to the world, a sparse twinkle and each window's work light. Without a
+ * clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU context) the clouds and
+ * twinkle are still; the lights keep whatever intensity the caller resolved.
  *
  * Behind a window's glass a cell moves at most `cap` toward any colour (Tide I6), the bound
  * the theme contrast checks assume for text over glass.
@@ -96,7 +158,7 @@ export function fillWallCells(
 ): Uint8ClampedArray {
   const count = grid.columns * grid.rows
   const cells = out && out.length === count * 4 ? out : new Uint8ClampedArray(count * 4)
-  const behind = markCellsBehindGlass(grid, windows)
+  const moved = new Float32Array(count)
   const weights = PIXEL_WALL[palette.appearance]
   const time = timeSeconds ?? 0
   const drift = time * CLOUD_DRIFT
@@ -109,14 +171,11 @@ export function fillWallCells(
       const worldColumn = grid.firstColumn + column
       const wx = (worldColumn + 0.5) * grid.worldCell
       const jitter = (hash2(worldColumn, worldRow) - 0.5) * weights.tileJitter
-      const tileR = baseR + jitter
-      const tileG = baseG + jitter
-      const tileB = baseB + jitter
-      let r = tileR
-      let g = tileG
-      let b = tileB
-      // How far the cell has moved from its tile colour, combined over every mix.
-      let moved = 0
+      cells[index] = baseR + jitter
+      cells[index + 1] = baseG + jitter
+      cells[index + 2] = baseB + jitter
+      cells[index + 3] = 255
+      let shift = 0
       const amount = smoothstep(
         0.4,
         0.88,
@@ -124,35 +183,36 @@ export function fillWallCells(
           0.38 * valueNoise((wx + drift) / 278 + 7.3, wy / 278 - 3.1),
       )
       const hue = Math.min(3, Math.floor(valueNoise(wx / 1150 + 31.7, wy / 1150 + 11.2) * 4))
-      const cloud = palette.clouds[hue]!
       const k = amount * weights.cloudA
       if (k > 0.01) {
-        r += (cloud[0] - r) * k
-        g += (cloud[1] - g) * k
-        b += (cloud[2] - b) * k
-        moved = k
+        shift = mix(cells, index, palette.clouds[hue]!, k, shift)
       }
       const spark = hash2(worldColumn * 7, worldRow * 13)
       if (timeSeconds !== null && spark > 1 - SPARK_SHARE) {
         const twinkle = Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * 0.85
         if (twinkle > 0.02) {
-          const color = palette.sparks[hue]!
-          r += (color[0] - r) * twinkle
-          g += (color[1] - g) * twinkle
-          b += (color[2] - b) * twinkle
-          moved = 1 - (1 - moved) * (1 - twinkle)
+          shift = mix(cells, index, palette.sparks[hue]!, twinkle, shift)
         }
       }
-      if (behind?.[index / 4] && moved > weights.cap) {
-        const scale = weights.cap / moved
-        r = tileR + (r - tileR) * scale
-        g = tileG + (g - tileG) * scale
-        b = tileB + (b - tileB) * scale
+      moved[index / 4] = shift
+    }
+  }
+  castWorkLight(cells, moved, grid, windows, palette.appearance)
+  const behind = markCellsBehindGlass(grid, windows)
+  if (behind) {
+    for (let cell = 0; cell < count; cell++) {
+      if (!behind[cell] || moved[cell]! <= weights.cap) {
+        continue
       }
-      cells[index] = r
-      cells[index + 1] = g
-      cells[index + 2] = b
-      cells[index + 3] = 255
+      // Pull the cell back toward its tile colour until it has moved exactly `cap`.
+      const scale = weights.cap / moved[cell]!
+      const worldColumn = grid.firstColumn + (cell % grid.columns)
+      const worldRow = grid.firstRow + Math.floor(cell / grid.columns)
+      const jitter = (hash2(worldColumn, worldRow) - 0.5) * weights.tileJitter
+      const at = cell * 4
+      cells[at] = baseR + jitter + (cells[at]! - baseR - jitter) * scale
+      cells[at + 1] = baseG + jitter + (cells[at + 1]! - baseG - jitter) * scale
+      cells[at + 2] = baseB + jitter + (cells[at + 2]! - baseB - jitter) * scale
     }
   }
   return cells

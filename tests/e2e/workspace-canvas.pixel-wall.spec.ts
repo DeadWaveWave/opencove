@@ -182,3 +182,40 @@ test.describe('Workspace Canvas - Background style', () => {
     }
   })
 })
+
+test.describe('Workspace Canvas - Work light', () => {
+  test('lights each window in its kind colour and turns neutral with window kind colours off', async ({
+    browserName,
+  }) => {
+    void browserName
+    const { electronApp, window } = await launchApp()
+    try {
+      await seed(window)
+      await expectPaintedWall(window)
+      const token = (name: string) =>
+        window.getByTestId('workspace-pixel-wall').evaluate((element, property) => {
+          const value = getComputedStyle(element).getPropertyValue(property).trim()
+          const hex = /^#([0-9a-f]{6})$/i.exec(value)?.[1]
+          return hex
+            ? [0, 2, 4].map(offset => Number.parseInt(hex.slice(offset, offset + 2), 16))
+            : value
+        }, name)
+      const noteLight = async () =>
+        (await window.evaluate(() => window.__opencovePixelWallTestApi?.getLights() ?? []))[0]
+          ?.light
+      const knowledge = await token('--cove-wall-light-knowledge')
+      const neutral = await token('--cove-wall-light-neutral')
+      expect(knowledge).not.toEqual(neutral)
+      await expect.poll(async () => (await noteLight())?.color).toEqual(knowledge)
+      // A note is not an agent: it rests at the idle level.
+      expect((await noteLight())?.intensity).toBeCloseTo(0.46)
+
+      await window.getByTestId('app-header-settings').click({ noWaitAfter: true })
+      await window.getByTestId('settings-section-nav-appearance').click()
+      await window.getByTestId('settings-window-kind-colors').setChecked(false)
+      await expect.poll(async () => (await noteLight())?.color).toEqual(neutral)
+    } finally {
+      await electronApp.close()
+    }
+  })
+})
