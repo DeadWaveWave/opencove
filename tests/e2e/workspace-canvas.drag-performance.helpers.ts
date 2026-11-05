@@ -97,6 +97,8 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
   await page.mouse.move(origin.x, origin.y)
   await page.mouse.down()
   await page.mouse.move(origin.x + 12, origin.y + 4)
+  // The threshold move starts the drag; the next move applies its first layout projection.
+  await page.mouse.move(origin.x + 14, origin.y + 4)
   await page.waitForTimeout(200)
   try {
     const result = await page.evaluate(
@@ -115,13 +117,12 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
           positionChanges += records.length
         })
         positions.observe(dragged, { attributes: true, attributeFilter: ['style'] })
-        const sidebar = document.querySelector(
-          '[data-testid="workspace-space-minimap-workspace-seeded-drag-space-0"]',
-        )!
         const mutations = new MutationObserver(records => {
           minimapMutations += records.length
         })
-        mutations.observe(sidebar, { attributes: true, childList: true, subtree: true })
+        document.querySelectorAll('.workspace-space-minimap').forEach(minimap => {
+          mutations.observe(minimap, { attributes: true, childList: true, subtree: true })
+        })
         let rectReads = 0
         const readRect = Element.prototype.getBoundingClientRect
         Element.prototype.getBoundingClientRect = function () {
@@ -151,7 +152,8 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
                     bubbles: true,
                     buttons: 1,
                     clientX: start.x + 12 + 80 * Math.sin((index / (frames - 1)) * Math.PI * 4),
-                    clientY: start.y + 4 + 25 * Math.sin((index / (frames - 1)) * Math.PI * 2),
+                    // Crossing a Space edge legitimately pushes neighboring windows.
+                    clientY: start.y + 4,
                   }),
                 )
                 moves.push(performance.now() - before)
@@ -170,6 +172,10 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
         const sorted = [...intervals].sort((a, b) => a - b)
         const percentile = (q: number) =>
           sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]!
+        // Read while the button is still down: transient geometry must not have escaped to storage.
+        const persisted = JSON.parse(
+          (await window.opencoveApi.persistence.readWorkspaceStateRaw()) ?? '{}',
+        )
         return {
           frames,
           fps: (1000 * frames) / intervals.reduce((sum, ms) => sum + ms, 0),
@@ -182,6 +188,10 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
           wallFrames: wall.getFrameCount() - wallBefore,
           windowCommits: api.getWindowCommitCounts(),
           windowCommitsByNode: api.getWindowCommitCountsByNode?.(),
+          presentationCommits: api.getWindowPresentationCommitCounts?.(),
+          persistedPositionDuringDrag: persisted.workspaces?.[0]?.nodes?.find(
+            (item: { id: string }) => item.id === nodeId,
+          )?.position,
           minimapMutations,
           rectReads,
           positionChanges,

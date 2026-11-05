@@ -3,6 +3,20 @@ import type { WindowKindFamily } from '../../utils/windowKindFamily'
 
 const counts: Partial<Record<WindowKindFamily, number>> = {}
 const countsByNode = new Map<string, number>()
+const presentationCounts = new Map<string, number>()
+
+/** Includes the compact shell even when a memoized runtime/header does not render. */
+export function useWindowPresentationCommitProbe(nodeId: string): void {
+  useEffect(() => {
+    if (window.opencoveApi?.meta?.isTest === true) {
+      presentationCounts.set(nodeId, (presentationCounts.get(nodeId) ?? 0) + 1)
+    }
+  })
+}
+
+export function readWindowPresentationCommitCounts(): Record<string, number> {
+  return Object.fromEntries(presentationCounts)
+}
 
 /**
  * Test builds only (Tide phase 4.3): counts commits of every window header, by kind family. The
@@ -33,6 +47,7 @@ export function readWindowCommitCounts(): Partial<Record<WindowKindFamily, numbe
 
 export function resetWindowCommitCounts(): void {
   countsByNode.clear()
+  presentationCounts.clear()
   for (const kind of Object.keys(counts) as WindowKindFamily[]) {
     delete counts[kind]
   }
