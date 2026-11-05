@@ -7,6 +7,7 @@ import {
   launchApp,
   storageKey,
 } from './workspace-canvas.helpers'
+import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection', () => {
   test('toggles node selection with shift-click on terminal headers in mouse mode', async () => {
@@ -113,7 +114,7 @@ test.describe('Workspace Canvas - Selection', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      await pane.click({ position: { x: 40, y: 40 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       await terminalBody.click({ position: { x: 48, y: 48 } })
@@ -168,7 +169,7 @@ test.describe('Workspace Canvas - Selection', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      await pane.click({ position: { x: 40, y: 40 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       await expect(terminalBody).toBeVisible()
@@ -312,7 +313,7 @@ test.describe('Workspace Canvas - Selection', () => {
         terminalBox.y + terminalBox.height - 24,
       )
 
-      await pane.click({ position: { x: 40, y: 40 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await window.keyboard.down('Shift')
       await window.mouse.move(startX, startY)
       await window.mouse.down()

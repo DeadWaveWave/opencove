@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
 import { readComputedColorToken } from './workspace-canvas.color-token.helpers'
 
 test.describe('Workspace Canvas - Task Selection Interactions', () => {
@@ -99,7 +100,7 @@ test.describe('Workspace Canvas - Task Selection Interactions', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      await pane.click({ position: { x: 40, y: 40 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
     } finally {
       await electronApp.close()

@@ -8,6 +8,7 @@ import {
   readCanvasViewport,
   storageKey,
 } from './workspace-canvas.helpers'
+import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
   const readNodePositions = async (
@@ -226,7 +227,7 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
         await expect(window.locator('.workspace-selection-draft')).toHaveCount(0)
       }
 
-      await pane.click({ position: { x: 40, y: 40 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await selectNodeByMarquee(leftBox)
       await selectNodeByMarquee(rightBox)
 

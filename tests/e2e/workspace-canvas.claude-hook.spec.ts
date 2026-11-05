@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
 import {
   installPtySessionCapture,
   resolveFirstAgentSessionId,
@@ -108,9 +109,8 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       await expect(sidebarStatus).toHaveText('Needs input')
       // The top bar summarizes it too, and one click reaches the waiting agent.
       await expect(headerActivity).toHaveText('1 waiting')
-      await window
-        .locator('.workspace-canvas .react-flow__pane')
-        .click({ position: { x: 20, y: 20 } })
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await headerActivity.click()
       await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
 

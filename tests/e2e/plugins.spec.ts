@@ -12,6 +12,7 @@ import {
   testWorkspacePath,
   viewStateStorageKey,
 } from './workspace-canvas.helpers'
+import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
 
 import { copyPluginFixture, installPlugin } from './plugins.local.helpers'
 
@@ -357,7 +358,10 @@ test.describe('Installed plugin window standard', () => {
       await expect(
         page.getByTestId('workspace-canvas-action-bar-new-plugin:hello-clock'),
       ).toHaveCount(0)
-      await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 16, y: 50 } })
+      await page.locator('.react-flow__pane').click({
+        button: 'right',
+        position: await findEmptyPanePoint(page.locator('.react-flow__pane')),
+      })
       await expect(page.getByTestId('workspace-context-new-note')).toBeVisible()
       await expect(page.getByTestId('workspace-context-new-plugin-hello-clock')).toHaveCount(0)
       await page.keyboard.press('Escape')
@@ -381,7 +385,10 @@ test.describe('Installed plugin window standard', () => {
         page.getByTestId('workspace-canvas-action-bar-new-plugin:hello-clock'),
       ).toBeVisible()
       expect((await readPluginState(page)).node).toEqual(original)
-      await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 16, y: 50 } })
+      await page.locator('.react-flow__pane').click({
+        button: 'right',
+        position: await findEmptyPanePoint(page.locator('.react-flow__pane')),
+      })
       await expect(page.getByTestId('workspace-context-new-plugin-hello-clock')).toBeVisible()
     } finally {
       await electronApp.close()
