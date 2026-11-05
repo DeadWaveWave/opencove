@@ -23,6 +23,7 @@ import { WorkspaceCanvasMenus } from './view/WorkspaceCanvasMenus'
 import { WorkspaceCanvasBackground } from './view/WorkspaceCanvasBackground'
 import { WorkspaceEdgeBeacons } from './view/WorkspaceEdgeBeacons'
 import { WorkspaceFarView } from './view/WorkspaceFarView'
+import { WorkspaceCanvasHud } from './view/WorkspaceCanvasHud'
 import { WorkspaceCanvasWindows } from './view/WorkspaceCanvasWindows'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
 import { WorkspaceSelectionDraftOverlay } from './view/WorkspaceSelectionDraftOverlay'
@@ -331,6 +332,10 @@ export function WorkspaceCanvasView({
         />
         <WorkspaceCanvasControls />
         <WorkspaceEdgeBeacons nodes={filteredNodes} />
+        <WorkspaceCanvasHud
+          canvasRef={canvasRef}
+          farViewEnabled={agentSettings.canvasFarViewEnabled}
+        />
         <ViewportSpaceReporter workspaceId={workspaceId} spaces={spaces} />
       </ReactFlow>
       {activeExplorerSpace && activeExplorerSpace.rect ? (

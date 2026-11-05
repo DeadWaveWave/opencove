@@ -7,6 +7,7 @@ import {
   readLocatorClientRect,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection (Node Scope)', () => {
   test('does not keep cross-scope nodes multi-selected after shift-click', async () => {
@@ -143,10 +144,11 @@ test.describe('Workspace Canvas - Selection (Node Scope)', () => {
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       const paneBox = await readLocatorClientRect(pane)
+      const marquee = await findMarqueeCorner(pane)
       const outsideBox = await readLocatorClientRect(outsideNode)
 
-      const startX = Math.max(paneBox.x + 40, outsideBox.x - 24)
-      const startY = Math.max(paneBox.y + 40, outsideBox.y - 24)
+      const startX = Math.max(marquee.x, outsideBox.x - 24)
+      const startY = Math.max(marquee.y, outsideBox.y - 24)
       const endX = Math.min(paneBox.x + paneBox.width - 40, outsideBox.x + outsideBox.width - 24)
       const endY = Math.min(paneBox.y + paneBox.height - 40, outsideBox.y + outsideBox.height - 24)
 

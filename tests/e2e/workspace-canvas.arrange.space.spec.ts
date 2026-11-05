@@ -5,6 +5,7 @@ import {
   readCanvasViewport,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
 import {
   ARRANGE_PADDING_PX,
   CANONICAL_GUTTER_PX,
@@ -319,7 +320,7 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
 
       await ensureArtifactsDir()
-      await pane.click({ position: { x: 10, y: 10 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({
         path: 'artifacts/workspace-canvas-arrange.in-space-no-room.png',
@@ -471,7 +472,7 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
 
       await ensureArtifactsDir()
-      await pane.click({ position: { x: 10, y: 10 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.all-after.png' })
     } finally {

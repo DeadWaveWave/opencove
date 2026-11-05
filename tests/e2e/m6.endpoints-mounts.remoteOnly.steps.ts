@@ -3,51 +3,11 @@ import type { Locator, Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import type { GetSessionResult } from '../../src/shared/contracts/dto'
 import { buildNodeEvalCommand } from './workspace-canvas.helpers'
+import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
 import { pollFor } from './m6.endpoints-mounts.integration.helpers'
 
 async function openWorkspacePaneContextMenu(pane: Locator): Promise<void> {
-  const position = await pane.evaluate(paneEl => {
-    const paneRect = paneEl.getBoundingClientRect()
-    const blocks = Array.from(
-      document.querySelectorAll(
-        '.terminal-node, .task-node, .note-node, .website-node, .workspace-canvas__space',
-      ),
-    ).map(el => el.getBoundingClientRect())
-
-    const paneWidth = Math.max(0, paneRect.width)
-    const paneHeight = Math.max(0, paneRect.height)
-    const margin = 28
-
-    const candidates = [
-      { x: margin, y: margin },
-      { x: paneWidth - margin, y: margin },
-      { x: margin, y: paneHeight - margin },
-      { x: paneWidth - margin, y: paneHeight - margin },
-      { x: paneWidth / 2, y: margin },
-      { x: margin, y: paneHeight / 2 },
-    ].filter(point => Number.isFinite(point.x) && Number.isFinite(point.y))
-
-    const isBlocked = (absX: number, absY: number): boolean =>
-      blocks.some(
-        rect =>
-          absX >= rect.x &&
-          absX <= rect.x + rect.width &&
-          absY >= rect.y &&
-          absY <= rect.y + rect.height,
-      )
-
-    for (const point of candidates) {
-      const absX = paneRect.x + point.x
-      const absY = paneRect.y + point.y
-      if (!isBlocked(absX, absY)) {
-        return { x: point.x, y: point.y }
-      }
-    }
-
-    return { x: margin, y: margin }
-  })
-
-  await pane.click({ button: 'right', position })
+  await pane.click({ button: 'right', position: await findEmptyPanePoint(pane) })
 }
 
 export async function verifyRemoteOnlyProjectDefaultMount({

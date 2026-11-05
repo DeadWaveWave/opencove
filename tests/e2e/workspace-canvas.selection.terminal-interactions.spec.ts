@@ -7,6 +7,7 @@ import {
   launchApp,
   storageKey,
 } from './workspace-canvas.helpers'
+import { findEmptyPanePoint, findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection', () => {
   test('toggles node selection with shift-click on terminal headers in mouse mode', async () => {
@@ -113,7 +114,7 @@ test.describe('Workspace Canvas - Selection', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      await pane.click({ position: { x: 40, y: 40 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       await terminalBody.click({ position: { x: 48, y: 48 } })
@@ -168,7 +169,7 @@ test.describe('Workspace Canvas - Selection', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      await pane.click({ position: { x: 40, y: 40 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       await expect(terminalBody).toBeVisible()
@@ -290,6 +291,7 @@ test.describe('Workspace Canvas - Selection', () => {
         'mouse',
       )
       const paneBox = await pane.boundingBox()
+      const marquee = await findMarqueeCorner(pane)
       if (!paneBox) {
         throw new Error('workspace pane bounding box unavailable for marquee drag')
       }
@@ -304,15 +306,15 @@ test.describe('Workspace Canvas - Selection', () => {
         throw new Error('terminal bounding box unavailable for marquee drag')
       }
 
-      const startX = Math.max(paneBox.x + 40, terminalBox.x - 24)
-      const startY = Math.max(paneBox.y + 40, terminalBox.y - 24)
+      const startX = Math.max(marquee.x, terminalBox.x - 24)
+      const startY = Math.max(marquee.y, terminalBox.y - 24)
       const endX = Math.min(paneBox.x + paneBox.width - 40, terminalBox.x + terminalBox.width - 24)
       const endY = Math.min(
         paneBox.y + paneBox.height - 120,
         terminalBox.y + terminalBox.height - 24,
       )
 
-      await pane.click({ position: { x: 40, y: 40 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await window.keyboard.down('Shift')
       await window.mouse.move(startX, startY)
       await window.mouse.down()

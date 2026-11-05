@@ -105,6 +105,7 @@
 @import './styles/node-color-identity.css' layer(opencove);
 @import './styles/window-kind-identity.css' layer(opencove);
 @import './styles/workspace-far-view.css' layer(opencove);
+@import './styles/workspace-canvas-hud.css' layer(opencove);
 @import './styles/themes/reduced-transparency.css' layer(opencove);
 @import './styles/node-collapse.css' layer(opencove);
 @import './styles/node-collapse-motion.css' layer(opencove);

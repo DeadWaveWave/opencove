@@ -7,6 +7,7 @@ import {
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection (Spaces)', () => {
   test('toggles selected space off with shift-click on the region', async () => {
@@ -47,10 +48,11 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
       const paneBox = await readLocatorClientRect(pane)
+      const marquee = await findMarqueeCorner(pane)
       const spaceBox = await readLocatorClientRect(spaceRegion)
 
-      const selectionStartX = paneBox.x + 40
-      const selectionStartY = paneBox.y + 40
+      const selectionStartX = marquee.x
+      const selectionStartY = marquee.y
       const selectionEndX = Math.min(
         paneBox.x + paneBox.width - 24,
         spaceBox.x + spaceBox.width * 0.35,
@@ -189,10 +191,11 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
       const paneBox = await readLocatorClientRect(pane)
+      const marquee = await findMarqueeCorner(pane)
       const spaceBox = await readLocatorClientRect(spaceRegion)
 
-      const selectionStartX = paneBox.x + 40
-      const selectionStartY = paneBox.y + 40
+      const selectionStartX = marquee.x
+      const selectionStartY = marquee.y
       const selectionEndX = Math.min(
         paneBox.x + paneBox.width - 24,
         spaceBox.x + spaceBox.width * 0.35,
@@ -376,10 +379,11 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
       const paneBox = await readLocatorClientRect(pane)
+      const marquee = await findMarqueeCorner(pane)
       const spaceBox = await readLocatorClientRect(spaceRegion)
 
-      const selectionStartX = paneBox.x + 40
-      const selectionStartY = paneBox.y + 40
+      const selectionStartX = marquee.x
+      const selectionStartY = marquee.y
       const selectionEndX = Math.min(
         paneBox.x + paneBox.width - 24,
         spaceBox.x + spaceBox.width * 0.35,

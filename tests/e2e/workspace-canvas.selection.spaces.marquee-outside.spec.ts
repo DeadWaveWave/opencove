@@ -9,6 +9,7 @@ import {
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection (Spaces)', () => {
   test.skip('selects space (not enclosed nodes) when marquee starts outside space', async () => {
@@ -50,10 +51,11 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await expect(spaceRegion).toBeVisible()
 
       const paneBox = await readLocatorClientRect(pane)
+      const marquee = await findMarqueeCorner(pane)
       const spaceBox = await readLocatorClientRect(spaceRegion)
 
-      const startX = paneBox.x + 40
-      const startY = paneBox.y + 40
+      const startX = marquee.x
+      const startY = marquee.y
       const endX = Math.min(paneBox.x + paneBox.width - 24, spaceBox.x + spaceBox.width * 0.35)
       const endY = Math.min(paneBox.y + paneBox.height - 24, spaceBox.y + spaceBox.height * 0.35)
 
@@ -125,10 +127,11 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await expect(spaceRegion).toBeVisible()
 
       const paneBox = await readLocatorClientRect(pane)
+      const marquee = await findMarqueeCorner(pane)
       const spaceBox = await readLocatorClientRect(spaceRegion)
 
-      const startX = paneBox.x + 40
-      const startY = paneBox.y + 40
+      const startX = marquee.x
+      const startY = marquee.y
       const endX = Math.min(paneBox.x + paneBox.width - 24, spaceBox.x + spaceBox.width * 0.35)
       const endY = Math.min(paneBox.y + paneBox.height - 24, spaceBox.y + spaceBox.height * 0.35)
 

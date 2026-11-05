@@ -8,6 +8,7 @@ import {
   readCanvasViewport,
   storageKey,
 } from './workspace-canvas.helpers'
+import { findEmptyPanePoint, findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
   const readNodePositions = async (
@@ -189,6 +190,7 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       const paneBox = await pane.boundingBox()
+      const marquee = await findMarqueeCorner(pane)
       if (!paneBox) {
         throw new Error('workspace pane bounding box unavailable for marquee selection')
       }
@@ -211,8 +213,8 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
       }
 
       const selectNodeByMarquee = async (targetBox: NonNullable<typeof leftBox>) => {
-        const startX = Math.max(paneBox.x + 40, targetBox.x - 24)
-        const startY = Math.max(paneBox.y + 40, targetBox.y - 24)
+        const startX = Math.max(marquee.x, targetBox.x - 24)
+        const startY = Math.max(marquee.y, targetBox.y - 24)
         const endX = Math.min(paneBox.x + paneBox.width - 40, targetBox.x + targetBox.width - 24)
         const endY = Math.min(paneBox.y + paneBox.height - 120, targetBox.y + targetBox.height - 24)
 
@@ -226,7 +228,7 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
         await expect(window.locator('.workspace-selection-draft')).toHaveCount(0)
       }
 
-      await pane.click({ position: { x: 40, y: 40 } })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
       await selectNodeByMarquee(leftBox)
       await selectNodeByMarquee(rightBox)
 

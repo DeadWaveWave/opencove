@@ -7,6 +7,7 @@ import {
   launchApp,
   storageKey,
 } from './workspace-canvas.helpers'
+import { findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Spaces (Push Away)', () => {
   test('pushes away unselected windows when creating a space would overlap them', async () => {
@@ -52,6 +53,7 @@ test.describe('Workspace Canvas - Spaces (Push Away)', () => {
         .filter({ hasText: 'terminal-space-create-right' })
         .first()
       const paneBox = await pane.boundingBox()
+      const marquee = await findMarqueeCorner(pane)
       if (!paneBox) {
         throw new Error('workspace pane bounding box unavailable')
       }
@@ -82,17 +84,17 @@ test.describe('Workspace Canvas - Spaces (Push Away)', () => {
         }
       }
 
-      const selectionStartY = Math.max(paneBox.y + 40, rightBox.y - 24)
+      const selectionStartY = Math.max(marquee.y, rightBox.y - 24)
 
       // Use a narrow box selection that only intersects the right node (avoid selecting middle).
       const rightCenterX = rightBox.x + rightBox.width * 0.82
       const boxHalfWidth = 28
-      const boxLeft = Math.max(paneBox.x + 40, rightCenterX - boxHalfWidth)
+      const boxLeft = Math.max(marquee.x, rightCenterX - boxHalfWidth)
       const boxRight = Math.min(paneBox.x + paneBox.width - 40, rightCenterX + boxHalfWidth)
 
       const aboveY = rightBox.y - 36
       const belowY = rightBox.y + rightBox.height + 36
-      const canStartAbove = aboveY > paneBox.y + 40
+      const canStartAbove = aboveY > marquee.y
       const canStartBelow = belowY < paneBox.y + paneBox.height - 120
       const startY = canStartAbove ? aboveY : canStartBelow ? belowY : selectionStartY
       const endY = Math.min(paneBox.y + paneBox.height - 120, rightBox.y + rightBox.height * 0.65)

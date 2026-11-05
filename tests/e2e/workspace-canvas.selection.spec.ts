@@ -6,6 +6,7 @@ import {
   readLocatorClientRect,
   storageKey,
 } from './workspace-canvas.helpers'
+import { findEmptyPanePoint, findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection', () => {
   test('does not allow creating space from empty shift box selection', async () => {
@@ -89,6 +90,7 @@ test.describe('Workspace Canvas - Selection', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
       const paneBox = await readLocatorClientRect(pane)
+      const marquee = await findMarqueeCorner(pane)
 
       await dragMouse(window, {
         start: { x: paneBox.x + 120, y: paneBox.y + 120 },
@@ -106,8 +108,8 @@ test.describe('Workspace Canvas - Selection', () => {
         .first()
       const secondNodeBox = await readLocatorClientRect(secondNode)
 
-      const selectionStartX = Math.max(paneBox.x + 40, secondNodeBox.x - 24)
-      const selectionStartY = Math.max(paneBox.y + 40, secondNodeBox.y - 24)
+      const selectionStartX = Math.max(marquee.x, secondNodeBox.x - 24)
+      const selectionStartY = Math.max(marquee.y, secondNodeBox.y - 24)
       const selectionEndX = Math.min(
         paneBox.x + paneBox.width - 40,
         secondNodeBox.x + secondNodeBox.width - 24,
@@ -132,8 +134,8 @@ test.describe('Workspace Canvas - Selection', () => {
         .filter({ hasText: 'terminal-trackpad-select-a' })
         .first()
       const firstNodeBoxForReplace = await readLocatorClientRect(firstNode)
-      const replaceStartX = Math.max(paneBox.x + 40, firstNodeBoxForReplace.x - 24)
-      const replaceStartY = Math.max(paneBox.y + 40, firstNodeBoxForReplace.y - 24)
+      const replaceStartX = Math.max(marquee.x, firstNodeBoxForReplace.x - 24)
+      const replaceStartY = Math.max(marquee.y, firstNodeBoxForReplace.y - 24)
       const replaceEndX = Math.min(
         paneBox.x + paneBox.width - 40,
         firstNodeBoxForReplace.x + firstNodeBoxForReplace.width - 24,
@@ -223,9 +225,7 @@ test.describe('Workspace Canvas - Selection', () => {
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
-      await pane.click({
-        position: { x: 40, y: 40 },
-      })
+      await pane.click({ position: await findEmptyPanePoint(pane) })
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
     } finally {
