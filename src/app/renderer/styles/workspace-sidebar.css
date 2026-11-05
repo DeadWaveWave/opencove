@@ -34,11 +34,13 @@
 }
 
 .workspace-sidebar__project-header h2 {
+  display: flex;
   flex: 1;
+  align-items: baseline;
+  gap: var(--cove-spacing-2);
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: calc(13px * var(--cove-ui-font-scale));
   font-weight: 600;
@@ -184,4 +186,23 @@
 .workspace-empty-selection-prompt button:focus-visible {
   outline: 2px solid var(--cove-focus-ring);
   outline-offset: 2px;
+}
+
+/* The project's name, then the branch its checkout is on (Tide prototype: "opencove feat/jwt");
+   the name keeps priority and both truncate. */
+.workspace-sidebar__project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-sidebar__project-branch {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cove-text-muted);
+  font-family: var(--cove-font-mono);
+  font-size: var(--cove-font-size-secondary);
+  font-weight: 400;
+  text-overflow: ellipsis;
 }

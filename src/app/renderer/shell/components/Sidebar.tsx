@@ -18,6 +18,7 @@ import { IconButton } from '@app/renderer/components/ui/IconButton'
 import type { PersistNotice, ProjectContextMenuState } from '../types'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { SidebarToolbar } from './SidebarToolbar'
+import { SidebarProjectBranch } from './SidebarProjectBranch'
 import { buildSidebarProjectTree } from '../utils/sidebarTree'
 import { SidebarAgentItemOverlay } from './SidebarAgentItems'
 import {
@@ -349,7 +350,12 @@ export function Sidebar({
             {displayedTree ? (
               <>
                 <header className="workspace-sidebar__project-header">
-                  <h2 title={displayedTree.workspace.name}>{displayedTree.workspace.name}</h2>
+                  <h2 title={displayedTree.workspace.name}>
+                    <span className="workspace-sidebar__project-name">
+                      {displayedTree.workspace.name}
+                    </span>
+                    <SidebarProjectBranch workspace={displayedTree.workspace} />
+                  </h2>
                   <SidebarRemoteDetails
                     key={displayedTree.workspace.id}
                     remote={mountDetails[displayedTree.workspace.id]?.remote ?? null}

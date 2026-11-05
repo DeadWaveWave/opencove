@@ -21,7 +21,7 @@ import { useAppStore } from '../store/useAppStore'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { buildSpaceMinimap, type SpaceMinimapModel } from '../utils/spaceMinimap'
 import { SidebarSpaceMinimap } from './SidebarSpaceMinimap'
-import { useWorktreeInfoByPath } from '@contexts/workspace/presentation/renderer/worktreeInfo/useWorktreeInfo'
+import { useProjectWorktrees } from '@contexts/workspace/presentation/renderer/worktreeInfo/useProjectWorktrees'
 import {
   resolveSpaceBranch,
   type SpaceBranch,
@@ -278,23 +278,7 @@ export function SidebarWorkspaceNavigation({
   const { workspace } = tree
   const rootAgents = tree.projectRootGroup.agents
   // The same worktree listing the canvas's Space frames read (one listing per repository).
-  const mountIdsKey = React.useMemo(
-    () =>
-      [...new Set(workspace.spaces.map(space => space.targetMountId?.trim() ?? '').filter(Boolean))]
-        .sort()
-        .join('|'),
-    [workspace.spaces],
-  )
-  const directoriesKey = React.useMemo(
-    () => workspace.spaces.map(space => space.directoryPath).join('\n'),
-    [workspace.spaces],
-  )
-  const worktreeInfo = useWorktreeInfoByPath({
-    repoPath: workspace.path,
-    mountIdsKey,
-    refreshKey: directoriesKey,
-  })
-  const worktrees = React.useMemo(() => [...worktreeInfo.values()], [worktreeInfo])
+  const worktrees = useProjectWorktrees(workspace)
 
   return (
     <div

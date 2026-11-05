@@ -37,3 +37,21 @@ export function resolveSpaceBranch(
     ? { kind: 'detached', value: toShortSha(worktree.head), title: worktree.head }
     : null
 }
+
+/** The branch the project's own checkout is on (the sidebar header's "project · branch"). */
+export function resolveProjectBranch(
+  worktrees: GitWorktreeInfo[],
+  workspacePath: string,
+): SpaceBranch | null {
+  const root = normalizeComparablePath(workspacePath)
+  const worktree = worktrees.find(entry => normalizeComparablePath(entry.path) === root)
+  if (!worktree) {
+    return null
+  }
+  if (worktree.branch) {
+    return { kind: 'branch', value: worktree.branch, title: worktree.branch }
+  }
+  return worktree.head
+    ? { kind: 'detached', value: toShortSha(worktree.head), title: worktree.head }
+    : null
+}

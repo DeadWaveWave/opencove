@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
 import { launchApp } from './workspace-canvas.helpers'
 import {
@@ -27,6 +28,14 @@ test.describe('Sidebar - Space branch', () => {
       )
       await expect(build).toBeVisible()
       await expect(build.locator('.workspace-space-item__meta-branch')).toHaveCount(0)
+
+      // The project header names the branch the project's own checkout is on.
+      const current = execFileSync('git', ['-C', fixture.repo, 'branch', '--show-current'], {
+        encoding: 'utf8',
+      }).trim()
+      await expect(window.getByTestId(`workspace-project-branch-${MATERIAL_WORKSPACE}`)).toHaveText(
+        current,
+      )
     } finally {
       await electronApp.close()
       await fixture.cleanup()
