@@ -93,17 +93,23 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
     await expect(window.locator(`.react-flow__node[data-id="${agentId}"]`)).toContainText('Working')
     // While it works, the agent sends a low sonar wave across the wall every 2.4s.
     await expect
-      .poll(() => window.evaluate(() => window.__opencovePixelWallTestApi?.getRippleKeys() ?? []), {
-        timeout: 5_000,
-      })
+      .poll(
+        () => window.evaluate(() => window.__opencovePixelWallTestApi?.getSeenRippleKeys() ?? []),
+        {
+          timeout: 5_000,
+        },
+      )
       .toContain(`sonar:${agentId}`)
     await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
 
     await expect
       .poll(() => window.evaluate(() => (window as SignalWindow).__coveSignals ?? []))
       .toContain('complete')
+    // The wave may finish before the next Playwright observation on a loaded runner.
     await expect
-      .poll(() => window.evaluate(() => window.__opencovePixelWallTestApi?.getRippleKeys() ?? []))
+      .poll(() =>
+        window.evaluate(() => window.__opencovePixelWallTestApi?.getSeenRippleKeys() ?? []),
+      )
       .toContain(`complete:${agentId}`)
     // The flash ends on its own.
     await expect(window.locator(`.react-flow__node[data-id="${agentId}"]`)).not.toHaveAttribute(
