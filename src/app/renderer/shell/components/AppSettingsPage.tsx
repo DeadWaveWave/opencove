@@ -3,6 +3,7 @@ import type { AgentProvider, AgentSettings } from '@contexts/settings/domain/age
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { AppUpdateState } from '@shared/contracts/dto'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
+import { useCoverShellWall } from '../shellWallLayer'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 
 interface ProviderModelCatalogEntry {
@@ -51,6 +52,8 @@ export function AppSettingsPage({
   onInstallUpdate: () => void
   onCloseSettings: () => void
 }): React.JSX.Element {
+  // The settings sheet covers the canvas, except while it previews the focus zoom over it.
+  useCoverShellWall(isSettingsOpen && !isFocusNodeTargetZoomPreviewing)
   return (
     <>
       {isSettingsOpen ? (

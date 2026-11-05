@@ -26,3 +26,29 @@
   .workspace-project-rail {
   background: transparent;
 }
+
+/* The settings page is one sheet of glass over the wall (Tide: `--cove-glass-sheet`, 72% dark,
+   80% light): its tab strip, panel, navigation and content let the sheet's tint through. While
+   it previews the focus zoom over the canvas it keeps its own transparent preview look. */
+.app-shell:has(> .app-shell__wall > .workspace-pixel-wall)
+  .settings-page:not(.settings-page--preview) {
+  background: var(--cove-surface-strong);
+  backdrop-filter: none;
+}
+
+.app-shell:has(> .app-shell__wall > .workspace-pixel-wall)
+  .settings-page:not(.settings-page--preview)
+  :is(
+    .settings-page__tabs,
+    .settings-panel,
+    .settings-panel__content-wrapper,
+    .settings-panel__sidebar
+  ) {
+  background: transparent;
+}
+
+.app-shell:has(> .app-shell__wall > .workspace-pixel-wall)
+  .settings-page:not(.settings-page--preview)
+  .settings-page__active-tab {
+  background: var(--cove-settings-group-surface);
+}

@@ -1,7 +1,7 @@
 import React, { memo, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useStoreApi, type Node } from '@xyflow/react'
-import { useShellWallLayer } from '@app/renderer/shell/shellWallLayer'
+import { useShellWallCovered, useShellWallLayer } from '@app/renderer/shell/shellWallLayer'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { TerminalNodeData } from '../../../types'
 import { createPixelFrameScheduler } from './pixelLayer/scheduler'
@@ -57,6 +57,8 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
 }): React.JSX.Element | null {
   const store = useStoreApi<Node<TerminalNodeData>>()
   const layer = useShellWallLayer()
+  const covered = useShellWallCovered()
+  const coveredRef = useRef(covered)
   const ambientRef = useRef(ambient)
   const signalsRef = useRef(signals)
   signalsRef.current = signals
@@ -176,10 +178,18 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         }
       }
       lightsAnimating = lit.animating || waves.length > 0 || pulsing.length > 0 || sonar.length > 0
-      cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows, waves, chrome)
-      const glass = projectWallGlass(lit.windows, view, glassRadius, glassRects)
+      // Under a sheet that covers the canvas (settings) the whole wall is behind glass and the
+      // windows are hidden, so it frosts everything and draws no window glass.
+      const frosted = coveredRef.current ? [{ x: 0, y: 0, width, height }] : chrome
+      cells = fillWallCells(grid, palette, ambientSeconds, cells, lit.windows, waves, frosted)
+      const glass = projectWallGlass(
+        coveredRef.current ? [] : lit.windows,
+        view,
+        glassRadius,
+        glassRects,
+      )
       glassRects = glass.rects
-      const chromeGlass = packWallChrome(chrome, chromeRects)
+      const chromeGlass = packWallChrome(frosted, chromeRects)
       chromeRects = chromeGlass.rects
       // A change of cell size dissolves over 120ms instead of jumping.
       const shown = dissolve.apply(grid, cells, now === null || reducedMotion ? null : now)
@@ -355,6 +365,11 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     ambientRef.current = ambient
     repaintRef.current?.()
   }, [ambient])
+
+  useLayoutEffect(() => {
+    coveredRef.current = covered
+    repaintRef.current?.()
+  }, [covered])
 
   // Inside the app the layer mounts with the shell; until then there is nowhere to paint.
   if (layer === null) {
