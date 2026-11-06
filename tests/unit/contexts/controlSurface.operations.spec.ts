@@ -19,7 +19,7 @@ it('has unique, complete metadata and strictly exportable wire schemas', () => {
   expect(new Set(CONTROL_SURFACE_OPERATIONS.map(op => op.id)).size).toBe(
     CONTROL_SURFACE_OPERATIONS.length,
   )
-  expect(CONTROL_SURFACE_OPERATIONS.filter(op => op.contract === 'schema')).toHaveLength(5)
+  expect(CONTROL_SURFACE_OPERATIONS.filter(op => op.contract === 'schema')).toHaveLength(54)
   for (const op of CONTROL_SURFACE_OPERATIONS) {
     expect(Object.isFrozen(op)).toBe(true)
     expect(getControlSurfaceOperation(op.id)).toBe(op)
@@ -128,4 +128,69 @@ it.each([
   ['plugin.sidebar.items', 'interact'],
 ] as const)('classifies side-effecting query %s as %s', (id, scope) => {
   expect(getControlSurfaceOperation(id)).toMatchObject({ kind: 'query', scope })
+})
+
+it('never lets a returning legacy normalizer override schema rejection', async () => {
+  const { defineOperation } =
+    await import('../../../src/shared/contracts/controlSurface/operations')
+  const { createControlSurface } =
+    await import('../../../src/app/main/controlSurface/controlSurface')
+  const actual = createControlSurface()
+  let dispatched = false
+  registerOperation(
+    actual,
+    defineOperation({
+      id: 'test.legacyAdmission',
+      kind: 'command',
+      scope: 'interact',
+      availability: 'always',
+      summary: 'Check schema admission.',
+      input: z.object({ id: z.string() }),
+      errors: [],
+      normalize: wire => wire,
+      legacyNormalize: () => ({ id: 'fallback' }),
+    }),
+    {
+      handle: () => {
+        dispatched = true
+      },
+      defaultErrorCode: 'common.unexpected',
+    },
+  )
+  const result = await actual.invoke(
+    { now: () => new Date() } as Parameters<ControlSurface['invoke']>[0],
+    {
+      id: 'test.legacyAdmission',
+      kind: 'command',
+      payload: { id: 123 },
+    },
+  )
+  expect(result).toMatchObject({ ok: false, error: { code: 'common.invalid_input' } })
+  expect(dispatched).toBe(false)
+})
+
+it('passes original own keys to legacy normalization after successful schema admission', async () => {
+  const { defineOperation } =
+    await import('../../../src/shared/contracts/controlSurface/operations')
+  const payload = JSON.parse('{"id":"sample","__proto__":true}') as unknown
+  const operation = defineOperation({
+    id: 'test.rawKeys',
+    kind: 'query',
+    scope: 'read',
+    availability: 'always',
+    summary: 'Check raw payload preservation.',
+    input: z.looseObject({ id: z.string() }),
+    errors: [],
+    normalize: wire => Object.keys(wire),
+    legacyNormalize: raw => {
+      expect(raw).toBe(payload)
+      return Object.keys(raw as object)
+    },
+  })
+  expect(operation.input.safeParse(payload).success).toBe(true)
+  registerOperation(surface, operation, {
+    handle: () => undefined,
+    defaultErrorCode: 'common.unexpected',
+  })
+  expect(validators[operation.id](payload)).toEqual(['id', '__proto__'])
 })

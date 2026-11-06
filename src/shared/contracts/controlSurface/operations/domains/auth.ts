@@ -4,6 +4,6 @@ export const authIssueWebSessionTicketOperation = defineLegacyOperation({
   kind: 'query',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform auth issue Web Session Ticket.',
+  summary: 'Issue a one-time ticket for a browser Web session',
 })
 export const authOperations = [authIssueWebSessionTicketOperation] as const

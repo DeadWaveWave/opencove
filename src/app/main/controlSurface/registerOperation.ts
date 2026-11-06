@@ -22,6 +22,9 @@ export function registerOperation<
     validate: payload => {
       const result = operation.input.safeParse(payload)
       if (!result.success) {
+        // Replay only for the legacy error descriptor. A returning hook must never
+        // admit a payload rejected by the wire schema.
+        operation.legacyNormalize?.(payload)
         const issues = result.error.issues.map(({ path, code, message }) => ({
           path,
           code,
@@ -33,7 +36,11 @@ export function registerOperation<
           details: { issues },
         })
       }
-      return operation.normalize(result.data)
+      // Object parsers may discard own __proto__ keys; compatibility checks must
+      // inspect the original payload, after schema admission has succeeded.
+      return operation.legacyNormalize
+        ? operation.legacyNormalize(payload)
+        : operation.normalize(result.data)
     },
   })
 }

@@ -1,122 +1,206 @@
-import { defineLegacyOperation } from '../defineOperation'
-export const pluginCommandRunOperation = defineLegacyOperation({
+import * as z from 'zod'
+import {
+  pluginListInput,
+  pluginDetailsInput,
+  pluginInstallInput,
+  pluginReloadInput,
+  pluginUninstallInput,
+  pluginSetEnabledInput,
+  pluginWindowOpenInput,
+  pluginWindowListInput,
+  pluginSkillGetInput,
+  pluginCommandRunInput,
+  pluginGitInstallInput,
+  pluginSourceInput,
+  pluginGitCheckInput,
+  pluginGitUpdateInput,
+  pluginGitApplyInput,
+  pluginRollbackInput,
+  pluginDiscoverInput,
+} from '../pluginNormalize'
+import { defineLegacyOperation, defineOperation } from '../defineOperation'
+// Structural admission uses Zod; legacyNormalize preserves raw-key checks and errors.
+export const pluginCommandRunOperation = defineOperation({
+  input: z.strictObject({
+    pluginId: z.string(),
+    projectId: z.string().optional(),
+    nodeId: z.string().optional(),
+    commandId: z.string(),
+    params: z.unknown().optional(),
+    viewId: z.string().optional(),
+    context: z.unknown().optional(),
+    expectedRevision: z.string().optional(),
+    expectedRuntimeGeneration: z.unknown().optional(),
+  }),
+  normalize: pluginCommandRunInput,
+  legacyNormalize: pluginCommandRunInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.command.run',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin command run.',
+  summary: 'Run a declared plugin command, opening its target window if needed',
 })
-export const pluginDetailsOperation = defineLegacyOperation({
+export const pluginDetailsOperation = defineOperation({
+  input: z.looseObject({ pluginId: z.string() }),
+  normalize: pluginDetailsInput,
+  legacyNormalize: pluginDetailsInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.details',
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Perform plugin details.',
+  summary: 'Get a plugin manifest, README, source directory and runtime logs',
 })
-export const pluginDiscoverOperation = defineLegacyOperation({
+export const pluginDiscoverOperation = defineOperation({
+  input: z.strictObject({ query: z.string().optional() }).nullish(),
+  normalize: pluginDiscoverInput,
+  legacyNormalize: pluginDiscoverInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.discover',
   kind: 'query',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin discover.',
+  summary: 'Search GitHub for repositories tagged as OpenCove plugins',
 })
-export const pluginGitApplyOperation = defineLegacyOperation({
+export const pluginGitApplyOperation = defineOperation({
+  input: z.strictObject({ candidateId: z.string() }),
+  normalize: pluginGitApplyInput,
+  legacyNormalize: pluginGitApplyInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.git.apply',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin git apply.',
+  summary: 'Build and publish a prepared plugin Git candidate',
 })
-export const pluginGitCheckOperation = defineLegacyOperation({
+export const pluginGitCheckOperation = defineOperation({
+  input: z.strictObject({ pluginId: z.string(), ref: z.string().optional() }),
+  normalize: pluginGitCheckInput,
+  legacyNormalize: pluginGitCheckInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.git.check',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin git check.',
+  summary: 'Check a managed plugin source for upstream Git updates',
 })
-export const pluginGitInstallOperation = defineLegacyOperation({
+export const pluginGitInstallOperation = defineOperation({
+  input: z.strictObject({
+    repository: z.string(),
+    ref: z.string().optional(),
+    directory: z.string().optional(),
+    build: z.unknown().optional(),
+  }),
+  normalize: pluginGitInstallInput,
+  legacyNormalize: pluginGitInstallInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.git.install',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin git install.',
+  summary: 'Clone, build and install a plugin from a Git repository',
 })
-export const pluginGitUpdateOperation = defineLegacyOperation({
+export const pluginGitUpdateOperation = defineOperation({
+  input: z.strictObject({ pluginId: z.string(), ref: z.string().optional() }),
+  normalize: pluginGitUpdateInput,
+  legacyNormalize: pluginGitUpdateInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.git.update',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin git update.',
+  summary: 'Merge upstream changes and publish a plugin unless conflicts remain',
 })
 export const pluginHostRequestOperation = defineLegacyOperation({
   id: 'plugin.host.request',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin host request.',
+  summary: 'Dispatch a host capability request on behalf of a plugin view',
 })
-export const pluginInstallOperation = defineLegacyOperation({
+export const pluginInstallOperation = defineOperation({
+  input: z.looseObject({ directory: z.string() }),
+  normalize: pluginInstallInput,
+  legacyNormalize: pluginInstallInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.install',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin install.',
+  summary: 'Install a plugin from a local source directory',
 })
 export const pluginInvokeOperation = defineLegacyOperation({
   id: 'plugin.invoke',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin invoke.',
+  summary: 'Invoke a plugin backend method on behalf of an open view',
 })
-export const pluginListOperation = defineLegacyOperation({
+export const pluginListOperation = defineOperation({
+  input: z.unknown(),
+  normalize: pluginListInput,
+  legacyNormalize: pluginListInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.list',
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Query plugin list.',
+  summary: 'List installed plugins with their manifests and runtime status',
 })
 export const pluginPreferencesGetOperation = defineLegacyOperation({
   id: 'plugin.preferences.get',
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Query plugin preferences get.',
+  summary: 'Read configured preference values for an installed plugin',
 })
 export const pluginPreferencesSetOperation = defineLegacyOperation({
   id: 'plugin.preferences.set',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin preferences set.',
+  summary: 'Save a named preference value for an installed plugin',
 })
-export const pluginReloadOperation = defineLegacyOperation({
+export const pluginReloadOperation = defineOperation({
+  input: z.looseObject({ pluginId: z.string() }),
+  normalize: pluginReloadInput,
+  legacyNormalize: pluginReloadInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.reload',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin reload.',
+  summary: 'Rebuild a managed Git plugin or reload its local source',
 })
 export const pluginRepositoryDetailsOperation = defineLegacyOperation({
   id: 'plugin.repository.details',
   kind: 'query',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin repository details.',
+  summary: 'Inspect a GitHub plugin repository before installation',
 })
-export const pluginRollbackOperation = defineLegacyOperation({
+export const pluginRollbackOperation = defineOperation({
+  input: z.strictObject({ pluginId: z.string(), revision: z.string() }),
+  normalize: pluginRollbackInput,
+  legacyNormalize: pluginRollbackInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.rollback',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin rollback.',
+  summary: 'Restore a retained plugin code revision as the active installation',
 })
-export const pluginSetEnabledOperation = defineLegacyOperation({
+export const pluginSetEnabledOperation = defineOperation({
+  input: z.looseObject({ pluginId: z.string(), enabled: z.boolean() }),
+  normalize: pluginSetEnabledInput,
+  legacyNormalize: pluginSetEnabledInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.setEnabled',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin set Enabled.',
+  summary: 'Enable or disable an installed plugin and its runtime',
 })
 export const pluginSidebarItemsOperation = defineLegacyOperation({
   id: 'plugin.sidebar.items',
@@ -124,91 +208,117 @@ export const pluginSidebarItemsOperation = defineLegacyOperation({
   // Runs a plugin command; the backend is not a read-only projection.
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin sidebar items.',
+  summary: 'Run a plugin command to populate a project Sidebar section',
 })
-export const pluginSkillGetOperation = defineLegacyOperation({
+export const pluginSkillGetOperation = defineOperation({
+  input: z.strictObject({ pluginId: z.string(), skillId: z.string() }),
+  normalize: pluginSkillGetInput,
+  legacyNormalize: pluginSkillGetInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.skill.get',
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Query plugin skill get.',
+  summary: 'Read a declared skill from an installed plugin',
 })
-export const pluginSourceOperation = defineLegacyOperation({
+export const pluginSourceOperation = defineOperation({
+  input: z.strictObject({ pluginId: z.string() }),
+  normalize: pluginSourceInput,
+  legacyNormalize: pluginSourceInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.source',
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Perform plugin source.',
+  summary: 'Inspect plugin source changes, revision history and pending candidates',
 })
 export const pluginStorageGetOperation = defineLegacyOperation({
   id: 'plugin.storage.get',
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Query plugin storage get.',
+  summary: 'Read a plugin storage value through an open view',
 })
 export const pluginStorageSetOperation = defineLegacyOperation({
   id: 'plugin.storage.set',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin storage set.',
+  summary: 'Persist a plugin storage value through an open view',
 })
-export const pluginUninstallOperation = defineLegacyOperation({
+export const pluginUninstallOperation = defineOperation({
+  input: z.looseObject({ pluginId: z.string() }),
+  normalize: pluginUninstallInput,
+  legacyNormalize: pluginUninstallInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.uninstall',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
-  summary: 'Perform plugin uninstall.',
+  summary: 'Uninstall a plugin and dispose its active runtime',
 })
 export const pluginViewCloseOperation = defineLegacyOperation({
   id: 'plugin.view.close',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin view close.',
+  summary: 'Close a plugin runtime view and release its resources',
 })
 export const pluginViewOpenOperation = defineLegacyOperation({
   id: 'plugin.view.open',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin view open.',
+  summary: 'Open a plugin runtime view bound to a canvas node',
 })
 export const pluginViewPreferencesGetOperation = defineLegacyOperation({
   id: 'plugin.view.preferences.get',
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Query plugin view preferences get.',
+  summary: 'Read plugin preferences through an open view',
 })
 export const pluginViewPreferencesSetOperation = defineLegacyOperation({
   id: 'plugin.view.preferences.set',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin view preferences set.',
+  summary: 'Save a plugin preference through an open view',
 })
 export const pluginViewSetTitleOperation = defineLegacyOperation({
   id: 'plugin.view.setTitle',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin view set Title.',
+  summary: 'Change the title of an open plugin view',
 })
-export const pluginWindowListOperation = defineLegacyOperation({
+export const pluginWindowListOperation = defineOperation({
+  input: z.strictObject({ pluginId: z.string(), projectId: z.string().optional() }),
+  normalize: pluginWindowListInput,
+  legacyNormalize: pluginWindowListInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.window.list',
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Query plugin window list.',
+  summary: 'List plugin canvas windows with their current view titles',
 })
-export const pluginWindowOpenOperation = defineLegacyOperation({
+export const pluginWindowOpenOperation = defineOperation({
+  input: z.strictObject({
+    pluginId: z.string(),
+    projectId: z.string().optional(),
+    nodeId: z.string().optional(),
+    spaceId: z.string().optional(),
+    anchor: z.looseObject({ x: z.number(), y: z.number() }).optional(),
+  }),
+  normalize: pluginWindowOpenInput,
+  legacyNormalize: pluginWindowOpenInput,
+  errors: ['plugin.operation_failed'],
   id: 'plugin.window.open',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform plugin window open.',
+  summary: 'Create or reuse a plugin canvas window and focus it',
 })
 export const pluginOperations = [
   pluginCommandRunOperation,

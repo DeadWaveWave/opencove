@@ -1,24 +1,16 @@
 import { parseRuntimeBuildIdentity } from '../../../../shared/contracts/runtimeBuild'
 import type {
   AppErrorDescriptor,
-  CreateMountInput,
   GetEndpointHomeDirectoryInput,
-  ListMountsInput,
-  PingWorkerEndpointInput,
   PrepareWorkerEndpointInput,
-  RegisterManagedSshWorkerEndpointInput,
-  ReadEndpointDirectoryInput,
-  RegisterWorkerEndpointInput,
   PromoteMountInput,
+  ReadEndpointDirectoryInput,
+  RegisterManagedSshWorkerEndpointInput,
   RepairWorkerEndpointInput,
-  RemoveMountInput,
-  RemoveWorkerEndpointInput,
-  ResolveMountTargetInput,
   UpdateManagedSshWorkerEndpointInput,
 } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import { parseOptionalManagedSshPort } from '../../../../contexts/topology/domain/managedSshPort'
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
@@ -70,19 +62,6 @@ function normalizeRequiredString(value: unknown, debugName: string): string {
   return normalized
 }
 
-function normalizeRequiredPort(value: unknown, debugName: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw createAppError('common.invalid_input', { debugMessage: `Invalid ${debugName}.` })
-  }
-
-  const port = Math.floor(value)
-  if (port <= 0 || port > 65_535) {
-    throw createAppError('common.invalid_input', { debugMessage: `Invalid ${debugName}.` })
-  }
-
-  return port
-}
-
 function normalizeOptionalManagedSshPort(value: unknown, debugName: string): number | null {
   if (value === null || value === undefined) {
     return null
@@ -113,45 +92,6 @@ function normalizeRequiredAbsolutePath(value: unknown, debugName: string): strin
   }
 
   return path
-}
-
-export function normalizeRegisterEndpointPayload(payload: unknown): RegisterWorkerEndpointInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for endpoint.register.',
-    })
-  }
-
-  return {
-    displayName: normalizeOptionalString(payload.displayName),
-    hostname: normalizeRequiredString(payload.hostname, 'endpoint.register hostname'),
-    port: normalizeRequiredPort(payload.port, 'endpoint.register port'),
-    token: normalizeRequiredString(payload.token, 'endpoint.register token'),
-  }
-}
-
-export function normalizeRemoveEndpointPayload(payload: unknown): RemoveWorkerEndpointInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for endpoint.remove.',
-    })
-  }
-
-  const expectedMountCount = payload.expectedMountCount
-  if (
-    expectedMountCount !== null &&
-    expectedMountCount !== undefined &&
-    (!Number.isSafeInteger(expectedMountCount) || Number(expectedMountCount) < 0)
-  ) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid endpoint.remove expectedMountCount.',
-    })
-  }
-
-  return {
-    endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.remove endpointId'),
-    ...(typeof expectedMountCount === 'number' ? { expectedMountCount } : {}),
-  }
 }
 
 export function normalizeRegisterManagedSshEndpointPayload(
@@ -216,43 +156,6 @@ export function normalizeUpdateManagedSshEndpointPayload(
   }
 }
 
-export function normalizeListMountsPayload(payload: unknown): ListMountsInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for mount.list.',
-    })
-  }
-
-  return {
-    projectId: normalizeRequiredString(payload.projectId, 'mount.list projectId'),
-  }
-}
-
-export function normalizeCreateMountPayload(payload: unknown): CreateMountInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for mount.create.',
-    })
-  }
-
-  return {
-    projectId: normalizeRequiredString(payload.projectId, 'mount.create projectId'),
-    name: normalizeOptionalString(payload.name),
-    endpointId: normalizeRequiredString(payload.endpointId, 'mount.create endpointId'),
-    rootPath: normalizeRequiredString(payload.rootPath, 'mount.create rootPath'),
-  }
-}
-
-export function normalizeRemoveMountPayload(payload: unknown): RemoveMountInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for mount.remove.',
-    })
-  }
-
-  return { mountId: normalizeRequiredString(payload.mountId, 'mount.remove mountId') }
-}
-
 export function normalizePromoteMountPayload(payload: unknown): PromoteMountInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -261,35 +164,6 @@ export function normalizePromoteMountPayload(payload: unknown): PromoteMountInpu
   }
 
   return { mountId: normalizeRequiredString(payload.mountId, 'mount.promote mountId') }
-}
-
-export function normalizeResolveMountTargetPayload(payload: unknown): ResolveMountTargetInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for mountTarget.resolve.',
-    })
-  }
-
-  return { mountId: normalizeRequiredString(payload.mountId, 'mountTarget.resolve mountId') }
-}
-
-export function normalizePingEndpointPayload(payload: unknown): PingWorkerEndpointInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for endpoint.ping.',
-    })
-  }
-
-  const timeoutMsRaw = payload.timeoutMs
-  const timeoutMs =
-    typeof timeoutMsRaw === 'number' && Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0
-      ? Math.floor(timeoutMsRaw)
-      : null
-
-  return {
-    endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.ping endpointId'),
-    ...(timeoutMs !== null ? { timeoutMs } : {}),
-  }
 }
 
 function normalizeTargetBuild(value: unknown) {

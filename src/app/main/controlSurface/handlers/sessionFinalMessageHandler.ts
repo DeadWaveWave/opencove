@@ -1,3 +1,5 @@
+import { sessionFinalMessageOperation } from '../../../../shared/contracts/controlSurface/operations/domains/session'
+import { registerOperation } from '../registerOperation'
 import type { ControlSurface } from '../controlSurface'
 import { locateAgentResumeSessionId } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocator'
 import { locateGeminiResumeSessionId } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
@@ -7,52 +9,18 @@ import {
 } from '../../../../contexts/agent/infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../../../contexts/agent/infrastructure/watchers/SessionFileResolver'
 import { createAppError } from '../../../../shared/errors/appError'
-import type {
-  GetSessionFinalMessageInput,
-  GetSessionFinalMessageResult,
-} from '../../../../shared/contracts/dto'
+import type { GetSessionFinalMessageResult } from '../../../../shared/contracts/dto'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import type { SessionRecord } from './sessionRecords'
-
 const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
 const SESSION_FILE_RESOLVE_TIMEOUT_MS = 1_500
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-function normalizeSessionIdPayload(payload: unknown): GetSessionFinalMessageInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.finalMessage.',
-    })
-  }
-
-  const sessionIdRaw = payload.sessionId
-  if (typeof sessionIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for session.finalMessage sessionId.',
-    })
-  }
-
-  const sessionId = sessionIdRaw.trim()
-  if (sessionId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for session.finalMessage sessionId.',
-    })
-  }
-
-  return { sessionId }
-}
 
 export function registerSessionFinalMessageHandler(
   controlSurface: ControlSurface,
   deps: { sessions: Map<string, SessionRecord>; topology: WorkerTopologyStore },
 ): void {
-  controlSurface.register('session.finalMessage', {
-    kind: 'query',
-    validate: payload => normalizeSessionIdPayload(payload),
+  registerOperation(controlSurface, sessionFinalMessageOperation, {
     handle: async (_ctx, payload): Promise<GetSessionFinalMessageResult> => {
       const record = deps.sessions.get(payload.sessionId)
       if (!record) {

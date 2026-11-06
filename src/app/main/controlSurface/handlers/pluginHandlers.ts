@@ -1,3 +1,15 @@
+import { pluginId } from '@shared/contracts/controlSurface/operations/pluginNormalize'
+import type * as z from 'zod'
+import type { SchemaOperation } from '@shared/contracts/controlSurface/operations/defineOperation'
+import {
+  pluginListOperation,
+  pluginDetailsOperation,
+  pluginInstallOperation,
+  pluginReloadOperation,
+  pluginUninstallOperation,
+  pluginSetEnabledOperation,
+} from '@shared/contracts/controlSurface/operations/domains/plugin'
+import { registerOperation } from '../registerOperation'
 import { registerPluginPreferenceHandlers } from './pluginPreferenceHandlers'
 import type { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
 import type { ControlSurface } from '../controlSurface'
@@ -7,9 +19,6 @@ import type { PluginInstallationManager } from '@contexts/plugins/application/Pl
 import { pluginRecord, pluginString } from '@contexts/plugins/domain/localPluginValidation'
 import type { PluginOpenViewInput } from '@contexts/plugins/domain/pluginRuntimeTypes'
 
-function pluginId(payload: unknown): { pluginId: string } {
-  return { pluginId: pluginString(pluginRecord(payload).pluginId, 'id', 80) }
-}
 function viewInput(payload: unknown): { viewId: string } {
   return { viewId: pluginString(pluginRecord(payload).viewId, 'viewId', 100) }
 }
@@ -57,54 +66,50 @@ export function registerPluginHandlers(
       },
     })
   }
+
+  const registerSchema = <Wire extends z.ZodType, T, R>(
+    operation: SchemaOperation<string, 'query' | 'command', Wire, T>,
+    handler: Pick<ControlSurfaceHandler<T, R>, 'handle' | 'defaultErrorCode'>,
+  ): void => {
+    registerOperation(controlSurface, operation, {
+      ...handler,
+      handle: async (ctx, value) => {
+        try {
+          return await handler.handle(ctx, value)
+        } catch (error) {
+          return fail(error)
+        }
+      },
+    })
+  }
   registerPluginPreferenceHandlers(controlSurface, manager)
-  register('plugin.list', {
-    kind: 'query',
-    validate: () => null,
+  registerSchema(pluginListOperation, {
     handle: async () => ({
       plugins: await manager.list(),
     }),
     defaultErrorCode: 'common.invalid_input',
   })
-  register('plugin.details', {
-    kind: 'query',
-    validate: pluginId,
+  registerSchema(pluginDetailsOperation, {
     handle: async (_ctx, input) => manager.details(input.pluginId),
     defaultErrorCode: 'common.invalid_input',
   })
-  register('plugin.install', {
-    kind: 'command',
-    validate: payload => ({
-      directory: pluginString(pluginRecord(payload).directory, 'directory', 4096),
-    }),
+  registerSchema(pluginInstallOperation, {
     handle: async (_ctx, input) => manager.install(input.directory),
     defaultErrorCode: 'common.invalid_input',
   })
-  register('plugin.reload', {
-    kind: 'command',
-    validate: pluginId,
+  registerSchema(pluginReloadOperation, {
     handle: async (_ctx, input) =>
       distribution ? distribution.rebuild(input.pluginId) : manager.reload(input.pluginId),
     defaultErrorCode: 'common.invalid_input',
   })
-  register('plugin.uninstall', {
-    kind: 'command',
-    validate: pluginId,
+  registerSchema(pluginUninstallOperation, {
     handle: async (_ctx, input) => {
       await manager.uninstall(input.pluginId)
       return { ok: true }
     },
     defaultErrorCode: 'common.invalid_input',
   })
-  register('plugin.setEnabled', {
-    kind: 'command',
-    validate: payload => {
-      const record = pluginRecord(payload)
-      if (typeof record.enabled !== 'boolean') {
-        throw new Error('Plugin enabled must be a boolean.')
-      }
-      return { ...pluginId(payload), enabled: record.enabled }
-    },
+  registerSchema(pluginSetEnabledOperation, {
     handle: async (_ctx, input) => manager.setEnabled(input.pluginId, input.enabled),
     defaultErrorCode: 'common.invalid_input',
   })

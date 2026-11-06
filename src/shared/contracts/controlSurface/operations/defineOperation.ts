@@ -25,6 +25,8 @@ export interface SchemaOperation<
   input: Wire
   normalize: (wire: z.output<Wire>) => Input
   errors: readonly AppErrorCode[]
+  /** Migration hook: inspect raw keys and reproduce legacy errors. Cannot override schema rejection. */
+  legacyNormalize?: (payload: unknown) => Input
 }
 export interface LegacyOperation<
   Id extends string,
@@ -42,6 +44,7 @@ export function defineOperation<
     input: Wire
     errors: readonly AppErrorCode[]
     normalize: (wire: z.output<Wire>) => Input
+    legacyNormalize?: (payload: unknown) => Input
   },
 ): Readonly<SchemaOperation<Id, Kind, Wire, Input>>
 export function defineOperation<
@@ -56,6 +59,7 @@ export function defineOperation(
     input: z.ZodType
     errors: readonly AppErrorCode[]
     normalize?: (wire: never) => unknown
+    legacyNormalize?: (payload: unknown) => unknown
   },
 ) {
   return Object.freeze({

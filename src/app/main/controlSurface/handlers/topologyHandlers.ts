@@ -1,3 +1,16 @@
+import {
+  endpointListOperation,
+  endpointPingOperation,
+  endpointRegisterOperation,
+  endpointRemoveOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/endpoint'
+import {
+  mountCreateOperation,
+  mountListOperation,
+  mountRemoveOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/mount'
+import { mountTargetResolveOperation } from '../../../../shared/contracts/controlSurface/operations/domains/mountTarget'
+import { registerOperation } from '../registerOperation'
 import { hostname } from 'node:os'
 import type { ControlSurface } from '../controlSurface'
 import { createAppError, OpenCoveAppError } from '../../../../shared/errors/appError'
@@ -8,34 +21,26 @@ import type {
   ListWorkerEndpointOverviewsResult,
   PingWorkerEndpointResult,
   PrepareWorkerEndpointResult,
-  RepairWorkerEndpointResult,
   ReadEndpointDirectoryResult,
+  RepairWorkerEndpointResult,
+  SshConfigHost,
 } from '../../../../shared/contracts/dto'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 import type { EndpointHealthService } from '../topology/endpointHealthService'
-import type { SshConfigHost } from '../../../../shared/contracts/dto'
 import {
   isUnknownControlSurfaceOperationError,
-  normalizeCreateMountPayload,
   normalizeEndpointHomeDirectoryPayload,
   normalizeEndpointReadDirectoryPayload,
-  normalizeListMountsPayload,
-  normalizePingEndpointPayload,
   normalizePrepareEndpointPayload,
   normalizePromoteMountPayload,
-  normalizeRegisterEndpointPayload,
   normalizeRegisterManagedSshEndpointPayload,
-  normalizeRemoveEndpointPayload,
-  normalizeRemoveMountPayload,
   normalizeRepairEndpointPayload,
-  normalizeResolveMountTargetPayload,
   normalizeSshConfigHostsPayload,
   normalizeUpdateManagedSshEndpointPayload,
 } from './topologyHandlerPayloads'
-
 export function registerTopologyHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -45,9 +50,7 @@ export function registerTopologyHandlers(
     readSshConfigHosts: () => Promise<SshConfigHost[]>
   },
 ): void {
-  controlSurface.register('endpoint.list', {
-    kind: 'query',
-    validate: payload => payload ?? null,
+  registerOperation(controlSurface, endpointListOperation, {
     handle: async () => await deps.topology.listEndpoints(),
     defaultErrorCode: 'common.unexpected',
   })
@@ -59,9 +62,7 @@ export function registerTopologyHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('endpoint.register', {
-    kind: 'command',
-    validate: normalizeRegisterEndpointPayload,
+  registerOperation(controlSurface, endpointRegisterOperation, {
     handle: async (_ctx, payload) => await deps.topology.registerEndpoint(payload),
     defaultErrorCode: 'common.unexpected',
   })
@@ -91,9 +92,7 @@ export function registerTopologyHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('endpoint.remove', {
-    kind: 'command',
-    validate: normalizeRemoveEndpointPayload,
+  registerOperation(controlSurface, endpointRemoveOperation, {
     handle: async (_ctx, payload) => await deps.topology.removeEndpoint(payload),
     defaultErrorCode: 'common.unexpected',
   })
@@ -122,9 +121,7 @@ export function registerTopologyHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('endpoint.ping', {
-    kind: 'query',
-    validate: normalizePingEndpointPayload,
+  registerOperation(controlSurface, endpointPingOperation, {
     handle: async (ctx, payload): Promise<PingWorkerEndpointResult> => {
       if (payload.endpointId === 'local') {
         return {
@@ -356,16 +353,12 @@ export function registerTopologyHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('mount.list', {
-    kind: 'query',
-    validate: normalizeListMountsPayload,
+  registerOperation(controlSurface, mountListOperation, {
     handle: async (_ctx, payload) => await deps.topology.listMounts(payload),
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('mount.create', {
-    kind: 'command',
-    validate: normalizeCreateMountPayload,
+  registerOperation(controlSurface, mountCreateOperation, {
     handle: async (_ctx, payload) => {
       if (payload.endpointId === 'local') {
         await deps.approvedWorkspaces.registerRoot(payload.rootPath)
@@ -401,9 +394,7 @@ export function registerTopologyHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('mount.remove', {
-    kind: 'command',
-    validate: normalizeRemoveMountPayload,
+  registerOperation(controlSurface, mountRemoveOperation, {
     handle: async (_ctx, payload) => await deps.topology.removeMount(payload),
     defaultErrorCode: 'common.unexpected',
   })
@@ -415,9 +406,7 @@ export function registerTopologyHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('mountTarget.resolve', {
-    kind: 'query',
-    validate: normalizeResolveMountTargetPayload,
+  registerOperation(controlSurface, mountTargetResolveOperation, {
     handle: async (_ctx, payload) => await deps.topology.resolveMountTarget(payload),
     defaultErrorCode: 'common.unexpected',
   })

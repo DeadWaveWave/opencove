@@ -4,6 +4,6 @@ export const noteCreateOperation = defineLegacyOperation({
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Perform note create.',
+  summary: 'Persist a note with text and geometry in the specified space',
 })
 export const noteOperations = [noteCreateOperation] as const
