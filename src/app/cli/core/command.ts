@@ -1,4 +1,5 @@
 import type { CONTROL_SURFACE_OPERATIONS } from '../../../shared/contracts/controlSurface/operations'
+import type { Connection } from './context'
 import type { CliIo } from './io'
 export type OperationId = (typeof CONTROL_SURFACE_OPERATIONS)[number]['id']
 export interface OptionSpec {
@@ -23,6 +24,7 @@ export interface CommandArgs {
 }
 export type CommandResult = unknown
 export interface CommandContext extends CommandArgs {
+  connection?: Connection
   io: CliIo
   input: unknown
   invoke(id: OperationId, payload: unknown): Promise<unknown>
@@ -35,7 +37,11 @@ export interface Command {
   options?: Record<string, OptionSpec>
   positionals?: PositionalSpec[]
   targetSpace?: 'required' | 'optional'
+  mutation?: boolean
+  stream?: boolean
+  timeoutMs?: number
   connect: boolean
+  selectOperation?(args: CommandArgs): OperationId
   operation?: OperationId
   buildInput?(args: CommandArgs): unknown
   execute?(ctx: CommandContext): Promise<CommandResult>

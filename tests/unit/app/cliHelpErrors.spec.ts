@@ -2,7 +2,18 @@
 import { expect, it, vi } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
 import type { CliIo } from '../../../src/app/cli/core/io'
-import { legacyGroups, legacyHelp } from '../../../src/app/cli/core/helpCatalog'
+import { commands } from '../../../src/app/cli/commands'
+const groups = [
+  'worker',
+  'runtime',
+  'endpoint',
+  'mount',
+  'fs',
+  'worktree',
+  'session',
+  'pty',
+  'plugin',
+]
 
 function fixture(tty = false) {
   let stdout = '',
@@ -27,22 +38,20 @@ function fixture(tty = false) {
     }),
     readStdinText: vi.fn(async () => ''),
     profileCandidates: () => ['.codex-out/tmp/profile-a', '.codex-out/tmp/profile-b'],
-    legacy: vi.fn(async () => 0),
   }
   return { io, out: () => stdout, err: () => stderr }
 }
-it.each(legacyGroups)('lists real %s subcommands offline', async group => {
+it.each(groups)('lists real %s subcommands offline', async group => {
   const f = fixture()
   expect(await run([group, '--help'], f.io)).toBe(0)
-  for (const [syntax, summary] of legacyHelp[group]) {
-    expect(f.out()).toContain(syntax)
+  for (const { path, summary } of commands.filter(c => c.path[0] === group)) {
+    expect(f.out()).toContain(path[1])
     expect(f.out()).toContain(summary)
   }
   expect(f.out()).toMatchSnapshot()
   expect(f.out()).not.toContain('(legacy)')
   expect(f.out()).not.toContain('--timeout')
   expect(f.out()).toContain('Global options: see "opencove --help".')
-  expect(f.io.legacy).not.toHaveBeenCalled()
   expect(f.io.fetch).not.toHaveBeenCalled()
   expect(f.io.readTextFile).not.toHaveBeenCalled()
 })

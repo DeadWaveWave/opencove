@@ -137,3 +137,5 @@ If `opencove plugin guide` cannot start, repair the launcher from Settings →
 Connections → CLI → Install CLI. If a running app rejects the documented commands,
 check that the CLI and app are from the same build. Do not invent alternate
 commands, edit the application's database, or hardcode a plugin into host source.
+
+CLI success writes value-only JSON to stdout. Failure exits nonzero and writes JSON `error` to stderr. `plugin run` accepts `--params <json>` or `--params-file <path|->`; the two options are mutually exclusive. Use `--help` for command options and examples.

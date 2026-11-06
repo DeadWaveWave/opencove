@@ -204,12 +204,14 @@ describe('TypeScript CLI core', () => {
     expect(await run(['api', 'schema', 'node.list'], f.io)).toBe(1)
     expect(f.err()).toContain('api.schema_unavailable')
   })
-  it('delegates legacy argv exactly once', async () => {
+  it('routes session through the core', async () => {
     const f = fixture()
-    f.io.legacy = vi.fn(async () => 0)
-    await run(['session', 'get', '--session', 'id'], f.io)
-    expect(f.io.legacy).toHaveBeenCalledWith(['session', 'get', '--session', 'id'])
-    expect(f.fetch).not.toHaveBeenCalled()
+    expect(await run(['session', 'get', '--session', 'id'], f.io)).toBe(0)
+    expect(JSON.parse(f.fetch.mock.calls[0][1].body)).toEqual({
+      kind: 'query',
+      id: 'session.get',
+      payload: { sessionId: 'id' },
+    })
   })
 })
 

@@ -1,3 +1,8 @@
+import { lifecycleCommands } from './lifecycle'
+import { ptyAttach } from './pty'
+import { pluginCommands } from './plugins'
+import { remoteCommands } from './remote'
+import { filesystemCommands } from './filesystem'
 import * as z from 'zod'
 import {
   CONTROL_SURFACE_OPERATIONS,
@@ -8,6 +13,11 @@ import { CliError, usage } from '../core/errors'
 import { nodeCommands, stringOption } from './nodes'
 export const commands = [
   ...nodeCommands,
+  ...lifecycleCommands,
+  ptyAttach,
+  ...pluginCommands,
+  ...remoteCommands,
+  ...filesystemCommands,
   ...(
     [
       ['ping', 'system.ping'],
@@ -107,3 +117,40 @@ export const commands = [
     buildInput: ({ options: o }) => o.input ?? null,
   }),
 ]
+
+for (const command of [...remoteCommands, ...pluginCommands, ...lifecycleCommands, ptyAttach]) {
+  if (command.examples) {
+    continue
+  }
+  const values: Record<string, string> = {
+    id: 'sample',
+    directory: './plugin',
+    repository: 'https://github.com/example/plugin.git',
+    'candidate-id': 'candidate-123',
+    revision: 'revision-123',
+    command: 'status',
+    skill: 'usage',
+  }
+  const args = [
+    ...command.path,
+    ...(command.positionals ?? []).map(p => values[p.name] ?? 'sample'),
+  ]
+  for (const [name, spec] of Object.entries(command.options ?? {})) {
+    if (!spec.required) {
+      continue
+    }
+    args.push(
+      `--${name}`,
+      (
+        {
+          hostname: 'worker.example.com',
+          port: '4312',
+          'remote-token': 'remote-token',
+          'root-path': '/workspace',
+          prompt: '"Review the project"',
+        } as Record<string, string>
+      )[name] ?? `${name}-123`,
+    )
+  }
+  command.examples = [`opencove ${args.join(' ')}`]
+}

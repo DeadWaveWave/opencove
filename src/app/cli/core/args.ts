@@ -64,8 +64,28 @@ export function parse(argv: string[], specs: Record<string, OptionSpec>, path: s
     }
   }
   try {
-    return parseArgs({ args: argv, options, strict: true, allowPositionals: true })
+    const result = parseArgs({
+      args: argv,
+      options,
+      strict: true,
+      allowPositionals: true,
+      tokens: true,
+    })
+    const seen = new Set<string>()
+    for (const token of result.tokens) {
+      if (token.kind !== 'option') {
+        continue
+      }
+      if (seen.has(token.name) && !specs[token.name]?.multiple) {
+        usage(`Option --${token.name} may only be specified once.`, commandHelpHint(path))
+      }
+      seen.add(token.name)
+    }
+    return result
   } catch (error) {
+    if (error instanceof CliError) {
+      throw error
+    }
     const message = error instanceof Error ? error.message : String(error)
     const flag = /(--[\w-]+|-[a-zA-Z])/.exec(message)?.[1] ?? '--option'
     const hint = commandHelpHint(path)
@@ -123,7 +143,7 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
     const file = values[`${key}-file`]
     if (file !== undefined) {
       if (values[key] !== undefined) {
-        usage(`Cannot use --${key} and --${key}-file together`)
+        usage(`Cannot use --${key} and --${key}-file together`, commandHelpHint(command.path))
       }
       try {
         // File variants are consumed in order; stdin is a single stream.
@@ -158,7 +178,7 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
         try {
           return JSON.parse(String(value))
         } catch {
-          usage(`Invalid JSON for --${key}`)
+          usage(`Invalid JSON for --${key}`, commandHelpHint(command.path))
         }
       }
       return value
@@ -189,7 +209,10 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
     (positionals.length > (command.positionals?.length ?? 0) ||
       command.positionals?.some((p, i) => p.required && positionals[i] === undefined))
   ) {
-    usage('Invalid positional arguments')
+    usage(
+      `Invalid positional arguments for "opencove ${command.path.join(' ')}".`,
+      commandHelpHint(command.path),
+    )
   }
   return { options: values, positionals }
 }

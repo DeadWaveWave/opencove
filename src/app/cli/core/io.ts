@@ -15,7 +15,6 @@ export interface CliIo {
   dispose?(): void
   profileCandidates?(): string[]
   isProcessAlive?(pid: number): boolean
-  legacy?(argv: string[]): Promise<number>
 }
 export function createNodeCliIo(): CliIo {
   const controller = new AbortController()

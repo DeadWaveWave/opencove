@@ -1,7 +1,6 @@
 import type { Command, OptionSpec } from './command'
 import { globals } from './args'
-import { legacyHelp, sections, commandExamples } from './helpCatalog'
-export { legacyGroups } from './helpCatalog'
+import { sections, commandExamples } from './helpCatalog'
 const footer = 'Global options: see "opencove --help".'
 function rows(entries: [string, string][]) {
   const width = Math.max(...entries.map(([name]) => name.length))
@@ -100,26 +99,6 @@ export function help(commands: Command[], path: string[]) {
       ]
     lines.push('', 'Examples:', ...examples.map(e => `  ${e}`), '', footer)
     return lines.join('\n') + '\n'
-  }
-  const legacy = legacyHelp[path[0]]
-  if (legacy) {
-    const entry = legacy.find(([syntax]) => syntax.split(' ')[0] === path[1])
-    if (path.length > 1 && entry) {
-      return (
-        [`Usage: opencove ${path[0]} ${entry[0]} [options]`, '', entry[1], '', footer].join('\n') +
-        '\n'
-      )
-    }
-    return (
-      [
-        `Usage: ${prefix} <command> [options]`,
-        '',
-        'Commands:',
-        ...rows(legacy.map(([syntax, summary]) => [syntax, summary])),
-        '',
-        footer,
-      ].join('\n') + '\n'
-    )
   }
   const children = new Map<string, Command[]>()
   for (const c of commands) {

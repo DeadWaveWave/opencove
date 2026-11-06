@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runCommand } from '../../../src/platform/process/runCommand'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../src/app/cli/constants.mjs'
-import { resolvePluginCommandTimeout } from '../../../src/app/cli/commands/plugins.mjs'
+import { resolvePluginCommandTimeout } from '../../../src/app/cli/commands/plugins'
 
 let root: string
 const cli = resolve('out/cli/opencove.mjs')
@@ -50,8 +50,8 @@ describe('offline plugin commands', () => {
     async subcommand => {
       const result = await runPlugin([...(subcommand ? [subcommand] : []), '--endpoint', 'invalid'])
       expect(result.exitCode).toBe(2)
-      expect(result.stderr).toContain('unsupported plugin command')
-      expect(result.stderr).toContain('opencove plugin guide')
+      expect(result.stderr).toContain('cli.usage')
+      expect(result.stderr).toContain('opencove')
       expect(result.stderr).not.toContain('control surface')
       expect(result.stderr).not.toContain('--token')
       expect(result.stdout).toBe('')
@@ -72,7 +72,7 @@ describe('offline plugin commands', () => {
   ])('rejects invalid plugin arguments %j before connection discovery', async (...args) => {
     const result = await runPlugin([...args, '--endpoint', 'invalid'])
     expect(result.exitCode).toBe(2)
-    expect(result.stderr).toContain('usage: opencove plugin')
+    expect(result.stderr).toContain('cli.usage')
     expect(result.stderr).not.toContain('--token')
     expect(await readdir(root)).toEqual([])
   })
@@ -117,9 +117,11 @@ describe('offline plugin commands', () => {
           'fixture',
         ])
         expect(result.exitCode).toBe(1)
-        expect(JSON.parse(result.stdout)).toMatchObject({
-          ok: true,
-          value: { status, candidateId: 'candidate', candidateDirectory: '/preserved/source' },
+        expect(result.stdout).toBe('')
+        expect(JSON.parse(result.stderr).error.details).toMatchObject({
+          status,
+          candidateId: 'candidate',
+          candidateDirectory: '/preserved/source',
         })
       } finally {
         server.closeAllConnections()
@@ -162,8 +164,8 @@ describe('offline plugin commands', () => {
         'fixture',
       ])
       expect(result.exitCode, result.stderr).toBe(0)
-      expect(JSON.parse(result.stdout)).toEqual({ ok: true, value: [{ id: 'sample-plugin' }] })
-      expect(requests).toEqual(['system.capabilities', 'plugin.list'])
+      expect(JSON.parse(result.stdout)).toEqual([{ id: 'sample-plugin' }])
+      expect(requests).toEqual(['plugin.list'])
     } finally {
       server.closeAllConnections()
       await new Promise<void>((resolvePromise, reject) =>
@@ -214,11 +216,9 @@ describe('offline plugin commands', () => {
       ])
       expect(result.exitCode, result.stderr).toBe(0)
       expect(JSON.parse(result.stdout)).toEqual({
-        ok: true,
-        value: { plugin: { id: 'my-plugin' } },
+        plugin: { id: 'my-plugin' },
       })
       expect(requests).toEqual([
-        { kind: 'query', id: 'system.capabilities', payload: null },
         {
           kind: fixture.kind,
           id: fixture.id,
