@@ -14,6 +14,7 @@ function regularTerminalLaunchGeometry() {
 describe('createTerminalNodeAtFlowPosition', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000001')
   })
 
   afterEach(() => {
@@ -26,7 +27,9 @@ describe('createTerminalNodeAtFlowPosition', () => {
       profileId: null,
       runtimeKind: 'posix' as const,
     }))
-    const createNodeForSession = vi.fn(async () => ({ id: 'node-1' }) as never)
+    const createNodeForSession = vi.fn(
+      async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
+    )
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -83,7 +86,9 @@ describe('createTerminalNodeAtFlowPosition', () => {
     const expectedGeometry = regularTerminalLaunchGeometry()
 
     expect(ptySpawn).toHaveBeenCalledWith({
+      canvasNodeId: '00000000-0000-4000-8000-000000000001',
       cwd: '/workspace/root/space',
+      spaceId: 'space-1',
       workspaceId: 'workspace-1',
       cols: expectedGeometry.cols,
       rows: expectedGeometry.rows,
@@ -91,6 +96,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
     })
     expect(createNodeForSession).toHaveBeenCalledWith(
       expect.objectContaining({
+        nodeId: '00000000-0000-4000-8000-000000000001',
         sessionId: 'session-1',
         terminalGeometry: expectedGeometry,
         executionDirectory: '/workspace/root/space',
@@ -99,7 +105,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
     )
     expect(result).toEqual({
       sessionId: 'session-1',
-      nodeId: 'node-1',
+      nodeId: '00000000-0000-4000-8000-000000000001',
     })
   })
 
@@ -110,7 +116,9 @@ describe('createTerminalNodeAtFlowPosition', () => {
       runtimeKind: 'posix' as const,
     }))
     const controlSurfaceInvoke = vi.fn()
-    const createNodeForSession = vi.fn(async () => ({ id: 'node-2' }) as never)
+    const createNodeForSession = vi.fn(
+      async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
+    )
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -153,9 +161,14 @@ describe('createTerminalNodeAtFlowPosition', () => {
     })
     const expectedGeometry = regularTerminalLaunchGeometry()
 
+    expect(createNodeForSession).toHaveBeenCalledWith(
+      expect.objectContaining({ nodeId: '00000000-0000-4000-8000-000000000001' }),
+    )
     expect(controlSurfaceInvoke).not.toHaveBeenCalled()
     expect(ptySpawn).toHaveBeenCalledWith({
+      canvasNodeId: '00000000-0000-4000-8000-000000000001',
       cwd: '/workspace/root',
+      spaceId: undefined,
       workspaceId: 'workspace-1',
       cols: expectedGeometry.cols,
       rows: expectedGeometry.rows,
@@ -181,7 +194,9 @@ describe('createTerminalNodeAtFlowPosition', () => {
         profileId: null,
         runtimeKind: 'posix' as const,
       })
-    const createNodeForSession = vi.fn(async () => ({ id: 'node-remote' }) as never)
+    const createNodeForSession = vi.fn(
+      async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
+    )
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -233,6 +248,9 @@ describe('createTerminalNodeAtFlowPosition', () => {
       kind: 'command',
       id: 'pty.spawnInMount',
       payload: {
+        canvasNodeId: '00000000-0000-4000-8000-000000000001',
+        workspaceId: 'workspace-remote',
+        spaceId: undefined,
         mountId: 'mount-remote',
         cwdUri: 'file:///remote/root',
         profileId: null,
@@ -243,6 +261,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
     expect(ptySpawn).not.toHaveBeenCalled()
     expect(createNodeForSession).toHaveBeenCalledWith(
       expect.objectContaining({
+        nodeId: '00000000-0000-4000-8000-000000000001',
         sessionId: 'session-remote',
         terminalGeometry: expectedGeometry,
         executionDirectory: '/remote/root',
@@ -251,7 +270,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
     )
     expect(result).toEqual({
       sessionId: 'session-remote',
-      nodeId: 'node-remote',
+      nodeId: '00000000-0000-4000-8000-000000000001',
     })
   })
 
@@ -261,7 +280,9 @@ describe('createTerminalNodeAtFlowPosition', () => {
       profileId: null,
       runtimeKind: 'posix' as const,
     }))
-    const createNodeForSession = vi.fn(async () => ({ id: 'node-calibrated' }) as never)
+    const createNodeForSession = vi.fn(
+      async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
+    )
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -329,6 +350,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
     )
     expect(createNodeForSession).toHaveBeenCalledWith(
       expect.objectContaining({
+        nodeId: '00000000-0000-4000-8000-000000000001',
         terminalGeometry: calibratedGeometry,
       }),
     )

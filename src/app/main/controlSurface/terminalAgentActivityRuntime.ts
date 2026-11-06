@@ -24,6 +24,9 @@ export function createTerminalAgentActivityRuntime(options: {
   disposeSessionStateWatcher?: (sessionId: string) => void
 }): {
   activity: TerminalAgentActivityEnvironmentService
+  ensureAssets: () => Promise<
+    import('../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore').TerminalAgentTelemetryAssets
+  >
   agentProviderRegistry: AgentProviderRegistry
   metadataSources: readonly Pick<AgentHookChannel, 'onMetadata'>[]
   stateSources: readonly Pick<AgentHookChannel, 'onState'>[]
@@ -81,6 +84,7 @@ export function createTerminalAgentActivityRuntime(options: {
 
   return {
     activity,
+    ensureAssets: () => assets.ensure(),
     agentProviderRegistry,
     metadataSources,
     stateSources: options.agentHookChannels,

@@ -23,8 +23,10 @@ export interface ListTerminalProfilesResult {
 }
 
 export interface SpawnTerminalInput {
-  cwd: string
+  canvasNodeId?: string
   workspaceId?: string
+  spaceId?: string
+  cwd: string
   profileId?: string
   shell?: string
   command?: string | null
@@ -35,6 +37,9 @@ export interface SpawnTerminalInput {
 }
 
 export interface SpawnTerminalInMountInput {
+  canvasNodeId?: string
+  workspaceId?: string
+  spaceId?: string
   mountId: string
   cwdUri?: string | null
   profileId?: string | null

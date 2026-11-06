@@ -58,6 +58,8 @@ export function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalIn
   const env = normalizeEnvPayload(record.env)
 
   return {
+    ...(typeof record.canvasNodeId === 'string' ? { canvasNodeId: record.canvasNodeId } : {}),
+    ...(typeof record.spaceId === 'string' ? { spaceId: record.spaceId } : {}),
     cwd,
     ...(workspaceId.length > 0 ? { workspaceId } : {}),
     profileId: profileId.length > 0 ? profileId : undefined,

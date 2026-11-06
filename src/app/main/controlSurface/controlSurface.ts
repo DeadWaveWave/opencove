@@ -1,3 +1,5 @@
+import { sessionGrantAllowsOperation } from './http/sessionGrantAuthorization'
+import { createAppErrorDescriptor } from '../../../shared/errors/appError'
 import { toAppErrorDescriptor } from '../../../shared/errors/appError'
 import type {
   ControlSurfaceInvokeRequest,
@@ -18,7 +20,14 @@ export interface ControlSurface {
 }
 
 export function createControlSurface(
-  options: { enter?: (id: string) => (() => void) | undefined } = {},
+  options: {
+    enter?: (id: string) => (() => void) | undefined
+    run?: (
+      ctx: ControlSurfaceContext,
+      request: ControlSurfaceInvokeRequest,
+      execute: () => Promise<unknown>,
+    ) => Promise<unknown>
+  } = {},
 ): ControlSurface {
   const handlers = new Map<string, ControlSurfaceHandler<unknown, unknown>>()
 
@@ -32,6 +41,13 @@ export function createControlSurface(
       handlers.set(id, handler as ControlSurfaceHandler<unknown, unknown>)
     },
     invoke: async (ctx, request) => {
+      if (ctx.requestAuth?.kind === 'session-grant' && !sessionGrantAllowsOperation(request.id)) {
+        return {
+          __opencoveControlEnvelope: true,
+          ok: false,
+          error: createAppErrorDescriptor('common.forbidden'),
+        }
+      }
       const handler = handlers.get(request.id)
       if (!handler || handler.kind !== request.kind) {
         return {
@@ -49,7 +65,8 @@ export function createControlSurface(
         leave = options.enter?.(request.id)
         ctx.assertActive?.()
         const payload = handler.validate(request.payload)
-        const value = await handler.handle(ctx, payload)
+        const execute = async () => await handler.handle(ctx, payload)
+        const value = options.run ? await options.run(ctx, request, execute) : await execute()
 
         return {
           __opencoveControlEnvelope: true,

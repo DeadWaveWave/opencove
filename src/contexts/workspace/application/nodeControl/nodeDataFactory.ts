@@ -288,6 +288,7 @@ export function resolveCreateFrame(options: {
 }
 
 export function makeNode(options: {
+  id?: string
   kind: ManagedCanvasNodeKind
   title: string
   frame: CanvasNodeFrameDto
@@ -346,7 +347,7 @@ export function makeNode(options: {
       : null
 
   return {
-    id: randomUUID(),
+    id: options.id ?? randomUUID(),
     sessionId: runtime?.sessionId ?? null,
     title: options.title,
     titlePinnedByUser: false,

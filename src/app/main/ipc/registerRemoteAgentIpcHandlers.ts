@@ -330,6 +330,9 @@ export function registerRemoteAgentIpcHandlers(options: {
         kind: 'command',
         id: 'session.launchAgent',
         payload: {
+          canvasNodeId: payload.canvasNodeId,
+          workspaceId: payload.workspaceId,
+          spaceId: payload.spaceId,
           cwd,
           prompt: typeof payload?.prompt === 'string' ? payload.prompt : '',
           provider,

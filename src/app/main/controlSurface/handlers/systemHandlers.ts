@@ -2,6 +2,7 @@ import { registerOperationIntrospectionHandlers } from './operationIntrospection
 import {
   systemCapabilitiesOperation,
   systemPingOperation,
+  systemWhoamiOperation,
 } from '../../../../shared/contracts/controlSurface/operations/domains/system'
 import { registerOperation } from '../registerOperation'
 import { hostname } from 'node:os'
@@ -24,6 +25,27 @@ export function registerSystemHandlers(
   },
 ): void {
   registerOperationIntrospectionHandlers(controlSurface)
+  registerOperation(controlSurface, systemWhoamiOperation, {
+    defaultErrorCode: 'common.unexpected',
+    handle: ctx => {
+      const auth = ctx.requestAuth
+      const identity =
+        auth?.kind === 'session-grant'
+          ? {
+              kind: auth.kind,
+              scopeTier: 'interact' as const,
+              projectId: auth.grant.projectId,
+              spaceId: auth.grant.spaceId,
+              nodeId: auth.grant.nodeId,
+              sessionId: auth.grant.sessionId,
+            }
+          : {
+              kind: auth?.kind === 'cookie' ? ('cookie' as const) : ('bearer' as const),
+              scopeTier: 'admin' as const,
+            }
+      return { ...identity, instanceId: deps.instanceId, appVersion: deps.appVersion }
+    },
+  })
   registerOperation(controlSurface, systemPingOperation, {
     handle: ctx =>
       ({

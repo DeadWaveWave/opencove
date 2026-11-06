@@ -74,6 +74,16 @@ export function createRuntimeDeps(
     assertActive: ctx.assertActive,
     validateTarget: ctx.validateNodeTarget,
     launchAgent: async (resolved, data) => {
+      const spawnContext = {
+        ...ctx,
+        spawnIdentity: resolved.canvasNodeId
+          ? {
+              projectId: resolved.workspace.id,
+              spaceId: resolved.space?.id ?? '',
+              nodeId: resolved.canvasNodeId,
+            }
+          : undefined,
+      }
       const payload = resolved.mount
         ? {
             mountId: resolved.mount.mountId,
@@ -89,7 +99,7 @@ export function createRuntimeDeps(
             model: data.model,
           }
       ctx.assertActive?.()
-      const launched = await invokeInternal<Record<string, unknown>>(controlSurface, ctx, {
+      const launched = await invokeInternal<Record<string, unknown>>(controlSurface, spawnContext, {
         kind: 'command',
         id: resolved.mount ? 'session.launchAgentInMount' : 'session.launchAgent',
         payload,
@@ -112,6 +122,16 @@ export function createRuntimeDeps(
       }
     },
     spawnTerminal: async (resolved, data) => {
+      const spawnContext = {
+        ...ctx,
+        spawnIdentity: resolved.canvasNodeId
+          ? {
+              projectId: resolved.workspace.id,
+              spaceId: resolved.space?.id ?? '',
+              nodeId: resolved.canvasNodeId,
+            }
+          : undefined,
+      }
       if (resolved.endpoint.kind === 'remote_worker' && data.command && !data.shell) {
         throw createAppError('common.invalid_input', {
           debugMessage: 'A remote terminal command requires an explicit target shell.',
@@ -128,7 +148,7 @@ export function createRuntimeDeps(
       }
       ctx.assertActive?.()
       const result = resolved.mount
-        ? await invokeInternal<SpawnTerminalResult>(controlSurface, ctx, {
+        ? await invokeInternal<SpawnTerminalResult>(controlSurface, spawnContext, {
             kind: 'command',
             id: 'pty.spawnInMount',
             payload: {
@@ -137,7 +157,7 @@ export function createRuntimeDeps(
               ...base,
             } satisfies SpawnTerminalInMountInput,
           })
-        : await invokeInternal<SpawnTerminalResult>(controlSurface, ctx, {
+        : await invokeInternal<SpawnTerminalResult>(controlSurface, spawnContext, {
             kind: 'command',
             id: 'pty.spawn',
             payload: {

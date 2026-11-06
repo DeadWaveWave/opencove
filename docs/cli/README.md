@@ -158,3 +158,23 @@ opencove worker start --hostname 0.0.0.0 --web-ui-password 'change-me'
 当 Web UI 暴露到 localhost 之外时，必须设置密码或等价安全门禁。
 
 相关文档：[Agent playbook](AGENT_PLAYBOOK.md)、[Canvas node control](CANVAS_NODE_CONTROL.md)、[Managed SSH runtime](../runtime/MANAGED_SSH_RUNTIME.md)。
+
+## Canvas 终端身份
+
+Hosting Worker 在 canvas PTY spawn 时注入 `OPENCOVE_ENV=1`、`OPENCOVE_NODE_ID`、
+`OPENCOVE_SPACE_ID`、`OPENCOVE_PROJECT_ID`、`OPENCOVE_CONTROL_URL`、session-scoped
+`OPENCOVE_CONTROL_TOKEN` 和 `OPENCOVE_CLI`；PTY host 分配实际 session ID 后注入
+`OPENCOVE_SESSION_ID`。不属于 Space 的节点使用空 `OPENCOVE_SPACE_ID`。Worker 全权限
+bearer 不进入该环境，调用者提供的身份/控制环境变量会被覆盖。
+
+现有 shim directory 提供 `opencove`（POSIX sh）和 `opencove.cmd`，并被放在 PATH 首部。
+Launcher 使用本 Worker 的 runtime executable；CLI 从环境读取 endpoint/token，显式 CLI
+flags 优先。`OPENCOVE_CLI` 指向构建产物 `out/cli/opencove.mjs`。
+
+`node.create` 和 UI 创建流程在 spawn 前预留 node ID；Worker 校验已有节点的所属记录，
+恢复使用 Worker 保存的身份。远端由实际 hosting Worker 签发 grant。凭证在 spawn 注册完成后
+激活，失败、退出、kill、hosting Worker shutdown 时失效。`system.whoami` 返回 caller identity、
+scopeTier、instanceId 和 appVersion，不返回 token/hash。
+
+Windows 直接以 `wsl.exe` 启动 canvas PTY 暂时明确拒绝 scoped identity：Windows shim 路径与
+loopback URL 不能保证在 WSL 中可用。应在 WSL 内运行 hosting Worker，并通过 mount 使用它。

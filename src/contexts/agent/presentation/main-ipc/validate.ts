@@ -273,6 +273,9 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
   }
 
   return {
+    ...(typeof record.canvasNodeId === 'string' ? { canvasNodeId: record.canvasNodeId } : {}),
+    ...(typeof record.workspaceId === 'string' ? { workspaceId: record.workspaceId } : {}),
+    ...(typeof record.spaceId === 'string' ? { spaceId: record.spaceId } : {}),
     provider,
     cwd,
     profileId: profileId.length > 0 ? profileId : null,

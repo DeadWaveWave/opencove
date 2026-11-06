@@ -43,6 +43,7 @@ async function fallbackToFailedAgentTerminal({
 
   try {
     const fallback = await window.opencoveApi.pty.spawn({
+      canvasNodeId: node.id,
       cwd,
       ...(profileId ? { profileId } : {}),
       cols: 80,
@@ -180,6 +181,7 @@ export async function hydrateAgentNode({
   if (shouldAutoResumeAgent) {
     try {
       const restoredAgent = await window.opencoveApi.agent.launch({
+        canvasNodeId: node.id,
         provider: sanitizedAgent.provider,
         cwd: sanitizedAgent.executionDirectory,
         profileId: terminalProfileId,
@@ -234,6 +236,7 @@ export async function hydrateAgentNode({
   if (shouldRelaunchBlankAgent) {
     try {
       const relaunchedAgent = await window.opencoveApi.agent.launch({
+        canvasNodeId: node.id,
         provider: sanitizedAgent.provider,
         cwd: sanitizedAgent.executionDirectory,
         profileId: terminalProfileId,
@@ -286,6 +289,7 @@ export async function hydrateAgentNode({
 
   try {
     const spawned = await window.opencoveApi.pty.spawn({
+      canvasNodeId: node.id,
       cwd: sanitizedAgent.executionDirectory,
       profileId: terminalProfileId ?? undefined,
       cols: 80,

@@ -1,10 +1,12 @@
 import type { AgentRunStateRegistry } from '../../../contexts/agent/application/AgentRunStateRegistry'
 import { isAgentRuntimeStream, serveAgentRuntimeEvents } from './http/agentRuntimeSse'
+import type { SessionGrantRegistry } from './http/sessionGrantRegistry'
+import { sessionGrantAllowsOperation } from './http/sessionGrantAuthorization'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface'
 import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import { tryHandlePluginAssetRoute } from './pluginAssetRoutes'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { createAppErrorDescriptor } from '../../../shared/errors/appError'
+import { createAppError, createAppErrorDescriptor } from '../../../shared/errors/appError'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import type { ControlSurface } from './controlSurface'
 import type { ControlSurfaceContext } from './types'
@@ -32,6 +34,7 @@ export interface ControlSurfaceHttpRequestHandlerDeps {
   plugins: PluginInstallationManager
   ctx: ControlSurfaceContext
   token: string
+  sessionGrants?: SessionGrantRegistry
   webSessions: WebSessionManager
   controlSurface: ControlSurface
   getPersistenceStore: () => Promise<PersistenceStore>
@@ -49,7 +52,7 @@ function listenerAllowsAuth(
   auth: RequestAuth,
 ): boolean {
   if (role === 'private') {
-    return auth.kind === 'bearer' || auth.kind === 'query_token'
+    return auth.kind === 'bearer' || auth.kind === 'query_token' || auth.kind === 'session-grant'
   }
 
   return true
@@ -162,6 +165,7 @@ export function createControlSurfaceHttpRequestHandler(
           req,
           url,
           token: deps.token,
+          sessionGrants: deps.sessionGrants,
           webSessions: deps.webSessions,
           allowQueryToken: true,
           now: deps.ctx.now(),
@@ -171,6 +175,23 @@ export function createControlSurfaceHttpRequestHandler(
           return
         }
 
+        let streamRevoked = false
+        const unsubscribeGrant =
+          auth.kind === 'session-grant'
+            ? deps.sessionGrants?.onRevoke(auth.grant.grantId, () => {
+                streamRevoked = true
+                deps.syncClients.delete(res)
+                deps.agentClients?.delete(res)
+                listenerSyncClients.delete(res)
+                res.end()
+              })
+            : undefined
+        res.once('close', () => unsubscribeGrant?.())
+        if (streamRevoked) {
+          return
+        }
+
+        // A revoked session grant ends the agent runtime stream too (subscription above).
         if (isAgentRuntimeStream(url)) {
           if (!deps.agentRuns || !deps.agentClients) {
             res.statusCode = 503
@@ -211,10 +232,11 @@ export function createControlSurfaceHttpRequestHandler(
         ) {
           try {
             const store = await deps.getPersistenceStore()
-            writeSseEvent(res, {
-              type: 'resync_required',
-              revision: await store.readAppStateRevision(),
-            })
+            const revision = await store.readAppStateRevision()
+            if (streamRevoked) {
+              return
+            }
+            writeSseEvent(res, { type: 'resync_required', revision })
           } catch {
             // ignore
           }
@@ -231,9 +253,13 @@ export function createControlSurfaceHttpRequestHandler(
           }
         }
 
+        if (streamRevoked) {
+          return
+        }
         deps.syncClients.add(res)
         listenerSyncClients.add(res)
         req.on('close', () => {
+          unsubscribeGrant?.()
           deps.syncClients.delete(res)
           listenerSyncClients.delete(res)
         })
@@ -251,6 +277,7 @@ export function createControlSurfaceHttpRequestHandler(
       req,
       url,
       token: deps.token,
+      sessionGrants: deps.sessionGrants,
       webSessions: deps.webSessions,
       allowQueryToken: false,
       now: deps.ctx.now(),
@@ -280,6 +307,18 @@ export function createControlSurfaceHttpRequestHandler(
 
     try {
       const request = normalizeInvokeRequest(await readJsonBody(req))
+      if (auth.kind === 'session-grant' && !deps.sessionGrants?.isActive(auth.grant.grantId)) {
+        sendJson(res, 401, buildUnauthorizedResult())
+        return
+      }
+      if (auth.kind === 'session-grant' && !sessionGrantAllowsOperation(request.id)) {
+        sendJson(res, 403, {
+          __opencoveControlEnvelope: true,
+          ok: false,
+          error: createAppErrorDescriptor('common.forbidden'),
+        })
+        return
+      }
       if (
         requiresPrivateBearer(request.id) &&
         (listener.role === 'web' || auth.kind !== 'bearer')
@@ -300,7 +339,26 @@ export function createControlSurfaceHttpRequestHandler(
       const revisionBefore = shouldCheckRevision
         ? await (await deps.getPersistenceStore()).readAppStateRevision()
         : null
-      const result = await deps.controlSurface.invoke(deps.ctx, request)
+      if (auth.kind === 'session-grant' && !deps.sessionGrants?.isActive(auth.grant.grantId)) {
+        sendJson(res, 401, buildUnauthorizedResult())
+        return
+      }
+      const result = await deps.controlSurface.invoke(
+        {
+          ...deps.ctx,
+          requestAuth: auth,
+          assertActive: () => {
+            deps.ctx.assertActive?.()
+            if (
+              auth.kind === 'session-grant' &&
+              !deps.sessionGrants?.isActive(auth.grant.grantId)
+            ) {
+              throw createAppError('control_surface.unauthorized')
+            }
+          },
+        },
+        request,
+      )
       if (shouldCheckRevision) {
         try {
           const revisionAfter = await (await deps.getPersistenceStore()).readAppStateRevision()

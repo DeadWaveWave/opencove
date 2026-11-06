@@ -1,5 +1,9 @@
 import { withAgentRunBindings } from './agentRunStatePersistence'
 import { createWorkerAgentRunState } from './ptyStream/ptyStreamAgentRunState'
+import { createSessionGrantPtyRuntime } from './sessionGrantPtyRuntime'
+import { canvasSpawnIdentity, canvasSpawnOperations } from './sessionSpawnIdentityContext'
+import { resolveCanvasSpawnIdentity } from './resolveCanvasSpawnIdentity'
+import { resolveWorkerCliScriptPath } from '../../../shared/runtime/opencoveRuntimePaths'
 import { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
 import { GitPluginSources } from '@contexts/plugins/infrastructure/GitPluginSources'
 import { registerPluginDistributionHandlers } from './handlers/pluginDistributionHandlers'
@@ -153,8 +157,15 @@ export function createControlSurfaceHttpRuntime(
     disposeSessionStateWatcher: options.ptyRuntime.disposeSessionStateWatcher,
   })
   const agentProviderRegistry = terminalAgents.agentProviderRegistry
+  let privateControlUrl = ''
+  const sessionAccess = createSessionGrantPtyRuntime({
+    runtime: options.ptyRuntime,
+    controlUrl: () => privateControlUrl,
+    cliPath: resolveWorkerCliScriptPath(__dirname),
+    ensureAssets: terminalAgents.ensureAssets,
+  })
   const ptyRuntime = createMultiEndpointPtyRuntime({
-    localRuntime: options.ptyRuntime,
+    localRuntime: sessionAccess.runtime,
     topology,
     disposeLocalRuntime: options.ownsPtyRuntime === true,
     agentStateSources: terminalAgents.stateSources,
@@ -162,6 +173,7 @@ export function createControlSurfaceHttpRuntime(
   })
   const ptyStreamService = createPtyStreamService({
     agentRuns,
+    sessionGrants: sessionAccess.grants,
     token,
     webSessions,
     now: ctx.now,
@@ -213,6 +225,25 @@ export function createControlSurfaceHttpRuntime(
       )
     : null
   const controlSurface = createControlSurface({
+    run: async (context, request, execute) => {
+      if (!canvasSpawnOperations.has(request.id)) {
+        return await execute()
+      }
+      // Direct PTY spawn admission must precede identity's persistence read, just as
+      // it precedes persistence-dependent work in the handler.
+      if (request.id === 'pty.spawn') {
+        const payload = request.payload as { workspaceId?: unknown }
+        terminalRuntimeAvailability.assertSpawnAllowed(
+          typeof payload.workspaceId === 'string' ? payload.workspaceId.trim() || null : null,
+          context.terminalRecoverySpawnScope,
+        )
+      }
+      const identity =
+        canvasSpawnIdentity.getStore() ??
+        (await resolveCanvasSpawnIdentity(context, request.payload, getPersistenceStore))
+      context.assertActive?.()
+      return identity ? await canvasSpawnIdentity.run(identity, execute) : await execute()
+    },
     enter: id =>
       maintenance &&
       !id.startsWith('worker.maintenance.') &&
@@ -265,6 +296,7 @@ export function createControlSurfaceHttpRuntime(
       return
     }
     closed = true
+    sessionAccess.dispose()
     plugins.beginShutdown()
     pluginViews.dispose()
     // Accepted long operations outlive HTTP handlers, but not runtime shutdown authority.
@@ -290,6 +322,7 @@ export function createControlSurfaceHttpRuntime(
   }
 
   const handleRequest = createControlSurfaceHttpRequestHandler({
+    sessionGrants: sessionAccess.grants,
     plugins,
     ctx,
     token,
@@ -339,6 +372,19 @@ export function createControlSurfaceHttpRuntime(
         },
         acceptedRequests,
       })
+      if (listenerOptions.role !== 'web') {
+        void listener.ready
+          .then(address => {
+            const host =
+              address.bindHostname === '0.0.0.0'
+                ? '127.0.0.1'
+                : address.bindHostname === '::'
+                  ? '::1'
+                  : address.bindHostname
+            privateControlUrl = `http://${host.includes(':') ? `[${host}]` : host}:${address.port}`
+          })
+          .catch(() => undefined)
+      }
       listeners.add(listener)
       return listener
     },

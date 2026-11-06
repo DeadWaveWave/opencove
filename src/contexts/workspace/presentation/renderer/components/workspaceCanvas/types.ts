@@ -231,6 +231,7 @@ export interface SpaceWorktreeMismatchDropWarningState {
 }
 
 export interface CreateNodeInput {
+  nodeId?: string
   sessionId: string
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind

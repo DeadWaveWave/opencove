@@ -143,6 +143,7 @@ export async function createTerminalNodeAtFlowPosition({
       executionDirectory: resolvedCwd,
     })
 
+  const canvasNodeId = crypto.randomUUID()
   let spawned: SpawnTerminalResult
 
   try {
@@ -151,6 +152,9 @@ export async function createTerminalNodeAtFlowPosition({
           kind: 'command',
           id: 'pty.spawnInMount',
           payload: {
+            canvasNodeId,
+            workspaceId,
+            spaceId: targetSpace?.id,
             mountId,
             cwdUri: spawnCwdUri,
             profileId: defaultTerminalProfileId,
@@ -166,6 +170,8 @@ export async function createTerminalNodeAtFlowPosition({
             kind: 'command',
             id: 'pty.spawn',
             payload: {
+              canvasNodeId,
+              spaceId: targetSpace?.id,
               cwd: resolvedCwd,
               workspaceId,
               profileId: defaultTerminalProfileId,
@@ -177,6 +183,8 @@ export async function createTerminalNodeAtFlowPosition({
             },
           })
         : await window.opencoveApi.pty.spawn({
+            canvasNodeId,
+            spaceId: targetSpace?.id,
             cwd: resolvedCwd,
             workspaceId,
             profileId: defaultTerminalProfileId ?? undefined,
@@ -200,6 +208,7 @@ export async function createTerminalNodeAtFlowPosition({
       : `terminal-${nodesRef.current.length + 1}`
 
   const created = await createNodeForSession({
+    nodeId: canvasNodeId,
     sessionId: spawned.sessionId,
     profileId: spawned.profileId,
     runtimeKind: spawned.runtimeKind,

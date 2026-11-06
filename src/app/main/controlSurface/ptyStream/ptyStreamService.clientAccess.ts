@@ -1,3 +1,4 @@
+import type { SessionGrantRegistry } from '../http/sessionGrantRegistry'
 import { randomBytes } from 'node:crypto'
 import type { IncomingMessage } from 'node:http'
 import type { Duplex } from 'node:stream'
@@ -44,6 +45,7 @@ export function handlePtyStreamUpgrade(input: {
   context: PtyStreamUpgradeContext
   ingressFrozen: boolean
   token: string
+  sessionGrants?: SessionGrantRegistry
   webSessions: WebSessionManager
   allowQueryToken: boolean
   now: () => Date
@@ -71,6 +73,7 @@ export function handlePtyStreamUpgrade(input: {
     req: input.req,
     url,
     token: input.token,
+    sessionGrants: input.sessionGrants,
     webSessions: input.webSessions,
     allowQueryToken: input.allowQueryToken,
     now: input.now(),
@@ -79,13 +82,26 @@ export function handlePtyStreamUpgrade(input: {
     !auth ||
     (input.context.listenerRole === 'private' &&
       auth.kind !== 'bearer' &&
-      auth.kind !== 'query_token')
+      auth.kind !== 'query_token' &&
+      auth.kind !== 'session-grant')
   ) {
     rejectUpgrade(input.socket, 'HTTP/1.1 401 Unauthorized')
     return
   }
 
   input.wss.handleUpgrade(input.req, input.socket, input.head, ws => {
+    let revoked = false
+    const unsubscribe =
+      auth.kind === 'session-grant'
+        ? input.sessionGrants?.onRevoke(auth.grant.grantId, () => {
+            revoked = true
+            ws.terminate()
+          })
+        : undefined
+    ws.once('close', () => unsubscribe?.())
+    if (revoked) {
+      return
+    }
     input.stateBySocket.set(ws, {
       clientId: randomBytes(12).toString('base64url'),
       kind: null,

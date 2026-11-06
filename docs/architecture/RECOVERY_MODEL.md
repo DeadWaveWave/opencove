@@ -341,3 +341,18 @@ compare-then-delete 不能与旧版写入实现原子互斥。Windows 文件锁�
 The executing Worker owns agent run-state decisions and turns. Durable `node.status` remains a UI
 projection and does not restore runtime authority. See [Agent run state](../agent/RUN_STATE.md) for
 incarnation fences, unknown/degraded semantics, turn completion and event recovery.
+
+### Session grant lifetime
+
+Session grant credentials belong to the Worker hosting the PTY, not to the Home transport.
+The PTY host cleans up sessions on parent disconnect and shutdown; cold recovery creates a new
+runtime epoch. Consequently local grants must not be restored merely from terminal presentation
+checkpoints. A Home restart that reconnects to a surviving remote Worker must preserve that remote
+Worker's grant ownership; a hosting Worker restart starts with no grants.
+
+The grant registry is memory-only, owned by the hosting Worker's local PTY wrapper. It tracks
+successful runtime registrations and revokes on exit, kill and shutdown. A failed/pending spawn
+reservation cannot authenticate, and late completion cannot reactivate a disposed owner. No grant
+persistence schema is introduced. Cold revival creates a new credential for the persisted node ID;
+reattaching a live remote session preserves the hosting Worker's existing credential. A grant must
+never be revived from a renderer cache.
