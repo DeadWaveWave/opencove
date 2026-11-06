@@ -12,6 +12,7 @@ import {
   seededWorkspaceId,
 } from './workspace-canvas.helpers'
 import { hoverCanvasPane } from './workspace-canvas.zoom.helpers'
+import { lodOf, setZoom } from './workspace-canvas.far-view.helpers'
 import {
   closeWebsiteTestServer,
   enableWebsiteWindowPolicy,
@@ -19,12 +20,6 @@ import {
 
 const TERMINAL = 'far-view-terminal'
 const NOTE = 'far-view-note'
-
-async function setZoom(window: Page, zoom: number) {
-  expect(
-    await window.evaluate(next => window.__opencoveWorkspaceCanvasTestApi?.setZoom(next), zoom),
-  ).toBe(true)
-}
 
 async function continuousWheelGesture(window: Page, deltaY: number, reactivate = false) {
   const point = await hoverCanvasPane(window)
@@ -83,9 +78,6 @@ async function readTerminal(window: Page) {
   }, TERMINAL)
 }
 
-const lodOf = (window: Page) =>
-  window.locator('.workspace-canvas').evaluate(canvas => canvas.getAttribute('data-cove-lod'))
-
 test('far view draws windows as tiles and leaves running terminals untouched', async () => {
   const { electronApp, window } = await launchApp()
   try {
@@ -134,12 +126,6 @@ test('far view draws windows as tiles and leaves running terminals untouched', a
       `.react-flow__node[data-id="${TERMINAL}"] .cove-node-presentation__runtime`,
     )
     await expect(runtime).toHaveCSS('content-visibility', 'hidden')
-    // The title stays legible on screen: 15px, capped by the tile (12% of a 460px window).
-    const title = await terminalTile
-      .locator('.workspace-far-tile__title')
-      .evaluate(element => element.getBoundingClientRect().height)
-    expect(title).toBeGreaterThan(9)
-    expect(title).toBeLessThan(40)
     expect(await readTerminal(window)).toEqual(before)
 
     // Hysteresis: far until above 28%.

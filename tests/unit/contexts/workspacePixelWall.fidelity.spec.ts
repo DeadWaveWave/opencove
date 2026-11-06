@@ -22,9 +22,8 @@ const vivid: WallPalette = {
     [255, 255, 255],
     [255, 255, 255],
   ],
-  spot: [255, 255, 255],
 }
-// No clouds at all: whatever moves a cell is shimmer, twinkle or the spotlight.
+// No clouds at all: whatever moves a cell is shimmer or twinkle.
 const plain: WallPalette = { ...vivid, clouds: vivid.clouds.map(() => base) }
 
 const grid = resolveWallGrid({ x: 0, y: 0, zoom: 1, width: 1920, height: 1200 })
@@ -120,28 +119,6 @@ describe('pixel wall twinkle near active windows', () => {
     const near = share(distance => distance > 3 * grid.worldCell && distance < 120)
     const far = share(distance => distance > 400)
     expect(near).toBeGreaterThan(far * 1.3)
-  })
-})
-
-describe('pixel wall cursor spotlight', () => {
-  const spot = { x: 960, y: 600 }
-  const column = Math.floor(spot.x / grid.screenCell)
-  const row = Math.floor(spot.y / grid.screenCell)
-
-  it('brightens the open wall around the pointer a little', () => {
-    const without = fillWallCells(grid, plain, null)
-    const lit = fillWallCells(grid, plain, null, { spot })
-    const gain = lift(lit, column, row) - lift(without, column, row)
-    expect(gain).toBeGreaterThan(20)
-    expect(gain).toBeLessThanOrEqual(255 * PIXEL_WALL.dark.spotA + 2)
-    // Far from the pointer nothing changes.
-    expect(cellAt(lit, 2, 2)).toEqual(cellAt(without, 2, 2))
-  })
-
-  it('never lights the glass behind a window', () => {
-    const glass = { x: 800, y: 480, width: 320, height: 240 }
-    const cells = fillWallCells(grid, plain, null, { windows: [glass], spot })
-    expect(lift(cells, column, row)).toBeLessThan(8)
   })
 })
 

@@ -26,8 +26,6 @@ export interface WallCellOptions {
   chrome?: readonly WallScreenRect[]
   /** How much faster than usual the clouds drift (showcase mode). */
   cloudSpeed?: number
-  /** The pointer on the wall, in CSS px: open wall near it brightens a little. */
-  spot?: { x: number; y: number } | null
 }
 
 /** Cells within this many cells of a window count as behind its glass, frame shadow included. */
@@ -227,18 +225,13 @@ function markActiveNearness(
   return near
 }
 
-/** Spotlight reach in CSS px squared, and its softness (Tide prototype). */
-const SPOT_REACH_SQ = 160_000
-const SPOT_SOFTNESS = 52_000
-
 /**
  * One colour per visible cell: the theme's cell colour with a little per-tile jitter, soft
  * colour clouds anchored to the world whose hue blends from one cloud colour into the next,
  * wandering bright patches (shimmer), a sparse twinkle in blank space that gathers around
- * working windows, a soft spotlight under the pointer, each window's work light and the output
- * ripples. Without a clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU
+ * working windows, each window's work light and the output ripples. Without a clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU
  * context) clouds, shimmer and twinkle are still; the lights keep whatever intensity the caller
- * resolved. Shimmer, twinkle and the spotlight never enter glass.
+ * resolved. Shimmer and twinkle never enter glass.
  *
  * Behind a window's glass, and behind the shell's chrome (`chrome`, screen bands where the top
  * bar and sidebar float on the wall), a cell moves at most `cap` toward any colour (Tide I6),
@@ -248,14 +241,7 @@ export function fillWallCells(
   grid: WallGrid,
   palette: WallPalette,
   timeSeconds: number | null,
-  {
-    out,
-    windows = [],
-    ripples = [],
-    chrome = [],
-    cloudSpeed = 1,
-    spot = null,
-  }: WallCellOptions = {},
+  { out, windows = [], ripples = [], chrome = [], cloudSpeed = 1 }: WallCellOptions = {},
 ): Uint8ClampedArray {
   const count = grid.columns * grid.rows
   const cells = out && out.length === count * 4 ? out : new Uint8ClampedArray(count * 4)
@@ -310,7 +296,7 @@ export function fillWallCells(
         cloud[2] = from[2] + (to[2] - from[2]) * blend
         shift = mix(cells, index, cloud, k, shift)
       }
-      // Shimmer, twinkle and the spotlight stay in blank space: never inside glass.
+      // Shimmer and twinkle stay in blank space: never inside glass.
       if (!behind?.[cell]) {
         const sheen = smoothstep(
           0.6,
@@ -327,20 +313,6 @@ export function fillWallCells(
             Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * 0.85
           if (twinkle > 0.02) {
             shift = mix(cells, index, palette.sparks[hue]!, twinkle, shift)
-          }
-        }
-        if (spot) {
-          const dx = grid.originX + (column + 0.5) * grid.screenCell - spot.x
-          const dy = grid.originY + (row + 0.5) * grid.screenCell - spot.y
-          const d2 = dx * dx + dy * dy
-          if (d2 < SPOT_REACH_SQ) {
-            shift = mix(
-              cells,
-              index,
-              palette.spot,
-              weights.spotA * Math.exp(-d2 / SPOT_SOFTNESS),
-              shift,
-            )
           }
         }
       }
