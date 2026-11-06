@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
 import { randomUUID } from 'node:crypto'
+import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
@@ -124,7 +125,7 @@ it('declares a real filesystem write failure', async () => {
     approvedWorkspaces: { registerRoot: async () => undefined, isPathApproved: async () => true },
   })
   // The parent is intentionally absent; no file or directory is created.
-  const uri = pathToFileURL(resolve('.codex-out/tmp', randomUUID(), 'missing.txt')).href
+  const uri = pathToFileURL(resolve(tmpdir(), randomUUID(), 'missing.txt')).href
   await expectDeclaredFailure(
     surface,
     'filesystem.writeFileText',
