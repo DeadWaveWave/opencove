@@ -6,6 +6,7 @@ import {
   type PixelNode,
   type PixelViewport,
 } from './model'
+import { drawPixelSparks, type PixelSpark } from './sparks'
 import { drawWorkingPixels } from './workingRenderer'
 import { drawDotRipples } from './dotRipples'
 import type { Ripple } from '../pixelWall/ripples'
@@ -94,6 +95,7 @@ export function drawPixelLayer({
   ripples = [],
   working = false,
   workingNow = now,
+  sparks = [],
 }: {
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
@@ -109,6 +111,7 @@ export function drawPixelLayer({
   ripples?: readonly Ripple[]
   working?: boolean
   workingNow?: number
+  sparks?: readonly PixelSpark[]
 }): boolean {
   const buffer = resolvePixelBuffer(viewport.width, viewport.height, window.devicePixelRatio)
   if (canvas.width !== buffer.width) {
@@ -151,6 +154,8 @@ export function drawPixelLayer({
       buffer.dpr,
     )
   }
+  drawPixelSparks(context, sparks, viewport, buffer.dpr)
+  active ||= sparks.length > 0
   context.globalAlpha = 1
   return active
 }

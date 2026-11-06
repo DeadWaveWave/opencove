@@ -240,11 +240,13 @@ static 1px frame highlight and no waves, following the spec table’s reduced-mo
 `resolveAgentPresentation` and only counts transitions seen live (a reload never signals):
 
 - A run finishing (working → standby), at most once per window per 3s: the window's frame flashes
-  in its kind colour and pixel sparks leave its corners; the wall sends a strong shockwave whose
+  in its kind colour and the canvas sheds 26 ink sparks from random perimeter points (speed 260,
+  base life 700ms); the wall sends a strong shockwave whose
   white crest stays in blank space (behind glass only the kind colour shows, within the cap). As
   the shockwave passes another window, that window's 1px edge glows in the sender's colour for
   half a second.
-- A change into failed: the frame jolts sideways in a 280ms glitch with red fragments, and the
+- A change into failed: the frame jolts sideways in a 280ms glitch; the canvas sheds 14 red sparks
+  (speed 150, base life 560ms, gravity 320), and the
   wall sends a small red ripple.
 
 Frame signals write one attribute (`data-cove-signal`) and one colour variable on the window, only
@@ -255,7 +257,7 @@ no waves, sparks or glitch.
 ## Canvas effects
 
 The effects canvas is a viewport-sized, read-only visual layer above the wall. It draws creation,
-closing and working effects, status corner marks, and the 「简约」 dot ripples. It paints no ambient
+closing and working effects, LOD/completion/failure sparks, status corner marks, and the 「简约」 dot ripples. It paints no ambient
 background (the older ridge and scan-line field is retired) and requests no frames while idle.
 It retains only bounded session/timestamp observations, not output text or persisted application state.
 
@@ -401,3 +403,18 @@ geometry; existing terminal continuity tests remain part of validation.
 For large workspaces, evaluate drawing cost and input latency with realistic node/output loads before
 raising the visual budget. Precise tool-level effects and text-frontier effects require trustworthy
 structured events or renderer APIs; they must not be inferred from CLI text.
+
+LOD changes shed 10 sparks per visible expanded window in its kind ink (speed 40, base life
+260ms). The effects layer reads the LOD attribute from `useSpaceVisualScale` and subscribes to
+`windowSignalEvents` for finished/failed runs; it does not infer either transition itself. An
+initial/reloaded LOD is not a transition. Signals off, reduced motion, hidden/offscreen canvases
+and disposal clear particles without replay; the background setting does not suppress signals.
+
+All three use Tide’s bounded field of at most 1200 particles. Origins and velocities are world
+coordinates; speed is multiplied by `0.5 + random()`, life by `0.7 + random() * 0.6`, size is
+`2 + random() * 2.5` screen px multiplied by `clamp(zoom, 0.55, 1.2)`. Exponential drag 2.4
+integrates from the event timestamp, gravity is analytic, and alpha is `(1 - age / life)^1.2`.
+The existing 30fps focused / 10fps unfocused / 0 hidden scheduler owns their frames. No CSS
+corner sparks remain; the frame flash and failure glitch retain their existing owner and timing.
+Creation/close assembly and burst retain their existing blue/cyan/mint gradients; their colour
+port is separate from these kind-ink signals. The wall’s glass cap is unchanged.

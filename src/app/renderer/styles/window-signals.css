@@ -5,26 +5,9 @@
   border-radius: var(--cove-node-radius);
 }
 
-/* A finished run: the frame flashes in the window's colour and pixel sparks leave its corners. */
+/* A finished run: the frame flashes in the window's colour while the effects canvas sheds its sparks. */
 .react-flow__node[data-cove-signal='complete'] {
   animation: cove-signal-complete 1.2s ease-out;
-}
-
-.react-flow__node[data-cove-signal='complete']::after,
-.react-flow__node[data-cove-signal='fail']::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  pointer-events: none;
-  background:
-    linear-gradient(var(--cove-signal-color), var(--cove-signal-color)) top left / 4px 4px no-repeat,
-    linear-gradient(var(--cove-signal-color), var(--cove-signal-color)) top right / 4px 4px
-      no-repeat,
-    linear-gradient(var(--cove-signal-color), var(--cove-signal-color)) bottom left / 4px 4px
-      no-repeat,
-    linear-gradient(var(--cove-signal-color), var(--cove-signal-color)) bottom right / 4px 4px
-      no-repeat;
-  animation: cove-signal-sparks 640ms steps(5) forwards;
 }
 
 /* A failure: the frame jolts sideways in a short scanline glitch and red fragments fly off. */
@@ -50,13 +33,6 @@
   }
   100% {
     box-shadow: 0 0 0 1px transparent;
-  }
-}
-
-@keyframes cove-signal-sparks {
-  to {
-    inset: -18px;
-    opacity: 0;
   }
 }
 
@@ -86,9 +62,5 @@
 
   .react-flow__node[data-cove-signal='complete'] {
     box-shadow: 0 0 0 2px var(--cove-signal-color);
-  }
-
-  .react-flow__node[data-cove-signal]::after {
-    content: none;
   }
 }

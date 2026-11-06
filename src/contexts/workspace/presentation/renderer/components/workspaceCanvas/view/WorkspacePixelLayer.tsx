@@ -23,6 +23,7 @@ import {
   readThemeEffect,
   subscribeThemeMotion,
 } from '@contexts/plugins/presentation/renderer/themeMotion'
+import { createPixelSignalSparks } from './pixelLayer/signalSparks'
 import { createThemeEffects } from './pixelLayer/themeEffects'
 import { createRippleField } from './pixelWall/ripples'
 import { emitOutputRipple, emitSonarRipples } from './pixelLayer/dotRipples'
@@ -55,23 +56,19 @@ function WorkspacePixelLayerComponent({
   const ripplesRef = useRef(ripples)
   const syncOptionsRef = useRef<(() => void) | null>(null)
   const { background, creation, closing, working } = options
-
   useLayoutEffect(() => {
     optionsRef.current = { background, creation, closing, working }
     syncOptionsRef.current?.()
   }, [background, creation, closing, working])
-
   useLayoutEffect(() => {
     ambientRef.current = ambient
     ripplesRef.current = ripples
     refreshRef.current?.()
   }, [ambient, ripples])
-
   useLayoutEffect(() => {
     nodesRef.current = nodes
     refreshRef.current?.()
   }, [nodes])
-
   useLayoutEffect(() => {
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
@@ -109,7 +106,12 @@ function WorkspacePixelLayerComponent({
       document.visibilityState !== 'hidden' &&
       viewport.width > 0 &&
       viewport.height > 0
-
+    const signalSparks = createPixelSignalSparks({
+      scope,
+      enabled: () => isVisible() && !reducedMotion && currentEffects().working,
+      readScene: () => ({ nodes: nodesRef.current, state: store.getState(), theme }),
+      invalidate: () => scheduler.invalidate(),
+    })
     const captureClosureGeometry = () => {
       if (!currentEffects().closing) {
         return
@@ -121,14 +123,12 @@ function WorkspacePixelLayerComponent({
         new Set(nodesRef.current.map(node => node.id)),
       )
     }
-
     const drawAssembly = () => {
       if (!reducedMotion && currentEffects().creation) {
         const pending = new Set(assembly.pendingIds(performance.now()))
         const candidates = frames.filter(frame => pending.has(frame.id))
         for (const id of readReadyPixelNodeIds(scope, candidates)) {
-          // RAF's timestamp can precede a busy DOM/layout commit. Start only after
-          // the real frame is present, using the same live clock as deadline cleanup.
+          // RAF can precede layout: start from the live clock only after the frame is ready.
           const readyAt = performance.now()
           if (assembly.markReady(id, readyAt)) {
             if (readThemeEffect('creation').preset === 'custom') {
@@ -187,6 +187,7 @@ function WorkspacePixelLayerComponent({
           emitSonarRipples(rippleField, workingNodes, nodesRef.current, viewport, canvas, now)
         }
         const dotWaves = ripplesRef.current && !reducedMotion ? rippleField.sample(now) : []
+        const sparks = signalSparks.sample(now)
         const active = drawPixelLayer({
           canvas,
           context,
@@ -198,10 +199,11 @@ function WorkspacePixelLayerComponent({
           reducedMotion,
           background: effects.background && readThemeEffect('background').preset === 'pixel',
           ripples: dotWaves,
+          sparks,
           working: effects.working && readThemeEffect('working').preset === 'pixel',
           workingNow: (now * 1400) / Math.max(1, readThemeEffect('working').durationMs ?? 1400),
         })
-        canvas.hidden = !effects.background && workingWindows.length === 0
+        canvas.hidden = !effects.background && workingWindows.length === 0 && sparks.length === 0
         canvas.dataset.covePixelWorkingNodeIds = workingNodes.map(node => node.id).join(',')
         canvas.dataset.covePixelActivity = active ? 'output' : 'idle'
         if (canvas.dataset.covePixelRipples !== String(dotWaves.length)) {
@@ -218,8 +220,6 @@ function WorkspacePixelLayerComponent({
         )
       },
     })
-
-    // Unfocused windows keep their ambient motion at a third of the rate (Tide phase 5.1).
     const syncFocus = () => {
       const focused = document.hasFocus()
       canvas.dataset.covePixelFocus = focused ? 'focused' : 'unfocused'
@@ -229,6 +229,7 @@ function WorkspacePixelLayerComponent({
       const visible = isVisible()
       canvas.dataset.covePixelVisibility = visible ? 'visible' : 'hidden'
       if (!visible && previousVisibility !== false) {
+        signalSparks.clear()
         activity.clear()
         customEffects.clear()
         assembly.clear()
@@ -278,6 +279,7 @@ function WorkspacePixelLayerComponent({
         canvas.dataset.covePixelActivity = 'idle'
       }
       if (!effects.working) {
+        signalSparks.clear()
         canvas.dataset.covePixelWorkingNodeIds = ''
       }
       if (isVisible()) {
@@ -287,6 +289,7 @@ function WorkspacePixelLayerComponent({
     }
     syncOptionsRef.current = syncOptions
     const onMotionChange = () => {
+      signalSparks.clear()
       reducedMotion = media.matches
       canvas.dataset.covePixelMotion = reducedMotion ? 'static' : 'enabled'
       activity.clear()
@@ -305,6 +308,7 @@ function WorkspacePixelLayerComponent({
       scheduler.invalidate()
     }
     const onThemeChange = () => {
+      signalSparks.clear()
       assembly.clear()
       masks.dispose()
       burst.clear()
@@ -396,8 +400,7 @@ function WorkspacePixelLayerComponent({
     })
     const unsubscribeCreation = subscribeWorkspaceNodeCreated(() => {
       refresh()
-      // A new window starts on the next frame, independent of the ambient 25Hz
-      // background cadence. Subsequent reveal frames retain the normal throttle.
+      // Start creation on the next frame; subsequent frames keep the shared throttle.
       scheduler.invalidate({ immediate: true })
     })
     const unsubscribeClosure = subscribeWorkspaceNodesClosed(nodeIds => {
@@ -438,12 +441,12 @@ function WorkspacePixelLayerComponent({
     syncOptions()
     syncVisibility()
     scheduler.invalidate()
-
     return () => {
       disposed = true
       refreshRef.current = null
       syncOptionsRef.current = null
       scheduler.dispose()
+      signalSparks.dispose()
       activity.clear()
       assembly.clear()
       masks.dispose()
@@ -469,7 +472,6 @@ function WorkspacePixelLayerComponent({
       window.removeEventListener('resize', refresh)
     }
   }, [store])
-
   return (
     <>
       <canvas
