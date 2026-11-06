@@ -208,11 +208,22 @@ Current code has some handlers that directly orchestrate persistence/topology be
 
 ## Adding A Capability
 
-1. Identify the owner and durable truth.
-2. Implement the domain/application usecase or boundary owner method.
-3. Register a command or query with runtime validation.
-4. Add contract tests for payload validation, success shape and stable error semantics.
-5. Add CLI/IPC/Web mapping only after the Control Surface contract exists.
+1. Identify the state owner and durable truth; implement side effects in the existing usecase/owner.
+2. Add one definition in `shared/contracts/controlSurface/operations/domains/<prefix>.ts` and include
+   it in `registry.ts`. Declare `id`, `kind`, `scope`, `availability`, a short summary and non-common
+   error codes. Unmigrated operations explicitly use `defineLegacyOperation`.
+3. Use two stages: `input` describes only wire shape and must pass
+   `z.toJSONSchema(input, { io: 'input', unrepresentable: 'throw' })`. Do not use refine, transform,
+   superRefine, preprocess or custom types. Pure `normalize` owns trimming, defaults, truncation,
+   cross-field rules, enum fallbacks and URI checks; reject with `common.invalid_input`.
+   Preserve the legacy accept-domain, including permissive fields, until a versioned change.
+4. Register schema operations through Main's `registerOperation`; retain handler authorization,
+   lifecycle fences and default error codes. Registry metadata does not grant authorization.
+5. Add strict export, frozen-oracle parity and real composition registration tests before adding
+   CLI/IPC/Web mappings. Output schemas are outside this migration.
+
+Renderer / Preload layers may only `import type` from operations and must not import `zod` at
+runtime. `architecture.rendererNoOperationRuntime` enforces this boundary, including subpaths.
 
 ## Verification Anchors
 

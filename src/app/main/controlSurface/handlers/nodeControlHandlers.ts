@@ -1,3 +1,5 @@
+import { registerOperation } from '../registerOperation'
+import { nodeCreateOperation } from '../../../../shared/contracts/controlSurface/operations/domains/node'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceContext } from '../types'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
@@ -122,25 +124,6 @@ function normalizeGetPayload(payload: unknown): GetNodeInput {
     throw createAppError('common.invalid_input', { debugMessage: 'Invalid payload for node.get.' })
   }
   return { nodeId: requiredString(payload.nodeId, 'nodeId') }
-}
-
-function normalizeCreatePayload(payload: unknown): CreateNodeInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for node.create.',
-    })
-  }
-  return {
-    kind: managedKind(payload.kind),
-    space:
-      payload.space === null || payload.space === undefined
-        ? null
-        : normalizeSpaceLocator(payload.space),
-    projectId: optionalString(payload.projectId),
-    title: optionalString(payload.title),
-    frame: normalizeFrame(payload.frame),
-    data: payload.data ?? null,
-  }
 }
 
 function normalizeUpdatePayload(payload: unknown): UpdateNodeInput {
@@ -268,9 +251,9 @@ export function registerNodeControlHandlers(
       })
     }),
   )
-  controlSurface.register(
-    'node.create',
-    command(normalizeCreatePayload, async (ctx, input) =>
+  registerOperation(controlSurface, nodeCreateOperation, {
+    defaultErrorCode: 'common.unexpected',
+    handle: async (ctx, input) =>
       queued(mutationQueue, async () => {
         const { store, locatorDeps, runtime } = await withDeps(ctx)
         return await createNodeForNodeControl({
@@ -281,8 +264,7 @@ export function registerNodeControlHandlers(
           now: ctx.now(),
         })
       }),
-    ),
-  )
+  })
   controlSurface.register(
     'node.update',
     command(normalizeUpdatePayload, async (ctx, input) =>

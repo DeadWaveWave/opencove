@@ -1,3 +1,5 @@
+import { registerOperation } from '../registerOperation'
+import { sessionLaunchAgentOperation } from '../../../../shared/contracts/controlSurface/operations/domains/session'
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
@@ -37,11 +39,7 @@ import type {
   TerminalSpawnAdmission,
 } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
-import {
-  isRecord,
-  normalizeLaunchAgentPayload,
-  normalizeOptionalString,
-} from './sessionLaunchPayloadSupport'
+import { isRecord, normalizeOptionalString } from './sessionLaunchPayloadSupport'
 import type { SessionRecord } from './sessionRecords'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
@@ -100,9 +98,7 @@ export function registerSessionHandlers(
 ): void {
   const sessions = new Map<string, SessionRecord>()
 
-  controlSurface.register('session.launchAgent', {
-    kind: 'command',
-    validate: normalizeLaunchAgentPayload,
+  registerOperation(controlSurface, sessionLaunchAgentOperation, {
     handle: async (ctx, payload): Promise<LaunchAgentSessionResult> => {
       const resolvedSpaceId = typeof payload.spaceId === 'string' ? payload.spaceId.trim() : ''
       const resolvedCwd = typeof payload.cwd === 'string' ? payload.cwd.trim() : ''
