@@ -78,7 +78,7 @@ describe('pixel wall windows', () => {
   it('brightens the window whose session produced output and ignores other sessions', () => {
     const tracker = createWallWindowTracker()
     tracker.sync(lookup(windowNode('a', {}), windowNode('b', {})), 0)
-    expect(tracker.observeOutput('b-session', 500)).toEqual({
+    expect(tracker.observeOutput('b-session', 500)).toMatchObject({
       id: 'b',
       center: { x: 150, y: 100 },
       family: 'shell',
@@ -131,6 +131,38 @@ describe('pixel wall windows', () => {
 })
 
 describe('pixel wall waiting windows', () => {
+  it('limits sonar and beacons to their respective screen margins', () => {
+    const tracker = createWallWindowTracker()
+    tracker.sync(
+      lookup(
+        windowNode(
+          'work-in',
+          { kind: 'agent', status: 'running' },
+          { x: 1599, y: 0, width: 100, height: 100 },
+        ),
+        windowNode(
+          'work-out',
+          { kind: 'agent', status: 'running' },
+          { x: 1601, y: 0, width: 100, height: 100 },
+        ),
+        windowNode(
+          'wait-in',
+          { kind: 'agent', status: 'waiting' },
+          { x: 1439, y: 0, width: 100, height: 100 },
+        ),
+        windowNode(
+          'wait-out',
+          { kind: 'agent', status: 'waiting' },
+          { x: 1441, y: 0, width: 100, height: 100 },
+        ),
+      ),
+      0,
+    )
+    const view = { x: 0, y: 0, width: 600, height: 400, zoom: 0.5 }
+    expect(tracker.working(view).map(window => window.id)).toEqual(['work-in'])
+    expect(tracker.waiting(view).map(window => window.id)).toEqual(['wait-in'])
+  })
+
   it('lists the windows waiting for you with their centres', () => {
     const tracker = createWallWindowTracker()
     tracker.sync(
@@ -144,6 +176,6 @@ describe('pixel wall waiting windows', () => {
       ),
       0,
     )
-    expect(tracker.waiting()).toEqual([{ id: 'wait', center: { x: 200, y: 50 } }])
+    expect(tracker.waiting()).toMatchObject([{ id: 'wait', center: { x: 200, y: 50 } }])
   })
 })

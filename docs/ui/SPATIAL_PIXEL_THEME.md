@@ -219,8 +219,13 @@ starts without it. A short hint says how to leave, then fades.
 
 Plain terminal output (the PTY event hub) sends a ripple out from the window's centre (Tide phase 5.4a):
 a true circle whose wavefront brightens the wall cells it passes, or the dots of the 「简约」 grid,
-in the window's kind colour, for about a second. Each window starts at most one ripple per 700ms
-and the canvas carries at most 24. Agent PTY repaints send neither output ripples nor output light
+in the window's kind colour, for 1100ms. Rings start at 0.35 times the sending window's short side;
+the radius adds `reach * (1 - (1 - t)^2.2)` and amplitude decays by `(1 - t)^1.5`. A Gaussian
+band (`exp(-x²)`, width at least 0.8 world cells) reaches 2.5 widths on either side. Output uses
+240px reach, 30px width and 0.85 amplitude; sonar uses 200/44/0.45 over 1600ms. Cells mix by
+0.8 in dark and 0.72 in light. Lit minimal-grid dots use the strongest wave above 0.06, with
+size `1.5 + round(v*4)*0.8` and alpha `min(1, 0.3+v)`, outside windows and shell chrome. Each window starts at most one ripple per 700ms
+and the canvas carries at most 24, dropping the oldest when a new wave arrives. Agent PTY repaints send neither output ripples nor output light
 flashes; authoritative state drives their sonar, waiting and completion signals. Future ACP message
 events may drive agent output ripples. A ripple only means output arrived, never a tool call, success
 or completion. It is cut to the visible grid and visits only the cells in its band, so its cost
@@ -231,7 +236,7 @@ keeps the status corner marks. E2E reads `getRippleCount()` from the wall probe.
 ## Waiting for you
 
 A window whose agent waits for you (`resolveAgentPresentation` status `waiting`) sends a yellow
-pulse ring across the wall every 1.8s, on top of its steady yellow light; reduced motion keeps
+beacon every 1300ms while within 120 screen px of the view (150px reach, 28px width, 0.9 amplitude); reduced motion keeps
 only the light. When the window is entirely out of view, an edge beacon (`WorkspaceEdgeBeacons`)
 sits where the line from the view's centre to the window crosses a frame inset from the canvas
 edges: a titled pill with an arrow, five at most (nearest first) and the rest as one "+N" pill.
@@ -249,7 +254,7 @@ and the second train starts half the unexpanded world perimeter later. As in the
 the expanded path adds `48 / zoom` world px to a lap. Only windows within a 40px margin participate.
 The colour is the kind ink (`--cove-kind-<family>-ink`): step 11 in dark, step 9 in light
 (neutral: step 10 / 9); Pixel themes fall back to their blue/cyan/mint palette. Every 2.4s it also sends a low sonar wave across the wall, or through the 「简约」
-dots. Both follow the Agent working effect switch; 「关闭」 has no sonar. Reduced motion keeps a
+dots. Wall sonar includes windows within 200 screen px of the view. Both follow the Agent working effect switch; 「关闭」 has no sonar. Reduced motion keeps a
 static 1px frame highlight and no waves, following the spec table’s reduced-motion promise
 (the prototype drawFx itself skips the patrol). Turning signals off removes the highlight too.
 
@@ -261,12 +266,14 @@ static 1px frame highlight and no waves, following the spec table’s reduced-mo
 - A run finishing (working → standby), at most once per window per 3s: the window's frame flashes
   in its kind colour and the canvas sheds 26 ink sparks from random perimeter points (speed 260,
   base life 700ms); the wall sends a strong shockwave whose
-  white crest stays in blank space (behind glass only the kind colour shows, within the cap). As
+  white crest stays outside windows and their one-cell margins (behind glass only the kind colour
+  shows, within the cap). Both last 2100ms; the kind wave uses 860px reach / 56px width / amplitude 1,
+  the crest 900/22/0.95 with a 0.92 mixing weight. As
   the shockwave passes another window, that window's 1px edge glows in the sender's colour for
   half a second.
 - A change into failed: the frame jolts sideways in a 280ms glitch; the canvas sheds 14 red sparks
   (speed 150, base life 560ms, gravity 320), and the
-  wall sends a small red ripple.
+  wall sends a red ripple over 820ms, with 190px reach, 26px width and 0.95 amplitude.
 
 Frame signals write one attribute (`data-cove-signal`) and one colour variable on the window, only
 while they last, and never touch the fill behind its text. They follow the Agent working effect
@@ -276,7 +283,8 @@ no waves, sparks or glitch.
 ## Canvas effects
 
 The effects canvas is a viewport-sized, read-only visual layer above the wall. It draws creation,
-closing and working effects, LOD/completion/failure sparks, status corner marks, and the 「简约」 dot ripples. It paints no ambient
+closing and working effects, LOD/completion/failure sparks, status corner marks, and the 「简约」 dot ripples. The ripples are
+drawn first, under the patrol and the sparks, as the prototype's dot canvas sits under its effects canvas. It paints no ambient
 background (the older ridge and scan-line field is retired) and requests no frames while idle.
 It retains only bounded session/timestamp observations, not output text or persisted application state.
 

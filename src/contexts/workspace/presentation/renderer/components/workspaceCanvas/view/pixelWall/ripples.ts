@@ -1,46 +1,48 @@
 import type { Rgb } from '@shared/design/oklch'
 
-/** A ripple lasts about a second (Tide signals). */
-export const RIPPLE_DURATION_MS = 1000
-/** Each window starts at most one ripple per 700ms… */
+export const RIPPLE_DURATION_MS = 1100
 export const RIPPLE_WINDOW_INTERVAL_MS = 700
-/** …and the canvas carries at most 24 at once. */
 export const RIPPLE_LIMIT = 24
-/** How far a ripple travels, in world px. */
-const RIPPLE_REACH = 640
+export const SONAR_INTERVAL_MS = 2400
+export const BEACON_INTERVAL_MS = 1300
+
+/** Tide prototype RIPPLE (1539–1546); drawField (1948) uses the same 1.5 decay for all types. */
+export const RIPPLE_SHAPES = {
+  output: { durationMs: 1100, reach: 240, width: 30, amp: 0.85 },
+  sonar: { durationMs: 1600, reach: 200, width: 44, amp: 0.45 },
+  beacon: { durationMs: 1300, reach: 150, width: 28, amp: 0.9 },
+  complete: { durationMs: 2100, reach: 860, width: 56, amp: 1 },
+  crest: { durationMs: 2100, reach: 900, width: 22, amp: 0.95 },
+  fail: { durationMs: 820, reach: 190, width: 26, amp: 0.95 },
+} as const
+export type RippleType = keyof typeof RIPPLE_SHAPES
 
 export interface Ripple {
-  /** Who sent it: a window id, or `complete:` / `fail:` / `waiting:` plus one. */
   key?: string
-  /** Centre in world px. */
+  sourceId?: string
   x: number
   y: number
-  /** Current wavefront radius and half-width of its band, in world px. */
   radius: number
+  /** Gaussian width, in world px. */
   band: number
-  /** 0–1, fading as the ripple travels. */
   strength: number
   color: Rgb
-  /** How strongly the wavefront pulls a cell toward its colour; output ripples use the default. */
-  gain?: number
-  /** A white crest in blank space, never behind glass (the completion shockwave). */
   crest?: boolean
+  sweep?: boolean
 }
 
 export interface WaveOptions {
-  reach?: number
-  durationMs?: number
-  gain?: number
-  crest?: boolean
-  /** The least time between two waves with this key; output ripples use 700ms. */
+  type?: RippleType
+  initialRadius?: number
+  sourceId?: string
   minIntervalMs?: number
 }
 
-/**
- * Received output sends a ripple out from the window's centre: a true circle whose wavefront
- * brightens the cells (or dots) it passes. It only means "output arrived", never a tool call,
- * success or completion. Runtime only.
- */
+export function rippleRadius(rect: { width: number; height: number }): number {
+  return 0.35 * Math.min(rect.width, rect.height)
+}
+
+/** Runtime signal waves, bounded by count and lifetime; overflow drops the oldest wave. */
 export function createRippleField() {
   const ripples: Array<{
     key: string
@@ -48,25 +50,25 @@ export function createRippleField() {
     y: number
     color: Rgb
     startedAt: number
-    reach: number
-    durationMs: number
-    gain?: number
-    crest?: boolean
+    type: RippleType
+    initialRadius: number
+    sourceId?: string
   }> = []
   const lastByWindow = new Map<string, number>()
   const prune = (now: number) => {
     for (let index = ripples.length - 1; index >= 0; index--) {
-      if (now - ripples[index]!.startedAt > ripples[index]!.durationMs) {
+      const ripple = ripples[index]!
+      if (now - ripple.startedAt >= RIPPLE_SHAPES[ripple.type].durationMs) {
         ripples.splice(index, 1)
       }
     }
+    for (const [key, at] of lastByWindow) {
+      if (now - at > SONAR_INTERVAL_MS) {
+        lastByWindow.delete(key)
+      }
+    }
   }
-
   return {
-    /**
-     * Returns whether a wave started; throttled per key and capped overall. Signal waves (a
-     * finished run, a failure) pass their own key and shape.
-     */
     emit(
       windowId: string,
       center: { x: number; y: number },
@@ -79,45 +81,43 @@ export function createRippleField() {
       if (last !== undefined && now - last < (options.minIntervalMs ?? RIPPLE_WINDOW_INTERVAL_MS)) {
         return false
       }
-      if (ripples.length >= RIPPLE_LIMIT) {
-        return false
-      }
       lastByWindow.set(windowId, now)
+      if (ripples.length >= RIPPLE_LIMIT) {
+        ripples.shift()
+      }
       ripples.push({
         key: windowId,
-        x: center.x,
-        y: center.y,
+        ...center,
         color,
         startedAt: now,
-        reach: options.reach ?? RIPPLE_REACH,
-        durationMs: options.durationMs ?? RIPPLE_DURATION_MS,
-        ...(options.gain === undefined ? {} : { gain: options.gain }),
-        ...(options.crest ? { crest: true } : {}),
+        type: options.type ?? 'output',
+        initialRadius: options.initialRadius ?? 0,
+        sourceId: options.sourceId,
       })
       return true
     },
-    /** Whether a wave with this key may start now, before paying to build it. */
     ready(windowId: string, now: number, minIntervalMs = RIPPLE_WINDOW_INTERVAL_MS): boolean {
       const last = lastByWindow.get(windowId)
-      return (last === undefined || now - last >= minIntervalMs) && ripples.length < RIPPLE_LIMIT
+      return last === undefined || now - last >= minIntervalMs
     },
     sample(now: number): Ripple[] {
       prune(now)
       return ripples
         .filter(ripple => now >= ripple.startedAt)
         .map(ripple => {
-          const t = (now - ripple.startedAt) / ripple.durationMs
-          const eased = 1 - (1 - t) ** 3
+          const shape = RIPPLE_SHAPES[ripple.type]
+          const t = (now - ripple.startedAt) / shape.durationMs
           return {
             key: ripple.key,
+            sourceId: ripple.sourceId,
             x: ripple.x,
             y: ripple.y,
-            radius: 24 + (ripple.reach - 24) * eased,
-            band: 30 + 18 * t,
-            strength: (1 - t) ** 1.5,
+            radius: ripple.initialRadius + shape.reach * (1 - (1 - t) ** 2.2),
+            band: shape.width,
+            strength: shape.amp * (1 - t) ** 1.5,
             color: ripple.color,
-            ...(ripple.gain === undefined ? {} : { gain: ripple.gain }),
-            ...(ripple.crest ? { crest: true } : {}),
+            crest: ripple.type === 'crest',
+            sweep: ripple.type === 'complete' || ripple.type === 'crest',
           }
         })
     },
@@ -152,8 +152,10 @@ export function forEachRingCell(
   ripple: Pick<Ripple, 'x' | 'y' | 'radius' | 'band'>,
   visit: (column: number, row: number, weight: number) => void,
 ): void {
-  const outer = ripple.radius + ripple.band
-  const inner = Math.max(0, ripple.radius - ripple.band)
+  const width = Math.max(ripple.band, 0.8 * grid.worldCell)
+  const extent = 2.5 * width
+  const outer = ripple.radius + extent
+  const inner = Math.max(0, ripple.radius - extent)
   const cell = grid.worldCell
   const firstRow = Math.max(0, Math.floor((ripple.y - outer) / cell) - grid.firstRow)
   const lastRow = Math.min(grid.rows - 1, Math.ceil((ripple.y + outer) / cell) - grid.firstRow)
@@ -162,9 +164,12 @@ export function forEachRingCell(
     const last = Math.min(grid.columns - 1, Math.ceil(to / cell - 0.5) - grid.firstColumn)
     for (let column = first; column <= last; column++) {
       const cx = (grid.firstColumn + column + 0.5) * cell
+      if (cx < from || cx > to) {
+        continue
+      }
       const offset = Math.abs(Math.hypot(cx - ripple.x, cy - ripple.y) - ripple.radius)
-      if (offset <= ripple.band) {
-        visit(column, row, 1 - offset / ripple.band)
+      if (offset <= extent) {
+        visit(column, row, Math.exp(-((offset / width) ** 2)))
       }
     }
   }

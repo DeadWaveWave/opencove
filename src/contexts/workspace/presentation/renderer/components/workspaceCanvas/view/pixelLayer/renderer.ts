@@ -93,6 +93,7 @@ export function drawPixelLayer({
   reducedMotion,
   background = true,
   ripples = [],
+  rippleExclusions = [],
   working = false,
   workingNow = now,
   sparks = [],
@@ -109,6 +110,8 @@ export function drawPixelLayer({
   background?: boolean
   /** Output ripples through the dot grid (「简约」); under the pixel wall the wall draws them. */
   ripples?: readonly Ripple[]
+  /** Windows the ripples leave dark. */
+  rippleExclusions?: readonly { x: number; y: number; width: number; height: number }[]
   working?: boolean
   workingNow?: number
   sparks?: readonly PixelSpark[]
@@ -139,9 +142,10 @@ export function drawPixelLayer({
     active ||= !reducedMotion && activity.intensity(node, now) > 0
     drawNodePixels(context, node, 0, theme, gradient)
   }
-  if (background && !reducedMotion && ripples.length > 0) {
-    drawDotRipples(context, viewport, ripples)
-    active = true
+  // The caller decides when ripples show. They sit under the patrol and the sparks, as the
+  // prototype's dot canvas sits under its effects canvas.
+  if (!reducedMotion && ripples.length > 0) {
+    drawDotRipples(context, viewport, ripples, rippleExclusions)
   }
   if (working) {
     // Reduced motion keeps a static frame highlight instead of moving pixels.

@@ -34,8 +34,33 @@ describe('dot ripples on the minimal background', () => {
       // …within the band around the wavefront.
       expect(
         Math.abs(Math.hypot(cx - ripple.x, cy - ripple.y) - ripple.radius),
-      ).toBeLessThanOrEqual(ripple.band + 1)
+      ).toBeLessThanOrEqual(ripple.band * 2.5)
     }
+  })
+
+  it('uses the strongest Gaussian wave and the prototype dot size, alpha and cutoff', () => {
+    const { context, rects } = recorder()
+    drawDotRipples(context, viewport, [ripple, { ...ripple, strength: 0.5 }])
+    const centres = new Set<string>()
+    for (const rect of rects) {
+      const x = rect.x + rect.size / 2,
+        y = rect.y + rect.size / 2
+      const v = Math.exp(
+        -(((Math.hypot(x - ripple.x, y - ripple.y) - ripple.radius) / ripple.band) ** 2),
+      )
+      expect(v).toBeGreaterThan(0.06)
+      expect(rect.size).toBeCloseTo(1.5 + Math.round(v * 4) * 0.8)
+      expect(rect.alpha).toBeCloseTo(Math.min(1, 0.3 + v))
+      expect(centres.has(`${x},${y}`)).toBe(false)
+      centres.add(`${x},${y}`)
+    }
+  })
+
+  it('never paints a lit dot under a window or chrome rectangle', () => {
+    const { context, rects } = recorder()
+    drawDotRipples(context, viewport, [ripple], [{ x: 0, y: 0, width: 700, height: 900 }])
+    expect(rects.length).toBeGreaterThan(0)
+    expect(rects.every(rect => rect.x + rect.size / 2 > 700)).toBe(true)
   })
 
   it('follows the canvas pan and zoom', () => {

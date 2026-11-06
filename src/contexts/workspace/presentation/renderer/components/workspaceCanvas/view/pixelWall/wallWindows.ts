@@ -2,6 +2,7 @@ import type { InternalNode, Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../../types'
 import { resolveAgentPresentation } from '../../../../utils/agentPresentation'
 import { resolveWindowKindFamily, type WindowKindFamily } from '../../../../utils/windowKindFamily'
+import type { WallViewport } from './wallGrid'
 import type { WallWindowRect } from './wallCells'
 import { RIPPLE_WINDOW_INTERVAL_MS } from './ripples'
 import type { WallLightPalette } from './wallPalette'
@@ -27,6 +28,21 @@ interface WindowEvents {
  * hub and a run finishing (working → standby, seen live; a reload never flares). Runtime only:
  * nothing here is stored or written back (I7).
  */
+export function isWindowOnScreen(
+  rect: TrackedWindow['rect'],
+  view: WallViewport,
+  margin: number,
+): boolean {
+  const x = rect.x * view.zoom + view.x,
+    y = rect.y * view.zoom + view.y
+  return (
+    x + rect.width * view.zoom >= -margin &&
+    y + rect.height * view.zoom >= -margin &&
+    x <= view.width + margin &&
+    y <= view.height + margin
+  )
+}
+
 export function createWallWindowTracker() {
   let windows: TrackedWindow[] = []
   const events = new Map<string, WindowEvents>()
@@ -75,7 +91,12 @@ export function createWallWindowTracker() {
     observeOutput(
       sessionId: string,
       now: number,
-    ): { id: string; center: { x: number; y: number }; family: WindowKindFamily } | null {
+    ): {
+      id: string
+      center: { x: number; y: number }
+      family: WindowKindFamily
+      rect: TrackedWindow['rect']
+    } | null {
       if (!sessionId) {
         return null
       }
@@ -94,6 +115,7 @@ export function createWallWindowTracker() {
         id: window.id,
         center: { x: x + width / 2, y: y + height / 2 },
         family: window.family,
+        rect: window.rect,
       }
     },
     /** A window's centre, frame and kind, for the waves it sends. */
@@ -118,21 +140,36 @@ export function createWallWindowTracker() {
       return windows.map(({ id, rect }) => ({ id, rect }))
     },
     /** Working agents' centres and kinds, for their sonar waves. */
-    working(): Array<{ id: string; center: { x: number; y: number }; family: WindowKindFamily }> {
+    working(view?: WallViewport): Array<{
+      id: string
+      center: { x: number; y: number }
+      family: WindowKindFamily
+      rect: TrackedWindow['rect']
+    }> {
       return windows
-        .filter(window => window.state === 'working')
+        .filter(
+          window =>
+            window.state === 'working' && (!view || isWindowOnScreen(window.rect, view, 200)),
+        )
         .map(({ id, rect, family }) => ({
           id,
+          rect,
           center: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
           family,
         }))
     },
     /** Centres of the windows waiting for you, for their pulse rings. */
-    waiting(): Array<{ id: string; center: { x: number; y: number } }> {
+    waiting(
+      view?: WallViewport,
+    ): Array<{ id: string; center: { x: number; y: number }; rect: TrackedWindow['rect'] }> {
       return windows
-        .filter(window => window.state === 'waiting')
+        .filter(
+          window =>
+            window.state === 'waiting' && (!view || isWindowOnScreen(window.rect, view, 120)),
+        )
         .map(({ id, rect }) => ({
           id,
+          rect,
           center: { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
         }))
     },
