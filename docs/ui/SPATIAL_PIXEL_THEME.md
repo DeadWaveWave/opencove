@@ -145,7 +145,11 @@ world, under every window and the effects layer.
 - Work light (5.3b): the cells around each window take its kind colour (`--cove-wall-light-*`:
   the kind solids in Cove, label colours in hand-written themes, neutral with window kind colours
   off). Dark themes spread the light out from the window; light themes cast it to the lower right,
-  as daylight through coloured glass. Strength follows the window: idle 0.46 (not an agent),
+  as daylight through coloured glass: offset `(0.09w + 30, 0.12h + 44)` world px,
+  with falloff `max(30, 13.65 / zoom)`. Glass and active nearness use the original frame.
+  Daylight tiles have 9-channel jitter and a 14-channel top-left to bottom-right screen gradient;
+  the brightest 5% of twinkle candidates flash white, at strength 0.9 (dark remains 0.85).
+  Strength follows the window: idle 0.46 (not an agent),
   standby 0.6, working breathing between 0.64 and 0.92, a flash on received output, a flare to
   full when a run finishes (seen live; a reload never flares), waiting yellow and failure red.
   It is derived per frame and never stored (I7). It keeps breathing with twinkle off; reduced

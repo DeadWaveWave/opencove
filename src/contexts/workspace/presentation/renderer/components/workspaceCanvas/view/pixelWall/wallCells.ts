@@ -49,6 +49,27 @@ function hash2(i: number, j: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296
 }
 
+/** Daylight falls across the whole screen, not across the rounded-up grid extent. */
+function tileVariation(
+  grid: WallGrid,
+  appearance: WallPalette['appearance'],
+  column: number,
+  row: number,
+): number {
+  const i = grid.firstColumn + column
+  const j = grid.firstRow + row
+  const weights = PIXEL_WALL[appearance]
+  if (appearance === 'dark') {
+    return (hash2(i, j) - 0.5) * weights.tileJitter
+  }
+  const cx = grid.originX + (column + 0.5) * grid.screenCell
+  const cy = grid.originY + (row + 0.5) * grid.screenCell
+  return (
+    (hash2(i * 3 + 7, j * 5 + 11) - 0.5) * weights.tileJitter +
+    (0.45 - (cx / grid.width) * 0.55 - (cy / grid.height) * 0.45) * weights.falloff
+  )
+}
+
 function valueNoise(x: number, y: number): number {
   const xi = Math.floor(x)
   const yi = Math.floor(y)
@@ -146,16 +167,17 @@ function castWorkLight(
 ) {
   const strength = PIXEL_WALL[appearance].workA
   // 1.5 × the 19.5px midpoint of the screen-cell band, continuous across grid levels.
-  const fall = Math.max(80, (29.25 * grid.worldCell) / grid.screenCell)
+  const daylight = appearance === 'light'
+  const continuousCell = (19.5 * grid.worldCell) / grid.screenCell
+  const fall = daylight ? Math.max(30, 0.7 * continuousCell) : Math.max(80, 1.5 * continuousCell)
   const reach = fall * 2.6
-  const shift = appearance === 'light' ? fall * 0.6 : 0
   for (const frame of windows) {
     const light = frame.light
     if (!light || light.intensity <= 0) {
       continue
     }
-    const x = frame.x + shift
-    const y = frame.y + shift
+    const x = frame.x + (daylight ? 0.09 * frame.width + 30 : 0)
+    const y = frame.y + (daylight ? 0.12 * frame.height + 44 : 0)
     const first = Math.max(0, Math.floor((x - reach) / grid.worldCell) - grid.firstColumn)
     const last = Math.min(
       grid.columns - 1,
@@ -263,7 +285,7 @@ export function fillWallCells(
     for (let column = 0; column < grid.columns; column++, index += 4) {
       const worldColumn = grid.firstColumn + column
       const wx = (worldColumn + 0.5) * grid.worldCell
-      const jitter = (hash2(worldColumn, worldRow) - 0.5) * weights.tileJitter
+      const jitter = tileVariation(grid, palette.appearance, column, row)
       cells[index] = baseR + jitter
       cells[index + 1] = baseG + jitter
       cells[index + 2] = baseB + jitter
@@ -305,9 +327,15 @@ export function fillWallCells(
         const share = SPARK_SHARE + 0.2 * (near?.[cell] ?? 0)
         if (timeSeconds !== null && spark > 1 - share) {
           const twinkle =
-            Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * 0.85
+            Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * weights.sparkA
           if (twinkle > 0.02) {
-            shift = mix(cells, index, palette.sparks[hue]!, twinkle, shift)
+            shift = mix(
+              cells,
+              index,
+              palette.appearance === 'light' && spark > 0.95 ? WHITE : palette.sparks[hue]!,
+              twinkle,
+              shift,
+            )
           }
         }
       }
@@ -338,9 +366,12 @@ export function fillWallCells(
       }
       // Pull the cell back toward its tile colour until it has moved exactly `cap`.
       const scale = weights.cap / moved[cell]!
-      const worldColumn = grid.firstColumn + (cell % grid.columns)
-      const worldRow = grid.firstRow + Math.floor(cell / grid.columns)
-      const jitter = (hash2(worldColumn, worldRow) - 0.5) * weights.tileJitter
+      const jitter = tileVariation(
+        grid,
+        palette.appearance,
+        cell % grid.columns,
+        Math.floor(cell / grid.columns),
+      )
       const at = cell * 4
       cells[at] = baseR + jitter + (cells[at]! - baseR - jitter) * scale
       cells[at + 1] = baseG + jitter + (cells[at + 1]! - baseG - jitter) * scale

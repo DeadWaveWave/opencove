@@ -15,6 +15,9 @@ export interface WallViewport {
 
 /** The visible cells of the wall, anchored to the world so panning never slides a cell. */
 export interface WallGrid {
+  /** Actual viewport dimensions in CSS px, including partial edge cells. */
+  width: number
+  height: number
   worldCell: number
   screenCell: number
   firstColumn: number
@@ -53,6 +56,8 @@ export function resolveWallGrid(viewport: WallViewport): WallGrid {
   const originX = firstColumn * screenCell + viewport.x
   const originY = firstRow * screenCell + viewport.y
   return {
+    width,
+    height,
     worldCell,
     screenCell,
     firstColumn,
