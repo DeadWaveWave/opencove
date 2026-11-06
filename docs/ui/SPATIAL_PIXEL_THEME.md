@@ -160,10 +160,14 @@ world, under every window and the effects layer.
   Daylight tiles have 9-channel jitter and a 14-channel top-left to bottom-right screen gradient;
   the brightest 5% of twinkle candidates flash white, at strength 0.9 (dark remains 0.85).
   Strength follows the window: idle 0.46 (not an agent),
-  standby 0.6, working breathing between 0.64 and 0.92, a flash on received output, a flare to
-  full when a run finishes (seen live; a reload never flares), waiting yellow and failure red.
-  It is derived per frame and never stored (I7). It keeps breathing with twinkle off; reduced
-  motion holds it at a fixed level. The glass cap applies after it.
+  standby 0.6, working `0.78 + 0.14*sin(2π*now/2400 + seed*6)` with a stable window-id phase,
+  waiting amber `0.7 + 0.3*(0.5 + 0.5*sin(2π*now/1300))`, and failure red at 0.9.
+  Terminal output adds `0.38*exp(-elapsed/520)` until below 0.01; a live completion or failure
+  adds `0.9*(1-elapsed/1500)^2`. New windows fade in over 700ms, while loaded/restored windows
+  start lit, including those awaiting measurement. The final intensity is clamped to [0,1].
+  It is derived per frame and never stored (I7). Twinkle off keeps this clock; reduced motion or
+  signals off holds working at 0.8 and waiting at 0.85, without transient energy or birth fade.
+  The glass cap applies after it.
 - Frosted glass (5.3c): behind every window the cells are not drawn sharp. WebGL samples the same
   cell texture with linear filtering (about half resolution, smoothly scaled) inside each
   window's rounded frame, with a very faint grid on top, in one instanced pass; Canvas 2D draws

@@ -3,21 +3,20 @@ import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 /** What a window's light says (Tide): derived from its state, never stored (I7). */
 export type WorkLightState = 'idle' | 'standby' | 'working' | 'waiting' | 'failed'
 
-/** Steady levels; working breathes between WORKING_MIN and WORKING_MAX. */
-const LEVEL: Record<Exclude<WorkLightState, 'working'>, number> = {
-  idle: 0.46,
-  standby: 0.6,
-  waiting: 0.78,
-  failed: 0.78,
+const LEVEL = { idle: 0.46, standby: 0.6, waiting: 0.85, failed: 0.9 }
+/** Output energy stops requesting frames once its contribution is below 0.01 (Tide nodeLight). */
+export const WORK_LIGHT_FLASH_MS = 520 * Math.log(38)
+export const WORK_LIGHT_BURST_MS = 1500
+const BIRTH_MS = 700
+
+/** Stable across remeasurement and reload; windows breathe with their own phase. */
+export function workLightSeed(id: string): number {
+  let hash = 2166136261
+  for (let index = 0; index < id.length; index++) {
+    hash = Math.imul(hash ^ id.charCodeAt(index), 16777619)
+  }
+  return (hash >>> 0) / 4294967296
 }
-const WORKING_MIN = 0.64
-const WORKING_MAX = 0.92
-const BREATH_MS = 2600
-/** Received output brightens the light for this long. */
-export const WORK_LIGHT_FLASH_MS = 700
-const FLASH_GAIN = 0.22
-/** A finished run flares to full and settles back over this long. */
-export const WORK_LIGHT_BURST_MS = 1400
 
 export function resolveWorkLightState(
   isAgent: boolean,
@@ -56,34 +55,40 @@ export function resolveWorkLight({
   state,
   now,
   outputAt,
-  completedAt,
+  flashAt,
+  bornAt = null,
+  seed = 0,
 }: {
   state: WorkLightState
   now: number | null
   outputAt: number | null
-  completedAt: number | null
+  flashAt: number | null
+  bornAt?: number | null
+  seed?: number
 }): WorkLight {
   const tone = state === 'waiting' ? 'waiting' : state === 'failed' ? 'failed' : 'kind'
   if (now === null) {
-    const level = state === 'working' ? (WORKING_MIN + WORKING_MAX) / 2 : LEVEL[state]
-    return { intensity: level, tone, animating: false }
+    return { intensity: state === 'working' ? 0.8 : LEVEL[state], tone, animating: false }
   }
-  const base =
+  let intensity =
     state === 'working'
-      ? WORKING_MIN +
-        (WORKING_MAX - WORKING_MIN) * (0.5 - 0.5 * Math.cos((2 * Math.PI * now) / BREATH_MS))
-      : LEVEL[state]
-  let intensity = base
-  let animating = state === 'working'
+      ? 0.78 + 0.14 * Math.sin((2 * Math.PI * now) / 2400 + seed * 6)
+      : state === 'waiting'
+        ? 0.7 + 0.3 * (0.5 + 0.5 * Math.sin((2 * Math.PI * now) / 1300))
+        : LEVEL[state]
+  let animating = state === 'working' || state === 'waiting'
   const sinceOutput = outputAt === null ? Infinity : now - outputAt
-  if (sinceOutput >= 0 && sinceOutput <= WORK_LIGHT_FLASH_MS) {
-    intensity += FLASH_GAIN * (1 - sinceOutput / WORK_LIGHT_FLASH_MS) ** 2
+  if (sinceOutput >= 0 && sinceOutput < WORK_LIGHT_FLASH_MS) {
+    intensity += 0.38 * Math.exp(-sinceOutput / 520)
     animating = true
   }
-  const sinceCompletion = completedAt === null ? Infinity : now - completedAt
-  if (sinceCompletion >= 0 && sinceCompletion <= WORK_LIGHT_BURST_MS) {
-    const flare = (1 - sinceCompletion / WORK_LIGHT_BURST_MS) ** 2
-    intensity = Math.max(intensity, base + (1 - base) * flare)
+  const sinceFlash = flashAt === null ? Infinity : now - flashAt
+  if (sinceFlash >= 0 && sinceFlash < WORK_LIGHT_BURST_MS) {
+    intensity += 0.9 * (1 - sinceFlash / WORK_LIGHT_BURST_MS) ** 2
+    animating = true
+  }
+  if (bornAt !== null && now - bornAt < BIRTH_MS) {
+    intensity *= Math.max(0, (now - bornAt) / BIRTH_MS)
     animating = true
   }
   return { intensity: Math.min(1, Math.max(0, intensity)), tone, animating }

@@ -10,7 +10,7 @@ const at = (
   state: Parameters<typeof resolveWorkLight>[0]['state'],
   now: number | null,
   extra = {},
-) => resolveWorkLight({ state, now, outputAt: null, completedAt: null, ...extra })
+) => resolveWorkLight({ state, now, outputAt: null, flashAt: null, ...extra })
 
 describe('work light', () => {
   it('maps agent status to a light state, with non-agent windows idle', () => {
@@ -22,6 +22,48 @@ describe('work light', () => {
     for (const status of ['standby', 'exited', 'stopped', null] as const) {
       expect(resolveWorkLightState(true, status)).toBe('standby')
     }
+  })
+
+  it('matches the per-window working phase and the waiting beacon clock', () => {
+    for (const now of [0, 300, 600, 1200, 1800, 2400]) {
+      for (const seed of [0, 0.3, 0.9]) {
+        expect(at('working', now, { seed }).intensity).toBeCloseTo(
+          0.78 + 0.14 * Math.sin((2 * Math.PI * now) / 2400 + seed * 6),
+          10,
+        )
+      }
+      expect(at('waiting', now).intensity).toBeCloseTo(
+        0.7 + 0.3 * (0.5 + 0.5 * Math.sin((2 * Math.PI * now) / 1300)),
+        10,
+      )
+    }
+    expect(at('waiting', 0).animating).toBe(true)
+    expect(at('failed', 0).intensity).toBe(0.9)
+  })
+
+  it('adds exponential output energy and quadratic completion or failure energy', () => {
+    for (const elapsed of [0, 260, 520, 1040, 1500]) {
+      expect(at('idle', 1000 + elapsed, { outputAt: 1000 }).intensity).toBeCloseTo(
+        0.46 + 0.38 * Math.exp(-elapsed / 520),
+        10,
+      )
+    }
+    expect(at('standby', 1750, { flashAt: 1000 }).intensity).toBeCloseTo(0.825)
+    expect(at('failed', 2250, { flashAt: 1000 }).intensity).toBeCloseTo(0.925)
+  })
+
+  it('fades new light in over 700ms, but calm mode has no energy or fade', () => {
+    expect(at('idle', 1000, { bornAt: 1000 }).intensity).toBe(0)
+    expect(at('idle', 1350, { bornAt: 1000 }).intensity).toBeCloseTo(0.23)
+    expect(at('idle', 1700, { bornAt: 1000 })).toMatchObject({ intensity: 0.46, animating: false })
+    expect(at('working', null, { outputAt: 0, flashAt: 0, bornAt: 0 })).toMatchObject({
+      intensity: 0.8,
+      animating: false,
+    })
+    expect(at('waiting', null, { outputAt: 0, flashAt: 0, bornAt: 0 })).toMatchObject({
+      intensity: 0.85,
+      animating: false,
+    })
   })
 
   it('holds idle at 0.46 and standby at 0.6, and breathes working between 0.64 and 0.92', () => {
@@ -59,24 +101,22 @@ describe('work light', () => {
   })
 
   it('flares to full on completion and settles monotonically to standby', () => {
-    const completedAt = 5_000
-    expect(at('standby', completedAt, { completedAt }).intensity).toBeCloseTo(1)
+    const flashAt = 5_000
+    expect(at('standby', flashAt, { flashAt }).intensity).toBeCloseTo(1)
     let previous = Infinity
     for (let elapsed = 0; elapsed <= WORK_LIGHT_BURST_MS + 100; elapsed += 30) {
-      const light = at('standby', completedAt + elapsed, { completedAt })
+      const light = at('standby', flashAt + elapsed, { flashAt })
       expect(light.intensity).toBeLessThanOrEqual(previous + 1e-9)
       expect(light.intensity).toBeGreaterThanOrEqual(0.6 - 1e-9)
       previous = light.intensity
     }
-    expect(at('standby', completedAt + WORK_LIGHT_BURST_MS + 1, { completedAt }).animating).toBe(
-      false,
-    )
+    expect(at('standby', flashAt + WORK_LIGHT_BURST_MS + 1, { flashAt }).animating).toBe(false)
   })
 
   it('stays within [0, 1] for every state and moment', () => {
     for (const state of ['idle', 'standby', 'working', 'waiting', 'failed'] as const) {
       for (let now = 0; now < 4000; now += 37) {
-        const { intensity } = at(state, now, { outputAt: now - 5, completedAt: now - 9 })
+        const { intensity } = at(state, now, { outputAt: now - 5, flashAt: now - 9 })
         expect(intensity).toBeGreaterThanOrEqual(0)
         expect(intensity).toBeLessThanOrEqual(1)
       }
@@ -84,10 +124,10 @@ describe('work light', () => {
   })
 
   it('holds a fixed level without a clock: no breathing, flash or flare under reduced motion', () => {
-    const still = at('working', null, { outputAt: 0, completedAt: 0 })
+    const still = at('working', null, { outputAt: 0, flashAt: 0 })
     expect(still.animating).toBe(false)
     expect(still.intensity).toBeGreaterThanOrEqual(0.64)
     expect(still.intensity).toBeLessThanOrEqual(0.92)
-    expect(at('standby', null, { completedAt: 0 }).intensity).toBeCloseTo(0.6)
+    expect(at('standby', null, { flashAt: 0 }).intensity).toBeCloseTo(0.6)
   })
 })

@@ -6,7 +6,12 @@ import type { WallViewport } from './wallGrid'
 import type { WallWindowRect } from './wallCells'
 import { RIPPLE_WINDOW_INTERVAL_MS } from './ripples'
 import type { WallLightPalette } from './wallPalette'
-import { resolveWorkLight, resolveWorkLightState, type WorkLightState } from './workLight'
+import {
+  resolveWorkLight,
+  resolveWorkLightState,
+  workLightSeed,
+  type WorkLightState,
+} from './workLight'
 
 interface TrackedWindow {
   id: string
@@ -18,16 +23,14 @@ interface TrackedWindow {
 }
 
 interface WindowEvents {
+  running: boolean
   state: WorkLightState
   outputAt: number | null
-  completedAt: number | null
+  flashAt: number | null
+  bornAt: number | null
+  seed: number
 }
 
-/**
- * The windows the wall lights, and the moments their light reacts to: output from the PTY event
- * hub and a run finishing (working → standby, seen live; a reload never flares). Runtime only:
- * nothing here is stored or written back (I7).
- */
 export function isWindowOnScreen(
   rect: TrackedWindow['rect'],
   view: WallViewport,
@@ -43,7 +46,14 @@ export function isWindowOnScreen(
   )
 }
 
-export function createWallWindowTracker() {
+/**
+ * The windows the wall lights, and the moments their light reacts to: output from the PTY event
+ * hub and a run finishing (working → standby, seen live; a reload never flares). Runtime only:
+ * nothing here is stored or written back (I7).
+ */
+export function createWallWindowTracker(initialNodeIds?: Iterable<string>) {
+  const initialIds = new Set(initialNodeIds)
+  let firstSnapshot = initialNodeIds === undefined
   let windows: TrackedWindow[] = []
   const events = new Map<string, WindowEvents>()
 
@@ -54,20 +64,38 @@ export function createWallWindowTracker() {
       for (const node of nodeLookup?.values() ?? []) {
         const width = node.measured?.width ?? node.width ?? 0
         const height = node.measured?.height ?? node.height ?? 0
-        if (node.hidden || width <= 0 || height <= 0) {
-          continue
-        }
         const { x, y } = node.internals.positionAbsolute
         const presentation = resolveAgentPresentation(node.data)
         const state = resolveWorkLightState(presentation.isAgent, presentation.status)
         const previous = events.get(node.id)
         if (!previous) {
-          events.set(node.id, { state, outputAt: null, completedAt: null })
-        } else if (previous.state !== state) {
-          if (previous.state === 'working' && state === 'standby') {
-            previous.completedAt = now
+          const restored =
+            firstSnapshot ||
+            initialIds.has(node.id) ||
+            presentation.status === 'restoring' ||
+            node.data.runtimeSessionBinding ||
+            node.data.isLiveSessionReattach
+          events.set(node.id, {
+            state,
+            running: presentation.status === 'running',
+            outputAt: null,
+            flashAt: null,
+            bornAt: restored ? null : now,
+            seed: workLightSeed(node.id),
+          })
+        } else {
+          if (
+            (previous.running && state === 'standby') ||
+            (previous.state !== 'failed' && state === 'failed')
+          ) {
+            previous.flashAt = now
           }
           previous.state = state
+          previous.running = presentation.status === 'running'
+        }
+        initialIds.delete(node.id)
+        if (node.hidden || width <= 0 || height <= 0) {
+          continue
         }
         next.push({
           id: node.id,
@@ -79,7 +107,8 @@ export function createWallWindowTracker() {
           acceptsOutput: node.data.kind === 'terminal' && !presentation.isAgent,
         })
       }
-      const present = new Set(next.map(window => window.id))
+      firstSnapshot = false
+      const present = new Set(nodeLookup?.keys() ?? [])
       for (const id of events.keys()) {
         if (!present.has(id)) {
           events.delete(id)
@@ -179,13 +208,21 @@ export function createWallWindowTracker() {
       palette: WallLightPalette,
     ): { windows: WallWindowRect[]; animating: boolean } {
       let animating = false
+      // Disabling signals consumes transient energy, so enabling them never replays an old flash.
+      if (now === null) {
+        for (const record of events.values()) {
+          record.outputAt = record.flashAt = record.bornAt = null
+        }
+      }
       const resolved = windows.map(window => {
         const record = events.get(window.id)
         const light = resolveWorkLight({
           state: window.state,
           now,
           outputAt: record?.outputAt ?? null,
-          completedAt: record?.completedAt ?? null,
+          flashAt: record?.flashAt ?? null,
+          bornAt: record?.bornAt ?? null,
+          seed: record?.seed ?? 0,
         })
         animating ||= light.animating
         const color = light.tone === 'kind' ? palette[window.family] : palette[light.tone]

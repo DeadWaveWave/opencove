@@ -43,7 +43,7 @@ const SHOWCASE_CLOUD_SPEED = 4
  * frame scheduler (30fps focused, 10fps in the background, none while hidden or with reduced
  * motion); a pan or zoom repaints on the next display frame, so the wall never trails windows.
  * Each window lights the cells around it (5.3b); that light is meaningful, so it keeps
- * breathing with twinkle off and only reduced motion holds it at a fixed level.
+ * breathing with twinkle off; reduced motion or signals off holds it at a fixed level.
  *
  * In the app the wall fills the window (Tide): it is painted into the shell's wall layer, and
  * the top bar and sidebar float on it as frosted glass with the same cap as behind windows.
@@ -126,7 +126,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     }
     measure()
     let nodes = initial.nodes
-    const tracker = createWallWindowTracker()
+    const tracker = createWallWindowTracker(initial.nodes?.map(node => node.id) ?? [])
     tracker.sync(initial.nodeLookup, performance.now())
     let cells: Uint8ClampedArray | undefined
     let screenCell = 0
@@ -141,7 +141,10 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       const { width, height } = view
       const grid = resolveWallGrid(view)
       const ambientSeconds = now === null || still() ? null : now / 1000
-      const lit = tracker.resolve(now === null || reducedMotion ? null : now, lights)
+      const lit = tracker.resolve(
+        now === null || reducedMotion || !signalsRef.current ? null : now,
+        lights,
+      )
       const signalTime = now !== null && !reducedMotion && signalsRef.current ? now : null
       if (signalTime === null) {
         ripples.clear()
