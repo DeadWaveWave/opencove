@@ -257,15 +257,19 @@ function baselineMeasurementCacheKey(input: {
   ])
 }
 
-export async function measureTerminalDisplayReferenceBaseline(input: {
-  terminalFontSize: number
-  terminalFontFamily: string | null
-}): Promise<TerminalDisplayMeasurement | null> {
+// `fresh` is for an explicit user capture: it always measures and replaces the cached result.
+export async function measureTerminalDisplayReferenceBaseline(
+  input: {
+    terminalFontSize: number
+    terminalFontFamily: string | null
+  },
+  options: { fresh?: boolean } = {},
+): Promise<TerminalDisplayMeasurement | null> {
   const key = baselineMeasurementCacheKey(input)
   if (key === null) {
     return await measureTerminalDisplayReferenceBaselineUncached(input)
   }
-  const cached = baselineMeasurementCache.get(key)
+  const cached = options.fresh ? undefined : baselineMeasurementCache.get(key)
   if (cached) {
     return await cached
   }

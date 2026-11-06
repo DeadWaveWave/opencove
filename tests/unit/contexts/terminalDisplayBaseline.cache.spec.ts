@@ -91,4 +91,20 @@ describe('terminal display reference baseline', () => {
     })
     expect(terminalsCreated).toHaveBeenCalledTimes(3)
   })
+
+  it('takes a new measurement for an explicit capture and serves it to later requests', async () => {
+    const input = { terminalFontSize: 17.5, terminalFontFamily: null }
+    const cached = await measureTerminalDisplayReferenceBaseline(input)
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2030-01-01T00:00:00.000Z'))
+    try {
+      const fresh = await measureTerminalDisplayReferenceBaseline(input, { fresh: true })
+      expect(terminalsCreated).toHaveBeenCalledTimes(2)
+      expect(fresh?.measuredAt).not.toBe(cached?.measuredAt)
+      expect(await measureTerminalDisplayReferenceBaseline(input)).toEqual(fresh)
+      expect(terminalsCreated).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
